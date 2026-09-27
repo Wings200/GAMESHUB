@@ -1,5 +1,4 @@
 function getCookie(request, name) {
-
   const cookieHeader =
     request.headers.get("Cookie") || "";
 
@@ -7,7 +6,6 @@ function getCookie(request, name) {
     cookieHeader.split(";");
 
   for (const cookie of cookies) {
-
     const parts =
       cookie.trim().split("=");
 
@@ -15,11 +13,8 @@ function getCookie(request, name) {
       parts.shift();
 
     if (key === name) {
-
       return parts.join("=");
-
     }
-
   }
 
   return null;
@@ -27,7 +22,6 @@ function getCookie(request, name) {
 
 
 async function sign(value, secret) {
-
   const encoder =
     new TextEncoder();
 
@@ -62,7 +56,6 @@ async function sign(value, secret) {
 
 
 async function validSession(request, secret) {
-
   if (!secret) {
     return false;
   }
@@ -116,11 +109,15 @@ async function validSession(request, secret) {
 
 
 export async function onRequest(context) {
-
   const url =
     new URL(
       context.request.url
     );
+
+  /*
+    Keep login API reachable
+    before authentication.
+  */
 
   if (
     url.pathname === "/api/login"
@@ -128,42 +125,52 @@ export async function onRequest(context) {
     return context.next();
   }
 
+
   const authenticated =
     await validSession(
       context.request,
       context.env.SESSION_SECRET
     );
 
+
+  /*
+    Allow both /login and /login.html
+    because Cloudflare may normalize
+    login.html to /login.
+  */
+
   if (
+    url.pathname === "/login" ||
     url.pathname === "/login.html"
   ) {
-
     if (authenticated) {
-
       return Response.redirect(
         new URL("/", url),
         302
       );
-
     }
 
     return context.next();
   }
 
-  if (!authenticated) {
 
+  /*
+    Lock everything else.
+  */
+
+  if (!authenticated) {
     return new Response(
       null,
       {
         status: 302,
         headers: {
-          "Location": "/login.html",
+          "Location": "/login",
           "Cache-Control": "no-store"
         }
       }
     );
-
   }
+
 
   return context.next();
 }
