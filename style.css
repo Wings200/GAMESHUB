@@ -1,0 +1,257 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #070a0f;
+  color: #f4f6fa;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button, select, a {
+  font: inherit;
+}
+
+#gameShell,
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+#gameCanvas {
+  display: block;
+  outline: none;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 15%, rgba(42, 52, 70, .38), transparent 35%),
+    rgba(5, 7, 11, .88);
+}
+
+.menu-card {
+  width: min(470px, 100%);
+  padding: 28px;
+  border: 1px solid #28303d;
+  border-radius: 18px;
+  background: rgba(14, 18, 25, .95);
+}
+
+.eyebrow {
+  color: #7f8a9b;
+  letter-spacing: 2.4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+h1 {
+  margin-top: 5px;
+  font-size: clamp(52px, 12vw, 80px);
+  line-height: .95;
+  letter-spacing: -3px;
+}
+
+.sub {
+  margin: 14px 0 26px;
+  color: #929cac;
+  line-height: 1.5;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #929cac;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #323b49;
+  border-radius: 10px;
+  padding: 0 13px;
+  background: #0a0e14;
+  color: white;
+  outline: none;
+}
+
+.menu-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+button,
+.secondary {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+#startBtn {
+  background: white;
+  color: #080b10;
+}
+
+.secondary {
+  border: 1px solid #303846;
+  background: #171c25;
+  color: #c3cad4;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-top: 22px;
+  color: #6f7989;
+  font-size: 11px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#hud {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.hud-left {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 10px;
+  background: rgba(4, 7, 12, .58);
+  backdrop-filter: blur(4px);
+}
+
+#trackName {
+  font-size: 12px;
+  letter-spacing: 1.8px;
+  font-weight: 850;
+}
+
+#objective {
+  margin-top: 4px;
+  color: #aab3c1;
+  font-size: 12px;
+}
+
+.hud-right {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 190px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  background: rgba(4, 7, 12, .60);
+  backdrop-filter: blur(4px);
+}
+
+.speed-line {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.speed-line small {
+  color: #8e98a8;
+  font-size: 12px;
+}
+
+.gear-line {
+  margin-top: 6px;
+  color: #b7c0cd;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bar-label {
+  margin-top: 9px;
+  color: #788292;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 1.2px;
+}
+
+.bar {
+  height: 5px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #252c37;
+}
+
+#rpmBar,
+#nitroBar {
+  width: 0%;
+  height: 100%;
+  background: #f1f4f8;
+}
+
+#fps {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  color: rgba(255,255,255,.45);
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+#countdown,
+#message {
+  position: fixed;
+  z-index: 15;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-weight: 950;
+  text-shadow: 0 5px 30px rgba(0,0,0,.8);
+}
+
+#countdown {
+  font-size: clamp(78px, 20vw, 150px);
+}
+
+#message {
+  padding: 18px 24px;
+  border-radius: 13px;
+  background: rgba(5,8,13,.78);
+  font-size: clamp(28px, 7vw, 52px);
+}
+
+@media (max-width: 600px) {
+  .menu-actions,
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .hud-right {
+    width: 155px;
+  }
+}
