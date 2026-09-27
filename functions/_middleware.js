@@ -114,9 +114,24 @@ export async function onRequest(context) {
       context.request.url
     );
 
+
   /*
-    Keep login API reachable
-    before authentication.
+    PUBLIC FILES
+
+    These must load before someone
+    has logged in.
+  */
+
+  if (
+    url.pathname === "/logo.png" ||
+    url.pathname === "/favicon.ico"
+  ) {
+    return context.next();
+  }
+
+
+  /*
+    Login API must be public.
   */
 
   if (
@@ -134,9 +149,8 @@ export async function onRequest(context) {
 
 
   /*
-    Allow both /login and /login.html
-    because Cloudflare may normalize
-    login.html to /login.
+    Login page must be accessible
+    before authentication.
   */
 
   if (
@@ -155,7 +169,7 @@ export async function onRequest(context) {
 
 
   /*
-    Lock everything else.
+    Everything else is private.
   */
 
   if (!authenticated) {
@@ -163,6 +177,7 @@ export async function onRequest(context) {
       null,
       {
         status: 302,
+
         headers: {
           "Location": "/login",
           "Cache-Control": "no-store"
