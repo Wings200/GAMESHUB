@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Game Hub</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #090b10;
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 0 40px;
+
+      background: #10131a;
+      border-bottom: 1px solid #242936;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    nav a {
+      color: #aeb5c2;
+      text-decoration: none;
+      margin-left: 25px;
+
+      transition: 0.2s;
+    }
+
+    nav a:hover {
+      color: white;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 45px 30px;
+    }
+
+    .hero {
+      margin-bottom: 45px;
+    }
+
+    .hero h1 {
+      font-size: 44px;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: #aab0bd;
+      font-size: 17px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      margin-bottom: 18px;
+    }
+
+    .games {
+      display: grid;
+
+      grid-template-columns:
+        repeat(auto-fit, minmax(260px, 1fr));
+
+      gap: 20px;
+    }
+
+    .game-card {
+      background: #141821;
+      border: 1px solid #272d3a;
+
+      border-radius: 14px;
+
+      overflow: hidden;
+
+      transition:
+        transform 0.2s,
+        border-color 0.2s;
+    }
+
+    .game-card:hover {
+      transform: translateY(-4px);
+      border-color: #505a70;
+    }
+
+    .thumbnail {
+      height: 170px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 55px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #1f2634,
+          #0e1016
+        );
+    }
+
+    .game-info {
+      padding: 18px;
+    }
+
+    .game-info h2 {
+      margin-bottom: 7px;
+    }
+
+    .game-info p {
+      color: #9ca5b4;
+      font-size: 14px;
+
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .tags {
+      margin-bottom: 16px;
+    }
+
+    .tag {
+      display: inline-block;
+
+      background: #222835;
+      color: #bfc7d4;
+
+      font-size: 12px;
+
+      padding: 5px 8px;
+
+      border-radius: 6px;
+
+      margin-right: 5px;
+    }
+
+    .play-button {
+      display: inline-block;
+
+      padding: 10px 18px;
+
+      background: #ffffff;
+      color: #080a0e;
+
+      text-decoration: none;
+
+      border-radius: 8px;
+
+      font-weight: bold;
+    }
+
+    .disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    footer {
+      text-align: center;
+
+      padding: 35px;
+
+      color: #646d7d;
+
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+
+  <div class="logo">
+    GAME HUB
+  </div>
+
+  <nav>
+    <a href="/">Games</a>
+    <a href="#">Multiplayer</a>
+    <a href="#">About</a>
+  </nav>
+
+</header>
+
+
+<main>
+
+  <section class="hero">
+
+    <h1>Play.</h1>
+
+    <p>
+      Lightweight browser games built to run smoothly
+      even on low-power Chromebooks.
+    </p>
+
+  </section>
+
+
+  <h2 class="section-title">
+    Featured Games
+  </h2>
+
+
+  <div class="games">
+
+
+    <!-- REDLINE -->
+
+    <div class="game-card">
+
+      <div class="thumbnail">
+        🏎️
+      </div>
+
+      <div class="game-info">
+
+        <h2>REDLINE</h2>
+
+        <p>
+          High-speed 3D arcade racing with multiple maps,
+          objectives, drifting, nitrous and multiplayer.
+        </p>
+
+        <div class="tags">
+          <span class="tag">3D</span>
+          <span class="tag">Racing</span>
+          <span class="tag">Multiplayer</span>
+        </div>
+
+        <a
+          class="play-button disabled"
+          href="games/redline/"
+        >
+          COMING SOON
+        </a>
+
+      </div>
+
+    </div>
+
+
+    <!-- FUTURE GAME -->
+
+    <div class="game-card">
+
+      <div class="thumbnail">
+        ?
+      </div>
+
+      <div class="game-info">
+
+        <h2>Next Game</h2>
+
+        <p>
+          Another original game will live here later.
+        </p>
+
+        <div class="tags">
+          <span class="tag">Coming Soon</span>
+        </div>
+
+        <a
+          class="play-button disabled"
+          href="#"
+        >
+          LOCKED
+        </a>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+</main>
+
+
+<footer>
+
+  Built for the browser.
+
+</footer>
+
+
+</body>
+</html>
