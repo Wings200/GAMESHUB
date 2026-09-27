@@ -2,16 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>GAMESHUB Access</title>
 
   <style>
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -20,11 +15,9 @@
 
     body {
       min-height: 100vh;
-
       display: grid;
       place-items: center;
-
-      padding: 25px;
+      padding: 24px;
 
       background:
         radial-gradient(
@@ -33,7 +26,7 @@
           #0b0e13 55%
         );
 
-      color: #f3f5f8;
+      color: white;
 
       font-family:
         system-ui,
@@ -44,62 +37,49 @@
     }
 
     .login {
-      width: min(
-        100%,
-        410px
-      );
-
+      width: min(100%, 410px);
       text-align: center;
     }
 
     .logo {
-      width: 60px;
-      height: 60px;
+      width: 62px;
+      height: 62px;
 
       display: grid;
       place-items: center;
 
-      margin:
-        0 auto
-        19px;
+      margin: 0 auto 18px;
 
       border-radius: 17px;
 
       background: #171c25;
+      border: 1px solid #29313e;
 
-      border:
-        1px solid #29313e;
-
-      font-size: 18px;
       font-weight: 900;
+      font-size: 18px;
     }
 
     h1 {
-      font-size: 27px;
-
+      font-size: 28px;
       letter-spacing: 4px;
     }
 
-    .private {
+    .subtitle {
       margin-top: 8px;
 
       color: #7f8999;
 
       font-size: 11px;
       font-weight: 800;
-
       letter-spacing: 2px;
     }
 
     .panel {
       margin-top: 34px;
+      padding: 28px;
 
-      padding: 27px;
-
-      border:
-        1px solid #272e3a;
-
-      border-radius: 17px;
+      border: 1px solid #272e3a;
+      border-radius: 18px;
 
       background: #12161e;
     }
@@ -112,7 +92,6 @@
       color: #a0a9b6;
 
       text-align: left;
-
       font-size: 13px;
     }
 
@@ -121,21 +100,17 @@
 
       padding: 15px;
 
-      outline: none;
-
-      border:
-        1px solid #303846;
-
+      border: 1px solid #303846;
       border-radius: 11px;
 
-      background: #0c0f15;
+      outline: none;
 
+      background: #0c0f15;
       color: white;
 
       text-align: center;
 
       font-size: 24px;
-
       letter-spacing: 9px;
     }
 
@@ -147,7 +122,6 @@
       width: 100%;
 
       margin-top: 13px;
-
       padding: 14px;
 
       border: none;
@@ -161,18 +135,12 @@
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: .5;
-      cursor: wait;
-    }
-
-    #error {
+    #message {
       min-height: 20px;
 
       margin-top: 13px;
 
       color: #f27474;
-
       font-size: 13px;
     }
 
@@ -180,44 +148,8 @@
       margin-top: 18px;
 
       color: #616b7a;
-
       font-size: 11px;
     }
-
-    .shake {
-      animation:
-        shake .28s linear;
-    }
-
-    @keyframes shake {
-
-      0% {
-        transform:
-          translateX(0);
-      }
-
-      25% {
-        transform:
-          translateX(-7px);
-      }
-
-      50% {
-        transform:
-          translateX(7px);
-      }
-
-      75% {
-        transform:
-          translateX(-5px);
-      }
-
-      100% {
-        transform:
-          translateX(0);
-      }
-
-    }
-
   </style>
 </head>
 
@@ -233,15 +165,11 @@
       GAMESHUB
     </h1>
 
-    <div class="private">
+    <div class="subtitle">
       PRIVATE GAME NETWORK
     </div>
 
-
-    <form
-      id="login-form"
-      class="panel"
-    >
+    <form class="panel" id="loginForm">
 
       <label for="code">
         Enter access code
@@ -249,7 +177,6 @@
 
       <input
         id="code"
-        name="code"
         type="password"
         inputmode="numeric"
         autocomplete="off"
@@ -257,20 +184,13 @@
         required
       >
 
-      <button
-        id="submit"
-        type="submit"
-      >
+      <button type="submit">
         UNLOCK
       </button>
 
-      <div
-        id="error"
-        aria-live="polite"
-      ></div>
+      <div id="message"></div>
 
     </form>
-
 
     <div class="note">
       Access is invite-only.
@@ -278,129 +198,70 @@
 
   </main>
 
+  <script>
+    const form =
+      document.getElementById("loginForm");
 
-<script>
+    const code =
+      document.getElementById("code");
 
-const form =
-  document.getElementById(
-    "login-form"
-  );
-
-
-const input =
-  document.getElementById(
-    "code"
-  );
+    const message =
+      document.getElementById("message");
 
 
-const button =
-  document.getElementById(
-    "submit"
-  );
+    form.addEventListener(
+      "submit",
+      async (event) => {
+
+        event.preventDefault();
+
+        message.textContent =
+          "Checking...";
+
+        try {
+
+          const response =
+            await fetch(
+              "/api/login",
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    code: code.value
+                  })
+              }
+            );
 
 
-const error =
-  document.getElementById(
-    "error"
-  );
+          if (response.ok) {
 
+            location.href = "/";
 
-form.addEventListener(
-  "submit",
-  async event => {
-
-    event.preventDefault();
-
-
-    error.textContent =
-      "";
-
-
-    button.disabled =
-      true;
-
-
-    button.textContent =
-      "CHECKING...";
-
-
-    try {
-
-      const response =
-        await fetch(
-          "/api/login",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body:
-              JSON.stringify({
-                code:
-                  input.value
-              })
           }
-        );
+          else {
 
+            message.textContent =
+              "Incorrect access code.";
 
-      if (
-        response.ok
-      ) {
+          }
 
-        location.replace(
-          "/"
-        );
+        }
+        catch {
 
-        return;
+          message.textContent =
+            "Server not ready yet.";
+
+        }
 
       }
-
-
-      error.textContent =
-        "Incorrect access code.";
-
-
-      form.classList.remove(
-        "shake"
-      );
-
-
-      void form.offsetWidth;
-
-
-      form.classList.add(
-        "shake"
-      );
-
-
-      input.select();
-
-    }
-    catch {
-
-      error.textContent =
-        "Unable to contact the server.";
-
-    }
-
-
-    button.disabled =
-      false;
-
-
-    button.textContent =
-      "UNLOCK";
-
-  }
-);
-
-
-input.focus();
-
-</script>
+    );
+  </script>
 
 </body>
 </html>
