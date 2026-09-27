@@ -1,91 +1,41 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-/* =========================================================
-   REDLINE
-   Navigation / HUD build
-   ========================================================= */
+const canvas = document.getElementById("gameCanvas");
+const menu = document.getElementById("menu");
+const hud = document.getElementById("hud");
+
+const startBtn = document.getElementById("startBtn");
+const trackSelect = document.getElementById("trackSelect");
+const trackDescription = document.getElementById("trackDescription");
+
+const trackNameEl = document.getElementById("trackName");
+const objectiveEl = document.getElementById("objective");
+const checkpointText = document.getElementById("checkpointText");
+
+const directionArrow = document.getElementById("directionArrow");
+const navigationText = document.getElementById("navigationText");
+const checkpointDistance = document.getElementById("checkpointDistance");
+const wrongWay = document.getElementById("wrongWay");
+
+const minimap = document.getElementById("minimap");
+const mapCtx = minimap.getContext("2d");
+
+const speedEl = document.getElementById("speed");
+const gearEl = document.getElementById("gear");
+const rpmBar = document.getElementById("rpmBar");
+const nitroBar = document.getElementById("nitroBar");
+const nitroPercent = document.getElementById("nitroPercent");
+
+const fpsEl = document.getElementById("fps");
+
+const countdown = document.getElementById("countdown");
+const checkpointPopup = document.getElementById("checkpointPopup");
+const message = document.getElementById("message");
 
 
-/* -------------------------
-   HTML ELEMENTS
-------------------------- */
-
-const canvas =
-  document.getElementById("gameCanvas");
-
-const menu =
-  document.getElementById("menu");
-
-const hud =
-  document.getElementById("hud");
-
-const startBtn =
-  document.getElementById("startBtn");
-
-const trackSelect =
-  document.getElementById("trackSelect");
-
-const trackDescription =
-  document.getElementById("trackDescription");
-
-const trackNameEl =
-  document.getElementById("trackName");
-
-const objectiveEl =
-  document.getElementById("objective");
-
-const checkpointText =
-  document.getElementById("checkpointText");
-
-const directionArrow =
-  document.getElementById("directionArrow");
-
-const navigationText =
-  document.getElementById("navigationText");
-
-const checkpointDistance =
-  document.getElementById("checkpointDistance");
-
-const wrongWay =
-  document.getElementById("wrongWay");
-
-const minimap =
-  document.getElementById("minimap");
-
-const mapCtx =
-  minimap.getContext("2d");
-
-const speedEl =
-  document.getElementById("speed");
-
-const gearEl =
-  document.getElementById("gear");
-
-const rpmBar =
-  document.getElementById("rpmBar");
-
-const nitroBar =
-  document.getElementById("nitroBar");
-
-const nitroPercent =
-  document.getElementById("nitroPercent");
-
-const fpsEl =
-  document.getElementById("fps");
-
-const countdown =
-  document.getElementById("countdown");
-
-const checkpointPopup =
-  document.getElementById("checkpointPopup");
-
-const message =
-  document.getElementById("message");
-
-
-/* =========================================================
+/* =========================
    THREE.JS
-   ========================================================= */
+========================= */
 
 const renderer =
   new THREE.WebGLRenderer({
@@ -109,24 +59,23 @@ const camera =
     68,
     16 / 9,
     0.1,
-    350
+    360
   );
 
 
-const hemisphere =
+scene.add(
   new THREE.HemisphereLight(
     0xffffff,
     0x263040,
-    1.7
-  );
-
-scene.add(hemisphere);
+    1.65
+  )
+);
 
 
 const sunlight =
   new THREE.DirectionalLight(
     0xffffff,
-    1.2
+    1.15
   );
 
 sunlight.position.set(
@@ -141,13 +90,26 @@ scene.add(sunlight);
 const clock =
   new THREE.Clock();
 
-
-/* =========================================================
-   GAME STATE
-   ========================================================= */
-
 const keys =
   new Set();
+
+
+const ROAD_HALF = 7;
+
+const CAR_HALF_WIDTH = 1.05;
+
+const TARGET_LAPS = 3;
+
+
+const quality = {
+  renderScale: 0.72
+};
+
+
+let fpsFrames = 0;
+
+let lastFpsTime =
+  performance.now();
 
 
 let worldGroup = null;
@@ -164,35 +126,23 @@ let checkpointStep = 0;
 
 let lap = 1;
 
-const targetLaps = 3;
-
 let wrongWayTimer = 0;
 
 let checkpointPopupTimer = null;
 
 
-/* PERFORMANCE */
+let obstacles = [];
 
-const quality = {
-  renderScale: 0.72
-};
+let boostPads = [];
 
+let pickups = [];
 
-let fpsFrames = 0;
-
-let lastFpsTime =
-  performance.now();
+let ramps = [];
 
 
-/* ROAD */
-
-const ROAD_HALF =
-  7;
-
-
-/* =========================================================
-   TRACK DATA
-   ========================================================= */
+/* =========================
+   TRACKS
+========================= */
 
 const tracks = {
 
@@ -202,7 +152,7 @@ const tracks = {
       "NEON DISTRICT",
 
     description:
-      "Night street circuit through the city with fast sweepers and tight corners.",
+      "Night street circuit with guardrails, roadblocks, boost lanes and a city jump.",
 
     sky:
       0x0b1020,
@@ -219,8 +169,11 @@ const tracks = {
     edge:
       0x8794a8,
 
+    guardrail:
+      0x596579,
+
     grip:
-      1,
+      1.0,
 
     points: [
 
@@ -251,6 +204,7 @@ const tracks = {
     ],
 
     checkpoints: [
+
       1,
       3,
       5,
@@ -258,7 +212,81 @@ const tracks = {
       9,
       11,
       0
+
+    ],
+
+    boosts: [
+
+      {
+        segment: 1,
+        t: 0.42,
+        offset: -1.8
+      },
+
+      {
+        segment: 6,
+        t: 0.58,
+        offset: 1.6
+      }
+
+    ],
+
+    pickups: [
+
+      {
+        type: "nitro",
+        segment: 3,
+        t: 0.48,
+        offset: 2.4
+      },
+
+      {
+        type: "overdrive",
+        segment: 9,
+        t: 0.5,
+        offset: -2.2
+      }
+
+    ],
+
+    obstacles: [
+
+      {
+        kind: "roadblock",
+        segment: 2,
+        t: 0.42,
+        offset: 2.4,
+        radius: 1.35
+      },
+
+      {
+        kind: "crate",
+        segment: 5,
+        t: 0.44,
+        offset: -2.2,
+        radius: 1.2
+      },
+
+      {
+        kind: "roadblock",
+        segment: 10,
+        t: 0.52,
+        offset: 2.1,
+        radius: 1.35
+      }
+
+    ],
+
+    ramps: [
+
+      {
+        segment: 8,
+        t: 0.5,
+        offset: 0
+      }
+
     ]
+
   },
 
 
@@ -268,7 +296,7 @@ const tracks = {
       "DUSTFALL CANYON",
 
     description:
-      "Fast desert circuit with long straights, sweeping turns and reduced off-road grip.",
+      "Desert circuit with rock hazards, boost pads and a canyon jump.",
 
     sky:
       0xb06d3d,
@@ -284,6 +312,9 @@ const tracks = {
 
     edge:
       0xc19a70,
+
+    guardrail:
+      0x8f6c50,
 
     grip:
       0.92,
@@ -317,6 +348,7 @@ const tracks = {
     ],
 
     checkpoints: [
+
       1,
       3,
       5,
@@ -324,7 +356,81 @@ const tracks = {
       9,
       11,
       0
+
+    ],
+
+    boosts: [
+
+      {
+        segment: 0,
+        t: 0.62,
+        offset: 0
+      },
+
+      {
+        segment: 7,
+        t: 0.48,
+        offset: -1.5
+      }
+
+    ],
+
+    pickups: [
+
+      {
+        type: "overdrive",
+        segment: 4,
+        t: 0.55,
+        offset: 2.3
+      },
+
+      {
+        type: "nitro",
+        segment: 10,
+        t: 0.45,
+        offset: -2.3
+      }
+
+    ],
+
+    obstacles: [
+
+      {
+        kind: "rock",
+        segment: 2,
+        t: 0.63,
+        offset: -2.1,
+        radius: 1.5
+      },
+
+      {
+        kind: "rock",
+        segment: 5,
+        t: 0.35,
+        offset: 2.4,
+        radius: 1.45
+      },
+
+      {
+        kind: "crate",
+        segment: 9,
+        t: 0.48,
+        offset: 2.0,
+        radius: 1.2
+      }
+
+    ],
+
+    ramps: [
+
+      {
+        segment: 6,
+        t: 0.54,
+        offset: 0
+      }
+
     ]
+
   },
 
 
@@ -334,7 +440,7 @@ const tracks = {
       "ARCTIC RELAY",
 
     description:
-      "Frozen research-road circuit where reduced traction makes every corner dangerous.",
+      "Low-grip ice circuit with frozen hazards, energy pickups and an ice jump.",
 
     sky:
       0xbad7df,
@@ -350,6 +456,9 @@ const tracks = {
 
     edge:
       0xd6f5ff,
+
+    guardrail:
+      0x91b4bd,
 
     grip:
       0.72,
@@ -383,6 +492,7 @@ const tracks = {
     ],
 
     checkpoints: [
+
       1,
       3,
       5,
@@ -390,15 +500,89 @@ const tracks = {
       9,
       11,
       0
+
+    ],
+
+    boosts: [
+
+      {
+        segment: 2,
+        t: 0.48,
+        offset: 1.7
+      },
+
+      {
+        segment: 8,
+        t: 0.58,
+        offset: -1.8
+      }
+
+    ],
+
+    pickups: [
+
+      {
+        type: "nitro",
+        segment: 5,
+        t: 0.45,
+        offset: -2.2
+      },
+
+      {
+        type: "overdrive",
+        segment: 10,
+        t: 0.52,
+        offset: 2.1
+      }
+
+    ],
+
+    obstacles: [
+
+      {
+        kind: "ice",
+        segment: 1,
+        t: 0.56,
+        offset: 2.2,
+        radius: 1.35
+      },
+
+      {
+        kind: "ice",
+        segment: 6,
+        t: 0.45,
+        offset: -2.4,
+        radius: 1.35
+      },
+
+      {
+        kind: "roadblock",
+        segment: 9,
+        t: 0.46,
+        offset: 2.0,
+        radius: 1.35
+      }
+
+    ],
+
+    ramps: [
+
+      {
+        segment: 4,
+        t: 0.48,
+        offset: 0
+      }
+
     ]
+
   }
 
 };
 
 
-/* =========================================================
-   RENDER SIZE
-   ========================================================= */
+/* =========================
+   SCREEN SIZE
+========================= */
 
 function resizeRenderer() {
 
@@ -428,6 +612,7 @@ function resizeRenderer() {
     ),
 
     false
+
   );
 
 
@@ -454,9 +639,9 @@ window.addEventListener(
 resizeRenderer();
 
 
-/* =========================================================
+/* =========================
    HELPERS
-   ========================================================= */
+========================= */
 
 function pointToVector(
   point,
@@ -464,9 +649,13 @@ function pointToVector(
 ) {
 
   return new THREE.Vector3(
+
     point[0],
+
     y,
+
     point[1]
+
   );
 
 }
@@ -491,14 +680,127 @@ function forwardVector() {
 }
 
 
-/* =========================================================
-   CLEANUP
-   ========================================================= */
+function rightVector() {
+
+  const forward =
+    forwardVector();
+
+
+  return new THREE.Vector3(
+
+    forward.z,
+
+    0,
+
+    -forward.x
+
+  );
+
+}
+
+
+function segmentInfo(
+  track,
+  segmentIndex,
+  t = 0.5,
+  offset = 0,
+  y = 0
+) {
+
+  const a =
+    pointToVector(
+      track.points[
+        segmentIndex
+      ]
+    );
+
+
+  const b =
+    pointToVector(
+
+      track.points[
+
+        (
+          segmentIndex +
+          1
+        )
+
+        %
+
+        track.points.length
+
+      ]
+
+    );
+
+
+  const tangent =
+    b
+      .clone()
+      .sub(a)
+      .normalize();
+
+
+  const normal =
+    new THREE.Vector3(
+
+      -tangent.z,
+
+      0,
+
+      tangent.x
+
+    );
+
+
+  const position =
+    a
+      .clone()
+      .lerp(
+        b,
+        t
+      )
+      .addScaledVector(
+        normal,
+        offset
+      );
+
+
+  position.y =
+    y;
+
+
+  return {
+
+    position,
+
+    tangent,
+
+    normal,
+
+    rotationY:
+      Math.atan2(
+        tangent.x,
+        tangent.z
+      )
+
+  };
+
+}
+
+
+/* =========================
+   CLEAN OLD WORLD
+========================= */
 
 function disposeWorld() {
 
-  if (!worldGroup) {
+  if (
+    !worldGroup
+  ) {
+
     return;
+
   }
 
 
@@ -506,14 +808,8 @@ function disposeWorld() {
 
     object => {
 
-      if (
-        object.geometry
-      ) {
-
-        object.geometry
-          .dispose?.();
-
-      }
+      object.geometry
+        ?.dispose?.();
 
 
       if (
@@ -521,23 +817,27 @@ function disposeWorld() {
       ) {
 
         const materials =
+
           Array.isArray(
             object.material
           )
+
           ?
+
           object.material
+
           :
-          [object.material];
+
+          [
+            object.material
+          ];
 
 
         materials.forEach(
 
-          material => {
-
+          material =>
             material
-              .dispose?.();
-
-          }
+              .dispose?.()
 
         );
 
@@ -558,9 +858,9 @@ function disposeWorld() {
 }
 
 
-/* =========================================================
+/* =========================
    ROAD
-   ========================================================= */
+========================= */
 
 function buildRoad(
   track
@@ -734,6 +1034,7 @@ function buildRoad(
     new THREE.Float32BufferAttribute(
 
       vertices,
+
       3
 
     )
@@ -769,64 +1070,46 @@ function buildRoad(
   );
 
 
-  buildRoadEdges(
+  buildCenterLines(
     track
   );
 
 
-  buildCenterLines(
+  buildGuardrails(
     track
   );
 
 }
 
 
-/* =========================================================
-   ROAD EDGES
-   ========================================================= */
+/* =========================
+   ROAD LINES
+========================= */
 
-function buildRoadEdges(
+function buildCenterLines(
   track
 ) {
 
-  const geometry =
-    new THREE.BoxGeometry(
-      0.20,
-      0.08,
-      1
-    );
-
-
-  const material =
-    new THREE.MeshBasicMaterial({
-
-      color:
-        track.edge
-
-    });
-
-
-  const points =
-    track.points;
+  const placements =
+    [];
 
 
   for (
     let i = 0;
-    i < points.length;
+    i < track.points.length;
     i++
   ) {
 
-    const start =
+    const a =
       pointToVector(
-        points[i],
-        0.08
+        track.points[i]
       );
 
 
-    const end =
+    const b =
       pointToVector(
 
-        points[
+        track.points[
 
           (
             i +
@@ -835,19 +1118,191 @@ function buildRoadEdges(
 
           %
 
-          points.length
+          track.points.length
 
-        ],
-
-        0.08
+        ]
 
       );
 
 
     const direction =
-      end
+      b
         .clone()
-        .sub(start);
+        .sub(a);
+
+
+    const length =
+      direction.length();
+
+
+    const tangent =
+      direction
+        .clone()
+        .normalize();
+
+
+    const rotationY =
+      Math.atan2(
+
+        tangent.x,
+
+        tangent.z
+
+      );
+
+
+    for (
+
+      let distance = 5;
+
+      distance <
+      length - 2;
+
+      distance += 7
+
+    ) {
+
+      placements.push({
+
+        position:
+
+          a
+            .clone()
+            .addScaledVector(
+
+              tangent,
+
+              distance
+
+            )
+            .setY(
+              0.065
+            ),
+
+        rotationY
+
+      });
+
+    }
+
+  }
+
+
+  const mesh =
+    new THREE.InstancedMesh(
+
+      new THREE.BoxGeometry(
+        0.12,
+        0.025,
+        2.5
+      ),
+
+      new THREE.MeshBasicMaterial({
+        color: 0xcbd0d8
+      }),
+
+      placements.length
+
+    );
+
+
+  const dummy =
+    new THREE.Object3D();
+
+
+  placements.forEach(
+
+    (
+      item,
+      index
+    ) => {
+
+      dummy.position.copy(
+        item.position
+      );
+
+
+      dummy.rotation.set(
+
+        0,
+
+        item.rotationY,
+
+        0
+
+      );
+
+
+      dummy.updateMatrix();
+
+
+      mesh.setMatrixAt(
+
+        index,
+
+        dummy.matrix
+
+      );
+
+    }
+
+  );
+
+
+  worldGroup.add(
+    mesh
+  );
+
+}
+
+
+/* =========================
+   GUARDRAILS
+========================= */
+
+function buildGuardrails(
+  track
+) {
+
+  const placements =
+    [];
+
+
+  for (
+    let i = 0;
+    i < track.points.length;
+    i++
+  ) {
+
+    const a =
+      pointToVector(
+        track.points[i]
+      );
+
+
+    const b =
+      pointToVector(
+
+        track.points[
+
+          (
+            i +
+            1
+          )
+
+          %
+
+          track.points.length
+
+        ]
+
+      );
+
+
+    const direction =
+      b
+        .clone()
+        .sub(a);
 
 
     const length =
@@ -872,206 +1327,155 @@ function buildRoadEdges(
       );
 
 
-    const midpoint =
-      start
-        .clone()
-        .add(end)
-        .multiplyScalar(
-          0.5
-        );
-
-
-    const rotation =
+    const rotationY =
       Math.atan2(
 
-        direction.x,
+        tangent.x,
 
-        direction.z
+        tangent.z
 
       );
 
 
     for (
-      const side
-      of [-1, 1]
+
+      let distance = 3;
+
+      distance <
+      length - 1;
+
+      distance += 5.2
+
     ) {
 
-      const edge =
-        new THREE.Mesh(
-          geometry,
-          material
-        );
+      const center =
+        a
+          .clone()
+          .addScaledVector(
+
+            tangent,
+
+            distance
+
+          );
 
 
-      edge.scale.z =
-        length;
+      for (
+        const side
+        of [-1, 1]
+      ) {
 
+        placements.push({
 
-      edge.position
-        .copy(midpoint)
-        .addScaledVector(
+          position:
 
-          normal,
+            center
+              .clone()
+              .addScaledVector(
 
-          ROAD_HALF *
-          side
+                normal,
 
-        );
+                side *
 
+                (
+                  ROAD_HALF +
+                  0.18
+                )
 
-      edge.rotation.y =
-        rotation;
+              )
+              .setY(
+                0.38
+              ),
 
+          rotationY
 
-      worldGroup.add(
-        edge
-      );
+        });
+
+      }
 
     }
 
   }
 
-}
 
+  const mesh =
+    new THREE.InstancedMesh(
 
-/* =========================================================
-   CENTER LINES
-   ========================================================= */
+      new THREE.BoxGeometry(
 
-function buildCenterLines(
-  track
-) {
+        0.18,
 
-  const geometry =
-    new THREE.BoxGeometry(
-      0.12,
-      0.025,
-      2.4
+        0.66,
+
+        4.75
+
+      ),
+
+      new THREE.MeshLambertMaterial({
+
+        color:
+          track.guardrail
+
+      }),
+
+      placements.length
+
     );
 
 
-  const material =
-    new THREE.MeshBasicMaterial({
-
-      color:
-        0xcbd0d8
-
-    });
+  const dummy =
+    new THREE.Object3D();
 
 
-  const points =
-    track.points;
+  placements.forEach(
 
+    (
+      item,
+      index
+    ) => {
 
-  for (
-    let i = 0;
-    i < points.length;
-    i++
-  ) {
-
-    const start =
-      pointToVector(
-        points[i],
-        0.065
+      dummy.position.copy(
+        item.position
       );
 
 
-    const end =
-      pointToVector(
+      dummy.rotation.set(
 
-        points[
+        0,
 
-          (
-            i +
-            1
-          )
+        item.rotationY,
 
-          %
-
-          points.length
-
-        ],
-
-        0.065
+        0
 
       );
 
 
-    const segment =
-      end
-        .clone()
-        .sub(start);
+      dummy.updateMatrix();
 
 
-    const length =
-      segment.length();
+      mesh.setMatrixAt(
 
+        index,
 
-    const direction =
-      segment
-        .clone()
-        .normalize();
+        dummy.matrix
 
-
-    const rotation =
-      Math.atan2(
-
-        direction.x,
-
-        direction.z
-
-      );
-
-
-    const dashCount =
-      Math.floor(
-        length /
-        7
-      );
-
-
-    for (
-      let dash = 1;
-      dash <= dashCount;
-      dash++
-    ) {
-
-      const marker =
-        new THREE.Mesh(
-          geometry,
-          material
-        );
-
-
-      marker.position
-        .copy(start)
-        .addScaledVector(
-
-          direction,
-
-          dash * 7
-
-        );
-
-
-      marker.rotation.y =
-        rotation;
-
-
-      worldGroup.add(
-        marker
       );
 
     }
 
-  }
+  );
+
+
+  worldGroup.add(
+    mesh
+  );
 
 }
 
 
-/* =========================================================
+/* =========================
    CHECKPOINT GATES
-   ========================================================= */
+========================= */
 
 function addCheckpointGate(
   track,
@@ -1081,11 +1485,9 @@ function addCheckpointGate(
 
   const point =
     pointToVector(
-
       track.points[
         pointIndex
       ]
-
     );
 
 
@@ -1156,33 +1558,43 @@ function addCheckpointGate(
   );
 
 
-  const color =
-
-    gateNumber === 0
-    ?
-    0x72a7ff
-    :
-    0xffffff;
-
-
   const material =
     new THREE.MeshBasicMaterial({
-      color
+
+      color:
+
+        gateNumber === 0
+
+        ?
+
+        0x72a7ff
+
+        :
+
+        0xffffff
+
     });
 
 
   const postGeometry =
     new THREE.BoxGeometry(
+
       0.35,
+
       4.5,
+
       0.35
+
     );
 
 
   const leftPost =
     new THREE.Mesh(
+
       postGeometry,
+
       material
+
     );
 
 
@@ -1202,8 +1614,11 @@ function addCheckpointGate(
 
   const rightPost =
     new THREE.Mesh(
+
       postGeometry,
+
       material
+
     );
 
 
@@ -1221,24 +1636,23 @@ function addCheckpointGate(
     2.25;
 
 
-  const topGeometry =
-    new THREE.BoxGeometry(
-
-      ROAD_HALF *
-      2 -
-      1,
-
-      0.35,
-
-      0.35
-
-    );
-
-
   const topBeam =
     new THREE.Mesh(
-      topGeometry,
+
+      new THREE.BoxGeometry(
+
+        ROAD_HALF *
+        2 -
+        1,
+
+        0.35,
+
+        0.35
+
+      ),
+
       material
+
     );
 
 
@@ -1246,12 +1660,7 @@ function addCheckpointGate(
     4.4;
 
 
-  /*
-    Beam lies across the road.
-  */
-
   topBeam.rotation.y =
-
     Math.atan2(
 
       normal.z,
@@ -1264,7 +1673,9 @@ function addCheckpointGate(
   gate.add(
 
     leftPost,
+
     rightPost,
+
     topBeam
 
   );
@@ -1277,9 +1688,9 @@ function addCheckpointGate(
 }
 
 
-/* =========================================================
+/* =========================
    SCENERY
-   ========================================================= */
+========================= */
 
 function buildScenery(
   track
@@ -1289,8 +1700,11 @@ function buildScenery(
     new THREE.Mesh(
 
       new THREE.PlaneGeometry(
+
         430,
+
         430
+
       ),
 
       new THREE.MeshLambertMaterial({
@@ -1325,6 +1739,7 @@ function buildScenery(
 
   }
 
+
   else if (
     track ===
     tracks.canyon
@@ -1334,6 +1749,7 @@ function buildScenery(
 
   }
 
+
   else {
 
     buildArctic();
@@ -1342,8 +1758,6 @@ function buildScenery(
 
 }
 
-
-/* CITY */
 
 function buildCity() {
 
@@ -1402,6 +1816,7 @@ function buildCity() {
     building.position.set(
 
       side *
+
       (
         24 +
         (
@@ -1419,11 +1834,14 @@ function buildCity() {
       ),
 
       -100 +
+
       (
         i *
         17
       )
+
       %
+
       190
 
     );
@@ -1461,8 +1879,6 @@ function buildCity() {
 }
 
 
-/* CANYON */
-
 function buildCanyon() {
 
   const geometry =
@@ -1475,10 +1891,7 @@ function buildCanyon() {
 
   const material =
     new THREE.MeshLambertMaterial({
-
-      color:
-        0x6d472f
-
+      color: 0x6d472f
     });
 
 
@@ -1493,25 +1906,33 @@ function buildCanyon() {
         i /
         30
       )
+
       *
+
       Math.PI *
       2;
 
 
     const radius =
       70 +
+
       (
         i %
         7
       )
+
       *
+
       7;
 
 
     const rock =
       new THREE.Mesh(
+
         geometry,
+
         material
+
       );
 
 
@@ -1570,8 +1991,6 @@ function buildCanyon() {
 }
 
 
-/* ARCTIC */
-
 function buildArctic() {
 
   const trunkGeometry =
@@ -1614,18 +2033,23 @@ function buildArctic() {
         i /
         34
       )
+
       *
+
       Math.PI *
       2;
 
 
     const radius =
       57 +
+
       (
         i %
         7
       )
+
       *
+
       7;
 
 
@@ -1649,6 +2073,7 @@ function buildArctic() {
       new THREE.Mesh(
 
         trunkGeometry,
+
         trunkMaterial
 
       );
@@ -1665,6 +2090,7 @@ function buildArctic() {
       new THREE.Mesh(
 
         treeGeometry,
+
         treeMaterial
 
       );
@@ -1678,8 +2104,11 @@ function buildArctic() {
 
 
     worldGroup.add(
+
       trunk,
+
       crown
+
     );
 
   }
@@ -1687,9 +2116,595 @@ function buildArctic() {
 }
 
 
-/* =========================================================
+/* =========================
+   BOOST PADS
+========================= */
+
+function buildBoostPads(
+  track
+) {
+
+  boostPads =
+    [];
+
+
+  const geometry =
+    new THREE.BoxGeometry(
+
+      3.6,
+
+      0.06,
+
+      5.2
+
+    );
+
+
+  const material =
+    new THREE.MeshBasicMaterial({
+
+      color:
+        0x36a7ff
+
+    });
+
+
+  track.boosts.forEach(
+
+    definition => {
+
+      const info =
+        segmentInfo(
+
+          track,
+
+          definition.segment,
+
+          definition.t,
+
+          definition.offset,
+
+          0.075
+
+        );
+
+
+      const mesh =
+        new THREE.Mesh(
+
+          geometry,
+
+          material
+
+        );
+
+
+      mesh.position.copy(
+        info.position
+      );
+
+
+      mesh.rotation.y =
+        info.rotationY;
+
+
+      worldGroup.add(
+        mesh
+      );
+
+
+      boostPads.push({
+
+        mesh,
+
+        position:
+          info.position.clone(),
+
+        cooldown: 0
+
+      });
+
+    }
+
+  );
+
+}
+
+
+/* =========================
+   POWERUPS
+========================= */
+
+function createPickupMesh(
+  type
+) {
+
+  if (
+    type ===
+    "overdrive"
+  ) {
+
+    return new THREE.Mesh(
+
+      new THREE.OctahedronGeometry(
+        0.72,
+        0
+      ),
+
+      new THREE.MeshBasicMaterial({
+        color: 0xff8c35
+      })
+
+    );
+
+  }
+
+
+  return new THREE.Mesh(
+
+    new THREE.OctahedronGeometry(
+      0.68,
+      0
+    ),
+
+    new THREE.MeshBasicMaterial({
+      color: 0x58c6ff
+    })
+
+  );
+
+}
+
+
+function buildPickups(
+  track
+) {
+
+  pickups =
+    [];
+
+
+  track.pickups.forEach(
+
+    definition => {
+
+      const info =
+        segmentInfo(
+
+          track,
+
+          definition.segment,
+
+          definition.t,
+
+          definition.offset,
+
+          1.15
+
+        );
+
+
+      const mesh =
+        createPickupMesh(
+          definition.type
+        );
+
+
+      mesh.position.copy(
+        info.position
+      );
+
+
+      worldGroup.add(
+        mesh
+      );
+
+
+      pickups.push({
+
+        type:
+          definition.type,
+
+        mesh,
+
+        position:
+          info.position.clone(),
+
+        active:
+          true,
+
+        respawn:
+          0,
+
+        spin:
+          Math.random()
+          *
+          Math.PI
+          *
+          2
+
+      });
+
+    }
+
+  );
+
+}
+
+
+/* =========================
+   OBSTACLES
+========================= */
+
+function buildObstacles(
+  track
+) {
+
+  obstacles =
+    [];
+
+
+  track.obstacles.forEach(
+
+    definition => {
+
+      const info =
+        segmentInfo(
+
+          track,
+
+          definition.segment,
+
+          definition.t,
+
+          definition.offset,
+
+          0
+
+        );
+
+
+      let mesh;
+
+
+      if (
+        definition.kind ===
+        "rock"
+      ) {
+
+        mesh =
+          new THREE.Mesh(
+
+            new THREE.DodecahedronGeometry(
+              1.25,
+              0
+            ),
+
+            new THREE.MeshLambertMaterial({
+              color: 0x67452f
+            })
+
+          );
+
+
+        mesh.scale.set(
+
+          1.25,
+
+          0.95,
+
+          1.05
+
+        );
+
+
+        mesh.position.y =
+          0.95;
+
+      }
+
+
+      else if (
+        definition.kind ===
+        "ice"
+      ) {
+
+        mesh =
+          new THREE.Mesh(
+
+            new THREE.DodecahedronGeometry(
+              1.1,
+              0
+            ),
+
+            new THREE.MeshLambertMaterial({
+              color: 0xbfe8ef
+            })
+
+          );
+
+
+        mesh.scale.set(
+
+          1.2,
+
+          1,
+
+          1
+
+        );
+
+
+        mesh.position.y =
+          1;
+
+      }
+
+
+      else if (
+        definition.kind ===
+        "crate"
+      ) {
+
+        mesh =
+          new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+              1.7,
+              1.7,
+              1.7
+            ),
+
+            new THREE.MeshLambertMaterial({
+              color: 0x7b5638
+            })
+
+          );
+
+
+        mesh.position.y =
+          0.85;
+
+      }
+
+
+      else {
+
+        mesh =
+          new THREE.Mesh(
+
+            new THREE.BoxGeometry(
+              2.5,
+              1.1,
+              0.7
+            ),
+
+            new THREE.MeshLambertMaterial({
+              color: 0xd7dbe2
+            })
+
+          );
+
+
+        mesh.rotation.y =
+          info.rotationY;
+
+
+        mesh.position.y =
+          0.55;
+
+      }
+
+
+      mesh.position.x +=
+        info.position.x;
+
+
+      mesh.position.z +=
+        info.position.z;
+
+
+      worldGroup.add(
+        mesh
+      );
+
+
+      obstacles.push({
+
+        mesh,
+
+        position:
+
+          new THREE.Vector3(
+
+            info.position.x,
+
+            0,
+
+            info.position.z
+
+          ),
+
+        radius:
+          definition.radius
+
+      });
+
+    }
+
+  );
+
+}
+
+
+/* =========================
+   RAMPS
+========================= */
+
+function createRampGeometry() {
+
+  const w =
+    3.8;
+
+  const l =
+    5.5;
+
+  const h =
+    1.25;
+
+
+  const hw =
+    w / 2;
+
+  const hl =
+    l / 2;
+
+
+  const vertices =
+    new Float32Array([
+
+      -hw, 0, -hl,
+       hw, 0, -hl,
+      -hw, h,  hl,
+
+       hw, 0, -hl,
+       hw, h,  hl,
+      -hw, h,  hl,
+
+
+      -hw, 0, -hl,
+      -hw, 0,  hl,
+      -hw, h,  hl,
+
+
+       hw, 0, -hl,
+       hw, h,  hl,
+       hw, 0,  hl,
+
+
+      -hw, 0, hl,
+       hw, 0, hl,
+      -hw, h, hl,
+
+
+       hw, 0, hl,
+       hw, h, hl,
+      -hw, h, hl
+
+    ]);
+
+
+  const geometry =
+    new THREE.BufferGeometry();
+
+
+  geometry.setAttribute(
+
+    "position",
+
+    new THREE.BufferAttribute(
+
+      vertices,
+
+      3
+
+    )
+
+  );
+
+
+  geometry.computeVertexNormals();
+
+
+  return geometry;
+
+}
+
+
+function buildRamps(
+  track
+) {
+
+  ramps =
+    [];
+
+
+  const geometry =
+    createRampGeometry();
+
+
+  const material =
+    new THREE.MeshLambertMaterial({
+      color: 0x6e7683
+    });
+
+
+  track.ramps.forEach(
+
+    definition => {
+
+      const info =
+        segmentInfo(
+
+          track,
+
+          definition.segment,
+
+          definition.t,
+
+          definition.offset,
+
+          0.04
+
+        );
+
+
+      const mesh =
+        new THREE.Mesh(
+
+          geometry,
+
+          material
+
+        );
+
+
+      mesh.position.copy(
+        info.position
+      );
+
+
+      mesh.rotation.y =
+        info.rotationY;
+
+
+      worldGroup.add(
+        mesh
+      );
+
+
+      ramps.push({
+
+        mesh,
+
+        position:
+          info.position.clone(),
+
+        cooldown:
+          0
+
+      });
+
+    }
+
+  );
+
+}
+
+
+/* =========================
    CAR
-   ========================================================= */
+========================= */
 
 function makeCar() {
 
@@ -1699,28 +2714,19 @@ function makeCar() {
 
   const bodyMaterial =
     new THREE.MeshLambertMaterial({
-
-      color:
-        0xe9eef4
-
+      color: 0xe9eef4
     });
 
 
   const glassMaterial =
     new THREE.MeshLambertMaterial({
-
-      color:
-        0x151c26
-
+      color: 0x151c26
     });
 
 
   const wheelMaterial =
     new THREE.MeshLambertMaterial({
-
-      color:
-        0x07090d
-
+      color: 0x07090d
     });
 
 
@@ -1730,7 +2736,9 @@ function makeCar() {
       new THREE.BoxGeometry(
 
         1.85,
+
         0.48,
+
         3.8
 
       ),
@@ -1755,7 +2763,9 @@ function makeCar() {
       new THREE.BoxGeometry(
 
         1.45,
+
         0.52,
+
         1.7
 
       ),
@@ -1766,9 +2776,13 @@ function makeCar() {
 
 
   cabin.position.set(
+
     0,
+
     1,
+
     -0.15
+
   );
 
 
@@ -1781,8 +2795,11 @@ function makeCar() {
     new THREE.CylinderGeometry(
 
       0.32,
+
       0.32,
+
       0.24,
+
       10
 
     );
@@ -1802,6 +2819,7 @@ function makeCar() {
         new THREE.Mesh(
 
           wheelGeometry,
+
           wheelMaterial
 
         );
@@ -1814,7 +2832,9 @@ function makeCar() {
       wheel.position.set(
 
         x,
+
         0.38,
+
         z
 
       );
@@ -1834,9 +2854,9 @@ function makeCar() {
 }
 
 
-/* =========================================================
+/* =========================
    BUILD TRACK
-   ========================================================= */
+========================= */
 
 function buildTrack(
   track
@@ -1908,6 +2928,26 @@ function buildTrack(
   );
 
 
+  buildBoostPads(
+    track
+  );
+
+
+  buildPickups(
+    track
+  );
+
+
+  buildObstacles(
+    track
+  );
+
+
+  buildRamps(
+    track
+  );
+
+
   car =
     makeCar();
 
@@ -1940,12 +2980,6 @@ function buildTrack(
   );
 
 
-  /*
-    IMPORTANT:
-    This makes the car actually face
-    the direction of the first road.
-  */
-
   car.rotation.y =
     Math.atan2(
 
@@ -1966,7 +3000,19 @@ function buildTrack(
 
     rpm: 900,
 
-    nitro: 100
+    nitro: 100,
+
+    boostTimer: 0,
+
+    overdriveTimer: 0,
+
+    verticalVelocity: 0,
+
+    airborne: false,
+
+    impactCooldown: 0,
+
+    rampCooldown: 0
 
   };
 
@@ -1988,20 +3034,16 @@ function buildTrack(
 }
 
 
-/* =========================================================
-   DISTANCE FROM ROAD
-   ========================================================= */
+/* =========================
+   ROAD POSITION
+========================= */
 
-function nearestRoadDistance(
+function nearestRoadInfo(
   position
 ) {
 
-  let closest =
-    Infinity;
-
-
-  const points =
-    activeTrack.points;
+  let best =
+    null;
 
 
   const player =
@@ -2016,22 +3058,16 @@ function nearestRoadDistance(
 
   for (
     let i = 0;
-    i < points.length;
+    i < activeTrack.points.length;
     i++
   ) {
 
-    const start =
-      new THREE.Vector2(
-
-        points[i][0],
-
-        points[i][1]
-
-      );
+    const p1 =
+      activeTrack.points[i];
 
 
-    const nextPoint =
-      points[
+    const p2 =
+      activeTrack.points[
 
         (
           i +
@@ -2040,29 +3076,39 @@ function nearestRoadDistance(
 
         %
 
-        points.length
+        activeTrack.points.length
 
       ];
 
 
-    const end =
+    const a =
       new THREE.Vector2(
 
-        nextPoint[0],
+        p1[0],
 
-        nextPoint[1]
+        p1[1]
 
       );
 
 
-    const line =
-      end
+    const b =
+      new THREE.Vector2(
+
+        p2[0],
+
+        p2[1]
+
+      );
+
+
+    const ab =
+      b
         .clone()
-        .sub(start);
+        .sub(a);
 
 
     const lengthSquared =
-      line.lengthSq()
+      ab.lengthSq()
       ||
       1;
 
@@ -2072,8 +3118,8 @@ function nearestRoadDistance(
 
         player
           .clone()
-          .sub(start)
-          .dot(line)
+          .sub(a)
+          .dot(ab)
 
         /
 
@@ -2086,40 +3132,861 @@ function nearestRoadDistance(
       );
 
 
-    const point =
-      start
+    const closest =
+      a
         .clone()
         .add(
 
-          line.multiplyScalar(
-            t
-          )
+          ab
+            .clone()
+            .multiplyScalar(
+              t
+            )
 
         );
 
 
-    closest =
-      Math.min(
+    const distance =
+      player.distanceTo(
+        closest
+      );
 
-        closest,
 
-        player.distanceTo(
-          point
+    if (
+      !best
+      ||
+      distance <
+      best.distance
+    ) {
+
+      const tangent =
+        b
+          .clone()
+          .sub(a)
+          .normalize();
+
+
+      const normal =
+        new THREE.Vector2(
+
+          -tangent.y,
+
+          tangent.x
+
+        );
+
+
+      const delta =
+        player
+          .clone()
+          .sub(
+            closest
+          );
+
+
+      best = {
+
+        distance,
+
+        closest:
+
+          new THREE.Vector3(
+
+            closest.x,
+
+            0,
+
+            closest.y
+
+          ),
+
+        tangent:
+
+          new THREE.Vector3(
+
+            tangent.x,
+
+            0,
+
+            tangent.y
+
+          ),
+
+        normal:
+
+          new THREE.Vector3(
+
+            normal.x,
+
+            0,
+
+            normal.y
+
+          ),
+
+        signedDistance:
+
+          delta.dot(
+            normal
+          ),
+
+        segmentIndex:
+          i
+
+      };
+
+    }
+
+  }
+
+
+  return best;
+
+}
+
+
+/* =========================
+   POPUP
+========================= */
+
+function showRacePopup(
+  text,
+  duration = 700
+) {
+
+  checkpointPopup.textContent =
+    text;
+
+
+  checkpointPopup
+    .classList
+    .remove(
+      "hidden"
+    );
+
+
+  clearTimeout(
+    checkpointPopupTimer
+  );
+
+
+  checkpointPopupTimer =
+    setTimeout(
+
+      () => {
+
+        checkpointPopup
+          .classList
+          .add(
+            "hidden"
+          );
+
+
+        checkpointPopup.textContent =
+          "CHECKPOINT";
+
+      },
+
+      duration
+
+    );
+
+}
+
+
+/* =========================
+   GUARDRAIL COLLISION
+========================= */
+
+function handleGuardrailCollision() {
+
+  if (
+
+    carState.airborne
+
+    &&
+
+    car.position.y >
+    0.7
+
+  ) {
+
+    return;
+
+  }
+
+
+  const road =
+    nearestRoadInfo(
+      car.position
+    );
+
+
+  const maxDistance =
+
+    ROAD_HALF -
+
+    CAR_HALF_WIDTH;
+
+
+  if (
+    road.distance <=
+    maxDistance
+  ) {
+
+    return;
+
+  }
+
+
+  const side =
+
+    road.signedDistance >= 0
+
+    ?
+
+    1
+
+    :
+
+    -1;
+
+
+  const corrected =
+    road.closest
+      .clone()
+      .addScaledVector(
+
+        road.normal,
+
+        side *
+        maxDistance
+
+      );
+
+
+  car.position.x =
+    corrected.x;
+
+
+  car.position.z =
+    corrected.z;
+
+
+  if (
+
+    carState.impactCooldown <= 0
+
+    &&
+
+    Math.abs(
+      carState.speed
+    )
+    >
+    9
+
+  ) {
+
+    showRacePopup(
+
+      "GUARDRAIL HIT",
+
+      480
+
+    );
+
+
+    carState.impactCooldown =
+      0.45;
+
+  }
+
+
+  carState.speed *=
+    0.64;
+
+
+  carState.steer *=
+    -0.25;
+
+}
+
+
+/* =========================
+   OBSTACLE COLLISION
+========================= */
+
+function handleObstacleCollisions() {
+
+  if (
+
+    carState.airborne
+
+    &&
+
+    car.position.y >
+    1.25
+
+  ) {
+
+    return;
+
+  }
+
+
+  for (
+    const obstacle
+    of obstacles
+  ) {
+
+    const dx =
+
+      car.position.x -
+
+      obstacle.position.x;
+
+
+    const dz =
+
+      car.position.z -
+
+      obstacle.position.z;
+
+
+    const distance =
+      Math.hypot(
+        dx,
+        dz
+      );
+
+
+    const minimum =
+
+      obstacle.radius +
+
+      0.85;
+
+
+    if (
+      distance <
+      minimum
+    ) {
+
+      const safeDistance =
+        Math.max(
+          distance,
+          0.001
+        );
+
+
+      car.position.x =
+
+        obstacle.position.x
+
+        +
+
+        (
+          dx /
+          safeDistance
         )
+
+        *
+
+        minimum;
+
+
+      car.position.z =
+
+        obstacle.position.z
+
+        +
+
+        (
+          dz /
+          safeDistance
+        )
+
+        *
+
+        minimum;
+
+
+      if (
+
+        carState.impactCooldown <= 0
+
+        &&
+
+        Math.abs(
+          carState.speed
+        )
+        >
+        7
+
+      ) {
+
+        showRacePopup(
+
+          "CRASH",
+
+          500
+
+        );
+
+
+        carState.impactCooldown =
+          0.55;
+
+      }
+
+
+      carState.speed *=
+        0.28;
+
+
+      break;
+
+    }
+
+  }
+
+}
+
+
+/* =========================
+   BOOST PADS
+========================= */
+
+function updateBoostPads(
+  delta
+) {
+
+  for (
+    const pad
+    of boostPads
+  ) {
+
+    pad.cooldown =
+      Math.max(
+
+        0,
+
+        pad.cooldown -
+        delta
+
+      );
+
+
+    const distance =
+      Math.hypot(
+
+        car.position.x -
+        pad.position.x,
+
+        car.position.z -
+        pad.position.z
+
+      );
+
+
+    if (
+
+      distance <
+      2.7
+
+      &&
+
+      pad.cooldown <= 0
+
+    ) {
+
+      carState.boostTimer =
+        Math.max(
+
+          carState.boostTimer,
+
+          1.35
+
+        );
+
+
+      carState.speed =
+        Math.max(
+
+          carState.speed,
+
+          30
+
+        );
+
+
+      pad.cooldown =
+        1.2;
+
+
+      showRacePopup(
+
+        "BOOST PAD",
+
+        520
+
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================
+   PICKUPS
+========================= */
+
+function updatePickups(
+  delta
+) {
+
+  for (
+    const pickup
+    of pickups
+  ) {
+
+    if (
+      !pickup.active
+    ) {
+
+      pickup.respawn -=
+        delta;
+
+
+      if (
+        pickup.respawn <= 0
+      ) {
+
+        pickup.active =
+          true;
+
+
+        pickup.mesh.visible =
+          true;
+
+      }
+
+
+      continue;
+
+    }
+
+
+    pickup.spin +=
+      delta *
+      1.8;
+
+
+    pickup.mesh.rotation.y =
+      pickup.spin;
+
+
+    pickup.mesh.position.y =
+
+      pickup.position.y
+
+      +
+
+      Math.sin(
+
+        performance.now()
+        *
+        0.003
+
+        +
+
+        pickup.spin
+
+      )
+
+      *
+
+      0.18;
+
+
+    const distance =
+      Math.hypot(
+
+        car.position.x -
+        pickup.position.x,
+
+        car.position.z -
+        pickup.position.z
+
+      );
+
+
+    if (
+      distance <
+      2.1
+    ) {
+
+      pickup.active =
+        false;
+
+
+      pickup.mesh.visible =
+        false;
+
+
+      pickup.respawn =
+        8;
+
+
+      if (
+        pickup.type ===
+        "overdrive"
+      ) {
+
+        carState.overdriveTimer =
+          Math.max(
+
+            carState.overdriveTimer,
+
+            3.2
+
+          );
+
+
+        showRacePopup(
+
+          "OVERDRIVE",
+
+          650
+
+        );
+
+      }
+
+
+      else {
+
+        carState.nitro =
+          Math.min(
+
+            100,
+
+            carState.nitro +
+            45
+
+          );
+
+
+        showRacePopup(
+
+          "NITRO +45",
+
+          650
+
+        );
+
+      }
+
+    }
+
+  }
+
+}
+
+
+/* =========================
+   RAMPS / JUMPING
+========================= */
+
+function updateRamps(
+  delta
+) {
+
+  carState.rampCooldown =
+    Math.max(
+
+      0,
+
+      carState.rampCooldown -
+      delta
+
+    );
+
+
+  if (
+
+    !carState.airborne
+
+    &&
+
+    carState.rampCooldown <= 0
+
+  ) {
+
+    for (
+      const ramp
+      of ramps
+    ) {
+
+      const distance =
+        Math.hypot(
+
+          car.position.x -
+          ramp.position.x,
+
+          car.position.z -
+          ramp.position.z
+
+        );
+
+
+      if (
+
+        distance <
+        2.8
+
+        &&
+
+        carState.speed >
+        12
+
+      ) {
+
+        carState.airborne =
+          true;
+
+
+        carState.verticalVelocity =
+
+          8.5
+
+          +
+
+          Math.min(
+
+            3.5,
+
+            carState.speed *
+            0.055
+
+          );
+
+
+        carState.rampCooldown =
+          1.6;
+
+
+        carState.speed *=
+          1.03;
+
+
+        showRacePopup(
+
+          "AIR!",
+
+          520
+
+        );
+
+
+        break;
+
+      }
+
+    }
+
+  }
+
+
+  if (
+    carState.airborne
+  ) {
+
+    car.position.y +=
+
+      carState.verticalVelocity
+
+      *
+
+      delta;
+
+
+    carState.verticalVelocity -=
+
+      20 *
+
+      delta;
+
+
+    car.rotation.x =
+      THREE.MathUtils.lerp(
+
+        car.rotation.x,
+
+        -0.08,
+
+        0.08
+
+      );
+
+
+    if (
+
+      car.position.y <= 0
+
+      &&
+
+      carState.verticalVelocity < 0
+
+    ) {
+
+      car.position.y =
+        0;
+
+
+      carState.verticalVelocity =
+        0;
+
+
+      carState.airborne =
+        false;
+
+
+      car.rotation.x =
+        0;
+
+    }
+
+  }
+
+
+  else {
+
+    car.position.y =
+      0;
+
+
+    car.rotation.x =
+      THREE.MathUtils.lerp(
+
+        car.rotation.x,
+
+        0,
+
+        0.2
 
       );
 
   }
 
-
-  return closest;
-
 }
 
 
-/* =========================================================
-   AUDIO - TEMPORARY
-   ========================================================= */
+/* =========================
+   TEMP ENGINE SOUND
+========================= */
 
 let audioContext = null;
 
@@ -2143,6 +4010,7 @@ function initAudio() {
 
     }
 
+
     return;
 
   }
@@ -2152,7 +4020,9 @@ function initAudio() {
     new (
 
       window.AudioContext
+
       ||
+
       window.webkitAudioContext
 
     )();
@@ -2173,7 +4043,7 @@ function initAudio() {
 
 
   engineGain.gain.value =
-    0.008;
+    0.006;
 
 
   engineOscillator
@@ -2190,18 +4060,16 @@ function initAudio() {
 }
 
 
-/*
-  THIS AUDIO IS STILL TEMPORARY.
-  We're replacing it with a much
-  better engine system next.
-*/
-
 function updateEngineAudio() {
 
   if (
+
     !audioContext
+
     ||
+
     !carState
+
   ) {
 
     return;
@@ -2210,14 +4078,20 @@ function updateEngineAudio() {
 
 
   const normalizedRPM =
+
     carState.rpm /
+
     7600;
 
 
   const frequency =
-    45 +
+
+    42
+
+    +
+
     normalizedRPM *
-    100;
+    92;
 
 
   engineOscillator
@@ -2235,9 +4109,9 @@ function updateEngineAudio() {
 }
 
 
-/* =========================================================
-   AUTOMATIC TRANSMISSION
-   ========================================================= */
+/* =========================
+   TRANSMISSION
+========================= */
 
 const gearRatios = [
 
@@ -2299,10 +4173,13 @@ const shiftDownSpeeds = [
 function updateTransmission() {
 
   const mph =
+
     Math.abs(
       carState.speed
     )
+
     *
+
     2.45;
 
 
@@ -2350,19 +4227,23 @@ function updateTransmission() {
     gear;
 
 
-  const ratio =
-    gearRatios[
-      gear
-    ];
-
-
   carState.rpm =
     THREE.MathUtils.clamp(
 
       900
+
       +
-      mph *
-      ratio *
+
+      mph
+
+      *
+
+      gearRatios[
+        gear
+      ]
+
+      *
+
       22,
 
       900,
@@ -2374,9 +4255,9 @@ function updateTransmission() {
 }
 
 
-/* =========================================================
+/* =========================
    CAR PHYSICS
-   ========================================================= */
+========================= */
 
 function updateCar(
   delta
@@ -2389,6 +4270,39 @@ function updateCar(
     return;
 
   }
+
+
+  carState.boostTimer =
+    Math.max(
+
+      0,
+
+      carState.boostTimer -
+      delta
+
+    );
+
+
+  carState.overdriveTimer =
+    Math.max(
+
+      0,
+
+      carState.overdriveTimer -
+      delta
+
+    );
+
+
+  carState.impactCooldown =
+    Math.max(
+
+      0,
+
+      carState.impactCooldown -
+      delta
+
+    );
 
 
   const accelerate =
@@ -2456,29 +4370,41 @@ function updateCar(
     carState.nitro > 0;
 
 
-  const roadDistance =
-    nearestRoadDistance(
+  const road =
+    nearestRoadInfo(
       car.position
     );
 
 
   const onRoad =
 
-    roadDistance <
+    road.distance <
 
     ROAD_HALF +
-    1.5;
+    0.5;
 
 
-  /*
-    ACCELERATION
-  */
+  const overdrive =
+
+    carState.overdriveTimer >
+    0;
+
+
+  /* ACCELERATION */
 
   if (
     accelerate
   ) {
 
-    carState.speed +=
+    const acceleration =
+
+      overdrive
+
+      ?
+
+      27
+
+      :
 
       (
         onRoad
@@ -2486,7 +4412,12 @@ function updateCar(
         20
         :
         8
-      )
+      );
+
+
+    carState.speed +=
+
+      acceleration
 
       *
 
@@ -2494,9 +4425,11 @@ function updateCar(
 
   }
 
+
   else {
 
     carState.speed *=
+
       Math.pow(
 
         0.985,
@@ -2509,9 +4442,7 @@ function updateCar(
   }
 
 
-  /*
-    BRAKING / REVERSE
-  */
+  /* BRAKES */
 
   if (
     brake
@@ -2523,15 +4454,20 @@ function updateCar(
     ) {
 
       carState.speed -=
+
         34 *
+
         delta;
 
     }
 
+
     else {
 
       carState.speed -=
+
         12 *
+
         delta;
 
     }
@@ -2539,15 +4475,12 @@ function updateCar(
   }
 
 
-  /*
-    OFF ROAD
-  */
-
   if (
     !onRoad
   ) {
 
     carState.speed *=
+
       Math.pow(
 
         0.95,
@@ -2560,9 +4493,7 @@ function updateCar(
   }
 
 
-  /*
-    NITRO
-  */
+  /* NITRO */
 
   if (
 
@@ -2570,7 +4501,8 @@ function updateCar(
 
     &&
 
-    carState.speed > 4
+    carState.speed >
+    4
 
   ) {
 
@@ -2587,10 +4519,13 @@ function updateCar(
 
 
     carState.speed +=
+
       26 *
+
       delta;
 
   }
+
 
   else {
 
@@ -2608,13 +4543,36 @@ function updateCar(
   }
 
 
+  const specialBoost =
+
+    carState.boostTimer > 0
+
+    ||
+
+    overdrive;
+
+
   const maximumSpeed =
 
-    nitroActive
+    specialBoost
+
     ?
-    60
+
+    68
+
     :
-    49;
+
+    (
+      nitroActive
+
+      ?
+
+      60
+
+      :
+
+      49
+    );
 
 
   carState.speed =
@@ -2629,9 +4587,7 @@ function updateCar(
     );
 
 
-  /*
-    STEERING
-  */
+  /* STEERING */
 
   const steeringInput =
 
@@ -2705,12 +4661,26 @@ function updateCar(
   }
 
 
+  if (
+    carState.airborne
+  ) {
+
+    turnRate *=
+      0.22;
+
+  }
+
+
   const reverseDirection =
 
     carState.speed >= 0
+
     ?
+
     1
+
     :
+
     -1;
 
 
@@ -2735,18 +4705,10 @@ function updateCar(
     reverseDirection;
 
 
-  /*
-    MOVE FORWARD
-  */
-
-  const forward =
-    forwardVector();
-
-
   car.position
     .addScaledVector(
 
-      forward,
+      forwardVector(),
 
       carState.speed *
       delta
@@ -2754,11 +4716,35 @@ function updateCar(
     );
 
 
+  updateRamps(
+    delta
+  );
+
+
+  handleGuardrailCollision();
+
+
+  handleObstacleCollisions();
+
+
+  updateBoostPads(
+    delta
+  );
+
+
+  updatePickups(
+    delta
+  );
+
+
   updateTransmission();
+
 
   updateEngineAudio();
 
+
   updateCheckpoints();
+
 
   updateNavigation(
     delta
@@ -2767,9 +4753,9 @@ function updateCar(
 }
 
 
-/* =========================================================
-   CHECKPOINT HELPERS
-   ========================================================= */
+/* =========================
+   CHECKPOINTS
+========================= */
 
 function getNextCheckpoint() {
 
@@ -2803,61 +4789,28 @@ function getNextCheckpoint() {
 }
 
 
-/* =========================================================
-   CHECKPOINT POPUP
-   ========================================================= */
-
-function showCheckpointMessage() {
-
-  checkpointPopup
-    .classList
-    .remove(
-      "hidden"
-    );
-
-
-  clearTimeout(
-    checkpointPopupTimer
-  );
-
-
-  checkpointPopupTimer =
-    setTimeout(
-
-      () => {
-
-        checkpointPopup
-          .classList
-          .add(
-            "hidden"
-          );
-
-      },
-
-      650
-
-    );
-
-}
-
-
-/* =========================================================
-   CHECKPOINT DETECTION
-   ========================================================= */
-
 function updateCheckpoints() {
 
   const target =
     getNextCheckpoint();
 
 
+  const carFlat =
+    new THREE.Vector3(
+
+      car.position.x,
+
+      0,
+
+      car.position.z
+
+    );
+
+
   const distance =
-    car.position
-      .clone()
-      .setY(0)
-      .distanceTo(
-        target.position
-      );
+    carFlat.distanceTo(
+      target.position
+    );
 
 
   if (
@@ -2870,7 +4823,13 @@ function updateCheckpoints() {
   }
 
 
-  showCheckpointMessage();
+  showRacePopup(
+
+    "CHECKPOINT",
+
+    600
+
+  );
 
 
   checkpointStep++;
@@ -2895,7 +4854,7 @@ function updateCheckpoints() {
 
     if (
       lap >
-      targetLaps
+      TARGET_LAPS
     ) {
 
       finishRace();
@@ -2912,10 +4871,6 @@ function updateCheckpoints() {
 }
 
 
-/* =========================================================
-   OBJECTIVE UI
-   ========================================================= */
-
 function updateObjective() {
 
   objectiveEl.textContent =
@@ -2923,9 +4878,9 @@ function updateObjective() {
     `LAP ${
       Math.min(
         lap,
-        targetLaps
+        TARGET_LAPS
       )
-    } / ${targetLaps}`;
+    } / ${TARGET_LAPS}`;
 
 
   checkpointText.textContent =
@@ -2941,9 +4896,9 @@ function updateObjective() {
 }
 
 
-/* =========================================================
+/* =========================
    NAVIGATION
-   ========================================================= */
+========================= */
 
 function updateNavigation(
   delta
@@ -2968,12 +4923,18 @@ function updateNavigation(
     checkpoint.position
       .clone()
       .sub(
-        car.position
+
+        new THREE.Vector3(
+
+          car.position.x,
+
+          0,
+
+          car.position.z
+
+        )
+
       );
-
-
-  vectorToTarget.y =
-    0;
 
 
   const distance =
@@ -3005,15 +4966,7 @@ function updateNavigation(
 
 
   const right =
-    new THREE.Vector3(
-
-      forward.z,
-
-      0,
-
-      -forward.x
-
-    );
+    rightVector();
 
 
   const forwardDot =
@@ -3043,10 +4996,6 @@ function updateNavigation(
       angle
     );
 
-
-  /*
-    Rotate arrow.
-  */
 
   directionArrow.style.transform =
 
@@ -3084,9 +5033,13 @@ function updateNavigation(
     navigationText.textContent =
 
       degrees > 0
+
       ?
+
       "TURN RIGHT"
+
       :
+
       "TURN LEFT";
 
   }
@@ -3097,17 +5050,17 @@ function updateNavigation(
     navigationText.textContent =
 
       degrees > 0
+
       ?
+
       "HARD RIGHT"
+
       :
+
       "HARD LEFT";
 
   }
 
-
-  /*
-    WRONG WAY
-  */
 
   if (
 
@@ -3128,6 +5081,7 @@ function updateNavigation(
       delta;
 
   }
+
 
   else {
 
@@ -3159,9 +5113,9 @@ function updateNavigation(
 }
 
 
-/* =========================================================
+/* =========================
    MINIMAP
-   ========================================================= */
+========================= */
 
 function getTrackBounds(
   track
@@ -3219,8 +5173,11 @@ function getTrackBounds(
   return {
 
     minX,
+
     maxX,
+
     minZ,
+
     maxZ
 
   };
@@ -3252,8 +5209,11 @@ function drawMinimap() {
   mapCtx.clearRect(
 
     0,
+
     0,
+
     width,
+
     height
 
   );
@@ -3272,12 +5232,14 @@ function drawMinimap() {
   const mapWidth =
 
     bounds.maxX -
+
     bounds.minX;
 
 
   const mapHeight =
 
     bounds.maxZ -
+
     bounds.minZ;
 
 
@@ -3293,7 +5255,6 @@ function drawMinimap() {
       /
 
       mapWidth,
-
 
       (
         height -
@@ -3327,6 +5288,7 @@ function drawMinimap() {
         )
 
         *
+
         scale,
 
 
@@ -3346,16 +5308,13 @@ function drawMinimap() {
         )
 
         *
+
         scale
 
     };
 
   }
 
-
-  /*
-    TRACK LINE
-  */
 
   mapCtx.strokeStyle =
     "rgba(255,255,255,.35)";
@@ -3407,6 +5366,7 @@ function drawMinimap() {
 
       }
 
+
       else {
 
         mapCtx.lineTo(
@@ -3448,9 +5408,43 @@ function drawMinimap() {
   mapCtx.stroke();
 
 
-  /*
-    CHECKPOINT DOTS
-  */
+  /* BOOST PAD DOTS */
+
+  for (
+    const pad
+    of boostPads
+  ) {
+
+    const mapped =
+      mapPoint(
+
+        pad.position.x,
+
+        pad.position.z
+
+      );
+
+
+    mapCtx.fillStyle =
+      "#36a7ff";
+
+
+    mapCtx.fillRect(
+
+      mapped.x - 2,
+
+      mapped.y - 2,
+
+      4,
+
+      4
+
+    );
+
+  }
+
+
+  /* CHECKPOINTS */
 
   activeTrack
     .checkpoints
@@ -3469,7 +5463,6 @@ function drawMinimap() {
 
 
         const mapped =
-
           mapPoint(
 
             point[0],
@@ -3528,9 +5521,7 @@ function drawMinimap() {
     );
 
 
-  /*
-    PLAYER
-  */
+  /* PLAYER */
 
   const player =
     mapPoint(
@@ -3568,19 +5559,19 @@ function drawMinimap() {
 
   mapCtx.moveTo(
     0,
-    7
-  );
-
-
-  mapCtx.lineTo(
-    -5,
-    -6
+    -7
   );
 
 
   mapCtx.lineTo(
     5,
-    -6
+    6
+  );
+
+
+  mapCtx.lineTo(
+    -5,
+    6
   );
 
 
@@ -3595,9 +5586,9 @@ function drawMinimap() {
 }
 
 
-/* =========================================================
+/* =========================
    CAMERA
-   ========================================================= */
+========================= */
 
 function updateCamera(
   delta
@@ -3616,19 +5607,21 @@ function updateCamera(
     forwardVector();
 
 
-  /*
-    Camera sits behind the car.
-  */
-
   const desired =
     car.position
       .clone()
       .add(
+
         new THREE.Vector3(
+
           0,
+
           3.2,
+
           0
+
         )
+
       )
       .addScaledVector(
 
@@ -3667,11 +5660,17 @@ function updateCamera(
     car.position
       .clone()
       .add(
+
         new THREE.Vector3(
+
           0,
+
           0.8,
+
           0
+
         )
+
       )
       .addScaledVector(
 
@@ -3689,9 +5688,9 @@ function updateCamera(
 }
 
 
-/* =========================================================
+/* =========================
    HUD
-   ========================================================= */
+========================= */
 
 function updateHUD() {
 
@@ -3704,7 +5703,7 @@ function updateHUD() {
   }
 
 
-  const mph =
+  speedEl.textContent =
     Math.round(
 
       Math.abs(
@@ -3716,10 +5715,6 @@ function updateHUD() {
       2.45
 
     );
-
-
-  speedEl.textContent =
-    mph;
 
 
   gearEl.textContent =
@@ -3770,9 +5765,9 @@ function updateHUD() {
 }
 
 
-/* =========================================================
+/* =========================
    COUNTDOWN
-   ========================================================= */
+========================= */
 
 async function runCountdown() {
 
@@ -3783,22 +5778,14 @@ async function runCountdown() {
     );
 
 
-  const sequence = [
-
-    "3",
-
-    "2",
-
-    "1",
-
-    "GO"
-
-  ];
-
-
   for (
     const value
-    of sequence
+    of [
+      "3",
+      "2",
+      "1",
+      "GO"
+    ]
   ) {
 
     countdown.textContent =
@@ -3807,21 +5794,23 @@ async function runCountdown() {
 
     await new Promise(
 
-      resolve => {
+      resolve =>
 
         setTimeout(
 
           resolve,
 
           value === "GO"
+
           ?
+
           550
+
           :
+
           700
 
-        );
-
-      }
+        )
 
     );
 
@@ -3841,9 +5830,9 @@ async function runCountdown() {
 }
 
 
-/* =========================================================
-   START RACE
-   ========================================================= */
+/* =========================
+   START / FINISH
+========================= */
 
 function startRace() {
 
@@ -3851,7 +5840,6 @@ function startRace() {
 
 
   const track =
-
     tracks[
       trackSelect.value
     ];
@@ -3895,10 +5883,6 @@ function startRace() {
 
 }
 
-
-/* =========================================================
-   FINISH RACE
-   ========================================================= */
 
 function finishRace() {
 
@@ -3950,14 +5934,13 @@ function finishRace() {
 }
 
 
-/* =========================================================
-   TRACK DESCRIPTION
-   ========================================================= */
+/* =========================
+   MENU
+========================= */
 
 function updateTrackDescription() {
 
   const track =
-
     tracks[
       trackSelect.value
     ];
@@ -3990,9 +5973,9 @@ startBtn.addEventListener(
 );
 
 
-/* =========================================================
-   KEYBOARD INPUT
-   ========================================================= */
+/* =========================
+   INPUT
+========================= */
 
 window.addEventListener(
 
@@ -4065,9 +6048,9 @@ window.addEventListener(
 );
 
 
-/* =========================================================
-   FPS / DYNAMIC RESOLUTION
-   ========================================================= */
+/* =========================
+   FPS / CHROMEBOOK QUALITY
+========================= */
 
 function updateFPS(
   now
@@ -4112,11 +6095,6 @@ function updateFPS(
     `FPS ${fps}`;
 
 
-  /*
-    Weak Chromebook:
-    lower internal resolution automatically.
-  */
-
   if (
 
     fps <
@@ -4144,11 +6122,6 @@ function updateFPS(
 
   }
 
-
-  /*
-    Raise quality again only when
-    performance is comfortably high.
-  */
 
   else if (
 
@@ -4188,9 +6161,9 @@ function updateFPS(
 }
 
 
-/* =========================================================
-   MAIN LOOP
-   ========================================================= */
+/* =========================
+   GAME LOOP
+========================= */
 
 function gameLoop(
   now
@@ -4243,9 +6216,9 @@ function gameLoop(
 }
 
 
-/* =========================================================
-   INITIAL BACKGROUND
-   ========================================================= */
+/* =========================
+   LOAD
+========================= */
 
 buildTrack(
   tracks.neon
