@@ -1,67 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>REDLINE</title>
-  <link rel="icon" type="image/png" href="/logo.png" />
-  <link rel="stylesheet" href="./style.css" />
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="/logo.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="./style.css"
+  >
 </head>
+
 <body>
-  <div id="gameShell">
-    <div id="menu" class="screen">
-      <div class="menu-card">
-        <div class="eyebrow">GAMESHUB PRESENTS</div>
-        <h1>REDLINE</h1>
-        <p class="sub">Lightweight 3D arcade racing built for browser play.</p>
 
-        <label for="trackSelect">TRACK</label>
-        <select id="trackSelect">
-          <option value="neon">Neon District</option>
-          <option value="canyon">Dustfall Canyon</option>
-          <option value="arctic">Arctic Relay</option>
-        </select>
+<div id="gameShell">
 
-        <div class="menu-actions">
-          <button id="startBtn">START RACE</button>
-          <a href="/" class="secondary">BACK TO GAMESHUB</a>
-        </div>
+  <!-- MAIN MENU -->
 
-        <div class="controls">
-          <span>W / ↑ Accelerate</span>
-          <span>S / ↓ Brake / Reverse</span>
-          <span>A D / ← → Steer</span>
-          <span>SPACE Handbrake</span>
-          <span>SHIFT Nitro</span>
-        </div>
+  <div
+    id="menu"
+    class="screen"
+  >
+
+    <div class="menu-card">
+
+      <div class="eyebrow">
+        GAMESHUB PRESENTS
       </div>
+
+      <h1>
+        REDLINE
+      </h1>
+
+      <p class="sub">
+        High-speed 3D arcade racing.
+      </p>
+
+
+      <label for="trackSelect">
+        TRACK
+      </label>
+
+      <select id="trackSelect">
+
+        <option value="neon">
+          Neon District
+        </option>
+
+        <option value="canyon">
+          Dustfall Canyon
+        </option>
+
+        <option value="arctic">
+          Arctic Relay
+        </option>
+
+      </select>
+
+
+      <div class="track-description">
+
+        <span id="trackDescription">
+          Night street circuit through the city.
+        </span>
+
+      </div>
+
+
+      <div class="menu-actions">
+
+        <button id="startBtn">
+          START RACE
+        </button>
+
+        <a
+          href="/"
+          class="secondary"
+        >
+          BACK TO GAMESHUB
+        </a>
+
+      </div>
+
+
+      <div class="controls">
+
+        <span>
+          W / ↑ &nbsp; Accelerate
+        </span>
+
+        <span>
+          S / ↓ &nbsp; Brake
+        </span>
+
+        <span>
+          A / D &nbsp; Steer
+        </span>
+
+        <span>
+          SPACE &nbsp; Handbrake
+        </span>
+
+        <span>
+          SHIFT &nbsp; Nitro
+        </span>
+
+      </div>
+
     </div>
 
-    <div id="hud" class="hidden">
-      <div class="hud-left">
-        <div id="trackName">NEON DISTRICT</div>
-        <div id="objective">LAP 1 / 3</div>
-      </div>
-
-      <div class="hud-right">
-        <div class="speed-line"><span id="speed">0</span><small> MPH</small></div>
-        <div class="gear-line">GEAR <span id="gear">1</span></div>
-        <div class="bar-label">RPM</div>
-        <div class="bar"><div id="rpmBar"></div></div>
-        <div class="bar-label">NITRO</div>
-        <div class="bar"><div id="nitroBar"></div></div>
-      </div>
-
-      <div id="fps">FPS 0</div>
-    </div>
-
-    <div id="countdown" class="hidden">3</div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="message" class="hidden"></div>
   </div>
 
-  <script type="module" src="./game.js"></script>
+
+
+  <!-- GAME HUD -->
+
+  <div
+    id="hud"
+    class="hidden"
+  >
+
+
+    <!-- TOP LEFT -->
+
+    <div class="race-info">
+
+      <div id="trackName">
+        NEON DISTRICT
+      </div>
+
+      <div class="race-stats">
+
+        <span id="objective">
+          LAP 1 / 3
+        </span>
+
+        <span id="checkpointText">
+          CHECKPOINT 1 / 6
+        </span>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- TOP CENTER NAVIGATION -->
+
+    <div id="navigation">
+
+      <div id="directionArrow">
+        ↑
+      </div>
+
+      <div id="navigationText">
+        STRAIGHT
+      </div>
+
+      <div id="checkpointDistance">
+        120m
+      </div>
+
+    </div>
+
+
+
+    <!-- WRONG WAY -->
+
+    <div
+      id="wrongWay"
+      class="hidden"
+    >
+
+      <strong>
+        WRONG WAY
+      </strong>
+
+      <span>
+        TURN AROUND
+      </span>
+
+    </div>
+
+
+
+    <!-- MINIMAP -->
+
+    <div class="minimap-container">
+
+      <div class="minimap-title">
+        TRACK
+      </div>
+
+      <canvas
+        id="minimap"
+        width="180"
+        height="180"
+      ></canvas>
+
+    </div>
+
+
+
+    <!-- SPEED HUD -->
+
+    <div class="vehicle-hud">
+
+      <div class="position-row">
+
+        <span id="racePosition">
+          1ST
+        </span>
+
+        <small id="totalRacers">
+          / 1
+        </small>
+
+      </div>
+
+
+      <div class="speed-row">
+
+        <span id="speed">
+          0
+        </span>
+
+        <small>
+          MPH
+        </small>
+
+      </div>
+
+
+      <div class="gear-row">
+
+        GEAR
+
+        <span id="gear">
+          1
+        </span>
+
+      </div>
+
+
+      <div class="meter-title">
+        RPM
+      </div>
+
+      <div class="meter">
+
+        <div id="rpmBar"></div>
+
+      </div>
+
+
+      <div class="meter-title nitro-title">
+
+        NITRO
+
+        <span id="nitroPercent">
+          100%
+        </span>
+
+      </div>
+
+      <div class="meter">
+
+        <div id="nitroBar"></div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- FPS -->
+
+    <div id="fps">
+      FPS 60
+    </div>
+
+  </div>
+
+
+
+  <!-- COUNTDOWN -->
+
+  <div
+    id="countdown"
+    class="hidden"
+  >
+    3
+  </div>
+
+
+
+  <!-- CHECKPOINT NOTIFICATION -->
+
+  <div
+    id="checkpointPopup"
+    class="hidden"
+  >
+
+    CHECKPOINT
+
+  </div>
+
+
+
+  <!-- GAME -->
+
+  <canvas
+    id="gameCanvas"
+    tabindex="0"
+  ></canvas>
+
+
+
+  <!-- FINISH / MESSAGE -->
+
+  <div
+    id="message"
+    class="hidden"
+  ></div>
+
+</div>
+
+
+<script
+  type="module"
+  src="./game.js"
+></script>
+
 </body>
 </html>
