@@ -28,8 +28,13 @@ a {
   font: inherit;
 }
 
+button {
+  border: none;
+}
+
 #gameShell {
   position: relative;
+
   width: 100%;
   height: 100%;
 }
@@ -61,58 +66,64 @@ a {
   display: grid;
   place-items: center;
 
-  padding: 24px;
+  padding: 20px;
+
+  overflow-y: auto;
 
   background:
     radial-gradient(
-      circle at 50% 0%,
-      rgba(37, 70, 120, 0.28),
+      circle at 50% -10%,
+      rgba(49, 85, 145, 0.32),
       transparent 42%
     ),
-    rgba(5, 8, 13, 0.78);
+    rgba(4, 7, 11, 0.88);
 
-  backdrop-filter: blur(8px);
+  backdrop-filter:
+    blur(8px);
 }
 
 .menu-card {
-  width: min(
-    510px,
-    calc(100vw - 30px)
-  );
+  width:
+    min(
+      720px,
+      calc(100vw - 32px)
+    );
 
-  padding: 34px;
+  padding: 30px;
+
+  margin: auto;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.11);
+    rgba(255, 255, 255, 0.10);
 
   border-radius: 20px;
 
   background:
-    rgba(12, 17, 24, 0.94);
+    rgba(12, 17, 24, 0.96);
 
   box-shadow:
-    0 30px 80px
+    0 28px 80px
     rgba(0, 0, 0, 0.45);
 }
 
 .eyebrow {
-  color: #7f8da1;
+  color: #758297;
 
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
 
   letter-spacing: 2.8px;
 }
 
 .menu-card h1 {
-  margin-top: 6px;
+  margin-top: 5px;
 
   font-size:
     clamp(
-      58px,
-      10vw,
-      86px
+      54px,
+      8vw,
+      82px
     );
 
   line-height: 0.9;
@@ -121,64 +132,483 @@ a {
 }
 
 .sub {
-  margin-top: 14px;
+  margin-top: 13px;
 
-  color: #a5afbd;
+  color: #a1acbb;
 
-  font-size: 15px;
+  font-size: 14px;
 }
 
-.menu-card label {
+.menu-card > label {
   display: block;
 
-  margin-top: 28px;
-  margin-bottom: 8px;
+  margin-top: 25px;
+  margin-bottom: 7px;
 
-  color: #7f8a9c;
+  color: #788598;
 
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
 
-  letter-spacing: 1.8px;
+  letter-spacing: 1.7px;
 }
 
 #trackSelect {
   width: 100%;
-  height: 48px;
+  height: 46px;
+
+  padding: 0 13px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.12);
+    rgba(255, 255, 255, 0.11);
 
   border-radius: 10px;
 
-  padding: 0 14px;
+  outline: none;
 
-  background: #090d13;
+  background: #080c12;
 
   color: white;
 
-  outline: none;
+  cursor: pointer;
 }
 
 #trackSelect:focus {
-  border-color: #4e8eff;
+  border-color: #5f91e5;
 }
 
 #trackSelect option:disabled {
-  color: #59616d;
+  color: #5b6470;
 }
 
 .track-description {
-  min-height: 40px;
+  min-height: 34px;
 
-  margin-top: 10px;
+  margin-top: 9px;
 
-  color: #7c8797;
+  color: #707c8e;
 
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
+
+
+/* =========================================================
+   GARAGE HEADER
+========================================================= */
+
+.garage-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-top: 27px;
+  margin-bottom: 12px;
+}
+
+.garage-label {
+  color: #718096;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 2px;
+}
+
+.garage-header h2 {
+  margin-top: 3px;
+
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.selected-car-name {
+  color: #aab4c2;
+
+  font-size: 11px;
+  font-weight: 900;
+
+  letter-spacing: 1.5px;
+}
+
+
+/* =========================================================
+   CAR SELECTOR
+========================================================= */
+
+.car-selector {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 10px;
+}
+
+.car-card {
+  min-width: 0;
+
+  overflow: hidden;
+
+  padding: 0;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 13px;
+
+  background: #121821;
+
+  color: white;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.car-card:hover {
+  transform:
+    translateY(-2px);
+
+  border-color:
+    rgba(
+      255,
+      255,
+      255,
+      0.20
+    );
+}
+
+.car-card.selected {
+  border-color: #6a9fff;
+
+  background: #182232;
+
+  box-shadow:
+    inset 0 0 0 1px
+    rgba(
+      106,
+      159,
+      255,
+      0.20
+    );
+}
+
+
+/* =========================================================
+   CAR PREVIEWS
+========================================================= */
+
+.car-preview {
+  position: relative;
+
+  height: 100px;
+
+  display: grid;
+  place-items: center;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      155deg,
+      #202836,
+      #0c1118
+    );
+}
+
+.gt-preview {
+  background:
+    linear-gradient(
+      155deg,
+      #222c3a,
+      #0c1118
+    );
+}
+
+.vortex-preview {
+  background:
+    linear-gradient(
+      155deg,
+      #301e24,
+      #0c1118
+    );
+}
+
+.apex-preview {
+  background:
+    linear-gradient(
+      155deg,
+      #1b2d2f,
+      #0c1118
+    );
+}
+
+.car-preview::after {
+  content: "";
+
+  position: absolute;
+
+  left: 12%;
+  right: 12%;
+  bottom: 14px;
+
+  height: 2px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
+}
+
+.preview-car {
+  position: relative;
+
+  z-index: 2;
+
+  width: 92px;
+  height: 36px;
+
+  transform:
+    perspective(140px)
+    rotateX(4deg);
+
+  border-radius:
+    15px 15px 8px 8px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      #edf1f6,
+      #9ea8b6
+    );
+
+  box-shadow:
+    0 10px 18px
+    rgba(
+      0,
+      0,
+      0,
+      0.32
+    );
+}
+
+.preview-car::before,
+.preview-car::after {
+  content: "";
+
+  position: absolute;
+
+  bottom: -4px;
+
+  width: 17px;
+  height: 9px;
+
+  border-radius:
+    3px;
+
+  background: #05070a;
+}
+
+.preview-car::before {
+  left: 8px;
+}
+
+.preview-car::after {
+  right: 8px;
+}
+
+.preview-cabin {
+  position: absolute;
+
+  left: 20px;
+  right: 20px;
+  top: -12px;
+
+  height: 22px;
+
+  border-radius:
+    11px 11px 2px 2px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      #24303e,
+      #121821
+    );
+}
+
+.preview-car.sport {
+  width: 100px;
+  height: 31px;
+
+  border-radius:
+    20px 20px 7px 7px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      #d95a67,
+      #852d38
+    );
+}
+
+.preview-car.sport
+.preview-cabin {
+  left: 26px;
+  right: 26px;
+
+  top: -10px;
+
+  height: 20px;
+}
+
+.preview-car.compact {
+  width: 84px;
+  height: 39px;
+
+  border-radius:
+    12px 12px 8px 8px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      #66c0b7,
+      #347b78
+    );
+}
+
+.preview-car.compact
+.preview-cabin {
+  left: 17px;
+  right: 17px;
+
+  top: -13px;
+
+  height: 23px;
+}
+
+
+/* =========================================================
+   CAR INFO
+========================================================= */
+
+.car-info {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+
+  padding:
+    11px 12px;
+}
+
+.car-info strong {
+  font-size: 12px;
+  font-weight: 900;
+
+  letter-spacing: 0.4px;
+}
+
+.car-info span {
+  color: #768294;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+.car-stats {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap:
+    11px 20px;
+
+  margin-top: 17px;
+
+  padding: 15px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.07);
+
+  border-radius: 12px;
+
+  background:
+    rgba(
+      7,
+      11,
+      17,
+      0.65
+    );
+}
+
+.stat {
+  min-width: 0;
+}
+
+.stat > span {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #768294;
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 1px;
+}
+
+.stat-bar {
+  width: 100%;
+  height: 5px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background: #252d38;
+}
+
+.stat-fill {
+  height: 100%;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #dfe5ed,
+      #ffffff
+    );
+
+  transition:
+    width 0.22s ease;
+}
+
+
+/* =========================================================
+   MENU ACTIONS
+========================================================= */
 
 .menu-actions {
   display: grid;
@@ -188,7 +618,7 @@ a {
 
   gap: 10px;
 
-  margin-top: 18px;
+  margin-top: 19px;
 }
 
 #startBtn,
@@ -200,14 +630,12 @@ a {
 
   border-radius: 10px;
 
-  font-weight: 900;
-
   text-decoration: none;
+
+  font-weight: 900;
 }
 
 #startBtn {
-  border: none;
-
   background: white;
 
   color: #07090c;
@@ -220,43 +648,44 @@ a {
 }
 
 #startBtn:hover {
-  background: #e8ebef;
-
   transform:
     translateY(-1px);
+
+  background: #e9edf2;
 }
 
 .secondary {
   border:
     1px solid
-    rgba(255, 255, 255, 0.10);
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
 
-  background:
-    #171c24;
+  background: #171d26;
 
-  color:
-    #c7ced8;
+  color: #c1c9d4;
 }
 
 .controls {
-  display: grid;
-
-  grid-template-columns:
-    1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
 
   gap:
-    8px 14px;
+    7px 15px;
 
-  margin-top: 24px;
+  margin-top: 20px;
 
-  color: #697486;
+  color: #647083;
 
-  font-size: 11px;
+  font-size: 10px;
 }
 
 
 /* =========================================================
-   HUD ROOT
+   HUD
 ========================================================= */
 
 #hud {
@@ -270,54 +699,61 @@ a {
 
 
 /* =========================================================
-   LAP / TRACK
+   RACE INFO
 ========================================================= */
 
 .race-info {
   position: absolute;
 
-  top: 24px;
-  left: 24px;
+  top: 22px;
+  left: 22px;
 
-  min-width: 230px;
+  min-width: 225px;
 
   padding:
-    14px 16px;
+    13px 15px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.10);
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
 
   border-radius: 12px;
 
   background:
-    rgba(5, 9, 15, 0.72);
+    rgba(
+      5,
+      9,
+      15,
+      0.72
+    );
 
-  backdrop-filter: blur(8px);
-
-  box-shadow:
-    0 12px 30px
-    rgba(0, 0, 0, 0.18);
+  backdrop-filter:
+    blur(8px);
 }
 
 #trackName {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 950;
 
-  letter-spacing: 2px;
+  letter-spacing: 1.9px;
 }
 
 .race-stats {
   display: flex;
 
-  gap: 14px;
+  gap: 13px;
 
-  margin-top: 8px;
+  margin-top: 7px;
 
-  color: #a3adbb;
+  color: #a0aab8;
 
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 
@@ -328,60 +764,67 @@ a {
 #navigation {
   position: absolute;
 
+  top: 20px;
   left: 50%;
-  top: 22px;
+
+  min-width: 205px;
 
   transform:
     translateX(-50%);
 
-  min-width: 220px;
-
   padding:
-    12px 20px 13px;
+    9px 18px 11px;
 
   text-align: center;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.11);
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
 
-  border-radius: 14px;
+  border-radius: 13px;
 
   background:
-    rgba(5, 9, 15, 0.74);
+    rgba(
+      5,
+      9,
+      15,
+      0.74
+    );
 
-  backdrop-filter: blur(8px);
-
-  box-shadow:
-    0 14px 35px
-    rgba(0, 0, 0, 0.22);
+  backdrop-filter:
+    blur(8px);
 }
 
 #directionArrow {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
 
   display: grid;
   place-items: center;
 
-  margin: 0 auto;
+  margin: auto;
 
-  font-size: 45px;
-  font-weight: 900;
+  font-size: 41px;
+  font-weight: 950;
 
   line-height: 1;
 
   transform-origin:
-    center center;
+    center;
 
   transition:
     transform 0.12s linear;
 }
 
 #navigationText {
-  margin-top: 2px;
+  margin-top: 1px;
 
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 950;
 
   letter-spacing: 1.5px;
@@ -390,9 +833,9 @@ a {
 #checkpointDistance {
   margin-top: 3px;
 
-  color: #9ca8b8;
+  color: #96a1b1;
 
-  font-size: 11px;
+  font-size: 10px;
 }
 
 
@@ -403,31 +846,28 @@ a {
 #wrongWay {
   position: absolute;
 
+  top: 128px;
   left: 50%;
-  top: 135px;
 
   transform:
     translateX(-50%);
 
-  min-width: 200px;
+  min-width: 190px;
 
   padding:
-    10px 18px;
+    9px 16px;
 
-  text-align: center;
-
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.15);
-
-  border-radius: 10px;
+  border-radius: 9px;
 
   background:
-    rgba(170, 25, 32, 0.92);
+    rgba(
+      174,
+      28,
+      35,
+      0.92
+    );
 
-  box-shadow:
-    0 12px 30px
-    rgba(0, 0, 0, 0.25);
+  text-align: center;
 
   animation:
     warningFlash
@@ -438,21 +878,21 @@ a {
 #wrongWay strong {
   display: block;
 
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 950;
 
-  letter-spacing: 2.2px;
+  letter-spacing: 2px;
 }
 
 #wrongWay span {
   display: block;
 
-  margin-top: 2px;
+  margin-top: 1px;
 
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
 
-  letter-spacing: 1.4px;
+  letter-spacing: 1.3px;
 }
 
 @keyframes warningFlash {
@@ -473,80 +913,91 @@ a {
 .minimap-container {
   position: absolute;
 
-  top: 24px;
-  right: 24px;
+  top: 22px;
+  right: 22px;
 
-  width: 220px;
+  width: 205px;
 
-  padding:
-    12px;
+  padding: 11px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.10);
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
 
-  border-radius: 14px;
+  border-radius: 13px;
 
   background:
-    rgba(5, 9, 15, 0.72);
+    rgba(
+      5,
+      9,
+      15,
+      0.72
+    );
 
   backdrop-filter:
     blur(8px);
-
-  box-shadow:
-    0 12px 30px
-    rgba(0, 0, 0, 0.18);
 }
 
 .minimap-title {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 
-  color: #788596;
+  color: #788496;
 
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
 
-  letter-spacing: 1.7px;
+  letter-spacing: 1.5px;
 }
 
 #minimap {
+  display: block;
+
   width: 100%;
   height: auto;
-
-  display: block;
 }
 
 
 /* =========================================================
-   SPEED / GEAR
+   SPEED HUD
 ========================================================= */
 
 .vehicle-hud {
   position: absolute;
 
-  right: 24px;
-  bottom: 24px;
+  right: 22px;
+  bottom: 22px;
 
-  width: 245px;
+  width: 225px;
 
   padding:
-    16px 18px 17px;
+    15px 17px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.11);
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
 
-  border-radius: 14px;
+  border-radius: 13px;
 
   background:
-    rgba(5, 9, 15, 0.76);
+    rgba(
+      5,
+      9,
+      15,
+      0.76
+    );
 
   backdrop-filter:
     blur(8px);
-
-  box-shadow:
-    0 16px 36px
-    rgba(0, 0, 0, 0.25);
 }
 
 .position-row {
@@ -555,33 +1006,31 @@ a {
 
   gap: 4px;
 
-  margin-bottom: 8px;
+  margin-bottom: 7px;
 }
 
 #racePosition {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 950;
 }
 
 #totalRacers {
-  color: #697484;
+  color: #687486;
 
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
 }
 
 .speed-row {
   display: flex;
-
   align-items: flex-end;
 
-  gap: 7px;
+  gap: 6px;
 
   line-height: 0.9;
 }
 
 #speed {
-  font-size: 68px;
+  font-size: 64px;
   font-weight: 950;
 
   letter-spacing: -4px;
@@ -590,31 +1039,29 @@ a {
 .speed-row small {
   margin-bottom: 6px;
 
-  color: #8f9baa;
+  color: #8b97a8;
 
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .gear-row {
-  margin-top: 12px;
+  margin-top: 11px;
 
-  color: #7e8998;
+  color: #788496;
 
-  font-size: 11px;
-  font-weight: 850;
+  font-size: 10px;
+  font-weight: 900;
 
-  letter-spacing: 1.2px;
+  letter-spacing: 1.1px;
 }
 
 #gear {
-  display: inline-block;
-
   margin-left: 5px;
 
   color: white;
 
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 950;
 }
 
@@ -622,14 +1069,14 @@ a {
   display: flex;
   justify-content: space-between;
 
-  margin-top: 13px;
+  margin-top: 12px;
 
-  color: #7a8595;
+  color: #778394;
 
   font-size: 9px;
   font-weight: 900;
 
-  letter-spacing: 1.4px;
+  letter-spacing: 1.2px;
 }
 
 #nitroPercent {
@@ -637,16 +1084,15 @@ a {
 }
 
 .meter {
-  width: 100%;
-  height: 7px;
+  height: 6px;
+
+  margin-top: 4px;
 
   overflow: hidden;
 
-  margin-top: 5px;
-
   border-radius: 999px;
 
-  background: #222a35;
+  background: #232b36;
 }
 
 #rpmBar,
@@ -658,12 +1104,7 @@ a {
 }
 
 #rpmBar {
-  background:
-    linear-gradient(
-      90deg,
-      #d7dde5,
-      #ffffff
-    );
+  background: white;
 }
 
 #nitroBar {
@@ -673,10 +1114,6 @@ a {
       #397bff,
       #68c1ff
     );
-
-  box-shadow:
-    0 0 12px
-    rgba(75, 152, 255, 0.45);
 }
 
 
@@ -687,15 +1124,15 @@ a {
 #fps {
   position: absolute;
 
-  left: 24px;
-  bottom: 22px;
+  left: 22px;
+  bottom: 20px;
 
   color:
     rgba(
       255,
       255,
       255,
-      0.35
+      0.32
     );
 
   font:
@@ -725,8 +1162,6 @@ a {
       -50%
     );
 
-  color: white;
-
   font-size:
     clamp(
       100px,
@@ -740,12 +1175,17 @@ a {
 
   text-shadow:
     0 15px 50px
-    rgba(0, 0, 0, 0.8);
+    rgba(
+      0,
+      0,
+      0,
+      0.8
+    );
 }
 
 
 /* =========================================================
-   CHECKPOINT / BOOST POPUP
+   EVENT POPUP
 ========================================================= */
 
 #checkpointPopup {
@@ -759,26 +1199,36 @@ a {
   transform:
     translateX(-50%);
 
-  min-width: 170px;
+  min-width: 165px;
 
   padding:
-    11px 18px;
+    10px 17px;
 
   text-align: center;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.14);
+    rgba(
+      255,
+      255,
+      255,
+      0.13
+    );
 
-  border-radius: 10px;
+  border-radius: 9px;
 
   background:
-    rgba(5, 9, 15, 0.80);
+    rgba(
+      5,
+      9,
+      15,
+      0.82
+    );
 
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 950;
 
-  letter-spacing: 2px;
+  letter-spacing: 1.8px;
 
   backdrop-filter:
     blur(7px);
@@ -828,16 +1278,26 @@ a {
     );
 
   padding:
-    24px 34px;
+    23px 32px;
 
   border:
     1px solid
-    rgba(255, 255, 255, 0.14);
+    rgba(
+      255,
+      255,
+      255,
+      0.14
+    );
 
-  border-radius: 15px;
+  border-radius: 14px;
 
   background:
-    rgba(4, 8, 14, 0.87);
+    rgba(
+      4,
+      8,
+      14,
+      0.88
+    );
 
   font-size:
     clamp(
@@ -848,14 +1308,8 @@ a {
 
   font-weight: 950;
 
-  text-align: center;
-
   backdrop-filter:
     blur(10px);
-
-  box-shadow:
-    0 20px 60px
-    rgba(0, 0, 0, 0.4);
 }
 
 
@@ -864,93 +1318,71 @@ a {
 ========================================================= */
 
 @media (
-  max-width: 900px
-) {
-
-  .race-info {
-    top: 14px;
-    left: 14px;
-
-    min-width: 190px;
-  }
-
-  #navigation {
-    top: 14px;
-
-    min-width: 180px;
-  }
-
-  .minimap-container {
-    top: 14px;
-    right: 14px;
-
-    width: 175px;
-  }
-
-  .vehicle-hud {
-    right: 14px;
-    bottom: 14px;
-
-    width: 205px;
-  }
-
-  #speed {
-    font-size: 56px;
-  }
-
-}
-
-
-@media (
-  max-width: 650px
+  max-width: 760px
 ) {
 
   .menu-card {
-    padding: 25px;
+    padding: 22px;
   }
 
-  .menu-actions,
-  .controls {
+  .car-selector {
     grid-template-columns:
       1fr;
   }
 
+  .car-preview {
+    height: 80px;
+  }
+
+  .car-stats {
+    grid-template-columns:
+      1fr;
+  }
+
+  .menu-actions {
+    grid-template-columns:
+      1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
   .race-info {
-    max-width: 145px;
-    min-width: 0;
+    top: 12px;
+    left: 12px;
+
+    min-width: 165px;
   }
 
   .race-stats {
     flex-direction: column;
+
     gap: 2px;
   }
 
   .minimap-container {
-    width: 140px;
+    top: 12px;
+    right: 12px;
+
+    width: 145px;
   }
 
   #navigation {
-    top: 105px;
+    top: 110px;
 
-    min-width: 150px;
-
-    padding:
-      8px 12px;
-  }
-
-  #directionArrow {
-    width: 38px;
-    height: 38px;
-
-    font-size: 36px;
+    min-width: 155px;
   }
 
   .vehicle-hud {
-    width: 170px;
+    right: 12px;
+    bottom: 12px;
+
+    width: 175px;
   }
 
   #speed {
-    font-size: 46px;
+    font-size: 48px;
   }
 
 }
