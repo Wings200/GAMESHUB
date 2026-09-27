@@ -26,7 +26,9 @@
 
 <div id="gameShell">
 
-  <!-- MAIN MENU -->
+  <!-- =========================
+       MAIN MENU
+  ========================== -->
 
   <div
     id="menu"
@@ -44,9 +46,13 @@
       </h1>
 
       <p class="sub">
-        High-speed 3D arcade racing.
+        Street racing. No rules.
       </p>
 
+
+      <!-- =========================
+           TRACK
+      ========================== -->
 
       <label for="trackSelect">
         TRACK
@@ -72,11 +78,227 @@
       <div class="track-description">
 
         <span id="trackDescription">
-          Night street circuit through the city.
+          Neon District V4
         </span>
 
       </div>
 
+
+      <!-- =========================
+           GARAGE
+      ========================== -->
+
+      <div class="garage-header">
+
+        <div>
+
+          <div class="garage-label">
+            GARAGE
+          </div>
+
+          <h2>
+            Choose your car
+          </h2>
+
+        </div>
+
+        <div
+          id="selectedCarName"
+          class="selected-car-name"
+        >
+          REDLINE GT
+        </div>
+
+      </div>
+
+
+      <div
+        id="carSelector"
+        class="car-selector"
+      >
+
+        <!-- REDLINE GT -->
+
+        <button
+          class="car-card selected"
+          data-car="gt"
+          type="button"
+        >
+
+          <div class="car-preview gt-preview">
+
+            <div class="preview-car">
+              <div class="preview-cabin"></div>
+            </div>
+
+          </div>
+
+          <div class="car-info">
+
+            <strong>
+              REDLINE GT
+            </strong>
+
+            <span>
+              Balanced
+            </span>
+
+          </div>
+
+        </button>
+
+
+        <!-- VORTEX R -->
+
+        <button
+          class="car-card"
+          data-car="vortex"
+          type="button"
+        >
+
+          <div class="car-preview vortex-preview">
+
+            <div class="preview-car sport">
+              <div class="preview-cabin"></div>
+            </div>
+
+          </div>
+
+          <div class="car-info">
+
+            <strong>
+              VORTEX R
+            </strong>
+
+            <span>
+              High speed
+            </span>
+
+          </div>
+
+        </button>
+
+
+        <!-- APEX S -->
+
+        <button
+          class="car-card"
+          data-car="apex"
+          type="button"
+        >
+
+          <div class="car-preview apex-preview">
+
+            <div class="preview-car compact">
+              <div class="preview-cabin"></div>
+            </div>
+
+          </div>
+
+          <div class="car-info">
+
+            <strong>
+              APEX S
+            </strong>
+
+            <span>
+              Grip / drift
+            </span>
+
+          </div>
+
+        </button>
+
+      </div>
+
+
+      <!-- =========================
+           CAR STATS
+      ========================== -->
+
+      <div class="car-stats">
+
+        <div class="stat">
+
+          <span>
+            SPEED
+          </span>
+
+          <div class="stat-bar">
+
+            <div
+              id="speedStat"
+              class="stat-fill"
+              style="width: 76%"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>
+            ACCELERATION
+          </span>
+
+          <div class="stat-bar">
+
+            <div
+              id="accelStat"
+              class="stat-fill"
+              style="width: 78%"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>
+            GRIP
+          </span>
+
+          <div class="stat-bar">
+
+            <div
+              id="gripStat"
+              class="stat-fill"
+              style="width: 75%"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <span>
+            DRIFT
+          </span>
+
+          <div class="stat-bar">
+
+            <div
+              id="driftStat"
+              class="stat-fill"
+              style="width: 70%"
+            ></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- =========================
+           ACTIONS
+      ========================== -->
 
       <div class="menu-actions">
 
@@ -97,23 +319,23 @@
       <div class="controls">
 
         <span>
-          W / ↑ &nbsp; Accelerate
+          W / ↑ — Accelerate
         </span>
 
         <span>
-          S / ↓ &nbsp; Brake
+          S / ↓ — Brake / Reverse
         </span>
 
         <span>
-          A / D &nbsp; Steer
+          A / D — Steer
         </span>
 
         <span>
-          SPACE &nbsp; Handbrake
+          SPACE — Handbrake
         </span>
 
         <span>
-          SHIFT &nbsp; Nitro
+          SHIFT — Nitro
         </span>
 
       </div>
@@ -124,13 +346,14 @@
 
 
 
-  <!-- GAME HUD -->
+  <!-- =========================
+       HUD
+  ========================== -->
 
   <div
     id="hud"
     class="hidden"
   >
-
 
     <!-- TOP LEFT -->
 
@@ -147,7 +370,7 @@
         </span>
 
         <span id="checkpointText">
-          CHECKPOINT 1 / 6
+          CHECKPOINT 1 / 7
         </span>
 
       </div>
@@ -155,8 +378,7 @@
     </div>
 
 
-
-    <!-- TOP CENTER NAVIGATION -->
+    <!-- NAVIGATION -->
 
     <div id="navigation">
 
@@ -169,11 +391,10 @@
       </div>
 
       <div id="checkpointDistance">
-        120m
+        0m
       </div>
 
     </div>
-
 
 
     <!-- WRONG WAY -->
@@ -194,13 +415,12 @@
     </div>
 
 
-
     <!-- MINIMAP -->
 
     <div class="minimap-container">
 
       <div class="minimap-title">
-        TRACK
+        NEON DISTRICT
       </div>
 
       <canvas
@@ -212,8 +432,7 @@
     </div>
 
 
-
-    <!-- SPEED HUD -->
+    <!-- VEHICLE HUD -->
 
     <div class="vehicle-hud">
 
@@ -267,7 +486,9 @@
 
       <div class="meter-title nitro-title">
 
-        NITRO
+        <span>
+          NITRO
+        </span>
 
         <span id="nitroPercent">
           100%
@@ -284,9 +505,6 @@
     </div>
 
 
-
-    <!-- FPS -->
-
     <div id="fps">
       FPS 60
     </div>
@@ -295,7 +513,9 @@
 
 
 
-  <!-- COUNTDOWN -->
+  <!-- =========================
+       COUNTDOWN
+  ========================== -->
 
   <div
     id="countdown"
@@ -306,20 +526,22 @@
 
 
 
-  <!-- CHECKPOINT NOTIFICATION -->
+  <!-- =========================
+       EVENT POPUP
+  ========================== -->
 
   <div
     id="checkpointPopup"
     class="hidden"
   >
-
     CHECKPOINT
-
   </div>
 
 
 
-  <!-- GAME -->
+  <!-- =========================
+       GAME
+  ========================== -->
 
   <canvas
     id="gameCanvas"
@@ -328,7 +550,9 @@
 
 
 
-  <!-- FINISH / MESSAGE -->
+  <!-- =========================
+       FINISH
+  ========================== -->
 
   <div
     id="message"
