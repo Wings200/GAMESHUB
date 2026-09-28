@@ -1,16 +1,13 @@
 /* =========================================================
-   REDLINE V10 AUDIO
-   Single-voice RPM engine system
+   REDLINE V10.1 AUDIO
+   Single-character engine system
 
-   IMPORTANT:
-   - No granular engine
-   - No six-layer engine stack
-   - Only ONE steady engine loop is audible at a time
-   - Idle uses a real steady idle recording
-   - 1000 RPM and 2000 RPM use real steady loop recordings
-   - Above 2000 RPM, the 2000 RPM loop is pitch-shifted smoothly
-   - Loop changes use a short fade-out -> swap -> fade-in
-     instead of overlapping two engine loops
+   Fix:
+   - Removes the obvious Idle -> 1000 RPM recording change.
+   - Uses the SAME 1000 RPM recording for idle + low RPM.
+   - The 1000 RPM sample is pitched slightly down at idle.
+   - Only switches to the 2000 RPM recording higher in the rev range.
+   - The high-RPM handoff is brief and pitch-matched.
 ========================================================= */
 
 const startBtn = document.getElementById("startBtn");
@@ -19,327 +16,850 @@ const rpmBar = document.getElementById("rpmBar");
 const gearEl = document.getElementById("gear");
 
 const FILES = {
-  idle: "./assets/audio/engine-idle.wav",
-  rpm1000: "./assets/audio/engine-1000.wav",
-  rpm2000: "./assets/audio/engine-2000.wav",
+  low: "./assets/audio/engine-1000.wav",
+  high: "./assets/audio/engine-2000.wav",
   startup: "./assets/audio/engine-start.wav"
 };
 
 const BASE_RPM = {
-  idle: 900,
-  rpm1000: 1000,
-  rpm2000: 2000
+  low: 1000,
+  high: 2000
 };
 
-let audioContext = null;
+let ctx = null;
 let masterGain = null;
 let engineGain = null;
 let startupGain = null;
 
 let buffers = {};
-let source = null;
+let engineSource = null;
+
 let currentBand = null;
 let pendingBand = null;
 let swapTimer = null;
 
-let audioReady = false;
+let ready = false;
 let raceEnabled = false;
 let starting = false;
 
 let smoothedRPM = 900;
-let lastGear = "1";
 let shiftDrop = 0;
+let lastGear = "1";
 
 const prefetched = {};
+
 for (const [key, url] of Object.entries(FILES)) {
   prefetched[key] = fetch(url)
-    .then(r => {
-      if (!r.ok) throw new Error(`Failed to load ${url}: ${r.status}`);
-      return r.arrayBuffer();
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to load ${url}: ${response.status}`);
+      }
+
+      return response.arrayBuffer();
     })
-    .catch(err => {
-      console.error(err);
+    .catch(error => {
+      console.error("REDLINE audio fetch error:", error);
       return null;
     });
 }
 
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function clamp(value, min, max) {
+  return Math.max(
+    min,
+    Math.min(max, value)
+  );
 }
+
 
 function getGameRPM() {
   const raw = rpmBar?.style?.width || "";
+
   if (raw.includes("%")) {
-    const pct = parseFloat(raw);
-    if (Number.isFinite(pct)) {
-      return clamp((pct / 100) * 7600, 900, 7600);
+    const percent = parseFloat(raw);
+
+    if (Number.isFinite(percent)) {
+      return clamp(
+        (percent / 100) * 7600,
+        900,
+        7600
+      );
     }
   }
+
   return 900;
 }
+
 
 function getGear() {
   return gearEl?.textContent?.trim() || "1";
 }
 
+
+/* =========================================================
+   ENGINE BANDS
+========================================================= */
+
 function chooseBand(rpm) {
-  if (rpm < 1150) return "idle";
-  if (rpm < 1850) return "rpm1000";
-  return "rpm2000";
+  /*
+    There is NO separate idle recording anymore.
+
+    900 RPM idle:
+      engine-1000.wav at about 0.90x speed
+
+    Then it smoothly pitches upward.
+
+    Only once we reach the higher RPM range do we
+    switch to the 2000 RPM recording.
+  */
+
+  return rpm < 1900
+    ? "low"
+    : "high";
 }
 
-function bandPlaybackRate(band, rpm) {
-  const base = BASE_RPM[band] || 1000;
 
-  // Keep pitch variation reasonable for the lower bands.
-  // The 2000 RPM recording carries the upper range.
-  if (band === "idle") {
-    return clamp(rpm / base, 0.90, 1.18);
+function getPlaybackRate(band, rpm) {
+  if (band === "low") {
+    /*
+      900 RPM  = 0.90x
+      1000 RPM = 1.00x
+      1500 RPM = 1.50x
+      1900 RPM = 1.90x
+    */
+
+    return clamp(
+      rpm / BASE_RPM.low,
+      0.88,
+      1.90
+    );
   }
 
-  if (band === "rpm1000") {
-    return clamp(rpm / base, 0.92, 1.55);
-  }
+  /*
+    Around the crossover:
 
-  return clamp(rpm / base, 0.92, 3.35);
+    1900 / 2000 = 0.95
+
+    So the 2000 RPM recording comes in close to
+    its natural pitch instead of sounding like
+    a completely different engine.
+  */
+
+  return clamp(
+    rpm / BASE_RPM.high,
+    0.90,
+    3.10
+  );
 }
+
+
+/* =========================================================
+   INITIALIZE AUDIO
+========================================================= */
 
 async function initAudio() {
-  if (audioReady) {
-    if (audioContext?.state === "suspended") {
-      await audioContext.resume();
+  if (ready) {
+    if (ctx?.state === "suspended") {
+      await ctx.resume();
     }
+
     return true;
   }
 
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  ctx = new (
+    window.AudioContext ||
+    window.webkitAudioContext
+  )();
 
-  masterGain = audioContext.createGain();
+
+  masterGain = ctx.createGain();
+
   masterGain.gain.value = 0.82;
-  masterGain.connect(audioContext.destination);
 
-  engineGain = audioContext.createGain();
+  masterGain.connect(
+    ctx.destination
+  );
+
+
+  engineGain = ctx.createGain();
+
   engineGain.gain.value = 0;
-  engineGain.connect(masterGain);
 
-  startupGain = audioContext.createGain();
-  startupGain.gain.value = 0.72;
-  startupGain.connect(masterGain);
+  engineGain.connect(
+    masterGain
+  );
+
+
+  startupGain = ctx.createGain();
+
+  startupGain.gain.value = 0.68;
+
+  startupGain.connect(
+    masterGain
+  );
+
 
   for (const key of Object.keys(FILES)) {
     const data = await prefetched[key];
-    if (!data) continue;
-    buffers[key] = await audioContext.decodeAudioData(data.slice(0));
+
+    if (!data) {
+      continue;
+    }
+
+    buffers[key] =
+      await ctx.decodeAudioData(
+        data.slice(0)
+      );
   }
 
-  if (!buffers.idle || !buffers.rpm1000 || !buffers.rpm2000) {
-    console.error("REDLINE audio: one or more engine loops failed to load.");
+
+  if (
+    !buffers.low ||
+    !buffers.high
+  ) {
+    console.error(
+      "REDLINE audio: required engine loops failed to load."
+    );
+
     return false;
   }
 
-  audioReady = true;
+
+  ready = true;
+
   return true;
 }
 
-function stopCurrentSource() {
-  if (!source) return;
+
+/* =========================================================
+   SOURCE CONTROL
+========================================================= */
+
+function stopEngineSource() {
+  if (!engineSource) {
+    return;
+  }
 
   try {
-    source.stop();
+    engineSource.stop();
   } catch {}
 
   try {
-    source.disconnect();
+    engineSource.disconnect();
   } catch {}
 
-  source = null;
+  engineSource = null;
 }
 
-function startBandImmediately(band, rpm) {
-  stopCurrentSource();
+
+function startEngineSource(
+  band,
+  rpm,
+  gain = 0.48
+) {
+  stopEngineSource();
+
 
   const buffer = buffers[band];
-  if (!buffer || !audioContext) return;
 
-  const node = audioContext.createBufferSource();
+  if (
+    !buffer ||
+    !ctx
+  ) {
+    return;
+  }
+
+
+  const node =
+    ctx.createBufferSource();
+
+
   node.buffer = buffer;
+
   node.loop = true;
-  node.playbackRate.value = bandPlaybackRate(band, rpm);
-  node.connect(engineGain);
 
-  // Start slightly into the loop so we're not relying on a possibly
-  // noisy first sample. The file itself still loops using its intended seam.
-  const offset = Math.min(0.08, Math.max(0, buffer.duration - 0.02));
-  node.start(0, offset);
+  node.playbackRate.value =
+    getPlaybackRate(
+      band,
+      rpm
+    );
 
-  source = node;
+
+  node.connect(
+    engineGain
+  );
+
+
+  /*
+    Skip a tiny bit at the beginning so we don't
+    rely on a potentially noisy first sample.
+  */
+
+  const offset =
+    Math.min(
+      0.06,
+      Math.max(
+        0,
+        buffer.duration - 0.02
+      )
+    );
+
+
+  node.start(
+    0,
+    offset
+  );
+
+
+  engineSource = node;
+
   currentBand = band;
+
+
+  const now =
+    ctx.currentTime;
+
+
+  engineGain.gain.cancelScheduledValues(
+    now
+  );
+
+
+  engineGain.gain.setValueAtTime(
+    0.0001,
+    now
+  );
+
+
+  engineGain.gain.linearRampToValueAtTime(
+    gain,
+    now + 0.10
+  );
 }
 
-function swapBand(band, rpm) {
-  if (!audioReady || !raceEnabled || !engineGain) return;
-  if (band === currentBand || band === pendingBand) return;
 
-  pendingBand = band;
+/* =========================================================
+   BAND SWITCHING
+========================================================= */
+
+function swapEngineBand(
+  newBand,
+  rpm
+) {
+  if (
+    !ready ||
+    !raceEnabled ||
+    !ctx ||
+    !engineGain
+  ) {
+    return;
+  }
+
+
+  if (
+    newBand === currentBand ||
+    newBand === pendingBand
+  ) {
+    return;
+  }
+
+
+  pendingBand =
+    newBand;
+
 
   if (swapTimer) {
-    clearTimeout(swapTimer);
+    clearTimeout(
+      swapTimer
+    );
+
     swapTimer = null;
   }
 
-  const now = audioContext.currentTime;
 
-  // No engine overlap:
-  // fade the current loop fully to zero first.
-  engineGain.gain.cancelScheduledValues(now);
-  engineGain.gain.setValueAtTime(engineGain.gain.value, now);
-  engineGain.gain.linearRampToValueAtTime(0.0001, now + 0.055);
+  /*
+    We intentionally do NOT keep two engine loops
+    fully audible at once.
 
-  swapTimer = setTimeout(() => {
-    if (!raceEnabled) {
-      pendingBand = null;
-      return;
-    }
+    Fade old engine almost completely out,
+    switch samples,
+    then fade the new engine in.
 
-    startBandImmediately(band, rpm);
+    Very short gap, but no ugly stacked-engine sound.
+  */
 
-    const t = audioContext.currentTime;
-    engineGain.gain.cancelScheduledValues(t);
-    engineGain.gain.setValueAtTime(0.0001, t);
-    engineGain.gain.linearRampToValueAtTime(0.50, t + 0.070);
+  const now =
+    ctx.currentTime;
 
-    pendingBand = null;
-    swapTimer = null;
-  }, 62);
+
+  engineGain.gain.cancelScheduledValues(
+    now
+  );
+
+
+  engineGain.gain.setValueAtTime(
+    engineGain.gain.value,
+    now
+  );
+
+
+  engineGain.gain.linearRampToValueAtTime(
+    0.0001,
+    now + 0.045
+  );
+
+
+  swapTimer =
+    setTimeout(
+      () => {
+        if (!raceEnabled) {
+          pendingBand = null;
+          return;
+        }
+
+
+        startEngineSource(
+          newBand,
+          rpm,
+          0.48
+        );
+
+
+        pendingBand = null;
+
+        swapTimer = null;
+      },
+
+      50
+    );
 }
+
+
+/* =========================================================
+   STARTUP SOUND
+========================================================= */
 
 function playStartup() {
-  if (!buffers.startup || !audioContext) return;
+  if (
+    !buffers.startup ||
+    !ctx
+  ) {
+    return;
+  }
 
-  const node = audioContext.createBufferSource();
-  node.buffer = buffers.startup;
-  node.connect(startupGain);
-  node.start();
+
+  const source =
+    ctx.createBufferSource();
+
+
+  source.buffer =
+    buffers.startup;
+
+
+  source.connect(
+    startupGain
+  );
+
+
+  source.start();
 }
 
+
+/* =========================================================
+   START RACE AUDIO
+========================================================= */
+
 async function startRaceAudio() {
-  const ok = await initAudio();
-  if (!ok) return;
+  const ok =
+    await initAudio();
+
+
+  if (!ok) {
+    return;
+  }
+
 
   raceEnabled = true;
+
   starting = true;
+
+
   smoothedRPM = 900;
-  lastGear = getGear();
+
   shiftDrop = 0;
+
+  lastGear = getGear();
+
 
   playStartup();
 
-  // Keep the engine quiet for the first part of the startup recording,
-  // then bring in the actual steady idle loop.
-  engineGain.gain.cancelScheduledValues(audioContext.currentTime);
-  engineGain.gain.setValueAtTime(0.0001, audioContext.currentTime);
 
-  setTimeout(() => {
-    if (!raceEnabled) return;
+  const now =
+    ctx.currentTime;
 
-    startBandImmediately("idle", 900);
 
-    const now = audioContext.currentTime;
-    engineGain.gain.cancelScheduledValues(now);
-    engineGain.gain.setValueAtTime(0.0001, now);
-    engineGain.gain.linearRampToValueAtTime(0.42, now + 0.20);
+  engineGain.gain.cancelScheduledValues(
+    now
+  );
 
-    starting = false;
-  }, 650);
+
+  engineGain.gain.setValueAtTime(
+    0.0001,
+    now
+  );
+
+
+  /*
+    Bring in the SAME low RPM recording used while driving.
+
+    No separate idle sample anymore.
+  */
+
+  setTimeout(
+    () => {
+      if (!raceEnabled) {
+        return;
+      }
+
+
+      startEngineSource(
+        "low",
+        900,
+        0.42
+      );
+
+
+      starting = false;
+    },
+
+    620
+  );
 }
+
+
+/* =========================================================
+   STOP RACE AUDIO
+========================================================= */
 
 function stopRaceAudio() {
   raceEnabled = false;
 
-  if (!audioReady || !engineGain || !audioContext) return;
 
-  const now = audioContext.currentTime;
-  engineGain.gain.cancelScheduledValues(now);
-  engineGain.gain.setValueAtTime(engineGain.gain.value, now);
-  engineGain.gain.linearRampToValueAtTime(0.0001, now + 0.12);
-
-  setTimeout(() => {
-    stopCurrentSource();
-    currentBand = null;
-    pendingBand = null;
-  }, 150);
-}
-
-startBtn?.addEventListener("click", () => {
-  startRaceAudio().catch(console.error);
-});
-
-document.addEventListener("visibilitychange", () => {
-  if (!audioContext) return;
-
-  if (document.hidden) {
-    audioContext.suspend().catch(() => {});
-  } else if (raceEnabled) {
-    audioContext.resume().catch(() => {});
-  }
-});
-
-let previousTime = performance.now();
-
-function audioLoop(nowMs) {
-  requestAnimationFrame(audioLoop);
-
-  const dt = Math.min((nowMs - previousTime) / 1000, 0.05);
-  previousTime = nowMs;
-
-  if (!audioReady) return;
-
-  const menuVisible = !menu?.classList.contains("hidden");
-
-  if (menuVisible && raceEnabled) {
-    stopRaceAudio();
+  if (
+    !ready ||
+    !ctx ||
+    !engineGain
+  ) {
     return;
   }
 
-  if (!raceEnabled || starting || !source) return;
 
-  const gear = getGear();
+  if (swapTimer) {
+    clearTimeout(
+      swapTimer
+    );
 
-  if (gear !== lastGear && gear !== "R") {
-    // Give every upshift a brief RPM fall instead of lowering engine volume.
-    shiftDrop = 1050;
+    swapTimer = null;
   }
+
+
+  pendingBand = null;
+
+
+  const now =
+    ctx.currentTime;
+
+
+  engineGain.gain.cancelScheduledValues(
+    now
+  );
+
+
+  engineGain.gain.setValueAtTime(
+    engineGain.gain.value,
+    now
+  );
+
+
+  engineGain.gain.linearRampToValueAtTime(
+    0.0001,
+    now + 0.12
+  );
+
+
+  setTimeout(
+    () => {
+      stopEngineSource();
+
+      currentBand = null;
+    },
+
+    150
+  );
+}
+
+
+/* =========================================================
+   START BUTTON
+========================================================= */
+
+startBtn?.addEventListener(
+  "click",
+  () => {
+    startRaceAudio()
+      .catch(
+        console.error
+      );
+  }
+);
+
+
+/* =========================================================
+   VISIBILITY
+========================================================= */
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+    if (!ctx) {
+      return;
+    }
+
+
+    if (document.hidden) {
+      ctx.suspend()
+        .catch(() => {});
+    }
+
+    else if (raceEnabled) {
+      ctx.resume()
+        .catch(() => {});
+    }
+  }
+);
+
+
+/* =========================================================
+   MAIN AUDIO LOOP
+========================================================= */
+
+let previousTime =
+  performance.now();
+
+
+function audioLoop(
+  nowMs
+) {
+  requestAnimationFrame(
+    audioLoop
+  );
+
+
+  const delta =
+    Math.min(
+
+      (
+        nowMs -
+        previousTime
+      )
+      /
+      1000,
+
+      0.05
+
+    );
+
+
+  previousTime =
+    nowMs;
+
+
+  if (!ready) {
+    return;
+  }
+
+
+  const menuVisible =
+    !menu?.classList.contains(
+      "hidden"
+    );
+
+
+  if (
+    menuVisible &&
+    raceEnabled
+  ) {
+    stopRaceAudio();
+
+    return;
+  }
+
+
+  if (
+    !raceEnabled ||
+    starting ||
+    !engineSource
+  ) {
+    return;
+  }
+
+
+  /* =======================================================
+     GEAR SHIFT
+  ======================================================= */
+
+  const gear =
+    getGear();
+
+
+  if (
+    gear !== lastGear &&
+    gear !== "R"
+  ) {
+    /*
+      Simulate the RPM falling when the transmission shifts.
+
+      No volume cut.
+      The actual engine pitch falls.
+    */
+
+    shiftDrop = 900;
+  }
+
 
   lastGear = gear;
 
-  shiftDrop = Math.max(0, shiftDrop - 4300 * dt);
 
-  const rawRPM = getGameRPM();
+  shiftDrop =
+    Math.max(
 
-  const targetRPM = Math.max(
-    900,
-    rawRPM - shiftDrop
-  );
+      0,
 
-  // Smooth the RPM itself so playbackRate doesn't chatter frame-to-frame.
-  const smoothing = 1 - Math.exp(-7.5 * dt);
-  smoothedRPM += (targetRPM - smoothedRPM) * smoothing;
+      shiftDrop -
+      3900 *
+      delta
 
-  const wantedBand = chooseBand(smoothedRPM);
+    );
 
-  if (wantedBand !== currentBand && !pendingBand) {
-    swapBand(wantedBand, smoothedRPM);
+
+  /* =======================================================
+     RPM
+  ======================================================= */
+
+  const rawRPM =
+    getGameRPM();
+
+
+  const targetRPM =
+    Math.max(
+
+      900,
+
+      rawRPM -
+      shiftDrop
+
+    );
+
+
+  /*
+    Smooth the RPM so pitch doesn't jitter frame-to-frame.
+  */
+
+  const smoothing =
+    1
+    -
+    Math.exp(
+      -7 *
+      delta
+    );
+
+
+  smoothedRPM +=
+    (
+      targetRPM -
+      smoothedRPM
+    )
+    *
+    smoothing;
+
+
+  /* =======================================================
+     SELECT RECORDING
+  ======================================================= */
+
+  const wantedBand =
+    chooseBand(
+      smoothedRPM
+    );
+
+
+  if (
+    wantedBand !== currentBand &&
+    !pendingBand
+  ) {
+    swapEngineBand(
+      wantedBand,
+      smoothedRPM
+    );
+
     return;
   }
 
-  if (source && currentBand) {
-    const rate = bandPlaybackRate(currentBand, smoothedRPM);
 
-    // Web Audio automation gives us smooth continuous revs.
-    const t = audioContext.currentTime;
-    source.playbackRate.cancelScheduledValues(t);
-    source.playbackRate.setTargetAtTime(rate, t, 0.035);
+  /* =======================================================
+     REV ENGINE
+  ======================================================= */
+
+  if (
+    engineSource &&
+    currentBand
+  ) {
+    const targetRate =
+      getPlaybackRate(
+        currentBand,
+        smoothedRPM
+      );
+
+
+    const now =
+      ctx.currentTime;
+
+
+    engineSource.playbackRate
+      .cancelScheduledValues(
+        now
+      );
+
+
+    /*
+      This is the actual revving.
+
+      Playback rate continuously rises and falls
+      with the game's RPM.
+    */
+
+    engineSource.playbackRate
+      .setTargetAtTime(
+
+        targetRate,
+
+        now,
+
+        0.045
+
+      );
   }
 }
 
-requestAnimationFrame(audioLoop);
+
+/* =========================================================
+   START AUDIO LOOP
+========================================================= */
+
+requestAnimationFrame(
+  audioLoop
+);
