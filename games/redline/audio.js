@@ -1,16 +1,14 @@
 /* =========================================================
-   REDLINE V9 AUDIO
+   REDLINE V9.1 AUDIO
 
-   Real sampled engine audio.
-   No oscillators.
-   No bee simulator.
-
-   Audio sources:
-   - OpenGameArt CC0 engine loops
-   - OpenGameArt CC0 engine startup
-   - OpenGameArt CC0 crash
-   - OpenGameArt CC0 wind
-   - OpenGameArt CC-BY tire skid
+   Fixes:
+   - Loud pops when changing engine samples
+   - Only 2 neighboring RPM samples audible at once
+   - Equal-power crossfading
+   - Smooth gain changes
+   - Uses actual RPM HUD instead of MPH for engine tone
+   - Gear changes naturally drop RPM
+   - Removes duplicate startup playback
 ========================================================= */
 
 
@@ -30,12 +28,15 @@ const speedEl =
 const gearEl =
   document.getElementById("gear");
 
+const rpmBar =
+  document.getElementById("rpmBar");
+
 const checkpointPopup =
   document.getElementById("checkpointPopup");
 
 
 /* =========================================================
-   AUDIO URLS
+   AUDIO FILES
 ========================================================= */
 
 const AUDIO = {
@@ -76,6 +77,41 @@ const AUDIO = {
 
 
 /* =========================================================
+   SETTINGS
+========================================================= */
+
+const ENGINE_MASTER_VOLUME =
+  0.38;
+
+const ENGINE_IDLE_VOLUME =
+  0.24;
+
+
+/*
+   Higher number = faster transition.
+
+   We're intentionally keeping this relatively slow
+   so the volume cannot suddenly jump and create a click.
+*/
+
+const ENGINE_FADE_SPEED =
+  5.5;
+
+
+/*
+   Playback rate changes are deliberately small.
+
+   The recordings already represent different RPM ranges.
+*/
+
+const MIN_PLAYBACK_RATE =
+  0.94;
+
+const MAX_PLAYBACK_RATE =
+  1.07;
+
+
+/* =========================================================
    STATE
 ========================================================= */
 
@@ -84,12 +120,6 @@ let audioStarted =
 
 let raceAudioEnabled =
   false;
-
-let shiftDip =
-  1;
-
-let previousGear =
-  "1";
 
 let crashCooldown =
   0;
@@ -100,9 +130,61 @@ let skidHeld =
 let nitroHeld =
   false;
 
+let previousGear =
+  "1";
+
+let previousTime =
+  performance.now();
+
 
 /* =========================================================
-   AUDIO CREATOR
+   HELPERS
+========================================================= */
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  );
+}
+
+
+function expSmooth(
+  current,
+  target,
+  speed,
+  delta
+) {
+
+  const amount =
+    1 -
+    Math.exp(
+      -speed *
+      delta
+    );
+
+
+  return current
+    +
+    (
+      target -
+      current
+    )
+    *
+    amount;
+}
+
+
+/* =========================================================
+   AUDIO ELEMENT CREATOR
 ========================================================= */
 
 function createAudio(
@@ -111,9 +193,11 @@ function createAudio(
 ) {
 
   const audio =
-    new Audio(
-      url
-    );
+    new Audio();
+
+
+  audio.src =
+    url;
 
 
   audio.preload =
@@ -142,7 +226,11 @@ function createAudio(
 
 const engineLayers =
   AUDIO.engines.map(
-    url => {
+
+    (
+      url,
+      index
+    ) => {
 
       const audio =
         createAudio(
@@ -151,18 +239,30 @@ const engineLayers =
         );
 
 
-      audio.playbackRate =
-        1;
+      return {
 
+        audio,
 
-      return audio;
+        index,
+
+        currentGain:
+          0,
+
+        targetGain:
+          0,
+
+        targetRate:
+          1
+
+      };
 
     }
+
   );
 
 
 /* =========================================================
-   OTHER SOUNDS
+   OTHER AUDIO
 ========================================================= */
 
 const startupSound =
@@ -170,10 +270,6 @@ const startupSound =
     AUDIO.startup,
     false
   );
-
-
-startupSound.volume =
-  0.48;
 
 
 const skidSound =
@@ -190,46 +286,17 @@ const windSound =
   );
 
 
+startupSound.volume =
+  0.46;
+
+
 /* =========================================================
-   AUDIO HELPERS
+   GAME VALUES
 ========================================================= */
-
-function clamp(
-  value,
-  min,
-  max
-) {
-
-  return Math.max(
-    min,
-    Math.min(
-      max,
-      value
-    )
-  );
-}
-
-
-function smooth(
-  current,
-  target,
-  amount
-) {
-
-  return current
-    +
-    (
-      target -
-      current
-    )
-    *
-    amount;
-}
-
 
 function getSpeed() {
 
-  const value =
+  const speed =
     Number(
       speedEl?.textContent
     );
@@ -237,11 +304,11 @@ function getSpeed() {
 
   if (
     Number.isFinite(
-      value
+      speed
     )
   ) {
 
-    return value;
+    return speed;
   }
 
 
@@ -249,8 +316,61 @@ function getSpeed() {
 }
 
 
+function getRPMPercent() {
+
+  if (
+    !rpmBar
+  ) {
+
+    return 0.12;
+  }
+
+
+  /*
+    game.js writes things like:
+
+    rpmBar.style.width = "62%"
+
+    So we can directly use the game's real RPM output.
+  */
+
+  const raw =
+    rpmBar.style.width;
+
+
+  if (
+    raw &&
+    raw.includes("%")
+  ) {
+
+    const value =
+      parseFloat(
+        raw
+      );
+
+
+    if (
+      Number.isFinite(
+        value
+      )
+    ) {
+
+      return clamp(
+        value /
+        100,
+        0,
+        1
+      );
+    }
+  }
+
+
+  return 0.12;
+}
+
+
 /* =========================================================
-   START ALL LOOPING AUDIO
+   START AUDIO
 ========================================================= */
 
 async function startAudioSystem() {
@@ -267,7 +387,20 @@ async function startAudioSystem() {
     true;
 
 
-  const playPromises =
+  /*
+    CRITICAL FIX:
+
+    Every engine loop starts ONCE at volume 0.
+
+    We never stop one sample and start another while driving.
+
+    That means switching RPM ranges only changes gain,
+    instead of beginning a new waveform halfway through
+    and causing the giant POP.
+  */
+
+
+  const promises =
     [];
 
 
@@ -276,25 +409,30 @@ async function startAudioSystem() {
     of engineLayers
   ) {
 
-    layer.volume =
+    layer.audio.volume =
       0;
 
 
-    const promise =
-      layer.play();
+    layer.currentGain =
+      0;
+
+
+    const playPromise =
+      layer.audio.play();
 
 
     if (
-      promise
+      playPromise
     ) {
 
-      playPromises.push(
-        promise.catch(
+      promises.push(
+
+        playPromise.catch(
           () => {}
         )
+
       );
     }
-
   }
 
 
@@ -306,7 +444,7 @@ async function startAudioSystem() {
     0;
 
 
-  playPromises.push(
+  promises.push(
 
     skidSound
       .play()
@@ -317,7 +455,7 @@ async function startAudioSystem() {
   );
 
 
-  playPromises.push(
+  promises.push(
 
     windSound
       .play()
@@ -329,19 +467,8 @@ async function startAudioSystem() {
 
 
   await Promise.all(
-    playPromises
+    promises
   );
-
-
-  startupSound.currentTime =
-    0;
-
-
-  startupSound
-    .play()
-    .catch(
-      () => {}
-    );
 }
 
 
@@ -350,7 +477,9 @@ async function startAudioSystem() {
 ========================================================= */
 
 startBtn?.addEventListener(
+
   "click",
+
   async () => {
 
     await startAudioSystem();
@@ -358,6 +487,17 @@ startBtn?.addEventListener(
 
     raceAudioEnabled =
       true;
+
+
+    /*
+      Startup now plays ONCE.
+
+      The old version accidentally played it once inside
+      startAudioSystem() and then AGAIN here.
+    */
+
+
+    startupSound.pause();
 
 
     startupSound.currentTime =
@@ -375,15 +515,18 @@ startBtn?.addEventListener(
       );
 
   }
+
 );
 
 
 /* =========================================================
-   INPUT TRACKING
+   INPUT
 ========================================================= */
 
 window.addEventListener(
+
   "keydown",
+
   event => {
 
     const key =
@@ -411,11 +554,14 @@ window.addEventListener(
     }
 
   }
+
 );
 
 
 window.addEventListener(
+
   "keyup",
+
   event => {
 
     const key =
@@ -443,11 +589,14 @@ window.addEventListener(
     }
 
   }
+
 );
 
 
 window.addEventListener(
+
   "blur",
+
   () => {
 
     skidHeld =
@@ -458,226 +607,289 @@ window.addEventListener(
       false;
 
   }
+
 );
 
 
 /* =========================================================
-   ENGINE MIXING
+   EQUAL POWER CROSSFADE
 ========================================================= */
 
-const ENGINE_CENTERS = [
-
-  0,
-
-  22,
-
-  48,
-
-  75,
-
-  108,
-
-  145
-
-];
-
-
-function engineWeight(
-  speed,
-  center,
-  width
-) {
-
-  return clamp(
-
-    1
-    -
-    Math.abs(
-      speed -
-      center
-    )
-    /
-    width,
-
-    0,
-
-    1
-
-  );
-}
-
-
-function updateEngine(
-  speed
+function equalPowerFade(
+  value
 ) {
 
   /*
-    The six recordings are already different pitches.
+    value = 0:
+      lower sample full volume
 
-    Instead of stretching one sound from idle to redline,
-    we crossfade through all six recordings.
+    value = 1:
+      upper sample full volume
 
-    That is what keeps it from sounding like one
-    pitch-shifted buzzing sample.
+    In between:
+      both overlap smoothly without a loud volume spike.
   */
 
 
-  const throttle =
-    speed >
-    1;
+  const lower =
+    Math.cos(
+      value *
+      Math.PI /
+      2
+    );
 
 
-  const totalVolume =
+  const upper =
+    Math.sin(
+      value *
+      Math.PI /
+      2
+    );
+
+
+  return {
+    lower,
+    upper
+  };
+}
+
+
+/* =========================================================
+   ENGINE TARGET MIX
+========================================================= */
+
+function calculateEngineTargets(
+  rpmPercent,
+  speed
+) {
+
+  const layerCount =
+    engineLayers.length;
+
+
+  /*
+    RPM 0.0 -> layer 0
+    RPM 1.0 -> layer 5
+
+    Values between those positions are blended.
+  */
+
+  const enginePosition =
+    clamp(
+      rpmPercent,
+      0,
+      0.9999
+    )
+    *
+    (
+      layerCount -
+      1
+    );
+
+
+  const lowerIndex =
+    Math.floor(
+      enginePosition
+    );
+
+
+  const upperIndex =
+    Math.min(
+
+      layerCount -
+      1,
+
+      lowerIndex +
+      1
+
+    );
+
+
+  const blend =
+    enginePosition -
+    lowerIndex;
+
+
+  const fade =
+    equalPowerFade(
+      blend
+    );
+
+
+  /*
+    Reset every layer.
+
+    Only the neighboring two will receive volume.
+  */
+
+  for (
+    const layer
+    of engineLayers
+  ) {
+
+    layer.targetGain =
+      0;
+  }
+
+
+  const masterVolume =
     raceAudioEnabled
     ?
     (
-      throttle
+      speed <
+      3
       ?
-      0.38
+      ENGINE_IDLE_VOLUME
       :
-      0.24
+      ENGINE_MASTER_VOLUME
     )
     :
     0;
 
 
-  const speedWidths = [
-
-    30,
-
-    34,
-
-    36,
-
-    40,
-
-    44,
-
-    52
-
-  ];
+  engineLayers[
+    lowerIndex
+  ].targetGain =
+    fade.lower *
+    masterVolume;
 
 
-  engineLayers.forEach(
+  engineLayers[
+    upperIndex
+  ].targetGain =
+    Math.max(
+
+      engineLayers[
+        upperIndex
+      ].targetGain,
+
+      fade.upper *
+      masterVolume
+
+    );
+
+
+  /*
+    Tiny pitch motion INSIDE each RPM band.
+
+    Nothing like the huge pitch sweeps from the
+    original bee engine.
+  */
+
+  const localRate =
+    MIN_PLAYBACK_RATE
+    +
+    blend
+    *
     (
-      layer,
-      index
-    ) => {
-
-      let weight =
-        engineWeight(
-
-          speed,
-
-          ENGINE_CENTERS[
-            index
-          ],
-
-          speedWidths[
-            index
-          ]
-
-        );
+      MAX_PLAYBACK_RATE -
+      MIN_PLAYBACK_RATE
+    );
 
 
-      /*
-        Keep a little idle engine present.
-      */
-
-      if (
-        index ===
-        0
-      ) {
-
-        weight =
-          Math.max(
-            weight,
-            speed <
-            8
-            ?
-            0.75
-            :
-            0
-          );
-      }
+  engineLayers[
+    lowerIndex
+  ].targetRate =
+    localRate;
 
 
-      const targetVolume =
-        weight
-        *
-        totalVolume
-        *
-        shiftDip;
-
-
-      layer.volume =
-        smooth(
-
-          layer.volume,
-
-          targetVolume,
-
-          0.08
-
-        );
-
-
-      /*
-        Very small playback-rate movement.
-
-        We're NOT doing the old giant pitch sweep.
-      */
-
-      const localSpeed =
-        clamp(
-
-          (
-            speed
-            -
-            ENGINE_CENTERS[
-              index
-            ]
-            +
-            25
-          )
-          /
-          50,
-
-          0,
-
-          1
-
-        );
-
-
-      const targetRate =
-        0.94
-        +
-        localSpeed *
-        0.13;
-
-
-      layer.playbackRate =
-        smooth(
-
-          layer.playbackRate,
-
-          targetRate,
-
-          0.05
-
-        );
-
-    }
-  );
+  engineLayers[
+    upperIndex
+  ].targetRate =
+    localRate;
 }
 
 
 /* =========================================================
-   GEAR SHIFT
+   APPLY ENGINE MIX
 ========================================================= */
 
-function updateGearShift() {
+function updateEngine(
+  delta
+) {
+
+  const speed =
+    getSpeed();
+
+
+  const rpmPercent =
+    getRPMPercent();
+
+
+  calculateEngineTargets(
+    rpmPercent,
+    speed
+  );
+
+
+  for (
+    const layer
+    of engineLayers
+  ) {
+
+    /*
+      Smooth volume ramp.
+
+      NO sudden:
+
+      volume = 0.4
+
+      from one frame to the next.
+    */
+
+
+    layer.currentGain =
+      expSmooth(
+
+        layer.currentGain,
+
+        layer.targetGain,
+
+        ENGINE_FADE_SPEED,
+
+        delta
+
+      );
+
+
+    /*
+      Browser volume range must be 0-1.
+    */
+
+    layer.audio.volume =
+      clamp(
+
+        layer.currentGain,
+
+        0,
+
+        1
+
+      );
+
+
+    layer.audio.playbackRate =
+      expSmooth(
+
+        layer.audio.playbackRate,
+
+        layer.targetRate,
+
+        3.5,
+
+        delta
+
+      );
+
+  }
+}
+
+
+/* =========================================================
+   GEAR CHANGE
+========================================================= */
+
+function updateGear() {
 
   const gear =
     gearEl?.textContent
@@ -688,39 +900,37 @@ function updateGearShift() {
   if (
     gear !==
     previousGear
-    &&
-    gear !==
-    "R"
   ) {
 
-    shiftDip =
-      0.40;
+    /*
+      We no longer lower the ENGINE VOLUME here.
+
+      That old shiftDip was another thing capable of making
+      audible abrupt transitions.
+
+      The game's RPM bar already drops when the gear ratio
+      changes, so the engine mixer will naturally move down
+      the RPM samples and climb back up.
+    */
 
 
-    setTimeout(
-      () => {
-
-        shiftDip =
-          1;
-
-      },
-      105
-    );
+    previousGear =
+      gear;
   }
-
-
-  previousGear =
-    gear;
 }
 
 
 /* =========================================================
-   TIRE SQUEAL
+   SKID
 ========================================================= */
 
 function updateSkid(
-  speed
+  delta
 ) {
+
+  const speed =
+    getSpeed();
+
 
   const active =
     raceAudioEnabled
@@ -741,11 +951,11 @@ function updateSkid(
         20
       )
       /
-      80,
+      100,
 
-      0.12,
+      0.08,
 
-      0.42
+      0.35
 
     )
     :
@@ -753,7 +963,7 @@ function updateSkid(
 
 
   skidSound.volume =
-    smooth(
+    expSmooth(
 
       skidSound.volume,
 
@@ -761,48 +971,56 @@ function updateSkid(
 
       active
       ?
-      0.14
+      6
       :
-      0.09
+      4,
+
+      delta
 
     );
 
 
   const targetRate =
-    0.85
+    0.86
     +
     clamp(
       speed /
-      150,
+      160,
       0,
       1
     )
     *
-    0.27;
+    0.24;
 
 
   skidSound.playbackRate =
-    smooth(
+    expSmooth(
 
       skidSound.playbackRate,
 
       targetRate,
 
-      0.08
+      3,
+
+      delta
 
     );
 }
 
 
 /* =========================================================
-   WIND / SPEED
+   WIND
 ========================================================= */
 
 function updateWind(
-  speed
+  delta
 ) {
 
-  let target =
+  const speed =
+    getSpeed();
+
+
+  let targetVolume =
     clamp(
 
       (
@@ -810,11 +1028,11 @@ function updateWind(
         35
       )
       /
-      120,
+      130,
 
       0,
 
-      0.22
+      0.18
 
     );
 
@@ -826,8 +1044,8 @@ function updateWind(
     20
   ) {
 
-    target +=
-      0.12;
+    targetVolume +=
+      0.09;
   }
 
 
@@ -835,39 +1053,59 @@ function updateWind(
     !raceAudioEnabled
   ) {
 
-    target =
+    targetVolume =
       0;
   }
 
 
   windSound.volume =
-    smooth(
+    expSmooth(
 
       windSound.volume,
 
-      target,
+      clamp(
+        targetVolume,
+        0,
+        0.28
+      ),
 
-      0.06
+      3.5,
+
+      delta
 
     );
 
 
-  windSound.playbackRate =
+  const targetRate =
     0.92
     +
     clamp(
       speed /
-      170,
+      180,
       0,
       1
     )
     *
-    0.28;
+    0.24;
+
+
+  windSound.playbackRate =
+    expSmooth(
+
+      windSound.playbackRate,
+
+      targetRate,
+
+      2.5,
+
+      delta
+
+    );
 }
 
 
 /* =========================================================
-   CRASH AUDIO
+   CRASH
 ========================================================= */
 
 function playCrash() {
@@ -882,7 +1120,7 @@ function playCrash() {
 
 
   crashCooldown =
-    0.20;
+    0.22;
 
 
   const sound =
@@ -893,14 +1131,14 @@ function playCrash() {
 
 
   sound.volume =
-    0.52;
+    0.48;
 
 
   sound.playbackRate =
-    0.91
+    0.94
     +
     Math.random() *
-    0.16;
+    0.12;
 
 
   sound
@@ -911,18 +1149,27 @@ function playCrash() {
 
 
   sound.addEventListener(
+
     "ended",
+
     () => {
 
-      sound.remove();
+      sound.src =
+        "";
 
+    },
+
+    {
+      once:
+        true
     }
+
   );
 }
 
 
 /* =========================================================
-   WATCH EXISTING V8 COLLISION POPUP
+   WATCH V8 CRASH POPUPS
 ========================================================= */
 
 if (
@@ -931,10 +1178,12 @@ if (
 
   const observer =
     new MutationObserver(
+
       () => {
 
         const text =
-          checkpointPopup.textContent
+          checkpointPopup
+            .textContent
             .trim()
             .toUpperCase();
 
@@ -951,11 +1200,14 @@ if (
         }
 
       }
+
     );
 
 
   observer.observe(
+
     checkpointPopup,
+
     {
       childList:
         true,
@@ -966,12 +1218,13 @@ if (
       subtree:
         true
     }
+
   );
 }
 
 
 /* =========================================================
-   MENU DETECTION
+   MENU STATE
 ========================================================= */
 
 function updateRaceState() {
@@ -983,10 +1236,6 @@ function updateRaceState() {
     return;
   }
 
-
-  /*
-    Menu hidden = currently racing.
-  */
 
   const racing =
     menu.classList.contains(
@@ -1009,21 +1258,31 @@ function updateRaceState() {
 ========================================================= */
 
 document.addEventListener(
+
   "visibilitychange",
+
   () => {
 
     if (
       document.hidden
     ) {
 
-      engineLayers.forEach(
-        layer => {
+      for (
+        const layer
+        of engineLayers
+      ) {
 
-          layer.volume =
-            0;
+        layer.currentGain =
+          0;
 
-        }
-      );
+
+        layer.targetGain =
+          0;
+
+
+        layer.audio.volume =
+          0;
+      }
 
 
       skidSound.volume =
@@ -1035,16 +1294,13 @@ document.addEventListener(
     }
 
   }
+
 );
 
 
 /* =========================================================
-   MAIN AUDIO LOOP
+   AUDIO LOOP
 ========================================================= */
-
-let previousTime =
-  performance.now();
-
 
 function audioLoop(
   now
@@ -1065,7 +1321,7 @@ function audioLoop(
       /
       1000,
 
-      0.1
+      0.05
 
     );
 
@@ -1087,23 +1343,18 @@ function audioLoop(
 
   updateRaceState();
 
-
-  const speed =
-    getSpeed();
-
-
-  updateGearShift();
+  updateGear();
 
   updateEngine(
-    speed
+    delta
   );
 
   updateSkid(
-    speed
+    delta
   );
 
   updateWind(
-    speed
+    delta
   );
 }
 
