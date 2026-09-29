@@ -955,4 +955,43 @@
     "redline:disconnected",
     resetResults
   );
+
+  window.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") {
+    return;
+  }
+
+  // Re-check server/local race state when returning to the tab.
+  if (everyoneFinished()) {
+    renderResults();
+    return;
+  }
+
+  const myId =
+    getMyId();
+
+  if (
+    myId &&
+    finishedStates.has(myId)
+  ) {
+    showWaiting();
+  }
+});
+
+window.addEventListener("focus", () => {
+  if (everyoneFinished()) {
+    renderResults();
+    return;
+  }
+
+  const myId =
+    getMyId();
+
+  if (
+    myId &&
+    finishedStates.has(myId)
+  ) {
+    showWaiting();
+  }
+});
 })();
