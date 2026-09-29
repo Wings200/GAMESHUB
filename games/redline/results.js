@@ -1,21 +1,16 @@
 (() => {
-  const finishedStates = new Map();
-
-  let finishOrder = [];
-  let raceStartAt = null;
-  let currentPhase = null;
-
   const carNames = {
     gt: "REDLINE GT",
     vortex: "VORTEX R",
     apex: "APEX S"
   };
 
-  /* =========================================================
-     UI
-  ========================================================= */
+  let lastRoom = null;
 
-  const style = document.createElement("style");
+  const style =
+    document.createElement(
+      "style"
+    );
 
   style.textContent = `
     #redlineResultsOverlay {
@@ -29,11 +24,17 @@
 
       padding: 24px;
 
-      background: rgba(3,7,14,.80);
-      backdrop-filter: blur(8px);
+      background:
+        rgba(3,7,14,.80);
 
-      font-family: Arial, sans-serif;
-      color: #fff;
+      backdrop-filter:
+        blur(8px);
+
+      font-family:
+        Arial,sans-serif;
+
+      color:
+        #fff;
     }
 
     #redlineResultsOverlay.hidden {
@@ -41,130 +42,207 @@
     }
 
     #redlineResultsCard {
-      width: min(680px,100%);
-      max-height: 82vh;
-      overflow: auto;
+      width:
+        min(680px,100%);
 
-      padding: 24px;
+      max-height:
+        82vh;
 
-      border-radius: 18px;
+      overflow:
+        auto;
 
-      background: rgba(12,18,30,.97);
+      padding:
+        24px;
 
-      border: 1px solid rgba(255,255,255,.15);
+      border-radius:
+        18px;
+
+      background:
+        rgba(12,18,30,.97);
+
+      border:
+        1px solid
+        rgba(255,255,255,.15);
     }
 
     #redlineResultsTitle {
-      margin: 0 0 6px;
+      margin:
+        0 0 6px;
 
-      font-size: clamp(30px,5vw,48px);
-      font-weight: 900;
+      font-size:
+        clamp(30px,5vw,48px);
+
+      font-weight:
+        900;
     }
 
     #redlineResultsStatus {
-      margin: 0 0 20px;
+      margin:
+        0 0 20px;
 
-      color: rgba(255,255,255,.68);
-      font-weight: 700;
+      color:
+        rgba(255,255,255,.68);
+
+      font-weight:
+        700;
     }
 
     #redlineResultsList {
-      display: grid;
-      gap: 10px;
+      display:
+        grid;
+
+      gap:
+        10px;
     }
 
     .redline-result-row {
-      display: grid;
+      display:
+        grid;
 
       grid-template-columns:
         58px 1fr auto;
 
-      gap: 14px;
+      gap:
+        14px;
 
-      align-items: center;
+      align-items:
+        center;
 
-      padding: 14px 16px;
+      padding:
+        14px 16px;
 
-      border-radius: 12px;
+      border-radius:
+        12px;
 
-      background: rgba(255,255,255,.06);
+      background:
+        rgba(255,255,255,.06);
 
-      border: 1px solid rgba(255,255,255,.08);
+      border:
+        1px solid
+        rgba(255,255,255,.08);
     }
 
     .redline-result-place {
-      font-size: 22px;
-      font-weight: 900;
+      font-size:
+        22px;
+
+      font-weight:
+        900;
     }
 
     .redline-result-name {
-      font-size: 17px;
-      font-weight: 800;
+      font-size:
+        17px;
+
+      font-weight:
+        800;
     }
 
     .redline-result-car {
-      margin-top: 3px;
+      margin-top:
+        3px;
 
-      color: rgba(255,255,255,.55);
+      color:
+        rgba(255,255,255,.55);
 
-      font-size: 12px;
-      font-weight: 700;
+      font-size:
+        12px;
+
+      font-weight:
+        700;
     }
 
     .redline-result-time {
-      font-variant-numeric: tabular-nums;
-      font-weight: 900;
+      font-variant-numeric:
+        tabular-nums;
+
+      font-weight:
+        900;
     }
 
     #redlineResultsActions {
-      margin-top: 20px;
+      margin-top:
+        20px;
 
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
+      display:
+        flex;
 
-      gap: 12px;
+      align-items:
+        center;
 
-      flex-wrap: wrap;
+      justify-content:
+        flex-end;
+
+      gap:
+        12px;
+
+      flex-wrap:
+        wrap;
     }
 
     #redlineResultsHostWait {
-      margin-right: auto;
+      margin-right:
+        auto;
 
-      color: rgba(255,255,255,.62);
+      color:
+        rgba(255,255,255,.62);
 
-      font-size: 13px;
-      font-weight: 700;
+      font-size:
+        13px;
+
+      font-weight:
+        700;
     }
 
     #redlineReturnLobbyBtn {
-      min-height: 44px;
+      min-height:
+        44px;
 
-      border: 0;
-      border-radius: 10px;
+      border:
+        0;
 
-      padding: 0 18px;
+      border-radius:
+        10px;
 
-      background: #fff;
-      color: #0b1019;
+      padding:
+        0 18px;
 
-      font-weight: 900;
+      background:
+        #fff;
 
-      cursor: pointer;
+      color:
+        #0b1019;
+
+      font-weight:
+        900;
+
+      cursor:
+        pointer;
     }
 
     #redlineReturnLobbyBtn:disabled {
-      opacity: .55;
-      cursor: default;
+      opacity:
+        .55;
+
+      cursor:
+        default;
     }
   `;
 
-  document.head.appendChild(style);
+  document.head.appendChild(
+    style
+  );
 
-  const overlay = document.createElement("div");
+  const overlay =
+    document.createElement(
+      "div"
+    );
 
-  overlay.id = "redlineResultsOverlay";
-  overlay.className = "hidden";
+  overlay.id =
+    "redlineResultsOverlay";
+
+  overlay.className =
+    "hidden";
 
   overlay.innerHTML = `
     <section id="redlineResultsCard">
@@ -195,419 +273,183 @@
     </section>
   `;
 
-  document.body.appendChild(overlay);
+  document.body.appendChild(
+    overlay
+  );
 
   const title =
-    document.getElementById("redlineResultsTitle");
+    document.getElementById(
+      "redlineResultsTitle"
+    );
 
   const status =
-    document.getElementById("redlineResultsStatus");
+    document.getElementById(
+      "redlineResultsStatus"
+    );
 
   const list =
-    document.getElementById("redlineResultsList");
+    document.getElementById(
+      "redlineResultsList"
+    );
 
   const hostWait =
-    document.getElementById("redlineResultsHostWait");
+    document.getElementById(
+      "redlineResultsHostWait"
+    );
 
   const returnButton =
-    document.getElementById("redlineReturnLobbyBtn");
+    document.getElementById(
+      "redlineReturnLobbyBtn"
+    );
 
-  /* =========================================================
-     HELPERS
-  ========================================================= */
-
-  function getPlayers() {
-    return window.REDLINE_MP?.players ?? [];
+  function getRoom() {
+    return (
+      lastRoom ||
+      window.REDLINE_MP?.room ||
+      null
+    );
   }
 
   function getMyId() {
-    return window.REDLINE_MP?.playerId ?? null;
-  }
-
-  function getRoomCode() {
     return (
-      window.REDLINE_MP?.roomCode ??
-      "unknown-room"
+      window.REDLINE_MP
+        ?.playerId ||
+      null
     );
   }
 
-  function expectedRacers() {
-    const players = getPlayers();
-
-    if (players.length > 0) {
-      return players.length;
-    }
-
-    const hudTotal =
-      Number(
-        document
-          .getElementById("totalRacers")
-          ?.textContent
-      );
-
-    if (
-      Number.isFinite(hudTotal) &&
-      hudTotal > 0
-    ) {
-      return hudTotal;
-    }
-
-    return Math.max(
-      finishedStates.size,
-      1
-    );
-  }
-
-  function isHost() {
-    const room =
-      window.REDLINE_MP?.room;
-
+  function isHost(
+    room = getRoom()
+  ) {
     const me =
       getMyId();
 
-    if (!room || !me) {
+    if (
+      !room ||
+      !me
+    ) {
       return false;
     }
 
-    const hostId =
-      room.hostId ??
-      room.hostPlayerId ??
-      room.host?.id ??
-      room.host?.playerId ??
-      null;
-
-    if (hostId) {
-      return hostId === me;
+    if (
+      room.hostId
+    ) {
+      return (
+        room.hostId === me
+      );
     }
 
-    const player =
-      getPlayers().find(
-        item =>
-          item.id === me
-      );
+    const mePlayer =
+      room.players
+        ?.find(
+          player =>
+            player.id === me
+        );
 
     return Boolean(
-      player?.isHost ||
-      player?.host
+      mePlayer?.host
     );
   }
 
-  function formatTime(ms) {
+  function formatTime(
+    ms
+  ) {
     const value =
       Number(ms);
 
-    if (!Number.isFinite(value)) {
-      return "FINISHED";
+    if (
+      !Number.isFinite(
+        value
+      )
+    ) {
+      return "—";
     }
 
     const total =
       Math.max(
         0,
-        Math.floor(value)
+        Math.floor(
+          value
+        )
       );
 
     const minutes =
-      Math.floor(total / 60000);
+      Math.floor(
+        total / 60000
+      );
 
     const seconds =
       Math.floor(
-        (total % 60000) / 1000
+        (total % 60000)
+        / 1000
       );
 
     const millis =
       total % 1000;
 
     return (
-      `${String(minutes).padStart(2, "0")}:` +
-      `${String(seconds).padStart(2, "0")}.` +
-      `${String(millis).padStart(3, "0")}`
+      `${String(minutes).padStart(2,"0")}:` +
+      `${String(seconds).padStart(2,"0")}.` +
+      `${String(millis).padStart(3,"0")}`
     );
   }
 
-  function resultTime(result) {
-    return (
-      result?.finishTime ??
-      result?.time ??
-      result?.elapsed ??
-      result?.elapsedMs ??
-      result?.finishMs ??
-      null
+  function hide() {
+    overlay.classList.add(
+      "hidden"
     );
   }
 
-  function authoritativeResult(playerId) {
-    return (
-      finishOrder.find(
-        item =>
-          item?.playerId === playerId
-      ) ??
-      null
+  function showWaiting(
+    room
+  ) {
+    overlay.classList.remove(
+      "hidden"
     );
-  }
-
-  /* =========================================================
-     PERSISTENCE
-  ========================================================= */
-
-  function storageKey() {
-    return (
-      "redline-results:" +
-      getRoomCode()
-    );
-  }
-
-  function saveState() {
-    try {
-      sessionStorage.setItem(
-        storageKey(),
-        JSON.stringify({
-          raceStartAt,
-          phase: currentPhase,
-
-          finishOrder,
-
-          finishedStates:
-            [...finishedStates.entries()]
-        })
-      );
-    } catch {}
-  }
-
-  function loadState() {
-    try {
-      const raw =
-        sessionStorage.getItem(
-          storageKey()
-        );
-
-      if (!raw) {
-        return;
-      }
-
-      const saved =
-        JSON.parse(raw);
-
-      if (!saved) {
-        return;
-      }
-
-      const currentRace =
-        window.REDLINE_MP
-          ?.raceStartAt ??
-        raceStartAt ??
-        null;
-
-      /*
-        If both race IDs exist and they are different,
-        the saved data belongs to an older race.
-      */
-      if (
-        saved.raceStartAt &&
-        currentRace &&
-        saved.raceStartAt !== currentRace
-      ) {
-        sessionStorage.removeItem(
-          storageKey()
-        );
-
-        return;
-      }
-
-      raceStartAt =
-        currentRace ??
-        saved.raceStartAt ??
-        raceStartAt;
-
-      if (
-        Array.isArray(saved.finishOrder)
-      ) {
-        finishOrder =
-          saved.finishOrder;
-      }
-
-      if (
-        Array.isArray(
-          saved.finishedStates
-        )
-      ) {
-        finishedStates.clear();
-
-        for (
-          const entry
-          of saved.finishedStates
-        ) {
-          if (
-            Array.isArray(entry) &&
-            entry.length === 2
-          ) {
-            finishedStates.set(
-              entry[0],
-              entry[1]
-            );
-          }
-        }
-      }
-    } catch {}
-  }
-
-  function clearSavedState() {
-    try {
-      sessionStorage.removeItem(
-        storageKey()
-      );
-    } catch {}
-  }
-
-  /* =========================================================
-     UI STATE
-  ========================================================= */
-
-  function showOverlay() {
-    overlay.classList.remove("hidden");
-  }
-
-  function hideOverlay() {
-    overlay.classList.add("hidden");
-  }
-
-  function everyoneFinished() {
-    const total =
-      expectedRacers();
-
-    return (
-      total > 0 &&
-      finishedStates.size >= total
-    );
-  }
-
-  function showWaiting() {
-    showOverlay();
 
     title.textContent =
       "FINISHED";
 
+    const count =
+      room.finishOrder
+        ?.length ||
+      0;
+
+    const total =
+      room.players
+        ?.length ||
+      1;
+
     status.textContent =
-      `Waiting for racers... ${finishedStates.size}/${expectedRacers()} finished`;
+      `Waiting for racers... ${count}/${total} finished`;
 
     list.replaceChildren();
 
-    hostWait.textContent = "";
+    hostWait.textContent =
+      "";
 
-    returnButton.hidden = true;
+    returnButton.hidden =
+      true;
 
     window.dispatchEvent(
       new CustomEvent(
         "redline:results-shown",
         {
           detail: {
-            waiting: true
+            waiting:
+              true
           }
         }
       )
     );
   }
 
-  function buildOrderedResults() {
-    const players =
-      getPlayers();
-
-    const results = [];
-
-    for (
-      const [
-        playerId,
-        state
-      ]
-      of finishedStates.entries()
-    ) {
-      const player =
-        players.find(
-          item =>
-            item.id === playerId
-        );
-
-      const official =
-        authoritativeResult(
-          playerId
-        );
-
-      results.push({
-        playerId,
-
-        username:
-          official?.username ??
-          state?.username ??
-          player?.username ??
-          "Racer",
-
-        car:
-          official?.car ??
-          state?.car ??
-          player?.car ??
-          "gt",
-
-        place:
-          Number(
-            official?.place
-          ) ||
-          null,
-
-        finishTime:
-          resultTime(
-            official
-          ) ??
-          state?.finishTime ??
-          null,
-
-        firstSeen:
-          state?._firstSeen ??
-          Infinity
-      });
-    }
-
-    results.sort(
-      (a, b) => {
-        if (
-          a.place &&
-          b.place
-        ) {
-          return (
-            a.place -
-            b.place
-          );
-        }
-
-        if (a.place) {
-          return -1;
-        }
-
-        if (b.place) {
-          return 1;
-        }
-
-        return (
-          a.firstSeen -
-          b.firstSeen
-        );
-      }
+  function showResults(
+    room
+  ) {
+    overlay.classList.remove(
+      "hidden"
     );
-
-    return results.map(
-      (result, index) => ({
-        ...result,
-
-        place:
-          result.place ??
-          index + 1
-      })
-    );
-  }
-
-  function renderResults() {
-    const ordered =
-      buildOrderedResults();
-
-    showOverlay();
 
     title.textContent =
       "RACE RESULTS";
@@ -617,79 +459,144 @@
 
     list.replaceChildren();
 
-    for (
-      const result
-      of ordered
-    ) {
-      const row =
-        document.createElement("div");
-
-      row.className =
-        "redline-result-row";
-
-      const placeEl =
-        document.createElement("div");
-
-      placeEl.className =
-        "redline-result-place";
-
-      placeEl.textContent =
-        `#${result.place}`;
-
-      const racer =
-        document.createElement("div");
-
-      const nameEl =
-        document.createElement("div");
-
-      nameEl.className =
-        "redline-result-name";
-
-      nameEl.textContent =
-        result.username;
-
-      const carEl =
-        document.createElement("div");
-
-      carEl.className =
-        "redline-result-car";
-
-      carEl.textContent =
-        carNames[result.car] ??
-        String(
-          result.car
-        ).toUpperCase();
-
-      racer.append(
-        nameEl,
-        carEl
+    const ordered =
+      [
+        ...(
+          room.finishOrder ||
+          []
+        )
+      ].sort(
+        (a, b) =>
+          (
+            Number(a.place) ||
+            Infinity
+          )
+          -
+          (
+            Number(b.place) ||
+            Infinity
+          )
       );
 
-      const timeEl =
-        document.createElement("div");
+    ordered.forEach(
+      (
+        result,
+        index
+      ) => {
+        const player =
+          room.players
+            ?.find(
+              item =>
+                item.id ===
+                result.playerId
+            );
 
-      timeEl.className =
-        "redline-result-time";
+        const row =
+          document.createElement(
+            "div"
+          );
 
-      timeEl.textContent =
-        formatTime(
-          result.finishTime
+        row.className =
+          "redline-result-row";
+
+        const place =
+          document.createElement(
+            "div"
+          );
+
+        place.className =
+          "redline-result-place";
+
+        place.textContent =
+          `#${
+            Number(
+              result.place
+            ) ||
+            index + 1
+          }`;
+
+        const racer =
+          document.createElement(
+            "div"
+          );
+
+        const name =
+          document.createElement(
+            "div"
+          );
+
+        name.className =
+          "redline-result-name";
+
+        name.textContent =
+          result.username ||
+          player?.username ||
+          "Racer";
+
+        const car =
+          document.createElement(
+            "div"
+          );
+
+        car.className =
+          "redline-result-car";
+
+        const carId =
+          result.car ||
+          player?.car ||
+          "gt";
+
+        car.textContent =
+          carNames[
+            carId
+          ] ||
+          String(
+            carId
+          ).toUpperCase();
+
+        racer.append(
+          name,
+          car
         );
 
-      row.append(
-        placeEl,
-        racer,
-        timeEl
-      );
+        const time =
+          document.createElement(
+            "div"
+          );
 
-      list.appendChild(row);
-    }
+        time.className =
+          "redline-result-time";
 
-    if (isHost()) {
-      hostWait.textContent = "";
+        time.textContent =
+          formatTime(
+            result.finishTime
+          );
 
-      returnButton.hidden = false;
-      returnButton.disabled = false;
+        row.append(
+          place,
+          racer,
+          time
+        );
+
+        list.appendChild(
+          row
+        );
+      }
+    );
+
+    if (
+      isHost(
+        room
+      )
+    ) {
+      hostWait.textContent =
+        "";
+
+      returnButton.hidden =
+        false;
+
+      returnButton.disabled =
+        false;
 
       returnButton.textContent =
         "RETURN TO LOBBY";
@@ -699,212 +606,103 @@
       hostWait.textContent =
         "Waiting for the host to return everyone to the lobby...";
 
-      returnButton.hidden = true;
+      returnButton.hidden =
+        true;
     }
-
-    saveState();
 
     window.dispatchEvent(
       new CustomEvent(
         "redline:results-shown",
         {
           detail: {
-            waiting: false,
-            finishOrder: ordered
+            waiting:
+              false,
+
+            finishOrder:
+              ordered
           }
         }
       )
     );
   }
 
-  function evaluateResults() {
-    const me =
-      getMyId();
-
-    if (everyoneFinished()) {
-      renderResults();
-      return;
-    }
-
-    if (
-      me &&
-      finishedStates.has(me)
-    ) {
-      showWaiting();
-    }
-  }
-
-  /* =========================================================
-     FINISH DATA
-  ========================================================= */
-
-  function ingestFinishedState(state) {
-    if (
-      !state?.playerId ||
-      !state.finished
-    ) {
-      return;
-    }
-
-    const old =
-      finishedStates.get(
-        state.playerId
-      );
-
-    finishedStates.set(
-      state.playerId,
-      {
-        ...old,
-        ...state,
-
-        _firstSeen:
-          old?._firstSeen ??
-          performance.now()
-      }
-    );
-
-    saveState();
-
-    evaluateResults();
-  }
-
-  function ingestFinishPacket(detail) {
-    const payload =
-      detail?.payload ??
-      detail?.data ??
-      detail ??
-      {};
-
-    const result =
-      payload.result ??
-      detail?.result ??
-      (
-        payload.playerId
-          ? payload
-          : null
-      );
-
-    const order =
-      payload.finishOrder ??
-      detail?.finishOrder ??
-      payload.results ??
-      detail?.results ??
-      null;
-
-    if (Array.isArray(order)) {
-      finishOrder =
-        order.slice();
-
-      for (
-        const item
-        of finishOrder
-      ) {
-        if (!item?.playerId) {
-          continue;
-        }
-
-        const old =
-          finishedStates.get(
-            item.playerId
-          );
-
-        finishedStates.set(
-          item.playerId,
-          {
-            ...old,
-            ...item,
-
-            finished: true,
-
-            _firstSeen:
-              old?._firstSeen ??
-              performance.now()
-          }
-        );
-      }
-    }
-
-    if (result?.playerId) {
-      const old =
-        finishedStates.get(
-          result.playerId
-        );
-
-      finishedStates.set(
-        result.playerId,
-        {
-          ...old,
-          ...result,
-
-          finished: true,
-
-          _firstSeen:
-            old?._firstSeen ??
-            performance.now()
-        }
-      );
-    }
-
-    saveState();
-
-    evaluateResults();
-  }
-
-  /* =========================================================
-     RESTORE SCREEN
-  ========================================================= */
-
-  function restoreScreen() {
-    loadState();
-
-    if (everyoneFinished()) {
-      renderResults();
-      return;
-    }
-
-    const me =
-      getMyId();
-
-    if (
-      me &&
-      finishedStates.has(me)
-    ) {
-      showWaiting();
-    }
-  }
-
-  /* =========================================================
-     RESET
-  ========================================================= */
-
-  function resetForNewRace(
-    newStartAt
+  function evaluate(
+    room = getRoom()
   ) {
-    finishedStates.clear();
+    if (!room) {
+      return;
+    }
 
-    finishOrder = [];
+    lastRoom =
+      room;
 
-    raceStartAt =
-      newStartAt ??
-      null;
+    if (
+      room.phase ===
+      "lobby" ||
+      room.phase ===
+      "car_select" ||
+      room.phase ===
+      "countdown"
+    ) {
+      hide();
 
-    clearSavedState();
+      return;
+    }
 
-    hideOverlay();
+    if (
+      room.phase ===
+      "results" ||
+      room.raceComplete
+    ) {
+      showResults(
+        room
+      );
+
+      return;
+    }
+
+    if (
+      room.phase ===
+      "racing"
+    ) {
+      const me =
+        getMyId();
+
+      const finished =
+        (
+          room.finishOrder ||
+          []
+        ).some(
+          result =>
+            result.playerId ===
+            me
+        );
+
+      if (
+        finished
+      ) {
+        showWaiting(
+          room
+        );
+      }
+
+      else {
+        hide();
+      }
+    }
   }
-
-  /* =========================================================
-     RETURN TO LOBBY
-  ========================================================= */
 
   returnButton.addEventListener(
     "click",
     () => {
-      if (!isHost()) {
+      if (
+        !isHost()
+      ) {
         return;
       }
 
-      returnButton.disabled = true;
+      returnButton.disabled =
+        true;
 
       returnButton.textContent =
         "RETURNING...";
@@ -912,148 +710,17 @@
       const sent =
         window.REDLINE_MP
           ?.send?.({
-            type: "return_lobby"
+            type:
+              "return_lobby"
           });
 
       if (!sent) {
-        returnButton.disabled = false;
+        returnButton.disabled =
+          false;
 
         returnButton.textContent =
           "RETURN TO LOBBY";
       }
-    }
-  );
-
-  /* =========================================================
-     MULTIPLAYER EVENTS
-  ========================================================= */
-
-  window.addEventListener(
-    "redline:race-state",
-    event => {
-      ingestFinishedState(
-        event.detail
-      );
-    }
-  );
-
-  window.addEventListener(
-    "redline:player-finished",
-    event => {
-      ingestFinishPacket(
-        event.detail
-      );
-    }
-  );
-
-  window.addEventListener(
-    "redline:race-snapshot",
-    event => {
-      const detail =
-        event.detail ?? {};
-
-      if (detail.startAt) {
-        /*
-          Don't reset here.
-
-          Snapshot is often sent after reconnecting.
-          Resetting here is what could destroy the
-          finish screen when switching tabs.
-        */
-        raceStartAt =
-          detail.startAt;
-      }
-
-      if (
-        Array.isArray(
-          detail.finishOrder
-        )
-      ) {
-        ingestFinishPacket(
-          detail
-        );
-      }
-
-      for (
-        const state
-        of (
-          detail.states ??
-          []
-        )
-      ) {
-        ingestFinishedState(
-          state
-        );
-      }
-
-      restoreScreen();
-    }
-  );
-
-  window.addEventListener(
-    "redline:countdown",
-    event => {
-      const newStartAt =
-        event.detail?.startAt ??
-        window.REDLINE_MP?.raceStartAt ??
-        null;
-
-      /*
-        Countdown means a genuinely new race,
-        so this IS where we clear old results.
-      */
-      if (
-        !raceStartAt ||
-        newStartAt !== raceStartAt
-      ) {
-        resetForNewRace(
-          newStartAt
-        );
-      }
-
-      raceStartAt =
-        newStartAt ??
-        raceStartAt;
-
-      currentPhase =
-        "countdown";
-    }
-  );
-
-  window.addEventListener(
-    "redline:race-started",
-    event => {
-      const newStartAt =
-        event.detail?.startAt ??
-        window.REDLINE_MP?.raceStartAt ??
-        null;
-
-      /*
-        Important:
-        race-started may happen again after
-        reconnecting.
-
-        Only wipe results if this is actually
-        a DIFFERENT race.
-      */
-      if (
-        raceStartAt &&
-        newStartAt &&
-        newStartAt !== raceStartAt
-      ) {
-        resetForNewRace(
-          newStartAt
-        );
-      }
-
-      raceStartAt =
-        newStartAt ??
-        raceStartAt;
-
-      currentPhase =
-        "racing";
-
-      restoreScreen();
     }
   );
 
@@ -1063,113 +730,125 @@
       const room =
         event.detail?.room ??
         event.detail?.state ??
-        event.detail?.payload?.room ??
         event.detail;
 
-      const phase =
-        room?.phase ??
-        window.REDLINE_MP
-          ?.room
-          ?.phase ??
-        null;
-
-      currentPhase =
-        phase;
-
-      /*
-        Lobby means the previous race is
-        completely over.
-
-        This is safe to clear.
-      */
-      if (phase === "lobby") {
-        finishedStates.clear();
-
-        finishOrder = [];
-
-        raceStartAt = null;
-
-        clearSavedState();
-
-        hideOverlay();
-
-        return;
-      }
-
-      /*
-        Reconnect/update during racing:
-        restore whatever screen we had.
-      */
       if (
-        phase === "racing" ||
-        phase === "countdown"
+        room?.code
       ) {
-        restoreScreen();
+        evaluate(
+          room
+        );
       }
     }
   );
 
-  /* =========================================================
-     TAB SWITCH / WINDOW FOCUS
-  ========================================================= */
+  window.addEventListener(
+    "redline:race-snapshot",
+    event => {
+      const room =
+        event.detail?.room ||
+        window.REDLINE_MP
+          ?.room;
+
+      if (!room) {
+        return;
+      }
+
+      if (
+        Array.isArray(
+          event.detail
+            ?.finishOrder
+        )
+      ) {
+        room.finishOrder =
+          event.detail
+            .finishOrder;
+      }
+
+      if (
+        event.detail
+          ?.raceComplete
+      ) {
+        room.raceComplete =
+          true;
+
+        room.phase =
+          "results";
+      }
+
+      evaluate(
+        room
+      );
+    }
+  );
+
+  window.addEventListener(
+    "redline:player-finished",
+    event => {
+      const room =
+        event.detail?.room ||
+        window.REDLINE_MP
+          ?.room;
+
+      if (!room) {
+        return;
+      }
+
+      if (
+        Array.isArray(
+          event.detail
+            ?.finishOrder
+        )
+      ) {
+        room.finishOrder =
+          event.detail
+            .finishOrder;
+      }
+
+      if (
+        event.detail
+          ?.raceComplete
+      ) {
+        room.raceComplete =
+          true;
+
+        room.phase =
+          "results";
+      }
+
+      evaluate(
+        room
+      );
+    }
+  );
 
   document.addEventListener(
     "visibilitychange",
     () => {
       if (
-        document.visibilityState !==
+        document.visibilityState ===
         "visible"
       ) {
-        return;
+        evaluate();
       }
-
-      restoreScreen();
     }
   );
 
   window.addEventListener(
     "focus",
-    () => {
-      restoreScreen();
-    }
+    () =>
+      evaluate()
   );
 
   window.addEventListener(
     "pageshow",
-    () => {
-      restoreScreen();
-    }
+    () =>
+      evaluate()
   );
-
-  /* =========================================================
-     DISCONNECT
-
-     DO NOT clear results here.
-
-     Switching tabs can temporarily cause a
-     disconnect/reconnect, so we preserve the
-     finish screen.
-  ========================================================= */
-
-  window.addEventListener(
-    "redline:disconnected",
-    () => {
-      saveState();
-    }
-  );
-
-  /* =========================================================
-     INITIAL RESTORE
-  ========================================================= */
 
   setTimeout(
-    () => {
-      raceStartAt =
-        window.REDLINE_MP?.raceStartAt ??
-        raceStartAt;
-
-      restoreScreen();
-    },
+    () =>
+      evaluate(),
     250
   );
 })();
