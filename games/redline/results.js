@@ -1,6 +1,7 @@
 (() => {
   let finishOrder = [];
   let localFinished = false;
+  let finishHookInstalled = false;
 
   const carNames = {
     gt: "REDLINE GT",
@@ -8,8 +9,7 @@
     apex: "APEX S"
   };
 
-  const style =
-    document.createElement("style");
+  const style = document.createElement("style");
 
   style.textContent = `
     #redlineResultsOverlay {
@@ -23,17 +23,11 @@
 
       padding: 24px;
 
-      background:
-        rgba(3, 7, 14, .72);
+      background: rgba(3, 7, 14, .78);
+      backdrop-filter: blur(8px);
 
-      backdrop-filter:
-        blur(8px);
-
-      font-family:
-        Arial, sans-serif;
-
-      color:
-        #fff;
+      font-family: Arial, sans-serif;
+      color: white;
     }
 
     #redlineResultsOverlay.hidden {
@@ -41,185 +35,124 @@
     }
 
     #redlineResultsCard {
-      width:
-        min(680px, 100%);
+      width: min(680px, 100%);
+      max-height: 82vh;
+      overflow: auto;
 
-      max-height:
-        82vh;
+      padding: 24px;
 
-      overflow:
-        auto;
+      border-radius: 18px;
+
+      background: rgba(12, 18, 30, .97);
 
       border:
         1px solid rgba(255,255,255,.15);
-
-      border-radius:
-        18px;
-
-      background:
-        rgba(12, 18, 30, .96);
-
-      padding:
-        24px;
     }
 
     #redlineResultsTitle {
-      margin:
-        0 0 6px;
+      margin: 0 0 6px;
 
-      font-size:
-        clamp(30px, 5vw, 48px);
-
-      font-weight:
-        900;
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 900;
     }
 
     #redlineResultsStatus {
-      margin:
-        0 0 20px;
+      margin: 0 0 20px;
 
-      color:
-        rgba(255,255,255,.68);
-
-      font-weight:
-        700;
+      color: rgba(255,255,255,.68);
+      font-weight: 700;
     }
 
     #redlineResultsList {
-      display:
-        grid;
-
-      gap:
-        10px;
+      display: grid;
+      gap: 10px;
     }
 
     .redline-result-row {
-      display:
-        grid;
+      display: grid;
 
       grid-template-columns:
         58px 1fr auto;
 
-      gap:
-        14px;
+      gap: 14px;
 
-      align-items:
-        center;
+      align-items: center;
 
-      padding:
-        14px 16px;
+      padding: 14px 16px;
 
-      border-radius:
-        12px;
+      border-radius: 12px;
 
-      background:
-        rgba(255,255,255,.06);
+      background: rgba(255,255,255,.06);
 
       border:
         1px solid rgba(255,255,255,.08);
     }
 
     .redline-result-place {
-      font-size:
-        22px;
-
-      font-weight:
-        900;
+      font-size: 22px;
+      font-weight: 900;
     }
 
     .redline-result-name {
-      font-size:
-        17px;
-
-      font-weight:
-        800;
+      font-size: 17px;
+      font-weight: 800;
     }
 
     .redline-result-car {
-      margin-top:
-        3px;
+      margin-top: 3px;
 
-      color:
-        rgba(255,255,255,.55);
+      color: rgba(255,255,255,.55);
 
-      font-size:
-        12px;
-
-      font-weight:
-        700;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .redline-result-time {
-      font-variant-numeric:
-        tabular-nums;
-
-      font-weight:
-        900;
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
     }
 
     #redlineResultsActions {
-      margin-top:
-        20px;
+      margin-top: 20px;
 
-      display:
-        flex;
+      display: flex;
 
-      align-items:
-        center;
+      align-items: center;
+      justify-content: flex-end;
 
-      justify-content:
-        flex-end;
+      gap: 12px;
 
-      gap:
-        12px;
-
-      flex-wrap:
-        wrap;
+      flex-wrap: wrap;
     }
 
     #redlineResultsHostWait {
-      margin-right:
-        auto;
+      margin-right: auto;
 
-      color:
-        rgba(255,255,255,.62);
+      color: rgba(255,255,255,.62);
 
-      font-size:
-        13px;
-
-      font-weight:
-        700;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     #redlineReturnLobbyBtn {
-      min-height:
-        44px;
+      min-height: 44px;
 
-      border:
-        0;
+      border: 0;
+      border-radius: 10px;
 
-      border-radius:
-        10px;
+      padding: 0 18px;
 
-      padding:
-        0 18px;
+      background: white;
+      color: #0b1019;
 
-      background:
-        #fff;
+      font-weight: 900;
 
-      color:
-        #0b1019;
-
-      font-weight:
-        900;
-
-      cursor:
-        pointer;
+      cursor: pointer;
     }
 
     #redlineReturnLobbyBtn:disabled {
-      opacity:
-        .55;
+      opacity: .55;
+      cursor: default;
     }
   `;
 
@@ -263,9 +196,7 @@
     </section>
   `;
 
-  document.body.appendChild(
-    overlay
-  );
+  document.body.appendChild(overlay);
 
   const title =
     document.getElementById(
@@ -292,45 +223,6 @@
       "redlineReturnLobbyBtn"
     );
 
-  function formatTime(ms) {
-
-    if (
-      !Number.isFinite(
-        Number(ms)
-      )
-    ) {
-      return "—";
-    }
-
-    const total =
-      Math.max(
-        0,
-        Math.floor(
-          Number(ms)
-        )
-      );
-
-    const minutes =
-      Math.floor(
-        total / 60000
-      );
-
-    const seconds =
-      Math.floor(
-        (total % 60000)
-        / 1000
-      );
-
-    const millis =
-      total % 1000;
-
-    return (
-      `${String(minutes).padStart(2, "0")}:` +
-      `${String(seconds).padStart(2, "0")}.` +
-      `${String(millis).padStart(3, "0")}`
-    );
-  }
-
   function getPlayers() {
     return (
       window.REDLINE_MP?.players ??
@@ -345,8 +237,35 @@
     );
   }
 
-  function isHost() {
+  function expectedRacers() {
+    const players =
+      getPlayers();
 
+    if (players.length) {
+      return players.length;
+    }
+
+    const hudTotal =
+      Number(
+        document.getElementById(
+          "totalRacers"
+        )?.textContent
+      );
+
+    if (
+      Number.isFinite(hudTotal) &&
+      hudTotal > 0
+    ) {
+      return hudTotal;
+    }
+
+    return Math.max(
+      1,
+      finishOrder.length
+    );
+  }
+
+  function isHost() {
     const room =
       getRoom();
 
@@ -383,8 +302,43 @@
     );
   }
 
-  function getFinishTime(result) {
+  function formatTime(ms) {
+    const value =
+      Number(ms);
 
+    if (
+      !Number.isFinite(value)
+    ) {
+      return "—";
+    }
+
+    const total =
+      Math.max(
+        0,
+        Math.floor(value)
+      );
+
+    const minutes =
+      Math.floor(
+        total / 60000
+      );
+
+    const seconds =
+      Math.floor(
+        (total % 60000) / 1000
+      );
+
+    const millis =
+      total % 1000;
+
+    return (
+      `${String(minutes).padStart(2, "0")}:` +
+      `${String(seconds).padStart(2, "0")}.` +
+      `${String(millis).padStart(3, "0")}`
+    );
+  }
+
+  function getFinishTime(result) {
     return (
       result?.finishTime ??
       result?.time ??
@@ -393,6 +347,76 @@
       result?.finishMs ??
       null
     );
+  }
+
+  function addFinishResult(result) {
+    if (
+      !result ||
+      !result.playerId
+    ) {
+      return;
+    }
+
+    const existing =
+      finishOrder.findIndex(
+        item =>
+          item.playerId ===
+          result.playerId
+      );
+
+    if (existing >= 0) {
+      finishOrder[existing] = {
+        ...finishOrder[existing],
+        ...result
+      };
+    } else {
+      finishOrder.push(result);
+    }
+
+    finishOrder.sort(
+      (a, b) =>
+        (Number(a.place) || Infinity)
+        -
+        (Number(b.place) || Infinity)
+    );
+  }
+
+  function normalizeFinishEvent(raw) {
+    const detail =
+      raw ?? {};
+
+    const payload =
+      detail.payload ??
+      detail.data ??
+      detail;
+
+    let result =
+      payload.result ??
+      detail.result ??
+      null;
+
+    if (
+      !result &&
+      payload.playerId
+    ) {
+      result =
+        payload;
+    }
+
+    const order =
+      payload.finishOrder ??
+      detail.finishOrder ??
+      payload.results ??
+      detail.results ??
+      null;
+
+    return {
+      result,
+      order:
+        Array.isArray(order)
+          ? order
+          : null
+    };
   }
 
   function showOverlay() {
@@ -408,7 +432,6 @@
   }
 
   function showWaiting() {
-
     showOverlay();
 
     title.textContent =
@@ -424,21 +447,30 @@
 
     returnButton.hidden =
       true;
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "redline:results-shown",
+        {
+          detail: {
+            waiting: true
+          }
+        }
+      )
+    );
   }
 
-  function allRacersFinished() {
-
-    const total =
-      getPlayers().length;
+  function everyoneFinished() {
+    const expected =
+      expectedRacers();
 
     return (
-      total > 0 &&
-      finishOrder.length >= total
+      expected > 0 &&
+      finishOrder.length >= expected
     );
   }
 
   function renderResults() {
-
     const players =
       getPlayers();
 
@@ -453,13 +485,12 @@
     list.replaceChildren();
 
     const ordered =
-      [...finishOrder]
-        .sort(
-          (a, b) =>
-            (Number(a?.place) || Infinity)
-            -
-            (Number(b?.place) || Infinity)
-        );
+      [...finishOrder].sort(
+        (a, b) =>
+          (Number(a.place) || Infinity)
+          -
+          (Number(b.place) || Infinity)
+      );
 
     ordered.forEach(
       (result, index) => {
@@ -468,21 +499,20 @@
           players.find(
             item =>
               item.id ===
-              result?.playerId
+              result.playerId
           );
 
         const place =
-          Number(result?.place)
-          ||
+          Number(result.place) ||
           index + 1;
 
         const username =
-          result?.username ??
+          result.username ??
           player?.username ??
           `Racer ${place}`;
 
         const car =
-          result?.car ??
+          result.car ??
           player?.car ??
           "gt";
 
@@ -557,14 +587,11 @@
           timeEl
         );
 
-        list.appendChild(
-          row
-        );
+        list.appendChild(row);
       }
     );
 
     if (isHost()) {
-
       hostWait.textContent =
         "";
 
@@ -576,17 +603,14 @@
 
       returnButton.textContent =
         "RETURN TO LOBBY";
-
     }
 
     else {
-
       hostWait.textContent =
         "Waiting for the host to return everyone to the lobby...";
 
       returnButton.hidden =
         true;
-
     }
 
     window.dispatchEvent(
@@ -594,11 +618,103 @@
         "redline:results-shown",
         {
           detail: {
+            waiting: false,
             finishOrder
           }
         }
       )
     );
+  }
+
+  function processFinishEvent(detail) {
+    const normalized =
+      normalizeFinishEvent(detail);
+
+    if (normalized.order) {
+      finishOrder =
+        normalized.order.slice();
+    }
+
+    if (normalized.result) {
+      addFinishResult(
+        normalized.result
+      );
+    }
+
+    const me =
+      window.REDLINE_MP?.playerId;
+
+    if (
+      normalized.result?.playerId === me
+    ) {
+      localFinished =
+        true;
+    }
+
+    if (
+      finishOrder.some(
+        result =>
+          result.playerId === me
+      )
+    ) {
+      localFinished =
+        true;
+    }
+
+    if (everyoneFinished()) {
+      renderResults();
+      return;
+    }
+
+    if (localFinished) {
+      showWaiting();
+    }
+  }
+
+  function installFinishHook() {
+    if (
+      finishHookInstalled ||
+      !window.REDLINE_MP ||
+      typeof window.REDLINE_MP.sendFinish !==
+        "function"
+    ) {
+      return false;
+    }
+
+    const original =
+      window.REDLINE_MP.sendFinish.bind(
+        window.REDLINE_MP
+      );
+
+    window.REDLINE_MP.sendFinish =
+      (...args) => {
+
+        localFinished =
+          true;
+
+        showWaiting();
+
+        return original(...args);
+      };
+
+    finishHookInstalled =
+      true;
+
+    return true;
+  }
+
+  if (!installFinishHook()) {
+    const hookTimer =
+      setInterval(
+        () => {
+          if (installFinishHook()) {
+            clearInterval(
+              hookTimer
+            );
+          }
+        },
+        100
+      );
   }
 
   returnButton.addEventListener(
@@ -616,18 +732,17 @@
         "RETURNING...";
 
       const sent =
-        window.REDLINE_MP?.send?.({
-          type: "return_lobby"
-        });
+        window.REDLINE_MP
+          ?.send?.({
+            type: "return_lobby"
+          });
 
       if (!sent) {
-
         returnButton.disabled =
           false;
 
         returnButton.textContent =
           "RETURN TO LOBBY";
-
       }
     }
   );
@@ -635,47 +750,9 @@
   window.addEventListener(
     "redline:player-finished",
     event => {
-
-      const detail =
-        event.detail ?? {};
-
-      if (
-        Array.isArray(
-          detail.finishOrder
-        )
-      ) {
-
-        finishOrder =
-          detail.finishOrder;
-      }
-
-      const me =
-        window.REDLINE_MP?.playerId;
-
-      if (
-        detail.result?.playerId ===
-        me
-      ) {
-
-        localFinished =
-          true;
-      }
-
-      if (
-        allRacersFinished()
-      ) {
-
-        renderResults();
-
-      }
-
-      else if (
-        localFinished
-      ) {
-
-        showWaiting();
-
-      }
+      processFinishEvent(
+        event.detail
+      );
     }
   );
 
@@ -686,14 +763,14 @@
       const detail =
         event.detail ?? {};
 
-      if (
-        Array.isArray(
-          detail.finishOrder
-        )
-      ) {
+      const order =
+        detail.finishOrder ??
+        detail.payload?.finishOrder ??
+        detail.data?.finishOrder;
 
+      if (Array.isArray(order)) {
         finishOrder =
-          detail.finishOrder;
+          order.slice();
       }
 
       const me =
@@ -702,23 +779,15 @@
       localFinished =
         finishOrder.some(
           result =>
-            result?.playerId === me
+            result.playerId === me
         );
 
-      if (
-        allRacersFinished()
-      ) {
-
+      if (everyoneFinished()) {
         renderResults();
-
       }
 
-      else if (
-        localFinished
-      ) {
-
+      else if (localFinished) {
         showWaiting();
-
       }
     }
   );
@@ -752,30 +821,20 @@
       const room =
         event.detail?.room ??
         event.detail?.state ??
+        event.detail?.payload?.room ??
         event.detail;
 
       const phase =
         room?.phase ??
-        window.REDLINE_MP?.room?.phase;
+        window.REDLINE_MP
+          ?.room
+          ?.phase;
 
-      if (
-        phase === "lobby"
-      ) {
-
+      if (phase === "lobby") {
         finishOrder = [];
         localFinished = false;
 
         hideOverlay();
-
-        document
-          .getElementById("hud")
-          ?.classList
-          .add("hidden");
-
-        document
-          .getElementById("menu")
-          ?.classList
-          .remove("hidden");
       }
     }
   );
