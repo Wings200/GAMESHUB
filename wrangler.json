@@ -1,7 +1,8 @@
 {
   "name": "redline-multiplayer",
-  "main": "multiplayer/src/index.js",
+  "main": "worker.js",
   "compatibility_date": "2026-09-28",
+
   "durable_objects": {
     "bindings": [
       {
@@ -14,11 +15,13 @@
       }
     ]
   },
+
   "exports": {
     "RedlineRoom": {
       "type": "durable-object",
       "storage": "sqlite"
     },
+
     "RedlineDirectory": {
       "type": "durable-object",
       "storage": "sqlite"
