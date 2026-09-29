@@ -21,7 +21,6 @@
   />
 </head>
 
-
 <body>
 
   <!-- =====================================================
@@ -32,7 +31,7 @@
 
 
   <!-- =====================================================
-       MAIN UI
+       MAIN MENU
   ====================================================== -->
 
   <main
@@ -178,9 +177,6 @@
             id="publicRoomList"
             class="room-list"
           >
-
-            <!-- Filled by local mock JS -->
-
           </div>
 
         </div>
@@ -387,7 +383,7 @@
 
 
     <!-- ===================================================
-         WAITING LOBBY
+         LOBBY
     ==================================================== -->
 
     <section
@@ -453,7 +449,7 @@
         </div>
 
 
-        <!-- HOST SETTINGS -->
+        <!-- SETTINGS -->
 
         <div class="lobby-panel host-panel">
 
@@ -474,12 +470,18 @@
                 Neon District
               </option>
 
-              <option value="canyon">
-                Dustfall Canyon
+              <option
+                value="canyon"
+                disabled
+              >
+                Dustfall Canyon — REBUILDING
               </option>
 
-              <option value="arctic">
-                Arctic Relay
+              <option
+                value="arctic"
+                disabled
+              >
+                Arctic Relay — REBUILDING
               </option>
 
             </select>
@@ -540,14 +542,6 @@
             START RACE
           </button>
 
-
-          <div
-            id="hostOnlyMessage"
-            class="small-status hidden"
-          >
-            Only the host can start the race.
-          </div>
-
         </div>
 
       </div>
@@ -556,7 +550,7 @@
 
 
     <!-- ===================================================
-         CAR SELECTION
+         CAR SELECT
     ==================================================== -->
 
     <section
@@ -599,6 +593,7 @@
 
         </div>
 
+
         <div class="lock-status">
 
           <span id="lockStatus">
@@ -615,7 +610,7 @@
         class="car-selector"
       >
 
-        <!-- GT -->
+        <!-- REDLINE GT -->
 
         <button
           class="car-card selected"
@@ -739,27 +734,21 @@
       </div>
 
 
-      <!-- CAR STATS -->
+      <!-- STATS -->
 
       <div class="car-stats">
 
         <div class="stat">
 
           <div class="stat-label">
-
-            <span>
-              SPEED
-            </span>
-
+            <span>SPEED</span>
           </div>
 
           <div class="stat-track">
-
             <div
               id="speedStat"
               class="stat-fill"
             ></div>
-
           </div>
 
         </div>
@@ -768,20 +757,14 @@
         <div class="stat">
 
           <div class="stat-label">
-
-            <span>
-              ACCELERATION
-            </span>
-
+            <span>ACCELERATION</span>
           </div>
 
           <div class="stat-track">
-
             <div
               id="accelStat"
               class="stat-fill"
             ></div>
-
           </div>
 
         </div>
@@ -790,20 +773,14 @@
         <div class="stat">
 
           <div class="stat-label">
-
-            <span>
-              GRIP
-            </span>
-
+            <span>GRIP</span>
           </div>
 
           <div class="stat-track">
-
             <div
               id="gripStat"
               class="stat-fill"
             ></div>
-
           </div>
 
         </div>
@@ -812,20 +789,14 @@
         <div class="stat">
 
           <div class="stat-label">
-
-            <span>
-              DRIFT
-            </span>
-
+            <span>DRIFT</span>
           </div>
 
           <div class="stat-track">
-
             <div
               id="driftStat"
               class="stat-fill"
             ></div>
-
           </div>
 
         </div>
@@ -835,26 +806,10 @@
 
       <div class="car-select-footer">
 
-        <div>
+        <span class="small-status">
+          Every racer must choose a vehicle before the race can begin.
+        </span>
 
-          <span class="small-status">
-            Every racer must choose a vehicle before the race can begin.
-          </span>
-
-        </div>
-
-
-        <!--
-          IMPORTANT:
-
-          game.js already listens to #startBtn.
-
-          In the current 1-player/local mock,
-          clicking this locks in your car and begins the race.
-
-          When real multiplayer is added, the server will control
-          whether everybody is locked in before this can trigger.
-        -->
 
         <button
           id="startBtn"
@@ -880,8 +835,6 @@
     class="hud hidden"
   >
 
-    <!-- TOP LEFT -->
-
     <div class="race-info">
 
       <div
@@ -891,14 +844,12 @@
         NEON DISTRICT
       </div>
 
-
       <div
         id="objective"
         class="objective"
       >
         LAP 1 / 3
       </div>
-
 
       <div
         id="checkpointText"
@@ -909,8 +860,6 @@
 
     </div>
 
-
-    <!-- TOP CENTER -->
 
     <div class="navigation">
 
@@ -937,8 +886,6 @@
     </div>
 
 
-    <!-- WRONG WAY -->
-
     <div
       id="wrongWay"
       class="wrong-way hidden"
@@ -946,8 +893,6 @@
       WRONG WAY
     </div>
 
-
-    <!-- MULTIPLAYER / RACE TOP RIGHT -->
 
     <div class="race-standing">
 
@@ -989,8 +934,6 @@
     </div>
 
 
-    <!-- MINIMAP -->
-
     <div class="minimap-wrap">
 
       <canvas
@@ -1001,8 +944,6 @@
 
     </div>
 
-
-    <!-- VEHICLE HUD -->
 
     <div class="vehicle-hud">
 
@@ -1040,20 +981,14 @@
         <div class="meter">
 
           <div class="meter-heading">
-
-            <span>
-              RPM
-            </span>
-
+            <span>RPM</span>
           </div>
 
           <div class="meter-track">
-
             <div
               id="rpmBar"
               class="meter-fill"
             ></div>
-
           </div>
 
         </div>
@@ -1124,7 +1059,7 @@
 
 
   <!-- =====================================================
-       GENERAL MESSAGE
+       MESSAGE
   ====================================================== -->
 
   <div
@@ -1136,14 +1071,22 @@
 
 
   <!-- =====================================================
-       LOCAL UI PROTOTYPE LOGIC
+       REDLINE MENU / MULTIPLAYER LOGIC
   ====================================================== -->
 
   <script>
     (() => {
 
       /* ===================================================
-         ELEMENTS
+         MULTIPLAYER SERVER
+      ==================================================== */
+
+      const MULTIPLAYER_API =
+        "https://gameshub.guestuseonly0173.workers.dev";
+
+
+      /* ===================================================
+         SCREENS
       ==================================================== */
 
       const screens = [
@@ -1154,6 +1097,10 @@
         "carSelectScreen"
       ];
 
+
+      /* ===================================================
+         ELEMENTS
+      ==================================================== */
 
       const usernameInput =
         document.getElementById(
@@ -1318,17 +1265,22 @@
 
 
       /* ===================================================
-         LOCAL STATE
-
-         Later this becomes Cloudflare room state.
+         STATE
       ==================================================== */
 
       let selectedPrivacy =
         "public";
 
 
-      let currentRoom = null;
+      let currentRoom =
+        null;
 
+
+      /*
+        Join Room is still fake/local FOR NOW.
+
+        Create Room below is now REAL.
+      */
 
       const mockPublicRooms = [
 
@@ -1355,20 +1307,6 @@
 
           maxPlayers:
             4,
-
-          map:
-            "Neon District"
-        },
-
-        {
-          name:
-            "Full Send",
-
-          players:
-            6,
-
-          maxPlayers:
-            8,
 
           map:
             "Neon District"
@@ -1425,6 +1363,7 @@
 
 
         return username;
+
       }
 
 
@@ -1438,24 +1377,26 @@
               .trim();
 
 
-          if (value) {
-
-            localStorage.setItem(
-              "redline_username",
-              value
-            );
-
-
-            usernameStatus.textContent =
-              "Username saved.";
+          if (!value) {
+            return;
           }
+
+
+          localStorage.setItem(
+            "redline_username",
+            value
+          );
+
+
+          usernameStatus.textContent =
+            "Username saved.";
 
         }
       );
 
 
       /* ===================================================
-         SCREEN SWITCHING
+         SCREEN SWITCH
       ==================================================== */
 
       function showScreen(
@@ -1488,6 +1429,7 @@
             "active-screen",
             id === screenId
           );
+
         }
 
       }
@@ -1516,7 +1458,7 @@
 
 
       /* ===================================================
-         HOME BUTTONS
+         HOME
       ==================================================== */
 
       joinRoomBtn.addEventListener(
@@ -1600,56 +1542,19 @@
 
 
       /* ===================================================
-         ROOM CODE
-      ==================================================== */
-
-      function generateRoomCode() {
-
-        const characters =
-          "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-
-        let code =
-          "";
-
-
-        for (
-          let i = 0;
-          i < 6;
-          i++
-        ) {
-
-          code +=
-            characters[
-              Math.floor(
-                Math.random() *
-                characters.length
-              )
-            ];
-
-        }
-
-
-        return code;
-      }
-
-
-      /* ===================================================
-         CREATE ROOM
+         REAL CREATE ROOM
       ==================================================== */
 
       confirmCreateBtn.addEventListener(
         "click",
-        () => {
+        async () => {
 
           const username =
             getUsername();
 
 
           const roomName =
-            roomNameInput
-              .value
-              .trim()
+            roomNameInput.value.trim()
             ||
             `${username}'s Room`;
 
@@ -1660,59 +1565,165 @@
             );
 
 
-          currentRoom = {
-
-            name:
-              roomName,
-
-            privacy:
-              selectedPrivacy,
-
-            roomCode:
-              selectedPrivacy ===
-              "private"
-              ?
-              generateRoomCode()
-              :
-              null,
-
-            host:
-              username,
-
-            maxPlayers,
-
-            players: [
-
-              {
-                username,
-
-                host:
-                  true,
-
-                car:
-                  null,
-
-                ready:
-                  false
-              }
-
-            ]
-
-          };
+          confirmCreateBtn.disabled =
+            true;
 
 
-          renderLobby();
+          confirmCreateBtn.textContent =
+            "CREATING...";
 
-          showScreen(
-            "lobbyScreen"
-          );
+
+          try {
+
+            const response =
+              await fetch(
+
+                `${MULTIPLAYER_API}/api/rooms`,
+
+                {
+
+                  method:
+                    "POST",
+
+                  headers: {
+
+                    "Content-Type":
+                      "application/json"
+
+                  },
+
+                  body:
+                    JSON.stringify({
+
+                      username,
+
+                      name:
+                        roomName,
+
+                      privacy:
+                        selectedPrivacy,
+
+                      maxPlayers
+
+                    })
+
+                }
+
+              );
+
+
+            const data =
+              await response.json();
+
+
+            if (
+              !response.ok
+            ) {
+
+              throw new Error(
+
+                data.error
+                ||
+                "Could not create room."
+
+              );
+
+            }
+
+
+            /*
+              Save identity information.
+
+              Later the WebSocket uses these.
+            */
+
+            sessionStorage.setItem(
+
+              "redline_room_code",
+
+              data.code
+
+            );
+
+
+            sessionStorage.setItem(
+
+              "redline_player_token",
+
+              data.playerToken
+
+            );
+
+
+            sessionStorage.setItem(
+
+              "redline_player_id",
+
+              data.playerId
+
+            );
+
+
+            /*
+              Use real room returned by Cloudflare.
+            */
+
+            currentRoom = {
+
+              ...data.room,
+
+              roomCode:
+                data.code,
+
+              host:
+                username
+
+            };
+
+
+            renderLobby();
+
+
+            showScreen(
+              "lobbyScreen"
+            );
+
+          }
+
+          catch (
+            error
+          ) {
+
+            console.error(
+              "Create room failed:",
+              error
+            );
+
+
+            alert(
+              `Could not create room: ${error.message}`
+            );
+
+          }
+
+          finally {
+
+            confirmCreateBtn.disabled =
+              false;
+
+
+            confirmCreateBtn.textContent =
+              "CREATE ROOM";
+
+          }
 
         }
       );
 
 
       /* ===================================================
-         PUBLIC ROOMS
+         PUBLIC ROOM MOCK
+         TEMPORARY
       ==================================================== */
 
       function renderPublicRooms() {
@@ -1769,74 +1780,6 @@
           `;
 
 
-          const joinButton =
-            card.querySelector(
-              ".public-join-button"
-            );
-
-
-          joinButton.addEventListener(
-            "click",
-            () => {
-
-              /*
-                LOCAL MOCK ONLY.
-
-                Real version will ask the Cloudflare
-                room server to join this room.
-              */
-
-              const username =
-                getUsername();
-
-
-              currentRoom = {
-
-                name:
-                  room.name,
-
-                privacy:
-                  "public",
-
-                roomCode:
-                  null,
-
-                host:
-                  username,
-
-                maxPlayers:
-                  room.maxPlayers,
-
-                players: [
-
-                  {
-                    username,
-
-                    host:
-                      true,
-
-                    car:
-                      null,
-
-                    ready:
-                      false
-                  }
-
-                ]
-
-              };
-
-
-              renderLobby();
-
-              showScreen(
-                "lobbyScreen"
-              );
-
-            }
-          );
-
-
           publicRoomList.appendChild(
             card
           );
@@ -1853,7 +1796,8 @@
 
 
       /* ===================================================
-         PRIVATE ROOM JOIN
+         PRIVATE JOIN
+         TEMPORARY LOCAL MOCK
       ==================================================== */
 
       roomCodeInput.addEventListener(
@@ -1905,51 +1849,8 @@
           }
 
 
-          const username =
-            getUsername();
-
-
-          currentRoom = {
-
-            name:
-              "Private Room",
-
-            privacy:
-              "private",
-
-            roomCode:
-              code,
-
-            host:
-              username,
-
-            maxPlayers:
-              8,
-
-            players: [
-
-              {
-                username,
-
-                host:
-                  true,
-
-                car:
-                  null,
-
-                ready:
-                  false
-              }
-
-            ]
-
-          };
-
-
-          renderLobby();
-
-          showScreen(
-            "lobbyScreen"
+          alert(
+            "Private joining will be connected to the real server next."
           );
 
         }
@@ -1975,8 +1876,23 @@
           `${currentRoom.players.length} / ${currentRoom.maxPlayers}`;
 
 
+        /*
+          Find the server-designated host.
+        */
+
+        const hostPlayer =
+          currentRoom.players.find(
+            player =>
+              player.host
+          );
+
+
         hostUsername.textContent =
-          currentRoom.host;
+          hostPlayer?.username
+          ||
+          currentRoom.host
+          ||
+          "Racer";
 
 
         lobbyPlayerList.innerHTML =
@@ -2003,10 +1919,13 @@
             <div class="player-identity">
 
               <span class="player-avatar">
+
                 ${player.username
                   .charAt(0)
                   .toUpperCase()}
+
               </span>
+
 
               <div>
 
@@ -2015,7 +1934,15 @@
                 </strong>
 
                 <span>
-                  ${player.host ? "HOST" : "PLAYER"}
+
+                  ${
+                    player.host
+                    ?
+                    "HOST"
+                    :
+                    "PLAYER"
+                  }
+
                 </span>
 
               </div>
@@ -2059,37 +1986,32 @@
         if (privateRoom) {
 
           lobbyRoomCode.textContent =
-            currentRoom.roomCode;
+            currentRoom.code
+            ||
+            currentRoom.roomCode
+            ||
+            "------";
 
         }
 
       }
 
 
-      leaveLobbyBtn.addEventListener(
-        "click",
-        () => {
-
-          currentRoom =
-            null;
-
-
-          showScreen(
-            "homeScreen"
-          );
-
-        }
-      );
-
+      /* ===================================================
+         COPY CODE
+      ==================================================== */
 
       copyRoomCodeBtn.addEventListener(
         "click",
         async () => {
 
-          if (
-            !currentRoom?.roomCode
-          ) {
+          const code =
+            currentRoom?.code
+            ||
+            currentRoom?.roomCode;
 
+
+          if (!code) {
             return;
           }
 
@@ -2097,7 +2019,7 @@
           try {
 
             await navigator.clipboard.writeText(
-              currentRoom.roomCode
+              code
             );
 
 
@@ -2120,7 +2042,7 @@
           catch {
 
             copyRoomCodeBtn.textContent =
-              currentRoom.roomCode;
+              code;
 
           }
 
@@ -2129,7 +2051,42 @@
 
 
       /* ===================================================
-         HOST STARTS CAR SELECTION
+         LEAVE ROOM
+      ==================================================== */
+
+      leaveLobbyBtn.addEventListener(
+        "click",
+        () => {
+
+          currentRoom =
+            null;
+
+
+          sessionStorage.removeItem(
+            "redline_room_code"
+          );
+
+
+          sessionStorage.removeItem(
+            "redline_player_token"
+          );
+
+
+          sessionStorage.removeItem(
+            "redline_player_id"
+          );
+
+
+          showScreen(
+            "homeScreen"
+          );
+
+        }
+      );
+
+
+      /* ===================================================
+         CAR SCREEN
       ==================================================== */
 
       openCarSelectBtn.addEventListener(
@@ -2173,7 +2130,8 @@
 
 
       /* ===================================================
-         CAR SELECTION UI
+         LOCAL CAR READY
+         TEMPORARY
       ==================================================== */
 
       document
@@ -2187,16 +2145,31 @@
               "click",
               () => {
 
-                const car =
-                  card.dataset.car;
+                if (!currentRoom) {
+                  return;
+                }
 
 
-                if (
-                  currentRoom?.players?.[0]
-                ) {
+                const myPlayerId =
+                  sessionStorage.getItem(
+                    "redline_player_id"
+                  );
 
-                  currentRoom.players[0].car =
-                    car;
+
+                const player =
+                  currentRoom.players.find(
+                    racer =>
+                      racer.id ===
+                      myPlayerId
+                  )
+                  ||
+                  currentRoom.players[0];
+
+
+                if (player) {
+
+                  player.car =
+                    card.dataset.car;
 
                 }
 
@@ -2206,7 +2179,7 @@
 
 
                 carReadyCount.textContent =
-                  `1 / ${currentRoom?.players?.length || 1} READY`;
+                  `1 / ${currentRoom.players.length} READY`;
 
               }
             );
@@ -2215,25 +2188,32 @@
         );
 
 
-      /*
-        game.js already handles the actual race start.
-
-        This local UI handler only records that the
-        single local player is ready.
-
-        Real multiplayer will replace this with
-        server-authoritative lock-in logic.
-      */
-
       startBtn.addEventListener(
         "click",
         () => {
 
-          if (
-            currentRoom?.players?.[0]
-          ) {
+          if (!currentRoom) {
+            return;
+          }
 
-            currentRoom.players[0].ready =
+
+          const myPlayerId =
+            sessionStorage.getItem(
+              "redline_player_id"
+            );
+
+
+          const player =
+            currentRoom.players.find(
+              racer =>
+                racer.id ===
+                myPlayerId
+            );
+
+
+          if (player) {
+
+            player.ready =
               true;
 
           }
@@ -2243,7 +2223,7 @@
 
 
       /* ===================================================
-         INITIALIZE
+         INITIAL
       ==================================================== */
 
       renderPublicRooms();
@@ -2253,7 +2233,7 @@
 
 
   <!-- =====================================================
-       REDLINE GAME
+       GAME
   ====================================================== -->
 
   <script
@@ -2263,7 +2243,7 @@
 
 
   <!-- =====================================================
-       REDLINE AUDIO
+       AUDIO
   ====================================================== -->
 
   <script
