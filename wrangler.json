@@ -1,0 +1,27 @@
+{
+  "name": "redline-multiplayer",
+  "main": "multiplayer/src/index.js",
+  "compatibility_date": "2026-09-28",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "RedlineRoom"
+      },
+      {
+        "name": "DIRECTORY",
+        "class_name": "RedlineDirectory"
+      }
+    ]
+  },
+  "exports": {
+    "RedlineRoom": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "RedlineDirectory": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}
