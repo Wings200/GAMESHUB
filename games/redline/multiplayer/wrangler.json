@@ -1,12 +1,8 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "redline-multiplayer",
-
   "main": "src/index.js",
-
   "compatibility_date": "2026-09-28",
-
   "durable_objects": {
     "bindings": [
       {
@@ -19,13 +15,11 @@
       }
     ]
   },
-
   "exports": {
     "RedlineRoom": {
       "type": "durable-object",
       "storage": "sqlite"
     },
-
     "RedlineDirectory": {
       "type": "durable-object",
       "storage": "sqlite"
