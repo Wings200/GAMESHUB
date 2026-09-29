@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>GAMESHUB</title>
+
+  <link
+    rel="icon"
+    href="/logo.png"
+  >
+
+  <style>
+
+    /* =====================================================
+       RESET
+    ====================================================== */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+
+      min-height: 100vh;
+
+      background:
+        radial-gradient(
+          circle at 72% 8%,
+          rgba(67, 101, 171, 0.15),
+          transparent 34%
+        ),
+        #080b10;
+
+      color: #f5f7fb;
+
+      font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+
+    /* =====================================================
+       HEADER
+    ====================================================== */
+
+    .site-header {
+      position: sticky;
+
+      top: 0;
+
+      z-index: 50;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+      gap: 28px;
+
+      min-height: 76px;
+
+      padding: 0 34px;
+
+      border-bottom:
+        1px solid rgba(255, 255, 255, 0.07);
+
+      background:
+        rgba(8, 11, 16, 0.88);
+
+      backdrop-filter:
+        blur(18px);
+    }
+
+    .brand {
+      display: flex;
+
+      align-items: center;
+
+      gap: 12px;
+
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 39px;
+      height: 39px;
+
+      object-fit: contain;
+    }
+
+    .brand-copy {
+      display: grid;
+
+      gap: 1px;
+    }
+
+    .brand-name {
+      font-size: 16px;
+
+      font-weight: 950;
+
+      letter-spacing: 0.08em;
+    }
+
+    .brand-tagline {
+      color: #707c8f;
+
+      font-size: 9px;
+
+      font-weight: 800;
+
+      letter-spacing: 0.13em;
+    }
+
+
+    /* =====================================================
+       NAVIGATION
+    ====================================================== */
+
+    .nav {
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      margin-left: auto;
+    }
+
+    .nav a {
+      padding: 9px 12px;
+
+      border-radius: 6px;
+
+      color: #8994a6;
+
+      font-size: 11px;
+
+      font-weight: 850;
+
+      letter-spacing: 0.06em;
+
+      text-decoration: none;
+
+      transition:
+        color 0.14s ease,
+        background 0.14s ease;
+    }
+
+    .nav a:hover {
+      color: #ffffff;
+
+      background:
+        rgba(255, 255, 255, 0.05);
+    }
+
+
+    /* =====================================================
+       LOGOUT
+    ====================================================== */
+
+    .logout-button {
+      padding: 9px 13px;
+
+      border:
+        1px solid #293345;
+
+      border-radius: 7px;
+
+      background: #111722;
+
+      color: #9da8b8;
+
+      cursor: pointer;
+
+      font-size: 10px;
+
+      font-weight: 900;
+
+      letter-spacing: 0.07em;
+
+      transition:
+        border-color 0.14s ease,
+        color 0.14s ease,
+        background 0.14s ease;
+    }
+
+    .logout-button:hover {
+      border-color: #43536d;
+
+      background: #171f2c;
+
+      color: #ffffff;
+    }
+
+
+    /* =====================================================
+       PAGE
+    ====================================================== */
+
+    .page {
+      width:
+        min(1280px, calc(100% - 48px));
+
+      margin:
+        0 auto;
+
+      padding:
+        52px 0 70px;
+    }
+
+
+    /* =====================================================
+       FEATURED HERO
+    ====================================================== */
+
+    .featured {
+      position: relative;
+
+      min-height: 480px;
+
+      overflow: hidden;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(340px, 0.85fr)
+        minmax(420px, 1.15fr);
+
+      border:
+        1px solid #202936;
+
+      border-radius: 18px;
+
+      background:
+        linear-gradient(
+          120deg,
+          #0c121c,
+          #111b2a
+        );
+
+      box-shadow:
+        0 32px 90px
+        rgba(0, 0, 0, 0.32);
+    }
+
+    .featured-content {
+      position: relative;
+
+      z-index: 5;
+
+      display: flex;
+
+      flex-direction: column;
+
+      justify-content: center;
+
+      padding: 54px;
+    }
+
+    .eyebrow {
+      color: #6f8fc6;
+
+      font-size: 10px;
+
+      font-weight: 900;
+
+      letter-spacing: 0.18em;
+    }
+
+    .featured-title {
+      margin:
+        8px 0 14px;
+
+      font-size:
+        clamp(54px, 7vw, 92px);
+
+      line-height: 0.87;
+
+      font-style: italic;
+
+      font-weight: 1000;
+
+      letter-spacing: -0.075em;
+    }
+
+    .featured-description {
+      max-width: 500px;
+
+      margin: 0;
+
+      color: #8996aa;
+
+      font-size: 14px;
+
+      line-height: 1.65;
+    }
+
+
+    /* =====================================================
+       TAGS
+    ====================================================== */
+
+    .tags {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 7px;
+
+      margin-top: 22px;
+    }
+
+    .tag {
+      padding: 6px 9px;
+
+      border:
+        1px solid #2a374a;
+
+      border-radius: 5px;
+
+      background:
+        rgba(15, 23, 34, 0.78);
+
+      color: #8ea0ba;
+
+      font-size: 9px;
+
+      font-weight: 850;
+
+      letter-spacing: 0.07em;
+
+      text-transform: uppercase;
+    }
+
+
+    /* =====================================================
+       HERO BUTTON
+    ====================================================== */
+
+    .hero-actions {
+      display: flex;
+
+      gap: 10px;
+
+      margin-top: 27px;
+    }
+
+    .play-button {
+      min-width: 150px;
+
+      display: inline-flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      min-height: 48px;
+
+      padding: 0 21px;
+
+      border:
+        1px solid #4b76c7;
+
+      border-radius: 8px;
+
+      background:
+        linear-gradient(
+          180deg,
+          #3d6bbd,
+          #2d5193
+        );
+
+      color: #ffffff;
+
+      font-size: 11px;
+
+      font-weight: 950;
+
+      letter-spacing: 0.08em;
+
+      text-decoration: none;
+
+      box-shadow:
+        0 12px 34px
+        rgba(44, 91, 174, 0.22);
+
+      transition:
+        transform 0.15s ease,
+        background 0.15s ease;
+    }
+
+    .play-button:hover {
+      transform:
+        translateY(-2px);
+
+      background:
+        linear-gradient(
+          180deg,
+          #4979ce,
+          #3260ac
+        );
+    }
+
+
+    /* =====================================================
+       REDLINE FEATURED ART
+    ====================================================== */
+
+    .featured-art {
+      position: relative;
+
+      min-height: 480px;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          180deg,
+          #172438 0%,
+          #111c2b 45%,
+          #0a0d12 100%
+        );
+    }
+
+    .featured-art::before {
+      content: "";
+
+      position: absolute;
+
+      inset: 0;
+
+      background:
+        linear-gradient(
+          90deg,
+          #111927 0%,
+          transparent 30%
+        );
+
+      z-index: 4;
+    }
+
+
+    /* SKY */
+
+    .sun {
+      position: absolute;
+
+      width: 170px;
+      height: 170px;
+
+      right: 18%;
+      top: 65px;
+
+      border-radius: 50%;
+
+      background:
+        linear-gradient(
+          180deg,
+          #e6a369,
+          #af5362
+        );
+
+      box-shadow:
+        0 0 80px
+        rgba(204, 96, 91, 0.22);
+    }
+
+
+    /* BUILDINGS */
+
+    .building {
+      position: absolute;
+
+      bottom: 140px;
+
+      background:
+        linear-gradient(
+          180deg,
+          #1c2939,
+          #0d131c
+        );
+
+      border:
+        1px solid
+        rgba(134, 161, 196, 0.08);
+    }
+
+    .building::after {
+      content: "";
+
+      position: absolute;
+
+      inset: 13px 9px;
+
+      background:
+        repeating-linear-gradient(
+          180deg,
+          rgba(114, 161, 213, 0.18) 0,
+          rgba(114, 161, 213, 0.18) 3px,
+          transparent 3px,
+          transparent 14px
+        );
+    }
+
+    .building.one {
+      width: 100px;
+      height: 240px;
+
+      left: 8%;
+    }
+
+    .building.two {
+      width: 125px;
+      height: 310px;
+
+      left: 24%;
+    }
+
+    .building.three {
+      width: 88px;
+      height: 205px;
+
+      right: 27%;
+    }
+
+    .building.four {
+      width: 145px;
+      height: 275px;
+
+      right: 5%;
+    }
+
+
+    /* ROAD */
+
+    .road {
+      position: absolute;
+
+      width: 120%;
+
+      height: 235px;
+
+      left: -10%;
+
+      bottom: -40px;
+
+      transform:
+        perspective(550px)
+        rotateX(63deg);
+
+      transform-origin:
+        center top;
+
+      background:
+        linear-gradient(
+          90deg,
+          #181c23,
+          #252a32 46%,
+          #252a32 54%,
+          #181c23
+        );
+
+      border-top:
+        2px solid
+        rgba(255, 255, 255, 0.09);
+    }
+
+    .road::after {
+      content: "";
+
+      position: absolute;
+
+      width: 7px;
+
+      height: 100%;
+
+      left: 50%;
+
+      transform:
+        translateX(-50%);
+
+      background:
+        repeating-linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.55) 0,
+          rgba(255, 255, 255, 0.55) 28px,
+          transparent 28px,
+          transparent 58px
+        );
+    }
+
+
+    /* CAR */
+
+    .hero-car {
+      position: absolute;
+
+      width: 330px;
+      height: 130px;
+
+      right: 18%;
+
+      bottom: 85px;
+
+      z-index: 6;
+
+      transform:
+        perspective(750px)
+        rotateY(-13deg);
+    }
+
+    .hero-car-body {
+      position: absolute;
+
+      width: 100%;
+
+      height: 72px;
+
+      bottom: 12px;
+
+      border-radius:
+        56px 72px 22px 25px;
+
+      background:
+        linear-gradient(
+          180deg,
+          #f0f3f6,
+          #9ea9b5 68%,
+          #68727c
+        );
+
+      box-shadow:
+        0 19px 38px
+        rgba(0, 0, 0, 0.45);
+    }
+
+    .hero-car-body::before {
+      content: "";
+
+      position: absolute;
+
+      width: 120px;
+      height: 10px;
+
+      left: 91px;
+      bottom: 5px;
+
+      background: #3968bd;
+
+      border-radius: 20px;
+    }
+
+    .hero-car-roof {
+      position: absolute;
+
+      width: 156px;
+      height: 65px;
+
+      left: 89px;
+      bottom: 73px;
+
+      clip-path:
+        polygon(
+          10% 100%,
+          31% 6%,
+          79% 8%,
+          100% 100%
+        );
+
+      background:
+        linear-gradient(
+          180deg,
+          #182536,
+          #0a1018
+        );
+    }
+
+    .wheel {
+      position: absolute;
+
+      width: 64px;
+      height: 64px;
+
+      bottom: 0;
+
+      border:
+        14px solid #080a0e;
+
+      border-radius: 50%;
+
+      background: #717a85;
+
+      box-shadow:
+        inset 0 0 0 8px #20252d;
+    }
+
+    .wheel.front {
+      right: 43px;
+    }
+
+    .wheel.rear {
+      left: 42px;
+    }
+
+
+    /* =====================================================
+       LIBRARY HEADER
+    ====================================================== */
+
+    .library-header {
+      display: flex;
+
+      align-items: end;
+
+      justify-content: space-between;
+
+      gap: 24px;
+
+      margin-top: 54px;
+
+      margin-bottom: 21px;
+    }
+
+    .library-title {
+      margin: 5px 0 0;
+
+      font-size: 29px;
+
+      letter-spacing: -0.035em;
+    }
+
+    .library-description {
+      margin: 8px 0 0;
+
+      color: #697589;
+
+      font-size: 12px;
+    }
+
+
+    /* =====================================================
+       SEARCH
+    ====================================================== */
+
+    .search-box {
+      width: min(330px, 100%);
+
+      height: 44px;
+
+      padding: 0 15px;
+
+      border:
+        1px solid #252f3f;
+
+      border-radius: 8px;
+
+      outline: none;
+
+      background: #0d121a;
+
+      color: #ffffff;
+
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+
+    .search-box:focus {
+      border-color: #416dbb;
+
+      box-shadow:
+        0 0 0 3px
+        rgba(61, 110, 192, 0.10);
+    }
+
+    .search-box::placeholder {
+      color: #515c6d;
+    }
+
+
+    /* =====================================================
+       FILTERS
+    ====================================================== */
+
+    .filters {
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 7px;
+
+      margin-bottom: 17px;
+    }
+
+    .filter-button {
+      padding: 8px 12px;
+
+      border:
+        1px solid #252e3d;
+
+      border-radius: 6px;
+
+      background: #0e141d;
+
+      color: #778396;
+
+      cursor: pointer;
+
+      font-size: 9px;
+
+      font-weight: 900;
+
+      letter-spacing: 0.08em;
+
+      text-transform: uppercase;
+
+      transition:
+        background 0.13s ease,
+        border-color 0.13s ease,
+        color 0.13s ease;
+    }
+
+    .filter-button:hover {
+      color: #ffffff;
+
+      border-color: #39495f;
+    }
+
+    .filter-button.active {
+      border-color: #3e65a8;
+
+      background: #15243a;
+
+      color: #c9dcff;
+    }
+
+
+    /* =====================================================
+       GAME GRID
+    ====================================================== */
+
+    .game-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(0, 1fr)
+        );
+
+      gap: 16px;
+    }
+
+
+    /* =====================================================
+       GAME CARDS
+    ====================================================== */
+
+    .game-card {
+      position: relative;
+
+      min-height: 255px;
+
+      overflow: hidden;
+
+      border:
+        1px solid #202936;
+
+      border-radius: 12px;
+
+      background:
+        linear-gradient(
+          180deg,
+          #101721,
+          #0b1017
+        );
+
+      text-decoration: none;
+
+      transition:
+        transform 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease;
+    }
+
+    .game-card:hover {
+      transform:
+        translateY(-4px);
+
+      border-color: #35465f;
+
+      box-shadow:
+        0 22px 60px
+        rgba(0, 0, 0, 0.26);
+    }
+
+    .game-thumb {
+      position: relative;
+
+      height: 158px;
+
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          150deg,
+          #162438,
+          #0d141f
+        );
+    }
+
+    .game-card-content {
+      padding: 15px;
+    }
+
+    .game-card-title {
+      margin: 0;
+
+      font-size: 17px;
+
+      font-weight: 900;
+    }
+
+    .game-card-description {
+      margin: 7px 0 0;
+
+      color: #6f7b8e;
+
+      font-size: 11px;
+
+      line-height: 1.45;
+    }
+
+    .card-tags {
+      display: flex;
+
+      gap: 5px;
+
+      margin-top: 11px;
+    }
+
+    .card-tag {
+      padding: 4px 6px;
+
+      border:
+        1px solid #283447;
+
+      border-radius: 4px;
+
+      color: #6f819c;
+
+      font-size: 7px;
+
+      font-weight: 900;
+
+      letter-spacing: 0.08em;
+
+      text-transform: uppercase;
+    }
+
+
+    /* =====================================================
+       REDLINE CARD ART
+    ====================================================== */
+
+    .redline-thumb {
+      background:
+        radial-gradient(
+          circle at 76% 26%,
+          #b25963 0 10%,
+          transparent 11%
+        ),
+        linear-gradient(
+          160deg,
+          #16243a,
+          #0b1018
+        );
+    }
+
+    .redline-thumb::before {
+      content: "";
+
+      position: absolute;
+
+      width: 130px;
+      height: 45px;
+
+      left: 50%;
+
+      bottom: 37px;
+
+      transform:
+        translateX(-50%)
+        skewX(-9deg);
+
+      border-radius:
+        24px 35px 10px 11px;
+
+      background:
+        linear-gradient(
+          180deg,
+          #e5e9ee,
+          #7f8995
+        );
+
+      box-shadow:
+        0 15px 25px
+        rgba(0, 0, 0, 0.38);
+    }
+
+    .redline-thumb::after {
+      content: "";
+
+      position: absolute;
+
+      width: 150%;
+
+      height: 55px;
+
+      left: -25%;
+
+      bottom: -18px;
+
+      transform:
+        perspective(300px)
+        rotateX(60deg);
+
+      background: #232830;
+    }
+
+
+    /* =====================================================
+       COMING SOON
+    ====================================================== */
+
+    .coming-card {
+      opacity: 0.56;
+
+      cursor: default;
+    }
+
+    .coming-card:hover {
+      transform: none;
+
+      border-color: #202936;
+
+      box-shadow: none;
+    }
+
+    .coming-thumb {
+      display: grid;
+
+      place-items: center;
+
+      color: #455165;
+
+      font-size: 42px;
+
+      font-weight: 200;
+    }
+
+
+    /* =====================================================
+       EMPTY SEARCH
+    ====================================================== */
+
+    .empty-message {
+      grid-column: 1 / -1;
+
+      display: none;
+
+      padding: 44px;
+
+      border:
+        1px dashed #253044;
+
+      border-radius: 10px;
+
+      color: #647185;
+
+      text-align: center;
+
+      font-size: 12px;
+    }
+
+
+    /* =====================================================
+       FOOTER
+    ====================================================== */
+
+    footer {
+      margin-top: 60px;
+
+      padding-top: 19px;
+
+      border-top:
+        1px solid #19212c;
+
+      color: #4d596a;
+
+      font-size: 10px;
+
+      letter-spacing: 0.06em;
+    }
+
+
+    /* =====================================================
+       RESPONSIVE
+    ====================================================== */
+
+    @media (max-width: 900px) {
+
+      .site-header {
+        padding:
+          0 18px;
+      }
+
+      .nav {
+        display: none;
+      }
+
+      .page {
+        width:
+          min(
+            100% - 28px,
+            1280px
+          );
+
+        padding-top: 24px;
+      }
+
+      .featured {
+        grid-template-columns: 1fr;
+      }
+
+      .featured-content {
+        padding: 35px;
+      }
+
+      .featured-art {
+        min-height: 360px;
+      }
+
+      .game-grid {
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+      }
+
+    }
+
+
+    @media (max-width: 620px) {
+
+      .site-header {
+        min-height: 65px;
+      }
+
+      .brand-tagline {
+        display: none;
+      }
+
+      .featured-content {
+        padding:
+          28px 23px;
+      }
+
+      .featured-art {
+        min-height: 300px;
+      }
+
+      .hero-car {
+        width: 250px;
+        height: 105px;
+
+        right: 12%;
+      }
+
+      .library-header {
+        align-items: stretch;
+
+        flex-direction: column;
+      }
+
+      .search-box {
+        width: 100%;
+      }
+
+      .game-grid {
+        grid-template-columns: 1fr;
+      }
+
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+
+  <!-- =====================================================
+       HEADER
+  ====================================================== -->
+
+  <header class="site-header">
+
+    <a
+      href="/"
+      class="brand"
+    >
+
+      <img
+        class="brand-logo"
+        src="/logo.png"
+        alt="GAMESHUB"
+      >
+
+      <div class="brand-copy">
+
+        <span class="brand-name">
+          GAMESHUB
+        </span>
+
+        <span class="brand-tagline">
+          PLAY SOMETHING GOOD.
+        </span>
+
+      </div>
+
+    </a>
+
+
+    <nav class="nav">
+
+      <a href="#games">
+        GAMES
+      </a>
+
+      <a href="#multiplayer">
+        MULTIPLAYER
+      </a>
+
+      <a href="#new">
+        NEW
+      </a>
+
+    </nav>
+
+
+    <button
+      id="logoutButton"
+      class="logout-button"
+      type="button"
+    >
+      LOG OUT
+    </button>
+
+  </header>
+
+
+  <!-- =====================================================
+       PAGE
+  ====================================================== -->
+
+  <main class="page">
+
+
+    <!-- ===================================================
+         FEATURED REDLINE
+    ==================================================== -->
+
+    <section class="featured">
+
+      <div class="featured-content">
+
+        <span class="eyebrow">
+          FEATURED GAME
+        </span>
+
+        <h1 class="featured-title">
+          REDLINE
+        </h1>
+
+        <p class="featured-description">
+          A lightweight 3D street racing game built for speed,
+          drifting, nitro, multiplayer rooms, and low-power hardware.
+        </p>
+
+
+        <div class="tags">
+
+          <span class="tag">
+            3D
+          </span>
+
+          <span class="tag">
+            RACING
+          </span>
+
+          <span class="tag">
+            MULTIPLAYER
+          </span>
+
+          <span class="tag">
+            CHROMEBOOK OPTIMIZED
+          </span>
+
+        </div>
+
+
+        <div class="hero-actions">
+
+          <a
+            class="play-button"
+            href="/games/redline/"
+          >
+            PLAY REDLINE
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- FEATURED ART -->
+
+      <div class="featured-art">
+
+        <div class="sun"></div>
+
+        <div class="building one"></div>
+
+        <div class="building two"></div>
+
+        <div class="building three"></div>
+
+        <div class="building four"></div>
+
+        <div class="road"></div>
+
+
+        <div class="hero-car">
+
+          <div class="hero-car-roof"></div>
+
+          <div class="hero-car-body"></div>
+
+          <div class="wheel rear"></div>
+
+          <div class="wheel front"></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         GAME LIBRARY
+    ==================================================== -->
+
+    <section
+      id="games"
+    >
+
+      <div class="library-header">
+
+        <div>
+
+          <span class="eyebrow">
+            LIBRARY
+          </span>
+
+          <h2 class="library-title">
+            Games
+          </h2>
+
+          <p class="library-description">
+            Pick something and play.
+          </p>
+
+        </div>
+
+
+        <input
+          id="gameSearch"
+          class="search-box"
+          type="search"
+          placeholder="Search games..."
+          autocomplete="off"
+        >
+
+      </div>
+
+
+      <!-- FILTERS -->
+
+      <div class="filters">
+
+        <button
+          class="filter-button active"
+          data-filter="all"
+          type="button"
+        >
+          ALL
+        </button>
+
+        <button
+          class="filter-button"
+          data-filter="multiplayer"
+          type="button"
+        >
+          MULTIPLAYER
+        </button>
+
+        <button
+          class="filter-button"
+          data-filter="racing"
+          type="button"
+        >
+          RACING
+        </button>
+
+        <button
+          class="filter-button"
+          data-filter="action"
+          type="button"
+        >
+          ACTION
+        </button>
+
+      </div>
+
+
+      <!-- CARDS -->
+
+      <div
+        id="gameGrid"
+        class="game-grid"
+      >
+
+
+        <!-- REDLINE -->
+
+        <a
+          href="/games/redline/"
+          class="game-card"
+          data-name="redline"
+          data-categories="racing multiplayer action"
+        >
+
+          <div
+            class="game-thumb redline-thumb"
+          ></div>
+
+
+          <div class="game-card-content">
+
+            <h3 class="game-card-title">
+              REDLINE
+            </h3>
+
+            <p class="game-card-description">
+              3D street racing with drifting, nitro,
+              multiple cars, and multiplayer rooms.
+            </p>
+
+
+            <div class="card-tags">
+
+              <span class="card-tag">
+                3D
+              </span>
+
+              <span class="card-tag">
+                RACING
+              </span>
+
+              <span class="card-tag">
+                MULTIPLAYER
+              </span>
+
+            </div>
+
+          </div>
+
+        </a>
+
+
+        <!-- FUTURE GAME -->
+
+        <article
+          class="game-card coming-card"
+          data-name="coming soon"
+          data-categories="action"
+        >
+
+          <div
+            class="game-thumb coming-thumb"
+          >
+            +
+          </div>
+
+
+          <div class="game-card-content">
+
+            <h3 class="game-card-title">
+              COMING SOON
+            </h3>
+
+            <p class="game-card-description">
+              Another GAMESHUB title is in development.
+            </p>
+
+
+            <div class="card-tags">
+
+              <span class="card-tag">
+                IN DEVELOPMENT
+              </span>
+
+            </div>
+
+          </div>
+
+        </article>
+
+
+        <div
+          id="emptyMessage"
+          class="empty-message"
+        >
+          No games matched your search.
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <footer>
+      GAMESHUB • BUILT FOR THE WEB
+    </footer>
+
+  </main>
+
+
+  <!-- =====================================================
+       HOMEPAGE LOGIC
+  ====================================================== -->
+
+  <script>
+
+    const searchInput =
+      document.getElementById(
+        "gameSearch"
+      );
+
+
+    const cards =
+      Array.from(
+        document.querySelectorAll(
+          ".game-card"
+        )
+      );
+
+
+    const filterButtons =
+      Array.from(
+        document.querySelectorAll(
+          ".filter-button"
+        )
+      );
+
+
+    const emptyMessage =
+      document.getElementById(
+        "emptyMessage"
+      );
+
+
+    let activeFilter =
+      "all";
+
+
+    /* =====================================================
+       FILTER GAMES
+    ====================================================== */
+
+    function updateGames() {
+
+      const search =
+        searchInput
+          .value
+          .trim()
+          .toLowerCase();
+
+
+      let visibleCount =
+        0;
+
+
+      for (
+        const card
+        of cards
+      ) {
+
+        const name =
+          (
+            card.dataset.name
+            ||
+            ""
+          )
+          .toLowerCase();
+
+
+        const categories =
+          (
+            card.dataset.categories
+            ||
+            ""
+          )
+          .toLowerCase();
+
+
+        const matchesSearch =
+          !search
+          ||
+          name.includes(
+            search
+          )
+          ||
+          categories.includes(
+            search
+          );
+
+
+        const matchesFilter =
+          activeFilter ===
+          "all"
+          ||
+          categories
+            .split(" ")
+            .includes(
+              activeFilter
+            );
+
+
+        const show =
+          matchesSearch
+          &&
+          matchesFilter;
+
+
+        card.style.display =
+          show
+          ?
+          ""
+          :
+          "none";
+
+
+        if (show) {
+
+          visibleCount++;
+
+        }
+
+      }
+
+
+      emptyMessage.style.display =
+        visibleCount ===
+        0
+        ?
+        "block"
+        :
+        "none";
+
+    }
+
+
+    searchInput.addEventListener(
+      "input",
+      updateGames
+    );
+
+
+    /* =====================================================
+       CATEGORY BUTTONS
+    ====================================================== */
+
+    for (
+      const button
+      of filterButtons
+    ) {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          activeFilter =
+            button.dataset.filter;
+
+
+          for (
+            const otherButton
+            of filterButtons
+          ) {
+
+            otherButton.classList.toggle(
+              "active",
+              otherButton === button
+            );
+
+          }
+
+
+          updateGames();
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       LOGOUT
+    ====================================================== */
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          try {
+
+            await fetch(
+              "/api/logout",
+              {
+                method:
+                  "POST"
+              }
+            );
+
+          }
+
+          catch (
+            error
+          ) {
+
+            console.error(
+              "Logout error:",
+              error
+            );
+
+          }
+
+
+          window.location.href =
+            "/login.html";
+
+        }
+      );
+
+  </script>
+
+</body>
+
+</html>
