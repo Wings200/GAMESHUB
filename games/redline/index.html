@@ -1,0 +1,3680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>REDLINE | GAMESHUB</title>
+
+  <link
+    rel="icon"
+    href="/logo.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="./style.css"
+  >
+</head>
+
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+
+  <!-- =====================================================
+       MENU
+  ====================================================== -->
+
+  <main
+    id="menu"
+    class="menu-shell"
+  >
+
+    <!-- ===================================================
+         HOME
+    ==================================================== -->
+
+    <section
+      id="homeScreen"
+      class="menu-screen active-screen"
+    >
+
+      <div class="screen-eyebrow">
+        GAMESHUB RACING
+      </div>
+
+      <h1 class="redline-logo">
+        REDLINE
+      </h1>
+
+      <p class="screen-subtitle">
+        Create a room, choose your car, and race.
+      </p>
+
+
+      <div class="username-panel">
+
+        <label for="usernameInput">
+          USERNAME
+        </label>
+
+        <input
+          id="usernameInput"
+          type="text"
+          maxlength="18"
+          autocomplete="off"
+          placeholder="Enter username"
+        >
+
+        <div
+          id="usernameStatus"
+          class="small-status"
+        >
+          Your username is saved on this device.
+        </div>
+
+      </div>
+
+
+      <div class="main-menu-actions">
+
+        <button
+          id="joinRoomBtn"
+          class="primary-button"
+          type="button"
+        >
+          JOIN ROOM
+        </button>
+
+
+        <button
+          id="createRoomBtn"
+          class="secondary-button"
+          type="button"
+        >
+          CREATE ROOM
+        </button>
+
+      </div>
+
+
+      <a
+        class="gameshub-back"
+        href="/"
+      >
+        ← BACK TO GAMESHUB
+      </a>
+
+    </section>
+
+
+    <!-- ===================================================
+         JOIN
+    ==================================================== -->
+
+    <section
+      id="joinScreen"
+      class="menu-screen hidden"
+    >
+
+      <div class="screen-topbar">
+
+        <button
+          class="text-button"
+          data-screen="homeScreen"
+          type="button"
+        >
+          ← BACK
+        </button>
+
+        <span>
+          JOIN ROOM
+        </span>
+
+        <span></span>
+
+      </div>
+
+
+      <div class="join-layout">
+
+        <!-- PUBLIC -->
+
+        <div class="join-section">
+
+          <div class="section-heading">
+
+            <div>
+
+              <span class="section-kicker">
+                PUBLIC
+              </span>
+
+              <h2>
+                Room Browser
+              </h2>
+
+            </div>
+
+
+            <button
+              id="refreshRoomsBtn"
+              class="small-button"
+              type="button"
+            >
+              REFRESH
+            </button>
+
+          </div>
+
+
+          <div
+            id="publicRoomList"
+            class="room-list"
+          >
+
+            <div class="public-room-card">
+
+              <div class="public-room-main">
+
+                <strong>
+                  Public room browser coming later
+                </strong>
+
+                <span>
+                  Private multiplayer is live.
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- PRIVATE -->
+
+        <div class="join-section private-code-section">
+
+          <span class="section-kicker">
+            PRIVATE
+          </span>
+
+          <h2>
+            Room Code
+          </h2>
+
+          <p>
+            Enter the six-character room code.
+          </p>
+
+
+          <input
+            id="roomCodeInput"
+            class="room-code-input"
+            type="text"
+            maxlength="6"
+            autocomplete="off"
+            placeholder="ABC123"
+          >
+
+
+          <button
+            id="joinCodeBtn"
+            class="primary-button"
+            type="button"
+          >
+            JOIN PRIVATE ROOM
+          </button>
+
+
+          <div
+            id="joinError"
+            class="form-error hidden"
+          >
+            Could not join room.
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         CREATE
+    ==================================================== -->
+
+    <section
+      id="createScreen"
+      class="menu-screen hidden"
+    >
+
+      <div class="screen-topbar">
+
+        <button
+          class="text-button"
+          data-screen="homeScreen"
+          type="button"
+        >
+          ← BACK
+        </button>
+
+        <span>
+          CREATE ROOM
+        </span>
+
+        <span></span>
+
+      </div>
+
+
+      <div class="create-room-panel">
+
+        <div class="form-group">
+
+          <label for="roomNameInput">
+            ROOM NAME
+          </label>
+
+          <input
+            id="roomNameInput"
+            type="text"
+            maxlength="24"
+            autocomplete="off"
+            placeholder="Night Racers"
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="maxPlayersSelect">
+            MAX PLAYERS
+          </label>
+
+          <select id="maxPlayersSelect">
+
+            <option value="1">
+              1 Player
+            </option>
+
+            <option value="2">
+              2 Players
+            </option>
+
+            <option value="3">
+              3 Players
+            </option>
+
+            <option value="4">
+              4 Players
+            </option>
+
+            <option value="5">
+              5 Players
+            </option>
+
+            <option value="6">
+              6 Players
+            </option>
+
+            <option value="7">
+              7 Players
+            </option>
+
+            <option
+              value="8"
+              selected
+            >
+              8 Players
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>
+            ROOM PRIVACY
+          </label>
+
+
+          <div class="privacy-selector">
+
+            <button
+              id="publicPrivacyBtn"
+              class="privacy-option selected"
+              type="button"
+            >
+
+              <strong>
+                PUBLIC
+              </strong>
+
+              <span>
+                Appears in the room browser
+              </span>
+
+            </button>
+
+
+            <button
+              id="privatePrivacyBtn"
+              class="privacy-option"
+              type="button"
+            >
+
+              <strong>
+                PRIVATE
+              </strong>
+
+              <span>
+                Join using a room code
+              </span>
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <button
+          id="confirmCreateBtn"
+          class="primary-button"
+          type="button"
+        >
+          CREATE ROOM
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         LOBBY
+    ==================================================== -->
+
+    <section
+      id="lobbyScreen"
+      class="menu-screen hidden"
+    >
+
+      <div class="screen-topbar">
+
+        <button
+          id="leaveLobbyBtn"
+          class="text-button"
+          type="button"
+        >
+          ← LEAVE
+        </button>
+
+
+        <span id="lobbyRoomName">
+          ROOM
+        </span>
+
+
+        <span
+          id="lobbyPlayerCount"
+          class="player-count"
+        >
+          1 / 8
+        </span>
+
+      </div>
+
+
+      <div class="lobby-layout">
+
+        <!-- PLAYERS -->
+
+        <div class="lobby-panel players-panel">
+
+          <div class="section-heading">
+
+            <div>
+
+              <span class="section-kicker">
+                RACERS
+              </span>
+
+              <h2>
+                Players
+              </h2>
+
+            </div>
+
+          </div>
+
+
+          <div
+            id="lobbyPlayerList"
+            class="lobby-player-list"
+          ></div>
+
+        </div>
+
+
+        <!-- SETTINGS -->
+
+        <div class="lobby-panel host-panel">
+
+          <span class="section-kicker">
+            RACE SETTINGS
+          </span>
+
+          <h2>
+            Choose Track
+          </h2>
+
+
+          <div class="map-select-area">
+
+            <select id="trackSelect">
+
+              <option value="neon">
+                Neon District
+              </option>
+
+              <option
+                value="canyon"
+                disabled
+              >
+                Dustfall Canyon — REBUILDING
+              </option>
+
+              <option
+                value="arctic"
+                disabled
+              >
+                Arctic Relay — REBUILDING
+              </option>
+
+            </select>
+
+
+            <div
+              id="trackDescription"
+              class="track-description"
+            >
+              Neon District
+            </div>
+
+          </div>
+
+
+          <div
+            id="privateRoomCodePanel"
+            class="room-code-panel hidden"
+          >
+
+            <span>
+              PRIVATE ROOM CODE
+            </span>
+
+            <strong id="lobbyRoomCode">
+              ------
+            </strong>
+
+            <button
+              id="copyRoomCodeBtn"
+              class="small-button"
+              type="button"
+            >
+              COPY CODE
+            </button>
+
+          </div>
+
+
+          <div class="host-info">
+
+            <span>
+              HOST
+            </span>
+
+            <strong id="hostUsername">
+              Racer
+            </strong>
+
+          </div>
+
+
+          <button
+            id="openCarSelectBtn"
+            class="primary-button"
+            type="button"
+          >
+            START RACE
+          </button>
+
+
+          <div
+            id="hostOnlyMessage"
+            class="small-status hidden"
+          >
+            Waiting for the host to start the race.
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================
+         CAR SELECT
+    ==================================================== -->
+
+    <section
+      id="carSelectScreen"
+      class="menu-screen hidden"
+    >
+
+      <div class="screen-topbar">
+
+        <span></span>
+
+        <span>
+          SELECT YOUR CAR
+        </span>
+
+        <span id="carReadyCount">
+          0 / 1 READY
+        </span>
+
+      </div>
+
+
+      <div class="garage-header">
+
+        <div>
+
+          <span class="section-kicker">
+            CURRENT VEHICLE
+          </span>
+
+          <h2 id="selectedCarName">
+            REDLINE GT
+          </h2>
+
+        </div>
+
+
+        <div class="lock-status">
+
+          <span id="lockStatus">
+            CHOOSE A CAR
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="carSelector"
+        class="car-selector"
+      >
+
+        <!-- GT -->
+
+        <button
+          class="car-card selected"
+          data-car="gt"
+          type="button"
+        >
+
+          <div class="preview-stage">
+
+            <div class="preview-car preview-gt">
+
+              <div class="preview-roof"></div>
+
+              <div class="preview-body"></div>
+
+              <div class="preview-wheel wheel-left"></div>
+
+              <div class="preview-wheel wheel-right"></div>
+
+            </div>
+
+          </div>
+
+
+          <div class="car-card-info">
+
+            <strong>
+              REDLINE GT
+            </strong>
+
+            <span>
+              Balanced
+            </span>
+
+          </div>
+
+        </button>
+
+
+        <!-- VORTEX -->
+
+        <button
+          class="car-card"
+          data-car="vortex"
+          type="button"
+        >
+
+          <div class="preview-stage">
+
+            <div class="preview-car preview-vortex">
+
+              <div class="preview-roof"></div>
+
+              <div class="preview-body"></div>
+
+              <div class="preview-wing"></div>
+
+              <div class="preview-wheel wheel-left"></div>
+
+              <div class="preview-wheel wheel-right"></div>
+
+            </div>
+
+          </div>
+
+
+          <div class="car-card-info">
+
+            <strong>
+              VORTEX R
+            </strong>
+
+            <span>
+              High Speed
+            </span>
+
+          </div>
+
+        </button>
+
+
+        <!-- APEX -->
+
+        <button
+          class="car-card"
+          data-car="apex"
+          type="button"
+        >
+
+          <div class="preview-stage">
+
+            <div class="preview-car preview-apex">
+
+              <div class="preview-roof"></div>
+
+              <div class="preview-body"></div>
+
+              <div class="preview-wheel wheel-left"></div>
+
+              <div class="preview-wheel wheel-right"></div>
+
+            </div>
+
+          </div>
+
+
+          <div class="car-card-info">
+
+            <strong>
+              APEX S
+            </strong>
+
+            <span>
+              Grip / Drift
+            </span>
+
+          </div>
+
+        </button>
+
+      </div>
+
+
+      <!-- STATS -->
+
+      <div class="car-stats">
+
+        <div class="stat">
+
+          <div class="stat-label">
+            <span>SPEED</span>
+          </div>
+
+          <div class="stat-track">
+
+            <div
+              id="speedStat"
+              class="stat-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <div class="stat-label">
+            <span>ACCELERATION</span>
+          </div>
+
+          <div class="stat-track">
+
+            <div
+              id="accelStat"
+              class="stat-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <div class="stat-label">
+            <span>GRIP</span>
+          </div>
+
+          <div class="stat-track">
+
+            <div
+              id="gripStat"
+              class="stat-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="stat">
+
+          <div class="stat-label">
+            <span>DRIFT</span>
+          </div>
+
+          <div class="stat-track">
+
+            <div
+              id="driftStat"
+              class="stat-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="car-select-footer">
+
+        <span
+          id="carSelectStatus"
+          class="small-status"
+        >
+          Choose a car, then lock in.
+        </span>
+
+
+        <button
+          id="lockInBtn"
+          class="primary-button"
+          type="button"
+        >
+          LOCK IN
+        </button>
+
+
+        <!-- game.js still starts from this button -->
+
+        <button
+          id="startBtn"
+          class="hidden"
+          type="button"
+          aria-hidden="true"
+          tabindex="-1"
+        >
+          START
+        </button>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+       RACE HUD
+  ====================================================== -->
+
+  <div
+    id="hud"
+    class="hud hidden"
+  >
+
+    <div class="race-info">
+
+      <div
+        id="trackName"
+        class="track-name"
+      >
+        NEON DISTRICT
+      </div>
+
+
+      <div
+        id="objective"
+        class="objective"
+      >
+        LAP 1 / 3
+      </div>
+
+
+      <div
+        id="checkpointText"
+        class="checkpoint-text"
+      >
+        CHECKPOINT 1 / 7
+      </div>
+
+    </div>
+
+
+    <div class="navigation">
+
+      <div
+        id="directionArrow"
+        class="direction-arrow"
+      >
+        ↑
+      </div>
+
+
+      <div class="navigation-copy">
+
+        <span id="navigationText">
+          STRAIGHT
+        </span>
+
+        <strong id="checkpointDistance">
+          0m
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="wrongWay"
+      class="wrong-way hidden"
+    >
+      WRONG WAY
+    </div>
+
+
+    <div class="race-standing">
+
+      <div class="standing-block">
+
+        <span>
+          POSITION
+        </span>
+
+        <strong>
+
+          <span id="racePosition">
+            1
+          </span>
+
+          /
+
+          <span id="totalRacers">
+            1
+          </span>
+
+        </strong>
+
+      </div>
+
+
+      <div class="standing-block">
+
+        <span>
+          TIME
+        </span>
+
+        <strong id="raceTimer">
+          00:00.000
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div class="minimap-wrap">
+
+      <canvas
+        id="minimap"
+        width="180"
+        height="180"
+      ></canvas>
+
+    </div>
+
+
+    <div class="vehicle-hud">
+
+      <div class="speed-display">
+
+        <span
+          id="speed"
+          class="speed-number"
+        >
+          0
+        </span>
+
+        <span class="speed-unit">
+          MPH
+        </span>
+
+      </div>
+
+
+      <div class="gear-display">
+
+        <span>
+          GEAR
+        </span>
+
+        <strong id="gear">
+          1
+        </strong>
+
+      </div>
+
+
+      <div class="meter-group">
+
+        <div class="meter">
+
+          <div class="meter-heading">
+            <span>RPM</span>
+          </div>
+
+
+          <div class="meter-track">
+
+            <div
+              id="rpmBar"
+              class="meter-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+
+        <div class="meter">
+
+          <div class="meter-heading">
+
+            <span>
+              NITRO
+            </span>
+
+            <span id="nitroPercent">
+              100%
+            </span>
+
+          </div>
+
+
+          <div class="meter-track">
+
+            <div
+              id="nitroBar"
+              class="meter-fill"
+            ></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="fps"
+      class="fps"
+    >
+      FPS 60
+    </div>
+
+  </div>
+
+
+  <div
+    id="countdown"
+    class="countdown hidden"
+  >
+    3
+  </div>
+
+
+  <div
+    id="checkpointPopup"
+    class="checkpoint-popup hidden"
+  >
+    CHECKPOINT
+  </div>
+
+
+  <div
+    id="message"
+    class="message hidden"
+  >
+    FINISH
+  </div>
+
+
+  <!-- =====================================================
+       MULTIPLAYER CONTROLLER
+  ====================================================== -->
+
+  <script>
+
+    (() => {
+
+      const MULTIPLAYER_API =
+        "https://redline-multiplayer.guestuseonly0173.workers.dev";
+
+
+      const MULTIPLAYER_WS =
+        "wss://redline-multiplayer.guestuseonly0173.workers.dev";
+
+
+      /* ===================================================
+         ELEMENTS
+      ==================================================== */
+
+      const screens = [
+        "homeScreen",
+        "joinScreen",
+        "createScreen",
+        "lobbyScreen",
+        "carSelectScreen"
+      ];
+
+
+      const usernameInput =
+        document.getElementById(
+          "usernameInput"
+        );
+
+
+      const usernameStatus =
+        document.getElementById(
+          "usernameStatus"
+        );
+
+
+      const joinRoomBtn =
+        document.getElementById(
+          "joinRoomBtn"
+        );
+
+
+      const createRoomBtn =
+        document.getElementById(
+          "createRoomBtn"
+        );
+
+
+      const confirmCreateBtn =
+        document.getElementById(
+          "confirmCreateBtn"
+        );
+
+
+      const roomNameInput =
+        document.getElementById(
+          "roomNameInput"
+        );
+
+
+      const maxPlayersSelect =
+        document.getElementById(
+          "maxPlayersSelect"
+        );
+
+
+      const publicPrivacyBtn =
+        document.getElementById(
+          "publicPrivacyBtn"
+        );
+
+
+      const privatePrivacyBtn =
+        document.getElementById(
+          "privatePrivacyBtn"
+        );
+
+
+      const lobbyRoomName =
+        document.getElementById(
+          "lobbyRoomName"
+        );
+
+
+      const lobbyPlayerCount =
+        document.getElementById(
+          "lobbyPlayerCount"
+        );
+
+
+      const lobbyPlayerList =
+        document.getElementById(
+          "lobbyPlayerList"
+        );
+
+
+      const hostUsername =
+        document.getElementById(
+          "hostUsername"
+        );
+
+
+      const privateRoomCodePanel =
+        document.getElementById(
+          "privateRoomCodePanel"
+        );
+
+
+      const lobbyRoomCode =
+        document.getElementById(
+          "lobbyRoomCode"
+        );
+
+
+      const copyRoomCodeBtn =
+        document.getElementById(
+          "copyRoomCodeBtn"
+        );
+
+
+      const leaveLobbyBtn =
+        document.getElementById(
+          "leaveLobbyBtn"
+        );
+
+
+      const openCarSelectBtn =
+        document.getElementById(
+          "openCarSelectBtn"
+        );
+
+
+      const hostOnlyMessage =
+        document.getElementById(
+          "hostOnlyMessage"
+        );
+
+
+      const trackSelect =
+        document.getElementById(
+          "trackSelect"
+        );
+
+
+      const roomCodeInput =
+        document.getElementById(
+          "roomCodeInput"
+        );
+
+
+      const joinCodeBtn =
+        document.getElementById(
+          "joinCodeBtn"
+        );
+
+
+      const joinError =
+        document.getElementById(
+          "joinError"
+        );
+
+
+      const carReadyCount =
+        document.getElementById(
+          "carReadyCount"
+        );
+
+
+      const lockStatus =
+        document.getElementById(
+          "lockStatus"
+        );
+
+
+      const carSelectStatus =
+        document.getElementById(
+          "carSelectStatus"
+        );
+
+
+      const lockInBtn =
+        document.getElementById(
+          "lockInBtn"
+        );
+
+
+      const startBtn =
+        document.getElementById(
+          "startBtn"
+        );
+
+
+      const totalRacers =
+        document.getElementById(
+          "totalRacers"
+        );
+
+
+      /* ===================================================
+         STATE
+      ==================================================== */
+
+      let selectedPrivacy =
+        "public";
+
+
+      let currentRoom =
+        null;
+
+
+      let currentRoomCode =
+        null;
+
+
+      let myPlayerId =
+        null;
+
+
+      let myPlayerToken =
+        null;
+
+
+      let roomSocket =
+        null;
+
+
+      let reconnectTimer =
+        null;
+
+
+      let reconnectAttempts =
+        0;
+
+
+      let heartbeatTimer =
+        null;
+
+
+      let intentionalSocketClose =
+        false;
+
+
+      const pendingSocketMessages =
+        [];
+
+
+      let chosenCar =
+        "gt";
+
+
+      let localRaceStarted =
+        false;
+
+
+      let serverRaceStartAt =
+        null;
+
+
+      /* ===================================================
+         MULTIPLAYER BRIDGE FOR game.js
+      ==================================================== */
+
+      window.REDLINE_MP = {
+
+        get connected() {
+
+          return (
+            roomSocket?.readyState
+            ===
+            WebSocket.OPEN
+          );
+
+        },
+
+
+        get playerId() {
+
+          return myPlayerId;
+
+        },
+
+
+        get roomCode() {
+
+          return currentRoomCode;
+
+        },
+
+
+        get room() {
+
+          return currentRoom;
+
+        },
+
+
+        get raceStartAt() {
+
+          return (
+            serverRaceStartAt
+            ??
+            currentRoom?.raceStartAt
+            ??
+            null
+          );
+
+        },
+
+
+        get myPlayer() {
+
+          if (
+            !currentRoom
+            ||
+            !myPlayerId
+          ) {
+
+            return null;
+
+          }
+
+
+          return (
+            currentRoom.players.find(
+              player =>
+                player.id ===
+                myPlayerId
+            )
+            ||
+            null
+          );
+
+        },
+
+
+        get players() {
+
+          return (
+            currentRoom?.players
+            ??
+            []
+          );
+
+        },
+
+
+        sendRaceState(
+          state
+        ) {
+
+          return socketSend({
+            type:
+              "race_state",
+
+            ...state
+          });
+
+        },
+
+
+        sendFinish() {
+
+          return socketSend({
+            type:
+              "race_finish"
+          });
+
+        },
+
+
+        send(
+          payload
+        ) {
+
+          return socketSend(
+            payload
+          );
+
+        }
+
+      };
+
+
+      /* ===================================================
+         USERNAME
+      ==================================================== */
+
+      const savedUsername =
+        localStorage.getItem(
+          "redline_username"
+        );
+
+
+      if (
+        savedUsername
+      ) {
+
+        usernameInput.value =
+          savedUsername;
+
+      }
+
+
+      function getUsername() {
+
+        let name =
+          usernameInput
+            .value
+            .trim();
+
+
+        if (!name) {
+
+          name =
+            "Racer";
+
+        }
+
+
+        name =
+          name.slice(
+            0,
+            18
+          );
+
+
+        usernameInput.value =
+          name;
+
+
+        localStorage.setItem(
+          "redline_username",
+          name
+        );
+
+
+        return name;
+
+      }
+
+
+      usernameInput.addEventListener(
+        "input",
+        () => {
+
+          const name =
+            usernameInput
+              .value
+              .trim();
+
+
+          if (!name) {
+
+            return;
+
+          }
+
+
+          localStorage.setItem(
+            "redline_username",
+            name
+          );
+
+
+          usernameStatus.textContent =
+            "Username saved.";
+
+        }
+      );
+
+
+      /* ===================================================
+         SCREEN SYSTEM
+      ==================================================== */
+
+      function showScreen(
+        screenId
+      ) {
+
+        for (
+          const id
+          of screens
+        ) {
+
+          const screen =
+            document.getElementById(
+              id
+            );
+
+
+          screen.classList.toggle(
+            "hidden",
+            id !== screenId
+          );
+
+
+          screen.classList.toggle(
+            "active-screen",
+            id === screenId
+          );
+
+        }
+
+      }
+
+
+      document
+        .querySelectorAll(
+          "[data-screen]"
+        )
+        .forEach(
+          button => {
+
+            button.addEventListener(
+              "click",
+              () => {
+
+                showScreen(
+                  button.dataset.screen
+                );
+
+              }
+            );
+
+          }
+        );
+
+
+      /* ===================================================
+         SESSION
+      ==================================================== */
+
+      function saveSession(
+        code,
+        playerId,
+        token
+      ) {
+
+        currentRoomCode =
+          code;
+
+
+        myPlayerId =
+          playerId;
+
+
+        myPlayerToken =
+          token;
+
+
+        sessionStorage.setItem(
+          "redline_room_code",
+          code
+        );
+
+
+        sessionStorage.setItem(
+          "redline_player_id",
+          playerId
+        );
+
+
+        sessionStorage.setItem(
+          "redline_player_token",
+          token
+        );
+
+      }
+
+
+      function clearSession() {
+
+        currentRoomCode =
+          null;
+
+
+        myPlayerId =
+          null;
+
+
+        myPlayerToken =
+          null;
+
+
+        serverRaceStartAt =
+          null;
+
+
+        sessionStorage.removeItem(
+          "redline_room_code"
+        );
+
+
+        sessionStorage.removeItem(
+          "redline_player_id"
+        );
+
+
+        sessionStorage.removeItem(
+          "redline_player_token"
+        );
+
+      }
+
+
+      /* ===================================================
+         HELPERS
+      ==================================================== */
+
+      function getMe() {
+
+        if (
+          !currentRoom
+        ) {
+
+          return null;
+
+        }
+
+
+        return (
+          currentRoom.players.find(
+            player =>
+              player.id ===
+              myPlayerId
+          )
+          ||
+          null
+        );
+
+      }
+
+
+      function socketSend(
+        payload
+      ) {
+
+        if (
+          roomSocket
+          &&
+          roomSocket.readyState ===
+          WebSocket.OPEN
+        ) {
+
+          roomSocket.send(
+            JSON.stringify(
+              payload
+            )
+          );
+
+
+          return true;
+
+        }
+
+
+        if (
+          payload?.type ===
+          "race_state"
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          !currentRoomCode
+          ||
+          !myPlayerToken
+        ) {
+
+          return false;
+
+        }
+
+
+        pendingSocketMessages.push(
+          payload
+        );
+
+
+        scheduleReconnect();
+
+
+        return true;
+
+      }
+
+
+      function flushPendingSocketMessages() {
+
+        if (
+          !roomSocket
+          ||
+          roomSocket.readyState !==
+          WebSocket.OPEN
+        ) {
+
+          return;
+
+        }
+
+
+        while (
+          pendingSocketMessages.length
+        ) {
+
+          const payload =
+            pendingSocketMessages.shift();
+
+
+          try {
+
+            roomSocket.send(
+              JSON.stringify(
+                payload
+              )
+            );
+
+          }
+
+          catch {
+
+            pendingSocketMessages.unshift(
+              payload
+            );
+
+
+            break;
+
+          }
+        }
+
+      }
+
+
+      function stopHeartbeat() {
+
+        if (
+          heartbeatTimer
+        ) {
+
+          clearInterval(
+            heartbeatTimer
+          );
+
+
+          heartbeatTimer =
+            null;
+
+        }
+
+      }
+
+
+      function startHeartbeat() {
+
+        stopHeartbeat();
+
+
+        heartbeatTimer =
+          setInterval(
+            () => {
+
+              if (
+                roomSocket?.readyState ===
+                WebSocket.OPEN
+              ) {
+
+                roomSocket.send(
+                  JSON.stringify({
+                    type:
+                      "ping"
+                  })
+                );
+
+              }
+
+            },
+            20000
+          );
+
+      }
+
+
+      function scheduleReconnect() {
+
+        if (
+          intentionalSocketClose
+          ||
+          reconnectTimer
+          ||
+          !currentRoomCode
+          ||
+          !myPlayerToken
+        ) {
+
+          return;
+
+        }
+
+
+        const delay =
+          Math.min(
+            3000,
+            400 *
+            Math.pow(
+              1.7,
+              reconnectAttempts
+            )
+          );
+
+
+        reconnectAttempts++;
+
+
+        reconnectTimer =
+          setTimeout(
+            () => {
+
+              reconnectTimer =
+                null;
+
+
+              connectRoomSocket(
+                currentRoomCode,
+                myPlayerToken,
+                true
+              );
+
+            },
+            delay
+          );
+
+      }
+
+
+      function dispatchMPEvent(
+        name,
+        detail
+      ) {
+
+        window.dispatchEvent(
+          new CustomEvent(
+            name,
+            {
+              detail
+            }
+          )
+        );
+
+      }
+
+
+      /* ===================================================
+         LOBBY
+      ==================================================== */
+
+      function renderLobby() {
+
+        if (
+          !currentRoom
+        ) {
+
+          return;
+
+        }
+
+
+        lobbyRoomName.textContent =
+          currentRoom.name;
+
+
+        lobbyPlayerCount.textContent =
+          `${currentRoom.players.length} / ${currentRoom.maxPlayers}`;
+
+
+        totalRacers.textContent =
+          currentRoom.players.length;
+
+
+        const host =
+          currentRoom.players.find(
+            player =>
+              player.host
+          );
+
+
+        hostUsername.textContent =
+          host?.username
+          ||
+          "Racer";
+
+
+        lobbyPlayerList.innerHTML =
+          "";
+
+
+        for (
+          const player
+          of currentRoom.players
+        ) {
+
+          const row =
+            document.createElement(
+              "div"
+            );
+
+
+          row.className =
+            "lobby-player-row";
+
+
+          const isMe =
+            player.id ===
+            myPlayerId;
+
+
+          const identity =
+            document.createElement(
+              "div"
+            );
+
+
+          identity.className =
+            "player-identity";
+
+
+          const avatar =
+            document.createElement(
+              "span"
+            );
+
+
+          avatar.className =
+            "player-avatar";
+
+
+          avatar.textContent =
+            player.username
+              .charAt(0)
+              .toUpperCase();
+
+
+          const copy =
+            document.createElement(
+              "div"
+            );
+
+
+          const name =
+            document.createElement(
+              "strong"
+            );
+
+
+          name.textContent =
+            isMe
+              ?
+              `${player.username} (YOU)`
+              :
+              player.username;
+
+
+          const role =
+            document.createElement(
+              "span"
+            );
+
+
+          role.textContent =
+            player.host
+              ?
+              "HOST"
+              :
+              "PLAYER";
+
+
+          copy.append(
+            name,
+            role
+          );
+
+
+          identity.append(
+            avatar,
+            copy
+          );
+
+
+          const state =
+            document.createElement(
+              "div"
+            );
+
+
+          state.className =
+            "player-ready-state";
+
+
+          state.textContent =
+            player.ready
+              ?
+              "READY ✓"
+              :
+              "WAITING";
+
+
+          row.append(
+            identity,
+            state
+          );
+
+
+          lobbyPlayerList.appendChild(
+            row
+          );
+
+        }
+
+
+        if (
+          currentRoom.privacy ===
+          "private"
+        ) {
+
+          privateRoomCodePanel
+            .classList
+            .remove(
+              "hidden"
+            );
+
+
+          lobbyRoomCode.textContent =
+            currentRoom.code;
+
+        }
+
+        else {
+
+          privateRoomCodePanel
+            .classList
+            .add(
+              "hidden"
+            );
+
+        }
+
+
+        const me =
+          getMe();
+
+
+        const amHost =
+          Boolean(
+            me?.host
+          );
+
+
+        openCarSelectBtn
+          .classList
+          .toggle(
+            "hidden",
+            !amHost
+          );
+
+
+        hostOnlyMessage
+          .classList
+          .toggle(
+            "hidden",
+            amHost
+          );
+
+
+        trackSelect.disabled =
+          !amHost;
+
+
+        if (
+          currentRoom.map
+        ) {
+
+          trackSelect.value =
+            currentRoom.map;
+
+        }
+
+      }
+
+
+      /* ===================================================
+         CAR SELECT
+      ==================================================== */
+
+      function renderCarSelect() {
+
+        if (
+          !currentRoom
+        ) {
+
+          return;
+
+        }
+
+
+        const readyPlayers =
+          currentRoom.players.filter(
+            player =>
+              player.ready
+          ).length;
+
+
+        carReadyCount.textContent =
+          `${readyPlayers} / ${currentRoom.players.length} READY`;
+
+
+        totalRacers.textContent =
+          currentRoom.players.length;
+
+
+        const me =
+          getMe();
+
+
+        if (
+          !me
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          me.car
+        ) {
+
+          chosenCar =
+            me.car;
+
+
+          document
+            .querySelectorAll(
+              ".car-card"
+            )
+            .forEach(
+              card => {
+
+                card.classList.toggle(
+                  "selected",
+                  card.dataset.car ===
+                  me.car
+                );
+
+              }
+            );
+
+        }
+
+
+        if (
+          me.ready
+        ) {
+
+          lockStatus.textContent =
+            "LOCKED IN";
+
+
+          carSelectStatus.textContent =
+            "Waiting for the other racers...";
+
+
+          lockInBtn.textContent =
+            "LOCKED IN";
+
+
+          lockInBtn.disabled =
+            true;
+
+        }
+
+        else {
+
+          lockStatus.textContent =
+            me.car
+              ?
+              "CAR SELECTED"
+              :
+              "CHOOSE A CAR";
+
+
+          carSelectStatus.textContent =
+            me.car
+              ?
+              "Ready when you are."
+              :
+              "Choose a car, then lock in.";
+
+
+          lockInBtn.textContent =
+            "LOCK IN";
+
+
+          lockInBtn.disabled =
+            !me.car;
+
+        }
+
+      }
+
+
+      /* ===================================================
+         PHASE
+      ==================================================== */
+
+      function applyRoomPhase() {
+
+        if (
+          !currentRoom
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          currentRoom.phase ===
+          "lobby"
+        ) {
+
+          localRaceStarted =
+            false;
+
+
+          renderLobby();
+
+
+          showScreen(
+            "lobbyScreen"
+          );
+
+
+          return;
+
+        }
+
+
+        if (
+          currentRoom.phase ===
+          "car_select"
+        ) {
+
+          renderCarSelect();
+
+
+          showScreen(
+            "carSelectScreen"
+          );
+
+
+          return;
+
+        }
+
+
+        if (
+          currentRoom.phase ===
+          "countdown"
+        ) {
+
+          renderCarSelect();
+
+
+          showScreen(
+            "carSelectScreen"
+          );
+
+        }
+
+      }
+
+
+      /* ===================================================
+         START LOCAL GAME
+      ==================================================== */
+
+      function launchLocalRace() {
+
+        if (
+          localRaceStarted
+        ) {
+
+          return;
+
+        }
+
+
+        localRaceStarted =
+          true;
+
+
+        totalRacers.textContent =
+          currentRoom?.players?.length
+          ||
+          1;
+
+
+        startBtn.click();
+
+      }
+
+
+      /* ===================================================
+         WEBSOCKET
+      ==================================================== */
+
+      function connectRoomSocket(
+        code,
+        token,
+        reconnecting = false
+      ) {
+
+        if (
+          !code
+          ||
+          !token
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          roomSocket
+          &&
+          (
+            roomSocket.readyState ===
+            WebSocket.OPEN
+            ||
+            roomSocket.readyState ===
+            WebSocket.CONNECTING
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        intentionalSocketClose =
+          false;
+
+
+        const socketUrl =
+          `${MULTIPLAYER_WS}/api/rooms/${encodeURIComponent(code)}/ws?token=${encodeURIComponent(token)}`;
+
+
+        const socket =
+          new WebSocket(
+            socketUrl
+          );
+
+
+        roomSocket =
+          socket;
+
+
+        socket.addEventListener(
+          "open",
+          () => {
+
+            if (
+              roomSocket !==
+              socket
+            ) {
+
+              return;
+
+            }
+
+
+            reconnectAttempts =
+              0;
+
+
+            if (
+              reconnectTimer
+            ) {
+
+              clearTimeout(
+                reconnectTimer
+              );
+
+
+              reconnectTimer =
+                null;
+
+            }
+
+
+            startHeartbeat();
+
+
+            flushPendingSocketMessages();
+
+
+            dispatchMPEvent(
+              "redline:connected",
+              {
+                playerId:
+                  myPlayerId,
+
+                reconnecting
+              }
+            );
+
+          }
+        );
+
+
+        socket.addEventListener(
+          "message",
+          event => {
+
+            let data;
+
+
+            try {
+
+              data =
+                JSON.parse(
+                  event.data
+                );
+
+            }
+
+            catch {
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "room_state"
+              &&
+              data.room
+            ) {
+
+              currentRoom =
+                data.room;
+
+
+              if (
+                data.room.raceStartAt
+              ) {
+
+                serverRaceStartAt =
+                  data.room.raceStartAt;
+
+              }
+
+              else if (
+                data.room.phase ===
+                "lobby"
+              ) {
+
+                serverRaceStartAt =
+                  null;
+
+              }
+
+
+              applyRoomPhase();
+
+
+              dispatchMPEvent(
+                "redline:room-state",
+                data.room
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "countdown"
+              &&
+              data.room
+            ) {
+
+              currentRoom =
+                data.room;
+
+
+              serverRaceStartAt =
+                data.startAt;
+
+
+              dispatchMPEvent(
+                "redline:countdown",
+                {
+                  startAt:
+                    data.startAt,
+
+                  room:
+                    data.room
+                }
+              );
+
+
+              launchLocalRace();
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "race_started"
+              &&
+              data.room
+            ) {
+
+              currentRoom =
+                data.room;
+
+
+              serverRaceStartAt =
+                data.startAt;
+
+
+              dispatchMPEvent(
+                "redline:race-started",
+                {
+                  startAt:
+                    data.startAt,
+
+                  room:
+                    data.room
+                }
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "race_state"
+              &&
+              data.state
+            ) {
+
+              dispatchMPEvent(
+                "redline:race-state",
+                data.state
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "race_snapshot"
+            ) {
+
+              if (
+                data.startAt
+              ) {
+
+                serverRaceStartAt =
+                  data.startAt;
+
+              }
+
+
+              if (
+                data.room
+              ) {
+
+                currentRoom =
+                  data.room;
+
+              }
+
+
+              dispatchMPEvent(
+                "redline:race-snapshot",
+                {
+                  startAt:
+                    data.startAt,
+
+                  states:
+                    data.states
+                    ??
+                    [],
+
+                  finishOrder:
+                    data.finishOrder
+                    ??
+                    [],
+
+                  raceComplete:
+                    data.raceComplete
+                    ??
+                    false,
+
+                  room:
+                    data.room
+                    ??
+                    currentRoom
+                }
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "player_finished"
+            ) {
+
+              if (
+                data.room
+              ) {
+
+                currentRoom =
+                  data.room;
+
+              }
+
+
+              dispatchMPEvent(
+                "redline:player-finished",
+                {
+                  result:
+                    data.result,
+
+                  finishOrder:
+                    data.finishOrder
+                    ??
+                    [],
+
+                  raceComplete:
+                    data.raceComplete
+                    ??
+                    false,
+
+                  room:
+                    data.room
+                    ??
+                    currentRoom
+                }
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "race_complete"
+            ) {
+
+              if (
+                data.room
+              ) {
+
+                currentRoom =
+                  data.room;
+
+              }
+
+
+              dispatchMPEvent(
+                "redline:race-complete",
+                {
+                  room:
+                    data.room
+                    ??
+                    currentRoom,
+
+                  finishOrder:
+                    data.finishOrder
+                    ??
+                    []
+                }
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "player_disconnected"
+            ) {
+
+              dispatchMPEvent(
+                "redline:player-disconnected",
+                {
+                  playerId:
+                    data.playerId
+                }
+              );
+
+
+              return;
+
+            }
+
+
+            if (
+              data.type ===
+              "error"
+            ) {
+
+              console.error(
+                "REDLINE multiplayer:",
+                data.error
+              );
+
+            }
+
+          }
+        );
+
+
+        socket.addEventListener(
+          "close",
+          () => {
+
+            if (
+              roomSocket !==
+              socket
+            ) {
+
+              return;
+
+            }
+
+
+            roomSocket =
+              null;
+
+
+            stopHeartbeat();
+
+
+            dispatchMPEvent(
+              "redline:disconnected",
+              {}
+            );
+
+
+            if (
+              !intentionalSocketClose
+            ) {
+
+              scheduleReconnect();
+
+            }
+
+          }
+        );
+
+
+        socket.addEventListener(
+          "error",
+          () => {}
+        );
+
+      }
+
+
+      /* ===================================================
+         HOME
+      ==================================================== */
+
+      joinRoomBtn.addEventListener(
+        "click",
+        () => {
+
+          getUsername();
+
+
+          joinError.classList.add(
+            "hidden"
+          );
+
+
+          showScreen(
+            "joinScreen"
+          );
+
+        }
+      );
+
+
+      createRoomBtn.addEventListener(
+        "click",
+        () => {
+
+          getUsername();
+
+
+          showScreen(
+            "createScreen"
+          );
+
+        }
+      );
+
+
+      /* ===================================================
+         PRIVACY
+      ==================================================== */
+
+      function setPrivacy(
+        privacy
+      ) {
+
+        selectedPrivacy =
+          privacy;
+
+
+        publicPrivacyBtn.classList.toggle(
+          "selected",
+          privacy ===
+          "public"
+        );
+
+
+        privatePrivacyBtn.classList.toggle(
+          "selected",
+          privacy ===
+          "private"
+        );
+
+      }
+
+
+      publicPrivacyBtn.addEventListener(
+        "click",
+        () => {
+
+          setPrivacy(
+            "public"
+          );
+
+        }
+      );
+
+
+      privatePrivacyBtn.addEventListener(
+        "click",
+        () => {
+
+          setPrivacy(
+            "private"
+          );
+
+        }
+      );
+
+
+      /* ===================================================
+         CREATE ROOM
+      ==================================================== */
+
+      confirmCreateBtn.addEventListener(
+        "click",
+        async () => {
+
+          const username =
+            getUsername();
+
+
+          const roomName =
+            roomNameInput
+              .value
+              .trim()
+            ||
+            `${username}'s Room`;
+
+
+          const maxPlayers =
+            Number(
+              maxPlayersSelect.value
+            );
+
+
+          confirmCreateBtn.disabled =
+            true;
+
+
+          confirmCreateBtn.textContent =
+            "CREATING...";
+
+
+          try {
+
+            const response =
+              await fetch(
+
+                `${MULTIPLAYER_API}/api/rooms`,
+
+                {
+
+                  method:
+                    "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body:
+                    JSON.stringify({
+                      username,
+                      name:
+                        roomName,
+                      privacy:
+                        selectedPrivacy,
+                      maxPlayers
+                    })
+
+                }
+
+              );
+
+
+            const data =
+              await response.json();
+
+
+            if (
+              !response.ok
+            ) {
+
+              throw new Error(
+                data.error
+                ||
+                "Could not create room."
+              );
+
+            }
+
+
+            currentRoom =
+              data.room;
+
+
+            saveSession(
+              data.code,
+              data.playerId,
+              data.playerToken
+            );
+
+
+            renderLobby();
+
+
+            showScreen(
+              "lobbyScreen"
+            );
+
+
+            connectRoomSocket(
+              data.code,
+              data.playerToken
+            );
+
+          }
+
+          catch (
+            error
+          ) {
+
+            alert(
+              `Could not create room: ${error.message}`
+            );
+
+          }
+
+          finally {
+
+            confirmCreateBtn.disabled =
+              false;
+
+
+            confirmCreateBtn.textContent =
+              "CREATE ROOM";
+
+          }
+
+        }
+      );
+
+
+      /* ===================================================
+         JOIN INPUT
+      ==================================================== */
+
+      roomCodeInput.addEventListener(
+        "input",
+        () => {
+
+          roomCodeInput.value =
+            roomCodeInput
+              .value
+              .toUpperCase()
+              .replace(
+                /[^A-Z0-9]/g,
+                ""
+              )
+              .slice(
+                0,
+                6
+              );
+
+
+          joinError.classList.add(
+            "hidden"
+          );
+
+        }
+      );
+
+
+      /* ===================================================
+         JOIN PRIVATE ROOM
+      ==================================================== */
+
+      joinCodeBtn.addEventListener(
+        "click",
+        async () => {
+
+          const username =
+            getUsername();
+
+
+          const code =
+            roomCodeInput
+              .value
+              .trim()
+              .toUpperCase();
+
+
+          if (
+            code.length !==
+            6
+          ) {
+
+            joinError.textContent =
+              "Enter a 6-character room code.";
+
+
+            joinError.classList.remove(
+              "hidden"
+            );
+
+
+            return;
+
+          }
+
+
+          joinCodeBtn.disabled =
+            true;
+
+
+          joinCodeBtn.textContent =
+            "JOINING...";
+
+
+          joinError.classList.add(
+            "hidden"
+          );
+
+
+          try {
+
+            const response =
+              await fetch(
+
+                `${MULTIPLAYER_API}/api/rooms/${encodeURIComponent(code)}/join`,
+
+                {
+
+                  method:
+                    "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body:
+                    JSON.stringify({
+                      username
+                    })
+
+                }
+
+              );
+
+
+            const data =
+              await response.json();
+
+
+            if (
+              !response.ok
+            ) {
+
+              throw new Error(
+                data.error
+                ||
+                "Could not join room."
+              );
+
+            }
+
+
+            currentRoom =
+              data.room;
+
+
+            saveSession(
+              data.code,
+              data.playerId,
+              data.playerToken
+            );
+
+
+            renderLobby();
+
+
+            showScreen(
+              "lobbyScreen"
+            );
+
+
+            connectRoomSocket(
+              data.code,
+              data.playerToken
+            );
+
+          }
+
+          catch (
+            error
+          ) {
+
+            joinError.textContent =
+              error.message;
+
+
+            joinError.classList.remove(
+              "hidden"
+            );
+
+          }
+
+          finally {
+
+            joinCodeBtn.disabled =
+              false;
+
+
+            joinCodeBtn.textContent =
+              "JOIN PRIVATE ROOM";
+
+          }
+
+        }
+      );
+
+
+      /* ===================================================
+         HOST MAP
+      ==================================================== */
+
+      trackSelect.addEventListener(
+        "change",
+        () => {
+
+          const me =
+            getMe();
+
+
+          if (
+            !me?.host
+          ) {
+
+            return;
+
+          }
+
+
+          socketSend({
+            type:
+              "set_map",
+
+            map:
+              trackSelect.value
+          });
+
+        }
+      );
+
+
+      /* ===================================================
+         HOST START
+      ==================================================== */
+
+      openCarSelectBtn.addEventListener(
+        "click",
+        () => {
+
+          const me =
+            getMe();
+
+
+          if (
+            !me?.host
+          ) {
+
+            return;
+
+          }
+
+
+          socketSend({
+            type:
+              "start_car_select"
+          });
+
+        }
+      );
+
+
+      /* ===================================================
+         CAR CHOICE
+      ==================================================== */
+
+      document
+        .querySelectorAll(
+          ".car-card"
+        )
+        .forEach(
+          card => {
+
+            card.addEventListener(
+              "click",
+              () => {
+
+                if (
+                  currentRoom?.phase !==
+                  "car_select"
+                ) {
+
+                  return;
+
+                }
+
+
+                const me =
+                  getMe();
+
+
+                if (
+                  me?.ready
+                ) {
+
+                  return;
+
+                }
+
+
+                chosenCar =
+                  card.dataset.car;
+
+
+                document
+                  .querySelectorAll(
+                    ".car-card"
+                  )
+                  .forEach(
+                    otherCard => {
+
+                      otherCard.classList.toggle(
+                        "selected",
+                        otherCard ===
+                        card
+                      );
+
+                    }
+                  );
+
+
+                lockStatus.textContent =
+                  "CAR SELECTED";
+
+
+                carSelectStatus.textContent =
+                  "Ready when you are.";
+
+
+                lockInBtn.disabled =
+                  false;
+
+
+                socketSend({
+                  type:
+                    "select_car",
+
+                  car:
+                    chosenCar
+                });
+
+              }
+            );
+
+          }
+        );
+
+
+      /* ===================================================
+         LOCK IN
+      ==================================================== */
+
+      lockInBtn.addEventListener(
+        "click",
+        () => {
+
+          if (
+            currentRoom?.phase !==
+            "car_select"
+          ) {
+
+            return;
+
+          }
+
+
+          const me =
+            getMe();
+
+
+          if (
+            !me?.car
+          ) {
+
+            return;
+
+          }
+
+
+          lockInBtn.disabled =
+            true;
+
+
+          lockInBtn.textContent =
+            "LOCKED IN";
+
+
+          lockStatus.textContent =
+            "LOCKED IN";
+
+
+          carSelectStatus.textContent =
+            "Waiting for the other racers...";
+
+
+          socketSend({
+            type:
+              "ready"
+          });
+
+        }
+      );
+
+
+      /* ===================================================
+         COPY CODE
+      ==================================================== */
+
+      copyRoomCodeBtn.addEventListener(
+        "click",
+        async () => {
+
+          if (
+            !currentRoom?.code
+          ) {
+
+            return;
+
+          }
+
+
+          try {
+
+            await navigator.clipboard.writeText(
+              currentRoom.code
+            );
+
+
+            copyRoomCodeBtn.textContent =
+              "COPIED";
+
+
+            setTimeout(
+              () => {
+
+                copyRoomCodeBtn.textContent =
+                  "COPY CODE";
+
+              },
+              1000
+            );
+
+          }
+
+          catch {
+
+            copyRoomCodeBtn.textContent =
+              currentRoom.code;
+
+          }
+
+        }
+      );
+
+
+      /* ===================================================
+         LEAVE
+      ==================================================== */
+
+      leaveLobbyBtn.addEventListener(
+        "click",
+        () => {
+
+          intentionalSocketClose =
+            true;
+
+
+          pendingSocketMessages.length =
+            0;
+
+
+          stopHeartbeat();
+
+
+          if (
+            reconnectTimer
+          ) {
+
+            clearTimeout(
+              reconnectTimer
+            );
+
+
+            reconnectTimer =
+              null;
+
+          }
+
+
+          if (
+            roomSocket
+          ) {
+
+            try {
+
+              roomSocket.close();
+
+            }
+
+            catch {}
+
+          }
+
+
+          roomSocket =
+            null;
+
+
+          currentRoom =
+            null;
+
+
+          localRaceStarted =
+            false;
+
+
+          clearSession();
+
+
+          showScreen(
+            "homeScreen"
+          );
+
+        }
+      );
+
+    })();
+
+  </script>
+
+
+  <script src="./music.js"></script>
+  <script src="./results.js"></script>
+
+
+  <!-- =====================================================
+       GAME
+  ====================================================== -->
+
+  <script
+    type="module"
+    src="./game.js"
+  ></script>
+
+
+  <!-- =====================================================
+       AUDIO
+  ====================================================== -->
+
+  <script
+    type="module"
+    src="./audio.js"
+  ></script>
+
+</body>
+
+</html>
