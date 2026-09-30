@@ -79,114 +79,262 @@ window.addEventListener("resize", resizeRenderer);
 resizeRenderer();
 const ROAD_HALF = 6.6;
 const SIDEWALK_OUTER = 9.2;
-const TRACK_SAMPLE_COUNT = 300;
-const TARGET_LAPS = 3;
 const CAR_RADIUS = 0.95;
-const CONTROL_POINTS = [
-    [-8, 58],
-    [28, 60],
-    [62, 48],
-    [84, 20],
-    [87, -14],
-    [70, -42],
-    [39, -58],
-    [5, -54],
-    [-22, -38],
-    [-52, -35],
-    [-75, -12],
-    [-72, 20],
-    [-50, 47]
-];
-const checkpointTs = [
-    0.09,
-    0.23,
-    0.37,
-    0.51,
-    0.65,
-    0.79,
-    0.93
-];
-const crosswalkTs = [
-    0.035,
-    0.285,
-    0.585,
-    0.835
-];
-const barrierSections = [
-    {
-        start: 0.17,
-        end: 0.28,
-        side: 1
+
+const TRACKS = {
+    neon: {
+        id: "neon",
+        name: "NEON DISTRICT",
+        description: "Neon District — tight city streets, boost pads, traffic obstacles and three fast laps.",
+        sampleCount: 300,
+        laps: 3,
+        background: 0x060c16,
+        fogNear: 105,
+        fogFar: 290,
+        controlPoints: [
+            [-8, 58],
+            [28, 60],
+            [62, 48],
+            [84, 20],
+            [87, -14],
+            [70, -42],
+            [39, -58],
+            [5, -54],
+            [-22, -38],
+            [-52, -35],
+            [-75, -12],
+            [-72, 20],
+            [-50, 47]
+        ],
+        checkpoints: [
+            0.09,
+            0.23,
+            0.37,
+            0.51,
+            0.65,
+            0.79,
+            0.93
+        ],
+        crosswalks: [
+            0.035,
+            0.285,
+            0.585,
+            0.835
+        ],
+        barriers: [
+            { start: 0.17, end: 0.28, side: 1 },
+            { start: 0.30, end: 0.39, side: -1 },
+            { start: 0.45, end: 0.57, side: 1 },
+            { start: 0.61, end: 0.70, side: -1 },
+            { start: 0.76, end: 0.86, side: 1 },
+            { start: 0.89, end: 0.98, side: -1 }
+        ],
+        obstacles: [
+            { t: 0.29, offset: 2.7, kind: "barrier", radius: 1.2 },
+            { t: 0.55, offset: -2.7, kind: "parked", radius: 1.4 },
+            { t: 0.875, offset: 2.4, kind: "barrier", radius: 1.2 }
+        ],
+        boosts: [
+            { t: 0.16, offset: -1.9 },
+            { t: 0.62, offset: 1.8 }
+        ],
+        pickups: [
+            { t: 0.40, offset: -2.2, type: "overdrive" },
+            { t: 0.82, offset: 2.0, type: "nitro" }
+        ],
+        ramps: []
     },
-    {
-        start: 0.30,
-        end: 0.39,
-        side: -1
-    },
-    {
-        start: 0.45,
-        end: 0.57,
-        side: 1
-    },
-    {
-        start: 0.61,
-        end: 0.70,
-        side: -1
-    },
-    {
-        start: 0.76,
-        end: 0.86,
-        side: 1
-    },
-    {
-        start: 0.89,
-        end: 0.98,
-        side: -1
+
+    arctic: {
+        id: "arctic",
+        name: "ARCTIC RELAY",
+        description: "Arctic Relay — a huge one-lap ice run with ramps, power-ups, obstacles and hidden shortcut jumps.",
+        sampleCount: 560,
+        laps: 1,
+        background: 0x07131f,
+        fogNear: 150,
+        fogFar: 430,
+        controlPoints: [
+            [-30, 285],
+            [75, 305],
+            [175, 275],
+            [260, 205],
+            [315, 105],
+            [320, -10],
+            [285, -125],
+            [215, -225],
+            [110, -285],
+            [-10, -310],
+            [-135, -285],
+            [-245, -225],
+            [-315, -135],
+            [-345, -25],
+            [-325, 95],
+            [-275, 195],
+            [-185, 265],
+            [-95, 295]
+        ],
+        checkpoints: [
+            0.06,
+            0.14,
+            0.22,
+            0.30,
+            0.38,
+            0.46,
+            0.54,
+            0.62,
+            0.70,
+            0.78,
+            0.86,
+            0.94
+        ],
+        crosswalks: [],
+        barriers: [
+            { start: 0.03, end: 0.10, side: -1 },
+            { start: 0.15, end: 0.21, side: 1 },
+            { start: 0.28, end: 0.36, side: -1 },
+            { start: 0.40, end: 0.47, side: 1 },
+            { start: 0.55, end: 0.61, side: -1 },
+            { start: 0.66, end: 0.73, side: 1 },
+            { start: 0.82, end: 0.89, side: -1 },
+            { start: 0.93, end: 0.985, side: 1 }
+        ],
+        obstacles: [
+            { t: 0.105, offset: 2.2, kind: "ice", radius: 1.35 },
+            { t: 0.175, offset: -2.6, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.265, offset: 2.9, kind: "ice", radius: 1.4 },
+            { t: 0.355, offset: -2.1, kind: "ice", radius: 1.25 },
+            { t: 0.435, offset: 2.5, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.515, offset: -2.7, kind: "ice", radius: 1.4 },
+            { t: 0.645, offset: 2.0, kind: "ice", radius: 1.3 },
+            { t: 0.735, offset: -2.8, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.825, offset: 2.4, kind: "ice", radius: 1.35 },
+            { t: 0.915, offset: -2.3, kind: "ice", radius: 1.3 }
+        ],
+        boosts: [
+            { t: 0.075, offset: -1.8 },
+            { t: 0.185, offset: 1.8 },
+            { t: 0.335, offset: -1.7 },
+            { t: 0.475, offset: 1.7 },
+            { t: 0.655, offset: -1.8 },
+            { t: 0.815, offset: 1.8 },
+            { t: 0.955, offset: 0 }
+        ],
+        pickups: [
+            { t: 0.12, offset: 2.0, type: "nitro" },
+            { t: 0.245, offset: -2.0, type: "overdrive" },
+            { t: 0.37, offset: 1.9, type: "nitro" },
+            { t: 0.505, offset: -1.8, type: "overdrive" },
+            { t: 0.59, offset: 2.0, type: "nitro" },
+            { t: 0.72, offset: -1.9, type: "overdrive" },
+            { t: 0.84, offset: 2.1, type: "nitro" },
+            { t: 0.965, offset: -1.8, type: "overdrive" }
+        ],
+        ramps: [
+            { t: 0.10, offset: 0, strength: 7.5, secret: false },
+            { t: 0.34, offset: -2.1, strength: 8.0, secret: false },
+            { t: 0.49, offset: 2.0, strength: 7.7, secret: false },
+            { t: 0.68, offset: 0.8, strength: 8.2, secret: false },
+            { t: 0.90, offset: -1.6, strength: 8.5, secret: false },
+
+            { t: 0.232, offset: 8.4, strength: 9.2, secret: true, targetT: 0.287, minSpeed: 24 },
+            { t: 0.552, offset: -8.5, strength: 9.4, secret: true, targetT: 0.607, minSpeed: 27 },
+            { t: 0.792, offset: 8.3, strength: 9.6, secret: true, targetT: 0.847, minSpeed: 29 }
+        ]
     }
-];
-const obstacleDefinitions = [
-    {
-        t: 0.29,
-        offset: 2.7,
-        kind: "barrier",
-        radius: 1.2
-    },
-    {
-        t: 0.55,
-        offset: -2.7,
-        kind: "parked",
-        radius: 1.4
-    },
-    {
-        t: 0.875,
-        offset: 2.4,
-        kind: "barrier",
-        radius: 1.2
-    }
-];
-const boostDefinitions = [
-    {
-        t: 0.16,
-        offset: -1.9
-    },
-    {
-        t: 0.62,
-        offset: 1.8
-    }
-];
-const pickupDefinitions = [
-    {
-        t: 0.40,
-        offset: -2.2,
-        type: "overdrive"
-    },
-    {
-        t: 0.82,
-        offset: 2.0,
-        type: "nitro"
-    }
-];
-const curve = new THREE.CatmullRomCurve3(CONTROL_POINTS.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "catmullrom", 0.18);
+};
+
+let activeTrackId = "neon";
+let TRACK_SAMPLE_COUNT = 300;
+let TARGET_LAPS = 3;
+let checkpointTs = [];
+let crosswalkTs = [];
+let barrierSections = [];
+let obstacleDefinitions = [];
+let boostDefinitions = [];
+let pickupDefinitions = [];
+let rampDefinitions = [];
+let curve = null;
+
+function applyTrackConfig(trackId) {
+    const config =
+        TRACKS[trackId]
+        ||
+        TRACKS.neon;
+
+    activeTrackId =
+        config.id;
+
+    TRACK_SAMPLE_COUNT =
+        config.sampleCount;
+
+    TARGET_LAPS =
+        config.laps;
+
+    checkpointTs =
+        [...config.checkpoints];
+
+    crosswalkTs =
+        [...config.crosswalks];
+
+    barrierSections =
+        config.barriers.map(section => ({ ...section }));
+
+    obstacleDefinitions =
+        config.obstacles.map(obstacle => ({ ...obstacle }));
+
+    boostDefinitions =
+        config.boosts.map(boost => ({ ...boost }));
+
+    pickupDefinitions =
+        config.pickups.map(pickup => ({ ...pickup }));
+
+    rampDefinitions =
+        config.ramps.map(ramp => ({ ...ramp }));
+
+    curve =
+        new THREE.CatmullRomCurve3(
+            config.controlPoints.map(
+                ([x, z]) =>
+                    new THREE.Vector3(
+                        x,
+                        0,
+                        z
+                    )
+            ),
+            true,
+            "catmullrom",
+            0.18
+        );
+
+    scene.background =
+        new THREE.Color(
+            config.background
+        );
+
+    scene.fog =
+        new THREE.Fog(
+            config.background,
+            config.fogNear,
+            config.fogFar
+        );
+
+    camera.far =
+        activeTrackId ===
+        "arctic"
+            ?
+            900
+            :
+            440;
+
+    camera.updateProjectionMatrix();
+
+    return config;
+}
+
+applyTrackConfig(
+    "neon"
+);
 const cars = {
     gt: {
         name: "REDLINE GT",
