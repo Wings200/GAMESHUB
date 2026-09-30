@@ -1958,6 +1958,497 @@ function buildArcticTunnel(
 }
 
 
+function buildSecondShortcutMountainHole() {
+
+    const secretRamps =
+        rampDefinitions
+            .filter(
+                ramp =>
+                    ramp.secret
+                    &&
+                    Number.isFinite(
+                        Number(
+                            ramp.targetT
+                        )
+                    )
+            );
+
+
+    const shortcut =
+        secretRamps[
+            1
+        ];
+
+
+    if (
+        !shortcut
+    ) {
+
+        return;
+
+    }
+
+
+    const startFrame =
+        getFrameAt(
+            shortcut.t
+        );
+
+
+    const targetFrame =
+        getFrameAt(
+            shortcut.targetT
+        );
+
+
+    const start =
+        startFrame.point
+            .clone()
+            .addScaledVector(
+                startFrame.normal,
+                shortcut.offset
+                ||
+                0
+            );
+
+
+    const target =
+        targetFrame.point
+            .clone();
+
+
+    const direction =
+        target
+            .clone()
+            .sub(
+                start
+            );
+
+
+    direction.y =
+        0;
+
+
+    const distance =
+        direction.length();
+
+
+    if (
+        distance <
+        30
+    ) {
+
+        return;
+
+    }
+
+
+    direction.normalize();
+
+
+    const normal =
+        new THREE.Vector3(
+            -direction.z,
+            0,
+            direction.x
+        );
+
+
+    const center =
+        start
+            .clone()
+            .addScaledVector(
+                direction,
+                distance *
+                0.48
+            );
+
+
+    const rotationY =
+        Math.atan2(
+            direction.x,
+            direction.z
+        );
+
+
+    const mountain =
+        new THREE.Group();
+
+
+    mountain.position
+        .copy(
+            center
+        );
+
+
+    mountain.rotation.y =
+        rotationY;
+
+
+    const rock =
+        material(
+            0x4e5c66,
+            0.98,
+            0.01
+        );
+
+
+    const iceRock =
+        material(
+            0x728fa1,
+            0.56,
+            0.05
+        );
+
+
+    const openingWidth =
+        11.5;
+
+
+    const openingHeight =
+        9.5;
+
+
+    const totalWidth =
+        54;
+
+
+    const sideWidth =
+        (
+            totalWidth -
+            openingWidth
+        )
+        /
+        2;
+
+
+    const thickness =
+        18;
+
+
+    const mountainHeight =
+        30;
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            sideWidth,
+            mountainHeight,
+            thickness
+        ),
+        rock,
+        -(
+            openingWidth /
+            2
+            +
+            sideWidth /
+            2
+        ),
+        mountainHeight /
+        2,
+        0
+    );
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            sideWidth,
+            mountainHeight,
+            thickness
+        ),
+        rock,
+        openingWidth /
+        2
+        +
+        sideWidth /
+        2,
+        mountainHeight /
+        2,
+        0
+    );
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            openingWidth,
+            mountainHeight -
+            openingHeight,
+            thickness
+        ),
+        iceRock,
+        0,
+        openingHeight
+        +
+        (
+            mountainHeight -
+            openingHeight
+        )
+        /
+        2,
+        0
+    );
+
+
+    /*
+      Dark tunnel interior makes the shortcut read as an actual hole,
+      not a flat gap between two rocks.
+    */
+
+    const tunnelDark =
+        new THREE.MeshBasicMaterial({
+            color:
+                0x071018,
+            side:
+                THREE.DoubleSide
+        });
+
+
+    const leftInterior =
+        addMesh(
+            mountain,
+            new THREE.PlaneGeometry(
+                thickness *
+                1.25,
+                openingHeight
+            ),
+            tunnelDark,
+            -openingWidth /
+            2,
+            openingHeight /
+            2,
+            0
+        );
+
+
+    leftInterior.rotation.y =
+        Math.PI /
+        2;
+
+
+    const rightInterior =
+        addMesh(
+            mountain,
+            new THREE.PlaneGeometry(
+                thickness *
+                1.25,
+                openingHeight
+            ),
+            tunnelDark,
+            openingWidth /
+            2,
+            openingHeight /
+            2,
+            0
+        );
+
+
+    rightInterior.rotation.y =
+        -Math.PI /
+        2;
+
+
+    const ceiling =
+        addMesh(
+            mountain,
+            new THREE.PlaneGeometry(
+                openingWidth,
+                thickness *
+                1.25
+            ),
+            tunnelDark,
+            0,
+            openingHeight,
+            0
+        );
+
+
+    ceiling.rotation.x =
+        Math.PI /
+        2;
+
+
+    /*
+      Ice edge around the cave mouth.
+    */
+
+    const rimMaterial =
+        new THREE.MeshBasicMaterial({
+            color:
+                0x9adcf4
+        });
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            0.30,
+            openingHeight,
+            0.35
+        ),
+        rimMaterial,
+        -openingWidth /
+        2,
+        openingHeight /
+        2,
+        -thickness /
+        2
+        -
+        0.20
+    );
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            0.30,
+            openingHeight,
+            0.35
+        ),
+        rimMaterial,
+        openingWidth /
+        2,
+        openingHeight /
+        2,
+        -thickness /
+        2
+        -
+        0.20
+    );
+
+
+    addMesh(
+        mountain,
+        new THREE.BoxGeometry(
+            openingWidth,
+            0.30,
+            0.35
+        ),
+        rimMaterial,
+        0,
+        openingHeight,
+        -thickness /
+        2
+        -
+        0.20
+    );
+
+
+    worldGroup.add(
+        mountain
+    );
+
+
+    const leftCenter =
+        center
+            .clone()
+            .addScaledVector(
+                normal,
+                -(
+                    openingWidth /
+                    2
+                    +
+                    sideWidth /
+                    2
+                )
+            );
+
+
+    const rightCenter =
+        center
+            .clone()
+            .addScaledVector(
+                normal,
+                openingWidth /
+                2
+                +
+                sideWidth /
+                2
+            );
+
+
+    addEnvironmentBoxCollider(
+        leftCenter,
+        sideWidth /
+        2,
+        thickness /
+        2,
+        rotationY,
+        {
+            maxY:
+                mountainHeight,
+
+            bounce:
+                0.08,
+
+            drag:
+                0.28,
+
+            tag:
+                "MOUNTAIN"
+        }
+    );
+
+
+    addEnvironmentBoxCollider(
+        rightCenter,
+        sideWidth /
+        2,
+        thickness /
+        2,
+        rotationY,
+        {
+            maxY:
+                mountainHeight,
+
+            bounce:
+                0.08,
+
+            drag:
+                0.28,
+
+            tag:
+                "MOUNTAIN"
+        }
+    );
+
+
+    /*
+      If somebody launches absurdly high, the top of the cave also blocks
+      them. The center opening below this height stays fully passable.
+    */
+
+    addEnvironmentBoxCollider(
+        center,
+        openingWidth /
+        2,
+        thickness /
+        2,
+        rotationY,
+        {
+            minY:
+                openingHeight -
+                0.35,
+
+            maxY:
+                mountainHeight,
+
+            bounce:
+                0.06,
+
+            drag:
+                0.30,
+
+            tag:
+                "MOUNTAIN"
+        }
+    );
+
+}
+
+
 function buildArcticEnvironment() {
 
     const ground =
@@ -2542,6 +3033,15 @@ function buildArcticEnvironment() {
         }
 
     }
+
+
+    /*
+      Shortcut #2 now has its own purpose-built cave mouth.
+      The ramp points through this opening and the mountain around it
+      has real collision.
+    */
+
+    buildSecondShortcutMountainHole();
 
 
     /*
