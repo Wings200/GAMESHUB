@@ -3227,7 +3227,15 @@ function respawnAtLastCheckpoint(
         0;
 
 
-    carState.pendingShortcut =
+    carState.shortcutActive =
+        false;
+
+
+    carState.shortcutLandingT =
+        null;
+
+
+    carState.shortcutLandingPoint =
         null;
 
 
@@ -3861,10 +3869,103 @@ function updateRamps(
             )
         ) {
 
-            carState.pendingShortcut =
+            const shortcutLanding =
+                getFrameAt(
+                    Number(
+                        ramp.targetT
+                    )
+                );
+
+
+            const toLanding =
+                shortcutLanding.point
+                    .clone()
+                    .sub(
+                        car.position
+                    );
+
+
+            toLanding.y =
+                0;
+
+
+            const distanceToLanding =
+                toLanding.length();
+
+
+            /*
+              Secret jumps are now REAL jumps.
+              We calculate a ballistic flight toward the shortcut landing
+              instead of teleporting the car there when it touches down.
+            */
+
+            const flightTime =
+                THREE.MathUtils.clamp(
+                    distanceToLanding /
+                    Math.max(
+                        48,
+                        speed
+                    ),
+                    1.15,
+                    2.05
+                );
+
+
+            if (
+                distanceToLanding >
+                0.1
+            ) {
+
+                const shortcutDirection =
+                    toLanding
+                        .clone()
+                        .normalize();
+
+
+                const shortcutSpeed =
+                    THREE.MathUtils.clamp(
+                        distanceToLanding /
+                        flightTime,
+                        Math.max(
+                            speed,
+                            34
+                        ),
+                        92
+                    );
+
+
+                carState.velocity
+                    .copy(
+                        shortcutDirection
+                    )
+                    .multiplyScalar(
+                        shortcutSpeed
+                    );
+
+            }
+
+
+            carState.verticalVelocity =
+                17.5
+                *
+                flightTime
+                *
+                0.5;
+
+
+            carState.shortcutActive =
+                true;
+
+
+            carState.shortcutLandingT =
                 Number(
                     ramp.targetT
                 );
+
+
+            carState.shortcutLandingPoint =
+                shortcutLanding.point
+                    .clone();
 
 
             showRacePopup(
@@ -3875,6 +3976,18 @@ function updateRamps(
         }
 
         else {
+
+            carState.shortcutActive =
+                false;
+
+
+            carState.shortcutLandingT =
+                null;
+
+
+            carState.shortcutLandingPoint =
+                null;
+
 
             showRacePopup(
                 "RAMP!",
@@ -4216,130 +4329,88 @@ function updateAirborne(
         0;
 
 
+    /*
+      IMPORTANT: landing from a ramp must NEVER change X/Z position.
+      The old code had two teleports here:
+      1) secret jumps copied the car to a target track point;
+      2) normal jumps could snap the car back to the nearest road.
+      Both are gone. Only R / the 5-second stuck recovery may teleport.
+    */
+
     if (
-        Number.isFinite(
-            Number(
-                carState.pendingShortcut
-            )
-        )
+        carState.shortcutActive
     ) {
 
-        const landing =
-            getFrameAt(
-                carState.pendingShortcut
-            );
+        const landingPoint =
+            carState.shortcutLandingPoint;
 
 
-        const landingSpeed =
-            Math.min(
-                activeCarSpec.boostSpeed,
-                Math.max(
-                    31,
-                    carState.velocity
-                        .length()
-                )
-            );
-
-
-        car.position
-            .copy(
-                landing.point
-            );
-
-
-        car.position.y =
-            0;
-
-
-        car.rotation.y =
-            landing.rotationY;
-
-
-        carState.velocity
-            .copy(
-                landing.tangent
+        const closeEnough =
+            landingPoint
+            &&
+            flatDistance(
+                car.position,
+                landingPoint
             )
-            .multiplyScalar(
-                landingSpeed
-            );
-
-
-        carState.pendingShortcut =
-            null;
-
-
-        carState.boostTimer =
-            Math.max(
-                carState.boostTimer,
-                0.85
-            );
-
-
-        showRacePopup(
-            "SHORTCUT LANDED",
-            650
-        );
-
-    }
-
-    else {
-
-        /*
-          Only rescue truly broken launches. Small off-road landings are
-          now allowed so jumps still feel physical and player-controlled.
-        */
-
-        const road =
-            nearestTrackInfo(
-                car.position
-            );
+            <
+            24;
 
 
         if (
-            road
-            &&
-            road.distance >
-            SIDEWALK_OUTER
-            +
-            24
+            closeEnough
         ) {
 
-            car.position
-                .copy(
-                    road.point
+            carState.boostTimer =
+                Math.max(
+                    carState.boostTimer,
+                    0.9
                 );
 
 
-            car.position.y =
-                0;
+            showRacePopup(
+                "SHORTCUT LANDED",
+                650
+            );
 
+        }
 
-            car.rotation.y =
-                road.rotationY;
+        else {
 
-
-            const landingSpeed =
-                Math.min(
-                    activeCarSpec.nitroSpeed,
-                    Math.max(
-                        12,
-                        carState.velocity
-                            .length()
-                    )
-                );
-
-
-            carState.velocity
-                .copy(
-                    road.tangent
-                )
-                .multiplyScalar(
-                    landingSpeed
-                );
+            showRacePopup(
+                "SHORTCUT MISSED",
+                650
+            );
 
         }
 
     }
+
+
+    carState.shortcutActive =
+        false;
+
+
+    carState.shortcutLandingT =
+        null;
+
+
+    carState.shortcutLandingPoint =
+        null;
+
+    car.rotation.x =
+        THREE.MathUtils.clamp(
+            car.rotation.x,
+            -0.34,
+            0.34
+        );
+
+
+    car.rotation.z =
+        THREE.MathUtils.clamp(
+            car.rotation.z,
+            -0.30,
+            0.30
+        );
 
 
     carState.takeoffTrackT =
@@ -6067,7 +6138,9 @@ function buildWorld() {
         takeoffSpeed: 0,
         cameraAirY: 0,
         rampCooldown: 0,
-        pendingShortcut: null
+        shortcutActive: false,
+        shortcutLandingT: null,
+        shortcutLandingPoint: null
     };
     checkpointStep =
         0;
