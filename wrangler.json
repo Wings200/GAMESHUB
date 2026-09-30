@@ -2,7 +2,6 @@
   "name": "redline-multiplayer",
   "main": "worker.js",
   "compatibility_date": "2026-09-28",
-
   "durable_objects": {
     "bindings": [
       {
@@ -12,17 +11,23 @@
       {
         "name": "DIRECTORY",
         "class_name": "RedlineDirectory"
+      },
+      {
+        "name": "STATS",
+        "class_name": "RedlineStats"
       }
     ]
   },
-
   "exports": {
     "RedlineRoom": {
       "type": "durable-object",
       "storage": "sqlite"
     },
-
     "RedlineDirectory": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    },
+    "RedlineStats": {
       "type": "durable-object",
       "storage": "sqlite"
     }
