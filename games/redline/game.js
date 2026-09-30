@@ -346,6 +346,7 @@ const TRACKS = {
                 offset: -8.5,
                 strength: 10.1,
                 secret: true,
+                cave: true,
                 targetT: 0.548,
                 landingLead: 12,
                 shortcutSpeed: 82,
@@ -2041,11 +2042,13 @@ function buildArcticTunnel(
 
 function buildSecondShortcutMountainHole() {
 
-    const secretRamps =
+    const shortcut =
         rampDefinitions
-            .filter(
+            .find(
                 ramp =>
                     ramp.secret
+                    &&
+                    ramp.cave
                     &&
                     Number.isFinite(
                         Number(
@@ -2053,12 +2056,6 @@ function buildSecondShortcutMountainHole() {
                         )
                     )
             );
-
-
-    const shortcut =
-        secretRamps[
-            1
-        ];
 
 
     if (
@@ -2076,12 +2073,6 @@ function buildSecondShortcutMountainHole() {
         );
 
 
-    const targetFrame =
-        getFrameAt(
-            shortcut.targetT
-        );
-
-
     const start =
         startFrame.point
             .clone()
@@ -2094,8 +2085,9 @@ function buildSecondShortcutMountainHole() {
 
 
     const target =
-        targetFrame.point
-            .clone();
+        getShortcutLandingPoint(
+            shortcut
+        );
 
 
     const direction =
@@ -2135,14 +2127,80 @@ function buildSecondShortcutMountainHole() {
         );
 
 
-    const center =
-        start
-            .clone()
-            .addScaledVector(
-                direction,
-                distance *
-                0.48
+    /*
+      Find the emptiest point along the shortcut flight path.
+      The old cave was always placed at 48% of the jump, which could put
+      the mountain directly across the normal race road.
+    */
+
+    let center =
+        null;
+
+
+    let bestClearance =
+        -Infinity;
+
+
+    for (
+        const progress
+        of [
+            0.28,
+            0.34,
+            0.40,
+            0.46,
+            0.52,
+            0.58,
+            0.64,
+            0.70
+        ]
+    ) {
+
+        const candidate =
+            start
+                .clone()
+                .addScaledVector(
+                    direction,
+                    distance *
+                    progress
+                );
+
+
+        const road =
+            nearestTrackInfo(
+                candidate
             );
+
+
+        const clearance =
+            road?.distance
+            ??
+            0;
+
+
+        if (
+            clearance >
+            bestClearance
+        ) {
+
+            bestClearance =
+                clearance;
+
+
+            center =
+                candidate;
+
+        }
+
+    }
+
+
+    if (
+        !center
+    ) {
+
+        return;
+
+    }
 
 
     const rotationY =
@@ -2182,16 +2240,38 @@ function buildSecondShortcutMountainHole() {
         );
 
 
+    /*
+      Keep the cave opening generous and size the surrounding mountain to
+      the available off-road space. This prevents the shortcut set piece
+      from spilling onto the main road.
+    */
+
     const openingWidth =
-        11.5;
+        13.5;
 
 
     const openingHeight =
-        9.5;
+        10.8;
+
+
+    const safeHalfWidth =
+        THREE.MathUtils.clamp(
+            bestClearance
+            -
+            SIDEWALK_OUTER
+            -
+            4.5,
+            openingWidth /
+            2
+            +
+            4.5,
+            23
+        );
 
 
     const totalWidth =
-        54;
+        safeHalfWidth *
+        2;
 
 
     const sideWidth =
@@ -2204,11 +2284,34 @@ function buildSecondShortcutMountainHole() {
 
 
     const thickness =
-        18;
+        20;
 
 
     const mountainHeight =
-        30;
+        33;
+
+
+    /*
+      If the route is unusually close here, do not create a giant wall.
+      The arch still exists, but the side masses stay compact.
+    */
+
+    const leftX =
+        -(
+            openingWidth /
+            2
+            +
+            sideWidth /
+            2
+        );
+
+
+    const rightX =
+        openingWidth /
+        2
+        +
+        sideWidth /
+        2;
 
 
     addMesh(
@@ -2219,13 +2322,7 @@ function buildSecondShortcutMountainHole() {
             thickness
         ),
         rock,
-        -(
-            openingWidth /
-            2
-            +
-            sideWidth /
-            2
-        ),
+        leftX,
         mountainHeight /
         2,
         0
@@ -2240,11 +2337,7 @@ function buildSecondShortcutMountainHole() {
             thickness
         ),
         rock,
-        openingWidth /
-        2
-        +
-        sideWidth /
-        2,
+        rightX,
         mountainHeight /
         2,
         0
@@ -2274,14 +2367,60 @@ function buildSecondShortcutMountainHole() {
 
 
     /*
-      Dark tunnel interior makes the shortcut read as an actual hole,
-      not a flat gap between two rocks.
+      Add two rocky wedges behind the arch so it reads as a mountain while
+      keeping the shortcut opening completely empty.
     */
+
+    for (
+        const side
+        of [-1, 1]
+    ) {
+
+        const peak =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    Math.max(
+                        10,
+                        sideWidth *
+                        0.72
+                    ),
+                    42,
+                    7
+                ),
+                rock
+            );
+
+
+        peak.position.set(
+            side *
+            (
+                openingWidth /
+                2
+                +
+                sideWidth *
+                0.55
+            ),
+            18,
+            3
+        );
+
+
+        peak.rotation.y =
+            side *
+            0.22;
+
+
+        mountain.add(
+            peak
+        );
+
+    }
+
 
     const tunnelDark =
         new THREE.MeshBasicMaterial({
             color:
-                0x071018,
+                0x061018,
             side:
                 THREE.DoubleSide
         });
@@ -2292,7 +2431,7 @@ function buildSecondShortcutMountainHole() {
             mountain,
             new THREE.PlaneGeometry(
                 thickness *
-                1.25,
+                1.3,
                 openingHeight
             ),
             tunnelDark,
@@ -2314,7 +2453,7 @@ function buildSecondShortcutMountainHole() {
             mountain,
             new THREE.PlaneGeometry(
                 thickness *
-                1.25,
+                1.3,
                 openingHeight
             ),
             tunnelDark,
@@ -2337,7 +2476,7 @@ function buildSecondShortcutMountainHole() {
             new THREE.PlaneGeometry(
                 openingWidth,
                 thickness *
-                1.25
+                1.3
             ),
             tunnelDark,
             0,
@@ -2351,10 +2490,6 @@ function buildSecondShortcutMountainHole() {
         2;
 
 
-    /*
-      Ice edge around the cave mouth.
-    */
-
     const rimMaterial =
         new THREE.MeshBasicMaterial({
             color:
@@ -2362,59 +2497,71 @@ function buildSecondShortcutMountainHole() {
         });
 
 
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            0.30,
+    /*
+      Put the bright cave rim on BOTH ends so the intended opening is
+      readable no matter which direction the camera approaches it from.
+    */
+
+    for (
+        const z
+        of [
+            -thickness /
+            2
+            -
+            0.20,
+            thickness /
+            2
+            +
+            0.20
+        ]
+    ) {
+
+        addMesh(
+            mountain,
+            new THREE.BoxGeometry(
+                0.34,
+                openingHeight,
+                0.38
+            ),
+            rimMaterial,
+            -openingWidth /
+            2,
+            openingHeight /
+            2,
+            z
+        );
+
+
+        addMesh(
+            mountain,
+            new THREE.BoxGeometry(
+                0.34,
+                openingHeight,
+                0.38
+            ),
+            rimMaterial,
+            openingWidth /
+            2,
+            openingHeight /
+            2,
+            z
+        );
+
+
+        addMesh(
+            mountain,
+            new THREE.BoxGeometry(
+                openingWidth,
+                0.34,
+                0.38
+            ),
+            rimMaterial,
+            0,
             openingHeight,
-            0.35
-        ),
-        rimMaterial,
-        -openingWidth /
-        2,
-        openingHeight /
-        2,
-        -thickness /
-        2
-        -
-        0.20
-    );
+            z
+        );
 
-
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            0.30,
-            openingHeight,
-            0.35
-        ),
-        rimMaterial,
-        openingWidth /
-        2,
-        openingHeight /
-        2,
-        -thickness /
-        2
-        -
-        0.20
-    );
-
-
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            openingWidth,
-            0.30,
-            0.35
-        ),
-        rimMaterial,
-        0,
-        openingHeight,
-        -thickness /
-        2
-        -
-        0.20
-    );
+    }
 
 
     worldGroup.add(
@@ -2449,6 +2596,11 @@ function buildSecondShortcutMountainHole() {
                 2
             );
 
+
+    /*
+      Only the rock AROUND the hole collides. There is intentionally no
+      center collider below openingHeight.
+    */
 
     addEnvironmentBoxCollider(
         leftCenter,
@@ -2496,11 +2648,6 @@ function buildSecondShortcutMountainHole() {
     );
 
 
-    /*
-      If somebody launches absurdly high, the top of the cave also blocks
-      them. The center opening below this height stays fully passable.
-    */
-
     addEnvironmentBoxCollider(
         center,
         openingWidth /
@@ -2510,8 +2657,8 @@ function buildSecondShortcutMountainHole() {
         rotationY,
         {
             minY:
-                openingHeight -
-                0.35,
+                openingHeight +
+                0.15,
 
             maxY:
                 mountainHeight,
@@ -2528,8 +2675,6 @@ function buildSecondShortcutMountainHole() {
     );
 
 }
-
-
 function buildArcticEnvironment() {
 
     /*
@@ -3001,8 +3146,10 @@ function buildArcticEnvironment() {
     buildSecondShortcutMountainHole();
 
 
-    addMountain(0.500, 1, 65, 45, 132, true);
-    addMountain(0.555, -1, 67, 46, 136, true);
+    /*
+      The cave structure itself is the mountain here; no extra cone
+      mountains are placed across its flight corridor.
+    */
 
 
     /*
