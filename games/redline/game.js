@@ -2480,6 +2480,85 @@ function updateGateColors() {
 function nextCheckpoint() {
     return checkpointGates[checkpointStep];
 }
+function respawnAtLastCheckpoint(
+    automatic = false
+) {
+
+    if (
+        !car
+        ||
+        !carState
+        ||
+        !lastCheckpointTransform
+        ||
+        localFinished
+    ) {
+
+        return;
+
+    }
+
+
+    car.position
+        .copy(
+            lastCheckpointTransform
+                .position
+        );
+
+
+    car.position.y =
+        0;
+
+
+    car.rotation.y =
+        lastCheckpointTransform
+            .rotationY;
+
+
+    carState.velocity
+        .set(
+            0,
+            0,
+            0
+        );
+
+
+    carState.airborne =
+        false;
+
+
+    carState.verticalVelocity =
+        0;
+
+
+    carState.pendingShortcut =
+        null;
+
+
+    carState.stillTimer =
+        0;
+
+
+    carState.respawnCooldown =
+        1.25;
+
+
+    carState.cameraShake =
+        0;
+
+
+    showRacePopup(
+        automatic
+            ?
+            "STUCK — RETURNED TO CHECKPOINT"
+            :
+            "RETURNED TO CHECKPOINT",
+        800
+    );
+
+}
+
+
 function updateCheckpoints() {
     const target = nextCheckpoint();
     if (!target
@@ -2490,6 +2569,28 @@ function updateCheckpoints() {
         return;
     }
     showRacePopup("CHECKPOINT", 500);
+
+
+    const reachedFrame =
+        getFrameAt(
+            target.t
+        );
+
+
+    lastCheckpointTransform = {
+        position:
+            reachedFrame.point
+                .clone()
+                .addScaledVector(
+                    reachedFrame.tangent,
+                    3.4
+                ),
+
+        rotationY:
+            reachedFrame.rotationY
+    };
+
+
     checkpointStep++;
     if (checkpointStep >=
         checkpointGates.length) {
@@ -3753,6 +3854,19 @@ function updatePhysics(delta) {
     carState.overdriveTimer =
         Math.max(0, carState.overdriveTimer -
             delta);
+
+    carState.respawnCooldown =
+        Math.max(
+            0,
+            (
+                carState.respawnCooldown
+                ||
+                0
+            )
+            -
+            delta
+        );
+
     carState.impactCooldown =
         Math.max(0, carState.impactCooldown -
             delta);
@@ -3955,13 +4069,87 @@ function updatePhysics(delta) {
             .setLength(maxSpeed);
     }
     car.position
-        .addScaledVector(carState.velocity, delta);
-    collideWithBarriers();
-    collideWithObstacles();
+        .addScaledVector(
+            carState.velocity,
+            delta
+        );
+
+
+    updateRamps(
+        delta
+    );
+
+
+    updateAirborne(
+        delta
+    );
+
+
+    /*
+      Being airborne lets a racer actually clear barriers and ice
+      instead of colliding with their flat X/Z hitboxes mid-jump.
+    */
+
+    if (
+        !carState.airborne
+        ||
+        car.position.y <
+        0.65
+    ) {
+
+        collideWithBarriers();
+        collideWithObstacles();
+
+    }
+
+
     updateBoostPads(delta);
     updatePickups(delta, clock.elapsedTime);
     updateTransmission();
     updateCheckpoints();
+
+
+    /*
+      Universal stuck recovery for every map.
+      Manual: press R.
+      Automatic: if the car remains essentially motionless for 5 sec.
+    */
+
+    if (
+        !carState.airborne
+        &&
+        carState.respawnCooldown <=
+        0
+        &&
+        carState.velocity.length() <
+        0.7
+    ) {
+
+        carState.stillTimer +=
+            delta;
+
+
+        if (
+            carState.stillTimer >=
+            5
+        ) {
+
+            respawnAtLastCheckpoint(
+                true
+            );
+
+        }
+
+    }
+
+    else {
+
+        carState.stillTimer =
+            0;
+
+    }
+
+
     updateNavigation(delta, roadInfo);
     updateDrivingEffects(delta, handbrake, lateralSpeed, surface, nitroActive);
     updateCarVisuals(delta, throttle, brake, nitroActive);
@@ -4931,6 +5119,30 @@ startBtn.addEventListener("click", startRace);
 window.addEventListener("keydown", event => {
     const key = event.key
         .toLowerCase();
+
+
+    if (
+        key ===
+        "r"
+        &&
+        raceActive
+        &&
+        !event.repeat
+    ) {
+
+        event.preventDefault();
+
+
+        respawnAtLastCheckpoint(
+            false
+        );
+
+
+        return;
+
+    }
+
+
     if ([
         "arrowup",
         "arrowdown",
@@ -4941,6 +5153,8 @@ window.addEventListener("keydown", event => {
         .includes(key)) {
         event.preventDefault();
     }
+
+
     keys.add(key);
 });
 window.addEventListener("keyup", event => {
