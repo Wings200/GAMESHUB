@@ -8,6 +8,10 @@ window.GAMESHUB_ACCOUNT = {
 };
 
 
+/* =========================================================
+   UI
+========================================================= */
+
 function createAccountUI() {
   const wrapper =
     document.createElement("div");
@@ -18,57 +22,114 @@ function createAccountUI() {
   wrapper.innerHTML = `
     <div id="gameshubGoogleButton"></div>
 
-    <div
-      id="gameshubAccountStatus"
-      style="
-        margin-top:8px;
-        font:600 12px Arial;
-        color:#aab4c5;
-        text-align:center;
-      "
-    >
-      SIGN IN TO GAMESHUB
+    <div id="gameshubAccountStatus">
+      SIGN IN
     </div>
   `;
 
-  Object.assign(
-    wrapper.style,
-    {
-      position:
-        "fixed",
 
-      top:
-        "18px",
+  const style =
+    document.createElement("style");
 
-      right:
-        "18px",
-
-      zIndex:
-        "99999",
-
-      padding:
-        "12px",
-
-      background:
-        "rgba(10,15,24,.92)",
-
-      border:
-        "1px solid rgba(255,255,255,.12)",
-
-      borderRadius:
-        "12px",
-
-      boxShadow:
-        "0 10px 35px rgba(0,0,0,.35)",
-
-      backdropFilter:
-        "blur(12px)"
+  style.textContent = `
+    #gameshubAccount {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: 14px;
     }
+
+    #gameshubGoogleButton {
+      display: flex;
+      align-items: center;
+    }
+
+    #gameshubAccountStatus {
+      display: none;
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: #aab4c5;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 850px) {
+      #gameshubAccount {
+        margin-left: 6px;
+      }
+    }
+  `;
+
+  document.head.appendChild(
+    style
   );
 
-  document.body.appendChild(
-    wrapper
-  );
+
+  /*
+    Put the account button INSIDE the existing header.
+  */
+
+  const header =
+    document.querySelector(
+      "header"
+    );
+
+
+  if (header) {
+    const inner =
+      header.querySelector(
+        ".header-inner"
+      )
+      ||
+      header.querySelector(
+        ".nav-inner"
+      )
+      ||
+      header.querySelector(
+        ".topbar-inner"
+      )
+      ||
+      header.firstElementChild
+      ||
+      header;
+
+
+    /*
+      Try putting it before the logout button.
+    */
+
+    const logout =
+      inner.querySelector(
+        'button[type="button"], button, .logout, #logoutBtn'
+      );
+
+
+    if (logout) {
+      inner.insertBefore(
+        wrapper,
+        logout
+      );
+    }
+
+    else {
+      inner.appendChild(
+        wrapper
+      );
+    }
+  }
+
+  else {
+    /*
+      Fallback:
+      still part of page flow — NEVER floating.
+    */
+
+    document.body.prepend(
+      wrapper
+    );
+  }
 }
 
 
@@ -93,14 +154,16 @@ function setAccountStatus(
 }
 
 
+/* =========================================================
+   GOOGLE RESPONSE
+========================================================= */
+
 async function handleGoogleCredential(
   response
 ) {
-  if (
-    !response?.credential
-  ) {
+  if (!response?.credential) {
     setAccountStatus(
-      "GOOGLE SIGN-IN FAILED",
+      "SIGN-IN FAILED",
       "#ff6b6b"
     );
 
@@ -160,16 +223,18 @@ async function handleGoogleCredential(
       data.user;
 
 
-    if (
-      data.needsUsername
-    ) {
+    /*
+      First ever GAMESHUB login.
+    */
+
+    if (data.needsUsername) {
       setAccountStatus(
-        "GOOGLE CONNECTED ✓",
+        "CONNECTED ✓",
         "#67e8a5"
       );
 
       alert(
-        "Google account connected successfully! Next we'll choose your GAMESHUB username."
+        "Google account connected! Next you'll choose your GAMESHUB username."
       );
 
       return;
@@ -177,7 +242,7 @@ async function handleGoogleCredential(
 
 
     setAccountStatus(
-      `SIGNED IN AS ${data.user.username}`,
+      data.user.username,
       "#67e8a5"
     );
 
@@ -188,13 +253,12 @@ async function handleGoogleCredential(
     );
   }
 
-  catch (
-    error
-  ) {
+  catch (error) {
     console.error(
       "GAMESHUB Google sign-in failed:",
       error
     );
+
 
     setAccountStatus(
       error.message ||
@@ -205,12 +269,18 @@ async function handleGoogleCredential(
 }
 
 
+/* =========================================================
+   GOOGLE BUTTON
+========================================================= */
+
 function startGoogleSignIn() {
   if (
-    !window.google?.accounts?.id
+    !window.google
+      ?.accounts
+      ?.id
   ) {
     setAccountStatus(
-      "GOOGLE FAILED TO LOAD",
+      "GOOGLE FAILED",
       "#ff6b6b"
     );
 
@@ -236,6 +306,11 @@ function startGoogleSignIn() {
     );
 
 
+  if (!container) {
+    return;
+  }
+
+
   google.accounts.id.renderButton(
     container,
     {
@@ -246,7 +321,7 @@ function startGoogleSignIn() {
         "filled_black",
 
       size:
-        "large",
+        "medium",
 
       text:
         "signin_with",
@@ -258,11 +333,15 @@ function startGoogleSignIn() {
         "left",
 
       width:
-        250
+        190
     }
   );
 }
 
+
+/* =========================================================
+   LOAD GOOGLE
+========================================================= */
 
 function loadGoogleLibrary() {
   const script =
@@ -270,22 +349,27 @@ function loadGoogleLibrary() {
       "script"
     );
 
+
   script.src =
     "https://accounts.google.com/gsi/client";
+
 
   script.async =
     true;
 
+
   script.defer =
     true;
+
 
   script.onload =
     startGoogleSignIn;
 
+
   script.onerror =
     () => {
       setAccountStatus(
-        "GOOGLE FAILED TO LOAD",
+        "GOOGLE FAILED",
         "#ff6b6b"
       );
     };
@@ -296,6 +380,10 @@ function loadGoogleLibrary() {
   );
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 function initializeGameshubAccount() {
   createAccountUI();
