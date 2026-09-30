@@ -296,6 +296,26 @@ h2 {
     box-shadow 0.15s ease;
 }
 
+.account-username {
+  width: 100%;
+  min-height: 50px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 15px;
+
+  border: 1px solid #2b374b;
+  border-radius: 8px;
+
+  background: #090e16;
+
+  color: #f7f9fc;
+
+  font-size: 16px;
+  font-weight: 800;
+}
+
 .username-panel input:focus,
 .form-group input:focus,
 .form-group select:focus,
