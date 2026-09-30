@@ -1,0 +1,3124 @@
+import { DurableObject } from "cloudflare:workers";
+
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const VALID_CARS =
+  new Set([
+    "gt",
+    "vortex",
+    "apex"
+  ]);
+
+const VALID_MAPS =
+  new Set([
+    "neon",
+    "canyon",
+    "arctic"
+  ]);
+
+const VALID_BODIES =
+  new Set([
+    "coupe",
+    "supercar",
+    "muscle",
+    "track"
+  ]);
+
+
+const CORS_HEADERS = {
+
+  "Access-Control-Allow-Origin":
+    "*",
+
+  "Access-Control-Allow-Headers":
+    "Content-Type",
+
+  "Access-Control-Allow-Methods":
+    "GET,POST,OPTIONS"
+
+};
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function json(
+  data,
+  status = 200
+) {
+
+  return new Response(
+    JSON.stringify(
+      data
+    ),
+    {
+      status,
+
+      headers: {
+
+        "Content-Type":
+          "application/json; charset=utf-8",
+
+        "Cache-Control":
+          "no-store",
+
+        ...CORS_HEADERS
+
+      }
+
+    }
+  );
+
+}
+
+
+function cleanUsername(
+  value
+) {
+
+  const name =
+    String(
+      value ?? ""
+    )
+      .replace(
+        /[<>]/g,
+        ""
+      )
+      .trim()
+      .slice(
+        0,
+        18
+      );
+
+
+  return (
+    name ||
+    "Racer"
+  );
+
+}
+
+
+function cleanRoomName(
+  value,
+  username
+) {
+
+  const name =
+    String(
+      value ?? ""
+    )
+      .replace(
+        /[<>]/g,
+        ""
+      )
+      .trim()
+      .slice(
+        0,
+        24
+      );
+
+
+  return (
+    name ||
+    `${username}'s Room`
+  );
+
+}
+
+
+function clampPlayerCount(
+  value
+) {
+
+  return Math.max(
+    1,
+    Math.min(
+      8,
+      Number(
+        value
+      )
+      ||
+      8
+    )
+  );
+
+}
+
+
+function finiteNumber(
+  value,
+  fallback = 0
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  return Number.isFinite(
+    number
+  )
+    ?
+    number
+    :
+    fallback;
+
+}
+
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  );
+
+}
+
+
+function cleanHex(
+  value,
+  fallback
+) {
+
+  const text =
+    String(
+      value ?? ""
+    )
+      .trim();
+
+
+  return /^#[0-9a-f]{6}$/i.test(
+    text
+  )
+    ?
+    text.toLowerCase()
+    :
+    fallback;
+
+}
+
+
+function cleanAppearance(
+  value
+) {
+
+  return {
+
+    body:
+      VALID_BODIES.has(
+        value?.body
+      )
+        ?
+        value.body
+        :
+        "coupe",
+
+    color:
+      cleanHex(
+        value?.color,
+        "#e9edf2"
+      ),
+
+    accent:
+      cleanHex(
+        value?.accent,
+        "#315fbd"
+      )
+
+  };
+
+}
+
+
+function makeRoomCode() {
+
+  const bytes =
+    new Uint8Array(
+      6
+    );
+
+
+  crypto.getRandomValues(
+    bytes
+  );
+
+
+  let code =
+    "";
+
+
+  for (
+    const byte
+    of bytes
+  ) {
+
+    code +=
+      ROOM_CODE_CHARS[
+        byte %
+        ROOM_CODE_CHARS.length
+      ];
+
+  }
+
+
+  return code;
+
+}
+
+
+function publicPlayer(
+  player
+) {
+
+  return {
+
+    id:
+      player.id,
+
+    username:
+      player.username,
+
+    host:
+      player.host,
+
+    connected:
+      player.connected,
+
+    car:
+      player.car,
+
+    ready:
+      player.ready
+
+  };
+
+}
+
+
+function publicRoom(
+  room
+) {
+
+  return {
+
+    code:
+      room.code,
+
+    name:
+      room.name,
+
+    privacy:
+      room.privacy,
+
+    maxPlayers:
+      room.maxPlayers,
+
+    map:
+      room.map,
+
+    phase:
+      room.phase,
+
+    hostId:
+      room.hostId,
+
+    createdAt:
+      room.createdAt,
+
+    raceStartAt:
+      room.raceStartAt
+      ??
+      null,
+
+    raceComplete:
+      Boolean(
+        room.raceComplete
+      ),
+
+    results:
+      Array.isArray(
+        room.results
+      )
+        ?
+        room.results
+        :
+        [],
+
+    players:
+      room.players.map(
+        publicPlayer
+      )
+
+  };
+
+}
+
+
+function roomSummary(
+  room
+) {
+
+  return {
+
+    code:
+      room.code,
+
+    name:
+      room.name,
+
+    players:
+      room.players.length,
+
+    maxPlayers:
+      room.maxPlayers,
+
+    map:
+      room.map,
+
+    phase:
+      room.phase,
+
+    createdAt:
+      room.createdAt
+
+  };
+
+}
+
+
+async function readJson(
+  request
+) {
+
+  try {
+
+    return await request.json();
+
+  }
+
+  catch {
+
+    return null;
+
+  }
+
+}
+
+
+function roomStub(
+  env,
+  code
+) {
+
+  return env
+    .ROOMS
+    .getByName(
+      `room:${code}`
+    );
+
+}
+
+
+function directoryStub(
+  env
+) {
+
+  return env
+    .DIRECTORY
+    .getByName(
+      "redline-public-directory"
+    );
+
+}
+
+
+/* =========================================================
+   MAIN WORKER
+========================================================= */
+
+export default {
+
+  async fetch(
+    request,
+    env
+  ) {
+
+    const url =
+      new URL(
+        request.url
+      );
+
+
+    /* =====================================================
+       CORS
+    ===================================================== */
+
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+
+      return new Response(
+        null,
+        {
+          status:
+            204,
+
+          headers:
+            CORS_HEADERS
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       HEALTH
+    ===================================================== */
+
+    if (
+      url.pathname ===
+      "/"
+      ||
+      url.pathname ===
+      "/health"
+    ) {
+
+      return json({
+
+        ok:
+          true,
+
+        service:
+          "REDLINE multiplayer",
+
+        version:
+          4
+
+      });
+
+    }
+
+
+    /* =====================================================
+       PUBLIC ROOMS
+    ===================================================== */
+
+    if (
+      url.pathname ===
+      "/api/rooms"
+      &&
+      request.method ===
+      "GET"
+    ) {
+
+      const rooms =
+        await directoryStub(
+          env
+        ).listRooms();
+
+
+      return json({
+        rooms
+      });
+
+    }
+
+
+    /* =====================================================
+       CREATE ROOM
+    ===================================================== */
+
+    if (
+      url.pathname ===
+      "/api/rooms"
+      &&
+      request.method ===
+      "POST"
+    ) {
+
+      const body =
+        await readJson(
+          request
+        );
+
+
+      if (
+        !body
+      ) {
+
+        return json(
+          {
+            error:
+              "Invalid JSON body."
+          },
+          400
+        );
+
+      }
+
+
+      const username =
+        cleanUsername(
+          body.username
+        );
+
+
+      const privacy =
+        body.privacy ===
+        "private"
+          ?
+          "private"
+          :
+          "public";
+
+
+      const maxPlayers =
+        clampPlayerCount(
+          body.maxPlayers
+        );
+
+
+      const name =
+        cleanRoomName(
+          body.name,
+          username
+        );
+
+
+      let code =
+        null;
+
+
+      let room =
+        null;
+
+
+      for (
+        let attempt = 0;
+        attempt < 12;
+        attempt++
+      ) {
+
+        const candidate =
+          makeRoomCode();
+
+
+        const candidateRoom =
+          roomStub(
+            env,
+            candidate
+          );
+
+
+        if (
+          !(
+            await candidateRoom.exists()
+          )
+        ) {
+
+          code =
+            candidate;
+
+
+          room =
+            candidateRoom;
+
+
+          break;
+
+        }
+
+      }
+
+
+      if (
+        !code
+        ||
+        !room
+      ) {
+
+        return json(
+          {
+            error:
+              "Could not allocate a room code."
+          },
+          503
+        );
+
+      }
+
+
+      const created =
+        await room.createRoom({
+
+          code,
+
+          name,
+
+          privacy,
+
+          maxPlayers,
+
+          username
+
+        });
+
+
+      return json(
+        created,
+        201
+      );
+
+    }
+
+
+    /* =====================================================
+       ROOM ROUTES
+    ===================================================== */
+
+    const roomMatch =
+      url.pathname.match(
+        /^\/api\/rooms\/([A-Z0-9]{6})(?:\/(join|ws))?$/i
+      );
+
+
+    if (
+      roomMatch
+    ) {
+
+      const code =
+        roomMatch[1]
+          .toUpperCase();
+
+
+      const action =
+        roomMatch[2]
+        ||
+        "snapshot";
+
+
+      const room =
+        roomStub(
+          env,
+          code
+        );
+
+
+      /* ---------------------------------------------------
+         SNAPSHOT
+      --------------------------------------------------- */
+
+      if (
+        action ===
+        "snapshot"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        const snapshot =
+          await room.getSnapshot();
+
+
+        if (
+          !snapshot
+        ) {
+
+          return json(
+            {
+              error:
+                "Room not found."
+            },
+            404
+          );
+
+        }
+
+
+        return json({
+          room:
+            snapshot
+        });
+
+      }
+
+
+      /* ---------------------------------------------------
+         JOIN
+      --------------------------------------------------- */
+
+      if (
+        action ===
+        "join"
+        &&
+        request.method ===
+        "POST"
+      ) {
+
+        const body =
+          await readJson(
+            request
+          );
+
+
+        const result =
+          await room.joinRoom({
+
+            username:
+              cleanUsername(
+                body?.username
+              )
+
+          });
+
+
+        if (
+          !result.ok
+        ) {
+
+          return json(
+            {
+              error:
+                result.error
+            },
+            result.status
+            ||
+            400
+          );
+
+        }
+
+
+        return json(
+          result.data
+        );
+
+      }
+
+
+      /* ---------------------------------------------------
+         WEBSOCKET
+      --------------------------------------------------- */
+
+      if (
+        action ===
+        "ws"
+        &&
+        request.method ===
+        "GET"
+      ) {
+
+        if (
+          (
+            request.headers.get(
+              "Upgrade"
+            )
+            ||
+            ""
+          )
+            .toLowerCase()
+          !==
+          "websocket"
+        ) {
+
+          return json(
+            {
+              error:
+                "Expected WebSocket upgrade."
+            },
+            426
+          );
+
+        }
+
+
+        return room.fetch(
+          request
+        );
+
+      }
+
+    }
+
+
+    return json(
+      {
+        error:
+          "Not found."
+      },
+      404
+    );
+
+  }
+
+};
+
+
+/* =========================================================
+   PUBLIC ROOM DIRECTORY
+========================================================= */
+
+export class RedlineDirectory
+  extends DurableObject {
+
+  constructor(
+    ctx,
+    env
+  ) {
+
+    super(
+      ctx,
+      env
+    );
+
+
+    this.rooms =
+      {};
+
+
+    this.ctx
+      .blockConcurrencyWhile(
+        async () => {
+
+          this.rooms =
+            (
+              await this.ctx
+                .storage
+                .get(
+                  "rooms"
+                )
+            )
+            ||
+            {};
+
+        }
+      );
+
+  }
+
+
+  async listRooms() {
+
+    return Object
+      .values(
+        this.rooms
+      )
+      .filter(
+        room =>
+          room.phase ===
+          "lobby"
+          &&
+          room.players <
+          room.maxPlayers
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.createdAt -
+          a.createdAt
+      )
+      .slice(
+        0,
+        100
+      );
+
+  }
+
+
+  async upsertRoom(
+    summary
+  ) {
+
+    this.rooms[
+      summary.code
+    ] =
+      summary;
+
+
+    await this.ctx
+      .storage
+      .put(
+        "rooms",
+        this.rooms
+      );
+
+  }
+
+
+  async removeRoom(
+    code
+  ) {
+
+    if (
+      !this.rooms[
+        code
+      ]
+    ) {
+
+      return;
+
+    }
+
+
+    delete this.rooms[
+      code
+    ];
+
+
+    await this.ctx
+      .storage
+      .put(
+        "rooms",
+        this.rooms
+      );
+
+  }
+
+}
+
+
+/* =========================================================
+   ROOM DURABLE OBJECT
+========================================================= */
+
+export class RedlineRoom
+  extends DurableObject {
+
+  constructor(
+    ctx,
+    env
+  ) {
+
+    super(
+      ctx,
+      env
+    );
+
+
+    this.env =
+      env;
+
+
+    this.room =
+      null;
+
+
+    /*
+      High frequency movement stays in memory.
+    */
+
+    this.liveRaceStates =
+      new Map();
+
+
+    this.finishOrder =
+      [];
+
+
+    this.ctx
+      .blockConcurrencyWhile(
+        async () => {
+
+          this.room =
+            (
+              await this.ctx
+                .storage
+                .get(
+                  "room"
+                )
+            )
+            ||
+            null;
+
+
+          /*
+            Restore finished race results after
+            a Durable Object wake-up.
+          */
+
+          if (
+            Array.isArray(
+              this.room?.results
+            )
+          ) {
+
+            this.finishOrder =
+              [
+                ...this.room.results
+              ];
+
+          }
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     EXISTS
+  ======================================================= */
+
+  async exists() {
+
+    return Boolean(
+      this.room
+    );
+
+  }
+
+
+  /* =======================================================
+     CREATE ROOM
+  ======================================================= */
+
+  async createRoom({
+    code,
+    name,
+    privacy,
+    maxPlayers,
+    username
+  }) {
+
+    if (
+      this.room
+    ) {
+
+      return {
+        error:
+          "Room already exists."
+      };
+
+    }
+
+
+    const playerId =
+      crypto.randomUUID();
+
+
+    const playerToken =
+      crypto.randomUUID();
+
+
+    this.room = {
+
+      code,
+
+      name,
+
+      privacy,
+
+      maxPlayers,
+
+      map:
+        "neon",
+
+      phase:
+        "lobby",
+
+      hostId:
+        playerId,
+
+      createdAt:
+        Date.now(),
+
+      raceStartAt:
+        null,
+
+      raceComplete:
+        false,
+
+      results:
+        [],
+
+      players: [
+
+        {
+
+          id:
+            playerId,
+
+          token:
+            playerToken,
+
+          username,
+
+          host:
+            true,
+
+          connected:
+            false,
+
+          car:
+            null,
+
+          ready:
+            false
+
+        }
+
+      ]
+
+    };
+
+
+    this.liveRaceStates.clear();
+
+    this.finishOrder =
+      [];
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+
+    return {
+
+      code,
+
+      playerId,
+
+      playerToken,
+
+      room:
+        publicRoom(
+          this.room
+        )
+
+    };
+
+  }
+
+
+  /* =======================================================
+     SNAPSHOT
+  ======================================================= */
+
+  async getSnapshot() {
+
+    return this.room
+      ?
+      publicRoom(
+        this.room
+      )
+      :
+      null;
+
+  }
+
+
+  /* =======================================================
+     JOIN ROOM
+  ======================================================= */
+
+  async joinRoom({
+    username
+  }) {
+
+    if (
+      !this.room
+    ) {
+
+      return {
+
+        ok:
+          false,
+
+        status:
+          404,
+
+        error:
+          "Room not found."
+
+      };
+
+    }
+
+
+    if (
+      this.room.phase !==
+      "lobby"
+    ) {
+
+      return {
+
+        ok:
+          false,
+
+        status:
+          409,
+
+        error:
+          "This race has already started."
+
+      };
+
+    }
+
+
+    if (
+      this.room.players.length >=
+      this.room.maxPlayers
+    ) {
+
+      return {
+
+        ok:
+          false,
+
+        status:
+          409,
+
+        error:
+          "Room is full."
+
+      };
+
+    }
+
+
+    const playerId =
+      crypto.randomUUID();
+
+
+    const playerToken =
+      crypto.randomUUID();
+
+
+    this.room.players.push({
+
+      id:
+        playerId,
+
+      token:
+        playerToken,
+
+      username,
+
+      host:
+        false,
+
+      connected:
+        false,
+
+      car:
+        null,
+
+      ready:
+        false
+
+    });
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+    this.broadcastState();
+
+
+    return {
+
+      ok:
+        true,
+
+      data: {
+
+        code:
+          this.room.code,
+
+        playerId,
+
+        playerToken,
+
+        room:
+          publicRoom(
+            this.room
+          )
+
+      }
+
+    };
+
+  }
+
+
+  /* =======================================================
+     WEBSOCKET CONNECTION
+  ======================================================= */
+
+  async fetch(
+    request
+  ) {
+
+    if (
+      !this.room
+    ) {
+
+      return json(
+        {
+          error:
+            "Room not found."
+        },
+        404
+      );
+
+    }
+
+
+    if (
+      (
+        request.headers.get(
+          "Upgrade"
+        )
+        ||
+        ""
+      )
+        .toLowerCase()
+      !==
+      "websocket"
+    ) {
+
+      return json(
+        {
+          error:
+            "Expected WebSocket upgrade."
+        },
+        426
+      );
+
+    }
+
+
+    const url =
+      new URL(
+        request.url
+      );
+
+
+    const token =
+      url.searchParams.get(
+        "token"
+      )
+      ||
+      "";
+
+
+    const player =
+      this.room.players.find(
+        candidate =>
+          candidate.token ===
+          token
+      );
+
+
+    if (
+      !player
+    ) {
+
+      return json(
+        {
+          error:
+            "Invalid player token."
+        },
+        401
+      );
+
+    }
+
+
+    const pair =
+      new WebSocketPair();
+
+
+    const [
+      client,
+      server
+    ] =
+      Object.values(
+        pair
+      );
+
+
+    this.ctx.acceptWebSocket(
+      server
+    );
+
+
+    server.serializeAttachment({
+
+      playerId:
+        player.id
+
+    });
+
+
+    player.connected =
+      true;
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+    this.broadcastState();
+
+
+    /*
+      Reconnect during an active race.
+    */
+
+    if (
+      this.room.phase ===
+      "racing"
+    ) {
+
+      this.send(
+        server,
+        {
+
+          type:
+            "race_snapshot",
+
+          startAt:
+            this.room.raceStartAt,
+
+          states:
+            Array.from(
+              this.liveRaceStates.values()
+            ),
+
+          finishOrder:
+            this.finishOrder
+
+        }
+      );
+
+    }
+
+
+    /*
+      Reconnect while results are showing.
+    */
+
+    if (
+      this.room.phase ===
+      "results"
+    ) {
+
+      this.send(
+        server,
+        {
+
+          type:
+            "race_complete",
+
+          results:
+            this.finishOrder,
+
+          finishOrder:
+            this.finishOrder,
+
+          room:
+            publicRoom(
+              this.room
+            )
+
+        }
+      );
+
+    }
+
+
+    return new Response(
+      null,
+      {
+
+        status:
+          101,
+
+        webSocket:
+          client
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     WEBSOCKET MESSAGE
+  ======================================================= */
+
+  async webSocketMessage(
+    ws,
+    message
+  ) {
+
+    if (
+      !this.room
+    ) {
+
+      return;
+
+    }
+
+
+    let data;
+
+
+    try {
+
+      const text =
+        typeof message ===
+        "string"
+          ?
+          message
+          :
+          new TextDecoder()
+            .decode(
+              message
+            );
+
+
+      data =
+        JSON.parse(
+          text
+        );
+
+    }
+
+    catch {
+
+      this.send(
+        ws,
+        {
+
+          type:
+            "error",
+
+          error:
+            "Invalid WebSocket message."
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    const attachment =
+      ws.deserializeAttachment();
+
+
+    const player =
+      this.room.players.find(
+        candidate =>
+          candidate.id ===
+          attachment?.playerId
+      );
+
+
+    if (
+      !player
+    ) {
+
+      this.send(
+        ws,
+        {
+
+          type:
+            "error",
+
+          error:
+            "Player session not found."
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       PING
+    ===================================================== */
+
+    if (
+      data.type ===
+      "ping"
+    ) {
+
+      this.send(
+        ws,
+        {
+
+          type:
+            "pong",
+
+          now:
+            Date.now()
+
+        }
+      );
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       SET MAP
+    ===================================================== */
+
+    if (
+      data.type ===
+      "set_map"
+    ) {
+
+      if (
+        !player.host
+      ) {
+
+        this.send(
+          ws,
+          {
+
+            type:
+              "error",
+
+            error:
+              "Only the host can choose the map."
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        this.room.phase !==
+        "lobby"
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        !VALID_MAPS.has(
+          data.map
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      this.room.map =
+        data.map;
+
+
+      await this.persist();
+
+      await this.syncDirectory();
+
+      this.broadcastState();
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       START CAR SELECT
+    ===================================================== */
+
+    if (
+      data.type ===
+      "start_car_select"
+    ) {
+
+      if (
+        !player.host
+      ) {
+
+        this.send(
+          ws,
+          {
+
+            type:
+              "error",
+
+            error:
+              "Only the host can start the race."
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        this.room.phase !==
+        "lobby"
+      ) {
+
+        return;
+
+      }
+
+
+      this.room.phase =
+        "car_select";
+
+
+      this.room.raceStartAt =
+        null;
+
+
+      this.room.raceComplete =
+        false;
+
+
+      this.room.results =
+        [];
+
+
+      this.liveRaceStates.clear();
+
+
+      this.finishOrder =
+        [];
+
+
+      for (
+        const racer
+        of this.room.players
+      ) {
+
+        racer.car =
+          null;
+
+
+        racer.ready =
+          false;
+
+      }
+
+
+      await this.persist();
+
+      await this.syncDirectory();
+
+      this.broadcastState();
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       SELECT CAR
+
+       Garage currently secretly selects GT so the old
+       lobby protocol remains compatible.
+    ===================================================== */
+
+    if (
+      data.type ===
+      "select_car"
+    ) {
+
+      if (
+        this.room.phase !==
+        "car_select"
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        !VALID_CARS.has(
+          data.car
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      player.car =
+        data.car;
+
+
+      player.ready =
+        false;
+
+
+      await this.persist();
+
+      this.broadcastState();
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       READY
+    ===================================================== */
+
+    if (
+      data.type ===
+      "ready"
+    ) {
+
+      if (
+        this.room.phase !==
+        "car_select"
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        !player.car
+      ) {
+
+        this.send(
+          ws,
+          {
+
+            type:
+              "error",
+
+            error:
+              "Choose a car before locking in."
+
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      player.ready =
+        true;
+
+
+      await this.persist();
+
+      this.broadcastState();
+
+
+      const everyoneReady =
+
+        this.room.players.length >=
+        1
+
+        &&
+
+        this.room.players.every(
+          racer =>
+            racer.car
+            &&
+            racer.ready
+        );
+
+
+      if (
+        everyoneReady
+      ) {
+
+        await this.beginCountdown();
+
+      }
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       UNREADY
+    ===================================================== */
+
+    if (
+      data.type ===
+      "unready"
+    ) {
+
+      if (
+        this.room.phase !==
+        "car_select"
+      ) {
+
+        return;
+
+      }
+
+
+      player.ready =
+        false;
+
+
+      await this.persist();
+
+      this.broadcastState();
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       LIVE RACE STATE
+    ===================================================== */
+
+    if (
+      data.type ===
+      "race_state"
+    ) {
+
+      if (
+        this.room.phase !==
+        "racing"
+      ) {
+
+        return;
+
+      }
+
+
+      const x =
+        clamp(
+          finiteNumber(
+            data.x
+          ),
+          -10000,
+          10000
+        );
+
+
+      const y =
+        clamp(
+          finiteNumber(
+            data.y
+          ),
+          -1000,
+          1000
+        );
+
+
+      const z =
+        clamp(
+          finiteNumber(
+            data.z
+          ),
+          -10000,
+          10000
+        );
+
+
+      const rotation =
+        finiteNumber(
+          data.rotation
+        );
+
+
+      const speed =
+        clamp(
+          finiteNumber(
+            data.speed
+          ),
+          -500,
+          500
+        );
+
+
+      const lap =
+        clamp(
+          Math.floor(
+            finiteNumber(
+              data.lap,
+              1
+            )
+          ),
+          1,
+          100
+        );
+
+
+      const checkpoint =
+        clamp(
+          Math.floor(
+            finiteNumber(
+              data.checkpoint
+            )
+          ),
+          0,
+          1000
+        );
+
+
+      const progress =
+        clamp(
+          finiteNumber(
+            data.progress
+          ),
+          0,
+          1
+        );
+
+
+      /*
+        NEW:
+        sanitize and relay Garage appearance.
+      */
+
+      const appearance =
+        cleanAppearance(
+          data.appearance
+        );
+
+
+      const state = {
+
+        playerId:
+          player.id,
+
+        username:
+          player.username,
+
+        car:
+          player.car,
+
+        appearance,
+
+        x,
+
+        y,
+
+        z,
+
+        rotation,
+
+        speed,
+
+        lap,
+
+        checkpoint,
+
+        progress,
+
+        finished:
+          this.finishOrder.some(
+            finisher =>
+              finisher.playerId ===
+              player.id
+          ),
+
+        timestamp:
+          Date.now()
+
+      };
+
+
+      this.liveRaceStates.set(
+        player.id,
+        state
+      );
+
+
+      this.broadcast({
+
+        type:
+          "race_state",
+
+        state
+
+      });
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       RACER FINISHED
+    ===================================================== */
+
+    if (
+      data.type ===
+      "race_finish"
+    ) {
+
+      if (
+        this.room.phase !==
+        "racing"
+        ||
+        !this.room.raceStartAt
+      ) {
+
+        return;
+
+      }
+
+
+      const alreadyFinished =
+        this.finishOrder.some(
+          finisher =>
+            finisher.playerId ===
+            player.id
+        );
+
+
+      if (
+        alreadyFinished
+      ) {
+
+        return;
+
+      }
+
+
+      const finishTime =
+        Math.max(
+          0,
+          Date.now() -
+          this.room.raceStartAt
+        );
+
+
+      const state =
+        this.liveRaceStates.get(
+          player.id
+        );
+
+
+      const result = {
+
+        playerId:
+          player.id,
+
+        username:
+          player.username,
+
+        car:
+          player.car,
+
+        appearance:
+          state?.appearance
+          ??
+          cleanAppearance(
+            null
+          ),
+
+        place:
+          this.finishOrder.length +
+          1,
+
+        finishTime
+
+      };
+
+
+      this.finishOrder.push(
+        result
+      );
+
+
+      if (
+        state
+      ) {
+
+        state.finished =
+          true;
+
+
+        state.finishTime =
+          finishTime;
+
+
+        this.liveRaceStates.set(
+          player.id,
+          state
+        );
+
+      }
+
+
+      this.broadcast({
+
+        type:
+          "player_finished",
+
+        result,
+
+        finishOrder:
+          this.finishOrder
+
+      });
+
+
+      /*
+        If everyone required has finished,
+        automatically show results.
+      */
+
+      await this.maybeCompleteRace();
+
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       RETURN TO LOBBY
+    ===================================================== */
+
+    if (
+      data.type ===
+      "return_lobby"
+    ) {
+
+      if (
+        !player.host
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+        Remove racers who disconnected during the race
+        before returning to the lobby.
+      */
+
+      this.room.players =
+        this.room.players.filter(
+          racer =>
+            racer.connected
+            ||
+            racer.id ===
+            player.id
+        );
+
+
+      if (
+        !this.room.players.some(
+          racer =>
+            racer.host
+        )
+      ) {
+
+        this.room.players.forEach(
+          racer => {
+
+            racer.host =
+              false;
+
+          }
+        );
+
+
+        this.room.players[0].host =
+          true;
+
+
+        this.room.hostId =
+          this.room.players[0].id;
+
+      }
+
+
+      this.room.phase =
+        "lobby";
+
+
+      this.room.raceStartAt =
+        null;
+
+
+      this.room.raceComplete =
+        false;
+
+
+      this.room.results =
+        [];
+
+
+      this.liveRaceStates.clear();
+
+
+      this.finishOrder =
+        [];
+
+
+      for (
+        const racer
+        of this.room.players
+      ) {
+
+        racer.car =
+          null;
+
+
+        racer.ready =
+          false;
+
+      }
+
+
+      await this.persist();
+
+      await this.syncDirectory();
+
+
+      /*
+        Explicit event for clients that listen for it.
+      */
+
+      this.broadcast({
+
+        type:
+          "returned_to_lobby",
+
+        room:
+          publicRoom(
+            this.room
+          )
+
+      });
+
+
+      /*
+        And the normal room_state so the existing
+        index flow also switches back to lobby.
+      */
+
+      this.broadcastState();
+
+
+      return;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     WEBSOCKET CLOSE / ERROR
+  ======================================================= */
+
+  async webSocketClose(
+    ws
+  ) {
+
+    await this.handleDisconnect(
+      ws
+    );
+
+  }
+
+
+  async webSocketError(
+    ws
+  ) {
+
+    await this.handleDisconnect(
+      ws
+    );
+
+  }
+
+
+  /* =======================================================
+     DISCONNECT
+  ======================================================= */
+
+  async handleDisconnect(
+    ws
+  ) {
+
+    if (
+      !this.room
+    ) {
+
+      return;
+
+    }
+
+
+    const attachment =
+      ws.deserializeAttachment();
+
+
+    const playerId =
+      attachment?.playerId;
+
+
+    if (
+      !playerId
+    ) {
+
+      return;
+
+    }
+
+
+    const player =
+      this.room.players.find(
+        candidate =>
+          candidate.id ===
+          playerId
+      );
+
+
+    if (
+      !player
+    ) {
+
+      return;
+
+    }
+
+
+    /* -----------------------------------------------------
+       LOBBY / GARAGE
+
+       Remove disconnected racer completely.
+    ----------------------------------------------------- */
+
+    if (
+      this.room.phase ===
+      "lobby"
+      ||
+      this.room.phase ===
+      "car_select"
+    ) {
+
+      this.room.players =
+        this.room.players.filter(
+          candidate =>
+            candidate.id !==
+            playerId
+        );
+
+
+      this.liveRaceStates.delete(
+        playerId
+      );
+
+
+      if (
+        this.room.players.length ===
+        0
+      ) {
+
+        await this.removeFromDirectory();
+
+
+        await this.ctx
+          .storage
+          .delete(
+            "room"
+          );
+
+
+        this.room =
+          null;
+
+
+        return;
+
+      }
+
+
+      if (
+        player.host
+      ) {
+
+        this.assignHost();
+
+      }
+
+    }
+
+
+    /* -----------------------------------------------------
+       RACE / RESULTS
+
+       Keep racer record temporarily so results can
+       still reference them, but mark disconnected.
+    ----------------------------------------------------- */
+
+    else {
+
+      player.connected =
+        false;
+
+
+      this.liveRaceStates.delete(
+        playerId
+      );
+
+
+      this.broadcast({
+
+        type:
+          "player_disconnected",
+
+        playerId
+
+      });
+
+
+      /*
+        A disconnected racer should not trap everybody
+        forever on the finish screen.
+      */
+
+      if (
+        this.room.phase ===
+        "racing"
+      ) {
+
+        await this.maybeCompleteRace();
+
+      }
+
+    }
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+    this.broadcastState();
+
+  }
+
+
+  /* =======================================================
+     HOST ASSIGNMENT
+  ======================================================= */
+
+  assignHost() {
+
+    if (
+      !this.room
+        ?.players
+        ?.length
+    ) {
+
+      return;
+
+    }
+
+
+    this.room.players.forEach(
+      racer => {
+
+        racer.host =
+          false;
+
+      }
+    );
+
+
+    const next =
+
+      this.room.players.find(
+        racer =>
+          racer.connected
+      )
+
+      ||
+
+      this.room.players[0];
+
+
+    next.host =
+      true;
+
+
+    this.room.hostId =
+      next.id;
+
+  }
+
+
+  /* =======================================================
+     COMPLETE RACE
+  ======================================================= */
+
+  async maybeCompleteRace() {
+
+    if (
+      !this.room
+      ||
+      this.room.phase !==
+      "racing"
+    ) {
+
+      return false;
+
+    }
+
+
+    /*
+      Connected racers are the ones still required
+      to finish.
+
+      This prevents somebody closing their browser
+      from holding the results screen hostage.
+    */
+
+    const requiredRacers =
+      this.room.players.filter(
+        racer =>
+          racer.connected
+      );
+
+
+    const racersToCheck =
+      requiredRacers.length
+        ?
+        requiredRacers
+        :
+        this.room.players;
+
+
+    const complete =
+
+      racersToCheck.length >
+      0
+
+      &&
+
+      racersToCheck.every(
+        racer =>
+          this.finishOrder.some(
+            result =>
+              result.playerId ===
+              racer.id
+          )
+      );
+
+
+    if (
+      !complete
+    ) {
+
+      return false;
+
+    }
+
+
+    this.room.phase =
+      "results";
+
+
+    this.room.raceComplete =
+      true;
+
+
+    this.room.results =
+      [
+        ...this.finishOrder
+      ];
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+
+    const room =
+      publicRoom(
+        this.room
+      );
+
+
+    /*
+      Main results event.
+    */
+
+    this.broadcast({
+
+      type:
+        "race_complete",
+
+      results:
+        this.finishOrder,
+
+      finishOrder:
+        this.finishOrder,
+
+      room
+
+    });
+
+
+    /*
+      Also send a normal room-state update so any
+      phase-based UI knows we're in results.
+    */
+
+    this.broadcastState();
+
+
+    return true;
+
+  }
+
+
+  /* =======================================================
+     BEGIN COUNTDOWN
+  ======================================================= */
+
+  async beginCountdown() {
+
+    if (
+      !this.room
+      ||
+      this.room.phase !==
+      "car_select"
+    ) {
+
+      return;
+
+    }
+
+
+    this.liveRaceStates.clear();
+
+
+    this.finishOrder =
+      [];
+
+
+    this.room.results =
+      [];
+
+
+    this.room.raceComplete =
+      false;
+
+
+    this.room.phase =
+      "countdown";
+
+
+    this.room.raceStartAt =
+      Date.now()
+      +
+      4000;
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+
+    await this.ctx
+      .storage
+      .setAlarm(
+        this.room.raceStartAt
+      );
+
+
+    this.broadcast({
+
+      type:
+        "countdown",
+
+      startAt:
+        this.room.raceStartAt,
+
+      room:
+        publicRoom(
+          this.room
+        )
+
+    });
+
+  }
+
+
+  /* =======================================================
+     COUNTDOWN FINISHED
+  ======================================================= */
+
+  async alarm() {
+
+    if (
+      !this.room
+      ||
+      this.room.phase !==
+      "countdown"
+      ||
+      !this.room.raceStartAt
+    ) {
+
+      return;
+
+    }
+
+
+    this.room.phase =
+      "racing";
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+
+    this.broadcast({
+
+      type:
+        "race_started",
+
+      startAt:
+        this.room.raceStartAt,
+
+      room:
+        publicRoom(
+          this.room
+        )
+
+    });
+
+  }
+
+
+  /* =======================================================
+     STORAGE
+  ======================================================= */
+
+  async persist() {
+
+    if (
+      this.room
+    ) {
+
+      await this.ctx
+        .storage
+        .put(
+          "room",
+          this.room
+        );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     PUBLIC DIRECTORY
+  ======================================================= */
+
+  async syncDirectory() {
+
+    if (
+      !this.room
+    ) {
+
+      return;
+
+    }
+
+
+    const directory =
+      directoryStub(
+        this.env
+      );
+
+
+    const shouldBePublic =
+
+      this.room.privacy ===
+      "public"
+
+      &&
+
+      this.room.phase ===
+      "lobby"
+
+      &&
+
+      this.room.players.length <
+      this.room.maxPlayers;
+
+
+    if (
+      shouldBePublic
+    ) {
+
+      await directory.upsertRoom(
+        roomSummary(
+          this.room
+        )
+      );
+
+    }
+
+    else {
+
+      await directory.removeRoom(
+        this.room.code
+      );
+
+    }
+
+  }
+
+
+  async removeFromDirectory() {
+
+    if (
+      !this.room?.code
+    ) {
+
+      return;
+
+    }
+
+
+    await directoryStub(
+      this.env
+    )
+      .removeRoom(
+        this.room.code
+      );
+
+  }
+
+
+  /* =======================================================
+     SOCKET HELPERS
+  ======================================================= */
+
+  send(
+    ws,
+    payload
+  ) {
+
+    try {
+
+      ws.send(
+        JSON.stringify(
+          payload
+        )
+      );
+
+    }
+
+    catch {}
+
+  }
+
+
+  broadcast(
+    payload
+  ) {
+
+    const message =
+      JSON.stringify(
+        payload
+      );
+
+
+    for (
+      const ws
+      of this.ctx
+        .getWebSockets()
+    ) {
+
+      try {
+
+        ws.send(
+          message
+        );
+
+      }
+
+      catch {}
+
+    }
+
+  }
+
+
+  broadcastState() {
+
+    if (
+      !this.room
+    ) {
+
+      return;
+
+    }
+
+
+    this.broadcast({
+
+      type:
+        "room_state",
+
+      room:
+        publicRoom(
+          this.room
+        )
+
+    });
+
+  }
+
+}
