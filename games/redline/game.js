@@ -4225,8 +4225,86 @@ function buildRamps() {
             );
 
 
-        group.rotation.y =
-            frame.rotationY;
+        let rampTangent =
+            frame.tangent
+                .clone();
+
+
+        let rampNormal =
+            frame.normal
+                .clone();
+
+
+        if (
+            definition.secret
+            &&
+            Number.isFinite(
+                Number(
+                    definition.targetT
+                )
+            )
+        ) {
+
+            const target =
+                getFrameAt(
+                    Number(
+                        definition.targetT
+                    )
+                )
+                    .point
+                    .clone();
+
+
+            rampTangent =
+                target
+                    .sub(
+                        group.position
+                    );
+
+
+            rampTangent.y =
+                0;
+
+
+            if (
+                rampTangent.lengthSq() >
+                0.001
+            ) {
+
+                rampTangent.normalize();
+
+
+                rampNormal =
+                    new THREE.Vector3(
+                        -rampTangent.z,
+                        0,
+                        rampTangent.x
+                    );
+
+
+                group.rotation.y =
+                    Math.atan2(
+                        rampTangent.x,
+                        rampTangent.z
+                    );
+
+            }
+
+            else {
+
+                group.rotation.y =
+                    frame.rotationY;
+
+            }
+
+        }
+
+        else {
+
+            group.rotation.y =
+                frame.rotationY;
+
+        }
 
 
         const width =
@@ -4340,15 +4418,15 @@ function buildRamps() {
                     .clone(),
 
             tangent:
-                frame.tangent
+                rampTangent
                     .clone(),
 
             normal:
-                frame.normal
+                rampNormal
                     .clone(),
 
             rotationY:
-                frame.rotationY,
+                group.rotation.y,
 
             cooldown:
                 0
