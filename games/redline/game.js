@@ -342,18 +342,18 @@ const TRACKS = {
 
             /* Signature cave-mouth shortcut */
             {
-                t: 0.515,
-                offset: -16.5,
-                strength: 12.8,
+                t: 0.528,
+                offset: -5.55,
+                strength: 13.8,
                 secret: true,
                 cave: true,
                 topHole: true,
                 caveProgress: 0.46,
                 holeHeight: 18,
-                targetT: 0.560,
+                targetT: 0.565,
                 landingLead: 18,
-                shortcutSpeed: 86,
-                minSpeed: 30
+                shortcutSpeed: 90,
+                minSpeed: 28
             },
 
             /* Ridgeline gap */
@@ -2277,7 +2277,6 @@ function buildSecondShortcutMountainHole() {
 
     const {
         hole,
-        direction,
         normal,
         rotationY,
         holeHeight
@@ -2301,41 +2300,54 @@ function buildSecondShortcutMountainHole() {
 
 
     const rock =
-        material(
-            0x46535f,
-            0.98,
-            0.01
-        );
+        new THREE.MeshStandardMaterial({
+            color:
+                0x485762,
+            roughness:
+                0.98,
+            metalness:
+                0.01,
+            flatShading:
+                true,
+            side:
+                THREE.DoubleSide
+        });
 
 
     const darkRock =
-        material(
-            0x35424d,
-            0.99,
-            0.01
-        );
+        new THREE.MeshStandardMaterial({
+            color:
+                0x35434e,
+            roughness:
+                1,
+            metalness:
+                0.01,
+            flatShading:
+                true,
+            side:
+                THREE.DoubleSide
+        });
 
 
     const snow =
-        material(
-            0xd7e5eb,
-            0.96,
-            0.02
-        );
-
-
-    const ice =
-        material(
-            0x789cac,
-            0.56,
-            0.05
-        );
+        new THREE.MeshStandardMaterial({
+            color:
+                0xd8e5eb,
+            roughness:
+                0.96,
+            metalness:
+                0.01,
+            flatShading:
+                true,
+            side:
+                THREE.DoubleSide
+        });
 
 
     const tunnelDark =
         new THREE.MeshBasicMaterial({
             color:
-                0x050c13,
+                0x040a10,
             side:
                 THREE.DoubleSide
         });
@@ -2344,16 +2356,16 @@ function buildSecondShortcutMountainHole() {
     const rim =
         new THREE.MeshBasicMaterial({
             color:
-                0xa9eaff
+                0xa8ebff
         });
 
 
     const openingWidth =
-        15.5;
+        14.5;
 
 
     const openingHeight =
-        9.5;
+        8.5;
 
 
     const openingBottom =
@@ -2370,313 +2382,390 @@ function buildSecondShortcutMountainHole() {
         2;
 
 
+    const mountainHalfWidth =
+        23;
+
+
+    const mountainHeight =
+        56;
+
+
     const tunnelDepth =
-        20;
+        21;
 
 
     /*
-      The opening is HIGH in the mountain. Ground-level road remains
-      completely open underneath / beside the set-piece.
+      Extruded 2D rock shapes create one continuous mountain silhouette:
+      solid at the bottom, rock on both sides, peak above, and ONLY the
+      elevated rectangle is empty.
     */
 
-    const sideRadius =
-        10.5;
-
-
-    const sideHeight =
-        34;
-
-
-    for (
-        const side
-        of [-1, 1]
+    function extrudedRock(
+        points,
+        meshMaterial,
+        depth =
+            tunnelDepth
     ) {
 
-        const localX =
-            side
-            *
-            (
-                openingWidth /
-                2
-                +
-                sideRadius *
-                0.78
-            );
+        const shape =
+            new THREE.Shape();
 
 
-        const sideCenterWorld =
-            hole
-                .clone()
-                .setY(
-                    0
-                )
-                .addScaledVector(
-                    normal,
-                    localX
-                );
+        shape.moveTo(
+            points[0][0],
+            points[0][1]
+        );
 
 
-        /*
-          Only add lower mountain shoulders if their whole base is safely
-          off every road. If a folded-back road is nearby, the high arch
-          still exists but the low rock cannot block traffic.
-        */
-
-        if (
-            arcticSceneryClearOfRoad(
-                sideCenterWorld,
-                sideRadius,
-                8
-            )
+        for (
+            let i = 1;
+            i < points.length;
+            i++
         ) {
 
-            const shoulder =
-                new THREE.Mesh(
-                    new THREE.ConeGeometry(
-                        sideRadius,
-                        sideHeight,
-                        7
-                    ),
-                    side <
-                    0
-                        ?
-                        darkRock
-                        :
-                        rock
-                );
-
-
-            shoulder.position.set(
-                localX,
-                sideHeight *
-                0.42,
-                0
-            );
-
-
-            shoulder.rotation.y =
-                side *
-                0.18;
-
-
-            mountain.add(
-                shoulder
-            );
-
-
-            addEnvironmentCircleCollider(
-                sideCenterWorld,
-                sideRadius *
-                0.68,
-                {
-                    maxY:
-                        sideHeight
-                        +
-                        4,
-
-                    bounce:
-                        0.07,
-
-                    drag:
-                        0.28,
-
-                    tag:
-                        "MOUNTAIN"
-                }
+            shape.lineTo(
+                points[i][0],
+                points[i][1]
             );
 
         }
 
-    }
+
+        shape.closePath();
 
 
-    /*
-      Peak above the hole. Its base STARTS above the opening, so even if
-      this visually overlaps another road from the camera, it can never
-      wall off ground-level driving.
-    */
-
-    const peakHeight =
-        31;
-
-
-    const peak =
-        new THREE.Mesh(
-            new THREE.ConeGeometry(
-                18,
-                peakHeight,
-                7
-            ),
-            rock
-        );
-
-
-    peak.position.set(
-        0,
-        openingTop
-        +
-        peakHeight /
-        2,
-        1.5
-    );
-
-
-    mountain.add(
-        peak
-    );
-
-
-    const snowCap =
-        new THREE.Mesh(
-            new THREE.ConeGeometry(
-                8.5,
-                11,
-                7
-            ),
-            snow
-        );
-
-
-    snowCap.position.set(
-        0,
-        openingTop
-        +
-        peakHeight
-        -
-        4,
-        1.5
-    );
-
-
-    mountain.add(
-        snowCap
-    );
-
-
-    /*
-      Rock frame around the elevated hole.
-    */
-
-    const pillarWidth =
-        4.6;
-
-
-    for (
-        const side
-        of [-1, 1]
-    ) {
-
-        addMesh(
-            mountain,
-            new THREE.DodecahedronGeometry(
-                1,
-                0
-            ),
-            side <
-            0
-                ?
-                darkRock
-                :
-                rock,
-            side
-            *
-            (
-                openingWidth /
-                2
-                +
-                pillarWidth /
-                2
-            ),
-            holeHeight,
-            0
-        )
-            .scale
-            .set(
-                pillarWidth,
-                openingHeight *
-                0.76,
-                tunnelDepth *
-                0.52
+        const shapeGeometry =
+            new THREE.ExtrudeGeometry(
+                shape,
+                {
+                    depth,
+                    bevelEnabled:
+                        false,
+                    steps:
+                        1
+                }
             );
 
+
+        shapeGeometry.translate(
+            0,
+            0,
+            -depth /
+            2
+        );
+
+
+        const mesh =
+            new THREE.Mesh(
+                shapeGeometry,
+                meshMaterial
+            );
+
+
+        mountain.add(
+            mesh
+        );
+
+
+        return mesh;
+
     }
 
 
-    const arch =
+    /*
+      SOLID LOWER MOUNTAIN.
+      This explicitly closes the old giant opening at ground level.
+    */
+
+    extrudedRock(
+        [
+            [
+                -mountainHalfWidth,
+                0
+            ],
+            [
+                mountainHalfWidth,
+                0
+            ],
+            [
+                18,
+                openingBottom *
+                0.58
+            ],
+            [
+                openingWidth /
+                2,
+                openingBottom
+            ],
+            [
+                -openingWidth /
+                2,
+                openingBottom
+            ],
+            [
+                -18,
+                openingBottom *
+                0.58
+            ]
+        ],
+        darkRock
+    );
+
+
+    /*
+      LEFT / RIGHT mountain faces wrap around the high opening.
+    */
+
+    extrudedRock(
+        [
+            [
+                -mountainHalfWidth,
+                0
+            ],
+            [
+                -18,
+                openingBottom *
+                0.58
+            ],
+            [
+                -openingWidth /
+                2,
+                openingBottom
+            ],
+            [
+                -openingWidth /
+                2,
+                openingTop
+            ],
+            [
+                -8.5,
+                openingTop
+                +
+                4
+            ],
+            [
+                -3.0,
+                mountainHeight
+                -
+                8
+            ],
+            [
+                -12,
+                37
+            ],
+            [
+                -20,
+                18
+            ]
+        ],
+        rock
+    );
+
+
+    extrudedRock(
+        [
+            [
+                mountainHalfWidth,
+                0
+            ],
+            [
+                18,
+                openingBottom *
+                0.58
+            ],
+            [
+                openingWidth /
+                2,
+                openingBottom
+            ],
+            [
+                openingWidth /
+                2,
+                openingTop
+            ],
+            [
+                8.5,
+                openingTop
+                +
+                4
+            ],
+            [
+                3.0,
+                mountainHeight
+                -
+                8
+            ],
+            [
+                12,
+                37
+            ],
+            [
+                20,
+                18
+            ]
+        ],
+        rock
+    );
+
+
+    /*
+      Peak / bridge above the hole. This makes it read as one mountain
+      instead of two towers with a floating roof.
+    */
+
+    extrudedRock(
+        [
+            [
+                -8.5,
+                openingTop
+            ],
+            [
+                -3.0,
+                mountainHeight
+                -
+                8
+            ],
+            [
+                0,
+                mountainHeight
+            ],
+            [
+                3.0,
+                mountainHeight
+                -
+                8
+            ],
+            [
+                8.5,
+                openingTop
+            ],
+            [
+                openingWidth /
+                2,
+                openingTop
+            ],
+            [
+                -openingWidth /
+                2,
+                openingTop
+            ]
+        ],
+        rock
+    );
+
+
+    /*
+      Snow cap only on the peak.
+    */
+
+    extrudedRock(
+        [
+            [
+                -5.2,
+                mountainHeight
+                -
+                12
+            ],
+            [
+                0,
+                mountainHeight
+            ],
+            [
+                5.2,
+                mountainHeight
+                -
+                12
+            ],
+            [
+                3.8,
+                mountainHeight
+                -
+                9
+            ],
+            [
+                -3.8,
+                mountainHeight
+                -
+                9
+            ]
+        ],
+        snow,
+        tunnelDepth
+        +
+        0.4
+    );
+
+
+    /*
+      Dark tunnel interior. There is NO back wall, so the car can pass
+      straight through the elevated opening.
+    */
+
+    const floor =
         addMesh(
             mountain,
             new THREE.BoxGeometry(
-                openingWidth
-                +
-                pillarWidth *
-                2,
-                3.2,
+                openingWidth,
+                0.30,
                 tunnelDepth
             ),
-            ice,
+            new THREE.MeshStandardMaterial({
+                color:
+                    0x243541,
+                roughness:
+                    0.82
+            }),
             0,
-            openingTop
+            openingBottom
             +
-            1.6,
+            0.10,
             0
         );
 
-
-    /*
-      Dark interior + floor inside the high passage.
-    */
 
     const ceiling =
         addMesh(
             mountain,
-            new THREE.PlaneGeometry(
+            new THREE.BoxGeometry(
                 openingWidth,
+                0.25,
                 tunnelDepth
             ),
             tunnelDark,
             0,
             openingTop
             -
-            0.05,
+            0.10,
             0
         );
 
 
-    ceiling.rotation.x =
-        Math.PI /
-        2;
+    for (
+        const side
+        of [-1, 1]
+    ) {
 
-
-    const floor =
         addMesh(
             mountain,
-            new THREE.PlaneGeometry(
-                openingWidth,
+            new THREE.BoxGeometry(
+                0.28,
+                openingHeight,
                 tunnelDepth
             ),
-            new THREE.MeshStandardMaterial({
-                color:
-                    0x263746,
-                roughness:
-                    0.78,
-                side:
-                    THREE.DoubleSide
-            }),
-            0,
-            openingBottom
-            +
-            0.15,
+            tunnelDark,
+            side
+            *
+            openingWidth /
+            2,
+            holeHeight,
             0
         );
 
-
-    floor.rotation.x =
-        -Math.PI /
-        2;
+    }
 
 
     /*
-      Bright rim makes the high opening readable at speed.
+      Ice-blue rim on both sides of the elevated hole.
     */
 
     for (
@@ -2685,11 +2774,11 @@ function buildSecondShortcutMountainHole() {
             -tunnelDepth /
             2
             -
-            0.18,
+            0.20,
             tunnelDepth /
             2
             +
-            0.18
+            0.20
         ]
     ) {
 
@@ -2698,7 +2787,7 @@ function buildSecondShortcutMountainHole() {
             new THREE.BoxGeometry(
                 0.34,
                 openingHeight,
-                0.40
+                0.42
             ),
             rim,
             -openingWidth /
@@ -2713,7 +2802,7 @@ function buildSecondShortcutMountainHole() {
             new THREE.BoxGeometry(
                 0.34,
                 openingHeight,
-                0.40
+                0.42
             ),
             rim,
             openingWidth /
@@ -2728,7 +2817,7 @@ function buildSecondShortcutMountainHole() {
             new THREE.BoxGeometry(
                 openingWidth,
                 0.34,
-                0.40
+                0.42
             ),
             rim,
             0,
@@ -2745,47 +2834,90 @@ function buildSecondShortcutMountainHole() {
 
 
     /*
-      Collision ONLY around/above the elevated hole.
-      There is intentionally no center collider at road height.
+      PHYSICS:
+      - the entire bottom is solid;
+      - side rock is solid at hole height;
+      - the peak is solid above the hole;
+      - the elevated opening itself has NO collider.
     */
 
-    const leftWorld =
+    const lowerCenter =
         hole
             .clone()
             .setY(
                 0
-            )
+            );
+
+
+    addEnvironmentBoxCollider(
+        lowerCenter,
+        mountainHalfWidth,
+        tunnelDepth /
+        2,
+        rotationY,
+        {
+            minY:
+                -1,
+
+            maxY:
+                openingBottom
+                -
+                0.15,
+
+            bounce:
+                0.05,
+
+            drag:
+                0.26,
+
+            tag:
+                "MOUNTAIN"
+        }
+    );
+
+
+    const sideColliderWidth =
+        (
+            mountainHalfWidth
+            -
+            openingWidth /
+            2
+        )
+        /
+        2;
+
+
+    const leftWorld =
+        lowerCenter
+            .clone()
             .addScaledVector(
                 normal,
                 -(
                     openingWidth /
                     2
                     +
-                    pillarWidth /
+                    sideColliderWidth /
                     2
                 )
             );
 
 
     const rightWorld =
-        hole
+        lowerCenter
             .clone()
-            .setY(
-                0
-            )
             .addScaledVector(
                 normal,
                 openingWidth /
                 2
                 +
-                pillarWidth /
+                sideColliderWidth /
                 2
             );
 
 
     addEnvironmentBoxCollider(
         leftWorld,
-        pillarWidth /
+        sideColliderWidth /
         2,
         tunnelDepth /
         2,
@@ -2797,13 +2929,13 @@ function buildSecondShortcutMountainHole() {
             maxY:
                 openingTop
                 +
-                4,
+                5,
 
             bounce:
                 0.05,
 
             drag:
-                0.28,
+                0.27,
 
             tag:
                 "MOUNTAIN"
@@ -2813,7 +2945,7 @@ function buildSecondShortcutMountainHole() {
 
     addEnvironmentBoxCollider(
         rightWorld,
-        pillarWidth /
+        sideColliderWidth /
         2,
         tunnelDepth /
         2,
@@ -2825,13 +2957,13 @@ function buildSecondShortcutMountainHole() {
             maxY:
                 openingTop
                 +
-                4,
+                5,
 
             bounce:
                 0.05,
 
             drag:
-                0.28,
+                0.27,
 
             tag:
                 "MOUNTAIN"
@@ -2840,15 +2972,9 @@ function buildSecondShortcutMountainHole() {
 
 
     addEnvironmentBoxCollider(
-        hole.clone().setY(0),
-        (
-            openingWidth
-            +
-            pillarWidth *
-            2
-        )
-        /
-        2,
+        lowerCenter,
+        mountainHalfWidth *
+        0.58,
         tunnelDepth /
         2,
         rotationY,
@@ -2857,17 +2983,15 @@ function buildSecondShortcutMountainHole() {
                 openingTop,
 
             maxY:
-                openingTop
+                mountainHeight
                 +
-                peakHeight
-                +
-                8,
+                4,
 
             bounce:
                 0.04,
 
             drag:
-                0.30,
+                0.28,
 
             tag:
                 "MOUNTAIN"
@@ -5781,7 +5905,7 @@ function buildRamps() {
             &&
             definition.topHole
                 ?
-                3.6
+                4.2
                 :
                 (
                     definition.secret
@@ -5797,7 +5921,7 @@ function buildRamps() {
             &&
             definition.topHole
                 ?
-                10.5
+                12.5
                 :
                 (
                     definition.secret
@@ -5843,7 +5967,7 @@ function buildRamps() {
             &&
             definition.topHole
                 ?
-                0.82
+                0.95
                 :
                 0.48;
 
@@ -5853,7 +5977,7 @@ function buildRamps() {
             &&
             definition.topHole
                 ?
-                -0.27
+                -0.34
                 :
                 -0.12;
 
