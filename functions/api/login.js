@@ -120,7 +120,7 @@ export async function onRequestPost(context) {
       headers: {
 
         "Set-Cookie":
-          `gh_session=${token}; ` +
+          `gh_access=${token}; ` +
           `Path=/; ` +
           `HttpOnly; ` +
           `Secure; ` +
