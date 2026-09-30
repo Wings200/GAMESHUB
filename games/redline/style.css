@@ -717,11 +717,56 @@ input::placeholder {
 
   gap: 14px;
 
+  flex: 0 0 auto;
+
   color: #8da0bb;
 
   font-size: 12px;
 
   font-weight: 800;
+}
+
+.public-room-placeholder {
+  justify-content: flex-start;
+
+  min-height: 82px;
+}
+
+.public-room-placeholder:hover {
+  transform: none;
+
+  border-color: #222e40;
+
+  background: #0c131e;
+}
+
+.public-room-join {
+  min-width: 74px;
+}
+
+.public-room-join:disabled,
+#refreshRoomsBtn:disabled {
+  opacity: 0.55;
+
+  cursor: default;
+
+  transform: none;
+}
+
+@media (max-width: 680px) {
+  .public-room-card {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+  .public-room-meta {
+    justify-content: space-between;
+  }
+
+  .public-room-join {
+    min-width: 92px;
+  }
 }
 
 
