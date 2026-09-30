@@ -1618,6 +1618,39 @@ function collideWithEnvironment() {
 }
 
 
+function arcticSceneryClearOfRoad(
+    position,
+    radius,
+    margin = 4
+) {
+
+    const road =
+        nearestTrackInfo(
+            position
+        );
+
+
+    if (
+        !road
+    ) {
+
+        return true;
+
+    }
+
+
+    return (
+        road.distance >
+        ROAD_HALF
+        +
+        radius
+        +
+        margin
+    );
+
+}
+
+
 function buildArcticTunnel(
     startT,
     endT,
@@ -2109,7 +2142,7 @@ function buildSecondShortcutMountainHole() {
 
     if (
         distance <
-        30
+        25
     ) {
 
         return;
@@ -2128,103 +2161,6 @@ function buildSecondShortcutMountainHole() {
         );
 
 
-    /*
-      Find the emptiest point along the shortcut flight path.
-      The old cave was always placed at 48% of the jump, which could put
-      the mountain directly across the normal race road.
-    */
-
-    let center =
-        null;
-
-
-    let bestClearance =
-        -Infinity;
-
-
-    for (
-        const progress
-        of [
-            0.28,
-            0.34,
-            0.40,
-            0.46,
-            0.52,
-            0.58,
-            0.64,
-            0.70
-        ]
-    ) {
-
-        const candidate =
-            start
-                .clone()
-                .addScaledVector(
-                    direction,
-                    distance *
-                    progress
-                );
-
-
-        const road =
-            nearestTrackInfo(
-                candidate
-            );
-
-
-        const clearance =
-            road?.distance
-            ??
-            0;
-
-
-        /*
-          The cave structure needs room in BOTH width and depth. Favor
-          genuinely off-road points so it cannot straddle normal asphalt.
-        */
-
-        const usableClearance =
-            clearance >
-            34
-                ?
-                clearance
-                :
-                -1;
-
-
-        if (
-            usableClearance >
-            bestClearance
-        ) {
-
-            bestClearance =
-                usableClearance;
-
-
-            center =
-                candidate;
-
-        }
-
-    }
-
-
-    if (
-        !center
-        ||
-        bestClearance <
-        34
-    ) {
-
-        /*
-          Better to omit the set-piece than ever block the real course.
-        */
-
-        return;
-
-    }
-
-
     const rotationY =
         Math.atan2(
             direction.x,
@@ -2232,23 +2168,29 @@ function buildSecondShortcutMountainHole() {
         );
 
 
-    const mountain =
-        new THREE.Group();
+    const openingWidth =
+        15.5;
 
 
-    mountain.position
-        .copy(
-            center
-        );
+    const openingHeight =
+        11.5;
 
 
-    mountain.rotation.y =
-        rotationY;
+    const sideWidth =
+        5.2;
+
+
+    const segmentDepth =
+        8.5;
+
+
+    const roofThickness =
+        3.0;
 
 
     const rock =
         material(
-            0x4e5c66,
+            0x4b5965,
             0.98,
             0.01
         );
@@ -2256,140 +2198,10 @@ function buildSecondShortcutMountainHole() {
 
     const iceRock =
         material(
-            0x728fa1,
-            0.56,
+            0x7597a9,
+            0.58,
             0.05
         );
-
-
-    /*
-      Keep the cave opening generous and size the surrounding mountain to
-      the available off-road space. This prevents the shortcut set piece
-      from spilling onto the main road.
-    */
-
-    const openingWidth =
-        16;
-
-
-    const openingHeight =
-        11.5;
-
-
-    const safeHalfWidth =
-        THREE.MathUtils.clamp(
-            bestClearance
-            -
-            SIDEWALK_OUTER
-            -
-            9,
-            14,
-            18
-        );
-
-
-    const totalWidth =
-        safeHalfWidth *
-        2;
-
-
-    const sideWidth =
-        (
-            totalWidth -
-            openingWidth
-        )
-        /
-        2;
-
-
-    const thickness =
-        20;
-
-
-    const mountainHeight =
-        33;
-
-
-    /*
-      If the route is unusually close here, do not create a giant wall.
-      The arch still exists, but the side masses stay compact.
-    */
-
-    const leftX =
-        -(
-            openingWidth /
-            2
-            +
-            sideWidth /
-            2
-        );
-
-
-    const rightX =
-        openingWidth /
-        2
-        +
-        sideWidth /
-        2;
-
-
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            sideWidth,
-            mountainHeight,
-            thickness
-        ),
-        rock,
-        leftX,
-        mountainHeight /
-        2,
-        0
-    );
-
-
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            sideWidth,
-            mountainHeight,
-            thickness
-        ),
-        rock,
-        rightX,
-        mountainHeight /
-        2,
-        0
-    );
-
-
-    addMesh(
-        mountain,
-        new THREE.BoxGeometry(
-            openingWidth,
-            mountainHeight -
-            openingHeight,
-            thickness
-        ),
-        iceRock,
-        0,
-        openingHeight
-        +
-        (
-            mountainHeight -
-            openingHeight
-        )
-        /
-        2,
-        0
-    );
-
-
-    /*
-      Keep the cave mouth completely open. The old cone-shaped peaks
-      extended into the opening and visually/physically blocked the jump.
-      The side rock masses + roof already sell the mountain silhouette.
-    */
 
 
     const tunnelDark =
@@ -2401,70 +2213,6 @@ function buildSecondShortcutMountainHole() {
         });
 
 
-    const leftInterior =
-        addMesh(
-            mountain,
-            new THREE.PlaneGeometry(
-                thickness *
-                1.3,
-                openingHeight
-            ),
-            tunnelDark,
-            -openingWidth /
-            2,
-            openingHeight /
-            2,
-            0
-        );
-
-
-    leftInterior.rotation.y =
-        Math.PI /
-        2;
-
-
-    const rightInterior =
-        addMesh(
-            mountain,
-            new THREE.PlaneGeometry(
-                thickness *
-                1.3,
-                openingHeight
-            ),
-            tunnelDark,
-            openingWidth /
-            2,
-            openingHeight /
-            2,
-            0
-        );
-
-
-    rightInterior.rotation.y =
-        -Math.PI /
-        2;
-
-
-    const ceiling =
-        addMesh(
-            mountain,
-            new THREE.PlaneGeometry(
-                openingWidth,
-                thickness *
-                1.3
-            ),
-            tunnelDark,
-            0,
-            openingHeight,
-            0
-        );
-
-
-    ceiling.rotation.x =
-        Math.PI /
-        2;
-
-
     const rimMaterial =
         new THREE.MeshBasicMaterial({
             color:
@@ -2473,181 +2221,411 @@ function buildSecondShortcutMountainHole() {
 
 
     /*
-      Put the bright cave rim on BOTH ends so the intended opening is
-      readable no matter which direction the camera approaches it from.
+      Build a chain of mountain arches directly around the ACTUAL shortcut
+      trajectory. Unlike the previous single giant mountain, each side rock
+      is individually skipped if it would touch any normal road section.
+      The opening itself is never given a low collider.
     */
 
-    for (
-        const z
-        of [
-            -thickness /
-            2
-            -
-            0.20,
-            thickness /
-            2
-            +
-            0.20
-        ]
-    ) {
-
-        addMesh(
-            mountain,
-            new THREE.BoxGeometry(
-                0.34,
-                openingHeight,
-                0.38
-            ),
-            rimMaterial,
-            -openingWidth /
-            2,
-            openingHeight /
-            2,
-            z
-        );
+    const progressValues =
+        [
+            0.24,
+            0.34,
+            0.44,
+            0.54,
+            0.64
+        ];
 
 
-        addMesh(
-            mountain,
-            new THREE.BoxGeometry(
-                0.34,
-                openingHeight,
-                0.38
-            ),
-            rimMaterial,
-            openingWidth /
-            2,
-            openingHeight /
-            2,
-            z
-        );
+    progressValues.forEach(
+        (
+            progress,
+            index
+        ) => {
+
+            const center =
+                start
+                    .clone()
+                    .addScaledVector(
+                        direction,
+                        distance *
+                        progress
+                    );
 
 
-        addMesh(
-            mountain,
-            new THREE.BoxGeometry(
-                openingWidth,
-                0.34,
-                0.38
-            ),
-            rimMaterial,
-            0,
-            openingHeight,
-            z
-        );
-
-    }
+            const group =
+                new THREE.Group();
 
 
-    worldGroup.add(
-        mountain
-    );
+            group.position
+                .copy(
+                    center
+                );
 
 
-    const leftCenter =
-        center
-            .clone()
-            .addScaledVector(
-                normal,
-                -(
-                    openingWidth /
-                    2
-                    +
+            group.rotation.y =
+                rotationY;
+
+
+            let sidePieces =
+                0;
+
+
+            for (
+                const side
+                of [-1, 1]
+            ) {
+
+                const localX =
+                    side
+                    *
+                    (
+                        openingWidth /
+                        2
+                        +
+                        sideWidth /
+                        2
+                    );
+
+
+                const worldCenter =
+                    center
+                        .clone()
+                        .addScaledVector(
+                            normal,
+                            localX
+                        );
+
+
+                const footprintRadius =
+                    Math.hypot(
+                        sideWidth /
+                        2,
+                        segmentDepth /
+                        2
+                    );
+
+
+                if (
+                    !arcticSceneryClearOfRoad(
+                        worldCenter,
+                        footprintRadius,
+                        3
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                addMesh(
+                    group,
+                    new THREE.BoxGeometry(
+                        sideWidth,
+                        24,
+                        segmentDepth
+                    ),
+                    rock,
+                    localX,
+                    12,
+                    0
+                );
+
+
+                addEnvironmentBoxCollider(
+                    worldCenter,
                     sideWidth /
+                    2,
+                    segmentDepth /
+                    2,
+                    rotationY,
+                    {
+                        maxY:
+                            24,
+
+                        bounce:
+                            0.08,
+
+                        drag:
+                            0.28,
+
+                        tag:
+                            "MOUNTAIN"
+                    }
+                );
+
+
+                sidePieces++;
+
+            }
+
+
+            /*
+              The roof can safely cross above normal asphalt because cars
+              pass below openingHeight. Its collider only begins above the
+              opening, so it can NEVER wall off the road.
+            */
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    openingWidth
+                    +
+                    sideWidth *
+                    2,
+                    roofThickness,
+                    segmentDepth
+                ),
+                index %
+                2 ===
+                0
+                    ?
+                    iceRock
+                    :
+                    rock,
+                0,
+                openingHeight
+                +
+                roofThickness /
+                2,
+                0
+            );
+
+
+            addEnvironmentBoxCollider(
+                center,
+                (
+                    openingWidth
+                    +
+                    sideWidth *
                     2
                 )
+                /
+                2,
+                segmentDepth /
+                2,
+                rotationY,
+                {
+                    minY:
+                        openingHeight,
+
+                    maxY:
+                        openingHeight
+                        +
+                        roofThickness
+                        +
+                        1,
+
+                    bounce:
+                        0.05,
+
+                    drag:
+                        0.30,
+
+                    tag:
+                        "MOUNTAIN"
+                }
             );
 
 
-    const rightCenter =
-        center
-            .clone()
-            .addScaledVector(
-                normal,
-                openingWidth /
-                2
-                +
-                sideWidth /
-                2
+            /*
+              Dark ceiling/interior makes it visually read as a secret pass
+              even when one side rock had to be omitted near a road crossing.
+            */
+
+            const ceiling =
+                addMesh(
+                    group,
+                    new THREE.PlaneGeometry(
+                        openingWidth,
+                        segmentDepth
+                    ),
+                    tunnelDark,
+                    0,
+                    openingHeight
+                    -
+                    0.05,
+                    0
+                );
+
+
+            ceiling.rotation.x =
+                Math.PI /
+                2;
+
+
+            if (
+                index ===
+                0
+                ||
+                index ===
+                progressValues.length -
+                1
+            ) {
+
+                for (
+                    const side
+                    of [-1, 1]
+                ) {
+
+                    addMesh(
+                        group,
+                        new THREE.BoxGeometry(
+                            0.32,
+                            openingHeight,
+                            0.42
+                        ),
+                        rimMaterial,
+                        side *
+                        openingWidth /
+                        2,
+                        openingHeight /
+                        2,
+                        -segmentDepth /
+                        2
+                    );
+
+                }
+
+
+                addMesh(
+                    group,
+                    new THREE.BoxGeometry(
+                        openingWidth,
+                        0.32,
+                        0.42
+                    ),
+                    rimMaterial,
+                    0,
+                    openingHeight,
+                    -segmentDepth /
+                    2
+                );
+
+            }
+
+
+            worldGroup.add(
+                group
             );
+
+        }
+    );
 
 
     /*
-      Only the rock AROUND the hole collides. There is intentionally no
-      center collider below openingHeight.
+      Add mountain mass beside the secret tunnel, but only where it is
+      guaranteed not to overlap ANY section of the race road.
     */
 
-    addEnvironmentBoxCollider(
-        leftCenter,
-        sideWidth /
-        2,
-        thickness /
-        2,
-        rotationY,
-        {
-            maxY:
-                mountainHeight,
+    const mountainMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                0x47545f,
+            roughness:
+                1
+        });
 
-            bounce:
-                0.08,
 
-            drag:
-                0.28,
+    for (
+        const progress
+        of [
+            0.34,
+            0.54
+        ]
+    ) {
 
-            tag:
-                "MOUNTAIN"
+        const center =
+            start
+                .clone()
+                .addScaledVector(
+                    direction,
+                    distance *
+                    progress
+                );
+
+
+        for (
+            const side
+            of [-1, 1]
+        ) {
+
+            const mountainCenter =
+                center
+                    .clone()
+                    .addScaledVector(
+                        normal,
+                        side *
+                        32
+                    );
+
+
+            const radius =
+                18;
+
+
+            if (
+                !arcticSceneryClearOfRoad(
+                    mountainCenter,
+                    radius,
+                    8
+                )
+            ) {
+
+                continue;
+
+            }
+
+
+            const peak =
+                new THREE.Mesh(
+                    new THREE.ConeGeometry(
+                        radius,
+                        55,
+                        7
+                    ),
+                    mountainMaterial
+                );
+
+
+            peak.position
+                .copy(
+                    mountainCenter
+                );
+
+
+            peak.position.y =
+                22;
+
+
+            worldGroup.add(
+                peak
+            );
+
+
+            addEnvironmentCircleCollider(
+                mountainCenter,
+                radius *
+                0.70,
+                {
+                    maxY:
+                        60,
+
+                    bounce:
+                        0.08,
+
+                    drag:
+                        0.30,
+
+                    tag:
+                        "MOUNTAIN"
+                }
+            );
+
         }
-    );
 
-
-    addEnvironmentBoxCollider(
-        rightCenter,
-        sideWidth /
-        2,
-        thickness /
-        2,
-        rotationY,
-        {
-            maxY:
-                mountainHeight,
-
-            bounce:
-                0.08,
-
-            drag:
-                0.28,
-
-            tag:
-                "MOUNTAIN"
-        }
-    );
-
-
-    addEnvironmentBoxCollider(
-        center,
-        openingWidth /
-        2,
-        thickness /
-        2,
-        rotationY,
-        {
-            minY:
-                openingHeight +
-                0.15,
-
-            maxY:
-                mountainHeight,
-
-            bounce:
-                0.06,
-
-            drag:
-                0.30,
-
-            tag:
-                "MOUNTAIN"
-        }
-    );
+    }
 
 }
 function buildArcticEnvironment() {
@@ -2730,6 +2708,81 @@ function buildArcticEnvironment() {
             );
 
 
+        let safeDistance =
+            Math.max(
+                Math.abs(
+                    distance
+                ),
+                radius
+                +
+                SIDEWALK_OUTER
+                +
+                18
+            );
+
+
+        let position =
+            null;
+
+
+        /*
+          Arctic folds back over itself, so checking only the local road is
+          not enough. Push the mountain outward until its ENTIRE base clears
+          the nearest road section anywhere on the map.
+        */
+
+        for (
+            let attempt = 0;
+            attempt < 12;
+            attempt++
+        ) {
+
+            const candidate =
+                frame.point
+                    .clone()
+                    .addScaledVector(
+                        frame.normal,
+                        side *
+                        safeDistance
+                    );
+
+
+            if (
+                arcticSceneryClearOfRoad(
+                    candidate,
+                    radius,
+                    10
+                )
+            ) {
+
+                position =
+                    candidate;
+
+
+                break;
+
+            }
+
+
+            safeDistance +=
+                18;
+
+        }
+
+
+        if (
+            !position
+        ) {
+
+            /*
+              Never spawn a mountain if a safe position cannot be found.
+            */
+
+            return;
+
+        }
+
+
         const mountain =
             new THREE.Mesh(
                 new THREE.ConeGeometry(
@@ -2745,34 +2798,9 @@ function buildArcticEnvironment() {
             );
 
 
-        /*
-          ConeGeometry uses "radius" at its base. A mountain centered only
-          50 units from the road with a 45-unit radius can literally cover
-          the asphalt. Guarantee the VISUAL mesh itself stays well outside
-          the shoulder, not just its collider.
-        */
-
-        const safeDistance =
-            Math.max(
-                Math.abs(
-                    distance
-                ),
-                radius
-                +
-                SIDEWALK_OUTER
-                +
-                15
-            );
-
-
         mountain.position
             .copy(
-                frame.point
-            )
-            .addScaledVector(
-                frame.normal,
-                side *
-                safeDistance
+                position
             );
 
 
@@ -2846,7 +2874,6 @@ function buildArcticEnvironment() {
         );
 
     }
-
 
     /*
       SECTOR 1 — BASE CAMP
@@ -3177,7 +3204,10 @@ function buildArcticEnvironment() {
       Wide open peaks and a long high-speed run.
     */
 
-    addMountain(0.735, 1, 78, 50, 150, true);
+    /*
+      Keep the research/radio outpost sightline completely open.
+      The old 0.735 peak was the mountain visible across the asphalt.
+    */
     addMountain(0.765, -1, 73, 47, 140, false);
     addMountain(0.805, 1, 82, 54, 158, true);
 
