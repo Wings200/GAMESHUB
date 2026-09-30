@@ -37,10 +37,12 @@ const carCards = [
 ];
 const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: false,
+    antialias: true,
     powerPreference: "high-performance"
 });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
 renderer.setPixelRatio(1);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060c16);
@@ -56,7 +58,11 @@ scene.add(fillLight);
 const clock = new THREE.Clock();
 const keys = new Set();
 const quality = {
-    renderScale: 0.76
+    /*
+      Keep a little headroom for Chromebook multiplayer while MSAA and
+      higher-detail geometry clean up the old low-poly look.
+    */
+    renderScale: 0.82
 };
 let fpsFrames = 0;
 let lastFpsTime = performance.now();
@@ -657,6 +663,675 @@ function createTextTexture(text, foreground = "#ffffff", background = "#111827")
         THREE.LinearFilter;
     return texture;
 }
+function createSurfaceTexture(
+    kind,
+    repeatX = 1,
+    repeatY = 1
+) {
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+
+    canvas.width =
+        256;
+
+
+    canvas.height =
+        256;
+
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    const palettes = {
+        asphalt: [
+            "#252d36",
+            "#313a44",
+            "#111820"
+        ],
+        snow: [
+            "#d6e2e8",
+            "#b8cad5",
+            "#edf5f8"
+        ],
+        rock: [
+            "#53616b",
+            "#3d4953",
+            "#75838c"
+        ],
+        ice: [
+            "#79a9bf",
+            "#a8d7e8",
+            "#527b91"
+        ],
+        concrete: [
+            "#303a46",
+            "#202934",
+            "#56616c"
+        ],
+        facade: [
+            "#263343",
+            "#17212d",
+            "#425064"
+        ]
+    };
+
+
+    const palette =
+        palettes[
+            kind
+        ]
+        ||
+        palettes.concrete;
+
+
+    ctx.fillStyle =
+        palette[0];
+
+
+    ctx.fillRect(
+        0,
+        0,
+        256,
+        256
+    );
+
+
+    /*
+      Deterministic pseudo-random grain. No downloaded texture files,
+      so every client sees the same surfaces and the game stays lightweight.
+    */
+
+    let seed =
+        (
+            kind
+                .split(
+                    ""
+                )
+                .reduce(
+                    (
+                        value,
+                        char
+                    ) =>
+                        (
+                            value *
+                            33
+                            +
+                            char.charCodeAt(
+                                0
+                            )
+                        )
+                        >>>
+                        0,
+                    2166136261
+                )
+        )
+        >>>
+        0;
+
+
+    function random() {
+
+        seed =
+            (
+                seed *
+                1664525
+                +
+                1013904223
+            )
+            >>>
+            0;
+
+
+        return seed /
+            4294967296;
+
+    }
+
+
+    for (
+        let i = 0;
+        i < 2100;
+        i++
+    ) {
+
+        const x =
+            random() *
+            256;
+
+
+        const y =
+            random() *
+            256;
+
+
+        const size =
+            0.35
+            +
+            random() *
+            (
+                kind ===
+                "snow"
+                    ?
+                    2.4
+                    :
+                    1.5
+            );
+
+
+        ctx.globalAlpha =
+            0.05
+            +
+            random() *
+            0.14;
+
+
+        ctx.fillStyle =
+            palette[
+                1
+                +
+                (
+                    random() >
+                    0.5
+                        ?
+                        1
+                        :
+                        0
+                )
+            ];
+
+
+        ctx.fillRect(
+            x,
+            y,
+            size,
+            size
+        );
+
+    }
+
+
+    ctx.globalAlpha =
+        1;
+
+
+    if (
+        kind ===
+        "asphalt"
+    ) {
+
+        ctx.strokeStyle =
+            "rgba(8,12,16,.34)";
+
+
+        ctx.lineWidth =
+            1;
+
+
+        for (
+            let i = 0;
+            i < 8;
+            i++
+        ) {
+
+            const y =
+                18
+                +
+                i *
+                29
+                +
+                random() *
+                10;
+
+
+            ctx.beginPath();
+
+
+            ctx.moveTo(
+                random() *
+                45,
+                y
+            );
+
+
+            for (
+                let x = 40;
+                x < 270;
+                x += 38
+            ) {
+
+                ctx.lineTo(
+                    x,
+                    y
+                    +
+                    (
+                        random() -
+                        0.5
+                    )
+                    *
+                    12
+                );
+
+            }
+
+
+            ctx.stroke();
+
+        }
+
+    }
+
+
+    if (
+        kind ===
+        "rock"
+    ) {
+
+        ctx.strokeStyle =
+            "rgba(20,26,31,.28)";
+
+
+        ctx.lineWidth =
+            2;
+
+
+        for (
+            let i = 0;
+            i < 18;
+            i++
+        ) {
+
+            ctx.beginPath();
+
+
+            const x =
+                random() *
+                256;
+
+
+            const y =
+                random() *
+                256;
+
+
+            ctx.moveTo(
+                x,
+                y
+            );
+
+
+            ctx.lineTo(
+                x
+                +
+                (
+                    random() -
+                    0.5
+                )
+                *
+                45,
+                y
+                +
+                20
+                +
+                random() *
+                48
+            );
+
+
+            ctx.stroke();
+
+        }
+
+    }
+
+
+    if (
+        kind ===
+        "facade"
+    ) {
+
+        ctx.strokeStyle =
+            "rgba(145,174,204,.15)";
+
+
+        ctx.lineWidth =
+            2;
+
+
+        for (
+            let y = 16;
+            y < 256;
+            y += 32
+        ) {
+
+            ctx.beginPath();
+
+
+            ctx.moveTo(
+                0,
+                y
+            );
+
+
+            ctx.lineTo(
+                256,
+                y
+            );
+
+
+            ctx.stroke();
+
+        }
+
+
+        for (
+            let x = 20;
+            x < 256;
+            x += 38
+        ) {
+
+            ctx.beginPath();
+
+
+            ctx.moveTo(
+                x,
+                0
+            );
+
+
+            ctx.lineTo(
+                x,
+                256
+            );
+
+
+            ctx.stroke();
+
+        }
+
+    }
+
+
+    const texture =
+        new THREE.CanvasTexture(
+            canvas
+        );
+
+
+    texture.colorSpace =
+        THREE.SRGBColorSpace;
+
+
+    texture.wrapS =
+        THREE.RepeatWrapping;
+
+
+    texture.wrapT =
+        THREE.RepeatWrapping;
+
+
+    texture.repeat.set(
+        repeatX,
+        repeatY
+    );
+
+
+    texture.minFilter =
+        THREE.LinearMipmapLinearFilter;
+
+
+    texture.magFilter =
+        THREE.LinearFilter;
+
+
+    texture.anisotropy =
+        Math.min(
+            8,
+            renderer.capabilities
+                .getMaxAnisotropy()
+        );
+
+
+    return texture;
+
+}
+
+
+function createDetailedMountainGeometry(
+    radius,
+    height,
+    seed = 1
+) {
+
+    const radialSegments =
+        30;
+
+
+    const verticalSegments =
+        10;
+
+
+    const vertices =
+        [];
+
+
+    const indices =
+        [];
+
+
+    for (
+        let yIndex = 0;
+        yIndex <= verticalSegments;
+        yIndex++
+    ) {
+
+        const t =
+            yIndex /
+            verticalSegments;
+
+
+        const y =
+            -height /
+            2
+            +
+            t *
+            height;
+
+
+        const taper =
+            Math.pow(
+                1 -
+                t,
+                0.78
+            );
+
+
+        for (
+            let segment = 0;
+            segment < radialSegments;
+            segment++
+        ) {
+
+            const angle =
+                segment /
+                radialSegments
+                *
+                Math.PI
+                *
+                2;
+
+
+            const irregularity =
+                1
+                +
+                Math.sin(
+                    angle *
+                    3
+                    +
+                    seed *
+                    0.71
+                    +
+                    t *
+                    2.3
+                )
+                *
+                0.075
+                +
+                Math.sin(
+                    angle *
+                    7
+                    +
+                    seed *
+                    1.37
+                    -
+                    t *
+                    4.2
+                )
+                *
+                0.045
+                +
+                Math.sin(
+                    angle *
+                    13
+                    +
+                    seed
+                )
+                *
+                0.018;
+
+
+            const ringRadius =
+                Math.max(
+                    radius *
+                    0.025,
+                    radius *
+                    taper *
+                    irregularity
+                );
+
+
+            vertices.push(
+                Math.cos(
+                    angle
+                )
+                *
+                ringRadius,
+                y,
+                Math.sin(
+                    angle
+                )
+                *
+                ringRadius
+            );
+
+        }
+
+    }
+
+
+    for (
+        let ring = 0;
+        ring < verticalSegments;
+        ring++
+    ) {
+
+        for (
+            let segment = 0;
+            segment < radialSegments;
+            segment++
+        ) {
+
+            const next =
+                (
+                    segment +
+                    1
+                )
+                %
+                radialSegments;
+
+
+            const a =
+                ring *
+                radialSegments
+                +
+                segment;
+
+
+            const b =
+                ring *
+                radialSegments
+                +
+                next;
+
+
+            const d =
+                (
+                    ring +
+                    1
+                )
+                *
+                radialSegments
+                +
+                segment;
+
+
+            const e =
+                (
+                    ring +
+                    1
+                )
+                *
+                radialSegments
+                +
+                next;
+
+
+            indices.push(
+                a,
+                d,
+                b,
+                b,
+                d,
+                e
+            );
+
+        }
+
+    }
+
+
+    const geometry =
+        new THREE.BufferGeometry();
+
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            vertices,
+            3
+        )
+    );
+
+
+    geometry.setIndex(
+        indices
+    );
+
+
+    geometry.computeVertexNormals();
+
+
+    return geometry;
+
+}
+
+
 function getFrameAt(t) {
     const wrapped = ((t %
         1)
@@ -1013,7 +1688,34 @@ function disposeWorld() {
                     [
                         object.material
                     ];
-            list.forEach(mat => mat.dispose?.());
+
+            list.forEach(
+                mat => {
+
+                    mat.map
+                        ?.dispose
+                        ?.();
+
+
+                    if (
+                        mat.bumpMap
+                        &&
+                        mat.bumpMap !==
+                        mat.map
+                    ) {
+
+                        mat.bumpMap
+                            .dispose
+                            ?.();
+
+                    }
+
+
+                    mat.dispose
+                        ?.();
+
+                }
+            );
         }
     });
     scene.remove(worldGroup);
@@ -1034,48 +1736,216 @@ function disposeWorld() {
     fx.sparkIndex =
         0;
 }
-function makeRibbon(innerDistance, outerDistance, color, y = 0.02, roughness = 0.9) {
-    const vertices = [];
-    const indices = [];
-    for (let i = 0; i < TRACK_SAMPLE_COUNT; i++) {
-        const sample = trackSamples[i];
-        const inner = sample.point
-            .clone()
-            .addScaledVector(sample.normal, innerDistance);
-        const outer = sample.point
-            .clone()
-            .addScaledVector(sample.normal, outerDistance);
+function makeRibbon(
+    innerDistance,
+    outerDistance,
+    color,
+    y = 0.02,
+    roughness = 0.9,
+    textureKind = null,
+    textureRepeats = 22
+) {
+
+    const vertices =
+        [];
+
+
+    const indices =
+        [];
+
+
+    const uvs =
+        [];
+
+
+    for (
+        let i = 0;
+        i < TRACK_SAMPLE_COUNT;
+        i++
+    ) {
+
+        const sample =
+            trackSamples[i];
+
+
+        const inner =
+            sample.point
+                .clone()
+                .addScaledVector(
+                    sample.normal,
+                    innerDistance
+                );
+
+
+        const outer =
+            sample.point
+                .clone()
+                .addScaledVector(
+                    sample.normal,
+                    outerDistance
+                );
+
+
         inner.y =
             y;
+
+
         outer.y =
             y;
-        vertices.push(inner.x, inner.y, inner.z, outer.x, outer.y, outer.z);
+
+
+        vertices.push(
+            inner.x,
+            inner.y,
+            inner.z,
+            outer.x,
+            outer.y,
+            outer.z
+        );
+
+
+        const u =
+            i /
+            TRACK_SAMPLE_COUNT
+            *
+            textureRepeats;
+
+
+        uvs.push(
+            u,
+            0,
+            u,
+            1
+        );
+
     }
-    for (let i = 0; i < TRACK_SAMPLE_COUNT; i++) {
-        const next = (i +
-            1)
+
+
+    for (
+        let i = 0;
+        i < TRACK_SAMPLE_COUNT;
+        i++
+    ) {
+
+        const next =
+            (
+                i +
+                1
+            )
             %
-                TRACK_SAMPLE_COUNT;
-        const a = i *
+            TRACK_SAMPLE_COUNT;
+
+
+        const a =
+            i *
             2;
-        const b = a +
+
+
+        const b =
+            a +
             1;
-        const c = next *
+
+
+        const nextA =
+            next *
             2;
-        const d = c +
+
+
+        const nextB =
+            nextA +
             1;
-        indices.push(a, c, b, c, d, b);
+
+
+        indices.push(
+            a,
+            nextA,
+            b,
+            nextA,
+            nextB,
+            b
+        );
+
     }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
+
+
+    const geometry =
+        new THREE.BufferGeometry();
+
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            vertices,
+            3
+        )
+    );
+
+
+    geometry.setAttribute(
+        "uv",
+        new THREE.Float32BufferAttribute(
+            uvs,
+            2
+        )
+    );
+
+
+    geometry.setIndex(
+        indices
+    );
+
+
     geometry.computeVertexNormals();
-    return new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-        color,
-        roughness,
-        metalness: 0.03,
-        side: THREE.DoubleSide
-    }));
+
+
+    const detailTexture =
+        textureKind
+            ?
+            createSurfaceTexture(
+                textureKind,
+                1,
+                1
+            )
+            :
+            null;
+
+
+    const meshMaterial =
+        new THREE.MeshStandardMaterial({
+            color,
+            roughness,
+            metalness:
+                textureKind ===
+                "ice"
+                    ?
+                    0.12
+                    :
+                    0.03,
+            side:
+                THREE.DoubleSide,
+            map:
+                detailTexture
+                ||
+                null,
+            bumpMap:
+                detailTexture
+                ||
+                null,
+            bumpScale:
+                textureKind ===
+                "asphalt"
+                    ?
+                    0.055
+                    :
+                    0.025
+        });
+
+
+    return new THREE.Mesh(
+        geometry,
+        meshMaterial
+    );
+
 }
 function buildRoad() {
     const roadColor =
@@ -1103,9 +1973,48 @@ function buildRoad() {
             0xbec7d3;
 
     worldGroup.add(
-        makeRibbon(-ROAD_HALF, ROAD_HALF, roadColor, 0.04, 0.78),
-        makeRibbon(ROAD_HALF, SIDEWALK_OUTER, shoulderColor, 0.055, 0.95),
-        makeRibbon(-ROAD_HALF, -SIDEWALK_OUTER, shoulderColor, 0.055, 0.95),
+        makeRibbon(
+            -ROAD_HALF,
+            ROAD_HALF,
+            roadColor,
+            0.04,
+            0.78,
+            "asphalt",
+            activeTrackId ===
+            "arctic"
+                ?
+                72
+                :
+                28
+        ),
+        makeRibbon(
+            ROAD_HALF,
+            SIDEWALK_OUTER,
+            shoulderColor,
+            0.055,
+            0.95,
+            activeTrackId ===
+            "arctic"
+                ?
+                "snow"
+                :
+                "concrete",
+            34
+        ),
+        makeRibbon(
+            -ROAD_HALF,
+            -SIDEWALK_OUTER,
+            shoulderColor,
+            0.055,
+            0.95,
+            activeTrackId ===
+            "arctic"
+                ?
+                "snow"
+                :
+                "concrete",
+            34
+        ),
         makeRibbon(ROAD_HALF - 0.30, ROAD_HALF + 0.12, edgeColor, 0.078, 0.8),
         makeRibbon(-ROAD_HALF + 0.30, -ROAD_HALF - 0.12, edgeColor, 0.078, 0.8),
         makeRibbon(5.55, 5.68, 0xd6dce4, 0.084, 0.8),
@@ -1157,10 +2066,34 @@ function buildCrosswalks() {
     }
 }
 function buildCity() {
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(560, 560), new THREE.MeshStandardMaterial({
-        color: 0x08111b,
-        roughness: 1
-    }));
+    const cityGroundTexture =
+        createSurfaceTexture(
+            "concrete",
+            26,
+            26
+        );
+
+
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            560,
+            560,
+            8,
+            8
+        ),
+        new THREE.MeshStandardMaterial({
+            color:
+                0x08111b,
+            roughness:
+                1,
+            map:
+                cityGroundTexture,
+            bumpMap:
+                cityGroundTexture,
+            bumpScale:
+                0.035
+        })
+    );
     ground.rotation.x =
         -Math.PI /
             2;
@@ -1222,11 +2155,40 @@ function buildCity() {
             buildingIndex++;
         }
     }
-    const buildingMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.88,
-        metalness: 0.04
-    }), buildingSpecs.length);
+    const facadeTexture =
+        createSurfaceTexture(
+            "facade",
+            2,
+            4
+        );
+
+
+    const buildingMesh =
+        new THREE.InstancedMesh(
+            new THREE.BoxGeometry(
+                1,
+                1,
+                1,
+                2,
+                4,
+                2
+            ),
+            new THREE.MeshStandardMaterial({
+                color:
+                    0xffffff,
+                roughness:
+                    0.78,
+                metalness:
+                    0.08,
+                map:
+                    facadeTexture,
+                bumpMap:
+                    facadeTexture,
+                bumpScale:
+                    0.035
+            }),
+            buildingSpecs.length
+        );
     const dummy = new THREE.Object3D();
     buildingSpecs.forEach((b, index) => {
         dummy.position.copy(b.position);
@@ -1247,6 +2209,7 @@ function buildCity() {
     }
     worldGroup.add(buildingMesh);
     buildBuildingWindows(buildingSpecs);
+    buildBuildingLedges(buildingSpecs);
     buildRooftopDetails(buildingSpecs);
     buildStreetLights();
     buildNeonSigns(buildingSpecs);
@@ -1828,21 +2791,43 @@ function buildArcticTunnel(
         12;
 
 
+    const tunnelWallTexture =
+        createSurfaceTexture(
+            ice
+                ?
+                "ice"
+                :
+                "rock",
+            3,
+            4
+        );
+
+
     const wallMaterial =
         new THREE.MeshStandardMaterial({
             color,
             roughness:
                 ice
                     ?
-                    0.46
+                    0.40
                     :
-                    0.98,
+                    0.90,
             metalness:
                 ice
                     ?
-                    0.08
+                    0.10
                     :
-                    0.01
+                    0.015,
+            map:
+                tunnelWallTexture,
+            bumpMap:
+                tunnelWallTexture,
+            bumpScale:
+                ice
+                    ?
+                    0.055
+                    :
+                    0.13
         });
 
 
@@ -1910,9 +2895,9 @@ function buildArcticTunnel(
 
 
         const wallGeometry =
-            new THREE.DodecahedronGeometry(
+            new THREE.IcosahedronGeometry(
                 1,
-                0
+                2
             );
 
 
@@ -2308,7 +3293,7 @@ function buildSecondShortcutMountainHole() {
             metalness:
                 0.01,
             flatShading:
-                true,
+                false,
             side:
                 THREE.DoubleSide
         });
@@ -2323,7 +3308,7 @@ function buildSecondShortcutMountainHole() {
             metalness:
                 0.01,
             flatShading:
-                true,
+                false,
             side:
                 THREE.DoubleSide
         });
@@ -2338,7 +3323,7 @@ function buildSecondShortcutMountainHole() {
             metalness:
                 0.01,
             flatShading:
-                true,
+                false,
             side:
                 THREE.DoubleSide
         });
@@ -2440,9 +3425,17 @@ function buildSecondShortcutMountainHole() {
                 {
                     depth,
                     bevelEnabled:
-                        false,
+                        true,
+                    bevelThickness:
+                        0.55,
+                    bevelSize:
+                        0.48,
+                    bevelSegments:
+                        3,
+                    curveSegments:
+                        4,
                     steps:
-                        1
+                        2
                 }
             );
 
@@ -3008,17 +4001,33 @@ function buildArcticEnvironment() {
       sectors. No random ring of mountains around a circular road.
     */
 
+    const arcticSnowTexture =
+        createSurfaceTexture(
+            "snow",
+            48,
+            42
+        );
+
+
     const ground =
         new THREE.Mesh(
             new THREE.PlaneGeometry(
                 2600,
-                2200
+                2200,
+                12,
+                10
             ),
             new THREE.MeshStandardMaterial({
                 color:
                     0xc7d4dc,
                 roughness:
-                    1
+                    0.94,
+                map:
+                    arcticSnowTexture,
+                bumpMap:
+                    arcticSnowTexture,
+                bumpScale:
+                    0.055
             })
         );
 
@@ -3037,12 +4046,34 @@ function buildArcticEnvironment() {
     );
 
 
+    const rockTexture =
+        createSurfaceTexture(
+            "rock",
+            5,
+            7
+        );
+
+
+    const snowTexture =
+        createSurfaceTexture(
+            "snow",
+            5,
+            5
+        );
+
+
     const rockMaterial =
         new THREE.MeshStandardMaterial({
             color:
                 0x52616c,
             roughness:
-                1
+                0.90,
+            map:
+                rockTexture,
+            bumpMap:
+                rockTexture,
+            bumpScale:
+                0.18
         });
 
 
@@ -3051,7 +4082,13 @@ function buildArcticEnvironment() {
             color:
                 0x3f4b55,
             roughness:
-                1
+                0.94,
+            map:
+                rockTexture,
+            bumpMap:
+                rockTexture,
+            bumpScale:
+                0.18
         });
 
 
@@ -3060,7 +4097,13 @@ function buildArcticEnvironment() {
             color:
                 0xdbe7ed,
             roughness:
-                0.98
+                0.92,
+            map:
+                snowTexture,
+            bumpMap:
+                snowTexture,
+            bumpScale:
+                0.07
         });
 
 
@@ -3156,10 +4199,24 @@ function buildArcticEnvironment() {
 
         const mountain =
             new THREE.Mesh(
-                new THREE.ConeGeometry(
+                createDetailedMountainGeometry(
                     radius,
                     height,
-                    7
+                    1
+                    +
+                    Math.floor(
+                        t *
+                        1000
+                    )
+                    +
+                    (
+                        side >
+                        0
+                            ?
+                            41
+                            :
+                            7
+                    )
                 ),
                 dark
                     ?
@@ -3192,12 +4249,17 @@ function buildArcticEnvironment() {
 
         const cap =
             new THREE.Mesh(
-                new THREE.ConeGeometry(
+                createDetailedMountainGeometry(
                     radius *
                     0.46,
                     height *
                     0.28,
-                    7
+                    90
+                    +
+                    Math.floor(
+                        t *
+                        1000
+                    )
                 ),
                 snowMaterial
             );
@@ -3475,7 +4537,8 @@ function buildArcticEnvironment() {
                     new THREE.ConeGeometry(
                         6.5,
                         20,
-                        6
+                        18,
+                        5
                     ),
                     new THREE.MeshStandardMaterial({
                         color:
@@ -3752,7 +4815,7 @@ function buildArcticEnvironment() {
                 0.24,
                 0.34,
                 1,
-                6
+                10
             ),
             new THREE.MeshStandardMaterial({
                 color:
@@ -3769,7 +4832,8 @@ function buildArcticEnvironment() {
             new THREE.ConeGeometry(
                 1,
                 1,
-                7
+                16,
+                4
             ),
             new THREE.MeshStandardMaterial({
                 color:
@@ -4161,6 +5225,137 @@ function buildBuildingWindows(buildings) {
         true;
     worldGroup.add(litMesh, darkMesh);
 }
+function buildBuildingLedges(
+    buildings
+) {
+
+    const ledgeMaterial =
+        material(
+            0x5d6b7c,
+            0.58,
+            0.26
+        );
+
+
+    const entries =
+        [];
+
+
+    for (
+        const building
+        of buildings
+    ) {
+
+        const levels =
+            building.height >
+            20
+                ?
+                [
+                    0.30,
+                    0.58,
+                    0.80
+                ]
+                :
+                [
+                    0.42,
+                    0.72
+                ];
+
+
+        for (
+            const level
+            of levels
+        ) {
+
+            entries.push({
+                building,
+                y:
+                    building.height *
+                    level
+            });
+
+        }
+
+    }
+
+
+    const ledges =
+        new THREE.InstancedMesh(
+            new THREE.BoxGeometry(
+                1,
+                0.10,
+                1
+            ),
+            ledgeMaterial,
+            entries.length
+        );
+
+
+    const dummy =
+        new THREE.Object3D();
+
+
+    entries.forEach(
+        (
+            entry,
+            index
+        ) => {
+
+            const building =
+                entry.building;
+
+
+            dummy.position
+                .copy(
+                    building.position
+                );
+
+
+            dummy.position.y =
+                entry.y;
+
+
+            dummy.rotation.set(
+                0,
+                building.rotationY,
+                0
+            );
+
+
+            dummy.scale.set(
+                building.width
+                +
+                0.32,
+                1,
+                building.depth
+                +
+                0.32
+            );
+
+
+            dummy.updateMatrix();
+
+
+            ledges.setMatrixAt(
+                index,
+                dummy.matrix
+            );
+
+        }
+    );
+
+
+    ledges.instanceMatrix.needsUpdate =
+        true;
+
+
+    worldGroup.add(
+        ledges
+    );
+
+}
+
+
 function buildRooftopDetails(buildings) {
     const vents = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material(0x3e4856, 0.8, 0.25), buildings.length);
     const dummy = new THREE.Object3D();
