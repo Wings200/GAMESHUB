@@ -2540,6 +2540,67 @@ function buildArcticEnvironment() {
       Chromebook hardware even with a much longer track.
     */
 
+    const scenerySecretRamps =
+        rampDefinitions
+            .filter(
+                ramp =>
+                    ramp.secret
+                    &&
+                    Number.isFinite(
+                        Number(
+                            ramp.targetT
+                        )
+                    )
+            );
+
+
+    const scenerySecondSecret =
+        scenerySecretRamps[
+            1
+        ]
+        ??
+        null;
+
+
+    let sceneryShortcutCorridor =
+        null;
+
+
+    if (
+        scenerySecondSecret
+    ) {
+
+        const startFrame =
+            getFrameAt(
+                scenerySecondSecret.t
+            );
+
+
+        const targetFrame =
+            getFrameAt(
+                scenerySecondSecret.targetT
+            );
+
+
+        sceneryShortcutCorridor = {
+            start:
+                startFrame.point
+                    .clone()
+                    .addScaledVector(
+                        startFrame.normal,
+                        scenerySecondSecret.offset
+                        ||
+                        0
+                    ),
+
+            target:
+                targetFrame.point
+                    .clone()
+        };
+
+    }
+
+
     const treeEntries =
         [];
 
@@ -2611,6 +2672,23 @@ function buildArcticEnvironment() {
                         -
                         4
                     );
+
+
+                if (
+                    sceneryShortcutCorridor
+                    &&
+                    pointToSegmentDistance2D(
+                        position,
+                        sceneryShortcutCorridor.start,
+                        sceneryShortcutCorridor.target
+                    )
+                    <
+                    13
+                ) {
+
+                    continue;
+
+                }
 
 
                 treeEntries.push({
@@ -2821,69 +2899,8 @@ function buildArcticEnvironment() {
         });
 
 
-    const secretRamps =
-        rampDefinitions
-            .filter(
-                ramp =>
-                    ramp.secret
-                    &&
-                    Number.isFinite(
-                        Number(
-                            ramp.targetT
-                        )
-                    )
-            );
-
-
-    const secondSecret =
-        secretRamps[
-            1
-        ]
-        ??
-        null;
-
-
-    let secondShortcutCorridor =
-        null;
-
-
-    if (
-        secondSecret
-    ) {
-
-        const startFrame =
-            getFrameAt(
-                secondSecret.t
-            );
-
-
-        const targetFrame =
-            getFrameAt(
-                secondSecret.targetT
-            );
-
-
-        const start =
-            startFrame.point
-                .clone()
-                .addScaledVector(
-                    startFrame.normal,
-                    secondSecret.offset
-                    ||
-                    0
-                );
-
-
-        secondShortcutCorridor = {
-            start,
-
-            target:
-                targetFrame.point
-                    .clone()
-        };
-
-    }
-
+    const secondShortcutCorridor =
+        sceneryShortcutCorridor;
 
     for (
         let i = 0;
