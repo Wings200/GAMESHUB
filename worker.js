@@ -1271,7 +1271,53 @@ export class RedlineRoom
         timestamp:
           Date.now()
       };
+appearance: {
 
+  body:
+    [
+      "coupe",
+      "supercar",
+      "muscle",
+      "track"
+    ].includes(
+      data.appearance?.body
+    )
+      ?
+      data.appearance.body
+      :
+      "coupe",
+
+  color:
+    /^#[0-9a-f]{6}$/i.test(
+      String(
+        data.appearance?.color
+        ??
+        ""
+      )
+    )
+      ?
+      String(
+        data.appearance.color
+      )
+      :
+      "#e9edf2",
+
+  accent:
+    /^#[0-9a-f]{6}$/i.test(
+      String(
+        data.appearance?.accent
+        ??
+        ""
+      )
+    )
+      ?
+      String(
+        data.appearance.accent
+      )
+      :
+      "#315fbd"
+
+},
       const officialFinish =
         (
           this.room
