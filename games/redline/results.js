@@ -9,6 +9,61 @@
 
   let lastRoom = null;
 
+  /*
+    Once the server says the race is complete, keep a frozen copy of
+    the final standings on screen. Late race_state / snapshot messages
+    are allowed to arrive after race_complete, so they must not replace
+    the final results with the temporary "waiting" view.
+  */
+  let resultsLocked = false;
+  let completedRoom = null;
+
+
+  function snapshotRoom(
+    room
+  ) {
+
+    if (
+      !room
+    ) {
+
+      return null;
+
+    }
+
+
+    return {
+      ...room,
+
+      players:
+        Array.isArray(
+          room.players
+        )
+        ?
+        room.players.map(
+          player => ({
+            ...player
+          })
+        )
+        :
+        [],
+
+      finishOrder:
+        Array.isArray(
+          room.finishOrder
+        )
+        ?
+        room.finishOrder.map(
+          result => ({
+            ...result
+          })
+        )
+        :
+        []
+    };
+
+  }
+
 
   /* =========================================================
      RESULTS UI
@@ -931,6 +986,72 @@
       room;
 
 
+    /*
+      A completed race stays locked on the final results screen until
+      the server sends a genuinely reset lobby state. This prevents
+      late racing/snapshot packets from flashing the standings for a
+      moment and then wiping them out.
+    */
+
+    if (
+      resultsLocked
+    ) {
+
+      const cleanLobby =
+        room.phase ===
+        "lobby"
+        &&
+        !room.raceComplete
+        &&
+        (
+          !Array.isArray(
+            room.finishOrder
+          )
+          ||
+          room.finishOrder.length ===
+          0
+        );
+
+
+      if (
+        cleanLobby
+      ) {
+
+        resultsLocked =
+          false;
+
+
+        completedRoom =
+          null;
+
+
+        hideResults();
+
+
+        restoreLobbyUI();
+
+
+        return;
+
+      }
+
+
+      if (
+        completedRoom
+      ) {
+
+        showResults(
+          completedRoom
+        );
+
+      }
+
+
+      return;
+
+    }
+
+
     /* ---------------------------------------------------------
        LOBBY
     --------------------------------------------------------- */
@@ -982,7 +1103,19 @@
       room.raceComplete
     ) {
 
+      resultsLocked =
+        true;
+
+
+      completedRoom =
+        snapshotRoom(
+          room
+        );
+
+
       showResults(
+        completedRoom
+        ||
         room
       );
 
@@ -1227,7 +1360,24 @@
         "results";
 
 
-      evaluate(
+      /*
+        Lock immediately on the authoritative race_complete event,
+        before any later room-state packet has a chance to replace it.
+      */
+
+      resultsLocked =
+        true;
+
+
+      completedRoom =
+        snapshotRoom(
+          room
+        );
+
+
+      showResults(
+        completedRoom
+        ||
         room
       );
 
