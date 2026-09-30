@@ -468,6 +468,19 @@ function directoryStub(
 }
 
 
+function statsStub(
+  env
+) {
+
+  return env
+    .STATS
+    .getByName(
+      "redline-global-stats"
+    );
+
+}
+
+
 async function verifyGameShubIdentity(
   token
 ) {
@@ -655,7 +668,7 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          6
+          7
 
       });
 
@@ -856,6 +869,124 @@ export default {
         created,
         201
       );
+
+    }
+
+
+    /* =====================================================
+       PLAYER STATS
+    ===================================================== */
+
+    if (
+      url.pathname ===
+      "/api/stats/me"
+      &&
+      request.method ===
+      "POST"
+    ) {
+
+      const body =
+        await readJson(
+          request
+        );
+
+
+      const identity =
+        await verifyGameShubIdentity(
+          body?.accountToken
+        );
+
+
+      if (
+        !identity.ok
+      ) {
+
+        return json(
+          {
+            error:
+              identity.error
+          },
+          identity.status
+        );
+
+      }
+
+
+      const stats =
+        await statsStub(
+          env
+        ).getPlayerStats(
+          identity.user.id,
+          identity.user.username
+        );
+
+
+      return json({
+        ok:
+          true,
+
+        stats
+      });
+
+    }
+
+
+    /* =====================================================
+       GLOBAL LEADERBOARD
+    ===================================================== */
+
+    if (
+      url.pathname ===
+      "/api/stats/leaderboard"
+      &&
+      request.method ===
+      "GET"
+    ) {
+
+      const map =
+        String(
+          url.searchParams.get(
+            "map"
+          )
+          ||
+          ""
+        )
+          .toLowerCase();
+
+
+      if (
+        !VALID_MAPS.has(
+          map
+        )
+      ) {
+
+        return json(
+          {
+            error:
+              "Unknown REDLINE map."
+          },
+          400
+        );
+
+      }
+
+
+      const leaderboard =
+        await statsStub(
+          env
+        ).getLeaderboard(
+          map
+        );
+
+
+      return json({
+        ok:
+          true,
+
+        map,
+
+        leaderboard
+      });
 
     }
 
@@ -1336,6 +1467,9 @@ export class RedlineRoom
         Date.now(),
 
       raceStartAt:
+        null,
+
+      raceId:
         null,
 
       raceComplete:
@@ -2036,6 +2170,10 @@ export class RedlineRoom
         null;
 
 
+      this.room.raceId =
+        null;
+
+
       this.room.raceComplete =
         false;
 
@@ -2614,6 +2752,10 @@ export class RedlineRoom
         null;
 
 
+      this.room.raceId =
+        null;
+
+
       this.room.raceComplete =
         false;
 
@@ -3009,6 +3151,94 @@ export class RedlineRoom
     await this.syncDirectory();
 
 
+    /*
+      Persist finished racers into the global REDLINE stats store.
+      The stats Durable Object de-duplicates by raceId, so a retry or
+      Durable Object wake-up cannot double-count a race.
+    */
+
+    const statResults =
+      this.finishOrder
+        .map(
+          result => {
+
+            const racer =
+              this.room.players.find(
+                player =>
+                  player.id ===
+                  result.playerId
+              );
+
+
+            if (
+              !racer?.accountId
+            ) {
+
+              return null;
+
+            }
+
+
+            return {
+              accountId:
+                racer.accountId,
+
+              username:
+                racer.username,
+
+              place:
+                result.place,
+
+              finishTime:
+                result.finishTime
+            };
+
+          }
+        )
+        .filter(
+          Boolean
+        );
+
+
+    if (
+      statResults.length
+    ) {
+
+      try {
+
+        await statsStub(
+          this.env
+        ).recordRace({
+
+          raceId:
+            this.room.raceId
+            ||
+            `${this.room.code}:${this.room.raceStartAt}`,
+
+          map:
+            this.room.map,
+
+          results:
+            statResults
+
+        });
+
+      }
+
+      catch (
+        error
+      ) {
+
+        console.error(
+          "REDLINE stats recording failed:",
+          error
+        );
+
+      }
+
+    }
+
+
     const room =
       publicRoom(
         this.room
@@ -3083,6 +3313,10 @@ export class RedlineRoom
 
     this.room.phase =
       "countdown";
+
+
+    this.room.raceId =
+      crypto.randomUUID();
 
 
     this.room.raceStartAt =
@@ -3348,6 +3582,611 @@ export class RedlineRoom
         )
 
     });
+
+  }
+
+}
+
+
+/* =========================================================
+   GLOBAL REDLINE STATS
+========================================================= */
+
+export class RedlineStats
+  extends DurableObject {
+
+  constructor(
+    ctx,
+    env
+  ) {
+
+    super(
+      ctx,
+      env
+    );
+
+
+    this.ctx =
+      ctx;
+
+
+    this.env =
+      env;
+
+  }
+
+
+  emptyPlayer(
+    accountId,
+    username = "Racer"
+  ) {
+
+    return {
+
+      accountId,
+
+      username:
+        cleanUsername(
+          username
+        ),
+
+      racesFinished:
+        0,
+
+      placements: {
+        "1":
+          0,
+
+        "2":
+          0,
+
+        "3":
+          0,
+
+        "4":
+          0,
+
+        "5":
+          0,
+
+        "6":
+          0,
+
+        "7":
+          0,
+
+        "8":
+          0
+      },
+
+      bestTimes: {
+        neon:
+          null,
+
+        canyon:
+          null,
+
+        arctic:
+          null
+      },
+
+      updatedAt:
+        null
+
+    };
+
+  }
+
+
+  async getPlayerStats(
+    accountId,
+    currentUsername
+  ) {
+
+    const key =
+      `player:${accountId}`;
+
+
+    const stored =
+      await this.ctx
+        .storage
+        .get(
+          key
+        );
+
+
+    const stats =
+      stored
+      ||
+      this.emptyPlayer(
+        accountId,
+        currentUsername
+      );
+
+
+    if (
+      currentUsername
+    ) {
+
+      stats.username =
+        cleanUsername(
+          currentUsername
+        );
+
+    }
+
+
+    return stats;
+
+  }
+
+
+  async getLeaderboard(
+    map
+  ) {
+
+    if (
+      !VALID_MAPS.has(
+        map
+      )
+    ) {
+
+      return [];
+
+    }
+
+
+    const rows =
+      (
+        await this.ctx
+          .storage
+          .get(
+            `leaderboard:${map}`
+          )
+      )
+      ||
+      [];
+
+
+    return rows
+      .slice(
+        0,
+        10
+      )
+      .map(
+        (
+          row,
+          index
+        ) => ({
+
+          rank:
+            index +
+            1,
+
+          username:
+            row.username,
+
+          time:
+            row.time,
+
+          achievedAt:
+            row.achievedAt
+            ??
+            null
+
+        })
+      );
+
+  }
+
+
+  async recordRace({
+    raceId,
+    map,
+    results
+  }) {
+
+    if (
+      !raceId
+      ||
+      !VALID_MAPS.has(
+        map
+      )
+      ||
+      !Array.isArray(
+        results
+      )
+    ) {
+
+      return {
+        ok:
+          false
+      };
+
+    }
+
+
+    const recentRaceIds =
+      (
+        await this.ctx
+          .storage
+          .get(
+            "recentRaceIds"
+          )
+      )
+      ||
+      [];
+
+
+    if (
+      recentRaceIds.includes(
+        raceId
+      )
+    ) {
+
+      return {
+        ok:
+          true,
+
+        duplicate:
+          true
+      };
+
+    }
+
+
+    const now =
+      Date.now();
+
+
+    let leaderboard =
+      (
+        await this.ctx
+          .storage
+          .get(
+            `leaderboard:${map}`
+          )
+      )
+      ||
+      [];
+
+
+    for (
+      const rawResult
+      of results
+    ) {
+
+      const accountId =
+        String(
+          rawResult?.accountId
+          ||
+          ""
+        );
+
+
+      const place =
+        clamp(
+          Math.floor(
+            finiteNumber(
+              rawResult?.place
+            )
+          ),
+          1,
+          8
+        );
+
+
+      const finishTime =
+        Math.floor(
+          finiteNumber(
+            rawResult?.finishTime,
+            -1
+          )
+        );
+
+
+      if (
+        !accountId
+        ||
+        finishTime <
+        0
+        ||
+        finishTime >
+        24 * 60 * 60 * 1000
+      ) {
+
+        continue;
+
+      }
+
+
+      const username =
+        cleanUsername(
+          rawResult?.username
+        );
+
+
+      const playerKey =
+        `player:${accountId}`;
+
+
+      const stats =
+        (
+          await this.ctx
+            .storage
+            .get(
+              playerKey
+            )
+        )
+        ||
+        this.emptyPlayer(
+          accountId,
+          username
+        );
+
+
+      stats.username =
+        username;
+
+
+      stats.racesFinished =
+        Math.max(
+          0,
+          Number(
+            stats.racesFinished
+          )
+          ||
+          0
+        )
+        +
+        1;
+
+
+      stats.placements =
+        {
+          ...this.emptyPlayer(
+            accountId,
+            username
+          ).placements,
+
+          ...(
+            stats.placements
+            ||
+            {}
+          )
+        };
+
+
+      stats.placements[
+        String(
+          place
+        )
+      ] =
+        Math.max(
+          0,
+          Number(
+            stats.placements[
+              String(
+                place
+              )
+            ]
+          )
+          ||
+          0
+        )
+        +
+        1;
+
+
+      stats.bestTimes =
+        {
+          ...this.emptyPlayer(
+            accountId,
+            username
+          ).bestTimes,
+
+          ...(
+            stats.bestTimes
+            ||
+            {}
+          )
+        };
+
+
+      const currentBest =
+        stats.bestTimes[
+          map
+        ];
+
+
+      if (
+        !currentBest
+        ||
+        finishTime <
+        Number(
+          currentBest.time
+        )
+      ) {
+
+        stats.bestTimes[
+          map
+        ] = {
+
+          time:
+            finishTime,
+
+          achievedAt:
+            now
+
+        };
+
+      }
+
+
+      stats.updatedAt =
+        now;
+
+
+      await this.ctx
+        .storage
+        .put(
+          playerKey,
+          stats
+        );
+
+
+      const bestTime =
+        Number(
+          stats.bestTimes[
+            map
+          ]?.time
+        );
+
+
+      const existingIndex =
+        leaderboard.findIndex(
+          row =>
+            row.accountId ===
+            accountId
+        );
+
+
+      if (
+        existingIndex >=
+        0
+      ) {
+
+        leaderboard[
+          existingIndex
+        ].username =
+          username;
+
+
+        if (
+          Number.isFinite(
+            bestTime
+          )
+          &&
+          bestTime <
+          Number(
+            leaderboard[
+              existingIndex
+            ].time
+          )
+        ) {
+
+          leaderboard[
+            existingIndex
+          ].time =
+            bestTime;
+
+
+          leaderboard[
+            existingIndex
+          ].achievedAt =
+            stats.bestTimes[
+              map
+            ]?.achievedAt
+            ??
+            now;
+
+        }
+
+      }
+
+      else if (
+        Number.isFinite(
+          bestTime
+        )
+      ) {
+
+        leaderboard.push({
+
+          accountId,
+
+          username,
+
+          time:
+            bestTime,
+
+          achievedAt:
+            stats.bestTimes[
+              map
+            ]?.achievedAt
+            ??
+            now
+
+        });
+
+      }
+
+    }
+
+
+    leaderboard =
+      leaderboard
+        .filter(
+          row =>
+            Number.isFinite(
+              Number(
+                row.time
+              )
+            )
+        )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            Number(
+              a.time
+            )
+            -
+            Number(
+              b.time
+            )
+        )
+        .slice(
+          0,
+          10
+        );
+
+
+    recentRaceIds.push(
+      raceId
+    );
+
+
+    if (
+      recentRaceIds.length >
+      1000
+    ) {
+
+      recentRaceIds.splice(
+        0,
+        recentRaceIds.length -
+        1000
+      );
+
+    }
+
+
+    await this.ctx
+      .storage
+      .put({
+        [
+          `leaderboard:${map}`
+        ]:
+          leaderboard,
+
+        recentRaceIds
+      });
+
+
+    return {
+      ok:
+        true
+    };
 
   }
 
