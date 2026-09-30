@@ -4,6 +4,7 @@ const GAMESHUB_GOOGLE_CLIENT_ID =
 
 window.GAMESHUB_ACCOUNT = {
   signedIn: false,
+  guest: false,
   user: null
 };
 
@@ -32,6 +33,13 @@ function createAccountUI() {
 
   wrapper.innerHTML = `
     <div id="gameshubGoogleButton"></div>
+
+    <button
+      id="gameshubGuestButton"
+      type="button"
+    >
+      CONTINUE AS GUEST
+    </button>
 
     <button
       id="gameshubAccountButton"
@@ -132,6 +140,7 @@ function createAccountUI() {
       display:none;
     }
 
+    #gameshubGuestButton,
     #gameshubAccountButton {
       border:1px solid rgba(255,255,255,.16);
       background:rgba(255,255,255,.06);
@@ -142,6 +151,25 @@ function createAccountUI() {
       font-weight:800;
       letter-spacing:.06em;
       cursor:pointer;
+      white-space:nowrap;
+    }
+
+    #gameshubGuestButton {
+      color:#b8c9e8;
+      border-color:rgba(103,139,196,.35);
+      background:rgba(63,92,138,.12);
+      font-size:10px;
+    }
+
+    #gameshubGuestButton:hover {
+      color:#fff;
+      border-color:rgba(111,157,231,.55);
+      background:rgba(65,105,170,.20);
+    }
+
+    #gameshubGuestButton:disabled {
+      opacity:.5;
+      cursor:default;
     }
 
     #gameshubAccountButton:hover {
@@ -281,7 +309,8 @@ function createAccountUI() {
 
 
   /*
-    Same header placement that already worked.
+    Put account controls directly in the homepage header,
+    immediately before the existing logout button.
   */
 
   const header =
@@ -291,39 +320,21 @@ function createAccountUI() {
 
 
   if (header) {
-    const inner =
-      header.querySelector(
-        ".header-inner"
-      )
-      ||
-      header.querySelector(
-        ".nav-inner"
-      )
-      ||
-      header.querySelector(
-        ".topbar-inner"
-      )
-      ||
-      header.firstElementChild
-      ||
-      header;
-
-
     const logout =
-      inner.querySelector(
-        ".logout, #logoutBtn"
+      header.querySelector(
+        "#logoutButton, .logout, #logoutBtn"
       );
 
 
     if (logout) {
-      inner.insertBefore(
+      header.insertBefore(
         wrapper,
         logout
       );
     }
 
     else {
-      inner.appendChild(
+      header.appendChild(
         wrapper
       );
     }
@@ -337,6 +348,7 @@ function createAccountUI() {
 
 
   setupUsernameEvents();
+  setupGuestEvents();
 }
 
 
@@ -348,6 +360,11 @@ function showGoogleButton() {
   const googleContainer =
     document.getElementById(
       "gameshubGoogleButton"
+    );
+
+  const guestButton =
+    document.getElementById(
+      "gameshubGuestButton"
     );
 
   const accountButton =
@@ -362,6 +379,12 @@ function showGoogleButton() {
   }
 
 
+  if (guestButton) {
+    guestButton.hidden =
+      false;
+  }
+
+
   if (accountButton) {
     accountButton.hidden =
       true;
@@ -370,11 +393,17 @@ function showGoogleButton() {
 
 
 function showSignedInAccount(
-  user
+  user,
+  guest = false
 ) {
   const googleContainer =
     document.getElementById(
       "gameshubGoogleButton"
+    );
+
+  const guestButton =
+    document.getElementById(
+      "gameshubGuestButton"
     );
 
   const accountButton =
@@ -389,6 +418,12 @@ function showSignedInAccount(
   }
 
 
+  if (guestButton) {
+    guestButton.hidden =
+      true;
+  }
+
+
   if (accountButton) {
     accountButton.hidden =
       false;
@@ -396,9 +431,22 @@ function showSignedInAccount(
     accountButton.textContent =
       user?.username
       ?
-      `@${user.username}`
+      (
+        guest
+          ?
+          user.username
+          :
+          `@${user.username}`
+      )
       :
       "ACCOUNT";
+
+    accountButton.title =
+      guest
+        ?
+        "Local GAMESHUB guest"
+        :
+        "GAMESHUB account";
   }
 }
 
@@ -478,6 +526,9 @@ async function loadCurrentAccount() {
       window.GAMESHUB_ACCOUNT.signedIn =
         false;
 
+      window.GAMESHUB_ACCOUNT.guest =
+        false;
+
       window.GAMESHUB_ACCOUNT.user =
         null;
 
@@ -490,12 +541,20 @@ async function loadCurrentAccount() {
     window.GAMESHUB_ACCOUNT.signedIn =
       true;
 
+    window.GAMESHUB_ACCOUNT.guest =
+      Boolean(
+        data.guest
+      );
+
     window.GAMESHUB_ACCOUNT.user =
       data.user;
 
 
     showSignedInAccount(
-      data.user
+      data.user,
+      Boolean(
+        data.guest
+      )
     );
 
 
@@ -698,12 +757,16 @@ async function saveUsername() {
     window.GAMESHUB_ACCOUNT.signedIn =
       true;
 
+    window.GAMESHUB_ACCOUNT.guest =
+      false;
+
     window.GAMESHUB_ACCOUNT.user =
       data.user;
 
 
     showSignedInAccount(
-      data.user
+      data.user,
+      false
     );
 
 
@@ -813,6 +876,126 @@ function setupUsernameEvents() {
 }
 
 
+
+/* =========================================================
+   GUEST MODE
+========================================================= */
+
+async function createGuestAccount() {
+  const button =
+    document.getElementById(
+      "gameshubGuestButton"
+    );
+
+
+  if (
+    !button
+  ) {
+    return;
+  }
+
+
+  const originalText =
+    button.textContent;
+
+
+  button.disabled =
+    true;
+
+  button.textContent =
+    "CREATING GUEST...";
+
+
+  try {
+    const response =
+      await fetch(
+        "/api/account/guest",
+        {
+          method:
+            "POST",
+
+          credentials:
+            "same-origin"
+        }
+      );
+
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => null
+        );
+
+
+    if (
+      !response.ok
+      ||
+      !data?.ok
+      ||
+      !data.user?.username
+    ) {
+      throw new Error(
+        data?.error
+        ||
+        "Could not create guest account."
+      );
+    }
+
+
+    window.GAMESHUB_ACCOUNT.signedIn =
+      true;
+
+    window.GAMESHUB_ACCOUNT.guest =
+      true;
+
+    window.GAMESHUB_ACCOUNT.user =
+      data.user;
+
+
+    showSignedInAccount(
+      data.user,
+      true
+    );
+  }
+
+  catch (
+    error
+  ) {
+    console.error(
+      "GAMESHUB guest creation failed:",
+      error
+    );
+
+
+    alert(
+      error.message
+      ||
+      "Could not create guest account."
+    );
+
+
+    button.disabled =
+      false;
+
+    button.textContent =
+      originalText;
+  }
+}
+
+
+function setupGuestEvents() {
+  document
+    .getElementById(
+      "gameshubGuestButton"
+    )
+    ?.addEventListener(
+      "click",
+      createGuestAccount
+    );
+}
+
+
 /* =========================================================
    GOOGLE LOGIN
 ========================================================= */
@@ -872,12 +1055,16 @@ async function handleGoogleCredential(
     window.GAMESHUB_ACCOUNT.signedIn =
       true;
 
+    window.GAMESHUB_ACCOUNT.guest =
+      false;
+
     window.GAMESHUB_ACCOUNT.user =
       data.user;
 
 
     showSignedInAccount(
-      data.user
+      data.user,
+      false
     );
 
 
