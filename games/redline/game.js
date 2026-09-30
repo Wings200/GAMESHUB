@@ -3589,6 +3589,17 @@ function buildRamps() {
                 group.position
                     .clone(),
 
+            tangent:
+                frame.tangent
+                    .clone(),
+
+            normal:
+                frame.normal
+                    .clone(),
+
+            rotationY:
+                frame.rotationY,
+
             cooldown:
                 0
         });
@@ -3702,6 +3713,33 @@ function updateRamps(
             13;
 
 
+        const travelDirection =
+            carState.velocity
+                .clone()
+                .normalize();
+
+
+        const approachDot =
+            travelDirection.dot(
+                ramp.tangent
+            );
+
+
+        /*
+          Only launch if the car is actually driving up the ramp.
+          Grazing a ramp sideways/backwards was one source of wild jumps.
+        */
+
+        if (
+            approachDot <
+            0.30
+        ) {
+
+            continue;
+
+        }
+
+
         if (
             speed <
             minSpeed
@@ -3733,6 +3771,35 @@ function updateRamps(
             );
 
 
+        /*
+          Blend the horizontal velocity toward the ramp direction instead
+          of freezing the car to one heading. This keeps takeoff stable
+          while still preserving the driver's approach angle.
+        */
+
+        const launchDirection =
+            travelDirection
+                .clone()
+                .lerp(
+                    ramp.tangent,
+                    ramp.secret
+                        ?
+                        0.46
+                        :
+                        0.32
+                )
+                .normalize();
+
+
+        carState.velocity
+            .copy(
+                launchDirection
+            )
+            .multiplyScalar(
+                speed
+            );
+
+
         carState.airborne =
             true;
 
@@ -3741,8 +3808,8 @@ function updateRamps(
             0;
 
 
-        carState.airHeading =
-            car.rotation.y;
+        carState.airSteer =
+            0;
 
 
         carState.takeoffTrackT =
@@ -3850,6 +3917,34 @@ function updateAirborne(
             );
 
 
+        /*
+          Settle the chassis naturally after landing.
+        */
+
+        car.rotation.x =
+            THREE.MathUtils.lerp(
+                car.rotation.x,
+                0,
+                1 -
+                Math.exp(
+                    -12 *
+                    delta
+                )
+            );
+
+
+        car.rotation.z =
+            THREE.MathUtils.lerp(
+                car.rotation.z,
+                0,
+                1 -
+                Math.exp(
+                    -12 *
+                    delta
+                )
+            );
+
+
         return;
 
     }
@@ -3865,22 +3960,142 @@ function updateAirborne(
         delta;
 
 
+    const airLeft =
+        keys.has(
+            "a"
+        )
+        ||
+        keys.has(
+            "arrowleft"
+        );
+
+
+    const airRight =
+        keys.has(
+            "d"
+        )
+        ||
+        keys.has(
+            "arrowright"
+        );
+
+
+    const airForward =
+        keys.has(
+            "w"
+        )
+        ||
+        keys.has(
+            "arrowup"
+        );
+
+
+    const airBack =
+        keys.has(
+            "s"
+        )
+        ||
+        keys.has(
+            "arrowdown"
+        );
+
+
+    const airSteerTarget =
+        (
+            airLeft
+                ?
+                1
+                :
+                0
+        )
+        -
+        (
+            airRight
+                ?
+                1
+                :
+                0
+        );
+
+
+    carState.airSteer =
+        THREE.MathUtils.lerp(
+            carState.airSteer
+            ||
+            0,
+            airSteerTarget,
+            1 -
+            Math.exp(
+                -8 *
+                delta
+            )
+        );
+
+
     /*
-      Keep the car facing its launch direction in the air.
-      Ground steering + lateral grip used to rotate the car while
-      airborne, which could throw it sideways by huge distances.
+      Limited air steering:
+      A/D can yaw and bank the car, but not instantly spin it.
+      The velocity follows the new heading gradually, which prevents
+      the camera from looking one way while the car travels sideways.
     */
 
+    const airYawRate =
+        0.82;
+
+
+    car.rotation.y +=
+        carState.airSteer
+        *
+        airYawRate
+        *
+        delta;
+
+
+    const horizontalSpeed =
+        carState.velocity
+            .length();
+
+
     if (
-        Number.isFinite(
-            Number(
-                carState.airHeading
-            )
-        )
+        horizontalSpeed >
+        0.01
     ) {
 
-        car.rotation.y =
-            carState.airHeading;
+        const desiredDirection =
+            forwardVector();
+
+
+        const currentDirection =
+            carState.velocity
+                .clone()
+                .normalize();
+
+
+        const airControl =
+            1 -
+            Math.exp(
+                -1.45 *
+                delta
+            );
+
+
+        currentDirection
+            .lerp(
+                desiredDirection,
+                airControl
+                *
+                0.58
+            )
+            .normalize();
+
+
+        carState.velocity
+            .copy(
+                currentDirection
+            )
+            .multiplyScalar(
+                horizontalSpeed
+            );
 
     }
 
@@ -3891,8 +4106,81 @@ function updateAirborne(
 
 
     car.position.y +=
-        carState.verticalVelocity *
+        carState.verticalVelocity
+        *
         delta;
+
+
+    /*
+      Full-car airborne tilt. W/S adds pitch control and A/D adds roll.
+      Vertical velocity also naturally raises the nose on takeoff and
+      lowers it on descent.
+    */
+
+    const manualPitch =
+        (
+            airBack
+                ?
+                1
+                :
+                0
+        )
+        -
+        (
+            airForward
+                ?
+                1
+                :
+                0
+        );
+
+
+    const flightPitch =
+        THREE.MathUtils.clamp(
+            -carState.verticalVelocity
+            *
+            0.028
+            +
+            manualPitch
+            *
+            0.10,
+            -0.30,
+            0.30
+        );
+
+
+    const flightRoll =
+        THREE.MathUtils.clamp(
+            -carState.airSteer
+            *
+            0.20,
+            -0.24,
+            0.24
+        );
+
+
+    const tiltAmount =
+        1 -
+        Math.exp(
+            -7.5 *
+            delta
+        );
+
+
+    car.rotation.x =
+        THREE.MathUtils.lerp(
+            car.rotation.x,
+            flightPitch,
+            tiltAmount
+        );
+
+
+    car.rotation.z =
+        THREE.MathUtils.lerp(
+            car.rotation.z,
+            flightRoll,
+            tiltAmount
+        );
 
 
     if (
@@ -3900,7 +4188,7 @@ function updateAirborne(
         0
         &&
         carState.airTime <
-        2.2
+        2.25
     ) {
 
         return;
@@ -3921,6 +4209,10 @@ function updateAirborne(
 
 
     carState.airTime =
+        0;
+
+
+    carState.airSteer =
         0;
 
 
@@ -3993,9 +4285,8 @@ function updateAirborne(
     else {
 
         /*
-          Normal ramps should land where the jump naturally carries you,
-          but if physics somehow puts the car far off the course, pull it
-          back to the nearest road edge instead of letting it fly away.
+          Only rescue truly broken launches. Small off-road landings are
+          now allowed so jumps still feel physical and player-controlled.
         */
 
         const road =
@@ -4010,26 +4301,12 @@ function updateAirborne(
             road.distance >
             SIDEWALK_OUTER
             +
-            5
+            24
         ) {
-
-            const safeOffset =
-                THREE.MathUtils.clamp(
-                    road.offset,
-                    -ROAD_HALF +
-                    0.8,
-                    ROAD_HALF -
-                    0.8
-                );
-
 
             car.position
                 .copy(
                     road.point
-                )
-                .addScaledVector(
-                    road.normal,
-                    safeOffset
                 );
 
 
@@ -4045,7 +4322,7 @@ function updateAirborne(
                 Math.min(
                     activeCarSpec.nitroSpeed,
                     Math.max(
-                        10,
+                        12,
                         carState.velocity
                             .length()
                     )
@@ -4065,10 +4342,6 @@ function updateAirborne(
     }
 
 
-    carState.airHeading =
-        null;
-
-
     carState.takeoffTrackT =
         null;
 
@@ -4080,7 +4353,7 @@ function updateAirborne(
     carState.rampCooldown =
         Math.max(
             carState.rampCooldown,
-            0.7
+            0.75
         );
 
 
@@ -4461,6 +4734,8 @@ function createRemoteRacer(player, playerIndex = 0, appearance = null) {
         appearanceSignature: signature,
         targetPosition: spawn.position.clone(),
         targetRotation: spawn.rotationY,
+        targetPitch: 0,
+        targetRoll: 0,
         lastUpdate: performance.now()
     };
     remoteRacers.set(player.id, remote);
@@ -4518,6 +4793,33 @@ function receiveRaceState(state) {
                 Number(state.rotation)
             :
                 remote.targetRotation;
+
+    remote.targetPitch =
+        Number.isFinite(
+            Number(
+                state.pitch
+            )
+        )
+            ?
+            Number(
+                state.pitch
+            )
+            :
+            0;
+
+    remote.targetRoll =
+        Number.isFinite(
+            Number(
+                state.roll
+            )
+        )
+            ?
+            Number(
+                state.roll
+            )
+            :
+            0;
+
     remote.lastUpdate =
         performance.now();
 }
@@ -4550,7 +4852,30 @@ function updateRemoteRacers(delta) {
     for (const remote of remoteRacers.values()) {
         remote.model.position.lerp(remote.targetPosition, positionAmount);
         remote.model.rotation.y =
-            interpolateAngle(remote.model.rotation.y, remote.targetRotation, rotationAmount);
+            interpolateAngle(
+                remote.model.rotation.y,
+                remote.targetRotation,
+                rotationAmount
+            );
+
+        remote.model.rotation.x =
+            THREE.MathUtils.lerp(
+                remote.model.rotation.x,
+                remote.targetPitch
+                ||
+                0,
+                rotationAmount
+            );
+
+        remote.model.rotation.z =
+            THREE.MathUtils.lerp(
+                remote.model.rotation.z,
+                remote.targetRoll
+                ||
+                0,
+                rotationAmount
+            );
+
         const state = raceStates.get(remote.playerId);
         const spin = Math.abs(Number(state?.speed)
             ||
@@ -4920,36 +5245,97 @@ function updatePhysics(delta) {
                 3.7 *
                     delta);
     }
-    const grip = handbrake
-        ?
-            activeCarSpec.driftGrip
-                *
-                    surface.gripMultiplier
-        :
-            activeCarSpec.grip
-                *
-                    surface.gripMultiplier;
-    const lateralCorrection = THREE.MathUtils.clamp(grip *
-        delta, 0, 1);
-    carState.velocity
-        .addScaledVector(rightVec, -lateralSpeed *
-        lateralCorrection);
-    const drag = activeCarSpec.drag
-        *
-            surface.drag;
-    carState.velocity
-        .multiplyScalar(Math.exp(-drag *
-        delta));
-    const currentSpeed = carState.velocity.length();
-    if (currentSpeed >
-        42) {
+    if (
+        !carState.airborne
+    ) {
+
+        const grip = handbrake
+            ?
+                activeCarSpec.driftGrip
+                    *
+                        surface.gripMultiplier
+            :
+                activeCarSpec.grip
+                    *
+                        surface.gripMultiplier;
+
+
+        const lateralCorrection =
+            THREE.MathUtils.clamp(
+                grip *
+                delta,
+                0,
+                1
+            );
+
+
         carState.velocity
-            .multiplyScalar(Math.exp(-(currentSpeed -
-            42)
+            .addScaledVector(
+                rightVec,
+                -lateralSpeed
+                *
+                lateralCorrection
+            );
+
+
+        const drag =
+            activeCarSpec.drag
             *
-                0.016
-            *
-                delta));
+            surface.drag;
+
+
+        carState.velocity
+            .multiplyScalar(
+                Math.exp(
+                    -drag *
+                    delta
+                )
+            );
+
+
+        const currentSpeed =
+            carState.velocity
+                .length();
+
+
+        if (
+            currentSpeed >
+            42
+        ) {
+
+            carState.velocity
+                .multiplyScalar(
+                    Math.exp(
+                        -(
+                            currentSpeed -
+                            42
+                        )
+                        *
+                        0.016
+                        *
+                        delta
+                    )
+                );
+
+        }
+
+    }
+
+    else {
+
+        /*
+          Tiny aerodynamic loss only. Ground grip/rough-surface drag
+          must never act on a car that is in the air.
+        */
+
+        carState.velocity
+            .multiplyScalar(
+                Math.exp(
+                    -0.018 *
+                    delta
+                )
+            );
+
     }
     const maxSpeed = carState.boostTimer >
         0
@@ -4963,8 +5349,12 @@ function updatePhysics(delta) {
                     activeCarSpec.nitroSpeed
                 :
                     activeCarSpec.topSpeed;
-    if (carState.velocity.length() >
-        maxSpeed) {
+    if (
+        !carState.airborne
+        &&
+        carState.velocity.length() >
+        maxSpeed
+    ) {
         carState.velocity
             .setLength(maxSpeed);
     }
@@ -5334,10 +5724,18 @@ function updateCamera(delta) {
                 .normalize()
         :
             forward.clone();
-    const cameraForward = forward
-        .clone()
-        .lerp(velocityDirection, 0.20)
-        .normalize();
+    const cameraForward =
+        carState.airborne
+            ?
+            forward.clone()
+            :
+            forward
+                .clone()
+                .lerp(
+                    velocityDirection,
+                    0.20
+                )
+                .normalize();
     const cameraBase =
         car.position
             .clone();
@@ -5384,9 +5782,22 @@ function updateCamera(delta) {
         +
             speed01 *
                 1.8));
-    desired.addScaledVector(right, -carState.steer *
-        speed01 *
-        0.32);
+    desired.addScaledVector(
+        right,
+        -(
+            carState.airborne
+                ?
+                carState.airSteer
+                ||
+                0
+                :
+                carState.steer
+        )
+        *
+        speed01
+        *
+        0.22
+    );
     const shake =
         carState.airborne
             ?
@@ -5442,9 +5853,22 @@ function updateCamera(delta) {
         +
             speed01 *
                 5);
-    lookAt.addScaledVector(right, carState.steer *
-        speed01 *
-        0.45);
+    lookAt.addScaledVector(
+        right,
+        (
+            carState.airborne
+                ?
+                carState.airSteer
+                ||
+                0
+                :
+                carState.steer
+        )
+        *
+        speed01
+        *
+        0.28
+    );
     camera.lookAt(lookAt);
     const boostExtra = (carState.boostTimer >
         0
@@ -5638,7 +6062,7 @@ function buildWorld() {
         airborne: false,
         verticalVelocity: 0,
         airTime: 0,
-        airHeading: null,
+        airSteer: 0,
         takeoffTrackT: null,
         takeoffSpeed: 0,
         cameraAirY: 0,
@@ -5758,6 +6182,8 @@ function createLocalRaceState() {
         y: car.position.y,
         z: car.position.z,
         rotation: car.rotation.y,
+        pitch: car.rotation.x,
+        roll: car.rotation.z,
         speed: carState.velocity.length(),
         lap: Math.min(lap, TARGET_LAPS),
         checkpoint: checkpointStep,
