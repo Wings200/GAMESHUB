@@ -60,23 +60,22 @@
 
       <div class="username-panel">
 
-        <label for="usernameInput">
+        <label>
           USERNAME
         </label>
 
-        <input
-          id="usernameInput"
-          type="text"
-          maxlength="18"
-          autocomplete="off"
-          placeholder="Enter username"
+        <div
+          id="usernameDisplay"
+          class="account-username"
         >
+          LOADING...
+        </div>
 
         <div
           id="usernameStatus"
           class="small-status"
         >
-          Your username is saved on this device.
+          Using your GAMESHUB account username.
         </div>
 
       </div>
@@ -1141,9 +1140,9 @@
       ];
 
 
-      const usernameInput =
+      const usernameDisplay =
         document.getElementById(
-          "usernameInput"
+          "usernameDisplay"
         );
 
 
@@ -1504,88 +1503,122 @@
          USERNAME
       ==================================================== */
 
-      const savedUsername =
-        localStorage.getItem(
-          "redline_username"
-        );
-
-
-      if (
-        savedUsername
-      ) {
-
-        usernameInput.value =
-          savedUsername;
-
-      }
+      let accountUsername =
+        null;
 
 
       function getUsername() {
 
-        let name =
-          usernameInput
-            .value
-            .trim();
-
-
-        if (!name) {
-
-          name =
-            "Racer";
-
-        }
-
-
-        name =
-          name.slice(
-            0,
-            18
-          );
-
-
-        usernameInput.value =
-          name;
-
-
-        localStorage.setItem(
-          "redline_username",
-          name
+        return (
+          accountUsername
+          ||
+          "Racer"
         );
-
-
-        return name;
 
       }
 
 
-      usernameInput.addEventListener(
-        "input",
-        () => {
+      async function loadAccountUsername() {
 
-          const name =
-            usernameInput
-              .value
-              .trim();
+        joinRoomBtn.disabled =
+          true;
+
+        createRoomBtn.disabled =
+          true;
 
 
-          if (!name) {
+        usernameDisplay.textContent =
+          "LOADING...";
 
-            return;
+
+        try {
+
+          const response =
+            await fetch(
+              "/api/account/me",
+              {
+                credentials:
+                  "same-origin",
+
+                cache:
+                  "no-store"
+              }
+            );
+
+
+          const data =
+            await response.json();
+
+
+          if (
+            !response.ok
+            ||
+            !data.ok
+            ||
+            !data.signedIn
+            ||
+            !data.user?.username
+          ) {
+
+            throw new Error(
+              "GAMESHUB account username unavailable."
+            );
 
           }
 
 
-          localStorage.setItem(
-            "redline_username",
-            name
-          );
+          accountUsername =
+            String(
+              data.user.username
+            )
+              .trim()
+              .slice(
+                0,
+                18
+              );
+
+
+          usernameDisplay.textContent =
+            accountUsername;
 
 
           usernameStatus.textContent =
-            "Username saved.";
+            "GAMESHUB account username";
+
+
+          joinRoomBtn.disabled =
+            false;
+
+          createRoomBtn.disabled =
+            false;
 
         }
-      );
+
+        catch (error) {
+
+          console.error(
+            "REDLINE account username load failed:",
+            error
+          );
+
+
+          accountUsername =
+            null;
+
+
+          usernameDisplay.textContent =
+            "ACCOUNT REQUIRED";
+
+
+          usernameStatus.textContent =
+            "Sign in to GAMESHUB and choose a username first.";
+
+        }
+
+      }
+
+
+      loadAccountUsername();
 
 
       /* ===================================================
