@@ -341,7 +341,16 @@ const TRACKS = {
             { t: 0.228, offset: 8.4, strength: 9.7, secret: true, targetT: 0.255, minSpeed: 28 },
 
             /* Signature cave-mouth shortcut */
-            { t: 0.515, offset: -8.5, strength: 10.1, secret: true, targetT: 0.548, minSpeed: 30 },
+            {
+                t: 0.515,
+                offset: -8.5,
+                strength: 10.1,
+                secret: true,
+                targetT: 0.548,
+                landingLead: 12,
+                shortcutSpeed: 82,
+                minSpeed: 30
+            },
 
             /* Ridgeline gap */
             { t: 0.785, offset: 8.4, strength: 10.0, secret: true, targetT: 0.815, minSpeed: 31 }
@@ -4673,7 +4682,15 @@ function respawnAtLastCheckpoint(
         false;
 
 
+    carState.shortcutTakeoffT =
+        null;
+
+
     carState.shortcutLandingT =
+        null;
+
+
+    carState.shortcutFlightTime =
         null;
 
 
@@ -4701,6 +4718,215 @@ function respawnAtLastCheckpoint(
             "RETURNED TO CHECKPOINT",
         800
     );
+
+}
+
+
+function trackForwardDistance(
+    fromT,
+    toT
+) {
+
+    return (
+        (
+            toT -
+            fromT
+        )
+        %
+        1
+        +
+        1
+    )
+    %
+    1;
+
+}
+
+
+function creditShortcutCheckpoints(
+    startT,
+    endT
+) {
+
+    if (
+        !Number.isFinite(
+            Number(
+                startT
+            )
+        )
+        ||
+        !Number.isFinite(
+            Number(
+                endT
+            )
+        )
+    ) {
+
+        return 0;
+
+    }
+
+
+    const shortcutSpan =
+        trackForwardDistance(
+            Number(
+                startT
+            ),
+            Number(
+                endT
+            )
+        );
+
+
+    if (
+        shortcutSpan <=
+        0
+        ||
+        shortcutSpan >
+        0.25
+    ) {
+
+        return 0;
+
+    }
+
+
+    let credited =
+        0;
+
+
+    for (
+        let safety = 0;
+        safety < checkpointGates.length;
+        safety++
+    ) {
+
+        const gate =
+            nextCheckpoint();
+
+
+        if (
+            !gate
+        ) {
+
+            break;
+
+        }
+
+
+        const gateDistance =
+            trackForwardDistance(
+                Number(
+                    startT
+                ),
+                gate.t
+            );
+
+
+        const atTakeoffGate =
+            Math.abs(
+                gate.t -
+                Number(
+                    startT
+                )
+            )
+            <
+            0.012;
+
+
+        const crossedByShortcut =
+            atTakeoffGate
+            ||
+            (
+                gateDistance >
+                0
+                &&
+                gateDistance <=
+                shortcutSpan
+                +
+                0.003
+            );
+
+
+        if (
+            !crossedByShortcut
+        ) {
+
+            break;
+
+        }
+
+
+        const reachedFrame =
+            getFrameAt(
+                gate.t
+            );
+
+
+        lastCheckpointTransform = {
+            position:
+                reachedFrame.point
+                    .clone()
+                    .addScaledVector(
+                        reachedFrame.tangent,
+                        3.4
+                    ),
+
+            rotationY:
+                reachedFrame.rotationY
+        };
+
+
+        checkpointStep++;
+
+
+        if (
+            checkpointStep >=
+            checkpointGates.length
+        ) {
+
+            checkpointStep =
+                0;
+
+
+            lap++;
+
+
+            if (
+                lap >
+                TARGET_LAPS
+            ) {
+
+                finishRace();
+
+
+                return (
+                    credited +
+                    1
+                );
+
+            }
+
+        }
+
+
+        credited++;
+
+    }
+
+
+    if (
+        credited >
+        0
+    ) {
+
+        updateObjective();
+        updateGateColors();
+
+    }
+
+
+    return credited;
 
 }
 
@@ -5397,8 +5623,21 @@ function updateRamps(
                 );
 
 
-            const toLanding =
+            const landingPoint =
                 shortcutLanding.point
+                    .clone()
+                    .addScaledVector(
+                        shortcutLanding.tangent,
+                        Number(
+                            ramp.landingLead
+                        )
+                        ||
+                        4
+                    );
+
+
+            const toLanding =
+                landingPoint
                     .clone()
                     .sub(
                         car.position
@@ -5414,20 +5653,29 @@ function updateRamps(
 
 
             /*
-              Secret jumps are now REAL jumps.
-              We calculate a ballistic flight toward the shortcut landing
-              instead of teleporting the car there when it touches down.
+              Long shortcuts calculate the speed/time needed to physically
+              reach their road landing. The old hard caps could make the
+              mountain jump fall short even when hit perfectly.
             */
+
+            const desiredShortcutSpeed =
+                Math.max(
+                    Number(
+                        ramp.shortcutSpeed
+                    )
+                    ||
+                    68,
+                    speed *
+                    1.06
+                );
+
 
             const flightTime =
                 THREE.MathUtils.clamp(
                     distanceToLanding /
-                    Math.max(
-                        48,
-                        speed
-                    ),
-                    1.15,
-                    2.05
+                    desiredShortcutSpeed,
+                    1.20,
+                    3.20
                 );
 
 
@@ -5442,15 +5690,12 @@ function updateRamps(
                         .normalize();
 
 
-                const shortcutSpeed =
+                const requiredHorizontalSpeed =
                     THREE.MathUtils.clamp(
                         distanceToLanding /
                         flightTime,
-                        Math.max(
-                            speed,
-                            34
-                        ),
-                        92
+                        34,
+                        125
                     );
 
 
@@ -5459,7 +5704,7 @@ function updateRamps(
                         shortcutDirection
                     )
                     .multiplyScalar(
-                        shortcutSpeed
+                        requiredHorizontalSpeed
                     );
 
             }
@@ -5477,15 +5722,24 @@ function updateRamps(
                 true;
 
 
+            carState.shortcutTakeoffT =
+                Number(
+                    ramp.t
+                );
+
+
             carState.shortcutLandingT =
                 Number(
                     ramp.targetT
                 );
 
 
+            carState.shortcutFlightTime =
+                flightTime;
+
+
             carState.shortcutLandingPoint =
-                shortcutLanding.point
-                    .clone();
+                landingPoint;
 
 
             showRacePopup(
@@ -5501,7 +5755,15 @@ function updateRamps(
                 false;
 
 
+            carState.shortcutTakeoffT =
+                null;
+
+
             carState.shortcutLandingT =
+                null;
+
+
+            carState.shortcutFlightTime =
                 null;
 
 
@@ -5816,12 +6078,27 @@ function updateAirborne(
         );
 
 
+    const maxAirTime =
+        carState.shortcutActive
+            ?
+            Math.max(
+                2.25,
+                Number(
+                    carState.shortcutFlightTime
+                )
+                +
+                0.35
+            )
+            :
+            2.25;
+
+
     if (
         car.position.y >
         0
         &&
         carState.airTime <
-        2.25
+        maxAirTime
     ) {
 
         return;
@@ -5873,12 +6150,19 @@ function updateAirborne(
                 landingPoint
             )
             <
-            24;
+            34;
 
 
         if (
             closeEnough
         ) {
+
+            const checkpointCredits =
+                creditShortcutCheckpoints(
+                    carState.shortcutTakeoffT,
+                    carState.shortcutLandingT
+                );
+
 
             carState.boostTimer =
                 Math.max(
@@ -5888,8 +6172,13 @@ function updateAirborne(
 
 
             showRacePopup(
-                "SHORTCUT LANDED",
-                650
+                checkpointCredits >
+                0
+                    ?
+                    `SHORTCUT + ${checkpointCredits} CHECKPOINT${checkpointCredits === 1 ? "" : "S"}`
+                    :
+                    "SHORTCUT LANDED",
+                750
             );
 
         }
@@ -5910,7 +6199,15 @@ function updateAirborne(
         false;
 
 
+    carState.shortcutTakeoffT =
+        null;
+
+
     carState.shortcutLandingT =
+        null;
+
+
+    carState.shortcutFlightTime =
         null;
 
 
@@ -7667,7 +7964,9 @@ function buildWorld() {
         cameraAirY: 0,
         rampCooldown: 0,
         shortcutActive: false,
+        shortcutTakeoffT: null,
         shortcutLandingT: null,
+        shortcutFlightTime: null,
         shortcutLandingPoint: null
     };
     checkpointStep =
