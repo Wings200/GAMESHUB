@@ -674,6 +674,32 @@ function getFrameAt(t) {
         rotationY: Math.atan2(tangent.x, tangent.z)
     };
 }
+function getShortcutLandingPoint(
+    definition
+) {
+
+    const frame =
+        getFrameAt(
+            Number(
+                definition.targetT
+            )
+        );
+
+
+    return frame.point
+        .clone()
+        .addScaledVector(
+            frame.tangent,
+            Number(
+                definition.landingLead
+            )
+            ||
+            4
+        );
+
+}
+
+
 function forwardVector() {
     return new THREE.Vector3(Math.sin(car.rotation.y), 0, Math.cos(car.rotation.y));
 }
@@ -5172,13 +5198,9 @@ function buildRamps() {
         ) {
 
             const target =
-                getFrameAt(
-                    Number(
-                        definition.targetT
-                    )
-                )
-                    .point
-                    .clone();
+                getShortcutLandingPoint(
+                    definition
+                );
 
 
             rampTangent =
@@ -5624,16 +5646,9 @@ function updateRamps(
 
 
             const landingPoint =
-                shortcutLanding.point
-                    .clone()
-                    .addScaledVector(
-                        shortcutLanding.tangent,
-                        Number(
-                            ramp.landingLead
-                        )
-                        ||
-                        4
-                    );
+                getShortcutLandingPoint(
+                    ramp
+                );
 
 
             const toLanding =
