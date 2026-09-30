@@ -5102,19 +5102,97 @@ carCards.forEach(card => {
     });
 });
 updateGarageUI();
-for (const option of trackSelect.options) {
-    if (option.value !==
-        "neon") {
+
+
+for (
+    const option
+    of trackSelect.options
+) {
+
+    if (
+        option.value ===
+        "canyon"
+    ) {
+
         option.disabled =
             true;
-        option.textContent =
-            `${option.textContent} — REBUILDING`;
+
     }
+
+    else {
+
+        option.disabled =
+            false;
+
+    }
+
 }
-trackSelect.value =
-    "neon";
-trackDescription.textContent =
-    "Neon District V8 — smoke, skid marks, sparks, nitro flames and upgraded driving feedback.";
+
+
+function updateTrackDescription(
+    trackId
+) {
+
+    const config =
+        TRACKS[
+            trackId
+        ]
+        ||
+        TRACKS.neon;
+
+
+    trackDescription.textContent =
+        config.description;
+
+}
+
+
+trackSelect.addEventListener(
+    "change",
+    () => {
+
+        updateTrackDescription(
+            trackSelect.value
+        );
+
+    }
+);
+
+
+window.addEventListener(
+    "redline:room-state",
+    event => {
+
+        const map =
+            event.detail
+                ?.map;
+
+
+        if (
+            map
+            &&
+            TRACKS[
+                map
+            ]
+        ) {
+
+            updateTrackDescription(
+                map
+            );
+
+        }
+
+    }
+);
+
+
+updateTrackDescription(
+    trackSelect.value
+    ||
+    "neon"
+);
+
+
 startBtn.addEventListener("click", startRace);
 window.addEventListener("keydown", event => {
     const key = event.key
