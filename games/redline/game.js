@@ -1829,6 +1829,68 @@ function buildArcticTunnel(
             group
         );
 
+
+        const leftCollider =
+            frame.point
+                .clone()
+                .addScaledVector(
+                    frame.normal,
+                    -(
+                        SIDEWALK_OUTER
+                        +
+                        3.3
+                    )
+                );
+
+
+        const rightCollider =
+            frame.point
+                .clone()
+                .addScaledVector(
+                    frame.normal,
+                    SIDEWALK_OUTER
+                    +
+                    3.3
+                );
+
+
+        addEnvironmentCircleCollider(
+            leftCollider,
+            5.25,
+            {
+                maxY:
+                    12.5,
+
+                bounce:
+                    0.16,
+
+                drag:
+                    0.48,
+
+                tag:
+                    "MOUNTAIN"
+            }
+        );
+
+
+        addEnvironmentCircleCollider(
+            rightCollider,
+            5.25,
+            {
+                maxY:
+                    12.5,
+
+                bounce:
+                    0.16,
+
+                drag:
+                    0.48,
+
+                tag:
+                    "MOUNTAIN"
+            }
+        );
+
     }
 
 
@@ -2218,6 +2280,34 @@ function buildArcticEnvironment() {
     );
 
 
+    for (
+        const tree
+        of treeEntries
+    ) {
+
+        addEnvironmentCircleCollider(
+            tree.position,
+            0.72,
+            {
+                maxY:
+                    tree.height
+                    +
+                    0.8,
+
+                bounce:
+                    0.18,
+
+                drag:
+                    0.42,
+
+                tag:
+                    "TREE"
+            }
+        );
+
+    }
+
+
     /*
       Massive peaks close enough to dominate the horizon.
     */
@@ -2238,6 +2328,70 @@ function buildArcticEnvironment() {
             roughness:
                 0.98
         });
+
+
+    const secretRamps =
+        rampDefinitions
+            .filter(
+                ramp =>
+                    ramp.secret
+                    &&
+                    Number.isFinite(
+                        Number(
+                            ramp.targetT
+                        )
+                    )
+            );
+
+
+    const secondSecret =
+        secretRamps[
+            1
+        ]
+        ??
+        null;
+
+
+    let secondShortcutCorridor =
+        null;
+
+
+    if (
+        secondSecret
+    ) {
+
+        const startFrame =
+            getFrameAt(
+                secondSecret.t
+            );
+
+
+        const targetFrame =
+            getFrameAt(
+                secondSecret.targetT
+            );
+
+
+        const start =
+            startFrame.point
+                .clone()
+                .addScaledVector(
+                    startFrame.normal,
+                    secondSecret.offset
+                    ||
+                    0
+                );
+
+
+        secondShortcutCorridor = {
+            start,
+
+            target:
+                targetFrame.point
+                    .clone()
+        };
+
+    }
 
 
     for (
@@ -2315,8 +2469,44 @@ function buildArcticEnvironment() {
                 0.11;
 
 
+            if (
+                secondShortcutCorridor
+                &&
+                pointToSegmentDistance2D(
+                    mountain.position,
+                    secondShortcutCorridor.start,
+                    secondShortcutCorridor.target
+                )
+                <
+                48
+            ) {
+
+                continue;
+
+            }
+
+
             worldGroup.add(
                 mountain
+            );
+
+
+            addEnvironmentCircleCollider(
+                mountain.position,
+                31,
+                {
+                    maxY:
+                        105,
+
+                    bounce:
+                        0.10,
+
+                    drag:
+                        0.34,
+
+                    tag:
+                        "MOUNTAIN"
+                }
             );
 
 
@@ -2517,6 +2707,27 @@ function buildArcticEnvironment() {
 
     worldGroup.add(
         station
+    );
+
+
+    addEnvironmentBoxCollider(
+        station.position,
+        9,
+        6,
+        station.rotation.y,
+        {
+            maxY:
+                6.2,
+
+            bounce:
+                0.12,
+
+            drag:
+                0.38,
+
+            tag:
+                "STATION"
+        }
     );
 
 
@@ -5975,6 +6186,14 @@ function updatePhysics(delta) {
     updateAirborne(
         delta
     );
+
+
+    /*
+      Trees, mountains, cave walls and buildings are real world objects.
+      Unlike small road obstacles, they can also be hit while airborne.
+    */
+
+    collideWithEnvironment();
 
 
     /*
