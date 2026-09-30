@@ -63,7 +63,7 @@ async function validSession(request, secret) {
   const token =
     getCookie(
       request,
-      "gh_session"
+      "gh_access"
     );
 
   if (!token) {
