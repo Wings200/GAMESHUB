@@ -30,7 +30,7 @@ const GAMESHUB_STATS_API =
             "arctic",
 
           name:
-            "ARCTIC CIRCUIT"
+            "ARCTIC RELAY"
         }
       ]
     }
