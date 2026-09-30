@@ -479,6 +479,7 @@ let obstacles = [];
 let boostPads = [];
 let pickups = [];
 let ramps = [];
+let environmentColliders = [];
 let surfaceZones = [];
 let car = null;
 let carState = null;
@@ -749,6 +750,10 @@ function disposeWorld() {
     raceStates.clear();
     finishOrder =
         [];
+
+    environmentColliders =
+        [];
+
     if (!worldGroup) {
         return;
     }
@@ -1005,6 +1010,532 @@ function buildCity() {
     buildLandmarkTower();
     buildTunnel();
 }
+function addEnvironmentCircleCollider(
+    position,
+    radius,
+    {
+        minY = -1,
+        maxY = 100,
+        bounce = 0.24,
+        drag = 0.58,
+        tag = "OBJECT"
+    } = {}
+) {
+
+    environmentColliders.push({
+        type:
+            "circle",
+
+        x:
+            position.x,
+
+        z:
+            position.z,
+
+        radius,
+
+        minY,
+
+        maxY,
+
+        bounce,
+
+        drag,
+
+        tag
+    });
+
+}
+
+
+function addEnvironmentBoxCollider(
+    position,
+    halfWidth,
+    halfDepth,
+    rotationY = 0,
+    {
+        minY = -1,
+        maxY = 100,
+        bounce = 0.20,
+        drag = 0.62,
+        tag = "OBJECT"
+    } = {}
+) {
+
+    environmentColliders.push({
+        type:
+            "box",
+
+        x:
+            position.x,
+
+        z:
+            position.z,
+
+        halfWidth,
+
+        halfDepth,
+
+        rotationY,
+
+        minY,
+
+        maxY,
+
+        bounce,
+
+        drag,
+
+        tag
+    });
+
+}
+
+
+function pointToSegmentDistance2D(
+    point,
+    a,
+    b
+) {
+
+    const abx =
+        b.x -
+        a.x;
+
+
+    const abz =
+        b.z -
+        a.z;
+
+
+    const apx =
+        point.x -
+        a.x;
+
+
+    const apz =
+        point.z -
+        a.z;
+
+
+    const lengthSq =
+        abx *
+        abx
+        +
+        abz *
+        abz
+        ||
+        1;
+
+
+    const t =
+        THREE.MathUtils.clamp(
+            (
+                apx *
+                abx
+                +
+                apz *
+                abz
+            )
+            /
+            lengthSq,
+            0,
+            1
+        );
+
+
+    const closestX =
+        a.x
+        +
+        abx *
+        t;
+
+
+    const closestZ =
+        a.z
+        +
+        abz *
+        t;
+
+
+    return Math.hypot(
+        point.x -
+        closestX,
+        point.z -
+        closestZ
+    );
+
+}
+
+
+function collideWithEnvironment() {
+
+    if (
+        !car
+        ||
+        !carState
+    ) {
+
+        return;
+
+    }
+
+
+    for (
+        const collider
+        of environmentColliders
+    ) {
+
+        if (
+            car.position.y >
+            collider.maxY
+            ||
+            car.position.y <
+            collider.minY
+        ) {
+
+            continue;
+
+        }
+
+
+        let normal =
+            null;
+
+
+        let penetration =
+            0;
+
+
+        if (
+            collider.type ===
+            "circle"
+        ) {
+
+            const dx =
+                car.position.x -
+                collider.x;
+
+
+            const dz =
+                car.position.z -
+                collider.z;
+
+
+            const distance =
+                Math.hypot(
+                    dx,
+                    dz
+                );
+
+
+            const minimum =
+                collider.radius
+                +
+                CAR_RADIUS;
+
+
+            if (
+                distance >=
+                minimum
+            ) {
+
+                continue;
+
+            }
+
+
+            const safe =
+                Math.max(
+                    distance,
+                    0.001
+                );
+
+
+            normal =
+                new THREE.Vector3(
+                    dx /
+                    safe,
+                    0,
+                    dz /
+                    safe
+                );
+
+
+            penetration =
+                minimum -
+                distance;
+
+        }
+
+        else {
+
+            const cos =
+                Math.cos(
+                    -collider.rotationY
+                );
+
+
+            const sin =
+                Math.sin(
+                    -collider.rotationY
+                );
+
+
+            const dx =
+                car.position.x -
+                collider.x;
+
+
+            const dz =
+                car.position.z -
+                collider.z;
+
+
+            const localX =
+                dx *
+                cos
+                -
+                dz *
+                sin;
+
+
+            const localZ =
+                dx *
+                sin
+                +
+                dz *
+                cos;
+
+
+            const expandedX =
+                collider.halfWidth
+                +
+                CAR_RADIUS;
+
+
+            const expandedZ =
+                collider.halfDepth
+                +
+                CAR_RADIUS;
+
+
+            if (
+                Math.abs(
+                    localX
+                )
+                >=
+                expandedX
+                ||
+                Math.abs(
+                    localZ
+                )
+                >=
+                expandedZ
+            ) {
+
+                continue;
+
+            }
+
+
+            const pushX =
+                expandedX
+                -
+                Math.abs(
+                    localX
+                );
+
+
+            const pushZ =
+                expandedZ
+                -
+                Math.abs(
+                    localZ
+                );
+
+
+            let nx =
+                0;
+
+
+            let nz =
+                0;
+
+
+            if (
+                pushX <
+                pushZ
+            ) {
+
+                nx =
+                    localX >=
+                    0
+                        ?
+                        1
+                        :
+                        -1;
+
+
+                penetration =
+                    pushX;
+
+            }
+
+            else {
+
+                nz =
+                    localZ >=
+                    0
+                        ?
+                        1
+                        :
+                        -1;
+
+
+                penetration =
+                    pushZ;
+
+            }
+
+
+            const worldCos =
+                Math.cos(
+                    collider.rotationY
+                );
+
+
+            const worldSin =
+                Math.sin(
+                    collider.rotationY
+                );
+
+
+            normal =
+                new THREE.Vector3(
+                    nx *
+                    worldCos
+                    -
+                    nz *
+                    worldSin,
+                    0,
+                    nx *
+                    worldSin
+                    +
+                    nz *
+                    worldCos
+                );
+
+        }
+
+
+        if (
+            !normal
+            ||
+            penetration <=
+            0
+        ) {
+
+            continue;
+
+        }
+
+
+        car.position
+            .addScaledVector(
+                normal,
+                penetration
+                +
+                0.015
+            );
+
+
+        const normalSpeed =
+            carState.velocity
+                .dot(
+                    normal
+                );
+
+
+        const hitSpeed =
+            Math.abs(
+                normalSpeed
+            );
+
+
+        if (
+            normalSpeed <
+            0
+        ) {
+
+            carState.velocity
+                .addScaledVector(
+                    normal,
+                    -(
+                        1
+                        +
+                        collider.bounce
+                    )
+                    *
+                    normalSpeed
+                );
+
+        }
+
+
+        carState.velocity
+            .multiplyScalar(
+                collider.drag
+            );
+
+
+        carState.impactPulse =
+            Math.max(
+                carState.impactPulse,
+                0.8
+            );
+
+
+        carState.cameraShake =
+            Math.max(
+                carState.cameraShake,
+                Math.min(
+                    0.45,
+                    hitSpeed /
+                    28
+                )
+            );
+
+
+        if (
+            carState.impactCooldown <=
+            0
+            &&
+            hitSpeed >
+            4
+        ) {
+
+            showRacePopup(
+                collider.tag ===
+                "MOUNTAIN"
+                    ?
+                    "MOUNTAIN HIT"
+                    :
+                    "CRASH",
+                420
+            );
+
+
+            carState.impactCooldown =
+                0.42;
+
+        }
+
+    }
+
+}
+
+
 function buildArcticTunnel(
     startT,
     endT,
