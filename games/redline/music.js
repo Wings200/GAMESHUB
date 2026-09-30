@@ -2,43 +2,72 @@
 
   /* =========================================================
      REDLINE MUSIC SYSTEM
-     HTML AUDIO VERSION
+     MAP-AWARE HTML AUDIO VERSION
   ========================================================= */
 
   const TRACKS = {
 
     lobby: {
-      id: "slapbass",
-      name: "I LUV SLAP BASS",
-      file: "./assets/audio/iluvslapbass.mp3"
+      id:
+        "slapbass",
+
+      name:
+        "I LUV SLAP BASS",
+
+      file:
+        "./assets/audio/iluvslapbass.mp3"
     },
+
 
     neon: {
-      id: "fugent",
-      name: "FUGENT — LUPUS NOCTE",
-      file: "./assets/audio/fugent.mp3"
+      id:
+        "fugent",
+
+      name:
+        "FUGENT — LUPUS NOCTE",
+
+      file:
+        "./assets/audio/fugent.mp3"
     },
 
+
     ice: {
-      id: "ice-slowed",
-      name: "ICE — SLOWED",
-      file: "./assets/audio/ice-slowed.mp3"
+      id:
+        "ice-slowed",
+
+      name:
+        "ICE — SLOWED",
+
+      /*
+        The real asset in the repo is named:
+        "ice - slowed.mp3"
+      */
+
+      file:
+        "./assets/audio/ice%20-%20slowed.mp3"
     }
 
   };
 
 
-  /* =========================================================
-     SETTINGS
-  ========================================================= */
-
   const DEFAULT_SETTINGS = {
-    enabled: true,
-    masterVolume: 1,
-    lobbyVolume: 0.52,
-    raceVolume: 0.40,
-    resultsVolume: 0.34,
-    fadeDuration: 1500
+    enabled:
+      true,
+
+    masterVolume:
+      1,
+
+    lobbyVolume:
+      0.52,
+
+    raceVolume:
+      0.40,
+
+    resultsVolume:
+      0.34,
+
+    fadeDuration:
+      1500
   };
 
 
@@ -49,15 +78,22 @@
   ) {
 
     const number =
-      Number(value);
+      Number(
+        value
+      );
+
 
     return Math.max(
       min,
       Math.min(
         max,
-        Number.isFinite(number)
-          ? number
-          : min
+        Number.isFinite(
+          number
+        )
+          ?
+          number
+          :
+          min
       )
     );
 
@@ -75,6 +111,7 @@
           )
         );
 
+
       let fade =
         Number(
           saved?.fadeDuration
@@ -83,23 +120,19 @@
         );
 
 
-      /*
-        If an older script saved 1.5 seconds,
-        convert it back to milliseconds.
-      */
-
       if (
-        fade > 0 &&
+        fade > 0
+        &&
         fade < 20
       ) {
 
-        fade *= 1000;
+        fade *=
+          1000;
 
       }
 
 
       return {
-
         ...DEFAULT_SETTINGS,
         ...(saved || {}),
 
@@ -141,10 +174,11 @@
             100,
             Math.min(
               10000,
-              fade || 1500
+              fade
+              ||
+              1500
             )
           )
-
       };
 
     }
@@ -183,78 +217,70 @@
 
 
   /* =========================================================
-     AUDIO PLAYERS
+     PLAYERS
   ========================================================= */
 
-  const lobbyAudio =
-    new Audio(
-      TRACKS.lobby.file
-    );
+  const players = {};
 
 
-  const neonAudio =
-    new Audio(
-      TRACKS.neon.file
-    );
+  for (
+    const [
+      key,
+      track
+    ]
+    of Object.entries(
+      TRACKS
+    )
+  ) {
+
+    const audio =
+      new Audio(
+        track.file
+      );
 
 
-  lobbyAudio.loop =
-    true;
-
-  neonAudio.loop =
-    true;
+    audio.loop =
+      true;
 
 
-  lobbyAudio.preload =
-    "auto";
-
-  neonAudio.preload =
-    "auto";
+    audio.preload =
+      "auto";
 
 
-  lobbyAudio.volume =
-    0;
-
-  neonAudio.volume =
-    0;
+    audio.volume =
+      0;
 
 
-  /*
-    Force both files to begin loading immediately.
-  */
-
-  lobbyAudio.load();
-
-  neonAudio.load();
+    audio.load();
 
 
-  const players = {
-    lobby:
-      lobbyAudio,
+    players[
+      key
+    ] =
+      audio;
 
-    neon:
-      neonAudio
-  };
+  }
 
-
-  /* =========================================================
-     STATE
-  ========================================================= */
 
   let unlocked =
     false;
 
+
   let currentTrack =
     null;
+
 
   let currentMode =
     "lobby";
 
+
   let currentMap =
     "neon";
 
+
   let fadeFrame =
     null;
+
 
   let fadeGeneration =
     0;
@@ -267,7 +293,8 @@
   function getRoom() {
 
     return (
-      window.REDLINE_MP?.room
+      window.REDLINE_MP
+        ?.room
       ??
       null
     );
@@ -292,6 +319,48 @@
   }
 
 
+  function raceTrackForMap(
+    map
+  ) {
+
+    if (
+      map ===
+      "neon"
+    ) {
+
+      return "neon";
+
+    }
+
+
+    if (
+      map ===
+      "arctic"
+    ) {
+
+      return "ice";
+
+    }
+
+
+    return null;
+
+  }
+
+
+  function getCurrentMap() {
+
+    return (
+      getRoom()?.map
+      ??
+      currentMap
+      ??
+      "neon"
+    );
+
+  }
+
+
   function volumeForMode(
     mode
   ) {
@@ -310,7 +379,8 @@
 
 
     if (
-      mode === "race"
+      mode ===
+      "race"
     ) {
 
       volume =
@@ -320,7 +390,8 @@
 
 
     else if (
-      mode === "results"
+      mode ===
+      "results"
     ) {
 
       volume =
@@ -330,39 +401,27 @@
 
 
     return clamp(
-      volume *
+      volume
+      *
       settings.masterVolume
     );
 
   }
 
 
-  function getCurrentMap() {
-
-    return (
-      getRoom()?.map
-      ??
-      currentMap
-      ??
-      "neon"
-    );
-
-  }
-
-
-  /* =========================================================
-     ENSURE AUDIO IS ACTUALLY RUNNING
-  ========================================================= */
-
   async function ensurePlaying(
     key
   ) {
 
     const audio =
-      players[key];
+      players[
+        key
+      ];
 
 
-    if (!audio) {
+    if (
+      !audio
+    ) {
 
       return false;
 
@@ -382,6 +441,7 @@
 
       await audio.play();
 
+
       return true;
 
     }
@@ -394,6 +454,7 @@
         `REDLINE could not start ${key} music:`,
         error
       );
+
 
       return false;
 
@@ -412,12 +473,14 @@
 
 
     if (
-      fadeFrame !== null
+      fadeFrame !==
+      null
     ) {
 
       cancelAnimationFrame(
         fadeFrame
       );
+
 
       fadeFrame =
         null;
@@ -427,9 +490,9 @@
   }
 
 
-  function crossfade(
-    targetLobby,
-    targetNeon,
+  function crossfadeTo(
+    targetKey,
+    mode,
     duration =
       settings.fadeDuration
   ) {
@@ -441,12 +504,48 @@
       fadeGeneration;
 
 
-    const startLobby =
-      lobbyAudio.volume;
+    const volume =
+      targetKey
+        ?
+        volumeForMode(
+          mode
+        )
+        :
+        0;
 
 
-    const startNeon =
-      neonAudio.volume;
+    const starts = {};
+
+
+    const targets = {};
+
+
+    for (
+      const key
+      of Object.keys(
+        players
+      )
+    ) {
+
+      starts[
+        key
+      ] =
+        players[
+          key
+        ].volume;
+
+
+      targets[
+        key
+      ] =
+        key ===
+        targetKey
+          ?
+          volume
+          :
+          0;
+
+    }
 
 
     const startTime =
@@ -481,46 +580,59 @@
         );
 
 
-      /*
-        Smoothstep crossfade.
-      */
-
       const smooth =
-        progress *
-        progress *
+        progress
+        *
+        progress
+        *
         (
-          3 -
-          2 *
+          3
+          -
+          2
+          *
           progress
         );
 
 
-      lobbyAudio.volume =
-        startLobby +
-        (
-          targetLobby -
-          startLobby
-        ) *
-        smooth;
+      for (
+        const key
+        of Object.keys(
+          players
+        )
+      ) {
 
+        players[
+          key
+        ].volume =
+          starts[
+            key
+          ]
+          +
+          (
+            targets[
+              key
+            ]
+            -
+            starts[
+              key
+            ]
+          )
+          *
+          smooth;
 
-      neonAudio.volume =
-        startNeon +
-        (
-          targetNeon -
-          startNeon
-        ) *
-        smooth;
+      }
 
 
       if (
-        progress < 1
+        progress <
+        1
       ) {
 
         fadeFrame =
           requestAnimationFrame(
             frame
           );
+
 
         return;
 
@@ -531,11 +643,21 @@
         null;
 
 
-      lobbyAudio.volume =
-        targetLobby;
+      for (
+        const key
+        of Object.keys(
+          players
+        )
+      ) {
 
-      neonAudio.volume =
-        targetNeon;
+        players[
+          key
+        ].volume =
+          targets[
+            key
+          ];
+
+      }
 
     }
 
@@ -568,6 +690,7 @@
       currentTrack =
         key;
 
+
       return;
 
     }
@@ -577,51 +700,69 @@
       !settings.enabled
     ) {
 
-      crossfade(
-        0,
-        0
+      currentTrack =
+        null;
+
+
+      crossfadeTo(
+        null,
+        mode
       );
+
 
       return;
 
     }
 
 
-    /*
-      No music assigned to map.
-    */
-
     if (
-      !key ||
-      !players[key]
+      !key
+      ||
+      !players[
+        key
+      ]
     ) {
 
       currentTrack =
         null;
 
-      crossfade(
-        0,
-        0
+
+      crossfadeTo(
+        null,
+        mode
       );
+
 
       return;
 
     }
 
 
+    const changingTrack =
+      currentTrack !==
+      key;
+
+
     /*
-      If we're entering Neon for a NEW race,
-      start Fugent from 0:00.
+      Every new race-map soundtrack starts from the beginning.
+      Results continue the same song instead of restarting it.
     */
 
     if (
-      key === "neon" &&
-      currentTrack !== "neon"
+      changingTrack
+      &&
+      mode ===
+      "race"
+      &&
+      key !==
+      "lobby"
     ) {
 
       try {
 
-        neonAudio.currentTime =
+        players[
+          key
+        ].currentTime =
           0;
 
       }
@@ -630,12 +771,6 @@
 
     }
 
-
-    /*
-      CRITICAL:
-      Fugent MUST actually start before we fade
-      Slap Bass away.
-    */
 
     const started =
       await ensurePlaying(
@@ -651,6 +786,7 @@
         `REDLINE refused to fade because ${key} did not start.`
       );
 
+
       return;
 
     }
@@ -660,29 +796,16 @@
       key;
 
 
-    const volume =
-      volumeForMode(
-        mode
-      );
-
-
-    crossfade(
-
-      key === "lobby"
-        ? volume
-        : 0,
-
-      key === "neon"
-        ? volume
-        : 0
-
+    crossfadeTo(
+      key,
+      mode
     );
 
   }
 
 
   /* =========================================================
-     DETERMINE MUSIC
+     MUSIC ROUTING
   ========================================================= */
 
   function syncMusic(
@@ -690,12 +813,15 @@
       getRoom()
   ) {
 
-    if (!room) {
+    if (
+      !room
+    ) {
 
       switchTo(
         "lobby",
         "lobby"
       );
+
 
       return;
 
@@ -708,21 +834,25 @@
       currentMap;
 
 
+    const raceTrack =
+      raceTrackForMap(
+        currentMap
+      );
+
+
     if (
-      room.phase === "countdown"
+      room.phase ===
+      "countdown"
       ||
-      room.phase === "racing"
+      room.phase ===
+      "racing"
     ) {
 
       switchTo(
-
-        currentMap === "neon"
-          ? "neon"
-          : null,
-
+        raceTrack,
         "race"
-
       );
+
 
       return;
 
@@ -730,20 +860,17 @@
 
 
     if (
-      room.phase === "results"
+      room.phase ===
+      "results"
       ||
       room.raceComplete
     ) {
 
       switchTo(
-
-        currentMap === "neon"
-          ? "neon"
-          : null,
-
+        raceTrack,
         "results"
-
       );
+
 
       return;
 
@@ -760,11 +887,6 @@
 
   /* =========================================================
      AUDIO UNLOCK
-
-     Both actual MP3 players are started from the
-     SAME user interaction and then kept alive.
-
-     No decodeAudioData anywhere.
   ========================================================= */
 
   async function unlockMusic() {
@@ -775,59 +897,88 @@
 
       syncMusic();
 
+
       return;
 
     }
 
 
-    /*
-      Keep them at volume 0 during unlock.
-    */
+    for (
+      const audio
+      of Object.values(
+        players
+      )
+    ) {
 
-    lobbyAudio.volume =
-      0;
+      audio.volume =
+        0;
 
-    neonAudio.volume =
-      0;
+    }
+
+
+    const entries =
+      Object.entries(
+        players
+      );
 
 
     const results =
-      await Promise.allSettled([
-        lobbyAudio.play(),
-        neonAudio.play()
-      ]);
+      await Promise.allSettled(
+        entries.map(
+          (
+            [
+              ,
+              audio
+            ]
+          ) =>
+            audio.play()
+        )
+      );
 
 
-    const lobbyOK =
-      results[0]?.status ===
-      "fulfilled";
+    const status = {};
 
 
-    const neonOK =
-      results[1]?.status ===
-      "fulfilled";
+    entries.forEach(
+      (
+        [
+          key
+        ],
+        index
+      ) => {
 
+        status[
+          key
+        ] =
+          results[
+            index
+          ]?.status ===
+          "fulfilled";
 
-    console.log(
-      "REDLINE music unlock:",
-      {
-        lobby:
-          lobbyOK,
-
-        neon:
-          neonOK
       }
     );
 
 
+    console.log(
+      "REDLINE music unlock:",
+      status
+    );
+
+
     if (
-      !lobbyOK &&
-      !neonOK
+      !Object
+        .values(
+          status
+        )
+        .some(
+          Boolean
+        )
     ) {
 
       console.warn(
-        "REDLINE browser blocked both music tracks."
+        "REDLINE browser blocked all music tracks."
       );
+
 
       return;
 
@@ -847,10 +998,6 @@
   }
 
 
-  /*
-    Every normal click retries a failed track too.
-  */
-
   async function interaction() {
 
     if (
@@ -859,33 +1006,36 @@
 
       await unlockMusic();
 
+
       return;
 
     }
 
 
     /*
-      Make sure BOTH players stay alive.
+      Keep all tracks alive at volume 0 so map switches can
+      crossfade immediately without a second autoplay gesture.
     */
 
-    if (
-      lobbyAudio.paused
+    for (
+      const [
+        key,
+        audio
+      ]
+      of Object.entries(
+        players
+      )
     ) {
 
-      ensurePlaying(
-        "lobby"
-      );
+      if (
+        audio.paused
+      ) {
 
-    }
+        ensurePlaying(
+          key
+        );
 
-
-    if (
-      neonAudio.paused
-    ) {
-
-      ensurePlaying(
-        "neon"
-      );
+      }
 
     }
 
@@ -971,13 +1121,10 @@
 
 
       switchTo(
-
-        currentMap === "neon"
-          ? "neon"
-          : null,
-
+        raceTrackForMap(
+          currentMap
+        ),
         "race"
-
       );
 
     }
@@ -1004,23 +1151,20 @@
       }
 
 
-      /*
-        Don't restart Fugent if countdown
-        already switched to it.
-      */
+      const key =
+        raceTrackForMap(
+          currentMap
+        );
+
 
       if (
-        currentTrack !== "neon"
+        currentTrack !==
+        key
       ) {
 
         switchTo(
-
-          currentMap === "neon"
-            ? "neon"
-            : null,
-
+          key,
           "race"
-
         );
 
       }
@@ -1034,13 +1178,10 @@
     () => {
 
       switchTo(
-
-        currentMap === "neon"
-          ? "neon"
-          : null,
-
+        raceTrackForMap(
+          currentMap
+        ),
         "results"
-
       );
 
     }
@@ -1052,15 +1193,14 @@
     event => {
 
       switchTo(
-
-        currentMap === "neon"
-          ? "neon"
-          : null,
-
+        raceTrackForMap(
+          currentMap
+        ),
         event.detail?.waiting
-          ? "race"
-          : "results"
-
+          ?
+          "race"
+          :
+          "results"
       );
 
     }
@@ -1084,9 +1224,14 @@
 
       return (
         currentTrack
-          ? TRACKS[currentTrack]
-            ?? null
-          : null
+          ?
+          TRACKS[
+            currentTrack
+          ]
+          ??
+          null
+          :
+          null
       );
 
     },
@@ -1103,8 +1248,55 @@
 
     get debug() {
 
-      return {
+      const debugPlayers = {};
 
+
+      for (
+        const [
+          key,
+          audio
+        ]
+        of Object.entries(
+          players
+        )
+      ) {
+
+        debugPlayers[
+          key
+        ] = {
+          src:
+            audio.currentSrc,
+
+          paused:
+            audio.paused,
+
+          readyState:
+            audio.readyState,
+
+          volume:
+            audio.volume,
+
+          currentTime:
+            audio.currentTime,
+
+          error:
+            audio.error
+              ?
+              {
+                code:
+                  audio.error.code,
+
+                message:
+                  audio.error.message
+              }
+              :
+              null
+        };
+
+      }
+
+
+      return {
         unlocked,
 
         currentTrack,
@@ -1113,66 +1305,7 @@
 
         currentMap,
 
-        lobby: {
-
-          src:
-            lobbyAudio.currentSrc,
-
-          paused:
-            lobbyAudio.paused,
-
-          readyState:
-            lobbyAudio.readyState,
-
-          volume:
-            lobbyAudio.volume,
-
-          currentTime:
-            lobbyAudio.currentTime,
-
-          error:
-            lobbyAudio.error
-              ? {
-                  code:
-                    lobbyAudio.error.code,
-
-                  message:
-                    lobbyAudio.error.message
-                }
-              : null
-
-        },
-
-        neon: {
-
-          src:
-            neonAudio.currentSrc,
-
-          paused:
-            neonAudio.paused,
-
-          readyState:
-            neonAudio.readyState,
-
-          volume:
-            neonAudio.volume,
-
-          currentTime:
-            neonAudio.currentTime,
-
-          error:
-            neonAudio.error
-              ? {
-                  code:
-                    neonAudio.error.code,
-
-                  message:
-                    neonAudio.error.message
-                }
-              : null
-
-        }
-
+        ...debugPlayers
       };
 
     },
@@ -1205,13 +1338,10 @@
     setRace() {
 
       switchTo(
-
-        getCurrentMap() === "neon"
-          ? "neon"
-          : null,
-
+        raceTrackForMap(
+          getCurrentMap()
+        ),
         "race"
-
       );
 
     },
@@ -1240,9 +1370,13 @@
 
       else {
 
-        crossfade(
-          0,
-          0
+        currentTrack =
+          null;
+
+
+        crossfadeTo(
+          null,
+          currentMode
         );
 
       }
