@@ -3727,8 +3727,45 @@ function updateRamps(
         }
 
 
+        const takeoffRoad =
+            nearestTrackInfo(
+                car.position
+            );
+
+
         carState.airborne =
             true;
+
+
+        carState.airTime =
+            0;
+
+
+        carState.airHeading =
+            car.rotation.y;
+
+
+        carState.takeoffTrackT =
+            takeoffRoad?.t
+            ??
+            ramp.t;
+
+
+        carState.takeoffSpeed =
+            Math.max(
+                1,
+                speed
+            );
+
+
+        /*
+          Ramp launches used to inherit collision camera shake and
+          steering corrections from the ground on the same frame.
+          That is what caused the violent snap / fling behavior.
+        */
+
+        carState.cameraShake =
+            0;
 
 
         carState.verticalVelocity =
@@ -3818,6 +3855,36 @@ function updateAirborne(
     }
 
 
+    carState.airTime =
+        (
+            carState.airTime
+            ||
+            0
+        )
+        +
+        delta;
+
+
+    /*
+      Keep the car facing its launch direction in the air.
+      Ground steering + lateral grip used to rotate the car while
+      airborne, which could throw it sideways by huge distances.
+    */
+
+    if (
+        Number.isFinite(
+            Number(
+                carState.airHeading
+            )
+        )
+    ) {
+
+        car.rotation.y =
+            carState.airHeading;
+
+    }
+
+
     carState.verticalVelocity -=
         17.5 *
         delta;
@@ -3831,6 +3898,9 @@ function updateAirborne(
     if (
         car.position.y >
         0
+        &&
+        carState.airTime <
+        2.2
     ) {
 
         return;
@@ -3850,6 +3920,10 @@ function updateAirborne(
         false;
 
 
+    carState.airTime =
+        0;
+
+
     if (
         Number.isFinite(
             Number(
@@ -3865,10 +3939,13 @@ function updateAirborne(
 
 
         const landingSpeed =
-            Math.max(
-                31,
-                carState.velocity
-                    .length()
+            Math.min(
+                activeCarSpec.boostSpeed,
+                Math.max(
+                    31,
+                    carState.velocity
+                        .length()
+                )
             );
 
 
@@ -3913,8 +3990,104 @@ function updateAirborne(
 
     }
 
-}
+    else {
 
+        /*
+          Normal ramps should land where the jump naturally carries you,
+          but if physics somehow puts the car far off the course, pull it
+          back to the nearest road edge instead of letting it fly away.
+        */
+
+        const road =
+            nearestTrackInfo(
+                car.position
+            );
+
+
+        if (
+            road
+            &&
+            road.distance >
+            SIDEWALK_OUTER
+            +
+            5
+        ) {
+
+            const safeOffset =
+                THREE.MathUtils.clamp(
+                    road.offset,
+                    -ROAD_HALF +
+                    0.8,
+                    ROAD_HALF -
+                    0.8
+                );
+
+
+            car.position
+                .copy(
+                    road.point
+                )
+                .addScaledVector(
+                    road.normal,
+                    safeOffset
+                );
+
+
+            car.position.y =
+                0;
+
+
+            car.rotation.y =
+                road.rotationY;
+
+
+            const landingSpeed =
+                Math.min(
+                    activeCarSpec.nitroSpeed,
+                    Math.max(
+                        10,
+                        carState.velocity
+                            .length()
+                    )
+                );
+
+
+            carState.velocity
+                .copy(
+                    road.tangent
+                )
+                .multiplyScalar(
+                    landingSpeed
+                );
+
+        }
+
+    }
+
+
+    carState.airHeading =
+        null;
+
+
+    carState.takeoffTrackT =
+        null;
+
+
+    carState.takeoffSpeed =
+        0;
+
+
+    carState.rampCooldown =
+        Math.max(
+            carState.rampCooldown,
+            0.7
+        );
+
+
+    carState.cameraShake =
+        0;
+
+}
 
 function addWheel(root, x, z, front, scale = 1) {
     const steerPivot = new THREE.Group();
@@ -4590,24 +4763,38 @@ function updatePhysics(delta) {
     const right = keys.has("d")
         ||
             keys.has("arrowright");
-    const handbrake = keys.has(" ");
+    const handbrake =
+        !carState.airborne
+        &&
+        keys.has(" ");
     const nitroActive = (keys.has("shift")
         ||
             keys.has("shiftleft"))
         &&
             carState.nitro >
                 0;
-    const steeringInput = (left
-        ?
-            1
-        :
-            0)
-        -
-            (right
-                ?
+    const steeringInput =
+        carState.airborne
+            ?
+            0
+            :
+            (
+                (
+                    left
+                    ?
                     1
-                :
-                    0);
+                    :
+                    0
+                )
+                -
+                (
+                    right
+                    ?
+                    1
+                    :
+                    0
+                )
+            );
     carState.steer =
         THREE.MathUtils.lerp(carState.steer, steeringInput, handbrake
             ?
@@ -4624,8 +4811,13 @@ function updatePhysics(delta) {
     const speedFactor = THREE.MathUtils.clamp(Math.abs(forwardSpeed)
         /
             14, 0, 1);
-    let steerRate = activeCarSpec.steer
-        *
+    let steerRate =
+        carState.airborne
+            ?
+            0
+            :
+            activeCarSpec.steer
+            *
             surface.steer;
     if (handbrake) {
         steerRate *=
@@ -4675,12 +4867,20 @@ function updatePhysics(delta) {
             activeCarSpec.acceleration)
         *
             surface.acceleration;
-    if (throttle) {
+    if (
+        throttle
+        &&
+        !carState.airborne
+    ) {
         carState.velocity
             .addScaledVector(forward, acceleration *
             delta);
     }
-    if (brake) {
+    if (
+        brake
+        &&
+        !carState.airborne
+    ) {
         if (forwardSpeed >
             1.5) {
             const braking = Math.min(forwardSpeed, activeCarSpec.braking *
@@ -4698,10 +4898,14 @@ function updatePhysics(delta) {
                     delta);
         }
     }
-    if (nitroActive
+    if (
+        nitroActive
         &&
-            forwardSpeed >
-                3) {
+        !carState.airborne
+        &&
+        forwardSpeed >
+        3
+    ) {
         carState.nitro =
             Math.max(0, carState.nitro -
                 24 *
@@ -4788,9 +4992,6 @@ function updatePhysics(delta) {
 
     if (
         !carState.airborne
-        ||
-        car.position.y <
-        0.65
     ) {
 
         collideWithBarriers();
@@ -5137,8 +5338,44 @@ function updateCamera(delta) {
         .clone()
         .lerp(velocityDirection, 0.20)
         .normalize();
-    const desired = car.position
-        .clone()
+    const cameraBase =
+        car.position
+            .clone();
+
+
+    const targetAirCameraY =
+        carState.airborne
+            ?
+            Math.min(
+                car.position.y *
+                0.24,
+                1.15
+            )
+            :
+            0;
+
+
+    carState.cameraAirY =
+        THREE.MathUtils.lerp(
+            Number(
+                carState.cameraAirY
+            )
+            ||
+            0,
+            targetAirCameraY,
+            carState.airborne
+                ?
+                0.08
+                :
+                0.16
+        );
+
+
+    cameraBase.y =
+        carState.cameraAirY;
+
+
+    const desired = cameraBase
         .add(new THREE.Vector3(0, 2.9
         +
             speed01 *
@@ -5150,7 +5387,12 @@ function updateCamera(delta) {
     desired.addScaledVector(right, -carState.steer *
         speed01 *
         0.32);
-    const shake = carState.cameraShake;
+    const shake =
+        carState.airborne
+            ?
+            0
+            :
+            carState.cameraShake;
     if (shake >
         0.001) {
         desired.x +=
@@ -5180,9 +5422,22 @@ function updateCamera(delta) {
         -
             Math.pow(0.0015, delta);
     camera.position.lerp(desired, smoothing);
-    const lookAt = car.position
-        .clone()
-        .add(new THREE.Vector3(0, 0.72, 0))
+    const lookAt =
+        car.position
+            .clone();
+
+
+    lookAt.y =
+        carState.airborne
+            ?
+            carState.cameraAirY
+            +
+            0.72
+            :
+            0.72;
+
+
+    lookAt
         .addScaledVector(cameraForward, 6
         +
             speed01 *
@@ -5382,6 +5637,11 @@ function buildWorld() {
         respawnCooldown: 0,
         airborne: false,
         verticalVelocity: 0,
+        airTime: 0,
+        airHeading: null,
+        takeoffTrackT: null,
+        takeoffSpeed: 0,
+        cameraAirY: 0,
         rampCooldown: 0,
         pendingShortcut: null
     };
