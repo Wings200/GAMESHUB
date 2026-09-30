@@ -2646,6 +2646,479 @@ function updatePickups(delta, elapsed) {
         }
     }
 }
+function buildRamps() {
+    ramps =
+        [];
+
+
+    for (
+        const definition
+        of rampDefinitions
+    ) {
+
+        const frame =
+            getFrameAt(
+                definition.t
+            );
+
+
+        const group =
+            new THREE.Group();
+
+
+        group.position
+            .copy(
+                frame.point
+            )
+            .addScaledVector(
+                frame.normal,
+                definition.offset
+                ||
+                0
+            );
+
+
+        group.rotation.y =
+            frame.rotationY;
+
+
+        const width =
+            definition.secret
+                ?
+                2.7
+                :
+                4.4;
+
+
+        const length =
+            definition.secret
+                ?
+                6.4
+                :
+                7.2;
+
+
+        const rampMaterial =
+            material(
+                definition.secret
+                    ?
+                    0x6f8e9d
+                    :
+                    (
+                        activeTrackId ===
+                        "arctic"
+                            ?
+                            0xc4d8e3
+                            :
+                            0x607188
+                    ),
+                0.72,
+                0.10
+            );
+
+
+        const deck =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    width,
+                    0.28,
+                    length
+                ),
+                rampMaterial
+            );
+
+
+        deck.position.y =
+            0.48;
+
+
+        deck.rotation.x =
+            -0.12;
+
+
+        group.add(
+            deck
+        );
+
+
+        if (
+            !definition.secret
+        ) {
+
+            const stripe =
+                new THREE.Mesh(
+                    new THREE.BoxGeometry(
+                        width *
+                        0.72,
+                        0.04,
+                        0.55
+                    ),
+                    new THREE.MeshBasicMaterial({
+                        color:
+                            0x5a9cff
+                    })
+                );
+
+
+            stripe.position.set(
+                0,
+                0.66,
+                -1.15
+            );
+
+
+            stripe.rotation.x =
+                -0.12;
+
+
+            group.add(
+                stripe
+            );
+
+        }
+
+
+        worldGroup.add(
+            group
+        );
+
+
+        ramps.push({
+            ...definition,
+
+            group,
+
+            position:
+                group.position
+                    .clone(),
+
+            cooldown:
+                0
+        });
+
+    }
+
+}
+
+
+function updateRamps(
+    delta
+) {
+
+    if (
+        !carState
+        ||
+        !car
+    ) {
+
+        return;
+
+    }
+
+
+    carState.rampCooldown =
+        Math.max(
+            0,
+            (
+                carState.rampCooldown
+                ||
+                0
+            )
+            -
+            delta
+        );
+
+
+    if (
+        carState.rampCooldown >
+        0
+        ||
+        carState.airborne
+    ) {
+
+        return;
+
+    }
+
+
+    const speed =
+        carState.velocity
+            .length();
+
+
+    for (
+        const ramp
+        of ramps
+    ) {
+
+        ramp.cooldown =
+            Math.max(
+                0,
+                (
+                    ramp.cooldown
+                    ||
+                    0
+                )
+                -
+                delta
+            );
+
+
+        if (
+            ramp.cooldown >
+            0
+        ) {
+
+            continue;
+
+        }
+
+
+        const distance =
+            flatDistance(
+                car.position,
+                ramp.position
+            );
+
+
+        if (
+            distance >
+            (
+                ramp.secret
+                    ?
+                    2.15
+                    :
+                    2.8
+            )
+        ) {
+
+            continue;
+
+        }
+
+
+        const minSpeed =
+            Number(
+                ramp.minSpeed
+            )
+            ||
+            13;
+
+
+        if (
+            speed <
+            minSpeed
+        ) {
+
+            if (
+                ramp.secret
+            ) {
+
+                showRacePopup(
+                    "SECRET JUMP — NEED MORE SPEED",
+                    650
+                );
+
+                ramp.cooldown =
+                    1.0;
+
+            }
+
+
+            continue;
+
+        }
+
+
+        carState.airborne =
+            true;
+
+
+        carState.verticalVelocity =
+            Number(
+                ramp.strength
+            )
+            ||
+            7.5;
+
+
+        carState.rampCooldown =
+            1.1;
+
+
+        ramp.cooldown =
+            1.25;
+
+
+        if (
+            ramp.secret
+            &&
+            Number.isFinite(
+                Number(
+                    ramp.targetT
+                )
+            )
+        ) {
+
+            carState.pendingShortcut =
+                Number(
+                    ramp.targetT
+                );
+
+
+            showRacePopup(
+                "SECRET JUMP!",
+                800
+            );
+
+        }
+
+        else {
+
+            showRacePopup(
+                "RAMP!",
+                500
+            );
+
+        }
+
+
+        break;
+
+    }
+
+}
+
+
+function updateAirborne(
+    delta
+) {
+
+    if (
+        !carState
+        ||
+        !car
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        !carState.airborne
+    ) {
+
+        car.position.y =
+            Math.max(
+                0,
+                car.position.y
+            );
+
+
+        return;
+
+    }
+
+
+    carState.verticalVelocity -=
+        17.5 *
+        delta;
+
+
+    car.position.y +=
+        carState.verticalVelocity *
+        delta;
+
+
+    if (
+        car.position.y >
+        0
+    ) {
+
+        return;
+
+    }
+
+
+    car.position.y =
+        0;
+
+
+    carState.verticalVelocity =
+        0;
+
+
+    carState.airborne =
+        false;
+
+
+    if (
+        Number.isFinite(
+            Number(
+                carState.pendingShortcut
+            )
+        )
+    ) {
+
+        const landing =
+            getFrameAt(
+                carState.pendingShortcut
+            );
+
+
+        const landingSpeed =
+            Math.max(
+                31,
+                carState.velocity
+                    .length()
+            );
+
+
+        car.position
+            .copy(
+                landing.point
+            );
+
+
+        car.position.y =
+            0;
+
+
+        car.rotation.y =
+            landing.rotationY;
+
+
+        carState.velocity
+            .copy(
+                landing.tangent
+            )
+            .multiplyScalar(
+                landingSpeed
+            );
+
+
+        carState.pendingShortcut =
+            null;
+
+
+        carState.boostTimer =
+            Math.max(
+                carState.boostTimer,
+                0.85
+            );
+
+
+        showRacePopup(
+            "SHORTCUT LANDED",
+            650
+        );
+
+    }
+
+}
+
+
 function addWheel(root, x, z, front, scale = 1) {
     const steerPivot = new THREE.Group();
     steerPivot.position.set(x, 0.34 *
@@ -3896,6 +4369,24 @@ function showRacePopup(text, duration = 600) {
 }
 function buildWorld() {
     disposeWorld();
+
+    const requestedTrack =
+        window.REDLINE_MP
+            ?.room
+            ?.map
+        ||
+        trackSelect
+            ?.value
+        ||
+        "neon";
+
+
+    const trackConfig =
+        applyTrackConfig(
+            requestedTrack
+        );
+
+
     const multiplayerCar = window.REDLINE_MP
         ?.myPlayer
         ?.car;
@@ -3917,15 +4408,45 @@ function buildWorld() {
     scene.add(worldGroup);
     surfaceZones =
         [];
+
     sampleTrack();
-    buildCity();
+
+
+    if (
+        activeTrackId ===
+        "arctic"
+    ) {
+
+        buildArcticEnvironment();
+
+    }
+
+    else {
+
+        buildCity();
+
+    }
+
+
     buildRoad();
     buildBarriers();
     buildCheckpointGates();
     buildBoostPads();
     buildPickups();
     buildObstacles();
-    buildParkingLot();
+    buildRamps();
+
+
+    if (
+        activeTrackId ===
+        "neon"
+    ) {
+
+        buildParkingLot();
+
+    }
+
+
     buildEffects();
     car =
         makeCarModel(activeCarSpec);
@@ -3947,6 +4468,18 @@ function buildWorld() {
     car.position.copy(start.position);
     car.rotation.y =
         start.rotationY;
+
+
+    lastCheckpointTransform = {
+        position:
+            start.position
+                .clone(),
+
+        rotationY:
+            start.rotationY
+    };
+
+
     carState = {
         velocity: new THREE.Vector3(),
         steer: 0,
@@ -3960,7 +4493,13 @@ function buildWorld() {
         sparkCooldown: 0,
         cameraShake: 0,
         smokeTimer: 0,
-        skidTimer: 0
+        skidTimer: 0,
+        stillTimer: 0,
+        respawnCooldown: 0,
+        airborne: false,
+        verticalVelocity: 0,
+        rampCooldown: 0,
+        pendingShortcut: null
     };
     checkpointStep =
         0;
@@ -4242,7 +4781,13 @@ function updateServerCountdown() {
 function startRace() {
     buildWorld();
     trackNameEl.textContent =
-        "NEON DISTRICT";
+        (
+            TRACKS[
+                activeTrackId
+            ]
+            ||
+            TRACKS.neon
+        ).name;
     menu.classList.add("hidden");
     hud.classList.remove("hidden");
     message.classList.add("hidden");
