@@ -1005,27 +1005,391 @@ function buildCity() {
     buildLandmarkTower();
     buildTunnel();
 }
+function buildArcticTunnel(
+    startT,
+    endT,
+    {
+        color = 0x596b78,
+        ice = false,
+        label = ""
+    } = {}
+) {
+
+    const steps =
+        12;
+
+
+    const wallMaterial =
+        new THREE.MeshStandardMaterial({
+            color,
+            roughness:
+                ice
+                    ?
+                    0.46
+                    :
+                    0.98,
+            metalness:
+                ice
+                    ?
+                    0.08
+                    :
+                    0.01
+        });
+
+
+    const roofMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                ice
+                    ?
+                    0x8cb7ca
+                    :
+                    color,
+            roughness:
+                ice
+                    ?
+                    0.38
+                    :
+                    0.96,
+            metalness:
+                ice
+                    ?
+                    0.10
+                    :
+                    0.01
+        });
+
+
+    for (
+        let i = 0;
+        i <= steps;
+        i++
+    ) {
+
+        const t =
+            startT
+            +
+            (
+                endT -
+                startT
+            )
+            *
+            (
+                i /
+                steps
+            );
+
+
+        const frame =
+            getFrameAt(
+                t
+            );
+
+
+        const group =
+            new THREE.Group();
+
+
+        group.position
+            .copy(
+                frame.point
+            );
+
+
+        group.rotation.y =
+            frame.rotationY;
+
+
+        const wallGeometry =
+            new THREE.DodecahedronGeometry(
+                1,
+                0
+            );
+
+
+        const left =
+            new THREE.Mesh(
+                wallGeometry,
+                wallMaterial
+            );
+
+
+        left.position.set(
+            -(
+                SIDEWALK_OUTER
+                +
+                3.3
+            ),
+            4.6,
+            0
+        );
+
+
+        left.scale.set(
+            6.5
+            +
+            (
+                i %
+                3
+            ),
+            6.6
+            +
+            (
+                i %
+                2
+            )
+            *
+            1.5,
+            5.8
+        );
+
+
+        const right =
+            new THREE.Mesh(
+                wallGeometry,
+                wallMaterial
+            );
+
+
+        right.position.set(
+            SIDEWALK_OUTER
+            +
+            3.3,
+            4.6,
+            0
+        );
+
+
+        right.scale.set(
+            6.7
+            +
+            (
+                (
+                    i +
+                    1
+                )
+                %
+                3
+            ),
+            7.1
+            +
+            (
+                (
+                    i +
+                    1
+                )
+                %
+                2
+            )
+            *
+            1.4,
+            5.8
+        );
+
+
+        group.add(
+            left,
+            right
+        );
+
+
+        /*
+          Continuous mountain/ice roof. The underside is high enough
+          for cars and jumps to pass through, but visually the road
+          disappears under the mountain instead of just running beside it.
+        */
+
+        const roof =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    SIDEWALK_OUTER *
+                    2
+                    +
+                    11,
+                    3.6,
+                    7.4
+                ),
+                roofMaterial
+            );
+
+
+        roof.position.y =
+            8.8
+            +
+            (
+                i %
+                2
+            )
+            *
+            0.35;
+
+
+        group.add(
+            roof
+        );
+
+
+        if (
+            ice
+            &&
+            i %
+            2 ===
+            0
+        ) {
+
+            for (
+                const x
+                of [
+                    -6.0,
+                    -2.2,
+                    2.5,
+                    6.1
+                ]
+            ) {
+
+                const icicle =
+                    new THREE.Mesh(
+                        new THREE.ConeGeometry(
+                            0.16,
+                            1.7
+                            +
+                            (
+                                (
+                                    i +
+                                    Math.round(
+                                        x
+                                    )
+                                )
+                                %
+                                3
+                            )
+                            *
+                            0.22,
+                            6
+                        ),
+                        new THREE.MeshBasicMaterial({
+                            color:
+                                0xc7efff
+                        })
+                    );
+
+
+                icicle.position.set(
+                    x,
+                    6.25,
+                    0
+                );
+
+
+                icicle.rotation.x =
+                    Math.PI;
+
+
+                group.add(
+                    icicle
+                );
+
+            }
+
+        }
+
+
+        worldGroup.add(
+            group
+        );
+
+    }
+
+
+    if (
+        label
+    ) {
+
+        const frame =
+            getFrameAt(
+                startT
+            );
+
+
+        const sign =
+            new THREE.Mesh(
+                new THREE.PlaneGeometry(
+                    5.2,
+                    1.45
+                ),
+                new THREE.MeshBasicMaterial({
+                    map:
+                        createTextTexture(
+                            label,
+                            "#eaf7ff",
+                            ice
+                                ?
+                                "#22485d"
+                                :
+                                "#303942"
+                        ),
+                    side:
+                        THREE.DoubleSide
+                })
+            );
+
+
+        sign.position
+            .copy(
+                frame.point
+            )
+            .addScaledVector(
+                frame.normal,
+                -(
+                    SIDEWALK_OUTER
+                    +
+                    1.8
+                )
+            );
+
+
+        sign.position.y =
+            3.0;
+
+
+        sign.rotation.y =
+            frame.rotationY;
+
+
+        worldGroup.add(
+            sign
+        );
+
+    }
+
+}
+
+
 function buildArcticEnvironment() {
+
     const ground =
         new THREE.Mesh(
             new THREE.PlaneGeometry(
-                1500,
-                1500
+                2200,
+                2200
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0xc7d5df,
+                    0xc8d6df,
                 roughness:
                     1
             })
         );
 
+
     ground.rotation.x =
         -Math.PI /
         2;
 
+
     ground.position.y =
         -0.025;
+
 
     worldGroup.add(
         ground
@@ -1033,38 +1397,40 @@ function buildArcticEnvironment() {
 
 
     /*
-      Frozen lake / blue ice field.
+      Large frozen lake beside the southern mountain run.
     */
 
     const lakeFrame =
         getFrameAt(
-            0.58
+            0.55
         );
 
 
     const lake =
         new THREE.Mesh(
             new THREE.CircleGeometry(
-                78,
-                40
+                132,
+                52
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0x6f9eb8,
+                    0x729eb5,
                 roughness:
-                    0.34,
+                    0.29,
                 metalness:
-                    0.12,
+                    0.14,
                 transparent:
                     true,
                 opacity:
-                    0.88
+                    0.90
             })
         );
+
 
     lake.rotation.x =
         -Math.PI /
         2;
+
 
     lake.position
         .copy(
@@ -1072,11 +1438,13 @@ function buildArcticEnvironment() {
         )
         .addScaledVector(
             lakeFrame.normal,
-            -68
+            -96
         );
 
+
     lake.position.y =
-        0.005;
+        0.004;
+
 
     worldGroup.add(
         lake
@@ -1084,8 +1452,8 @@ function buildArcticEnvironment() {
 
 
     /*
-      Low-poly pine forest. Instancing keeps Arctic usable
-      on Chromebook hardware even though the map is much larger.
+      Forest hugs the course. Instancing keeps this cheap enough for
+      Chromebook hardware even with a much longer track.
     */
 
     const treeEntries =
@@ -1095,7 +1463,7 @@ function buildArcticEnvironment() {
     for (
         let i = 0;
         i < TRACK_SAMPLE_COUNT;
-        i += 18
+        i += 15
     ) {
 
         const sample =
@@ -1107,56 +1475,93 @@ function buildArcticEnvironment() {
             of [-1, 1]
         ) {
 
-            const spread =
-                21
-                +
-                (
+            for (
+                let row = 0;
+                row < 2;
+                row++
+            ) {
+
+                const spread =
+                    22
+                    +
+                    row *
+                    12
+                    +
                     (
-                        i *
-                        13
-                        +
-                        side *
-                        7
-                    )
-                    %
-                    17
-                );
-
-
-            const position =
-                sample.point
-                    .clone()
-                    .addScaledVector(
-                        sample.normal,
-                        side *
-                        spread
+                        (
+                            i *
+                            11
+                            +
+                            row *
+                            7
+                        )
+                        %
+                        9
                     );
 
 
-            treeEntries.push({
-                position,
+                const position =
+                    sample.point
+                        .clone()
+                        .addScaledVector(
+                            sample.normal,
+                            side *
+                            spread
+                        );
 
-                height:
-                    5.5
-                    +
-                    (
-                        i %
-                        9
-                    )
-                    *
-                    0.42,
 
-                rotation:
-                    (
-                        i *
-                        0.31
-                    )
-                    %
-                    (
-                        Math.PI *
-                        2
-                    )
-            });
+                position
+                    .addScaledVector(
+                        sample.tangent,
+                        (
+                            (
+                                i *
+                                5
+                                +
+                                row *
+                                13
+                            )
+                            %
+                            9
+                        )
+                        -
+                        4
+                    );
+
+
+                treeEntries.push({
+                    position,
+
+                    height:
+                        5.3
+                        +
+                        (
+                            (
+                                i +
+                                row *
+                                3
+                            )
+                            %
+                            8
+                        )
+                        *
+                        0.48,
+
+                    rotation:
+                        (
+                            i *
+                            0.29
+                            +
+                            row
+                        )
+                        %
+                        (
+                            Math.PI *
+                            2
+                        )
+                });
+
+            }
 
         }
 
@@ -1166,7 +1571,7 @@ function buildArcticEnvironment() {
     const trunks =
         new THREE.InstancedMesh(
             new THREE.CylinderGeometry(
-                0.24,
+                0.23,
                 0.34,
                 1,
                 6
@@ -1190,7 +1595,7 @@ function buildArcticEnvironment() {
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0x173a36,
+                    0x163c38,
                 roughness:
                     0.95
             }),
@@ -1213,15 +1618,18 @@ function buildArcticEnvironment() {
                     tree.position
                 );
 
+
             dummy.position.y =
                 tree.height *
                 0.18;
+
 
             dummy.rotation.set(
                 0,
                 tree.rotation,
                 0
             );
+
 
             dummy.scale.set(
                 1,
@@ -1230,7 +1638,9 @@ function buildArcticEnvironment() {
                 1
             );
 
+
             dummy.updateMatrix();
+
 
             trunks.setMatrixAt(
                 index,
@@ -1242,14 +1652,17 @@ function buildArcticEnvironment() {
                 tree.height *
                 0.58;
 
+
             dummy.scale.set(
-                1.7,
+                1.72,
                 tree.height *
                 0.78,
-                1.7
+                1.72
             );
 
+
             dummy.updateMatrix();
+
 
             needles.setMatrixAt(
                 index,
@@ -1263,8 +1676,10 @@ function buildArcticEnvironment() {
     trunks.instanceMatrix.needsUpdate =
         true;
 
+
     needles.instanceMatrix.needsUpdate =
         true;
+
 
     worldGroup.add(
         trunks,
@@ -1273,22 +1688,31 @@ function buildArcticEnvironment() {
 
 
     /*
-      Mountain silhouettes beyond the trees.
+      Massive peaks close enough to dominate the horizon.
     */
 
     const mountainMaterial =
         new THREE.MeshStandardMaterial({
             color:
-                0x667783,
+                0x596a76,
             roughness:
                 1
+        });
+
+
+    const snowCapMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                0xdde8ee,
+            roughness:
+                0.98
         });
 
 
     for (
         let i = 0;
         i < TRACK_SAMPLE_COUNT;
-        i += 70
+        i += 52
     ) {
 
         const sample =
@@ -1300,10 +1724,25 @@ function buildArcticEnvironment() {
             of [-1, 1]
         ) {
 
+            const distance =
+                56
+                +
+                (
+                    (
+                        i /
+                        52
+                    )
+                    %
+                    3
+                )
+                *
+                18;
+
+
             const mountain =
                 new THREE.Mesh(
                     new THREE.ConeGeometry(
-                        25
+                        38
                         +
                         (
                             i %
@@ -1311,15 +1750,15 @@ function buildArcticEnvironment() {
                         )
                         *
                         5,
-                        55
+                        92
                         +
                         (
                             i %
                             5
                         )
                         *
-                        8,
-                        6
+                        10,
+                        7
                     ),
                     mountainMaterial
                 );
@@ -1332,27 +1771,51 @@ function buildArcticEnvironment() {
                 .addScaledVector(
                     sample.normal,
                     side *
-                    (
-                        78
-                        +
-                        (
-                            i %
-                            3
-                        )
-                        *
-                        20
-                    )
+                    distance
                 );
 
+
             mountain.position.y =
-                24;
+                40;
+
 
             mountain.rotation.y =
                 i *
-                0.17;
+                0.11;
+
 
             worldGroup.add(
                 mountain
+            );
+
+
+            const cap =
+                new THREE.Mesh(
+                    new THREE.ConeGeometry(
+                        18,
+                        28,
+                        7
+                    ),
+                    snowCapMaterial
+                );
+
+
+            cap.position
+                .copy(
+                    mountain.position
+                );
+
+
+            cap.position.y +=
+                38;
+
+
+            cap.rotation.y =
+                mountain.rotation.y;
+
+
+            worldGroup.add(
+                cap
             );
 
         }
@@ -1361,63 +1824,238 @@ function buildArcticEnvironment() {
 
 
     /*
-      Aurora strips above the course.
+      Actual drivable-under mountain sections.
     */
 
-    const auroraMaterial =
+    buildArcticTunnel(
+        0.165,
+        0.205,
+        {
+            color:
+                0x4d5c66,
+            label:
+                "NORTH PASS"
+        }
+    );
+
+
+    buildArcticTunnel(
+        0.405,
+        0.455,
+        {
+            color:
+                0x7397aa,
+            ice:
+                true,
+            label:
+                "GLACIER CAVE"
+        }
+    );
+
+
+    buildArcticTunnel(
+        0.675,
+        0.715,
+        {
+            color:
+                0x515d67,
+            label:
+                "BLACKRIDGE"
+        }
+    );
+
+
+    buildArcticTunnel(
+        0.875,
+        0.915,
+        {
+            color:
+                0x82adbf,
+            ice:
+                true,
+            label:
+                "ICE VAULT"
+        }
+    );
+
+
+    /*
+      Research station landmark near the frozen lake.
+    */
+
+    const stationFrame =
+        getFrameAt(
+            0.535
+        );
+
+
+    const station =
+        new THREE.Group();
+
+
+    station.position
+        .copy(
+            stationFrame.point
+        )
+        .addScaledVector(
+            stationFrame.normal,
+            28
+        );
+
+
+    station.rotation.y =
+        stationFrame.rotationY;
+
+
+    const stationBody =
+        material(
+            0x273846,
+            0.70,
+            0.20
+        );
+
+
+    addMesh(
+        station,
+        new THREE.BoxGeometry(
+            18,
+            5,
+            12
+        ),
+        stationBody,
+        0,
+        2.5,
+        0
+    );
+
+
+    addMesh(
+        station,
+        new THREE.BoxGeometry(
+            8,
+            3,
+            7
+        ),
+        material(
+            0x324e61,
+            0.54,
+            0.18
+        ),
+        -8,
+        1.5,
+        6
+    );
+
+
+    const beacon =
+        addMesh(
+            station,
+            new THREE.CylinderGeometry(
+                0.16,
+                0.16,
+                15,
+                6
+            ),
+            material(
+                0x697986,
+                0.65,
+                0.40
+            ),
+            5,
+            10,
+            0
+        );
+
+
+    addMesh(
+        station,
+        new THREE.SphereGeometry(
+            0.45,
+            8,
+            6
+        ),
         new THREE.MeshBasicMaterial({
             color:
-                0x63ffd1,
-            transparent:
-                true,
-            opacity:
-                0.11,
-            side:
-                THREE.DoubleSide,
-            depthWrite:
-                false
-        });
+                0xff496b
+        }),
+        beacon.position.x,
+        17.6,
+        beacon.position.z
+    );
+
+
+    worldGroup.add(
+        station
+    );
+
+
+    /*
+      Aurora spans the whole course rather than a tiny patch.
+    */
+
+    const auroraColors =
+        [
+            0x65ffd5,
+            0x6cb7ff,
+            0x9a75ff
+        ];
 
 
     for (
         let i = 0;
-        i < 3;
+        i < 5;
         i++
     ) {
 
         const strip =
             new THREE.Mesh(
                 new THREE.PlaneGeometry(
-                    420,
-                    28
+                    760,
+                    36
                 ),
-                auroraMaterial.clone()
+                new THREE.MeshBasicMaterial({
+                    color:
+                        auroraColors[
+                            i %
+                            auroraColors.length
+                        ],
+                    transparent:
+                        true,
+                    opacity:
+                        0.10,
+                    side:
+                        THREE.DoubleSide,
+                    depthWrite:
+                        false
+                })
             );
 
 
         strip.position.set(
-            -80
+            -260
             +
             i *
-            90,
-            62
+            135,
+            78
             +
             i *
-            6,
-            -30
+            5,
+            -160
             +
             i *
-            38
+            82
         );
 
+
         strip.rotation.set(
-            -0.22,
-            0.22
+            -0.18,
+            0.18
             +
             i *
-            0.15,
-            0.04
+            0.11,
+            0.05
         );
+
 
         worldGroup.add(
             strip
@@ -1426,7 +2064,6 @@ function buildArcticEnvironment() {
     }
 
 }
-
 
 function buildBuildingWindows(buildings) {
     const lit = [];
