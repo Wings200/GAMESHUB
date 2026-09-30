@@ -2,6 +2,9 @@ import { DurableObject } from "cloudflare:workers";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+const GAMESHUB_IDENTITY_VERIFY_URL =
+  "https://redline-dnk.pages.dev/api/account/multiplayer-verify";
+
 const VALID_CARS =
   new Set([
     "gt",
@@ -443,6 +446,132 @@ function directoryStub(
 }
 
 
+async function verifyGameShubIdentity(
+  token
+) {
+
+  if (
+    typeof token !==
+    "string"
+    ||
+    token.length < 40
+  ) {
+
+    return {
+      ok:
+        false,
+
+      status:
+        401,
+
+      error:
+        "Sign in to GAMESHUB before using REDLINE multiplayer."
+    };
+
+  }
+
+
+  let response;
+
+
+  try {
+
+    response =
+      await fetch(
+        GAMESHUB_IDENTITY_VERIFY_URL,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              token
+            })
+        }
+      );
+
+  }
+
+  catch {
+
+    return {
+      ok:
+        false,
+
+      status:
+        503,
+
+      error:
+        "GAMESHUB account verification is unavailable."
+    };
+
+  }
+
+
+  const data =
+    await response
+      .json()
+      .catch(
+        () => null
+      );
+
+
+  if (
+    !response.ok
+    ||
+    !data?.ok
+    ||
+    !data.user?.id
+    ||
+    !data.user?.username
+  ) {
+
+    return {
+      ok:
+        false,
+
+      status:
+        response.status >=
+        500
+          ?
+          503
+          :
+          401,
+
+      error:
+        data?.error
+        ||
+        "Could not verify your GAMESHUB account."
+    };
+
+  }
+
+
+  return {
+    ok:
+      true,
+
+    user: {
+      id:
+        String(
+          data.user.id
+        ),
+
+      username:
+        cleanUsername(
+          data.user.username
+        )
+    }
+  };
+
+}
+
+
 /* =========================================================
    MAIN WORKER
 ========================================================= */
@@ -504,7 +633,7 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          4
+          5
 
       });
 
@@ -569,10 +698,33 @@ export default {
       }
 
 
-      const username =
-        cleanUsername(
-          body.username
+      const identity =
+        await verifyGameShubIdentity(
+          body.accountToken
         );
+
+
+      if (
+        !identity.ok
+      ) {
+
+        return json(
+          {
+            error:
+              identity.error
+          },
+          identity.status
+        );
+
+      }
+
+
+      const username =
+        identity.user.username;
+
+
+      const accountId =
+        identity.user.id;
 
 
       const privacy =
@@ -671,7 +823,9 @@ export default {
 
           maxPlayers,
 
-          username
+          username,
+
+          accountId
 
         });
 
@@ -773,13 +927,35 @@ export default {
           );
 
 
+        const identity =
+          await verifyGameShubIdentity(
+            body?.accountToken
+          );
+
+
+        if (
+          !identity.ok
+        ) {
+
+          return json(
+            {
+              error:
+                identity.error
+            },
+            identity.status
+          );
+
+        }
+
+
         const result =
           await room.joinRoom({
 
             username:
-              cleanUsername(
-                body?.username
-              )
+              identity.user.username,
+
+            accountId:
+              identity.user.id
 
           });
 
@@ -1091,7 +1267,8 @@ export class RedlineRoom
     name,
     privacy,
     maxPlayers,
-    username
+    username,
+    accountId
   }) {
 
     if (
@@ -1154,6 +1331,8 @@ export class RedlineRoom
 
           token:
             playerToken,
+
+          accountId,
 
           username,
 
@@ -1227,7 +1406,8 @@ export class RedlineRoom
   ======================================================= */
 
   async joinRoom({
-    username
+    username,
+    accountId
   }) {
 
     if (
@@ -1292,6 +1472,32 @@ export class RedlineRoom
     }
 
 
+    if (
+      accountId
+      &&
+      this.room.players.some(
+        candidate =>
+          candidate.accountId ===
+          accountId
+      )
+    ) {
+
+      return {
+
+        ok:
+          false,
+
+        status:
+          409,
+
+        error:
+          "Your GAMESHUB account is already in this room."
+
+      };
+
+    }
+
+
     const playerId =
       crypto.randomUUID();
 
@@ -1307,6 +1513,8 @@ export class RedlineRoom
 
       token:
         playerToken,
+
+      accountId,
 
       username,
 
