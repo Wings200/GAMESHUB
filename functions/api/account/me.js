@@ -79,6 +79,213 @@ async function sha256Hex(
 }
 
 
+function base64UrlToBytes(
+  value
+) {
+  let base64 =
+    value
+      .replaceAll(
+        "-",
+        "+"
+      )
+      .replaceAll(
+        "_",
+        "/"
+      );
+
+
+  while (
+    base64.length %
+    4
+  ) {
+    base64 +=
+      "=";
+  }
+
+
+  const binary =
+    atob(
+      base64
+    );
+
+
+  const bytes =
+    new Uint8Array(
+      binary.length
+    );
+
+
+  for (
+    let i = 0;
+    i < binary.length;
+    i++
+  ) {
+    bytes[
+      i
+    ] =
+      binary.charCodeAt(
+        i
+      );
+  }
+
+
+  return bytes;
+}
+
+
+async function readGuest(
+  request,
+  secret
+) {
+  const token =
+    getCookie(
+      request,
+      "gh_guest"
+    );
+
+
+  if (
+    !token
+    ||
+    !secret
+  ) {
+    return null;
+  }
+
+
+  const parts =
+    token.split(
+      "."
+    );
+
+
+  if (
+    parts.length !==
+    3
+    ||
+    parts[0] !==
+    "v1"
+  ) {
+    return null;
+  }
+
+
+  const signedValue =
+    `${parts[0]}.${parts[1]}`;
+
+
+  const key =
+    await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder()
+        .encode(
+          secret
+        ),
+      {
+        name:
+          "HMAC",
+
+        hash:
+          "SHA-256"
+      },
+      false,
+      [
+        "verify"
+      ]
+    );
+
+
+  let valid =
+    false;
+
+
+  try {
+    valid =
+      await crypto.subtle.verify(
+        "HMAC",
+        key,
+        base64UrlToBytes(
+          parts[2]
+        ),
+        new TextEncoder()
+          .encode(
+            signedValue
+          )
+      );
+  }
+
+  catch {
+    return null;
+  }
+
+
+  if (
+    !valid
+  ) {
+    return null;
+  }
+
+
+  let guest;
+
+
+  try {
+    guest =
+      JSON.parse(
+        new TextDecoder()
+          .decode(
+            base64UrlToBytes(
+              parts[1]
+            )
+          )
+      );
+  }
+
+  catch {
+    return null;
+  }
+
+
+  if (
+    typeof guest?.id !==
+    "string"
+    ||
+    !/^GUEST-[A-Z0-9]{6}$/.test(
+      String(
+        guest?.username
+        ||
+        ""
+      )
+    )
+    ||
+    !Number.isFinite(
+      Number(
+        guest?.exp
+      )
+    )
+    ||
+    Date.now() >=
+    Number(
+      guest.exp
+    )
+  ) {
+    return null;
+  }
+
+
+  return {
+    id:
+      `guest:${guest.id}`,
+
+    guestId:
+      guest.id,
+
+    username:
+      guest.username
+  };
+}
+
+
 export async function onRequestGet(
   context
 ) {
@@ -89,73 +296,119 @@ export async function onRequestGet(
         "gh_session"
       );
 
-    if (!token) {
-      return json({
-        ok: true,
-        signedIn: false,
-        user: null
-      });
+
+    if (
+      token
+    ) {
+      const sessionId =
+        await sha256Hex(
+          token
+        );
+
+
+      const now =
+        Date.now();
+
+
+      const user =
+        await context.env.DB
+          .prepare(`
+            SELECT
+              u.id,
+              u.username,
+              u.created_at,
+              u.updated_at
+            FROM sessions s
+            JOIN users u
+              ON u.id = s.user_id
+            WHERE s.id = ?
+              AND s.expires_at > ?
+            LIMIT 1
+          `)
+          .bind(
+            sessionId,
+            now
+          )
+          .first();
+
+
+      if (
+        user
+      ) {
+        return json({
+          ok:
+            true,
+
+          signedIn:
+            true,
+
+          guest:
+            false,
+
+          needsUsername:
+            !user.username,
+
+          user: {
+            id:
+              user.id,
+
+            username:
+              user.username
+              ??
+              null
+          }
+        });
+      }
     }
 
 
-    const sessionId =
-      await sha256Hex(
-        token
+    const guest =
+      await readGuest(
+        context.request,
+        context.env
+          .SESSION_SECRET
       );
 
 
-    const now =
-      Date.now();
-
-
-    const user =
-      await context.env.DB
-        .prepare(`
-          SELECT
-            u.id,
-            u.username,
-            u.created_at,
-            u.updated_at
-          FROM sessions s
-          JOIN users u
-            ON u.id = s.user_id
-          WHERE s.id = ?
-            AND s.expires_at > ?
-          LIMIT 1
-        `)
-        .bind(
-          sessionId,
-          now
-        )
-        .first();
-
-
-    if (!user) {
+    if (
+      guest
+    ) {
       return json({
-        ok: true,
-        signedIn: false,
-        user: null
+        ok:
+          true,
+
+        signedIn:
+          true,
+
+        guest:
+          true,
+
+        needsUsername:
+          false,
+
+        user: {
+          id:
+            guest.id,
+
+          username:
+            guest.username
+        }
       });
     }
 
 
     return json({
-      ok: true,
+      ok:
+        true,
 
-      signedIn: true,
+      signedIn:
+        false,
 
-      needsUsername:
-        !user.username,
+      guest:
+        false,
 
-      user: {
-        id:
-          user.id,
-
-        username:
-          user.username
-          ??
-          null
-      }
+      user:
+        null
     });
   }
 
