@@ -3217,24 +3217,20 @@ function buildArcticEnvironment() {
       cave shortcut corridor is kept clear.
     */
 
-    const secretRamps =
+    const signatureShortcut =
         rampDefinitions
-            .filter(
+            .find(
                 ramp =>
                     ramp.secret
+                    &&
+                    ramp.cave
                     &&
                     Number.isFinite(
                         Number(
                             ramp.targetT
                         )
                     )
-            );
-
-
-    const signatureShortcut =
-        secretRamps[
-            1
-        ]
+            )
         ??
         null;
 
@@ -3257,12 +3253,6 @@ function buildArcticEnvironment() {
             );
 
 
-        const endFrame =
-            getFrameAt(
-                signatureShortcut.targetT
-            );
-
-
         shortcutStart =
             startFrame.point
                 .clone()
@@ -3275,8 +3265,9 @@ function buildArcticEnvironment() {
 
 
         shortcutEnd =
-            endFrame.point
-                .clone();
+            getShortcutLandingPoint(
+                signatureShortcut
+            );
 
     }
 
@@ -4145,6 +4136,90 @@ function sectionContains(t, start, end) {
                 ||
                     t <= end);
 }
+function wrappedTrackDistance(
+    a,
+    b
+) {
+
+    const difference =
+        Math.abs(
+            a -
+            b
+        );
+
+
+    return Math.min(
+        difference,
+        1 -
+        difference
+    );
+
+}
+
+
+function barrierWouldBlockCrossing(
+    midpoint,
+    t
+) {
+
+    if (
+        activeTrackId !==
+        "arctic"
+    ) {
+
+        return false;
+
+    }
+
+
+    /*
+      Arctic doubles back over itself. If another distant section of road
+      is close to this guardrail segment, leave the rail out so the X/T
+      intersection stays drivable instead of putting a wall across it.
+    */
+
+    for (
+        const sample
+        of trackSamples
+    ) {
+
+        if (
+            wrappedTrackDistance(
+                t,
+                sample.t
+            )
+            <
+            0.035
+        ) {
+
+            continue;
+
+        }
+
+
+        if (
+            flatDistance(
+                midpoint,
+                sample.point
+            )
+            <
+            SIDEWALK_OUTER
+            +
+            3.6
+        ) {
+
+            return true;
+
+        }
+
+    }
+
+
+    return false;
+
+}
+
+
 function buildBarriers() {
     barriers =
         [];
@@ -4186,6 +4261,20 @@ function buildBarriers() {
                 .clone()
                 .add(b)
                 .multiplyScalar(0.5);
+
+
+            if (
+                barrierWouldBlockCrossing(
+                    midpoint,
+                    t
+                )
+            ) {
+
+                continue;
+
+            }
+
+
             const segment = b
                 .clone()
                 .sub(a);
