@@ -1720,6 +1720,12 @@ function buildArcticTunnel(
             );
 
 
+        const wallOffset =
+            SIDEWALK_OUTER
+            +
+            9.0;
+
+
         const left =
             new THREE.Mesh(
                 wallGeometry,
@@ -1728,32 +1734,30 @@ function buildArcticTunnel(
 
 
         left.position.set(
-            -(
-                SIDEWALK_OUTER
-                +
-                3.3
-            ),
-            4.6,
+            -wallOffset,
+            4.9,
             0
         );
 
 
         left.scale.set(
-            6.5
+            5.0
             +
             (
                 i %
                 3
-            ),
-            6.6
+            )
+            *
+            0.45,
+            6.8
             +
             (
                 i %
                 2
             )
             *
-            1.5,
-            5.8
+            1.3,
+            5.6
         );
 
 
@@ -1765,16 +1769,14 @@ function buildArcticTunnel(
 
 
         right.position.set(
-            SIDEWALK_OUTER
-            +
-            3.3,
-            4.6,
+            wallOffset,
+            4.9,
             0
         );
 
 
         right.scale.set(
-            6.7
+            5.1
             +
             (
                 (
@@ -1783,8 +1785,10 @@ function buildArcticTunnel(
                 )
                 %
                 3
-            ),
-            7.1
+            )
+            *
+            0.45,
+            7.0
             +
             (
                 (
@@ -1795,8 +1799,8 @@ function buildArcticTunnel(
                 2
             )
             *
-            1.4,
-            5.8
+            1.2,
+            5.6
         );
 
 
@@ -1815,10 +1819,13 @@ function buildArcticTunnel(
         const roof =
             new THREE.Mesh(
                 new THREE.BoxGeometry(
-                    SIDEWALK_OUTER *
-                    2
-                    +
-                    11,
+                    (
+                        SIDEWALK_OUTER
+                        +
+                        11
+                    )
+                    *
+                    2,
                     3.6,
                     7.4
                 ),
@@ -1917,11 +1924,7 @@ function buildArcticTunnel(
                 .clone()
                 .addScaledVector(
                     frame.normal,
-                    -(
-                        SIDEWALK_OUTER
-                        +
-                        3.3
-                    )
+                    -wallOffset
                 );
 
 
@@ -1930,15 +1933,13 @@ function buildArcticTunnel(
                 .clone()
                 .addScaledVector(
                     frame.normal,
-                    SIDEWALK_OUTER
-                    +
-                    3.3
+                    wallOffset
                 );
 
 
         addEnvironmentCircleCollider(
             leftCollider,
-            5.25,
+            4.55,
             {
                 maxY:
                     12.5,
@@ -1957,7 +1958,7 @@ function buildArcticTunnel(
 
         addEnvironmentCircleCollider(
             rightCollider,
-            5.25,
+            4.55,
             {
                 maxY:
                     12.5,
@@ -2177,13 +2178,27 @@ function buildSecondShortcutMountainHole() {
             0;
 
 
-        if (
+        /*
+          The cave structure needs room in BOTH width and depth. Favor
+          genuinely off-road points so it cannot straddle normal asphalt.
+        */
+
+        const usableClearance =
             clearance >
+            34
+                ?
+                clearance
+                :
+                -1;
+
+
+        if (
+            usableClearance >
             bestClearance
         ) {
 
             bestClearance =
-                clearance;
+                usableClearance;
 
 
             center =
@@ -2196,7 +2211,14 @@ function buildSecondShortcutMountainHole() {
 
     if (
         !center
+        ||
+        bestClearance <
+        34
     ) {
+
+        /*
+          Better to omit the set-piece than ever block the real course.
+        */
 
         return;
 
@@ -2247,11 +2269,11 @@ function buildSecondShortcutMountainHole() {
     */
 
     const openingWidth =
-        13.5;
+        16;
 
 
     const openingHeight =
-        10.8;
+        11.5;
 
 
     const safeHalfWidth =
@@ -2260,12 +2282,9 @@ function buildSecondShortcutMountainHole() {
             -
             SIDEWALK_OUTER
             -
-            4.5,
-            openingWidth /
-            2
-            +
-            4.5,
-            23
+            9,
+            14,
+            18
         );
 
 
@@ -2367,54 +2386,10 @@ function buildSecondShortcutMountainHole() {
 
 
     /*
-      Add two rocky wedges behind the arch so it reads as a mountain while
-      keeping the shortcut opening completely empty.
+      Keep the cave mouth completely open. The old cone-shaped peaks
+      extended into the opening and visually/physically blocked the jump.
+      The side rock masses + roof already sell the mountain silhouette.
     */
-
-    for (
-        const side
-        of [-1, 1]
-    ) {
-
-        const peak =
-            new THREE.Mesh(
-                new THREE.ConeGeometry(
-                    Math.max(
-                        10,
-                        sideWidth *
-                        0.72
-                    ),
-                    42,
-                    7
-                ),
-                rock
-            );
-
-
-        peak.position.set(
-            side *
-            (
-                openingWidth /
-                2
-                +
-                sideWidth *
-                0.55
-            ),
-            18,
-            3
-        );
-
-
-        peak.rotation.y =
-            side *
-            0.22;
-
-
-        mountain.add(
-            peak
-        );
-
-    }
 
 
     const tunnelDark =
@@ -2770,6 +2745,26 @@ function buildArcticEnvironment() {
             );
 
 
+        /*
+          ConeGeometry uses "radius" at its base. A mountain centered only
+          50 units from the road with a 45-unit radius can literally cover
+          the asphalt. Guarantee the VISUAL mesh itself stays well outside
+          the shoulder, not just its collider.
+        */
+
+        const safeDistance =
+            Math.max(
+                Math.abs(
+                    distance
+                ),
+                radius
+                +
+                SIDEWALK_OUTER
+                +
+                15
+            );
+
+
         mountain.position
             .copy(
                 frame.point
@@ -2777,7 +2772,7 @@ function buildArcticEnvironment() {
             .addScaledVector(
                 frame.normal,
                 side *
-                distance
+                safeDistance
             );
 
 
@@ -4203,9 +4198,11 @@ function barrierWouldBlockCrossing(
                 sample.point
             )
             <
-            SIDEWALK_OUTER
+            ROAD_HALF
+            *
+            2
             +
-            3.6
+            10
         ) {
 
             return true;
