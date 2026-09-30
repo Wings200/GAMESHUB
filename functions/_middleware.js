@@ -130,7 +130,8 @@ export async function onRequest(context) {
     url.pathname === "/privacy" ||
     url.pathname === "/privacy.html" ||
     url.pathname === "/terms" ||
-    url.pathname === "/terms.html"
+    url.pathname === "/terms.html" ||
+    url.pathname === "/api/account/multiplayer-verify"
   ) {
     return context.next();
   }
