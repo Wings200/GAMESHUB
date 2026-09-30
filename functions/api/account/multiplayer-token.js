@@ -115,7 +115,209 @@ function makeToken() {
 }
 
 
-async function ensureTokenTable(
+function base64UrlToBytes(
+  value
+) {
+  let base64 =
+    value
+      .replaceAll(
+        "-",
+        "+"
+      )
+      .replaceAll(
+        "_",
+        "/"
+      );
+
+
+  while (
+    base64.length %
+    4
+  ) {
+    base64 +=
+      "=";
+  }
+
+
+  const binary =
+    atob(
+      base64
+    );
+
+
+  const bytes =
+    new Uint8Array(
+      binary.length
+    );
+
+
+  for (
+    let i = 0;
+    i < binary.length;
+    i++
+  ) {
+    bytes[i] =
+      binary.charCodeAt(
+        i
+      );
+  }
+
+
+  return bytes;
+}
+
+
+async function readGuest(
+  request,
+  secret
+) {
+  const token =
+    getCookie(
+      request,
+      "gh_guest"
+    );
+
+
+  if (
+    !token
+    ||
+    !secret
+  ) {
+    return null;
+  }
+
+
+  const parts =
+    token.split(
+      "."
+    );
+
+
+  if (
+    parts.length !==
+    3
+    ||
+    parts[0] !==
+    "v1"
+  ) {
+    return null;
+  }
+
+
+  const signedValue =
+    `${parts[0]}.${parts[1]}`;
+
+
+  const key =
+    await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder()
+        .encode(
+          secret
+        ),
+      {
+        name:
+          "HMAC",
+
+        hash:
+          "SHA-256"
+      },
+      false,
+      [
+        "verify"
+      ]
+    );
+
+
+  let valid =
+    false;
+
+
+  try {
+    valid =
+      await crypto.subtle.verify(
+        "HMAC",
+        key,
+        base64UrlToBytes(
+          parts[2]
+        ),
+        new TextEncoder()
+          .encode(
+            signedValue
+          )
+      );
+  }
+
+  catch {
+    return null;
+  }
+
+
+  if (
+    !valid
+  ) {
+    return null;
+  }
+
+
+  let guest;
+
+
+  try {
+    guest =
+      JSON.parse(
+        new TextDecoder()
+          .decode(
+            base64UrlToBytes(
+              parts[1]
+            )
+          )
+      );
+  }
+
+  catch {
+    return null;
+  }
+
+
+  if (
+    typeof guest?.id !==
+    "string"
+    ||
+    !/^GUEST-[A-Z0-9]{6}$/.test(
+      String(
+        guest?.username
+        ||
+        ""
+      )
+    )
+    ||
+    !Number.isFinite(
+      Number(
+        guest?.exp
+      )
+    )
+    ||
+    Date.now() >=
+    Number(
+      guest.exp
+    )
+  ) {
+    return null;
+  }
+
+
+  return {
+    id:
+      guest.id,
+
+    username:
+      guest.username
+  };
+}
+
+
+async function ensureTokenTables(
   db
 ) {
   await db
@@ -123,6 +325,20 @@ async function ensureTokenTable(
       CREATE TABLE IF NOT EXISTS multiplayer_tokens (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        used_at INTEGER
+      )
+    `)
+    .run();
+
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS guest_multiplayer_tokens (
+        id TEXT PRIMARY KEY,
+        guest_id TEXT NOT NULL,
+        username TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL,
         used_at INTEGER
@@ -185,8 +401,22 @@ export async function onRequestPost(
       );
 
 
+    const guest =
+      user
+        ?
+        null
+        :
+        await readGuest(
+          context.request,
+          context.env
+            .SESSION_SECRET
+        );
+
+
     if (
       !user
+      &&
+      !guest
     ) {
       return json(
         {
@@ -202,6 +432,8 @@ export async function onRequestPost(
 
 
     if (
+      user
+      &&
       !user.username
     ) {
       return json(
@@ -217,7 +449,7 @@ export async function onRequestPost(
     }
 
 
-    await ensureTokenTable(
+    await ensureTokenTables(
       context.env.DB
     );
 
@@ -226,14 +458,21 @@ export async function onRequestPost(
       Date.now();
 
 
-    /*
-      Keep this table tiny. Used tokens and old expired tokens have no
-      reason to stick around.
-    */
-
     await context.env.DB
       .prepare(`
         DELETE FROM multiplayer_tokens
+        WHERE expires_at <= ?
+           OR used_at IS NOT NULL
+      `)
+      .bind(
+        now
+      )
+      .run();
+
+
+    await context.env.DB
+      .prepare(`
+        DELETE FROM guest_multiplayer_tokens
         WHERE expires_at <= ?
            OR used_at IS NOT NULL
       `)
@@ -259,29 +498,61 @@ export async function onRequestPost(
       TOKEN_LIFETIME_MS;
 
 
-    await context.env.DB
-      .prepare(`
-        INSERT INTO multiplayer_tokens (
-          id,
-          user_id,
-          created_at,
-          expires_at,
-          used_at
+    if (
+      user
+    ) {
+      await context.env.DB
+        .prepare(`
+          INSERT INTO multiplayer_tokens (
+            id,
+            user_id,
+            created_at,
+            expires_at,
+            used_at
+          )
+          VALUES (?, ?, ?, ?, NULL)
+        `)
+        .bind(
+          tokenHash,
+          user.id,
+          now,
+          expiresAt
         )
-        VALUES (?, ?, ?, ?, NULL)
-      `)
-      .bind(
-        tokenHash,
-        user.id,
-        now,
-        expiresAt
-      )
-      .run();
+        .run();
+    }
+
+    else {
+      await context.env.DB
+        .prepare(`
+          INSERT INTO guest_multiplayer_tokens (
+            id,
+            guest_id,
+            username,
+            created_at,
+            expires_at,
+            used_at
+          )
+          VALUES (?, ?, ?, ?, ?, NULL)
+        `)
+        .bind(
+          tokenHash,
+          guest.id,
+          guest.username,
+          now,
+          expiresAt
+        )
+        .run();
+    }
 
 
     return json({
       ok:
         true,
+
+      guest:
+        Boolean(
+          guest
+        ),
 
       token:
         rawToken,
