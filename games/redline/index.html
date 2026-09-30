@@ -176,18 +176,19 @@
           <div
             id="publicRoomList"
             class="room-list"
+            aria-live="polite"
           >
 
-            <div class="public-room-card">
+            <div class="public-room-card public-room-placeholder">
 
               <div class="public-room-main">
 
                 <strong>
-                  Public room browser coming later
+                  Loading public rooms...
                 </strong>
 
                 <span>
-                  Private multiplayer is live.
+                  Looking for open REDLINE lobbies.
                 </span>
 
               </div>
@@ -1278,6 +1279,18 @@
         );
 
 
+      const publicRoomList =
+        document.getElementById(
+          "publicRoomList"
+        );
+
+
+      const refreshRoomsBtn =
+        document.getElementById(
+          "refreshRoomsBtn"
+        );
+
+
       const carReadyCount =
         document.getElementById(
           "carReadyCount"
@@ -1372,6 +1385,10 @@
 
       let serverRaceStartAt =
         null;
+
+
+      let publicRoomsLoading =
+        false;
 
 
       /* ===================================================
@@ -1667,6 +1684,589 @@
 
 
       /* ===================================================
+         PUBLIC ROOM BROWSER
+      ==================================================== */
+
+      function publicRoomPlaceholder(
+        title,
+        subtitle
+      ) {
+
+        publicRoomList.replaceChildren();
+
+
+        const card =
+          document.createElement(
+            "div"
+          );
+
+
+        card.className =
+          "public-room-card public-room-placeholder";
+
+
+        const main =
+          document.createElement(
+            "div"
+          );
+
+
+        main.className =
+          "public-room-main";
+
+
+        const strong =
+          document.createElement(
+            "strong"
+          );
+
+
+        strong.textContent =
+          title;
+
+
+        const span =
+          document.createElement(
+            "span"
+          );
+
+
+        span.textContent =
+          subtitle;
+
+
+        main.append(
+          strong,
+          span
+        );
+
+
+        card.appendChild(
+          main
+        );
+
+
+        publicRoomList.appendChild(
+          card
+        );
+
+      }
+
+
+      function mapLabel(
+        map
+      ) {
+
+        const labels = {
+          neon:
+            "NEON DISTRICT",
+
+          canyon:
+            "CANYON RUN",
+
+          arctic:
+            "ARCTIC CIRCUIT"
+        };
+
+
+        return (
+          labels[
+            map
+          ]
+          ||
+          String(
+            map
+            ||
+            "UNKNOWN"
+          )
+            .replaceAll(
+              "_",
+              " "
+            )
+            .toUpperCase()
+        );
+
+      }
+
+
+      async function joinPublicRoom(
+        code,
+        button
+      ) {
+
+        if (
+          !code
+        ) {
+
+          return;
+
+        }
+
+
+        const originalText =
+          button.textContent;
+
+
+        button.disabled =
+          true;
+
+
+        button.textContent =
+          "JOINING...";
+
+
+        try {
+
+          const accountToken =
+            await getMultiplayerAccountToken();
+
+
+          const response =
+            await fetch(
+              `${MULTIPLAYER_API}/api/rooms/${encodeURIComponent(code)}/join`,
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    accountToken
+                  })
+              }
+            );
+
+
+          const data =
+            await response
+              .json()
+              .catch(
+                () => null
+              );
+
+
+          if (
+            !response.ok
+          ) {
+
+            throw new Error(
+              data?.error
+              ||
+              "Could not join room."
+            );
+
+          }
+
+
+          currentRoom =
+            data.room;
+
+
+          saveSession(
+            data.code,
+            data.playerId,
+            data.playerToken
+          );
+
+
+          renderLobby();
+
+
+          showScreen(
+            "lobbyScreen"
+          );
+
+
+          connectRoomSocket(
+            data.code,
+            data.playerToken
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          console.error(
+            "Could not join public REDLINE room:",
+            error
+          );
+
+
+          publicRoomPlaceholder(
+            "COULD NOT JOIN ROOM",
+            error.message
+            ||
+            "The room may have filled up or started."
+          );
+
+
+          setTimeout(
+            () => {
+
+              loadPublicRooms(
+                true
+              );
+
+            },
+            1200
+          );
+
+        }
+
+        finally {
+
+          button.disabled =
+            false;
+
+
+          button.textContent =
+            originalText;
+
+        }
+
+      }
+
+
+      function renderPublicRooms(
+        rooms
+      ) {
+
+        publicRoomList.replaceChildren();
+
+
+        const joinableRooms =
+          (
+            Array.isArray(
+              rooms
+            )
+              ?
+              rooms
+              :
+              []
+          )
+            .filter(
+              room =>
+                room
+                ?.code
+                &&
+                room.phase ===
+                "lobby"
+                &&
+                Number(
+                  room.players
+                )
+                <
+                Number(
+                  room.maxPlayers
+                )
+            );
+
+
+        if (
+          joinableRooms.length ===
+          0
+        ) {
+
+          publicRoomPlaceholder(
+            "NO PUBLIC ROOMS",
+            "Create one and it will appear here."
+          );
+
+
+          return;
+
+        }
+
+
+        for (
+          const room
+          of joinableRooms
+        ) {
+
+          const card =
+            document.createElement(
+              "div"
+            );
+
+
+          card.className =
+            "public-room-card";
+
+
+          const main =
+            document.createElement(
+              "div"
+            );
+
+
+          main.className =
+            "public-room-main";
+
+
+          const name =
+            document.createElement(
+              "strong"
+            );
+
+
+          name.textContent =
+            room.name
+            ||
+            "REDLINE ROOM";
+
+
+          const details =
+            document.createElement(
+              "span"
+            );
+
+
+          details.textContent =
+            `HOST ${room.hostUsername || "Racer"} • ${mapLabel(room.map)} • CODE ${room.code}`;
+
+
+          main.append(
+            name,
+            details
+          );
+
+
+          const meta =
+            document.createElement(
+              "div"
+            );
+
+
+          meta.className =
+            "public-room-meta";
+
+
+          const count =
+            document.createElement(
+              "span"
+            );
+
+
+          count.textContent =
+            `${Number(room.players) || 0} / ${Number(room.maxPlayers) || 8}`;
+
+
+          const join =
+            document.createElement(
+              "button"
+            );
+
+
+          join.type =
+            "button";
+
+
+          join.className =
+            "small-button public-room-join";
+
+
+          join.textContent =
+            "JOIN";
+
+
+          join.addEventListener(
+            "click",
+            () => {
+
+              joinPublicRoom(
+                room.code,
+                join
+              );
+
+            }
+          );
+
+
+          meta.append(
+            count,
+            join
+          );
+
+
+          card.append(
+            main,
+            meta
+          );
+
+
+          publicRoomList.appendChild(
+            card
+          );
+
+        }
+
+      }
+
+
+      async function loadPublicRooms(
+        silent = false
+      ) {
+
+        if (
+          publicRoomsLoading
+        ) {
+
+          return;
+
+        }
+
+
+        publicRoomsLoading =
+          true;
+
+
+        refreshRoomsBtn.disabled =
+          true;
+
+
+        const originalText =
+          refreshRoomsBtn.textContent;
+
+
+        refreshRoomsBtn.textContent =
+          "REFRESHING...";
+
+
+        if (
+          !silent
+        ) {
+
+          publicRoomPlaceholder(
+            "LOADING PUBLIC ROOMS...",
+            "Checking for open REDLINE lobbies."
+          );
+
+        }
+
+
+        try {
+
+          const response =
+            await fetch(
+              `${MULTIPLAYER_API}/api/rooms`,
+              {
+                cache:
+                  "no-store"
+              }
+            );
+
+
+          const data =
+            await response
+              .json()
+              .catch(
+                () => null
+              );
+
+
+          if (
+            !response.ok
+          ) {
+
+            throw new Error(
+              data?.error
+              ||
+              "Could not load public rooms."
+            );
+
+          }
+
+
+          renderPublicRooms(
+            data?.rooms
+            ??
+            []
+          );
+
+        }
+
+        catch (
+          error
+        ) {
+
+          console.error(
+            "REDLINE public room browser failed:",
+            error
+          );
+
+
+          publicRoomPlaceholder(
+            "ROOM BROWSER UNAVAILABLE",
+            "Press refresh to try again."
+          );
+
+        }
+
+        finally {
+
+          publicRoomsLoading =
+            false;
+
+
+          refreshRoomsBtn.disabled =
+            false;
+
+
+          refreshRoomsBtn.textContent =
+            originalText;
+
+        }
+
+      }
+
+
+      refreshRoomsBtn.addEventListener(
+        "click",
+        () => {
+
+          loadPublicRooms();
+
+        }
+      );
+
+
+      setInterval(
+        () => {
+
+          const joinScreen =
+            document.getElementById(
+              "joinScreen"
+            );
+
+
+          if (
+            joinScreen
+            &&
+            !joinScreen.classList.contains(
+              "hidden"
+            )
+            &&
+            !currentRoom
+          ) {
+
+            loadPublicRooms(
+              true
+            );
+
+          }
+
+        },
+        5000
+      );
+
+
+      /* ===================================================
          SCREEN SYSTEM
       ==================================================== */
 
@@ -1695,6 +2295,16 @@
             "active-screen",
             id === screenId
           );
+
+        }
+
+
+        if (
+          screenId ===
+          "joinScreen"
+        ) {
+
+          loadPublicRooms();
 
         }
 
