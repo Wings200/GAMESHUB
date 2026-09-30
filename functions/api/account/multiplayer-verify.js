@@ -57,7 +57,7 @@ async function sha256Hex(
 }
 
 
-async function ensureTokenTable(
+async function ensureTokenTables(
   db
 ) {
   await db
@@ -65,6 +65,20 @@ async function ensureTokenTable(
       CREATE TABLE IF NOT EXISTS multiplayer_tokens (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        used_at INTEGER
+      )
+    `)
+    .run();
+
+
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS guest_multiplayer_tokens (
+        id TEXT PRIMARY KEY,
+        guest_id TEXT NOT NULL,
+        username TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         expires_at INTEGER NOT NULL,
         used_at INTEGER
@@ -95,11 +109,6 @@ export async function onRequestPost(
         "";
 
 
-    /*
-      Current multiplayer tokens are 96 lowercase hex characters.
-      Reject obviously-invalid requests before touching D1.
-    */
-
     if (
       !/^[a-f0-9]{96}$/i.test(
         token
@@ -118,7 +127,7 @@ export async function onRequestPost(
     }
 
 
-    await ensureTokenTable(
+    await ensureTokenTables(
       context.env.DB
     );
 
@@ -134,11 +143,10 @@ export async function onRequestPost(
 
 
     /*
-      Atomically claim the one-use token. Only the first verifier can
-      change used_at from NULL, so replayed tokens fail.
+      First try a normal GAMESHUB account token.
     */
 
-    const claimed =
+    const claimedUser =
       await context.env.DB
         .prepare(`
           UPDATE multiplayer_tokens
@@ -157,7 +165,105 @@ export async function onRequestPost(
 
     if (
       Number(
-        claimed.meta?.changes
+        claimedUser.meta?.changes
+        ??
+        0
+      )
+      ===
+      1
+    ) {
+      const user =
+        await context.env.DB
+          .prepare(`
+            SELECT
+              u.id,
+              u.username
+            FROM multiplayer_tokens mt
+            JOIN users u
+              ON u.id = mt.user_id
+            WHERE mt.id = ?
+              AND mt.used_at = ?
+            LIMIT 1
+          `)
+          .bind(
+            tokenHash,
+            now
+          )
+          .first();
+
+
+      await context.env.DB
+        .prepare(`
+          DELETE FROM multiplayer_tokens
+          WHERE id = ?
+        `)
+        .bind(
+          tokenHash
+        )
+        .run();
+
+
+      if (
+        user?.id
+        &&
+        user?.username
+      ) {
+        return json({
+          ok:
+            true,
+
+          guest:
+            false,
+
+          user: {
+            id:
+              user.id,
+
+            username:
+              user.username
+          }
+        });
+      }
+
+
+      return json(
+        {
+          ok:
+            false,
+
+          error:
+            "GAMESHUB account not found."
+        },
+        401
+      );
+    }
+
+
+    /*
+      If it was not a normal account token, try the one-use
+      guest-token table.
+    */
+
+    const claimedGuest =
+      await context.env.DB
+        .prepare(`
+          UPDATE guest_multiplayer_tokens
+          SET used_at = ?
+          WHERE id = ?
+            AND used_at IS NULL
+            AND expires_at > ?
+        `)
+        .bind(
+          now,
+          tokenHash,
+          now
+        )
+        .run();
+
+
+    if (
+      Number(
+        claimedGuest.meta?.changes
         ??
         0
       )
@@ -177,17 +283,15 @@ export async function onRequestPost(
     }
 
 
-    const user =
+    const guest =
       await context.env.DB
         .prepare(`
           SELECT
-            u.id,
-            u.username
-          FROM multiplayer_tokens mt
-          JOIN users u
-            ON u.id = mt.user_id
-          WHERE mt.id = ?
-            AND mt.used_at = ?
+            guest_id,
+            username
+          FROM guest_multiplayer_tokens
+          WHERE id = ?
+            AND used_at = ?
           LIMIT 1
         `)
         .bind(
@@ -197,13 +301,9 @@ export async function onRequestPost(
         .first();
 
 
-    /*
-      The token is one-use. Remove it after resolving the account.
-    */
-
     await context.env.DB
       .prepare(`
-        DELETE FROM multiplayer_tokens
+        DELETE FROM guest_multiplayer_tokens
         WHERE id = ?
       `)
       .bind(
@@ -213,9 +313,9 @@ export async function onRequestPost(
 
 
     if (
-      !user?.id
+      !guest?.guest_id
       ||
-      !user?.username
+      !guest?.username
     ) {
       return json(
         {
@@ -223,7 +323,7 @@ export async function onRequestPost(
             false,
 
           error:
-            "GAMESHUB account not found."
+            "Guest identity not found."
         },
         401
       );
@@ -234,12 +334,15 @@ export async function onRequestPost(
       ok:
         true,
 
+      guest:
+        true,
+
       user: {
         id:
-          user.id,
+          `guest:${guest.guest_id}`,
 
         username:
-          user.username
+          guest.username
       }
     });
   }
