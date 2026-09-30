@@ -372,6 +372,23 @@ function roomSummary(
   room
 ) {
 
+  const host =
+    room.players.find(
+      player =>
+        player.id ===
+        room.hostId
+    )
+    ||
+    room.players.find(
+      player =>
+        player.host
+    )
+    ||
+    room.players[0]
+    ||
+    null;
+
+
   return {
 
     code:
@@ -379,6 +396,11 @@ function roomSummary(
 
     name:
       room.name,
+
+    hostUsername:
+      host?.username
+      ||
+      "Racer",
 
     players:
       room.players.length,
@@ -633,7 +655,7 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          5
+          6
 
       });
 
