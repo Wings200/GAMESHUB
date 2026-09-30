@@ -1,83 +1,47 @@
 (() => {
 
   /* =========================================================
-     REDLINE MUSIC SYSTEM V2
-
-     Lobby:
-       iluvslapbass
-
-     Neon District:
-       Fugent - Lupus Nocte
-
-     Future:
-       ice - slowed
+     REDLINE MUSIC SYSTEM V3
   ========================================================= */
-
 
   const MUSIC = {
 
-    lobby: [
-      {
-        id: "slapbass",
-        name: "I LUV SLAP BASS",
-        file:
-          "./assets/audio/music/iluvslapbass.mp3"
-      }
-    ],
-
+    lobby: {
+      id: "slapbass",
+      name: "I LUV SLAP BASS",
+      file: "./assets/audio/iluvslapbass.mp3"
+    },
 
     maps: {
 
-      neon: [
-        {
-          id: "fugent",
-          name: "FUGENT — LUPUS NOCTE",
-          file:
-            "./assets/audio/music/fugent.mp3"
-        }
-      ],
+      neon: {
+        id: "fugent",
+        name: "FUGENT — LUPUS NOCTE",
+        file: "./assets/audio/fugent.mp3"
+      },
 
+      canyon: null,
 
-      canyon: [
-        /*
-          Future Canyon music goes here.
-        */
-      ],
-
-
-      arctic: [
-        /*
-          Future Arctic music goes here.
-        */
-      ]
+      arctic: null
 
     },
 
-
-    /*
-      Available for later.
-
-      This does NOT currently play automatically.
-    */
-
-    unassigned: [
-      {
+    unassigned: {
+      ice: {
         id: "ice-slowed",
         name: "ICE — SLOWED",
-        file:
-          "./assets/audio/music/ice-slowed.mp3"
+        file: "./assets/audio/ice-slowed.mp3"
       }
-    ]
+    }
 
   };
 
 
   /* =========================================================
-     DEFAULT SETTINGS
+     SETTINGS
   ========================================================= */
 
   const DEFAULT_SETTINGS = {
-
     enabled: true,
 
     masterVolume: 1.00,
@@ -88,14 +52,9 @@
 
     resultsVolume: 0.32,
 
-    fadeDuration: 900
-
+    fadeDuration: 700
   };
 
-
-  /* =========================================================
-     SAVED SETTINGS
-  ========================================================= */
 
   function loadSettings() {
 
@@ -107,7 +66,6 @@
             "redline_music_settings"
           )
         );
-
 
       return {
         ...DEFAULT_SETTINGS,
@@ -150,47 +108,27 @@
 
 
   /* =========================================================
-     AUDIO PLAYERS
-
-     Two players allow smooth crossfades.
+     AUDIO
   ========================================================= */
 
-  const audioA =
+  const audio =
     new Audio();
 
 
-  const audioB =
-    new Audio();
+  audio.loop =
+    true;
 
 
-  for (
-    const audio
-    of [
-      audioA,
-      audioB
-    ]
-  ) {
-
-    audio.loop =
-      true;
+  audio.preload =
+    "auto";
 
 
-    audio.preload =
-      "auto";
+  audio.volume =
+    0;
 
 
-    audio.volume =
-      0;
-
-  }
-
-
-  let activeAudio =
-    audioA;
-
-
-  let inactiveAudio =
-    audioB;
+  let unlocked =
+    false;
 
 
   let currentTrack =
@@ -198,18 +136,18 @@
 
 
   let currentMode =
-    null;
+    "lobby";
 
 
   let currentMap =
     "neon";
 
 
-  let audioUnlocked =
-    false;
+  let transitionId =
+    0;
 
 
-  let fadeAnimation =
+  let fadeFrame =
     null;
 
 
@@ -227,14 +165,38 @@
       min,
       Math.min(
         max,
-        value
+        Number(value) || 0
       )
     );
 
   }
 
 
-  function getEffectiveVolume(
+  function getRoom() {
+
+    return (
+      window.REDLINE_MP?.room
+      ??
+      null
+    );
+
+  }
+
+
+  function getCurrentMap() {
+
+    return (
+      getRoom()?.map
+      ??
+      currentMap
+      ??
+      "neon"
+    );
+
+  }
+
+
+  function volumeForMode(
     mode
   ) {
 
@@ -281,79 +243,18 @@
   }
 
 
-  function getRoom() {
-
-    return (
-      window.REDLINE_MP
-        ?.room
-      ??
-      null
-    );
-
-  }
-
-
-  function getCurrentMap() {
-
-    return (
-      getRoom()?.map
-      ??
-      currentMap
-      ??
-      "neon"
-    );
-
-  }
-
-
-  function getLobbyTrack() {
-
-    return (
-      MUSIC.lobby[0]
-      ??
-      null
-    );
-
-  }
-
-
-  function getMapTrack(
-    map
-  ) {
-
-    const tracks =
-      MUSIC.maps[
-        map
-      ]
-      ??
-      [];
-
-
-    return (
-      tracks[0]
-      ??
-      null
-    );
-
-  }
-
-
-  /* =========================================================
-     FADE SYSTEM
-  ========================================================= */
-
   function cancelFade() {
 
     if (
-      fadeAnimation
+      fadeFrame
     ) {
 
       cancelAnimationFrame(
-        fadeAnimation
+        fadeFrame
       );
 
 
-      fadeAnimation =
+      fadeFrame =
         null;
 
     }
@@ -361,616 +262,161 @@
   }
 
 
-  function fadeAudio(
-    audio,
-    from,
-    to,
-    duration,
-    onFinished = null
+  function fadeTo(
+    target,
+    duration = settings.fadeDuration
   ) {
 
-    const start =
+    cancelFade();
+
+
+    target =
+      clamp(
+        target
+      );
+
+
+    const from =
+      audio.volume;
+
+
+    const startedAt =
       performance.now();
 
 
-    function frame(
-      now
-    ) {
-
-      const progress =
-        clamp(
-          (
-            now -
-            start
-          )
-          /
-          duration
-        );
+    const id =
+      transitionId;
 
 
-      /*
-        Smooth cubic fade.
-      */
+    return new Promise(
+      resolve => {
 
-      const eased =
-        1 -
-        Math.pow(
-          1 -
-          progress,
-          3
-        );
+        function frame(
+          now
+        ) {
 
+          if (
+            id !==
+            transitionId
+          ) {
 
-      audio.volume =
-        clamp(
-          from +
-          (
-            to -
-            from
-          )
-          *
-          eased
-        );
+            resolve();
+
+            return;
+
+          }
 
 
-      if (
-        progress <
-        1
-      ) {
+          const progress =
+            clamp(
+              (
+                now -
+                startedAt
+              )
+              /
+              Math.max(
+                1,
+                duration
+              )
+            );
 
-        fadeAnimation =
+
+          const smooth =
+            progress *
+            progress *
+            (
+              3 -
+              2 *
+              progress
+            );
+
+
+          audio.volume =
+            from +
+            (
+              target -
+              from
+            )
+            *
+            smooth;
+
+
+          if (
+            progress <
+            1
+          ) {
+
+            fadeFrame =
+              requestAnimationFrame(
+                frame
+              );
+
+          }
+
+          else {
+
+            fadeFrame =
+              null;
+
+
+            audio.volume =
+              target;
+
+
+            resolve();
+
+          }
+
+        }
+
+
+        fadeFrame =
           requestAnimationFrame(
             frame
           );
 
       }
-
-      else {
-
-        fadeAnimation =
-          null;
-
-
-        audio.volume =
-          clamp(
-            to
-          );
-
-
-        onFinished?.();
-
-      }
-
-    }
-
-
-    fadeAnimation =
-      requestAnimationFrame(
-        frame
-      );
-
-  }
-
-
-  /* =========================================================
-     START / AUTOPLAY UNLOCK
-  ========================================================= */
-
-  async function unlockAudio() {
-
-    if (
-      audioUnlocked
-    ) {
-
-      return true;
-
-    }
-
-
-    try {
-
-      /*
-        Browser autoplay rules require the first
-        playback to happen after a user interaction.
-      */
-
-      activeAudio.muted =
-        true;
-
-
-      await activeAudio.play();
-
-
-      activeAudio.pause();
-
-
-      activeAudio.currentTime =
-        0;
-
-
-      activeAudio.muted =
-        false;
-
-
-      audioUnlocked =
-        true;
-
-
-      syncMusic();
-
-
-      return true;
-
-    }
-
-    catch {
-
-      return false;
-
-    }
-
-  }
-
-
-  const unlockListener =
-    () => {
-
-      unlockAudio();
-
-    };
-
-
-  window.addEventListener(
-    "pointerdown",
-    unlockListener,
-    {
-      passive: true
-    }
-  );
-
-
-  window.addEventListener(
-    "keydown",
-    unlockListener
-  );
-
-
-  window.addEventListener(
-    "touchstart",
-    unlockListener,
-    {
-      passive: true
-    }
-  );
-
-
-  /* =========================================================
-     TRACK CHANGE
-  ========================================================= */
-
-  async function playTrack(
-    track,
-    mode
-  ) {
-
-    if (
-      !track
-    ) {
-
-      stopMusic();
-
-      return;
-
-    }
-
-
-    const targetVolume =
-      getEffectiveVolume(
-        mode
-      );
-
-
-    /*
-      Same song already playing.
-
-      Don't restart it.
-      Only change volume.
-    */
-
-    if (
-      currentTrack?.id ===
-      track.id
-      &&
-      !activeAudio.paused
-    ) {
-
-      currentMode =
-        mode;
-
-
-      fadeVolume(
-        targetVolume
-      );
-
-
-      return;
-
-    }
-
-
-    currentTrack =
-      track;
-
-
-    currentMode =
-      mode;
-
-
-    if (
-      !audioUnlocked
-    ) {
-
-      return;
-
-    }
-
-
-    cancelFade();
-
-
-    inactiveAudio.pause();
-
-
-    inactiveAudio.src =
-      track.file;
-
-
-    inactiveAudio.loop =
-      true;
-
-
-    inactiveAudio.currentTime =
-      0;
-
-
-    inactiveAudio.volume =
-      0;
-
-
-    try {
-
-      await inactiveAudio.play();
-
-    }
-
-    catch (
-      error
-    ) {
-
-      console.warn(
-        "REDLINE music could not start:",
-        error
-      );
-
-
-      return;
-
-    }
-
-
-    const oldAudio =
-      activeAudio;
-
-
-    const newAudio =
-      inactiveAudio;
-
-
-    const oldVolume =
-      oldAudio.volume;
-
-
-    /*
-      Switch which player is considered active.
-    */
-
-    activeAudio =
-      newAudio;
-
-
-    inactiveAudio =
-      oldAudio;
-
-
-    /*
-      Fade old music away.
-    */
-
-    const start =
-      performance.now();
-
-
-    const duration =
-      settings.fadeDuration;
-
-
-    function crossfade(
-      now
-    ) {
-
-      const progress =
-        clamp(
-          (
-            now -
-            start
-          )
-          /
-          duration
-        );
-
-
-      const smooth =
-        progress *
-        progress *
-        (
-          3 -
-          2 *
-          progress
-        );
-
-
-      newAudio.volume =
-        clamp(
-          targetVolume *
-          smooth
-        );
-
-
-      oldAudio.volume =
-        clamp(
-          oldVolume *
-          (
-            1 -
-            smooth
-          )
-        );
-
-
-      if (
-        progress <
-        1
-      ) {
-
-        fadeAnimation =
-          requestAnimationFrame(
-            crossfade
-          );
-
-      }
-
-      else {
-
-        fadeAnimation =
-          null;
-
-
-        newAudio.volume =
-          targetVolume;
-
-
-        oldAudio.volume =
-          0;
-
-
-        oldAudio.pause();
-
-
-        oldAudio.removeAttribute(
-          "src"
-        );
-
-
-        oldAudio.load();
-
-      }
-
-    }
-
-
-    fadeAnimation =
-      requestAnimationFrame(
-        crossfade
-      );
-
-  }
-
-
-  /* =========================================================
-     VOLUME CHANGE WITHOUT RESTARTING SONG
-  ========================================================= */
-
-  function fadeVolume(
-    volume
-  ) {
-
-    if (
-      !audioUnlocked
-      ||
-      activeAudio.paused
-    ) {
-
-      return;
-
-    }
-
-
-    cancelFade();
-
-
-    fadeAudio(
-      activeAudio,
-      activeAudio.volume,
-      getEffectiveVolume(
-        currentMode
-      ),
-      settings.fadeDuration
     );
 
   }
 
 
   /* =========================================================
-     STOP
+     CHOOSE MUSIC
   ========================================================= */
 
-  function stopMusic() {
-
-    cancelFade();
-
-
-    const stop =
-      audio => {
-
-        const startingVolume =
-          audio.volume;
-
-
-        fadeAudio(
-          audio,
-          startingVolume,
-          0,
-          settings.fadeDuration,
-          () => {
-
-            audio.pause();
-
-          }
-        );
-
-      };
-
-
-    stop(
-      activeAudio
-    );
-
-
-    currentTrack =
-      null;
-
-
-    currentMode =
-      null;
-
-  }
-
-
-  /* =========================================================
-     MUSIC MODES
-  ========================================================= */
-
-  function playLobbyMusic() {
-
-    playTrack(
-      getLobbyTrack(),
-      "lobby"
-    );
-
-  }
-
-
-  function playRaceMusic(
-    map = getCurrentMap()
+  function getMapTrack(
+    map
   ) {
 
-    currentMap =
-      map;
-
-
-    const track =
-      getMapTrack(
+    return (
+      MUSIC.maps[
         map
-      );
-
-
-    /*
-      If this map currently has no music,
-      fade the lobby song out instead.
-    */
-
-    if (
-      !track
-    ) {
-
-      stopMusic();
-
-
-      return;
-
-    }
-
-
-    playTrack(
-      track,
-      "race"
+      ]
+      ??
+      null
     );
 
   }
 
 
-  function playResultsMusic() {
-
-    /*
-      Keep the MAP song playing on the results
-      screen, just slightly quieter.
-
-      It will switch back to lobby music when
-      the room actually returns to lobby.
-    */
-
-    const track =
-      getMapTrack(
-        getCurrentMap()
-      );
-
-
-    if (
-      track
-    ) {
-
-      playTrack(
-        track,
-        "results"
-      );
-
-    }
-
-  }
-
-
-  /* =========================================================
-     DETERMINE CURRENT GAME STATE
-  ========================================================= */
-
-  function syncMusic() {
+  function determineMusic() {
 
     const room =
       getRoom();
 
 
-    /*
-      Before joining a room:
-      use lobby/menu music.
-    */
-
     if (
       !room
     ) {
 
-      playLobbyMusic();
+      return {
+        track:
+          MUSIC.lobby,
 
-
-      return;
+        mode:
+          "lobby"
+      };
 
     }
 
@@ -981,54 +427,409 @@
       currentMap;
 
 
-    switch (
-      room.phase
+    if (
+      room.phase ===
+      "racing"
+      ||
+      room.phase ===
+      "countdown"
     ) {
 
+      return {
+        track:
+          getMapTrack(
+            currentMap
+          ),
 
-      case "racing":
+        mode:
+          "race"
+      };
 
-        playRaceMusic(
-          room.map
+    }
+
+
+    if (
+      room.phase ===
+      "results"
+      ||
+      room.raceComplete
+    ) {
+
+      return {
+        track:
+          getMapTrack(
+            currentMap
+          ),
+
+        mode:
+          "results"
+      };
+
+    }
+
+
+    return {
+      track:
+        MUSIC.lobby,
+
+      mode:
+        "lobby"
+    };
+
+  }
+
+
+  /* =========================================================
+     PLAY TRACK
+  ========================================================= */
+
+  async function playTrack(
+    track,
+    mode
+  ) {
+
+    currentMode =
+      mode;
+
+
+    const targetVolume =
+      volumeForMode(
+        mode
+      );
+
+
+    if (
+      !settings.enabled
+    ) {
+
+      transitionId++;
+
+
+      await fadeTo(
+        0
+      );
+
+
+      audio.pause();
+
+
+      return;
+
+    }
+
+
+    if (
+      !track
+    ) {
+
+      transitionId++;
+
+
+      await fadeTo(
+        0
+      );
+
+
+      audio.pause();
+
+
+      currentTrack =
+        null;
+
+
+      return;
+
+    }
+
+
+    /*
+      If the correct track is already playing,
+      DO NOT restart it.
+
+      Just change its volume.
+    */
+
+    if (
+      currentTrack?.id ===
+      track.id
+      &&
+      audio.src
+    ) {
+
+      if (
+        unlocked
+        &&
+        audio.paused
+      ) {
+
+        try {
+
+          await audio.play();
+
+        }
+
+        catch (
+          error
+        ) {
+
+          console.warn(
+            "REDLINE music playback blocked:",
+            error
+          );
+
+
+          unlocked =
+            false;
+
+
+          return;
+
+        }
+
+      }
+
+
+      if (
+        unlocked
+      ) {
+
+        transitionId++;
+
+
+        await fadeTo(
+          targetVolume
         );
 
-        break;
+      }
 
 
-      case "results":
+      return;
 
-        playResultsMusic();
-
-        break;
+    }
 
 
-      case "countdown":
+    /*
+      Remember which song we WANT even before
+      browser audio has been unlocked.
+    */
 
-        /*
-          Begin the map song during countdown
-          so it's already playing when GO appears.
-        */
+    if (
+      !unlocked
+    ) {
 
-        playRaceMusic(
-          room.map
-        );
-
-        break;
+      currentTrack =
+        track;
 
 
-      case "lobby":
+      return;
 
-      case "car_select":
+    }
 
-      default:
 
-        playLobbyMusic();
+    const myTransition =
+      ++transitionId;
 
-        break;
+
+    /*
+      Fade current song out.
+    */
+
+    if (
+      !audio.paused
+    ) {
+
+      await fadeTo(
+        0
+      );
+
+    }
+
+
+    if (
+      myTransition !==
+      transitionId
+    ) {
+
+      return;
+
+    }
+
+
+    audio.pause();
+
+
+    audio.src =
+      track.file;
+
+
+    audio.currentTime =
+      0;
+
+
+    audio.loop =
+      true;
+
+
+    audio.volume =
+      0;
+
+
+    currentTrack =
+      track;
+
+
+    try {
+
+      await audio.play();
+
+    }
+
+    catch (
+      error
+    ) {
+
+      console.error(
+        `REDLINE could not play ${track.file}`,
+        error
+      );
+
+
+      unlocked =
+        false;
+
+
+      return;
+
+    }
+
+
+    if (
+      myTransition !==
+      transitionId
+    ) {
+
+      return;
+
+    }
+
+
+    await fadeTo(
+      targetVolume
+    );
+
+  }
+
+
+  /* =========================================================
+     SYNC WITH GAME
+  ========================================================= */
+
+  async function syncMusic() {
+
+    const choice =
+      determineMusic();
+
+
+    await playTrack(
+      choice.track,
+      choice.mode
+    );
+
+  }
+
+
+  /* =========================================================
+     BROWSER AUTOPLAY UNLOCK
+  ========================================================= */
+
+  async function unlockMusic() {
+
+    if (
+      unlocked
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+      IMPORTANT FIX:
+
+      We mark audio as unlocked while we're still
+      inside the user's click/key interaction.
+
+      syncMusic() then assigns the REAL song before
+      calling audio.play().
+    */
+
+    unlocked =
+      true;
+
+
+    const choice =
+      determineMusic();
+
+
+    /*
+      Force the initial song to load because before
+      the first interaction currentTrack may already
+      have been remembered without assigning audio.src.
+    */
+
+    currentTrack =
+      null;
+
+
+    try {
+
+      await playTrack(
+        choice.track,
+        choice.mode
+      );
+
+    }
+
+    catch (
+      error
+    ) {
+
+      unlocked =
+        false;
+
+
+      console.warn(
+        "REDLINE music unlock failed:",
+        error
+      );
 
     }
 
   }
+
+
+  window.addEventListener(
+    "pointerdown",
+    unlockMusic,
+    {
+      passive: true
+    }
+  );
+
+
+  window.addEventListener(
+    "keydown",
+    unlockMusic
+  );
+
+
+  window.addEventListener(
+    "touchstart",
+    unlockMusic,
+    {
+      passive: true
+    }
+  );
 
 
   /* =========================================================
@@ -1067,18 +868,17 @@
     "redline:countdown",
     event => {
 
-      const map =
+      currentMap =
         event.detail?.room?.map
         ??
         getCurrentMap();
 
 
-      currentMap =
-        map;
-
-
-      playRaceMusic(
-        map
+      playTrack(
+        getMapTrack(
+          currentMap
+        ),
+        "race"
       );
 
     }
@@ -1089,18 +889,17 @@
     "redline:race-started",
     event => {
 
-      const map =
+      currentMap =
         event.detail?.room?.map
         ??
         getCurrentMap();
 
 
-      currentMap =
-        map;
-
-
-      playRaceMusic(
-        map
+      playTrack(
+        getMapTrack(
+          currentMap
+        ),
+        "race"
       );
 
     }
@@ -1111,7 +910,12 @@
     "redline:race-complete",
     () => {
 
-      playResultsMusic();
+      playTrack(
+        getMapTrack(
+          getCurrentMap()
+        ),
+        "results"
+      );
 
     }
   );
@@ -1125,21 +929,23 @@
         event.detail?.waiting
       ) {
 
-        /*
-          Player finished but others are still racing.
-
-          Keep race music at race volume.
-        */
-
-        playRaceMusic(
-          getCurrentMap()
+        playTrack(
+          getMapTrack(
+            getCurrentMap()
+          ),
+          "race"
         );
 
       }
 
       else {
 
-        playResultsMusic();
+        playTrack(
+          getMapTrack(
+            getCurrentMap()
+          ),
+          "results"
+        );
 
       }
 
@@ -1148,9 +954,7 @@
 
 
   /* =========================================================
-     SETTINGS API
-
-     We'll connect this to the settings menu later.
+     PUBLIC SETTINGS API
   ========================================================= */
 
   window.REDLINE_MUSIC = {
@@ -1158,6 +962,21 @@
     get tracks() {
 
       return MUSIC;
+
+    },
+
+
+    get currentTrack() {
+
+      return (
+        currentTrack
+        ?
+        {
+          ...currentTrack
+        }
+        :
+        null
+      );
 
     },
 
@@ -1171,16 +990,38 @@
     },
 
 
-    start() {
+    async start() {
 
-      return unlockAudio();
+      await unlockMusic();
 
     },
 
 
-    sync() {
+    async sync() {
 
-      syncMusic();
+      await syncMusic();
+
+    },
+
+
+    async setNormal() {
+
+      await playTrack(
+        MUSIC.lobby,
+        "lobby"
+      );
+
+    },
+
+
+    async setRace() {
+
+      await playTrack(
+        getMapTrack(
+          getCurrentMap()
+        ),
+        "race"
+      );
 
     },
 
@@ -1198,19 +1039,7 @@
       saveSettings();
 
 
-      if (
-        settings.enabled
-      ) {
-
-        syncMusic();
-
-      }
-
-      else {
-
-        stopMusic();
-
-      }
+      syncMusic();
 
     },
 
@@ -1221,18 +1050,27 @@
 
       settings.masterVolume =
         clamp(
-          Number(value)
+          value
         );
 
 
       saveSettings();
 
 
-      fadeVolume(
-        getEffectiveVolume(
-          currentMode
-        )
-      );
+      if (
+        unlocked
+      ) {
+
+        transitionId++;
+
+
+        fadeTo(
+          volumeForMode(
+            currentMode
+          )
+        );
+
+      }
 
     },
 
@@ -1243,7 +1081,7 @@
 
       settings.lobbyVolume =
         clamp(
-          Number(value)
+          value
         );
 
 
@@ -1255,8 +1093,11 @@
         "lobby"
       ) {
 
-        fadeVolume(
-          getEffectiveVolume(
+        transitionId++;
+
+
+        fadeTo(
+          volumeForMode(
             "lobby"
           )
         );
@@ -1272,7 +1113,7 @@
 
       settings.raceVolume =
         clamp(
-          Number(value)
+          value
         );
 
 
@@ -1284,8 +1125,11 @@
         "race"
       ) {
 
-        fadeVolume(
-          getEffectiveVolume(
+        transitionId++;
+
+
+        fadeTo(
+          volumeForMode(
             "race"
           )
         );
@@ -1301,7 +1145,7 @@
 
       settings.resultsVolume =
         clamp(
-          Number(value)
+          value
         );
 
 
@@ -1313,54 +1157,16 @@
         "results"
       ) {
 
-        fadeVolume(
-          getEffectiveVolume(
+        transitionId++;
+
+
+        fadeTo(
+          volumeForMode(
             "results"
           )
         );
 
       }
-
-    },
-
-
-    setNormal() {
-
-      playLobbyMusic();
-
-    },
-
-
-    setRace() {
-
-      playRaceMusic(
-        getCurrentMap()
-      );
-
-    },
-
-
-    next() {
-
-      /*
-        Playlist switching comes when we add
-        multiple songs to each category.
-      */
-
-      syncMusic();
-
-    },
-
-
-    get currentTrack() {
-
-      return (
-        currentTrack
-          ? {
-              ...currentTrack
-            }
-          : null
-      );
 
     }
 
@@ -1368,16 +1174,21 @@
 
 
   /* =========================================================
-     INITIAL MUSIC
+     INITIAL STATE
+
+     This chooses the desired song but DOES NOT try
+     to autoplay before the user interacts.
   ========================================================= */
 
-  setTimeout(
-    () => {
+  const initial =
+    determineMusic();
 
-      syncMusic();
 
-    },
-    250
-  );
+  currentTrack =
+    initial.track;
+
+
+  currentMode =
+    initial.mode;
 
 })();
