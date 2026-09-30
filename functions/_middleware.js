@@ -124,7 +124,13 @@ export async function onRequest(context) {
 
   if (
     url.pathname === "/logo.png" ||
-    url.pathname === "/favicon.ico"
+    url.pathname === "/favicon.ico" ||
+    url.pathname === "/oauth-home" ||
+    url.pathname === "/oauth-home.html" ||
+    url.pathname === "/privacy" ||
+    url.pathname === "/privacy.html" ||
+    url.pathname === "/terms" ||
+    url.pathname === "/terms.html"
   ) {
     return context.next();
   }
