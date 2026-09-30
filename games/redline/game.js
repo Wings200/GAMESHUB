@@ -148,157 +148,203 @@ const TRACKS = {
     arctic: {
         id: "arctic",
         name: "ARCTIC RELAY",
-        description: "Arctic Relay — a massive one-lap mountain expedition with glacier tunnels, ice caves, long straights, switchbacks, ramps, power-ups and hidden shortcut jumps.",
-        sampleCount: 720,
+        description: "Arctic Relay V2 — a huge one-lap expedition through a base camp, avalanche valley, mountain tunnels, a frozen lake, an ice cave shortcut and a long ridgeline descent.",
+        sampleCount: 880,
         laps: 1,
-        background: 0x06121d,
-        fogNear: 190,
-        fogFar: 620,
+        background: 0x06111b,
+        fogNear: 220,
+        fogFar: 760,
+
+        /*
+          Clean-sheet V2 route.
+          It is deliberately irregular and sector-based instead of being
+          a rounded perimeter loop. The long return leg runs through the
+          mountain interior so the minimap reads like an expedition route.
+        */
         controlPoints: [
-            [-520, 520],
-            [-300, 560],
-            [-100, 500],
-            [90, 560],
-            [280, 500],
-            [500, 540],
-            [680, 450],
+            [-920, 520],
+            [-720, 535],
+            [-520, 510],
+            [-320, 445],
+            [-130, 520],
 
-            [580, 340],
-            [690, 230],
-            [560, 120],
-            [680, 10],
-            [540, -110],
-            [650, -240],
-            [500, -360],
+            [40, 665],
+            [245, 720],
+            [445, 650],
+            [585, 500],
+            [650, 310],
 
-            [300, -300],
-            [120, -410],
-            [-60, -340],
-            [-250, -430],
-            [-470, -370],
-            [-650, -250],
+            [585, 120],
+            [705, -75],
+            [610, -275],
+            [430, -420],
+            [205, -500],
 
-            [-540, -120],
+            [-40, -520],
+            [-260, -465],
+            [-455, -345],
+            [-600, -175],
             [-690, 20],
-            [-550, 150],
-            [-680, 280],
-            [-560, 410],
 
-            [-400, 330],
-            [-230, 420],
-            [-50, 340],
-            [140, 420],
-            [310, 340],
-            [450, 250],
+            [-610, 200],
+            [-455, 330],
+            [-275, 255],
+            [-85, 130],
+            [115, 205],
 
-            [300, 180],
-            [100, 250],
-            [-100, 170],
-            [-300, 250],
-            [-450, 390]
+            [315, 330],
+            [500, 250],
+            [565, 60],
+            [450, -95],
+            [260, -165],
+
+            [80, -80],
+            [-100, 40],
+            [-300, 90],
+            [-505, 175],
+            [-690, 320],
+            [-835, 430]
         ],
+
         checkpoints: [
-            0.045,
-            0.095,
-            0.145,
+            0.035,
+            0.075,
+            0.115,
+            0.155,
             0.195,
-            0.245,
-            0.295,
-            0.345,
+            0.235,
+            0.275,
+            0.315,
+            0.355,
             0.395,
-            0.445,
-            0.495,
-            0.545,
+            0.435,
+            0.475,
+            0.515,
+            0.555,
             0.595,
-            0.645,
-            0.695,
-            0.745,
+            0.635,
+            0.675,
+            0.715,
+            0.755,
             0.795,
-            0.845,
-            0.895,
-            0.945,
-            0.985
+            0.835,
+            0.875,
+            0.915,
+            0.955,
+            0.988
         ],
-        crosswalks: [],
-        barriers: [
-            { start: 0.025, end: 0.085, side: -1 },
-            { start: 0.11, end: 0.17, side: 1 },
-            { start: 0.205, end: 0.265, side: -1 },
-            { start: 0.31, end: 0.37, side: 1 },
-            { start: 0.405, end: 0.47, side: -1 },
-            { start: 0.515, end: 0.58, side: 1 },
-            { start: 0.615, end: 0.68, side: -1 },
-            { start: 0.72, end: 0.78, side: 1 },
-            { start: 0.815, end: 0.875, side: -1 },
-            { start: 0.91, end: 0.972, side: 1 }
-        ],
-        obstacles: [
-            { t: 0.062, offset: 2.2, kind: "ice", radius: 1.35 },
-            { t: 0.112, offset: -2.7, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.164, offset: 2.8, kind: "ice", radius: 1.4 },
-            { t: 0.216, offset: -2.1, kind: "ice", radius: 1.3 },
-            { t: 0.268, offset: 2.5, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.318, offset: -2.8, kind: "ice", radius: 1.4 },
-            { t: 0.368, offset: 2.0, kind: "ice", radius: 1.3 },
-            { t: 0.418, offset: -2.7, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.468, offset: 2.4, kind: "ice", radius: 1.35 },
-            { t: 0.518, offset: -2.2, kind: "ice", radius: 1.3 },
-            { t: 0.568, offset: 2.8, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.618, offset: -2.5, kind: "ice", radius: 1.4 },
-            { t: 0.668, offset: 2.2, kind: "ice", radius: 1.3 },
-            { t: 0.718, offset: -2.8, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.768, offset: 2.6, kind: "ice", radius: 1.35 },
-            { t: 0.818, offset: -2.3, kind: "ice", radius: 1.3 },
-            { t: 0.868, offset: 2.7, kind: "snowbarrier", radius: 1.25 },
-            { t: 0.918, offset: -2.6, kind: "ice", radius: 1.4 },
-            { t: 0.958, offset: 2.3, kind: "ice", radius: 1.3 }
-        ],
-        boosts: [
-            { t: 0.035, offset: -1.8 },
-            { t: 0.105, offset: 1.8 },
-            { t: 0.185, offset: -1.7 },
-            { t: 0.255, offset: 1.7 },
-            { t: 0.335, offset: -1.8 },
-            { t: 0.415, offset: 1.8 },
-            { t: 0.505, offset: -1.8 },
-            { t: 0.585, offset: 1.7 },
-            { t: 0.665, offset: -1.8 },
-            { t: 0.755, offset: 1.8 },
-            { t: 0.835, offset: -1.8 },
-            { t: 0.925, offset: 1.8 },
-            { t: 0.975, offset: 0 }
-        ],
-        pickups: [
-            { t: 0.075, offset: 2.0, type: "nitro" },
-            { t: 0.135, offset: -2.0, type: "overdrive" },
-            { t: 0.225, offset: 1.9, type: "nitro" },
-            { t: 0.285, offset: -1.8, type: "overdrive" },
-            { t: 0.365, offset: 2.0, type: "nitro" },
-            { t: 0.435, offset: -1.9, type: "overdrive" },
-            { t: 0.525, offset: 2.1, type: "nitro" },
-            { t: 0.605, offset: -1.8, type: "overdrive" },
-            { t: 0.685, offset: 2.0, type: "nitro" },
-            { t: 0.775, offset: -1.9, type: "overdrive" },
-            { t: 0.855, offset: 2.1, type: "nitro" },
-            { t: 0.935, offset: -1.8, type: "overdrive" }
-        ],
-        ramps: [
-            { t: 0.052, offset: 0, strength: 7.8, secret: false },
-            { t: 0.158, offset: -1.8, strength: 8.1, secret: false },
-            { t: 0.248, offset: 2.0, strength: 8.0, secret: false },
-            { t: 0.342, offset: -1.2, strength: 8.4, secret: false },
-            { t: 0.462, offset: 1.6, strength: 8.1, secret: false },
-            { t: 0.552, offset: -1.8, strength: 8.4, secret: false },
-            { t: 0.652, offset: 1.2, strength: 8.3, secret: false },
-            { t: 0.742, offset: -1.8, strength: 8.6, secret: false },
-            { t: 0.842, offset: 1.8, strength: 8.5, secret: false },
-            { t: 0.942, offset: -1.4, strength: 8.8, secret: false },
 
-            { t: 0.116, offset: 8.4, strength: 9.4, secret: true, targetT: 0.140, minSpeed: 25 },
-            { t: 0.266, offset: -8.5, strength: 9.6, secret: true, targetT: 0.290, minSpeed: 27 },
-            { t: 0.416, offset: 8.3, strength: 9.7, secret: true, targetT: 0.440, minSpeed: 28 },
-            { t: 0.616, offset: -8.4, strength: 9.8, secret: true, targetT: 0.640, minSpeed: 29 },
-            { t: 0.816, offset: 8.4, strength: 10.0, secret: true, targetT: 0.840, minSpeed: 30 }
+        crosswalks: [],
+
+        barriers: [
+            { start: 0.018, end: 0.082, side: -1 },
+            { start: 0.105, end: 0.168, side: 1 },
+            { start: 0.205, end: 0.265, side: -1 },
+            { start: 0.300, end: 0.365, side: 1 },
+            { start: 0.405, end: 0.468, side: -1 },
+            { start: 0.505, end: 0.568, side: 1 },
+            { start: 0.605, end: 0.668, side: -1 },
+            { start: 0.705, end: 0.768, side: 1 },
+            { start: 0.805, end: 0.868, side: -1 },
+            { start: 0.905, end: 0.972, side: 1 }
+        ],
+
+        /*
+          Obstacles are grouped into recognizable sectors rather than
+          evenly sprinkled around the whole map.
+        */
+        obstacles: [
+            /* Base camp / opening straight */
+            { t: 0.050, offset: -2.5, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.062, offset: 2.6, kind: "snowbarrier", radius: 1.25 },
+
+            /* Avalanche valley */
+            { t: 0.115, offset: -2.9, kind: "ice", radius: 1.35 },
+            { t: 0.128, offset: 2.5, kind: "ice", radius: 1.4 },
+            { t: 0.142, offset: -1.2, kind: "ice", radius: 1.45 },
+            { t: 0.154, offset: 2.8, kind: "snowbarrier", radius: 1.25 },
+
+            /* North pass */
+            { t: 0.205, offset: -2.2, kind: "ice", radius: 1.3 },
+            { t: 0.224, offset: 2.7, kind: "ice", radius: 1.35 },
+
+            /* Glacier drop */
+            { t: 0.292, offset: -2.5, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.315, offset: 2.6, kind: "ice", radius: 1.4 },
+
+            /* Frozen lake */
+            { t: 0.400, offset: -2.8, kind: "ice", radius: 1.4 },
+            { t: 0.425, offset: 2.5, kind: "ice", radius: 1.35 },
+            { t: 0.452, offset: -1.6, kind: "ice", radius: 1.3 },
+
+            /* Ice cave approach */
+            { t: 0.500, offset: 2.8, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.525, offset: -2.5, kind: "ice", radius: 1.4 },
+
+            /* Inner mountain switchbacks */
+            { t: 0.605, offset: 2.6, kind: "ice", radius: 1.3 },
+            { t: 0.632, offset: -2.7, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.660, offset: 2.2, kind: "ice", radius: 1.35 },
+
+            /* Ridgeline */
+            { t: 0.745, offset: -2.5, kind: "ice", radius: 1.35 },
+            { t: 0.770, offset: 2.7, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.802, offset: -1.8, kind: "ice", radius: 1.4 },
+
+            /* Final descent */
+            { t: 0.885, offset: 2.8, kind: "ice", radius: 1.35 },
+            { t: 0.910, offset: -2.6, kind: "snowbarrier", radius: 1.25 },
+            { t: 0.945, offset: 2.0, kind: "ice", radius: 1.3 }
+        ],
+
+        boosts: [
+            { t: 0.030, offset: 0 },
+            { t: 0.095, offset: -1.8 },
+            { t: 0.180, offset: 1.8 },
+            { t: 0.265, offset: -1.7 },
+            { t: 0.345, offset: 1.7 },
+            { t: 0.390, offset: -1.8 },
+            { t: 0.470, offset: 1.8 },
+            { t: 0.575, offset: -1.8 },
+            { t: 0.690, offset: 1.8 },
+            { t: 0.790, offset: -1.8 },
+            { t: 0.865, offset: 1.8 },
+            { t: 0.960, offset: 0 }
+        ],
+
+        pickups: [
+            { t: 0.080, offset: 2.0, type: "nitro" },
+            { t: 0.165, offset: -2.0, type: "overdrive" },
+            { t: 0.245, offset: 1.9, type: "nitro" },
+            { t: 0.335, offset: -1.8, type: "overdrive" },
+            { t: 0.430, offset: 2.0, type: "nitro" },
+            { t: 0.515, offset: -1.9, type: "overdrive" },
+            { t: 0.615, offset: 2.1, type: "nitro" },
+            { t: 0.705, offset: -1.8, type: "overdrive" },
+            { t: 0.805, offset: 2.0, type: "nitro" },
+            { t: 0.900, offset: -1.9, type: "overdrive" }
+        ],
+
+        /*
+          Only a few big jumps now. Secret jumps are meaningful set pieces,
+          not random ramps beside the road.
+        */
+        ramps: [
+            { t: 0.185, offset: 0, strength: 8.2, secret: false },
+            { t: 0.285, offset: -1.4, strength: 8.5, secret: false },
+            { t: 0.455, offset: 1.2, strength: 8.0, secret: false },
+            { t: 0.650, offset: -1.4, strength: 8.4, secret: false },
+            { t: 0.820, offset: 1.4, strength: 8.8, secret: false },
+            { t: 0.940, offset: 0, strength: 8.3, secret: false },
+
+            /* Ravine skip */
+            { t: 0.228, offset: 8.4, strength: 9.7, secret: true, targetT: 0.255, minSpeed: 28 },
+
+            /* Signature cave-mouth shortcut */
+            { t: 0.515, offset: -8.5, strength: 10.1, secret: true, targetT: 0.548, minSpeed: 30 },
+
+            /* Ridgeline gap */
+            { t: 0.785, offset: 8.4, strength: 10.0, secret: true, targetT: 0.815, minSpeed: 31 }
         ]
     }
 };
