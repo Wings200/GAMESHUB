@@ -1621,6 +1621,51 @@
       loadAccountUsername();
 
 
+      async function getMultiplayerAccountToken() {
+
+        const response =
+          await fetch(
+            "/api/account/multiplayer-token",
+            {
+              method:
+                "POST",
+
+              credentials:
+                "same-origin"
+            }
+          );
+
+
+        const data =
+          await response
+            .json()
+            .catch(
+              () => null
+            );
+
+
+        if (
+          !response.ok
+          ||
+          !data?.ok
+          ||
+          !data.token
+        ) {
+
+          throw new Error(
+            data?.error
+            ||
+            "Could not authorize your GAMESHUB account for multiplayer."
+          );
+
+        }
+
+
+        return data.token;
+
+      }
+
+
       /* ===================================================
          SCREEN SYSTEM
       ==================================================== */
@@ -3075,6 +3120,10 @@
 
           try {
 
+            const accountToken =
+              await getMultiplayerAccountToken();
+
+
             const response =
               await fetch(
 
@@ -3092,11 +3141,21 @@
 
                   body:
                     JSON.stringify({
+                      /*
+                        username is kept temporarily for compatibility
+                        with an older Worker deployment. Worker v5+
+                        ignores it and trusts accountToken instead.
+                      */
                       username,
+
+                      accountToken,
+
                       name:
                         roomName,
+
                       privacy:
                         selectedPrivacy,
+
                       maxPlayers
                     })
 
@@ -3256,6 +3315,10 @@
 
           try {
 
+            const accountToken =
+              await getMultiplayerAccountToken();
+
+
             const response =
               await fetch(
 
@@ -3273,7 +3336,13 @@
 
                   body:
                     JSON.stringify({
-                      username
+                      /*
+                        Kept for compatibility with pre-v5 Workers.
+                        Worker v5+ derives the username from accountToken.
+                      */
+                      username,
+
+                      accountToken
                     })
 
                 }
