@@ -2497,15 +2497,22 @@ function buildSecondShortcutMountainHole() {
 
 function buildArcticEnvironment() {
 
+    /*
+      ARCTIC RELAY V2
+      ----------------
+      The environment is intentionally built as a sequence of memorable
+      sectors. No random ring of mountains around a circular road.
+    */
+
     const ground =
         new THREE.Mesh(
             new THREE.PlaneGeometry(
-                2200,
+                2600,
                 2200
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0xc8d6df,
+                    0xc7d4dc,
                 roughness:
                     1
             })
@@ -2518,7 +2525,7 @@ function buildArcticEnvironment() {
 
 
     ground.position.y =
-        -0.025;
+        -0.03;
 
 
     worldGroup.add(
@@ -2526,33 +2533,321 @@ function buildArcticEnvironment() {
     );
 
 
+    const rockMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                0x52616c,
+            roughness:
+                1
+        });
+
+
+    const darkRockMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                0x3f4b55,
+            roughness:
+                1
+        });
+
+
+    const snowMaterial =
+        new THREE.MeshStandardMaterial({
+            color:
+                0xdbe7ed,
+            roughness:
+                0.98
+        });
+
+
+    function addMountain(
+        t,
+        side,
+        distance,
+        radius,
+        height,
+        dark = false
+    ) {
+
+        const frame =
+            getFrameAt(
+                t
+            );
+
+
+        const mountain =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    radius,
+                    height,
+                    7
+                ),
+                dark
+                    ?
+                    darkRockMaterial
+                    :
+                    rockMaterial
+            );
+
+
+        mountain.position
+            .copy(
+                frame.point
+            )
+            .addScaledVector(
+                frame.normal,
+                side *
+                distance
+            );
+
+
+        mountain.position.y =
+            height *
+            0.42;
+
+
+        mountain.rotation.y =
+            t *
+            11.7;
+
+
+        worldGroup.add(
+            mountain
+        );
+
+
+        const cap =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    radius *
+                    0.46,
+                    height *
+                    0.28,
+                    7
+                ),
+                snowMaterial
+            );
+
+
+        cap.position
+            .copy(
+                mountain.position
+            );
+
+
+        cap.position.y +=
+            height *
+            0.34;
+
+
+        cap.rotation.y =
+            mountain.rotation.y;
+
+
+        worldGroup.add(
+            cap
+        );
+
+
+        addEnvironmentCircleCollider(
+            mountain.position,
+            radius *
+            0.72,
+            {
+                maxY:
+                    height
+                    +
+                    10,
+
+                bounce:
+                    0.08,
+
+                drag:
+                    0.30,
+
+                tag:
+                    "MOUNTAIN"
+            }
+        );
+
+    }
+
+
     /*
-      Large frozen lake beside the southern mountain run.
+      SECTOR 1 — BASE CAMP
+      Long opening straight with real buildings and service barriers.
+    */
+
+    const baseFrame =
+        getFrameAt(
+            0.025
+        );
+
+
+    for (
+        const side
+        of [-1, 1]
+    ) {
+
+        const hangar =
+            new THREE.Group();
+
+
+        hangar.position
+            .copy(
+                baseFrame.point
+            )
+            .addScaledVector(
+                baseFrame.normal,
+                side *
+                25
+            );
+
+
+        hangar.rotation.y =
+            baseFrame.rotationY;
+
+
+        addMesh(
+            hangar,
+            new THREE.BoxGeometry(
+                22,
+                6,
+                15
+            ),
+            material(
+                side <
+                0
+                    ?
+                    0x344553
+                    :
+                    0x2b3c49,
+                0.74,
+                0.16
+            ),
+            0,
+            3,
+            0
+        );
+
+
+        addMesh(
+            hangar,
+            new THREE.BoxGeometry(
+                15,
+                0.45,
+                16
+            ),
+            material(
+                0xd2dde3,
+                0.90,
+                0.04
+            ),
+            0,
+            6.15,
+            0
+        );
+
+
+        worldGroup.add(
+            hangar
+        );
+
+
+        addEnvironmentBoxCollider(
+            hangar.position,
+            11,
+            7.5,
+            hangar.rotation.y,
+            {
+                maxY:
+                    7,
+
+                bounce:
+                    0.10,
+
+                drag:
+                    0.34,
+
+                tag:
+                    "STATION"
+            }
+        );
+
+    }
+
+
+    /*
+      SECTOR 2 — AVALANCHE VALLEY
+      Mountains crowd the road on alternating sides.
+    */
+
+    addMountain(0.095, -1, 53, 35, 95, true);
+    addMountain(0.118, 1, 49, 32, 88, false);
+    addMountain(0.142, -1, 50, 37, 105, true);
+    addMountain(0.160, 1, 52, 34, 96, false);
+
+
+    /*
+      SECTOR 3 — NORTH PASS
+      A proper mountain tunnel.
+    */
+
+    buildArcticTunnel(
+        0.178,
+        0.218,
+        {
+            color:
+                0x485660,
+
+            label:
+                "NORTH PASS"
+        }
+    );
+
+
+    addMountain(0.184, -1, 50, 39, 112, true);
+    addMountain(0.195, 1, 52, 38, 108, true);
+
+
+    /*
+      SECTOR 4 — GLACIER DROP
+      Open valley with a huge ravine-jump feel.
+    */
+
+    addMountain(0.265, -1, 70, 47, 132, false);
+    addMountain(0.300, 1, 75, 52, 145, true);
+    addMountain(0.335, -1, 68, 44, 126, false);
+
+
+    /*
+      SECTOR 5 — FROZEN LAKE
+      The road cuts across a giant blue ice field.
     */
 
     const lakeFrame =
         getFrameAt(
-            0.55
+            0.420
         );
 
 
     const lake =
         new THREE.Mesh(
             new THREE.CircleGeometry(
-                132,
-                52
+                190,
+                64
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0x729eb5,
+                    0x6c9db7,
                 roughness:
-                    0.29,
+                    0.22,
                 metalness:
-                    0.14,
+                    0.15,
                 transparent:
                     true,
                 opacity:
-                    0.90
+                    0.92
             })
         );
 
@@ -2568,12 +2863,12 @@ function buildArcticEnvironment() {
         )
         .addScaledVector(
             lakeFrame.normal,
-            -96
+            -52
         );
 
 
     lake.position.y =
-        0.004;
+        0.006;
 
 
     worldGroup.add(
@@ -2581,12 +2876,166 @@ function buildArcticEnvironment() {
     );
 
 
+    for (
+        const t
+        of [
+            0.385,
+            0.410,
+            0.438,
+            0.462
+        ]
+    ) {
+
+        const frame =
+            getFrameAt(
+                t
+            );
+
+
+        for (
+            const side
+            of [-1, 1]
+        ) {
+
+            const iceSpire =
+                new THREE.Mesh(
+                    new THREE.ConeGeometry(
+                        6.5,
+                        20,
+                        6
+                    ),
+                    new THREE.MeshStandardMaterial({
+                        color:
+                            0x9fc8d8,
+                        roughness:
+                            0.38,
+                        metalness:
+                            0.06
+                    })
+                );
+
+
+            iceSpire.position
+                .copy(
+                    frame.point
+                )
+                .addScaledVector(
+                    frame.normal,
+                    side *
+                    20
+                );
+
+
+            iceSpire.position.y =
+                8.5;
+
+
+            worldGroup.add(
+                iceSpire
+            );
+
+
+            addEnvironmentCircleCollider(
+                iceSpire.position,
+                4.2,
+                {
+                    maxY:
+                        22,
+
+                    bounce:
+                        0.14,
+
+                    drag:
+                        0.40,
+
+                    tag:
+                        "ICE"
+                }
+            );
+
+        }
+
+    }
+
+
     /*
-      Forest hugs the course. Instancing keeps this cheap enough for
-      Chromebook hardware even with a much longer track.
+      SECTOR 6 — SIGNATURE SECRET CAVE
+      Shortcut #2 jumps into this mountain opening.
     */
 
-    const scenerySecretRamps =
+    buildSecondShortcutMountainHole();
+
+
+    addMountain(0.500, 1, 65, 45, 132, true);
+    addMountain(0.555, -1, 67, 46, 136, true);
+
+
+    /*
+      SECTOR 7 — INNER MOUNTAIN SWITCHBACKS
+    */
+
+    buildArcticTunnel(
+        0.605,
+        0.648,
+        {
+            color:
+                0x708d9c,
+
+            ice:
+                true,
+
+            label:
+                "GLACIER CORE"
+        }
+    );
+
+
+    addMountain(0.585, -1, 52, 38, 110, false);
+    addMountain(0.665, 1, 50, 36, 104, true);
+    addMountain(0.700, -1, 55, 40, 116, false);
+
+
+    /*
+      SECTOR 8 — RIDGELINE
+      Wide open peaks and a long high-speed run.
+    */
+
+    addMountain(0.735, 1, 78, 50, 150, true);
+    addMountain(0.765, -1, 73, 47, 140, false);
+    addMountain(0.805, 1, 82, 54, 158, true);
+
+
+    /*
+      SECTOR 9 — ICE VAULT / FINAL DESCENT
+    */
+
+    buildArcticTunnel(
+        0.855,
+        0.892,
+        {
+            color:
+                0x7fa8ba,
+
+            ice:
+                true,
+
+            label:
+                "ICE VAULT"
+        }
+    );
+
+
+    addMountain(0.900, -1, 58, 40, 116, true);
+    addMountain(0.930, 1, 62, 42, 124, false);
+
+
+    /*
+      Sparse forest, intentionally secondary to the set pieces.
+      Trees stay well outside the racing surface and the signature
+      cave shortcut corridor is kept clear.
+    */
+
+    const secretRamps =
         rampDefinitions
             .filter(
                 ramp =>
@@ -2600,49 +3049,52 @@ function buildArcticEnvironment() {
             );
 
 
-    const scenerySecondSecret =
-        scenerySecretRamps[
+    const signatureShortcut =
+        secretRamps[
             1
         ]
         ??
         null;
 
 
-    let sceneryShortcutCorridor =
+    let shortcutStart =
+        null;
+
+
+    let shortcutEnd =
         null;
 
 
     if (
-        scenerySecondSecret
+        signatureShortcut
     ) {
 
         const startFrame =
             getFrameAt(
-                scenerySecondSecret.t
+                signatureShortcut.t
             );
 
 
-        const targetFrame =
+        const endFrame =
             getFrameAt(
-                scenerySecondSecret.targetT
+                signatureShortcut.targetT
             );
 
 
-        sceneryShortcutCorridor = {
-            start:
-                startFrame.point
-                    .clone()
-                    .addScaledVector(
-                        startFrame.normal,
-                        scenerySecondSecret.offset
-                        ||
-                        0
-                    ),
+        shortcutStart =
+            startFrame.point
+                .clone()
+                .addScaledVector(
+                    startFrame.normal,
+                    signatureShortcut.offset
+                    ||
+                    0
+                );
 
-            target:
-                targetFrame.point
-                    .clone()
-        };
+
+        shortcutEnd =
+            endFrame.point
+                .clone();
 
     }
 
@@ -2654,7 +3106,7 @@ function buildArcticEnvironment() {
     for (
         let i = 0;
         i < TRACK_SAMPLE_COUNT;
-        i += 15
+        i += 22
     ) {
 
         const sample =
@@ -2666,110 +3118,65 @@ function buildArcticEnvironment() {
             of [-1, 1]
         ) {
 
-            for (
-                let row = 0;
-                row < 2;
-                row++
-            ) {
-
-                const spread =
-                    22
-                    +
-                    row *
-                    12
-                    +
-                    (
-                        (
-                            i *
-                            11
-                            +
-                            row *
-                            7
-                        )
-                        %
-                        9
-                    );
-
-
-                const position =
-                    sample.point
-                        .clone()
-                        .addScaledVector(
-                            sample.normal,
-                            side *
-                            spread
-                        );
-
-
-                position
+            const position =
+                sample.point
+                    .clone()
                     .addScaledVector(
-                        sample.tangent,
+                        sample.normal,
+                        side *
                         (
+                            28
+                            +
                             (
-                                i *
-                                5
-                                +
-                                row *
-                                13
-                            )
-                            %
-                            9
-                        )
-                        -
-                        4
-                    );
-
-
-                if (
-                    sceneryShortcutCorridor
-                    &&
-                    pointToSegmentDistance2D(
-                        position,
-                        sceneryShortcutCorridor.start,
-                        sceneryShortcutCorridor.target
-                    )
-                    <
-                    13
-                ) {
-
-                    continue;
-
-                }
-
-
-                treeEntries.push({
-                    position,
-
-                    height:
-                        5.3
-                        +
-                        (
-                            (
-                                i +
-                                row *
+                                (
+                                    i /
+                                    22
+                                )
+                                %
                                 3
                             )
-                            %
-                            8
+                            *
+                            9
                         )
-                        *
-                        0.48,
+                    );
 
-                    rotation:
-                        (
-                            i *
-                            0.29
-                            +
-                            row
-                        )
-                        %
-                        (
-                            Math.PI *
-                            2
-                        )
-                });
+
+            if (
+                shortcutStart
+                &&
+                shortcutEnd
+                &&
+                pointToSegmentDistance2D(
+                    position,
+                    shortcutStart,
+                    shortcutEnd
+                )
+                <
+                18
+            ) {
+
+                continue;
 
             }
+
+
+            treeEntries.push({
+                position,
+
+                height:
+                    6
+                    +
+                    (
+                        i %
+                        7
+                    )
+                    *
+                    0.55,
+
+                rotation:
+                    i *
+                    0.19
+            });
 
         }
 
@@ -2779,7 +3186,7 @@ function buildArcticEnvironment() {
     const trunks =
         new THREE.InstancedMesh(
             new THREE.CylinderGeometry(
-                0.23,
+                0.24,
                 0.34,
                 1,
                 6
@@ -2803,9 +3210,9 @@ function buildArcticEnvironment() {
             ),
             new THREE.MeshStandardMaterial({
                 color:
-                    0x163c38,
+                    0x173c38,
                 roughness:
-                    0.95
+                    0.96
             }),
             treeEntries.length
         );
@@ -2829,7 +3236,7 @@ function buildArcticEnvironment() {
 
             dummy.position.y =
                 tree.height *
-                0.18;
+                0.17;
 
 
             dummy.rotation.set(
@@ -2842,7 +3249,7 @@ function buildArcticEnvironment() {
             dummy.scale.set(
                 1,
                 tree.height *
-                0.36,
+                0.34,
                 1
             );
 
@@ -2862,10 +3269,10 @@ function buildArcticEnvironment() {
 
 
             dummy.scale.set(
-                1.72,
+                1.65,
                 tree.height *
-                0.78,
-                1.72
+                0.76,
+                1.65
             );
 
 
@@ -2875,6 +3282,27 @@ function buildArcticEnvironment() {
             needles.setMatrixAt(
                 index,
                 dummy.matrix
+            );
+
+
+            addEnvironmentCircleCollider(
+                tree.position,
+                0.72,
+                {
+                    maxY:
+                        tree.height
+                        +
+                        1,
+
+                    bounce:
+                        0.15,
+
+                    drag:
+                        0.42,
+
+                    tag:
+                        "TREE"
+                }
             );
 
         }
@@ -2895,318 +3323,46 @@ function buildArcticEnvironment() {
     );
 
 
-    for (
-        const tree
-        of treeEntries
-    ) {
-
-        addEnvironmentCircleCollider(
-            tree.position,
-            0.72,
-            {
-                maxY:
-                    tree.height
-                    +
-                    0.8,
-
-                bounce:
-                    0.18,
-
-                drag:
-                    0.42,
-
-                tag:
-                    "TREE"
-            }
-        );
-
-    }
-
-
     /*
-      Massive peaks close enough to dominate the horizon.
+      Research outpost landmark on the ridgeline.
     */
 
-    const mountainMaterial =
-        new THREE.MeshStandardMaterial({
-            color:
-                0x596a76,
-            roughness:
-                1
-        });
-
-
-    const snowCapMaterial =
-        new THREE.MeshStandardMaterial({
-            color:
-                0xdde8ee,
-            roughness:
-                0.98
-        });
-
-
-    const secondShortcutCorridor =
-        sceneryShortcutCorridor;
-
-    for (
-        let i = 0;
-        i < TRACK_SAMPLE_COUNT;
-        i += 52
-    ) {
-
-        const sample =
-            trackSamples[i];
-
-
-        for (
-            const side
-            of [-1, 1]
-        ) {
-
-            const distance =
-                56
-                +
-                (
-                    (
-                        i /
-                        52
-                    )
-                    %
-                    3
-                )
-                *
-                18;
-
-
-            const mountain =
-                new THREE.Mesh(
-                    new THREE.ConeGeometry(
-                        38
-                        +
-                        (
-                            i %
-                            4
-                        )
-                        *
-                        5,
-                        92
-                        +
-                        (
-                            i %
-                            5
-                        )
-                        *
-                        10,
-                        7
-                    ),
-                    mountainMaterial
-                );
-
-
-            mountain.position
-                .copy(
-                    sample.point
-                )
-                .addScaledVector(
-                    sample.normal,
-                    side *
-                    distance
-                );
-
-
-            mountain.position.y =
-                40;
-
-
-            mountain.rotation.y =
-                i *
-                0.11;
-
-
-            if (
-                secondShortcutCorridor
-                &&
-                pointToSegmentDistance2D(
-                    mountain.position,
-                    secondShortcutCorridor.start,
-                    secondShortcutCorridor.target
-                )
-                <
-                48
-            ) {
-
-                continue;
-
-            }
-
-
-            worldGroup.add(
-                mountain
-            );
-
-
-            addEnvironmentCircleCollider(
-                mountain.position,
-                31,
-                {
-                    maxY:
-                        105,
-
-                    bounce:
-                        0.10,
-
-                    drag:
-                        0.34,
-
-                    tag:
-                        "MOUNTAIN"
-                }
-            );
-
-
-            const cap =
-                new THREE.Mesh(
-                    new THREE.ConeGeometry(
-                        18,
-                        28,
-                        7
-                    ),
-                    snowCapMaterial
-                );
-
-
-            cap.position
-                .copy(
-                    mountain.position
-                );
-
-
-            cap.position.y +=
-                38;
-
-
-            cap.rotation.y =
-                mountain.rotation.y;
-
-
-            worldGroup.add(
-                cap
-            );
-
-        }
-
-    }
-
-
-    /*
-      Shortcut #2 now has its own purpose-built cave mouth.
-      The ramp points through this opening and the mountain around it
-      has real collision.
-    */
-
-    buildSecondShortcutMountainHole();
-
-
-    /*
-      Actual drivable-under mountain sections.
-    */
-
-    buildArcticTunnel(
-        0.165,
-        0.205,
-        {
-            color:
-                0x4d5c66,
-            label:
-                "NORTH PASS"
-        }
-    );
-
-
-    buildArcticTunnel(
-        0.405,
-        0.455,
-        {
-            color:
-                0x7397aa,
-            ice:
-                true,
-            label:
-                "GLACIER CAVE"
-        }
-    );
-
-
-    buildArcticTunnel(
-        0.675,
-        0.715,
-        {
-            color:
-                0x515d67,
-            label:
-                "BLACKRIDGE"
-        }
-    );
-
-
-    buildArcticTunnel(
-        0.875,
-        0.915,
-        {
-            color:
-                0x82adbf,
-            ice:
-                true,
-            label:
-                "ICE VAULT"
-        }
-    );
-
-
-    /*
-      Research station landmark near the frozen lake.
-    */
-
-    const stationFrame =
+    const outpostFrame =
         getFrameAt(
-            0.535
+            0.735
         );
 
 
-    const station =
+    const outpost =
         new THREE.Group();
 
 
-    station.position
+    outpost.position
         .copy(
-            stationFrame.point
+            outpostFrame.point
         )
         .addScaledVector(
-            stationFrame.normal,
-            28
+            outpostFrame.normal,
+            -28
         );
 
 
-    station.rotation.y =
-        stationFrame.rotationY;
-
-
-    const stationBody =
-        material(
-            0x273846,
-            0.70,
-            0.20
-        );
+    outpost.rotation.y =
+        outpostFrame.rotationY;
 
 
     addMesh(
-        station,
+        outpost,
         new THREE.BoxGeometry(
-            18,
+            17,
             5,
-            12
+            11
         ),
-        stationBody,
+        material(
+            0x293b49,
+            0.70,
+            0.16
+        ),
         0,
         2.5,
         0
@@ -3214,79 +3370,60 @@ function buildArcticEnvironment() {
 
 
     addMesh(
-        station,
-        new THREE.BoxGeometry(
-            8,
-            3,
-            7
+        outpost,
+        new THREE.CylinderGeometry(
+            0.18,
+            0.18,
+            16,
+            6
         ),
         material(
-            0x324e61,
-            0.54,
-            0.18
+            0x667783,
+            0.64,
+            0.36
         ),
-        -8,
-        1.5,
-        6
+        5,
+        11,
+        0
     );
 
 
-    const beacon =
-        addMesh(
-            station,
-            new THREE.CylinderGeometry(
-                0.16,
-                0.16,
-                15,
-                6
-            ),
-            material(
-                0x697986,
-                0.65,
-                0.40
-            ),
-            5,
-            10,
-            0
-        );
-
-
     addMesh(
-        station,
+        outpost,
         new THREE.SphereGeometry(
-            0.45,
+            0.5,
             8,
             6
         ),
         new THREE.MeshBasicMaterial({
             color:
-                0xff496b
+                0xff4466
         }),
-        beacon.position.x,
-        17.6,
-        beacon.position.z
+        5,
+        19,
+        0
     );
 
 
     worldGroup.add(
-        station
+        outpost
     );
 
 
     addEnvironmentBoxCollider(
-        station.position,
-        9,
-        6,
-        station.rotation.y,
+        outpost.position,
+        8.5,
+        5.5,
+        outpost.rotation.y,
         {
             maxY:
-                6.2,
+                6.5,
 
             bounce:
-                0.12,
+                0.10,
 
             drag:
-                0.38,
+                0.34,
 
             tag:
                 "STATION"
@@ -3295,28 +3432,28 @@ function buildArcticEnvironment() {
 
 
     /*
-      Aurora spans the whole course rather than a tiny patch.
+      Aurora ribbon over the entire expedition.
     */
 
     const auroraColors =
         [
-            0x65ffd5,
-            0x6cb7ff,
-            0x9a75ff
+            0x62ffd1,
+            0x70b8ff,
+            0xa47cff
         ];
 
 
     for (
         let i = 0;
-        i < 5;
+        i < 6;
         i++
     ) {
 
         const strip =
             new THREE.Mesh(
                 new THREE.PlaneGeometry(
-                    760,
-                    36
+                    880,
+                    38
                 ),
                 new THREE.MeshBasicMaterial({
                     color:
@@ -3327,7 +3464,7 @@ function buildArcticEnvironment() {
                     transparent:
                         true,
                     opacity:
-                        0.10,
+                        0.09,
                     side:
                         THREE.DoubleSide,
                     depthWrite:
@@ -3337,28 +3474,28 @@ function buildArcticEnvironment() {
 
 
         strip.position.set(
-            -260
+            -420
             +
             i *
-            135,
-            78
+            165,
+            86
             +
             i *
-            5,
-            -160
+            4,
+            -230
             +
             i *
-            82
+            92
         );
 
 
         strip.rotation.set(
-            -0.18,
-            0.18
+            -0.17,
+            0.16
             +
             i *
-            0.11,
-            0.05
+            0.09,
+            0.04
         );
 
 
