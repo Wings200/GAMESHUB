@@ -5206,6 +5206,12 @@ window.addEventListener("keydown", event => {
         raceActive
         &&
         !event.repeat
+        &&
+        !event.ctrlKey
+        &&
+        !event.metaKey
+        &&
+        !event.altKey
     ) {
 
         event.preventDefault();
