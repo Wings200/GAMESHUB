@@ -10227,18 +10227,322 @@ window.addEventListener("redline:race-started", event => {
 window.addEventListener("redline:race-state", event => {
     receiveRaceState(event.detail);
 });
+function restoreLocalRaceState(
+    state
+) {
+
+    if (
+        !state
+        ||
+        !car
+        ||
+        !carState
+        ||
+        state.playerId !==
+        window.REDLINE_MP?.playerId
+    ) {
+
+        return;
+
+    }
+
+
+    const x =
+        Number(
+            state.x
+        );
+
+
+    const y =
+        Number(
+            state.y
+        );
+
+
+    const z =
+        Number(
+            state.z
+        );
+
+
+    if (
+        Number.isFinite(
+            x
+        )
+        &&
+        Number.isFinite(
+            y
+        )
+        &&
+        Number.isFinite(
+            z
+        )
+    ) {
+
+        car.position.set(
+            x,
+            Math.max(
+                0,
+                y
+            ),
+            z
+        );
+
+    }
+
+
+    if (
+        Number.isFinite(
+            Number(
+                state.rotation
+            )
+        )
+    ) {
+
+        car.rotation.y =
+            Number(
+                state.rotation
+            );
+
+    }
+
+
+    car.rotation.x =
+        Number.isFinite(
+            Number(
+                state.pitch
+            )
+        )
+            ?
+            Number(
+                state.pitch
+            )
+            :
+            0;
+
+
+    car.rotation.z =
+        Number.isFinite(
+            Number(
+                state.roll
+            )
+        )
+            ?
+            Number(
+                state.roll
+            )
+            :
+            0;
+
+
+    const restoredSpeed =
+        THREE.MathUtils.clamp(
+            Number(
+                state.speed
+            )
+            ||
+            0,
+            0,
+            160
+        );
+
+
+    carState.velocity
+        .copy(
+            forwardVector()
+        )
+        .multiplyScalar(
+            restoredSpeed
+        );
+
+
+    carState.airborne =
+        car.position.y >
+        0.75;
+
+
+    carState.verticalVelocity =
+        0;
+
+
+    lap =
+        THREE.MathUtils.clamp(
+            Math.floor(
+                Number(
+                    state.lap
+                )
+                ||
+                1
+            ),
+            1,
+            TARGET_LAPS
+        );
+
+
+    if (
+        checkpointGates.length
+    ) {
+
+        checkpointStep =
+            THREE.MathUtils.clamp(
+                Math.floor(
+                    Number(
+                        state.checkpoint
+                    )
+                    ||
+                    0
+                ),
+                0,
+                checkpointGates.length -
+                1
+            );
+
+
+        const previousIndex =
+            (
+                checkpointStep -
+                1
+                +
+                checkpointGates.length
+            )
+            %
+            checkpointGates.length;
+
+
+        const previousGate =
+            checkpointGates[
+                previousIndex
+            ];
+
+
+        if (
+            previousGate
+        ) {
+
+            const previousFrame =
+                getFrameAt(
+                    previousGate.t
+                );
+
+
+            lastCheckpointTransform = {
+                position:
+                    previousFrame.point
+                        .clone()
+                        .addScaledVector(
+                            previousFrame.tangent,
+                            3.4
+                        ),
+
+                rotationY:
+                    previousFrame.rotationY
+            };
+
+        }
+
+    }
+
+
+    raceStates.set(
+        state.playerId,
+        state
+    );
+
+
+    if (
+        state.finished
+    ) {
+
+        localFinished =
+            true;
+
+
+        raceActive =
+            false;
+
+
+        localFinishElapsed =
+            Number.isFinite(
+                Number(
+                    state.finishTime
+                )
+            )
+                ?
+                Number(
+                    state.finishTime
+                )
+                :
+                Math.max(
+                    0,
+                    Date.now()
+                    -
+                    (
+                        serverRaceStartAt
+                        ||
+                        Date.now()
+                    )
+                );
+
+
+        carState.velocity.set(
+            0,
+            0,
+            0
+        );
+
+    }
+
+
+    updateObjective();
+
+    updateGateColors();
+
+}
+
+
 window.addEventListener("redline:race-snapshot", event => {
     if (event.detail?.startAt) {
         serverRaceStartAt =
             event.detail.startAt;
     }
+
     finishOrder =
         event.detail?.finishOrder
             ??
                 [];
-    for (const state of (event.detail?.states
+
+    const states =
+        event.detail?.states
         ??
-            [])) {
+        [];
+
+
+    if (
+        event.detail?.resumeLocalState
+    ) {
+
+        const ownState =
+            states.find(
+                state =>
+                    state?.playerId ===
+                    window.REDLINE_MP?.playerId
+            );
+
+
+        if (
+            ownState
+        ) {
+
+            restoreLocalRaceState(
+                ownState
+            );
+
+        }
+
+    }
+
+
+    for (const state of states) {
         receiveRaceState(state);
     }
 });
