@@ -1434,6 +1434,46 @@ export class RedlineRoom
 
 
           if (
+            this.room
+          ) {
+
+            this.room.resumeStates =
+              (
+                this.room.resumeStates
+                &&
+                typeof this.room.resumeStates ===
+                "object"
+              )
+                ?
+                this.room.resumeStates
+                :
+                {};
+
+
+            for (
+              const state
+              of Object.values(
+                this.room.resumeStates
+              )
+            ) {
+
+              if (
+                state?.playerId
+              ) {
+
+                this.liveRaceStates.set(
+                  state.playerId,
+                  state
+                );
+
+              }
+
+            }
+
+          }
+
+
+          if (
             Array.isArray(
               this.room?.results
             )
@@ -1531,6 +1571,9 @@ export class RedlineRoom
 
       results:
         [],
+
+      resumeStates:
+        {},
 
       emptySince:
         null,
@@ -2448,6 +2491,10 @@ export class RedlineRoom
       this.liveRaceStates.clear();
 
 
+      this.room.resumeStates =
+        {};
+
+
       this.finishOrder =
         [];
 
@@ -2712,6 +2759,26 @@ export class RedlineRoom
         );
 
 
+      const pitch =
+        clamp(
+          finiteNumber(
+            data.pitch
+          ),
+          -Math.PI,
+          Math.PI
+        );
+
+
+      const roll =
+        clamp(
+          finiteNumber(
+            data.roll
+          ),
+          -Math.PI,
+          Math.PI
+        );
+
+
       const speed =
         clamp(
           finiteNumber(
@@ -2788,6 +2855,10 @@ export class RedlineRoom
         z,
 
         rotation,
+
+        pitch,
+
+        roll,
 
         speed,
 
@@ -3044,6 +3115,10 @@ export class RedlineRoom
       this.liveRaceStates.clear();
 
 
+      this.room.resumeStates =
+        {};
+
+
       this.finishOrder =
         [];
 
@@ -3273,9 +3348,51 @@ export class RedlineRoom
     }
 
 
-    this.liveRaceStates.delete(
-      playerId
-    );
+    if (
+      this.room.phase ===
+      "lobby"
+      ||
+      this.room.phase ===
+      "car_select"
+    ) {
+
+      this.liveRaceStates.delete(
+        playerId
+      );
+
+    }
+
+    else {
+
+      const resumeState =
+        this.liveRaceStates.get(
+          playerId
+        );
+
+
+      if (
+        resumeState
+      ) {
+
+        this.room.resumeStates =
+          this.room.resumeStates
+          ||
+          {};
+
+
+        this.room.resumeStates[
+          playerId
+        ] =
+          {
+            ...resumeState,
+
+            timestamp:
+              Date.now()
+          };
+
+      }
+
+    }
 
 
     this.broadcast({
