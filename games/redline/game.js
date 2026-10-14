@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import * as NEON_ART from "./neon-art.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -95,8 +96,8 @@ const TRACKS = {
         sampleCount: 520,
         laps: 1,
         background: 0x050a13,
-        fogNear: 170,
-        fogFar: 560,
+        fogNear: 340,
+        fogFar: 1290,
 
         /*
           V2 is a much longer non-self-crossing city loop.
@@ -547,7 +548,7 @@ function applyTrackConfig(trackId) {
                 activeTrackId ===
                 "neon"
                     ?
-                    720
+                    1550
                     :
                     440
             );
@@ -2073,7 +2074,7 @@ function buildRoad() {
             :
             0xbec7d3;
 
-    worldGroup.add(
+    const surfaceLayers = [
         makeRibbon(
             -ROAD_HALF,
             ROAD_HALF,
@@ -2120,7 +2121,53 @@ function buildRoad() {
         makeRibbon(-ROAD_HALF + 0.30, -ROAD_HALF - 0.12, edgeColor, 0.078, 0.8),
         makeRibbon(5.55, 5.68, 0xd6dce4, 0.084, 0.8),
         makeRibbon(-5.55, -5.68, 0xd6dce4, 0.084, 0.8)
-    );
+    ];
+
+    worldGroup.add(...surfaceLayers);
+
+
+    if (
+        activeTrackId === "neon"
+    ) {
+
+        NEON_ART.applyPbr({
+            THREE,
+            renderer,
+            sceneRoot: worldGroup,
+            material: surfaceLayers[0].material,
+            kind: "asphalt"
+        });
+
+
+        for (
+            const layer
+            of [surfaceLayers[1], surfaceLayers[2]]
+        ) {
+
+            NEON_ART.applyPbr({
+                THREE,
+                renderer,
+                sceneRoot: worldGroup,
+                material: layer.material,
+                kind: "concrete"
+            });
+
+        }
+
+
+        NEON_ART.addStreetSurfaceDetails({
+            THREE,
+            worldGroup,
+            trackSamples,
+            sampleCount: TRACK_SAMPLE_COUNT,
+            getFrameAt,
+            roadHalf: ROAD_HALF,
+            sidewalkOuter: SIDEWALK_OUTER
+        });
+
+    }
+
+
     const dashSamples = [];
     for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 9) {
         dashSamples.push(trackSamples[i]);
@@ -2177,10 +2224,10 @@ function buildCity() {
 
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(
-            760,
-            600,
-            12,
-            10
+            2480,
+            2320,
+            14,
+            14
         ),
         new THREE.MeshStandardMaterial({
             color:
@@ -2201,6 +2248,36 @@ function buildCity() {
     ground.position.y =
         -0.02;
     worldGroup.add(ground);
+
+
+    NEON_ART.applyPbr({
+        THREE,
+        renderer,
+        sceneRoot: worldGroup,
+        material: ground.material,
+        kind: "concrete",
+        repeatX: 98,
+        repeatY: 91
+    });
+
+
+    NEON_ART.buildBackdrop({
+        THREE,
+        worldGroup,
+        trackSamples,
+        sampleCount: TRACK_SAMPLE_COUNT,
+        getFrameAt
+    });
+
+
+    // Authored glTF buildings and props load independently of race startup.
+    NEON_ART.loadAuthoredModels({
+        THREE,
+        worldGroup,
+        getFrameAt
+    }).catch(error => console.warn("Neon model dressing:", error));
+
+
     const buildingSpecs = [];
 
 
@@ -2441,61 +2518,13 @@ function buildCity() {
     }
 
 
-    const facadeTexture =
-        createSurfaceTexture(
-            "facade",
-            2,
-            4
-        );
-
-
-    const buildingMesh =
-        new THREE.InstancedMesh(
-            new THREE.BoxGeometry(
-                1,
-                1,
-                1,
-                2,
-                4,
-                2
-            ),
-            new THREE.MeshStandardMaterial({
-                color:
-                    0xffffff,
-                roughness:
-                    0.78,
-                metalness:
-                    0.08,
-                map:
-                    facadeTexture,
-                bumpMap:
-                    facadeTexture,
-                bumpScale:
-                    0.035
-            }),
-            buildingSpecs.length
-        );
-    const dummy = new THREE.Object3D();
-    buildingSpecs.forEach((b, index) => {
-        dummy.position.copy(b.position);
-        dummy.position.y =
-            b.height /
-                2;
-        dummy.rotation.set(0, b.rotationY, 0);
-        dummy.scale.set(b.width, b.height, b.depth);
-        dummy.updateMatrix();
-        buildingMesh.setMatrixAt(index, dummy.matrix);
-        buildingMesh.setColorAt(index, new THREE.Color(b.color));
+    NEON_ART.buildRoadsideArchitecture({
+        THREE,
+        worldGroup,
+        buildings: buildingSpecs
     });
-    buildingMesh.instanceMatrix.needsUpdate =
-        true;
-    if (buildingMesh.instanceColor) {
-        buildingMesh.instanceColor.needsUpdate =
-            true;
-    }
-    worldGroup.add(buildingMesh);
-    buildBuildingWindows(buildingSpecs);
-    buildBuildingLedges(buildingSpecs);
+
+
     buildRooftopDetails(buildingSpecs);
     buildStreetLights();
     buildNeonSigns(buildingSpecs);
