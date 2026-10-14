@@ -283,9 +283,30 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
 
   // Secondary streets and asphalt/pavement pads tie buildings together.
   const streetMaterial = new THREE.MeshStandardMaterial({
-    color: 0x202b34, roughness: .98, metalness: .01
+    color: 0x273038, roughness: .92, metalness: .01
   });
-  instantiate(THREE, worldGroup, new THREE.BoxGeometry(1,1,1), streetMaterial, streetLots);
+  const roadGeo=new THREE.BoxGeometry(1,1,1);
+  instantiate(THREE, worldGroup, roadGeo, streetMaterial, streetLots);
+
+  // Continuous urban grid between the track and the far neighborhoods,
+  // rather than a sea of empty concrete between isolated building boxes.
+  const parallelRoads=[];
+  const laneCenters=[];
+  for(let x=-423;x<=423;x+=68){
+    parallelRoads.push({x,y:-.002,z:0,w:7.3,h:.025,d:750});
+    for(let z=-340;z<=340;z+=30){
+      laneCenters.push({x,y:.013,z,w:.10,h:.013,d:3.0});
+    }
+  }
+  for(let z=-333;z<=333;z+=68){
+    parallelRoads.push({x:0,y:-.002,z,w:930,h:.025,d:7.3});
+    for(let x=-428;x<=428;x+=30){
+      laneCenters.push({x,y:.013,z,w:3.0,h:.013,d:.10});
+    }
+  }
+  instantiate(THREE,worldGroup,roadGeo,streetMaterial,parallelRoads);
+  instantiate(THREE,worldGroup,roadGeo,
+    new THREE.MeshStandardMaterial({color:0x858680,roughness:.96}),laneCenters);
 
   const buildingGeo = new THREE.BoxGeometry(1,1,1);
   cityBlocks.forEach((list, i) =>
