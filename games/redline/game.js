@@ -218,7 +218,7 @@ const TRACKS = {
         ramps: [
             { t: 0.365, offset: -1.2, strength: 7.6, secret: false },
             { t: 0.642, offset: 1.2, strength: 7.9, secret: false },
-            { t: 0.912, offset: 0, strength: 7.5, secret: false },
+            { t: 0.926, offset: 0, strength: 7.5, secret: false },
 
             /* Hidden downtown corner cut */
             {
@@ -2532,19 +2532,27 @@ function buildCity() {
     buildTrafficLights();
     buildLandmarkTower();
 
-    buildTunnel(
-        0.315,
-        0.365,
-        0x27313e,
-        0x8bcfff
-    );
+    // Full-size rectangular concrete expressway tunnels replace
+    // the earlier bare box/egg-looking placeholder portals.
+    NEON_ART.buildMetroTunnel({
+        THREE,
+        worldGroup,
+        getFrameAt,
+        sidewalkOuter: SIDEWALK_OUTER,
+        start: 0.315,
+        end: 0.365,
+        theme: "metro"
+    });
 
-    buildTunnel(
-        0.865,
-        0.915,
-        0x252b35,
-        0xff5f9a
-    );
+    NEON_ART.buildMetroTunnel({
+        THREE,
+        worldGroup,
+        getFrameAt,
+        sidewalkOuter: SIDEWALK_OUTER,
+        start: 0.865,
+        end: 0.915,
+        theme: "industrial"
+    });
 
     buildNeonDistrictSetPieces();
 }
