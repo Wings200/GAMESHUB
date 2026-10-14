@@ -210,7 +210,7 @@ function instantiate(THREE, worldGroup, geometry, material, instances) {
 export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
                                  getFrameAt }) {
   const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(1420, 52, 26),
+    new THREE.SphereGeometry(1160, 52, 26),
     new THREE.MeshBasicMaterial({
       map: skyTexture(THREE), side: THREE.BackSide,
       depthWrite: false, fog: false
@@ -388,9 +388,13 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
     }
   }
   const materials=atlas.map((map,i)=>new THREE.MeshStandardMaterial({
-    color: i===1 ? 0xd4c4bd : 0xe1e8ed, map, bumpMap:map,
-    bumpScale:.024,roughness: i===0 ? .47 : .85,
-    metalness: i===0 ? .22 : .04
+    color: i===1 ? 0xd4c4bd : 0xe1e8ed,
+    map, bumpMap:map, bumpScale:.024,
+    roughness: i===0 ? .47 : .85,
+    metalness: i===0 ? .22 : .04,
+    emissive: i===0 ? 0x22232d : 0x2b2422,
+    emissiveMap: map,
+    emissiveIntensity: .13
   }));
   groups.forEach((group,i)=>instantiate(THREE,worldGroup,shellGeo,materials[i],group));
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
