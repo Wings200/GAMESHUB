@@ -33,7 +33,6 @@ function canvasTexture(THREE, canvas) {
   return texture;
 }
 
-const textureCache = new Map();
 
 /**
  * Real PBR textures load independently and may fail without hiding the existing
@@ -49,11 +48,7 @@ export function applyPbr({ THREE, renderer, sceneRoot, material, kind,
 
   const slots = ["map", "normalMap", "roughnessMap"];
   files.forEach((name, i) => {
-    const key = kind + ":" + i + ":" + repeatX + ":" + repeatY;
-    let texture = textureCache.get(key);
-
-    if (!texture) {
-      texture = loader.load(
+    const texture = loader.load(
         SOURCE_ROOT + "textures/" + name,
         () => {
           if (!sceneRoot.parent) return;
@@ -73,16 +68,6 @@ export function applyPbr({ THREE, renderer, sceneRoot, material, kind,
       texture.repeat.set(repeatX, repeatY);
       texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
       if (i === 0) texture.colorSpace = THREE.SRGBColorSpace;
-      textureCache.set(key, texture);
-    } else if (texture.image && sceneRoot.parent) {
-      material[slots[i]] = texture;
-      material.color.set(0xc6ccd0);
-      material.bumpMap = null;
-      material.roughness = kind === "asphalt" ? 0.86 : 0.96;
-      material.metalness = 0.018;
-      material.normalScale = new THREE.Vector2(0.45, 0.45);
-      material.needsUpdate = true;
-    }
   });
 }
 
@@ -254,6 +239,20 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     return Math.sqrt(nearest);
   };
 
+  const reservedBuildings = [
+    [.07,.23,.48,.64,.81],
+    [.10,.30,.58,.77,.96],
+    [.16,.40,.70,.89],
+    [.26,.55,.75]
+  ].flatMap((progresses, modelIndex) => {
+    const offsets = [44,47,53,57];
+    return progresses.map((t,i) => {
+      const f = getFrameAt(t);
+      const side = (i + modelIndex) % 2 === 0 ? 1 : -1;
+      return f.point.clone().addScaledVector(f.normal, side*offsets[modelIndex]);
+    });
+  });
+
   const cityBlocks = [[], [], []];
   const rooftop = [];
   const podiums = [];
@@ -265,6 +264,7 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const roadD = distRoad(x, z);
       const outerEdge = Math.max(Math.abs(x) / 450, Math.abs(z) / 355);
       if (roadD < 27 || (noise01(gx * 67 + gz * 41) < .09)) continue;
+      if (reservedBuildings.some(p=>Math.hypot(p.x-x,p.z-z)<23)) continue;
       const type = (Math.floor(noise01(gx * 17 + gz * 23) * 3));
       const height = (outerEdge > .7 ? 21 : 30) +
         noise01(gx * 3 - gz * 13) * (outerEdge > .7 ? 50 : 72);
@@ -523,4 +523,128 @@ export async function loadAuthoredModels({THREE, worldGroup, getFrameAt}) {
     );
   });
   await Promise.all(specs.map((s,i)=>loadOne(...s,i)));
+}
+
+
+/**
+ * Rectangular urban expressway / metro-tunnel kit.
+ *
+ * This is a modelled structural shell, not the Arctic cave's old egg shape.
+ * All overhead spans are taller than the cars, have side walls outside the
+ * asphalt, and follow the road curve. No game colliders are touched.
+ */
+export function buildMetroTunnel({THREE,worldGroup,getFrameAt,start,end,sidewalkOuter,
+                                  theme="metro"}) {
+  const colored=theme === "metro" ? 0x94ceff : 0xffbf7f;
+  const concrete = new THREE.MeshStandardMaterial({
+    color:0x646a70,roughness:.89,metalness:.02,
+    map:facadeMap(THREE,"shop")
+  });
+  const black = new THREE.MeshStandardMaterial({
+    color:0x2b3036,metalness:.28,roughness:.72
+  });
+  const steel = new THREE.MeshStandardMaterial({
+    color:0x717982,metalness:.53,roughness:.44
+  });
+  const light = new THREE.MeshBasicMaterial({color:colored});
+  const warning = new THREE.MeshBasicMaterial({color:0xf2cb55});
+  const laneWidth=sidewalkOuter+1.6;
+  const intervals=28;
+
+  const portal=(t)=>{
+    const f=getFrameAt(t);
+    const arch = new THREE.Group();
+    arch.position.copy(f.point);
+    arch.rotation.y=f.rotationY;
+    // Tall, vertical, rectilinear portals with chamfered headers.
+    for(const s of [-1,1]){
+      const pillar=new THREE.Mesh(new THREE.BoxGeometry(1.45,8.3,1.6),concrete);
+      pillar.position.set(s*laneWidth,4.15,0);
+      arch.add(pillar);
+      const foundation=new THREE.Mesh(new THREE.BoxGeometry(2.9,.55,2.6),black);
+      foundation.position.set(s*laneWidth,.25,0);
+      arch.add(foundation);
+      const reflector=new THREE.Mesh(new THREE.BoxGeometry(.08,.35,1.2),warning);
+      reflector.position.set(s*(laneWidth-.75),1.13,0);
+      arch.add(reflector);
+    }
+    const lintel=new THREE.Mesh(
+      new THREE.BoxGeometry(laneWidth*2+3.2,1.8,1.7),concrete);
+    lintel.position.y=8.05;
+    arch.add(lintel);
+    const fascia=new THREE.Mesh(
+      new THREE.BoxGeometry(laneWidth*2+1.4,.22,.12),light);
+    fascia.position.set(0,7.02,-.88);
+    arch.add(fascia);
+
+    for(const x of [-laneWidth+1.4,laneWidth-1.4]){
+      const chevron=new THREE.Mesh(new THREE.BoxGeometry(.40,.23,.1),warning);
+      chevron.position.set(x,7.53,-.92); chevron.rotation.z=.38;
+      arch.add(chevron);
+    }
+    worldGroup.add(arch);
+  };
+  portal(start);
+  portal(end);
+
+  for(let k=0;k<=intervals;k++){
+    const t=start+(end-start)*(k/intervals);
+    const f=getFrameAt(t);
+    const next=getFrameAt(Math.min(end,t+(end-start)/intervals));
+    const depth=Math.max(.7,Math.hypot(next.point.x-f.point.x,
+                                     next.point.z-f.point.z)+.3);
+    const g=new THREE.Group();
+    g.position.copy(f.point);
+    g.rotation.y=f.rotationY;
+
+    // Side panels and overhead ceiling enclose space, but are not egg-shaped.
+    const ceiling=new THREE.Mesh(
+      new THREE.BoxGeometry(laneWidth*2+.9,.47,depth+.2),black);
+    ceiling.position.y=8.73;g.add(ceiling);
+
+    for(const side of [-1,1]){
+      const wall=new THREE.Mesh(
+        new THREE.BoxGeometry(.38,8.2,depth+.2),concrete);
+      wall.position.set(side*laneWidth,4.1,0);g.add(wall);
+
+      // Real wall panelling, horizontal shoulder rail, black base.
+      const base=new THREE.Mesh(
+        new THREE.BoxGeometry(.47,1.1,depth+.2),black);
+      base.position.set(side*(laneWidth-.05),.55,0);g.add(base);
+      const strip=new THREE.Mesh(
+        new THREE.BoxGeometry(.12,.12,depth+.2),steel);
+      strip.position.set(side*(laneWidth-.30),1.25,0);g.add(strip);
+      const edge=new THREE.Mesh(
+        new THREE.BoxGeometry(.12,.065,depth+.2),light);
+      edge.position.set(side*(laneWidth-.32),5.95,0);g.add(edge);
+
+      if(k%5===0) {
+        const door=new THREE.Mesh(new THREE.BoxGeometry(.12,3.2,1.15),black);
+        door.position.set(side*(laneWidth-.34),2.95,0);g.add(door);
+        const doorLamp=new THREE.Mesh(
+          new THREE.BoxGeometry(.13,.20,.5),warning);
+        doorLamp.position.set(side*(laneWidth-.43),5.1,0);g.add(doorLamp);
+      }
+    }
+
+    // Overhead service pipes / ventilation cable runs.
+    for(const side of [-1,1]){
+      const pipe=new THREE.Mesh(
+        new THREE.CylinderGeometry(.18,.18,depth+.35,8),steel);
+      pipe.rotation.x=Math.PI/2;
+      pipe.position.set(side*(laneWidth-1.1),8.04,0);
+      g.add(pipe);
+    }
+    if(k%2===0) {
+      const lamp=new THREE.Mesh(
+        new THREE.BoxGeometry(2.1,.10,1.3),light);
+      lamp.position.y=8.40;g.add(lamp);
+    }
+    if(k%4===0){
+      const truss=new THREE.Mesh(
+        new THREE.BoxGeometry(laneWidth*2+.7,.35,.28),steel);
+      truss.position.y=8.42;g.add(truss);
+    }
+    worldGroup.add(g);
+  }
 }
