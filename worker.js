@@ -5,17 +5,6 @@ const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const GAMESHUB_IDENTITY_VERIFY_URL =
   "https://redline-dnk.pages.dev/api/account/multiplayer-verify";
 
-/*
-  Short disconnects should feel like a network hiccup, not a kick.
-  Lobby/garage slots are reserved briefly; fully abandoned active rooms
-  are removed after a longer timeout.
-*/
-const DISCONNECT_GRACE_MS =
-  30 * 1000;
-
-const ABANDONED_ROOM_TTL_MS =
-  2 * 60 * 1000;
-
 const VALID_CARS =
   new Set([
     "gt",
@@ -679,7 +668,7 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          8
+          7
 
       });
 
@@ -1391,89 +1380,6 @@ export class RedlineRoom
           */
 
           if (
-            this.room
-          ) {
-
-            this.room.emptySince =
-              Number.isFinite(
-                Number(
-                  this.room.emptySince
-                )
-              )
-                ?
-                Number(
-                  this.room.emptySince
-                )
-                :
-                null;
-
-
-            for (
-              const racer
-              of this.room.players
-              ||
-              []
-            ) {
-
-              racer.disconnectedAt =
-                Number.isFinite(
-                  Number(
-                    racer.disconnectedAt
-                  )
-                )
-                  ?
-                  Number(
-                    racer.disconnectedAt
-                  )
-                  :
-                  null;
-
-            }
-
-          }
-
-
-          if (
-            this.room
-          ) {
-
-            this.room.resumeStates =
-              (
-                this.room.resumeStates
-                &&
-                typeof this.room.resumeStates ===
-                "object"
-              )
-                ?
-                this.room.resumeStates
-                :
-                {};
-
-
-            for (
-              const state
-              of Object.values(
-                this.room.resumeStates
-              )
-            ) {
-
-              if (
-                state?.playerId
-              ) {
-
-                this.liveRaceStates.set(
-                  state.playerId,
-                  state
-                );
-
-              }
-
-            }
-
-          }
-
-
-          if (
             Array.isArray(
               this.room?.results
             )
@@ -1572,12 +1478,6 @@ export class RedlineRoom
       results:
         [],
 
-      resumeStates:
-        {},
-
-      emptySince:
-        null,
-
       players: [
 
         {
@@ -1597,9 +1497,6 @@ export class RedlineRoom
 
           connected:
             false,
-
-          disconnectedAt:
-            null,
 
           car:
             null,
@@ -1689,109 +1586,6 @@ export class RedlineRoom
     }
 
 
-    await this.cleanupStalePlayers();
-
-
-    if (
-      !this.room
-    ) {
-
-      return {
-
-        ok:
-          false,
-
-        status:
-          404,
-
-        error:
-          "Room expired."
-
-      };
-
-    }
-
-
-    /*
-      VERIFIED SESSION RECLAIM
-
-      The same account is not added twice. Instead, rotate its socket token
-      and hand the existing player slot back to that account. This works in
-      lobby, car select, countdown, racing and results.
-    */
-
-    const existing =
-      accountId
-        ?
-        this.room.players.find(
-          candidate =>
-            candidate.accountId ===
-            accountId
-        )
-        :
-        null;
-
-
-    if (
-      existing
-    ) {
-
-      existing.username =
-        cleanUsername(
-          username
-        );
-
-
-      existing.token =
-        crypto.randomUUID();
-
-
-      if (
-        !existing.connected
-      ) {
-
-        existing.disconnectedAt =
-          Date.now();
-
-      }
-
-
-      await this.persist();
-
-      await this.scheduleNextAlarm();
-
-
-      return {
-
-        ok:
-          true,
-
-        data: {
-
-          code:
-            this.room.code,
-
-          playerId:
-            existing.id,
-
-          playerToken:
-            existing.token,
-
-          reconnected:
-            true,
-
-          room:
-            publicRoom(
-              this.room
-            )
-
-        }
-
-      };
-
-    }
-
-
     if (
       this.room.phase !==
       "lobby"
@@ -1834,6 +1628,32 @@ export class RedlineRoom
     }
 
 
+    if (
+      accountId
+      &&
+      this.room.players.some(
+        candidate =>
+          candidate.accountId ===
+          accountId
+      )
+    ) {
+
+      return {
+
+        ok:
+          false,
+
+        status:
+          409,
+
+        error:
+          "Your GAMESHUB account is already in this room."
+
+      };
+
+    }
+
+
     const playerId =
       crypto.randomUUID();
 
@@ -1859,9 +1679,6 @@ export class RedlineRoom
 
       connected:
         false,
-
-      disconnectedAt:
-        null,
 
       car:
         null,
@@ -1903,6 +1720,7 @@ export class RedlineRoom
     };
 
   }
+
 
   /* =======================================================
      WEBSOCKET CONNECTION
@@ -2001,10 +1819,6 @@ export class RedlineRoom
       );
 
 
-    const connectionId =
-      crypto.randomUUID();
-
-
     this.ctx.acceptWebSocket(
       server
     );
@@ -2013,109 +1827,25 @@ export class RedlineRoom
     server.serializeAttachment({
 
       playerId:
-        player.id,
-
-      connectionId
+        player.id
 
     });
-
-
-    /*
-      Only one active socket may own a player slot. A second tab/device
-      takes over the verified account instead of duplicating the racer.
-    */
-
-    for (
-      const oldSocket
-      of this.ctx.getWebSockets()
-    ) {
-
-      if (
-        oldSocket ===
-        server
-      ) {
-
-        continue;
-
-      }
-
-
-      const oldAttachment =
-        oldSocket.deserializeAttachment();
-
-
-      if (
-        oldAttachment?.playerId ===
-        player.id
-      ) {
-
-        try {
-
-          oldSocket.close(
-            4001,
-            "Session replaced by reconnect."
-          );
-
-        }
-
-        catch {}
-
-      }
-
-    }
 
 
     player.connected =
       true;
 
 
-    player.disconnectedAt =
-      null;
-
-
-    this.room.emptySince =
-      null;
-
-
     await this.persist();
 
     await this.syncDirectory();
-
-    await this.scheduleNextAlarm();
 
     this.broadcastState();
 
 
     /*
-      Phase-specific snapshots make a reload/reconnect land on the exact
-      screen/race state instead of falling back to the home screen.
+      Reconnect during an active race.
     */
-
-    if (
-      this.room.phase ===
-      "countdown"
-    ) {
-
-      this.send(
-        server,
-        {
-
-          type:
-            "countdown",
-
-          startAt:
-            this.room.raceStartAt,
-
-          room:
-            publicRoom(
-              this.room
-            )
-
-        }
-      );
-
-    }
-
 
     if (
       this.room.phase ===
@@ -2138,23 +1868,17 @@ export class RedlineRoom
             ),
 
           finishOrder:
-            this.finishOrder,
-
-          raceComplete:
-            Boolean(
-              this.room.raceComplete
-            ),
-
-          room:
-            publicRoom(
-              this.room
-            )
+            this.finishOrder
 
         }
       );
 
     }
 
+
+    /*
+      Reconnect while results are showing.
+    */
 
     if (
       this.room.phase ===
@@ -2199,6 +1923,7 @@ export class RedlineRoom
     );
 
   }
+
 
   /* =======================================================
      WEBSOCKET MESSAGE
@@ -2319,37 +2044,6 @@ export class RedlineRoom
 
         }
       );
-
-
-      return;
-
-    }
-
-
-    /* =====================================================
-       LEAVE ROOM
-    ===================================================== */
-
-    if (
-      data.type ===
-      "leave_room"
-    ) {
-
-      await this.removePlayerNow(
-        player.id
-      );
-
-
-      try {
-
-        ws.close(
-          1000,
-          "Left room."
-        );
-
-      }
-
-      catch {}
 
 
       return;
@@ -2491,10 +2185,6 @@ export class RedlineRoom
       this.liveRaceStates.clear();
 
 
-      this.room.resumeStates =
-        {};
-
-
       this.finishOrder =
         [];
 
@@ -2511,21 +2201,7 @@ export class RedlineRoom
         racer.ready =
           false;
 
-
-        if (
-          racer.connected
-        ) {
-
-          racer.disconnectedAt =
-            null;
-
-        }
-
       }
-
-
-      this.room.emptySince =
-        null;
 
 
       await this.persist();
@@ -2759,26 +2435,6 @@ export class RedlineRoom
         );
 
 
-      const pitch =
-        clamp(
-          finiteNumber(
-            data.pitch
-          ),
-          -Math.PI,
-          Math.PI
-        );
-
-
-      const roll =
-        clamp(
-          finiteNumber(
-            data.roll
-          ),
-          -Math.PI,
-          Math.PI
-        );
-
-
       const speed =
         clamp(
           finiteNumber(
@@ -2855,10 +2511,6 @@ export class RedlineRoom
         z,
 
         rotation,
-
-        pitch,
-
-        roll,
 
         speed,
 
@@ -3115,10 +2767,6 @@ export class RedlineRoom
       this.liveRaceStates.clear();
 
 
-      this.room.resumeStates =
-        {};
-
-
       this.finishOrder =
         [];
 
@@ -3226,10 +2874,6 @@ export class RedlineRoom
       attachment?.playerId;
 
 
-    const connectionId =
-      attachment?.connectionId;
-
-
     if (
       !playerId
     ) {
@@ -3239,56 +2883,6 @@ export class RedlineRoom
     }
 
 
-    /*
-      If a replacement socket is already active, this close belongs to the
-      OLD connection. Do not mark the racer offline.
-    */
-
-    const replacementExists =
-      this.ctx
-        .getWebSockets()
-        .some(
-          candidate => {
-
-            if (
-              candidate ===
-              ws
-            ) {
-
-              return false;
-
-            }
-
-
-            const candidateAttachment =
-              candidate.deserializeAttachment();
-
-
-            return (
-              candidateAttachment?.playerId ===
-              playerId
-              &&
-              (
-                !connectionId
-                ||
-                candidateAttachment?.connectionId !==
-                connectionId
-              )
-            );
-
-          }
-        );
-
-
-    if (
-      replacementExists
-    ) {
-
-      return;
-
-    }
-
-
     const player =
       this.room.players.find(
         candidate =>
@@ -3306,47 +2900,11 @@ export class RedlineRoom
     }
 
 
-    player.connected =
-      false;
+    /* -----------------------------------------------------
+       LOBBY / GARAGE
 
-
-    player.disconnectedAt =
-      Date.now();
-
-
-    /*
-      Never leave host powers attached to an offline socket. This is
-      especially important during results, because somebody must be able
-      to return the room to the lobby.
-    */
-
-    if (
-      player.host
-      &&
-      this.room.players.some(
-        racer =>
-          racer.id !==
-          player.id
-          &&
-          racer.connected
-      )
-    ) {
-
-      this.assignHost();
-
-    }
-
-
-    if (
-      this.room.phase ===
-      "car_select"
-    ) {
-
-      player.ready =
-        false;
-
-    }
-
+       Remove disconnected racer completely.
+    ----------------------------------------------------- */
 
     if (
       this.room.phase ===
@@ -3356,343 +2914,104 @@ export class RedlineRoom
       "car_select"
     ) {
 
+      this.room.players =
+        this.room.players.filter(
+          candidate =>
+            candidate.id !==
+            playerId
+        );
+
+
       this.liveRaceStates.delete(
         playerId
       );
 
-    }
 
-    else {
+      if (
+        this.room.players.length ===
+        0
+      ) {
 
-      const resumeState =
-        this.liveRaceStates.get(
-          playerId
-        );
+        await this.removeFromDirectory();
+
+
+        await this.ctx
+          .storage
+          .delete(
+            "room"
+          );
+
+
+        this.room =
+          null;
+
+
+        return;
+
+      }
 
 
       if (
-        resumeState
+        player.host
       ) {
 
-        this.room.resumeStates =
-          this.room.resumeStates
-          ||
-          {};
-
-
-        this.room.resumeStates[
-          playerId
-        ] =
-          {
-            ...resumeState,
-
-            timestamp:
-              Date.now()
-          };
+        this.assignHost();
 
       }
 
     }
 
 
-    this.broadcast({
+    /* -----------------------------------------------------
+       RACE / RESULTS
 
-      type:
-        "player_disconnected",
-
-      playerId
-
-    });
-
-
-    const anyConnected =
-      this.room.players.some(
-        racer =>
-          racer.connected
-      );
-
-
-    if (
-      !anyConnected
-    ) {
-
-      this.room.emptySince =
-        this.room.emptySince
-        ||
-        Date.now();
-
-    }
+       Keep racer record temporarily so results can
+       still reference them, but mark disconnected.
+    ----------------------------------------------------- */
 
     else {
 
-      this.room.emptySince =
-        null;
+      player.connected =
+        false;
 
-    }
-
-
-    /*
-      A disconnected racer should not trap the race forever.
-    */
-
-    if (
-      this.room.phase ===
-      "racing"
-    ) {
-
-      await this.maybeCompleteRace();
-
-    }
-
-
-    await this.persist();
-
-    await this.syncDirectory();
-
-    await this.scheduleNextAlarm();
-
-    this.broadcastState();
-
-  }
-
-
-  /* =======================================================
-     IMMEDIATE LEAVE
-  ======================================================= */
-
-  async removePlayerNow(
-    playerId
-  ) {
-
-    if (
-      !this.room
-    ) {
-
-      return;
-
-    }
-
-
-    const player =
-      this.room.players.find(
-        candidate =>
-          candidate.id ===
-          playerId
-      );
-
-
-    if (
-      !player
-    ) {
-
-      return;
-
-    }
-
-
-    const wasHost =
-      Boolean(
-        player.host
-      );
-
-
-    this.room.players =
-      this.room.players.filter(
-        candidate =>
-          candidate.id !==
-          playerId
-      );
-
-
-    this.liveRaceStates.delete(
-      playerId
-    );
-
-
-    if (
-      this.room.players.length ===
-      0
-    ) {
-
-      await this.destroyRoom();
-
-      return;
-
-    }
-
-
-    if (
-      wasHost
-      ||
-      !this.room.players.some(
-        racer =>
-          racer.id ===
-          this.room.hostId
-          &&
-          racer.host
-      )
-    ) {
-
-      this.assignHost();
-
-    }
-
-
-    if (
-      this.room.phase ===
-      "racing"
-    ) {
-
-      await this.maybeCompleteRace();
-
-    }
-
-
-    await this.persist();
-
-    await this.syncDirectory();
-
-    await this.scheduleNextAlarm();
-
-    this.broadcastState();
-
-  }
-
-
-  /* =======================================================
-     STALE DISCONNECT CLEANUP
-  ======================================================= */
-
-  async cleanupStalePlayers(
-    now =
-      Date.now()
-  ) {
-
-    if (
-      !this.room
-      ||
-      (
-        this.room.phase !==
-        "lobby"
-        &&
-        this.room.phase !==
-        "car_select"
-      )
-    ) {
-
-      return false;
-
-    }
-
-
-    const before =
-      this.room.players.length;
-
-
-    const removedIds =
-      new Set();
-
-
-    this.room.players =
-      this.room.players.filter(
-        racer => {
-
-          const stale =
-            !racer.connected
-            &&
-            Number.isFinite(
-              Number(
-                racer.disconnectedAt
-              )
-            )
-            &&
-            now -
-            Number(
-              racer.disconnectedAt
-            )
-            >=
-            DISCONNECT_GRACE_MS;
-
-
-          if (
-            stale
-          ) {
-
-            removedIds.add(
-              racer.id
-            );
-
-          }
-
-
-          return !stale;
-
-        }
-      );
-
-
-    for (
-      const playerId
-      of removedIds
-    ) {
 
       this.liveRaceStates.delete(
         playerId
       );
 
-    }
+
+      this.broadcast({
+
+        type:
+          "player_disconnected",
+
+        playerId
+
+      });
 
 
-    if (
-      this.room.players.length ===
-      0
-    ) {
+      /*
+        A disconnected racer should not trap everybody
+        forever on the finish screen.
+      */
 
-      await this.destroyRoom();
+      if (
+        this.room.phase ===
+        "racing"
+      ) {
 
-      return true;
+        await this.maybeCompleteRace();
 
-    }
-
-
-    if (
-      removedIds.has(
-        this.room.hostId
-      )
-      ||
-      !this.room.players.some(
-        racer =>
-          racer.host
-          &&
-          racer.id ===
-          this.room.hostId
-      )
-    ) {
-
-      this.assignHost();
+      }
 
     }
 
 
-    const changed =
-      this.room.players.length !==
-      before;
+    await this.persist();
 
+    await this.syncDirectory();
 
-    if (
-      changed
-    ) {
-
-      await this.persist();
-
-      await this.syncDirectory();
-
-      this.broadcastState();
-
-    }
-
-
-    return changed;
+    this.broadcastState();
 
   }
 
@@ -3745,190 +3064,6 @@ export class RedlineRoom
 
   }
 
-
-  /* =======================================================
-     ROOM CLEANUP / ALARM SCHEDULING
-  ======================================================= */
-
-  async destroyRoom() {
-
-    if (
-      !this.room
-    ) {
-
-      return;
-
-    }
-
-
-    await this.removeFromDirectory();
-
-
-    await this.ctx
-      .storage
-      .delete(
-        "room"
-      );
-
-
-    try {
-
-      await this.ctx
-        .storage
-        .deleteAlarm();
-
-    }
-
-    catch {}
-
-
-    this.room =
-      null;
-
-
-    this.liveRaceStates.clear();
-
-
-    this.finishOrder =
-      [];
-
-  }
-
-
-  async scheduleNextAlarm() {
-
-    if (
-      !this.room
-    ) {
-
-      return;
-
-    }
-
-
-    const now =
-      Date.now();
-
-
-    const candidates =
-      [];
-
-
-    if (
-      this.room.phase ===
-      "countdown"
-      &&
-      Number.isFinite(
-        Number(
-          this.room.raceStartAt
-        )
-      )
-    ) {
-
-      candidates.push(
-        Number(
-          this.room.raceStartAt
-        )
-      );
-
-    }
-
-
-    if (
-      this.room.phase ===
-      "lobby"
-      ||
-      this.room.phase ===
-      "car_select"
-    ) {
-
-      for (
-        const racer
-        of this.room.players
-      ) {
-
-        if (
-          !racer.connected
-          &&
-          Number.isFinite(
-            Number(
-              racer.disconnectedAt
-            )
-          )
-        ) {
-
-          candidates.push(
-            Number(
-              racer.disconnectedAt
-            )
-            +
-            DISCONNECT_GRACE_MS
-          );
-
-        }
-
-      }
-
-    }
-
-
-    if (
-      Number.isFinite(
-        Number(
-          this.room.emptySince
-        )
-      )
-    ) {
-
-      candidates.push(
-        Number(
-          this.room.emptySince
-        )
-        +
-        ABANDONED_ROOM_TTL_MS
-      );
-
-    }
-
-
-    if (
-      candidates.length ===
-      0
-    ) {
-
-      try {
-
-        await this.ctx
-          .storage
-          .deleteAlarm();
-
-      }
-
-      catch {}
-
-
-      return;
-
-    }
-
-
-    const next =
-      Math.max(
-        now +
-        25,
-        Math.min(
-          ...candidates
-        )
-      );
-
-
-    await this.ctx
-      .storage
-      .setAlarm(
-        next
-      );
-
-  }
 
   /* =======================================================
      COMPLETE RACE
@@ -4195,7 +3330,11 @@ export class RedlineRoom
     await this.syncDirectory();
 
 
-    await this.scheduleNextAlarm();
+    await this.ctx
+      .storage
+      .setAlarm(
+        this.room.raceStartAt
+      );
 
 
     this.broadcast({
@@ -4224,102 +3363,44 @@ export class RedlineRoom
 
     if (
       !this.room
-    ) {
-
-      return;
-
-    }
-
-
-    const now =
-      Date.now();
-
-
-    /*
-      Expire short-lived lobby/garage disconnect reservations.
-    */
-
-    await this.cleanupStalePlayers(
-      now
-    );
-
-
-    if (
-      !this.room
-    ) {
-
-      return;
-
-    }
-
-
-    /*
-      Fully abandoned active rooms are eventually destroyed so old race
-      codes do not live forever.
-    */
-
-    if (
-      Number.isFinite(
-        Number(
-          this.room.emptySince
-        )
-      )
-      &&
-      now -
-      Number(
-        this.room.emptySince
-      )
-      >=
-      ABANDONED_ROOM_TTL_MS
-    ) {
-
-      await this.destroyRoom();
-
-      return;
-
-    }
-
-
-    if (
-      this.room.phase ===
+      ||
+      this.room.phase !==
       "countdown"
-      &&
-      this.room.raceStartAt
-      &&
-      now >=
-      this.room.raceStartAt
+      ||
+      !this.room.raceStartAt
     ) {
 
-      this.room.phase =
-        "racing";
-
-
-      await this.persist();
-
-      await this.syncDirectory();
-
-
-      this.broadcast({
-
-        type:
-          "race_started",
-
-        startAt:
-          this.room.raceStartAt,
-
-        room:
-          publicRoom(
-            this.room
-          )
-
-      });
+      return;
 
     }
 
 
-    await this.scheduleNextAlarm();
+    this.room.phase =
+      "racing";
+
+
+    await this.persist();
+
+    await this.syncDirectory();
+
+
+    this.broadcast({
+
+      type:
+        "race_started",
+
+      startAt:
+        this.room.raceStartAt,
+
+      room:
+        publicRoom(
+          this.room
+        )
+
+    });
 
   }
+
 
   /* =======================================================
      STORAGE
