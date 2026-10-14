@@ -2199,24 +2199,29 @@ function buildRoad() {
     buildCrosswalks();
 }
 function buildCrosswalks() {
-    const stripeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xdfe4eb
-    });
-    for (const t of crosswalkTs) {
-        const frame = getFrameAt(t);
-        const group = new THREE.Group();
+    /*
+      Correct zebra crossings: separate white slabs painted across the
+      roadway. Previously every 12-m-long strip overlapped the next,
+      causing one giant fluorescent slab across city intersections.
+    */
+    const paint =
+        new THREE.MeshStandardMaterial({
+            color: 0xd2d6d5,
+            roughness: .93,
+            metalness: 0
+        });
+
+    const stripeGeo =
+        new THREE.BoxGeometry(.64,.015,2.35);
+
+    for(const t of crosswalkTs) {
+        const frame=getFrameAt(t);
+        const group=new THREE.Group();
         group.position.copy(frame.point);
-        group.rotation.y =
-            frame.rotationY;
-        for (let i = -5; i <= 5; i++) {
-            const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.026, ROAD_HALF *
-                2 -
-                0.9), stripeMaterial);
-            stripe.position.set(i *
-                0.95, 0.095, 0);
-            stripe.rotation.y =
-                Math.PI /
-                    2;
+        group.rotation.y=frame.rotationY;
+        for(let i=-6;i<=6;i++){
+            const stripe=new THREE.Mesh(stripeGeo,paint);
+            stripe.position.set(i*.94,.095,0);
             group.add(stripe);
         }
         worldGroup.add(group);
