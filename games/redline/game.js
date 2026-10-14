@@ -1860,14 +1860,25 @@ function makeRibbon(
         [];
 
 
+    /*
+      Textured Neon ribbons duplicate the first section at the end
+      with increasing UV coordinates. This prevents a giant texture smear
+      across the wraparound segment near the start/finish line.
+    */
+    const splitUvSeam =
+        activeTrackId === "neon"
+        &&
+        Boolean(textureKind);
+
+
     for (
         let i = 0;
-        i < TRACK_SAMPLE_COUNT;
+        i < TRACK_SAMPLE_COUNT + (splitUvSeam ? 1 : 0);
         i++
     ) {
 
         const sample =
-            trackSamples[i];
+            trackSamples[i % TRACK_SAMPLE_COUNT];
 
 
         const inner =
@@ -1930,12 +1941,16 @@ function makeRibbon(
     ) {
 
         const next =
-            (
-                i +
-                1
-            )
-            %
-            TRACK_SAMPLE_COUNT;
+            splitUvSeam
+                ?
+                i + 1
+                :
+                (
+                    i +
+                    1
+                )
+                %
+                TRACK_SAMPLE_COUNT;
 
 
         const a =
