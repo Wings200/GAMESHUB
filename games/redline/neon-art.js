@@ -407,6 +407,41 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
   }),shutters);
 }
 
+/**
+ * Pools of warm/cool light under existing street lamps. This fakes diffuse
+ * bounced illumination cheaply, without dozens of expensive point lights.
+ */
+export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
+                                   roadHalf}) {
+  const canvas=document.createElement("canvas");
+  canvas.width=256;canvas.height=256;
+  const g=canvas.getContext("2d");
+  const gradient=g.createRadialGradient(128,128,4,128,128,120);
+  gradient.addColorStop(0,"rgba(255,255,245,.37)");
+  gradient.addColorStop(.18,"rgba(255,246,225,.16)");
+  gradient.addColorStop(.52,"rgba(255,232,195,.055)");
+  gradient.addColorStop(1,"rgba(255,223,170,0)");
+  g.fillStyle=gradient;g.fillRect(0,0,256,256);
+  const texture=canvasTexture(THREE,canvas);
+  const mat=new THREE.MeshBasicMaterial({
+    map:texture,transparent:true,depthWrite:false,
+    blending:THREE.AdditiveBlending,opacity:.95,
+    side:THREE.DoubleSide,fog:true
+  });
+  const geo=new THREE.PlaneGeometry(21,28);
+  geo.rotateX(-Math.PI/2);
+  const instances=[];
+  for(let i=0;i<sampleCount;i+=18){
+    const s=trackSamples[i];
+    if(!s)continue;
+    for(const side of [-1,1]){
+      const p=s.point.clone().addScaledVector(s.normal,side*(roadHalf+2.9));
+      instances.push({x:p.x,y:.10,z:p.z,w:1,h:1,d:1,rotation:s.rotationY});
+    }
+  }
+  instantiate(THREE,worldGroup,geo,mat,instances);
+}
+
 /** Proper sidewalk lip, gutter, reflective studs and drains. No collider edits. */
 export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCount,
                                          getFrameAt, roadHalf, sidewalkOuter}) {
@@ -526,6 +561,38 @@ export async function loadAuthoredModels({THREE, worldGroup, getFrameAt}) {
 }
 
 
+function tunnelConcreteMap(THREE) {
+  const canvas = document.createElement("canvas");
+  canvas.width=512;canvas.height=512;
+  const g=canvas.getContext("2d");
+  const grad=g.createLinearGradient(0,0,512,512);
+  grad.addColorStop(0,"#858a8b");grad.addColorStop(.6,"#999a98");
+  grad.addColorStop(1,"#6c7479");
+  g.fillStyle=grad;g.fillRect(0,0,512,512);
+  // Cast concrete shutter joints, granular aggregate and rain stains.
+  for(let y=0;y<=512;y+=128) {
+    g.fillStyle="rgba(18,28,34,.18)";g.fillRect(0,y,512,3);
+    g.fillStyle="rgba(239,236,223,.08)";g.fillRect(0,y+3,512,1);
+  }
+  for(let x=0;x<=512;x+=256){
+    g.fillStyle="rgba(20,27,30,.12)";g.fillRect(x,0,2,512);
+  }
+  for(let i=0;i<10000;i++){
+    const x=noise01(i*3+47)*512,y=noise01(i*11+2)*512;
+    g.fillStyle=noise01(i*13)>.5?"#152028":"#e0dcd3";
+    g.globalAlpha=.018+noise01(i*5)*.075;
+    g.fillRect(x,y,1+noise01(i)*4,1+noise01(i*19)*3);
+  }
+  g.globalAlpha=1;
+  for(let i=0;i<50;i++){
+    const x=noise01(i*29+11)*512;
+    const y=noise01(i*17+33)*512;
+    g.fillStyle="rgba(19,29,34,.038)";
+    g.fillRect(x,y,4+noise01(i*31)*13,24+noise01(i*41)*120);
+  }
+  return canvasTexture(THREE,canvas);
+}
+
 /**
  * Rectangular urban expressway / metro-tunnel kit.
  *
@@ -536,9 +603,10 @@ export async function loadAuthoredModels({THREE, worldGroup, getFrameAt}) {
 export function buildMetroTunnel({THREE,worldGroup,getFrameAt,start,end,sidewalkOuter,
                                   theme="metro"}) {
   const colored=theme === "metro" ? 0x94ceff : 0xffbf7f;
+  const concreteTile=tunnelConcreteMap(THREE);
   const concrete = new THREE.MeshStandardMaterial({
-    color:0x646a70,roughness:.89,metalness:.02,
-    map:facadeMap(THREE,"shop")
+    color:0xc9cbd0,roughness:.89,metalness:.02,
+    map:concreteTile, bumpMap:concreteTile,bumpScale:.035
   });
   const black = new THREE.MeshStandardMaterial({
     color:0x2b3036,metalness:.28,roughness:.72
