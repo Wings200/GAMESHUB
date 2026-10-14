@@ -1368,14 +1368,6 @@
         false;
 
 
-      let resumeFromSavedSession =
-        false;
-
-
-      let restoringSavedSession =
-        false;
-
-
       const pendingSocketMessages =
         [];
 
@@ -2812,23 +2804,11 @@
 
 
           state.textContent =
-            !player.connected
+            player.ready
               ?
-              (
-                isMe
-                  ?
-                  "CONNECTING..."
-                  :
-                  "RECONNECTING..."
-              )
+              "READY ✓"
               :
-              (
-                player.ready
-                  ?
-                  "READY ✓"
-                  :
-                  "WAITING"
-              );
+              "WAITING";
 
 
           row.append(
@@ -3101,22 +3081,6 @@
           showScreen(
             "carSelectScreen"
           );
-
-
-          return;
-
-        }
-
-
-        if (
-          currentRoom.phase ===
-          "racing"
-        ) {
-
-          launchLocalRace();
-
-
-          return;
 
         }
 
@@ -3440,26 +3404,6 @@
               }
 
 
-              if (
-                !localRaceStarted
-                &&
-                currentRoom?.phase ===
-                "racing"
-              ) {
-
-                launchLocalRace();
-
-              }
-
-
-              const shouldRestoreLocalState =
-                resumeFromSavedSession;
-
-
-              resumeFromSavedSession =
-                false;
-
-
               dispatchMPEvent(
                 "redline:race-snapshot",
                 {
@@ -3484,10 +3428,7 @@
                   room:
                     data.room
                     ??
-                    currentRoom,
-
-                  resumeLocalState:
-                    shouldRestoreLocalState
+                    currentRoom
                 }
               );
 
@@ -3545,10 +3486,6 @@
               data.type ===
               "race_complete"
             ) {
-
-              resumeFromSavedSession =
-                false;
-
 
               if (
                 data.room
@@ -4349,309 +4286,6 @@
 
 
       /* ===================================================
-         RESTORE SAVED MULTIPLAYER SESSION
-      ==================================================== */
-
-      async function restoreSavedMultiplayerSession() {
-
-        if (
-          restoringSavedSession
-          ||
-          currentRoom
-        ) {
-
-          return;
-
-        }
-
-
-        const code =
-          (
-            sessionStorage.getItem(
-              "redline_room_code"
-            )
-            ||
-            ""
-          )
-            .trim()
-            .toUpperCase();
-
-
-        const playerId =
-          sessionStorage.getItem(
-            "redline_player_id"
-          )
-          ||
-          "";
-
-
-        const playerToken =
-          sessionStorage.getItem(
-            "redline_player_token"
-          )
-          ||
-          "";
-
-
-        if (
-          code.length !==
-          6
-          ||
-          !playerId
-          ||
-          !playerToken
-        ) {
-
-          return;
-
-        }
-
-
-        restoringSavedSession =
-          true;
-
-
-        try {
-
-          const response =
-            await fetch(
-              `${MULTIPLAYER_API}/api/rooms/${encodeURIComponent(code)}`,
-              {
-                cache:
-                  "no-store"
-              }
-            );
-
-
-          if (
-            response.status ===
-            404
-          ) {
-
-            clearSession();
-
-
-            return;
-
-          }
-
-
-          if (
-            !response.ok
-          ) {
-
-            throw new Error(
-              "Could not restore REDLINE room."
-            );
-
-          }
-
-
-          const data =
-            await response
-              .json();
-
-
-          let room =
-            data?.room
-            ||
-            null;
-
-
-          let me =
-            room
-              ?.players
-              ?.find(
-                player =>
-                  player.id ===
-                  playerId
-              )
-            ||
-            null;
-
-
-          let restoredPlayerId =
-            playerId;
-
-
-          let restoredPlayerToken =
-            playerToken;
-
-
-          /*
-            If the old lobby reservation already expired, reclaim/join the
-            verified account again when the room is still joinable.
-          */
-
-          if (
-            !me
-            &&
-            room?.phase ===
-            "lobby"
-          ) {
-
-            const accountToken =
-              await getMultiplayerAccountToken();
-
-
-            const reclaimResponse =
-              await fetch(
-                `${MULTIPLAYER_API}/api/rooms/${encodeURIComponent(code)}/join`,
-                {
-                  method:
-                    "POST",
-
-                  headers: {
-                    "Content-Type":
-                      "application/json"
-                  },
-
-                  body:
-                    JSON.stringify({
-                      accountToken
-                    })
-                }
-              );
-
-
-            const reclaimData =
-              await reclaimResponse
-                .json()
-                .catch(
-                  () => null
-                );
-
-
-            if (
-              !reclaimResponse.ok
-            ) {
-
-              clearSession();
-
-
-              return;
-
-            }
-
-
-            room =
-              reclaimData.room;
-
-
-            restoredPlayerId =
-              reclaimData.playerId;
-
-
-            restoredPlayerToken =
-              reclaimData.playerToken;
-
-
-            me =
-              room
-                ?.players
-                ?.find(
-                  player =>
-                    player.id ===
-                    restoredPlayerId
-                )
-              ||
-              null;
-
-          }
-
-
-          if (
-            !room
-            ||
-            !me
-          ) {
-
-            clearSession();
-
-
-            return;
-
-          }
-
-
-          currentRoom =
-            room;
-
-
-          saveSession(
-            code,
-            restoredPlayerId,
-            restoredPlayerToken
-          );
-
-
-          resumeFromSavedSession =
-            true;
-
-
-          if (
-            room.raceStartAt
-          ) {
-
-            serverRaceStartAt =
-              room.raceStartAt;
-
-          }
-
-
-          applyRoomPhase();
-
-
-          connectRoomSocket(
-            code,
-            restoredPlayerToken,
-            true
-          );
-
-        }
-
-        catch (
-          error
-        ) {
-
-          /*
-            Network outage: keep the session keys so the normal reload or
-            reconnect path can try again later instead of deleting recovery
-            data just because the Worker was temporarily unreachable.
-          */
-
-          console.warn(
-            "REDLINE saved-session restore deferred:",
-            error
-          );
-
-        }
-
-        finally {
-
-          restoringSavedSession =
-            false;
-
-        }
-
-      }
-
-
-      window.addEventListener(
-        "load",
-        () => {
-
-          restoreSavedMultiplayerSession();
-
-        },
-        {
-          once:
-            true
-        }
-      );
-
-
-      /* ===================================================
          LEAVE
       ==================================================== */
 
@@ -4690,21 +4324,6 @@
           ) {
 
             try {
-
-              if (
-                roomSocket.readyState ===
-                WebSocket.OPEN
-              ) {
-
-                roomSocket.send(
-                  JSON.stringify({
-                    type:
-                      "leave_room"
-                  })
-                );
-
-              }
-
 
               roomSocket.close();
 
