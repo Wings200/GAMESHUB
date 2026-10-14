@@ -2165,6 +2165,15 @@ function buildRoad() {
             sidewalkOuter: SIDEWALK_OUTER
         });
 
+
+        NEON_ART.addStreetLighting({
+            THREE,
+            worldGroup,
+            trackSamples,
+            sampleCount: TRACK_SAMPLE_COUNT,
+            roadHalf: ROAD_HALF
+        });
+
     }
 
 
