@@ -91,64 +91,158 @@ const TRACKS = {
     neon: {
         id: "neon",
         name: "NEON DISTRICT",
-        description: "Neon District — tight city streets, boost pads, traffic obstacles and three fast laps.",
-        sampleCount: 300,
-        laps: 3,
-        background: 0x060c16,
-        fogNear: 105,
-        fogFar: 290,
+        description: "Neon District V2 — a long one-lap midnight street circuit through downtown towers, metro tunnels, a tight old-city alley, construction works, parking structures and two hidden corner-cut jumps.",
+        sampleCount: 520,
+        laps: 1,
+        background: 0x050a13,
+        fogNear: 170,
+        fogFar: 560,
+
+        /*
+          V2 is a much longer non-self-crossing city loop.
+          The jagged outer route creates real blocks and district changes
+          without putting guardrails across crossing roads.
+        */
         controlPoints: [
-            [-8, 58],
-            [28, 60],
-            [62, 48],
-            [84, 20],
-            [87, -14],
-            [70, -42],
-            [39, -58],
-            [5, -54],
-            [-22, -38],
-            [-52, -35],
-            [-75, -12],
-            [-72, 20],
-            [-50, 47]
+            [-245, 163],
+            [-170, 190],
+            [-95, 170],
+            [-41, 194],
+            [27, 173],
+            [102, 201],
+            [184, 173],
+            [245, 139],
+            [286, 82],
+            [265, 31],
+            [292, -24],
+            [272, -85],
+            [228, -133],
+            [170, -160],
+            [109, -139],
+            [48, -184],
+            [-24, -167],
+            [-88, -187],
+            [-150, -156],
+            [-211, -136],
+            [-248, -92],
+            [-228, -48],
+            [-275, 0],
+            [-258, 65],
+            [-224, 109],
+            [-184, 139]
         ],
+
         checkpoints: [
-            0.09,
-            0.23,
-            0.37,
-            0.51,
-            0.65,
-            0.79,
-            0.93
+            0.045,
+            0.105,
+            0.165,
+            0.225,
+            0.285,
+            0.345,
+            0.405,
+            0.465,
+            0.525,
+            0.585,
+            0.645,
+            0.705,
+            0.765,
+            0.825,
+            0.885,
+            0.945
         ],
+
         crosswalks: [
             0.035,
-            0.285,
-            0.585,
-            0.835
+            0.145,
+            0.265,
+            0.405,
+            0.555,
+            0.705,
+            0.835,
+            0.955
         ],
+
         barriers: [
-            { start: 0.17, end: 0.28, side: 1 },
-            { start: 0.30, end: 0.39, side: -1 },
-            { start: 0.45, end: 0.57, side: 1 },
-            { start: 0.61, end: 0.70, side: -1 },
-            { start: 0.76, end: 0.86, side: 1 },
-            { start: 0.89, end: 0.98, side: -1 }
+            { start: 0.055, end: 0.125, side: 1 },
+            { start: 0.160, end: 0.225, side: -1 },
+            { start: 0.275, end: 0.345, side: 1 },
+            { start: 0.385, end: 0.455, side: -1 },
+            { start: 0.505, end: 0.575, side: 1 },
+            { start: 0.615, end: 0.685, side: -1 },
+            { start: 0.735, end: 0.805, side: 1 },
+            { start: 0.845, end: 0.915, side: -1 }
         ],
+
         obstacles: [
-            { t: 0.29, offset: 2.7, kind: "barrier", radius: 1.2 },
-            { t: 0.55, offset: -2.7, kind: "parked", radius: 1.4 },
-            { t: 0.875, offset: 2.4, kind: "barrier", radius: 1.2 }
+            /* Downtown */
+            { t: 0.082, offset: 2.5, kind: "barrier", radius: 1.2 },
+            { t: 0.118, offset: -2.6, kind: "parked", radius: 1.4 },
+
+            /* Metro approach */
+            { t: 0.255, offset: -2.7, kind: "barrier", radius: 1.2 },
+            { t: 0.292, offset: 2.5, kind: "parked", radius: 1.4 },
+
+            /* Old-city alley */
+            { t: 0.505, offset: 2.6, kind: "barrier", radius: 1.2 },
+            { t: 0.548, offset: -2.4, kind: "parked", radius: 1.4 },
+
+            /* Construction district */
+            { t: 0.690, offset: -2.7, kind: "barrier", radius: 1.2 },
+            { t: 0.724, offset: 2.6, kind: "barrier", radius: 1.2 },
+            { t: 0.758, offset: -2.4, kind: "parked", radius: 1.4 },
+
+            /* Final underpass */
+            { t: 0.902, offset: 2.5, kind: "barrier", radius: 1.2 }
         ],
+
         boosts: [
-            { t: 0.16, offset: -1.9 },
-            { t: 0.62, offset: 1.8 }
+            { t: 0.028, offset: 0 },
+            { t: 0.178, offset: -1.7 },
+            { t: 0.332, offset: 1.8 },
+            { t: 0.472, offset: -1.8 },
+            { t: 0.612, offset: 1.8 },
+            { t: 0.782, offset: -1.8 },
+            { t: 0.935, offset: 0 }
         ],
+
         pickups: [
-            { t: 0.40, offset: -2.2, type: "overdrive" },
-            { t: 0.82, offset: 2.0, type: "nitro" }
+            { t: 0.125, offset: 2.0, type: "nitro" },
+            { t: 0.285, offset: -2.0, type: "overdrive" },
+            { t: 0.445, offset: 2.0, type: "nitro" },
+            { t: 0.595, offset: -2.0, type: "overdrive" },
+            { t: 0.748, offset: 2.0, type: "nitro" },
+            { t: 0.875, offset: -2.0, type: "overdrive" }
         ],
-        ramps: []
+
+        ramps: [
+            { t: 0.365, offset: -1.2, strength: 7.6, secret: false },
+            { t: 0.642, offset: 1.2, strength: 7.9, secret: false },
+            { t: 0.912, offset: 0, strength: 7.5, secret: false },
+
+            /* Hidden downtown corner cut */
+            {
+                t: 0.188,
+                offset: -5.45,
+                strength: 8.9,
+                secret: true,
+                targetT: 0.211,
+                landingLead: 5,
+                shortcutSpeed: 74,
+                minSpeed: 27
+            },
+
+            /* Construction service-road jump */
+            {
+                t: 0.704,
+                offset: 5.45,
+                strength: 9.2,
+                secret: true,
+                targetT: 0.730,
+                landingLead: 6,
+                shortcutSpeed: 78,
+                minSpeed: 29
+            }
+        ]
     },
 
     arctic: {
@@ -449,7 +543,14 @@ function applyTrackConfig(trackId) {
             ?
             900
             :
-            440;
+            (
+                activeTrackId ===
+                "neon"
+                    ?
+                    720
+                    :
+                    440
+            );
 
     camera.updateProjectionMatrix();
 
@@ -2076,10 +2177,10 @@ function buildCity() {
 
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(
-            560,
-            560,
-            8,
-            8
+            760,
+            600,
+            12,
+            10
         ),
         new THREE.MeshStandardMaterial({
             color:
@@ -2101,60 +2202,245 @@ function buildCity() {
         -0.02;
     worldGroup.add(ground);
     const buildingSpecs = [];
+
+
+    const secretCorridors =
+        rampDefinitions
+            .filter(
+                ramp =>
+                    ramp.secret
+                    &&
+                    Number.isFinite(
+                        Number(
+                            ramp.targetT
+                        )
+                    )
+            )
+            .map(
+                ramp => {
+
+                    const frame =
+                        getFrameAt(
+                            ramp.t
+                        );
+
+
+                    return {
+                        start:
+                            frame.point
+                                .clone()
+                                .addScaledVector(
+                                    frame.normal,
+                                    ramp.offset
+                                    ||
+                                    0
+                                ),
+
+                        end:
+                            getShortcutLandingPoint(
+                                ramp
+                            )
+                    };
+
+                }
+            );
+
+
     let buildingIndex = 0;
-    for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 13) {
-        const sample = trackSamples[i];
-        for (const side of [-1, 1]) {
-            const distance = 18
-                +
-                    (buildingIndex *
-                        7)
+
+
+    for (
+        let i = 0;
+        i < TRACK_SAMPLE_COUNT;
+        i += 13
+    ) {
+
+        const sample =
+            trackSamples[i];
+
+
+        const t =
+            i /
+            TRACK_SAMPLE_COUNT;
+
+
+        const alley =
+            sectionContains(
+                t,
+                0.490,
+                0.585
+            );
+
+
+        const downtown =
+            sectionContains(
+                t,
+                0.015,
+                0.205
+            );
+
+
+        for (
+            const side
+            of [-1, 1]
+        ) {
+
+            const distance =
+                alley
+                    ?
+                    13.8
+                    +
+                    (
+                        buildingIndex *
+                        5
+                    )
+                    %
+                    3.5
+                    :
+                    (
+                        18
+                        +
+                        (
+                            buildingIndex *
+                            7
+                        )
                         %
-                            10;
-            const height = 10
+                        10
+                    );
+
+
+            const height =
+                downtown
+                    ?
+                    24
+                    +
+                    (
+                        buildingIndex *
+                        17
+                    )
+                    %
+                    30
+                    :
+                    (
+                        alley
+                            ?
+                            12
+                            +
+                            (
+                                buildingIndex *
+                                9
+                            )
+                            %
+                            15
+                            :
+                            14
+                            +
+                            (
+                                buildingIndex *
+                                13
+                            )
+                            %
+                            26
+                    );
+
+
+            const width =
+                7
                 +
-                    (buildingIndex *
-                        13)
-                        %
-                            22;
-            const width = 7
+                (
+                    buildingIndex *
+                    5
+                )
+                %
+                6;
+
+
+            const depth =
+                8
                 +
-                    (buildingIndex *
-                        5)
-                        %
-                            5;
-            const depth = 8
-                +
-                    (buildingIndex *
-                        11)
-                        %
-                            6;
-            const position = sample.point
-                .clone()
-                .addScaledVector(sample.normal, side *
-                distance);
+                (
+                    buildingIndex *
+                    11
+                )
+                %
+                7;
+
+
+            const position =
+                sample.point
+                    .clone()
+                    .addScaledVector(
+                        sample.normal,
+                        side *
+                        distance
+                    );
+
+
+            /*
+              Never visually wall off the two secret jump trajectories.
+            */
+
+            const inSecretFlightPath =
+                secretCorridors.some(
+                    corridor =>
+                        pointToSegmentDistance2D(
+                            position,
+                            corridor.start,
+                            corridor.end
+                        )
+                        <
+                        10.5
+                );
+
+
+            if (
+                inSecretFlightPath
+            ) {
+
+                continue;
+
+            }
+
+
             const colors = [
                 0x172231,
                 0x1e2938,
                 0x253142,
-                0x202532
+                0x202532,
+                0x18283a,
+                0x2a2438
             ];
+
+
             buildingSpecs.push({
                 position,
-                rotationY: sample.rotationY,
-                normal: sample.normal.clone(),
-                tangent: sample.tangent.clone(),
+                rotationY:
+                    sample.rotationY,
+                normal:
+                    sample.normal.clone(),
+                tangent:
+                    sample.tangent.clone(),
                 side,
                 width,
                 height,
                 depth,
-                color: colors[buildingIndex %
-                    colors.length],
-                index: buildingIndex
+                color:
+                    colors[
+                        buildingIndex %
+                        colors.length
+                    ],
+                index:
+                    buildingIndex
             });
+
+
             buildingIndex++;
+
         }
+
     }
+
+
     const facadeTexture =
         createSurfaceTexture(
             "facade",
@@ -2216,7 +2502,22 @@ function buildCity() {
     buildBillboards();
     buildTrafficLights();
     buildLandmarkTower();
-    buildTunnel();
+
+    buildTunnel(
+        0.315,
+        0.365,
+        0x27313e,
+        0x8bcfff
+    );
+
+    buildTunnel(
+        0.865,
+        0.915,
+        0x252b35,
+        0xff5f9a
+    );
+
+    buildNeonDistrictSetPieces();
 }
 function addEnvironmentCircleCollider(
     position,
@@ -5524,9 +5825,13 @@ function buildBillboards() {
 }
 function buildTrafficLights() {
     const trafficTs = [
-        0.28,
-        0.585,
-        0.835
+        0.095,
+        0.245,
+        0.405,
+        0.555,
+        0.705,
+        0.835,
+        0.955
     ];
     for (const t of trafficTs) {
         const frame = getFrameAt(t);
@@ -5571,74 +5876,890 @@ function buildLandmarkTower() {
     }), 0, 53.5, 0);
     worldGroup.add(tower);
 }
-function buildTunnel() {
-    const start = 0.46;
-    const end = 0.535;
-    const steps = 10;
-    const concrete = material(0x303844, 0.92, 0.03);
-    const dark = material(0x151a22, 0.95, 0.02);
-    const lightMat = new THREE.MeshBasicMaterial({
-        color: 0xa8d9ff
-    });
-    for (let i = 0; i <= steps; i++) {
-        const t = start
+function buildTunnel(
+    start,
+    end,
+    wallColor =
+        0x303844,
+    lightColor =
+        0xa8d9ff
+) {
+
+    const steps =
+        Math.max(
+            9,
+            Math.round(
+                (
+                    end -
+                    start
+                )
+                *
+                TRACK_SAMPLE_COUNT
+                /
+                3.3
+            )
+        );
+
+
+    const concrete =
+        material(
+            wallColor,
+            0.88,
+            0.05
+        );
+
+
+    const dark =
+        material(
+            0x111720,
+            0.96,
+            0.02
+        );
+
+
+    const lightMat =
+        new THREE.MeshBasicMaterial({
+            color:
+                lightColor
+        });
+
+
+    for (
+        let i = 0;
+        i <= steps;
+        i++
+    ) {
+
+        const t =
+            start
             +
-                (end -
-                    start)
-                    *
-                        (i /
-                            steps);
-        const frame = getFrameAt(t);
-        const group = new THREE.Group();
-        group.position.copy(frame.point);
+            (
+                end -
+                start
+            )
+            *
+            (
+                i /
+                steps
+            );
+
+
+        const frame =
+            getFrameAt(
+                t
+            );
+
+
+        const group =
+            new THREE.Group();
+
+
+        group.position
+            .copy(
+                frame.point
+            );
+
+
         group.rotation.y =
             frame.rotationY;
-        addMesh(group, new THREE.BoxGeometry(0.55, 6.2, 0.65), concrete, -(SIDEWALK_OUTER +
-            0.4), 3.1, 0);
-        addMesh(group, new THREE.BoxGeometry(0.55, 6.2, 0.65), concrete, SIDEWALK_OUTER +
-            0.4, 3.1, 0);
-        addMesh(group, new THREE.BoxGeometry(SIDEWALK_OUTER *
-            2
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                0.65,
+                6.4,
+                5.8
+            ),
+            concrete,
+            -(
+                SIDEWALK_OUTER
+                +
+                0.5
+            ),
+            3.2,
+            0
+        );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                0.65,
+                6.4,
+                5.8
+            ),
+            concrete,
+            SIDEWALK_OUTER
             +
-                1.3, 0.45, 0.65), concrete, 0, 6.15, 0);
-        worldGroup.add(group);
+            0.5,
+            3.2,
+            0
+        );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                SIDEWALK_OUTER *
+                2
+                +
+                1.65,
+                0.42,
+                5.8
+            ),
+            dark,
+            0,
+            6.25,
+            0
+        );
+
+
+        if (
+            i %
+            2 ===
+            0
+        ) {
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    0.24,
+                    0.06,
+                    3.2
+                ),
+                lightMat,
+                0,
+                6.00,
+                0
+            );
+
+        }
+
+
+        if (
+            i %
+            4 ===
+            0
+        ) {
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    0.09,
+                    2.3,
+                    3.5
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:
+                        lightColor,
+                    transparent:
+                        true,
+                    opacity:
+                        0.35
+                }),
+                -(
+                    SIDEWALK_OUTER
+                    -
+                    0.35
+                ),
+                2.4,
+                0
+            );
+
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    0.09,
+                    2.3,
+                    3.5
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:
+                        lightColor,
+                    transparent:
+                        true,
+                    opacity:
+                        0.35
+                }),
+                SIDEWALK_OUTER
+                -
+                0.35,
+                2.4,
+                0
+            );
+
+        }
+
+
+        worldGroup.add(
+            group
+        );
+
     }
-    const mid = getFrameAt((start +
-        end)
-        /
-            2);
-    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(SIDEWALK_OUTER *
-        2
-        +
-            1.6, 0.35, 23), dark);
-    ceiling.position.copy(mid.point);
-    ceiling.position.y =
-        6;
-    ceiling.rotation.y =
-        mid.rotationY;
-    worldGroup.add(ceiling);
-    for (let i = 0; i < 6; i++) {
-        const t = start
-            +
-                (end -
-                    start)
-                    *
-                        ((i +
-                            0.5)
-                            /
-                                6);
-        const frame = getFrameAt(t);
-        const light = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 3), lightMat);
-        light.position.copy(frame.point);
-        light.position.y =
-            5.75;
-        light.rotation.y =
-            frame.rotationY;
-        worldGroup.add(light);
-    }
+
 }
+
+function buildNeonDistrictSetPieces() {
+
+    function districtGate(
+        t,
+        text,
+        color
+    ) {
+
+        const frame =
+            getFrameAt(
+                t
+            );
+
+
+        const group =
+            new THREE.Group();
+
+
+        group.position
+            .copy(
+                frame.point
+            );
+
+
+        group.rotation.y =
+            frame.rotationY;
+
+
+        const structure =
+            material(
+                0x3b4655,
+                0.68,
+                0.34
+            );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                0.30,
+                5.6,
+                0.30
+            ),
+            structure,
+            -(
+                ROAD_HALF
+                +
+                1.1
+            ),
+            2.8,
+            0
+        );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                0.30,
+                5.6,
+                0.30
+            ),
+            structure,
+            ROAD_HALF
+            +
+            1.1,
+            2.8,
+            0
+        );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                ROAD_HALF *
+                2
+                +
+                2.5,
+                0.22,
+                0.32
+            ),
+            new THREE.MeshBasicMaterial({
+                color
+            }),
+            0,
+            5.55,
+            0
+        );
+
+
+        const texture =
+            createTextTexture(
+                text,
+                "#ffffff",
+                "#111827"
+            );
+
+
+        const sign =
+            new THREE.Mesh(
+                new THREE.PlaneGeometry(
+                    5.8,
+                    1.25
+                ),
+                new THREE.MeshBasicMaterial({
+                    map:
+                        texture,
+                    side:
+                        THREE.DoubleSide
+                })
+            );
+
+
+        sign.position.set(
+            0,
+            4.72,
+            0
+        );
+
+
+        group.add(
+            sign
+        );
+
+
+        worldGroup.add(
+            group
+        );
+
+    }
+
+
+    districtGate(
+        0.020,
+        "DOWNTOWN",
+        0x4f8cff
+    );
+
+
+    districtGate(
+        0.300,
+        "METRO",
+        0x39d9ff
+    );
+
+
+    districtGate(
+        0.485,
+        "OLD CITY",
+        0xff4e73
+    );
+
+
+    districtGate(
+        0.675,
+        "CONSTRUCTION",
+        0xffad4d
+    );
+
+
+    districtGate(
+        0.850,
+        "UNDERPASS",
+        0xa469ff
+    );
+
+
+    /*
+      Multi-level parking structure beside the old-city exit.
+    */
+
+    {
+        const frame =
+            getFrameAt(
+                0.605
+            );
+
+
+        const garage =
+            new THREE.Group();
+
+
+        garage.position
+            .copy(
+                frame.point
+            )
+            .addScaledVector(
+                frame.normal,
+                -27
+            );
+
+
+        garage.rotation.y =
+            frame.rotationY;
+
+
+        const slab =
+            material(
+                0x394553,
+                0.82,
+                0.10
+            );
+
+
+        const column =
+            material(
+                0x566474,
+                0.74,
+                0.18
+            );
+
+
+        for (
+            let floor = 0;
+            floor < 5;
+            floor++
+        ) {
+
+            addMesh(
+                garage,
+                new THREE.BoxGeometry(
+                    22,
+                    0.45,
+                    16
+                ),
+                slab,
+                0,
+                0.6
+                +
+                floor *
+                3.15,
+                0
+            );
+
+        }
+
+
+        for (
+            const x
+            of [-9.5, 0, 9.5]
+        ) {
+
+            for (
+                const z
+                of [-6.5, 6.5]
+            ) {
+
+                addMesh(
+                    garage,
+                    new THREE.BoxGeometry(
+                        0.55,
+                        14.0,
+                        0.55
+                    ),
+                    column,
+                    x,
+                    7,
+                    z
+                );
+
+            }
+
+        }
+
+
+        addMesh(
+            garage,
+            new THREE.BoxGeometry(
+                17,
+                0.22,
+                0.35
+            ),
+            new THREE.MeshBasicMaterial({
+                color:
+                    0xff4e73
+            }),
+            0,
+            15.1,
+            -8.1
+        );
+
+
+        worldGroup.add(
+            garage
+        );
+
+    }
+
+
+    /*
+      Elevated metro/skyway crossing. Supports stay outside the raceway.
+    */
+
+    {
+        const frame =
+            getFrameAt(
+                0.445
+            );
+
+
+        const group =
+            new THREE.Group();
+
+
+        group.position
+            .copy(
+                frame.point
+            );
+
+
+        group.rotation.y =
+            frame.rotationY;
+
+
+        const steel =
+            material(
+                0x48576a,
+                0.55,
+                0.48
+            );
+
+
+        addMesh(
+            group,
+            new THREE.BoxGeometry(
+                SIDEWALK_OUTER *
+                2
+                +
+                12,
+                0.75,
+                5.2
+            ),
+            steel,
+            0,
+            8.4,
+            0
+        );
+
+
+        for (
+            const side
+            of [-1, 1]
+        ) {
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    0.75,
+                    8.4,
+                    0.75
+                ),
+                steel,
+                side *
+                (
+                    SIDEWALK_OUTER
+                    +
+                    3.5
+                ),
+                4.2,
+                0
+            );
+
+
+            addMesh(
+                group,
+                new THREE.BoxGeometry(
+                    0.24,
+                    0.28,
+                    4.4
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:
+                        side <
+                        0
+                            ?
+                            0x39d9ff
+                            :
+                            0xff4e73
+                }),
+                side *
+                (
+                    SIDEWALK_OUTER
+                    +
+                    3.5
+                ),
+                7.1,
+                0
+            );
+
+        }
+
+
+        worldGroup.add(
+            group
+        );
+
+    }
+
+
+    /*
+      Construction crane and half-built tower.
+    */
+
+    {
+        const frame =
+            getFrameAt(
+                0.735
+            );
+
+
+        const site =
+            new THREE.Group();
+
+
+        site.position
+            .copy(
+                frame.point
+            )
+            .addScaledVector(
+                frame.normal,
+                27
+            );
+
+
+        site.rotation.y =
+            frame.rotationY;
+
+
+        const concrete =
+            material(
+                0x4e5965,
+                0.88,
+                0.08
+            );
+
+
+        const craneMat =
+            material(
+                0xc99438,
+                0.58,
+                0.28
+            );
+
+
+        for (
+            let floor = 0;
+            floor < 4;
+            floor++
+        ) {
+
+            addMesh(
+                site,
+                new THREE.BoxGeometry(
+                    15,
+                    0.45,
+                    12
+                ),
+                concrete,
+                -2,
+                0.6
+                +
+                floor *
+                3.2,
+                0
+            );
+
+        }
+
+
+        for (
+            const x
+            of [-8, 4]
+        ) {
+
+            for (
+                const z
+                of [-5, 5]
+            ) {
+
+                addMesh(
+                    site,
+                    new THREE.BoxGeometry(
+                        0.55,
+                        11,
+                        0.55
+                    ),
+                    concrete,
+                    x,
+                    5.5,
+                    z
+                );
+
+            }
+
+        }
+
+
+        addMesh(
+            site,
+            new THREE.BoxGeometry(
+                0.75,
+                28,
+                0.75
+            ),
+            craneMat,
+            9,
+            14,
+            -5
+        );
+
+
+        addMesh(
+            site,
+            new THREE.BoxGeometry(
+                21,
+                0.55,
+                0.55
+            ),
+            craneMat,
+            1,
+            26.5,
+            -5
+        );
+
+
+        addMesh(
+            site,
+            new THREE.BoxGeometry(
+                0.18,
+                7,
+                0.18
+            ),
+            craneMat,
+            -8.5,
+            22.8,
+            -5
+        );
+
+
+        worldGroup.add(
+            site
+        );
+
+    }
+
+
+    /*
+      Container/service yard near the final sector.
+    */
+
+    {
+        const frame =
+            getFrameAt(
+                0.795
+            );
+
+
+        for (
+            let i = 0;
+            i < 12;
+            i++
+        ) {
+
+            const side =
+                i %
+                2 ===
+                0
+                    ?
+                    -1
+                    :
+                    1;
+
+
+            const container =
+                new THREE.Mesh(
+                    new THREE.BoxGeometry(
+                        5.8,
+                        2.5,
+                        2.4
+                    ),
+                    material(
+                        [
+                            0x395a76,
+                            0x784052,
+                            0x4d6a50,
+                            0x76563a
+                        ][
+                            i %
+                            4
+                        ],
+                        0.78,
+                        0.16
+                    )
+                );
+
+
+            container.position
+                .copy(
+                    frame.point
+                )
+                .addScaledVector(
+                    frame.normal,
+                    side *
+                    (
+                        19
+                        +
+                        (
+                            i %
+                            3
+                        )
+                        *
+                        3.0
+                    )
+                )
+                .addScaledVector(
+                    frame.tangent,
+                    (
+                        Math.floor(
+                            i /
+                            2
+                        )
+                        -
+                        2.5
+                    )
+                    *
+                    5.4
+                );
+
+
+            container.position.y =
+                1.25
+                +
+                (
+                    i %
+                    5 ===
+                    0
+                        ?
+                        2.55
+                        :
+                        0
+                );
+
+
+            container.rotation.y =
+                frame.rotationY;
+
+
+            worldGroup.add(
+                container
+            );
+
+        }
+
+    }
+
+}
+
+
 function buildParkingLot() {
-    const frame = getFrameAt(0.72);
+    const frame = getFrameAt(0.625);
     const zone = {
         center: frame.point
             .clone()
