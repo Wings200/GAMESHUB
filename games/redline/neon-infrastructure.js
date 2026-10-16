@@ -238,7 +238,7 @@ export function buildRaisedRoads({
       // Fill the graded road down to the ground instead of putting a
       // fake floating bridge (and a wall of parapets) over normal streets.
       makeSegment(a.point,b.point,0,sidewalkOuter*2+.55,
-        high+.35, girderMaterial, -high/2-.085);
+        high+.35, girderMaterial, -high/2-.255);
       continue;
     }
 
