@@ -95,7 +95,7 @@ const TRACKS = {
         id: "neon",
         name: "NEON DISTRICT",
         description: "Neon District V3 — real graded city streets, twin concrete bridges across the shipping canal, waterfront warehouses, downtown tunnels and elevated approaches.",
-        sampleCount: 520,
+        sampleCount: 640,
         laps: 1,
         background: 0x050a13,
         fogNear: 340,
@@ -478,6 +478,28 @@ let pickupDefinitions = [];
 let rampDefinitions = [];
 let curve = null;
 
+/*
+ * Road-design smoothing for Neon only. Chaikin subdivision rounds hard
+ * polygonal city corners into long, driveable arcs. The race still uses
+ * one canonical curve for road rendering, vehicle surface height, track
+ * checkpoints, props and collisions, so the visual and physical route
+ * never disagree. Arctic keeps its exact original control points.
+ */
+function smoothNeonControlPoints(points) {
+    let result = points.map(point => point.clone());
+    for (const ratio of [0.22, 0.18]) {
+        const rounded = [];
+        for (let i = 0; i < result.length; i++) {
+            const current = result[i];
+            const next = result[(i + 1) % result.length];
+            rounded.push(current.clone().lerp(next, ratio));
+            rounded.push(current.clone().lerp(next, 1 - ratio));
+        }
+        result = rounded;
+    }
+    return result;
+}
+
 function applyTrackConfig(trackId) {
     const config =
         TRACKS[trackId]
@@ -514,20 +536,18 @@ function applyTrackConfig(trackId) {
     rampDefinitions =
         config.ramps.map(ramp => ({ ...ramp }));
 
-    curve =
-        new THREE.CatmullRomCurve3(
-            config.controlPoints.map(
-                ([x, z, elevation = 0]) =>
-                    new THREE.Vector3(
-                        x,
-                        config.id === "neon" ? elevation : 0,
-                        z
-                    )
-            ),
-            true,
-            "catmullrom",
-            0.18
-        );
+    const originalRoadPoints = config.controlPoints.map(
+        ([x, z, elevation = 0]) =>
+            new THREE.Vector3(x, config.id === "neon" ? elevation : 0, z)
+    );
+    curve = new THREE.CatmullRomCurve3(
+        config.id === "neon"
+            ? smoothNeonControlPoints(originalRoadPoints)
+            : originalRoadPoints,
+        true,
+        "catmullrom",
+        0.18
+    );
 
     scene.background =
         new THREE.Color(
@@ -2265,10 +2285,11 @@ function buildRoad() {
 
 
     const dashSamples = [];
-    for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
+    for (let i = 0; i < TRACK_SAMPLE_COUNT; i += (activeTrackId === "neon" ? 5 : 3)) {
         dashSamples.push(trackSamples[i]);
     }
-    const dashes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.025, 3.0), new THREE.MeshBasicMaterial({
+    const dashes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.025,
+        activeTrackId === "neon" ? 1.8 : 3.0), new THREE.MeshBasicMaterial({
         color: 0xe4e7eb
     }), dashSamples.length);
     const dummy = new THREE.Object3D();
