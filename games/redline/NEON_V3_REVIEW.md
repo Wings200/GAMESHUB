@@ -48,3 +48,28 @@ The water-edge height lookup returns **−0.40 m** where the car is off the elev
 - World objects that require elevated Y include road, curb, road markings, lights, checkpoints, obstacles, boosts, pickups, camera, collision barriers and the local player.
 
 **Important limitation:** The five traversals are **numerical/simulated checks**, not five real browser playthroughs or a screenshot-based visual review. The map **must still be tested interactively** for final visual judgment, camera comfort, road surface quality, performance and multiplayer with two players. These checks reduce risks but do not establish that the map is perfect.
+
+
+## Follow-up — browser recording review (2026-10-16)
+
+A 77.8-second gameplay recording exposed visual/runtime issues that the numerical route checks could not catch:
+- Ordinary road rails overlapped bridge-specific rails and some segments were not aligned to the grade.
+- Roadwork obstacles rendered as plain grey boxes.
+- Some street props, district-gate supports, tunnel walls and canal quays lacked collision coverage.
+- The UNDERPASS fascia sat too close to the follow camera.
+- Neon road/building lighting was too dim, and pickup diamonds did not read clearly as collectibles.
+
+Corrective changes committed to the main branch:
+- Raised-road sections now use the dedicated bridge rail system without duplicate ordinary rails; remaining rail segments follow the road grade.
+- Nearby-track crossing filtering is enabled for Neon as well as Arctic, with a vertical-separation check for bridges.
+- Neon roadwork obstacles use marked concrete-barrier geometry.
+- Added collision registration for streetlights, billboards, traffic-light supports, district gates, tunnel walls/portals, utility cabinets, hydrants, the landmark tower and canal quay walls.
+- Raised and resized overhead district signs; corrected their text texture aspect ratio.
+- Increased Neon exposure/ambient fill, added emissive window maps, brightened fallback asphalt/concrete textures, and increased street-light pool coverage.
+- Added ground rings and soft beacons to nitro/overdrive pickups.
+
+## Post-fix validation
+
+Five focused static review passes were completed: (1) syntax, (2) road/guardrail generation, (3) collision registration, (4) visual readability changes, and (5) isolation from Arctic-specific behavior. All three modified JavaScript modules passed a syntax parse, and the targeted source invariants passed.
+
+**Limitation:** The fixes have not yet been verified in a second interactive browser recording. The next user playtest is still needed to confirm final visual appearance and real driving/collision behavior.
