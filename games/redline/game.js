@@ -10522,6 +10522,16 @@ function updatePhysics(delta) {
         delta
     );
 
+    if(activeTrackId==="neon" &&
+        car.position.x>127 && car.position.x<213 &&
+        Math.abs(car.position.z)<400 &&
+        car.position.y<-.24 &&
+        Math.abs(nearestTrackInfo(car.position)?.offset ?? 999)>SIDEWALK_OUTER+1
+    ) {
+        respawnAtLastCheckpoint(false);
+        showRacePopup("FELL INTO THE CANAL — RESET",1100);
+    }
+
 
     /*
       Trees, mountains, cave walls and buildings are real world objects.
