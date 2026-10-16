@@ -53,11 +53,12 @@ export function applyPbr({ THREE, renderer, sceneRoot, material, kind,
         () => {
           if (!sceneRoot.parent) return;
           material[slots[i]] = texture;
-          material.color.set(0xc6ccd0);
+          // Use texture albedo without an arbitrary grey multiplier.
+          material.color.set(0xffffff);
           material.bumpMap = null;
-          material.roughness = kind === "asphalt" ? 0.86 : 0.96;
+          material.roughness = kind === "asphalt" ? 0.82 : 0.94;
           material.metalness = kind === "asphalt" ? 0.018 : 0.0;
-          material.normalScale = new THREE.Vector2(0.45, 0.45);
+          material.normalScale = new THREE.Vector2(0.30, 0.30);
           material.needsUpdate = true;
         },
         undefined,
@@ -155,19 +156,19 @@ function skyTexture(THREE) {
   canvas.height = 512;
   const g = canvas.getContext("2d");
   const grad = g.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, "#020814");
-  grad.addColorStop(.35, "#071326");
-  grad.addColorStop(.62, "#152039");
-  grad.addColorStop(.80, "#293044");
-  grad.addColorStop(.89, "#403544");
-  grad.addColorStop(1, "#101522");
+  grad.addColorStop(0, "#01040b");
+  grad.addColorStop(.35, "#030712");
+  grad.addColorStop(.62, "#060c1a");
+  grad.addColorStop(.80, "#0b1325");
+  grad.addColorStop(.89, "#141525");
+  grad.addColorStop(1, "#070a13");
   g.fillStyle = grad; g.fillRect(0, 0, 1024, 512);
 
   // Tiny subdued stars above the urban haze.
   for (let i = 0; i < 250; i++) {
     const x = noise01(i * 97 + 19) * 1024;
     const y = noise01(i * 107 + 11) * 212;
-    const a = 0.08 + noise01(i * 29 + 3) * .31;
+    const a = 0.03 + noise01(i * 29 + 3) * .22;
     g.fillStyle = "rgba(205,220,240," + a + ")";
     g.fillRect(x, y, i % 13 === 0 ? 2 : 1, 1);
   }
@@ -208,7 +209,7 @@ function instantiate(THREE, worldGroup, geometry, material, instances) {
  * enormous atmospheric skyscraper skyline.
  */
 export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
-                                 getFrameAt }) {
+                                 getFrameAt, registerBuilding }) {
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(1160, 52, 26),
     new THREE.MeshBasicMaterial({
@@ -271,6 +272,10 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const w = 13 + noise01(gx * 7 + gz * 3) * 12;
       const d = 12 + noise01(gx * 9 + gz * 7) * 14;
       cityBlocks[type].push({x, y: height / 2, z, w, h: height, d});
+      // The same footprint and height as the rendered city building.
+      if (registerBuilding) registerBuilding(
+        new THREE.Vector3(x, 0, z), w, d, 0, height
+      );
       const top = height + 2 + noise01(gx - gz) * 5;
       rooftop.push({x: x + w * .18, y: top * .5 + height * .5,
         z: z - d * .15, w: w * .42, h: top - height, d: d * .35});
@@ -306,7 +311,7 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   }
   instantiate(THREE,worldGroup,roadGeo,streetMaterial,parallelRoads);
   instantiate(THREE,worldGroup,roadGeo,
-    new THREE.MeshStandardMaterial({color:0x858680,roughness:.96}),laneCenters);
+    new THREE.MeshStandardMaterial({color:0x6f7478,roughness:.96}),laneCenters);
 
   const buildingGeo = new THREE.BoxGeometry(1,1,1);
   cityBlocks.forEach((list, i) =>
@@ -335,6 +340,9 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const d = 17 + noise01(i * 61 + ring * 13) * 33;
       distant[ring].push({x, y:h*.5, z, w, h, d,
         color: ring === 0 ? 0x9babb9 : ring === 1 ? 0x718499 : 0x515f77});
+      if (registerBuilding) registerBuilding(
+        new THREE.Vector3(x, 0, z), w, d, 0, h
+      );
       if (i % 11 === 0 && ring < 2) {
         antennas.push({x, y:h + 9, z, w:.9, h:18, d:.9});
       }
@@ -413,9 +421,9 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
     map, bumpMap:map, bumpScale:.024,
     roughness: i===0 ? .47 : .85,
     metalness: i===0 ? .22 : .04,
-    emissive: i===0 ? 0x22232d : 0x2b2422,
+    emissive: i===0 ? 0x141924 : 0x181418,
     emissiveMap: map,
-    emissiveIntensity: .13
+    emissiveIntensity: .08
   }));
   groups.forEach((group,i)=>instantiate(THREE,worldGroup,shellGeo,materials[i],group));
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
@@ -532,7 +540,9 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
 
 /** Actual glTF models (not boxes) are optional art dressing.
  * If any CDN fails the nearby textured procedural scenery remains. */
-export async function loadAuthoredModels({THREE, worldGroup, getFrameAt}) {
+export async function loadAuthoredModels({
+  THREE, worldGroup, getFrameAt, registerBuilding
+}) {
   const root=worldGroup;
   let GLTFLoader;
   try {
@@ -577,6 +587,16 @@ export async function loadAuthoredModels({THREE, worldGroup, getFrameAt}) {
           mesh.position.y=-lowest + .015;
           mesh.rotation.y=f.rotationY+(side===1?Math.PI:0);
           root.add(mesh);
+          if (registerBuilding) {
+            // GLB bounds at actual model scale, not generic road circles.
+            registerBuilding(
+              mesh.position.clone(),
+              Math.max(.4, size.x * baseScale),
+              Math.max(.4, size.z * baseScale),
+              mesh.rotation.y,
+              Math.max(1, size.y * baseScale)
+            );
+          }
         });
         resolve();
       },undefined,()=>resolve()
