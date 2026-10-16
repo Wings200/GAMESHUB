@@ -257,7 +257,6 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   const cityBlocks = [[], [], []];
   const rooftop = [];
   const podiums = [];
-  const streetLots = [];
   for (let gx = -440; gx <= 440; gx += 34) {
     for (let gz = -350; gz <= 350; gz += 34) {
       const x = gx + (noise01(gx * 2 + gz * 7) - .5) * 4;
@@ -265,6 +264,8 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const roadD = distRoad(x, z);
       const outerEdge = Math.max(Math.abs(x) / 450, Math.abs(z) / 355);
       if (roadD < 27 || (noise01(gx * 67 + gz * 41) < .09)) continue;
+      // A city block can never sit on the shipping canal.
+      if(x>109 && x<230 && Math.abs(z)<420) continue;
       if (reservedBuildings.some(p=>Math.hypot(p.x-x,p.z-z)<23)) continue;
       const type = (Math.floor(noise01(gx * 17 + gz * 23) * 3));
       const height = (outerEdge > .7 ? 21 : 30) +
@@ -282,7 +283,6 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       if (roadD > 34 && roadD < 80 && noise01(x * .1 + z) > .38) {
         podiums.push({x, y: 2.0, z, w: w + 2, h: 4, d: d + 2});
       }
-      if (roadD < 80) streetLots.push({x, y: .005, z, w: 29, h: .01, d: 29});
     }
   }
 
@@ -291,27 +291,31 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     color: 0x273038, roughness: .92, metalness: .01
   });
   const roadGeo=new THREE.BoxGeometry(1,1,1);
-  instantiate(THREE, worldGroup, roadGeo, streetMaterial, streetLots);
 
   // Continuous urban grid between the track and the far neighborhoods,
   // rather than a sea of empty concrete between isolated building boxes.
   const parallelRoads=[];
   const laneCenters=[];
-  for(let x=-423;x<=423;x+=68){
-    parallelRoads.push({x,y:-.002,z:0,w:7.3,h:.025,d:750});
-    for(let z=-340;z<=340;z+=30){
-      laneCenters.push({x,y:.013,z,w:.10,h:.013,d:3.0});
+  for(let x=-423;x<=423;x+=68) {
+    // Canal follows X=170; no suspended asphalt street painted over water.
+    if(x>120&&x<222)continue;
+    parallelRoads.push({x,y:-.004,z:0,w:7.3,h:.025,d:750});
+    for(let z=-340;z<=340;z+=28) {
+      laneCenters.push({x,y:.017,z,w:.10,h:.012,d:2.0});
     }
   }
-  for(let z=-333;z<=333;z+=68){
-    parallelRoads.push({x:0,y:-.002,z,w:930,h:.025,d:7.3});
-    for(let x=-428;x<=428;x+=30){
-      laneCenters.push({x,y:.013,z,w:3.0,h:.013,d:.10});
-    }
+  for(let z=-333;z<=333;z+=68) {
+    // Stop both street ends precisely at the two quay walls.
+    parallelRoads.push({x:-169,y:-.004,z,w:580,h:.025,d:7.3});
+    parallelRoads.push({x:342,y:-.004,z,w:260,h:.025,d:7.3});
+    for(let x=-428;x<116;x+=28)
+      laneCenters.push({x,y:.017,z,w:2.0,h:.012,d:.10});
+    for(let x=225;x<451;x+=28)
+      laneCenters.push({x,y:.017,z,w:2.0,h:.012,d:.10});
   }
   instantiate(THREE,worldGroup,roadGeo,streetMaterial,parallelRoads);
   instantiate(THREE,worldGroup,roadGeo,
-    new THREE.MeshStandardMaterial({color:0x6f7478,roughness:.96}),laneCenters);
+    new THREE.MeshStandardMaterial({color:0x62666a,roughness:.96}),laneCenters);
 
   const buildingGeo = new THREE.BoxGeometry(1,1,1);
   cityBlocks.forEach((list, i) =>
@@ -469,7 +473,7 @@ export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
     if(!s)continue;
     for(const side of [-1,1]){
       const p=s.point.clone().addScaledVector(s.normal,side*(roadHalf+2.9));
-      instances.push({x:p.x,y:.10,z:p.z,w:1,h:1,d:1,rotation:s.rotationY});
+      instances.push({x:p.x,y:s.point.y+.10,z:p.z,w:1,h:1,d:1,rotation:s.rotationY});
     }
   }
   instantiate(THREE,worldGroup,geo,mat,instances);
@@ -500,25 +504,26 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
       const z=(a.point.z+b.point.z)*.5+
         (a.normal.z+b.normal.z)*.5*side*(roadHalf+.18);
       const rotation=Math.atan2(b.point.x-a.point.x,b.point.z-a.point.z);
-      curb.push({x,y:.15,z,w:.20,h:.22,d:length+.18,rotation});
-      gutters.push({x:x+side*a.normal.x*.26,y:.062,z:z+side*a.normal.z*.26,
+      const h=(a.point.y+b.point.y)*.5;
+      curb.push({x,y:h+.15,z,w:.20,h:.22,d:length+.18,rotation});
+      gutters.push({x:x+side*a.normal.x*.26,y:h+.062,z:z+side*a.normal.z*.26,
         w:.28,h:.015,d:length+.2,rotation});
       if(i%12===0){
-        studs.push({x:x-side*a.normal.x*.55,y:.101,
+        studs.push({x:x-side*a.normal.x*.55,y:h+.101,
           z:z-side*a.normal.z*.55,w:.17,h:.07,d:.43,rotation});
       }
       if(i%30===0) {
-        drains.push({x:x+side*a.normal.x*.49,y:.072,
+        drains.push({x:x+side*a.normal.x*.49,y:h+.072,
           z:z+side*a.normal.z*.49,w:.42,h:.05,d:.80,rotation});
       }
       if(i%51===0){
         const px=x+side*a.normal.x*2.2,pz=z+side*a.normal.z*2.2;
-        cabinets.push({x:px,y:.58,z:pz,w:.72,h:1.16,d:.54,rotation});
-        bolts.push({x:px,y:1.2,z:pz,w:.75,h:.10,d:.6,rotation});
+        cabinets.push({x:px,y:h+.58,z:pz,w:.72,h:1.16,d:.54,rotation});
+        bolts.push({x:px,y:h+1.2,z:pz,w:.75,h:.10,d:.6,rotation});
       }
       if(i%87===0) {
         const px=x+side*a.normal.x*2.3,pz=z+side*a.normal.z*2.3;
-        hydrants.push({x:px,y:.44,z:pz,w:.42,h:.84,d:.42,rotation});
+        hydrants.push({x:px,y:h+.44,z:pz,w:.42,h:.84,d:.42,rotation});
       }
     }
   }
@@ -586,6 +591,8 @@ export async function loadAuthoredModels({
           mesh.position.copy(f.point).addScaledVector(f.normal, side*offset);
           mesh.position.y=-lowest + .015;
           mesh.rotation.y=f.rotationY+(side===1?Math.PI:0);
+          if (mesh.position.x>115 && mesh.position.x<225 &&
+              Math.abs(mesh.position.z)<413) return;
           root.add(mesh);
           if (registerBuilding) {
             // GLB bounds at actual model scale, not generic road circles.
