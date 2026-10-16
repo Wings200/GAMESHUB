@@ -227,7 +227,22 @@ export function buildRaisedRoads({
     if(high<1.0)continue;
     if(distance2D(a.point,b.point)>40)continue;
 
-    // The concrete bridge extends beneath sidewalk / curb edges.
+    // An elevated altitude does NOT automatically mean a bridge.
+    // Only the two actual shipping canal crossings need piers and
+    // bridge parapets. The western graded streets are ground-backed.
+    const x=(a.point.x+b.point.x)/2;
+    const z=(a.point.z+b.point.z)/2;
+    const northBridge = x>=65 && x<=280 && z>=75 && z<=240;
+    const southBridge = x>=65 && x<=280 && z>=-235 && z<=-75;
+    if(!northBridge && !southBridge){
+      // Fill the graded road down to the ground instead of putting a
+      // fake floating bridge (and a wall of parapets) over normal streets.
+      makeSegment(a.point,b.point,0,sidewalkOuter*2+.55,
+        high+.35, girderMaterial, -high/2-.085);
+      continue;
+    }
+
+    // The true concrete canal bridge extends beneath sidewalk/curb edges.
     makeSegment(a.point,b.point,0,sidewalkOuter*2+.7,.45,deckMaterial,-.27);
     for(const side of [-1,1]){
       const railCrossesLane=bridgeRailWouldCrossLane(
