@@ -118,3 +118,27 @@ The user supplied another recording and identified five remaining problems: guar
 - Separate mock bridge pass generated 134 physical rail segments with zero sampled lane intrusions.
 
 **Limitations:** Numerical geometry was modeled from a sampled approximation of the spline, not an actual browser playthrough. Screenshots, camera line of sight, lighting appearance, multiplayer behavior and real-world FPS must still be assessed in a fresh deployed build.
+
+
+## Road grade seams and turn-radius correction (2026-10-16)
+
+A new player clip was submitted with complaints about rectangles across uphill/downhill stretches, visually odd road intersections, and sharp 90-degree-feeling turns. The provided video displays NEON DISTRICT at LAP 1/3; the current Neon V3 config is one lap, so this capture likely predates the current branch. Changes were made in the current source and require a fresh deployed playtest.
+
+### Changes
+- New Neon-only two-pass Chaikin corner subdivision (ratios .22 and .18) yields smooth curved route transitions while preserving one canonical route spline for checkpoints, visuals, physics, signs and collision. Arctic route and handling are unchanged.
+- Neon drivable sample count increased from 520 to 640, improving curvature and elevation mesh fidelity.
+- Removed independent rectangular center-support box instances from graded roads and canal bridge decks.
+- Replaced them with two continuous triangular BufferGeometry meshes: recessed connected road supports and sloped embankments for ground-backed hills; recessed joined bridge decks over the canal.
+- Preserved canal bridge-specific side rails and real pier structures; rail collision and rendered parapet now share the same lateral offset (sidewalkOuter + .04).
+- Increased separation between background decorative city-grid streets and the circuit, and removed decorative road stubs shorter than 32 meters.
+- Reduced the size of repeating center-line marker meshes around the updated curves.
+- No multiplayer Worker, server, garage or login changes.
+
+### Verification
+- The modified game.js, neon-art.js and neon-infrastructure.js modules passed a JavaScript syntax parse.
+- The simulated smoothed 640-point Neon circuit yielded around 1,646 meters of track length, a maximum climb/descent grade of approximately 11.1%, and no widely separated same-grade track-point pairs closer than 18 meters.
+- A Neon infrastructure scene-build simulation generated two continuous support meshes comprising 1,986 triangles, 132 graded street support segments and 199 elevated bridge deck segments.
+- The same simulation found zero physical bridge rail segments intruding into the driving corridor with matching rendered/physics offsets.
+
+### Still pending
+This is a numerical mock build, not a live browser playtest. Visual quality, road feel, performance on Chromebooks, correct placement of ramps/pickups and multiplayer with multiple clients still require real in-game testing.
