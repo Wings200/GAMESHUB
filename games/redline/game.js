@@ -172,16 +172,8 @@ const TRACKS = {
             0.955
         ],
 
-        barriers: [
-            { start: 0.055, end: 0.125, side: 1 },
-            { start: 0.160, end: 0.225, side: -1 },
-            { start: 0.275, end: 0.345, side: 1 },
-            { start: 0.385, end: 0.455, side: -1 },
-            { start: 0.505, end: 0.575, side: 1 },
-            { start: 0.615, end: 0.685, side: -1 },
-            { start: 0.735, end: 0.805, side: 1 },
-            { start: 0.845, end: 0.915, side: -1 }
-        ],
+        // Normal streets stay open. Only actual canal bridges need rails.
+        barriers: [],
 
         obstacles: [
             /* Downtown */
@@ -2322,6 +2314,21 @@ function buildCrosswalks() {
         worldGroup.add(group);
     }
 }
+function neonBuildingIntrudesOnRoad(position, halfWidth, halfDepth, rotationY, clearance = 3) {
+    // The same footprint check is used for visible facades and colliders.
+    const cos = Math.cos(rotationY);
+    const sin = Math.sin(rotationY);
+    const safeMargin = SIDEWALK_OUTER + clearance;
+    for (const sample of trackSamples) {
+        const dx = sample.point.x - position.x;
+        const dz = sample.point.z - position.z;
+        const localX = dx * cos - dz * sin;
+        const localZ = dx * sin + dz * cos;
+        if (Math.abs(localX) < halfWidth + safeMargin &&
+            Math.abs(localZ) < halfDepth + safeMargin) return true;
+    }
+    return false;
+}
 function buildCity() {
     /*
       Neon V3 is organized around a real shipping canal. Bank terrain
@@ -2358,6 +2365,8 @@ function buildCity() {
         THREE,
         worldGroup,
         getFrameAt,
+        trackSamples,
+        sidewalkOuter: SIDEWALK_OUTER,
         registerBuilding: (position, width, depth, rotationY, height) => {
             if (worldGroup !== activeNeonArtRoot || !worldGroup?.parent) return;
             addEnvironmentBoxCollider(
@@ -2418,10 +2427,10 @@ function buildCity() {
       layout and let the asynchronous loader place the model there.
     */
     const authoredRoadsideSites = [
-        [[.07,.23,.48,.64,.81],21,0],
-        [[.10,.30,.58,.77,.96],22,1],
-        [[.16,.40,.70,.89],24,2],
-        [[.26,.55,.75],23,3]
+        [[.07,.23,.48,.64,.81],31,0],
+        [[.10,.30,.58,.77,.96],30,1],
+        [[.16,.40,.70,.89],31,2],
+        [[.26,.55,.75],29,3]
     ].flatMap(([stops,offset,modelIndex])=>
         stops.map((t,i)=>{
             const frame=getFrameAt(t);
@@ -2552,14 +2561,19 @@ function buildCity() {
                 7;
 
 
-            const position =
-                sample.point
-                    .clone()
-                    .addScaledVector(
-                        sample.normal,
-                        side *
-                        distance
-                    );
+            // The entire building must clear the sidewalk, not merely
+            // its center; adjust for corners and neighboring route legs.
+            const safeDistance = Math.max(
+                distance, SIDEWALK_OUTER + 4.5 + Math.hypot(width / 2, depth / 2)
+            );
+            const position = sample.point.clone().addScaledVector(
+                sample.normal, side * safeDistance
+            );
+            for (let shift = 0; shift < 4 &&
+                neonBuildingIntrudesOnRoad(position, width / 2, depth / 2,
+                    sample.rotationY, 2.5); shift++) {
+                position.addScaledVector(sample.normal, side * 4);
+            }
 
 
             /*
@@ -2586,10 +2600,18 @@ function buildCity() {
                 && Math.abs(position.z) < 401;
 
             const besideAuthoredModel = authoredRoadsideSites.some(
-                p => Math.hypot(position.x-p.x,position.z-p.z)<16
+                p => Math.hypot(position.x-p.x,position.z-p.z)<19
+            );
+            const intersectsRaceway = neonBuildingIntrudesOnRoad(
+                position, width / 2, depth / 2, sample.rotationY, 2.5
+            );
+            const overlapsBuilding = buildingSpecs.some(b =>
+                Math.hypot(b.position.x-position.x,b.position.z-position.z) <
+                Math.hypot(b.width, b.depth) / 2 + Math.hypot(width,depth) / 2 + 1.2
             );
 
-            if (inSecretFlightPath || inCanal || besideAuthoredModel) {
+            if (inSecretFlightPath || inCanal || besideAuthoredModel ||
+                intersectsRaceway || overlapsBuilding) {
                 continue;
             }
 
@@ -2655,6 +2677,7 @@ function buildCity() {
     buildRooftopDetails(buildingSpecs);
     buildStreetLights();
     buildNeonSigns(buildingSpecs);
+    NEON_ART.buildNeonAdvertising({THREE, worldGroup, buildings: buildingSpecs});
     buildBillboards();
     buildTrafficLights();
     buildLandmarkTower();
