@@ -2401,6 +2401,26 @@ function buildCity() {
             );
 
 
+    /*
+      Real GLB building sites line the actual street, not invisible behind
+      generic cuboids. Reserve their footprints in the roadside building
+      layout and let the asynchronous loader place the model there.
+    */
+    const authoredRoadsideSites = [
+        [[.07,.23,.48,.64,.81],21,0],
+        [[.10,.30,.58,.77,.96],22,1],
+        [[.16,.40,.70,.89],24,2],
+        [[.26,.55,.75],23,3]
+    ].flatMap(([stops,offset,modelIndex])=>
+        stops.map((t,i)=>{
+            const frame=getFrameAt(t);
+            const side=(i+modelIndex)%2===0?1:-1;
+            return frame.point.clone().addScaledVector(
+                frame.normal,side*offset
+            );
+        })
+    );
+
     let buildingIndex = 0;
 
 
@@ -2554,7 +2574,11 @@ function buildCity() {
                 position.x > 113 && position.x < 227
                 && Math.abs(position.z) < 401;
 
-            if (inSecretFlightPath || inCanal) {
+            const besideAuthoredModel = authoredRoadsideSites.some(
+                p => Math.hypot(position.x-p.x,position.z-p.z)<16
+            );
+
+            if (inSecretFlightPath || inCanal || besideAuthoredModel) {
                 continue;
             }
 
