@@ -95,3 +95,26 @@ Changes committed following this recording:
 **Validation:** 3 modified modules passed JS syntax parsing; 8 additional code invariants passed. A GitHub diff comparison confirmed that the changes only touched the game source, Neon infrastructure, and review notes; the multiplayer Worker and room client were not edited.
 
 **Pending:** Interactive visual/physics retest in a real browser after deployment; lighter facade textures and more varied buildings need their own subsequent art overhaul.
+
+
+## Neon city clearance + dark-art overhaul (2026-10-16)
+
+The user supplied another recording and identified five remaining problems: guardrails obstructing the route, intersecting decorative roads, buildings crossing the asphalt, blue instead of dark city architecture, and too few neon posters.
+
+**Implemented on the main branch:**
+- No ordinary street rails are generated for Neon; the canal-specific structural module still places physical bridge guardrails with lane-clearance filtering.
+- Roadside building locations account for the full width/depth footprint, sidewalk width and extra corner/turn clearance; move candidates outward and reject remaining overlaps with the race route, neighboring buildings, secret-flight corridors, or reserved authored-model sites.
+- Backdrop block positions are compared to the entire interpolated road centerline and their complete footprints. The previous every-fourth-sample estimate was too coarse for corners.
+- Secondary city-grid roads are no longer enormous full-length slabs. They are merged into clipped, contiguous off-track runs, avoiding all racing roads, canal water, and building footprints.
+- Imported GLTF building skins are tinted dark charcoal while preserving construction-prop colors. Generated facades, podiums, shutters, roofs and skyline towers now use dark neutral asphalt/graphite materials with sparse lit windows.
+- New decorative neon advertising module uses 18 shared poster designs in varied neon colors, attaches wall boards and rooftop signs to roadside architecture, and adds 16 sector-specific billboard locations.
+- No multiplayer, Worker, race scoring, checkpoint physics, car handling, or Arctic racing logic was edited in this pass.
+
+**Verification:**
+- Static JS syntax passed for game.js, neon-art.js, and neon-infrastructure.js.
+- 12 targeted source invariant checks passed (road/guardrail settings, building clearance, clipped streets, GLTF materials, posters, and multiplayer preservation).
+- Numerical mock scene-build with an approximate sampled route: 367 backdrop buildings, 327 skyline towers, 115 clipped decorative street runs, 489 lane markers, and zero intersections between generated city-block/street footprints and the sampled racing corridor.
+- Mock neon advertising on 46 buildings generated 92 wall posters, 10 rooftop signs and 18 distinct designs.
+- Separate mock bridge pass generated 134 physical rail segments with zero sampled lane intrusions.
+
+**Limitations:** Numerical geometry was modeled from a sampled approximation of the spline, not an actual browser playthrough. Screenshots, camera line of sight, lighting appearance, multiplayer behavior and real-world FPS must still be assessed in a fresh deployed build.
