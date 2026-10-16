@@ -1464,6 +1464,15 @@ function getFrameAt(t) {
     const tangent = curve
         .getTangentAt(wrapped)
         .normalize();
+
+    // Catmull-Rom can undershoot zero between flat-road control points.
+    // Prevent the city pavement from dipping below the urban ground.
+    if(activeTrackId==="neon" && point.y<0) {
+        point.y=0;
+        tangent.y=0;
+        tangent.normalize();
+    }
+
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x)
         .normalize();
     return {
