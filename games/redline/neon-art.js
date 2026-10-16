@@ -359,7 +359,10 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   const allBlocks=cityBlocks.flat();
   function clearStreetCell(x,z,w,d) {
     if(x+w/2>123 && x-w/2<217 && Math.abs(z)<406) return false;
-    if(occupiesRaceway(x,z,w,d,4)) return false;
+    // Keep neighborhood traffic lanes away from curved course edges.
+    // A larger no-road buffer prevents accidental-looking joins with
+    // the racing line and leaves room for sidewalk/poster dressing.
+    if(occupiesRaceway(x,z,w,d,15)) return false;
     // Decorative road slabs must not pass through physical city blocks.
     for(const b of allBlocks) {
       if(Math.abs(x-b.x)<(w+b.w)/2+.9 &&
@@ -371,7 +374,9 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     const step=8;
     let runStart=null,runEnd=null;
     const flush=()=>{
-      if(runStart===null || runEnd-runStart<step) return;
+      // Tiny isolated asphalt fragments looked like broken intersecting
+      // roads. Only keep coherent full block-length street runs.
+      if(runStart===null || runEnd-runStart<32) return;
       const middle=(runStart+runEnd)/2;
       const len=runEnd-runStart;
       const obj=axis==="z"
