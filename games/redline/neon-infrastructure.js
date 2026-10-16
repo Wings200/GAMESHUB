@@ -133,7 +133,7 @@ export function buildWaterfront({
  */
 export function buildRaisedRoads({
   THREE,worldGroup,trackSamples,sampleCount,
-  roadHalf,sidewalkOuter,addRail
+  roadHalf,sidewalkOuter,addRail,addPierCollider
 }) {
   const deckMaterial=matte(THREE,0x555d63,.88);
   const girderMaterial=matte(THREE,0x2e363f,.62);
@@ -176,14 +176,15 @@ export function buildRaisedRoads({
         .15,.16,coping,1.05);
       makeSegment(a.point,b.point,side*(sidewalkOuter-1.0),
         .25,.28,girderMaterial,-.72);
-      if(addRail && i%6===0) {
+      if(addRail) {
         const nx=a.normal.x*side*(sidewalkOuter+.02);
         const nz=a.normal.z*side*(sidewalkOuter+.02);
         const mx=b.normal.x*side*(sidewalkOuter+.02);
         const mz=b.normal.z*side*(sidewalkOuter+.02);
         addRail(
           new THREE.Vector2(a.point.x+nx,a.point.z+nz),
-          new THREE.Vector2(b.point.x+mx,b.point.z+mz)
+          new THREE.Vector2(b.point.x+mx,b.point.z+mz),
+          (a.point.y+b.point.y)/2
         );
       }
     }
@@ -198,6 +199,10 @@ export function buildRaisedRoads({
         [a.point.x,base+h/2,a.point.z],concrete);
       addBox(THREE,worldGroup,[4,.5,4],
         [a.point.x,base+.25,a.point.z],coping);
+      if(addPierCollider) addPierCollider(
+        new THREE.Vector3(a.point.x,base,a.point.z),
+        1.4,1.4,Math.max(base,base+h-.65)
+      );
       piers++;
     }
     bridgeCount++;
