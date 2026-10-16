@@ -93,7 +93,7 @@ const TRACKS = {
     neon: {
         id: "neon",
         name: "NEON DISTRICT",
-        description: "Neon District V2 — a long one-lap midnight street circuit through downtown towers, metro tunnels, a tight old-city alley, construction works, parking structures and two hidden corner-cut jumps.",
+        description: "Neon District V3 — real graded city streets, twin concrete bridges across the shipping canal, waterfront warehouses, downtown tunnels and elevated approaches.",
         sampleCount: 520,
         laps: 1,
         background: 0x050a13,
@@ -105,33 +105,40 @@ const TRACKS = {
           The jagged outer route creates real blocks and district changes
           without putting guardrails across crossing roads.
         */
+        /*
+          Canal district geography (X/Z/Y):
+          Two engineered bridges cross the north-south river at X≈170.
+          Graded approaches rise gradually to 12 m at both spans.
+          The west-bank district has a separate mild street grade.
+          All Z/heading positions remain from the proven Neon V2 route.
+        */
         controlPoints: [
-            [-245, 163],
-            [-170, 190],
-            [-95, 170],
-            [-41, 194],
-            [27, 173],
-            [102, 201],
-            [184, 173],
-            [245, 139],
-            [286, 82],
-            [265, 31],
-            [292, -24],
-            [272, -85],
-            [228, -133],
-            [170, -160],
-            [109, -139],
-            [48, -184],
-            [-24, -167],
-            [-88, -187],
-            [-150, -156],
-            [-211, -136],
-            [-248, -92],
-            [-228, -48],
-            [-275, 0],
-            [-258, 65],
-            [-224, 109],
-            [-184, 139]
+            [-245, 163, 0],
+            [-170, 190, 0],
+            [-95, 170, 0],
+            [-41, 194, 0],
+            [27, 173, 0],
+            [102, 201, 5],
+            [184, 173, 12],
+            [245, 139, 5],
+            [286, 82, 0],
+            [265, 31, 0],
+            [292, -24, 0],
+            [272, -85, 0],
+            [228, -133, 6],
+            [170, -160, 12],
+            [109, -139, 5],
+            [48, -184, 0],
+            [-24, -167, 0],
+            [-88, -187, 0],
+            [-150, -156, 0],
+            [-211, -136, 0],
+            [-248, -92, 2.5],
+            [-228, -48, 4],
+            [-275, 0, 3],
+            [-258, 65, 1],
+            [-224, 109, 0],
+            [-184, 139, 0]
         ],
 
         checkpoints: [
@@ -223,11 +230,11 @@ const TRACKS = {
 
             /* Hidden downtown corner cut */
             {
-                t: 0.188,
+                t: 0.092,
                 offset: -5.45,
                 strength: 8.9,
                 secret: true,
-                targetT: 0.211,
+                targetT: 0.115,
                 landingLead: 5,
                 shortcutSpeed: 74,
                 minSpeed: 27
@@ -515,10 +522,10 @@ function applyTrackConfig(trackId) {
     curve =
         new THREE.CatmullRomCurve3(
             config.controlPoints.map(
-                ([x, z]) =>
+                ([x, z, elevation = 0]) =>
                     new THREE.Vector3(
                         x,
-                        0,
+                        config.id === "neon" ? elevation : 0,
                         z
                     )
             ),
@@ -1917,12 +1924,10 @@ function makeRibbon(
                 );
 
 
-        inner.y =
-            y;
-
-
-        outer.y =
-            y;
+        // Both shoulders and road mesh follow the actual 3D curve.
+        // Arctic remains unchanged because its track Y is zero.
+        inner.y = sample.point.y + y;
+        outer.y = sample.point.y + y;
 
 
         vertices.push(
@@ -2552,6 +2557,10 @@ function buildCity() {
                 0x2a2438
             ];
 
+
+            // Buildings sit on their urban lots, not floating beside a
+            // graded approach or elevated bridge.
+            position.y = 0;
 
             buildingSpecs.push({
                 position,
@@ -7148,8 +7157,7 @@ function buildBarriers() {
             const length = segment.length();
             const rail = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.80, length), barrierMaterial);
             rail.position.copy(midpoint);
-            rail.position.y =
-                0.45;
+            rail.position.y = midpoint.y + 0.45;
             rail.rotation.y =
                 Math.atan2(segment.x, segment.z);
             worldGroup.add(rail);
@@ -9730,8 +9738,7 @@ function getGridTransform(playerIndex) {
     const position = frame.point
         .clone()
         .addScaledVector(frame.normal, lateral)
-        .addScaledVector(frame.tangent, -row *
-        4.0);
+        .addScaledVector(frame.tangent, -row * 4.0);
     return {
         position,
         rotationY: frame.rotationY
