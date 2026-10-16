@@ -543,6 +543,155 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
  * Pools of warm/cool light under existing street lamps. This fakes diffuse
  * bounced illumination cheaply, without dozens of expensive point lights.
  */
+
+/**
+ * Curated Neon District advertising. Uses a small shared set of canvas
+ * atlases, mounted on real building facades. No billboard can block the
+ * driving lane because the building layout is clearance-tested upstream.
+ * All ads are decorative and do not affect collision or race logic.
+ */
+export function buildNeonAdvertising({THREE,worldGroup,buildings}) {
+  const brands=[
+    ["NIGHT CITY","OPEN ALL NIGHT","#ff4b9e"],
+    ["SYNTH//88","LIVE MUSIC","#34dbff"],
+    ["TOKYO NOIR","AFTER DARK","#af79ff"],
+    ["PIXEL ARCADE","HIGH SCORES","#30f0d4"],
+    ["RAMEN 24","HOT AND FAST","#ff9c57"],
+    ["NEON DRIVE","MIDNIGHT RUN","#5c95ff"],
+    ["CYBER CAFE","24 HOURS","#ff5abd"],
+    ["RETRO WAVE","DANCE FLOOR","#2ff0ed"],
+    ["BLACKOUT","NIGHT CLUB","#dd61ff"],
+    ["VOLT ENERGY","STAY AWAKE","#fcd467"],
+    ["VOID MARKET","STREET STYLE","#ff5c87"],
+    ["ZERO GRAVITY","ROOFTOP BAR","#68b4ff"],
+    ["APEX MOTORS","CUSTOM GARAGE","#ff8850"],
+    ["BYTE DISTRICT","NEXT LEVEL","#55e7dd"],
+    ["DREAM SIGNAL","RADIO 99.4","#ff4fab"],
+    ["METRO 7","LAST TRAIN","#9f8dff"],
+    ["KAIRO TECH","UPGRADE NOW","#4ef2cb"],
+    ["NOVA PIZZA","DELIVERY 24H","#f2bf52"]
+  ];
+  function makeAdCanvas(name,sub,color,portrait,seed) {
+    const c=document.createElement("canvas");
+    c.width=portrait?256:512;
+    c.height=portrait?448:256;
+    const ctx=c.getContext("2d"),w=c.width,h=c.height;
+    const bg=ctx.createLinearGradient(0,0,w,h);
+    bg.addColorStop(0,"#080911");
+    bg.addColorStop(.55,seed%3===0?"#190f28":"#0a111c");
+    bg.addColorStop(1,"#05060c");
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    // Lit framing, circuit lines and subtle diagonal ad graphics.
+    ctx.strokeStyle=color;ctx.lineWidth=7;ctx.globalAlpha=.88;
+    ctx.strokeRect(8,8,w-16,h-16);
+    ctx.lineWidth=2;ctx.globalAlpha=.27;
+    for(let i=0;i<9;i++){
+      ctx.beginPath();
+      ctx.moveTo(-w*.2+i*w/7,0);
+      ctx.lineTo(i*w/7,h);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    ctx.fillStyle=color;
+    ctx.fillRect(18,18,portrait?w*.25:w*.16,5);
+    ctx.fillRect(w*.73,h-24,w*.19,4);
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.shadowColor=color;ctx.shadowBlur=22;
+    const maxWidth=w-24;
+    const fontSize=portrait?42:57;
+    ctx.fillStyle="#ffffff";
+    ctx.font="900 "+fontSize+"px Arial, sans-serif";
+    // Native canvas maxWidth keeps even long names inside the frame.
+    if(portrait){
+      const words=name.split(" ");
+      const rows=words.length===1?[name]:words.length===2?words:
+        [words.slice(0,2).join(" "),words.slice(2).join(" ")];
+      rows.forEach((line,i)=>ctx.fillText(line,w/2,h*.32+(i-(rows.length-1)/2)*61,maxWidth));
+    }else{
+      ctx.fillText(name,w/2,h*.43,maxWidth);
+    }
+    ctx.shadowBlur=11;ctx.fillStyle=color;
+    ctx.font="800 "+(portrait?23:25)+"px Arial, sans-serif";
+    ctx.fillText(sub,w/2,portrait?h*.70:h*.76,maxWidth);
+    ctx.shadowBlur=0;
+    const texture=new THREE.CanvasTexture(c);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.anisotropy=4;
+    texture.minFilter=THREE.LinearMipmapLinearFilter;
+    return texture;
+  }
+  // Each material is reused on dozens of signs, keeping draw calls bounded.
+  const posters=brands.map(([name,sub,color],i)=>{
+    const portrait=i%3!==0;
+    return {
+      portrait,
+      material:new THREE.MeshBasicMaterial({
+        map:makeAdCanvas(name,sub,color,portrait,i),
+        side:THREE.FrontSide,
+        toneMapped:false
+      }),
+      frame:new THREE.MeshBasicMaterial({color:new THREE.Color(color),
+        toneMapped:false})
+    };
+  });
+  const darkFrame=new THREE.MeshStandardMaterial({
+    color:0x101116,roughness:.51,metalness:.52
+  });
+  const posterGeometry=new THREE.PlaneGeometry(1,1);
+  const frameGeometry=new THREE.BoxGeometry(1,1,.10);
+  let boards=0,rooftops=0;
+  for(let i=0;i<buildings.length;i++){
+    const b=buildings[i];
+    if(b.height<7)continue;
+    // One or two ads per facade, distributed over multiple street levels.
+    const count=i%4===0 ? 2 : 1;
+    for(let slot=0;slot<count;slot++){
+      const ad=posters[(i*7+slot*11)%posters.length];
+      const height=ad.portrait?3.65:2.35;
+      const width=Math.min(ad.portrait?2.25:5.5,b.depth*.67);
+      const y=Math.min(b.height-2.15,3.35+slot*5.4+(i%3)*.55);
+      if(y-height/2<.35)continue;
+      const point=b.position.clone().addScaledVector(
+        b.normal,-b.side*(b.width/2+.19)
+      );
+      point.addScaledVector(b.tangent,
+        slot===0?-b.depth*.16:b.depth*.16);
+      point.y=y;
+      const faceRotation=b.rotationY+(b.side===1?Math.PI/2:-Math.PI/2);
+      const sign=new THREE.Mesh(posterGeometry,ad.material);
+      sign.position.copy(point);sign.rotation.y=faceRotation;
+      sign.scale.set(width,height,1);
+      worldGroup.add(sign);
+      const border=new THREE.Mesh(frameGeometry,darkFrame);
+      border.position.copy(point).addScaledVector(b.normal,b.side*.10);
+      border.rotation.y=faceRotation;
+      border.scale.set(width+.20,height+.20,1);
+      worldGroup.add(border);
+      // Three strip-lights give the posters a 3D neon rim without bloom.
+      const line=new THREE.Mesh(
+        new THREE.BoxGeometry(width+.16,.055,.055),ad.frame);
+      line.position.copy(point);
+      line.position.y+=height/2+.07;
+      line.rotation.y=faceRotation;
+      worldGroup.add(line);
+      boards++;
+    }
+    // High vertical roof signs create a recognizable lit city skyline.
+    if(i%5===0 && b.height>17){
+      const ad=posters[(i*3+2)%posters.length];
+      const roofSign=new THREE.Mesh(posterGeometry,ad.material);
+      roofSign.position.copy(b.position).addScaledVector(
+        b.normal,-b.side*(b.width/2+.34));
+      roofSign.position.y=b.height+2.3;
+      roofSign.rotation.y=b.rotationY+(b.side===1?Math.PI/2:-Math.PI/2);
+      roofSign.scale.set(Math.min(6.5,b.depth*.8),3.4,1);
+      worldGroup.add(roofSign);
+      rooftops++;
+    }
+  }
+  return {posters:boards,roofSigns:rooftops,designs:brands.length};
+}
+
 export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
                                    roadHalf}) {
   const canvas=document.createElement("canvas");
