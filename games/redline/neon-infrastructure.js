@@ -52,6 +52,34 @@ function addBox(THREE,parent,sizes,position,mat){
 }
 function distance2D(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
 
+function waterNormalTexture(THREE) {
+  // Tangent-space normal map built from several overlapping wind waves.
+  // Repeats along the commercial canal instead of presenting flat plastic.
+  const canvas=document.createElement("canvas");
+  canvas.width=256;canvas.height=256;
+  const ctx=canvas.getContext("2d");
+  const pixels=ctx.createImageData(256,256);
+  for(let y=0;y<256;y++){
+    for(let x=0;x<256;x++){
+      const tx=x/256,ty=y/256;
+      const phase=tx*35+ty*14;
+      const u=.17*Math.sin(phase*1.1)+.08*Math.sin(tx*95-ty*21);
+      const v=.20*Math.sin(phase*.78)+.09*Math.sin(ty*79+tx*12);
+      const i=(y*256+x)*4;
+      pixels.data[i]=Math.max(0,Math.min(255,128+u*115));
+      pixels.data[i+1]=Math.max(0,Math.min(255,128+v*115));
+      pixels.data[i+2]=246;
+      pixels.data[i+3]=255;
+    }
+  }
+  ctx.putImageData(pixels,0,0);
+  const tex=new THREE.CanvasTexture(canvas);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(4,15);
+  tex.anisotropy=4;
+  return tex;
+}
+
 /* Ground broken into actual riverbanks. Wide river trench means no
    "cardboard concrete" plane under the water. */
 export function buildWaterfront({
@@ -73,13 +101,20 @@ export function buildWaterfront({
   // Water terminates in the harbor beyond the visible built-up blocks.
   // Shore banks are vertical concrete quays, with a top edge/pedestrian route.
   const waterMaterial=new THREE.MeshPhysicalMaterial({
-    color:0x0b2834,roughness:.26,metalness:.24,
-    transparent:false,clearcoat:.34,clearcoatRoughness:.22,
+    color:0x0a2636,roughness:.21,metalness:.12,
+    transparent:false,clearcoat:.58,clearcoatRoughness:.17,
+    normalMap:waterNormalTexture(THREE),
+    normalScale:new THREE.Vector2(.33,.33),
     side:THREE.DoubleSide
   });
   const water=makePlane(THREE,worldGroup,
     CANAL_EAST-CANAL_WEST,CANAL_LENGTH,CANAL_MID_X,0,-.40,waterMaterial);
   water.renderOrder=-1;
+  water.onBeforeRender=()=>{
+    if(water.material.normalMap){
+      water.material.normalMap.offset.y=(performance.now()*.000011)%1;
+    }
+  };
 
   // Land continues north/south of the water channel as a separate peninsula.
   const endLength=(sceneDepth-CANAL_LENGTH)/2;
