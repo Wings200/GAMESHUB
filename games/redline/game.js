@@ -49,8 +49,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060c16);
 scene.fog = new THREE.Fog(0x060c16, 105, 290);
 const camera = new THREE.PerspectiveCamera(66, 16 / 9, 0.1, 440);
-scene.add(new THREE.HemisphereLight(0xc7dcff, 0x0d1420, 1.75));
-const moonLight = new THREE.DirectionalLight(0xdee9ff, 1.18);
+const hemisphereLight = new THREE.HemisphereLight(0x9aaacf, 0x08111b, 1.75);
+scene.add(hemisphereLight);
+const moonLight = new THREE.DirectionalLight(0xb7c8e8, 1.18);
 moonLight.position.set(-35, 55, 25);
 scene.add(moonLight);
 const fillLight = new THREE.DirectionalLight(0x637cff, 0.30);
@@ -537,6 +538,16 @@ function applyTrackConfig(trackId) {
             config.fogNear,
             config.fogFar
         );
+
+    // Keep Arctic's original illumination while making Neon genuinely night.
+    hemisphereLight.intensity =
+        config.id === "neon" ? 0.42 : 1.75;
+    moonLight.intensity =
+        config.id === "neon" ? 0.56 : 1.18;
+    fillLight.intensity =
+        config.id === "neon" ? 0.10 : 0.30;
+    renderer.toneMappingExposure =
+        config.id === "neon" ? 0.82 : 1.08;
 
     camera.far =
         activeTrackId ===
@@ -1870,6 +1881,13 @@ function makeRibbon(
         &&
         Boolean(textureKind);
 
+    // World-space texel scale: ~5m per repeat rather than one 80m
+    // stretched asphalt tile. Preserve the old Arctic UVs unchanged.
+    let roadMeters = 0;
+    let previousPoint = null;
+    const physicalUv = splitUvSeam;
+    const acrossRepeats = Math.abs(outerDistance - innerDistance) / 4.5;
+
 
     for (
         let i = 0;
@@ -1917,18 +1935,21 @@ function makeRibbon(
         );
 
 
-        const u =
-            i /
-            TRACK_SAMPLE_COUNT
-            *
-            textureRepeats;
+        if (physicalUv && previousPoint) {
+            roadMeters += sample.point.distanceTo(previousPoint);
+        }
+        previousPoint = sample.point;
 
+        const u =
+            physicalUv
+                ? roadMeters / 4.5
+                : i / TRACK_SAMPLE_COUNT * textureRepeats;
 
         uvs.push(
             u,
             0,
             u,
-            1
+            physicalUv ? acrossRepeats : 1
         );
 
     }
@@ -2260,7 +2281,7 @@ function buildCity() {
         ),
         new THREE.MeshStandardMaterial({
             color:
-                0x08111b,
+                0x647079,
             roughness:
                 1,
             map:
@@ -2285,8 +2306,8 @@ function buildCity() {
         sceneRoot: worldGroup,
         material: ground.material,
         kind: "concrete",
-        repeatX: 98,
-        repeatY: 91
+        repeatX: 310,
+        repeatY: 290
     });
 
 
@@ -2295,15 +2316,29 @@ function buildCity() {
         worldGroup,
         trackSamples,
         sampleCount: TRACK_SAMPLE_COUNT,
-        getFrameAt
+        getFrameAt,
+        registerBuilding: (position, width, depth, rotationY, height) => {
+            addEnvironmentBoxCollider(
+                position, width / 2, depth / 2, rotationY,
+                { minY: -1, maxY: height, tag: "BUILDING" }
+            );
+        }
     });
 
 
+    // This exact world owns any asynchronously loaded model collisions.
+    const activeNeonArtRoot = worldGroup;
     // Authored glTF buildings and props load independently of race startup.
     NEON_ART.loadAuthoredModels({
         THREE,
         worldGroup,
-        getFrameAt
+        getFrameAt,
+        registerBuilding: (position, width, depth, rotationY, height) => {
+            // Async loaders must not register collision into a later race.
+            if (worldGroup !== activeNeonArtRoot || !worldGroup?.parent) return;
+            addEnvironmentBoxCollider(position, width / 2, depth / 2, rotationY,
+                { minY: -1, maxY: height, tag: "MODEL" });
+        }
     }).catch(error => console.warn("Neon model dressing:", error));
 
 
@@ -2553,6 +2588,14 @@ function buildCity() {
         buildings: buildingSpecs
     });
 
+    // Match visible roadside building footprints to real oriented colliders.
+    // The secret jump corridors remain unobstructed because these are built
+    // from the same filtered buildingSpecs used to render the facades.
+    for (const b of buildingSpecs) {
+        addEnvironmentBoxCollider(b.position, b.width / 2, b.depth / 2,
+            b.rotationY, { minY: -1, maxY: b.height, tag: "BUILDING" });
+    }
+
 
     buildRooftopDetails(buildingSpecs);
     buildStreetLights();
@@ -2768,11 +2811,19 @@ function collideWithEnvironment() {
             car.position.y <
             collider.minY
         ) {
-
             continue;
-
         }
 
+        // Cheap broadphase before any rotation/trigonometry; important
+        // once there are hundreds of actual city building colliders.
+        const cx = car.position.x - collider.x;
+        const cz = car.position.z - collider.z;
+        const broadRadius = collider.type === "circle"
+            ? collider.radius + CAR_RADIUS
+            : Math.hypot(collider.halfWidth, collider.halfDepth) + CAR_RADIUS;
+        if (Math.abs(cx) > broadRadius || Math.abs(cz) > broadRadius) {
+            continue;
+        }
 
         let normal =
             null;
@@ -5885,7 +5936,13 @@ function buildBillboards() {
         }));
         board.position.y =
             4.2;
-        group.add(board);
+        // PlaneGeometry's back face mirrors lettering. Use a second
+        // independently oriented front face for the other viewpoint.
+        board.material.side = THREE.FrontSide;
+        const readableBack = board.clone();
+        readableBack.rotation.y = Math.PI;
+        readableBack.position.z = -0.014;
+        group.add(board, readableBack);
         worldGroup.add(group);
     }
 }
@@ -6279,16 +6336,15 @@ function buildNeonDistrictSetPieces() {
             );
 
 
-        sign.position.set(
-            0,
-            4.72,
-            0
-        );
-
-
-        group.add(
-            sign
-        );
+        sign.position.set(0, 4.72, 0);
+        // Approaching cars see the -Z side of this overhead gantry.
+        // Rotate its actual FRONT toward them so text isn't backwards.
+        sign.rotation.y = Math.PI;
+        sign.material.side = THREE.FrontSide;
+        const exitSide = sign.clone();
+        exitSide.rotation.y = 0;
+        exitSide.position.z = 0.015;
+        group.add(sign, exitSide);
 
 
         worldGroup.add(
