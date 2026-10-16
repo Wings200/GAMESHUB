@@ -7174,7 +7174,8 @@ function buildBarriers() {
             worldGroup.add(rail);
             barriers.push({
                 a: new THREE.Vector2(a.x, a.z),
-                b: new THREE.Vector2(b.x, b.z)
+                b: new THREE.Vector2(b.x, b.z),
+                y: midpoint.y
             });
         }
     }
@@ -7475,6 +7476,10 @@ function updateEffects(delta) {
 function collideWithBarriers() {
     const player = new THREE.Vector2(car.position.x, car.position.z);
     for (const barrier of barriers) {
+        // A guardrail on an elevated bridge must not block a vehicle
+        // traveling on the lower waterfront beside/under that bridge.
+        if (activeTrackId === "neon" && Number.isFinite(barrier.y) &&
+            Math.abs(car.position.y-barrier.y)>2.1) continue;
         const ab = barrier.b
             .clone()
             .sub(barrier.a);
@@ -7549,7 +7554,7 @@ function collideWithBarriers() {
                 .clone()
                 .addScaledVector(normal3D, -0.9);
             contact.y =
-                0.42;
+                car.position.y + 0.42;
             emitSparks(contact, normal3D, Math.min(1.4, hitSpeed /
                 16));
             carState.sparkCooldown =
@@ -7656,12 +7661,16 @@ function buildObstacles() {
         obstacles.push({
             ...definition,
             mesh,
-            position: new THREE.Vector3(mesh.position.x, 0, mesh.position.z)
+            position: new THREE.Vector3(
+                mesh.position.x,mesh.position.y,mesh.position.z
+            )
         });
     }
 }
 function collideWithObstacles() {
     for (const obstacle of obstacles) {
+        if (activeTrackId === "neon" &&
+            Math.abs(car.position.y - obstacle.position.y)>2.4) continue;
         const dx = car.position.x -
             obstacle.position.x;
         const dz = car.position.z -
@@ -7712,7 +7721,7 @@ function collideWithObstacles() {
                 .clone()
                 .addScaledVector(normal, -0.85);
             contact.y =
-                0.45;
+                car.position.y + 0.45;
             emitSparks(contact, normal, Math.min(1.3, hitSpeed /
                 14));
             carState.sparkCooldown =
@@ -11122,7 +11131,12 @@ function buildWorld() {
             sampleCount: TRACK_SAMPLE_COUNT,
             roadHalf: ROAD_HALF,
             sidewalkOuter: SIDEWALK_OUTER,
-            addRail: (a,b) => barriers.push({a,b})
+            addRail: (a,b,y) => barriers.push({a,b,y}),
+            addPierCollider: (position,halfWidth,halfDepth,maxY) => {
+                addEnvironmentBoxCollider(position,halfWidth,halfDepth,0,{
+                    minY:-1,maxY,tag:"BRIDGE SUPPORT"
+                });
+            }
         });
     }
 
