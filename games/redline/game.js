@@ -3627,13 +3627,14 @@ function buildArcticTunnel(
             3.0;
 
 
-        sign.rotation.y =
-            frame.rotationY;
-
-
-        worldGroup.add(
-            sign
-        );
+        // Sector markers use two genuine front faces so the rear
+        // never displays reversed/mirrored lettering.
+        sign.material.side = THREE.FrontSide;
+        sign.rotation.y = frame.rotationY + Math.PI;
+        const reverseFace = sign.clone();
+        reverseFace.rotation.y = frame.rotationY;
+        reverseFace.position.y += .002;
+        worldGroup.add(sign, reverseFace);
 
     }
 
@@ -6981,9 +6982,13 @@ function buildParkingLot() {
         side: THREE.DoubleSide
     }));
     sign.position.copy(localPoint(zone, 0, -10.4, 2.5));
-    sign.rotation.y =
-        zone.rotationY;
-    worldGroup.add(sign);
+    // Legible from both ends of the parking entrance.
+    sign.material.side = THREE.FrontSide;
+    sign.rotation.y = zone.rotationY + Math.PI;
+    const parkingReverse = sign.clone();
+    parkingReverse.rotation.y = zone.rotationY;
+    parkingReverse.position.y += .002;
+    worldGroup.add(sign, parkingReverse);
 }
 function sectionContains(t, start, end) {
     return start <= end
