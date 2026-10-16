@@ -323,10 +323,12 @@ export function buildRaisedRoads({
       makeSegment(a.point,b.point,side*(sidewalkOuter-1.0),
         .25,.28,girderMaterial,-.72);
       if(addRail && !railCrossesLane) {
-        const nx=a.normal.x*side*(sidewalkOuter+.02);
-        const nz=a.normal.z*side*(sidewalkOuter+.02);
-        const mx=b.normal.x*side*(sidewalkOuter+.02);
-        const mz=b.normal.z*side*(sidewalkOuter+.02);
+        // Physics must use precisely the same offset as the
+        // clearance-tested, rendered parapet, not a nearer parallel rail.
+        const nx=a.normal.x*side*(sidewalkOuter+.04);
+        const nz=a.normal.z*side*(sidewalkOuter+.04);
+        const mx=b.normal.x*side*(sidewalkOuter+.04);
+        const mz=b.normal.z*side*(sidewalkOuter+.04);
         addRail(
           new THREE.Vector2(a.point.x+nx,a.point.z+nz),
           new THREE.Vector2(b.point.x+mx,b.point.z+mz),
