@@ -261,37 +261,50 @@ export function buildRaisedRoads({
   THREE,worldGroup,trackSamples,sampleCount,
   roadHalf,sidewalkOuter,addRail,addPierCollider
 }) {
-  const deckMaterial=matte(THREE,0x555d63,.88);
-  const girderMaterial=matte(THREE,0x2e363f,.62);
   const concrete=matte(THREE,0x929496,.92);
   const coping=matte(THREE,0x747a83,.75);
   const supportStats=buildContinuousRoadSupport({
     THREE,worldGroup,trackSamples,sampleCount,sidewalkOuter
   });
 
-  // Bridge parapets and piers are still batched to limit draw calls.
-  // Instance matrices preserve each road span's slope, yaw and dimensions.
-  const batches=new Map();
-  const makeSegment=(a,b,offset,width,height,material,up=0)=>{
-    const dx=b.x-a.x, dz=b.z-a.z,dy=b.y-a.y;
-    const horizontal=Math.hypot(dx,dz);
-    if(horizontal<.01) return;
-    const nx=-dz/horizontal,nz=dx/horizontal;
-    if(!batches.has(material)) batches.set(material,[]);
-    batches.get(material).push({
-      x:(a.x+b.x)*.5+nx*offset,
-      y:(a.y+b.y)*.5+up,
-      z:(a.z+b.z)*.5+nz*offset,
-      yaw:Math.atan2(dx,dz),
-      pitch:-Math.atan2(dy,horizontal),
-      width,height,length:Math.hypot(horizontal,dy)+.28
-    });
+  // CURVE-CONFORMING GUARDRAILS: continuous triangular surfaces whose
+  // vertices are anchored to the actual spline samples. The previous
+  // InstancedMesh boxes were oriented by each straight chord, which made
+  // disconnected ends and sharp bits sticking into bends.
+  const railFaces=[],trimFaces=[];
+  const addQuad=(out,a,b,c,d)=>{
+    for(const p of [a,b,c,a,c,d]) out.push(p.x,p.y,p.z);
+  };
+  const appendRail=(a,b,side,offset,width,low,high,out)=>{
+    // Local normals are sampled at BOTH ends. Neighbouring quads share
+    // precisely identical edge points, including on curved uphill roads.
+    const end=(frame,lateral,up)=>new THREE.Vector3(
+      frame.point.x+frame.normal.x*lateral,
+      frame.point.y+up,
+      frame.point.z+frame.normal.z*lateral
+    );
+    const center=side*offset,lo=center-width*.5,hi=center+width*.5;
+    const a0=end(a,lo,low),a1=end(a,hi,low);
+    const a2=end(a,lo,high),a3=end(a,hi,high);
+    const b0=end(b,lo,low),b1=end(b,hi,low);
+    const b2=end(b,lo,high),b3=end(b,hi,high);
+    addQuad(out,a2,b2,b3,a3); // flat top
+    addQuad(out,a0,b0,b2,a2); // inboard
+    addQuad(out,b1,a1,a3,b3); // outboard
+    addQuad(out,a0,a1,b1,b0); // underside
+  };
+  const drawRail=(vertices,mat)=>{
+    if(!vertices.length)return;
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute("position",
+      new THREE.Float32BufferAttribute(vertices,3));
+    geometry.computeVertexNormals();
+    worldGroup.add(new THREE.Mesh(geometry,mat));
   };
 
-
   let bridgeCount=0,piers=0;
-  for(let i=0;i<sampleCount;i+=2){
-    const a=trackSamples[i],b=trackSamples[(i+2)%sampleCount];
+  for(let i=0;i<sampleCount;i++){
+    const a=trackSamples[i],b=trackSamples[(i+1)%sampleCount];
     if(!a||!b)continue;
     const high=(a.point.y+b.point.y)/2;
     if(high<1.0)continue;
@@ -314,14 +327,13 @@ export function buildRaisedRoads({
     for(const side of [-1,1]){
       const railCrossesLane=bridgeRailWouldCrossLane(
         a,b,side,roadHalf,sidewalkOuter,trackSamples,high,THREE);
-      // Still draw the underside girders, but never place raised guard
-      // parapets (or their physical segments) across the usable road.
-      if(!railCrossesLane) makeSegment(a.point,b.point,side*(sidewalkOuter+.04),
-        .32,.85,concrete,.38);
-      if(!railCrossesLane) makeSegment(a.point,b.point,side*(sidewalkOuter+.13),
-        .15,.16,coping,1.05);
-      makeSegment(a.point,b.point,side*(sidewalkOuter-1.0),
-        .25,.28,girderMaterial,-.72);
+      if(!railCrossesLane) {
+        // Join the barrier wall and its cap with NO floating gap. Do not
+        // add the old separate underslung girder boxes that protruded
+        // into sidewalk and asphalt on corners.
+        appendRail(a,b,side,sidewalkOuter+.04,.30,.02,.83,railFaces);
+        appendRail(a,b,side,sidewalkOuter+.04,.38,.83,.95,trimFaces);
+      }
       if(addRail && !railCrossesLane) {
         // Physics must use precisely the same offset as the
         // clearance-tested, rendered parapet, not a nearer parallel rail.
@@ -337,7 +349,7 @@ export function buildRaisedRoads({
       }
     }
     // Heavy piers sit on ground or riverbed, safely below the road deck.
-    if(i%12===0 && high>2.8){
+    if(i%24===0 && high>2.8){
       const water =
         a.point.x>CANAL_WEST&&a.point.x<CANAL_EAST &&
         Math.abs(a.point.z)<CANAL_LENGTH/2;
@@ -355,28 +367,15 @@ export function buildRaisedRoads({
     }
     bridgeCount++;
   }
-  for(const [material,entries] of batches) {
-    if(!entries.length) continue;
-    const mesh=new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1,1,1),
-      material,entries.length
-    );
-    const dummy=new THREE.Object3D();
-    for(let i=0;i<entries.length;i++) {
-      const e=entries[i];
-      dummy.position.set(e.x,e.y,e.z);
-      dummy.rotation.order="YXZ";
-      dummy.rotation.y=e.yaw;
-      dummy.rotation.x=e.pitch;
-      dummy.scale.set(e.width,e.height,e.length);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i,dummy.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate=true;
-    worldGroup.add(mesh);
-  }
+  drawRail(railFaces,new THREE.MeshStandardMaterial({
+    color:0x606a78,roughness:.88,metalness:.08,side:THREE.DoubleSide
+  }));
+  drawRail(trimFaces,new THREE.MeshStandardMaterial({
+    color:0x9299a5,roughness:.74,metalness:.12,side:THREE.DoubleSide
+  }));
 
-  return {segments:bridgeCount,piers,batches:batches.size,
+  return {segments:bridgeCount,piers,batches:2,
     gradeSections:supportStats.gradeSections,
-    continuousBridgeSections:supportStats.bridgeSections};
+    continuousBridgeSections:supportStats.bridgeSections,
+    continuousRailTriangles:(railFaces.length+trimFaces.length)/9};
 }
