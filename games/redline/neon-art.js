@@ -246,7 +246,7 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     [.16,.40,.70,.89],
     [.26,.55,.75]
   ].flatMap((progresses, modelIndex) => {
-    const offsets = [44,47,53,57];
+    const offsets = [21,22,24,23];
     return progresses.map((t,i) => {
       const f = getFrameAt(t);
       const side = (i + modelIndex) % 2 === 0 ? 1 : -1;
@@ -377,15 +377,8 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   }
   instantiate(THREE,worldGroup,buildingGeo,capMat,pylons);
 
-  // Low fog/glow halo near the actual city center, not a glowing globe.
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(1160,1160),
-    new THREE.MeshBasicMaterial({
-      color:0x4e5485, transparent:true, opacity:.08,
-      depthWrite:false, blending:THREE.AdditiveBlending
-    }));
-  glow.rotation.x = -Math.PI/2;
-  glow.position.y = -.05;
-  worldGroup.add(glow);
+  // No giant transparent ground glow plane: it tinted the entire canal
+  // pink and made the water and streets look like cardboard.
 
   return { cityBuildings: cityBlocks.reduce((n,b)=>n+b.length,0),
     skylineTowers: distant.reduce((n,b)=>n+b.length,0) };
@@ -561,10 +554,10 @@ export async function loadAuthoredModels({
   if(!root.parent)return;
   const loader=new GLTFLoader();
   const specs=[
-    ["quaternius_buildings_pack/building2-small.glb",[.07,.23,.48,.64,.81],44],
-    ["quaternius_buildings_pack/building3-small.glb",[.10,.30,.58,.77,.96],47],
-    ["quaternius_buildings_pack/building4.glb",[.16,.40,.70,.89],53],
-    ["kenney_city_kit_industrial/building-i.glb",[.26,.55,.75],57],
+    ["quaternius_buildings_pack/building2-small.glb",[.07,.23,.48,.64,.81],21],
+    ["quaternius_buildings_pack/building3-small.glb",[.10,.30,.58,.77,.96],22],
+    ["quaternius_buildings_pack/building4.glb",[.16,.40,.70,.89],24],
+    ["kenney_city_kit_industrial/building-i.glb",[.26,.55,.75],23],
     ["kenney_city_kit_roads/dumpster.glb",[.08,.34,.50,.76,.91],11.4],
     ["kenney_city_kit_roads/construction-fence.glb",[.69,.73,.77],12.0],
     ["kenney_city_kit_roads/construction-cone.glb",[.66,.68,.70,.72,.74],10.5]
