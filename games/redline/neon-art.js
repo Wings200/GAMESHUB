@@ -150,6 +150,39 @@ export function facadeMap(THREE, type = "office") {
   return canvasTexture(THREE, canvas);
 }
 
+export function facadeEmissiveMap(THREE, type = "office") {
+  const canvas = document.createElement("canvas");
+  canvas.width = 768;
+  canvas.height = 1024;
+  const g = canvas.getContext("2d");
+  g.fillStyle = "#000000";
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  const brick = type === "brick";
+  const shop = type === "shop";
+  const cols = shop ? 5 : 6;
+  const rows = brick ? 12 : 16;
+  const cx = canvas.width / cols;
+  const cy = canvas.height / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * cx + (brick ? 17 : 10);
+      const y = r * cy + (brick ? 11 : 7);
+      const w = cx - (brick ? 34 : 20);
+      const h = cy - (brick ? 22 : 14);
+      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > .58;
+      if (!lit) continue;
+      const cool = noise01(r * 29 + col * 83 + (shop ? 17 : 5)) > .80;
+      g.fillStyle = cool ? "#83d8ff" : (brick ? "#ffd08a" : "#ffe0a1");
+      g.fillRect(x + 3, y + 3, w - 6, h - 6);
+      g.globalAlpha = .42;
+      g.fillStyle = "#ffffff";
+      g.fillRect(x + 4, y + 4, 5, h - 8);
+      g.globalAlpha = 1;
+    }
+  }
+  return canvasTexture(THREE, canvas);
+}
+
 function skyTexture(THREE) {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
@@ -223,9 +256,19 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
 
   const atlas = [facadeMap(THREE, "office"), facadeMap(THREE, "brick"),
                  facadeMap(THREE, "shop")];
+  const glowAtlas = [
+    facadeEmissiveMap(THREE, "office"),
+    facadeEmissiveMap(THREE, "brick"),
+    facadeEmissiveMap(THREE, "shop")
+  ];
   const mats = atlas.map((map, i) => new THREE.MeshStandardMaterial({
-    color: i === 1 ? 0xc2acaa : 0xcbd4df, map,
-    roughness: i === 0 ? .48 : .82, metalness: i === 0 ? .20 : .04,
+    color: i === 1 ? 0xc2acaa : 0xcbd4df,
+    map,
+    emissive: 0xffffff,
+    emissiveMap: glowAtlas[i],
+    emissiveIntensity: .62,
+    roughness: i === 0 ? .48 : .82,
+    metalness: i === 0 ? .20 : .04,
     bumpMap: map, bumpScale: .018
   }));
 
@@ -413,14 +456,19 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
         d:Math.min(5,b.depth*.55),rotation:b.rotationY});
     }
   }
+  const glowAtlas = [
+    facadeEmissiveMap(THREE, "office"),
+    facadeEmissiveMap(THREE, "brick"),
+    facadeEmissiveMap(THREE, "shop")
+  ];
   const materials=atlas.map((map,i)=>new THREE.MeshStandardMaterial({
     color: i===1 ? 0xd4c4bd : 0xe1e8ed,
     map, bumpMap:map, bumpScale:.024,
     roughness: i===0 ? .47 : .85,
     metalness: i===0 ? .22 : .04,
-    emissive: i===0 ? 0x141924 : 0x181418,
-    emissiveMap: map,
-    emissiveIntensity: .08
+    emissive: 0xffffff,
+    emissiveMap: glowAtlas[i],
+    emissiveIntensity: .62
   }));
   groups.forEach((group,i)=>instantiate(THREE,worldGroup,shellGeo,materials[i],group));
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
@@ -447,9 +495,9 @@ export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
   canvas.width=256;canvas.height=256;
   const g=canvas.getContext("2d");
   const gradient=g.createRadialGradient(128,128,4,128,128,120);
-  gradient.addColorStop(0,"rgba(255,255,245,.37)");
-  gradient.addColorStop(.18,"rgba(255,246,225,.16)");
-  gradient.addColorStop(.52,"rgba(255,232,195,.055)");
+  gradient.addColorStop(0,"rgba(255,255,245,.56)");
+  gradient.addColorStop(.18,"rgba(255,246,225,.28)");
+  gradient.addColorStop(.52,"rgba(255,232,195,.10)");
   gradient.addColorStop(1,"rgba(255,223,170,0)");
   g.fillStyle=gradient;g.fillRect(0,0,256,256);
   const texture=canvasTexture(THREE,canvas);
@@ -458,10 +506,10 @@ export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
     blending:THREE.AdditiveBlending,opacity:.95,
     side:THREE.DoubleSide,fog:true
   });
-  const geo=new THREE.PlaneGeometry(21,28);
+  const geo=new THREE.PlaneGeometry(24,32);
   geo.rotateX(-Math.PI/2);
   const instances=[];
-  for(let i=0;i<sampleCount;i+=18){
+  for(let i=0;i<sampleCount;i+=12){
     const s=trackSamples[i];
     if(!s)continue;
     for(const side of [-1,1]){
@@ -474,7 +522,7 @@ export function addStreetLighting({THREE, worldGroup, trackSamples, sampleCount,
 
 /** Proper sidewalk lip, gutter, reflective studs and drains. No collider edits. */
 export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCount,
-                                         getFrameAt, roadHalf, sidewalkOuter}) {
+                                         getFrameAt, roadHalf, sidewalkOuter, registerCollider}) {
   const curbMat = new THREE.MeshStandardMaterial({
     color:0x92979a,roughness:.90,metalness:0
   });
@@ -518,6 +566,22 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
         const px=x+side*a.normal.x*2.3,pz=z+side*a.normal.z*2.3;
         hydrants.push({x:px,y:h+.44,z:pz,w:.42,h:.84,d:.42,rotation});
       }
+    }
+  }
+  if (registerCollider) {
+    for (const item of cabinets) {
+      registerCollider(
+        new THREE.Vector3(item.x, item.y, item.z),
+        item.w / 2, item.d / 2, item.rotation,
+        { minY: item.y - item.h / 2, maxY: item.y + item.h / 2, tag: "STREET CABINET" }
+      );
+    }
+    for (const item of hydrants) {
+      registerCollider(
+        new THREE.Vector3(item.x, item.y, item.z),
+        item.w / 2, item.d / 2, item.rotation,
+        { minY: item.y - item.h / 2, maxY: item.y + item.h / 2, tag: "HYDRANT" }
+      );
     }
   }
   const box=new THREE.BoxGeometry(1,1,1);
@@ -646,7 +710,7 @@ function tunnelConcreteMap(THREE) {
  * asphalt, and follow the road curve. No game colliders are touched.
  */
 export function buildMetroTunnel({THREE,worldGroup,getFrameAt,start,end,sidewalkOuter,
-                                  theme="metro"}) {
+                                  theme="metro",registerWallCollider}) {
   const colored=theme === "metro" ? 0x94ceff : 0xffbf7f;
   const concreteTile=tunnelConcreteMap(THREE);
   const concrete = new THREE.MeshStandardMaterial({
@@ -674,6 +738,12 @@ export function buildMetroTunnel({THREE,worldGroup,getFrameAt,start,end,sidewalk
       const pillar=new THREE.Mesh(new THREE.BoxGeometry(1.45,8.3,1.6),concrete);
       pillar.position.set(s*laneWidth,4.15,0);
       arch.add(pillar);
+      if(registerWallCollider) {
+        const center=f.point.clone().addScaledVector(f.normal,-s*laneWidth);
+        registerWallCollider(center,.725,1.3,f.rotationY,{
+          minY:f.point.y-.1,maxY:f.point.y+8.4,tag:"TUNNEL PORTAL"
+        });
+      }
       const foundation=new THREE.Mesh(new THREE.BoxGeometry(2.9,.55,2.6),black);
       foundation.position.set(s*laneWidth,.25,0);
       arch.add(foundation);
@@ -719,6 +789,12 @@ export function buildMetroTunnel({THREE,worldGroup,getFrameAt,start,end,sidewalk
       const wall=new THREE.Mesh(
         new THREE.BoxGeometry(.38,8.2,depth+.2),concrete);
       wall.position.set(side*laneWidth,4.1,0);g.add(wall);
+      if(registerWallCollider) {
+        const center=f.point.clone().addScaledVector(f.normal,-side*laneWidth);
+        registerWallCollider(center,.19,(depth+.2)/2,f.rotationY,{
+          minY:f.point.y-.1,maxY:f.point.y+8.3,tag:"TUNNEL WALL"
+        });
+      }
 
       // Real wall panelling, horizontal shoulder rail, black base.
       const base=new THREE.Mesh(
