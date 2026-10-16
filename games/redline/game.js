@@ -2272,7 +2272,7 @@ function buildRoad() {
     dashSamples.forEach((sample, index) => {
         dummy.position.copy(sample.point);
         dummy.position.y =
-            0.08;
+            sample.point.y + 0.08;
         dummy.rotation.set(0, sample.rotationY, 0);
         dummy.updateMatrix();
         dashes.setMatrixAt(index, dummy.matrix);
@@ -5845,14 +5845,14 @@ function buildStreetLights() {
     placements.forEach((item, index) => {
         dummy.position.copy(item.position);
         dummy.position.y =
-            2.55;
+            item.position.y + 2.55;
         dummy.rotation.set(0, item.rotationY, 0);
         dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
         poles.setMatrixAt(index, dummy.matrix);
         dummy.position.copy(item.position);
         dummy.position.y =
-            5.02;
+            item.position.y + 5.02;
         dummy.rotation.set(0, item.rotationY, 0);
         dummy.updateMatrix();
         heads.setMatrixAt(index, dummy.matrix);
@@ -9013,15 +9013,24 @@ function updateAirborne(
           Settle the chassis naturally after landing.
         */
 
+        let roadPitch=0;
+        if(activeTrackId==="neon") {
+            const info=nearestTrackInfo(car.position);
+            if(info && Math.abs(info.offset)<SIDEWALK_OUTER+1) {
+                const t=info.tangent;
+                const planar=Math.hypot(t.x,t.z);
+                if(planar>.001) {
+                    const travelSign=forwardVector().x*t.x+
+                        forwardVector().z*t.z>=0?1:-1;
+                    roadPitch=-Math.atan2(t.y,planar)*travelSign;
+                }
+            }
+        }
         car.rotation.x =
             THREE.MathUtils.lerp(
                 car.rotation.x,
-                0,
-                1 -
-                Math.exp(
-                    -12 *
-                    delta
-                )
+                roadPitch,
+                1 - Math.exp(-12*delta)
             );
 
 
@@ -10264,6 +10273,19 @@ function updatePhysics(delta) {
     lateralSpeed =
         carState.velocity
             .dot(rightVec);
+    // Gravity adds believable downhill acceleration and uphill resistance,
+    // along the horizontal road direction. Existing car steering remains.
+    if(activeTrackId==="neon" && !carState.airborne && roadInfo) {
+        const t=roadInfo.tangent;
+        const lengthXZ=Math.hypot(t.x,t.z);
+        if(lengthXZ>.001 && Math.abs(t.y)>.0001) {
+            carState.velocity.add(
+                new THREE.Vector3(t.x/lengthXZ,0,t.z/lengthXZ)
+                  .multiplyScalar(-9.81*t.y*delta)
+            );
+        }
+    }
+
     const overdrive = carState.overdriveTimer >
         0;
     const acceleration = (overdrive
