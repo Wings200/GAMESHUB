@@ -79,8 +79,8 @@ export function facadeMap(THREE, type = "office") {
   const g = canvas.getContext("2d");
   const brick = type === "brick";
   const shop = type === "shop";
-  const base = brick ? "#6a5550" : shop ? "#505f67" : "#334250";
-  const mortar = brick ? "#9a8781" : "#526373";
+  const base = brick ? "#211b20" : shop ? "#171c22" : "#111721";
+  const mortar = brick ? "#44363a" : "#303640";
   g.fillStyle = base;
   g.fillRect(0, 0, 768, 1024);
 
@@ -113,19 +113,19 @@ export function facadeMap(THREE, type = "office") {
       const y = r * cy + (brick ? 11 : 7);
       const w = cx - (brick ? 34 : 20);
       const h = cy - (brick ? 22 : 14);
-      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > .58;
-      g.fillStyle = brick ? "#b09c91" : "#647687";
+      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > (shop ? .65 : .79);
+      g.fillStyle = brick ? "#46373b" : "#29323b";
       g.fillRect(x - 3, y - 3, w + 6, h + 6);
-      g.fillStyle = "#121f2a";
+      g.fillStyle = "#080d12";
       g.fillRect(x, y, w, h);
       const grad = g.createLinearGradient(x, y, x + w, y + h);
-      grad.addColorStop(0, lit ? "#62707a" : "#213848");
-      grad.addColorStop(.62, lit ? "#aa9276" : "#112635");
-      grad.addColorStop(1, lit ? "#cab390" : "#0a1925");
+      grad.addColorStop(0, lit ? "#493e44" : "#101820");
+      grad.addColorStop(.62, lit ? "#776452" : "#0a1119");
+      grad.addColorStop(1, lit ? "#987a62" : "#050b11");
       g.fillStyle = grad;
       g.fillRect(x + 3, y + 3, w - 6, h - 6);
       g.globalAlpha = lit ? .22 : .40;
-      g.fillStyle = lit ? "#fff1bb" : "#7f9eb5";
+      g.fillStyle = lit ? "#ffe6b4" : "#17232d";
       g.fillRect(x + 4, y + 4, 5, h - 8);
       g.fillRect(x + 6, y + 4, w * .18, 3);
       g.globalAlpha = 1;
@@ -169,7 +169,7 @@ export function facadeEmissiveMap(THREE, type = "office") {
       const y = r * cy + (brick ? 11 : 7);
       const w = cx - (brick ? 34 : 20);
       const h = cy - (brick ? 22 : 14);
-      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > .58;
+      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > (shop ? .65 : .79);
       if (!lit) continue;
       const cool = noise01(r * 29 + col * 83 + (shop ? 17 : 5)) > .80;
       g.fillStyle = cool ? "#83d8ff" : (brick ? "#ffd08a" : "#ffe0a1");
@@ -262,25 +262,39 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     facadeEmissiveMap(THREE, "shop")
   ];
   const mats = atlas.map((map, i) => new THREE.MeshStandardMaterial({
-    color: i === 1 ? 0xc2acaa : 0xcbd4df,
+    color: i === 1 ? 0xa79c9d : 0xa8b0b7,
     map,
     emissive: 0xffffff,
     emissiveMap: glowAtlas[i],
-    emissiveIntensity: .62,
+    emissiveIntensity: .55,
     roughness: i === 0 ? .48 : .82,
     metalness: i === 0 ? .20 : .04,
     bumpMap: map, bumpScale: .018
   }));
 
-  const livePoints = trackSamples.filter((v, i) => i % 4 === 0);
+  // Continuous point-to-segment distance, not every fourth spline point.
+  // This avoids placing a footprint on a curved road between samples.
   const distRoad = (x, z) => {
-    let nearest = 9999;
-    for (const sample of livePoints) {
-      const dx = x - sample.point.x, dz = z - sample.point.z;
-      const ds = dx * dx + dz * dz;
-      if (ds < nearest) nearest = ds;
+    let nearestSq = Infinity;
+    for (let i = 0; i < trackSamples.length; i++) {
+      const a = trackSamples[i].point;
+      const b = trackSamples[(i + 1) % trackSamples.length].point;
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const t = Math.max(0, Math.min(1,
+        ((x-a.x)*dx + (z-a.z)*dz) / (dx*dx + dz*dz || 1)));
+      const px=x-a.x-t*dx,pz=z-a.z-t*dz;
+      const ds=px*px+pz*pz;
+      if (ds < nearestSq) nearestSq=ds;
     }
-    return Math.sqrt(nearest);
+    return Math.sqrt(nearestSq);
+  };
+  const occupiesRaceway = (x,z,w,d,margin=3) => {
+    const pad=9.2+margin;
+    for(const sample of trackSamples) {
+      if(Math.abs(x-sample.point.x)<w/2+pad &&
+         Math.abs(z-sample.point.z)<d/2+pad) return true;
+    }
+    return false;
   };
 
   const reservedBuildings = [
@@ -289,7 +303,7 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     [.16,.40,.70,.89],
     [.26,.55,.75]
   ].flatMap((progresses, modelIndex) => {
-    const offsets = [21,22,24,23];
+    const offsets = [31,30,31,29];
     return progresses.map((t,i) => {
       const f = getFrameAt(t);
       const side = (i + modelIndex) % 2 === 0 ? 1 : -1;
@@ -306,15 +320,20 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const z = gz + (noise01(gz * 11 - gx * 2) - .5) * 4;
       const roadD = distRoad(x, z);
       const outerEdge = Math.max(Math.abs(x) / 450, Math.abs(z) / 355);
-      if (roadD < 27 || (noise01(gx * 67 + gz * 41) < .09)) continue;
-      // A city block can never sit on the shipping canal.
-      if(x>109 && x<230 && Math.abs(z)<420) continue;
-      if (reservedBuildings.some(p=>Math.hypot(p.x-x,p.z-z)<23)) continue;
-      const type = (Math.floor(noise01(gx * 17 + gz * 23) * 3));
+      // Compute the actual block dimensions before checking clearance.
+      const type = Math.floor(noise01(gx * 17 + gz * 23) * 3);
       const height = (outerEdge > .7 ? 21 : 30) +
         noise01(gx * 3 - gz * 13) * (outerEdge > .7 ? 50 : 72);
       const w = 13 + noise01(gx * 7 + gz * 3) * 12;
       const d = 12 + noise01(gx * 9 + gz * 7) * 14;
+      // Road exclusion includes pavement, turning-room and the building
+      // footprint, rather than testing only the building's center.
+      if(roadD < 9.2 + Math.hypot(w,d)/2 + 4 ||
+         occupiesRaceway(x,z,w,d,3) ||
+         noise01(gx * 67 + gz * 41) < .09) continue;
+      if(x+w/2>117 && x-w/2<222 && Math.abs(z)<424) continue;
+      if(reservedBuildings.some(p=>
+           Math.hypot(p.x-x,p.z-z)<Math.hypot(w,d)/2+13)) continue;
       cityBlocks[type].push({x, y: height / 2, z, w, h: height, d});
       // The same footprint and height as the rendered city building.
       if (registerBuilding) registerBuilding(
@@ -329,47 +348,78 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     }
   }
 
-  // Secondary streets and asphalt/pavement pads tie buildings together.
+  // Secondary city roads are clipped to the actual neighborhoods.
+  // Previously full-length grid slabs crossed the race track and even
+  // buildings at arbitrary angles. Those were the "intersecting roads".
   const streetMaterial = new THREE.MeshStandardMaterial({
-    color: 0x273038, roughness: .92, metalness: .01
+    color: 0x1b1e24, roughness: .95, metalness: .004
   });
-  const roadGeo=new THREE.BoxGeometry(1,1,1);
-
-  // Continuous urban grid between the track and the far neighborhoods,
-  // rather than a sea of empty concrete between isolated building boxes.
-  const parallelRoads=[];
-  const laneCenters=[];
-  for(let x=-423;x<=423;x+=68) {
-    // Canal follows X=170; no suspended asphalt street painted over water.
-    if(x>120&&x<222)continue;
-    parallelRoads.push({x,y:-.004,z:0,w:7.3,h:.025,d:750});
-    for(let z=-340;z<=340;z+=28) {
-      laneCenters.push({x,y:.017,z,w:.10,h:.012,d:2.0});
+  const roadGeo = new THREE.BoxGeometry(1,1,1);
+  const parallelRoads=[], laneCenters=[];
+  const allBlocks=cityBlocks.flat();
+  function clearStreetCell(x,z,w,d) {
+    if(x+w/2>123 && x-w/2<217 && Math.abs(z)<406) return false;
+    if(occupiesRaceway(x,z,w,d,4)) return false;
+    // Decorative road slabs must not pass through physical city blocks.
+    for(const b of allBlocks) {
+      if(Math.abs(x-b.x)<(w+b.w)/2+.9 &&
+         Math.abs(z-b.z)<(d+b.d)/2+.9) return false;
     }
+    return true;
+  }
+  function clippedStreet(axis,fixed,begin,end) {
+    const step=8;
+    let runStart=null,runEnd=null;
+    const flush=()=>{
+      if(runStart===null || runEnd-runStart<step) return;
+      const middle=(runStart+runEnd)/2;
+      const len=runEnd-runStart;
+      const obj=axis==="z"
+        ?{x:fixed,y:-.012,z:middle,w:7.0,h:.025,d:len}
+        :{x:middle,y:-.012,z:fixed,w:len,h:.025,d:7.0};
+      parallelRoads.push(obj);
+      for(let tick=runStart+9;tick<runEnd-3;tick+=24){
+        laneCenters.push(axis==="z"
+          ?{x:fixed,y:.016,z:tick,w:.11,h:.013,d:2.4}
+          :{x:tick,y:.016,z:fixed,w:2.4,h:.013,d:.11});
+      }
+    };
+    for(let k=begin;k<end;k+=step) {
+      const lo=k,hi=Math.min(end,k+step),m=(lo+hi)/2;
+      const ok=axis==="z"
+        ?clearStreetCell(fixed,m,7.0,hi-lo)
+        :clearStreetCell(m,fixed,hi-lo,7.0);
+      if(ok) {
+        if(runStart===null)runStart=lo;
+        runEnd=hi;
+      } else {
+        flush();runStart=null;runEnd=null;
+      }
+    }
+    flush();
+  }
+  for(let x=-423;x<=423;x+=68){
+    if(x>117&&x<223) continue;
+    clippedStreet("z",x,-368,368);
   }
   for(let z=-333;z<=333;z+=68) {
-    // Stop both street ends precisely at the two quay walls.
-    parallelRoads.push({x:-169,y:-.004,z,w:580,h:.025,d:7.3});
-    parallelRoads.push({x:342,y:-.004,z,w:260,h:.025,d:7.3});
-    for(let x=-428;x<116;x+=28)
-      laneCenters.push({x,y:.017,z,w:2.0,h:.012,d:.10});
-    for(let x=225;x<451;x+=28)
-      laneCenters.push({x,y:.017,z,w:2.0,h:.012,d:.10});
+    clippedStreet("x",z,-432,119);
+    clippedStreet("x",z,223,433);
   }
   instantiate(THREE,worldGroup,roadGeo,streetMaterial,parallelRoads);
   instantiate(THREE,worldGroup,roadGeo,
-    new THREE.MeshStandardMaterial({color:0x62666a,roughness:.96}),laneCenters);
+    new THREE.MeshBasicMaterial({color:0x53575d}),laneCenters);
 
   const buildingGeo = new THREE.BoxGeometry(1,1,1);
   cityBlocks.forEach((list, i) =>
     instantiate(THREE, worldGroup, buildingGeo, mats[i], list));
 
   const capMat = new THREE.MeshStandardMaterial({
-    color: 0x303b46, roughness: .90, metalness: .06
+    color: 0x171a22, roughness: .90, metalness: .06
   });
   instantiate(THREE, worldGroup, buildingGeo, capMat, rooftop);
   instantiate(THREE, worldGroup, buildingGeo,
-    new THREE.MeshStandardMaterial({color:0x343d45, roughness:.82}), podiums);
+    new THREE.MeshStandardMaterial({color:0x20232b, roughness:.86}), podiums);
 
   // Horizon: three staggered non-identical rings of office towers.
   const distant = [[], [], []];
@@ -398,8 +448,12 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   distant.forEach((list, i) =>
     instantiate(THREE, worldGroup, buildingGeo,
       new THREE.MeshStandardMaterial({
-        color: i === 0 ? 0xc0c9d4 : i === 1 ? 0xa1aabb : 0x8b96ae,
-        map: atlas[i === 2 ? 0 : i], roughness:.75, metalness:.08
+        color: i === 0 ? 0x858b94 : i === 1 ? 0x737881 : 0x626670,
+        map: atlas[i === 2 ? 0 : i],
+        emissive: 0xffffff,
+        emissiveMap: glowAtlas[i === 2 ? 0 : i],
+        emissiveIntensity: .40,
+        roughness:.8, metalness:.08
       }), list));
   instantiate(THREE, worldGroup, buildingGeo, capMat, antennas);
 
@@ -462,26 +516,26 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
     facadeEmissiveMap(THREE, "shop")
   ];
   const materials=atlas.map((map,i)=>new THREE.MeshStandardMaterial({
-    color: i===1 ? 0xd4c4bd : 0xe1e8ed,
+    color: i===1 ? 0xaaa0a0 : 0x9299a4,
     map, bumpMap:map, bumpScale:.024,
-    roughness: i===0 ? .47 : .85,
-    metalness: i===0 ? .22 : .04,
+    roughness: i===0 ? .56 : .9,
+    metalness: i===0 ? .17 : .04,
     emissive: 0xffffff,
     emissiveMap: glowAtlas[i],
-    emissiveIntensity: .62
+    emissiveIntensity: .56
   }));
   groups.forEach((group,i)=>instantiate(THREE,worldGroup,shellGeo,materials[i],group));
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
-    color:0x4b5661,roughness:.84
+    color:0x20232a,roughness:.86
   }),roofs);
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
-    color:0x334451,roughness:.74
+    color:0x1b2029,roughness:.78
   }),parapets);
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
-    color:0x547183,roughness:.55,metalness:.25
+    color:0x242b33,roughness:.65,metalness:.15
   }),awnings);
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
-    color:0x293542,roughness:.78,metalness:.08
+    color:0x171d24,roughness:.8,metalness:.05
   }),shutters);
 }
 
@@ -603,7 +657,8 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
 /** Actual glTF models (not boxes) are optional art dressing.
  * If any CDN fails the nearby textured procedural scenery remains. */
 export async function loadAuthoredModels({
-  THREE, worldGroup, getFrameAt, registerBuilding
+  THREE, worldGroup, getFrameAt, registerBuilding, trackSamples = [],
+  sidewalkOuter = 9.2
 }) {
   const root=worldGroup;
   let GLTFLoader;
@@ -618,10 +673,10 @@ export async function loadAuthoredModels({
   if(!root.parent)return;
   const loader=new GLTFLoader();
   const specs=[
-    ["quaternius_buildings_pack/building2-small.glb",[.07,.23,.48,.64,.81],21],
-    ["quaternius_buildings_pack/building3-small.glb",[.10,.30,.58,.77,.96],22],
-    ["quaternius_buildings_pack/building4.glb",[.16,.40,.70,.89],24],
-    ["kenney_city_kit_industrial/building-i.glb",[.26,.55,.75],23],
+    ["quaternius_buildings_pack/building2-small.glb",[.07,.23,.48,.64,.81],31],
+    ["quaternius_buildings_pack/building3-small.glb",[.10,.30,.58,.77,.96],30],
+    ["quaternius_buildings_pack/building4.glb",[.16,.40,.70,.89],31],
+    ["kenney_city_kit_industrial/building-i.glb",[.26,.55,.75],29],
     ["kenney_city_kit_roads/dumpster.glb",[.08,.34,.50,.76,.91],11.4],
     ["kenney_city_kit_roads/construction-fence.glb",[.69,.73,.77],12.0],
     ["kenney_city_kit_roads/construction-cone.glb",[.66,.68,.70,.72,.74],10.5]
@@ -648,8 +703,15 @@ export async function loadAuthoredModels({
           mesh.position.copy(f.point).addScaledVector(f.normal, side*offset);
           mesh.position.y=-lowest + .015;
           mesh.rotation.y=f.rotationY+(side===1?Math.PI:0);
-          if (mesh.position.x>115 && mesh.position.x<225 &&
-              Math.abs(mesh.position.z)<413) return;
+          const radius = Math.hypot(size.x,size.z)*baseScale/2;
+          // Check the FULL loaded model bounds. Skip assets that intrude
+          // on the raceway even when their placement marker is outside.
+          if (trackSamples.some(sample =>
+              Math.hypot(mesh.position.x-sample.point.x,
+                         mesh.position.z-sample.point.z) <
+              sidewalkOuter+3.2+radius)) return;
+          if (mesh.position.x+radius>116 && mesh.position.x-radius<222 &&
+              Math.abs(mesh.position.z)<414) return;
           root.add(mesh);
           if (registerBuilding) {
             // GLB bounds at actual model scale, not generic road circles.
