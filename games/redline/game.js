@@ -5969,34 +5969,24 @@ function buildNeonSigns(buildings) {
 }
 function buildBillboards() {
     const defs = [
-        {
-            t: 0.115,
-            side: 1,
-            text: "REDLINE",
-            fg: "#ffffff",
-            bg: "#243e85"
-        },
-        {
-            t: 0.345,
-            side: -1,
-            text: "NEON",
-            fg: "#ffb3c0",
-            bg: "#421a2a"
-        },
-        {
-            t: 0.695,
-            side: 1,
-            text: "APEX",
-            fg: "#d9fff8",
-            bg: "#163c39"
-        },
-        {
-            t: 0.915,
-            side: -1,
-            text: "VORTEX",
-            fg: "#ffffff",
-            bg: "#491a24"
-        }
+        // Billboard sites are kept beyond the curb/sidewalk and vary by
+        // neighborhood, with unique colors instead of repeating one sign.
+        { t: .038, side: -1, text: "NEON 88", fg:"#ffffff", bg:"#4f164e" },
+        { t: .085, side:  1, text: "SYNTH", fg:"#76f8ff", bg:"#12283c" },
+        { t: .145, side: -1, text: "PIXEL", fg:"#f6abf8", bg:"#351750" },
+        { t: .204, side:  1, text: "RAMEN 24", fg:"#ffdf93", bg:"#63301e" },
+        { t: .252, side: -1, text: "METRO", fg:"#aefbff", bg:"#193f55" },
+        { t: .307, side:  1, text: "BYTE", fg:"#b7ffe1", bg:"#154034" },
+        { t: .382, side: -1, text: "ARCADE", fg:"#fdb7fb", bg:"#402446" },
+        { t: .440, side:  1, text: "VOLT", fg:"#ffeb9c", bg:"#46330b" },
+        { t: .505, side: -1, text: "NOIR", fg:"#f6a1ff", bg:"#352041" },
+        { t: .560, side:  1, text: "DRIVE", fg:"#b0dbff", bg:"#243e85" },
+        { t: .615, side: -1, text: "KAIRO", fg:"#6cfbd1", bg:"#163c39" },
+        { t: .680, side:  1, text: "APEX", fg:"#d9fff8", bg:"#163c39" },
+        { t: .745, side: -1, text: "CYBER", fg:"#ffb3c0", bg:"#421a2a" },
+        { t: .815, side:  1, text: "AFTER 9", fg:"#f9cdfd", bg:"#4b2153" },
+        { t: .885, side: -1, text: "VORTEX", fg:"#ffffff", bg:"#491a24" },
+        { t: .946, side:  1, text: "REDLINE", fg:"#c7dfff", bg:"#243e85" }
     ];
     for (const def of defs) {
         const frame = getFrameAt(def.t);
