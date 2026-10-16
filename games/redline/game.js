@@ -225,9 +225,11 @@ const TRACKS = {
         ],
 
         ramps: [
-            { t: 0.365, offset: -1.2, strength: 7.6, secret: false },
-            { t: 0.642, offset: 1.2, strength: 7.9, secret: false },
-            { t: 0.926, offset: 0, strength: 7.5, secret: false },
+            // Short, controllable city hops. The former 7.5+ launch
+            // velocity threw cars across curved junctions at race speed.
+            { t: 0.365, offset: -1.2, strength: 4.0, secret: false },
+            { t: 0.642, offset: 1.2, strength: 4.1, secret: false },
+            { t: 0.926, offset: 0, strength: 4.0, secret: false },
 
             /* Hidden downtown corner cut */
             {
@@ -7135,6 +7137,19 @@ function barrierWouldBlockCrossing(
     return false;
 }
 
+function neonRailIntrudesOnRoad(a, b, height) {
+    if (activeTrackId !== "neon") return false;
+    // A rail that cuts through a curved portion of the drivable asphalt
+    // must be omitted. Check the whole span, not only its midpoint.
+    // This catches sharp turn/chicane intersections at the final underpass.
+    for (const sample of trackSamples) {
+        if (Math.abs(sample.point.y - height) > 2.3) continue;
+        if (pointToSegmentDistance2D(sample.point, a, b) <
+            ROAD_HALF + 1.1) return true;
+    }
+    return false;
+}
+
 function buildBarriers() {
     barriers = [];
     const barrierMaterial = material(
@@ -7167,6 +7182,7 @@ function buildBarriers() {
             const midpoint = a.clone().add(b).multiplyScalar(0.5);
 
             if (barrierWouldBlockCrossing(midpoint, t, barrierY)) continue;
+            if (neonRailIntrudesOnRoad(a, b, barrierY)) continue;
 
             const segment = b.clone().sub(a);
             const horizontalLength = Math.hypot(segment.x, segment.z);
@@ -7822,16 +7838,23 @@ function buildCheckpointGates() {
                 :
                     0x445064
         });
-        const poles = new THREE.BoxGeometry(0.18, 4.6, 0.18);
-        const beam = new THREE.BoxGeometry(ROAD_HALF *
-            2
-            +
-                1.9, 0.26, 0.22);
-        addMesh(group, poles, gateMaterial, -(ROAD_HALF +
-            0.6), 2.3, 0);
-        addMesh(group, poles, gateMaterial, ROAD_HALF +
-            0.6, 2.3, 0);
-        addMesh(group, beam, gateMaterial, 0, 4.55, 0);
+        if (activeTrackId === "neon") {
+            // No more giant white scaffolding across real city junctions.
+            // Keep the checkpoint hitbox and HUD exactly as before, but
+            // mark its edges with understated, reflective roadside bollards.
+            const bollard = new THREE.BoxGeometry(0.18, 1.25, 0.18);
+            for (const side of [-1, 1]) {
+                addMesh(group, bollard, gateMaterial,
+                    side * (ROAD_HALF + 0.8), 0.625, 0);
+            }
+        } else {
+            // Arctic retains its original checkpoint appearance.
+            const poles = new THREE.BoxGeometry(0.18, 4.6, 0.18);
+            const beam = new THREE.BoxGeometry(ROAD_HALF * 2 + 1.9, 0.26, 0.22);
+            addMesh(group, poles, gateMaterial, -(ROAD_HALF + 0.6), 2.3, 0);
+            addMesh(group, poles, gateMaterial, ROAD_HALF + 0.6, 2.3, 0);
+            addMesh(group, beam, gateMaterial, 0, 4.55, 0);
+        }
         worldGroup.add(group);
         checkpointGates.push({
             group,
@@ -8544,78 +8567,64 @@ function buildRamps() {
             );
 
 
-        const deck =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    width,
-                    0.28,
-                    length
-                ),
+        if (activeTrackId === "neon" && !(definition.cave && definition.topHole)) {
+            // Proper wedge: rear entrance is flush with the asphalt, with
+            // a smooth sloped top rising toward the exit (+local Z).
+            const low = 0.035;
+            const high = definition.secret ? 0.92 : 0.76;
+            const wedge = new THREE.Mesh(
+                createWedgeGeometry(width, length, high, low, 1.0),
+                new THREE.MeshStandardMaterial({
+                    color: definition.secret ? 0x3c555e : 0x46515e,
+                    roughness: 0.86,
+                    metalness: 0.09,
+                    side: THREE.DoubleSide
+                })
+            );
+            wedge.position.y = 0.025;
+            group.add(wedge);
+
+            const stripColor = definition.secret ? 0xffc76a : 0x54b7ff;
+            const stripMat = new THREE.MeshBasicMaterial({color:stripColor});
+            const pitch = -Math.atan2(high - low, length);
+            for (const edge of [-1, 1]) {
+                const trim = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.085, 0.027, length * 0.93),
+                    stripMat
+                );
+                trim.position.set(edge * (width * .5 - .11),
+                    (high + low) * .5 + .05, 0);
+                trim.rotation.x = pitch;
+                group.add(trim);
+            }
+            // Distinct caution marks keep the jump readable at speed.
+            const topMark = new THREE.Mesh(
+                new THREE.BoxGeometry(width * 0.55, 0.03, 0.13),
+                stripMat
+            );
+            topMark.position.set(0, high + 0.058, length * .5 - .22);
+            topMark.rotation.x = pitch;
+            group.add(topMark);
+        } else {
+            // Preserve existing Arctic/cave ramp geometry.
+            const deck = new THREE.Mesh(
+                new THREE.BoxGeometry(width, 0.28, length),
                 rampMaterial
             );
+            deck.position.y = definition.cave && definition.topHole ? 0.95 : 0.48;
+            deck.rotation.x = definition.cave && definition.topHole ? -0.34 : -0.12;
+            group.add(deck);
 
-
-        deck.position.y =
-            definition.cave
-            &&
-            definition.topHole
-                ?
-                0.95
-                :
-                0.48;
-
-
-        deck.rotation.x =
-            definition.cave
-            &&
-            definition.topHole
-                ?
-                -0.34
-                :
-                -0.12;
-
-
-        group.add(
-            deck
-        );
-
-
-        if (
-            !definition.secret
-        ) {
-
-            const stripe =
-                new THREE.Mesh(
-                    new THREE.BoxGeometry(
-                        width *
-                        0.72,
-                        0.04,
-                        0.55
-                    ),
-                    new THREE.MeshBasicMaterial({
-                        color:
-                            0x5a9cff
-                    })
+            if (!definition.secret) {
+                const stripe = new THREE.Mesh(
+                    new THREE.BoxGeometry(width * 0.72, 0.04, 0.55),
+                    new THREE.MeshBasicMaterial({color:0x5a9cff})
                 );
-
-
-            stripe.position.set(
-                0,
-                0.66,
-                -1.15
-            );
-
-
-            stripe.rotation.x =
-                -0.12;
-
-
-            group.add(
-                stripe
-            );
-
+                stripe.position.set(0, 0.66, -1.15);
+                stripe.rotation.x = -0.12;
+                group.add(stripe);
+            }
         }
-
 
         worldGroup.add(
             group
