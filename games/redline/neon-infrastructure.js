@@ -176,23 +176,25 @@ export function buildRaisedRoads({
   const coping=matte(THREE,0x747a83,.75);
   const lineMat=new THREE.MeshBasicMaterial({color:0xa8b5bc});
 
+  // Four batched materials instead of hundreds of separate bridge meshes.
+  // Instance matrices preserve each road span's slope, yaw and dimensions.
+  const batches=new Map();
   const makeSegment=(a,b,offset,width,height,material,up=0)=>{
     const dx=b.x-a.x, dz=b.z-a.z,dy=b.y-a.y;
     const horizontal=Math.hypot(dx,dz);
     if(horizontal<.01) return;
-    const mesh=new THREE.Mesh(
-      new THREE.BoxGeometry(width,height,Math.hypot(horizontal,dy)+.28),
-      material
-    );
-    mesh.rotation.order="YXZ";
-    mesh.rotation.y=Math.atan2(dx,dz);
-    mesh.rotation.x=-Math.atan2(dy,horizontal);
     const nx=-dz/horizontal,nz=dx/horizontal;
-    mesh.position.set((a.x+b.x)*.5+nx*offset,
-      (a.y+b.y)*.5+up,
-      (a.z+b.z)*.5+nz*offset);
-    worldGroup.add(mesh);
+    if(!batches.has(material)) batches.set(material,[]);
+    batches.get(material).push({
+      x:(a.x+b.x)*.5+nx*offset,
+      y:(a.y+b.y)*.5+up,
+      z:(a.z+b.z)*.5+nz*offset,
+      yaw:Math.atan2(dx,dz),
+      pitch:-Math.atan2(dy,horizontal),
+      width,height,length:Math.hypot(horizontal,dy)+.28
+    });
   };
+
 
   let bridgeCount=0,piers=0;
   for(let i=0;i<sampleCount;i+=2){
@@ -242,5 +244,26 @@ export function buildRaisedRoads({
     }
     bridgeCount++;
   }
-  return {segments:bridgeCount,piers};
+  for(const [material,entries] of batches) {
+    if(!entries.length) continue;
+    const mesh=new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1,1,1),
+      material,entries.length
+    );
+    const dummy=new THREE.Object3D();
+    for(let i=0;i<entries.length;i++) {
+      const e=entries[i];
+      dummy.position.set(e.x,e.y,e.z);
+      dummy.rotation.order="YXZ";
+      dummy.rotation.y=e.yaw;
+      dummy.rotation.x=e.pitch;
+      dummy.scale.set(e.width,e.height,e.length);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i,dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate=true;
+    worldGroup.add(mesh);
+  }
+
+  return {segments:bridgeCount,piers,batches:batches.size};
 }
