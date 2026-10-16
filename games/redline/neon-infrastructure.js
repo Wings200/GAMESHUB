@@ -128,6 +128,11 @@ export function buildWaterfront({
       [x,.05,0],matte(THREE,0x5d636a));
     addBox(THREE,worldGroup,[3.7,.17,CANAL_LENGTH],
       [x+sign*2,.16,0],bankMaterial);
+    // The quay wall is a real low collision boundary at ground level;
+    // its height intentionally stays below the elevated bridge deck.
+    if(registerBuilding) {
+      registerBuilding(new THREE.Vector3(x,0,0),1.9,CANAL_LENGTH,0,1.4,"CANAL QUAY");
+    }
     // Waterfront streetlights/rails do not block elevated bridge.
     for(let z=-365;z<365;z+=30){
       addBox(THREE,worldGroup,[.21,1.1,.21],
