@@ -73,3 +73,25 @@ Corrective changes committed to the main branch:
 Five focused static review passes were completed: (1) syntax, (2) road/guardrail generation, (3) collision registration, (4) visual readability changes, and (5) isolation from Arctic-specific behavior. All three modified JavaScript modules passed a syntax parse, and the targeted source invariants passed.
 
 **Limitation:** The fixes have not yet been verified in a second interactive browser recording. The next user playtest is still needed to confirm final visual appearance and real driving/collision behavior.
+
+
+## Second recording — 00:58:11 (73-second browser capture, 2026-10-16)
+
+A second interactive recording highlighted the following still-open faults:
+- Near 00:24, overlapping road rails and apparent elevated roadside pieces close to the Metro turn.
+- Near 00:39, an ordinary ramp looked like a large solid flat block and the car overshot into the off-road space after jumping.
+- Near 00:48–01:00, the player became trapped against rails while negotiating the last sharp turn toward UNDERPASS.
+- Giant white checkpoint overhead frames made city corners look structurally cluttered.
+- Neon office façades remain too repetitive and unrealistically uniform; that broader art-quality task is not solved by this geometry patch.
+
+**Root cause traced in the source:** The earlier buildRaisedRoads logic made a full bridge structure at *every* road altitude >1m. The western neighborhood's modest uphill/downhill grading was therefore being constructed as a floating bridge with pier-like supports and parapets, although there is no canal beneath it.
+
+Changes committed following this recording:
+- Build true parapets/decks/piers only along the north and south shipping-canal crossings; graded streets elsewhere receive a solid recessed roadbed, not bridge parapets.
+- Remove ordinary/bridge rail segments whose geometry would cut across the sampled drivable lane. Visual parapets and their collision segments are filtered together.
+- Replace Neon checkpoint overhead gantries with low roadside bollards, preserving checkpoint scoring/HUD. Arctic keeps its existing gates.
+- Use wedge geometry for Neon ramps and lower the three non-secret launch strengths to keep airborne cars closer to the road at racing speed. Arctic/cave ramps and secret jumps retain their logic.
+
+**Validation:** 3 modified modules passed JS syntax parsing; 8 additional code invariants passed. A GitHub diff comparison confirmed that the changes only touched the game source, Neon infrastructure, and review notes; the multiplayer Worker and room client were not edited.
+
+**Pending:** Interactive visual/physics retest in a real browser after deployment; lighter facade textures and more varied buildings need their own subsequent art overhaul.
