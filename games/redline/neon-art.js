@@ -644,7 +644,7 @@ export function buildNeonAdvertising({THREE,worldGroup,buildings}) {
     const b=buildings[i];
     if(b.height<7)continue;
     // One or two ads per facade, distributed over multiple street levels.
-    const count=i%4===0 ? 2 : 1;
+    const count=b.height>13 ? 2 : 1;
     for(let slot=0;slot<count;slot++){
       const ad=posters[(i*7+slot*11)%posters.length];
       const height=ad.portrait?3.65:2.35;
@@ -852,6 +852,25 @@ export async function loadAuthoredModels({
           mesh.position.copy(f.point).addScaledVector(f.normal, side*offset);
           mesh.position.y=-lowest + .015;
           mesh.rotation.y=f.rotationY+(side===1?Math.PI:0);
+          // Imported kits use bright blues by default. Desaturate only
+          // BUILDINGS into gunmetal charcoal, retaining prop colors,
+          // glazing textures and geometry detail.
+          if(!prop) mesh.traverse(part=>{
+            if(!part.isMesh || !part.material) return;
+            const darken=original=>{
+              const m=original.clone();
+              if(m.color)m.color.setHex(0x34373d);
+              if(m.emissive) {
+                m.emissive.setHex(0x060508);
+                m.emissiveIntensity=.12;
+              }
+              if("roughness" in m)m.roughness=.78;
+              if("metalness" in m)m.metalness=.13;
+              return m;
+            };
+            part.material=Array.isArray(part.material)
+              ?part.material.map(darken):darken(part.material);
+          });
           const radius = Math.hypot(size.x,size.z)*baseScale/2;
           // Check the FULL loaded model bounds. Skip assets that intrude
           // on the raceway even when their placement marker is outside.
