@@ -142,3 +142,19 @@ A new player clip was submitted with complaints about rectangles across uphill/d
 
 ### Still pending
 This is a numerical mock build, not a live browser playtest. Visual quality, road feel, performance on Chromebooks, correct placement of ramps/pickups and multiplayer with multiple clients still require real in-game testing.
+
+
+## Guardrail and curb continuity repair (2026-10-16)
+
+The latest full-resolution screenshot circled detached gray guardrail blocks at an uphill right-hand bend, with a new recording showing repeated slotted road edges around curves.
+
+**Root causes:**
+- Raised Neon bridge parapets and coping were still constructed as independent pitched instanced box meshes, each positioned from its local road chord instead of anchoring both endpoints to the sampled outer road edge. Their rotations and end caps did not meet on curves; an underslung girder was also generated as a separate box strip.
+- Neon roadside curb and gutter strips were separate three-sample box instances. The reflective studs were shifted INWARD toward the driving lane and some bridge-level fixtures added unnecessary clutter.
+
+**Fixes pushed:**
+- Replace bridge wall and coping box instances with two continuous buffer meshes using road-sample normals at each end; wall top and coping bottom meet with no vertical gap. Skip the old separate box girder.
+- Generate collision rail line segments from the same road-edge offset as the visible parapet; preserve bridge-only guardrails and elevated pier supports.
+- Build curb and gutter as connected sample-to-sample surface strips, with a guarded wraparound at the circuit seam. Move studs outward behind curb and prevent raised bridge cabinets, hydrants and studs.
+
+**Validation:** All three game-related modules parsed as valid JS. A mocked 640-sample rounded track produced 2 new road-edge meshes, 2 continuous guardrail meshes, and finite coordinates across all support meshes. The same test found zero rail collision segments intruding into the lane under the sampled 7.6m clearance check. Static/browser screenshot confirmation and frame-rate measurements still require playtesting after deployment. Multiplayer source was not touched.
