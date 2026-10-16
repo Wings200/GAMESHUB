@@ -184,6 +184,74 @@ export function buildWaterfront({
 }
 
 /**
+ * Continuous side-skirts for graded pavement and continuous bridge decks.
+ * Replaces the old stack of independent rectangular boxes at every uphill
+ * sample (whose exposed end-caps looked like cross-road rectangles).
+ *
+ * The top is sunk beneath the driveable ribbon; the skirt extends to
+ * natural ground (or the bridge's soffit) without horizontal seams.
+ */
+function buildContinuousRoadSupport({
+  THREE, worldGroup, trackSamples, sampleCount, sidewalkOuter
+}) {
+  const groundFaces=[];
+  const bridgeFaces=[];
+  const addQuad=(buffer,a,b,c,d)=>{
+    for(const p of [a,b,c,a,c,d]) buffer.push(p.x,p.y,p.z);
+  };
+  const at=(sample,offset,y)=>new THREE.Vector3(
+    sample.point.x+sample.normal.x*offset,
+    y,
+    sample.point.z+sample.normal.z*offset
+  );
+  const onBridge=(a,b)=>{
+    const x=(a.point.x+b.point.x)*.5;
+    const z=(a.point.z+b.point.z)*.5;
+    return (x>=65 && x<=280 && z>=75 && z<=240) ||
+           (x>=65 && x<=280 && z>=-235 && z<=-75);
+  };
+  let gradeSections=0, bridgeSections=0;
+  for(let i=0;i<sampleCount;i++){
+    const a=trackSamples[i], b=trackSamples[(i+1)%sampleCount];
+    if(!a||!b||distance2D(a.point,b.point)>20)continue;
+    const h=(a.point.y+b.point.y)/2;
+    if(h<.27)continue;
+    const bridge=onBridge(a,b);
+    const faces=bridge?bridgeFaces:groundFaces;
+    const w=sidewalkOuter+(bridge?.34:.32);
+    const topA=Math.max(.005,a.point.y-(bridge?.20:.14));
+    const topB=Math.max(.005,b.point.y-(bridge?.20:.14));
+    const baseA=bridge ? a.point.y-.77 : -.10;
+    const baseB=bridge ? b.point.y-.77 : -.10;
+    const spreadA=bridge ? w : w+1.1+Math.min(13,a.point.y*1.13);
+    const spreadB=bridge ? w : w+1.1+Math.min(13,b.point.y*1.13);
+    const upperLeftA=at(a,-w,topA),upperRightA=at(a,w,topA);
+    const upperLeftB=at(b,-w,topB),upperRightB=at(b,w,topB);
+    const lowerLeftA=at(a,-spreadA,baseA),lowerRightA=at(a,spreadA,baseA);
+    const lowerLeftB=at(b,-spreadB,baseB),lowerRightB=at(b,spreadB,baseB);
+    // The road top is the continuous raceway ribbon built by game.js.
+    // This solid surface lives slightly below it and fills all gaps.
+    addQuad(faces,upperLeftA,upperRightA,upperRightB,upperLeftB);
+    addQuad(faces,upperLeftA,upperLeftB,lowerLeftB,lowerLeftA);
+    addQuad(faces,upperRightB,upperRightA,lowerRightA,lowerRightB);
+    if(bridge)bridgeSections++;else gradeSections++;
+  }
+  const draw=(buffer,color)=>{
+    if(!buffer.length)return;
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute("position",new THREE.Float32BufferAttribute(buffer,3));
+    geometry.computeVertexNormals();
+    const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({
+      color,metalness:.02,roughness:.97,side:THREE.DoubleSide
+    }));
+    worldGroup.add(mesh);
+  };
+  draw(groundFaces,0x252a31);
+  draw(bridgeFaces,0x4d565f);
+  return {gradeSections,bridgeSections};
+}
+
+/**
  * Deck, edge parapets, structural girders and concrete piers. Driveable
  * surface stays the original dynamically sampled road ribbon in game.js.
  * Geometric bridge deck hangs under that surface and follows its 3D pitch.
@@ -197,9 +265,11 @@ export function buildRaisedRoads({
   const girderMaterial=matte(THREE,0x2e363f,.62);
   const concrete=matte(THREE,0x929496,.92);
   const coping=matte(THREE,0x747a83,.75);
-  const lineMat=new THREE.MeshBasicMaterial({color:0xa8b5bc});
+  const supportStats=buildContinuousRoadSupport({
+    THREE,worldGroup,trackSamples,sampleCount,sidewalkOuter
+  });
 
-  // Four batched materials instead of hundreds of separate bridge meshes.
+  // Bridge parapets and piers are still batched to limit draw calls.
   // Instance matrices preserve each road span's slope, yaw and dimensions.
   const batches=new Map();
   const makeSegment=(a,b,offset,width,height,material,up=0)=>{
@@ -234,16 +304,13 @@ export function buildRaisedRoads({
     const z=(a.point.z+b.point.z)/2;
     const northBridge = x>=65 && x<=280 && z>=75 && z<=240;
     const southBridge = x>=65 && x<=280 && z>=-235 && z<=-75;
-    if(!northBridge && !southBridge){
-      // Fill the graded road down to the ground instead of putting a
-      // fake floating bridge (and a wall of parapets) over normal streets.
-      makeSegment(a.point,b.point,0,sidewalkOuter*2+.55,
-        high+.35, girderMaterial, -high/2-.255);
+    if(!northBridge && !southBridge) {
+      // Ordinary uphill city streets use continuous sloped embankments;
+      // no more rectangular roadbed boxes or bridge parapets.
       continue;
     }
 
-    // The true concrete canal bridge extends beneath sidewalk/curb edges.
-    makeSegment(a.point,b.point,0,sidewalkOuter*2+.7,.45,deckMaterial,-.27);
+    // Main deck is now one connected continuous ribbon, not discrete boxes.
     for(const side of [-1,1]){
       const railCrossesLane=bridgeRailWouldCrossLane(
         a,b,side,roadHalf,sidewalkOuter,trackSamples,high,THREE);
@@ -307,5 +374,7 @@ export function buildRaisedRoads({
     worldGroup.add(mesh);
   }
 
-  return {segments:bridgeCount,piers,batches:batches.size};
+  return {segments:bridgeCount,piers,batches:batches.size,
+    gradeSections:supportStats.gradeSections,
+    continuousBridgeSections:supportStats.bridgeSections};
 }
