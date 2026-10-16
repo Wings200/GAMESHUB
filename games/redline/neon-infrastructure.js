@@ -51,6 +51,24 @@ function addBox(THREE,parent,sizes,position,mat){
   m.position.set(...position);parent.add(m);return m;
 }
 function distance2D(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
+function distanceToRail2D(point,a,b) {
+  const vx=b.x-a.x,vz=b.z-a.z;
+  const q=Math.max(0,Math.min(1,
+    ((point.x-a.x)*vx+(point.z-a.z)*vz)/Math.max(.0001,vx*vx+vz*vz)));
+  return Math.hypot(point.x-a.x-vx*q,point.z-a.z-vz*q);
+}
+function bridgeRailWouldCrossLane(a,b,side,roadHalf,sidewalkOuter,trackSamples,height,THREE) {
+  const offset=side*(sidewalkOuter+.04);
+  const start=a.point.clone().addScaledVector(a.normal,offset);
+  const end=b.point.clone().addScaledVector(b.normal,offset);
+  // Tight downhill hairpins and road connectors may cut across a
+  // bridge's outer parapet. Do not generate a hard wall through asphalt.
+  for (const sample of trackSamples) {
+    if(Math.abs(sample.point.y-height)>2.4) continue;
+    if(distanceToRail2D(sample.point,start,end)<roadHalf+1.0) return true;
+  }
+  return false;
+}
 
 function waterNormalTexture(THREE) {
   // Tangent-space normal map built from several overlapping wind waves.
@@ -212,13 +230,17 @@ export function buildRaisedRoads({
     // The concrete bridge extends beneath sidewalk / curb edges.
     makeSegment(a.point,b.point,0,sidewalkOuter*2+.7,.45,deckMaterial,-.27);
     for(const side of [-1,1]){
-      makeSegment(a.point,b.point,side*(sidewalkOuter+.04),
+      const railCrossesLane=bridgeRailWouldCrossLane(
+        a,b,side,roadHalf,sidewalkOuter,trackSamples,high,THREE);
+      // Still draw the underside girders, but never place raised guard
+      // parapets (or their physical segments) across the usable road.
+      if(!railCrossesLane) makeSegment(a.point,b.point,side*(sidewalkOuter+.04),
         .32,.85,concrete,.38);
-      makeSegment(a.point,b.point,side*(sidewalkOuter+.13),
+      if(!railCrossesLane) makeSegment(a.point,b.point,side*(sidewalkOuter+.13),
         .15,.16,coping,1.05);
       makeSegment(a.point,b.point,side*(sidewalkOuter-1.0),
         .25,.28,girderMaterial,-.72);
-      if(addRail) {
+      if(addRail && !railCrossesLane) {
         const nx=a.normal.x*side*(sidewalkOuter+.02);
         const nz=a.normal.z*side*(sidewalkOuter+.02);
         const mx=b.normal.x*side*(sidewalkOuter+.02);
