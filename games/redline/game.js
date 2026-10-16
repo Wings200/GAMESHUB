@@ -8200,9 +8200,9 @@ function updateBoostPads(delta) {
             0) {
             continue;
         }
-        if (flatDistance(car.position, pad.position)
-            <
-                2.9) {
+        if (flatDistance(car.position, pad.position)<2.9
+            && (activeTrackId !== "neon" ||
+                Math.abs(car.position.y-pad.position.y)<2.5)) {
             const forward = forwardVector();
             const forwardSpeed = carState.velocity
                 .dot(forward);
@@ -8279,9 +8279,9 @@ function updatePickups(delta, elapsed) {
                             pickup.spin)
                         *
                             0.16;
-        if (flatDistance(car.position, pickup.position)
-            <
-                2) {
+        if (flatDistance(car.position, pickup.position)<2
+            && (activeTrackId !== "neon" ||
+                Math.abs(car.position.y-pickup.position.y)<2.5)) {
             pickup.active =
                 false;
             pickup.mesh.visible =
@@ -9332,9 +9332,19 @@ function updateAirborne(
             2.25;
 
 
-    const landingGround = activeTrackId === "neon"
+    let landingGround = activeTrackId === "neon"
         ? neonSurfaceHeight(car.position)
         : 0;
+
+    // Once a car has fallen *below* a bridge, its underside is not a
+    // magical trampoline. It must descend to the river or lower streets.
+    if(activeTrackId==="neon" && landingGround>2.5 &&
+        car.position.y<landingGround-2.5) {
+        landingGround=(
+            car.position.x>127 && car.position.x<213
+            && Math.abs(car.position.z)<400
+        ) ? -.40 : 0;
+    }
 
     if(activeTrackId==="neon") {
         // Bridges and canal have different landing heights.
