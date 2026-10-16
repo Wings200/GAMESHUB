@@ -741,7 +741,34 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
     color:0xe3cf9e,roughness:.36,metalness:.10,
     emissive:0x483e26,emissiveIntensity:.12
   });
-  const curb=[],gutters=[],studs=[],drains=[],bolts=[],cabinets=[],hydrants=[];
+  const curbFaces=[],gutterFaces=[],studs=[],drains=[],bolts=[],cabinets=[],hydrants=[];
+  const addQuad=(dest,a,b,c,d)=>{
+    for(const p of [a,b,c,a,c,d]) dest.push(p.x,p.y,p.z);
+  };
+  function curbSurface(a,b,side,offset,width,minHeight,maxHeight,buffer) {
+    const vertex=(sample,lateral,up)=>new THREE.Vector3(
+      sample.point.x+sample.normal.x*lateral,
+      sample.point.y+up,
+      sample.point.z+sample.normal.z*lateral
+    );
+    const center=side*offset,lo=center-width/2,hi=center+width/2;
+    const a0=vertex(a,lo,minHeight),a1=vertex(a,hi,minHeight);
+    const a2=vertex(a,lo,maxHeight),a3=vertex(a,hi,maxHeight);
+    const b0=vertex(b,lo,minHeight),b1=vertex(b,hi,minHeight);
+    const b2=vertex(b,lo,maxHeight),b3=vertex(b,hi,maxHeight);
+    addQuad(buffer,a2,b2,b3,a3);
+    addQuad(buffer,a0,b0,b2,a2);
+    addQuad(buffer,b1,a1,a3,b3);
+  }
+  function renderCurb(buffer,mat) {
+    if(!buffer.length)return;
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute("position",new THREE.Float32BufferAttribute(buffer,3));
+    geometry.computeVertexNormals();
+    const meshMat=mat.clone();
+    meshMat.side=THREE.DoubleSide;
+    worldGroup.add(new THREE.Mesh(geometry,meshMat));
+  }
   for(let i=0;i<sampleCount;i+=3) {
     const a=trackSamples[i], b=trackSamples[(i+3)%sampleCount];
     if(!a||!b)continue;
@@ -754,24 +781,30 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
         (a.normal.z+b.normal.z)*.5*side*(roadHalf+.18);
       const rotation=Math.atan2(b.point.x-a.point.x,b.point.z-a.point.z);
       const h=(a.point.y+b.point.y)*.5;
-      curb.push({x,y:h+.15,z,w:.20,h:.22,d:length+.18,rotation});
-      gutters.push({x:x+side*a.normal.x*.26,y:h+.062,z:z+side*a.normal.z*.26,
-        w:.28,h:.015,d:length+.2,rotation});
-      if(i%12===0){
-        studs.push({x:x-side*a.normal.x*.55,y:h+.101,
-          z:z-side*a.normal.z*.55,w:.17,h:.07,d:.43,rotation});
+      // Connect each consecutive sample pair with shared end vertices.
+      // The old straight box instances detached at tight uphill bends.
+      for(let j=0;j<3;j++){
+        const one=trackSamples[(i+j)%sampleCount];
+        const two=trackSamples[(i+j+1)%sampleCount];
+        curbSurface(one,two,side,roadHalf+.18,.20,.04,.26,curbFaces);
+        curbSurface(one,two,side,roadHalf+.44,.28,.055,.070,gutterFaces);
+      }
+      if(i%12===0 && h<1.0){
+        // Reflectors belong OUTSIDE the asphalt, never in the racing lane.
+        studs.push({x:x+side*a.normal.x*.55,y:h+.115,
+          z:z+side*a.normal.z*.55,w:.17,h:.07,d:.43,rotation});
       }
       if(i%30===0) {
         drains.push({x:x+side*a.normal.x*.49,y:h+.072,
           z:z+side*a.normal.z*.49,w:.42,h:.05,d:.80,rotation});
       }
-      if(i%51===0){
-        const px=x+side*a.normal.x*2.2,pz=z+side*a.normal.z*2.2;
+      if(i%51===0 && h<1.0){
+        const px=x+side*a.normal.x*3.65,pz=z+side*a.normal.z*3.65;
         cabinets.push({x:px,y:h+.58,z:pz,w:.72,h:1.16,d:.54,rotation});
         bolts.push({x:px,y:h+1.2,z:pz,w:.75,h:.10,d:.6,rotation});
       }
-      if(i%87===0) {
-        const px=x+side*a.normal.x*2.3,pz=z+side*a.normal.z*2.3;
+      if(i%87===0 && h<1.0) {
+        const px=x+side*a.normal.x*3.65,pz=z+side*a.normal.z*3.65;
         hydrants.push({x:px,y:h+.44,z:pz,w:.42,h:.84,d:.42,rotation});
       }
     }
@@ -793,8 +826,8 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
     }
   }
   const box=new THREE.BoxGeometry(1,1,1);
-  instantiate(THREE,worldGroup,box,curbMat,curb);
-  instantiate(THREE,worldGroup,box,concrete,gutters);
+  renderCurb(curbFaces,curbMat);
+  renderCurb(gutterFaces,concrete);
   instantiate(THREE,worldGroup,box,reflector,studs);
   instantiate(THREE,worldGroup,box,new THREE.MeshStandardMaterial({
     color:0x151d24,metalness:.6,roughness:.58
