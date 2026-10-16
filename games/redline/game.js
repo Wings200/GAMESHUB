@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js";
+import * as NEON_INFRA from "./neon-infrastructure.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -2269,52 +2270,21 @@ function buildCrosswalks() {
     }
 }
 function buildCity() {
-    const cityGroundTexture =
-        createSurfaceTexture(
-            "concrete",
-            26,
-            26
-        );
-
-
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(
-            2480,
-            2320,
-            14,
-            14
-        ),
-        new THREE.MeshStandardMaterial({
-            color:
-                0x647079,
-            roughness:
-                1,
-            map:
-                cityGroundTexture,
-            bumpMap:
-                cityGroundTexture,
-            bumpScale:
-                0.035
-        })
-    );
-    ground.rotation.x =
-        -Math.PI /
-            2;
-    ground.position.y =
-        -0.02;
-    worldGroup.add(ground);
-
-
-    NEON_ART.applyPbr({
+    /*
+      Neon V3 is organized around a real shipping canal. Bank terrain
+      is physically open at the channel instead of an endless floating
+      2.5-kilometer cardboard/concrete slab.
+    */
+    NEON_INFRA.buildWaterfront({
         THREE,
-        renderer,
-        sceneRoot: worldGroup,
-        material: ground.material,
-        kind: "concrete",
-        repeatX: 310,
-        repeatY: 290
+        worldGroup,
+        registerBuilding: (position,width,depth,rotationY,height) => {
+            addEnvironmentBoxCollider(
+                position,width/2,depth/2,rotationY,
+                {minY:-1,maxY:height,tag:"WAREHOUSE"}
+            );
+        }
     });
-
 
     NEON_ART.buildBackdrop({
         THREE,
@@ -2330,22 +2300,19 @@ function buildCity() {
         }
     });
 
-
-    // This exact world owns any asynchronously loaded model collisions.
     const activeNeonArtRoot = worldGroup;
-    // Authored glTF buildings and props load independently of race startup.
     NEON_ART.loadAuthoredModels({
         THREE,
         worldGroup,
         getFrameAt,
         registerBuilding: (position, width, depth, rotationY, height) => {
-            // Async loaders must not register collision into a later race.
             if (worldGroup !== activeNeonArtRoot || !worldGroup?.parent) return;
-            addEnvironmentBoxCollider(position, width / 2, depth / 2, rotationY,
-                { minY: -1, maxY: height, tag: "MODEL" });
+            addEnvironmentBoxCollider(
+                position, width / 2, depth / 2, rotationY,
+                { minY: -1, maxY: height, tag: "MODEL" }
+            );
         }
     }).catch(error => console.warn("Neon model dressing:", error));
-
 
     const buildingSpecs = [];
 
@@ -2539,12 +2506,14 @@ function buildCity() {
                 );
 
 
-            if (
-                inSecretFlightPath
-            ) {
+            // The central water channel is open. No buildings may
+            // stand on its surface or inside a bridge's travel corridor.
+            const inCanal =
+                position.x > 113 && position.x < 227
+                && Math.abs(position.z) < 401;
 
+            if (inSecretFlightPath || inCanal) {
                 continue;
-
             }
 
 
@@ -11072,6 +11041,19 @@ function buildWorld() {
 
     buildRoad();
     buildBarriers();
+
+    if (activeTrackId === "neon") {
+        NEON_INFRA.buildRaisedRoads({
+            THREE,
+            worldGroup,
+            trackSamples,
+            sampleCount: TRACK_SAMPLE_COUNT,
+            roadHalf: ROAD_HALF,
+            sidewalkOuter: SIDEWALK_OUTER,
+            addRail: (a,b) => barriers.push({a,b})
+        });
+    }
+
     buildCheckpointGates();
     buildBoostPads();
     buildPickups();
