@@ -8267,83 +8267,100 @@ function updateBoostPads(delta) {
     }
 }
 function buildPickups() {
-    pickups =
-        [];
+    pickups = [];
     for (const definition of pickupDefinitions) {
         const frame = getFrameAt(definition.t);
-        const color = definition.type ===
-            "overdrive"
-            ?
-                0xff9c3a
-            :
-                0x59c7ff;
-        const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.72, 0), new THREE.MeshBasicMaterial({
-            color
-        }));
-        mesh.position
-            .copy(frame.point)
-            .addScaledVector(frame.normal, definition.offset);
-        mesh.position.y =
-            frame.point.y + 1.25;
-        worldGroup.add(mesh);
+        const color = definition.type === "overdrive" ? 0xff9c3a : 0x59c7ff;
+
+        // A clear floating power-up, with a matching ground ring and a soft
+        // beacon so it reads as a collectible instead of a misplaced marker.
+        const mesh = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.72, 0),
+            new THREE.MeshStandardMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.55,
+                metalness: 0.12,
+                roughness: 0.28
+            })
+        );
+        mesh.position.copy(frame.point).addScaledVector(frame.normal, definition.offset);
+        mesh.position.y = frame.point.y + 1.25;
+
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.88, 0.035, 6, 24),
+            new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.72,
+                depthWrite: false
+            })
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(mesh.position.x, frame.point.y + 0.14, mesh.position.z);
+
+        const beam = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.035, 0.12, 1.1, 8, 1, true),
+            new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.20,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            })
+        );
+        beam.position.set(mesh.position.x, frame.point.y + 0.70, mesh.position.z);
+
+        worldGroup.add(ring, beam, mesh);
         pickups.push({
             ...definition,
             mesh,
+            ring,
+            beam,
             position: mesh.position.clone(),
             active: true,
             respawn: 0,
-            spin: definition.t *
-                10
+            spin: definition.t * 10
         });
     }
 }
 function updatePickups(delta, elapsed) {
     for (const pickup of pickups) {
         if (!pickup.active) {
-            pickup.respawn -=
-                delta;
-            if (pickup.respawn <=
-                0) {
-                pickup.active =
-                    true;
-                pickup.mesh.visible =
-                    true;
+            pickup.respawn -= delta;
+            if (pickup.respawn <= 0) {
+                pickup.active = true;
+                pickup.mesh.visible = true;
+                pickup.ring.visible = true;
+                pickup.beam.visible = true;
             }
             continue;
         }
-        pickup.spin +=
-            delta *
-                1.8;
-        pickup.mesh.rotation.y =
-            pickup.spin;
-        pickup.mesh.position.y =
-            pickup.position.y
-                +
-                    Math.sin(elapsed *
-                        3
-                        +
-                            pickup.spin)
-                        *
-                            0.16;
-        if (flatDistance(car.position, pickup.position)<2
+
+        pickup.spin += delta * 1.8;
+        pickup.mesh.rotation.y = pickup.spin;
+        pickup.mesh.rotation.x = 0.12 + Math.sin(elapsed * 2.1 + pickup.spin) * 0.08;
+        pickup.mesh.position.y = pickup.position.y +
+            Math.sin(elapsed * 3 + pickup.spin) * 0.16;
+        pickup.ring.material.opacity = 0.58 +
+            Math.sin(elapsed * 3.2 + pickup.spin) * 0.12;
+        pickup.beam.material.opacity = 0.15 +
+            Math.sin(elapsed * 2.7 + pickup.spin) * 0.045;
+
+        if (flatDistance(car.position, pickup.position) < 2
             && (activeTrackId !== "neon" ||
-                Math.abs(car.position.y-pickup.position.y)<2.5)) {
-            pickup.active =
-                false;
-            pickup.mesh.visible =
-                false;
-            pickup.respawn =
-                9;
-            if (pickup.type ===
-                "overdrive") {
-                carState.overdriveTimer =
-                    Math.max(carState.overdriveTimer, 3.2);
+                Math.abs(car.position.y - pickup.position.y) < 2.5)) {
+            pickup.active = false;
+            pickup.mesh.visible = false;
+            pickup.ring.visible = false;
+            pickup.beam.visible = false;
+            pickup.respawn = 9;
+            if (pickup.type === "overdrive") {
+                carState.overdriveTimer = Math.max(carState.overdriveTimer, 3.2);
                 showRacePopup("OVERDRIVE", 600);
             }
             else {
-                carState.nitro =
-                    Math.min(100, carState.nitro +
-                        45);
+                carState.nitro = Math.min(100, carState.nitro + 45);
                 showRacePopup("NITRO +45", 600);
             }
         }
