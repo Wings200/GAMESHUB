@@ -783,8 +783,8 @@ export function addStreetSurfaceDetails({THREE,worldGroup,trackSamples, sampleCo
       const h=(a.point.y+b.point.y)*.5;
       // Connect each consecutive sample pair with shared end vertices.
       // The old straight box instances detached at tight uphill bends.
-      for(let j=0;j<3;j++){
-        const one=trackSamples[(i+j)%sampleCount];
+      for(let j=0;j<Math.min(3,sampleCount-i);j++){
+        const one=trackSamples[i+j];
         const two=trackSamples[(i+j+1)%sampleCount];
         curbSurface(one,two,side,roadHalf+.18,.20,.04,.26,curbFaces);
         curbSurface(one,two,side,roadHalf+.44,.28,.055,.070,gutterFaces);
