@@ -6504,8 +6504,11 @@ function buildNeonDistrictSetPieces() {
         );
 
 
-        worldGroup.add(
-            garage
+        worldGroup.add(garage);
+        // Garage is a full-height hard structure, not a ghost shell.
+        addEnvironmentBoxCollider(
+            garage.position, 11, 8, garage.rotation.y,
+            { minY: -1, maxY: 15.5, tag: "PARKING GARAGE" }
         );
 
     }
@@ -6614,9 +6617,17 @@ function buildNeonDistrictSetPieces() {
         }
 
 
-        worldGroup.add(
-            group
-        );
+        worldGroup.add(group);
+        group.updateMatrixWorld(true);
+        for (const side of [-1, 1]) {
+            const support = group.localToWorld(
+                new THREE.Vector3(side * (SIDEWALK_OUTER + 3.5), 0, 0)
+            );
+            addEnvironmentBoxCollider(
+                support, .375, .375, group.rotation.y,
+                { minY: -1, maxY: 8.4, tag: "ELEVATED SUPPORT" }
+            );
+        }
 
     }
 
@@ -6761,8 +6772,23 @@ function buildNeonDistrictSetPieces() {
         );
 
 
-        worldGroup.add(
-            site
+        worldGroup.add(site);
+        site.updateMatrixWorld(true);
+        for (const px of [-8, 4]) {
+            for (const pz of [-5, 5]) {
+                const foot = site.localToWorld(
+                    new THREE.Vector3(px, 0, pz)
+                );
+                addEnvironmentBoxCollider(
+                    foot, .275, .275, site.rotation.y,
+                    { minY: -1, maxY: 11, tag: "CONSTRUCTION COLUMN" }
+                );
+            }
+        }
+        const craneFoot = site.localToWorld(new THREE.Vector3(9, 0, -5));
+        addEnvironmentBoxCollider(
+            craneFoot, .375, .375, site.rotation.y,
+            { minY: -1, maxY: 28, tag: "CRANE" }
         );
 
     }
@@ -6869,8 +6895,14 @@ function buildNeonDistrictSetPieces() {
                 frame.rotationY;
 
 
-            worldGroup.add(
-                container
+            worldGroup.add(container);
+            addEnvironmentBoxCollider(
+                container.position, 2.9, 1.2, container.rotation.y,
+                {
+                    minY: container.position.y - 1.25,
+                    maxY: container.position.y + 1.25,
+                    tag: "SHIPPING CONTAINER"
+                }
             );
 
         }
