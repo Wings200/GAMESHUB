@@ -549,13 +549,13 @@ function applyTrackConfig(trackId) {
 
     // Keep Arctic's original illumination while making Neon genuinely night.
     hemisphereLight.intensity =
-        config.id === "neon" ? 0.42 : 1.75;
+        config.id === "neon" ? 1.05 : 1.75;
     moonLight.intensity =
-        config.id === "neon" ? 0.56 : 1.18;
+        config.id === "neon" ? 0.92 : 1.18;
     fillLight.intensity =
-        config.id === "neon" ? 0.10 : 0.30;
+        config.id === "neon" ? 0.25 : 0.30;
     renderer.toneMappingExposure =
-        config.id === "neon" ? 0.82 : 1.08;
+        config.id === "neon" ? 1.15 : 1.08;
 
     camera.far =
         activeTrackId ===
@@ -758,12 +758,10 @@ function createWedgeGeometry(width, length, frontHeight, rearHeight, topScale = 
     geometry.computeVertexNormals();
     return geometry;
 }
-function createTextTexture(text, foreground = "#ffffff", background = "#111827") {
+function createTextTexture(text, foreground = "#ffffff", background = "#111827", width = 512, height = 160) {
     const c = document.createElement("canvas");
-    c.width =
-        512;
-    c.height =
-        160;
+    c.width = width;
+    c.height = height;
     const ctx = c.getContext("2d");
     ctx.fillStyle =
         background;
@@ -771,7 +769,7 @@ function createTextTexture(text, foreground = "#ffffff", background = "#111827")
     ctx.fillStyle =
         foreground;
     ctx.font =
-        "900 66px Arial";
+        "900 " + Math.round(c.height * 0.4125) + "px Arial";
     ctx.textAlign =
         "center";
     ctx.textBaseline =
@@ -812,9 +810,9 @@ function createSurfaceTexture(
 
     const palettes = {
         asphalt: [
-            "#252d36",
-            "#313a44",
-            "#111820"
+            "#343c44",
+            "#414a53",
+            "#1d252d"
         ],
         snow: [
             "#d6e2e8",
@@ -832,9 +830,9 @@ function createSurfaceTexture(
             "#527b91"
         ],
         concrete: [
-            "#303a46",
-            "#202934",
-            "#56616c"
+            "#596168",
+            "#454e56",
+            "#747b81"
         ],
         facade: [
             "#263343",
@@ -2149,7 +2147,7 @@ function buildRoad() {
             ?
             0x263746
             :
-            0x1b2430;
+            0x2b343e;
 
     const shoulderColor =
         activeTrackId ===
@@ -2157,7 +2155,7 @@ function buildRoad() {
             ?
             0xa9bcc9
             :
-            0x39414b;
+            0x505a64;
 
     const edgeColor =
         activeTrackId ===
@@ -2171,7 +2169,7 @@ function buildRoad() {
         makeRibbon(
             -ROAD_HALF,
             ROAD_HALF,
-            roadColor,
+            activeTrackId === "neon" ? 0xffffff : roadColor,
             0.04,
             0.78,
             "asphalt",
@@ -2185,7 +2183,7 @@ function buildRoad() {
         makeRibbon(
             ROAD_HALF,
             SIDEWALK_OUTER,
-            shoulderColor,
+            activeTrackId === "neon" ? 0xffffff : shoulderColor,
             0.055,
             0.95,
             activeTrackId ===
@@ -2199,7 +2197,7 @@ function buildRoad() {
         makeRibbon(
             -ROAD_HALF,
             -SIDEWALK_OUTER,
-            shoulderColor,
+            activeTrackId === "neon" ? 0xffffff : shoulderColor,
             0.055,
             0.95,
             activeTrackId ===
@@ -2255,7 +2253,9 @@ function buildRoad() {
             sampleCount: TRACK_SAMPLE_COUNT,
             getFrameAt,
             roadHalf: ROAD_HALF,
-            sidewalkOuter: SIDEWALK_OUTER
+            sidewalkOuter: SIDEWALK_OUTER,
+            registerCollider: (position, halfWidth, halfDepth, rotationY, options) =>
+                addEnvironmentBoxCollider(position, halfWidth, halfDepth, rotationY, options)
         });
 
 
@@ -2271,7 +2271,7 @@ function buildRoad() {
 
 
     const dashSamples = [];
-    for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 9) {
+    for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
         dashSamples.push(trackSamples[i]);
     }
     const dashes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.025, 3.0), new THREE.MeshBasicMaterial({
@@ -2329,10 +2329,10 @@ function buildCity() {
     NEON_INFRA.buildWaterfront({
         THREE,
         worldGroup,
-        registerBuilding: (position,width,depth,rotationY,height) => {
+        registerBuilding: (position,width,depth,rotationY,height,tag="WAREHOUSE") => {
             addEnvironmentBoxCollider(
                 position,width/2,depth/2,rotationY,
-                {minY:-1,maxY:height,tag:"WAREHOUSE"}
+                {minY:-1,maxY:height,tag}
             );
         }
     });
@@ -2666,7 +2666,9 @@ function buildCity() {
         sidewalkOuter: SIDEWALK_OUTER,
         start: 0.315,
         end: 0.365,
-        theme: "metro"
+        theme: "metro",
+        registerWallCollider: (position, halfWidth, halfDepth, rotationY, options) =>
+            addEnvironmentBoxCollider(position, halfWidth, halfDepth, rotationY, options)
     });
 
     NEON_ART.buildMetroTunnel({
@@ -2676,7 +2678,9 @@ function buildCity() {
         sidewalkOuter: SIDEWALK_OUTER,
         start: 0.865,
         end: 0.915,
-        theme: "industrial"
+        theme: "industrial",
+        registerWallCollider: (position, halfWidth, halfDepth, rotationY, options) =>
+            addEnvironmentBoxCollider(position, halfWidth, halfDepth, rotationY, options)
     });
 
     buildNeonDistrictSetPieces();
@@ -5870,6 +5874,13 @@ function buildStreetLights() {
             });
         }
     }
+    for (const item of placements) {
+        addEnvironmentCircleCollider(item.position, 0.14, {
+            minY: item.position.y - 0.1,
+            maxY: item.position.y + 5.1,
+            tag: "STREETLIGHT"
+        });
+    }
     const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.055, 0.075, 5.1, 6), material(0x555f6d, 0.7, 0.45), placements.length);
     const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.12, 0.88), new THREE.MeshBasicMaterial({
         color: 0xbddcff
@@ -5998,6 +6009,11 @@ function buildBillboards() {
         readableBack.position.z = -0.014;
         group.add(board, readableBack);
         worldGroup.add(group);
+        addEnvironmentBoxCollider(group.position, 2.3, 0.14, group.rotation.y, {
+            minY: frame.point.y - 0.1,
+            maxY: frame.point.y + 5.1,
+            tag: "BILLBOARD"
+        });
     }
 }
 function buildTrafficLights() {
@@ -6034,6 +6050,12 @@ function buildTrafficLights() {
             color: 0x1d5c3f
         }), 0, -0.46, -0.23);
         worldGroup.add(group);
+        const support = frame.point.clone().addScaledVector(frame.normal, ROAD_HALF + 1.5);
+        addEnvironmentCircleCollider(support, 0.17, {
+            minY: frame.point.y - 0.1,
+            maxY: frame.point.y + 4.9,
+            tag: "TRAFFIC LIGHT"
+        });
     }
 }
 function buildLandmarkTower() {
@@ -6052,6 +6074,11 @@ function buildLandmarkTower() {
         color: 0xff4f74
     }), 0, 53.5, 0);
     worldGroup.add(tower);
+    addEnvironmentCircleCollider(center, 8.5, {
+        minY: frame.point.y - 0.2,
+        maxY: frame.point.y + 60,
+        tag: "LANDMARK TOWER"
+    });
 }
 function buildTunnel(
     start,
@@ -6371,7 +6398,9 @@ function buildNeonDistrictSetPieces() {
             createTextTexture(
                 text,
                 "#ffffff",
-                "#111827"
+                "#111827",
+                768,
+                160
             );
 
 
@@ -6379,7 +6408,7 @@ function buildNeonDistrictSetPieces() {
             new THREE.Mesh(
                 new THREE.PlaneGeometry(
                     5.8,
-                    1.25
+                    1.10
                 ),
                 new THREE.MeshBasicMaterial({
                     map:
@@ -6390,20 +6419,29 @@ function buildNeonDistrictSetPieces() {
             );
 
 
-        sign.position.set(0, 4.72, 0);
-        // Approaching cars see the -Z side of this overhead gantry.
-        // Rotate its actual FRONT toward them so text isn't backwards.
+        // Keep the fascia above the vehicle/camera envelope so it cannot
+        // fill the screen as the car passes underneath the gantry.
+        sign.position.set(0, 6.30, -0.18);
         sign.rotation.y = Math.PI;
         sign.material.side = THREE.FrontSide;
         const exitSide = sign.clone();
         exitSide.rotation.y = 0;
-        exitSide.position.z = 0.015;
+        exitSide.position.z = 0.18;
         group.add(sign, exitSide);
 
 
-        worldGroup.add(
-            group
-        );
+        worldGroup.add(group);
+        for (const side of [-1, 1]) {
+            const support = frame.point.clone().addScaledVector(
+                frame.normal,
+                side * (ROAD_HALF + 1.1)
+            );
+            addEnvironmentCircleCollider(support, 0.18, {
+                minY: frame.point.y - 0.1,
+                maxY: frame.point.y + 5.6,
+                tag: "DISTRICT GATE"
+            });
+        }
 
     }
 
@@ -7077,138 +7115,76 @@ function wrappedTrackDistance(
 
 function barrierWouldBlockCrossing(
     midpoint,
-    t
+    t,
+    barrierY = midpoint.y
 ) {
-
-    if (
-        activeTrackId !==
-        "arctic"
-    ) {
-
-        return false;
-
-    }
-
-
     /*
-      Arctic doubles back over itself. If another distant section of road
-      is close to this guardrail segment, leave the rail out so the X/T
-      intersection stays drivable instead of putting a wall across it.
+      Both routes pass near their own return legs and district connectors.
+      Do not put a wall across another drivable segment. On Neon, ignore
+      roads at a different elevation so the bridge rail stays continuous
+      above the lower waterfront street.
     */
-
-    for (
-        const sample
-        of trackSamples
-    ) {
-
-        if (
-            wrappedTrackDistance(
-                t,
-                sample.t
-            )
-            <
-            0.035
-        ) {
-
-            continue;
-
-        }
-
-
-        if (
-            flatDistance(
-                midpoint,
-                sample.point
-            )
-            <
-            ROAD_HALF
-            *
-            2
-            +
-            10
-        ) {
-
+    for (const sample of trackSamples) {
+        if (wrappedTrackDistance(t, sample.t) < 0.035) continue;
+        if (activeTrackId === "neon" &&
+            Math.abs(sample.point.y - barrierY) > 2.5) continue;
+        if (flatDistance(midpoint, sample.point) < ROAD_HALF * 2 + 10) {
             return true;
-
         }
-
     }
-
-
     return false;
-
 }
 
-
 function buildBarriers() {
-    barriers =
-        [];
-    const barrierMaterial =
-        material(
-            activeTrackId ===
-            "arctic"
-                ?
-                0xd7e4ec
-                :
-                0x697688,
-            0.62,
-            0.35
-        );
+    barriers = [];
+    const barrierMaterial = material(
+        activeTrackId === "arctic" ? 0xd7e4ec : 0x697688,
+        0.62,
+        0.35
+    );
     for (const section of barrierSections) {
         for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
-            const t = i /
-                TRACK_SAMPLE_COUNT;
-            if (!sectionContains(t, section.start, section.end)) {
-                continue;
-            }
-            const nextIndex = (i +
-                3)
-                %
-                    TRACK_SAMPLE_COUNT;
+            const t = i / TRACK_SAMPLE_COUNT;
+            if (!sectionContains(t, section.start, section.end)) continue;
+
+            const nextIndex = (i + 3) % TRACK_SAMPLE_COUNT;
             const aSample = trackSamples[i];
             const bSample = trackSamples[nextIndex];
-            const a = aSample.point
-                .clone()
-                .addScaledVector(aSample.normal, section.side *
-                (SIDEWALK_OUTER +
-                    0.45));
-            const b = bSample.point
-                .clone()
-                .addScaledVector(bSample.normal, section.side *
-                (SIDEWALK_OUTER +
-                    0.45));
-            const midpoint = a
-                .clone()
-                .add(b)
-                .multiplyScalar(0.5);
+            const barrierY = (aSample.point.y + bSample.point.y) * 0.5;
 
+            // Raised Neon spans already receive grade-following guardrails
+            // and collision segments from NEON_INFRA.buildRaisedRoads.
+            if (activeTrackId === "neon" && barrierY > 1.0) continue;
 
-            if (
-                barrierWouldBlockCrossing(
-                    midpoint,
-                    t
-                )
-            ) {
+            const a = aSample.point.clone().addScaledVector(
+                aSample.normal,
+                section.side * (SIDEWALK_OUTER + 0.45)
+            );
+            const b = bSample.point.clone().addScaledVector(
+                bSample.normal,
+                section.side * (SIDEWALK_OUTER + 0.45)
+            );
+            const midpoint = a.clone().add(b).multiplyScalar(0.5);
 
-                continue;
+            if (barrierWouldBlockCrossing(midpoint, t, barrierY)) continue;
 
-            }
-
-
-            const segment = b
-                .clone()
-                .sub(a);
-            const length = segment.length();
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.80, length), barrierMaterial);
+            const segment = b.clone().sub(a);
+            const horizontalLength = Math.hypot(segment.x, segment.z);
+            const rail = new THREE.Mesh(
+                new THREE.BoxGeometry(0.28, 0.80, segment.length()),
+                barrierMaterial
+            );
             rail.position.copy(midpoint);
-            rail.position.y = midpoint.y + 0.45;
-            rail.rotation.y =
-                Math.atan2(segment.x, segment.z);
+            rail.position.y = barrierY + 0.45;
+            rail.rotation.order = "YXZ";
+            rail.rotation.y = Math.atan2(segment.x, segment.z);
+            rail.rotation.x = -Math.atan2(segment.y, horizontalLength);
             worldGroup.add(rail);
+
             barriers.push({
                 a: new THREE.Vector2(a.x, a.z),
                 b: new THREE.Vector2(b.x, b.z),
-                y: midpoint.y
+                y: barrierY
             });
         }
     }
@@ -7621,6 +7597,64 @@ function buildParkedCar(color = 0x586575) {
     }
     return group;
 }
+function buildConstructionBarrier() {
+    const group = new THREE.Group();
+    const concrete = material(0xa2a9af, 0.88, 0.02);
+    const darkFoot = material(0x333d46, 0.82, 0.04);
+    const orange = new THREE.MeshStandardMaterial({
+        color: 0xff9a36,
+        roughness: 0.55,
+        metalness: 0.02,
+        emissive: 0x8b3a05,
+        emissiveIntensity: 0.22
+    });
+    const white = new THREE.MeshStandardMaterial({
+        color: 0xf0f2f4,
+        roughness: 0.78,
+        metalness: 0.02,
+        emissive: 0x30363d,
+        emissiveIntensity: 0.10
+    });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.78, 0.72), concrete);
+    body.position.y = 0.44;
+    group.add(body);
+
+    for (const x of [-0.82, 0.82]) {
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.16, 0.92), darkFoot);
+        foot.position.set(x, 0.09, 0);
+        group.add(foot);
+    }
+
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(2.42, 0.08, 0.76), white);
+    cap.position.y = 0.85;
+    group.add(cap);
+
+    for (let i = 0; i < 6; i++) {
+        const x = -1.0 + i * 0.4;
+        const stripeMaterial = i % 2 === 0 ? orange : white;
+        for (const z of [-0.382, 0.382]) {
+            const stripe = new THREE.Mesh(
+                new THREE.BoxGeometry(0.22, 0.56, 0.035),
+                stripeMaterial
+            );
+            stripe.position.set(x, 0.46, z);
+            stripe.rotation.z = -0.38;
+            group.add(stripe);
+        }
+    }
+
+    const reflectorMaterial = new THREE.MeshBasicMaterial({ color: 0xffd77a });
+    for (const x of [-0.92, 0, 0.92]) {
+        const reflector = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 0.11, 0.06),
+            reflectorMaterial
+        );
+        reflector.position.set(x, 0.72, 0.40);
+        group.add(reflector);
+    }
+    return group;
+}
 function buildObstacles() {
     obstacles =
         [];
@@ -7678,6 +7712,9 @@ function buildObstacles() {
 
             mesh.position.y =
                 0.45;
+        }
+        else if (activeTrackId === "neon") {
+            mesh = buildConstructionBarrier();
         }
         else {
             mesh =
