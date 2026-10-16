@@ -1684,6 +1684,48 @@ function sampleTrack() {
         });
     }
 }
+/*
+  Continuous road altitude for Neon: interpolate the nearest spline sample
+  segment in X/Z. This avoids jerky stair-step chassis motion on 12m bridge
+  approaches. Arctic's old ground system remains entirely unchanged.
+*/
+function neonSurfaceHeight(position) {
+    if(activeTrackId!=="neon") return 0;
+    const nearest=nearestTrackInfo(position);
+    if(!nearest) return 0;
+    const n=trackSamples.length;
+    let bestDist=Infinity;
+    let h=0;
+    for(const i of [
+        (nearest.index+n-2)%n,
+        (nearest.index+n-1)%n,
+        nearest.index,
+        (nearest.index+1)%n
+    ]) {
+        const a=trackSamples[i].point;
+        const b=trackSamples[(i+1)%n].point;
+        const dx=b.x-a.x,dz=b.z-a.z;
+        const t=THREE.MathUtils.clamp(
+            ((position.x-a.x)*dx+(position.z-a.z)*dz)/
+            Math.max(.00001,dx*dx+dz*dz),
+            0,1
+        );
+        const offX=position.x-(a.x+dx*t);
+        const offZ=position.z-(a.z+dz*t);
+        const distance=offX*offX+offZ*offZ;
+        if(distance<bestDist) {
+            bestDist=distance;
+            h=a.y+(b.y-a.y)*t;
+        }
+    }
+    if(Math.sqrt(bestDist)>SIDEWALK_OUTER+1) {
+        if(position.x>127&&position.x<213&&Math.abs(position.z)<400)
+            return -.40;
+        return 0;
+    }
+    return h;
+}
+
 function nearestTrackInfo(position) {
     let best = null;
     for (const sample of trackSamples) {
@@ -7760,7 +7802,9 @@ function respawnAtLastCheckpoint(
 
 
     car.position.y =
-        0;
+        activeTrackId === "neon"
+            ? lastCheckpointTransform.position.y
+            : 0;
 
 
     car.rotation.y =
@@ -8041,9 +8085,10 @@ function updateCheckpoints() {
     const target = nextCheckpoint();
     if (!target
         ||
-            flatDistance(car.position, target.point)
-                >
-                    7) {
+            flatDistance(car.position, target.point) > 7
+            ||
+            (activeTrackId === "neon" &&
+                Math.abs(car.position.y-target.point.y)>4)) {
         return;
     }
     showRacePopup("CHECKPOINT", 500);
@@ -8102,7 +8147,7 @@ function buildBoostPads() {
             .copy(frame.point)
             .addScaledVector(frame.normal, definition.offset);
         mesh.position.y =
-            0.09;
+            frame.point.y + 0.09;
         mesh.rotation.y =
             frame.rotationY;
         worldGroup.add(mesh);
@@ -8160,7 +8205,7 @@ function buildPickups() {
             .copy(frame.point)
             .addScaledVector(frame.normal, definition.offset);
         mesh.position.y =
-            1.25;
+            frame.point.y + 1.25;
         worldGroup.add(mesh);
         pickups.push({
             ...definition,
@@ -8959,10 +9004,9 @@ function updateAirborne(
     ) {
 
         car.position.y =
-            Math.max(
-                0,
-                car.position.y
-            );
+            activeTrackId === "neon"
+                ? neonSurfaceHeight(car.position)
+                : Math.max(0,car.position.y);
 
 
         /*
@@ -9246,21 +9290,19 @@ function updateAirborne(
             2.25;
 
 
-    if (
-        car.position.y >
-        0
-        &&
-        carState.airTime <
-        maxAirTime
-    ) {
+    const landingGround = activeTrackId === "neon"
+        ? neonSurfaceHeight(car.position)
+        : 0;
 
+    if(activeTrackId==="neon") {
+        // Bridges and canal have different landing heights.
+        if(car.position.y>landingGround &&
+            carState.airTime<Math.max(5.5,maxAirTime)) return;
+    } else if(car.position.y>0 && carState.airTime<maxAirTime) {
         return;
-
     }
 
-
-    car.position.y =
-        0;
+    car.position.y = landingGround;
 
 
     carState.verticalVelocity =
@@ -10404,6 +10446,17 @@ function updatePhysics(delta) {
             delta
         );
 
+    if (activeTrackId === "neon" && !carState.airborne) {
+        const surfaceY = neonSurfaceHeight(car.position);
+        if (car.position.y > surfaceY + .95) {
+            // A car driving off the bridge must fall under gravity.
+            carState.airborne = true;
+            carState.verticalVelocity = 0;
+            carState.airTime = 0;
+        } else {
+            car.position.y = surfaceY;
+        }
+    }
 
     updateRamps(
         delta
@@ -10818,7 +10871,8 @@ function updateCamera(delta) {
 
 
     cameraBase.y =
-        carState.cameraAirY;
+        (activeTrackId === "neon" ? car.position.y : 0)
+        + carState.cameraAirY;
 
 
     const desired = cameraBase
@@ -10887,13 +10941,9 @@ function updateCamera(delta) {
 
 
     lookAt.y =
-        carState.airborne
-            ?
-            carState.cameraAirY
-            +
-            0.72
-            :
-            0.72;
+        (activeTrackId === "neon" ? car.position.y : 0)
+        + (carState.airborne ? carState.cameraAirY : 0)
+        + 0.72;
 
 
     lookAt
