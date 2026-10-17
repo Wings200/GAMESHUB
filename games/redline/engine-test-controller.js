@@ -41,9 +41,11 @@ function setCar(id){
   if($("labAudioDescription"))$("labAudioDescription").textContent=
     id==="gt"?"V15 · recorded inline-six engine":
     id==="ironclad"?
-      (window.REDLINE_LAB_V8_STATUS?.().ready?
-        "V16 · recorded Mercury V8 ready":
-        "V16 bank not available yet · V11.2 fallback active"):
+      (window.REDLINE_LAB_V17_STATUS?.().ready?
+        "V17 · longer Mercury V8 acceleration takes ready":
+        window.REDLINE_LAB_V8_STATUS?.().ready?
+          "V16 short V8 loops active · V17 long-take test not loaded":
+          "V17 bank not loaded · fallback V11.2"):
     "V11.2 fallback · awaiting a licensed "+engineType(id)+" engine bank";
   syncRoom();
 }
@@ -129,7 +131,7 @@ for(const id of names){
     spec.style+" · $0 IN LAB";
   const sound=document.createElement("small");sound.textContent=
     id==="gt"?"REAL i6 AUDIO":
-    id==="ironclad"?"REAL V8 AUDIO · V16":"ENGINE SAMPLE PENDING";
+    id==="ironclad"?"V17 LONG V8 TAKES · TEST":"ENGINE SAMPLE PENDING";
   btn.append(title,meta,sound);
   btn.addEventListener("click",()=>setCar(id));
   grid.append(btn);
@@ -214,15 +216,40 @@ function diagButton(text){
 const retryButton=diagButton("RETRY V8 AUDIO");
 const testSampleButton=diagButton("HEAR RAW V8");
 const abButton=diagButton("A/B: HEAR ORIGINAL");
+const oldLoopsButton=diagButton("A/B: HEAR V16 SHORT LOOPS");
+const retry17Button=diagButton("RETRY V17 BANK");
 const copyButton=diagButton("COPY STATUS");
+const v17File=document.createElement("input");
+v17File.type="file";v17File.accept=".bank";
+v17File.style.cssText="margin-top:9px;display:block;width:100%;max-width:325px;font:11px system-ui,sans-serif;";
+v17File.setAttribute("aria-label","Load downloaded V17 long-take engine bank locally");
+v17File.addEventListener("change",async()=>{
+  if(!v17File.files?.[0])return;
+  diagStatus.textContent="Reading V17 bank from your PC…";
+  v17File.disabled=true;
+  try{
+    await window.REDLINE_LAB_V17_LOAD_LOCAL?.(v17File.files[0]);
+  }catch(e){diagStatus.textContent="Cannot read V17 file: "+(e?.message||e)}
+  finally{v17File.disabled=false;renderV8Diagnostics()}
+});
 abButton.addEventListener("click",()=>{
-  if(chosen!=="ironclad"){
-    diagStatus.textContent="Select IRONCLAD first to compare engines";
-    return;
-  }
-  const isOriginal=!!window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v8?.forceOriginal;
-  window.REDLINE_LAB_V8_AB?.(!isOriginal);
+  if(chosen!=="ironclad")return;
+  const wasOriginal=window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v17?.selectedMode==="v11";
+  window.REDLINE_LAB_V8_AB?.(!wasOriginal);
   renderV8Diagnostics();
+});
+oldLoopsButton.addEventListener("click",()=>{
+  if(chosen!=="ironclad")return;
+  const wasOld=window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v17?.selectedMode==="v16";
+  window.REDLINE_LAB_V17_AB?.(!wasOld);
+  renderV8Diagnostics();
+});
+retry17Button.addEventListener("click",async()=>{
+  retry17Button.disabled=true;
+  diagStatus.textContent="Looking for the V17 recording bank…";
+  try{await window.REDLINE_LAB_V17_RETRY?.()}
+  catch(e){diagStatus.textContent="V17 retry failed: "+(e?.message||e)}
+  finally{retry17Button.disabled=false;renderV8Diagnostics()}
 });
 retryButton.addEventListener("click",async()=>{
   retryButton.disabled=true;diagStatus.textContent="Retrying V8 bank download…";
@@ -252,59 +279,70 @@ copyButton.addEventListener("click",()=>{
     });
   }else diagStatus.textContent="Status: "+formatted;
 });
-diag.append(diagHeader,diagStatus,diagInfo,diagBtns);
+diag.append(diagHeader,diagStatus,diagInfo,diagBtns,v17File);
 document.body.append(diag);
 function renderV8Diagnostics(){
   const d=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
   if(!d){
-    diagStatus.textContent="Starting engine diagnostics…";
+    diagStatus.textContent="Starting V17 diagnostics…";
     return;
   }
   const selected=d.selectedCar||chosen;
-  const v=d.v8;
-  const bank=d.bank;
+  const v=d.v8||{};
+  const newer=d.v17||{};
+  const bank=d.bank||{};
+  const bank17=d.v17bank||{};
   let label,color;
   if(selected!=="ironclad"){
-    label="IRONCLAD V16 is idle · "+REDLINE_CAR_CATALOG[selected]?.name+" selected";
+    label="IRONCLAD V17 ready for selection · "+REDLINE_CAR_CATALOG[selected]?.name+" selected";
     color="#b6cbce";
-  }else if(!bank?.ready){
-    label="V11.2 FALLBACK · V8 bank unavailable";
-    color="#ffad98";
   }else if(!d.raceEnabled){
-    label="V8 BANK READY · Start an IRONCLAD test drive";
+    label=bank17.ready?"V17 LONG-TAKE BANK READY · START TEST DRIVE":
+      bank.ready?"V16 short loops available · Load V17 below":"No V8 bank loaded yet";
     color="#f5d99b";
-  }else if(d.starting||v?.loading){
-    label="Preparing and decoding V8 recordings…";
-    color="#f5d99b";
-  }else if(v?.forceOriginal){
-    label="A/B TEST · ORIGINAL V11.2 PLAYING (V8 MUTED)";
-    color="#f5d99b";
-  }else if(v?.v8Audible&&v?.layerCount===8){
-    label="V16 ACTIVE · REAL V8 PLAYING · 8 layers";
+  }else if(newer.selectedMode==="v11"){
+    label="A/B ORIGINAL · V11.2 ONLY · V8 muted";color="#f5d99b";
+  }else if(newer.selectedMode==="v16"){
+    label="A/B OLD V16 · SHORT REPEATING V8 LOOPS";color="#f5d99b";
+  }else if(newer.v17Audible){
+    label="V17 ACTIVE · REAL LONG V8 TAKES · "+(newer.currentTake||"IDLE");
     color="#88edb5";
-  }else if(v?.error){
-    label="V11.2 FALLBACK · decode error: "+v.error;
-    color="#ffad98";
+  }else if(newer.loading||d.starting){
+    label="DECODING LONG V8 TAKES…";color="#f5d99b";
+  }else if(bank.ready&&v.v8Audible){
+    label="V16 SHORT LOOPS · V17 BANK NOT ACTIVE";color="#f5d99b";
+  }else if(newer.error){
+    label="V17 FAILED · "+newer.error;color="#ffad98";
   }else{
-    label="V11.2 FALLBACK · Recorded V8 not active";
-    color="#ffad98";
+    label="V11.2 FALLBACK · NO RECORDED ENGINE ACTIVE";color="#ffad98";
   }
   if(!testSampleButton.disabled)diagStatus.textContent=label;
   diagStatus.style.color=color;
-  abButton.disabled=selected!=="ironclad"||!bank?.ready||!v?.decoded||!v?.active;
-  abButton.textContent=v?.forceOriginal?"A/B: HEAR RECORDED V8":"A/B: HEAR ORIGINAL";
-  const detail=[
-    "V8 bank: "+(bank?.status||"not loaded"),
-    "Race: "+(d.raceEnabled?"ON":"OFF")+" · Selected: "+selected,
-    "V8 mixer: "+(v?.active?"running":"not started")+
-      " · Decoded: "+(v?.decoded?"YES":"NO")+
-      " · Layers: "+(v?.layerCount||0),
-    d.telemetryAgeMs!==null?"Telemetry: "+d.telemetryAgeMs+" ms old":"Telemetry: no samples yet"
+  const canCompare=selected==="ironclad"&&d.raceEnabled&&
+    (bank.ready||bank17.ready);
+  abButton.disabled=!canCompare;
+  oldLoopsButton.disabled=!canCompare||!bank.ready||!bank17.ready;
+  retry17Button.disabled=!!bank17.ready;
+  abButton.textContent=newer.selectedMode==="v11"?
+    "A/B: HEAR RECORDED V8":"A/B: HEAR ORIGINAL";
+  oldLoopsButton.textContent=newer.selectedMode==="v16"?
+    "A/B: HEAR NEW V17":"A/B: HEAR V16 SHORT LOOPS";
+  const parts=[
+    "New bank: "+(bank17.status||"pending"),
+    "V17: "+(newer.decoded?"decoded":"not decoded")+
+      " · "+(newer.voiceCount||0)+" live voices",
+    "Engine: "+(newer.currentTake||newer.idleTake||"none"),
+    "V16 fallback: "+(v.v8Audible?"YES":"NO"),
+    "Telemetry: "+(d.telemetryAgeMs??"none")+"ms"
   ];
-  diagInfo.textContent=detail.join(" | ");
+  diagInfo.textContent=parts.join(" | ");
 }
 window.setInterval(renderV8Diagnostics,550);
 window.addEventListener("redline:v8-bank-status",renderV8Diagnostics);
+window.addEventListener("redline:v17-bank-status",()=>{
+  if(chosen==="ironclad")setCar("ironclad");
+  renderV8Diagnostics();
+});
 
 const nav=document.createElement("div");
 nav.className="lab-brand";nav.innerHTML=
