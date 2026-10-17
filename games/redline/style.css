@@ -2367,5 +2367,12 @@ select option:disabled {
  .upgrade-shop-head{align-items:start;flex-direction:column}
  .upgrade-levels-note{white-space:normal}
 }
-/* Older cached garage scripts must not resurrect the obsolete 16-point editor. */
-#carSelectScreen #redlineGarageV1{display:none!important}
+/* Retain the previous appearance/body-color editor, but never display
+   its deprecated performance point sliders or second duplicate wallet. */
+#carSelectScreen #redlineGarageV1{
+  grid-template-columns:minmax(0,1fr)!important;
+  max-width:920px;
+}
+#carSelectScreen #redlineGarageV1>.rg-panel:nth-child(2){display:none!important}
+#carSelectScreen #redlineGarageV1 .rg-wallet,
+#carSelectScreen #redlineGarageV1 .rg-wallet-hint{display:none!important}
