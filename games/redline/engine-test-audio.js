@@ -5,7 +5,9 @@ import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
 import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
 import { createIroncladV8Preview, preloadIroncladV8Bank, getIroncladV8BankStatus } from "./engine-test-v8-soundscape.js?v=ironclad-v16-1";
-preloadIroncladV8Bank().catch(console.warn);
+preloadIroncladV8Bank().then(()=>{
+  window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
+}).catch(console.warn);
 let playLabV8Startup=null;
 function createEngineLabFallback(options){
   const v8=createIroncladV8Preview({
