@@ -613,24 +613,29 @@
         </div>
       </div>
 
-      <section id="redlineUpgradeShop" class="redline-upgrade-shop" aria-label="Performance garage">
-        <div class="upgrade-shop-head">
-          <div>
-            <span class="upgrade-kicker">PERMANENT PERFORMANCE PARTS</span>
-            <h2>UPGRADE YOUR RIDE</h2>
-          </div>
-          <span class="upgrade-levels-note">STOCK → STREET → SPORT → RACE</span>
-        </div>
-        <p id="redlineUpgradeMessage" class="upgrade-message" aria-live="polite">
-          Loading purchased parts from your account…
-        </p>
-        <div id="redlineUpgradeGrid" class="upgrade-grid"></div>
-        <p class="upgrade-footnote">
-          Parts are saved to your account. Equipped upgrades are locked when you press Ready.
-          Each car retains its own stock driving characteristics.
-        </p>
-      </section>
 
+      <div class="race-garage-summary">
+        <span class="race-garage-kicker">YOUR RACE CAR</span>
+        <h2 id="raceSelectedCarName">REDLINE GT</h2>
+        <p>Choose cars, buy new vehicles and upgrade each one separately inside your garage.</p>
+        <button id="goToGarageBtn" type="button" class="primary-button race-garage-enter">
+          GO TO GARAGE →
+        </button>
+      </div>
+
+      <div id="redlineGarageOverlay" class="redline-garage-overlay hidden"
+           role="dialog" aria-modal="true" aria-labelledby="garageOverlayTitle">
+        <div class="garage-overlay-shell">
+          <header class="garage-overlay-topbar">
+            <div>
+              <span class="dealer-kicker">REDLINE MOTOR COMPANY</span>
+              <h2 id="garageOverlayTitle">MY GARAGE</h2>
+              <p>Each car has its own upgrades and maximum performance.</p>
+            </div>
+            <button id="closeGarageBtn" type="button" class="garage-overlay-return">← BACK TO RACE</button>
+          </header>
+          <div class="garage-overlay-content">
+            <section class="garage-overlay-car-picker" aria-label="Select an owned race car">
       <div class="garage-header">
 
         <div>
@@ -786,26 +791,6 @@
       </div>
 
 
-      <!-- PERMANENT CASH CAR DEALERSHIP AND OWNED VEHICLE GARAGE -->
-      <section id="redlineDealership" class="redline-dealership" aria-label="Car dealership">
-        <div class="dealer-heading">
-          <div>
-            <span class="dealer-kicker">REDLINE MOTOR COMPANY</span>
-            <h2>DEALERSHIP & MY GARAGE</h2>
-          </div>
-          <div class="dealer-cash" id="dealerCash">CASH —</div>
-        </div>
-        <div class="dealer-tabbar" role="group" aria-label="Garage filter">
-          <button type="button" class="dealer-tab active" data-dealer-filter="all">DEALERSHIP</button>
-          <button type="button" class="dealer-tab" data-dealer-filter="owned">MY CARS</button>
-        </div>
-        <p class="dealer-feedback" id="dealerFeedback" aria-live="polite">
-          Loading your permanent car collection…
-        </p>
-        <div id="dealerGrid" class="dealer-grid"></div>
-        <p class="dealer-footer-note">Cars are permanently saved to your account. Starter vehicles remain free.
-          Bought vehicles can be equipped in multiplayer; each has its own real driving physics.</p>
-      </section>
 
       <!-- STATS -->
 
@@ -884,6 +869,55 @@
 
       </div>
 
+
+
+            </section>
+      <!-- PERMANENT CASH CAR DEALERSHIP AND OWNED VEHICLE GARAGE -->
+      <section id="redlineDealership" class="redline-dealership" aria-label="Car dealership">
+        <div class="dealer-heading">
+          <div>
+            <span class="dealer-kicker">REDLINE MOTOR COMPANY</span>
+            <h2>DEALERSHIP & MY GARAGE</h2>
+          </div>
+          <div class="dealer-cash" id="dealerCash">CASH —</div>
+        </div>
+        <div class="dealer-tabbar" role="group" aria-label="Garage filter">
+          <button type="button" class="dealer-tab active" data-dealer-filter="all">DEALERSHIP</button>
+          <button type="button" class="dealer-tab" data-dealer-filter="owned">MY CARS</button>
+        </div>
+        <p class="dealer-feedback" id="dealerFeedback" aria-live="polite">
+          Loading your permanent car collection…
+        </p>
+        <div id="dealerGrid" class="dealer-grid"></div>
+        <p class="dealer-footer-note">Cars are permanently saved to your account. Starter vehicles remain free.
+          Bought vehicles can be equipped in multiplayer. Upgrades are saved separately for each car.</p>
+      </section>
+
+
+      <section id="redlineUpgradeShop" class="redline-upgrade-shop" aria-label="Performance garage">
+        <div class="upgrade-shop-head">
+          <div>
+            <span class="upgrade-kicker">PERMANENT PERFORMANCE PARTS</span>
+            <h2>UPGRADE THIS CAR</h2>
+            <p id="upgradeCarLimit" class="garage-car-limit">Each car has its own performance limit.</p>
+          </div>
+          <span class="upgrade-levels-note">STOCK → STREET → SPORT → RACE</span>
+        </div>
+        <p id="redlineUpgradeMessage" class="upgrade-message" aria-live="polite">
+          Loading purchased parts from your account…
+        </p>
+        <div id="redlineUpgradeGrid" class="upgrade-grid"></div>
+        <p class="upgrade-footnote">
+          Parts you buy are saved only to this car. Every vehicle has unique stock
+          performance and a unique fully upgraded limit.
+        </p>
+      </section>
+
+
+            <div id="garageCosmeticsMount"></div>
+          </div>
+        </div>
+      </div>
 
       <div class="car-select-footer">
 
@@ -1482,14 +1516,14 @@
         async getAccountStats() {
           return (await this.requestAccountOperation("/api/stats/me")).stats;
         },
-        async purchaseUpgrade(category) {
-          return this.requestAccountOperation("/api/garage/purchase",{category});
+        async purchaseUpgrade(category,carId) {
+          return this.requestAccountOperation("/api/garage/purchase",{category,carId});
         },
         async purchaseCar(carId) {
           return this.requestAccountOperation("/api/dealership/purchase",{carId});
         },
-        async equipUpgrade(category,tier) {
-          return this.requestAccountOperation("/api/garage/equip",{category,tier});
+        async equipUpgrade(category,tier,carId) {
+          return this.requestAccountOperation("/api/garage/equip",{category,tier,carId});
         },
 
         get connected() {
@@ -4406,6 +4440,7 @@
   <script src="./cash-wallet.js"></script>
   <!-- Keep existing cosmetic paint/body editor, but not its retired free points. -->
   <script src="./garage.js"></script>
+  <script src="./garage-view.js"></script>
   <script type="module" src="./upgrade-shop.js"></script>
   <script type="module" src="./dealership.js"></script>
 
