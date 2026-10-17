@@ -266,7 +266,7 @@ const TRACKS = {
     arctic: {
         id: "arctic",
         name: "ARCTIC RELAY",
-        description: "Arctic Relay V2 — a huge one-lap expedition through a base camp, avalanche valley, mountain tunnels, a frozen lake, an ice cave shortcut and a long ridgeline descent.",
+        description: "Arctic Relay V3 — sculpted alpine ridges, carved snow valleys, pine forests, a frozen lake, mountain tunnels, real snowdrifts and the original high-speed cave jump.",
         sampleCount: 880,
         laps: 1,
         background: 0x06111b,
