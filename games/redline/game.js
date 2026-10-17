@@ -11254,6 +11254,8 @@ function buildWorld() {
         applyTrackConfig(
             requestedTrack
         );
+    // Arctic is deliberately unchanged by the Neon weather rollout.
+    weatherStatusEl?.classList.toggle("hidden",activeTrackId !== "neon");
 
 
     const multiplayerCar = window.REDLINE_MP
