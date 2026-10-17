@@ -979,6 +979,10 @@ function swapEngineBand(
 ========================================================= */
 
 function playStartup() {
+  // V15 substitutes the actual i6 startup from the user's locally selected
+  // licensed ZIP. The sample never leaves the user's browser.
+  if(USE_V15_RECORDED_PREVIEW &&
+     soundscape?.playStartupSample?.(startupGain))return;
 
   if (
     !buffers.startup ||
