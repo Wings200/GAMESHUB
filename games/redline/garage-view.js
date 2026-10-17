@@ -14,8 +14,12 @@
     if(window.REDLINE_MP?.room?.phase!=="car_select")return;
     overlay.classList.remove("hidden");
     opened=true;
-    window.REDLINE_DEALERSHIP?.refresh?.();
-    window.REDLINE_UPGRADE_SHOP?.refresh?.();
+    if(window.REDLINE_GARAGE_CONNECTION?.check)
+      window.REDLINE_GARAGE_CONNECTION.check();
+    else{
+      window.REDLINE_DEALERSHIP?.refresh?.();
+      window.REDLINE_UPGRADE_SHOP?.refresh?.();
+    }
     closeBtn.focus();
   }
   function close(){
