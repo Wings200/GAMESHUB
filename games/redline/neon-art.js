@@ -482,8 +482,18 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   // No giant transparent ground glow plane: it tinted the entire canal
   // pink and made the water and streets look like cardboard.
 
+  // Expose only the decorative streets that were actually built and
+  // collision-cleared, for local ambient NPC traffic. These are never
+  // the competitive racing road or canal bridge lanes.
+  const trafficRoads = parallelRoads.filter(road =>
+    Math.max(road.w,road.d)>=56).map(road => ({
+      axis: road.d>road.w ? "z" : "x",
+      centerX: road.x, centerZ: road.z,
+      length: Math.max(road.w,road.d), width: Math.min(road.w,road.d)
+    }));
   return { cityBuildings: cityBlocks.reduce((n,b)=>n+b.length,0),
-    skylineTowers: distant.reduce((n,b)=>n+b.length,0) };
+    skylineTowers: distant.reduce((n,b)=>n+b.length,0),
+    trafficRoads };
 }
 
 /** Replace the cheap one-color office faces with tiled facades + storefronts. */
