@@ -201,6 +201,11 @@
         800;
     }
 
+    .redline-result-cash {
+      margin-top:6px;color:#a3ffc7;font-size:12px;font-weight:900;
+      text-shadow:0 0 9px rgba(77,255,162,.17);
+    }
+
     .redline-result-car {
       margin-top:
         3px;
@@ -880,6 +885,15 @@
           car
         );
 
+        // Shown only for grants confirmed by the Worker.
+        const prize=Number(result.cashEarned);
+        if(Number.isSafeInteger(prize) && prize>=0 &&
+           result.cashEarned!==undefined){
+          const award=document.createElement("div");
+          award.className="redline-result-cash";
+          award.textContent="+$"+prize+" CASH";
+          racer.appendChild(award);
+        }
 
         const time =
           document.createElement(
