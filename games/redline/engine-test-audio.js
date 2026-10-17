@@ -5,12 +5,17 @@ import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
 import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
 import { createIroncladV8Preview, preloadIroncladV8Bank, getIroncladV8BankStatus, auditionIroncladV8Clip } from "./engine-test-v8-soundscape.js?v=ironclad-v16-ab-4";
+import { createV17LongTakeEngine, preloadV17Bank, getV17Status } from "./engine-test-v17-long-takes.js?v=long-takes-v17-1";
+preloadV17Bank().then(()=>{
+  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
+}).catch(console.warn);
 preloadIroncladV8Bank().then(()=>{
   window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
 }).catch(console.warn);
 let playLabV8Startup=null;
 let labV8Instance=null;
 let labV15Instance=null;
+let labV17Instance=null;
 /*
  * Explicit soundscape chain for this lab ONLY:
  *   IRONCLAD V16 V8 (top-level mixer; directly connected to engineBus)
@@ -32,6 +37,13 @@ function createEngineLabV8Primary(options){
   labV8Instance=v8;
   playLabV8Startup=(destination)=>v8.playStartupSample(destination);
   return v8;
+}
+function createEngineLabV17Primary(options){
+  const v17=createV17LongTakeEngine({
+    ...options,fallbackFactory:createEngineLabV8Primary
+  });
+  labV17Instance=v17;
+  return v17;
 }
 window.REDLINE_LAB_V8_STATUS=getIroncladV8BankStatus;
 // V14 physically simulated sound was rejected in listening tests and is
@@ -688,7 +700,7 @@ async function initAudio() {
   }
   try {
     soundscape=USE_V15_RECORDED_ENGINE
-      ?createEngineLabV8Primary({
+      ?createEngineLabV17Primary({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
         })
       :USE_V13_CLEAN_PREVIEW
@@ -1004,7 +1016,8 @@ function playStartup() {
   if(USE_V15_RECORDED_ENGINE && labCar==="gt" &&
      labV15Instance?.playStartupSample?.(startupGain))return;
   if(labCar==="ironclad" &&
-     playLabV8Startup?.(startupGain))return;
+     (labV17Instance?.playStartupSample?.(startupGain)||
+      playLabV8Startup?.(startupGain)))return;
 
   if (
     !buffers.startup ||
@@ -1511,6 +1524,8 @@ window.REDLINE_LAB_V8_DIAGNOSTICS=()=>({
   selectedCar:window.REDLINE_MP?.myPlayer?.car||"gt",
   bank:getIroncladV8BankStatus(),
   v8:labV8Instance?.debug||null,
+  v17:labV17Instance?.debug||null,
+  v17bank:getV17Status(),
   v15:labV15Instance?.debug||null,
   context:ctx?.state||"not initialized",
   raceEnabled,
@@ -1527,9 +1542,19 @@ window.REDLINE_LAB_V8_RETRY=async()=>{
 };
 window.REDLINE_LAB_V8_AUDITION=()=>auditionIroncladV8Clip("med_on");
 window.REDLINE_LAB_V8_AB=(useOriginal)=>{
-  if(!labV8Instance)return null;
-  return labV8Instance.selectOriginalMode(useOriginal);
+  if(!labV17Instance)return null;
+  return labV17Instance.selectOriginalMode(useOriginal);
 };
+window.REDLINE_LAB_V17_AB=(useOldV16)=>{
+  if(!labV17Instance)return null;
+  return labV17Instance.selectV16Mode(useOldV16);
+};
+window.REDLINE_LAB_V17_RETRY=async()=>{
+  const ok=await preloadV17Bank(true);
+  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
+  return ok;
+};
+window.REDLINE_LAB_V17_STATUS=getV17Status;
 
 window.REDLINE_AUDIO = {
   updateTelemetry(data) {
