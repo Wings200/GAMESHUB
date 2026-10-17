@@ -3342,7 +3342,7 @@ function buildArcticTunnel(
 ) {
 
     const steps =
-        12;
+        18;
 
 
     const tunnelWallTexture =
@@ -3551,37 +3551,32 @@ function buildArcticTunnel(
           disappears under the mountain instead of just running beside it.
         */
 
-        const roof =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    (
-                        SIDEWALK_OUTER
-                        +
-                        11
-                    )
-                    *
-                    2,
-                    3.6,
-                    7.4
-                ),
-                roofMaterial
-            );
-
-
-        roof.position.y =
-            8.8
-            +
-            (
-                i %
-                2
-            )
-            *
-            0.35;
-
-
-        group.add(
-            roof
-        );
+        // Interlocked alpine roof geometry follows the tunnel spline.
+        // Variable-depth pieces OVERLAP, eliminating rectangular gaps.
+        const nextFrame=getFrameAt(startT+(endT-startT)*
+            Math.min(1,(i+1)/steps));
+        const dx=nextFrame.point.x-frame.point.x;
+        const dz=nextFrame.point.z-frame.point.z;
+        const roofLength=Math.max(9.0,Math.hypot(dx,dz)+3.2);
+        const roofWidth=(SIDEWALK_OUTER+11)*2;
+        const roofGeometry=new THREE.BoxGeometry(
+            roofWidth,3.6,roofLength,12,2,1);
+        const points=roofGeometry.attributes.position;
+        for(let vertex=0;vertex<points.count;vertex++){
+            const x=points.getX(vertex);
+            const yy=points.getY(vertex);
+            const ridge=1.9*Math.pow(
+                Math.max(0,1-Math.abs(x)/(roofWidth*.50)),1.45);
+            const fractured=.32*Math.sin(x*.57+i*2.3)+
+                .17*Math.cos(x*1.18+i*.73);
+            // Roof remains high enough for the original driving/jumps.
+            points.setY(vertex,yy+ridge+fractured);
+        }
+        points.needsUpdate=true;
+        roofGeometry.computeVertexNormals();
+        const roof=new THREE.Mesh(roofGeometry,roofMaterial);
+        roof.position.y=11.6;
+        group.add(roof);
 
 
         if (
