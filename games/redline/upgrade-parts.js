@@ -74,7 +74,7 @@ export function applyCarUpgrades(baseSpec,equipped) {
   // relative to the selected CAR, so fast cars still differ from agile ones.
   const spec={...baseSpec,
     acceleration:baseSpec.acceleration*(1+engine),
-    reverseAcceleration:baseSpec.reverseAcceleration*(1+engine*.40+brakes*.12),
+    reverseAcceleration:baseSpec.reverseAcceleration*(1+engine*.40+brakes*.48),
     nitroSpeed:baseSpec.nitroSpeed*(1+turbo*.82),
     boostSpeed:baseSpec.boostSpeed*(1+turbo),
     nitroAcceleration:22*(1+turbo*1.18),
