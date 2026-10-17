@@ -16,7 +16,7 @@ export function createRuggedMountainGeometry(THREE,radius,height,seed=1,dark=fal
  // Forty-eight radial faces and nineteen contour rings, with curved
  // lateral ridges and snow by altitude. Unlike cones, the skyline has
  // several offset peaks, asymmetric valleys, and exposed rock channels.
- const around=56,rings=20,pos=[],colors=[],indices=[];
+ const around=56,rings=20,pos=[],colors=[],uvs=[],indices=[];
  const rock=dark?[.225,.29,.34]:[.30,.36,.405];
  const snow=[.78,.88,.935],ridge=[.50,.59,.66];
  const rand=random(seed*7919+7);
@@ -41,6 +41,8 @@ export function createRuggedMountainGeometry(THREE,radius,height,seed=1,dark=fal
      const h=clamp(Math.pow(t,1.43)+peaks,0,1);
      const y=-height*.42+height*h;
      pos.push(x,y,z);
+     // UVs allow subtle procedural rock microtexture without loading assets.
+     uvs.push(k/around*3.5,t*2.2);
      const snowLine=.58+.075*Math.sin(angle*5+phase)-
        .045*Math.cos(angle*8+t*7)+.03*channel;
      const ice=smooth(snowLine-.035,snowLine+.095,h);
@@ -57,6 +59,7 @@ export function createRuggedMountainGeometry(THREE,radius,height,seed=1,dark=fal
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
  geo.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
+ geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
  geo.setIndex(indices);
  geo.computeVertexNormals();
  return geo;
@@ -159,6 +162,7 @@ export function buildArcticV3Art({
    flatShading:false,side:THREE.DoubleSide
  });
  let distantPeaks=0;
+ const distantMeshes=[];
  for(let i=0;i<32;i++){
    const t=(.025+i*.0309)%1,frame=getFrameAt(t);
    const side=i%2?1:-1,radius=55+(i%5)*18;
@@ -174,6 +178,7 @@ export function buildArcticV3Art({
    massif.rotation.y=rng()*Math.PI*2;
    rootMountain(massif,height);
    worldGroup.add(massif);
+   distantMeshes.push(massif);
    distantPeaks++;
  }
 
@@ -472,7 +477,10 @@ export function buildArcticV3Art({
    addBoxCollider?.(camp.position,5.5,4,camp.rotation.y,
      {minY:-1,maxY:7.2,bounce:.11,drag:.35,tag:"OUTPOST"});
  }
- return {terrain,treeCount:trees.length,rockCount,distantPeaks};
+ // Optional V4 exterior dressing reads these exact terrain/road samplers
+ // rather than inventing a second ground height or shortcut clearance.
+ return {terrain,treeCount:trees.length,rockCount,distantPeaks,
+   heightAt,roadDistance,shortcutDistance,lakeCenter,distantMeshes};
 }
 
 /* Visual-only Arctic snowfall following the local racer.
