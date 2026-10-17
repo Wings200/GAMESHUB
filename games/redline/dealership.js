@@ -14,6 +14,7 @@ import {
  if(!root||!grid||!cash||!feedback||!selector)return;
  let stats=null,profile=garageCarOwnership(null);
  let fetching=null,lastFetch=0,pending=false,filter="all";
+ let purchaseBalanceVersion=0;
  let restoredForThisCarSelect=false;
  // Clear on-card specialty labels: different vehicles reward different
  // driving styles, not merely a higher price tag.
@@ -166,12 +167,15 @@ import {
      feedback.textContent="Waiting for REDLINE account connection…";
      return null;
    }
+   const versionAtStart=purchaseBalanceVersion;
    fetching=(async()=>{
      try{
        const saved=await api.call(window.REDLINE_MP);
        const balance=Number(saved?.cashBalance);
        if(!Number.isSafeInteger(balance)||balance<0)
          throw new Error("Could not verify account balance");
+       if(versionAtStart!==purchaseBalanceVersion&&
+          balance!==stats?.cashBalance)return stats;
        stats=saved;profile=garageCarOwnership(saved.carGarage);
        lastFetch=Date.now();delete feedback.dataset.error;render();
        // Re-select the last saved car once, so players keep their chosen
@@ -241,6 +245,20 @@ import {
    btn.addEventListener("click",()=>{
      filter=btn.dataset.dealerFilter;render();
    }));
+ // All successful purchases broadcast the exact new balance returned
+ // by the Worker. Update this header even when an upgrade was bought.
+ window.addEventListener("redline:cash-confirmed",event=>{
+   const balance=Number(event.detail?.balance);
+   if(!Number.isSafeInteger(balance)||balance<0)return;
+   purchaseBalanceVersion++;
+   lastFetch=Date.now();
+   if(stats){
+     stats={...stats,cashBalance:balance};
+     render();
+   }else{
+     cash.textContent="BALANCE "+money(balance);
+   }
+ });
  window.addEventListener("redline:car-thumbnails-ready",()=>{
    window.REDLINE_CAR_THUMBNAILS?.applyAll?.();
  });
