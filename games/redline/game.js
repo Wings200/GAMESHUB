@@ -2,6 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 import * as NEON_ART from "./neon-art.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
+import * as NEON_WEATHER from "./neon-weather.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -27,6 +28,7 @@ const rpmBar = $("rpmBar");
 const nitroBar = $("nitroBar");
 const nitroPercent = $("nitroPercent");
 const fpsEl = $("fps");
+const weatherStatusEl = $("weatherStatus");
 const countdown = $("countdown");
 const checkpointPopup = $("checkpointPopup");
 const message = $("message");
@@ -69,6 +71,11 @@ const quality = {
     renderScale: 0.82
 };
 let trafficSystem = null;
+let weatherSystem = null;
+let weatherRoadMaterial = null;
+let weatherOverride = "auto";
+let lastWeatherHudLabel = "";
+let lastWeatherHudTime = 0;
 let fpsFrames = 0;
 let lastFpsTime = performance.now();
 function resizeRenderer() {
@@ -1852,6 +1859,10 @@ function getSurface(roadInfo) {
     };
 }
 function disposeWorld() {
+    weatherSystem?.dispose();
+    weatherSystem = null;
+    weatherRoadMaterial = null;
+    lastWeatherHudLabel = "";
     // All visual traffic meshes belong to worldGroup and dispose with it.
     trafficSystem = null;
     remoteRacers.clear();
@@ -2246,6 +2257,9 @@ function buildRoad() {
             material: surfaceLayers[0].material,
             kind: "asphalt"
         });
+        // Same PBR road material survives the asynchronous texture loads;
+        // weather only varies its appearance, never the grip physics.
+        weatherRoadMaterial = surfaceLayers[0].material;
 
 
         for (
@@ -11324,6 +11338,17 @@ function buildWorld() {
     car =
         makeCarModel(activeCarSpec);
     worldGroup.add(car);
+
+    if (activeTrackId === "neon") {
+        weatherSystem = NEON_WEATHER.createNeonWeather({
+            THREE, worldGroup, scene, renderer, camera,
+            roadMaterial: weatherRoadMaterial,
+            trackSamples,
+            getPlayer: () => ({car, carState, raceActive}),
+            startingOverride: weatherOverride
+        });
+        weatherSystem.update(0);
+    }
     const players = window.REDLINE_MP
         ?.players
         ??
@@ -11908,6 +11933,20 @@ window.addEventListener("keydown", event => {
             "CITY TRAFFIC ON" : "CITY TRAFFIC OFF", 800);
         return;
     }
+    // Y, not W: W is already the throttle in REDLINE.
+    // Weather presets remain local, so other multiplayer racers
+    // can keep the automatic cycle if they prefer.
+    if (key === "y" && weatherSystem && !typing &&
+        !event.repeat && !event.ctrlKey && !event.altKey &&
+        !event.metaKey && menu.classList.contains("hidden")) {
+        event.preventDefault();
+        weatherOverride = weatherSystem.cycleOverride();
+        showRacePopup(
+            "WEATHER: " + weatherOverride.toUpperCase(), 900
+        );
+        lastWeatherHudLabel = "";
+        return;
+    }
 
     if (
         key ===
@@ -12007,6 +12046,18 @@ function gameLoop(now) {
     updateRemoteRacers(delta);
     updateEffects(delta);
     updateCamera(delta);
+    weatherSystem?.update(delta);
+    if (weatherStatusEl && weatherSystem &&
+        (now-lastWeatherHudTime > 450 || !lastWeatherHudLabel)) {
+        const state = weatherSystem.mode.toUpperCase();
+        const suffix = weatherSystem.override === "auto" ? " · AUTO" : "";
+        const label = "WEATHER: " + state + suffix + "  ·  Y TO CHANGE";
+        if(label !== lastWeatherHudLabel) {
+            weatherStatusEl.textContent = label;
+            lastWeatherHudLabel = label;
+        }
+        lastWeatherHudTime = now;
+    }
     updateHUD();
     drawMinimap();
     updateFPS(now);
