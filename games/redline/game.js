@@ -10684,7 +10684,9 @@ function updateGarageUI() {
 document.getElementById("carSelector").addEventListener("click",event=>{
     const card=event.target.closest(".car-card");
     if(!card || !cars[card.dataset.car] ||
-        card.disabled || card.dataset.locked==="true")return;
+        card.disabled || card.dataset.locked==="true" ||
+        window.REDLINE_MP?.room?.phase!=="car_select" ||
+        window.REDLINE_MP?.myPlayer?.ready)return;
     selectedCar=card.dataset.car;
     updateGarageUI();
     window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
