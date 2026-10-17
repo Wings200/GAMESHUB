@@ -2422,3 +2422,32 @@ select option:disabled {
 }
 .upgrade-await{color:#b6c4d5;font-size:11px;margin:7px 0 0}
 .upgrade-tier-button:focus-visible{outline:2px solid #82d8ff;outline-offset:2px}
+
+/* Shared-server-clock READY → 3 → 2 → 1 → GO animation.
+   CSS-only: no extra effects/particles and safe on Chromebooks. */
+.countdown.redline-countdown-pulse {
+  animation:redlineCountdownBeat .52s cubic-bezier(.19,.9,.38,1);
+}
+.countdown.redline-countdown-go {
+  color:#adffca;
+  text-shadow:0 0 23px rgba(65,255,144,.58),
+    0 10px 50px rgba(0,0,0,.50);
+  animation:redlineCountdownGo .64s cubic-bezier(.18,.83,.27,1);
+}
+@keyframes redlineCountdownBeat {
+  from {opacity:.28;transform:scale(1.24)}
+  to {opacity:1;transform:scale(1)}
+}
+@keyframes redlineCountdownGo {
+  from {opacity:0;transform:scale(1.5)}
+  60% {opacity:1}
+  to {opacity:1;transform:scale(1)}
+}
+@media(max-width:560px){
+  .countdown{font-size:clamp(74px,18vw,145px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .countdown.redline-countdown-pulse,.countdown.redline-countdown-go {
+    animation:none;
+  }
+}
