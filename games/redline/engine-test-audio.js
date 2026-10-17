@@ -9,10 +9,12 @@ preloadIroncladV8Bank().then(()=>{
   window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
 }).catch(console.warn);
 let playLabV8Startup=null;
+let labV8Instance=null;
 function createEngineLabFallback(options){
   const v8=createIroncladV8Preview({
     ...options,fallbackFactory:createRedlineSoundscape
   });
+  labV8Instance=v8;
   playLabV8Startup=(destination)=>v8.playStartupSample(destination);
   return v8;
 }
@@ -1410,7 +1412,11 @@ function audioLoop(
   if(soundscape?.active){
     const fresh=telemetry&&performance.now()-telemetryUpdatedAt<800;
     soundscape.update({
-      ...(fresh?telemetry:{}),rpm:smoothedRPM,gear:Number(gear)||1
+      ...(fresh?telemetry:{}),
+      // In the offline lab, the selected test car is authoritative even
+      // when a telemetry frame is delayed or skipped during a restart.
+      car:window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt",
+      rpm:smoothedRPM,gear:Number(gear)||1
     },delta);
     return;
   }
@@ -1485,6 +1491,27 @@ function audioLoop(
 
 // The engine lab can deliberately reset audio on each test-car change.
 window.REDLINE_LAB_RESTART_AUDIO=()=>stopRaceAudio();
+// Diagnostics reveal which recording is ACTUALLY playing, not merely
+// whether a bank file exists. Only installed on the offline test page.
+window.REDLINE_LAB_V8_DIAGNOSTICS=()=>({
+  selectedCar:window.REDLINE_MP?.myPlayer?.car||"gt",
+  bank:getIroncladV8BankStatus(),
+  v8:labV8Instance?.debug||null,
+  v15:soundscape?.debug||null,
+  context:ctx?.state||"not initialized",
+  raceEnabled,
+  starting,
+  telemetryAgeMs:telemetryUpdatedAt?
+    Math.round(performance.now()-telemetryUpdatedAt):null,
+  engineVolume:audioSettings.engineVolume,
+  engineBusGain:engineGain?.gain?.value??null
+});
+window.REDLINE_LAB_V8_RETRY=async()=>{
+  const ok=await preloadIroncladV8Bank(true);
+  window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
+  return ok;
+};
+
 window.REDLINE_AUDIO = {
   updateTelemetry(data) {
     if(!data||typeof data!=="object")return;
