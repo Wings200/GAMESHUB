@@ -1,17 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
+import { REDLINE_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
+  from "./games/redline/car-catalog.js";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const GAMESHUB_IDENTITY_VERIFY_URL =
   "https://redline-dnk.pages.dev/api/account/multiplayer-verify";
 
-const VALID_CARS =
-  new Set([
-    "gt",
-    "vortex",
-    "apex"
-  ]);
+const VALID_CARS = new Set(REDLINE_CAR_IDS);
 
 const VALID_MAPS =
   new Set([
@@ -887,6 +884,16 @@ export default {
 
     }
 
+
+    /* ACCOUNT CAR DEALERSHIP */
+    if(url.pathname==="/api/dealership/purchase" &&
+       request.method==="POST") {
+      const body=await readJson(request);
+      const identity=await verifyGameShubIdentity(body?.accountToken);
+      if(!identity.ok)return json({ok:false,error:identity.error},identity.status);
+      const result=await statsStub(env).purchaseCar(identity.user.id,body?.carId);
+      return json(result,result.ok?200:400);
+    }
 
     /* AUTHENTICATED PERFORMANCE GARAGE */
     if((url.pathname==="/api/garage/purchase" ||
@@ -2283,12 +2290,24 @@ export class RedlineRoom
       }
 
 
-      player.car =
-        data.car;
-
-
-      player.ready =
-        false;
+      // A client may request ANY catalog ID, but the Worker verifies
+      // it belongs to the authenticated account before showing it in-room.
+      let selected;
+      try {
+        selected=await statsStub(this.env).chooseCar(
+          player.accountId,data.car);
+      } catch(error){
+        this.send(ws,{type:"error",
+          error:"Could not verify your saved garage. Try again."});
+        return;
+      }
+      if(!selected?.ok){
+        this.send(ws,{type:"error",
+          error:selected?.error||"Vehicle is locked."});
+        return;
+      }
+      player.car = data.car;
+      player.ready = false;
 
 
       await this.persist();
@@ -2349,6 +2368,12 @@ export class RedlineRoom
         const saved=await statsStub(this.env).getPlayerStats(
           player.accountId,player.username
         );
+        if(!ownsRedlineCar(saved.carGarage,player.car)){
+          this.send(ws,{type:"error",
+            error:"This car is not owned by your account."});
+          player.ready=false;
+          return;
+        }
         player.upgrades=sanitizeGarage(saved.garage).equipped;
       } catch(error) {
         this.send(ws,{type:"error",error:"Could not verify garage parts. Try again."});
@@ -3701,6 +3726,8 @@ export class RedlineStats
       lastCashAward:0,
       cashSpentTotal:0,
       garage:sanitizeGarage(null),
+      carGarage:garageCarOwnership(null),
+      cashSpentOnCars:0,
 
       placements: {
         "1":
@@ -3746,6 +3773,54 @@ export class RedlineStats
 
   }
 
+
+  // Transactional ownership: no client-supplied price, wallet, or owner.
+  async purchaseCar(accountId,carId) {
+    return this.ctx.storage.transaction(async tx=>{
+      const id=String(accountId||"");
+      const price=carPrice(carId);
+      if(!id || !Number.isSafeInteger(price) || price<=0)
+        return {ok:false,error:"This vehicle is not available for purchase."};
+      const key="player:"+id;
+      const stats=(await tx.get(key))||this.emptyPlayer(id);
+      const owned=garageCarOwnership(stats.carGarage);
+      if(owned.owned.includes(carId))
+        return {ok:false,error:"You already own this vehicle."};
+      const cash=Math.max(0,Math.floor(Number(stats.cashBalance)||0));
+      if(cash<price)
+        return {ok:false,error:"Earn $"+(price-cash)+" more race cash."};
+      owned.owned.push(carId);
+      owned.selected=carId;
+      stats.carGarage=garageCarOwnership(owned);
+      stats.cashBalance=cash-price;
+      stats.cashSpentTotal=Math.max(0,Math.floor(Number(stats.cashSpentTotal)||0))+price;
+      stats.cashSpentOnCars=Math.max(0,Math.floor(Number(stats.cashSpentOnCars)||0))+price;
+      stats.updatedAt=Date.now();
+      await tx.put(key,stats);
+      return {ok:true,carId,price,cashBalance:stats.cashBalance,
+        carGarage:stats.carGarage};
+    });
+  }
+
+  // Room selections are verified against saved ownership, and last
+  // selected car persists across race sessions on the same account.
+  async chooseCar(accountId,carId) {
+    return this.ctx.storage.transaction(async tx=>{
+      const id=String(accountId||"");
+      if(!id||!VALID_CARS.has(carId))
+        return {ok:false,error:"Unknown car."};
+      const key="player:"+id;
+      const stats=(await tx.get(key))||this.emptyPlayer(id);
+      const profile=garageCarOwnership(stats.carGarage);
+      if(!ownsRedlineCar(profile,carId))
+        return {ok:false,error:"Buy this car in the dealership first."};
+      profile.selected=carId;
+      stats.carGarage=profile;
+      stats.updatedAt=Date.now();
+      await tx.put(key,stats);
+      return {ok:true,carId,carGarage:profile};
+    });
+  }
 
   async purchaseUpgrade(accountId,category) {
     return this.ctx.storage.transaction(async tx=>{
@@ -3823,6 +3898,8 @@ export class RedlineStats
     stats.lastCashAward=Math.max(0,Math.floor(Number(stats.lastCashAward)||0));
     stats.cashSpentTotal=Math.max(0,Math.floor(Number(stats.cashSpentTotal)||0));
     stats.garage=sanitizeGarage(stats.garage);
+    stats.carGarage=garageCarOwnership(stats.carGarage);
+    stats.cashSpentOnCars=Math.max(0,Math.floor(Number(stats.cashSpentOnCars)||0));
 
     if (
       currentUsername
