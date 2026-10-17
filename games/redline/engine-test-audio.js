@@ -4,6 +4,17 @@
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
 import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
+import { createIroncladV8Preview, preloadIroncladV8Bank, getIroncladV8BankStatus } from "./engine-test-v8-soundscape.js?v=ironclad-v16-1";
+preloadIroncladV8Bank().catch(console.warn);
+let playLabV8Startup=null;
+function createEngineLabFallback(options){
+  const v8=createIroncladV8Preview({
+    ...options,fallbackFactory:createRedlineSoundscape
+  });
+  playLabV8Startup=(destination)=>v8.playStartupSample(destination);
+  return v8;
+}
+window.REDLINE_LAB_V8_STATUS=getIroncladV8BankStatus;
 // V14 physically simulated sound was rejected in listening tests and is
 // deliberately disabled until proper recorded engine banks exist.
 const ENGINE_EXPERIMENT=new URLSearchParams(window.location.search).get("engine");
@@ -660,7 +671,7 @@ async function initAudio() {
     soundscape=USE_V15_RECORDED_ENGINE
       ?createV15RecordedEnginePreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
-          fallbackFactory:createRedlineSoundscape
+          fallbackFactory:createEngineLabFallback
         })
       :USE_V13_CLEAN_PREVIEW
       ?createV13EnginePreview({
@@ -971,9 +982,11 @@ function swapEngineBand(
 function playStartup() {
   // V15 substitutes the actual i6 startup from the user's locally selected
   // licensed ZIP. The sample never leaves the user's browser.
-  if(USE_V15_RECORDED_ENGINE &&
-     (window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt")==="gt" &&
+  const labCar=window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt";
+  if(USE_V15_RECORDED_ENGINE && labCar==="gt" &&
      soundscape?.playStartupSample?.(startupGain))return;
+  if(labCar==="ironclad" &&
+     playLabV8Startup?.(startupGain))return;
 
   if (
     !buffers.startup ||
