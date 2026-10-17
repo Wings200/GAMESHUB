@@ -1160,7 +1160,7 @@
     screenTitle
   ) {
     screenTitle.textContent =
-      "BUILD YOUR CAR";
+      "SELECT YOUR CAR";
   }
 
 
@@ -1775,54 +1775,9 @@
       ready;
 
 
-    /*
-      Stage 1 still requires the old
-      server car ID behind the scenes.
-    */
-
-    lockInBtn.disabled =
-      ready ||
-      !valid ||
-      !legacyCarSelected();
-
-
-    if (
-      !ready
-    ) {
-
-      if (
-        lockStatus
-      ) {
-
-        lockStatus.textContent =
-          valid
-            ? "16 / 16 POINTS"
-            : `${total} / 16 POINTS`;
-
-      }
-
-
-      if (
-        carSelectStatus
-      ) {
-
-        carSelectStatus.textContent =
-          valid
-
-            ? "Build ready. Lock in when you're ready."
-
-            : `Allocate ${remaining} more point${
-                remaining === 1
-                  ? ""
-                  : "s"
-              }.`;
-
-      }
-
-    }
-
+    // Cosmetic editor never modifies multiplayer Ready state.
+    // The room controller uses the server-confirmed selected car.
   }
-
 
   /* =========================================================
      STAT CHANGES
