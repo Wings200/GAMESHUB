@@ -10,9 +10,24 @@ preloadIroncladV8Bank().then(()=>{
 }).catch(console.warn);
 let playLabV8Startup=null;
 let labV8Instance=null;
-function createEngineLabFallback(options){
-  const v8=createIroncladV8Preview({
+let labV15Instance=null;
+/*
+ * Explicit soundscape chain for this lab ONLY:
+ *   IRONCLAD V16 V8 (top-level mixer; directly connected to engineBus)
+ *     -> GT V15 recorded i6
+ *       -> V11.2 for the other seven cars.
+ * V16's 8 recorded layers are no longer hidden inside a V15 fallback.
+ */
+function createEngineLabV15Fallback(options){
+  const v15=createV15RecordedEnginePreview({
     ...options,fallbackFactory:createRedlineSoundscape
+  });
+  labV15Instance=v15;
+  return v15;
+}
+function createEngineLabV8Primary(options){
+  const v8=createIroncladV8Preview({
+    ...options,fallbackFactory:createEngineLabV15Fallback
   });
   labV8Instance=v8;
   playLabV8Startup=(destination)=>v8.playStartupSample(destination);
@@ -673,9 +688,8 @@ async function initAudio() {
   }
   try {
     soundscape=USE_V15_RECORDED_ENGINE
-      ?createV15RecordedEnginePreview({
-          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
-          fallbackFactory:createEngineLabFallback
+      ?createEngineLabV8Primary({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
         })
       :USE_V13_CLEAN_PREVIEW
       ?createV13EnginePreview({
@@ -984,11 +998,11 @@ function swapEngineBand(
 ========================================================= */
 
 function playStartup() {
-  // V15 substitutes the actual i6 startup from the user's locally selected
-  // licensed ZIP. The sample never leaves the user's browser.
+  // Each recording plays only for its matching engine; V16 owns the
+  // primary mixer and V15 is the fallback for the GT in this lab.
   const labCar=window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt";
   if(USE_V15_RECORDED_ENGINE && labCar==="gt" &&
-     soundscape?.playStartupSample?.(startupGain))return;
+     labV15Instance?.playStartupSample?.(startupGain))return;
   if(labCar==="ironclad" &&
      playLabV8Startup?.(startupGain))return;
 
@@ -1497,7 +1511,7 @@ window.REDLINE_LAB_V8_DIAGNOSTICS=()=>({
   selectedCar:window.REDLINE_MP?.myPlayer?.car||"gt",
   bank:getIroncladV8BankStatus(),
   v8:labV8Instance?.debug||null,
-  v15:soundscape?.debug||null,
+  v15:labV15Instance?.debug||null,
   context:ctx?.state||"not initialized",
   raceEnabled,
   starting,
