@@ -2,10 +2,12 @@
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
+import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus } from "./audio-v15-local-sample-bank.js?v=local-bank-v15-2";
 // V14 physically simulated sound was rejected in listening tests and is
 // deliberately disabled until proper recorded engine banks exist.
 const ENGINE_EXPERIMENT=new URLSearchParams(window.location.search).get("engine");
 const USE_V13_CLEAN_PREVIEW=ENGINE_EXPERIMENT==="v13";
+const USE_V15_RECORDED_PREVIEW=ENGINE_EXPERIMENT==="v15";
 const V14_RETIRED=ENGINE_EXPERIMENT==="v14";
 // Retired V12 outdoor field audio. ?engine=v12 now uses safe V11.2
 // rather than starting a recording with crowd voices.
@@ -665,7 +667,12 @@ async function initAudio() {
     console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
   try {
-    soundscape=USE_V13_CLEAN_PREVIEW
+    soundscape=USE_V15_RECORDED_PREVIEW
+      ?createV15RecordedEnginePreview({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
+          fallbackFactory:createRedlineSoundscape
+        })
+      :USE_V13_CLEAN_PREVIEW
       ?createV13EnginePreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
           fallbackFactory:createRedlineSoundscape
@@ -1627,6 +1634,69 @@ if(V14_RETIRED){
     "border-radius:10px;padding:7px 10px;font:12px/1.4 system-ui,sans-serif";
   tag.textContent="V14 RETIRED · V11.2 AUDIO RESTORED";
   document.body.appendChild(tag);
+}
+// V15 prototype keeps licensed WAVs on the player's device.
+// Selecting a ZIP reads bytes in-memory only; nothing is uploaded.
+if(USE_V15_RECORDED_PREVIEW){
+  const panel=document.createElement("section");
+  panel.id="redlineV15LocalAudioPanel";
+  panel.style.cssText=
+    "position:fixed;bottom:12px;left:12px;z-index:12000;"+
+    "max-width:340px;background:#101923f2;color:#e6eff9;"+
+    "border:1px solid #5887a2;border-radius:12px;padding:12px;"+
+    "font:12px/1.5 system-ui,sans-serif;box-shadow:0 7px 24px #0009;";
+  const heading=document.createElement("div");
+  heading.style.cssText="font-weight:800;font-size:14px;color:#a6e9ed;";
+  heading.textContent="V15 · REAL RECORDED i6 ENGINE";
+  panel.appendChild(heading);
+  const intro=document.createElement("div");
+  intro.style.cssText="margin:4px 0 8px;";
+  intro.textContent="Choose your i6_german_free.zip from your PC, then start a race with REDLINE GT. No WAV files are uploaded.";
+  panel.appendChild(intro);
+  const zipInput=document.createElement("input");
+  zipInput.type="file";zipInput.accept=".zip,application/zip";
+  zipInput.style.cssText="font-size:12px;width:100%;max-width:305px;";
+  zipInput.setAttribute("aria-label","Choose licensed local engine WAV ZIP");
+  panel.appendChild(zipInput);
+  const status=document.createElement("div");
+  status.setAttribute("role","status");
+  status.style.cssText="margin-top:8px;color:#f2de9f;max-width:310px;overflow-wrap:anywhere;";
+  status.textContent=getV15LocalStatus().status;
+  panel.appendChild(status);
+  const tip=document.createElement("div");
+  tip.style.cssText="margin-top:6px;color:#acbaca;font-size:11px;";
+  tip.textContent="Other cars retain V11.2. This ZIP stays in memory until refresh.";
+  panel.appendChild(tip);
+  zipInput.addEventListener("change",async()=>{
+    const file=zipInput.files?.[0];
+    if(!file)return;
+    zipInput.disabled=true;
+    status.textContent="Reading local ZIP…";
+    try{
+      const result=await loadV15LocalZip(file);
+      status.textContent=result.status;
+      status.style.color=result.ready?"#97e6bc":"#ffb6ae";
+    }catch(error){
+      status.textContent=error?.message||"Could not load ZIP";
+      status.style.color="#ffb6ae";
+    }finally{
+      zipInput.disabled=false;
+    }
+  });
+  document.body.appendChild(panel);
+  const oldLoop=audioLoop;
+  audioLoop=function(now){
+    const state=getV15LocalStatus();
+    const data=soundscape?.debug;
+    if(data?.active){
+      if(data.loading)status.textContent="Decoding recorded engine loops…";
+      else if(!state.ready)status.textContent=state.status;
+      else if(data.usingFallback){
+        status.textContent=data.status;
+      }else status.textContent="REAL i6 ENGINE ACTIVE · "+data.rpm+" RPM";
+    }
+    oldLoop(now);
+  };
 }
 requestAnimationFrame(
   audioLoop
