@@ -1468,6 +1468,13 @@
 
       let chosenCar =
         "gt";
+
+      // All wallet, dealership and upgrade widgets share one consistent
+      // authenticated stats read rather than racing 3-4 token requests.
+      let accountStatsRequest=null;
+      let accountStatsCache=null;
+      let accountStatsCachedAt=0;
+      let accountApiTransport=null;
       // A car is not usable for Ready until the server acknowledges it.
       let pendingCarSelection = null;
 
@@ -1503,29 +1510,99 @@
 
         // Uses the existing account identity handshake; balance is
         // authoritative on the REDLINE multiplayer Worker.
+        // Prefer the same-site Pages relay (avoids browser CORS/preflight).
+        // A read-only stats request may fall back to the original direct
+        // Worker when a Pages relay is not configured yet. Mutating
+        // purchases are NEVER retried automatically: the first might
+        // already have reached the Worker before a connection failure.
         async requestAccountOperation(path,params={}) {
-          const accountToken=await getMultiplayerAccountToken();
-          const response=await fetch(`${MULTIPLAYER_API}${path}`,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({...params,accountToken})
-          });
-          const data=await response.json().catch(()=>null);
-          if(!response.ok||!data?.ok)
-            throw new Error(data?.error||"REDLINE account request failed.");
-          return data;
+          const isRead=path==="/api/stats/me";
+          const send=async transport=>{
+            const accountToken=await getMultiplayerAccountToken();
+            const base=transport==="direct"?MULTIPLAYER_API:"/api/redline";
+            let response;
+            try{
+              response=await fetch(base+path,{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                credentials:transport==="proxy"?"same-origin":"omit",
+                cache:"no-store",
+                body:JSON.stringify({...params,accountToken})
+              });
+            }catch(error){
+              const networkError=new Error("Cannot reach the REDLINE multiplayer server via "+
+                (transport==="proxy"?"the website relay":"the direct Worker")+
+                ". Check the Worker deployment.");
+              networkError.transportError=true;
+              throw networkError;
+            }
+            const data=await response.json().catch(()=>null);
+            if(!response.ok||!data?.ok){
+              const message=data?.error||
+                "REDLINE multiplayer server returned HTTP "+response.status+".";
+              const error=new Error(message);
+              error.status=response.status;
+              error.transportError=response.status===502||response.status===503||
+                !data||typeof data!=="object";
+              throw error;
+            }
+            accountApiTransport=transport;
+            window.dispatchEvent(new CustomEvent("redline:account-api",{
+              detail:{ok:true,transport}
+            }));
+            return data;
+          };
+          const route=accountApiTransport||"proxy";
+          try{
+            return await send(route);
+          }catch(firstError){
+            if(isRead&&firstError.transportError){
+              const backup=route==="proxy"?"direct":"proxy";
+              try{return await send(backup)}
+              catch(secondError){
+                window.dispatchEvent(new CustomEvent("redline:account-api",{
+                  detail:{ok:false,error:secondError.message}
+                }));
+                throw new Error(firstError.message+" Fallback: "+secondError.message);
+              }
+            }
+            window.dispatchEvent(new CustomEvent("redline:account-api",{
+              detail:{ok:false,error:firstError.message}
+            }));
+            throw firstError;
+          }
         },
-        async getAccountStats() {
-          return (await this.requestAccountOperation("/api/stats/me")).stats;
+        async getAccountStats(force=false) {
+          if(accountStatsRequest)return accountStatsRequest;
+          if(!force&&accountStatsCache&&Date.now()-accountStatsCachedAt<4000)
+            return accountStatsCache;
+          accountStatsRequest=(async()=>{
+            const response=await this.requestAccountOperation("/api/stats/me");
+            accountStatsCache=response.stats;
+            accountStatsCachedAt=Date.now();
+            return response.stats;
+          })();
+          try{return await accountStatsRequest}
+          finally{accountStatsRequest=null}
+        },
+        invalidateAccountStats(){
+          accountStatsCache=null;
+          accountStatsCachedAt=0;
         },
         async purchaseUpgrade(category,carId) {
-          return this.requestAccountOperation("/api/garage/purchase",{category,carId});
+          const result=await this.requestAccountOperation("/api/garage/purchase",{category,carId});
+          this.invalidateAccountStats();
+          return result;
         },
         async purchaseCar(carId) {
-          return this.requestAccountOperation("/api/dealership/purchase",{carId});
+          const result=await this.requestAccountOperation("/api/dealership/purchase",{carId});
+          this.invalidateAccountStats();
+          return result;
         },
         async equipUpgrade(category,tier,carId) {
-          return this.requestAccountOperation("/api/garage/equip",{category,tier,carId});
+          const result=await this.requestAccountOperation("/api/garage/equip",{category,tier,carId});
+          this.invalidateAccountStats();
+          return result;
         },
 
         get connected() {
