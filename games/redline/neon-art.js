@@ -664,8 +664,11 @@ export function buildNeonAdvertising({THREE,worldGroup,buildings}) {
       const ad=posters[(i*7+slot*11)%posters.length];
       const height=ad.portrait?3.65:2.35;
       const width=Math.min(ad.portrait?2.25:5.5,b.depth*.67);
-      const y=Math.min(b.height-2.15,3.35+slot*5.4+(i%3)*.55);
-      if(y-height/2<.35)continue;
+      // V7 ground floors have real storefront glazing and canopies.
+      // Keep the existing poster atlas on UPPER facade panels instead
+      // of cutting directly through the new shop doors and awnings.
+      const y=Math.min(b.height-2.15,5.35+slot*5.4+(i%3)*.55);
+      if(y-height/2<3.45)continue;
       const point=b.position.clone().addScaledVector(
         b.normal,-b.side*(b.width/2+.19)
       );
