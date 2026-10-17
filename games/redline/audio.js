@@ -1602,9 +1602,11 @@ if(USE_V13_CLEAN_PREVIEW){
   const oldLoop=audioLoop;
   audioLoop=function(now){
     const info=soundscape?.debug;
-    const state=info?.usingFallback
-      ?("FALLBACK TO V11.2 · "+(info.status||"Initializing"))
-      :("ENGINE ACTIVE · "+info.engine+" · "+info.rpm+" RPM");
+    const state=!info?.active
+      ? "Waiting for race"
+      : info.usingFallback
+        ? ("FALLBACK TO V11.2 · "+(info.status||"Initializing"))
+        : ("ENGINE ACTIVE · "+info.engine+" · "+info.rpm+" RPM");
     const next="V13 CLEAN ENGINE TEST · "+state;
     if(next!==v13PreviewLabel.textContent)v13PreviewLabel.textContent=next;
     oldLoop(now);
