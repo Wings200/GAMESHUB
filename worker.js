@@ -28,6 +28,18 @@ const VALID_BODIES =
   ]);
 
 
+function raceCashPrize(playerCount,place) {
+  const racers=Number(playerCount),rank=Number(place);
+  if(!Number.isInteger(racers)||racers<1||racers>8||
+     !Number.isInteger(rank)||rank<1||rank>racers)return 0;
+  if(racers===1)return rank===1?5:0;
+  const winner=Math.min(80,racers*10);
+  if(rank===1)return winner;
+  if(rank===2)return Math.round(winner/2);
+  if(rank===3)return Math.round(winner/3);
+  return 5;
+}
+
 const CORS_HEADERS = {
 
   "Access-Control-Allow-Origin":
@@ -348,6 +360,7 @@ function publicRoom(
       Boolean(
         room.raceComplete
       ),
+    raceEntrantCount:room.raceEntrantCount ?? room.players.length,
 
     results:
       Array.isArray(
@@ -1471,6 +1484,7 @@ export class RedlineRoom
 
       raceId:
         null,
+      raceEntrantCount:0,
 
       raceComplete:
         false,
@@ -3206,7 +3220,7 @@ export class RedlineRoom
 
       try {
 
-        await statsStub(
+        const cashRecord=await statsStub(
           this.env
         ).recordRace({
 
@@ -3218,10 +3232,25 @@ export class RedlineRoom
           map:
             this.room.map,
 
+          playerCount:this.room.raceEntrantCount || this.room.players.length,
+
           results:
             statResults
 
         });
+
+        if(cashRecord?.ok && Array.isArray(cashRecord.payouts)){
+          const awards=new Map(cashRecord.payouts.map(
+            v=>[String(v.accountId),v.cash]
+          ));
+          for(const result of this.finishOrder){
+            const racer=this.room.players.find(p=>p.id===result.playerId);
+            if(racer && awards.has(String(racer.accountId)))
+              result.cashEarned=awards.get(String(racer.accountId));
+          }
+          this.room.results=[...this.finishOrder];
+          await this.persist();
+        }
 
       }
 
@@ -3317,6 +3346,10 @@ export class RedlineRoom
 
     this.room.raceId =
       crypto.randomUUID();
+    // Lock count at countdown; departures don't reduce prizes.
+    this.room.raceEntrantCount=Math.min(8,new Set(
+      this.room.players.map(p=>String(p.accountId||p.id))
+    ).size);
 
 
     this.room.raceStartAt =
@@ -3632,6 +3665,9 @@ export class RedlineStats
 
       racesFinished:
         0,
+      cashBalance:0,
+      cashEarnedTotal:0,
+      lastCashAward:0,
 
       placements: {
         "1":
@@ -3703,6 +3739,10 @@ export class RedlineStats
         currentUsername
       );
 
+
+    stats.cashBalance=Math.max(0,Math.floor(Number(stats.cashBalance)||0));
+    stats.cashEarnedTotal=Math.max(0,Math.floor(Number(stats.cashEarnedTotal)||0));
+    stats.lastCashAward=Math.max(0,Math.floor(Number(stats.lastCashAward)||0));
 
     if (
       currentUsername
@@ -3780,9 +3820,16 @@ export class RedlineStats
   }
 
 
-  async recordRace({
+  async recordRace(input) {
+    return this.ctx.storage.transaction(async storage =>
+      this.recordRaceAtomic(storage,input)
+    );
+  }
+
+  async recordRaceAtomic(storage,{
     raceId,
     map,
+    playerCount,
     results
   }) {
 
@@ -3808,9 +3855,7 @@ export class RedlineStats
 
     const recentRaceIds =
       (
-        await this.ctx
-          .storage
-          .get(
+        await storage.get(
             "recentRaceIds"
           )
       )
@@ -3835,15 +3880,16 @@ export class RedlineStats
     }
 
 
-    const now =
-      Date.now();
-
+    const now=Date.now();
+    const raceSize=Number(playerCount);
+    if(!Number.isInteger(raceSize)||raceSize<1||raceSize>8)
+      return {ok:false,error:"Invalid race size"};
+    const payouts=[];
+    const seenAccounts=new Set();
 
     let leaderboard =
       (
-        await this.ctx
-          .storage
-          .get(
+        await storage.get(
             `leaderboard:${map}`
           )
       )
@@ -3885,19 +3931,9 @@ export class RedlineStats
         );
 
 
-      if (
-        !accountId
-        ||
-        finishTime <
-        0
-        ||
-        finishTime >
-        24 * 60 * 60 * 1000
-      ) {
-
-        continue;
-
-      }
+      if(!accountId||seenAccounts.has(accountId)||
+         place>raceSize||finishTime<0||finishTime>86400000)continue;
+      seenAccounts.add(accountId);
 
 
       const username =
@@ -3912,9 +3948,7 @@ export class RedlineStats
 
       const stats =
         (
-          await this.ctx
-            .storage
-            .get(
+          await storage.get(
               playerKey
             )
         )
@@ -3928,6 +3962,12 @@ export class RedlineStats
       stats.username =
         username;
 
+
+      const cash=raceCashPrize(raceSize,place);
+      stats.cashBalance=Math.max(0,Math.floor(Number(stats.cashBalance)||0))+cash;
+      stats.cashEarnedTotal=Math.max(0,Math.floor(Number(stats.cashEarnedTotal)||0))+cash;
+      stats.lastCashAward=cash;
+      payouts.push({accountId,place,cash});
 
       stats.racesFinished =
         Math.max(
@@ -4027,9 +4067,7 @@ export class RedlineStats
         now;
 
 
-      await this.ctx
-        .storage
-        .put(
+      await storage.put(
           playerKey,
           stats
         );
@@ -4171,9 +4209,7 @@ export class RedlineStats
     }
 
 
-    await this.ctx
-      .storage
-      .put({
+    await storage.put({
         [
           `leaderboard:${map}`
         ]:
@@ -4183,10 +4219,7 @@ export class RedlineStats
       });
 
 
-    return {
-      ok:
-        true
-    };
+    return {ok:true,payouts};
 
   }
 
