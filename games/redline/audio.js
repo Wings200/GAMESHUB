@@ -1,7 +1,7 @@
 /* REDLINE V11 — seamless sampled engine and car-specific driving SFX.
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
-import { createV12ExteriorPreview } from "./engine-v12-exterior-preview.js";
+import { createV12ExteriorPreview, primeV12ExteriorAudio } from "./engine-v12-exterior-preview.js?v=direct-v12-1";
 const USE_V12_EXTERIOR_PREVIEW =
   new URLSearchParams(window.location.search).get("engine")==="v12";
 
@@ -663,7 +663,8 @@ async function initAudio() {
     soundscape=USE_V12_EXTERIOR_PREVIEW
       ?createV12ExteriorPreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
-          fallbackFactory:createRedlineSoundscape
+          fallbackFactory:createRedlineSoundscape,
+          getMixSettings:()=>audioSettings
         })
       :createRedlineSoundscape({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
@@ -1189,7 +1190,10 @@ startBtn?.addEventListener(
   "click",
 
   () => {
-
+    // Prime the direct exterior recording synchronously on the START
+    // click. It must not begin only after async audio sample loading,
+    // because browser autoplay policies would reject that later play().
+    if(USE_V12_EXTERIOR_PREVIEW)primeV12ExteriorAudio();
     startRaceAudio()
       .catch(
         console.error
