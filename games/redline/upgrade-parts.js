@@ -31,10 +31,36 @@ export function sanitizeGarage(input){
   for(const key of UPGRADE_KEYS)equipped[key]=Math.min(owned[key],attempted[key]);
   return {owned,equipped};
 }
-export function upgradePrice(category,tier) {
+/* V18.1: distinct upgrade economics for distinct car classes.
+ * Leave the two-argument form unchanged for older Workers during rollout.
+ * All multipliers affect PRICE only, not physics, saved upgrades or cash.
+ */
+export const CAR_UPGRADE_PRICE_MULTIPLIER=Object.freeze({
+  gt:1.00, vortex:1.15, apex:1.05,
+  bayside:1.20, aurora:1.30, ironclad:1.40,
+  cirrus:1.55, obsidian:1.75, phantom:2.00
+});
+export const CAR_SPECIALTY_PART_FACTOR=Object.freeze({
+  vortex:Object.freeze({transmission:1.10}),
+  apex:Object.freeze({suspension:1.08,tires:1.08}),
+  bayside:Object.freeze({turbo:1.15}),
+  aurora:Object.freeze({suspension:1.08,tires:1.06}),
+  ironclad:Object.freeze({engine:1.15,brakes:1.05}),
+  cirrus:Object.freeze({transmission:1.10}),
+  obsidian:Object.freeze({engine:1.10,tires:1.08}),
+  phantom:Object.freeze({engine:1.12,turbo:1.12,transmission:1.12})
+});
+export function upgradePrice(category,tier,carId=null) {
   if(!Object.hasOwn(UPGRADE_CATALOG,category) ||
      !Number.isInteger(tier)||tier<=0||tier>MAX_UPGRADE_TIER)return null;
-  return UPGRADE_CATALOG[category].prices[tier];
+  const base=UPGRADE_CATALOG[category].prices[tier];
+  if(carId===null||carId===undefined)return base; // legacy price API
+  if(typeof carId!=="string"||
+     !Object.hasOwn(CAR_UPGRADE_PRICE_MULTIPLIER,carId))return null;
+  const vehicle=CAR_UPGRADE_PRICE_MULTIPLIER[carId];
+  const specialty=CAR_SPECIALTY_PART_FACTOR[carId]?.[category]||1;
+  // Whole in-game $5 steps make the shop easy to read and compare.
+  return Math.max(5,Math.round(base*vehicle*specialty/5)*5);
 }
 // Tier bonuses are deliberately non-linear: first purchase is noticeable,
 // later tiers have diminishing gains, preventing stacked upgrades from
