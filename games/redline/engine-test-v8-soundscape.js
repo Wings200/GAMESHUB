@@ -80,19 +80,32 @@ export function preloadIroncladV8Bank(force=false){
   loadPromise=(async()=>{
     try{
       const url=new URL("./assets/audio/redline-ironclad-v16-audio.bank",import.meta.url);
-      // v16-2 is a distinct asset URL from the original test build;
-      // no-store also bypasses negative 404 caches during new deployments.
-      url.searchParams.set("v","v16-2");
-      const response=await fetch(url,{cache:"no-store"});
-      if(!response.ok)
-        throw Error("V8 bank request HTTP "+response.status);
-      const bytes=await response.arrayBuffer();
-      if(bytes.byteLength>1500000)throw Error("Unexpectedly large V8 audio bank");
-      const parsed=parseBank(bytes);
-      bank=parsed;
-      bankStatus="Recorded V8 bank downloaded · 9 samples";
-      bankRevision++;
-      return true;
+      url.searchParams.set("v","v16-3");
+      // Pages can temporarily return a cached 404 after a GitHub upload.
+      // In that case use the owner's same repository's public raw-file CDN.
+      // Neither path modifies an account or sends player information.
+      const mirrors=[
+        {label:"REDLINE website",url:url.href},
+        {label:"GitHub repository",url:
+          "https://raw.githubusercontent.com/Wings200/GAMESHUB/main/games/redline/assets/audio/redline-ironclad-v16-audio.bank"}
+      ];
+      const failures=[];
+      for(const mirror of mirrors){
+        try{
+          const response=await fetch(mirror.url,{cache:"no-store"});
+          if(!response.ok)throw Error("HTTP "+response.status);
+          const bytes=await response.arrayBuffer();
+          if(bytes.byteLength>1500000)throw Error("Unexpectedly large V8 audio bank");
+          const parsed=parseBank(bytes);
+          bank=parsed;
+          bankStatus="Recorded V8 bank loaded from "+mirror.label+" · 9 samples";
+          bankRevision++;
+          return true;
+        }catch(error){
+          failures.push(mirror.label+": "+(error?.message||error));
+        }
+      }
+      throw Error(failures.join("; "));
     }catch(err){
       // Keep an already working bank alive if an explicit retry fails.
       bankStatus=String(err?.message||err);
