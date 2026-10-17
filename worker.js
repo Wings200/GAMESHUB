@@ -708,11 +708,12 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          8,
+          9,
         features:{
           perCarGarage:true,
           stockStarterOfflineReady:true,
-          accountStorageDiagnostics:true
+          accountStorageDiagnostics:true,
+          rpcSafeAccountStats:true
         }
 
       });
@@ -3983,7 +3984,8 @@ export class RedlineStats
         cashSpentTotal:positive(stats.cashSpentTotal),
         cashSpentOnCars:positive(stats.cashSpentOnCars),
         garage,carGarage:owned,carUpgrades,placements,bestTimes,
-        updatedAt:Number.isFinite(Number(stats.updatedAt))
+        updatedAt:stats.updatedAt!=null &&
+          Number.isFinite(Number(stats.updatedAt))
           ?Number(stats.updatedAt):null
       };
     }catch(error){
