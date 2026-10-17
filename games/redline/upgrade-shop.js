@@ -1,7 +1,7 @@
 import {
   UPGRADE_CATALOG,UPGRADE_KEYS,sanitizeGarage,upgradePrice,
   upgradeComparison,stockUpgrades,applyCarUpgrades
-} from "./upgrade-parts.js";
+} from "./upgrade-parts.js?v=car-specific-prices-v18-1";
 
 /* Never accept client-supplied ownership or wallet balances. The Worker
    owns those; previews use the same formulas as actual vehicle physics. */
