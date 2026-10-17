@@ -9,6 +9,8 @@
  * See NEON_ASSET_SOURCES.md.
  */
 
+import { neonV8BaseRatio } from "./neon-v8-architecture.js";
+
 const SOURCE_ROOT =
   "https://raw.githubusercontent.com/AetherRadar/operation-steel-tide/main/assets/";
 
@@ -78,9 +80,11 @@ export function facadeMap(THREE, type = "office") {
   canvas.height = 1024;
   const g = canvas.getContext("2d");
   const brick = type === "brick";
-  const shop = type === "shop";
-  const base = brick ? "#211b20" : shop ? "#171c22" : "#111721";
-  const mortar = brick ? "#44363a" : "#303640";
+  const shop=type==="shop",residential=type==="residential",hotel=type==="hotel";
+  const base=brick?"#211b20":shop?"#171c22":
+    residential?"#27262f":hotel?"#0f1c2a":"#111721";
+  const mortar=brick?"#44363a":residential?"#5a4b55":
+    hotel?"#3c576e":"#303640";
   g.fillStyle = base;
   g.fillRect(0, 0, 768, 1024);
 
@@ -103,8 +107,8 @@ export function facadeMap(THREE, type = "office") {
   g.globalAlpha = 1;
 
   // Architectural frames and window depth: a complete facade atlas.
-  const cols = shop ? 5 : 6;
-  const rows = brick ? 12 : 16;
+  const cols=residential?4:hotel?8:shop?5:6;
+  const rows=residential?11:hotel?20:brick?12:16;
   const cx = 768 / cols;
   const cy = 1024 / rows;
   for (let r = 0; r < rows; r++) {
@@ -113,15 +117,16 @@ export function facadeMap(THREE, type = "office") {
       const y = r * cy + (brick ? 11 : 7);
       const w = cx - (brick ? 34 : 20);
       const h = cy - (brick ? 22 : 14);
-      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > (shop ? .65 : .79);
+      const lit=noise01(r*131+col*17+(brick?11:3))>
+        (shop?.65:residential?.86:hotel?.68:.79);
       g.fillStyle = brick ? "#46373b" : "#29323b";
       g.fillRect(x - 3, y - 3, w + 6, h + 6);
       g.fillStyle = "#080d12";
       g.fillRect(x, y, w, h);
       const grad = g.createLinearGradient(x, y, x + w, y + h);
-      grad.addColorStop(0, lit ? "#493e44" : "#101820");
-      grad.addColorStop(.62, lit ? "#776452" : "#0a1119");
-      grad.addColorStop(1, lit ? "#987a62" : "#050b11");
+      grad.addColorStop(0,lit?(hotel?"#263951":"#493e44"):"#101820");
+      grad.addColorStop(.62,lit?(residential?"#806a66":"#776452"):"#0a1119");
+      grad.addColorStop(1,lit?(hotel?"#668aa5":"#987a62"):"#050b11");
       g.fillStyle = grad;
       g.fillRect(x + 3, y + 3, w - 6, h - 6);
       g.globalAlpha = lit ? .22 : .40;
@@ -132,9 +137,18 @@ export function facadeMap(THREE, type = "office") {
       g.fillStyle = "#17212c";
       g.fillRect(x + w * .50 - 2, y, 4, h);
       g.fillRect(x, y + h * .56 - 2, w, 3);
-      if (brick && r % 3 === 0) {
-        g.fillStyle = "#bb9c8a";
-        g.fillRect(x - 10, y + h + 1, w + 20, 4);
+      if(brick&&r%3===0){
+        g.fillStyle="#bb9c8a";g.fillRect(x-10,y+h+1,w+20,4);
+      }
+      if(residential){
+        // Apartment balcony ledges and railings interrupt office grids.
+        g.fillStyle="#514e56";g.fillRect(x-7,y+h-6,w+14,6);
+        g.fillStyle="#89919b";g.globalAlpha=.36;
+        g.fillRect(x-5,y+h-23,w+10,3);g.globalAlpha=1;
+      }
+      if(hotel&&col%2===0){
+        g.fillStyle="#50667a";g.globalAlpha=.3;
+        g.fillRect(x-8,y-6,3,h+13);g.globalAlpha=1;
       }
     }
   }
@@ -157,10 +171,10 @@ export function facadeEmissiveMap(THREE, type = "office") {
   const g = canvas.getContext("2d");
   g.fillStyle = "#000000";
   g.fillRect(0, 0, canvas.width, canvas.height);
-  const brick = type === "brick";
-  const shop = type === "shop";
-  const cols = shop ? 5 : 6;
-  const rows = brick ? 12 : 16;
+  const brick=type==="brick",shop=type==="shop",
+    residential=type==="residential",hotel=type==="hotel";
+  const cols=residential?4:hotel?8:shop?5:6;
+  const rows=residential?11:hotel?20:brick?12:16;
   const cx = canvas.width / cols;
   const cy = canvas.height / rows;
   for (let r = 0; r < rows; r++) {
@@ -169,10 +183,12 @@ export function facadeEmissiveMap(THREE, type = "office") {
       const y = r * cy + (brick ? 11 : 7);
       const w = cx - (brick ? 34 : 20);
       const h = cy - (brick ? 22 : 14);
-      const lit = noise01(r * 131 + col * 17 + (brick ? 11 : 3)) > (shop ? .65 : .79);
+      const lit=noise01(r*131+col*17+(brick?11:3))>
+        (shop?.65:residential?.86:hotel?.68:.79);
       if (!lit) continue;
       const cool = noise01(r * 29 + col * 83 + (shop ? 17 : 5)) > .80;
-      g.fillStyle = cool ? "#83d8ff" : (brick ? "#ffd08a" : "#ffe0a1");
+      g.fillStyle=cool||hotel?"#83d8ff":
+        (brick?"#ffd08a":residential?"#ffeac0":"#ffe0a1");
       g.fillRect(x + 3, y + 3, w - 6, h - 6);
       g.globalAlpha = .42;
       g.fillStyle = "#ffffff";
@@ -254,13 +270,9 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   sky.renderOrder = -10;
   worldGroup.add(sky);
 
-  const atlas = [facadeMap(THREE, "office"), facadeMap(THREE, "brick"),
-                 facadeMap(THREE, "shop")];
-  const glowAtlas = [
-    facadeEmissiveMap(THREE, "office"),
-    facadeEmissiveMap(THREE, "brick"),
-    facadeEmissiveMap(THREE, "shop")
-  ];
+  const facadeTypes=["office","brick","shop","residential","hotel"];
+  const atlas=facadeTypes.map(type=>facadeMap(THREE,type));
+  const glowAtlas=facadeTypes.map(type=>facadeEmissiveMap(THREE,type));
   const mats = atlas.map((map, i) => new THREE.MeshStandardMaterial({
     color: i === 1 ? 0xa79c9d : 0xa8b0b7,
     map,
@@ -311,8 +323,9 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     });
   });
 
-  const cityBlocks = [[], [], []];
-  const rooftop = [];
+  const cityBlocks=facadeTypes.map(()=>[]);
+  const innerLots=[];
+  const rooftop=[];
   const podiums = [];
   for (let gx = -440; gx <= 440; gx += 34) {
     for (let gz = -350; gz <= 350; gz += 34) {
@@ -321,7 +334,7 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const roadD = distRoad(x, z);
       const outerEdge = Math.max(Math.abs(x) / 450, Math.abs(z) / 355);
       // Compute the actual block dimensions before checking clearance.
-      const type = Math.floor(noise01(gx * 17 + gz * 23) * 3);
+      const type = Math.min(4,Math.floor(noise01(gx*17+gz*23)*5));
       const height = (outerEdge > .7 ? 21 : 30) +
         noise01(gx * 3 - gz * 13) * (outerEdge > .7 ? 50 : 72);
       const w = 13 + noise01(gx * 7 + gz * 3) * 12;
@@ -334,8 +347,12 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       if(x+w/2>117 && x-w/2<222 && Math.abs(z)<424) continue;
       if(reservedBuildings.some(p=>
            Math.hypot(p.x-x,p.z-z)<Math.hypot(w,d)/2+13)) continue;
-      cityBlocks[type].push({x, y: height / 2, z, w, h: height, d});
-      // The same footprint and height as the rendered city building.
+      // Original collider dimensions remain unmodified. A solid base
+      // supports V8 inset tower masses entirely within its footprint.
+      const baseHeight=height*neonV8BaseRatio(height,type);
+      cityBlocks[type].push({x,y:baseHeight/2,z,w,h:baseHeight,d});
+      innerLots.push({x,z,w,d,height,style:type});
+      // Use the original footprint and full height for collision.
       if (registerBuilding) registerBuilding(
         new THREE.Vector3(x, 0, z), w, d, 0, height
       );
@@ -427,8 +444,9 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     new THREE.MeshStandardMaterial({color:0x20232b, roughness:.86}), podiums);
 
   // Horizon: three staggered non-identical rings of office towers.
-  const distant = [[], [], []];
-  const antennas = [];
+  const distant=[[],[],[]];
+  const horizonLots=[];
+  const antennas=[];
   for (let ring = 0; ring < 3; ring++) {
     const radius = 610 + ring * 175;
     const count = ring === 0 ? 95 : 116;
@@ -440,8 +458,11 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       const h = 55 + Math.pow(noise01(i * 19 + ring * 31), 2) * 150;
       const w = 17 + noise01(i * 43 + ring * 7) * 38;
       const d = 17 + noise01(i * 61 + ring * 13) * 33;
-      distant[ring].push({x, y:h*.5, z, w, h, d,
-        color: ring === 0 ? 0x9babb9 : ring === 1 ? 0x718499 : 0x515f77});
+      const style=(i+ring*2)%5;
+      const baseHeight=h*neonV8BaseRatio(h,style);
+      distant[ring].push({x,y:baseHeight*.5,z,w,h:baseHeight,d,
+        color:ring===0?0x9babb9:ring===1?0x718499:0x515f77});
+      horizonLots.push({x,z,w,d,height:h,style});
       if (registerBuilding) registerBuilding(
         new THREE.Vector3(x, 0, z), w, d, 0, h
       );
@@ -491,24 +512,22 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       centerX: road.x, centerZ: road.z,
       length: Math.max(road.w,road.d), width: Math.min(road.w,road.d)
     }));
-  return { cityBuildings: cityBlocks.reduce((n,b)=>n+b.length,0),
-    skylineTowers: distant.reduce((n,b)=>n+b.length,0),
-    trafficRoads };
+  return {cityBuildings:cityBlocks.reduce((n,b)=>n+b.length,0),
+    skylineTowers:distant.reduce((n,b)=>n+b.length,0),
+    trafficRoads,innerLots,horizonLots,architectureMaterials:mats};
 }
 
 /** Replace the cheap one-color office faces with tiled facades + storefronts. */
 export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
   const shellGeo = new THREE.BoxGeometry(1,1,1);
-  const atlas = [
-    facadeMap(THREE, "office"),
-    facadeMap(THREE, "brick"),
-    facadeMap(THREE, "shop")
-  ];
-  const groups = [[],[],[]], roofs=[], parapets=[], awnings=[], shutters=[];
+  const types=["office","brick","shop","residential","hotel"];
+  const atlas=types.map(type=>facadeMap(THREE,type));
+  const groups=types.map(()=>[]),roofs=[],parapets=[],awnings=[],shutters=[];
   for(const b of buildings) {
-    const type = b.index % 3;
-    groups[type].push({x:b.position.x,y:b.height*.5,z:b.position.z,
-      w:b.width,h:b.height,d:b.depth,rotation:b.rotationY});
+    const type=b.index%5;
+    const baseHeight=b.height*neonV8BaseRatio(b.height,type);
+    groups[type].push({x:b.position.x,y:baseHeight*.5,z:b.position.z,
+      w:b.width,h:baseHeight,d:b.depth,rotation:b.rotationY});
     roofs.push({x:b.position.x,y:b.height+.20,z:b.position.z,
       w:b.width+.7,h:.38,d:b.depth+.7,rotation:b.rotationY});
     if(b.height>22) {
@@ -525,11 +544,7 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
         d:Math.min(5,b.depth*.55),rotation:b.rotationY});
     }
   }
-  const glowAtlas = [
-    facadeEmissiveMap(THREE, "office"),
-    facadeEmissiveMap(THREE, "brick"),
-    facadeEmissiveMap(THREE, "shop")
-  ];
+  const glowAtlas=types.map(type=>facadeEmissiveMap(THREE,type));
   const materials=atlas.map((map,i)=>new THREE.MeshStandardMaterial({
     color: i===1 ? 0xaaa0a0 : 0x9299a4,
     map, bumpMap:map, bumpScale:.024,
@@ -552,6 +567,7 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
     color:0x171d24,roughness:.8,metalness:.05
   }),shutters);
+  return {materials};
 }
 
 /**
