@@ -786,6 +786,27 @@
       </div>
 
 
+      <!-- PERMANENT CASH CAR DEALERSHIP AND OWNED VEHICLE GARAGE -->
+      <section id="redlineDealership" class="redline-dealership" aria-label="Car dealership">
+        <div class="dealer-heading">
+          <div>
+            <span class="dealer-kicker">REDLINE MOTOR COMPANY</span>
+            <h2>DEALERSHIP & MY GARAGE</h2>
+          </div>
+          <div class="dealer-cash" id="dealerCash">CASH —</div>
+        </div>
+        <div class="dealer-tabbar" role="group" aria-label="Garage filter">
+          <button type="button" class="dealer-tab active" data-dealer-filter="all">DEALERSHIP</button>
+          <button type="button" class="dealer-tab" data-dealer-filter="owned">MY CARS</button>
+        </div>
+        <p class="dealer-feedback" id="dealerFeedback" aria-live="polite">
+          Loading your permanent car collection…
+        </p>
+        <div id="dealerGrid" class="dealer-grid"></div>
+        <p class="dealer-footer-note">Cars are permanently saved to your account. Starter vehicles remain free.
+          Bought vehicles can be equipped in multiplayer; each has its own real driving physics.</p>
+      </section>
+
       <!-- STATS -->
 
       <div class="car-stats">
@@ -1463,6 +1484,9 @@
         },
         async purchaseUpgrade(category) {
           return this.requestAccountOperation("/api/garage/purchase",{category});
+        },
+        async purchaseCar(carId) {
+          return this.requestAccountOperation("/api/dealership/purchase",{carId});
         },
         async equipUpgrade(category,tier) {
           return this.requestAccountOperation("/api/garage/equip",{category,tier});
@@ -4173,87 +4197,26 @@
          CAR CHOICE
       ==================================================== */
 
-      document
-        .querySelectorAll(
-          ".car-card"
-        )
-        .forEach(
-          card => {
-
-            card.addEventListener(
-              "click",
-              () => {
-
-                if (
-                  currentRoom?.phase !==
-                  "car_select"
-                ) {
-
-                  return;
-
-                }
-
-
-                const me =
-                  getMe();
-
-
-                if (
-                  me?.ready
-                ) {
-
-                  return;
-
-                }
-
-
-                chosenCar =
-                  card.dataset.car;
-
-
-                document
-                  .querySelectorAll(
-                    ".car-card"
-                  )
-                  .forEach(
-                    otherCard => {
-
-                      otherCard.classList.toggle(
-                        "selected",
-                        otherCard ===
-                        card
-                      );
-
-                    }
-                  );
-
-
-                lockStatus.textContent =
-                  "CAR SELECTED";
-
-
-                carSelectStatus.textContent =
-                  "Ready when you are.";
-
-
-                lockInBtn.disabled =
-                  false;
-
-
-                socketSend({
-                  type:
-                    "select_car",
-
-                  car:
-                    chosenCar
-                });
-
-              }
-            );
-
-          }
-        );
-
+      // Delegated selection supports new purchased cars inserted by
+      // dealership.js after this inline script has already executed.
+      document.getElementById("carSelector").addEventListener(
+        "click",event=>{
+          const card=event.target.closest(".car-card");
+          if(!card || card.disabled || card.dataset.locked==="true" ||
+             currentRoom?.phase!=="car_select")return;
+          const me=getMe();
+          if(me?.ready)return;
+          chosenCar=card.dataset.car;
+          document.querySelectorAll(".car-card").forEach(
+            other=>other.classList.toggle("selected",other===card));
+          lockStatus.textContent="CHECKING OWNERSHIP…";
+          carSelectStatus.textContent="Confirming car with server…";
+          // Only a room_state response from the Worker actually enables
+          // LOCK IN. A forged local click never grants car access.
+          lockInBtn.disabled=true;
+          socketSend({type:"select_car",car:chosenCar});
+        }
+      );
 
       /* ===================================================
          LOCK IN
@@ -4444,6 +4407,7 @@
   <!-- Keep existing cosmetic paint/body editor, but not its retired free points. -->
   <script src="./garage.js"></script>
   <script type="module" src="./upgrade-shop.js"></script>
+  <script type="module" src="./dealership.js"></script>
 
 
   <!-- =====================================================
