@@ -47,24 +47,36 @@ function parseBank(bytes){
 export function getIroncladV8BankStatus(){
   return{ready:!!bank,revision:bankRevision,status:bankStatus};
 }
-export function preloadIroncladV8Bank(){
-  if(loadPromise)return loadPromise;
+export function preloadIroncladV8Bank(force=false){
+  // Failed loads must NOT remain cached forever. The user may have
+  // uploaded the bank to Cloudflare after the page was initially opened.
+  if(loadPromise&&!force)return loadPromise;
+  if(loadPromise&&force)return loadPromise.then(()=>preloadIroncladV8Bank(true));
+  bankStatus="Checking recorded V8 file…";
   loadPromise=(async()=>{
     try{
       const url=new URL("./assets/audio/redline-ironclad-v16-audio.bank",import.meta.url);
-      const response=await fetch(url,{cache:"force-cache"});
-      if(!response.ok)throw Error("V8 audio bank not installed (HTTP "+response.status+")");
+      // v16-2 is a distinct asset URL from the original test build;
+      // no-store also bypasses negative 404 caches during new deployments.
+      url.searchParams.set("v","v16-2");
+      const response=await fetch(url,{cache:"no-store"});
+      if(!response.ok)
+        throw Error("V8 bank request HTTP "+response.status);
       const bytes=await response.arrayBuffer();
       if(bytes.byteLength>1500000)throw Error("Unexpectedly large V8 audio bank");
-      bank=parseBank(bytes);
-      bankStatus="Recorded IRONCLAD V8 loaded";
+      const parsed=parseBank(bytes);
+      bank=parsed;
+      bankStatus="Recorded V8 bank downloaded · 9 samples";
       bankRevision++;
       return true;
     }catch(err){
-      bank=null;bankStatus=String(err?.message||err);
-      console.info("IRONCLAD recorded engine fallback:",bankStatus);
+      // Keep an already working bank alive if an explicit retry fails.
+      bankStatus=String(err?.message||err);
+      console.warn("IRONCLAD recorded engine bank unavailable:",bankStatus);
       bankRevision++;
-      return false;
+      return !!bank;
+    }finally{
+      loadPromise=null;
     }
   })();
   return loadPromise;
@@ -102,6 +114,7 @@ export function createIroncladV8Preview({
   v8Bus.connect(engineBus);
   let active=false,decoded=false,loading=false,revSeen=-1;
   let ticket=0,engineCar="gt",smoothedRPM=900,gas=0,error="";
+  let v8Audible=false;
   let layers=[];
   function clear(){
     for(const v of layers){
@@ -129,6 +142,7 @@ export function createIroncladV8Preview({
         layers.push({name,source,gain});
       }
       decoded=true;loading=false;error="";
+      console.info("IRONCLAD V16: decoded 8 V8 loops successfully");
     }catch(e){
       if(!active||ticketId!==ticket)return;
       decoded=false;loading=false;error=String(e?.message||e);
@@ -137,7 +151,7 @@ export function createIroncladV8Preview({
   }
   function start(){
     if(active)return;
-    active=true;decoded=false;loading=false;ticket++;
+    active=true;decoded=false;loading=false;v8Audible=false;ticket++;
     smoothedRPM=900;gas=0;error="";
     revSeen=bankRevision;
     v11.start();
@@ -154,6 +168,7 @@ export function createIroncladV8Preview({
     }
     engineCar=typeof data.car==="string"?data.car:"gt";
     const useV8=engineCar==="ironclad"&&decoded;
+    v8Audible=useV8;
     glide(context,v8Bus.gain,useV8?.87:0,.12);
     glide(context,v11Bus.gain,useV8?.0001:1,.12);
     if(!useV8)return;
@@ -172,7 +187,7 @@ export function createIroncladV8Preview({
   }
   function stop(){
     if(!active)return;
-    active=false;decoded=false;loading=false;ticket++;
+    active=false;decoded=false;loading=false;v8Audible=false;ticket++;
     glide(context,v8Bus.gain,0,.015);
     glide(context,v11Bus.gain,0,.015);
     clear();v11.stop();
@@ -192,8 +207,10 @@ export function createIroncladV8Preview({
   }
   return {start,update,stop,playStartupSample,
     get active(){return active},
-    get debug(){return {active,car:engineCar,usingFallback:!decoded||engineCar!=="ironclad",
-      bankReady:!!bank,layerCount:layers.length,loading,
-      rpm:Math.round(smoothedRPM),error,status:bankStatus}}
+    get debug(){return {
+      active,car:engineCar,usingFallback:!v8Audible,
+      v8Audible,bankReady:!!bank,decoded,layerCount:layers.length,loading,
+      rpm:Math.round(smoothedRPM),error,status:bankStatus
+    }}
   };
 }
