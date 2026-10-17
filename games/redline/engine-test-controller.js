@@ -195,7 +195,7 @@ diag.style.cssText="position:fixed;bottom:12px;left:12px;z-index:1100;"+
   "font:12px/1.45 system-ui,sans-serif;box-shadow:0 8px 25px #0009;";
 const diagHeader=document.createElement("strong");
 diagHeader.style.cssText="display:block;color:#91ded6;font-size:13px;";
-diagHeader.textContent="IRONCLAD V16 · AUDIO STATUS";
+diagHeader.textContent="IRONCLAD V17 · LONG-TAKE AUDIO TEST";
 const diagStatus=document.createElement("div");
 diagStatus.id="labV8LiveStatus";
 diagStatus.style.cssText="margin:7px 0;overflow-wrap:anywhere;";
@@ -223,6 +223,10 @@ const v17File=document.createElement("input");
 v17File.type="file";v17File.accept=".bank";
 v17File.style.cssText="margin-top:9px;display:block;width:100%;max-width:325px;font:11px system-ui,sans-serif;";
 v17File.setAttribute("aria-label","Load downloaded V17 long-take engine bank locally");
+const v17FileHint=document.createElement("div");
+v17FileHint.style.cssText="margin-top:9px;color:#8fded0;font-weight:750;";
+v17FileHint.textContent="LOAD V17 .BANK FILE FROM YOUR PC (NO UPLOAD)";
+
 v17File.addEventListener("change",async()=>{
   if(!v17File.files?.[0])return;
   diagStatus.textContent="Reading V17 bank from your PC…";
@@ -279,7 +283,7 @@ copyButton.addEventListener("click",()=>{
     });
   }else diagStatus.textContent="Status: "+formatted;
 });
-diag.append(diagHeader,diagStatus,diagInfo,diagBtns,v17File);
+diag.append(diagHeader,diagStatus,diagInfo,diagBtns,v17FileHint,v17File);
 document.body.append(diag);
 function renderV8Diagnostics(){
   const d=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
