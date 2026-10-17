@@ -1,6 +1,9 @@
 /* REDLINE V11 — seamless sampled engine and car-specific driving SFX.
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
+import { createV12ExteriorPreview } from "./engine-v12-exterior-preview.js";
+const USE_V12_EXTERIOR_PREVIEW =
+  new URLSearchParams(window.location.search).get("engine")==="v12";
 
 const startBtn =
   document.getElementById(
@@ -657,9 +660,14 @@ async function initAudio() {
     console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
   try {
-    soundscape=createRedlineSoundscape({
-      context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
-    });
+    soundscape=USE_V12_EXTERIOR_PREVIEW
+      ?createV12ExteriorPreview({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
+          fallbackFactory:createRedlineSoundscape
+        })
+      :createRedlineSoundscape({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
+        });
   } catch(error){
     console.warn("REDLINE V11 soundscape unavailable; legacy engine enabled.",error);
     soundscape=null;
