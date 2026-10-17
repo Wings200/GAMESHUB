@@ -10581,7 +10581,7 @@ function updatePhysics(delta) {
 
         if (
             currentSpeed >
-            42
+            (activeCarSpec.softLimiterStart ?? 42)
         ) {
 
             carState.velocity
@@ -10589,7 +10589,7 @@ function updatePhysics(delta) {
                     Math.exp(
                         -(
                             currentSpeed -
-                            42
+                            (activeCarSpec.softLimiterStart ?? 42)
                         )
                         *
                         0.016
@@ -11840,11 +11840,17 @@ carCards.forEach(card => {
         if (!cars[card.dataset.car]) {
             return;
         }
-        selectedCar =
-            card.dataset.car;
+        selectedCar = card.dataset.car;
         updateGarageUI();
+        // Stat previews use the actual selected car's base driving values.
+        window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
     });
 });
+window.REDLINE_GARAGE_PREVIEW={
+    get baseSpec() {return cars[selectedCar];},
+    get selectedCar(){return selectedCar;}
+};
+window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
 updateGarageUI();
 
 
