@@ -166,11 +166,18 @@ import {
      lastFetch=Date.now();
      feedback.textContent="PURCHASED "+REDLINE_CAR_CATALOG[carId].name+
        " · PERMANENTLY UNLOCKED · "+money(response.cashBalance)+" LEFT";
+     // A newly bought car isn't equipped in the room until a
+     // trusted room_state arrives. Block premature LOCK IN.
+     const lockIn=document.getElementById("lockInBtn");
+     if(lockIn)lockIn.disabled=true;
      // Never claim the car was selected for this room until room_state.
      window.dispatchEvent(new CustomEvent("redline:car-purchased",{
        detail:{carId,balance:response.cashBalance}
      }));
-     window.REDLINE_MP?.send?.({type:"select_car",car:carId});
+     if(window.REDLINE_MP?.send?.({type:"select_car",car:carId})===false){
+       feedback.dataset.error="true";
+       feedback.textContent="Car purchased, but room disconnected. Reconnect to select it.";
+     }
      window.REDLINE_CASH?.refresh?.();
      window.REDLINE_UPGRADE_SHOP?.refresh?.();
    }catch(err){
