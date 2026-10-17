@@ -4,6 +4,7 @@ import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
 import * as REDLINE_PARTS from "./upgrade-parts.js";
+import { createRemoteMotion } from "./multiplayer-smoothing.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -10004,6 +10005,7 @@ function createRemoteRacer(player, playerIndex = 0, appearance = null) {
         targetRotation: spawn.rotationY,
         targetPitch: 0,
         targetRoll: 0,
+        motion: createRemoteMotion(),
         lastUpdate: performance.now()
     };
     remoteRacers.set(player.id, remote);
@@ -10019,145 +10021,47 @@ function removeRemoteRacer(playerId) {
     raceStates.delete(playerId);
 }
 function receiveRaceState(state) {
-    if (!state?.playerId) {
+    if (!state?.playerId) return;
+    if(state.playerId === window.REDLINE_MP?.playerId){
+        // Local car is already authoritative for its own position.
         return;
     }
-    raceStates.set(state.playerId, state);
-    if (state.playerId ===
-        window.REDLINE_MP?.playerId) {
-        return;
+    const players=window.REDLINE_MP?.players ?? [];
+    const playerIndex=Math.max(0,players.findIndex(p=>p.id===state.playerId));
+    const player=players.find(p=>p.id===state.playerId) || {
+        id:state.playerId,
+        username:state.username || "Racer",
+        car:state.car || "gt",
+        appearance:state.appearance || null
+    };
+    const remote=createRemoteRacer(player,playerIndex,
+        state.appearance || player.appearance || null);
+    if(!remote)return;
+    if(!remote.motion)remote.motion=createRemoteMotion();
+    const arrival=performance.now();
+    const accepted=remote.motion.push(state,arrival);
+    if(!accepted.accepted)return; // Never rewind late/out-of-order ghosts.
+    raceStates.set(state.playerId,state);
+    const snap=remote.motion.consumeTeleport();
+    if(snap){
+        // Checkpoint respawns and reconnections must snap, not slide.
+        remote.model.position.set(snap.x,snap.y,snap.z);
+        remote.model.rotation.set(snap.pitch,snap.rotation,snap.roll);
     }
-    const players = window.REDLINE_MP?.players
-        ??
-            [];
-    const playerIndex = Math.max(0, players.findIndex(player => player.id ===
-        state.playerId));
-    const player = players.find(item => item.id ===
-        state.playerId)
-        ||
-            {
-                id: state.playerId,
-                username: state.username ||
-                    "Racer",
-                car: state.car ||
-                    "gt",
-                appearance: state.appearance ||
-                    null
-            };
-    const remote = createRemoteRacer(player, playerIndex, state.appearance || player.appearance || null);
-    if (!remote) {
-        return;
-    }
-    remote.targetPosition.set(Number(state.x)
-        ||
-            0, Number(state.y)
-        ||
-            0, Number(state.z)
-        ||
-            0);
-    remote.targetRotation =
-        Number.isFinite(Number(state.rotation))
-            ?
-                Number(state.rotation)
-            :
-                remote.targetRotation;
-
-    remote.targetPitch =
-        Number.isFinite(
-            Number(
-                state.pitch
-            )
-        )
-            ?
-            Number(
-                state.pitch
-            )
-            :
-            0;
-
-    remote.targetRoll =
-        Number.isFinite(
-            Number(
-                state.roll
-            )
-        )
-            ?
-            Number(
-                state.roll
-            )
-            :
-            0;
-
-    remote.lastUpdate =
-        performance.now();
-}
-function interpolateAngle(current, target, amount) {
-    let difference = (target -
-        current +
-        Math.PI)
-        %
-            (Math.PI *
-                2)
-        -
-            Math.PI;
-    if (difference <
-        -Math.PI) {
-        difference +=
-            Math.PI *
-                2;
-    }
-    return current +
-        difference *
-            amount;
+    remote.lastUpdate=arrival;
 }
 function updateRemoteRacers(delta) {
-    const positionAmount = 1 -
-        Math.exp(-12 *
-            delta);
-    const rotationAmount = 1 -
-        Math.exp(-15 *
-            delta);
-    for (const remote of remoteRacers.values()) {
-        remote.model.position.lerp(remote.targetPosition, positionAmount);
-        remote.model.rotation.y =
-            interpolateAngle(
-                remote.model.rotation.y,
-                remote.targetRotation,
-                rotationAmount
-            );
-
-        remote.model.rotation.x =
-            THREE.MathUtils.lerp(
-                remote.model.rotation.x,
-                remote.targetPitch
-                ||
-                0,
-                rotationAmount
-            );
-
-        remote.model.rotation.z =
-            THREE.MathUtils.lerp(
-                remote.model.rotation.z,
-                remote.targetRoll
-                ||
-                0,
-                rotationAmount
-            );
-
-        const state = raceStates.get(remote.playerId);
-        const spin = Math.abs(Number(state?.speed)
-            ||
-                0)
-            *
-                delta
-            *
-                2.9;
-        for (const wheel of remote.visual?.wheels
-            ||
-                []) {
-            wheel.rotation.x -=
-                spin;
+    const now=performance.now();
+    for(const remote of remoteRacers.values()){
+        const state=remote.motion?.sample(now);
+        if(state){
+            remote.model.position.set(state.x,state.y,state.z);
+            remote.model.rotation.set(state.pitch,state.rotation,state.roll);
         }
+        const speed=Math.abs(Number(state?.speed) || 0);
+        const spin=speed * delta * 2.9;
+        for(const wheel of remote.visual?.wheels || [])
+            wheel.rotation.x-=spin;
     }
 }
 const gearRatios = [
