@@ -2367,15 +2367,15 @@ select option:disabled {
  .upgrade-shop-head{align-items:start;flex-direction:column}
  .upgrade-levels-note{white-space:normal}
 }
-/* Retain the previous appearance/body-color editor, but never display
-   its deprecated performance point sliders or second duplicate wallet. */
-#carSelectScreen #redlineGarageV1{
-  grid-template-columns:minmax(0,1fr)!important;
-  max-width:920px;
+/* The retired body/color customization is not part of the factory-car
+   garage. Safety net for clients that have cached the old garage.js. */
+#redlineGarageV1,
+#garageCosmeticsMount,
+#rgBodyOptions,
+#rgBodyColor,
+#rgAccentColor {
+  display:none!important;
 }
-#carSelectScreen #redlineGarageV1>.rg-panel:nth-child(2){display:none!important}
-#carSelectScreen #redlineGarageV1 .rg-wallet,
-#carSelectScreen #redlineGarageV1 .rg-wallet-hint{display:none!important}
 
 /* Actual before/after physics numbers for every upgrade level. */
 .upgrade-preview{
@@ -2597,7 +2597,6 @@ select option:disabled {
 .garage-overlay-car-picker .car-selector{margin:13px auto 18px}
 .garage-overlay-car-picker .car-stats{margin:14px auto}
 .garage-car-limit{margin:6px 0 0;font-size:11px;color:#9ed9ff;line-height:1.5}
-#garageCosmeticsMount #redlineGarageV1{margin:19px auto}
 #redlineGarageOverlay .redline-upgrade-shop,
 #redlineGarageOverlay .redline-dealership{width:min(1080px,100%)}
 @media(max-width:620px){
