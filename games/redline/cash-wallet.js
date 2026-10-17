@@ -6,12 +6,6 @@
   const carScreen=document.getElementById("carSelectScreen");
   if(!panel||!number||!status||!carScreen)return;
 
-  // Read-only career milestone indicator; the Worker alone pays cash.
-  const milestone=document.createElement("small");
-  milestone.id="redlineCareerMilestone";
-  milestone.style.cssText="display:block;margin-top:5px;color:#a5f3db;";
-  milestone.textContent="Career milestones unlock after every 5 finishes";
-  panel.querySelector(".cash-balance-block")?.append(milestone);
   let request=null;
   let lastFetch=0;
   let currentBalance=null;
@@ -66,27 +60,18 @@
         if(secondary)secondary.textContent=v18?
           "2nd half · 3rd one-third · 4th–8th $12":
           "2nd half · 3rd one-third · 4th–8th $5";
-        if(bonus)bonus.textContent=v18?
-          "Every 5th finished race +$60 · New personal best +$15":
-          "V18 rewards activate when the race server updates";
+        if(bonus)bonus.textContent=Number(stats?.challengeVersion)>=1?
+          "Daily/weekly challenges pay bonus cash · Personal best +$15":
+          "V19 daily/weekly challenges activate with the updated race server";
         const latest=Number(stats?.lastCashAward)||0;
         const last=stats?.lastCashBreakdown||{};
         const notes=[];
-        if(Number(last.milestone)>0)notes.push("MILESTONE +$"+last.milestone);
+        if(Number(last.challenges)>0)notes.push("CHALLENGES +$"+last.challenges);
         if(Number(last.personalBest)>0)notes.push("PERSONAL BEST +$"+last.personalBest);
         status.textContent=latest>0
           ? "Saved to account · Last finish +$"+latest+
             (notes.length?" · "+notes.join(" · "):"")
           : "Saved to your REDLINE account";
-        const races=Number(stats?.racesFinished);
-        if(!v18){
-          milestone.textContent="V18 career milestones pending race server update";
-        }else if(Number.isSafeInteger(races)&&races>=0){
-          const progress=races%5;
-          milestone.textContent="CAREER PROGRESS "+progress+"/5 FINISHES"+
-            " · NEXT MILESTONE +$60 IN "+(5-progress)+
-            (5-progress===1?" RACE":" RACES");
-        }
         window.dispatchEvent(new CustomEvent("redline:cash-updated",{
           detail:{balance:amount,lastAward:latest}
         }));
