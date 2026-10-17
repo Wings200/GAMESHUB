@@ -4,7 +4,7 @@ import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
 import * as REDLINE_PARTS from "./upgrade-parts.js";
-import { REDLINE_CAR_CATALOG, REDLINE_CAR_IDS, STARTER_CAR_IDS }
+import { REDLINE_CAR_CATALOG, REDLINE_CAR_IDS }
     from "./car-catalog.js";
 import { buildDealerModel } from "./dealer-models.js";
 import { createRuggedMountainGeometry, buildArcticV3Art, createArcticSnowfall }
@@ -8651,49 +8651,7 @@ function buildApex(root, bodyPivot, spec) {
     addWheel(root, -0.94, -1.10, false, 0.98);
     addWheel(root, 0.94, -1.10, false, 0.98);
 }
-function cleanAppearanceHex(value, fallback) {
-    const text = String(value || "").trim();
-    return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
-}
-function appearanceColorNumber(value, fallback) {
-    const clean = cleanAppearanceHex(value, fallback);
-    return Number.parseInt(clean.slice(1), 16);
-}
-function normalizeGarageAppearance(appearance) {
-    const body = ["coupe", "supercar", "muscle", "track"].includes(appearance?.body)
-        ? appearance.body
-        : "coupe";
-    return {
-        body,
-        color: cleanAppearanceHex(appearance?.color, "#e9edf2"),
-        accent: cleanAppearanceHex(appearance?.accent, "#315fbd")
-    };
-}
-function applyAppearanceToSpec(baseSpec, appearance) {
-    const clean = normalizeGarageAppearance(appearance);
-    const modelMap = {
-        coupe: "gt",
-        supercar: "vortex",
-        muscle: "muscle",
-        track: "apex"
-    };
-    return {
-        ...baseSpec,
-        // Keep purchased original models recognizable even when the
-        // player changes the paint/body setting from the older editor.
-        model: REDLINE_CAR_IDS.some(id=>
-            !STARTER_CAR_IDS.includes(id) &&
-            REDLINE_CAR_CATALOG[id].spec.model===baseSpec.model)
-            ? baseSpec.model : (modelMap[clean.body] || "gt"),
-        body: appearanceColorNumber(clean.color, "#e9edf2"),
-        accent: appearanceColorNumber(clean.accent, "#315fbd"),
-        garageAppearance: clean
-    };
-}
-function appearanceSignature(appearance) {
-    const clean = normalizeGarageAppearance(appearance);
-    return `${clean.body}|${clean.color.toLowerCase()}|${clean.accent.toLowerCase()}`;
-}
+// Factory paint and body models are sourced exclusively from car-catalog.js.
 function buildMuscle(root, bodyPivot, spec) {
     const bodyMat = material(spec.body, 0.38, 0.28);
     const accentMat = material(spec.accent, 0.42, 0.34);
@@ -8853,74 +8811,43 @@ function getGridTransform(playerIndex) {
         rotationY: frame.rotationY
     };
 }
-function createRemoteRacer(player, playerIndex = 0, appearance = null) {
-    if (!worldGroup
-        ||
-            !player?.id
-        ||
-            player.id ===
-                window.REDLINE_MP?.playerId) {
-        return null;
-    }
-
-    const cleanAppearance = normalizeGarageAppearance(appearance);
-    const signature = String(player.car||"gt")+"|"+
-        appearanceSignature(cleanAppearance);
-    const existing = remoteRacers.get(player.id);
-
-    if (existing) {
-        if (existing.appearanceSignature === signature) {
-            return existing;
-        }
-
-        const savedPosition = existing.model.position.clone();
-        const savedRotation = existing.model.rotation.y;
-        worldGroup?.remove(existing.model);
+function createRemoteRacer(player, playerIndex = 0) {
+    if (!worldGroup || !player?.id ||
+        player.id === window.REDLINE_MP?.playerId) return null;
+    // Trust the server's car selection, not a caller-provided appearance.
+    const modelId=cars[player.car]?player.car:"gt";
+    const existing=remoteRacers.get(player.id);
+    if(existing&&existing.car===modelId)return existing;
+    const previousPos=existing?.model.position.clone();
+    const previousRotation=existing?.model.rotation.y;
+    if(existing){
+        worldGroup.remove(existing.model);
         remoteRacers.delete(player.id);
-
-        const baseSpec = cars[player.car] || cars.gt;
-        const spec = applyAppearanceToSpec(baseSpec, cleanAppearance);
-        const ghost = makeGhostCar(spec, player.username);
-        ghost.model.position.copy(savedPosition);
-        ghost.model.rotation.y = savedRotation;
-        worldGroup.add(ghost.model);
-
-        const rebuilt = {
-            ...existing,
-            car: player.car || "gt",
-            model: ghost.model,
-            visual: ghost.visual,
-            appearance: cleanAppearance,
-            appearanceSignature: signature
-        };
-        remoteRacers.set(player.id, rebuilt);
-        return rebuilt;
     }
-
-    const baseSpec = cars[player.car] || cars.gt;
-    const spec = applyAppearanceToSpec(baseSpec, cleanAppearance);
-    const ghost = makeGhostCar(spec, player.username);
-    const spawn = getGridTransform(playerIndex);
-    ghost.model.position.copy(spawn.position);
-    ghost.model.rotation.y = spawn.rotationY;
+    const ghost=makeGhostCar(cars[modelId],player.username);
+    if(previousPos){
+        ghost.model.position.copy(previousPos);
+        ghost.model.rotation.y=previousRotation;
+    }else{
+        const spawn=getGridTransform(playerIndex);
+        ghost.model.position.copy(spawn.position);
+        ghost.model.rotation.y=spawn.rotationY;
+    }
     worldGroup.add(ghost.model);
-
-    const remote = {
-        playerId: player.id,
-        username: player.username || "Racer",
-        car: player.car || "gt",
-        model: ghost.model,
-        visual: ghost.visual,
-        appearance: cleanAppearance,
-        appearanceSignature: signature,
-        targetPosition: spawn.position.clone(),
-        targetRotation: spawn.rotationY,
-        targetPitch: 0,
-        targetRoll: 0,
-        motion: createRemoteMotion(),
-        lastUpdate: performance.now()
+    const remote={
+        playerId:player.id,
+        username:player.username||"Racer",
+        car:modelId,
+        model:ghost.model,
+        visual:ghost.visual,
+        targetPosition:ghost.model.position.clone(),
+        targetRotation:ghost.model.rotation.y,
+        targetPitch:0,
+        targetRoll:0,
+        motion:existing?.motion||createRemoteMotion(),
+        lastUpdate:performance.now()
     };
-    remoteRacers.set(player.id, remote);
+    remoteRacers.set(player.id,remote);
     return remote;
 }
 function removeRemoteRacer(playerId) {
@@ -8943,11 +8870,9 @@ function receiveRaceState(state) {
     const player=players.find(p=>p.id===state.playerId) || {
         id:state.playerId,
         username:state.username || "Racer",
-        car:state.car || "gt",
-        appearance:state.appearance || null
+        car:"gt"
     };
-    const remote=createRemoteRacer(player,playerIndex,
-        state.appearance || player.appearance || null);
+    const remote=createRemoteRacer(player,playerIndex);
     if(!remote)return;
     if(!remote.motion)remote.motion=createRemoteMotion();
     const arrival=performance.now();
@@ -10085,31 +10010,12 @@ function buildWorld() {
             multiplayerCar;
     }
     const baseCarSpec = cars[selectedCar];
-    // Cosmetic body/paint choices remain freely editable; they never
-    // affect the verified paid upgrade tiers or the physics formulas.
-    const chosenAppearance = window.REDLINE_GARAGE?.build?.appearance;
-    const bodyModels = {coupe:"gt",supercar:"vortex",
-        muscle:"muscle",track:"apex"};
-    const validHex = value => typeof value==="string" &&
-        /^#[0-9a-f]{6}$/i.test(value);
-    const visualSpec = chosenAppearance && bodyModels[chosenAppearance.body]
-        ? {
-            ...baseCarSpec,
-            model:STARTER_CAR_IDS.includes(selectedCar)
-                ? bodyModels[chosenAppearance.body]
-                : baseCarSpec.model,
-            body:validHex(chosenAppearance.color)
-                ? parseInt(chosenAppearance.color.slice(1),16)
-                : baseCarSpec.body,
-            accent:validHex(chosenAppearance.accent)
-                ? parseInt(chosenAppearance.accent.slice(1),16)
-                : baseCarSpec.accent,
-            garageAppearance:{...chosenAppearance}
-        } : baseCarSpec;
+    // The actual car model, body color, and accent are those purchased in
+    // the dealership. Only trusted per-car performance parts may change it.
     // Trust ONLY the loadout the Worker attached to the ready player.
     // Browser-local point allocations NEVER modify engine or handling.
     activeCarSpec = REDLINE_PARTS.applyCarUpgrades(
-        visualSpec,
+        baseCarSpec,
         window.REDLINE_MP?.myPlayer?.upgrades
     );
     updateGarageUI();
@@ -10387,11 +10293,6 @@ function createLocalRaceState() {
             ||
                 "Racer",
         car: selectedCar,
-        appearance: window.REDLINE_GARAGE
-            ?.build
-            ?.appearance
-            ??
-                null,
         x: car.position.x,
         y: car.position.y,
         z: car.position.z,
