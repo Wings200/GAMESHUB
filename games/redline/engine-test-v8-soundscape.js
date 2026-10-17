@@ -47,6 +47,30 @@ function parseBank(bytes){
 export function getIroncladV8BankStatus(){
   return{ready:!!bank,revision:bankRevision,status:bankStatus};
 }
+/** Play the actual, unlooped recorded clip for a short A/B check.
+ * Separate from driving audio, and only invoked by a real button click.
+ */
+export async function auditionIroncladV8Clip(name="med_on"){
+  if(!NAMES.includes(name)||name==="startup")throw Error("Unknown clip");
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass)throw Error("Browser does not support audio previews");
+  const context=new AudioContextClass();
+  try{
+    await context.resume();
+    if(!bank)await preloadIroncladV8Bank(true);
+    if(!bank)throw Error(bankStatus);
+    const buffer=await context.decodeAudioData(bank[name].slice(0));
+    const source=context.createBufferSource();
+    source.buffer=buffer;
+    source.connect(context.destination);
+    source.onended=()=>context.close().catch(()=>{});
+    source.start();
+    return{ok:true,seconds:buffer.duration};
+  }catch(error){
+    await context.close().catch(()=>{});
+    throw error;
+  }
+}
 export function preloadIroncladV8Bank(force=false){
   // Failed loads must NOT remain cached forever. The user may have
   // uploaded the bank to Cloudflare after the page was initially opened.
