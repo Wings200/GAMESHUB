@@ -1,6 +1,6 @@
 /* REDLINE V11 — seamless sampled engine and car-specific driving SFX.
    Existing volume controls and startup sample remain compatible. */
-import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=clean-v11-1";
+import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 
 const startBtn =
   document.getElementById(
