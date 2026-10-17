@@ -1480,6 +1480,8 @@
       let accountStatsRequest=null;
       let accountStatsCache=null;
       let accountStatsCachedAt=0;
+      // A successful transaction supersedes earlier stats responses.
+      let accountStatsMutationRevision=0;
       let accountApiTransport=null;
       // A car is not usable for Ready until the server acknowledges it.
       let pendingCarSelection = null;
@@ -1583,9 +1585,19 @@
           if(!force&&accountStatsCache&&Date.now()-accountStatsCachedAt<4000)
             return accountStatsCache;
           accountStatsRequest=(async()=>{
-            const response=await this.requestAccountOperation("/api/stats/me");
-            accountStatsCache=response.stats;
-            accountStatsCachedAt=Date.now();
+            // Don't cache an old balance if a purchase finishes during a
+            // concurrent stats read from the same browser.
+            let revision=accountStatsMutationRevision;
+            let response=await this.requestAccountOperation("/api/stats/me");
+            for(let attempt=0;attempt<3 &&
+                revision!==accountStatsMutationRevision;attempt++){
+              revision=accountStatsMutationRevision;
+              response=await this.requestAccountOperation("/api/stats/me");
+            }
+            if(revision===accountStatsMutationRevision){
+              accountStatsCache=response.stats;
+              accountStatsCachedAt=Date.now();
+            }
             return response.stats;
           })();
           try{return await accountStatsRequest}
@@ -1595,19 +1607,31 @@
           accountStatsCache=null;
           accountStatsCachedAt=0;
         },
+        publishConfirmedPurchase(result,kind){
+          // This amount came from an authenticated Worker purchase/equip
+          // response. The UI must never subtract a client-side price.
+          if(result?.ok!==true)return;
+          const amount=Number(result.cashBalance);
+          if(!Number.isSafeInteger(amount)||amount<0)return;
+          accountStatsMutationRevision++;
+          this.invalidateAccountStats();
+          window.dispatchEvent(new CustomEvent("redline:cash-confirmed",{
+            detail:{balance:amount,kind,revision:accountStatsMutationRevision}
+          }));
+        },
         async purchaseUpgrade(category,carId) {
           const result=await this.requestAccountOperation("/api/garage/purchase",{category,carId});
-          this.invalidateAccountStats();
+          this.publishConfirmedPurchase(result,"upgrade");
           return result;
         },
         async purchaseCar(carId) {
           const result=await this.requestAccountOperation("/api/dealership/purchase",{carId});
-          this.invalidateAccountStats();
+          this.publishConfirmedPurchase(result,"car");
           return result;
         },
         async equipUpgrade(category,tier,carId) {
           const result=await this.requestAccountOperation("/api/garage/equip",{category,tier,carId});
-          this.invalidateAccountStats();
+          this.publishConfirmedPurchase(result,"equip");
           return result;
         },
 
