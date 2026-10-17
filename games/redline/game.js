@@ -2653,7 +2653,8 @@ function buildCity() {
     const nearArchitecture=NEON_ART.buildRoadsideArchitecture({
         THREE,
         worldGroup,
-        buildings: buildingSpecs
+        buildings: buildingSpecs,
+        facadeAtlas: cityLayout.facadeAtlas
     });
 
     // V8 building massing uses ONLY the pre-cleared footprints returned
