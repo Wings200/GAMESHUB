@@ -11553,6 +11553,10 @@ function updateRacePosition() {
             :
                 "1";
 }
+function multiplayerServerTime() {
+    const corrected=window.REDLINE_MP?.serverNow;
+    return Number.isFinite(corrected)?corrected:Date.now();
+}
 function updateRaceTimer() {
     if (!raceTimerEl) {
         return;
@@ -11569,49 +11573,39 @@ function updateRaceTimer() {
         return;
     }
     raceTimerEl.textContent =
-        formatRaceTime(Math.max(0, Date.now() -
+        formatRaceTime(Math.max(0, multiplayerServerTime() -
             serverRaceStartAt));
 }
 function updateServerCountdown() {
-    if (!raceStarted
-        ||
-            !serverRaceStartAt) {
+    if(!raceStarted||!serverRaceStartAt)return;
+    const now=multiplayerServerTime();
+    const remaining=serverRaceStartAt-now;
+    if(remaining>0) {
+        raceActive=false;
+        countdown.classList.remove("hidden");
+        // Four seconds from the Worker: READY, then three true
+        // one-second beats. No 1.33-second uneven countdown.
+        const label=remaining>3000?"READY":
+            String(THREE.MathUtils.clamp(Math.ceil(remaining/1000),1,3));
+        if(countdown.textContent!==label){
+            countdown.textContent=label;
+            countdown.classList.remove("redline-countdown-pulse","redline-countdown-go");
+            void countdown.offsetWidth;
+            countdown.classList.add("redline-countdown-pulse");
+        }
         return;
     }
-    const now = Date.now();
-    const remaining = serverRaceStartAt -
-        now;
-    if (remaining >
-        0) {
-        raceActive =
-            false;
-        countdown.classList.remove("hidden");
-        const number = THREE.MathUtils.clamp(Math.ceil(remaining /
-            (4000 /
-                3)), 1, 3);
-        countdown.textContent =
-            String(number);
-        return;
+    if(!raceActive&&!localFinished) {
+        raceActive=true;
+        countdown.textContent="GO!";
+        countdown.classList.remove("hidden","redline-countdown-pulse");
+        countdown.classList.add("redline-countdown-go");
+        goHideAt=now+850;
     }
-    if (!raceActive
-        &&
-            !localFinished) {
-        raceActive =
-            true;
-        countdown.classList.remove("hidden");
-        countdown.textContent =
-            "GO";
-        goHideAt =
-            now +
-                650;
-    }
-    if (goHideAt
-        &&
-            now >=
-                goHideAt) {
+    if(goHideAt&&now>=goHideAt) {
         countdown.classList.add("hidden");
-        goHideAt =
-            0;
+        countdown.classList.remove("redline-countdown-go");
+        goHideAt=0;
     }
 }
 function startRace() {
@@ -11668,10 +11662,8 @@ function finishRace() {
     raceActive =
         false;
     localFinishElapsed =
-        Math.max(0, Date.now() -
-            (serverRaceStartAt
-                ||
-                    Date.now()));
+        Math.max(0, multiplayerServerTime() -
+            (serverRaceStartAt || multiplayerServerTime()));
     carState?.velocity?.set(0, 0, 0);
     message.textContent =
         "FINISH";
