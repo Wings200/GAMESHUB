@@ -63,7 +63,7 @@ export function createRuggedMountainGeometry(THREE,radius,height,seed=1,dark=fal
 }
 export function buildArcticV3Art({
  THREE,worldGroup,trackSamples,getFrameAt,roadHalf,sidewalkOuter,
- addCircleCollider,addBoxCollider,addRail,shortcut
+ addCircleCollider,addBoxCollider,addRail,shortcut,originalMountains=[]
 }){
  const rng=random(738821);
  const coords=trackSamples.filter((_,i)=>i%5===0).map(
@@ -121,6 +121,37 @@ export function buildArcticV3Art({
  terrain.receiveShadow=true;
  worldGroup.add(terrain);
 
+ // Ground every vertex of the mountain foothills against the SAME
+ // height sampler used to build the visible terrain. The previous code
+ // aligned only the CENTER and left the outer ring hovering on slopes.
+ // The first 38% of each peak morphs smoothly into the landscape.
+ function rootMountain(mesh,height){
+   const position=mesh.geometry.attributes.position;
+   const center=heightAt(mesh.position.x,mesh.position.z);
+   mesh.position.y=height*.42+center;
+   const c=Math.cos(mesh.rotation.y),sn=Math.sin(mesh.rotation.y);
+   for(let i=0;i<position.count;i++){
+     const lx=position.getX(i),lz=position.getZ(i);
+     const t=clamp((position.getY(i)+height*.42)/height,0,1);
+     if(t>.39)continue;
+     const x=mesh.position.x+lx*c+lz*sn;
+     const z=mesh.position.z-lx*sn+lz*c;
+     const floor=heightAt(x,z);
+     const original=mesh.position.y+position.getY(i);
+     // All edge rings sit 5m INTO snow, not at or above its surface.
+     // Fade that correction upward to retain organic natural ridges.
+     const w=1-smooth(0,.39,t);
+     const desired=floor-5.2+(height*.45)*t;
+     const correction=(desired-original)*w;
+     position.setY(i,position.getY(i)+correction);
+   }
+   position.needsUpdate=true;
+   mesh.geometry.computeVertexNormals();
+ }
+ for(const root of originalMountains){
+   if(root?.mesh?.geometry)rootMountain(root.mesh,root.height);
+ }
+
  // Distant mountain ridges: protected by real road clearance. The old
  // game-play mountain colliders are not removed or shifted.
  const alpMat=new THREE.MeshStandardMaterial({
@@ -139,8 +170,9 @@ export function buildArcticV3Art({
    const height=(125+(i%7)*21)*(0.86+.25*rng());
    const massif=new THREE.Mesh(createRuggedMountainGeometry(
      THREE,radius,height,i*73+11,i%3===0),alpMat);
-   massif.position.set(site.x,height*.42+heightAt(site.x,site.z),site.z);
+   massif.position.set(site.x,0,site.z);
    massif.rotation.y=rng()*Math.PI*2;
+   rootMountain(massif,height);
    worldGroup.add(massif);
    distantPeaks++;
  }
@@ -367,74 +399,9 @@ export function buildArcticV3Art({
    }
  }
 
- // Tunnel faces with rock-colored arched portals, safely outside the
- // road and high above the normal car envelope.
- const tunnelMat=new THREE.MeshStandardMaterial({
-   color:0x697d86,roughness:.95
- });
- const iceMat=new THREE.MeshStandardMaterial({
-   color:0xafdce7,roughness:.31,metalness:.10
- });
- for(const [a,b,ice] of [[.178,.218,false],[.855,.892,true]]){
-   for(const t of [a,b]){
-     const frame=getFrameAt(t),group=new THREE.Group();
-     group.position.copy(frame.point);group.rotation.y=frame.rotationY;
-     const span=sidewalkOuter+6;
-     const points=[];
-     for(let k=0;k<=18;k++){
-       const u=k/18,angle=Math.PI*u;
-       points.push(new THREE.Vector3(
-         -span*Math.cos(angle),7.8+5.7*Math.sin(angle),0));
-     }
-     const arch=new THREE.Mesh(
-       new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),36,.50,7,false),
-       ice?iceMat:tunnelMat);
-     group.add(arch);
-     for(const x of [-span,span]){
-       const post=new THREE.Mesh(
-         new THREE.CylinderGeometry(.46,.61,7.6,9),ice?iceMat:tunnelMat);
-       post.position.set(x,3.9,0);group.add(post);
-     }
-     worldGroup.add(group);
-   }
- }
-
- // Curved aurora curtains, continuous transparent meshes rather than
- // the old flat glowing billboard rectangles.
- const curtains=[
-   {color:[.35,.95,.78],base:155,z:-300,offset:.5},
-   {color:[.42,.69,.98],base:191,z:-420,offset:2.2},
-   {color:[.71,.54,1.0],base:208,z:-180,offset:4.1}
- ];
- for(const curtain of curtains){
-   const position=[],rgb=[],indices=[],long=74,vertical=8;
-   for(let i=0;i<=long;i++){
-     const u=i/long,x=-1050+2100*u;
-     const wave=Math.sin(u*18+curtain.offset)*14+
-       Math.sin(u*42+curtain.offset*1.7)*4.3;
-     for(let j=0;j<=vertical;j++){
-       const v=j/vertical;
-       position.push(x,curtain.base+wave+v*(60+8*Math.sin(u*11)),
-         curtain.z+Math.sin(u*13+curtain.offset)*44-v*13);
-       const fade=Math.sin(Math.PI*v)*(.70+.30*Math.sin(u*17)**2);
-       rgb.push(...curtain.color.map(c=>c*(.23+.77*fade)));
-       if(i<long&&j<vertical){
-         const o=i*(vertical+1)+j,n=o+vertical+1;
-         indices.push(o,n,o+1,n,n+1,o+1);
-       }
-     }
-   }
-   const meshGeo=new THREE.BufferGeometry();
-   meshGeo.setAttribute("position",new THREE.Float32BufferAttribute(position,3));
-   meshGeo.setAttribute("color",new THREE.Float32BufferAttribute(rgb,3));
-   meshGeo.setIndex(indices);
-   meshGeo.computeVertexNormals();
-   const curtainMesh=new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({
-     vertexColors:true,side:THREE.DoubleSide,
-     transparent:true,opacity:.17,depthWrite:false
-   }));
-   worldGroup.add(curtainMesh);
- }
+ // Tunnel entrances are now cut directly into the continuous cave
+ // shell with fully closed rock faces (arctic-caves.js). No decorative
+ // ring tubes float in front of the actual openings.
 
  // Scientific snow outposts, solar lamps, antennas and service hoppers.
  // Buildings are well off the shoulder to keep the first-race line clear.
