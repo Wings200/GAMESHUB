@@ -86,7 +86,7 @@ function makeCarPopulation(roads,maxCars) {
     const direction=(i%2===0)?1:-1;
     // At most two cars on a road; space them far apart on spawn.
     const second=i>=chosen.length;
-    const progress=road.length*(second?.69:.22);
+    const progress=road.length*(second ? 0.69 : 0.22);
     cars.push({
       id:i,road,dir:direction,progress,
       desiredSpeed:7.3+(i*19%9)*.63,
