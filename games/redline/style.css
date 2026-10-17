@@ -2295,3 +2295,35 @@ select option:disabled {
   .weather-status { top: 12px; right: 12px; font-size: 9px;
     padding: 7px 9px; max-width: 49vw; }
 }
+
+/* Race cash is credited by the authoritative Worker, never browser storage. */
+.cash-panel {
+  width:min(920px,calc(100% - 36px));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  margin:12px auto 18px;
+  padding:14px 18px;
+  border:1px solid rgba(125,242,177,.38);
+  border-radius:12px;
+  background:linear-gradient(108deg,rgba(11,49,40,.88),rgba(7,18,29,.94));
+  color:#edfef2;
+}
+.cash-balance-block{display:grid;gap:4px;min-width:150px}
+.cash-balance-block>span,.cash-prize-info>strong{
+  font-size:10px;letter-spacing:.12em;font-weight:900;color:#9ff4bb;
+}
+.cash-balance-block>strong{
+  font-size:29px;font-weight:950;line-height:1.05;font-variant-numeric:tabular-nums;
+}
+.cash-balance-block>small{
+  font-size:10px;color:rgba(217,239,230,.7);line-height:1.3;
+}
+.cash-prize-info{display:grid;gap:4px;text-align:right;font-size:11px;line-height:1.3}
+.cash-prize-info>span{color:rgba(232,241,239,.78)}
+@media(max-width:680px){
+  .cash-panel{flex-direction:column;align-items:stretch;gap:12px;margin:10px auto;
+    width:calc(100% - 26px);padding:12px}
+  .cash-prize-info{text-align:left}
+}
