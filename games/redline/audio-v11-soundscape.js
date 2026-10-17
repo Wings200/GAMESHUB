@@ -158,8 +158,8 @@ export function createRedlineSoundscape({
     const a=Math.cos(crossfade*Math.PI/2);
     const b=Math.sin(crossfade*Math.PI/2);
     const remaining=1+(t.brake?-.07:0);
-    target(lowGain.gain,buffers.low?.62*a*intensity*safeFactor*remaining:0,context,.082);
-    target(highGain.gain,buffers.high?.66*b*intensity*safeFactor*remaining:0,context,.082);
+    target(lowGain.gain,buffers.low ? .62*a*intensity*safeFactor*remaining : 0,context,.082);
+    target(highGain.gain,buffers.high ? .66*b*intensity*safeFactor*remaining : 0,context,.082);
     const lowPitch=clamp((.91+rpmValue*.44)*profile.pitch,.82,1.49);
     const highPitch=clamp((.92+rpmValue*.59)*profile.pitch,.82,1.72);
     for(const {node,band} of samples)
