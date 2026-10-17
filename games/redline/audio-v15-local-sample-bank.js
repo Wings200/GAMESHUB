@@ -258,8 +258,22 @@ export function createV15RecordedEnginePreview({
     clearSources();
     backup.stop();
   }
+  function playStartupSample(destination){
+    if(!localBank||!destination)return false;
+    // The pack's real i6 startup replaces the old synthesized-game startup
+    // only in V15, and only after the player has selected the local ZIP.
+    const data=localBank.startup.slice(0);
+    context.decodeAudioData(data).then(buffer=>{
+      const sound=context.createBufferSource();
+      sound.buffer=buffer;
+      sound.connect(destination);
+      sound.onended=()=>{try{sound.disconnect()}catch{}};
+      sound.start();
+    }).catch(e=>console.warn("V15 startup sample unavailable",e));
+    return true;
+  }
   return{
-    start,update,stop,
+    start,update,stop,playStartupSample,
     get active(){return active},
     get debug(){return {
       active,mode:"V15 locally loaded real i6 engine recordings",
