@@ -3615,8 +3615,9 @@ function buildSecondShortcutMountainHole() {
         2,
         rotationY,
         {
+            // The carved arch reaches 1.75m above the old flat top.
             minY:
-                openingTop,
+                openingTop + 1.75,
 
             maxY:
                 mountainHeight
