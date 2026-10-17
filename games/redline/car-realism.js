@@ -43,7 +43,21 @@ export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt",lowDetai
  // Cylindrical shoulder + rounded sidewall; ring axis is the wheel axle X.
  const outer=add(new THREE.CylinderGeometry(r,r,.205*scale,20),rubber);
  outer.rotation.z=Math.PI/2;
- if(!lowDetail) for(const x of [-.080,.080]){
+ if(lowDetail){
+   // Translucent distant ghosts only need recognizable rims. Skip the
+   // sidewall beads, inner discs, and small spoke hardware.
+   const rim=add(new THREE.CylinderGeometry(r*.58,r*.58,.025*scale,12),
+     alloy,side*.125*scale);
+   rim.rotation.z=Math.PI/2;
+   for(let i=0;i<3;i++){
+     const a=i*2*Math.PI/3;
+     const spoke=add(new THREE.BoxGeometry(.023*scale,.21*scale,.06*scale),
+       darkAlloy,side*.145*scale,.105*scale*Math.cos(a),.105*scale*Math.sin(a));
+     spoke.rotation.x=a;
+   }
+   return spin;
+ }
+ for(const x of [-.080,.080]){
    const shoulder=add(new THREE.TorusGeometry((r-.055*scale),.055*scale,7,20),tread,x*scale);
    shoulder.rotation.y=Math.PI/2;
  }
@@ -75,6 +89,22 @@ export function addFactoryCarDetails(pivot,spec,{THREE,wheelPivots=[],lowDetail=
  const d=DIMENSIONS[spec?.model]||DIMENSIONS.gt;
  const isPremium=["obsidian","phantom","cirrus","vortex"].includes(spec?.model);
  const isRace=["obsidian","phantom","apex"].includes(spec?.model);
+ if(lowDetail){
+   // Factory shape and rear light signature remain visible from a
+   // distance. Tiny body hardware is reserved for the local player's car.
+   const trim=makeMaterial(THREE,0x111a25,.55,.18);
+   const red=luminous(THREE,0xef3543,.9);
+   const mesh=(w,h,l,mat,x,y,z)=>{
+     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,l),mat);
+     m.position.set(x,y,z);pivot.add(m);
+   };
+   mesh(d.width*.66,.15,.055,trim,0,.38,d.front+.045);
+   mesh(d.width*.60,.055,.065,red,0,.57,d.rear-.065);
+   mesh(d.width*.76,.09,.22,trim,0,.19,d.rear-.09);
+   for(const sign of [-1,1])
+     mesh(.25,.10,.22,trim,sign*(d.cabin+.12),.93,.46);
+   return pivot;
+ }
  const metallic=makeMaterial(THREE,0x738396,.24,.72);
  const carbon=makeMaterial(THREE,0x101820,.66,.20);
  const trim=makeMaterial(THREE,0x18212b,.54,.27);
