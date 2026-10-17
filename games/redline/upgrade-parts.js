@@ -80,9 +80,10 @@ export function applyCarUpgrades(baseSpec,equipped) {
     nitroAcceleration:22*(1+turbo*1.18),
     topSpeed:baseSpec.topSpeed*(1+transmission),
     drag:baseSpec.drag*(1-transmission*.34),
-    // Avoid the existing fixed high-speed road-drag threshold cancelling
-    // transmission upgrades. Tier zero remains EXACTLY the old 42 threshold.
-    softLimiterStart:42*(1+transmission),
+    // Each vehicle's aerodynamic limit is unique; transmission tuning
+    // scales that car's own baseline without erasing factory advantages.
+    // Legacy stock models continue to default to 42 exactly.
+    softLimiterStart:(baseSpec.softLimiterStart??42)*(1+transmission),
     steer:baseSpec.steer*(1+suspension),
     highSpeedSteer:baseSpec.highSpeedSteer*(1+suspension*.72),
     braking:baseSpec.braking*(1+brakes),
