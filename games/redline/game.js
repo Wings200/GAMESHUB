@@ -8706,6 +8706,154 @@ function makeCarModel(spec,lowDetail=false) {
     });
     return root;
 }
+/*
+ * REDLINE Factory Showroom Thumbnails
+ * Render a single photo-like orthographic view of each ACTUAL race model:
+ * same mesh factory, detailing, rims, aero parts, and catalog paint.
+ * One temporary renderer/context produces nine cached PNG data URLs, then
+ * releases its GPU resources. These are pure visual previews: no changes
+ * to physics, car ownership, game scene, or multiplayer connections.
+ */
+const factoryThumbnailImages=new Map();
+let thumbnailJob=null;
+let thumbnailUnavailable=false;
+function applyFactoryThumbnails(){
+    const stages=document.querySelectorAll(
+        ".dealer-showroom[data-car], #carSelector .car-card[data-car] .preview-stage"
+    );
+    for(const stage of stages){
+        const id=stage.dataset.car||stage.closest(".car-card")?.dataset.car;
+        const src=factoryThumbnailImages.get(id);
+        if(!src)continue; // Preserve original CSS silhouette if WebGL fails.
+        const existing=stage.querySelector("img.redline-real-car-thumbnail");
+        if(existing?.dataset.car===id&&existing.src===src)continue;
+        const img=document.createElement("img");
+        img.className="redline-real-car-thumbnail";
+        img.dataset.car=id;
+        img.alt=REDLINE_CAR_CATALOG[id].name+" · authentic factory car, viewed from the left side";
+        img.decoding="async";
+        img.draggable=false;
+        img.src=src;
+        stage.replaceChildren(img);
+        stage.classList.add("redline-rendered-preview");
+    }
+}
+function disposeFactoryThumbnailModel(model){
+    const geometries=new Set(),materials=new Set();
+    model.traverse(object=>{
+        if(!object.isMesh)return;
+        if(object.geometry)geometries.add(object.geometry);
+        const assigned=Array.isArray(object.material)?object.material:[object.material];
+        for(const m of assigned)if(m)materials.add(m);
+    });
+    for(const g of geometries)g.dispose();
+    for(const m of materials)m.dispose();
+}
+async function generateFactoryThumbnails(){
+    if(thumbnailUnavailable||factoryThumbnailImages.size===REDLINE_CAR_IDS.length){
+        applyFactoryThumbnails();
+        return;
+    }
+    if(thumbnailJob)return thumbnailJob;
+    thumbnailJob=(async()=>{
+        let previewRenderer=null;
+        try{
+            // Important for low-spec PCs: one 460x200 canvas is reused, not
+            // a renderer/WebGL context attached to each garage card.
+            const canvas=document.createElement("canvas");
+            previewRenderer=new THREE.WebGLRenderer({
+                canvas,alpha:true,antialias:true,preserveDrawingBuffer:true,
+                powerPreference:"low-power"
+            });
+            previewRenderer.setPixelRatio(1);
+            previewRenderer.setSize(460,200,false);
+            previewRenderer.outputColorSpace=THREE.SRGBColorSpace;
+            previewRenderer.toneMapping=THREE.ACESFilmicToneMapping;
+            previewRenderer.toneMappingExposure=1.25;
+            previewRenderer.setClearColor(0x000000,0);
+            const showroom=new THREE.Scene();
+            showroom.add(new THREE.HemisphereLight(0xe5f3ff,0x3b4352,2.45));
+            const keyLight=new THREE.DirectionalLight(0xffffff,2.6);
+            keyLight.position.set(-5,9,6);
+            showroom.add(keyLight);
+            const fillLight=new THREE.DirectionalLight(0xb4cfff,1.15);
+            fillLight.position.set(3,5,-5);
+            showroom.add(fillLight);
+            const sideCamera=new THREE.OrthographicCamera(-3.6,3.6,1.56,-1.56,.1,100);
+            for(const id of REDLINE_CAR_IDS){
+                if(raceActive)break; // No extra showroom GPU work during a race.
+                if(factoryThumbnailImages.has(id))continue;
+                const spec=REDLINE_CAR_CATALOG[id]?.spec;
+                if(!spec)continue;
+                let model=null;
+                try{
+                    // makeCarModel sets a game-global visual attachment list;
+                    // restore it so race animation/control state is untouched.
+                    const savedVisual=carVisual;
+                    try{model=makeCarModel(spec,false)}
+                    finally{carVisual=savedVisual}
+                    showroom.add(model);
+                    const bounds=new THREE.Box3().setFromObject(model);
+                    if(bounds.isEmpty())throw Error("Factory model has no geometry");
+                    const size=bounds.getSize(new THREE.Vector3());
+                    const center=bounds.getCenter(new THREE.Vector3());
+                    // Side view looks toward the left panels (-X), with a
+                    // very slight front bias (+Z), keeping all cards aligned.
+                    const halfWidth=Math.max(3.25,size.z*.69);
+                    const halfHeight=halfWidth*(200/460);
+                    sideCamera.left=-halfWidth;
+                    sideCamera.right=halfWidth;
+                    sideCamera.top=halfHeight;
+                    sideCamera.bottom=-halfHeight;
+                    sideCamera.position.set(center.x-12,center.y+2.0,center.z+1.0);
+                    sideCamera.lookAt(center);
+                    sideCamera.updateProjectionMatrix();
+                    previewRenderer.clear();
+                    previewRenderer.render(showroom,sideCamera);
+                    const png=canvas.toDataURL("image/png");
+                    if(!png.startsWith("data:image/png"))throw Error("PNG encoding unavailable");
+                    factoryThumbnailImages.set(id,png);
+                    applyFactoryThumbnails();
+                }catch(error){
+                    console.warn("REDLINE car thumbnail unavailable for "+id,error);
+                }finally{
+                    if(model){
+                        showroom.remove(model);
+                        disposeFactoryThumbnailModel(model);
+                    }
+                }
+                // Don't block the garage UI while creating nine real models.
+                await new Promise(resolve=>requestAnimationFrame(resolve));
+            }
+        }catch(error){
+            console.warn("REDLINE 3D thumbnail renderer unavailable; keeping silhouettes",error);
+            thumbnailUnavailable=true;
+        }finally{
+            if(previewRenderer){
+                previewRenderer.dispose();
+                previewRenderer.forceContextLoss();
+            }
+            thumbnailJob=null;
+            applyFactoryThumbnails();
+            window.dispatchEvent(new CustomEvent("redline:car-thumbnails-ready"));
+        }
+    })();
+    return thumbnailJob;
+}
+window.REDLINE_CAR_THUMBNAILS={
+    applyAll:applyFactoryThumbnails,
+    generate:generateFactoryThumbnails,
+    get renderedCount(){return factoryThumbnailImages.size}
+};
+// Render lazily the first time the user opens their garage; racing load time
+// and the existing GPU budget are unchanged until thumbnails are needed.
+for(const id of ["goToGarageBtn","openCarSelectBtn"]){
+    document.getElementById(id)?.addEventListener("click",()=>{
+        generateFactoryThumbnails().catch(console.warn);
+    });
+}
+window.addEventListener("redline:garage-car-changed",applyFactoryThumbnails);
+
 function createNameSprite(username) {
     const labelCanvas = document.createElement("canvas");
     labelCanvas.width =
