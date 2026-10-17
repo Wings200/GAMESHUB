@@ -2675,7 +2675,7 @@ select option:disabled {
 }
 .dealer-bayside .dealer-body{height:31px;clip-path:polygon(0 68%,15% 45%,31% 31%,43% 11%,72% 11%,87% 47%,100% 66%,100% 100%,0 100%)}
 .dealer-bayside .dealer-spoiler{opacity:1;right:8%;bottom:43px;width:26%;height:8px}
-.dealer-bayside .dealer-silhouette:before{content:"";position:absolute;left:13%;bottom:39px;width:13%;height:6px;background:#76c7fa}
+.dealer-bayside:before{content:"";position:absolute;left:13%;bottom:39px;width:13%;height:6px;background:#76c7fa}
 .dealer-aurora{transform:translateX(-50%) translateY(-4px)}
 .dealer-aurora .dealer-body{height:44px;clip-path:polygon(0 44%,14% 28%,30% 27%,34% 8%,73% 8%,87% 37%,100% 51%,100% 100%,0 100%)}
 .dealer-aurora .dealer-glass{height:25px;width:43%;left:30%;bottom:51px;clip-path:polygon(0 100%,10% 0,88% 0,100% 100%)}
