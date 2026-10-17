@@ -178,3 +178,29 @@ The latest full-resolution screenshot circled detached gray guardrail blocks at 
 - Sixteen focused headless checks passed: road eligibility, real perpendicular road intersections, exclusive crossing signals, red-light stopping, green-light acceleration, follower spacing, instanced vehicle visuals, visible stoplights, sustained movement, valid world positions, distinct directional lanes, pause/resume toggle, network isolation, Arctic isolation, and preservation of the original street exclusion rules.
 - Browser rendering and live multiplayer regression must still be verified after deployment.
 
+
+
+## Dynamic Neon weather release (2026-10-16)
+
+### Delivery order confirmed
+1. Dynamic Neon weather (this release)
+2. Custom car garage and cosmetics
+3. Multiplayer quality-of-life and race improvements
+4. Arctic Relay visual/layout rework
+
+The remaining three stages are the agreed roadmap, not implemented by this weather commit.
+
+### Implementation
+- New separate game module: games/redline/neon-weather.js.
+- The weather cycle is based on UTC wall clock, so automatic conditions follow the same broad stages in different clients with no additional multiplayer packets. Y selects a local override: Auto, Clear, Drizzle, Storm. Existing W acceleration and T traffic toggle are preserved.
+- Single camera-following draw call for rain streaks: 460 pooled line segments, dynamically limited by intensity.
+- Wet visual treatment updates the existing Neon asphalt PBR material's roughness/metalness and adds 142 small instanced translucent reflection decals anchored to the racing spline. No physically ray-traced reflections are claimed.
+- Car tire spray uses 62 reusable pooled particles; emits only when the local car drives fast enough on wet roads, and excludes airborne cars.
+- Storm effect adds visibility fog and occasional local lightning flashes. Clear weather gradually dries the road; exiting Neon restores fog, light exposure and original asphalt material values.
+- The compact HUD shows active weather and the Y key hint; it is hidden on Arctic.
+- Weather is visual-only: no changes to grip, road-surface physics, checkpoints, leaderboards, car upgrades, networking, or authoritative multiplayer state.
+
+### Verification
+- A headless mock Three.js weather simulation passed 16 targeted checks, covering deterministic weather transitions, finite bounded effects pools, wet road appearance, drizzle/storm levels, fog, valid particle buffers, mode cycling, drying, following the camera, and full map-switch cleanup.
+- The existing game and art modules continued to parse correctly after weather integration.
+- Live browser appearance and performance, especially Chromebook GPU performance and synchronized client views, still require a deployed playtest.
