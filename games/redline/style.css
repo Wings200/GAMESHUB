@@ -2376,3 +2376,47 @@ select option:disabled {
 #carSelectScreen #redlineGarageV1>.rg-panel:nth-child(2){display:none!important}
 #carSelectScreen #redlineGarageV1 .rg-wallet,
 #carSelectScreen #redlineGarageV1 .rg-wallet-hint{display:none!important}
+
+/* Actual before/after physics numbers for every upgrade level. */
+.upgrade-preview{
+  margin-top:12px;padding:11px 11px 8px;
+  border-radius:9px;
+  border:1px solid rgba(115,190,242,.20);
+  background:rgba(5,16,30,.68);
+}
+.upgrade-compare-heading{
+  display:flex;justify-content:space-between;gap:12px;
+  padding-bottom:9px;border-bottom:1px solid rgba(132,160,194,.16);
+  font-size:9px;font-weight:900;letter-spacing:.045em;
+  color:#a8b8cb;
+}
+.upgrade-compare-heading span:last-child{color:#9cd7ff;text-align:right}
+.upgrade-metric-row{margin-top:12px}
+.upgrade-metric-title{
+  color:#dce8f8;font-size:11px;font-weight:850;margin-bottom:5px;
+}
+.upgrade-metric-values{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-variant-numeric:tabular-nums;
+}
+.upgrade-metric-values strong{font-size:13px;font-weight:900;color:#dbe9f9}
+.upgrade-metric-values .upgrade-metric-target{color:#a0ffd0}
+.upgrade-metric-arrow{color:#738aa6;font-size:11px}
+.upgrade-metric-gain{margin-left:auto;color:#a1ffd0;font-size:13px}
+.upgrade-progress-track{
+  height:8px;margin-top:7px;border-radius:8px;
+  background:rgba(120,147,174,.17);position:relative;overflow:hidden;
+}
+.upgrade-progress-track>div{
+  position:absolute;left:0;top:0;height:100%;transition:width .17s ease;
+}
+.upgrade-progress-target{
+  background:linear-gradient(90deg,rgba(38,131,214,.68),rgba(101,196,255,.78));
+}
+.upgrade-progress-installed{background:#46d69c;opacity:.88}
+.upgrade-preview-notice{
+  margin-top:9px;color:rgba(195,216,239,.62);
+  font-size:9px;line-height:1.5;
+}
+.upgrade-await{color:#b6c4d5;font-size:11px;margin:7px 0 0}
+.upgrade-tier-button:focus-visible{outline:2px solid #82d8ff;outline-offset:2px}
