@@ -1424,24 +1424,10 @@
     );
 
 
-  if (
-    footer
-  ) {
-
-    screen.insertBefore(
-      garage,
-      footer
-    );
-
-  }
-
-  else {
-
-    screen.appendChild(
-      garage
-    );
-
-  }
+  const cosmeticsMount=document.getElementById("garageCosmeticsMount");
+  if(cosmeticsMount)cosmeticsMount.appendChild(garage);
+  else if(footer)screen.insertBefore(garage,footer);
+  else screen.appendChild(garage);
 
 
   /* =========================================================
@@ -2237,7 +2223,8 @@
         "car_select"
       ) {
         refreshCashBalance();
-        ensureLegacySelection();
+        // Preserve the last account-backed car selection; no forced GT.
+        render();
 
       }
 
@@ -2351,9 +2338,6 @@
   render();
 
 
-  setTimeout(
-    ensureLegacySelection,
-    0
-  );
+  // Account-backed dealership restores the correct selected vehicle.
 
 })();
