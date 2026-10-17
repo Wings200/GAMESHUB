@@ -51,7 +51,8 @@ export function createRuggedMountainGeometry(THREE,radius,height,seed=1,dark=fal
  }
  for(let j=0;j<rings;j++)for(let k=0;k<around;k++){
    const a=j*(around+1)+k,b=a+around+1;
-   indices.push(a,a+1,b,b,a+1,b+1);
+   // Outer-facing normals keep the shaded rock silhouette lit correctly.
+   indices.push(a,b,a+1,b,b+1,a+1);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
@@ -256,6 +257,12 @@ export function buildArcticV3Art({
          frame.normal,side*(sidewalkOuter+1.7));
        if(prev){
          const delta=at.clone().sub(prev);
+         // Keep bridge rails out of the other approach whenever
+         // nearby pieces of this very long spline double back.
+         if(roadDistance(at.x,at.z)<roadHalf+3.5 ||
+            roadDistance(prev.x,prev.z)<roadHalf+3.5){
+           prev=at;continue;
+         }
          const length=Math.hypot(delta.x,delta.z);
          const middle=at.clone().add(prev).multiplyScalar(.5);
          const rail=new THREE.Mesh(
