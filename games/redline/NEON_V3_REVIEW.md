@@ -158,3 +158,23 @@ The latest full-resolution screenshot circled detached gray guardrail blocks at 
 - Build curb and gutter as connected sample-to-sample surface strips, with a guarded wraparound at the circuit seam. Move studs outward behind curb and prevent raised bridge cabinets, hydrants and studs.
 
 **Validation:** All three game-related modules parsed as valid JS. A mocked 640-sample rounded track produced 2 new road-edge meshes, 2 continuous guardrail meshes, and finite coordinates across all support meshes. The same test found zero rail collision segments intruding into the lane under the sampled 7.6m clearance check. Static/browser screenshot confirmation and frame-rate measurements still require playtesting after deployment. Multiplayer source was not touched.
+
+
+## Neon ambient traffic — initial release (2026-10-16)
+
+**Files:** game.js, neon-art.js, newly added neon-traffic.js.
+
+**Design and boundaries:**
+- The existing Neon city backdrop exposes only secondary streets that actually passed its building, canal and racing-road exclusion rules, rather than inventing a second traffic route that could cross the track.
+- A separate client-only traffic controller drives up to 26 visible civilian vehicles. Vehicles use seven instanced geometry components (body, glass, roof, wheels, headlights, taillights and selected taxi signs) rather than constructing scores of separate meshes per car.
+- Autos travel along two-way neighborhood lanes, accelerate/brake, stop at timed red intersections, and keep distance from same-direction traffic. They fade into/out of decorative road endpoints; no traffic crosses the competitive track.
+- Up to 20 geometric side-street intersections get visually synchronized red/green light posts, rendered in just three additional instanced batches.
+- Press T during racing to toggle local ambient traffic visibility and simulation. This does not change room settings or other players' display.
+- Civilian traffic is strictly cosmetic. No collisions with racers, race timer changes, checkpoint changes, or multiplayer/network packets. Because vehicles are local-only and non-colliding, they need not synchronize between connected players.
+- Rebuilding Neon instantiates a fresh traffic controller; world teardown disposes its geometry. Arctic has no civilian traffic.
+
+**Validation (no live browser or Chromebook playtest yet):**
+- The actual Neon street generator returned 67 eligible secondary street stretches in a simulated map build; 26 traffic cars were spawned and updated for 40 simulated seconds without invalid positions or speeds.
+- Sixteen focused headless checks passed: road eligibility, real perpendicular road intersections, exclusive crossing signals, red-light stopping, green-light acceleration, follower spacing, instanced vehicle visuals, visible stoplights, sustained movement, valid world positions, distinct directional lanes, pause/resume toggle, network isolation, Arctic isolation, and preservation of the original street exclusion rules.
+- Browser rendering and live multiplayer regression must still be verified after deployment.
+
