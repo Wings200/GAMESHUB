@@ -2,12 +2,14 @@
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
-import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus } from "./audio-v15-local-sample-bank.js?v=local-bank-v15-2";
+import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
 // V14 physically simulated sound was rejected in listening tests and is
 // deliberately disabled until proper recorded engine banks exist.
 const ENGINE_EXPERIMENT=new URLSearchParams(window.location.search).get("engine");
 const USE_V13_CLEAN_PREVIEW=ENGINE_EXPERIMENT==="v13";
 const USE_V15_RECORDED_PREVIEW=ENGINE_EXPERIMENT==="v15";
+const USE_V15_RECORDED_ENGINE=ENGINE_EXPERIMENT===null||USE_V15_RECORDED_PREVIEW;
+if(USE_V15_RECORDED_ENGINE)preloadV15PublishedEngine().catch(console.warn);
 const V14_RETIRED=ENGINE_EXPERIMENT==="v14";
 // Retired V12 outdoor field audio. ?engine=v12 now uses safe V11.2
 // rather than starting a recording with crowd voices.
@@ -667,7 +669,7 @@ async function initAudio() {
     console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
   try {
-    soundscape=USE_V15_RECORDED_PREVIEW
+    soundscape=USE_V15_RECORDED_ENGINE
       ?createV15RecordedEnginePreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
           fallbackFactory:createRedlineSoundscape
@@ -981,7 +983,8 @@ function swapEngineBand(
 function playStartup() {
   // V15 substitutes the actual i6 startup from the user's locally selected
   // licensed ZIP. The sample never leaves the user's browser.
-  if(USE_V15_RECORDED_PREVIEW &&
+  if(USE_V15_RECORDED_ENGINE &&
+     (!telemetry||telemetry.car==="gt") &&
      soundscape?.playStartupSample?.(startupGain))return;
 
   if (
