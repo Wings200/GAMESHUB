@@ -1064,7 +1064,7 @@ async function startRaceAudio() {
     if(!raceEnabled||session!==audioSession)return;
     if(soundscape){
       soundscape.start();
-      engineTargetGain=.48;
+      engineTargetGain=.60;
       applyEngineVolume();
     }else{
       startEngineSource("low",900,.42);
@@ -1351,15 +1351,10 @@ function audioLoop(
     getGameRPM();
 
 
+  // V11.1 mixer applies its own brief shift envelope. Applying the
+  // legacy 900-RPM drop on top made the engine wobble unnaturally.
   const targetRPM =
-    Math.max(
-
-      900,
-
-      rawRPM -
-      shiftDrop
-
-    );
+    Math.max(900,rawRPM-(soundscape?.active?0:shiftDrop));
 
 
   const smoothing =
