@@ -1,6 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
+import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
@@ -113,7 +114,7 @@ const TRACKS = {
     neon: {
         id: "neon",
         name: "NEON DISTRICT",
-        description: "Neon District V7 — detailed night-city storefronts, illuminated streets, twin canal bridges, traffic, waterfront warehouses and downtown tunnels.",
+        description: "Neon District V8 — varied skyscrapers, hotels and apartments, lit storefronts, traffic, bridges and waterfront highways.",
         sampleCount: 640,
         laps: 1,
         background: 0x050a13,
@@ -2649,10 +2650,22 @@ function buildCity() {
     }
 
 
-    NEON_ART.buildRoadsideArchitecture({
+    const nearArchitecture=NEON_ART.buildRoadsideArchitecture({
         THREE,
         worldGroup,
         buildings: buildingSpecs
+    });
+
+    // V8 building massing uses ONLY the pre-cleared footprints returned
+    // from the city / roadside builders. Original colliders remain intact.
+    // Five architecture styles create real rooftop setbacks and towers.
+    NEON_V8.buildNeonV8Architecture({
+        THREE,worldGroup,
+        innerLots:cityLayout.innerLots,
+        horizonLots:cityLayout.horizonLots,
+        roadsideLots:buildingSpecs,
+        innerMaterials:cityLayout.architectureMaterials,
+        roadsideMaterials:nearArchitecture.materials
     });
 
     // Art-only V7 layers sit on existing raceway-cleared city footprints
