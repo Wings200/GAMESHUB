@@ -1,262 +1,251 @@
 /*
- * REDLINE V11 — sampled multi-layer vehicle soundscape.
+ * REDLINE V11.1 — recorded-engine-first racing audio.
  *
- * Persistent, crossfaded low/high engine WAV loops, distinct factory-car
- * exhaust response, tire/road noise, boost whoosh, turbo spool, wind, gear
- * shift burbles and short collision transients. No network/physics changes.
- * All generators run on the SAME AudioContext and existing saved volumes.
- * WebAudio sounds start only after the player clicks START (audio unlock).
+ * Corrects V11's harshness: five always-on white-noise layers plus extreme
+ * >3x WAV playback speeds made the engine sound like sandpaper. This mix
+ * uses two gently filtered engine samples with constant-power crossfade;
+ * all secondary engine/tyre/boost sounds are quiet, pure oscillators.
+ * Impacts and shifts are brief pitched envelopes, NEVER static noise.
+ *
+ * Visuals, physics, Garage, accounts, networking and saved audio settings
+ * are external and unchanged.
  */
-const limit=(x,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(x)?x:0));
-const mix=(a,b,t)=>a+(b-a)*t;
-const CAR_SOUND={
-  gt:{pitch:1,rumble:.52,edge:.44},
-  vortex:{pitch:1.15,rumble:.28,edge:.79},
-  apex:{pitch:1.07,rumble:.38,edge:.60},
-  bayside:{pitch:1.16,rumble:.24,edge:.69},
-  aurora:{pitch:.93,rumble:.62,edge:.31},
-  ironclad:{pitch:.80,rumble:1,edge:.27},
-  cirrus:{pitch:1.03,rumble:.55,edge:.54},
-  obsidian:{pitch:1.24,rumble:.25,edge:.96},
-  phantom:{pitch:1.36,rumble:.20,edge:1.00}
-};
-const set=(param,value,context,smooth=.065)=>{
- const time=context.currentTime;
- const finite=Number.isFinite(value)?value:0;
- param.cancelScheduledValues(time);
- param.setTargetAtTime(finite,time,smooth);
-};
-function buildNoise(context){
- const length=Math.max(1,Math.round(context.sampleRate*1.23));
- const buffer=context.createBuffer(1,length,context.sampleRate);
- const samples=buffer.getChannelData(0);
- let seed=17787;
- for(let i=0;i<length;i++){
-   seed=(Math.imul(seed,1664525)+1013904223)>>>0;
-   samples[i]=(seed/2147483648-1)*.84;
- }
- return buffer;
+const clamp=(v,min=0,max=1)=>Math.max(min,Math.min(max,Number.isFinite(v)?v:0));
+const smoothstep=(a,b,v)=>{const t=clamp((v-a)/(b-a));return t*t*(3-2*t)};
+const PROFILES=Object.freeze({
+  gt:      {pitch:1.000,bass:.66,bright:.40,cylinders:6},
+  vortex:  {pitch:1.060,bass:.40,bright:.70,cylinders:8},
+  apex:    {pitch:1.025,bass:.50,bright:.58,cylinders:4},
+  bayside: {pitch:1.080,bass:.37,bright:.70,cylinders:4},
+  aurora:  {pitch:.960,bass:.76,bright:.30,cylinders:4},
+  ironclad:{pitch:.905,bass:1.00,bright:.28,cylinders:8},
+  cirrus:  {pitch:1.015,bass:.69,bright:.53,cylinders:8},
+  obsidian:{pitch:1.090,bass:.44,bright:.80,cylinders:8},
+  phantom: {pitch:1.110,bass:.35,bright:.87,cylinders:10}
+});
+function target(param,value,ctx,seconds=.070){
+  if(!param)return;
+  const time=ctx.currentTime;
+  param.cancelScheduledValues(time);
+  param.setTargetAtTime(Number.isFinite(value)?value:0,time,seconds);
 }
-function gain(context,destination,initial=0){
- const node=context.createGain();
- node.gain.value=initial;node.connect(destination);return node;
+function makeGain(ctx,destination,initial=0){
+  const node=ctx.createGain();node.gain.value=initial;
+  node.connect(destination);return node;
 }
-function filter(context,type,frequency,q,destination){
- const node=context.createBiquadFilter();
- node.type=type;node.frequency.value=frequency;node.Q.value=q;
- node.connect(destination);return node;
+function makeFilter(ctx,type,frequency,destination){
+  const node=ctx.createBiquadFilter();
+  node.type=type;node.frequency.value=frequency;
+  node.Q.value=.55;node.connect(destination);return node;
 }
-function makeOsc(context,type,freq,target){
- const o=context.createOscillator();
- o.type=type;o.frequency.value=freq;o.connect(target);o.start();
- return o;
+function playOsc(ctx,type,freq,destination){
+  const node=ctx.createOscillator();
+  node.type=type;node.frequency.value=freq;
+  node.connect(destination);node.start();return node;
 }
-function makeNoise(context,buffer,target){
- const src=context.createBufferSource();
- src.buffer=buffer;src.loop=true;src.connect(target);src.start();
- return src;
+function playSample(ctx,buffer,destination){
+  const node=ctx.createBufferSource();
+  node.buffer=buffer;node.loop=true;
+  node.playbackRate.value=1;
+  node.connect(destination);node.start();return node;
 }
-function releaseNode(node){try{node.stop()}catch{}try{node.disconnect()}catch{}}
+function eventTone(ctx,bus,type,strength){
+  // Short musical engine/impact cues: no white-noise samples, no sizzle.
+  const amount=clamp(strength,.12,1.35);
+  const now=ctx.currentTime;
+  const config=type==="impact"
+    ?{wave:"sine",from:116,to:49,peak:.24,life:.27}
+    :type==="shift"
+    ?{wave:"triangle",from:190,to:85,peak:.043,life:.12}
+    :{wave:"sine",from:240,to:420,peak:.042,life:.21};
+  const gain=makeGain(ctx,bus,.00001);
+  const osc=ctx.createOscillator();
+  osc.type=config.wave;
+  osc.frequency.setValueAtTime(config.from,now);
+  osc.frequency.exponentialRampToValueAtTime(config.to,now+config.life);
+  osc.connect(gain);
+  gain.gain.setValueAtTime(.00001,now);
+  gain.gain.exponentialRampToValueAtTime(
+    Math.max(.00002,config.peak*amount),now+.012);
+  gain.gain.exponentialRampToValueAtTime(.00001,now+config.life);
+  osc.onended=()=>{try{osc.disconnect()}catch{}try{gain.disconnect()}catch{}};
+  osc.start(now);osc.stop(now+config.life+.02);
+}
+/** Shared AudioContext and existing engine/SFX buses from audio.js. */
+export function createRedlineSoundscape({
+  context,engineBus,sfxBus,buffers={}
+}={}){
+  if(!context||!engineBus||!sfxBus)
+    throw new Error("REDLINE audio requires one context and engine/SFX buses");
 
-/** Soundscape routes engine sources into engineBus and effects into sfxBus. */
-export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
- if(!context||!engineBus||!sfxBus)throw new Error("Soundscape needs the race audio context and buses");
- const noise=buildNoise(context);
- const state={active:false,profile:"gt",rpm:900,speed:0,throttle:0,
-   boost:false,gear:1,shiftDuck:0,prevThrottle:0,lastImpact:0,
-   lastShift:0,lastExhaust:0,lastBoost:false,engineSources:[],
-   elapsed:0};
- let stream=[],connections=[];
- let lowGain,highGain,rumbleGain,rumbleTone,harmonicGain,harmonicTone;
- let tyreGain,tyreFilter,tyreSquealGain,tyreSquealTone;
- let windGain,windFilter,turboGain,turboFilter,boostGain,boostFilter;
- const live=()=>state.active;
- const persistentGain=(destination,initial=0)=>{
-   const n=gain(context,destination,initial);connections.push(n);return n;
- };
- const persistentFilter=(type,frequency,q,destination)=>{
-   const n=filter(context,type,frequency,q,destination);
-   connections.push(n);return n;
- };
- function transient(type,intensity=1){
-   if(!live())return;
-   const now=context.currentTime,amount=limit(intensity,.1,1.5);
-   const peak=type==="impact"?.26*amount:type==="shift"?.094*amount:.13*amount;
-   const duration=type==="impact"?.29:type==="shift"?.14:.25;
-   const output=gain(context,sfxBus,0);
-   const eq=filter(context,type==="boost"?"bandpass":"lowpass",
-     type==="impact"?300:type==="shift"?870:1450,
-     type==="boost"?.63:.72,output);
-   const src=context.createBufferSource();
-   src.buffer=noise;src.loop=false;src.connect(eq);
-   output.gain.setValueAtTime(.0001,now);
-   output.gain.exponentialRampToValueAtTime(Math.max(.0002,peak),now+.013);
-   output.gain.exponentialRampToValueAtTime(.0001,now+duration);
-   src.start(now);src.stop(now+duration+.03);
-   if(type==="impact"){
-     const thud=gain(context,sfxBus,0);
-     const osc=context.createOscillator();
-     osc.type="sine";
-     osc.frequency.setValueAtTime(97,now);
-     osc.frequency.exponentialRampToValueAtTime(41,now+.21);
-     osc.connect(thud);
-     thud.gain.setValueAtTime(.0001,now);
-     thud.gain.exponentialRampToValueAtTime(.20*amount,now+.009);
-     thud.gain.exponentialRampToValueAtTime(.0001,now+.22);
-     osc.start(now);osc.stop(now+.24);
-     osc.onended=()=>{try{osc.disconnect();thud.disconnect()}catch{}};
-   }
-   src.onended=()=>{try{src.disconnect();eq.disconnect();output.disconnect()}catch{}};
- }
- function begin(){
-   if(state.active)return;
-   state.active=true;
-   state.prevThrottle=0;state.shiftDuck=0;state.lastImpact=0;
-   state.lastBoost=false;state.gear=1;state.elapsed=0;
-   connections=[];
-   lowGain=persistentGain(engineBus);
-   highGain=persistentGain(engineBus);
-   rumbleGain=persistentGain(engineBus);
-   const rumbleEQ=persistentFilter("lowpass",215,.43,rumbleGain);
-   rumbleTone=makeOsc(context,"sawtooth",47,rumbleEQ);
-   harmonicGain=persistentGain(engineBus);
-   const harmonicEQ=persistentFilter("lowpass",820,.52,harmonicGain);
-   harmonicTone=makeOsc(context,"triangle",93,harmonicEQ);
-   stream.push(rumbleTone,harmonicTone);
-   if(buffers.low){
-     const low=makeNoise(context,buffers.low,lowGain);
-     state.engineSources.push(low);stream.push(low);
-   }
-   if(buffers.high){
-     const high=makeNoise(context,buffers.high,highGain);
-     state.engineSources.push(high);stream.push(high);
-   }
-   // Inexpensive procedural fallback exists if the WAV assets fail to load.
-   tyreGain=persistentGain(sfxBus);
-   tyreFilter=persistentFilter("bandpass",1450,.78,tyreGain);
-   stream.push(makeNoise(context,noise,tyreFilter));
-   tyreSquealGain=persistentGain(sfxBus);
-   tyreSquealTone=makeOsc(context,"sine",890,tyreSquealGain);
-   stream.push(tyreSquealTone);
-   windGain=persistentGain(sfxBus);
-   windFilter=persistentFilter("lowpass",950,.75,windGain);
-   stream.push(makeNoise(context,noise,windFilter));
-   turboGain=persistentGain(sfxBus);
-   turboFilter=persistentFilter("bandpass",2050,1.4,turboGain);
-   stream.push(makeNoise(context,noise,turboFilter));
-   boostGain=persistentGain(sfxBus);
-   boostFilter=persistentFilter("bandpass",620,.64,boostGain);
-   stream.push(makeNoise(context,noise,boostFilter));
-   return true;
- }
- function update(telemetry={},dt=.016){
-   if(!live())return;
-   const delta=limit(Number(dt)||0,.001,.08),t=telemetry||{};
-   state.elapsed+=delta;
-   const id=typeof t.car==="string"?t.car:"gt";
-   const profile=CAR_SOUND[id]||CAR_SOUND.gt;
-   state.profile=id in CAR_SOUND?id:"gt";
-   const rpm=limit(Number(t.rpm)||900,800,7800);
-   const throttle=t.throttle?1:0,brake=t.brake?1:0;
-   const speed=limit(Number(t.speed)||0,0,130);
-   const slip=limit(Math.abs(Number(t.slip)||0),0,38);
-   const grounded=!t.airborne;
-   const boost=!!t.nitro;
-   const gear=Math.round(limit(Number(t.gear)||1,1,6));
-   const tension=limit((rpm-900)/6500),speedRatio=limit(speed/50);
-   state.rpm=mix(state.rpm,rpm,1-Math.exp(-delta*11));
-   state.speed=mix(state.speed,speed,1-Math.exp(-delta*6));
-   state.throttle=mix(state.throttle,throttle,1-Math.exp(-delta*8));
-   const spread=limit((state.rpm-1300)/2100);
-   const wavLow=Math.cos(spread*Math.PI*.5),wavHigh=Math.sin(spread*Math.PI*.5);
-   const lift=(1-state.throttle)*.32+.68;
-   const input=lift*(.75+.25*tension)*(1-state.shiftDuck*.55);
-   const basePitch=profile.pitch;
-   // Both recorded samples play continuously. No 50ms dead-air switch.
-   set(lowGain.gain,buffers.low ? .43*wavLow*input : 0,context);
-   set(highGain.gain,buffers.high ? .45*wavHigh*input : 0,context);
-   let engineIndex=0;
-   if(buffers.low){
-     set(state.engineSources[engineIndex++].playbackRate,
-       limit(state.rpm/1000*basePitch,.75,2.65),context,.045);
-   }
-   if(buffers.high){
-     set(state.engineSources[engineIndex++].playbackRate,
-       limit(state.rpm/2000*basePitch,.80,3.65),context,.045);
-   }
-   // Car sound identity: heavy Ironclad bass, high Phantom/Cirrus whine.
-   set(rumbleTone.frequency,limit(state.rpm*(.0085+profile.edge*.0030),36,132),context,.05);
-   set(rumbleGain.gain,((buffers.low||buffers.high) ? .020 : .055)+
-     .030*profile.rumble*(.45+.55*state.throttle),context);
-   set(harmonicTone.frequency,limit(state.rpm*(.019+profile.edge*.008),70,230),context);
-   set(harmonicGain.gain,.010+.025*profile.edge*tension,context);
-   // Continuous physics-driven layers with short smoothing (no pops).
-   const drift=grounded?limit((slip-2.8)/11+(t.handbrake&&speed>7?.3:0)):0;
-   const ice=t.surface==="ICE"||t.surface==="SNOW";
-   const squeal=ice?.18:1;
-   set(tyreGain.gain,(.003+.12*drift*squeal)*(.5+.5*speedRatio),context,.085);
-   set(tyreFilter.frequency,ice?1250:1670,context);
-   set(tyreSquealTone.frequency,930+155*drift+speed*5,context,.052);
-   set(tyreSquealGain.gain,.035*Math.pow(drift,1.5)*squeal,context,.075);
-   const wind=limit((state.speed-8)/60);
-   set(windGain.gain,.019*wind*wind+(t.airborne?.028*wind:0),context,.11);
-   set(windFilter.frequency,720+speed*19,context,.13);
-   const turbo=limit((tension-.24)/.62)*state.throttle;
-   set(turboGain.gain,.005+.042*turbo*profile.edge,context,.09);
-   set(turboFilter.frequency,1350+2300*turbo,context,.085);
-   set(boostGain.gain,boost?.12:0,context,.065);
-   set(boostFilter.frequency,boost?1120:550,context,.09);
-   if(gear!==state.gear&&state.elapsed>1.0){
-     transient("shift",.56+.3*tension);
-     state.shiftDuck=1;
-   }
-   state.gear=gear;state.shiftDuck=Math.max(0,state.shiftDuck-delta*7.2);
-   // Short exhaust burbles on lifting off after accelerating.
-   if(state.prevThrottle>.65&&throttle===0&&state.rpm>2450&&
-      state.elapsed-state.lastExhaust>.22){
-     transient("shift",.45+.35*profile.rumble);
-     state.lastExhaust=state.elapsed;
-   }
-   state.prevThrottle=throttle;
-   if(boost&&!state.lastBoost)transient("boost",.58);
-   state.lastBoost=boost;
-   const impact=limit(Number(t.impact)||0);
-   if(impact>.36&&state.lastImpact<=.15&&state.elapsed-state.lastShift>.27){
-     transient("impact",limit((speed+10)/45,.35,1));
-     state.lastShift=state.elapsed;
-   }
-   state.lastImpact=impact;
- }
- function stop(){
-   if(!state.active)return;
-   state.active=false;
-   const at=context.currentTime;
-   // Release quietly so a menu transition doesn't click.
-   for(const g of [lowGain,highGain,rumbleGain,harmonicGain,tyreGain,
-      tyreSquealGain,windGain,turboGain,boostGain]){
-     if(g){g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(0,at,.025);}
-   }
-   const old=stream.slice();
-   const staleConnections=connections.slice();
-   stream=[];connections=[];state.engineSources=[];
-   // Web Audio clock cleanup: no lingering lowpass/gain branches each time
-   // the player goes back to the Garage and starts another race.
-   let awaiting=old.length;
-   for(const source of old){
-     source.onended=()=>{
-       try{source.disconnect()}catch{}
-       if(--awaiting===0)for(const n of staleConnections)try{n.disconnect()}catch{}
-     };
-     try{source.stop(at+.12)}catch{source.onended?.()}
-   }
-   if(!old.length)for(const n of staleConnections)try{n.disconnect()}catch{};
- }
- return {
-   get active(){return state.active},
-   start:begin,update,stop,
-   get debug(){return {
-     active:state.active,profile:state.profile,rpm:state.rpm,
-     speed:state.speed,engineSamples:state.engineSources.length
-   }}
- };
+  let active=false;
+  let streams=[],connections=[],samples=[];
+  let lowGain,highGain,subGain,subTone,harmonicGain,harmonicTone;
+  let tireGain,tireTone,turboGain,turboTone,boostGain,boostTone;
+  let elapsed=0,prevGear=1,prevThrottle=0,prevBoost=false,prevImpact=0;
+  let lastImpactTime=-100,lastLiftTime=-100,shiftDip=0;
+  let smoothedRPM=900,smoothedSpeed=0,smoothedThrottle=0;
+  let model="gt";
+  let crossfade=.0;
+  let generation=0;
+
+  const attach=(node)=>{connections.push(node);return node;};
+  function begin(){
+    if(active)return;
+    active=true;generation++;
+    elapsed=0;prevGear=1;prevThrottle=0;prevBoost=false;
+    prevImpact=0;lastImpactTime=-100;lastLiftTime=-100;shiftDip=0;
+    smoothedRPM=900;smoothedSpeed=0;smoothedThrottle=0;
+    streams=[];connections=[];samples=[];
+    lowGain=attach(makeGain(context,engineBus));
+    highGain=attach(makeGain(context,engineBus));
+    const lowFilter=attach(makeFilter(context,"lowpass",2100,lowGain));
+    const highFilter=attach(makeFilter(context,"lowpass",2750,highGain));
+    if(buffers.low){
+      const low=playSample(context,buffers.low,lowFilter);
+      streams.push(low);samples.push({node:low,band:"low"});
+    }
+    if(buffers.high){
+      const high=playSample(context,buffers.high,highFilter);
+      streams.push(high);samples.push({node:high,band:"high"});
+    }
+    // Rounded, almost inaudible cylinders/low-end weight under recordings.
+    // Missing WAVs raise only these *tonal* fallback levels.
+    subGain=attach(makeGain(context,engineBus));
+    const subFilter=attach(makeFilter(context,"lowpass",250,subGain));
+    subTone=playOsc(context,"sine",54,subFilter);streams.push(subTone);
+    harmonicGain=attach(makeGain(context,engineBus));
+    const harmonicFilter=attach(makeFilter(context,"lowpass",570,harmonicGain));
+    harmonicTone=playOsc(context,"triangle",106,harmonicFilter);
+    streams.push(harmonicTone);
+
+    // SFX do not produce any noise at idle. Tire squeal requires a real
+    // slide; boost/turbo whine requires input and revs.
+    tireGain=attach(makeGain(context,sfxBus));
+    tireTone=playOsc(context,"sine",670,tireGain);streams.push(tireTone);
+    turboGain=attach(makeGain(context,sfxBus));
+    turboTone=playOsc(context,"sine",440,turboGain);streams.push(turboTone);
+    boostGain=attach(makeGain(context,sfxBus));
+    boostTone=playOsc(context,"sine",260,boostGain);streams.push(boostTone);
+    return true;
+  }
+
+  function update(telemetry={},dt=.016){
+    if(!active)return;
+    const t=telemetry||{};
+    const delta=clamp(Number(dt)||.016,.001,.075);
+    elapsed+=delta;
+    const specId=typeof t.car==="string"?t.car:"gt";
+    model=Object.hasOwn(PROFILES,specId)?specId:"gt";
+    const profile=PROFILES[model];
+    const rawRPM=clamp(Number(t.rpm)||900,800,7600);
+    const rpmValue=clamp((rawRPM-900)/6300);
+    const speed=clamp(Number(t.speed)||0,0,125);
+    const throttle=t.throttle?1:0;
+    const boost=!!t.nitro;
+    const gear=Math.round(clamp(Number(t.gear)||1,1,6));
+    const slip=Math.abs(Number(t.slip)||0);
+    const grounded=!t.airborne;
+    smoothedRPM+=(rawRPM-smoothedRPM)*(1-Math.exp(-delta*8));
+    smoothedSpeed+=(speed-smoothedSpeed)*(1-Math.exp(-delta*7));
+    smoothedThrottle+=(throttle-smoothedThrottle)*(1-Math.exp(-delta*8));
+    const intensity=.73+.27*smoothedThrottle;
+    const safeFactor=1-shiftDip*.32;
+
+    // Recorded 1000/2000 RPM loops are never sped up beyond 1.72x;
+    // V11 drove some cars over 3.5x, generating brittle high frequencies.
+    crossfade=smoothstep(1200,3050,smoothedRPM);
+    const a=Math.cos(crossfade*Math.PI/2);
+    const b=Math.sin(crossfade*Math.PI/2);
+    const remaining=1+(t.brake?-.07:0);
+    target(lowGain.gain,buffers.low?.62*a*intensity*safeFactor*remaining:0,context,.082);
+    target(highGain.gain,buffers.high?.66*b*intensity*safeFactor*remaining:0,context,.082);
+    const lowPitch=clamp((.91+rpmValue*.44)*profile.pitch,.82,1.49);
+    const highPitch=clamp((.92+rpmValue*.59)*profile.pitch,.82,1.72);
+    for(const {node,band} of samples)
+      target(node.playbackRate,band==="low"?lowPitch:highPitch,context,.11);
+
+    // Quieter engine support: a low sine fundamental and lightly rounded
+    // triangle octave (no abrasive sawtooth, broadband white noise).
+    const firing=profile.cylinders/2;
+    const fundamental=clamp((smoothedRPM/60)*firing/2,32,260);
+    target(subTone.frequency,fundamental,context,.10);
+    target(harmonicTone.frequency,fundamental*1.90,context,.10);
+    const missingBoth=!buffers.low&&!buffers.high;
+    const tonalScale=missingBoth?2.5:1;
+    target(subGain.gain,(missingBoth?.045:.009)*profile.bass*
+      (.62+.38*smoothedThrottle)*tonalScale,context,.095);
+    target(harmonicGain.gain,(missingBoth?.020:.003)*
+      (.6+.4*profile.bright)*tonalScale,context,.095);
+
+    const drift=grounded&&speed>8
+      ?clamp((slip-4.5)/13+(t.handbrake?.25:0)):0;
+    const icy=t.surface==="ICE"||t.surface==="SNOW";
+    target(tireGain.gain,.015*drift*(icy?.30:1),context,.10);
+    target(tireTone.frequency,600+200*drift+speed*2.0,context,.10);
+
+    const turbo=smoothstep(2500,5200,smoothedRPM)*smoothedThrottle;
+    target(turboGain.gain,.009*turbo*profile.bright,context,.12);
+    target(turboTone.frequency,410+510*turbo,context,.12);
+
+    target(boostGain.gain,boost?.024:0,context,.075);
+    target(boostTone.frequency,boost?370:260,context,.09);
+
+    if(gear!==prevGear&&elapsed>.9){
+      shiftDip=1;
+      eventTone(context,sfxBus,"shift",.48);
+    }
+    prevGear=gear;
+    shiftDip=Math.max(0,shiftDip-delta*6);
+    if(prevThrottle===1&&throttle===0&&smoothedRPM>2600&&
+       elapsed-lastLiftTime>.3){
+      eventTone(context,sfxBus,"shift",.38);
+      lastLiftTime=elapsed;
+    }
+    prevThrottle=throttle;
+    if(boost&&!prevBoost)eventTone(context,sfxBus,"boost",.47);
+    prevBoost=boost;
+    const impact=clamp(Number(t.impact)||0);
+    if(impact>.50&&prevImpact<=.20&&elapsed-lastImpactTime>.28){
+      eventTone(context,sfxBus,"impact",clamp(.33+speed/65,.35,1));
+      lastImpactTime=elapsed;
+    }
+    prevImpact=impact;
+  }
+
+  function stop(){
+    if(!active)return;
+    active=false;
+    const now=context.currentTime;
+    // Fade through the WebAudio clock; release all sources and connections
+    // as soon as their scheduled stop fires.
+    for(const gain of [lowGain,highGain,subGain,harmonicGain,tireGain,
+      turboGain,boostGain]){
+      if(gain)target(gain.gain,0,context,.018);
+    }
+    const ending=streams.slice(),branches=connections.slice();
+    streams=[];connections=[];samples=[];
+    let outstanding=ending.length;
+    for(const source of ending){
+      source.onended=()=>{
+        try{source.disconnect()}catch{}
+        if(--outstanding===0)
+          for(const branch of branches)try{branch.disconnect()}catch{}
+      };
+      try{source.stop(now+.105)}catch{
+        if(source.onended)source.onended();
+      }
+    }
+    if(!ending.length)for(const branch of branches)
+      try{branch.disconnect()}catch{}
+  }
+  return {
+    start:begin,update,stop,
+    get active(){return active},
+    get debug(){return {
+      active,profile:model,rpm:smoothedRPM,speed:smoothedSpeed,
+      engineSamples:samples.length,noiseLayers:0,
+      highPitchLimit:1.72
+    }}
+  };
 }
