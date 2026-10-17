@@ -230,6 +230,7 @@ let engineTargetGain =
 
 // Actual driving telemetry is supplied by game.js; the HUD is fallback.
 let telemetry=null,telemetryUpdatedAt=0,soundscape=null,audioSession=0;
+let audioStartPending=false;
 
 
 /* =========================================================
@@ -995,10 +996,14 @@ function playStartup() {
 ========================================================= */
 
 async function startRaceAudio() {
-  if(raceEnabled)return;
+  // Double-clicking START must not create two AudioContexts or overlap
+  // two asynchronous engine-sample decodes before ready is set.
+  if(raceEnabled||audioStartPending)return;
+  audioStartPending=true;
   const session=++audioSession;
-  const ok =
-    await initAudio();
+  let ok=false;
+  try {ok=await initAudio();}
+  finally {audioStartPending=false;}
 
 
   if (
