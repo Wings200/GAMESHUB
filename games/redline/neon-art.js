@@ -325,7 +325,6 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
 
   const cityBlocks=facadeTypes.map(()=>[]);
   const innerLots=[];
-  const rooftop=[];
   const podiums = [];
   for (let gx = -440; gx <= 440; gx += 34) {
     for (let gz = -350; gz <= 350; gz += 34) {
@@ -356,9 +355,6 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
       if (registerBuilding) registerBuilding(
         new THREE.Vector3(x, 0, z), w, d, 0, height
       );
-      const top = height + 2 + noise01(gx - gz) * 5;
-      rooftop.push({x: x + w * .18, y: top * .5 + height * .5,
-        z: z - d * .15, w: w * .42, h: top - height, d: d * .35});
       if (roadD > 34 && roadD < 80 && noise01(x * .1 + z) > .38) {
         podiums.push({x, y: 2.0, z, w: w + 2, h: 4, d: d + 2});
       }
@@ -439,7 +435,6 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
   const capMat = new THREE.MeshStandardMaterial({
     color: 0x171a22, roughness: .90, metalness: .06
   });
-  instantiate(THREE, worldGroup, buildingGeo, capMat, rooftop);
   instantiate(THREE, worldGroup, buildingGeo,
     new THREE.MeshStandardMaterial({color:0x20232b, roughness:.86}), podiums);
 
@@ -528,18 +523,16 @@ export function buildRoadsideArchitecture({
   // more 768×1024 atlases for the buildings by the competitive roadway.
   const atlas=facadeAtlas?.maps?.length===types.length
     ?facadeAtlas.maps:types.map(type=>facadeMap(THREE,type));
-  const groups=types.map(()=>[]),roofs=[],parapets=[],awnings=[],shutters=[];
+  const groups=types.map(()=>[]),roofs=[],awnings=[],shutters=[];
   for(const b of buildings) {
     const type=b.index%5;
     const baseHeight=b.height*neonV8BaseRatio(b.height,type);
     groups[type].push({x:b.position.x,y:baseHeight*.5,z:b.position.z,
       w:b.width,h:baseHeight,d:b.depth,rotation:b.rotationY});
-    roofs.push({x:b.position.x,y:b.height+.20,z:b.position.z,
-      w:b.width+.7,h:.38,d:b.depth+.7,rotation:b.rotationY});
-    if(b.height>22) {
-      parapets.push({x:b.position.x,y:b.height+1.1,z:b.position.z,
-        w:b.width*.74,h:1.4,d:b.depth*.74,rotation:b.rotationY});
-    }
+    // Podium roof sits at the setback height. The old full-footprint
+    // rooftop slabs at b.height would float alongside narrower V8 towers.
+    roofs.push({x:b.position.x,y:baseHeight+.18,z:b.position.z,
+      w:b.width+.40,h:.30,d:b.depth+.40,rotation:b.rotationY});
     const at = b.position.clone().addScaledVector(b.normal, -b.side*(b.width*.5+.12));
     if(b.index%2===0) {
       awnings.push({x:at.x,y:3.35,z:at.z,w:1.8,h:.22,
@@ -565,9 +558,6 @@ export function buildRoadsideArchitecture({
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
     color:0x20232a,roughness:.86
   }),roofs);
-  instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
-    color:0x1b2029,roughness:.78
-  }),parapets);
   instantiate(THREE,worldGroup,shellGeo,new THREE.MeshStandardMaterial({
     color:0x242b33,roughness:.65,metalness:.15
   }),awnings);
