@@ -39,14 +39,8 @@ function setCar(id){
   });
   if($("labQuickCar"))$("labQuickCar").value=id;
   if($("labAudioDescription"))$("labAudioDescription").textContent=
-    id==="gt"?"V15 · recorded inline-six engine":
-    id==="ironclad"?
-      (window.REDLINE_LAB_V17_STATUS?.().ready?
-        "V17 · longer Mercury V8 acceleration takes ready":
-        window.REDLINE_LAB_V8_STATUS?.().ready?
-          "V16 short V8 loops active · V17 long-take test not loaded":
-          "V17 bank not loaded · fallback V11.2"):
-    "V11.2 fallback · awaiting a licensed "+engineType(id)+" engine bank";
+    id==="gt"?"V15 · approved recorded inline-six engine":
+    "V11.2 · preferred original engine (recorded V8 experiments retired)";
   syncRoom();
 }
 function engineType(id){
@@ -130,8 +124,7 @@ for(const id of names){
   const meta=document.createElement("span");meta.textContent=
     spec.style+" · $0 IN LAB";
   const sound=document.createElement("small");sound.textContent=
-    id==="gt"?"REAL i6 AUDIO":
-    id==="ironclad"?"V17 LONG V8 TAKES · TEST":"ENGINE SAMPLE PENDING";
+    id==="gt"?"V15 RECORDED i6":"V11.2 ORIGINAL ENGINE";
   btn.append(title,meta,sound);
   btn.addEventListener("click",()=>setCar(id));
   grid.append(btn);
@@ -140,11 +133,6 @@ labPicker.append(grid);
 const audioDescription=document.createElement("div");
 audioDescription.id="labAudioDescription";audioDescription.className="lab-audio-description";
 labPicker.append(audioDescription);
-const credit=document.createElement("p");
-credit.className="lab-audio-description";
-credit.style.cssText="font-size:11px;font-weight:400;line-height:1.6;max-width:900px;";
-credit.innerHTML='IRONCLAD V8 audio adapted from <a href="https://freesound.org/people/lonemonk/sounds/62564/" target="_blank" rel="noopener noreferrer">1951 Mercury Warm Start and Idle</a> and <a href="https://freesound.org/people/lonemonk/sounds/62567/" target="_blank" rel="noopener noreferrer">Idle and Throttle 2</a> by <strong>lonemonk</strong>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Edited and looped for this prototype.';
-labPicker.append(credit);
 $("carSelectScreen").insertBefore(labPicker,$("carSelectScreen").querySelector(".car-select-footer"));
 const toolbar=document.createElement("aside");
 toolbar.id="labQuickControls";
@@ -183,171 +171,6 @@ const finish=document.createElement("div");
 finish.id="labFinishMessage";finish.className="lab-finish-message";
 finish.hidden=true;finish.textContent="TEST COMPLETE · NO CASH OR STATS SAVED · USE RESTART TEST DRIVE";
 document.body.append(finish);
-// In-game diagnostic distinguishes downloaded file from real decoded audio.
-// A previous V16 build showed "ready" for the bank even if the soundscape
-// was still using V11.2. This diagnostic reports actual engine activation.
-const diag=document.createElement("aside");
-diag.id="labV8DiagnosticPanel";
-diag.style.cssText="position:fixed;bottom:12px;left:12px;z-index:1100;"+
-  "min-width:265px;max-width:370px;background:#0a1c25ef;"+
-  "border:1px solid #508990;border-radius:12px;"+
-  "padding:12px;color:#ecf6f5;"+
-  "font:12px/1.45 system-ui,sans-serif;box-shadow:0 8px 25px #0009;";
-const diagHeader=document.createElement("strong");
-diagHeader.style.cssText="display:block;color:#91ded6;font-size:13px;";
-diagHeader.textContent="IRONCLAD V17 · LONG-TAKE AUDIO TEST";
-const diagStatus=document.createElement("div");
-diagStatus.id="labV8LiveStatus";
-diagStatus.style.cssText="margin:7px 0;overflow-wrap:anywhere;";
-diagStatus.setAttribute("role","status");
-diagStatus.textContent="Checking V8 recording…";
-const diagInfo=document.createElement("div");
-diagInfo.style.cssText="font-size:11px;color:#b3cbd1;max-width:330px;";
-const diagBtns=document.createElement("div");
-diagBtns.style.cssText="display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;";
-function diagButton(text){
-  const button=document.createElement("button");button.type="button";
-  button.textContent=text;
-  button.style.cssText="border:1px solid #659fa6;border-radius:6px;"+
-    "background:#18404e;color:#ecf8fa;padding:7px 10px;cursor:pointer;";
-  diagBtns.append(button);
-  return button;
-}
-const retryButton=diagButton("RETRY V8 AUDIO");
-const testSampleButton=diagButton("HEAR RAW V8");
-const abButton=diagButton("A/B: HEAR ORIGINAL");
-const oldLoopsButton=diagButton("A/B: HEAR V16 SHORT LOOPS");
-const retry17Button=diagButton("RETRY V17 BANK");
-const copyButton=diagButton("COPY STATUS");
-const v17File=document.createElement("input");
-v17File.type="file";v17File.accept=".bank";
-v17File.style.cssText="margin-top:9px;display:block;width:100%;max-width:325px;font:11px system-ui,sans-serif;";
-v17File.setAttribute("aria-label","Load downloaded V17 long-take engine bank locally");
-const v17FileHint=document.createElement("div");
-v17FileHint.style.cssText="margin-top:9px;color:#8fded0;font-weight:750;";
-v17FileHint.textContent="LOAD V17 .BANK FILE FROM YOUR PC (NO UPLOAD)";
-
-v17File.addEventListener("change",async()=>{
-  if(!v17File.files?.[0])return;
-  diagStatus.textContent="Reading V17 bank from your PC…";
-  v17File.disabled=true;
-  try{
-    await window.REDLINE_LAB_V17_LOAD_LOCAL?.(v17File.files[0]);
-  }catch(e){diagStatus.textContent="Cannot read V17 file: "+(e?.message||e)}
-  finally{v17File.disabled=false;renderV8Diagnostics()}
-});
-abButton.addEventListener("click",()=>{
-  if(chosen!=="ironclad")return;
-  const wasOriginal=window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v17?.selectedMode==="v11";
-  window.REDLINE_LAB_V8_AB?.(!wasOriginal);
-  renderV8Diagnostics();
-});
-oldLoopsButton.addEventListener("click",()=>{
-  if(chosen!=="ironclad")return;
-  const wasOld=window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v17?.selectedMode==="v16";
-  window.REDLINE_LAB_V17_AB?.(!wasOld);
-  renderV8Diagnostics();
-});
-retry17Button.addEventListener("click",async()=>{
-  retry17Button.disabled=true;
-  diagStatus.textContent="Looking for the V17 recording bank…";
-  try{await window.REDLINE_LAB_V17_RETRY?.()}
-  catch(e){diagStatus.textContent="V17 retry failed: "+(e?.message||e)}
-  finally{retry17Button.disabled=false;renderV8Diagnostics()}
-});
-retryButton.addEventListener("click",async()=>{
-  retryButton.disabled=true;diagStatus.textContent="Retrying V8 bank download…";
-  try{
-    await window.REDLINE_LAB_V8_RETRY?.();
-  }catch(e){diagStatus.textContent="Retry failed: "+e.message}
-  finally{retryButton.disabled=false;renderV8Diagnostics()}
-});
-testSampleButton.addEventListener("click",async()=>{
-  testSampleButton.disabled=true;
-  try{
-    const result=await window.REDLINE_LAB_V8_AUDITION?.();
-    if(!result?.ok)throw Error("V8 preview not ready");
-    diagStatus.textContent="Playing authentic V8 excerpt directly · "+
-      result.seconds.toFixed(1)+" seconds";
-  }catch(e){diagStatus.textContent="Raw V8 test failed: "+(e?.message||e)}
-  finally{testSampleButton.disabled=false}
-});
-copyButton.addEventListener("click",()=>{
-  const status=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
-  const formatted=JSON.stringify(status||{error:"audio module not ready"},null,2);
-  if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(formatted).then(()=>{
-      diagStatus.textContent="Audio diagnostic copied; paste it into ChatGPT";
-    }).catch(()=>{
-      diagStatus.textContent="Clipboard blocked. Status: "+formatted;
-    });
-  }else diagStatus.textContent="Status: "+formatted;
-});
-diag.append(diagHeader,diagStatus,diagInfo,diagBtns,v17FileHint,v17File);
-document.body.append(diag);
-function renderV8Diagnostics(){
-  const d=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
-  if(!d){
-    diagStatus.textContent="Starting V17 diagnostics…";
-    return;
-  }
-  const selected=d.selectedCar||chosen;
-  const v=d.v8||{};
-  const newer=d.v17||{};
-  const bank=d.bank||{};
-  const bank17=d.v17bank||{};
-  let label,color;
-  if(selected!=="ironclad"){
-    label="IRONCLAD V17 ready for selection · "+REDLINE_CAR_CATALOG[selected]?.name+" selected";
-    color="#b6cbce";
-  }else if(!d.raceEnabled){
-    label=bank17.ready?"V17 LONG-TAKE BANK READY · START TEST DRIVE":
-      bank.ready?"V16 short loops available · Load V17 below":"No V8 bank loaded yet";
-    color="#f5d99b";
-  }else if(newer.selectedMode==="v11"){
-    label="A/B ORIGINAL · V11.2 ONLY · V8 muted";color="#f5d99b";
-  }else if(newer.selectedMode==="v16"){
-    label="A/B OLD V16 · SHORT REPEATING V8 LOOPS";color="#f5d99b";
-  }else if(newer.v17Audible){
-    label="V17 ACTIVE · REAL LONG V8 TAKES · "+(newer.currentTake||"IDLE");
-    color="#88edb5";
-  }else if(newer.loading||d.starting){
-    label="DECODING LONG V8 TAKES…";color="#f5d99b";
-  }else if(bank.ready&&v.v8Audible){
-    label="V16 SHORT LOOPS · V17 BANK NOT ACTIVE";color="#f5d99b";
-  }else if(newer.error){
-    label="V17 FAILED · "+newer.error;color="#ffad98";
-  }else{
-    label="V11.2 FALLBACK · NO RECORDED ENGINE ACTIVE";color="#ffad98";
-  }
-  if(!testSampleButton.disabled)diagStatus.textContent=label;
-  diagStatus.style.color=color;
-  const canCompare=selected==="ironclad"&&d.raceEnabled&&
-    (bank.ready||bank17.ready);
-  abButton.disabled=!canCompare;
-  oldLoopsButton.disabled=!canCompare||!bank.ready||!bank17.ready;
-  retry17Button.disabled=!!bank17.ready;
-  abButton.textContent=newer.selectedMode==="v11"?
-    "A/B: HEAR RECORDED V8":"A/B: HEAR ORIGINAL";
-  oldLoopsButton.textContent=newer.selectedMode==="v16"?
-    "A/B: HEAR NEW V17":"A/B: HEAR V16 SHORT LOOPS";
-  const parts=[
-    "New bank: "+(bank17.status||"pending"),
-    "V17: "+(newer.decoded?"decoded":"not decoded")+
-      " · "+(newer.voiceCount||0)+" live voices",
-    "Engine: "+(newer.currentTake||newer.idleTake||"none"),
-    "V16 fallback: "+(v.v8Audible?"YES":"NO"),
-    "Telemetry: "+(d.telemetryAgeMs??"none")+"ms"
-  ];
-  diagInfo.textContent=parts.join(" | ");
-}
-window.setInterval(renderV8Diagnostics,550);
-window.addEventListener("redline:v8-bank-status",renderV8Diagnostics);
-window.addEventListener("redline:v17-bank-status",()=>{
-  if(chosen==="ironclad")setCar("ironclad");
-  renderV8Diagnostics();
-});
-
 const nav=document.createElement("div");
 nav.className="lab-brand";nav.innerHTML=
   '<strong>REDLINE · PRIVATE ENGINE LAB</strong><span>ALL CARS UNLOCKED · NO SERVER CONNECTIONS</span>';
@@ -367,6 +190,3 @@ $("labReturnButton").hidden=true;
 setCar("gt");
 setMap("neon");
 show("carSelectScreen");
-window.addEventListener("redline:v8-bank-status",()=>{
-  if(chosen==="ironclad")setCar("ironclad");
-});
