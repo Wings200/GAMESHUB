@@ -4,6 +4,9 @@ import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
 import * as REDLINE_PARTS from "./upgrade-parts.js";
+import { REDLINE_CAR_CATALOG, REDLINE_CAR_IDS, STARTER_CAR_IDS }
+    from "./car-catalog.js";
+import { buildDealerModel } from "./dealer-models.js";
 import { createRuggedMountainGeometry, buildArcticV3Art, createArcticSnowfall }
     from "./arctic-v3-art.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
@@ -42,9 +45,7 @@ const speedStat = $("speedStat");
 const accelStat = $("accelStat");
 const gripStat = $("gripStat");
 const driftStat = $("driftStat");
-const carCards = [
-    ...document.querySelectorAll(".car-card")
-];
+const carCards = () => [...document.querySelectorAll(".car-card")];
 const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -610,80 +611,10 @@ function applyTrackConfig(trackId) {
 applyTrackConfig(
     "neon"
 );
-const cars = {
-    gt: {
-        name: "REDLINE GT",
-        topSpeed: 50,
-        nitroSpeed: 61,
-        boostSpeed: 70,
-        acceleration: 19,
-        reverseAcceleration: 10.5,
-        braking: 34,
-        grip: 8.5,
-        driftGrip: 1.36,
-        steer: 1.32,
-        highSpeedSteer: 0.82,
-        drag: 0.34,
-        stats: {
-            speed: 76,
-            accel: 78,
-            grip: 75,
-            drift: 70
-        },
-        body: 0xe9edf2,
-        accent: 0x315fbd,
-        glass: 0x111820,
-        model: "gt"
-    },
-    vortex: {
-        name: "VORTEX R",
-        topSpeed: 64,
-        nitroSpeed: 76,
-        boostSpeed: 84,
-        acceleration: 18.5,
-        reverseAcceleration: 9.5,
-        braking: 31,
-        grip: 7.1,
-        driftGrip: 0.95,
-        steer: 1.08,
-        highSpeedSteer: 0.68,
-        drag: 0.20,
-        stats: {
-            speed: 98,
-            accel: 74,
-            grip: 58,
-            drift: 63
-        },
-        body: 0xb72f43,
-        accent: 0x191d24,
-        glass: 0x080c11,
-        model: "vortex"
-    },
-    apex: {
-        name: "APEX S",
-        topSpeed: 46,
-        nitroSpeed: 56,
-        boostSpeed: 64,
-        acceleration: 21.5,
-        reverseAcceleration: 11.5,
-        braking: 38,
-        grip: 10.2,
-        driftGrip: 1.18,
-        steer: 1.52,
-        highSpeedSteer: 0.92,
-        drag: 0.40,
-        stats: {
-            speed: 68,
-            accel: 90,
-            grip: 92,
-            drift: 86
-        },
-        body: 0x36a697,
-        accent: 0x15282c,
-        glass: 0x0c1a20,
-        model: "apex"
-    }
-};
+// Shared authoritative vehicle physics catalog, also checked by Worker.
+const cars = Object.fromEntries(REDLINE_CAR_IDS.map(id=>[
+    id,{name:REDLINE_CAR_CATALOG[id].name,...REDLINE_CAR_CATALOG[id].spec}
+]));
 let selectedCar = "gt";
 let activeCarSpec = cars.gt;
 let worldGroup = null;
@@ -8748,7 +8679,12 @@ function applyAppearanceToSpec(baseSpec, appearance) {
     };
     return {
         ...baseSpec,
-        model: modelMap[clean.body] || "gt",
+        // Keep purchased original models recognizable even when the
+        // player changes the paint/body setting from the older editor.
+        model: REDLINE_CAR_IDS.some(id=>
+            !STARTER_CAR_IDS.includes(id) &&
+            REDLINE_CAR_CATALOG[id].spec.model===baseSpec.model)
+            ? baseSpec.model : (modelMap[clean.body] || "gt"),
         body: appearanceColorNumber(clean.color, "#e9edf2"),
         accent: appearanceColorNumber(clean.accent, "#315fbd"),
         garageAppearance: clean
@@ -8791,6 +8727,12 @@ function makeCarModel(spec) {
         brakeMaterials: [],
         nitroFlames: []
     };
+    if(buildDealerModel(root,bodyPivot,spec,{
+        THREE,material,addMesh,createWedgeGeometry,
+        addWheel,addLights,addNitroFlames
+    })) {
+        return root;
+    }
     if (spec.model ===
         "vortex") {
         buildVortex(root, bodyPivot, spec);
@@ -8922,7 +8864,8 @@ function createRemoteRacer(player, playerIndex = 0, appearance = null) {
     }
 
     const cleanAppearance = normalizeGarageAppearance(appearance);
-    const signature = appearanceSignature(cleanAppearance);
+    const signature = String(player.car||"gt")+"|"+
+        appearanceSignature(cleanAppearance);
     const existing = remoteRacers.get(player.id);
 
     if (existing) {
@@ -10152,7 +10095,9 @@ function buildWorld() {
     const visualSpec = chosenAppearance && bodyModels[chosenAppearance.body]
         ? {
             ...baseCarSpec,
-            model:bodyModels[chosenAppearance.body],
+            model:STARTER_CAR_IDS.includes(selectedCar)
+                ? bodyModels[chosenAppearance.body]
+                : baseCarSpec.model,
             body:validHex(chosenAppearance.color)
                 ? parseInt(chosenAppearance.color.slice(1),16)
                 : baseCarSpec.body,
@@ -10729,21 +10674,36 @@ function updateGarageUI() {
         `${spec.stats.grip}%`;
     driftStat.style.width =
         `${spec.stats.drift}%`;
-    carCards.forEach(card => {
+    carCards().forEach(card => {
         card.classList.toggle("selected", card.dataset.car ===
             selectedCar);
     });
 }
-carCards.forEach(card => {
-    card.addEventListener("click", () => {
-        if (!cars[card.dataset.car]) {
-            return;
-        }
-        selectedCar = card.dataset.car;
+// One delegated listener works for both starter cars and newly purchased
+// vehicles appended to the selector after page/module initialization.
+document.getElementById("carSelector").addEventListener("click",event=>{
+    const card=event.target.closest(".car-card");
+    if(!card || !cars[card.dataset.car] ||
+        card.disabled || card.dataset.locked==="true")return;
+    selectedCar=card.dataset.car;
+    updateGarageUI();
+    window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
+});
+window.addEventListener("redline:car-purchased",event=>{
+    const id=event.detail?.carId;
+    if(id&&cars[id]){
+        selectedCar=id;
         updateGarageUI();
-        // Stat previews use the actual selected car's base driving values.
         window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
-    });
+    }
+});
+window.addEventListener("redline:room-state",event=>{
+    const mine=window.REDLINE_MP?.myPlayer?.car;
+    if(mine&&cars[mine]&&mine!==selectedCar){
+        selectedCar=mine;
+        updateGarageUI();
+        window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
+    }
 });
 window.REDLINE_GARAGE_PREVIEW={
     get baseSpec() {return cars[selectedCar];},
