@@ -42,11 +42,6 @@ function safeBuilding(b){
     Number.isFinite(b.tangent?.x)&&Number.isFinite(b.tangent?.z)&&
     Number.isFinite(b.rotationY);
 }
-const warm=(THREE,color)=>new THREE.MeshStandardMaterial({
- color:0xe7e0d6,emissive:color,emissiveIntensity:.66,
- roughness:.4,metalness:.07
-});
-
 export function buildNeonV7District({THREE,worldGroup,buildings=[],
                                       trafficRoads=[]}={}){
   if(!THREE||!worldGroup)throw new Error("Neon V7 requires a scene");
@@ -58,8 +53,9 @@ export function buildNeonV7District({THREE,worldGroup,buildings=[],
     steel:new THREE.MeshStandardMaterial({color:0x657282,metalness:.61,roughness:.47}),
     sill:new THREE.MeshStandardMaterial({color:0x202936,roughness:.67,metalness:.27}),
     glass:new THREE.MeshStandardMaterial({
-      color:0x1b3445,emissive:0x0b2232,emissiveIntensity:.23,
-      metalness:.49,roughness:.22
+      color:0x31566b,emissive:0x0b2232,emissiveIntensity:.17,
+      metalness:.30,roughness:.18,
+      transparent:true,opacity:.68,depthWrite:false
     }),
     interior:new THREE.MeshStandardMaterial({
       color:0x927a5b,emissive:0xeab87e,emissiveIntensity:.72,
@@ -94,19 +90,21 @@ export function buildNeonV7District({THREE,worldGroup,buildings=[],
     };
     const front=facade(.075);
     const span=Math.min(b.depth*.78,8);
-    const storey=Math.min(3.4,b.height*.24);
     const isRetail=i%5!==2;
     const isWarehouse=i%5===2;
     const color=i%bars.length;
     if(isRetail){
-      const panel=facade(.095);
-      put(shopFrames,panel.x,1.66,panel.z,.17,3.12,span,rot);
-      const glass=facade(.158);
-      put(shopGlass,glass.x,1.76,glass.z,.065,2.62,span-.34,rot);
-      // Warm interior facing the actual street, not fake flood lighting
-      // that turns the whole sky cyan. Front glass conceals the panel.
-      const interior=facade(.04);
-      put(shopLight,interior.x,1.74,interior.z,.09,2.21,span-.72,rot);
+      // Stone lintel + base ledge form a real window frame. A previous
+      // full opaque slab would have hidden the interior and glass entirely.
+      const frame=facade(.20);
+      put(shopFrames,frame.x,3.08,frame.z,.13,.16,span,rot);
+      put(shopFrames,frame.x,.25,frame.z,.13,.20,span,rot);
+      const glass=facade(.177);
+      put(shopGlass,glass.x,1.75,glass.z,.048,2.62,span-.34,rot);
+      // A recessed warm-lit room behind actual semitransparent glazing.
+      // No large ground glow plane and no light per shop.
+      const interior=facade(.066);
+      put(shopLight,interior.x,1.74,interior.z,.045,2.21,span-.72,rot);
       const door=facade(.185,span*.25);
       put(shopDoor,door.x,1.39,door.z,.075,2.49,.93,rot);
       put(shopAwning,front.x,3.27,front.z,.40,.14,span+.16,rot);
