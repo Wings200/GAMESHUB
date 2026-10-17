@@ -17,7 +17,9 @@ const VALID_CARS = new Set(REDLINE_CAR_IDS);
 function ensurePerCarUpgrades(stats) {
   const original=stats.carUpgrades;
   const present=original&&typeof original==="object"&&!Array.isArray(original);
-  const map=Object.create(null);
+  // Plain objects only: this map crosses Cloudflare RPC and storage
+  // serialization boundaries. No null-prototype/custom objects are returned.
+  const map={};
   if(present) {
     for(const id of REDLINE_CAR_IDS)
       if(Object.hasOwn(original,id))map[id]=sanitizeGarage(original[id]);
@@ -996,8 +998,11 @@ export default {
         return json({ok:true,stats});
       }catch(error){
         console.error("REDLINE saved player statistics unavailable:",error);
-        return json({ok:false,
-          error:"REDLINE account storage is temporarily unavailable. Your saved cash and cars have not been reset."},503);
+        const stage=error?.message==="REDLINE_STATS_READ_FAILED"?"READ":
+          error?.message==="REDLINE_STATS_NORMALIZE_FAILED"?"FORMAT":"RPC";
+        return json({ok:false,code:"REDLINE_STATS_"+stage+"_FAILED",
+          error:"REDLINE account data could not be loaded ("+stage+
+            "). Your saved cash and cars have not been reset."},503);
       }
 
     }
@@ -3931,55 +3936,60 @@ export class RedlineStats
     });
   }
 
-  async getPlayerStats(
-    accountId,
-    currentUsername
-  ) {
-
-    const key =
-      `player:${accountId}`;
-
-
-    const stored =
-      await this.ctx
-        .storage
-        .get(
-          key
-        );
-
-
-    const stats =
-      stored
-      ||
-      this.emptyPlayer(
-        accountId,
-        currentUsername
-      );
-
-
-    stats.cashBalance=Math.max(0,Math.floor(Number(stats.cashBalance)||0));
-    stats.cashEarnedTotal=Math.max(0,Math.floor(Number(stats.cashEarnedTotal)||0));
-    stats.lastCashAward=Math.max(0,Math.floor(Number(stats.lastCashAward)||0));
-    stats.cashSpentTotal=Math.max(0,Math.floor(Number(stats.cashSpentTotal)||0));
-    stats.garage=sanitizeGarage(stats.garage);
-    stats.carGarage=garageCarOwnership(stats.carGarage);
-    ensurePerCarUpgrades(stats);
-    stats.cashSpentOnCars=Math.max(0,Math.floor(Number(stats.cashSpentOnCars)||0));
-
-    if (
-      currentUsername
-    ) {
-
-      stats.username =
-        cleanUsername(
-          currentUsername
-        );
-
+  // Return only known, JSON-safe fields from Durable Object RPC.
+  // Legacy storage can contain data from many earlier game revisions.
+  // Never rewrite an existing account during a read or erase paid items.
+  async getPlayerStats(accountId,currentUsername) {
+    const id=String(accountId??"");
+    let stored;
+    try{
+      stored=await this.ctx.storage.get("player:"+id);
+    }catch(error){
+      console.error("REDLINE_STATS_READ_FAILED",error);
+      throw new Error("REDLINE_STATS_READ_FAILED");
     }
-
-
-    return stats;
-
+    try{
+      const stats=stored && typeof stored==="object" && !Array.isArray(stored)
+        ?stored:this.emptyPlayer(id,currentUsername);
+      const positive=n=>{
+        const number=Number(n);
+        return Number.isSafeInteger(number)&&number>=0?number:0;
+      };
+      const owned=garageCarOwnership(stats.carGarage);
+      const garage=sanitizeGarage(stats.garage);
+      // sanitize the old shared record as well as all paid vehicle records.
+      const carUpgrades=ensurePerCarUpgrades({
+        carGarage:owned,garage,carUpgrades:stats.carUpgrades
+      });
+      const bestTimes={};
+      for(const map of VALID_MAPS){
+        const item=stats.bestTimes?.[map];
+        const time=Number(item?.time);
+        const achievedAt=Number(item?.achievedAt);
+        bestTimes[map]=item && Number.isFinite(time) && time>=0
+          ?{time,achievedAt:Number.isFinite(achievedAt)?achievedAt:null}
+          :null;
+      }
+      const placements={};
+      for(let rank=1;rank<=8;rank++)
+        placements[String(rank)]=positive(stats.placements?.[String(rank)]);
+      return {
+        accountId:id,
+        username:cleanUsername(currentUsername||stats.username||"Racer"),
+        racesFinished:positive(stats.racesFinished),
+        cashBalance:positive(stats.cashBalance),
+        cashEarnedTotal:positive(stats.cashEarnedTotal),
+        lastCashAward:positive(stats.lastCashAward),
+        cashSpentTotal:positive(stats.cashSpentTotal),
+        cashSpentOnCars:positive(stats.cashSpentOnCars),
+        garage,carGarage:owned,carUpgrades,placements,bestTimes,
+        updatedAt:Number.isFinite(Number(stats.updatedAt))
+          ?Number(stats.updatedAt):null
+      };
+    }catch(error){
+      console.error("REDLINE_STATS_NORMALIZE_FAILED",error);
+      throw new Error("REDLINE_STATS_NORMALIZE_FAILED");
+    }
   }
 
 
