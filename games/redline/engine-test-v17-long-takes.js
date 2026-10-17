@@ -37,8 +37,20 @@ function parseBank(source){
   if(p!==raw.length)throw Error("V17 bank contains trailing data");
   return sounds;
 }
+let selectedLocal=false;
 export function getV17Status(){
-  return{ready:!!bank,revision,status};
+  return{ready:!!bank,revision,status,selectedLocal};
+}
+/** Optional zero-upload test: owner selects the already generated .bank file.
+ * Reads the same binary used in public deployment, entirely in tab memory.
+ */
+export async function loadV17LocalBank(file){
+  if(!file||file.size>1600000||file.size<10000)
+    throw Error("Choose the V17 .bank file (maximum 1.6 MB)");
+  const decoded=parseBank(await file.arrayBuffer());
+  bank=decoded;selectedLocal=true;revision++;
+  status="10 long V8 takes loaded from your computer · no upload";
+  return getV17Status();
 }
 export function preloadV17Bank(force=false){
   if(loadingPromise)return loadingPromise;
@@ -54,12 +66,14 @@ export function preloadV17Bank(force=false){
     const errors=[];
     try{
       for(const [label,link] of locations){
+        if(selectedLocal)return true;
         try{
           const response=await fetch(link,{cache:"no-store"});
           if(!response.ok)throw Error("HTTP "+response.status);
           const bytes=await response.arrayBuffer();
           if(bytes.byteLength>1600000)throw Error("Bank size exceeded");
           const clips=parseBank(bytes);
+          if(selectedLocal)return true;
           bank=clips;revision++;
           status="10 longer V8 recordings loaded · "+label;
           return true;
