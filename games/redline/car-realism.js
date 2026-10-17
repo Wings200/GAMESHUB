@@ -25,7 +25,7 @@ const luminous=(THREE,color,intensity=1)=>
     roughness:.35,metalness:.1
   });
 
-export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt"){
+export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt",lowDetail=false){
  const premium=["obsidian","phantom","vortex","cirrus"].includes(model);
  const rally=model==="aurora";
  const muscle=model==="ironclad";
@@ -39,11 +39,11 @@ export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt"){
    const m=new THREE.Mesh(geom,mat);
    m.position.set(x,y,z);spin.add(m);return m;
  };
- const r=(rally?.356:muscle?.345:.326)*scale;
+ const r=(rally ? .356 : muscle ? .345 : .326)*scale;
  // Cylindrical shoulder + rounded sidewall; ring axis is the wheel axle X.
  const outer=add(new THREE.CylinderGeometry(r,r,.205*scale,20),rubber);
  outer.rotation.z=Math.PI/2;
- for(const x of [-.080,.080]){
+ if(!lowDetail) for(const x of [-.080,.080]){
    const shoulder=add(new THREE.TorusGeometry((r-.055*scale),.055*scale,7,20),tread,x*scale);
    shoulder.rotation.y=Math.PI/2;
  }
@@ -52,10 +52,12 @@ export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt"){
  rim.rotation.z=Math.PI/2;
  const inner=add(new THREE.CylinderGeometry(r*.51,r*.51,.028*scale,18),darkAlloy,face+side*.014*scale);
  inner.rotation.z=Math.PI/2;
- const disc=add(new THREE.CylinderGeometry(r*.44,r*.44,.018*scale,18),brake,face+side*.032*scale);
- disc.rotation.z=Math.PI/2;
+ if(!lowDetail){
+   const disc=add(new THREE.CylinderGeometry(r*.44,r*.44,.018*scale,18),brake,face+side*.032*scale);
+   disc.rotation.z=Math.PI/2;
+ }
  // Five / six / seven spokes, with a shared wheel origin for animated spin.
- const count=premium?7:rally?6:5;
+ const count=lowDetail?5:(premium?7:rally?6:5);
  for(let i=0;i<count;i++){
    const a=i*2*Math.PI/count;
    const spoke=add(new THREE.BoxGeometry(.030*scale,.205*scale,
@@ -69,7 +71,7 @@ export function buildDetailedWheel(THREE,spin,scale=1,side=1,model="gt"){
  return spin;
 }
 
-export function addFactoryCarDetails(pivot,spec,{THREE,wheelPivots=[]}={}){
+export function addFactoryCarDetails(pivot,spec,{THREE,wheelPivots=[],lowDetail=false}={}){
  const d=DIMENSIONS[spec?.model]||DIMENSIONS.gt;
  const isPremium=["obsidian","phantom","cirrus","vortex"].includes(spec?.model);
  const isRace=["obsidian","phantom","apex"].includes(spec?.model);
@@ -94,7 +96,8 @@ export function addFactoryCarDetails(pivot,spec,{THREE,wheelPivots=[]}={}){
  };
  const half=d.width/2;
  const front=d.front, rear=d.rear;
- const fenderY=spec.model==="aurora"?.49:spec.model==="obsidian"||spec.model==="phantom"?.34:.40;
+ const fenderY=spec.model==="aurora" ? .49 :
+   (spec.model==="obsidian"||spec.model==="phantom") ? .34 : .40;
  const doorTop=Math.min(.95,d.roof-.22);
  // Layered lower body: rocker panels and aerodynamic undertray.
  for(const side of [-1,1]){
@@ -138,6 +141,9 @@ export function addFactoryCarDetails(pivot,spec,{THREE,wheelPivots=[]}={}){
    cylinder(.092,.15,metallic,x,.26,rear-.16);
    cylinder(.060,.16,carbon,x,.26,rear-.245);
  }
+ // Ghost racers use factory bodies and lighting, but omit the tiny close-up
+ // accents and wheel arch geometry to protect low-end multiplayer frame rate.
+ if(lowDetail)return pivot;
  // Two shallow body character lines following the factory silhouette.
  for(const side of [-1,1]){
    box(.034,.034,(front-rear)*.39,paint,
