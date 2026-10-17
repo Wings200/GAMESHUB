@@ -3,6 +3,7 @@ import * as NEON_ART from "./neon-art.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
+import * as REDLINE_PARTS from "./upgrade-parts.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -10516,8 +10517,8 @@ function updatePhysics(delta) {
                 24 *
                     delta);
         carState.velocity
-            .addScaledVector(forward, 22 *
-            delta);
+            .addScaledVector(forward,
+                (activeCarSpec.nitroAcceleration ?? 22) * delta);
     }
     else {
         carState.nitro =
@@ -11268,11 +11269,12 @@ function buildWorld() {
             multiplayerCar;
     }
     const baseCarSpec = cars[selectedCar];
-    activeCarSpec =
-        window.REDLINE_GARAGE_PHYSICS
-            ?.getPhysicsSpec?.(baseCarSpec)
-            ??
-                baseCarSpec;
+    // Trust only the loadout the Worker attached to the ready player.
+    // Never use localStorage/free stat points or unverified UI selections.
+    activeCarSpec = REDLINE_PARTS.applyCarUpgrades(
+        baseCarSpec,
+        window.REDLINE_MP?.myPlayer?.upgrades
+    );
     updateGarageUI();
     worldGroup =
         new THREE.Group();
