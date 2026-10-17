@@ -74,15 +74,19 @@ export function trafficLightIsGreen(signal,axis,elapsed) {
 
 function makeCarPopulation(roads,maxCars) {
   const usable=roads.filter(r=>r.length>=68);
-  const chosen=usable.length?usable:roads;
+  // Concentrate a few commuters on the roads nearest the race so
+  // traffic is visible, and allow real follower behavior on shared lanes.
+  const candidates=usable.length?usable:roads;
+  const chosen=candidates.slice(0,18);
   if(!chosen.length)return [];
   const count=Math.min(maxCars,chosen.length*2);
   const cars=[];
   for(let i=0;i<count;i++){
     const road=chosen[i%chosen.length];
     const direction=(i%2===0)?1:-1;
-    const seed=(i*0.618033988749895)%1;
-    const progress=road.length*(.14+.69*seed);
+    // At most two cars on a road; space them far apart on spawn.
+    const second=i>=chosen.length;
+    const progress=road.length*(second?.69:.22);
     cars.push({
       id:i,road,dir:direction,progress,
       desiredSpeed:7.3+(i*19%9)*.63,
