@@ -78,6 +78,7 @@ const quality = {
 let trafficSystem = null;
 let weatherSystem = null;
 let arcticSnowSystem = null;
+let arcticMountainRoots = [];
 let weatherRoadMaterial = null;
 let weatherOverride = "auto";
 let lastWeatherHudLabel = "";
@@ -1868,6 +1869,7 @@ function disposeWorld() {
     weatherSystem?.dispose();
     weatherSystem = null;
     arcticSnowSystem = null; // GPU particles dispose with worldGroup.
+    arcticMountainRoots = [];
     weatherRoadMaterial = null;
     lastWeatherHudLabel = "";
     // All visual traffic meshes belong to worldGroup and dispose with it.
@@ -3869,6 +3871,8 @@ function buildArcticEnvironment() {
         mountain.position.y=height*.42;
         mountain.rotation.y=t*11.7;
         worldGroup.add(mountain);
+        // V4: Root the entire foothill after the terrain heightmap exists.
+        arcticMountainRoots.push({mesh:mountain,height});
 
         addEnvironmentCircleCollider(
             mountain.position,
@@ -10209,7 +10213,7 @@ function buildWorld() {
             addCircleCollider:addEnvironmentCircleCollider,
             addBoxCollider:addEnvironmentBoxCollider,
             addRail:(a,b,y)=>barriers.push({a,b,y}),
-            shortcut
+            shortcut,originalMountains:arcticMountainRoots
         });
     }
 
