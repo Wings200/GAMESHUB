@@ -14,6 +14,8 @@ export function buildDealerModel(root,pivot,spec,api) {
  const glass=material(spec.glass,.15,.16);
  const dark=material(0x0a0e14,.8,.12);
  const metal=material(0x8997a6,.40,.52);
+ const neon=new THREE.MeshBasicMaterial({color:spec.accent});
+ const headlamp=new THREE.MeshBasicMaterial({color:0xdcf4ff});
  const parts=(geom,mat,x,y,z)=>addMesh(pivot,geom,mat,x,y,z);
  const box=(w,h,d,mat,x,y,z)=>parts(new THREE.BoxGeometry(w,h,d),mat,x,y,z);
  const wedge=(w,l,h,shoulder,bevel,mat,x,y,z)=>
@@ -29,6 +31,16 @@ export function buildDealerModel(root,pivot,spec,api) {
    box(1.90,.13,.35,dark,0,.35,-2.06);
    box(.72,.12,.20,secondary,0,.60,2.04);
    for(const x of [-.77,.77])box(.48,.10,.11,dark,x,.57,2.03);
+   // Street tuner: oversized rear deck, roof antenna, exposed exhausts,
+   // offset intake and bright underbody rails. Not the generic stock coupe.
+   box(1.83,.12,.64,paint,0,.94,-1.61);
+   box(1.94,.09,.43,dark,0,.24,2.11);
+   box(.76,.065,.72,dark,-.29,.83,1.14);
+   for(const x of [-.83,.83]){
+     box(.10,.10,2.65,neon,x,.25,-.05);
+     box(.22,.16,.20,metal,x,.27,-2.22);
+   }
+   parts(new THREE.CylinderGeometry(.025,.025,.50,6),dark,.48,1.32,-.49);
    wheelX=1.02;scale=1.01;
  } else if(model==="aurora"){
    // Rally AWD, raised roof, dual fog lamps, roof rack and skid guards.
@@ -42,7 +54,18 @@ export function buildDealerModel(root,pivot,spec,api) {
      box(.23,.18,.20,secondary,x,.55,2.08);
    }
    box(1.84,.09,.36,secondary,0,1.38,-1.70);
-   wheelX=1.01;scale=1.15;front=2.05;back=-2.04;fy=.68;by=.64;
+   // Lifted rally vehicle: wheel arches, bullbar, exposed roof lamps and
+   // rally box. The high square roof separates it from low supercars.
+   box(1.63,.19,1.07,paint,0,1.33,-.36);
+   box(1.83,.10,.17,metal,0,.54,2.18);
+   for(const x of [-.83,.83]){
+     box(.17,.31,.18,metal,x,.36,2.03);
+     box(.40,.08,1.08,dark,x,.33,-.04);
+     box(.32,.15,.20,headlamp,x,1.56,.35);
+     box(.18,.19,.43,secondary,x,.71,-1.90);
+   }
+   box(.10,.16,1.83,metal,0,1.69,-.24);
+   wheelX=1.08;scale=1.22;front=2.05;back=-2.04;fy=.68;by=.64;
  } else if(model==="ironclad"){
    // Classic muscle proportions: long bonnet, short cabin, broad haunches.
    wedge(2.13,4.55,.47,.48,.91,paint,0,.37,0);
@@ -54,6 +77,16 @@ export function buildDealerModel(root,pivot,spec,api) {
      box(.12,.17,2.02,secondary,x,.52,.13);
    }
    box(2.08,.25,.26,dark,0,.28,2.28);
+   // V8 muscle: tall exposed blower, triple intake slots, raised rear
+   // haunches, side exhausts and a thick front chin.
+   box(.94,.26,.81,metal,0,1.02,1.14);
+   box(.84,.24,.52,dark,0,1.24,1.18);
+   for(const x of [-.27,0,.27])box(.16,.08,.45,metal,x,1.40,1.23);
+   for(const x of [-1.03,1.03]){
+     box(.19,.32,1.01,paint,x,.69,-1.17);
+     box(.18,.14,.64,metal,x,.34,-.60);
+   }
+   box(2.18,.17,.50,dark,0,.25,2.37);
    wheelX=1.08;wheelFront=1.36;wheelBack=-1.49;scale=1.12;
    front=2.30;back=-2.30;fy=.59;by=.57;
  } else if(model==="cirrus"){
@@ -64,7 +97,17 @@ export function buildDealerModel(root,pivot,spec,api) {
    box(1.85,.065,.18,metal,0,.90,-1.74);
    for(const x of [-.86,.86])box(.085,.085,3.0,secondary,x,.48,.07);
    box(1.88,.12,.31,dark,0,.32,2.34);
-   wheelX=1.03;wheelFront=1.42;wheelBack=-1.48;scale=1.04;
+   // Premium grand tourer: much longer glasshouse, chrome bumper /
+   // grille treatment, split rear light bar and panoramic upper roof.
+   wedge(1.76,2.10,.10,.50,.94,paint,0,1.06,-.35);
+   box(1.96,.13,.13,metal,0,.49,2.38);
+   box(1.66,.10,.12,metal,0,.53,-2.27);
+   box(1.61,.07,1.32,glass,0,1.13,-.34);
+   for(const x of [-.90,.90]){
+     box(.11,.13,3.15,metal,x,.45,-.02);
+     box(.18,.13,.18,headlamp,x,.66,2.36);
+   }
+   wheelX=1.04;wheelFront=1.50;wheelBack=-1.55;scale=1.07;
    front=2.33;back=-2.33;
  } else if(model==="obsidian"){
    // Track supercar: extremely low cabin, splitter, canards and high wing.
@@ -77,7 +120,17 @@ export function buildDealerModel(root,pivot,spec,api) {
      box(.15,.53,.23,secondary,x,.85,-1.87);
      box(.34,.09,.67,dark,x,.33,1.72);
    }
-   wheelX=1.10;wheelFront=1.34;wheelBack=-1.39;scale=1.04;
+   // Race-track machine: large double-plane GT wing with risers, tall
+   // diffuser, aggressive front splitters and open fender vents.
+   box(2.41,.095,.52,dark,0,1.34,-2.02);
+   for(const x of [-1.04,1.04]){
+     box(.18,.70,.18,secondary,x,.93,-1.97);
+     box(.30,.12,.96,dark,x,.18,1.76);
+     box(.27,.085,.75,neon,x,.43,.18);
+   }
+   box(2.21,.13,.29,neon,0,.22,2.25);
+   box(2.31,.30,.18,dark,0,.32,-2.20);
+   wheelX=1.15;wheelFront=1.34;wheelBack=-1.44;scale=1.07;
    front=2.18;back=-2.17;fy=.46;by=.42;
  } else if(model==="phantom"){
    // Hypercar: narrow teardrop cockpit, broad carbon rear and split fins.
@@ -91,7 +144,18 @@ export function buildDealerModel(root,pivot,spec,api) {
    }
    box(2.29,.10,.32,secondary,0,.94,-2.01);
    box(.24,.18,1.90,dark,0,.74,-.68);
-   wheelX=1.13;wheelFront=1.41;wheelBack=-1.43;scale=1.09;
+   // Hypercar: narrow teardrop cockpit, twin rear aero channels, wide
+   // rear diffuser, central shark fin and triangular side intakes.
+   wedge(.19,2.82,.43,.42,.65,secondary,0,1.01,-.78);
+   for(const x of [-1.02,1.02]){
+     wedge(.39,1.20,.34,.34,.66,dark,x,.37,.05);
+     box(.20,.19,.90,neon,x,.59,-1.56);
+     box(.23,.25,1.31,paint,x,.51,1.11);
+     box(.20,.16,.33,headlamp,x,.42,2.39);
+   }
+   box(2.47,.17,.66,dark,0,.19,-2.44);
+   box(2.50,.10,.53,secondary,0,1.09,-2.10);
+   wheelX=1.15;wheelFront=1.44;wheelBack=-1.49;scale=1.10;
    front=2.39;back=-2.39;fy=.41;by=.40;
  }
  addLights(pivot,front,back,fy,by);
