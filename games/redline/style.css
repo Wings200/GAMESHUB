@@ -2271,3 +2271,27 @@ select option:disabled {
   }
 
 }
+
+
+/* Neon weather is visual-only; small, unobtrusive live preset hint. */
+.weather-status {
+  position: absolute;
+  top: 25px;
+  right: 22px;
+  max-width: min(55vw, 285px);
+  padding: 9px 12px;
+  border: 1px solid rgba(113, 166, 222, .36);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(6, 15, 28, .88), rgba(10, 16, 28, .68));
+  color: #cee8ff;
+  font-size: 10px;
+  letter-spacing: .7px;
+  font-weight: 800;
+  text-align: right;
+  text-shadow: 0 0 11px rgba(80, 160, 250, .34);
+  backdrop-filter: blur(6px);
+}
+@media(max-width: 650px) {
+  .weather-status { top: 12px; right: 12px; font-size: 9px;
+    padding: 7px 9px; max-width: 49vw; }
+}
