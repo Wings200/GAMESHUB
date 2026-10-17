@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>REDLINE • V12 Engine Recording Lab</title>
+<title>REDLINE · V12 Exterior Exhaust Recording Lab</title>
 <style>
 :root{color-scheme:dark;--base:#080b12;--surface:#141b29;--line:#2d394c;--muted:#9baabd;--white:#f1f6fc;--accent:#ef5564;--good:#65d7c0}
 *{box-sizing:border-box}
@@ -46,90 +46,114 @@ textarea{margin:12px 0;width:100%;min-height:88px;resize:vertical;background:#09
 </head>
 <body>
 <main>
-<div class="top"><span class="tag">V12 · Listening Lab · Candidate recordings</span><a href="./index.html">← Back to REDLINE</a></div>
-<h1>Let the engines<br>sound like engines.</h1>
-<p class="intro">Compare real car recordings before we replace REDLINE V11.2's working audio. Play them with music off and headphones on. These are <strong>unaltered originals</strong>, not finished in-game loops; choose based on engine character, not loudness.</p>
-<div class="notice"><strong>This lab does not change the game.</strong> No new engine sounds are enabled in races yet. Recordings are played from their source at Wikimedia Commons; if a source cannot load, use its linked original page.</div>
-<section class="grid" aria-label="Three candidate recordings">
- <article class="card" data-key="maserati">
-  <span class="eyebrow">Candidate A · Deep V8</span>
-  <h2>Maserati GranTurismo S</h2>
-  <p class="detail">A real V8 starting, idling, and revving. First candidate for the IRONCLAD and muscular grand-tourer exhaust character.</p>
-  <div class="meta">66 seconds · Original recorded exhaust · CC BY 4.0</div>
-  <audio controls preload="none" aria-label="Maserati V8 original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/9/98/Maserati_GranTurismo_S_Exhaust.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
-  <div class="control"><label for="pitch-a">Speed</label><select class="speed" id="pitch-a"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
-  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Maserati_GranTurismo_S_Exhaust.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>lmartins</strong> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></div>
- </article>
- <article class="card" data-key="gto">
-  <span class="eyebrow">Candidate B · Classic race engine</span>
-  <h2>Ferrari 250 GTO</h2>
-  <p class="detail">A separate real engine recording for a higher-revving classic sports-car character. Possible fit for GT, CIRRUS or APEX.</p>
-  <div class="meta">60 seconds · Authentic car recording · CC BY 4.0</div>
-  <audio controls preload="none" aria-label="Ferrari 250 GTO original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Ferrari_250_GTO%2C_Engine_Sound.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
-  <div class="control"><label for="pitch-b">Speed</label><select class="speed" id="pitch-b"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
-  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Ferrari_250_GTO,_Engine_Sound.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>Provo rossi</strong> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></div>
- </article>
- <article class="card" data-key="458">
-  <span class="eyebrow">Candidate C · High-performance V8</span>
-  <h2>Ferrari 458 Italia</h2>
-  <p class="detail">A real Ferrari accelerating past the recording position. Useful for evaluating sharper supercar character, but it includes changing distance and may not loop cleanly.</p>
-  <div class="meta">12 seconds · Goodwood acceleration take · CC BY-SA 3.0</div>
-  <audio controls preload="none" aria-label="Ferrari 458 original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Ferrari_458_Italia.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
-  <div class="control"><label for="pitch-c">Speed</label><select class="speed" id="pitch-c"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
-  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Ferrari_458_Italia.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>Edvvc</strong> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a></div>
- </article>
+<div class="top"><span class="tag">REDLINE V12 · Exterior Audio Auditions</span><a href="./index.html">← Back to the game</a></div>
+<h1>Hear the exhaust.<br>Not the cabin.</h1>
+<p class="intro">Our first candidates sounded muffled, like in-car recordings. This second round uses <strong>actual outdoor recordings of cars at a motorsport event</strong>, with naturally captured exhaust and acceleration. These are the unedited original takes at 100% speed.</p>
+<div class="notice"><strong>V11.2 is still the working race audio.</strong> This page only auditions candidate recordings. Outdoor passing/launch clips are <em>not</em> clean engine loops and can't be dropped into the game without selecting and processing usable segments. Some have crowd and wind noise.</div>
+<section class="grid" aria-label="Four exterior exhaust candidate recordings">
+
+<article class="card" data-key="v8">
+<span class="eyebrow">A · OUTSIDE / BIG V8</span>
+<h2>American V8s · Trophy Truck</h2>
+<p class="detail">Stationary outside recording at a real motorsport event: trophy truck idling and multiple American V8 exhausts. Candidate for IRONCLAD muscle character.</p>
+<p class="meta">~82 seconds · Original outdoor recording · 100% playback speed</p>
+<audio controls preload="none" aria-label="Play American V8s · Trophy Truck real exterior recording">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/c/c6/Trophy_Truck_and_American_V8s.ogg" type="audio/ogg">Your browser does not support Ogg playback.
+</audio>
+<p class="license">
+ <a href="https://commons.wikimedia.org/wiki/File:Trophy_Truck_and_American_V8s.ogg" target="_blank" rel="noopener noreferrer">Original source / playback fallback</a>
+ · Edvvc (Ed Pond) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>
+</p>
+</article>
+
+<article class="card" data-key="v12">
+<span class="eyebrow">B · OUTSIDE / HIGH-REVVING V12</span>
+<h2>Aston Martin V12 Vantage</h2>
+<p class="detail">Real V12 exiting the Goodwood starting area and hitting the rev limiter. A sharper exterior exhaust comparison for CIRRUS or a premium sports car.</p>
+<p class="meta">~9 seconds · Original outdoor recording · 100% playback speed</p>
+<audio controls preload="none" aria-label="Play Aston Martin V12 Vantage real exterior recording">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/f/f5/Aston-Martin-V12-Vantage.ogg" type="audio/ogg">Your browser does not support Ogg playback.
+</audio>
+<p class="license">
+ <a href="https://commons.wikimedia.org/wiki/File:Aston-Martin-V12-Vantage.ogg" target="_blank" rel="noopener noreferrer">Original source / playback fallback</a>
+ · Edvvc (Ed Pond) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>
+</p>
+</article>
+
+<article class="card" data-key="v10">
+<span class="eyebrow">C · OUTSIDE / V10</span>
+<h2>Lamborghini Gallardo Superleggera</h2>
+<p class="detail">2010 Gallardo LP570-4 V10 accelerating away at Goodwood. Candidate high-performance exhaust character for OBSIDIAN or PHANTOM.</p>
+<p class="meta">~10 seconds · Original outdoor recording · 100% playback speed</p>
+<audio controls preload="none" aria-label="Play Lamborghini Gallardo Superleggera real exterior recording">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Lamborghini_Gallardo_LP570-4_Superleggera.ogg" type="audio/ogg">Your browser does not support Ogg playback.
+</audio>
+<p class="license">
+ <a href="https://commons.wikimedia.org/wiki/File:Lamborghini_Gallardo_LP570-4_Superleggera.ogg" target="_blank" rel="noopener noreferrer">Original source / playback fallback</a>
+ · Edvvc (Ed Pond) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>
+</p>
+</article>
+
+<article class="card" data-key="v6">
+<span class="eyebrow">D · OUTSIDE / TWIN-TURBO V6</span>
+<h2>Nissan GT-R SpecV</h2>
+<p class="detail">GT-R SpecV pulling away from a standing start at Goodwood. A lower, more aggressive exterior sound to try with REDLINE GT, VORTEX or BAYSIDE.</p>
+<p class="meta">~8 seconds · Original outdoor recording · 100% playback speed</p>
+<audio controls preload="none" aria-label="Play Nissan GT-R SpecV real exterior recording">
+ <source src="https://upload.wikimedia.org/wikipedia/commons/6/69/Nissan_GT-R_SpecV.ogg" type="audio/ogg">Your browser does not support Ogg playback.
+</audio>
+<p class="license">
+ <a href="https://commons.wikimedia.org/wiki/File:Nissan_GT-R_SpecV.ogg" target="_blank" rel="noopener noreferrer">Original source / playback fallback</a>
+ · Edvvc (Ed Pond) · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>
+</p>
+</article>
 </section>
-<section class="panel" aria-label="Compare">
- <h2>Which sounds belong in REDLINE?</h2>
- <p class="small">Each role can use a different recording, or you can choose none. The final engine bank will require hand-picked loop sections and multi-RPM transitions before it replaces the current system.</p>
- <div class="picks">
-  <label class="pick">IRONCLAD / V8 muscle<select id="muscle"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
-  <label class="pick">GT / APEX / CIRRUS<select id="sport"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
-  <label class="pick">OBSIDIAN / PHANTOM<select id="hyper"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
- </div>
- <label for="notes" class="small">What sounds wrong (crowd noise, rev pitch, exhaust quality, loop potential)?</label>
- <textarea id="notes" placeholder="Example: A sounds deep but has too much background noise; B has better throttle response..."></textarea>
- <div class="row"><button class="primary" id="copy">Copy my V12 feedback</button><span id="status" role="status" aria-live="polite"></span></div>
+<section class="panel" aria-label="Exterior engine recording feedback">
+<h2>Which one actually sounds right?</h2>
+<p class="small">Focus on exhaust presence, punch, throttle response and how much wind/crowd noise you hear. If all four are muffled or low-quality, select None—we'll look for dedicated stationary exhaust microphones instead of using worse samples.</p>
+<div class="picks">
+<label class="pick">IRONCLAD · Muscle/V8<select id="muscle"><option value="undecided">Not sure</option><option value="v8">A · American V8s · Trophy Truck</option><option value="v12">B · Aston Martin V12 Vantage</option><option value="v10">C · Lamborghini Gallardo Superleggera</option><option value="v6">D · Nissan GT-R SpecV</option><option value="none">None sound right</option></select></label>
+<label class="pick">GT / APEX / CIRRUS · Sport<select id="sport"><option value="undecided">Not sure</option><option value="v8">A · American V8s · Trophy Truck</option><option value="v12">B · Aston Martin V12 Vantage</option><option value="v10">C · Lamborghini Gallardo Superleggera</option><option value="v6">D · Nissan GT-R SpecV</option><option value="none">None sound right</option></select></label>
+<label class="pick">OBSIDIAN / PHANTOM · Supercar<select id="hyper"><option value="undecided">Not sure</option><option value="v8">A · American V8s · Trophy Truck</option><option value="v12">B · Aston Martin V12 Vantage</option><option value="v10">C · Lamborghini Gallardo Superleggera</option><option value="v6">D · Nissan GT-R SpecV</option><option value="none">None sound right</option></select></label>
+</div>
+<label for="notes" class="small">Tell me what's wrong or good about the sound</label>
+<textarea id="notes" placeholder="Example: A sounds raw and powerful, but C sounds too distant. None is clean enough to loop."></textarea>
+<div class="row"><button class="primary" id="copy">Copy my feedback</button><span id="status" role="status" aria-live="polite"></span></div>
 </section>
-<p class="small">REDLINE V12 source evaluation only. Recordings remain the property of their respective authors under the indicated CC licenses. This preview plays the original files without distributing modified engine assets. Attribution and licensing will be retained when building any final audio bank.</p>
+<p class="small">Recordings by Edvvc, shared under <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-ShareAlike 3.0</a>. Originals are streamed from Wikimedia Commons, not redistributed in the REDLINE codebase. Their license and artist credit must be preserved if a final edited sound pack is developed. External audio availability is not guaranteed.</p>
 </main>
 <script>
 (()=>{
- const audio=[...document.querySelectorAll("audio")];
- for(const player of audio){
-  player.addEventListener("play",()=>{for(const other of audio)if(other!==player)other.pause()});
-  const select=player.closest(".card").querySelector(".speed");
-  select.addEventListener("change",()=>{
-   const rate=Number(select.value);
-   player.playbackRate=rate;
-   if("preservesPitch" in player)player.preservesPitch=false;
-   if("mozPreservesPitch" in player)player.mozPreservesPitch=false;
+ const players=[...document.querySelectorAll("audio")];
+ for(const player of players){
+  player.addEventListener("play",()=>{
+   player.playbackRate=1;
+   for(const other of players)if(other!==player)other.pause();
   });
   player.addEventListener("error",()=>{
-   const card=player.closest(".card");
-   const note=document.createElement("p");
-   note.className="note";
-   note.textContent="This original media could not load here. Open the Original & license link above to audition it on Wikimedia Commons.";
-   player.insertAdjacentElement("afterend",note);
+   const info=document.createElement("p");
+   info.className="note";
+   info.textContent="Playback blocked or unavailable. Use the Original source / playback fallback link above to hear it on Wikimedia Commons.";
+   player.insertAdjacentElement("afterend",info);
   },{once:true});
  }
  document.getElementById("copy").addEventListener("click",async()=>{
   const chosen=id=>document.getElementById(id).selectedOptions[0].text;
   const feedback=[
-   "REDLINE V12 real engine recording feedback:",
-   "V8 muscle: "+chosen("muscle"),
-   "Sports cars: "+chosen("sport"),
-   "Hypercars: "+chosen("hyper"),
-   "Notes: "+(document.getElementById("notes").value.trim()||"No notes")
+   "REDLINE V12 exterior exhaust auditions:",
+   "IRONCLAD / Muscle: "+chosen("muscle"),
+   "Sport: "+chosen("sport"),
+   "Supercar: "+chosen("hyper"),
+   "Notes: "+(document.getElementById("notes").value.trim()||"None")
   ].join("\n");
   const status=document.getElementById("status");
   try{
    await navigator.clipboard.writeText(feedback);
-   status.textContent="Copied! Paste this into our ChatGPT conversation.";
+   status.textContent="Copied! Paste it into the REDLINE ChatGPT conversation.";
   }catch{
    const field=document.getElementById("notes");
    field.value=feedback;field.focus();field.select();
-   status.textContent="Copy manually from the selected text.";
+   status.textContent="Copy the selected text manually.";
   }
  });
 })();
