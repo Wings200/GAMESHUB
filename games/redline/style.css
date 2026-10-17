@@ -2327,3 +2327,45 @@ select option:disabled {
     width:calc(100% - 26px);padding:12px}
   .cash-prize-info{text-align:left}
 }
+
+/* Server-validated parts garage, replacing the old 16 free tuning points. */
+.redline-upgrade-shop {
+  width:min(1080px,calc(100% - 32px));
+  margin:16px auto 22px;
+  padding:18px;
+  border-radius:14px;
+  border:1px solid rgba(86,132,194,.31);
+  background:linear-gradient(140deg,rgba(8,17,33,.96),rgba(7,13,24,.92));
+  color:#f0f6ff;
+}
+.upgrade-shop-head{display:flex;align-items:end;justify-content:space-between;gap:15px}
+.upgrade-shop-head h2{font-size:21px;line-height:1.2;margin:5px 0 0;font-weight:950;letter-spacing:.03em}
+.upgrade-kicker{color:#77e6ac;font-size:10px;font-weight:900;letter-spacing:.13em}
+.upgrade-levels-note{font-size:10px;color:#b4c9e7;font-weight:850;white-space:nowrap}
+.upgrade-message{margin:12px 0 16px;color:#abddbe;font-size:11px;font-weight:800}
+.upgrade-message.upgrade-error{color:#ff9090}
+.upgrade-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.upgrade-part{padding:13px;border:1px solid rgba(124,162,217,.16);
+ border-radius:11px;background:rgba(20,32,49,.56)}
+.upgrade-part-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.upgrade-part-top strong{font-size:13px;font-weight:900;letter-spacing:.04em}
+.upgrade-current-tier{font-size:9px;color:#b6f1cf;white-space:nowrap;font-weight:800}
+.upgrade-part p{font-size:11px;color:rgba(218,233,250,.66);margin:6px 0 12px}
+.upgrade-level-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.upgrade-tier-button{font-family:inherit;min-height:34px;padding:7px 6px;border-radius:7px;
+ border:1px solid rgba(121,151,188,.30);background:rgba(12,22,36,.95);
+ color:#dbe7f5;font-size:10px;font-weight:850;cursor:pointer}
+.upgrade-tier-button.owned{border-color:rgba(124,221,172,.34)}
+.upgrade-tier-button.equipped{background:rgba(15,104,73,.46);
+ border-color:rgba(90,251,152,.72);color:#d5ffe7}
+.upgrade-tier-button:hover:not(:disabled){border-color:#7dbbfa;background:rgba(50,90,146,.35)}
+.upgrade-tier-button:disabled{opacity:.42;cursor:default}
+.upgrade-tier-button.equipped:disabled{opacity:.79}
+.upgrade-footnote{margin:14px 0 0;color:#95a6bb;font-size:10px;line-height:1.5}
+@media(max-width:760px){
+ .upgrade-grid{grid-template-columns:1fr}
+ .upgrade-shop-head{align-items:start;flex-direction:column}
+ .upgrade-levels-note{white-space:normal}
+}
+/* Older cached garage scripts must not resurrect the obsolete 16-point editor. */
+#carSelectScreen #redlineGarageV1{display:none!important}
