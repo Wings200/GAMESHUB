@@ -87,7 +87,8 @@ function makeCarPopulation(roads,maxCars) {
       id:i,road,dir:direction,progress,
       desiredSpeed:7.3+(i*19%9)*.63,
       speed:5.2+(i%5)*.45,
-      laneOffset:direction===1?-1.45:1.45,
+      // A fixed local-right offset naturally flips sides on opposite headings.
+      laneOffset:-1.45,
       paint:COLORS[(i*7)%COLORS.length],
       taxi:i%9===0,
       size:i%6===0?1.11:1,
@@ -233,7 +234,8 @@ export function createNeonTraffic({
     dummy.position.set(centerX+lx*cos+lz*sin,
       part[1],centerZ-lx*sin+lz*cos);
     dummy.rotation.set(0,yaw,component.wheel?Math.PI/2:0);
-    const scale=component.onlyTaxi&&!car.taxi?.001:car.visibleSize*car.size;
+    const scale=component.onlyTaxi && !car.taxi
+      ? .001 : car.visibleSize*car.size;
     dummy.scale.set(component.size[0]*scale,
       component.size[1]*scale,component.size[2]*scale);
     dummy.updateMatrix();
