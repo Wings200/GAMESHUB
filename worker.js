@@ -2070,7 +2070,10 @@ export class RedlineRoom
             "pong",
 
           now:
-            Date.now()
+            Date.now(),
+          // Echo the client's send-time for midpoint RTT clock syncing.
+          clientSentAt:Number.isFinite(data.clientSentAt)
+            ? data.clientSentAt : null
 
         }
       );
