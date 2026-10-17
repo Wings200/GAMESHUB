@@ -85,8 +85,8 @@ function createRoadReflections(THREE,worldGroup,trackSamples) {
       dummy.position.copy(frame.point).addScaledVector(frame.normal,shift);
       dummy.position.y+=.094;
       dummy.rotation.set(0,frame.rotationY,0);
-      dummy.scale.set(1.25+hash(i*31+5)*2.8,6.2+hash(i*17+6)*9.2,1);
-      // PlaneGeometry rotated -90deg: local Y is along road Z.
+      dummy.scale.set(1.25+hash(i*31+5)*2.8,1,6.2+hash(i*17+6)*9.2);
+      // Geometry was rotated into X/Z; scale.z is the road length.
       dummy.updateMatrix();
       puddles.setMatrixAt(k++,dummy.matrix);
     }
