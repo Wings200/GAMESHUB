@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REDLINE • V12 Engine Recording Lab</title>
+<style>
+:root{color-scheme:dark;--base:#080b12;--surface:#141b29;--line:#2d394c;--muted:#9baabd;--white:#f1f6fc;--accent:#ef5564;--good:#65d7c0}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#23344c 0%,var(--base) 58%);font:16px/1.5 system-ui,Segoe UI,sans-serif;color:var(--white)}
+main{width:min(1050px,calc(100% - 36px));margin:auto;padding:34px 0 72px}
+a{color:#90dbff}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.top a{font-size:.91rem;text-decoration:none;color:#cbd4e1;border:1px solid var(--line);padding:8px 14px;border-radius:12px}
+.tag{display:inline-flex;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--good);border:1px solid #2e695d;border-radius:60px;padding:5px 11px}
+h1{font-size:clamp(2rem,5vw,3.65rem);line-height:1.12;letter-spacing:-.055em;margin:24px 0 12px}
+.intro{max-width:760px;color:#becadc;margin:0 0 24px}
+.notice{border:1px solid #5c5540;background:#201e17;border-radius:12px;padding:12px 16px;color:#e6daba;font-size:.92rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:24px}
+.card{background:linear-gradient(150deg,#1a2434,#101621);border:1px solid var(--line);border-radius:18px;padding:20px;min-width:0}
+.eyebrow{font-size:.75rem;color:var(--good);letter-spacing:.12em;text-transform:uppercase}
+.card h2{font-size:1.37rem;line-height:1.25;margin:10px 0}
+.detail{color:var(--muted);font-size:.92rem;min-height:50px}
+.meta{font-size:.82rem;color:#aab8c8;margin:12px 0}
+audio{width:100%;margin:9px 0;min-height:54px}
+.control{margin:12px 0;display:flex;align-items:center;gap:12px}
+.control label{font-size:.88rem;color:#cbd4e1}
+select,button,textarea{font:inherit}
+select{min-width:0;flex:1;color:#eef7ff;background:#111b27;border:1px solid #506279;padding:8px 10px;border-radius:8px}
+.note{font-size:.82rem;color:var(--muted);margin:9px 0}
+button{cursor:pointer;color:white;background:#2a3d56;border:1px solid #58708a;border-radius:10px;padding:10px 13px}
+button.primary{background:#ab3347;border-color:#df5e6f;font-weight:650}
+button:hover{filter:brightness(1.12)}
+button:focus-visible,select:focus-visible,a:focus-visible,textarea:focus-visible{outline:3px solid #79c9ff;outline-offset:3px}
+.license{font-size:.82rem;border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
+.panel{border:1px solid var(--line);background:#111827;border-radius:18px;padding:21px;margin-top:20px}
+.panel h2{margin:0 0 12px;font-size:1.45rem}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pick{display:grid;gap:4px;color:#b8c9df;font-size:.89rem}
+.pick select{width:100%}
+textarea{margin:12px 0;width:100%;min-height:88px;resize:vertical;background:#090f19;color:#f4f6fc;border:1px solid #495b70;padding:11px;border-radius:10px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#status{font-size:.88rem;color:var(--good)}
+.small{font-size:.83rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><span class="tag">V12 · Listening Lab · Candidate recordings</span><a href="./index.html">← Back to REDLINE</a></div>
+<h1>Let the engines<br>sound like engines.</h1>
+<p class="intro">Compare real car recordings before we replace REDLINE V11.2's working audio. Play them with music off and headphones on. These are <strong>unaltered originals</strong>, not finished in-game loops; choose based on engine character, not loudness.</p>
+<div class="notice"><strong>This lab does not change the game.</strong> No new engine sounds are enabled in races yet. Recordings are played from their source at Wikimedia Commons; if a source cannot load, use its linked original page.</div>
+<section class="grid" aria-label="Three candidate recordings">
+ <article class="card" data-key="maserati">
+  <span class="eyebrow">Candidate A · Deep V8</span>
+  <h2>Maserati GranTurismo S</h2>
+  <p class="detail">A real V8 starting, idling, and revving. First candidate for the IRONCLAD and muscular grand-tourer exhaust character.</p>
+  <div class="meta">66 seconds · Original recorded exhaust · CC BY 4.0</div>
+  <audio controls preload="none" aria-label="Maserati V8 original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/9/98/Maserati_GranTurismo_S_Exhaust.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
+  <div class="control"><label for="pitch-a">Speed</label><select class="speed" id="pitch-a"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
+  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Maserati_GranTurismo_S_Exhaust.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>lmartins</strong> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></div>
+ </article>
+ <article class="card" data-key="gto">
+  <span class="eyebrow">Candidate B · Classic race engine</span>
+  <h2>Ferrari 250 GTO</h2>
+  <p class="detail">A separate real engine recording for a higher-revving classic sports-car character. Possible fit for GT, CIRRUS or APEX.</p>
+  <div class="meta">60 seconds · Authentic car recording · CC BY 4.0</div>
+  <audio controls preload="none" aria-label="Ferrari 250 GTO original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Ferrari_250_GTO%2C_Engine_Sound.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
+  <div class="control"><label for="pitch-b">Speed</label><select class="speed" id="pitch-b"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
+  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Ferrari_250_GTO,_Engine_Sound.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>Provo rossi</strong> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></div>
+ </article>
+ <article class="card" data-key="458">
+  <span class="eyebrow">Candidate C · High-performance V8</span>
+  <h2>Ferrari 458 Italia</h2>
+  <p class="detail">A real Ferrari accelerating past the recording position. Useful for evaluating sharper supercar character, but it includes changing distance and may not loop cleanly.</p>
+  <div class="meta">12 seconds · Goodwood acceleration take · CC BY-SA 3.0</div>
+  <audio controls preload="none" aria-label="Ferrari 458 original recording"><source src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Ferrari_458_Italia.ogg" type="audio/ogg">Your browser cannot play Ogg audio.</audio>
+  <div class="control"><label for="pitch-c">Speed</label><select class="speed" id="pitch-c"><option value="0.9">90% (lower)</option><option selected value="1">100% (original)</option><option value="1.1">110% (higher)</option></select></div>
+  <div class="license"><a href="https://commons.wikimedia.org/wiki/File:Ferrari_458_Italia.ogg" target="_blank" rel="noopener noreferrer">Original &amp; license</a> · Recorded by <strong>Edvvc</strong> · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a></div>
+ </article>
+</section>
+<section class="panel" aria-label="Compare">
+ <h2>Which sounds belong in REDLINE?</h2>
+ <p class="small">Each role can use a different recording, or you can choose none. The final engine bank will require hand-picked loop sections and multi-RPM transitions before it replaces the current system.</p>
+ <div class="picks">
+  <label class="pick">IRONCLAD / V8 muscle<select id="muscle"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
+  <label class="pick">GT / APEX / CIRRUS<select id="sport"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
+  <label class="pick">OBSIDIAN / PHANTOM<select id="hyper"><option value="undecided">Undecided</option><option value="maserati">A · Maserati</option><option value="gto">B · 250 GTO</option><option value="458">C · Ferrari 458</option><option value="none">None sound good</option></select></label>
+ </div>
+ <label for="notes" class="small">What sounds wrong (crowd noise, rev pitch, exhaust quality, loop potential)?</label>
+ <textarea id="notes" placeholder="Example: A sounds deep but has too much background noise; B has better throttle response..."></textarea>
+ <div class="row"><button class="primary" id="copy">Copy my V12 feedback</button><span id="status" role="status" aria-live="polite"></span></div>
+</section>
+<p class="small">REDLINE V12 source evaluation only. Recordings remain the property of their respective authors under the indicated CC licenses. This preview plays the original files without distributing modified engine assets. Attribution and licensing will be retained when building any final audio bank.</p>
+</main>
+<script>
+(()=>{
+ const audio=[...document.querySelectorAll("audio")];
+ for(const player of audio){
+  player.addEventListener("play",()=>{for(const other of audio)if(other!==player)other.pause()});
+  const select=player.closest(".card").querySelector(".speed");
+  select.addEventListener("change",()=>{
+   const rate=Number(select.value);
+   player.playbackRate=rate;
+   if("preservesPitch" in player)player.preservesPitch=false;
+   if("mozPreservesPitch" in player)player.mozPreservesPitch=false;
+  });
+  player.addEventListener("error",()=>{
+   const card=player.closest(".card");
+   const note=document.createElement("p");
+   note.className="note";
+   note.textContent="This original media could not load here. Open the Original & license link above to audition it on Wikimedia Commons.";
+   player.insertAdjacentElement("afterend",note);
+  },{once:true});
+ }
+ document.getElementById("copy").addEventListener("click",async()=>{
+  const chosen=id=>document.getElementById(id).selectedOptions[0].text;
+  const feedback=[
+   "REDLINE V12 real engine recording feedback:",
+   "V8 muscle: "+chosen("muscle"),
+   "Sports cars: "+chosen("sport"),
+   "Hypercars: "+chosen("hyper"),
+   "Notes: "+(document.getElementById("notes").value.trim()||"No notes")
+  ].join("\n");
+  const status=document.getElementById("status");
+  try{
+   await navigator.clipboard.writeText(feedback);
+   status.textContent="Copied! Paste this into our ChatGPT conversation.";
+  }catch{
+   const field=document.getElementById("notes");
+   field.value=feedback;field.focus();field.select();
+   status.textContent="Copy manually from the selected text.";
+  }
+ });
+})();
+</script>
+</body>
+</html>
