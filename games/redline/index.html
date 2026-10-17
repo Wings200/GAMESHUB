@@ -1426,12 +1426,23 @@
       let publicRoomsLoading =
         false;
 
+      // Server clock calibration from low-RTT ping/pong midpoints.
+      // All participants use the same server raceStartAt timestamp.
+      let serverClockOffset = 0;
+      let bestClockRtt = Infinity;
+      function readServerTime() {
+        return Date.now() + serverClockOffset;
+      }
+
 
       /* ===================================================
          MULTIPLAYER BRIDGE FOR game.js
       ==================================================== */
 
       window.REDLINE_MP = {
+
+        get serverNow() {return readServerTime();},
+        get clockOffset() {return serverClockOffset;},
 
         // Uses the existing account identity handshake; balance is
         // authoritative on the REDLINE multiplayer Worker.
@@ -2621,33 +2632,17 @@
       }
 
 
+      function sendClockPing() {
+        if(roomSocket?.readyState!==WebSocket.OPEN)return;
+        roomSocket.send(JSON.stringify({
+          type:"ping",clientSentAt:Date.now()
+        }));
+      }
       function startHeartbeat() {
-
         stopHeartbeat();
-
-
-        heartbeatTimer =
-          setInterval(
-            () => {
-
-              if (
-                roomSocket?.readyState ===
-                WebSocket.OPEN
-              ) {
-
-                roomSocket.send(
-                  JSON.stringify({
-                    type:
-                      "ping"
-                  })
-                );
-
-              }
-
-            },
-            20000
-          );
-
+        // Sync BEFORE the four-second starting countdown if possible.
+        sendClockPing();
+        heartbeatTimer=setInterval(sendClockPing,10000);
       }
 
 
@@ -3311,6 +3306,25 @@
 
             }
 
+
+            if(data.type==="pong") {
+              const recv=Date.now();
+              const sent=Number(data.clientSentAt);
+              const server=Number(data.now);
+              const rtt=recv-sent;
+              if(Number.isFinite(sent)&&Number.isFinite(server)&&
+                 sent>0&&rtt>=0&&rtt<2000) {
+                const estimate=server-(sent+recv)/2;
+                if(rtt<bestClockRtt+15 || !Number.isFinite(bestClockRtt)) {
+                  // Prefer lowest latency samples; avoid jarring drift
+                  // after race countdown already started.
+                  serverClockOffset=bestClockRtt===Infinity?estimate:
+                    serverClockOffset*.80+estimate*.20;
+                  bestClockRtt=Math.min(bestClockRtt,rtt);
+                }
+              }
+              return;
+            }
 
             if (
               data.type ===
