@@ -1402,6 +1402,21 @@
 
       window.REDLINE_MP = {
 
+        // Uses the existing account identity handshake; balance is
+        // authoritative on the REDLINE multiplayer Worker.
+        async getAccountStats() {
+          const accountToken=await getMultiplayerAccountToken();
+          const response=await fetch(`${MULTIPLAYER_API}/api/stats/me`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({accountToken})
+          });
+          const data=await response.json().catch(()=>null);
+          if(!response.ok||!data?.ok)
+            throw new Error(data?.error||"Could not load REDLINE balance.");
+          return data.stats;
+        },
+
         get connected() {
 
           return (
