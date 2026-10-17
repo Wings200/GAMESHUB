@@ -470,7 +470,7 @@ export function buildArcticV3Art({
 
 /* Visual-only Arctic snowfall following the local racer.
  * 380 GPU-rendered points, one geometry buffer, no physical particles. */
-export function createArcticSnowfall({THREE,worldGroup,getCar}){
+export function createArcticSnowfall({THREE,worldGroup,getCar,isSheltered}){
  const count=380,rng=random(9611);
  const positions=new Float32Array(count*3);
  const drift=new Float32Array(count);
@@ -497,6 +497,8 @@ export function createArcticSnowfall({THREE,worldGroup,getCar}){
    update(delta){
      const player=getCar();
      if(!player)return;
+     // Snow doesn't fall THROUGH the North Pass or Ice Vault roof.
+     flakes.visible=!(isSheltered?.() ?? false);
      const center=player.position;
      if(!initialized){
        for(let i=0;i<count;i++)reset(i,center);
