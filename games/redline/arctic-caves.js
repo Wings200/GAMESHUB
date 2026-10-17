@@ -151,12 +151,22 @@ export function createShortcutMassif({
  const verts=[];
  for(let i=0;i<position.count;i++){
    const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+   // An actual 3D fractured cliff, not a perfectly flat extrusion face.
+   // Keep the entire flight opening UNDISTORTED (including both portals).
+   // Only the solid outer rock flanks and upper peak get relief.
+   const outsideX=Math.max(0,Math.abs(x)-(half+3));
+   const outsideY=Math.max(0,y-(top+5));
+   const relief=clamp(Math.max(outsideX,outsideY)/12,0,1);
+   const strata=Math.sin(x*.19+y*.071+z*.35)*2.1+
+       Math.sin(x*.41-y*.17-z*.29)*.9;
+   position.setZ(i,z+relief*strata);
    const b=(.89+.065*Math.sin(x*.47+z*.30)+.045*Math.cos(y*.73-z*.35));
    const snow=clamp((y-48)/14,0,.92);
    const stone=[.28,.34,.39],powder=[.77,.86,.91];
    verts.push(...stone.map((c,j)=>clamp((c*(1-snow)+powder[j]*snow)*b,0,1)));
  }
  geometry.setAttribute("color",new THREE.Float32BufferAttribute(verts,3));
+ position.needsUpdate=true;
  geometry.computeVertexNormals();
  const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({
    vertexColors:true,roughness:.96,metalness:0,
