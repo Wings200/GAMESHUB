@@ -1,3 +1,5 @@
+> **Superseded for playback by V12.1:** The first version described below used a Cloudflare 502-prone media proxy and automatic 2.5-second loop search. See [V12.1 direct browser playback and proxy fix](AUDIO_V12_1_PROXY_502_FIX.md). The real preview now streams the full original directly from Wikimedia using an HTMLAudioElement, with V11.2 fallback.
+
 # REDLINE V12 — Exterior V8 *in-game* audio preview (opt-in)
 
 ## Chosen recording
