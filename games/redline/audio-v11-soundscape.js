@@ -65,12 +65,19 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
  const state={active:false,profile:"gt",rpm:900,speed:0,throttle:0,
    boost:false,gear:1,shiftDuck:0,prevThrottle:0,lastImpact:0,
    lastShift:0,lastExhaust:0,lastBoost:false,engineSources:[],
-   transientNodes:[],elapsed:0};
- let stream=[];
+   elapsed:0};
+ let stream=[],connections=[];
  let lowGain,highGain,rumbleGain,rumbleTone,harmonicGain,harmonicTone;
  let tyreGain,tyreFilter,tyreSquealGain,tyreSquealTone;
  let windGain,windFilter,turboGain,turboFilter,boostGain,boostFilter;
  const live=()=>state.active;
+ const persistentGain=(destination,initial=0)=>{
+   const n=gain(context,destination,initial);connections.push(n);return n;
+ };
+ const persistentFilter=(type,frequency,q,destination)=>{
+   const n=filter(context,type,frequency,q,destination);
+   connections.push(n);return n;
+ };
  function transient(type,intensity=1){
    if(!live())return;
    const now=context.currentTime,amount=limit(intensity,.1,1.5);
@@ -106,13 +113,14 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
    state.active=true;
    state.prevThrottle=0;state.shiftDuck=0;state.lastImpact=0;
    state.lastBoost=false;state.gear=1;state.elapsed=0;
-   lowGain=gain(context,engineBus);
-   highGain=gain(context,engineBus);
-   rumbleGain=gain(context,engineBus);
-   const rumbleEQ=filter(context,"lowpass",215,.43,rumbleGain);
+   connections=[];
+   lowGain=persistentGain(engineBus);
+   highGain=persistentGain(engineBus);
+   rumbleGain=persistentGain(engineBus);
+   const rumbleEQ=persistentFilter("lowpass",215,.43,rumbleGain);
    rumbleTone=makeOsc(context,"sawtooth",47,rumbleEQ);
-   harmonicGain=gain(context,engineBus);
-   const harmonicEQ=filter(context,"lowpass",820,.52,harmonicGain);
+   harmonicGain=persistentGain(engineBus);
+   const harmonicEQ=persistentFilter("lowpass",820,.52,harmonicGain);
    harmonicTone=makeOsc(context,"triangle",93,harmonicEQ);
    stream.push(rumbleTone,harmonicTone);
    if(buffers.low){
@@ -124,20 +132,20 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
      state.engineSources.push(high);stream.push(high);
    }
    // Inexpensive procedural fallback exists if the WAV assets fail to load.
-   tyreGain=gain(context,sfxBus);
-   tyreFilter=filter(context,"bandpass",1450,.78,tyreGain);
+   tyreGain=persistentGain(sfxBus);
+   tyreFilter=persistentFilter("bandpass",1450,.78,tyreGain);
    stream.push(makeNoise(context,noise,tyreFilter));
-   tyreSquealGain=gain(context,sfxBus);
+   tyreSquealGain=persistentGain(sfxBus);
    tyreSquealTone=makeOsc(context,"sine",890,tyreSquealGain);
    stream.push(tyreSquealTone);
-   windGain=gain(context,sfxBus);
-   windFilter=filter(context,"lowpass",950,.75,windGain);
+   windGain=persistentGain(sfxBus);
+   windFilter=persistentFilter("lowpass",950,.75,windGain);
    stream.push(makeNoise(context,noise,windFilter));
-   turboGain=gain(context,sfxBus);
-   turboFilter=filter(context,"bandpass",2050,1.4,turboGain);
+   turboGain=persistentGain(sfxBus);
+   turboFilter=persistentFilter("bandpass",2050,1.4,turboGain);
    stream.push(makeNoise(context,noise,turboFilter));
-   boostGain=gain(context,sfxBus);
-   boostFilter=filter(context,"bandpass",620,.64,boostGain);
+   boostGain=persistentGain(sfxBus);
+   boostFilter=persistentFilter("bandpass",620,.64,boostGain);
    stream.push(makeNoise(context,noise,boostFilter));
    return true;
  }
@@ -178,7 +186,7 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
    }
    // Car sound identity: heavy Ironclad bass, high Phantom/Cirrus whine.
    set(rumbleTone.frequency,limit(state.rpm*(.0085+profile.edge*.0030),36,132),context,.05);
-   set(rumbleGain.gain,(buffers.low||buffers.high?.02:.055)+
+   set(rumbleGain.gain,((buffers.low||buffers.high) ? .020 : .055)+
      .030*profile.rumble*(.45+.55*state.throttle),context);
    set(harmonicTone.frequency,limit(state.rpm*(.019+profile.edge*.008),70,230),context);
    set(harmonicGain.gain,.010+.025*profile.edge*tension,context);
@@ -209,7 +217,7 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
      transient("shift",.45+.35*profile.rumble);
      state.lastExhaust=state.elapsed;
    }
-   state.prevThrottle=state.throttle;
+   state.prevThrottle=throttle;
    if(boost&&!state.lastBoost)transient("boost",.58);
    state.lastBoost=boost;
    const impact=limit(Number(t.impact)||0);
@@ -228,12 +236,20 @@ export function createRedlineSoundscape({context,engineBus,sfxBus,buffers={}}){
       tyreSquealGain,windGain,turboGain,boostGain]){
      if(g){g.gain.cancelScheduledValues(at);g.gain.setTargetAtTime(0,at,.025);}
    }
-   const old=stream.slice();stream=[];state.engineSources=[];
-   // Scheduled stop is on the Web Audio clock, without background timers.
+   const old=stream.slice();
+   const staleConnections=connections.slice();
+   stream=[];connections=[];state.engineSources=[];
+   // Web Audio clock cleanup: no lingering lowpass/gain branches each time
+   // the player goes back to the Garage and starts another race.
+   let awaiting=old.length;
    for(const source of old){
-     try{source.stop(at+.12)}catch{}
-     source.onended=()=>releaseNode(source);
+     source.onended=()=>{
+       try{source.disconnect()}catch{}
+       if(--awaiting===0)for(const n of staleConnections)try{n.disconnect()}catch{}
+     };
+     try{source.stop(at+.12)}catch{source.onended?.()}
    }
+   if(!old.length)for(const n of staleConnections)try{n.disconnect()}catch{};
  }
  return {
    get active(){return state.active},
