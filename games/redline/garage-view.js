@@ -1,5 +1,13 @@
-/* REDLINE Garage V3: a separate view without altering multiplayer flow. */
+/* REDLINE factory Garage V5.1: dedicated owned-car and upgrade view. */
 (() => {
+  // Some browsers still have the retired garage.js in cache. It used to
+  // insert #redlineGarageV1 into the DOM at runtime. Remove it defensively
+  // without affecting the new dealership, part shop, or multiplayer state.
+  const removeLegacyCustomize=()=>{
+    document.getElementById("redlineGarageV1")?.remove();
+    document.getElementById("garageCosmeticsMount")?.remove();
+  };
+  removeLegacyCustomize();
   const overlay=document.getElementById("redlineGarageOverlay");
   const openBtn=document.getElementById("goToGarageBtn");
   const closeBtn=document.getElementById("closeGarageBtn");
@@ -11,6 +19,7 @@
     if(label)raceName.textContent=label;
   };
   function open(){
+    removeLegacyCustomize();
     if(window.REDLINE_MP?.room?.phase!=="car_select")return;
     overlay.classList.remove("hidden");
     opened=true;
@@ -38,6 +47,7 @@
   window.addEventListener("redline:garage-car-changed",syncAfterGame);
   window.addEventListener("redline:car-purchased",syncAfterGame);
   window.addEventListener("redline:room-state",event=>{
+    removeLegacyCustomize();
     const room=event.detail?.room||event.detail?.state||event.detail;
     if(room?.phase!=="car_select"||window.REDLINE_MP?.myPlayer?.ready)close();
     syncAfterGame();
