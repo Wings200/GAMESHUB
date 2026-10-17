@@ -40,6 +40,7 @@ function setCar(id){
   if($("labQuickCar"))$("labQuickCar").value=id;
   if($("labAudioDescription"))$("labAudioDescription").textContent=
     id==="gt"?"V15 · recorded inline-six engine":
+    id==="ironclad"?"V16 · recorded 1951 Mercury flathead V8":
     "V11.2 fallback · awaiting a licensed "+engineType(id)+" engine bank";
   syncRoom();
 }
@@ -124,7 +125,8 @@ for(const id of names){
   const meta=document.createElement("span");meta.textContent=
     spec.style+" · $0 IN LAB";
   const sound=document.createElement("small");sound.textContent=
-    id==="gt"?"REAL i6 AUDIO":"ENGINE SAMPLE PENDING";
+    id==="gt"?"REAL i6 AUDIO":
+    id==="ironclad"?"REAL V8 AUDIO · V16":"ENGINE SAMPLE PENDING";
   btn.append(title,meta,sound);
   btn.addEventListener("click",()=>setCar(id));
   grid.append(btn);
@@ -133,6 +135,11 @@ labPicker.append(grid);
 const audioDescription=document.createElement("div");
 audioDescription.id="labAudioDescription";audioDescription.className="lab-audio-description";
 labPicker.append(audioDescription);
+const credit=document.createElement("p");
+credit.className="lab-audio-description";
+credit.style.cssText="font-size:11px;font-weight:400;line-height:1.6;max-width:900px;";
+credit.innerHTML='IRONCLAD V8 audio adapted from <a href="https://freesound.org/people/lonemonk/sounds/62564/" target="_blank" rel="noopener noreferrer">1951 Mercury Warm Start and Idle</a> and <a href="https://freesound.org/people/lonemonk/sounds/62567/" target="_blank" rel="noopener noreferrer">Idle and Throttle 2</a> by <strong>lonemonk</strong>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Edited and looped for this prototype.';
+labPicker.append(credit);
 $("carSelectScreen").insertBefore(labPicker,$("carSelectScreen").querySelector(".car-select-footer"));
 const toolbar=document.createElement("aside");
 toolbar.id="labQuickControls";
