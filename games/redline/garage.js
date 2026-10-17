@@ -182,14 +182,9 @@
   let state =
     loadBuild();
 
-  function buildIsValid(
-    build = state
-  ) {
-    return (
-      totalPoints(build) ===
-      TOTAL_POINTS
-    );
-  }
+  // Performance points are retired. The separate cash shop and Worker
+  // now determine real driving stats; legacy values cannot block Ready.
+  function buildIsValid() { return true; }
 
   function saveBuild() {
     try {
