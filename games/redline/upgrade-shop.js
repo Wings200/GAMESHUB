@@ -266,8 +266,9 @@ if(root&&grid&&message){
         render();
         return snapshot;
       }catch(err){
-        showFeedback("Could not load upgrades: "+(err?.message||"Connection error"),true);
-        return null;
+        if(versionAtStart===confirmedPurchaseVersion)
+          showFeedback("Could not load upgrades: "+(err?.message||"Connection error"),true);
+        return snapshot;
       }finally{refreshing=null}
     })();
     return refreshing;
