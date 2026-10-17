@@ -3,9 +3,7 @@
  * sphere blobs and unconnected ceiling slabs. The shortcut uses ONE true
  * manifold opening cut out of a wide grounded cliff face.
  */
-const TAU=Math.PI*2;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const shade=(color,mul)=>color.map(v=>clamp(v*mul,0,1));
 
 /* Profile of a mountain with an open driveable arch. Coordinates are
    relative to the real road center. The polygon travels once around the
@@ -67,17 +65,15 @@ export function createContinuousCave({
      indices.push(a,c,b,b,c,d);
    }
  }
- // The ring-shaped front/back face has no asphalt-spanning polygon,
- // so cave entrances show the actual mountain material around the void.
- for(const step of [0,steps]){
-   const offset=step*count;
-   // Geometry contour deliberately remains open at ground/road level;
-   // outer and inner skirts attach to the terrain.
-   for(let j=0;j<count;j++){
-     const a=offset+j,b=offset+(j+1)%count;
-     // Small double-sided rock lip along the portal edges.
-     if(j===count-1 || j===11)continue;
-   }
+ // Cap the stone ring at BOTH portals so it has genuine rock
+ // thickness, not a thin one-sided mesh showing a hollow "roof".
+ // This polygon covers only rock outside the interior opening.
+ const cross=profile.map(([x,y])=>new THREE.Vector2(x,y));
+ const faces=THREE.ShapeUtils.triangulateShape(cross,[]);
+ for(const [a,b,c] of faces){
+   indices.push(a,b,c);
+   const back=steps*count;
+   indices.push(back+a,back+c,back+b);
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
