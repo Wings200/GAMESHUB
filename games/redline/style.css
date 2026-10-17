@@ -2700,3 +2700,39 @@ select option:disabled {
   .dealer-silhouette{width:min(212px,94%)}
   .dealer-specialty{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Factory-car preview images V18.2: real race meshes, left-side camera.
+   One-time WebGL render creates a cached PNG; cards never run 3D loops. */
+.preview-stage.redline-rendered-preview,
+.dealer-showroom.redline-rendered-preview {
+  isolation:isolate;
+}
+.preview-stage .redline-real-car-thumbnail,
+.dealer-showroom .redline-real-car-thumbnail {
+  position:absolute;
+  display:block;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center center;
+  filter:drop-shadow(0 9px 8px rgba(0,0,0,.55));
+  pointer-events:none;
+  user-select:none;
+  -webkit-user-drag:none;
+  z-index:1;
+}
+.preview-stage.redline-rendered-preview::before {
+  bottom:24px;
+  opacity:.65;
+}
+.dealer-showroom.redline-rendered-preview::after {
+  bottom:21px;
+  opacity:.55;
+}
+@media(max-width:540px){
+  .dealer-showroom .redline-real-car-thumbnail {
+    object-position:center 55%;
+  }
+}
