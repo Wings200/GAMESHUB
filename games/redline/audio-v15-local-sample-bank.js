@@ -162,7 +162,7 @@ export function createV15RecordedEnginePreview({
     }
     // Disconnect nodes only after a short fade so exit doesn't click.
     for(const g of toDisconnect){
-      setTimeout(()=>{try{g.disconnect()}catch{}},160);
+      setTimeout(()=>{try{g.node.disconnect()}catch{}},160);
     }
   }
   async function activate(id){
