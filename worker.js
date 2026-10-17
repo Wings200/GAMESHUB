@@ -3995,6 +3995,12 @@ export class RedlineStats
       return {
         accountId:id,
         username:cleanUsername(currentUsername||stats.username||"Racer"),
+        // The dealership must show actual Worker-confirmed prices, not
+        // optimistic frontend catalog data during staggered deployments.
+        economyVersion:18,
+        carPrices:Object.fromEntries(
+          REDLINE_CAR_IDS.map(carId=>[carId,carPrice(carId)])
+        ),
         racesFinished:positive(stats.racesFinished),
         cashBalance:positive(stats.cashBalance),
         cashEarnedTotal:positive(stats.cashEarnedTotal),
