@@ -15,6 +15,21 @@
   let request=null;
   let lastFetch=0;
   let currentBalance=null;
+  let confirmedPurchaseVersion=0;
+  // Purchases already returned the Worker-approved remaining balance.
+  // Show it immediately; a slower earlier stats request must not undo it.
+  window.addEventListener("redline:cash-confirmed",event=>{
+    const balance=Number(event.detail?.balance);
+    if(!Number.isSafeInteger(balance)||balance<0)return;
+    confirmedPurchaseVersion++;
+    currentBalance=balance;
+    lastFetch=Date.now();
+    number.textContent="$"+balance.toLocaleString();
+    status.textContent="Purchase saved · Balance updated";
+    window.dispatchEvent(new CustomEvent("redline:cash-updated",{
+      detail:{balance,lastAward:0,purchase:true}
+    }));
+  });
   async function refresh(force=false) {
     if(request)return request;
     if(!force && currentBalance!==null &&
@@ -26,12 +41,17 @@
       return;
     }
     status.textContent="Checking your account…";
+    const purchaseVersionAtStart=confirmedPurchaseVersion;
     request=(async()=>{
       try{
         const stats=await api.call(window.REDLINE_MP);
         const amount=Number(stats?.cashBalance);
         if(!Number.isSafeInteger(amount)||amount<0)
           throw new Error("Invalid balance");
+        // A purchase completed after this refresh began. Its confirmed
+        // balance takes precedence over any older stats response.
+        if(purchaseVersionAtStart!==confirmedPurchaseVersion &&
+           amount!==currentBalance)return;
         currentBalance=amount;
         number.textContent="$"+amount.toLocaleString();
         const v18=Number(stats?.economyVersion)>=18;
