@@ -917,8 +917,13 @@ export default {
       const body=await readJson(request);
       const identity=await verifyGameShubIdentity(body?.accountToken);
       if(!identity.ok)return json({ok:false,error:identity.error},identity.status);
-      const result=await statsStub(env).purchaseCar(identity.user.id,body?.carId);
-      return json(result,result.ok?200:400);
+      try{
+        const result=await statsStub(env).purchaseCar(identity.user.id,body?.carId);
+        return json(result,result.ok?200:400);
+      }catch(error){
+        console.error("REDLINE dealership transaction unavailable:",error);
+        return json({ok:false,error:"REDLINE account storage is unavailable. No car was purchased."},503);
+      }
     }
 
     /* AUTHENTICATED PERFORMANCE GARAGE */
@@ -929,10 +934,15 @@ export default {
       const identity=await verifyGameShubIdentity(body?.accountToken);
       if(!identity.ok)return json({ok:false,error:identity.error},identity.status);
       const category=body?.category,carId=body?.carId;
-      const result=await (url.pathname.endsWith("/purchase")
-        ?statsStub(env).purchaseUpgrade(identity.user.id,carId,category)
-        :statsStub(env).equipUpgrade(identity.user.id,carId,category,body?.tier));
-      return json(result,result.ok?200:400);
+      try{
+        const result=await (url.pathname.endsWith("/purchase")
+          ?statsStub(env).purchaseUpgrade(identity.user.id,carId,category)
+          :statsStub(env).equipUpgrade(identity.user.id,carId,category,body?.tier));
+        return json(result,result.ok?200:400);
+      }catch(error){
+        console.error("REDLINE performance garage unavailable:",error);
+        return json({ok:false,error:"REDLINE account storage is unavailable. No part purchase was confirmed."},503);
+      }
     }
 
     /* =====================================================
@@ -974,21 +984,16 @@ export default {
       }
 
 
-      const stats =
-        await statsStub(
-          env
-        ).getPlayerStats(
-          identity.user.id,
-          identity.user.username
+      try{
+        const stats=await statsStub(env).getPlayerStats(
+          identity.user.id,identity.user.username
         );
-
-
-      return json({
-        ok:
-          true,
-
-        stats
-      });
+        return json({ok:true,stats});
+      }catch(error){
+        console.error("REDLINE saved player statistics unavailable:",error);
+        return json({ok:false,
+          error:"REDLINE account storage is temporarily unavailable. Your saved cash and cars have not been reset."},503);
+      }
 
     }
 
@@ -2409,8 +2414,18 @@ export class RedlineRoom
         }
         player.upgrades=savedCarGarage(saved,player.car).equipped;
       } catch(error) {
-        this.send(ws,{type:"error",error:"Could not verify garage parts. Try again."});
-        return;
+        // The three starter cars are permanently free. A temporary
+        // account-storage outage may NEVER grant paid cars or upgrades,
+        // but can safely let racers drive a free stock car and finish.
+        if(STARTER_CAR_IDS.includes(player.car)){
+          player.upgrades=stockUpgrades();
+          this.send(ws,{type:"notice",
+            message:"Garage storage is offline; racing with stock starter-car parts."});
+        }else{
+          this.send(ws,{type:"error",
+            error:"Cannot verify purchased car while garage storage is offline. Select a free starter car."});
+          return;
+        }
       }
       player.ready =
         true;
