@@ -118,6 +118,69 @@ export async function loadV15LocalZip(file){
 export function getV15LocalStatus(){
   return {ready:!!localBank,revision:localRevision,status:localStatus};
 }
+/**
+ * Production audio is embedded in a REDLINE-specific packed binary bank,
+ * not shipped as nine standalone Unity WAV downloads. The user-provided
+ * sample ZIP remains only for optional V15 testing and is never uploaded.
+ */
+function decodePublishedBank(raw){
+  const bytes=new Uint8Array(raw);
+  const dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+  const head=new TextDecoder().decode(bytes.subarray(0,8));
+  if(head!=="RDL15BNK"||dv.byteLength<16||dv.getUint32(8,true)!==1)
+    throw new Error("Unsupported REDLINE audio-bank header");
+  const count=dv.getUint32(12,true);
+  if(count!==SAMPLE_NAMES.length)
+    throw new Error("Incomplete embedded engine bank");
+  const decoded={};
+  let at=16;
+  for(let i=0;i<count;i++){
+    if(at+1>bytes.length)throw new Error("Truncated bank name");
+    const length=bytes[at++];
+    if(length<2||length>32||at+length+4>bytes.length)
+      throw new Error("Invalid bank entry");
+    const name=new TextDecoder().decode(bytes.subarray(at,at+length));
+    at+=length;
+    const size=dv.getUint32(at,true);at+=4;
+    if(!SAMPLE_NAMES.includes(name)||Object.hasOwn(decoded,name)||
+       size<500||size>3*1024*1024||at+size>bytes.length)
+      throw new Error("Invalid compressed engine sample: "+name);
+    const payload=bytes.slice(at,at+size);
+    if(new TextDecoder().decode(payload.subarray(0,4))!=="OggS")
+      throw new Error("Invalid compressed audio for "+name);
+    decoded[name]=payload.buffer;
+    at+=size;
+  }
+  if(at!==bytes.length)throw new Error("Trailing bank data");
+  return decoded;
+}
+let publishedPromise=null;
+export async function preloadV15PublishedEngine(){
+  if(publishedPromise)return publishedPromise;
+  publishedPromise=(async()=>{
+    try{
+      const url=new URL("./assets/audio/redline-gt-v15-audio.bank",import.meta.url);
+      const response=await fetch(url,{cache:"force-cache"});
+      if(!response.ok){
+        if(!localBank)localStatus="Built-in V15 bank not installed yet; using V11.2";
+        return false;
+      }
+      const data=await response.arrayBuffer();
+      if(data.byteLength>5*1024*1024)throw new Error("Bank too large");
+      const unpacked=decodePublishedBank(data);
+      if(!localBank){
+        localBank=unpacked;localRevision++;
+        localStatus="Built-in recorded GT engine ready";
+      }
+      return true;
+    }catch(error){
+      console.warn("REDLINE built-in recorded engine unavailable:",error);
+      if(!localBank)localStatus="Built-in recorded audio unavailable; using V11.2";
+      return false;
+    }
+  })();
+  return publishedPromise;
+}
 function set(ctx,param,value,seconds=.07){
   const now=ctx.currentTime;
   param.cancelScheduledValues(now);
@@ -153,7 +216,7 @@ export function createV15RecordedEnginePreview({
   bankBus.gain.value=0;bankBus.connect(engineBus);
   let active=false,engaged=false,decoding=false,revision=-1,token=0;
   let sources=[],gains=[],current="gt",rpm=900,gas=0;
-  let status="Choose your local ZIP",error="";
+  let status="Waiting for recorded engine bank",error="";
   function clearSources(){
     const toStop=sources.slice(),toDisconnect=gains.slice();
     sources=[];gains=[];
@@ -211,7 +274,7 @@ export function createV15RecordedEnginePreview({
     backup.start();
     set(context,bankBus.gain,0,.025);
     set(context,oldBus.gain,1,.025);
-    status=localBank?"Preparing recorded engine":"Choose ZIP in bottom-left panel";
+    status=localBank?"Preparing recorded engine":"Recorded bank not installed; V11.2 active";
     if(localBank)activate(token);
   }
   function update(data={},dt=.016){
@@ -222,7 +285,7 @@ export function createV15RecordedEnginePreview({
       set(context,bankBus.gain,0,.035);
       set(context,oldBus.gain,1,.05);
       clearSources();
-      status=localBank?"Loading newly selected ZIP":"Choose engine ZIP";
+      status=localBank?"Loading recorded engine bank":"Recorded bank unavailable";
       if(localBank)activate(token);
     }
     const t=clamp(Number(dt)||.016,.001,.08);
@@ -276,11 +339,11 @@ export function createV15RecordedEnginePreview({
     start,update,stop,playStartupSample,
     get active(){return active},
     get debug(){return {
-      active,mode:"V15 locally loaded real i6 engine recordings",
+      active,mode:"V15 real i6 recorded engine",
       usingFallback:!engaged||current!=="gt",
       loading:decoding,status,car:current,
       rpm:Math.round(rpm),throttle:Number(gas.toFixed(2)),
-      engineSamples:sources.length,archiveReady:!!localBank,
+      engineSamples:sources.length,bankReady:!!localBank,
       noUpload:true,error
     }}
   };
