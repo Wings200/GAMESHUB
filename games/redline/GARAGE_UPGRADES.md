@@ -35,6 +35,25 @@ Players start with their chosen base car (stock). A permanent garage shop lets p
 - Changing parts after pressing Ready cannot change the locked race spec. Purchasing between races can be equipped for the next race.
 - The server protects purchases and loadout ownership. The existing movement simulation remains client-based; this is **not** a full server-authoritative racing anti-cheat implementation.
 
+## Tier rebalancing and visible comparison (2026-10-16)
+
+Each category now has **nonlinear, diminishing-return** bonuses. Street provides the biggest initial step, Sport adds another noticeable boost, and Race finishes the build with a smaller step. Existing part ownership and cash prices are preserved; no account data migration or reset is required.
+
+| Upgrade | Street | Sport | Race | Primary effect |
+|---|---:|---:|---:|---|
+| Engine | +11% | +20% | +27% | Forward acceleration (reverse power also benefits) |
+| Turbo | +12% | +21% | +28% | Boost top speed, nitro speed and thrust |
+| Transmission | +7% | +13% | +18% | Top-speed cap and scaled high-speed resistance |
+| Suspension | +9% | +16% | +22% | Steering and high-speed handling |
+| Brakes | +12% | +21% | +29% | Stopping force and reverse response |
+| Tires | +10% | +18% | +24% | Cornering grip and controlled drifting |
+
+Percentages above are primary bonuses over **stock** and not additive purchase-by-purchase. Secondary bonuses vary by metric (see `UPGRADE_TUNING` and `UPGRADE_METRICS` in `upgrade-parts.js`).
+
+The garage shows **current equipped vs hovered/focused preview tier** for each category using the same `applyCarUpgrades` physics formula used by the game. Each upgrade lists two exact numerical metrics, the percentage gained/lost from the current setup, and installed/target progress bars. Car selections trigger live preview recalculation for GT, Vortex, or Apex. Unaffordable and still-locked tiers can be previewed without purchasing. Cash balance, ownership and purchase authorization remain controlled by the Worker.
+
+The original physics had a fixed 42-unit high-speed resistance threshold; this previously limited the felt benefit of transmission upgrades. Now it scales with paid transmission tiers and remains precisely 42 for stock, without altering the underlying car physics for non-upgraded players.
+
 ## Testing notes
 
 - 19 headless upgrade checks passed: tier prices, insufficient cash, tier progression, equip/revert, old-account migration, permanent ownership, real car physics changes, code parsing and multiplayer integration.
