@@ -514,14 +514,20 @@ export function buildBackdrop({ THREE, worldGroup, trackSamples, sampleCount,
     }));
   return {cityBuildings:cityBlocks.reduce((n,b)=>n+b.length,0),
     skylineTowers:distant.reduce((n,b)=>n+b.length,0),
-    trafficRoads,innerLots,horizonLots,architectureMaterials:mats};
+    trafficRoads,innerLots,horizonLots,architectureMaterials:mats,
+    facadeAtlas:{maps:atlas,glows:glowAtlas}};
 }
 
 /** Replace the cheap one-color office faces with tiled facades + storefronts. */
-export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
+export function buildRoadsideArchitecture({
+  THREE,worldGroup,buildings,facadeAtlas=null
+}) {
   const shellGeo = new THREE.BoxGeometry(1,1,1);
   const types=["office","brick","shop","residential","hotel"];
-  const atlas=types.map(type=>facadeMap(THREE,type));
+  // Reuse backdrop's five canvas textures rather than allocating 10
+  // more 768×1024 atlases for the buildings by the competitive roadway.
+  const atlas=facadeAtlas?.maps?.length===types.length
+    ?facadeAtlas.maps:types.map(type=>facadeMap(THREE,type));
   const groups=types.map(()=>[]),roofs=[],parapets=[],awnings=[],shutters=[];
   for(const b of buildings) {
     const type=b.index%5;
@@ -544,7 +550,8 @@ export function buildRoadsideArchitecture({ THREE, worldGroup, buildings }) {
         d:Math.min(5,b.depth*.55),rotation:b.rotationY});
     }
   }
-  const glowAtlas=types.map(type=>facadeEmissiveMap(THREE,type));
+  const glowAtlas=facadeAtlas?.glows?.length===types.length
+    ?facadeAtlas.glows:types.map(type=>facadeEmissiveMap(THREE,type));
   const materials=atlas.map((map,i)=>new THREE.MeshStandardMaterial({
     color: i===1 ? 0xaaa0a0 : 0x9299a4,
     map, bumpMap:map, bumpScale:.024,
