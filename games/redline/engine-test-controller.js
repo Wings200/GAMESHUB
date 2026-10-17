@@ -59,6 +59,8 @@ function setMap(id){
   syncRoom();
 }
 function testDrive(){
+  // Restart recorded engine loops and startup on car switching in the lab.
+  if(started)window.REDLINE_LAB_RESTART_AUDIO?.();
   started=true;
   startAt=Date.now()+1800;
   ownPlayer.ready=true;
