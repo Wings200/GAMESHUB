@@ -9489,6 +9489,19 @@ function updatePhysics(delta) {
     updateNavigation(delta, roadInfo);
     updateDrivingEffects(delta, handbrake, lateralSpeed, surface, nitroActive);
     updateCarVisuals(delta, throttle, brake, nitroActive);
+    // Audio-only physics snapshot. Single-player/local racer only; no new
+    // multiplayer traffic or changes to the authoritative driving model.
+    window.REDLINE_AUDIO?.updateTelemetry?.({
+        rpm:carState.rpm,gear:carState.gear,
+        speed:carState.velocity.length(),
+        throttle,brake,handbrake,lateralSpeed,
+        slip:Math.abs(lateralSpeed),surface:surface.name,
+        nitro:nitroActive || carState.boostTimer>0 ||
+            carState.overdriveTimer>0,
+        impact:carState.impactPulse,
+        airborne:carState.airborne,
+        car:activeCarSpec?.model || selectedCar
+    });
 }
 function updateCarVisuals(delta, throttle, brake, nitroActive) {
     if (!carVisual) {
