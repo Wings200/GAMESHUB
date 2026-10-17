@@ -2255,19 +2255,26 @@ export class RedlineRoom
         [];
 
 
-      for (
-        const racer
-        of this.room.players
-      ) {
-
-        racer.car =
-          null;
-
-
-        racer.ready =
-          false;
+      // Ensure every racer has a SERVER-VERIFIED owned car immediately
+      // when selection opens. The free starter GT is always an owned
+      // fallback even when the profile lookup is temporarily unavailable.
+      // This avoids relying on a hidden browser selector to enable READY.
+      for (const racer of this.room.players) {
+        let initialCar="gt";
+        try {
+          const saved=await statsStub(this.env).getPlayerStats(
+            racer.accountId,racer.username
+          );
+          const profile=garageCarOwnership(saved.carGarage);
+          if(ownsRedlineCar(profile,profile.selected))
+            initialCar=profile.selected;
+        } catch(error) {
+          // No wallet or upgrades are inferred during fallback selection.
+          initialCar="gt";
+        }
+        racer.car=initialCar;
+        racer.ready=false;
         racer.upgrades=stockUpgrades();
-
       }
 
 
