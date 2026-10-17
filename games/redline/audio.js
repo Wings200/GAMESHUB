@@ -2,8 +2,10 @@
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
-const USE_V13_CLEAN_PREVIEW =
-  new URLSearchParams(window.location.search).get("engine")==="v13";
+import { createV14PhysicalEnginePreview } from "./engine-v14-physical-preview.js?v=physical-v14-1";
+const ENGINE_EXPERIMENT=new URLSearchParams(window.location.search).get("engine");
+const USE_V13_CLEAN_PREVIEW=ENGINE_EXPERIMENT==="v13";
+const USE_V14_PHYSICAL_PREVIEW=ENGINE_EXPERIMENT==="v14";
 // Retired V12 outdoor field audio. ?engine=v12 now uses safe V11.2
 // rather than starting a recording with crowd voices.
 
@@ -662,7 +664,12 @@ async function initAudio() {
     console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
   try {
-    soundscape=USE_V13_CLEAN_PREVIEW
+    soundscape=USE_V14_PHYSICAL_PREVIEW
+      ?createV14PhysicalEnginePreview({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
+          fallbackFactory:createRedlineSoundscape
+        })
+      :USE_V13_CLEAN_PREVIEW
       ?createV13EnginePreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
           fallbackFactory:createRedlineSoundscape
@@ -1610,6 +1617,35 @@ if(USE_V13_CLEAN_PREVIEW){
     const next="V13 CLEAN ENGINE TEST · "+state;
     if(next!==v13PreviewLabel.textContent)v13PreviewLabel.textContent=next;
     oldLoop(now);
+  };
+}
+// V14 gets a separate, explicit status (including WASM/CDN loading errors).
+// It is impossible for it to silently claim success while V11.2 plays.
+if(USE_V14_PHYSICAL_PREVIEW){
+  const tag=document.createElement("div");
+  tag.id="redlineV14PreviewStatus";
+  tag.setAttribute("role","status");
+  tag.style.cssText=
+    "position:fixed;left:12px;bottom:12px;z-index:10000;pointer-events:none;"+
+    "background:#141820ee;color:#b4edd5;border:1px solid #4e8c81;"+
+    "border-radius:10px;padding:7px 10px;font:12px/1.4 system-ui,sans-serif";
+  const label=document.createElement("div");
+  label.textContent="V14 PHYSICAL ENGINE TEST · Waiting for race";
+  tag.appendChild(label);
+  document.body.appendChild(tag);
+  const previousLoop=audioLoop;
+  audioLoop=function(now){
+    const info=soundscape?.debug;
+    let status="Waiting for race";
+    if(info?.active){
+      status=info.usingFallback
+        ?((info.loading?"LOADING":"FALLBACK TO V11.2")+
+          " · "+(info.status||"Starting"))
+        :("PHYSICAL ENGINE ACTIVE · "+info.engine+" · "+info.rpm+" RPM");
+    }
+    const text="V14 PHYSICAL ENGINE TEST · "+status;
+    if(text!==label.textContent)label.textContent=text;
+    previousLoop(now);
   };
 }
 requestAnimationFrame(
