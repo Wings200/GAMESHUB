@@ -22,7 +22,7 @@ export async function onRequestGet({request}){
       headers:{"Accept":"audio/ogg"},
       cf:{cacheEverything:true,cacheTtl:86400}
     });
-    if(!upstream.ok || !(upstream.headers.get("content-type")||"").includes("audio"))
+    if(!upstream.ok || !/^(audio\/|application\/ogg)/i.test(upstream.headers.get("content-type")||""))
       return new Response("Recording not available; use V11.2 instead.",{
         status:502,headers:{"Cache-Control":"no-store"}});
     const size=Number(upstream.headers.get("content-length")||0);
