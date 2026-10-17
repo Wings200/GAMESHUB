@@ -2106,54 +2106,24 @@
      The new stats do NOT affect physics yet.
   ========================================================= */
 
+  // Compatibility for clients briefly served an older Worker, which
+  // still starts car selection with no car. New Workers assign the
+  // last owned car server-side; this fallback does nothing in that case.
+  let fallbackAttempted=false;
   function ensureLegacySelection() {
-
-    const room =
-      window.REDLINE_MP
-        ?.room;
-
-
-    const me =
-      window.REDLINE_MP
-        ?.myPlayer;
-
-
-    if (
-      room?.phase !==
-      "car_select" ||
-      !me ||
-      me.car
-    ) {
-
-      render();
-
-      return;
-
+    const room=window.REDLINE_MP?.room;
+    const me=window.REDLINE_MP?.myPlayer;
+    if(room?.phase!=="car_select"){
+      fallbackAttempted=false;return;
     }
-
-
-    const gt =
-      document.querySelector(
-        '.car-card[data-car="gt"]'
-      );
-
-
-    if (
-      gt
-    ) {
-
-      gt.click();
-
-    }
-
-
-    setTimeout(
-      render,
-      0
-    );
-
+    if(!me||me.car||me.ready||fallbackAttempted)return;
+    const freeGT=document.querySelector('.car-card[data-car="gt"]');
+    if(!freeGT)return;
+    fallbackAttempted=true;
+    // Uses the ordinary selector click -> Worker chooseCar -> room_state
+    // acknowledgement flow. Never enables Ready locally.
+    freeGT.click();
   }
-
 
   /* =========================================================
      MULTIPLAYER EVENTS
@@ -2178,15 +2148,11 @@
         "car_select"
       ) {
         refreshCashBalance();
-        // Preserve the last account-backed car selection; no forced GT.
+        ensureLegacySelection();
         render();
-
-      }
-
-      else {
-
+      } else {
+        fallbackAttempted=false;
         render();
-
       }
 
     }
