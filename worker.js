@@ -10,6 +10,32 @@ const GAMESHUB_IDENTITY_VERIFY_URL =
 
 const VALID_CARS = new Set(REDLINE_CAR_IDS);
 
+/*
+ * Vehicle-specific performance storage. Migrates a legacy account-wide
+ * paid garage to the previously saved selected car exactly once, on write.
+ */
+function ensurePerCarUpgrades(stats) {
+  const original=stats.carUpgrades;
+  const present=original&&typeof original==="object"&&!Array.isArray(original);
+  const map=Object.create(null);
+  if(present) {
+    for(const id of REDLINE_CAR_IDS)
+      if(Object.hasOwn(original,id))map[id]=sanitizeGarage(original[id]);
+  }else{
+    const legacyCar=garageCarOwnership(stats.carGarage).selected;
+    map[legacyCar]=sanitizeGarage(stats.garage);
+  }
+  stats.carUpgrades=map;
+  return map;
+}
+function savedCarGarage(stats,carId){
+  return sanitizeGarage(ensurePerCarUpgrades(stats)[carId]);
+}
+function ownedUpgradeCar(stats,carId){
+  return typeof carId==="string"&&VALID_CARS.has(carId)&&
+    ownsRedlineCar(stats.carGarage,carId);
+}
+
 const VALID_MAPS =
   new Set([
     "neon",
@@ -902,10 +928,10 @@ export default {
       const body=await readJson(request);
       const identity=await verifyGameShubIdentity(body?.accountToken);
       if(!identity.ok)return json({ok:false,error:identity.error},identity.status);
-      const category=body?.category;
+      const category=body?.category,carId=body?.carId;
       const result=await (url.pathname.endsWith("/purchase")
-        ?statsStub(env).purchaseUpgrade(identity.user.id,category)
-        :statsStub(env).equipUpgrade(identity.user.id,category,body?.tier));
+        ?statsStub(env).purchaseUpgrade(identity.user.id,carId,category)
+        :statsStub(env).equipUpgrade(identity.user.id,carId,category,body?.tier));
       return json(result,result.ok?200:400);
     }
 
@@ -2374,7 +2400,7 @@ export class RedlineRoom
           player.ready=false;
           return;
         }
-        player.upgrades=sanitizeGarage(saved.garage).equipped;
+        player.upgrades=savedCarGarage(saved,player.car).equipped;
       } catch(error) {
         this.send(ws,{type:"error",error:"Could not verify garage parts. Try again."});
         return;
@@ -3783,6 +3809,7 @@ export class RedlineStats
         return {ok:false,error:"This vehicle is not available for purchase."};
       const key="player:"+id;
       const stats=(await tx.get(key))||this.emptyPlayer(id);
+      ensurePerCarUpgrades(stats);
       const owned=garageCarOwnership(stats.carGarage);
       if(owned.owned.includes(carId))
         return {ok:false,error:"You already own this vehicle."};
@@ -3811,6 +3838,7 @@ export class RedlineStats
         return {ok:false,error:"Unknown car."};
       const key="player:"+id;
       const stats=(await tx.get(key))||this.emptyPlayer(id);
+      ensurePerCarUpgrades(stats);
       const profile=garageCarOwnership(stats.carGarage);
       if(!ownsRedlineCar(profile,carId))
         return {ok:false,error:"Buy this car in the dealership first."};
@@ -3822,47 +3850,56 @@ export class RedlineStats
     });
   }
 
-  async purchaseUpgrade(accountId,category) {
+  // Car-part ownership and equipment never cross between vehicles.
+  async purchaseUpgrade(accountId,carId,category) {
     return this.ctx.storage.transaction(async tx=>{
       const id=String(accountId||"");
-      if(!id||!Object.hasOwn(UPGRADE_CATALOG,category))
-        return {ok:false,error:"Unknown upgrade."};
+      if(!id||!Object.hasOwn(UPGRADE_CATALOG,category)||!VALID_CARS.has(carId))
+        return {ok:false,error:"Invalid car or upgrade."};
       const key="player:"+id;
       const stats=(await tx.get(key))||this.emptyPlayer(id);
-      const garage=sanitizeGarage(stats.garage);
+      if(!ownedUpgradeCar(stats,carId))
+        return {ok:false,error:"Own this vehicle before upgrading it."};
+      const map=ensurePerCarUpgrades(stats);
+      const garage=sanitizeGarage(map[carId]);
       const tier=garage.owned[category]+1;
       const price=upgradePrice(category,tier);
-      if(price===null)return {ok:false,error:"Maximum level reached."};
+      if(price===null)return {ok:false,error:"Maximum level reached for this car."};
       const balance=Math.max(0,Math.floor(Number(stats.cashBalance)||0));
       if(balance<price)return {ok:false,error:"Not enough race cash."};
       garage.owned[category]=tier;
       garage.equipped[category]=tier;
+      map[carId]=garage;
+      stats.carUpgrades=map;
       stats.cashBalance=balance-price;
       stats.cashSpentTotal=Math.max(0,Math.floor(Number(stats.cashSpentTotal)||0))+price;
-      stats.garage=garage;
       stats.updatedAt=Date.now();
       await tx.put(key,stats);
-      return {ok:true,garage,cashBalance:stats.cashBalance,
+      return {ok:true,carId,garage,cashBalance:stats.cashBalance,
         price,category,tier};
     });
   }
 
-  async equipUpgrade(accountId,category,tier) {
+  async equipUpgrade(accountId,carId,category,tier) {
     return this.ctx.storage.transaction(async tx=>{
       const id=String(accountId||"");
-      if(!id||!Object.hasOwn(UPGRADE_CATALOG,category)||
+      if(!id||!VALID_CARS.has(carId)||!Object.hasOwn(UPGRADE_CATALOG,category)||
          !Number.isInteger(tier)||tier<0||tier>3)
-        return {ok:false,error:"Invalid part."};
+        return {ok:false,error:"Invalid car or part."};
       const key="player:"+id;
       const stats=(await tx.get(key))||this.emptyPlayer(id);
-      const garage=sanitizeGarage(stats.garage);
+      if(!ownedUpgradeCar(stats,carId))
+        return {ok:false,error:"Own this vehicle before equipping parts."};
+      const map=ensurePerCarUpgrades(stats);
+      const garage=sanitizeGarage(map[carId]);
       if(tier>garage.owned[category])
-        return {ok:false,error:"Purchase that level first."};
+        return {ok:false,error:"Purchase that level for this car first."};
       garage.equipped[category]=tier;
-      stats.garage=garage;
+      map[carId]=garage;
+      stats.carUpgrades=map;
       stats.updatedAt=Date.now();
       await tx.put(key,stats);
-      return {ok:true,garage,cashBalance:Math.max(0,
+      return {ok:true,carId,garage,cashBalance:Math.max(0,
         Math.floor(Number(stats.cashBalance)||0)),category,tier};
     });
   }
@@ -3899,6 +3936,7 @@ export class RedlineStats
     stats.cashSpentTotal=Math.max(0,Math.floor(Number(stats.cashSpentTotal)||0));
     stats.garage=sanitizeGarage(stats.garage);
     stats.carGarage=garageCarOwnership(stats.carGarage);
+    ensurePerCarUpgrades(stats);
     stats.cashSpentOnCars=Math.max(0,Math.floor(Number(stats.cashSpentOnCars)||0));
 
     if (
