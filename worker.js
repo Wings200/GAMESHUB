@@ -3914,7 +3914,8 @@ export class RedlineStats
       const map=ensurePerCarUpgrades(stats);
       const garage=sanitizeGarage(map[carId]);
       const tier=garage.owned[category]+1;
-      const price=upgradePrice(category,tier);
+      // Price is determined from this exact owned car on the Worker.
+      const price=upgradePrice(category,tier,carId);
       if(price===null)return {ok:false,error:"Maximum level reached for this car."};
       const balance=Math.max(0,Math.floor(Number(stats.cashBalance)||0));
       if(balance<price)return {ok:false,error:"Not enough race cash."};
@@ -3998,6 +3999,7 @@ export class RedlineStats
         // The dealership must show actual Worker-confirmed prices, not
         // optimistic frontend catalog data during staggered deployments.
         economyVersion:18,
+        upgradePriceVersion:2,
         carPrices:Object.fromEntries(
           REDLINE_CAR_IDS.map(carId=>[carId,carPrice(carId)])
         ),
