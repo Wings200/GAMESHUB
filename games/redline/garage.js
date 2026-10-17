@@ -240,6 +240,17 @@
     }
 
 
+    .rg-wallet {
+      display:flex;align-items:center;justify-content:space-between;
+      gap:14px;margin:13px 0 16px;padding:12px 14px;
+      border:1px solid rgba(95,230,175,.27);
+      border-radius:12px;
+      background:linear-gradient(115deg,rgba(17,52,45,.8),rgba(7,17,28,.94));
+    }
+    .rg-wallet-title {font-size:10px;font-weight:900;letter-spacing:.12em;color:#9bdac1;}
+    .rg-wallet-value {font-size:27px;font-weight:950;color:#d5ffe5;}
+    .rg-wallet-desc {font-size:10px;color:rgba(210,238,225,.66);max-width:210px;text-align:right;}
+    .rg-wallet-hint {font-size:10px;line-height:1.55;color:rgba(225,237,249,.68);margin:-5px 0 12px;}
     #redlineGarageV1 {
       width: min(1050px, 100%);
       margin: 18px auto 20px;
@@ -1176,6 +1187,20 @@
         CUSTOMIZE
       </h2>
 
+      <div class="rg-wallet" aria-live="polite">
+        <div>
+          <div class="rg-wallet-title">REDLINE CASH</div>
+          <div class="rg-wallet-value" id="rgCashBalance">—</div>
+        </div>
+        <div class="rg-wallet-desc" id="rgCashStatus">
+          Loading your account balance…
+        </div>
+      </div>
+      <p class="rg-wallet-hint">
+        Earn $5 solo. In multiplayer, 1st wins $10 per racer
+        (up to $80), 2nd gets half, 3rd gets one-third
+        rounded, and 4th–8th get $5.
+      </p>
 
       <div class="rg-preview">
 
@@ -1441,6 +1466,42 @@
       "rgAccentColor"
     );
 
+
+  const cashBalanceEl=document.getElementById("rgCashBalance");
+  const cashStatusEl=document.getElementById("rgCashStatus");
+  let cashBalance=null;
+  let lastCashRefresh=0;
+  let cashRequest=null;
+  async function refreshCashBalance(force=false){
+    const account=window.REDLINE_MP?.getAccountStats;
+    if(!account) {
+      cashStatusEl.textContent="Sign in to load cash.";
+      return;
+    }
+    if(cashRequest)return cashRequest;
+    if(!force && Date.now()-lastCashRefresh<10000)return;
+    lastCashRefresh=Date.now();
+    cashStatusEl.textContent="Checking server…";
+    cashRequest=(async()=>{
+      try{
+        const stats=await account.call(window.REDLINE_MP);
+        const balance=Number(stats?.cashBalance);
+        if(!Number.isSafeInteger(balance)||balance<0)
+          throw new Error("Invalid cash balance");
+        cashBalance=balance;
+        cashBalanceEl.textContent="$"+cashBalance.toLocaleString();
+        const last=Number(stats?.lastCashAward)||0;
+        cashStatusEl.textContent=last>0 ?
+          "Last race +$"+last+" · saved to your account" :
+          "Saved to your REDLINE account";
+      }catch(e){
+        cashStatusEl.textContent="Balance unavailable — try again later.";
+      }finally{
+        cashRequest=null;
+      }
+    })();
+    return cashRequest;
+  }
 
   const pointCount =
     document.getElementById(
@@ -2176,7 +2237,7 @@
         room?.phase ===
         "car_select"
       ) {
-
+        refreshCashBalance();
         ensureLegacySelection();
 
       }
@@ -2202,6 +2263,8 @@
     "redline:race-started",
     render
   );
+  window.addEventListener("redline:race-complete",()=>refreshCashBalance(true));
+  window.addEventListener("redline:results-shown",()=>refreshCashBalance(true));
 
 
   /* =========================================================
@@ -2212,6 +2275,8 @@
   ========================================================= */
 
   window.REDLINE_GARAGE = {
+    refreshCashBalance:()=>refreshCashBalance(true),
+    get cashBalance(){return cashBalance;},
 
     get build() {
 
