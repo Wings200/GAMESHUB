@@ -1,6 +1,6 @@
 import {
   UPGRADE_CATALOG,UPGRADE_KEYS,sanitizeGarage,upgradePrice,
-  upgradeComparison,stockUpgrades
+  upgradeComparison,stockUpgrades,applyCarUpgrades
 } from "./upgrade-parts.js";
 
 /* Never accept client-supplied ownership or wallet balances. The Worker
@@ -17,6 +17,10 @@ if(root&&grid&&message){
   const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
   const spec=()=>window.REDLINE_GARAGE_PREVIEW?.baseSpec||null;
+  const carId=()=>window.REDLINE_GARAGE_PREVIEW?.selectedCar||null;
+  const carGarage=()=>sanitizeGarage(snapshot?.carUpgrades?.[carId()]);
+  const ownsCar=()=>Array.isArray(snapshot?.carGarage?.owned)&&
+    snapshot.carGarage.owned.includes(carId());
 
   function el(tag,className,text){
     const node=document.createElement(tag);
@@ -43,7 +47,7 @@ if(root&&grid&&message){
       preview.append(el("p","upgrade-await","Vehicle stats loading…"));
       return;
     }
-    const equipped=sanitizeGarage(snapshot?.garage).equipped;
+    const equipped=carGarage().equipped;
     const result=upgradeComparison(base,equipped,key,targetTier);
     if(!result)return;
     const activeTier=result.currentTier;
@@ -93,8 +97,20 @@ if(root&&grid&&message){
   }
   function render(){
     grid.replaceChildren();
-    const garage=sanitizeGarage(snapshot?.garage);
+    const garage=carGarage();
     const balance=Number(snapshot?.cashBalance)||0;
+    const base=spec(),id=carId();
+    const capText=document.getElementById("upgradeCarLimit");
+    if(capText){
+      if(base&&id){
+        const max=applyCarUpgrades(base,Object.fromEntries(UPGRADE_KEYS.map(k=>[k,3])));
+        capText.textContent=base.name+
+          " · STOCK "+(base.topSpeed*2.45).toFixed(0)+
+          " MPH · MAX "+(max.topSpeed*2.45).toFixed(0)+
+          " MPH · MAX ACCEL "+max.acceleration.toFixed(1)+
+          " · MAX GRIP "+max.grip.toFixed(1);
+      }else capText.textContent="Select a car to see its individual performance cap.";
+    }
     for(const key of UPGRADE_KEYS){
       const item=UPGRADE_CATALOG[key],owned=garage.owned[key],
         equipped=garage.equipped[key];
@@ -113,7 +129,7 @@ if(root&&grid&&message){
         if(equipped===t)button.classList.add("equipped");
         if(t<=owned)button.classList.add("owned");
         const cost=upgradePrice(key,t);
-        button.disabled=pending||locked()||!snapshot;
+        button.disabled=pending||locked()||!snapshot||!ownsCar();
         if(t===equipped)button.textContent=labels[t]+" ✓";
         else if(t<=owned)button.textContent=labels[t]+" · EQUIP";
         else if(t===owned+1)button.textContent=labels[t]+" · "+formatCash(cost);
@@ -128,20 +144,21 @@ if(root&&grid&&message){
       section.append(preview);
       grid.append(section);
       // Initially compare the next available purchase against equipped gear.
-      const toShow=shownTier[key]??(owned<3?owned+1:equipped);
+      const toShow=shownTier[carId()+":"+key]??(owned<3?owned+1:equipped);
       renderComparison(section,key,Math.max(0,Math.min(3,toShow)));
     }
     if(!pending&&snapshot&&!feedback){
       message.classList.remove("upgrade-error");
       message.textContent="CASH "+formatCash(balance)+" · "+
-        (locked()?"Parts locked while racing":
-        "Point to a level to compare performance before buying.");
+        (!ownsCar()?"Purchase this car to upgrade it":
+        locked()?"Parts locked while racing":
+        "Purchases here apply ONLY to "+(base?.name||"this car")+".");
     }
   }
   function previewTier(key,tier){
     const section=[...grid.children].find(x=>x.dataset.category===key);
     if(!section||!Number.isInteger(tier)||tier<0||tier>3)return;
-    shownTier[key]=tier;
+    shownTier[carId()+":"+key]=tier;
     renderComparison(section,key,tier);
   }
   // Preview even unaffordable tiers without trying to purchase them.
@@ -155,12 +172,13 @@ if(root&&grid&&message){
   });
   grid.addEventListener("click",async ev=>{
     const button=ev.target.closest("button[data-part]");
-    if(!button||pending||locked()||!snapshot)return;
+    if(!button||pending||locked()||!snapshot||!ownsCar())return;
     const key=button.dataset.part,tier=Number(button.dataset.tier);
     if(!Object.hasOwn(UPGRADE_CATALOG,key)||
        !Number.isInteger(tier)||tier<0||tier>3)return;
     previewTier(key,tier);
-    const profile=sanitizeGarage(snapshot.garage);
+    const profile=carGarage();
+    const selected=carId();
     const buy=tier>profile.owned[key];
     if(tier===profile.equipped[key]){
       showFeedback(labels[tier]+" "+UPGRADE_CATALOG[key].label+" is already equipped.");
@@ -181,19 +199,24 @@ if(root&&grid&&message){
     showFeedback(buy?"Purchasing securely…":"Equipping your part…");
     render();
     try{
-      const response=buy?await api.purchaseUpgrade(key):
-        await api.equipUpgrade(key,tier);
+      const response=buy?await api.purchaseUpgrade(key,selected):
+        await api.equipUpgrade(key,tier,selected);
       if(!response?.ok)throw new Error(response?.error||"Request failed");
-      snapshot={...snapshot,garage:sanitizeGarage(response.garage),
+      if(response.carId!==selected)
+        throw new Error("Server returned a different vehicle");
+      snapshot={...snapshot,
+        carUpgrades:{...snapshot.carUpgrades,[selected]:sanitizeGarage(response.garage)},
         cashBalance:response.cashBalance};
       lastRefresh=Date.now();
-      shownTier[key]=tier;
+      shownTier[carId()+":"+key]=tier;
       showFeedback((buy?"PURCHASED ":"EQUIPPED ")+
+        (spec()?.name||selected.toUpperCase())+" · "+
         UPGRADE_CATALOG[key].label+" "+labels[tier]+
         " · SAVED · BALANCE "+formatCash(response.cashBalance));
       window.REDLINE_CASH?.refresh?.();
       window.dispatchEvent(new CustomEvent("redline:upgrades-updated",{
-        detail:{equipped:snapshot.garage.equipped,cashBalance:response.cashBalance}
+        detail:{carId:selected,equipped:sanitizeGarage(response.garage).equipped,
+          cashBalance:response.cashBalance}
       }));
     }catch(err){
       // Refresh ownership after network errors; keep the error visible.
@@ -216,7 +239,9 @@ if(root&&grid&&message){
     refreshing=(async()=>{
       try{
         const stats=await api.call(window.REDLINE_MP);
-        snapshot={...stats,garage:sanitizeGarage(stats.garage)};
+        if(!stats?.carUpgrades||typeof stats.carUpgrades!=="object")
+          throw new Error("Per-car garage server update has not deployed yet.");
+        snapshot=stats;
         lastRefresh=Date.now();
         feedback=null;
         render();
@@ -229,6 +254,7 @@ if(root&&grid&&message){
     return refreshing;
   }
   window.addEventListener("redline:garage-car-changed",()=>render());
+  window.addEventListener("redline:car-purchased",()=>refresh(true));
   window.addEventListener("redline:room-state",event=>{
     const room=event.detail?.room||event.detail?.state||event.detail;
     if(room?.phase==="car_select")refresh();
@@ -243,7 +269,8 @@ if(root&&grid&&message){
   });
   window.REDLINE_UPGRADE_SHOP={
     refresh:()=>refresh(true),
-    get equipped(){return sanitizeGarage(snapshot?.garage).equipped;},
+    get equipped(){return carGarage().equipped;},
+    get selectedCar(){return carId();},
     get cashBalance(){return snapshot?.cashBalance??null;}
   };
   render();
