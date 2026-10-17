@@ -2411,7 +2411,9 @@ select option:disabled {
   position:absolute;left:0;top:0;height:100%;transition:width .17s ease;
 }
 .upgrade-progress-target{
-  background:linear-gradient(90deg,rgba(38,131,214,.68),rgba(101,196,255,.78));
+  background:linear-gradient(90deg,rgba(38,131,214,.90),rgba(113,207,255,.98));
+  height:4px!important;top:2px!important;
+  border-right:2px solid #d1f2ff;
 }
 .upgrade-progress-installed{background:#46d69c;opacity:.88}
 .upgrade-preview-notice{
