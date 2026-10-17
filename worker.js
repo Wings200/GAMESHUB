@@ -54,16 +54,28 @@ const VALID_BODIES =
   ]);
 
 
+// REDLINE V18: server-authoritative rewards and progression.
 function raceCashPrize(playerCount,place) {
   const racers=Number(playerCount),rank=Number(place);
   if(!Number.isInteger(racers)||racers<1||racers>8||
      !Number.isInteger(rank)||rank<1||rank>racers)return 0;
-  if(racers===1)return rank===1?5:0;
-  const winner=Math.min(80,racers*10);
+  if(racers===1)return rank===1?35:0;
+  const winner=Math.min(160,racers*20);
   if(rank===1)return winner;
   if(rank===2)return Math.round(winner/2);
   if(rank===3)return Math.round(winner/3);
-  return 5;
+  return 12;
+}
+function raceProgressionBonuses(previousFinishes,previousBest,finishTime) {
+  const finishes=Math.max(0,Math.floor(Number(previousFinishes)||0))+1;
+  const milestoneBonus=finishes%5===0?60:0;
+  const before=Number(previousBest?.time);
+  const priorValid=previousBest!=null&&Number.isFinite(before)&&before>0;
+  const newTime=Number(finishTime);
+  const personalBest=Number.isFinite(newTime)&&newTime>0&&
+    (!priorValid||newTime<=before*.98);
+  return {milestoneBonus,personalBestBonus:personalBest?15:0,
+    finishCount:finishes};
 }
 
 const CORS_HEADERS = {
@@ -3356,12 +3368,17 @@ export class RedlineRoom
 
         if(cashRecord?.ok && Array.isArray(cashRecord.payouts)){
           const awards=new Map(cashRecord.payouts.map(
-            v=>[String(v.accountId),v.cash]
+            v=>[String(v.accountId),v]
           ));
           for(const result of this.finishOrder){
             const racer=this.room.players.find(p=>p.id===result.playerId);
-            if(racer && awards.has(String(racer.accountId)))
-              result.cashEarned=awards.get(String(racer.accountId));
+            const reward=racer&&awards.get(String(racer.accountId));
+            if(reward){
+              result.cashEarned=reward.cash;
+              result.cashBase=reward.baseCash;
+              result.cashMilestone=reward.milestoneBonus;
+              result.cashPersonalBest=reward.personalBestBonus;
+            }
           }
           this.room.results=[...this.finishOrder];
           await this.persist();
@@ -3783,6 +3800,7 @@ export class RedlineStats
       cashBalance:0,
       cashEarnedTotal:0,
       lastCashAward:0,
+      lastCashBreakdown:{base:0,milestone:0,personalBest:0},
       cashSpentTotal:0,
       garage:sanitizeGarage(null),
       carGarage:garageCarOwnership(null),
@@ -3981,6 +3999,11 @@ export class RedlineStats
         cashBalance:positive(stats.cashBalance),
         cashEarnedTotal:positive(stats.cashEarnedTotal),
         lastCashAward:positive(stats.lastCashAward),
+        lastCashBreakdown:{
+          base:positive(stats.lastCashBreakdown?.base),
+          milestone:positive(stats.lastCashBreakdown?.milestone),
+          personalBest:positive(stats.lastCashBreakdown?.personalBest)
+        },
         cashSpentTotal:positive(stats.cashSpentTotal),
         cashSpentOnCars:positive(stats.cashSpentOnCars),
         garage,carGarage:owned,carUpgrades,placements,bestTimes,
@@ -4197,23 +4220,23 @@ export class RedlineStats
         username;
 
 
-      const cash=raceCashPrize(raceSize,place);
+      const progression=raceProgressionBonuses(
+        stats.racesFinished,stats.bestTimes?.[map],finishTime
+      );
+      const baseCash=raceCashPrize(raceSize,place);
+      const cash=baseCash+progression.milestoneBonus+
+        progression.personalBestBonus;
       stats.cashBalance=Math.max(0,Math.floor(Number(stats.cashBalance)||0))+cash;
       stats.cashEarnedTotal=Math.max(0,Math.floor(Number(stats.cashEarnedTotal)||0))+cash;
       stats.lastCashAward=cash;
-      payouts.push({accountId,place,cash});
-
-      stats.racesFinished =
-        Math.max(
-          0,
-          Number(
-            stats.racesFinished
-          )
-          ||
-          0
-        )
-        +
-        1;
+      stats.lastCashBreakdown={
+        base:baseCash,milestone:progression.milestoneBonus,
+        personalBest:progression.personalBestBonus
+      };
+      payouts.push({accountId,place,cash,baseCash,
+        milestoneBonus:progression.milestoneBonus,
+        personalBestBonus:progression.personalBestBonus});
+      stats.racesFinished=progression.finishCount;
 
 
       stats.placements =
