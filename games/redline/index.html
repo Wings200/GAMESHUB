@@ -613,6 +613,24 @@
         </div>
       </div>
 
+      <section id="redlineUpgradeShop" class="redline-upgrade-shop" aria-label="Performance garage">
+        <div class="upgrade-shop-head">
+          <div>
+            <span class="upgrade-kicker">PERMANENT PERFORMANCE PARTS</span>
+            <h2>UPGRADE YOUR RIDE</h2>
+          </div>
+          <span class="upgrade-levels-note">STOCK → STREET → SPORT → RACE</span>
+        </div>
+        <p id="redlineUpgradeMessage" class="upgrade-message" aria-live="polite">
+          Loading purchased parts from your account…
+        </p>
+        <div id="redlineUpgradeGrid" class="upgrade-grid"></div>
+        <p class="upgrade-footnote">
+          Parts are saved to your account. Equipped upgrades are locked when you press Ready.
+          Each car retains its own stock driving characteristics.
+        </p>
+      </section>
+
       <div class="garage-header">
 
         <div>
@@ -1417,17 +1435,26 @@
 
         // Uses the existing account identity handshake; balance is
         // authoritative on the REDLINE multiplayer Worker.
-        async getAccountStats() {
+        async requestAccountOperation(path,params={}) {
           const accountToken=await getMultiplayerAccountToken();
-          const response=await fetch(`${MULTIPLAYER_API}/api/stats/me`,{
+          const response=await fetch(`${MULTIPLAYER_API}${path}`,{
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({accountToken})
+            body:JSON.stringify({...params,accountToken})
           });
           const data=await response.json().catch(()=>null);
           if(!response.ok||!data?.ok)
-            throw new Error(data?.error||"Could not load REDLINE balance.");
-          return data.stats;
+            throw new Error(data?.error||"REDLINE account request failed.");
+          return data;
+        },
+        async getAccountStats() {
+          return (await this.requestAccountOperation("/api/stats/me")).stats;
+        },
+        async purchaseUpgrade(category) {
+          return this.requestAccountOperation("/api/garage/purchase",{category});
+        },
+        async equipUpgrade(category,tier) {
+          return this.requestAccountOperation("/api/garage/equip",{category,tier});
         },
 
         get connected() {
@@ -4400,6 +4427,7 @@
   <script src="./music.js"></script>
   <script src="./results.js"></script>
   <script src="./cash-wallet.js"></script>
+  <script type="module" src="./upgrade-shop.js"></script>
 
 
   <!-- =====================================================
