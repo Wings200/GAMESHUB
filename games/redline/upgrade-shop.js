@@ -18,6 +18,14 @@ if(root&&grid&&message){
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
   const spec=()=>window.REDLINE_GARAGE_PREVIEW?.baseSpec||null;
   const carId=()=>window.REDLINE_GARAGE_PREVIEW?.selectedCar||null;
+  // Only show scaled prices after account stats confirm the authoritative
+  // Worker is on upgradePriceVersion 2. Legacy Worker still uses base rates.
+  const priceFor=(category,tier)=>{
+    const selected=carId();
+    return Number(snapshot?.upgradePriceVersion)>=2&&selected
+      ?upgradePrice(category,tier,selected)
+      :upgradePrice(category,tier);
+  };
   const carGarage=()=>sanitizeGarage(snapshot?.carUpgrades?.[carId()]);
   const ownsCar=()=>Array.isArray(snapshot?.carGarage?.owned)&&
     snapshot.carGarage.owned.includes(carId());
@@ -128,7 +136,7 @@ if(root&&grid&&message){
         button.dataset.tier=String(t);
         if(equipped===t)button.classList.add("equipped");
         if(t<=owned)button.classList.add("owned");
-        const cost=upgradePrice(key,t);
+        const cost=priceFor(key,t);
         button.disabled=pending||locked()||!snapshot||!ownsCar();
         if(t===equipped)button.textContent=labels[t]+" ✓";
         else if(t<=owned)button.textContent=labels[t]+" · EQUIP";
@@ -152,7 +160,10 @@ if(root&&grid&&message){
       message.textContent="CASH "+formatCash(balance)+" · "+
         (!ownsCar()?"Purchase this car to upgrade it":
         locked()?"Parts locked while racing":
-        "Purchases here apply ONLY to "+(base?.name||"this car")+".");
+        "Purchases here apply ONLY to "+(base?.name||"this car")+
+        (Number(snapshot?.upgradePriceVersion)>=2?
+          " · Vehicle-specific upgrade prices active.":
+          " · Base prices until the updated server is deployed."));
     }
   }
   function previewTier(key,tier){
@@ -188,7 +199,7 @@ if(root&&grid&&message){
       showFeedback("Buy "+labels[profile.owned[key]+1]+" before "+labels[tier]+".",true);
       return;
     }
-    const price=upgradePrice(key,tier);
+    const price=priceFor(key,tier);
     if(buy&&price>snapshot.cashBalance){
       showFeedback("Need "+formatCash(price-snapshot.cashBalance)+
         " more to unlock "+labels[tier]+" "+UPGRADE_CATALOG[key].label+".",true);
