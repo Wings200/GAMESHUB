@@ -3879,10 +3879,11 @@ function buildArcticEnvironment() {
             radius *
             0.72,
             {
+                // Height includes the V4 terrain-root offset.
                 maxY:
                     height
                     +
-                    10,
+                    65,
 
                 bounce:
                     0.08,
