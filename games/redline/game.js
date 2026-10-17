@@ -11269,10 +11269,29 @@ function buildWorld() {
             multiplayerCar;
     }
     const baseCarSpec = cars[selectedCar];
-    // Trust only the loadout the Worker attached to the ready player.
-    // Never use localStorage/free stat points or unverified UI selections.
+    // Cosmetic body/paint choices remain freely editable; they never
+    // affect the verified paid upgrade tiers or the physics formulas.
+    const chosenAppearance = window.REDLINE_GARAGE?.build?.appearance;
+    const bodyModels = {coupe:"gt",supercar:"vortex",
+        muscle:"muscle",track:"apex"};
+    const validHex = value => typeof value==="string" &&
+        /^#[0-9a-f]{6}$/i.test(value);
+    const visualSpec = chosenAppearance && bodyModels[chosenAppearance.body]
+        ? {
+            ...baseCarSpec,
+            model:bodyModels[chosenAppearance.body],
+            body:validHex(chosenAppearance.color)
+                ? parseInt(chosenAppearance.color.slice(1),16)
+                : baseCarSpec.body,
+            accent:validHex(chosenAppearance.accent)
+                ? parseInt(chosenAppearance.accent.slice(1),16)
+                : baseCarSpec.accent,
+            garageAppearance:{...chosenAppearance}
+        } : baseCarSpec;
+    // Trust ONLY the loadout the Worker attached to the ready player.
+    // Browser-local point allocations NEVER modify engine or handling.
     activeCarSpec = REDLINE_PARTS.applyCarUpgrades(
-        baseCarSpec,
+        visualSpec,
         window.REDLINE_MP?.myPlayer?.upgrades
     );
     updateGarageUI();
