@@ -8540,7 +8540,7 @@ function addWheel(root, x, z, front, scale = 1) {
     // Detailed radial multi-spoke factory wheels share the original
     // rotation/steering pivots. No driving math has changed.
     buildDetailedWheel(THREE, spinPivot, scale, Math.sign(x) || 1,
-        carVisual.modelStyle);
+        carVisual.modelStyle,carVisual.lowDetail);
     steerPivot.add(spinPivot);
     root.add(steerPivot);
     carVisual.wheels.push(spinPivot);
@@ -8640,13 +8640,14 @@ function buildApex(root, bodyPivot, spec) {
     addWheel(root, 0.94, -1.10, false, 0.98);
 }
 // Factory paint and body models are sourced exclusively from car-catalog.js.
-function makeCarModel(spec) {
+function makeCarModel(spec,lowDetail=false) {
     const root = new THREE.Group();
     const bodyPivot = new THREE.Group();
     root.add(bodyPivot);
     carVisual = {
         bodyPivot,
         modelStyle: spec.model,
+        lowDetail,
         wheels: [],
         frontSteer: [],
         brakeMaterials: [],
@@ -8665,7 +8666,8 @@ function makeCarModel(spec) {
     // This reads factory specs only; no network, cash, or physics changes.
     addFactoryCarDetails(bodyPivot,spec,{
         THREE,
-        wheelPivots:carVisual.wheels.map(wheel=>wheel.parent)
+        wheelPivots:carVisual.wheels.map(wheel=>wheel.parent),
+        lowDetail
     });
     return root;
 }
@@ -8705,7 +8707,7 @@ function createNameSprite(username) {
 }
 function makeGhostCar(spec, username) {
     const savedVisual = carVisual;
-    const model = makeCarModel(spec);
+    const model = makeCarModel(spec,true);
     const visual = carVisual;
     carVisual =
         savedVisual;
