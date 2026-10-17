@@ -213,7 +213,17 @@ function diagButton(text){
 }
 const retryButton=diagButton("RETRY V8 AUDIO");
 const testSampleButton=diagButton("HEAR RAW V8");
+const abButton=diagButton("A/B: HEAR ORIGINAL");
 const copyButton=diagButton("COPY STATUS");
+abButton.addEventListener("click",()=>{
+  if(chosen!=="ironclad"){
+    diagStatus.textContent="Select IRONCLAD first to compare engines";
+    return;
+  }
+  const isOriginal=!!window.REDLINE_LAB_V8_DIAGNOSTICS?.()?.v8?.forceOriginal;
+  window.REDLINE_LAB_V8_AB?.(!isOriginal);
+  renderV8Diagnostics();
+});
 retryButton.addEventListener("click",async()=>{
   retryButton.disabled=true;diagStatus.textContent="Retrying V8 bank download…";
   try{
@@ -266,6 +276,9 @@ function renderV8Diagnostics(){
   }else if(d.starting||v?.loading){
     label="Preparing and decoding V8 recordings…";
     color="#f5d99b";
+  }else if(v?.forceOriginal){
+    label="A/B TEST · ORIGINAL V11.2 PLAYING (V8 MUTED)";
+    color="#f5d99b";
   }else if(v?.v8Audible&&v?.layerCount===8){
     label="V16 ACTIVE · REAL V8 PLAYING · 8 layers";
     color="#88edb5";
@@ -278,6 +291,8 @@ function renderV8Diagnostics(){
   }
   if(!testSampleButton.disabled)diagStatus.textContent=label;
   diagStatus.style.color=color;
+  abButton.disabled=selected!=="ironclad"||!bank?.ready||!v?.decoded||!v?.active;
+  abButton.textContent=v?.forceOriginal?"A/B: HEAR RECORDED V8":"A/B: HEAR ORIGINAL";
   const detail=[
     "V8 bank: "+(bank?.status||"not loaded"),
     "Race: "+(d.raceEnabled?"ON":"OFF")+" · Selected: "+selected,
