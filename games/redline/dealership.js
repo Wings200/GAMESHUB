@@ -28,6 +28,19 @@ import {
    obsidian:["TRACK SUPERCAR","Extreme acceleration · maximum cornering grip"],
    phantom:["HYPERCAR","Top-end speed · flagship aero and launch"]
  };
+ // Until Worker V18 deploys, the old Worker still charges legacy prices.
+ // Never show a price the authoritative server is not ready to charge.
+ const legacyPrices=Object.freeze({
+   gt:0,vortex:0,apex:0,bayside:65,aurora:85,
+   ironclad:110,cirrus:160,obsidian:235,phantom:380
+ });
+ const priceFor=id=>{
+   const serverPrice=Number(stats?.carPrices?.[id]);
+   if(Number(stats?.economyVersion)>=18&&
+      Number.isSafeInteger(serverPrice)&&serverPrice>=0)
+     return serverPrice;
+   return legacyPrices[id]??REDLINE_CAR_CATALOG[id].price;
+ };
  const money=n=>"$"+Math.max(0,Number(n)||0).toLocaleString();
  const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
@@ -100,7 +113,7 @@ import {
        element("span","",car.style));
      header.append(names,element("span",
        "dealer-status "+(owned?"dealer-status-owned":""),
-       owned?"OWNED":money(car.price)));
+       owned?"OWNED":money(priceFor(id))));
      const preview=element("div","dealer-showroom");
      preview.dataset.car=id;
      const silhouette=element("div","dealer-silhouette dealer-"+id);
@@ -128,13 +141,16 @@ import {
        action.textContent=chosen?"SELECTED FOR RACE":"SELECT THIS CAR";
        action.dataset.selectCar=id;
      }else{
-       action.textContent="BUY FOR "+money(car.price);
+       action.textContent="BUY FOR "+money(priceFor(id));
      }
      article.append(header,preview,trim,description,rowStats(car),action);
      grid.append(article);
    }
    if(stats&&!pending&&!feedback.dataset.error)
      feedback.textContent="OWNED "+profile.owned.length+"/"+REDLINE_CAR_IDS.length+
+       (Number(stats.economyVersion)>=18?
+         " · V18 prices confirmed by server":
+         " · Waiting for V18 Worker deployment; current prices still apply")+
        " · Purchases and vehicle choices are saved to your REDLINE account.";
  }
  async function refresh(force=false){
