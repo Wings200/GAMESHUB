@@ -1,11 +1,12 @@
 /*
- * REDLINE V11.1 — recorded-engine-first racing audio.
+ * REDLINE V11.2 — fix sustained boost whistle masking engines.
  *
  * Corrects V11's harshness: five always-on white-noise layers plus extreme
  * >3x WAV playback speeds made the engine sound like sandpaper. This mix
  * uses two gently filtered engine samples with constant-power crossfade;
  * all secondary engine/tyre/boost sounds are quiet, pure oscillators.
- * Impacts and shifts are brief pitched envelopes, NEVER static noise.
+ * Impacts, shifts and boost entry are brief pitched envelopes.
+ * Sustained nitro does NOT produce a constant 370 Hz whistle.
  *
  * Visuals, physics, Garage, accounts, networking and saved audio settings
  * are external and unchanged.
@@ -81,7 +82,7 @@ export function createRedlineSoundscape({
   let active=false;
   let streams=[],connections=[],samples=[];
   let lowGain,highGain,subGain,subTone,harmonicGain,harmonicTone;
-  let tireGain,tireTone,turboGain,turboTone,boostGain,boostTone;
+  let tireGain,tireTone,turboGain,turboTone;
   let elapsed=0,prevGear=1,prevThrottle=0,prevBoost=false,prevImpact=0;
   let lastImpactTime=-100,lastLiftTime=-100,shiftDip=0;
   let smoothedRPM=900,smoothedSpeed=0,smoothedThrottle=0;
@@ -125,8 +126,9 @@ export function createRedlineSoundscape({
     tireTone=playOsc(context,"sine",670,tireGain);streams.push(tireTone);
     turboGain=attach(makeGain(context,sfxBus));
     turboTone=playOsc(context,"sine",440,turboGain);streams.push(turboTone);
-    boostGain=attach(makeGain(context,sfxBus));
-    boostTone=playOsc(context,"sine",260,boostGain);streams.push(boostTone);
+    // The old continuously running boostTone was fixed at 370 Hz.
+    // User recording confirms that line dominates while nitro is held.
+    // Keep only the short onset sweep below, not a constant synth note.
     return true;
   }
 
@@ -181,16 +183,16 @@ export function createRedlineSoundscape({
     const drift=grounded&&speed>8
       ?clamp((slip-4.5)/13+(t.handbrake?.25:0)):0;
     const icy=t.surface==="ICE"||t.surface==="SNOW";
-    target(tireGain.gain,.015*drift*(icy?.30:1),context,.10);
+    target(tireGain.gain,.009*drift*(icy?.30:1),context,.10);
     target(tireTone.frequency,600+200*drift+speed*2.0,context,.10);
 
     const turbo=smoothstep(2500,5200,smoothedRPM)*smoothedThrottle;
-    target(turboGain.gain,.009*turbo*profile.bright,context,.12);
+    // Very quiet turbo color; never mask the primary sampled engine.
+    target(turboGain.gain,.0035*turbo*profile.bright,context,.12);
     target(turboTone.frequency,410+510*turbo,context,.12);
 
-    target(boostGain.gain,boost?.024:0,context,.075);
-    target(boostTone.frequency,boost?370:260,context,.09);
-
+    // No sustained nitro sine. The short eventTone("boost") below plays
+    // only on activation and finishes naturally while boost is held.
     if(gear!==prevGear&&elapsed>.9){
       shiftDip=1;
       eventTone(context,sfxBus,"shift",.48);
@@ -220,7 +222,7 @@ export function createRedlineSoundscape({
     // Fade through the WebAudio clock; release all sources and connections
     // as soon as their scheduled stop fires.
     for(const gain of [lowGain,highGain,subGain,harmonicGain,tireGain,
-      turboGain,boostGain]){
+      turboGain]){
       if(gain)target(gain.gain,0,context,.018);
     }
     const ending=streams.slice(),branches=connections.slice();
@@ -245,7 +247,7 @@ export function createRedlineSoundscape({
     get debug(){return {
       active,profile:model,rpm:smoothedRPM,speed:smoothedSpeed,
       engineSamples:samples.length,noiseLayers:0,
-      highPitchLimit:1.72
+      continuousBoostTone:false,highPitchLimit:1.72
     }}
   };
 }
