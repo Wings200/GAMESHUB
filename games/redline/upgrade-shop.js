@@ -71,7 +71,9 @@ if(root&&grid&&message){
       equippedBar.style.width=toCap(currentBonus)+"%";
       const targetBar=el("div","upgrade-progress-target");
       targetBar.style.width=toCap(metric.improvementPercent)+"%";
-      bars.append(targetBar,equippedBar);
+      // Full-height green is owned/equipped; thin blue is preview.
+      // Both stay visible even when previewing a lower owned tier.
+      bars.append(equippedBar,targetBar);
       row.append(nums,bars);
       preview.append(row);
     }
@@ -194,8 +196,10 @@ if(root&&grid&&message){
         detail:{equipped:snapshot.garage.equipped,cashBalance:response.cashBalance}
       }));
     }catch(err){
-      showFeedback("Upgrade not applied: "+(err?.message||"Server error"),true);
+      // Refresh ownership after network errors; keep the error visible.
+      const reason="Upgrade not applied: "+(err?.message||"Server error");
       await refresh(true);
+      showFeedback(reason,true);
     }finally{
       pending=false;
       render();
