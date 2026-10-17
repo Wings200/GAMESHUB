@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
-import { REDLINE_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
+import { REDLINE_CAR_IDS, STARTER_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
   from "./games/redline/car-catalog.js";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
