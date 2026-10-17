@@ -9,9 +9,17 @@ export function buildDealerModel(root,pivot,spec,api) {
  const model=spec.model;
  if(!["bayside","aurora","ironclad","cirrus","obsidian","phantom"].includes(model))
    return false;
- const paint=material(spec.body,.34,.28);
+ // Factory metallic paint catches city light without loading external
+ // textures or introducing new assets / customization state.
+ const paint=new THREE.MeshPhysicalMaterial({
+   color:spec.body,roughness:.26,metalness:.31,
+   clearcoat:.75,clearcoatRoughness:.15
+ });
  const secondary=material(spec.accent,.43,.38);
- const glass=material(spec.glass,.15,.16);
+ const glass=new THREE.MeshPhysicalMaterial({
+   color:spec.glass,roughness:.11,metalness:.12,
+   clearcoat:.88,clearcoatRoughness:.08
+ });
  const dark=material(0x0a0e14,.8,.12);
  const metal=material(0x8997a6,.40,.52);
  const neon=new THREE.MeshBasicMaterial({color:spec.accent});
