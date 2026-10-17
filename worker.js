@@ -706,7 +706,12 @@ export default {
           "REDLINE multiplayer",
 
         version:
-          7
+          8,
+        features:{
+          perCarGarage:true,
+          stockStarterOfflineReady:true,
+          accountStorageDiagnostics:true
+        }
 
       });
 
