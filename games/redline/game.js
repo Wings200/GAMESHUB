@@ -5612,17 +5612,6 @@ function buildArcticEnvironment() {
 
     }
 
-    // Add terrain and detailed scenery only for Arctic, with the proven
-    // original road, jump offsets, cave and checkpoint placements intact.
-    buildArcticV3Art({
-        THREE,worldGroup,trackSamples,getFrameAt,
-        roadHalf:ROAD_HALF,sidewalkOuter:SIDEWALK_OUTER,
-        addCircleCollider:addEnvironmentCircleCollider,
-        addBoxCollider:addEnvironmentBoxCollider,
-        addRail:(a,b,y)=>barriers.push({a,b,y}),
-        shortcut:{start:shortcutStart,end:shortcutEnd}
-    });
-
 }
 
 function buildBuildingWindows(buildings) {
@@ -11166,6 +11155,29 @@ function buildWorld() {
 
     buildRoad();
     buildBarriers();
+    // V3 guardrails must be registered AFTER buildBarriers() clears and
+    // recreates the collider list. Otherwise visible rails would be ghosts.
+    if(activeTrackId==="arctic"){
+        const cave=rampDefinitions.find(r=>r.secret&&r.cave&&
+            Number.isFinite(Number(r.targetT)));
+        let shortcut=null;
+        if(cave){
+            const at=getFrameAt(cave.t);
+            shortcut={
+                start:at.point.clone().addScaledVector(
+                    at.normal,cave.offset||0),
+                end:getShortcutLandingPoint(cave)
+            };
+        }
+        buildArcticV3Art({
+            THREE,worldGroup,trackSamples,getFrameAt,
+            roadHalf:ROAD_HALF,sidewalkOuter:SIDEWALK_OUTER,
+            addCircleCollider:addEnvironmentCircleCollider,
+            addBoxCollider:addEnvironmentBoxCollider,
+            addRail:(a,b,y)=>barriers.push({a,b,y}),
+            shortcut
+        });
+    }
 
     if (activeTrackId === "neon") {
         NEON_INFRA.buildRaisedRoads({
