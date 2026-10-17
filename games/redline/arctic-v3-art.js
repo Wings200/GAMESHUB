@@ -398,6 +398,43 @@ export function buildArcticV3Art({
    }
  }
 
+ // Curved aurora curtains, continuous transparent meshes rather than
+ // the old flat glowing billboard rectangles.
+ const curtains=[
+   {color:[.35,.95,.78],base:155,z:-300,offset:.5},
+   {color:[.42,.69,.98],base:191,z:-420,offset:2.2},
+   {color:[.71,.54,1.0],base:208,z:-180,offset:4.1}
+ ];
+ for(const curtain of curtains){
+   const position=[],rgb=[],indices=[],long=74,vertical=8;
+   for(let i=0;i<=long;i++){
+     const u=i/long,x=-1050+2100*u;
+     const wave=Math.sin(u*18+curtain.offset)*14+
+       Math.sin(u*42+curtain.offset*1.7)*4.3;
+     for(let j=0;j<=vertical;j++){
+       const v=j/vertical;
+       position.push(x,curtain.base+wave+v*(60+8*Math.sin(u*11)),
+         curtain.z+Math.sin(u*13+curtain.offset)*44-v*13);
+       const fade=Math.sin(Math.PI*v)*(.70+.30*Math.sin(u*17)**2);
+       rgb.push(...curtain.color.map(c=>c*(.23+.77*fade)));
+       if(i<long&&j<vertical){
+         const o=i*(vertical+1)+j,n=o+vertical+1;
+         indices.push(o,n,o+1,n,n+1,o+1);
+       }
+     }
+   }
+   const meshGeo=new THREE.BufferGeometry();
+   meshGeo.setAttribute("position",new THREE.Float32BufferAttribute(position,3));
+   meshGeo.setAttribute("color",new THREE.Float32BufferAttribute(rgb,3));
+   meshGeo.setIndex(indices);
+   meshGeo.computeVertexNormals();
+   const curtainMesh=new THREE.Mesh(meshGeo,new THREE.MeshBasicMaterial({
+     vertexColors:true,side:THREE.DoubleSide,
+     transparent:true,opacity:.17,depthWrite:false
+   }));
+   worldGroup.add(curtainMesh);
+ }
+
  // Scientific snow outposts, solar lamps, antennas and service hoppers.
  // Buildings are well off the shoulder to keep the first-race line clear.
  const metal=new THREE.MeshStandardMaterial({
@@ -428,4 +465,53 @@ export function buildArcticV3Art({
      {minY:-1,maxY:7.2,bounce:.11,drag:.35,tag:"OUTPOST"});
  }
  return {terrain,treeCount:trees.length,rockCount,distantPeaks};
+}
+
+/* Visual-only Arctic snowfall following the local racer.
+ * 380 GPU-rendered points, one geometry buffer, no physical particles. */
+export function createArcticSnowfall({THREE,worldGroup,getCar}){
+ const count=380,rng=random(9611);
+ const positions=new Float32Array(count*3);
+ const drift=new Float32Array(count);
+ const speeds=new Float32Array(count);
+ const geometry=new THREE.BufferGeometry();
+ const attribute=new THREE.BufferAttribute(positions,3);
+ geometry.setAttribute("position",attribute);
+ const flakes=new THREE.Points(geometry,new THREE.PointsMaterial({
+   color:0xeefaff,size:.23,transparent:true,opacity:.75,
+   depthWrite:false,sizeAttenuation:true
+ }));
+ flakes.frustumCulled=false;
+ worldGroup.add(flakes);
+ let initialized=false;
+ function reset(index,anchor,randomHeight=true){
+   const k=index*3;
+   positions[k]=anchor.x+(rng()-.5)*74;
+   positions[k+1]=anchor.y+(randomHeight?5+rng()*30:0);
+   positions[k+2]=anchor.z+(rng()-.5)*74;
+   drift[index]=.9+rng()*1.6;
+   speeds[index]=3.1+rng()*6;
+ }
+ return {
+   update(delta){
+     const player=getCar();
+     if(!player)return;
+     const center=player.position;
+     if(!initialized){
+       for(let i=0;i<count;i++)reset(i,center);
+       initialized=true;
+     }
+     for(let i=0;i<count;i++){
+       const k=i*3;
+       positions[k]+=(drift[i]*.40)*delta;
+       positions[k+1]-=speeds[i]*delta;
+       positions[k+2]+=(drift[i]*.25)*delta;
+       if(positions[k+1]<center.y-.7 ||
+          Math.abs(positions[k]-center.x)>43 ||
+          Math.abs(positions[k+2]-center.z)>43)
+         reset(i,center);
+     }
+     attribute.needsUpdate=true;
+   }
+ };
 }
