@@ -1468,6 +1468,8 @@ function audioLoop(
    PUBLIC AUDIO SETTINGS API
 ========================================================= */
 
+// The engine lab can deliberately reset audio on each test-car change.
+window.REDLINE_LAB_RESTART_AUDIO=()=>stopRaceAudio();
 window.REDLINE_AUDIO = {
   updateTelemetry(data) {
     if(!data||typeof data!=="object")return;
