@@ -11145,7 +11145,12 @@ function buildWorld() {
     worldGroup.add(car);
     if(activeTrackId==="arctic"){
         arcticSnowSystem=createArcticSnowfall({
-            THREE,worldGroup,getCar:()=>car
+            THREE,worldGroup,getCar:()=>car,
+            isSheltered:()=>{
+                if(!car)return false;
+                const t=nearestTrackInfo(car.position)?.t;
+                return (t>=.178&&t<=.218)||(t>=.855&&t<=.892);
+            }
         });
         arcticSnowSystem.update(0);
     }
