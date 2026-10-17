@@ -4,6 +4,8 @@ import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
 import * as REDLINE_PARTS from "./upgrade-parts.js";
+import { createRuggedMountainGeometry, buildArcticV3Art }
+    from "./arctic-v3-art.js";
 import { createRemoteMotion } from "./multiplayer-smoothing.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
@@ -4748,93 +4750,20 @@ function buildArcticEnvironment() {
         }
 
 
-        const mountain =
-            new THREE.Mesh(
-                createDetailedMountainGeometry(
-                    radius,
-                    height,
-                    1
-                    +
-                    Math.floor(
-                        t *
-                        1000
-                    )
-                    +
-                    (
-                        side >
-                        0
-                            ?
-                            41
-                            :
-                            7
-                    )
-                ),
-                dark
-                    ?
-                    darkRockMaterial
-                    :
-                    rockMaterial
-            );
-
-
-        mountain.position
-            .copy(
-                position
-            );
-
-
-        mountain.position.y =
-            height *
-            0.42;
-
-
-        mountain.rotation.y =
-            t *
-            11.7;
-
-
-        worldGroup.add(
-            mountain
+        // Arctic V3: multiple eroded ridges and an organic snow line,
+        // replacing cone-on-cone polygon peaks without moving colliders.
+        const mountain=new THREE.Mesh(
+            createRuggedMountainGeometry(THREE,radius,height,
+                1+Math.floor(t*1000)+(side>0?41:7),dark),
+            new THREE.MeshStandardMaterial({
+                vertexColors:true,roughness:.96,metalness:0,
+                side:THREE.DoubleSide
+            })
         );
-
-
-        const cap =
-            new THREE.Mesh(
-                createDetailedMountainGeometry(
-                    radius *
-                    0.46,
-                    height *
-                    0.28,
-                    90
-                    +
-                    Math.floor(
-                        t *
-                        1000
-                    )
-                ),
-                snowMaterial
-            );
-
-
-        cap.position
-            .copy(
-                mountain.position
-            );
-
-
-        cap.position.y +=
-            height *
-            0.34;
-
-
-        cap.rotation.y =
-            mountain.rotation.y;
-
-
-        worldGroup.add(
-            cap
-        );
-
+        mountain.position.copy(position);
+        mountain.position.y=height*.42;
+        mountain.rotation.y=t*11.7;
+        worldGroup.add(mountain);
 
         addEnvironmentCircleCollider(
             mountain.position,
@@ -5682,6 +5611,17 @@ function buildArcticEnvironment() {
         );
 
     }
+
+    // Add terrain and detailed scenery only for Arctic, with the proven
+    // original road, jump offsets, cave and checkpoint placements intact.
+    buildArcticV3Art({
+        THREE,worldGroup,trackSamples,getFrameAt,
+        roadHalf:ROAD_HALF,sidewalkOuter:SIDEWALK_OUTER,
+        addCircleCollider:addEnvironmentCircleCollider,
+        addBoxCollider:addEnvironmentBoxCollider,
+        addRail:(a,b,y)=>barriers.push({a,b,y}),
+        shortcut:{start:shortcutStart,end:shortcutEnd}
+    });
 
 }
 
