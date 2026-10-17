@@ -2627,3 +2627,77 @@ select option:disabled {
 }
 .garage-service-status button:hover:not(:disabled){background:rgba(74,139,212,.65)}
 .garage-service-status button:disabled{opacity:.5;cursor:wait}
+
+
+/* Factory car showroom V5: each price tier has an immediately recognizable
+   silhouette and setting. The actual race meshes come from dealer-models.js. */
+.dealer-showroom{height:144px}
+.dealer-silhouette{
+  bottom:28px;width:212px;height:78px;
+  filter:drop-shadow(0 11px 9px rgba(0,0,0,.48))
+}
+.dealer-silhouette .dealer-body{bottom:6px}
+.dealer-silhouette .dealer-wheel{width:29px;height:29px;bottom:-1px}
+.dealer-silhouette .dealer-glass{bottom:34px}
+.dealer-specialty{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px 9px;align-items:center}
+.dealer-specialty-name{
+  padding:5px 8px;background:rgba(95,151,219,.15);
+  color:#b9dbff;border-radius:5px;font-size:10px;letter-spacing:.06em
+}
+.dealer-specialty-claim{font-size:10px;color:#a6bcd7;line-height:1.5}
+.dealer-description{
+  min-height:0;font-size:10px;font-variant-numeric:tabular-nums;
+  font-weight:850;color:#d9eaff;letter-spacing:.025em
+}
+.dealer-showroom[data-car="bayside"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(54,172,253,.42),transparent 68%),
+  linear-gradient(150deg,#14273e,#07101d);
+}
+.dealer-showroom[data-car="aurora"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(255,195,67,.31),transparent 65%),
+  linear-gradient(150deg,#394034,#0e1920);
+}
+.dealer-showroom[data-car="ironclad"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(235,75,75,.35),transparent 70%),
+  linear-gradient(150deg,#33212b,#091017);
+}
+.dealer-showroom[data-car="cirrus"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(184,222,255,.39),transparent 75%),
+  linear-gradient(150deg,#33485b,#0e1c2c);
+}
+.dealer-showroom[data-car="obsidian"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(245,89,56,.35),transparent 68%),
+  linear-gradient(150deg,#20242d,#080b13);
+}
+.dealer-showroom[data-car="phantom"]{
+  background:radial-gradient(ellipse at 52% 110%,rgba(185,93,255,.47),transparent 68%),
+  linear-gradient(150deg,#301b48,#080c19);
+}
+.dealer-bayside .dealer-body{height:31px;clip-path:polygon(0 68%,15% 45%,31% 31%,43% 11%,72% 11%,87% 47%,100% 66%,100% 100%,0 100%)}
+.dealer-bayside .dealer-spoiler{opacity:1;right:8%;bottom:43px;width:26%;height:8px}
+.dealer-bayside .dealer-silhouette:before{content:"";position:absolute;left:13%;bottom:39px;width:13%;height:6px;background:#76c7fa}
+.dealer-aurora{transform:translateX(-50%) translateY(-4px)}
+.dealer-aurora .dealer-body{height:44px;clip-path:polygon(0 44%,14% 28%,30% 27%,34% 8%,73% 8%,87% 37%,100% 51%,100% 100%,0 100%)}
+.dealer-aurora .dealer-glass{height:25px;width:43%;left:30%;bottom:51px;clip-path:polygon(0 100%,10% 0,88% 0,100% 100%)}
+.dealer-aurora .dealer-spoiler{opacity:1;left:29%;bottom:81px;width:45%;height:5px}
+.dealer-aurora:before{content:"";position:absolute;left:39%;bottom:90px;width:30%;height:7px;background:#313c39;border:1px solid #f1c558}
+.dealer-aurora .dealer-wheel{width:35px;height:35px;bottom:-2px}
+.dealer-ironclad .dealer-body{height:37px;clip-path:polygon(0 48%,25% 47%,36% 8%,59% 8%,68% 44%,100% 47%,100% 100%,0 100%)}
+.dealer-ironclad .dealer-glass{left:43%;width:22%;height:18px}
+.dealer-ironclad:before{content:"";position:absolute;right:22%;bottom:47px;width:27px;height:12px;background:#bfc5ce;border:4px solid #292b33;border-radius:3px}
+.dealer-ironclad .dealer-wheel{width:33px;height:33px}
+.dealer-cirrus .dealer-body{height:25px;clip-path:polygon(0 72%,9% 52%,25% 40%,34% 14%,73% 14%,86% 47%,100% 70%,100% 100%,0 100%)}
+.dealer-cirrus .dealer-glass{left:27%;width:53%;height:32px;bottom:29px;clip-path:polygon(0 100%,19% 0,75% 0,100% 100%)}
+.dealer-cirrus .dealer-spoiler{opacity:1;right:8%;bottom:42px;width:18%;height:3px;background:#cbd7e3}
+.dealer-obsidian .dealer-body{height:22px;clip-path:polygon(0 75%,16% 58%,33% 29%,45% 9%,68% 14%,86% 51%,100% 75%,100% 100%,0 100%)}
+.dealer-obsidian .dealer-glass{left:35%;width:33%;height:20px;bottom:32px}
+.dealer-obsidian .dealer-spoiler{opacity:1;right:2%;bottom:71px;width:35%;height:8px;background:#fb764d}
+.dealer-obsidian:before{content:"";position:absolute;right:11%;bottom:38px;width:5px;height:39px;background:#fb764d;transform:skewX(-11deg)}
+.dealer-phantom .dealer-body{height:20px;clip-path:polygon(0 85%,18% 51%,32% 27%,45% 7%,64% 7%,83% 44%,100% 85%,100% 100%,0 100%)}
+.dealer-phantom .dealer-glass{left:40%;width:21%;height:20px;bottom:31px;clip-path:polygon(0 100%,27% 0,70% 0,100% 100%)}
+.dealer-phantom .dealer-spoiler{opacity:1;right:0;bottom:48px;width:40%;height:5px;background:#c48dff}
+.dealer-phantom:before{content:"";position:absolute;left:48%;bottom:47px;width:5px;height:29px;background:#ba8aff;transform:skewX(-17deg)}
+@media(max-width:600px){
+  .dealer-silhouette{width:min(212px,94%)}
+  .dealer-specialty{align-items:flex-start;flex-direction:column}
+}
