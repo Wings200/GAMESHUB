@@ -1,9 +1,11 @@
 /* REDLINE V11 — seamless sampled engine and car-specific driving SFX.
    Existing volume controls and startup sample remain compatible. */
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
-import { createV12ExteriorPreview, primeV12ExteriorAudio } from "./engine-v12-exterior-preview.js?v=direct-v12-1";
-const USE_V12_EXTERIOR_PREVIEW =
-  new URLSearchParams(window.location.search).get("engine")==="v12";
+import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
+const USE_V13_CLEAN_PREVIEW =
+  new URLSearchParams(window.location.search).get("engine")==="v13";
+// Retired V12 outdoor field audio. ?engine=v12 now uses safe V11.2
+// rather than starting a recording with crowd voices.
 
 const startBtn =
   document.getElementById(
@@ -660,11 +662,10 @@ async function initAudio() {
     console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
   try {
-    soundscape=USE_V12_EXTERIOR_PREVIEW
-      ?createV12ExteriorPreview({
+    soundscape=USE_V13_CLEAN_PREVIEW
+      ?createV13EnginePreview({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
-          fallbackFactory:createRedlineSoundscape,
-          getMixSettings:()=>audioSettings
+          fallbackFactory:createRedlineSoundscape
         })
       :createRedlineSoundscape({
           context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
@@ -1190,10 +1191,8 @@ startBtn?.addEventListener(
   "click",
 
   () => {
-    // Prime the direct exterior recording synchronously on the START
-    // click. It must not begin only after async audio sample loading,
-    // because browser autoplay policies would reject that later play().
-    if(USE_V12_EXTERIOR_PREVIEW)primeV12ExteriorAudio();
+    // V13 runs entirely inside the existing user-unlocked AudioContext.
+    // No external media, download, or special browser gesture priming.
     startRaceAudio()
       .catch(
         console.error
@@ -1585,41 +1584,31 @@ window.REDLINE_AUDIO = {
    START LOOP
 ========================================================= */
 
-// V12 test mode is deliberately obvious and cannot silently masquerade
-// as an upgraded engine if Wikimedia audio failed to load.
-let v12PreviewTag=null,v12PreviewLabel=null;
-if(USE_V12_EXTERIOR_PREVIEW){
-  v12PreviewTag=document.createElement("div");
-  v12PreviewTag.id="redlineV12PreviewStatus";
-  v12PreviewTag.setAttribute("role","status");
-  v12PreviewTag.style.cssText=
-    "position:fixed;left:12px;bottom:12px;z-index:10000;pointer-events:auto;"+
+// The opt-in V13 test keeps its own visible status and never claims
+// that an external engine recording was used or validated.
+let v13PreviewLabel=null;
+if(USE_V13_CLEAN_PREVIEW){
+  const tag=document.createElement("div");
+  tag.id="redlineV13PreviewStatus";
+  tag.setAttribute("role","status");
+  tag.style.cssText=
+    "position:fixed;left:12px;bottom:12px;z-index:10000;pointer-events:none;"+
     "background:#0d1720ed;color:#8fe1d2;border:1px solid #376b71;"+
     "border-radius:10px;padding:7px 10px;font:12px/1.4 system-ui,sans-serif";
-  v12PreviewLabel=document.createElement("div");
-  v12PreviewLabel.textContent="V12 ENGINE TEST · Waiting for race";
-  v12PreviewTag.appendChild(v12PreviewLabel);
-  const credit=document.createElement("a");
-  credit.href="https://commons.wikimedia.org/wiki/File:Trophy_Truck_and_American_V8s.ogg";
-  credit.target="_blank";credit.rel="noopener noreferrer";
-  credit.style.cssText="font-size:10px;color:#bdd7f0;text-decoration:underline";
-  credit.textContent="Edvvc (Ed Pond) · adapted audio · CC BY-SA 3.0";
-  credit.title="Original Goodwood V8 exterior field recording and Creative Commons license details";
-  v12PreviewTag.appendChild(credit);
-  document.body.appendChild(v12PreviewTag);
-}
-function syncV12PreviewTag(){
-  if(!v12PreviewLabel)return;
-  const info=soundscape?.debug;
-  const name=info?.usingFallback
-    ?("FALLBACK TO V11.2 · "+(info.status||"Loading"))
-    :("EXTERIOR V8 · ACTIVE");
-  const newText="V12 ENGINE TEST · "+name;
-  if(newText!==v12PreviewLabel.textContent)v12PreviewLabel.textContent=newText;
-}
-if(USE_V12_EXTERIOR_PREVIEW){
-  const loop=audioLoop;
-  audioLoop=function(now){syncV12PreviewTag();loop(now)};
+  v13PreviewLabel=document.createElement("div");
+  v13PreviewLabel.textContent="V13 CLEAN ENGINE TEST · Waiting for race";
+  tag.appendChild(v13PreviewLabel);
+  document.body.appendChild(tag);
+  const oldLoop=audioLoop;
+  audioLoop=function(now){
+    const info=soundscape?.debug;
+    const state=info?.usingFallback
+      ?("FALLBACK TO V11.2 · "+(info.status||"Initializing"))
+      :("ENGINE ACTIVE · "+info.engine+" · "+info.rpm+" RPM");
+    const next="V13 CLEAN ENGINE TEST · "+state;
+    if(next!==v13PreviewLabel.textContent)v13PreviewLabel.textContent=next;
+    oldLoop(now);
+  };
 }
 requestAnimationFrame(
   audioLoop
