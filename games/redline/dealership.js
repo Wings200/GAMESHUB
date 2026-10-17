@@ -14,6 +14,7 @@ import {
  if(!root||!grid||!cash||!feedback||!selector)return;
  let stats=null,profile=garageCarOwnership(null);
  let fetching=null,lastFetch=0,pending=false,filter="all";
+ let restoredForThisCarSelect=false;
  const money=n=>"$"+Math.max(0,Number(n)||0).toLocaleString();
  const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
@@ -135,6 +136,18 @@ import {
          throw new Error("Could not verify account balance");
        stats=saved;profile=garageCarOwnership(saved.carGarage);
        lastFetch=Date.now();delete feedback.dataset.error;render();
+       // Re-select the last saved car once, so players keep their chosen
+       // ride across sessions and return-to-lobby rounds.
+       const me=window.REDLINE_MP?.myPlayer;
+       if(!restoredForThisCarSelect &&
+          window.REDLINE_MP?.room?.phase==="car_select" &&
+          me && !me.car && !me.ready &&
+          profile.owned.includes(profile.selected)){
+         const sent=window.REDLINE_MP?.send?.({
+           type:"select_car",car:profile.selected
+         });
+         if(sent!==false)restoredForThisCarSelect=true;
+       }
        return stats;
      }catch(error){
        feedback.dataset.error="true";
@@ -192,6 +205,7 @@ import {
    }));
  window.addEventListener("redline:room-state",event=>{
    const room=event.detail?.room||event.detail?.state||event.detail;
+   if(room?.phase!=="car_select")restoredForThisCarSelect=false;
    if(room?.phase==="car_select")refresh();
    if(stats)render();
  });
