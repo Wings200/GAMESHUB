@@ -4587,8 +4587,10 @@ function buildArcticEnvironment() {
         2;
 
 
+    // Underlay stays below the sculpted V3 terrain everywhere,
+    // so the old flat plane never masks hills, ruts or the lake shore.
     ground.position.y =
-        -0.03;
+        -0.28;
 
 
     worldGroup.add(
