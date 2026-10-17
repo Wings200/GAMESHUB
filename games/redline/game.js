@@ -7,6 +7,7 @@ import * as REDLINE_PARTS from "./upgrade-parts.js";
 import { REDLINE_CAR_CATALOG, REDLINE_CAR_IDS }
     from "./car-catalog.js";
 import { buildDealerModel } from "./dealer-models.js";
+import { addFactoryCarDetails, buildDetailedWheel } from "./car-realism.js";
 import { createRuggedMountainGeometry, buildArcticV3Art, createArcticSnowfall }
     from "./arctic-v3-art.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
@@ -8534,29 +8535,16 @@ function updateAirborne(
 
 function addWheel(root, x, z, front, scale = 1) {
     const steerPivot = new THREE.Group();
-    steerPivot.position.set(x, 0.34 *
-        scale, z);
+    steerPivot.position.set(x, 0.34 * scale, z);
     const spinPivot = new THREE.Group();
-    const tire = new THREE.Mesh(new THREE.TorusGeometry(0.235 *
-        scale, 0.095 *
-        scale, 8, 14), material(0x040506, 0.95, 0.02));
-    tire.rotation.y =
-        Math.PI /
-            2;
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.18 *
-        scale, 0.18 *
-        scale, 0.20 *
-        scale, 12), material(0x9ba4b1, 0.28, 0.78));
-    rim.rotation.z =
-        Math.PI /
-            2;
-    spinPivot.add(tire, rim);
+    // Detailed radial multi-spoke factory wheels share the original
+    // rotation/steering pivots. No driving math has changed.
+    buildDetailedWheel(THREE, spinPivot, scale, Math.sign(x) || 1,
+        carVisual.modelStyle);
     steerPivot.add(spinPivot);
     root.add(steerPivot);
     carVisual.wheels.push(spinPivot);
-    if (front) {
-        carVisual.frontSteer.push(steerPivot);
-    }
+    if (front) carVisual.frontSteer.push(steerPivot);
 }
 function addLights(bodyPivot, frontZ, rearZ, frontY, rearY) {
     const headMaterial = new THREE.MeshBasicMaterial({
@@ -8658,28 +8646,27 @@ function makeCarModel(spec) {
     root.add(bodyPivot);
     carVisual = {
         bodyPivot,
+        modelStyle: spec.model,
         wheels: [],
         frontSteer: [],
         brakeMaterials: [],
         nitroFlames: []
     };
-    if(buildDealerModel(root,bodyPivot,spec,{
+    const dealerBuilt=buildDealerModel(root,bodyPivot,spec,{
         THREE,material,addMesh,createWedgeGeometry,
         addWheel,addLights,addNitroFlames
-    })) {
-        return root;
+    });
+    if (!dealerBuilt) {
+        if(spec.model==="vortex")buildVortex(root,bodyPivot,spec);
+        else if(spec.model==="apex")buildApex(root,bodyPivot,spec);
+        else buildGT(root,bodyPivot,spec);
     }
-    if (spec.model ===
-        "vortex") {
-        buildVortex(root, bodyPivot, spec);
-    }
-    else if (spec.model ===
-        "apex") {
-        buildApex(root, bodyPivot, spec);
-    }
-    else {
-        buildGT(root, bodyPivot, spec);
-    }
+    // Same body details are built for the local car and all remote ghosts.
+    // This reads factory specs only; no network, cash, or physics changes.
+    addFactoryCarDetails(bodyPivot,spec,{
+        THREE,
+        wheelPivots:carVisual.wheels.map(wheel=>wheel.parent)
+    });
     return root;
 }
 function createNameSprite(username) {
