@@ -25,7 +25,9 @@
     currentBalance=balance;
     lastFetch=Date.now();
     number.textContent="$"+balance.toLocaleString();
-    status.textContent="Purchase saved · Balance updated";
+    status.textContent=event.detail?.kind==="equip"?
+      "Part equipped · Saved balance confirmed":
+      "Purchase saved · Balance updated";
     window.dispatchEvent(new CustomEvent("redline:cash-updated",{
       detail:{balance,lastAward:0,purchase:true}
     }));
@@ -89,7 +91,9 @@
           detail:{balance:amount,lastAward:latest}
         }));
       }catch(e){
-        status.textContent="Balance unavailable. Reopen the garage to retry.";
+        // A later successful purchase already confirmed the cash amount.
+        if(purchaseVersionAtStart===confirmedPurchaseVersion)
+          status.textContent="Balance unavailable. Reopen the garage to retry.";
       }finally{
         request=null;
       }
