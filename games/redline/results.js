@@ -17,6 +17,7 @@
   */
   let resultsLocked = false;
   let completedRoom = null;
+  let lastPodiumSignature = "";
 
 
   function snapshotRoom(
@@ -289,11 +290,59 @@
     }
 
     #redlineReturnLobbyBtn:disabled {
-      opacity:
-        .55;
-
-      cursor:
-        default;
+      opacity:.55;
+      cursor:default;
+    }
+    #redlineResultsPodium {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      align-items:end;
+      margin:0 0 20px;
+    }
+    #redlineResultsPodium:empty{display:none}
+    .redline-podium-card {
+      text-align:center;
+      padding:14px 8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(150,182,230,.20);
+      background:linear-gradient(155deg,rgba(20,33,54,.92),rgba(8,15,29,.9));
+      animation:redlinePodiumRise .5s ease-out both;
+      min-height:104px;
+    }
+    .redline-podium-card.place-1 {
+      order:2;min-height:155px;
+      border-color:rgba(255,208,105,.65);
+      box-shadow:0 0 22px rgba(240,180,61,.12);
+    }
+    .redline-podium-card.place-2 {order:1;min-height:124px}
+    .redline-podium-card.place-3 {order:3}
+    .redline-podium-medal {font-size:27px;margin:0 0 6px}
+    .redline-podium-name {
+      font-size:13px;font-weight:900;white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis;
+    }
+    .redline-podium-time {
+      font-size:11px;color:rgba(231,241,255,.64);
+      font-variant-numeric:tabular-nums;margin-top:6px;
+    }
+    .redline-podium-cash {font-size:12px;font-weight:900;color:#9cffc1;margin-top:6px}
+    .redline-result-row.place-1{border-color:rgba(255,207,90,.35)}
+    .redline-result-row.place-2{border-color:rgba(183,212,255,.29)}
+    .redline-result-row.place-3{border-color:rgba(216,157,95,.29)}
+    @keyframes redlinePodiumRise {
+      from{opacity:0;transform:translateY(18px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+    @media(max-width:540px) {
+      #redlineResultsCard{padding:14px}
+      #redlineResultsPodium{gap:5px}
+      .redline-podium-card{padding:10px 5px}
+      .redline-podium-name{font-size:11px}
+      .redline-result-row{grid-template-columns:36px 1fr auto;padding:10px;gap:7px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .redline-podium-card{animation:none}
     }
   `;
 
@@ -328,6 +377,7 @@
         Waiting for the other racers...
       </p>
 
+      <div id="redlineResultsPodium" aria-label="Race podium"></div>
       <div id="redlineResultsList"></div>
 
       <div id="redlineResultsActions">
@@ -368,6 +418,7 @@
     document.getElementById(
       "redlineResultsList"
     );
+  const podium=document.getElementById("redlineResultsPodium");
 
 
   const hostWait =
@@ -662,11 +713,8 @@
   ========================================================= */
 
   function hideResults() {
-
-    overlay.classList.add(
-      "hidden"
-    );
-
+    overlay.classList.add("hidden");
+    lastPodiumSignature="";
   }
 
 
@@ -744,9 +792,6 @@
       "All racers finished.";
 
 
-    list.replaceChildren();
-
-
     const ordered =
       [
         ...(
@@ -783,6 +828,40 @@
         );
 
 
+    const signature=JSON.stringify({
+      id:room.raceId||room.raceStartAt,
+      finish:ordered.map(r=>[r.playerId,r.place,r.finishTime,r.cashEarned]),
+      players:room.players?.length||0
+    });
+    if(signature!==lastPodiumSignature) {
+      lastPodiumSignature=signature;
+      list.replaceChildren();
+      podium.replaceChildren();
+      const medals=["🥇","🥈","🥉"];
+      for(const result of ordered.slice(0,3)) {
+        const place=Number(result.place);
+        if(!Number.isInteger(place)||place<1||place>3)continue;
+        const player=room.players?.find(p=>p.id===result.playerId);
+        const card=document.createElement("div");
+        card.className="redline-podium-card place-"+place;
+        const medal=document.createElement("div");
+        medal.className="redline-podium-medal";
+        medal.textContent=medals[place-1];
+        const name=document.createElement("div");
+        name.className="redline-podium-name";
+        name.textContent=result.username||player?.username||"Racer";
+        const time=document.createElement("div");
+        time.className="redline-podium-time";
+        time.textContent=formatTime(result.finishTime);
+        card.append(medal,name,time);
+        if(Number.isSafeInteger(result.cashEarned)&&result.cashEarned>=0) {
+          const cash=document.createElement("div");
+          cash.className="redline-podium-cash";
+          cash.textContent="+$"+result.cashEarned+" CASH";
+          card.append(cash);
+        }
+        podium.append(card);
+      }
     ordered.forEach(
       (
         result,
@@ -805,7 +884,7 @@
 
 
         row.className =
-          "redline-result-row";
+          "redline-result-row place-"+String(result.place||index+1);
 
 
         const place =
@@ -924,6 +1003,7 @@
 
       }
     );
+    }
 
 
     if (
