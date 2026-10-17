@@ -13,6 +13,8 @@ if(root&&grid&&message){
   const formatCash=n=>"$"+Math.max(0,Number(n)||0).toLocaleString();
   const shownTier={};
   let snapshot=null,pending=false,refreshing=null,lastRefresh=0;
+  let confirmedPurchaseVersion=0;
+  const cashCounter=document.getElementById("redlineUpgradeCash");
   let feedback=null,feedbackError=false;
   const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
@@ -107,6 +109,8 @@ if(root&&grid&&message){
     grid.replaceChildren();
     const garage=carGarage();
     const balance=Number(snapshot?.cashBalance)||0;
+    if(cashCounter)cashCounter.textContent=snapshot?
+      "AVAILABLE CASH "+formatCash(balance):"AVAILABLE CASH —";
     const base=spec(),id=carId();
     const capText=document.getElementById("upgradeCarLimit");
     if(capText){
@@ -247,11 +251,15 @@ if(root&&grid&&message){
       showFeedback("Waiting for account connection…");
       return null;
     }
+    const versionAtStart=confirmedPurchaseVersion;
     refreshing=(async()=>{
       try{
         const stats=await api.call(window.REDLINE_MP);
         if(!stats?.carUpgrades||typeof stats.carUpgrades!=="object")
           throw new Error("Per-car garage server update has not deployed yet.");
+        if(versionAtStart!==confirmedPurchaseVersion&&
+           Number(stats.cashBalance)!==Number(snapshot?.cashBalance))
+          return snapshot;
         snapshot=stats;
         lastRefresh=Date.now();
         feedback=null;
@@ -264,6 +272,21 @@ if(root&&grid&&message){
     })();
     return refreshing;
   }
+  // The Worker gives the final saved balance in every purchase response.
+  // Keep this shop, the dealership header and the outside garage HUD in
+  // sync regardless of which part of the garage initiated the purchase.
+  window.addEventListener("redline:cash-confirmed",event=>{
+    const balance=Number(event.detail?.balance);
+    if(!Number.isSafeInteger(balance)||balance<0)return;
+    confirmedPurchaseVersion++;
+    lastRefresh=Date.now();
+    if(snapshot){
+      snapshot={...snapshot,cashBalance:balance};
+      render();
+    }else if(cashCounter){
+      cashCounter.textContent="AVAILABLE CASH "+formatCash(balance);
+    }
+  });
   window.addEventListener("redline:garage-car-changed",()=>render());
   window.addEventListener("redline:car-purchased",()=>refresh(true));
   window.addEventListener("redline:room-state",event=>{
