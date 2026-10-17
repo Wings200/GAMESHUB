@@ -1,6 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
+import * as NEON_TRAFFIC from "./neon-traffic.js";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -67,6 +68,7 @@ const quality = {
     */
     renderScale: 0.82
 };
+let trafficSystem = null;
 let fpsFrames = 0;
 let lastFpsTime = performance.now();
 function resizeRenderer() {
@@ -1850,6 +1852,8 @@ function getSurface(roadInfo) {
     };
 }
 function disposeWorld() {
+    // All visual traffic meshes belong to worldGroup and dispose with it.
+    trafficSystem = null;
     remoteRacers.clear();
     raceStates.clear();
     finishOrder =
@@ -2367,7 +2371,7 @@ function buildCity() {
         }
     });
 
-    NEON_ART.buildBackdrop({
+    const cityLayout = NEON_ART.buildBackdrop({
         THREE,
         worldGroup,
         trackSamples,
@@ -2379,6 +2383,15 @@ function buildCity() {
                 { minY: -1, maxY: height, tag: "BUILDING" }
             );
         }
+    });
+
+    // Purely decorative local traffic; no race collisions, scoring, or
+    // multiplayer packets, even if several clients load the same map.
+    trafficSystem = NEON_TRAFFIC.createNeonTraffic({
+        THREE, worldGroup,
+        roadSegments: cityLayout.trafficRoads,
+        trackSamples,
+        maxCars: 26
     });
 
     const activeNeonArtRoot = worldGroup;
@@ -11881,6 +11894,20 @@ window.addEventListener("keydown", event => {
     const key = event.key
         .toLowerCase();
 
+    // T toggles local ambient scenery. It never writes shared room state
+    // and ignores keystrokes while typing into account/room fields.
+    const typing = event.target?.closest?.(
+        "input,textarea,select,[contenteditable]"
+    );
+    if (key === "t" && trafficSystem && !typing &&
+        !event.repeat && !event.ctrlKey && !event.altKey &&
+        !event.metaKey && menu.classList.contains("hidden")) {
+        event.preventDefault();
+        trafficSystem.setEnabled(!trafficSystem.enabled);
+        showRacePopup(trafficSystem.enabled ?
+            "CITY TRAFFIC ON" : "CITY TRAFFIC OFF", 800);
+        return;
+    }
 
     if (
         key ===
@@ -11975,6 +12002,7 @@ function gameLoop(now) {
     const delta = Math.min(clock.getDelta(), 0.04);
     updateServerCountdown();
     updatePhysics(delta);
+    trafficSystem?.update(delta);
     updateNetwork(now);
     updateRemoteRacers(delta);
     updateEffects(delta);
