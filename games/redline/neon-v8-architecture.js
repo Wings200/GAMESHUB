@@ -133,13 +133,17 @@ export function buildNeonV8Architecture({
         }
       }
     }
+    // Anchor rooftop equipment to actual upper mass, especially split
+    // towers which have empty space at the midpoint of the original roof.
+    const equipmentX=style===2?w*.25:style===0?-w*.10:0;
+    const equipmentZ=style===0?d*.06:0;
     if((idx+style)%3===0){
-      const q=world(0,0);
-      put("roof_access",dark,q.x,height-.11,q.z,w*.21,.22,d*.23,rot);
+      const q=world(equipmentX,equipmentZ);
+      put("roof_access",dark,q.x,height-.11,q.z,w*.16,.22,d*.20,rot);
       roofPieces++;
     }
     if((idx+style)%8===0){
-      const p=world(0,0);
+      const p=world(equipmentX,equipmentZ);
       put("antenna_mast",stone,p.x,height+1.6,p.z,.13,3.2,.13);
       put("antenna_light",poolLights[style%4],p.x,height+3.24,p.z,.25,.18,.25);
       roofPieces+=2;
