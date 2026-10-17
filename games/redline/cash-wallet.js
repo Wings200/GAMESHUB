@@ -34,6 +34,19 @@
           throw new Error("Invalid balance");
         currentBalance=amount;
         number.textContent="$"+amount.toLocaleString();
+        const v18=Number(stats?.economyVersion)>=18;
+        const primary=document.getElementById("redlinePrizePrimary");
+        const secondary=document.getElementById("redlinePrizeSecondary");
+        const bonus=document.getElementById("redlinePrizeBonus");
+        if(primary)primary.textContent=v18?
+          "Solo $35 · Multiplayer winner $20/player (max $160)":
+          "Solo $5 · Multiplayer 1st $10/player (max $80)";
+        if(secondary)secondary.textContent=v18?
+          "2nd half · 3rd one-third · 4th–8th $12":
+          "2nd half · 3rd one-third · 4th–8th $5";
+        if(bonus)bonus.textContent=v18?
+          "Every 5th finished race +$60 · New personal best +$15":
+          "V18 rewards activate when the race server updates";
         const latest=Number(stats?.lastCashAward)||0;
         const last=stats?.lastCashBreakdown||{};
         const notes=[];
@@ -44,7 +57,9 @@
             (notes.length?" · "+notes.join(" · "):"")
           : "Saved to your REDLINE account";
         const races=Number(stats?.racesFinished);
-        if(Number.isSafeInteger(races)&&races>=0){
+        if(!v18){
+          milestone.textContent="V18 career milestones pending race server update";
+        }else if(Number.isSafeInteger(races)&&races>=0){
           const progress=races%5;
           milestone.textContent="CAREER PROGRESS "+progress+"/5 FINISHES"+
             " · NEXT MILESTONE +$60 IN "+(5-progress)+
