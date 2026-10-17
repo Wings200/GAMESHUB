@@ -273,7 +273,7 @@ const TRACKS = {
     arctic: {
         id: "arctic",
         name: "ARCTIC RELAY",
-        description: "Arctic Relay V3 — sculpted alpine ridges, carved snow valleys, pine forests, a frozen lake, mountain tunnels, real snowdrifts and the original high-speed cave jump.",
+        description: "Arctic Relay V4 — textured mountain ridges, denser alpine forests, weathered snowdrifts, frozen lake cracks and illuminated glacier tunnels.",
         sampleCount: 880,
         laps: 1,
         background: 0x06111b,
