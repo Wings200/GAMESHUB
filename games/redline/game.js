@@ -8583,7 +8583,10 @@ function addNitroFlames(bodyPivot, rearZ, y, spacing = 0.47) {
     }
 }
 function buildGT(root, bodyPivot, spec) {
-    const bodyMat = material(spec.body, 0.34, 0.3);
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+        color:spec.body,roughness:.29,metalness:.28,
+        clearcoat:.70,clearcoatRoughness:.16
+    });
     const accentMat = material(spec.accent, 0.42, 0.35);
     const glassMat = material(spec.glass, 0.16, 0.12);
     const darkMat = material(0x080b10, 0.7, 0.16);
@@ -8603,7 +8606,10 @@ function buildGT(root, bodyPivot, spec) {
     addWheel(root, 0.99, -1.24, false, 1);
 }
 function buildVortex(root, bodyPivot, spec) {
-    const bodyMat = material(spec.body, 0.26, 0.4);
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+        color:spec.body,roughness:.29,metalness:.28,
+        clearcoat:.70,clearcoatRoughness:.16
+    });
     const carbonMat = material(spec.accent, 0.35, 0.5);
     const glassMat = material(spec.glass, 0.12, 0.18);
     const darkMat = material(0x05070a, 0.7, 0.15);
@@ -8622,7 +8628,10 @@ function buildVortex(root, bodyPivot, spec) {
     addWheel(root, 1.06, -1.35, false, 1.08);
 }
 function buildApex(root, bodyPivot, spec) {
-    const bodyMat = material(spec.body, 0.40, 0.25);
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+        color:spec.body,roughness:.29,metalness:.28,
+        clearcoat:.70,clearcoatRoughness:.16
+    });
     const accentMat = material(spec.accent, 0.50, 0.25);
     const glassMat = material(spec.glass, 0.17, 0.08);
     const darkMat = material(0x080b0f, 0.72, 0.12);
