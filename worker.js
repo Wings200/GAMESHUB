@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
 import { REDLINE_CAR_IDS, STARTER_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
   from "./games/redline/car-catalog.js";
+import {advanceChallenges,challengeSnapshot} from "./games/redline/challenges.js";
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -54,7 +55,7 @@ const VALID_BODIES =
   ]);
 
 
-// REDLINE V18: server-authoritative rewards and progression.
+// REDLINE V19: server-authoritative race and challenge rewards.
 function raceCashPrize(playerCount,place) {
   const racers=Number(playerCount),rank=Number(place);
   if(!Number.isInteger(racers)||racers<1||racers>8||
@@ -68,14 +69,15 @@ function raceCashPrize(playerCount,place) {
 }
 function raceProgressionBonuses(previousFinishes,previousBest,finishTime) {
   const finishes=Math.max(0,Math.floor(Number(previousFinishes)||0))+1;
-  const milestoneBonus=finishes%5===0?60:0;
   const before=Number(previousBest?.time);
   const priorValid=previousBest!=null&&Number.isFinite(before)&&before>0;
   const newTime=Number(finishTime);
-  const personalBest=Number.isFinite(newTime)&&newTime>0&&
-    (!priorValid||newTime<=before*.98);
-  return {milestoneBonus,personalBestBonus:personalBest?15:0,
-    finishCount:finishes};
+  const improvedBest=priorValid&&Number.isFinite(newTime)&&newTime>0&&
+    newTime<=before*.98;
+  // Keep the existing personal-best reward, including the first finish
+  // on a map. Remove the retired every-five-finish career award entirely.
+  return {personalBestBonus:(!priorValid||improvedBest)?15:0,
+    improvedBest,finishCount:finishes};
 }
 
 const CORS_HEADERS = {
@@ -3376,8 +3378,9 @@ export class RedlineRoom
             if(reward){
               result.cashEarned=reward.cash;
               result.cashBase=reward.baseCash;
-              result.cashMilestone=reward.milestoneBonus;
               result.cashPersonalBest=reward.personalBestBonus;
+              result.cashChallenges=reward.challengeBonus;
+              result.challengesCompleted=reward.challengesCompleted;
             }
           }
           this.room.results=[...this.finishOrder];
@@ -3800,7 +3803,9 @@ export class RedlineStats
       cashBalance:0,
       cashEarnedTotal:0,
       lastCashAward:0,
-      lastCashBreakdown:{base:0,milestone:0,personalBest:0},
+      lastCashBreakdown:{base:0,personalBest:0,challenges:0},
+      challenges:null,
+      lastChallengeAwards:[],
       cashSpentTotal:0,
       garage:sanitizeGarage(null),
       carGarage:garageCarOwnership(null),
@@ -4004,13 +4009,21 @@ export class RedlineStats
           REDLINE_CAR_IDS.map(carId=>[carId,carPrice(carId)])
         ),
         racesFinished:positive(stats.racesFinished),
+        challengeVersion:1,
+        challenges:challengeSnapshot(stats.challenges,Date.now()),
+        lastChallengeAwards:Array.isArray(stats.lastChallengeAwards)?
+          stats.lastChallengeAwards.slice(0,6).map(a=>({
+            id:String(a.id||""),title:String(a.title||""),
+            period:a.period==="weekly"?"weekly":"daily",
+            reward:positive(a.reward)
+          })):[],
         cashBalance:positive(stats.cashBalance),
         cashEarnedTotal:positive(stats.cashEarnedTotal),
         lastCashAward:positive(stats.lastCashAward),
         lastCashBreakdown:{
           base:positive(stats.lastCashBreakdown?.base),
-          milestone:positive(stats.lastCashBreakdown?.milestone),
-          personalBest:positive(stats.lastCashBreakdown?.personalBest)
+          personalBest:positive(stats.lastCashBreakdown?.personalBest),
+          challenges:positive(stats.lastCashBreakdown?.challenges)
         },
         cashSpentTotal:positive(stats.cashSpentTotal),
         cashSpentOnCars:positive(stats.cashSpentOnCars),
@@ -4197,7 +4210,7 @@ export class RedlineStats
 
 
       if(!accountId||seenAccounts.has(accountId)||
-         place>raceSize||finishTime<0||finishTime>86400000)continue;
+         place>raceSize||finishTime<=0||finishTime>86400000)continue;
       seenAccounts.add(accountId);
 
 
@@ -4231,19 +4244,25 @@ export class RedlineStats
       const progression=raceProgressionBonuses(
         stats.racesFinished,stats.bestTimes?.[map],finishTime
       );
+      const challengeUpdate=advanceChallenges(stats.challenges,{
+        map,place,improvedBest:progression.improvedBest
+      },now);
       const baseCash=raceCashPrize(raceSize,place);
-      const cash=baseCash+progression.milestoneBonus+
-        progression.personalBestBonus;
+      const cash=baseCash+progression.personalBestBonus+
+        challengeUpdate.earned;
       stats.cashBalance=Math.max(0,Math.floor(Number(stats.cashBalance)||0))+cash;
       stats.cashEarnedTotal=Math.max(0,Math.floor(Number(stats.cashEarnedTotal)||0))+cash;
       stats.lastCashAward=cash;
       stats.lastCashBreakdown={
-        base:baseCash,milestone:progression.milestoneBonus,
-        personalBest:progression.personalBestBonus
+        base:baseCash,personalBest:progression.personalBestBonus,
+        challenges:challengeUpdate.earned
       };
+      stats.challenges=challengeUpdate.state;
+      stats.lastChallengeAwards=challengeUpdate.awards;
       payouts.push({accountId,place,cash,baseCash,
-        milestoneBonus:progression.milestoneBonus,
-        personalBestBonus:progression.personalBestBonus});
+        personalBestBonus:progression.personalBestBonus,
+        challengeBonus:challengeUpdate.earned,
+        challengesCompleted:challengeUpdate.awards});
       stats.racesFinished=progression.finishCount;
 
 
