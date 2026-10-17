@@ -4,6 +4,10 @@
   const lockStatus = document.getElementById("lockStatus");
   const carSelectStatus = document.getElementById("carSelectStatus");
 
+  // Avoid duplicate legacy appearance panels if cached clients load
+  // this compatibility script a second time.
+  if(document.getElementById("redlineGarageV1"))return;
+
   if (!screen || !lockInBtn) {
     console.warn("REDLINE Garage: car select screen not found.");
     return;
