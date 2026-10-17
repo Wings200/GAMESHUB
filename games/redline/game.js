@@ -11,7 +11,8 @@ import { REDLINE_CAR_CATALOG, REDLINE_CAR_IDS }
 import { buildDealerModel } from "./dealer-models.js";
 import { addFactoryCarDetails, buildDetailedWheel } from "./car-realism.js";
 import { createRuggedMountainGeometry, buildArcticV3Art, createArcticSnowfall }
-    from "./arctic-v3-art.js";
+    from "./arctic-v3-art.js?v=arctic-v4";
+import { buildArcticV4Scenery } from "./arctic-v4-scenery.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
 import { createRemoteMotion } from "./multiplayer-smoothing.js";
 const $ = id => document.getElementById(id);
@@ -10057,13 +10058,21 @@ function buildWorld() {
                 end:getShortcutLandingPoint(cave)
             };
         }
-        buildArcticV3Art({
+        const arcticV3=buildArcticV3Art({
             THREE,worldGroup,trackSamples,getFrameAt,
             roadHalf:ROAD_HALF,sidewalkOuter:SIDEWALK_OUTER,
             addCircleCollider:addEnvironmentCircleCollider,
             addBoxCollider:addEnvironmentBoxCollider,
             addRail:(a,b,y)=>barriers.push({a,b,y}),
             shortcut,originalMountains:arcticMountainRoots
+        });
+        // Arctic V4 shares the terrain sampler and safe flight corridors
+        // from V3; it adds visual dressing only and no new collisions.
+        buildArcticV4Scenery({
+            THREE,worldGroup,trackSamples,getFrameAt,
+            roadHalf:ROAD_HALF,sidewalkOuter:SIDEWALK_OUTER,
+            scene:arcticV3,shortcut,
+            originalMountains:arcticMountainRoots
         });
     }
 
