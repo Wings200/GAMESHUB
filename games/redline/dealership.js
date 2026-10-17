@@ -192,9 +192,11 @@ import {
        }
        return stats;
      }catch(error){
-       feedback.dataset.error="true";
-       feedback.textContent="Garage unavailable: "+(error?.message||"Connection error");
-       return null;
+       if(versionAtStart===purchaseBalanceVersion){
+         feedback.dataset.error="true";
+         feedback.textContent="Garage unavailable: "+(error?.message||"Connection error");
+       }
+       return stats;
      }finally{fetching=null}
    })();
    return fetching;
