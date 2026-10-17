@@ -857,10 +857,10 @@
         if(Number.isSafeInteger(result.cashEarned)&&result.cashEarned>=0) {
           const cash=document.createElement("div");
           cash.className="redline-podium-cash";
-          const milestone=Number(result.cashMilestone)||0;
+          const challenges=Number(result.cashChallenges)||0;
           const best=Number(result.cashPersonalBest)||0;
           cash.textContent="+$"+result.cashEarned+" CASH"+
-            (milestone?" · MILESTONE +$"+milestone:"")+
+            (challenges?" · CHALLENGES +$"+challenges:"")+
             (best?" · PB +$"+best:"");
           card.append(cash);
         }
@@ -975,8 +975,8 @@
           const award=document.createElement("div");
           award.className="redline-result-cash";
           const bonusNotes=[];
-          if(Number(result.cashMilestone)>0)
-            bonusNotes.push("5-RACE MILESTONE +$"+result.cashMilestone);
+          if(Number(result.cashChallenges)>0)
+            bonusNotes.push("CHALLENGES +$"+result.cashChallenges);
           if(Number(result.cashPersonalBest)>0)
             bonusNotes.push("PERSONAL BEST +$"+result.cashPersonalBest);
           award.textContent="+$"+prize+" CASH"+
