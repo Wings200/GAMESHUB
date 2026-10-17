@@ -5,7 +5,7 @@ import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
 import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
 import { createIroncladV8Preview, preloadIroncladV8Bank, getIroncladV8BankStatus, auditionIroncladV8Clip } from "./engine-test-v8-soundscape.js?v=ironclad-v16-ab-4";
-import { createV17LongTakeEngine, preloadV17Bank, getV17Status } from "./engine-test-v17-long-takes.js?v=long-takes-v17-1";
+import { createV17LongTakeEngine, preloadV17Bank, getV17Status, loadV17LocalBank } from "./engine-test-v17-long-takes.js?v=long-takes-v17-2";
 preloadV17Bank().then(()=>{
   window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
 }).catch(console.warn);
@@ -1555,6 +1555,11 @@ window.REDLINE_LAB_V17_RETRY=async()=>{
   return ok;
 };
 window.REDLINE_LAB_V17_STATUS=getV17Status;
+window.REDLINE_LAB_V17_LOAD_LOCAL=async(file)=>{
+  const status=await loadV17LocalBank(file);
+  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
+  return status;
+};
 
 window.REDLINE_AUDIO = {
   updateTelemetry(data) {
