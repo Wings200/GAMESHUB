@@ -152,6 +152,7 @@ export function createIroncladV8Preview({
   let active=false,decoded=false,loading=false,revSeen=-1;
   let ticket=0,engineCar="gt",smoothedRPM=900,gas=0,error="";
   let v8Audible=false;
+  let forceOriginal=false;
   let layers=[];
   function clear(){
     for(const v of layers){
@@ -204,10 +205,12 @@ export function createIroncladV8Preview({
       if(bank)load(ticket);
     }
     engineCar=typeof data.car==="string"?data.car:"gt";
-    const useV8=engineCar==="ironclad"&&decoded;
+    // Lab A/B mode cleanly isolates the two engines instead of overlaying
+    // their audio. With V16 selected the entire V11.2 path is silent.
+    const useV8=engineCar==="ironclad"&&decoded&&!forceOriginal;
     v8Audible=useV8;
-    glide(context,v8Bus.gain,useV8?.87:0,.12);
-    glide(context,v11Bus.gain,useV8?.0001:1,.12);
+    glide(context,v8Bus.gain,useV8?.87:0,.09);
+    glide(context,v11Bus.gain,useV8?0:1,.09);
     if(!useV8)return;
     const dtSafe=clamp(Number(dt)||.016,.001,.08);
     smoothedRPM+=(clamp(Number(data.rpm)||900,900,7600)-smoothedRPM)*
@@ -242,10 +245,20 @@ export function createIroncladV8Preview({
     }).catch(err=>console.warn("V8 startup sample failed:",err));
     return true;
   }
-  return {start,update,stop,playStartupSample,
+  function selectOriginalMode(enabled){
+    forceOriginal=!!enabled;
+    // Apply the A/B action immediately to the audio buses. The next frame
+    // resumes regular RPM-driven envelopes; no restart is needed.
+    const useV8=active&&engineCar==="ironclad"&&decoded&&!forceOriginal;
+    v8Audible=useV8;
+    glide(context,v8Bus.gain,useV8?.87:0,.075);
+    glide(context,v11Bus.gain,useV8?0:1,.075);
+    return forceOriginal;
+  }
+  return {start,update,stop,playStartupSample,selectOriginalMode,
     get active(){return active},
     get debug(){return {
-      active,car:engineCar,usingFallback:!v8Audible,
+      active,car:engineCar,usingFallback:!v8Audible,forceOriginal,
       v8Audible,bankReady:!!bank,decoded,layerCount:layers.length,loading,
       rpm:Math.round(smoothedRPM),error,status:bankStatus
     }}
