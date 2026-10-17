@@ -8652,28 +8652,6 @@ function buildApex(root, bodyPivot, spec) {
     addWheel(root, 0.94, -1.10, false, 0.98);
 }
 // Factory paint and body models are sourced exclusively from car-catalog.js.
-function buildMuscle(root, bodyPivot, spec) {
-    const bodyMat = material(spec.body, 0.38, 0.28);
-    const accentMat = material(spec.accent, 0.42, 0.34);
-    const glassMat = material(spec.glass ?? 0x111820, 0.18, 0.10);
-    const darkMat = material(0x07090d, 0.78, 0.14);
-
-    addMesh(bodyPivot, createWedgeGeometry(2.08, 4.15, 0.46, 0.54, 0.96), bodyMat, 0, 0.34, 0);
-    addMesh(bodyPivot, new THREE.BoxGeometry(1.94, 0.22, 1.15), bodyMat, 0, 0.70, 1.30);
-    addMesh(bodyPivot, createWedgeGeometry(1.52, 1.72, 0.54, 0.61, 0.83), glassMat, 0, 0.79, -0.28);
-    addMesh(bodyPivot, new THREE.BoxGeometry(1.52, 0.10, 2.15), accentMat, 0, 0.61, 0.12);
-    addMesh(bodyPivot, new THREE.BoxGeometry(2.04, 0.20, 0.34), darkMat, 0, 0.35, 2.05);
-    addMesh(bodyPivot, new THREE.BoxGeometry(2.02, 0.22, 0.38), darkMat, 0, 0.38, -2.04);
-    addMesh(bodyPivot, new THREE.BoxGeometry(1.55, 0.10, 0.32), accentMat, 0, 1.15, -1.68);
-
-    addLights(bodyPivot, 2.08, -2.08, 0.62, 0.62);
-    addNitroFlames(bodyPivot, -2.28, 0.34, 0.50);
-
-    addWheel(root, -1.04, 1.30, true, 1.08);
-    addWheel(root, 1.04, 1.30, true, 1.08);
-    addWheel(root, -1.04, -1.32, false, 1.12);
-    addWheel(root, 1.04, -1.32, false, 1.12);
-}
 function makeCarModel(spec) {
     const root = new THREE.Group();
     const bodyPivot = new THREE.Group();
@@ -8698,10 +8676,6 @@ function makeCarModel(spec) {
     else if (spec.model ===
         "apex") {
         buildApex(root, bodyPivot, spec);
-    }
-    else if (spec.model ===
-        "muscle") {
-        buildMuscle(root, bodyPivot, spec);
     }
     else {
         buildGT(root, bodyPivot, spec);
