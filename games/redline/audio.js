@@ -1,15 +1,6 @@
-/* =========================================================
-   REDLINE V10.2 AUDIO
-
-   Keeps the V10.1 engine system intact.
-
-   Adds:
-   - Saved master volume
-   - Saved engine volume
-   - Saved SFX volume
-   - Public REDLINE_AUDIO settings API
-   - Automatically loads settings.js
-========================================================= */
+/* REDLINE V11 — seamless sampled engine and car-specific driving SFX.
+   Existing volume controls and startup sample remain compatible. */
+import { createRedlineSoundscape } from "./audio-v11-soundscape.js";
 
 const startBtn =
   document.getElementById(
@@ -237,6 +228,9 @@ let lastGear =
 let engineTargetGain =
   0.48;
 
+// Actual driving telemetry is supplied by game.js; the HUD is fallback.
+let telemetry=null,telemetryUpdatedAt=0,soundscape=null,audioSession=0;
+
 
 /* =========================================================
    PRELOAD
@@ -302,6 +296,8 @@ for (
 ========================================================= */
 
 function getGameRPM() {
+  if(telemetry && performance.now()-telemetryUpdatedAt<800 &&
+     Number.isFinite(telemetry.rpm))return clamp(telemetry.rpm,900,7600);
 
   const raw =
     rpmBar?.style?.width ||
@@ -348,6 +344,8 @@ function getGameRPM() {
 
 
 function getGear() {
+  if(telemetry && performance.now()-telemetryUpdatedAt<800 &&
+     Number.isFinite(Number(telemetry.gear)))return String(telemetry.gear);
 
   return (
     gearEl
@@ -510,7 +508,7 @@ function applyEngineVolume() {
     !ctx ||
     !engineGain ||
     !raceEnabled ||
-    !engineSource
+    (!engineSource && !soundscape?.active)
   ) {
 
     return;
@@ -646,25 +644,25 @@ async function initAudio() {
     buffers[key] =
       await ctx.decodeAudioData(
         data.slice(0)
-      );
+      ).catch(error=>{
+        console.warn("REDLINE audio decode skipped:",key,error);
+        return null;
+      });
 
   }
 
 
-  if (
-    !buffers.low ||
-    !buffers.high
-  ) {
-
-    console.error(
-      "REDLINE audio: required engine loops failed to load."
-    );
-
-
-    return false;
-
+  if (!buffers.low || !buffers.high) {
+    console.warn("REDLINE audio: missing engine sample; using generated fallback where needed.");
   }
-
+  try {
+    soundscape=createRedlineSoundscape({
+      context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
+    });
+  } catch(error){
+    console.warn("REDLINE V11 soundscape unavailable; legacy engine enabled.",error);
+    soundscape=null;
+  }
 
   ready =
     true;
@@ -997,7 +995,8 @@ function playStartup() {
 ========================================================= */
 
 async function startRaceAudio() {
-
+  if(raceEnabled)return;
+  const session=++audioSession;
   const ok =
     await initAudio();
 
@@ -1011,6 +1010,7 @@ async function startRaceAudio() {
   }
 
 
+  if(session!==audioSession)return;
   raceEnabled =
     true;
 
@@ -1055,34 +1055,17 @@ async function startRaceAudio() {
     );
 
 
-  setTimeout(
-
-    () => {
-
-      if (
-        !raceEnabled
-      ) {
-
-        return;
-
-      }
-
-
-      startEngineSource(
-        "low",
-        900,
-        0.42
-      );
-
-
-      starting =
-        false;
-
-    },
-
-    620
-
-  );
+  setTimeout(()=>{
+    if(!raceEnabled||session!==audioSession)return;
+    if(soundscape){
+      soundscape.start();
+      engineTargetGain=.48;
+      applyEngineVolume();
+    }else{
+      startEngineSource("low",900,.42);
+    }
+    starting=false;
+  },620);
 
 }
 
@@ -1092,7 +1075,8 @@ async function startRaceAudio() {
 ========================================================= */
 
 function stopRaceAudio() {
-
+  ++audioSession;
+  soundscape?.stop();
   raceEnabled =
     false;
 
@@ -1316,7 +1300,7 @@ function audioLoop(
   if (
     !raceEnabled ||
     starting ||
-    !engineSource
+    (!engineSource && !soundscape?.active)
   ) {
 
     return;
@@ -1392,6 +1376,14 @@ function audioLoop(
     smoothing;
 
 
+  if(soundscape?.active){
+    const fresh=telemetry&&performance.now()-telemetryUpdatedAt<800;
+    soundscape.update({
+      ...(fresh?telemetry:{}),rpm:smoothedRPM,gear:Number(gear)||1
+    },delta);
+    return;
+  }
+
   const wantedBand =
     chooseBand(
       smoothedRPM
@@ -1461,6 +1453,23 @@ function audioLoop(
 ========================================================= */
 
 window.REDLINE_AUDIO = {
+  updateTelemetry(data) {
+    if(!data||typeof data!=="object")return;
+    telemetry={
+      rpm:Number.isFinite(data.rpm)?data.rpm:900,
+      gear:Number.isFinite(data.gear)?data.gear:1,
+      speed:Number.isFinite(data.speed)?data.speed:0,
+      slip:Number.isFinite(data.slip)?data.slip:0,
+      impact:Number.isFinite(data.impact)?data.impact:0,
+      throttle:!!data.throttle,brake:!!data.brake,
+      handbrake:!!data.handbrake,nitro:!!data.nitro,
+      airborne:!!data.airborne,surface:String(data.surface||""),
+      car:String(data.car||"gt")
+    };
+    telemetryUpdatedAt=performance.now();
+  },
+
+  get soundscapeDebug(){return soundscape?.debug||{active:false};},
 
   get settings() {
 
