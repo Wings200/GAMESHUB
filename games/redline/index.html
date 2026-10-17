@@ -103,6 +103,12 @@
       </div>
 
 
+      <button type="button" class="redline-challenges-home-button"
+        data-open-challenges>
+        <span>CHALLENGES</span>
+        <strong>3 DAILY · 3 WEEKLY</strong>
+        <small>EARN EXTRA CASH BY RACING →</small>
+      </button>
       <a
         class="gameshub-back"
         href="/"
@@ -610,7 +616,7 @@
           <strong>WIN CASH BY RACING</strong>
           <span id="redlinePrizePrimary">Solo $5 · Multiplayer 1st $10/player (max $80)</span>
           <span id="redlinePrizeSecondary">2nd half · 3rd one-third · 4th–8th $5</span>
-          <span id="redlinePrizeBonus">V18 rewards activate when the race server updates</span>
+          <span id="redlinePrizeBonus">Daily and weekly challenges unlock with V19</span>
         </div>
       </div>
 
@@ -619,9 +625,13 @@
         <span class="race-garage-kicker">YOUR RACE CAR</span>
         <h2 id="raceSelectedCarName">REDLINE GT</h2>
         <p>Choose cars, buy new vehicles and upgrade each one separately inside your garage.</p>
-        <button id="goToGarageBtn" type="button" class="primary-button race-garage-enter">
-          GO TO GARAGE →
-        </button>
+        <div class="redline-race-actions">
+          <button id="goToGarageBtn" type="button" class="primary-button race-garage-enter">
+            GO TO GARAGE →
+          </button>
+          <button type="button" class="redline-challenges-garage-button"
+            data-open-challenges>VIEW DAILY & WEEKLY CHALLENGES</button>
+        </div>
       </div>
 
       <div id="redlineGarageOverlay" class="redline-garage-overlay hidden"
@@ -4561,6 +4571,32 @@
   </script>
 
 
+  <!-- REDLINE V19 challenges: read-only board; server awards cash. -->
+  <div id="redlineChallengesOverlay" class="redline-challenge-overlay hidden"
+    role="dialog" aria-modal="true" aria-labelledby="redlineChallengesTitle">
+    <div class="redline-challenge-shell">
+      <header class="redline-challenge-header">
+        <div>
+          <span class="dealer-kicker">REDLINE MOTOR COMPANY · V19</span>
+          <h2 id="redlineChallengesTitle">RACING CHALLENGES</h2>
+          <p id="redlineChallengeReset">Daily UTC resets · Weekly Monday UTC resets</p>
+        </div>
+        <button id="closeChallengesBtn" type="button"
+          class="garage-overlay-return">✕ CLOSE</button>
+      </header>
+      <p id="redlineChallengeStatus" class="redline-challenge-status" aria-live="polite">
+        Loading your saved challenges…
+      </p>
+      <div id="redlineChallengeBoard" class="redline-challenge-board"></div>
+      <p class="redline-challenge-note">
+        Solo races count. Rewards are added automatically to your saved REDLINE cash
+        when the race server verifies completion. Challenges reset at UTC boundaries.
+      </p>
+    </div>
+  </div>
+  <div id="redlineChallengeToast" class="redline-challenge-toast hidden"
+    role="status" aria-live="polite"></div>
+  <script src="./challenges-ui.js?v=v19-challenge-board-1"></script>
   <script src="./music.js"></script>
   <script src="./results.js?v=career-bonuses-v18"></script>
   <script src="./cash-wallet.js?v=live-cash-sync-v18-3"></script>
