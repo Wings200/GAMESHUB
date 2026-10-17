@@ -200,6 +200,72 @@ function createCarMeshes(THREE,group,cars) {
   return components;
 }
 
+/*
+ * Compact intersection signals which visually match the same phase the
+ * AI uses to stop. One pair per junction and only for nearby intersections.
+ * Poles are visual only, placed on the outside corners of cleared streets.
+ */
+function createIntersectionLights(THREE,root,roads) {
+  const unique=new Set(),junctions=[];
+  for(const road of roads) {
+    for(const entry of road.intersections) {
+      if(unique.has(entry.signal))continue;
+      unique.add(entry.signal);
+      junctions.push({...entry.signal,signal:entry.signal,
+        priority:road.score});
+    }
+  }
+  junctions.sort((a,b)=>a.priority-b.priority);
+  const sites=junctions.slice(0,20);
+  if(!sites.length)return {count:0,refresh(){}};
+  const count=sites.length*2;
+  const make=(geo,material)=>{
+    const mesh=new THREE.InstancedMesh(geo,material,count);
+    mesh.frustumCulled=false;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    root.add(mesh);
+    return mesh;
+  };
+  const pole=make(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshStandardMaterial({color:0x323943,roughness:.87}));
+  const housing=make(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshStandardMaterial({color:0x11141a,roughness:.62}));
+  const lens=make(new THREE.SphereGeometry(1,8,6),
+    new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}));
+  const dummy=new THREE.Object3D();
+  for(let i=0;i<sites.length;i++){
+    const site=sites[i];
+    for(let axis=0;axis<2;axis++){
+      const j=i*2+axis;
+      // Two traffic posts beyond the outside corners of an intersection.
+      const x=site.x+(axis===0?-4.1:4.1);
+      const z=site.z+(axis===0?4.1:-4.1);
+      dummy.position.set(x,1.48,z);
+      dummy.rotation.set(0,0,0);
+      dummy.scale.set(.11,2.96,.11);
+      dummy.updateMatrix();pole.setMatrixAt(j,dummy.matrix);
+      dummy.position.set(x,2.88,z);
+      dummy.scale.set(.49,.74,.36);
+      dummy.updateMatrix();housing.setMatrixAt(j,dummy.matrix);
+      dummy.position.set(x,2.89,z+.21);
+      dummy.scale.set(.15,.15,.15);
+      dummy.updateMatrix();lens.setMatrixAt(j,dummy.matrix);
+    }
+  }
+  for(const mesh of [pole,housing,lens])mesh.instanceMatrix.needsUpdate=true;
+  const red=new THREE.Color(0xff304c),green=new THREE.Color(0x36f39a);
+  function refresh(elapsed){
+    for(let i=0;i<sites.length;i++){
+      const signal=sites[i].signal;
+      lens.setColorAt(2*i,trafficLightIsGreen(signal,"x",elapsed)?green:red);
+      lens.setColorAt(2*i+1,trafficLightIsGreen(signal,"z",elapsed)?green:red);
+    }
+    if(lens.instanceColor)lens.instanceColor.needsUpdate=true;
+  }
+  refresh(0);
+  return {count:sites.length,refresh};
+}
+
 export function createNeonTraffic({
   THREE,worldGroup,roadSegments,trackSamples,maxCars=26
 }) {
@@ -214,6 +280,8 @@ export function createNeonTraffic({
   root.name="REDLINE_AMBIENT_TRAFFIC";
   worldGroup.add(root);
   const components=createCarMeshes(THREE,root,cars);
+  const junctionLights=createIntersectionLights(THREE,root,roads);
+  let lightTick=0;
   const dummy=new THREE.Object3D();
   dummy.rotation.order="YXZ";
   function applyCar(car,component,j) {
@@ -252,11 +320,17 @@ export function createNeonTraffic({
   draw();
   return {
     count:cars.length,roadCount:roads.length,
+    junctionCount:junctionLights.count,
     update(delta){
       if(!enabled)return;
       elapsed+=Math.max(0,Math.min(.05,delta));
       updateTrafficCars(cars,delta,elapsed);
       draw();
+      lightTick+=delta;
+      if(lightTick>=.25){
+        junctionLights.refresh(elapsed);
+        lightTick=0;
+      }
     },
     setEnabled(value){
       enabled=Boolean(value);
