@@ -1583,26 +1583,35 @@ window.REDLINE_AUDIO = {
 
 // V12 test mode is deliberately obvious and cannot silently masquerade
 // as an upgraded engine if Wikimedia audio failed to load.
-let v12PreviewTag=null;
+let v12PreviewTag=null,v12PreviewLabel=null;
 if(USE_V12_EXTERIOR_PREVIEW){
   v12PreviewTag=document.createElement("div");
   v12PreviewTag.id="redlineV12PreviewStatus";
   v12PreviewTag.setAttribute("role","status");
   v12PreviewTag.style.cssText=
-    "position:fixed;left:12px;bottom:12px;z-index:10000;pointer-events:none;"+
+    "position:fixed;left:12px;bottom:12px;z-index:10000;pointer-events:auto;"+
     "background:#0d1720ed;color:#8fe1d2;border:1px solid #376b71;"+
     "border-radius:10px;padding:7px 10px;font:12px/1.4 system-ui,sans-serif";
-  v12PreviewTag.textContent="V12 ENGINE TEST · Waiting for race";
+  v12PreviewLabel=document.createElement("div");
+  v12PreviewLabel.textContent="V12 ENGINE TEST · Waiting for race";
+  v12PreviewTag.appendChild(v12PreviewLabel);
+  const credit=document.createElement("a");
+  credit.href="https://commons.wikimedia.org/wiki/File:Trophy_Truck_and_American_V8s.ogg";
+  credit.target="_blank";credit.rel="noopener noreferrer";
+  credit.style.cssText="font-size:10px;color:#bdd7f0;text-decoration:underline";
+  credit.textContent="Edvvc (Ed Pond) · adapted audio · CC BY-SA 3.0";
+  credit.title="Original Goodwood V8 exterior field recording and Creative Commons license details";
+  v12PreviewTag.appendChild(credit);
   document.body.appendChild(v12PreviewTag);
 }
 function syncV12PreviewTag(){
-  if(!v12PreviewTag)return;
+  if(!v12PreviewLabel)return;
   const info=soundscape?.debug;
   const name=info?.usingFallback
     ?("FALLBACK TO V11.2 · "+(info.status||"Loading"))
     :("EXTERIOR V8 · ACTIVE");
   const newText="V12 ENGINE TEST · "+name;
-  if(newText!==v12PreviewTag.textContent)v12PreviewTag.textContent=newText;
+  if(newText!==v12PreviewLabel.textContent)v12PreviewLabel.textContent=newText;
 }
 if(USE_V12_EXTERIOR_PREVIEW){
   const loop=audioLoop;
