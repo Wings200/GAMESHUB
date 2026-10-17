@@ -209,6 +209,88 @@ export function buildArcticV3Art({
    worldGroup.add(mesh);
  }
 
+ // Ice-packed wheel ruts and irregular shoulder snowdrifts make the
+ // continuous road feel used rather than looking like a flat dark ribbon.
+ // Geometry hugs the exact spline, so no ghost lane markings appear.
+ const rutMat=new THREE.MeshStandardMaterial({
+   color:0x8598a5,roughness:.78,metalness:.015,
+   transparent:true,opacity:.43,depthWrite:false
+ });
+ const rutSamples=trackSamples.filter((_,i)=>i%4===0);
+ const ruts=new THREE.InstancedMesh(
+   new THREE.BoxGeometry(.23,.018,2.15),rutMat,rutSamples.length*2);
+ const roadDummy=new THREE.Object3D();
+ let mark=0;
+ for(const sample of rutSamples){
+   for(const offset of [-1.58,1.58]){
+     roadDummy.position.copy(sample.point).addScaledVector(
+       sample.normal,offset);
+     roadDummy.position.y=sample.point.y+.087;
+     roadDummy.rotation.set(0,sample.rotationY,0);
+     roadDummy.scale.set(.78+(mark%3)*.12,1,1.1+(mark%5)*.04);
+     roadDummy.updateMatrix();
+     ruts.setMatrixAt(mark++,roadDummy.matrix);
+   }
+ }
+ ruts.instanceMatrix.needsUpdate=true;
+ worldGroup.add(ruts);
+ const crestMat=new THREE.MeshStandardMaterial({
+   color:0xdbe8ec,roughness:.99
+ });
+ const banks=new THREE.InstancedMesh(
+   new THREE.IcosahedronGeometry(1,1),crestMat,
+   Math.ceil(trackSamples.length/9)*2);
+ let bankCount=0;
+ for(let i=0;i<trackSamples.length;i+=9){
+   const frame=trackSamples[i];
+   for(const side of [-1,1]){
+     const offset=side*(sidewalkOuter+2.6);
+     const x=frame.point.x+frame.normal.x*offset;
+     const z=frame.point.z+frame.normal.z*offset;
+     if(roadDistance(x,z)<roadHalf+4)continue;
+     roadDummy.position.set(x,-.12,z);
+     roadDummy.rotation.set(0,frame.rotationY,0);
+     roadDummy.scale.set(1.5+rng()*.6,.27+rng()*.25,3.0+rng()*2);
+     roadDummy.updateMatrix();
+     banks.setMatrixAt(bankCount++,roadDummy.matrix);
+   }
+ }
+ banks.count=bankCount;
+ banks.instanceMatrix.needsUpdate=true;
+ worldGroup.add(banks);
+ // Emergency reflector poles indicate the road edges in snow and fog.
+ const markerPosts=new THREE.InstancedMesh(
+   new THREE.CylinderGeometry(.075,.12,1.4,7),
+   new THREE.MeshStandardMaterial({color:0x7d97a6,metalness:.35,roughness:.62}),
+   Math.ceil(trackSamples.length/20)*2);
+ const markerReflectors=new THREE.InstancedMesh(
+   new THREE.BoxGeometry(.31,.21,.16),
+   new THREE.MeshBasicMaterial({color:0xffd69b}),
+   Math.ceil(trackSamples.length/20)*2);
+ let markerCount=0;
+ for(let i=0;i<trackSamples.length;i+=20){
+   const frame=trackSamples[i];
+   for(const side of [-1,1]){
+     const offset=side*(sidewalkOuter+2.4);
+     const x=frame.point.x+frame.normal.x*offset;
+     const z=frame.point.z+frame.normal.z*offset;
+     if(roadDistance(x,z)<roadHalf+4.0)continue;
+     roadDummy.position.set(x,.52,z);
+     roadDummy.rotation.set(0,frame.rotationY,0);
+     roadDummy.scale.set(1,1,1);roadDummy.updateMatrix();
+     markerPosts.setMatrixAt(markerCount,roadDummy.matrix);
+     roadDummy.position.y=1.03;
+     roadDummy.updateMatrix();
+     markerReflectors.setMatrixAt(markerCount,roadDummy.matrix);
+     markerCount++;
+   }
+ }
+ for(const mesh of [markerPosts,markerReflectors]){
+   mesh.count=markerCount;
+   mesh.instanceMatrix.needsUpdate=true;
+   worldGroup.add(mesh);
+ }
+
  // Ice/rock scatter, safely outside asphalt and secret jump lanes.
  const boulderMat=new THREE.MeshStandardMaterial({
    color:0x697f8b,roughness:.94,flatShading:false
