@@ -2753,3 +2753,82 @@ select option:disabled {
   .upgrade-head-actions{align-items:flex-start}
   .upgrade-available-cash{font-size:12px}
 }
+
+/* REDLINE V19 — Challenges board. No gameplay canvas or wallet state changes. */
+.redline-challenges-home-button{
+  display:grid;gap:5px;margin:24px auto 10px;
+  width:min(360px,94%);padding:17px 20px;text-align:left;
+  border-radius:13px;border:1px solid rgba(109,223,181,.53);
+  background:linear-gradient(120deg,rgba(29,84,85,.87),rgba(12,27,45,.96));
+  color:#e9fff5;cursor:pointer;font-family:inherit;
+  box-shadow:0 10px 25px rgba(0,0,0,.24);
+}
+.redline-challenges-home-button:hover{border-color:#a8ffe4;transform:translateY(-2px)}
+.redline-challenges-home-button span{font-size:10px;letter-spacing:.16em;font-weight:850;color:#95edd1}
+.redline-challenges-home-button strong{font-size:18px;letter-spacing:.045em}
+.redline-challenges-home-button small{color:#b0cfce;font-size:11px;font-weight:750}
+.redline-race-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.redline-challenges-garage-button{
+  border-radius:9px;padding:11px 14px;
+  border:1px solid rgba(123,223,187,.52);
+  background:rgba(20,74,65,.76);color:#d2f8e9;cursor:pointer;
+  font:850 11px/1.4 inherit;letter-spacing:.035em
+}
+.redline-challenges-garage-button:hover{border-color:#a4ffdf;background:rgba(29,96,79,.95)}
+.redline-challenge-overlay{
+  position:fixed;inset:0;z-index:14500;display:flex;
+  align-items:center;justify-content:center;padding:16px;
+  background:rgba(3,9,16,.88);backdrop-filter:blur(7px);
+}
+.redline-challenge-overlay.hidden,.redline-challenge-toast.hidden{display:none!important}
+.redline-challenge-shell{
+  width:min(1020px,100%);max-height:min(92vh,850px);
+  overflow-y:auto;background:linear-gradient(150deg,#112434,#0a111c);
+  border:1px solid rgba(116,191,202,.46);border-radius:18px;
+  box-shadow:0 28px 90px rgba(0,0,0,.7);padding:23px;
+  color:#f0fbff
+}
+.redline-challenge-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding-bottom:15px;border-bottom:1px solid rgba(121,157,184,.18)
+}
+.redline-challenge-header h2{margin:6px 0;font-size:clamp(23px,3.5vw,31px);letter-spacing:.05em}
+.redline-challenge-header p{font-size:12px;color:#a6c9d2;margin:7px 0}
+.redline-challenge-status{min-height:19px;font-size:12px;color:#a6e3c6;margin:15px 0}
+.redline-challenge-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.redline-challenge-group{min-width:0;display:grid;gap:10px;align-content:start}
+.redline-challenge-group-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.redline-challenge-group-title h3{margin:0;font-size:15px;letter-spacing:.075em;color:#dcf7f2}
+.redline-challenge-group-title span{font-size:10px;font-weight:850;color:#c0dbc9}
+.redline-challenge-card{
+  padding:15px;background:rgba(20,38,57,.84);
+  border:1px solid rgba(102,158,177,.29);border-radius:12px;
+}
+.redline-challenge-complete{border-color:rgba(89,220,154,.57);background:rgba(17,64,57,.55)}
+.redline-challenge-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.redline-challenge-row strong{font-size:13px;color:#f2ffff}
+.redline-challenge-reward{flex-shrink:0;font-size:12px;font-weight:900;color:#a4ffce;white-space:nowrap}
+.redline-challenge-card p{margin:8px 0 11px;line-height:1.5;font-size:11px;color:#acbdc9;min-height:32px}
+.redline-challenge-track{height:8px;background:rgba(150,187,206,.19);border-radius:20px;overflow:hidden}
+.redline-challenge-fill{height:100%;border-radius:20px;
+  background:linear-gradient(90deg,#4c93ba,#61dfa6);transition:width .3s ease}
+.redline-challenge-count{margin-top:8px;text-align:right;color:#a2e5cd;font-size:10px;font-weight:900}
+.redline-challenge-note{font-size:11px;line-height:1.6;color:#8ca8b4;margin:17px 0 0}
+.redline-challenge-empty{grid-column:1/-1;color:#f1d59b;font-size:13px;padding:25px;
+  border:1px dashed rgba(207,175,100,.4);border-radius:10px}
+.redline-challenge-toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  z-index:16000;max-width:min(90vw,540px);min-width:280px;
+  border:1px solid rgba(111,244,160,.7);border-radius:14px;
+  background:#123e30f5;box-shadow:0 15px 40px #000a;
+  display:grid;gap:6px;text-align:center;padding:16px 24px;color:#eefff8;
+}
+.redline-challenge-toast strong{font-size:15px;color:#b9ffdb}
+.redline-challenge-toast span{font-size:12px;color:#caecdf}
+@media(max-width:710px){
+  .redline-challenge-board{grid-template-columns:1fr}
+  .redline-challenge-shell{padding:15px;max-height:95vh}
+  .redline-challenge-header{flex-wrap:wrap}
+  .redline-challenges-home-button{margin:13px auto}
+  .redline-race-actions{flex-direction:column}
+}
