@@ -40,7 +40,10 @@ function setCar(id){
   if($("labQuickCar"))$("labQuickCar").value=id;
   if($("labAudioDescription"))$("labAudioDescription").textContent=
     id==="gt"?"V15 · recorded inline-six engine":
-    id==="ironclad"?"V16 · recorded 1951 Mercury flathead V8":
+    id==="ironclad"?
+      (window.REDLINE_LAB_V8_STATUS?.().ready?
+        "V16 · recorded Mercury V8 ready":
+        "V16 bank not available yet · V11.2 fallback active"):
     "V11.2 fallback · awaiting a licensed "+engineType(id)+" engine bank";
   syncRoom();
 }
@@ -197,3 +200,6 @@ $("labReturnButton").hidden=true;
 setCar("gt");
 setMap("neon");
 show("carSelectScreen");
+window.addEventListener("redline:v8-bank-status",()=>{
+  if(chosen==="ironclad")setCar("ironclad");
+});
