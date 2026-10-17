@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js";
+import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
 import * as NEON_TRAFFIC from "./neon-traffic.js";
 import * as NEON_WEATHER from "./neon-weather.js";
@@ -112,7 +113,7 @@ const TRACKS = {
     neon: {
         id: "neon",
         name: "NEON DISTRICT",
-        description: "Neon District V3 — real graded city streets, twin concrete bridges across the shipping canal, waterfront warehouses, downtown tunnels and elevated approaches.",
+        description: "Neon District V7 — detailed night-city storefronts, illuminated streets, twin canal bridges, traffic, waterfront warehouses and downtown tunnels.",
         sampleCount: 640,
         laps: 1,
         background: 0x050a13,
@@ -2652,6 +2653,16 @@ function buildCity() {
         THREE,
         worldGroup,
         buildings: buildingSpecs
+    });
+
+    // Art-only V7 layers sit on existing raceway-cleared city footprints
+    // and on ambient road segments already verified by buildBackdrop.
+    // Colliders, buildings and competitive race geometry remain unchanged.
+    NEON_V7.buildNeonV7District({
+        THREE,
+        worldGroup,
+        buildings: buildingSpecs,
+        trafficRoads: cityLayout.trafficRoads
     });
 
     // Match visible roadside building footprints to real oriented colliders.
