@@ -4,48 +4,6 @@
 import { createRedlineSoundscape } from "./audio-v11-soundscape.js?v=nitro-fix-v11-2";
 import { createV13EnginePreview } from "./engine-v13-clean-preview.js?v=clean-rpm-v13";
 import { createV15RecordedEnginePreview, loadV15LocalZip, getV15LocalStatus, preloadV15PublishedEngine } from "./audio-v15-local-sample-bank.js?v=embedded-gt-v15-1";
-import { createIroncladV8Preview, preloadIroncladV8Bank, getIroncladV8BankStatus, auditionIroncladV8Clip } from "./engine-test-v8-soundscape.js?v=ironclad-v16-ab-4";
-import { createV17LongTakeEngine, preloadV17Bank, getV17Status, loadV17LocalBank } from "./engine-test-v17-long-takes.js?v=long-takes-v17-2";
-preloadV17Bank().then(()=>{
-  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
-}).catch(console.warn);
-preloadIroncladV8Bank().then(()=>{
-  window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
-}).catch(console.warn);
-let playLabV8Startup=null;
-let labV8Instance=null;
-let labV15Instance=null;
-let labV17Instance=null;
-/*
- * Explicit soundscape chain for this lab ONLY:
- *   IRONCLAD V16 V8 (top-level mixer; directly connected to engineBus)
- *     -> GT V15 recorded i6
- *       -> V11.2 for the other seven cars.
- * V16's 8 recorded layers are no longer hidden inside a V15 fallback.
- */
-function createEngineLabV15Fallback(options){
-  const v15=createV15RecordedEnginePreview({
-    ...options,fallbackFactory:createRedlineSoundscape
-  });
-  labV15Instance=v15;
-  return v15;
-}
-function createEngineLabV8Primary(options){
-  const v8=createIroncladV8Preview({
-    ...options,fallbackFactory:createEngineLabV15Fallback
-  });
-  labV8Instance=v8;
-  playLabV8Startup=(destination)=>v8.playStartupSample(destination);
-  return v8;
-}
-function createEngineLabV17Primary(options){
-  const v17=createV17LongTakeEngine({
-    ...options,fallbackFactory:createEngineLabV8Primary
-  });
-  labV17Instance=v17;
-  return v17;
-}
-window.REDLINE_LAB_V8_STATUS=getIroncladV8BankStatus;
 // V14 physically simulated sound was rejected in listening tests and is
 // deliberately disabled until proper recorded engine banks exist.
 const ENGINE_EXPERIMENT=new URLSearchParams(window.location.search).get("engine");
@@ -700,8 +658,9 @@ async function initAudio() {
   }
   try {
     soundscape=USE_V15_RECORDED_ENGINE
-      ?createEngineLabV17Primary({
-          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers
+      ?createV15RecordedEnginePreview({
+          context:ctx,engineBus:engineGain,sfxBus:startupGain,buffers,
+          fallbackFactory:createRedlineSoundscape
         })
       :USE_V13_CLEAN_PREVIEW
       ?createV13EnginePreview({
@@ -1010,14 +969,11 @@ function swapEngineBand(
 ========================================================= */
 
 function playStartup() {
-  // Each recording plays only for its matching engine; V16 owns the
-  // primary mixer and V15 is the fallback for the GT in this lab.
-  const labCar=window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt";
-  if(USE_V15_RECORDED_ENGINE && labCar==="gt" &&
-     labV15Instance?.playStartupSample?.(startupGain))return;
-  if(labCar==="ironclad" &&
-     (labV17Instance?.playStartupSample?.(startupGain)||
-      playLabV8Startup?.(startupGain)))return;
+  // V15 substitutes the actual i6 startup from the user's locally selected
+  // licensed ZIP. The sample never leaves the user's browser.
+  if(USE_V15_RECORDED_ENGINE &&
+     (window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt")==="gt" &&
+     soundscape?.playStartupSample?.(startupGain))return;
 
   if (
     !buffers.startup ||
@@ -1439,11 +1395,7 @@ function audioLoop(
   if(soundscape?.active){
     const fresh=telemetry&&performance.now()-telemetryUpdatedAt<800;
     soundscape.update({
-      ...(fresh?telemetry:{}),
-      // In the offline lab, the selected test car is authoritative even
-      // when a telemetry frame is delayed or skipped during a restart.
-      car:window.REDLINE_MP?.myPlayer?.car||telemetry?.car||"gt",
-      rpm:smoothedRPM,gear:Number(gear)||1
+      ...(fresh?telemetry:{}),rpm:smoothedRPM,gear:Number(gear)||1
     },delta);
     return;
   }
@@ -1518,49 +1470,6 @@ function audioLoop(
 
 // The engine lab can deliberately reset audio on each test-car change.
 window.REDLINE_LAB_RESTART_AUDIO=()=>stopRaceAudio();
-// Diagnostics reveal which recording is ACTUALLY playing, not merely
-// whether a bank file exists. Only installed on the offline test page.
-window.REDLINE_LAB_V8_DIAGNOSTICS=()=>({
-  selectedCar:window.REDLINE_MP?.myPlayer?.car||"gt",
-  bank:getIroncladV8BankStatus(),
-  v8:labV8Instance?.debug||null,
-  v17:labV17Instance?.debug||null,
-  v17bank:getV17Status(),
-  v15:labV15Instance?.debug||null,
-  context:ctx?.state||"not initialized",
-  raceEnabled,
-  starting,
-  telemetryAgeMs:telemetryUpdatedAt?
-    Math.round(performance.now()-telemetryUpdatedAt):null,
-  engineVolume:audioSettings.engineVolume,
-  engineBusGain:engineGain?.gain?.value??null
-});
-window.REDLINE_LAB_V8_RETRY=async()=>{
-  const ok=await preloadIroncladV8Bank(true);
-  window.dispatchEvent(new CustomEvent("redline:v8-bank-status"));
-  return ok;
-};
-window.REDLINE_LAB_V8_AUDITION=()=>auditionIroncladV8Clip("med_on");
-window.REDLINE_LAB_V8_AB=(useOriginal)=>{
-  if(!labV17Instance)return null;
-  return labV17Instance.selectOriginalMode(useOriginal);
-};
-window.REDLINE_LAB_V17_AB=(useOldV16)=>{
-  if(!labV17Instance)return null;
-  return labV17Instance.selectV16Mode(useOldV16);
-};
-window.REDLINE_LAB_V17_RETRY=async()=>{
-  const ok=await preloadV17Bank(true);
-  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
-  return ok;
-};
-window.REDLINE_LAB_V17_STATUS=getV17Status;
-window.REDLINE_LAB_V17_LOAD_LOCAL=async(file)=>{
-  const status=await loadV17LocalBank(file);
-  window.dispatchEvent(new CustomEvent("redline:v17-bank-status"));
-  return status;
-};
-
 window.REDLINE_AUDIO = {
   updateTelemetry(data) {
     if(!data||typeof data!=="object")return;
