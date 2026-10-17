@@ -146,6 +146,9 @@ import {
      article.append(header,preview,trim,description,rowStats(car),action);
      grid.append(article);
    }
+   // Owned selector cards and filtered dealership tiles can be recreated
+   // after the thumbnail render; re-apply already cached real model photos.
+   window.REDLINE_CAR_THUMBNAILS?.applyAll?.();
    if(stats&&!pending&&!feedback.dataset.error)
      feedback.textContent="OWNED "+profile.owned.length+"/"+REDLINE_CAR_IDS.length+
        (Number(stats.economyVersion)>=18?
@@ -238,6 +241,9 @@ import {
    btn.addEventListener("click",()=>{
      filter=btn.dataset.dealerFilter;render();
    }));
+ window.addEventListener("redline:car-thumbnails-ready",()=>{
+   window.REDLINE_CAR_THUMBNAILS?.applyAll?.();
+ });
  window.addEventListener("redline:room-state",event=>{
    const room=event.detail?.room||event.detail?.state||event.detail;
    if(room?.phase!=="car_select")restoredForThisCarSelect=false;
