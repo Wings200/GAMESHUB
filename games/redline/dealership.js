@@ -15,6 +15,19 @@ import {
  let stats=null,profile=garageCarOwnership(null);
  let fetching=null,lastFetch=0,pending=false,filter="all";
  let restoredForThisCarSelect=false;
+ // Clear on-card specialty labels: different vehicles reward different
+ // driving styles, not merely a higher price tag.
+ const vehicleIdentity={
+   gt:["BALANCED COUPE","Easy to drive · versatile starter"],
+   vortex:["FREE SPEEDSTER","Fast straights · lighter cornering grip"],
+   apex:["FREE TRACK CAR","Sharp steering · tight corner specialist"],
+   bayside:["STREET TUNER","Quick launch · drift-focused handling"],
+   aurora:["RALLY AWD","High grip · strong braking · raised rally body"],
+   ironclad:["V8 MUSCLE","Huge acceleration · heavier cornering"],
+   cirrus:["GRAND TOURER","High-speed stability · long-wheelbase comfort"],
+   obsidian:["TRACK SUPERCAR","Extreme acceleration · maximum cornering grip"],
+   phantom:["HYPERCAR","Top-end speed · flagship aero and launch"]
+ };
  const money=n=>"$"+Math.max(0,Number(n)||0).toLocaleString();
  const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
     Boolean(window.REDLINE_MP?.myPlayer?.ready);
@@ -96,10 +109,16 @@ import {
        element("div","dealer-wheel dealer-wheel-front"),
        element("div","dealer-wheel dealer-wheel-rear"));
      preview.append(silhouette);
+     const role=vehicleIdentity[id]||[car.style,""];
+     const trim=element("div","dealer-specialty");
+     trim.append(
+       element("strong","dealer-specialty-name",role[0]),
+       element("span","dealer-specialty-claim",role[1])
+     );
      const description=element("p","dealer-description",
-       car.style+" · "+(car.spec.topSpeed*2.45).toFixed(0)+
-       " MPH top-speed rating · "+car.spec.acceleration+
-       " acceleration");
+       "FACTORY "+(car.spec.topSpeed*2.45).toFixed(0)+
+       " MPH MAX · "+car.spec.acceleration.toFixed(1)+
+       " ACCEL · "+car.spec.grip.toFixed(1)+" GRIP");
      const action=element("button","dealer-action");
      action.type="button";action.dataset.purchaseCar=id;
      action.disabled=pending||locked()||!stats;
@@ -111,7 +130,7 @@ import {
      }else{
        action.textContent="BUY FOR "+money(car.price);
      }
-     article.append(header,preview,description,rowStats(car),action);
+     article.append(header,preview,trim,description,rowStats(car),action);
      grid.append(article);
    }
    if(stats&&!pending&&!feedback.dataset.error)
