@@ -330,7 +330,8 @@ export function buildArcticV3Art({
  const postMat=new THREE.MeshStandardMaterial({
    color:0xbccfd9,roughness:.70,metalness:.12
  });
- for(const [start,end] of [[.287,.317],[.761,.793]]){
+ // Bridge rail set pieces stay away from the .785 ridgeline secret ramp.
+ for(const [start,end] of [[.305,.333],[.724,.749]]){
    for(const side of [-1,1]){
      let prev=null;
      for(let k=0;k<=22;k++){
