@@ -10679,26 +10679,9 @@ function updateGarageUI() {
             selectedCar);
     });
 }
-// One delegated listener works for both starter cars and newly purchased
-// vehicles appended to the selector after page/module initialization.
-document.getElementById("carSelector").addEventListener("click",event=>{
-    const card=event.target.closest(".car-card");
-    if(!card || !cars[card.dataset.car] ||
-        card.disabled || card.dataset.locked==="true" ||
-        window.REDLINE_MP?.room?.phase!=="car_select" ||
-        window.REDLINE_MP?.myPlayer?.ready)return;
-    selectedCar=card.dataset.car;
-    updateGarageUI();
-    window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
-});
-window.addEventListener("redline:car-purchased",event=>{
-    const id=event.detail?.carId;
-    if(id&&cars[id]){
-        selectedCar=id;
-        updateGarageUI();
-        window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
-    }
-});
+// The multiplayer controller sends car selections. Never treat a local
+// card click (or HTTP dealership purchase) as in-room confirmation.
+// Only the Worker room_state event below may change the active race car.
 window.addEventListener("redline:room-state",event=>{
     const mine=window.REDLINE_MP?.myPlayer?.car;
     if(mine&&cars[mine]&&mine!==selectedCar){
