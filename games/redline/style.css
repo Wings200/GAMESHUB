@@ -2606,3 +2606,24 @@ select option:disabled {
   .garage-overlay-return{width:100%}
   .garage-overlay-car-picker{padding:12px}
 }
+
+
+/* Explicit online/offline status; disabled shop buttons are never silent. */
+.garage-service-status {
+  width:min(1080px,100%);margin:16px auto 0;padding:13px 15px;
+  border:1px solid rgba(118,161,215,.28);border-radius:10px;
+  background:rgba(16,33,52,.85);display:flex;gap:14px;
+  align-items:center;justify-content:space-between;flex-wrap:wrap;
+}
+.garage-service-status span{font-size:12px;font-weight:800;line-height:1.6;color:#c9daf2}
+.garage-service-status[data-state="online"]{border-color:rgba(80,194,138,.5);background:rgba(17,58,42,.55)}
+.garage-service-status[data-state="online"] span{color:#a8eec4}
+.garage-service-status[data-state="offline"]{border-color:rgba(240,107,107,.5);background:rgba(85,29,35,.48)}
+.garage-service-status[data-state="offline"] span{color:#ffbdbd}
+.garage-service-status button{
+  background:rgba(50,99,159,.42);border:1px solid rgba(132,177,225,.6);
+  border-radius:7px;padding:9px 13px;color:white;font-weight:900;
+  font-family:inherit;font-size:11px;cursor:pointer
+}
+.garage-service-status button:hover:not(:disabled){background:rgba(74,139,212,.65)}
+.garage-service-status button:disabled{opacity:.5;cursor:wait}
