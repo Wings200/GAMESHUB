@@ -1,0 +1,206 @@
+import {
+  REDLINE_CAR_CATALOG,REDLINE_CAR_IDS,STARTER_CAR_IDS,
+  garageCarOwnership
+} from "./car-catalog.js";
+
+/* Account-backed dealership: only the REDLINE Worker can charge cash or
+   grant vehicle ownership. No price or wallet value is trusted from DOM. */
+(() => {
+ const root=document.getElementById("redlineDealership");
+ const grid=document.getElementById("dealerGrid");
+ const cash=document.getElementById("dealerCash");
+ const feedback=document.getElementById("dealerFeedback");
+ const selector=document.getElementById("carSelector");
+ if(!root||!grid||!cash||!feedback||!selector)return;
+ let stats=null,profile=garageCarOwnership(null);
+ let fetching=null,lastFetch=0,pending=false,filter="all";
+ const money=n=>"$"+Math.max(0,Number(n)||0).toLocaleString();
+ const locked=()=>window.REDLINE_MP?.room?.phase!=="car_select" ||
+    Boolean(window.REDLINE_MP?.myPlayer?.ready);
+ const element=(tag,cls,text)=>{
+    const e=document.createElement(tag);
+    if(cls)e.className=cls;
+    if(text!==undefined)e.textContent=text;
+    return e;
+ };
+ function createOwnedSelectorCard(id){
+   const car=REDLINE_CAR_CATALOG[id];
+   const card=element("button","car-card dealer-owned-car");
+   card.type="button";
+   card.dataset.car=id;
+   const preview=element("div","preview-stage");
+   const model=element("div","preview-car preview-"+id);
+   for(const [cls] of [["preview-roof"],["preview-body"],["preview-wing"],
+     ["preview-wheel wheel-left"],["preview-wheel wheel-right"]])
+      model.append(element("div",cls));
+   preview.append(model);
+   const info=element("div","car-card-info");
+   info.append(element("strong","",car.name),
+     element("span","",car.style));
+   card.append(preview,info);
+   return card;
+ }
+ function syncSelector(){
+   for(const id of REDLINE_CAR_IDS){
+     if(STARTER_CAR_IDS.includes(id))continue;
+     const exists=[...selector.querySelectorAll(".car-card")].find(
+       x=>x.dataset.car===id);
+     const owned=profile.owned.includes(id);
+     if(owned&&!exists)selector.append(createOwnedSelectorCard(id));
+     if(!owned&&exists)exists.remove();
+   }
+ }
+ function rowStats(car){
+   const statsNode=element("div","dealer-stats");
+   const metrics=[
+     ["TOP SPEED","speed"],["ACCELERATION","accel"],
+     ["GRIP","grip"],["DRIFT","drift"]
+   ];
+   for(const [title,key] of metrics){
+     const stat=element("div","dealer-stat");
+     const heading=element("div","dealer-stat-heading");
+     heading.append(element("span","",title),
+       element("strong","",String(car.spec.stats[key])));
+     const track=element("div","dealer-stat-track");
+     const fill=element("div","dealer-stat-fill");
+     fill.style.width=Math.max(0,Math.min(100,car.spec.stats[key]))+"%";
+     track.append(fill);stat.append(heading,track);statsNode.append(stat);
+   }
+   return statsNode;
+ }
+ function render(){
+   syncSelector();
+   grid.replaceChildren();
+   cash.textContent="BALANCE "+(stats?money(stats.cashBalance):"—");
+   document.querySelectorAll("[data-dealer-filter]").forEach(btn=>
+     btn.classList.toggle("active",btn.dataset.dealerFilter===filter));
+   for(const id of REDLINE_CAR_IDS){
+     const car=REDLINE_CAR_CATALOG[id],owned=profile.owned.includes(id);
+     if(filter==="owned"&&!owned)continue;
+     const article=element("article","dealer-card");
+     if(owned)article.classList.add("dealer-card-owned");
+     article.dataset.carId=id;
+     const header=element("div","dealer-card-header");
+     const names=element("div","dealer-name");
+     names.append(element("strong","",car.name),
+       element("span","",car.style));
+     header.append(names,element("span",
+       "dealer-status "+(owned?"dealer-status-owned":""),
+       owned?"OWNED":money(car.price)));
+     const preview=element("div","dealer-showroom");
+     preview.dataset.car=id;
+     const silhouette=element("div","dealer-silhouette dealer-"+id);
+     silhouette.append(element("div","dealer-body"),
+       element("div","dealer-glass"),element("div","dealer-spoiler"),
+       element("div","dealer-wheel dealer-wheel-front"),
+       element("div","dealer-wheel dealer-wheel-rear"));
+     preview.append(silhouette);
+     const description=element("p","dealer-description",
+       car.style+" · "+(car.spec.topSpeed*2.45).toFixed(0)+
+       " MPH top-speed rating · "+car.spec.acceleration+
+       " acceleration");
+     const action=element("button","dealer-action");
+     action.type="button";action.dataset.purchaseCar=id;
+     action.disabled=pending||locked()||!stats;
+     if(owned){
+       action.dataset.purchaseCar="";
+       const chosen=window.REDLINE_MP?.myPlayer?.car===id;
+       action.textContent=chosen?"SELECTED FOR RACE":"SELECT THIS CAR";
+       action.dataset.selectCar=id;
+     }else{
+       action.textContent="BUY FOR "+money(car.price);
+     }
+     article.append(header,preview,description,rowStats(car),action);
+     grid.append(article);
+   }
+   if(stats&&!pending&&!feedback.dataset.error)
+     feedback.textContent="OWNED "+profile.owned.length+"/"+REDLINE_CAR_IDS.length+
+       " · Purchases and vehicle choices are saved to your REDLINE account.";
+ }
+ async function refresh(force=false){
+   if(fetching)return fetching;
+   if(!force&&stats&&Date.now()-lastFetch<12000){
+     render();return stats;
+   }
+   const api=window.REDLINE_MP?.getAccountStats;
+   if(typeof api!=="function"){
+     feedback.textContent="Waiting for REDLINE account connection…";
+     return null;
+   }
+   fetching=(async()=>{
+     try{
+       const saved=await api.call(window.REDLINE_MP);
+       const balance=Number(saved?.cashBalance);
+       if(!Number.isSafeInteger(balance)||balance<0)
+         throw new Error("Could not verify account balance");
+       stats=saved;profile=garageCarOwnership(saved.carGarage);
+       lastFetch=Date.now();delete feedback.dataset.error;render();
+       return stats;
+     }catch(error){
+       feedback.dataset.error="true";
+       feedback.textContent="Garage unavailable: "+(error?.message||"Connection error");
+       return null;
+     }finally{fetching=null}
+   })();
+   return fetching;
+ }
+ grid.addEventListener("click",async event=>{
+   const btn=event.target.closest("button[data-purchase-car],button[data-select-car]");
+   if(!btn||pending||locked()||!stats)return;
+   const carId=btn.dataset.selectCar||btn.dataset.purchaseCar;
+   if(!Object.hasOwn(REDLINE_CAR_CATALOG,carId))return;
+   if(profile.owned.includes(carId)){
+     const ok=window.REDLINE_MP?.send?.({type:"select_car",car:carId});
+     feedback.textContent=ok===false?"Connection unavailable":
+       "Selecting "+REDLINE_CAR_CATALOG[carId].name+"…";
+     return;
+   }
+   pending=true;delete feedback.dataset.error;
+   feedback.textContent="Purchasing "+REDLINE_CAR_CATALOG[carId].name+" securely…";
+   render();
+   try{
+     const response=await window.REDLINE_MP.purchaseCar(carId);
+     if(!response?.ok)throw new Error(response?.error||"Purchase failed");
+     profile=garageCarOwnership(response.carGarage);
+     stats={...stats,cashBalance:response.cashBalance,carGarage:profile};
+     lastFetch=Date.now();
+     feedback.textContent="PURCHASED "+REDLINE_CAR_CATALOG[carId].name+
+       " · PERMANENTLY UNLOCKED · "+money(response.cashBalance)+" LEFT";
+     // Never claim the car was selected for this room until room_state.
+     window.dispatchEvent(new CustomEvent("redline:car-purchased",{
+       detail:{carId,balance:response.cashBalance}
+     }));
+     window.REDLINE_MP?.send?.({type:"select_car",car:carId});
+     window.REDLINE_CASH?.refresh?.();
+     window.REDLINE_UPGRADE_SHOP?.refresh?.();
+   }catch(err){
+     feedback.dataset.error="true";
+     feedback.textContent="Purchase not completed: "+(err?.message||"Server error");
+     await refresh(true);
+   }finally{pending=false;render()}
+ });
+ document.querySelectorAll("[data-dealer-filter]").forEach(btn=>
+   btn.addEventListener("click",()=>{
+     filter=btn.dataset.dealerFilter;render();
+   }));
+ window.addEventListener("redline:room-state",event=>{
+   const room=event.detail?.room||event.detail?.state||event.detail;
+   if(room?.phase==="car_select")refresh();
+   if(stats)render();
+ });
+ window.addEventListener("redline:race-complete",()=>refresh(true));
+ document.getElementById("openCarSelectBtn")
+   ?.addEventListener("click",()=>refresh(true));
+ window.addEventListener("focus",()=>{
+   if(!document.getElementById("carSelectScreen")?.classList.contains("hidden"))
+     refresh();
+ });
+ window.REDLINE_DEALERSHIP={
+   refresh:()=>refresh(true),
+   get owned(){return [...profile.owned]},
+   get selected(){return profile.selected},
+   get balance(){return stats?.cashBalance??null}
+ };
+ render();
+ if(window.REDLINE_MP?.room?.phase==="car_select")refresh();
+})();
