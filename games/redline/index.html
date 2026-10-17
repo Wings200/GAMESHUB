@@ -634,6 +634,10 @@
             </div>
             <button id="closeGarageBtn" type="button" class="garage-overlay-return">← BACK TO RACE</button>
           </header>
+          <div class="garage-service-status" id="redlineServiceStatus" aria-live="polite">
+            <span id="redlineServiceMessage">Checking garage connection…</span>
+            <button id="redlineRetryConnection" type="button">RETRY CONNECTION</button>
+          </div>
           <div class="garage-overlay-content">
             <section class="garage-overlay-car-picker" aria-label="Select an owned race car">
       <div class="garage-header">
@@ -4534,6 +4538,7 @@
   <!-- Keep existing cosmetic paint/body editor, but not its retired free points. -->
   <script src="./garage.js"></script>
   <script src="./garage-view.js"></script>
+  <script src="./garage-connection.js"></script>
   <script type="module" src="./upgrade-shop.js"></script>
   <script type="module" src="./dealership.js"></script>
 
