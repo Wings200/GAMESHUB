@@ -181,6 +181,116 @@ const finish=document.createElement("div");
 finish.id="labFinishMessage";finish.className="lab-finish-message";
 finish.hidden=true;finish.textContent="TEST COMPLETE · NO CASH OR STATS SAVED · USE RESTART TEST DRIVE";
 document.body.append(finish);
+// In-game diagnostic distinguishes downloaded file from real decoded audio.
+// A previous V16 build showed "ready" for the bank even if the soundscape
+// was still using V11.2. This diagnostic reports actual engine activation.
+const diag=document.createElement("aside");
+diag.id="labV8DiagnosticPanel";
+diag.style.cssText="position:fixed;bottom:12px;left:12px;z-index:1100;"+
+  "min-width:265px;max-width:370px;background:#0a1c25ef;"+
+  "border:1px solid #508990;border-radius:12px;"+
+  "padding:12px;color:#ecf6f5;"+
+  "font:12px/1.45 system-ui,sans-serif;box-shadow:0 8px 25px #0009;";
+const diagHeader=document.createElement("strong");
+diagHeader.style.cssText="display:block;color:#91ded6;font-size:13px;";
+diagHeader.textContent="IRONCLAD V16 · AUDIO STATUS";
+const diagStatus=document.createElement("div");
+diagStatus.id="labV8LiveStatus";
+diagStatus.style.cssText="margin:7px 0;overflow-wrap:anywhere;";
+diagStatus.setAttribute("role","status");
+diagStatus.textContent="Checking V8 recording…";
+const diagInfo=document.createElement("div");
+diagInfo.style.cssText="font-size:11px;color:#b3cbd1;max-width:330px;";
+const diagBtns=document.createElement("div");
+diagBtns.style.cssText="display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;";
+function diagButton(text){
+  const button=document.createElement("button");button.type="button";
+  button.textContent=text;
+  button.style.cssText="border:1px solid #659fa6;border-radius:6px;"+
+    "background:#18404e;color:#ecf8fa;padding:7px 10px;cursor:pointer;";
+  diagBtns.append(button);
+  return button;
+}
+const retryButton=diagButton("RETRY V8 AUDIO");
+const testSampleButton=diagButton("HEAR RAW V8");
+const copyButton=diagButton("COPY STATUS");
+retryButton.addEventListener("click",async()=>{
+  retryButton.disabled=true;diagStatus.textContent="Retrying V8 bank download…";
+  try{
+    await window.REDLINE_LAB_V8_RETRY?.();
+  }catch(e){diagStatus.textContent="Retry failed: "+e.message}
+  finally{retryButton.disabled=false;renderV8Diagnostics()}
+});
+testSampleButton.addEventListener("click",async()=>{
+  testSampleButton.disabled=true;
+  try{
+    const result=await window.REDLINE_LAB_V8_AUDITION?.();
+    if(!result?.ok)throw Error("V8 preview not ready");
+    diagStatus.textContent="Playing authentic V8 excerpt directly · "+
+      result.seconds.toFixed(1)+" seconds";
+  }catch(e){diagStatus.textContent="Raw V8 test failed: "+(e?.message||e)}
+  finally{testSampleButton.disabled=false}
+});
+copyButton.addEventListener("click",()=>{
+  const status=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
+  const formatted=JSON.stringify(status||{error:"audio module not ready"},null,2);
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(formatted).then(()=>{
+      diagStatus.textContent="Audio diagnostic copied; paste it into ChatGPT";
+    }).catch(()=>{
+      diagStatus.textContent="Clipboard blocked. Status: "+formatted;
+    });
+  }else diagStatus.textContent="Status: "+formatted;
+});
+diag.append(diagHeader,diagStatus,diagInfo,diagBtns);
+document.body.append(diag);
+function renderV8Diagnostics(){
+  const d=window.REDLINE_LAB_V8_DIAGNOSTICS?.();
+  if(!d){
+    diagStatus.textContent="Starting engine diagnostics…";
+    return;
+  }
+  const selected=d.selectedCar||chosen;
+  const v=d.v8;
+  const bank=d.bank;
+  let label,color;
+  if(selected!=="ironclad"){
+    label="IRONCLAD V16 is idle · "+REDLINE_CAR_CATALOG[selected]?.name+" selected";
+    color="#b6cbce";
+  }else if(!bank?.ready){
+    label="V11.2 FALLBACK · V8 bank unavailable";
+    color="#ffad98";
+  }else if(!d.raceEnabled){
+    label="V8 BANK READY · Start an IRONCLAD test drive";
+    color="#f5d99b";
+  }else if(d.starting||v?.loading){
+    label="Preparing and decoding V8 recordings…";
+    color="#f5d99b";
+  }else if(v?.v8Audible&&v?.layerCount===8){
+    label="V16 ACTIVE · REAL V8 PLAYING · 8 layers";
+    color="#88edb5";
+  }else if(v?.error){
+    label="V11.2 FALLBACK · decode error: "+v.error;
+    color="#ffad98";
+  }else{
+    label="V11.2 FALLBACK · Recorded V8 not active";
+    color="#ffad98";
+  }
+  if(!testSampleButton.disabled)diagStatus.textContent=label;
+  diagStatus.style.color=color;
+  const detail=[
+    "V8 bank: "+(bank?.status||"not loaded"),
+    "Race: "+(d.raceEnabled?"ON":"OFF")+" · Selected: "+selected,
+    "V8 mixer: "+(v?.active?"running":"not started")+
+      " · Decoded: "+(v?.decoded?"YES":"NO")+
+      " · Layers: "+(v?.layerCount||0),
+    d.telemetryAgeMs!==null?"Telemetry: "+d.telemetryAgeMs+" ms old":"Telemetry: no samples yet"
+  ];
+  diagInfo.textContent=detail.join(" | ");
+}
+window.setInterval(renderV8Diagnostics,550);
+window.addEventListener("redline:v8-bank-status",renderV8Diagnostics);
+
 const nav=document.createElement("div");
 nav.className="lab-brand";nav.innerHTML=
   '<strong>REDLINE · PRIVATE ENGINE LAB</strong><span>ALL CARS UNLOCKED · NO SERVER CONNECTIONS</span>';
