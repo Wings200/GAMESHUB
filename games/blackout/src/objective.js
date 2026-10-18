@@ -43,6 +43,7 @@ export class ObjectiveDrill {
     this.role=role;this.phase="ready";this.result="";
     this.deadline=0;this.bombEnd=0;this.nextWave=0;this.wave=0;
     this.hold=0;this.holdNeeded=role==="attacker"?5000:5500;
+    this.pausedAt=0;this.lastHitNotice=0;
     this.ring.material.color.setHex(role==="attacker"?0x68e9e8:0xffbd6a);
     this.beacon.material.color.setHex(role==="attacker"?0x76f7e0:0xffc168);
   }
@@ -69,6 +70,20 @@ export class ObjectiveDrill {
       }};
     for(const part of bot.hitboxes)part.userData={kind:"bot",bot,hitZone:part===head?"head":"body"};
     this.world.shootables.push(...bot.hitboxes);this.bots.push(bot);return bot;
+  }
+  pause(now){
+    if(this.phase!=="ready"&&this.phase!=="won"&&this.phase!=="lost"&&!this.pausedAt)
+      this.pausedAt=now;
+  }
+  resume(now){
+    if(!this.pausedAt)return;
+    const diff=Math.max(0,now-this.pausedAt);
+    if(this.deadline)this.deadline+=diff;
+    if(this.bombEnd)this.bombEnd+=diff;
+    if(this.nextWave)this.nextWave+=diff;
+    if(this.lastHitNotice)this.lastHitNotice+=diff;
+    for(const bot of this.bots)if(Number.isFinite(bot.nextShot))bot.nextShot+=diff;
+    this.pausedAt=0;
   }
   start(now){
     if(this.phase!=="ready")return;
