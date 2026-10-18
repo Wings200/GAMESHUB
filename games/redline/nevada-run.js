@@ -21,7 +21,8 @@ export const NEVADA_TRACK=Object.freeze({
   ],
   checkpoints:Array.from({length:20},(_,i)=>Math.round((.035+i*.049)*10000)/10000),
   crosswalks:[],barriers:[
-    {start:.14,end:.30,side:1},{start:.82,end:.97,side:-1}
+    {start:.14,end:.30,side:1},{start:.14,end:.30,side:-1},
+   {start:.82,end:.97,side:1},{start:.82,end:.97,side:-1}
   ],
   obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
   boosts:[
@@ -147,8 +148,24 @@ export function createNevadaWorld({
  points.needsUpdate=true;
  ground.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
  ground.computeVertexNormals();
+ // Fine procedural gravel repeats across the desert and embankments,
+ // giving the flat, featureless tan ground visible surface grain.
+ const gritCanvas=document.createElement("canvas");
+ gritCanvas.width=128;gritCanvas.height=128;
+ const gritContext=gritCanvas.getContext("2d");
+ for(let y=0;y<128;y+=2)for(let x=0;x<128;x+=2){
+  const noise=seeded(y*501+x*17+83);
+  const channel=Math.floor(209+noise*42);
+  gritContext.fillStyle=`rgb(${channel},${Math.floor(channel*.96)},${Math.floor(channel*.87)})`;
+  gritContext.fillRect(x,y,2,2);
+ }
+ const desertTexture=new THREE.CanvasTexture(gritCanvas);
+ desertTexture.wrapS=THREE.RepeatWrapping;
+ desertTexture.wrapT=THREE.RepeatWrapping;
+ desertTexture.repeat.set(25,22);
+ desertTexture.colorSpace=THREE.SRGBColorSpace;
  const terrain=new THREE.Mesh(ground,new THREE.MeshStandardMaterial({
-   vertexColors:true,roughness:1,side:THREE.DoubleSide
+   vertexColors:true,map:desertTexture,roughness:1,side:THREE.DoubleSide
  }));
  root.add(terrain);
  // Follow an exact continuous cross-section without running triangles
@@ -208,13 +225,14 @@ export function createNevadaWorld({
   return false;
  };
  for(const side of [-1,1]){
-   const v=[],rgb=[],tri=[],strips=bankDistances;
+   const v=[],rgb=[],tri=[],uv=[],strips=bankDistances;
    for(let i=0;i<=n;i++){
      const frame=trackSamples[i%n],p=frame.point,normal=frame.normal;
      for(let j=0;j<strips.length;j++){
        const off=side*strips[j];
        const y=roadsideHeight(frame,off);
        v.push(p.x+normal.x*off,y,p.z+normal.z*off);
+       uv.push(i/n*115,Math.abs(off)/16);
        col.setHex(j<2?0x93704e:j===2?0xa27b53:0x99724b);
        const tone=.90+seeded(i*5+j+7)*.18;
        rgb.push(col.r*tone,col.g*tone,col.b*tone);
@@ -235,10 +253,11 @@ export function createNevadaWorld({
    const bankGeo=new THREE.BufferGeometry();
    bankGeo.setAttribute("position",new THREE.Float32BufferAttribute(v,3));
    bankGeo.setAttribute("color",new THREE.Float32BufferAttribute(rgb,3));
+   bankGeo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
    bankGeo.setIndex(tri);
    bankGeo.computeVertexNormals();
    root.add(new THREE.Mesh(bankGeo,new THREE.MeshStandardMaterial({
-     vertexColors:true,roughness:.98,side:THREE.DoubleSide,
+     vertexColors:true,map:desertTexture,roughness:.98,side:THREE.DoubleSide,
      polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1
    })));
  }
@@ -289,6 +308,10 @@ export function createNevadaWorld({
  }
  // Sunset disk near horizon. Changes with deterministic ambient time, not
  // actual day/night cycles that could darken the track into invisibility.
+ const sunsetLight=new THREE.DirectionalLight(0xffb578,1.40);
+ sunsetLight.position.set(-850,240,-480);root.add(sunsetLight);
+ const desertFill=new THREE.HemisphereLight(0xffcf9e,0x6f5140,.55);
+ root.add(desertFill);
  const sun=new THREE.Mesh(new THREE.SphereGeometry(47,20,14),
   new THREE.MeshBasicMaterial({
    color:0xffbd76,fog:false,transparent:true,opacity:1
@@ -672,6 +695,8 @@ export function createNevadaWorld({
   scene.background?.copy?.(skyColor);
   scene.fog?.color?.copy?.(skyColor);
   sun.material.opacity=1-nightProgress;
+  sunsetLight.intensity=1.40*(1-nightProgress)+.025;
+  desertFill.intensity=.55-.24*nightProgress;
   for(const f of floodLights){
    f.light.intensity=2.2+nightProgress*2.1;
    f.box.material.emissiveIntensity=.25+nightProgress*1.65;
