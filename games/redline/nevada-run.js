@@ -72,6 +72,47 @@ function billboard(THREE,parent,text,back="#453022",front="#f8d5a0",size=10){
  parent.add(mesh);return mesh;
 }
 function seeded(i){const x=Math.sin(i*127.131+31.7)*43758.5453;return x-Math.floor(x)}
+// Stratified, weathered sandstone instead of obviously polygonal cones.
+// Shared color bands mimic real sedimentary rock and varied erosion layers.
+function sandstoneMesa(THREE,radius,height,seed){
+ const rings=7,segments=16,verts=[],cols=[],indices=[];
+ const color=new THREE.Color();
+ const widths=[1.00,.97,.86,.76,.65,.50,.44];
+ for(let ring=0;ring<rings;ring++){
+  const y=height*ring/(rings-1);
+  for(let seg=0;seg<segments;seg++){
+   const a=seg/segments*TWO_PI;
+   const wobble=.84+.26*seeded(seed*52+seg*13)+
+    .06*Math.sin(a*5+seed);
+   const r=radius*widths[ring]*wobble;
+   verts.push(Math.cos(a)*r,y,Math.sin(a)*r);
+   const tones=[0x77503b,0x9e684b,0xb47c57,0x986346,0xb98660,0xc09365,0x76523e];
+   color.setHex(tones[(ring+Math.floor(seeded(seed*9+seg)*2))%tones.length]);
+   const light=.82+.30*seeded(seed+ring*20+seg);
+   cols.push(color.r*light,color.g*light,color.b*light);
+   if(ring>0){
+    const first=(ring-1)*segments+seg;
+    const next=(ring-1)*segments+(seg+1)%segments;
+    const upper=ring*segments+seg;
+    const upperNext=ring*segments+(seg+1)%segments;
+    indices.push(first,next,upper,next,upperNext,upper);
+   }
+  }
+ }
+ // Eroded plateau rather than a pointed artificial summit.
+ const topCenter=verts.length/3;
+ verts.push(0,height*.99,0);
+ color.setHex(0x987051);cols.push(color.r,color.g,color.b);
+ for(let k=0;k<segments;k++)
+  indices.push(topCenter,(rings-1)*segments+k,(rings-1)*segments+(k+1)%segments);
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
+ geometry.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
+ geometry.setIndex(indices);geometry.computeVertexNormals();
+ return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({
+  vertexColors:true,roughness:1,metalness:0,flatShading:true,side:THREE.DoubleSide
+ }));
+}
 export function createNevadaWorld({
  THREE,worldGroup,scene,trackSamples,getFrameAt,addBoxCollider,addCircleCollider,
  roadHalf=6.6,addRoadBarrier
@@ -135,11 +176,8 @@ export function createNevadaWorld({
   const theta=i/92*TWO_PI,dist=720+seeded(i+4)*350;
   const x=Math.cos(theta)*dist-250,z=Math.sin(theta)*dist;
   const h=24+seeded(i+40)*65;
-  const mountain=new THREE.Mesh(
-   new THREE.ConeGeometry(32+seeded(i+3)*30,h,5),
-   makeMaterial(THREE,[0x674638,0x8d5841,0x9b6747,0x754b43][i%4])
-  );
-  mountain.position.set(x,h*.5-3,z);
+  const mountain=sandstoneMesa(THREE,32+seeded(i+3)*30,h,i+181);
+  mountain.position.set(x,-3,z);
   mountain.rotation.y=seeded(i+50)*TWO_PI;
   mountain.scale.z=.65+seeded(i+6);
   root.add(mountain);
@@ -167,8 +205,8 @@ export function createNevadaWorld({
   rock.position.copy(f.point).addScaledVector(f.normal,side*distance);
   rock.position.y-=2;root.add(rock);
   const h=10+seeded(i+188)*23;
-  shape(THREE,rock,"box",0,h*.45,0,17,h*.75,18,0x8c5a40,f.rotationY+.15);
-  shape(THREE,rock,"box",0,h*.88,0,13,h*.33,14,0xb1774e,f.rotationY+.22);
+  const cliff=sandstoneMesa(THREE,13.4,h,i+401);
+  cliff.rotation.y=f.rotationY;rock.add(cliff);
   if(distance<33)addBoxCollider(rock.position,8,8,f.rotationY,{minY:-1,maxY:70,tag:"CANYON CLIFF"});
  }
  // Sunset disk near horizon. Changes with deterministic ambient time, not
