@@ -59,7 +59,7 @@ export class ObjectiveDrill{
     this.clearBots();
     this.role=role;this.phase="ready";this.result="";
     this.deadline=0;this.bombEnd=0;this.nextWave=0;this.wave=0;
-    this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;
+    this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;this.plantPosition=null;
     this.pausedAt=0;this.lastHitNotice=0;this.lastFootstep=0;
     this.defuser.hide();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
@@ -92,14 +92,21 @@ export class ObjectiveDrill{
       // Sentries remain ALIVE while attackers plant or rotate sites.
       if(this.siteId==="A"){
         this.spawnBot(-7,-48,true);
-        this.spawnBot(-3,-46,true);
+        const patrol=this.spawnBot(-3,-46,false);
+        patrol.patrolPoints=[{x:-3,z:-46},{x:-7,z:-43},{x:-7,z:-48}];
+        patrol.patrolIndex=0;
       }else{
         this.spawnBot(7,-33,true);
-        this.spawnBot(3,-25,true);
+        const patrol=this.spawnBot(3,-25,false);
+        patrol.patrolPoints=[{x:3,z:-25},{x:6,z:-27},{x:4,z:-32}];
+        patrol.patrolIndex=0;
       }
     }else{
       this.phase="guard";this.deadline=now+100000;
-      this.spawnWave(now);this.nextWave=now+25000;
+      // One fair, finite attacking squad, not endless respawning waves.
+      this.spawnBot(0,10,false);
+      this.spawnBot(-5,14,false);
+      this.spawnBot(6,14,false);
     }
   }
   spawnWave(now){
@@ -114,9 +121,9 @@ export class ObjectiveDrill{
   }
   atSite(p){return Math.hypot(p.x-this.site.x,p.z-this.site.z)<this.site.radius;}
   canInteract(p){
-    return this.atSite(p)&&
-      (this.role==="attacker"&&this.phase==="attack"||
-       this.role==="defender"&&this.phase==="planted");
+    if(this.role==="attacker")return this.phase==="attack"&&this.atSite(p);
+    return this.phase==="planted"&&!!this.plantPosition&&
+      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<2.25;
   }
   end(won,reason,notify=()=>{}){
     if(this.phase==="won"||this.phase==="lost")return;
@@ -166,17 +173,23 @@ export class ObjectiveDrill{
       if(!bot.alive)continue;
       const visible=this.canBotSeePlayer(bot,player);
       const playerDist=Math.hypot(player.x-bot.x,player.z-bot.z);
-      const targetDist=Math.hypot(this.site.x-bot.x,this.site.z-bot.z);
+      const devicePosition=this.phase==="planted"&&this.plantPosition||this.site;
+      const targetDist=Math.hypot(devicePosition.x-bot.x,devicePosition.z-bot.z);
       let goal=null;
       if(this.phase==="planted"||this.role==="defender"){
         // Defuse or attack the active site, using navmesh A* around walls.
-        goal={x:this.site.x+((bot.id%2)?-.45:.45),z:this.site.z};
+        goal={x:devicePosition.x+((bot.id%2)?-.28:.28),z:devicePosition.z};
         bot.state="objective";
       }else if(visible){
         bot.state="hold-angle";bot.group.rotation.y=Math.atan2(bot.x-player.x,bot.z-player.z);
         if(playerDist>12)goal={x:player.x,z:player.z};
       }else if(bot.hearingUntil>now&&bot.hearing){
         bot.state="investigate";goal=bot.hearing;
+      }else if(bot.patrolPoints&&this.phase==="attack"){
+        const p=bot.patrolPoints[bot.patrolIndex];
+        if(Math.hypot(bot.x-p.x,bot.z-p.z)<.85)
+          bot.patrolIndex=(bot.patrolIndex+1)%bot.patrolPoints.length;
+        goal=bot.patrolPoints[bot.patrolIndex];bot.state="patrol";
       }else if(!bot.stationary){
         bot.state="flank";goal={x:this.site.x+(bot.id%2?2:-2),z:this.site.z+(bot.id%2?3:-3)};
       }else bot.state="guard";
@@ -204,7 +217,8 @@ export class ObjectiveDrill{
           bot.working=0;
           if(this.role==="defender"&&this.phase==="guard"){
             this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+750;
-            this.defuser.show(this.site.x,this.site.z,32,now);
+            this.plantPosition={x:devicePosition.x,z:devicePosition.z};
+            this.defuser.show(devicePosition.x,devicePosition.z,32,now);
             this.hold=0;notify("HOSTILES PLANTED AT SITE "+this.siteId+" · DISABLE THE DEFUSER","plant");
           }else if(this.role==="attacker"&&this.phase==="planted"){
             this.defuser.hide();notify(null,"defuse");
@@ -240,9 +254,12 @@ export class ObjectiveDrill{
     if(this.phase==="guard"&&now>=this.deadline){
       this.end(true,"SITE "+this.siteId+" DEFENDED",notify);return;
     }
-    if(this.phase==="guard"&&now>=this.nextWave){
-      this.spawnWave(now);this.nextWave=now+24000;
-      notify("HOSTILES ENTERING THE FACILITY","alarm");
+    // Finite team elimination is also a legitimate tactical win condition.
+    // A completed plant overrides ordinary elimination until the round resolves.
+    if((this.phase==="attack"||this.phase==="guard")&&this.bots.length&&
+        !this.bots.some(bot=>bot.alive)){
+      this.end(true,this.role==="attacker"?"DEFENDERS ELIMINATED":"ATTACKERS ELIMINATED",notify);
+      return;
     }
     if(this.phase==="planted"){
       const remaining=Math.max(0,(this.bombEnd-now)/1000);
@@ -270,7 +287,8 @@ export class ObjectiveDrill{
         this.hold=0;this.lastInteractionTick=-1;
         if(this.role==="attacker"){
           this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+800;
-          this.defuser.show(this.site.x,this.site.z,32,now);
+          this.plantPosition={x:player.x,z:player.z};
+          this.defuser.show(player.x,player.z,32,now);
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
           notify("DEFUSER PLANTED AT SITE "+this.siteId+" · DEFEND FOR 32 SECONDS","plant");
         }else{
