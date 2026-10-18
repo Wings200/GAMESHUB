@@ -127,3 +127,35 @@ The second recording showed defects too serious to call Nevada release-ready. Co
 - Cache version strings match between the HTML entrypoint and game module.
 
 **Limitations:** This is a simulated construction/contact smoke test, **not actual browser WebGL visual QA**, player-paced route completion, deployed Cloudflare verification, or multiplayer load testing. Road seams, concrete/asphalt appearance, correct tunnel clearance on a real curve, nighttime lighting, scenery realism, hazard balance and server-validated persistent cash pickups remain open for recording-based validation. Future work should prioritize any reproducible browser defects over decorative additions.
+
+## V22 — recording-driven track rescue (October 17, 2026)
+
+**Evidence:** User video `Screen Recording 2026-10-17 225307.mp4`, 112 seconds at 2560×1440. The recording showed a huge desert mountain visually covering the road around the 1:04–1:08 mark, mostly featureless black asphalt, large sparse terrain, visually underwhelming hazards, and a miniature dust devil that barely affected handling. Players also reported unreliable scenery and trap collisions. These observations are defects, not polish requests.
+
+### Terrain and visual repairs
+
+- All 92 candidate distant mesas now undergo X/Z road and secret-route clearance before being created. The test uses the stretched mesh footprint, not just its nominal radius. A polyline-only diagnostic identified **five previous candidate meshes overlapping the road envelope**; the actual curved road clearance is tested at the game's 900 track samples. Collision is attached to each retained mesa.
+- Nearby canyon cliffs, hangars, watchtowers, radar installations and the abandoned outpost avoid overlapping other raceway segments. The full 168m runway is relocated outward until its footprint clears the sampled road.
+- Sandstone mesas use 15 layers × 36 radial vertices for smoother strata and more natural erosion. Valley and embankments receive repeatable gravel textures with matching world-space UVs, preventing seam and frequency mismatch.
+- 210 possible instanced desert rocks (210 registered in the linear-route fixture) add dimensional foreground detail without hundreds of draw calls; each has a physical circular collider.
+- Sunset lighting now includes a warm directional light fading toward night and a mild amber sky fill. Canyon-specific asphalt now has a brighter, weathered desert texture, not the old dark-blue/black multiply. Guardrails on both high-exposure edges are galvanized-looking, fitted with posts/reflectors, and graded fences match underlying slopes.
+- Hangars have roof ribs, vents, door seams and painted markings instead of plain single-box fronts.
+
+### Physical collision and hazard repairs
+
+- Added swept static-box and circular collision tests in `game.js` (gated to Nevada). A player whose center moves from one side of a thin pole/fence to the other within a single frame no longer phases through it.
+- Added swept moving-hazard circle tests for aircraft, debris and convoys. Security gates and blast doors already had continuous barrier-crossing checks, and now gate support posts also have physical collision.
+- 27 dynamic hazards remain in place, including two aircraft, three convoys/tankers, three security gates, two blast doors, 14 debris pieces and three dust devils. Aircraft face across the runway when crossing.
+- The three dust devils now use tall translucent layered funnels with animated spiral dust. The wind radius increased to 10.8m; the vortex adds significant tangential and outward momentum, visible camera disturbance, slight vehicle yaw and an 0.85s reduced-grip effect. The previous ~3.2 m/s² imperceptible side shove was removed.
+- Watchtower spotlight beams now genuinely sweep along with the light instead of a vertical cone spinning without visible motion. Detection deducts nitro and enforces a 2.4-second boost jammer.
+- Closed-gate/blastdoor collision is matched to the actual moving mesh height. Warning beacon lamps flash. Rock, runway light and floodlight colliders are registered at realistic vertical limits.
+- Nevada off-road ledges now transition to airborne gravity rather than instantly snapping downward to terrain altitude. Neon/Arctic height logic otherwise remains unchanged.
+
+### Load-time improvement and tests
+
+- Replaced repeated linear road scans per bank face with 28m spatial buckets. On the same V8 mock scene harness, elapsed scene construction went from approximately 1,319ms to 225ms (synthetic browser-independent timing, **not a device performance benchmark**).
+- Latest mock check parsed both JavaScript entrypoints and built the Nevada world from a 22-control-point linear route approximation: **27 hazards, 4 shortcuts, 250 static box colliders and 370 circle colliders**, including 87 retained mesas and 210 boulders in that fixture.
+- Dust vortex altered velocity, set the reduced-grip timer and triggered visible camera impact. Separate swept collision checks passed against a thin box fence and a pole by stopping a high-speed car before it could cross.
+- All commits are on `main`. Cache tag: `nevada-v22-final-pass-1017`, shared by `index.html` and `game.js` Nevada import.
+
+**Important limits:** This remains a code-validated release candidate. The mocked Three.js checks do **not** establish real WebGL visual correctness, obstacle balancing across a complete timed lap, cloud deployment state, sound design, multiplayer state/latency correctness, or every shortcut's driveability. The Cloudflare Pages URL could not be reached from the available verification tools. The next QA must be a real V22 driving recording and should report location/time of any new clipping or intangible obstacle; any proven bug should be fixed before marketing Nevada as finished. Permanent cash pickups still require secure Worker validation and were not modified in this pass.
