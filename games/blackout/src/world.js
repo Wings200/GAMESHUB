@@ -74,32 +74,107 @@ export function buildRange(THREE,scene){
     const id=++panelId,g=new THREE.Group();root.add(g);
     g.position.set(x,0,z);
     const frameMat=new THREE.MeshStandardMaterial({color:0x38444e,roughness:.82,metalness:.3});
-    const soft=new THREE.MeshStandardMaterial({color:0x977d63,roughness:.93});
-    const reinforced=new THREE.MeshStandardMaterial({color:0x4b667a,roughness:.55,metalness:.75});
+    const reinforced=new THREE.MeshStandardMaterial({color:0x4b667a,roughness:.55,metalness:.75,side:THREE.DoubleSide});
+    // Flat double-sided wall skin: transparent texture pixels are literal
+    // visible apertures. Bullet tracing independently respects those holes.
+    // A full box would keep opaque geometry behind its front-face cutouts.
+    const paint=document.createElement("canvas");paint.width=512;paint.height=512;
+    const brush=paint.getContext("2d");
+    const texture=new THREE.CanvasTexture(paint);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    const soft=new THREE.MeshStandardMaterial({map:texture,side:THREE.DoubleSide,
+      transparent:true,alphaTest:.40,roughness:.93,metalness:0});
+    const center=mesh(new THREE.PlaneGeometry(3,2.88),soft,0,1.5,0,g);
     box(-1.56,1.48,0,.13,2.97,.4,frameMat,g);
     box(1.56,1.48,0,.13,2.97,.4,frameMat,g);
-    const center=box(0,1.5,0,3,2.88,.18,soft,g);
-    const rails=[.65,1.55,2.45].map(h=>box(0,h,.125,2.94,.085,.09,frameMat,g));
+    box(0,2.985,0,3.2,.13,.4,frameMat,g);
+    const rails=[.33,2.73].map(h=>box(0,h,.12,2.94,.075,.09,frameMat,g));
+    const overlay=new THREE.Group();g.add(overlay);overlay.visible=false;
+    const plateMat=new THREE.MeshStandardMaterial({color:0x526f82,metalness:.83,roughness:.39});
+    const plates=[0,1,2].map(i=>{
+      const plate=box(0,.51+i*.99,.145,2.94,.96,.095,plateMat,overlay);
+      plate.userData.previewPlate=i;
+      return plate;
+    });
+    const holes=[];
+    function repaint(){
+      brush.clearRect(0,0,512,512);
+      brush.fillStyle="#bba087";brush.fillRect(0,0,512,512);
+      brush.fillStyle="#937b65";
+      for(let k=0;k<23;k++){
+        const yy=(k*71+18)%512;
+        brush.globalAlpha=.13+(k%5)*.025;
+        brush.fillRect(0,yy,512,2+(k%3));
+      }
+      brush.globalAlpha=1;
+      brush.strokeStyle="rgba(52,40,31,.40)";brush.lineWidth=3;
+      for(let k=1;k<5;k++){const xx=k*102;brush.beginPath();brush.moveTo(xx,0);brush.lineTo(xx,512);brush.stroke();}
+      for(const hole of holes){
+        const u=(hole.x+1.5)/3*512,v=(2.94-hole.y)/2.88*512;
+        const r=hole.r/3*512;
+        brush.beginPath();brush.arc(u,v,r+4,0,Math.PI*2);
+        brush.fillStyle="#44392f";brush.fill();
+        brush.globalCompositeOperation="destination-out";
+        brush.beginPath();brush.arc(u,v,r,0,Math.PI*2);brush.fill();
+        brush.globalCompositeOperation="source-over";
+      }
+      texture.needsUpdate=true;
+    }
+    repaint();
     const c={minX:x-1.56,maxX:x+1.56,minZ:z-.22,maxZ:z+.22,minY:0,maxY:2.99,tag:"test-panel"};
     colliders.push(c);
-    const panel={id,x,z,group:g,mesh:center,rails,collider:c,hp:220,reinforced:false,destroyed:false,
-      reset(){this.hp=220;this.reinforced=false;this.destroyed=false;g.visible=true;
-        center.material=soft;rails.forEach(r=>r.material=frameMat);
-        if(!colliders.includes(c))colliders.push(c);},
-      reinforce(){if(this.destroyed||this.reinforced)return false;this.reinforced=true;
-        center.material=reinforced;rails.forEach(r=>r.material=reinforced);return true;},
-      damage(amount,breach=false){
+    const panel={id,x,z,group:g,mesh:center,rails,collider:c,holes,reinforced:false,destroyed:false,
+      holeAt(point){
+        const localX=point.x-x,localY=point.y;
+        return holes.some(h=>Math.hypot(localX-h.x,localY-h.y)<h.r*.85);
+      },
+      bulletHole(point){
         if(this.destroyed||this.reinforced)return false;
-        this.hp=Math.max(0,this.hp-(breach?500:amount));
-        if(this.hp===0){this.destroyed=true;g.visible=false;
-          const i=colliders.indexOf(c);if(i!==-1)colliders.splice(i,1);return true;}
-        return false;
+        const localX=point.x-x,localY=point.y;
+        if(Math.abs(localX)>1.49||localY<.065||localY>2.93)return false;
+        if(this.holeAt(point))return true;
+        // Bounded number of independently collidable holes, per panel.
+        if(holes.length>=160)return false;
+        holes.push({x:localX,y:localY,r:.115});
+        repaint();return true;
+      },
+      previewReinforcement(progress){
+        overlay.visible=progress>0&&progress<1&&!this.reinforced&&!this.destroyed;
+        const p=Math.max(0,Math.min(1,progress));
+        plates.forEach((plate,i)=>{
+          const part=Math.max(.001,Math.min(1,p*3-i));
+          plate.visible=p*3>i;
+          plate.scale.y=part;
+          plate.position.y=(.03+i*.99)+part*.48;
+        });
+      },
+      cancelReinforcement(){overlay.visible=false;},
+      reset(){
+        this.reinforced=false;this.destroyed=false;g.visible=true;
+        overlay.visible=false;holes.length=0;repaint();
+        center.material=soft;rails.forEach(r=>r.material=frameMat);
+        if(!colliders.includes(c))colliders.push(c);
+      },
+      reinforce(){
+        if(this.destroyed||this.reinforced)return false;
+        this.reinforced=true;overlay.visible=false;center.material=reinforced;
+        rails.forEach(r=>r.material=reinforced);return true;
+      },
+      // Ordinary bullets only punch through soft material. The panel itself
+      // NEVER disappears from a bullet hit. Only an explicit breach charge
+      // can fully remove a non-reinforced test wall.
+      damage(amount,breach=false){
+        if(this.destroyed||this.reinforced||!breach)return false;
+        this.destroyed=true;g.visible=false;overlay.visible=false;
+        const i=colliders.indexOf(c);if(i!==-1)colliders.splice(i,1);
+        return true;
       }};
-    for(const part of [center,...rails])part.userData={kind:"panel",panel};
+    for(const part of [center,...rails])part.userData={kind:"panel",panel,perforated:part===center};
     panels.push(panel);shootables.push(center,...rails);
     return panel;
   }
-  makePanel(-18,-29);makePanel(18,-29);
+  // Aligned with target lanes behind them so through-holes are testable.
+  makePanel(-12,-29);makePanel(12,-29);
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
     const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=yaw;root.add(g);
