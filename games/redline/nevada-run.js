@@ -157,8 +157,13 @@ export function createNevadaWorld({
      const frame=trackSamples[i%n],p=frame.point,normal=frame.normal;
      for(let j=0;j<strips.length;j++){
        const off=side*strips[j];
-       const drop=j===0?.42:j===1?1.0:j===2?7.0:13.5;
-       const y=Math.max(-3.3,p.y-drop);
+       // Meet the low valley floor at the outer edge; do not end a
+       // raised road embankment as a giant floating, 20-m-high shelf.
+       const groundY=baseHeight(p.x+normal.x*off,p.z+normal.z*off);
+       const y=j===0?p.y-.48:
+         j===1?p.y-1.55:
+         j===2?p.y*.54+groundY*.46:
+         groundY-.08;
        v.push(p.x+normal.x*off,y,p.z+normal.z*off);
        col.setHex(j<2?0x93704e:j===2?0xa27b53:0x99724b);
        const tone=.90+seeded(i*5+j+7)*.18;
@@ -210,14 +215,14 @@ export function createNevadaWorld({
  // Actual multilayer strata / slot canyons alongside the winding section.
  for(let i=0;i<16;i++){
   const t=.155+i*.0091,f=getFrameAt(t),side=i%2?1:-1;
-  const distance=24+(i%4)*6;
+  const distance=33+(i%4)*9;
   const rock=new THREE.Group();
   rock.position.copy(f.point).addScaledVector(f.normal,side*distance);
   rock.position.y-=2;root.add(rock);
   const h=10+seeded(i+188)*23;
   const cliff=sandstoneMesa(THREE,13.4,h,i+401);
   cliff.rotation.y=f.rotationY;rock.add(cliff);
-  if(distance<33)addBoxCollider(rock.position,8,8,f.rotationY,{minY:-1,maxY:70,tag:"CANYON CLIFF"});
+  addBoxCollider(rock.position,12,12,f.rotationY,{minY:-3,maxY:70,tag:"CANYON CLIFF"});
  }
  // Sunset disk near horizon. Changes with deterministic ambient time, not
  // actual day/night cycles that could darken the track into invisibility.
