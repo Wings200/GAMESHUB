@@ -87,7 +87,12 @@
     updateTime();
   }
   async function refresh(force=false,{notify=false}={}){
-    if(inflight)return inflight;
+    if(inflight){
+      // A race may finish while the board is already loading. Read the
+      // authoritative updated stats afterward rather than losing the
+      // completion notification to an older in-flight response.
+      return force?inflight.then(()=>refresh(true,{notify})):inflight;
+    }
     const api=window.REDLINE_MP?.getAccountStats;
     if(typeof api!=="function"){
       status.textContent="Waiting for account connection…";return;
