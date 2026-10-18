@@ -78,7 +78,7 @@ export function buildRange(THREE,scene){
     // Flat double-sided wall skin: transparent texture pixels are literal
     // visible apertures. Bullet tracing independently respects those holes.
     // A full box would keep opaque geometry behind its front-face cutouts.
-    const paint=document.createElement("canvas");paint.width=512;paint.height=512;
+    const paint=document.createElement("canvas");paint.width=1024;paint.height=1024;
     const brush=paint.getContext("2d");
     const texture=new THREE.CanvasTexture(paint);
     texture.colorSpace=THREE.SRGBColorSpace;
@@ -99,20 +99,20 @@ export function buildRange(THREE,scene){
     const holes=[];
     function repaint(){
       brush.clearRect(0,0,512,512);
-      brush.fillStyle="#bba087";brush.fillRect(0,0,512,512);
+      brush.fillStyle="#bba087";brush.fillRect(0,0,1024,1024);
       brush.fillStyle="#937b65";
       for(let k=0;k<23;k++){
-        const yy=(k*71+18)%512;
+        const yy=(k*142+36)%1024;
         brush.globalAlpha=.13+(k%5)*.025;
-        brush.fillRect(0,yy,512,2+(k%3));
+        brush.fillRect(0,yy,1024,4+(k%3));
       }
       brush.globalAlpha=1;
       brush.strokeStyle="rgba(52,40,31,.40)";brush.lineWidth=3;
-      for(let k=1;k<5;k++){const xx=k*102;brush.beginPath();brush.moveTo(xx,0);brush.lineTo(xx,512);brush.stroke();}
+      for(let k=1;k<5;k++){const xx=k*205;brush.beginPath();brush.moveTo(xx,0);brush.lineTo(xx,1024);brush.stroke();}
       for(const hole of holes){
-        const u=(hole.x+1.5)/3*512,v=(2.94-hole.y)/2.88*512;
-        const r=hole.r/3*512;
-        brush.beginPath();brush.arc(u,v,r+4,0,Math.PI*2);
+        const u=(hole.x+1.5)/3*1024,v=(2.94-hole.y)/2.88*1024;
+        const r=hole.r/3*1024;
+        brush.beginPath();brush.arc(u,v,r+2.1,0,Math.PI*2);
         brush.fillStyle="#44392f";brush.fill();
         brush.globalCompositeOperation="destination-out";
         brush.beginPath();brush.arc(u,v,r,0,Math.PI*2);brush.fill();
@@ -135,7 +135,7 @@ export function buildRange(THREE,scene){
         if(this.holeAt(point))return true;
         // Bounded number of independently collidable holes, per panel.
         if(holes.length>=160)return false;
-        holes.push({x:localX,y:localY,r:.115});
+        holes.push({x:localX,y:localY,r:.018});
         repaint();return true;
       },
       previewReinforcement(progress){
