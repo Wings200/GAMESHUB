@@ -97,3 +97,9 @@ body.ads .reticle{display:none!important}
 .round-result{position:absolute;left:50%;top:27%;transform:translateX(-50%);min-width:min(480px,85vw);max-width:90vw;background:#0a2730e8;border:2px solid #63f0e0;padding:23px 22px;color:#c9fff2;font-size:20px;font-weight:1000;text-align:center;letter-spacing:.09em;text-shadow:0 2px 6px #000;box-shadow:0 14px 50px #0008}
 .round-result.lost{border-color:#fb7972;color:#ffbcab;background:#2f1619e9}
 @media(max-width:700px){.objective-hint{top:calc(50% + 40px);font-size:8px}.objective-progress{top:calc(50% + 77px)}.operator-health{flex-direction:column}}
+
+/* BLACKOUT V0.6: visible browser-audio diagnostic. */
+.audio-status{padding:9px 11px;border-left:3px solid #72e2d6;background:#0a1a25;color:#b4e6e2;font-size:10px;font-weight:850;letter-spacing:.07em;max-width:655px;margin-top:13px;line-height:1.5}
+#audioTest{border-color:#538a89;color:#bdf9f0}
+.objective-hint{max-width:min(650px,84vw);line-height:1.4}
+body.playing #objectiveHint{box-shadow:0 5px 15px #0006}
