@@ -495,17 +495,20 @@ export function createNevadaWorld({
   const g=new THREE.Group();g.position.copy(p);root.add(g);
   shape(THREE,g,"box",0,8.5,0,3,17,3,0x6b6261);
   const cabin=shape(THREE,g,"box",0,17,0,7,4,7,0x2f4756);
-  const beam=new THREE.Mesh(new THREE.ConeGeometry(9.5,23,18,1,true),
-   new THREE.MeshBasicMaterial({color:0xffe5a8,transparent:true,
-    opacity:.10,depthWrite:false,side:THREE.DoubleSide}));
-  beam.position.y=6;
-  beam.rotation.z=Math.PI; // cone points down
-  g.add(beam);
+  // Actual spotlight pan: the beam tilts forward from the tower and
+  // rotates WITH the lamp, rather than spinning a vertical cone in place.
   const pivot=new THREE.Group();pivot.position.y=16;g.add(pivot);
+  const beam=new THREE.Mesh(new THREE.ConeGeometry(9.5,19,24,1,true),
+   new THREE.MeshBasicMaterial({color:0xffe5a8,transparent:true,
+    opacity:.14,depthWrite:false,side:THREE.DoubleSide}));
+  beam.position.y=-9.5;
+  beam.rotation.x=-.46;
+  pivot.add(beam);
   shape(THREE,pivot,"sphere",0,0,0,1.4,1,1,0xffefbe);
-  const spotlight=new THREE.SpotLight(0xffe5aa,5,72,.32,.8,2);
+  const spotlight=new THREE.SpotLight(0xffe5aa,5,75,.35,.8,2);
   spotlight.position.set(0,0,0);
-  spotlight.target.position.set(0,-2,0);pivot.add(spotlight,spotlight.target);
+  spotlight.target.position.set(0,-19,10);
+  pivot.add(spotlight,spotlight.target);
   searchlights.push({g,pivot,beam,t,offset});
   addBoxCollider(p,2,2,0,{minY:p.y,maxY:p.y+19,tag:"WATCHTOWER"});
  }
@@ -661,6 +664,18 @@ export function createNevadaWorld({
   h.bar=shape(THREE,g,"box",0,6.3,0,6.6,.35,.50,0xe7d8c0);
   for(let x=-3;x<=3;x+=1.5)shape(THREE,h.bar,"box",x,0,0,.52,.42,.54,0xd44836);
  }
+ // Physical gate pillars remain solid while the arm is open.
+ for(const gate of hazards.filter(h=>h.type==="gate")){
+  const f=getFrameAt(gate.t);
+  const base=f.point.clone().addScaledVector(f.normal,gate.side);
+  for(const side of [-1,1]){
+   const p=base.clone().addScaledVector(f.normal,side*3.45);
+   addCircleCollider(p,.34,{
+    minY:p.y-.4,maxY:p.y+6.3,drag:.52,
+    tag:"SECURITY GATE SUPPORT"
+   });
+  }
+ }
  for(const [j,t] of [.57,.90].entries()){
   const h=hazardGroup("blastdoor",t,j%2?-3.55:3.55,3.5,19+j*4,.4+j*.3);
   const g=h.mesh;
@@ -744,7 +759,7 @@ export function createNevadaWorld({
   }
   for(const light of searchlights){
    light.pivot.rotation.y=Math.sin(sec*.46+light.t*12)*1.25;
-   light.beam.rotation.y=light.pivot.rotation.y;
+   light.beam.material.opacity=.105+.045*Math.sin(sec*2.2+light.t*40);
   }
   for(const p of particles){
    p.mesh.position.set(
