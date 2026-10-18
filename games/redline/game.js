@@ -6260,6 +6260,13 @@ function buildBarriers() {
         for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
             const t = i / TRACK_SAMPLE_COUNT;
             if (!sectionContains(t, section.start, section.end)) continue;
+            // The ridge cave is a second drivable tunnel off Nevada's
+            // guarded descent. Never render a beam/post OR register a
+            // collision wall across its departure and return throat.
+            // This is a constant-time, Nevada-only exclusion: no extra
+            // scene traversal or repeated road scans.
+            if(activeTrackId==="canyon"&&section.side===-1&&
+                t>=.829&&t<=.863)continue;
 
             const nextIndex = (i + 3) % TRACK_SAMPLE_COUNT;
             const aSample = trackSamples[i];
