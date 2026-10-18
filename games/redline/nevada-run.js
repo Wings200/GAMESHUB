@@ -172,6 +172,19 @@ export function createNevadaWorld({
    return valley;
  };
  const n=trackSamples.length;
+ // Suppress embankment triangles that would project onto a distinct road
+ // section at a switchback. Valley ground still fills the space below.
+ const bankWouldCoverRoad=(x,z,y,index)=>{
+  const d=roadHalf+2;
+  for(let k=0;k<n;k+=2){
+   const gap=Math.abs(k-index);
+   if(Math.min(gap,n-gap)<21)continue;
+   const q=trackSamples[k].point,dx=x-q.x,dz=z-q.z;
+   if(Math.abs(dx)>d||Math.abs(dz)>d)continue;
+   if(dx*dx+dz*dz<d*d&&y>=q.y-2.5)return true;
+  }
+  return false;
+ };
  for(const side of [-1,1]){
    const v=[],rgb=[],tri=[],strips=bankDistances;
    for(let i=0;i<=n;i++){
@@ -186,9 +199,15 @@ export function createNevadaWorld({
      }
      if(i===0)continue;
      for(let j=0;j<strips.length-1;j++){
-       const a=(i-1)*strips.length+j,b=i*strips.length+j;
-       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
-       else tri.push(a,a+1,b,b,a+1,b+1);
+      const a=(i-1)*strips.length+j,b=i*strips.length+j;
+      const x=(v[a*3]+v[(b+1)*3])*.5;
+      const y=(v[a*3+1]+v[(b+1)*3+1])*.5;
+      const z=(v[a*3+2]+v[(b+1)*3+2])*.5;
+      const hits=[a+1,b+1].some(q=>
+       bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n));
+      if(hits||bankWouldCoverRoad(x,z,y,i%n))continue;
+      if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
+      else tri.push(a,a+1,b,b,a+1,b+1);
      }
    }
    const bankGeo=new THREE.BufferGeometry();
@@ -397,37 +416,44 @@ export function createNevadaWorld({
  const shortcuts=[];
  for(const [from,to,offset,name] of shortcutLabels){
   const path=new THREE.Group();root.add(path);
-  const vertices=[],uvs=[],indices=[];
-  const steps=15;
+  const vertices=[],uvs=[],indices=[],steps=18,centers=[];
+  // Match both the visible tunnel and its physical walls to the actual
+  // offset corridor's heading instead of the adjacent main highway.
   for(let k=0;k<=steps;k++){
    const f=getFrameAt(from+(to-from)*k/steps);
-   const taper=Math.sin(Math.PI*k/steps);
-   const side=offset*taper;
+   const side=offset*Math.sin(Math.PI*k/steps);
    const c=f.point.clone().addScaledVector(f.normal,side);
    c.y=roadsideHeight(f,side)+.24;
+   centers.push(c);
+  }
+  for(let k=0;k<=steps;k++){
+   const c=centers[k],prev=centers[Math.max(0,k-1)];
+   const next=centers[Math.min(steps,k+1)];
+   const tangent=next.clone().sub(prev).setY(0).normalize();
+   const normal=new THREE.Vector3(-tangent.z,0,tangent.x);
+   const yaw=Math.atan2(tangent.x,tangent.z);
    for(const w of [-3.6,3.6]){
-    vertices.push(c.x+f.normal.x*w,c.y+.10,c.z+f.normal.z*w);
+    vertices.push(c.x+normal.x*w,c.y+.10,c.z+normal.z*w);
     uvs.push(w>0?1:0,k/3);
    }
    if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
    const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
-   if(enclosed&&k>=4&&k<=11){
-    // Eight continuous enclosed sections, with lateral wall collision.
+   if(enclosed&&k>=4&&k<=steps-4){
     const group=new THREE.Group();group.position.copy(c);
-    group.rotation.y=f.rotationY;root.add(group);
-    const length=Math.max(3.4,f.point.distanceTo(getFrameAt(
-      from+(to-from)*Math.min(steps,k+1)/steps).point)+1.1);
+    group.rotation.y=yaw;root.add(group);
+    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
     const color=name.includes("CAVE")?0x80553d:0x4c5155;
     shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
-    for(const side of [-1,1]){
-      shape(THREE,group,"box",side*4.6,3,0,.8,5.8,length,color);
-      const wall=c.clone().addScaledVector(f.normal,side*4.6);
-      addBoxCollider(wall,.48,length*.50,f.rotationY,{
-        minY:c.y-.1,maxY:c.y+6.1,tag:name
-      });
+    for(const sign of [-1,1]){
+     shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
+     // Local +X under Y-rotation points toward negative normal.
+     const wall=c.clone().addScaledVector(normal,-sign*4.6);
+     addBoxCollider(wall,.48,length*.5,yaw,{
+      minY:c.y-.1,maxY:c.y+6.1,tag:name
+     });
     }
-   }else if(k===5||k===10){
-    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=f.rotationY;
+   }else if(!enclosed&&(k===6||k===12)){
+    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=yaw;
     root.add(arch);
     shape(THREE,arch,"box",-4.2,2.5,0,.8,5,.8,0x755039);
     shape(THREE,arch,"box",4.2,2.5,0,.8,5,.8,0x755039);
