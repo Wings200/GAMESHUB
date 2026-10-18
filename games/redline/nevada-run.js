@@ -169,9 +169,17 @@ export function createNevadaWorld({
      +.24*Math.sin(x*.018+z*.012);
  for(let i=0;i<points.count;i++){
    const x=points.getX(i),z=points.getZ(i);
-   points.setY(i,baseHeight(x,z));
+   // Broad distant desert escarpments outside the racing basin. All
+   // gameplay roads are inside the untouched central low-elevation area.
+   const outer=Math.max(0,
+    (Math.abs(x+250)-900)/650,(Math.abs(z)-610)/610);
+   const edge=clamp(outer,0,1);
+   const ridge=73*edge*edge*(.70+.18*Math.sin(x*.006+z*.002)
+    +.12*Math.cos(z*.010));
+   points.setY(i,baseHeight(x,z)+Math.max(0,ridge));
    const shade=.82+.18*seeded(i+400);
-   col.setHex(i%7===0?0x9f7953:0xb38d62);
+   col.setHex(edge>.45?0x987653:
+    edge>.08?0xa7815c:i%7===0?0x9f7953:0xb38d62);
    colors.push(col.r*shade,col.g*shade,col.b*shade);
  }
  points.needsUpdate=true;
