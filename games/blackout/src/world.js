@@ -1,4 +1,5 @@
-// BLACKOUT V0.2 — The Lab. Pure flat mechanics range, not a map.
+import {buildFacility} from "./facility.js";
+// BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
 export function buildRange(THREE,scene){
@@ -178,6 +179,7 @@ export function buildRange(THREE,scene){
   }
   // Aligned with target lanes behind them so through-holes are testable.
   makePanel(-12,-29);makePanel(12,-29);
+  const facility=buildFacility(THREE,scene,{root,colliders,shootables});
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
     const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=yaw;root.add(g);
@@ -211,8 +213,8 @@ export function buildRange(THREE,scene){
     for(const p of panels)p.reset();
     for(const s of [...placed])s.remove();
   }
-  return {root,colliders,shootables,targets,panels,placed,floor,reset,addShield,
-    floorAt:()=>0,zoneAt:()=>"THE LAB / OPEN RANGE",
-    spawn:{x:0,y:0,z:19,yaw:0},
-    specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length}};
+  return {root,colliders,shootables,targets,panels,placed,floor,reset,addShield,facility,
+    floorAt:()=>0,zoneAt:(x,z)=>facility.zoneAt(x,z),
+    spawn:{x:0,y:0,z:16,yaw:0},
+    specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length,sites:2,facility:true}};
 }
