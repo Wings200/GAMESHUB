@@ -394,7 +394,7 @@ function frame(now){
     gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
-    });
+    },objectiveRound.bots);
     objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,popup);
     reinforceBar.classList.toggle("hidden",!gadgets.busy);
     if(gadgets.busy){
