@@ -18,7 +18,7 @@
 
   <link
     rel="stylesheet"
-    href="./style.css?v=challenges-v19-1"
+    href="./style.css?v=time-trial-v20-1"
   >
 </head>
 
@@ -99,6 +99,8 @@
         >
           CREATE ROOM
         </button>
+        <button type="button" class="redline-time-trial-home-button"
+          data-open-time-trial>TIME TRIAL · RACE YOUR GHOST</button>
 
       </div>
 
@@ -975,6 +977,63 @@
 
   </main>
 
+
+  <!-- V20 independent solo trial setup. No room creation or online payouts. -->
+  <div id="redlineTimeTrialOverlay" class="redline-trial-overlay hidden"
+    role="dialog" aria-modal="true" aria-labelledby="redlineTrialTitle">
+    <div class="redline-trial-shell">
+      <header class="redline-trial-head">
+        <div>
+          <span class="dealer-kicker">REDLINE V20 · SOLO RACING</span>
+          <h2 id="redlineTrialTitle">TIME TRIAL</h2>
+          <p>Race against a translucent recording of your personal best.</p>
+        </div>
+        <button id="redlineTrialClose" type="button" class="garage-overlay-return">✕ CLOSE</button>
+      </header>
+      <div class="redline-trial-picker">
+        <label>TRACK
+          <select id="redlineTrialMap">
+            <option value="neon">NEON DISTRICT</option>
+            <option value="arctic">ARCTIC</option>
+          </select>
+        </label>
+        <label>OWNED CAR
+          <select id="redlineTrialCar"><option value="gt">REDLINE GT</option></select>
+        </label>
+      </div>
+      <p id="redlineTrialStatus" class="redline-trial-status" aria-live="polite">Checking owned cars…</p>
+      <div class="redline-trial-pb">
+        <strong id="redlineTrialPB">No saved ghost yet</strong>
+        <label><input id="redlineGhostBeforeStart" type="checkbox" checked/> SHOW PERSONAL GHOST</label>
+      </div>
+      <button id="redlineTrialStart" type="button" class="primary-button redline-trial-start">
+        START SOLO TIME TRIAL
+      </button>
+      <div id="redlineTrialLeaderboard" class="redline-trial-leaderboard">
+        <strong>OFFICIAL RACE LEADERBOARD</strong>
+      </div>
+      <p class="redline-trial-note">Personal ghosts are stored in this browser on this device. Time Trial
+        runs do not award cash, complete challenges, or submit times to the online leaderboard.
+        The leaderboard above shows existing verified race records.</p>
+    </div>
+  </div>
+  <aside id="redlineTrialRaceHud" class="redline-trial-hud hidden" aria-label="Time Trial ghost controls">
+    <strong>SOLO TIME TRIAL</strong>
+    <span id="redlineTrialDelta">FIRST RUN · SET A RECORD</span>
+    <label><input id="redlineTrialGhostVisible" type="checkbox" checked/> SHOW GHOST (G)</label>
+  </aside>
+  <div id="redlineTimeTrialResult" class="redline-trial-result hidden"
+    role="dialog" aria-modal="true" aria-labelledby="redlineTrialResultTitle">
+    <div class="redline-trial-result-card">
+      <span class="dealer-kicker">REDLINE V20 · TIME TRIAL FINISHED</span>
+      <h2 id="redlineTrialResultTitle">TIME TRIAL COMPLETE</h2>
+      <strong id="redlineTrialResultSummary"></strong>
+      <div class="redline-trial-result-buttons">
+        <button id="redlineTrialRetry" type="button" class="primary-button">RACE AGAIN</button>
+        <button id="redlineTrialResultHome" type="button" class="secondary-button">BACK TO HOME</button>
+      </div>
+    </div>
+  </div>
 
   <!-- =====================================================
        RACE HUD
@@ -4621,9 +4680,10 @@
   </script>
 
 
+  <script type="module" src="./time-trial.js?v=v20-solo-1"></script>
   <script
     type="module"
-    src="./game.js?v=real-car-thumbnails-v18-2"
+    src="./game.js?v=time-trial-ghost-v20-1"
   ></script>
 
 
