@@ -650,6 +650,7 @@ let localFinishElapsed = null;
 // V20 time trial state exists only for standalone solo races. Never
 // publish ghost telemetry or times to multiplayer server endpoints.
 let trialGhost=null,trialFrames=[],trialLastSampleAt=-Infinity;
+let trialLastDeltaAt=-Infinity;
 let trialSnapshot=null;
 let goHideAt = 0;
 let lastNetworkSend = 0;
@@ -8951,6 +8952,7 @@ function initTimeTrialGhost(){
     trialGhost=null;
     trialFrames=[];
     trialLastSampleAt=-Infinity;
+    trialLastDeltaAt=-Infinity;
     trialSnapshot=window.REDLINE_TT?.active?window.REDLINE_TT.ghost:null;
     if(!window.REDLINE_TT?.active||!trialSnapshot?.frames?.length)return;
     try{
@@ -8992,9 +8994,16 @@ function updateTimeTrial(){
         }
     }
     if(!trialSnapshot?.frames?.length){
-        window.REDLINE_TT.setDelta("FIRST RUN · SET YOUR BEST");
+        if(elapsed-trialLastDeltaAt>=250){
+            trialLastDeltaAt=elapsed;
+            window.REDLINE_TT.setDelta("FIRST RUN · SET YOUR BEST");
+        }
         return;
     }
+    // Visual replay remains frame-perfect; the progress lookup runs at
+    // 5 Hz to keep slower laptops/Chromebooks responsive on long races.
+    if(elapsed-trialLastDeltaAt<200)return;
+    trialLastDeltaAt=elapsed;
     const ghostAt=ghostTimeAtProgress(trialSnapshot.frames,progress);
     if(ghostAt===null){
         window.REDLINE_TT.setDelta("GHOST DELTA · FINDING TRACK POSITION");
