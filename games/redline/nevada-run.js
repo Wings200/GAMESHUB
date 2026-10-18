@@ -469,8 +469,12 @@ export function createNevadaWorld({
    p.mesh.rotation.y+=delta*.7;
   }
   for(const h of hazards){
-   const f=getFrameAt(h.t),time=sec/h.period+h.phase;
+   const time=sec/h.period+h.phase;
    const phase=((time%1)+1)%1;
+   // Convoys really travel along ~280 m of track per cycle. They do not
+   // just rub back and forth against one spot on the road.
+   const travel=h.type==="convoy"||h.type==="tanker"?phase*.070:0;
+   const f=getFrameAt((h.t+travel)%1);
    const oscillation=Math.sin(phase*TWO_PI);
    const n=f.normal;
    const lateral=h.type==="convoy"||h.type==="tanker"?
@@ -494,7 +498,7 @@ export function createNevadaWorld({
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
     h.mesh.rotation.y+=.08*Math.sin(sec*.45);
    }else if(h.type==="convoy"||h.type==="tanker"){
-    h.mesh.position.addScaledVector(f.tangent,Math.sin(sec*.35+h.phase)*13);
+    h.mesh.rotation.y=f.rotationY; // align truck wheels to the road
    }
    if(!car||!carState||!carState.velocity||h.open)return;
    const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
