@@ -6283,11 +6283,10 @@ function buildBarriers() {
         if(activeTrackId!=="canyon")return false;
         for(const route of NEVADA_TRACK.secretRoutes){
             if(Math.sign(route.offset)!==side)continue;
-            const entering=t>=route.from-.004&&
-                t<=route.from+(route.to-route.from)*.37;
-            const exiting=t>=route.to-(route.to-route.from)*.37&&
-                t<=route.to+.004;
-            if(entering||exiting)return true;
+            // Leave the entire branch-side shoulder open between entry
+            // and exit. The previous split-gap left stray rail segments
+            // BETWEEN portals, which looked like a blocked entrance.
+            if(t>=route.from-.005&&t<=route.to+.005)return true;
         }
         // A different leg of a hairpin can cross the shortcut. Never allow
         // its rail to sever the physical side road either.
