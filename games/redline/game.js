@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
-import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=21-1";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=21-2";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
@@ -11083,7 +11083,7 @@ function gameLoop(now) {
         const synced=window.REDLINE_MP?.serverNow;
         const now=Number.isFinite(synced)?synced:Date.now();
         nevadaSystem.update(delta,now,raceActive?car:null,
-            raceActive?carState:null,showRacePopup);
+            raceActive?carState:null,showRacePopup,serverRaceStartAt);
     }
     trafficSystem?.update(delta);
     updateNetwork(now);
