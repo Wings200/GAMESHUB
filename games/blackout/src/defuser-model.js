@@ -62,7 +62,7 @@ export function createDefuserModel(THREE,scene){
   body.add(ledA,ledB);
   const light=new THREE.PointLight(0x35ffc5,.42,2.5,1.8);
   light.position.set(0,.48,0);root.add(light);
-  let mode="ARMED",lastDraw=-1,lastSeconds=-1;
+  let mode="ARMED",lastDraw=-1,lastSeconds=-1,placedAt=0;
   function updateScreen(seconds,now){
     const remaining=Math.max(0,Math.ceil(seconds));
     if(remaining===lastSeconds&&now-lastDraw<450)return;
@@ -83,15 +83,24 @@ export function createDefuserModel(THREE,scene){
   }
   return {
     root,screenTexture,
-    show(x,z,seconds=25){
-      root.position.set(x,0,z);root.visible=true;mode="ARMED";
-      lastSeconds=-1;updateScreen(seconds,0);
+    show(x,z,seconds=25,now=0){
+      root.position.set(x,-.16,z);root.visible=true;mode="ARMED";
+      placedAt=now;lid.rotation.x=0;
+      lastSeconds=-1;updateScreen(seconds,now);
     },
     hide(){root.visible=false;},
-    setMode(next){mode=next;lastSeconds=-1;},
+    setMode(next){
+      if(mode===next)return;
+      mode=next;lastSeconds=-1;
+    },
     update(seconds,now=0){
       if(!root.visible)return;
       updateScreen(seconds,now);
+      // Case settles onto the ground and the real hinge folds its display up.
+      const deploy=Math.max(0,Math.min(1,(now-placedAt)/470));
+      const eased=1-Math.pow(1-deploy,3);
+      root.position.y=-.16*(1-eased);
+      lid.rotation.x=-.27*eased;
       const flash=Math.floor(now/(seconds<=8?220:650))%2===0;
       ledA.visible=flash;ledB.visible=!flash;
       light.intensity=flash?.68:.15;
