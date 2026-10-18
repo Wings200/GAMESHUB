@@ -259,6 +259,62 @@ export function createNevadaWorld({
   if(!roadBins.has(key))roadBins.set(key,[]);
   roadBins.get(key).push(i);
  }
+ // Scene-safe no-fill corridors: bank ribbons used to run massive
+ // brown triangles through the road and hidden paths. Exclude the
+ // entire face when any paved centerline intersects that face.
+ // Indexed once at build time; no per-frame cost.
+ const corridorBins=new Map();
+ const corridorKey=(x,z)=>Math.floor(x/roadCell)+","+
+  Math.floor(z/roadCell);
+ const markCorridor=(p,width)=>{
+  const key=corridorKey(p.x,p.z);
+  if(!corridorBins.has(key))corridorBins.set(key,[]);
+  corridorBins.get(key).push({x:p.x,z:p.z,width});
+ };
+ for(const f of trackSamples)markCorridor(f.point,roadHalf+1.1);
+ for(const [from,to,offset] of [
+  [.395,.420,-10],[.532,.562,-18],
+  [.688,.712,10],[.834,.858,-18]
+ ])for(let i=0;i<=36;i++){
+  const frame=getFrameAt(from+(to-from)*i/36);
+  markCorridor(frame.point.clone().addScaledVector(
+   frame.normal,offset*Math.sin(Math.PI*i/36)),4.6);
+ }
+ const faceOverPavement=(v,ids)=>{
+  const p=ids.map(k=>({x:v[k*3],z:v[k*3+2]}));
+  const loX=Math.min(...p.map(q=>q.x))-9;
+  const hiX=Math.max(...p.map(q=>q.x))+9;
+  const loZ=Math.min(...p.map(q=>q.z))-9;
+  const hiZ=Math.max(...p.map(q=>q.z))+9;
+  const cellsX0=Math.floor(loX/roadCell),cellsX1=Math.floor(hiX/roadCell);
+  const cellsZ0=Math.floor(loZ/roadCell),cellsZ1=Math.floor(hiZ/roadCell);
+  const sqEdge=(c,a,b)=>{
+   const dx=b.x-a.x,dz=b.z-a.z;
+   const t=clamp(((c.x-a.x)*dx+(c.z-a.z)*dz)/
+    Math.max(.0001,dx*dx+dz*dz),0,1);
+   return (c.x-a.x-t*dx)**2+(c.z-a.z-t*dz)**2;
+  };
+  const inside=(c,a,b,d)=>{
+   const v1=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
+   const v2=(d.x-b.x)*(c.z-b.z)-(d.z-b.z)*(c.x-b.x);
+   const v3=(a.x-d.x)*(c.z-d.z)-(a.z-d.z)*(c.x-d.x);
+   return (v1>=0&&v2>=0&&v3>=0)||(v1<=0&&v2<=0&&v3<=0);
+  };
+  for(let x=cellsX0;x<=cellsX1;x++)for(let z=cellsZ0;z<=cellsZ1;z++){
+   const nearby=corridorBins.get(x+","+z);
+   if(!nearby)continue;
+   for(const c of nearby){
+    if(c.x<loX||c.x>hiX||c.z<loZ||c.z>hiZ)continue;
+    if(inside(c,p[0],p[1],p[2])||
+       inside(c,p[1],p[3],p[2]))return true;
+    const dist=Math.min(sqEdge(c,p[0],p[1]),
+     sqEdge(c,p[1],p[3]),sqEdge(c,p[3],p[2]),
+     sqEdge(c,p[2],p[0]));
+    if(dist<c.width*c.width)return true;
+   }
+  }
+  return false;
+ };
  const bankWouldCoverRoad=(x,z,y,index)=>{
   const d=roadHalf+2,cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
   for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
@@ -298,7 +354,8 @@ export function createNevadaWorld({
       const z=(v[a*3+2]+v[(b+1)*3+2])*.5;
       const hits=[a,b,a+1,b+1].some(q=>
        bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n));
-      if(hits||bankWouldCoverRoad(x,z,y,i%n))continue;
+      if(hits||bankWouldCoverRoad(x,z,y,i%n)||
+        faceOverPavement(v,[a,b,a+1,b+1]))continue;
       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
       else tri.push(a,a+1,b,b,a+1,b+1);
      }
