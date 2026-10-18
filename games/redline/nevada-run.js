@@ -670,17 +670,17 @@ export function createNevadaWorld({
     group.rotation.y=yaw;root.add(group);
     const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
     const color=name.includes("CAVE")?0x80553d:0x4c5155;
-    shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
+    shape(THREE,group,"box",0,5.9,0,11.5,.8,length,color);
     for(const sign of [-1,1]){
      // Local +X under Y-rotation points toward negative normal.
-     const wall=c.clone().addScaledVector(normal,-sign*4.6);
+     const wall=c.clone().addScaledVector(normal,-sign*5.3);
      // Only physical supports that also have corresponding visible walls.
      // The previous first walls intersected the adjacent highway and
      // blocked the off-road entrance before it was reachable.
      if(clearOfRoad(wall,1.8)){
-      shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
-      addBoxCollider(wall,.45,length*.42,yaw,{
-       minY:c.y-.1,maxY:c.y+6.1,tag:name
+      shape(THREE,group,"box",sign*5.3,3,0,.8,5.8,length,color);
+      addBoxCollider(wall,.42,length*.42,yaw,{
+       minY:c.y-1.1,maxY:c.y+6.1,tag:name
       });
      }
     }
