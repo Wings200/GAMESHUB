@@ -122,55 +122,65 @@ export function createNevadaWorld({
   cliff:makeMaterial(THREE,0x704938),metal:makeMaterial(THREE,0x48535b,.38),
   concrete:makeMaterial(THREE,0x555c5e),light:makeMaterial(THREE,0xf9bb76)};
  const props=new THREE.Group();root.add(props);
- // Large low-poly terrain with a deliberately textured color gradient.
- const terrainGeo=new THREE.PlaneGeometry(3000,2400,58,48);
- terrainGeo.rotateX(-Math.PI/2);
- const pos=terrainGeo.attributes.position;
- const vertexColors=[];
- const c=new THREE.Color();
- for(let i=0;i<pos.count;i++){
-  const x=pos.getX(i),z=pos.getZ(i);
-  const height=-3+.9*Math.sin(x*.008)*Math.cos(z*.012)+.7*Math.sin(x*.047+z*.031);
-  pos.setY(i,height);
-  const n=clamp((height+4)/4,0,1);
-  c.setRGB(.37+n*.28,.235+n*.23,.16+n*.14);
-  vertexColors.push(c.r,c.g,c.b);
+ // The original V21 terrain used one giant seven-column mesh ACROSS the
+ // pavement. At switchbacks its diagonals rose through the road and showed
+ // as enormous tan/purple triangles. Build a safe low ground plane and only
+ // TWO OUTSIDE embankments; never draw earth across the actual asphalt.
+ const ground=new THREE.PlaneGeometry(3500,3000,62,52);
+ ground.rotateX(-Math.PI/2);
+ const points=ground.attributes.position;
+ const colors=[];
+ const col=new THREE.Color();
+ const baseHeight=(x,z)=>-3.8+.28*Math.sin(x*.009)*Math.cos(z*.010)
+     +.24*Math.sin(x*.018+z*.012);
+ for(let i=0;i<points.count;i++){
+   const x=points.getX(i),z=points.getZ(i);
+   points.setY(i,baseHeight(x,z));
+   const shade=.82+.18*seeded(i+400);
+   col.setHex(i%7===0?0x9f7953:0xb38d62);
+   colors.push(col.r*shade,col.g*shade,col.b*shade);
  }
- pos.needsUpdate=true;terrainGeo.setAttribute("color",new THREE.Float32BufferAttribute(vertexColors,3));
- terrainGeo.computeVertexNormals();
- const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({
-  vertexColors:true,roughness:1,side:THREE.DoubleSide
+ points.needsUpdate=true;
+ ground.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
+ ground.computeVertexNormals();
+ const terrain=new THREE.Mesh(ground,new THREE.MeshStandardMaterial({
+   vertexColors:true,roughness:1,side:THREE.DoubleSide
  }));
  root.add(terrain);
- // Chassis-supporting embankments / mountains for grade-changing paved road:
- // strips fall naturally away from both edges rather than floating in midair.
- const verts=[],inds=[],colors=[];
- const col=new THREE.Color();
- for(let i=0;i<=trackSamples.length;i++){
-  const s=trackSamples[i%trackSamples.length],p=s.point,n=s.normal;
-  for(const off of [-65,-30,-11,0,11,30,65]){
-   const outside=Math.abs(off);
-   const y=outside<=11?p.y-.05:
-     outside<=30?p.y-(outside-11)*.26:
-     p.y-4.94-(outside-30)*.35;
-   verts.push(p.x+n.x*off,Math.max(-2.7,y),p.z+n.z*off);
-   col.setHex(outside<=11?0x846142:outside<=30?0x976f4d:0x8a6547);
-   const variation=.87+seeded(i*7+Math.round(off))* .24;
-   colors.push(col.r*variation,col.g*variation,col.b*variation);
-  }
-  if(i===0)continue;
-  for(let k=0;k<6;k++){
-   const a=(i-1)*7+k,b=i*7+k;
-   inds.push(a,b,a+1,b,b+1,a+1);
-  }
+ // Embankments start OUTSIDE both painted road shoulders, with an
+ // intentional >2m gap from the edge stripes. A lane can never be hidden
+ // by an embankment triangle again.
+ const n=trackSamples.length;
+ for(const side of [-1,1]){
+   const v=[],rgb=[],tri=[],strips=[11.8,18,34,52];
+   for(let i=0;i<=n;i++){
+     const frame=trackSamples[i%n],p=frame.point,normal=frame.normal;
+     for(let j=0;j<strips.length;j++){
+       const off=side*strips[j];
+       const drop=j===0?.42:j===1?1.0:j===2?7.0:13.5;
+       const y=Math.max(-3.3,p.y-drop);
+       v.push(p.x+normal.x*off,y,p.z+normal.z*off);
+       col.setHex(j<2?0x93704e:j===2?0xa27b53:0x99724b);
+       const tone=.90+seeded(i*5+j+7)*.18;
+       rgb.push(col.r*tone,col.g*tone,col.b*tone);
+     }
+     if(i===0)continue;
+     for(let j=0;j<strips.length-1;j++){
+       const a=(i-1)*strips.length+j,b=i*strips.length+j;
+       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
+       else tri.push(a,a+1,b,b,a+1,b+1);
+     }
+   }
+   const bankGeo=new THREE.BufferGeometry();
+   bankGeo.setAttribute("position",new THREE.Float32BufferAttribute(v,3));
+   bankGeo.setAttribute("color",new THREE.Float32BufferAttribute(rgb,3));
+   bankGeo.setIndex(tri);
+   bankGeo.computeVertexNormals();
+   root.add(new THREE.Mesh(bankGeo,new THREE.MeshStandardMaterial({
+     vertexColors:true,roughness:.98,side:THREE.DoubleSide,
+     polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1
+   })));
  }
- const gradeGeo=new THREE.BufferGeometry();
- gradeGeo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
- gradeGeo.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
- gradeGeo.setIndex(inds);gradeGeo.computeVertexNormals();
- root.add(new THREE.Mesh(gradeGeo,new THREE.MeshStandardMaterial({
-  vertexColors:true,roughness:1,side:THREE.DoubleSide
- })));
  // Distant ridgelines of varying shape, kept well clear of drivable lanes.
  for(let i=0;i<92;i++){
   const theta=i/92*TWO_PI,dist=720+seeded(i+4)*350;
@@ -473,9 +483,9 @@ export function createNevadaWorld({
   }else shape(THREE,g,"box",0,.45,0,1,.7,1.2,j%2?0x756257:0x414443);
  }
  const active={lastCall:0,warning:0,hitCount:0,discovered:new Set()};
- const sunsetColor=new THREE.Color(0x99625b);
- const eveningColor=new THREE.Color(0x523c55);
- const nightColor=new THREE.Color(0x1a213b);
+ const sunsetColor=new THREE.Color(0xd99365);
+ const eveningColor=new THREE.Color(0x8a6680);
+ const nightColor=new THREE.Color(0x343449);
  const skyColor=new THREE.Color();
  function update(delta,nowMs,car,carState,popup,raceStartAt=null){
   const sec=nowMs*.001;
@@ -539,7 +549,7 @@ export function createNevadaWorld({
    }else if(h.type==="convoy"||h.type==="tanker"){
     h.mesh.rotation.y=f.rotationY; // align truck wheels to the road
    }
-   if(!car||!carState||!carState.velocity||h.open)return;
+   if(!car||!carState||!carState.velocity||h.open)continue;
    const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
    const dist=Math.hypot(dx,dz);
    const across=dx*f.normal.x+dz*f.normal.z;
