@@ -129,6 +129,10 @@ function close(){
  overlay.classList.add("hidden");
 }
 function enter(){
+ if(!window.REDLINE_GAME_READY){
+   status.textContent="3D race engine is still loading. Try START again once the game is ready.";
+   return;
+ }
  if(!TRIAL_MAPS.includes(mapPick.value))return;
  const id=carPick.value;
  if(!state.ownCars.includes(id)||!REDLINE_CAR_IDS.includes(id))return;
