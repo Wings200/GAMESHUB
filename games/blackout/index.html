@@ -5,11 +5,19 @@
 <meta name="description" content="BLACKOUT V0.2 - flat tactical shooting, movement and gadget mechanics lab.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=flat-lab-02">
+<link rel="stylesheet" href="./style.css?v=penetration-optics-reinforce-03">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
 <div class="reticle" id="reticle" aria-hidden="true"><span></span><i></i></div>
+<div class="ads-optic" id="adsOptic" data-sight="holo-a" aria-hidden="true">
+  <div class="optic-housing"><div class="optic-lens"></div>
+    <div class="optic-aim"><span class="aim-dot"></span><span class="aim-ring"></span>
+      <i class="aim-cross-h"></i><i class="aim-cross-v"></i><b class="aim-chevron"></b>
+    </div>
+  </div>
+  <div class="optic-indicator"><span id="opticName">HOLO A</span> · OPTIC ZERO 0.0</div>
+</div>
 <div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
 <header id="gameHUD" class="game-hud hidden">
   <div class="hud-left">
@@ -36,19 +44,25 @@
       <div id="weaponName" class="weapon-name">KESTREL MK1</div>
       <div class="ammo-row"><span id="ammoCount">30</span><span id="reserveCount">/ 120</span></div>
       <div class="stat-row" id="combatStats">0 HITS · 0% ACC · 0 DOWN</div>
+      <div class="sight-readout">OPTIC <span>V TO CYCLE</span></div>
     </div>
     <div class="side-controls">
       <span><kbd>LMB</kbd> FIRE</span><span><kbd>RMB</kbd> AIM</span><span><kbd>R</kbd> RELOAD</span>
-      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
+      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
     </div>
     <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
   </div>
   <div id="debugPanel" class="debug-panel hidden">DEBUG <div id="positionReadout"></div></div>
   <div id="toast" class="toast" role="status"></div>
+  <div id="reinforceBar" class="reinforce-progress hidden" role="status">
+    <div class="reinforce-title">INSTALLING REINFORCEMENT <span id="reinforceCountdown">3.0S</span></div>
+    <div class="reinforce-track"><div id="reinforceFill" class="reinforce-fill"></div></div>
+    <div class="reinforce-hint">MOVEMENT AND WEAPONS LOCKED · ESC TO CANCEL</div>
+  </div>
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.2.0 // SANDBOX BUILD</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.3.0 // PENETRATION + OPTICS</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
@@ -60,6 +74,12 @@
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
     </div>
     <div class="lab-section-title" id="selectedMode">ATTACKER MECHANICS</div>
+    <label class="sight-picker">SELECT YOUR OPTIC <select id="sightSelect" aria-label="Select weapon sight">
+      <option value="holo-a">HOLOGRAPHIC A — CIRCLE + DOT</option>
+      <option value="holo-b">HOLOGRAPHIC B — TACTICAL CROSS</option>
+      <option value="red-dot">REFLEX RED DOT — SINGLE POINT</option>
+      <option value="iron">IRON SIGHTS — POST</option>
+    </select></label>
     <div class="tuning-grid">
       <label>Walk speed <output id="walkValue">3.3 m/s</output><input id="walkSlider" type="range" min="2" max="5" step="0.1" value="3.34"></label>
       <label>Sprint speed <output id="sprintValue">5.5 m/s</output><input id="sprintSlider" type="range" min="4" max="8" step="0.1" value="5.5"></label>
@@ -73,9 +93,10 @@
     <div id="guide" class="test-guide hidden">
       <strong>TEST CONTROLS</strong>
       <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: lean · Mouse: look</p>
-      <p>LMB: shoot · RMB: ADS · R: reload · 1/2: rifle/sidearm</p>
+      <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
       <p><strong>Attacker</strong> — G: attach charge to soft panel (within 7m; detonates automatically), X: pulse reveal test targets.</p>
-      <p><strong>Defender</strong> — F: reinforce aimed panel (within 5m), G: deploy shield, X: place proximity sensor. Exit its radius and re-enter to trigger the alert.</p>
+      <p><strong>Defender</strong> — F: install reinforcement on aimed panel (3-second animation; no movement or firing until complete); G: shield; X: proximity sensor. Move outside then re-enter its radius to trigger it.</p>
+      <p><strong>Soft-wall penetration:</strong> bullets punch individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
@@ -93,5 +114,5 @@
     <div class="menu-right-footer">THE LAB / OPEN RANGE<br>BUILD THE MECHANICS. THEN BUILD THE WORLD.</div>
   </div>
 </main>
-<script type="module" src="./main.js?v=flat-lab-02"></script>
+<script type="module" src="./main.js?v=penetration-optics-reinforce-03"></script>
 </body></html>
