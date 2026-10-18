@@ -157,6 +157,8 @@ export class ObjectiveDrill {
       }
     }
     const canHold=this.canInteract(player);
+    if(this.phase==="planted"&&this.role==="defender")
+      this.defuser.setMode(canHold&&holdingF?"DISARMING":"ARMED");
     const required=this.role==="attacker"?5000:5500;
     if(canHold&&holdingF&&(this.phase==="attack"||this.role==="defender"&&this.phase==="planted")){
       this.hold+=dt*1000;
@@ -170,7 +172,7 @@ export class ObjectiveDrill {
         if(this.role==="attacker"){
           this.phase="planted";this.bombEnd=now+28000;
           this.nextBeep=now+900;
-          this.defuser.show(this.site.x,this.site.z,28);
+          this.defuser.show(this.site.x,this.site.z,28,now);
           // Surviving sentries actively move in to disable the defuser.
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
           this.spawnBot(-7,-9,false);this.spawnBot(7,-10,false);
@@ -202,7 +204,7 @@ export class ObjectiveDrill {
             if(this.role==="defender"&&this.phase==="guard"){
               this.phase="planted";this.bombEnd=now+26000;
               this.nextBeep=now+800;
-              this.defuser.show(this.site.x,this.site.z,26);
+              this.defuser.show(this.site.x,this.site.z,26,now);
               this.hold=0;notify("DEFUSER PLANTED · GET TO SITE A, HOLD F TO DISABLE","plant");
             }else if(this.role==="attacker"&&this.phase==="planted"){
               this.defuser.hide();
