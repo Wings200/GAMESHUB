@@ -1,0 +1,70 @@
+# REDLINE V21 — Nevada Run (Blacksite Desert)
+
+## Status
+Implemented in the existing REDLINE main branch as the third playable track; no production Worker changes are required to recognize its identifier. Live browser visual/physics testing remains necessary after Cloudflare Pages deployment.
+
+**Player-visible track name:** NEVADA RUN
+**Canonical internal identifier:** `canyon`. This ID is already allowed by the existing Cloudflare Worker (`VALID_MAPS`), is part of its race results/leaderboard data, and avoids disrupting saved multiplayer or requiring an immediate Worker rollout. The formerly disabled Dustfall Canyon slot has been repurposed for Nevada Run. Neon District and Arctic Relay are untouched.
+
+## Route and atmosphere
+
+- Nearly **4,000 m** of closed-loop route based on 22 nonintersecting control points, sampled at 900 curve points.
+- **20 ordered checkpoints**, 1 complete lap, grade up to approximately 12% between control points.
+- Six Nevada-themed sectors: open desert highway; Red Rock Canyon; sandy dry lakebed; fictional restricted blacksite perimeter; an active testing airstrip; elevated downhill canyon return.
+- Day transitions **sunset → dusk → illuminated night** over about 145 seconds from the shared race start.
+- Sandstone procedural eroded mesa geometry (not cones), canyon walls, 3D embankment/fill alongside elevated road, colored desert terrain, floodlights, watchtowers, radar dishes, military hangars, fences and roadside warnings.
+- Road itself follows the 3D route; camera, physics ground height, ramp landings, respawns, and gravity follow the same altitude.
+- Particle dust, desert scrub, power poles, road signage, warning signs and lakebed cracks.
+- Per-race weather/light changes apply to Nevada only; Neon weather and Arctic snowfall are preserved.
+
+## Active obstacles with driving consequences
+
+All hazard geometry is part of `nevada-run.js`, updated from `REDLINE_MP.serverNow` when connected (falling back to Date.now when local). Hazards have physical collision and/or vehicle-handling effects. They are not purely decorative:
+
+| Hazard | Gameplay |
+|---|---|
+| Military convoys and fuel tanker | Traverse stretches of raceway with moving vehicle mesh; timed road collision adds impact, bounce, slowdown |
+| Security gates | Periodically open/close; closed arms stop and jolt the car |
+| Sweeping searchlights | Spotlights patrol the restricted sector; detection triggers visible warning and minor nitro penalty |
+| Dust devils | Moving debris vortex, repeated sideways force and reduced stability; demands countersteering |
+| Airstrip aircraft | Large moving aircraft cross active racing lanes, with crash collision |
+| Loose debris/tires | Mobile road clutter with contact slowdown |
+| Lakebed cracks | Visible crust fractures with reduced grip, steering and acceleration plus increased drag |
+| Timed blast doors | Metal industrial barriers close on a clock; physical collisions while closed |
+
+The simulation has 27 moving hazards, three searchlights, 5 floodlight arrays and actual static colliders for hangars, rocks, towers, tunnel walls and fencing. Same Worker clock keeps motion phase consistent across network clients. Each racer computes their own contact forces with the game's existing local physics (the server is not running authoritative car physics).
+
+## Hidden routes and racing features
+
+- Four rendered drivable alternate road links (drainage channel, underground service tunnel, hangar maintenance road, cave/ridge passage). All fall inside existing sequential checkpoint intervals to avoid making a shortcut invalidate the lap.
+- Service tunnel/cave links have roof geometry and physical side wall colliders.
+- A separate broken-fence/blacksite jump and second hangar-side jump use REDLINE's existing secret ramp system and speed thresholds.
+- An abandoned research outpost is placed beside the ridge with service-road detail.
+- Discovering a secret side passage grants a small **nitro boost** locally and displays its name. These discoveries **do not award saved cash**, to avoid client-controlled account money.
+- Six existing functioning nitro/overdrive collectible pickups on dangerous racing lines.
+- **Cash pickups were deferred:** Persistent REDLINE money must be credited and deduplicated by the Worker after validating a real pickup. The existing client-only positional check cannot securely mint account cash. No fake on-screen cash credits were added. These require a separate account-safe Worker update.
+
+## Cross-mode compatibility
+- Online map selection: `canyon` is a Worker-supported map and now renders Nevada Run.
+- V20 local solo Time Trial and PB ghost: `canyon` added to local track validation and menu; ghosts remain locally stored per account/map/car.
+- Online `canyon` leaderboard already exists, visible with the Nevada Run name. Note existing historical canyon records (if any) may remain associated with this reused server ID.
+- Existing per-car upgrades, gameplay physics, camera and music continue as before.
+- Neon/Arctic map data, Worker, saved accounts, real race result logic, race cash economy and challenge definitions are **unchanged** by V21.
+
+## Verification performed
+- JavaScript syntax tests for the new environment and patched game/trial files.
+- Standalone mock Three.js scene construction test: world built without runtime exceptions; colliders registered; hazards ticked with a simulated player.
+- Route validation from 22 control points: about 3,975 m of route (straight-line segment approximation), 0 straight-segment self intersections, grade up to ~12%, 20 monotonically ordered checkpoints.
+- Four secret routes kept within adjacent checkpoint windows, not spanning a required sequential gate.
+- Worker source checked to already accept the internal `canyon` map ID.
+- Frontend selectors, module URLs and local ghost storage map list checked.
+- **Not done:** live Cloudflare/browser rendering, multiple real cars in multiplayer, live sound/pacing, visual QA for vehicle-to-hazard collision, and persistent cash pickups. Tester feedback remains the next source for adjustments.
+
+## Quick test
+1. Open https://redline-dnk.pages.dev/games/redline/index.html
+2. Create a multiplayer room and select `Nevada Run · Blacksite Desert`. Verify friends load it.
+3. Alternatively choose `TIME TRIAL` → `NEVADA RUN` and drive with a starter or owned car.
+4. Drive through the six sectors and challenge the gates, convoys and aircraft. Countersteer through dust devils.
+5. Explore alternate service corridors, the broken fence, ridgeline cave and outpost.
+6. Finish: normal multiplayer race rewards work as before; a local Time Trial stores the Nevada personal best.
+7. Revisit Neon and Arctic to confirm no changes to their original physics/geometry.
