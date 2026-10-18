@@ -18,7 +18,7 @@ const status=$("redlineTrialStatus");
 const pbInfo=$("redlineTrialPB");
 const leaderboard=$("redlineTrialLeaderboard");
 const menu=$("menu"),hud=$("hud");
-const mapNames={neon:"NEON DISTRICT",arctic:"ARCTIC"};
+const mapNames={neon:"NEON DISTRICT",arctic:"ARCTIC",canyon:"NEVADA RUN"};
 let memory;
 try{memory=window.localStorage}
 catch{
