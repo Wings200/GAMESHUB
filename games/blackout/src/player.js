@@ -25,16 +25,24 @@ export class FirstPersonController{
     this.standingHeight=PLAYER_DIMENSIONS.stand;
     this.height=this.standingHeight;
     this.isCrouched=false;this.isProne=false;this.proneWanted=false;
-    this.speeds={walk:3.34,sprint:5.5,crouch:1.73,prone:.78};
+    this.speeds={walk:3.35,sprint:5.5,crouch:1.74,prone:.79};
+    this.operatorName="KESTREL";this.speedRating=2;this.armorRating=2;this.maxHealth=110;this.health=110;
     this.lean=0;this.leanTarget=0;
     this.stepClock=0;this.moving=false;this.sprinting=false;
     this.camera.rotation.order="YXZ";
     this.applyCamera();
   }
+  setOperator(spec){
+    this.operatorName=spec.name;this.speedRating=spec.speed;this.armorRating=spec.armor;
+    this.maxHealth=spec.health;this.health=this.maxHealth;
+    this.speeds={walk:spec.walk,sprint:spec.sprint,crouch:spec.walk*.52,prone:spec.walk*.235};
+  }
+  takeDamage(amount){this.health=Math.max(0,this.health-Math.max(0,amount));return this.health<=0;}
   reset(){
     Object.assign(this,{x:this.world.spawn.x,y:this.world.spawn.y,z:this.world.spawn.z,
       yaw:this.world.spawn.yaw,pitch:0,velX:0,velY:0,velZ:0,
       height:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,stepClock:0});
+    this.health=this.maxHealth;this.moving=false;this.sprinting=false;
     this.applyCamera();
   }
   toggleProne(){this.proneWanted=!this.proneWanted;}
@@ -112,14 +120,16 @@ export class FirstPersonController{
     // increment is tested against every solid collider at eye height.
     const leanX=Math.cos(this.yaw),leanZ=-Math.sin(this.yaw);
     let shift=0;
-    const wanted=this.lean*.24;
+    // Greater camera translation, but retain collision-checked eye clearance.
+    const wanted=this.lean*.50;
     for(let k=1;k<=6;k++){
       const candidate=wanted*k/6;
       const nx=this.x+leanX*candidate,nz=this.z+leanZ*candidate;
-      if(this.blocked(nx,nz,eye-.11,.22,.17))break;
+      if(this.blocked(nx,nz,eye-.12,.24,.21))break;
       shift=candidate;
     }
     this.camera.position.set(this.x+leanX*shift,eye,this.z+leanZ*shift);
-    this.camera.rotation.set(this.pitch,this.yaw,-shift*.40,"YXZ");
+    // ~17 degrees at full lean: visible tactical shoulder peek.
+    this.camera.rotation.set(this.pitch,this.yaw,-shift*.61,"YXZ");
   }
 }
