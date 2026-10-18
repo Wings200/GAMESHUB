@@ -1,11 +1,11 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-operator-objectives-05";
-import {FirstPersonController} from "./src/player.js?v=blackout-operator-objectives-05";
-import {Weapons} from "./src/weapons.js?v=blackout-operator-objectives-05";
-import {Gadgets} from "./src/gadgets.js?v=blackout-operator-objectives-05";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-operator-objectives-05";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-operator-objectives-05";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-operator-objectives-05";
+import {buildRange} from "./src/world.js?v=blackout-audio-plant-defuser-06";
+import {FirstPersonController} from "./src/player.js?v=blackout-audio-plant-defuser-06";
+import {Weapons} from "./src/weapons.js?v=blackout-audio-plant-defuser-06";
+import {Gadgets} from "./src/gadgets.js?v=blackout-audio-plant-defuser-06";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-audio-plant-defuser-06";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-audio-plant-defuser-06";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-audio-plant-defuser-06";
 import {GameAudio} from "./src/audio.js?v=blackout-audio-plant-defuser-06";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
