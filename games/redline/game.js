@@ -10423,30 +10423,28 @@ function buildWorld() {
             nevadaSystem=null;
         }
     }
-    // Four true paved side corridors, following Nevada's road-grade and
-    // sharing regular tire physics. None skip mandatory checkpoints.
+    // Nevada V22.5: EXACTLY the same points and widths as the visible
+    // side pavement in nevada-run.js. No second math implementation that
+    // can put tires above/below the rendered surface or break the exits.
     if(activeTrackId==="canyon"&&nevadaSystem){
         for(const route of nevadaSystem.shortcuts){
-            const steps=18;
-            for(let k=0;k<steps;k++){
-                const t0=route.from+(route.to-route.from)*k/steps;
-                const t1=route.from+(route.to-route.from)*(k+1)/steps;
-                const a=getFrameAt(t0),b=getFrameAt(t1);
-                const o0=route.offset*Math.sin(Math.PI*k/steps);
-                const o1=route.offset*Math.sin(Math.PI*(k+1)/steps);
-                const p=a.point.clone().addScaledVector(a.normal,o0);
-                const q=b.point.clone().addScaledVector(b.normal,o1);
-                p.y=nevadaSystem.roadsideHeight(a,o0)+.25;
-                q.y=nevadaSystem.roadsideHeight(b,o1)+.25;
-                const startHeight=p.y,endHeight=q.y;
+            const nodes=route.samples;
+            if(!nodes||nodes.length<2)continue;
+            for(let k=0;k<nodes.length-1;k++){
+                const a=nodes[k],b=nodes[k+1];
+                const p=a.center,q=b.center;
                 const axis=q.clone().sub(p).setY(0);
                 if(axis.lengthSq()<.05)continue;
-                const tangent=axis.clone().normalize(),normal=
-                    new THREE.Vector3(-tangent.z,0,tangent.x);
-                const center=p.add(q).multiplyScalar(.5);
-                surfaceZones.push({center,tangent,normal,
-                    startHeight,endHeight,segmentLength:axis.length(),
-                    halfLength:axis.length()*.5+1.6,halfWidth:4.1});
+                const tangent=axis.clone().normalize();
+                const normal=new THREE.Vector3(-tangent.z,0,tangent.x);
+                const center=p.clone().add(q).multiplyScalar(.5);
+                surfaceZones.push({
+                    center,tangent,normal,
+                    startHeight:p.y+.012,endHeight:q.y+.012,
+                    segmentLength:axis.length(),
+                    halfLength:axis.length()*.5+.40,
+                    halfWidth:Math.min(a.width,b.width)+.10
+                });
             }
         }
     }
