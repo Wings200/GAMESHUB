@@ -231,8 +231,11 @@ export function createNevadaWorld({
      for(let j=0;j<strips.length;j++){
        const off=side*strips[j];
        const y=roadsideHeight(frame,off);
-       v.push(p.x+normal.x*off,y,p.z+normal.z*off);
-       uv.push(i/n*115,Math.abs(off)/16);
+       const px=p.x+normal.x*off,pz=p.z+normal.z*off;
+       v.push(px,y,pz);
+       // Match the world-position UV scale and orientation of the valley
+       // floor to eliminate jittery over-repeated gravel on bank slopes.
+       uv.push(.5+px/3500,.5-pz/3000);
        col.setHex(j<2?0x93704e:j===2?0xa27b53:0x99724b);
        const tone=.90+seeded(i*5+j+7)*.18;
        rgb.push(col.r*tone,col.g*tone,col.b*tone);
