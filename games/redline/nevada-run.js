@@ -291,9 +291,9 @@ export function createNevadaWorld({
  // 3D tunnel structure and drainage shortcuts with real drivable pavement.
  const shortcutLabels=[
   [.395,.420,-10,"DRAINAGE CHANNEL"],
-  [.52,.548,-12,"RESTRICTED SERVICE TUNNEL"],
+  [.52,.548,-18,"RESTRICTED SERVICE TUNNEL"],
   [.69,.722,10,"HANGAR MAINTENANCE"],
-  [.834,.858,-11,"RIDGE CAVE PASSAGE"]
+  [.834,.858,-18,"RIDGE CAVE PASSAGE"]
  ];
  const shortcuts=[];
  for(const [from,to,offset,name] of shortcutLabels){
@@ -444,7 +444,7 @@ export function createNevadaWorld({
   // use the same Worker raceStartAt, so their twilight stage is identical.
   const passed=Number.isFinite(raceStartAt)?
    Math.max(0,nowMs-raceStartAt):0;
-  const nightProgress=clamp(passed/240000,0,1);
+  const nightProgress=clamp(passed/145000,0,1);
   skyColor.copy(sunsetColor);
   if(nightProgress<.48)
    skyColor.lerp(eveningColor,nightProgress/.48);
