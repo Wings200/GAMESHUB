@@ -1,12 +1,12 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-audio-plant-defuser-06";
-import {FirstPersonController} from "./src/player.js?v=blackout-audio-plant-defuser-06";
-import {Weapons} from "./src/weapons.js?v=blackout-audio-plant-defuser-06";
-import {Gadgets} from "./src/gadgets.js?v=blackout-audio-plant-defuser-06";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-audio-plant-defuser-06";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-audio-plant-defuser-06";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-audio-plant-defuser-06";
-import {GameAudio} from "./src/audio.js?v=blackout-audio-plant-defuser-06";
+import {buildRange} from "./src/world.js?v=blackout-v07-facility-ai-weapons";
+import {FirstPersonController} from "./src/player.js?v=blackout-v07-facility-ai-weapons";
+import {Weapons} from "./src/weapons.js?v=blackout-v07-facility-ai-weapons";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v07-facility-ai-weapons";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v07-facility-ai-weapons";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v07-facility-ai-weapons";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v07-facility-ai-weapons";
+import {GameAudio} from "./src/audio.js?v=blackout-v07-facility-ai-weapons";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v07-facility-ai-weapons";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
@@ -145,7 +145,7 @@ function resetSimulation(){
   world.spawn.yaw=role==="defender"?Math.PI:0;
   player.setOperator(operator);player.reset();keys.clear();
   aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
-  hitUntil=0;popup("OBJECTIVE ROUND RESET · "+operator.name);
+  hitUntil=0;popup("OBJECTIVE ROUND RESET · "+operator.name+" · SITE "+objectiveRound.siteId);
   updateHud({sprinting:false,crouched:false,prone:false,lean:0,speed:0});
 }
 function chooseOperator(id){
@@ -162,7 +162,7 @@ function setRole(r){
   role=r==="defender"?"defender":"attacker";
   attackButton.classList.toggle("active",role==="attacker");
   defendButton.classList.toggle("active",role==="defender");
-  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE A":"DEFENDER · PROTECT SITE A";
+  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE "+objectiveRound.siteId:"DEFENDER · PROTECT SITE "+objectiveRound.siteId;
   operatorSelect.replaceChildren();
   for(const spec of operatorsForSide(role)){
     const option=document.createElement("option");option.value=spec.id;
@@ -180,6 +180,7 @@ reset.addEventListener("click",()=>{resetSimulation();status.textContent="All ta
 operatorSelect.addEventListener("change",()=>chooseOperator(operatorSelect.value));
 siteSelect.addEventListener("change",()=>{
   objectiveRound.chooseSite(siteSelect.value);resetSimulation();
+  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE "+objectiveRound.siteId:"DEFENDER · PROTECT SITE "+objectiveRound.siteId;
   status.textContent="SITE "+objectiveRound.siteId+" · "+objectiveRound.site.name+" SELECTED";
 });
 mouseSlider.addEventListener("input",()=>{mouseValue.textContent=Number(mouseSlider.value).toFixed(1)+"×";});
@@ -440,6 +441,7 @@ window.BLACKOUT_DEV={
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
   get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
   get dynamicColliders(){return world.colliders.length},
+  get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
   get sight(){return sight},
   get reinforcing(){return gadgets.busy},
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
