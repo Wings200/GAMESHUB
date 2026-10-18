@@ -211,16 +211,29 @@ export function createNevadaWorld({
   }
   return true;
  };
- // Suppress embankment triangles that would project onto a distinct road
- // section at a switchback. Valley ground still fills the space below.
+ // Acceleration grid for terrain-road intersection checks. Repeating a
+ // linear 900-sample scan for every embankment quad caused map-load pauses,
+ // especially on Chromebooks. Only nearby 28m cells can overlap a face.
+ const roadCell=28,roadBins=new Map();
+ const roadBinKey=(x,z)=>x+","+z;
+ for(let i=0;i<n;i+=2){
+  const p=trackSamples[i].point;
+  const key=roadBinKey(Math.floor(p.x/roadCell),Math.floor(p.z/roadCell));
+  if(!roadBins.has(key))roadBins.set(key,[]);
+  roadBins.get(key).push(i);
+ }
  const bankWouldCoverRoad=(x,z,y,index)=>{
-  const d=roadHalf+2;
-  for(let k=0;k<n;k+=2){
-   const gap=Math.abs(k-index);
-   if(Math.min(gap,n-gap)<10)continue;
-   const q=trackSamples[k].point,dx=x-q.x,dz=z-q.z;
-   if(Math.abs(dx)>d||Math.abs(dz)>d)continue;
-   if(dx*dx+dz*dz<d*d&&y>=q.y-2.5)return true;
+  const d=roadHalf+2,cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
+  for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
+   const candidates=roadBins.get(roadBinKey(gx,gz));
+   if(!candidates)continue;
+   for(const k of candidates){
+    const gap=Math.abs(k-index);
+    if(Math.min(gap,n-gap)<10)continue;
+    const q=trackSamples[k].point,dx=x-q.x,dz=z-q.z;
+    if(Math.abs(dx)>d||Math.abs(dz)>d)continue;
+    if(dx*dx+dz*dz<d*d&&y>=q.y-2.5)return true;
+   }
   }
   return false;
  };
