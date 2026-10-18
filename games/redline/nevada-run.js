@@ -595,13 +595,35 @@ export function createNevadaWorld({
   h.bar=shape(THREE,g,"box",0,9.2,0,6.4,5.4,1.1,0x61645f);
   for(let x=-2.5;x<=2.5;x+=1)shape(THREE,h.bar,"box",x,0,.58,.24,4.1,.07,0xe8bf59);
  }
+ // Readable fifteen-meter sand funnels, not tiny transparent spheres.
+ // The physical gust radius matches the visible cloud footprint.
+ const dustConeGeo=new THREE.CylinderGeometry(.65,5.7,16,24,8,true);
+ const dustConeInnerGeo=new THREE.CylinderGeometry(.35,3.3,15,20,6,true);
+ const dustPuffGeo=new THREE.SphereGeometry(.70,7,5);
+ const dustPuffMat=new THREE.MeshBasicMaterial({
+  color:0xd5b48a,transparent:true,opacity:.27,depthWrite:false,
+  side:THREE.DoubleSide
+ });
  for(let j=0;j<3;j++){
-  const h=hazardGroup("dust",.35+j*.065,j%2?-2.2:2.2,4.7,14+j*3,j*.4);
-  for(let i=0;i<22;i++){
-   const phase=i/22*TWO_PI;
-   const puff=shape(THREE,h.mesh,"sphere",Math.cos(phase)*2.2,.3+i*.20,
-    Math.sin(phase)*2.2,.45,.5,.6,0xbf9c70);
-   puff.material.transparent=true;puff.material.opacity=.36;
+  const h=hazardGroup("dust",.35+j*.065,j%2?-2.2:2.2,
+   10.8,12+j*3,j*.4);
+  const g=h.mesh;
+  const shell=new THREE.Mesh(dustConeGeo,new THREE.MeshBasicMaterial({
+   color:0xc8a67e,transparent:true,opacity:.27,depthWrite:false,
+   side:THREE.DoubleSide
+  }));
+  shell.position.y=8.3;g.add(shell);h.shell=shell;
+  const inner=new THREE.Mesh(dustConeInnerGeo,new THREE.MeshBasicMaterial({
+   color:0x907056,transparent:true,opacity:.18,depthWrite:false,
+   side:THREE.DoubleSide
+  }));
+  inner.position.y=7.9;g.add(inner);h.inner=inner;
+  h.puffs=[];
+  for(let i=0;i<48;i++){
+   const puff=new THREE.Mesh(dustPuffGeo,dustPuffMat);
+   puff.scale.set(.75+seeded(i+j*70)*1.7,
+    .55+seeded(i+j*34)*1.15,.75+seeded(i+j*70)*1.7);
+   g.add(puff);h.puffs.push(puff);
   }
  }
  for(let j=0;j<2;j++){
@@ -697,7 +719,17 @@ export function createNevadaWorld({
        part.material.emissive?.setHex?.(0xff2417);
     });
    }else if(h.type==="dust"){
-    h.mesh.rotation.y=sec*1.7+h.phase;
+    h.mesh.rotation.y=sec*.20+h.phase;
+    h.shell.rotation.y=-sec*1.8;
+    h.inner.rotation.y=sec*2.6;
+    h.shell.material.opacity=.25+.05*Math.sin(sec*1.8+h.phase);
+    h.puffs.forEach((p,i)=>{
+     const rise=((sec*.17+i/48+h.phase)%1+1)%1;
+     const a=i*2.39996+sec*(2.9-rise*1.2)+h.phase;
+     const radius=1.2+rise*4.4+seeded(i+h.phase*10)*1.1;
+     p.position.set(Math.cos(a)*radius, .4+rise*15.8,
+      Math.sin(a)*radius);
+    });
    }else if(h.type==="aircraft"){
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
     h.mesh.rotation.y+=.08*Math.sin(sec*.45);
@@ -731,11 +763,25 @@ export function createNevadaWorld({
     dist<h.radius+1.0;
    if(!blocked||Math.abs(car.position.y-f.point.y)>3.2)continue;
    if(h.type==="dust"){
-    // Sustained side gust: forces real countersteer instead of a popup only.
-    carState.velocity.x+=n.x*3.2*delta;
-    carState.velocity.z+=n.z*3.2*delta;
-    carState.cameraShake=Math.max(carState.cameraShake,.24);
-    if(sec-h.lastImpact>2.2){popup?.("CROSSWIND · COUNTERSTEER",600);h.lastImpact=sec;}
+    // Vortex force is independent of RPM/accelerator, and the wake stays
+    // slippery briefly after exiting. A 180 mph pass now gets a meaningful
+    // sideways velocity change instead of the previous invisible 3.2m/s².
+    const reach=h.radius+1,weight=clamp((reach-dist)/reach,.20,1);
+    const inv=1/Math.max(1,dist);
+    const circulation=h.phase%1>.5?-1:1;
+    const tx=-dz*inv*circulation,tz=dx*inv*circulation;
+    const wind=weight*delta;
+    carState.velocity.x+=(tx*39+dx*inv*12+n.x*9)*wind;
+    carState.velocity.z+=(tz*39+dz*inv*12+n.z*9)*wind;
+    if(!carState.airborne)car.rotation.y+=
+     (tx*n.x+tz*n.z)*.52*wind;
+    carState.nevadaDustGripTimer=Math.max(
+     carState.nevadaDustGripTimer||0,.85);
+    carState.cameraShake=Math.max(carState.cameraShake,.38+weight*.36);
+    if(sec-h.lastImpact>1.65){
+     popup?.("DUST DEVIL · STRONG CROSSWIND · LOW GRIP",1050);
+     h.lastImpact=sec;
+    }
     continue;
    }
    let normal;
