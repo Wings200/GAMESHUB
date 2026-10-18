@@ -6249,9 +6249,10 @@ function neonRailIntrudesOnRoad(a, b, height) {
 function buildBarriers() {
     barriers = [];
     const barrierMaterial = material(
-        activeTrackId === "arctic" ? 0xd7e4ec : 0x697688,
-        0.62,
-        0.35
+        activeTrackId === "arctic" ? 0xd7e4ec :
+        activeTrackId === "canyon" ? 0xa39b8a : 0x697688,
+        activeTrackId==="canyon"? .82:.62,
+        activeTrackId==="canyon"? .18:.35
     );
     for (const section of barrierSections) {
         for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
@@ -6283,15 +6284,35 @@ function buildBarriers() {
             const segment = b.clone().sub(a);
             const horizontalLength = Math.hypot(segment.x, segment.z);
             const rail = new THREE.Mesh(
-                new THREE.BoxGeometry(0.28, 0.80, segment.length()),
+                new THREE.BoxGeometry(
+                    activeTrackId==="canyon"?.24:.28,
+                    activeTrackId==="canyon"?.36:.80,
+                    segment.length()),
                 barrierMaterial
             );
             rail.position.copy(midpoint);
-            rail.position.y = barrierY + 0.45;
+            rail.position.y = barrierY + (activeTrackId==="canyon"?.89:.45);
             rail.rotation.order = "YXZ";
             rail.rotation.y = Math.atan2(segment.x, segment.z);
             rail.rotation.x = -Math.atan2(segment.y, horizontalLength);
             worldGroup.add(rail);
+            if(activeTrackId==="canyon"){
+                // Physical shoulder barrier and high-visibility galvanized
+                // guardrail. Sparse posts avoid a wall of untextured blue.
+                const post = new THREE.Mesh(
+                    new THREE.BoxGeometry(.27,1.28,.27),barrierMaterial);
+                post.position.copy(a);
+                post.position.y=a.y+.58;
+                worldGroup.add(post);
+                if(i%12===0){
+                    const reflector=new THREE.Mesh(
+                        new THREE.BoxGeometry(.075,.20,.48),
+                        new THREE.MeshBasicMaterial({color:0xffd58a}));
+                    reflector.position.copy(a);
+                    reflector.position.y=a.y+1.07;
+                    worldGroup.add(reflector);
+                }
+            }
 
             barriers.push({
                 a: new THREE.Vector2(a.x, a.z),
@@ -9712,7 +9733,8 @@ function updatePhysics(delta) {
             delta
         );
 
-    if (activeTrackId === "neon" && !carState.airborne) {
+    if ((activeTrackId === "neon"||activeTrackId==="canyon") &&
+        !carState.airborne) {
         const surfaceY = neonSurfaceHeight(car.position);
         if (car.position.y > surfaceY + .95) {
             // A car driving off the bridge must fall under gravity.
