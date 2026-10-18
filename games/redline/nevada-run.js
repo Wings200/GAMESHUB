@@ -38,8 +38,8 @@ export const NEVADA_TRACK=Object.freeze({
   ],
   ramps:[
     {t:.215,offset:-1.4,strength:5.2,secret:false},
-    {t:.51,offset:-5.6,strength:8.6,secret:true,
-      targetT:.533,landingLead:6,shortcutSpeed:76,minSpeed:26},
+    {t:.536,offset:-5.6,strength:8.6,secret:true,
+      targetT:.558,landingLead:6,shortcutSpeed:76,minSpeed:26},
     {t:.735,offset:5.7,strength:8.7,secret:true,
       targetT:.756,landingLead:5,shortcutSpeed:78,minSpeed:27},
     {t:.91,offset:-1.4,strength:4.4,secret:false}
@@ -291,8 +291,8 @@ export function createNevadaWorld({
  // 3D tunnel structure and drainage shortcuts with real drivable pavement.
  const shortcutLabels=[
   [.395,.420,-10,"DRAINAGE CHANNEL"],
-  [.52,.548,-18,"RESTRICTED SERVICE TUNNEL"],
-  [.69,.722,10,"HANGAR MAINTENANCE"],
+  [.532,.562,-18,"RESTRICTED SERVICE TUNNEL"],
+  [.688,.712,10,"HANGAR MAINTENANCE"],
   [.834,.858,-18,"RIDGE CAVE PASSAGE"]
  ];
  const shortcuts=[];
