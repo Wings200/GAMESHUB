@@ -217,7 +217,7 @@ export function createNevadaWorld({
   const d=roadHalf+2;
   for(let k=0;k<n;k+=2){
    const gap=Math.abs(k-index);
-   if(Math.min(gap,n-gap)<21)continue;
+   if(Math.min(gap,n-gap)<10)continue;
    const q=trackSamples[k].point,dx=x-q.x,dz=z-q.z;
    if(Math.abs(dx)>d||Math.abs(dz)>d)continue;
    if(dx*dx+dz*dz<d*d&&y>=q.y-2.5)return true;
@@ -246,7 +246,7 @@ export function createNevadaWorld({
       const x=(v[a*3]+v[(b+1)*3])*.5;
       const y=(v[a*3+1]+v[(b+1)*3+1])*.5;
       const z=(v[a*3+2]+v[(b+1)*3+2])*.5;
-      const hits=[a+1,b+1].some(q=>
+      const hits=[a,b,a+1,b+1].some(q=>
        bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n));
       if(hits||bankWouldCoverRoad(x,z,y,i%n))continue;
       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
