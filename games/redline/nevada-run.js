@@ -399,6 +399,7 @@ export function createNevadaWorld({
    const taper=Math.sin(Math.PI*k/steps);
    const side=offset*taper;
    const c=f.point.clone().addScaledVector(f.normal,side);
+   c.y=roadsideHeight(f,side)+.24;
    for(const w of [-3.6,3.6]){
     vertices.push(c.x+f.normal.x*w,c.y+.10,c.z+f.normal.z*w);
     uvs.push(w>0?1:0,k/3);
@@ -688,5 +689,5 @@ export function createNevadaWorld({
  }
  // worldGroup's normal disposer owns all geometries and materials; do not
  // detach the root before it has traversed and released their resources.
- return {update,hazards,shortcuts,stats:active,dispose(){}};
+ return {update,hazards,shortcuts,roadsideHeight,stats:active,dispose(){}};
 }
