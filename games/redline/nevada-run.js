@@ -254,6 +254,9 @@ export function createNevadaWorld({
   mountain.rotation.y=seeded(i+50)*TWO_PI;
   mountain.scale.z=.65+seeded(i+6);
   root.add(mountain);
+  addCircleCollider(mountain.position,radius*.63,{
+   minY:-6,maxY:h+6,drag:.28,bounce:.06,tag:"SANDSTONE MESA"
+  });
  }
  // Dark lakebed fractures and a salt-crust drainage field. These patches
  // visibly match the reduced-grip zone in the car physics (t=.325-.485).
@@ -344,6 +347,13 @@ export function createNevadaWorld({
      const lamp=shape(THREE,runway,"box",side*14.2,.20,i*11,.28,.23,.55,0xffd9a1);
      lamp.material.emissive=new THREE.Color(0xffbd74);
      lamp.material.emissiveIntensity=.45;
+     const yaw=runway.rotation.y,cx=side*14.2,cz=i*11;
+     const px=runway.position.x+cx*Math.cos(yaw)+cz*Math.sin(yaw);
+     const pz=runway.position.z-cx*Math.sin(yaw)+cz*Math.cos(yaw);
+     addCircleCollider({x:px,z:pz},.25,{
+      minY:runway.position.y-.3,maxY:runway.position.y+1.2,
+      tag:"RUNWAY EDGE LIGHT",drag:.75
+     });
    }
  }
  for(const side of [-1,1])
@@ -758,9 +768,22 @@ export function createNevadaWorld({
     }
    }
    // Include car width and prevent fast cars skipping a 1-frame barrier.
+   // Swept disk prevents moving aircraft, tankers and thin scrap
+   // jumping between frames at 150–200 mph.
+   let sweptCircle=false,hitNormalX=dx,hitNormalZ=dz;
+   if(!isBarrier&&sweptCar){
+    const ox=sweptCar.x-h.mesh.position.x,oz=sweptCar.z-h.mesh.position.z;
+    const vx=dx-ox,vz=dz-oz,len=vx*vx+vz*vz;
+    const t=len>1e-8?clamp(-(ox*vx+oz*vz)/len,0,1):0;
+    const px=ox+vx*t,pz=oz+vz*t;
+    sweptCircle=px*px+pz*pz<(h.radius+1)*(h.radius+1);
+    if(sweptCircle&&dist>h.radius+1){
+     hitNormalX=ox;hitNormalZ=oz;
+    }
+   }
    const blocked=isBarrier?
     (Math.abs(across)<3.75&&Math.abs(along)<2.45)||crossedBarrier:
-    dist<h.radius+1.0;
+    dist<h.radius+1.0||sweptCircle;
    if(!blocked||Math.abs(car.position.y-f.point.y)>3.2)continue;
    if(h.type==="dust"){
     // Vortex force is independent of RPM/accelerator, and the wake stays
@@ -791,9 +814,12 @@ export function createNevadaWorld({
     normal=f.tangent.clone().setY(0).normalize().multiplyScalar(side);
     car.position.addScaledVector(f.tangent,side*2.5-along);
    }else{
-    normal=new THREE.Vector3(dx/Math.max(.001,dist),0,
-     dz/Math.max(.001,dist));
-    car.position.addScaledVector(normal,Math.max(0,h.radius+1.1-dist));
+    const hitDist=Math.max(.001,Math.hypot(hitNormalX,hitNormalZ));
+    normal=new THREE.Vector3(hitNormalX/hitDist,0,hitNormalZ/hitDist);
+    if(sweptCircle&&dist>h.radius+1)
+     car.position.copy(sweptCar);
+    else car.position.addScaledVector(normal,
+     Math.max(0,h.radius+1.1-dist));
    }
    const into=carState.velocity.dot(normal);
    if(into<0)carState.velocity.addScaledVector(normal,-into);
