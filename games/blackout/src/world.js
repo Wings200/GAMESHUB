@@ -179,6 +179,8 @@ export function buildRange(THREE,scene){
   }
   // Aligned with target lanes behind them so through-holes are testable.
   makePanel(-12,-29);makePanel(12,-29);
+  // Two destructible/reinforceable partitions INSIDE the facility.
+  makePanel(0,-37);makePanel(-5,-39);
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
