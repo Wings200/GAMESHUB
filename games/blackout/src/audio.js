@@ -39,7 +39,7 @@ export class GameAudio{
     const c=this.ctx,t=c.currentTime+delay,o=c.createOscillator();
     o.type=type;o.frequency.setValueAtTime(hz,t);
     if(endHz!==hz)o.frequency.exponentialRampToValueAtTime(Math.max(20,endHz),t+seconds);
-    this.envelope(o,t,level,t+seconds,.002);
+    this.envelope(o,t,level,seconds,.002);
     o.start(t);o.stop(t+seconds+.01);
   }
   noise(seconds,level,frequency=2200,mode="bandpass",delay=0,attack=.002){
@@ -48,7 +48,7 @@ export class GameAudio{
     const source=c.createBufferSource();source.buffer=this.noiseBuffer;
     const filter=c.createBiquadFilter();filter.type=mode;
     filter.frequency.value=frequency;filter.Q.value=mode==="bandpass"?.65:.7;
-    source.connect(filter);this.envelope(filter,t,level,t+seconds,attack);
+    source.connect(filter);this.envelope(filter,t,level,seconds,attack);
     source.start(t,Math.random()*.16);source.stop(t+seconds+.012);
   }
   gun(secondary=false){
