@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
-import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=21-2";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-final-21-3";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
@@ -17,7 +17,7 @@ import { buildArcticV4Scenery } from "./arctic-v4-scenery.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
 import { createRemoteMotion } from "./multiplayer-smoothing.js";
 import {sampleGhost,ghostTimeAtProgress,TRIAL_MAX_SAMPLES,trialTimeLabel}
-    from "./time-trial-core.js?v=20-1";
+    from "./time-trial-core.js?v=nevada-21-1";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
