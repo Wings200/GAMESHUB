@@ -1,190 +1,295 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import { buildAnnex } from "./src/world.js?v=blackout-v01-corrected-controls-2";
-import { FirstPersonController } from "./src/player.js?v=blackout-v01-corrected-controls-2";
+import {buildRange} from "./src/world.js?v=flat-lab-02";
+import {FirstPersonController} from "./src/player.js?v=flat-lab-02";
+import {Weapons} from "./src/weapons.js?v=flat-lab-02";
+import {Gadgets} from "./src/gadgets.js?v=flat-lab-02";
 
-// Stage 1 intentionally has no weapon or multiplayer. REDLINE stays isolated.
+// BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
 const canvas=$("view"),menu=$("menu"),hud=$("gameHUD"),start=$("start"),reset=$("reset");
 const status=$("status"),zoneLabel=$("zoneLabel"),objective=$("objective");
 const stateReadout=$("stateReadout"),fpsReadout=$("fpsReadout"),debugPanel=$("debugPanel");
-const positionReadout=$("positionReadout"),toast=$("toast");
-const minimap=$("minimap"),ctx=minimap.getContext("2d");
+const positionReadout=$("positionReadout"),toast=$("toast"),hitmark=$("hitmark");
+const weaponName=$("weaponName"),ammoCount=$("ammoCount"),reserveCount=$("reserveCount");
+const combatStats=$("combatStats"),gadgetPrimary=$("gadgetPrimary"),gadgetSecondary=$("gadgetSecondary");
+const gadgetInteract=$("gadgetInteract"),hudRole=$("hudRole"),selectedMode=$("selectedMode");
+const rangeInfo=$("rangeInfo"),walkSlider=$("walkSlider"),sprintSlider=$("sprintSlider");
+const mouseSlider=$("mouseSlider"),walkValue=$("walkValue"),sprintValue=$("sprintValue"),mouseValue=$("mouseValue");
+const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
+let role="attacker";
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.24;
-renderer.setClearColor(0x080e17,1);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.23;
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(79,1,.055,120);
-const world=buildAnnex(THREE,scene);
+const camera=new THREE.PerspectiveCamera(80,1,.045,360);scene.add(camera);
+const world=buildRange(THREE,scene);
 const player=new FirstPersonController(THREE,world,camera);
-const keys=new Set(),zones=new Set();
+const weapons=new Weapons();
+const gadgets=new Gadgets(THREE,world,scene);
+const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
-let debug=false,frames=0,frameTime=0,reportedFPS=0,last=performance.now(),time=0;
-let completed=false,toastUntil=0,hadStarted=false;
-let pointerLocked=false;
+let last=performance.now(),frames=0,elapsed=0,fps=0;
+let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
+let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
+let audioContext=null,noiseBuffer=null;
+const clock=()=>performance.now();
 
 function resize(){
-  const w=window.innerWidth,h=window.innerHeight;
-  renderer.setSize(w,h,false);
-  camera.aspect=w/Math.max(1,h);
-  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight,false);
+  camera.aspect=window.innerWidth/Math.max(1,window.innerHeight);camera.updateProjectionMatrix();
 }
 window.addEventListener("resize",resize);resize();
 
-function notice(message){status.textContent=message;}
-function showToast(message,seconds=3){
-  toast.textContent=message;
-  toast.classList.add("shown");
-  toastUntil=performance.now()+seconds*1000;
+const gunModel=new THREE.Group();camera.add(gunModel);
+const mat=(c,metalness=.3)=>new THREE.MeshStandardMaterial({color:c,metalness,roughness:.55});
+const parts=[
+  [0,-.015,-.2,.16,.17,.65,0x303f4a],
+  [0,-.08,-.43,.10,.10,.63,0x202c34],
+  [0,-.13,-.04,.12,.25,.13,0x1a262c],
+  [0,.085,-.26,.16,.07,.13,0x131f29],
+  [0,.15,-.26,.042,.09,.07,0x75e6dd],
+  [0,-.02,-.82,.062,.063,.29,0x697780],
+  [0,-.11,.15,.21,.10,.33,0x323a48],
+  [.125,.045,-.35,.045,.09,.37,0x667887]
+];
+for(const [x,y,z,w,h,d,color] of parts){
+  const piece=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
+  piece.position.set(x,y,z);gunModel.add(piece);
+}
+const muzzle=new THREE.PointLight(0xffb666,0,4,2);muzzle.position.set(0,-.02,-.95);
+gunModel.add(muzzle);
+const muzzleSprite=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),
+  new THREE.MeshBasicMaterial({color:0xffdf8a,transparent:true,opacity:.9}));
+muzzleSprite.position.copy(muzzle.position);gunModel.add(muzzleSprite);muzzleSprite.visible=false;
+gunModel.position.set(.42,-.36,-.77);
+
+function audioReady(){
+  try {
+    if(!audioContext){
+      const C=window.AudioContext||window.webkitAudioContext;
+      if(!C)return;
+      audioContext=new C();
+      const frames=Math.floor(audioContext.sampleRate*.14);
+      noiseBuffer=audioContext.createBuffer(1,frames,audioContext.sampleRate);
+      const buf=noiseBuffer.getChannelData(0);
+      for(let i=0;i<frames;i++)buf[i]=(Math.random()*2-1)*Math.exp(-i/frames*6);
+    }
+    if(audioContext.state==="suspended")audioContext.resume().catch(()=>{});
+  }catch{}
+}
+function sound(type="fire"){
+  if(!audioContext||!noiseBuffer||audioContext.state!=="running")return;
+  const t=audioContext.currentTime;
+  const gain=audioContext.createGain(),filter=audioContext.createBiquadFilter();
+  gain.gain.setValueAtTime(type==="fire"?.16:.07,t);
+  gain.gain.exponentialRampToValueAtTime(.0001,t+(type==="fire"?.115:.085));
+  filter.type="lowpass";filter.frequency.value=type==="fire"?1800:1100;
+  const source=audioContext.createBufferSource();source.buffer=noiseBuffer;
+  source.connect(filter);filter.connect(gain);gain.connect(audioContext.destination);
+  source.start(t);source.stop(t+(type==="fire"?.13:.08));
+  if(type==="fire"){
+    const osc=audioContext.createOscillator(),bass=audioContext.createGain();
+    osc.type="triangle";osc.frequency.setValueAtTime(128,t);
+    osc.frequency.exponentialRampToValueAtTime(52,t+.09);
+    bass.gain.setValueAtTime(.10,t);bass.gain.exponentialRampToValueAtTime(.0001,t+.095);
+    osc.connect(bass);bass.connect(audioContext.destination);osc.start(t);osc.stop(t+.10);
+  }
+}
+function popup(message,seconds=2.6){
+  toast.textContent=message;toast.classList.add("shown");toastUntil=clock()+seconds*1000;
 }
 function showMenu(){
-  pointerLocked=false;keys.clear();document.body.classList.remove("playing");
-  hud.classList.add("hidden");
+  locked=false;keys.clear();fireHeld=false;ads=false;
+  document.body.classList.remove("playing");hud.classList.add("hidden");
   menu.classList.remove("hidden");
-  if(hadStarted){start.innerHTML="RESUME TRAINING <span>→</span>";notice("Simulation paused · click RESUME TRAINING to continue.");}
+  if(started){start.textContent="RESUME TESTING";status.textContent="Training paused · select a role or resume.";}
 }
 function showGame(){
-  pointerLocked=true;hadStarted=true;
-  menu.classList.add("hidden");
-  hud.classList.remove("hidden");
+  locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
   document.body.classList.add("playing");
-  showToast("TRAINING ACTIVE · EXPLORE ALL 4 ZONES");
+  popup("FLAT LAB ONLINE · MOVEMENT + WEAPONS + GADGETS",3.6);
 }
 async function lockMouse(){
-  try {
-    await canvas.requestPointerLock();
-    if(document.pointerLockElement!==canvas)notice("Pointer lock was not granted. Click ENTER TRAINING again.");
-  }catch(err){notice("Mouse lock unavailable: "+String(err?.message||err));}
+  audioReady();
+  try {await canvas.requestPointerLock();}
+  catch(error){status.textContent="Mouse lock unavailable: "+String(error?.message||error);}
 }
 start.addEventListener("click",lockMouse);
-reset.addEventListener("click",()=>{
-  player.reset();zones.clear();completed=false;
-  notice("Position and training progress reset.");
-});
 document.addEventListener("pointerlockchange",()=>{
-  if(document.pointerLockElement===canvas)showGame();
-  else showMenu();
+  if(document.pointerLockElement===canvas)showGame();else showMenu();
 });
-document.addEventListener("pointerlockerror",()=>{
-  notice("Browser blocked pointer lock. Allow mouse access for this tab.");
+document.addEventListener("pointerlockerror",()=>{status.textContent="Browser blocked pointer lock. Try clicking ENTER TEST RANGE again.";});
+window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
+  if(document.pointerLockElement===canvas)document.exitPointerLock();});
+
+function resetSimulation(){
+  world.reset();gadgets.reset(role);weapons.reset();player.reset();keys.clear();
+  hitUntil=0;popup("SIMULATION RESET");
+  updateHud({sprinting:false,crouched:false,prone:false,lean:0,speed:0});
+}
+function setRole(r){
+  role=r==="defender"?"defender":"attacker";
+  attackButton.classList.toggle("active",role==="attacker");
+  defendButton.classList.toggle("active",role==="defender");
+  selectedMode.textContent=(role==="attacker"?"ATTACKER":"DEFENDER")+" MECHANICS";
+  resetSimulation();
+  status.textContent=(role==="attacker"?"Attacker: plant breach charges (G) and pulse scan (X).":
+    "Defender: place shields (G), sensors (X), reinforce panels (F).");
+}
+attackButton.addEventListener("click",()=>setRole("attacker"));
+defendButton.addEventListener("click",()=>setRole("defender"));
+reset.addEventListener("click",()=>{resetSimulation();status.textContent="All targets and ammo reset.";});
+for(const [el,target,key] of [[walkSlider,walkValue,"walk"],[sprintSlider,sprintValue,"sprint"]]){
+  el.addEventListener("input",()=>{
+    player.speeds[key]=Number(el.value);
+    target.textContent=Number(el.value).toFixed(1)+" m/s";
+  });
+}
+mouseSlider.addEventListener("input",()=>{mouseValue.textContent=Number(mouseSlider.value).toFixed(1)+"×";});
+$("guideToggle").addEventListener("click",()=>{menuGuide=!menuGuide;guide.classList.toggle("hidden",!menuGuide);});
+
+document.addEventListener("keydown",e=>{
+  if(e.code==="F3"){e.preventDefault();debug=!debug;debugPanel.classList.toggle("hidden",!debug);return;}
+  if(!locked)return;
+  if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
+      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","Digit1","Digit2","Space"].includes(e.code))
+    e.preventDefault();
+  keys.add(e.code);
+  if(e.repeat)return;
+  if(e.code==="Digit1"||e.code==="Digit2"){
+    weapons.equip(e.code==="Digit1"?"primary":"secondary");popup(weapons.current.name);
+  }else if(e.code==="KeyR"){
+    popup(weapons.reload(clock())?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
+  }else if(e.code==="KeyZ"){
+    player.toggleProne();
+  }else if(e.code==="KeyG"){
+    const r=gadgets.main(camera,player,clock());popup(r.message);if(r.ok)sound("click");
+  }else if(e.code==="KeyX"){
+    const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
+  }else if(e.code==="KeyF"){
+    const r=gadgets.interact(camera);popup(r.message);if(r.ok)sound("click");
+  }
 });
-window.addEventListener("blur",()=>{keys.clear();if(document.pointerLockElement===canvas)document.exitPointerLock();});
-document.addEventListener("keydown",event=>{
-  if(event.code==="F3"){
-    event.preventDefault();
-    debug=!debug;
-    debugPanel.classList.toggle("hidden",!debug);
-    debugRoot.visible=debug;
+document.addEventListener("keyup",e=>keys.delete(e.code));
+document.addEventListener("mousemove",e=>{
+  if(locked)player.look(e.movementX||0,e.movementY||0,.0022*Number(mouseSlider.value)*(ads?.65:1));
+});
+canvas.addEventListener("mousedown",e=>{
+  if(!locked)return;
+  audioReady();
+  if(e.button===0){fireHeld=true;fireOnce(clock());}
+  if(e.button===2)ads=true;
+});
+window.addEventListener("mouseup",e=>{if(e.button===0)fireHeld=false;if(e.button===2)ads=false;});
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+
+function impact(point,color=0xffc16c,size=.08){
+  const obj=new THREE.Mesh(new THREE.SphereGeometry(size,6,5),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:1}));
+  obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
+}
+function fireOnce(now){
+  const shot=weapons.tryFire(now,ads,!player.sprinting);
+  if(!shot.ok){
+    if(shot.why==="empty"&&now-lastEmptyClick>600){sound("click");lastEmptyClick=now;popup("MAGAZINE EMPTY · R TO RELOAD",1);}
     return;
   }
-  if(!pointerLocked)return;
-  if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft",
-      "ControlRight","KeyC","KeyQ","KeyE","Space"].includes(event.code))
-    event.preventDefault();
-  keys.add(event.code);
-});
-document.addEventListener("keyup",event=>keys.delete(event.code));
-document.addEventListener("mousemove",event=>{
-  if(pointerLocked)player.look(event.movementX||0,event.movementY||0);
-});
-canvas.addEventListener("mousedown",event=>{
-  if(pointerLocked&&event.button===2)event.preventDefault();
-});
-canvas.addEventListener("contextmenu",event=>event.preventDefault());
-
-for(const c of world.colliders) {
-  if(c.tag==="floor-base")continue;
-  const w=c.maxX-c.minX,h=c.maxY-c.minY,d=c.maxZ-c.minZ;
-  const mesh=new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)),
-    new THREE.LineBasicMaterial({color:c.tag==="wall"?0x75eae5:0xffbd66,transparent:true,opacity:.48,depthTest:false})
-  );
-  mesh.position.set((c.minX+c.maxX)/2,(c.minY+c.maxY)/2,(c.minZ+c.maxZ)/2);
-  debugRoot.add(mesh);
+  sound("fire");muzzleUntil=now+48;
+  // Spread offsets the center ray, not the player's movement direction.
+  const spread=shot.spread,aim={x:(Math.random()-.5)*spread*2,y:(Math.random()-.5)*spread*2};
+  raycaster.setFromCamera(aim,camera);raycaster.far=shot.range;
+  // Dead targets and breached panels should not continue intercepting shots.
+  const hits=raycaster.intersectObjects(world.shootables.filter(o=>{
+    const info=o.userData;if(info.kind==="panel")return !info.panel.destroyed;
+    if(info.kind==="target")return info.target.alive;
+    if(info.kind==="shield")return info.shield.group.parent!==null;
+    return true;
+  }),false);
+  if(hits.length){
+    const h=hits[0],info=h.object.userData;
+    if(info.kind==="target"){
+      const head=info.hitZone==="head";
+      const kill=info.target.damage(head?shot.headDamage:shot.damage);
+      weapons.registerHit(kill);
+      hitUntil=now+170;
+      popup(head?(kill?"HEADSHOT · TARGET DOWN":"HEADSHOT"):(kill?"TARGET DOWN":"TARGET HIT"),.7);
+      impact(h.point,head?0xf8e3a0:0x6dffe1,.11);
+    }else if(info.kind==="panel"){
+      const destroyed=info.panel.damage(shot.damage);
+      popup(info.panel.reinforced?"REINFORCED · NO PENETRATION":
+        destroyed?"PANEL DESTROYED":"SOFT PANEL HIT",.65);
+      impact(h.point,0xffa16a);
+    }else{
+      impact(h.point,info.kind==="shield"?0x8bf8ff:0xa4b6b7);
+      if(info.kind==="shield")popup("SHIELD BLOCKED SHOT",.65);
+    }
+  }
+  // Camera's positive pitch looks UP in Three.js; recoil is positive.
+  player.pitch=Math.min(1.37,player.pitch+shot.recoil*(ads?.7:1.25));
+  player.applyCamera();
 }
-debugRoot.visible=false;
-
-function drawMap(){
-  const w=minimap.width,h=minimap.height,pad=11;
-  const sx=(w-pad*2)/48,sz=(h-pad*2)/36;
-  const px=x=>pad+(x+24)*sx,pz=z=>pad+(z+18)*sz;
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle="#0b1a24";ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle="#2b4c59";ctx.lineWidth=1;
-  ctx.strokeRect(pad,pad,48*sx,36*sz);
-  ctx.fillStyle="#36596b";
-  for(const c of world.colliders) {
-    if(c.tag!=="wall"&&c.tag!=="range-backstop"&&c.tag!=="reinforced-glass")continue;
-    ctx.fillRect(px(c.minX),pz(c.minZ),Math.max(1,(c.maxX-c.minX)*sx),
-      Math.max(1,(c.maxZ-c.minZ)*sz));
-  }
-  ctx.fillStyle="#638b9a";
-  for(const c of world.colliders){
-    if(["supply-cover","equipment-table","locker","junction-cabinet"].includes(c.tag))
-      ctx.fillRect(px(c.minX),pz(c.minZ),(c.maxX-c.minX)*sx,(c.maxZ-c.minZ)*sz);
-  }
-  for(const [x,z] of [[-16,-8],[-16,9],[-.5,0],[15,0]]){
-    ctx.fillStyle="#43636d";
-    ctx.fillRect(px(x)-1,pz(z)-1,3,3);
-  }
-  const x=px(player.x),y=pz(player.z);
-  const dirX=-Math.sin(player.yaw),dirZ=-Math.cos(player.yaw);
-  ctx.fillStyle="#67f7ee";ctx.strokeStyle="#cdfcf7";ctx.lineWidth=1.6;
-  ctx.beginPath();ctx.moveTo(x+dirX*8,y+dirZ*8);
-  ctx.lineTo(x-dirZ*4-dirX*3,y+dirX*4-dirZ*3);
-  ctx.lineTo(x+dirZ*4-dirX*3,y-dirX*4-dirZ*3);
-  ctx.closePath();ctx.fill();ctx.stroke();
-}
-
-function updateHUD(report){
-  zoneLabel.textContent=report.room;
-  zones.add(report.room);
-  objective.textContent=String(zones.size).padStart(2,"0")+" / 04 ZONES";
-  stateReadout.textContent=report.crouched?"CROUCHED":report.sprinting?"SPRINTING":
-    Math.abs(report.lean)>.1?"LEANING":"STANDING";
-  fpsReadout.textContent=reportedFPS+" FPS";
+function updateHud(report){
+  zoneLabel.textContent="FLAT MECHANICS LAB";
+  objective.textContent=weapons.stats.kills+" / "+world.targets.length+" TARGETS";
+  stateReadout.textContent=report.prone?"PRONE":report.crouched?"CROUCHED":
+    report.sprinting?"SPRINTING":Math.abs(report.lean)>.12?"LEANING":"STANDING";
+  fpsReadout.textContent=fps+" FPS";
+  weaponName.textContent=weapons.current.name;
+  ammoCount.textContent=String(weapons.current.ammo).padStart(2,"0");
+  reserveCount.textContent="/ "+weapons.current.remaining;
+  combatStats.textContent=`${weapons.stats.hits} HITS · ${weapons.stats.accuracy}% ACC · ${weapons.stats.kills} DOWN`;
+  const detail=gadgets.details;
+  gadgetPrimary.textContent=`G · ${detail.g} [${gadgets.counts.g}]`;
+  gadgetSecondary.textContent=`X · ${detail.x} [${gadgets.counts.x}]`;
+  gadgetInteract.textContent=role==="defender"?`F · REINFORCE [${gadgets.counts.reinforce}]`:"F · INSPECT (DEFEND ONLY)";
+  hudRole.textContent=role.toUpperCase();
+  rangeInfo.textContent=report.speed.toFixed(1)+" m/s";
   if(debug){
-    positionReadout.textContent=
-      `X ${player.x.toFixed(2)}  Y ${player.y.toFixed(2)}  Z ${player.z.toFixed(2)}`+
-      `\nYaw ${player.yaw.toFixed(2)}  Colliders ${world.colliders.length}`+
-      `\nRoom: ${report.room}  Physics: local AABB capsule approximation`;
     positionReadout.style.whiteSpace="pre-line";
-  }
-  if(!completed&&zones.size===4){
-    completed=true;
-    showToast("TRAINING PASS · ALL FOUR AREAS EXPLORED",5);
+    positionReadout.textContent=`POS ${player.x.toFixed(2)}, ${player.y.toFixed(2)}, ${player.z.toFixed(2)}
+YAW ${player.yaw.toFixed(2)} / PITCH ${player.pitch.toFixed(2)}
+SPEED ${report.speed.toFixed(2)}m/s / ${stateReadout.textContent}
+DYNAMIC COLLIDERS ${world.colliders.length} / TARGETS ${world.targets.filter(t=>t.alive).length}`;
   }
 }
 function frame(now){
-  const realDt=Math.max(0,(now-last)/1000);
-  const dt=Math.min(realDt,.043);last=now;
-  // Physics is clamped after a stall; FPS still measures actual wall time.
-  frames++;frameTime+=realDt;
-  if(frameTime>=.55){
-    reportedFPS=Math.round(frames/frameTime);
-    frames=0;frameTime=0;
+  const actualDt=Math.max(0,(now-last)/1000),dt=Math.min(actualDt,.043);last=now;
+  frames++;elapsed+=actualDt;
+  if(elapsed>=.6){fps=Math.round(frames/elapsed);frames=0;elapsed=0;}
+  weapons.tick(now);
+  if(locked){
+    // ADS reduces the move speed by removing sprint; it does NOT
+    // toggle mouse-lock or turn the gun into a third-person camera.
+    const activeKeys=ads?new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
+    const report=player.update(dt,activeKeys);
+    if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
+    if(fireHeld&&(weapons.slot==="primary"))fireOnce(now);
+    gadgets.tick(now,player,popup);
+    updateHud(report);
   }
-  if(pointerLocked){
-    const report=player.update(dt,keys);
-    updateHUD(report);
+  if(toastUntil&&now>toastUntil){toastUntil=0;toast.classList.remove("shown");}
+  hitmark.classList.toggle("shown",now<hitUntil);
+  muzzle.intensity=now<muzzleUntil?2.5:0;muzzleSprite.visible=now<muzzleUntil;
+  aimBlend+=(Number(locked&&ads)-aimBlend)*Math.min(1,dt*13);
+  camera.fov=80-aimBlend*25;camera.updateProjectionMatrix();
+  gunModel.position.x+=( (aimBlend?.02:.42)-gunModel.position.x)*Math.min(1,dt*13);
+  gunModel.position.y+=((- .36+aimBlend*.16)-gunModel.position.y)*Math.min(1,dt*13);
+  gunModel.position.z+=((- .77+aimBlend*.16)-gunModel.position.z)*Math.min(1,dt*13);
+  gunModel.scale.setScalar(weapons.slot==="secondary"?.78:1);
+  for(let i=effects.length-1;i>=0;i--){
+    const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
   }
-  if(toastUntil&&now>toastUntil){
-    toast.classList.remove("shown");toastUntil=0;
-  }
-  drawMap();
-  renderer.render(scene,camera);
-  requestAnimationFrame(frame);
+  renderer.render(scene,camera);requestAnimationFrame(frame);
 }
-hud.classList.add("hidden");
-notice("Ready. Click ENTER TRAINING to test movement, collisions and leaning.");
-requestAnimationFrame(frame);
-// Diagnostics are deliberately read-only; never connected to user accounts.
-window.BLACKOUT_DEV={get position(){return [player.x,player.y,player.z]},
-  get currentRoom(){return world.zoneAt(player.x,player.z)},
-  get collisionCount(){return world.colliders.length},
-  get fps(){return reportedFPS},
-  get visibleZones(){return [...zones]},
-  get build(){return "0.1.0-first-contact"}
+setRole("attacker");
+hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
+function noticeReady(){status.textContent="Choose a role, adjust speeds, then enter the flat test range.";}
+window.BLACKOUT_DEV={
+  get build(){return "0.2.0-flat-lab"},
+  get role(){return role},get position(){return [player.x,player.y,player.z]},
+  get fps(){return fps},get weapon(){return {...weapons.current}},
+  get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
+  get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
+  get dynamicColliders(){return world.colliders.length}
 };
