@@ -86,6 +86,7 @@ export function buildFacility(T,scene,world){
   roof.castShadow=false;roof.receiveShadow=true;
   // Use glowing rectangular ceiling luminaires plus actual point lights.
   const fixtures=[];
+  const coverPoints=[];
   for(const z of [-48,-42,-33,-25]){
     for(const x of [-5.7,5.7]){
       const fixture=box(x,3.52,z,2.3,.09,.48,cyan);
@@ -96,6 +97,8 @@ export function buildFacility(T,scene,world){
   // Waist-height cover with actual collision, tactical routes around the
   // desks, lockers, crates, and server racks.
   const cover=(x,z,w,h,d,type="cover")=>{
+    for(const [px,pz] of [[x-w/2-1.15,z],[x+w/2+1.15,z],[x,z-d/2-1.15],[x,z+d/2+1.15]])
+      coverPoints.push({x:px,z:pz});
     box(x,h/2,z,w,h,d,type==="locker"?metal:type==="desk"?painted:concrete,true,type);
     if(type==="desk"){
       box(x,h-.035,z,w+.11,.07,d+.15,frame);
@@ -143,5 +146,5 @@ export function buildFacility(T,scene,world){
     }
     return "FACILITY EXTERIOR";
   }
-  return {shell,sites,zoneAt,fixtures,bounds:{minX:-9.5,maxX:9.5,minZ:-53,maxZ:-19}};
+  return {shell,sites,zoneAt,fixtures,coverPoints,bounds:{minX:-9.5,maxX:9.5,minZ:-53,maxZ:-19}};
 }
