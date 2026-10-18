@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=21-1";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
@@ -114,6 +115,7 @@ const SIDEWALK_OUTER = 9.2;
 const CAR_RADIUS = 0.95;
 
 const TRACKS = {
+    canyon:NEVADA_TRACK,
     neon: {
         id: "neon",
         name: "NEON DISTRICT",
@@ -490,6 +492,7 @@ const TRACKS = {
 };
 
 let activeTrackId = "neon";
+let nevadaSystem=null;
 let TRACK_SAMPLE_COUNT = 300;
 let TARGET_LAPS = 3;
 let checkpointTs = [];
@@ -561,7 +564,7 @@ function applyTrackConfig(trackId) {
 
     const originalRoadPoints = config.controlPoints.map(
         ([x, z, elevation = 0]) =>
-            new THREE.Vector3(x, config.id === "neon" ? elevation : 0, z)
+            new THREE.Vector3(x,(config.id==="neon"||config.id==="canyon")?elevation:0,z)
     );
     curve = new THREE.CatmullRomCurve3(
         config.id === "neon"
@@ -586,28 +589,16 @@ function applyTrackConfig(trackId) {
 
     // Keep Arctic's original illumination while making Neon genuinely night.
     hemisphereLight.intensity =
-        config.id === "neon" ? 1.05 : 1.75;
+        config.id === "neon" ? 1.05 : config.id==="canyon"?1.68:1.75;
     moonLight.intensity =
-        config.id === "neon" ? 0.92 : 1.18;
+        config.id === "neon" ? 0.92 : config.id==="canyon"?1.55:1.18;
     fillLight.intensity =
-        config.id === "neon" ? 0.25 : 0.30;
+        config.id === "neon" ? 0.25 : config.id==="canyon"?.60:0.30;
     renderer.toneMappingExposure =
-        config.id === "neon" ? 1.15 : 1.08;
+        config.id === "neon" ? 1.15 : config.id==="canyon"?1.34:1.08;
 
     camera.far =
-        activeTrackId ===
-        "arctic"
-            ?
-            900
-            :
-            (
-                activeTrackId ===
-                "neon"
-                    ?
-                    1550
-                    :
-                    440
-            );
+        activeTrackId==="canyon"?1950:activeTrackId==="arctic"?900:1550;
 
     camera.updateProjectionMatrix();
 
@@ -1437,7 +1428,7 @@ function getFrameAt(t) {
 
     // Catmull-Rom can undershoot zero between flat-road control points.
     // Prevent the city pavement from dipping below the urban ground.
-    if(activeTrackId==="neon" && point.y<0) {
+    if((activeTrackId==="neon"||activeTrackId==="canyon") && point.y<0) {
         point.y=0;
         tangent.y=0;
         tangent.normalize();
@@ -1669,7 +1660,7 @@ function sampleTrack() {
   approaches. Arctic's old ground system remains entirely unchanged.
 */
 function neonSurfaceHeight(position) {
-    if(activeTrackId!=="neon") return 0;
+    if(activeTrackId!=="neon"&&activeTrackId!=="canyon") return 0;
     const nearest=nearestTrackInfo(position);
     if(!nearest) return 0;
     const n=trackSamples.length;
@@ -1698,6 +1689,7 @@ function neonSurfaceHeight(position) {
         }
     }
     if(Math.sqrt(bestDist)>SIDEWALK_OUTER+1) {
+        if(activeTrackId==="canyon")return -2.1;
         if(position.x>127&&position.x<213&&Math.abs(position.z)<400)
             return -.40;
         return 0;
@@ -1767,6 +1759,17 @@ function localPoint(zone, across, along, y = 0) {
         .setY(y);
 }
 function getSurface(roadInfo) {
+    if(activeTrackId==="canyon"&&roadInfo){
+        const t=roadInfo.t,d=Math.abs(roadInfo.offset);
+        if(t>.325&&t<.485&&d<ROAD_HALF+3)return {
+            name:"LAKEBED",acceleration:.94,gripMultiplier:.69,
+            drag:1.40,steer:.84
+        };
+        if(d>ROAD_HALF&&d<40)return {
+            name:"DESERT",acceleration:.73,gripMultiplier:.62,
+            drag:2.20,steer:.79
+        };
+    }
     for (const zone of surfaceZones) {
         if (pointInsideZone(car.position, zone)) {
             return {
@@ -1810,6 +1813,8 @@ function getSurface(roadInfo) {
 function disposeWorld() {
     weatherSystem?.dispose();
     weatherSystem = null;
+    nevadaSystem?.dispose?.();
+    nevadaSystem=null;
     arcticSnowSystem = null; // GPU particles dispose with worldGroup.
     arcticMountainRoots = [];
     weatherRoadMaterial = null;
@@ -6500,7 +6505,7 @@ function collideWithBarriers() {
     for (const barrier of barriers) {
         // A guardrail on an elevated bridge must not block a vehicle
         // traveling on the lower waterfront beside/under that bridge.
-        if (activeTrackId === "neon" && Number.isFinite(barrier.y) &&
+        if ((activeTrackId === "neon"||activeTrackId==="canyon") && Number.isFinite(barrier.y) &&
             Math.abs(car.position.y-barrier.y)>2.1) continue;
         const ab = barrier.b
             .clone()
@@ -6752,7 +6757,7 @@ function buildObstacles() {
 }
 function collideWithObstacles() {
     for (const obstacle of obstacles) {
-        if (activeTrackId === "neon" &&
+        if ((activeTrackId === "neon"||activeTrackId==="canyon") &&
             Math.abs(car.position.y - obstacle.position.y)>2.4) continue;
         const dx = car.position.x -
             obstacle.position.x;
@@ -6835,8 +6840,8 @@ function buildCheckpointGates() {
                 :
                     0x445064
         });
-        if (activeTrackId === "neon") {
-            // No more giant white scaffolding across real city junctions.
+        if (activeTrackId === "neon"||activeTrackId==="canyon") {
+            // No giant scaffolding across an active racing lane.
             // Keep the checkpoint hitbox and HUD exactly as before, but
             // mark its edges with understated, reflective roadside bollards.
             const bollard = new THREE.BoxGeometry(0.18, 1.25, 0.18);
@@ -6901,7 +6906,7 @@ function respawnAtLastCheckpoint(
 
 
     car.position.y =
-        activeTrackId === "neon"
+        (activeTrackId==="neon"||activeTrackId==="canyon")
             ? lastCheckpointTransform.position.y
             : 0;
 
@@ -7368,7 +7373,7 @@ function updatePickups(delta, elapsed) {
             Math.sin(elapsed * 2.7 + pickup.spin) * 0.045;
 
         if (flatDistance(car.position, pickup.position) < 2
-            && (activeTrackId !== "neon" ||
+            && ((activeTrackId !== "neon"&&activeTrackId!=="canyon") ||
                 Math.abs(car.position.y - pickup.position.y) < 2.5)) {
             pickup.active = false;
             pickup.mesh.visible = false;
@@ -7564,7 +7569,7 @@ function buildRamps() {
             );
 
 
-        if (activeTrackId === "neon" && !(definition.cave && definition.topHole)) {
+        if ((activeTrackId==="neon"||activeTrackId==="canyon") && !(definition.cave && definition.topHole)) {
             // Proper wedge: rear entrance is flush with the asphalt, with
             // a smooth sloped top rising toward the exit (+local Z).
             const low = 0.035;
@@ -8106,7 +8111,7 @@ function updateAirborne(
     ) {
 
         car.position.y =
-            activeTrackId === "neon"
+            (activeTrackId==="neon"||activeTrackId==="canyon")
                 ? neonSurfaceHeight(car.position)
                 : Math.max(0,car.position.y);
 
@@ -8116,7 +8121,7 @@ function updateAirborne(
         */
 
         let roadPitch=0;
-        if(activeTrackId==="neon") {
+        if(activeTrackId==="neon"||activeTrackId==="canyon") {
             const info=nearestTrackInfo(car.position);
             if(info && Math.abs(info.offset)<SIDEWALK_OUTER+1) {
                 const t=info.tangent;
@@ -8401,7 +8406,7 @@ function updateAirborne(
             2.25;
 
 
-    let landingGround = activeTrackId === "neon"
+    let landingGround = (activeTrackId==="neon"||activeTrackId==="canyon")
         ? neonSurfaceHeight(car.position)
         : 0;
 
@@ -8415,8 +8420,8 @@ function updateAirborne(
         ) ? -.40 : 0;
     }
 
-    if(activeTrackId==="neon") {
-        // Bridges and canal have different landing heights.
+    if(activeTrackId==="neon"||activeTrackId==="canyon") {
+        // Grade-aware Nevada landing uses interpolated road elevation.
         if(car.position.y>landingGround &&
             carState.airTime<Math.max(5.5,maxAirTime)) return;
     } else if(car.position.y>0 && carState.airTime<maxAirTime) {
@@ -9418,7 +9423,7 @@ function updatePhysics(delta) {
             .dot(rightVec);
     // Gravity adds believable downhill acceleration and uphill resistance,
     // along the horizontal road direction. Existing car steering remains.
-    if(activeTrackId==="neon" && !carState.airborne && roadInfo) {
+    if((activeTrackId==="neon"||activeTrackId==="canyon") && !carState.airborne && roadInfo) {
         const t=roadInfo.tangent;
         const lengthXZ=Math.hypot(t.x,t.z);
         if(lengthXZ>.001 && Math.abs(t.y)>.0001) {
@@ -10059,7 +10064,7 @@ function updateCamera(delta) {
 
 
     cameraBase.y =
-        (activeTrackId === "neon" ? car.position.y : 0)
+        ((activeTrackId==="neon"||activeTrackId==="canyon")?car.position.y:0)
         + carState.cameraAirY;
 
 
@@ -10129,7 +10134,7 @@ function updateCamera(delta) {
 
 
     lookAt.y =
-        (activeTrackId === "neon" ? car.position.y : 0)
+        ((activeTrackId==="neon"||activeTrackId==="canyon")?car.position.y:0)
         + (carState.airborne ? carState.cameraAirY : 0)
         + 0.72;
 
@@ -10270,24 +10275,20 @@ function buildWorld() {
     sampleTrack();
 
 
-    if (
-        activeTrackId ===
-        "arctic"
-    ) {
-
-        buildArcticEnvironment();
-
-    }
-
-    else {
-
-        buildCity();
-
-    }
+    if(activeTrackId==="arctic")buildArcticEnvironment();
+    else if(activeTrackId==="neon")buildCity();
 
 
     buildRoad();
     buildBarriers();
+    if(activeTrackId==="canyon"){
+        nevadaSystem=createNevadaWorld({
+            THREE,worldGroup,scene,trackSamples,getFrameAt,
+            roadHalf:ROAD_HALF,addBoxCollider:addEnvironmentBoxCollider,
+            addCircleCollider:addEnvironmentCircleCollider,
+            addRoadBarrier:(a,b,y)=>barriers.push({a,b,y})
+        });
+    }
     // V3 guardrails must be registered AFTER buildBarriers() clears and
     // recreates the collider list. Otherwise visible rails would be ghosts.
     if(activeTrackId==="arctic"){
@@ -11090,6 +11091,12 @@ function gameLoop(now) {
     const delta = Math.min(clock.getDelta(), 0.04);
     updateServerCountdown();
     updatePhysics(delta);
+    if(nevadaSystem&&activeTrackId==="canyon"){
+        const synced=window.REDLINE_MP?.serverNow;
+        const now=Number.isFinite(synced)?synced:Date.now();
+        nevadaSystem.update(delta,now,raceActive?car:null,
+            raceActive?carState:null,showRacePopup);
+    }
     trafficSystem?.update(delta);
     updateNetwork(now);
     updateRemoteRacers(delta);
