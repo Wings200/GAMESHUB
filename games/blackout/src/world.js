@@ -220,7 +220,7 @@ export function buildAnnex(THREE, scene) {
     {id:"range",name:"FIRING RANGE",test:(x,z)=>x>=6}
   ];
   function zoneAt(x,z){return zones.find(a=>a.test(x,z))?.name||"ANNEX";}
-  return {root:group,colliders,meshes,floorAt,zoneAt,spawn:{x:-15.7,z:-9.6,y:0,yaw:Math.PI/2},
+  return {root:group,colliders,meshes,floorAt,zoneAt,spawn:{x:-15.7,z:-9.6,y:0,yaw:-Math.PI/2},
     specifications:{width:48,depth:36,areas:zones.length,solidCount:colliders.length},
     dispose(){for(const m of meshes)m.geometry?.dispose?.();}
   };
