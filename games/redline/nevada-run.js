@@ -461,15 +461,34 @@ export function createNevadaWorld({
    "#393c43","#f2e5ce",19);
  runwayLabel.position.set(0,2.1,72);
  runwayLabel.rotation.y=Math.PI;
+ // Reserve every part of the full 30×168m runway. Radius accounts
+ // for all rotated building corners; do not put hangars on the landing strip.
+ const clearOfRunway=(position,radius=0)=>{
+  const dx=position.x-runway.position.x,dz=position.z-runway.position.z;
+  const co=Math.cos(runway.rotation.y),si=Math.sin(runway.rotation.y);
+  const localX=dx*co-dz*si,localZ=dx*si+dz*co;
+  const gapX=Math.max(0,Math.abs(localX)-15);
+  const gapZ=Math.max(0,Math.abs(localZ)-84);
+  return gapX*gapX+gapZ*gapZ>(radius+7)*(radius+7);
+ };
  // A detailed fictional test facility outside the raceway.
  const buildings=[{t:.56,side:-1,w:28,d:54,h:16,name:"HANGAR 07"},
    {t:.615,side:-1,w:32,d:62,h:19,name:"EXPERIMENTAL SYSTEMS"},
    {t:.69,side:1,w:22,d:37,h:12,name:"RANGE CONTROL"},
    {t:.76,side:-1,w:38,d:70,h:23,name:"AIRCRAFT STORAGE"}];
  for(let j=0;j<buildings.length;j++){
-  const b=buildings[j],o=placeFrame(b.t,b.side*53);
-  // Hangars must not hang into a different switchback lane.
-  if(!clearOfRoad(o.p,Math.hypot(b.w*.5,b.d*.5)+2))continue;
+  const b=buildings[j],footprint=Math.hypot(b.w*.5,b.d*.5);
+  let o=null;
+  // Relocate buildings farther away from runway and road or omit them.
+  for(const offset of [b.side*53,b.side*83,b.side*118,
+   b.side*158,-b.side*80,-b.side*118,b.side*198]){
+   const candidate=placeFrame(b.t,offset);
+   if(clearOfRoad(candidate.p,footprint+3)&&
+      clearOfRunway(candidate.p,footprint+2)){
+    o=candidate;break;
+   }
+  }
+  if(!o)continue;
   const place=new THREE.Group();place.position.copy(o.p);place.rotation.y=o.f.rotationY;
   root.add(place);
   shape(THREE,place,"box",0,b.h/2,0,b.w,b.h,b.d,0x566168);
@@ -557,7 +576,7 @@ export function createNevadaWorld({
  const searchlights=[];
  for(const [t,offset] of [[.535,-26],[.665,26],[.745,-29]]){
   const {p}=placeFrame(t,offset);
-  if(!clearOfRoad(p,5))continue;
+  if(!clearOfRoad(p,5)||!clearOfRunway(p,6))continue;
   const g=new THREE.Group();g.position.copy(p);root.add(g);
   shape(THREE,g,"box",0,8.5,0,3,17,3,0x6b6261);
   const cabin=shape(THREE,g,"box",0,17,0,7,4,7,0x2f4756);
@@ -606,7 +625,7 @@ export function createNevadaWorld({
  // Radar arrays and masts.
  for(const t of [.577,.698,.784]){
   const {p}=placeFrame(t,65);
-  if(!clearOfRoad(p,6))continue;
+  if(!clearOfRoad(p,6)||!clearOfRunway(p,7))continue;
   const group=new THREE.Group();group.position.copy(p);root.add(group);
   shape(THREE,group,"cylinder",0,9,0,.7,18,1,0x75827f);
   const antenna=new THREE.Mesh(new THREE.SphereGeometry(5,12,5,0,Math.PI),
