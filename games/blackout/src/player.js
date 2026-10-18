@@ -37,7 +37,9 @@ export class FirstPersonController{
     this.applyCamera();
   }
   look(dx,dy,sensitivity=0.0022){
-    this.yaw += clamp(dx,-250,250)*sensitivity;
+    // Three.js camera looks toward -Z. Positive yaw rotates view LEFT,
+    // so a mouse move RIGHT must DECREASE yaw.
+    this.yaw -= clamp(dx,-250,250)*sensitivity;
     this.pitch=clamp(this.pitch-clamp(dy,-250,250)*sensitivity,-1.37,1.37);
     this.applyCamera();
   }
@@ -71,8 +73,11 @@ export class FirstPersonController{
     this.sprinting=this.moving && !this.isCrouched &&
       (keys.has("ShiftLeft")||keys.has("ShiftRight"))&&front>0;
     const speed=this.isCrouched?1.73:this.sprinting?5.5:3.34;
-    const targetX=(Math.sin(this.yaw)*front+Math.cos(this.yaw)*side)*speed;
-    const targetZ=(-Math.cos(this.yaw)*front+Math.sin(this.yaw)*side)*speed;
+    // Match the actual camera vectors: forward = (-sin(yaw),-cos(yaw)),
+    // right = (cos(yaw),-sin(yaw)). Both were previously mirrored,
+    // making W move opposite to the direction the player was looking.
+    const targetX=(-Math.sin(this.yaw)*front+Math.cos(this.yaw)*side)*speed;
+    const targetZ=(-Math.cos(this.yaw)*front-Math.sin(this.yaw)*side)*speed;
     const friction=1-Math.exp(-(this.moving?13:20)*d);
     this.velX+=(targetX-this.velX)*friction;
     this.velZ+=(targetZ-this.velZ)*friction;
@@ -100,7 +105,7 @@ export class FirstPersonController{
     const eye=this.y+this.height-.12+bob;
     // This is not a decorative through-wall camera offset: each leaning
     // increment is tested against every solid collider at eye height.
-    const leanX=Math.cos(this.yaw),leanZ=Math.sin(this.yaw);
+    const leanX=Math.cos(this.yaw),leanZ=-Math.sin(this.yaw);
     let shift=0;
     const wanted=this.lean*.24;
     for(let k=1;k<=6;k++){
