@@ -2,10 +2,10 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V0.6 - tactical plant/defuse gameplay, manageable recoil, 3D defuser and audio.">
+<meta name="description" content="BLACKOUT V0.7 - enterable two-site facility, weapon animations, tactical movement, bots and round objectives.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=blackout-audio-plant-defuser-06">
+<link rel="stylesheet" href="./style.css?v=blackout-v07-facility-ai-weapons">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
@@ -13,12 +13,12 @@
 <div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
 <header id="gameHUD" class="game-hud hidden">
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ SITE A DRILLS · V0.6</span></div>
+    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ TWO-SITE FACILITY · V0.7</span></div>
     <h2 id="zoneLabel">FLAT MECHANICS LAB</h2>
     <p>LOCAL SHOOTING TEST · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
   <div class="hud-right lab-right">
-    <div class="mission">ROUND OBJECTIVE <strong id="objective">SITE A · WAITING</strong></div>
+    <div class="mission">ROUND OBJECTIVE <strong id="objective">SITE A · WAITING</strong><small id="roundScore" class="round-score">ROUND 1 · ATK 0 : 0 DEF</small></div>
     <div class="lab-card">
       <div class="lab-card-heading">GADGET TOOLKIT</div>
       <p id="gadgetPrimary">G · BREACH CHARGE [2]</p>
@@ -27,10 +27,10 @@
       <div class="lab-card-heading separation">MOVEMENT</div>
       <p>WASD MOVE · SHIFT SPRINT</p>
       <p>CTRL CROUCH · Z PRONE</p>
-      <p>Q / E LEAN</p>
+      <p>Q / E LEAN · ALT SLOW WALK</p>
     </div>
   </div>
-  <div class="crosshair-caption">SOLO OBJECTIVE DRILL · NOT MULTIPLAYER</div>
+  <div class="crosshair-caption">LIVE SOLO TACTICAL DRILL · A / B SITE</div>
   <div id="objectiveHint" class="objective-hint" aria-live="polite"></div>
   <div id="objectiveProgress" class="objective-progress hidden"><span id="objectiveAction">PLANTING</span><div class="objective-progress-track"><div id="objectiveFill"></div></div></div>
   <div id="roundResult" class="round-result hidden" role="status"></div>
@@ -58,18 +58,22 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.6.0 // DEFUSER + AUDIO</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.7.0 // TACTICAL FACILITY</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">THE LAB <span>—</span> MECHANICS BEFORE MAPS</div>
     <div class="rule"></div>
-    <p class="description">No city. No facility. No map development yet. A <strong>flat tactical testing ground</strong> with playable Site A attack/defend rounds, simulated hostile bots, operator health, recoil, leaning and gadgets. Offline single-player—not a live 5v5.</p>
+    <p class="description">Fight inside a <strong>compact tactical training facility</strong> with connected hallways, real doorways, cover, enterable rooms, and two objective sites. Attack, defend, plant, defuse, clear angles, and listen for enemy movement. Offline PvE prototype—not a live 5v5 match.</p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
     </div>
     <div class="lab-section-title" id="selectedMode">ATTACKER · PLANT & DEFEND</div>
+    <label class="site-picker">CHOOSE ACTIVE BOMB SITE <select id="siteSelect" aria-label="Choose the bomb site">
+      <option value="A">SITE A — SERVER ROOM</option>
+      <option value="B">SITE B — CONTROL ROOM</option>
+    </select></label>
     <label class="operator-picker">CHOOSE OPERATOR <select id="operatorSelect" aria-label="Choose operator"><option value="kestrel">KESTREL · 2 SPEED / 2 ARMOR · 110 HP</option></select></label>
     <div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP · FIXED OPERATOR MOVEMENT</div>
     <label class="sight-picker">SELECT YOUR OPTIC <select id="sightSelect" aria-label="Select weapon sight">
@@ -89,16 +93,16 @@
     </div>
     <div id="guide" class="test-guide hidden">
       <strong>TEST CONTROLS</strong>
-      <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: strong, collision-checked lean · Mouse: look. Speed is fixed per operator</p>
+      <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Q/E: collision-checked lean · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attacker objective</strong> — Enter the glowing Site A circle and HOLD F for 5 seconds to plant, even while defenders are still alive. The planted defuser is a visible 3D device with a countdown and beeping alarm. Protect it for 28 seconds. G: breach charge; X: scan.</p>
-      <p><strong>Defender objective</strong> — Guard Site A for 85 seconds against approaching orange hostiles. If they plant, get inside the circle and HOLD F for 5.5 seconds to disable. Otherwise F reinforces aimed panels over 3 seconds. G: shield; X: proximity sensor.</p>
+      <p><strong>Attackers</strong> — Enter your selected Site A or B room, stop moving and HOLD F for 5 seconds to plant, even with enemies alive. Defend the physical 3D defuser for 32 seconds. Enemies hear loud gunfire and sprinting. G: breach charge; X: scan.</p>
+      <p><strong>Defenders</strong> — Protect your selected site for 100 seconds as attackers navigate through facility doorways. If they plant, get to the device, stop moving, and HOLD F for 5.5 seconds to disable. F reinforces nearby soft-wall test panels, G deploys shield, X sensor.</p>
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
     <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
-    <div class="progress-foot"><span>FLAT FLOOR · SITE A · HOSTILE TRAINING BOTS</span><span>NO MULTIPLAYER · NO MAPS YET</span></div>
+    <div class="progress-foot"><span>2 SITES · CONNECTED ROOMS · HOSTILE AI · REINFORCEMENTS</span><span>OFFLINE TRAINING · NOT MULTIPLAYER</span></div>
   </div>
   <div class="menu-right lab-aside">
     <div class="redline">B<span>↗</span></div>
