@@ -159,7 +159,9 @@ export function createNevadaWorld({
  // Sunset disk near horizon. Changes with deterministic ambient time, not
  // actual day/night cycles that could darken the track into invisibility.
  const sun=new THREE.Mesh(new THREE.SphereGeometry(47,20,14),
-  new THREE.MeshBasicMaterial({color:0xffbd76,fog:false}));
+  new THREE.MeshBasicMaterial({
+   color:0xffbd76,fog:false,transparent:true,opacity:1
+  }));
  sun.position.set(-970,170,-1450);root.add(sun);
  // Road-side details: signs, power poles, desert scrub and reflective markers.
  const signData=[
@@ -247,6 +249,19 @@ export function createNevadaWorld({
   spotlight.target.position.set(0,-2,0);pivot.add(spotlight,spotlight.target);
   searchlights.push({g,pivot,beam,t,offset});
   addBoxCollider(p,2,2,0,{minY:p.y,maxY:p.y+19,tag:"WATCHTOWER"});
+ }
+ // Floodlights make blacksite readable even after full twilight.
+ const floodLights=[];
+ for(const [t,side] of [[.492,-1],[.56,-1],[.645,1],[.715,1],[.78,-1]]){
+  const {p}=placeFrame(t,side*20);
+  const lamp=new THREE.Group();lamp.position.copy(p);root.add(lamp);
+  shape(THREE,lamp,"cylinder",0,5,0,.13,10,.13,0x7e847c);
+  const box=shape(THREE,lamp,"box",0,10,0,1.8,.7,1.2,0xffd39c);
+  box.material.emissive=new THREE.Color(0xffb765);
+  box.material.emissiveIntensity=.25;
+  const light=new THREE.PointLight(0xffc788,2.7,46,2);
+  light.position.set(0,9.9,0);lamp.add(light);
+  floodLights.push({light,box});
  }
  // Radar arrays and masts.
  for(const t of [.577,.698,.784]){
@@ -388,8 +403,28 @@ export function createNevadaWorld({
   }else shape(THREE,g,"box",0,.45,0,1,.7,1.2,j%2?0x756257:0x414443);
  }
  const active={lastCall:0,warning:0,hitCount:0};
- function update(delta,nowMs,car,carState,popup){
+ const sunsetColor=new THREE.Color(0x99625b);
+ const eveningColor=new THREE.Color(0x523c55);
+ const nightColor=new THREE.Color(0x1a213b);
+ const skyColor=new THREE.Color();
+ function update(delta,nowMs,car,carState,popup,raceStartAt=null){
   const sec=nowMs*.001;
+  // Race-relative sunset to night, approximately four minutes. All clients
+  // use the same Worker raceStartAt, so their twilight stage is identical.
+  const passed=Number.isFinite(raceStartAt)?
+   Math.max(0,nowMs-raceStartAt):0;
+  const nightProgress=clamp(passed/240000,0,1);
+  skyColor.copy(sunsetColor);
+  if(nightProgress<.48)
+   skyColor.lerp(eveningColor,nightProgress/.48);
+  else skyColor.copy(eveningColor).lerp(nightColor,(nightProgress-.48)/.52);
+  scene.background?.copy?.(skyColor);
+  scene.fog?.color?.copy?.(skyColor);
+  sun.material.opacity=1-nightProgress;
+  for(const f of floodLights){
+   f.light.intensity=2.2+nightProgress*2.1;
+   f.box.material.emissiveIntensity=.25+nightProgress*1.65;
+  }
   for(const light of searchlights){
    light.pivot.rotation.y=Math.sin(sec*.46+light.t*12)*1.25;
    light.beam.rotation.y=light.pivot.rotation.y;
@@ -473,5 +508,7 @@ export function createNevadaWorld({
    }
   }
  }
- return {update,hazards,shortcuts,stats:active,dispose(){root.clear();}};
+ // worldGroup's normal disposer owns all geometries and materials; do not
+ // detach the root before it has traversed and released their resources.
+ return {update,hazards,shortcuts,stats:active,dispose(){}};
 }
