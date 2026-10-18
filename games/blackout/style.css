@@ -98,3 +98,13 @@ body.playing.ads .ads-optic{display:block}
 .reinforce-fill{height:100%;width:0;background:linear-gradient(90deg,#5aadb8,#9ef8de);transition:width .08s linear}
 .reinforce-hint{font-size:9px;letter-spacing:.08em;color:#94a7b7;text-align:center}
 @media(max-width:700px){.optic-housing{transform:scale(.77)}.reinforce-progress{top:calc(50% + 95px)}}
+
+
+/* Optic zero correction: the sight glass itself (not glass + caption)
+   is centered on the camera ray, so bullets land at the shown reticle. */
+.ads-optic{width:0;height:0;transform:none}
+.ads-optic .optic-housing{position:absolute;left:0;top:0;transform:translate(-50%,-50%)}
+.ads-optic .optic-indicator{position:absolute;left:0;top:110px;transform:translateX(-50%);width:240px;padding:0}
+.ads-optic[data-sight="red-dot"] .optic-indicator{top:91px}
+.ads-optic[data-sight="iron"] .optic-indicator{top:78px}
+.ads-optic[data-sight="iron"] .aim-chevron{left:32px;top:36px;height:31px}
