@@ -788,7 +788,8 @@ export function createNevadaWorld({
    const f=getFrameAt(from+(to-from)*k/steps);
    const lateral=offset*Math.sin(Math.PI*k/steps);
    const center=f.point.clone().addScaledVector(f.normal,lateral);
-   center.y=roadsideHeight(f,lateral)+.24;
+   // Road edge joins main asphalt at +.04m, not a raised patch.
+   center.y=roadsideHeight(f,lateral)+.15;
    centers.push(center);
    const approach=Math.min(k,steps-k);
    widths.push(3.75*(.58+.42*clamp(approach/4,0,1)));
