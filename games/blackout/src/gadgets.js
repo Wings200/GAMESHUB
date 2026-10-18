@@ -4,7 +4,7 @@ export class Gadgets {
   constructor(THREE,world,scene){
     this.THREE=THREE;this.world=world;this.scene=scene;
     this.raycaster=new THREE.Raycaster();
-    this.role="attacker";this.sensors=[];this.charge=null;
+    this.role="attacker";this.sensors=[];this.charge=null;this.action=null;
     this.scanUntil=0;this.scanMarkers=[];
     const ringMat=new THREE.MeshBasicMaterial({color:0x60f9f0,transparent:true,opacity:.9,depthTest:false});
     for(const t of world.targets){
@@ -14,7 +14,12 @@ export class Gadgets {
     }
     this.reset("attacker");
   }
+  cancelAction(){
+    if(this.action?.panel)this.action.panel.cancelReinforcement();
+    this.action=null;
+  }
   reset(role=this.role){
+    this.cancelAction();
     this.role=role;
     this.counts={g:2,x:2,reinforce:2};
     this.scanUntil=0;
@@ -81,15 +86,35 @@ export class Gadgets {
     this.counts.x--;
     return {ok:true,message:"PROXIMITY SENSOR DEPLOYED · EXIT ITS RADIUS TO ARM"};
   }
-  interact(camera){
+  interact(camera,now){
     if(this.role!=="defender")return {ok:false,message:"ATTACKERS CANNOT REINFORCE PANELS"};
+    if(this.action)return {ok:false,message:"REINFORCEMENT ALREADY IN PROGRESS"};
     if(this.counts.reinforce<=0)return {ok:false,message:"NO REINFORCEMENTS REMAIN"};
     const p=this.nearestPanel(camera,5.3);
     if(!p)return {ok:false,message:"AIM AT A PANEL WITHIN 5 METERS"};
-    if(!p.reinforce())return {ok:false,message:"PANEL ALREADY REINFORCED OR DESTROYED"};
-    this.counts.reinforce--;return {ok:true,message:"PANEL REINFORCED · BLOCKS BULLETS AND STANDARD CHARGES"};
+    if(p.reinforced||p.destroyed)return {ok:false,message:"PANEL ALREADY REINFORCED OR DESTROYED"};
+    this.action={kind:"reinforce",panel:p,start:now,end:now+3000,progress:0};
+    p.previewReinforcement(.001);
+    return {ok:true,message:"INSTALLING REINFORCEMENT · 3.0 SECONDS"};
   }
+  get busy(){return !!this.action;}
+  get actionProgress(){return this.action?.progress||0;}
   tick(now,player,ping){
+    if(this.action){
+      const a=this.action;
+      a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
+      if(a.panel.destroyed){
+        this.cancelAction();ping("REINFORCEMENT CANCELLED · PANEL DESTROYED");
+      }else if(Math.hypot(player.x-a.panel.x,player.z-a.panel.z)>5.8){
+        this.cancelAction();ping("REINFORCEMENT CANCELLED · OUT OF RANGE");
+      }else if(now>=a.end){
+        a.panel.previewReinforcement(1);
+        const ok=a.panel.reinforce();
+        if(ok)this.counts.reinforce--;
+        this.action=null;
+        ping(ok?"REINFORCEMENT INSTALLED · STEEL WALL READY":"REINFORCEMENT INTERRUPTED");
+      }else a.panel.previewReinforcement(a.progress);
+    }
     if(this.charge&&now>=this.charge.detonateAt){
       const {panel,marker}=this.charge;
       this.scene.remove(marker);
