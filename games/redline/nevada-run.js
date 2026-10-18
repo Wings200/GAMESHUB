@@ -1200,5 +1200,5 @@ export function createNevadaWorld({
  const drawOptimization=batchStaticDetail();
  // No collision, physics, checkpoint or route changes.
  return {update,hazards,shortcuts,roadsideHeight,stats:active,
-  drawOptimization,dispose(){}};
+  drawOptimization,dispose(){rockSedimentTexture=null;}};
 }
