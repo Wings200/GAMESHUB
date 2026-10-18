@@ -1,0 +1,477 @@
+/*
+ * REDLINE V21 — NEVADA RUN (legacy internal ID "canyon")
+ * Original fictional, Nevada-inspired secret test range.
+ * No depiction of actual Area 51 buildings or access roads.
+ * Game module is also shared by V20 solo Time Trials.
+ *
+ * The server already recognizes "canyon" for room selection, stats and
+ * leaderboards. Keeping that ID avoids a breaking Worker migration.
+ */
+export const NEVADA_TRACK=Object.freeze({
+  id:"canyon",name:"NEVADA RUN",
+  description:"Nevada Run · golden-hour highway, red-rock switchbacks, dry lakebed, restricted blacksite, active runway and fast canyon escape. Watch moving hazards.",
+  sampleCount:900,laps:1,background:0x5b4251,fogNear:550,fogFar:1900,
+  controlPoints:[
+    [-940,195,5],[-745,253,5],[-535,265,7],[-345,310,11],
+    [-245,400,20],[-110,350,28],[25,445,31],[208,453,22],
+    [358,347,13],[463,218,5],[535,40,1],[490,-165,1],
+    [355,-325,2],[165,-433,2],[-40,-472,4],[-240,-449,6],
+    [-449,-395,10],[-642,-333,14],[-783,-235,18],
+    [-900,-105,31],[-1020,4,23],[-1016,119,9]
+  ],
+  checkpoints:Array.from({length:20},(_,i)=>Math.round((.035+i*.049)*10000)/10000),
+  crosswalks:[],barriers:[
+    {start:.14,end:.30,side:1},{start:.82,end:.97,side:-1}
+  ],
+  obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
+  boosts:[
+    {t:.075,offset:0},{t:.335,offset:2.4},{t:.525,offset:-2.2},
+    {t:.705,offset:1.9},{t:.91,offset:0}
+  ],
+  pickups:[
+    {t:.11,offset:-2.4,type:"nitro"},
+    {t:.27,offset:2.1,type:"overdrive"},
+    {t:.435,offset:-2.2,type:"nitro"},
+    {t:.585,offset:2.0,type:"nitro"},
+    {t:.74,offset:-1.5,type:"overdrive"},
+    {t:.915,offset:2.3,type:"nitro"}
+  ],
+  ramps:[
+    {t:.215,offset:-1.4,strength:5.2,secret:false},
+    {t:.51,offset:-5.6,strength:8.6,secret:true,
+      targetT:.533,landingLead:6,shortcutSpeed:76,minSpeed:26},
+    {t:.735,offset:5.7,strength:8.7,secret:true,
+      targetT:.756,landingLead:5,shortcutSpeed:78,minSpeed:27},
+    {t:.91,offset:-1.4,strength:4.4,secret:false}
+  ]
+});
+const TWO_PI=Math.PI*2;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+function makeMaterial(THREE,color,metalness=0){
+ return new THREE.MeshStandardMaterial({color,roughness:.92,metalness});
+}
+function shape(THREE,parent,kind,x,y,z,w,h,d,color,rot=0){
+ const geo=kind==="cylinder"?
+  new THREE.CylinderGeometry(w,w,h,8):
+  kind==="sphere"?new THREE.SphereGeometry(w,10,7):
+  kind==="cone"?new THREE.ConeGeometry(w,h,6):
+  new THREE.BoxGeometry(w,h,d);
+ const mesh=new THREE.Mesh(geo,makeMaterial(THREE,color));
+ mesh.position.set(x,y,z);mesh.rotation.y=rot;parent.add(mesh);return mesh;
+}
+function billboard(THREE,parent,text,back="#453022",front="#f8d5a0",size=10){
+ const canvas=document.createElement("canvas");canvas.width=768;canvas.height=144;
+ const c=canvas.getContext("2d");c.fillStyle=back;c.fillRect(0,0,768,144);
+ c.strokeStyle="#d9b37d";c.lineWidth=7;c.strokeRect(5,5,758,134);
+ c.fillStyle=front;c.font="bold 52px Arial";c.textAlign="center";
+ c.textBaseline="middle";c.fillText(text,384,73,735);
+ const texture=new THREE.CanvasTexture(canvas);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ const mesh=new THREE.Mesh(new THREE.PlaneGeometry(size,size*144/768),
+  new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide}));
+ parent.add(mesh);return mesh;
+}
+function seeded(i){const x=Math.sin(i*127.131+31.7)*43758.5453;return x-Math.floor(x)}
+export function createNevadaWorld({
+ THREE,worldGroup,scene,trackSamples,getFrameAt,addBoxCollider,addCircleCollider,
+ roadHalf=6.6,addRoadBarrier
+}){
+ const root=new THREE.Group();worldGroup.add(root);
+ const staticMats={sand:makeMaterial(THREE,0xa57b55),rock:makeMaterial(THREE,0x936748),
+  cliff:makeMaterial(THREE,0x704938),metal:makeMaterial(THREE,0x48535b,.38),
+  concrete:makeMaterial(THREE,0x555c5e),light:makeMaterial(THREE,0xf9bb76)};
+ const props=new THREE.Group();root.add(props);
+ // Large low-poly terrain with a deliberately textured color gradient.
+ const terrainGeo=new THREE.PlaneGeometry(3000,2400,58,48);
+ terrainGeo.rotateX(-Math.PI/2);
+ const pos=terrainGeo.attributes.position;
+ const vertexColors=[];
+ const c=new THREE.Color();
+ for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i),z=pos.getZ(i);
+  const height=-3+.9*Math.sin(x*.008)*Math.cos(z*.012)+.7*Math.sin(x*.047+z*.031);
+  pos.setY(i,height);
+  const n=clamp((height+4)/4,0,1);
+  c.setRGB(.37+n*.28,.235+n*.23,.16+n*.14);
+  vertexColors.push(c.r,c.g,c.b);
+ }
+ pos.needsUpdate=true;terrainGeo.setAttribute("color",new THREE.Float32BufferAttribute(vertexColors,3));
+ terrainGeo.computeVertexNormals();
+ const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({
+  vertexColors:true,roughness:1,side:THREE.DoubleSide
+ }));
+ root.add(terrain);
+ // Chassis-supporting embankments / mountains for grade-changing paved road:
+ // strips fall naturally away from both edges rather than floating in midair.
+ const verts=[],inds=[],colors=[];
+ const col=new THREE.Color();
+ for(let i=0;i<=trackSamples.length;i++){
+  const s=trackSamples[i%trackSamples.length],p=s.point,n=s.normal;
+  for(const off of [-65,-30,-11,0,11,30,65]){
+   const outside=Math.abs(off);
+   const y=outside<=11?p.y-.05:
+     outside<=30?p.y-(outside-11)*.26:
+     p.y-4.94-(outside-30)*.35;
+   verts.push(p.x+n.x*off,Math.max(-2.7,y),p.z+n.z*off);
+   col.setHex(outside<=11?0x846142:outside<=30?0x976f4d:0x8a6547);
+   const variation=.87+seeded(i*7+Math.round(off))* .24;
+   colors.push(col.r*variation,col.g*variation,col.b*variation);
+  }
+  if(i===0)continue;
+  for(let k=0;k<6;k++){
+   const a=(i-1)*7+k,b=i*7+k;
+   inds.push(a,b,a+1,b,b+1,a+1);
+  }
+ }
+ const gradeGeo=new THREE.BufferGeometry();
+ gradeGeo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
+ gradeGeo.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
+ gradeGeo.setIndex(inds);gradeGeo.computeVertexNormals();
+ root.add(new THREE.Mesh(gradeGeo,new THREE.MeshStandardMaterial({
+  vertexColors:true,roughness:1,side:THREE.DoubleSide
+ })));
+ // Distant ridgelines of varying shape, kept well clear of drivable lanes.
+ for(let i=0;i<92;i++){
+  const theta=i/92*TWO_PI,dist=720+seeded(i+4)*350;
+  const x=Math.cos(theta)*dist-250,z=Math.sin(theta)*dist;
+  const h=24+seeded(i+40)*65;
+  const mountain=new THREE.Mesh(
+   new THREE.ConeGeometry(32+seeded(i+3)*30,h,5),
+   makeMaterial(THREE,[0x674638,0x8d5841,0x9b6747,0x754b43][i%4])
+  );
+  mountain.position.set(x,h*.5-3,z);
+  mountain.rotation.y=seeded(i+50)*TWO_PI;
+  mountain.scale.z=.65+seeded(i+6);
+  root.add(mountain);
+ }
+ // Actual multilayer strata / slot canyons alongside the winding section.
+ for(let i=0;i<16;i++){
+  const t=.155+i*.0091,f=getFrameAt(t),side=i%2?1:-1;
+  const distance=24+(i%4)*6;
+  const rock=new THREE.Group();
+  rock.position.copy(f.point).addScaledVector(f.normal,side*distance);
+  rock.position.y-=2;root.add(rock);
+  const h=10+seeded(i+188)*23;
+  shape(THREE,rock,"box",0,h*.45,0,17,h*.75,18,0x8c5a40,f.rotationY+.15);
+  shape(THREE,rock,"box",0,h*.88,0,13,h*.33,14,0xb1774e,f.rotationY+.22);
+  if(distance<33)addBoxCollider(rock.position,8,8,f.rotationY,{minY:-1,maxY:70,tag:"CANYON CLIFF"});
+ }
+ // Sunset disk near horizon. Changes with deterministic ambient time, not
+ // actual day/night cycles that could darken the track into invisibility.
+ const sun=new THREE.Mesh(new THREE.SphereGeometry(47,20,14),
+  new THREE.MeshBasicMaterial({color:0xffbd76,fog:false}));
+ sun.position.set(-970,170,-1450);root.add(sun);
+ // Road-side details: signs, power poles, desert scrub and reflective markers.
+ const signData=[
+  [.04,"US 93 · NEVADA RUN"],[.146,"RED ROCK PASS"],[.329,"DRY LAKE BED"],
+  [.49,"WARNING · RESTRICTED RANGE"],[.625,"BLACKSITE PERIMETER"],
+  [.748,"ACTIVE AIRSTRIP"],[.852,"CAUTION · STEEP DESCENT"]
+ ];
+ const placeFrame=(t,offset,height=0)=>{
+  const f=getFrameAt(t),v=f.point.clone().addScaledVector(f.normal,offset);
+  v.y+=height;return {f,p:v};
+ };
+ for(const [t,text] of signData){
+  const {f,p}=placeFrame(t,16,0);
+  const group=new THREE.Group();group.position.copy(p);group.rotation.y=f.rotationY;root.add(group);
+  shape(THREE,group,"box",0,3.1,0,.27,6.1,.27,0x616568);
+  const label=billboard(THREE,group,text,"#3e2a25","#ffe3a2",8.4);
+  label.position.y=6.1;label.rotation.y=Math.PI/2;
+ }
+ for(let i=0;i<110;i++){
+  const t=i/110,p=placeFrame(t,18+(i%2)*6);
+  const tree=new THREE.Group();tree.position.copy(p.p);root.add(tree);
+  const h=.9+seeded(i+90)*2.5;
+  shape(THREE,tree,"cylinder",0,h*.5,0,.06,h,.07,0x5d6352);
+  for(let b=0;b<3;b++)
+   shape(THREE,tree,"box",(b-1)*.55,h*(.25+b*.15),0,.5,.13,.17,0x77704f);
+  if(i%4===0){
+   const pole=placeFrame(t,-22).p;
+   shape(THREE,root,"cylinder",pole.x,pole.y+5,pole.z,.14,10,.2,0x54443b);
+   shape(THREE,root,"box",pole.x,pole.y+9.4,pole.z,3,.19,.19,0x695943);
+  }
+ }
+ // A detailed fictional test facility outside the raceway.
+ const buildings=[{t:.56,side:-1,w:28,d:54,h:16,name:"HANGAR 07"},
+   {t:.615,side:-1,w:32,d:62,h:19,name:"EXPERIMENTAL SYSTEMS"},
+   {t:.69,side:1,w:22,d:37,h:12,name:"RANGE CONTROL"},
+   {t:.76,side:-1,w:38,d:70,h:23,name:"AIRCRAFT STORAGE"}];
+ for(let j=0;j<buildings.length;j++){
+  const b=buildings[j],o=placeFrame(b.t,b.side*53);
+  const place=new THREE.Group();place.position.copy(o.p);place.rotation.y=o.f.rotationY;
+  root.add(place);
+  shape(THREE,place,"box",0,b.h/2,0,b.w,b.h,b.d,0x566168);
+  shape(THREE,place,"box",0,b.h+.35,0,b.w+1,.7,b.d+1,0x343d46);
+  shape(THREE,place,"box",0,b.h*.35,b.d*.501,b.w*.72,b.h*.61,.17,0x2f424d);
+  const tag=billboard(THREE,place,b.name,"#21323b","#ffe6aa",b.w*.7);
+  tag.position.set(0,b.h*.78,b.d*.515);
+  for(let i=0;i<4;i++)shape(THREE,place,"box",-b.w*.38+i*b.w*.25,
+   b.h-2,b.d*.51,.8,1,.1,0xffd69d);
+  addBoxCollider(place.position,b.w*.5,b.d*.5,place.rotation.y,{
+   minY:-3,maxY:b.h+4,tag:b.name
+  });
+ }
+ // Perimeter security fencing: long side runs, not blocking main road.
+ for(let i=0;i<29;i++){
+  const f=getFrameAt(.48+i*.0104);
+  for(const sign of [-1,1]){
+   const p=f.point.clone().addScaledVector(f.normal,sign*(17+(i%4===0?1:0)));
+   const group=new THREE.Group();group.position.copy(p);group.rotation.y=f.rotationY;
+   root.add(group);
+   shape(THREE,group,"box",0,2,0,.13,4,4.7,0x4b5e5e);
+   shape(THREE,group,"box",0,2,0,.06,3.4,4.6,0x7c9290);
+   if(i%6===0){
+    const label=billboard(THREE,group,"RESTRICTED","#702e2c","#ffe3bd",4.3);
+    label.position.set(sign*.1,3.1,0);label.rotation.y=Math.PI/2;
+   }
+   if(i%3===0)addBoxCollider(p,.3,2.4,f.rotationY,{minY:f.point.y-2,maxY:f.point.y+5,tag:"BASE FENCE"});
+  }
+ }
+ // Two surveillance towers with active moving searchlight beams.
+ const searchlights=[];
+ for(const [t,offset] of [[.535,-26],[.665,26],[.745,-29]]){
+  const {p}=placeFrame(t,offset);
+  const g=new THREE.Group();g.position.copy(p);root.add(g);
+  shape(THREE,g,"box",0,8.5,0,3,17,3,0x6b6261);
+  const cabin=shape(THREE,g,"box",0,17,0,7,4,7,0x2f4756);
+  const beam=new THREE.Mesh(new THREE.ConeGeometry(9.5,23,18,1,true),
+   new THREE.MeshBasicMaterial({color:0xffe5a8,transparent:true,
+    opacity:.10,depthWrite:false,side:THREE.DoubleSide}));
+  beam.position.y=6;
+  beam.rotation.z=Math.PI; // cone points down
+  g.add(beam);
+  const pivot=new THREE.Group();pivot.position.y=16;g.add(pivot);
+  shape(THREE,pivot,"sphere",0,0,0,1.4,1,1,0xffefbe);
+  const spotlight=new THREE.SpotLight(0xffe5aa,5,72,.32,.8,2);
+  spotlight.position.set(0,0,0);
+  spotlight.target.position.set(0,-2,0);pivot.add(spotlight,spotlight.target);
+  searchlights.push({g,pivot,beam,t,offset});
+  addBoxCollider(p,2,2,0,{minY:p.y,maxY:p.y+19,tag:"WATCHTOWER"});
+ }
+ // Radar arrays and masts.
+ for(const t of [.577,.698,.784]){
+  const {p}=placeFrame(t,65);
+  const group=new THREE.Group();group.position.copy(p);root.add(group);
+  shape(THREE,group,"cylinder",0,9,0,.7,18,1,0x75827f);
+  const antenna=new THREE.Mesh(new THREE.SphereGeometry(5,12,5,0,Math.PI),
+   makeMaterial(THREE,0xb9c2ba,.35));
+  antenna.rotation.x=Math.PI/2;antenna.position.y=19;group.add(antenna);
+  addCircleCollider(p,1.5,{minY:p.y,maxY:p.y+22,tag:"RADAR"});
+ }
+ // 3D tunnel structure and drainage shortcuts with real drivable pavement.
+ const shortcutLabels=[
+  [.395,.420,-10,"DRAINAGE CHANNEL"],
+  [.52,.548,-12,"RESTRICTED SERVICE TUNNEL"],
+  [.69,.722,10,"HANGAR MAINTENANCE"],
+  [.834,.858,-11,"RIDGE CAVE PASSAGE"]
+ ];
+ const shortcuts=[];
+ for(const [from,to,offset,name] of shortcutLabels){
+  const path=new THREE.Group();root.add(path);
+  const vertices=[],uvs=[],indices=[];
+  const steps=15;
+  for(let k=0;k<=steps;k++){
+   const f=getFrameAt(from+(to-from)*k/steps);
+   const taper=Math.sin(Math.PI*k/steps);
+   const side=offset*taper;
+   const c=f.point.clone().addScaledVector(f.normal,side);
+   for(const w of [-3.6,3.6]){
+    vertices.push(c.x+f.normal.x*w,c.y+.10,c.z+f.normal.z*w);
+    uvs.push(w>0?1:0,k/3);
+   }
+   if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
+   if(k===5||k===10){
+    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=f.rotationY;
+    root.add(arch);
+    shape(THREE,arch,"box",-4,2.4,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",4,2.4,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",0,5.05,0,9,.8,.9,0x715244);
+   }
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
+  geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(indices);geo.computeVertexNormals();
+  root.add(new THREE.Mesh(geo,makeMaterial(THREE,0x4a3e38)));
+  const a=placeFrame(from,.0,0),sign=new THREE.Group();
+  sign.position.copy(a.p).addScaledVector(a.f.normal,offset<0?-11:11);
+  sign.rotation.y=a.f.rotationY;root.add(sign);
+  const label=billboard(THREE,sign,name,"#40372c","#e5cda2",6.8);
+  label.rotation.y=Math.PI/2;label.position.y=3.0;
+  shortcuts.push({from,to,offset,name});
+ }
+ const outpost=placeFrame(.855,47);
+ const outpostGroup=new THREE.Group();outpostGroup.position.copy(outpost.p);
+ outpostGroup.rotation.y=outpost.f.rotationY;root.add(outpostGroup);
+ for(let i=0;i<4;i++){
+  shape(THREE,outpostGroup,"box",(i-1.5)*7,2.5,0,5,5,7,0x765e4c);
+ }
+ const opLabel=billboard(THREE,outpostGroup,"ABANDONED OUTPOST","#43392f","#f7e1b3",15);
+ opLabel.position.y=6;opLabel.rotation.y=Math.PI/2;
+ // Sand gust particles: fixed small count and one shared material.
+ const particles=[],dustMat=new THREE.MeshBasicMaterial({
+  color:0xc5aa7c,transparent:true,opacity:.3,depthWrite:false
+ });
+ for(let i=0;i<80;i++){
+  const t=(i%20)/20,frame=getFrameAt(.31+t*.23);
+  const side=(i%2?1:-1)*(6+seeded(i+240)*25);
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.3+seeded(i)*1.4,.6),dustMat);
+  mesh.position.copy(frame.point).addScaledVector(frame.normal,side);
+  mesh.position.y+=1+seeded(i+333)*4;mesh.rotation.y=seeded(i+84)*6;
+  root.add(mesh);
+  particles.push({mesh,base:mesh.position.clone(),phase:seeded(i+50)*TWO_PI});
+ }
+ // Actual moving hazards, moved from one consistent clock across clients.
+ const hazards=[];
+ function hazardGroup(type,t,side,radius,speedPeriod,phase=0){
+  const g=new THREE.Group();root.add(g);
+  const h={type,t,side,radius,period:speedPeriod,phase,mesh:g,lastImpact:-1e9};
+  hazards.push(h);return h;
+ }
+ for(const [j,t] of [.085,.325,.598].entries()){
+  const h=hazardGroup(j===1?"tanker":"convoy",t,-2.4+(j%2)*4.4,3.1,16+j*5,j*.36);
+  const g=h.mesh,base=h.type==="tanker"?0x7e8883:0x515e4c;
+  shape(THREE,g,"box",0,1.3,0,4.5,2.3,8.4,base);
+  shape(THREE,g,"box",0,2.7,2.0,3.4,1.8,2.7,0x343e3a);
+  if(h.type==="tanker"){
+   const tank=shape(THREE,g,"cylinder",0,3.0,-1,1.5,5.3,1.5,0xa5a9a2);
+   tank.rotation.x=Math.PI/2;
+  }
+  for(const x of [-2.1,2.1])for(const z of [-2.5,2.5]){
+   const wheel=shape(THREE,g,"cylinder",x,.66,z,.8,.5,.8,0x1c2124);
+   wheel.rotation.z=Math.PI/2;
+  }
+  shape(THREE,g,"box",0,1.25,4.25,2.3,.3,.1,0xffdca8);
+ }
+ for(const [j,t] of [.505,.68,.845].entries()){
+  const h=hazardGroup("gate",t,0,5.0,12+j*2,j*.26);
+  const g=h.mesh;
+  for(const s of [-1,1]){
+   shape(THREE,g,"box",s*7,2.6,0,.85,5.2,.85,0x5a6263);
+   shape(THREE,g,"sphere",s*7,5.6,0,.7,.7,.7,0xff4932);
+  }
+  h.bar=shape(THREE,g,"box",0,3.2,0,13.4,.35,.50,0xe7d8c0);
+  for(let x=-6;x<7;x+=2)shape(THREE,h.bar,"box",x,0,0,.82,.42,.54,0xd44836);
+ }
+ for(const [j,t] of [.57,.90].entries()){
+  const h=hazardGroup("blastdoor",t,0,5.0,19+j*4,.4+j*.3);
+  const g=h.mesh;
+  for(const s of [-1,1])shape(THREE,g,"box",s*7,4,0,2.1,8,2.7,0x4e5150);
+  shape(THREE,g,"box",0,8.2,0,16,1.7,3.0,0x565a56);
+  h.bar=shape(THREE,g,"box",0,2.7,0,12,5.4,1.1,0x61645f);
+  for(let x=-5;x<6;x+=2)shape(THREE,h.bar,"box",x,0,.58,.5,4.1,.07,0xe8bf59);
+ }
+ for(let j=0;j<3;j++){
+  const h=hazardGroup("dust",.35+j*.065,j%2?-2.2:2.2,4.7,14+j*3,j*.4);
+  for(let i=0;i<22;i++){
+   const phase=i/22*TWO_PI;
+   const puff=shape(THREE,h.mesh,"sphere",Math.cos(phase)*2.2,.3+i*.20,
+    Math.sin(phase)*2.2,.45,.5,.6,0xbf9c70);
+   puff.material.transparent=true;puff.material.opacity=.36;
+  }
+ }
+ for(let j=0;j<2;j++){
+  const h=hazardGroup("aircraft",.728+j*.036,0,5.1,23+j*11,j*.48);
+  const g=h.mesh;
+  shape(THREE,g,"box",0,2.7,0,3,2,17,0xaeb5b3);
+  shape(THREE,g,"box",0,2.8,-1,17,.34,3.2,0x707e7e);
+  shape(THREE,g,"box",0,4.2,-7,7,3,.9,0x697781);
+  shape(THREE,g,"sphere",0,3.2,7.7,1.3,1.2,1.2,0xb9c9c3);
+ }
+ for(let j=0;j<14;j++){
+  const h=hazardGroup("debris",.10+j*.056,((j%3)-1)*3.0,
+    j%4===0?1.5:.7,8+j*.12,j*.14);
+  const g=h.mesh;
+  if(j%3===0){
+   const tire=shape(THREE,g,"cylinder",0,.55,0,.68,.5,.7,0x282829);
+   tire.rotation.z=Math.PI/2;
+  }else shape(THREE,g,"box",0,.45,0,1,.7,1.2,j%2?0x756257:0x414443);
+ }
+ const active={lastCall:0,warning:0,hitCount:0};
+ function update(delta,nowMs,car,carState,popup){
+  const sec=nowMs*.001;
+  for(const light of searchlights){
+   light.pivot.rotation.y=Math.sin(sec*.46+light.t*12)*1.25;
+   light.beam.rotation.y=light.pivot.rotation.y;
+  }
+  for(const p of particles){
+   p.mesh.position.set(
+    p.base.x+Math.sin(sec*.7+p.phase)*1.8,
+    p.base.y+Math.sin(sec*1.9+p.phase)*.7,
+    p.base.z+Math.cos(sec*.48+p.phase)*2.1
+   );
+   p.mesh.rotation.y+=delta*.7;
+  }
+  for(const h of hazards){
+   const f=getFrameAt(h.t),time=sec/h.period+h.phase;
+   const phase=((time%1)+1)%1;
+   const oscillation=Math.sin(phase*TWO_PI);
+   const n=f.normal;
+   const lateral=h.type==="convoy"||h.type==="tanker"?
+     h.side+oscillation*2.9:
+     h.type==="aircraft"?oscillation*16:
+     h.type==="debris"?h.side+oscillation*1.25:
+     h.side;
+   h.mesh.position.copy(f.point).addScaledVector(n,lateral);
+   h.mesh.rotation.y=f.rotationY;
+   if(h.type==="gate"||h.type==="blastdoor"){
+    const open=Math.sin(TWO_PI*phase)>-.08;
+    h.open=open;
+    h.bar.visible=!open;
+    h.mesh.children.forEach((part,i)=>{
+      if(i<4&&part.material?.color?.getHex?.()===0xff4932)
+       part.material.emissive?.setHex?.(0xff2417);
+    });
+   }else if(h.type==="dust"){
+    h.mesh.rotation.y=sec*1.7+h.phase;
+   }else if(h.type==="aircraft"){
+    h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
+    h.mesh.rotation.y+=.08*Math.sin(sec*.45);
+   }else if(h.type==="convoy"||h.type==="tanker"){
+    h.mesh.position.addScaledVector(f.tangent,Math.sin(sec*.35+h.phase)*13);
+   }
+   if(!car||!carState||!carState.velocity||h.open)return;
+   const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
+   const dist=Math.hypot(dx,dz);
+   if(dist>h.radius+1.0||Math.abs(car.position.y-f.point.y)>3.2)continue;
+   if(h.type==="dust"){
+    // Sustained side gust: forces real countersteer instead of a popup only.
+    carState.velocity.x+=n.x*3.2*delta;
+    carState.velocity.z+=n.z*3.2*delta;
+    carState.cameraShake=Math.max(carState.cameraShake,.24);
+    if(sec-h.lastImpact>2.2){popup?.("CROSSWIND · COUNTERSTEER",600);h.lastImpact=sec;}
+    continue;
+   }
+   if(sec-h.lastImpact<1.25)continue;
+   h.lastImpact=sec;active.hitCount++;
+   const normal=new THREE.Vector3(dx/dist||n.x,0,dz/dist||n.z);
+   car.position.addScaledVector(normal,Math.max(0,h.radius+1.1-dist));
+   const into=carState.velocity.dot(normal);
+   if(into<0)carState.velocity.addScaledVector(normal,-1.22*into);
+   carState.velocity.multiplyScalar(h.type==="blastdoor"?.25:
+    h.type==="aircraft"?.30:.46);
+   carState.impactPulse=1;
+   carState.cameraShake=Math.max(carState.cameraShake,.72);
+   popup?.(h.type==="gate"?"SECURITY GATE!":
+     h.type==="blastdoor"?"BLAST DOOR!":
+     h.type==="aircraft"?"RUNWAY INCURSION!":
+     h.type==="debris"?"DEBRIS STRIKE!":"CONVOY COLLISION!",750);
+  }
+  // Spotlight alarm has a small legitimate gameplay consequence.
+  if(car&&carState&&carState.velocity&&sec-active.warning>3){
+   for(const l of searchlights){
+    const dx=car.position.x-l.g.position.x,dz=car.position.z-l.g.position.z;
+    const dist=Math.hypot(dx,dz);
+    const heading=Math.atan2(dx,dz);
+    const sweeping=l.pivot.rotation.y;
+    if(dist<27&&Math.abs(Math.atan2(Math.sin(heading-sweeping),
+        Math.cos(heading-sweeping)))<.42){
+      active.warning=sec;
+      carState.nitro=Math.max(0,(carState.nitro||0)-4);
+      popup?.("SEARCHLIGHT LOCK · NITRO JAM",850);break;
+    }
+   }
+  }
+ }
+ return {update,hazards,shortcuts,stats:active,dispose(){root.clear();}};
+}
