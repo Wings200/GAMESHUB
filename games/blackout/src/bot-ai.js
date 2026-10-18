@@ -1,0 +1,174 @@
+// BLACKOUT V0.7 — collision-aware indoor AI navigation and detailed enemy rig.
+// Grid navigation uses the very same colliders as the player's character.
+const GRID=1,MINX=-19,MAXX=19,MINZ=-65,MAXZ=25;
+const WIDTH=(MAXX-MINX)+1,HEIGHT=(MAXZ-MINZ)+1;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+function blocked(world,x,z,r=.38){
+  return world.colliders.some(a=>a.maxY>.42&&a.minY<1.6&&
+    x>=a.minX-r&&x<=a.maxX+r&&z>=a.minZ-r&&z<=a.maxZ+r);
+}
+const toGrid=(x,z)=>[clamp(Math.round(x-MINX),0,WIDTH-1),
+  clamp(Math.round(z-MINZ),0,HEIGHT-1)];
+const toWorld=(a,b)=>({x:MINX+a,z:MINZ+b});
+const hash=(a,b)=>b*WIDTH+a;
+export function findTacticalPath(world,from,to){
+  const [ax,az]=toGrid(from.x,from.z),[bx,bz]=toGrid(to.x,to.z);
+  const s=hash(ax,az),g=hash(bx,bz);
+  if(s===g)return [to];
+  const best=new Float64Array(WIDTH*HEIGHT);best.fill(Infinity);
+  const parents=new Int32Array(WIDTH*HEIGHT);parents.fill(-1);
+  best[s]=0;
+  const open=[{x:ax,z:az,k:s,f:Math.hypot(bx-ax,bz-az)}];
+  const closed=new Uint8Array(WIDTH*HEIGHT);
+  let found=false,iterations=0;
+  const directions=[[1,0],[0,1],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+  while(open.length&&iterations++<3200){
+    let low=0;
+    for(let i=1;i<open.length;i++)if(open[i].f<open[low].f)low=i;
+    const node=open.splice(low,1)[0];
+    if(closed[node.k])continue;
+    if(node.k===g){found=true;break;}
+    closed[node.k]=1;
+    for(const [dx,dz] of directions){
+      const nx=node.x+dx,nz=node.z+dz;
+      if(nx<0||nz<0||nx>=WIDTH||nz>=HEIGHT)continue;
+      const nk=hash(nx,nz);
+      if(closed[nk])continue;
+      const p=toWorld(nx,nz);
+      if(nk!==g&&blocked(world,p.x,p.z))continue;
+      // Don't cut around wall corners through diagonals.
+      if(dx&&dz){
+        const px=toWorld(node.x+dx,node.z),pz=toWorld(node.x,node.z+dz);
+        if(blocked(world,px.x,px.z)||blocked(world,pz.x,pz.z))continue;
+      }
+      const cost=best[node.k]+(dx&&dz?1.414:1);
+      if(cost>=best[nk])continue;
+      parents[nk]=node.k;best[nk]=cost;
+      open.push({x:nx,z:nz,k:nk,f:cost+Math.hypot(bx-nx,bz-nz)});
+    }
+  }
+  if(!found)return [];
+  const result=[to];
+  let cursor=g;
+  while(cursor!==s&&parents[cursor]>=0){
+    cursor=parents[cursor];
+    const x=cursor%WIDTH,z=Math.floor(cursor/WIDTH);
+    if(cursor!==s)result.push(toWorld(x,z));
+    if(result.length>400)break;
+  }
+  result.reverse();
+  // Skip long straight waypoint chains while preserving collision-safe bends.
+  const compact=[];
+  for(let i=0;i<result.length;i++){
+    const prev=result[i-1],at=result[i],next=result[i+1];
+    if(prev&&next){
+      const a=Math.atan2(at.z-prev.z,at.x-prev.x),b=Math.atan2(next.z-at.z,next.x-at.x);
+      if(Math.abs(a-b)<.02)continue;
+    }
+    compact.push(at);
+  }
+  return compact;
+}
+export function advanceTacticalBot(bot,goal,world,dt,now){
+  const changingGoal=!bot.lastGoal||Math.hypot(bot.lastGoal.x-goal.x,bot.lastGoal.z-goal.z)>1.4;
+  if(changingGoal||now>bot.repathAt||!bot.path?.length){
+    bot.path=findTacticalPath(world,bot,goal);
+    bot.repathAt=now+1400+(bot.id%3)*240;
+    bot.lastGoal={...goal};
+  }
+  while(bot.path.length&&Math.hypot(bot.x-bot.path[0].x,bot.z-bot.path[0].z)<.52)
+    bot.path.shift();
+  const dest=bot.path[0];
+  if(!dest)return 0;
+  const dx=dest.x-bot.x,dz=dest.z-bot.z,len=Math.hypot(dx,dz);
+  if(len<.03)return 0;
+  const step=Math.min(len,dt*bot.walkSpeed);
+  const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
+  if(blocked(world,nx,nz,.34)){
+    bot.path=[];bot.repathAt=now+1000;return 0;
+  }
+  bot.x=nx;bot.z=nz;bot.group.position.set(nx,0,nz);
+  bot.group.rotation.y=Math.atan2(-dx,-dz);
+  return step/Math.max(.001,dt);
+}
+export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
+  const group=new T.Group();group.position.set(x,0,z);scene.add(group);
+  const shell=new T.MeshStandardMaterial({color:0x68483a,roughness:.79,metalness:.05});
+  const vest=new T.MeshStandardMaterial({color:0x26343c,roughness:.86,metalness:.25});
+  const helmet=new T.MeshStandardMaterial({color:0x353b34,roughness:.72,metalness:.25});
+  const skin=new T.MeshStandardMaterial({color:0xbd896d,roughness:.9});
+  const muzzleMaterial=new T.MeshBasicMaterial({color:0xffc782,transparent:true,opacity:.9});
+  const parts=[];
+  function box(parent,w,h,d,px,py,pz,material){
+    const m=new T.Mesh(new T.BoxGeometry(w,h,d),material);
+    m.position.set(px,py,pz);parent.add(m);parts.push(m);return m;
+  }
+  function cylinder(parent,r1,r2,h,x,y,z,material){
+    const m=new T.Mesh(new T.CylinderGeometry(r1,r2,h,10),material);
+    m.position.set(x,y,z);parent.add(m);parts.push(m);return m;
+  }
+  const body=box(group,.69,.90,.39,0,1.32,0,shell);
+  const armor=box(group,.69,.63,.43,0,1.34,-.04,vest);
+  for(const ax of [-1,1]){
+    box(group,.18,.56,.15,ax*.24,1.32,-.27,vest);
+    box(group,.12,.25,.07,ax*.23,1.37,-.37,shell);
+  }
+  const head=new T.Mesh(new T.SphereGeometry(.23,12,10),skin);
+  head.position.set(0,2.10,0);group.add(head);parts.push(head);
+  box(group,.49,.17,.47,0,2.24,.03,helmet);
+  box(group,.44,.13,.1,0,2.12,-.20,helmet);
+  const leftLeg=new T.Group(),rightLeg=new T.Group();
+  for(const [g,side] of [[leftLeg,-1],[rightLeg,1]]){
+    group.add(g);g.position.set(side*.20,.91,0);
+    box(g,.22,.53,.26,0,-.26,0,shell);
+    box(g,.21,.30,.21,0,-.62,0,vest);
+    box(g,.24,.13,.39,0,-.78,-.09,helmet);
+  }
+  const leftArm=new T.Group(),rightArm=new T.Group();
+  for(const [g,side] of [[leftArm,-1],[rightArm,1]]){
+    group.add(g);g.position.set(side*.45,1.70,0);
+    box(g,.22,.59,.24,0,-.30,-.12,shell);
+    box(g,.17,.18,.17,0,-.60,-.20,skin);
+  }
+  // Silhouette gun and optic, oriented along the bot's local -Z.
+  box(group,.12,.14,.66,.05,1.42,-.44,vest);
+  box(group,.045,.035,.33,.05,1.44,-.91,helmet);
+  box(group,.09,.1,.13,.05,1.55,-.41,helmet);
+  const muzzle=new T.Mesh(new T.SphereGeometry(.055,8,6),muzzleMaterial);
+  muzzle.position.set(.05,1.44,-1.10);group.add(muzzle);muzzle.visible=false;
+  const shadow=new T.Mesh(new T.CircleGeometry(.43,18),
+    new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.22,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2;shadow.position.y=.012;group.add(shadow);
+  const bot={id,group,body,head,hitboxes:[body,head],x,z,
+    health:100,alive:true,stationary,healthMax:100,
+    armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
+    path:[],lastGoal:null,repathAt:0,state:stationary?"hold":"approach",
+    hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
+    moved:0,movePhase:0,muzzle,
+    damage(amount){
+      if(!this.alive)return false;
+      this.health=Math.max(0,this.health-amount);
+      this.hitAt=performance.now();
+      this.suppressedUntil=this.hitAt+1400;
+      armor.color.setHex(0x665049);
+      if(!this.health){
+        this.alive=false;this.group.visible=false;
+        return true;
+      }
+      return false;
+    },
+    animate(dt,now,movement=0){
+      this.movePhase+=dt*Math.max(0,movement)*3.5;
+      const wave=Math.sin(this.movePhase)*Math.min(.55,movement*.18);
+      leftLeg.rotation.x=wave;rightLeg.rotation.x=-wave;
+      leftArm.rotation.x=-wave*.45;rightArm.rotation.x=wave*.45;
+      const recoil=Math.max(0,1-(now-this.lastShotAt)/170);
+      body.rotation.x=-recoil*.055;
+      this.muzzle.visible=recoil>.7;
+    }
+  };
+  body.userData={kind:"bot",bot,hitZone:"body"};
+  head.userData={kind:"bot",bot,hitZone:"head"};
+  world.shootables.push(body,head);
+  return bot;
+}
