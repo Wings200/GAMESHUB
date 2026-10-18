@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import { buildAnnex } from "./src/world.js?v=blackout-v01-annex-1";
-import { FirstPersonController } from "./src/player.js?v=blackout-v01-annex-1";
+import { buildAnnex } from "./src/world.js?v=blackout-v01-corrected-controls-2";
+import { FirstPersonController } from "./src/player.js?v=blackout-v01-corrected-controls-2";
 
 // Stage 1 intentionally has no weapon or multiplayer. REDLINE stays isolated.
 const $=id=>document.getElementById(id);
@@ -130,7 +130,7 @@ function drawMap(){
     ctx.fillRect(px(x)-1,pz(z)-1,3,3);
   }
   const x=px(player.x),y=pz(player.z);
-  const dirX=Math.sin(player.yaw),dirZ=-Math.cos(player.yaw);
+  const dirX=-Math.sin(player.yaw),dirZ=-Math.cos(player.yaw);
   ctx.fillStyle="#67f7ee";ctx.strokeStyle="#cdfcf7";ctx.lineWidth=1.6;
   ctx.beginPath();ctx.moveTo(x+dirX*8,y+dirZ*8);
   ctx.lineTo(x-dirZ*4-dirX*3,y+dirX*4-dirZ*3);
