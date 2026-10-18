@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
-import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-collision-21-7";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-rebuild-21-8";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
@@ -10266,12 +10266,17 @@ function buildWorld() {
     buildRoad();
     buildBarriers();
     if(activeTrackId==="canyon"){
-        nevadaSystem=createNevadaWorld({
-            THREE,worldGroup,scene,trackSamples,getFrameAt,
-            roadHalf:ROAD_HALF,addBoxCollider:addEnvironmentBoxCollider,
-            addCircleCollider:addEnvironmentCircleCollider,
-            addRoadBarrier:(a,b,y)=>barriers.push({a,b,y})
-        });
+        try{
+            nevadaSystem=createNevadaWorld({
+                THREE,worldGroup,scene,trackSamples,getFrameAt,
+                roadHalf:ROAD_HALF,addBoxCollider:addEnvironmentBoxCollider,
+                addCircleCollider:addEnvironmentCircleCollider,
+                addRoadBarrier:(a,b,y)=>barriers.push({a,b,y})
+            });
+        }catch(error){
+            console.error("Nevada scenery failed; base raceway remains playable",error);
+            nevadaSystem=null;
+        }
     }
     // Four true paved side corridors, following Nevada's road-grade and
     // sharing regular tire physics. None skip mandatory checkpoints.
@@ -11082,8 +11087,13 @@ function gameLoop(now) {
     if(nevadaSystem&&activeTrackId==="canyon"){
         const synced=window.REDLINE_MP?.serverNow;
         const now=Number.isFinite(synced)?synced:Date.now();
-        nevadaSystem.update(delta,now,raceActive?car:null,
-            raceActive?carState:null,showRacePopup,serverRaceStartAt);
+        try{
+            nevadaSystem.update(delta,now,raceActive?car:null,
+                raceActive?carState:null,showRacePopup,serverRaceStartAt);
+        }catch(error){
+            console.error("Nevada dynamic hazards disabled after error",error);
+            nevadaSystem=null;
+        }
     }
     trafficSystem?.update(delta);
     updateNetwork(now);
