@@ -1044,8 +1044,11 @@ export function createNevadaWorld({
     if(Math.hypot(car.position.x-p.x,car.position.z-p.z)<6.3&&
        Math.abs(car.position.y-p.y)<3){
       active.discovered.add(route.name);
-      carState.nitro=Math.min(100,(carState.nitro||0)+12);
-      popup?.("SECRET FOUND · "+route.name+" · NITRO +12",1200);
+      // A side route must be rewarding, not just a longer exposed road.
+      // Actual discovery is inside it, never triggered by driving past.
+      carState.nitro=Math.min(100,(carState.nitro||0)+24);
+      carState.boostTimer=Math.max(carState.boostTimer||0,1.0);
+      popup?.("HIDDEN ROUTE · "+route.name+" · BOOST + NITRO 24",1500);
     }
    }
   }
