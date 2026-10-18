@@ -68,3 +68,21 @@ The simulation has 27 moving hazards, three searchlights, 5 floodlight arrays an
 5. Explore alternate service corridors, the broken fence, ridgeline cave and outpost.
 6. Finish: normal multiplayer race rewards work as before; a local Time Trial stores the Nevada personal best.
 7. Revisit Neon and Arctic to confirm no changes to their original physics/geometry.
+
+## V21.1 recording-driven rebuild — October 17, 2026
+
+A 77-second user gameplay recording revealed Nevada Run looked severely unfinished: earth-color geometric sheets swallowed asphalt edges, ground appeared to end in elevated slabs, landmarks were sparse, and hazards did not behave consistently. Previous "code pass" reporting was insufficient; **a static syntax test cannot validate actual visual quality.** These issues were acknowledged as release defects.
+
+Changes committed after studying video frames:
+- Removed the seven-band mesh that ran across the middle of the roadway and generated large triangles on turns. Replaced it with two separate bands beginning **outside the painted road** and graded down to the desert floor. This removes the direct cause of earth strips appearing over asphalt.
+- Connected the outer bands to the real low terrain height rather than leaving artificial 20-meter-high shelves. Moved canyon cliff geometry farther from the drivable shoulder.
+- Darkened asphalt and brightened edge stripes so racing lanes contrast with sandstone at sunset.
+- Fixed a serious hazard update early `return` inside a for-loop: if any barrier was open, later aircraft, gates, dust and the spotlight detection skipped their update that frame. It is now `continue`.
+- Replaced floating collision arms with visible rising/lowering security arms. Their closed height now matches vehicle bumper/windshield, and industrial blast doors lift out of the road instead of simply disappearing.
+- Added marked fictional runway surface and runway lighting by the blacksite, plus real collision boxes for the abandoned outpost shacks.
+- Added guarded desert initialization/update failure handling so scenery exceptions don't break the central race loop.
+- Fresh module/script versions in HTML and `game.js` to bypass stale browser caches.
+
+**Verification:** JavaScript parsing was checked and new scenery instantiated/updated in a Three.js-compatible simulated scene; 27 hazards and four shortcuts were present, late-stage aircraft and dust moved after an earlier gate changed state, 79 static box colliders were registered, and contact with a simulated convoy slowed the vehicle. The actual WebGL output in a user's browser has **not yet** been visually confirmed for V21.1; video-based visual QA of the repaired build is required before calling the map polished.
+
+**Remaining quality work:** high-detail runway and facility modeling, believable road material/weather blending, dynamic hazard fairness at multiplayer latency, user-driving validation of all shortcuts, and server-authorized cash collectibles. No claim that these are finished.
