@@ -227,3 +227,30 @@ User-submitted recording: `Screen Recording 2026-10-18 005549.mp4` (92.3946s, 25
 - The route, lap, shop/garage, purchased car appearance, car physics, multiplayer backend, Neon and Arctic files were not modified.
 
 **Validation:** JS syntax passed. Mock 900-frame linear track construction produced 27 hazards, 4 shortcuts, 205 box and 370 circle static colliders both before and after. Scene construction contained 545 meshes before and 559 after (new aircraft parts). Comparison of embankment faces went from 10,800 triangles to 10,494 in approximation, meaning some intruding faces were omitted. Mock world build changed from 324ms to 374ms; this is not a reliable browser load benchmark. Simulated aircraft moved from Y~7.3/9.9 before to Y~18.8/22.4 after, before body-local vertical offsets. All 27 hazards remain, but two overhead aircraft no longer apply contact penalties. Real browser visual validation, real FPS and live deployment are still unverified.
+
+## V22.5b — highway & side-road geometry first (October 18, 2026)
+
+**Source:** player specifically criticized the main highway and off-road paths in `Screen Recording 2026-10-18 005549.mp4`, noting earlier reviews focused on unrelated objects instead of obvious road defects. This patch therefore touches only Nevada road surfaces, terrain alignment, and the physics/surface-zone seam; Flight 51 jet patch V22.4 remains in place.
+
+**Confirmed root causes in source code**
+- Each 4-way shortcut rendered as a **flat brown ribbon starting at the main highway centerline**, visibly painting mud-colored trapezoids over main asphalt. `game.js` independently recalculated shortcut collision heights, so geometry and tire physics could drift apart.
+- Two enclosed tunnel roofs were sometimes unsupported: `clearOfRoad(wall,1.8)` rejected walls for being within 7.8m of the tunnel's own route center. Result was an overhead floating slab.
+- Highway road elevation peaked around 31m yet the terrain returned to roughly -4m at only 32m lateral offset, generating extreme triangular embankments and empty/desolate off-road terrain.
+- `makeRibbon` applied only ~28 asphalt texture repeats to the whole multi-kilometre Nevada highway, stretching the same pattern into exaggerated repeated longitudinal streaks; Neon's correct metre-based UV method wasn't enabled for canyon/Nevada.
+
+**Corrections**
+- Side roads now use 25 common sampled points and tapered asphalt-colored pavement with edge lines. Pavement at both junctions meets main road height within ~3cm. Exact sample coordinates/widths/height are returned by Nevada builder and consumed directly by `game.js` canyon-only `surfaceZones`; no divergent recomputation.
+- Covered tunnel sections require geometric highway-footprint clearance before creation; build both walls and roof together, register matching wall colliders, and leave open merger throats. Ridge guardrail and perimeter fence existing cutouts preserved.
+- Desert floor vertices are elevated into a coherent hillside near road, interpolated back into the valley over 100m+; roadside banks use six graded stations across 65m rather than dropping to the valley floor over 32m. Road spline and asphalt elevation remain exactly the same.
+- Main Nevada asphalt and shoulders now use Neon's proven 4.5m/world repeat plus end UV seam, instead of 28 UV repeats per lap. Neon mapping remains unchanged; Arctic still uses the prior mapping.
+- Preserved saved vehicles, garage, multiplayer, worker, economy, all dynamic hazards, shortcut definitions and road control points.
+
+**Tests performed**
+- JS parser passes on current `nevada-run.js` and `game.js`.
+- Mock Three.js V8 full 900-frame Nevada scene creates **27 hazards and 4 shortcuts** with **563 meshes (62 instanced)**; static batch optimization continues to report **838 static boxes in 54 batches**. **233 static box and 370 circle colliders**; the extra 28 boxes are the two now-physical tunnel walls (14 per tunnel), instead of roofs without solid visible walls. No claim of measured browser FPS.
+- All four side routes have 25 contiguous nodes, approximate length 98–122m; max sampled slopes 1.5%–4.3%; junction ends just 3cm above spline centerline. Independent main-road proximity checks found no nonlocal road intersection with the four shortcuts.
+- Standalone `makeRibbon` mapping test passed for Neon/Nevada (901 sample pairs, full seam, world-space UV ~838 repeats in a synthetic 3.77km oval) and Arctic (900 pairs and unchanged legacy 28 repeats). No out-of-range triangle indices.
+
+**Limitation:** live WebGL browser playthrough, visual appearance on user's screen, Cloudflare deployment and actual FPS are not independently verified. The build improves reproducible code-level geometry defects, not a guaranteed finished map.
+
+Latest frontend cache tag: `nevada-v22-5b-road-uv-and-shortcuts-1018`.
