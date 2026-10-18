@@ -2,10 +2,10 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V0.2 - flat tactical shooting, movement and gadget mechanics lab.">
+<meta name="description" content="BLACKOUT V0.5 - playable tactical objective drills with fixed operators, recoil and leaning.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=optic-on-gun-spread-alarm-04">
+<link rel="stylesheet" href="./style.css?v=blackout-operator-objectives-05">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
@@ -13,12 +13,12 @@
 <div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
 <header id="gameHUD" class="game-hud hidden">
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ MECHANICS LAB · V0.2</span></div>
+    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ SITE A DRILLS · V0.5</span></div>
     <h2 id="zoneLabel">FLAT MECHANICS LAB</h2>
     <p>LOCAL SHOOTING TEST · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
   <div class="hud-right lab-right">
-    <div class="mission">TARGET RANGE <strong id="objective">0 / 12 TARGETS</strong></div>
+    <div class="mission">ROUND OBJECTIVE <strong id="objective">SITE A · WAITING</strong></div>
     <div class="lab-card">
       <div class="lab-card-heading">GADGET TOOLKIT</div>
       <p id="gadgetPrimary">G · BREACH CHARGE [2]</p>
@@ -30,12 +30,16 @@
       <p>Q / E LEAN</p>
     </div>
   </div>
-  <div class="crosshair-caption">MECHANICS TEST ONLY · OFFLINE TRAINING</div>
+  <div class="crosshair-caption">SOLO OBJECTIVE DRILL · NOT MULTIPLAYER</div>
+  <div id="objectiveHint" class="objective-hint" aria-live="polite"></div>
+  <div id="objectiveProgress" class="objective-progress hidden"><span id="objectiveAction">PLANTING</span><div class="objective-progress-track"><div id="objectiveFill"></div></div></div>
+  <div id="roundResult" class="round-result hidden" role="status"></div>
   <div class="hud-bottom lab-bottom">
     <div class="weapon-hud">
       <div id="weaponName" class="weapon-name">KESTREL MK1</div>
       <div class="ammo-row"><span id="ammoCount">30</span><span id="reserveCount">/ 120</span></div>
       <div class="stat-row" id="combatStats">0 HITS · 0% ACC · 0 DOWN</div>
+      <div class="operator-health"><strong id="operatorHud">KESTREL · 2 SPEED / 2 ARMOR</strong><strong id="healthHud">110 / 110 HP</strong></div>
       <div class="sight-readout">OPTIC <span>V TO CYCLE</span></div>
     </div>
     <div class="side-controls">
@@ -54,18 +58,20 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.4.0 // WEAPON ALIGNMENT</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.5.0 // TACTICAL ROUNDS</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">THE LAB <span>—</span> MECHANICS BEFORE MAPS</div>
     <div class="rule"></div>
-    <p class="description">No city. No facility. No map development yet. A <strong>flat tactical testing ground</strong> for movement, recoil, ADS, bullet damage, speed and original attacker/defender gadgets. This is single-player testing—not a live 5v5 match.</p>
+    <p class="description">No city. No facility. No map development yet. A <strong>flat tactical testing ground</strong> with playable Site A attack/defend rounds, simulated hostile bots, operator health, recoil, leaning and gadgets. Offline single-player—not a live 5v5.</p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
     </div>
-    <div class="lab-section-title" id="selectedMode">ATTACKER MECHANICS</div>
+    <div class="lab-section-title" id="selectedMode">ATTACKER · PLANT & DEFEND</div>
+    <label class="operator-picker">CHOOSE OPERATOR <select id="operatorSelect" aria-label="Choose operator"><option value="kestrel">KESTREL · 2 SPEED / 2 ARMOR · 110 HP</option></select></label>
+    <div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP · FIXED OPERATOR MOVEMENT</div>
     <label class="sight-picker">SELECT YOUR OPTIC <select id="sightSelect" aria-label="Select weapon sight">
       <option value="holo-a">HOLOGRAPHIC A — CIRCLE + DOT</option>
       <option value="holo-b">HOLOGRAPHIC B — TACTICAL CROSS</option>
@@ -73,8 +79,8 @@
       <option value="iron">IRON SIGHTS — POST</option>
     </select></label>
     <div class="tuning-grid">
-      <label>Walk speed <output id="walkValue">3.3 m/s</output><input id="walkSlider" type="range" min="2" max="5" step="0.1" value="3.34"></label>
-      <label>Sprint speed <output id="sprintValue">5.5 m/s</output><input id="sprintSlider" type="range" min="4" max="8" step="0.1" value="5.5"></label>
+      
+      
       <label>Mouse sensitivity <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label>
     </div>
     <div class="menu-actions">
@@ -84,15 +90,15 @@
     </div>
     <div id="guide" class="test-guide hidden">
       <strong>TEST CONTROLS</strong>
-      <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: lean · Mouse: look</p>
+      <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: strong, collision-checked lean · Mouse: look. Speed is fixed per operator</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attacker</strong> — G: attach charge to soft panel (within 7m; detonates automatically), X: pulse reveal test targets.</p>
-      <p><strong>Defender</strong> — F: install reinforcement on aimed panel (3-second animation; no movement or firing until complete); G: shield; X: proximity sensor. Move outside then re-enter its radius for an audible three-beep alarm.</p>
+      <p><strong>Attacker objective</strong> — Eliminate the two orange sentries, enter Site A, HOLD F for 5 seconds to plant, then protect the defuser for 24 seconds. G: breach charge; X: scan.</p>
+      <p><strong>Defender objective</strong> — Guard Site A for 85 seconds against approaching orange hostiles. If they plant, get inside the circle and HOLD F for 5.5 seconds to disable. Otherwise F reinforces aimed panels over 3 seconds. G: shield; X: proximity sensor.</p>
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
-    <div class="progress-foot"><span>FLAT FLOOR · 12 DUMMIES · 2 TEST PANELS</span><span>NO MULTIPLAYER · NO MAPS YET</span></div>
+    <div class="progress-foot"><span>FLAT FLOOR · SITE A · HOSTILE TRAINING BOTS</span><span>NO MULTIPLAYER · NO MAPS YET</span></div>
   </div>
   <div class="menu-right lab-aside">
     <div class="redline">B<span>↗</span></div>
@@ -106,5 +112,5 @@
     <div class="menu-right-footer">THE LAB / OPEN RANGE<br>BUILD THE MECHANICS. THEN BUILD THE WORLD.</div>
   </div>
 </main>
-<script type="module" src="./main.js?v=optic-on-gun-spread-alarm-04"></script>
+<script type="module" src="./main.js?v=blackout-operator-objectives-05"></script>
 </body></html>
