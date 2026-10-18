@@ -266,6 +266,7 @@ export function createNevadaWorld({
   label.position.y=6.1;
   // Face approaching traffic, not across the road or backwards.
   label.rotation.y=Math.PI;
+  addCircleCollider(p,.30,{minY:p.y-.5,maxY:p.y+6.5,tag:"DESERT SIGNPOST"});
  }
  for(let i=0;i<110;i++){
   const t=i/110,p=placeFrame(t,18+(i%2)*6);
@@ -278,6 +279,7 @@ export function createNevadaWorld({
    const pole=placeFrame(t,-22).p;
    shape(THREE,root,"cylinder",pole.x,pole.y+5,pole.z,.14,10,.2,0x54443b);
    shape(THREE,root,"box",pole.x,pole.y+9.4,pole.z,3,.19,.19,0x695943);
+   addCircleCollider(pole,.35,{minY:pole.y,maxY:pole.y+10,tag:"DESERT POWER POLE"});
   }
  }
  // Groom Lake-inspired fictional runway: a long parallel taxiway with
