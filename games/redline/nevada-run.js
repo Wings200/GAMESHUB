@@ -603,6 +603,12 @@ export function createNevadaWorld({
    );
    p.mesh.rotation.y+=delta*.7;
   }
+  // Keep last frame's location to detect crossing a closed barrier at speed.
+  // Teleport/respawn movement is excluded.
+  const lastCar=car&&carState?active.lastCarPosition:null;
+  const sweptCar=lastCar&&
+   Math.hypot(car.position.x-lastCar.x,car.position.z-lastCar.z)<15?
+   lastCar:null;
   for(const h of hazards){
    const time=sec/h.period+h.phase;
    const phase=((time%1)+1)%1;
@@ -654,10 +660,22 @@ export function createNevadaWorld({
    const dist=Math.hypot(dx,dz);
    const across=dx*f.normal.x+dz*f.normal.z;
    const along=dx*f.tangent.x+dz*f.tangent.z;
-   // Hazard takes one lane; the other remains safely passable.
-   const blocked=h.type==="gate"||h.type==="blastdoor"?
-     Math.abs(across)<3.15&&Math.abs(along)<1.45:
-     dist<h.radius+1.0;
+   const isBarrier=h.type==="gate"||h.type==="blastdoor";
+   let previousAlong=along,crossedBarrier=false;
+   if(isBarrier&&sweptCar){
+    const px=sweptCar.x-h.mesh.position.x,pz=sweptCar.z-h.mesh.position.z;
+    previousAlong=px*f.tangent.x+pz*f.tangent.z;
+    const previousAcross=px*f.normal.x+pz*f.normal.z;
+    if(previousAlong*along<=0&&Math.abs(previousAlong-along)>.001){
+     const t=previousAlong/(previousAlong-along);
+     const crossingAcross=previousAcross+(across-previousAcross)*t;
+     crossedBarrier=t>=0&&t<=1&&Math.abs(crossingAcross)<3.75;
+    }
+   }
+   // Include car width and prevent fast cars skipping a 1-frame barrier.
+   const blocked=isBarrier?
+    (Math.abs(across)<3.75&&Math.abs(along)<2.45)||crossedBarrier:
+    dist<h.radius+1.0;
    if(!blocked||Math.abs(car.position.y-f.point.y)>3.2)continue;
    if(h.type==="dust"){
     // Sustained side gust: forces real countersteer instead of a popup only.
@@ -667,17 +685,21 @@ export function createNevadaWorld({
     if(sec-h.lastImpact>2.2){popup?.("CROSSWIND · COUNTERSTEER",600);h.lastImpact=sec;}
     continue;
    }
+   let normal;
+   if(isBarrier){
+    // Keep the driver on the approaching side throughout hit cooldown.
+    const side=(crossedBarrier?previousAlong:along)>=0?1:-1;
+    normal=f.tangent.clone().setY(0).normalize().multiplyScalar(side);
+    car.position.addScaledVector(f.tangent,side*2.5-along);
+   }else{
+    normal=new THREE.Vector3(dx/Math.max(.001,dist),0,
+     dz/Math.max(.001,dist));
+    car.position.addScaledVector(normal,Math.max(0,h.radius+1.1-dist));
+   }
+   const into=carState.velocity.dot(normal);
+   if(into<0)carState.velocity.addScaledVector(normal,-into);
    if(sec-h.lastImpact<1.25)continue;
    h.lastImpact=sec;active.hitCount++;
-   const isFullWidth=h.type==="gate"||h.type==="blastdoor";
-   const normal=isFullWidth?
-     f.tangent.clone().multiplyScalar(along>=0?1:-1).setY(0).normalize():
-     new THREE.Vector3(dx/Math.max(.001,dist),0,dz/Math.max(.001,dist));
-   const penetration=isFullWidth?Math.max(0,1.5-Math.abs(along)):
-     Math.max(0,h.radius+1.1-dist);
-   car.position.addScaledVector(normal,penetration);
-   const into=carState.velocity.dot(normal);
-   if(into<0)carState.velocity.addScaledVector(normal,-1.22*into);
    carState.velocity.multiplyScalar(h.type==="blastdoor"?.25:
     h.type==="aircraft"?.30:.46);
    carState.impactPulse=1;
@@ -695,6 +717,8 @@ export function createNevadaWorld({
     const mid=(route.from+route.to)*.5,f=getFrameAt(mid);
     const off=route.offset;
     const p=f.point.clone().addScaledVector(f.normal,off);
+    // This passage is below the main highway in the hillside.
+    p.y=roadsideHeight(f,off)+.25;
     if(Math.hypot(car.position.x-p.x,car.position.z-p.z)<6.3&&
        Math.abs(car.position.y-p.y)<3){
       active.discovered.add(route.name);
@@ -718,6 +742,7 @@ export function createNevadaWorld({
     }
    }
   }
+  active.lastCarPosition=car&&carState?car.position.clone():null;
  }
  // worldGroup's normal disposer owns all geometries and materials; do not
  // detach the root before it has traversed and released their resources.
