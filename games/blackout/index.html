@@ -2,10 +2,10 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V0.5 - playable tactical objective drills with fixed operators, recoil and leaning.">
+<meta name="description" content="BLACKOUT V0.6 - tactical plant/defuse gameplay, manageable recoil, 3D defuser and audio.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=blackout-operator-objectives-05">
+<link rel="stylesheet" href="./style.css?v=blackout-audio-plant-defuser-06">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
@@ -13,7 +13,7 @@
 <div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
 <header id="gameHUD" class="game-hud hidden">
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ SITE A DRILLS · V0.5</span></div>
+    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ SITE A DRILLS · V0.6</span></div>
     <h2 id="zoneLabel">FLAT MECHANICS LAB</h2>
     <p>LOCAL SHOOTING TEST · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
@@ -58,7 +58,7 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.5.0 // TACTICAL ROUNDS</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.6.0 // DEFUSER + AUDIO</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
@@ -79,24 +79,24 @@
       <option value="iron">IRON SIGHTS — POST</option>
     </select></label>
     <div class="tuning-grid">
-      
-      
       <label>Mouse sensitivity <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label>
     </div>
     <div class="menu-actions">
       <button id="start" type="button">ENTER TEST RANGE <span>→</span></button>
       <button id="reset" class="outline" type="button">RESET LAB</button>
       <button id="guideToggle" class="outline" type="button">SHOW CONTROLS</button>
+      <button id="audioTest" class="outline" type="button">TEST AUDIO ♪</button>
     </div>
     <div id="guide" class="test-guide hidden">
       <strong>TEST CONTROLS</strong>
       <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: strong, collision-checked lean · Mouse: look. Speed is fixed per operator</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attacker objective</strong> — Eliminate the two orange sentries, enter Site A, HOLD F for 5 seconds to plant, then protect the defuser for 24 seconds. G: breach charge; X: scan.</p>
+      <p><strong>Attacker objective</strong> — Enter the glowing Site A circle and HOLD F for 5 seconds to plant, even while defenders are still alive. The planted defuser is a visible 3D device with a countdown and beeping alarm. Protect it for 28 seconds. G: breach charge; X: scan.</p>
       <p><strong>Defender objective</strong> — Guard Site A for 85 seconds against approaching orange hostiles. If they plant, get inside the circle and HOLD F for 5.5 seconds to disable. Otherwise F reinforces aimed panels over 3 seconds. G: shield; X: proximity sensor.</p>
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
+    <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
     <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
     <div class="progress-foot"><span>FLAT FLOOR · SITE A · HOSTILE TRAINING BOTS</span><span>NO MULTIPLAYER · NO MAPS YET</span></div>
   </div>
