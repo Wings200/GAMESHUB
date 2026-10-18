@@ -63,29 +63,6 @@
 
 /* BLACKOUT V0.3 — optic sights and timed reinforcement build. */
 body.ads .reticle{display:none!important}
-.ads-optic{display:none;position:fixed;left:50%;top:50%;z-index:7;transform:translate(-50%,-50%);pointer-events:none;color:#f24946}
-body.playing.ads .ads-optic{display:block}
-.optic-housing{position:relative;width:174px;height:174px;border:14px solid #161f2a;border-radius:29%;box-shadow:0 0 0 3px #667b8c,0 3px 0 6px #0e1722,0 10px 40px #0009,inset 0 0 22px #79c4db18;background:radial-gradient(circle,#8ddaff06 0%,#244a6612 70%,#081d2c18 100%)}
-.optic-housing:after{content:"";position:absolute;left:50%;bottom:-25px;transform:translateX(-50%);width:55px;height:16px;background:#1a2731;border:2px solid #465965;border-radius:3px}
-.optic-lens{position:absolute;inset:0;border-radius:19%;box-shadow:inset 0 0 14px #8ee9f01f}
-.optic-aim{position:absolute;left:50%;top:50%;width:72px;height:72px;transform:translate(-50%,-50%);filter:drop-shadow(0 0 3px #ff2f2f);color:#ff4d3e}
-.optic-aim .aim-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:currentColor;left:calc(50% - 2.5px);top:calc(50% - 2.5px)}
-.optic-aim .aim-ring{position:absolute;width:42px;height:42px;border:2px solid currentColor;border-radius:50%;left:15px;top:15px}
-.optic-aim .aim-cross-h,.optic-aim .aim-cross-v{display:none;position:absolute;background:currentColor}
-.optic-aim .aim-chevron{display:none}
-.optic-indicator{text-align:center;padding-top:28px;letter-spacing:.17em;font-weight:850;font-size:9px;color:#c4e7ef;text-shadow:0 2px 7px #000b}
-.ads-optic[data-sight="holo-b"] .optic-housing{border-radius:14%;width:187px;height:151px}
-.ads-optic[data-sight="holo-b"] .optic-aim .aim-ring{width:25px;height:25px;left:23.5px;top:23.5px;border:1.7px solid currentColor}
-.ads-optic[data-sight="holo-b"] .aim-cross-h{display:block;width:60px;height:1.4px;left:6px;top:35.3px}
-.ads-optic[data-sight="holo-b"] .aim-cross-v{display:block;width:1.4px;height:60px;left:35.3px;top:6px}
-.ads-optic[data-sight="red-dot"] .optic-housing{width:133px;height:133px;border-radius:50%;border-width:13px}
-.ads-optic[data-sight="red-dot"] .aim-ring{display:none}
-.ads-optic[data-sight="red-dot"] .aim-dot{width:5px;height:5px;background:#ff5948;box-shadow:0 0 8px #fc5a4e}
-.ads-optic[data-sight="iron"] .optic-housing{border:0;box-shadow:none;background:none;width:126px;height:127px}
-.ads-optic[data-sight="iron"] .optic-lens,.ads-optic[data-sight="iron"] .optic-housing:after{display:none}
-.ads-optic[data-sight="iron"] .aim-ring,.ads-optic[data-sight="iron"] .aim-dot{display:none}
-.ads-optic[data-sight="iron"] .aim-chevron{display:block;position:absolute;left:34px;top:19px;width:8px;height:45px;background:#141f28;box-shadow:0 0 0 2px #95b6c9;clip-path:polygon(50% 0,100% 28%,100% 100%,0 100%,0 28%)}
-.ads-optic[data-sight="iron"] .optic-aim{transform:translate(-50%,-50%)}
 .sight-picker{display:flex;align-items:center;gap:14px;margin:4px 0 20px;font-size:10px;font-weight:950;letter-spacing:.13em;color:#8ae3eb;flex-wrap:wrap}
 .sight-picker select{padding:10px 13px;background:#091824;color:#d2eaf1;border:1px solid #457184;outline:0;font:800 11px Inter,"Segoe UI",Arial,sans-serif;letter-spacing:.04em;min-width:275px;cursor:pointer;max-width:100%}
 .sight-picker select:focus{border-color:#68eeee}
@@ -98,13 +75,8 @@ body.playing.ads .ads-optic{display:block}
 .reinforce-fill{height:100%;width:0;background:linear-gradient(90deg,#5aadb8,#9ef8de);transition:width .08s linear}
 .reinforce-hint{font-size:9px;letter-spacing:.08em;color:#94a7b7;text-align:center}
 @media(max-width:700px){.optic-housing{transform:scale(.77)}.reinforce-progress{top:calc(50% + 95px)}}
-
-
-/* Optic zero correction: the sight glass itself (not glass + caption)
-   is centered on the camera ray, so bullets land at the shown reticle. */
-.ads-optic{width:0;height:0;transform:none}
-.ads-optic .optic-housing{position:absolute;left:0;top:0;transform:translate(-50%,-50%)}
-.ads-optic .optic-indicator{position:absolute;left:0;top:110px;transform:translateX(-50%);width:240px;padding:0}
-.ads-optic[data-sight="red-dot"] .optic-indicator{top:91px}
-.ads-optic[data-sight="iron"] .optic-indicator{top:78px}
-.ads-optic[data-sight="iron"] .aim-chevron{left:32px;top:36px;height:31px}
+/* Physical 3D gun optics own ADS. This hipfire guide shows the wide spread. */
+.reticle{width:var(--hip-size,30px);height:var(--hip-size,30px)}
+.reticle span{left:50%;top:50%;transform:translate(-50%,-50%)}
+.reticle i{width:100%;height:100%;left:0;top:0}
+body.ads .reticle{display:none!important}
