@@ -73,10 +73,35 @@ function billboard(THREE,parent,text,back="#453022",front="#f8d5a0",size=10){
  parent.add(mesh);return mesh;
 }
 function seeded(i){const x=Math.sin(i*127.131+31.7)*43758.5453;return x-Math.floor(x)}
+// One shared 256px mineral texture across every eroded mesa / cliff.
+let rockSedimentTexture=null;
+function sedimentTexture(THREE){
+ if(rockSedimentTexture)return rockSedimentTexture;
+ const canvas=document.createElement("canvas");
+ canvas.width=256;canvas.height=256;
+ const c=canvas.getContext("2d");
+ for(let y=0;y<256;y+=2){
+  const band=11*Math.sin(y*.27)+5*Math.sin(y*.8)+3*Math.sin(y*1.8);
+  for(let x=0;x<256;x+=2){
+   const streak=7*Math.sin(x*.053+y*.17)+6*Math.sin(x*.14-y*.043);
+   const grain=17*(seeded(y*191+x*43+71)-.5);
+   const v=clamp(Math.round(230+band+streak+grain),174,255);
+   c.fillStyle=`rgb(${v},${Math.max(0,v-4)},${Math.max(0,v-10)})`;
+   c.fillRect(x,y,2,2);
+  }
+ }
+ const texture=new THREE.CanvasTexture(canvas);
+ texture.wrapS=THREE.RepeatWrapping;
+ texture.wrapT=THREE.RepeatWrapping;
+ texture.repeat.set(2,1);
+ texture.colorSpace=THREE.SRGBColorSpace;
+ rockSedimentTexture=texture;
+ return texture;
+}
 // Stratified, weathered sandstone instead of obviously polygonal cones.
 // Shared color bands mimic real sedimentary rock and varied erosion layers.
 function sandstoneMesa(THREE,radius,height,seed){
- const rings=15,segments=36,verts=[],cols=[],indices=[];
+ const rings=15,segments=36,verts=[],cols=[],uv=[],indices=[];
  const color=new THREE.Color();
  const widths=Array.from({length:rings},(_,i)=>{
   const t=i/(rings-1),terraces=.026*Math.sin(t*31+seed*1.7);
@@ -91,6 +116,7 @@ function sandstoneMesa(THREE,radius,height,seed){
     .055*Math.sin(a*5+seed)+.022*Math.sin(a*11+ring*.92);
    const r=radius*widths[ring]*wobble;
    verts.push(Math.cos(a)*r,y,Math.sin(a)*r);
+   uv.push(seg/segments,ring/(rings-1));
    const tones=[0x79513e,0x895c44,0xa47150,0xaf7d5a,0xb78660,0xa87451,0x81513e,0x9b694e];
    color.setHex(tones[Math.floor(ring*tones.length/rings)]);
    const light=.80+.28*seeded(seed+ring*20+seg);
@@ -107,15 +133,18 @@ function sandstoneMesa(THREE,radius,height,seed){
  // Eroded plateau rather than a pointed artificial summit.
  const topCenter=verts.length/3;
  verts.push(0,height*.99,0);
+ uv.push(.5,1);
  color.setHex(0x987051);cols.push(color.r,color.g,color.b);
  for(let k=0;k<segments;k++)
   indices.push(topCenter,(rings-1)*segments+k,(rings-1)*segments+(k+1)%segments);
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
  geometry.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
+ geometry.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
  geometry.setIndex(indices);geometry.computeVertexNormals();
  return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({
-  vertexColors:true,roughness:1,metalness:0,flatShading:true,side:THREE.DoubleSide
+  vertexColors:true,map:sedimentTexture(THREE),roughness:1,
+  metalness:0,flatShading:false,side:THREE.DoubleSide
  }));
 }
 export function createNevadaWorld({
