@@ -159,3 +159,18 @@ The second recording showed defects too serious to call Nevada release-ready. Co
 - All commits are on `main`. Cache tag: `nevada-v22-final-pass-1017`, shared by `index.html` and `game.js` Nevada import.
 
 **Important limits:** This remains a code-validated release candidate. The mocked Three.js checks do **not** establish real WebGL visual correctness, obstacle balancing across a complete timed lap, cloud deployment state, sound design, multiplayer state/latency correctness, or every shortcut's driveability. The Cloudflare Pages URL could not be reached from the available verification tools. The next QA must be a real V22 driving recording and should report location/time of any new clipping or intangible obstacle; any proven bug should be fixed before marketing Nevada as finished. Permanent cash pickups still require secure Worker validation and were not modified in this pass.
+
+## V22.1 — concealed routes and actual open approaches (October 17, 2026)
+
+Player report: most “secret” branches were advertised openly by highway billboards or were obstructed by physical guardrail and fence segments.
+
+- Defined all four hidden branch routes once in `NEVADA_TRACK.secretRoutes`, consumed consistently by side-road meshes, tunnel supports, spatial terrain cutouts, fence openings and `game.js` guardrail openings.
+- Completely omit branch-side guardrails **including visual beams/posts/reflectors AND `barriers[]` collision records**, for the entrance–exit span plus 0.005 track-parameter margin. Also geometrically skip rails on adjacent road legs when they cross the branch. The rest of the guarded canyon remains.
+- Remove any fence panels/colliders whose geometry overlaps the alternate path, supplementing the aligned restricted-area fence gaps.
+- Trim embankment meshes away from each 7.2m-wide side-road pavement strip. Spatial buckets avoid quadratic construction cost.
+- Removed large roadside billboards naming secret corridors. Identification signs now appear only inside the passage.
+- Converted exposed concrete arches and warehouse paths to partially roofed, thematic underground culvert, utility service, hangar maintenance and sandstone-cave corridors. Physically collidable supports are only placed away from the public main-road lanes; camouflage boulders sit outside the 7.2m driveway.
+- Increased actual discovery reward to 24 nitro and a 1.0s speed boost; only driving into the route earns it. Kept 20 normal checkpoint sequence intact. Lakebed reduced-grip behavior no longer overrides paved side-road traction.
+- Forced new client asset version `nevada-v22-1-hidden-routes` for both `game.js` and the Nevada module.
+
+**Verification**: Both files pass JavaScript parsing. Numerical guardrail test showed **zero opposing-side physical rails** at `t=.834,.839,.844,.850,.857` and retained the outside barrier at `t=.890`. Mock Three.js world construction passed with 27 hazards, four shortcuts, 205 box colliders and 370 circular colliders. For each of four branches, **15/15 centerline positions clear**, no perimeter fence collision and no sampled static collision in the mock. This does not constitute a real rendered browser or multiplayer driving test, and the mock control-point interpolation is approximate.
