@@ -421,9 +421,11 @@ function frame(now){
   gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)+gunKick*.28-gunModel.position.z)*blend;
   gunModel.rotation.x=-gunKick*.64;
   gunModel.rotation.z=gunKickSide;
-  gunOptics.mount.visible=weapons.slot==="primary";
+  const interacting=objectiveRound.hold>0&&keys.has("KeyF");
+  gunOptics.mount.visible=weapons.slot==="primary"&&!interacting;
   weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
-    sprinting:player.sprinting,step:player.stepClock,lean:player.lean});
+    sprinting:player.sprinting,step:player.stepClock,lean:player.lean,
+    interacting,interactionProgress:objectiveRound.holdPercent/100});
   gunKick*=Math.exp(-dt*14);
   gunKickSide*=Math.exp(-dt*14);
   for(let i=effects.length-1;i>=0;i--){
@@ -435,7 +437,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.7.0-two-sites-facility-ai-weapon-animation"},
+  get build(){return "0.7.1-two-sites-facility-ai-viewmodel-and-interaction"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
