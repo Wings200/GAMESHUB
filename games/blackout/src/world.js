@@ -64,8 +64,11 @@ export function buildRange(THREE,scene){
     targets.push(target);shootables.push(torso,head,chest);
     return target;
   }
-  for(const z of [-10,-22,-36,-51]){
-    for(const x of [-12,0,12])makeTarget(x,z,`${Math.abs(z-10)}m`);
+  // Keep Site A center lane clear of non-hostile range dummies so
+  // defenders can actually engage approaching orange attack bots.
+  // Preserve 12 practice dummies and targets behind the two side panels.
+  for(const z of [-10,-22,-36]){
+    for(const x of [-18,-11,11,18])makeTarget(x,z,`${Math.abs(z-10)}m`);
   }
   // Standalone panels for weapon penetration and attacker/defender tests.
   // They are NOT a level, so remove/rebuild them without changing the arena.
