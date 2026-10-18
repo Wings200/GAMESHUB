@@ -198,3 +198,18 @@ Player reported a hangar visibly inside Flight 51's runway, an unrelated secret 
 - Validations: JS syntax passed; sampled runway bounds show Aircraft Storage **20.3 m** clear of the airstrip pavement in the Catmull-Rom approximation, with all four retained buildings clear. Sampled tunnel center/side approach found **zero registered static blockers** for either enclosed tunnel. Guardrail simulation found no left-side rails at `t=.832,.834,.839,.845,.851,.858`, and rail returned by `t=.864`. All 27 hazards and 4 alternate routes remained in scene-construction test. Live browser driving, real FPS and Cloudflare deployment have not been independently verified.
 
 Latest browser module cache marker: `nevada-v22-2b-runway-tunnel-clear`.
+
+## V22.3 — art quality plus performance rescue (October 18, 2026)
+
+Player report: Nevada Run remains distinctly less polished than Neon District and Arctic Relay and lags despite prior releases. Prioritize smoothness and geometry/materials; do not add more standalone objects, new tracks or risky gameplay rewrites.
+
+**Code changes:**
+- Replaced individual perimeter wireframe fence panels with one shared `THREE.InstancedMesh` and maintained original fence transforms and all 205 registered box colliders (including fence colliders). Source: `nevada-run.js`.
+- Added geographically bucketed GPU instancing for static rectangular scenery with identical materials: industrial detailing, road signs and trim, bushes, salt-flat cracks, etc. Animated hazard hierarchies and rotating searchlights are explicitly excluded, as are dynamically emissive lights. Their registered world collisions remain in the `game.js` collider system.
+- Shared 256×256 procedural sediment grain / erosion-bedding texture on 105 sandstone features, added UV coordinates to mesas, used smooth normal shading to reduce the faceted polygon look; recreated the texture when the Nevada world is disposed so rematches do not use a disposed GPU texture.
+- Recontoured the far perimeter ground plane into broad desert escarpments, strictly beyond the current 22-control-point racing basin. The near-road collision and driving ground heights are unaffected; no extra meshes.
+- Did not modify garage/account/cash/Worker, other maps, barrier definitions, road spline, car driving physics, traps or existing shortcuts. The specific V22.2b tunnel and runway fixes are retained.
+
+**QA evidence:** JavaScript parse succeeded; mock Three.js scene construction and 40-frame hazard simulation passed: 27 hazards, 4 side routes, 205 static boxes and 370 circle colliders. Result was **545 renderable mesh objects with 62 instanced draw groups**; previous recovered V22 scene contained approximately 1,535 mesh objects before these additional batches. Static box optimization explicitly reported **810 boxes collapsed into 54 spatial instancing batches**. There are **105 textured sandstone meshes**; the dust devil still changes car velocity and activates low grip. This is a **mock draw-submission metric, not a real browser FPS benchmark**. Rendering fidelity and Cloudflare deployment need a fresh driving test.
+
+Latest forced cache version: `nevada-v22-3-art-perf-1018`, synchronized in index.html and game.js.
