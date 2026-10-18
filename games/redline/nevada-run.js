@@ -262,7 +262,9 @@ export function createNevadaWorld({
   const group=new THREE.Group();group.position.copy(p);group.rotation.y=f.rotationY;root.add(group);
   shape(THREE,group,"box",0,3.1,0,.27,6.1,.27,0x616568);
   const label=billboard(THREE,group,text,"#3e2a25","#ffe3a2",8.4);
-  label.position.y=6.1;label.rotation.y=Math.PI/2;
+  label.position.y=6.1;
+  // Face approaching traffic, not across the road or backwards.
+  label.rotation.y=Math.PI;
  }
  for(let i=0;i<110;i++){
   const t=i/110,p=placeFrame(t,18+(i%2)*6);
@@ -438,7 +440,7 @@ export function createNevadaWorld({
   sign.position.copy(a.p).addScaledVector(a.f.normal,offset<0?-11:11);
   sign.rotation.y=a.f.rotationY;root.add(sign);
   const label=billboard(THREE,sign,name,"#40372c","#e5cda2",6.8);
-  label.rotation.y=Math.PI/2;label.position.y=3.0;
+  label.rotation.y=Math.PI;label.position.y=3.0;
   shortcuts.push({from,to,offset,name});
  }
  const outpost=placeFrame(.855,47);
@@ -464,7 +466,8 @@ export function createNevadaWorld({
   const side=(i%2?1:-1)*(6+seeded(i+240)*25);
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.3+seeded(i)*1.4,.6),dustMat);
   mesh.position.copy(frame.point).addScaledVector(frame.normal,side);
-  mesh.position.y+=1+seeded(i+333)*4;mesh.rotation.y=seeded(i+84)*6;
+  mesh.position.y=roadsideHeight(frame,side)+1+seeded(i+333)*4;
+  mesh.rotation.y=seeded(i+84)*6;
   root.add(mesh);
   particles.push({mesh,base:mesh.position.clone(),phase:seeded(i+50)*TWO_PI});
  }
