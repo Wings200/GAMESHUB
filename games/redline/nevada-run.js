@@ -227,6 +227,31 @@ export function createNevadaWorld({
   if(!roadBins.has(key))roadBins.set(key,[]);
   roadBins.get(key).push(i);
  }
+ // Cut physical openings in the roadside embankment mesh for every
+ // branch. Without these openings, the bank Z-fights the paved shortcut,
+ // which can look like a solid roadblock even where rails are absent.
+ const shortcutBins=new Map();
+ for(const route of NEVADA_TRACK.secretRoutes){
+  for(let k=0;k<=48;k++){
+   const t=route.from+(route.to-route.from)*k/48;
+   const f=getFrameAt(t),off=route.offset*Math.sin(Math.PI*k/48);
+   const x=f.point.x+f.normal.x*off,z=f.point.z+f.normal.z*off;
+   const key=roadBinKey(Math.floor(x/roadCell),Math.floor(z/roadCell));
+   if(!shortcutBins.has(key))shortcutBins.set(key,[]);
+   shortcutBins.get(key).push({x,z});
+  }
+ }
+ const nearShortcutAt=(x,z,clearance=5.6)=>{
+  const cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
+  const limitSq=clearance*clearance;
+  for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
+   for(const p of shortcutBins.get(roadBinKey(gx,gz))||[]){
+    const dx=x-p.x,dz=z-p.z;
+    if(dx*dx+dz*dz<limitSq)return true;
+   }
+  }
+  return false;
+ };
  const bankWouldCoverRoad=(x,z,y,index)=>{
   const d=roadHalf+2,cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
   for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
@@ -265,8 +290,10 @@ export function createNevadaWorld({
       const y=(v[a*3+1]+v[(b+1)*3+1])*.5;
       const z=(v[a*3+2]+v[(b+1)*3+2])*.5;
       const hits=[a,b,a+1,b+1].some(q=>
-       bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n));
-      if(hits||bankWouldCoverRoad(x,z,y,i%n))continue;
+       bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n)||
+       nearShortcutAt(v[q*3],v[q*3+2],4.8));
+      if(hits||bankWouldCoverRoad(x,z,y,i%n)||
+         nearShortcutAt(x,z,5.9))continue;
       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
       else tri.push(a,a+1,b,b,a+1,b+1);
      }
@@ -539,8 +566,9 @@ export function createNevadaWorld({
    const dx=q.x-p.x,dz=q.z-p.z,length=Math.hypot(dx,dz);
    if(length<.1)continue;
    const c=p.clone().add(q).multiplyScalar(.5);
-   if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n))
-    continue;
+   if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n)||
+      nearShortcutAt(c.x,c.z,5.3)||nearShortcutAt(p.x,p.z,5.3)||
+      nearShortcutAt(q.x,q.z,5.3))continue;
    const group=new THREE.Group();group.position.copy(c);
    group.rotation.order="YXZ";
    group.rotation.y=Math.atan2(dx,dz);
