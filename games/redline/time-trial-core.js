@@ -12,7 +12,10 @@ export const trialStorageKey=(map,car,accountId="offline-local")=>{
  const id=String(accountId||"offline-local");
  // Scope a personal best to the authenticated owner, never another user
  // of the same shared computer. Encode IDs safely for localStorage keys.
- return "redline:time-trial:v20:"+encodeURIComponent(id)+":"+map+":"+car;
+ // Neon 3-lap runs get fresh per-car ghosts; Arctic and Nevada keep theirs.
+ // Legacy 1-lap recordings remain on disk for rollback but are not read.
+ const rulesMap=map==="neon"?"neon-3laps-20261018":map;
+ return "redline:time-trial:v20:"+encodeURIComponent(id)+":"+rulesMap+":"+car;
 };
 export function validTrace(record,map,car){
  if(!TRIAL_MAPS.includes(map)||!allowedCars.has(car))return false;
