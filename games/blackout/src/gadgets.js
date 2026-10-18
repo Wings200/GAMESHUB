@@ -82,7 +82,7 @@ export class Gadgets {
     const core=new this.THREE.Mesh(new this.THREE.CylinderGeometry(.23,.31,.18,12),
       new this.THREE.MeshStandardMaterial({color:0xdc7044,emissive:0xff501c,emissiveIntensity:.4}));
     group.add(core);
-    this.sensors.push({x,z,group,armed:false,lastPing:0});
+    this.sensors.push({x,z,group,armed:false,lastPing:0,hostileInside:false});
     this.counts.x--;
     return {ok:true,message:"PROXIMITY SENSOR DEPLOYED · EXIT ITS RADIUS TO ARM"};
   }
@@ -99,7 +99,7 @@ export class Gadgets {
   }
   get busy(){return !!this.action;}
   get actionProgress(){return this.action?.progress||0;}
-  tick(now,player,ping){
+  tick(now,player,ping,hostileBots=[]){
     if(this.action){
       const a=this.action;
       a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
@@ -134,9 +134,18 @@ export class Gadgets {
       if(sensor.armed&&r<4.75){
         sensor.armed=false;
         sensor.lastPing=now;
-        // This event produces an audible three-note alarm instead of a text toast.
+        // Preserve user re-entry beep for solo testing.
         ping(null,"proximity-beep");
       }
+      // In objective drills, defenders' sensors also detect approaching hostile
+      // training bots, independently from the player's own test re-entry.
+      const hostileInside=hostileBots.some(bot=>bot.alive&&
+        Math.hypot(bot.x-sensor.x,bot.z-sensor.z)<4.75);
+      if(hostileInside&&!sensor.hostileInside){
+        sensor.lastPing=now;
+        ping(null,"proximity-beep");
+      }
+      sensor.hostileInside=hostileInside;
     }
   }
   get details(){
