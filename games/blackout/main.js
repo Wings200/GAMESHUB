@@ -233,7 +233,10 @@ function impact(point,color=0xffc16c,size=.08){
   obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
 }
 function fireOnce(now){
-  const shot=weapons.tryFire(now,ads,!player.sprinting);
+  // Do not grant laser-accurate ADS while the actual sight is still moving
+  // into position. Once aligned, the 3D reticle and the shot share the ray.
+  const sightAligned=ads&&aimBlend>=.93;
+  const shot=weapons.tryFire(now,sightAligned,!player.sprinting);
   if(!shot.ok){
     if(shot.why==="empty"&&now-lastEmptyClick>600){sound("click");lastEmptyClick=now;popup("MAGAZINE EMPTY · R TO RELOAD",1);}
     return;
@@ -244,9 +247,10 @@ function fireOnce(now){
   // gun-mounted optic, i.e. both sight center and bullet use camera (0,0).
   const stance=player.isProne?.55:player.isCrouched?.78:1;
   const motion=player.moving?1.35:1;
-  const spread=ads?0:shot.spread*stance*motion;
+  const spread=sightAligned?0:shot.spread*stance*motion;
   const angle=Math.random()*Math.PI*2,radial=Math.sqrt(Math.random())*spread;
   const aim={x:Math.cos(angle)*radial,y:Math.sin(angle)*radial};
+  camera.updateMatrixWorld(true);
   raycaster.setFromCamera(aim,camera);raycaster.far=shot.range;
   // Trace all real ray intersections in order, so the actual wall hole
   // and the bullet's collision behavior share a world-space position.
