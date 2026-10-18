@@ -9423,6 +9423,8 @@ function updatePhysics(delta) {
     // The Nevada funnel remains slippery briefly after the cloud is gone.
     carState.nevadaDustGripTimer=Math.max(0,
         (carState.nevadaDustGripTimer||0)-delta);
+    carState.nevadaJammedTimer=Math.max(0,
+        (carState.nevadaJammedTimer||0)-delta);
     carState.sparkCooldown =
         Math.max(0, carState.sparkCooldown -
             delta);
@@ -9451,12 +9453,10 @@ function updatePhysics(delta) {
         !carState.airborne
         &&
         keys.has(" ");
-    const nitroActive = (keys.has("shift")
-        ||
-            keys.has("shiftleft"))
-        &&
-            carState.nitro >
-                0;
+    const nitroActive = (keys.has("shift") ||
+        keys.has("shiftleft")) &&
+        carState.nitro>0 &&
+        !(activeTrackId==="canyon"&&carState.nevadaJammedTimer>0);
     const steeringInput =
         carState.airborne
             ?
