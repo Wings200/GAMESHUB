@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070d15">
+  <meta name="description" content="BLACKOUT V0.1 — an original tactical FPS movement and collision prototype on GAMESHUB.">
+  <title>PROJECT BLACKOUT · FIRST CONTACT | GAMESHUB</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./style.css?v=blackout-v01-annex-1">
+</head>
+<body>
+  <canvas id="view" aria-label="BLACKOUT first-person Training Annex"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="reticle" id="reticle" aria-hidden="true"><span></span><i></i></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <header id="gameHUD" class="game-hud hidden" aria-live="off">
+    <div class="hud-left">
+      <div class="overline"><span class="live-dot"></span> BLACKOUT <span class="dim">/ TRAINING SERVER LOCAL</span></div>
+      <h2 id="zoneLabel">EQUIPMENT BAY</h2>
+      <p>OPERATION FIRST CONTACT <span class="line"></span> V0.1 DEVELOPMENT BUILD</p>
+    </div>
+    <div class="hud-right">
+      <div class="mission">MOVEMENT TEST <strong id="objective">01 / 04 ZONES</strong></div>
+      <div class="map-shell"><canvas id="minimap" width="220" height="166" aria-label="Training Annex floor plan"></canvas><span class="map-caption">TRAINING ANNEX // FLOOR 01</span></div>
+    </div>
+    <div class="crosshair-caption" id="crosshairCaption">NO WEAPON EQUIPPED · MOVEMENT PROTOTYPE</div>
+    <div class="hud-bottom">
+      <div class="moves">
+        <span><kbd>W A S D</kbd> MOVE</span>
+        <span><kbd>SHIFT</kbd> SPRINT</span>
+        <span><kbd>CTRL</kbd> CROUCH</span>
+        <span><kbd>Q / E</kbd> LEAN</span>
+      </div>
+      <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
+    </div>
+    <div id="debugPanel" class="debug-panel hidden">COLLISION DEBUG ACTIVE <div id="positionReadout"></div></div>
+    <div id="toast" class="toast" role="status"></div>
+  </header>
+
+  <main id="menu" class="menu">
+    <div class="menu-grain"></div>
+    <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> BUILD 0.1.0 // OFFLINE TEST</span></div>
+    <div class="menu-main">
+      <div class="eyebrow">TACTICAL OPERATIONS / RESTRICTED ACCESS</div>
+      <div class="corner-mark">01 / FIRST CONTACT</div>
+      <h1>BLACK<span>OUT</span><i>.</i></h1>
+      <div class="subtitle">PROJECT BLACKOUT <span>—</span> FIRST PLAYABLE</div>
+      <div class="rule"></div>
+      <p class="description">An original tactical FPS. You're entering the Training Annex to test the one thing everything else depends on: <strong>movement and collision that actually work.</strong></p>
+      <div class="squad-details">
+        <div><small>ASSIGNMENT</small><strong>TRAINING ANNEX</strong></div>
+        <div><small>OPERATION</small><strong>MOVEMENT / COLLISION</strong></div>
+        <div><small>STATUS</small><strong>SIMULATION READY</strong></div>
+      </div>
+      <div class="menu-actions">
+        <button id="start" type="button">ENTER TRAINING <span>→</span></button>
+        <button id="reset" type="button" class="outline">RESET POSITION</button>
+      </div>
+      <p id="status" class="notice">Click ENTER TRAINING to lock your mouse. Press ESC to pause.</p>
+      <div class="progress-foot"><span>PHASE 01 — PLAYER MOVEMENT</span><span>FUTURE: WEAPONS · SECURITY NETWORK · MULTIPLAYER</span></div>
+    </div>
+    <div class="menu-right">
+      <div class="redline">B<span>↗</span></div>
+      <div class="blueprint">
+        <div class="bp-row"><span>02</span><strong>Mobility Lab</strong></div>
+        <div class="bp-row"><span>03</span><strong>Crossroute</strong></div>
+        <div class="bp-row"><span>04</span><strong>Firing Range</strong></div>
+      </div>
+      <div class="radar"></div>
+      <div class="menu-right-footer">NO OPERATORS. NO MULTIPLAYER.<br>REAL COLLISION. A CLEAN FOUNDATION.</div>
+    </div>
+  </main>
+  <script type="module" src="./main.js?v=blackout-v01-annex-1"></script>
+</body>
+</html>
