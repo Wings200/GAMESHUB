@@ -75,20 +75,24 @@ function seeded(i){const x=Math.sin(i*127.131+31.7)*43758.5453;return x-Math.flo
 // Stratified, weathered sandstone instead of obviously polygonal cones.
 // Shared color bands mimic real sedimentary rock and varied erosion layers.
 function sandstoneMesa(THREE,radius,height,seed){
- const rings=7,segments=16,verts=[],cols=[],indices=[];
+ const rings=15,segments=36,verts=[],cols=[],indices=[];
  const color=new THREE.Color();
- const widths=[1.00,.97,.86,.76,.65,.50,.44];
+ const widths=Array.from({length:rings},(_,i)=>{
+  const t=i/(rings-1),terraces=.026*Math.sin(t*31+seed*1.7);
+  const slope=t<.18?1-.07*t:t<.70?.97-(t-.18)*.56:.68-(t-.70)*.62;
+  return Math.max(.35,slope+terraces);
+ });
  for(let ring=0;ring<rings;ring++){
   const y=height*ring/(rings-1);
   for(let seg=0;seg<segments;seg++){
    const a=seg/segments*TWO_PI;
-   const wobble=.84+.26*seeded(seed*52+seg*13)+
-    .06*Math.sin(a*5+seed);
+   const wobble=.89+.14*seeded(seed*52+seg*13)+
+    .055*Math.sin(a*5+seed)+.022*Math.sin(a*11+ring*.92);
    const r=radius*widths[ring]*wobble;
    verts.push(Math.cos(a)*r,y,Math.sin(a)*r);
-   const tones=[0x77503b,0x9e684b,0xb47c57,0x986346,0xb98660,0xc09365,0x76523e];
-   color.setHex(tones[(ring+Math.floor(seeded(seed*9+seg)*2))%tones.length]);
-   const light=.82+.30*seeded(seed+ring*20+seg);
+   const tones=[0x79513e,0x895c44,0xa47150,0xaf7d5a,0xb78660,0xa87451,0x81513e,0x9b694e];
+   color.setHex(tones[Math.floor(ring*tones.length/rings)]);
+   const light=.80+.28*seeded(seed+ring*20+seg);
    cols.push(color.r*light,color.g*light,color.b*light);
    if(ring>0){
     const first=(ring-1)*segments+seg;
@@ -172,6 +176,24 @@ export function createNevadaWorld({
    return valley;
  };
  const n=trackSamples.length;
+ // Exclude big geometry from all main/secret road corridors, irrespective
+ // of relative height; otherwise a mountain can fill the entire camera view.
+ const clearOfRoad=(position,radius=12)=>{
+  const safe=roadHalf+radius+3;
+  for(let i=0;i<n;i+=2){
+   const p=trackSamples[i].point,dx=p.x-position.x,dz=p.z-position.z;
+   if(dx*dx+dz*dz<safe*safe)return false;
+  }
+  for(const [from,to,offset] of [
+   [.395,.420,-10],[.532,.562,-18],[.688,.712,10],[.834,.858,-18]
+  ])for(let k=0;k<=24;k++){
+   const f=getFrameAt(from+(to-from)*k/24);
+   const c=f.point.clone().addScaledVector(f.normal,offset*Math.sin(Math.PI*k/24));
+   const dx=c.x-position.x,dz=c.z-position.z;
+   if(dx*dx+dz*dz<(radius+6)*(radius+6))return false;
+  }
+  return true;
+ };
  // Suppress embankment triangles that would project onto a distinct road
  // section at a switchback. Valley ground still fills the space below.
  const bankWouldCoverRoad=(x,z,y,index)=>{
@@ -225,7 +247,9 @@ export function createNevadaWorld({
   const theta=i/92*TWO_PI,dist=720+seeded(i+4)*350;
   const x=Math.cos(theta)*dist-250,z=Math.sin(theta)*dist;
   const h=24+seeded(i+40)*65;
-  const mountain=sandstoneMesa(THREE,32+seeded(i+3)*30,h,i+181);
+  const radius=32+seeded(i+3)*30;
+  if(!clearOfRoad({x,z},radius+8))continue;
+  const mountain=sandstoneMesa(THREE,radius,h,i+181);
   mountain.position.set(x,-3,z);
   mountain.rotation.y=seeded(i+50)*TWO_PI;
   mountain.scale.z=.65+seeded(i+6);
@@ -252,7 +276,9 @@ export function createNevadaWorld({
   const distance=33+(i%4)*9;
   const rock=new THREE.Group();
   rock.position.copy(f.point).addScaledVector(f.normal,side*distance);
-  rock.position.y=roadsideHeight(f,side*distance)-.4;root.add(rock);
+  rock.position.y=roadsideHeight(f,side*distance)-.4;
+  if(!clearOfRoad(rock.position,15.5))continue;
+  root.add(rock);
   const h=10+seeded(i+188)*23;
   const cliff=sandstoneMesa(THREE,13.4,h,i+401);
   cliff.rotation.y=f.rotationY;rock.add(cliff);
