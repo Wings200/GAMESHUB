@@ -258,7 +258,8 @@ export function createNevadaWorld({
   return {f,p:v};
  };
  for(const [t,text] of signData){
-  const {f,p}=placeFrame(t,16,0);
+  // Close enough to the road to remain readable on steep raised grades.
+  const {f,p}=placeFrame(t,10.7,0);
   const group=new THREE.Group();group.position.copy(p);group.rotation.y=f.rotationY;root.add(group);
   shape(THREE,group,"box",0,3.1,0,.27,6.1,.27,0x616568);
   const label=billboard(THREE,group,text,"#3e2a25","#ffe3a2",8.4);
