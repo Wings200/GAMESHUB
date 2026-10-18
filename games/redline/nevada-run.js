@@ -24,7 +24,13 @@ export const NEVADA_TRACK=Object.freeze({
     {start:.14,end:.30,side:1},{start:.14,end:.30,side:-1},
    {start:.82,end:.97,side:1},{start:.82,end:.97,side:-1}
   ],
-  obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
+  secretRoutes:[
+  {from:.395,to:.420,offset:-14,name:"DRAINAGE CHANNEL",theme:"culvert"},
+  {from:.532,to:.562,offset:-18,name:"RESTRICTED SERVICE TUNNEL",theme:"utility"},
+  {from:.688,to:.712,offset:18,name:"HANGAR MAINTENANCE",theme:"hangar"},
+  {from:.834,to:.858,offset:-18,name:"RIDGE CAVE PASSAGE",theme:"cave"}
+ ],
+ obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
   boosts:[
     {t:.075,offset:0},{t:.335,offset:2.4},{t:.525,offset:-2.2},
     {t:.705,offset:1.9},{t:.91,offset:0}
@@ -201,9 +207,8 @@ export function createNevadaWorld({
    const p=trackSamples[i].point,dx=p.x-position.x,dz=p.z-position.z;
    if(dx*dx+dz*dz<safe*safe)return false;
   }
-  for(const [from,to,offset] of [
-   [.395,.420,-10],[.532,.562,-18],[.688,.712,10],[.834,.858,-18]
-  ])for(let k=0;k<=24;k++){
+  for(const {from,to,offset} of NEVADA_TRACK.secretRoutes)
+  for(let k=0;k<=24;k++){
    const f=getFrameAt(from+(to-from)*k/24);
    const c=f.point.clone().addScaledVector(f.normal,offset*Math.sin(Math.PI*k/24));
    const dx=c.x-position.x,dz=c.z-position.z;
@@ -511,10 +516,10 @@ export function createNevadaWorld({
  // separated by 40m gaps, with physics only on every third panel.
  // Openings intentionally preserve the side roads and broken-fence jump.
  const fenceOpenings=[
-  {side:-1,start:.525,end:.571},
-  {side:1,start:.681,end:.719},
-  {side:-1,start:.725,end:.763},
-  {side:1,start:.729,end:.759}
+  ...NEVADA_TRACK.secretRoutes.map(r=>({
+   side:Math.sign(r.offset),start:r.from-.009,end:r.to+.009
+  })),
+  {side:-1,start:.725,end:.763},{side:1,start:.729,end:.759}
  ];
  const fenceSections=120,fenceStart=.48,fenceStep=.30/fenceSections;
  const chainMeshMat=new THREE.MeshStandardMaterial({
@@ -606,14 +611,8 @@ export function createNevadaWorld({
   addCircleCollider(p,1.5,{minY:p.y,maxY:p.y+22,tag:"RADAR"});
  }
  // 3D tunnel structure and drainage shortcuts with real drivable pavement.
- const shortcutLabels=[
-  [.395,.420,-10,"DRAINAGE CHANNEL"],
-  [.532,.562,-18,"RESTRICTED SERVICE TUNNEL"],
-  [.688,.712,10,"HANGAR MAINTENANCE"],
-  [.834,.858,-18,"RIDGE CAVE PASSAGE"]
- ];
  const shortcuts=[];
- for(const [from,to,offset,name] of shortcutLabels){
+ for(const {from,to,offset,name,theme} of NEVADA_TRACK.secretRoutes){
   const path=new THREE.Group();root.add(path);
   const vertices=[],uvs=[],indices=[],steps=18,centers=[];
   // Match both the visible tunnel and its physical walls to the actual
@@ -664,12 +663,19 @@ export function createNevadaWorld({
   geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   geo.setIndex(indices);geo.computeVertexNormals();
   root.add(new THREE.Mesh(geo,makeMaterial(THREE,0x4a3e38)));
-  const a=placeFrame(from,.0,0),sign=new THREE.Group();
-  sign.position.copy(a.p).addScaledVector(a.f.normal,offset<0?-11:11);
-  sign.rotation.y=a.f.rotationY;root.add(sign);
-  const label=billboard(THREE,sign,name,"#40372c","#e5cda2",6.8);
-  label.rotation.y=Math.PI;label.position.y=3.0;
-  shortcuts.push({from,to,offset,name});
+  // Discovery signage is INSIDE the tunnel, not beside the highway.
+  const k=Math.floor(steps*.67),c=centers[k];
+  const direction=centers[k+1].clone().sub(c).setY(0).normalize();
+  const normal=new THREE.Vector3(-direction.z,0,direction.x);
+  const marker=new THREE.Group();
+  marker.position.copy(c).addScaledVector(normal,4.05);
+  marker.position.y+=2.3;
+  marker.rotation.y=Math.atan2(direction.x,direction.z);
+  root.add(marker);
+  const label=billboard(THREE,marker,name,
+   theme==="cave"?"#47392a":"#283333","#c7baa1",4.8);
+  label.rotation.y=-Math.PI/2;
+  shortcuts.push({from,to,offset,name,theme});
  }
  let outpost=placeFrame(.855,47);
  for(const offset of [47,67,88,120]){
