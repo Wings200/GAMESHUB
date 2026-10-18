@@ -635,34 +635,64 @@ export function createNevadaWorld({
     uvs.push(w>0?1:0,k/3);
    }
    if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
-   const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
-   if(enclosed&&k>=4&&k<=steps-4){
-    const group=new THREE.Group();group.position.copy(c);
-    group.rotation.y=yaw;root.add(group);
-    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
-    const color=name.includes("CAVE")?0x80553d:0x4c5155;
-    shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
+   // The old drainage and maintenance paths were exposed arches.
+   // All four branches now duck under terrain/industry part-way in.
+   // Entrances are sheltered away from the public road; structural sides
+   // cannot protrude back onto the through-highway.
+   if(k>=5&&k<=steps-5){
+    const group=new THREE.Group();
+    group.position.copy(c);group.rotation.y=yaw;root.add(group);
+    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.1;
+    const roofY=theme==="culvert"?4.45:theme==="hangar"?5.2:5.9;
+    const roofColor=theme==="culvert"?0x766d60:
+      theme==="cave"?0x806147:theme==="hangar"?0x4c5554:0x474b4a;
+    shape(THREE,group,"box",0,roofY,0,10,.72,length,roofColor);
+    // Low, dimensional seams create a recognizable concealed structure,
+    // not exposed generic arches or a single flat-colored tube.
+    if(k%2===0){
+     shape(THREE,group,"box",0,roofY+.43,0,
+      10.35,.16,.24,theme==="hangar"?0x7f8b87:0x9e876a);
+    }
     for(const sign of [-1,1]){
-     shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
-     // Local +X under Y-rotation points toward negative normal.
-     const wall=c.clone().addScaledVector(normal,-sign*4.6);
-     addBoxCollider(wall,.48,length*.5,yaw,{
-      minY:c.y-.1,maxY:c.y+6.1,tag:name
+     const wall=c.clone().addScaledVector(normal,-sign*4.85);
+     // Do not place even a portal-support collider on the primary
+     // racing asphalt. The shoulder opening must be completely open.
+     if(!clearOfRoad(wall,1.0))continue;
+     shape(THREE,group,"box",sign*4.85,
+      (roofY-.35)*.5,0,.63,roofY-.35,length,roofColor);
+     addBoxCollider(wall,.34,length*.5,yaw,{
+      minY:c.y-.1,maxY:c.y+roofY+.2,tag:name
      });
     }
-   }else if(!enclosed&&(k===6||k===12)){
-    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=yaw;
-    root.add(arch);
-    shape(THREE,arch,"box",-4.2,2.5,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",4.2,2.5,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",0,5.2,0,9,.8,.9,0x715244);
+    if((theme==="utility"||theme==="hangar")&&k%3===0){
+     const lamp=shape(THREE,group,"box",0,roofY-.49,0,
+      1.25,.07,1.8,0xe6ba7b);
+     lamp.material.emissive=new THREE.Color(0xa67f3f);
+     lamp.material.emissiveIntensity=1.0;
+    }
+   }
+   if((k===7||k===11)&&(theme==="cave"||theme==="culvert")){
+    // Camouflaging boulders on the OUTER shoulder break the sightline
+    // without creating a fake blocked passage.
+    for(const side of [-1,1]){
+     const p=c.clone().addScaledVector(normal,side*6.5);
+     if(!clearOfRoad(p,1.7))continue;
+     const rock=sandstoneMesa(THREE,1.55,
+      2.6+seeded(k+offset+side)*1.8,k+side*19+311);
+     rock.position.copy(p);rock.position.y-=.65;root.add(rock);
+     addCircleCollider(p,1.15,{
+      minY:p.y-.7,maxY:p.y+4.8,tag:"HIDDEN PASSAGE ROCK"
+     });
+    }
    }
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
   geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   geo.setIndex(indices);geo.computeVertexNormals();
-  root.add(new THREE.Mesh(geo,makeMaterial(THREE,0x4a3e38)));
+  const floorColor=theme==="culvert"?0x5d5950:
+   theme==="hangar"?0x4b504f:theme==="cave"?0x76614a:0x414546;
+  root.add(new THREE.Mesh(geo,makeMaterial(THREE,floorColor)));
   // Discovery signage is INSIDE the tunnel, not beside the highway.
   const k=Math.floor(steps*.67),c=centers[k];
   const direction=centers[k+1].clone().sub(c).setY(0).normalize();
