@@ -745,7 +745,10 @@ export function createNevadaWorld({
   antenna.rotation.x=Math.PI/2;antenna.position.y=19;group.add(antenna);
   addCircleCollider(p,1.5,{minY:p.y,maxY:p.y+22,tag:"RADAR"});
  }
- // 3D tunnel structure and drainage shortcuts with real drivable pavement.
+ // V22.5: driveable side roads, with ONE sampled centerline used by
+ // visual pavement, tunnels and the main game's physical surface zones.
+ // Previous ribbons covered the main road with large mud-brown overlays;
+ // tunnel roofs had no walls because clearOfRoad() rejected their OWN lane.
  const shortcutLabels=[
   [.395,.420,-10,"DRAINAGE CHANNEL"],
   [.532,.562,-18,"RESTRICTED SERVICE TUNNEL"],
@@ -753,68 +756,131 @@ export function createNevadaWorld({
   [.834,.858,-18,"RIDGE CAVE PASSAGE"]
  ];
  const shortcuts=[];
+ const sideAsphalt=new THREE.MeshStandardMaterial({
+  color:0x4a4e53,roughness:.96,metalness:0,side:THREE.DoubleSide,
+  polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1
+ });
+ const sideEdge=new THREE.MeshBasicMaterial({
+  color:0xd5c7a6,side:THREE.DoubleSide,depthWrite:false
+ });
+ // Check visible roof corners, NOT the tunnel corridor itself. Otherwise
+ // a tunnel either floats without walls or covers the highway.
+ const clearMainPavement=(pt,radius=1.1)=>{
+  const safe=(roadHalf+radius)*(roadHalf+radius);
+  for(let i=0;i<n;i+=2){
+   const p=trackSamples[i].point;
+   const dx=pt.x-p.x,dz=pt.z-p.z;
+   if(dx*dx+dz*dz<safe)return false;
+  }
+  return true;
+ };
  for(const [from,to,offset,name] of shortcutLabels){
-  const path=new THREE.Group();root.add(path);
-  const vertices=[],uvs=[],indices=[],steps=18,centers=[];
-  // Match both the visible tunnel and its physical walls to the actual
-  // offset corridor's heading instead of the adjacent main highway.
+  const steps=24,centers=[],widths=[];
   for(let k=0;k<=steps;k++){
    const f=getFrameAt(from+(to-from)*k/steps);
-   const side=offset*Math.sin(Math.PI*k/steps);
-   const c=f.point.clone().addScaledVector(f.normal,side);
-   c.y=roadsideHeight(f,side)+.24;
-   centers.push(c);
+   const lateral=offset*Math.sin(Math.PI*k/steps);
+   const center=f.point.clone().addScaledVector(f.normal,lateral);
+   center.y=roadsideHeight(f,lateral)+.24;
+   centers.push(center);
+   const approach=Math.min(k,steps-k);
+   widths.push(3.75*(.58+.42*clamp(approach/4,0,1)));
   }
+  const verts=[],uvs=[],indices=[],edgeVerts=[],edgeIndices=[];
   for(let k=0;k<=steps;k++){
    const c=centers[k],prev=centers[Math.max(0,k-1)];
    const next=centers[Math.min(steps,k+1)];
    const tangent=next.clone().sub(prev).setY(0).normalize();
    const normal=new THREE.Vector3(-tangent.z,0,tangent.x);
-   const yaw=Math.atan2(tangent.x,tangent.z);
-   for(const w of [-3.6,3.6]){
-    vertices.push(c.x+normal.x*w,c.y+.10,c.z+normal.z*w);
-    uvs.push(w>0?1:0,k/3);
+   const half=widths[k],yaw=Math.atan2(tangent.x,tangent.z);
+   for(const side of [-1,1]){
+    const x=side*half;
+    verts.push(c.x+normal.x*x,c.y+.012,c.z+normal.z*x);
+    uvs.push(side>0?1:0,k*.22);
    }
-   if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
+   if(k){
+    const j=k*2;
+    indices.push(j-2,j-1,j,j-1,j+1,j);
+   }
+   // Thin dust-colored edge paint stops the branch from looking like
+   // undefined brown terrain. Leave last few meters unmarked for merges.
+   if(k>=3&&k<=steps-3){
+    for(const side of [-1,1]){
+     for(const edge of [-.075,.075]){
+      const x=side*(half-.26)+edge;
+      edgeVerts.push(c.x+normal.x*x,c.y+.038,
+       c.z+normal.z*x);
+     }
+    }
+    if(k>3){
+     const base=(k-3)*4,prevBase=base-4;
+     for(const side of [0,2]){
+      edgeIndices.push(prevBase+side,base+side,
+       prevBase+side+1,prevBase+side+1,base+side,
+       base+side+1);
+     }
+    }
+   }
    const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
-   if(enclosed&&k>=6&&k<=steps-6){
-    const group=new THREE.Group();group.position.copy(c);
-    group.rotation.y=yaw;root.add(group);
-    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
-    const color=name.includes("CAVE")?0x80553d:0x4c5155;
-    shape(THREE,group,"box",0,5.9,0,11.5,.8,length,color);
-    for(const sign of [-1,1]){
-     // Local +X under Y-rotation points toward negative normal.
-     const wall=c.clone().addScaledVector(normal,-sign*5.3);
-     // Only physical supports that also have corresponding visible walls.
-     // The previous first walls intersected the adjacent highway and
-     // blocked the off-road entrance before it was reachable.
-     if(clearOfRoad(wall,1.8)){
-      shape(THREE,group,"box",sign*5.3,3,0,.8,5.8,length,color);
-      addBoxCollider(wall,.42,length*.42,yaw,{
-       minY:c.y-1.1,maxY:c.y+6.1,tag:name
+   const coverSection=k>=9&&k<=steps-9;
+   if(enclosed&&coverSection){
+    const span=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.0;
+    const roofCorners=[c,prev,next];
+    let protectedRoad=true;
+    for(const p of roofCorners){
+     for(const edge of [-5.0,5.0]){
+      const corner=p.clone().addScaledVector(normal,edge);
+      if(!clearMainPavement(corner,1.35)){
+       protectedRoad=false;break;
+      }
+     }
+     if(!protectedRoad)break;
+    }
+    // Keep both visible walls and their matching colliders, or neither.
+    if(protectedRoad){
+     const group=new THREE.Group();
+     group.position.copy(c);
+     group.rotation.y=yaw;
+     root.add(group);
+     const color=name.includes("CAVE")?0x88614b:0x585a56;
+     shape(THREE,group,"box",0,5.9,0,10.2,.80,span,color);
+     for(const sign of [-1,1]){
+      shape(THREE,group,"box",sign*4.65,3,0,.78,5.75,span,color);
+      const wall=c.clone().addScaledVector(normal,-sign*4.65);
+      addBoxCollider(wall,.42,span*.48,yaw,{
+       minY:c.y-.1,maxY:c.y+6.1,tag:name
       });
      }
     }
-   }else if(!enclosed&&(k===6||k===12)){
-    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=yaw;
-    root.add(arch);
-    shape(THREE,arch,"box",-4.2,2.5,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",4.2,2.5,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",0,5.2,0,9,.8,.9,0x715244);
+   }else if(!enclosed&&(k===8||k===16)){
+    // Low service-ditch marker arches, not a giant roof across asphalt.
+    const arch=new THREE.Group();
+    arch.position.copy(c);arch.rotation.y=yaw;root.add(arch);
+    for(const side of [-1,1])
+     shape(THREE,arch,"box",side*4.8,2.15,0,.32,4.3,.35,0x755f49);
+    shape(THREE,arch,"box",0,4.37,0,10,.30,.40,0x826c55);
    }
   }
   const geo=new THREE.BufferGeometry();
-  geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
+  geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));
   geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   geo.setIndex(indices);geo.computeVertexNormals();
-  root.add(new THREE.Mesh(geo,makeMaterial(THREE,0x4a3e38)));
-  const a=placeFrame(from,.0,0),sign=new THREE.Group();
+  root.add(new THREE.Mesh(geo,sideAsphalt));
+  if(edgeIndices.length){
+   const edgeGeo=new THREE.BufferGeometry();
+   edgeGeo.setAttribute("position",
+    new THREE.Float32BufferAttribute(edgeVerts,3));
+   edgeGeo.setIndex(edgeIndices);edgeGeo.computeVertexNormals();
+   root.add(new THREE.Mesh(edgeGeo,sideEdge));
+  }
+  const a=placeFrame(from,0,0),sign=new THREE.Group();
   sign.position.copy(a.p).addScaledVector(a.f.normal,offset<0?-11:11);
   sign.rotation.y=a.f.rotationY;root.add(sign);
   const label=billboard(THREE,sign,name,"#40372c","#e5cda2",6.8);
   label.rotation.y=Math.PI;label.position.y=3.0;
-  shortcuts.push({from,to,offset,name});
+  shortcuts.push({from,to,offset,name,
+   samples:centers.map((center,k)=>({
+    center,width:widths[k],t:from+(to-from)*k/steps
+   }))});
  }
  let outpost=placeFrame(.855,47);
  for(const offset of [47,67,88,120]){
