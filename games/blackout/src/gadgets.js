@@ -94,8 +94,10 @@ export class Gadgets {
     for(const sensor of this.sensors){
       const r=Math.hypot(player.x-sensor.x,player.z-sensor.z);
       if(r>=5.25)sensor.armed=true;
-      if(sensor.armed&&r<4.75&&now-sensor.lastPing>3500){
-        sensor.lastPing=now;ping("PROXIMITY SENSOR TRIGGERED · MOVEMENT DETECTED");
+      if(sensor.armed&&r<4.75){
+        sensor.armed=false;
+        sensor.lastPing=now;
+        ping("PROXIMITY SENSOR TRIGGERED · MOVEMENT DETECTED");
       }
     }
   }
