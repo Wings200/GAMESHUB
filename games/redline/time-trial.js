@@ -6,7 +6,7 @@
  * NOT a fabricated or unaudited Time Trial ranking.
  */
 import {readPersonalGhost,savePersonalGhost,TRIAL_MAPS,trialTimeLabel}
- from "./time-trial-core.js?v=20-1";
+ from "./time-trial-core.js?v=20-2";
 import {REDLINE_CAR_CATALOG,STARTER_CAR_IDS,REDLINE_CAR_IDS}
  from "./car-catalog.js";
 const $=id=>document.getElementById(id);
@@ -23,10 +23,10 @@ const memory=window.localStorage;
 const state={
   active:false,map:"neon",car:"gt",upgrades:null,
   ghostEnabled:true,previous:null,lastResult:null,
-  accountConnected:false,ownCars:[...STARTER_CAR_IDS]
+  accountConnected:false,accountId:"offline-local",ownCars:[...STARTER_CAR_IDS]
 };
 function currentGhost(){
- return readPersonalGhost(memory,state.map,state.car);
+ return readPersonalGhost(memory,state.map,state.car,state.accountId);
 }
 function setPB(){
  const old=currentGhost();
@@ -53,6 +53,7 @@ async function getGarage(){
  const get=window.REDLINE_MP?.getAccountStats;
  if(typeof get!=="function"){
   state.accountConnected=false;
+  state.accountId="offline-local";
   state.ownCars=[...STARTER_CAR_IDS];
   populateCars();
   status.textContent="Account unavailable · free starter cars only · local runs not ranked";
@@ -64,11 +65,13 @@ async function getGarage(){
     stats.carGarage.owned.filter(id=>REDLINE_CAR_IDS.includes(id)):[];
   if(!confirmed.length)throw Error("No confirmed garage received");
   state.ownCars=confirmed;state.savedUpgrades=stats?.carUpgrades||{};
+  state.accountId=String(stats.accountId||"offline-local");
   state.accountConnected=true;populateCars();
   status.textContent="SOLO TIME TRIAL · real owned cars · records saved in this browser";
  }catch(e){
   state.ownCars=[...STARTER_CAR_IDS];
-  state.savedUpgrades={};state.accountConnected=false;populateCars();
+  state.savedUpgrades={};state.accountConnected=false;
+  state.accountId="offline-local";populateCars();
   status.textContent="Garage temporarily unavailable · starters only: "+(e?.message||"Connection error");
  }
 }
@@ -142,7 +145,7 @@ function enter(){
 function saveFinish(time,frames){
  const current={version:1,map:state.map,car:state.car,time:Math.floor(time),
   frames,recordedAt:Date.now()};
- const saved=savePersonalGhost(memory,current);
+ const saved=savePersonalGhost(memory,current,state.accountId);
  state.lastResult={time,frames,saved,previous:state.previous};
  state.active=false;
  $("redlineTrialRaceHud").classList.add("hidden");
