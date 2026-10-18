@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
-import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-v22-final-pass-1017";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-v22-1-hidden-routes";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
