@@ -385,9 +385,10 @@ function frame(now){
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
     },objectiveRound.bots);
-    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,(message,event)=>{
+    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,(message,event,origin)=>{
       if(message)popup(message);
-      if(event)sound(event);
+      if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
+      else if(event)sound(event);
     });
     reinforceBar.classList.toggle("hidden",!gadgets.busy);
     if(gadgets.busy){
