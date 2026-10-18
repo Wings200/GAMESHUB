@@ -346,20 +346,47 @@ export function createNevadaWorld({
    minY:place.position.y-2,maxY:place.position.y+b.h+3,tag:b.name
   });
  }
- // Perimeter security fencing: long side runs, not blocking main road.
- for(let i=0;i<29;i++){
-  const f=getFrameAt(.48+i*.0104);
-  for(const sign of [-1,1]){
-   const p=f.point.clone().addScaledVector(f.normal,sign*(17+(i%4===0?1:0)));
-   const group=new THREE.Group();group.position.copy(p);group.rotation.y=f.rotationY;
-   root.add(group);
-   shape(THREE,group,"box",0,2,0,.13,4,4.7,0x4b5e5e);
-   shape(THREE,group,"box",0,2,0,.06,3.4,4.6,0x7c9290);
-   if(i%6===0){
-    const label=billboard(THREE,group,"RESTRICTED","#702e2c","#ffe3bd",4.3);
-    label.position.set(sign*.1,3.1,0);label.rotation.y=Math.PI/2;
-   }
-   if(i%3===0)addBoxCollider(p,.3,2.4,f.rotationY,{minY:p.y-.5,maxY:p.y+4.6,tag:"BASE FENCE"});
+ // Connected restricted-perimeter fence. Formerly: 4.7m fence slats
+ // separated by 40m gaps, with physics only on every third panel.
+ // Openings intentionally preserve the side roads and broken-fence jump.
+ const fenceOpenings=[
+  {side:-1,start:.525,end:.571},
+  {side:1,start:.681,end:.719},
+  {side:-1,start:.725,end:.763},
+  {side:1,start:.729,end:.759}
+ ];
+ const fenceSections=120,fenceStart=.48,fenceStep=.30/fenceSections;
+ const chainMeshMat=new THREE.MeshStandardMaterial({
+  color:0x839997,roughness:.88,metalness:.32,side:THREE.DoubleSide,
+  wireframe:true,transparent:true,opacity:.76
+ });
+ for(let i=0;i<fenceSections;i++){
+  const ta=fenceStart+i*fenceStep,tb=ta+fenceStep,mid=(ta+tb)*.5;
+  const fa=getFrameAt(ta),fb=getFrameAt(tb);
+  for(const side of [-1,1]){
+   if(fenceOpenings.some(open=>open.side===side&&
+     mid>=open.start&&mid<=open.end))continue;
+   const p=fa.point.clone().addScaledVector(fa.normal,side*17.4);
+   const q=fb.point.clone().addScaledVector(fb.normal,side*17.4);
+   p.y=roadsideHeight(fa,side*17.4);
+   q.y=roadsideHeight(fb,side*17.4);
+   const dx=q.x-p.x,dz=q.z-p.z,length=Math.hypot(dx,dz);
+   if(length<.1)continue;
+   const c=p.clone().add(q).multiplyScalar(.5);
+   if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n))
+    continue;
+   const group=new THREE.Group();group.position.copy(c);
+   group.rotation.y=Math.atan2(dx,dz);root.add(group);
+   const fence=new THREE.Mesh(new THREE.PlaneGeometry(length,3.45,
+    Math.max(3,Math.round(length/1.3)),4),chainMeshMat);
+   fence.rotation.y=Math.PI/2;fence.position.y=2.05;group.add(fence);
+   shape(THREE,group,"box",0,4,0,.13,.14,length,0x5f7776);
+   if(i%3===0||i===0||i===fenceSections-1)
+    shape(THREE,group,"box",0,2,-length*.48,.22,4.1,.22,0x3f5658);
+   addBoxCollider(c,.18,length*.5,group.rotation.y,{
+    minY:Math.min(p.y,q.y)-.4,maxY:Math.max(p.y,q.y)+4.4,
+    tag:"RESTRICTED PERIMETER FENCE"
+   });
   }
  }
  // Two surveillance towers with active moving searchlight beams.
