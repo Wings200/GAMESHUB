@@ -1,8 +1,8 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=flat-lab-02";
-import {FirstPersonController} from "./src/player.js?v=flat-lab-02";
-import {Weapons} from "./src/weapons.js?v=flat-lab-02";
-import {Gadgets} from "./src/gadgets.js?v=flat-lab-02";
+import {buildRange} from "./src/world.js?v=penetration-optics-reinforce-03";
+import {FirstPersonController} from "./src/player.js?v=penetration-optics-reinforce-03";
+import {Weapons} from "./src/weapons.js?v=penetration-optics-reinforce-03";
+import {Gadgets} from "./src/gadgets.js?v=penetration-optics-reinforce-03";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -16,6 +16,12 @@ const gadgetInteract=$("gadgetInteract"),hudRole=$("hudRole"),selectedMode=$("se
 const rangeInfo=$("rangeInfo"),walkSlider=$("walkSlider"),sprintSlider=$("sprintSlider");
 const mouseSlider=$("mouseSlider"),walkValue=$("walkValue"),sprintValue=$("sprintValue"),mouseValue=$("mouseValue");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
+const sightSelect=$("sightSelect"),adsOptic=$("adsOptic"),opticName=$("opticName");
+const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
+const reinforceCountdown=$("reinforceCountdown");
+const SIGHTS=["holo-a","holo-b","red-dot","iron"];
+const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
+let sight="holo-a";
 let role="attacker";
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
@@ -63,6 +69,28 @@ const muzzleSprite=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),
   new THREE.MeshBasicMaterial({color:0xffdf8a,transparent:true,opacity:.9}));
 muzzleSprite.position.copy(muzzle.position);gunModel.add(muzzleSprite);muzzleSprite.visible=false;
 gunModel.position.set(.42,-.36,-.77);
+// Local sight housing follows the gun, while the optic aim mark remains
+// precisely centered on the actual camera shot ray.
+const sightModels=new THREE.Group();gunModel.add(sightModels);
+function scopeBox(x,y,z,w,h,d,color){
+  const shape=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color,.6));
+  shape.position.set(x,y,z);sightModels.add(shape);return shape;
+}
+scopeBox(0,.12,-.28,.19,.07,.28,0x111e29);
+scopeBox(-.10,.22,-.36,.035,.16,.075,0x171f29);
+scopeBox(.10,.22,-.36,.035,.16,.075,0x171f29);
+scopeBox(0,.31,-.36,.235,.035,.09,0x172532);
+const sightFrame=new THREE.Mesh(new THREE.TorusGeometry(.12,.018,8,24),mat(0x273949,.76));
+sightFrame.position.set(0,.23,-.36);sightModels.add(sightFrame);
+function setSight(value){
+  sight=SIGHTS.includes(value)?value:"holo-a";
+  sightSelect.value=sight;
+  adsOptic.dataset.sight=sight;
+  opticName.textContent=SIGHT_NAMES[sight];
+  sightFrame.visible=sight!=="iron";
+}
+sightSelect.addEventListener("change",()=>setSight(sightSelect.value));
+setSight(sight);
 
 function audioReady(){
   try {
@@ -101,7 +129,8 @@ function popup(message,seconds=2.6){
 }
 function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
-  document.body.classList.remove("playing");hud.classList.add("hidden");
+  gadgets.cancelAction();
+  document.body.classList.remove("playing","ads");hud.classList.add("hidden");
   menu.classList.remove("hidden");
   if(started){start.textContent="RESUME TESTING";status.textContent="Training paused · select a role or resume.";}
 }
@@ -153,11 +182,15 @@ document.addEventListener("keydown",e=>{
   if(e.code==="F3"){e.preventDefault();debug=!debug;debugPanel.classList.toggle("hidden",!debug);return;}
   if(!locked)return;
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
-      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","Digit1","Digit2","Space"].includes(e.code))
+      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","KeyV","Digit1","Digit2","Space"].includes(e.code))
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
-  if(e.code==="Digit1"||e.code==="Digit2"){
+  if(gadgets.busy)return;
+  if(e.code==="KeyV"){
+    setSight(SIGHTS[(SIGHTS.indexOf(sight)+1)%SIGHTS.length]);
+    popup("SIGHT SELECTED · "+SIGHT_NAMES[sight],1.1);
+  }else if(e.code==="Digit1"||e.code==="Digit2"){
     weapons.equip(e.code==="Digit1"?"primary":"secondary");popup(weapons.current.name);
   }else if(e.code==="KeyR"){
     popup(weapons.reload(clock())?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
@@ -168,15 +201,16 @@ document.addEventListener("keydown",e=>{
   }else if(e.code==="KeyX"){
     const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
   }else if(e.code==="KeyF"){
-    const r=gadgets.interact(camera);popup(r.message);if(r.ok)sound("click");
+    const r=gadgets.interact(camera,clock());popup(r.message);
+    if(r.ok){sound("click");fireHeld=false;ads=false;}
   }
 });
 document.addEventListener("keyup",e=>keys.delete(e.code));
 document.addEventListener("mousemove",e=>{
-  if(locked)player.look(e.movementX||0,e.movementY||0,.0022*Number(mouseSlider.value)*(ads?.65:1));
+  if(locked&&!gadgets.busy)player.look(e.movementX||0,e.movementY||0,.0022*Number(mouseSlider.value)*(ads?.65:1));
 });
 canvas.addEventListener("mousedown",e=>{
-  if(!locked)return;
+  if(!locked||gadgets.busy)return;
   audioReady();
   if(e.button===0){fireHeld=true;fireOnce(clock());}
   if(e.button===2)ads=true;
@@ -199,31 +233,43 @@ function fireOnce(now){
   // Spread offsets the center ray, not the player's movement direction.
   const spread=shot.spread,aim={x:(Math.random()-.5)*spread*2,y:(Math.random()-.5)*spread*2};
   raycaster.setFromCamera(aim,camera);raycaster.far=shot.range;
-  // Dead targets and breached panels should not continue intercepting shots.
+  // Trace all real ray intersections in order, so the actual wall hole
+  // and the bullet's collision behavior share a world-space position.
   const hits=raycaster.intersectObjects(world.shootables.filter(o=>{
-    const info=o.userData;if(info.kind==="panel")return !info.panel.destroyed;
+    const info=o.userData;
+    if(info.kind==="panel")return !info.panel.destroyed;
     if(info.kind==="target")return info.target.alive;
     if(info.kind==="shield")return info.shield.group.parent!==null;
     return true;
   }),false);
-  if(hits.length){
-    const h=hits[0],info=h.object.userData;
+  let penetration=1;
+  for(const h of hits){
+    const info=h.object.userData;
+    if(info.kind==="panel"){
+      if(info.panel.reinforced||!info.perforated){
+        popup(info.panel.reinforced?"REINFORCED PANEL · BLOCKED":"FRAME · SHOT BLOCKED",.65);
+        impact(h.point,0x9badb7);break;
+      }
+      // Creating a new hole lets this first round through too. Later
+      // bullets follow existing apertures, with reduced downstream damage.
+      if(info.panel.bulletHole(h.point)){
+        penetration*=.68;
+        popup("SOFT WALL · BULLET HOLE / PENETRATION",.65);
+        continue;
+      }
+      impact(h.point,0xc58b56);break;
+    }
     if(info.kind==="target"){
-      const head=info.hitZone==="head";
-      const kill=info.target.damage(head?shot.headDamage:shot.damage);
-      weapons.registerHit(kill);
-      hitUntil=now+170;
+      const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
+      const kill=info.target.damage(Math.max(1,Math.round(base*penetration)));
+      weapons.registerHit(kill);hitUntil=now+170;
       popup(head?(kill?"HEADSHOT · TARGET DOWN":"HEADSHOT"):(kill?"TARGET DOWN":"TARGET HIT"),.7);
       impact(h.point,head?0xf8e3a0:0x6dffe1,.11);
-    }else if(info.kind==="panel"){
-      const destroyed=info.panel.damage(shot.damage);
-      popup(info.panel.reinforced?"REINFORCED · NO PENETRATION":
-        destroyed?"PANEL DESTROYED":"SOFT PANEL HIT",.65);
-      impact(h.point,0xffa16a);
-    }else{
-      impact(h.point,info.kind==="shield"?0x8bf8ff:0xa4b6b7);
-      if(info.kind==="shield")popup("SHIELD BLOCKED SHOT",.65);
+      break;
     }
+    impact(h.point,info.kind==="shield"?0x8bf8ff:0xa4b6b7);
+    if(info.kind==="shield")popup("SHIELD BLOCKED SHOT",.65);
+    break;
   }
   // Camera's positive pitch looks UP in Three.js; recoil is positive.
   player.pitch=Math.min(1.37,player.pitch+shot.recoil*(ads?.7:1.25));
@@ -261,15 +307,26 @@ function frame(now){
   if(locked){
     // ADS reduces the move speed by removing sprint; it does NOT
     // toggle mouse-lock or turn the gun into a third-person camera.
-    const activeKeys=ads?new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
+    const activeKeys=gadgets.busy?new Set():ads?
+      new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
+    if(gadgets.busy){player.velX=0;player.velZ=0;}
     const report=player.update(dt,activeKeys);
     if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
-    if(fireHeld&&(weapons.slot==="primary"))fireOnce(now);
+    if(fireHeld&&!gadgets.busy&&(weapons.slot==="primary"))fireOnce(now);
     gadgets.tick(now,player,popup);
+    reinforceBar.classList.toggle("hidden",!gadgets.busy);
+    if(gadgets.busy){
+      const remaining=Math.max(0,(gadgets.action.end-now)/1000);
+      reinforceFill.style.width=(gadgets.actionProgress*100).toFixed(1)+"%";
+      reinforceCountdown.textContent=remaining.toFixed(1)+"S";
+    }
     updateHud(report);
   }
   if(toastUntil&&now>toastUntil){toastUntil=0;toast.classList.remove("shown");}
   hitmark.classList.toggle("shown",now<hitUntil);
+  const showingAds=locked&&ads&&!gadgets.busy;
+  document.body.classList.toggle("ads",showingAds);
+  adsOptic.setAttribute("aria-hidden",String(!showingAds));
   muzzle.intensity=now<muzzleUntil?2.5:0;muzzleSprite.visible=now<muzzleUntil;
   aimBlend+=(Number(locked&&ads)-aimBlend)*Math.min(1,dt*13);
   camera.fov=80-aimBlend*25;camera.updateProjectionMatrix();
@@ -286,10 +343,13 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a role, adjust speeds, then enter the flat test range.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.2.0-flat-lab"},
+  get build(){return "0.3.0-bullet-holes-optics-reinforcement"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
   get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
-  get dynamicColliders(){return world.colliders.length}
+  get dynamicColliders(){return world.colliders.length},
+  get sight(){return sight},
+  get reinforcing(){return gadgets.busy},
+  get bulletHoles(){return world.panels.map(p=>p.holes.length)}
 };
