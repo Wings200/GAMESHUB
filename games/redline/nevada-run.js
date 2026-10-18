@@ -897,13 +897,29 @@ export function createNevadaWorld({
   h.puffs.instanceMatrix.needsUpdate=true;
   g.add(h.puffs);
  }
+ // FLIGHT 51 overflights: the old jet had a 17m solid-box wing and
+ // 3m-high tail at driving height. On camera it filled the road like a
+ // giant grey wall. Keep jet crossings as high-altitude flyovers.
  for(let j=0;j<2;j++){
   const h=hazardGroup("aircraft",.728+j*.036,0,8.2,23+j*11,j*.48);
   const g=h.mesh;
-  shape(THREE,g,"box",0,2.7,0,3,2,17,0xaeb5b3);
-  shape(THREE,g,"box",0,2.8,-1,17,.34,3.2,0x707e7e);
-  shape(THREE,g,"box",0,4.2,-7,7,3,.9,0x697781);
-  shape(THREE,g,"sphere",0,3.2,7.7,1.3,1.2,1.2,0xb9c9c3);
+  shape(THREE,g,"box",0,2.2,0,1.8,1.3,12.8,0x9faeb4);
+  shape(THREE,g,"box",0,3.06,2.7,1.28,.50,3.15,0x2d4555);
+  shape(THREE,g,"sphere",0,2.15,6.45,.72,.72,.72,0xa9b9bf);
+  for(const side of [-1,1]){
+   // Low, swept wings rather than giant vertical slabs.
+   const wing=shape(THREE,g,"box",side*3.5,2.2,-.35,
+    6.6,.19,2.15,0x8a9ca5);
+   wing.rotation.y=side*.17;
+   const engine=shape(THREE,g,"cylinder",side*2.65,1.78,-.8,
+    .42,2.7,.42,0x5c6d76);
+   engine.rotation.x=Math.PI/2;
+   shape(THREE,g,"sphere",side*6.7,2.2,-.7,.23,.23,.23,
+    side<0?0xe24f4b:0x8de1d5);
+  }
+  const tail=shape(THREE,g,"box",0,3.6,-4.7,.20,2.65,2.2,0x617884);
+  tail.rotation.x=-.24;
+  shape(THREE,g,"box",0,2.5,-5.3,5,.14,1.3,0x758c96);
  }
  for(let j=0;j<14;j++){
   const h=hazardGroup("debris",.10+j*.056,((j%3)-1)*3.0,
@@ -1016,15 +1032,19 @@ export function createNevadaWorld({
     }
     h.puffs.instanceMatrix.needsUpdate=true;
    }else if(h.type==="aircraft"){
+    // Above the road and follow-camera, never at bumper height.
+    // Nose and wings still visibly cross the range overhead.
+    h.mesh.position.y+=11.5+h.phase*2;
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
-    // Rotate fuselage ACROSS the crossing instead of flying parallel
-    // to the road while sliding sideways.
     h.mesh.rotation.y=f.rotationY+Math.PI/2+
       .08*Math.sin(sec*.45);
    }else if(h.type==="convoy"||h.type==="tanker"){
     h.mesh.rotation.y=f.rotationY+
       (Math.sin(phase*TWO_PI)<0?Math.PI:0);
    }
+   // Aircraft fly over the circuit; do not stop a 150 mph car against
+   // an object whose mesh is more than 11m above the tire contact plane.
+   if(h.type==="aircraft")continue;
    if(!car||!carState||!carState.velocity)continue;
    // Only collide once the actual 3D moving arm drops to car height.
    if((h.type==="gate"||h.type==="blastdoor")&&
