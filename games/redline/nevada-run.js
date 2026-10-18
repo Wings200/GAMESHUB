@@ -536,6 +536,8 @@ export function createNevadaWorld({
   {side:1,start:.729,end:.759}
  ];
  const fenceSections=120,fenceStart=.48,fenceStep=.30/fenceSections;
+ const fenceMatrices=[];
+ const panelDummy=new THREE.Object3D();
  const chainMeshMat=new THREE.MeshStandardMaterial({
   color:0x839997,roughness:.88,metalness:.32,side:THREE.DoubleSide,
   wireframe:true,transparent:true,opacity:.76
@@ -560,9 +562,15 @@ export function createNevadaWorld({
    group.rotation.y=Math.atan2(dx,dz);
    group.rotation.x=-Math.atan2(q.y-p.y,length);
    root.add(group);
-   const fence=new THREE.Mesh(new THREE.PlaneGeometry(length,3.45,
-    Math.max(3,Math.round(length/1.3)),4),chainMeshMat);
-   fence.rotation.y=Math.PI/2;fence.position.y=2.05;group.add(fence);
+   // The old chainlink was 179+ separate wireframe GPU draws.
+   // Same panels, transforms and collision, but one instanced mesh.
+   group.updateMatrix();
+   panelDummy.position.set(0,2.05,0);
+   panelDummy.rotation.set(0,Math.PI/2,0);
+   panelDummy.scale.set(length,1,1);
+   panelDummy.updateMatrix();
+   fenceMatrices.push(new THREE.Matrix4().multiplyMatrices(
+    group.matrix,panelDummy.matrix));
    shape(THREE,group,"box",0,4,0,.13,.14,length,0x5f7776);
    if(i%3===0||i===0||i===fenceSections-1)
     shape(THREE,group,"box",0,2,-length*.48,.22,4.1,.22,0x3f5658);
@@ -571,6 +579,16 @@ export function createNevadaWorld({
     tag:"RESTRICTED PERIMETER FENCE"
    });
   }
+ }
+ if(fenceMatrices.length){
+  const mesh=new THREE.InstancedMesh(
+   new THREE.PlaneGeometry(1,3.45,7,4),
+   chainMeshMat,fenceMatrices.length);
+  for(let i=0;i<fenceMatrices.length;i++)
+   mesh.setMatrixAt(i,fenceMatrices[i]);
+  mesh.instanceMatrix.needsUpdate=true;
+  mesh.computeBoundingSphere();
+  root.add(mesh);
  }
  // Two surveillance towers with active moving searchlight beams.
  const searchlights=[];
