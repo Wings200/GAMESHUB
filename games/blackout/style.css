@@ -103,3 +103,16 @@ body.ads .reticle{display:none!important}
 #audioTest{border-color:#538a89;color:#bdf9f0}
 .objective-hint{max-width:min(650px,84vw);line-height:1.4}
 body.playing #objectiveHint{box-shadow:0 5px 15px #0006}
+
+/* BLACKOUT V0.7 — active site picker, compact round score and clean facility HUD. */
+.site-picker{display:flex;align-items:center;gap:12px;margin:8px 0 17px;max-width:650px;color:#8ff0e8;font-size:10px;font-weight:950;letter-spacing:.12em;flex-wrap:wrap}
+.site-picker select{background:#091b28;color:#f2fafa;border:1px solid #62b9ae;padding:10px 14px;font:900 11px Inter,"Segoe UI",Arial,sans-serif;letter-spacing:.035em;cursor:pointer;min-width:260px}
+.site-picker select:focus{outline:2px solid #9cfaed}
+.round-score{display:block;margin-top:4px;font-size:10px;color:#f9cf9a;font-weight:900;letter-spacing:.07em}
+.hud-left h2{font-size:clamp(17px,2vw,26px);max-width:260px}
+.hud-right{width:260px}
+.mission strong{line-height:1.4}
+.lab-card{border-color:#3a5a69}
+.objective-hint{background:#081823ec;color:#e4f9f2;border:1px solid #6fe4d599;font-size:10px}
+.round-result{z-index:10}
+@media(max-width:900px){.site-picker select{min-width:200px;max-width:100%}.round-score{font-size:9px}.hud-right{width:195px}}
