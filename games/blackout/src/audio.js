@@ -31,7 +31,7 @@ export class GameAudio{
     g.gain.setValueAtTime(.0001,t);
     g.gain.linearRampToValueAtTime(Math.max(.0002,peak),t+attack);
     g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(attack+.008,duration));
-    gain.connect(g);g.connect(this.master);
+    gain.connect(g);g.connect(this.spatialBus||this.master);
     return g;
   }
   tone(hz,seconds,level,type="triangle",delay=0,endHz=hz){
@@ -61,6 +61,21 @@ export class GameAudio{
     this.noise(.105,.10*scale,2400,"bandpass",.12);
     this.tone(440,.028,.014,"sine",.055,190);
   }
+  playAt(name,x,z,px,pz,yaw=0){
+    if(!this.ready)return;
+    const c=this.ctx;
+    const dx=x-px,dz=z-pz,distance=Math.hypot(dx,dz);
+    const level=1/(1+.09*distance+.007*distance*distance);
+    const bus=c.createGain();bus.gain.value=Math.max(.13,Math.min(1,level));
+    if(typeof c.createStereoPanner==="function"){
+      const stereo=c.createStereoPanner();
+      const side=distance>.01?(dx*Math.cos(yaw)-dz*Math.sin(yaw))/distance:0;
+      stereo.pan.value=Math.max(-.90,Math.min(.90,side));
+      bus.connect(stereo);stereo.connect(this.master);
+    }else bus.connect(this.master);
+    this.spatialBus=bus;
+    try{this.play(name);}finally{this.spatialBus=null;}
+  }
   play(name){
     if(!this.ready)return;
     switch(name){
@@ -72,7 +87,8 @@ export class GameAudio{
         break;
       case "step":
       case "run-step":
-        this.noise(.07,name==="run-step"?.13:.093,310,"lowpass");
+      case "enemy-step":
+        this.noise(.07,name==="run-step"?.13:name==="enemy-step"?.105:.093,310,"lowpass");
         this.noise(.024,.043,1650,"bandpass");
         this.tone(name==="run-step"?76:60,.07,.043,"sine",0,35);
         break;
