@@ -174,3 +174,15 @@ Player report: most “secret” branches were advertised openly by highway bill
 - Forced new client asset version `nevada-v22-1-hidden-routes` for both `game.js` and the Nevada module.
 
 **Verification**: Both files pass JavaScript parsing. Numerical guardrail test showed **zero opposing-side physical rails** at `t=.834,.839,.844,.850,.857` and retained the outside barrier at `t=.890`. Mock Three.js world construction passed with 27 hazards, four shortcuts, 205 box colliders and 370 circular colliders. For each of four branches, **15/15 centerline positions clear**, no perimeter fence collision and no sampled static collision in the mock. This does not constitute a real rendered browser or multiplayer driving test, and the mock control-point interpolation is approximate.
+
+## V22.1 rollback / V22 recovery (October 17, 2026)
+
+**Regression reported by player immediately after V22.1:** the whole game became broken and extremely laggy. Do not ship the V22.1 secret-path redesign again without browser/performance regression testing.
+
+- Restored `nevada-run.js`, `game.js` and `index.html` to the last V22 code from commit `69467edf28c9913f850c47145076a2e18b59c40c`. This reverts V22.1's bank cutouts, extra covered shortcut geometry, portal-sweep guards, and modified route discovery.
+- Applied *isolated performance fixes only* to the restored Nevada module. Converted 80 separate dust-gust mesh draws and 144 individual spinning dust puff meshes into four `THREE.InstancedMesh` batches (three tornadoes + one ambient dust field). Retained physics/dust-force handling, 27 hazards, four unchanged road shortcuts, 250 registered static boxes and 370 registered circles. Mock build comparison: 1,755 → 1,535 scene meshes, a reduction of 220 meshes/draw submissions. Mock tests, not real GPU FPS measurements.
+- Reduced per-fragment active dynamic lights (3 tower spotlights to 1, up to 5 floodlight point sources to 2); emissive fixture meshes and spotlight-trigger logic remain.
+- Cache version `nevada-v22-stable-recovery-1017` on both the main game module and Nevada import, to avoid reusing V22.1 JavaScript in browsers.
+- The missing secret-path openings reported before V22.1 are **not solved** in this rollback. Resolve them later with a small, precisely measured change, and test a complete lap/performance before applying any major shortcut redesign.
+
+**QA limits:** Script parse checks and mocked scene construction/update passed. Live Cloudflare URL could not be opened via our web tool, so actual deployed build, real browser FPS, graphics and network multiplayer still need user gameplay confirmation.
