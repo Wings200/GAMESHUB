@@ -2125,13 +2125,13 @@ function makeRibbon(
 
 }
 function buildRoad() {
-    const roadColor = activeTrackId==="canyon"?0x544a43:
+    const roadColor = activeTrackId==="canyon"?0x34383d:
         activeTrackId==="arctic"?0x263746:0x2b343e;
 
-    const shoulderColor = activeTrackId==="canyon"?0x947153:
+    const shoulderColor = activeTrackId==="canyon"?0xa17e57:
         activeTrackId==="arctic"?0xa9bcc9:0x505a64;
 
-    const edgeColor = activeTrackId==="canyon"?0xdcc29b:
+    const edgeColor = activeTrackId==="canyon"?0xf3d59d:
         activeTrackId==="arctic"?0xe5f2f7:0xbec7d3;
 
     const surfaceLayers = [
