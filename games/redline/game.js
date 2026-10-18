@@ -1946,13 +1946,16 @@ function makeRibbon(
       with increasing UV coordinates. This prevents a giant texture smear
       across the wraparound segment near the start/finish line.
     */
+    // Nevada's four-kilometre desert loop previously stretched just
+    // 28 texture repeats over the entire road, causing giant longitudinal
+    // streaks. Use Neon's metre-scaled UVs on Nevada as well.
     const splitUvSeam =
-        activeTrackId === "neon"
+        (activeTrackId === "neon" || activeTrackId === "canyon")
         &&
         Boolean(textureKind);
 
-    // World-space texel scale: ~5m per repeat rather than one 80m
-    // stretched asphalt tile. Preserve the old Arctic UVs unchanged.
+    // World-space texel scale: ~4.5m per repeat on Neon and Nevada,
+    // avoiding elongated road streaks. Arctic remains unchanged.
     let roadMeters = 0;
     let previousPoint = null;
     const physicalUv = splitUvSeam;
