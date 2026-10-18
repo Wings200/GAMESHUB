@@ -4,7 +4,7 @@
  * Deliberately scoped to a car and track; original online leaderboards
  * remain server-authoritative and unmodified.
  */
-export const TRIAL_MAPS=Object.freeze(["neon","arctic"]);
+export const TRIAL_MAPS=Object.freeze(["neon","arctic","canyon"]);
 export const TRIAL_MAX_SAMPLES=7800; // 13 minutes at a 100ms capture interval
 const allowedCars=new Set(["gt","vortex","apex","bayside","aurora","ironclad","cirrus","obsidian","phantom"]);
 const validNumber=(n,min,max)=>typeof n==="number"&&Number.isFinite(n)&&n>=min&&n<=max;
