@@ -11116,3 +11116,5 @@ function gameLoop(now) {
 }
 buildWorld();
 requestAnimationFrame(gameLoop);
+window.REDLINE_GAME_READY=true;
+window.dispatchEvent(new Event("redline:game-ready"));
