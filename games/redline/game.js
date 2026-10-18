@@ -15,6 +15,8 @@ import { createRuggedMountainGeometry, buildArcticV3Art, createArcticSnowfall }
 import { buildArcticV4Scenery } from "./arctic-v4-scenery.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
 import { createRemoteMotion } from "./multiplayer-smoothing.js";
+import {sampleGhost,ghostTimeAtProgress,TRIAL_MAX_SAMPLES,trialTimeLabel}
+    from "./time-trial-core.js?v=20-1";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
@@ -645,6 +647,10 @@ let raceStarted = false;
 let serverRaceStartAt = null;
 let localFinished = false;
 let localFinishElapsed = null;
+// V20 time trial state exists only for standalone solo races. Never
+// publish ghost telemetry or times to multiplayer server endpoints.
+let trialGhost=null,trialFrames=[],trialLastSampleAt=-Infinity;
+let trialSnapshot=null;
 let goHideAt = 0;
 let lastNetworkSend = 0;
 const NETWORK_INTERVAL = 80;
@@ -8936,6 +8942,70 @@ function makeGhostCar(spec, username) {
         visual
     };
 }
+/*
+ * V20 Personal Best Ghost
+ * One low-detail translucent model, created from the real factory mesh.
+ * Never registered with collision checks, physics, pickups or multiplayer.
+ */
+function initTimeTrialGhost(){
+    trialGhost=null;
+    trialFrames=[];
+    trialLastSampleAt=-Infinity;
+    trialSnapshot=window.REDLINE_TT?.active?window.REDLINE_TT.ghost:null;
+    if(!window.REDLINE_TT?.active||!trialSnapshot?.frames?.length)return;
+    try{
+        const model=makeGhostCar(cars[trialSnapshot.car],"PERSONAL BEST");
+        trialGhost=model.model;
+        trialGhost.visible=!!window.REDLINE_TT.ghostEnabled;
+        worldGroup.add(trialGhost);
+    }catch(error){
+        console.warn("REDLINE ghost renderer unavailable",error);
+        trialGhost=null;
+    }
+}
+function updateTimeTrial(){
+    if(!window.REDLINE_TT?.active||!car||!carState)return;
+    if(trialGhost)trialGhost.visible=!!window.REDLINE_TT.ghostEnabled;
+    if(!raceActive||localFinished||!serverRaceStartAt)return;
+    const elapsed=Math.max(0,Date.now()-serverRaceStartAt);
+    const progress=(lap-1)*checkpointTs.length+checkpointStep+
+       getCheckpointProgressForPosition(car.position,checkpointStep);
+    if(elapsed-trialLastSampleAt>=100 && trialFrames.length<TRIAL_MAX_SAMPLES){
+        trialLastSampleAt=elapsed;
+        // Compact immutable JSON trace. One frame ~100 ms; only the best
+        // valid run is persisted after FINISH, never an unfinished attempt.
+        trialFrames.push([
+            Math.floor(elapsed),
+            Math.round(car.position.x*100)/100,
+            Math.round(car.position.y*100)/100,
+            Math.round(car.position.z*100)/100,
+            car.rotation.y,car.rotation.x,car.rotation.z,
+            Math.round(progress*1000)/1000,
+            Math.round(carState.velocity.length()*10)/10
+        ]);
+    }
+    if(trialGhost&&trialSnapshot?.frames?.length){
+        const point=sampleGhost(trialSnapshot.frames,elapsed);
+        if(point){
+            trialGhost.position.set(point[1],point[2],point[3]);
+            trialGhost.rotation.set(point[5],point[4],point[6]);
+        }
+    }
+    if(!trialSnapshot?.frames?.length){
+        window.REDLINE_TT.setDelta("FIRST RUN · SET YOUR BEST");
+        return;
+    }
+    const ghostAt=ghostTimeAtProgress(trialSnapshot.frames,progress);
+    if(ghostAt===null){
+        window.REDLINE_TT.setDelta("GHOST DELTA · FINDING TRACK POSITION");
+        return;
+    }
+    const delta=elapsed-ghostAt;
+    const signed=(delta>0?"+":"-")+(Math.abs(delta)/1000).toFixed(2)+"s";
+    window.REDLINE_TT.setDelta(
+      (delta<=0?"AHEAD ":"BEHIND ")+signed+" · G TO TOGGLE GHOST"
+    );
+}
 function getGridTransform(playerIndex) {
     const frame = getFrameAt(0.015);
     const lane = playerIndex %
@@ -10141,6 +10211,8 @@ function buildWorld() {
     disposeWorld();
 
     const requestedTrack =
+        (window.REDLINE_TT?.active?window.REDLINE_TT.map:null)
+        ||
         window.REDLINE_MP
             ?.room
             ?.map
@@ -10159,9 +10231,9 @@ function buildWorld() {
     weatherStatusEl?.classList.toggle("hidden",activeTrackId !== "neon");
 
 
-    const multiplayerCar = window.REDLINE_MP
-        ?.myPlayer
-        ?.car;
+    const multiplayerCar = window.REDLINE_TT?.active
+        ?window.REDLINE_TT.car
+        :window.REDLINE_MP?.myPlayer?.car;
     if (multiplayerCar
         &&
             cars[multiplayerCar]) {
@@ -10175,7 +10247,9 @@ function buildWorld() {
     // Browser-local point allocations NEVER modify engine or handling.
     activeCarSpec = REDLINE_PARTS.applyCarUpgrades(
         baseCarSpec,
-        window.REDLINE_MP?.myPlayer?.upgrades
+        window.REDLINE_TT?.active
+            ?window.REDLINE_TT.upgrades
+            :window.REDLINE_MP?.myPlayer?.upgrades
     );
     updateGarageUI();
     worldGroup =
@@ -10377,6 +10451,7 @@ function buildWorld() {
     });
     updateObjective();
     updateGateColors();
+    initTimeTrialGhost();
 }
 async function runCountdown() {
     countdown.classList.remove("hidden");
@@ -10570,6 +10645,8 @@ function updateRacePosition() {
                 "1";
 }
 function multiplayerServerTime() {
+    // Solo Time Trial has no server clock synchronization or room.
+    if(window.REDLINE_TT?.active)return Date.now();
     const corrected=window.REDLINE_MP?.serverNow;
     return Number.isFinite(corrected)?corrected:Date.now();
 }
@@ -10637,12 +10714,9 @@ function startRace() {
     menu.classList.add("hidden");
     hud.classList.remove("hidden");
     message.classList.add("hidden");
-    serverRaceStartAt =
-        window.REDLINE_MP
-            ?.raceStartAt
-            ||
-                (Date.now() +
-                    2800);
+    serverRaceStartAt =window.REDLINE_TT?.active
+        ?Date.now()+4000
+        :(window.REDLINE_MP?.raceStartAt||(Date.now()+2800));
     raceActive =
         false;
     raceStarted =
@@ -10684,8 +10758,22 @@ function finishRace() {
     message.textContent =
         "FINISH";
     message.classList.remove("hidden");
-    window.REDLINE_MP
-        ?.sendFinish?.();
+    if(window.REDLINE_TT?.active){
+        // Local-only run: no Worker finish, leaderboard injection, payouts,
+        // or challenges. A personal ghost saves only in local browser data.
+        if(trialFrames.length && trialFrames[trialFrames.length-1][0]<localFinishElapsed){
+            trialFrames.push([
+                Math.floor(localFinishElapsed),
+                car.position.x,car.position.y,car.position.z,
+                car.rotation.y,car.rotation.x,car.rotation.z,
+                TARGET_LAPS*checkpointTs.length,
+                Math.round(carState?.velocity.length()||0)
+            ]);
+        }
+        window.REDLINE_TT.onFinish(localFinishElapsed,trialFrames);
+    }else{
+        window.REDLINE_MP?.sendFinish?.();
+    }
     setTimeout(() => {
         message.classList.add("hidden");
     }, 2200);
@@ -11001,6 +11089,7 @@ function gameLoop(now) {
         lastWeatherHudTime = now;
     }
     updateHUD();
+    updateTimeTrial();
     drawMinimap();
     updateFPS(now);
     renderer.render(scene, camera);
