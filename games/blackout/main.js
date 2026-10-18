@@ -1,9 +1,11 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=optic-on-gun-spread-alarm-04";
-import {FirstPersonController} from "./src/player.js?v=optic-on-gun-spread-alarm-04";
-import {Weapons} from "./src/weapons.js?v=optic-on-gun-spread-alarm-04";
-import {Gadgets} from "./src/gadgets.js?v=optic-on-gun-spread-alarm-04";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=optic-on-gun-spread-alarm-04";
+import {buildRange} from "./src/world.js?v=blackout-operator-objectives-05";
+import {FirstPersonController} from "./src/player.js?v=blackout-operator-objectives-05";
+import {Weapons} from "./src/weapons.js?v=blackout-operator-objectives-05";
+import {Gadgets} from "./src/gadgets.js?v=blackout-operator-objectives-05";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-operator-objectives-05";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-operator-objectives-05";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-operator-objectives-05";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -14,8 +16,11 @@ const positionReadout=$("positionReadout"),toast=$("toast"),hitmark=$("hitmark")
 const weaponName=$("weaponName"),ammoCount=$("ammoCount"),reserveCount=$("reserveCount");
 const combatStats=$("combatStats"),gadgetPrimary=$("gadgetPrimary"),gadgetSecondary=$("gadgetSecondary");
 const gadgetInteract=$("gadgetInteract"),hudRole=$("hudRole"),selectedMode=$("selectedMode");
-const rangeInfo=$("rangeInfo"),walkSlider=$("walkSlider"),sprintSlider=$("sprintSlider");
-const mouseSlider=$("mouseSlider"),walkValue=$("walkValue"),sprintValue=$("sprintValue"),mouseValue=$("mouseValue");
+const rangeInfo=$("rangeInfo"),mouseSlider=$("mouseSlider"),mouseValue=$("mouseValue");
+const operatorSelect=$("operatorSelect"),operatorDetails=$("operatorDetails");
+const operatorHud=$("operatorHud"),healthHud=$("healthHud");
+const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
+const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
 const sightSelect=$("sightSelect"),reticle=$("reticle");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
@@ -24,6 +29,7 @@ const SIGHTS=["holo-a","holo-b","red-dot","iron"];
 const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
 let sight="holo-a";
 let role="attacker";
+let operator=defaultOperator(role);
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -34,11 +40,13 @@ const world=buildRange(THREE,scene);
 const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
+const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
 let last=performance.now(),frames=0,elapsed=0,fps=0;
 let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
+let gunKick=0,gunKickSide=0;
 let audioContext=null,noiseBuffer=null;
 const clock=()=>performance.now();
 
@@ -145,8 +153,9 @@ function showMenu(){
 }
 function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
+  if(objectiveRound.phase==="ready")objectiveRound.start(clock());
   document.body.classList.add("playing");
-  popup("FLAT LAB ONLINE · MOVEMENT + WEAPONS + GADGETS",3.6);
+  popup("SITE A OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
 }
 async function lockMouse(){
   audioReady();
@@ -162,28 +171,44 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
   if(document.pointerLockElement===canvas)document.exitPointerLock();});
 
 function resetSimulation(){
-  world.reset();gadgets.reset(role);weapons.reset();player.reset();keys.clear();
-  hitUntil=0;popup("SIMULATION RESET");
+  objectiveRound.reset(role);world.reset();gadgets.reset(role);weapons.reset();
+  world.spawn.x=0;world.spawn.z=role==="defender"?-36:19;
+  world.spawn.yaw=role==="defender"?Math.PI:0;
+  player.setOperator(operator);player.reset();keys.clear();
+  aimBlend=0;gunKick=0;gunKickSide=0;fireHeld=false;ads=false;
+  hitUntil=0;popup("OBJECTIVE ROUND RESET · "+operator.name);
   updateHud({sprinting:false,crouched:false,prone:false,lean:0,speed:0});
+}
+function chooseOperator(id){
+  const selected=OPERATORS[id];
+  if(!selected||selected.side!==role)return;
+  operator=selected;operatorSelect.value=id;
+  player.setOperator(selected);
+  operatorDetails.textContent=selected.speed+" SPEED · "+selected.armor+" ARMOR · "+selected.health+
+    " HP · "+selected.walk.toFixed(2)+" m/s WALK · "+selected.sprint.toFixed(2)+" m/s SPRINT";
+  resetSimulation();
+  status.textContent=selected.name+" READY · FIXED OPERATOR SPEED AND HEALTH";
 }
 function setRole(r){
   role=r==="defender"?"defender":"attacker";
   attackButton.classList.toggle("active",role==="attacker");
   defendButton.classList.toggle("active",role==="defender");
-  selectedMode.textContent=(role==="attacker"?"ATTACKER":"DEFENDER")+" MECHANICS";
-  resetSimulation();
-  status.textContent=(role==="attacker"?"Attacker: plant breach charges (G) and pulse scan (X).":
-    "Defender: place shields (G), sensors (X), reinforce panels (F).");
+  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE A":"DEFENDER · PROTECT SITE A";
+  operatorSelect.replaceChildren();
+  for(const spec of operatorsForSide(role)){
+    const option=document.createElement("option");option.value=spec.id;
+    option.textContent=spec.name+" · "+spec.speed+" SPEED / "+spec.armor+" ARMOR · "+spec.health+" HP";
+    operatorSelect.appendChild(option);
+  }
+  chooseOperator(defaultOperator(role).id);
+  status.textContent=role==="attacker"?
+    "ATTACK: eliminate the two sentries, hold F at Site A to plant, protect the defuser.":
+    "DEFEND: stop hostile bots from planting, or hold F at Site A to disable the defuser.";
 }
 attackButton.addEventListener("click",()=>setRole("attacker"));
 defendButton.addEventListener("click",()=>setRole("defender"));
 reset.addEventListener("click",()=>{resetSimulation();status.textContent="All targets and ammo reset.";});
-for(const [el,target,key] of [[walkSlider,walkValue,"walk"],[sprintSlider,sprintValue,"sprint"]]){
-  el.addEventListener("input",()=>{
-    player.speeds[key]=Number(el.value);
-    target.textContent=Number(el.value).toFixed(1)+" m/s";
-  });
-}
+operatorSelect.addEventListener("change",()=>chooseOperator(operatorSelect.value));
 mouseSlider.addEventListener("input",()=>{mouseValue.textContent=Number(mouseSlider.value).toFixed(1)+"×";});
 $("guideToggle").addEventListener("click",()=>{menuGuide=!menuGuide;guide.classList.toggle("hidden",!menuGuide);});
 
@@ -210,8 +235,13 @@ document.addEventListener("keydown",e=>{
   }else if(e.code==="KeyX"){
     const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
   }else if(e.code==="KeyF"){
-    const r=gadgets.interact(camera,clock());popup(r.message);
-    if(r.ok){sound("click");fireHeld=false;ads=false;}
+    if(objectiveRound.canInteract(player)){
+      popup(objectiveRound.phase==="clear"?"ELIMINATE SITE SENTRIES FIRST":
+        role==="attacker"?"HOLD F TO PLANT DEFUSER":"HOLD F TO DISABLE DEFUSER",1.4);
+    }else{
+      const r=gadgets.interact(camera,clock());popup(r.message);
+      if(r.ok){sound("click");fireHeld=false;ads=false;}
+    }
   }
 });
 document.addEventListener("keyup",e=>keys.delete(e.code));
@@ -233,6 +263,7 @@ function impact(point,color=0xffc16c,size=.08){
   obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
 }
 function fireOnce(now){
+  if(objectiveRound.phase==="won"||objectiveRound.phase==="lost")return;
   // Do not grant laser-accurate ADS while the actual sight is still moving
   // into position. Once aligned, the 3D reticle and the shot share the ray.
   const sightAligned=ads&&aimBlend>=.93;
@@ -258,6 +289,7 @@ function fireOnce(now){
     const info=o.userData;
     if(info.kind==="panel")return !info.panel.destroyed;
     if(info.kind==="target")return info.target.alive;
+    if(info.kind==="bot")return info.bot.alive;
     if(info.kind==="shield")return info.shield.group.parent!==null;
     return true;
   }),false);
@@ -278,6 +310,14 @@ function fireOnce(now){
       }
       impact(h.point,0xc58b56);break;
     }
+    if(info.kind==="bot"){
+      const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
+      const kill=info.bot.damage(Math.max(1,Math.round(base*penetration)));
+      weapons.registerHit(kill);hitUntil=now+170;
+      popup(kill?"HOSTILE ELIMINATED":head?"HOSTILE HEADSHOT":"HOSTILE HIT",.65);
+      impact(h.point,head?0xffd2a1:0xff7e67,.07);
+      break;
+    }
     if(info.kind==="target"){
       const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
       const kill=info.target.damage(Math.max(1,Math.round(base*penetration)));
@@ -290,13 +330,30 @@ function fireOnce(now){
     if(info.kind==="shield")popup("SHIELD BLOCKED SHOT",.65);
     break;
   }
-  // Camera's positive pitch looks UP in Three.js; recoil is positive.
-  player.pitch=Math.min(1.37,player.pitch+shot.recoil*(ads?.7:1.25));
+  // Every shot pushes view upward AND introduces slight sideways climb.
+  // Counteract recoil with mouse movement; model kick springs back separately.
+  const climb=shot.recoil*(ads?.83:1.18);
+  player.pitch=Math.min(1.37,player.pitch+climb);
+  player.yaw+=(Math.random()-.5)*shot.recoil*.65;
+  gunKick=Math.min(.19,gunKick+.078);
+  gunKickSide=Math.max(-.06,Math.min(.06,gunKickSide+(Math.random()-.5)*.035));
   player.applyCamera();
 }
 function updateHud(report){
-  zoneLabel.textContent="FLAT MECHANICS LAB";
-  objective.textContent=weapons.stats.kills+" / "+world.targets.length+" TARGETS";
+  zoneLabel.textContent="SITE A / FLAT TACTICAL LAB";
+  objective.textContent=objectiveRound.summary(clock());
+  objectiveHint.textContent=objectiveRound.hint;
+  const progressing=objectiveRound.hold>0;
+  objectiveProgress.classList.toggle("hidden",!progressing);
+  objectiveAction.textContent=role==="attacker"?"PLANTING DEFUSER":"DISABLING DEFUSER";
+  objectiveFill.style.width=objectiveRound.holdPercent.toFixed(1)+"%";
+  const ended=objectiveRound.phase==="won"||objectiveRound.phase==="lost";
+  roundResult.classList.toggle("hidden",!ended);
+  roundResult.textContent=ended?(objectiveRound.phase==="won"?"VICTORY":"DEFEAT")+" · "+objectiveRound.result+" · ESC → RESET LAB":"";
+  roundResult.classList.toggle("lost",objectiveRound.phase==="lost");
+  operatorHud.textContent=operator.name+" · "+operator.speed+" SPEED / "+operator.armor+" ARMOR";
+  healthHud.textContent=player.health+" / "+player.maxHealth+" HP";
+  healthHud.classList.toggle("low-health",player.health<=player.maxHealth*.35);
   stateReadout.textContent=report.prone?"PRONE":report.crouched?"CROUCHED":
     report.sprinting?"SPRINTING":Math.abs(report.lean)>.12?"LEANING":"STANDING";
   fpsReadout.textContent=fps+" FPS";
@@ -336,6 +393,7 @@ function frame(now){
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
     });
+    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,popup);
     reinforceBar.classList.toggle("hidden",!gadgets.busy);
     if(gadgets.busy){
       const remaining=Math.max(0,(gadgets.action.end-now)/1000);
@@ -362,7 +420,11 @@ function frame(now){
   const blend=Math.min(1,dt*14);
   gunModel.position.x+=(aligned.x*aimBlend+.42*(1-aimBlend)-gunModel.position.x)*blend;
   gunModel.position.y+=(aligned.y*aimBlend-.36*(1-aimBlend)-gunModel.position.y)*blend;
-  gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)-gunModel.position.z)*blend;
+  gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)+gunKick*.28-gunModel.position.z)*blend;
+  gunModel.rotation.x=-gunKick*.95;
+  gunModel.rotation.z=gunKickSide;
+  gunKick*=Math.exp(-dt*9);
+  gunKickSide*=Math.exp(-dt*11);
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
   }
@@ -370,9 +432,9 @@ function frame(now){
 }
 setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
-function noticeReady(){status.textContent="Choose a role, adjust speeds, then enter the flat test range.";}
+function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.4.0-3d-optics-and-accurate-ads"},
+  get build(){return "0.5.0-objective-operator-recoil-lean"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
@@ -382,5 +444,7 @@ window.BLACKOUT_DEV={
   get reinforcing(){return gadgets.busy},
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
   get ads(){return ads},
+  get operator(){return {...operator}},get health(){return player.health},
+  get round(){return {role,phase:objectiveRound.phase,summary:objectiveRound.summary(clock()),bots:objectiveRound.bots.filter(b=>b.alive).length}},
   get sightOrigin(){return gunOptics.aimPosition(weapons.slot==="secondary"?.78:1)}
 };
