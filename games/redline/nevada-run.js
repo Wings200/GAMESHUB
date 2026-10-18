@@ -571,10 +571,16 @@ export function createNevadaWorld({
   beam.rotation.x=-.46;
   pivot.add(beam);
   shape(THREE,pivot,"sphere",0,0,0,1.4,1,1,0xffefbe);
-  const spotlight=new THREE.SpotLight(0xffe5aa,5,75,.35,.8,2);
-  spotlight.position.set(0,0,0);
-  spotlight.target.position.set(0,-19,10);
-  pivot.add(spotlight,spotlight.target);
+  // The GPU-heavy SpotLight was instantiated for every tower, even
+  // though a rotating beam mesh already draws the visible sweep.
+  // Keep ONE physical spotlight for depth; other towers use the beam
+  // material and retain exactly the same gameplay detection logic.
+  if(searchlights.length===0){
+   const spotlight=new THREE.SpotLight(0xffe5aa,3.7,67,.35,.8,2);
+   spotlight.position.set(0,0,0);
+   spotlight.target.position.set(0,-19,10);
+   pivot.add(spotlight,spotlight.target);
+  }
   searchlights.push({g,pivot,beam,t,offset});
   addBoxCollider(p,2,2,0,{minY:p.y,maxY:p.y+19,tag:"WATCHTOWER"});
  }
@@ -588,8 +594,11 @@ export function createNevadaWorld({
   const box=shape(THREE,lamp,"box",0,10,0,1.8,.7,1.2,0xffd39c);
   box.material.emissive=new THREE.Color(0xffb765);
   box.material.emissiveIntensity=.25;
-  const light=new THREE.PointLight(0xffc788,2.7,46,2);
-  light.position.set(0,9.9,0);lamp.add(light);
+  // Cap expensive per-fragment dynamic point lights: painted/emissive
+  // lamp fixtures remain visible at every blacksite position.
+  const light=floodLights.length<2?
+   new THREE.PointLight(0xffc788,2.7,46,2):null;
+  if(light){light.position.set(0,9.9,0);lamp.add(light);}
   floodLights.push({light,box});
   addCircleCollider(p,.28,{minY:p.y,maxY:p.y+11,
    tag:"BLACKSITE FLOODLIGHT",drag:.60});
@@ -848,7 +857,7 @@ export function createNevadaWorld({
   sunsetLight.intensity=1.40*(1-nightProgress)+.025;
   desertFill.intensity=.55-.24*nightProgress;
   for(const f of floodLights){
-   f.light.intensity=2.2+nightProgress*2.1;
+   if(f.light)f.light.intensity=2.2+nightProgress*2.1;
    f.box.material.emissiveIntensity=.25+nightProgress*1.65;
   }
   for(const light of searchlights){
