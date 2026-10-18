@@ -2913,3 +2913,12 @@ select option:disabled {
   .redline-trial-shell{padding:14px}
   .redline-trial-hud{top:auto;bottom:10px;width:min(96vw,550px);justify-content:center}
 }
+
+/* V20 solo HUD exit button — usable with pointer and keyboard. */
+.redline-trial-hud button{
+  flex-shrink:0;border:1px solid rgba(243,180,169,.65);
+  border-radius:7px;padding:8px 11px;
+  background:rgba(112,44,54,.77);color:#fff0ea;cursor:pointer;
+  font:800 11px system-ui,sans-serif
+}
+.redline-trial-hud button:hover{background:rgba(154,54,64,.9);border-color:#ffc2b6}
