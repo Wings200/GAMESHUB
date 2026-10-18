@@ -6,7 +6,7 @@
  * NOT a fabricated or unaudited Time Trial ranking.
  */
 import {readPersonalGhost,savePersonalGhost,TRIAL_MAPS,trialTimeLabel}
- from "./time-trial-core.js?v=20-2";
+ from "./time-trial-core.js?v=nevada-21-1";
 import {REDLINE_CAR_CATALOG,STARTER_CAR_IDS,REDLINE_CAR_IDS}
  from "./car-catalog.js";
 const $=id=>document.getElementById(id);
