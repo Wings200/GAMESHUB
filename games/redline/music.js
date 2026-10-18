@@ -45,6 +45,15 @@
 
       file:
         "./assets/audio/ice%20-%20slowed.mp3"
+    },
+
+    canyon: {
+      id: "hot-roadway",
+      name: "HOT ROADWAY — MINTODOG",
+      // CC0; source: https://opengameart.org/content/hot-roadway
+      // Original loopable 160 BPM OGG. Stream it rather than downloading
+      // an untracked multi-megabyte binary into the browser's JS bundle.
+      file: "https://opengameart.org/sites/default/files/hot_roadway_bpm160_0.ogg"
     }
 
   };
@@ -244,7 +253,7 @@
 
 
     audio.preload =
-      "auto";
+      key === "canyon" ? "metadata" : "auto";
 
 
     audio.volume =
@@ -342,6 +351,9 @@
 
     }
 
+    if (map === "canyon" || map === "nevada") {
+      return "canyon";
+    }
 
     return null;
 
@@ -504,12 +516,12 @@
       fadeGeneration;
 
 
+    // Keep Nevada's techno beneath the engine mix; the existing
+    // race/master music volume controls still apply normally.
     const volume =
       targetKey
         ?
-        volumeForMode(
-          mode
-        )
+        volumeForMode(mode) * (targetKey === "canyon" ? 0.78 : 1)
         :
         0;
 
