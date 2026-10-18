@@ -62,7 +62,9 @@ export function buildFacility(T,scene,world){
   }
   // Cross-corridor: two 2.8m clear doorways for rotations and flanks.
   wall(-7.9,-37,3.2,.34);
-  wall(0,-37,5.9,.34);
+  // Center span intentionally leaves a flush soft-wall opening, supplied by world.makePanel.
+  wall(-2.3,-37,1.4,.34);
+  wall(2.3,-37,1.4,.34);
   wall(7.9,-37,3.2,.34);
   for(const x of [-4.55,4.55]){
     box(x-1.47,1.5,-37,.10,3,.45,frame);
