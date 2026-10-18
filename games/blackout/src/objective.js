@@ -10,9 +10,11 @@ export class ObjectiveDrill {
     const ring=new THREE.Mesh(new THREE.RingGeometry(3.35,3.52,64),
       new THREE.MeshBasicMaterial({color:0x60e9e0,side:THREE.DoubleSide,transparent:true,opacity:.83}));
     ring.rotation.x=-Math.PI/2;ring.position.set(0,.045,-29);this.root.add(ring);this.ring=ring;
-    const center=new THREE.Mesh(new THREE.CylinderGeometry(.49,.55,.26,12),
+    // Flush site marker, NOT a cylinder occupying the same volume as
+    // the real equipment. The actual 3D field case appears after planting.
+    const center=new THREE.Mesh(new THREE.CylinderGeometry(.49,.55,.028,12),
       new THREE.MeshStandardMaterial({color:0x294857,metalness:.72,roughness:.3,emissive:0x15565c,emissiveIntensity:.45}));
-    center.position.set(0,.15,-29);this.root.add(center);this.device=center;
+    center.position.set(0,.017,-29);this.root.add(center);this.device=center;
     const beacon=new THREE.Mesh(new THREE.BoxGeometry(.32,.32,.32),
       new THREE.MeshBasicMaterial({color:0x76f7e0}));
     beacon.position.set(0,.43,-29);this.root.add(beacon);this.beacon=beacon;
