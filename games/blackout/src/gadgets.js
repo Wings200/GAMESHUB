@@ -19,8 +19,18 @@ export class Gadgets {
     this.counts={g:2,x:2,reinforce:2};
     this.scanUntil=0;
     for(const a of this.scanMarkers)a.marker.visible=false;
-    if(this.charge){this.scene.remove(this.charge.marker);this.charge=null;}
-    for(const s of this.sensors)this.scene.remove(s.group);
+    if(this.charge){
+      this.scene.remove(this.charge.marker);
+      this.charge.marker.geometry?.dispose?.();
+      this.charge.marker.material?.dispose?.();
+      this.charge=null;
+    }
+    for(const s of this.sensors){
+      this.scene.remove(s.group);
+      s.group.traverse?.(node=>{
+        if(node.isMesh){node.geometry?.dispose?.();node.material?.dispose?.();}
+      });
+    }
     this.sensors=[];
   }
   nearestPanel(camera,limit=6.5){
@@ -82,7 +92,9 @@ export class Gadgets {
   tick(now,player,ping){
     if(this.charge&&now>=this.charge.detonateAt){
       const {panel,marker}=this.charge;
-      this.scene.remove(marker);this.charge=null;
+      this.scene.remove(marker);
+      marker.geometry?.dispose?.();marker.material?.dispose?.();
+      this.charge=null;
       const destroyed=panel.damage(500,true);
       ping(destroyed?"PANEL BREACHED · OPEN PATH":"CHARGE DID NOT BREACH");
     }
