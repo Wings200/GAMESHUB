@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import * as NEON_ART from "./neon-art.js?v=neon-v8";
-import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-v22-1-hidden-routes";
+import {NEVADA_TRACK,createNevadaWorld} from "./nevada-run.js?v=nevada-v22-final-pass-1017";
 import * as NEON_V7 from "./neon-v7-streetscape.js";
 import * as NEON_V8 from "./neon-v8-architecture.js";
 import * as NEON_INFRA from "./neon-infrastructure.js";
@@ -1790,9 +1790,7 @@ function localPoint(zone, across, along, y = 0) {
 function getSurface(roadInfo) {
     if(activeTrackId==="canyon"&&roadInfo){
         const t=roadInfo.t,d=Math.abs(roadInfo.offset);
-        if(t>.325&&t<.485&&d<ROAD_HALF+3&&
-            !surfaceZones.some(zone=>pointInsideZone(car.position,zone)))
-            return {
+        if(t>.325&&t<.485&&d<ROAD_HALF+3)return {
             name:"LAKEBED",acceleration:.94,gripMultiplier:.69,
             drag:1.40,steer:.84
         };
@@ -6258,44 +6256,6 @@ function buildBarriers() {
         activeTrackId==="canyon"? .82:.62,
         activeTrackId==="canyon"? .18:.35
     );
-    // Remove BOTH rail geometry and collision for every actual Nevada
-    // shortcut junction. Side road leaves the main asphalt near 'from',
-    // crosses the shoulder rail, then comes back across it near 'to'.
-    // These gates are intentionally narrower than the entire route so
-    // only the two junctions open; the rest of the cliff remains guarded.
-    const nevadaPortalCandidates=activeTrackId==="canyon"?
-        NEVADA_TRACK.secretRoutes.flatMap(route=>{
-            const samples=[];
-            for(let k=0;k<=30;k++){
-                const t=route.from+(route.to-route.from)*k/30;
-                const f=getFrameAt(t);
-                const off=route.offset*Math.sin(Math.PI*k/30);
-                samples.push({
-                    x:f.point.x+f.normal.x*off,
-                    z:f.point.z+f.normal.z*off,
-                    // Geometrical grade approximation for rail collision.
-                    y:f.point.y,t,side:Math.sign(route.offset)
-                });
-            }
-            return samples;
-        }):[];
-    function blocksNevadaShortcut(a,b,railY,side,t){
-        if(activeTrackId!=="canyon")return false;
-        for(const route of NEVADA_TRACK.secretRoutes){
-            if(Math.sign(route.offset)!==side)continue;
-            // Leave the entire branch-side shoulder open between entry
-            // and exit. The previous split-gap left stray rail segments
-            // BETWEEN portals, which looked like a blocked entrance.
-            if(t>=route.from-.005&&t<=route.to+.005)return true;
-        }
-        // A different leg of a hairpin can cross the shortcut. Never allow
-        // its rail to sever the physical side road either.
-        for(const p of nevadaPortalCandidates){
-            if(p.side!==side||Math.abs(p.y-railY)>6.5)continue;
-            if(pointToSegmentDistance2D(p,a,b)<5.3)return true;
-        }
-        return false;
-    }
     for (const section of barrierSections) {
         for (let i = 0; i < TRACK_SAMPLE_COUNT; i += 3) {
             const t = i / TRACK_SAMPLE_COUNT;
@@ -6320,9 +6280,6 @@ function buildBarriers() {
             );
             const midpoint = a.clone().add(b).multiplyScalar(0.5);
 
-            // Skip ALL connected pieces: rendered beam, post, reflector and
-            // the barriers[] physics entry. Never make an invisible wall.
-            if(blocksNevadaShortcut(a,b,barrierY,section.side,t))continue;
             if (barrierWouldBlockCrossing(midpoint, t, barrierY)) continue;
             if (neonRailIntrudesOnRoad(a, b, barrierY)) continue;
 
