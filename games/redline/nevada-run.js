@@ -413,7 +413,8 @@ export function createNevadaWorld({
   hazards.push(h);return h;
  }
  for(const [j,t] of [.085,.325,.598].entries()){
-  const h=hazardGroup(j===1?"tanker":"convoy",t,-2.4+(j%2)*4.4,3.1,16+j*5,j*.36);
+  const h=hazardGroup(j===1?"tanker":"convoy",t,-2.4+(j%2)*4.4,
+    j===1?4.5:4.1,16+j*5,j*.36);
   const g=h.mesh,base=h.type==="tanker"?0x7e8883:0x515e4c;
   shape(THREE,g,"box",0,1.3,0,4.5,2.3,8.4,base);
   shape(THREE,g,"box",0,2.7,2.0,3.4,1.8,2.7,0x343e3a);
@@ -455,7 +456,7 @@ export function createNevadaWorld({
   }
  }
  for(let j=0;j<2;j++){
-  const h=hazardGroup("aircraft",.728+j*.036,0,5.1,23+j*11,j*.48);
+  const h=hazardGroup("aircraft",.728+j*.036,0,8.2,23+j*11,j*.48);
   const g=h.mesh;
   shape(THREE,g,"box",0,2.7,0,3,2,17,0xaeb5b3);
   shape(THREE,g,"box",0,2.8,-1,17,.34,3.2,0x707e7e);
@@ -541,7 +542,14 @@ export function createNevadaWorld({
    if(!car||!carState||!carState.velocity||h.open)return;
    const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
    const dist=Math.hypot(dx,dz);
-   if(dist>h.radius+1.0||Math.abs(car.position.y-f.point.y)>3.2)continue;
+   const across=dx*f.normal.x+dz*f.normal.z;
+   const along=dx*f.tangent.x+dz*f.tangent.z;
+   // Gates and blast doors span the entire roadway: use a rectangular
+   // collision volume, not a small circle that leaves the rail ends ghostly.
+   const blocked=h.type==="gate"||h.type==="blastdoor"?
+     Math.abs(across)<7.3&&Math.abs(along)<1.45:
+     dist<h.radius+1.0;
+   if(!blocked||Math.abs(car.position.y-f.point.y)>3.2)continue;
    if(h.type==="dust"){
     // Sustained side gust: forces real countersteer instead of a popup only.
     carState.velocity.x+=n.x*3.2*delta;
@@ -552,8 +560,13 @@ export function createNevadaWorld({
    }
    if(sec-h.lastImpact<1.25)continue;
    h.lastImpact=sec;active.hitCount++;
-   const normal=new THREE.Vector3(dx/dist||n.x,0,dz/dist||n.z);
-   car.position.addScaledVector(normal,Math.max(0,h.radius+1.1-dist));
+   const isFullWidth=h.type==="gate"||h.type==="blastdoor";
+   const normal=isFullWidth?
+     f.tangent.clone().multiplyScalar(along>=0?1:-1).setY(0).normalize():
+     new THREE.Vector3(dx/Math.max(.001,dist),0,dz/Math.max(.001,dist));
+   const penetration=isFullWidth?Math.max(0,1.5-Math.abs(along)):
+     Math.max(0,h.radius+1.1-dist);
+   car.position.addScaledVector(normal,penetration);
    const into=carState.velocity.dot(normal);
    if(into<0)carState.velocity.addScaledVector(normal,-1.22*into);
    carState.velocity.multiplyScalar(h.type==="blastdoor"?.25:
