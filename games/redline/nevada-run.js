@@ -147,23 +147,38 @@ export function createNevadaWorld({
    vertexColors:true,roughness:1,side:THREE.DoubleSide
  }));
  root.add(terrain);
- // Embankments start OUTSIDE both painted road shoulders, with an
- // intentional >2m gap from the edge stripes. A lane can never be hidden
- // by an embankment triangle again.
+ // Follow an exact continuous cross-section without running triangles
+ // across the asphalt. Shoulder is at 9.2m; the bank starts at 9.45m.
+ // Limit the outside span to reduce ribbon self-overlaps on switchbacks.
+ const bankDistances=[9.45,13.5,21,32];
+ const roadsideHeight=(frame,offset)=>{
+   const d=Math.abs(offset);
+   const p=frame.point,n=frame.normal;
+   const x=p.x+n.x*offset,z=p.z+n.z*offset;
+   const valley=baseHeight(x,z);
+   if(d<=bankDistances[0])return p.y-.12;
+   if(d<=bankDistances[1]){
+     const f=(d-bankDistances[0])/(bankDistances[1]-bankDistances[0]);
+     return p.y-.12-1.25*f;
+   }
+   if(d<=bankDistances[2]){
+     const f=(d-bankDistances[1])/(bankDistances[2]-bankDistances[1]);
+     return (p.y-1.37)*(1-f)+(p.y*.48+valley*.52)*f;
+   }
+   if(d<=bankDistances[3]){
+     const f=(d-bankDistances[2])/(bankDistances[3]-bankDistances[2]);
+     return (p.y*.48+valley*.52)*(1-f)+(valley-.05)*f;
+   }
+   return valley;
+ };
  const n=trackSamples.length;
  for(const side of [-1,1]){
-   const v=[],rgb=[],tri=[],strips=[11.8,18,34,52];
+   const v=[],rgb=[],tri=[],strips=bankDistances;
    for(let i=0;i<=n;i++){
      const frame=trackSamples[i%n],p=frame.point,normal=frame.normal;
      for(let j=0;j<strips.length;j++){
        const off=side*strips[j];
-       // Meet the low valley floor at the outer edge; do not end a
-       // raised road embankment as a giant floating, 20-m-high shelf.
-       const groundY=baseHeight(p.x+normal.x*off,p.z+normal.z*off);
-       const y=j===0?p.y-.48:
-         j===1?p.y-1.55:
-         j===2?p.y*.54+groundY*.46:
-         groundY-.08;
+       const y=roadsideHeight(frame,off);
        v.push(p.x+normal.x*off,y,p.z+normal.z*off);
        col.setHex(j<2?0x93704e:j===2?0xa27b53:0x99724b);
        const tone=.90+seeded(i*5+j+7)*.18;
@@ -218,7 +233,7 @@ export function createNevadaWorld({
   const distance=33+(i%4)*9;
   const rock=new THREE.Group();
   rock.position.copy(f.point).addScaledVector(f.normal,side*distance);
-  rock.position.y-=2;root.add(rock);
+  rock.position.y=roadsideHeight(f,side*distance)-.4;root.add(rock);
   const h=10+seeded(i+188)*23;
   const cliff=sandstoneMesa(THREE,13.4,h,i+401);
   cliff.rotation.y=f.rotationY;rock.add(cliff);
@@ -239,7 +254,8 @@ export function createNevadaWorld({
  ];
  const placeFrame=(t,offset,height=0)=>{
   const f=getFrameAt(t),v=f.point.clone().addScaledVector(f.normal,offset);
-  v.y+=height;return {f,p:v};
+  v.y=roadsideHeight(f,offset)+height;
+  return {f,p:v};
  };
  for(const [t,text] of signData){
   const {f,p}=placeFrame(t,16,0);
@@ -267,7 +283,7 @@ export function createNevadaWorld({
  const airstrip=getFrameAt(.747);
  const runway=new THREE.Group();
  runway.position.copy(airstrip.point).addScaledVector(airstrip.normal,-43);
- runway.position.y-=.48;
+ runway.position.y=roadsideHeight(airstrip,-43)+.05;
  runway.rotation.y=airstrip.rotationY;
  root.add(runway);
  shape(THREE,runway,"box",0,0,0,30,.12,168,0x555b60);
@@ -303,7 +319,7 @@ export function createNevadaWorld({
   for(let i=0;i<4;i++)shape(THREE,place,"box",-b.w*.38+i*b.w*.25,
    b.h-2,b.d*.51,.8,1,.1,0xffd69d);
   addBoxCollider(place.position,b.w*.5,b.d*.5,place.rotation.y,{
-   minY:-3,maxY:b.h+4,tag:b.name
+   minY:place.position.y-2,maxY:place.position.y+b.h+3,tag:b.name
   });
  }
  // Perimeter security fencing: long side runs, not blocking main road.
