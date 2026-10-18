@@ -433,7 +433,7 @@ export function createNevadaWorld({
    tire.rotation.z=Math.PI/2;
   }else shape(THREE,g,"box",0,.45,0,1,.7,1.2,j%2?0x756257:0x414443);
  }
- const active={lastCall:0,warning:0,hitCount:0};
+ const active={lastCall:0,warning:0,hitCount:0,discovered:new Set()};
  const sunsetColor=new THREE.Color(0x99625b);
  const eveningColor=new THREE.Color(0x523c55);
  const nightColor=new THREE.Color(0x1a213b);
@@ -522,6 +522,22 @@ export function createNevadaWorld({
      h.type==="blastdoor"?"BLAST DOOR!":
      h.type==="aircraft"?"RUNWAY INCURSION!":
      h.type==="debris"?"DEBRIS STRIKE!":"CONVOY COLLISION!",750);
+  }
+  // Discoverable alternate routes: physically reach the midpoint of
+  // the *side path*, not merely the checkpoint on the main road.
+  if(car&&carState&&carState.velocity){
+   for(const route of shortcuts){
+    if(active.discovered.has(route.name))continue;
+    const mid=(route.from+route.to)*.5,f=getFrameAt(mid);
+    const off=route.offset;
+    const p=f.point.clone().addScaledVector(f.normal,off);
+    if(Math.hypot(car.position.x-p.x,car.position.z-p.z)<6.3&&
+       Math.abs(car.position.y-p.y)<3){
+      active.discovered.add(route.name);
+      carState.nitro=Math.min(100,(carState.nitro||0)+12);
+      popup?.("SECRET FOUND · "+route.name+" · NITRO +12",1200);
+    }
+   }
   }
   // Spotlight alarm has a small legitimate gameplay consequence.
   if(car&&carState&&carState.velocity&&sec-active.warning>3){
