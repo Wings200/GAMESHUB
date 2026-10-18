@@ -46,6 +46,12 @@ const VALID_MAPS =
     "arctic"
   ]);
 
+// Neon now requires 3 laps: era 2, independent of previous one-lap records.
+const NEON_RECORD_RULES_VERSION=2;
+function validMapBest(best,map){
+  return map==="neon"&&best?.rulesVersion!==NEON_RECORD_RULES_VERSION?null:best||null;
+}
+
 const VALID_BODIES =
   new Set([
     "coupe",
@@ -3988,7 +3994,7 @@ export class RedlineStats
       });
       const bestTimes={};
       for(const map of VALID_MAPS){
-        const item=stats.bestTimes?.[map];
+        const item=validMapBest(stats.bestTimes?.[map],map);
         const time=Number(item?.time);
         const achievedAt=Number(item?.achievedAt);
         bestTimes[map]=item && Number.isFinite(time) && time>=0
@@ -4066,7 +4072,7 @@ export class RedlineStats
       [];
 
 
-    return rows
+    return (map==="neon" ?rows.filter(row=>row?.rulesVersion===NEON_RECORD_RULES_VERSION):rows)
       .slice(
         0,
         10
@@ -4173,6 +4179,7 @@ export class RedlineStats
       )
       ||
       [];
+    if(map==="neon")leaderboard=leaderboard.filter(row=>row?.rulesVersion===NEON_RECORD_RULES_VERSION);
 
 
     for (
@@ -4242,7 +4249,7 @@ export class RedlineStats
 
 
       const progression=raceProgressionBonuses(
-        stats.racesFinished,stats.bestTimes?.[map],finishTime
+        stats.racesFinished,validMapBest(stats.bestTimes?.[map],map),finishTime
       );
       const challengeUpdate=advanceChallenges(stats.challenges,{
         map,place,improvedBest:progression.improvedBest
@@ -4317,10 +4324,7 @@ export class RedlineStats
         };
 
 
-      const currentBest =
-        stats.bestTimes[
-          map
-        ];
+      const currentBest=validMapBest(stats.bestTimes[map],map);
 
 
       if (
@@ -4340,7 +4344,8 @@ export class RedlineStats
             finishTime,
 
           achievedAt:
-            now
+            now,
+          ...(map==="neon"?{rulesVersion:NEON_RECORD_RULES_VERSION}:{})
 
         };
 
@@ -4436,7 +4441,8 @@ export class RedlineStats
               map
             ]?.achievedAt
             ??
-            now
+            now,
+          ...(map==="neon"?{rulesVersion:NEON_RECORD_RULES_VERSION}:{})
 
         });
 
