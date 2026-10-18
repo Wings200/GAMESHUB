@@ -1790,7 +1790,9 @@ function localPoint(zone, across, along, y = 0) {
 function getSurface(roadInfo) {
     if(activeTrackId==="canyon"&&roadInfo){
         const t=roadInfo.t,d=Math.abs(roadInfo.offset);
-        if(t>.325&&t<.485&&d<ROAD_HALF+3)return {
+        if(t>.325&&t<.485&&d<ROAD_HALF+3&&
+            !surfaceZones.some(zone=>pointInsideZone(car.position,zone)))
+            return {
             name:"LAKEBED",acceleration:.94,gripMultiplier:.69,
             drag:1.40,steer:.84
         };
