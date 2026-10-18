@@ -108,3 +108,22 @@ A follow-up 181.65-second player recording showed Nevada still suffered from exc
 **Cash collectibles:** Not implemented because a server-authoritative and deduplicated pickup event is required to pay persistent in-game cash safely.
 
 **Current page:** https://redline-dnk.pages.dev/games/redline/index.html?v=nevada-road-fixes-21-11
+
+## V21.3–V21.5 track repair pass — October 17, 2026
+
+The second recording showed defects too serious to call Nevada release-ready. Continued edits were made **directly on main**, without changing the Worker, accounts, money, or the other maps.
+
+- **V21.3 road geometry:** Added a guard against outside embankment triangles covering unrelated road sections at switchbacks. Used the displaced shortcut centerline (not the neighboring highway heading) to orient side-road pavement, tunnel roof sections, and wall colliders.
+- **V21.3 support physics:** When several shortcut surface zones overlap, support height now comes from the closest relevant side path and prefers the main asphalt while the car is actually on it. Nevada boost pads now require correct height rather than triggering on a nearby overpass. Rail collision crossing checks account for Nevada grade differences. If dynamic hazard updates fail, the terrain support provider is retained so cars do not fall off-road.
+- **V21.4 hazards and secrets:** Fast vehicles now use a previous-position crossing test against lowered gates and blast doors; solid barriers push drivers back to the approach side even during hit cooldown, rather than allowing them to drive through during the 1.25-second effect debounce. Side-road secret discovery height is anchored to the actual passage floor instead of main-road altitude.
+- **V21.5 blacksite fencing:** Replaced 29 short widely spaced fence objects (with colliders on every third fence) with 120 sampled intervals per side. The new fence panels join into a continuous run where safe, and each retained section has a collider. Explicit openings preserve the service tunnel, maintenance route, and broken-fence jump. Where a fence would interfere with a distinct roadway, it is omitted. This is a geometric/functional correction, not a claim of photorealistic art.
+- **Cache refresh:** Browser module URL is now `nevada-v21-5-fencing` in both the HTML page and the game’s Nevada module import. Players must still receive the new Cloudflare Pages deployment; updating GitHub itself does not verify that deployment.
+
+### Verification performed for this pass
+
+- JavaScript syntax parsing passed for `nevada-run.js` and `game.js` (after stripping ES module imports/exports for parser-only checks).
+- A mock Three.js scene constructed and advanced its moving hazards. It registered **27 hazards, 4 side paths, 250 static box colliders (179 perimeter fences), and 38 circle colliders** in the test fixture.
+- Reproduced a simulated high-speed attempt to cross a closed gate: the driver was returned to the approaching side (~2.49 m in front of the barrier), with one impact event.
+- Cache version strings match between the HTML entrypoint and game module.
+
+**Limitations:** This is a simulated construction/contact smoke test, **not actual browser WebGL visual QA**, player-paced route completion, deployed Cloudflare verification, or multiplayer load testing. Road seams, concrete/asphalt appearance, correct tunnel clearance on a real curve, nighttime lighting, scenery realism, hazard balance and server-validated persistent cash pickups remain open for recording-based validation. Future work should prioritize any reproducible browser defects over decorative additions.
