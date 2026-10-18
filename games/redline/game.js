@@ -777,6 +777,11 @@ function createSurfaceTexture(
             "#414a53",
             "#1d252d"
         ],
+        desertAsphalt: [
+            "#59595b",
+            "#777371",
+            "#3f4144"
+        ],
         snow: [
             "#d6e2e8",
             "#b8cad5",
@@ -943,10 +948,7 @@ function createSurfaceTexture(
         1;
 
 
-    if (
-        kind ===
-        "asphalt"
-    ) {
+    if (kind==="asphalt"||kind==="desertAsphalt") {
 
         ctx.strokeStyle =
             "rgba(8,12,16,.34)";
@@ -2152,7 +2154,7 @@ function makeRibbon(
 
 }
 function buildRoad() {
-    const roadColor = activeTrackId==="canyon"?0x34383d:
+    const roadColor = activeTrackId==="canyon"?0xe1dbd3:
         activeTrackId==="arctic"?0x263746:0x2b343e;
 
     const shoulderColor = activeTrackId==="canyon"?0xa17e57:
@@ -2167,8 +2169,8 @@ function buildRoad() {
             ROAD_HALF,
             activeTrackId === "neon" ? 0xffffff : roadColor,
             0.04,
-            0.78,
-            "asphalt",
+            activeTrackId==="canyon"?.91:.78,
+            activeTrackId==="canyon"?"desertAsphalt":"asphalt",
             activeTrackId ===
             "arctic"
                 ?
