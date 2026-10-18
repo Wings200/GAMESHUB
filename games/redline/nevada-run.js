@@ -39,8 +39,8 @@ export const NEVADA_TRACK=Object.freeze({
   ],
   ramps:[
     {t:.215,offset:-1.4,strength:5.2,secret:false},
-    {t:.536,offset:-5.6,strength:8.6,secret:true,
-      targetT:.558,landingLead:6,shortcutSpeed:76,minSpeed:26},
+    // Service tunnel is a drive-through road, not a jump shortcut.
+    // The former .536 secret launch wedge blocked its approach.
     {t:.735,offset:5.7,strength:8.7,secret:true,
       targetT:.756,landingLead:5,shortcutSpeed:78,minSpeed:27},
     {t:.91,offset:-1.4,strength:4.4,secret:false}
@@ -646,19 +646,24 @@ export function createNevadaWorld({
    }
    if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
    const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
-   if(enclosed&&k>=4&&k<=steps-4){
+   if(enclosed&&k>=6&&k<=steps-6){
     const group=new THREE.Group();group.position.copy(c);
     group.rotation.y=yaw;root.add(group);
     const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
     const color=name.includes("CAVE")?0x80553d:0x4c5155;
     shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
     for(const sign of [-1,1]){
-     shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
      // Local +X under Y-rotation points toward negative normal.
      const wall=c.clone().addScaledVector(normal,-sign*4.6);
-     addBoxCollider(wall,.48,length*.5,yaw,{
-      minY:c.y-.1,maxY:c.y+6.1,tag:name
-     });
+     // Only physical supports that also have corresponding visible walls.
+     // The previous first walls intersected the adjacent highway and
+     // blocked the off-road entrance before it was reachable.
+     if(clearOfRoad(wall,1.8)){
+      shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
+      addBoxCollider(wall,.45,length*.42,yaw,{
+       minY:c.y-.1,maxY:c.y+6.1,tag:name
+      });
+     }
     }
    }else if(!enclosed&&(k===6||k===12)){
     const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=yaw;
