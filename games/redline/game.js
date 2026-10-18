@@ -1689,7 +1689,7 @@ function neonSurfaceHeight(position) {
         }
     }
     if(Math.sqrt(bestDist)>SIDEWALK_OUTER+1) {
-        if(activeTrackId==="canyon")return -2.1;
+        if(activeTrackId==="canyon")return Math.sqrt(bestDist)<43?h:-2.1;
         if(position.x>127&&position.x<213&&Math.abs(position.z)<400)
             return -.40;
         return 0;
@@ -1765,10 +1765,6 @@ function getSurface(roadInfo) {
             name:"LAKEBED",acceleration:.94,gripMultiplier:.69,
             drag:1.40,steer:.84
         };
-        if(d>ROAD_HALF&&d<40)return {
-            name:"DESERT",acceleration:.73,gripMultiplier:.62,
-            drag:2.20,steer:.79
-        };
     }
     for (const zone of surfaceZones) {
         if (pointInsideZone(car.position, zone)) {
@@ -1782,6 +1778,9 @@ function getSurface(roadInfo) {
         }
     }
     const distance = Math.abs(roadInfo.offset);
+    if(activeTrackId==="canyon"&&distance>ROAD_HALF)return{
+        name:"DESERT",acceleration:.73,gripMultiplier:.62,drag:2.2,steer:.79
+    };
     if (distance <=
         ROAD_HALF) {
         return {
@@ -2126,29 +2125,14 @@ function makeRibbon(
 
 }
 function buildRoad() {
-    const roadColor =
-        activeTrackId ===
-        "arctic"
-            ?
-            0x263746
-            :
-            0x2b343e;
+    const roadColor = activeTrackId==="canyon"?0x544a43:
+        activeTrackId==="arctic"?0x263746:0x2b343e;
 
-    const shoulderColor =
-        activeTrackId ===
-        "arctic"
-            ?
-            0xa9bcc9
-            :
-            0x505a64;
+    const shoulderColor = activeTrackId==="canyon"?0x947153:
+        activeTrackId==="arctic"?0xa9bcc9:0x505a64;
 
-    const edgeColor =
-        activeTrackId ===
-        "arctic"
-            ?
-            0xe5f2f7
-            :
-            0xbec7d3;
+    const edgeColor = activeTrackId==="canyon"?0xdcc29b:
+        activeTrackId==="arctic"?0xe5f2f7:0xbec7d3;
 
     const surfaceLayers = [
         makeRibbon(
@@ -10289,6 +10273,29 @@ function buildWorld() {
             addRoadBarrier:(a,b,y)=>barriers.push({a,b,y})
         });
     }
+    // Four true paved side corridors, following Nevada's road-grade and
+    // sharing regular tire physics. None skip mandatory checkpoints.
+    if(activeTrackId==="canyon"&&nevadaSystem){
+        for(const route of nevadaSystem.shortcuts){
+            const steps=18;
+            for(let k=0;k<steps;k++){
+                const t0=route.from+(route.to-route.from)*k/steps;
+                const t1=route.from+(route.to-route.from)*(k+1)/steps;
+                const a=getFrameAt(t0),b=getFrameAt(t1);
+                const o0=route.offset*Math.sin(Math.PI*k/steps);
+                const o1=route.offset*Math.sin(Math.PI*(k+1)/steps);
+                const p=a.point.clone().addScaledVector(a.normal,o0);
+                const q=b.point.clone().addScaledVector(b.normal,o1);
+                const axis=q.clone().sub(p).setY(0);
+                if(axis.lengthSq()<.05)continue;
+                const tangent=axis.clone().normalize(),normal=
+                    new THREE.Vector3(-tangent.z,0,tangent.x);
+                const center=p.add(q).multiplyScalar(.5);
+                surfaceZones.push({center,tangent,normal,
+                    halfLength:axis.length()*.5+1.6,halfWidth:4.1});
+            }
+        }
+    }
     // V3 guardrails must be registered AFTER buildBarriers() clears and
     // recreates the collider list. Otherwise visible rails would be ghosts.
     if(activeTrackId==="arctic"){
@@ -10875,28 +10882,9 @@ window.dispatchEvent(new CustomEvent("redline:garage-car-changed"));
 updateGarageUI();
 
 
-for (
-    const option
-    of trackSelect.options
-) {
-
-    if (
-        option.value ===
-        "canyon"
-    ) {
-
-        option.disabled =
-            true;
-
-    }
-
-    else {
-
-        option.disabled =
-            false;
-
-    }
-
+// All three supported routes are live in multiplayer and solo trials.
+for(const option of trackSelect.options){
+    option.disabled = !Object.hasOwn(TRACKS,option.value);
 }
 
 
