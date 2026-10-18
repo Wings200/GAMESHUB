@@ -86,3 +86,25 @@ Changes committed after studying video frames:
 **Verification:** JavaScript parsing was checked and new scenery instantiated/updated in a Three.js-compatible simulated scene; 27 hazards and four shortcuts were present, late-stage aircraft and dust moved after an earlier gate changed state, 79 static box colliders were registered, and contact with a simulated convoy slowed the vehicle. The actual WebGL output in a user's browser has **not yet** been visually confirmed for V21.1; video-based visual QA of the repaired build is required before calling the map polished.
 
 **Remaining quality work:** high-detail runway and facility modeling, believable road material/weather blending, dynamic hazard fairness at multiplayer latency, user-driving validation of all shortcuts, and server-authorized cash collectibles. No claim that these are finished.
+
+## V21.2 — second recording review and systemic fixes (October 17, 2026)
+
+A follow-up 181.65-second player recording showed Nevada still suffered from excessive bugs and a disjointed driving environment. Rather than claiming the scene was ready, we reviewed terrain placement, obstacle lifecycle, vehicle hazard contact, shortcut floor height and road readability.
+
+**Fixes shipped in the latest main branch:**
+- Unified all road embankments into a continuous terrain-height function; embankments now begin just beyond the 9.2m shoulder and end at the existing valley floor. The outer bank width shrank to ~32m to reduce ribbon folding around tight bends.
+- Grounded signs, fences, radar dishes, watchtowers, hangars, the runway, roadside dust, rock cliffs, and outpost structures on that same height model instead of leaving them floating at roadway elevation.
+- Raised hangar collision-box world min/max heights to match their actual elevated or low-lying placement; fixed fence collider heights.
+- Exposed terrain height to `game.js`, which now uses it for off-road vehicle support.
+- Brought the alternate paved passages' actual rendered height and the car's calculated support height into agreement; trial ghosts continue recording real car transforms on the new ground. The short side-road physics zones carry start/end elevation for continuous interpolation.
+- Changed gates and blast doors from road-spanning unavoidables to **single-lane hazards**, with the other lane open. Collision is applied only once a moving arm/door has descended to a height that can physically strike the car.
+- Changed convoy motion from teleporting back to its beginning every cycle to smooth path oscillation and legal turnarounds. Dynamic hazards continue updating after open gates.
+- Reoriented roadside and shortcut signs to face approaching cars; moved sector signposts to the raised-road shoulder so drivers can see them.
+- Added physical collision to roadside power poles and warning signs, while retaining collision on hangars, perimeter fences, cliffs, and abandoned outposts.
+- All changes gated to Nevada (`canyon`) apart from the shared, conditional physics ground-height function. The existing Worker and permanent money/ownership systems were not changed.
+
+**QA performed:** JavaScript and HTML inline-script parsing; mocked Three.js environment creation and animation; 27 dynamic hazards found, 4 shortcut paths found, convoy collision slowed the test vehicle, and later hazards kept animating. Static roadside colliders are registered. These checks are not a replacement for a visual playthrough in a real browser. Specifically, 3D asset/model realism, minor road artifact clipping, balancing obstacle difficulty and complete multiplayer live testing remain open, not verified as complete.
+
+**Cash collectibles:** Not implemented because a server-authoritative and deduplicated pickup event is required to pay persistent in-game cash safely.
+
+**Current page:** https://redline-dnk.pages.dev/games/redline/index.html?v=nevada-road-fixes-21-11
