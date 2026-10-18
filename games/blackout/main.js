@@ -158,8 +158,10 @@ function updateHUD(report){
   }
 }
 function frame(now){
-  const dt=Math.min((now-last)/1000,.043);last=now;
-  frames++;frameTime+=dt;
+  const realDt=Math.max(0,(now-last)/1000);
+  const dt=Math.min(realDt,.043);last=now;
+  // Physics is clamped after a stall; FPS still measures actual wall time.
+  frames++;frameTime+=realDt;
   if(frameTime>=.55){
     reportedFPS=Math.round(frames/frameTime);
     frames=0;frameTime=0;
