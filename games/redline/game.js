@@ -17,7 +17,7 @@ import { buildArcticV4Scenery } from "./arctic-v4-scenery.js";
 import { createContinuousCave, createShortcutMassif } from "./arctic-caves.js";
 import { createRemoteMotion } from "./multiplayer-smoothing.js";
 import {sampleGhost,ghostTimeAtProgress,TRIAL_MAX_SAMPLES,trialTimeLabel}
-    from "./time-trial-core.js?v=nevada-21-1";
+    from "./time-trial-core.js?v=neon-3lap-record-reset-1018";
 const $ = id => document.getElementById(id);
 const canvas = $("gameCanvas");
 const menu = $("menu");
