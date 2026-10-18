@@ -19,7 +19,13 @@ const pbInfo=$("redlineTrialPB");
 const leaderboard=$("redlineTrialLeaderboard");
 const menu=$("menu"),hud=$("hud");
 const mapNames={neon:"NEON DISTRICT",arctic:"ARCTIC"};
-const memory=window.localStorage;
+let memory;
+try{memory=window.localStorage}
+catch{
+ // Private/restricted browsers may block localStorage entirely. Solo
+ // racing remains playable; the result screen explains that saving failed.
+ memory={getItem(){return null},setItem(){throw Error("Storage blocked")}};
+}
 const state={
   active:false,map:"neon",car:"gt",upgrades:null,
   ghostEnabled:true,previous:null,lastResult:null,
