@@ -1113,7 +1113,63 @@ export function createNevadaWorld({
   }
   active.lastCarPosition=car&&carState?car.position.clone():null;
  }
- // worldGroup's normal disposer owns all geometries and materials; do not
- // detach the root before it has traversed and released their resources.
- return {update,hazards,shortcuts,roadsideHeight,stats:active,dispose(){}};
+ // Group hundreds of immutable building trims, signs, roadside scrub,
+ // and cracked-lakebed details into a small number of GPU submissions.
+ // Keep all hazards and rotating searchlight groups untouched.
+ function batchStaticDetail(){
+  const animated=new Set([
+   ...hazards.map(h=>h.mesh),
+   ...searchlights.map(l=>l.g)
+  ]);
+  const buckets=new Map();
+  root.updateMatrixWorld(true);
+  const collect=node=>{
+   if(animated.has(node))return;
+   const geo=node.geometry,mat=node.material;
+   if(node.isMesh&&geo?.type==="BoxGeometry"&&
+    mat?.type==="MeshStandardMaterial"&&mat.roughness===.92&&
+    !mat.transparent&&!mat.map&&!mat.vertexColors&&
+    mat.emissive?.getHex?.()===0&&
+    geo.parameters?.width>0&&geo.parameters?.height>0&&
+    geo.parameters?.depth>0){
+    const x=node.matrixWorld.elements[12],z=node.matrixWorld.elements[14];
+    const tileX=Math.floor(x/340),tileZ=Math.floor(z/340);
+    const key=[tileX,tileZ,mat.color.getHex(),
+     mat.metalness||0,mat.roughness].join(":");
+    if(!buckets.has(key))buckets.set(key,[]);
+    buckets.get(key).push(node);
+   }
+   for(const child of node.children)collect(child);
+  };
+  collect(root);
+  const worldToRoot=root.matrixWorld.clone().invert();
+  let replaced=0,batches=0;
+  for(const meshes of buckets.values()){
+   if(meshes.length<3)continue;
+   const batch=new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1,1,1),
+    meshes[0].material.clone(),meshes.length);
+   for(let i=0;i<meshes.length;i++){
+    const m=meshes[i],p=m.geometry.parameters;
+    const transform=worldToRoot.clone().multiply(m.matrixWorld)
+     .multiply(new THREE.Matrix4().makeScale(p.width,p.height,p.depth));
+    batch.setMatrixAt(i,transform);
+   }
+   batch.instanceMatrix.needsUpdate=true;
+   batch.computeBoundingSphere();
+   root.add(batch);
+   for(const m of meshes){
+    m.parent.remove(m);
+    m.geometry.dispose();
+    m.material.dispose();
+   }
+   replaced+=meshes.length;
+   batches++;
+  }
+  return {replaced,batches};
+ }
+ const drawOptimization=batchStaticDetail();
+ // No collision, physics, checkpoint or route changes.
+ return {update,hazards,shortcuts,roadsideHeight,stats:active,
+  drawOptimization,dispose(){}};
 }
