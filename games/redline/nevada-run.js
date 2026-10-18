@@ -24,13 +24,7 @@ export const NEVADA_TRACK=Object.freeze({
     {start:.14,end:.30,side:1},{start:.14,end:.30,side:-1},
    {start:.82,end:.97,side:1},{start:.82,end:.97,side:-1}
   ],
-  secretRoutes:[
-  {from:.395,to:.420,offset:-14,name:"DRAINAGE CHANNEL",theme:"culvert"},
-  {from:.532,to:.562,offset:-18,name:"RESTRICTED SERVICE TUNNEL",theme:"utility"},
-  {from:.688,to:.712,offset:18,name:"HANGAR MAINTENANCE",theme:"hangar"},
-  {from:.834,to:.858,offset:-18,name:"RIDGE CAVE PASSAGE",theme:"cave"}
- ],
- obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
+  obstacles:[], // V21 uses genuine movable/contact hazards, not box spam.
   boosts:[
     {t:.075,offset:0},{t:.335,offset:2.4},{t:.525,offset:-2.2},
     {t:.705,offset:1.9},{t:.91,offset:0}
@@ -207,8 +201,9 @@ export function createNevadaWorld({
    const p=trackSamples[i].point,dx=p.x-position.x,dz=p.z-position.z;
    if(dx*dx+dz*dz<safe*safe)return false;
   }
-  for(const {from,to,offset} of NEVADA_TRACK.secretRoutes)
-  for(let k=0;k<=24;k++){
+  for(const [from,to,offset] of [
+   [.395,.420,-10],[.532,.562,-18],[.688,.712,10],[.834,.858,-18]
+  ])for(let k=0;k<=24;k++){
    const f=getFrameAt(from+(to-from)*k/24);
    const c=f.point.clone().addScaledVector(f.normal,offset*Math.sin(Math.PI*k/24));
    const dx=c.x-position.x,dz=c.z-position.z;
@@ -227,31 +222,6 @@ export function createNevadaWorld({
   if(!roadBins.has(key))roadBins.set(key,[]);
   roadBins.get(key).push(i);
  }
- // Cut physical openings in the roadside embankment mesh for every
- // branch. Without these openings, the bank Z-fights the paved shortcut,
- // which can look like a solid roadblock even where rails are absent.
- const shortcutBins=new Map();
- for(const route of NEVADA_TRACK.secretRoutes){
-  for(let k=0;k<=48;k++){
-   const t=route.from+(route.to-route.from)*k/48;
-   const f=getFrameAt(t),off=route.offset*Math.sin(Math.PI*k/48);
-   const x=f.point.x+f.normal.x*off,z=f.point.z+f.normal.z*off;
-   const key=roadBinKey(Math.floor(x/roadCell),Math.floor(z/roadCell));
-   if(!shortcutBins.has(key))shortcutBins.set(key,[]);
-   shortcutBins.get(key).push({x,z});
-  }
- }
- const nearShortcutAt=(x,z,clearance=5.6)=>{
-  const cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
-  const limitSq=clearance*clearance;
-  for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
-   for(const p of shortcutBins.get(roadBinKey(gx,gz))||[]){
-    const dx=x-p.x,dz=z-p.z;
-    if(dx*dx+dz*dz<limitSq)return true;
-   }
-  }
-  return false;
- };
  const bankWouldCoverRoad=(x,z,y,index)=>{
   const d=roadHalf+2,cx=Math.floor(x/roadCell),cz=Math.floor(z/roadCell);
   for(let gx=cx-1;gx<=cx+1;gx++)for(let gz=cz-1;gz<=cz+1;gz++){
@@ -290,10 +260,8 @@ export function createNevadaWorld({
       const y=(v[a*3+1]+v[(b+1)*3+1])*.5;
       const z=(v[a*3+2]+v[(b+1)*3+2])*.5;
       const hits=[a,b,a+1,b+1].some(q=>
-       bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n)||
-       nearShortcutAt(v[q*3],v[q*3+2],4.8));
-      if(hits||bankWouldCoverRoad(x,z,y,i%n)||
-         nearShortcutAt(x,z,5.9))continue;
+       bankWouldCoverRoad(v[q*3],v[q*3+2],v[q*3+1],i%n));
+      if(hits||bankWouldCoverRoad(x,z,y,i%n))continue;
       if(side===1)tri.push(a,b,a+1,b,b+1,a+1);
       else tri.push(a,a+1,b,b,a+1,b+1);
      }
@@ -543,10 +511,10 @@ export function createNevadaWorld({
  // separated by 40m gaps, with physics only on every third panel.
  // Openings intentionally preserve the side roads and broken-fence jump.
  const fenceOpenings=[
-  ...NEVADA_TRACK.secretRoutes.map(r=>({
-   side:Math.sign(r.offset),start:r.from-.009,end:r.to+.009
-  })),
-  {side:-1,start:.725,end:.763},{side:1,start:.729,end:.759}
+  {side:-1,start:.525,end:.571},
+  {side:1,start:.681,end:.719},
+  {side:-1,start:.725,end:.763},
+  {side:1,start:.729,end:.759}
  ];
  const fenceSections=120,fenceStart=.48,fenceStep=.30/fenceSections;
  const chainMeshMat=new THREE.MeshStandardMaterial({
@@ -566,9 +534,8 @@ export function createNevadaWorld({
    const dx=q.x-p.x,dz=q.z-p.z,length=Math.hypot(dx,dz);
    if(length<.1)continue;
    const c=p.clone().add(q).multiplyScalar(.5);
-   if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n)||
-      nearShortcutAt(c.x,c.z,5.3)||nearShortcutAt(p.x,p.z,5.3)||
-      nearShortcutAt(q.x,q.z,5.3))continue;
+   if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n))
+    continue;
    const group=new THREE.Group();group.position.copy(c);
    group.rotation.order="YXZ";
    group.rotation.y=Math.atan2(dx,dz);
@@ -639,8 +606,14 @@ export function createNevadaWorld({
   addCircleCollider(p,1.5,{minY:p.y,maxY:p.y+22,tag:"RADAR"});
  }
  // 3D tunnel structure and drainage shortcuts with real drivable pavement.
+ const shortcutLabels=[
+  [.395,.420,-10,"DRAINAGE CHANNEL"],
+  [.532,.562,-18,"RESTRICTED SERVICE TUNNEL"],
+  [.688,.712,10,"HANGAR MAINTENANCE"],
+  [.834,.858,-18,"RIDGE CAVE PASSAGE"]
+ ];
  const shortcuts=[];
- for(const {from,to,offset,name,theme} of NEVADA_TRACK.secretRoutes){
+ for(const [from,to,offset,name] of shortcutLabels){
   const path=new THREE.Group();root.add(path);
   const vertices=[],uvs=[],indices=[],steps=18,centers=[];
   // Match both the visible tunnel and its physical walls to the actual
@@ -663,77 +636,40 @@ export function createNevadaWorld({
     uvs.push(w>0?1:0,k/3);
    }
    if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
-   // The old drainage and maintenance paths were exposed arches.
-   // All four branches now duck under terrain/industry part-way in.
-   // Entrances are sheltered away from the public road; structural sides
-   // cannot protrude back onto the through-highway.
-   if(k>=5&&k<=steps-5){
-    const group=new THREE.Group();
-    group.position.copy(c);group.rotation.y=yaw;root.add(group);
-    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.1;
-    const roofY=theme==="culvert"?4.45:theme==="hangar"?5.2:5.9;
-    const roofColor=theme==="culvert"?0x766d60:
-      theme==="cave"?0x806147:theme==="hangar"?0x4c5554:0x474b4a;
-    shape(THREE,group,"box",0,roofY,0,10,.72,length,roofColor);
-    // Low, dimensional seams create a recognizable concealed structure,
-    // not exposed generic arches or a single flat-colored tube.
-    if(k%2===0){
-     shape(THREE,group,"box",0,roofY+.43,0,
-      10.35,.16,.24,theme==="hangar"?0x7f8b87:0x9e876a);
-    }
+   const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
+   if(enclosed&&k>=4&&k<=steps-4){
+    const group=new THREE.Group();group.position.copy(c);
+    group.rotation.y=yaw;root.add(group);
+    const length=(next.distanceTo(c)+prev.distanceTo(c))*.5+1.2;
+    const color=name.includes("CAVE")?0x80553d:0x4c5155;
+    shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
     for(const sign of [-1,1]){
-     const wall=c.clone().addScaledVector(normal,-sign*4.85);
-     // Do not place even a portal-support collider on the primary
-     // racing asphalt. The shoulder opening must be completely open.
-     if(!clearOfRoad(wall,1.0))continue;
-     shape(THREE,group,"box",sign*4.85,
-      (roofY-.35)*.5,0,.63,roofY-.35,length,roofColor);
-     addBoxCollider(wall,.34,length*.5,yaw,{
-      minY:c.y-.1,maxY:c.y+roofY+.2,tag:name
+     shape(THREE,group,"box",sign*4.6,3,0,.8,5.8,length,color);
+     // Local +X under Y-rotation points toward negative normal.
+     const wall=c.clone().addScaledVector(normal,-sign*4.6);
+     addBoxCollider(wall,.48,length*.5,yaw,{
+      minY:c.y-.1,maxY:c.y+6.1,tag:name
      });
     }
-    if((theme==="utility"||theme==="hangar")&&k%3===0){
-     const lamp=shape(THREE,group,"box",0,roofY-.49,0,
-      1.25,.07,1.8,0xe6ba7b);
-     lamp.material.emissive=new THREE.Color(0xa67f3f);
-     lamp.material.emissiveIntensity=1.0;
-    }
-   }
-   if((k===7||k===11)&&(theme==="cave"||theme==="culvert")){
-    // Camouflaging boulders on the OUTER shoulder break the sightline
-    // without creating a fake blocked passage.
-    for(const side of [-1,1]){
-     const p=c.clone().addScaledVector(normal,side*6.5);
-     if(!clearOfRoad(p,1.7))continue;
-     const rock=sandstoneMesa(THREE,1.55,
-      2.6+seeded(k+offset+side)*1.8,k+side*19+311);
-     rock.position.copy(p);rock.position.y-=.65;root.add(rock);
-     addCircleCollider(p,1.15,{
-      minY:p.y-.7,maxY:p.y+4.8,tag:"HIDDEN PASSAGE ROCK"
-     });
-    }
+   }else if(!enclosed&&(k===6||k===12)){
+    const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=yaw;
+    root.add(arch);
+    shape(THREE,arch,"box",-4.2,2.5,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",4.2,2.5,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",0,5.2,0,9,.8,.9,0x715244);
    }
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));
   geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   geo.setIndex(indices);geo.computeVertexNormals();
-  const floorColor=theme==="culvert"?0x5d5950:
-   theme==="hangar"?0x4b504f:theme==="cave"?0x76614a:0x414546;
-  root.add(new THREE.Mesh(geo,makeMaterial(THREE,floorColor)));
-  // Discovery signage is INSIDE the tunnel, not beside the highway.
-  const k=Math.floor(steps*.67),c=centers[k];
-  const direction=centers[k+1].clone().sub(c).setY(0).normalize();
-  const normal=new THREE.Vector3(-direction.z,0,direction.x);
-  const marker=new THREE.Group();
-  marker.position.copy(c).addScaledVector(normal,4.05);
-  marker.position.y+=2.3;
-  marker.rotation.y=Math.atan2(direction.x,direction.z);
-  root.add(marker);
-  const label=billboard(THREE,marker,name,
-   theme==="cave"?"#47392a":"#283333","#c7baa1",4.8);
-  label.rotation.y=-Math.PI/2;
-  shortcuts.push({from,to,offset,name,theme});
+  root.add(new THREE.Mesh(geo,makeMaterial(THREE,0x4a3e38)));
+  const a=placeFrame(from,.0,0),sign=new THREE.Group();
+  sign.position.copy(a.p).addScaledVector(a.f.normal,offset<0?-11:11);
+  sign.rotation.y=a.f.rotationY;root.add(sign);
+  const label=billboard(THREE,sign,name,"#40372c","#e5cda2",6.8);
+  label.rotation.y=Math.PI;label.position.y=3.0;
+  shortcuts.push({from,to,offset,name});
  }
  let outpost=placeFrame(.855,47);
  for(const offset of [47,67,88,120]){
@@ -1072,11 +1008,8 @@ export function createNevadaWorld({
     if(Math.hypot(car.position.x-p.x,car.position.z-p.z)<6.3&&
        Math.abs(car.position.y-p.y)<3){
       active.discovered.add(route.name);
-      // A side route must be rewarding, not just a longer exposed road.
-      // Actual discovery is inside it, never triggered by driving past.
-      carState.nitro=Math.min(100,(carState.nitro||0)+24);
-      carState.boostTimer=Math.max(carState.boostTimer||0,1.0);
-      popup?.("HIDDEN ROUTE · "+route.name+" · BOOST + NITRO 24",1500);
+      carState.nitro=Math.min(100,(carState.nitro||0)+12);
+      popup?.("SECRET FOUND · "+route.name+" · NITRO +12",1200);
     }
    }
   }
