@@ -267,13 +267,17 @@ export function createNevadaWorld({
   const x=Math.cos(theta)*dist-250,z=Math.sin(theta)*dist;
   const h=24+seeded(i+40)*65;
   const radius=32+seeded(i+3)*30;
-  if(!clearOfRoad({x,z},radius+8))continue;
+  const scaleZ=.65+seeded(i+6);
+  // Account for the WORST-CASE stretched, eroded mesh. The prior simple
+  // nominal-radius check could still allow a stretched rock over asphalt.
+  const footprint=radius*Math.max(1.32,scaleZ*1.28)+7;
+  if(!clearOfRoad({x,z},footprint))continue;
   const mountain=sandstoneMesa(THREE,radius,h,i+181);
   mountain.position.set(x,-3,z);
   mountain.rotation.y=seeded(i+50)*TWO_PI;
-  mountain.scale.z=.65+seeded(i+6);
+  mountain.scale.z=scaleZ;
   root.add(mountain);
-  addCircleCollider(mountain.position,radius*.63,{
+  addCircleCollider(mountain.position,radius*Math.max(1,scaleZ)*.87,{
    minY:-6,maxY:h+6,drag:.28,bounce:.06,tag:"SANDSTONE MESA"
   });
  }
@@ -395,9 +399,25 @@ export function createNevadaWorld({
  // It is OFF the racing centerline, not a floating slab across the road.
  const airstrip=getFrameAt(.747);
  const runway=new THREE.Group();
- runway.position.copy(airstrip.point).addScaledVector(airstrip.normal,-43);
- runway.position.y=roadsideHeight(airstrip,-43)+.05;
  runway.rotation.y=airstrip.rotationY;
+ // Search outward for the closest safe airstrip location; a long slab
+ // can cross the neighboring curve even though its midpoint is off-road.
+ let runwayOffset=-43;
+ for(const testOffset of [-43,-59,-78,-102,-135]){
+  const candidate=airstrip.point.clone().addScaledVector(
+   airstrip.normal,testOffset);
+  const co=Math.cos(runway.rotation.y),si=Math.sin(runway.rotation.y);
+  const collides=trackSamples.some(sample=>{
+   const dx=sample.point.x-candidate.x,dz=sample.point.z-candidate.z;
+   const x=dx*co-dz*si,z=dx*si+dz*co;
+   return Math.abs(x)<15+roadHalf+3&&Math.abs(z)<84+roadHalf+3;
+  });
+  if(!collides){runwayOffset=testOffset;break;}
+  runwayOffset=testOffset;
+ }
+ runway.position.copy(airstrip.point).addScaledVector(
+  airstrip.normal,runwayOffset);
+ runway.position.y=roadsideHeight(airstrip,runwayOffset)+.05;
  root.add(runway);
  shape(THREE,runway,"box",0,0,0,30,.12,168,0x555b60);
  for(let i=-6;i<=6;i++){
