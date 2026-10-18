@@ -152,6 +152,18 @@ export function buildAnnex(THREE, scene) {
   for(const x of [rx1+.1,rx2-.1]){
     box(x,.45,13,.13,.9,4,metal,true,"platform-rail");
   }
+  // Separate stair trial: each visible tread has its OWN exact floorAt
+  // elevation (0.20m increments, below the 0.23m controller step limit).
+  // Approaching from an ungraded side is correctly blocked by step-up.
+  const stairX1=-12.5,stairX2=-9.4,stairStart=7;
+  const stairTreads=[.20,.39,.58,.78];
+  for(let i=0;i<stairTreads.length;i++){
+    const h=stairTreads[i],z=stairStart+i*.9+.45;
+    box((stairX1+stairX2)/2,h/2,z,stairX2-stairX1,h,.9,
+      i%2?metal:darkPanel);
+    box((stairX1+stairX2)/2,h+.012,z+.39,stairX2-stairX1-.08,.022,.08,orange);
+  }
+  box((stairX1+stairX2)/2,.39,11.8,stairX2-stairX1,.78,2.4,metal);
   // Crouch-height duct: stand blocked, crouched player fits underneath.
   box(-11.4,1.81,5.1,2.6,.86,.68,darkPanel,true,"crouch-test-duct");
   // Decorative catwalk rail and reinforced panel.
@@ -191,6 +203,10 @@ export function buildAnnex(THREE, scene) {
   sign("04 / FIRING RANGE", 14.9,3.32,17.74,Math.PI,5.2);
 
   function floorAt(x,z) {
+    if(x>=stairX1&&x<=stairX2&&z>=stairStart&&z<=13){
+      const n=Math.floor((z-stairStart)/.9);
+      return stairTreads[Math.min(stairTreads.length-1,Math.max(0,n))];
+    }
     if(x>=rx1&&x<=rx2&&z>=rz1&&z<=rz2)
       return rise*(z-rz1)/(rz2-rz1);
     if(x>=rx1&&x<=rx2&&z>rz2&&z<=15)
