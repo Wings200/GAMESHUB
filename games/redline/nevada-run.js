@@ -261,6 +261,31 @@ export function createNevadaWorld({
    shape(THREE,root,"box",pole.x,pole.y+9.4,pole.z,3,.19,.19,0x695943);
   }
  }
+ // Groom Lake-inspired fictional runway: a long parallel taxiway with
+ // real markings and a visible crossing warning near the racing highway.
+ // It is OFF the racing centerline, not a floating slab across the road.
+ const airstrip=getFrameAt(.747);
+ const runway=new THREE.Group();
+ runway.position.copy(airstrip.point).addScaledVector(airstrip.normal,-43);
+ runway.position.y-=.48;
+ runway.rotation.y=airstrip.rotationY;
+ root.add(runway);
+ shape(THREE,runway,"box",0,0,0,30,.12,168,0x555b60);
+ for(let i=-6;i<=6;i++){
+   if(i===0)continue;
+   shape(THREE,runway,"box",0,.09,i*11,0.45,.025,5,0xe8dfc6);
+   for(const side of [-1,1]){
+     const lamp=shape(THREE,runway,"box",side*14.2,.20,i*11,.28,.23,.55,0xffd9a1);
+     lamp.material.emissive=new THREE.Color(0xffbd74);
+     lamp.material.emissiveIntensity=.45;
+   }
+ }
+ for(const side of [-1,1])
+   shape(THREE,runway,"box",side*13.2,.11,0,.24,.025,160,0xe4dbc8);
+ const runwayLabel=billboard(THREE,runway,"RUNWAY 51 · FLIGHT TEST",
+   "#393c43","#f2e5ce",19);
+ runwayLabel.position.set(0,2.1,72);
+ runwayLabel.rotation.y=Math.PI;
  // A detailed fictional test facility outside the raceway.
  const buildings=[{t:.56,side:-1,w:28,d:54,h:16,name:"HANGAR 07"},
    {t:.615,side:-1,w:32,d:62,h:19,name:"EXPERIMENTAL SYSTEMS"},
@@ -403,7 +428,13 @@ export function createNevadaWorld({
  const outpostGroup=new THREE.Group();outpostGroup.position.copy(outpost.p);
  outpostGroup.rotation.y=outpost.f.rotationY;root.add(outpostGroup);
  for(let i=0;i<4;i++){
-  shape(THREE,outpostGroup,"box",(i-1.5)*7,2.5,0,5,5,7,0x765e4c);
+  const side=(i-1.5)*7;
+  shape(THREE,outpostGroup,"box",side,2.5,0,5,5,7,0x765e4c);
+  // Abandoned buildings must be physical as well as visible.
+  const center=outpost.p.clone().addScaledVector(outpost.f.normal,-side);
+  addBoxCollider(center,2.5,3.5,outpostGroup.rotation.y,{
+    minY:outpost.p.y-1,maxY:outpost.p.y+5.3,tag:"OUTPOST SHACK"
+  });
  }
  const opLabel=billboard(THREE,outpostGroup,"ABANDONED OUTPOST","#43392f","#f7e1b3",15);
  opLabel.position.y=6;opLabel.rotation.y=Math.PI/2;
