@@ -1,8 +1,9 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=penetration-optics-reinforce-03";
-import {FirstPersonController} from "./src/player.js?v=penetration-optics-reinforce-03";
-import {Weapons} from "./src/weapons.js?v=penetration-optics-reinforce-03";
-import {Gadgets} from "./src/gadgets.js?v=penetration-optics-reinforce-03";
+import {buildRange} from "./src/world.js?v=optic-on-gun-spread-alarm-04";
+import {FirstPersonController} from "./src/player.js?v=optic-on-gun-spread-alarm-04";
+import {Weapons} from "./src/weapons.js?v=optic-on-gun-spread-alarm-04";
+import {Gadgets} from "./src/gadgets.js?v=optic-on-gun-spread-alarm-04";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=optic-on-gun-spread-alarm-04";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -16,7 +17,7 @@ const gadgetInteract=$("gadgetInteract"),hudRole=$("hudRole"),selectedMode=$("se
 const rangeInfo=$("rangeInfo"),walkSlider=$("walkSlider"),sprintSlider=$("sprintSlider");
 const mouseSlider=$("mouseSlider"),walkValue=$("walkValue"),sprintValue=$("sprintValue"),mouseValue=$("mouseValue");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
-const sightSelect=$("sightSelect"),adsOptic=$("adsOptic"),opticName=$("opticName");
+const sightSelect=$("sightSelect"),reticle=$("reticle");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
 const reinforceCountdown=$("reinforceCountdown");
 const SIGHTS=["holo-a","holo-b","red-dot","iron"];
@@ -69,25 +70,12 @@ const muzzleSprite=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),
   new THREE.MeshBasicMaterial({color:0xffdf8a,transparent:true,opacity:.9}));
 muzzleSprite.position.copy(muzzle.position);gunModel.add(muzzleSprite);muzzleSprite.visible=false;
 gunModel.position.set(.42,-.36,-.77);
-// Local sight housing follows the gun, while the optic aim mark remains
-// precisely centered on the actual camera shot ray.
-const sightModels=new THREE.Group();gunModel.add(sightModels);
-function scopeBox(x,y,z,w,h,d,color){
-  const shape=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color,.6));
-  shape.position.set(x,y,z);sightModels.add(shape);return shape;
-}
-scopeBox(0,.12,-.28,.19,.07,.28,0x111e29);
-scopeBox(-.10,.22,-.36,.035,.16,.075,0x171f29);
-scopeBox(.10,.22,-.36,.035,.16,.075,0x171f29);
-scopeBox(0,.31,-.36,.235,.035,.09,0x172532);
-const sightFrame=new THREE.Mesh(new THREE.TorusGeometry(.12,.018,8,24),mat(0x273949,.76));
-sightFrame.position.set(0,.23,-.36);sightModels.add(sightFrame);
+// All four optically zeroed reticles are modeled in 3D ON the gun.
+const gunOptics=createWeaponOptics(THREE,gunModel);
 function setSight(value){
-  sight=SIGHTS.includes(value)?value:"holo-a";
+  sight=gunOptics.selectSight(value);
   sightSelect.value=sight;
-  adsOptic.dataset.sight=sight;
-  opticName.textContent=SIGHT_NAMES[sight];
-  sightFrame.visible=sight!=="iron";
+  // No floating HTML ADS element: sight stays rigidly attached to firearm.
 }
 sightSelect.addEventListener("change",()=>setSight(sightSelect.value));
 setSight(sight);
@@ -122,6 +110,27 @@ function sound(type="fire"){
     osc.frequency.exponentialRampToValueAtTime(52,t+.09);
     bass.gain.setValueAtTime(.10,t);bass.gain.exponentialRampToValueAtTime(.0001,t+.095);
     osc.connect(bass);bass.connect(audioContext.destination);osc.start(t);osc.stop(t+.10);
+  }
+}
+// Three distinct short electronic notes: beep-beep-BEEP!
+// Generated as actual WebAudio sound, never written to the alert HUD.
+function proximityAlarm(){
+  if(!audioContext||audioContext.state!=="running")return;
+  const t=audioContext.currentTime;
+  for(const [offset,hz,duration,volume] of [
+    [0,720,.105,.065],
+    [.19,720,.105,.065],
+    [.40,1080,.295,.105]
+  ]){
+    const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+    osc.type="square";
+    osc.frequency.setValueAtTime(hz,t+offset);
+    gain.gain.setValueAtTime(.0001,t+offset);
+    gain.gain.linearRampToValueAtTime(volume,t+offset+.008);
+    gain.gain.setValueAtTime(volume,t+offset+duration-.027);
+    gain.gain.exponentialRampToValueAtTime(.0001,t+offset+duration);
+    osc.connect(gain);gain.connect(audioContext.destination);
+    osc.start(t+offset);osc.stop(t+offset+duration+.005);
   }
 }
 function popup(message,seconds=2.6){
@@ -231,7 +240,13 @@ function fireOnce(now){
   }
   sound("fire");muzzleUntil=now+48;
   // Spread offsets the center ray, not the player's movement direction.
-  const spread=shot.spread,aim={x:(Math.random()-.5)*spread*2,y:(Math.random()-.5)*spread*2};
+  // Hipfire is a broad random cone. ADS is zeroed through the physical
+  // gun-mounted optic, i.e. both sight center and bullet use camera (0,0).
+  const stance=player.isProne?.55:player.isCrouched?.78:1;
+  const motion=player.moving?1.35:1;
+  const spread=ads?0:shot.spread*stance*motion;
+  const angle=Math.random()*Math.PI*2,radial=Math.sqrt(Math.random())*spread;
+  const aim={x:Math.cos(angle)*radial,y:Math.sin(angle)*radial};
   raycaster.setFromCamera(aim,camera);raycaster.far=shot.range;
   // Trace all real ray intersections in order, so the actual wall hole
   // and the bullet's collision behavior share a world-space position.
@@ -313,7 +328,10 @@ function frame(now){
     const report=player.update(dt,activeKeys);
     if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
     if(fireHeld&&!gadgets.busy&&(weapons.slot==="primary"))fireOnce(now);
-    gadgets.tick(now,player,popup);
+    gadgets.tick(now,player,(message,event)=>{
+      if(event==="proximity-beep")proximityAlarm();
+      else if(message)popup(message);
+    });
     reinforceBar.classList.toggle("hidden",!gadgets.busy);
     if(gadgets.busy){
       const remaining=Math.max(0,(gadgets.action.end-now)/1000);
@@ -326,14 +344,21 @@ function frame(now){
   hitmark.classList.toggle("shown",now<hitUntil);
   const showingAds=locked&&ads&&!gadgets.busy;
   document.body.classList.toggle("ads",showingAds);
-  adsOptic.setAttribute("aria-hidden",String(!showingAds));
+  // Real 3D optic is always attached to the gun, so no HTML ADS indicator.
+  const hipSpread=weapons.current.hipSpread*(player.moving?1.35:1);
+  reticle.style.setProperty("--hip-size",(30+hipSpread*225).toFixed(1)+"px");
   muzzle.intensity=now<muzzleUntil?2.5:0;muzzleSprite.visible=now<muzzleUntil;
   aimBlend+=(Number(locked&&ads)-aimBlend)*Math.min(1,dt*13);
   camera.fov=80-aimBlend*25;camera.updateProjectionMatrix();
-  gunModel.position.x+=( (aimBlend?.02:.42)-gunModel.position.x)*Math.min(1,dt*13);
-  gunModel.position.y+=((- .36+aimBlend*.16)-gunModel.position.y)*Math.min(1,dt*13);
-  gunModel.position.z+=((- .77+aimBlend*.16)-gunModel.position.z)*Math.min(1,dt*13);
-  gunModel.scale.setScalar(weapons.slot==="secondary"?.78:1);
+  const scale=weapons.slot==="secondary"?.78:1;
+  gunModel.scale.setScalar(scale);
+  // ADS slides the REAL sight's optic origin onto (0,0) in camera space.
+  // The reticle's 3D meshes are part of the weapon group—not CSS art.
+  const aligned=gunOptics.aimPosition(scale);
+  const blend=Math.min(1,dt*14);
+  gunModel.position.x+=(aligned.x*aimBlend+.42*(1-aimBlend)-gunModel.position.x)*blend;
+  gunModel.position.y+=(aligned.y*aimBlend-.36*(1-aimBlend)-gunModel.position.y)*blend;
+  gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)-gunModel.position.z)*blend;
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
   }
@@ -343,7 +368,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a role, adjust speeds, then enter the flat test range.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.3.0-bullet-holes-optics-reinforcement"},
+  get build(){return "0.4.0-3d-optics-and-accurate-ads"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
@@ -351,5 +376,7 @@ window.BLACKOUT_DEV={
   get dynamicColliders(){return world.colliders.length},
   get sight(){return sight},
   get reinforcing(){return gadgets.busy},
-  get bulletHoles(){return world.panels.map(p=>p.holes.length)}
+  get bulletHoles(){return world.panels.map(p=>p.holes.length)},
+  get ads(){return ads},
+  get sightOrigin(){return gunOptics.aimPosition(weapons.slot==="secondary"?.78:1)}
 };
