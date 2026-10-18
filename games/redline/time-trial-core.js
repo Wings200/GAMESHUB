@@ -8,7 +8,12 @@ export const TRIAL_MAPS=Object.freeze(["neon","arctic"]);
 export const TRIAL_MAX_SAMPLES=7800; // 13 minutes at a 100ms capture interval
 const allowedCars=new Set(["gt","vortex","apex","bayside","aurora","ironclad","cirrus","obsidian","phantom"]);
 const validNumber=(n,min,max)=>typeof n==="number"&&Number.isFinite(n)&&n>=min&&n<=max;
-export const trialStorageKey=(map,car)=>"redline:time-trial:v20:"+map+":"+car;
+export const trialStorageKey=(map,car,accountId="offline-local")=>{
+ const id=String(accountId||"offline-local");
+ // Scope a personal best to the authenticated owner, never another user
+ // of the same shared computer. Encode IDs safely for localStorage keys.
+ return "redline:time-trial:v20:"+encodeURIComponent(id)+":"+map+":"+car;
+};
 export function validTrace(record,map,car){
  if(!TRIAL_MAPS.includes(map)||!allowedCars.has(car))return false;
  if(!record||record.version!==1||record.map!==map||record.car!==car||
@@ -31,21 +36,21 @@ export function validTrace(record,map,car){
  }
  return previous<=record.time+500;
 }
-export function readPersonalGhost(store,map,car){
+export function readPersonalGhost(store,map,car,accountId="offline-local"){
  try{
-  const raw=store.getItem(trialStorageKey(map,car));
+  const raw=store.getItem(trialStorageKey(map,car,accountId));
   if(!raw||raw.length>1300000)return null;
   const record=JSON.parse(raw);
   return validTrace(record,map,car)?record:null;
  }catch{return null}
 }
-export function savePersonalGhost(store,record){
+export function savePersonalGhost(store,record,accountId="offline-local"){
  const {map,car}=record||{};
  if(!validTrace(record,map,car))return {ok:false,reason:"invalid"};
- const existing=readPersonalGhost(store,map,car);
+ const existing=readPersonalGhost(store,map,car,accountId);
  if(existing&&existing.time<=record.time)return {ok:true,personalBest:false,best:existing.time};
  try{
-  store.setItem(trialStorageKey(map,car),JSON.stringify(record));
+  store.setItem(trialStorageKey(map,car,accountId),JSON.stringify(record));
   return {ok:true,personalBest:true,best:record.time};
  }catch(e){return {ok:false,reason:"storage",best:existing?.time??null}}
 }
