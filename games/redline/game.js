@@ -2919,6 +2919,89 @@ function collideWithEnvironment() {
     }
 
 
+    // Continuous collision detection for static geometry, scoped to Nevada.
+    // Endpoint-only collision let fast cars skip small rocks, fences and
+    // narrow posts entirely between frames at racing speeds.
+    if(activeTrackId==="canyon"&&carState.previousPhysicsPosition){
+        const previous=carState.previousPhysicsPosition;
+        const mvx=car.position.x-previous.x;
+        const mvz=car.position.z-previous.z;
+        const travelSq=mvx*mvx+mvz*mvz;
+        if(travelSq>.01&&travelSq<225){
+            let first=null;
+            for(const block of environmentColliders){
+                if(Math.min(previous.y,car.position.y)>block.maxY||
+                   Math.max(previous.y,car.position.y)<block.minY)continue;
+                const maxR=block.type==="circle"?
+                    block.radius+CAR_RADIUS:
+                    Math.hypot(block.halfWidth,block.halfDepth)+CAR_RADIUS;
+                const midX=(previous.x+car.position.x)*.5-block.x;
+                const midZ=(previous.z+car.position.z)*.5-block.z;
+                const reach=maxR+Math.sqrt(travelSq)*.5;
+                if(midX*midX+midZ*midZ>reach*reach)continue;
+                const startX=previous.x-block.x,startZ=previous.z-block.z;
+                let fraction=null,nx=0,nz=0;
+                if(block.type==="circle"){
+                    const radius=block.radius+CAR_RADIUS;
+                    const b=2*(startX*mvx+startZ*mvz);
+                    const c=startX*startX+startZ*startZ-radius*radius;
+                    const discriminant=b*b-4*travelSq*c;
+                    if(c>0&&b<0&&discriminant>=0){
+                        const hit=(-b-Math.sqrt(discriminant))/(2*travelSq);
+                        if(hit>=0&&hit<=1){
+                            fraction=hit;
+                            const dist=Math.hypot(startX+mvx*hit,startZ+mvz*hit)||1;
+                            nx=(startX+mvx*hit)/dist;
+                            nz=(startZ+mvz*hit)/dist;
+                        }
+                    }
+                }else{
+                    const co=Math.cos(-block.rotationY),si=Math.sin(-block.rotationY);
+                    const ox=startX*co-startZ*si,oz=startX*si+startZ*co;
+                    const vx=mvx*co-mvz*si,vz=mvx*si+mvz*co;
+                    const ex=block.halfWidth+CAR_RADIUS;
+                    const ez=block.halfDepth+CAR_RADIUS;
+                    if(Math.abs(ox)>=ex||Math.abs(oz)>=ez){
+                        let entry=0,exit=1,localNx=0,localNz=0,valid=true;
+                        for(const [o,v,half,axis] of [[ox,vx,ex,0],[oz,vz,ez,1]]){
+                            if(Math.abs(v)<1e-8){
+                                if(Math.abs(o)>half)valid=false;
+                                continue;
+                            }
+                            const t1=(-half-o)/v,t2=(half-o)/v;
+                            const near=Math.min(t1,t2),far=Math.max(t1,t2);
+                            if(near>entry){
+                                entry=near;localNx=axis===0?(v>0?-1:1):0;
+                                localNz=axis===1?(v>0?-1:1):0;
+                            }
+                            exit=Math.min(exit,far);
+                        }
+                        if(valid&&entry<=exit&&entry>=0&&entry<=1){
+                            fraction=entry;
+                            const wc=Math.cos(block.rotationY),ws=Math.sin(block.rotationY);
+                            nx=localNx*wc-localNz*ws;
+                            nz=localNx*ws+localNz*wc;
+                        }
+                    }
+                }
+                if(fraction!==null&&(!first||fraction<first.t))
+                    first={t:fraction,nx,nz,block};
+            }
+            if(first){
+                const safe=Math.max(0,first.t-.006);
+                car.position.x=previous.x+mvx*safe;
+                car.position.z=previous.z+mvz*safe;
+                const normal=new THREE.Vector3(first.nx,0,first.nz);
+                const into=carState.velocity.dot(normal);
+                if(into<0)carState.velocity.addScaledVector(normal,
+                    -(1+first.block.bounce)*into);
+                carState.velocity.multiplyScalar(first.block.drag);
+                carState.impactPulse=Math.max(carState.impactPulse,.8);
+                carState.cameraShake=Math.max(carState.cameraShake,.48);
+            }
+        }
+    }
+
     for (
         const collider
         of environmentColliders
@@ -9314,6 +9397,9 @@ function updatePhysics(delta) {
     carState.impactCooldown =
         Math.max(0, carState.impactCooldown -
             delta);
+    // The Nevada funnel remains slippery briefly after the cloud is gone.
+    carState.nevadaDustGripTimer=Math.max(0,
+        (carState.nevadaDustGripTimer||0)-delta);
     carState.sparkCooldown =
         Math.max(0, carState.sparkCooldown -
             delta);
@@ -9512,15 +9598,11 @@ function updatePhysics(delta) {
         !carState.airborne
     ) {
 
-        const grip = handbrake
-            ?
-                activeCarSpec.driftGrip
-                    *
-                        surface.gripMultiplier
-            :
-                activeCarSpec.grip
-                    *
-                        surface.gripMultiplier;
+        const grip = (handbrake
+            ? activeCarSpec.driftGrip * surface.gripMultiplier
+            : activeCarSpec.grip * surface.gripMultiplier) *
+            (activeTrackId==="canyon" &&
+             carState.nevadaDustGripTimer>0 ? .37 : 1);
 
 
         const lateralCorrection =
@@ -9621,6 +9703,9 @@ function updatePhysics(delta) {
         carState.velocity
             .setLength(maxSpeed);
     }
+    // A known movement segment is necessary for fast collisions with
+    // poles, fencing, hangars and other thin Nevada geometry.
+    const beforePhysicsMove=car.position.clone();
     car.position
         .addScaledVector(
             carState.velocity,
@@ -9664,7 +9749,9 @@ function updatePhysics(delta) {
       Unlike small road obstacles, they can also be hit while airborne.
     */
 
+    carState.previousPhysicsPosition=beforePhysicsMove;
     collideWithEnvironment();
+    carState.previousPhysicsPosition=null;
 
 
     /*
