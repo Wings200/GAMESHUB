@@ -1,7 +1,7 @@
 // BLACKOUT V0.1 — deterministic single-player character controller.
 // Collision checks use the exact AABBs created by the world mesh helpers.
 export const PLAYER_DIMENSIONS = Object.freeze({
-  radius:.34, stand:1.73, crouch:1.10, stepHeight:.23
+  radius:.34, stand:1.73, crouch:1.10, prone:.62, stepHeight:.23
 });
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 function intersects(a,x,z,y,height,radius) {
@@ -24,7 +24,8 @@ export class FirstPersonController{
     this.radius=PLAYER_DIMENSIONS.radius;
     this.standingHeight=PLAYER_DIMENSIONS.stand;
     this.height=this.standingHeight;
-    this.isCrouched=false;
+    this.isCrouched=false;this.isProne=false;this.proneWanted=false;
+    this.speeds={walk:3.34,sprint:5.5,crouch:1.73,prone:.78};
     this.lean=0;this.leanTarget=0;
     this.stepClock=0;this.moving=false;this.sprinting=false;
     this.camera.rotation.order="YXZ";
@@ -33,9 +34,10 @@ export class FirstPersonController{
   reset(){
     Object.assign(this,{x:this.world.spawn.x,y:this.world.spawn.y,z:this.world.spawn.z,
       yaw:this.world.spawn.yaw,pitch:0,velX:0,velY:0,velZ:0,
-      height:PLAYER_DIMENSIONS.stand,isCrouched:false,lean:0,leanTarget:0,stepClock:0});
+      height:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,stepClock:0});
     this.applyCamera();
   }
+  toggleProne(){this.proneWanted=!this.proneWanted;}
   look(dx,dy,sensitivity=0.0022){
     // Three.js camera looks toward -Z. Positive yaw rotates view LEFT,
     // so a mouse move RIGHT must DECREASE yaw.
@@ -63,16 +65,19 @@ export class FirstPersonController{
   update(dt,keys){
     const d=clamp(dt,0,0.043);
     const wantsCrouch=keys.has("ControlLeft")||keys.has("ControlRight")||keys.has("KeyC");
-    this.isCrouched=wantsCrouch||!this.canStand();
-    this.height=this.isCrouched?PLAYER_DIMENSIONS.crouch:PLAYER_DIMENSIONS.stand;
+    this.isProne=this.proneWanted&&!wantsCrouch;
+    this.isCrouched=!this.isProne&&(wantsCrouch||!this.canStand());
+    this.height=this.isProne?PLAYER_DIMENSIONS.prone:
+      this.isCrouched?PLAYER_DIMENSIONS.crouch:PLAYER_DIMENSIONS.stand;
     let front=Number(keys.has("KeyW"))-Number(keys.has("KeyS"));
     let side=Number(keys.has("KeyD"))-Number(keys.has("KeyA"));
     const magnitude=Math.hypot(front,side);
     if(magnitude>1){front/=magnitude;side/=magnitude;}
     this.moving=magnitude>.1;
-    this.sprinting=this.moving && !this.isCrouched &&
+    this.sprinting=this.moving && !this.isCrouched && !this.isProne &&
       (keys.has("ShiftLeft")||keys.has("ShiftRight"))&&front>0;
-    const speed=this.isCrouched?1.73:this.sprinting?5.5:3.34;
+    const speed=this.isProne?this.speeds.prone:
+      this.isCrouched?this.speeds.crouch:this.sprinting?this.speeds.sprint:this.speeds.walk;
     // Match the actual camera vectors: forward = (-sin(yaw),-cos(yaw)),
     // right = (cos(yaw),-sin(yaw)). Both were previously mirrored,
     // making W move opposite to the direction the player was looking.
@@ -97,8 +102,8 @@ export class FirstPersonController{
     this.leanTarget=Number(keys.has("KeyE"))-Number(keys.has("KeyQ"));
     this.lean+=(this.leanTarget-this.lean)*Math.min(1,d*12);
     this.applyCamera();
-    return {room:this.world.zoneAt(this.x,this.z),crouched:this.isCrouched,
-      sprinting:this.sprinting,lean:this.lean,groundY:floor,position:[this.x,this.y,this.z]};
+    return {room:this.world.zoneAt(this.x,this.z),crouched:this.isCrouched,prone:this.isProne,
+      sprinting:this.sprinting,lean:this.lean,speed:Math.hypot(this.velX,this.velZ),groundY:floor,position:[this.x,this.y,this.z]};
   }
   applyCamera(){
     const bob=this.moving ? Math.sin(this.stepClock)*.012 : 0;
