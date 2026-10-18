@@ -1661,6 +1661,20 @@ function sampleTrack() {
 */
 function neonSurfaceHeight(position) {
     if(activeTrackId!=="neon"&&activeTrackId!=="canyon") return 0;
+    // Preserve the actual height of the underground service paths and
+    // cave links. The old implementation used the MAIN road's height,
+    // so cars hovered over the downhill passage mesh.
+    if(activeTrackId==="canyon"&&nevadaSystem){
+        for(const zone of surfaceZones){
+            if(zone.startHeight===undefined||!pointInsideZone(position,zone))
+                continue;
+            const x=position.x-zone.center.x,z=position.z-zone.center.z;
+            const along=x*zone.tangent.x+z*zone.tangent.z;
+            const dist=Math.max(.1,zone.segmentLength);
+            const t=THREE.MathUtils.clamp((along+dist*.5)/dist,0,1);
+            return zone.startHeight*(1-t)+zone.endHeight*t;
+        }
+    }
     const nearest=nearestTrackInfo(position);
     if(!nearest) return 0;
     const n=trackSamples.length;
@@ -1689,7 +1703,9 @@ function neonSurfaceHeight(position) {
         }
     }
     if(Math.sqrt(bestDist)>SIDEWALK_OUTER+1) {
-        if(activeTrackId==="canyon")return Math.sqrt(bestDist)<43?h:-2.1;
+        if(activeTrackId==="canyon"&&nevadaSystem)
+            return nevadaSystem.roadsideHeight(nearest,nearest.offset);
+        if(activeTrackId==="canyon")return Math.sqrt(bestDist)<43?h:-3.8;
         if(position.x>127&&position.x<213&&Math.abs(position.z)<400)
             return -.40;
         return 0;
@@ -10291,12 +10307,16 @@ function buildWorld() {
                 const o1=route.offset*Math.sin(Math.PI*(k+1)/steps);
                 const p=a.point.clone().addScaledVector(a.normal,o0);
                 const q=b.point.clone().addScaledVector(b.normal,o1);
+                p.y=nevadaSystem.roadsideHeight(a,o0)+.25;
+                q.y=nevadaSystem.roadsideHeight(b,o1)+.25;
+                const startHeight=p.y,endHeight=q.y;
                 const axis=q.clone().sub(p).setY(0);
                 if(axis.lengthSq()<.05)continue;
                 const tangent=axis.clone().normalize(),normal=
                     new THREE.Vector3(-tangent.z,0,tangent.x);
                 const center=p.add(q).multiplyScalar(.5);
                 surfaceZones.push({center,tangent,normal,
+                    startHeight,endHeight,segmentLength:axis.length(),
                     halfLength:axis.length()*.5+1.6,halfWidth:4.1});
             }
         }
