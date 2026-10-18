@@ -174,6 +174,11 @@ function retry(){
  $("startBtn").click();
 }
 function returnHome(){
+ if(state.active){
+   // The game keeps its own physics flags. Explicitly stop that standalone
+   // run as well before revealing the normal multiplayer home screen.
+   window.dispatchEvent(new CustomEvent("redline:time-trial-exit"));
+ }
  state.active=false;
  result.classList.add("hidden");
  overlay.classList.add("hidden");
@@ -192,7 +197,7 @@ for(const button of document.querySelectorAll("[data-open-time-trial]"))
 $("redlineTrialStart").addEventListener("click",enter);
 $("redlineTrialClose").addEventListener("click",close);
 $("redlineTrialRetry").addEventListener("click",retry);
-$("redlineTrialHome").addEventListener("click",returnHome);
+$("redlineTrialExit").addEventListener("click",returnHome);
 $("redlineTrialResultHome").addEventListener("click",returnHome);
 mapPick.addEventListener("change",()=>{
  state.map=mapPick.value;setPB();refreshLeaderboard();
