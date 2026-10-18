@@ -55,6 +55,7 @@ export class ObjectiveDrill{
     this.bots=[];
   }
   reset(role="attacker"){
+    if(this.phase==="won"||this.phase==="lost")this.roundNumber++;
     this.clearBots();
     this.role=role;this.phase="ready";this.result="";
     this.deadline=0;this.bombEnd=0;this.nextWave=0;this.wave=0;
@@ -189,6 +190,10 @@ export class ObjectiveDrill{
       if(visible&&playerDist<9&&bot.state!=="seek-cover"&&
          this.role==="defender"&&targetDist>2.5)goal=null;
       const moved=goal?advanceTacticalBot(bot,goal,this.world,dt,now):0;
+      if(moved>.30){
+        bot.moved+=moved*dt;
+        if(bot.moved>=1.85){bot.moved=0;notify(null,"enemy-step",bot);}
+      }
       if(visible&&moved<.2)
         bot.group.rotation.y=Math.atan2(bot.x-player.x,bot.z-player.z);
       if(targetDist<1.85&&!bot.stationary&&
@@ -212,7 +217,7 @@ export class ObjectiveDrill{
       if(now>=bot.nextShot&&visible&&playerDist<20){
         bot.nextShot=now+920+Math.random()*540;
         bot.lastShotAt=now;
-        notify(null,"enemy-fire");
+        notify(null,"enemy-fire",bot);
         // Actual line-of-sight, imperfect aim and limited effective range.
         const hitRate=clamp(.78-playerDist*.021-(player.moving?.08:0)-(Math.abs(player.lean)>.3?.08:0),.27,.79);
         if(Math.random()<hitRate){
