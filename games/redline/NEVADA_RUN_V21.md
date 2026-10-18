@@ -186,3 +186,15 @@ Player report: most “secret” branches were advertised openly by highway bill
 - The missing secret-path openings reported before V22.1 are **not solved** in this rollback. Resolve them later with a small, precisely measured change, and test a complete lap/performance before applying any major shortcut redesign.
 
 **QA limits:** Script parse checks and mocked scene construction/update passed. Live Cloudflare URL could not be opened via our web tool, so actual deployed build, real browser FPS, graphics and network multiplayer still need user gameplay confirmation.
+
+## V22.2b — Flight 51 and two tunnel approaches
+
+Player reported a hangar visibly inside Flight 51's runway, an unrelated secret jump pad by the service tunnel, and an invisible wall at the second off-road tunnel.
+
+- `NEVADA_TRACK.ramps`: removed the unrelated `t=.536` secret ramp. Preserved the drive-through Restricted Service Tunnel and the separately located `t=.735` secret jump.
+- `createNevadaWorld`: relocate candidate Flight 51 hangars or omit them if road/runway footprints overlap. Checks the complete 30 m × 168 m runway, including rotated corners and extra buffer. Watchtower and radar candidates also avoid the runway.
+- Enclosed tunnel geometry: keep both ends open by starting structural walls farther inside (`k=6..steps-6`); widen the portal interior; only create colliders when their corresponding visible walls can fit clear of the main highway. Colliders match wall transforms and vertical ranges.
+- Ridge cave off-road junction (`t≈.834–.858`): removed **both beam geometry and physics collision** from the left-side descent rail over `t=.829–.863`. All other canyon guardrails remain. This is a single constant-time Nevada-only branch, not the expensive V22.1 geometry rewrite.
+- Validations: JS syntax passed; sampled runway bounds show Aircraft Storage **20.3 m** clear of the airstrip pavement in the Catmull-Rom approximation, with all four retained buildings clear. Sampled tunnel center/side approach found **zero registered static blockers** for either enclosed tunnel. Guardrail simulation found no left-side rails at `t=.832,.834,.839,.845,.851,.858`, and rail returned by `t=.864`. All 27 hazards and 4 alternate routes remained in scene-construction test. Live browser driving, real FPS and Cloudflare deployment have not been independently verified.
+
+Latest browser module cache marker: `nevada-v22-2b-runway-tunnel-clear`.
