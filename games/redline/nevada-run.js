@@ -277,6 +277,43 @@ export function createNevadaWorld({
    minY:-6,maxY:h+6,drag:.28,bounce:.06,tag:"SANDSTONE MESA"
   });
  }
+ // A low-draw-call field of actual irregular gravel boulders. Every
+ // instance is outside main/secret pavement and has matching physical
+ // collision. Do not scatter these as fake obstacles into the racing lanes.
+ const boulderGeo=new THREE.DodecahedronGeometry(1,1);
+ const boulderPalette=[0x8e6a50,0x9e7454,0x705747];
+ const boulderDummy=new THREE.Object3D();
+ for(let band=0;band<3;band++){
+  const instances=new THREE.InstancedMesh(boulderGeo,
+   new THREE.MeshStandardMaterial({
+    color:boulderPalette[band],roughness:1,flatShading:true
+   }),70);
+  let placed=0;
+  for(let i=0;i<70;i++){
+   const id=i*3+band,t=((id+.5)/210+.012*seeded(id+301))%1;
+   const frame=getFrameAt(t);
+   const side=id%2?1:-1;
+   const offset=side*(25+seeded(id+188)*55);
+   const c=frame.point.clone().addScaledVector(frame.normal,offset);
+   c.y=roadsideHeight(frame,offset);
+   const size=.9+seeded(id+605)*2.5;
+   if(!clearOfRoad(c,size+2))continue;
+   boulderDummy.position.copy(c);
+   boulderDummy.position.y+=size*.40;
+   boulderDummy.rotation.set(seeded(id+3)*.3,
+    seeded(id+14)*TWO_PI,seeded(id+55)*.35);
+   boulderDummy.scale.set(size*1.25,size*.61,size*.86);
+   boulderDummy.updateMatrix();
+   instances.setMatrixAt(placed++,boulderDummy.matrix);
+   addCircleCollider(c,size*.68,{
+    minY:c.y-.1,maxY:c.y+size*1.6,drag:.52,
+    tag:"DESERT BOULDER"
+   });
+  }
+  instances.count=placed;
+  instances.instanceMatrix.needsUpdate=true;
+  root.add(instances);
+ }
  // Dark lakebed fractures and a salt-crust drainage field. These patches
  // visibly match the reduced-grip zone in the car physics (t=.325-.485).
  for(let i=0;i<46;i++){
@@ -392,6 +429,8 @@ export function createNevadaWorld({
    {t:.76,side:-1,w:38,d:70,h:23,name:"AIRCRAFT STORAGE"}];
  for(let j=0;j<buildings.length;j++){
   const b=buildings[j],o=placeFrame(b.t,b.side*53);
+  // Hangars must not hang into a different switchback lane.
+  if(!clearOfRoad(o.p,Math.hypot(b.w*.5,b.d*.5)+2))continue;
   const place=new THREE.Group();place.position.copy(o.p);place.rotation.y=o.f.rotationY;
   root.add(place);
   shape(THREE,place,"box",0,b.h/2,0,b.w,b.h,b.d,0x566168);
@@ -452,6 +491,7 @@ export function createNevadaWorld({
  const searchlights=[];
  for(const [t,offset] of [[.535,-26],[.665,26],[.745,-29]]){
   const {p}=placeFrame(t,offset);
+  if(!clearOfRoad(p,5))continue;
   const g=new THREE.Group();g.position.copy(p);root.add(g);
   shape(THREE,g,"box",0,8.5,0,3,17,3,0x6b6261);
   const cabin=shape(THREE,g,"box",0,17,0,7,4,7,0x2f4756);
@@ -485,6 +525,7 @@ export function createNevadaWorld({
  // Radar arrays and masts.
  for(const t of [.577,.698,.784]){
   const {p}=placeFrame(t,65);
+  if(!clearOfRoad(p,6))continue;
   const group=new THREE.Group();group.position.copy(p);root.add(group);
   shape(THREE,group,"cylinder",0,9,0,.7,18,1,0x75827f);
   const antenna=new THREE.Mesh(new THREE.SphereGeometry(5,12,5,0,Math.PI),
