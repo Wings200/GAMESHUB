@@ -572,7 +572,15 @@ export function createNevadaWorld({
    if(h.type==="gate"||h.type==="blastdoor"){
     const open=Math.sin(TWO_PI*phase)>-.08;
     h.open=open;
-    h.bar.visible=!open;
+    // Previous arms floated 3m above the car yet hit its front bumper.
+    // Closed gates now actually sit at bumper/windshield height;
+    // open barriers lift visibly rather than instantly disappearing.
+    const closedY=h.type==="gate"?1.15:2.7;
+    const raisedY=h.type==="gate"?6.3:9.2;
+    const targetY=open?raisedY:closedY;
+    h.bar.position.y+=(targetY-h.bar.position.y)*
+      Math.min(1,delta*5.8);
+    h.bar.visible=true;
     h.mesh.children.forEach((part,i)=>{
       if(i<4&&part.material?.color?.getHex?.()===0xff4932)
        part.material.emissive?.setHex?.(0xff2417);
