@@ -335,7 +335,7 @@ export function createNevadaWorld({
     const label=billboard(THREE,group,"RESTRICTED","#702e2c","#ffe3bd",4.3);
     label.position.set(sign*.1,3.1,0);label.rotation.y=Math.PI/2;
    }
-   if(i%3===0)addBoxCollider(p,.3,2.4,f.rotationY,{minY:f.point.y-2,maxY:f.point.y+5,tag:"BASE FENCE"});
+   if(i%3===0)addBoxCollider(p,.3,2.4,f.rotationY,{minY:p.y-.5,maxY:p.y+4.6,tag:"BASE FENCE"});
   }
  }
  // Two surveillance towers with active moving searchlight beams.
@@ -491,22 +491,23 @@ export function createNevadaWorld({
   shape(THREE,g,"box",0,1.25,4.25,2.3,.3,.1,0xffdca8);
  }
  for(const [j,t] of [.505,.68,.845].entries()){
-  const h=hazardGroup("gate",t,0,5.0,12+j*2,j*.26);
+  // Occupy ONE lane at a time; a checkpoint should never be sealed.
+  const h=hazardGroup("gate",t,j%2?3.5:-3.5,3.5,12+j*2,j*.26);
   const g=h.mesh;
   for(const s of [-1,1]){
-   shape(THREE,g,"box",s*7,2.6,0,.85,5.2,.85,0x5a6263);
-   shape(THREE,g,"sphere",s*7,5.6,0,.7,.7,.7,0xff4932);
+   shape(THREE,g,"box",s*3.45,2.6,0,.55,5.2,.85,0x5a6263);
+   shape(THREE,g,"sphere",s*3.45,5.6,0,.45,.45,.45,0xff4932);
   }
-  h.bar=shape(THREE,g,"box",0,3.2,0,13.4,.35,.50,0xe7d8c0);
-  for(let x=-6;x<7;x+=2)shape(THREE,h.bar,"box",x,0,0,.82,.42,.54,0xd44836);
+  h.bar=shape(THREE,g,"box",0,6.3,0,6.6,.35,.50,0xe7d8c0);
+  for(let x=-3;x<=3;x+=1.5)shape(THREE,h.bar,"box",x,0,0,.52,.42,.54,0xd44836);
  }
  for(const [j,t] of [.57,.90].entries()){
-  const h=hazardGroup("blastdoor",t,0,5.0,19+j*4,.4+j*.3);
+  const h=hazardGroup("blastdoor",t,j%2?-3.55:3.55,3.5,19+j*4,.4+j*.3);
   const g=h.mesh;
-  for(const s of [-1,1])shape(THREE,g,"box",s*7,4,0,2.1,8,2.7,0x4e5150);
-  shape(THREE,g,"box",0,8.2,0,16,1.7,3.0,0x565a56);
-  h.bar=shape(THREE,g,"box",0,2.7,0,12,5.4,1.1,0x61645f);
-  for(let x=-5;x<6;x+=2)shape(THREE,h.bar,"box",x,0,.58,.5,4.1,.07,0xe8bf59);
+  for(const side of [-1,1])shape(THREE,g,"box",side*3.5,4,0,1.0,8,2.7,0x4e5150);
+  shape(THREE,g,"box",0,8.2,0,8,1.7,3.0,0x565a56);
+  h.bar=shape(THREE,g,"box",0,9.2,0,6.4,5.4,1.1,0x61645f);
+  for(let x=-2.5;x<=2.5;x+=1)shape(THREE,h.bar,"box",x,0,.58,.24,4.1,.07,0xe8bf59);
  }
  for(let j=0;j<3;j++){
   const h=hazardGroup("dust",.35+j*.065,j%2?-2.2:2.2,4.7,14+j*3,j*.4);
@@ -574,7 +575,9 @@ export function createNevadaWorld({
    const phase=((time%1)+1)%1;
    // Convoys really travel along ~280 m of track per cycle. They do not
    // just rub back and forth against one spot on the road.
-   const travel=h.type==="convoy"||h.type==="tanker"?phase*.070:0;
+   // Ping-pong prevents instantly teleporting hundreds of meters.
+   const travel=h.type==="convoy"||h.type==="tanker"?
+     (.5-.5*Math.cos(phase*TWO_PI))*.052:0;
    const f=getFrameAt((h.t+travel)%1);
    const oscillation=Math.sin(phase*TWO_PI);
    const n=f.normal;
@@ -607,17 +610,20 @@ export function createNevadaWorld({
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
     h.mesh.rotation.y+=.08*Math.sin(sec*.45);
    }else if(h.type==="convoy"||h.type==="tanker"){
-    h.mesh.rotation.y=f.rotationY; // align truck wheels to the road
+    h.mesh.rotation.y=f.rotationY+
+      (Math.sin(phase*TWO_PI)<0?Math.PI:0);
    }
-   if(!car||!carState||!carState.velocity||h.open)continue;
+   if(!car||!carState||!carState.velocity)continue;
+   // Only collide once the actual 3D moving arm drops to car height.
+   if((h.type==="gate"||h.type==="blastdoor")&&
+      h.bar.position.y>(h.type==="gate"?2.5:5.6))continue;
    const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
    const dist=Math.hypot(dx,dz);
    const across=dx*f.normal.x+dz*f.normal.z;
    const along=dx*f.tangent.x+dz*f.tangent.z;
-   // Gates and blast doors span the entire roadway: use a rectangular
-   // collision volume, not a small circle that leaves the rail ends ghostly.
+   // Hazard takes one lane; the other remains safely passable.
    const blocked=h.type==="gate"||h.type==="blastdoor"?
-     Math.abs(across)<7.3&&Math.abs(along)<1.45:
+     Math.abs(across)<3.15&&Math.abs(along)<1.45:
      dist<h.radius+1.0;
    if(!blocked||Math.abs(car.position.y-f.point.y)>3.2)continue;
    if(h.type==="dust"){
