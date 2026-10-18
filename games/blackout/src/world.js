@@ -115,6 +115,14 @@ export function buildRange(THREE,scene){
     const shield={group:g,collider:c,mesh:center,remove(){
       const i=colliders.indexOf(c);if(i>=0)colliders.splice(i,1);
       g.visible=false;root.remove(g);
+      const shotIndex=shootables.indexOf(center);
+      if(shotIndex>=0)shootables.splice(shotIndex,1);
+      g.traverse?.(node=>{if(node.isMesh){
+        node.geometry?.dispose?.();
+        // The dark/cyan materials are shared; only the unique shield
+        // face material is owned by this instance.
+        if(node===center)node.material?.dispose?.();
+      }});
       const j=placed.indexOf(shield);if(j>=0)placed.splice(j,1);
     }};
     center.userData={kind:"shield",shield};shootables.push(center);
