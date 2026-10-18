@@ -1,77 +1,97 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070d15">
-  <meta name="description" content="BLACKOUT V0.1 — an original tactical FPS movement and collision prototype on GAMESHUB.">
-  <title>PROJECT BLACKOUT · FIRST CONTACT | GAMESHUB</title>
-  <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./style.css?v=blackout-v01-annex-1">
-</head>
-<body>
-  <canvas id="view" aria-label="BLACKOUT first-person Training Annex"></canvas>
-  <div class="vignette" aria-hidden="true"></div>
-  <div class="reticle" id="reticle" aria-hidden="true"><span></span><i></i></div>
-  <div class="scanline" aria-hidden="true"></div>
-
-  <header id="gameHUD" class="game-hud hidden" aria-live="off">
-    <div class="hud-left">
-      <div class="overline"><span class="live-dot"></span> BLACKOUT <span class="dim">/ TRAINING SERVER LOCAL</span></div>
-      <h2 id="zoneLabel">EQUIPMENT BAY</h2>
-      <p>OPERATION FIRST CONTACT <span class="line"></span> V0.1 DEVELOPMENT BUILD</p>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#081019">
+<meta name="description" content="BLACKOUT V0.2 - flat tactical shooting, movement and gadget mechanics lab.">
+<title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
+<link rel="icon" href="/logo.png">
+<link rel="stylesheet" href="./style.css?v=flat-lab-02">
+</head><body>
+<canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="reticle" id="reticle" aria-hidden="true"><span></span><i></i></div>
+<div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
+<header id="gameHUD" class="game-hud hidden">
+  <div class="hud-left">
+    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ MECHANICS LAB · V0.2</span></div>
+    <h2 id="zoneLabel">FLAT MECHANICS LAB</h2>
+    <p>LOCAL SHOOTING TEST · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
+  </div>
+  <div class="hud-right lab-right">
+    <div class="mission">TARGET RANGE <strong id="objective">0 / 12 TARGETS</strong></div>
+    <div class="lab-card">
+      <div class="lab-card-heading">GADGET TOOLKIT</div>
+      <p id="gadgetPrimary">G · BREACH CHARGE [2]</p>
+      <p id="gadgetSecondary">X · RECON PULSE [2]</p>
+      <p id="gadgetInteract">F · INSPECT</p>
+      <div class="lab-card-heading separation">MOVEMENT</div>
+      <p>WASD MOVE · SHIFT SPRINT</p>
+      <p>CTRL CROUCH · Z PRONE</p>
+      <p>Q / E LEAN</p>
     </div>
-    <div class="hud-right">
-      <div class="mission">MOVEMENT TEST <strong id="objective">01 / 04 ZONES</strong></div>
-      <div class="map-shell"><canvas id="minimap" width="220" height="166" aria-label="Training Annex floor plan"></canvas><span class="map-caption">TRAINING ANNEX // FLOOR 01</span></div>
+  </div>
+  <div class="crosshair-caption">MECHANICS TEST ONLY · OFFLINE TRAINING</div>
+  <div class="hud-bottom lab-bottom">
+    <div class="weapon-hud">
+      <div id="weaponName" class="weapon-name">KESTREL MK1</div>
+      <div class="ammo-row"><span id="ammoCount">30</span><span id="reserveCount">/ 120</span></div>
+      <div class="stat-row" id="combatStats">0 HITS · 0% ACC · 0 DOWN</div>
     </div>
-    <div class="crosshair-caption" id="crosshairCaption">NO WEAPON EQUIPPED · MOVEMENT PROTOTYPE</div>
-    <div class="hud-bottom">
-      <div class="moves">
-        <span><kbd>W A S D</kbd> MOVE</span>
-        <span><kbd>SHIFT</kbd> SPRINT</span>
-        <span><kbd>CTRL</kbd> CROUCH</span>
-        <span><kbd>Q / E</kbd> LEAN</span>
-      </div>
-      <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
+    <div class="side-controls">
+      <span><kbd>LMB</kbd> FIRE</span><span><kbd>RMB</kbd> AIM</span><span><kbd>R</kbd> RELOAD</span>
+      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
     </div>
-    <div id="debugPanel" class="debug-panel hidden">COLLISION DEBUG ACTIVE <div id="positionReadout"></div></div>
-    <div id="toast" class="toast" role="status"></div>
-  </header>
-
-  <main id="menu" class="menu">
-    <div class="menu-grain"></div>
-    <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> BUILD 0.1.0 // OFFLINE TEST</span></div>
-    <div class="menu-main">
-      <div class="eyebrow">TACTICAL OPERATIONS / RESTRICTED ACCESS</div>
-      <div class="corner-mark">01 / FIRST CONTACT</div>
-      <h1>BLACK<span>OUT</span><i>.</i></h1>
-      <div class="subtitle">PROJECT BLACKOUT <span>—</span> FIRST PLAYABLE</div>
-      <div class="rule"></div>
-      <p class="description">BLACKOUT is a tactical 5v5 game: attackers infiltrate facilities and extract protected data while defenders fight to stop them. <strong>This V0.1 training build is a movement-and-collision test, not the full match mode.</strong> Explore all four areas to complete the test.</p>
-      <div class="squad-details">
-        <div><small>ASSIGNMENT</small><strong>TRAINING ANNEX</strong></div>
-        <div><small>OPERATION</small><strong>MOVEMENT / COLLISION</strong></div>
-        <div><small>STATUS</small><strong>SIMULATION READY</strong></div>
-      </div>
-      <div class="menu-actions">
-        <button id="start" type="button">ENTER TRAINING <span>→</span></button>
-        <button id="reset" type="button" class="outline">RESET POSITION</button>
-      </div>
-      <p id="status" class="notice">Click ENTER TRAINING to lock your mouse. Press ESC to pause.</p>
-      <div class="progress-foot"><span>PHASE 01 — PLAYER MOVEMENT</span><span>FUTURE: WEAPONS · SECURITY NETWORK · MULTIPLAYER</span></div>
+    <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
+  </div>
+  <div id="debugPanel" class="debug-panel hidden">DEBUG <div id="positionReadout"></div></div>
+  <div id="toast" class="toast" role="status"></div>
+</header>
+<main id="menu" class="menu">
+  <div class="menu-grain"></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.2.0 // SANDBOX BUILD</span></div>
+  <div class="menu-main lab-menu-main">
+    <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
+    <h1>BLACK<span>OUT</span><i>.</i></h1>
+    <div class="subtitle">THE LAB <span>—</span> MECHANICS BEFORE MAPS</div>
+    <div class="rule"></div>
+    <p class="description">No city. No facility. No map development yet. A <strong>flat tactical testing ground</strong> for movement, recoil, ADS, bullet damage, speed and original attacker/defender gadgets. This is single-player testing—not a live 5v5 match.</p>
+    <div class="role-picker" aria-label="Choose testing side">
+      <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
+      <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
     </div>
-    <div class="menu-right">
-      <div class="redline">B<span>↗</span></div>
-      <div class="blueprint">
-        <div class="bp-row"><span>02</span><strong>Mobility Lab</strong></div>
-        <div class="bp-row"><span>03</span><strong>Crossroute</strong></div>
-        <div class="bp-row"><span>04</span><strong>Firing Range</strong></div>
-      </div>
-      <div class="radar"></div>
-      <div class="menu-right-footer">NO OPERATORS. NO MULTIPLAYER.<br>REAL COLLISION. A CLEAN FOUNDATION.</div>
+    <div class="lab-section-title" id="selectedMode">ATTACKER MECHANICS</div>
+    <div class="tuning-grid">
+      <label>Walk speed <output id="walkValue">3.3 m/s</output><input id="walkSlider" type="range" min="2" max="5" step="0.1" value="3.34"></label>
+      <label>Sprint speed <output id="sprintValue">5.5 m/s</output><input id="sprintSlider" type="range" min="4" max="8" step="0.1" value="5.5"></label>
+      <label>Mouse sensitivity <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label>
     </div>
-  </main>
-  <script type="module" src="./main.js?v=blackout-v01-corrected-controls-2"></script>
-</body>
-</html>
+    <div class="menu-actions">
+      <button id="start" type="button">ENTER TEST RANGE <span>→</span></button>
+      <button id="reset" class="outline" type="button">RESET LAB</button>
+      <button id="guideToggle" class="outline" type="button">SHOW CONTROLS</button>
+    </div>
+    <div id="guide" class="test-guide hidden">
+      <strong>TEST CONTROLS</strong>
+      <p>WASD: move · Shift: sprint · Ctrl: hold crouch · Z: toggle prone · Q/E: lean · Mouse: look</p>
+      <p>LMB: shoot · RMB: ADS · R: reload · 1/2: rifle/sidearm</p>
+      <p><strong>Attacker</strong> — G: attach charge to soft panel (within 7m; detonates automatically), X: pulse reveal test targets.</p>
+      <p><strong>Defender</strong> — F: reinforce aimed panel (within 5m), G: deploy shield, X: place proximity sensor. Exit its radius and re-enter to trigger the alert.</p>
+      <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
+    </div>
+    <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
+    <div class="progress-foot"><span>FLAT FLOOR · 12 DUMMIES · 2 TEST PANELS</span><span>NO MULTIPLAYER · NO MAPS YET</span></div>
+  </div>
+  <div class="menu-right lab-aside">
+    <div class="redline">B<span>↗</span></div>
+    <div class="blueprint">
+      <div class="bp-row"><span>01</span><strong>MOVEMENT</strong></div>
+      <div class="bp-row"><span>02</span><strong>RIFLE + PISTOL</strong></div>
+      <div class="bp-row"><span>03</span><strong>ATTACKER GADGETS</strong></div>
+      <div class="bp-row"><span>04</span><strong>DEFENDER GADGETS</strong></div>
+    </div>
+    <div class="radar"></div>
+    <div class="menu-right-footer">THE LAB / OPEN RANGE<br>BUILD THE MECHANICS. THEN BUILD THE WORLD.</div>
+  </div>
+</main>
+<script type="module" src="./main.js?v=flat-lab-02"></script>
+</body></html>
