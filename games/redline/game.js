@@ -10778,6 +10778,17 @@ function finishRace() {
         message.classList.add("hidden");
     }, 2200);
 }
+window.addEventListener("redline:time-trial-exit",()=>{
+    // Never leave a solo race simulating invisibly under multiplayer menus.
+    raceActive=false;
+    raceStarted=false;
+    localFinished=false;
+    serverRaceStartAt=null;
+    trialFrames=[];
+    trialSnapshot=null;
+    if(trialGhost)trialGhost.visible=false;
+    carState?.velocity?.set(0,0,0);
+});
 window.addEventListener("redline:countdown", event => {
     if (event.detail?.startAt) {
         serverRaceStartAt =
