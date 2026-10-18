@@ -1,4 +1,4 @@
-# REDLINE V18 — Career Rewards & Car Prices
+# REDLINE V19 — Race Rewards, Daily & Weekly Challenges
 
 ## Rollout status
 
@@ -42,13 +42,27 @@ All prices are whole **in-game** REDLINE dollars. The server imports the same ca
 
 Formula: solo $35; multiplayer winner $20 per distinct entrant up to 8 ($160 max); second gets half; third gets one third, rounded; all other actual finishers $12.
 
-### Career milestone: every fifth real finish
-Each account receives **+$60 every 5th completed race**, including existing historical finish counts toward the next milestone. This is recorded server-side in the existing Durable Object. Non-finishers do not earn a milestone. Existing balances, purchases, upgrades, ranks, and times are never reset.
+### V19 daily and weekly challenges replace career milestones
+The previous **+$60 every 5th finished race** payment and corresponding career progress HUD were retired. Past purchases, cash, race counts and best times remain unchanged.
+
+V19 tracks three daily and three weekly challenges in each player's existing REDLINE Stats Durable Object. Challenges are awarded and saved in the **same transaction as the verified race finish and normal race payout**. The browser cannot submit or claim completion.
+
+Daily challenges (reset midnight UTC):
+- Finish 3 races — +$75.
+- Improve an already saved track personal best by at least 2% — +$50.
+- Finish 2 Neon District races — +$60.
+
+Weekly challenges (reset Monday midnight UTC):
+- Finish 15 races — +$350.
+- Win 5 races, including solo wins — +$200.
+- Finish 5 Arctic races — +$180.
+
+One reward per challenge per reset period. Rewards auto-credit as soon as the server records the triggering verified race; no separate manual claim. Progress is per account and per UTC period. The read-only challenge board is available from the homepage and race car-selection screen. An empty or older player record starts at zero progress without migration or balance changes.
 
 ### Personal record bonus
 **+$15** for the first valid completion on each course, or for a later finish at least **2% quicker** than that course's stored best before the current race. The normal stored best time still updates for *any* improvement; this 2% rule applies only to bonus money. One PB award max per completed race. Courses are tracked independently.
 
-Milestone and PB bonuses stack with the base payout and are included in `cashEarned`. The results UI labels those bonuses only after a Worker confirms them. The read-only wallet shows `lastCashBreakdown` and a 0–5 race milestone progress indicator.
+Challenge and personal-best bonuses stack with the base payout and are included in `cashEarned`. Results identify challenge rewards separately. The wallet's old milestone bar is removed, replaced by the V19 challenge board.
 
 ## Transaction and anti-duplicate rules
 
@@ -56,7 +70,7 @@ Milestone and PB bonuses stack with the base payout and are included in `cashEar
 - The room captures distinct participant identities at countdown and the server computes placements. Only actual valid finishers receive cash.
 - Race results, latest rewards and personal-best records commit inside the existing Durable Object storage transaction.
 - Recent `raceId` suppression prevents paying a recorded race more than once. Duplicate account results inside one race are skipped.
-- Legacy account records with absent `lastCashBreakdown` remain readable; all new fields are optional/backward compatible. `economyVersion:18` and `carPrices` are read-only response fields, not persisted/modified account state.
+- Legacy account records with absent `lastCashBreakdown`, `challenges`, or `lastChallengeAwards` remain readable; all new fields are optional/backward compatible. `challengeVersion:1` and `challenges` are read-only normalized response fields, while actual progress is stored server-side. `economyVersion:18` and `carPrices` remain backwards compatible.
 - The server never recomputes old purchases and never adjusts or resets saved balances.
 
 ## QA
@@ -64,9 +78,18 @@ Milestone and PB bonuses stack with the base payout and are included in `cashEar
 2026-10-17 source checks:
 - JS parsing passed for the Worker, catalog, dealership, wallet and results.
 - Payout arithmetic checked for 1–8 entrants, invalid sizes/places and rounding.
-- Bonuses checked for the fifth finish, first-course completion, 2%-improvement threshold, non-PB finishes and invalid times.
+- Bonuses checked for first-course completion, 2%-improvement threshold, non-PB finishes and invalid times.
+- V19 verified a six-challenge completion sequence, one-time award totals, daily UTC rollover, Monday UTC weekly rollover, and default zero progress for legacy accounts.
+- The five-race milestone bonus and progress UI were removed. Existing racesFinished history remains intact.
 - Confirmed old Worker/frontend coexistence uses legacy prices until V18 stats become available.
 - These are **source and unit checks only**. Production Worker deployment, Cloudflare API response and a live end-to-end race/purchase must still be verified by a tester.
 
-### Subsequent V18 features
-Daily/weekly challenges, personal-best time trials, ghost playback and additional race formats are **not** implemented by this economy update; they can be scoped separately after rewards are verified.
+### Deployment
+The frontend commits deploy to Pages. The root multiplayer `worker.js` and its `challenges.js` import **must also deploy to the existing REDLINE Worker**. Run from the repo root with authorized Cloudflare access:
+```sh
+npx wrangler deploy --config wrangler.json
+```
+Until that deploy, the challenge board explicitly shows that V19 isn't live. An older Worker may still have the old milestone payout enabled; removing it from the frontend alone does not remove an undeployed server rule.
+
+### Future features
+Personal ghost time trials, additional race formats, or rotating challenge pools are possible next features, but are **not** included in V19.
