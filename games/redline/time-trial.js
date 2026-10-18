@@ -180,11 +180,9 @@ function retry(){
  $("startBtn").click();
 }
 function returnHome(){
- if(state.active){
-   // The game keeps its own physics flags. Explicitly stop that standalone
-   // run as well before revealing the normal multiplayer home screen.
-   window.dispatchEvent(new CustomEvent("redline:time-trial-exit"));
- }
+ // Clear the engine's solo raceStarted flag even after a FINISH. Otherwise
+ // connecting to a future multiplayer lobby could send stale trial state.
+ window.dispatchEvent(new CustomEvent("redline:time-trial-exit"));
  state.active=false;
  result.classList.add("hidden");
  overlay.classList.add("hidden");
