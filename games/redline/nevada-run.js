@@ -876,7 +876,10 @@ export function createNevadaWorld({
     });
    }else if(h.type==="aircraft"){
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
-    h.mesh.rotation.y+=.08*Math.sin(sec*.45);
+    // Rotate fuselage ACROSS the crossing instead of flying parallel
+    // to the road while sliding sideways.
+    h.mesh.rotation.y=f.rotationY+Math.PI/2+
+      .08*Math.sin(sec*.45);
    }else if(h.type==="convoy"||h.type==="tanker"){
     h.mesh.rotation.y=f.rotationY+
       (Math.sin(phase*TWO_PI)<0?Math.PI:0);
@@ -996,8 +999,11 @@ export function createNevadaWorld({
     if(dist<27&&Math.abs(Math.atan2(Math.sin(heading-sweeping),
         Math.cos(heading-sweeping)))<.42){
       active.warning=sec;
-      carState.nitro=Math.max(0,(carState.nitro||0)-4);
-      popup?.("SEARCHLIGHT LOCK · NITRO JAM",850);break;
+      carState.nitro=Math.max(0,(carState.nitro||0)-12);
+      carState.nevadaJammedTimer=Math.max(
+       carState.nevadaJammedTimer||0,2.4);
+      popup?.("SEARCHLIGHT LOCK · NITRO JAMMED 2.4s",1100);
+      break;
     }
    }
   }
