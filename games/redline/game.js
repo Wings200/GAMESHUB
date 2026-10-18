@@ -121,7 +121,7 @@ const TRACKS = {
         name: "NEON DISTRICT",
         description: "Neon District V8 — varied skyscrapers, hotels and apartments, lit storefronts, traffic, bridges and waterfront highways.",
         sampleCount: 640,
-        laps: 1,
+        laps: 3,
         background: 0x050a13,
         fogNear: 340,
         fogFar: 1290,
