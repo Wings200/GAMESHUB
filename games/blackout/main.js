@@ -146,6 +146,7 @@ function popup(message,seconds=2.6){
 }
 function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
+  objectiveRound.pause(clock());
   gadgets.cancelAction();
   document.body.classList.remove("playing","ads");hud.classList.add("hidden");
   menu.classList.remove("hidden");
@@ -153,6 +154,7 @@ function showMenu(){
 }
 function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
+  objectiveRound.resume(clock());
   if(objectiveRound.phase==="ready")objectiveRound.start(clock());
   document.body.classList.add("playing");
   popup("SITE A OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
