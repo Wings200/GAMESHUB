@@ -524,7 +524,10 @@ export function createNevadaWorld({
    if(bankWouldCoverRoad(c.x,c.z,c.y,Math.floor(mid*n)%n))
     continue;
    const group=new THREE.Group();group.position.copy(c);
-   group.rotation.y=Math.atan2(dx,dz);root.add(group);
+   group.rotation.order="YXZ";
+   group.rotation.y=Math.atan2(dx,dz);
+   group.rotation.x=-Math.atan2(q.y-p.y,length);
+   root.add(group);
    const fence=new THREE.Mesh(new THREE.PlaneGeometry(length,3.45,
     Math.max(3,Math.round(length/1.3)),4),chainMeshMat);
    fence.rotation.y=Math.PI/2;fence.position.y=2.05;group.add(fence);
@@ -566,6 +569,7 @@ export function createNevadaWorld({
  const floodLights=[];
  for(const [t,side] of [[.492,-1],[.56,-1],[.645,1],[.715,1],[.78,-1]]){
   const {p}=placeFrame(t,side*20);
+  if(!clearOfRoad(p,3))continue;
   const lamp=new THREE.Group();lamp.position.copy(p);root.add(lamp);
   shape(THREE,lamp,"cylinder",0,5,0,.13,10,.13,0x7e847c);
   const box=shape(THREE,lamp,"box",0,10,0,1.8,.7,1.2,0xffd39c);
@@ -574,6 +578,8 @@ export function createNevadaWorld({
   const light=new THREE.PointLight(0xffc788,2.7,46,2);
   light.position.set(0,9.9,0);lamp.add(light);
   floodLights.push({light,box});
+  addCircleCollider(p,.28,{minY:p.y,maxY:p.y+11,
+   tag:"BLACKSITE FLOODLIGHT",drag:.60});
  }
  // Radar arrays and masts.
  for(const t of [.577,.698,.784]){
@@ -652,7 +658,12 @@ export function createNevadaWorld({
   label.rotation.y=Math.PI;label.position.y=3.0;
   shortcuts.push({from,to,offset,name});
  }
- const outpost=placeFrame(.855,47);
+ let outpost=placeFrame(.855,47);
+ for(const offset of [47,67,88,120]){
+  const candidate=placeFrame(.855,offset);
+  outpost=candidate;
+  if(clearOfRoad(candidate.p,23))break;
+ }
  const outpostGroup=new THREE.Group();outpostGroup.position.copy(outpost.p);
  outpostGroup.rotation.y=outpost.f.rotationY;root.add(outpostGroup);
  for(let i=0;i<4;i++){
