@@ -345,7 +345,10 @@ export function createNevadaWorld({
   const h=10+seeded(i+188)*23;
   const cliff=sandstoneMesa(THREE,13.4,h,i+401);
   cliff.rotation.y=f.rotationY;rock.add(cliff);
-  addBoxCollider(rock.position,12,12,f.rotationY,{minY:-3,maxY:70,tag:"CANYON CLIFF"});
+  addBoxCollider(rock.position,12,12,f.rotationY,{
+   minY:rock.position.y-.4,maxY:rock.position.y+h+2,
+   tag:"CANYON CLIFF"
+  });
  }
  // Sunset disk near horizon. Changes with deterministic ambient time, not
  // actual day/night cycles that could darken the track into invisibility.
@@ -456,6 +459,30 @@ export function createNevadaWorld({
   shape(THREE,place,"box",0,b.h/2,0,b.w,b.h,b.d,0x566168);
   shape(THREE,place,"box",0,b.h+.35,0,b.w+1,.7,b.d+1,0x343d46);
   shape(THREE,place,"box",0,b.h*.35,b.d*.501,b.w*.72,b.h*.61,.17,0x2f424d);
+  // Dimensional panels, support ribs and rooftop machinery rather than
+  // untextured rectangular blacksite buildings.
+  for(const side of [-1,1]){
+   for(let rib=0;rib<7;rib++){
+    const zz=-b.d*.44+rib*b.d*.146;
+    shape(THREE,place,"box",side*(b.w*.5+.13),
+     b.h*.55,zz,.26,b.h*.88,.24,0x77858a);
+   }
+   shape(THREE,place,"box",side*b.w*.42,b.h+.60,0,
+    .75,.54,b.d*.90,0x889397);
+   shape(THREE,place,"box",side*b.w*.29,b.h+1.18,
+    b.d*.1,4.2,1.2,5.6,0x5a666a);
+   shape(THREE,place,"box",side*b.w*.29,b.h+1.89,
+    b.d*.1,4.6,.2,5.9,0x2e373a);
+  }
+  for(let door=0;door<5;door++){
+   const x=(door-2)*b.w*.135;
+   shape(THREE,place,"box",x,b.h*.33,b.d*.514,
+    .12,b.h*.60,.26,0x91a0a1);
+  }
+  shape(THREE,place,"box",0,b.h*.64,b.d*.519,
+   b.w*.69,.18,.32,0xc6a251);
+  shape(THREE,place,"box",0,.09,b.d*.56,
+   b.w*.79,.16,b.d*.11,0x62676a);
   const tag=billboard(THREE,place,b.name,"#21323b","#ffe6aa",b.w*.7);
   tag.position.set(0,b.h*.78,b.d*.515);
   for(let i=0;i<4;i++)shape(THREE,place,"box",-b.w*.38+i*b.w*.25,
@@ -826,8 +853,11 @@ export function createNevadaWorld({
       Math.min(1,delta*5.8);
     h.bar.visible=true;
     h.mesh.children.forEach((part,i)=>{
-      if(i<4&&part.material?.color?.getHex?.()===0xff4932)
+      if(i<4&&part.material?.color?.getHex?.()===0xff4932){
        part.material.emissive?.setHex?.(0xff2417);
+       part.material.emissiveIntensity=h.open?.12:
+        (Math.sin(sec*8)>0?1.9:.25);
+      }
     });
    }else if(h.type==="dust"){
     h.mesh.rotation.y=sec*.20+h.phase;
@@ -851,7 +881,7 @@ export function createNevadaWorld({
    if(!car||!carState||!carState.velocity)continue;
    // Only collide once the actual 3D moving arm drops to car height.
    if((h.type==="gate"||h.type==="blastdoor")&&
-      h.bar.position.y>(h.type==="gate"?2.5:5.6))continue;
+      h.bar.position.y>(h.type==="gate"?2.6:5.1))continue;
    const dx=car.position.x-h.mesh.position.x,dz=car.position.z-h.mesh.position.z;
    const dist=Math.hypot(dx,dz);
    const across=dx*f.normal.x+dz*f.normal.z;
