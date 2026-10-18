@@ -690,20 +690,31 @@ export function createNevadaWorld({
  }
  const opLabel=billboard(THREE,outpostGroup,"ABANDONED OUTPOST","#43392f","#f7e1b3",15);
  opLabel.position.y=6;opLabel.rotation.y=Math.PI/2;
- // Sand gust particles: fixed small count and one shared material.
+ // 80 animated gusts in a single GPU draw call, not 80 meshes.
  const particles=[],dustMat=new THREE.MeshBasicMaterial({
-  color:0xc5aa7c,transparent:true,opacity:.3,depthWrite:false
+  color:0xc5aa7c,transparent:true,opacity:.3,depthWrite:false,
+  side:THREE.DoubleSide
  });
+ const windInstanced=new THREE.InstancedMesh(
+  new THREE.PlaneGeometry(.3,.6),dustMat,80);
+ const windDummy=new THREE.Object3D();
+ windInstanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+ root.add(windInstanced);
  for(let i=0;i<80;i++){
   const t=(i%20)/20,frame=getFrameAt(.31+t*.23);
   const side=(i%2?1:-1)*(6+seeded(i+240)*25);
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.3+seeded(i)*1.4,.6),dustMat);
-  mesh.position.copy(frame.point).addScaledVector(frame.normal,side);
-  mesh.position.y=roadsideHeight(frame,side)+1+seeded(i+333)*4;
-  mesh.rotation.y=seeded(i+84)*6;
-  root.add(mesh);
-  particles.push({mesh,base:mesh.position.clone(),phase:seeded(i+50)*TWO_PI});
+  const base=frame.point.clone().addScaledVector(frame.normal,side);
+  base.y=roadsideHeight(frame,side)+1+seeded(i+333)*4;
+  const part={base,phase:seeded(i+50)*TWO_PI,
+   rotation:seeded(i+84)*6,width:(.3+seeded(i)*1.4)/.3};
+  particles.push(part);
+  windDummy.position.copy(base);
+  windDummy.rotation.y=part.rotation;
+  windDummy.scale.set(part.width,1,1);
+  windDummy.updateMatrix();
+  windInstanced.setMatrixAt(i,windDummy.matrix);
  }
+ windInstanced.instanceMatrix.needsUpdate=true;
  // Actual moving hazards, moved from one consistent clock across clients.
  const hazards=[];
  function hazardGroup(type,t,side,radius,speedPeriod,phase=0){
@@ -767,6 +778,7 @@ export function createNevadaWorld({
   color:0xd5b48a,transparent:true,opacity:.27,depthWrite:false,
   side:THREE.DoubleSide
  });
+ const vortexDummy=new THREE.Object3D();
  for(let j=0;j<3;j++){
   const h=hazardGroup("dust",.35+j*.065,j%2?-2.2:2.2,
    10.8,12+j*3,j*.4);
@@ -781,13 +793,21 @@ export function createNevadaWorld({
    side:THREE.DoubleSide
   }));
   inner.position.y=7.9;g.add(inner);h.inner=inner;
-  h.puffs=[];
+  // Each dust devil now uses a single instanced puff mesh.
+  h.puffs=new THREE.InstancedMesh(dustPuffGeo,dustPuffMat,48);
+  h.puffs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  h.puffScales=[];
   for(let i=0;i<48;i++){
-   const puff=new THREE.Mesh(dustPuffGeo,dustPuffMat);
-   puff.scale.set(.75+seeded(i+j*70)*1.7,
+   const size=new THREE.Vector3(.75+seeded(i+j*70)*1.7,
     .55+seeded(i+j*34)*1.15,.75+seeded(i+j*70)*1.7);
-   g.add(puff);h.puffs.push(puff);
+   h.puffScales.push(size);
+   vortexDummy.position.set(0,-30,0);
+   vortexDummy.scale.copy(size);
+   vortexDummy.updateMatrix();
+   h.puffs.setMatrixAt(i,vortexDummy.matrix);
   }
+  h.puffs.instanceMatrix.needsUpdate=true;
+  g.add(h.puffs);
  }
  for(let j=0;j<2;j++){
   const h=hazardGroup("aircraft",.728+j*.036,0,8.2,23+j*11,j*.48);
@@ -835,14 +855,19 @@ export function createNevadaWorld({
    light.pivot.rotation.y=Math.sin(sec*.46+light.t*12)*1.25;
    light.beam.material.opacity=.105+.045*Math.sin(sec*2.2+light.t*40);
   }
-  for(const p of particles){
-   p.mesh.position.set(
+  for(let i=0;i<particles.length;i++){
+   const p=particles[i];
+   windDummy.position.set(
     p.base.x+Math.sin(sec*.7+p.phase)*1.8,
     p.base.y+Math.sin(sec*1.9+p.phase)*.7,
     p.base.z+Math.cos(sec*.48+p.phase)*2.1
    );
-   p.mesh.rotation.y+=delta*.7;
+   windDummy.rotation.y=p.rotation+sec*.7;
+   windDummy.scale.set(p.width,1,1);
+   windDummy.updateMatrix();
+   windInstanced.setMatrixAt(i,windDummy.matrix);
   }
+  windInstanced.instanceMatrix.needsUpdate=true;
   // Keep last frame's location to detect crossing a closed barrier at speed.
   // Teleport/respawn movement is excluded.
   const lastCar=car&&carState?active.lastCarPosition:null;
@@ -891,13 +916,17 @@ export function createNevadaWorld({
     h.shell.rotation.y=-sec*1.8;
     h.inner.rotation.y=sec*2.6;
     h.shell.material.opacity=.25+.05*Math.sin(sec*1.8+h.phase);
-    h.puffs.forEach((p,i)=>{
+    for(let i=0;i<48;i++){
      const rise=((sec*.17+i/48+h.phase)%1+1)%1;
      const a=i*2.39996+sec*(2.9-rise*1.2)+h.phase;
      const radius=1.2+rise*4.4+seeded(i+h.phase*10)*1.1;
-     p.position.set(Math.cos(a)*radius, .4+rise*15.8,
-      Math.sin(a)*radius);
-    });
+     vortexDummy.position.set(Math.cos(a)*radius,
+      .4+rise*15.8,Math.sin(a)*radius);
+     vortexDummy.scale.copy(h.puffScales[i]);
+     vortexDummy.updateMatrix();
+     h.puffs.setMatrixAt(i,vortexDummy.matrix);
+    }
+    h.puffs.instanceMatrix.needsUpdate=true;
    }else if(h.type==="aircraft"){
     h.mesh.position.addScaledVector(f.tangent,3*Math.sin(sec*.31+h.phase));
     // Rotate fuselage ACROSS the crossing instead of flying parallel
