@@ -2832,3 +2832,84 @@ select option:disabled {
   .redline-challenges-home-button{margin:13px auto}
   .redline-race-actions{flex-direction:column}
 }
+
+/* REDLINE V20 — Solo Time Trial / Personal Ghost UI. */
+.redline-time-trial-home-button{
+  grid-column:1/-1;display:block;width:100%;
+  border:1px solid rgba(76,191,242,.72);border-radius:11px;
+  background:linear-gradient(110deg,rgba(25,75,119,.9),rgba(15,37,57,.96));
+  color:#ddf8ff;padding:13px 17px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:900;letter-spacing:.065em;
+}
+.redline-time-trial-home-button:hover{border-color:#a6ebff;background:#245778}
+.redline-trial-overlay,.redline-trial-result{
+  position:fixed;inset:0;z-index:16000;display:flex;
+  align-items:center;justify-content:center;padding:16px;
+  background:rgba(3,9,18,.91);backdrop-filter:blur(7px)
+}
+.redline-trial-overlay.hidden,.redline-trial-result.hidden,.redline-trial-hud.hidden{
+  display:none!important
+}
+.redline-trial-shell{
+  width:min(930px,100%);max-height:94vh;overflow-y:auto;
+  padding:24px;background:linear-gradient(150deg,#112637,#090f1c);
+  border:1px solid rgba(122,199,239,.48);border-radius:18px;
+  color:#eaffff;box-shadow:0 24px 90px #000b
+}
+.redline-trial-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  border-bottom:1px solid #46657866;padding-bottom:12px
+}
+.redline-trial-head h2{margin:5px 0;font-size:30px}
+.redline-trial-head p{color:#bbcfda;font-size:12px;line-height:1.6}
+.redline-trial-picker{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.redline-trial-picker label{
+  display:grid;gap:7px;font-size:11px;font-weight:900;letter-spacing:.07em;
+  color:#bce0e9
+}
+.redline-trial-picker select{
+  width:100%;padding:12px 14px;border:1px solid #4d8297;
+  border-radius:8px;background:#102735;color:#ecffff;font-size:13px
+}
+.redline-trial-status{font-size:12px;min-height:18px;color:#8bdac1}
+.redline-trial-pb{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+  padding:15px;border-radius:9px;background:#102e41;color:#c2f7ff}
+.redline-trial-pb strong{font-size:13px}
+.redline-trial-pb label{font-size:11px;white-space:nowrap}
+.redline-trial-start{margin:15px 0;width:100%}
+.redline-trial-leaderboard{
+  border:1px solid #33556688;border-radius:11px;padding:13px 16px;
+  background:#101d2aec
+}
+.redline-trial-leaderboard>strong{font-size:13px;letter-spacing:.04em}
+.redline-trial-leaderboard>p{font-size:11px;line-height:1.5;color:#91b2c0}
+.redline-trial-leaderboard ol{display:grid;gap:7px;padding-left:26px;margin:12px 0 0}
+.redline-trial-leaderboard li{display:flex;justify-content:space-between;gap:12px;
+  padding:5px 0;border-bottom:1px solid #38506766;font-size:12px}
+.redline-trial-leaderboard li strong{font-variant-numeric:tabular-nums;color:#a8edff}
+.redline-trial-note{font-size:11px;line-height:1.65;color:#91adbb;margin-top:13px}
+.redline-trial-hud{
+  position:fixed;z-index:1900;top:12px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:13px;flex-wrap:wrap;
+  max-width:min(900px,95vw);border:1px solid #4e9ac5;
+  border-radius:9px;background:rgba(5,28,43,.94);
+  padding:10px 15px;color:#d5f6ff;font:750 12px system-ui,sans-serif;
+  box-shadow:0 8px 30px #0009
+}
+.redline-trial-hud strong{color:#bceaff;white-space:nowrap}
+.redline-trial-hud>span{font-variant-numeric:tabular-nums;color:#98fbd1}
+.redline-trial-hud label{white-space:nowrap;color:#c3d7e5;font-size:11px}
+.redline-trial-result-card{
+  max-width:550px;width:100%;background:linear-gradient(135deg,#10313e,#101723);
+  border:1px solid #76c7e5;border-radius:18px;padding:25px;
+  display:grid;gap:15px;text-align:center;box-shadow:0 20px 70px #000b;color:#eafbff
+}
+.redline-trial-result-card h2{font-size:26px;margin:0}
+.redline-trial-result-card>strong{font-size:20px;color:#a8f9db;font-variant-numeric:tabular-nums}
+.redline-trial-result-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.redline-trial-result-buttons>button{flex:1}
+@media(max-width:690px){
+  .redline-trial-picker{grid-template-columns:1fr}
+  .redline-trial-shell{padding:14px}
+  .redline-trial-hud{top:auto;bottom:10px;width:min(96vw,550px);justify-content:center}
+}
