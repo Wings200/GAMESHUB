@@ -134,7 +134,8 @@ export class Gadgets {
       if(sensor.armed&&r<4.75){
         sensor.armed=false;
         sensor.lastPing=now;
-        ping("PROXIMITY SENSOR TRIGGERED · MOVEMENT DETECTED");
+        // This event produces an audible three-note alarm instead of a text toast.
+        ping(null,"proximity-beep");
       }
     }
   }
