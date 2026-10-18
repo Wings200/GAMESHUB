@@ -144,6 +144,21 @@ export function createNevadaWorld({
   mountain.scale.z=.65+seeded(i+6);
   root.add(mountain);
  }
+ // Dark lakebed fractures and a salt-crust drainage field. These patches
+ // visibly match the reduced-grip zone in the car physics (t=.325-.485).
+ for(let i=0;i<46;i++){
+  const t=.326+i/46*.158,f=getFrameAt(t);
+  const offset=(seeded(i+811)-.5)*11;
+  const fracture=new THREE.Group();
+  fracture.position.copy(f.point).addScaledVector(f.normal,offset);
+  fracture.position.y+=.11;
+  fracture.rotation.y=f.rotationY+seeded(i+88)*.8;
+  root.add(fracture);
+  const length=2+seeded(i+14)*5;
+  const crack=shape(THREE,fracture,"box",0,0,0,.10,.022,length,0x433a35);
+  const branch=shape(THREE,fracture,"box",1.0,0,0,.065,.019,length*.46,0x4f4039);
+  branch.rotation.y=.6+seeded(i+40);
+ }
  // Actual multilayer strata / slot canyons alongside the winding section.
  for(let i=0;i<16;i++){
   const t=.155+i*.0091,f=getFrameAt(t),side=i%2?1:-1;
@@ -295,12 +310,28 @@ export function createNevadaWorld({
     uvs.push(w>0?1:0,k/3);
    }
    if(k>0){const j=k*2;indices.push(j-2,j-1,j,j-1,j+1,j);}
-   if(k===5||k===10){
+   const enclosed=name.includes("TUNNEL")||name.includes("CAVE");
+   if(enclosed&&k>=4&&k<=11){
+    // Eight continuous enclosed sections, with lateral wall collision.
+    const group=new THREE.Group();group.position.copy(c);
+    group.rotation.y=f.rotationY;root.add(group);
+    const length=Math.max(3.4,f.point.distanceTo(getFrameAt(
+      from+(to-from)*Math.min(steps,k+1)/steps).point)+1.1);
+    const color=name.includes("CAVE")?0x80553d:0x4c5155;
+    shape(THREE,group,"box",0,5.9,0,9.4,.8,length,color);
+    for(const side of [-1,1]){
+      shape(THREE,group,"box",side*4.6,3,0,.8,5.8,length,color);
+      const wall=c.clone().addScaledVector(f.normal,side*4.6);
+      addBoxCollider(wall,.48,length*.50,f.rotationY,{
+        minY:c.y-.1,maxY:c.y+6.1,tag:name
+      });
+    }
+   }else if(k===5||k===10){
     const arch=new THREE.Group();arch.position.copy(c);arch.rotation.y=f.rotationY;
     root.add(arch);
-    shape(THREE,arch,"box",-4,2.4,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",4,2.4,0,.8,5,.8,0x755039);
-    shape(THREE,arch,"box",0,5.05,0,9,.8,.9,0x715244);
+    shape(THREE,arch,"box",-4.2,2.5,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",4.2,2.5,0,.8,5,.8,0x755039);
+    shape(THREE,arch,"box",0,5.2,0,9,.8,.9,0x715244);
    }
   }
   const geo=new THREE.BufferGeometry();
