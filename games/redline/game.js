@@ -1661,21 +1661,32 @@ function sampleTrack() {
 */
 function neonSurfaceHeight(position) {
     if(activeTrackId!=="neon"&&activeTrackId!=="canyon") return 0;
-    // Preserve the actual height of the underground service paths and
-    // cave links. The old implementation used the MAIN road's height,
-    // so cars hovered over the downhill passage mesh.
-    if(activeTrackId==="canyon"&&nevadaSystem){
+    // Prefer the actual closest side-road segment. The old first-match
+    // loop could snap cars vertically between overlapping shortcut zones.
+    const nearest=nearestTrackInfo(position);
+    if(activeTrackId==="canyon"&&nevadaSystem&&nearest){
+        let best=null;
         for(const zone of surfaceZones){
             if(zone.startHeight===undefined||!pointInsideZone(position,zone))
                 continue;
             const x=position.x-zone.center.x,z=position.z-zone.center.z;
             const along=x*zone.tangent.x+z*zone.tangent.z;
-            const dist=Math.max(.1,zone.segmentLength);
-            const t=THREE.MathUtils.clamp((along+dist*.5)/dist,0,1);
-            return zone.startHeight*(1-t)+zone.endHeight*t;
+            const across=x*zone.normal.x+z*zone.normal.z;
+            const t=THREE.MathUtils.clamp(
+                (along+zone.segmentLength*.5)/Math.max(.1,zone.segmentLength),0,1);
+            const height=zone.startHeight*(1-t)+zone.endHeight*t;
+            const score=Math.abs(across)+
+                Math.max(0,Math.abs(along)-zone.segmentLength*.5)*2;
+            if(!best||score<best.score)best={height,score};
+        }
+        if(best){
+            const onMainRoad=nearest.distance<ROAD_HALF-.5;
+            const sideRoadCloserInHeight=
+                Math.abs(position.y-best.height)+.4<
+                Math.abs(position.y-nearest.point.y);
+            if(!onMainRoad||sideRoadCloserInHeight)return best.height;
         }
     }
-    const nearest=nearestTrackInfo(position);
     if(!nearest) return 0;
     const n=trackSamples.length;
     let bestDist=Infinity;
@@ -6130,7 +6141,7 @@ function barrierWouldBlockCrossing(
     */
     for (const sample of trackSamples) {
         if (wrappedTrackDistance(t, sample.t) < 0.035) continue;
-        if (activeTrackId === "neon" &&
+        if ((activeTrackId === "neon"||activeTrackId==="canyon") &&
             Math.abs(sample.point.y - barrierY) > 2.5) continue;
         if (flatDistance(midpoint, sample.point) < ROAD_HALF * 2 + 10) {
             return true;
@@ -7272,7 +7283,7 @@ function updateBoostPads(delta) {
             continue;
         }
         if (flatDistance(car.position, pad.position)<2.9
-            && (activeTrackId !== "neon" ||
+            && ((activeTrackId !== "neon"&&activeTrackId!=="canyon") ||
                 Math.abs(car.position.y-pad.position.y)<2.5)) {
             const forward = forwardVector();
             const forwardSpeed = carState.velocity
@@ -11112,7 +11123,8 @@ function gameLoop(now) {
                 raceActive?carState:null,showRacePopup,serverRaceStartAt);
         }catch(error){
             console.error("Nevada dynamic hazards disabled after error",error);
-            nevadaSystem=null;
+            // Preserve the terrain collision sampler if hazard animation fails.
+            nevadaSystem.update=()=>{};
         }
     }
     trafficSystem?.update(delta);
