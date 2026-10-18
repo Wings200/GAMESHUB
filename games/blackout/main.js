@@ -6,6 +6,7 @@ import {Gadgets} from "./src/gadgets.js?v=blackout-operator-objectives-05";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-operator-objectives-05";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-operator-objectives-05";
 import {ObjectiveDrill} from "./src/objective.js?v=blackout-operator-objectives-05";
+import {GameAudio} from "./src/audio.js?v=blackout-audio-plant-defuser-06";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -46,8 +47,9 @@ const debugRoot=new THREE.Group();scene.add(debugRoot);
 let last=performance.now(),frames=0,elapsed=0,fps=0;
 let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
-let gunKick=0,gunKickSide=0;
-let audioContext=null,noiseBuffer=null;
+let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
+const audio=new GameAudio();
+const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
 
 function resize(){
@@ -89,58 +91,17 @@ sightSelect.addEventListener("change",()=>setSight(sightSelect.value));
 setSight(sight);
 
 function audioReady(){
-  try {
-    if(!audioContext){
-      const C=window.AudioContext||window.webkitAudioContext;
-      if(!C)return;
-      audioContext=new C();
-      const frames=Math.floor(audioContext.sampleRate*.14);
-      noiseBuffer=audioContext.createBuffer(1,frames,audioContext.sampleRate);
-      const buf=noiseBuffer.getChannelData(0);
-      for(let i=0;i<frames;i++)buf[i]=(Math.random()*2-1)*Math.exp(-i/frames*6);
-    }
-    if(audioContext.state==="suspended")audioContext.resume().catch(()=>{});
-  }catch{}
+  audio.unlock().then(ok=>{
+    if(audioStatus)audioStatus.textContent=ok?"AUDIO ACTIVE · PROCEDURAL EFFECTS":"AUDIO BLOCKED · CHECK TAB MUTE / BROWSER";
+  });
 }
-function sound(type="fire"){
-  if(!audioContext||!noiseBuffer||audioContext.state!=="running")return;
-  const t=audioContext.currentTime;
-  const gain=audioContext.createGain(),filter=audioContext.createBiquadFilter();
-  gain.gain.setValueAtTime(type==="fire"?.16:.07,t);
-  gain.gain.exponentialRampToValueAtTime(.0001,t+(type==="fire"?.115:.085));
-  filter.type="lowpass";filter.frequency.value=type==="fire"?1800:1100;
-  const source=audioContext.createBufferSource();source.buffer=noiseBuffer;
-  source.connect(filter);filter.connect(gain);gain.connect(audioContext.destination);
-  source.start(t);source.stop(t+(type==="fire"?.13:.08));
-  if(type==="fire"){
-    const osc=audioContext.createOscillator(),bass=audioContext.createGain();
-    osc.type="triangle";osc.frequency.setValueAtTime(128,t);
-    osc.frequency.exponentialRampToValueAtTime(52,t+.09);
-    bass.gain.setValueAtTime(.10,t);bass.gain.exponentialRampToValueAtTime(.0001,t+.095);
-    osc.connect(bass);bass.connect(audioContext.destination);osc.start(t);osc.stop(t+.10);
-  }
-}
-// Three distinct short electronic notes: beep-beep-BEEP!
-// Generated as actual WebAudio sound, never written to the alert HUD.
-function proximityAlarm(){
-  if(!audioContext||audioContext.state!=="running")return;
-  const t=audioContext.currentTime;
-  for(const [offset,hz,duration,volume] of [
-    [0,720,.105,.065],
-    [.19,720,.105,.065],
-    [.40,1080,.295,.105]
-  ]){
-    const osc=audioContext.createOscillator(),gain=audioContext.createGain();
-    osc.type="square";
-    osc.frequency.setValueAtTime(hz,t+offset);
-    gain.gain.setValueAtTime(.0001,t+offset);
-    gain.gain.linearRampToValueAtTime(volume,t+offset+.008);
-    gain.gain.setValueAtTime(volume,t+offset+duration-.027);
-    gain.gain.exponentialRampToValueAtTime(.0001,t+offset+duration);
-    osc.connect(gain);gain.connect(audioContext.destination);
-    osc.start(t+offset);osc.stop(t+offset+duration+.005);
-  }
-}
+function sound(type="fire"){audio.play(type);}
+function proximityAlarm(){audio.play("proximity");}
+audioTest.addEventListener("click",async()=>{
+  const ok=await audio.unlock();
+  audioStatus.textContent=ok?"AUDIO ACTIVE · TEST SHOT PLAYED":"AUDIO BLOCKED · CHECK TAB MUTE / BROWSER";
+  if(ok){audio.play("fire");audio.play("beep");}
+});
 function popup(message,seconds=2.6){
   toast.textContent=message;toast.classList.add("shown");toastUntil=clock()+seconds*1000;
 }
@@ -158,6 +119,7 @@ function showGame(){
   if(objectiveRound.phase==="ready")objectiveRound.start(clock());
   document.body.classList.add("playing");
   popup("SITE A OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
+  sound("round-start");
 }
 async function lockMouse(){
   audioReady();
@@ -177,7 +139,7 @@ function resetSimulation(){
   world.spawn.x=0;world.spawn.z=role==="defender"?-36:19;
   world.spawn.yaw=role==="defender"?Math.PI:0;
   player.setOperator(operator);player.reset();keys.clear();
-  aimBlend=0;gunKick=0;gunKickSide=0;fireHeld=false;ads=false;
+  aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
   hitUntil=0;popup("OBJECTIVE ROUND RESET · "+operator.name);
   updateHud({sprinting:false,crouched:false,prone:false,lean:0,speed:0});
 }
@@ -227,9 +189,11 @@ document.addEventListener("keydown",e=>{
     setSight(SIGHTS[(SIGHTS.indexOf(sight)+1)%SIGHTS.length]);
     popup("SIGHT SELECTED · "+SIGHT_NAMES[sight],1.1);
   }else if(e.code==="Digit1"||e.code==="Digit2"){
-    weapons.equip(e.code==="Digit1"?"primary":"secondary");popup(weapons.current.name);
+    weapons.equip(e.code==="Digit1"?"primary":"secondary");sound("equip");popup(weapons.current.name);
   }else if(e.code==="KeyR"){
-    popup(weapons.reload(clock())?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
+    const reloading=weapons.reload(clock());
+    if(reloading)sound("reload");
+    popup(reloading?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
   }else if(e.code==="KeyZ"){
     player.toggleProne();
   }else if(e.code==="KeyG"){
@@ -238,8 +202,7 @@ document.addEventListener("keydown",e=>{
     const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
   }else if(e.code==="KeyF"){
     if(objectiveRound.canInteract(player)){
-      popup(objectiveRound.phase==="clear"?"ELIMINATE SITE SENTRIES FIRST":
-        role==="attacker"?"HOLD F TO PLANT DEFUSER":"HOLD F TO DISABLE DEFUSER",1.4);
+      popup(role==="attacker"?"HOLD F TO PLANT DEFUSER":"HOLD F TO DISABLE DEFUSER",1.4);
     }else{
       const r=gadgets.interact(camera,clock());popup(r.message);
       if(r.ok){sound("click");fireHeld=false;ads=false;}
@@ -254,7 +217,7 @@ canvas.addEventListener("mousedown",e=>{
   if(!locked||gadgets.busy)return;
   audioReady();
   if(e.button===0){fireHeld=true;fireOnce(clock());}
-  if(e.button===2)ads=true;
+  if(e.button===2){if(!ads)sound("aim");ads=true;}
 });
 window.addEventListener("mouseup",e=>{if(e.button===0)fireHeld=false;if(e.button===2)ads=false;});
 canvas.addEventListener("contextmenu",e=>e.preventDefault());
@@ -274,7 +237,7 @@ function fireOnce(now){
     if(shot.why==="empty"&&now-lastEmptyClick>600){sound("click");lastEmptyClick=now;popup("MAGAZINE EMPTY · R TO RELOAD",1);}
     return;
   }
-  sound("fire");muzzleUntil=now+48;
+  sound(shot.gun==="secondary"?"pistol":"fire");muzzleUntil=now+48;
   // Spread offsets the center ray, not the player's movement direction.
   // Hipfire is a broad random cone. ADS is zeroed through the physical
   // gun-mounted optic, i.e. both sight center and bullet use camera (0,0).
@@ -334,11 +297,13 @@ function fireOnce(now){
   }
   // Every shot pushes view upward AND introduces slight sideways climb.
   // Counteract recoil with mouse movement; model kick springs back separately.
-  const climb=shot.recoil*(ads?.83:1.18);
+  const climb=shot.recoil*(ads?.79:1.03);
   player.pitch=Math.min(1.37,player.pitch+climb);
-  player.yaw+=(Math.random()-.5)*shot.recoil*.65;
-  gunKick=Math.min(.19,gunKick+.078);
-  gunKickSide=Math.max(-.06,Math.min(.06,gunKickSide+(Math.random()-.5)*.035));
+  player.yaw+=(Math.random()-.5)*shot.recoil*.27;
+  recoilRecovery=Math.min(.085,recoilRecovery+climb*.48);
+  lastShotAt=now;
+  gunKick=Math.min(.075,gunKick+.028);
+  gunKickSide=Math.max(-.026,Math.min(.026,gunKickSide+(Math.random()-.5)*.011));
   player.applyCamera();
 }
 function updateHud(report){
@@ -366,7 +331,7 @@ function updateHud(report){
   const detail=gadgets.details;
   gadgetPrimary.textContent=`G · ${detail.g} [${gadgets.counts.g}]`;
   gadgetSecondary.textContent=`X · ${detail.x} [${gadgets.counts.x}]`;
-  gadgetInteract.textContent=role==="defender"?`F · REINFORCE [${gadgets.counts.reinforce}]`:"F · INSPECT (DEFEND ONLY)";
+  gadgetInteract.textContent=role==="attacker"?"F · HOLD TO PLANT AT SITE A":objectiveRound.phase==="planted"?"F · HOLD TO DISABLE DEFUSER":`F · REINFORCE [${gadgets.counts.reinforce}]`;
   hudRole.textContent=role.toUpperCase();
   rangeInfo.textContent=report.speed.toFixed(1)+" m/s";
   if(debug){
@@ -389,13 +354,25 @@ function frame(now){
       new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
     if(gadgets.busy){player.velX=0;player.velZ=0;}
     const report=player.update(dt,activeKeys);
+    const mark=Math.floor(player.stepClock/Math.PI);
+    if(player.moving&&!player.isProne&&report.speed>.65&&mark!==lastStepMark)
+      sound(player.sprinting?"run-step":"step");
+    lastStepMark=mark;
+    if(now-lastShotAt>140&&recoilRecovery>0){
+      const recover=Math.min(recoilRecovery,dt*.072);
+      player.pitch=Math.max(-1.37,player.pitch-recover);
+      recoilRecovery-=recover;player.applyCamera();
+    }
     if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
     if(fireHeld&&!gadgets.busy&&(weapons.slot==="primary"))fireOnce(now);
     gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
     },objectiveRound.bots);
-    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,popup);
+    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,(message,event)=>{
+      if(message)popup(message);
+      if(event)sound(event);
+    });
     reinforceBar.classList.toggle("hidden",!gadgets.busy);
     if(gadgets.busy){
       const remaining=Math.max(0,(gadgets.action.end-now)/1000);
@@ -423,10 +400,10 @@ function frame(now){
   gunModel.position.x+=(aligned.x*aimBlend+.42*(1-aimBlend)-gunModel.position.x)*blend;
   gunModel.position.y+=(aligned.y*aimBlend-.36*(1-aimBlend)-gunModel.position.y)*blend;
   gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)+gunKick*.28-gunModel.position.z)*blend;
-  gunModel.rotation.x=-gunKick*.95;
+  gunModel.rotation.x=-gunKick*.64;
   gunModel.rotation.z=gunKickSide;
-  gunKick*=Math.exp(-dt*9);
-  gunKickSide*=Math.exp(-dt*11);
+  gunKick*=Math.exp(-dt*14);
+  gunKickSide*=Math.exp(-dt*14);
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
   }
@@ -436,7 +413,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.5.0-objective-operator-recoil-lean"},
+  get build(){return "0.6.0-plant-anytime-controlled-recoil-real-defuser-audio"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
@@ -445,7 +422,7 @@ window.BLACKOUT_DEV={
   get sight(){return sight},
   get reinforcing(){return gadgets.busy},
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
-  get ads(){return ads},
+  get ads(){return ads},get audioReady(){return audio.ready},
   get operator(){return {...operator}},get health(){return player.health},
   get round(){return {role,phase:objectiveRound.phase,summary:objectiveRound.summary(clock()),bots:objectiveRound.bots.filter(b=>b.alive).length}},
   get sightOrigin(){return gunOptics.aimPosition(weapons.slot==="secondary"?.78:1)}
