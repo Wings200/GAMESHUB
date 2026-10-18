@@ -167,26 +167,44 @@ export function createNevadaWorld({
  const col=new THREE.Color();
  const baseHeight=(x,z)=>-3.8+.28*Math.sin(x*.009)*Math.cos(z*.010)
      +.24*Math.sin(x*.018+z*.012);
+ // Match the hillside to highway grade; previous roadY=31m roads fell
+ // to a -4m desert plane within only 32m, forming giant triangular walls.
+ const groundRoadSamples=trackSamples.filter((_,i)=>i%3===0);
+ const blendedBed=(x,z,frame=null,distance=null)=>{
+  let nearest=frame,dist=distance;
+  if(!nearest){
+   let ds=Infinity;
+   for(const sample of groundRoadSamples){
+    const dx=sample.point.x-x,dz=sample.point.z-z;
+    const q=dx*dx+dz*dz;
+    if(q<ds){ds=q;nearest=sample;}
+   }
+   dist=Math.sqrt(ds);
+  }
+  const valley=baseHeight(x,z);
+  const t=clamp((dist-22)/112,0,1);
+  const eased=t*t*(3-2*t);
+  const uplift=Math.max(0,nearest.point.y-valley-3.6);
+  return valley+uplift*(1-eased);
+ };
  for(let i=0;i<points.count;i++){
    const x=points.getX(i),z=points.getZ(i);
-   // Broad distant desert escarpments outside the racing basin. All
-   // gameplay roads are inside the untouched central low-elevation area.
    const outer=Math.max(0,
     (Math.abs(x+250)-900)/650,(Math.abs(z)-610)/610);
    const edge=clamp(outer,0,1);
-   const ridge=73*edge*edge*(.70+.18*Math.sin(x*.006+z*.002)
-    +.12*Math.cos(z*.010));
-   points.setY(i,baseHeight(x,z)+Math.max(0,ridge));
-   const shade=.82+.18*seeded(i+400);
+   const ridge=73*edge*edge*(.70+
+    .18*Math.sin(x*.006+z*.002)+.12*Math.cos(z*.010));
+   const h=blendedBed(x,z)+Math.max(0,ridge);
+   points.setY(i,h);
+   const shade=.85+.13*seeded(i+400);
    col.setHex(edge>.45?0x987653:
+    h>14?0x8e6851:h>5?0xa08061:
     edge>.08?0xa7815c:i%7===0?0x9f7953:0xb38d62);
    colors.push(col.r*shade,col.g*shade,col.b*shade);
  }
  points.needsUpdate=true;
  ground.setAttribute("color",new THREE.Float32BufferAttribute(colors,3));
  ground.computeVertexNormals();
- // Fine procedural gravel repeats across the desert and embankments,
- // giving the flat, featureless tan ground visible surface grain.
  const gritCanvas=document.createElement("canvas");
  gritCanvas.width=128;gritCanvas.height=128;
  const gritContext=gritCanvas.getContext("2d");
@@ -205,29 +223,19 @@ export function createNevadaWorld({
    vertexColors:true,map:desertTexture,roughness:1,side:THREE.DoubleSide
  }));
  root.add(terrain);
- // Follow an exact continuous cross-section without running triangles
- // across the asphalt. Shoulder is at 9.2m; the bank starts at 9.45m.
- // Limit the outside span to reduce ribbon self-overlaps on switchbacks.
- const bankDistances=[9.45,13.5,21,32];
+ // Six smoothly graded stations meet the raised desert terrain instead
+ // of leaving a cliff-wall wedge directly beside the highway.
+ const bankDistances=[9.45,14,24,38,52,65];
  const roadsideHeight=(frame,offset)=>{
-   const d=Math.abs(offset);
-   const p=frame.point,n=frame.normal;
+   const d=Math.abs(offset),p=frame.point,n=frame.normal;
    const x=p.x+n.x*offset,z=p.z+n.z*offset;
-   const valley=baseHeight(x,z);
    if(d<=bankDistances[0])return p.y-.12;
-   if(d<=bankDistances[1]){
-     const f=(d-bankDistances[0])/(bankDistances[1]-bankDistances[0]);
-     return p.y-.12-1.25*f;
-   }
-   if(d<=bankDistances[2]){
-     const f=(d-bankDistances[1])/(bankDistances[2]-bankDistances[1]);
-     return (p.y-1.37)*(1-f)+(p.y*.48+valley*.52)*f;
-   }
-   if(d<=bankDistances[3]){
-     const f=(d-bankDistances[2])/(bankDistances[3]-bankDistances[2]);
-     return (p.y*.48+valley*.52)*(1-f)+(valley-.05)*f;
-   }
-   return valley;
+   const bed=blendedBed(x,z,frame,d);
+   if(d>=bankDistances[bankDistances.length-1])return bed;
+   const t=clamp((d-bankDistances[0])/
+    (bankDistances[bankDistances.length-1]-bankDistances[0]),0,1);
+   const eased=t*t*(3-2*t);
+   return (p.y-.12)*(1-eased)+bed*eased;
  };
  const n=trackSamples.length;
  // Exclude big geometry from all main/secret road corridors, irrespective
