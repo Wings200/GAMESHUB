@@ -40,7 +40,8 @@ const T=new Proxy({
 },{get:(o,k)=>o[k]??Geometry});
 const step=load("throw-physics.js",{},"stepThrowable");
 const Ops=load("operators.js",{},"OPERATORS");
-const Gadgets=load("gadgets.js",{stepThrowable:step,
+const {Ordnance,SECONDARY_KITS}=load("ordnance.js",{stepThrowable:step},"{Ordnance,SECONDARY_KITS}");
+const Gadgets=load("gadgets.js",{stepThrowable:step,Ordnance,SECONDARY_KITS,
   performance:{now(){return 9000}}},"Gadgets");
 const recoilFor=load("material-ballistics.js",{},"recoilFor");
 const Weapons=load("weapons.js",{recoilFor},"Weapons");
