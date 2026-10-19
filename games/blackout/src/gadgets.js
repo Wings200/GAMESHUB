@@ -599,7 +599,7 @@ export class Gadgets {
     return {ok:true,message:"INSTALLING REINFORCEMENT · 3.0 SECONDS"};
   }
   get busy(){return !!(this.action||this.specialAction||this.ordnance.pending);}
-  get actionProgress(){return this.specialAction?.progress??this.action?.progress??(this.ordnance.pending?Math.min(1,(performance.now()-this.ordnance.pending.at)/290):0);}
+  get actionProgress(){return this.specialAction?.progress??this.action?.progress??(this.ordnance.pending?Math.min(1,(performance.now()-this.ordnance.pending.at)/(this.ordnance.pending.end-this.ordnance.pending.at)):0);}
   get currentAction(){return this.specialAction||this.action||this.ordnance.pending;}
   tick(now,player,ping,hostileBots=[]){
     this.hostiles=hostileBots;
