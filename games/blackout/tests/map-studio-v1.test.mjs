@@ -216,7 +216,8 @@ test("V2 UI supports three-dimensional move, floor scale, and redundant ceiling 
   assert.ok(html.includes('"three/addons/"'));
   assert.match(source,/new TransformControls\(camera,canvas\)/);
   assert.match(source,/scene\.add\(gizmo\.getHelper\(\)\)/);
-  assert.match(source,/gizmo\.setMode\(mode\)/);
+  assert.match(source,/gizmo\.setMode\("translate"\)/);
+  assert.match(source,/function redrawEdgeHandles\(\)/);
   assert.match(source,/gizmo\.addEventListener\("mouseUp"/);
   assert.match(source,/gizmo\.setTranslationSnap\(shiftFree\|\|map\.grid===0\?null:map\.grid\)/);
   assert.match(source,/case "r":setTransformMode\("scale"\)/);
