@@ -91,10 +91,16 @@ test("stairs rise in small legal increments, but can't teleport from bottom to u
 test("player physics climbs first staircase without teleporting",()=>{
  const {world}=make();const cam=new Node(),p=new Player(T,world,cam);
  p.reset();p.y=0;p.x=17.1;p.z=-49.9;p.yaw=Math.PI;p.applyCamera();
- for(let i=0;i<230;i++)p.update(.032,new Set(["KeyW"]));
+ const samples=[];
+ for(let i=0;i<230;i++){
+   p.update(.032,new Set(["KeyW"]));
+   samples.push({x:p.x,y:p.y,z:p.z});
+ }
  assert.ok(p.z>-37.0,"operator progressed up external stairs");
  assert.ok(p.y>3.0,"feet moved from the main floor toward upper deck");
- assert.ok(p.y<4.3,"stairs did not teleport player to rooftop");
+ assert.ok(samples.some(p=>p.y>3.9&&p.y<4.2),"operator genuinely crosses upper floor");
+ assert.ok(samples.every((v,i)=>i===0||Math.abs(v.y-samples[i-1].y)<.23),
+   "every visible frame climbs continuously without a vertical teleport");
 });
 test("multi-floor route uses exterior stairs rather than a ghost vertical jump",()=>{
  const {world}=make();
