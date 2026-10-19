@@ -6,7 +6,7 @@ import * as T from "three";
 import {TransformControls} from "three/addons/controls/TransformControls.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
   canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v1";
-import {snapNumber,applyGizmoToPiece,floorUndersideY} from "./map-editor-math.js?v=blackout-editor-v2";
+import {snapNumber,applyGizmoToPiece,floorUndersideY,magnetizeEdges} from "./map-editor-math.js?v=blackout-editor-v2";
 
 const $=id=>document.getElementById(id);
 const canvas=$("editorCanvas"),nameInput=$("mapName"),notice=$("notice");
@@ -144,9 +144,11 @@ gizmo.addEventListener("mouseUp",()=>{
   const piece=map.elements.find(x=>x.id===transformItem);
   const root=entityMeshes.get(transformItem);
   if(piece&&root){
-    const result=applyGizmoToPiece(piece,{
+    let result=applyGizmoToPiece(piece,{
       position:root.position,scale:root.scale,rotationY:piece.rotationY
     },{grid:map.grid,snap:!shiftFree});
+    if(!shiftFree&&$("edgeSnap").checked&&transformMode==="translate")
+      result=magnetizeEdges(result,map.elements);
     const before=transformStart;
     Object.assign(piece,result);
     if(before!==snapshot()){
@@ -386,7 +388,8 @@ function setTool(next){
     btn.classList.toggle("active",next===btn.dataset.piece||
       next==="bomb-"+btn.dataset.site);
   }
-  $("selectTool").classList.toggle("active",next==="select");
+  $("selectTool").classList.toggle("active",next==="select"&&transformMode==="translate");
+  $("scaleTool").classList.toggle("active",next==="select"&&transformMode==="scale");
   if(next!=="select")gizmo.detach();else attachGizmo();
   $("toolStatus").textContent=next==="select"?"SELECT / MOVE":
     next.startsWith("bomb-")?"PLACE SITE "+next.slice(5):
@@ -495,8 +498,10 @@ function setBomb(key,point){
 function placePart(point){
   beginChange();
   const step=shiftFree?0:map.grid;
-  const piece=makePiece(tool,round(point.x,step),layer,round(point.z,step));
+  let piece=makePiece(tool,round(point.x,step),layer,round(point.z,step));
   piece.rotationY=placementRotation;
+  if(!shiftFree&&$("edgeSnap").checked)
+    piece=magnetizeEdges(piece,map.elements);
   const carved=cutOpeningInWall(map.elements,piece);
   map.elements.push(piece);
   selectedId=piece.id;changed({inspector:false});updateInspector();
@@ -633,8 +638,14 @@ canvas.addEventListener("pointermove",evt=>{
     if(preview.visible){
       const spacing=evt.shiftKey?0:map.grid;
       const px=round(cursor.x,spacing),pz=round(cursor.z,spacing);
-      // Ghost preview matches the coordinates to be exported.
-      preview.position.set(px,0,pz);
+      // Visual preview uses the exact same magnetic alignment as placement.
+      let point={x:px,y:layer,z:pz};
+      if(PART_KEYS.includes(tool)&&!evt.shiftKey&&$("edgeSnap").checked){
+        const candidate=makePiece(tool,px,layer,pz,"preview");
+        candidate.rotationY=placementRotation;
+        point=magnetizeEdges(candidate,map.elements).position;
+      }
+      preview.position.set(point.x,0,point.z);
     }
   }
   if(gizmo.dragging)return;
