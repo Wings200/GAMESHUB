@@ -7,7 +7,8 @@ import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v07-facility
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v07-facility-ai-weapons";
 import {ObjectiveDrill} from "./src/objective.js?v=blackout-v07-facility-ai-weapons";
 import {GameAudio} from "./src/audio.js?v=blackout-v07-facility-ai-weapons";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v07-facility-ai-weapons";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v08-barricades-collision-performance";
+import {Barricades} from "./src/barricades.js?v=blackout-v08-barricades-collision-performance";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -27,7 +28,7 @@ const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roun
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
 const sightSelect=$("sightSelect"),reticle=$("reticle");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
-const reinforceCountdown=$("reinforceCountdown");
+const reinforceCountdown=$("reinforceCountdown"),reinforceTitle=$("reinforceTitle");
 const SIGHTS=["holo-a","holo-b","red-dot","iron"];
 const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
 let sight="holo-a";
@@ -43,6 +44,7 @@ const world=buildRange(THREE,scene);
 const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
+const barricades=new Barricades(THREE,world,scene,world.facility.openings);
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
@@ -50,6 +52,7 @@ let last=performance.now(),frames=0,elapsed=0,fps=0;
 let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
 let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
+let roundFrozen=false,lastEndFrame=0,lastHudAt=0;
 const audio=new GameAudio();
 const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
@@ -112,7 +115,7 @@ function popup(message,seconds=2.6){
 function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
   objectiveRound.pause(clock());
-  gadgets.cancelAction();
+  gadgets.cancelAction();barricades.cancel();
   document.body.classList.remove("playing","ads");hud.classList.add("hidden");
   menu.classList.remove("hidden");
   if(started){start.textContent="RESUME TESTING";status.textContent="Training paused · select a role or resume.";}
@@ -122,7 +125,7 @@ function showGame(){
   objectiveRound.resume(clock());
   if(objectiveRound.phase==="ready")objectiveRound.start(clock());
   document.body.classList.add("playing");
-  popup("SITE A OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
+  popup("SITE "+objectiveRound.siteId+" OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
   sound("round-start");
 }
 async function lockMouse(){
@@ -139,7 +142,8 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
   if(document.pointerLockElement===canvas)document.exitPointerLock();});
 
 function resetSimulation(){
-  objectiveRound.reset(role);world.reset();gadgets.reset(role);weapons.reset();weaponView.reset();
+  objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  roundFrozen=false;lastHudAt=0;lastEndFrame=0;
   world.spawn.x=role==="defender"?objectiveRound.site.x:0;
   world.spawn.z=role==="defender"?objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2):16;
   world.spawn.yaw=role==="defender"?Math.PI:0;
@@ -189,12 +193,16 @@ $("guideToggle").addEventListener("click",()=>{menuGuide=!menuGuide;guide.classL
 document.addEventListener("keydown",e=>{
   if(e.code==="F3"){e.preventDefault();debug=!debug;debugPanel.classList.toggle("hidden",!debug);return;}
   if(!locked)return;
+  if((objectiveRound.phase==="won"||objectiveRound.phase==="lost")){
+    if(e.code==="Enter"){e.preventDefault();resetSimulation();objectiveRound.start(clock());popup("NEW ROUND · SITE "+objectiveRound.siteId);}
+    return;
+  }
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
       "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","KeyV","Digit1","Digit2","Space","AltLeft","AltRight"].includes(e.code))
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
-  if(gadgets.busy)return;
+  if(gadgets.busy||barricades.busy)return;
   if(e.code==="KeyV"){
     setSight(SIGHTS[(SIGHTS.indexOf(sight)+1)%SIGHTS.length]);
     popup("SIGHT SELECTED · "+SIGHT_NAMES[sight],1.1);
@@ -206,6 +214,8 @@ document.addEventListener("keydown",e=>{
     popup(reloading?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
   }else if(e.code==="KeyZ"){
     player.toggleProne();
+  }else if(e.code==="Space"){
+    if(barricades.vault(player,clock())){sound("step");popup("WINDOW VAULT");}
   }else if(e.code==="KeyG"){
     const r=gadgets.main(camera,player,clock());popup(r.message);if(r.ok)sound("click");
   }else if(e.code==="KeyX"){
@@ -213,6 +223,9 @@ document.addEventListener("keydown",e=>{
   }else if(e.code==="KeyF"){
     if(objectiveRound.canInteract(player)){
       popup(role==="attacker"?"HOLD F TO PLANT DEFUSER":"HOLD F TO DISABLE DEFUSER",1.4);
+    }else if(barricades.nearest(player)){
+      const r=barricades.interact(player,clock());popup(r.message);
+      if(r.ok){sound("click");fireHeld=false;ads=false;}
     }else{
       const r=gadgets.interact(camera,clock());popup(r.message);
       if(r.ok){sound("click");fireHeld=false;ads=false;}
@@ -224,7 +237,7 @@ document.addEventListener("mousemove",e=>{
   if(locked&&!gadgets.busy)player.look(e.movementX||0,e.movementY||0,.0022*Number(mouseSlider.value)*(ads?.65:1));
 });
 canvas.addEventListener("mousedown",e=>{
-  if(!locked||gadgets.busy)return;
+  if(!locked||gadgets.busy||barricades.busy||["won","lost"].includes(objectiveRound.phase))return;
   audioReady();
   if(e.button===0){fireHeld=true;fireOnce(clock());}
   if(e.button===2){if(!ads)sound("aim");ads=true;}
@@ -238,7 +251,7 @@ function impact(point,color=0xffc16c,size=.08){
   obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
 }
 function fireOnce(now){
-  if(objectiveRound.phase==="won"||objectiveRound.phase==="lost"||
+  if(objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
     objectiveRound.canInteract(player)&&keys.has("KeyF"))return;
   // Do not grant laser-accurate ADS while the actual sight is still moving
   // into position. Once aligned, the 3D reticle and the shot share the ray.
@@ -268,6 +281,7 @@ function fireOnce(now){
     if(info.kind==="panel")return !info.panel.destroyed;
     if(info.kind==="target")return info.target.alive;
     if(info.kind==="bot")return info.bot.alive;
+    if(info.kind==="barricade")return !info.plank.broken;
     if(info.kind==="shield")return info.shield.group.parent!==null;
     return true;
   }),false);
@@ -287,6 +301,13 @@ function fireOnce(now){
         continue;
       }
       impact(h.point,0xc58b56);break;
+    }
+    if(info.kind==="barricade"){
+      const destroyed=barricades.hit(info.plank,shot.damage);
+      sound("impact");
+      if(destroyed)popup("BARRICADE PLANK DESTROYED",.65);
+      impact(h.point,0xbd9160,.06);
+      break;
     }
     if(info.kind==="bot"){
       const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
@@ -345,7 +366,13 @@ function updateHud(report){
   const detail=gadgets.details;
   gadgetPrimary.textContent=`G · ${detail.g} [${gadgets.counts.g}]`;
   gadgetSecondary.textContent=`X · ${detail.x} [${gadgets.counts.x}]`;
-  gadgetInteract.textContent=role==="attacker"?"F · HOLD TO PLANT AT SITE A":objectiveRound.phase==="planted"?"F · HOLD TO DISABLE DEFUSER":`F · REINFORCE [${gadgets.counts.reinforce}]`;
+  const nearbyOpening=barricades.nearest(player,2.7);
+  gadgetInteract.textContent=objectiveRound.canInteract(player)?
+    (role==="attacker"?"F · HOLD TO PLANT":"F · HOLD TO DISABLE"):
+    nearbyOpening?("F · "+(barricades.hasBarricade(nearbyOpening)?"REMOVE":"BARRICADE")+" "+
+      nearbyOpening.kind.toUpperCase()):
+    role==="defender"?`F · REINFORCE [${gadgets.counts.reinforce}]`:
+      `F · PLANT AT SITE ${objectiveRound.siteId}`;
   hudRole.textContent=role.toUpperCase();
   rangeInfo.textContent=report.speed.toFixed(1)+" m/s";
   if(debug){
