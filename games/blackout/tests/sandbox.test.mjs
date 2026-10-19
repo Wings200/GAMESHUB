@@ -52,7 +52,8 @@ const load=(name,deps,result)=>{
 };
 const facility=load("facility.js",{},"buildFacility");
 const ballistics=load("material-ballistics.js",{},"{materialStats,accumulatedBreach}");
-const switchyard=load("switchyard.js",{},
+const tacticalPanels=load("tactical-panels.js",ballistics,"createTacticalPanel");
+const switchyard=load("switchyard.js",{createTacticalPanel:tacticalPanels},
   "{createSwitchyard,SWITCHYARD_SITE_PAIRS,switchyardFloorAt}");
 const build=load("world.js",{buildFacility:facility,...ballistics,
   createSwitchyard:switchyard.createSwitchyard,
