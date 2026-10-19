@@ -1,4 +1,4 @@
-import {buildFacility} from "./facility.js?v=blackout-v100-two-site-fivevfive";
+import {buildFacility} from "./facility.js?v=blackout-v200-builder-drone-operators";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
