@@ -220,14 +220,19 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
       else if(i%4===1){kind="board";opening=east;}
       else if(spec==="smoke")kind="sensor";
       else if(i%4===2)kind="jammer";
-      if((kind==="board"||kind==="armor")&&opening)
+      if((kind==="board"||kind==="armor")&&opening){
+        // Install FROM the room the operator defends. Never barricade a
+        // door behind yourself and become permanently trapped outside.
+        const side=bot.assignedSite.id==="A"?-1:1;
         goal={x:opening.x+(opening.axis==="z"?0:opening.x<0?.85:-.85),
-          z:opening.z+(opening.axis==="z"?1.1:0)};
-      else{
+          z:opening.z+(opening.axis==="z"?side*1.12:0)};
+      }else if(kind==="jammer"){
+        // Portable Mute equipment can be installed directly at a safe
+        // operator position; don't path into the adjacent desk to set it.
+        goal={x:bot.x,z:bot.z};
+      }else{
         const loc=PREP_POSITIONS[bot.assignedSite.id]||[];
         const ordered=[loc[i%loc.length],...loc].filter(Boolean);
-        // Only pick an install location with standing clearance; the
-        // desk/cabinet's actual AABB is authoritative.
         const spot=ordered.find(p=>canStand(round,p,.44))||bot.anchor||
           bot.assignedSite;
         goal={x:spot.x,z:spot.z};
