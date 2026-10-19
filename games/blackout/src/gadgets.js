@@ -1,5 +1,5 @@
-import {stepThrowable} from "./throw-physics.js?v=blackout-v320-ballistics-breakable-walls";
-import {Ordnance,SECONDARY_KITS} from "./ordnance.js?v=blackout-v320-ballistics-breakable-walls";
+import {stepThrowable} from "./throw-physics.js?v=blackout-v330-advanced-ordnance";
+import {Ordnance,SECONDARY_KITS} from "./ordnance.js?v=blackout-v330-advanced-ordnance";
 // BLACKOUT V0.2 — role-specific gadgets tested against standalone panels.
 // Offline only; future multiplayer must validate all gadget state on server.
 export class Gadgets {
