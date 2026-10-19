@@ -28,7 +28,7 @@ export function switchyardFloorAt(x,z,footY=0){
   if(between(x,z,15.3,18.9,-35.4,-20.6))
     candidates.push(Math.max(4,Math.min(8,4+4*(z+35)/14)));
   if(between(x,z,13.6,18.9,-36.1,-34.6))candidates.push(4);
-  if(between(x,z,13.6,18.9,-21.4,-20.4))candidates.push(8);
+  if(between(x,z,13.3,18.9,-24.4,-19.5))candidates.push(8);
   // Low edge stair: allow at most 23cm step changes per frame.
   return Math.max(...candidates.filter(v=>v<=footY+.235+.012),0);
 }
@@ -147,7 +147,7 @@ export function createSwitchyard(T,scene){
   box(-14,8.65,-35.5,.5,1.3,31,steel,{solid:true});
   // East roof guardrail has a real stairwell gate at z≈-21;
   // a full-length wall here would trap everybody on the stairs.
-  box(14,8.65,-36.4,.5,1.3,29,steel,{solid:true});
+  box(14,8.65,-37.65,.5,1.3,26.5,steel,{solid:true});
   // Original open central spine provides a loop for both A and B sites.
   for(const level of [0,4]){
     // Separating wall, segmented by wide corridor opening z[-37,-33].
@@ -195,9 +195,13 @@ export function createSwitchyard(T,scene){
       box(17.1+side*1.86,base+2.1,z0+7,.15,4.1,14.2,steel,{shoot:false});
   }
   // Transition landings attach physically to the appropriate floors.
-  for(const [y,z] of [[0,-50],[4,-35.5],[8,-21]]){
-    box(15.4,y-.12,z,4,.22,2.2,steel,{shoot:true});
-    box(15.4,y+.04,z,4,.07,2.2,floor,{shoot:true});
+  for(const [y,z] of [[0,-50],[4,-35.5],[8,-21]]) {
+    // Roof access is a wide connected landing, not a 2m strip that lets
+    // a character drop 8m the moment it turns toward the bomb site.
+    const length=y===8?5.0:y===4?4.0:2.2;
+    const centerZ=y===8?-21.9:z;
+    box(15.4,y-.12,centerZ,4,.22,length,steel,{shoot:true});
+    box(15.4,y+.04,centerZ,4,.07,length,floor,{shoot:true});
   }
   // Roof apparatus with distinctive silhouette.
   // Keep mechanical rooftop units OUTSIDE both legal bomb-site floors.
