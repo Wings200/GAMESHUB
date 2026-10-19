@@ -644,6 +644,7 @@ function updateFrame(now){
     const report=alive&&!drone.active?player.update(dt,activeKeys):
       {sprinting:false,prone:false,crouched:false,lean:0,speed:0};
     if(!alive){
+      if(drone.active){drone.end();droneActionMode=false;}
       fireHeld=false;ads=false;keys.clear();
       const ally=objectiveRound.allies.find(bot=>bot.alive);
       if(ally){
