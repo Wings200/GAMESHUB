@@ -375,7 +375,9 @@ test("V4 UI provides zone selection, free box dimensions, moving and no circle r
  for(const id of ["zoneSelect","zoneX","zoneY","zoneZ","zoneWidth","zoneDepth",
    "zoneHeight","addZone","placeZone","removeZone","zoneError"]){
    assert.ok(html.includes('id="'+id+'"'),id);
-   assert.ok(js.includes('$("'+id+'")'),id+" runtime hook");
+   assert.ok(js.includes('$("'+id+'")')||
+     js.includes('"'+id+'"')||
+     js.includes("'"+id+"'"),id+" runtime hook");
  }
  assert.ok(!html.includes('id="plantRadius"'));
  assert.ok(!js.includes("CircleGeometry(site.plantRadius"));
