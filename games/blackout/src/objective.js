@@ -1,8 +1,8 @@
-import {createDefuserModel} from "./defuser-model.js?v=blackout-v310-smoke-remote-stage2";
-import {createBombStations} from "./bomb-sites.js?v=blackout-v310-smoke-remote-stage2";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v310-smoke-remote-stage2";
-import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v310-smoke-remote-stage2";
-import {operatorsForSide} from "./operators.js?v=blackout-v310-smoke-remote-stage2";
+import {createDefuserModel} from "./defuser-model.js?v=blackout-v320-ballistics-breakable-walls";
+import {createBombStations} from "./bomb-sites.js?v=blackout-v320-ballistics-breakable-walls";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v320-ballistics-breakable-walls";
+import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v320-ballistics-breakable-walls";
+import {operatorsForSide} from "./operators.js?v=blackout-v320-ballistics-breakable-walls";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
