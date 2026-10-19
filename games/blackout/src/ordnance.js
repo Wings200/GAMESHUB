@@ -1,4 +1,4 @@
-import {stepThrowable} from "./throw-physics.js?v=blackout-v320-ballistics-breakable-walls";
+import {stepThrowable} from "./throw-physics.js?v=blackout-v330-advanced-ordnance";
 // BLACKOUT V3.3: offline PvE secondary utility sandbox.
 // Shared physics; tactical blast LOS; finite ammo; shootable persistent tools.
 // These are game-world interactions, not server-authoritative multiplayer.
