@@ -1,6 +1,24 @@
 # BLACKOUT // Developer Map Studio V1
 Implemented October 19, 2026. A private Three.js map-authoring interface at `/games/blackout/dev-editor.html`, launched with **MAP STUDIO · DEV** in the BLACKOUT main menu.
 
+## V2 editor movement / snapping / floor overhaul — October 19, 2026
+The original builder could only move objects along a horizontal mouse-plane, floor sizes were hard to edit, grid snapping was always forced, and the standalone ceiling tool duplicated what an upper floor already supplies. These are fixed in V2.
+
+### Editing controls
+- **W / MOVE 3D:** Select a placed piece. Drag the red X, green Y or blue Z arrow to move on that axis, or drag a colored plane to move along two dimensions. Unlike V1, raising/lowering objects no longer requires typing an elevation.
+- **R / SCALE:** Select a wall, stair, or floor. Drag its colored handles to resize in actual 3D. Floors can expand along X/Z independently. The floor inspector includes 6×6, 10×10, 20×20 and 30×30 metre presets, plus +/- footprint buttons.
+- **Grid snap:** OFF/FREE, 0.25m, 0.5m, 1m, 2m and 4m. The visible construction grid matches the chosen spacing. **Hold Shift** temporarily for unsnapped placement or transforms, then release to restore snapping.
+- **Magnetic edge alignment:** Optional toggle aligns adjoining soft/hard/reinforced wall ends and neighboring slab edges even if the module dimensions (e.g. 3.1m vs 4m) don't land on whole-metre centres. Shift temporarily bypasses this.
+- **Fly Camera:** Toggle FLY CAMERA and navigate with WASD, Space up, C down, Shift fast; right-drag changes view direction. Turn it off to use W to switch to the piece-move tool again. The original middle-drag pan, orbit and zoom still work.
+- **Ceilings:** Every FLOOR is already a solid slab. Its top is the walking surface; its underside is the ceiling for the room below, with a darker underside material. Separate ceiling placement was removed. Old ceiling pieces in already-saved V1 maps still load; the selected floor inspector has a cleanup action to remove obsolete duplicate ceilings (requires confirmation and supports undo).
+- **Precise geometry:** Moving pieces does not round their thickness/size. Scaling preserves their Y placement and unaffected dimensions. Slab thickness stays .25m unless deliberately changed. X/Y/Z values and dimensions can still be entered directly, and transforms retain undo/redo history.
+- **Compatibility:** Export remains `blackout-editor-v1` JSON, so previously authored builds do not need conversion. Maps exported with grid 0 retain that setting on import.
+
+### Testing
+`node --test games/blackout/tests/*.test.mjs` covers free/grid snapping (including negative coordinates), moving between floors, scaling floor footprints without moving their surface or shrinking slab thickness, magnetic wall seams, and transform UI/controls. Live browser acceptance for gizmo dragging and fly camera is still needed.
+
+---
+
 ## Owner-only access
 GAMESHUB Cloudflare Pages `functions/_middleware.js` already verifies valid `gh_access` and independent, authenticated `gh_session` against the D1 users/sessions tables for ALL paths under `/games/blackout/`, including this editor and its JavaScript/CSS. Requests by non-owner accounts get HTTP 403. This is real server-side authorization, **not** an unsecured hidden button or client-only access flag. Editing does not publish files to GitHub or give the browser repository credentials.
 
