@@ -22,6 +22,16 @@ const gadgetInteract=$("gadgetInteract"),hudRole=$("hudRole"),selectedMode=$("se
 const rangeInfo=$("rangeInfo"),mouseSlider=$("mouseSlider"),mouseValue=$("mouseValue");
 const operatorSelect=$("operatorSelect"),operatorDetails=$("operatorDetails");
 const siteSelect=$("siteSelect"),roundScore=$("roundScore");
+const operatorCards=$("operatorCards"),operatorPreviewName=$("operatorPreviewName");
+const operatorPreviewDescription=$("operatorPreviewDescription"),operatorPreviewPerk=$("operatorPreviewPerk");
+const operatorPreviewIcon=$("operatorPreviewIcon"),operatorSpeed=$("operatorSpeed");
+const operatorArmor=$("operatorArmor"),operatorKit=$("operatorKit");
+const matchClock=$("matchClock"),matchScore=$("matchScore"),phaseText=$("phaseText");
+const friendlySlots=$("friendlySlots"),enemySlots=$("enemySlots");
+const phaseAnnounce=$("phaseAnnounce"),phaseAnnounceTitle=$("phaseAnnounceTitle");
+const phaseAnnounceHelp=$("phaseAnnounceHelp"),phaseAnnounceEyebrow=$("phaseAnnounceEyebrow");
+const bombArrow=$("bombArrow"),bombRange=$("bombRange"),bombGuide=$("bombGuide");
+const healthFill=$("healthFill"),matchCaption=$("matchCaption"),defuserInventory=$("defuserInventory");
 const operatorHud=$("operatorHud"),healthHud=$("healthHud");
 const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
 const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
@@ -53,7 +63,7 @@ let last=performance.now(),frames=0,elapsed=0,fps=0;
 let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
 let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
-let roundFrozen=false,lastEndFrame=0,lastHudAt=0;
+let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
 const audio=new GameAudio();
 const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
@@ -125,6 +135,7 @@ function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
   objectiveRound.resume(clock());
   if(objectiveRound.phase==="ready")objectiveRound.start(clock());
+  lastPhaseLabel="";phaseToastUntil=clock()+1500;
   document.body.classList.add("playing");
   popup("SITE "+objectiveRound.siteId+" OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
   sound("round-start");
@@ -144,10 +155,11 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
 
 function resetSimulation(){
   objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
-  roundFrozen=false;lastHudAt=0;lastEndFrame=0;
+  roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   world.spawn.x=role==="defender"?objectiveRound.site.x:0;
   world.spawn.z=role==="defender"?objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2):16;
   world.spawn.yaw=role==="defender"?Math.PI:0;
+  objectiveRound.setOperator(operator);
   player.setOperator(operator);player.reset();keys.clear();
   aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
   hitUntil=0;popup("OBJECTIVE ROUND RESET · "+operator.name+" · SITE "+objectiveRound.siteId);
@@ -160,6 +172,22 @@ function chooseOperator(id){
   player.setOperator(selected);
   operatorDetails.textContent=selected.speed+" SPEED · "+selected.armor+" ARMOR · "+selected.health+
     " HP · "+selected.walk.toFixed(2)+" m/s WALK · "+selected.sprint.toFixed(2)+" m/s SPRINT";
+  gadgets.setOperator(selected);
+  operatorPreviewName.textContent=selected.name;
+  operatorPreviewDescription.textContent=selected.description;
+  operatorPreviewPerk.textContent=selected.specialty+" // "+selected.passive;
+  operatorPreviewIcon.textContent=selected.sigil;
+  operatorPreviewIcon.style.color=selected.accent;
+  operatorSpeed.textContent="SPEED "+"●".repeat(selected.speed)+"○".repeat(3-selected.speed);
+  operatorArmor.textContent="ARMOR "+"●".repeat(selected.armor)+"○".repeat(3-selected.armor);
+  operatorKit.textContent=selected.side==="attacker"?
+    selected.kit.breach+" BREACH · "+selected.kit.scan+" RECON":
+    selected.kit.shield+" SHIELDS · "+selected.kit.sensor+" SENSORS";
+  for(const card of operatorCards.querySelectorAll("button[data-operator]")){
+    const active=card.dataset.operator===selected.id;
+    card.classList.toggle("selected",active);
+    card.setAttribute("aria-pressed",String(active));
+  }
   resetSimulation();
   status.textContent=selected.name+" READY · FIXED OPERATOR SPEED AND HEALTH";
 }
@@ -174,10 +202,28 @@ function setRole(r){
     option.textContent=spec.name+" · "+spec.speed+" SPEED / "+spec.armor+" ARMOR · "+spec.health+" HP";
     operatorSelect.appendChild(option);
   }
+  renderOperatorCards();
   chooseOperator(defaultOperator(role).id);
   status.textContent=role==="attacker"?
     "ATTACK: reach Site "+objectiveRound.siteId+", hold F while still to plant, then defend the defuser.":
     "DEFEND: hold Site "+objectiveRound.siteId+" or disable an enemy defuser.";
+}
+function renderOperatorCards(){
+  operatorCards.replaceChildren();
+  for(const spec of operatorsForSide(role)){
+    const button=document.createElement("button");
+    button.type="button";button.className="bo-operator-card";
+    button.dataset.operator=spec.id;button.style.setProperty("--op-accent",spec.accent);
+    button.setAttribute("aria-pressed",String(operator.id===spec.id));
+    const icon=document.createElement("div");icon.className="bo-operator-icon";icon.textContent=spec.sigil;
+    const title=document.createElement("strong");title.textContent=spec.name;
+    const specialty=document.createElement("span");specialty.className="bo-role";specialty.textContent=spec.specialty;
+    const speed=document.createElement("span");speed.className="bo-speed";
+    speed.textContent=spec.speed+" SPD  /  "+spec.armor+" ARM";
+    button.append(icon,title,specialty,speed);
+    button.addEventListener("click",()=>chooseOperator(spec.id));
+    operatorCards.appendChild(button);
+  }
 }
 attackButton.addEventListener("click",()=>setRole("attacker"));
 defendButton.addEventListener("click",()=>setRole("defender"));
