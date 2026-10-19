@@ -125,13 +125,15 @@ export class GameAudio{
     switch(name){
       case "fire":this.gun(false);break;
       case "pistol":this.gun(true);break;
+      case "ally-fire":
       case "enemy-fire":
-        this.noise(.08,.12,2600,"bandpass");
+        this.noise(.08,name==="ally-fire"?.10:.12,2600,"bandpass");
         this.tone(112,.11,.075,"triangle",0,55);
         break;
       case "step":
       case "run-step":
       case "enemy-step":
+      case "ally-step":
         this.noise(.07,name==="run-step"?.13:name==="enemy-step"?.105:.093,310,"lowpass");
         this.noise(.024,.043,1650,"bandpass");
         this.tone(name==="run-step"?76:60,.07,.043,"sine",0,35);
