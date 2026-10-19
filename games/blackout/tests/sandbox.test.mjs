@@ -186,6 +186,7 @@ test("SWITCHYARD and mechanics lab use separate collision and raycast lists",()=
   const labCount=w.colliders.length,labShoot=w.shootables.length;
   const labZones=Object.values(w.facility.sites).map(x=>({x:x.x,z:x.z}));
   assert.equal(w.activateMap("switchyard"),true);
+  w.barricades.configure(w.facility.openings);
   assert.equal(w.facility.mode,"switchyard");
   assert.equal(w.mapId,"switchyard");
   assert.equal(w.root.visible,false);
@@ -198,6 +199,7 @@ test("SWITCHYARD and mechanics lab use separate collision and raycast lists",()=
   const pairBounds=w.facility.sites.A.bounds;
   assert.ok(pairBounds.minX<w.facility.sites.A.x);
   assert.equal(w.activateMap("lab"),true);
+  w.barricades.configure(w.facility.openings);
   assert.equal(w.mapId,"lab");
   assert.equal(w.facility.mode,"mechanics-sandbox");
   assert.equal(w.root.visible,true);
