@@ -159,7 +159,7 @@ function maybeWorkDevice(round,bot,now,dt,notify){
   return true;
 }
 function fireAt(round,bot,target,now,notify){
-  if(now<bot.nextShot||!bot.sightCache)return;
+  if((bot.blindedUntil||0)>now||now<bot.nextShot||!bot.sightCache)return;
   bot.nextShot=now+(bot.team==="ally"?650:830)+(bot.id%4)*75+Math.random()*190;
   bot.lastShotAt=now;
   notify(null,bot.team==="ally"?"ally-fire":"enemy-fire",bot);
@@ -345,6 +345,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
         health:player.health});
     if(now>=(bot.nextSightAt||0)){
       bot.visibleTarget=null;bot.sightCache=false;
+      if((bot.blindedUntil||0)>now){bot.nextSightAt=now+200;continue;}
       targets.sort((a,b)=>distance(bot,a)-distance(bot,b));
       // Do not waste frame time raycasting across the whole compound.
       for(const target of targets){
