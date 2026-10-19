@@ -11,8 +11,28 @@ const toGrid=(x,z)=>[clamp(Math.round(x-MINX),0,WIDTH-1),
   clamp(Math.round(z-MINZ),0,HEIGHT-1)];
 const toWorld=(a,b)=>({x:MINX+a,z:MINZ+b});
 const hash=(a,b)=>b*WIDTH+a;
+// Static geometry is expensive to test thousands of times during every A*.
+// Cache a collision occupancy grid by world collision revision. A damaged
+// barricade or breached wall bumps the revision, regenerating exactly once.
+const occupancyCache=new WeakMap();
+function occupancy(world){
+  const cached=occupancyCache.get(world);
+  if(cached&&cached.revision===world.collisionRevision&&
+      cached.colliderCount===world.colliders.length)return cached.data;
+  const data=new Uint8Array(WIDTH*HEIGHT);
+  // Expand each wall collider by the bot radius and paint occupied cells.
+  // Narrow geometries still resolve through the same blocked() test.
+  for(let gz=0;gz<HEIGHT;gz++)for(let gx=0;gx<WIDTH;gx++){
+    const pos=toWorld(gx,gz);
+    data[hash(gx,gz)]=Number(blocked(world,pos.x,pos.z));
+  }
+  occupancyCache.set(world,{revision:world.collisionRevision,
+    colliderCount:world.colliders.length,data});
+  return data;
+}
 export function findTacticalPath(world,from,to){
   const [ax,az]=toGrid(from.x,from.z),[bx,bz]=toGrid(to.x,to.z);
+  const grid=occupancy(world);
   const s=hash(ax,az),g=hash(bx,bz);
   if(s===g)return [to];
   const best=new Float64Array(WIDTH*HEIGHT);best.fill(Infinity);
@@ -34,12 +54,11 @@ export function findTacticalPath(world,from,to){
       if(nx<0||nz<0||nx>=WIDTH||nz>=HEIGHT)continue;
       const nk=hash(nx,nz);
       if(closed[nk])continue;
-      const p=toWorld(nx,nz);
-      if(nk!==g&&blocked(world,p.x,p.z))continue;
+      if(nk!==g&&grid[nk])continue;
       // Don't cut around wall corners through diagonals.
       if(dx&&dz){
-        const px=toWorld(node.x+dx,node.z),pz=toWorld(node.x,node.z+dz);
-        if(blocked(world,px.x,px.z)||blocked(world,pz.x,pz.z))continue;
+        if(grid[hash(node.x+dx,node.z)]||
+           grid[hash(node.x,node.z+dz)])continue;
       }
       const cost=best[node.k]+(dx&&dz?1.414:1);
       if(cost>=best[nk])continue;
