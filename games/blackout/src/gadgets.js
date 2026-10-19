@@ -74,12 +74,32 @@ export class Gadgets {
       return {ok:true,message:"BREACH CHARGE PLANTED · DETONATING IN 1.5S"};
     }
     const forwardX=-Math.sin(player.yaw),forwardZ=-Math.cos(player.yaw);
-    const x=player.x+forwardX*2.35,z=player.z+forwardZ*2.35;
-    const collision=this.world.colliders.some(c=>x>c.minX-1.25&&x<c.maxX+1.25
-      &&z>c.minZ-1.25&&z<c.maxZ+1.25);
-    if(collision)return {ok:false,message:"SHIELD PLACEMENT BLOCKED"};
-    this.world.addShield(x,z,player.yaw);this.counts.g--;
-    return {ok:true,message:"DEPLOYABLE SHIELD PLACED · PHYSICAL COVER"};
+    // The old test used a 2.5-by-2.5 metre invisible square and never
+    // checked collider heights. It rejected wide open hallways because a
+    // nearby wall or overhead beam was inside that oversized box.
+    const halfX=Math.abs(Math.cos(player.yaw))*.90+Math.abs(Math.sin(player.yaw))*.14;
+    const halfZ=Math.abs(Math.sin(player.yaw))*.90+Math.abs(Math.cos(player.yaw))*.14;
+    const fits=(x,z)=>{
+      const margin=.045;
+      const left=x-halfX-margin,right=x+halfX+margin;
+      const back=z-halfZ-margin,front=z+halfZ+margin;
+      if(Math.hypot(x-player.x,z-player.z)<.92)return false;
+      for(const c of this.world.colliders){
+        if(c.tag==="floor-base"||c.maxY<=.09||c.minY>=1.42)continue;
+        if(right>c.minX&&left<c.maxX&&front>c.minZ&&back<c.maxZ)
+          return false;
+      }
+      return true;
+    };
+    // Search just ahead of the operator; only place in the direction faced,
+    // without jumping to another room or using a far-away fake location.
+    for(const distance of [1.38,1.62,1.90,2.15]){
+      const x=player.x+forwardX*distance,z=player.z+forwardZ*distance;
+      if(!fits(x,z))continue;
+      this.world.addShield(x,z,player.yaw);this.counts.g--;
+      return {ok:true,message:"DEPLOYABLE SHIELD PLACED · PHYSICAL COVER"};
+    }
+    return {ok:false,message:"SHIELD NEEDS 1.8M CLEAR SPACE IN FRONT · FACE OPEN FLOOR"};
   }
   secondary(camera,player,now){
     if(this.counts.x<=0)return {ok:false,message:"NO SECONDARY GADGETS REMAIN"};
@@ -144,9 +164,10 @@ export class Gadgets {
     }
     // Recon is usable in actual objective rounds: mark REAL hostile bots,
     // not just range dummies. These reusable meshes do not allocate per frame.
+    const aliveBots=scan&&this.role==="attacker"?hostileBots.filter(b=>b.alive):[];
     for(let i=0;i<this.botMarkers.length;i++){
       const marker=this.botMarkers[i];
-      const bot=hostileBots.filter(b=>b.alive)[i];
+      const bot=aliveBots[i];
       marker.visible=Boolean(scan&&this.role==="attacker"&&bot);
       if(marker.visible){
         marker.position.set(bot.x,2.54,bot.z);
