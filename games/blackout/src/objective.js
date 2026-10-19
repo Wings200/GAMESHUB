@@ -1,7 +1,7 @@
 import {createDefuserModel} from "./defuser-model.js?v=blackout-v210-tactical-ai-toggle-lean";
 import {createBombStations} from "./bomb-sites.js?v=blackout-v210-tactical-ai-toggle-lean";
 import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v210-tactical-ai-toggle-lean";
-import {updateSquadCombat} from "./squad-ai.js?v=blackout-v210-tactical-ai-toggle-lean";
+import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v210-tactical-ai-toggle-lean";
 import {operatorsForSide} from "./operators.js?v=blackout-v210-tactical-ai-toggle-lean";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
@@ -71,6 +71,7 @@ export class ObjectiveDrill{
     this.playerAlive=true;this.runoutPlayer=false;this.runoutUntil=0;
     this.runoutTarget=null;this.runoutAlly=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
     this.defuser.hide();this.prepUntil=0;this.prepFortified=false;
+    this.defuseOperatorId=null;
     this.teamIntel={ally:null,enemy:null};
     this.updateHoldRequirement();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
@@ -297,17 +298,10 @@ export class ObjectiveDrill{
       // Defensive squads actually prepare the facility rather than sitting
       // idle for 45 seconds. Leave external approaches available so neither
       // attackers nor defenders become sealed into a corner.
-      if(!this.prepFortified&&now>=this.prepUntil-24500){
-        this.prepFortified=true;
-        const system=this.world.barricades;
-        let installed=0;
-        for(const id of ["west-hall","east-hall"]){
-          const door=system?.openings?.find(o=>o.id===id);
-          if(door&&!system.hasBarricade(door)&&system.place(door))
-            installed++;
-        }
-        if(installed)notify("DEFENSE SQUAD FORTIFIED "+installed+" INTERIOR ENTRANCES");
-      }
+      // Defenders physically WALK to the setup points, play a timed
+      // installation animation and place collision-aware equipment.
+      // This runs during prep, not only during action.
+      updateDefenderPrep(this,now,dt,notify);
       if(now>=this.prepUntil)this.beginAction(now,notify);
       else return;
     }
@@ -365,6 +359,7 @@ export class ObjectiveDrill{
         if(this.role==="attacker"){
           this.chooseSite(this.holdSiteId||this.siteId);
           this.phase="planted";this.bombEnd=now+35000;this.nextBeep=now+800;
+          this.defuseOperatorId=null;
           this.plantPosition={x:player.x,z:player.z};
           this.defuser.show(player.x,player.z,35,now,this.siteId);
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
