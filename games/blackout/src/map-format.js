@@ -93,7 +93,7 @@ export function normalizeMap(raw){
     format:MAP_FORMAT,
     name:label(raw.name,80)||"UNTITLED OPERATION",
     units:"meters",
-    grid:num(raw.grid,1,.25,4),
+    grid:raw.grid===0?0:num(raw.grid,1,.25,4),
     elements,sitePairs,activeSitePair:active,
     notes:label(raw.notes,500)
   };
