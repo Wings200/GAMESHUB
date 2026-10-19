@@ -117,7 +117,12 @@ export class Gadgets {
       this.counts.g--;
       const mat=new this.THREE.MeshStandardMaterial({color:0xffb451,emissive:0xb45211,emissiveIntensity:1});
       const marker=new this.THREE.Mesh(new this.THREE.BoxGeometry(.48,.32,.16),mat);
-      marker.position.set(panel.x,(panel.y||0)+1.6,panel.z+(camera.position.z>panel.z?.24:-.24));
+      const wallAlongX=panel.axis==="x";
+      marker.position.set(
+        panel.x+(wallAlongX?(camera.position.x>panel.x?.24:-.24):0),
+        (panel.y||0)+1.6,
+        panel.z+(!wallAlongX?(camera.position.z>panel.z?.24:-.24):0));
+      marker.rotation.y=wallAlongX?Math.PI/2:0;
       this.scene.add(marker);this.charge={panel,marker,detonateAt:now+1500};
       return {ok:true,message:"BREACH CHARGE PLANTED · DETONATING IN 1.5S"};
     }
