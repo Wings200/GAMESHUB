@@ -250,10 +250,16 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false,team="enem
       this.movePhase+=dt*Math.max(0,movement)*3.5;
       const wave=Math.sin(this.movePhase)*Math.min(.55,movement*.18);
       leftLeg.rotation.x=wave;rightLeg.rotation.x=-wave;
-      leftArm.rotation.x=-wave*.45;rightArm.rotation.x=wave*.45;
+      const setup=this.state==="install-barricade"||
+        this.state==="deploy-armor"||this.state==="deploy-jammer"||
+        this.state==="place-sensor"||this.state==="throw-gas"||
+        this.state==="stim-heal"||this.state==="heartbeat-scan";
+      const phase=this.setupProgress||0;
+      leftArm.rotation.x=setup?-1.05-.4*Math.sin(now*.009+phase*4):-wave*.45;
+      rightArm.rotation.x=setup?-1.15-.4*Math.sin(now*.012+phase*3):wave*.45;
       const recoil=Math.max(0,1-(now-this.lastShotAt)/170);
-      body.rotation.x=-recoil*.055;
-      this.muzzle.visible=recoil>.7;
+      body.rotation.x=setup?.08:-recoil*.055;
+      this.muzzle.visible=!setup&&recoil>.7;
     }
   };
   // V0.9.2: Combat volumes cover the entire visible silhouette. The old
