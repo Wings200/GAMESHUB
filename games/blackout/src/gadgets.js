@@ -180,18 +180,10 @@ export class Gadgets {
           e.disabledUntil=now+13000;disabled++;
         }
       }
-      for(const gas of this.gasFields){
-      if(now>gas.end){gas.group.visible=false;continue;}
-      if(now>=gas.nextTick){
-        gas.nextTick=now+450;
-        for(const enemy of hostileBots)if(enemy.alive&&
-          Math.hypot(enemy.x-gas.x,enemy.z-gas.z)<4.0)enemy.damage(7);
-      }
-      gas.group.scale.setScalar(1+Math.min(2,(now-(gas.end-10500))/5000));
-    }
-    for(const sensor of this.sensors){
-      if(sensor.disabledUntil>now)continue;
-        if(Math.hypot(sensor.x-x,sensor.z-z)<=9){sensor.disabledUntil=now+13000;disabled++;}
+      for(const sensor of this.sensors){
+        if(Math.hypot(sensor.x-x,sensor.z-z)<=9){
+          sensor.disabledUntil=now+13000;disabled++;
+        }
       }
       return {ok:true,message:"EMP DETONATED · "+disabled+" DEVICES DISABLED"};
     }
@@ -317,7 +309,17 @@ export class Gadgets {
         marker.rotation.y=now*.0018;
       }
     }
+    for(const gas of this.gasFields){
+      if(now>gas.end){gas.group.visible=false;continue;}
+      if(now>=gas.nextTick){
+        gas.nextTick=now+450;
+        for(const enemy of hostileBots)if(enemy.alive&&
+          Math.hypot(enemy.x-gas.x,enemy.z-gas.z)<4.0)enemy.damage(7);
+      }
+      gas.group.scale.setScalar(1+Math.min(2.5,(now-(gas.end-10500))/5000));
+    }
     for(const sensor of this.sensors){
+      if((sensor.disabledUntil||0)>now)continue;
       const r=Math.hypot(player.x-sensor.x,player.z-sensor.z);
       if(r>=5.25)sensor.armed=true;
       if(sensor.armed&&r<4.75){
