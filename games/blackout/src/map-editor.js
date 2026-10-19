@@ -2,16 +2,18 @@
 // Route /games/blackout/* is developer-account-only via Cloudflare Pages D1
 // session verification in functions/_middleware.js. Never ship a client-only
 // password and never confuse local autosave with server publishing.
-import * as T from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import * as T from "three";
+import {TransformControls} from "three/addons/controls/TransformControls.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
   canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v1";
+import {snapNumber,applyGizmoToPiece,floorUndersideY} from "./map-editor-math.js?v=blackout-editor-v2";
 
 const $=id=>document.getElementById(id);
 const canvas=$("editorCanvas"),nameInput=$("mapName"),notice=$("notice");
 const STORAGE="BLACKOUT_DEV_MAP_DRAFT_V1";
 const cap=(v,a,b)=>Math.max(a,Math.min(b,v));
 const n=(v,fallback=0)=>Number.isFinite(Number(v))?Number(v):fallback;
-const round=(v,step)=>Math.round(v/step)*step;
+const round=(v,step)=>snapNumber(v,step);
 const safeName=s=>String(s||"blackout-map").toLowerCase()
   .replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,55)||"blackout-map";
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -20,6 +22,8 @@ try{const saved=localStorage.getItem(STORAGE);map=saved?normalizeMap(JSON.parse(
 catch(error){console.warn("BLACKOUT editor draft reset",error);map=createBlankMap();}
 let tool="select",siteEditing="A",selectedId=null,layer=0,placementRotation=0;
 let dragging=null,mouseMoved=false,dragStart=null,lastPoint=null;
+let transformMode="translate",shiftFree=false,transformStart=null,transformItem=null;
+let ignoreGizmoChanges=false;
 const undoStack=[],redoStack=[];
 let noticeTimeout=0,dirty=false,continuousPreview=false;
 const mat={
@@ -61,13 +65,26 @@ function setOrbit(){
     o.target.y+Math.cos(o.phi)*o.distance,
     o.target.z+Math.sin(o.phi)*Math.cos(o.theta)*o.distance);
   camera.lookAt(o.target);
+  camera.updateMatrixWorld();
 }
 setOrbit();
 const ground=new T.Mesh(new T.PlaneGeometry(650,650),
   new T.MeshStandardMaterial({color:0x152837,roughness:1,metalness:0}));
 ground.rotation.x=-Math.PI/2;ground.position.y=-.30;scene.add(ground);
-const grid=new T.GridHelper(300,300,0x446376,0x2c4657);
+let grid=new T.GridHelper(160,160,0x446376,0x2c4657);
 scene.add(grid);
+function refreshGrid(){
+  scene.remove(grid);
+  grid.geometry.dispose();grid.material.dispose();
+  const step=map.grid>0?map.grid:1;
+  const size=Math.round(160/step)*step;
+  const divisions=Math.round(size/step);
+  grid=new T.GridHelper(size,divisions,0x557b90,0x344e60);
+  grid.position.y=layer+.01;
+  scene.add(grid);
+  $("currentLayer").textContent="HEIGHT "+layer.toFixed(2)+"M"+
+    (map.grid===0?" · FREE":" · "+map.grid+"M SNAP");
+}
 const axis=new T.AxesHelper(4);
 axis.position.set(0,.012,0);scene.add(axis);
 const raycaster=new T.Raycaster(),pointer=new T.Vector2(),plane=new T.Plane(),hit=new T.Vector3();
@@ -76,7 +93,71 @@ const objectives=new T.Group();scene.add(objectives);
 const preview=new T.Group();scene.add(preview);
 preview.visible=false;
 const entityMeshes=new Map(),labels=[];
+const gizmo=new TransformControls(camera,canvas);
+gizmo.setMode("translate");gizmo.setSpace("world");gizmo.setSize(.95);
+scene.add(gizmo.getHelper());
 let outline=null;
+function updateGizmoSnap(){
+  gizmo.setTranslationSnap(shiftFree||map.grid===0?null:map.grid);
+  // Scale factor snaps are fractions of an object's width, not metres.
+  // Snap final size dimensions in metres on mouse release instead.
+  gizmo.setScaleSnap(null);
+}
+function attachGizmo(){
+  const root=entityMeshes.get(selectedId);
+  if(root)gizmo.attach(root);
+  else gizmo.detach();
+  gizmo.setMode(transformMode);
+  gizmo.setSpace("world");
+  updateGizmoSnap();
+}
+function displayGizmoMeasurements(){
+  const piece=map.elements.find(x=>x.id===selectedId);
+  const root=entityMeshes.get(selectedId);
+  if(!piece||!root)return;
+  const next=applyGizmoToPiece(piece,{
+    position:root.position,scale:root.scale,rotationY:piece.rotationY
+  },{grid:map.grid,snap:!shiftFree});
+  for(const [key,val] of Object.entries({
+    px:next.position.x,py:next.position.y,pz:next.position.z,
+    sx:next.size.x,sy:next.size.y,sz:next.size.z
+  })){
+    const input=document.querySelector('[data-field="'+key+'"]');
+    if(input&&!input.matches(":focus"))input.value=val;
+  }
+  $("selectedInfo").textContent=piece.type.toUpperCase()+
+    " · X "+next.position.x+" Y "+next.position.y+" Z "+next.position.z+
+    " · "+next.size.x+" × "+next.size.z+"M";
+}
+gizmo.addEventListener("mouseDown",()=>{
+  if(!selectedId)return;
+  transformStart=snapshot();
+  transformItem=selectedId;
+});
+gizmo.addEventListener("objectChange",()=>{
+  if(ignoreGizmoChanges)return;
+  displayGizmoMeasurements();
+  refreshOutline();
+});
+gizmo.addEventListener("mouseUp",()=>{
+  if(!transformStart||!transformItem)return;
+  const piece=map.elements.find(x=>x.id===transformItem);
+  const root=entityMeshes.get(transformItem);
+  if(piece&&root){
+    const result=applyGizmoToPiece(piece,{
+      position:root.position,scale:root.scale,rotationY:piece.rotationY
+    },{grid:map.grid,snap:!shiftFree});
+    const before=transformStart;
+    Object.assign(piece,result);
+    if(before!==snapshot()){
+      undoStack.push(before);
+      if(undoStack.length>90)undoStack.shift();
+      redoStack.length=0;
+    }
+    changed(); // Rebuilds exactly sized meshes and retains selection.
+  }
+  transformStart=null;transformItem=null;
+});
 function box(parent,w,h,d,x,y,z,material){
   const m=new T.Mesh(new T.BoxGeometry(w,h,d),material);
   m.position.set(x,y,z);parent.add(m);return m;
@@ -106,7 +187,13 @@ function makeGeometry(piece,transparent=false){
   const group=new T.Group(),{type,size:d}=piece;
   const w=d.x,h=d.y,depth=d.z;
   const material=transparent?mat.ghost:mat[type]||mat.hardWall;
-  if(type==="floor")box(group,w,h,depth,0,-h/2,0,material);
+  if(type==="floor"){
+    // A floor slab is walkable at position.y and is ALSO the ceiling
+    // of the level beneath it. Its lower face has distinct ceiling material.
+    box(group,w,h,depth,0,-h/2,0,transparent?material:[
+      mat.floor,mat.floor,mat.floor,mat.ceiling,mat.floor,mat.floor
+    ]);
+  }
   else if(type==="ceiling")box(group,w,h,depth,0,h/2,0,material);
   else if(type==="hardWall"){
     box(group,w,h,depth,0,h/2,0,material);
@@ -228,6 +315,7 @@ function renderStructures(){
   }
   updateBombMarkers();
   refreshOutline();
+  attachGizmo();
   $("objectCount").textContent=map.elements.length+" PIECES";
   updateValidation(false);
 }
@@ -299,6 +387,7 @@ function setTool(next){
       next==="bomb-"+btn.dataset.site);
   }
   $("selectTool").classList.toggle("active",next==="select");
+  if(next!=="select")gizmo.detach();else attachGizmo();
   $("toolStatus").textContent=next==="select"?"SELECT / MOVE":
     next.startsWith("bomb-")?"PLACE SITE "+next.slice(5):
     (PART_TYPES[next]?.name||next).toUpperCase();
@@ -306,6 +395,7 @@ function setTool(next){
 function selectPiece(id){
   selectedId=id;
   if(id)setTool("select");
+  attachGizmo();
   refreshOutline();
   updateInspector();
   $("selectedInfo").textContent=id?(
@@ -325,9 +415,10 @@ function updateInspector(){
     input.disabled=!piece;input.value=value??"";
   }
   $("partRotation").disabled=!piece;$("partRotation").value=piece?.rotationY??"";
+  $("floorSizeTools").hidden=piece?.type!=="floor";
   const tips={
     stairs:"Stair HEIGHT is rise, DEPTH is horizontal run. Stairs climb from local -Z to +Z. Rotate the entire flight with Q/E.",
-    floor:"Floor Y represents its walking surface. Place upper floors at Y=4m, Y=8m, etc.",
+    floor:"Floor Y is the walking surface; its underside automatically forms a ceiling below. Press R and drag a colored scale handle to resize width/depth, or use the floor presets.",
     hardWall:"Solid structural wall. Not reinforceable or breachable during matches.",
     softWall:"Breachable drywall. Can receive bullet holes or a 3-second reinforcement by defenders.",
     reinforcedWall:"Starts with steel reinforcement. Only specialized hard-breach tools can open it.",
@@ -343,6 +434,7 @@ function updateInspector(){
 function updateGlobalFields(){
   nameInput.value=map.name;$("gridStep").value=String(map.grid);
   if(!$("gridStep").value)$("gridStep").value="1";
+  refreshGrid();updateGizmoSnap();
   $("pairSelect").replaceChildren();
   for(const pair of map.sitePairs){
     const op=document.createElement("option");op.value=pair.id;
