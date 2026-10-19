@@ -93,3 +93,6 @@ dialog button{padding:11px}
 .zone-box-editor .triple input{padding:7px 4px}
 .zone-box-editor .site-actions button{font-size:9px}
 .zone-error{color:#ffb1a3;min-height:18px;line-height:1.45;font-size:10px;margin:7px 0 0}
+
+/* Exterior roof grappling/rappel elements use turquoise anchors. */
+.palette-grid [data-piece="rappelAnchor"]{border-color:#398e8f;color:#b7f7e9}
