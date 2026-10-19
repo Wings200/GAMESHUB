@@ -1,10 +1,11 @@
+import {recoilFor} from "./material-ballistics.js?v=blackout-v310-smoke-remote-stage2";
 // BLACKOUT V0.2 — independent offline weapon mechanics for test tuning.
 // Gun statistics are GAMEPLAY values; no server-authoritative combat yet.
 export const WEAPON_SPECS=Object.freeze({
   primary:{name:"CARBINE 556",category:"CARBINE",magazine:30,reserve:120,rpm:710,
-    reload:2.25,body:29,head:83,hipSpread:.18,adsSpread:0,recoil:.015,range:110},
+    reload:2.25,body:29,head:83,hipSpread:.18,adsSpread:.003,recoil:.015,range:110},
   secondary:{name:"P9 SIDEARM",category:"SIDEARM",magazine:15,reserve:60,rpm:375,
-    reload:1.55,body:42,head:110,hipSpread:.23,adsSpread:0,recoil:.023,range:75}
+    reload:1.55,body:42,head:110,hipSpread:.23,adsSpread:.005,recoil:.023,range:75}
 });
 export class Weapons {
   constructor(){
@@ -14,7 +15,7 @@ export class Weapons {
       // magically refillable magazine. Ammo remains retained in the reserve.
       this.guns[id]={...spec,ammo:spec.magazine+1,remaining:spec.reserve,
         chambered:true,reloadType:null,reloadDurationMs:0,
-        reloadingUntil:0,nextShotAt:0};
+        reloadingUntil:0,nextShotAt:0,shotSequence:0,lastFiredAt:-Infinity};
     this.slot="primary";this.shots=0;this.hits=0;this.kills=0;
   }
   get current(){return this.guns[this.slot]}
@@ -22,11 +23,15 @@ export class Weapons {
     for(const [id,spec] of Object.entries(WEAPON_SPECS)){
       Object.assign(this.guns[id],{ammo:spec.magazine+1,remaining:spec.reserve,
         chambered:true,reloadType:null,reloadDurationMs:0,
-        reloadingUntil:0,nextShotAt:0});
+        reloadingUntil:0,nextShotAt:0,shotSequence:0,lastFiredAt:-Infinity});
     }
     this.slot="primary";this.shots=this.hits=this.kills=0;
   }
-  equip(slot){if(!this.guns[slot])return false;this.slot=slot;return true;}
+  equip(slot){
+    if(!this.guns[slot])return false;
+    if(slot!==this.slot)this.guns[slot].shotSequence=0;
+    this.slot=slot;return true;
+  }
   get reloading(){return this.current.reloadingUntil>0;}
   reload(now){
     const gun=this.current;
@@ -57,6 +62,10 @@ export class Weapons {
     if(gun.ammo<=0){gun.nextShotAt=now+250;return {ok:false,why:"empty"};}
     gun.ammo--;
     gun.chambered=gun.ammo>0;
+    // Repeatable pattern so fire control is learnable, not coin-flip yaw.
+    if(now-gun.lastFiredAt>290)gun.shotSequence=0;
+    const kick=recoilFor(this.slot,gun.shotSequence++,ads);
+    gun.lastFiredAt=now;
     // Schedule the next shot from the previous weapon-cycle deadline, not
     // the timestamp of whichever animation frame finally fired this round.
     // This prevents a 710-RPM rifle from slowing noticeably at 30-60 FPS.
@@ -67,7 +76,7 @@ export class Weapons {
     this.shots++;
     const spread=ads?gun.adsSpread:gun.hipSpread;
     return {ok:true,gun:this.slot,damage:gun.body,headDamage:gun.head,
-      recoil:gun.recoil,range:gun.range,spread,ads};
+      recoil:gun.recoil,kick,range:gun.range,spread,ads};
   }
   registerHit(kill=false){this.hits++;if(kill)this.kills++;}
   get stats(){return {shots:this.shots,hits:this.hits,kills:this.kills,
