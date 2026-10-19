@@ -173,6 +173,21 @@ test("V2 XYZ gizmo moves pieces through floors and scales slab footprint precise
     position:{x:3.31,y:4.08,z:7.91},scale:{x:1.101,y:1,z:.88},rotationY:0
   },{grid:1,snap:false}).position.y,4.08,
   "Shift permits a truly free vertical translation");
+  const selectedUpperFloor={...floor,position:{x:1.25,y:4.25,z:0},size:{x:30,y:.25,z:30}};
+  const widthOnly=math.applyGizmoToPiece(selectedUpperFloor,{
+    position:{x:1.25,y:4.25,z:0},scale:{x:1.2,y:1,z:.75},rotationY:0
+  },{grid:1,snap:true,mode:"scale"});
+  assert.deepEqual(widthOnly.position,{x:1.25,y:4.25,z:0},
+    "scaling can't snap the upper floor onto a lower elevation");
+  assert.equal(widthOnly.size.y,.25,
+    "floor X/Z resize must preserve its precise ceiling slab thickness");
+  assert.equal(widthOnly.size.x,36);
+  assert.equal(widthOnly.size.z,23);
+  const moveOnly=math.applyGizmoToPiece(selectedUpperFloor,{
+    position:{x:5.08,y:8.12,z:-4.09},scale:{x:1,y:1,z:1},rotationY:0
+  },{grid:1,snap:true,mode:"translate"});
+  assert.deepEqual(moveOnly.size,{x:30,y:.25,z:30},
+    "moving a floor must never resize any dimension");
 });
 test("V2 magnetic alignment joins unequal wall modules at exact ends",()=>{
   const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
