@@ -184,11 +184,14 @@ export function buildRange(THREE,scene){
   // Aligned with target lanes behind them so through-holes are testable.
   // Five standalone wall rigs: soft material, reinforcement and
   // Thermite tests remain collision-aware without constructing a building.
-  makePanel(-12,-29);makePanel(12,-29);
+  makePanel(-12,-29);
+  const preReinforcedTestPanel=makePanel(12,-29);
   makePanel(-12,-44);makePanel(12,-44);
   // The central wall is used by AI reinforcement and penetration tests.
   makePanel(0,-37);
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
+  // One permanent hard-breach SAMPLE station, never a one-time building wall.
+  preReinforcedTestPanel.reinforce();
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
     const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=yaw;root.add(g);
@@ -222,6 +225,7 @@ export function buildRange(THREE,scene){
   function reset(){
     for(const t of targets)t.reset();
     for(const p of panels)p.reset();
+    if(facility.mode==="mechanics-sandbox")preReinforcedTestPanel.reinforce();
     for(const s of [...placed])s.remove();
   }
   return {root,colliders,shootables,targets,panels,placed,
@@ -231,5 +235,7 @@ export function buildRange(THREE,scene){
     state,
     get collisionRevision(){return state.collisionRevision;},
     set collisionRevision(v){state.collisionRevision=v;},
-    specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length,sites:2,facility:true}};
+    specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length,sites:2,
+      facility:false,mode:"mechanics-sandbox",doorFrames:10,wallStations:panels.length,
+      hardBreachSamples:1,coverProps:8}};
 }
