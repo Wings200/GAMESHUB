@@ -1,6 +1,6 @@
 // BLACKOUT V4.0: front-end flow is deliberately offline. This is NOT a network matchmaking client.
 // All operator/loadout controls continue to use main.js's existing live game selectors.
-export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,getRole}){
+export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,getRole,getGunName}){
   const screens=[...menu.querySelectorAll("[data-bo-screen]")];
   const navs=[...menu.querySelectorAll("[data-bo-nav]")];
   const queue=menu.querySelector("#boQueue");
@@ -15,6 +15,12 @@ export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,get
   function updateLoadout(){
     const operator=getOperator();
     if(ready&&operator)ready.textContent=operator.name;
+    if(getGunName){
+      const primary=menu.querySelector("#boPrimaryName");
+      const secondary=menu.querySelector("#boSecondaryName");
+      if(primary)primary.textContent=getGunName("primary");
+      if(secondary)secondary.textContent=getGunName("secondary");
+    }
     for(const button of optics){
       const selected=button.dataset.boOptic===sightSelect.value;
       button.classList.toggle("selected",selected);
@@ -69,6 +75,8 @@ export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,get
   });
   if(lock)lock.addEventListener("click",()=>navigate("loadout"));
   if(sightSelect)sightSelect.addEventListener("change",updateLoadout);
+  menu.querySelector("#primaryWeaponSelect")?.addEventListener("change",updateLoadout);
+  menu.querySelector("#secondaryWeaponSelect")?.addEventListener("change",updateLoadout);
   optics.forEach(button=>button.addEventListener("click",()=>{
     sightSelect.value=button.dataset.boOptic;
     sightSelect.dispatchEvent(new Event("change",{bubbles:true}));
