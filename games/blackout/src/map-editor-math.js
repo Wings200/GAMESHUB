@@ -85,6 +85,12 @@ export function magnetizeEdges(piece,elements,threshold=.7){
     for(const axis of ["x","z"]){
       const otherHalf=extent(other,axis,otherSwap)/2;
       const selfHalf=extent(piece,axis,swapped)/2;
+      // A wall 60 metres down the road must not magnetically influence
+      // a new wall just because its X coordinate happens to match.
+      const across=axis==="x"?"z":"x";
+      if(Math.abs(p[across]-other.position[across])>
+         (extent(piece,across,swapped)+extent(other,across,otherSwap))/2+
+         threshold)continue;
       // Both butt joints and matched ends/centres are valid connections.
       const candidates=[
         other.position[axis],
