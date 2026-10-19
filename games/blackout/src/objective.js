@@ -2,6 +2,7 @@ import {createDefuserModel} from "./defuser-model.js?v=blackout-v100-two-site-fi
 import {createBombStations} from "./bomb-sites.js?v=blackout-v100-two-site-fivevfive";
 import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v100-two-site-fivevfive";
 import {updateSquadCombat} from "./squad-ai.js?v=blackout-v100-two-site-fivevfive";
+import {operatorsForSide} from "./operators.js?v=blackout-v200-builder-drone-operators";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
@@ -82,9 +83,16 @@ export class ObjectiveDrill{
   spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
     const bot=makeTacticalBot(this.THREE,this.scene,this.world,
       ++this.botSerial,x,z,stationary,team);
+    const botSide=team==="ally"?this.role:
+      this.role==="attacker"?"defender":"attacker";
+    const roster=operatorsForSide(botSide);
+    const teammates=team==="ally"?this.allies:this.bots;
+    const taken=new Set(teammates.map(b=>b.operatorSpec?.id));
+    if(team==="ally"&&this.operator?.side===botSide)taken.add(this.operator.id);
+    bot.operatorSpec=roster.find(o=>!taken.has(o.id))||roster[0];
     bot.assignedSite=this.sites[siteId];
-    bot.anchor={x,z};bot.carrier=false;
-    (team==="ally"?this.allies:this.bots).push(bot);
+    bot.anchor={x,z};bot.carrier=false;bot.spottedUntil=0;
+    teammates.push(bot);
     return bot;
   }
   isInside(p){
@@ -129,6 +137,7 @@ export class ObjectiveDrill{
       for(const defender of this.bots){
         if(!defender.alive||this.isInside(defender))continue;
         defender.runoutUntil=now+2300;
+        defender.spottedUntil=now+4500;
         this.runoutTarget=defender;
         for(const ally of this.allies)if(ally.alive){
           ally.hearing={x:defender.x,z:defender.z};
