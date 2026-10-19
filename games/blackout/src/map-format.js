@@ -2,7 +2,7 @@
 // All coordinates are in metres, Y is height. A/B are paired bomb sites.
 export const MAP_FORMAT="blackout-editor-v1";
 export const PART_TYPES=Object.freeze({
-  floor:{name:"Floor / slab",size:[8,.28,8],color:0x566776},
+  floor:{name:"Floor / slab",size:[8,.25,8],color:0x566776},
   ceiling:{name:"Ceiling",size:[8,.25,8],color:0x3d4c5b},
   hardWall:{name:"Hard wall",size:[4,3.75,.25],color:0x68747e},
   softWall:{name:"Soft / reinforceable wall",size:[4,3.75,.25],color:0xb6a28d},
