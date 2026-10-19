@@ -96,7 +96,7 @@ export function buildFacility(T,scene,world){
   }
   // Middle dividing walls with openings at -45 and -29. Split corridors
   // into site rooms without ever sealing either bomb room off.
-  for(const [z1,z2] of [[-53,-47],[-43,-37],[-37,-31],[-27,-19]])
+  for(const [z1,z2] of [[-50.5,-47],[-43,-37],[-37,-31],[-27,-21]])
     wall(0,(z1+z2)/2,.30,z2-z1);
   for(const z of [-45,-29]){
     box(0,3.24,z,.38,.60,4,metal,true,"lintel");
