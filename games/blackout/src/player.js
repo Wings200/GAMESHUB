@@ -50,7 +50,7 @@ export class FirstPersonController{
   toggleProne(){this.proneWanted=!this.proneWanted;}
   startVault(x,z){
     if(this.vault||this.isProne||this.health<=0)return false;
-    const y=this.world.floorAt(x,z);
+    const y=this.world.floorAt(x,z,this.y);
     if(this.blocked(x,z,y,PLAYER_DIMENSIONS.stand))return false;
     this.vault={fromX:this.x,fromZ:this.z,fromY:this.y,
       toX:x,toZ:z,toY:y,elapsed:0,duration:.64};
@@ -84,7 +84,7 @@ export class FirstPersonController{
   moveAxis(dx,dz){
     if(dx===0 && dz===0)return;
     const nx=this.x+dx,nz=this.z+dz;
-    const floor=this.world.floorAt(nx,nz);
+    const floor=this.world.floorAt(nx,nz,this.y);
     if(floor > this.y+PLAYER_DIMENSIONS.stepHeight)return;
     if(this.blocked(nx,nz,Math.max(this.y,floor),this.height))return;
     this.x=nx;this.z=nz;
@@ -106,7 +106,7 @@ export class FirstPersonController{
       this.velX=0;this.velZ=0;this.velY=0;
       this.applyCamera();
       if(p>=1){this.vault=null;this.vaultArc=0;this.applyCamera();}
-      return {room:this.world.zoneAt(this.x,this.z),crouched:false,
+      return {room:this.world.zoneAt(this.x,this.z,this.y),crouched:false,
         prone:false,sprinting:false,slow:false,lean:this.lean,speed:0,
         vaulting:!!this.vault,groundY:this.y,position:[this.x,this.y,this.z]};
     }
@@ -142,7 +142,7 @@ export class FirstPersonController{
       this.moveAxis(dx/steps,0);
       this.moveAxis(0,dz/steps);
     }
-    const floor=this.world.floorAt(this.x,this.z);
+    const floor=this.world.floorAt(this.x,this.z,this.y);
     this.velY=Math.max(-19,this.velY-23*d);
     this.y+=this.velY*d;
     if(this.y<=floor+.008){this.y=floor;this.velY=0;}
