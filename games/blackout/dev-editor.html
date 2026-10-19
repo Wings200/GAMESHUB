@@ -74,7 +74,8 @@
         <label>GRID SNAP (METRES)
           <select id="gridStep"><option value="0">OFF / FREE</option><option value=".25">0.25</option><option value=".5">0.5</option><option value="1" selected>1.0</option><option value="2">2.0</option><option value="4">4.0</option></select>
         </label>
-        <p class="hint">Grid aligns to world coordinates. Hold SHIFT to temporarily move or place without snapping.</p>
+        <label class="edge-snap-setting"><input type="checkbox" id="edgeSnap" checked> MAGNETIC WALL / FLOOR EDGES</label>
+        <p class="hint">Grid aligns to world coordinates; nearby compatible wall/floor edges snap flush. Hold SHIFT to temporarily bypass both snapping systems.</p>
         <p class="hint">An upstairs FLOOR is also the solid ceiling of the room below it. No second ceiling slab needed.</p>
       </section>
       <div class="left-footer"><span>PRIVATE DEVELOPMENT BUILD</span><small>Protected by GAMESHUB's server-side BLACKOUT owner access. Drafts stay in this browser until exported.</small></div>
