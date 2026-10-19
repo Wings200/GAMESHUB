@@ -321,7 +321,8 @@ function fireOnce(now){
   }
 }
 function fireOnceSafe(now){
-  if(player.health<=0||objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
+  if(player.health<=0||role==="attacker"&&objectiveRound.phase==="prep"||
+    objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
     objectiveRound.canInteract(player)&&keys.has("KeyF"))return;
   // Do not grant laser-accurate ADS while the actual sight is still moving
   // into position. Once aligned, the 3D reticle and the shot share the ray.
@@ -561,6 +562,7 @@ function updateFrame(now){
       new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
     if(gadgets.busy||barricades.busy){player.velX=0;player.velZ=0;}
     const alive=player.health>0;
+    const beforeMove={x:player.x,z:player.z};
     const report=alive?player.update(dt,activeKeys):
       {sprinting:false,prone:false,crouched:false,lean:0,speed:0};
     if(!alive){
@@ -570,6 +572,14 @@ function updateFrame(now){
         camera.position.set(ally.x,1.96,ally.z+1.05);
         camera.rotation.set(-.045,ally.group.rotation.y,0,"YXZ");
       }
+    }
+    // Attackers cannot enter the building or kill stationary defenders
+    // before the round clock starts; insertion is an actual locked phase.
+    if(alive&&role==="attacker"&&objectiveRound.phase==="prep"&&
+       objectiveRound.isInside(player)){
+      player.x=beforeMove.x;player.z=beforeMove.z;
+      player.velX=0;player.velZ=0;
+      player.applyCamera();
     }
     // Preparation lockdown applies to defenders, not a permanent invisible
     // wall. Player remains inside the building, regardless of open doors.
