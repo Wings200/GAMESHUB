@@ -1,5 +1,5 @@
-import {createDefuserModel} from "./defuser-model.js?v=blackout-v093-shield-ai-routing";
-import {createBombStations} from "./bomb-sites.js?v=blackout-v093-shield-ai-routing";
+import {createDefuserModel} from "./defuser-model.js?v=blackout-v100-two-site-fivevfive";
+import {createBombStations} from "./bomb-sites.js?v=blackout-v100-two-site-fivevfive";
 import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v100-two-site-fivevfive";
 import {updateSquadCombat} from "./squad-ai.js?v=blackout-v100-two-site-fivevfive";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
