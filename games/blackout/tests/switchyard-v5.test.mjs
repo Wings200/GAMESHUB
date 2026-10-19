@@ -215,7 +215,7 @@ test("real barricades install on matching floor and rebuild cleanly",()=>{
  const ground=boards.openings.find(o=>o.y===0&&o.kind==="door");
  assert.ok(upper&&ground);
  const player={
-   x:upper.x,z:upper.z+1.2,y:4,yaw:0,
+   x:upper.x+1.2,z:upper.z,y:4,yaw:Math.PI/2,
    blocked:()=>false
  };
  assert.equal(boards.nearest(player)?.id,upper.id,"floor height selects upper frame");
