@@ -1,5 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v500-switchyard";
+import {buildRange} from "./src/world.js?v=blackout-v501-switchyard";
 import {FirstPersonController} from "./src/player.js?v=blackout-v500-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
@@ -10,7 +10,7 @@ import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
-import {createReconDrone} from "./src/drone.js?v=blackout-v411-ai-drone-fix";
+import {createReconDrone} from "./src/drone.js?v=blackout-v501-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
