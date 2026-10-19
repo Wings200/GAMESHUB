@@ -15,22 +15,26 @@ export const snapPoint=(point,grid)=>{
     z:snapNumber(point.z,grid)
   };
 };
-export function applyGizmoToPiece(piece,transform,{grid=0,snap=true}={}){
+export function applyGizmoToPiece(piece,transform,{grid=0,snap=true,mode="both"}={}){
   const step=snap?grid:0;
   const signedRotation=Number(transform.rotationY);
   const scale=transform.scale||{x:1,y:1,z:1};
+  // Translating must NEVER secretly resize a .25m wall slab into a 1m slab;
+  // resizing must NEVER shift an upper floor down to the nearest whole metre.
+  const move=mode==="translate"||mode==="both";
+  const resize=mode==="scale"||mode==="both";
   const next={
     ...piece,
-    position:{
+    position:move?{
       x:snapNumber(transform.position.x,step),
       y:snapNumber(transform.position.y,step),
       z:snapNumber(transform.position.z,step)
-    },
-    size:{
+    }:{...piece.position},
+    size:resize?{
       x:Math.max(.15,snapNumber(piece.size.x*Math.abs(scale.x),step)),
       y:Math.max(.12,snapNumber(piece.size.y*Math.abs(scale.y),step)),
       z:Math.max(.12,snapNumber(piece.size.z*Math.abs(scale.z),step))
-    },
+    }:{...piece.size},
     rotationY:Number.isFinite(signedRotation)?signedRotation:piece.rotationY
   };
   next.position.x=Math.max(-300,Math.min(300,next.position.x));
