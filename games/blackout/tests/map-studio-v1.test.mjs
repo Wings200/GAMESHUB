@@ -135,3 +135,79 @@ test("placing barricadable door or window actually cuts a real wall opening",()=
   assert.equal(model.cutOpeningInWall(upper,{...window,position:{x:0,y:0,z:-10}}),false,
     "ground-floor window cannot cut an upstairs wall");
 });
+
+test("V2 coordinate snap honors exact quarter metres, negative positions and FREE mode",()=>{
+  const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
+    ";return {snapNumber,snapPoint,applyGizmoToPiece,floorUndersideY,magnetizeEdges}")();
+  assert.equal(math.snapNumber(3.11,.25),3);
+  assert.equal(math.snapNumber(3.14,.25),3.25);
+  assert.equal(math.snapNumber(-3.14,.25),-3.25);
+  assert.equal(math.snapNumber(8.625,0),8.625);
+  assert.equal(math.snapNumber(-4.08,0),-4.08);
+  assert.equal(math.snapNumber(4.8,1),5);
+  assert.equal(math.snapNumber(4.8,.5),5);
+  assert.deepEqual(math.snapPoint({x:1.12,y:4.23,z:-1.13},.25),
+    {x:1,y:4.25,z:-1.25});
+  const exportable=model.createBlankMap();
+  exportable.grid=0;
+  assert.equal(model.normalizeMap(exportable).grid,0,
+    "OFF setting must not be silently changed to .25m on export/import");
+});
+test("V2 XYZ gizmo moves pieces through floors and scales slab footprint precisely",()=>{
+  const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
+    ";return {snapNumber,snapPoint,applyGizmoToPiece,floorUndersideY,magnetizeEdges}")();
+  const floor=model.makePiece("floor",0,0,0,"foundation");
+  floor.size={x:30,y:.25,z:30};
+  const moved=math.applyGizmoToPiece(floor,{
+    position:{x:10.1,y:8.1,z:-12.1},scale:{x:1.5,y:1,z:.5},rotationY:0
+  },{grid:.25,snap:true});
+  assert.deepEqual(moved.position,{x:10,y:8,z:-12});
+  assert.deepEqual(moved.size,{x:45,y:.25,z:15});
+  assert.equal(math.floorUndersideY(moved),7.75,
+    "slab bottom naturally becomes the ceiling of room underneath");
+  assert.deepEqual(floor.position,{x:0,y:0,z:0},
+    "source model is not silently mutated before undo snapshot");
+  assert.equal(math.applyGizmoToPiece(floor,{
+    position:{x:3.31,y:4.08,z:7.91},scale:{x:1.101,y:1,z:.88},rotationY:0
+  },{grid:1,snap:false}).position.y,4.08,
+  "Shift permits a truly free vertical translation");
+});
+test("V2 magnetic alignment joins unequal wall modules at exact ends",()=>{
+  const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
+    ";return {magnetizeEdges}")();
+  const existing=model.makePiece("hardWall",0,4,-8,"existing");
+  existing.size.x=4;
+  const incoming=model.makePiece("softWall",3.54,4,-8,"incoming");
+  incoming.size.x=3.1;
+  const snapped=math.magnetizeEdges(incoming,[existing]);
+  assert.equal(snapped.position.x,3.55,"2m + 1.55m centers must align");
+  assert.equal(snapped.position.z,-8);
+  assert.equal(incoming.position.x,3.54,"snap must preserve unedited source");
+  const unrelated=model.makePiece("softWall",20,8,20,"other");
+  assert.equal(math.magnetizeEdges(unrelated,[existing]).position.x,20,
+    "different floor must not magnetize");
+});
+test("V2 UI supports three-dimensional move, floor scale, and redundant ceiling removal",()=>{
+  const html=read("dev-editor.html"),source=read("src/map-editor.js");
+  for(const id of ["selectTool","scaleTool","edgeSnap","floorSizeTools",
+    "floorExpand","floorShrink","removeLegacyCeilings"])
+    assert.ok(html.includes('id="'+id+'"'),"missing V2 control "+id);
+  assert.match(html,/<option value="0">OFF \/ FREE/);
+  assert.ok(!html.includes('data-piece="ceiling"'),
+    "ceilings should no longer be an unnecessary building piece");
+  assert.ok(html.includes('type="importmap"'));
+  assert.ok(html.includes('"three/addons/"'));
+  assert.match(source,/new TransformControls\(camera,canvas\)/);
+  assert.match(source,/scene\.add\(gizmo\.getHelper\(\)\)/);
+  assert.match(source,/gizmo\.setMode\(mode\)/);
+  assert.match(source,/gizmo\.addEventListener\("mouseUp"/);
+  assert.match(source,/gizmo\.setTranslationSnap\(shiftFree\|\|map\.grid===0\?null:map\.grid\)/);
+  assert.match(source,/case "r":setTransformMode\("scale"\)/);
+  assert.match(source,/case "w":case "v":setTransformMode\("translate"\)/);
+  assert.match(source,/type==="floor"[\s\S]*mat\.floor,mat\.floor,mat\.floor,mat\.ceiling/);
+  assert.match(source,/floor\.size|piece\.size\.x=cap\(size\.x/);
+  assert.match(source,/magnetizeEdges/);
+  assert.match(source,/removeLegacyCeilings/);
+  const asFunction=source.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"");
+  assert.doesNotThrow(()=>new Function(asFunction));
+});
