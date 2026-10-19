@@ -3,6 +3,7 @@ import {createBombStations} from "./bomb-sites.js?v=blackout-v330-advanced-ordna
 import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v330-advanced-ordnance";
 import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v411-ai-drone-fix";
 import {operatorsForSide} from "./operators.js?v=blackout-v330-advanced-ordnance";
+import {ATTACK_SQUAD_SPAWNS,ENEMY_ATTACK_SPAWNS} from "./spawn-rules.js?v=blackout-v420-ai-rotations";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
@@ -73,6 +74,7 @@ export class ObjectiveDrill{
     this.defuser.hide();this.prepUntil=0;this.prepFortified=false;
     this.defuseOperatorId=null;
     this.teamIntel={ally:null,enemy:null};
+    this.stagedAttackers=[];this.prepAttackersDeployed=false;
     this.updateHoldRequirement();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
   }
@@ -206,11 +208,13 @@ export class ObjectiveDrill{
     // Each side fields FIVE operators: human plus 4 active squad bots
     // versus 5 hostile bots. Friendly defenders prepare inside the facility.
     if(this.role==="attacker"){
-      for(const [i,p] of [
-        [-7,12,"A"],[7,13,"B"],[-13,-40,"A"],[13,-27,"B"]
-      ].entries()){
-        const [x,z,site]=p;this.spawnBot(x,z,false,"ally",site);
-      }
+      // Preparation is drone-only for attackers: NO operator bodies,
+      // collision meshes or bot hitboxes exist until action starts.
+      // Keep display-only roster data for UI; it cannot be shot or spotted.
+      const roster=operatorsForSide("attacker").filter(o=>o.id!==this.operator?.id);
+      this.stagedAttackers=ATTACK_SQUAD_SPAWNS.map((p,i)=>({
+        ...p,operatorSpec:roster[i%roster.length],team:"ally",staged:true
+      }));
       for(const [x,z,site] of [
         [-7,-48,"A"],[-4,-41,"A"],[7,-33,"B"],
         [5,-24.6,"B"],[-6,-28,"B"]
@@ -226,17 +230,22 @@ export class ObjectiveDrill{
     this.actionStartedAt=now;
     this.phase=this.role==="attacker"?"attack":"guard";
     this.deadline=now+145000;
-    if(this.role==="defender"){
-      // Five enemy attackers use south, southwest, southeast, west and east
-      // approaches. Two flank the outer entrances instead of rushing mid.
-      for(const [i,[x,z,site]] of [
-        [0,12,"A"],[-7,14,"A"],[7,13,"B"],
-        [-13,-40,"A"],[13,-27,"B"]
-      ].entries()){
-        const bot=this.spawnBot(x,z,false,"enemy",site);
-        bot.carrier=i===2;bot.nextShot=now+950+i*180;
+    if(this.role==="attacker"){
+      // Materialize attacker operators only now; nothing can be spawn
+      // peeked during setup, even by an AI defender or reconnaissance drone.
+      for(const position of this.stagedAttackers){
+        const bot=this.spawnBot(position.x,position.z,false,"ally",position.site);
+        bot.nextShot=now+850+(bot.id%4)*170;
       }
-      // Allies begin their own rotations only after the action phase.
+      this.stagedAttackers=[];
+      this.prepAttackersDeployed=true;
+    }else{
+      for(const [i,p] of ENEMY_ATTACK_SPAWNS.entries()){
+        const bot=this.spawnBot(p.x,p.z,false,"enemy",p.site);
+        bot.carrier=i===2;
+        bot.nextShot=now+850+i*170;
+      }
+      this.prepAttackersDeployed=true;
       for(const ally of this.allies)ally.stationary=false;
     }
     notify("ACTION PHASE · "+(this.role==="attacker"?
