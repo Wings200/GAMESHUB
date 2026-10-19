@@ -39,6 +39,8 @@ const runoutAlert=$("runoutAlert"),runoutAlertTitle=$("runoutAlertTitle");
 const runoutAlertInfo=$("runoutAlertInfo"),spectatorAlert=$("spectatorAlert");
 const healthFill=$("healthFill"),matchCaption=$("matchCaption"),defuserInventory=$("defuserInventory");
 const spawnSelect=$("spawnSelect"),droneOverlay=$("droneOverlay"),droneSignal=$("droneSignal");
+const mapSelect=$("mapSelect"),sitePairSelect=$("sitePairSelect"),
+  mapLabel=$("boSelectedMapLabel");
 const teamPopulation=$("teamPopulation");
 const attackAlive=$("attackAlive"),defendAlive=$("defendAlive");
 const operatorHud=$("operatorHud"),healthHud=$("healthHud");
@@ -231,6 +233,7 @@ function resetSimulation(){
   world.spawn.z=role==="defender"?
     objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2):attackerSpawn.z;
   world.spawn.yaw=role==="defender"?Math.PI:0;
+  world.spawn.y=role==="defender"?(objectiveRound.site.y||0):0;
   objectiveRound.setOperator(operator);
   player.setOperator(operator);player.reset();keys.clear();
   aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
@@ -316,6 +319,47 @@ function renderOperatorCards(){
     operatorCards.appendChild(button);
   }
 }
+function syncSiteChoice(){
+  const map=world.mapId;
+  mapSelect.value=map;
+  sitePairSelect.disabled=map!=="switchyard";
+  if(map==="switchyard")sitePairSelect.value=world.sitePairId;
+  mapLabel.textContent=map==="switchyard"?"SWITCHYARD · 3 FLOORS":"MECHANICS LAB";
+  const a=world.facility.sites.A,b=world.facility.sites.B;
+  siteSelect.replaceChildren();
+  for(const site of [a,b]){
+    const opt=document.createElement("option");
+    opt.value=site.id;opt.textContent="SITE "+site.id+" · "+site.name+
+      (map==="switchyard"?" / "+Math.round(site.y||0)+"M":"");
+    siteSelect.appendChild(opt);
+  }
+  siteSelect.value=objectiveRound.siteId;
+}
+function applyMap(next){
+  // Remove every old round actor BEFORE changing collision and raycast lists.
+  objectiveRound.reset(role);
+  drone.reset();gadgets.reset(role);barricades.reset(role);world.reset();
+  world.activateMap(next);
+  if(world.mapId==="switchyard")world.setSitePair(sitePairSelect.value||"operations");
+  objectiveRound.refreshMap();
+  syncSiteChoice();
+  setRole(role);
+  status.textContent=(world.mapId==="switchyard"?
+    "SWITCHYARD ACTIVE · 3 FLOORS / STAIRWELLS":"MECHANICS LAB ACTIVE")+
+    " · LOCAL TRAINING";
+}
+mapSelect.addEventListener("change",()=>applyMap(mapSelect.value));
+sitePairSelect.addEventListener("change",()=>{
+  if(world.mapId!=="switchyard")return;
+  objectiveRound.reset(role);
+  drone.reset();gadgets.reset(role);barricades.reset(role);
+  if(world.setSitePair(sitePairSelect.value)){
+    objectiveRound.refreshMap();
+    syncSiteChoice();
+    resetSimulation();
+    status.textContent="SITE PAIR LOCKED · "+sitePairSelect.selectedOptions[0]?.textContent;
+  }
+});
 attackButton.addEventListener("click",()=>setRole("attacker"));
 defendButton.addEventListener("click",()=>setRole("defender"));
 reset.addEventListener("click",()=>{resetSimulation();status.textContent="All targets and ammo reset.";});
@@ -717,7 +761,7 @@ function drawTacticalHud(now){
 function updateHud(report){
   drawTacticalHud(clock());
   zoneLabel.textContent=role==="attacker"&&objectiveRound.phase==="prep"?
-    "ATTACK TEAM · AWAITING INSERTION":world.zoneAt(player.x,player.z).toUpperCase();
+    "ATTACK TEAM · AWAITING INSERTION":world.zoneAt(player.x,player.z,player.y).toUpperCase();
   const allies=objectiveRound.allies.filter(b=>b.alive);
   const attacking=role==="attacker";
   const stateCounts={};
@@ -997,9 +1041,11 @@ function updateFrame(now){
 setRole("attacker");
 const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator:()=>operator,getRole:()=>role,getGunName:slot=>weapons.guns[slot].name});
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
+// Switch to the actual tactical map by default. Sandbox remains one click away.
+applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "4.2.0-ai-spawn-staging"},
+  get build(){return "5.0.0-switchyard-alpha"},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
     staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
@@ -1017,7 +1063,8 @@ window.BLACKOUT_DEV={
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({material:p.materialType,impacts:p.impacts,opening:p.openingWidth,reinforced:p.reinforced,destroyed:p.destroyed}))},
   get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
   get dynamicColliders(){return world.colliders.length},get collisionRevision(){return world.collisionRevision},
-  get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
+  get facility(){return {...world.facility.bounds,site:objectiveRound.siteId,
+    map:world.mapId,sitePair:world.sitePairId,sites:world.facility.sites}},
   get sight(){return sight},
   get loadout(){return {...weapons.loadout}},
   get secondaryKit(){return gadgets.ordnanceStatus},
