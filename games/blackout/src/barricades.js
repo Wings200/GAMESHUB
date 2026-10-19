@@ -7,6 +7,7 @@ export class Barricades {
     const wood=new T.MeshStandardMaterial({color:0x947255,roughness:.88,metalness:.04});
     const stripe=new T.MeshStandardMaterial({color:0xd8a846,roughness:.81,metalness:.05});
     const bolts=new T.MeshStandardMaterial({color:0x343f44,metalness:.65,roughness:.36});
+    this.armoredMaterial=new T.MeshStandardMaterial({color:0x596877,metalness:.84,roughness:.36});
     for(const item of openings){
       const o={...item,planks:[],active:false,group:new T.Group()};
       o.group.position.set(item.x,0,item.z);scene.add(o.group);
@@ -28,7 +29,7 @@ export class Barricades {
         }
         const c={minX:item.x-w/2,maxX:item.x+w/2,minZ:item.z-d/2,maxZ:item.z+d/2,
           minY:y-(step-.025)/2,maxY:y+(step-.025)/2,tag:"barricade",barricade:o};
-        const plank={mesh:board,collider:c,hp:0,broken:true};
+        const plank={mesh:board,collider:c,hp:0,broken:true,originalMaterial:board.material};
         board.userData={kind:"barricade",barricade:o,plank,open:true};
         o.planks.push(plank);this.world.shootables.push(board);
       }
@@ -47,14 +48,16 @@ export class Barricades {
       const i=this.world.colliders.indexOf(p.collider);
       if(i>=0)this.world.colliders.splice(i,1);
     }
-    o.group.visible=false;o.active=false;
+    o.group.visible=false;o.active=false;o.armored=false;
     if(bump)this.world.collisionRevision++;
   }
-  place(o){
+  place(o,armored=false){
     if(!o||this.hasBarricade(o))return false;
+    o.armored=armored;
     o.group.visible=true;o.active=true;
     for(const p of o.planks){
-      p.hp=48;p.broken=false;p.mesh.visible=true;
+      p.hp=armored?180:48;p.broken=false;p.mesh.visible=true;
+      p.mesh.material=armored?this.armoredMaterial:p.originalMaterial;
       if(!this.world.colliders.includes(p.collider))this.world.colliders.push(p.collider);
     }
     this.world.collisionRevision++;return true;
