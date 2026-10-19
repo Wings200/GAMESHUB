@@ -72,7 +72,7 @@ const debugRoot=new THREE.Group();scene.add(debugRoot);
 let last=performance.now(),frames=0,elapsed=0,fps=0;
 let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,toastUntil=0;
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
-let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
+let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0,lastWallToastAt=0;
 let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
 let combatErrors=0,lastCombatError="",lastRuntimeReportAt=0;
 let droneActionMode=false;
@@ -399,6 +399,19 @@ function impact(point,color=0xffc16c,size=.08){
     new THREE.MeshBasicMaterial({color,transparent:true,opacity:1}));
   obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
 }
+function breachDebris(point,color){
+  // Short-lived fragments; cap the total to avoid performance regressions.
+  for(let i=0;i<9&&effects.length<90;i++){
+    const obj=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,.045),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:1}));
+    obj.position.copy(point);
+    const angle=i*2.39996323;
+    scene.add(obj);
+    effects.push({obj,until:clock()+510,
+      velocity:{x:Math.cos(angle)*(1+i*.12),y:1+(i%4)*.47,
+        z:Math.sin(angle)*(1+i*.12)}});
+  }
+}
 function fireOnce(now){
   try{return fireOnceSafe(now);}catch(err){
     // Do not forcibly turn full-auto into semi-auto after a bad hit event.
@@ -447,17 +460,23 @@ function fireOnceSafe(now){
     const info=h.object.userData||{};
     if(info.kind==="panel"){
       if(info.panel.reinforced||!info.perforated){
-        popup(info.panel.reinforced?"REINFORCED PANEL · BLOCKED":"FRAME · SHOT BLOCKED",.65);
+        popup(info.panel.reinforced?"HARD REINFORCEMENT · BLOCKED":"STEEL FRAME · BLOCKED",.65);
         impact(h.point,0x9badb7);break;
       }
-      // Creating a new hole lets this first round through too. Later
-      // bullets follow existing apertures, with reduced downstream damage.
-      if(info.panel.bulletHole(h.point)){
-        penetration*=.68;
-        popup("SOFT WALL · BULLET HOLE / PENETRATION",.65);
+      const previousOpening=info.panel.openingWidth;
+      const result=info.panel.hitBullet(h.point);
+      if(result.passed){
+        penetration*=result.attenuation;
+        if(info.panel.openingWidth>0&&previousOpening===0){
+          popup("SOFT BREACH OPEN · WALK THROUGH THE WALL",1.5);
+          breachDebris(h.point,info.panel.materialProfile.impactColor);
+        }else if(now-lastWallToastAt>550){
+          lastWallToastAt=now;
+          popup(info.panel.materialProfile.name+" · "+Math.round(result.attenuation*100)+"% PENETRATION",.7);
+        }
         continue;
       }
-      impact(h.point,0xc58b56);break;
+      impact(h.point,info.panel.materialProfile.impactColor);break;
     }
     if(info.kind==="smoke-canister"){
       const removed=gadgets.damageSmokeCanister(info.device,shot.damage*penetration);
@@ -496,13 +515,13 @@ function fireOnceSafe(now){
   }
   // Every shot pushes view upward AND introduces slight sideways climb.
   // Counteract recoil with mouse movement; model kick springs back separately.
-  const climb=shot.recoil*(ads?.79:1.03);
+  const climb=shot.kick.vertical;
   player.pitch=Math.min(1.37,player.pitch+climb);
-  player.yaw+=(Math.random()-.5)*shot.recoil*.27;
+  player.yaw+=shot.kick.horizontal;
   recoilRecovery=Math.min(.085,recoilRecovery+climb*.48);
   lastShotAt=now;
   gunKick=Math.min(.075,gunKick+.028);
-  gunKickSide=Math.max(-.026,Math.min(.026,gunKickSide+(Math.random()-.5)*.011));
+  gunKickSide=Math.max(-.026,Math.min(.026,gunKickSide+shot.kick.horizontal*.8));
   player.applyCamera();
 }
 // All match widgets are calculated from actual PvE round state (no fake 5v5 slots).
@@ -838,7 +857,19 @@ function updateFrame(now){
   gunKick*=Math.exp(-dt*14);
   gunKickSide*=Math.exp(-dt*14);
   for(let i=effects.length-1;i>=0;i--){
-    const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
+    const e=effects[i];
+    if(now>=e.until){
+      scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();
+      effects.splice(i,1);continue;
+    }
+    if(e.velocity){
+      e.velocity.y-=dt*8;
+      e.obj.position.x+=e.velocity.x*dt;
+      e.obj.position.y+=e.velocity.y*dt;
+      e.obj.position.z+=e.velocity.z*dt;
+      e.obj.rotation.x+=dt*6;e.obj.rotation.z+=dt*5;
+      e.obj.material.opacity=Math.max(0,(e.until-now)/510);
+    }
   }
   // A dead or paused round is visually static: avoid burning a full render
   // every vsync while preserving responsive HTML menu and result controls.
@@ -851,7 +882,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="OPEN MECHANICS LAB · CHOOSE ATTACK OR DEFENSE · TEST WALLS, DRONES, GADGETS AND BOMBS";}
 window.BLACKOUT_DEV={
-  get build(){return "3.1.0-smoke-throw-remote-mechanics-stage2"},
+  get build(){return "3.2.0-material-breaches-gunplay"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
@@ -863,7 +894,7 @@ window.BLACKOUT_DEV={
   get allyNavigation(){return objectiveRound.allies.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null}))},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
-  get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
+  get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({material:p.materialType,impacts:p.impacts,opening:p.openingWidth,reinforced:p.reinforced,destroyed:p.destroyed}))},
   get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
   get dynamicColliders(){return world.colliders.length},get collisionRevision(){return world.collisionRevision},
   get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
