@@ -884,6 +884,17 @@ $("gridStep").addEventListener("change",e=>{
   refreshGrid();rebuildPreview();updateGizmoSnap();
   toast(map.grid===0?"FREE PLACEMENT — SNAP OFF":"GRID SNAP "+map.grid+"M");
 });
+$("repairGrid").addEventListener("click",()=>{
+  if(!window.confirm("Align existing walls, floors, doors, and their storey heights to the grid?\n\nThis is undoable with Ctrl+Z, and your exported map file is unchanged until the next download."))return;
+  const result=alignStoryWalls(map,map.grid||1);
+  if(!result.adjusted.length){
+    toast("NO MISALIGNED STRUCTURE PIECES FOUND");return;
+  }
+  beginChange();
+  map=result.map;
+  changed();
+  toast("ALIGNED "+result.adjusted.length+" PIECES · CTRL+Z TO UNDO");
+});
 nameInput.addEventListener("change",()=>{
   beginChange();map.name=nameInput.value.trim()||"UNTITLED OPERATION";
   changed({render:false});
