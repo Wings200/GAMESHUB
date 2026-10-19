@@ -83,7 +83,7 @@ function refreshGrid(){
   const size=Math.round(160/step)*step;
   const divisions=Math.round(size/step);
   grid=new T.GridHelper(size,divisions,0x557b90,0x344e60);
-  grid.position.y=layer+.01;
+  grid.position.y=layer-.016;
   scene.add(grid);
   $("currentLayer").textContent="HEIGHT "+layer.toFixed(2)+"M"+
     (map.grid===0?" · FREE":" · "+map.grid+"M SNAP");
@@ -125,9 +125,11 @@ function redrawEdgeHandles(){
   const controls=[
     ["x",-1,[-w/2,piece.type==="floor"?.07:h*.55,0]],
     ["x",1,[w/2,piece.type==="floor"?.07:h*.55,0]],
-    ["z",-1,[0,piece.type==="floor"?.07:h*.55,-d/2]],
-    ["z",1,[0,piece.type==="floor"?.07:h*.55,d/2]],
-    ["y",piece.type==="floor"?-1:1,[0,piece.type==="floor"?-h:h,0]]
+    ...(d>.7?[
+      ["z",-1,[0,piece.type==="floor"?.07:h*.55,-d/2]],
+      ["z",1,[0,piece.type==="floor"?.07:h*.55,d/2]]
+    ]:[]),
+    ...(piece.type==="floor"?[]:[["y",1,[0,h,0]]])
   ];
   for(const [axis,side,pos] of controls){
     const shape=new T.Mesh(
@@ -521,7 +523,7 @@ function setLayer(val){
   $("customLevel").value=String(layer);
   if(["0","4","8","12"].includes(String(layer)))$("floorLevel").value=String(layer);
   else $("floorLevel").selectedIndex=-1;
-  grid.position.y=layer+.01;
+  grid.position.y=layer-.016;
   rebuildPreview();
   $("currentLayer").textContent="HEIGHT "+layer.toFixed(2)+"M";
 }
