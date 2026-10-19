@@ -64,6 +64,7 @@ let locked=false,started=false,debug=false,fireHeld=false,ads=false,hitUntil=0,t
 let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
 let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
 let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
+let combatErrors=0,lastCombatError="",lastRuntimeReportAt=0;
 const audio=new GameAudio();
 const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
@@ -113,8 +114,21 @@ function audioReady(){
     if(audioStatus)audioStatus.textContent=ok?"AUDIO ACTIVE · PROCEDURAL EFFECTS":"AUDIO BLOCKED · CHECK TAB MUTE / BROWSER";
   });
 }
-function sound(type="fire"){audio.play(type);}
-function proximityAlarm(){audio.play("proximity");}
+function sound(type="fire"){
+  try{audio.play(type);}catch(err){reportCombatError("AUDIO",err);}
+}
+function proximityAlarm(){sound("proximity");}
+function reportCombatError(source,err){
+  combatErrors++;
+  const message=String(err?.message||err).slice(0,180);
+  lastCombatError=source+": "+message;
+  if(combatErrors<=4)console.error("BLACKOUT "+source+" error:",err);
+  const now=clock();
+  if(now-lastRuntimeReportAt>4500){
+    lastRuntimeReportAt=now;
+    popup("COMBAT ERROR RECOVERED · F3 FOR DETAILS",4.5);
+  }
+}
 audioTest.addEventListener("click",async()=>{
   const ok=await audio.unlock();
   audioStatus.textContent=ok?"AUDIO ACTIVE · TEST SHOT PLAYED":"AUDIO BLOCKED · CHECK TAB MUTE / BROWSER";
@@ -298,6 +312,11 @@ function impact(point,color=0xffc16c,size=.08){
   obj.position.copy(point);scene.add(obj);effects.push({obj,until:clock()+300});
 }
 function fireOnce(now){
+  try{return fireOnceSafe(now);}catch(err){
+    fireHeld=false;reportCombatError("FIRE",err);
+  }
+}
+function fireOnceSafe(now){
   if(objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
     objectiveRound.canInteract(player)&&keys.has("KeyF"))return;
   // Do not grant laser-accurate ADS while the actual sight is still moving
@@ -324,7 +343,7 @@ function fireOnce(now){
   // Trace all real ray intersections in order, so the actual wall hole
   // and the bullet's collision behavior share a world-space position.
   const hits=raycaster.intersectObjects(world.shootables.filter(o=>{
-    const info=o.userData;
+    const info=o.userData||{};
     if(info.kind==="panel")return !info.panel.destroyed;
     if(info.kind==="target")return info.target.alive;
     if(info.kind==="bot")return info.bot.alive;
@@ -334,7 +353,7 @@ function fireOnce(now){
   }),false);
   let penetration=1;
   for(const h of hits){
-    const info=h.object.userData;
+    const info=h.object.userData||{};
     if(info.kind==="panel"){
       if(info.panel.reinforced||!info.perforated){
         popup(info.panel.reinforced?"REINFORCED PANEL · BLOCKED":"FRAME · SHOT BLOCKED",.65);
@@ -492,10 +511,20 @@ function updateHud(report){
     positionReadout.textContent=`POS ${player.x.toFixed(2)}, ${player.y.toFixed(2)}, ${player.z.toFixed(2)}
 YAW ${player.yaw.toFixed(2)} / PITCH ${player.pitch.toFixed(2)}
 SPEED ${report.speed.toFixed(2)}m/s / ${stateReadout.textContent}
-DYNAMIC COLLIDERS ${world.colliders.length} / TARGETS ${world.targets.filter(t=>t.alive).length}`;
+DYNAMIC COLLIDERS ${world.colliders.length} / TARGETS ${world.targets.filter(t=>t.alive).length}
+COMBAT ERRORS ${combatErrors}
+LAST ERROR ${lastCombatError||"NONE"}
+AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}`;
   }
 }
 function frame(now){
+  // Always schedule the next frame: combat exceptions used to kill RAF forever.
+  try{updateFrame(now);}catch(err){
+    fireHeld=false;
+    reportCombatError("FRAME",err);
+  }finally{requestAnimationFrame(frame);}
+}
+function updateFrame(now){
   const actualDt=Math.max(0,(now-last)/1000),dt=Math.min(actualDt,.043);last=now;
   frames++;elapsed+=actualDt;
   if(elapsed>=.6){fps=Math.round(frames/elapsed);frames=0;elapsed=0;}
@@ -602,13 +631,13 @@ function frame(now){
   if(!renderInterval||now-lastEndFrame>=renderInterval){
     renderer.render(scene,camera);lastEndFrame=now;
   }
-  requestAnimationFrame(frame);
 }
 setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.9.0-bomb-stations-operator-select-round-ui"},
+  get build(){return "0.9.1-combat-stability-audio-voice-guard-ai-cache"},
+  get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
