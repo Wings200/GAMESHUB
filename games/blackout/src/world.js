@@ -198,8 +198,10 @@ export function buildRange(THREE,scene){
     const halfZ=Math.abs(Math.sin(yaw))*.9+Math.abs(Math.cos(yaw))*.14;
     const c={minX:x-halfX,maxX:x+halfX,minZ:z-halfZ,maxZ:z+halfZ,minY:0,maxY:1.42,tag:"shield"};
     colliders.push(c);
+    state.collisionRevision++;
     const shield={group:g,collider:c,mesh:center,remove(){
-      const i=colliders.indexOf(c);if(i>=0)colliders.splice(i,1);
+      const i=colliders.indexOf(c);
+      if(i>=0){colliders.splice(i,1);state.collisionRevision++;}
       g.visible=false;root.remove(g);
       const shotIndex=shootables.indexOf(center);
       if(shotIndex>=0)shootables.splice(shotIndex,1);
