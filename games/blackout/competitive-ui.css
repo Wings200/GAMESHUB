@@ -179,3 +179,15 @@ body.playing .game-hud .debug-panel:not(.hidden){top:165px}
 @media(max-width:850px){.bo-nav{height:65px;gap:12px;padding:0 15px}.bo-brand{font-size:13px}.bo-brand small{font-size:7px}.bo-nav-links button{padding:0 8px;font-size:10px}.bo-page{height:calc(100vh - 65px);padding:20px 22px 90px}.bo-home{padding-top:9vh}.bo-home-visual{display:none}.bo-home-bottom{bottom:65px;gap:22px}.bo-play-columns,.bo-loadout-columns,.bo-ops-layout{grid-template-columns:1fr}.bo-shell .bo-operator-card{min-height:90px}.bo-shell .bo-operator-card .bo-role,.bo-shell .bo-operator-card .bo-speed{display:none}.bo-shell .bo-operator-preview{min-height:210px}.bo-shell .bo-preview-avatar{height:60px;font-size:45px}.bo-footer span:nth-child(2){display:none}body.playing .game-hud .bo-utility{display:none}body.playing .game-hud>.hud-right{bottom:140px;right:12px}body.playing .game-hud .bo-health-circle{width:77px;height:77px}body.playing .game-hud .bo-bomb-compass{bottom:105px}}
 @media(max-width:570px){.bo-nav-links{gap:0}.bo-nav-links button{font-size:8px;padding:0 5px}.bo-brand small{display:none}.bo-brand-mark{display:none}.bo-brand{font-size:11px;letter-spacing:0}.bo-home h1{font-size:clamp(44px,11vw,69px)}.bo-home-bottom{display:none}.bo-shell .role-picker{flex-direction:column}.bo-shell .bo-operator-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.bo-page-actions{flex-wrap:wrap}.bo-footer span:last-child{display:none}.bo-play-columns{grid-template-columns:minmax(0,1fr)}.bo-playlist-card{min-height:300px}body.playing .game-hud .bo-team-label{display:none}body.playing .game-hud .bo-matchbar{height:61px}body.playing .game-hud>.hud-left{top:76px;left:12px}body.playing .game-hud .operator-health{left:10px;bottom:9px}body.playing .game-hud .weapon-hud{right:10px;bottom:9px;min-width:140px}body.playing .game-hud .ammo-row #ammoCount{font-size:39px}body.playing .game-hud .bo-bomb-compass{display:none}}
 @media(prefers-reduced-motion:reduce){.bo-page.is-active{animation:none}.bo-queue-spin,.bo-queue-progress span{animation:none}}
+
+/* Operator pick shows the human slot and four clearly labelled AI teammates. */
+.bo-squad-picks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;max-width:1210px;margin-top:18px}
+.bo-squad-slot{display:flex;flex-direction:column;gap:6px;min-height:67px;background:#0a1827dc;border-top:3px solid #65849b;padding:12px}
+.bo-squad-slot strong{font-size:10px;letter-spacing:.13em;color:#dae9f3}
+.bo-squad-slot span{font-size:11px;font-weight:950;color:#f4f7f9;letter-spacing:.05em}
+.bo-squad-slot small{font-size:9px;color:#9cb0bf;letter-spacing:.06em}
+.bo-squad-slot.bo-player-select{border-top-color:#b4ddf4;background:#21415bc7}
+.bo-no-pick-timer{font-size:9px;color:#aec0cd;letter-spacing:.1em;font-weight:850;margin-right:auto}
+.bo-gun-select-label{margin-top:11px}
+@media(max-width:850px){.bo-squad-picks{gap:5px}.bo-squad-slot{padding:8px;min-height:59px}.bo-squad-slot strong,.bo-squad-slot span{font-size:9px}.bo-squad-slot small{font-size:7px}}
+@media(max-width:570px){.bo-squad-picks{grid-template-columns:repeat(3,minmax(0,1fr))}.bo-no-pick-timer{display:none}}
