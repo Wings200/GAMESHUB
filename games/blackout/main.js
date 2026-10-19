@@ -10,7 +10,6 @@ import {GameAudio} from "./src/audio.js?v=blackout-v201-builder-drone-ai-final";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v201-builder-drone-ai-final";
 import {Barricades} from "./src/barricades.js?v=blackout-v201-builder-drone-ai-final";
 import {createReconDrone} from "./src/drone.js?v=blackout-v201-builder-drone-ai-final";
-import {createSiteBuilder} from "./src/site-builder.js?v=blackout-v201-builder-drone-ai-final";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -65,7 +64,6 @@ const barricades=new Barricades(THREE,world,scene,world.facility.openings);
 world.barricades=barricades;
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 const drone=createReconDrone(THREE,scene,world,camera);
-const siteBuilder=createSiteBuilder(world,objectiveRound,$("siteBuilder"),message=>popup(message,2));
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
 let last=performance.now(),frames=0,elapsed=0,fps=0;
@@ -307,6 +305,12 @@ document.addEventListener("keydown",e=>{
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
+  if(!e.repeat&&(e.code==="KeyQ"||e.code==="KeyE")&&!drone.active&&
+     player.health>0){
+    const side=player.toggleLean(e.code==="KeyQ"?-1:1);
+    popup(side===0?"LEAN RESET":side<0?"LEAN LOCKED LEFT":"LEAN LOCKED RIGHT",.85);
+    return;
+  }
   if(drone.active){
     if(e.code==="Digit3"&&objectiveRound.phase!=="prep"){
       drone.end();droneActionMode=false;player.applyCamera();
@@ -803,7 +807,6 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
 window.BLACKOUT_DEV={
   get build(){return "2.0.0-site-builder-operators-45s-drone-ai-plant"},
-  get siteLayout(){return siteBuilder.layout},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
