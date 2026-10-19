@@ -101,9 +101,11 @@ gizmo.setMode("translate");gizmo.setSpace("world");gizmo.setSize(.95);
 scene.add(gizmo.getHelper());
 let outline=null;
 function updateGizmoSnap(){
-  gizmo.setTranslationSnap(shiftFree||map.grid===0?null:map.grid);
-  // Scale factor snaps are fractions of an object's width, not metres.
-  // Snap final size dimensions in metres on mouse release instead.
+  // TransformControls snaps object CENTRES; a 3m wall requires a half-grid
+  // centre to keep BOTH physical ends on whole-grid boundaries. Therefore
+  // use edge-aware snapping below instead of the built-in centre snap.
+  gizmo.setTranslationSnap(null);
+  // Edge resizing uses separately snapped moving faces.
   gizmo.setScaleSnap(null);
 }
 const edgeHandles=new T.Group();scene.add(edgeHandles);
@@ -174,6 +176,16 @@ gizmo.addEventListener("mouseDown",()=>{
 });
 gizmo.addEventListener("objectChange",()=>{
   if(ignoreGizmoChanges)return;
+  const piece=map.elements.find(e=>e.id===selectedId);
+  const root=entityMeshes.get(selectedId);
+  if(piece&&root&&transformMode==="translate"&&!shiftFree&&map.grid>0){
+    const aligned=alignPieceToGrid({
+      ...piece,position:{x:root.position.x,y:root.position.y,z:root.position.z}
+    },map.grid);
+    root.position.x=aligned.position.x;
+    root.position.z=aligned.position.z;
+    root.position.y=snapNumber(root.position.y,map.grid);
+  }
   displayGizmoMeasurements();
   refreshOutline();
 });
@@ -184,7 +196,11 @@ gizmo.addEventListener("mouseUp",()=>{
   if(piece&&root){
     let result=applyGizmoToPiece(piece,{
       position:root.position,scale:root.scale,rotationY:piece.rotationY
-    },{grid:map.grid,snap:!shiftFree,mode:transformMode});
+    },{grid:0,snap:false,mode:transformMode});
+    if(!shiftFree&&map.grid>0&&transformMode==="translate"){
+      result=alignPieceToGrid(result,map.grid);
+      result.position.y=snapNumber(result.position.y,map.grid);
+    }
     if(!shiftFree&&$("edgeSnap").checked&&transformMode==="translate")
       result=magnetizeEdges(result,map.elements);
     const before=transformStart;
