@@ -31,6 +31,8 @@ const friendlySlots=$("friendlySlots"),enemySlots=$("enemySlots");
 const phaseAnnounce=$("phaseAnnounce"),phaseAnnounceTitle=$("phaseAnnounceTitle");
 const phaseAnnounceHelp=$("phaseAnnounceHelp"),phaseAnnounceEyebrow=$("phaseAnnounceEyebrow");
 const bombArrow=$("bombArrow"),bombRange=$("bombRange"),bombGuide=$("bombGuide");
+const runoutAlert=$("runoutAlert"),runoutAlertTitle=$("runoutAlertTitle");
+const runoutAlertInfo=$("runoutAlertInfo"),spectatorAlert=$("spectatorAlert");
 const healthFill=$("healthFill"),matchCaption=$("matchCaption"),defuserInventory=$("defuserInventory");
 const operatorHud=$("operatorHud"),healthHud=$("healthHud");
 const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
@@ -319,7 +321,7 @@ function fireOnce(now){
   }
 }
 function fireOnceSafe(now){
-  if(objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
+  if(player.health<=0||objectiveRound.phase==="won"||objectiveRound.phase==="lost"||barricades.busy||
     objectiveRound.canInteract(player)&&keys.has("KeyF"))return;
   // Do not grant laser-accurate ADS while the actual sight is still moving
   // into position. Once aligned, the 3D reticle and the shot share the ray.
@@ -348,7 +350,7 @@ function fireOnceSafe(now){
     const info=o.userData||{};
     if(info.kind==="panel")return !info.panel.destroyed;
     if(info.kind==="target")return info.target.alive;
-    if(info.kind==="bot")return info.bot.alive;
+    if(info.kind==="bot")return info.bot.alive&&info.bot.team!=="ally";
     if(info.kind==="barricade")return !info.plank.broken;
     if(info.kind==="shield")return info.shield.group.parent!==null;
     return true;
@@ -422,16 +424,30 @@ function drawTacticalHud(now){
   matchClock.classList.toggle("warning",seconds<=15&&seconds>0);
   phaseText.textContent=phaseName;
   matchScore.textContent=round.score.attacker+" — "+round.score.defender;
-  // The offline build has one human and two or three simulated opponents.
-  // Never show nonexistent live teammates.
-  const enemy=round.bots;
+  // All ten slots are real participants in this OFFLINE PvE simulation.
   const playerAlive=player.health>0;
-  const onePip='<span class="bo-player-pip'+(playerAlive?"":" down")+'" title="Your operator">◆</span>';
-  const enemyPips=enemy.length?
-    enemy.map(b=>'<span class="bo-player-pip'+(b.alive?"":" down")+'" title="Training hostile">'+(b.alive?"●":"×")+'</span>').join(""):
-    '<span class="bo-player-pip" title="Opponents deploy after preparation">·</span>';
-  if(role==="attacker"){friendlySlots.innerHTML=onePip;enemySlots.innerHTML=enemyPips;}
-  else{enemySlots.innerHTML=onePip;friendlySlots.innerHTML=enemyPips;}
+  const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+'" title="Your operator">◆</span>';
+  const friendly=onePip+round.allies.map(b=>
+    '<span class="bo-player-pip ally'+(b.alive?"":" down")+'" title="Friendly AI '+b.id+'">'+
+    (b.alive?"◆":"×")+'</span>').join("");
+  const enemy=round.bots.length?
+    round.bots.map(b=>'<span class="bo-player-pip hostile'+(b.alive?"":" down")+
+      '" title="Hostile AI '+b.id+'">'+(b.alive?"●":"×")+'</span>').join(""):
+    Array(5).fill('<span class="bo-player-pip hostile" title="Enemy undisclosed">?</span>').join("");
+  if(role==="attacker"){friendlySlots.innerHTML=friendly;enemySlots.innerHTML=enemy;}
+  else{enemySlots.innerHTML=friendly;friendlySlots.innerHTML=enemy;}
+  const runout=round.runoutPlayer||round.runoutTarget&&
+    round.runoutTarget.alive&&now<round.runoutTarget.runoutUntil;
+  runoutAlert.classList.toggle("hidden",!runout);
+  if(runout){
+    runoutAlertTitle.textContent=role==="defender"?
+      "YOU ARE DETECTED OUTSIDE":"DEFENDER DETECTED OUTSIDE";
+    runoutAlertInfo.textContent=role==="defender"?
+      "ATTACKERS CAN TRACK YOUR LAST-KNOWN POSITION":
+      "RUNOUT PING · "+Math.round(Math.hypot(round.runoutTarget.x-player.x,
+        round.runoutTarget.z-player.z))+"M";
+  }
+  spectatorAlert.classList.toggle("hidden",playerAlive);
   // During attack, show the nearest of BOTH live bomb locations. Once
   // planted the compass locks to the actual planted defuser location.
   const options=Object.values(round.sites);
@@ -467,7 +483,7 @@ function drawTacticalHud(now){
       (role==="attacker"?"ATTACKERS":"DEFENDERS");
     phaseAnnounceTitle.textContent=phase==="prep"?"PREPARATION PHASE":"ACTION PHASE";
     phaseAnnounceHelp.textContent=phase==="prep"?
-      role==="defender"?"FORTIFY DOORWAYS AND PROTECT THE BOMB":
+      role==="defender"?"PROTECT BOTH SITES · REMAIN INSIDE DURING PREP":
       "SCOUT THE BUILDING · PLAN YOUR ATTACK":
       role==="attacker"?"LOCATE THE BOMB · PLANT YOUR DEFUSER":
       "ELIMINATE ATTACKERS · DENY THE PLANT";
@@ -519,7 +535,9 @@ COMBAT ERRORS ${combatErrors}
 LAST ERROR ${lastCombatError||"NONE"}
 AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}
 ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.health)).join(" / ")||"ALL ELIMINATED"}
-BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}`;
+BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}
+FRIENDLIES ${objectiveRound.allies.filter(b=>b.alive).length}/4
+RUNOUT ${objectiveRound.runoutPlayer?"PLAYER SPOTTED":objectiveRound.runoutTarget?"ENEMY SPOTTED":"NONE"}`;
   }
 }
 function frame(now){
@@ -540,7 +558,28 @@ function updateFrame(now){
     const activeKeys=gadgets.busy||barricades.busy?new Set():ads?
       new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
     if(gadgets.busy||barricades.busy){player.velX=0;player.velZ=0;}
-    const report=player.update(dt,activeKeys);
+    const alive=player.health>0;
+    const report=alive?player.update(dt,activeKeys):
+      {sprinting:false,prone:false,crouched:false,lean:0,speed:0};
+    if(!alive){
+      fireHeld=false;ads=false;keys.clear();
+      const ally=objectiveRound.allies.find(bot=>bot.alive);
+      if(ally){
+        camera.position.set(ally.x,1.96,ally.z+1.05);
+        camera.rotation.set(-.045,ally.group.rotation.y,0,"YXZ");
+      }
+    }
+    // Preparation lockdown applies to defenders, not a permanent invisible
+    // wall. Player remains inside the building, regardless of open doors.
+    if(alive&&role==="defender"&&objectiveRound.phase==="prep"){
+      const b=world.facility.bounds;
+      const x=Math.max(b.minX+.46,Math.min(b.maxX-.46,player.x));
+      const z=Math.max(b.minZ+.46,Math.min(b.maxZ-.46,player.z));
+      if(x!==player.x||z!==player.z){
+        player.x=x;player.z=z;player.velX=0;player.velZ=0;
+        player.applyCamera();
+      }
+    }
     const mark=Math.floor(player.stepClock/Math.PI);
     if(player.moving&&!player.isProne&&report.speed>.65&&mark!==lastStepMark){
       sound(player.sprinting?"run-step":"step");
@@ -632,7 +671,8 @@ function updateFrame(now){
   gunModel.rotation.x=-gunKick*.64;
   gunModel.rotation.z=gunKickSide;
   const interacting=!ended&&objectiveRound.hold>0&&keys.has("KeyF");
-  gunOptics.mount.visible=weapons.slot==="primary"&&!interacting;
+  gunModel.visible=player.health>0;
+  gunOptics.mount.visible=player.health>0&&weapons.slot==="primary"&&!interacting;
   if(!ended)weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
     sprinting:player.sprinting,step:player.stepClock,lean:player.lean,
     interacting,interactionProgress:objectiveRound.holdPercent/100});
@@ -655,6 +695,9 @@ window.BLACKOUT_DEV={
   get build(){return "0.9.3-shield-placement-ai-barricade-breaching"},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
+  get teams(){return {friendly:1+objectiveRound.allies.length,
+    enemy:objectiveRound.bots.length,alliesAlive:objectiveRound.allies.filter(b=>b.alive).length,
+    enemiesAlive:objectiveRound.bots.filter(b=>b.alive).length}},
   get aiNavigation(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null,repathAt:b.repathAt}))},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
