@@ -24,6 +24,42 @@ const label=(v,max=64)=>String(v??"").replace(/[<>\x00-\x1F]/g,"").trim().slice(
 const position=(p={})=>({
   x:num(p.x,0,-300,300),y:num(p.y,0,-12,90),z:num(p.z,0,-300,300)
 });
+// Axis-aligned editable plant volumes. Multiple isolated volumes may belong
+// to one bomb. A minimum buffer prevents accidentally merged A/B sites.
+export const ZONE_CLEARANCE=.15;
+export function zonesOverlap(a,b,clearance=ZONE_CLEARANCE){
+  const gap=Math.max(0,Number(clearance)||0);
+  const upperA=a.y+(a.height??2.5),upperB=b.y+(b.height??2.5);
+  return a.x+a.width/2+gap>b.x-b.width/2 &&
+    b.x+b.width/2+gap>a.x-a.width/2 &&
+    a.z+a.depth/2+gap>b.z-b.depth/2 &&
+    b.z+b.depth/2+gap>a.z-a.depth/2 &&
+    upperA+gap>b.y && upperB+gap>a.y;
+}
+export function zonePlacementError(pair,candidate,exceptId=null){
+  for(const key of ["A","B"]){
+    for(const zone of pair[key]?.plantZones||[]){
+      if(zone.id===exceptId)continue;
+      if(zonesOverlap(zone,candidate))
+        return "Zone overlaps or touches "+key+" / "+zone.id+
+          ". Leave at least "+ZONE_CLEARANCE+"m clearance.";
+    }
+  }
+  return null;
+}
+export function newPlantZone(id,x,y,z,width=4,depth=4,height=2.5){
+  return {id,x,y,z,width,depth,height};
+}
+const normalizedZone=(zone,fallback,index)=>{
+  if(!zone||typeof zone!=="object")throw Error("Invalid zone "+(index+1));
+  const id=label(zone.id,56);
+  if(!id)throw Error("Every plant zone needs an ID.");
+  const p=position(zone);
+  return {id,...p,
+    width:num(zone.width,4,.5,80),
+    depth:num(zone.depth,4,.5,80),
+    height:num(zone.height,2.5,.5,12)};
+};
 export function createBlankMap(){
   return {
     format:MAP_FORMAT,
@@ -36,8 +72,10 @@ export function createBlankMap(){
     }],
     sitePairs:[{
       id:"site-pair-1",name:"GROUND FLOOR",
-      A:{x:-6,y:0,z:-5,plantRadius:4,defuseRange:2.25},
-      B:{x:6,y:0,z:5,plantRadius:4,defuseRange:2.25}
+      A:{x:-6,y:0,z:-5,plantRadius:4,defuseRange:2.25,
+        plantZones:[{id:"a-zone-1",x:-6,y:0,z:-5,width:7,depth:7,height:2.5}]},
+      B:{x:6,y:0,z:5,plantRadius:4,defuseRange:2.25,
+        plantZones:[{id:"b-zone-1",x:6,y:0,z:5,width:7,depth:7,height:2.5}]}
     }],
     activeSitePair:"site-pair-1",
     notes:"Built with BLACKOUT Dev Map Studio. Bomb sites can be positioned independently."
@@ -79,11 +117,20 @@ export function normalizeMap(raw){
     const site=(key)=>{
       if(!pair[key]||typeof pair[key]!=="object")
         throw Error("Site "+key+" missing in "+id);
-      return {
-        ...position(pair[key]),
-        plantRadius:num(pair[key].plantRadius,4,1,22),
-        defuseRange:num(pair[key].defuseRange,2.25,.5,12)
-      };
+      const source=pair[key],pos=position(source);
+      const radius=num(source.plantRadius,4,1,22);
+      // V1 circle -> one independently editable rectangular box. Keep
+      // legacy plantRadius for older export consumers, but boxes take priority.
+      const legacy=[newPlantZone(key.toLowerCase()+"-legacy-"+i,
+        pos.x,pos.y,pos.z,Math.min(80,radius*2),Math.min(80,radius*2),2.5)];
+      const input=source.plantZones===undefined?legacy:source.plantZones;
+      if(!Array.isArray(input)||input.length<1||input.length>32)
+        throw Error("Bomb "+key+" requires 1–32 plant zone boxes.");
+      const plantZones=input.map((z,j)=>normalizedZone(z,pos,j));
+      if(new Set(plantZones.map(z=>z.id)).size!==plantZones.length)
+        throw Error("Duplicate plant zone IDs at Bomb "+key);
+      return {...pos,plantRadius:radius,
+        defuseRange:num(source.defuseRange,2.25,.5,12),plantZones};
     };
     return {id,name:label(pair.name,75)||"BOMB PAIR "+(i+1),A:site("A"),B:site("B")};
   });
@@ -151,11 +198,22 @@ export function mapAsJSON(map){
   return JSON.stringify(normalizeMap(map),null,2)+"\n";
 }
 export function siteBounds(site){
+  if(Array.isArray(site.plantZones)&&site.plantZones.length){
+    return {minX:Math.min(...site.plantZones.map(z=>z.x-z.width/2)),
+      maxX:Math.max(...site.plantZones.map(z=>z.x+z.width/2)),
+      minZ:Math.min(...site.plantZones.map(z=>z.z-z.depth/2)),
+      maxZ:Math.max(...site.plantZones.map(z=>z.z+z.depth/2)),
+      y:site.plantZones[0].y};
+  }
   const radius=num(site.plantRadius,4,1,22);
   return {minX:site.x-radius,maxX:site.x+radius,
     minZ:site.z-radius,maxZ:site.z+radius,y:site.y};
 }
 export function canPlantAt(site,player){
+  if(Array.isArray(site.plantZones)&&site.plantZones.length)
+    return site.plantZones.some(z=>Math.abs(player.x-z.x)<=z.width/2&&
+      Math.abs(player.z-z.z)<=z.depth/2&&
+      player.y>=z.y-.25&&player.y<=z.y+z.height);
   return Math.hypot(player.x-site.x,player.z-site.z)<=site.plantRadius&&
     Math.abs(player.y-site.y)<=1.2;
 }
