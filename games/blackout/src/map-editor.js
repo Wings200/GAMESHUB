@@ -108,7 +108,7 @@ function attachGizmo(){
   if(root)gizmo.attach(root);
   else gizmo.detach();
   gizmo.setMode(transformMode);
-  gizmo.setSpace("world");
+  gizmo.setSpace(transformMode==="scale"?"local":"world");
   updateGizmoSnap();
 }
 function displayGizmoMeasurements(){
@@ -487,14 +487,14 @@ function setLayer(val){
 }
 function setBomb(key,point){
   beginChange();
-  const site=sitePair()[key],step=map.grid;
+  const site=sitePair()[key],step=shiftFree?0:map.grid;
   site.x=round(point.x,step);site.y=layer;site.z=round(point.z,step);
   siteEditing=key;changed({render:false});updateBombMarkers();updateSiteFields();
   toast("BOMB "+key+" POSITION SET · FLOOR "+layer.toFixed(2)+"M");
 }
 function placePart(point){
   beginChange();
-  const step=map.grid;
+  const step=shiftFree?0:map.grid;
   const piece=makePiece(tool,round(point.x,step),layer,round(point.z,step));
   piece.rotationY=placementRotation;
   const carved=cutOpeningInWall(map.elements,piece);
@@ -604,24 +604,20 @@ function updateValidation(show=true){
 canvas.addEventListener("contextmenu",e=>e.preventDefault());
 canvas.addEventListener("pointerdown",evt=>{
   if(![0,1,2].includes(evt.button))return;
-  canvas.setPointerCapture(evt.pointerId);
+  // TransformControls captures its own drag; editor handles camera otherwise.
+  if(!(evt.button===0&&(gizmo.dragging||gizmo.axis)))
+    canvas.setPointerCapture(evt.pointerId);
   dragging={button:evt.button,lastX:evt.clientX,lastY:evt.clientY,
     startX:evt.clientX,startY:evt.clientY,mode:"camera"};
   mouseMoved=false;
   if(evt.button!==0)return;
+  // Don't select the mesh beneath a move/scale handle or place new geometry
+  // while TransformControls owns this pointer.
+  if(gizmo.dragging||gizmo.axis){
+    dragging=null;return;
+  }
   if(tool==="select"){
-    const selected=findUnderPointer(evt);
-    if(selected){
-      selectPiece(selected);
-      const part=map.elements.find(e=>e.id===selected);
-      const point=readPoint(evt,part.position.y);
-      if(point){
-        dragging.mode="piece";dragging.id=selected;
-        dragging.initial=clone(part.position);
-        dragging.offset={x:part.position.x-point.x,z:part.position.z-point.z};
-        dragStart=snapshot();
-      }
-    }else selectPiece(null);
+    selectPiece(findUnderPointer(evt));
   }else{
     const point=readPoint(evt,layer);
     if(!point)return;
@@ -635,11 +631,13 @@ canvas.addEventListener("pointermove",evt=>{
     $("viewportCoords").textContent="X "+cursor.x.toFixed(1)+
       " · Y "+layer.toFixed(1)+" · Z "+cursor.z.toFixed(1);
     if(preview.visible){
-      const px=round(cursor.x,map.grid),pz=round(cursor.z,map.grid);
+      const spacing=evt.shiftKey?0:map.grid;
+      const px=round(cursor.x,spacing),pz=round(cursor.z,spacing);
       // Ghost preview matches the coordinates to be exported.
       preview.position.set(px,0,pz);
     }
   }
+  if(gizmo.dragging)return;
   if(!dragging)return;
   const dx=evt.clientX-dragging.lastX,dy=evt.clientY-dragging.lastY;
   dragging.lastX=evt.clientX;dragging.lastY=evt.clientY;
@@ -656,27 +654,11 @@ canvas.addEventListener("pointermove",evt=>{
     orbit.target.addScaledVector(right,-dx*factor);
     orbit.target.addScaledVector(up,dy*factor);
     setOrbit();
-  }else if(dragging.mode==="piece"&&dragging.id){
-    const item=map.elements.find(e=>e.id===dragging.id);
-    if(!item)return;
-    const point=readPoint(evt,item.position.y);
-    if(!point)return;
-    item.position.x=round(point.x+dragging.offset.x,map.grid);
-    item.position.z=round(point.z+dragging.offset.z,map.grid);
-    const group=entityMeshes.get(item.id);
-    group?.position.set(item.position.x,item.position.y,item.position.z);
-    refreshOutline();
-    $("selectedInfo").textContent=item.type.toUpperCase()+" X "+item.position.x+
-      " / Z "+item.position.z;
   }
 });
 function endDragging(){
-  if(dragging?.mode==="piece"&&mouseMoved&&dragStart&&snapshot()!==dragStart){
-    undoStack.push(dragStart);
-    if(undoStack.length>90)undoStack.shift();
-    redoStack.length=0;changed({render:false});refreshOutline();
-  }
-  dragging=null;dragStart=null;updateInspector();
+  dragging=null;dragStart=null;
+  if(!gizmo.dragging)updateInspector();
 }
 canvas.addEventListener("pointerup",endDragging);
 canvas.addEventListener("pointercancel",endDragging);
@@ -709,7 +691,18 @@ for(const btn of document.querySelectorAll("[data-site]"))
   btn.addEventListener("click",()=>{
     siteEditing=btn.dataset.site;setTool("bomb-"+siteEditing);updateSiteFields();
   });
-$("selectTool").addEventListener("click",()=>setTool("select"));
+function setTransformMode(mode){
+  transformMode=mode;
+  gizmo.setMode(mode);gizmo.setSpace(mode==="scale"?"local":"world");
+  $("selectTool").classList.toggle("active",mode==="translate");
+  $("scaleTool").classList.toggle("active",mode==="scale");
+  if(tool!=="select")setTool("select");
+  if(!selectedId)toast("SELECT A PIECE TO USE "+(mode==="scale"?"SCALE":"MOVE")+" HANDLES");
+  else toast(mode==="scale"?"DRAG COLORED CUBES TO SCALE X / Y / Z":
+    "DRAG X / Y / Z ARROWS OR COLORED PLANES TO MOVE IN 3D");
+}
+$("selectTool").addEventListener("click",()=>setTransformMode("translate"));
+$("scaleTool").addEventListener("click",()=>setTransformMode("scale"));
 $("rotateLeft").addEventListener("click",()=>rotatePiece(-1));
 $("rotateRight").addEventListener("click",()=>rotatePiece(1));
 $("deleteSelected").addEventListener("click",removeSelected);
@@ -726,7 +719,8 @@ $("floorLevel").addEventListener("change",e=>setLayer(Number(e.target.value)));
 $("customLevel").addEventListener("change",e=>setLayer(Number(e.target.value)));
 $("gridStep").addEventListener("change",e=>{
   beginChange();map.grid=n(e.target.value,1);changed({render:false});
-  toast("GRID SNAP "+map.grid+"M");
+  refreshGrid();rebuildPreview();updateGizmoSnap();
+  toast(map.grid===0?"FREE PLACEMENT — SNAP OFF":"GRID SNAP "+map.grid+"M");
 });
 nameInput.addEventListener("change",()=>{
   beginChange();map.name=nameInput.value.trim()||"UNTITLED OPERATION";
@@ -823,13 +817,57 @@ window.addEventListener("keydown",e=>{
     if(k==="o")$("importFile").click();if(k==="d")duplicateSelected();
     return;
   }
+  if(e.key==="Shift"){
+    shiftFree=true;updateGizmoSnap();
+    return;
+  }
   if(editing||e.altKey||e.metaKey)return;
   switch(e.key.toLowerCase()){
     case "delete":case "backspace":e.preventDefault();removeSelected();break;
     case "escape":setTool("select");selectPiece(null);break;
     case "q":rotatePiece(-1);break;case "e":rotatePiece(1);break;
-    case "v":setTool("select");break;case "f":focus();break;
+    case "w":case "v":setTransformMode("translate");break;
+    case "r":setTransformMode("scale");break;
+    case "f":focus();break;
   }
+});
+window.addEventListener("keyup",e=>{
+  if(e.key==="Shift"){shiftFree=false;updateGizmoSnap();}
+});
+window.addEventListener("blur",()=>{shiftFree=false;updateGizmoSnap();});
+function resizeFloor(size){
+  const piece=map.elements.find(e=>e.id===selectedId);
+  if(!piece||piece.type!=="floor")return;
+  beginChange();
+  piece.size.x=cap(size.x,.15,110);
+  piece.size.z=cap(size.z,.15,110);
+  changed();
+  toast("FLOOR RESIZED TO "+piece.size.x+" × "+piece.size.z+"M");
+}
+for(const button of document.querySelectorAll("[data-floor-size]"))
+  button.addEventListener("click",()=>{
+    const size=Number(button.dataset.floorSize);
+    resizeFloor({x:size,z:size});
+  });
+for(const [button,sign] of [["floorExpand",1],["floorShrink",-1]]){
+  $(button).addEventListener("click",()=>{
+    const piece=map.elements.find(e=>e.id===selectedId);
+    if(!piece||piece.type!=="floor")return;
+    const amount=map.grid>0?map.grid:1;
+    resizeFloor({
+      x:Math.max(.15,piece.size.x+amount*sign),
+      z:Math.max(.15,piece.size.z+amount*sign)
+    });
+  });
+}
+$("removeLegacyCeilings").addEventListener("click",()=>{
+  const count=map.elements.filter(e=>e.type==="ceiling").length;
+  if(!count){toast("NO OLD CEILING PIECES TO REMOVE");return;}
+  if(!window.confirm("Remove "+count+" old standalone ceiling pieces? Floors already have their own underside ceilings."))return;
+  beginChange();
+  map.elements=map.elements.filter(e=>e.type!=="ceiling");
+  if(!map.elements.some(e=>e.id===selectedId))selectedId=null;
+  changed();toast("REMOVED "+count+" REDUNDANT CEILINGS");
 });
 setLayer(0);updateGlobalFields();renderStructures();updateInspector();
 setTool("select");saveDraft();resize();requestAnimationFrame(loop);
