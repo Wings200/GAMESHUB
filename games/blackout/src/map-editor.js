@@ -535,8 +535,17 @@ function setBomb(key,point){
 function placePart(point){
   beginChange();
   const step=shiftFree?0:map.grid;
-  let piece=makePiece(tool,round(point.x,step),layer,round(point.z,step));
+  let piece=makePiece(tool,point.x,layer,point.z);
   piece.rotationY=placementRotation;
+  if(["hardWall","softWall","reinforcedWall","door"].includes(tool)){
+    const upcoming=map.elements.filter(e=>e.type==="floor"&&
+      e.position.y>layer+.5&&
+      Math.abs(e.position.x-piece.position.x)<e.size.x/2&&
+      Math.abs(e.position.z-piece.position.z)<e.size.z/2)
+      .sort((a,b)=>a.position.y-b.position.y)[0];
+    if(upcoming)piece.size.y=Math.max(.5,upcoming.position.y-upcoming.size.y-layer);
+  }
+  if(step>0)piece=alignPieceToGrid(piece,step);
   if(!shiftFree&&$("edgeSnap").checked)
     piece=magnetizeEdges(piece,map.elements);
   const carved=cutOpeningInWall(map.elements,piece);
@@ -644,7 +653,32 @@ function updateValidation(show=true){
 }
 
 canvas.addEventListener("contextmenu",e=>e.preventDefault());
+function hitResizeHandle(evt){
+  if(!edgeHandles.visible||!edgeHandles.children.length)return null;
+  const r=canvas.getBoundingClientRect();
+  pointer.set((evt.clientX-r.left)/r.width*2-1,
+    1-(evt.clientY-r.top)/r.height*2);
+  raycaster.setFromCamera(pointer,camera);
+  return raycaster.intersectObjects(edgeHandles.children,false)[0]?.object||null;
+}
 canvas.addEventListener("pointerdown",evt=>{
+  if(evt.button===0&&tool==="select"&&transformMode==="scale"){
+    const handle=hitResizeHandle(evt);
+    const part=map.elements.find(e=>e.id===selectedId);
+    if(handle&&part){
+      evt.preventDefault();
+      canvas.setPointerCapture(evt.pointerId);
+      const baseY=part.position.y+(part.type==="floor"?0:part.size.y/2);
+      resizingEdge={
+        part:clone(part),previous:snapshot(),
+        axis:handle.userData.edgeAxis,side:handle.userData.edgeSide,
+        startX:evt.clientX,startY:evt.clientY,
+        startWorld:readPoint(evt,baseY),
+        baseY,latest:null
+      };
+      dragging=null;return;
+    }
+  }
   if(![0,1,2].includes(evt.button))return;
   // TransformControls captures its own drag; editor handles camera otherwise.
   if(!(evt.button===0&&(gizmo.dragging||gizmo.axis)))
@@ -668,6 +702,43 @@ canvas.addEventListener("pointerdown",evt=>{
   }
 });
 canvas.addEventListener("pointermove",evt=>{
+  if(resizingEdge){
+    const r=resizingEdge,axis=r.axis,original=r.part;
+    const current=axis==="y"?null:readPoint(evt,r.baseY);
+    let delta=0;
+    if(axis==="y"){
+      delta=(r.startY-evt.clientY)*orbit.distance/
+        Math.max(150,canvas.clientHeight)*1.55;
+      if(original.type==="floor")delta=-delta;
+    }else if(current&&r.startWorld){
+      const angle=(original.rotationY||0)*Math.PI/180;
+      const dir=axis==="x"?{x:Math.cos(angle),z:-Math.sin(angle)}:
+        {x:Math.sin(angle),z:Math.cos(angle)};
+      delta=(current.x-r.startWorld.x)*dir.x+
+        (current.z-r.startWorld.z)*dir.z;
+    }
+    const next=resizeFromEdge(original,{
+      axis,side:r.side,delta,grid:map.grid,snap:!evt.shiftKey
+    });
+    r.latest=next;
+    const root=entityMeshes.get(original.id);
+    if(root){
+      root.position.set(next.position.x,next.position.y,next.position.z);
+      root.scale.set(next.size.x/original.size.x,
+        next.size.y/original.size.y,next.size.z/original.size.z);
+      redrawEdgeHandles();refreshOutline();
+    }
+    for(const [field,value] of Object.entries({
+      px:next.position.x,py:next.position.y,pz:next.position.z,
+      sx:next.size.x,sy:next.size.y,sz:next.size.z
+    })){
+      const input=document.querySelector('[data-field="'+field+'"]');
+      if(input)input.value=value;
+    }
+    $("selectedInfo").textContent=original.type.toUpperCase()+
+      " "+next.size.x+" × "+next.size.y+" × "+next.size.z+"M";
+    return;
+  }
   const cursor=readPoint(evt,layer);
   if(cursor){
     $("viewportCoords").textContent="X "+cursor.x.toFixed(1)+
@@ -675,12 +746,14 @@ canvas.addEventListener("pointermove",evt=>{
     if(preview.visible){
       const spacing=evt.shiftKey?0:map.grid;
       const px=round(cursor.x,spacing),pz=round(cursor.z,spacing);
-      // Visual preview uses the exact same magnetic alignment as placement.
       let point={x:px,y:layer,z:pz};
-      if(PART_KEYS.includes(tool)&&!evt.shiftKey&&$("edgeSnap").checked){
-        const candidate=makePiece(tool,px,layer,pz,"preview");
+      if(PART_KEYS.includes(tool)){
+        let candidate=makePiece(tool,cursor.x,layer,cursor.z,"preview");
         candidate.rotationY=placementRotation;
-        point=magnetizeEdges(candidate,map.elements).position;
+        if(spacing>0)candidate=alignPieceToGrid(candidate,spacing);
+        if(!evt.shiftKey&&$("edgeSnap").checked)
+          candidate=magnetizeEdges(candidate,map.elements);
+        point=candidate.position;
       }
       preview.position.set(point.x,0,point.z);
     }
@@ -705,6 +778,21 @@ canvas.addEventListener("pointermove",evt=>{
   }
 });
 function endDragging(){
+  if(resizingEdge){
+    const r=resizingEdge;
+    resizingEdge=null;
+    const current=map.elements.find(e=>e.id===r.part.id);
+    if(current&&r.latest){
+      const before=r.previous;
+      Object.assign(current,r.latest);
+      if(before!==snapshot()){
+        undoStack.push(before);
+        if(undoStack.length>90)undoStack.shift();
+        redoStack.length=0;
+      }
+      changed();
+    }else redrawEdgeHandles();
+  }
   dragging=null;dragStart=null;
   if(!gizmo.dragging)updateInspector();
 }
@@ -922,10 +1010,20 @@ function resizeFloor(size){
   const piece=map.elements.find(e=>e.id===selectedId);
   if(!piece||piece.type!=="floor")return;
   beginChange();
-  piece.size.x=cap(size.x,.15,110);
-  piece.size.z=cap(size.z,.15,110);
+  // Presets also pin the lower-left (local -X/-Z) corner.
+  // Expanding 10 to 20 metres adds space to ONE side of the floor,
+  // without displacing the rooms on the stationary two sides.
+  let resized=resizeFromEdge(piece,{
+    axis:"x",side:1,delta:cap(size.x,.15,110)-piece.size.x,
+    grid:0,snap:false
+  });
+  resized=resizeFromEdge(resized,{
+    axis:"z",side:1,delta:cap(size.z,.15,110)-piece.size.z,
+    grid:0,snap:false
+  });
+  Object.assign(piece,resized);
   changed();
-  toast("FLOOR RESIZED TO "+piece.size.x+" × "+piece.size.z+"M");
+  toast("FLOOR RESIZED FROM ANCHORED CORNER · "+piece.size.x+" × "+piece.size.z+"M");
 }
 for(const button of document.querySelectorAll("[data-floor-size]"))
   button.addEventListener("click",()=>{
