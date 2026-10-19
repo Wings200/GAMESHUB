@@ -532,6 +532,8 @@ async function loadCurrentAccount() {
       window.GAMESHUB_ACCOUNT.user =
         null;
 
+      window.dispatchEvent(new Event("gameshub-account-change"));
+
       showGoogleButton();
 
       return;
@@ -548,6 +550,8 @@ async function loadCurrentAccount() {
 
     window.GAMESHUB_ACCOUNT.user =
       data.user;
+
+    window.dispatchEvent(new Event("gameshub-account-change"));
 
 
     showSignedInAccount(
@@ -763,6 +767,8 @@ async function saveUsername() {
     window.GAMESHUB_ACCOUNT.user =
       data.user;
 
+    window.dispatchEvent(new Event("gameshub-account-change"));
+
 
     showSignedInAccount(
       data.user,
@@ -952,6 +958,8 @@ async function createGuestAccount() {
     window.GAMESHUB_ACCOUNT.user =
       data.user;
 
+    window.dispatchEvent(new Event("gameshub-account-change"));
+
 
     showSignedInAccount(
       data.user,
@@ -1060,6 +1068,8 @@ async function handleGoogleCredential(
 
     window.GAMESHUB_ACCOUNT.user =
       data.user;
+
+    window.dispatchEvent(new Event("gameshub-account-change"));
 
 
     showSignedInAccount(
