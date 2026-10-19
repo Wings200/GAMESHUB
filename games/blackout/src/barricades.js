@@ -28,7 +28,7 @@ export class Barricades {
         }
         const c={minX:item.x-w/2,maxX:item.x+w/2,minZ:item.z-d/2,maxZ:item.z+d/2,
           minY:y-(step-.025)/2,maxY:y+(step-.025)/2,tag:"barricade",barricade:o};
-        const plank={mesh:board,collider:c,hp:48,broken:false};
+        const plank={mesh:board,collider:c,hp:0,broken:true};
         board.userData={kind:"barricade",barricade:o,plank,open:true};
         o.planks.push(plank);this.world.shootables.push(board);
       }
