@@ -149,8 +149,15 @@ export function createSwitchyard(T,scene,state={collisionRevision:0}){
   for(const level of [0,4]){
     const y=level+1.87;
     box(0,y,-51,.5,3.74,.48,steel,{solid:true});
-    box(-7.2,y,-51,13.7,3.74,.48,concrete,{solid:true});
-    box(7.2,y,-51,13.7,3.74,.48,concrete,{solid:true});
+    // Northern entry walls: four extra, fully interactive soft-breach bays.
+    // Defenders can close them with steel, attackers can charge an unreinforced
+    // bay to make an actual opening into the floor's bomb-room approach.
+    for(const x of [-7.2,7.2]){
+      for(const dx of [-4.2,4.2])
+        box(x+dx,y,-51,5.3,3.74,.48,concrete,{solid:true});
+      softWall("north-"+(x<0?"west":"east")+"-"+level,
+        "z",x,-51,level,"drywall");
+    }
     for(const [x,w] of [[-8,11.7],[8,11.7]]){
       box(x,y,-20,w,3.74,.45,concrete,{solid:true});
     }
@@ -193,7 +200,12 @@ export function createSwitchyard(T,scene,state={collisionRevision:0}){
           box(x-2.36,level+1.85,z,1.4,3.7,.32,concrete,{solid:true});
           box(x+2.36,level+1.85,z,1.4,3.7,.32,concrete,{solid:true});
           softWall("partition-"+(z===-38?"A":"B")+"-"+level,"z",x,z,level);
-        }else box(x,level+1.85,z,6.0,3.7,.32,pale,{solid:true});
+        }else{
+          for(const offset of [-2.2,2.2])
+            box(x+offset,level+1.85,z,1.5,3.7,.32,pale,{solid:true});
+          doorway("switch-room-"+(x<0?"W":"E")+"-"+z+"-"+level,
+            "z",x,z,level,2.6,"door");
+        }
       }
     }
     doorway("switch-south-"+level,"z",0,-20,level,2.6,"door");
