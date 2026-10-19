@@ -47,6 +47,7 @@ const sightSelect=$("sightSelect"),reticle=$("reticle");
 const secondarySelect=$("secondarySelect"),flashOverlay=$("flashOverlay");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
 const reinforceCountdown=$("reinforceCountdown"),reinforceTitle=$("reinforceTitle");
+const reinforceHint=$("reinforceHint");
 const SIGHTS=["holo-a","holo-b","red-dot","iron"];
 const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
 let sight="holo-a";
@@ -839,7 +840,14 @@ function updateFrame(now){
       const remaining=Math.max(0,((action?.end||now)-now)/1000);
       reinforceTitle.textContent=barricades.busy?
         (barricades.action.kind==="install"?"INSTALLING BARRICADE":"REMOVING BARRICADE"):
-        gadgets.specialAction?"ACTIVATING "+gadgets.specialAction.kind.toUpperCase():"INSTALLING REINFORCEMENT";
+        gadgets.ordnance.pending?
+          (gadgets.ordnance.pending.kind==="claymore"?
+            "PLACING CLAYMORE":"THROWING "+gadgets.ordnance.pending.kind.toUpperCase()):
+        gadgets.specialAction?"ACTIVATING "+gadgets.specialAction.kind.toUpperCase():
+        "INSTALLING REINFORCEMENT";
+      reinforceHint.textContent=gadgets.ordnance.pending?
+        "THROW / INSTALL ANIMATION · RELEASE WHEN COMPLETE":
+        "KEEP HOLDING F · RELEASE TO CANCEL · ESC FOR MENU";
       reinforceFill.style.width=((barricades.busy?barricades.progress:gadgets.actionProgress)*100).toFixed(1)+"%";
       reinforceCountdown.textContent=remaining.toFixed(1)+"S";
     }
