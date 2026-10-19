@@ -61,7 +61,7 @@ export function buildFacility(T,scene,world){
   // Exterior flanks: split the complete wall material around genuine
   // window apertures rather than drawing glass over an invisible full wall.
   for(const x of [-9.5,9.5]){
-    const doorway=x<0?-37:-27;
+    const doorway=x<0?-40:-27;
     const minZ=-53,maxZ=-19,winZ=x<0?-45:-44,halfW=1.17;
     const segments=[[minZ,winZ-halfW],[winZ+halfW,doorway-1.5],
       [doorway+1.5,maxZ]];
