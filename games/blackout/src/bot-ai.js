@@ -217,7 +217,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false,team="enem
     new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.22,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.012;group.add(shadow);
   const bot={id,team,group,body,head,hitboxes:[body,head],x,z,
-    health:100,alive:true,stationary,healthMax:100,
+    health:team==="ally"?120:100,alive:true,stationary,healthMax:team==="ally"?120:100,
     armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
     path:[],lastGoal:null,repathAt:0,collisionRevision:-1,blockingBarricade:null,state:stationary?"hold":"approach",
     hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
