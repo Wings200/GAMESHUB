@@ -38,6 +38,7 @@ const runoutAlertInfo=$("runoutAlertInfo"),spectatorAlert=$("spectatorAlert");
 const healthFill=$("healthFill"),matchCaption=$("matchCaption"),defuserInventory=$("defuserInventory");
 const spawnSelect=$("spawnSelect"),droneOverlay=$("droneOverlay"),droneSignal=$("droneSignal");
 const teamPopulation=$("teamPopulation");
+const attackAlive=$("attackAlive"),defendAlive=$("defendAlive");
 const operatorHud=$("operatorHud"),healthHud=$("healthHud");
 const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
 const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
@@ -494,8 +495,13 @@ function drawTacticalHud(now){
   const seconds=Math.ceil(clockMs/1000);
   matchClock.textContent=String(Math.floor(seconds/60))+":"+String(seconds%60).padStart(2,"0");
   matchClock.classList.toggle("warning",seconds<=15&&seconds>0);
-  teamPopulation.textContent=(Number(player.health>0)+round.allies.filter(b=>b.alive).length)+
-    " VS "+round.bots.filter(b=>b.alive).length;
+  const friendCount=Number(player.health>0)+round.allies.filter(b=>b.alive).length;
+  const opposingCount=round.bots.length?round.bots.filter(b=>b.alive).length:5;
+  const atkCount=role==="attacker"?friendCount:opposingCount;
+  const defCount=role==="defender"?friendCount:opposingCount;
+  attackAlive.textContent=atkCount+"/5";
+  defendAlive.textContent=defCount+"/5";
+  teamPopulation.textContent=atkCount+" ATTACKERS   VS   "+defCount+" DEFENDERS";
   droneOverlay.classList.toggle("hidden",!drone.active);
   droneSignal.textContent=drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE";
   phaseText.textContent=phaseName;
