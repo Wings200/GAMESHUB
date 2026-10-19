@@ -316,6 +316,7 @@ document.addEventListener("keydown",e=>{
       const scan=drone.ping(clock(),objectiveRound.bots);
       if(scan.ok)for(const bot of scan.contacts){
         bot.lastSeen={x:bot.x,z:bot.z,time:clock()};
+        bot.spottedUntil=clock()+9500;
       }
       popup(scan.message,1.4);if(scan.ok)sound("beep");
     }
@@ -456,6 +457,7 @@ function fireOnceSafe(now){
       const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
       const kill=info.bot.damage(Math.max(1,Math.round(base*penetration)));
       weapons.registerHit(kill);hitUntil=now+170;
+      info.bot.spottedUntil=now+9000;
       popup(kill?"HOSTILE ELIMINATED":(head?"HEADSHOT":"BODY HIT")+
         " · "+Math.ceil(info.bot.health)+" HP REMAINING",.75);
       impact(h.point,head?0xffd2a1:0xff7e67,.07);
@@ -508,13 +510,18 @@ function drawTacticalHud(now){
   matchScore.textContent=round.score.attacker+" — "+round.score.defender;
   // All ten slots are real participants in this OFFLINE PvE simulation.
   const playerAlive=player.health>0;
-  const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+'" title="Your operator">◆</span>';
+  const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+
+    '" title="YOUR OPERATOR · '+operator.name+'">'+operator.sigil+'</span>';
   const friendly=onePip+round.allies.map(b=>
-    '<span class="bo-player-pip ally'+(b.alive?"":" down")+'" title="Friendly AI '+b.id+'">'+
-    (b.alive?"◆":"×")+'</span>').join("");
+    '<span class="bo-player-pip ally'+(b.alive?"":" down")+
+    '" title="ALLY · '+b.operatorSpec?.name+' · '+(b.alive?"ALIVE":"ELIMINATED")+'">'+
+    (b.alive?b.operatorSpec?.sigil||"◆":"×")+'</span>').join("");
   const enemy=round.bots.length?
     round.bots.map(b=>'<span class="bo-player-pip hostile'+(b.alive?"":" down")+
-      '" title="Hostile AI '+b.id+'">'+(b.alive?"●":"×")+'</span>').join(""):
+      '" title="'+(b.alive&&now<b.spottedUntil?"SPOTTED · "+b.operatorSpec?.name:
+        b.alive?"UNKNOWN HOSTILE":"HOSTILE ELIMINATED")+'">'+
+      (b.alive?(now<b.spottedUntil?b.operatorSpec?.sigil||"●":"?"):"×")+
+      '</span>').join(""):
     Array(5).fill('<span class="bo-player-pip hostile" title="Enemy undisclosed">?</span>').join("");
   if(role==="attacker"){friendlySlots.innerHTML=friendly;enemySlots.innerHTML=enemy;}
   else{enemySlots.innerHTML=friendly;friendlySlots.innerHTML=enemy;}
