@@ -131,9 +131,13 @@ export function assaultSweepPosition(round,bot,now){
 // Small lateral combat movement prevents visible bots from becoming static
 // aim turrets. Do not teleport and never pick an occupied cover square.
 export function chooseTacticalReposition(round,bot,target,now){
-  if(!target||distance(bot,target)>13)return null;
-  if(bot.repositionGoal&&now<(bot.repositionUntil||0)&&
-      distance(bot,bot.repositionGoal)>.6)return bot.repositionGoal;
+  if(!target||!Number.isFinite(bot.x+bot.z+target.x+target.z)||
+      distance(bot,target)>13)return null;
+  if(bot.repositionGoal&&now<(bot.repositionUntil||0)){
+    const stored=bot.repositionGoal;
+    if(!Number.isFinite(stored.x+stored.z))bot.repositionGoal=null;
+    else return distance(bot,stored)>.6?stored:null;
+  }
   if(now<(bot.repositionCooldown||0))return null;
   const dx=target.x-bot.x,dz=target.z-bot.z,len=Math.hypot(dx,dz)||1;
   const side=bot.id%2?1:-1;
@@ -141,7 +145,7 @@ export function chooseTacticalReposition(round,bot,target,now){
     const away=distance(bot,target)<3.2?1.25:0;
     const pos={x:bot.x-sign*dz/len*2.0-dx/len*away,
       z:bot.z+sign*dx/len*2.0-dz/len*away};
-    if(canStand(round,pos,.37)){
+    if(Number.isFinite(pos.x+pos.z)&&canStand(round,pos,.37)){
       bot.repositionGoal=pos;
       bot.repositionUntil=now+1900;
       bot.repositionCooldown=now+2900+(bot.id%3)*290;
