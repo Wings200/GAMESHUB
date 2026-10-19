@@ -46,19 +46,40 @@ export function buildFacility(T,scene,world){
   for(const z of [-53,-19])box(0,.045,z,19.4,.065,.12,yellow);
   const H=3.55;
   function wall(x,z,w,d,mat=wallMat){return box(x,H/2,z,w,H,d,mat,true,"wall");}
+  // Real door and window openings; corresponding barricade meshes will reuse
+  // these exact aperture coordinates to avoid colliding with unseen wall faces.
+  const openings=[];
   // Entrance & exit are real openings with lintels. Never collide across them.
   for(const z of [-53,-19]){
     wall(-5.75,z,7.9,.36);wall(5.75,z,7.9,.36);
     box(0,3.22,z,3.75,.68,.37,metal,true,"lintel");
-    box(-1.82,1.65,z,.09,3.2,.46,frame);
-    box(1.82,1.65,z,.09,3.2,.46,frame);
+    box(-1.82,1.65,z,.09,3.2,.46,frame,true,"door-frame");
+    box(1.82,1.65,z,.09,3.2,.46,frame,true,"door-frame");
+    openings.push({id:z===-53?"entry-north":"entry-south",kind:"door",
+      axis:"z",x:0,z,width:3.48,height:3.02,bottom:0});
   }
-  // Exterior flanks and open service gates.
+  // Exterior flanks: split the complete wall material around genuine
+  // window apertures rather than drawing glass over an invisible full wall.
   for(const x of [-9.5,9.5]){
     const doorway=x<0?-37:-27;
-    wall(x,(-53+doorway-1.5)/2,.38,doorway-1.5+53);
-    wall(x,(doorway+1.5-19)/2,.38,-19-(doorway+1.5));
+    const minZ=-53,maxZ=-19,winZ=x<0?-45:-44,halfW=1.17;
+    const segments=[[minZ,winZ-halfW],[winZ+halfW,doorway-1.5],
+      [doorway+1.5,maxZ]];
+    for(const [a,b] of segments)if(b-a>.15)wall(x,(a+b)/2,.38,b-a);
+    // Collision covers sill (0-0.95m) and header (2.68-3.55m),
+    // NOT the open window span. This enables real bullet passage and vaults.
+    box(x,.475,winZ,.38,.95,halfW*2,concrete,true,"window-sill");
+    box(x,(2.68+H)/2,winZ,.38,H-2.68,halfW*2,wallMat,true,"window-header");
+    for(const side of [-1,1]){
+      box(x,1.815,winZ+side*halfW,.42,1.73,.10,frame,true,"window-frame");
+    }
+    openings.push({id:x<0?"west-window":"east-window",kind:"window",
+      axis:"x",x,z:winZ,width:halfW*2-.10,height:1.67,bottom:.97});
     box(x,3.24,doorway,.43,.62,3.1,frame,true,"lintel");
+    for(const side of [-1,1])
+      box(x,1.5,doorway+side*1.53,.43,3,.09,frame,true,"door-frame");
+    openings.push({id:x<0?"west-entry":"east-entry",kind:"door",
+      axis:"x",x,z:doorway,width:2.85,height:3.0,bottom:0});
   }
   // Cross-corridor: two 2.8m clear doorways for rotations and flanks.
   wall(-7.9,-37,3.2,.34);
@@ -67,9 +88,11 @@ export function buildFacility(T,scene,world){
   wall(2.3,-37,1.4,.34);
   wall(7.9,-37,3.2,.34);
   for(const x of [-4.55,4.55]){
-    box(x-1.47,1.5,-37,.10,3,.45,frame);
-    box(x+1.47,1.5,-37,.10,3,.45,frame);
+    box(x-1.47,1.5,-37,.10,3,.45,frame,true,"door-frame");
+    box(x+1.47,1.5,-37,.10,3,.45,frame,true,"door-frame");
     box(x,3.25,-37,2.95,.60,.45,metal,true,"lintel");
+    openings.push({id:x<0?"west-hall":"east-hall",kind:"door",
+      axis:"z",x,z:-37,width:2.80,height:2.96,bottom:0});
   }
   // Middle dividing walls with openings at -45 and -29. Split corridors
   // into site rooms without ever sealing either bomb room off.
@@ -77,14 +100,16 @@ export function buildFacility(T,scene,world){
     wall(0,(z1+z2)/2,.30,z2-z1);
   for(const z of [-45,-29]){
     box(0,3.24,z,.38,.60,4,metal,true,"lintel");
-    for(const dz of [-2,2])box(0,1.47,z+dz,.42,2.95,.09,frame);
+    for(const dz of [-2,2])box(0,1.47,z+dz,.42,2.95,.09,frame,true,"door-frame");
+    openings.push({id:z===-45?"server-door":"control-door",kind:"door",
+      axis:"x",x:0,z,width:3.73,height:2.95,bottom:0});
   }
   // Low reinforced foundation strips and door thresholds; all collision
   // boxes are generated with exact coordinates from the visible meshes.
   for(const x of [-9.5,9.5])box(x,.18,-36,.47,.34,33.5,metal);
   const ceiling=new T.Group();shell.add(ceiling);
   // Real roof with a small realistic fixture grid, not a giant floating plane.
-  const roof=box(0,3.67,-36,19.2,.18,34.1,frame);
+  const roof=box(0,3.67,-36,19.2,.18,34.1,frame,true,"roof");
   roof.castShadow=false;roof.receiveShadow=true;
   // Use glowing rectangular ceiling luminaires plus actual point lights.
   const fixtures=[];
@@ -148,5 +173,6 @@ export function buildFacility(T,scene,world){
     }
     return "FACILITY EXTERIOR";
   }
-  return {shell,sites,zoneAt,fixtures,coverPoints,bounds:{minX:-9.5,maxX:9.5,minZ:-53,maxZ:-19}};
+  return {shell,sites,zoneAt,fixtures,coverPoints,openings,
+    bounds:{minX:-9.5,maxX:9.5,minZ:-53,maxZ:-19}};
 }
