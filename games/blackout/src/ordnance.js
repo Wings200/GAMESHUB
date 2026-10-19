@@ -15,10 +15,10 @@ export const SECONDARY_KITS=Object.freeze({
     {id:"impact",label:"IMPACT GRENADE",count:2}
   ])
 });
-export function occluded(colliders,from,to){
+export function occluded(colliders,from,to,ignore=null){
   const d={x:to.x-from.x,y:to.y-from.y,z:to.z-from.z};
   for(const c of colliders){
-    if(c.tag==="floor-base"||c.maxY<=.08)continue;
+    if(c===ignore||c.tag==="floor-base"||c.maxY<=.08)continue;
     let near=0,far=1;
     for(const [axis,lo,hi] of [["x",c.minX,c.maxX],["y",c.minY,c.maxY],
       ["z",c.minZ,c.maxZ]]){
@@ -173,8 +173,8 @@ export class Ordnance{
     if(!round)return [];
     return round.bots||[];
   }
-  lineClear(from,to){
-    return !occluded(this.world.colliders,from,to);
+  lineClear(from,to,ignore=null){
+    return !occluded(this.world.colliders,from,to,ignore);
   }
   affectUnits(d,kind,now,player,round){
     const flash=kind==="stun",radius=flash?10:kind==="claymore"?5.2:
@@ -209,7 +209,7 @@ export class Ordnance{
         if(panel.destroyed||panel.reinforced||Math.hypot(panel.x-d.x,panel.z-d.z)>radius*.66)
           continue;
         if(!this.lineClear({x:d.x,y:1.1,z:d.z},
-          {x:panel.x,y:1.1,z:panel.z}))continue;
+          {x:panel.x,y:1.1,z:panel.z},panel.collider))continue;
         if(kind!=="impact")panel.damage(500,true);
       }
     }
