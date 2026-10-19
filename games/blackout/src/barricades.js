@@ -129,10 +129,8 @@ export class Barricades {
       if(Math.abs(player.x-o.x)<.035)continue;
       const nx=o.x+(player.x<o.x?1.05:-1.05);
       if(player.blocked(nx,o.z,0,player.height,player.radius))continue;
-      player.x=nx;player.z=o.z;player.y=0;
-      player.velX=player.velZ=player.velY=0;
-      player.applyCamera();
-      this.vaultCooldown=now+1000;return true;
+      if(!player.startVault?.(nx,o.z))continue;
+      this.vaultCooldown=now+1150;return true;
     }
     return false;
   }
