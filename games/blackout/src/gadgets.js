@@ -119,6 +119,25 @@ export class Gadgets {
     }
     return {ok:false,message:"SHIELD NEEDS 1.8M CLEAR SPACE IN FRONT · FACE OPEN FLOOR"};
   }
+  deployJammer(x,z,team="enemy"){
+    const group=new this.THREE.Group();group.position.set(x,0,z);this.scene.add(group);
+    const housing=new this.THREE.Mesh(new this.THREE.BoxGeometry(.58,.30,.52),
+      new this.THREE.MeshStandardMaterial({color:0x3c5b68,metalness:.55,roughness:.43}));
+    housing.position.y=.16;group.add(housing);
+    const indicator=new this.THREE.Mesh(new this.THREE.SphereGeometry(.055,10,8),
+      new this.THREE.MeshBasicMaterial({color:0x69fff2}));
+    indicator.position.y=.35;group.add(indicator);
+    const device={kind:"jammer",team,x,z,group,light:indicator,disabledUntil:0};
+    this.electronics.push(device);
+    return device;
+  }
+  populateEnemyDefenses(sites){
+    // Ensure attacker gadgets have real enemy electronics to counter.
+    // These are physical units in both rooms, not decorative HUD labels.
+    for(const site of Object.values(sites))
+      this.deployJammer(site.x-((site.id==="A")?1.3:-1.3),
+        site.z+1.2,"enemy");
+  }
   jammedAt(x,z,now=performance.now()){
     return this.electronics.some(e=>e.kind==="jammer"&&
       e.disabledUntil<=now&&Math.hypot(x-e.x,z-e.z)<5.2);
@@ -181,6 +200,10 @@ export class Gadgets {
       if(this.world.colliders.some(c=>c.maxY>.4&&c.minY<.6&&
         x>=c.minX-.32&&x<=c.maxX+.32&&z>=c.minZ-.32&&z<=c.maxZ+.32))
         return {ok:false,message:"GADGET PLACEMENT BLOCKED · FACE OPEN FLOOR"};
+      if(id==="mute"){
+        this.deployJammer(x,z,"ally");consume();
+        return {ok:true,message:"MUTE SIGNAL JAMMER ONLINE · DRONES DISRUPTED"};
+      }
       const group=new this.THREE.Group();group.position.set(x,0,z);this.scene.add(group);
       const mat=new this.THREE.MeshStandardMaterial({color:id==="mute"?0x415e6b:0x68724d,metalness:.38});
       const mesh=new this.THREE.Mesh(new this.THREE.BoxGeometry(.55,.31,.45),mat);
