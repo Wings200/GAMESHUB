@@ -304,7 +304,7 @@ document.addEventListener("keydown",e=>{
     return;
   }
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
-      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","KeyV","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
+      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyB","KeyX","KeyZ","KeyV","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
@@ -355,7 +355,13 @@ document.addEventListener("keydown",e=>{
   }else if(e.code==="Space"){
     if(barricades.vault(player,clock())){sound("step");popup("WINDOW VAULT");}
   }else if(e.code==="KeyG"){
-    const r=gadgets.main(camera,player,clock(),objectiveRound);popup(r.message);if(r.ok)sound("click");
+    const r=gadgets.main(camera,player,clock(),objectiveRound);
+    popup(r.message);if(r.ok)sound(operator.id==="smoke"?"smoke-throw":"click");
+  }else if(e.code==="KeyB"){
+    if(operator.id==="smoke"){
+      const r=gadgets.detonateSmoke(clock());
+      popup(r.message,2);if(r.ok)sound("smoke-trigger");
+    }
   }else if(e.code==="KeyX"){
     const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
   }else if(e.code==="KeyF"){
@@ -452,6 +458,12 @@ function fireOnceSafe(now){
         continue;
       }
       impact(h.point,0xc58b56);break;
+    }
+    if(info.kind==="smoke-canister"){
+      const removed=gadgets.damageSmokeCanister(info.device,shot.damage*penetration);
+      sound("impact");impact(h.point,0xc7e28c,.06);
+      if(removed)popup("GAS CANISTER DESTROYED · NO DETONATION",1.1);
+      break;
     }
     if(info.kind==="barricade"){
       const destroyed=barricades.hit(info.plank,shot.damage);
@@ -635,7 +647,9 @@ function updateHud(report){
   reserveCount.textContent="/ "+weapons.current.remaining;
   combatStats.textContent=`${weapons.stats.hits} HITS · ${weapons.stats.accuracy}% ACC · ${weapons.stats.kills} DOWN`;
   const detail=gadgets.details;
-  gadgetPrimary.textContent=`G · ${detail.g} [${gadgets.specialCount??0}]`;
+  gadgetPrimary.textContent=operator.id==="smoke"?
+    `G THROW [${gadgets.specialCount}] · B DETONATE [${gadgets.smokeStatus.armed} ARMED]`:
+    `G · ${detail.g} [${gadgets.specialCount??0}]`;
   gadgetSecondary.textContent=drone.active?"X · DRONE PING · G SHOCK (TWITCH)":
     `X · ${detail.x} [${gadgets.counts.x}]`;
   const nearbyOpening=barricades.nearest(player,2.7);
@@ -837,7 +851,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="OPEN MECHANICS LAB · CHOOSE ATTACK OR DEFENSE · TEST WALLS, DRONES, GADGETS AND BOMBS";}
 window.BLACKOUT_DEV={
-  get build(){return "2.2.0-animated-specials-active-defender-setup-retakes"},
+  get build(){return "3.1.0-smoke-throw-remote-mechanics-stage2"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
