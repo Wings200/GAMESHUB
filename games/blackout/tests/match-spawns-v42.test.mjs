@@ -111,7 +111,11 @@ test("attacking support AI cycles physically clear cover lanes after reaching th
   const enemy={x:bot.x+6,z:bot.z};
   const strafe=chooseTacticalReposition(round,bot,enemy,8000);
   assert.ok(strafe&&Math.hypot(strafe.x-bot.x,strafe.z-bot.z)>=1.9);
-  assert.deepEqual(chooseTacticalReposition(round,bot,8100),strafe);
+  const follow=chooseTacticalReposition(round,bot,8100);
+  assert.deepEqual(follow,strafe,"combat goal should persist; state="+JSON.stringify({
+    bot:{x:bot.x,z:bot.z,id:bot.id,until:bot.repositionUntil,goal:bot.repositionGoal,cooldown:bot.repositionCooldown},
+    target:enemy,strafe,follow
+  }));
   const obstacles=[{minX:strafe.x-.8,maxX:strafe.x+.8,
     minZ:strafe.z-.8,maxZ:strafe.z+.8,minY:0,maxY:3}];
   round.world.colliders=obstacles;
