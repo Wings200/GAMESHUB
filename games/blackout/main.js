@@ -11,6 +11,7 @@ import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,re
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
 import {createReconDrone} from "./src/drone.js?v=blackout-v411-ai-drone-fix";
+import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -80,7 +81,23 @@ let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
 let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0,lastWallToastAt=0;
 let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
 let combatErrors=0,lastCombatError="",lastRuntimeReportAt=0;
-let droneActionMode=false;
+let droneActionMode=false,localAttackerDeployed=true;
+function stageLocalAttacker(){
+  if(role!=="attacker"||objectiveRound.phase!=="prep")return;
+  // Player controller has no world-space avatar during drone preparation.
+  // The camera belongs to the recon drone; don't expose an attacker's
+  // location, gun, physics body or spawn to defender hit tests.
+  localAttackerDeployed=false;
+  player.x=500;player.z=500;player.y=0;
+  player.velX=0;player.velZ=0;player.velY=0;
+  fireHeld=false;ads=false;
+}
+function deployLocalAttacker(){
+  if(role!=="attacker"||localAttackerDeployed)return;
+  if(!["attack","planted"].includes(objectiveRound.phase))return;
+  player.reset();localAttackerDeployed=true;
+  if(!drone.active)player.applyCamera();
+}
 const audio=new GameAudio();
 const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
@@ -179,6 +196,7 @@ function showGame(){
   gadgets.ordnance.resume(clock());
   if(objectiveRound.phase==="ready"){
     objectiveRound.start(clock());
+    stageLocalAttacker();
     // Enemy Mute places real jammer equipment during the 45s defender prep.
   }
   if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active){
@@ -205,12 +223,10 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
 
 function resetSimulation(){
   resetTacticalCue();
-  drone.reset();droneActionMode=false;objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
-  const attackerSpawns={south:{x:0,z:16},west:{x:-14,z:-40},
-    east:{x:14,z:-27}};
-  const attackerSpawn=attackerSpawns[spawn]||attackerSpawns.south;
+  const attackerSpawn=attackSpawnFor(spawn);
   world.spawn.x=role==="defender"?objectiveRound.site.x:attackerSpawn.x;
   world.spawn.z=role==="defender"?
     objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2):attackerSpawn.z;
@@ -333,7 +349,7 @@ document.addEventListener("keydown",e=>{
       e.preventDefault();resetSimulation();objectiveRound.start(clock());
       if(role==="attacker"){
         // Defender AI installs jammer devices physically during preparation.
-        droneActionMode=false;drone.begin(clock());
+        stageLocalAttacker();droneActionMode=false;drone.begin(clock());
       }
       popup("NEW ROUND · "+(role==="attacker"?"DRONE DEPLOYED":"DEFENSE PREP"));
     }
@@ -378,6 +394,11 @@ document.addEventListener("keydown",e=>{
     }
     droneActionMode=objectiveRound.phase!=="prep";
     popup("DRONE DEPLOYED · "+drone.remaining+" IN RESERVE · 3 TO RETURN",1.5);
+    return;
+  }
+  if(role==="attacker"&&objectiveRound.phase==="prep"){
+    // Destroyed recon feeds cannot fire, activate gadgets or fake a spawn.
+    popup("PREPARATION · PRESS 3 TO DEPLOY A SPARE DRONE",1.5);
     return;
   }
   if(gadgets.busy||barricades.busy)return;
@@ -434,7 +455,7 @@ document.addEventListener("mousemove",e=>{
   }
 });
 canvas.addEventListener("mousedown",e=>{
-  if(!locked||drone.active||gadgets.busy||barricades.busy||["won","lost"].includes(objectiveRound.phase))return;
+  if(!locked||drone.active||role==="attacker"&&objectiveRound.phase==="prep"||gadgets.busy||barricades.busy||["won","lost"].includes(objectiveRound.phase))return;
   audioReady();
   if(e.button===0){fireHeld=true;fireOnce(clock());}
   if(e.button===2){if(!ads)sound("aim");ads=true;}
@@ -596,7 +617,8 @@ function drawTacticalHud(now){
   const seconds=Math.ceil(clockMs/1000);
   matchClock.textContent=String(Math.floor(seconds/60))+":"+String(seconds%60).padStart(2,"0");
   matchClock.classList.toggle("warning",seconds<=15&&seconds>0);
-  const friendCount=Number(player.health>0)+round.allies.filter(b=>b.alive).length;
+  const staged=role==="attacker"&&phase==="prep"?round.stagedAttackers||[]:[];
+  const friendCount=Number(player.health>0)+round.allies.filter(b=>b.alive).length+staged.length;
   const opposingCount=round.bots.length?round.bots.filter(b=>b.alive).length:5;
   const atkCount=role==="attacker"?friendCount:opposingCount;
   const defCount=role==="defender"?friendCount:opposingCount;
@@ -614,7 +636,10 @@ function drawTacticalHud(now){
   const playerAlive=player.health>0;
   const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+
     '" title="YOUR OPERATOR · '+operator.name+'">'+operator.sigil+'</span>';
-  const friendly=onePip+round.allies.map(b=>
+  const stagedPips=staged.map(b=>
+    '<span class="bo-player-pip ally" title="AWAITING ACTION INSERTION · '+
+    b.operatorSpec?.name+'">'+(b.operatorSpec?.sigil||"◆")+'</span>').join("");
+  const friendly=onePip+stagedPips+round.allies.map(b=>
     '<span class="bo-player-pip ally'+(b.alive?"":" down")+
     '" title="ALLY · '+b.operatorSpec?.name+' · '+(b.alive?"ALIVE":"ELIMINATED")+'">'+
     (b.alive?b.operatorSpec?.sigil||"◆":"×")+'</span>').join("");
@@ -708,7 +733,7 @@ function updateHud(report){
      stateCounts["team-flank"]?"SQUAD FLANKING LAST KNOWN POSITION":
      stateCounts["site-response"]?"DEFENDERS RESPONDING TO CONTACT":
      attacking?"SQUAD · CLEARING BOTH BOMB ROOMS":"SQUAD · HOLDING BOTH SITES");
-  const squadText="AI SQUAD · "+squadLabel+" · "+allies.length+"/4 UP";
+  const squadText="AI SQUAD · "+squadLabel+" · "+(attacking&&objectiveRound.phase==="prep"?4:allies.length)+"/4 UP";
   if(squadStatus.textContent!==squadText)squadStatus.textContent=squadText;
   objective.textContent=objectiveRound.summary(clock());
   roundScore.textContent=`ROUND ${objectiveRound.roundNumber} · ATK ${objectiveRound.score.attacker} : ${objectiveRound.score.defender} DEF`;
@@ -863,11 +888,14 @@ function updateFrame(now){
       if(message)popup(message);
       if(event)sound(event);
     });
+    const phaseBeforeSimulation=objectiveRound.phase;
     objectiveRound.update(now,dt,player,keys.has("KeyF")&&!drone.active&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
       if(message)popup(message);
       if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
       else if(event)sound(event);
     });
+    if(phaseBeforeSimulation==="prep"&&objectiveRound.phase!=="prep")
+      deployLocalAttacker();
     if(drone.active&&objectiveRound.phase!=="prep"&&!droneActionMode){
       drone.end();player.applyCamera();
       sound("round-start");popup("INSERTION COMPLETE · OPERATOR SPAWNED",2.5);
@@ -933,8 +961,8 @@ function updateFrame(now){
   gunModel.rotation.z=gunKickSide;
   const interacting=!ended&&objectiveRound.hold>0&&keys.has("KeyF");
   document.body.classList.toggle("spectating",player.health<=0&&locked);
-  gunModel.visible=player.health>0&&!drone.active;
-  gunOptics.mount.visible=player.health>0&&!drone.active&&weapons.slot==="primary"&&!interacting;
+  gunModel.visible=player.health>0&&!drone.active&&localAttackerDeployed;
+  gunOptics.mount.visible=player.health>0&&!drone.active&&localAttackerDeployed&&weapons.slot==="primary"&&!interacting;
   if(!ended)weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
     sprinting:player.sprinting,step:player.stepClock,lean:player.lean,
     interacting,interactionProgress:objectiveRound.holdPercent/100});
@@ -970,6 +998,7 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
   get build(){return "4.1.0-ai-drone-fixes"},
+  get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
     health:drone.health,remaining:drone.remaining,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
