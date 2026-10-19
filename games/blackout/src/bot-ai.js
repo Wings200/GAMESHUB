@@ -167,6 +167,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
     armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
     path:[],lastGoal:null,repathAt:0,collisionRevision:-1,state:stationary?"hold":"approach",
     hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
+    nextSightAt:0,sightCache:false,
     moved:0,movePhase:0,muzzle,
     damage(amount){
       if(!this.alive)return false;
