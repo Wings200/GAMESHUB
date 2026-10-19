@@ -280,3 +280,9 @@ body:has(.bo-drone-overlay:not(.hidden)) .bo-drone-header span{animation:bo-sign
  .bo-drone-footer{left:5%;right:5%;bottom:50px;font-size:9px;flex-wrap:wrap}
  .bo-population{top:66px}
 }
+
+/* BLACKOUT V2.1 — concise squad-state feedback without HUD spam */
+.bo-squad-status{display:inline-block;background:#081c27dd;
+ color:#a5f4df;border-left:3px solid #5ce0c5;padding:5px 9px;
+ font:800 10px/1.3 Arial,sans-serif;letter-spacing:.085em;
+ max-width:min(440px,90vw);text-shadow:0 1px 3px #000a}
