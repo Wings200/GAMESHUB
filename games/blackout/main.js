@@ -573,17 +573,19 @@ function drawTacticalHud(now){
   healthFill.classList.toggle("danger",player.health<=player.maxHealth*.35);
   if(phase!==lastPhaseLabel){
     lastPhaseLabel=phase;
-    phaseToastUntil=now+(phase==="prep"?20000:phase==="attack"||phase==="guard"?3300:0);
+    phaseToastUntil=now+(phase==="prep"?2800:phase==="attack"||phase==="guard"?2600:0);
   }
-  const show=phase==="prep"||now<phaseToastUntil&&
-    (phase==="attack"||phase==="guard");
+  // Show a brief phase change announcement; NEVER cover the aiming area
+  // throughout the full 45-second fortification phase.
+  const show=now<phaseToastUntil&&
+    (phase==="prep"||phase==="attack"||phase==="guard");
   phaseAnnounce.classList.toggle("hidden",!show);
   if(show){
     phaseAnnounceEyebrow.textContent="ROUND "+round.roundNumber+" · "+
       (role==="attacker"?"ATTACKERS":"DEFENDERS");
     phaseAnnounceTitle.textContent=phase==="prep"?(role==="attacker"?"DRONE PREPARATION":"FORTIFICATION PHASE"):"ACTION PHASE";
     phaseAnnounceHelp.textContent=phase==="prep"?
-      role==="defender"?"PROTECT BOTH SITES · REMAIN INSIDE DURING PREP":
+      role==="defender"?"PREPARE THE TWO BOMB LABS · TEST MECHANICS":
       "DRONE ACROSS TEST ZONES · X PING · SPAWN IN "+seconds+"S":
       role==="attacker"?"LOCATE THE BOMB · PLANT YOUR DEFUSER":
       "ELIMINATE ATTACKERS · DENY THE PLANT";
@@ -697,8 +699,8 @@ function updateFrame(now){
       }
     }
     if(drone.active)drone.update(dt,activeKeys,gadgets);
-    // Attackers cannot enter the building or kill stationary defenders
-    // before the round clock starts; insertion is an actual locked phase.
+    // Attackers cannot move their physical operator during the drone phase;
+    // their operator spawns only when preparation ends.
     if(alive&&role==="attacker"&&objectiveRound.phase==="prep"&&
        objectiveRound.isInside(player)){
       player.x=beforeMove.x;player.z=beforeMove.z;
@@ -706,8 +708,9 @@ function updateFrame(now){
       player.applyCamera();
     }
     // Preparation lockdown applies to defenders, not a permanent invisible
-    // wall. Player remains inside the building, regardless of open doors.
-    if(alive&&role==="defender"&&objectiveRound.phase==="prep"){
+    // map. Only enclosed competitive maps constrain defenders during prep.
+    if(alive&&role==="defender"&&objectiveRound.phase==="prep"&&
+      world.facility.mode!=="mechanics-sandbox"){
       const b=world.facility.bounds;
       const x=Math.max(b.minX+.46,Math.min(b.maxX-.46,player.x));
       const z=Math.max(b.minZ+.46,Math.min(b.maxZ-.46,player.z));
