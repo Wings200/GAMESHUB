@@ -5,7 +5,7 @@ import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v411-ai-drone-fix";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v420-ai-spawn-staging";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
@@ -669,14 +669,15 @@ function drawTacticalHud(now){
   // During attack, show the nearest of BOTH live bomb locations. Once
   // planted the compass locks to the actual planted defuser location.
   const options=Object.values(round.sites);
+  const viewPosition=drone.active?drone.position:player;
   const focusedSite=phase!=="planted"?
-    options.reduce((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)<
-      Math.hypot(a.x-player.x,a.z-player.z)?b:a):
+    options.reduce((a,b)=>Math.hypot(b.x-viewPosition.x,b.z-viewPosition.z)<
+      Math.hypot(a.x-viewPosition.x,a.z-viewPosition.z)?b:a):
     round.site;
   const dest=phase==="planted"&&round.plantPosition||focusedSite;
-  const dx=dest.x-player.x,dz=dest.z-player.z;
+  const dx=dest.x-viewPosition.x,dz=dest.z-viewPosition.z;
   const distance=Math.round(Math.hypot(dx,dz));
-  const angle=(Math.atan2(dx,-dz)+player.yaw)*180/Math.PI;
+  const angle=(Math.atan2(dx,-dz)+(drone.active?drone.yaw:player.yaw))*180/Math.PI;
   bombArrow.style.transform="rotate("+angle.toFixed(1)+"deg)";
   bombRange.textContent=(phase==="planted"?"DEFUSER ":"BOMB ")+focusedSite.id+" · "+distance+"M";
   bombGuide.textContent=phase==="planted"?
@@ -715,7 +716,8 @@ function drawTacticalHud(now){
 }
 function updateHud(report){
   drawTacticalHud(clock());
-  zoneLabel.textContent=world.zoneAt(player.x,player.z).toUpperCase();
+  zoneLabel.textContent=role==="attacker"&&objectiveRound.phase==="prep"?
+    "ATTACK TEAM · AWAITING INSERTION":world.zoneAt(player.x,player.z).toUpperCase();
   const allies=objectiveRound.allies.filter(b=>b.alive);
   const attacking=role==="attacker";
   const stateCounts={};
@@ -997,14 +999,15 @@ const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "4.1.0-ai-drone-fixes"},
-  get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase}},
+  get build(){return "4.2.0-ai-spawn-staging"},
+  get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
+    staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
     health:drone.health,remaining:drone.remaining,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
-  get teams(){return {friendly:1+objectiveRound.allies.length,
+  get teams(){return {friendly:1+objectiveRound.allies.length+objectiveRound.stagedAttackers.length,
     enemy:objectiveRound.bots.length,alliesAlive:objectiveRound.allies.filter(b=>b.alive).length,
     enemiesAlive:objectiveRound.bots.filter(b=>b.alive).length}},
   get aiNavigation(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null,repathAt:b.repathAt}))},
