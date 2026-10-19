@@ -153,6 +153,7 @@ function popup(message,seconds=2.6){
 function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
   objectiveRound.pause(clock());
+  gadgets.ordnance.pause(clock());
   gadgets.cancelAction();barricades.cancel();
   document.body.classList.remove("playing","ads","spectating");hud.classList.add("hidden");
   menu.classList.remove("hidden");
@@ -161,6 +162,7 @@ function showMenu(){
 function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
   objectiveRound.resume(clock());
+  gadgets.ordnance.resume(clock());
   if(objectiveRound.phase==="ready"){
     objectiveRound.start(clock());
     // Enemy Mute places real jammer equipment during the 45s defender prep.
