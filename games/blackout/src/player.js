@@ -30,6 +30,7 @@ export class FirstPersonController{
     this.lean=0;this.leanTarget=0;
     this.leanSide=0; // persistent toggle: -1 left, +1 right
     this.stepClock=0;this.moving=false;this.sprinting=false;
+    this.vault=null;this.vaultArc=0;
     this.camera.rotation.order="YXZ";
     this.applyCamera();
   }
@@ -42,11 +43,23 @@ export class FirstPersonController{
   reset(){
     Object.assign(this,{x:this.world.spawn.x,y:this.world.spawn.y,z:this.world.spawn.z,
       yaw:this.world.spawn.yaw,pitch:0,velX:0,velY:0,velZ:0,
-      height:PLAYER_DIMENSIONS.stand,eyeHeight:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,leanSide:0,stepClock:0});
+      height:PLAYER_DIMENSIONS.stand,eyeHeight:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,leanSide:0,vault:null,vaultArc:0,stepClock:0});
     this.health=this.maxHealth;this.moving=false;this.sprinting=false;
     this.applyCamera();
   }
   toggleProne(){this.proneWanted=!this.proneWanted;}
+  startVault(x,z){
+    if(this.vault||this.isProne||this.health<=0)return false;
+    const y=this.world.floorAt(x,z);
+    if(this.blocked(x,z,y,PLAYER_DIMENSIONS.stand))return false;
+    this.vault={fromX:this.x,fromZ:this.z,fromY:this.y,
+      toX:x,toZ:z,toY:y,elapsed:0,duration:.64};
+    this.velX=0;this.velY=0;this.velZ=0;this.sprinting=false;
+    this.isCrouched=false;this.isProne=false;
+    this.proneWanted=false;this.height=PLAYER_DIMENSIONS.stand;
+    this.eyeHeight=PLAYER_DIMENSIONS.stand;
+    return true;
+  }
   toggleLean(side){
     if(side!==-1&&side!==1)return this.leanSide;
     // Tap Q or E once to lock that shoulder. Tap the opposite key to
@@ -81,6 +94,22 @@ export class FirstPersonController{
   }
   update(dt,keys){
     const d=clamp(dt,0,0.043);
+    if(this.vault){
+      const v=this.vault;
+      v.elapsed=Math.min(v.duration,v.elapsed+d);
+      const p=v.elapsed/v.duration,e=p*p*(3-2*p);
+      this.x=v.fromX+(v.toX-v.fromX)*e;
+      this.z=v.fromZ+(v.toZ-v.fromZ)*e;
+      this.y=v.fromY+(v.toY-v.fromY)*e;
+      this.vaultArc=Math.sin(Math.PI*p)*.62;
+      this.moving=false;this.sprinting=false;
+      this.velX=0;this.velZ=0;this.velY=0;
+      this.applyCamera();
+      if(p>=1){this.vault=null;this.vaultArc=0;this.applyCamera();}
+      return {room:this.world.zoneAt(this.x,this.z),crouched:false,
+        prone:false,sprinting:false,slow:false,lean:this.lean,speed:0,
+        vaulting:!!this.vault,groundY:this.y,position:[this.x,this.y,this.z]};
+    }
     const wantsCrouch=keys.has("ControlLeft")||keys.has("ControlRight")||keys.has("KeyC");
     this.isProne=this.proneWanted&&!wantsCrouch;
     this.isCrouched=!this.isProne&&(wantsCrouch||!this.canStand());
@@ -129,7 +158,7 @@ export class FirstPersonController{
   }
   applyCamera(){
     const bob=this.moving ? Math.sin(this.stepClock)*(this.sprinting?.016:this.isCrouched?.007:.009) : 0;
-    const eye=this.y+this.eyeHeight-.12+bob;
+    const eye=this.y+this.eyeHeight-.12+bob+this.vaultArc;
     // This is not a decorative through-wall camera offset: each leaning
     // increment is tested against every solid collider at eye height.
     const leanX=Math.cos(this.yaw),leanZ=-Math.sin(this.yaw);
