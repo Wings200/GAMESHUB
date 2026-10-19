@@ -1,12 +1,12 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v07-facility-ai-weapons";
-import {FirstPersonController} from "./src/player.js?v=blackout-v07-facility-ai-weapons";
-import {Weapons} from "./src/weapons.js?v=blackout-v07-facility-ai-weapons";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v07-facility-ai-weapons";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v07-facility-ai-weapons";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v07-facility-ai-weapons";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v07-facility-ai-weapons";
-import {GameAudio} from "./src/audio.js?v=blackout-v07-facility-ai-weapons";
+import {buildRange} from "./src/world.js?v=blackout-v08-barricades-collision-performance";
+import {FirstPersonController} from "./src/player.js?v=blackout-v08-barricades-collision-performance";
+import {Weapons} from "./src/weapons.js?v=blackout-v08-barricades-collision-performance";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v08-barricades-collision-performance";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v08-barricades-collision-performance";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v08-barricades-collision-performance";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v08-barricades-collision-performance";
+import {GameAudio} from "./src/audio.js?v=blackout-v08-barricades-collision-performance";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v08-barricades-collision-performance";
 import {Barricades} from "./src/barricades.js?v=blackout-v08-barricades-collision-performance";
 
