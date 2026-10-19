@@ -119,6 +119,34 @@ export class Gadgets {
     }
     return {ok:false,message:"SHIELD NEEDS 1.8M CLEAR SPACE IN FRONT · FACE OPEN FLOOR"};
   }
+  deployBotSensor(x,z,team="enemy"){
+    const T=this.THREE,group=new T.Group();
+    group.position.set(x,.055,z);this.scene.add(group);
+    const ring=new T.Mesh(new T.RingGeometry(4.7,4.85,36),
+      new T.MeshBasicMaterial({color:team==="enemy"?0xff9654:0x65d6e6,
+        transparent:true,opacity:.16,side:T.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;group.add(ring);
+    const core=new T.Mesh(new T.CylinderGeometry(.20,.24,.16,12),
+      new T.MeshStandardMaterial({color:0x445766,metalness:.5,roughness:.46}));
+    group.add(core);
+    const sensor={x,z,group,team,armed:true,lastPing:0,hostileInside:false,
+      disabledUntil:0};
+    this.sensors.push(sensor);return sensor;
+  }
+  deployBotGas(x,z,team="enemy",now=performance.now()){
+    const T=this.THREE,group=new T.Group();
+    group.position.set(x,0,z);this.scene.add(group);
+    const canister=new T.Mesh(new T.CylinderGeometry(.16,.19,.32,12),
+      new T.MeshStandardMaterial({color:0x60714a,metalness:.55}));
+    canister.position.y=.16;group.add(canister);
+    const cloud=new T.Mesh(new T.SphereGeometry(2.0,16,12),
+      new T.MeshBasicMaterial({color:0x849961,transparent:true,
+        opacity:.18,depthWrite:false,side:T.DoubleSide}));
+    cloud.position.y=1.22;group.add(cloud);
+    const field={kind:"gas",team,x,z,group,cloud,
+      nextTick:now,end:now+9500,disabledUntil:0};
+    this.gasFields.push(field);return field;
+  }
   deployJammer(x,z,team="enemy"){
     const group=new this.THREE.Group();group.position.set(x,0,z);this.scene.add(group);
     const housing=new this.THREE.Mesh(new this.THREE.BoxGeometry(.58,.30,.52),
@@ -203,7 +231,7 @@ export class Gadgets {
       const light=new this.THREE.Mesh(new this.THREE.SphereGeometry(.045,8,6),
         new this.THREE.MeshBasicMaterial({color:id==="mute"?0x59f0db:0xe5a55f}));
       light.position.y=.37;group.add(light);
-      const entry={kind:id==="mute"?"jammer":"gas",x,z,group,light,disabledUntil:0,
+      const entry={kind:id==="mute"?"jammer":"gas",team:"ally",x,z,group,light,disabledUntil:0,
         end:now+10500,nextTick:now};
       if(id==="mute")this.electronics.push(entry);
       else{
@@ -258,7 +286,8 @@ export class Gadgets {
     const core=new this.THREE.Mesh(new this.THREE.CylinderGeometry(.23,.31,.18,12),
       new this.THREE.MeshStandardMaterial({color:0xdc7044,emissive:0xff501c,emissiveIntensity:.4}));
     group.add(core);
-    this.sensors.push({x,z,group,armed:false,lastPing:0,hostileInside:false});
+    this.sensors.push({x,z,group,team:"ally",armed:false,lastPing:0,
+      hostileInside:false,disabledUntil:0});
     this.counts.x--;
     return {ok:true,message:"PROXIMITY SENSOR DEPLOYED · EXIT ITS RADIUS TO ARM"};
   }
@@ -317,32 +346,45 @@ export class Gadgets {
         marker.rotation.y=now*.0018;
       }
     }
+    const round=this.world.round;
     for(const gas of this.gasFields){
       if(now>gas.end){gas.group.visible=false;continue;}
       if(now>=gas.nextTick){
         gas.nextTick=now+450;
-        for(const enemy of hostileBots)if(enemy.alive&&
-          Math.hypot(enemy.x-gas.x,enemy.z-gas.z)<4.0)enemy.damage(7);
+        const targets=gas.team==="enemy"?
+          (round?.role==="attacker"?round.allies:round.bots):
+          (round?.role==="defender"?round.bots:round.allies);
+        for(const enemy of targets||hostileBots)if(enemy.alive&&
+          Math.hypot(enemy.x-gas.x,enemy.z-gas.z)<3.55)enemy.damage(7);
+        if(round&&gas.team==="enemy"&&round.role==="attacker"&&
+          round.playerAlive&&Math.hypot(player.x-gas.x,player.z-gas.z)<3.55)
+          player.takeDamage(6);
       }
-      gas.group.scale.setScalar(1+Math.min(2.5,(now-(gas.end-10500))/5000));
+      gas.group.scale.setScalar(1+Math.min(2.5,(now-(gas.end-9500))/5000));
+      gas.cloud.material.opacity=Math.min(.23,Math.max(.025,(gas.end-now)/28000));
     }
     for(const sensor of this.sensors){
       if((sensor.disabledUntil||0)>now)continue;
-      const r=Math.hypot(player.x-sensor.x,player.z-sensor.z);
-      if(r>=5.25)sensor.armed=true;
-      if(sensor.armed&&r<4.75){
-        sensor.armed=false;
-        sensor.lastPing=now;
-        // Preserve user re-entry beep for solo testing.
-        ping(null,"proximity-beep");
-      }
-      // In objective drills, defenders' sensors also detect approaching hostile
-      // training bots, independently from the player's own test re-entry.
-      const hostileInside=hostileBots.some(bot=>bot.alive&&
+      const owner=sensor.team||"ally";
+      const enemies=owner==="enemy"?
+        (round?.role==="attacker"?round.allies:round.bots):
+        (round?.role==="defender"?round.bots:round.allies);
+      const nearPlayer=owner==="enemy"&&round?.role==="attacker"&&
+        round.playerAlive&&Math.hypot(player.x-sensor.x,player.z-sensor.z)<4.75;
+      const nearBot=(enemies||hostileBots).some(bot=>bot.alive&&
         Math.hypot(bot.x-sensor.x,bot.z-sensor.z)<4.75);
-      if(hostileInside&&!sensor.hostileInside){
+      const hostileInside=nearPlayer||nearBot;
+      if(hostileInside&&!sensor.hostileInside&&now-sensor.lastPing>700){
         sensor.lastPing=now;
         ping(null,"proximity-beep");
+        if(round)for(const defender of (owner==="enemy"?round.bots:round.allies))
+          if(defender.alive){
+            const intruder=(enemies||hostileBots).find(b=>b.alive&&
+              Math.hypot(b.x-sensor.x,b.z-sensor.z)<4.75);
+            defender.hearing=intruder?{x:intruder.x,z:intruder.z}:
+              {x:player.x,z:player.z};
+            defender.hearingUntil=now+3000;
+          }
       }
       sensor.hostileInside=hostileInside;
     }
