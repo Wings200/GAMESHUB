@@ -451,7 +451,7 @@ function drawTacticalHud(now){
   // During attack, show the nearest of BOTH live bomb locations. Once
   // planted the compass locks to the actual planted defuser location.
   const options=Object.values(round.sites);
-  const focusedSite=role==="attacker"&&phase!=="planted"?
+  const focusedSite=phase!=="planted"?
     options.reduce((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)<
       Math.hypot(a.x-player.x,a.z-player.z)?b:a):
     round.site;
@@ -465,7 +465,9 @@ function drawTacticalHud(now){
     role==="attacker"?"PROTECT DEFUSER":"DISABLE DEFUSER":
     phase==="prep"?"SCOUT / FORTIFY":
     role==="attacker"?"LOCATE & PLANT":"PROTECT THE BOMBS";
-  matchCaption.textContent="SITE "+round.siteId+" · "+round.site.name+" · "+phaseName;
+  matchCaption.textContent=phase==="planted"?
+    "DEFUSER SITE "+round.siteId+" · "+phaseName:
+    "SITES A + B · "+phaseName+" · 5V5 AI";
   defuserInventory.textContent=role==="attacker"?
     phase==="planted"?"DEFUSER DEPLOYED":"DEFUSER CARRIED":
     "DEFEND BOMB STATION";
@@ -586,7 +588,7 @@ function updateFrame(now){
       objectiveRound.onNoise(player.x,player.z,player.sprinting?9:report.slow?2.3:4.5,now);
     }
     lastStepMark=mark;
-    if(now-lastShotAt>140&&recoilRecovery>0){
+    if(player.health>0&&now-lastShotAt>140&&recoilRecovery>0){
       const recover=Math.min(recoilRecovery,dt*.072);
       player.pitch=Math.max(-1.37,player.pitch-recover);
       recoilRecovery-=recover;player.applyCamera();
@@ -671,6 +673,7 @@ function updateFrame(now){
   gunModel.rotation.x=-gunKick*.64;
   gunModel.rotation.z=gunKickSide;
   const interacting=!ended&&objectiveRound.hold>0&&keys.has("KeyF");
+  document.body.classList.toggle("spectating",player.health<=0&&locked);
   gunModel.visible=player.health>0;
   gunOptics.mount.visible=player.health>0&&weapons.slot==="primary"&&!interacting;
   if(!ended)weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
@@ -692,7 +695,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.9.3-shield-placement-ai-barricade-breaching"},
+  get build(){return "1.0.0-five-vs-five-offline-squads-two-sites-runout-detection"},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
   get teams(){return {friendly:1+objectiveRound.allies.length,
