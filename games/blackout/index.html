@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V2.0 - tactical site builder, 45-second drone preparation, opening-row operators with unique equipment, and live 5v5 AI squad combat.">
+<meta name="description" content="BLACKOUT V2.1 - fixed two-site facility, 45-second drone prep, intelligent 5v5 bot squads and toggle-to-hold Q/E lean.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v201-builder-drone-ai-final">
@@ -91,13 +91,13 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V2.0.1 // SITE BUILDER + DRONE PREP</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V2.1 // TACTICAL AI + DRONE PREP</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">BLACKOUT // TACTICAL OPERATIONS · PRIVATE ALPHA</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">OPERATOR SELECTION <span>—</span> PLAN · PREPARE · EXECUTE</div>
     <div class="rule"></div>
-    <p class="description">Build a tactical test site, choose an opening-row operator, then deploy. Defenders get 45 seconds to reinforce while attackers drive scouting drones. After preparation, enter with your four AI teammates against five enemies. <strong>This is offline 5v5 AI testing, not online multiplayer.</strong></p>
+    <p class="description">Choose your operator and attack spawn or defense site, then deploy into the fixed two-site training facility. Defenders get 45 seconds to reinforce while attackers drive scouting drones. After preparation, enter with your four AI teammates against five enemies. <strong>This is offline 5v5 AI testing, not online multiplayer.</strong></p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
@@ -116,9 +116,6 @@
       <option value="A">SITE A — SERVER ROOM</option>
       <option value="B">SITE B — CONTROL ROOM</option>
     </select></label>
-    <div class="bo-section-title">03 <span>BUILD YOUR TEST SITE</span><small>EDIT THE FLOOR PLAN BEFORE SPAWNING</small></div>
-    <div class="bo-site-builder" id="siteBuilder"></div>
-    <p class="bo-builder-help">Use ADD COVER for crates, WALL ↔ / WALL ↕ for full-height hard-wall segments, and ERASE to remove pieces. MOVE A / MOVE B relocates bomb equipment inside its site. Every prop physically blocks bullets and movement. Layout saves in your browser; test it from offense or defense.</p>
     <label class="site-picker">TEST INSERTION SPAWN
       <select id="spawnSelect">
         <option value="south">SOUTH ENTRY</option>
@@ -156,7 +153,7 @@
     </div>
     <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
     <p id="status" class="notice">EDIT A SITE · SELECT OPERATOR · START DRONE / DEFENSE PREP</p>
-    <div class="progress-foot"><span>SITE BUILDER · 45S DRONE PREP · FIRST-ROW OPERATORS · 5V5 AI</span><span>OFFLINE SQUAD SIMULATION · NOT ONLINE MULTIPLAYER</span></div>
+    <div class="progress-foot"><span>45S DRONE PREP · FIRST-ROW OPERATORS · 5V5 TACTICAL AI</span><span>OFFLINE SQUAD SIMULATION · NOT ONLINE MULTIPLAYER</span></div>
   </div>
   <div class="menu-right lab-aside">
     <div class="redline">B<span>↗</span></div>
