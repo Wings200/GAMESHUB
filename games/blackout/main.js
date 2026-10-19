@@ -738,7 +738,8 @@ function updateFrame(now){
     }
     gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
-      else if(message)popup(message);
+      else if(event)sound(event);
+      if(message)popup(message);
     },objectiveRound.bots);
     barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
       if(message)popup(message);
@@ -756,11 +757,11 @@ function updateFrame(now){
     const installing=gadgets.busy||barricades.busy;
     reinforceBar.classList.toggle("hidden",!installing);
     if(installing){
-      const action=barricades.action||gadgets.action;
-      const remaining=Math.max(0,(action.end-now)/1000);
+      const action=barricades.action||gadgets.currentAction;
+      const remaining=Math.max(0,((action?.end||now)-now)/1000);
       reinforceTitle.textContent=barricades.busy?
         (barricades.action.kind==="install"?"INSTALLING BARRICADE":"REMOVING BARRICADE"):
-        "INSTALLING REINFORCEMENT";
+        gadgets.specialAction?"ACTIVATING "+gadgets.specialAction.kind.toUpperCase():"INSTALLING REINFORCEMENT";
       reinforceFill.style.width=((barricades.busy?barricades.progress:gadgets.actionProgress)*100).toFixed(1)+"%";
       reinforceCountdown.textContent=remaining.toFixed(1)+"S";
     }
