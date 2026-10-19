@@ -1,4 +1,5 @@
 import {stepThrowable} from "./throw-physics.js?v=blackout-v320-ballistics-breakable-walls";
+import {Ordnance,SECONDARY_KITS} from "./ordnance.js?v=blackout-v320-ballistics-breakable-walls";
 // BLACKOUT V0.2 — role-specific gadgets tested against standalone panels.
 // Offline only; future multiplayer must validate all gadget state on server.
 export class Gadgets {
@@ -10,7 +11,8 @@ export class Gadgets {
     this.electronics=[];this.gasFields=[];this.specialLastAt=0;
     this.specialAction=null;this.specialFx=[];
     this.smokeCanisters=[];this.lastProjectileTick=null;
-    this.hostiles=[];
+    this.ordnance=new Ordnance(THREE,world,scene);
+    this.secondaryType="recon";this.hostiles=[];
     const ringMat=new THREE.MeshBasicMaterial({color:0x60f9f0,transparent:true,opacity:.9,depthTest:false});
     for(const t of world.targets){
       const marker=new THREE.Mesh(new THREE.RingGeometry(.32,.42,24),ringMat);
@@ -39,6 +41,9 @@ export class Gadgets {
   }
   reset(role=this.role){
     this.cancelAction();
+    this.ordnance.reset();
+    if(!SECONDARY_KITS[role]?.some(t=>t.id===this.secondaryType))
+      this.secondaryType=role==="attacker"?"recon":"sensor";
     for(const device of this.smokeCanisters)this.removeSmokeCanister(device);
     this.smokeCanisters=[];this.lastProjectileTick=null;
     for(const effect of this.specialFx){
@@ -54,6 +59,7 @@ export class Gadgets {
       x:role==="attacker"?(spec?.kit.scan??2):(spec?.kit.sensor??2),
       reinforce:spec?.kit.reinforce??2};
     this.specialCount=spec?.kit.special??0;
+    this.counts.x=SECONDARY_KITS[role].find(t=>t.id===this.secondaryType).count;
     this.scanUntil=0;
     for(const effect of [...this.electronics,...this.gasFields]){
       this.scene.remove(effect.group);
@@ -79,6 +85,19 @@ export class Gadgets {
     this.operator=spec;
     this.reset(spec.side);
   }
+  setSecondaryType(type){
+    const spec=SECONDARY_KITS[this.role]?.find(item=>item.id===type);
+    if(!spec)return false;
+    this.ordnance.reset();
+    this.secondaryType=type;
+    this.counts.x=spec.count;
+    return true;
+  }
+  remoteC4(now){return this.ordnance.remoteC4(now)}
+  damageOrdnance(device,damage){return this.ordnance.damageDevice(device,damage)}
+  get ordnanceStatus(){return {type:this.secondaryType,armedC4:this.ordnance.armedC4,
+    deployed:this.ordnance.count,flashUntil:this.ordnance.flashUntil}}
+
   nearestPanel(camera,limit=6.5){
     this.raycaster.setFromCamera({x:0,y:0},camera);
     const hits=this.raycaster.intersectObjects(this.world.panels
@@ -545,6 +564,11 @@ export class Gadgets {
   }
   secondary(camera,player,now){
     if(this.counts.x<=0)return {ok:false,message:"NO SECONDARY GADGETS REMAIN"};
+    if(!["recon","sensor"].includes(this.secondaryType)){
+      const result=this.ordnance.use(this.secondaryType,camera,player,now);
+      if(result.ok)this.counts.x--;
+      return result;
+    }
     if(this.role==="attacker"){
       this.counts.x--;this.scanUntil=now+4500;
       return {ok:true,message:"RECON PULSE · HOSTILE CONTACTS MARKED FOR 4.5S"};
@@ -574,13 +598,14 @@ export class Gadgets {
     p.previewReinforcement(.001);
     return {ok:true,message:"INSTALLING REINFORCEMENT · 3.0 SECONDS"};
   }
-  get busy(){return !!(this.action||this.specialAction);}
-  get actionProgress(){return this.specialAction?.progress??this.action?.progress??0;}
-  get currentAction(){return this.specialAction||this.action;}
+  get busy(){return !!(this.action||this.specialAction||this.ordnance.pending);}
+  get actionProgress(){return this.specialAction?.progress??this.action?.progress??(this.ordnance.pending?Math.min(1,(performance.now()-this.ordnance.pending.at)/290):0);}
+  get currentAction(){return this.specialAction||this.action||this.ordnance.pending;}
   tick(now,player,ping,hostileBots=[]){
     this.hostiles=hostileBots;
     this.tickAbility(now,ping);
     this.tickSmokeProjectiles(now,ping);
+    this.ordnance.tick(now,player,ping,this.world.round);
     if(this.action){
       const a=this.action;
       a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
@@ -676,12 +701,13 @@ export class Gadgets {
       remaining:this.specialCount};
   }
   get details(){
+    const secondary=SECONDARY_KITS[this.role]?.find(item=>item.id===this.secondaryType);
     if(this.operator?.id==="smoke")
-      return {g:"THROW GAS",x:"PROX SENSOR",f:"REINFORCE PANEL",
+      return {g:"THROW GAS",x:secondary?.label||"PROX SENSOR",f:"REINFORCE PANEL",
         remote:"B · DETONATE LANDED CANISTERS"};
     const special=this.operator?.passive||"SPECIAL";
     return this.role==="attacker"?
-      {g:special,x:"RECON / UTILITY",f:"PLANT DEFUSER"}:
-      {g:special,x:"PROX SENSOR",f:"REINFORCE PANEL"};
+      {g:special,x:secondary?.label||"RECON / UTILITY",f:"PLANT DEFUSER"}:
+      {g:special,x:secondary?.label||"PROX SENSOR",f:"REINFORCE PANEL"};
   }
 }
