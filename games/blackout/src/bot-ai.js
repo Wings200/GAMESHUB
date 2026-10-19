@@ -251,6 +251,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false,team="enem
       const wave=Math.sin(this.movePhase)*Math.min(.55,movement*.18);
       leftLeg.rotation.x=wave;rightLeg.rotation.x=-wave;
       const setup=this.state==="install-barricade"||
+        this.state==="install-reinforcement"||
         this.state==="deploy-armor"||this.state==="deploy-jammer"||
         this.state==="place-sensor"||this.state==="throw-gas"||
         this.state==="stim-heal"||this.state==="heartbeat-scan";
