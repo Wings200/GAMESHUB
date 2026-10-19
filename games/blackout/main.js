@@ -1,11 +1,11 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v330-advanced-ordnance";
-import {FirstPersonController} from "./src/player.js?v=blackout-v330-advanced-ordnance";
+import {buildRange} from "./src/world.js?v=blackout-v500-switchyard";
+import {FirstPersonController} from "./src/player.js?v=blackout-v500-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v420-ai-spawn-staging";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v500-switchyard";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
