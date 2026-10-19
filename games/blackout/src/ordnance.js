@@ -97,8 +97,15 @@ export class Ordnance{
     if(type==="claymore"){
       const x=player.x+target.dx*1.15,z=player.z+target.dz*1.15;
       if(!this.clearSpot(x,z))return {ok:false,message:"CLAYMORE NEEDS CLEAR FLOOR"};
-      this.placeClaymore(x,z,player.yaw,now);
-      return {ok:true,message:"CLAYMORE PLACED · ARMING LASER TRIPWIRE",event:"deploy"};
+      const T=this.T,group=new T.Group();camera.add(group);
+      group.position.set(.15,-.48,-.42);
+      const prop=new T.Mesh(new T.BoxGeometry(.36,.22,.16),
+        new T.MeshStandardMaterial({color:0x6a7b65,metalness:.48}));
+      group.add(prop);
+      this.pending={type,kind:type,group,mesh:prop,
+        at:now,start:now,end:now+1150,
+        camera,player,placement:{x,z,yaw:player.yaw}};
+      return {ok:true,message:"PLACING CLAYMORE · 1.15S",event:"gadget-throw"};
     }
     const T=this.T,group=new T.Group();
     camera.add(group);group.position.set(.31,-.33,-.60);
@@ -251,13 +258,22 @@ export class Ordnance{
   tick(now,player,notify=()=>{},round=this.world.round){
     this.lastPlayer=player;
     if(this.pending){
-      const a=this.pending,p=Math.max(0,Math.min(1,(now-a.at)/290));
-      a.group.rotation.x=-Math.sin(Math.PI*p)*.95;
-      a.group.position.y=-.33+Math.sin(Math.PI*p)*.17;
+      const a=this.pending,p=Math.max(0,Math.min(1,(now-a.at)/(a.end-a.at)));
+      a.group.rotation.x=a.type==="claymore"?
+        -p*.9:-Math.sin(Math.PI*p)*.95;
+      a.group.position.y=a.type==="claymore"?
+        -.48-p*.22:-.33+Math.sin(Math.PI*p)*.17;
       if(now>=a.end){
         this.pending=null;
-        this.release(a,now);this.removeMesh(a.group);
-        notify(a.type.toUpperCase()+" RELEASED","gadget-throw");
+        if(a.type==="claymore"){
+          const {x,z,yaw}=a.placement;
+          this.placeClaymore(x,z,yaw,now);
+          notify("CLAYMORE PLACED · LASER ARMING","click");
+        }else{
+          this.release(a,now);
+          notify(a.type.toUpperCase()+" RELEASED","gadget-throw");
+        }
+        this.removeMesh(a.group);
       }
     }
     for(const d of this.devices){
@@ -283,6 +299,8 @@ export class Ordnance{
       }else if(d.state==="arming"&&now>=d.armedAt){
         d.state="armed";
         notify("CLAYMORE ARMED · LASER ACTIVE");
+      }else if(d.state==="counting"){
+        d.led.visible=Math.floor(now/180)%2===0;
       }
       if(!d.removed&&(d.type==="frag"||d.type==="stun")&&now>=d.detonateAt)
         this.explode(d,now,player,round,notify);
