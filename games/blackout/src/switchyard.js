@@ -1,5 +1,5 @@
 // BLACKOUT V5.0 / SWITCHYARD — original stacked industrial tactical arena.
-import {createTacticalPanel} from "./tactical-panels.js?v=blackout-v530-interactive-walls";
+import {createTacticalPanel} from "./tactical-panels.js?v=blackout-v531-interactive-walls";
 // Geometry, floor collision, visibility, 3 floor levels and site pairs share
 // a single authoritative definition. This is NOT a copied Siege map.
 // The first release is an offline playable map, not network matchmaking.
