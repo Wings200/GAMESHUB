@@ -123,6 +123,18 @@ export class GameAudio{
   }
   playEvent(name){
     switch(name){
+      case "tactical-cue": {
+        // Original five-stab tactical phase motif; not sampled or transcribed game audio.
+        const notes=[98,117,104,139,165];
+        const pulses=[0,.17,.34,.51,.73];
+        for(let i=0;i<5;i++){
+          const duration=i===4?.45:.14;
+          this.tone(notes[i],duration,i===4?.13:.095,"triangle",pulses[i],notes[i]*.69);
+          this.tone(notes[i]*2,duration*.7,i===4?.055:.033,"sawtooth",pulses[i],notes[i]*1.2);
+          this.noise(i===4?.28:.075,i===4?.16:.085,i===4?430:700,"lowpass",pulses[i]);
+        }
+        break;
+      }
       case "fire":this.gun(false);break;
       case "pistol":this.gun(true);break;
       case "ally-fire":
