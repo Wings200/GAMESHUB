@@ -1,7 +1,7 @@
-import {createDefuserModel} from "./defuser-model.js?v=blackout-v100-two-site-fivevfive";
-import {createBombStations} from "./bomb-sites.js?v=blackout-v100-two-site-fivevfive";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v100-two-site-fivevfive";
-import {updateSquadCombat} from "./squad-ai.js?v=blackout-v100-two-site-fivevfive";
+import {createDefuserModel} from "./defuser-model.js?v=blackout-v200-builder-drone-operators";
+import {createBombStations} from "./bomb-sites.js?v=blackout-v200-builder-drone-operators";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v200-builder-drone-operators";
+import {updateSquadCombat} from "./squad-ai.js?v=blackout-v200-builder-drone-operators";
 import {operatorsForSide} from "./operators.js?v=blackout-v200-builder-drone-operators";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
