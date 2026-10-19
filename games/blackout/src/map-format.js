@@ -105,6 +105,48 @@ export function makePiece(type,x=0,y=0,z=0,id=""){
     type,position:{x,y,z},size:{x:w,y:h,z:d},rotationY:0,
     name:PART_TYPES[type].name};
 }
+// When a door/window is positioned on an aligned wall, remove the covered
+// wall span and split the adjacent material into actual separate segments.
+// This avoids the common "window painted on an unbroken concrete wall" bug.
+export function cutOpeningInWall(elements,opening){
+  if(!Array.isArray(elements)||!["door","window"].includes(opening.type))return false;
+  const radians=opening.rotationY*Math.PI/180;
+  const cos=Math.cos(radians),sin=Math.sin(radians);
+  const allowable=["hardWall","softWall","reinforcedWall"];
+  for(let i=elements.length-1;i>=0;i--){
+    const wall=elements[i];
+    if(!allowable.includes(wall.type))continue;
+    const deltaAngle=Math.sin((wall.rotationY-opening.rotationY)*Math.PI/180);
+    if(Math.abs(deltaAngle)>.035)continue;
+    if(Math.abs(wall.position.y-opening.position.y)>.3)continue;
+    const dx=opening.position.x-wall.position.x;
+    const dz=opening.position.z-wall.position.z;
+    const along=dx*cos-dz*sin,normal=dx*sin+dz*cos;
+    if(Math.abs(normal)>.45+wall.size.z/2)continue;
+    const limit=wall.size.x/2,half=opening.size.x/2;
+    const left=Math.max(-limit,along-half);
+    const right=Math.min(limit,along+half);
+    if(right-left<Math.min(opening.size.x*.88,1.2))continue;
+    if(left<-limit+.04&&right>limit-.04){
+      elements.splice(i,1);
+      return true;
+    }
+    const remaining=[];
+    for(const [a,b,suffix] of [[-limit,left,"L"],[right,limit,"R"]]){
+      if(b-a<.16)continue;
+      const segment=JSON.parse(JSON.stringify(wall));
+      const local=(a+b)/2;
+      segment.id=wall.id+"-"+suffix+"-"+Math.random().toString(36).slice(2,7);
+      segment.size.x=b-a;
+      segment.position.x=wall.position.x+local*cos;
+      segment.position.z=wall.position.z-local*sin;
+      remaining.push(segment);
+    }
+    elements.splice(i,1,...remaining);
+    return true;
+  }
+  return false;
+}
 export function mapAsJSON(map){
   return JSON.stringify(normalizeMap(map),null,2)+"\n";
 }
