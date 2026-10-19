@@ -82,7 +82,25 @@ export class ObjectiveDrill{
   updateHoldRequirement(){
     this.holdNeeded=this.role==="attacker"?5000:5500;
   }
+  findSafeSpawn(x,z){
+    const clear=(px,pz)=>!this.world.colliders.some(c=>
+      c.maxY>.5&&c.minY<1.8&&px>c.minX-.41&&px<c.maxX+.41&&
+      pz>c.minZ-.41&&pz<c.maxZ+.41);
+    if(clear(x,z))return {x,z};
+    // Never spawn an AI body through a desk, bomb cabinet or wall.
+    // Test compact rings around the intended team setup position.
+    for(const radius of [.6,1.1,1.7,2.3]){
+      for(let k=0;k<16;k++){
+        const a=k*Math.PI/8,px=x+Math.cos(a)*radius,
+          pz=z+Math.sin(a)*radius;
+        if(clear(px,pz))return {x:px,z:pz};
+      }
+    }
+    return {x,z};
+  }
   spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
+    const safe=this.findSafeSpawn(x,z);
+    x=safe.x;z=safe.z;
     const bot=makeTacticalBot(this.THREE,this.scene,this.world,
       ++this.botSerial,x,z,stationary,team);
     const botSide=team==="ally"?this.role:
