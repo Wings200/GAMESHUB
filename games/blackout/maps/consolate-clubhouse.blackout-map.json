@@ -1,0 +1,2949 @@
+{
+  "format": "blackout-editor-v1",
+  "name": "Consolate + Clubhouse",
+  "units": "meters",
+  "grid": 0.25,
+  "elements": [
+    {
+      "id": "part-mvfs6h1h-ymf47",
+      "type": "hardWall",
+      "position": {
+        "x": 1.75,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 4,
+        "y": 4,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfs6ku6-0yba9",
+      "type": "hardWall",
+      "position": {
+        "x": 3.75,
+        "y": 0,
+        "z": -4.125
+      },
+      "size": {
+        "x": 7.75,
+        "y": 4,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfs80pa-d5q2x",
+      "type": "floor",
+      "position": {
+        "x": 2.25,
+        "y": 4,
+        "z": -1.875
+      },
+      "size": {
+        "x": 3,
+        "y": 0.25,
+        "z": 3.25
+      },
+      "rotationY": 0,
+      "name": "Floor / slab"
+    },
+    {
+      "id": "part-mvfs95q9-x7w9c",
+      "type": "stairs",
+      "position": {
+        "x": 2.25,
+        "y": 0,
+        "z": -7
+      },
+      "size": {
+        "x": 3,
+        "y": 4,
+        "z": 7
+      },
+      "rotationY": 0,
+      "name": "Walkable staircase"
+    },
+    {
+      "id": "part-mvfsa3eg-weyd4",
+      "type": "hardWall",
+      "position": {
+        "x": 0.75,
+        "y": 0,
+        "z": -5.375
+      },
+      "size": {
+        "x": 10.25,
+        "y": 4,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfsav6q-8x8ty",
+      "type": "floor",
+      "position": {
+        "x": -20.875,
+        "y": 4,
+        "z": -8.625
+      },
+      "size": {
+        "x": 16.75,
+        "y": 0.25,
+        "z": 43.25
+      },
+      "rotationY": 90,
+      "name": "Floor / slab"
+    },
+    {
+      "id": "part-mvfsbzay-7gfod",
+      "type": "door",
+      "position": {
+        "x": -1.25,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfscb4y-werci",
+      "type": "hardWall",
+      "position": {
+        "x": -3.375,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfsded7-utczj",
+      "type": "softWall",
+      "position": {
+        "x": -4.25,
+        "y": 0,
+        "z": -2.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvfsdirf-77pgc",
+      "type": "softWall",
+      "position": {
+        "x": -4.25,
+        "y": 0,
+        "z": -6.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvfse8n4-hgzwi",
+      "type": "door",
+      "position": {
+        "x": -4.25,
+        "y": 0,
+        "z": -13.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfsut7i-243jd",
+      "type": "floor",
+      "position": {
+        "x": -19.5,
+        "y": 0,
+        "z": -10.125
+      },
+      "size": {
+        "x": 20.25,
+        "y": 0.25,
+        "z": 46.5
+      },
+      "rotationY": 270,
+      "name": "Floor / slab"
+    },
+    {
+      "id": "part-mvfsvsv3-zbbx1",
+      "type": "hardWall",
+      "position": {
+        "x": -6.5,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfswe29-61y1c",
+      "type": "hardWall",
+      "position": {
+        "x": -8.5,
+        "y": 0,
+        "z": -2.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfswwda-yhqco",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfsx0zr-t1b84",
+      "type": "softWall",
+      "position": {
+        "x": -14.5,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvfsy7fd-uv8nv",
+      "type": "door",
+      "position": {
+        "x": -9.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfsymud-tont1",
+      "type": "hardWall",
+      "position": {
+        "x": -16.75,
+        "y": 0,
+        "z": -2
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfsyx2f-pzcyz",
+      "type": "hardWall",
+      "position": {
+        "x": -13.625,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 6.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftrn9k-9dbhx",
+      "type": "softWall",
+      "position": {
+        "x": -10.25,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvftrsri-dy5cr",
+      "type": "door",
+      "position": {
+        "x": -13.25,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvftrx26-sj0kq",
+      "type": "softWall",
+      "position": {
+        "x": -16.25,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvfts7il-8zrwq",
+      "type": "hardWall",
+      "position": {
+        "x": -19.125,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 1.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftsln0-plx7i",
+      "type": "hardWall",
+      "position": {
+        "x": -6.25,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfttjmr-05o7m",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -10.75
+      },
+      "size": {
+        "x": 6.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftttu1-1ubzv",
+      "type": "hardWall",
+      "position": {
+        "x": -19.875,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 6.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftuaw7-sw4vq",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvftuwhw-3eakb",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -0.875
+      },
+      "size": {
+        "x": 1.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftw2u5-qapfn",
+      "type": "hardWall",
+      "position": {
+        "x": -23,
+        "y": 0,
+        "z": -2.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftwklm-90ai8",
+      "type": "softWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Soft / reinforceable wall"
+    },
+    {
+      "id": "part-mvftx0c7-vnkbr",
+      "type": "hardWall",
+      "position": {
+        "x": -4.25,
+        "y": 0,
+        "z": -10.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftxsc0-p5mrn",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -12.5,
+        "y": 0,
+        "z": -8.25
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 90,
+      "name": "Defender spawn"
+    },
+    {
+      "id": "part-mvftyx5d-pucyu",
+      "type": "window",
+      "position": {
+        "x": -24.25,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Window / barricadable"
+    },
+    {
+      "id": "part-mvftzid6-5tcki",
+      "type": "hardWall",
+      "position": {
+        "x": -22,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftzm40-4iyo7",
+      "type": "hardWall",
+      "position": {
+        "x": -26,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvftzodx-key8f",
+      "type": "door",
+      "position": {
+        "x": -29,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvftzs43-ayty1",
+      "type": "hardWall",
+      "position": {
+        "x": -32,
+        "y": 0,
+        "z": -14
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu055i-2ehns",
+      "type": "hardWall",
+      "position": {
+        "x": -30,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu08fs-74kf3",
+      "type": "hardWall",
+      "position": {
+        "x": -30,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu0ey9-mxmb9",
+      "type": "hardWall",
+      "position": {
+        "x": -32.75,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 15,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu0qye-bmxwf",
+      "type": "hardWall",
+      "position": {
+        "x": -34,
+        "y": 0,
+        "z": -5.375
+      },
+      "size": {
+        "x": 10.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu1nfw-2s3sb",
+      "type": "door",
+      "position": {
+        "x": -34,
+        "y": 0,
+        "z": -11.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfu1sad-ai5o2",
+      "type": "hardWall",
+      "position": {
+        "x": -34,
+        "y": 0,
+        "z": -13.25
+      },
+      "size": {
+        "x": 1.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfu4vxr-ozejk",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -25.5,
+        "y": 0,
+        "z": -6.75
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 90,
+      "name": "Defender spawn"
+    },
+    {
+      "id": "part-mvfu508p-389ei",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -22.5,
+        "y": 0,
+        "z": -7
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 90,
+      "name": "Defender spawn"
+    },
+    {
+      "id": "part-mvfu53pl-fwilv",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -8.5,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 90,
+      "name": "Defender spawn"
+    },
+    {
+      "id": "part-mvfu5534-opc4i",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -8.25
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 90,
+      "name": "Defender spawn"
+    },
+    {
+      "id": "part-mvfuiqdl-9211t",
+      "type": "cover",
+      "position": {
+        "x": -11.25,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 2,
+        "y": 1.4,
+        "z": 2
+      },
+      "rotationY": 90,
+      "name": "Crate / cover"
+    },
+    {
+      "id": "part-mvfuiu0t-jg2db",
+      "type": "cover",
+      "position": {
+        "x": -12.75,
+        "y": 0,
+        "z": -5.75
+      },
+      "size": {
+        "x": 2,
+        "y": 1.4,
+        "z": 2
+      },
+      "rotationY": 90,
+      "name": "Crate / cover"
+    },
+    {
+      "id": "part-mvfuj1r7-c8lb2",
+      "type": "cover",
+      "position": {
+        "x": -29.75,
+        "y": 0,
+        "z": -3
+      },
+      "size": {
+        "x": 2,
+        "y": 1.4,
+        "z": 2
+      },
+      "rotationY": 90,
+      "name": "Crate / cover"
+    },
+    {
+      "id": "part-mvfuj3kd-xu4zk",
+      "type": "cover",
+      "position": {
+        "x": -23.5,
+        "y": 0,
+        "z": -10
+      },
+      "size": {
+        "x": 2,
+        "y": 1.4,
+        "z": 2
+      },
+      "rotationY": 90,
+      "name": "Crate / cover"
+    },
+    {
+      "id": "part-mvfujej6-ubvrs",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfujj3n-kzh07",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -19
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfujw17-m8ntz",
+      "type": "hardWall",
+      "position": {
+        "x": 3.75,
+        "y": 0,
+        "z": -14.125
+      },
+      "size": {
+        "x": 12.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfukjej-50jv2",
+      "type": "hardWall",
+      "position": {
+        "x": -19.5,
+        "y": 0,
+        "z": -20.25
+      },
+      "size": {
+        "x": 46.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfumdua-gta8d",
+      "type": "stairs",
+      "position": {
+        "x": -37.25,
+        "y": 0,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 4,
+        "z": 7
+      },
+      "rotationY": 270,
+      "name": "Walkable staircase"
+    },
+    {
+      "id": "part-mvfumpu3-je8cd",
+      "type": "hardWall",
+      "position": {
+        "x": -42.5,
+        "y": 0,
+        "z": -10.125
+      },
+      "size": {
+        "x": 20.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfunvl9-luvxw",
+      "type": "door",
+      "position": {
+        "x": -41.25,
+        "y": 0,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Door opening / barricadable"
+    },
+    {
+      "id": "part-mvfupbii-3e2zv",
+      "type": "floor",
+      "position": {
+        "x": -14.875,
+        "y": 4,
+        "z": -15.5
+      },
+      "size": {
+        "x": 37.75,
+        "y": 0.25,
+        "z": 10
+      },
+      "rotationY": 180,
+      "name": "Floor / slab"
+    },
+    {
+      "id": "part-mvfupugd-lymci",
+      "type": "floor",
+      "position": {
+        "x": -41.625,
+        "y": 4,
+        "z": -17.75
+      },
+      "size": {
+        "x": 1.75,
+        "y": 0.25,
+        "z": 5
+      },
+      "rotationY": 180,
+      "name": "Floor / slab"
+    },
+    {
+      "id": "part-mvfuqjfh-l08ct",
+      "type": "hardWall",
+      "position": {
+        "x": -33.75,
+        "y": 0,
+        "z": 35.75
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfuqpbn-ftmyq",
+      "type": "hardWall",
+      "position": {
+        "x": 14.75,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfuqrcm-478wy",
+      "type": "hardWall",
+      "position": {
+        "x": 30.25,
+        "y": 0,
+        "z": -13.75
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfuqt6i-w8ylv",
+      "type": "hardWall",
+      "position": {
+        "x": -11.5,
+        "y": 0,
+        "z": -52.5
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfuqupk-j7xh8",
+      "type": "hardWall",
+      "position": {
+        "x": -59.5,
+        "y": 0,
+        "z": -22.25
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 180,
+      "name": "Hard wall"
+    },
+    {
+      "id": "part-mvfuqxn7-0n9dl",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -11.5,
+        "y": 0,
+        "z": -55.25
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 180,
+      "name": "Attacker spawn"
+    },
+    {
+      "id": "part-mvfur0ah-wgxrp",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -60.25,
+        "y": 0,
+        "z": -24.25
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 180,
+      "name": "Attacker spawn"
+    },
+    {
+      "id": "part-mvfur1y1-ogwtz",
+      "type": "attackerSpawn",
+      "position": {
+        "x": 14,
+        "y": 0,
+        "z": 22
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 180,
+      "name": "Attacker spawn"
+    },
+    {
+      "id": "part-mvfur5sw-mb7fx",
+      "type": "attackerSpawn",
+      "position": {
+        "x": 31.75,
+        "y": 0,
+        "z": -15.75
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 180,
+      "name": "Attacker spawn"
+    },
+    {
+      "id": "part-mvfur7wj-8svrt",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -33.5,
+        "y": 0,
+        "z": 37
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 180,
+      "name": "Attacker spawn"
+    },
+    {
+      "id": "f2-2f-north-front-0a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -41.25,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-front-0a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -38.75,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-0a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-front-rappel-window-west",
+      "type": "window",
+      "position": {
+        "x": -36.5,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT rappel-window-west"
+    },
+    {
+      "id": "f2-2f-north-front-1a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -33.75,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-front-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -30.25,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-front-rappel-window-archive",
+      "type": "window",
+      "position": {
+        "x": -27.5,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT rappel-window-archive"
+    },
+    {
+      "id": "f2-2f-north-front-2a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -24.75,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-2a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-front-2a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -21.25,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-2a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-front-rappel-window-hall",
+      "type": "window",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT rappel-window-hall"
+    },
+    {
+      "id": "f2-2f-north-front-3a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -15.75,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-3a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-front-3a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -12.25,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-3a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-front-rappel-window-office",
+      "type": "window",
+      "position": {
+        "x": -9.5,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT rappel-window-office"
+    },
+    {
+      "id": "f2-2f-north-front-4a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -7.25,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-4a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-front-4a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -4.75,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-4a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-front-rappel-window-east",
+      "type": "window",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT rappel-window-east"
+    },
+    {
+      "id": "f2-2f-north-front-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -0.375,
+        "y": 4,
+        "z": -0.25
+      },
+      "size": {
+        "x": 2.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH FRONT-end-wall-1"
+    },
+    {
+      "id": "f2-2f-west-front-0a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -15.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-west-front-west-grapple-window",
+      "type": "window",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -12.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT west-grapple-window"
+    },
+    {
+      "id": "f2-2f-west-front-1a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -9.5
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-west-front-northwest-grapple-window",
+      "type": "window",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -6.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT northwest-grapple-window"
+    },
+    {
+      "id": "f2-2f-west-front-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -4.188
+      },
+      "size": {
+        "x": 2.625,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT-end-wall-1"
+    },
+    {
+      "id": "f2-2f-west-front-end-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -42.5,
+        "y": 4,
+        "z": -1.562
+      },
+      "size": {
+        "x": 2.625,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST FRONT-end-wall-2"
+    },
+    {
+      "id": "f2-2f-south-front-0a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -32.312,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2.875,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-front-0a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -29.438,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2.875,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-0a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-front-southwest-rappel-window",
+      "type": "window",
+      "position": {
+        "x": -27,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT southwest-rappel-window"
+    },
+    {
+      "id": "f2-2f-south-front-1a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -24.125,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-front-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -20.375,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-front-south-lounge-rappel-window",
+      "type": "window",
+      "position": {
+        "x": -17.5,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT south-lounge-rappel-window"
+    },
+    {
+      "id": "f2-2f-south-front-2a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -14.75,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-2a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-front-2a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -11.25,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-2a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-front-south-control-rappel-window",
+      "type": "window",
+      "position": {
+        "x": -8.5,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT south-control-rappel-window"
+    },
+    {
+      "id": "f2-2f-south-front-3a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": -5.625,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-3a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-front-3a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -1.875,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-3a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-front-east-wing-rappel-window",
+      "type": "window",
+      "position": {
+        "x": 1,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT east-wing-rappel-window"
+    },
+    {
+      "id": "f2-2f-south-front-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 3,
+        "y": 4,
+        "z": -20.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH FRONT-end-wall-1"
+    },
+    {
+      "id": "f2-2f-east-recessed-0a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -9.25
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST RECESSED-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-east-recessed-east-window",
+      "type": "window",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -7
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST RECESSED east-window"
+    },
+    {
+      "id": "f2-2f-east-recessed-1a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -4.75
+      },
+      "size": {
+        "x": 2.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST RECESSED-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-east-recessed-east-stair-arrival-door",
+      "type": "door",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST RECESSED east-stair-arrival-door"
+    },
+    {
+      "id": "f2-2f-east-recessed-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -0.875
+      },
+      "size": {
+        "x": 1.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST RECESSED-end-wall-1"
+    },
+    {
+      "id": "f2-2f-east-wing-0a-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -18.75
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WING-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-east-wing-east-service-rappel-window",
+      "type": "window",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WING east-service-rappel-window"
+    },
+    {
+      "id": "f2-2f-east-wing-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -13.875
+      },
+      "size": {
+        "x": 2.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WING-end-wall-1"
+    },
+    {
+      "id": "f2-2f-east-wing-end-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -11.625
+      },
+      "size": {
+        "x": 2.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WING-end-wall-2"
+    },
+    {
+      "id": "f2-2f-wing-north-end-end-wall-1",
+      "type": "hardWall",
+      "position": {
+        "x": 2.375,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F WING NORTH END-end-wall-1"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-0a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -41.125,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-0a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -38.375,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-0a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-archive-double-entry",
+      "type": "door",
+      "position": {
+        "x": -36,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR archive-double-entry"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-1a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -33.333,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-1a-wall-3",
+      "type": "softWall",
+      "position": {
+        "x": -26.667,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-1a-wall-3"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-record-office-door",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR record-office-door"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-2a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -21.333,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-2a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-2a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -18,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-2a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-2a-wall-3",
+      "type": "softWall",
+      "position": {
+        "x": -14.667,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.333,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-2a-wall-3"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-staff-lounge-door",
+      "type": "door",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR staff-lounge-door"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-3a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -9.125,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-3a-wall-1"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-3a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -5.375,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-3a-wall-2"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-east-control-door",
+      "type": "door",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR east-control-door"
+    },
+    {
+      "id": "f2-2f-north-south-cross-corridor-end-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -0.375,
+        "y": 4,
+        "z": -9
+      },
+      "size": {
+        "x": 2.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F NORTH-SOUTH CROSS CORRIDOR-end-wall-1"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-0a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -32.188,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.125,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-0a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -29.062,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.125,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-0a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-workshop-door",
+      "type": "door",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS workshop-door"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-1a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -23.917,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.167,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -20.75,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.167,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-1a-wall-3",
+      "type": "softWall",
+      "position": {
+        "x": -17.583,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.167,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-1a-wall-3"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-meeting-door",
+      "type": "door",
+      "position": {
+        "x": -15,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS meeting-door"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-2a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -11.875,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 4.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-2a-wall-1"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-2a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -7.625,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 4.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-2a-wall-2"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-utility-door",
+      "type": "door",
+      "position": {
+        "x": -4.5,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS utility-door"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-end-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -1.625,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-end-wall-1"
+    },
+    {
+      "id": "f2-2f-south-operations-cross-end-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": 2.125,
+        "y": 4,
+        "z": -14.5
+      },
+      "size": {
+        "x": 3.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F SOUTH OPERATIONS CROSS-end-wall-2"
+    },
+    {
+      "id": "f2-2f-west-record-divider-0a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -15.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-west-record-divider-south-archive-door",
+      "type": "door",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -13
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER south-archive-door"
+    },
+    {
+      "id": "f2-2f-west-record-divider-1a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -10.375
+      },
+      "size": {
+        "x": 3.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-west-record-divider-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -7.125
+      },
+      "size": {
+        "x": 3.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-west-record-divider-north-archive-door",
+      "type": "door",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -4.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER north-archive-door"
+    },
+    {
+      "id": "f2-2f-west-record-divider-end-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -30,
+        "y": 4,
+        "z": -1.875
+      },
+      "size": {
+        "x": 3.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F WEST RECORD DIVIDER-end-wall-1"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-0a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -15.25
+      },
+      "size": {
+        "x": 3.5,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-lounge-office-door",
+      "type": "door",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -12.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER lounge-office-door"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-1a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -10
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -7
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-meeting-office-door",
+      "type": "door",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -4.5
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER meeting-office-door"
+    },
+    {
+      "id": "f2-2f-middle-office-divider-end-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -1.875
+      },
+      "size": {
+        "x": 3.25,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F MIDDLE OFFICE DIVIDER-end-wall-1"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-0a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -15
+      },
+      "size": {
+        "x": 4,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER-0a-wall-1"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-utility-control-door",
+      "type": "door",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER utility-control-door"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-1a-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -9.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER-1a-wall-1"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-1a-wall-2",
+      "type": "hardWall",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -6.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER-1a-wall-2"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-office-control-door",
+      "type": "door",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER office-control-door"
+    },
+    {
+      "id": "f2-2f-east-workspace-divider-end-wall-1",
+      "type": "softWall",
+      "position": {
+        "x": -6.5,
+        "y": 4,
+        "z": -1.625
+      },
+      "size": {
+        "x": 2.75,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 270,
+      "name": "2F EAST WORKSPACE DIVIDER-end-wall-1"
+    },
+    {
+      "id": "f2-west-stairwell-safety-rail",
+      "type": "railing",
+      "position": {
+        "x": -36.5,
+        "y": 4,
+        "z": -17
+      },
+      "size": {
+        "x": 5.5,
+        "y": 1.1,
+        "z": 0.18
+      },
+      "rotationY": 0,
+      "name": "West stairwell safety rail"
+    },
+    {
+      "id": "f2-east-stairwell-fall-guard",
+      "type": "railing",
+      "position": {
+        "x": 0.75,
+        "y": 4,
+        "z": -8.75
+      },
+      "size": {
+        "x": 3,
+        "y": 1.1,
+        "z": 0.18
+      },
+      "rotationY": 270,
+      "name": "East stairwell fall guard"
+    },
+    {
+      "id": "f2-2f-archives-file-banks",
+      "type": "cover",
+      "position": {
+        "x": -37.25,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.4,
+        "z": 0.9
+      },
+      "rotationY": 0,
+      "name": "2F Archives file banks"
+    },
+    {
+      "id": "f2-2f-records-terminal",
+      "type": "cover",
+      "position": {
+        "x": -25.25,
+        "y": 4,
+        "z": -4.25
+      },
+      "size": {
+        "x": 1.7,
+        "y": 1.2,
+        "z": 0.9
+      },
+      "rotationY": 0,
+      "name": "2F Records terminal"
+    },
+    {
+      "id": "f2-2f-west-lounge-sofa",
+      "type": "cover",
+      "position": {
+        "x": -36.75,
+        "y": 4,
+        "z": -12.25
+      },
+      "size": {
+        "x": 2.6,
+        "y": 1.05,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F West lounge sofa"
+    },
+    {
+      "id": "f2-2f-office-centre-island",
+      "type": "cover",
+      "position": {
+        "x": -12.25,
+        "y": 4,
+        "z": -4.5
+      },
+      "size": {
+        "x": 2.2,
+        "y": 1.15,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "2F Office centre island"
+    },
+    {
+      "id": "f2-2f-workshop-tool-cabinet",
+      "type": "cover",
+      "position": {
+        "x": -24.5,
+        "y": 4,
+        "z": -17
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.65,
+        "z": 0.9
+      },
+      "rotationY": 0,
+      "name": "2F Workshop tool cabinet"
+    },
+    {
+      "id": "f2-2f-operations-console",
+      "type": "cover",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": -17
+      },
+      "size": {
+        "x": 2.25,
+        "y": 1.25,
+        "z": 1.05
+      },
+      "rotationY": 0,
+      "name": "2F Operations console"
+    },
+    {
+      "id": "f2-2f-east-wing-electrical-unit",
+      "type": "cover",
+      "position": {
+        "x": 1.75,
+        "y": 4,
+        "z": -17.5
+      },
+      "size": {
+        "x": 1.35,
+        "y": 1.75,
+        "z": 0.95
+      },
+      "rotationY": 0,
+      "name": "2F East wing electrical unit"
+    },
+    {
+      "id": "f2-rappel-north-west-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -36.5,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "RAPPEL North west window"
+    },
+    {
+      "id": "f2-rappel-north-archive-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -27.5,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "RAPPEL North archive window"
+    },
+    {
+      "id": "f2-rappel-north-hall-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -18.5,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "RAPPEL North hall window"
+    },
+    {
+      "id": "f2-rappel-north-office-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -9.5,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "RAPPEL North office window"
+    },
+    {
+      "id": "f2-rappel-west-side-entry",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -43.2,
+        "y": 7.75,
+        "z": -6.5
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 270,
+      "name": "RAPPEL West side entry"
+    },
+    {
+      "id": "f2-rappel-southwest-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -27,
+        "y": 7.75,
+        "z": -21.15
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 180,
+      "name": "RAPPEL Southwest window"
+    },
+    {
+      "id": "f2-rappel-south-lounge-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -17.5,
+        "y": 7.75,
+        "z": -21.15
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 180,
+      "name": "RAPPEL South lounge window"
+    },
+    {
+      "id": "f2-rappel-south-control-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -8.5,
+        "y": 7.75,
+        "z": -21.15
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 180,
+      "name": "RAPPEL South control window"
+    },
+    {
+      "id": "f2-rappel-east-wing-window",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 4.7,
+        "y": 7.75,
+        "z": -16
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 90,
+      "name": "RAPPEL East wing window"
+    }
+  ],
+  "sitePairs": [
+    {
+      "id": "site-pair-mvfst7oj",
+      "name": "1F A-B",
+      "A": {
+        "x": -6.25,
+        "y": 0,
+        "z": -2.75,
+        "plantRadius": 13,
+        "defuseRange": 6.75,
+        "plantZones": [
+          {
+            "id": "a-legacy-0",
+            "x": -6.375,
+            "y": 0,
+            "z": -7.25,
+            "width": 3.75,
+            "depth": 14,
+            "height": 3.5
+          },
+          {
+            "id": "zone-mvftocll-66vn",
+            "x": -14.25,
+            "y": 0,
+            "z": -9.25,
+            "width": 11.5,
+            "depth": 10,
+            "height": 3.5
+          }
+        ]
+      },
+      "B": {
+        "x": -26,
+        "y": 0,
+        "z": -1.75,
+        "plantRadius": 4,
+        "defuseRange": 2.25,
+        "plantZones": [
+          {
+            "id": "b-legacy-0",
+            "x": -27,
+            "y": 0,
+            "z": -7.125,
+            "width": 13.5,
+            "depth": 13.25,
+            "height": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "id": "site-pair-consolate-2f",
+      "name": "2F ARCHIVES / OPERATIONS",
+      "A": {
+        "x": -25.5,
+        "y": 4,
+        "z": -4.75,
+        "plantRadius": 4,
+        "defuseRange": 2.5,
+        "plantZones": [
+          {
+            "id": "2f-archives-a1",
+            "x": -25.5,
+            "y": 4,
+            "z": -4.75,
+            "width": 6.5,
+            "depth": 6.5,
+            "height": 3.4
+          }
+        ]
+      },
+      "B": {
+        "x": -12.5,
+        "y": 4,
+        "z": -17.5,
+        "plantRadius": 4,
+        "defuseRange": 2.5,
+        "plantZones": [
+          {
+            "id": "2f-ops-b1",
+            "x": -12.5,
+            "y": 4,
+            "z": -17.5,
+            "width": 7.5,
+            "depth": 4,
+            "height": 3.4
+          }
+        ]
+      }
+    }
+  ],
+  "activeSitePair": "site-pair-mvfst7oj",
+  "notes": "Built with BLACKOUT Dev Map Studio. Bomb sites can be positioned independently.\nSecond floor additions by ChatGPT: upper rooms, windows, soft walls and roof-edge rappel anchors. Cable anchors are blueprint markers for future grappling physics; second floor y=4. First-floor geometry, 1F bomb sites and spawns preserved. No duplicate second-floor slabs."
+}
