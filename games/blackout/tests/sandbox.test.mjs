@@ -121,11 +121,11 @@ test("attacking AI can navigate from all three approaches to both test bomb zone
 });
 test("west/east windows vault gradually without teleporting or clipping on landing",()=>{
   const w=makeWorld();
-  for(const initialX of [-17,17]){
+  for(const [index,initialX] of [-17,17].entries()){
     const camera=new Node(),p=new Player(THREE,w,camera);
     p.x=initialX;p.z=-45;p.y=0;p.applyCamera();
     const baseY=camera.position.y;
-    assert.equal(w.barricades.vault(p,1000),true);
+    assert.equal(w.barricades.vault(p,1000+index*2000),true);
     assert.equal(p.x,initialX);
     for(let i=0;i<11;i++)p.update(.03,new Set());
     assert.ok(p.vault);
