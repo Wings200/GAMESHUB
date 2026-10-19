@@ -375,12 +375,16 @@ document.addEventListener("keydown",e=>{
     const r=gadgets.main(camera,player,clock(),objectiveRound);
     popup(r.message);if(r.ok)sound(operator.id==="smoke"?"smoke-throw":"click");
   }else if(e.code==="KeyB"){
-    if(operator.id==="smoke"){
-      const r=gadgets.detonateSmoke(clock());
-      popup(r.message,2);if(r.ok)sound("smoke-trigger");
-    }else if(gadgets.secondaryType==="c4"){
-      const r=gadgets.remoteC4(clock());
-      popup(r.message,2);if(r.ok)sound("gadget-blast");
+    if(operator.id==="smoke"||gadgets.secondaryType==="c4"){
+      // Smoke and C4 deliberately share the remote button in the mechanics
+      // lab. When Smoke selects C4 as secondary, B can trigger both kinds
+      // of armed device; neither will detonate while still flying.
+      const smoke=operator.id==="smoke"?gadgets.detonateSmoke(clock()):null;
+      const c4=gadgets.secondaryType==="c4"?gadgets.remoteC4(clock()):null;
+      const messages=[smoke,c4].filter(r=>r?.ok).map(r=>r.message);
+      popup(messages.join(" · ")||(smoke?.message||c4?.message),2);
+      if(c4?.ok)sound("gadget-blast");
+      else if(smoke?.ok)sound("smoke-trigger");
     }
   }else if(e.code==="KeyX"){
     const r=gadgets.secondary(camera,player,clock());
