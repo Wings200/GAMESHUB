@@ -44,6 +44,7 @@ const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
 const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
 const sightSelect=$("sightSelect"),reticle=$("reticle");
+const secondarySelect=$("secondarySelect"),flashOverlay=$("flashOverlay");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
 const reinforceCountdown=$("reinforceCountdown"),reinforceTitle=$("reinforceTitle");
 const SIGHTS=["holo-a","holo-b","red-dot","iron"];
@@ -209,6 +210,7 @@ function chooseOperator(id){
   operatorDetails.textContent=selected.speed+" SPEED · "+selected.armor+" ARMOR · "+selected.health+
     " HP · "+selected.walk.toFixed(2)+" m/s WALK · "+selected.sprint.toFixed(2)+" m/s SPRINT";
   gadgets.setOperator(selected);
+  gadgets.setSecondaryType(secondarySelect.value);
   operatorPreviewName.textContent=selected.name;
   operatorPreviewDescription.textContent=selected.description;
   operatorPreviewPerk.textContent=selected.specialty+" // "+selected.passive;
@@ -228,6 +230,16 @@ function chooseOperator(id){
 }
 function setRole(r){
   role=r==="defender"?"defender":"attacker";
+  secondarySelect.replaceChildren();
+  const equipment=role==="attacker"?
+    [["recon","RECON PULSE (2)"],["frag","FRAG GRENADE (2)"],
+     ["stun","FLASHBANG (2)"],["claymore","CLAYMORE (1)"]]:
+    [["sensor","PROXIMITY ALARM (2)"],["c4","REMOTE C4 (1)"],
+     ["impact","IMPACT GRENADE (2)"]];
+  for(const [id,label] of equipment){
+    const option=document.createElement("option");
+    option.value=id;option.textContent=label;secondarySelect.appendChild(option);
+  }
   attackButton.classList.toggle("active",role==="attacker");
   defendButton.classList.toggle("active",role==="defender");
   selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
@@ -273,6 +285,11 @@ attackButton.addEventListener("click",()=>setRole("attacker"));
 defendButton.addEventListener("click",()=>setRole("defender"));
 reset.addEventListener("click",()=>{resetSimulation();status.textContent="All targets and ammo reset.";});
 operatorSelect.addEventListener("change",()=>chooseOperator(operatorSelect.value));
+secondarySelect.addEventListener("change",()=>{
+  gadgets.setSecondaryType(secondarySelect.value);
+  resetSimulation();
+  status.textContent="SECONDARY KIT · "+secondarySelect.selectedOptions[0]?.textContent;
+});
 spawnSelect.addEventListener("change",()=>{
   if(role==="defender"){
     objectiveRound.chooseSite(spawnSelect.value);siteSelect.value=objectiveRound.siteId;
@@ -361,9 +378,13 @@ document.addEventListener("keydown",e=>{
     if(operator.id==="smoke"){
       const r=gadgets.detonateSmoke(clock());
       popup(r.message,2);if(r.ok)sound("smoke-trigger");
+    }else if(gadgets.secondaryType==="c4"){
+      const r=gadgets.remoteC4(clock());
+      popup(r.message,2);if(r.ok)sound("gadget-blast");
     }
   }else if(e.code==="KeyX"){
-    const r=gadgets.secondary(camera,player,clock());popup(r.message);if(r.ok)sound("click");
+    const r=gadgets.secondary(camera,player,clock());
+    popup(r.message);if(r.ok)sound(r.event||"click");
   }else if(e.code==="KeyF"){
     if(objectiveRound.canInteract(player)){
       popup(role==="attacker"?"HOLD F TO PLANT DEFUSER":"HOLD F TO DISABLE DEFUSER",1.4);
@@ -477,6 +498,12 @@ function fireOnceSafe(now){
         continue;
       }
       impact(h.point,info.panel.materialProfile.impactColor);break;
+    }
+    if(info.kind==="ordnance"){
+      const disabled=gadgets.damageOrdnance(info.device,shot.damage*penetration);
+      sound("impact");impact(h.point,0xd4a384,.065);
+      if(disabled)popup("DEPLOYED GADGET DESTROYED",1.0);
+      break;
     }
     if(info.kind==="smoke-canister"){
       const removed=gadgets.damageSmokeCanister(info.device,shot.damage*penetration);
@@ -670,7 +697,13 @@ function updateHud(report){
     `G THROW [${gadgets.specialCount}] · B DETONATE [${gadgets.smokeStatus.armed} ARMED]`:
     `G · ${detail.g} [${gadgets.specialCount??0}]`;
   gadgetSecondary.textContent=drone.active?"X · DRONE PING · G SHOCK (TWITCH)":
-    `X · ${detail.x} [${gadgets.counts.x}]`;
+    `X · ${detail.x} [${gadgets.counts.x}]`+
+      (gadgets.secondaryType==="c4"?
+        ` · B DETONATE [${gadgets.ordnance.armedC4} ARMED]`:"");
+  const blind=gadgets.ordnance;
+  const remain=Math.max(0,blind.flashUntil-clock());
+  flashOverlay.style.opacity=remain>0?
+    String(Math.min(.94,blind.flashIntensity*Math.min(1,remain/550))):"0";
   const nearbyOpening=barricades.nearest(player,2.7);
   gadgetInteract.textContent=objectiveRound.canInteract(player)?
     (role==="attacker"?"F · HOLD TO PLANT":"F · HOLD TO DISABLE"):
@@ -882,7 +915,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="OPEN MECHANICS LAB · CHOOSE ATTACK OR DEFENSE · TEST WALLS, DRONES, GADGETS AND BOMBS";}
 window.BLACKOUT_DEV={
-  get build(){return "3.2.0-material-breaches-gunplay"},
+  get build(){return "3.3.0-advanced-ordnance"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
@@ -899,6 +932,7 @@ window.BLACKOUT_DEV={
   get dynamicColliders(){return world.colliders.length},get collisionRevision(){return world.collisionRevision},
   get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
   get sight(){return sight},
+  get secondaryKit(){return gadgets.ordnanceStatus},
   get reinforcing(){return gadgets.busy},get barricading(){return barricades.busy},
   get barricades(){return barricades.info},get roundFrozen(){return roundFrozen},
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
