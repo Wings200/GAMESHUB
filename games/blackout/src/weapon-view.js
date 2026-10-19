@@ -42,6 +42,12 @@ export function createWeaponView(T,gunRoot){
   block(rifle,0,-.11,.35,.17,.09,.06,black);
   block(rifle,0,-.105,-.095,.12,.065,.10,black);
   const magazine=block(rifle,0,-.23,-.33,.105,.28,.135,black,.19);
+  const rifleFreshMag=block(rifle,.26,-.44,-.12,.105,.28,.135,black,.19);
+  rifleFreshMag.visible=false;
+  const rifleReloadHand=block(rifle,.29,-.51,-.11,.14,.21,.20,skin,.15);
+  rifleReloadHand.visible=false;
+  const bolt=block(rifle,.107,.033,-.33,.022,.052,.095,edge);
+  const chargingHandle=block(rifle,-.012,.17,-.16,.16,.027,.042,black);
   for(let n=0;n<5;n++)block(magazine,0,-.10+n*.045,-.070,.10,.008,.012,edge);
   block(rifle,-.103,-.006,-.35,.018,.055,.085,edge);
   block(rifle,.099,-.036,-.36,.023,.04,.12,edge);
@@ -74,6 +80,11 @@ export function createWeaponView(T,gunRoot){
   block(pistol,.18,-.245,.025,.33,.31,.28,tan,-.23,0,-.18);
   block(pistol,0,-.30,-.12,.15,.23,.16,skin,.05);
   const pistolMag=block(pistol,0,-.218,-.067,.083,.20,.118,black,-.22);
+  const pistolFreshMag=block(pistol,.23,-.40,-.06,.083,.20,.118,black,-.22);
+  pistolFreshMag.visible=false;
+  const pistolReloadHand=block(pistol,.22,-.46,-.02,.14,.21,.18,skin,.12);
+  pistolReloadHand.visible=false;
+  const pistolSlide=block(pistol,0,.117,-.30,.124,.02,.18,edge);
   // Visible handheld deploy/disarm equipment for the full hold-F interaction.
   const toolCase=block(interactionTool,0,-.04,-.30,.59,.14,.36,receiver,-.18);
   block(interactionTool,0,.03,-.34,.42,.023,.21,black,-.18);
@@ -89,7 +100,9 @@ export function createWeaponView(T,gunRoot){
   }
   // Shells fly from the bolt with gravity and rotate in camera space.
   let reloadInfo=null;const shells=[];
-  function beginReload(now,slot,duration){reloadInfo={at:now,slot,duration:duration*1000};}
+  function beginReload(now,slot,duration,type="tactical"){
+    reloadInfo={at:now,slot,duration:duration*1000,type};
+  }
   function eject(slot="primary"){
     const shell=new T.Mesh(new T.CylinderGeometry(.016,.018,.052,8),casing);
     const isPistol=slot==="secondary";
@@ -118,6 +131,10 @@ export function createWeaponView(T,gunRoot){
     rifle.rotation.set(0,sway*.22,lean*.011);
     pistol.rotation.set(0,sway*.16,lean*.01);
     magazine.position.y=-.23;pistolMag.position.y=-.218;
+    rifleFreshMag.visible=false;pistolFreshMag.visible=false;
+    rifleReloadHand.visible=false;pistolReloadHand.visible=false;
+    bolt.position.z=-.33;chargingHandle.position.z=-.16;
+    pistolSlide.position.z=-.30;
     if(reloadInfo){
       const p=(now-reloadInfo.at)/reloadInfo.duration;
       if(p>=1)reloadInfo=null;
@@ -127,7 +144,26 @@ export function createWeaponView(T,gunRoot){
         const pull=p<.43?Math.sin(p/.43*Math.PI/2):
           p<.71?1:Math.max(0,1-(p-.71)/.29);
         mag.position.y-=pull*.29;
-        mag.rotation.x=.19+pull*.48;
+        mag.rotation.x=(reloadInfo.slot==="primary"?.19:-.22)+pull*.48;
+        const fresh=reloadInfo.slot==="primary"?rifleFreshMag:pistolFreshMag;
+        const hand=reloadInfo.slot==="primary"?rifleReloadHand:pistolReloadHand;
+        // Old magazine pulls down, then an independent spare comes up
+        // into the magwell with a visible support hand.
+        fresh.visible=p>.30&&p<.88;hand.visible=p>.16&&p<.92;
+        const insert=Math.max(0,Math.min(1,(p-.45)/.38));
+        const freshBase=reloadInfo.slot==="primary"?-.23:-.218;
+        fresh.position.set(.26*(1-insert),freshBase-.37*(1-insert),
+          reloadInfo.slot==="primary"?-.33:-.067);
+        fresh.rotation.x=(reloadInfo.slot==="primary"?.19:-.22)+.18*(1-insert);
+        hand.position.set(.29*(1-insert),fresh.position.y-.08,
+          fresh.position.z+.06);
+        if(reloadInfo.type==="empty"&&p>.75){
+          const charge=Math.sin(Math.PI*Math.min(1,(p-.75)/.25));
+          if(reloadInfo.slot==="primary"){
+            chargingHandle.position.z=-.16+charge*.085;
+            bolt.position.z=-.33+charge*.10;
+          }else pistolSlide.position.z=-.30+charge*.095;
+        }
         rig.rotation.x-=Math.sin(Math.PI*p)*.34*(1-aim*.45);
         rig.rotation.z+=Math.sin(p*Math.PI)*.085;
       }
@@ -141,7 +177,12 @@ export function createWeaponView(T,gunRoot){
       }
     }
   }
-  function reset(){reloadInfo=null;magazine.position.y=-.23;pistolMag.position.y=-.218;
+  function reset(){
+    reloadInfo=null;magazine.position.y=-.23;pistolMag.position.y=-.218;
+    rifleFreshMag.visible=pistolFreshMag.visible=false;
+    rifleReloadHand.visible=pistolReloadHand.visible=false;
+    bolt.position.z=-.33;chargingHandle.position.z=-.16;
+    pistolSlide.position.z=-.30;
     for(const e of shells){gunRoot.remove(e.shell);e.shell.geometry.dispose();}
     shells.length=0;
   }
