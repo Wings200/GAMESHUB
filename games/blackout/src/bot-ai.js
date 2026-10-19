@@ -1,5 +1,6 @@
 // BLACKOUT V0.7 — collision-aware indoor AI navigation and detailed enemy rig.
 // Grid navigation uses the very same colliders as the player's character.
+import {findClubhousePath} from "./clubhouse-nav.js?v=blackout-v600-approved-clubhouse";
 const GRID=1,MINX=-19,MAXX=19,MINZ=-65,MAXZ=25;
 const WIDTH=(MAXX-MINX)+1,HEIGHT=(MAXZ-MINZ)+1;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -131,6 +132,7 @@ function levelWorld(world,level){
     barricades:world.barricades};
 }
 export function findTacticalPath(world,from,to,ignoreDoors=true){
+  if(world.mapId==="clubhouse")return findClubhousePath(world,from,to,ignoreDoors);
   if(world.mapId!=="switchyard")
     return findTacticalPath2D(world,from,to,ignoreDoors);
   const quantize=y=>Math.max(0,Math.min(2,Math.round((y||0)/4)));
@@ -175,7 +177,7 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   // Timed replanning used to send a climber back to the staircase bottom.
   // Preserve active 3D route waypoints unless target/world changes or the
   // stuck-recovery logic explicitly discards its path.
-  const routeInProgress=world.mapId==="switchyard"&&bot.path.length>0;
+  const routeInProgress=(world.mapId==="switchyard"||world.mapId==="clubhouse")&&bot.path.length>0;
   if(changingGoal||changedWorld||now>=bot.repathAt&&!routeInProgress){
     bot.path=findTacticalPath(world,bot,goal,bot.allowBreach!==false);
     if(changedWorld)bot.blockingBarricade=null;
@@ -192,7 +194,7 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   if(len<.03)return 0;
   const step=Math.min(len,dt*bot.walkSpeed);
   const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
-  const floor=world.mapId==="switchyard"?world.floorAt(nx,nz,bot.y||0):0;
+  const floor=world.mapId!=="lab"?world.floorAt(nx,nz,bot.y||0):0;
   const collision=collisionAt(world,nx,nz,.34,false,floor);
   if(collision){
     if(bot.allowBreach!==false&&collision.tag==="barricade"&&
