@@ -7,11 +7,11 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const live=list=>list.filter(x=>x.alive);
 function visible(round,from,target){
-  const origin=new round.THREE.Vector3(from.x,1.61,from.z);
+  const origin=new round.THREE.Vector3(from.x,(from.y||0)+1.61,from.z);
   // Use the actual operator position; a remote-controlled drone must
   // not teleport the operator's hit/visibility origin across the map.
   const dest=new round.THREE.Vector3(target.x,
-    target.isDrone?.24:target.isPlayer?1.55:1.62,target.z);
+    (target.y||0)+(target.isDrone?.24:target.isPlayer?1.55:1.62),target.z);
   const dir=dest.sub(origin),dist=dir.length();
   if(dist<.25||dist>26)return false;
   round.ray.set(origin,dir.normalize());
@@ -26,8 +26,9 @@ function visible(round,from,target){
   return !round.ray.intersectObjects(occluders,false).length;
 }
 function canStand(round,p,r=.43){
+  const y=p.y||0;
   return !round.world.colliders.some(c=>
-    c.maxY>.48&&c.minY<1.65&&p.x>c.minX-r&&p.x<c.maxX+r&&
+    c.maxY>y+.48&&c.minY<y+1.65&&p.x>c.minX-r&&p.x<c.maxX+r&&
     p.z>c.minZ-r&&p.z<c.maxZ+r);
 }
 function chooseCover(round,bot,threat){
@@ -119,7 +120,8 @@ export function assaultSweepPosition(round,bot,now){
   const current=bot.assaultIndex??(bot.id%offsets.length);
   for(let k=1;k<=offsets.length;k++){
     const index=(current+k)%offsets.length;
-    const pt={x:site.x+offsets[index].x,z:site.z+offsets[index].z};
+    const pt={x:site.x+offsets[index].x,z:site.z+offsets[index].z,
+      y:site.y||0};
     if(canStand(round,pt,.37)&&distance(bot,pt)>1.1){
       bot.assaultIndex=index;bot.assaultGoal=pt;
       bot.assaultNext=now+4500+(bot.id%4)*400;
@@ -144,7 +146,7 @@ export function chooseTacticalReposition(round,bot,target,now){
   for(const sign of [side,-side]){
     const away=distance(bot,target)<3.2?1.25:0;
     const pos={x:bot.x-sign*dz/len*2.0-dx/len*away,
-      z:bot.z+sign*dx/len*2.0-dz/len*away};
+      z:bot.z+sign*dx/len*2.0-dz/len*away,y:bot.y||0};
     if(Number.isFinite(pos.x+pos.z)&&canStand(round,pos,.37)){
       bot.repositionGoal=pos;
       bot.repositionUntil=now+1900;
@@ -203,8 +205,8 @@ function maybeWorkDevice(round,bot,now,dt,notify){
   if(bot.working>=5400){
     bot.working=0;round.chooseSite(site.id);
     round.phase="planted";round.bombEnd=now+35000;round.nextBeep=now+800;
-    round.plantPosition={x:bot.x,z:bot.z};
-    round.defuser.show(bot.x,bot.z,35,now,site.id);
+    round.plantPosition={x:bot.x,z:bot.z,y:bot.y||0};
+    round.defuser.show(bot.x,bot.z,35,now,site.id,bot.y||0);
     notify("DEFUSER PLANTED BY "+(bot.team==="ally"?"YOUR SQUAD":"HOSTILES")+" · SITE "+site.id,"plant");
   }
   return true;
@@ -258,7 +260,13 @@ const PREP_POSITIONS={
   B:[{x:3,z:-32},{x:7,z:-30},{x:3,z:-24},{x:6,z:-26}]
 };
 function patrolPosition(round,bot,now){
-  const site=assignedSite(round,bot),pts=PREP_POSITIONS[site.id]||[];
+  const site=assignedSite(round,bot);
+  const pts=round.world.mapId==="switchyard"?
+    [{x:site.x-3,z:site.z-3,y:site.y||0},
+     {x:site.x+3,z:site.z-3,y:site.y||0},
+     {x:site.x+3,z:site.z+3,y:site.y||0},
+     {x:site.x-3,z:site.z+3,y:site.y||0}]:
+    PREP_POSITIONS[site.id]||[];
   if(!pts.length)return bot.anchor||site;
   if(!bot.patrolGoal||now>=(bot.patrolNext||0)||
       distance(bot,bot.patrolGoal)<.9){
@@ -278,6 +286,20 @@ function patrolPosition(round,bot,now){
 export function updateDefenderPrep(round,now,dt,notify=()=>{}){
   const defenders=round.role==="defender"?round.allies:round.bots;
   const gadgets=round.world.gadgets,doors=round.world.barricades;
+  if(round.world.mapId==="switchyard"){
+    // Multi-floor defenders secure physically reachable sightlines first.
+    // Old mechanics-lab gadget coordinates would place devices under floors.
+    for(const bot of defenders){
+      if(!bot.alive)continue;
+      if(!bot.setupTask)bot.setupTask={kind:"hold-site",placed:true};
+      const goal=patrolPosition(round,bot,now);
+      const speed=goal&&distance(bot,goal)>.8?
+        advanceTacticalBot(bot,goal,round.world,dt,now):0;
+      bot.state=speed>.3?"prep-rotate":"hold-site";
+      bot.animate(dt,now,speed);
+    }
+    return;
+  }
   for(let i=0;i<defenders.length;i++){
     const bot=defenders[i];if(!bot.alive)continue;
     if(!bot.setupTask){
@@ -430,7 +452,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     const enemies=bot.team==="ally"?round.bots:round.allies;
     const targets=live(enemies);
     if(bot.team==="enemy"&&round.playerAlive)
-      targets.push({isPlayer:true,x:player.x,z:player.z,
+      targets.push({isPlayer:true,x:player.x,y:player.y||0,z:player.z,
         health:player.health});
     if(now>=(bot.nextSightAt||0)){
       bot.visibleTarget=null;bot.sightCache=false;
@@ -599,6 +621,10 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     if(!working&&goal&&bot.recoveryGoal&&now<bot.recoveryUntil){
       goal=bot.recoveryGoal;bot.state="unstuck";
     }
+    if(goal&&round.world.mapId==="switchyard"&&goal.y===undefined)
+      goal={...goal,y:planting||isAttack?(assignedSite(round,bot).y||0):
+        defusing?(round.plantPosition?.y||0):
+        target?(target.y||0):(assignedSite(round,bot).y||0)};
     const moved=!working&&goal?
       advanceTacticalBot(bot,goal,round.world,dt,now):0;
     bot.movedLast=moved;
