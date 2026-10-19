@@ -215,16 +215,21 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
       let kind="sensor",opening=null,goal=bot.assignedSite;
       if(spec==="mute")kind="jammer";
       else if(spec==="castle"){kind="armor";opening=east||west;}
+      else if(spec==="doc"||spec==="pulse")kind="sensor";
       else if(i%4===0){kind="board";opening=west;}
       else if(i%4===1){kind="board";opening=east;}
-      else if(spec==="smoke"){kind="sensor";}
+      else if(spec==="smoke")kind="sensor";
       else if(i%4===2)kind="jammer";
       if((kind==="board"||kind==="armor")&&opening)
         goal={x:opening.x+(opening.axis==="z"?0:opening.x<0?.85:-.85),
           z:opening.z+(opening.axis==="z"?1.1:0)};
       else{
         const loc=PREP_POSITIONS[bot.assignedSite.id]||[];
-        const spot=loc[i%loc.length]||bot.assignedSite;
+        const ordered=[loc[i%loc.length],...loc].filter(Boolean);
+        // Only pick an install location with standing clearance; the
+        // desk/cabinet's actual AABB is authoritative.
+        const spot=ordered.find(p=>canStand(round,p,.44))||bot.anchor||
+          bot.assignedSite;
         goal={x:spot.x,z:spot.z};
       }
       bot.setupTask={kind,opening,goal,placed:false,progress:0};
