@@ -3,12 +3,15 @@
 // Camera is attached to a small independently moving ground drone.
 export function createReconDrone(T,scene,world,camera){
   const body=new T.Group();scene.add(body);body.visible=false;
+  // The physical drone is a shootable world actor. Rendering briefly
+  // hides it from its OWN camera only, never from the world or defenders.
+  const hitMeshes=[];
   const shell=new T.MeshStandardMaterial({color:0x20292f,metalness:.63,roughness:.52});
   const rubber=new T.MeshStandardMaterial({color:0x111619,roughness:.94});
   const lens=new T.MeshBasicMaterial({color:0x61e5ee});
   const cube=(x,y,z,w,h,d,mat)=>{
     const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);
-    m.position.set(x,y,z);body.add(m);return m;
+    m.position.set(x,y,z);body.add(m);hitMeshes.push(m);return m;
   };
   cube(0,.10,0,.30,.16,.42,shell);
   for(const x of [-.19,.19])for(const z of [-.145,.145]){
@@ -17,6 +20,39 @@ export function createReconDrone(T,scene,world,camera){
   }
   cube(0,.225,-.18,.12,.065,.05,lens);
   let x=0,z=-15.8,yaw=0,pitch=0,active=false;
+  let destroyed=false,health=35,lastDamageAt=-Infinity;
+  let remaining=2,deployments=0;
+  const device={get active(){return active},get destroyed(){return destroyed},
+    get health(){return health},get position(){return {x,z}}};
+  for(const mesh of hitMeshes){
+    mesh.userData={kind:"drone",drone:device};
+    world.shootables.push(mesh);
+  }
+  function damage(amount,now=performance.now()){
+    if(!active||destroyed||!(amount>0))return false;
+    health=Math.max(0,health-amount);lastDamageAt=now;
+    if(health<=0){
+      destroyed=true;active=false;body.visible=false;
+      for(const fx of dartTraces){
+        scene.remove(fx.line);fx.line.geometry.dispose();fx.line.material.dispose();
+      }
+      dartTraces.length=0;
+      return true;
+    }
+    return false;
+  }
+  function reset(){
+    end();destroyed=false;health=35;remaining=2;deployments=0;
+  }
+  // In the camera render pass ONLY, avoid drawing the shell/lens
+  // sitting centimeters ahead of the camera. Afterwards restore it
+  // so world raycasts and enemies continue seeing the real model.
+  function concealForOwnCamera(){
+    if(!active||destroyed)return ()=>{};
+    const wasVisible=body.visible;
+    body.visible=false;
+    return ()=>{body.visible=wasVisible&&active&&!destroyed;};
+  }
   let lastPing=0,jammed=false,pingCount=0;
   const dartTraces=[];
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -43,10 +79,13 @@ export function createReconDrone(T,scene,world,camera){
       nz>=c.minZ-.155&&nz<=c.maxZ+.155);
   };
   function begin(now=0){
+    if(active||remaining<=0)return false;
+    remaining--;deployments++;destroyed=false;health=35;
     x=0;z=-15.8;yaw=0;pitch=0;active=true;jammed=false;pingCount=0;
     lastPing=now-1000;body.visible=true;body.position.set(x,.0,z);
     camera.rotation.order="YXZ";
     update(0,new Set(),null);
+    return true;
   }
   function look(dx,dy,sensitivity=.0022){
     if(!active)return;
@@ -120,7 +159,10 @@ export function createReconDrone(T,scene,world,camera){
     }
     dartTraces.length=0;
   }
-  return {begin,update,look,ping,shock,end,
-    get active(){return active},get jammed(){return jammed},
+  return {begin,update,look,ping,shock,end,reset,damage,concealForOwnCamera,body,
+    get active(){return active},get destroyed(){return destroyed},
+    get health(){return health},get remaining(){return remaining},
+    get deployments(){return deployments},get lastDamageAt(){return lastDamageAt},
+    get jammed(){return jammed},
     get position(){return {x,z}},get pingCount(){return pingCount}};
 }
