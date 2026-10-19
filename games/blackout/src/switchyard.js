@@ -200,7 +200,8 @@ export function createSwitchyard(T,scene){
     box(15.4,y+.04,z,4,.07,2.2,floor,{shoot:true});
   }
   // Roof apparatus with distinctive silhouette.
-  for(const [x,z] of [[-8,-43],[7,-30],[1,-46]]){
+  // Keep mechanical rooftop units OUTSIDE both legal bomb-site floors.
+  for(const [x,z] of [[-12,-49],[12,-44],[0,-24]]){
     box(x,8.55,z,2.0,1.1,1.6,black,{solid:true});
     box(x,9.8,z,.15,1.45,.15,steel,{shoot:true});
     box(x,10.54,z,.80,.15,.15,safety,{shoot:true});
