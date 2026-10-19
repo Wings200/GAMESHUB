@@ -1,6 +1,22 @@
 # BLACKOUT // Developer Map Studio V1
 Implemented October 19, 2026. A private Three.js map-authoring interface at `/games/blackout/dev-editor.html`, launched with **MAP STUDIO · DEV** in the BLACKOUT main menu.
 
+## V4 — Separate, editable rectangular bomb zones
+The V1–V3 editor used one circular plant radius around each bomb, which could unintentionally extend into surrounding rooms. V4 replaces circles with multiple independently editable **3D rectangular plant volumes** per Bomb A or B. The `blackout-editor-v1` JSON file format is intentionally maintained; the exported per-bomb `plantZones[]` array is an additive field.
+
+- In **BOMB SITE PAIRS**, select A or B, then choose the box using **SELECT ZONE BOX**. Click `+ BOX` to allocate another *separate* box for the same bomb (up to 32 per bomb). Use **DELETE BOX** to remove one (at least one box must remain per bomb).
+- Select a colored translucent box directly in the 3D viewport. **W** exposes X/Y/Z move handles. **R** exposes one-sided X/Z width/depth and Y-height resizing handles. The opposite edge remains fixed.
+- Set exact `X`, `Y`, `Z`, `WIDTH`, `HEIGHT`, `DEPTH` values in the right inspector, or select **PLACE / MOVE BOX** and click a snapped grid position on the selected build level.
+- Zones cannot overlap or touch other boxes in the active bomb-site pair, even if those boxes belong to Bomb B. The editor enforces **0.15m minimum clearance** for zones that overlap vertically. Boxes on separate floors may share X/Z locations when their vertical volumes don't intersect.
+- The union of separate boxes **does not turn into one giant circle or bounding rectangle** for planting. The `canPlantAt` portable map helper checks membership in *any individual 3D volume*; gaps between them remain illegal plant positions.
+- Bomb placement is independent of planting-zone placement. The **defuse interaction range** remains a separate numeric distance measured from the planted defuser, displayed next to the bomb marker.
+- Existing saved V1–V3 maps with only `plantRadius` are converted into one selectable, editable rectangular box per bomb when loaded. The original `plantRadius` is retained for older consumers, but newly authored `plantZones` take precedence. Existing exported maps remain importable.
+- **CHECK MAP SETUP** warns about overlapping boxes or boxes without a floor beneath them. Overlapping edits are rejected rather than silently merging the boxes. The imported portable file, not this editor itself, still needs conversion to live BLACKOUT collision and bomb logic before multiplayer use.
+
+**V4 editor assets:** `blackout-editor-v4` cache tag. For existing drafts, refresh with Ctrl+Shift+R before testing.
+
+---
+
 ## V3 geometry fix — user-reported screenshot corrections (October 19, 2026)
 The prior V2 editor still allowed mismatched modular wall dimensions, centered scaling and an actual default floor-thickness mismatch. On a 1m grid, 3.1m walls and 2.5m doorframes placed by their centre could never line up cleanly.
 
