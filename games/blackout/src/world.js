@@ -116,6 +116,7 @@ export function buildRange(THREE,scene){
     function syncPartition(){
       removePartition();
       const ci=colliders.indexOf(c);
+      rails[0].visible=!breach?.traversable;
       if(breach?.traversable){
         if(ci>=0)colliders.splice(ci,1);
         const min=x-1.56,max=x+1.56,
@@ -230,7 +231,7 @@ export function buildRange(THREE,scene){
         state.collisionRevision++;
         overlay.visible=false;holes.length=0;cluster=null;breach=null;
         removePartition();repaint();
-        center.material=soft;rails.forEach(r=>r.material=frameMat);
+        center.material=soft;rails.forEach(r=>{r.material=frameMat;r.visible=true});
         if(!colliders.includes(c))colliders.push(c);
       },
       reinforce(){
@@ -239,7 +240,7 @@ export function buildRange(THREE,scene){
         cluster=null;breach=null;removePartition();holes.length=0;repaint();
         if(!colliders.includes(c))colliders.push(c);
         state.collisionRevision++;
-        rails.forEach(r=>r.material=reinforced);return true;
+        rails.forEach(r=>{r.material=reinforced;r.visible=true});return true;
       },
       // Ordinary bullets only punch through soft material. The panel itself
       // NEVER disappears from a bullet hit. Only an explicit breach charge
