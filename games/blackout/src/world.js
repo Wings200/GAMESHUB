@@ -164,10 +164,11 @@ export function buildRange(THREE,scene){
         const l=(breach.centerX-breach.halfWidth+1.5)/3*1024;
         const w=breach.halfWidth*2/3*1024;
         const top=(2.94-breach.top)/2.88*1024;
+        const bottom=Math.min(1024,(2.94-breach.bottom)/2.88*1024);
         brush.fillStyle="#362b25";
-        brush.fillRect(l-5,top-5,w+10,1024-top+5);
+        brush.fillRect(l-5,top-5,w+10,bottom-top+10);
         brush.globalCompositeOperation="destination-out";
-        brush.fillRect(l,top,w,1024-top);
+        brush.fillRect(l,top,w,bottom-top);
         brush.globalCompositeOperation="source-over";
       }
       texture.needsUpdate=true;
