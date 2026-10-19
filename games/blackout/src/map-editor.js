@@ -4,7 +4,7 @@
 // password and never confuse local autosave with server publishing.
 import * as T from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
-  canPlantAt,canDefuseAt} from "./map-format.js?v=blackout-editor-v1";
+  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v1";
 
 const $=id=>document.getElementById(id);
 const canvas=$("editorCanvas"),nameInput=$("mapName"),notice=$("notice");
@@ -405,8 +405,10 @@ function placePart(point){
   const step=map.grid;
   const piece=makePiece(tool,round(point.x,step),layer,round(point.z,step));
   piece.rotationY=placementRotation;
+  const carved=cutOpeningInWall(map.elements,piece);
   map.elements.push(piece);
   selectedId=piece.id;changed({inspector:false});updateInspector();
+  if(carved)toast("REAL WALL OPENING CUT · SIDES REMAIN SOLID");
   $("selectedInfo").textContent=piece.type.toUpperCase()+" · "+piece.id;
   toast(PART_TYPES[tool].name.toUpperCase()+" PLACED");
 }
@@ -666,7 +668,9 @@ $("pairName").addEventListener("change",evt=>{
 });
 for(const key of ["A","B"])
   $("editSite"+key).addEventListener("click",()=>{
-    siteEditing=key;updateSiteFields();updateBombMarkers();
+    siteEditing=key;
+    if(tool.startsWith("bomb-"))setTool("bomb-"+key);
+    updateSiteFields();updateBombMarkers();
   });
 for(const [control,key,min,max] of [
   ["bombX","x",-300,300],["bombY","y",-12,90],["bombZ","z",-300,300],
