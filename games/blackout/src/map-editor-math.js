@@ -47,3 +47,51 @@ export function floorUndersideY(piece){
   if(piece.type!=="floor")return null;
   return piece.position.y-piece.size.y;
 }
+
+// Magnetic edge alignment is applied AFTER integer grid snapping, so
+// differently sized modules (e.g. a 3.1m soft wall beside a 4m hard wall)
+// join flush without leaving visible cracks. Shift temporarily bypasses it.
+export function magnetizeEdges(piece,elements,threshold=.7){
+  if(!["floor","hardWall","softWall","reinforcedWall","ceiling"].includes(piece.type))
+    return piece;
+  const original={...piece,position:{...piece.position}};
+  const p=original.position;
+  const eligible=new Set(piece.type==="floor"?["floor"]:
+    piece.type==="ceiling"?["ceiling"]:
+      ["hardWall","softWall","reinforcedWall"]);
+  let best={x:Infinity,z:Infinity};
+  for(const other of elements){
+    if(other.id===piece.id||!eligible.has(other.type)||
+      Math.abs(other.position.y-piece.position.y)>.25)continue;
+    const a=(((piece.rotationY||0)%180)+180)%180;
+    const b=(((other.rotationY||0)%180)+180)%180;
+    if(Math.abs(a-b)>1.5)continue;
+    const swapped=Math.abs(Math.sin(piece.rotationY*Math.PI/180))>.7;
+    const otherSwap=Math.abs(Math.sin((other.rotationY||0)*Math.PI/180))>.7;
+    const extent=(item,axis,flip)=>{
+      if(flip)return axis==="x"?item.size.z:item.size.x;
+      return axis==="x"?item.size.x:item.size.z;
+    };
+    for(const axis of ["x","z"]){
+      const otherHalf=extent(other,axis,otherSwap)/2;
+      const selfHalf=extent(piece,axis,swapped)/2;
+      // Both butt joints and matched ends/centres are valid connections.
+      const candidates=[
+        other.position[axis],
+        other.position[axis]+otherHalf+selfHalf,
+        other.position[axis]-otherHalf-selfHalf,
+        other.position[axis]+otherHalf-selfHalf,
+        other.position[axis]-otherHalf+selfHalf
+      ];
+      for(const value of candidates){
+        const d=Math.abs(p[axis]-value);
+        if(d<=threshold&&d<best[axis]){
+          p[axis]=value;best[axis]=d;
+        }
+      }
+    }
+  }
+  p.x=Math.round(p.x*10000)/10000;
+  p.z=Math.round(p.z*10000)/10000;
+  return original;
+}
