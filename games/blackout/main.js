@@ -1,16 +1,16 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v501-switchyard";
-import {FirstPersonController} from "./src/player.js?v=blackout-v500-switchyard";
+import {buildRange} from "./src/world.js?v=blackout-v520-switchyard";
+import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v500-switchyard";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v520-switchyard";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
-import {createReconDrone} from "./src/drone.js?v=blackout-v501-switchyard";
+import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
@@ -1045,7 +1045,7 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "5.0.0-switchyard-alpha"},
+  get build(){return "5.2.0-switchyard-alpha"},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
     staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
