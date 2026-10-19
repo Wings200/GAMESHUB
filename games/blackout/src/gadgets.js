@@ -1,3 +1,4 @@
+import {stepThrowable} from "./throw-physics.js?v=blackout-v301-video-fixes";
 // BLACKOUT V0.2 — role-specific gadgets tested against standalone panels.
 // Offline only; future multiplayer must validate all gadget state on server.
 export class Gadgets {
@@ -8,6 +9,7 @@ export class Gadgets {
     this.scanUntil=0;this.scanMarkers=[];
     this.electronics=[];this.gasFields=[];this.specialLastAt=0;
     this.specialAction=null;this.specialFx=[];
+    this.smokeCanisters=[];this.lastProjectileTick=null;
     this.hostiles=[];
     const ringMat=new THREE.MeshBasicMaterial({color:0x60f9f0,transparent:true,opacity:.9,depthTest:false});
     for(const t of world.targets){
@@ -37,6 +39,8 @@ export class Gadgets {
   }
   reset(role=this.role){
     this.cancelAction();
+    for(const device of this.smokeCanisters)this.removeSmokeCanister(device);
+    this.smokeCanisters=[];this.lastProjectileTick=null;
     for(const effect of this.specialFx){
       effect.group.parent?.remove(effect.group);
       effect.group.traverse(obj=>{if(obj.isMesh){
@@ -135,6 +139,136 @@ export class Gadgets {
     }
     return {ok:false,message:"SHIELD NEEDS 1.8M CLEAR SPACE IN FRONT · FACE OPEN FLOOR"};
   }
+  // Stage 2: all throwable special equipment uses reusable collision
+  // physics. Smoke has two separate inputs: throw (G) and remote ignite (B).
+  // Neither placement nor the throw-release animation creates damage/gas.
+  createSmokeCanister(camera,player,now){
+    const T=this.THREE,forward=new T.Vector3();
+    if(typeof camera?.getWorldDirection==="function")
+      camera.getWorldDirection(forward);
+    else forward.set(-Math.sin(player.yaw),-Math.sin(player.pitch||0),
+      -Math.cos(player.yaw));
+    const origin=new T.Vector3();
+    if(typeof camera?.getWorldPosition==="function")
+      camera.getWorldPosition(origin);
+    else origin.set(player.x,player.y+player.eyeHeight-.17,player.z);
+    const horizontal=Math.hypot(forward.x,forward.z)||1;
+    const dx=forward.x/horizontal,dz=forward.z/horizontal;
+    const x=origin.x+dx*.44,z=origin.z+dz*.44;
+    const y=Math.max(.32,origin.y-.22);
+    const group=new T.Group();this.scene.add(group);
+    const body=new T.Mesh(new T.CylinderGeometry(.12,.12,.25,12),
+      new T.MeshStandardMaterial({color:0x59684f,metalness:.55,roughness:.55}));
+    body.rotation.z=Math.PI/2;group.add(body);
+    const capMat=new T.MeshStandardMaterial({color:0x1b262a,metalness:.7});
+    for(const sign of [-1,1]){
+      const cap=new T.Mesh(new T.CylinderGeometry(.125,.125,.035,12),capMat);
+      cap.rotation.z=Math.PI/2;cap.position.x=sign*.14;group.add(cap);
+    }
+    const led=new T.Mesh(new T.SphereGeometry(.045,8,6),
+      new T.MeshBasicMaterial({color:0xffc473}));
+    led.position.set(0,.13,0);group.add(led);
+    const device={kind:"smoke-canister",team:"ally",x,y,z,
+      vx:dx*10.7,vy:2.8+Math.max(-.5,Math.min(.5,forward.y))*5.4,
+      vz:dz*10.7,group,body,led,bounces:0,resting:false,
+      stage:"flying",bornAt:now,armedAt:Infinity,active:false,
+      destroyed:false,health:24,lastUpdateAt:now};
+    group.position.set(x,y,z);
+    body.userData={kind:"smoke-canister",device};
+    this.world.shootables.push(body);
+    this.smokeCanisters.push(device);
+    return device;
+  }
+  removeSmokeCanister(device){
+    if(!device||device.destroyed)return;
+    device.destroyed=true;device.stage="destroyed";
+    const index=this.world.shootables.indexOf(device.body);
+    if(index>=0)this.world.shootables.splice(index,1);
+    device.group.parent?.remove(device.group);
+    device.group.traverse(node=>{if(node.isMesh){
+      node.geometry?.dispose?.();node.material?.dispose?.();
+    }});
+  }
+  damageSmokeCanister(device,damage){
+    if(!device||device.destroyed||device.stage==="spent")return false;
+    device.health-=damage;
+    if(device.health>0)return false;
+    if(device.active){
+      const idx=this.gasFields.indexOf(device);
+      if(idx>=0)this.gasFields.splice(idx,1);
+    }
+    this.removeSmokeCanister(device);
+    return true;
+  }
+  throwSmoke(camera,player,now){
+    if(this.operator?.id!=="smoke"||this.role!=="defender")
+      return {ok:false,message:"SMOKE CANISTERS ARE DEFENDER-ONLY"};
+    if(this.specialAction)return {ok:false,message:"FINISH THE CURRENT THROW"};
+    if(this.specialCount<=0)return {ok:false,message:"NO GAS CANISTERS REMAIN"};
+    const started=this.startAbility("smoke",camera,{x:player.x,z:player.z},
+      now,430,()=>{
+        this.createSmokeCanister(camera,player,now+430);
+        return {message:"CANISTER THROWN · WAIT FOR LANDING, THEN PRESS B"};
+      });
+    if(started.ok)this.specialCount--;
+    return started;
+  }
+  detonateSmoke(now){
+    if(this.operator?.id!=="smoke"||this.role!=="defender")
+      return {ok:false,message:"REMOTE DETONATOR IS SMOKE-ONLY"};
+    const ready=this.smokeCanisters.filter(d=>!d.destroyed&&d.stage==="armed");
+    if(!ready.length)return {ok:false,message:this.smokeCanisters.some(d=>d.stage==="flying")?
+      "CANISTER IN FLIGHT · WAIT FOR IT TO LAND":
+      "NO ARMED GAS CANISTERS · THROW WITH G FIRST"};
+    for(const device of ready){
+      device.stage="active";device.active=true;
+      device.nextTick=now;device.end=now+10000;device.detonatedAt=now;
+      const T=this.THREE;
+      const cloud=new T.Mesh(new T.SphereGeometry(1.7,16,12),
+        new T.MeshBasicMaterial({color:0x7e9162,transparent:true,
+          opacity:.08,depthWrite:false,side:T.DoubleSide}));
+      cloud.position.set(0,1.15-device.y,0);device.group.add(cloud);
+      device.cloud=cloud;device.kind="gas";
+      this.gasFields.push(device);
+      device.led.material.color.setHex(0xf2e9bf);
+    }
+    return {ok:true,message:"REMOTE GAS DETONATED · "+ready.length+
+      " CANISTER"+(ready.length===1?"":"S")+" · 10S AREA DENIAL"};
+  }
+  tickSmokeProjectiles(now,ping){
+    for(const device of this.smokeCanisters){
+      if(device.destroyed)continue;
+      if(device.stage==="flying"){
+        const dt=Math.min(.08,Math.max(0,(now-device.lastUpdateAt)/1000));
+        device.lastUpdateAt=now;
+        stepThrowable(device,this.world.colliders,dt);
+        device.group.position.set(device.x,device.y,device.z);
+        device.group.rotation.z+=dt*9;
+        if(device.resting||now-device.bornAt>3800){
+          device.stage="armed";device.resting=true;
+          device.armedAt=now;device.vx=device.vy=device.vz=0;
+          device.group.rotation.z=0;
+          device.led.material.color.setHex(0x5cff9c);
+          ping("SMOKE CANISTER ARMED · PRESS B TO REMOTELY DETONATE");
+        }
+      }else if(device.stage==="armed"){
+        device.led.visible=Math.floor(now/280)%2===0;
+      }else if(device.stage==="active"){
+        device.led.visible=true;
+        device.body.rotation.x=Math.sin(now*.006)*.11;
+      }
+    }
+    // Stop spent devices from ever damaging a later round.
+    for(let i=this.smokeCanisters.length-1;i>=0;i--){
+      const d=this.smokeCanisters[i];
+      if(d.stage==="active"&&now>d.end){
+        const idx=this.gasFields.indexOf(d);
+        if(idx>=0)this.gasFields.splice(idx,1);
+        this.removeSmokeCanister(d);
+        this.smokeCanisters.splice(i,1);
+      }
+    }
+  }
   deployBotSensor(x,z,team="enemy"){
     const T=this.THREE,group=new T.Group();
     group.position.set(x,.055,z);this.scene.add(group);
@@ -198,7 +332,7 @@ export class Gadgets {
   startAbility(type,camera,position,now,duration,onComplete){
     if(this.specialAction)return {ok:false,message:"FINISH THE CURRENT GADGET ANIMATION"};
     const T=this.THREE;
-    const handheld=["sledge","doc","pulse"].includes(type)&&camera;
+    const handheld=["sledge","doc","pulse","smoke"].includes(type)&&camera;
     const group=new T.Group();
     if(handheld){
       camera.add(group);group.position.set(.36,-.36,-.65);
@@ -363,46 +497,16 @@ export class Gadgets {
       if(r.ok)consume();return r;
     }
     if(id==="twitch")return {ok:false,message:"TWITCH · USE THE DRONE DURING PREP · X PINGS"};
-    if(id==="mute"||id==="smoke"){
+    if(id==="smoke")return this.throwSmoke(camera,player,now);
+    if(id==="mute"){
       if(this.world.colliders.some(c=>c.maxY>.4&&c.minY<.6&&
         x>=c.minX-.32&&x<=c.maxX+.32&&z>=c.minZ-.32&&z<=c.maxZ+.32))
-        return {ok:false,message:"GADGET PLACEMENT BLOCKED · FACE OPEN FLOOR"};
-      if(id==="mute"){
-        const r=this.startAbility(id,camera,{x,z},now,1250,()=>{
-          this.deployJammer(x,z,"ally");
-          return {message:"MUTE SIGNAL JAMMER ONLINE · DRONES DISRUPTED"};
-        });
-        if(r.ok)consume();return r;
-      }
-      const group=new this.THREE.Group();group.position.set(x,0,z);this.scene.add(group);
-      const mat=new this.THREE.MeshStandardMaterial({color:id==="mute"?0x415e6b:0x68724d,metalness:.38});
-      const mesh=new this.THREE.Mesh(new this.THREE.BoxGeometry(.55,.31,.45),mat);
-      mesh.position.y=.16;group.add(mesh);
-      const light=new this.THREE.Mesh(new this.THREE.SphereGeometry(.045,8,6),
-        new this.THREE.MeshBasicMaterial({color:id==="mute"?0x59f0db:0xe5a55f}));
-      light.position.y=.37;group.add(light);
-      const entry={kind:id==="mute"?"jammer":"gas",team:"ally",x,z,group,light,disabledUntil:0,
-        end:now+10500,nextTick:now};
-      if(id==="mute")this.electronics.push(entry);
-      else{
-        const cloud=new this.THREE.Mesh(new this.THREE.SphereGeometry(2.0,16,12),
-          new this.THREE.MeshBasicMaterial({color:0x81955a,
-            transparent:true,opacity:.16,depthWrite:false,
-            side:this.THREE.DoubleSide}));
-        cloud.position.y=1.15;group.add(cloud);
-        entry.cloud=cloud;
-        this.gasFields.push(entry);
-      }
-      group.visible=false;entry.active=false;
-      const r=this.startAbility(id,camera,{x,z},now,890,()=>{
-        group.visible=true;entry.active=true;
-        entry.end=performance.now()+10500;
-        entry.nextTick=performance.now();
-        return {message:"SMOKE · GAS CANISTER RELEASED · AREA DENIAL ACTIVE"};
+        return {ok:false,message:"JAMMER PLACEMENT BLOCKED · FACE OPEN FLOOR"};
+      const r=this.startAbility(id,camera,{x,z},now,1250,()=>{
+        this.deployJammer(x,z,"ally");
+        return {message:"MUTE SIGNAL JAMMER ONLINE · DRONES DISRUPTED"};
       });
-      if(!r.ok){
-        this.scene.remove(group);this.gasFields.splice(this.gasFields.indexOf(entry),1);
-      }else consume();
+      if(r.ok)consume();
       return r;
     }
     if(id==="castle"){
@@ -473,6 +577,7 @@ export class Gadgets {
   tick(now,player,ping,hostileBots=[]){
     this.hostiles=hostileBots;
     this.tickAbility(now,ping);
+    this.tickSmokeProjectiles(now,ping);
     if(this.action){
       const a=this.action;
       a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
@@ -515,7 +620,7 @@ export class Gadgets {
     }
     const round=this.world.round;
     for(const gas of this.gasFields){
-      if(gas.active===false)continue;
+      if(gas.active===false||gas.destroyed)continue;
       if(now>gas.end){gas.group.visible=false;continue;}
       if(now>=gas.nextTick){
         gas.nextTick=now+450;
@@ -528,8 +633,12 @@ export class Gadgets {
           round.playerAlive&&Math.hypot(player.x-gas.x,player.z-gas.z)<3.55)
           player.takeDamage(6);
       }
-      gas.group.scale.setScalar(1+Math.min(2.5,(now-(gas.end-9500))/5000));
-      gas.cloud.material.opacity=Math.min(.23,Math.max(.025,(gas.end-now)/28000));
+      if(gas.cloud){
+        const life=Math.max(0,1-(gas.end-now)/10000);
+        gas.cloud.scale.setScalar(1+Math.min(2.2,life*2.2));
+        gas.cloud.material.opacity=Math.min(.23,Math.max(.025,
+          Math.min(life*2,.96,(1-life)*5)*.22));
+      }
     }
     for(const sensor of this.sensors){
       if((sensor.disabledUntil||0)>now)continue;
@@ -557,7 +666,16 @@ export class Gadgets {
       sensor.hostileInside=hostileInside;
     }
   }
+  get smokeStatus(){
+    return {armed:this.smokeCanisters.filter(d=>d.stage==="armed").length,
+      flying:this.smokeCanisters.filter(d=>d.stage==="flying").length,
+      active:this.smokeCanisters.filter(d=>d.stage==="active").length,
+      remaining:this.specialCount};
+  }
   get details(){
+    if(this.operator?.id==="smoke")
+      return {g:"THROW GAS",x:"PROX SENSOR",f:"REINFORCE PANEL",
+        remote:"B · DETONATE LANDED CANISTERS"};
     const special=this.operator?.passive||"SPECIAL";
     return this.role==="attacker"?
       {g:special,x:"RECON / UTILITY",f:"PLANT DEFUSER"}:
