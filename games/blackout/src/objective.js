@@ -1,5 +1,5 @@
 import {createDefuserModel} from "./defuser-model.js";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v08-barricades-collision-performance";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
