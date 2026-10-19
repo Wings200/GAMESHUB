@@ -1,5 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v531-interactive-walls";
+import {buildRange} from "./src/world.js?v=blackout-v600-approved-clubhouse";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
@@ -64,7 +64,18 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.23;
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(80,1,.045,360);scene.add(camera);
-const world=buildRange(THREE,scene);
+// Load the EXACT approved export committed under /maps; the existing
+// offline lab remains usable even if the authored-map asset fails to load.
+let clubhouseBlueprint=null;
+try{
+  const res=await fetch("./maps/consolate-clubhouse.blackout-map.json?v=approved-v6");
+  if(!res.ok)throw Error("HTTP "+res.status);
+  const data=await res.json();
+  if(data.format!=="blackout-editor-v1"||data.elements?.length!==178)
+    throw Error("Approved map signature mismatch");
+  clubhouseBlueprint=data;
+}catch(error){console.error("BLACKOUT CLUBHOUSE map unavailable",error);}
+const world=buildRange(THREE,scene,clubhouseBlueprint);
 const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
@@ -228,12 +239,21 @@ function resetSimulation(){
   drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
-  const attackerSpawn=attackSpawnFor(spawn);
-  world.spawn.x=role==="defender"?objectiveRound.site.x:attackerSpawn.x;
+  const attackers=world.facility.attackSpawns||[];
+  const defenders=world.facility.defendSpawns||[];
+  const selectedSpawn=world.mapId==="clubhouse"?
+    (role==="attacker"?attackers.find(s=>s.id===spawn)||
+      attackers[Math.max(0,Number(spawn)||0)]||attackers[0]:
+      defenders.find(s=>s.id===spawn)||
+      defenders[Math.max(0,Number(spawn)||0)]||defenders[0]):null;
+  const attackerSpawn=selectedSpawn||attackSpawnFor(spawn);
+  world.spawn.x=role==="defender"?
+    (selectedSpawn?.x??objectiveRound.site.x):attackerSpawn.x;
   world.spawn.z=role==="defender"?
-    objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2):attackerSpawn.z;
-  world.spawn.yaw=role==="defender"?Math.PI:0;
-  world.spawn.y=role==="defender"?(objectiveRound.site.y||0):0;
+    (selectedSpawn?.z??objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2)):
+    attackerSpawn.z;
+  world.spawn.yaw=selectedSpawn?.yaw??(role==="defender"?Math.PI:0);
+  world.spawn.y=selectedSpawn?.y??(role==="defender"?(objectiveRound.site.y||0):0);
   objectiveRound.setOperator(operator);
   player.setOperator(operator);player.reset();keys.clear();
   aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
@@ -282,14 +302,17 @@ function setRole(r){
   defendButton.classList.toggle("active",role==="defender");
   selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
   spawnSelect.replaceChildren();
-  const choices=role==="attacker"?
+  const choices=world.mapId==="clubhouse"?
+    (role==="attacker"?world.facility.attackSpawns:world.facility.defendSpawns)
+      .map((p,i)=>[String(i),(role==="attacker"?"EXTERIOR INSERTION ":"DEFENDER POSITION ")+(i+1)]):
+    role==="attacker"?
     [["south","SOUTH ENTRY"],["west","WEST FLANK"],["east","EAST FLANK"]]:
     [["A","DEFEND SITE A"],["B","DEFEND SITE B"]];
   for(const [id,label] of choices){
     const option=document.createElement("option");option.value=id;option.textContent=label;
     spawnSelect.appendChild(option);
   }
-  if(role==="defender")spawnSelect.value=objectiveRound.siteId;
+  if(role==="defender"&&world.mapId!=="clubhouse")spawnSelect.value=objectiveRound.siteId;
   operatorSelect.replaceChildren();
   for(const spec of operatorsForSide(role)){
     const option=document.createElement("option");option.value=spec.id;
@@ -322,15 +345,22 @@ function renderOperatorCards(){
 function syncSiteChoice(){
   const map=world.mapId;
   mapSelect.value=map;
-  sitePairSelect.disabled=map!=="switchyard";
-  if(map==="switchyard")sitePairSelect.value=world.sitePairId;
-  mapLabel.textContent=map==="switchyard"?"SWITCHYARD · 3 FLOORS":"MECHANICS LAB";
+  sitePairSelect.disabled=map==="lab";
+  sitePairSelect.replaceChildren();
+  for(const pair of world.sitePairs){
+    const op=document.createElement("option");
+    op.value=pair.id;op.textContent=pair.name.toUpperCase();
+    sitePairSelect.appendChild(op);
+  }
+  if(map!=="lab")sitePairSelect.value=world.sitePairId;
+  mapLabel.textContent=map==="clubhouse"?"CONSOLATE + CLUBHOUSE · 2 FLOORS":
+    map==="switchyard"?"SWITCHYARD · 3 FLOORS":"MECHANICS LAB";
   const a=world.facility.sites.A,b=world.facility.sites.B;
   siteSelect.replaceChildren();
   for(const site of [a,b]){
     const opt=document.createElement("option");
     opt.value=site.id;opt.textContent="SITE "+site.id+" · "+site.name+
-      (map==="switchyard"?" / "+Math.round(site.y||0)+"M":"");
+      (map!=="lab"?" / "+Math.round(site.y||0)+"M":"");
     siteSelect.appendChild(opt);
   }
   siteSelect.value=objectiveRound.siteId;
@@ -345,17 +375,19 @@ function applyMap(next){
   barricades.configure(world.facility.openings);
   barricades.reset(role);
   world.reset();
-  if(world.mapId==="switchyard")world.setSitePair(sitePairSelect.value||"operations");
+  if(world.mapId!=="lab")world.setSitePair(world.sitePairId);
   objectiveRound.refreshMap();
   syncSiteChoice();
   setRole(role);
-  status.textContent=(world.mapId==="switchyard"?
+  status.textContent=(world.mapId==="clubhouse"?
+    "CONSOLATE + CLUBHOUSE · 2 FLOORS / RAPPEL ANCHORS":
+    world.mapId==="switchyard"?
     "SWITCHYARD ACTIVE · 3 FLOORS / STAIRWELLS":"MECHANICS LAB ACTIVE")+
     " · LOCAL TRAINING";
 }
 mapSelect.addEventListener("change",()=>applyMap(mapSelect.value));
 sitePairSelect.addEventListener("change",()=>{
-  if(world.mapId!=="switchyard")return;
+  if(world.mapId==="lab")return;
   objectiveRound.reset(role);
   drone.reset();gadgets.reset(role);barricades.reset(role);
   if(world.setSitePair(sitePairSelect.value)){
