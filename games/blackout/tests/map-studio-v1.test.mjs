@@ -82,7 +82,7 @@ test("dev page exposes working place, inspector, bomb and file controls",()=>{
   const script=read("src/map-editor.js");
   const ids=[
     "mapName","editorCanvas","mapSelect","pairSelect","pairName",
-    "plantRadius","defuseRange","bombX","bombY","bombZ","importFile",
+    "zoneSelect","addZone","placeZone","removeZone","zoneX","zoneY","zoneZ","zoneWidth","zoneDepth","zoneHeight","defuseRange","bombX","bombY","bombZ","importFile",
     "exportMap","floorLevel","customLevel","gridStep",
     "selectTool","rotateLeft","rotateRight","newMap","undo","redo"
   ];
@@ -313,7 +313,77 @@ test("V3 runtime has clickable physical-edge handles, preserves map repair and p
   assert.match(source,/alignPieceToGrid\(piece,step\)/);
   assert.match(source,/alignStoryWalls\(map,map.grid\|\|1\)/);
   assert.match(source,/opposite edge/i);
-  assert.match(html,/blackout-editor-v3/);
+  assert.match(html,/blackout-editor-v4/);
   const stripped=source.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"");
   assert.doesNotThrow(()=>new Function(stripped));
+});
+
+test("V4 independently adjustable rectangular bomb zones are persisted, not circular",()=>{
+ const model4=new Function(formatSource.replace(/^export /gm,"")+
+   ";return {MAP_FORMAT,createBlankMap,normalizeMap,mapAsJSON,canPlantAt,zonePlacementError,zonesOverlap,newPlantZone,siteBounds}")();
+ const map=model4.createBlankMap();
+ const a=map.sitePairs[0].A,b=map.sitePairs[0].B;
+ assert.equal(a.plantZones.length,1);
+ assert.equal(b.plantZones.length,1);
+ const extraBox=model4.newPlantZone("a-zone-2",-16,0,-5,3,2,2.5);
+ assert.equal(model4.zonePlacementError(map.sitePairs[0],extraBox),null);
+ a.plantZones.push(extraBox);
+ assert.equal(model4.canPlantAt(a,{x:-16,y:1,z:-5}),true);
+ assert.equal(model4.canPlantAt(a,{x:-12,y:1,z:-5}),false,
+   "the gap between two boxes must not become a plantable circle");
+ assert.equal(model4.canPlantAt(a,{x:-16,y:4,z:-5}),false,
+   "box on ground floor cannot be used from upstairs");
+ const saved=model4.normalizeMap(JSON.parse(model4.mapAsJSON(map)));
+ assert.equal(saved.sitePairs[0].A.plantZones.length,2);
+ assert.deepEqual(saved.sitePairs[0].A.plantZones[1],extraBox);
+ assert.equal(saved.sitePairs[0].B.plantZones.length,1);
+ assert.equal(saved.sitePairs[0].A.defuseRange,2.25);
+ const bounds=model4.siteBounds(saved.sitePairs[0].A);
+ assert.ok(bounds.minX<=-17.5);
+ assert.ok(bounds.maxX>=-2.5);
+});
+test("V4 disallows touching and overlapping zone boxes across both bombs, but allows other floors",()=>{
+ const m=new Function(formatSource.replace(/^export /gm,"")+
+   ";return {createBlankMap,normalizeMap,zonePlacementError,zonesOverlap,newPlantZone}")();
+ const pair=m.createBlankMap().sitePairs[0],a=pair.A.plantZones[0];
+ const within=m.newPlantZone("other",-6,0,-5,2,2,2.5);
+ assert.match(m.zonePlacementError(pair,within),/overlaps or touches/);
+ const flush=m.newPlantZone("touching",-6+a.width/2+1,0,-5,2,2,2.5);
+ assert.match(m.zonePlacementError(pair,flush),/touches/);
+ const spaced={...flush,x:flush.x+.3};
+ assert.equal(m.zonePlacementError(pair,spaced),null);
+ const upstairs={...within,y:4};
+ assert.equal(m.zonePlacementError(pair,upstairs),null);
+ const acrossB={...pair.B.plantZones[0],id:"new-b"};
+ assert.match(m.zonePlacementError(pair,acrossB),/overlaps/);
+ assert.equal(m.zonesOverlap(a,spaced),false);
+});
+test("V4 imports legacy circle maps as editable rectangular boxes with preserved defuse range",()=>{
+ const m=new Function(formatSource.replace(/^export /gm,"")+
+   ";return {createBlankMap,normalizeMap,canPlantAt}")();
+ const source=m.createBlankMap();
+ source.sitePairs[0].A={x:-4,y:4,z:-4,plantRadius:3,defuseRange:1.5};
+ const decoded=m.normalizeMap(source);
+ const legacy=decoded.sitePairs[0].A.plantZones;
+ assert.equal(legacy.length,1);
+ assert.deepEqual([legacy[0].width,legacy[0].depth,legacy[0].y],[6,6,4]);
+ assert.equal(decoded.sitePairs[0].A.defuseRange,1.5);
+ assert.equal(m.canPlantAt(decoded.sitePairs[0].A,{x:-1.2,y:4,z:-2.5}),true);
+});
+test("V4 UI provides zone selection, free box dimensions, moving and no circle radius sliders",()=>{
+ const html=read("dev-editor.html"),js=read("src/map-editor.js");
+ for(const id of ["zoneSelect","zoneX","zoneY","zoneZ","zoneWidth","zoneDepth",
+   "zoneHeight","addZone","placeZone","removeZone","zoneError"]){
+   assert.ok(html.includes('id="'+id+'"'),id);
+   assert.ok(js.includes('$("'+id+'")'),id+" runtime hook");
+ }
+ assert.ok(!html.includes('id="plantRadius"'));
+ assert.ok(!js.includes("CircleGeometry(site.plantRadius"));
+ assert.ok(!js.includes("RingGeometry(site.plantRadius"));
+ assert.match(js,/function zoneBox\(key,zone,highlight\)/);
+ assert.match(js,/function zonePlacementError|zonePlacementError\(/);
+ assert.match(js,/function selectZone\(id\)/);
+ assert.match(js,/resizeFromEdge\(original/);
+ assert.match(js,/zoneOwner\(transformItem\)/);
+ assert.doesNotThrow(()=>new Function(js.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"")));
 });
