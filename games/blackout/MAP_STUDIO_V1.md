@@ -1,6 +1,21 @@
 # BLACKOUT // Developer Map Studio V1
 Implemented October 19, 2026. A private Three.js map-authoring interface at `/games/blackout/dev-editor.html`, launched with **MAP STUDIO · DEV** in the BLACKOUT main menu.
 
+## V3 geometry fix — user-reported screenshot corrections (October 19, 2026)
+The prior V2 editor still allowed mismatched modular wall dimensions, centered scaling and an actual default floor-thickness mismatch. On a 1m grid, 3.1m walls and 2.5m doorframes placed by their centre could never line up cleanly.
+
+- **One-sided edge resize**: Press R, select a floor/wall, and drag one colored cube at its **outer edge**. The opposite edge stays physically stationary. Floors have four perimeter handles; walls have length/height handles. W retains X/Y/Z movement arrows.
+- **Accurate physical-grid snap**: New hard/soft/reinforced wall modules are 4m wide × 3.75m high × .25m deep; door/window modules are 2m wide; floor slabs are .25m thick. Construction grid lines align to actual module **edges**, not the centre points. Even a 3m-wide custom wall aligns its ends to integers by positioning the centre at .5m. Moving objects uses these same physical-edge rules, not Three.js center-snapping. Hold Shift to bypass; turn grid OFF for entirely free positions.
+- **Floor/first-storey contact**: 0m walls end at 3.75m. The top of an upper floor at 4m has a 0.25m slab underside at 3.75m, so there is no structural gap. For custom heights, newly placed walls below an existing upper floor adopt its underside as top.
+- **Repair an existing draft**: Use **ALIGN EXISTING WALLS & FLOORS** in the left pane. This is optional and requires confirmation. It rounds legacy dimensions and positions into compatible grid-sized modules, updates default 28cm floors to 25cm and fits walls to upper slabs. The whole action is in Undo history. It preserves component IDs, site pairs, bomb settings, and saved imports. Consider exporting a backup before repair if your map is important.
+- **Anchored floor presets**: 6×6, 10×10, 20×20, 30×30 and +/- controls expand from one fixed corner, not their centre. For a different side, use the appropriate edge handle.
+- **Better visuals**: Drawing grid lines slightly below floor top avoids the illusion of an open gridded floor when a solid slab is present.
+- **Precision:** 3.75m tall walls remain 3.75m if only moved. Resizing floor width won't unexpectedly round slab thickness from .25m to zero; wall Y resizing increments in quarter metres.
+- **Export compatibility:** The `blackout-editor-v1` JSON file format remains unchanged. Editor asset imports use `blackout-editor-v3` to force refreshed browser modules.
+
+V3 automated checks include one-sided anchored ±X/±Z resize, rotated module alignment, wall top meeting the upstairs slab underside, old-map repair preservation, and control wiring. Real browser interaction still requires testing on the developer's device.
+
+---
 ## V2 editor movement / snapping / floor overhaul — October 19, 2026
 The original builder could only move objects along a horizontal mouse-plane, floor sizes were hard to edit, grid snapping was always forced, and the standalone ceiling tool duplicated what an upper floor already supplies. These are fixed in V2.
 
