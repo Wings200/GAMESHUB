@@ -30,11 +30,17 @@ export function applyGizmoToPiece(piece,transform,{grid=0,snap=true,mode="both"}
       y:snapNumber(transform.position.y,step),
       z:snapNumber(transform.position.z,step)
     }:{...piece.position},
-    size:resize?{
-      x:Math.max(.15,snapNumber(piece.size.x*Math.abs(scale.x),step)),
-      y:Math.max(.12,snapNumber(piece.size.y*Math.abs(scale.y),step)),
-      z:Math.max(.12,snapNumber(piece.size.z*Math.abs(scale.z),step))
-    }:{...piece.size},
+    size:resize?Object.fromEntries(["x","y","z"].map(axis=>{
+      const factor=Math.abs(Number(scale[axis])||1);
+      const unchanged=Math.abs(factor-1)<1e-5;
+      // Don't round a .25m floor slab thickness to ZERO when its WIDTH
+      // was the only dimension being scaled with a 1m grid.
+      const dimensionStep=(axis==="y"&&["floor","ceiling"].includes(piece.type))?
+        Math.min(step||.25,.25):step;
+      const raw=piece.size[axis]*factor;
+      return [axis,unchanged?piece.size[axis]:
+        Math.max(axis==="y"?.12:.15,snapNumber(raw,dimensionStep))];
+    })):{...piece.size},
     rotationY:Number.isFinite(signedRotation)?signedRotation:piece.rotationY
   };
   next.position.x=Math.max(-300,Math.min(300,next.position.x));
