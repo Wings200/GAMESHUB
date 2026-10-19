@@ -1,14 +1,14 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v092-ai-hitreg-fullauto";
-import {FirstPersonController} from "./src/player.js?v=blackout-v092-ai-hitreg-fullauto";
-import {Weapons} from "./src/weapons.js?v=blackout-v092-ai-hitreg-fullauto";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v092-ai-hitreg-fullauto";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v092-ai-hitreg-fullauto";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v092-ai-hitreg-fullauto";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v092-ai-hitreg-fullauto";
-import {GameAudio} from "./src/audio.js?v=blackout-v092-ai-hitreg-fullauto";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v092-ai-hitreg-fullauto";
-import {Barricades} from "./src/barricades.js?v=blackout-v092-ai-hitreg-fullauto";
+import {buildRange} from "./src/world.js?v=blackout-v093-shield-ai-routing";
+import {FirstPersonController} from "./src/player.js?v=blackout-v093-shield-ai-routing";
+import {Weapons} from "./src/weapons.js?v=blackout-v093-shield-ai-routing";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v093-shield-ai-routing";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v093-shield-ai-routing";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v093-shield-ai-routing";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v093-shield-ai-routing";
+import {GameAudio} from "./src/audio.js?v=blackout-v093-shield-ai-routing";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v093-shield-ai-routing";
+import {Barricades} from "./src/barricades.js?v=blackout-v093-shield-ai-routing";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
