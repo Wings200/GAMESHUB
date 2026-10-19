@@ -1,7 +1,11 @@
 // BLACKOUT V0.6 — standalone procedural WebAudio mixer.
 // No audio downloads, server requirements or hidden autoplay. First click unlocks it.
 export class GameAudio{
-  constructor(){this.ctx=null;this.master=null;this.noiseBuffer=null;this.enabled=true;}
+  constructor(){
+    this.ctx=null;this.master=null;this.noiseBuffer=null;this.enabled=true;
+    this.spatialBuses=[];this.spatialIndex=0;this.spatialBus=null;
+    this.activeVoices=0;this.voiceLimit=72;this.failedEvents=0;
+  }
   async unlock(){
     try{
       if(!this.ctx){
@@ -14,6 +18,17 @@ export class GameAudio{
         compressor.threshold.value=-12;compressor.knee.value=12;
         compressor.ratio.value=5;compressor.attack.value=.002;compressor.release.value=.16;
         this.master.connect(compressor);compressor.connect(c.destination);
+        // Fixed-size spatial voice buses: don't leak one GainNode and
+        // StereoPannerNode for every bot shot for the entire match.
+        for(let i=0;i<12;i++){
+          const gain=c.createGain();gain.gain.value=1;
+          let panner=null;
+          if(typeof c.createStereoPanner==="function"){
+            panner=c.createStereoPanner();
+            gain.connect(panner);panner.connect(this.master);
+          }else gain.connect(this.master);
+          this.spatialBuses.push({gain,panner});
+        }
         const size=Math.floor(c.sampleRate*.65);
         this.noiseBuffer=c.createBuffer(1,size,c.sampleRate);
         const data=this.noiseBuffer.getChannelData(0);
@@ -35,21 +50,42 @@ export class GameAudio{
     return g;
   }
   tone(hz,seconds,level,type="triangle",delay=0,endHz=hz){
-    if(!this.ready)return;
+    if(!this.ready||this.activeVoices>=this.voiceLimit)return;
     const c=this.ctx,t=c.currentTime+delay,o=c.createOscillator();
     o.type=type;o.frequency.setValueAtTime(hz,t);
     if(endHz!==hz)o.frequency.exponentialRampToValueAtTime(Math.max(20,endHz),t+seconds);
-    this.envelope(o,t,level,seconds,.002);
-    o.start(t);o.stop(t+seconds+.01);
+    const envelope=this.envelope(o,t,level,seconds,.002);
+    this.activeVoices++;
+    o.onended=()=>{
+      try{o.disconnect();envelope.disconnect();}catch{}
+      this.activeVoices=Math.max(0,this.activeVoices-1);
+    };
+    try{o.start(t);o.stop(t+seconds+.01);}
+    catch(error){
+      o.onended=null;try{o.disconnect();envelope.disconnect();}catch{}
+      this.activeVoices=Math.max(0,this.activeVoices-1);
+      throw error;
+    }
   }
   noise(seconds,level,frequency=2200,mode="bandpass",delay=0,attack=.002){
-    if(!this.ready)return;
+    if(!this.ready||this.activeVoices>=this.voiceLimit)return;
     const c=this.ctx,t=c.currentTime+delay;
     const source=c.createBufferSource();source.buffer=this.noiseBuffer;
     const filter=c.createBiquadFilter();filter.type=mode;
     filter.frequency.value=frequency;filter.Q.value=mode==="bandpass"?.65:.7;
-    source.connect(filter);this.envelope(filter,t,level,seconds,attack);
-    source.start(t,Math.random()*.16);source.stop(t+seconds+.012);
+    source.connect(filter);
+    const envelope=this.envelope(filter,t,level,seconds,attack);
+    this.activeVoices++;
+    source.onended=()=>{
+      try{source.disconnect();filter.disconnect();envelope.disconnect();}catch{}
+      this.activeVoices=Math.max(0,this.activeVoices-1);
+    };
+    try{source.start(t,Math.random()*.16);source.stop(t+seconds+.012);}
+    catch(error){
+      source.onended=null;try{source.disconnect();filter.disconnect();envelope.disconnect();}catch{}
+      this.activeVoices=Math.max(0,this.activeVoices-1);
+      throw error;
+    }
   }
   gun(secondary=false){
     // Fast pressure crack + close mid-body + sub punch + short outdoor tail.
@@ -63,21 +99,29 @@ export class GameAudio{
   }
   playAt(name,x,z,px,pz,yaw=0){
     if(!this.ready)return;
-    const c=this.ctx;
     const dx=x-px,dz=z-pz,distance=Math.hypot(dx,dz);
     const level=1/(1+.09*distance+.007*distance*distance);
-    const bus=c.createGain();bus.gain.value=Math.max(.13,Math.min(1,level));
-    if(typeof c.createStereoPanner==="function"){
-      const stereo=c.createStereoPanner();
+    const bus=this.spatialBuses[this.spatialIndex++%this.spatialBuses.length];
+    if(!bus)return this.play(name);
+    bus.gain.gain.value=Math.max(.13,Math.min(1,level));
+    if(bus.panner){
       const side=distance>.01?(dx*Math.cos(yaw)-dz*Math.sin(yaw))/distance:0;
-      stereo.pan.value=Math.max(-.90,Math.min(.90,side));
-      bus.connect(stereo);stereo.connect(this.master);
-    }else bus.connect(this.master);
-    this.spatialBus=bus;
+      bus.panner.pan.value=Math.max(-.90,Math.min(.90,side));
+    }
+    this.spatialBus=bus.gain;
     try{this.play(name);}finally{this.spatialBus=null;}
   }
   play(name){
     if(!this.ready)return;
+    try{this.playEvent(name);}
+    catch(error){
+      // A browser audio scheduling failure must never take down gameplay.
+      this.failedEvents++;
+      if(this.failedEvents<=2)console.warn("BLACKOUT: audio event failed",name,error);
+      this.enabled=false;
+    }
+  }
+  playEvent(name){
     switch(name){
       case "fire":this.gun(false);break;
       case "pistol":this.gun(true);break;
