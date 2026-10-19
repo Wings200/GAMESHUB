@@ -199,3 +199,25 @@ body{--bo-ui-text:#f0f7fa}
   .bo-bomb-compass{bottom:110px}
   .bo-section-title small{display:none}
 }
+
+/* V1.0 original tactical squad/runout/spectator presentation */
+.bo-runout-alert,.bo-spectator-alert{
+  position:absolute;z-index:14;left:50%;transform:translateX(-50%);
+  background:linear-gradient(90deg,#280d13ed,#3f161bee,#280d13ed);
+  border:1px solid #ee7567;border-inline:3px solid #ff8b68;
+  padding:10px 20px;display:flex;flex-direction:column;align-items:center;
+  gap:4px;text-align:center;min-width:min(380px,94vw);
+  box-shadow:0 8px 35px #0009;pointer-events:none;
+}
+.bo-runout-alert{top:85px;}
+.bo-runout-alert strong{color:#ffb4a1;font:950 13px Arial;letter-spacing:.15em}
+.bo-runout-alert span{color:#fff1e8;font:800 10px Arial;letter-spacing:.09em}
+.bo-spectator-alert{top:calc(50% - 105px);background:#0c1b2cee;
+  color:#fbdb9e;font:900 13px Arial;letter-spacing:.13em;border-color:#ccab66}
+.bo-player-pip.ally{background:#1b5d71;border-color:#4fbfc8;color:#c9fff6}
+.bo-player-pip.hostile{background:#5e3024;border-color:#c47d56;color:#f9c4a1}
+.bo-player-pip.down{opacity:.26;filter:grayscale(1)}
+@media(max-width:700px){.bo-runout-alert{top:66px;padding:8px 12px}
+ .bo-runout-alert strong{font-size:11px}
+ .bo-spectator-alert{font-size:10px}
+}
