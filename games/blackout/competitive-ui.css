@@ -159,7 +159,7 @@ body.playing .game-hud .ammo-row #reserveCount{font-size:16px;color:#a5bcca}
 body.playing .game-hud .stat-row{display:none}
 body.playing .game-hud .sight-readout{font-size:9px;line-height:1.5;color:#a9c4d5}
 body.playing .game-hud .operator-health{position:fixed;left:28px;bottom:19px;z-index:9;display:flex;align-items:center;gap:12px;min-width:0;margin:0;padding:0;border:0;font-size:9px;color:#e8f2f8;text-align:left}
-body.playing .game-hud .bo-health-circle{--bo-hp:100;display:grid;place-items:center;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at center,#07131fe0 0 60%,transparent 61%),conic-gradient(#e9f5fc calc(var(--bo-hp)*1%),#344758 0);box-shadow:0 0 0 3px #07131aca,0 0 15px #0008}
+body.playing .game-hud .bo-health-circle{--bo-hp:100;display:grid;place-items:center;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at center,#07131fe0 0 60%,transparent 61%),conic-gradient(#e9f5fc var(--bo-hp-angle,360deg),#344758 0);box-shadow:0 0 0 3px #07131aca,0 0 15px #0008}
 body.playing .game-hud .bo-health-circle strong{font-size:13px!important;color:#fff!important;letter-spacing:-.03em;white-space:nowrap;line-height:1.2;text-align:center;text-shadow:0 1px 5px #000}
 body.playing .game-hud .bo-health-track{display:none}
 body.playing .game-hud .side-controls,body.playing .game-hud .debug-mini{display:none}
