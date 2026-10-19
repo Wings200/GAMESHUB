@@ -15,6 +15,8 @@ export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,get
   function updateLoadout(){
     const operator=getOperator();
     if(ready&&operator)ready.textContent=operator.name;
+    const squadPick=menu.querySelector("#boSquadSelected");
+    if(squadPick&&operator)squadPick.textContent=operator.name;
     if(getGunName){
       const primary=menu.querySelector("#boPrimaryName");
       const secondary=menu.querySelector("#boSecondaryName");
