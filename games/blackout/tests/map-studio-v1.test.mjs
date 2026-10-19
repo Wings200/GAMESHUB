@@ -389,3 +389,21 @@ test("V4 UI provides zone selection, free box dimensions, moving and no circle r
  assert.match(js,/zoneOwner\(transformItem\)/);
  assert.doesNotThrow(()=>new Function(js.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"")));
 });
+
+test("second-floor rappel anchors remain exportable and editable after loading a custom map",()=>{
+ const page=read("dev-editor.html"),source=read("src/map-editor.js");
+ assert.ok(model.PART_KEYS.includes("rappelAnchor"));
+ assert.match(page,/data-piece="rappelAnchor"/);
+ assert.match(source,/type==="rappelAnchor"/);
+ assert.match(source,/new T\.TorusGeometry\(\.27/);
+ assert.match(source,/size\.y is cable length/);
+ const saved=model.createBlankMap();
+ saved.elements.push(model.makePiece("rappelAnchor",-43,7.75,-6.5,"rappel-west"));
+ const imported=model.normalizeMap(JSON.parse(model.mapAsJSON(saved)));
+ const piece=imported.elements.find(e=>e.id==="rappel-west");
+ assert.ok(piece,"rappel point persists in imported map");
+ assert.equal(piece.type,"rappelAnchor");
+ assert.equal(piece.position.y,7.75);
+ assert.equal(piece.size.y,7.75);
+ assert.equal(imported.sitePairs.length,1,"custom anchor doesn't alter existing bomb sites");
+});
