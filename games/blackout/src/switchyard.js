@@ -1,4 +1,5 @@
 // BLACKOUT V5.0 / SWITCHYARD — original stacked industrial tactical arena.
+import {createTacticalPanel} from "./tactical-panels.js?v=blackout-v530-interactive-walls";
 // Geometry, floor collision, visibility, 3 floor levels and site pairs share
 // a single authoritative definition. This is NOT a copied Siege map.
 // The first release is an offline playable map, not network matchmaking.
@@ -32,9 +33,38 @@ export function switchyardFloorAt(x,z,footY=0){
   // Low edge stair: allow at most 23cm step changes per frame.
   return Math.max(...candidates.filter(v=>v<=footY+.235+.012),0);
 }
-export function createSwitchyard(T,scene){
+export function createSwitchyard(T,scene,state={collisionRevision:0}){
   const root=new T.Group();root.visible=false;scene.add(root);
-  const colliders=[],shootables=[],coverPoints=[],props=[];
+  const colliders=[],shootables=[],coverPoints=[],props=[],panels=[],openings=[];
+  const panelWorld={
+    colliders,shootables,
+    get collisionRevision(){return state.collisionRevision},
+    set collisionRevision(v){state.collisionRevision=v}
+  };
+  function softWall(id,axis,x,z,level,kind="drywall"){
+    const panel=createTacticalPanel(T,root,panelWorld,{
+      id,axis,x,z,y:level,width:3.10,height:2.91,materialType:kind
+    });
+    panels.push(panel);return panel;
+  }
+  function doorway(id,axis,x,z,level,width=2.6,kind="door"){
+    const half=width/2,height=3.7,head=kind==="window"?1.15:.5;
+    if(axis==="z"){
+      for(const side of [-1,1])
+        box(x+side*(half+.12),level+height/2,z,.22,height,.32,steel,{solid:true,tag:"door-frame"});
+      box(x,level+height-head/2,z,width+.65,head,.32,steel,{solid:true,tag:"door-frame"});
+      if(kind==="window")
+        box(x,level+.49,z,width+.45,.98,.32,concrete,{solid:true,tag:"window-sill"});
+    }else{
+      for(const side of [-1,1])
+        box(x,level+height/2,z+side*(half+.12),.32,height,.22,steel,{solid:true,tag:"door-frame"});
+      box(x,level+height-head/2,z,.32,head,width+.65,steel,{solid:true,tag:"door-frame"});
+      if(kind==="window")
+        box(x,level+.49,z,.32,.98,width+.45,concrete,{solid:true,tag:"window-sill"});
+    }
+    openings.push({id,axis,kind,x,z,y:level,width,height:kind==="window"?1.45:3.2,
+      bottom:kind==="window"?.98:0});
+  }
   const materials={};
   function texture(base,kind){
     const canvas=document.createElement("canvas");canvas.width=256;canvas.height=256;
@@ -125,12 +155,10 @@ export function createSwitchyard(T,scene){
       box(x,y,-20,w,3.74,.45,concrete,{solid:true});
     }
     box(0,level+3.18,-20,4.2,1.12,.48,steel,{solid:true});
-    // West wall: segmented window cutout with bullet-transparent glass.
-    for(const [z,d] of [[-46.5,9],[-25.5,11]])
+    // Window is a physically empty, framed cutout, not a fake 12m glass wall.
+    for(const [z,d] of [[-46.5,9],[-39.65,4.7],[-32.3,4.6],[-25.5,11]])
       box(-14,y,z,.45,3.74,d,concrete,{solid:true});
-    box(-14,level+.65,-36,.45,1.3,12,concrete,{solid:true});
-    box(-14,level+3.25,-36,.45,1.0,12,concrete,{solid:true});
-    box(-14,level+1.95,-36,.10,1.45,10,glass,{shoot:true});
+    doorway("switch-west-window-"+level,"x",-14,-36,level,2.55,"window");
     // East wall opened at the two landings; interior doors not fake portals.
     for(const [z,d] of [[-46.5,9],[-28,12]])
       box(14,y,z,.45,3.74,d,concrete,{solid:true});
@@ -151,14 +179,24 @@ export function createSwitchyard(T,scene){
   // Original open central spine provides a loop for both A and B sites.
   for(const level of [0,4]){
     // Separating wall, segmented by wide corridor opening z[-37,-33].
-    for(const [z,d] of [[-45.7,10.4],[-27.4,13.5]]){
+    // Center wall modules now use working reinforcement / soft breach.
+    for(const [z,d] of [[-49.15,3.5],[-42.4,3.8],[-32.5,3.2],[-24,6.8]])
       box(0,level+1.85,z,.35,3.7,d,concrete,{solid:true});
+    softWall("center-A-"+level,"x",0,-45.85,level,"drywall");
+    softWall("center-B-"+level,"x",0,-29.0,level,"plywood");
+    doorway("switch-cross-"+level,"x",0,-37.3,level,2.6,"door");
+    // Room walls mix solid supporting sections with real soft panel inserts.
+    for(const z of [-38,-30]){
+      for(const x of [-10,10]){
+        const destructible=(z===-38&&x<0)||(z===-30&&x>0);
+        if(destructible){
+          box(x-2.36,level+1.85,z,1.4,3.7,.32,concrete,{solid:true});
+          box(x+2.36,level+1.85,z,1.4,3.7,.32,concrete,{solid:true});
+          softWall("partition-"+(z===-38?"A":"B")+"-"+level,"z",x,z,level);
+        }else box(x,level+1.85,z,6.0,3.7,.32,pale,{solid:true});
+      }
     }
-    // Horizontal rooms and safe side corridors (open doorway gaps x=~ +/-5).
-    for(const [z] of [[-38],[-30]]){
-      box(-10,level+1.85,z,6.0,3.7,.32,pale,{solid:true});
-      box(10,level+1.85,z,6.0,3.7,.32,pale,{solid:true});
-    }
+    doorway("switch-south-"+level,"z",0,-20,level,2.6,"door");
     for(const [x,z] of [[-7,-45],[7,-29],[-7,-26],[7,-46]]){
       // Vertical electrical cabinets are real cover with matching AABB.
       box(x,level+1.0,z,1.3,2,1.0,steel,{solid:true});
@@ -222,7 +260,7 @@ export function createSwitchyard(T,scene){
   }
   const sitePairs=SWITCHYARD_SITE_PAIRS;
   const facilities={mode:"switchyard",bounds:{minX:-14,maxX:14,minZ:-51,maxZ:-20},
-    sitePairs,coverPoints,openings:[],shell:root,
+    sitePairs,coverPoints,openings,shell:root,
     zoneAt(x,z,y=0){
       const level=y>=6?"ROOF":y>=2?"UPPER":"GROUND";
       if(between(x,z,-14,14,-51,-20))return "SWITCHYARD / "+level;
@@ -233,6 +271,10 @@ export function createSwitchyard(T,scene){
     n.geometry?.dispose?.();
     // materials intentionally shared by nodes, dispose only once below.
   });for(const mat of Object.values(materials)){mat.map?.dispose?.();mat.dispose?.();}};
-  return {root,colliders,shootables,coverPoints,facilities,sitePairs,
+  return {root,colliders,shootables,coverPoints,facilities,sitePairs,panels,openings,
+    setActiveCollections(activeColliders,activeShootables){
+      panelWorld.colliders=activeColliders;
+      panelWorld.shootables=activeShootables;
+    },
     floorAt:switchyardFloorAt,dispose};
 }
