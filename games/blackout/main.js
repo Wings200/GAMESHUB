@@ -1,14 +1,14 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v08-barricades-collision-performance";
-import {FirstPersonController} from "./src/player.js?v=blackout-v08-barricades-collision-performance";
-import {Weapons} from "./src/weapons.js?v=blackout-v08-barricades-collision-performance";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v08-barricades-collision-performance";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v08-barricades-collision-performance";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v08-barricades-collision-performance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v08-barricades-collision-performance";
-import {GameAudio} from "./src/audio.js?v=blackout-v08-barricades-collision-performance";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v08-barricades-collision-performance";
-import {Barricades} from "./src/barricades.js?v=blackout-v08-barricades-collision-performance";
+import {buildRange} from "./src/world.js?v=blackout-v09-tactical-objective-ui";
+import {FirstPersonController} from "./src/player.js?v=blackout-v09-tactical-objective-ui";
+import {Weapons} from "./src/weapons.js?v=blackout-v09-tactical-objective-ui";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v09-tactical-objective-ui";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v09-tactical-objective-ui";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v09-tactical-objective-ui";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v09-tactical-objective-ui";
+import {GameAudio} from "./src/audio.js?v=blackout-v09-tactical-objective-ui";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v09-tactical-objective-ui";
+import {Barricades} from "./src/barricades.js?v=blackout-v09-tactical-objective-ui";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
