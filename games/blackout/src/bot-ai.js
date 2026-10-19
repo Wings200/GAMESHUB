@@ -3,15 +3,15 @@
 const GRID=1,MINX=-19,MAXX=19,MINZ=-65,MAXZ=25;
 const WIDTH=(MAXX-MINX)+1,HEIGHT=(MAXZ-MINZ)+1;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-function collisionAt(world,x,z,r=.38,ignoreDoorBarricades=false){
+function collisionAt(world,x,z,r=.38,ignoreDoorBarricades=false,y=0){
   return world.colliders.find(a=>{
     if(ignoreDoorBarricades&&a.tag==="barricade"&&a.barricade?.kind==="door")return false;
-    return a.maxY>.42&&a.minY<1.6&&
+    return a.maxY>y+.42&&a.minY<y+1.6&&
       x>=a.minX-r&&x<=a.maxX+r&&z>=a.minZ-r&&z<=a.maxZ+r;
   })||null;
 }
-function blocked(world,x,z,r=.38,ignoreDoorBarricades=false){
-  return !!collisionAt(world,x,z,r,ignoreDoorBarricades);
+function blocked(world,x,z,r=.38,ignoreDoorBarricades=false,y=0){
+  return !!collisionAt(world,x,z,r,ignoreDoorBarricades,y);
 }
 const toGrid=(x,z)=>[clamp(Math.round(x-MINX),0,WIDTH-1),
   clamp(Math.round(z-MINZ),0,HEIGHT-1)];
@@ -44,7 +44,7 @@ function occupancy(world,ignoreDoors=true){
   occupancyCache.set(world,entry);
   return data;
 }
-export function findTacticalPath(world,from,to,ignoreDoors=true){
+function findTacticalPath2D(world,from,to,ignoreDoors=true){
   const [ax,az]=toGrid(from.x,from.z);
   const grid=occupancy(world,ignoreDoors);
   let [bx,bz]=toGrid(to.x,to.z);
@@ -121,8 +121,51 @@ export function findTacticalPath(world,from,to,ignoreDoors=true){
   }
   return compact;
 }
+// SWITCHYARD routes are stitched from floor-specific collision-aware A*
+// and actual physical exterior stair segments. No teleport or same-floor
+// pathing through stacked walls. Lab retains the original fast 2D grid.
+function levelWorld(world,level){
+  const colliders=world.colliders.filter(c=>
+    c.maxY>level+.42&&c.minY<level+1.6);
+  return {colliders,collisionRevision:world.collisionRevision+level*100000,
+    barricades:world.barricades};
+}
+export function findTacticalPath(world,from,to,ignoreDoors=true){
+  if(world.mapId!=="switchyard")
+    return findTacticalPath2D(world,from,to,ignoreDoors);
+  const quantize=y=>Math.max(0,Math.min(2,Math.round((y||0)/4)));
+  const fromTier=quantize(from.y),toTier=quantize(to.y);
+  const route=[];
+  function appendGround(at,dest,tier){
+    const sub=findTacticalPath2D(levelWorld(world,tier*4),at,dest,ignoreDoors);
+    // If no valid path, don't try moving directly through a wall.
+    if(!sub.length)return false;
+    for(const p of sub)route.push({...p,y:tier*4});
+    return true;
+  }
+  let cursor={x:from.x,z:from.z,y:fromTier*4},tier=fromTier;
+  // One exterior stair connection per adjacent pair of floors.
+  while(tier!==toTier){
+    const ascend=toTier>tier;
+    const ramp=ascend?tier:tier-1;
+    const near=ascend?{x:17.1,z:ramp===0?-50:-35,y:tier*4}:
+      {x:17.1,z:ramp===0?-36:-21,y:tier*4};
+    if(!appendGround(cursor,near,tier))return [];
+    // 28 intermediate links prevent bots climbing stairs in one leap.
+    const lowZ=ramp===0?-50:-35,forward=ascend?1:-1;
+    for(let step=1;step<=28;step++){
+      const portion=ascend?step/28:1-step/28;
+      route.push({x:17.1,z:lowZ+14*portion,y:ramp*4+4*portion});
+    }
+    tier+=forward;
+    cursor={x:17.1,z:ascend?lowZ+14:lowZ,y:tier*4};
+  }
+  if(!appendGround(cursor,to,tier))return [];
+  return route;
+}
 export function advanceTacticalBot(bot,goal,world,dt,now){
-  const changingGoal=!bot.lastGoal||Math.hypot(bot.lastGoal.x-goal.x,bot.lastGoal.z-goal.z)>1.4;
+  const changingGoal=!bot.lastGoal||Math.hypot(bot.lastGoal.x-goal.x,bot.lastGoal.z-goal.z)>1.4||
+    Math.abs((bot.lastGoal.y||0)-(goal.y||0))>1;
   if(bot.blockingBarricade&&!world.barricades?.hasBarricade(bot.blockingBarricade))
     bot.blockingBarricade=null;
   // Never perform a full A* search every frame for an unreachable goal.
@@ -145,7 +188,8 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   if(len<.03)return 0;
   const step=Math.min(len,dt*bot.walkSpeed);
   const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
-  const collision=collisionAt(world,nx,nz,.34);
+  const floor=world.mapId==="switchyard"?world.floorAt(nx,nz,bot.y||0):0;
+  const collision=collisionAt(world,nx,nz,.34,false,floor);
   if(collision){
     if(bot.allowBreach!==false&&collision.tag==="barricade"&&
        collision.barricade?.kind==="door"){
@@ -164,15 +208,15 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
     for(const side of [sign,-sign]){
       const ex=bot.x+(-dz/len)*sidestep*side;
       const ez=bot.z+(dx/len)*sidestep*side;
-      if(!blocked(world,ex,ez,.34)){
-        bot.x=ex;bot.z=ez;bot.group.position.set(ex,0,ez);
+      if(!blocked(world,ex,ez,.34,false,bot.y||0)){
+        bot.x=ex;bot.z=ez;bot.group.position.set(ex,bot.y||0,ez);
         return sidestep/Math.max(dt,.001);
       }
     }
     return 0;
   }
   bot.blockingBarricade=null;
-  bot.x=nx;bot.z=nz;bot.group.position.set(nx,0,nz);
+  bot.x=nx;bot.z=nz;bot.y=floor;bot.group.position.set(nx,floor,nz);
   bot.group.rotation.y=Math.atan2(-dx,-dz);
   return step/Math.max(.001,dt);
 }
