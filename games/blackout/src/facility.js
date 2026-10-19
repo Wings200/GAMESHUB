@@ -53,10 +53,10 @@ export function buildFacility(T,scene,world){
       bounds:{minX:.58,maxX:9.12,minZ:-36.62,maxZ:-19.42}}
   };
   floorZone(sites.A,siteA,light);floorZone(sites.B,siteB,yellow);
-  label("MOVEMENT + DRONES",0,9,5,light);
-  label("SOFT / REINFORCED WALLS",0,-34,5,yellow);
-  label("BARRICADES + VAULT",0,-57,5,light);
-  label("COVER + AI LANES",0,-14,4.5,yellow);
+  label("DRONE / MOVE",0,9,3.0,light);
+  label("BREACH WALL TEST",0,-33.5,3.2,yellow);
+  label("BARRICADES",0,-61,3.1,light);
+  label("AI / COVER",0,-9.5,3.1,yellow);
   const openings=[];
   // Freestanding physical door/window TEST FRAMES. They aren't connected
   // into hallways, and they do not create an enclosing structure.
@@ -80,13 +80,14 @@ export function buildFacility(T,scene,world){
   // Two entries nearest site A/B are used by automated defender prep.
   portal("west-hall","door","z",-4.55,-37.0);
   portal("east-hall","door","z",4.55,-37.0);
-  // Separate barricade stations for shooting/plank tests.
+  // Move spare door/barricade practice frames to peripheral equipment lanes.
+  // Keep the two AI setup doors at the middle for real preparation tasks.
   portal("entry-north","door","z",-4.55,-57.0);
   portal("entry-south","door","z",4.55,-57.0);
-  portal("west-entry","door","x",-13,-41,2.5);
-  portal("east-entry","door","x",13,-25,2.5);
-  portal("server-door","door","x",-13,-51,2.5);
-  portal("control-door","door","x",13,-36,2.5);
+  portal("west-entry","door","x",-23,-48,2.5);
+  portal("east-entry","door","x",23,-48,2.5);
+  portal("server-door","door","x",-23,-40,2.5);
+  portal("control-door","door","x",23,-40,2.5);
   portal("west-window","window","x",-16,-45,2.36);
   portal("east-window","window","x",16,-45,2.36);
   // Freestanding cover test rigs. Exact visible size = physical collider.
