@@ -121,6 +121,13 @@ export class ObjectiveDrill{
       p.z>b.minZ+.08&&p.z<b.maxZ-.08;
   }
   updateRunouts(now,player,notify){
+    // No outside/inside concept exists in this stripped mechanics sandbox.
+    // Runout detection belongs to future enclosed competitive maps, not
+    // open floor testing; otherwise every training drill reports false pings.
+    if(this.world.facility.mode==="mechanics-sandbox"){
+      this.runoutPlayer=false;this.runoutTarget=null;this.runoutAlly=null;
+      return;
+    }
     const action=this.phase==="attack"||this.phase==="guard"||this.phase==="planted";
     this.runoutPlayer=action&&this.role==="defender"&&!this.isInside(player)&&player.health>0;
     if(this.runoutPlayer){
