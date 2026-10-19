@@ -4,14 +4,14 @@ export const MAP_FORMAT="blackout-editor-v1";
 export const PART_TYPES=Object.freeze({
   floor:{name:"Floor / slab",size:[8,.28,8],color:0x566776},
   ceiling:{name:"Ceiling",size:[8,.25,8],color:0x3d4c5b},
-  hardWall:{name:"Hard wall",size:[4,3.4,.3],color:0x68747e},
-  softWall:{name:"Soft / reinforceable wall",size:[3.1,3,.2],color:0xb6a28d},
-  reinforcedWall:{name:"Reinforced steel wall",size:[3.1,3,.25],color:0x57758b},
-  door:{name:"Door opening / barricadable",size:[2.5,3.4,.36],color:0xd9a459},
-  window:{name:"Window / barricadable",size:[2.3,2.0,.3],color:0x66b7d5},
+  hardWall:{name:"Hard wall",size:[4,3.75,.25],color:0x68747e},
+  softWall:{name:"Soft / reinforceable wall",size:[4,3.75,.25],color:0xb6a28d},
+  reinforcedWall:{name:"Reinforced steel wall",size:[4,3.75,.25],color:0x57758b},
+  door:{name:"Door opening / barricadable",size:[2,3.75,.25],color:0xd9a459},
+  window:{name:"Window / barricadable",size:[2,2.75,.25],color:0x66b7d5},
   stairs:{name:"Walkable staircase",size:[3,4,7],color:0xb1b6ba},
   cover:{name:"Crate / cover",size:[2,1.4,2],color:0x95856c},
-  railing:{name:"Safety railing",size:[4,1.05,.14],color:0xeab65d},
+  railing:{name:"Safety railing",size:[4,1.05,.25],color:0xeab65d},
   attackerSpawn:{name:"Attacker spawn",size:[1,.12,1],color:0x5faefa},
   defenderSpawn:{name:"Defender spawn",size:[1,.12,1],color:0xffa168}
 });
