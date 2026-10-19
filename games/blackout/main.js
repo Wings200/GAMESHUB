@@ -1,18 +1,18 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v600-approved-clubhouse";
+import {buildRange} from "./src/world.js?v=blackout-v603-approved-clubhouse";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v531-interactive-walls";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v603-approved-clubhouse";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
-import {Barricades} from "./src/barricades.js?v=blackout-v531-interactive-walls";
+import {Barricades} from "./src/barricades.js?v=blackout-v603-approved-clubhouse";
 import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
-import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v600-approved-clubhouse";
+import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v603-approved-clubhouse";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
