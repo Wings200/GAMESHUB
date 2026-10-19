@@ -252,20 +252,23 @@ export class ObjectiveDrill{
           }
         }
       }else bot.working=0;
-      // Hostile attackers can dismantle a nearby barricade with gunfire
-      // instead of getting stuck forever on the wrong side of a doorway.
-      if(!visible&&goal&&now>=bot.nextShot&&this.world.barricades){
-        const obstructing=this.world.barricades.openings.find(o=>
-          this.world.barricades.hasBarricade(o)&&
-          Math.hypot(o.x-bot.x,o.z-bot.z)<2.35);
-        if(obstructing){
-          const plank=obstructing.planks.find(p=>!p.broken);
-          if(plank){
-            this.world.barricades.hit(plank,28);
-            bot.nextShot=now+750+(bot.id%3)*180;
-            bot.lastShotAt=now;
-            notify(null,"enemy-fire",bot);
-          }
+      // Breach the SPECIFIC boarded doorway obstructing the route, rather
+      // than blindly shooting any barricade within 2.35m. The navigator
+      // retains its planned path until enough boards have been destroyed.
+      const barricadeSystem=this.world.barricades;
+      const obstructing=goal&&bot.blockingBarricade&&barricadeSystem?.
+        hasBarricade(bot.blockingBarricade)?bot.blockingBarricade:null;
+      if(obstructing&&now>=bot.nextShot){
+        const plank=obstructing.planks.find(p=>!p.broken&&
+          p.collider.maxY>.42&&p.collider.minY<1.6)||
+          obstructing.planks.find(p=>!p.broken);
+        if(plank){
+          barricadeSystem.hit(plank,32);
+          bot.nextShot=now+510+(bot.id%3)*110;
+          bot.lastShotAt=now;
+          bot.group.rotation.y=Math.atan2(bot.x-obstructing.x,
+            bot.z-obstructing.z);
+          notify(null,"enemy-fire",bot);
         }
       }
       bot.group.updateMatrixWorld(true);
