@@ -7,7 +7,7 @@ import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advance
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
 import {ObjectiveDrill} from "./src/objective.js?v=blackout-v330-advanced-ordnance";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
-import {initCompetitiveUI,playTacticalPhaseAnnouncement} from "./src/competitive-ui.js?v=blackout-v401-competitive-ui";
+import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
 import {createReconDrone} from "./src/drone.js?v=blackout-v330-advanced-ordnance";
@@ -164,6 +164,7 @@ function popup(message,seconds=2.6){
 function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
   objectiveRound.pause(clock());
+  stopTacticalNarration();
   gadgets.ordnance.pause(clock());
   gadgets.cancelAction();barricades.cancel();
   document.body.classList.remove("playing","ads","spectating");hud.classList.add("hidden");
@@ -201,6 +202,7 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
   if(document.pointerLockElement===canvas)document.exitPointerLock();});
 
 function resetSimulation(){
+  resetTacticalCue();
   drone.end();droneActionMode=false;objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
