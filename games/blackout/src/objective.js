@@ -1,7 +1,7 @@
-import {createDefuserModel} from "./defuser-model.js?v=blackout-v500-switchyard";
-import {createBombStations} from "./bomb-sites.js?v=blackout-v500-switchyard";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v500-switchyard";
-import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v500-switchyard";
+import {createDefuserModel} from "./defuser-model.js?v=blackout-v520-switchyard";
+import {createBombStations} from "./bomb-sites.js?v=blackout-v520-switchyard";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v520-switchyard";
+import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v520-switchyard";
 import {operatorsForSide} from "./operators.js?v=blackout-v330-advanced-ordnance";
 import {ATTACK_SQUAD_SPAWNS,ENEMY_ATTACK_SPAWNS} from "./spawn-rules.js?v=blackout-v420-ai-rotations";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
