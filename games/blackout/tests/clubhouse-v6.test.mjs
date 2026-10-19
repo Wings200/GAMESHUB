@@ -138,3 +138,28 @@ test("operator rappel anchors connect to actual clear upper windows",()=>{
  assert.equal(rappel.attached,false);
  assert.ok(player.vault);
 });
+
+test("clubhouse bot physically walks from ground via real stairs to upstairs bomb",()=>{
+ const {world,map}=make();
+ const botAI=load("bot-ai.js",{findClubhousePath:navigator},
+   "{findTacticalPath,advanceTacticalBot}");
+ const connector=world.facility.stairConnectors[1];
+ const bot={id:7,x:connector.bottom.x,z:connector.bottom.z,y:0,
+   group:new Node(),path:[],walkSpeed:3.0,allowBreach:false,
+   lastGoal:null,repathAt:0,collisionRevision:-1};
+ const goal={x:-25.5,z:-4.75,y:4};
+ let peak=0,arrived=false,changes=0;
+ for(let tick=0;tick<2400;tick++){
+   botAI.advanceTacticalBot(bot,goal,world,.045,1000+tick*45);
+   peak=Math.max(peak,bot.y);
+   if(bot.y>3&&bot.y<4)changes++;
+   if(Math.hypot(bot.x-goal.x,bot.z-goal.z)<1.8&&bot.y>3.6){
+     arrived=true;break;
+   }
+ }
+ assert.ok(peak>3.75,"bot must actually climb stairs, peak="+peak+
+   " final="+JSON.stringify({x:bot.x,z:bot.z,y:bot.y}));
+ assert.ok(changes>2,"ascent must have intermediate heights, not vertical teleport");
+ assert.ok(arrived,"bot should reach upstairs Archives site; final="+
+   JSON.stringify({x:bot.x,z:bot.z,y:bot.y,path:bot.path.slice(0,2)}));
+});
