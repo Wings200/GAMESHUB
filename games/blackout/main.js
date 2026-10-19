@@ -195,7 +195,7 @@ function setRole(r){
   role=r==="defender"?"defender":"attacker";
   attackButton.classList.toggle("active",role==="attacker");
   defendButton.classList.toggle("active",role==="defender");
-  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE "+objectiveRound.siteId:"DEFENDER · PROTECT SITE "+objectiveRound.siteId;
+  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
   operatorSelect.replaceChildren();
   for(const spec of operatorsForSide(role)){
     const option=document.createElement("option");option.value=spec.id;
@@ -205,8 +205,8 @@ function setRole(r){
   renderOperatorCards();
   chooseOperator(defaultOperator(role).id);
   status.textContent=role==="attacker"?
-    "ATTACK: reach Site "+objectiveRound.siteId+", hold F while still to plant, then defend the defuser.":
-    "DEFEND: hold Site "+objectiveRound.siteId+" or disable an enemy defuser.";
+    "ATTACK: locate bomb A or B, hold F while still to plant, then defend the defuser.":
+    "DEFEND: protect both bomb units and disable any planted defuser.";
 }
 function renderOperatorCards(){
   operatorCards.replaceChildren();
@@ -231,8 +231,8 @@ reset.addEventListener("click",()=>{resetSimulation();status.textContent="All ta
 operatorSelect.addEventListener("change",()=>chooseOperator(operatorSelect.value));
 siteSelect.addEventListener("change",()=>{
   objectiveRound.chooseSite(siteSelect.value);resetSimulation();
-  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT & HOLD SITE "+objectiveRound.siteId:"DEFENDER · PROTECT SITE "+objectiveRound.siteId;
-  status.textContent="SITE "+objectiveRound.siteId+" · "+objectiveRound.site.name+" SELECTED";
+  selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
+  status.textContent="INSERTION FOCUS · SITE "+objectiveRound.siteId+" · BOTH SITES REMAIN LIVE";
 });
 mouseSlider.addEventListener("input",()=>{mouseValue.textContent=Number(mouseSlider.value).toFixed(1)+"×";});
 $("guideToggle").addEventListener("click",()=>{menuGuide=!menuGuide;guide.classList.toggle("hidden",!menuGuide);});
@@ -410,11 +410,19 @@ function drawTacticalHud(now){
     '<span class="bo-player-pip" title="Opponents deploy after preparation">·</span>';
   if(role==="attacker"){friendlySlots.innerHTML=onePip;enemySlots.innerHTML=enemyPips;}
   else{enemySlots.innerHTML=onePip;friendlySlots.innerHTML=enemyPips;}
-  const dx=round.site.x-player.x,dz=round.site.z-player.z;
+  // During attack, show the nearest of BOTH live bomb locations. Once
+  // planted the compass locks to the actual planted defuser location.
+  const options=Object.values(round.sites);
+  const focusedSite=role==="attacker"&&phase!=="planted"?
+    options.reduce((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)<
+      Math.hypot(a.x-player.x,a.z-player.z)?b:a):
+    round.site;
+  const dest=phase==="planted"&&round.plantPosition||focusedSite;
+  const dx=dest.x-player.x,dz=dest.z-player.z;
   const distance=Math.round(Math.hypot(dx,dz));
   const angle=(Math.atan2(dx,-dz)+player.yaw)*180/Math.PI;
   bombArrow.style.transform="rotate("+angle.toFixed(1)+"deg)";
-  bombRange.textContent="BOMB "+round.siteId+" · "+distance+"M";
+  bombRange.textContent=(phase==="planted"?"DEFUSER ":"BOMB ")+focusedSite.id+" · "+distance+"M";
   bombGuide.textContent=phase==="planted"?
     role==="attacker"?"PROTECT DEFUSER":"DISABLE DEFUSER":
     phase==="prep"?"SCOUT / FORTIFY":
