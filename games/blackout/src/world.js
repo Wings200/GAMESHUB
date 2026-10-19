@@ -263,6 +263,10 @@ export function buildRange(THREE,scene){
   makePanel(-12,-29,"drywall");
   const preReinforcedTestPanel=makePanel(12,-29,"steel");
   makePanel(-12,-44,"plywood");makePanel(12,-44,"glass");
+  label("DRYWALL",-12,-31.5,2.8);
+  label("STEEL / HARD BREACH",12,-31.5,3.8);
+  label("PLYWOOD",-12,-46.6,2.7);
+  label("GLASS",12,-46.6,2.3);
   // The central wall is used by AI reinforcement and penetration tests.
   makePanel(0,-37,"drywall");
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
