@@ -5,7 +5,7 @@
 import * as T from "three";
 import {TransformControls} from "three/addons/controls/TransformControls.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
-  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v1";
+  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v2";
 import {snapNumber,applyGizmoToPiece,floorUndersideY,magnetizeEdges} from "./map-editor-math.js?v=blackout-editor-v2";
 
 const $=id=>document.getElementById(id);
