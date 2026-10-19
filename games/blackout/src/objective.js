@@ -1,6 +1,7 @@
 import {createDefuserModel} from "./defuser-model.js?v=blackout-v093-shield-ai-routing";
 import {createBombStations} from "./bomb-sites.js?v=blackout-v093-shield-ai-routing";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v093-shield-ai-routing";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v100-two-site-fivevfive";
+import {updateSquadCombat} from "./squad-ai.js?v=blackout-v100-two-site-fivevfive";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
@@ -28,7 +29,9 @@ export class ObjectiveDrill{
     this.defuser=createDefuserModel(T,scene);
     this.bombStations=createBombStations(T,scene,world,this.sites);
     this.operator=null;this.prepUntil=0;this.actionStartedAt=0;this.holdNeeded=5000;
-    this.ray=new T.Raycaster();this.bots=[];this.botSerial=0;
+    // Objective decals are not restricted planting circles.
+    this.ring.visible=false;this.center.visible=false;alternate.visible=false;
+    this.ray=new T.Raycaster();this.bots=[];this.allies=[];this.botSerial=0;
     this.score={attacker:0,defender:0};this.roundNumber=1;
     this.chooseSite("A");this.reset("attacker");
   }
@@ -45,7 +48,7 @@ export class ObjectiveDrill{
     this.signTexture.needsUpdate=true;
   }
   clearBots(){
-    for(const bot of this.bots){
+    for(const bot of [...this.bots,...this.allies]){
       for(const hitbox of bot.hitboxes){
         const at=this.world.shootables.indexOf(hitbox);
         if(at>=0)this.world.shootables.splice(at,1);
@@ -55,7 +58,7 @@ export class ObjectiveDrill{
         if(node.isMesh){node.geometry?.dispose?.();node.material?.dispose?.();}
       });
     }
-    this.bots=[];
+    this.bots=[];this.allies=[];
   }
   reset(role="attacker"){
     if(this.phase==="won"||this.phase==="lost")this.roundNumber++;
@@ -64,6 +67,8 @@ export class ObjectiveDrill{
     this.deadline=0;this.bombEnd=0;this.nextWave=0;this.wave=0;
     this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;this.plantPosition=null;this.holdSiteId=null;
     this.pausedAt=0;this.lastHitNotice=0;this.lastFootstep=0;
+    this.playerAlive=true;this.runoutPlayer=false;this.runoutUntil=0;
+    this.runoutTarget=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
     this.defuser.hide();this.prepUntil=0;
     this.updateHoldRequirement();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
@@ -76,9 +81,52 @@ export class ObjectiveDrill{
       this.role==="defender"&&this.operator?.id==="atlas"?4400:
       this.role==="attacker"?5000:5500;
   }
-  spawnBot(x,z,stationary=false){
-    const bot=makeTacticalBot(this.THREE,this.scene,this.world,++this.botSerial,x,z,stationary);
-    this.bots.push(bot);return bot;
+  spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
+    const bot=makeTacticalBot(this.THREE,this.scene,this.world,
+      ++this.botSerial,x,z,stationary,team);
+    bot.assignedSite=this.sites[siteId];
+    bot.anchor={x,z};bot.carrier=false;
+    (team==="ally"?this.allies:this.bots).push(bot);
+    return bot;
+  }
+  isInside(p){
+    const b=this.world.facility.bounds;
+    return p.x>b.minX+.08&&p.x<b.maxX-.08&&
+      p.z>b.minZ+.08&&p.z<b.maxZ-.08;
+  }
+  updateRunouts(now,player,notify){
+    const action=this.phase==="attack"||this.phase==="guard"||this.phase==="planted";
+    this.runoutPlayer=action&&this.role==="defender"&&!this.isInside(player)&&player.health>0;
+    if(this.runoutPlayer){
+      this.runoutUntil=now+2300;
+      if(now-this.lastRunoutNotice>3000){
+        this.lastRunoutNotice=now;
+        notify("DEFENDER OUTSIDE · YOUR POSITION IS REVEALED","alarm");
+      }
+      // Enemy attacker bots receive a continuously refreshed last-known
+      // runout location. This has real gameplay consequences, not just UI.
+      for(const bot of this.bots)if(bot.alive){
+        bot.hearing={x:player.x,z:player.z};bot.hearingUntil=now+2300;
+        bot.runoutTarget={x:player.x,z:player.z};
+      }
+    }
+    this.runoutTarget=null;
+    if(action&&this.role==="attacker"){
+      for(const defender of this.bots){
+        if(!defender.alive||this.isInside(defender))continue;
+        defender.runoutUntil=now+2300;
+        this.runoutTarget=defender;
+        for(const ally of this.allies)if(ally.alive){
+          ally.hearing={x:defender.x,z:defender.z};
+          ally.hearingUntil=now+2300;
+        }
+        if(now-this.lastRunoutEnemy>3800){
+          this.lastRunoutEnemy=now;
+          notify("DEFENDER DETECTED OUTSIDE · LOCATION PINGED","alarm");
+        }
+        break;
+      }
+    }
   }
   pause(now){
     if(!this.pausedAt&&this.phase!=="ready"&&this.phase!=="won"&&this.phase!=="lost")
@@ -91,7 +139,7 @@ export class ObjectiveDrill{
     if(this.prepUntil)this.prepUntil+=d;
     if(this.nextWave)this.nextWave+=d;if(this.nextBeep)this.nextBeep+=d;
     this.lastHitNotice+=d;
-    for(const b of this.bots){
+    for(const b of [...this.bots,...this.allies]){
       if(b.nextShot)b.nextShot+=d;
       if(b.repathAt)b.repathAt+=d;
       if(b.hearingUntil)b.hearingUntil+=d;
@@ -101,27 +149,46 @@ export class ObjectiveDrill{
   start(now){
     if(this.phase!=="ready")return;
     this.phase="prep";
-    this.prepUntil=now+(this.role==="defender"?14000:6000);
+    this.prepUntil=now+(this.role==="defender"?22000:8500);
+    // Each side fields FIVE operators: human plus 4 active squad bots
+    // versus 5 hostile bots. Friendly defenders prepare inside the facility.
+    if(this.role==="attacker"){
+      for(const [i,p] of [
+        [-7,12,"A"],[7,13,"B"],[-13,-40,"A"],[13,-27,"B"]
+      ].entries()){
+        const [x,z,site]=p;this.spawnBot(x,z,false,"ally",site);
+      }
+      for(const [x,z,site] of [
+        [-7,-48,"A"],[-4,-41,"A"],[7,-33,"B"],
+        [5,-24.6,"B"],[-6,-28,"B"]
+      ])this.spawnBot(x,z,true,"enemy",site);
+    }else{
+      for(const [x,z,site] of [
+        [-7,-46,"A"],[-3,-41,"A"],[6,-32,"B"],[5,-25,"B"]
+      ])this.spawnBot(x,z,true,"ally",site);
+    }
   }
   beginAction(now,notify=()=>{}){
     if(this.phase!=="prep")return;
     this.actionStartedAt=now;
-    if(this.role==="attacker"){
-      this.phase="attack";this.deadline=now+120000;
-      // Sentries remain ALIVE while attackers plant or rotate sites.
-      // Both sites are live, and attackers may plant at either one.
-      const sentry=this.spawnBot(-7,-48,true);
-      const patrol=this.spawnBot(7,-33,false);
-      patrol.patrolPoints=[{x:7,z:-33},{x:3,z:-25},{x:6,z:-27}];
-      patrol.patrolIndex=0;
-    }else{
-      this.phase="guard";this.deadline=now+100000;
-      // One fair, finite attacking squad, not endless respawning waves.
-      this.spawnBot(0,10,false);
-      this.spawnBot(-5,14,false);
-      this.spawnBot(6,14,false);
+    this.phase=this.role==="attacker"?"attack":"guard";
+    this.deadline=now+145000;
+    if(this.role==="defender"){
+      // Five enemy attackers use south, southwest, southeast, west and east
+      // approaches. Two flank the outer entrances instead of rushing mid.
+      for(const [i,[x,z,site]] of [
+        [0,12,"A"],[-7,14,"A"],[7,13,"B"],
+        [-13,-40,"A"],[13,-27,"B"]
+      ].entries()){
+        const bot=this.spawnBot(x,z,false,"enemy",site);
+        bot.carrier=i===2;bot.nextShot=now+950+i*180;
+      }
+      // Allies begin their own rotations only after the action phase.
+      for(const ally of this.allies)ally.stationary=false;
     }
-    notify("ACTION PHASE · "+(this.role==="attacker"?"LOCATE AND PLANT AT THE BOMB SITE":"STOP THE ATTACKERS"),"round-start");
+    notify("ACTION PHASE · "+(this.role==="attacker"?
+      "FIVE ATTACKERS · CLEAR A / B AND PLANT":"FIVE ATTACKERS APPROACHING · DEFEND BOTH SITES"),
+      "round-start");
   }
   spawnWave(now){
     this.wave++;
@@ -134,8 +201,10 @@ export class ObjectiveDrill{
     }
   }
   siteAt(p){
-    return Object.values(this.sites).find(site=>
-      Math.hypot(p.x-site.x,p.z-site.z)<site.radius)||null;
+    // Full room boundaries. Planting no longer requires standing near a
+    // floating circle or bomb station, only a legal walkable site floor.
+    return Object.values(this.sites).find(({bounds:b})=>
+      p.x>=b.minX&&p.x<=b.maxX&&p.z>=b.minZ&&p.z<=b.maxZ)||null;
   }
   atSite(p){return !!this.siteAt(p);}
   canInteract(p){
@@ -151,7 +220,7 @@ export class ObjectiveDrill{
   }
   // Audible action travels to nearby bots. Bots do not have omniscient player tracking.
   onNoise(x,z,radius,now){
-    for(const bot of this.bots){
+    for(const bot of [...this.bots,...this.allies]){
       if(!bot.alive||Math.hypot(bot.x-x,bot.z-z)>radius)continue;
       bot.hearing={x,z};bot.hearingUntil=now+5800;
       if(bot.stationary&&this.phase==="attack"){
