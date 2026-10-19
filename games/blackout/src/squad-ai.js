@@ -64,7 +64,13 @@ function attackingCarrier(round){
 function designatedDefuser(round){
   if(round.phase!=="planted"||!round.plantPosition)return null;
   const defenders=round.role==="defender"?round.allies:round.bots;
-  return nearestLiving(defenders,round.plantPosition);
+  // Lock the selection so bots don't constantly reassign the defuse task
+  // while approaching. Reassign only if the designated operator dies.
+  const current=defenders.find(b=>b.alive&&b.id===round.defuseOperatorId);
+  if(current)return current;
+  const replacement=nearestLiving(defenders,round.plantPosition);
+  round.defuseOperatorId=replacement?.id||null;
+  return replacement;
 }
 function assignedSite(round,bot){
   return bot.assignedSite||round.sites[bot.id%2===0?"B":"A"];
@@ -96,7 +102,7 @@ function desiredPosition(round,bot,player){
   }
   // Defenders anchor BOTH devices, patrol nearby angles and reposition
   // only when they have heard or seen an actual threat.
-  return bot.anchor||{x:site.x+(bot.id%2?1.5:-1.5),z:site.z};
+  return bot.patrolGoal||bot.anchor||{x:site.x+(bot.id%2?1.5:-1.5),z:site.z};
 }
 function maybeWorkDevice(round,bot,now,dt,notify){
   if(round.phase==="planted"){
@@ -172,6 +178,87 @@ function fireAt(round,bot,target,now,notify){
     if(killed&&bot.team==="ally")notify("SQUADMATE ELIMINATED HOSTILE · "+(round.bots.filter(x=>x.alive).length)+" REMAIN");
   }
 }
+const PREP_POSITIONS={
+  A:[{x:-7,z:-45},{x:-3,z:-42},{x:-7,z:-40},{x:-5,z:-49}],
+  B:[{x:3,z:-32},{x:7,z:-30},{x:3,z:-24},{x:6,z:-26}]
+};
+function patrolPosition(round,bot,now){
+  const site=assignedSite(round,bot),pts=PREP_POSITIONS[site.id]||[];
+  if(!pts.length)return bot.anchor||site;
+  if(!bot.patrolGoal||now>=(bot.patrolNext||0)||
+      distance(bot,bot.patrolGoal)<.9){
+    // Each operator cycles through staggered patrol routes around its room.
+    // Never request a point inside the bomb cabinet or a solid desk.
+    for(let k=0;k<pts.length;k++){
+      bot.patrolIndex=((bot.patrolIndex??(bot.id%pts.length))+1)%pts.length;
+      const p=pts[bot.patrolIndex];
+      if(canStand(round,p,.38)&&distance(bot,p)>1.2){
+        bot.patrolGoal=p;break;
+      }
+    }
+    bot.patrolNext=now+5200+(bot.id%4)*900;
+  }
+  return bot.patrolGoal||bot.anchor||site;
+}
+export function updateDefenderPrep(round,now,dt,notify=()=>{}){
+  const defenders=round.role==="defender"?round.allies:round.bots;
+  const gadgets=round.world.gadgets,doors=round.world.barricades;
+  for(let i=0;i<defenders.length;i++){
+    const bot=defenders[i];if(!bot.alive)continue;
+    if(!bot.setupTask){
+      const spec=bot.operatorSpec?.id;
+      const openings=doors?.openings||[];
+      const west=openings.find(o=>o.id==="west-hall");
+      const east=openings.find(o=>o.id==="east-hall");
+      // Actual task ownership: special equipment has priority. Other
+      // defenders board distinct hall entrances or set proximity sensors.
+      let kind="sensor",opening=null,goal=bot.assignedSite;
+      if(spec==="mute")kind="jammer";
+      else if(spec==="castle"){kind="armor";opening=west||east;}
+      else if(i%4===0){kind="board";opening=west;}
+      else if(i%4===1){kind="board";opening=east;}
+      else if(spec==="smoke"){kind="sensor";}
+      else if(i%4===2)kind="jammer";
+      if((kind==="board"||kind==="armor")&&opening)
+        goal={x:opening.x+(opening.axis==="z"?0:opening.x<0?.85:-.85),
+          z:opening.z+(opening.axis==="z"?1.1:0)};
+      else{
+        const loc=PREP_POSITIONS[bot.assignedSite.id]||[];
+        const spot=loc[i%loc.length]||bot.assignedSite;
+        goal={x:spot.x,z:spot.z};
+      }
+      bot.setupTask={kind,opening,goal,placed:false,progress:0};
+    }
+    const task=bot.setupTask;
+    if(task.placed)continue;
+    bot.allowBreach=false;
+    if(distance(bot,task.goal)>1.35){
+      const speed=advanceTacticalBot(bot,task.goal,round.world,dt,now);
+      bot.state="setup-approach";
+      bot.animate(dt,now,speed);
+      continue;
+    }
+    bot.state=task.kind==="armor"?"deploy-armor":
+      task.kind==="board"?"install-barricade":
+      task.kind==="jammer"?"deploy-jammer":"place-sensor";
+    task.progress+=dt*1000;
+    bot.setupProgress=clamp(task.progress/1700,0,1);
+    bot.animate(dt,now,0);
+    if(task.progress<1700)continue;
+    task.placed=true;bot.setupProgress=0;
+    if((task.kind==="armor"||task.kind==="board")&&task.opening){
+      if(!doors?.hasBarricade(task.opening))doors?.place(task.opening,task.kind==="armor");
+    }else if(task.kind==="jammer"&&gadgets){
+      gadgets.deployJammer(task.goal.x,task.goal.z,
+        bot.team==="ally"?"ally":"enemy");
+    }else if(task.kind==="sensor"&&gadgets){
+      gadgets.deployBotSensor?.(task.goal.x,task.goal.z,
+        bot.team==="ally"?"ally":"enemy");
+    }
+    notify("DEFENDER "+(bot.operatorSpec?.name||bot.id)+" · "+
+      task.kind.toUpperCase().replace("-"," ")+" SET","click",bot);
+  }
+}
 // Tactical squad brain. Each bot can share *last known* enemy positions,
 // but only unobstructed line of sight authorizes firing.
 export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
@@ -186,6 +273,9 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     if(successor){successor.carrier=true;notify("ATTACKERS RECOVERED THE DEFUSER");}
   }
   const combatants=[...round.bots,...round.allies];
+  // Save this once per decision frame: all teammates need the same
+  // disarm specialist, even while that operator is walking towards it.
+  if(round.phase==="planted")designatedDefuser(round);
   for(const bot of combatants){
     if(!bot.alive)continue;
     const isAttack=isAttacking(round,bot);
@@ -219,6 +309,11 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     const sharedIntel=intel&&intel.until>now?intel:null;
     const home=assignedSite(round,bot);
     const anchor=bot.anchor||home;
+    if(!isAttack&&round.phase!=="planted"){
+      // A defender isn't a stationary turret. Patrol cover and doors
+      // around its own site, then rotate when an actual contact arrives.
+      patrolPosition(round,bot,now);
+    }
     let goal=null,working=false;
     const defusing=round.phase==="planted"&&
       !isAttack&&bot===designatedDefuser(round);
@@ -255,7 +350,10 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
       }else if(!isAttack&&distance(anchor,bot)>7.5){
         goal=anchor;bot.state="fallback";
       }else{
-        goal=null;bot.state="hold-angle";
+        // If no attacker is inside firing range, cycle positions instead
+        // of spending the whole action phase rooted at the spawn.
+        goal=!isAttack&&dst>6?patrolPosition(round,bot,now):null;
+        bot.state=goal?"site-patrol":"hold-angle";
       }
     }else{
       bot.coverGoal=null;
@@ -278,7 +376,12 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
           goal=bot.hearing;bot.state="investigate";
         }
       }
-      if(goal&&distance(bot,goal)<1.0)goal=null;
+      if(goal&&distance(bot,goal)<1.0){
+        if(!isAttack&&round.phase!=="planted"){
+          bot.patrolNext=now;bot.patrolGoal=null;
+        }
+        goal=null;
+      }
       if(!isAttack&&round.phase!=="planted"&&distance(bot,anchor)>9){
         goal=anchor;bot.state="return-to-site";
       }
