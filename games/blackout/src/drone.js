@@ -17,6 +17,7 @@ export function createReconDrone(T,scene,world,camera){
   for(const x of [-.19,.19])for(const z of [-.145,.145]){
     const wheel=new T.Mesh(new T.CylinderGeometry(.085,.085,.045,12),rubber);
     wheel.rotation.z=Math.PI/2;wheel.position.set(x,.092,z);body.add(wheel);
+    hitMeshes.push(wheel);
   }
   cube(0,.225,-.18,.12,.065,.05,lens);
   let x=0,z=-15.8,yaw=0,pitch=0,active=false;
