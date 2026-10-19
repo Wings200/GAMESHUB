@@ -94,7 +94,7 @@ test("dev page exposes working place, inspector, bomb and file controls",()=>{
     assert.ok(page.includes('data-piece="'+type+'"'),"missing placeable "+type);
   assert.ok(model.PART_KEYS.includes("ceiling"),
     "old imported ceiling pieces must remain supported in the V1 file format");
-  for(const prop of ["dragging.mode=\"piece\"","new Blob(","URL.createObjectURL",
+  for(const prop of ["new TransformControls(camera,canvas)","new Blob(","URL.createObjectURL",
     "localStorage.setItem","normalizeMap(","updateBombMarkers",
     "keydown","pointerdown","pointermove","orbit.theta","sitePairs"])
     assert.ok(script.includes(prop),"missing authoring behavior "+prop);
