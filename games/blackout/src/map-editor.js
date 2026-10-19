@@ -806,13 +806,15 @@ function hitResizeHandle(evt){
 canvas.addEventListener("pointerdown",evt=>{
   if(evt.button===0&&tool==="select"&&transformMode==="scale"){
     const handle=hitResizeHandle(evt);
-    const part=map.elements.find(e=>e.id===selectedId);
+    const owner=zoneOwner(selectedZoneId);
+    const part=map.elements.find(e=>e.id===selectedId)||
+      (owner?zoneAsPiece(owner.zone):null);
     if(handle&&part){
       evt.preventDefault();
       canvas.setPointerCapture(evt.pointerId);
       const baseY=part.position.y+(part.type==="floor"?0:part.size.y/2);
       resizingEdge={
-        part:clone(part),previous:snapshot(),
+        part:clone(part),previous:snapshot(),isZone:!!owner,
         axis:handle.userData.edgeAxis,side:handle.userData.edgeSide,
         startX:evt.clientX,startY:evt.clientY,
         startWorld:readPoint(evt,baseY),
@@ -864,8 +866,15 @@ canvas.addEventListener("pointermove",evt=>{
     const next=resizeFromEdge(original,{
       axis,side:r.side,delta,grid:map.grid,snap:!evt.shiftKey
     });
+    if(r.isZone){
+      const owner=zoneOwner(original.id);
+      const proposed=owner?fromZonePiece(owner.zone,next):null;
+      const conflict=proposed&&zonePlacementError(sitePair(),proposed,original.id);
+      if(conflict){$("zoneError").textContent=conflict;return;}
+      $("zoneError").textContent="";
+    }
     r.latest=next;
-    const root=entityMeshes.get(original.id);
+    const root=entityMeshes.get(original.id)||zoneMeshes.get(original.id);
     if(root){
       root.position.set(next.position.x,next.position.y,next.position.z);
       root.scale.set(next.size.x/original.size.x,
@@ -926,16 +935,22 @@ function endDragging(){
     const r=resizingEdge;
     resizingEdge=null;
     const current=map.elements.find(e=>e.id===r.part.id);
-    if(current&&r.latest){
+    const owner=r.isZone?zoneOwner(r.part.id):null;
+    if((current||owner)&&r.latest){
       const before=r.previous;
-      Object.assign(current,r.latest);
+      if(owner)Object.assign(owner.zone,fromZonePiece(owner.zone,r.latest));
+      else Object.assign(current,r.latest);
       if(before!==snapshot()){
         undoStack.push(before);
         if(undoStack.length>90)undoStack.shift();
         redoStack.length=0;
       }
-      changed();
-    }else redrawEdgeHandles();
+      changed({render:!owner});
+      if(owner)updateBombMarkers();
+    }else{
+      if(r.isZone)updateBombMarkers();
+      else redrawEdgeHandles();
+    }
   }
   dragging=null;dragStart=null;
   if(!gizmo.dragging)updateInspector();
@@ -993,7 +1008,7 @@ function setTransformMode(mode){
   $("scaleTool").classList.toggle("active",mode==="scale");
   if(tool!=="select")setTool("select");
   attachGizmo();
-  if(!selectedId)toast("SELECT A PIECE TO USE "+(mode==="scale"?"SCALE":"MOVE")+" HANDLES");
+  if(!selectedId&&!selectedZoneId)toast("SELECT A PIECE OR PLANT BOX TO USE "+(mode==="scale"?"SCALE":"MOVE")+" HANDLES");
   else toast(mode==="scale"?"DRAG ONE COLORED EDGE CUBE — OPPOSITE EDGE IS FIXED":
     "DRAG X / Y / Z ARROWS OR COLORED PLANES TO MOVE IN 3D");
 }
