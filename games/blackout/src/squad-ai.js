@@ -261,7 +261,7 @@ const PREP_POSITIONS={
 };
 function patrolPosition(round,bot,now){
   const site=assignedSite(round,bot);
-  const pts=round.world.mapId==="switchyard"?
+  const pts=round.world.mapId!=="lab"?
     [{x:site.x-3,z:site.z-3,y:site.y||0},
      {x:site.x+3,z:site.z-3,y:site.y||0},
      {x:site.x+3,z:site.z+3,y:site.y||0},
@@ -286,7 +286,7 @@ function patrolPosition(round,bot,now){
 export function updateDefenderPrep(round,now,dt,notify=()=>{}){
   const defenders=round.role==="defender"?round.allies:round.bots;
   const gadgets=round.world.gadgets,doors=round.world.barricades;
-  if(round.world.mapId==="switchyard"){
+  if(round.world.mapId==="switchyard"||round.world.mapId==="clubhouse"){
     // Defenders prepare their actual room: approach a physical, accessible
     // soft wall; show a three-second steel installation, then board a nearby
     // REAL door. Setup tasks are allocated once per bot, not on every frame.
@@ -698,7 +698,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     if(!working&&goal&&bot.recoveryGoal&&now<bot.recoveryUntil){
       goal=bot.recoveryGoal;bot.state="unstuck";
     }
-    if(goal&&round.world.mapId==="switchyard"&&goal.y===undefined)
+    if(goal&&round.world.mapId!=="lab"&&goal.y===undefined)
       goal={...goal,y:planting||isAttack?(assignedSite(round,bot).y||0):
         defusing?(round.plantPosition?.y||0):
         target?(target.y||0):(assignedSite(round,bot).y||0)};
