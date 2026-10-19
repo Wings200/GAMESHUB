@@ -26,8 +26,9 @@ export class FirstPersonController{
     this.height=this.standingHeight;this.eyeHeight=this.standingHeight;
     this.isCrouched=false;this.isProne=false;this.proneWanted=false;
     this.speeds={walk:3.35,sprint:5.5,crouch:1.74,prone:.79};
-    this.operatorName="KESTREL";this.speedRating=2;this.armorRating=2;this.maxHealth=110;this.health=110;
+    this.operatorName="SLEDGE";this.speedRating=2;this.armorRating=2;this.maxHealth=110;this.health=110;
     this.lean=0;this.leanTarget=0;
+    this.leanSide=0; // persistent toggle: -1 left, +1 right
     this.stepClock=0;this.moving=false;this.sprinting=false;
     this.camera.rotation.order="YXZ";
     this.applyCamera();
@@ -41,11 +42,19 @@ export class FirstPersonController{
   reset(){
     Object.assign(this,{x:this.world.spawn.x,y:this.world.spawn.y,z:this.world.spawn.z,
       yaw:this.world.spawn.yaw,pitch:0,velX:0,velY:0,velZ:0,
-      height:PLAYER_DIMENSIONS.stand,eyeHeight:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,stepClock:0});
+      height:PLAYER_DIMENSIONS.stand,eyeHeight:PLAYER_DIMENSIONS.stand,isCrouched:false,isProne:false,proneWanted:false,lean:0,leanTarget:0,leanSide:0,stepClock:0});
     this.health=this.maxHealth;this.moving=false;this.sprinting=false;
     this.applyCamera();
   }
   toggleProne(){this.proneWanted=!this.proneWanted;}
+  toggleLean(side){
+    if(side!==-1&&side!==1)return this.leanSide;
+    // Tap Q or E once to lock that shoulder. Tap the opposite key to
+    // switch sides, or tap the same key again to return upright.
+    this.leanSide=this.leanSide===side?0:side;
+    this.leanTarget=this.leanSide;
+    return this.leanSide;
+  }
   look(dx,dy,sensitivity=0.0022){
     // Three.js camera looks toward -Z. Positive yaw rotates view LEFT,
     // so a mouse move RIGHT must DECREASE yaw.
@@ -112,7 +121,7 @@ export class FirstPersonController{
     // Stance switches change physical collision height immediately, but the
     // eye eases to its target to avoid a camera teleport at each keypress.
     this.eyeHeight+=(this.height-this.eyeHeight)*(1-Math.exp(-d*13));
-    this.leanTarget=Number(keys.has("KeyE"))-Number(keys.has("KeyQ"));
+    this.leanTarget=this.leanSide;
     this.lean+=(this.leanTarget-this.lean)*Math.min(1,d*12);
     this.applyCamera();
     return {room:this.world.zoneAt(this.x,this.z),crouched:this.isCrouched,prone:this.isProne,
