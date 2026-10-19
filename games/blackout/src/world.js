@@ -10,6 +10,7 @@ export function buildRange(THREE,scene){
   sun.position.set(-38,85,-54);scene.add(sun);
   const root=new THREE.Group();scene.add(root);
   const colliders=[],shootables=[],targets=[],panels=[],placed=[];
+  const state={collisionRevision:0};
   const surface=new THREE.MeshStandardMaterial({color:0x525c67,roughness:.96,metalness:.05});
   const dark=new THREE.MeshStandardMaterial({color:0x273341,metalness:.4,roughness:.67});
   const bright=new THREE.MeshStandardMaterial({color:0xe4eef5,roughness:.55});
@@ -102,7 +103,7 @@ export function buildRange(THREE,scene){
     });
     const holes=[];
     function repaint(){
-      brush.clearRect(0,0,512,512);
+      brush.clearRect(0,0,1024,1024);
       brush.fillStyle="#bba087";brush.fillRect(0,0,1024,1024);
       brush.fillStyle="#937b65";
       for(let k=0;k<23;k++){
@@ -155,6 +156,7 @@ export function buildRange(THREE,scene){
       cancelReinforcement(){overlay.visible=false;},
       reset(){
         this.reinforced=false;this.destroyed=false;g.visible=true;
+        state.collisionRevision++;
         overlay.visible=false;holes.length=0;repaint();
         center.material=soft;rails.forEach(r=>r.material=frameMat);
         if(!colliders.includes(c))colliders.push(c);
@@ -162,6 +164,7 @@ export function buildRange(THREE,scene){
       reinforce(){
         if(this.destroyed||this.reinforced)return false;
         this.reinforced=true;overlay.visible=false;center.material=reinforced;
+        state.collisionRevision++;
         rails.forEach(r=>r.material=reinforced);return true;
       },
       // Ordinary bullets only punch through soft material. The panel itself
@@ -170,6 +173,7 @@ export function buildRange(THREE,scene){
       damage(amount,breach=false){
         if(this.destroyed||this.reinforced||!breach)return false;
         this.destroyed=true;g.visible=false;overlay.visible=false;
+        state.collisionRevision++;
         const i=colliders.indexOf(c);if(i!==-1)colliders.splice(i,1);
         return true;
       }};
@@ -180,7 +184,7 @@ export function buildRange(THREE,scene){
   // Aligned with target lanes behind them so through-holes are testable.
   makePanel(-12,-29);makePanel(12,-29);
   // Two destructible/reinforceable partitions INSIDE the facility.
-  makePanel(0,-37);makePanel(-5,-39);
+  makePanel(0,-37); // Integrated into a structural opening, not floating in a room.
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
@@ -218,5 +222,8 @@ export function buildRange(THREE,scene){
   return {root,colliders,shootables,targets,panels,placed,floor,reset,addShield,facility,
     floorAt:()=>0,zoneAt:(x,z)=>facility.zoneAt(x,z),
     spawn:{x:0,y:0,z:16,yaw:0},
+    state,
+    get collisionRevision(){return state.collisionRevision;},
+    set collisionRevision(v){state.collisionRevision=v;},
     specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length,sites:2,facility:true}};
 }
