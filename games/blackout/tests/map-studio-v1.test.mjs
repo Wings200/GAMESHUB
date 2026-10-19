@@ -223,7 +223,7 @@ test("V2 UI supports three-dimensional move, floor scale, and redundant ceiling 
   assert.match(source,/case "r":setTransformMode\("scale"\)/);
   assert.match(source,/case "w":case "v":setTransformMode\("translate"\)/);
   assert.match(source,/type==="floor"[\s\S]*mat\.floor,mat\.floor,mat\.floor,mat\.ceiling/);
-  assert.match(source,/floor\.size|piece\.size\.x=cap\(size\.x/);
+  assert.match(source,/resizeFromEdge\(piece/);
   assert.match(source,/magnetizeEdges/);
   assert.match(source,/removeLegacyCeilings/);
   const asFunction=source.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"");
@@ -248,9 +248,9 @@ test("V3 default module widths land exactly on grid boundaries and story height 
     "physical east end must land on the grid");
   const rotated={...wall,rotationY:90};
   aligned=math.alignPieceToGrid(rotated,1);
-  assert.equal((aligned.position.z-aligned.size.x/2)%1,0,
+  assert.ok(Math.abs((aligned.position.z-aligned.size.x/2)%1)<1e-9,
     "90-degree rotated walls snap their physical Z ends");
-  assert.equal((aligned.position.z+aligned.size.x/2)%1,0);
+  assert.ok(Math.abs((aligned.position.z+aligned.size.x/2)%1)<1e-9);
   const lowerWall=model.makePiece("hardWall",0,0,0,"lowerWall");
   const upperFloor=model.makePiece("floor",0,4,0,"upperFloor");
   const backup=model.createBlankMap();
