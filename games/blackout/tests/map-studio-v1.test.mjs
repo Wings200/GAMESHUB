@@ -90,8 +90,10 @@ test("dev page exposes working place, inspector, bomb and file controls",()=>{
     if(id==="mapSelect")continue; // main gameplay map selector belongs to index.html
     assert.ok(page.includes('id="'+id+'"'),"missing editor control "+id);
   }
-  for(const type of model.PART_KEYS)
+  for(const type of model.PART_KEYS.filter(type=>type!=="ceiling"))
     assert.ok(page.includes('data-piece="'+type+'"'),"missing placeable "+type);
+  assert.ok(model.PART_KEYS.includes("ceiling"),
+    "old imported ceiling pieces must remain supported in the V1 file format");
   for(const prop of ["dragging.mode=\"piece\"","new Blob(","URL.createObjectURL",
     "localStorage.setItem","normalizeMap(","updateBombMarkers",
     "keydown","pointerdown","pointermove","orbit.theta","sitePairs"])
