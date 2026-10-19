@@ -20,7 +20,7 @@ export class ObjectiveDrill{
     this.signTexture=new T.CanvasTexture(canvas);this.signTexture.colorSpace=T.SRGBColorSpace;
     const sign=new T.Mesh(new T.PlaneGeometry(4.7,.84),
       new T.MeshBasicMaterial({map:this.signTexture,transparent:true,side:T.DoubleSide,depthWrite:false}));
-    sign.position.y=3.04;this.root.add(sign);
+    sign.position.y=3.04;sign.visible=false;this.root.add(sign);
     const alternate=new T.Mesh(new T.RingGeometry(2.87,3.01,64),
       new T.MeshBasicMaterial({color:0x50646a,transparent:true,opacity:.5,side:T.DoubleSide}));
     alternate.rotation.x=-Math.PI/2;alternate.position.y=.049;scene.add(alternate);
@@ -239,7 +239,7 @@ export class ObjectiveDrill{
           if(this.role==="defender"&&this.phase==="guard"){
             this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+750;
             this.plantPosition={x:devicePosition.x,z:devicePosition.z};
-            this.defuser.show(devicePosition.x,devicePosition.z,32,now);
+            this.defuser.show(devicePosition.x,devicePosition.z,32,now,this.siteId);
             this.hold=0;notify("HOSTILES PLANTED AT SITE "+this.siteId+" · DISABLE THE DEFUSER","plant");
           }else if(this.role==="attacker"&&this.phase==="planted"){
             this.defuser.hide();notify(null,"defuse");
@@ -330,7 +330,7 @@ export class ObjectiveDrill{
         if(this.role==="attacker"){
           this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+800;
           this.plantPosition={x:player.x,z:player.z};
-          this.defuser.show(player.x,player.z,32,now);
+          this.defuser.show(player.x,player.z,32,now,this.siteId);
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
           notify("DEFUSER PLANTED AT SITE "+this.siteId+" · DEFEND FOR 32 SECONDS","plant");
         }else{
