@@ -1,5 +1,5 @@
-import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v310-smoke-remote-stage2";
-import {buildFacility} from "./facility.js?v=blackout-v310-smoke-remote-stage2";
+import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v320-ballistics-breakable-walls";
+import {buildFacility} from "./facility.js?v=blackout-v320-ballistics-breakable-walls";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
