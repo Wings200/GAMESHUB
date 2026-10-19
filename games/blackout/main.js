@@ -387,7 +387,64 @@ function fireOnce(now){
   gunKickSide=Math.max(-.026,Math.min(.026,gunKickSide+(Math.random()-.5)*.011));
   player.applyCamera();
 }
+// All match widgets are calculated from actual PvE round state (no fake 5v5 slots).
+function drawTacticalHud(now){
+  const round=objectiveRound;
+  const phase=round.phase;
+  const phaseName=phase==="prep"?"PREPARATION":phase==="planted"?"DEFUSER ACTIVE":
+    phase==="attack"||phase==="guard"?"ACTION PHASE":
+    phase==="won"?"ROUND WON":phase==="lost"?"ROUND LOST":"OPERATOR SELECT";
+  const clockMs=round.clockEnd?Math.max(0,round.clockEnd-now):0;
+  const seconds=Math.ceil(clockMs/1000);
+  matchClock.textContent=String(Math.floor(seconds/60))+":"+String(seconds%60).padStart(2,"0");
+  matchClock.classList.toggle("warning",seconds<=15&&seconds>0);
+  phaseText.textContent=phaseName;
+  matchScore.textContent=round.score.attacker+" — "+round.score.defender;
+  // The offline build has one human and two or three simulated opponents.
+  // Never show nonexistent live teammates.
+  const enemy=round.bots;
+  const playerAlive=player.health>0;
+  const onePip='<span class="bo-player-pip'+(playerAlive?"":" down")+'" title="Your operator">◆</span>';
+  const enemyPips=enemy.length?
+    enemy.map(b=>'<span class="bo-player-pip'+(b.alive?"":" down")+'" title="Training hostile">'+(b.alive?"●":"×")+'</span>').join(""):
+    '<span class="bo-player-pip" title="Opponents deploy after preparation">·</span>';
+  if(role==="attacker"){friendlySlots.innerHTML=onePip;enemySlots.innerHTML=enemyPips;}
+  else{enemySlots.innerHTML=onePip;friendlySlots.innerHTML=enemyPips;}
+  const dx=round.site.x-player.x,dz=round.site.z-player.z;
+  const distance=Math.round(Math.hypot(dx,dz));
+  const angle=(Math.atan2(dx,-dz)+player.yaw)*180/Math.PI;
+  bombArrow.style.transform="rotate("+angle.toFixed(1)+"deg)";
+  bombRange.textContent="BOMB "+round.siteId+" · "+distance+"M";
+  bombGuide.textContent=phase==="planted"?
+    role==="attacker"?"PROTECT DEFUSER":"DISABLE DEFUSER":
+    phase==="prep"?"SCOUT / FORTIFY":
+    role==="attacker"?"LOCATE & PLANT":"PROTECT THE BOMBS";
+  matchCaption.textContent="SITE "+round.siteId+" · "+round.site.name+" · "+phaseName;
+  defuserInventory.textContent=role==="attacker"?
+    phase==="planted"?"DEFUSER DEPLOYED":"DEFUSER CARRIED":
+    "DEFEND BOMB STATION";
+  healthFill.style.width=Math.max(0,player.health/player.maxHealth*100).toFixed(1)+"%";
+  healthFill.classList.toggle("danger",player.health<=player.maxHealth*.35);
+  if(phase!==lastPhaseLabel){
+    lastPhaseLabel=phase;
+    phaseToastUntil=now+(phase==="prep"?20000:phase==="attack"||phase==="guard"?3300:0);
+  }
+  const show=phase==="prep"||now<phaseToastUntil&&
+    (phase==="attack"||phase==="guard");
+  phaseAnnounce.classList.toggle("hidden",!show);
+  if(show){
+    phaseAnnounceEyebrow.textContent="ROUND "+round.roundNumber+" · "+
+      (role==="attacker"?"ATTACKERS":"DEFENDERS");
+    phaseAnnounceTitle.textContent=phase==="prep"?"PREPARATION PHASE":"ACTION PHASE";
+    phaseAnnounceHelp.textContent=phase==="prep"?
+      role==="defender"?"FORTIFY DOORWAYS AND PROTECT THE BOMB":
+      "SCOUT THE BUILDING · PLAN YOUR ATTACK":
+      role==="attacker"?"LOCATE THE BOMB · PLANT YOUR DEFUSER":
+      "ELIMINATE ATTACKERS · DENY THE PLANT";
+  }
+}
 function updateHud(report){
+  drawTacticalHud(clock());
   zoneLabel.textContent=world.zoneAt(player.x,player.z).toUpperCase();
   objective.textContent=objectiveRound.summary(clock());
   roundScore.textContent=`ROUND ${objectiveRound.roundNumber} · ATK ${objectiveRound.score.attacker} : ${objectiveRound.score.defender} DEF`;
@@ -543,7 +600,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.8.0-barricades-full-collision-postdeath-performance"},
+  get build(){return "0.9.0-bomb-stations-operator-select-round-ui"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
@@ -556,6 +613,6 @@ window.BLACKOUT_DEV={
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
   get ads(){return ads},get audioReady(){return audio.ready},
   get operator(){return {...operator}},get health(){return player.health},
-  get round(){return {role,site:objectiveRound.siteId,phase:objectiveRound.phase,summary:objectiveRound.summary(clock()),bots:objectiveRound.bots.filter(b=>b.alive).length}},
+  get round(){return {role,site:objectiveRound.siteId,phase:objectiveRound.phase,summary:objectiveRound.summary(clock()),bots:objectiveRound.bots.filter(b=>b.alive).length,prepUntil:objectiveRound.prepUntil,bombStations:Object.keys(objectiveRound.bombStations.items)}},
   get sightOrigin(){return gunOptics.aimPosition(weapons.slot==="secondary"?.78:1)}
 };
