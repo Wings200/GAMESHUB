@@ -1,15 +1,15 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v310-smoke-remote-stage2";
-import {FirstPersonController} from "./src/player.js?v=blackout-v310-smoke-remote-stage2";
-import {Weapons} from "./src/weapons.js?v=blackout-v310-smoke-remote-stage2";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v310-smoke-remote-stage2";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v310-smoke-remote-stage2";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v310-smoke-remote-stage2";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v310-smoke-remote-stage2";
-import {GameAudio} from "./src/audio.js?v=blackout-v310-smoke-remote-stage2";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v310-smoke-remote-stage2";
-import {Barricades} from "./src/barricades.js?v=blackout-v310-smoke-remote-stage2";
-import {createReconDrone} from "./src/drone.js?v=blackout-v310-smoke-remote-stage2";
+import {buildRange} from "./src/world.js?v=blackout-v320-ballistics-breakable-walls";
+import {FirstPersonController} from "./src/player.js?v=blackout-v320-ballistics-breakable-walls";
+import {Weapons} from "./src/weapons.js?v=blackout-v320-ballistics-breakable-walls";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v320-ballistics-breakable-walls";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v320-ballistics-breakable-walls";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v320-ballistics-breakable-walls";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v320-ballistics-breakable-walls";
+import {GameAudio} from "./src/audio.js?v=blackout-v320-ballistics-breakable-walls";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v320-ballistics-breakable-walls";
+import {Barricades} from "./src/barricades.js?v=blackout-v320-ballistics-breakable-walls";
+import {createReconDrone} from "./src/drone.js?v=blackout-v320-ballistics-breakable-walls";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
