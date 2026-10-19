@@ -182,7 +182,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     // Attackers physically break blocking wooden door planks, then proceed.
     const doors=round.world.barricades;
     const blockedDoor=bot.blockingBarricade;
-    if(blockedDoor&&doors?.hasBarricade(blockedDoor)&&now>=bot.nextShot){
+    if(isAttacker&&blockedDoor&&doors?.hasBarricade(blockedDoor)&&now>=bot.nextShot){
       const plank=blockedDoor.planks.find(p=>!p.broken&&p.collider.maxY>.42&&p.collider.minY<1.6)||
         blockedDoor.planks.find(p=>!p.broken);
       if(plank){
