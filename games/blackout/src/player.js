@@ -150,7 +150,9 @@ export class FirstPersonController{
     // Stance switches change physical collision height immediately, but the
     // eye eases to its target to avoid a camera teleport at each keypress.
     this.eyeHeight+=(this.height-this.eyeHeight)*(1-Math.exp(-d*13));
-    this.leanTarget=this.leanSide;
+    // A locked Q/E preference survives sprinting, but the operator
+    // straightens while sprinting (instead of banking the horizon).
+    this.leanTarget=this.sprinting||this.vault?0:this.leanSide;
     this.lean+=(this.leanTarget-this.lean)*Math.min(1,d*12);
     this.applyCamera();
     return {room:this.world.zoneAt(this.x,this.z),crouched:this.isCrouched,prone:this.isProne,
@@ -164,7 +166,7 @@ export class FirstPersonController{
     const leanX=Math.cos(this.yaw),leanZ=-Math.sin(this.yaw);
     let shift=0;
     // Greater camera translation, but retain collision-checked eye clearance.
-    const wanted=this.lean*.50;
+    const wanted=this.lean*.38;
     for(let k=1;k<=6;k++){
       const candidate=wanted*k/6;
       const nx=this.x+leanX*candidate,nz=this.z+leanZ*candidate;
@@ -172,7 +174,8 @@ export class FirstPersonController{
       shift=candidate;
     }
     this.camera.position.set(this.x+leanX*shift,eye,this.z+leanZ*shift);
-    // ~17 degrees at full lean: visible tactical shoulder peek.
-    this.camera.rotation.set(this.pitch,this.yaw,-shift*.61,"YXZ");
+    // Around 10 degrees of camera roll at full lean. Retains a useful
+    // shoulder peek without the exaggerated 20-degree battlefield tilt.
+    this.camera.rotation.set(this.pitch,this.yaw,-shift*.48,"YXZ");
   }
 }
