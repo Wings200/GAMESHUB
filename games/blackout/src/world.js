@@ -330,8 +330,12 @@ export function buildRange(THREE,scene){
     switchyard.root.visible=next==="switchyard";
     colliders.splice(0,colliders.length,
       ...(next==="lab"?sandboxColliders:switchyard.colliders));
+    const labBoards=next==="lab"?
+      (this?.barricades?.openings||[]).flatMap(o=>
+        o.planks.map(p=>p.mesh)):[];
     shootables.splice(0,shootables.length,
-      ...(next==="lab"?sandboxShootables:switchyard.shootables));
+      ...(next==="lab"?[...sandboxShootables,...labBoards]:
+        switchyard.shootables));
     // Facility reference stays stable for gadgets and round controllers.
     Object.assign(facility,next==="lab"?originalFacility:switchyard.facilities);
     facility.sites=originalFacility.sites;
