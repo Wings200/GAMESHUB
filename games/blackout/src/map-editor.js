@@ -482,6 +482,7 @@ function undo(){
   if(!undoStack.length)return;
   redoStack.push(snapshot());
   map=normalizeMap(JSON.parse(undoStack.pop()));
+  selectedZoneId=null;
   if(!map.elements.some(e=>e.id===selectedId))selectedId=null;
   updateGlobalFields();changed();
   toast("UNDID LAST CHANGE");
@@ -490,6 +491,7 @@ function redo(){
   if(!redoStack.length)return;
   undoStack.push(snapshot());
   map=normalizeMap(JSON.parse(redoStack.pop()));
+  selectedZoneId=null;
   if(!map.elements.some(e=>e.id===selectedId))selectedId=null;
   updateGlobalFields();changed();
   toast("REDID CHANGE");
@@ -755,7 +757,7 @@ async function importMap(file){
     const json=JSON.parse(await file.text());
     const parsed=normalizeMap(json);
     if(!window.confirm("Replace the current editor map with '"+parsed.name+"'?\nYour previous draft remains in undo history."))return;
-    beginChange();map=parsed;selectedId=null;
+    beginChange();map=parsed;selectedId=null;selectedZoneId=null;
     updateGlobalFields();changed();toast("IMPORTED "+parsed.elements.length+" PIECES · "+parsed.sitePairs.length+" SITE PAIRS");
   }catch(error){toast("INVALID IMPORT: "+error.message,true)}
 }
@@ -1078,6 +1080,7 @@ numberChange("partRotation",value=>{
 });
 $("pairSelect").addEventListener("change",evt=>{
   map.activeSitePair=evt.target.value;
+  selectedId=null;selectedZoneId=null;
   updateGlobalFields();updateBombMarkers();saveDraft();
 });
 $("pairName").addEventListener("change",evt=>{
@@ -1087,42 +1090,99 @@ $("pairName").addEventListener("change",evt=>{
 for(const key of ["A","B"])
   $("editSite"+key).addEventListener("click",()=>{
     siteEditing=key;
+    selectedZoneId=sitePair()[key].plantZones[0]?.id||null;
+    selectedId=null;
     if(tool.startsWith("bomb-"))setTool("bomb-"+key);
     updateSiteFields();updateBombMarkers();
   });
 for(const [control,key,min,max] of [
   ["bombX","x",-300,300],["bombY","y",-12,90],["bombZ","z",-300,300],
-  ["plantRadius","plantRadius",1,22],["defuseRange","defuseRange",.5,12]
+  ["defuseRange","defuseRange",.5,12]
 ]){
   const input=$(control);
-  const update=()=>{
+  input.addEventListener("change",()=>{
     const value=Number(input.value);if(!Number.isFinite(value))return;
     beginChange();sitePair()[siteEditing][key]=cap(value,min,max);
     updateSiteFields();updateBombMarkers();saveDraft();
-  };
-  input.addEventListener(control.endsWith("Radius")||control==="defuseRange"?"change":"change",update);
-  if(control==="plantRadius"||control==="defuseRange")
-    input.addEventListener("input",()=>{
-      const text=control==="plantRadius"?"plantRadiusValue":"defuseRangeValue";
-      $(text).textContent=n(input.value).toFixed(2)+"m";
-    });
+  });
 }
+$("defuseRange").addEventListener("input",()=>{
+  $("defuseRangeValue").textContent=n($("defuseRange").value).toFixed(2)+"m";
+});
+$("zoneSelect").addEventListener("change",evt=>{
+  selectZone(evt.target.value);
+});
+for(const [control,key,min,max] of [
+  ["zoneX","x",-300,300],["zoneY","y",-12,90],["zoneZ","z",-300,300],
+  ["zoneWidth","width",.5,80],["zoneDepth","depth",.5,80],
+  ["zoneHeight","height",.5,12]
+]){
+  $(control).addEventListener("change",evt=>{
+    const zone=currentZone(),value=Number(evt.target.value);
+    if(!zone||!Number.isFinite(value))return;
+    const proposal={...zone,[key]:cap(value,min,max)};
+    const conflict=zonePlacementError(sitePair(),proposal,zone.id);
+    if(conflict){zoneError(conflict);updateSiteFields();return;}
+    beginChange();Object.assign(zone,proposal);
+    zoneError();changed({render:false});updateBombMarkers();
+  });
+}
+$("addZone").addEventListener("click",()=>{
+  const site=sitePair()[siteEditing];
+  if(site.plantZones.length>=32){zoneError("Maximum 32 boxes per bomb.");return;}
+  const step=Math.max(map.grid||.5,.5);
+  let zone=null;
+  // Allocate a new non-overlapping volume near this site's existing boxes.
+  // Never put it directly on top of the first zone.
+  for(let ring=1;ring<=24&&!zone;ring++){
+    for(const [ox,oz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1]]){
+      const trial=newPlantZone("zone-"+Date.now().toString(36)+"-"+
+        Math.random().toString(36).slice(2,6),
+        site.x+ox*ring*step*3,layer,site.z+oz*ring*step*3,
+        Math.max(1,4*step),Math.max(1,4*step),2.5);
+      if(!zonePlacementError(sitePair(),trial))zone=trial;
+      if(zone)break;
+    }
+  }
+  if(!zone){zoneError("No available space for another box; move or shrink existing zones.");return;}
+  beginChange();site.plantZones.push(zone);
+  selectedZoneId=zone.id;selectedId=null;zoneError();
+  changed({render:false});updateBombMarkers();selectZone(zone.id);
+  toast("NEW SEPARATE "+siteEditing+" BOX CREATED");
+});
+$("removeZone").addEventListener("click",()=>{
+  const site=sitePair()[siteEditing];
+  if(site.plantZones.length<=1){zoneError("Keep at least one box per bomb.");return;}
+  const zone=currentZone();if(!zone)return;
+  beginChange();
+  site.plantZones=site.plantZones.filter(z=>z.id!==zone.id);
+  selectedZoneId=site.plantZones[0].id;zoneError();
+  changed({render:false});updateBombMarkers();
+  toast("PLANT BOX DELETED · CTRL+Z TO UNDO");
+});
+$("placeZone").addEventListener("click",()=>{
+  selectedId=null;
+  setTool("zone-place");rebuildPreview();
+  toast("CLICK THE GRID TO POSITION SELECTED BOX "+siteEditing);
+});
 $("placeBomb").addEventListener("click",()=>{setTool("bomb-"+siteEditing);toast("CLICK GRID TO PLACE BOMB "+siteEditing)});
 $("addPair").addEventListener("click",()=>{
   if(map.sitePairs.length>=12){toast("MAXIMUM 12 BOMB PAIRS",true);return;}
   beginChange();
   const id="site-pair-"+Date.now().toString(36);
   map.sitePairs.push({id,name:"BOMB PAIR "+(map.sitePairs.length+1),
-    A:{x:-5,y:layer,z:-5,plantRadius:4,defuseRange:2.25},
-    B:{x:5,y:layer,z:5,plantRadius:4,defuseRange:2.25}});
-  map.activeSitePair=id;changed({render:false});updateGlobalFields();updateBombMarkers();
+    A:{x:-5,y:layer,z:-5,plantRadius:4,defuseRange:2.25,
+      plantZones:[newPlantZone(id+"-a1",-5,layer,-5,6,6,2.5)]},
+    B:{x:5,y:layer,z:5,plantRadius:4,defuseRange:2.25,
+      plantZones:[newPlantZone(id+"-b1",5,layer,5,6,6,2.5)]}});
+  map.activeSitePair=id;selectedZoneId=null;changed({render:false});updateGlobalFields();updateBombMarkers();
   toast("NEW SITE PAIR CREATED");
 });
 $("removePair").addEventListener("click",()=>{
   if(map.sitePairs.length<=1)return;
   if(!window.confirm("Delete this bomb site pair?"))return;
   beginChange();map.sitePairs=map.sitePairs.filter(p=>p.id!==map.activeSitePair);
-  map.activeSitePair=map.sitePairs[0].id;changed({render:false});
+  map.activeSitePair=map.sitePairs[0].id;selectedZoneId=null;changed({render:false});
   updateGlobalFields();updateBombMarkers();
 });
 $("validateMap").addEventListener("click",()=>updateValidation(true));
@@ -1134,7 +1194,7 @@ $("importFile").addEventListener("change",async evt=>{
 $("newMap").addEventListener("click",()=>$("confirmNew").showModal());
 $("cancelNew").addEventListener("click",()=>$("confirmNew").close());
 $("confirmNewButton").addEventListener("click",()=>{
-  beginChange();map=createBlankMap();selectedId=null;setTool("select");
+  beginChange();map=createBlankMap();selectedId=null;selectedZoneId=null;setTool("select");
   updateGlobalFields();changed();$("confirmNew").close();toast("BLANK MAP CREATED");
 });
 window.addEventListener("keydown",e=>{
