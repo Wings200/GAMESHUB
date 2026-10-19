@@ -195,6 +195,9 @@ export function alignStoryWalls(map,grid=1){
     if(part.type==="floor"||part.type==="ceiling"){
       for(const axis of ["x","z"])
         part.size[axis]=Math.max(step,snapNumber(part.size[axis],step));
+      // V1 generated 28cm floor slabs in some places and 25cm in others.
+      // Normalize only these legacy default slabs in the explicit repair.
+      if(Math.abs(part.size.y-.28)<.011)part.size.y=.25;
     }else{
       part.size.x=Math.max(step,snapNumber(part.size.x,step));
     }
