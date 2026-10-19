@@ -19,6 +19,22 @@ export function createReconDrone(T,scene,world,camera){
   let x=0,z=-15.8,yaw=0,pitch=0,active=false;
   let lastPing=0,jammed=false,pingCount=0;
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const scanRay=new T.Raycaster();
+  function contactVisible(bot){
+    const start=new T.Vector3(x,.28,z),end=new T.Vector3(bot.x,1.5,bot.z);
+    const direction=end.sub(start),distance=direction.length();
+    if(distance>11||distance<.03)return false;
+    scanRay.set(start,direction.normalize());
+    scanRay.near=.03;scanRay.far=Math.max(.01,distance-.38);
+    const solid=world.shootables.filter(mesh=>{
+      const u=mesh.userData||{};
+      return mesh.visible!==false&&(u.kind==="solid"||
+        u.kind==="panel"&&!u.panel.destroyed||
+        u.kind==="barricade"&&!u.plank.broken||
+        u.kind==="shield"&&u.shield.group.parent);
+    });
+    return !scanRay.intersectObjects(solid,false).length;
+  }
   const canMove=(nx,nz)=>{
     if(nx<-28||nx>28||nz<-64||nz>24)return false;
     return !world.colliders.some(c=>c.maxY>.08&&c.minY<.30&&
@@ -58,7 +74,7 @@ export function createReconDrone(T,scene,world,camera){
     if(jammed)return {ok:false,message:"SIGNAL JAMMED · MOVE AWAY FROM THE JAMMER"};
     if(now-lastPing<1000)return {ok:false,message:"RECON PING RECHARGING"};
     lastPing=now;
-    const contacts=bots.filter(bot=>bot.alive&&Math.hypot(bot.x-x,bot.z-z)<11);
+    const contacts=bots.filter(bot=>bot.alive&&contactVisible(bot));
     pingCount+=contacts.length;
     return{ok:true,message:contacts.length?
       "DRONE SCANNED "+contacts.length+" HOSTILE"+(contacts.length===1?"":"S"):
