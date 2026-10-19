@@ -658,7 +658,7 @@ ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.he
 BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}
 ALLY ROUTES ${objectiveRound.allies.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO ALLIES"}
 SQUAD INTEL ${Object.keys(objectiveRound.teamIntel||{}).map(team=>team+":"+Math.max(0,Math.round(((objectiveRound.teamIntel[team]?.until||0)-clock())/1000))+"s").join(" / ")}
-AI DEFENSE ${[...objectiveRound.allies,...objectiveRound.bots].filter(b=>b.alive&&!((b.team==="ally"?role:"opposite")==="attacker")).map(b=>b.id+":"+b.operatorSpec?.name+":"+(b.setupTask?.placed?"SET":"WAIT")+(b.extraSetup?.placed?"+REINFORCED":"")).join(" / ")}
+AI DEFENSE ${[...objectiveRound.allies,...objectiveRound.bots].filter(b=>b.alive&&((b.team==="ally")===(role==="defender"))).map(b=>b.id+":"+b.operatorSpec?.name+":"+(b.setupTask?.placed?"SET":"WAIT")+(b.extraSetup?.placed?"+REINFORCED":"")).join(" / ")}
 AI GADGETS ${gadgets.electronics.length} JAMMERS / ${gadgets.sensors.length} SENSORS / ${gadgets.gasFields.filter(g=>g.group.visible).length} GAS
 GADGET ACTION ${gadgets.currentAction?.kind||"IDLE"}
 FRIENDLIES ${objectiveRound.allies.filter(b=>b.alive).length}/4
