@@ -132,7 +132,11 @@ export function normalizeMap(raw){
       return {...pos,plantRadius:radius,
         defuseRange:num(source.defuseRange,2.25,.5,12),plantZones};
     };
-    return {id,name:label(pair.name,75)||"BOMB PAIR "+(i+1),A:site("A"),B:site("B")};
+    const A=site("A"),B=site("B");
+    const allIds=[...A.plantZones,...B.plantZones].map(z=>z.id);
+    if(new Set(allIds).size!==allIds.length)
+      throw Error("Plant zone IDs must be unique across A and B in "+id);
+    return {id,name:label(pair.name,75)||"BOMB PAIR "+(i+1),A,B};
   });
   const active=sitePairs.some(p=>p.id===raw.activeSitePair)?
     raw.activeSitePair:sitePairs[0].id;
