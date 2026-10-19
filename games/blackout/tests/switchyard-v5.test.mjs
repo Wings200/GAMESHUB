@@ -37,7 +37,10 @@ function load(file,deps,expr){
  return new Function("document",...Object.keys(deps),src+";return "+expr+";")(
    document,...Object.values(deps));
 }
-const mapModule=load("switchyard.js",{},
+const ballistics=load("material-ballistics.js",{},
+  "{materialStats,accumulatedBreach}");
+const tacticalPanels=load("tactical-panels.js",ballistics,"createTacticalPanel");
+const mapModule=load("switchyard.js",{createTacticalPanel:tacticalPanels},
   "{createSwitchyard,switchyardFloorAt,SWITCHYARD_SITE_PAIRS}");
 const AI=load("bot-ai.js",{},"{findTacticalPath,advanceTacticalBot}");
 const Player=load("player.js",{},"FirstPersonController");
