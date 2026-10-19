@@ -144,12 +144,14 @@ export class Barricades {
     for(const o of this.openings){
       if(o.kind!=="window"||this.hasBarricade(o))continue;
       if(Math.abs((player.y||0)-(o.y||0))>1.1)continue;
-      if(Math.abs(player.z-o.z)>o.width*.5-.34)continue;
-      if(Math.abs(player.x-o.x)>1.35)continue;
-      if(Math.abs(player.x-o.x)<.035)continue;
-      const nx=o.x+(player.x<o.x?1.05:-1.05);
-      if(player.blocked(nx,o.z,o.y||0,player.height,player.radius))continue;
-      if(!player.startVault?.(nx,o.z))continue;
+      const along=o.axis==="z"?player.x-o.x:player.z-o.z;
+      const outside=o.axis==="z"?player.z-o.z:player.x-o.x;
+      if(Math.abs(along)>o.width/2-.34)continue;
+      if(Math.abs(outside)>1.35||Math.abs(outside)<.035)continue;
+      const nx=o.axis==="z"?o.x:o.x+(outside<0?1.05:-1.05);
+      const nz=o.axis==="z"?o.z+(outside<0?1.05:-1.05):o.z;
+      if(player.blocked(nx,nz,o.y||0,player.height,player.radius))continue;
+      if(!player.startVault?.(nx,nz))continue;
       this.vaultCooldown=now+1150;return true;
     }
     return false;
