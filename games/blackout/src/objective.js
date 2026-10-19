@@ -321,11 +321,11 @@ export class ObjectiveDrill{
         this.hold=0;this.lastInteractionTick=-1;
         if(this.role==="attacker"){
           this.chooseSite(this.holdSiteId||this.siteId);
-          this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+800;
+          this.phase="planted";this.bombEnd=now+35000;this.nextBeep=now+800;
           this.plantPosition={x:player.x,z:player.z};
-          this.defuser.show(player.x,player.z,32,now,this.siteId);
+          this.defuser.show(player.x,player.z,35,now,this.siteId);
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
-          notify("DEFUSER PLANTED AT SITE "+this.siteId+" · DEFEND FOR 32 SECONDS","plant");
+          notify("DEFUSER PLANTED AT SITE "+this.siteId+" · DEFEND FOR 35 SECONDS","plant");
         }else{
           this.defuser.hide();notify("DEFUSER DISABLED","defuse");
           this.end(true,"DEFUSER DISABLED",notify);return;
