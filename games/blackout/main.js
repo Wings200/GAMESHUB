@@ -448,7 +448,7 @@ function fireOnceSafe(now){
   // and the bullet's collision behavior share a world-space position.
   const hits=raycaster.intersectObjects(world.shootables.filter(o=>{
     const info=o.userData||{};
-    if(info.kind==="panel")return !info.panel.destroyed;
+    if(info.kind==="panel")return !info.panel.destroyed&&o.visible!==false;
     if(info.kind==="target")return info.target.alive;
     if(info.kind==="bot")return info.bot.alive&&info.bot.team!=="ally";
     if(info.kind==="barricade")return !info.plank.broken;
