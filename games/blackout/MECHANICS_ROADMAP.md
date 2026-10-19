@@ -11,7 +11,7 @@
 
 ## Development milestones
 1. **Sandbox foundation (current):** remove enclosed map/roof; separate stations, full-room A/B zones, target/cover tests, selectable roles/spawns, safe collision and timed vault.
-2. **Movement + weapons + destruction:** stance transitions, hand/optic rigs, chamber/reload and recoil rules, penetration by material, incremental destruction, persistent openings.
+2. **Movement + weapons + destruction (in progress):** Stage 2A introduces shared colliding throwable physics, Smoke's thrown/armed/remote-trigger gas, destructible canisters, and tactical versus empty magazine/chamber rules. Next: material penetration, incremental breach geometry, detailed hand reloads and weapon recoil tuning.
 3. **Complete operator gadgets:** physical place/use/pickup/counter states, animations, cameras/drones, explosions, denial and detection systems.
 4. **Competitive round and bots:** accurate two-site rules, 45s prep, shared intel, purpose-driven 5v5 attacks and retakes, tactical difficulty.
 5. **Presentation + performance:** reliable counters/HUD, high-quality original visuals, spatial acoustics, automated + browser QA.
@@ -55,7 +55,7 @@
 | G04 | Recoil recovery and attachments | PROTOTYPE |  |
 | G05 | True hipfire vs ADS accuracy | PROTOTYPE |  |
 | G07 | Head, body and limb damage | PROTOTYPE |  |
-| G08 | Magazine and chamber logic | PROTOTYPE |  |
+| G08 | Magazine and chamber logic | PROTOTYPE | Stage 2A: 30+1/15+1 chamber; tactical reload retains +1; empty reload 440ms longer; reserve preserved. Animation polish still needed |
 | G09 | Reload and inspect animations | PROTOTYPE |  |
 | G10 | Different operator weapon loadouts | PROTOTYPE |  |
 | G11 | Proper muzzle flash and casings | PROTOTYPE |  |
@@ -96,7 +96,7 @@
 | ID | Feature | Status | Note |
 |---|---|---|---|
 | E01 | Mute jammers | PROTOTYPE |  |
-| E02 | Smoke gas canisters | PROTOTYPE |  |
+| E02 | Smoke gas canisters | PROTOTYPE | Stage 2A: G physically throws/bounces, arms on rest, B remotely detonates, shootable before use; 10s real gas damage; live-browser polish pending |
 | E03 | Castle armor panels | PROTOTYPE |  |
 | E04 | Pulse heartbeat scanner | PROTOTYPE |  |
 | E05 | Doc stim pistol | PROTOTYPE |  |
@@ -217,7 +217,7 @@
 
 | ID | Feature | Status | Note |
 |---|---|---|---|
-| Q01 | Automated mechanic regression tests | PROTOTYPE | repeatable sandbox tests added: node --test games/blackout/tests/sandbox.test.mjs |
+| Q01 | Automated mechanic regression tests | PROTOTYPE | Stage 2 smoke-stage2.test.mjs added alongside sandbox.test.mjs; source-level simulations; not yet live-browser verified |
 | Q02 | AI scenario testing | PROTOTYPE |  |
 | Q03 | Collision diagnostics | PENDING |  |
 | Q04 | Frame-time and memory profiler | PENDING |  |
@@ -235,3 +235,11 @@ From the repository root run `node --test games/blackout/tests/sandbox.test.mjs`
 
 ### Don't regress
 The open floor must have **no enclosing structural walls and no roof**. Preserve independent, actually collidable test stations; real world interaction for A/B planting; distinctive soft/reinforced test panels; collision-aware individual barricade planks; player capsule and aiming; 45s drone prep; 5v5 offline bot squads. Existing game authentication and the REDLINE game must not be modified.
+
+## Stage 2A — Smoke throw / remote activation and magazine mechanics
+
+- **Smoke primary ability:** Select Smoke on defense. Tap **G** to begin a visible ~0.43s throw animation; a canister then flies, hits real colliders, bounces, and arms when resting (green LED). The gas is **inactive until B is pressed**, at which point all landed armed canisters remotely emit toxic gas for ~10 seconds. You can pre-place multiple canisters; shot canisters are destroyed without gas. **X** remains the separate proximity-sensor control. Charges reset each round. Enemy AI Smoke gas remains automatic and independent.
+- **Shared throw physics:** `src/throw-physics.js` uses deterministic substeps, gravity, solid collider impact and damping. It's designed for future frag, stun and EMP throwables, but those follow-up mechanics are **not yet complete**.
+- **Weapon magazine model:** Rifle loads 30+1, pistol 15+1. Tactical reload retains a chambered round while replenishing from reserve. Empty reload adds a 440ms animation/action delay and loads a 30/15-round magazine without +1 until another tactical reload. This is a first pass; full eject-mag and charging-handle animations remain incomplete.
+- **Source regression tests:** `node --test games/blackout/tests/*.test.mjs`. `tests/smoke-stage2.test.mjs` covers throw/landing, inactive-before-trigger, remote damage/expiry, shooting canisters, physics collisions, round reset and magazine states.
+- **Unfinished:** detailed hand model / lever throws, true obscuring volumetric smoke, authentic environmental occlusion and destruction materials, multiple gun-specific attachment animations, actual live-browser smoke test, real multiplayer synchronization.
