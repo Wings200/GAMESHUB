@@ -16,7 +16,7 @@ export function createBombStations(T,scene,world,sites){
     const root=new T.Group();
     const x=site.x+(site.id==="A"?1.52:-1.36);
     const z=site.z+(site.id==="A"?1.0:-1.0);
-    root.position.set(x,0,z);scene.add(root);
+    root.position.set(x,site.y||0,z);scene.add(root);
     // Reinforced containment trolley with canisters, numbered security seals,
     // orange hazard shield, status display and revolving warning beacon.
     mesh(root,new T.CylinderGeometry(.72,.77,.14,16),steel,0,.10,0);
@@ -59,7 +59,7 @@ export function createBombStations(T,scene,world,sites){
     marker.rotation.x=-Math.PI/2;
     // One physical body collider, not ten overlapping tiny geometry collisions.
     const c={minX:x-.57,maxX:x+.57,minZ:z-.39,maxZ:z+.39,
-      minY:.17,maxY:1.08,tag:"bomb-unit"};
+      minY:(site.y||0)+.17,maxY:(site.y||0)+1.08,tag:"bomb-unit"};
     world.colliders.push(c);
     face.userData.kind="solid";
     // The complete apparatus has bullet blockers; its root isn't used in shots.
@@ -70,8 +70,29 @@ export function createBombStations(T,scene,world,sites){
     }
     items[site.id]={site,x,z,root,halo,alarm,light,label,marker,collider:c};
   }
+  function relocate(){
+    // Existing station meshes follow the selected map/site pair while
+    // preserving a single physical object and its collision body.
+    for(const item of Object.values(items)){
+      const site=item.site;
+      item.x=site.x+(site.id==="A"?1.52:-1.36);
+      item.z=site.z+(site.id==="A"?1.0:-1.0);
+      const y=site.y||0;
+      item.root.position.set(item.x,y,item.z);
+      Object.assign(item.collider,{
+        minX:item.x-.57,maxX:item.x+.57,
+        minZ:item.z-.39,maxZ:item.z+.39,
+        minY:y+.17,maxY:y+1.08
+      });
+      if(!world.colliders.includes(item.collider))world.colliders.push(item.collider);
+      for(const part of item.root.children){
+        if(part.isMesh&&part.userData.kind==="solid"&&!world.shootables.includes(part))
+          world.shootables.push(part);
+      }
+    }
+  }
   return {
-    items,
+    items,relocate,
     update(now,activeId){
       for(const item of Object.values(items)){
         const selected=item.site.id===activeId;
