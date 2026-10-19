@@ -45,6 +45,7 @@ const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
 const barricades=new Barricades(THREE,world,scene,world.facility.openings);
+world.barricades=barricades;
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
