@@ -67,8 +67,12 @@ export function createReconDrone(T,scene,world,camera){
   function shock(now,gadgets){
     if(!active)return {ok:false,message:"DRONE UNAVAILABLE"};
     if(jammed)return {ok:false,message:"JAMMER BLOCKS SHOCK DRONE"};
-    return gadgets?.shockNear?.(x,z,3.5)||
+    if((gadgets?.specialCount??0)<=0)
+      return {ok:false,message:"SHOCK DRONE · NO ELECTRIC DARTS REMAIN"};
+    const result=gadgets?.shockNear?.(x,z,3.5,now)||
       {ok:false,message:"NO ELECTRONIC GADGET WITHIN 3.5M"};
+    if(result.ok)gadgets.specialCount--;
+    return result;
   }
   function end(){
     active=false;body.visible=false;
