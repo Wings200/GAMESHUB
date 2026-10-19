@@ -4,9 +4,9 @@ const make=(id,name,side,speed,armor,health,walk,sprint,specialty,passive,descri
   specialty,passive,description,sigil,accent,kit:Object.freeze(kit)
 });
 export const OPERATORS=Object.freeze({
-  orion:make("orion","ORION","attacker",1,3,125,2.85,4.65,
+  orion:make("orion","SLEDGE","attacker",1,3,125,2.85,4.65,
     "FRONTLINE","EXTRA CHARGES","Heavy breach lead with an additional wall charge.","◆","#f3bf75",{breach:3,scan:1}),
-  kestrel:make("kestrel","KESTREL","attacker",2,2,110,3.35,5.5,
+  kestrel:make("kestrel","THATCHER","attacker",2,2,110,3.35,5.5,
     "OBJECTIVE","FAST PLANT","Plants the defuser 20% faster than other attackers.","⌁","#7de5de",{breach:2,scan:2}),
   phantom:make("phantom","PHANTOM","attacker",3,1,100,3.90,6.30,
     "RECON","DEEP SCAN","Extra recon pulse for locating opposition.","◈","#b29cff",{breach:1,scan:4}),
