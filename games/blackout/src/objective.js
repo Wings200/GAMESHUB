@@ -190,7 +190,14 @@ export class ObjectiveDrill{
   updateBots(now,dt,player,notify){
     for(const bot of this.bots){
       if(!bot.alive)continue;
-      const visible=this.canBotSeePlayer(bot,player);
+      // Combat sight checks use a short per-bot cadence instead of casting
+      // through every wall 60 times/second for each enemy. Shooting still
+      // remains responsive while avoiding browser main-thread stalls.
+      if(now>=bot.nextSightAt){
+        bot.sightCache=this.canBotSeePlayer(bot,player);
+        bot.nextSightAt=now+110+(bot.id%3)*25;
+      }
+      const visible=bot.sightCache;
       const playerDist=Math.hypot(player.x-bot.x,player.z-bot.z);
       const devicePosition=this.phase==="planted"&&this.plantPosition||this.site;
       const targetDist=Math.hypot(devicePosition.x-bot.x,devicePosition.z-bot.z);
