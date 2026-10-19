@@ -126,7 +126,13 @@ function maybeWorkDevice(round,bot,now,dt,notify){
   if(bot.team==="ally"&&round.role==="attacker"&&round.playerAlive)return false;
   if(!bot.carrier)return false;
   const site=round.siteAt(bot);
-  if(!site||!canStand(round,bot,.19)){bot.working=0;return false;}
+  // Don't plant on the threshold the moment a boot barely enters the
+  // painted site rectangle. Reach an actual secure interior planting
+  // position first, several metres beyond the outside doorway.
+  const safePlant=desiredPosition(round,bot,round.playerRef);
+  if(!site||distance(bot,safePlant)>1.75||!canStand(round,bot,.19)){
+    bot.working=0;return false;
+  }
   const opponents=bot.team==="ally"?round.bots:round.allies;
   const nearbyOpponent=opponents.some(enemy=>enemy.alive&&distance(enemy,bot)<3.5);
   const playerThreat=bot.team==="enemy"&&round.role==="defender"&&
