@@ -25,6 +25,13 @@
     <strong id="phaseAnnounceTitle">PREPARATION PHASE</strong>
     <span id="phaseAnnounceHelp">FORTIFY THE OBJECTIVE</span>
   </div>
+  <div id="runoutAlert" class="bo-runout-alert hidden" aria-live="polite">
+    <strong id="runoutAlertTitle">DEFENDER OUTSIDE</strong>
+    <span id="runoutAlertInfo">POSITION REVEALED TO ATTACKERS</span>
+  </div>
+  <div id="spectatorAlert" class="bo-spectator-alert hidden" aria-live="polite">
+    YOU ARE ELIMINATED · SPECTATING YOUR SQUAD
+  </div>
   <div id="bombCompass" class="bo-bomb-compass" aria-live="off">
     <div class="bo-bomb-arrow" id="bombArrow">▲</div>
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
@@ -32,7 +39,7 @@
   <div class="hud-left">
     <div class="overline"><span class="live-dot"></span> BLACKOUT / TACTICAL OPERATIONS <span class="dim">· V0.9.3</span></div>
     <h2 id="zoneLabel">SERVER ROOM</h2>
-    <p>TACTICAL ROUND · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
+    <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
   <div class="hud-right lab-right">
     <div class="mission">TACTICAL OBJECTIVE <strong id="objective">LOCATE BOMB A</strong><small id="roundScore" class="round-score">ROUND 1 · ATK 0 : 0 DEF</small></div>
@@ -83,7 +90,7 @@
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">OPERATOR SELECTION <span>—</span> PLAN · PREPARE · EXECUTE</div>
     <div class="rule"></div>
-    <p class="description">Choose an operator, select your bomb site and build your loadout before deployment. Defenders fortify during preparation; attackers enter to locate the physical bomb units and plant a defuser. <strong>Offline tactical PvE prototype</strong> — not multiplayer.</p>
+    <p class="description">Choose an operator, select your bomb site and build your loadout before deployment. Defenders fortify during preparation; attackers enter to locate the physical bomb units and plant a defuser. <strong>Solo 5v5 AI tactical test (four friendly bots versus five enemy bots); not online multiplayer</strong> — not multiplayer.</p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
