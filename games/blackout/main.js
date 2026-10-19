@@ -437,14 +437,16 @@ function drawTacticalHud(now){
     Array(5).fill('<span class="bo-player-pip hostile" title="Enemy undisclosed">?</span>').join("");
   if(role==="attacker"){friendlySlots.innerHTML=friendly;enemySlots.innerHTML=enemy;}
   else{enemySlots.innerHTML=friendly;friendlySlots.innerHTML=enemy;}
-  const runout=round.runoutPlayer||round.runoutTarget&&
-    round.runoutTarget.alive&&now<round.runoutTarget.runoutUntil;
+  const runout=round.runoutPlayer||
+    round.runoutAlly?.alive&&now<round.runoutAlly.runoutUntil||
+    round.runoutTarget?.alive&&now<round.runoutTarget.runoutUntil;
   runoutAlert.classList.toggle("hidden",!runout);
   if(runout){
-    runoutAlertTitle.textContent=role==="defender"?
-      "YOU ARE DETECTED OUTSIDE":"DEFENDER DETECTED OUTSIDE";
+    runoutAlertTitle.textContent=round.runoutPlayer?
+      "YOU ARE DETECTED OUTSIDE":round.runoutAlly?
+      "SQUADMATE SPOTTED OUTSIDE":"DEFENDER DETECTED OUTSIDE";
     runoutAlertInfo.textContent=role==="defender"?
-      "ATTACKERS CAN TRACK YOUR LAST-KNOWN POSITION":
+      "ATTACKERS CAN TRACK THE DEFENDER":
       "RUNOUT PING · "+Math.round(Math.hypot(round.runoutTarget.x-player.x,
         round.runoutTarget.z-player.z))+"M";
   }
