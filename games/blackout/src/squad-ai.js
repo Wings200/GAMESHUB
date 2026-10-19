@@ -163,98 +163,177 @@ function fireAt(round,bot,target,now,notify){
     if(killed&&bot.team==="ally")notify("SQUADMATE ELIMINATED HOSTILE · "+(round.bots.filter(x=>x.alive).length)+" REMAIN");
   }
 }
+// Tactical squad brain. Each bot can share *last known* enemy positions,
+// but only unobstructed line of sight authorizes firing.
 export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
   round.playerRef=player;
   round.playerAlive=player.health>0;
-  // If an enemy defuser carrier is eliminated, the surviving attackers
-  // recover the objective. Otherwise a single early kill would make the
-  // entire attacking squad unable to plant for the rest of the round.
+  if(!round.teamIntel)round.teamIntel={ally:null,enemy:null};
+  // Dropped carrier recovery is meaningful for the defending player:
+  // another living attacker actually takes over the defuser role.
   if(round.role==="defender"&&round.phase==="guard"&&
-     !round.bots.some(bot=>bot.alive&&bot.carrier)){
-    const replacement=round.bots.find(bot=>bot.alive);
-    if(replacement){replacement.carrier=true;notify("ATTACKERS RECOVERED THE DEFUSER");}
+     !round.bots.some(b=>b.alive&&b.carrier)){
+    const successor=round.bots.find(b=>b.alive);
+    if(successor){successor.carrier=true;notify("ATTACKERS RECOVERED THE DEFUSER");}
   }
   const combatants=[...round.bots,...round.allies];
   for(const bot of combatants){
     if(!bot.alive)continue;
-    const opponents=bot.team==="ally"?round.bots:round.allies;
-    const possible=live(opponents);
+    const isAttack=isAttacking(round,bot);
+    bot.allowBreach=isAttack;
+    const enemies=bot.team==="ally"?round.bots:round.allies;
+    const targets=live(enemies);
     if(bot.team==="enemy"&&round.playerAlive)
-      possible.push({isPlayer:true,x:player.x,z:player.z,camera:player.camera,health:player.health});
+      targets.push({isPlayer:true,x:player.x,z:player.z,
+        health:player.health});
     if(now>=(bot.nextSightAt||0)){
-      bot.sightCache=false;bot.visibleTarget=null;
-      possible.sort((a,b)=>distance(bot,a)-distance(bot,b));
-      for(const candidate of possible.slice(0,4)){
-        if(visible(round,bot,candidate)){
-          bot.sightCache=true;bot.visibleTarget=candidate;
-          bot.lastSeen={x:candidate.x,z:candidate.z,time:now};
+      bot.visibleTarget=null;bot.sightCache=false;
+      targets.sort((a,b)=>distance(bot,a)-distance(bot,b));
+      // Do not waste frame time raycasting across the whole compound.
+      for(const target of targets){
+        if(distance(bot,target)>26)break;
+        if(visible(round,bot,target)){
+          bot.visibleTarget=target;bot.sightCache=true;
+          bot.lastSeen={x:target.x,z:target.z,time:now};
+          round.teamIntel[bot.team]={x:target.x,z:target.z,
+            until:now+3900,siteId:round.siteAt(target)?.id||null};
           break;
         }
       }
-      bot.nextSightAt=now+150+(bot.id%5)*31;
+      bot.nextSightAt=now+155+(bot.id%5)*34;
     }
     let target=bot.visibleTarget;
     if(target?.isPlayer&&!round.playerAlive)target=null;
-    if(target&&!target.isPlayer&&!target.alive)target=null;
+    else if(target&&!target.isPlayer&&!target.alive)target=null;
     const dst=target?distance(bot,target):Infinity;
-    let goal=null;
-    const isAttacker=bot.team==="ally"?
-      round.role==="attacker":round.role==="defender";
+    const intel=round.teamIntel[bot.team];
+    const sharedIntel=intel&&intel.until>now?intel:null;
+    const home=assignedSite(round,bot);
+    const anchor=bot.anchor||home;
+    let goal=null,working=false;
+    const defusing=round.phase==="planted"&&
+      !isAttack&&bot===designatedDefuser(round);
+    const planting=isAttack&&bot.carrier&&round.phase!=="planted";
+    const dangerous=target&&dst<5.2;
+    const pinned=(bot.suppressedUntil||0)>now||
+      bot.health<bot.healthMax*.43;
     if(target){
       bot.state="engage";
-      // Attackers contest angles instead of sprinting straight to the bomb.
-      // Defenders rotate behind nearby hard cover when pressured.
-      if(dst<15&&(!bot.coverGoal||now>bot.coverUntil)){
+      bot.group.rotation.y=Math.atan2(bot.x-target.x,bot.z-target.z);
+      const shouldCover=!defusing&&!planting&&(dangerous||pinned);
+      if(shouldCover&&(!bot.coverGoal||now>(bot.coverUntil||0))){
         bot.coverGoal=chooseCover(round,bot,target);
-        bot.coverUntil=now+3500+bot.id*110;
+        bot.coverUntil=now+3100+(bot.id%4)*160;
       }
-      if(isAttacker&&bot.carrier&&round.phase!=="planted"&&dst>8){
-        // Objective carrier approaches a safe planting room instead of
-        // being endlessly distracted by targets a corridor away.
-        goal=desiredPosition(round,bot,player);
-        bot.state="plant-approach";
-      }else if(dst>13)goal={x:target.x,z:target.z};
-      else if(bot.coverGoal&&distance(bot,bot.coverGoal)>.9)goal=bot.coverGoal;
-      else if(dst>8.5&&isAttacker)goal={x:target.x,z:target.z};
+      if(defusing){
+        // Disarm specialists head for the planted device while their
+        // teammates engage. If a hostile is standing on it, clear first.
+        goal=dst<4.1?null:round.plantPosition;
+        bot.state=dst<4.1?"clear-defuser":"retake";
+      }else if(planting){
+        // Defuser carrier advances behind the entry pair, contesting an
+        // immediate threat without aimlessly chasing every spotted enemy.
+        if(dst<=5.4)goal=null;
+        else goal=desiredPosition(round,bot,player);
+        bot.state=dst<=5.4?"cover-carrier":"plant-approach";
+      }else if(bot.coverGoal&&distance(bot,bot.coverGoal)>.78)
+        {goal=bot.coverGoal;bot.state="seek-cover";}
+      else if(isAttack&&dst>10.5){
+        // Flank towards a side of the threat rather than rush its muzzle.
+        const side=bot.id%2?1:-1;
+        goal={x:target.x+side*2.3,z:target.z+(bot.id%3-1)*1.5};
+        bot.state="flank";
+      }else if(!isAttack&&distance(anchor,bot)>7.5){
+        goal=anchor;bot.state="fallback";
+      }else{
+        goal=null;bot.state="hold-angle";
+      }
     }else{
       bot.coverGoal=null;
-      const site=assignedSite(round,bot);
       goal=desiredPosition(round,bot,player);
-      if(bot.hearing&&bot.hearingUntil>now){
-        // Sound investigation never permanently replaces the round objective.
-        goal=bot.hearing;bot.state="investigate";
-      }else bot.state=isAttacker?"clear-site":"hold-site";
-      if(distance(bot,goal)<1.15)goal=null;
-      if(!isAttacker&&bot.anchor&&distance(bot,bot.anchor)<1.2)goal=null;
+      bot.state=isAttack?"clear-site":"anchor";
+      if(sharedIntel&&!defusing&&!planting){
+        const withinHome=distance(anchor,sharedIntel)<8.8;
+        if(isAttack&&distance(bot,sharedIntel)<17){
+          const side=bot.id%2?1:-1;
+          goal={x:sharedIntel.x+side*1.5,z:sharedIntel.z+(bot.id%3-1)*1.6};
+          bot.state="team-flank";
+        }else if(!isAttack&&withinHome&&distance(bot,sharedIntel)<10){
+          goal={x:sharedIntel.x+(bot.id%2?1:-1)*2.0,
+            z:sharedIntel.z+(bot.id%3-1)*1.2};
+          bot.state="site-response";
+        }
+      }else if(bot.hearing&&bot.hearingUntil>now&&!planting&&!defusing){
+        if(isAttack&&distance(bot,bot.hearing)<12||
+           !isAttack&&distance(anchor,bot.hearing)<7){
+          goal=bot.hearing;bot.state="investigate";
+        }
+      }
+      if(goal&&distance(bot,goal)<1.0)goal=null;
+      if(!isAttack&&round.phase!=="planted"&&distance(bot,anchor)>9){
+        goal=anchor;bot.state="return-to-site";
+      }
     }
-    const moved=goal?advanceTacticalBot(bot,goal,round.world,dt,now):0;
+    // Keep the designated plant/disarm operator stationary during its
+    // actual interaction. Teammates may keep shooting and covering.
+    if(planting||defusing){
+      const activity=maybeWorkDevice(round,bot,now,dt,notify);
+      if(activity&&bot.working>0){
+        goal=null;working=true;
+        bot.state=planting?"planting":"disarming";
+      }
+    }
+    if(["won","lost"].includes(round.phase))return;
+    if(!working&&goal&&bot.recoveryGoal&&now<bot.recoveryUntil){
+      goal=bot.recoveryGoal;bot.state="unstuck";
+    }
+    const moved=!working&&goal?
+      advanceTacticalBot(bot,goal,round.world,dt,now):0;
     bot.movedLast=moved;
-    if(moved>.35){
-      bot.moved+=moved*dt;
-      if(bot.moved>2.45){bot.moved=0;notify(null,bot.team==="ally"?"ally-step":"enemy-step",bot);}
-    }
-    // Attackers physically break blocking wooden door planks, then proceed.
-    const doors=round.world.barricades;
-    const blockedDoor=bot.blockingBarricade;
-    if(isAttacker&&blockedDoor&&doors?.hasBarricade(blockedDoor)&&now>=bot.nextShot){
-      const plank=blockedDoor.planks.find(p=>!p.broken&&p.collider.maxY>.42&&p.collider.minY<1.6)||
-        blockedDoor.planks.find(p=>!p.broken);
+    if(moved>.34){
+      bot.moved=(bot.moved||0)+moved*dt;
+      bot.stuckFor=0;
+      if(bot.moved>2.55){
+        bot.moved=0;notify(null,bot.team==="ally"?"ally-step":"enemy-step",bot);
+      }
+    }else if(goal&&!working&&!bot.blockingBarricade&&distance(bot,goal)>1.3){
+      // Release bots from tight corners/blocked destinations instead of
+      // staring at the same stuck path forever.
+      bot.stuckFor=(bot.stuckFor||0)+dt;
+      if(bot.stuckFor>2.8){
+        bot.stuckFor=0;bot.path=[];bot.lastGoal=null;
+        bot.repathAt=now+120;
+        const sign=(bot.id+Math.floor(now/2700))%2?1:-1;
+        const dx=goal.x-bot.x,dz=goal.z-bot.z,len=Math.hypot(dx,dz)||1;
+        const retreat={x:bot.x-sign*dz/len*1.5,
+          z:bot.z+sign*dx/len*1.5};
+        if(canStand(round,retreat)){
+          bot.recoveryGoal=retreat;bot.recoveryUntil=now+1700;
+        }else{
+          bot.recoveryGoal=null;bot.recoveryUntil=0;
+        }
+      }
+    }else bot.stuckFor=0;
+    const door=bot.blockingBarricade;
+    const barriers=round.world.barricades;
+    if(isAttack&&door&&barriers?.hasBarricade(door)&&now>=bot.nextShot){
+      const plank=door.planks.find(p=>!p.broken&&
+        p.collider.maxY>.42&&p.collider.minY<1.6)||
+        door.planks.find(p=>!p.broken);
       if(plank){
-        doors.hit(plank,34);bot.nextShot=now+410+(bot.id%4)*90;
-        bot.lastShotAt=now;bot.state="breach";
+        barriers.hit(plank,34);
+        bot.nextShot=now+450+(bot.id%4)*85;
+        bot.lastShotAt=now;bot.state="breaching";
         notify(null,bot.team==="ally"?"ally-fire":"enemy-fire",bot);
       }
     }
-    // Planting can proceed when distant enemies remain on the map. Only
-    // nearby immediate threats interrupt an objective interaction.
-    const canWork=!target||dst>7;
-    const working=canWork&&maybeWorkDevice(round,bot,now,dt,notify);
-    if(target){
+    // A squad member may fire only at a target it ACTUALLY sees, never
+    // solely because another bot shared a last-known position.
+    if(target&&!working){
       bot.group.rotation.y=Math.atan2(bot.x-target.x,bot.z-target.z);
       fireAt(round,bot,target,now,notify);
     }
     bot.group.updateMatrixWorld(true);
     bot.animate(dt,now,moved);
-    if(["won","lost"].includes(round.phase))return;
   }
 }
