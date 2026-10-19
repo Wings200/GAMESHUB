@@ -11,7 +11,7 @@ function visible(round,from,target){
   // Use the actual operator position; a remote-controlled drone must
   // not teleport the operator's hit/visibility origin across the map.
   const dest=new round.THREE.Vector3(target.x,
-    target.isPlayer?1.55:1.62,target.z);
+    target.isDrone?.24:target.isPlayer?1.55:1.62,target.z);
   const dir=dest.sub(origin),dist=dir.length();
   if(dist<.25||dist>26)return false;
   round.ray.set(origin,dir.normalize());
@@ -178,6 +178,30 @@ function fireAt(round,bot,target,now,notify){
     if(killed&&bot.team==="ally")notify("SQUADMATE ELIMINATED HOSTILE · "+(round.bots.filter(x=>x.alive).length)+" REMAIN");
   }
 }
+// Defender NPCs identify the physical attacker drone by sight and range.
+// Unlike scripted fake detection, cover must not occlude the actual ray.
+export function engageEnemyDrone(round,bot,now,notify=()=>{}){
+  const drone=round.world.drone;
+  if(!drone?.active||drone.destroyed||!bot.alive||isAttacking(round,bot))return false;
+  const position=drone.position;
+  if(distance(bot,position)>15||!visible(round,bot,{...position,isDrone:true}))return false;
+  bot.group.rotation.y=Math.atan2(bot.x-position.x,bot.z-position.z);
+  bot.state="drone-contact";
+  if(now<(bot.nextDroneShot||0))return true;
+  bot.nextDroneShot=now+620+(bot.id%4)*135;
+  bot.lastShotAt=now;
+  notify(null,bot.team==="ally"?"ally-fire":"enemy-fire",bot);
+  // Close-range, low-profile target: accuracy falls off across lanes.
+  const chance=clamp(.86-distance(bot,position)*.039,.22,.78);
+  if(Math.random()<chance){
+    const destroyed=drone.damage(18,now);
+    if(destroyed){
+      notify("YOUR DRONE WAS DESTROYED · "+drone.remaining+
+        " IN RESERVE","gadget-blast",bot);
+    }else notify("DRONE UNDER FIRE · "+Math.ceil(drone.health)+" HP","click",bot);
+  }
+  return true;
+}
 const PREP_POSITIONS={
   A:[{x:-7,z:-45},{x:-3,z:-42},{x:-7,z:-40},{x:-5,z:-49}],
   B:[{x:3,z:-32},{x:7,z:-30},{x:3,z:-24},{x:6,z:-26}]
@@ -241,6 +265,10 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
     }
     const task=bot.setupTask;
     if(task.placed){
+      if(engageEnemyDrone(round,bot,now,notify)){
+        bot.animate(dt,now,0);
+        continue;
+      }
       // A designated support operator reinforces the physical soft wall
       // after deploying its primary gadget. This uses the same panel
       // reinforcement animation/state and collider as the human player.
@@ -278,6 +306,16 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
             }
           }
         }
+      }
+      // After equipping, defenders keep moving between real cover/angles
+      // instead of becoming idle figures for the remainder of preparation.
+      if(!bot.extraSetup||bot.extraSetup.placed){
+        bot.allowBreach=false;
+        const goal=patrolPosition(round,bot,now);
+        const speed=goal&&distance(bot,goal)>.75?
+          advanceTacticalBot(bot,goal,round.world,dt,now):0;
+        bot.state=speed>.18?"prep-patrol":"holding-site";
+        bot.animate(dt,now,speed);
       }
       continue;
     }
@@ -407,6 +445,10 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
         }
         bot.gadgetAt=now+6800;
       }
+    }
+    if(!isAttack&&engageEnemyDrone(round,bot,now,notify)&&!target){
+      bot.animate(dt,now,0);bot.group.updateMatrixWorld(true);
+      continue;
     }
     if(!isAttack&&round.phase!=="planted"){
       // A defender isn't a stationary turret. Patrol cover and doors
