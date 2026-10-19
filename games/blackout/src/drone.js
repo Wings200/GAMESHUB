@@ -18,6 +18,7 @@ export function createReconDrone(T,scene,world,camera){
   cube(0,.225,-.18,.12,.065,.05,lens);
   let x=0,z=-15.8,yaw=0,pitch=0,active=false;
   let lastPing=0,jammed=false,pingCount=0;
+  const dartTraces=[];
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const scanRay=new T.Raycaster();
   function contactVisible(bot){
@@ -54,6 +55,13 @@ export function createReconDrone(T,scene,world,camera){
     camera.rotation.set(pitch,yaw,0);
   }
   function update(dt,keys,gadgets){
+    for(let i=dartTraces.length-1;i>=0;i--){
+      const fx=dartTraces[i],age=performance.now()-fx.start;
+      if(age>=280){
+        scene.remove(fx.line);fx.line.geometry.dispose();
+        fx.line.material.dispose();dartTraces.splice(i,1);
+      }else fx.line.material.opacity=1-age/280;
+    }
     if(!active)return;
     const fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
     const f=Number(keys?.has("KeyW"))-Number(keys?.has("KeyS"));
@@ -87,11 +95,30 @@ export function createReconDrone(T,scene,world,camera){
       return {ok:false,message:"SHOCK DRONE · NO ELECTRIC DARTS REMAIN"};
     const result=gadgets?.shockNear?.(x,z,3.5,now)||
       {ok:false,message:"NO ELECTRONIC GADGET WITHIN 3.5M"};
-    if(result.ok)gadgets.specialCount--;
+    if(result.ok){
+      gadgets.specialCount--;
+      if(result.target){
+        // Visible turquoise electrical discharge from the actual drone
+        // muzzle to the disabled jammer/sensor. Brief tracer, no fake hit.
+        const geometry=new T.BufferGeometry().setFromPoints([
+          new T.Vector3(x,.30,z),
+          new T.Vector3(result.target.x,.35,result.target.z)
+        ]);
+        const line=new T.Line(geometry,new T.LineBasicMaterial({
+          color:0x78f5ed,transparent:true,opacity:1,depthWrite:false
+        }));
+        scene.add(line);
+        dartTraces.push({line,start:now});
+      }
+    }
     return result;
   }
   function end(){
     active=false;body.visible=false;
+    for(const fx of dartTraces){
+      scene.remove(fx.line);fx.line.geometry.dispose();fx.line.material.dispose();
+    }
+    dartTraces.length=0;
   }
   return {begin,update,look,ping,shock,end,
     get active(){return active},get jammed(){return jammed},
