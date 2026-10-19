@@ -62,7 +62,7 @@ export class ObjectiveDrill{
     this.clearBots();
     this.role=role;this.phase="ready";this.result="";
     this.deadline=0;this.bombEnd=0;this.nextWave=0;this.wave=0;
-    this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;this.plantPosition=null;
+    this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;this.plantPosition=null;this.holdSiteId=null;
     this.pausedAt=0;this.lastHitNotice=0;this.lastFootstep=0;
     this.defuser.hide();this.prepUntil=0;
     this.updateHoldRequirement();
@@ -109,17 +109,11 @@ export class ObjectiveDrill{
     if(this.role==="attacker"){
       this.phase="attack";this.deadline=now+120000;
       // Sentries remain ALIVE while attackers plant or rotate sites.
-      if(this.siteId==="A"){
-        this.spawnBot(-7,-48,true);
-        const patrol=this.spawnBot(-3,-46,false);
-        patrol.patrolPoints=[{x:-3,z:-46},{x:-7,z:-43},{x:-7,z:-48}];
-        patrol.patrolIndex=0;
-      }else{
-        this.spawnBot(7,-33,true);
-        const patrol=this.spawnBot(3,-25,false);
-        patrol.patrolPoints=[{x:3,z:-25},{x:6,z:-27},{x:4,z:-32}];
-        patrol.patrolIndex=0;
-      }
+      // Both sites are live, and attackers may plant at either one.
+      const sentry=this.spawnBot(-7,-48,true);
+      const patrol=this.spawnBot(7,-33,false);
+      patrol.patrolPoints=[{x:7,z:-33},{x:3,z:-25},{x:6,z:-27}];
+      patrol.patrolIndex=0;
     }else{
       this.phase="guard";this.deadline=now+100000;
       // One fair, finite attacking squad, not endless respawning waves.
@@ -139,7 +133,11 @@ export class ObjectiveDrill{
       second.nextShot=now+1700;
     }
   }
-  atSite(p){return Math.hypot(p.x-this.site.x,p.z-this.site.z)<this.site.radius;}
+  siteAt(p){
+    return Object.values(this.sites).find(site=>
+      Math.hypot(p.x-site.x,p.z-site.z)<site.radius)||null;
+  }
+  atSite(p){return !!this.siteAt(p);}
   canInteract(p){
     if(this.role==="attacker")return this.phase==="attack"&&this.atSite(p);
     return this.phase==="planted"&&!!this.plantPosition&&
@@ -314,11 +312,16 @@ export class ObjectiveDrill{
       }
     }
     const canHold=this.canInteract(player);
+    const plantSite=this.role==="attacker"?this.siteAt(player):null;
+    if(this.holdSiteId&&plantSite&&this.holdSiteId!==plantSite.id){
+      this.hold=0;this.lastInteractionTick=-1;
+    }
     const stationary=!player.sprinting&&Math.hypot(player.velX,player.velZ)<.38;
     if(this.phase==="planted"&&this.role==="defender")
       this.defuser.setMode(canHold&&holdingF?"DISARMING":"ARMED");
     const required=this.holdNeeded;
     if(canHold&&holdingF&&stationary){
+      if(plantSite)this.holdSiteId=plantSite.id;
       this.hold+=dt*1000;
       const tick=Math.floor(this.hold/400);
       if(tick>this.lastInteractionTick){
@@ -328,6 +331,7 @@ export class ObjectiveDrill{
       if(this.hold>=required){
         this.hold=0;this.lastInteractionTick=-1;
         if(this.role==="attacker"){
+          this.chooseSite(this.holdSiteId||this.siteId);
           this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+800;
           this.plantPosition={x:player.x,z:player.z};
           this.defuser.show(player.x,player.z,32,now,this.siteId);
@@ -339,7 +343,7 @@ export class ObjectiveDrill{
         }
       }
     }else{
-      this.hold=0;this.lastInteractionTick=-1;
+      this.hold=0;this.lastInteractionTick=-1;this.holdSiteId=null;
     }
     this.updateBots(now,dt,player,notify);
   }
@@ -352,7 +356,7 @@ export class ObjectiveDrill{
     if(this.phase==="planted")return this.role==="attacker"?
       "PROTECT DEFUSER · PREVENT HOSTILE DISABLE":
       "SITE "+this.siteId+" · STAND STILL AND HOLD F TO DISABLE";
-    if(this.role==="attacker")return "SITE "+this.siteId+" · STAND STILL AND HOLD F TO PLANT, EVEN WITH DEFENDERS ALIVE";
+    if(this.role==="attacker")return "SITE A OR B · FIND THE BOMB · STAND STILL & HOLD F TO PLANT";
     return "DEFEND SITE "+this.siteId+" · STOP PLANTING HOSTILES";
   }
   summary(now){
@@ -361,7 +365,7 @@ export class ObjectiveDrill{
     if(this.phase==="prep")return "PREPARATION · "+sec(this.prepUntil-now);
     if(this.phase==="won"||this.phase==="lost")return (this.phase==="won"?"VICTORY":"DEFEAT")+" · "+this.result;
     if(this.phase==="planted")return "DEFUSER ACTIVE · "+sec(this.bombEnd-now);
-    return (this.role==="attacker"?"PLANT":"DEFEND")+" SITE "+this.siteId+" · "+sec(this.deadline-now);
+    return (this.role==="attacker"?"PLANT AT A / B":"DEFEND BOTH BOMB SITES")+" · "+sec(this.deadline-now);
   }
   get clockEnd(){return this.phase==="prep"?this.prepUntil:this.phase==="planted"?this.bombEnd:this.deadline;}
   get holdPercent(){return clamp(this.hold/this.holdNeeded*100,0,100);}
