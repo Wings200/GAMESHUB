@@ -15,6 +15,7 @@ import {createReconDrone} from "./src/drone.js?v=blackout-v201-builder-drone-ai-
 const $=id=>document.getElementById(id);
 const canvas=$("view"),menu=$("menu"),hud=$("gameHUD"),start=$("start"),reset=$("reset");
 const status=$("status"),zoneLabel=$("zoneLabel"),objective=$("objective");
+const squadStatus=$("squadStatus");
 const stateReadout=$("stateReadout"),fpsReadout=$("fpsReadout"),debugPanel=$("debugPanel");
 const positionReadout=$("positionReadout"),toast=$("toast"),hitmark=$("hitmark");
 const weaponName=$("weaponName"),ammoCount=$("ammoCount"),reserveCount=$("reserveCount");
@@ -589,6 +590,23 @@ function drawTacticalHud(now){
 function updateHud(report){
   drawTacticalHud(clock());
   zoneLabel.textContent=world.zoneAt(player.x,player.z).toUpperCase();
+  const allies=objectiveRound.allies.filter(b=>b.alive);
+  const attacking=role==="attacker";
+  const stateCounts={};
+  for(const b of allies)stateCounts[b.state]=(stateCounts[b.state]||0)+1;
+  const squadLabel=objectiveRound.phase==="prep"?
+    (attacking?"DRONE RECON · SQUAD AWAITING INSERTION":"SQUAD · FORTIFYING BOTH SITES"):
+    objectiveRound.phase==="planted"?
+    (attacking?"SQUAD · PROTECT THE DEFUSER":"SQUAD · RETAKE AND DISABLE"):
+    (stateCounts.planting?"DEFUSER CARRIER PLANTING":
+     stateCounts.disarming?"SQUADMATE DISABLING DEFUSER":
+     stateCounts.breaching?"ENTRY TEAM BREACHING":
+     stateCounts["seek-cover"]?"SQUAD SEEKING COVER":
+     stateCounts["team-flank"]?"SQUAD FLANKING LAST KNOWN POSITION":
+     stateCounts["site-response"]?"DEFENDERS RESPONDING TO CONTACT":
+     attacking?"SQUAD · CLEARING BOTH BOMB ROOMS":"SQUAD · HOLDING BOTH SITES");
+  const squadText="AI SQUAD · "+squadLabel+" · "+allies.length+"/4 UP";
+  if(squadStatus.textContent!==squadText)squadStatus.textContent=squadText;
   objective.textContent=objectiveRound.summary(clock());
   roundScore.textContent=`ROUND ${objectiveRound.roundNumber} · ATK ${objectiveRound.score.attacker} : ${objectiveRound.score.defender} DEF`;
   objectiveHint.textContent=objectiveRound.hint;
@@ -634,6 +652,8 @@ LAST ERROR ${lastCombatError||"NONE"}
 AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}
 ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.health)).join(" / ")||"ALL ELIMINATED"}
 BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}
+ALLY ROUTES ${objectiveRound.allies.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO ALLIES"}
+SQUAD INTEL ${Object.keys(objectiveRound.teamIntel||{}).map(team=>team+":"+Math.max(0,Math.round(((objectiveRound.teamIntel[team]?.until||0)-clock())/1000))+"s").join(" / ")}
 FRIENDLIES ${objectiveRound.allies.filter(b=>b.alive).length}/4
 RUNOUT ${objectiveRound.runoutPlayer?"PLAYER SPOTTED":objectiveRound.runoutTarget?"ENEMY SPOTTED":"NONE"}`;
   }
@@ -806,7 +826,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
 window.BLACKOUT_DEV={
-  get build(){return "2.0.0-site-builder-operators-45s-drone-ai-plant"},
+  get build(){return "2.1.0-fixed-map-tactical-ai-lean-toggle"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
@@ -815,6 +835,7 @@ window.BLACKOUT_DEV={
     enemy:objectiveRound.bots.length,alliesAlive:objectiveRound.allies.filter(b=>b.alive).length,
     enemiesAlive:objectiveRound.bots.filter(b=>b.alive).length}},
   get aiNavigation(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null,repathAt:b.repathAt}))},
+  get allyNavigation(){return objectiveRound.allies.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null}))},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
