@@ -228,3 +228,89 @@ test("V2 UI supports three-dimensional move, floor scale, and redundant ceiling 
   const asFunction=source.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"");
   assert.doesNotThrow(()=>new Function(asFunction));
 });
+
+test("V3 default module widths land exactly on grid boundaries and story height fills floor gap",()=>{
+  for(const type of ["hardWall","softWall","reinforcedWall"]){
+    assert.equal(model.PART_TYPES[type].size[0],4);
+    assert.equal(model.PART_TYPES[type].size[1],3.75);
+    assert.equal(model.PART_TYPES[type].size[2],.25);
+  }
+  assert.equal(model.PART_TYPES.door.size[0],2);
+  const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
+    ";return {alignPieceToGrid,resizeFromEdge,alignStoryWalls}")();
+  let wall=model.makePiece("softWall",2.4,0,-3.3,"soft");
+  wall.size.x=3;
+  let aligned=math.alignPieceToGrid(wall,1);
+  assert.equal((aligned.position.x-aligned.size.x/2)%1,0,
+    "physical west end must land on the grid");
+  assert.equal((aligned.position.x+aligned.size.x/2)%1,0,
+    "physical east end must land on the grid");
+  const rotated={...wall,rotationY:90};
+  aligned=math.alignPieceToGrid(rotated,1);
+  assert.equal((aligned.position.z-aligned.size.x/2)%1,0,
+    "90-degree rotated walls snap their physical Z ends");
+  assert.equal((aligned.position.z+aligned.size.x/2)%1,0);
+  const lowerWall=model.makePiece("hardWall",0,0,0,"lowerWall");
+  const upperFloor=model.makePiece("floor",0,4,0,"upperFloor");
+  const backup=model.createBlankMap();
+  backup.elements.push(lowerWall,upperFloor);
+  lowerWall.size.y=3.4;
+  const result=math.alignStoryWalls(backup,1);
+  const corrected=result.map.elements.find(x=>x.id==="lowerWall");
+  assert.equal(corrected.size.y,3.75);
+  assert.equal(corrected.position.y+corrected.size.y,
+    upperFloor.position.y-upperFloor.size.y,
+    "walls must physically meet the first-floor slab underside without a gap");
+  assert.equal(backup.elements.find(x=>x.id==="lowerWall").size.y,3.4,
+    "the repair must be undoable, not silently mutate the original");
+});
+test("V3 floor and wall edge resize anchors the OPPOSITE SIDE in XYZ",()=>{
+  const math=new Function(read("src/map-editor-math.js").replace(/^export /gm,"")+
+    ";return {alignPieceToGrid,resizeFromEdge,alignStoryWalls}")();
+  const start=model.makePiece("floor",0,4,0,"floor");
+  start.size={x:10,y:.25,z:10};
+  const right=math.resizeFromEdge(start,{axis:"x",side:1,delta:4,grid:1,snap:true});
+  assert.equal(right.size.x,14);
+  assert.equal(right.position.x,2);
+  assert.equal(right.position.x-right.size.x/2,-5,
+    "resizing right edge keeps left edge physically stationary");
+  const left=math.resizeFromEdge(start,{axis:"x",side:-1,delta:-4,grid:1,snap:true});
+  assert.equal(left.size.x,14);
+  assert.equal(left.position.x,-2);
+  assert.equal(left.position.x+left.size.x/2,5,
+    "resizing left edge keeps right edge stationary");
+  const front=math.resizeFromEdge(start,{axis:"z",side:1,delta:3,grid:1,snap:true});
+  assert.equal(front.size.z,13);
+  assert.equal(front.position.z,1.5);
+  assert.equal(front.position.z-front.size.z/2,-5);
+  assert.equal(front.position.y,4);
+  const thickness=math.resizeFromEdge(start,{axis:"y",side:-1,delta:-.25,grid:.25,snap:true});
+  assert.equal(thickness.position.y,4,"the floor's walking surface stays fixed");
+  assert.equal(thickness.size.y,.5,"dragging underside down thickens slab");
+  const wall=model.makePiece("hardWall",0,0,0,"testWall");
+  const tall=math.resizeFromEdge(wall,{axis:"y",side:1,delta:.5,grid:.25,snap:true});
+  assert.equal(tall.position.y,0,"wall bottom stays rooted");
+  assert.equal(tall.size.y,4.25);
+  const rotated=model.makePiece("softWall",0,0,0,"rotated");
+  rotated.rotationY=90;
+  const rotatedWide=math.resizeFromEdge(rotated,{axis:"x",side:1,delta:2,grid:1,snap:true});
+  assert.equal(rotatedWide.position.x,0);
+  assert.equal(rotatedWide.position.z,-1,
+    "rotated wall extends along Z without shifting its fixed endpoint");
+  assert.equal(rotatedWide.size.x,6);
+  assert.equal(start.size.x,10,"drag math is pure and undo safe");
+});
+test("V3 runtime has clickable physical-edge handles, preserves map repair and preview-alignment",()=>{
+  const html=read("dev-editor.html"),source=read("src/map-editor.js");
+  assert.match(html,/id="repairGrid"/);
+  assert.match(source,/new T\.Group\(\);scene\.add\(edgeHandles\)/);
+  assert.match(source,/function hitResizeHandle\(evt\)/);
+  assert.match(source,/resizeFromEdge\(original/);
+  assert.match(source,/resizeFromEdge\(piece/);
+  assert.match(source,/alignPieceToGrid\(piece,step\)/);
+  assert.match(source,/alignStoryWalls\(map,map.grid\|\|1\)/);
+  assert.match(source,/opposite edge/i);
+  assert.match(html,/blackout-editor-v3/);
+  const stripped=source.replace(/^import[\s\S]*?from\s+"[^"]+";/gm,"");
+  assert.doesNotThrow(()=>new Function(stripped));
+});
