@@ -87,8 +87,8 @@ export function buildFacility(T,scene,world){
   portal("east-entry","door","x",13,-25,2.5);
   portal("server-door","door","x",-13,-51,2.5);
   portal("control-door","door","x",13,-36,2.5);
-  portal("west-window","window","x",-13,-45,2.36);
-  portal("east-window","window","x",13,-44,2.36);
+  portal("west-window","window","x",-16,-45,2.36);
+  portal("east-window","window","x",16,-45,2.36);
   // Freestanding cover test rigs. Exact visible size = physical collider.
   const coverPoints=[];
   function cover(x,z,w,h,d){
