@@ -1,6 +1,6 @@
 import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v330-advanced-ordnance";
 import {buildFacility} from "./facility.js?v=blackout-v330-advanced-ordnance";
-import {createSwitchyard,SWITCHYARD_SITE_PAIRS} from "./switchyard.js?v=blackout-v500-switchyard";
+import {createSwitchyard,SWITCHYARD_SITE_PAIRS} from "./switchyard.js?v=blackout-v501-switchyard";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
