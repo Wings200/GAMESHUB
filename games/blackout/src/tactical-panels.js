@@ -101,7 +101,7 @@ export function createTacticalPanel(T,root,world,config){
   }
   redraw();
   const panel={
-    id,x,y,z,axis,width,height,group,mesh:center,rails,collider,holes,
+    id,x,y,z,axis,width,height,group,mesh:center,rails,overlay,collider,holes,
     materialType,materialProfile,
     get reinforced(){return reinforced},
     set reinforced(value){
@@ -110,7 +110,7 @@ export function createTacticalPanel(T,root,world,config){
       // flip a public boolean (the mechanics lab exposed a writable field).
       if(value){this.reinforce();return;}
       if(!reinforced)return;
-      reinforced=false;center.material=soft;
+      reinforced=false;center.material=soft;overlay.visible=false;
       for(const beam of rails)beam.material=frameMat;
       redraw();syncCollider();
     },
@@ -153,11 +153,17 @@ export function createTacticalPanel(T,root,world,config){
         plate.position.y=(i+fill*.5)*height/3;
       }
     },
-    cancelReinforcement(){overlay.visible=false},
+    cancelReinforcement(){overlay.visible=reinforced},
     reinforce(){
       if(reinforced||destroyed)return false;
       reinforced=true;holes.length=0;breach=null;cluster=null;
-      center.material=armored;overlay.visible=false;
+      center.material=armored;overlay.visible=true;
+      // Finished reinforcement is raised, segmented steel plating with real
+      // thickness, not simply a color swap on the underlying wall texture.
+      for(const [i,plate] of plates.entries()){
+        plate.visible=true;plate.scale.y=1;
+        plate.position.y=(i+.5)*height/3;
+      }
       for(const r of rails)r.material=armored;
       redraw();syncCollider();return true;
     },
