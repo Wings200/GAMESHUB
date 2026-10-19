@@ -168,11 +168,11 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   bot.group.rotation.y=Math.atan2(-dx,-dz);
   return step/Math.max(.001,dt);
 }
-export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
+export function makeTacticalBot(T,scene,world,id,x,z,stationary=false,team="enemy"){
   const group=new T.Group();group.position.set(x,0,z);scene.add(group);
-  const shell=new T.MeshStandardMaterial({color:0x68483a,roughness:.79,metalness:.05});
-  const vest=new T.MeshStandardMaterial({color:0x26343c,roughness:.86,metalness:.25});
-  const helmet=new T.MeshStandardMaterial({color:0x353b34,roughness:.72,metalness:.25});
+  const shell=new T.MeshStandardMaterial({color:team==="ally"?0x376879:0x68483a,roughness:.79,metalness:.05});
+  const vest=new T.MeshStandardMaterial({color:team==="ally"?0x214453:0x26343c,roughness:.86,metalness:.25});
+  const helmet=new T.MeshStandardMaterial({color:team==="ally"?0x32505c:0x353b34,roughness:.72,metalness:.25});
   const skin=new T.MeshStandardMaterial({color:0xbd896d,roughness:.9});
   const muzzleMaterial=new T.MeshBasicMaterial({color:0xffc782,transparent:true,opacity:.9});
   const parts=[];
@@ -216,12 +216,12 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
   const shadow=new T.Mesh(new T.CircleGeometry(.43,18),
     new T.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.22,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2;shadow.position.y=.012;group.add(shadow);
-  const bot={id,group,body,head,hitboxes:[body,head],x,z,
+  const bot={id,team,group,body,head,hitboxes:[body,head],x,z,
     health:100,alive:true,stationary,healthMax:100,
     armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
     path:[],lastGoal:null,repathAt:0,collisionRevision:-1,blockingBarricade:null,state:stationary?"hold":"approach",
     hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
-    nextSightAt:0,sightCache:false,
+    nextSightAt:0,sightCache:false,visibleTarget:null,coverUntil:0,lastSeen:null,
     moved:0,movePhase:0,muzzle,
     damage(amount){
       if(!this.alive)return false;
@@ -231,7 +231,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
       // armor is a THREE.Mesh. The material owns the Color, not the mesh.
       // Previously armor.color was undefined, which threw on EVERY bot hit,
       // stopped automatic firing and skipped the hit confirmation.
-      armor.material.color.setHex(0x665049);
+      armor.material.color.setHex(team==="ally"?0x356675:0x665049);
       if(!this.health){
         this.alive=false;this.group.visible=false;
         return true;
