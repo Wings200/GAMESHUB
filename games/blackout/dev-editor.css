@@ -72,3 +72,16 @@ dialog>div{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
 dialog button{padding:11px}
 @media(max-width:1150px){#app{grid-template-columns:230px minmax(300px,1fr) 265px}.topbar{gap:10px;padding:0 11px}.brand{font-size:17px}.brand strong{font-size:15px}.viewport-toolbar{inset:8px}.tool-group button{font-size:8px;padding:8px 5px}}
 @media(max-width:850px){#app{grid-template-columns:200px 1fr;grid-template-rows:70px minmax(0,1fr) 280px}.inspector{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px}.inspector .pane-head{display:none}.topbar .save-state{display:none}.map-name-label{max-width:175px}.tool-group{flex-wrap:wrap}.viewport-toolbar{position:relative;inset:auto;background:#0b1c29}.viewport-upper-left{top:120px}.sidebar{padding:12px}.palette-grid button{height:50px}}
+
+/* Map Studio V2: native XYZ transform handles, precise snap and floor footprint tools. */
+.edge-snap-setting{display:flex!important;align-items:center;gap:9px;color:#a5e8e7!important;cursor:pointer}
+.edge-snap-setting input{width:17px!important;height:17px;margin:0!important;accent-color:#79dae5;flex:0 0 auto}
+.floor-size-tools{margin:15px 0 4px;padding:14px 11px 12px;border:1px solid #496980;border-radius:5px;background:#13283a}
+.floor-size-tools[hidden]{display:none!important}
+.floor-size-tools h3{color:#92e7ef}
+.floor-preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0}
+.floor-preset-grid button{padding:10px 4px;font-size:10px;min-height:36px;color:#d8f3fa;background:#254255}
+.floor-preset-grid button:hover{background:#39647a}
+.floor-size-tools>.wide{margin-top:13px;font-size:10px;border-color:#496a77}
+.tool-group button#scaleTool.active{background:#b4eebc;color:#0d2719;border-color:#b4eebc}
+#editorCanvas{cursor:crosshair}
