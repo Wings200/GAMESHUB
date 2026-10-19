@@ -5,8 +5,8 @@
 import * as T from "three";
 import {TransformControls} from "three/addons/controls/TransformControls.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
-  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v2";
-import {snapNumber,applyGizmoToPiece,floorUndersideY,magnetizeEdges} from "./map-editor-math.js?v=blackout-editor-v2";
+  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v3";
+import {snapNumber,applyGizmoToPiece,floorUndersideY,magnetizeEdges,alignPieceToGrid,resizeFromEdge,alignStoryWalls} from "./map-editor-math.js?v=blackout-editor-v3";
 
 const $=id=>document.getElementById(id);
 const canvas=$("editorCanvas"),nameInput=$("mapName"),notice=$("notice");
@@ -22,6 +22,7 @@ try{const saved=localStorage.getItem(STORAGE);map=saved?normalizeMap(JSON.parse(
 catch(error){console.warn("BLACKOUT editor draft reset",error);map=createBlankMap();}
 let tool="select",siteEditing="A",selectedId=null,layer=0,placementRotation=0;
 let dragging=null,mouseMoved=false,dragStart=null,lastPoint=null;
+let resizingEdge=null;
 let transformMode="translate",shiftFree=false,transformStart=null,transformItem=null;
 let flyCamera=false,lastFrame=0;
 const flyKeys=new Set();
@@ -105,13 +106,46 @@ function updateGizmoSnap(){
   // Snap final size dimensions in metres on mouse release instead.
   gizmo.setScaleSnap(null);
 }
+const edgeHandles=new T.Group();scene.add(edgeHandles);
+const edgeColor={
+  x:new T.MeshBasicMaterial({color:0xf46f68,depthTest:false}),
+  y:new T.MeshBasicMaterial({color:0x8ce781,depthTest:false}),
+  z:new T.MeshBasicMaterial({color:0x78b4ff,depthTest:false})
+};
+function redrawEdgeHandles(){
+  for(const child of [...edgeHandles.children]){
+    edgeHandles.remove(child);child.geometry.dispose();
+  }
+  edgeHandles.visible=tool==="select"&&transformMode==="scale"&&!!selectedId;
+  const piece=map.elements.find(e=>e.id===selectedId);
+  const root=entityMeshes.get(selectedId);
+  if(!edgeHandles.visible||!piece||!root)return;
+  root.updateWorldMatrix(true,false);
+  const {x:w,y:h,z:d}=piece.size;
+  const controls=[
+    ["x",-1,[-w/2,piece.type==="floor"?.07:h*.55,0]],
+    ["x",1,[w/2,piece.type==="floor"?.07:h*.55,0]],
+    ["z",-1,[0,piece.type==="floor"?.07:h*.55,-d/2]],
+    ["z",1,[0,piece.type==="floor"?.07:h*.55,d/2]],
+    ["y",piece.type==="floor"?-1:1,[0,piece.type==="floor"?-h:h,0]]
+  ];
+  for(const [axis,side,pos] of controls){
+    const shape=new T.Mesh(
+      new T.BoxGeometry(.40,.40,.40),edgeColor[axis]);
+    shape.position.copy(root.localToWorld(new T.Vector3(...pos)));
+    shape.renderOrder=20;
+    shape.userData.edgeAxis=axis;shape.userData.edgeSide=side;
+    edgeHandles.add(shape);
+  }
+}
 function attachGizmo(){
   const root=entityMeshes.get(selectedId);
-  if(root)gizmo.attach(root);
+  if(root&&tool==="select"&&transformMode==="translate")gizmo.attach(root);
   else gizmo.detach();
-  gizmo.setMode(transformMode);
-  gizmo.setSpace(transformMode==="scale"?"local":"world");
+  gizmo.setMode("translate");
+  gizmo.setSpace("world");
   updateGizmoSnap();
+  redrawEdgeHandles();
 }
 function displayGizmoMeasurements(){
   const piece=map.elements.find(x=>x.id===selectedId);
@@ -393,6 +427,7 @@ function setTool(next){
   $("selectTool").classList.toggle("active",next==="select"&&transformMode==="translate");
   $("scaleTool").classList.toggle("active",next==="select"&&transformMode==="scale");
   if(next!=="select")gizmo.detach();else attachGizmo();
+  redrawEdgeHandles();
   $("toolStatus").textContent=next==="select"?"SELECT / MOVE":
     next.startsWith("bomb-")?"PLACE SITE "+next.slice(5):
     (PART_TYPES[next]?.name||next).toUpperCase();
@@ -423,7 +458,7 @@ function updateInspector(){
   $("floorSizeTools").hidden=piece?.type!=="floor";
   const tips={
     stairs:"Stair HEIGHT is rise, DEPTH is horizontal run. Stairs climb from local -Z to +Z. Rotate the entire flight with Q/E.",
-    floor:"Floor Y is the walking surface; its underside automatically forms a ceiling below. Press R and drag a colored scale handle to resize width/depth, or use the floor presets.",
+    floor:"The top is your walking surface; the underside is the ceiling below. Press R, drag an edge cube. The OPPOSITE edge stays anchored. Walls meet upper-floor undersides.",
     hardWall:"Solid structural wall. Not reinforceable or breachable during matches.",
     softWall:"Breachable drywall. Can receive bullet holes or a 3-second reinforcement by defenders.",
     reinforcedWall:"Starts with steel reinforcement. Only specialized hard-breach tools can open it.",
@@ -721,12 +756,13 @@ for(const btn of document.querySelectorAll("[data-site]"))
   });
 function setTransformMode(mode){
   transformMode=mode;
-  gizmo.setMode(mode);gizmo.setSpace(mode==="scale"?"local":"world");
+  gizmo.setMode("translate");gizmo.setSpace("world");
   $("selectTool").classList.toggle("active",mode==="translate");
   $("scaleTool").classList.toggle("active",mode==="scale");
   if(tool!=="select")setTool("select");
+  attachGizmo();
   if(!selectedId)toast("SELECT A PIECE TO USE "+(mode==="scale"?"SCALE":"MOVE")+" HANDLES");
-  else toast(mode==="scale"?"DRAG COLORED CUBES TO SCALE X / Y / Z":
+  else toast(mode==="scale"?"DRAG ONE COLORED EDGE CUBE — OPPOSITE EDGE IS FIXED":
     "DRAG X / Y / Z ARROWS OR COLORED PLANES TO MOVE IN 3D");
 }
 $("selectTool").addEventListener("click",()=>setTransformMode("translate"));
