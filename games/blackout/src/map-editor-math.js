@@ -151,13 +151,17 @@ export function resizeFromEdge(piece,{axis,side,delta,grid=0,snap=true}){
   const step=snap?sqGrid(grid):0;
   const minimum=axis==="y"?.12:.15;
   if(axis==="y"){
+    // Snap CHANGES to storey height rather than the absolute dimensions:
+    // 3.75m walls stay 3.75m with a 1m grid until intentionally resized.
+    const verticalStep=step?Math.min(step,.25):0;
+    const travel=snapNumber(delta,verticalStep);
     if(piece.type==="floor"){
-      // Floor slab upper surface is pinned. Only its underside can move.
-      const newBottom=snapNumber(piece.position.y-piece.size.y+delta,step);
-      size.y=clamp(piece.position.y-newBottom,.12,28);
+      // Moving the underside downward increases slab thickness; its
+      // top walking surface remains fixed at position.y.
+      size.y=clamp(piece.size.y-travel,.12,28);
     }else{
-      // A wall grows upward from its anchored bottom.
-      size.y=clamp(snapNumber(piece.size.y+delta,step),.12,28);
+      // Walls and doorframes grow upward from a fixed ground-level bottom.
+      size.y=clamp(piece.size.y+travel,.12,28);
     }
   }else{
     const dir=axisDirection(piece.rotationY,axis);
