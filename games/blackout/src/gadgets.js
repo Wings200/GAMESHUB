@@ -368,9 +368,9 @@ export class Gadgets {
         entry.cloud=cloud;
         this.gasFields.push(entry);
       }
-      group.visible=false;
+      group.visible=false;entry.active=false;
       const r=this.startAbility(id,camera,{x,z},now,890,()=>{
-        group.visible=true;
+        group.visible=true;entry.active=true;
         entry.end=performance.now()+10500;
         entry.nextTick=performance.now();
         return {message:"SMOKE · GAS CANISTER RELEASED · AREA DENIAL ACTIVE"};
@@ -490,6 +490,7 @@ export class Gadgets {
     }
     const round=this.world.round;
     for(const gas of this.gasFields){
+      if(gas.active===false)continue;
       if(now>gas.end){gas.group.visible=false;continue;}
       if(now>=gas.nextTick){
         gas.nextTick=now+450;
