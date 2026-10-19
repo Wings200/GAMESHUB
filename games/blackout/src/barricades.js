@@ -8,9 +8,23 @@ export class Barricades {
     const stripe=new T.MeshStandardMaterial({color:0xd8a846,roughness:.81,metalness:.05});
     const bolts=new T.MeshStandardMaterial({color:0x343f44,metalness:.65,roughness:.36});
     this.armoredMaterial=new T.MeshStandardMaterial({color:0x596877,metalness:.84,roughness:.36});
-    for(const item of openings){
+    this.configure=(entries)=>{
+      // Regenerate map-specific boards. Old boards, meshes and collision
+      // handles must never survive a SWITCHYARD <-> LAB map swap.
+      for(const old of this.openings){
+        for(const board of old.planks){
+          const bi=this.world.shootables.indexOf(board.mesh);
+          if(bi>=0)this.world.shootables.splice(bi,1);
+          const ci=this.world.colliders.indexOf(board.collider);
+          if(ci>=0)this.world.colliders.splice(ci,1);
+          board.mesh.geometry?.dispose?.();
+        }
+        this.scene.remove(old.group);
+      }
+      this.openings.length=0;this.cancel();
+      for(const item of entries){
       const o={...item,planks:[],active:false,group:new T.Group()};
-      o.group.position.set(item.x,0,item.z);scene.add(o.group);
+      o.group.position.set(item.x,item.y||0,item.z);scene.add(o.group);
       const count=item.kind==="window"?4:6;
       const step=item.height/count;
       for(let i=0;i<count;i++){
@@ -28,13 +42,17 @@ export class Barricades {
           bar.position.y=y;bar.visible=true;board.add(bar);
         }
         const c={minX:item.x-w/2,maxX:item.x+w/2,minZ:item.z-d/2,maxZ:item.z+d/2,
-          minY:y-(step-.025)/2,maxY:y+(step-.025)/2,tag:"barricade",barricade:o};
+          minY:(item.y||0)+y-(step-.025)/2,
+          maxY:(item.y||0)+y+(step-.025)/2,tag:"barricade",barricade:o};
         const plank={mesh:board,collider:c,hp:0,broken:true,originalMaterial:board.material};
         board.userData={kind:"barricade",barricade:o,plank,open:true};
         o.planks.push(plank);this.world.shootables.push(board);
       }
       o.group.visible=false;this.openings.push(o);
-    }
+      }
+      this.world.collisionRevision++;
+    };
+    this.configure(openings);
   }
   reset(role=this.role){
     this.cancel();this.role=role;
@@ -81,7 +99,7 @@ export class Barricades {
     for(const o of this.openings){
       const dx=o.x-player.x,dz=o.z-player.z;
       const d=Math.hypot(dx,dz);
-      if(d>.001&&d<best){
+      if(d>.001&&d<best&&Math.abs((player.y||0)-(o.y||0))<1.3){
         // Avoid sealing a fresh wooden barrier through the player's own
         // capsule when they're standing in the threshold.
         const sideDist=Math.abs(o.axis==="z"?player.z-o.z:player.x-o.x);
@@ -109,7 +127,8 @@ export class Barricades {
   tick(now,held,player,ping){
     this.lastNow=now;
     const a=this.action;if(!a)return;
-    if(!held||Math.hypot(player.x-a.opening.x,player.z-a.opening.z)>2.8){
+    if(!held||Math.hypot(player.x-a.opening.x,player.z-a.opening.z)>2.8||
+      Math.abs((player.y||0)-(a.opening.y||0))>1.3){
       this.cancel();ping("BARRICADE ACTION CANCELLED");return;
     }
     if(now<a.end)return;
@@ -124,11 +143,12 @@ export class Barricades {
     if(now<this.vaultCooldown)return false;
     for(const o of this.openings){
       if(o.kind!=="window"||this.hasBarricade(o))continue;
+      if(Math.abs((player.y||0)-(o.y||0))>1.1)continue;
       if(Math.abs(player.z-o.z)>o.width*.5-.34)continue;
       if(Math.abs(player.x-o.x)>1.35)continue;
       if(Math.abs(player.x-o.x)<.035)continue;
       const nx=o.x+(player.x<o.x?1.05:-1.05);
-      if(player.blocked(nx,o.z,0,player.height,player.radius))continue;
+      if(player.blocked(nx,o.z,o.y||0,player.height,player.radius))continue;
       if(!player.startVault?.(nx,o.z))continue;
       this.vaultCooldown=now+1150;return true;
     }
