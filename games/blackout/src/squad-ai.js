@@ -239,6 +239,14 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
     bot.allowBreach=false;
     if(distance(bot,task.goal)>1.35){
       const speed=advanceTacticalBot(bot,task.goal,round.world,dt,now);
+      // If a placement point becomes inaccessible, place portable devices
+      // at the operator's nearest clear location after a real approach
+      // attempt. Never teleport a barricade to a doorway.
+      task.stall= speed<.20?(task.stall||0)+dt:0;
+      if(task.stall>3.5&&
+         (task.kind==="jammer"||task.kind==="sensor")&&canStand(round,bot,.45)){
+        task.goal={x:bot.x,z:bot.z};task.stall=0;
+      }
       bot.state="setup-approach";
       bot.animate(dt,now,speed);
       continue;
