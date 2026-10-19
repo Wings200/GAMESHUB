@@ -1,10 +1,11 @@
 import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v330-advanced-ordnance";
 import {buildFacility} from "./facility.js?v=blackout-v330-advanced-ordnance";
 import {createSwitchyard,SWITCHYARD_SITE_PAIRS} from "./switchyard.js?v=blackout-v531-interactive-walls";
+import {createClubhouse} from "./clubhouse-runtime.js?v=blackout-v600-approved-clubhouse";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
-export function buildRange(THREE,scene){
+export function buildRange(THREE,scene,clubhouseBlueprint=null){
   scene.background=new THREE.Color(0x9db7c6);
   scene.fog=new THREE.FogExp2(0x9db7c6,.004);
   scene.add(new THREE.HemisphereLight(0xd7f0ff,0x3e4e61,2));
@@ -310,10 +311,15 @@ export function buildRange(THREE,scene){
     B:{...facility.sites.B,bounds:{...facility.sites.B.bounds},y:0}
   };
   const originalFacility={...facility,sitePairs:null};
-  let liveMap="lab",sitePairId="operations",switchyard=null;
+  let liveMap="lab",sitePairId="operations",switchyard=null,clubhouse=null;
+  function activeSitePairs(){
+    return liveMap==="switchyard"?SWITCHYARD_SITE_PAIRS:
+      liveMap==="clubhouse"?(clubhouse?.sitePairs||[]):[];
+  }
   function setSitePair(id){
-    if(liveMap!=="switchyard")return false;
-    const pair=SWITCHYARD_SITE_PAIRS.find(p=>p.id===id);
+    if(liveMap==="lab")return false;
+    const pairs=activeSitePairs();
+    const pair=pairs.find(p=>p.id===id);
     if(!pair)return false;
     sitePairId=pair.id;
     for(const key of ["A","B"]){
@@ -323,34 +329,42 @@ export function buildRange(THREE,scene){
     return true;
   }
   function activateMap(id="lab"){
-    const next=id==="switchyard"?"switchyard":"lab";
+    const next=id==="switchyard"?"switchyard":
+      id==="clubhouse"&&clubhouseBlueprint?"clubhouse":"lab";
     if(next===liveMap)return false;
-    if(!switchyard)switchyard=createSwitchyard(THREE,scene,state);
+    if(next==="switchyard"&&!switchyard)switchyard=createSwitchyard(THREE,scene,state);
+    if(next==="clubhouse"&&!clubhouse)
+      clubhouse=createClubhouse(THREE,scene,clubhouseBlueprint,state);
     liveMap=next;
     root.visible=next==="lab";
-    switchyard.root.visible=next==="switchyard";
+    if(switchyard)switchyard.root.visible=next==="switchyard";
+    if(clubhouse)clubhouse.root.visible=next==="clubhouse";
+    const active=next==="switchyard"?switchyard:
+      next==="clubhouse"?clubhouse:null;
     colliders.splice(0,colliders.length,
-      ...(next==="lab"?sandboxColliders:switchyard.colliders));
+      ...(active?active.colliders:sandboxColliders));
     shootables.splice(0,shootables.length,
-      ...(next==="lab"?sandboxShootables:switchyard.shootables));
+      ...(active?active.shootables:sandboxShootables));
     panels.splice(0,panels.length,
-      ...(next==="lab"?sandboxPanels:switchyard.panels));
-    // Panel physics writes back into the live shared world collision list.
-    // Without this, reinforcements would only update an unused map snapshot.
-    if(next==="switchyard")switchyard.setActiveCollections(colliders,shootables);
-    // Facility reference stays stable for gadgets and round controllers.
-    Object.assign(facility,next==="lab"?originalFacility:switchyard.facilities);
+      ...(active?active.panels:sandboxPanels));
+    if(active)active.setActiveCollections(colliders,shootables);
+    Object.assign(facility,active?active.facilities:originalFacility);
     facility.sites=originalFacility.sites;
-    if(next==="switchyard")setSitePair(sitePairId);
-    else for(const key of ["A","B"])
+    if(active){
+      // First entry always chooses a valid pair from THIS map, not an
+      // unrelated site ID left over from a different selected map.
+      setSitePair(active.sitePairs.some(p=>p.id===sitePairId)?
+        sitePairId:active.sitePairs[0].id);
+    }else for(const key of ["A","B"])
       Object.assign(facility.sites[key],originalSites[key],
         {bounds:{...originalSites[key].bounds}});
     state.collisionRevision++;
     return true;
   }
   function floorAt(x,z,footY=0){
-    return liveMap==="switchyard"?
-      switchyard.floorAt(x,z,footY):0;
+    if(liveMap==="switchyard")return switchyard.floorAt(x,z,footY);
+    if(liveMap==="clubhouse")return clubhouse.floorAt(x,z,footY);
+    return 0;
   }
   function reset(){
     for(const t of targets)t.reset();
@@ -363,7 +377,8 @@ export function buildRange(THREE,scene){
     zoneAt:(x,z,y=0)=>facility.zoneAt(x,z,y),
     get mapId(){return liveMap},
     get sitePairId(){return sitePairId},
-    get sitePairs(){return liveMap==="switchyard"?SWITCHYARD_SITE_PAIRS:[]},
+    get clubhouse(){return clubhouse},
+    get sitePairs(){return activeSitePairs()},
     spawn:{x:0,y:0,z:16,yaw:0},
     state,
     get collisionRevision(){return state.collisionRevision;},
