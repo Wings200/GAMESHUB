@@ -117,7 +117,7 @@ export class Gadgets {
       this.counts.g--;
       const mat=new this.THREE.MeshStandardMaterial({color:0xffb451,emissive:0xb45211,emissiveIntensity:1});
       const marker=new this.THREE.Mesh(new this.THREE.BoxGeometry(.48,.32,.16),mat);
-      marker.position.set(panel.x,1.6,panel.z+(camera.position.z>panel.z?.24:-.24));
+      marker.position.set(panel.x,(panel.y||0)+1.6,panel.z+(camera.position.z>panel.z?.24:-.24));
       this.scene.add(marker);this.charge={panel,marker,detonateAt:now+1500};
       return {ok:true,message:"BREACH CHARGE PLANTED · DETONATING IN 1.5S"};
     }
@@ -611,7 +611,8 @@ export class Gadgets {
       a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
       if(a.panel.destroyed){
         this.cancelAction();ping("REINFORCEMENT CANCELLED · PANEL DESTROYED");
-      }else if(Math.hypot(player.x-a.panel.x,player.z-a.panel.z)>5.8){
+      }else if(Math.hypot(player.x-a.panel.x,player.z-a.panel.z)>5.8||
+        Math.abs((player.y||0)-(a.panel.y||0))>1.4){
         this.cancelAction();ping("REINFORCEMENT CANCELLED · OUT OF RANGE");
       }else if(now>=a.end){
         a.panel.previewReinforcement(1);
