@@ -119,7 +119,7 @@ function displayGizmoMeasurements(){
   if(!piece||!root)return;
   const next=applyGizmoToPiece(piece,{
     position:root.position,scale:root.scale,rotationY:piece.rotationY
-  },{grid:map.grid,snap:!shiftFree});
+  },{grid:map.grid,snap:!shiftFree,mode:transformMode});
   for(const [key,val] of Object.entries({
     px:next.position.x,py:next.position.y,pz:next.position.z,
     sx:next.size.x,sy:next.size.y,sz:next.size.z
@@ -148,7 +148,7 @@ gizmo.addEventListener("mouseUp",()=>{
   if(piece&&root){
     let result=applyGizmoToPiece(piece,{
       position:root.position,scale:root.scale,rotationY:piece.rotationY
-    },{grid:map.grid,snap:!shiftFree});
+    },{grid:map.grid,snap:!shiftFree,mode:transformMode});
     if(!shiftFree&&$("edgeSnap").checked&&transformMode==="translate")
       result=magnetizeEdges(result,map.elements);
     const before=transformStart;
