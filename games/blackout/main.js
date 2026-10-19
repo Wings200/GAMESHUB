@@ -2,7 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 import {buildRange} from "./src/world.js?v=blackout-v531-interactive-walls";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v531-interactive-walls";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
 import {ObjectiveDrill} from "./src/objective.js?v=blackout-v531-interactive-walls";
@@ -1050,7 +1050,7 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "5.3.1-interactive-interiors"},
+  get build(){return "5.3.2-interactive-interiors"},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
     staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
