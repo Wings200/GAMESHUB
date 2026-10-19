@@ -79,6 +79,10 @@ export class Barricades {
       const dx=o.x-player.x,dz=o.z-player.z;
       const d=Math.hypot(dx,dz);
       if(d>.001&&d<best){
+        // Avoid sealing a fresh wooden barrier through the player's own
+        // capsule when they're standing in the threshold.
+        const sideDist=Math.abs(o.axis==="z"?player.z-o.z:player.x-o.x);
+        if(sideDist<.46)continue;
         const f=(-Math.sin(player.yaw)*dx-Math.cos(player.yaw)*dz)/d;
         if(f<.22)continue;
         best=d;chosen=o;
