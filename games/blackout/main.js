@@ -518,7 +518,8 @@ DYNAMIC COLLIDERS ${world.colliders.length} / TARGETS ${world.targets.filter(t=>
 COMBAT ERRORS ${combatErrors}
 LAST ERROR ${lastCombatError||"NONE"}
 AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}
-ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.health)).join(" / ")||"ALL ELIMINATED"}`;
+ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.health)).join(" / ")||"ALL ELIMINATED"}
+BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}`;
   }
 }
 function frame(now){
@@ -651,9 +652,10 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.9.1-combat-stability-audio-voice-guard-ai-cache"},
+  get build(){return "0.9.3-shield-placement-ai-barricade-breaching"},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
+  get aiNavigation(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,x:b.x,z:b.z,state:b.state,routeNodes:b.path?.length||0,blockingDoor:b.blockingBarricade?.id||null,repathAt:b.repathAt}))},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
