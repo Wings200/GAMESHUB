@@ -77,9 +77,7 @@ export class ObjectiveDrill{
     this.operator=operator;this.updateHoldRequirement();
   }
   updateHoldRequirement(){
-    this.holdNeeded=this.role==="attacker"&&this.operator?.id==="kestrel"?4000:
-      this.role==="defender"&&this.operator?.id==="atlas"?4400:
-      this.role==="attacker"?5000:5500;
+    this.holdNeeded=this.role==="attacker"?5000:5500;
   }
   spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
     const bot=makeTacticalBot(this.THREE,this.scene,this.world,
@@ -165,7 +163,7 @@ export class ObjectiveDrill{
   start(now){
     if(this.phase!=="ready")return;
     this.phase="prep";
-    this.prepUntil=now+(this.role==="defender"?22000:8500);
+    this.prepUntil=now+45000;
     // Each side fields FIVE operators: human plus 4 active squad bots
     // versus 5 hostile bots. Friendly defenders prepare inside the facility.
     if(this.role==="attacker"){
@@ -359,7 +357,7 @@ export class ObjectiveDrill{
     if(this.phase==="ready")return "SELECT OPERATOR · SELECT SITE · DEPLOY";
     if(this.phase==="prep")return this.role==="defender"?
       "PREPARATION · BARRICADE DOORS / REINFORCE WALLS · PROTECT BOTH DEVICES":
-      "INSERTION · SCOUT THE FACILITY · LOCATE THE BOMB UNIT";
+      "DRONE PHASE · DRIVE THROUGH ENTRANCES · X PING ENEMIES";
     if(this.phase==="won"||this.phase==="lost")return this.result+" · ESC → RESET TO PLAY AGAIN";
     if(this.phase==="planted")return this.role==="attacker"?
       "PROTECT DEFUSER · PREVENT HOSTILE DISABLE":
