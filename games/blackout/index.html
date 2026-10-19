@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V2.0 - offline 5v5 AI tactical squads, two full bomb rooms, prep restrictions and defender runout detection.">
+<meta name="description" content="BLACKOUT V2.0 - tactical site builder, 45-second drone preparation, opening-row operators with unique equipment, and live 5v5 AI squad combat.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v100-two-site-fivevfive">
@@ -68,10 +68,10 @@
   <div id="roundResult" class="round-result hidden" role="status"></div>
   <div class="hud-bottom lab-bottom">
     <div class="weapon-hud">
-      <div id="weaponName" class="weapon-name">KESTREL MK1</div>
+      <div id="weaponName" class="weapon-name">CARBINE 556</div>
       <div class="ammo-row"><span id="ammoCount">30</span><span id="reserveCount">/ 120</span></div>
       <div class="stat-row" id="combatStats">0 HITS · 0% ACC · 0 DOWN</div>
-      <div class="operator-health"><strong id="operatorHud">KESTREL · 2 SPEED / 2 ARMOR</strong><strong id="healthHud">110 / 110 HP</strong></div>
+      <div class="operator-health"><strong id="operatorHud">SLEDGE · 2 SPEED / 2 ARMOR</strong><strong id="healthHud">110 / 110 HP</strong></div>
       <div class="bo-health-track"><div id="healthFill" class="bo-health-fill"></div></div>
       <div class="sight-readout">OPTIC <span>V TO CYCLE</span> · <span id="defuserInventory">DEFUSER CARRIED</span></div>
     </div>
@@ -147,7 +147,7 @@
       <strong>TEST CONTROLS</strong>
       <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Q/E: collision-checked lean · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant the defuser where you are standing (KESTREL plants faster). Defend it after planting. G: breach charge; X: scan.</p>
+      <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant where you stand. Defend it after planting. G uses your selected operator's unique gadget; X is recon/utility. Press 3 after spawning to deploy another scouting drone.</p>
       <p><strong>Defenders</strong> — You and four friendly AI protect BOTH bomb rooms. During the 45-second preparation phase, you cannot leave the building. After action begins, leaving the building reveals your location to all five attackers (runout detection). Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
       <p><strong>Barricade interaction</strong> — Aim toward a door or window and hold F to install (defenders) or remove (either side). Shoot individual wooden planks to break them; press Space near a cleared side window to vault through. Barricades block players, bots, and bullets while intact.</p>
       <p><strong>Round results</strong> — Rounds continue if you die while surviving allies fight; you spectate the squad. Team elimination, successful plant/disable or objective timer decides the winner. Enter starts the next round; Esc opens the menu.</p>
