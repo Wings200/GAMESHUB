@@ -12,7 +12,7 @@
 ## Development milestones
 1. **Sandbox foundation (current):** remove enclosed map/roof; separate stations, full-room A/B zones, target/cover tests, selectable roles/spawns, safe collision and timed vault.
 2. **Movement + weapons + destruction (in progress):** Stage 2A added shared throw physics, remote Smoke, and chambered reloads. **Stage 2B/V3.2** adds four material profiles, penetrating rounds with different damage loss, accumulated wall erosion that eventually opens a traversable collider, deterministic recoil patterns, moving magazine/hand/charging-handle animations and impact debris. Next: detailed material layering, ballistic ricochets, destructible vertical floors, operator-specific firearms.
-3. **Complete operator gadgets:** physical place/use/pickup/counter states, animations, cameras/drones, explosions, denial and detection systems.
+3. **Complete operator gadgets (V3.3 underway):** Stage 3A adds frag/stun timers, C4 remote, laser claymores with installation, contact-detonated impacts, physical bounce, visible blast/flash, bullet counters and blast cover checks. Remaining: full per-operator equipment restrictions, barbed wire, volumetric smoke grenades, gadget pickup, realistic destruction and multiplayer replication.
 4. **Competitive round and bots:** accurate two-site rules, 45s prep, shared intel, purpose-driven 5v5 attacks and retakes, tactical difficulty.
 5. **Presentation + performance:** reliable counters/HUD, high-quality original visuals, spatial acoustics, automated + browser QA.
 6. **Network architecture:** true multiplayer server authority, private lobbies, replication, reconnects and protections.
@@ -86,9 +86,9 @@
 | A04 | Thermite exothermic overhaul | PROTOTYPE |  |
 | A05 | Twitch shock drone overhaul | PROTOTYPE |  |
 | A06 | Standard breach charges | PENDING |  |
-| A07 | Frag and stun grenades | PENDING |  |
+| A07 | Frag and stun grenades | PROTOTYPE | V3.3: X throw, gravity and collision, separate fuses, AoE damage or blindness, cover blocks effects; advanced flash directional exposure pending |
 | A08 | Smoke grenades | PENDING |  |
-| A09 | Claymores | PENDING |  |
+| A09 | Claymores | PROTOTYPE | V3.3: timed first-person placement, 1.15s arming, visible red laser trip zone, enemy-triggered explosion, damage/shootable destruction |
 | A10 | Secondary hard-breach gadget | PENDING |  |
 
 ### Defender Gadgets
@@ -104,7 +104,7 @@
 | E07 | Proximity alarms | PROTOTYPE |  |
 | E08 | Bulletproof cameras | PENDING |  |
 | E09 | Barbed wire | PENDING |  |
-| E10 | Impact grenades and C4 | PENDING |  |
+| E10 | Impact grenades and C4 | PROTOTYPE | V3.3: physical impact grenade on collision; C4 thrown and arms on landing, B remote detonator with LOS damage; bullets can disable placed charges |
 | E11 | Reinforcement animation | PROTOTYPE |  |
 | E12 | Gadget pickup and redeployment | PENDING |  |
 
@@ -217,7 +217,7 @@
 
 | ID | Feature | Status | Note |
 |---|---|---|---|
-| Q01 | Automated mechanic regression tests | PROTOTYPE | Stage 2 smoke-stage2.test.mjs added alongside sandbox.test.mjs; source-level simulations; not yet live-browser verified |
+| Q01 | Automated mechanic regression tests | PROTOTYPE | Added ordnance-stage33.test.mjs for fuses, blind/LOS, C4, claymores, impact and resets. Existing sandbox, smoke and destruction suites remain; live browser verification still pending |
 | Q02 | AI scenario testing | PROTOTYPE |  |
 | Q03 | Collision diagnostics | PENDING |  |
 | Q04 | Frame-time and memory profiler | PENDING |  |
@@ -251,3 +251,13 @@ The open floor must have **no enclosing structural walls and no roof**. Preserve
 - Rifle and pistol recoil trajectories are learnable, distinct patterns with a pause-reset, not per-shot random lateral displacement. True weapon-specific attachments, stance-independent spray analysis and competitive recoil calibration are still pending.
 - First-person magazines, replacement magazines, supporting hands and empty-reload bolt/slide motion added. These are procedural meshes, not motion-captured Siege animations.
 - Test: `node --test games/blackout/tests/*.test.mjs` includes `destruction-stage3.test.mjs`. Code-level mock simulations passed during implementation. Full Node runner in this connector environment and live-browser rendering/deployment have **not** been independently verified.
+
+## Stage 3A — BLACKOUT V3.3 advanced equipment
+
+- **Selectable secondary loadout, X:** Attackers can test recon pulse, frag grenade, flashbang, or claymore. Defenders can test proximity sensor, thrown C4, or impact grenade. This sandbox allows team-wide loadout selection for testing; authentic operator-by-operator loadout restrictions remain **pending**.
+- **Thrown grenades:** Real existing collider physics, visible first-person throw motion, distinct frag (3.2s) and stun (2.25s) fuses; impact grenades detonate on world collision. Explosions affect bots/player with distance falloff and line-of-sight cover blocking. Flashbangs blind affected AI and temporarily white-out affected player views.
+- **C4:** X throw; wait until the device lands and arms; B detonates landed, armed C4 remotely. Shooting a device disables it before detonation. Smoke still uses G for special gas canisters, and B can detonate armed Smoke and C4 together if both are equipped in this experimental sandbox.
+- **Claymore:** X begins ~1.15s physical placement; lasers arm ~1.15s later. Enemy AI crossing the laser zone triggers an explosion. Undetonated devices may be shot and disabled.
+- **Feedback and cleanup:** Detailed secondary selector, ammo counts, remote armed-C4 count, WebAudio blast/flash/throw effects, brief explosion mesh and player flash overlay. All active/pending ordnance, hit targets, and effects are cleared on round reset.
+- **Tests:** `tests/ordnance-stage33.test.mjs` adds deterministic source-level cases for role loadouts, delayed fuses, blast and sight occlusion, C4 remote arming, claymore triggers, impact explosions, shootable counters and cleanup. Isolated JS integration simulations were executed. Not yet proven with a full deployed-browser playthrough.
+- **Still pending:** authentic operator-restricted utility lists, real grenade hand meshes/cooking/fuse details, true post-flash deafness and view-direction exposure, throw trajectories through glass, server-authoritative sync, full barbed wire, floor/wall destruction polish and browser capture regression.
