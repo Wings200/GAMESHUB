@@ -21,7 +21,10 @@ export class Gadgets {
   reset(role=this.role){
     this.cancelAction();
     this.role=role;
-    this.counts={g:2,x:2,reinforce:2};
+    const spec=this.operator?.side===role?this.operator:null;
+    this.counts={g:role==="attacker"?(spec?.kit.breach??2):(spec?.kit.shield??2),
+      x:role==="attacker"?(spec?.kit.scan??2):(spec?.kit.sensor??2),
+      reinforce:spec?.kit.reinforce??2};
     this.scanUntil=0;
     for(const a of this.scanMarkers)a.marker.visible=false;
     if(this.charge){
@@ -37,6 +40,10 @@ export class Gadgets {
       });
     }
     this.sensors=[];
+  }
+  setOperator(spec){
+    this.operator=spec;
+    this.reset(spec.side);
   }
   nearestPanel(camera,limit=6.5){
     this.raycaster.setFromCamera({x:0,y:0},camera);
