@@ -345,8 +345,8 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
         health:player.health});
     if(now>=(bot.nextSightAt||0)){
       bot.visibleTarget=null;bot.sightCache=false;
-      if((bot.blindedUntil||0)>now){bot.nextSightAt=now+200;continue;}
-      targets.sort((a,b)=>distance(bot,a)-distance(bot,b));
+      if((bot.blindedUntil||0)<=now){
+        targets.sort((a,b)=>distance(bot,a)-distance(bot,b));
       // Do not waste frame time raycasting across the whole compound.
       for(const target of targets){
         if(distance(bot,target)>26)break;
@@ -358,6 +358,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
           break;
         }
       }
+      } // Blinded operators may still move toward cover but cannot aim.
       bot.nextSightAt=now+155+(bot.id%5)*34;
     }
     let target=bot.visibleTarget;
