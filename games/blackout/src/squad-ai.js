@@ -287,11 +287,88 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
   const defenders=round.role==="defender"?round.allies:round.bots;
   const gadgets=round.world.gadgets,doors=round.world.barricades;
   if(round.world.mapId==="switchyard"){
-    // Multi-floor defenders secure physically reachable sightlines first.
-    // Old mechanics-lab gadget coordinates would place devices under floors.
+    // Defenders prepare their actual room: approach a physical, accessible
+    // soft wall; show a three-second steel installation, then board a nearby
+    // REAL door. Setup tasks are allocated once per bot, not on every frame.
     for(const bot of defenders){
       if(!bot.alive)continue;
-      if(!bot.setupTask)bot.setupTask={kind:"hold-site",placed:true};
+      if(engageEnemyDrone(round,bot,now,notify)){
+        bot.animate(dt,now,0);continue;
+      }
+      if(!bot.setupTask){
+        const claimed=new Set(defenders.map(b=>b.setupTask?.panel).filter(Boolean));
+        const candidates=(round.world.panels||[])
+          .filter(p=>!p.destroyed&&!p.reinforced&&!claimed.has(p)&&
+            Math.abs((p.y||0)-(bot.y||0))<.65)
+          .sort((a,b)=>distance(a,bot)-distance(b,bot));
+        const panel=candidates[0];
+        bot.setupTask=panel?
+          {kind:"reinforce",panel,placed:false,progress:0}:
+          {kind:"hold-site",placed:true};
+      }
+      const task=bot.setupTask;
+      if(!task.placed&&task.panel){
+        const p=task.panel;
+        if(p.reinforced||p.destroyed){task.placed=true;task.progress=0;}
+        else {
+          const near= p.axis==="x"?
+            {x:p.x+(bot.x>=p.x?1.25:-1.25),z:p.z,y:p.y}:
+            {x:p.x,z:p.z+(bot.z>=p.z?1.25:-1.25),y:p.y};
+          const dist=distance(bot,near);
+          if(dist>.7){
+            const speed=advanceTacticalBot(bot,near,round.world,dt,now);
+            bot.state=speed>.18?"prep-to-wall":"prep-find-entry";
+            bot.animate(dt,now,speed);
+            continue;
+          }
+          bot.state="reinforcing";
+          task.progress+=dt*1000;
+          p.previewReinforcement(Math.min(.999,task.progress/3000));
+          if(task.progress>=3000){
+            p.previewReinforcement(1);
+            if(p.reinforce())notify("DEFENDER REINFORCED "+p.id,"reinforce",bot);
+            task.placed=true;
+          }
+          bot.animate(dt,now,0);
+          continue;
+        }
+      }
+      if(!bot.prepDoor){
+        const claimed=new Set(defenders.map(b=>b.prepDoor?.opening).filter(Boolean));
+        const choices=(doors?.openings||[])
+          .filter(o=>o.kind==="door"&&!doors.hasBarricade(o)&&
+            !claimed.has(o)&&Math.abs((o.y||0)-(bot.y||0))<.65)
+          .sort((a,b)=>distance(a,bot)-distance(b,bot));
+        const opening=choices[0];
+        bot.prepDoor=opening?
+          {opening,placed:false,progress:0}:
+          {placed:true};
+      }
+      if(!bot.prepDoor.placed){
+        const door=bot.prepDoor,opening=door.opening;
+        if(doors.hasBarricade(opening)){door.placed=true;}
+        else {
+          const approach=opening.axis==="x"?
+            {x:opening.x+(bot.x>=opening.x?1.25:-1.25),
+             z:opening.z,y:opening.y||0}:
+            {x:opening.x,z:opening.z+(bot.z>=opening.z?1.25:-1.25),
+             y:opening.y||0};
+          if(distance(bot,approach)>.75){
+            const speed=advanceTacticalBot(bot,approach,round.world,dt,now);
+            bot.state=speed>.18?"prep-to-door":"prep-clear-path";
+            bot.animate(dt,now,speed);
+            continue;
+          }
+          bot.state="barricading";
+          door.progress+=dt*1000;
+          if(door.progress>=2500){
+            if(doors.place(opening))notify("DEFENDER BARRICADED "+opening.id,"barricade",bot);
+            door.placed=true;
+          }
+          bot.animate(dt,now,0);
+          continue;
+        }
+      }
       const goal=patrolPosition(round,bot,now);
       const speed=goal&&distance(bot,goal)>.8?
         advanceTacticalBot(bot,goal,round.world,dt,now):0;
