@@ -103,7 +103,18 @@ export function createTacticalPanel(T,root,world,config){
   const panel={
     id,x,y,z,axis,width,height,group,mesh:center,rails,collider,holes,
     materialType,materialProfile,
-    get reinforced(){return reinforced},get destroyed(){return destroyed},
+    get reinforced(){return reinforced},
+    set reinforced(value){
+      // Thermite's existing gadget removes reinforcement before breaching.
+      // This must update the real steel skin and collision state, not just
+      // flip a public boolean (the mechanics lab exposed a writable field).
+      if(value){this.reinforce();return;}
+      if(!reinforced)return;
+      reinforced=false;center.material=soft;
+      for(const beam of rails)beam.material=frameMat;
+      redraw();syncCollider();
+    },
+    get destroyed(){return destroyed},
     get breach(){return breach},get impacts(){return cluster?.wear||0},
     get openingWidth(){return breach?.traversable?breach.halfWidth*2:0},
     holeAt(point){
