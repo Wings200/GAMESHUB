@@ -191,3 +191,11 @@ body.playing .game-hud .debug-panel:not(.hidden){top:165px}
 .bo-gun-select-label{margin-top:11px}
 @media(max-width:850px){.bo-squad-picks{gap:5px}.bo-squad-slot{padding:8px;min-height:59px}.bo-squad-slot strong,.bo-squad-slot span{font-size:9px}.bo-squad-slot small{font-size:7px}}
 @media(max-width:570px){.bo-squad-picks{grid-template-columns:repeat(3,minmax(0,1fr))}.bo-no-pick-timer{display:none}}
+
+/* BLACKOUT V4.1: physical drone destruction produces unmistakable lost feed. */
+.bo-drone-overlay.bo-feed-lost{background:#02070bed!important;border-color:#07101af0!important}
+.bo-drone-overlay.bo-feed-lost .bo-drone-center{width:min(450px,80vw);height:140px;border:2px solid #ec8f7c70;border-radius:0;background:#260d16b8}
+.bo-drone-overlay.bo-feed-lost .bo-drone-center:after{content:"SIGNAL LOST · DRONE DESTROYED";position:absolute;left:0;right:0;bottom:20px;text-align:center;font:900 13px Arial,sans-serif;letter-spacing:.15em;color:#ffd2c6}
+.bo-drone-overlay.bo-feed-lost .bo-drone-bracket{color:#fc887a}
+.bo-drone-overlay.bo-feed-lost .bo-drone-header{border-left-color:#e98778!important}
+.bo-drone-overlay.bo-feed-lost .bo-drone-footer{color:#f8c2b9}
