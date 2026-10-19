@@ -1,4 +1,4 @@
-import {recoilFor} from "./material-ballistics.js?v=blackout-v320-ballistics-breakable-walls";
+import {recoilFor} from "./material-ballistics.js?v=blackout-v330-advanced-ordnance";
 // BLACKOUT V0.2 — independent offline weapon mechanics for test tuning.
 // Gun statistics are GAMEPLAY values; no server-authoritative combat yet.
 export const WEAPON_SPECS=Object.freeze({
