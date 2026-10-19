@@ -51,7 +51,8 @@ const load=(name,deps,result)=>{
     ";return "+result+";")(document,...Object.values(deps));
 };
 const facility=load("facility.js",{},"buildFacility");
-const build=load("world.js",{buildFacility:facility},"buildRange");
+const ballistics=load("material-ballistics.js",{},"{materialStats,accumulatedBreach}");
+const build=load("world.js",{buildFacility:facility,...ballistics},"buildRange");
 const Bar=load("barricades.js",{},"Barricades");
 const Player=load("player.js",{},"FirstPersonController");
 const AI=load("bot-ai.js",{},"{findTacticalPath,advanceTacticalBot}");
