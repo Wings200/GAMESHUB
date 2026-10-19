@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b131e">
   <title>BLACKOUT | Developer Map Studio</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v1">
+  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v2">
 </head>
 <body>
   <div id="app">
@@ -24,12 +24,12 @@
     </header>
 
     <aside class="sidebar" aria-label="3D map builder tools">
-      <div class="pane-head"><span class="section-id">01 / TOOLKIT</span><h2>BUILDING PIECES</h2><p>Choose a piece, then click the 3D grid to place it. Click existing pieces to select and drag them.</p></div>
+      <div class="pane-head"><span class="section-id">01 / TOOLKIT</span><h2>BUILDING PIECES</h2><p>Click the grid to place pieces. Select an object and use the colored X/Y/Z handles to move or resize it in 3D.</p></div>
       <section class="palette-category">
         <h3>STRUCTURE</h3>
         <div class="palette-grid">
           <button type="button" data-piece="floor">▦ <span>FLOOR</span></button>
-          <button type="button" data-piece="ceiling">▤ <span>CEILING</span></button>
+          
           <button type="button" data-piece="hardWall">▰ <span>HARD WALL</span></button>
           <button type="button" data-piece="softWall">▧ <span>SOFT WALL</span></button>
           <button type="button" data-piece="reinforcedWall">▥ <span>REINFORCED</span></button>
@@ -71,9 +71,11 @@
           </select>
         </label>
         <label>CUSTOM ELEVATION (M)<input id="customLevel" type="number" min="-12" max="90" step=".25" value="0"></label>
-        <label>GRID SNAP (M)
-          <select id="gridStep"><option value=".25">0.25</option><option value=".5">0.5</option><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option></select>
+        <label>GRID SNAP (METRES)
+          <select id="gridStep"><option value="0">OFF / FREE</option><option value=".25">0.25</option><option value=".5">0.5</option><option value="1" selected>1.0</option><option value="2">2.0</option><option value="4">4.0</option></select>
         </label>
+        <p class="hint">Grid aligns to world coordinates. Hold SHIFT to temporarily move or place without snapping.</p>
+        <p class="hint">An upstairs FLOOR is also the solid ceiling of the room below it. No second ceiling slab needed.</p>
       </section>
       <div class="left-footer"><span>PRIVATE DEVELOPMENT BUILD</span><small>Protected by GAMESHUB's server-side BLACKOUT owner access. Drafts stay in this browser until exported.</small></div>
     </aside>
@@ -81,7 +83,8 @@
     <main class="viewport-shell">
       <div class="viewport-toolbar">
         <div class="tool-group">
-          <button id="selectTool" class="active" type="button">◈ SELECT / MOVE <kbd>V</kbd></button>
+          <button id="selectTool" class="active" type="button">◈ MOVE 3D <kbd>W</kbd></button>
+          <button id="scaleTool" type="button">⬚ SCALE <kbd>R</kbd></button>
           <button id="rotateLeft" type="button">↶ -90° <kbd>Q</kbd></button>
           <button id="rotateRight" type="button">↷ +90° <kbd>E</kbd></button>
           <button id="duplicate" type="button">DUPLICATE <kbd>CTRL+D</kbd></button>
@@ -100,7 +103,7 @@
         <span class="live-dot"></span> AUTHORING MODE · <strong id="toolStatus">SELECT</strong>
         <span id="viewportCoords">X 0 · Y 0 · Z 0</span>
       </div>
-      <div class="viewport-guide">LEFT CLICK: PLACE / SELECT / DRAG <span>·</span> RIGHT DRAG: ORBIT <span>·</span> MIDDLE DRAG: PAN <span>·</span> WHEEL: ZOOM <span>·</span> Q/E ROTATE <span>·</span> DELETE REMOVE</div>
+      <div class="viewport-guide">LEFT: SELECT / PLACE <span>·</span> DRAG XYZ ARROWS: MOVE <span>·</span> R: SCALE HANDLES <span>·</span> SHIFT: FREE SNAP <span>·</span> RIGHT: ORBIT <span>·</span> MIDDLE: PAN</div>
       <div class="viewport-lower-left">
         <span id="objectCount">1 PIECE</span>
         <span id="currentLayer">HEIGHT 0.0M</span>
@@ -113,7 +116,7 @@
       <div class="pane-head"><span class="section-id">02 / PROPERTIES</span><h2>INSPECTOR</h2></div>
       <section class="inspect-panel" id="pieceInspector">
         <h3>SELECTED PIECE</h3>
-        <p id="selectionDescription" class="hint">Select a placed structure to edit its exact measurements. You can also drag it in the 3D view.</p>
+        <p id="selectionDescription" class="hint">Select any piece. W activates X/Y/Z move arrows; R activates 3D scale handles. Width and depth also work in the fields below.</p>
         <label>LABEL <input id="partName" placeholder="Piece label" maxlength="70" disabled></label>
         <div class="triple" id="posFields">
           <label>X<input data-field="px" type="number" step=".25" disabled></label>
@@ -126,6 +129,21 @@
           <label>DEPTH / RUN<input data-field="sz" type="number" min=".12" step=".25" disabled></label>
         </div>
         <label>YAW / ROTATION (°)<input id="partRotation" type="number" step="15" disabled></label>
+        <div id="floorSizeTools" class="floor-size-tools" hidden>
+          <h3>FLOOR FOOTPRINT</h3>
+          <p class="hint">Floors are solid slabs with their own underside ceiling. Resize directly using R, or choose a footprint below.</p>
+          <div class="floor-preset-grid">
+            <button type="button" data-floor-size="6">6 × 6M</button>
+            <button type="button" data-floor-size="10">10 × 10M</button>
+            <button type="button" data-floor-size="20">20 × 20M</button>
+            <button type="button" data-floor-size="30">30 × 30M</button>
+          </div>
+          <div class="floor-preset-grid">
+            <button type="button" id="floorExpand">+ WIDTH/DEPTH</button>
+            <button type="button" id="floorShrink">− WIDTH/DEPTH</button>
+          </div>
+          <button type="button" id="removeLegacyCeilings" class="subtle wide">REMOVE OLD SEPARATE CEILINGS</button>
+        </div>
         <p id="pieceTip" class="hint">Hard walls are structural. Soft walls can be reinforced or breached after the map is integrated into gameplay.</p>
       </section>
 
@@ -163,6 +181,7 @@
     <h2>START A NEW MAP?</h2><p>Your current draft stays backed up locally, but a new blank map replaces the active editor layout.</p>
     <div><button id="cancelNew">CANCEL</button><button id="confirmNewButton" class="danger">CREATE BLANK MAP</button></div>
   </dialog>
-  <script type="module" src="./src/map-editor.js?v=blackout-editor-v1"></script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+  <script type="module" src="./src/map-editor.js?v=blackout-editor-v2"></script>
 </body>
 </html>
