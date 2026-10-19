@@ -1,7 +1,7 @@
 import {createDefuserModel} from "./defuser-model.js?v=blackout-v330-advanced-ordnance";
 import {createBombStations} from "./bomb-sites.js?v=blackout-v330-advanced-ordnance";
 import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v330-advanced-ordnance";
-import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v330-advanced-ordnance";
+import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v410-ai-drone-fix";
 import {operatorsForSide} from "./operators.js?v=blackout-v330-advanced-ordnance";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
