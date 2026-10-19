@@ -68,7 +68,7 @@ export class ObjectiveDrill{
     this.hold=0;this.lastInteractionTick=-1;this.nextBeep=0;this.plantPosition=null;this.holdSiteId=null;
     this.pausedAt=0;this.lastHitNotice=0;this.lastFootstep=0;
     this.playerAlive=true;this.runoutPlayer=false;this.runoutUntil=0;
-    this.runoutTarget=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
+    this.runoutTarget=null;this.runoutAlly=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
     this.defuser.hide();this.prepUntil=0;
     this.updateHoldRequirement();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
@@ -110,7 +110,23 @@ export class ObjectiveDrill{
         bot.runoutTarget={x:player.x,z:player.z};
       }
     }
-    this.runoutTarget=null;
+    this.runoutTarget=null;this.runoutAlly=null;
+    if(action&&this.role==="defender"){
+      // Allied defender AI can also be spotted if it roams outdoors.
+      for(const ally of this.allies){
+        if(!ally.alive||this.isInside(ally))continue;
+        this.runoutAlly=ally;ally.runoutUntil=now+2300;
+        for(const attacker of this.bots)if(attacker.alive){
+          attacker.hearing={x:ally.x,z:ally.z};
+          attacker.hearingUntil=now+2300;
+        }
+        if(now-this.lastRunoutEnemy>3800){
+          this.lastRunoutEnemy=now;
+          notify("SQUADMATE DETECTED OUTSIDE · ATTACKERS PINGED LOCATION","alarm");
+        }
+        break;
+      }
+    }
     if(action&&this.role==="attacker"){
       for(const defender of this.bots){
         if(!defender.alive||this.isInside(defender))continue;
