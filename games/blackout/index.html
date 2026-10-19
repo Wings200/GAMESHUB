@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V3.2: gradual walk-through soft-wall destruction, drywall/plywood/glass/steel ballistics, learnable recoil and magazine/bolt animations.">
+<meta name="description" content="BLACKOUT V3.3: physical frag, flashbang, impact, remotely detonated C4 and laser-triggered claymores in the open mechanics sandbox.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v320-ballistics-breakable-walls">
@@ -44,7 +44,7 @@
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
   </div>
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.2</span></div>
+    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.3</span></div>
     <h2 id="zoneLabel">OPEN MECHANICS RANGE</h2>
     <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
@@ -61,7 +61,8 @@
       <p>CTRL CROUCH · Z PRONE</p>
       <p>Q / E TOGGLE LEAN · ALT SLOW WALK</p>
       <p>F BARRICADE · SPACE WINDOW VAULT</p>
-      <p>SMOKE: G THROW CANISTER · B REMOTE DETONATE</p>
+      <p>SMOKE: G THROW · B DETONATE · X SECONDARY GADGET</p>
+      <p>FRAG / FLASH / CLAYMORE / C4 / IMPACT: SELECT SECONDARY KIT</p>
       <p>WALLS: SHOOT SOFT PANELS REPEATEDLY TO OPEN WALKABLE BREACHES</p>
     </div>
   </div>
@@ -80,12 +81,13 @@
     </div>
     <div class="side-controls">
       <span><kbd>LMB</kbd> FIRE</span><span><kbd>RMB</kbd> AIM</span><span><kbd>R</kbd> RELOAD</span>
-      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>B</kbd> SMOKE DETONATOR</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
+      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>B</kbd> SMOKE / C4 DETONATOR</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
     </div>
     <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
   </div>
   <div id="debugPanel" class="debug-panel hidden">DEBUG <div id="positionReadout"></div></div>
   <div id="toast" class="toast" role="status"></div>
+  <div id="flashOverlay" class="bo-flash-overlay" aria-hidden="true"></div>
   <div id="reinforceBar" class="reinforce-progress hidden" role="status">
     <div class="reinforce-title"><span id="reinforceTitle">INSTALLING REINFORCEMENT</span> <span id="reinforceCountdown">3.0S</span></div>
     <div class="reinforce-track"><div id="reinforceFill" class="reinforce-fill"></div></div>
@@ -94,7 +96,7 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V3.2 // DESTRUCTION & GUNPLAY</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V3.3 // ADVANCED GADGETS</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">BLACKOUT // TACTICAL OPERATIONS · PRIVATE ALPHA</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
@@ -126,6 +128,11 @@
         <option value="east">EAST FLANK</option>
       </select>
     </label>
+    <label class="site-picker">SECONDARY EQUIPMENT · X DEPLOYS · B TRIGGERS C4
+      <select id="secondarySelect" aria-label="Choose secondary gadget">
+        <option value="recon">RECON PULSE (2)</option>
+      </select>
+    </label>
     <label class="operator-picker bo-operator-fallback">OPERATOR <select id="operatorSelect" aria-label="Choose operator"><option value="sledge">SLEDGE</option></select></label>
     <div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP · FIXED OPERATOR MOVEMENT</div>
     <label class="sight-picker">SELECT YOUR OPTIC <select id="sightSelect" aria-label="Select weapon sight">
@@ -151,7 +158,8 @@
       <p><strong>Defenders</strong> — You and four AI teammates protect two marked bomb zones. During the 45-second preparation phase install defenses. Use G for your chosen operator special and X for the secondary sensor. <strong>Smoke:</strong> tap G to throw a physical canister, let it land and show its green armed light, then tap B to detonate all armed canisters remotely. Until B is pressed there is no gas or damage. Enemies can shoot undetonated canisters. Open sandbox runout detection is disabled.</p>
       <p><strong>Barricade interaction</strong> — Aim toward a door or window and hold F to install (defenders) or remove (either side). Shoot individual wooden planks to break them; press Space near a cleared side window to vault through. Barricades block players, bots, and bullets while intact.</p>
       <p><strong>Round results</strong> — Rounds continue if you die while surviving allies fight; you spectate the squad. Team elimination, successful plant/disable or objective timer decides the winner. Enter starts the next round; Esc opens the menu.</p>
-      <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
+      <p><strong>Soft walls:</strong> Repeated rifle shots grow small drywall/plywood holes into walkable openings. Glass transmits more bullet damage while steel reinforcement blocks gunfire.</p>
+      <p><strong>Advanced gadgets:</strong> Choose secondary equipment in the menu. X throws a frag, flashbang, impact grenade, or C4; or places a laser-trip claymore. Frag/stun use timed fuses, impacts burst on collision, C4 arms after landing and detonates with B, and claymores trigger when hostiles pass their lasers. Cover blocks explosion/flash effects. You can shoot deployed enemy devices.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
