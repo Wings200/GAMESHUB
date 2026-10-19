@@ -221,3 +221,8 @@ body{--bo-ui-text:#f0f7fa}
  .bo-runout-alert strong{font-size:11px}
  .bo-spectator-alert{font-size:10px}
 }
+
+/* V1.0 team-side colors and clean camera after player death */
+body.spectating .reticle,body.spectating .crosshair-caption{display:none!important}
+.bo-team-orange .bo-player-pip.ally{background:#704027;border-color:#e3a568;color:#ffecd1}
+.bo-team-blue .bo-player-pip.hostile{background:#235879;border-color:#82cdeb;color:#ecfbff}
