@@ -12,6 +12,7 @@ import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive
 import {Barricades} from "./src/barricades.js?v=blackout-v531-interactive-walls";
 import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
+import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v600-approved-clubhouse";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -85,6 +86,7 @@ world.barricades=barricades;
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 world.round=objectiveRound; // determines ownership when gadget AoE is simulated
 const drone=createReconDrone(THREE,scene,world,camera);
+const rappel=new ClubhouseRappel(world,player,barricades);
 world.drone=drone; // Defender AI can see, hit and destroy this physical device.
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
@@ -236,7 +238,7 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
 
 function resetSimulation(){
   resetTacticalCue();
-  drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  rappel.reset();drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
   const attackers=world.facility.attackSpawns||[];
@@ -368,7 +370,7 @@ function syncSiteChoice(){
 function applyMap(next){
   // Remove every old round actor BEFORE changing collision and raycast lists.
   objectiveRound.reset(role);
-  drone.reset();gadgets.reset(role);barricades.reset(role);world.reset();
+  rappel.reset();drone.reset();gadgets.reset(role);barricades.reset(role);world.reset();
   world.activateMap(next);
   // Physical door and window boards belong to the active facility only.
   // Rebuild the world-side board hitboxes; don't reuse lab boards in the map.
@@ -389,7 +391,7 @@ mapSelect.addEventListener("change",()=>applyMap(mapSelect.value));
 sitePairSelect.addEventListener("change",()=>{
   if(world.mapId==="lab")return;
   objectiveRound.reset(role);
-  drone.reset();gadgets.reset(role);barricades.reset(role);
+  rappel.reset();drone.reset();gadgets.reset(role);barricades.reset(role);
   if(world.setSitePair(sitePairSelect.value)){
     objectiveRound.refreshMap();
     syncSiteChoice();
@@ -437,7 +439,7 @@ document.addEventListener("keydown",e=>{
     return;
   }
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
-      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyB","KeyX","KeyZ","KeyV","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
+      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyB","KeyX","KeyZ","KeyV","KeyT","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
@@ -483,6 +485,11 @@ document.addEventListener("keydown",e=>{
     return;
   }
   if(gadgets.busy||barricades.busy)return;
+  if(e.code==="KeyT"){
+    const r=rappel.toggle();
+    popup(r.message,2.5);
+    return;
+  }
   if(e.code==="KeyV"){
     setSight(SIGHTS[(SIGHTS.indexOf(sight)+1)%SIGHTS.length]);
     popup("SIGHT SELECTED · "+SIGHT_NAMES[sight],1.1);
@@ -495,7 +502,13 @@ document.addEventListener("keydown",e=>{
   }else if(e.code==="KeyZ"){
     player.toggleProne();
   }else if(e.code==="Space"){
-    if(barricades.vault(player,clock())){sound("step");popup("WINDOW VAULT");}
+    if(rappel.attached){
+      const result=rappel.enterWindow(clock());
+      popup(result.message,2.25);
+      if(result.ok)sound("step");
+    }else if(barricades.vault(player,clock())){
+      sound("step");popup("WINDOW VAULT");
+    }
   }else if(e.code==="KeyG"){
     const r=gadgets.main(camera,player,clock(),objectiveRound);
     popup(r.message);if(r.ok)sound(operator.id==="smoke"?"smoke-throw":"click");
@@ -852,7 +865,8 @@ function updateHud(report){
   flashOverlay.style.opacity=remain>0?
     String(Math.min(.94,blind.flashIntensity*Math.min(1,remain/550))):"0";
   const nearbyOpening=barricades.nearest(player,2.7);
-  gadgetInteract.textContent=objectiveRound.canInteract(player)?
+  gadgetInteract.textContent=rappel.attached?"RAPPEL · W UP / S DOWN · SPACE WINDOW · T RELEASE":
+    objectiveRound.canInteract(player)?
     (role==="attacker"?"F · HOLD TO PLANT":"F · HOLD TO DISABLE"):
     nearbyOpening?("F · "+(barricades.hasBarricade(nearbyOpening)?"REMOVE":"BARRICADE")+" "+
       nearbyOpening.kind.toUpperCase()):
@@ -901,9 +915,13 @@ function updateFrame(now){
     const alive=player.health>0;
     const beforeMove={x:player.x,z:player.z};
     const inDronePreparation=role==="attacker"&&objectiveRound.phase==="prep";
-    const report=alive&&!drone.active&&!inDronePreparation?player.update(dt,activeKeys):
-      {sprinting:false,prone:false,crouched:false,lean:0,speed:0};
+    const onRope=alive&&!drone.active&&!inDronePreparation&&rappel.attached;
+    if(onRope)rappel.update(dt,activeKeys);
+    const report=alive&&!drone.active&&!inDronePreparation&&!onRope?
+      player.update(dt,activeKeys):
+      {sprinting:false,prone:false,crouched:false,lean:player.lean,speed:0};
     if(!alive){
+      rappel.reset();
       if(drone.active){drone.end();droneActionMode=false;}
       fireHeld=false;ads=false;keys.clear();
       const ally=objectiveRound.allies.find(bot=>bot.alive);
