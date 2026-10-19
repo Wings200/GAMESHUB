@@ -153,13 +153,13 @@ export function buildFacility(T,scene,world){
     ctx.font="900 52px Arial";ctx.textAlign="center";ctx.fillStyle="#e9fcfa";
     ctx.fillText(text,256,84,492);
     const tex=new T.CanvasTexture(cv);tex.colorSpace=T.SRGBColorSpace;
-    const s=new T.Mesh(new T.PlaneGeometry(3.6,.90),
+    const s=new T.Mesh(new T.PlaneGeometry(2.40,.58),
       new T.MeshBasicMaterial({map:tex,transparent:true,side:T.DoubleSide}));
-    s.position.set(x,2.52,z);s.rotation.y=rotation;shell.add(s);
+    s.position.set(x,2.85,z);s.rotation.y=rotation;shell.add(s);
   }
   sign("A  /  SERVER ROOM",-5.15,-52.73,0);
   sign("B  /  CONTROL ROOM",5.12,-19.28,0);
-  sign("BLACKOUT · TRAINING",0,-18.73,0);
+  sign("BLACKOUT | TRAINING",0,-18.73,0);
   // 2 clearly separated legitimate objectives. The active ring is controlled
   // by ObjectiveDrill; the other area stays available as physical level space.
   const sites={
