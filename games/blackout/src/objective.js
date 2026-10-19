@@ -247,7 +247,9 @@ export class ObjectiveDrill{
   }
   // Audible action travels to nearby bots. Bots do not have omniscient player tracking.
   onNoise(x,z,radius,now){
-    for(const bot of [...this.bots,...this.allies]){
+    // The player's own teammates know which side fired that weapon.
+    // Never lure the friendly squad into investigating a friendly gunshot.
+    for(const bot of this.bots){
       if(!bot.alive||Math.hypot(bot.x-x,bot.z-z)>radius)continue;
       bot.hearing={x,z};bot.hearingUntil=now+5800;
       if(bot.stationary&&this.phase==="attack"){
