@@ -214,7 +214,7 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
       // defenders board distinct hall entrances or set proximity sensors.
       let kind="sensor",opening=null,goal=bot.assignedSite;
       if(spec==="mute")kind="jammer";
-      else if(spec==="castle"){kind="armor";opening=west||east;}
+      else if(spec==="castle"){kind="armor";opening=east||west;}
       else if(i%4===0){kind="board";opening=west;}
       else if(i%4===1){kind="board";opening=east;}
       else if(spec==="smoke"){kind="sensor";}
@@ -309,6 +309,45 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     const sharedIntel=intel&&intel.until>now?intel:null;
     const home=assignedSite(round,bot);
     const anchor=bot.anchor||home;
+    const gadgets=round.world.gadgets;
+    const op=bot.operatorSpec?.id;
+    if(!isAttack&&gadgets){
+      // Operator-specific defender support continues AFTER prep. The bot
+      // actually spends a limited gadget charge and the device stays in
+      // the world for player/drone collision, detection and damage.
+      if(op==="smoke"&&target&&dst<8&&now>=(bot.gadgetAt||0)&&
+        (bot.gadgetUses||0)<2){
+        const pos={x:bot.x+(target.x-bot.x)*.64,
+          z:bot.z+(target.z-bot.z)*.64};
+        gadgets.deployBotGas(pos.x,pos.z,bot.team,now);
+        bot.gadgetUses=(bot.gadgetUses||0)+1;bot.gadgetAt=now+15000;
+        bot.state="throw-gas";bot.lastShotAt=now;
+        notify("SMOKE DEPLOYED GAS TO HOLD "+home.id,"click",bot);
+      }
+      if(op==="doc"&&now>=(bot.gadgetAt||0)&&
+        (bot.gadgetUses||0)<3){
+        const friends=(bot.team==="ally"?round.allies:round.bots).
+          filter(b=>b.alive&&b.health<b.healthMax-30&&distance(bot,b)<3.5).
+          sort((a,b)=>a.health-b.health);
+        const patient=friends[0];
+        if(patient){
+          patient.health=Math.min(patient.healthMax,patient.health+48);
+          bot.gadgetUses=(bot.gadgetUses||0)+1;bot.gadgetAt=now+5200;
+          bot.state="stim-heal";bot.setupProgress=1;
+          bot.lastShotAt=now;
+          notify("DOC HEALED "+(patient.operatorSpec?.name||"SQUADMATE"),"click",bot);
+        }
+      }
+      if(op==="pulse"&&now>=(bot.gadgetAt||0)){
+        const enemy=targets.find(t=>distance(t,bot)<12.5);
+        if(enemy){
+          round.teamIntel[bot.team]={x:enemy.x,z:enemy.z,
+            siteId:round.siteAt(enemy)?.id||null,until:now+3800};
+          bot.state="heartbeat-scan";bot.lastShotAt=now;
+        }
+        bot.gadgetAt=now+6800;
+      }
+    }
     if(!isAttack&&round.phase!=="planted"){
       // A defender isn't a stationary turret. Patrol cover and doors
       // around its own site, then rotate when an actual contact arrives.
