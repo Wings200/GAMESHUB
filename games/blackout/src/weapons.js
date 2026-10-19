@@ -7,8 +7,24 @@ export const WEAPON_SPECS=Object.freeze({
   secondary:{name:"P9 SIDEARM",category:"SIDEARM",magazine:15,reserve:60,rpm:375,
     reload:1.55,body:42,head:110,hipSpread:.23,adsSpread:.005,recoil:.023,range:75}
 });
+// Explicit gun selection uses actual ballistics and magazine states, not UI-only labels.
+export const WEAPON_VARIANTS=Object.freeze({
+  primary:Object.freeze({
+    carbine:WEAPON_SPECS.primary,
+    smg:Object.freeze({name:"COMPACT-9 SMG",category:"SMG",magazine:32,reserve:128,rpm:885,
+      reload:2.05,body:23,head:72,hipSpread:.14,adsSpread:.0037,recoil:.0165,range:77}),
+    dmr:Object.freeze({name:"MR-20 MARKSMAN",category:"DMR",magazine:20,reserve:80,rpm:450,
+      reload:2.55,body:46,head:115,hipSpread:.20,adsSpread:.002,recoil:.024,range:145})
+  }),
+  secondary:Object.freeze({
+    p9:WEAPON_SPECS.secondary,
+    compact:Object.freeze({name:"C12 COMPACT",category:"SIDEARM",magazine:12,reserve:60,rpm:440,
+      reload:1.42,body:36,head:100,hipSpread:.19,adsSpread:.0042,recoil:.020,range:66})
+  })
+});
 export class Weapons {
   constructor(){
+    this.loadout={primary:"carbine",secondary:"p9"};
     this.guns={};
     for(const [id,spec] of Object.entries(WEAPON_SPECS))
       // A full detachable magazine plus one chambered round, not a
@@ -19,9 +35,19 @@ export class Weapons {
     this.slot="primary";this.shots=0;this.hits=0;this.kills=0;
   }
   get current(){return this.guns[this.slot]}
+  setLoadout(slot,id){
+    if(!WEAPON_VARIANTS[slot]||!WEAPON_VARIANTS[slot][id])return false;
+    this.loadout[slot]=id;
+    const spec=WEAPON_VARIANTS[slot][id];
+    this.guns[slot]={...spec,ammo:spec.magazine+1,remaining:spec.reserve,
+      chambered:true,reloadType:null,reloadDurationMs:0,
+      reloadingUntil:0,nextShotAt:0,shotSequence:0,lastFiredAt:-Infinity};
+    return true;
+  }
   reset(){
-    for(const [id,spec] of Object.entries(WEAPON_SPECS)){
-      Object.assign(this.guns[id],{ammo:spec.magazine+1,remaining:spec.reserve,
+    for(const id of Object.keys(WEAPON_SPECS)){
+      const spec=WEAPON_VARIANTS[id][this.loadout[id]];
+      Object.assign(this.guns[id],{...spec,ammo:spec.magazine+1,remaining:spec.reserve,
         chambered:true,reloadType:null,reloadDurationMs:0,
         reloadingUntil:0,nextShotAt:0,shotSequence:0,lastFiredAt:-Infinity});
     }
@@ -45,7 +71,7 @@ export class Weapons {
     for(const gun of Object.values(this.guns)){
       if(gun.reloadingUntil&&now>=gun.reloadingUntil){
         // Tactical: keep one in chamber, replace the magazine, 30+1 max.
-        // Empty: charge the weapon from a full 30-round magazine (no +1).
+        // Empty: charge the weapon from a full magazine (no +1).
         const capacity=gun.magazine+(gun.reloadType==="tactical"?1:0);
         const count=Math.max(0,Math.min(capacity-gun.ammo,gun.remaining));
         gun.ammo+=count;gun.remaining-=count;
@@ -64,7 +90,9 @@ export class Weapons {
     gun.chambered=gun.ammo>0;
     // Repeatable pattern so fire control is learnable, not coin-flip yaw.
     if(now-gun.lastFiredAt>290)gun.shotSequence=0;
-    const kick=recoilFor(this.slot,gun.shotSequence++,ads);
+    const baseKick=recoilFor(this.slot,gun.shotSequence++,ads);
+    const recoilScale=gun.recoil/WEAPON_SPECS[this.slot].recoil;
+    const kick={vertical:baseKick.vertical*recoilScale,horizontal:baseKick.horizontal*recoilScale};
     gun.lastFiredAt=now;
     // Schedule the next shot from the previous weapon-cycle deadline, not
     // the timestamp of whichever animation frame finally fired this round.
