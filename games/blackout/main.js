@@ -381,7 +381,8 @@ function fireOnceSafe(now){
       const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
       const kill=info.bot.damage(Math.max(1,Math.round(base*penetration)));
       weapons.registerHit(kill);hitUntil=now+170;
-      popup(kill?"HOSTILE ELIMINATED":head?"HOSTILE HEADSHOT":"HOSTILE HIT",.65);
+      popup(kill?"HOSTILE ELIMINATED":(head?"HEADSHOT":"BODY HIT")+
+        " · "+Math.ceil(info.bot.health)+" HP REMAINING",.75);
       impact(h.point,head?0xffd2a1:0xff7e67,.07);
       break;
     }
@@ -516,7 +517,8 @@ SPEED ${report.speed.toFixed(2)}m/s / ${stateReadout.textContent}
 DYNAMIC COLLIDERS ${world.colliders.length} / TARGETS ${world.targets.filter(t=>t.alive).length}
 COMBAT ERRORS ${combatErrors}
 LAST ERROR ${lastCombatError||"NONE"}
-AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}`;
+AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}
+ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.health)).join(" / ")||"ALL ELIMINATED"}`;
   }
 }
 function frame(now){
