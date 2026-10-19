@@ -18,7 +18,7 @@ class V{
 }
 class Node{
   constructor(){this.position=new V();this.rotation={x:0,y:0,z:0,set(x,y,z){Object.assign(this,{x,y,z})}};
-    this.children=[];this.visible=true;this.userData={};this.isMesh=false}
+    this.children=[];this.visible=true;this.userData={};this.isMesh=false;this.scale={x:1,y:1,z:1}}
   add(...xs){for(const x of xs){this.children.push(x);x.parent=this}}
   remove(x){this.children=this.children.filter(c=>c!==x)}
   traverse(cb){cb(this);for(const c of this.children)c.traverse?.(cb)}
@@ -215,7 +215,7 @@ test("real barricades install on matching floor and rebuild cleanly",()=>{
  const ground=boards.openings.find(o=>o.y===0&&o.kind==="door");
  assert.ok(upper&&ground);
  const player={
-   x:upper.x,z:upper.z+1.2,y:4,yaw:Math.PI,
+   x:upper.x,z:upper.z+1.2,y:4,yaw:0,
    blocked:()=>false
  };
  assert.equal(boards.nearest(player)?.id,upper.id,"floor height selects upper frame");
