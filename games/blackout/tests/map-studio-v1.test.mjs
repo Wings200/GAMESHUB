@@ -219,7 +219,9 @@ test("V2 UI supports three-dimensional move, floor scale, and redundant ceiling 
   assert.match(source,/gizmo\.setMode\("translate"\)/);
   assert.match(source,/function redrawEdgeHandles\(\)/);
   assert.match(source,/gizmo\.addEventListener\("mouseUp"/);
-  assert.match(source,/gizmo\.setTranslationSnap\(shiftFree\|\|map\.grid===0\?null:map\.grid\)/);
+  assert.match(source,/gizmo\.setTranslationSnap\(null\)/);
+  assert.match(source,/root\.position\.x=aligned\.position\.x/);
+  assert.match(source,/result=alignPieceToGrid\(result,map\.grid\)/);
   assert.match(source,/case "r":setTransformMode\("scale"\)/);
   assert.match(source,/case "w":case "v":setTransformMode\("translate"\)/);
   assert.match(source,/type==="floor"[\s\S]*mat\.floor,mat\.floor,mat\.floor,mat\.ceiling/);
