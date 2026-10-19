@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V2.2 - moving AI defender site setup, physical jammer and barricade installation, stronger retake intelligence and animated special gadgets.">
+<meta name="description" content="BLACKOUT V3: open flat mechanics laboratory with wall, barricade, cover and bomb stations; preserves offline 5v5 AI drills.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v220-defender-ai-gadget-animations">
@@ -44,8 +44,8 @@
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
   </div>
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> BLACKOUT / TACTICAL OPERATIONS <span class="dim">· V2.0.1</span></div>
-    <h2 id="zoneLabel">SERVER ROOM</h2>
+    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.0</span></div>
+    <h2 id="zoneLabel">OPEN MECHANICS RANGE</h2>
     <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
@@ -60,10 +60,10 @@
       <p>WASD MOVE · SHIFT SPRINT</p>
       <p>CTRL CROUCH · Z PRONE</p>
       <p>Q / E TOGGLE LEAN · ALT SLOW WALK</p>
-      <p>F BARRICADE · SPACE WINDOW VAULT</p>
+      <p>F BARRICADE · SPACE TIMED WINDOW VAULT</p>
     </div>
   </div>
-  <div class="crosshair-caption" id="matchCaption">SITE A · SERVER ROOM · LIVE TACTICAL ROUND</div>
+  <div class="crosshair-caption" id="matchCaption">SITE A · BOMB LAB A · MECHANICS TRAINING</div>
   <div id="objectiveHint" class="objective-hint" aria-live="polite"></div>
   <div id="objectiveProgress" class="objective-progress hidden"><span id="objectiveAction">PLANTING</span><div class="objective-progress-track"><div id="objectiveFill"></div></div></div>
   <div id="roundResult" class="round-result hidden" role="status"></div>
@@ -92,13 +92,13 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V2.1 // TACTICAL AI + DRONE PREP</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V3.0 // MECHANICS SANDBOX</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">BLACKOUT // TACTICAL OPERATIONS · PRIVATE ALPHA</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">OPERATOR SELECTION <span>—</span> PLAN · PREPARE · EXECUTE</div>
     <div class="rule"></div>
-    <p class="description">Choose your operator and attack spawn or defense site, then deploy into the fixed two-site training facility. Defenders get 45 seconds to reinforce while attackers drive scouting drones. After preparation, enter with your four AI teammates against five enemies. <strong>This is offline 5v5 AI testing, not online multiplayer.</strong></p>
+    <p class="description">Choose an operator and training spawn. The entire building and roof are gone: BLACKOUT now uses a flat open mechanics sandbox with freestanding wall, barricade, cover and bomb-site testing stations. Defenders get 45 seconds to prepare while attackers control scouting drones. After preparation, enter with your four AI teammates against five enemies. <strong>This is offline 5v5 AI testing, not online multiplayer.</strong></p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
@@ -114,8 +114,8 @@
     </div>
     <div class="bo-section-title">02 <span>MISSION & EQUIPMENT</span><small>TWO POSSIBLE BOMB LOCATIONS</small></div>
     <label class="site-picker">INSERTION / DEFENSE FOCUS · BOTH SITES ARE LIVE <select id="siteSelect" aria-label="Choose the bomb site">
-      <option value="A">SITE A — SERVER ROOM</option>
-      <option value="B">SITE B — CONTROL ROOM</option>
+      <option value="A">SITE A — BOMB LAB A</option>
+      <option value="B">SITE B — BOMB LAB B</option>
     </select></label>
     <label class="site-picker">TEST INSERTION SPAWN
       <select id="spawnSelect">
@@ -145,16 +145,16 @@
       <strong>TEST CONTROLS</strong>
       <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Tap Q/E: hold left/right lean · tap the same side to reset · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant where you stand. Defend it after planting. G uses your selected operator's unique gadget; X is recon/utility. Press 3 after spawning to deploy another scouting drone.</p>
-      <p><strong>Defenders</strong> — You and four friendly AI protect BOTH bomb rooms. During the 45-second preparation phase, you cannot leave the building. After action begins, leaving the building reveals your location to all five attackers (runout detection). Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
+      <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER marked bomb zone, hold F while stationary to plant where you stand. Defend it after planting. G uses your selected operator's unique gadget; X is recon/utility. Press 3 after spawning to deploy another scouting drone.</p>
+      <p><strong>Defenders</strong> — You and four friendly AI defend BOTH marked bomb-site zones. During the 45-second preparation phase stay inside the central defense test area. There is no building and no runout detection in the open lab; runouts will return with actual competitive maps. Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
       <p><strong>Barricade interaction</strong> — Aim toward a door or window and hold F to install (defenders) or remove (either side). Shoot individual wooden planks to break them; press Space near a cleared side window to vault through. Barricades block players, bots, and bullets while intact.</p>
       <p><strong>Round results</strong> — Rounds continue if you die while surviving allies fight; you spectate the squad. Team elimination, successful plant/disable or objective timer decides the winner. Enter starts the next round; Esc opens the menu.</p>
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
-    <p id="status" class="notice">EDIT A SITE · SELECT OPERATOR · START DRONE / DEFENSE PREP</p>
-    <div class="progress-foot"><span>45S DRONE PREP · FIRST-ROW OPERATORS · 5V5 TACTICAL AI</span><span>OFFLINE SQUAD SIMULATION · NOT ONLINE MULTIPLAYER</span></div>
+    <p id="status" class="notice">SELECT OPERATOR · TEST MECHANICS · START DRONE / DEFENSE PREP</p>
+    <div class="progress-foot"><span>FLAT LAB · 5 WALL RIGS · 10 BARRICADE FRAMES · TWO BOMB SITES</span><span>OFFLINE SQUAD SIMULATION · NOT ONLINE MULTIPLAYER</span></div>
   </div>
   <div class="menu-right lab-aside">
     <div class="redline">B<span>↗</span></div>
