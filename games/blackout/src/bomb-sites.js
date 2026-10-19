@@ -68,7 +68,7 @@ export function createBombStations(T,scene,world,sites){
         piece.userData.kind="solid";world.shootables.push(piece);
       }
     }
-    items[site.id]={site,x,z,root,halo,alarm,light,label,marker};
+    items[site.id]={site,x,z,root,halo,alarm,light,label,marker,collider:c};
   }
   return {
     items,
