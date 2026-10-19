@@ -21,7 +21,7 @@ export function accumulatedBreach(cluster,type){
   if(score<1)return null;
   const p=Math.max(0,Math.min(1,(score-1)/.34));
   return {centerX:Math.max(-.78,Math.min(.78,cluster.x)),
-    halfWidth:.39+.28*p,bottom:.02,top:1.55+.60*p,
+    halfWidth:.39+.28*p,bottom:.98*(1-p)+.02,top:1.55+.60*p,
     traversable:p>=.88};
 }
 export const RECOIL_PATTERNS=Object.freeze({
