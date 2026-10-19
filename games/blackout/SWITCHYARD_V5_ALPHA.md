@@ -1,6 +1,21 @@
 # BLACKOUT V5.2 — SWITCHYARD multi-floor alpha
 Date: October 19, 2026
 
+## V5.3.1 interactive interior correction — October 19, 2026
+The first SWITCHYARD alpha had mostly non-interactive concrete walls and did not register its room openings with the reinforcement/barricade gameplay systems. **That was a genuine missing part of the requested map**, not a visual-only problem.
+
+Implemented:
+- 12 original, in-place soft/plywood wall panels across the ground and upper floors (6 per level) integrated into the building partitions and exterior entry bays
+- Physically collidable walls that receive bullet holes; clustered sustained shots can open a traversable area using the existing material damage profile; soft breach charges remove the whole panel collider
+- Defender 3-second wall reinforcement on actual map panels, with animated and permanently visible raised steel plates; Thermite can remove the protection with a hard breach
+- 10 actual framed door/window openings (five per floor) using the existing install/remove/break-board barricade interactions; wood collision and bullet hitboxes match the visible boards, and floor height prevents cross-floor interaction
+- Map switching reconfigures barricades and panel physics without leaving ghost boards in the separate Mechanics Lab
+- Defender AI now gets actual assigned prep tasks to approach walls, reinforce for three seconds, and install doorway barricades
+
+Automated tests include actual wall hitboxes, reinforcement, breach collider removal, upper-floor placement, map switching and AI preparation. Browser acceptance and visual polish are still necessary.
+
+**Limit:** Twelve designated soft sections, not universal per-tile destructibility. The remaining structural concrete walls and roof supports intentionally stay solid. Some unfinished room layout and visual issues from the uploaded V5 recording may still need separate fixes.
+
 ## Delivered
 - First original tactical building **SWITCHYARD** selectable in the in-game loadout; original flat **MECHANICS LAB** remains selectable and its colliders, target props and barricade hitboxes restore upon return.
 - Three physically separate accessible elevations: ground (Y=0), upper operations (Y=4), rooftop control deck (Y=8), joined by two genuine exterior flights of stairs and rail/landing geometry. Player collision/floor sampling knows the operator's current height; it cannot simply teleport upward inside the same X/Z footprint.
@@ -21,7 +36,7 @@ Date: October 19, 2026
 
 ## Known alpha gaps — not concealed
 - Geometry is original procedural blockout/detailing, not a photorealistic final map or a licensed Rainbow Six Siege map.
-- Existing lab's stand-alone destructible test panels and barricade test frames remain in the separate lab, but SWITCHYARD itself does **not yet** have its complete per-room soft-wall / reinforced-wall / barricadable door/window system.
+- SWITCHYARD now has 12 integrated soft-wall modules and 10 real door/window openings, though it does **not** have universal destructibility for every structural surface.
 - Vertical gadget effects, operator-specific detailed model/animation polishing, robust sound occlusion across floors, full drone observation UI and all 3D bot combat edge cases need further hands-on acceptance.
 - Defender AI on SWITCHYARD patrols during prep rather than silently installing gadgets at the old sandbox coordinates. Proper room-aware defender deployment is a next map iteration.
 - Real multiplayer, server-authoritative damage/spawns/site voting/replication and actual matchmaking are not built.
