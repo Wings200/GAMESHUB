@@ -1,3 +1,4 @@
+import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v310-smoke-remote-stage2";
 import {buildFacility} from "./facility.js?v=blackout-v310-smoke-remote-stage2";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
@@ -75,8 +76,9 @@ export function buildRange(THREE,scene){
   // Standalone panels for weapon penetration and attacker/defender tests.
   // They are NOT a level, so remove/rebuild them without changing the arena.
   let panelId=0;
-  function makePanel(x,z){
+  function makePanel(x,z,materialType="drywall"){
     const id=++panelId,g=new THREE.Group();root.add(g);
+    const materialProfile=materialStats(materialType);
     g.position.set(x,0,z);
     const frameMat=new THREE.MeshStandardMaterial({color:0x38444e,roughness:.82,metalness:.3});
     const reinforced=new THREE.MeshStandardMaterial({color:0x4b667a,roughness:.55,metalness:.75,side:THREE.DoubleSide});
@@ -88,7 +90,8 @@ export function buildRange(THREE,scene){
     const texture=new THREE.CanvasTexture(paint);
     texture.colorSpace=THREE.SRGBColorSpace;
     const soft=new THREE.MeshStandardMaterial({map:texture,side:THREE.DoubleSide,
-      transparent:true,alphaTest:.40,roughness:.93,metalness:0});
+      transparent:true,alphaTest:.40,roughness:materialType==="glass"?.3:.93,
+      metalness:0,opacity:materialType==="glass"?.74:1});
     const center=mesh(new THREE.PlaneGeometry(3,2.88),soft,0,1.5,0,g);
     box(-1.56,1.48,0,.13,2.97,.4,frameMat,g);
     box(1.56,1.48,0,.13,2.97,.4,frameMat,g);
@@ -101,11 +104,42 @@ export function buildRange(THREE,scene){
       plate.userData.previewPlate=i;
       return plate;
     });
-    const holes=[];
+    const holes=[],partitionColliders=[];
+    let cluster=null,breach=null;
+    function removePartition(){
+      for(const section of partitionColliders){
+        const k=colliders.indexOf(section);
+        if(k>=0)colliders.splice(k,1);
+      }
+      partitionColliders.length=0;
+    }
+    function syncPartition(){
+      removePartition();
+      const ci=colliders.indexOf(c);
+      if(breach?.traversable){
+        if(ci>=0)colliders.splice(ci,1);
+        const min=x-1.56,max=x+1.56,
+          left=x+breach.centerX-breach.halfWidth,
+          right=x+breach.centerX+breach.halfWidth;
+        const makeSection=(a,b,low,high)=>{
+          if(b-a<.015||high-low<.015)return;
+          const section={minX:a,maxX:b,minZ:z-.22,maxZ:z+.22,
+            minY:low,maxY:high,tag:"test-panel"};
+          colliders.push(section);partitionColliders.push(section);
+        };
+        makeSection(min,left,0,2.99);
+        makeSection(right,max,0,2.99);
+        makeSection(left,right,breach.top,2.99);
+      }else if(!colliders.includes(c))colliders.push(c);
+      state.collisionRevision++;
+    }
     function repaint(){
       brush.clearRect(0,0,1024,1024);
-      brush.fillStyle="#bba087";brush.fillRect(0,0,1024,1024);
-      brush.fillStyle="#937b65";
+      brush.fillStyle=materialType==="glass"?"#a6d4d9":
+        materialType==="plywood"?"#ae855c":"#bba087";
+      brush.fillRect(0,0,1024,1024);
+      brush.fillStyle=materialType==="glass"?"#daf8ff":
+        materialType==="plywood"?"#795132":"#937b65";
       for(let k=0;k<23;k++){
         const yy=(k*142+36)%1024;
         brush.globalAlpha=.13+(k%5)*.025;
@@ -123,25 +157,62 @@ export function buildRange(THREE,scene){
         brush.beginPath();brush.arc(u,v,r,0,Math.PI*2);brush.fill();
         brush.globalCompositeOperation="source-over";
       }
+      if(breach){
+        // The visible aperture and the real floor-level collision opening
+        // use the *same* coordinates. No magic full-panel deletion.
+        const l=(breach.centerX-breach.halfWidth+1.5)/3*1024;
+        const w=breach.halfWidth*2/3*1024;
+        const top=(2.94-breach.top)/2.88*1024;
+        brush.fillStyle="#362b25";
+        brush.fillRect(l-5,top-5,w+10,1024-top+5);
+        brush.globalCompositeOperation="destination-out";
+        brush.fillRect(l,top,w,1024-top);
+        brush.globalCompositeOperation="source-over";
+      }
       texture.needsUpdate=true;
     }
     repaint();
     const c={minX:x-1.56,maxX:x+1.56,minZ:z-.22,maxZ:z+.22,minY:0,maxY:2.99,tag:"test-panel"};
     colliders.push(c);
-    const panel={id,x,z,group:g,mesh:center,rails,collider:c,holes,reinforced:false,destroyed:false,
+    const panel={id,x,z,group:g,mesh:center,rails,collider:c,holes,
+      materialType,materialProfile,reinforced:false,destroyed:false,
+      get breach(){return breach},get impacts(){return cluster?.wear||0},
+      get openingWidth(){return breach?.traversable?breach.halfWidth*2:0},
       holeAt(point){
         const localX=point.x-x,localY=point.y;
-        return holes.some(h=>Math.hypot(localX-h.x,localY-h.y)<h.r*.85);
+        return Boolean(breach&&Math.abs(localX-breach.centerX)<breach.halfWidth&&
+          localY>=breach.bottom&&localY<=breach.top)||
+          holes.some(h=>Math.hypot(localX-h.x,localY-h.y)<h.r*.85);
       },
       bulletHole(point){
         if(this.destroyed||this.reinforced)return false;
         const localX=point.x-x,localY=point.y;
         if(Math.abs(localX)>1.49||localY<.065||localY>2.93)return false;
-        if(this.holeAt(point))return true;
-        // Bounded number of independently collidable holes, per panel.
-        if(holes.length>=160)return false;
-        holes.push({x:localX,y:localY,r:.018});
+        if(holes.length<160){
+          const existing=holes.find(h=>Math.hypot(localX-h.x,localY-h.y)<.11);
+          if(existing)existing.r=Math.min(.12,existing.r+.006*materialProfile.wear);
+          else holes.push({x:localX,y:localY,r:materialProfile.hole});
+        }
+        // Sustained impacts in a local cluster gradually eat material.
+        // A large opening requires repeated shots, not just one.
+        if(!cluster||Math.abs(localX-cluster.x)>.78){
+          cluster={x:localX,wear:0};
+        }
+        cluster.x=Math.max(-.78,Math.min(.78,cluster.x*.93+localX*.07));
+        cluster.wear+=materialProfile.wear;
+        const next=accumulatedBreach(cluster,materialType);
+        const wasOpen=Boolean(breach?.traversable);
+        breach=next;
+        if(Boolean(breach?.traversable)!==wasOpen)syncPartition();
         repaint();return true;
+      },
+      hitBullet(point){
+        if(this.destroyed)return {passed:true,attenuation:1,material:materialType};
+        if(this.reinforced)return {passed:false,attenuation:0,material:"steel"};
+        const previouslyOpen=this.holeAt(point);
+        if(!this.bulletHole(point))return {passed:false,attenuation:0,material:materialType};
+        return {passed:true,attenuation:previouslyOpen?.94:materialProfile.through,
+          material:materialType,opened:Boolean(breach?.traversable)};
       },
       previewReinforcement(progress){
         overlay.visible=progress>0&&progress<1&&!this.reinforced&&!this.destroyed;
@@ -157,13 +228,16 @@ export function buildRange(THREE,scene){
       reset(){
         this.reinforced=false;this.destroyed=false;g.visible=true;
         state.collisionRevision++;
-        overlay.visible=false;holes.length=0;repaint();
+        overlay.visible=false;holes.length=0;cluster=null;breach=null;
+        removePartition();repaint();
         center.material=soft;rails.forEach(r=>r.material=frameMat);
         if(!colliders.includes(c))colliders.push(c);
       },
       reinforce(){
         if(this.destroyed||this.reinforced)return false;
         this.reinforced=true;overlay.visible=false;center.material=reinforced;
+        cluster=null;breach=null;removePartition();holes.length=0;repaint();
+        if(!colliders.includes(c))colliders.push(c);
         state.collisionRevision++;
         rails.forEach(r=>r.material=reinforced);return true;
       },
@@ -175,7 +249,7 @@ export function buildRange(THREE,scene){
         this.destroyed=true;g.visible=false;overlay.visible=false;
         state.collisionRevision++;
         const i=colliders.indexOf(c);if(i!==-1)colliders.splice(i,1);
-        return true;
+        removePartition();return true;
       }};
     for(const part of [center,...rails])part.userData={kind:"panel",panel,perforated:part===center};
     panels.push(panel);shootables.push(center,...rails);
@@ -184,11 +258,11 @@ export function buildRange(THREE,scene){
   // Aligned with target lanes behind them so through-holes are testable.
   // Five standalone wall rigs: soft material, reinforcement and
   // Thermite tests remain collision-aware without constructing a building.
-  makePanel(-12,-29);
-  const preReinforcedTestPanel=makePanel(12,-29);
-  makePanel(-12,-44);makePanel(12,-44);
+  makePanel(-12,-29,"drywall");
+  const preReinforcedTestPanel=makePanel(12,-29,"steel");
+  makePanel(-12,-44,"plywood");makePanel(12,-44,"glass");
   // The central wall is used by AI reinforcement and penetration tests.
-  makePanel(0,-37);
+  makePanel(0,-37,"drywall");
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
   // One permanent hard-breach SAMPLE station, never a one-time building wall.
   preReinforcedTestPanel.reinforce();
@@ -237,5 +311,5 @@ export function buildRange(THREE,scene){
     set collisionRevision(v){state.collisionRevision=v;},
     specifications:{flat:true,size:240,targetCount:targets.length,panelCount:panels.length,sites:2,
       facility:false,mode:"mechanics-sandbox",doorFrames:10,wallStations:panels.length,
-      hardBreachSamples:1,coverProps:8}};
+      hardBreachSamples:1,materialTypes:["drywall","plywood","glass","steel"],coverProps:8}};
 }
