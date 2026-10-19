@@ -206,7 +206,15 @@ export class Gadgets {
       const entry={kind:id==="mute"?"jammer":"gas",x,z,group,light,disabledUntil:0,
         end:now+10500,nextTick:now};
       if(id==="mute")this.electronics.push(entry);
-      else this.gasFields.push(entry);
+      else{
+        const cloud=new this.THREE.Mesh(new this.THREE.SphereGeometry(2.0,16,12),
+          new this.THREE.MeshBasicMaterial({color:0x81955a,
+            transparent:true,opacity:.16,depthWrite:false,
+            side:this.THREE.DoubleSide}));
+        cloud.position.y=1.15;group.add(cloud);
+        entry.cloud=cloud;
+        this.gasFields.push(entry);
+      }
       consume();
       return{ok:true,message:id==="mute"?"MUTE JAMMER ONLINE · DRONES JAMMED NEARBY":
         "SMOKE CANISTER ACTIVE · 10 SECOND AREA DENIAL"};
