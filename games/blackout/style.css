@@ -226,3 +226,67 @@ body{--bo-ui-text:#f0f7fa}
 body.spectating .reticle,body.spectating .crosshair-caption{display:none!important}
 .bo-team-orange .bo-player-pip.ally{background:#704027;border-color:#e3a568;color:#ffecd1}
 .bo-team-blue .bo-player-pip.hostile{background:#235879;border-color:#82cdeb;color:#ecfbff}
+
+/* BLACKOUT V2: original competitive tactical HUD, operator select and builder */
+.bo-team{min-width:150px;display:flex;align-items:center;gap:11px}
+.bo-team-blue{background:linear-gradient(90deg,#0d3f67c9,transparent);border-left:3px solid #53a9f0;padding:7px 10px}
+.bo-team-orange{background:linear-gradient(270deg,#76402bc9,transparent);border-right:3px solid #f6a45e;padding:7px 10px}
+.bo-team-label{font-size:11px;font-weight:900;letter-spacing:.18em}
+.bo-match-clock{font-weight:950;letter-spacing:.08em;font-size:30px}
+.bo-matchbar{background:linear-gradient(180deg,#07101dea,#0c1726d0);border-bottom:1px solid #60717c80;
+ box-shadow:0 14px 40px #0009}
+.bo-player-pip{min-width:22px;height:24px;display:inline-flex;align-items:center;
+ justify-content:center;border:1px solid #8db4c4;background:#233c4c;color:#f0ffff;
+ font-weight:900;clip-path:polygon(8% 0,92% 0,100% 20%,100% 80%,92% 100%,8% 100%,0 80%,0 20%)}
+.bo-population{position:absolute;top:77px;left:50%;transform:translateX(-50%);
+ z-index:10;background:#07111ccc;padding:4px 12px;border:1px solid #496579;
+ font-size:11px;font-weight:900;letter-spacing:.18em;pointer-events:none}
+.bo-operator-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.bo-operator-card{min-height:108px;position:relative;overflow:hidden;
+ background:linear-gradient(155deg,#1a3442,#0b1723 65%);
+ border:1px solid #3b5365;border-radius:0!important;transition:border-color .15s,transform .15s;
+ display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bo-operator-card:hover{border-color:var(--op-accent);transform:translateY(-2px)}
+.bo-operator-card.selected{background:linear-gradient(155deg,#29536b,#111e2c);
+ border:2px solid var(--op-accent);box-shadow:inset 0 0 0 1px #ffffff18}
+.bo-operator-card strong{letter-spacing:.1em;font-size:11px}
+.bo-operator-icon{font-size:27px;color:var(--op-accent)}
+.bo-site-builder{border:1px solid #335163;background:#0b1723;padding:9px;
+ border-left:3px solid #70b8d3;max-width:760px}
+.bo-builder-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.bo-builder-tools button{flex:1;min-width:82px;border:1px solid #416174;
+ background:#183143;color:#d7f1f8;font-size:10px;font-weight:900;letter-spacing:.08em;
+ padding:8px 7px;cursor:pointer}
+.bo-builder-tools button.selected{background:#387a90;border-color:#9ff5ea;color:#fff}
+.bo-builder-tools button.bo-builder-reset{background:#463229;border-color:#b97959;color:#ffdabf}
+.bo-builder-status,.bo-builder-help{font-size:11px;line-height:1.55;color:#9db4c4;
+ letter-spacing:.045em;margin:6px 0 9px}
+.bo-drone-overlay{position:absolute;inset:0;z-index:7;pointer-events:none;
+ border:18px solid #03080bc9;background:repeating-linear-gradient(0deg,
+ transparent 0,transparent 5px,#152c3721 6px)}
+.bo-drone-header{position:absolute;top:105px;left:8%;right:8%;display:flex;
+ justify-content:space-between;align-items:center;background:#06141ad9;
+ border-top:3px solid #70dae1;padding:15px 20px;
+ font:900 16px monospace;color:#d6ffff;letter-spacing:.12em}
+.bo-drone-header span{color:#94e5b9;font-size:13px}
+.bo-drone-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:100px;height:100px;border:1px solid #a5e9ee47;display:grid;place-items:center}
+.bo-drone-bracket{font:400 55px monospace;color:#a8f9eeaa}
+.bo-drone-footer{position:absolute;left:8%;right:8%;bottom:85px;
+ background:#06141be8;border-bottom:3px solid #70dae1;padding:14px 20px;
+ display:flex;gap:15px;justify-content:space-between;align-items:center;
+ color:#e5faff;font:800 12px monospace;letter-spacing:.07em}
+body:has(.bo-drone-overlay:not(.hidden)) .weapon-hud,
+body:has(.bo-drone-overlay:not(.hidden)) .crosshair-caption,
+body:has(.bo-drone-overlay:not(.hidden)) .reticle{display:none!important}
+body:has(.bo-drone-overlay:not(.hidden)) .bo-drone-header span{animation:bo-signal 1.5s infinite}
+@keyframes bo-signal{50%{opacity:.62}}
+.menu-main{overflow-y:auto;max-height:calc(100vh - 48px)}
+@media(max-width:850px){
+ .bo-team{min-width:0}
+ .bo-operator-card{min-height:86px}
+ .bo-operator-card .bo-role,.bo-operator-card .bo-speed{display:none}
+ .bo-drone-header{left:5%;right:5%;font-size:12px}
+ .bo-drone-footer{left:5%;right:5%;bottom:50px;font-size:9px;flex-wrap:wrap}
+ .bo-population{top:66px}
+}
