@@ -84,7 +84,12 @@ export function createReconDrone(T,scene,world,camera){
   function begin(now=0){
     if(active||remaining<=0)return false;
     remaining--;deployments++;destroyed=false;health=35;
-    x=0;z=-15.8;y=0;yaw=0;pitch=0;active=true;jammed=false;pingCount=0;
+    // A recon device deploys at the chosen attacker insertion, not
+    // magically 30 metres ahead or on the far side of a spawn blocker.
+    x=world.spawn?.x??0;z=world.spawn?.z??-15.8;
+    y=world.spawn?.y??0;
+    yaw=world.spawn?.yaw??0;pitch=0;
+    active=true;jammed=false;pingCount=0;
     lastPing=now-1000;body.visible=true;body.position.set(x,y,z);
     camera.rotation.order="YXZ";
     update(0,new Set(),null);
