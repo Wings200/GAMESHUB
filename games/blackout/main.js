@@ -1,16 +1,16 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v200-builder-drone-operators";
-import {FirstPersonController} from "./src/player.js?v=blackout-v200-builder-drone-operators";
-import {Weapons} from "./src/weapons.js?v=blackout-v200-builder-drone-operators";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v200-builder-drone-operators";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v200-builder-drone-operators";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v200-builder-drone-operators";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v200-builder-drone-operators";
-import {GameAudio} from "./src/audio.js?v=blackout-v200-builder-drone-operators";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v200-builder-drone-operators";
-import {Barricades} from "./src/barricades.js?v=blackout-v200-builder-drone-operators";
-import {createReconDrone} from "./src/drone.js?v=blackout-v200-builder-drone-operators";
-import {createSiteBuilder} from "./src/site-builder.js?v=blackout-v200-builder-drone-operators";
+import {buildRange} from "./src/world.js?v=blackout-v201-builder-drone-ai-final";
+import {FirstPersonController} from "./src/player.js?v=blackout-v201-builder-drone-ai-final";
+import {Weapons} from "./src/weapons.js?v=blackout-v201-builder-drone-ai-final";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v201-builder-drone-ai-final";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v201-builder-drone-ai-final";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v201-builder-drone-ai-final";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v201-builder-drone-ai-final";
+import {GameAudio} from "./src/audio.js?v=blackout-v201-builder-drone-ai-final";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v201-builder-drone-ai-final";
+import {Barricades} from "./src/barricades.js?v=blackout-v201-builder-drone-ai-final";
+import {createReconDrone} from "./src/drone.js?v=blackout-v201-builder-drone-ai-final";
+import {createSiteBuilder} from "./src/site-builder.js?v=blackout-v201-builder-drone-ai-final";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
