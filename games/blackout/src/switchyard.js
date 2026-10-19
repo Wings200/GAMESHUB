@@ -144,7 +144,10 @@ export function createSwitchyard(T,scene){
     box(-7,.65+8,z,13.8,1.30,.48,steel,{solid:true});
     box(7,.65+8,z,13.8,1.30,.48,steel,{solid:true});
   }
-  for(const x of [-14,14])box(x,8.65,-35.5,.5,1.3,31,steel,{solid:true});
+  box(-14,8.65,-35.5,.5,1.3,31,steel,{solid:true});
+  // East roof guardrail has a real stairwell gate at z≈-21;
+  // a full-length wall here would trap everybody on the stairs.
+  box(14,8.65,-36.4,.5,1.3,29,steel,{solid:true});
   // Original open central spine provides a loop for both A and B sites.
   for(const level of [0,4]){
     // Separating wall, segmented by wide corridor opening z[-37,-33].
