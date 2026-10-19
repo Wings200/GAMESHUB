@@ -45,7 +45,26 @@ export class Ordnance{
     this.flashUntil=0;this.flashIntensity=0;this.flashStarted=0;
     this.onEffect=null;
   }
+  pause(now){
+    if(this.pausedAt===null||this.pausedAt===undefined)this.pausedAt=now;
+  }
+  resume(now){
+    if(this.pausedAt===null||this.pausedAt===undefined)return;
+    const delta=Math.max(0,now-this.pausedAt);
+    this.pausedAt=null;
+    if(this.pending){
+      this.pending.at+=delta;this.pending.start+=delta;this.pending.end+=delta;
+    }
+    for(const d of this.devices){
+      for(const field of ["created","last","armedAt","detonateAt"]){
+        if(Number.isFinite(d[field]))d[field]+=delta;
+      }
+    }
+    for(const fx of this.effects){fx.start+=delta;fx.end+=delta;}
+    if(this.flashUntil>0){this.flashUntil+=delta;this.flashStarted+=delta;}
+  }
   reset(){
+    this.pausedAt=null;
     if(this.pending)this.removeMesh(this.pending.group);
     this.pending=null;
     for(const d of this.devices)this.cleanupDevice(d);
