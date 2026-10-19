@@ -23,6 +23,8 @@ catch(error){console.warn("BLACKOUT editor draft reset",error);map=createBlankMa
 let tool="select",siteEditing="A",selectedId=null,layer=0,placementRotation=0;
 let dragging=null,mouseMoved=false,dragStart=null,lastPoint=null;
 let transformMode="translate",shiftFree=false,transformStart=null,transformItem=null;
+let flyCamera=false,lastFrame=0;
+const flyKeys=new Set();
 let ignoreGizmoChanges=false;
 const undoStack=[],redoStack=[];
 let noticeTimeout=0,dirty=false,continuousPreview=false;
@@ -685,8 +687,23 @@ function resize(){
   renderer.setSize(w,h,false);
   camera.aspect=w/h;camera.updateProjectionMatrix();
 }
-function loop(){
+function loop(now=0){
   requestAnimationFrame(loop);
+  const dt=cap((now-lastFrame)/1000||.016,0,.06);
+  lastFrame=now;
+  if(flyCamera&&flyKeys.size){
+    const speed=(flyKeys.has("shift")?24:10)*dt;
+    const forward=(flyKeys.has("w")?1:0)-(flyKeys.has("s")?1:0);
+    const strafe=(flyKeys.has("d")?1:0)-(flyKeys.has("a")?1:0);
+    const vertical=(flyKeys.has(" ")?1:0)-(flyKeys.has("c")?1:0);
+    const unit=Math.max(1,Math.hypot(forward,strafe,vertical));
+    orbit.target.x+=(-Math.sin(orbit.theta)*forward+
+      Math.cos(orbit.theta)*strafe)*speed/unit;
+    orbit.target.z+=(-Math.cos(orbit.theta)*forward-
+      Math.sin(orbit.theta)*strafe)*speed/unit;
+    orbit.target.y+=vertical*speed/unit;
+    setOrbit();
+  }
   renderer.render(scene,camera);
 }
 function numberChange(id,handler){
@@ -724,6 +741,16 @@ $("topView").addEventListener("click",()=>{
 });
 $("perspectiveView").addEventListener("click",()=>{
   orbit.phi=.92;orbit.theta=.75;setOrbit();
+});
+$("flyCamera").addEventListener("click",()=>{
+  flyCamera=!flyCamera;
+  flyKeys.clear();
+  $("flyCamera").classList.toggle("active",flyCamera);
+  if(flyCamera){
+    orbit.phi=1.3;orbit.distance=Math.min(orbit.distance,8);
+    setOrbit();
+    toast("FREECAM ON · WASD MOVE · SPACE UP · C DOWN · SHIFT FAST · RIGHT DRAG LOOK");
+  }else toast("FREECAM OFF · EDITOR HOTKEYS RESTORED");
 });
 $("frameSelection").addEventListener("click",focus);
 $("floorLevel").addEventListener("change",e=>setLayer(Number(e.target.value)));
@@ -830,9 +857,15 @@ window.addEventListener("keydown",e=>{
   }
   if(e.key==="Shift"){
     shiftFree=true;updateGizmoSnap();
+    if(flyCamera)flyKeys.add("shift");
     return;
   }
   if(editing||e.altKey||e.metaKey)return;
+  if(flyCamera&&["w","a","s","d"," ","c"].includes(e.key.toLowerCase())){
+    flyKeys.add(e.key.toLowerCase());
+    if(e.key===" ")e.preventDefault();
+    return;
+  }
   switch(e.key.toLowerCase()){
     case "delete":case "backspace":e.preventDefault();removeSelected();break;
     case "escape":setTool("select");selectPiece(null);break;
@@ -843,9 +876,12 @@ window.addEventListener("keydown",e=>{
   }
 });
 window.addEventListener("keyup",e=>{
+  flyKeys.delete(e.key.toLowerCase());
   if(e.key==="Shift"){shiftFree=false;updateGizmoSnap();}
 });
-window.addEventListener("blur",()=>{shiftFree=false;updateGizmoSnap();});
+window.addEventListener("blur",()=>{
+  flyKeys.clear();shiftFree=false;updateGizmoSnap();
+});
 function resizeFloor(size){
   const piece=map.elements.find(e=>e.id===selectedId);
   if(!piece||piece.type!=="floor")return;
