@@ -11,7 +11,7 @@
 
 ## Development milestones
 1. **Sandbox foundation (current):** remove enclosed map/roof; separate stations, full-room A/B zones, target/cover tests, selectable roles/spawns, safe collision and timed vault.
-2. **Movement + weapons + destruction (in progress):** Stage 2A introduces shared colliding throwable physics, Smoke's thrown/armed/remote-trigger gas, destructible canisters, and tactical versus empty magazine/chamber rules. Next: material penetration, incremental breach geometry, detailed hand reloads and weapon recoil tuning.
+2. **Movement + weapons + destruction (in progress):** Stage 2A added shared throw physics, remote Smoke, and chambered reloads. **Stage 2B/V3.2** adds four material profiles, penetrating rounds with different damage loss, accumulated wall erosion that eventually opens a traversable collider, deterministic recoil patterns, moving magazine/hand/charging-handle animations and impact debris. Next: detailed material layering, ballistic ricochets, destructible vertical floors, operator-specific firearms.
 3. **Complete operator gadgets:** physical place/use/pickup/counter states, animations, cameras/drones, explosions, denial and detection systems.
 4. **Competitive round and bots:** accurate two-site rules, 45s prep, shared intel, purpose-driven 5v5 attacks and retakes, tactical difficulty.
 5. **Presentation + performance:** reliable counters/HUD, high-quality original visuals, spatial acoustics, automated + browser QA.
@@ -51,12 +51,12 @@
 |---|---|---|---|
 | G01 | Real gun-mounted optics | PROTOTYPE |  |
 | G02 | Multiple optic choices | PROTOTYPE |  |
-| G03 | Individual recoil patterns | PROTOTYPE |  |
+| G03 | Individual recoil patterns | PROTOTYPE | V3.2: repeatable rifle/pistol vertical and lateral recoil that resets after pausing fire; recoil still needs operator/attachment tuning |
 | G04 | Recoil recovery and attachments | PROTOTYPE |  |
 | G05 | True hipfire vs ADS accuracy | PROTOTYPE |  |
 | G07 | Head, body and limb damage | PROTOTYPE |  |
 | G08 | Magazine and chamber logic | PROTOTYPE | Stage 2A: 30+1/15+1 chamber; tactical reload retains +1; empty reload 440ms longer; reserve preserved. Animation polish still needed |
-| G09 | Reload and inspect animations | PROTOTYPE |  |
+| G09 | Reload and inspect animations | PROTOTYPE | V3.2: first-person magazines and support hands move during reload; empty reload pulls rifle bolt/pistol slide; weapon inspection still pending |
 | G10 | Different operator weapon loadouts | PROTOTYPE |  |
 | G11 | Proper muzzle flash and casings | PROTOTYPE |  |
 | G12 | Reliable hit registration | PROTOTYPE |  |
@@ -65,16 +65,16 @@
 
 | ID | Feature | Status | Note |
 |---|---|---|---|
-| D01 | Gradual soft-wall destruction | PENDING | current soft wall supports bullet apertures and whole-panel breach; gradual holes remain |
+| D01 | Gradual soft-wall destruction | PROTOTYPE | V3.2: localized damage accumulates into larger opening; after sufficient impacts, creates a human-sized open passage. Per-voxel exact damage not yet implemented |
 | D02 | Small, accurate bullet holes | PROTOTYPE |  |
-| D03 | Material-based penetration | PENDING |  |
+| D03 | Material-based penetration | PROTOTYPE | V3.2: drywall ~70%, plywood ~48%, glass ~88% through-damage; reinforced steel blocks rifle shots. More materials, thickness, range and ricochet pending |
 | D04 | Wooden barricade damage | PROTOTYPE |  |
 | D05 | Full reinforcement mechanics | PROTOTYPE |  |
 | D06 | Hard-breach interaction | PROTOTYPE |  |
 | D07 | Destructible floors and ceilings | PENDING |  |
 | D08 | Explosion damage and fragments | PENDING |  |
 | D09 | Debris and dust particles | PROTOTYPE |  |
-| D10 | Real persistent openings | PROTOTYPE |  |
+| D10 | Real persistent openings | PROTOTYPE | V3.2: wall opening removes full-panel collider and replaces it with side/top colliders; AI path cache invalidated; reset restores continuous wall |
 
 ### Attacker Gadgets
 
@@ -243,3 +243,11 @@ The open floor must have **no enclosing structural walls and no roof**. Preserve
 - **Weapon magazine model:** Rifle loads 30+1, pistol 15+1. Tactical reload retains a chambered round while replenishing from reserve. Empty reload adds a 440ms animation/action delay and loads a 30/15-round magazine without +1 until another tactical reload. This is a first pass; full eject-mag and charging-handle animations remain incomplete.
 - **Source regression tests:** `node --test games/blackout/tests/*.test.mjs`. `tests/smoke-stage2.test.mjs` covers throw/landing, inactive-before-trigger, remote damage/expiry, shooting canisters, physics collisions, round reset and magazine states.
 - **Unfinished:** detailed hand model / lever throws, true obscuring volumetric smoke, authentic environmental occlusion and destruction materials, multiple gun-specific attachment animations, actual live-browser smoke test, real multiplayer synchronization.
+
+## Stage 2B / BLACKOUT V3.2 — destruction and gunplay prototype
+
+- Five freestanding test panels: 2 drywall, 1 plywood, 1 laminated-glass *gameplay approximation*, 1 reinforced steel. A rifle bullet can pierce unreinforced material with a material-dependent damage multiplier. Steel reinforcement and physical metal frames stop bullets.
+- Sustained impacts form an expanding aperture instead of destroying the entire panel. When a sufficiently tall/wide opening exists, the wall's full-width collider is replaced with left/right/top sections, enabling player movement and AI pathfinding. The opening and its surviving braces must agree with the visible geometry; reset clears holes and restores collisions.
+- Rifle and pistol recoil trajectories are learnable, distinct patterns with a pause-reset, not per-shot random lateral displacement. True weapon-specific attachments, stance-independent spray analysis and competitive recoil calibration are still pending.
+- First-person magazines, replacement magazines, supporting hands and empty-reload bolt/slide motion added. These are procedural meshes, not motion-captured Siege animations.
+- Test: `node --test games/blackout/tests/*.test.mjs` includes `destruction-stage3.test.mjs`. Code-level mock simulations passed during implementation. Full Node runner in this connector environment and live-browser rendering/deployment have **not** been independently verified.
