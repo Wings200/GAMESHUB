@@ -22,7 +22,7 @@ export const OPERATORS=Object.freeze({
     "ROAMER","EXTRA SENSOR","Carries an additional proximity detector.","⌁","#b19fff",{shield:1,sensor:3,reinforce:2}),
   bastion:make("bastion","BASTION","defender",1,3,125,2.85,4.65,
     "FORTIFY","HARDENED SITE","Carries more shields and reinforcements.","⬢","#f0af73",{shield:3,sensor:1,reinforce:4}),
-  echo:make("echo","ECHO","defender",2,2,110,3.35,5.50,
+  sonar:make("sonar","SONAR","defender",2,2,110,3.35,5.50,
     "INTEL","WIDE SENSOR KIT","Carries more proximity sensors for doorway coverage.","◉","#88c9ff",{shield:1,sensor:4,reinforce:2})
 });
 export function defaultOperator(side){return side==="defender"?OPERATORS.atlas:OPERATORS.kestrel;}
