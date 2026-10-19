@@ -105,12 +105,21 @@ export function initCompetitiveUI({menu,start,status,sightSelect,getOperator,get
   return {navigate,stopQueue,updateLoadout,get page(){return page;}};
 }
 
-let lastCue="";
+let lastCue="",speechTimer=null;
+export function stopTacticalNarration(){
+  if(speechTimer!==null){clearTimeout(speechTimer);speechTimer=null;}
+  try{if(typeof window!=="undefined")window.speechSynthesis?.cancel();}catch{}
+}
+export function resetTacticalCue(){
+  lastCue="";
+  stopTacticalNarration();
+}
 export function playTacticalPhaseAnnouncement({phase,role,roundNumber,audio}){
   if(phase!=="prep"&&phase!=="attack"&&phase!=="guard")return;
   // Pausing and reopening the match must not repeatedly play the same announcement.
   const key=roundNumber+":"+phase+":"+role;
   if(lastCue===key)return;
+  stopTacticalNarration();
   lastCue=key;
   audio.play("tactical-cue"); // five original synthesized beats; not a Ubisoft recording
   const spoken=phase==="prep"?
@@ -118,7 +127,8 @@ export function playTacticalPhaseAnnouncement({phase,role,roundNumber,audio}){
     role==="attacker"?"Make your way to the bomb sites and plant the defuser.":"Defend the bombs. Stop the attackers.";
   // System text-to-speech is optional; the equivalent objective remains on-screen.
   if(typeof window==="undefined"||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
-  setTimeout(()=>{
+  speechTimer=setTimeout(()=>{
+    speechTimer=null;
     if(!document.body.classList.contains("playing"))return;
     try{
       const synth=window.speechSynthesis;
