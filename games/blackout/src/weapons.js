@@ -1,9 +1,9 @@
 // BLACKOUT V0.2 — independent offline weapon mechanics for test tuning.
 // Gun statistics are GAMEPLAY values; no server-authoritative combat yet.
 export const WEAPON_SPECS=Object.freeze({
-  primary:{name:"KESTREL MK1",category:"CARBINE",magazine:30,reserve:120,rpm:710,
+  primary:{name:"CARBINE 556",category:"CARBINE",magazine:30,reserve:120,rpm:710,
     reload:2.25,body:29,head:83,hipSpread:.18,adsSpread:0,recoil:.015,range:110},
-  secondary:{name:"VIGIL P9",category:"SIDEARM",magazine:15,reserve:60,rpm:375,
+  secondary:{name:"P9 SIDEARM",category:"SIDEARM",magazine:15,reserve:60,rpm:375,
     reload:1.55,body:42,head:110,hipSpread:.23,adsSpread:0,recoil:.023,range:75}
 });
 export class Weapons {
