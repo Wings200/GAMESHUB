@@ -21,10 +21,11 @@ const hash=(a,b)=>b*WIDTH+a;
 // Cache a collision occupancy grid by world collision revision. A damaged
 // barricade or breached wall bumps the revision, regenerating exactly once.
 const occupancyCache=new WeakMap();
-function occupancy(world){
+function occupancy(world,ignoreDoors=true){
   const cached=occupancyCache.get(world);
   if(cached&&cached.revision===world.collisionRevision&&
-      cached.colliderCount===world.colliders.length)return cached.data;
+      cached.colliderCount===world.colliders.length&&cached[ignoreDoors?"attack":"defend"])
+    return cached[ignoreDoors?"attack":"defend"];
   const data=new Uint8Array(WIDTH*HEIGHT);
   // Expand each wall collider by the bot radius and paint occupied cells.
   // Narrow geometries still resolve through the same blocked() test.
@@ -33,15 +34,19 @@ function occupancy(world){
     // Wooden DOOR barricades can be shot away, so route THROUGH their
     // openings during planning. Actual movement still collides until
     // enough planks have been destroyed. Windows still block foot travel.
-    data[hash(gx,gz)]=Number(blocked(world,pos.x,pos.z,.38,true));
+    data[hash(gx,gz)]=Number(blocked(world,pos.x,pos.z,.38,ignoreDoors));
   }
-  occupancyCache.set(world,{revision:world.collisionRevision,
-    colliderCount:world.colliders.length,data});
+  const entry=cached&&cached.revision===world.collisionRevision&&
+    cached.colliderCount===world.colliders.length?cached:{
+      revision:world.collisionRevision,colliderCount:world.colliders.length
+    };
+  entry[ignoreDoors?"attack":"defend"]=data;
+  occupancyCache.set(world,entry);
   return data;
 }
-export function findTacticalPath(world,from,to){
+export function findTacticalPath(world,from,to,ignoreDoors=true){
   const [ax,az]=toGrid(from.x,from.z);
-  const grid=occupancy(world);
+  const grid=occupancy(world,ignoreDoors);
   let [bx,bz]=toGrid(to.x,to.z);
   // Never deliberately route into a solid desk, bomb unit or blocked corner.
   // Find the nearest available standing square if the requested square is
@@ -122,13 +127,15 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
     bot.blockingBarricade=null;
   // Never perform a full A* search every frame for an unreachable goal.
   // A failed route is cached until its retry deadline or a collision change.
-  const changedWorld=bot.collisionRevision!==world.collisionRevision;
+  const changedWorld=bot.collisionRevision!==world.collisionRevision||
+    bot.lastBreachPermission!==Boolean(bot.allowBreach!==false);
   if(changingGoal||changedWorld||now>=bot.repathAt){
-    bot.path=findTacticalPath(world,bot,goal);
+    bot.path=findTacticalPath(world,bot,goal,bot.allowBreach!==false);
     if(changedWorld)bot.blockingBarricade=null;
     bot.repathAt=now+(bot.path.length?1600:2600)+(bot.id%3)*270;
     bot.lastGoal={...goal};
     bot.collisionRevision=world.collisionRevision;
+    bot.lastBreachPermission=bot.allowBreach!==false;
   }
   while(bot.path.length&&Math.hypot(bot.x-bot.path[0].x,bot.z-bot.path[0].z)<.52)
     bot.path.shift();
@@ -140,7 +147,8 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
   const collision=collisionAt(world,nx,nz,.34);
   if(collision){
-    if(collision.tag==="barricade"&&collision.barricade?.kind==="door"){
+    if(bot.allowBreach!==false&&collision.tag==="barricade"&&
+       collision.barricade?.kind==="door"){
       // Don't forget the route: stand at this doorway and shoot the boards.
       // This also prevents infinite loops in a corner when every entrance
       // has been barricaded.
