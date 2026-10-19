@@ -107,7 +107,7 @@ export class Ordnance{
         type==="frag"?0x4e6651:type==="c4"?0x527085:0x73634c,
         roughness:.44,metalness:.61}));
     group.add(mesh);
-    this.pending={type,group,mesh,at:now,end:now+290,
+    this.pending={type,kind:type,start:now,group,mesh,at:now,end:now+290,
       camera,player,origin:target.origin};
     return {ok:true,message:type.toUpperCase()+" · THROWING",event:"gadget-throw"};
   }
