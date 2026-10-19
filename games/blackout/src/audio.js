@@ -124,6 +124,12 @@ export class GameAudio{
         this.tone(670,.11,.10,"sine",.14);
         this.tone(400,.23,.11,"sine",.28);
         break;
+      case "barricade":
+        this.noise(.09,.19,670,"bandpass");
+        this.noise(.13,.14,360,"lowpass",.12);
+        this.tone(380,.10,.13,"triangle",.03,185);
+        this.noise(.055,.12,1700,"highpass",.28);
+        break;
       case "beep":
         this.tone(1040,.075,.096,"sine");
         this.tone(520,.086,.03,"triangle");
