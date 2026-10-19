@@ -1,5 +1,6 @@
 import {materialStats,accumulatedBreach} from "./material-ballistics.js?v=blackout-v330-advanced-ordnance";
 import {buildFacility} from "./facility.js?v=blackout-v330-advanced-ordnance";
+import {createSwitchyard,SWITCHYARD_SITE_PAIRS} from "./switchyard.js?v=blackout-v500-switchyard";
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
@@ -302,6 +303,49 @@ export function buildRange(THREE,scene){
     center.userData={kind:"shield",shield};shootables.push(center);
     placed.push(shield);return shield;
   }
+  const sandboxColliders=colliders.slice(),sandboxShootables=shootables.slice();
+  const originalSites={
+    A:{...facility.sites.A,bounds:{...facility.sites.A.bounds},y:0},
+    B:{...facility.sites.B,bounds:{...facility.sites.B.bounds},y:0}
+  };
+  const originalFacility={...facility,sitePairs:null};
+  let liveMap="lab",sitePairId="operations",switchyard=null;
+  function setSitePair(id){
+    if(liveMap!=="switchyard")return false;
+    const pair=SWITCHYARD_SITE_PAIRS.find(p=>p.id===id);
+    if(!pair)return false;
+    sitePairId=pair.id;
+    for(const key of ["A","B"]){
+      const data=pair[key],site=facility.sites[key];
+      Object.assign(site,data,{id:key,radius:2.95,bounds:{...data.bounds}});
+    }
+    return true;
+  }
+  function activateMap(id="lab"){
+    const next=id==="switchyard"?"switchyard":"lab";
+    if(next===liveMap)return false;
+    if(!switchyard)switchyard=createSwitchyard(THREE,scene);
+    liveMap=next;
+    root.visible=next==="lab";
+    switchyard.root.visible=next==="switchyard";
+    colliders.splice(0,colliders.length,
+      ...(next==="lab"?sandboxColliders:switchyard.colliders));
+    shootables.splice(0,shootables.length,
+      ...(next==="lab"?sandboxShootables:switchyard.shootables));
+    // Facility reference stays stable for gadgets and round controllers.
+    Object.assign(facility,next==="lab"?originalFacility:switchyard.facilities);
+    facility.sites=originalFacility.sites;
+    if(next==="switchyard")setSitePair(sitePairId);
+    else for(const key of ["A","B"])
+      Object.assign(facility.sites[key],originalSites[key],
+        {bounds:{...originalSites[key].bounds}});
+    state.collisionRevision++;
+    return true;
+  }
+  function floorAt(x,z,footY=0){
+    return liveMap==="switchyard"?
+      switchyard.floorAt(x,z,footY):0;
+  }
   function reset(){
     for(const t of targets)t.reset();
     for(const p of panels)p.reset();
@@ -309,8 +353,11 @@ export function buildRange(THREE,scene){
     for(const s of [...placed])s.remove();
   }
   return {root,colliders,shootables,targets,panels,placed,
-    floor,reset,addShield,facility,
-    floorAt:()=>0,zoneAt:(x,z)=>facility.zoneAt(x,z),
+    floor,reset,addShield,facility,activateMap,setSitePair,floorAt,
+    zoneAt:(x,z,y=0)=>facility.zoneAt(x,z,y),
+    get mapId(){return liveMap},
+    get sitePairId(){return sitePairId},
+    get sitePairs(){return liveMap==="switchyard"?SWITCHYARD_SITE_PAIRS:[]},
     spawn:{x:0,y:0,z:16,yaw:0},
     state,
     get collisionRevision(){return state.collisionRevision;},
