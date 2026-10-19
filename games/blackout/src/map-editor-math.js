@@ -111,3 +111,102 @@ export function magnetizeEdges(piece,elements,threshold=.7){
   p.z=Math.round(p.z*10000)/10000;
   return original;
 }
+
+
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sqGrid=(grid)=>Number.isFinite(grid)&&grid>0?grid:0;
+const axisDirection=(rotationY,axis)=>{
+  const a=(rotationY||0)*Math.PI/180;
+  return axis==="x"?{x:Math.cos(a),z:-Math.sin(a)}:
+    {x:Math.sin(a),z:Math.cos(a)};
+};
+// Align physical PIECE EDGES to grid intersections rather than the centre.
+// E.g. a 3m wall on a 1m grid has a half-grid centre, with both ends exact.
+export function alignPieceToGrid(piece,grid){
+  const step=sqGrid(grid),item={...piece,position:{...piece.position}};
+  if(!step)return item;
+  const p=item.position;
+  const rot=((item.rotationY||0)%180+180)%180;
+  const swap=rot>45&&rot<135;
+  if(item.type==="floor"||item.type==="ceiling"){
+    const w=swap?item.size.z:item.size.x;
+    const d=swap?item.size.x:item.size.z;
+    p.x=snapNumber(p.x-w/2,step)+w/2;
+    p.z=snapNumber(p.z-d/2,step)+d/2;
+  }else if(["hardWall","softWall","reinforcedWall","door","window","railing"].includes(item.type)){
+    const parallel=swap?"z":"x";
+    const normal=swap?"x":"z";
+    p[parallel]=snapNumber(p[parallel]-item.size.x/2,step)+item.size.x/2;
+    p[normal]=snapNumber(p[normal],step);
+  }else{
+    p.x=snapNumber(p.x,step);p.z=snapNumber(p.z,step);
+  }
+  p.x=Math.round(p.x*10000)/10000;
+  p.z=Math.round(p.z*10000)/10000;
+  return item;
+}
+export function resizeFromEdge(piece,{axis,side,delta,grid=0,snap=true}){
+  if(!["x","y","z"].includes(axis)||![-1,1].includes(side))throw Error("Invalid resize edge");
+  const size={...piece.size},position={...piece.position};
+  const step=snap?sqGrid(grid):0;
+  const minimum=axis==="y"?.12:.15;
+  if(axis==="y"){
+    if(piece.type==="floor"){
+      // Floor slab upper surface is pinned. Only its underside can move.
+      const newBottom=snapNumber(piece.position.y-piece.size.y+delta,step);
+      size.y=clamp(piece.position.y-newBottom,.12,28);
+    }else{
+      // A wall grows upward from its anchored bottom.
+      size.y=clamp(snapNumber(piece.size.y+delta,step),.12,28);
+    }
+  }else{
+    const dir=axisDirection(piece.rotationY,axis);
+    const origin=position.x*dir.x+position.z*dir.z;
+    const fixed=origin-side*piece.size[axis]/2;
+    const moving=origin+side*piece.size[axis]/2;
+    let target=snapNumber(moving+delta,step);
+    let newSize=side*(target-fixed);
+    newSize=clamp(newSize,minimum,110);
+    if(step>0)newSize=Math.max(minimum,Math.round(newSize*10000)/10000);
+    const movement=side*(newSize-piece.size[axis])/2;
+    position.x+=dir.x*movement;position.z+=dir.z*movement;
+    size[axis]=newSize;
+  }
+  position.x=Math.round(position.x*10000)/10000;
+  position.z=Math.round(position.z*10000)/10000;
+  size[axis]=Math.round(size[axis]*10000)/10000;
+  return {...piece,position,size};
+}
+export function alignStoryWalls(map,grid=1){
+  // Optional one-click repair for existing editor V1 geometry. Retains IDs,
+  // Y floors, bomb pairs and custom materials. Do not auto-edit on load.
+  const result=JSON.parse(JSON.stringify(map));
+  const step=grid>0?grid:1;
+  const floors=result.elements.filter(e=>e.type==="floor");
+  const isWall=e=>["hardWall","softWall","reinforcedWall","door","window"].includes(e.type);
+  const adjusted=[];
+  for(let i=0;i<result.elements.length;i++){
+    let part=result.elements[i];
+    if(!["floor","ceiling","hardWall","softWall","reinforcedWall","door","window","railing"].includes(part.type))continue;
+    if(part.type==="floor"||part.type==="ceiling"){
+      for(const axis of ["x","z"])
+        part.size[axis]=Math.max(step,snapNumber(part.size[axis],step));
+    }else{
+      part.size.x=Math.max(step,snapNumber(part.size.x,step));
+    }
+    part=alignPieceToGrid(part,step);
+    if(isWall(part)){
+      const above=floors.filter(f=>f.position.y>part.position.y+.5&&
+        Math.abs(f.position.x-part.position.x)<f.size.x/2+.15&&
+        Math.abs(f.position.z-part.position.z)<f.size.z/2+.15)
+        .sort((a,b)=>a.position.y-b.position.y)[0];
+      const target=above?
+        above.position.y-above.size.y-part.position.y:4-.25;
+      if(target>.4&&target<=28&&Math.abs(part.size.y-target)>.025&&part.type!=="window")
+        part.size.y=Math.round(target*10000)/10000;
+    }
+    if(JSON.stringify(part)!==JSON.stringify(result.elements[i]))adjusted.push(part.id);
+    result.elements[i]=part;
+  }
+  return {map:result,adjusted};
+}
