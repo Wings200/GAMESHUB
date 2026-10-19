@@ -275,8 +275,25 @@ function toast(message,error=false){
   clearTimeout(noticeTimeout);
   noticeTimeout=setTimeout(()=>notice.classList.add("hidden"),3100);
 }
+function rebuildPreview(){
+  disposeGroup(preview);preview.visible=false;
+  if(PART_KEYS.includes(tool)){
+    const model=makePiece(tool,0,layer,0,"preview");
+    model.rotationY=placementRotation;
+    preview.add(makeGeometry(model,true));
+    preview.visible=true;
+  }else if(tool.startsWith("bomb-")){
+    const key=tool.slice(5),data=sitePair()[key];
+    const proxy={...data,x:0,y:layer,z:0};
+    const model=bombMarker(key,proxy);
+    model.traverse(child=>{
+      if(child.isSprite)child.visible=false;
+    });
+    preview.add(model);preview.visible=true;
+  }
+}
 function setTool(next){
-  tool=next;preview.visible=false;
+  tool=next;rebuildPreview();
   for(const btn of document.querySelectorAll("[data-piece],[data-site]")){
     btn.classList.toggle("active",next===btn.dataset.piece||
       next==="bomb-"+btn.dataset.site);
@@ -373,6 +390,7 @@ function setLayer(val){
   if(["0","4","8","12"].includes(String(layer)))$("floorLevel").value=String(layer);
   else $("floorLevel").selectedIndex=-1;
   grid.position.y=layer+.01;
+  rebuildPreview();
   $("currentLayer").textContent="HEIGHT "+layer.toFixed(2)+"M";
 }
 function setBomb(key,point){
@@ -400,6 +418,7 @@ function rotatePiece(dir){
     changed();toast("ROTATED "+(dir>0?"+90°":"-90°"));
   }else{
     placementRotation=((placementRotation+dir*90)%360+360)%360;
+    rebuildPreview();
     toast("NEXT PIECE YAW "+placementRotation+"°");
   }
 }
@@ -518,8 +537,15 @@ canvas.addEventListener("pointerdown",evt=>{
 });
 canvas.addEventListener("pointermove",evt=>{
   const cursor=readPoint(evt,layer);
-  if(cursor) $("viewportCoords").textContent="X "+cursor.x.toFixed(1)+
-    " · Y "+layer.toFixed(1)+" · Z "+cursor.z.toFixed(1);
+  if(cursor){
+    $("viewportCoords").textContent="X "+cursor.x.toFixed(1)+
+      " · Y "+layer.toFixed(1)+" · Z "+cursor.z.toFixed(1);
+    if(preview.visible){
+      const px=round(cursor.x,map.grid),pz=round(cursor.z,map.grid);
+      // Ghost preview matches the coordinates to be exported.
+      preview.position.set(px,0,pz);
+    }
+  }
   if(!dragging)return;
   const dx=evt.clientX-dragging.lastX,dy=evt.clientY-dragging.lastY;
   dragging.lastX=evt.clientX;dragging.lastY=evt.clientY;
