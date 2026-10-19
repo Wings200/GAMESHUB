@@ -172,14 +172,16 @@ function displayGizmoMeasurements(){
     " · "+next.size.x+" × "+next.size.z+"M";
 }
 gizmo.addEventListener("mouseDown",()=>{
-  if(!selectedId)return;
+  if(!selectedId&&!selectedZoneId)return;
   transformStart=snapshot();
-  transformItem=selectedId;
+  transformItem=selectedId||selectedZoneId;
 });
 gizmo.addEventListener("objectChange",()=>{
   if(ignoreGizmoChanges)return;
-  const piece=map.elements.find(e=>e.id===selectedId);
-  const root=entityMeshes.get(selectedId);
+  const owner=zoneOwner(selectedZoneId);
+  const piece=map.elements.find(e=>e.id===selectedId)||
+    (owner?zoneAsPiece(owner.zone):null);
+  const root=entityMeshes.get(selectedId)||zoneMeshes.get(selectedZoneId);
   if(piece&&root&&transformMode==="translate"&&!shiftFree&&map.grid>0){
     const aligned=alignPieceToGrid({
       ...piece,position:{x:root.position.x,y:root.position.y,z:root.position.z}
@@ -188,31 +190,60 @@ gizmo.addEventListener("objectChange",()=>{
     root.position.z=aligned.position.z;
     root.position.y=snapNumber(root.position.y,map.grid);
   }
-  displayGizmoMeasurements();
+  if(owner&&root){
+    $("selectedInfo").textContent="ZONE "+owner.key+" X "+root.position.x.toFixed(2)+
+      " Y "+root.position.y.toFixed(2)+" Z "+root.position.z.toFixed(2);
+  }else displayGizmoMeasurements();
   refreshOutline();
 });
 gizmo.addEventListener("mouseUp",()=>{
   if(!transformStart||!transformItem)return;
-  const piece=map.elements.find(x=>x.id===transformItem);
-  const root=entityMeshes.get(transformItem);
-  if(piece&&root){
-    let result=applyGizmoToPiece(piece,{
-      position:root.position,scale:root.scale,rotationY:piece.rotationY
-    },{grid:0,snap:false,mode:transformMode});
-    if(!shiftFree&&map.grid>0&&transformMode==="translate"){
-      result=alignPieceToGrid(result,map.grid);
-      result.position.y=snapNumber(result.position.y,map.grid);
+  const owner=zoneOwner(transformItem);
+  if(owner){
+    const root=zoneMeshes.get(transformItem);
+    if(root){
+      const proposed={...owner.zone,x:root.position.x,
+        y:root.position.y,z:root.position.z};
+      if(!shiftFree&&map.grid>0){
+        proposed.x=snapNumber(proposed.x,map.grid);
+        proposed.y=snapNumber(proposed.y,map.grid);
+        proposed.z=snapNumber(proposed.z,map.grid);
+      }
+      const conflict=zonePlacementError(sitePair(),proposed,proposed.id);
+      if(conflict){zoneError(conflict);updateBombMarkers();}
+      else{
+        Object.assign(owner.zone,proposed);
+        if(transformStart!==snapshot()){
+          undoStack.push(transformStart);
+          if(undoStack.length>90)undoStack.shift();
+          redoStack.length=0;
+        }
+        zoneError();changed({render:false});updateBombMarkers();
+      }
+      updateSiteFields();
     }
-    if(!shiftFree&&$("edgeSnap").checked&&transformMode==="translate")
-      result=magnetizeEdges(result,map.elements);
-    const before=transformStart;
-    Object.assign(piece,result);
-    if(before!==snapshot()){
-      undoStack.push(before);
-      if(undoStack.length>90)undoStack.shift();
-      redoStack.length=0;
+  }else{
+    const piece=map.elements.find(x=>x.id===transformItem);
+    const root=entityMeshes.get(transformItem);
+    if(piece&&root){
+      let result=applyGizmoToPiece(piece,{
+        position:root.position,scale:root.scale,rotationY:piece.rotationY
+      },{grid:0,snap:false,mode:transformMode});
+      if(!shiftFree&&map.grid>0&&transformMode==="translate"){
+        result=alignPieceToGrid(result,map.grid);
+        result.position.y=snapNumber(result.position.y,map.grid);
+      }
+      if(!shiftFree&&$("edgeSnap").checked&&transformMode==="translate")
+        result=magnetizeEdges(result,map.elements);
+      const before=transformStart;
+      Object.assign(piece,result);
+      if(before!==snapshot()){
+        undoStack.push(before);
+        if(undoStack.length>90)undoStack.shift();
+        redoStack.length=0;
+      }
+      changed();
     }
-    changed(); // Rebuilds exactly sized meshes and retains selection.
   }
   transformStart=null;transformItem=null;
 });
@@ -501,6 +532,7 @@ function setTool(next){
     (PART_TYPES[next]?.name||next).toUpperCase();
 }
 function selectPiece(id){
+  selectedZoneId=null;
   selectedId=id;
   if(id)setTool("select");
   attachGizmo();
@@ -513,6 +545,7 @@ function updateInspector(){
   const piece=map.elements.find(x=>x.id===selectedId);
   $("selectionDescription").textContent=piece?
     piece.type.toUpperCase()+" / "+piece.id:
+    selectedZoneId?"Selected plant box — use the zone controls below, W to move or R to resize.":
     "Click a piece in the scene to edit or drag it. Choose an item on the left to start placing.";
   $("partName").disabled=!piece;
   $("partName").value=piece?.name||"";
@@ -577,10 +610,15 @@ function findUnderPointer(evt){
   pointer.set((evt.clientX-r.left)/r.width*2-1,
     1-(evt.clientY-r.top)/r.height*2);
   raycaster.setFromCamera(pointer,camera);
-  const hits=raycaster.intersectObjects([...entityMeshes.values()],true);
+  const hits=raycaster.intersectObjects(
+    [...zoneMeshes.values(),...entityMeshes.values()],true);
   for(const h of hits){
     let o=h.object;
-    while(o){if(o.userData.editorId)return o.userData.editorId;o=o.parent}
+    while(o){
+      if(o.userData.zoneId)return {zoneId:o.userData.zoneId};
+      if(o.userData.editorId)return {pieceId:o.userData.editorId};
+      o=o.parent;
+    }
   }
   return null;
 }
@@ -761,7 +799,9 @@ canvas.addEventListener("pointerdown",evt=>{
     dragging=null;return;
   }
   if(tool==="select"){
-    selectPiece(findUnderPointer(evt));
+    const chosen=findUnderPointer(evt);
+    if(chosen?.zoneId)selectZone(chosen.zoneId);
+    else selectPiece(chosen?.pieceId||null);
   }else{
     const point=readPoint(evt,layer);
     if(!point)return;
