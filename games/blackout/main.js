@@ -597,7 +597,9 @@ function updateHud(report){
   const stateCounts={};
   for(const b of allies)stateCounts[b.state]=(stateCounts[b.state]||0)+1;
   const squadLabel=objectiveRound.phase==="prep"?
-    (attacking?"DRONE RECON · SQUAD AWAITING INSERTION":"SQUAD · FORTIFYING BOTH SITES"):
+    (attacking?"DRONE RECON · SQUAD AWAITING INSERTION":
+      "FORTIFICATION · "+allies.filter(b=>b.setupTask?.placed).length+
+      "/"+allies.length+" SETUP TASKS"):
     objectiveRound.phase==="planted"?
     (attacking?"SQUAD · PROTECT THE DEFUSER":"SQUAD · RETAKE AND DISABLE"):
     (stateCounts.planting?"DEFUSER CARRIER PLANTING":
@@ -656,6 +658,9 @@ ENEMY HP ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+Math.ceil(b.he
 BOT ROUTES ${objectiveRound.bots.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO BOTS"}
 ALLY ROUTES ${objectiveRound.allies.filter(b=>b.alive).map(b=>b.id+":"+(b.blockingBarricade?"BREACH "+b.blockingBarricade.id:b.state)+" ["+(b.path?.length||0)+"]").join(" / ")||"NO ALLIES"}
 SQUAD INTEL ${Object.keys(objectiveRound.teamIntel||{}).map(team=>team+":"+Math.max(0,Math.round(((objectiveRound.teamIntel[team]?.until||0)-clock())/1000))+"s").join(" / ")}
+AI DEFENSE ${[...objectiveRound.allies,...objectiveRound.bots].filter(b=>b.alive&&!((b.team==="ally"?role:"opposite")==="attacker")).map(b=>b.id+":"+b.operatorSpec?.name+":"+(b.setupTask?.placed?"SET":"WAIT")+(b.extraSetup?.placed?"+REINFORCED":"")).join(" / ")}
+AI GADGETS ${gadgets.electronics.length} JAMMERS / ${gadgets.sensors.length} SENSORS / ${gadgets.gasFields.filter(g=>g.group.visible).length} GAS
+GADGET ACTION ${gadgets.currentAction?.kind||"IDLE"}
 FRIENDLIES ${objectiveRound.allies.filter(b=>b.alive).length}/4
 RUNOUT ${objectiveRound.runoutPlayer?"PLAYER SPOTTED":objectiveRound.runoutTarget?"ENEMY SPOTTED":"NONE"}`;
   }
@@ -829,7 +834,7 @@ setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
 window.BLACKOUT_DEV={
-  get build(){return "2.1.0-fixed-map-tactical-ai-lean-toggle"},
+  get build(){return "2.2.0-animated-specials-active-defender-setup-retakes"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
