@@ -1,15 +1,15 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v301-video-fixes";
-import {FirstPersonController} from "./src/player.js?v=blackout-v301-video-fixes";
-import {Weapons} from "./src/weapons.js?v=blackout-v301-video-fixes";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v301-video-fixes";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v301-video-fixes";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v301-video-fixes";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v301-video-fixes";
-import {GameAudio} from "./src/audio.js?v=blackout-v301-video-fixes";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v301-video-fixes";
-import {Barricades} from "./src/barricades.js?v=blackout-v301-video-fixes";
-import {createReconDrone} from "./src/drone.js?v=blackout-v301-video-fixes";
+import {buildRange} from "./src/world.js?v=blackout-v310-smoke-remote-stage2";
+import {FirstPersonController} from "./src/player.js?v=blackout-v310-smoke-remote-stage2";
+import {Weapons} from "./src/weapons.js?v=blackout-v310-smoke-remote-stage2";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v310-smoke-remote-stage2";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v310-smoke-remote-stage2";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v310-smoke-remote-stage2";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v310-smoke-remote-stage2";
+import {GameAudio} from "./src/audio.js?v=blackout-v310-smoke-remote-stage2";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v310-smoke-remote-stage2";
+import {Barricades} from "./src/barricades.js?v=blackout-v310-smoke-remote-stage2";
+import {createReconDrone} from "./src/drone.js?v=blackout-v310-smoke-remote-stage2";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
