@@ -23,7 +23,7 @@ class Vector3{
 }
 class Node{
   constructor(){
-    this.position=new Vector3();this.rotation={order:"YXZ",set(){}};
+    this.position=new Vector3();this.rotation={order:"YXZ",x:0,y:0,z:0,set(x,y,z){this.x=x;this.y=y;this.z=z}};
     this.scale={set(){},setScalar(){}};
     this.children=[];this.userData={};this.visible=true;
   }
@@ -134,5 +134,43 @@ test("west/east windows vault gradually without teleporting or clipping on landi
     assert.equal(p.vault,null);
     assert.ok(Math.abs(p.x-initialX)>1.0);
     assert.equal(p.blocked(p.x,p.z,0,p.height),false);
+  }
+});
+
+test("locked Q/E lean remains selected but camera straightens during sprint",()=>{
+  const w=makeWorld(),camera=new Node(),p=new Player(THREE,w,camera);
+  p.toggleLean(-1);
+  for(let i=0;i<30;i++)p.update(.016,new Set());
+  assert.equal(p.leanSide,-1);
+  assert.ok(p.lean<-.9);
+  assert.ok(Math.abs(camera.rotation.z)<.195,
+    "Lean camera should never bank beyond ~11 degrees");
+  for(let i=0;i<45;i++)p.update(.016,new Set(["KeyW","ShiftLeft"]));
+  assert.equal(p.leanSide,-1,
+    "Sprint should not erase the persistent Q/E preference");
+  assert.ok(Math.abs(camera.rotation.z)<.007,
+    "Sprint should center camera roll even with Q/E lock");
+  for(let i=0;i<35;i++)p.update(.016,new Set());
+  assert.ok(p.lean<-.9,"Lean should resume after sprinting ends");
+  p.toggleLean(1);
+  for(let i=0;i<35;i++)p.update(.016,new Set());
+  assert.ok(p.lean>.9,"Switching from Q to E must reverse the shoulder");
+});
+test("phase banner is short-lived and flat arena has no phantom prep building boundary",()=>{
+  const source=readFileSync(join(root,"main.js"),"utf8");
+  assert.ok(source.includes('phase==="prep"?2800'),
+    "Phase intro should last less than 3 seconds");
+  assert.ok(source.includes('const show=now<phaseToastUntil&&'),
+    "Phase intro must not remain visible throughout prep");
+  assert.ok(source.includes('world.facility.mode!=="mechanics-sandbox"'),
+    "Flat lab should not enforce invisible old-building prep boundaries");
+});
+test("peripheral barricade training frames stay clear of both bomb zones",()=>{
+  const w=makeWorld(),outward=w.facility.openings.filter(o=>
+    ["west-entry","east-entry","server-door","control-door"].includes(o.id));
+  assert.equal(outward.length,4);
+  for(const frame of outward){
+    assert.ok(Math.abs(frame.x)>=20,
+      "Nonessential door frames must stay in the peripheral practice lanes");
   }
 });
