@@ -174,7 +174,10 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
       this.health=Math.max(0,this.health-amount);
       this.hitAt=performance.now();
       this.suppressedUntil=this.hitAt+1400;
-      armor.color.setHex(0x665049);
+      // armor is a THREE.Mesh. The material owns the Color, not the mesh.
+      // Previously armor.color was undefined, which threw on EVERY bot hit,
+      // stopped automatic firing and skipped the hit confirmation.
+      armor.material.color.setHex(0x665049);
       if(!this.health){
         this.alive=false;this.group.visible=false;
         return true;
