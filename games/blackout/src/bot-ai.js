@@ -172,7 +172,11 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   // A failed route is cached until its retry deadline or a collision change.
   const changedWorld=bot.collisionRevision!==world.collisionRevision||
     bot.lastBreachPermission!==Boolean(bot.allowBreach!==false);
-  if(changingGoal||changedWorld||now>=bot.repathAt){
+  // Timed replanning used to send a climber back to the staircase bottom.
+  // Preserve active 3D route waypoints unless target/world changes or the
+  // stuck-recovery logic explicitly discards its path.
+  const routeInProgress=world.mapId==="switchyard"&&bot.path.length>0;
+  if(changingGoal||changedWorld||now>=bot.repathAt&&!routeInProgress){
     bot.path=findTacticalPath(world,bot,goal,bot.allowBreach!==false);
     if(changedWorld)bot.blockingBarricade=null;
     bot.repathAt=now+(bot.path.length?1600:2600)+(bot.id%3)*270;
