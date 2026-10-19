@@ -351,7 +351,7 @@ function updateHud(report){
   objectiveFill.style.width=objectiveRound.holdPercent.toFixed(1)+"%";
   const ended=objectiveRound.phase==="won"||objectiveRound.phase==="lost";
   roundResult.classList.toggle("hidden",!ended);
-  roundResult.textContent=ended?(objectiveRound.phase==="won"?"VICTORY":"DEFEAT")+" · "+objectiveRound.result+" · ESC → RESET LAB":"";
+  roundResult.textContent=ended?(objectiveRound.phase==="won"?"VICTORY":"DEFEAT")+" · "+objectiveRound.result+" · ENTER: NEXT ROUND / ESC: MENU":"";
   roundResult.classList.toggle("lost",objectiveRound.phase==="lost");
   operatorHud.textContent=operator.name+" · "+operator.speed+" SPEED / "+operator.armor+" ARMOR";
   healthHud.textContent=player.health+" / "+player.maxHealth+" HP";
@@ -387,13 +387,14 @@ function frame(now){
   const actualDt=Math.max(0,(now-last)/1000),dt=Math.min(actualDt,.043);last=now;
   frames++;elapsed+=actualDt;
   if(elapsed>=.6){fps=Math.round(frames/elapsed);frames=0;elapsed=0;}
-  weapons.tick(now);
-  if(locked){
+  const ended=["won","lost"].includes(objectiveRound.phase);
+  if(!ended)weapons.tick(now);
+  if(locked&&!ended){
     // ADS reduces the move speed by removing sprint; it does NOT
     // toggle mouse-lock or turn the gun into a third-person camera.
-    const activeKeys=gadgets.busy?new Set():ads?
+    const activeKeys=gadgets.busy||barricades.busy?new Set():ads?
       new Set([...keys].filter(k=>k!=="ShiftLeft"&&k!=="ShiftRight")):keys;
-    if(gadgets.busy){player.velX=0;player.velZ=0;}
+    if(gadgets.busy||barricades.busy){player.velX=0;player.velZ=0;}
     const report=player.update(dt,activeKeys);
     const mark=Math.floor(player.stepClock/Math.PI);
     if(player.moving&&!player.isProne&&report.speed>.65&&mark!==lastStepMark){
@@ -407,32 +408,56 @@ function frame(now){
       recoilRecovery-=recover;player.applyCamera();
     }
     if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
-    if(fireHeld&&!gadgets.busy&&(weapons.slot==="primary"))fireOnce(now);
+    if(fireHeld&&!gadgets.busy&&!barricades.busy&&(weapons.slot==="primary"))fireOnce(now);
     gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
     },objectiveRound.bots);
-    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy,(message,event,origin)=>{
+    barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
+      if(message)popup(message);
+      if(event)sound(event);
+    });
+    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
       if(message)popup(message);
       if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
       else if(event)sound(event);
     });
-    reinforceBar.classList.toggle("hidden",!gadgets.busy);
-    if(gadgets.busy){
-      const remaining=Math.max(0,(gadgets.action.end-now)/1000);
-      reinforceFill.style.width=(gadgets.actionProgress*100).toFixed(1)+"%";
+    const installing=gadgets.busy||barricades.busy;
+    reinforceBar.classList.toggle("hidden",!installing);
+    if(installing){
+      const action=barricades.action||gadgets.action;
+      const remaining=Math.max(0,(action.end-now)/1000);
+      reinforceTitle.textContent=barricades.busy?
+        (barricades.action.kind==="install"?"INSTALLING BARRICADE":"REMOVING BARRICADE"):
+        "INSTALLING REINFORCEMENT";
+      reinforceFill.style.width=((barricades.busy?barricades.progress:gadgets.actionProgress)*100).toFixed(1)+"%";
       reinforceCountdown.textContent=remaining.toFixed(1)+"S";
     }
-    updateHud(report);
+    if(now-lastHudAt>90||["won","lost"].includes(objectiveRound.phase)){
+      lastHudAt=now;updateHud(report);
+    }
+  }else if(locked&&!roundFrozen){
+    // Freeze all simulation, movement, AI and weapon logic immediately at
+    // victory/death. Do not continue per-frame work after the round is over.
+    roundFrozen=true;keys.clear();fireHeld=false;ads=false;
+    player.velX=0;player.velY=0;player.velZ=0;
+    gadgets.cancelAction();barricades.cancel();
+    reinforceBar.classList.add("hidden");
+    if(effects.length){
+      for(const e of effects){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();}
+      effects.length=0;
+    }
+    updateHud({prone:player.isProne,crouched:player.isCrouched,sprinting:false,
+      lean:player.lean,speed:0});
   }
   if(toastUntil&&now>toastUntil){toastUntil=0;toast.classList.remove("shown");}
   hitmark.classList.toggle("shown",now<hitUntil);
-  const showingAds=locked&&ads&&!gadgets.busy;
+  const showingAds=locked&&!ended&&ads&&!gadgets.busy&&!barricades.busy;
   document.body.classList.toggle("ads",showingAds);
   // Real 3D optic is always attached to the gun, so no HTML ADS indicator.
   const hipSpread=weapons.current.hipSpread*(player.moving?1.35:1);
   reticle.style.setProperty("--hip-size",(30+hipSpread*225).toFixed(1)+"px");
-  const flash=now<muzzleUntil;
+  const flash=!ended&&now<muzzleUntil;
   muzzle.position.z=weapons.slot==="secondary"?-.73:-1.15;
   muzzleSprite.position.copy(muzzle.position);
   muzzle.intensity=flash?3.8:0;muzzleSprite.visible=flash;
@@ -449,9 +474,9 @@ function frame(now){
   gunModel.position.z+=(aligned.z*aimBlend-.77*(1-aimBlend)+gunKick*.28-gunModel.position.z)*blend;
   gunModel.rotation.x=-gunKick*.64;
   gunModel.rotation.z=gunKickSide;
-  const interacting=objectiveRound.hold>0&&keys.has("KeyF");
+  const interacting=!ended&&objectiveRound.hold>0&&keys.has("KeyF");
   gunOptics.mount.visible=weapons.slot==="primary"&&!interacting;
-  weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
+  if(!ended)weaponView.update({now,dt,slot:weapons.slot,aim:aimBlend,moving:player.moving,
     sprinting:player.sprinting,step:player.stepClock,lean:player.lean,
     interacting,interactionProgress:objectiveRound.holdPercent/100});
   gunKick*=Math.exp(-dt*14);
@@ -459,21 +484,28 @@ function frame(now){
   for(let i=effects.length-1;i>=0;i--){
     const e=effects[i];if(now>=e.until){scene.remove(e.obj);e.obj.geometry.dispose();e.obj.material.dispose();effects.splice(i,1);}
   }
-  renderer.render(scene,camera);requestAnimationFrame(frame);
+  // A dead or paused round is visually static: avoid burning a full render
+  // every vsync while preserving responsive HTML menu and result controls.
+  const renderInterval=ended?160:locked?0:160;
+  if(!renderInterval||now-lastEndFrame>=renderInterval){
+    renderer.render(scene,camera);lastEndFrame=now;
+  }
+  requestAnimationFrame(frame);
 }
 setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
 window.BLACKOUT_DEV={
-  get build(){return "0.7.1-two-sites-facility-ai-viewmodel-and-interaction"},
+  get build(){return "0.8.0-barricades-full-collision-postdeath-performance"},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
   get targets(){return world.targets.map(t=>({hp:t.health,alive:t.alive}))},
-  get dynamicColliders(){return world.colliders.length},
+  get dynamicColliders(){return world.colliders.length},get collisionRevision(){return world.collisionRevision},
   get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
   get sight(){return sight},
-  get reinforcing(){return gadgets.busy},
+  get reinforcing(){return gadgets.busy},get barricading(){return barricades.busy},
+  get barricades(){return barricades.info},get roundFrozen(){return roundFrozen},
   get bulletHoles(){return world.panels.map(p=>p.holes.length)},
   get ads(){return ads},get audioReady(){return audio.ready},
   get operator(){return {...operator}},get health(){return player.health},
