@@ -177,6 +177,13 @@ export function createWeaponView(T,gunRoot){
       }
     }
   }
+  function setModelVariant(primary="carbine",secondary="p9"){
+    // Keep weapon silhouettes visibly different while preserving the existing
+    // reload meshes, optic mount, casing physics and animation rig.
+    const depth=primary==="smg"?.85:primary==="dmr"?1.17:1;
+    rifle.scale.set(primary==="smg"?.94:1,1,depth);
+    pistol.scale.set(secondary==="compact"?.89:1,1,secondary==="compact"?.91:1);
+  }
   function reset(){
     reloadInfo=null;magazine.position.y=-.23;pistolMag.position.y=-.218;
     rifleFreshMag.visible=pistolFreshMag.visible=false;
@@ -186,5 +193,5 @@ export function createWeaponView(T,gunRoot){
     for(const e of shells){gunRoot.remove(e.shell);e.shell.geometry.dispose();}
     shells.length=0;
   }
-  return {rifle,pistol,magazine,pistolMag,eject,beginReload,update,reset};
+  return {rifle,pistol,magazine,pistolMag,eject,beginReload,update,reset,setModelVariant};
 }
