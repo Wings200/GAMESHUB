@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b131e">
   <title>BLACKOUT | Developer Map Studio</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v3">
+  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v4">
 </head>
 <body>
   <div id="app">
@@ -164,9 +164,28 @@
           <label>Y<input id="bombY" type="number" step=".25"></label>
           <label>Z<input id="bombZ" type="number" step=".25"></label>
         </div>
-        <label>PLANT ZONE RADIUS <strong id="plantRadiusValue">4.0m</strong><input id="plantRadius" type="range" min="1" max="22" step=".25"></label>
+        <section class="zone-box-editor" aria-label="Editable rectangular bomb plant zones">
+          <div class="section-row"><h3>RECTANGULAR PLANT ZONES</h3><button id="addZone" class="mini" type="button">+ BOX</button></div>
+          <label>SELECT ZONE BOX<select id="zoneSelect" aria-label="Select bomb zone box"></select></label>
+          <p class="hint">Each A/B bomb can have up to 32 independent boxes. Click a colored box in 3D, or choose it here. The editor won't allow boxes to overlap or touch one another.</p>
+          <div class="triple">
+            <label>X<input id="zoneX" type="number" step=".25"></label>
+            <label>Y / FLOOR<input id="zoneY" type="number" step=".25"></label>
+            <label>Z<input id="zoneZ" type="number" step=".25"></label>
+          </div>
+          <div class="triple">
+            <label>WIDTH (X)<input id="zoneWidth" type="number" min=".5" max="80" step=".25"></label>
+            <label>HEIGHT<input id="zoneHeight" type="number" min=".5" max="12" step=".25"></label>
+            <label>DEPTH (Z)<input id="zoneDepth" type="number" min=".5" max="80" step=".25"></label>
+          </div>
+          <div class="site-actions">
+            <button id="placeZone" class="secondary" type="button">PLACE / MOVE BOX</button>
+            <button id="removeZone" class="danger" type="button">DELETE BOX</button>
+          </div>
+          <p id="zoneError" class="zone-error" role="status"></p>
+        </section>
         <label>DEFUSE INTERACTION RANGE <strong id="defuseRangeValue">2.25m</strong><input id="defuseRange" type="range" min=".5" max="12" step=".25"></label>
-        <p class="hint">Plant zone is how far from the bomb defenders/attackers can use that site. Defuse range is the maximum distance from a planted defuser for disabling it. Both values save separately for A and B.</p>
+        <p class="hint">The colored 3D boxes are the legal plant areas, not circles. Defuse range is still a separate distance measured from the planted defuser.</p>
         <div class="site-actions">
           <button id="placeBomb" class="secondary" type="button">PLACE SELECTED BOMB</button>
           <button id="removePair" class="danger" type="button">DELETE PAIR</button>
@@ -186,6 +205,6 @@
     <div><button id="cancelNew">CANCEL</button><button id="confirmNewButton" class="danger">CREATE BLANK MAP</button></div>
   </dialog>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
-  <script type="module" src="./src/map-editor.js?v=blackout-editor-v3"></script>
+  <script type="module" src="./src/map-editor.js?v=blackout-editor-v4"></script>
 </body>
 </html>
