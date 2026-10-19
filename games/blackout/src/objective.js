@@ -39,15 +39,20 @@ export class ObjectiveDrill{
   }
   chooseSite(id){
     this.siteId=id==="B"?"B":"A";this.site=this.sites[this.siteId];
-    this.root.position.set(this.site.x,0,this.site.z);
+    this.root.position.set(this.site.x,this.site.y||0,this.site.z);
     const other=this.sites[this.siteId==="A"?"B":"A"];
-    this.alternate.position.set(other.x,.052,other.z);
+    this.alternate.position.set(other.x,(other.y||0)+.052,other.z);
     const ctx=this.signContext;
     ctx.clearRect(0,0,768,136);ctx.fillStyle="#0a1b2a";ctx.fillRect(0,0,768,136);
     ctx.fillStyle="#68f2df";ctx.fillRect(0,0,768,9);
     ctx.font="900 63px Arial";ctx.textAlign="center";ctx.fillStyle="#f2faff";
     ctx.fillText("SITE "+this.siteId+" / "+this.site.name,384,90,740);
     this.signTexture.needsUpdate=true;
+  }
+  refreshMap(){
+    this.sites=this.world.facility.sites;
+    this.bombStations.relocate();
+    this.chooseSite(this.siteId);
   }
   clearBots(){
     for(const bot of [...this.bots,...this.allies]){
@@ -84,9 +89,9 @@ export class ObjectiveDrill{
   updateHoldRequirement(){
     this.holdNeeded=this.role==="attacker"?5000:5500;
   }
-  findSafeSpawn(x,z){
+  findSafeSpawn(x,z,y=0){
     const clear=(px,pz)=>!this.world.colliders.some(c=>
-      c.maxY>.5&&c.minY<1.8&&px>c.minX-.41&&px<c.maxX+.41&&
+      c.maxY>y+.5&&c.minY<y+1.8&&px>c.minX-.41&&px<c.maxX+.41&&
       pz>c.minZ-.41&&pz<c.maxZ+.41);
     if(clear(x,z))return {x,z};
     // Never spawn an AI body through a desk, bomb cabinet or wall.
@@ -101,10 +106,13 @@ export class ObjectiveDrill{
     return {x,z};
   }
   spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
-    const safe=this.findSafeSpawn(x,z);
+    const height=stationary&&this.world.mapId==="switchyard"?
+      (this.sites[siteId]?.y||0):0;
+    const safe=this.findSafeSpawn(x,z,height);
     x=safe.x;z=safe.z;
     const bot=makeTacticalBot(this.THREE,this.scene,this.world,
       ++this.botSerial,x,z,stationary,team);
+    bot.y=height;bot.group.position.y=height;
     const botSide=team==="ally"?this.role:
       this.role==="attacker"?"defender":"attacker";
     const roster=operatorsForSide(botSide);
@@ -215,12 +223,24 @@ export class ObjectiveDrill{
       this.stagedAttackers=ATTACK_SQUAD_SPAWNS.map((p,i)=>({
         ...p,operatorSpec:roster[i%roster.length],team:"ally",staged:true
       }));
-      for(const [x,z,site] of [
+      if(this.world.mapId==="switchyard"){
+        const a=this.sites.A,b=this.sites.B;
+        for(const [x,z,site] of [
+          [a.x+2,a.z-2,"A"],[a.x-2,a.z+1,"A"],
+          [b.x+2,b.z-2,"B"],[b.x-2,b.z+2,"B"],[b.x,b.z+4,"B"]
+        ])this.spawnBot(x,z,true,"enemy",site);
+      }else for(const [x,z,site] of [
         [-7,-48,"A"],[-4,-41,"A"],[7,-33,"B"],
         [5,-24.6,"B"],[-6,-28,"B"]
       ])this.spawnBot(x,z,true,"enemy",site);
     }else{
-      for(const [x,z,site] of [
+      if(this.world.mapId==="switchyard"){
+        const a=this.sites.A,b=this.sites.B;
+        for(const [x,z,site] of [
+          [a.x+2,a.z-2,"A"],[a.x-2,a.z+2,"A"],
+          [b.x+2,b.z-2,"B"],[b.x-2,b.z+2,"B"]
+        ])this.spawnBot(x,z,true,"ally",site);
+      }else for(const [x,z,site] of [
         [-7,-46,"A"],[-3,-41,"A"],[6,-32,"B"],[5,-25,"B"]
       ])this.spawnBot(x,z,true,"ally",site);
     }
@@ -265,14 +285,16 @@ export class ObjectiveDrill{
   siteAt(p){
     // Full room boundaries. Planting no longer requires standing near a
     // floating circle or bomb station, only a legal walkable site floor.
-    return Object.values(this.sites).find(({bounds:b})=>
-      p.x>=b.minX&&p.x<=b.maxX&&p.z>=b.minZ&&p.z<=b.maxZ)||null;
+    return Object.values(this.sites).find(({bounds:b,y=0})=>
+      p.x>=b.minX&&p.x<=b.maxX&&p.z>=b.minZ&&p.z<=b.maxZ&&
+      Math.abs((p.y||0)-y)<1.2)||null;
   }
   atSite(p){return !!this.siteAt(p);}
   canInteract(p){
     if(this.role==="attacker")return this.phase==="attack"&&this.atSite(p);
     return this.phase==="planted"&&!!this.plantPosition&&
-      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<2.25;
+      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<2.25&&
+      Math.abs((p.y||0)-(this.plantPosition.y||0))<1.2;
   }
   end(won,reason,notify=()=>{}){
     if(this.phase==="won"||this.phase==="lost")return;
@@ -394,8 +416,8 @@ export class ObjectiveDrill{
           this.chooseSite(this.holdSiteId||this.siteId);
           this.phase="planted";this.bombEnd=now+35000;this.nextBeep=now+800;
           this.defuseOperatorId=null;
-          this.plantPosition={x:player.x,z:player.z};
-          this.defuser.show(player.x,player.z,35,now,this.siteId);
+          this.plantPosition={x:player.x,z:player.z,y:player.y||0};
+          this.defuser.show(player.x,player.z,35,now,this.siteId,player.y||0);
           for(const bot of this.bots)if(bot.alive)bot.stationary=false;
           notify("DEFUSER PLANTED AT SITE "+this.siteId+" · DEFEND FOR 35 SECONDS","plant");
         }else{
