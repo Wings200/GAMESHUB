@@ -1,8 +1,8 @@
-import {createDefuserModel} from "./defuser-model.js?v=blackout-v300-flat-mechanics-sandbox";
-import {createBombStations} from "./bomb-sites.js?v=blackout-v300-flat-mechanics-sandbox";
-import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v300-flat-mechanics-sandbox";
-import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v300-flat-mechanics-sandbox";
-import {operatorsForSide} from "./operators.js?v=blackout-v300-flat-mechanics-sandbox";
+import {createDefuserModel} from "./defuser-model.js?v=blackout-v301-video-fixes";
+import {createBombStations} from "./bomb-sites.js?v=blackout-v301-video-fixes";
+import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v301-video-fixes";
+import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v301-video-fixes";
+import {operatorsForSide} from "./operators.js?v=blackout-v301-video-fixes";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
