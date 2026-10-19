@@ -5,7 +5,7 @@
 import * as T from "three";
 import {TransformControls} from "three/addons/controls/TransformControls.js";
 import {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,
-  canPlantAt,canDefuseAt,cutOpeningInWall} from "./map-format.js?v=blackout-editor-v3";
+  canPlantAt,canDefuseAt,cutOpeningInWall,zonePlacementError,newPlantZone} from "./map-format.js?v=blackout-editor-v4";
 import {snapNumber,applyGizmoToPiece,floorUndersideY,magnetizeEdges,alignPieceToGrid,resizeFromEdge,alignStoryWalls} from "./map-editor-math.js?v=blackout-editor-v3";
 
 const $=id=>document.getElementById(id);
@@ -20,7 +20,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 let map;
 try{const saved=localStorage.getItem(STORAGE);map=saved?normalizeMap(JSON.parse(saved)):createBlankMap();}
 catch(error){console.warn("BLACKOUT editor draft reset",error);map=createBlankMap();}
-let tool="select",siteEditing="A",selectedId=null,layer=0,placementRotation=0;
+let tool="select",siteEditing="A",selectedId=null,selectedZoneId=null,layer=0,placementRotation=0;
 let dragging=null,mouseMoved=false,dragStart=null,lastPoint=null;
 let resizingEdge=null;
 let transformMode="translate",shiftFree=false,transformStart=null,transformItem=null;
@@ -95,7 +95,7 @@ const objects=new T.Group();scene.add(objects);
 const objectives=new T.Group();scene.add(objectives);
 const preview=new T.Group();scene.add(preview);
 preview.visible=false;
-const entityMeshes=new Map(),labels=[];
+const entityMeshes=new Map(),zoneMeshes=new Map(),labels=[];
 const gizmo=new TransformControls(camera,canvas);
 gizmo.setMode("translate");gizmo.setSpace("world");gizmo.setSize(.95);
 scene.add(gizmo.getHelper());
@@ -118,9 +118,11 @@ function redrawEdgeHandles(){
   for(const child of [...edgeHandles.children]){
     edgeHandles.remove(child);child.geometry.dispose();
   }
-  edgeHandles.visible=tool==="select"&&transformMode==="scale"&&!!selectedId;
-  const piece=map.elements.find(e=>e.id===selectedId);
-  const root=entityMeshes.get(selectedId);
+  edgeHandles.visible=tool==="select"&&transformMode==="scale"&&!!(selectedId||selectedZoneId);
+  const owner=zoneOwner(selectedZoneId);
+  const piece=map.elements.find(e=>e.id===selectedId)||
+    (owner?zoneAsPiece(owner.zone):null);
+  const root=entityMeshes.get(selectedId)||zoneMeshes.get(selectedZoneId);
   if(!edgeHandles.visible||!piece||!root)return;
   root.updateWorldMatrix(true,false);
   const {x:w,y:h,z:d}=piece.size;
@@ -143,7 +145,7 @@ function redrawEdgeHandles(){
   }
 }
 function attachGizmo(){
-  const root=entityMeshes.get(selectedId);
+  const root=entityMeshes.get(selectedId)||zoneMeshes.get(selectedZoneId);
   if(root&&tool==="select"&&transformMode==="translate")gizmo.attach(root);
   else gizmo.detach();
   gizmo.setMode("translate");
@@ -335,34 +337,82 @@ function refreshOutline(){
   }
 }
 function sitePair(){return map.sitePairs.find(p=>p.id===map.activeSitePair)||map.sitePairs[0]}
+function currentZone(){
+  const site=sitePair()[siteEditing];
+  return site.plantZones.find(z=>z.id===selectedZoneId)||site.plantZones[0];
+}
+function zoneOwner(id){
+  const pair=sitePair();
+  for(const key of ["A","B"]){
+    const zone=pair[key].plantZones.find(z=>z.id===id);
+    if(zone)return {key,zone};
+  }
+  return null;
+}
+function zoneAsPiece(zone){
+  return {id:zone.id,type:"zone-box",position:{x:zone.x,y:zone.y,z:zone.z},
+    size:{x:zone.width,y:zone.height,z:zone.depth},rotationY:0};
+}
+function fromZonePiece(base,part){
+  return {...base,x:part.position.x,y:part.position.y,z:part.position.z,
+    width:part.size.x,depth:part.size.z,height:part.size.y};
+}
+function zoneError(message=""){
+  $("zoneError").textContent=message;
+  if(message)toast(message,true);
+}
+function selectZone(id){
+  const owner=zoneOwner(id);
+  if(!owner)return;
+  selectedId=null;selectedZoneId=id;siteEditing=owner.key;
+  setTool("select");
+  updateInspector();updateSiteFields();updateBombMarkers();attachGizmo();
+  $("selectedInfo").textContent="ZONE "+owner.key+" / "+id;
+}
+function zoneBox(key,zone,highlight){
+  const color=key==="A"?0x5dbaf8:0xffb46c;
+  const root=new T.Group();root.position.set(zone.x,zone.y,zone.z);
+  root.userData.zoneId=zone.id;
+  const surface=new T.Mesh(new T.BoxGeometry(zone.width,zone.height,zone.depth),
+    new T.MeshBasicMaterial({color,opacity:highlight?.21:.105,
+      transparent:true,depthWrite:false,side:T.DoubleSide}));
+  surface.position.y=zone.height/2;
+  surface.userData.zoneId=zone.id;surface.userData.zoneKey=key;
+  root.add(surface);
+  const outline=new T.LineSegments(
+    new T.EdgesGeometry(new T.BoxGeometry(zone.width,zone.height,zone.depth)),
+    new T.LineBasicMaterial({color:highlight?0xffffff:color,
+      transparent:true,opacity:highlight?1:.88,depthTest:false}));
+  outline.position.y=zone.height/2;
+  outline.renderOrder=11;root.add(outline);
+  const tag=textSprite(key+" / "+zone.id.slice(0,12),
+    key==="A"?0xa6e1ff:0xffd2a2);
+  tag.position.set(0,zone.height+.48,0);root.add(tag);
+  return root;
+}
 function bombMarker(key,site){
   const g=new T.Group();g.position.set(site.x,site.y,site.z);
   const blue=key==="A"?0x73cfff:0xf7ad76;
   const body=new T.MeshStandardMaterial({color:blue,metalness:.48,roughness:.3});
-  const transparent=new T.MeshBasicMaterial({color:blue,transparent:true,opacity:.075,
-    side:T.DoubleSide,depthWrite:false});
   cylinder(g,.48,.48,.52,0,.26,0,body,12);
   box(g,.56,.17,.55,0,.58,0,mat.ceiling);
-  const disc=new T.Mesh(new T.CircleGeometry(site.plantRadius,64),transparent);
-  disc.rotation.x=-Math.PI/2;disc.position.y=.018;g.add(disc);
-  const ring=new T.Mesh(new T.RingGeometry(site.plantRadius-.055,site.plantRadius,72),
-    new T.MeshBasicMaterial({color:blue,transparent:true,opacity:.85,side:T.DoubleSide,
-      depthWrite:false}));
-  ring.rotation.x=-Math.PI/2;ring.position.y=.035;g.add(ring);
-  const defRing=new T.Mesh(new T.RingGeometry(
-    Math.max(.1,site.defuseRange-.035),site.defuseRange,64),
-    new T.MeshBasicMaterial({color:0xe9e4b7,transparent:true,opacity:.75,side:T.DoubleSide,
-      depthWrite:false}));
-  defRing.rotation.x=-Math.PI/2;defRing.position.y=.048;g.add(defRing);
-  const label=textSprite("BOMB "+key+(key===siteEditing?" // EDITING":""),
+  const label=textSprite("BOMB "+key+" / DEFUSE "+site.defuseRange.toFixed(2)+"M",
     key==="A"?0xb1e7ff:0xffc3a6);
-  label.position.y=1.5;g.add(label);
+  label.position.y=1.65;label.scale.set(3.6,.72,1);g.add(label);
   return g;
 }
 function updateBombMarkers(){
-  disposeGroup(objectives);
+  if(gizmo.object&&zoneMeshes.has(selectedZoneId))gizmo.detach();
+  disposeGroup(objectives);zoneMeshes.clear();
   const pair=sitePair();
-  for(const key of ["A","B"])objectives.add(bombMarker(key,pair[key]));
+  for(const key of ["A","B"]){
+    objectives.add(bombMarker(key,pair[key]));
+    for(const zone of pair[key].plantZones){
+      const model=zoneBox(key,zone,selectedZoneId===zone.id);
+      objectives.add(model);zoneMeshes.set(zone.id,model);
+    }
+  }
+  attachGizmo();
 }
 function renderStructures(){
   clearOutline();disposeGroup(objects);entityMeshes.clear();
