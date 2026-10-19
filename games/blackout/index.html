@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V2.1 - fixed two-site facility, 45-second drone prep, intelligent 5v5 bot squads and toggle-to-hold Q/E lean.">
+<meta name="description" content="BLACKOUT V2.1 - fixed two-site bomb map, 45s drone prep, tactical 5v5 AI squad combat, persistent Q/E shoulder leaning.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v201-builder-drone-ai-final">
@@ -46,6 +46,7 @@
   <div class="hud-left">
     <div class="overline"><span class="live-dot"></span> BLACKOUT / TACTICAL OPERATIONS <span class="dim">· V2.0.1</span></div>
     <h2 id="zoneLabel">SERVER ROOM</h2>
+    <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
   <div class="hud-right lab-right">
@@ -58,7 +59,7 @@
       <div class="lab-card-heading separation">MOVEMENT</div>
       <p>WASD MOVE · SHIFT SPRINT</p>
       <p>CTRL CROUCH · Z PRONE</p>
-      <p>Q / E LEAN · ALT SLOW WALK</p>
+      <p>Q / E TOGGLE LEAN · ALT SLOW WALK</p>
       <p>F BARRICADE · SPACE WINDOW VAULT</p>
     </div>
   </div>
@@ -142,7 +143,7 @@
     </div>
     <div id="guide" class="test-guide hidden">
       <strong>TEST CONTROLS</strong>
-      <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Q/E: collision-checked lean · Mouse: look. Operator speed is fixed.</p>
+      <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Tap Q/E: hold left/right lean · tap the same side to reset · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
       <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant where you stand. Defend it after planting. G uses your selected operator's unique gadget; X is recon/utility. Press 3 after spawning to deploy another scouting drone.</p>
       <p><strong>Defenders</strong> — You and four friendly AI protect BOTH bomb rooms. During the 45-second preparation phase, you cannot leave the building. After action begins, leaving the building reveals your location to all five attackers (runout detection). Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
