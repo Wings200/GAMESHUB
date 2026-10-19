@@ -348,7 +348,7 @@ document.addEventListener("keydown",e=>{
     weapons.equip(e.code==="Digit1"?"primary":"secondary");sound("equip");popup(weapons.current.name);
   }else if(e.code==="KeyR"){
     const reloading=weapons.reload(clock());
-    if(reloading){sound("reload");weaponView.beginReload(clock(),weapons.slot,weapons.current.reload);}
+    if(reloading){sound("reload");weaponView.beginReload(clock(),weapons.slot,weapons.current.reloadDurationMs/1000);}
     popup(reloading?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
   }else if(e.code==="KeyZ"){
     player.toggleProne();
