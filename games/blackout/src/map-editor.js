@@ -780,6 +780,14 @@ function updateValidation(show=true){
       Math.abs(p.position.x-site.x)<=p.size.x/2&&
       Math.abs(p.position.z-site.z)<=p.size.z/2))
       messages.push(pair.name+" — BOMB "+key+" has no floor directly below it.");
+    for(const zone of site.plantZones){
+      const problem=zonePlacementError(pair,zone,zone.id);
+      if(problem)messages.push(pair.name+" / "+key+" / "+zone.id+": "+problem);
+      if(!floorParts.some(p=>Math.abs(p.position.y-zone.y)<=.4&&
+        Math.abs(p.position.x-zone.x)<=p.size.x/2&&
+        Math.abs(p.position.z-zone.z)<=p.size.z/2))
+        messages.push(pair.name+" / "+key+" / "+zone.id+" needs a supporting floor.");
+    }
   }
   const output=$("validationResults");output.replaceChildren();
   const p=document.createElement("p");p.className="ok";
