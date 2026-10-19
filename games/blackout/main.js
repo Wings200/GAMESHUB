@@ -584,7 +584,7 @@ function drawTacticalHud(now){
     phaseAnnounceTitle.textContent=phase==="prep"?(role==="attacker"?"DRONE PREPARATION":"FORTIFICATION PHASE"):"ACTION PHASE";
     phaseAnnounceHelp.textContent=phase==="prep"?
       role==="defender"?"PROTECT BOTH SITES · REMAIN INSIDE DURING PREP":
-      "DRONE THE BUILDING · X PING · SPAWN IN "+seconds+"S":
+      "DRONE ACROSS TEST ZONES · X PING · SPAWN IN "+seconds+"S":
       role==="attacker"?"LOCATE THE BOMB · PLANT YOUR DEFUSER":
       "ELIMINATE ATTACKERS · DENY THE PLANT";
   }
@@ -832,7 +832,7 @@ function updateFrame(now){
 }
 setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
-function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
+function noticeReady(){status.textContent="OPEN MECHANICS LAB · CHOOSE ATTACK OR DEFENSE · TEST WALLS, DRONES, GADGETS AND BOMBS";}
 window.BLACKOUT_DEV={
   get build(){return "2.2.0-animated-specials-active-defender-setup-retakes"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
