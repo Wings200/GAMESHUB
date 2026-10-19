@@ -42,7 +42,14 @@ export class Weapons {
     if(gun.reloadingUntil)return {ok:false,why:"reloading"};
     if(now<gun.nextShotAt)return {ok:false,why:"cooldown"};
     if(gun.ammo<=0){gun.nextShotAt=now+250;return {ok:false,why:"empty"};}
-    gun.ammo--;gun.nextShotAt=now+60000/gun.rpm;
+    gun.ammo--;
+    // Schedule the next shot from the previous weapon-cycle deadline, not
+    // the timestamp of whichever animation frame finally fired this round.
+    // This prevents a 710-RPM rifle from slowing noticeably at 30-60 FPS.
+    const cycle=60000/gun.rpm;
+    const scheduled=gun.nextShotAt>0&&now-gun.nextShotAt<cycle*3?
+      gun.nextShotAt:now;
+    gun.nextShotAt=scheduled+cycle;
     this.shots++;
     const spread=ads?gun.adsSpread:gun.hipSpread;
     return {ok:true,gun:this.slot,damage:gun.body,headDamage:gun.head,
