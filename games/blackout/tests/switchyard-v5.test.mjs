@@ -159,3 +159,104 @@ test("an attacking bot actually walks from exterior insertion onto the rooftop",
  assert.ok(steps>0,"the bot must physically arrive at its upper bomb zone; state="+JSON.stringify({x:bot.x,z:bot.z,y:bot.y,maxY,route:bot.path.length,first:bot.path[0],last:bot.lastGoal,repath:bot.repathAt,steps}));
  assert.ok(bot.group.position.y>7.7,"visible character rig follows its physics floor");
 });
+
+test("SWITCHYARD contains 12 actual wall mechanics and 10 distinct barricade-ready frames",()=>{
+ const {map}=make();
+ assert.equal(map.panels.length,12);
+ assert.equal(map.openings.length,10);
+ assert.equal(map.openings.filter(o=>o.kind==="door").length,8);
+ assert.equal(map.openings.filter(o=>o.kind==="window").length,2);
+ for(const y of [0,4]){
+   assert.equal(map.panels.filter(p=>p.y===y).length,6);
+   assert.equal(map.openings.filter(o=>o.y===y).length,5);
+   assert.ok(map.panels.some(p=>p.y===y&&p.axis==="z"));
+   assert.ok(map.panels.some(p=>p.y===y&&p.axis==="x"));
+ }
+ for(const panel of map.panels){
+   assert.ok(map.colliders.includes(panel.collider),panel.id+" is physically solid");
+   assert.ok(map.shootables.includes(panel.mesh),panel.id+" can receive bullets");
+   assert.equal(panel.collider.minY,panel.y,panel.id+" collision follows its floor");
+ }
+});
+test("in-building soft panels create holes, reinforce with segmented steel, and truly breach",()=>{
+ const {map}=make();
+ const p=map.panels.find(p=>p.axis==="x"&&p.y===4);
+ assert.ok(p);
+ const shot={x:p.x,y:p.y+1.5,z:p.z};
+ assert.equal(p.bulletHole(shot),true);
+ assert.equal(p.holes.length,1);
+ assert.equal(p.holeAt(shot),true);
+ assert.equal(p.previewReinforcement(.55),undefined);
+ assert.equal(p.overlay.visible,true,"installation animation starts before the final steel wall");
+ assert.equal(p.reinforce(),true);
+ assert.equal(p.reinforced,true);
+ assert.equal(p.overlay.visible,true,"raised steel plates remain after installation");
+ assert.equal(p.mesh.material.map,undefined,"armor physically replaces the drywall face");
+ assert.equal(p.bulletHole(shot),false,"reinforced steel stops soft bullet holes");
+ assert.equal(p.damage(500,true),false,"ordinary hard breach must not destroy steel");
+ p.reinforced=false; // Thermite strips steel before using its charge.
+ assert.equal(p.reinforced,false);
+ assert.equal(p.overlay.visible,false);
+ assert.equal(p.damage(500,true),true);
+ assert.equal(p.destroyed,true);
+ assert.equal(map.colliders.includes(p.collider),false,"breach removes the REAL wall collider");
+ p.reset();
+ assert.equal(p.destroyed,false);
+ assert.equal(p.reinforced,false);
+ assert.equal(p.holes.length,0);
+ assert.equal(map.colliders.includes(p.collider),true);
+});
+test("real barricades install on matching floor and rebuild cleanly",()=>{
+ const {map,scene,world}=make();
+ const Bar=load("barricades.js",{},"Barricades");
+ const boards=new Bar(T,world,scene,map.openings);
+ assert.equal(boards.openings.length,10);
+ const upper=boards.openings.find(o=>o.y===4&&o.kind==="door");
+ const ground=boards.openings.find(o=>o.y===0&&o.kind==="door");
+ assert.ok(upper&&ground);
+ const player={
+   x:upper.x,z:upper.z+1.2,y:4,yaw:Math.PI,
+   blocked:()=>false
+ };
+ assert.equal(boards.nearest(player)?.id,upper.id,"floor height selects upper frame");
+ player.y=0;
+ assert.notEqual(boards.nearest(player)?.id,upper.id,"cannot interact upstairs from downstairs");
+ const boardCount=world.shootables.length;
+ assert.equal(boards.place(upper),true);
+ assert.ok(upper.planks.some(p=>world.colliders.includes(p.collider)));
+ assert.ok(upper.planks.every(p=>p.collider.minY>=3.95));
+ boards.configure(map.openings.filter(o=>o.y===0));
+ assert.equal(boards.openings.length,5);
+ assert.ok(!world.colliders.some(c=>c.barricade?.id===upper.id));
+ assert.ok(world.shootables.length<boardCount);
+ const newGround=boards.openings.find(o=>o.id===ground.id);
+ assert.equal(boards.place(newGround),true);
+ boards.breakAll(newGround);
+ assert.ok(newGround.planks.every(p=>!world.colliders.includes(p.collider)));
+});
+test("SWITCHYARD defender AI installs real reinforcement then barricades one of its frames",()=>{
+ const {map,world,scene}=make();
+ const Bar=load("barricades.js",{},"Barricades");
+ world.panels=map.panels;
+ world.barricades=new Bar(T,world,scene,map.openings);
+ const {updateDefenderPrep}=load("squad-ai.js",{
+   advanceTacticalBot:(bot,goal)=>{
+     bot.x=goal.x;bot.z=goal.z;bot.y=goal.y||0;return 2;
+   }
+ },"{updateDefenderPrep}");
+ const panel=map.panels.find(p=>p.id==="north-west-0");
+ const bot={id:1,x:panel.x,z:panel.z+1.25,y:0,team:"ally",alive:true,
+   state:"prep",assignedSite:map.sitePairs[0].A,
+   operatorSpec:{id:"mute"},animate(){}};
+ const events=[];
+ const round={role:"defender",phase:"prep",bots:[],allies:[bot],
+   world:{...world,mapId:"switchyard",panels:map.panels,barricades:world.barricades,
+     drone:{active:false}}};
+ for(let i=0;i<100;i++)
+   updateDefenderPrep(round,1000+i*100,.1,(message)=>events.push(message));
+ assert.ok(map.panels.some(p=>p.reinforced),"AI must reinforce a REAL wall, not pace around");
+ assert.ok(world.barricades.openings.some(o=>world.barricades.hasBarricade(o)),
+   "AI must physically install wood/armor boards in a real door opening");
+ assert.ok(events.some(s=>/REINFORCED/.test(s||"")));
+ assert.ok(events.some(s=>/BARRICADED/.test(s||"")));
+});
