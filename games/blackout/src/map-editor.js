@@ -511,10 +511,15 @@ function rebuildPreview(){
     const key=tool.slice(5),data=sitePair()[key];
     const proxy={...data,x:0,y:layer,z:0};
     const model=bombMarker(key,proxy);
-    model.traverse(child=>{
-      if(child.isSprite)child.visible=false;
-    });
+    model.traverse(child=>{if(child.isSprite)child.visible=false;});
     preview.add(model);preview.visible=true;
+  }else if(tool==="zone-place"){
+    const zone=currentZone();
+    if(zone){
+      const model=zoneBox(siteEditing,{...zone,x:0,z:0,y:layer},true);
+      model.traverse(child=>{if(child.isSprite)child.visible=false;});
+      preview.add(model);preview.visible=true;
+    }
   }
 }
 function setTool(next){
@@ -592,10 +597,30 @@ function updateSiteFields(){
   for(const key of ["A","B"])
     $("editSite"+key).classList.toggle("active",siteEditing===key);
   for(const [id,value] of [["bombX",site.x],["bombY",site.y],["bombZ",site.z],
-    ["plantRadius",site.plantRadius],["defuseRange",site.defuseRange]])
+    ["defuseRange",site.defuseRange]])
     $(id).value=String(value);
-  $("plantRadiusValue").textContent=site.plantRadius.toFixed(2)+"m";
   $("defuseRangeValue").textContent=site.defuseRange.toFixed(2)+"m";
+  const options=$("zoneSelect");
+  options.replaceChildren();
+  for(const [index,zone] of site.plantZones.entries()){
+    const opt=document.createElement("option");opt.value=zone.id;
+    opt.textContent="BOX "+(index+1)+" · "+zone.width+"×"+zone.depth+"M"+
+      " / Y "+zone.y+"M";
+    options.appendChild(opt);
+  }
+  // When switching site tabs, select a box belonging to the selected bomb.
+  if(!site.plantZones.some(z=>z.id===selectedZoneId))
+    selectedZoneId=site.plantZones[0]?.id||null;
+  options.value=selectedZoneId||"";
+  const zone=currentZone();
+  for(const [id,key] of [["zoneX","x"],["zoneY","y"],["zoneZ","z"],
+    ["zoneWidth","width"],["zoneDepth","depth"],["zoneHeight","height"]]){
+    $(id).value=zone?String(zone[key]):"";
+    $(id).disabled=!zone;
+  }
+  $("removeZone").disabled=site.plantZones.length<=1;
+  $("addZone").disabled=site.plantZones.length>=32;
+  $("placeZone").disabled=!zone;
 }
 function readPoint(evt,atY=layer){
   const r=canvas.getBoundingClientRect();
@@ -637,6 +662,17 @@ function setBomb(key,point){
   site.x=round(point.x,step);site.y=layer;site.z=round(point.z,step);
   siteEditing=key;changed({render:false});updateBombMarkers();updateSiteFields();
   toast("BOMB "+key+" POSITION SET · FLOOR "+layer.toFixed(2)+"M");
+}
+function placeZoneAt(point){
+  const zone=currentZone();if(!zone)return;
+  const step=shiftFree?0:map.grid;
+  const proposal={...zone,x:round(point.x,step),y:layer,z:round(point.z,step)};
+  const conflict=zonePlacementError(sitePair(),proposal,zone.id);
+  if(conflict){zoneError(conflict);return;}
+  beginChange();Object.assign(zone,proposal);
+  zoneError();setTool("select");changed({render:false});updateBombMarkers();
+  selectZone(zone.id);
+  toast("RECTANGLE MOVED · "+siteEditing+" / "+zone.id);
 }
 function placePart(point){
   beginChange();
@@ -694,7 +730,7 @@ function duplicateSelected(){
 }
 function focus(){
   const item=map.elements.find(e=>e.id===selectedId);
-  const p=item?.position||sitePair()[siteEditing];
+  const p=item?.position||(selectedZoneId?currentZone():sitePair()[siteEditing]);
   orbit.target.set(p.x,p.y+(item?item.size.y/2:0),p.z);
   orbit.distance=cap(item?Math.max(...Object.values(item.size))*4:16,9,70);
   setOrbit();
@@ -806,6 +842,7 @@ canvas.addEventListener("pointerdown",evt=>{
     const point=readPoint(evt,layer);
     if(!point)return;
     if(tool.startsWith("bomb-"))setBomb(tool.slice(5),point);
+    else if(tool==="zone-place")placeZoneAt(point);
     else if(PART_KEYS.includes(tool))placePart(point);
   }
 });
