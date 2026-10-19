@@ -140,20 +140,25 @@ test("armed C4 and claymore are shootable before activation",()=>{
   assert.equal(c.gadget.remoteC4(5600).ok,false);
   const cl=fixture("attacker","claymore");
   cl.gadget.secondary(cl.camera,cl.player,1000);
+  cl.gadget.tick(2200,cl.player,cl.notify,[]);
   const mine=cl.gadget.ordnance.devices[0];
+  assert.ok(mine,"claymore must appear after placement animation");
   assert.equal(cl.gadget.damageOrdnance(mine,60),true);
   assert.equal(cl.world.shootables.length,0);
 });
 test("claymore trips only when an enemy enters its forward lasers",()=>{
   const f=fixture("attacker","claymore"),g=f.gadget;
   g.secondary(f.camera,f.player,1000);
+  assert.equal(g.ordnance.devices.length,0,"installing takes time");
+  step(f,1016,2300);
   const device=g.ordnance.devices[0],enemy=bot(5,5);
+  assert.ok(device,"must deploy after install");
   f.round.bots.push(enemy);
-  step(f,1016,2350);
+  step(f,2316,3580);
   assert.equal(device.state,"armed");
   assert.equal(enemy.health,110);
   enemy.x=device.x;enemy.z=device.z-1.7;
-  g.tick(2370,f.player,f.notify,[]);
+  g.tick(3600,f.player,f.notify,[]);
   assert.ok(enemy.health<110);
   assert.equal(g.ordnance.devices.length,0);
 });
