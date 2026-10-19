@@ -1,14 +1,14 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v100-two-site-fivevfive";
-import {FirstPersonController} from "./src/player.js?v=blackout-v100-two-site-fivevfive";
-import {Weapons} from "./src/weapons.js?v=blackout-v100-two-site-fivevfive";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v100-two-site-fivevfive";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v100-two-site-fivevfive";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v100-two-site-fivevfive";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v100-two-site-fivevfive";
-import {GameAudio} from "./src/audio.js?v=blackout-v100-two-site-fivevfive";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v100-two-site-fivevfive";
-import {Barricades} from "./src/barricades.js?v=blackout-v100-two-site-fivevfive";
+import {buildRange} from "./src/world.js?v=blackout-v200-builder-drone-operators";
+import {FirstPersonController} from "./src/player.js?v=blackout-v200-builder-drone-operators";
+import {Weapons} from "./src/weapons.js?v=blackout-v200-builder-drone-operators";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v200-builder-drone-operators";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v200-builder-drone-operators";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v200-builder-drone-operators";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v200-builder-drone-operators";
+import {GameAudio} from "./src/audio.js?v=blackout-v200-builder-drone-operators";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v200-builder-drone-operators";
+import {Barricades} from "./src/barricades.js?v=blackout-v200-builder-drone-operators";
 import {createReconDrone} from "./src/drone.js?v=blackout-v200-builder-drone-operators";
 import {createSiteBuilder} from "./src/site-builder.js?v=blackout-v200-builder-drone-operators";
 
