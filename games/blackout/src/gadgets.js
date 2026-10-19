@@ -212,15 +212,30 @@ export class Gadgets {
         type==="thatcher"?0x516279:type==="doc"?0xd2e0e7:0x434f56,
         metalness:.65,roughness:.4}));
     group.add(body);
+    if(type==="sledge"){
+      const handle=new T.Mesh(new T.CylinderGeometry(.055,.055,.72,10),
+        new T.MeshStandardMaterial({color:0x765642,metalness:.24,roughness:.7}));
+      handle.position.y=-.24;group.add(handle);
+    }
+    if(type==="doc"){
+      const injector=new T.Mesh(new T.CylinderGeometry(.055,.068,.55,10),
+        new T.MeshStandardMaterial({color:0x9dc7d8,metalness:.68}));
+      injector.rotation.z=Math.PI/2;injector.position.set(0,-.23,0);
+      group.add(injector);
+    }
     const lamps=[];
     for(let i=0;i<3;i++){
       const glow=new T.Mesh(new T.SphereGeometry(.045,8,6),
         new T.MeshBasicMaterial({color:type==="thermite"?0xfba45d:0x75f4eb}));
       glow.position.set((i-1)*.21,.03,-.077);group.add(glow);lamps.push(glow);
     }
+    const traveling=!handheld&&["ash","thatcher"].includes(type)&&
+      camera?.position;
+    const origin=traveling?camera.position.clone():null;
+    if(origin)group.position.copy(origin);
     const action={kind:type,group,body,lamps,
       start:now,end:now+duration,duration,progress:0,
-      onComplete,position:{...position},handheld};
+      onComplete,position:{...position},handheld,origin};
     this.specialAction=action;
     return {ok:true,message:type.toUpperCase()+" · "+
       (type==="thermite"?"PLACING EXOTHERMIC CHARGE":
@@ -268,6 +283,15 @@ export class Gadgets {
       }else{
         a.group.scale.setScalar(.65+a.progress*.35);
         a.body.rotation.y=a.kind==="thatcher"?a.progress*4:0;
+        if(a.origin){
+          // Ash's round and Thatcher's canister travel through the level,
+          // instead of appearing instantly on the target wall.
+          const p=a.progress;
+          a.group.position.set(
+            a.origin.x+(a.position.x-a.origin.x)*p,
+            a.origin.y+(1.4-a.origin.y)*p+Math.sin(p*Math.PI)*.55,
+            a.origin.z+(a.position.z-a.origin.z)*p);
+        }
       }
       if(now>=a.end){
         this.specialAction=null;
