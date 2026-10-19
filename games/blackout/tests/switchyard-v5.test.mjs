@@ -126,3 +126,16 @@ test("site selector and map source both wired to visible UI",()=>{
  assert.match(main,/world\.setSitePair\(/);
  assert.match(main,/world\.spawn\.y=role==="defender"/);
 });
+
+test("AI can route to a roof site and descend between floor pairs",()=>{
+ const {world}=make();
+ const floor0={x:17.1,z:-49.9,y:0},roof={x:7,z:-30,y:8};
+ const climb=AI.findTacticalPath(world,floor0,roof);
+ assert.ok(climb.length>50,"ground-to-roof requires both physical stair tiers");
+ assert.ok(climb.some(p=>p.y>3.8&&p.y<4.2),"passes upper landing");
+ assert.ok(climb.some(p=>p.y>6&&p.y<7),"uses second flight");
+ assert.ok(climb.some(p=>p.y>=7.95),"arrives at roof elevation");
+ const down=AI.findTacticalPath(world,roof,{x:-7,z:-41,y:0});
+ assert.ok(down.length>50,"roof-to-ground must also use physical stairs");
+ assert.ok(down.some(p=>p.y>0&&p.y<4),"routes down lower flight");
+});
