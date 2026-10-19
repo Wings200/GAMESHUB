@@ -1,7 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {buildRange} from "./src/world.js?v=blackout-v330-advanced-ordnance";
 import {FirstPersonController} from "./src/player.js?v=blackout-v330-advanced-ordnance";
-import {Weapons} from "./src/weapons.js?v=blackout-v330-advanced-ordnance";
+import {Weapons} from "./src/weapons.js?v=blackout-v400-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
@@ -45,6 +45,7 @@ const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
 const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
 const sightSelect=$("sightSelect"),reticle=$("reticle");
+const primaryWeaponSelect=$("primaryWeaponSelect"),secondaryWeaponSelect=$("secondaryWeaponSelect");
 const secondarySelect=$("secondarySelect"),flashOverlay=$("flashOverlay");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
 const reinforceCountdown=$("reinforceCountdown"),reinforceTitle=$("reinforceTitle");
@@ -91,6 +92,7 @@ window.addEventListener("resize",resize);resize();
 
 const gunModel=new THREE.Group();camera.add(gunModel);
 const weaponView=createWeaponView(THREE,gunModel);
+weaponView.setModelVariant(weapons.loadout.primary,weapons.loadout.secondary);
 /* prior box-only placeholder weapon removed in V0.7 */
 /*const mat=(c,metalness=.3)=>new THREE.MeshStandardMaterial({color:c,metalness,roughness:.55});
 const parts=[
@@ -121,6 +123,14 @@ function setSight(value){
   // No floating HTML ADS element: sight stays rigidly attached to firearm.
 }
 sightSelect.addEventListener("change",()=>setSight(sightSelect.value));
+for(const [element,slot] of [[primaryWeaponSelect,"primary"],[secondaryWeaponSelect,"secondary"]]){
+  element.addEventListener("change",()=>{
+    if(!weapons.setLoadout(slot,element.value))return;
+    weaponView.setModelVariant(weapons.loadout.primary,weapons.loadout.secondary);
+    resetSimulation();
+    status.textContent="EQUIPPED "+weapons.guns[slot].name+" · GAMEPLAY STATS UPDATED";
+  });
+}
 setSight(sight);
 
 function audioReady(){
@@ -882,7 +892,7 @@ function updateFrame(now){
   const hipSpread=weapons.current.hipSpread*(player.moving?1.35:1);
   reticle.style.setProperty("--hip-size",(30+hipSpread*225).toFixed(1)+"px");
   const flash=!ended&&now<muzzleUntil;
-  muzzle.position.z=weapons.slot==="secondary"?-.73:-1.15;
+  muzzle.position.z=weapons.slot==="secondary"?-.73:weapons.loadout.primary==="smg"?-.99:weapons.loadout.primary==="dmr"?-1.33:-1.15;
   muzzleSprite.position.copy(muzzle.position);
   muzzle.intensity=flash?3.8:0;muzzleSprite.visible=flash;
   aimBlend+=(Number(locked&&ads)-aimBlend)*Math.min(1,dt*13);
@@ -930,7 +940,7 @@ function updateFrame(now){
   }
 }
 setRole("attacker");
-const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator:()=>operator,getRole:()=>role});
+const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator:()=>operator,getRole:()=>role,getGunName:slot=>weapons.guns[slot].name});
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
@@ -951,6 +961,7 @@ window.BLACKOUT_DEV={
   get dynamicColliders(){return world.colliders.length},get collisionRevision(){return world.collisionRevision},
   get facility(){return {...world.facility.bounds,site:objectiveRound.siteId}},
   get sight(){return sight},
+  get loadout(){return {...weapons.loadout}},
   get secondaryKit(){return gadgets.ordnanceStatus},
   get reinforcing(){return gadgets.busy},get barricading(){return barricades.busy},
   get barricades(){return barricades.info},get roundFrozen(){return roundFrozen},
