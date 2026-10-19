@@ -205,12 +205,21 @@ export class Ordnance{
     // Frag and C4 may break soft panels and wooden boards, but not
     // magically erase reinforcements.
     if(!flash){
+      // Blast waves remove wooden barricades in the immediate area.
+      // Armored Castle barriers stay up against weak impact blasts.
+      const bars=this.world.barricades;
+      for(const opening of bars?.openings||[]){
+        if(!bars.hasBarricade(opening))continue;
+        const d2=Math.hypot(d.x-opening.x,d.z-opening.z);
+        if(d2>(kind==="impact"?1.9:2.7)||kind==="impact"&&opening.armored)continue;
+        bars.breakAll(opening);
+      }
       for(const panel of this.world.panels||[]){
         if(panel.destroyed||panel.reinforced||Math.hypot(panel.x-d.x,panel.z-d.z)>radius*.66)
           continue;
         if(!this.lineClear({x:d.x,y:1.1,z:d.z},
           {x:panel.x,y:1.1,z:panel.z},panel.collider))continue;
-        if(kind!=="impact")panel.damage(500,true);
+        panel.damage(500,true);
       }
     }
   }
