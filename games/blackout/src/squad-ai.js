@@ -53,8 +53,10 @@ function desiredPosition(round,bot,player){
   if(isAttack){
     // Five attackers enter from different directions and clear two sites.
     // One objective runner aims for the plant; the rest take flank/cover lanes.
-    return {x:site.x+(bot.id%2?1.2:-1.2),
-      z:site.z+(bot.id%3-1)*1.7};
+    if(bot.carrier)return {x:site.x+(bot.id%2?.95:-.95),
+      z:site.z+(bot.id%3-1)*1.1};
+    return {x:site.x+(bot.id%2?1.9:-1.9),
+      z:site.z+(bot.id%3-1)*2.4};
   }
   // Defenders anchor BOTH devices, patrol nearby angles and reposition
   // only when they have heard or seen an actual threat.
@@ -83,7 +85,11 @@ function maybeWorkDevice(round,bot,now,dt,notify){
   const site=round.siteAt(bot);
   if(!site){bot.working=0;return false;}
   const opponents=bot.team==="ally"?round.bots:round.allies;
-  if(opponents.some(enemy=>enemy.alive&&distance(enemy,bot)<6)){bot.working=0;return false;}
+  const nearbyOpponent=opponents.some(enemy=>enemy.alive&&distance(enemy,bot)<3.5);
+  const playerThreat=bot.team==="enemy"&&round.role==="defender"&&
+    round.playerAlive&&distance(round.playerRef,bot)<3.5;
+  if(nearbyOpponent||playerThreat){bot.working=0;return false;}
+  if(bot.working===0)notify("ATTACKER STARTED PLANTING · SITE "+site.id);
   bot.working=(bot.working||0)+dt*1000;
   if(bot.working>=5400){
     bot.working=0;round.chooseSite(site.id);
@@ -159,7 +165,12 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
         bot.coverGoal=chooseCover(round,bot,target);
         bot.coverUntil=now+3500+bot.id*110;
       }
-      if(dst>13)goal={x:target.x,z:target.z};
+      if(isAttacker&&bot.carrier&&round.phase!=="planted"&&dst>8){
+        // Objective carrier approaches a safe planting room instead of
+        // being endlessly distracted by targets a corridor away.
+        goal=desiredPosition(round,bot,player);
+        bot.state="plant-approach";
+      }else if(dst>13)goal={x:target.x,z:target.z};
       else if(bot.coverGoal&&distance(bot,bot.coverGoal)>.9)goal=bot.coverGoal;
       else if(dst>8.5&&isAttacker)goal={x:target.x,z:target.z};
     }else{
@@ -191,7 +202,10 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
         notify(null,bot.team==="ally"?"ally-fire":"enemy-fire",bot);
       }
     }
-    const working=!target&&maybeWorkDevice(round,bot,now,dt,notify);
+    // Planting can proceed when distant enemies remain on the map. Only
+    // nearby immediate threats interrupt an objective interaction.
+    const canWork=!target||dst>7;
+    const working=canWork&&maybeWorkDevice(round,bot,now,dt,notify);
     if(target){
       bot.group.rotation.y=Math.atan2(bot.x-target.x,bot.z-target.z);
       fireAt(round,bot,target,now,notify);
