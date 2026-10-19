@@ -12,6 +12,7 @@ export const PART_TYPES=Object.freeze({
   stairs:{name:"Walkable staircase",size:[3,4,7],color:0xb1b6ba},
   cover:{name:"Crate / cover",size:[2,1.4,2],color:0x95856c},
   railing:{name:"Safety railing",size:[4,1.05,.25],color:0xeab65d},
+  rappelAnchor:{name:"Roof-edge rappel / grappling anchor",size:[.7,7.75,.7],color:0x62e6d9},
   attackerSpawn:{name:"Attacker spawn",size:[1,.12,1],color:0x5faefa},
   defenderSpawn:{name:"Defender spawn",size:[1,.12,1],color:0xffa168}
 });
