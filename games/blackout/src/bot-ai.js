@@ -3,9 +3,15 @@
 const GRID=1,MINX=-19,MAXX=19,MINZ=-65,MAXZ=25;
 const WIDTH=(MAXX-MINX)+1,HEIGHT=(MAXZ-MINZ)+1;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-function blocked(world,x,z,r=.38){
-  return world.colliders.some(a=>a.maxY>.42&&a.minY<1.6&&
-    x>=a.minX-r&&x<=a.maxX+r&&z>=a.minZ-r&&z<=a.maxZ+r);
+function collisionAt(world,x,z,r=.38,ignoreDoorBarricades=false){
+  return world.colliders.find(a=>{
+    if(ignoreDoorBarricades&&a.tag==="barricade"&&a.barricade?.kind==="door")return false;
+    return a.maxY>.42&&a.minY<1.6&&
+      x>=a.minX-r&&x<=a.maxX+r&&z>=a.minZ-r&&z<=a.maxZ+r;
+  })||null;
+}
+function blocked(world,x,z,r=.38,ignoreDoorBarricades=false){
+  return !!collisionAt(world,x,z,r,ignoreDoorBarricades);
 }
 const toGrid=(x,z)=>[clamp(Math.round(x-MINX),0,WIDTH-1),
   clamp(Math.round(z-MINZ),0,HEIGHT-1)];
@@ -24,17 +30,39 @@ function occupancy(world){
   // Narrow geometries still resolve through the same blocked() test.
   for(let gz=0;gz<HEIGHT;gz++)for(let gx=0;gx<WIDTH;gx++){
     const pos=toWorld(gx,gz);
-    data[hash(gx,gz)]=Number(blocked(world,pos.x,pos.z));
+    // Wooden DOOR barricades can be shot away, so route THROUGH their
+    // openings during planning. Actual movement still collides until
+    // enough planks have been destroyed. Windows still block foot travel.
+    data[hash(gx,gz)]=Number(blocked(world,pos.x,pos.z,.38,true));
   }
   occupancyCache.set(world,{revision:world.collisionRevision,
     colliderCount:world.colliders.length,data});
   return data;
 }
 export function findTacticalPath(world,from,to){
-  const [ax,az]=toGrid(from.x,from.z),[bx,bz]=toGrid(to.x,to.z);
+  const [ax,az]=toGrid(from.x,from.z);
   const grid=occupancy(world);
+  let [bx,bz]=toGrid(to.x,to.z);
+  // Never deliberately route into a solid desk, bomb unit or blocked corner.
+  // Find the nearest available standing square if the requested square is
+  // occupied; a goal behind a removable door is still traversable.
+  if(grid[hash(bx,bz)]){
+    let best=null,bestD=Infinity;
+    for(let r=1;r<=5;r++){
+      for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){
+        const gx=bx+dx,gz=bz+dz;
+        if(gx<0||gz<0||gx>=WIDTH||gz>=HEIGHT||grid[hash(gx,gz)])continue;
+        const d=Math.hypot(dx,dz);
+        if(d<bestD){best={x:gx,z:gz};bestD=d;}
+      }
+      if(best)break;
+    }
+    if(best){bx=best.x;bz=best.z;}
+  }
   const s=hash(ax,az),g=hash(bx,bz);
-  if(s===g)return [to];
+  const exactGoal=grid[hash(...toGrid(to.x,to.z))]===0;
+  const destination=exactGoal?to:toWorld(bx,bz);
+  if(s===g)return [destination];
   const best=new Float64Array(WIDTH*HEIGHT);best.fill(Infinity);
   const parents=new Int32Array(WIDTH*HEIGHT);parents.fill(-1);
   best[s]=0;
@@ -67,7 +95,7 @@ export function findTacticalPath(world,from,to){
     }
   }
   if(!found)return [];
-  const result=[to];
+  const result=[destination];
   let cursor=g;
   while(cursor!==s&&parents[cursor]>=0){
     cursor=parents[cursor];
@@ -90,11 +118,14 @@ export function findTacticalPath(world,from,to){
 }
 export function advanceTacticalBot(bot,goal,world,dt,now){
   const changingGoal=!bot.lastGoal||Math.hypot(bot.lastGoal.x-goal.x,bot.lastGoal.z-goal.z)>1.4;
+  if(bot.blockingBarricade&&!world.barricades?.hasBarricade(bot.blockingBarricade))
+    bot.blockingBarricade=null;
   // Never perform a full A* search every frame for an unreachable goal.
   // A failed route is cached until its retry deadline or a collision change.
   const changedWorld=bot.collisionRevision!==world.collisionRevision;
   if(changingGoal||changedWorld||now>=bot.repathAt){
     bot.path=findTacticalPath(world,bot,goal);
+    if(changedWorld)bot.blockingBarricade=null;
     bot.repathAt=now+(bot.path.length?1600:2600)+(bot.id%3)*270;
     bot.lastGoal={...goal};
     bot.collisionRevision=world.collisionRevision;
@@ -107,9 +138,32 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   if(len<.03)return 0;
   const step=Math.min(len,dt*bot.walkSpeed);
   const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
-  if(blocked(world,nx,nz,.34)){
-    bot.path=[];bot.repathAt=now+900;return 0;
+  const collision=collisionAt(world,nx,nz,.34);
+  if(collision){
+    if(collision.tag==="barricade"&&collision.barricade?.kind==="door"){
+      // Don't forget the route: stand at this doorway and shoot the boards.
+      // This also prevents infinite loops in a corner when every entrance
+      // has been barricaded.
+      bot.blockingBarricade=collision.barricade;
+      bot.state="breaching";
+      return 0;
+    }
+    // A solid obstacle has appeared, or the grid-to-world turn was too
+    // tight. Replan and try a physical sidestep (never through colliders).
+    bot.path=[];bot.repathAt=now+850;
+    const sign=bot.id%2?-1:1;
+    const sidestep=Math.min(.12,dt*bot.walkSpeed);
+    for(const side of [sign,-sign]){
+      const ex=bot.x+(-dz/len)*sidestep*side;
+      const ez=bot.z+(dx/len)*sidestep*side;
+      if(!blocked(world,ex,ez,.34)){
+        bot.x=ex;bot.z=ez;bot.group.position.set(ex,0,ez);
+        return sidestep/Math.max(dt,.001);
+      }
+    }
+    return 0;
   }
+  bot.blockingBarricade=null;
   bot.x=nx;bot.z=nz;bot.group.position.set(nx,0,nz);
   bot.group.rotation.y=Math.atan2(-dx,-dz);
   return step/Math.max(.001,dt);
@@ -165,7 +219,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
   const bot={id,group,body,head,hitboxes:[body,head],x,z,
     health:100,alive:true,stationary,healthMax:100,
     armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
-    path:[],lastGoal:null,repathAt:0,collisionRevision:-1,state:stationary?"hold":"approach",
+    path:[],lastGoal:null,repathAt:0,collisionRevision:-1,blockingBarricade:null,state:stationary?"hold":"approach",
     hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
     nextSightAt:0,sightCache:false,
     moved:0,movePhase:0,muzzle,
