@@ -220,10 +220,18 @@ export class ObjectiveDrill{
       // collision meshes or bot hitboxes exist until action starts.
       // Keep display-only roster data for UI; it cannot be shot or spotted.
       const roster=operatorsForSide("attacker").filter(o=>o.id!==this.operator?.id);
-      this.stagedAttackers=ATTACK_SQUAD_SPAWNS.map((p,i)=>({
+      const staged=this.world.mapId==="clubhouse"?
+        (this.world.facility.attackSpawns||[]).slice(0,4)
+          .map((p,i)=>({...p,site:i%2?"B":"A"})):
+        ATTACK_SQUAD_SPAWNS;
+      this.stagedAttackers=staged.map((p,i)=>({
         ...p,operatorSpec:roster[i%roster.length],team:"ally",staged:true
       }));
-      if(this.world.mapId==="switchyard"){
+      if(this.world.mapId==="clubhouse"){
+        const positions=this.world.facility.defendSpawns||[];
+        for(const [i,p] of positions.entries())
+          this.spawnBot(p.x,p.z,true,"enemy",i%2?"B":"A");
+      }else if(this.world.mapId==="switchyard"){
         const a=this.sites.A,b=this.sites.B;
         for(const [x,z,site] of [
           [a.x+2,a.z-2,"A"],[a.x-2,a.z+1,"A"],
@@ -234,7 +242,11 @@ export class ObjectiveDrill{
         [5,-24.6,"B"],[-6,-28,"B"]
       ])this.spawnBot(x,z,true,"enemy",site);
     }else{
-      if(this.world.mapId==="switchyard"){
+      if(this.world.mapId==="clubhouse"){
+        const positions=(this.world.facility.defendSpawns||[]).slice(0,4);
+        for(const [i,p] of positions.entries())
+          this.spawnBot(p.x,p.z,true,"ally",i%2?"B":"A");
+      }else if(this.world.mapId==="switchyard"){
         const a=this.sites.A,b=this.sites.B;
         for(const [x,z,site] of [
           [a.x+2,a.z-2,"A"],[a.x-2,a.z+2,"A"],
@@ -260,7 +272,11 @@ export class ObjectiveDrill{
       this.stagedAttackers=[];
       this.prepAttackersDeployed=true;
     }else{
-      for(const [i,p] of ENEMY_ATTACK_SPAWNS.entries()){
+      const incoming=this.world.mapId==="clubhouse"?
+        (this.world.facility.attackSpawns||[])
+          .map((p,i)=>({...p,site:i%2?"B":"A"})):
+        ENEMY_ATTACK_SPAWNS;
+      for(const [i,p] of incoming.entries()){
         const bot=this.spawnBot(p.x,p.z,false,"enemy",p.site);
         bot.carrier=i===2;
         bot.nextShot=now+850+i*170;
@@ -283,17 +299,21 @@ export class ObjectiveDrill{
     }
   }
   siteAt(p){
-    // Full room boundaries. Planting no longer requires standing near a
-    // floating circle or bomb station, only a legal walkable site floor.
-    return Object.values(this.sites).find(({bounds:b,y=0})=>
-      p.x>=b.minX&&p.x<=b.maxX&&p.z>=b.minZ&&p.z<=b.maxZ&&
-      Math.abs((p.y||0)-y)<1.2)||null;
+    return Object.values(this.sites).find(site=>{
+      if(this.world.mapId==="clubhouse"&&Array.isArray(site.plantZones))
+        return site.plantZones.some(z=>
+          Math.abs(p.x-z.x)<=z.width/2&&Math.abs(p.z-z.z)<=z.depth/2&&
+          (p.y||0)>=z.y-.25&&(p.y||0)<=z.y+z.height);
+      const {bounds:b,y=0}=site;
+      return p.x>=b.minX&&p.x<=b.maxX&&p.z>=b.minZ&&p.z<=b.maxZ&&
+        Math.abs((p.y||0)-y)<1.2;
+    })||null;
   }
   atSite(p){return !!this.siteAt(p);}
   canInteract(p){
     if(this.role==="attacker")return this.phase==="attack"&&this.atSite(p);
     return this.phase==="planted"&&!!this.plantPosition&&
-      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<2.25&&
+      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<(this.world.mapId==="clubhouse"?(this.sites[this.holdSiteId||this.siteId]?.defuseRange||2.25):2.25)&&
       Math.abs((p.y||0)-(this.plantPosition.y||0))<1.2;
   }
   end(won,reason,notify=()=>{}){
@@ -315,7 +335,7 @@ export class ObjectiveDrill{
     }
   }
   canBotSeePlayer(bot,player){
-    const from=new this.THREE.Vector3(bot.x,1.65,bot.z);
+    const from=new this.THREE.Vector3(bot.x,(bot.y||0)+1.65,bot.z);
     const direction=player.camera.position.clone().sub(from);
     const distance=direction.length();
     if(distance<.05||distance>20)return false;
