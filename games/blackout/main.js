@@ -486,6 +486,10 @@ document.addEventListener("keydown",e=>{
   }
   if(gadgets.busy||barricades.busy)return;
   if(e.code==="KeyT"){
+    if(role!=="attacker"){
+      popup("RAPPEL EQUIPMENT · ATTACKERS ONLY",1.7);
+      return;
+    }
     const r=rappel.toggle();
     popup(r.message,2.5);
     return;
