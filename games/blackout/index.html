@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V1.0 - offline 5v5 AI tactical squads, two full bomb rooms, prep restrictions and defender runout detection.">
+<meta name="description" content="BLACKOUT V2.0 - offline 5v5 AI tactical squads, two full bomb rooms, prep restrictions and defender runout detection.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v100-two-site-fivevfive">
@@ -29,6 +29,13 @@
     <strong id="runoutAlertTitle">DEFENDER OUTSIDE</strong>
     <span id="runoutAlertInfo">POSITION REVEALED TO ATTACKERS</span>
   </div>
+  <div id="droneOverlay" class="bo-drone-overlay hidden" aria-live="polite">
+    <div class="bo-drone-header"><strong>RECON / DRONE FEED</strong><span id="droneSignal">SIGNAL STABLE</span></div>
+    <div class="bo-drone-center"><span class="bo-drone-bracket">⌖</span></div>
+    <div class="bo-drone-footer"><span>WASD DRIVE · MOUSE LOOK</span><strong>X SCAN · G SHOCK (TWITCH)</strong>
+      <span>ATTACKER SPAWNS AFTER PREPARATION</span></div>
+  </div>
+  <div class="bo-population" id="teamPopulation">5 ATTACKERS  ·  5 DEFENDERS</div>
   <div id="spectatorAlert" class="bo-spectator-alert hidden" aria-live="polite">
     YOU ARE ELIMINATED · SPECTATING YOUR SQUAD
   </div>
@@ -37,7 +44,7 @@
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
   </div>
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> BLACKOUT / TACTICAL OPERATIONS <span class="dim">· V1.0</span></div>
+    <div class="overline"><span class="live-dot"></span> BLACKOUT / TACTICAL OPERATIONS <span class="dim">· V2.0</span></div>
     <h2 id="zoneLabel">SERVER ROOM</h2>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
@@ -84,13 +91,13 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V1.0 // TACTICAL SQUADS</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V2.0 // TACTICAL SQUADS</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">BLACKOUT // TACTICAL OPERATIONS · PRIVATE ALPHA</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
     <div class="subtitle">OPERATOR SELECTION <span>—</span> PLAN · PREPARE · EXECUTE</div>
     <div class="rule"></div>
-    <p class="description">Choose an operator, select your bomb site and build your loadout before deployment. Defenders fortify during preparation; attackers enter to locate the physical bomb units and plant a defuser. <strong>Solo 5v5 AI tactical test (four friendly bots versus five enemy bots); not online multiplayer</strong> — not multiplayer.</p>
+    <p class="description">Build a tactical test site, choose an opening-row operator, then deploy. Defenders get 45 seconds to reinforce while attackers drive scouting drones. After preparation, enter with your four AI teammates against five enemies. <strong>This is offline 5v5 AI testing, not online multiplayer.</strong></p>
     <div class="role-picker" aria-label="Choose testing side">
       <button id="attackRole" type="button" class="role-button active"><small>TEAM 01</small><strong>ATTACKER</strong><span>Breaching & reconnaissance</span></button>
       <button id="defendRole" type="button" class="role-button"><small>TEAM 02</small><strong>DEFENDER</strong><span>Reinforcements & area control</span></button>
@@ -100,7 +107,7 @@
     <div id="operatorCards" class="bo-operator-grid" role="group" aria-label="Choose a tactical operator"></div>
     <div id="operatorPreview" class="bo-operator-preview" aria-live="polite">
       <div class="bo-preview-avatar" id="operatorPreviewIcon">⌁</div>
-      <div class="bo-preview-copy"><span class="bo-preview-label">SELECTED OPERATOR</span><h3 id="operatorPreviewName">KESTREL</h3>
+      <div class="bo-preview-copy"><span class="bo-preview-label">SELECTED OPERATOR</span><h3 id="operatorPreviewName">SLEDGE</h3>
         <p id="operatorPreviewDescription">Fast objective specialist.</p><div id="operatorPreviewPerk" class="bo-preview-perk">FAST PLANT</div></div>
       <div class="bo-preview-rating"><span id="operatorSpeed">SPEED ●●○</span><span id="operatorArmor">ARMOR ●●○</span><span id="operatorKit">2 BREACH · 2 RECON</span></div>
     </div>
@@ -109,7 +116,17 @@
       <option value="A">SITE A — SERVER ROOM</option>
       <option value="B">SITE B — CONTROL ROOM</option>
     </select></label>
-    <label class="operator-picker bo-operator-fallback">OPERATOR <select id="operatorSelect" aria-label="Choose operator"><option value="kestrel">KESTREL · 2 SPEED / 2 ARMOR · 110 HP</option></select></label>
+    <div class="bo-section-title">03 <span>BUILD YOUR TEST SITE</span><small>EDIT THE FLOOR PLAN BEFORE SPAWNING</small></div>
+    <div class="bo-site-builder" id="siteBuilder"></div>
+    <p class="bo-builder-help">Choose ADD COVER and click free floor to place props; REMOVE COVER deletes props. Choose MOVE A or MOVE B, then click within the appropriate bomb room to relocate its equipment. Changes save locally. Attack or defend the layout you build.</p>
+    <label class="site-picker">TEST INSERTION SPAWN
+      <select id="spawnSelect">
+        <option value="south">SOUTH ENTRY</option>
+        <option value="west">WEST FLANK</option>
+        <option value="east">EAST FLANK</option>
+      </select>
+    </label>
+    <label class="operator-picker bo-operator-fallback">OPERATOR <select id="operatorSelect" aria-label="Choose operator"><option value="sledge">SLEDGE</option></select></label>
     <div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP · FIXED OPERATOR MOVEMENT</div>
     <label class="sight-picker">SELECT YOUR OPTIC <select id="sightSelect" aria-label="Select weapon sight">
       <option value="holo-a">HOLOGRAPHIC A — CIRCLE + DOT</option>
@@ -130,15 +147,15 @@
       <strong>TEST CONTROLS</strong>
       <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Q/E: collision-checked lean · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
-      <p><strong>Attackers</strong> — Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant the defuser where you are standing (KESTREL plants faster). Defend it after planting. G: breach charge; X: scan.</p>
-      <p><strong>Defenders</strong> — You and four friendly AI protect BOTH bomb rooms. During the 22-second preparation phase, you cannot leave the building. After action begins, leaving the building reveals your location to all five attackers (runout detection). Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
+      <p><strong>Attackers</strong> — Control a wheeled drone for 45 seconds before your operator spawns; use X to scan and Twitch can use G to shock nearby electronics. Four allied AI operators enter with you against five defending bots. Split between Sites A and B, take cover and clear angles. Stand anywhere on legal floor inside EITHER bomb room, hold F while stationary to plant the defuser where you are standing (KESTREL plants faster). Defend it after planting. G: breach charge; X: scan.</p>
+      <p><strong>Defenders</strong> — You and four friendly AI protect BOTH bomb rooms. During the 45-second preparation phase, you cannot leave the building. After action begins, leaving the building reveals your location to all five attackers (runout detection). Board doors or windows with F, reinforce soft panels, deploy shields with G and proximity sensors with X. Enemy attackers arrive from multiple directions.</p>
       <p><strong>Barricade interaction</strong> — Aim toward a door or window and hold F to install (defenders) or remove (either side). Shoot individual wooden planks to break them; press Space near a cleared side window to vault through. Barricades block players, bots, and bullets while intact.</p>
       <p><strong>Round results</strong> — Rounds continue if you die while surviving allies fight; you spectate the squad. Team elimination, successful plant/disable or objective timer decides the winner. Enter starts the next round; Esc opens the menu.</p>
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
     <p id="audioStatus" class="audio-status">AUDIO: CLICK TEST AUDIO TO CHECK SPEAKERS AND BROWSER PERMISSIONS</p>
-    <p id="status" class="notice">Choose a side. Then click ENTER TEST RANGE.</p>
+    <p id="status" class="notice">EDIT A SITE · SELECT OPERATOR · START DRONE / DEFENSE PREP</p>
     <div class="progress-foot"><span>5V5 AI · TWO LIVE BOMB SITES · FLANKS · RUNOUT PINGS</span><span>OFFLINE SQUAD SIMULATION · NOT ONLINE MULTIPLAYER</span></div>
   </div>
   <div class="menu-right lab-aside">
