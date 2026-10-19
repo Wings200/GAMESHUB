@@ -150,6 +150,15 @@ export class GameAudio{
         this.noise(.038,name==="equip"?.075:.027,1700,"bandpass");
         this.tone(350,.043,.021,"triangle",0,190);
         break;
+      case "smoke-throw":
+        this.noise(.09,.11,850,"bandpass");
+        this.tone(190,.11,.07,"triangle",0,105);
+        break;
+      case "smoke-trigger":
+        this.tone(910,.11,.075,"square",0,550);
+        this.noise(.24,.16,700,"lowpass",.11);
+        this.noise(.50,.10,330,"lowpass",.20);
+        break;
       case "click":
         this.noise(.025,.105,2100,"highpass");
         this.tone(760,.022,.06,"triangle",0,350);
