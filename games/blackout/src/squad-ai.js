@@ -105,11 +105,12 @@ function maybeWorkDevice(round,bot,now,dt,notify){
     if(distance(bot,round.plantPosition)>1.85){bot.working=0;return false;}
     const threats=bot.team==="ally"?round.bots:round.allies;
     const playerClose=bot.team==="enemy"&&round.playerAlive&&
-      distance(round.playerRef,bot)<4.1;
+      distance(round.playerRef,bot)<4.1&&visible(round,bot,round.playerRef);
     // Don't ignore enemies standing on top of the defuser unless the timer
     // is about to expire and a risky last-second attempt is justified.
     const urgent=round.bombEnd-now<9000;
-    if(!urgent&&(threats.some(x=>x.alive&&distance(bot,x)<3.3)||playerClose)){
+    if(!urgent&&(threats.some(x=>x.alive&&distance(bot,x)<3.3&&
+       visible(round,bot,x))||playerClose)){
       bot.working=0;return false;
     }
     bot.working=(bot.working||0)+dt*1000;
@@ -134,9 +135,11 @@ function maybeWorkDevice(round,bot,now,dt,notify){
     bot.working=0;return false;
   }
   const opponents=bot.team==="ally"?round.bots:round.allies;
-  const nearbyOpponent=opponents.some(enemy=>enemy.alive&&distance(enemy,bot)<3.5);
+  const nearbyOpponent=opponents.some(enemy=>enemy.alive&&
+    distance(enemy,bot)<3.5&&visible(round,bot,enemy));
   const playerThreat=bot.team==="enemy"&&round.role==="defender"&&
-    round.playerAlive&&distance(round.playerRef,bot)<3.5;
+    round.playerAlive&&distance(round.playerRef,bot)<3.5&&
+    visible(round,bot,round.playerRef);
   if(nearbyOpponent||playerThreat){bot.working=0;return false;}
   if(bot.working===0)notify("ATTACKER STARTED PLANTING · SITE "+site.id);
   bot.working=(bot.working||0)+dt*1000;
