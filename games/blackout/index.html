@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V3.0.1: cleaner open mechanics laboratory with wall, barricade, cover and bomb stations; preserves offline 5v5 AI drills.">
+<meta name="description" content="BLACKOUT V3.1: Smoke throwable canisters with G throw/B remote detonation, chamber-aware tactical reloads and flat sandbox mechanics testing.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v301-video-fixes">
@@ -44,7 +44,7 @@
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
   </div>
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.0.1</span></div>
+    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.1</span></div>
     <h2 id="zoneLabel">OPEN MECHANICS RANGE</h2>
     <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
@@ -53,14 +53,15 @@
     <div class="mission">TACTICAL OBJECTIVE <strong id="objective">LOCATE BOMB A</strong><small id="roundScore" class="round-score">ROUND 1 · ATK 0 : 0 DEF</small></div>
     <div class="lab-card">
       <div class="lab-card-heading">GADGET TOOLKIT</div>
-      <p id="gadgetPrimary">G · BREACH CHARGE [2]</p>
+      <p id="gadgetPrimary">G · SPECIAL GADGET [3]</p>
       <p id="gadgetSecondary">X · RECON PULSE [2]</p>
       <p id="gadgetInteract">F · BARRICADE / REINFORCE</p>
       <div class="lab-card-heading separation">MOVEMENT</div>
       <p>WASD MOVE · SHIFT SPRINT</p>
       <p>CTRL CROUCH · Z PRONE</p>
       <p>Q / E TOGGLE LEAN · ALT SLOW WALK</p>
-      <p>F BARRICADE · SPACE TIMED WINDOW VAULT</p>
+      <p>F BARRICADE · SPACE WINDOW VAULT</p>
+      <p>SMOKE: G THROW CANISTER · B REMOTE DETONATE</p>
     </div>
   </div>
   <div class="crosshair-caption" id="matchCaption">SITE A · BOMB LAB A · MECHANICS TRAINING</div>
@@ -78,7 +79,7 @@
     </div>
     <div class="side-controls">
       <span><kbd>LMB</kbd> FIRE</span><span><kbd>RMB</kbd> AIM</span><span><kbd>R</kbd> RELOAD</span>
-      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
+      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>B</kbd> SMOKE DETONATOR</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
     </div>
     <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
   </div>
