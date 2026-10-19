@@ -1,7 +1,7 @@
 // BLACKOUT V1.0 — real bot-vs-bot squad combat for offline five-on-five drills.
 // Five operators per side means one human + four friendly AI versus five hostiles.
 // Do not misrepresent this as online multiplayer.
-import {advanceTacticalBot} from "./bot-ai.js?v=blackout-v210-tactical-ai-toggle-lean";
+import {advanceTacticalBot} from "./bot-ai.js?v=blackout-v220-defender-ai-gadget-animations";
 
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
