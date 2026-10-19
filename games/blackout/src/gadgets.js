@@ -435,9 +435,12 @@ export class Gadgets {
           obj.geometry?.dispose?.();obj.material?.dispose?.();
         }});
         const result=a.onComplete();
-        this.finishAbilityFx(a.kind,a.position,now);
+        // A throw has no explosion at the operator's hand; the cloud
+        // only exists after the separately commanded remote detonation.
+        if(a.kind!=="smoke")this.finishAbilityFx(a.kind,a.position,now);
         ping(result?.message||a.kind.toUpperCase()+" · ACTIVATED",
-          a.kind==="thermite"||a.kind==="ash"?"impact":"click");
+          a.kind==="thermite"||a.kind==="ash"?"impact":
+          a.kind==="smoke"?"smoke-throw":"click");
       }
     }
     for(let i=this.specialFx.length-1;i>=0;i--){
