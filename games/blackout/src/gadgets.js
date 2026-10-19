@@ -1,4 +1,4 @@
-import {stepThrowable} from "./throw-physics.js?v=blackout-v310-smoke-remote-stage2";
+import {stepThrowable} from "./throw-physics.js?v=blackout-v320-ballistics-breakable-walls";
 // BLACKOUT V0.2 — role-specific gadgets tested against standalone panels.
 // Offline only; future multiplayer must validate all gadget state on server.
 export class Gadgets {
