@@ -42,7 +42,8 @@ const step=load("throw-physics.js",{},"stepThrowable");
 const Ops=load("operators.js",{},"OPERATORS");
 const Gadgets=load("gadgets.js",{stepThrowable:step,
   performance:{now(){return 9000}}},"Gadgets");
-const Weapons=load("weapons.js",{},"Weapons");
+const recoilFor=load("material-ballistics.js",{},"recoilFor");
+const Weapons=load("weapons.js",{recoilFor},"Weapons");
 function create(){
   const world={targets:[],colliders:[],panels:[],shootables:[]};
   const scene=new Node(),camera=new Node();
