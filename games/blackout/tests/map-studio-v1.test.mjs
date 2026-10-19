@@ -9,7 +9,7 @@ const base=join(dirname(fileURLToPath(import.meta.url)),"..");
 const read=relative=>readFileSync(join(base,relative),"utf8");
 const formatSource=read("src/map-format.js");
 const model=new Function(formatSource.replace(/^export /gm,"")+
-  ";return {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,siteBounds,canPlantAt,canDefuseAt}")();
+  ";return {MAP_FORMAT,PART_TYPES,PART_KEYS,createBlankMap,normalizeMap,makePiece,mapAsJSON,siteBounds,canPlantAt,canDefuseAt,cutOpeningInWall}")();
 test("editor JSON round-trips with every piece transform and paired bomb rules",()=>{
   const map=model.createBlankMap();
   const sample=[
@@ -108,4 +108,30 @@ test("editor is protected by actual server-side account policy and linked in-gam
   assert.match(middleware,/s\.expires_at > \?/);
   assert.match(middleware,/status: 403/);
   assert.match(index,/href="\.\/dev-editor\.html"/);
+});
+
+test("placing barricadable door or window actually cuts a real wall opening",()=>{
+  const wall=model.makePiece("hardWall",0,0,0,"wall-1");
+  wall.size.x=8;wall.rotationY=0;
+  const door=model.makePiece("door",0,0,0,"door-1");
+  door.size.x=2.5;
+  const pieces=[wall];
+  assert.equal(model.cutOpeningInWall(pieces,door),true);
+  assert.equal(pieces.length,2,"wall splits into two real sections");
+  assert.ok(pieces.every(x=>x.type==="hardWall"));
+  assert.ok(pieces.every(x=>Math.abs(x.position.x)>1.25));
+  assert.ok(pieces.every(x=>x.size.x>2));
+  assert.equal(model.cutOpeningInWall(pieces,door),false,"does not recut already empty doorway");
+  const rotatedWall=model.makePiece("softWall",0,4,-10,"upper");
+  rotatedWall.rotationY=90;rotatedWall.size.x=8;
+  const window=model.makePiece("window",0,4,-10,"window");
+  window.rotationY=90;
+  const upper=[rotatedWall];
+  assert.equal(model.cutOpeningInWall(upper,window),true);
+  assert.equal(upper.length,2);
+  assert.ok(upper.every(x=>x.position.y===4));
+  assert.ok(upper.every(x=>Math.abs(x.position.z+10)>1.1));
+  assert.ok(upper.every(x=>x.type==="softWall"));
+  assert.equal(model.cutOpeningInWall(upper,{...window,position:{x:0,y:0,z:-10}}),false,
+    "ground-floor window cannot cut an upstairs wall");
 });
