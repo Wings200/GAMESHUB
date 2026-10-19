@@ -98,6 +98,15 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
     }
     return node;
   }
+  // The Mechanics Lab's 240m training floor is hidden when maps switch.
+  // Give the approved map its own outdoor terrain for the five attacker
+  // approaches and nine exterior rappel ropes (physics ground remains Y=0).
+  const terrain=new T.Mesh(new T.PlaneGeometry(190,190),
+    material(0x43545a,.015,.96));
+  terrain.rotation.x=-Math.PI/2;
+  terrain.position.set(-16,-.025,-10);
+  terrain.userData.kind="solid";
+  root.add(terrain);shootables.push(terrain);
   const groups=new Map();
   for(const part of map.elements){
     const {type,position:p,size:s}=part;
