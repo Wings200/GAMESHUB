@@ -61,9 +61,11 @@ const world=buildRange(THREE,scene);
 const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
+world.gadgets=gadgets; // AI prep and reactive abilities use the same deployed objects
 const barricades=new Barricades(THREE,world,scene,world.facility.openings);
 world.barricades=barricades;
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
+world.round=objectiveRound; // determines ownership when gadget AoE is simulated
 const drone=createReconDrone(THREE,scene,world,camera);
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
