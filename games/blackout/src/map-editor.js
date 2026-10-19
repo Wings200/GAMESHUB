@@ -709,7 +709,6 @@ canvas.addEventListener("pointermove",evt=>{
     if(axis==="y"){
       delta=(r.startY-evt.clientY)*orbit.distance/
         Math.max(150,canvas.clientHeight)*1.55;
-      if(original.type==="floor")delta=-delta;
     }else if(current&&r.startWorld){
       const angle=(original.rotationY||0)*Math.PI/180;
       const dir=axis==="x"?{x:Math.cos(angle),z:-Math.sin(angle)}:
