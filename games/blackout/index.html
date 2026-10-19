@@ -2,10 +2,10 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V0.7 - enterable two-site facility, weapon animations, tactical movement, bots and round objectives.">
+<meta name="description" content="BLACKOUT V0.8 - barricadable doors and windows, corrected wall collision, improved post-round performance.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=blackout-v07-facility-ai-weapons">
+<link rel="stylesheet" href="./style.css?v=blackout-v08-barricades-collision-performance">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
@@ -13,7 +13,7 @@
 <div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
 <header id="gameHUD" class="game-hud hidden">
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ TWO-SITE FACILITY · V0.7</span></div>
+    <div class="overline"><span class="live-dot"></span> PROJECT BLACKOUT <span class="dim">/ BARRICADES · V0.8</span></div>
     <h2 id="zoneLabel">FLAT MECHANICS LAB</h2>
     <p>LOCAL SHOOTING TEST · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
   </div>
@@ -23,11 +23,12 @@
       <div class="lab-card-heading">GADGET TOOLKIT</div>
       <p id="gadgetPrimary">G · BREACH CHARGE [2]</p>
       <p id="gadgetSecondary">X · RECON PULSE [2]</p>
-      <p id="gadgetInteract">F · INSPECT</p>
+      <p id="gadgetInteract">F · BARRICADE / REINFORCE</p>
       <div class="lab-card-heading separation">MOVEMENT</div>
       <p>WASD MOVE · SHIFT SPRINT</p>
       <p>CTRL CROUCH · Z PRONE</p>
       <p>Q / E LEAN · ALT SLOW WALK</p>
+      <p>F BARRICADE · SPACE WINDOW VAULT</p>
     </div>
   </div>
   <div class="crosshair-caption">LIVE SOLO TACTICAL DRILL · A / B SITE</div>
@@ -51,14 +52,14 @@
   <div id="debugPanel" class="debug-panel hidden">DEBUG <div id="positionReadout"></div></div>
   <div id="toast" class="toast" role="status"></div>
   <div id="reinforceBar" class="reinforce-progress hidden" role="status">
-    <div class="reinforce-title">INSTALLING REINFORCEMENT <span id="reinforceCountdown">3.0S</span></div>
+    <div class="reinforce-title"><span id="reinforceTitle">INSTALLING REINFORCEMENT</span> <span id="reinforceCountdown">3.0S</span></div>
     <div class="reinforce-track"><div id="reinforceFill" class="reinforce-fill"></div></div>
-    <div class="reinforce-hint">MOVEMENT AND WEAPONS LOCKED · ESC TO CANCEL</div>
+    <div class="reinforce-hint">KEEP HOLDING F · RELEASE TO CANCEL · ESC FOR MENU</div>
   </div>
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.7.0 // TACTICAL FACILITY</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V0.8.0 // BARRICADES & COLLISION</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">TACTICAL DEVELOPMENT · PHASE 02</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
@@ -96,7 +97,9 @@
       <p>WASD: move · Shift: sprint · Hold ALT: quiet, slow walk · Ctrl: crouch · Z: prone · Q/E: collision-checked lean · Mouse: look. Operator speed is fixed.</p>
       <p>LMB: shoot/hipfire · Hold RMB: ADS (hipfire crosshair hides; sight reticle appears) · V: cycle Holo A / Holo B / Red Dot / Iron · R: reload · 1/2: rifle/sidearm.</p>
       <p><strong>Attackers</strong> — Enter your selected Site A or B room, stop moving and HOLD F for 5 seconds to plant, even with enemies alive. Defend the physical 3D defuser for 32 seconds. Enemies hear loud gunfire and sprinting. G: breach charge; X: scan.</p>
-      <p><strong>Defenders</strong> — Protect your selected site for 100 seconds as attackers navigate through facility doorways. If they plant, get to the device, stop moving, and HOLD F for 5.5 seconds to disable. F reinforces nearby soft-wall test panels, G deploys shield, X sensor.</p>
+      <p><strong>Defenders</strong> — Protect your selected site for 100 seconds. Face a doorway or window from up close, then hold F for 2.5 seconds to install wooden barricades. Aim at a soft wall and use F to reinforce. G deploys shield; X places a sensor.</p>
+      <p><strong>Barricade interaction</strong> — Aim toward a door or window and hold F to install (defenders) or remove (either side). Shoot individual wooden planks to break them; press Space near a cleared side window to vault through. Barricades block players, bots, and bullets while intact.</p>
+      <p><strong>Round results</strong> — When you win or die, movement and AI stop. Press Enter for the next round or Esc for the menu.
       <p><strong>Soft-wall penetration:</strong> bullets punch tiny individual holes and travel through at reduced damage, but do not destroy the wall. Line up the rear targets behind the two wall panels to test shooting through. Only a breach charge removes an unreinforced panel.</p>
       <p>Esc: return to menu to switch sides · F3: coordinates and collision diagnostics.</p>
     </div>
