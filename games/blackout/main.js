@@ -1,14 +1,14 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v093-shield-ai-routing";
-import {FirstPersonController} from "./src/player.js?v=blackout-v093-shield-ai-routing";
-import {Weapons} from "./src/weapons.js?v=blackout-v093-shield-ai-routing";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v093-shield-ai-routing";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v093-shield-ai-routing";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v093-shield-ai-routing";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v093-shield-ai-routing";
-import {GameAudio} from "./src/audio.js?v=blackout-v093-shield-ai-routing";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v093-shield-ai-routing";
-import {Barricades} from "./src/barricades.js?v=blackout-v093-shield-ai-routing";
+import {buildRange} from "./src/world.js?v=blackout-v100-two-site-fivevfive";
+import {FirstPersonController} from "./src/player.js?v=blackout-v100-two-site-fivevfive";
+import {Weapons} from "./src/weapons.js?v=blackout-v100-two-site-fivevfive";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v100-two-site-fivevfive";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v100-two-site-fivevfive";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v100-two-site-fivevfive";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v100-two-site-fivevfive";
+import {GameAudio} from "./src/audio.js?v=blackout-v100-two-site-fivevfive";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v100-two-site-fivevfive";
+import {Barricades} from "./src/barricades.js?v=blackout-v100-two-site-fivevfive";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -143,7 +143,7 @@ function showMenu(){
   locked=false;keys.clear();fireHeld=false;ads=false;
   objectiveRound.pause(clock());
   gadgets.cancelAction();barricades.cancel();
-  document.body.classList.remove("playing","ads");hud.classList.add("hidden");
+  document.body.classList.remove("playing","ads","spectating");hud.classList.add("hidden");
   menu.classList.remove("hidden");
   if(started){start.textContent="RESUME TESTING";status.textContent="Training paused · select a role or resume.";}
 }
@@ -705,7 +705,7 @@ function updateFrame(now){
 }
 setRole("attacker");
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
-function noticeReady(){status.textContent="Choose a side and operator, then enter the Site A objective test.";}
+function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
 window.BLACKOUT_DEV={
   get build(){return "1.0.0-five-vs-five-offline-squads-two-sites-runout-detection"},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
