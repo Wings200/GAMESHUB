@@ -89,6 +89,15 @@ export class Gadgets {
         if(right>c.minX&&left<c.maxX&&front>c.minZ&&back<c.maxZ)
           return false;
       }
+      // Do not magically deploy a shield behind a wall: the short line
+      // from the operator to its final position must also be reachable.
+      const distance=Math.hypot(x-player.x,z-player.z);
+      for(let d=.48;d<distance-.23;d+=.18){
+        const px=player.x+forwardX*d,pz=player.z+forwardZ*d;
+        if(this.world.colliders.some(c=>c.maxY>.40&&c.minY<1.42&&
+          px>c.minX-.12&&px<c.maxX+.12&&
+          pz>c.minZ-.12&&pz<c.maxZ+.12))return false;
+      }
       return true;
     };
     // Search just ahead of the operator; only place in the direction faced,
