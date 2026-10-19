@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0b131e">
   <title>BLACKOUT | Developer Map Studio</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v2">
+  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v3">
 </head>
 <body>
   <div id="app">
@@ -75,7 +75,9 @@
           <select id="gridStep"><option value="0">OFF / FREE</option><option value=".25">0.25</option><option value=".5">0.5</option><option value="1" selected>1.0</option><option value="2">2.0</option><option value="4">4.0</option></select>
         </label>
         <label class="edge-snap-setting"><input type="checkbox" id="edgeSnap" checked> MAGNETIC WALL / FLOOR EDGES</label>
-        <p class="hint">Grid aligns to world coordinates; nearby compatible wall/floor edges snap flush. Hold SHIFT to temporarily bypass both snapping systems.</p>
+        <p class="hint">Snapping aligns real wall/floor edges, not their centers. Hold SHIFT to place precisely without snapping.</p>
+        <button id="repairGrid" class="secondary wide" type="button">ALIGN EXISTING WALLS & FLOORS</button>
+        <p class="hint">Repairs old 3.1m walls and floor seams. Reversible with Undo.</p>
         <p class="hint">An upstairs FLOOR is also the solid ceiling of the room below it. No second ceiling slab needed.</p>
       </section>
       <div class="left-footer"><span>PRIVATE DEVELOPMENT BUILD</span><small>Protected by GAMESHUB's server-side BLACKOUT owner access. Drafts stay in this browser until exported.</small></div>
@@ -85,7 +87,7 @@
       <div class="viewport-toolbar">
         <div class="tool-group">
           <button id="selectTool" class="active" type="button">◈ MOVE 3D <kbd>W</kbd></button>
-          <button id="scaleTool" type="button">⬚ SCALE <kbd>R</kbd></button>
+          <button id="scaleTool" type="button">⬚ ONE-SIDE RESIZE <kbd>R</kbd></button>
           <button id="rotateLeft" type="button">↶ -90° <kbd>Q</kbd></button>
           <button id="rotateRight" type="button">↷ +90° <kbd>E</kbd></button>
           <button id="duplicate" type="button">DUPLICATE <kbd>CTRL+D</kbd></button>
@@ -105,7 +107,7 @@
         <span class="live-dot"></span> AUTHORING MODE · <strong id="toolStatus">SELECT</strong>
         <span id="viewportCoords">X 0 · Y 0 · Z 0</span>
       </div>
-      <div class="viewport-guide">LEFT: PLACE / SELECT <span>·</span> W: XYZ MOVE / R: SCALE <span>·</span> SHIFT: SNAP OFF <span>·</span> RIGHT: ORBIT <span>·</span> FLY CAM: WASD + SPACE/C</div>
+      <div class="viewport-guide">LEFT: PLACE / SELECT <span>·</span> W: XYZ MOVE / R: DRAG AN EDGE TO RESIZE <span>·</span> SHIFT: SNAP OFF <span>·</span> RIGHT: ORBIT <span>·</span> FLY CAM: WASD + SPACE/C</div>
       <div class="viewport-lower-left">
         <span id="objectCount">1 PIECE</span>
         <span id="currentLayer">HEIGHT 0.0M</span>
@@ -118,7 +120,7 @@
       <div class="pane-head"><span class="section-id">02 / PROPERTIES</span><h2>INSPECTOR</h2></div>
       <section class="inspect-panel" id="pieceInspector">
         <h3>SELECTED PIECE</h3>
-        <p id="selectionDescription" class="hint">Select any piece. W activates X/Y/Z move arrows; R activates 3D scale handles. Width and depth also work in the fields below.</p>
+        <p id="selectionDescription" class="hint">Select an object. W moves it in 3D; R shows handles on its edges. Drag ONE edge to resize while the opposite edge stays fixed.</p>
         <label>LABEL <input id="partName" placeholder="Piece label" maxlength="70" disabled></label>
         <div class="triple" id="posFields">
           <label>X<input data-field="px" type="number" step=".25" disabled></label>
@@ -133,7 +135,7 @@
         <label>YAW / ROTATION (°)<input id="partRotation" type="number" step="15" disabled></label>
         <div id="floorSizeTools" class="floor-size-tools" hidden>
           <h3>FLOOR FOOTPRINT</h3>
-          <p class="hint">Floors are solid slabs with their own underside ceiling. Resize directly using R, or choose a footprint below.</p>
+          <p class="hint">Floor surfaces meet walls below. Press R, then drag a floor EDGE; its opposite edge stays still.</p>
           <div class="floor-preset-grid">
             <button type="button" data-floor-size="6">6 × 6M</button>
             <button type="button" data-floor-size="10">10 × 10M</button>
@@ -184,6 +186,6 @@
     <div><button id="cancelNew">CANCEL</button><button id="confirmNewButton" class="danger">CREATE BLANK MAP</button></div>
   </dialog>
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
-  <script type="module" src="./src/map-editor.js?v=blackout-editor-v2"></script>
+  <script type="module" src="./src/map-editor.js?v=blackout-editor-v3"></script>
 </body>
 </html>
