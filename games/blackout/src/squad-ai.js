@@ -104,6 +104,53 @@ function desiredPosition(round,bot,player){
   // only when they have heard or seen an actual threat.
   return bot.patrolGoal||bot.anchor||{x:site.x+(bot.id%2?1.5:-1.5),z:site.z};
 }
+// Support attackers keep clearing lanes after reaching the first site.
+// Destinations are deterministic and move around the objective, but each
+// candidate is checked against the same collision geometry used by players.
+export function assaultSweepPosition(round,bot,now){
+  if(bot.carrier)return desiredPosition(round,bot,round.playerRef);
+  const site=assignedSite(round,bot);
+  const offsets=[
+    {x:-4.3,z:2.4},{x:4.0,z:2.1},{x:3.8,z:-3.3},
+    {x:-3.8,z:-3.4},{x:-1.8,z:4.2},{x:2,z:-4.6}
+  ];
+  if(bot.assaultGoal&&now<(bot.assaultNext||0)&&distance(bot,bot.assaultGoal)>.85)
+    return bot.assaultGoal;
+  const current=bot.assaultIndex??(bot.id%offsets.length);
+  for(let k=1;k<=offsets.length;k++){
+    const index=(current+k)%offsets.length;
+    const pt={x:site.x+offsets[index].x,z:site.z+offsets[index].z};
+    if(canStand(round,pt,.37)&&distance(bot,pt)>1.1){
+      bot.assaultIndex=index;bot.assaultGoal=pt;
+      bot.assaultNext=now+4500+(bot.id%4)*400;
+      return pt;
+    }
+  }
+  return bot.assaultGoal||desiredPosition(round,bot,round.playerRef);
+}
+// Small lateral combat movement prevents visible bots from becoming static
+// aim turrets. Do not teleport and never pick an occupied cover square.
+export function chooseTacticalReposition(round,bot,target,now){
+  if(!target||distance(bot,target)>13)return null;
+  if(bot.repositionGoal&&now<(bot.repositionUntil||0)&&
+      distance(bot,bot.repositionGoal)>.6)return bot.repositionGoal;
+  if(now<(bot.repositionCooldown||0))return null;
+  const dx=target.x-bot.x,dz=target.z-bot.z,len=Math.hypot(dx,dz)||1;
+  const side=bot.id%2?1:-1;
+  for(const sign of [side,-side]){
+    const away=distance(bot,target)<3.2?1.25:0;
+    const pos={x:bot.x-sign*dz/len*2.0-dx/len*away,
+      z:bot.z+sign*dx/len*2.0-dz/len*away};
+    if(canStand(round,pos,.37)){
+      bot.repositionGoal=pos;
+      bot.repositionUntil=now+1900;
+      bot.repositionCooldown=now+2900+(bot.id%3)*290;
+      return pos;
+    }
+  }
+  bot.repositionCooldown=now+1100;
+  return null;
+}
 function maybeWorkDevice(round,bot,now,dt,notify){
   if(round.phase==="planted"){
     const isDefender=!isAttacking(round,bot);
@@ -473,13 +520,18 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
       if(defusing){
         // Disarm specialists head for the planted device while their
         // teammates engage. If a hostile is standing on it, clear first.
-        goal=dst<4.1?null:round.plantPosition;
-        bot.state=dst<4.1?"clear-defuser":"retake";
+        goal=distance(bot,round.plantPosition)>1.85?
+          round.plantPosition:null;
+        if(dst<5.2&&goal){
+          const dodge=chooseTacticalReposition(round,bot,target,now);
+          if(dodge)goal=dodge;
+        }
+        bot.state=goal?"retake":"clear-defuser";
       }else if(planting){
         // Defuser carrier advances behind the entry pair, contesting an
         // immediate threat without aimlessly chasing every spotted enemy.
-        if(dst<=5.4)goal=null;
-        else goal=desiredPosition(round,bot,player);
+        goal=dst<=5.4?chooseTacticalReposition(round,bot,target,now):
+          desiredPosition(round,bot,player);
         bot.state=dst<=5.4?"cover-carrier":"plant-approach";
       }else if(bot.coverGoal&&distance(bot,bot.coverGoal)>.78)
         {goal=bot.coverGoal;bot.state="seek-cover";}
@@ -491,15 +543,16 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
       }else if(!isAttack&&distance(anchor,bot)>7.5){
         goal=anchor;bot.state="fallback";
       }else{
-        // If no attacker is inside firing range, cycle positions instead
-        // of spending the whole action phase rooted at the spawn.
-        goal=!isAttack&&dst>6?patrolPosition(round,bot,now):null;
-        bot.state=goal?"site-patrol":"hold-angle";
+        // Reposition around contact rather than freezing at one firing lane.
+        goal=chooseTacticalReposition(round,bot,target,now);
+        if(!goal&&!isAttack&&dst>6)goal=patrolPosition(round,bot,now);
+        bot.state=goal?"combat-reposition":"hold-angle";
       }
     }else{
       bot.coverGoal=null;
-      goal=desiredPosition(round,bot,player);
-      bot.state=isAttack?"clear-site":"anchor";
+      goal=isAttack?assaultSweepPosition(round,bot,now):
+        patrolPosition(round,bot,now);
+      bot.state=isAttack?"site-sweep":"anchor";
       if(sharedIntel&&!defusing&&!planting){
         const withinHome=distance(anchor,sharedIntel)<8.8;
         if(isAttack&&distance(bot,sharedIntel)<17){
@@ -520,6 +573,8 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
       if(goal&&distance(bot,goal)<1.0){
         if(!isAttack&&round.phase!=="planted"){
           bot.patrolNext=now;bot.patrolGoal=null;
+        }else if(isAttack&&!bot.carrier){
+          bot.assaultNext=now;
         }
         goal=null;
       }
@@ -555,6 +610,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
       bot.stuckFor=(bot.stuckFor||0)+dt;
       if(bot.stuckFor>2.8){
         bot.stuckFor=0;bot.path=[];bot.lastGoal=null;
+        bot.coverGoal=null;bot.assaultGoal=null;bot.patrolGoal=null;
         bot.repathAt=now+120;
         const sign=(bot.id+Math.floor(now/2700))%2?1:-1;
         const dx=goal.x-bot.x,dz=goal.z-bot.z,len=Math.hypot(dx,dz)||1;
