@@ -216,55 +216,13 @@ export function buildRange(THREE,scene){
     center.userData={kind:"shield",shield};shootables.push(center);
     placed.push(shield);return shield;
   }
-  const testCover=[],testWalls=[];
-  function addTestWall(x,z,axis="x"){
-    const across=axis==="x",w=across?2.4:.30,d=across?.30:2.4;
-    const material=new THREE.MeshStandardMaterial({
-      color:0x5e727e,metalness:.19,roughness:.84
-    });
-    const m=box(x,1.52,z,w,3.04,d,material,root);
-    m.userData={kind:"solid",builder:true};
-    const c={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,
-      minY:0,maxY:3.04,tag:"builder-wall"};
-    colliders.push(c);shootables.push(m);
-    const item={x,z,axis,mesh:m,collider:c,remove(){
-      const ci=colliders.indexOf(c);if(ci>=0)colliders.splice(ci,1);
-      const si=shootables.indexOf(m);if(si>=0)shootables.splice(si,1);
-      root.remove(m);m.geometry.dispose();m.material.dispose();
-      const j=testWalls.indexOf(item);if(j>=0)testWalls.splice(j,1);
-      state.collisionRevision++;
-    }};
-    testWalls.push(item);state.collisionRevision++;
-    return item;
-  }
-  function addTestCover(x,z){
-    // Builder cover changes both rendering and authoritative navigation.
-    const material=new THREE.MeshStandardMaterial({
-      color:0x536675,metalness:.55,roughness:.53
-    });
-    const m=box(x,.62,z,1.15,1.24,.78,material,root);
-    m.userData={kind:"solid",builder:true};
-    const c={minX:x-.575,maxX:x+.575,minZ:z-.39,maxZ:z+.39,
-      minY:0,maxY:1.24,tag:"builder-cover"};
-    colliders.push(c);shootables.push(m);
-    const obj={x,z,mesh:m,collider:c,remove(){
-      const ci=colliders.indexOf(c);if(ci>=0)colliders.splice(ci,1);
-      const si=shootables.indexOf(m);if(si>=0)shootables.splice(si,1);
-      root.remove(m);m.geometry.dispose();m.material.dispose();
-      const ai=testCover.indexOf(obj);if(ai>=0)testCover.splice(ai,1);
-      state.collisionRevision++;
-    }};
-    testCover.push(obj);
-    state.collisionRevision++;
-    return obj;
-  }
   function reset(){
     for(const t of targets)t.reset();
     for(const p of panels)p.reset();
     for(const s of [...placed])s.remove();
   }
-  return {root,colliders,shootables,targets,panels,placed,testCover,testWalls,
-    addTestCover,addTestWall,floor,reset,addShield,facility,
+  return {root,colliders,shootables,targets,panels,placed,
+    floor,reset,addShield,facility,
     floorAt:()=>0,zoneAt:(x,z)=>facility.zoneAt(x,z),
     spawn:{x:0,y:0,z:16,yaw:0},
     state,
