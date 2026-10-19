@@ -121,7 +121,14 @@
     <div class="bo-selection-top"><div class="role-picker" aria-label="Choose training side"><button id="attackRole" type="button" class="role-button active"><small>BLUE TEAM</small><strong>ATTACKERS</strong><span>BREACH & DEFUSE</span></button><button id="defendRole" type="button" class="role-button"><small>ORANGE TEAM</small><strong>DEFENDERS</strong><span>FORTIFY & DENY</span></button></div><div class="bo-selection-status"><span id="selectedMode">ATTACKER · PLANT AT EITHER SITE</span><small>ROUND 01 // BOMB</small></div></div>
     <div class="bo-ops-layout"><div class="bo-ops-roster"><div class="bo-mini-heading">AVAILABLE OPERATORS <span>SELECT ONE</span></div><div id="operatorCards" class="bo-operator-grid" role="group" aria-label="Choose a tactical operator"></div><label class="bo-operator-fallback">OPERATOR LIST <select id="operatorSelect" aria-label="Choose operator"><option value="sledge">SLEDGE</option></select></label></div>
       <div id="operatorPreview" class="bo-operator-preview" aria-live="polite"><span class="bo-eyebrow">YOUR OPERATOR</span><div id="operatorPreviewIcon" class="bo-preview-avatar">⌁</div><div class="bo-preview-copy"><span class="bo-preview-label">SPECIALIST SELECTED</span><h3 id="operatorPreviewName">SLEDGE</h3><p id="operatorPreviewDescription">Close-quarters breaching specialist.</p><div id="operatorPreviewPerk" class="bo-preview-perk">SOFT BREACH</div></div><div class="bo-preview-rating"><span id="operatorSpeed">SPEED ●●○</span><span id="operatorArmor">ARMOR ●●○</span><span id="operatorKit">SPECIAL EQUIPMENT</span></div><div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP</div></div></div>
-    <div class="bo-page-actions"><button type="button" class="bo-secondary" data-bo-nav="play">‹ PLAYLISTS</button><button type="button" class="bo-primary" id="boLockOperator">CONFIRM OPERATOR <b>›</b></button></div>
+    <div class="bo-squad-picks" aria-label="Training squad roster">
+      <div class="bo-squad-slot bo-player-select"><strong>YOU</strong><span id="boSquadSelected">SLEDGE</span><small>SELECTING</small></div>
+      <div class="bo-squad-slot"><strong>AI 01</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
+      <div class="bo-squad-slot"><strong>AI 02</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
+      <div class="bo-squad-slot"><strong>AI 03</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
+      <div class="bo-squad-slot"><strong>AI 04</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
+    </div>
+    <div class="bo-page-actions"><span class="bo-no-pick-timer">PICK TIMER DISABLED · PRACTICE SESSION</span><button type="button" class="bo-secondary" data-bo-nav="play">‹ PLAYLISTS</button><button type="button" class="bo-primary" id="boLockOperator">CONFIRM OPERATOR <b>›</b></button></div>
   </section>
 
   <section class="bo-page bo-loadout-page" data-bo-screen="loadout" aria-labelledby="boLoadoutTitle">
