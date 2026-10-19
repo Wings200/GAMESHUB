@@ -340,6 +340,11 @@ function applyMap(next){
   objectiveRound.reset(role);
   drone.reset();gadgets.reset(role);barricades.reset(role);world.reset();
   world.activateMap(next);
+  // Physical door and window boards belong to the active facility only.
+  // Rebuild the world-side board hitboxes; don't reuse lab boards in the map.
+  barricades.configure(world.facility.openings);
+  barricades.reset(role);
+  world.reset();
   if(world.mapId==="switchyard")world.setSitePair(sitePairSelect.value||"operations");
   objectiveRound.refreshMap();
   syncSiteChoice();
@@ -1045,7 +1050,7 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "5.2.0-switchyard-alpha"},
+  get build(){return "5.3.0-interactive-interiors"},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
     staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
