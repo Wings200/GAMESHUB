@@ -89,10 +89,10 @@ test("frag throws first, deals damage only after 3.2s fuse, then resets",()=>{
   assert.ok(device);
   const enemy=bot(0,-5);
   f.round.bots.push(enemy);
-  step(f,1326,3000);
+  step(f,1326,4250);
   enemy.x=device.x;enemy.z=device.z;
   assert.equal(enemy.health,110,"no early explosion damage");
-  step(f,3016,4700);
+  step(f,4266,4700);
   assert.ok(enemy.health<110,"frag fuse must cause real damage");
   assert.equal(g.ordnance.devices.length,0);
   g.reset("attacker");
@@ -104,9 +104,9 @@ test("flashbang blinds visible AI but cannot see through cover",()=>{
   g.tick(1310,f.player,f.notify,[]);
   const device=g.ordnance.devices[0],target=bot(0,-3.5);
   f.round.bots.push(target);
-  step(f,1326,2100);
+  step(f,1326,3150);
   target.x=device.x;target.z=device.z;
-  step(f,2116,3700);
+  step(f,3166,3700);
   assert.ok(target.blindedUntil>3000);
   assert.equal(target.health,110,"stun is not explosive damage");
   const cover={minX:-2,maxX:2,minY:0,maxY:2.4,minZ:-1,maxZ:-.5,
