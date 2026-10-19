@@ -62,7 +62,7 @@ export function createDefuserModel(THREE,scene){
   body.add(ledA,ledB);
   const light=new THREE.PointLight(0x35ffc5,.42,2.5,1.8);
   light.position.set(0,.48,0);root.add(light);
-  let mode="ARMED",lastDraw=-1,lastSeconds=-1,placedAt=0;
+  let mode="ARMED",siteId="A",lastDraw=-1,lastSeconds=-1,placedAt=0;
   function updateScreen(seconds,now){
     const remaining=Math.max(0,Math.ceil(seconds));
     if(remaining===lastSeconds&&now-lastDraw<450)return;
@@ -75,7 +75,7 @@ export function createDefuserModel(THREE,scene){
     ctx.fillText("BLACKOUT // EOD-01",23,47);
     ctx.fillStyle=remaining<=8?"#ff906e":"#bafaf1";
     ctx.font="bold 72px monospace";ctx.fillText("00:"+String(remaining).padStart(2,"0"),22,134);
-    ctx.font="bold 25px monospace";ctx.fillText(mode+" / SITE A",24,179);
+    ctx.font="bold 25px monospace";ctx.fillText(mode+" / SITE "+siteId,24,179);
     ctx.fillStyle="#224a4e";ctx.fillRect(22,205,465,20);
     ctx.fillStyle=remaining<=8?"#fd7554":"#5bf1c9";
     ctx.fillRect(22,205,465*Math.min(1,seconds/26),20);
@@ -83,7 +83,8 @@ export function createDefuserModel(THREE,scene){
   }
   return {
     root,screenTexture,
-    show(x,z,seconds=25,now=0){
+    show(x,z,seconds=25,now=0,nextSiteId="A"){
+      siteId=nextSiteId;
       root.position.set(x,-.16,z);root.visible=true;mode="ARMED";
       placedAt=now;lid.rotation.x=0;
       lastSeconds=-1;updateScreen(seconds,now);
