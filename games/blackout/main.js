@@ -313,7 +313,9 @@ function impact(point,color=0xffc16c,size=.08){
 }
 function fireOnce(now){
   try{return fireOnceSafe(now);}catch(err){
-    fireHeld=false;reportCombatError("FIRE",err);
+    // Do not forcibly turn full-auto into semi-auto after a bad hit event.
+    // A shot error is reported, but the trigger remains held until mouseup.
+    reportCombatError("FIRE",err);
   }
 }
 function fireOnceSafe(now){
@@ -520,7 +522,6 @@ AUDIO VOICES ${audio.activeVoices||0} / ${audio.voiceLimit||0}`;
 function frame(now){
   // Always schedule the next frame: combat exceptions used to kill RAF forever.
   try{updateFrame(now);}catch(err){
-    fireHeld=false;
     reportCombatError("FRAME",err);
   }finally{requestAnimationFrame(frame);}
 }
@@ -549,7 +550,19 @@ function updateFrame(now){
       recoilRecovery-=recover;player.applyCamera();
     }
     if(Math.abs(player.x)>117||Math.abs(player.z)>117){player.reset();popup("RANGE LIMIT · RETURNED TO START");}
-    if(fireHeld&&!gadgets.busy&&!barricades.busy&&(weapons.slot==="primary"))fireOnce(now);
+    if(fireHeld&&!gadgets.busy&&!barricades.busy&&
+       weapons.slot==="primary"&&!player.sprinting){
+      // Automatic fire is driven by the gun's RPM, not limited to 1 shot per
+      // render frame. Catch up at most three shots after a slow frame.
+      // This preserves trigger-down behavior when looking at enemy models.
+      for(let emitted=0;emitted<3&&fireHeld;emitted++){
+        const gun=weapons.current;
+        if(gun.reloadingUntil||!gun.ammo||now+.001<gun.nextShotAt)break;
+        const previousAmmo=gun.ammo;
+        fireOnce(now);
+        if(gun.ammo===previousAmmo)break;
+      }
+    }
     gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(message)popup(message);
@@ -638,6 +651,7 @@ function noticeReady(){status.textContent="Choose a side and operator, then ente
 window.BLACKOUT_DEV={
   get build(){return "0.9.1-combat-stability-audio-voice-guard-ai-cache"},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
+  get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
   get role(){return role},get position(){return [player.x,player.y,player.z]},
   get fps(){return fps},get weapon(){return {...weapons.current}},
   get scores(){return weapons.stats},get panels(){return world.panels.map(p=>({hp:p.hp,reinforced:p.reinforced,destroyed:p.destroyed}))},
