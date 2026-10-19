@@ -96,13 +96,14 @@ function maybeWorkDevice(round,bot,now,dt,notify){
 }
 function fireAt(round,bot,target,now,notify){
   if(now<bot.nextShot||!bot.sightCache)return;
-  bot.nextShot=now+720+(bot.id%4)*90+Math.random()*210;
+  bot.nextShot=now+(bot.team==="ally"?650:830)+(bot.id%4)*75+Math.random()*190;
   bot.lastShotAt=now;
   notify(null,bot.team==="ally"?"ally-fire":"enemy-fire",bot);
   const range=distance(bot,target);
-  const hitChance=clamp(.72-range*.018-(bot.movedLast>.2?.13:0),.25,.76);
+  const hitChance=clamp((bot.team==="ally"?.76:.64)-range*.017-
+    (bot.movedLast>.2?.12:0),.26,.79);
   if(Math.random()>=hitChance)return;
-  const damage=18+Math.floor(Math.random()*11);
+  const damage=(bot.team==="ally"?20:15)+Math.floor(Math.random()*11);
   if(target.isPlayer){
     round.playerRef.takeDamage(damage);
     notify(null,"hurt");
@@ -116,6 +117,14 @@ function fireAt(round,bot,target,now,notify){
 export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
   round.playerRef=player;
   round.playerAlive=player.health>0;
+  // If an enemy defuser carrier is eliminated, the surviving attackers
+  // recover the objective. Otherwise a single early kill would make the
+  // entire attacking squad unable to plant for the rest of the round.
+  if(round.role==="defender"&&round.phase==="guard"&&
+     !round.bots.some(bot=>bot.alive&&bot.carrier)){
+    const replacement=round.bots.find(bot=>bot.alive);
+    if(replacement){replacement.carrier=true;notify("ATTACKERS RECOVERED THE DEFUSER");}
+  }
   const combatants=[...round.bots,...round.allies];
   for(const bot of combatants){
     if(!bot.alive)continue;
@@ -168,7 +177,7 @@ export function updateSquadCombat(round,now,dt,player,notify=()=>{}){
     bot.movedLast=moved;
     if(moved>.35){
       bot.moved+=moved*dt;
-      if(bot.moved>2.45){bot.moved=0;notify(null,"enemy-step",bot);}
+      if(bot.moved>2.45){bot.moved=0;notify(null,bot.team==="ally"?"ally-step":"enemy-step",bot);}
     }
     // Attackers physically break blocking wooden door planks, then proceed.
     const doors=round.world.barricades;
