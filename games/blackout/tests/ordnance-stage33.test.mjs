@@ -181,3 +181,19 @@ test("radial falloff has range boundary and blocked covers stop damage",()=>{
   assert.equal(radialFactor(0,8),1);
   assert.ok(radialFactor(3,8)>radialFactor(6,8));
 });
+
+test("grenade timers pause while the operator menu is open",()=>{
+  const f=fixture("attacker","frag"),g=f.gadget;
+  g.secondary(f.camera,f.player,1000);
+  g.tick(1310,f.player,f.notify,[]);
+  const d=g.ordnance.devices[0];
+  assert.ok(d);
+  const fuseAt=d.detonateAt;
+  g.ordnance.pause(2000);
+  g.ordnance.resume(10000);
+  assert.equal(d.detonateAt-fuseAt,8000);
+  const before=d.detonateAt;
+  g.tick(10500,f.player,f.notify,[]);
+  assert.ok(g.ordnance.devices.includes(d));
+  assert.equal(d.detonateAt,before);
+});
