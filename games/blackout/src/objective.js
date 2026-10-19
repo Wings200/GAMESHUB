@@ -257,107 +257,9 @@ export class ObjectiveDrill{
     return choice;
   }
   updateBots(now,dt,player,notify){
-    for(const bot of this.bots){
-      if(!bot.alive)continue;
-      // Combat sight checks use a short per-bot cadence instead of casting
-      // through every wall 60 times/second for each enemy. Shooting still
-      // remains responsive while avoiding browser main-thread stalls.
-      if(now>=bot.nextSightAt){
-        bot.sightCache=this.canBotSeePlayer(bot,player);
-        bot.nextSightAt=now+110+(bot.id%3)*25;
-      }
-      const visible=bot.sightCache;
-      const playerDist=Math.hypot(player.x-bot.x,player.z-bot.z);
-      const devicePosition=this.phase==="planted"&&this.plantPosition||this.site;
-      const targetDist=Math.hypot(devicePosition.x-bot.x,devicePosition.z-bot.z);
-      let goal=null;
-      if(this.phase==="planted"||this.role==="defender"){
-        // Defuse or attack the active site, using navmesh A* around walls.
-        goal={x:devicePosition.x+((bot.id%2)?-.28:.28),z:devicePosition.z};
-        bot.state="objective";
-      }else if(visible){
-        bot.state="hold-angle";bot.group.rotation.y=Math.atan2(bot.x-player.x,bot.z-player.z);
-        if(playerDist>12)goal={x:player.x,z:player.z};
-      }else if(bot.hearingUntil>now&&bot.hearing){
-        bot.state="investigate";goal=bot.hearing;
-      }else if(bot.patrolPoints&&this.phase==="attack"){
-        const p=bot.patrolPoints[bot.patrolIndex];
-        if(Math.hypot(bot.x-p.x,bot.z-p.z)<.85)
-          bot.patrolIndex=(bot.patrolIndex+1)%bot.patrolPoints.length;
-        goal=bot.patrolPoints[bot.patrolIndex];bot.state="patrol";
-      }else if(!bot.stationary){
-        bot.state="flank";goal={x:this.site.x+(bot.id%2?2:-2),z:this.site.z+(bot.id%2?3:-3)};
-      }else bot.state="guard";
-      if(visible&&playerDist<9&&bot.hitAt&&now-bot.hitAt<1500){
-        goal=this.coverDestination(bot,player)||goal;
-        bot.state="seek-cover";
-      }
-      if(bot.stationary&&bot.state==="guard")goal=null;
-      // Once a hostile has sight on the player, it holds an angle rather
-      // than running blindly into their muzzle.
-      if(visible&&playerDist<9&&bot.state!=="seek-cover"&&
-         this.role==="defender"&&targetDist>2.5)goal=null;
-      const moved=goal?advanceTacticalBot(bot,goal,this.world,dt,now):0;
-      if(moved>.30){
-        bot.moved+=moved*dt;
-        if(bot.moved>=1.85){bot.moved=0;notify(null,"enemy-step",bot);}
-      }
-      if(visible&&moved<.2)
-        bot.group.rotation.y=Math.atan2(bot.x-player.x,bot.z-player.z);
-      if(targetDist<1.85&&!bot.stationary&&
-        (this.role==="defender"&&this.phase==="guard"||
-         this.role==="attacker"&&this.phase==="planted")){
-        bot.working+=dt*1000;
-        if(bot.working>=7500){
-          bot.working=0;
-          if(this.role==="defender"&&this.phase==="guard"){
-            this.phase="planted";this.bombEnd=now+32000;this.nextBeep=now+750;
-            this.plantPosition={x:devicePosition.x,z:devicePosition.z};
-            this.defuser.show(devicePosition.x,devicePosition.z,32,now,this.siteId);
-            this.hold=0;notify("HOSTILES PLANTED AT SITE "+this.siteId+" · DISABLE THE DEFUSER","plant");
-          }else if(this.role==="attacker"&&this.phase==="planted"){
-            this.defuser.hide();notify(null,"defuse");
-            this.end(false,"DEFUSER DISABLED BY HOSTILES",notify);return;
-          }
-        }
-      }else bot.working=0;
-      // Breach the SPECIFIC boarded doorway obstructing the route, rather
-      // than blindly shooting any barricade within 2.35m. The navigator
-      // retains its planned path until enough boards have been destroyed.
-      const barricadeSystem=this.world.barricades;
-      const obstructing=goal&&bot.blockingBarricade&&barricadeSystem?.
-        hasBarricade(bot.blockingBarricade)?bot.blockingBarricade:null;
-      if(obstructing&&now>=bot.nextShot){
-        const plank=obstructing.planks.find(p=>!p.broken&&
-          p.collider.maxY>.42&&p.collider.minY<1.6)||
-          obstructing.planks.find(p=>!p.broken);
-        if(plank){
-          barricadeSystem.hit(plank,32);
-          bot.nextShot=now+510+(bot.id%3)*110;
-          bot.lastShotAt=now;
-          bot.group.rotation.y=Math.atan2(bot.x-obstructing.x,
-            bot.z-obstructing.z);
-          notify(null,"enemy-fire",bot);
-        }
-      }
-      bot.group.updateMatrixWorld(true);
-      bot.animate(dt,now,moved);
-      if(now>=bot.nextShot&&visible&&playerDist<20){
-        bot.nextShot=now+920+Math.random()*540;
-        bot.lastShotAt=now;
-        notify(null,"enemy-fire",bot);
-        // Actual line-of-sight, imperfect aim and limited effective range.
-        const hitRate=clamp(.78-playerDist*.021-(player.moving?.08:0)-(Math.abs(player.lean)>.3?.08:0),.27,.79);
-        if(Math.random()<hitRate){
-          player.takeDamage(8+Math.floor(Math.random()*3));
-          notify(null,"hurt");
-          if(player.health<=0){this.end(false,"OPERATOR ELIMINATED",notify);return;}
-          if(now-this.lastHitNotice>1850){
-            notify("UNDER FIRE · "+player.health+" HP");this.lastHitNotice=now;
-          }
-        }
-      }
-    }
+    // Dedicated squad controller handles friendly vs hostile gunfights,
+    // cover, flanks, planted-device actions and barricade breaching.
+    updateSquadCombat(this,now,dt,player,notify);
   }
   update(now,dt,player,holdingF,notify=()=>{}){
     this.bombStations.update(now,this.siteId);
@@ -366,15 +268,22 @@ export class ObjectiveDrill{
       if(now>=this.prepUntil)this.beginAction(now,notify);
       else return;
     }
-    if(player.health<=0){this.end(false,"OPERATOR ELIMINATED",notify);return;}
+    this.playerAlive=player.health>0;
+    if(!this.playerAlive&&!this.allies.some(b=>b.alive)){
+      this.end(false,"ATTACK TEAM ELIMINATED",notify);return;
+    }
+    if(!this.playerAlive&&this.role==="attacker"&&!this.allies.some(b=>b.carrier&&b.alive)){
+      const carrier=this.allies.find(b=>b.alive);
+      if(carrier)carrier.carrier=true;
+    }
     if(this.phase==="attack"&&now>=this.deadline){
       this.end(false,"ATTACK TIME EXPIRED",notify);return;
     }
     if(this.phase==="guard"&&now>=this.deadline){
       this.end(true,"SITE "+this.siteId+" DEFENDED",notify);return;
     }
-    // Finite team elimination is also a legitimate tactical win condition.
-    // A completed plant overrides ordinary elimination until the round resolves.
+    // Five-on-five round resolution uses *team* elimination, not the
+    // player's life alone. If the player dies, friendly bots keep fighting.
     if((this.phase==="attack"||this.phase==="guard")&&this.bots.length&&
         !this.bots.some(bot=>bot.alive)){
       this.end(true,this.role==="attacker"?"DEFENDERS ELIMINATED":"ATTACKERS ELIMINATED",notify);
@@ -390,7 +299,8 @@ export class ObjectiveDrill{
         this.end(this.role==="attacker","DEFUSER TIMER EXPIRED",notify);return;
       }
     }
-    const canHold=this.canInteract(player);
+    this.updateRunouts(now,player,notify);
+    const canHold=this.playerAlive&&this.canInteract(player);
     const plantSite=this.role==="attacker"?this.siteAt(player):null;
     if(this.holdSiteId&&plantSite&&this.holdSiteId!==plantSite.id){
       this.hold=0;this.lastInteractionTick=-1;
@@ -425,6 +335,9 @@ export class ObjectiveDrill{
       this.hold=0;this.lastInteractionTick=-1;this.holdSiteId=null;
     }
     this.updateBots(now,dt,player,notify);
+    if(!this.playerAlive&&!this.allies.some(bot=>bot.alive)&&
+       this.phase!=="won"&&this.phase!=="lost")
+      this.end(false,"YOUR SQUAD WAS ELIMINATED",notify);
   }
   get hint(){
     if(this.phase==="ready")return "SELECT OPERATOR · SELECT SITE · DEPLOY";
