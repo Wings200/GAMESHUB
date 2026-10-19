@@ -1,15 +1,15 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v220-defender-ai-gadget-animations";
-import {FirstPersonController} from "./src/player.js?v=blackout-v220-defender-ai-gadget-animations";
-import {Weapons} from "./src/weapons.js?v=blackout-v220-defender-ai-gadget-animations";
-import {Gadgets} from "./src/gadgets.js?v=blackout-v220-defender-ai-gadget-animations";
-import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v220-defender-ai-gadget-animations";
-import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v220-defender-ai-gadget-animations";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v220-defender-ai-gadget-animations";
-import {GameAudio} from "./src/audio.js?v=blackout-v220-defender-ai-gadget-animations";
-import {createWeaponView} from "./src/weapon-view.js?v=blackout-v220-defender-ai-gadget-animations";
-import {Barricades} from "./src/barricades.js?v=blackout-v220-defender-ai-gadget-animations";
-import {createReconDrone} from "./src/drone.js?v=blackout-v220-defender-ai-gadget-animations";
+import {buildRange} from "./src/world.js?v=blackout-v300-flat-mechanics-sandbox";
+import {FirstPersonController} from "./src/player.js?v=blackout-v300-flat-mechanics-sandbox";
+import {Weapons} from "./src/weapons.js?v=blackout-v300-flat-mechanics-sandbox";
+import {Gadgets} from "./src/gadgets.js?v=blackout-v300-flat-mechanics-sandbox";
+import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v300-flat-mechanics-sandbox";
+import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v300-flat-mechanics-sandbox";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v300-flat-mechanics-sandbox";
+import {GameAudio} from "./src/audio.js?v=blackout-v300-flat-mechanics-sandbox";
+import {createWeaponView} from "./src/weapon-view.js?v=blackout-v300-flat-mechanics-sandbox";
+import {Barricades} from "./src/barricades.js?v=blackout-v300-flat-mechanics-sandbox";
+import {createReconDrone} from "./src/drone.js?v=blackout-v300-flat-mechanics-sandbox";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
