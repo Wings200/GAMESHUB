@@ -152,7 +152,7 @@ test("an attacking bot actually walks from exterior insertion onto the rooftop",
    if(bot.y>maxY)maxY=bot.y;
    if(Math.hypot(bot.x-goal.x,bot.z-goal.z)<1.5&&bot.y>7.7){steps=i;break}
  }
- assert.ok(maxY>7.7,"the actual bot movement must climb both stair flights");
+ assert.ok(maxY>7.7,"the actual bot movement must climb both stair flights; state="+JSON.stringify({x:bot.x,z:bot.z,y:bot.y,maxY,route:bot.path.length,first:bot.path[0],last:bot.lastGoal,repath:bot.repathAt,steps}));
  assert.ok(steps>0,"the bot must physically arrive at its upper bomb zone");
  assert.ok(bot.group.position.y>7.7,"visible character rig follows its physics floor");
 });
