@@ -162,9 +162,14 @@ export function buildFacility(T,scene,world){
   sign("BLACKOUT | TRAINING",0,-18.73,0);
   // 2 clearly separated legitimate objectives. The active ring is controlled
   // by ObjectiveDrill; the other area stays available as physical level space.
+  // Two distinct *rooms*, not a 2.95m circle around each bomb cart.
+  // These are legal planting zones and objective defense areas, not bomb
+  // model footprints. Plant on any walkable floor tile inside a room.
   const sites={
-    A:{id:"A",name:"SERVER ROOM",x:-5,z:-44,radius:2.95},
-    B:{id:"B",name:"CONTROL ROOM",x:5,z:-29,radius:2.95}
+    A:{id:"A",name:"SERVER ROOM",x:-5,z:-44,radius:2.95,
+      bounds:{minX:-9.12,maxX:-.58,minZ:-52.58,maxZ:-37.38}},
+    B:{id:"B",name:"CONTROL ROOM",x:5,z:-29,radius:2.95,
+      bounds:{minX:.58,maxX:9.12,minZ:-36.62,maxZ:-19.42}}
   };
   function zoneAt(x,z){
     if(x>-9.5&&x<9.5&&z>-53&&z<-19){
