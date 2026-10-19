@@ -191,6 +191,34 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
       this.muzzle.visible=recoil>.7;
     }
   };
+  // V0.9.2: Combat volumes cover the entire visible silhouette. The old
+  // raycast only checked the thin core torso and naked head, even though the
+  // player was clearly shooting the helmet, vest, arms and legs.
+  //
+  // Transparent hit regions take no render space, follow the animated limbs,
+  // and are resolved in the same raycast as walls and barricades.
+  const hitMaterial=new T.MeshBasicMaterial({
+    color:0xffffff,transparent:true,opacity:0,depthWrite:false,
+    depthTest:false,side:T.DoubleSide
+  });
+  function addHitVolume(parent,w,h,d,x,y,z,hitZone="body"){
+    const volume=new T.Mesh(new T.BoxGeometry(w,h,d),hitMaterial);
+    volume.position.set(x,y,z);
+    volume.userData={kind:"bot",bot,hitZone};
+    parent.add(volume);
+    bot.hitboxes.push(volume);
+    world.shootables.push(volume);
+  }
+  // Head volume also covers the helmet and its visor.
+  addHitVolume(group,.54,.48,.54,0,2.14,0,"head");
+  // Vest, armor plates and pelvis (close to their visible model limits).
+  addHitVolume(group,.85,1.07,.57,0,1.37,-.06);
+  for(const [arm,side] of [[leftArm,-1],[rightArm,1]])
+    addHitVolume(arm,.28,.73,.32,0,-.33,-.12);
+  for(const [leg,side] of [[leftLeg,-1],[rightLeg,1]])
+    addHitVolume(leg,.29,.94,.36,0,-.41,-.035);
+
+  // Original torso and face meshes stay hittable as well.
   body.userData={kind:"bot",bot,hitZone:"body"};
   head.userData={kind:"bot",bot,hitZone:"head"};
   world.shootables.push(body,head);
