@@ -7,6 +7,7 @@ export class Gadgets {
     this.role="attacker";this.sensors=[];this.charge=null;this.action=null;
     this.scanUntil=0;this.scanMarkers=[];
     this.electronics=[];this.gasFields=[];this.specialLastAt=0;
+    this.specialAction=null;this.specialFx=[];
     this.hostiles=[];
     const ringMat=new THREE.MeshBasicMaterial({color:0x60f9f0,transparent:true,opacity:.9,depthTest:false});
     for(const t of world.targets){
@@ -25,9 +26,24 @@ export class Gadgets {
   cancelAction(){
     if(this.action?.panel)this.action.panel.cancelReinforcement();
     this.action=null;
+    if(this.specialAction){
+      const fx=this.specialAction;
+      fx.group.parent?.remove(fx.group);
+      fx.group.traverse(obj=>{if(obj.isMesh){
+        obj.geometry?.dispose?.();obj.material?.dispose?.();
+      }});
+      this.specialAction=null;
+    }
   }
   reset(role=this.role){
     this.cancelAction();
+    for(const effect of this.specialFx){
+      effect.group.parent?.remove(effect.group);
+      effect.group.traverse(obj=>{if(obj.isMesh){
+        obj.geometry?.dispose?.();obj.material?.dispose?.();
+      }});
+    }
+    this.specialFx=[];
     this.role=role;
     const spec=this.operator?.side===role?this.operator:null;
     this.counts={g:role==="attacker"?(spec?.kit.breach??2):(spec?.kit.shield??2),
@@ -178,9 +194,114 @@ export class Gadgets {
     e.light.material.color.setHex(0x5a6974);
     return {ok:true,message:"DRONE SHOCK · ELECTRONIC DEVICE DISABLED"};
   }
+  startAbility(type,camera,position,now,duration,onComplete){
+    if(this.specialAction)return {ok:false,message:"FINISH THE CURRENT GADGET ANIMATION"};
+    const T=this.THREE;
+    const handheld=["sledge","doc","pulse"].includes(type)&&camera;
+    const group=new T.Group();
+    if(handheld){
+      camera.add(group);group.position.set(.36,-.36,-.65);
+    }else{
+      this.scene.add(group);
+      group.position.set(position.x,1.40,position.z);
+    }
+    const body=new T.Mesh(new T.BoxGeometry(
+      type==="thermite"?1.04:type==="castle"?.72:.30,
+      type==="thermite"?1.25:type==="castle"?.58:.46,.13),
+      new T.MeshStandardMaterial({color:type==="thermite"?0x373d42:
+        type==="thatcher"?0x516279:type==="doc"?0xd2e0e7:0x434f56,
+        metalness:.65,roughness:.4}));
+    group.add(body);
+    const lamps=[];
+    for(let i=0;i<3;i++){
+      const glow=new T.Mesh(new T.SphereGeometry(.045,8,6),
+        new T.MeshBasicMaterial({color:type==="thermite"?0xfba45d:0x75f4eb}));
+      glow.position.set((i-1)*.21,.03,-.077);group.add(glow);lamps.push(glow);
+    }
+    const action={kind:type,group,body,lamps,
+      start:now,end:now+duration,duration,progress:0,
+      onComplete,position:{...position},handheld};
+    this.specialAction=action;
+    return {ok:true,message:type.toUpperCase()+" · "+
+      (type==="thermite"?"PLACING EXOTHERMIC CHARGE":
+       type==="sledge"?"SWINGING HAMMER":
+       type==="ash"?"FIRING BREACHING ROUND":
+       type==="castle"?"INSTALLING ARMOR PANEL":
+       type==="doc"?"PREPARING STIM":
+       type==="mute"?"DEPLOYING JAMMER":
+       type==="smoke"?"THROWING GAS CANISTER":
+       type==="thatcher"?"THROWING EMP":"ACTIVATING SENSOR")+
+      " · "+(duration/1000).toFixed(1)+"S"};
+  }
+  finishAbilityFx(type,pos,now){
+    // Persistent-for-650ms explosion, spark, or activation feedback.
+    // Created only at gadget activation, not per game frame.
+    const T=this.THREE,group=new T.Group();
+    group.position.set(pos.x,1.42,pos.z);this.scene.add(group);
+    const material=new T.MeshBasicMaterial({color:
+      type==="thermite"||type==="ash"?0xffa85f:0x6becdd,
+      transparent:true,opacity:.78,depthWrite:false});
+    const flash=new T.Mesh(new T.SphereGeometry(.18,12,8),material);
+    group.add(flash);
+    for(let i=0;i<8;i++){
+      const angle=i*Math.PI/4;
+      const spark=new T.Mesh(new T.BoxGeometry(.045,.20,.04),
+        new T.MeshBasicMaterial({color:i%2?0xffdc85:0xf2a96b,
+          transparent:true,opacity:.9}));
+      spark.userData={vx:Math.cos(angle),vy:.35+(i%3)*.18,
+        vz:Math.sin(angle)};
+      group.add(spark);
+    }
+    this.specialFx.push({group,flash,material,start:now,end:now+690});
+  }
+  tickAbility(now,ping){
+    const a=this.specialAction;
+    if(a){
+      a.progress=Math.min(1,Math.max(0,(now-a.start)/a.duration));
+      // Visible placement/swing timing: gadget doesn't instantly delete
+      // geometry. LEDs accelerate as the exothermic cutter charges.
+      a.lamps.forEach((l,i)=>{l.visible=
+        a.kind!=="thermite"||Math.floor((now-a.start)/Math.max(75,280-a.progress*195)+i)%2===0;});
+      if(a.handheld){
+        a.group.rotation.x=-Math.sin(a.progress*Math.PI)*.9;
+        a.group.rotation.z=Math.sin(a.progress*Math.PI)*.48;
+      }else{
+        a.group.scale.setScalar(.65+a.progress*.35);
+        a.body.rotation.y=a.kind==="thatcher"?a.progress*4:0;
+      }
+      if(now>=a.end){
+        this.specialAction=null;
+        a.group.parent?.remove(a.group);
+        a.group.traverse(obj=>{if(obj.isMesh){
+          obj.geometry?.dispose?.();obj.material?.dispose?.();
+        }});
+        const result=a.onComplete();
+        this.finishAbilityFx(a.kind,a.position,now);
+        ping(result?.message||a.kind.toUpperCase()+" · ACTIVATED",
+          a.kind==="thermite"||a.kind==="ash"?"impact":"click");
+      }
+    }
+    for(let i=this.specialFx.length-1;i>=0;i--){
+      const fx=this.specialFx[i],progress=(now-fx.start)/(fx.end-fx.start);
+      if(now>=fx.end){
+        fx.group.parent?.remove(fx.group);
+        fx.group.traverse(obj=>{if(obj.isMesh){obj.geometry?.dispose?.();obj.material?.dispose?.()}});
+        this.specialFx.splice(i,1);continue;
+      }
+      fx.flash.scale.setScalar(1+progress*14);
+      fx.material.opacity=(1-progress)*.65;
+      for(const spark of fx.group.children.slice(1)){
+        const v=spark.userData;
+        spark.position.set(v.vx*progress*1.2,v.vy*progress*1.7,
+          v.vz*progress*1.2);
+        spark.material.opacity=1-progress;
+      }
+    }
+  }
   useSpecial(camera,player,now,round){
     const id=this.operator?.id;
     const count=this.specialCount||0;
+    if(this.specialAction)return {ok:false,message:"GADGET ANIMATION IN PROGRESS"};
     if(id!=="pulse"&&count<=0)return {ok:false,message:"NO SPECIAL GADGETS REMAIN"};
     const fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw);
     const x=player.x+fx*1.25,z=player.z+fz*1.25;
@@ -188,32 +309,33 @@ export class Gadgets {
     const bars=this.world.barricades,opening=bars?.nearest(player,2.7);
     const consume=()=>{if(id!=="pulse")this.specialCount--;};
     if(id==="sledge"||id==="ash"||id==="thermite"){
-      if(opening&&bars.hasBarricade(opening)){
-        bars.breakAll(opening);consume();
-        return {ok:true,message:id.toUpperCase()+" · BARRICADE BREACHED"};
-      }
-      if(!panel)return {ok:false,message:"AIM AT A BREAKABLE PANEL WITHIN RANGE"};
-      if(panel.reinforced&&id!=="thermite")
+      const door=opening&&bars.hasBarricade(opening)?opening:null;
+      if(!door&&!panel)return {ok:false,message:"AIM AT A BREACHABLE WALL OR BARRICADE"};
+      if(!door&&panel.reinforced&&id!=="thermite")
         return {ok:false,message:"REINFORCED WALL · NEED THERMITE"};
-      if(panel.destroyed)return {ok:false,message:"WALL ALREADY BREACHED"};
-      if(id==="thermite")panel.reinforced=false;
-      if(!panel.damage(500,true))return {ok:false,message:"BREACH BLOCKED"};
-      consume();
-      return {ok:true,message:id.toUpperCase()+" · WALL BREACHED"};
+      if(!door&&panel.destroyed)return {ok:false,message:"WALL ALREADY BREACHED"};
+      const p=door?{x:door.x,z:door.z}:{x:panel.x,z:panel.z};
+      const duration=id==="thermite"?3400:id==="sledge"?660:970;
+      const r=this.startAbility(id,camera,p,now,duration,()=>{
+        if(door){
+          bars.breakAll(door);return{message:id.toUpperCase()+" · BARRICADE BREACHED"};
+        }
+        if(id==="thermite")panel.reinforced=false;
+        const ok=panel.damage(500,true);
+        return {message:ok?id.toUpperCase()+" · WALL BREACHED":"BREACH BLOCKED"};
+      });
+      if(r.ok)consume();
+      return r;
     }
     if(id==="thatcher"){
-      consume();let disabled=0;
-      for(const e of this.electronics){
-        if(Math.hypot(e.x-x,e.z-z)<=9){
-          e.disabledUntil=now+13000;disabled++;
+      const r=this.startAbility(id,camera,{x,z},now,920,()=>{
+        let disabled=0;
+        for(const e of [...this.electronics,...this.sensors]){
+          if(Math.hypot(e.x-x,e.z-z)<=9){e.disabledUntil=now+14000;disabled++;}
         }
-      }
-      for(const sensor of this.sensors){
-        if(Math.hypot(sensor.x-x,sensor.z-z)<=9){
-          sensor.disabledUntil=now+13000;disabled++;
-        }
-      }
-      return {ok:true,message:"EMP DETONATED · "+disabled+" DEVICES DISABLED"};
+        return {message:"EMP DETONATED · "+disabled+" DEVICES DISABLED"};
+      });
+      if(r.ok)consume();return r;
     }
     if(id==="twitch")return {ok:false,message:"TWITCH · USE THE DRONE DURING PREP · X PINGS"};
     if(id==="mute"||id==="smoke"){
@@ -221,8 +343,11 @@ export class Gadgets {
         x>=c.minX-.32&&x<=c.maxX+.32&&z>=c.minZ-.32&&z<=c.maxZ+.32))
         return {ok:false,message:"GADGET PLACEMENT BLOCKED · FACE OPEN FLOOR"};
       if(id==="mute"){
-        this.deployJammer(x,z,"ally");consume();
-        return {ok:true,message:"MUTE SIGNAL JAMMER ONLINE · DRONES DISRUPTED"};
+        const r=this.startAbility(id,camera,{x,z},now,1250,()=>{
+          this.deployJammer(x,z,"ally");
+          return {message:"MUTE SIGNAL JAMMER ONLINE · DRONES DISRUPTED"};
+        });
+        if(r.ok)consume();return r;
       }
       const group=new this.THREE.Group();group.position.set(x,0,z);this.scene.add(group);
       const mat=new this.THREE.MeshStandardMaterial({color:id==="mute"?0x415e6b:0x68724d,metalness:.38});
@@ -243,31 +368,46 @@ export class Gadgets {
         entry.cloud=cloud;
         this.gasFields.push(entry);
       }
-      consume();
-      return{ok:true,message:id==="mute"?"MUTE JAMMER ONLINE · DRONES JAMMED NEARBY":
-        "SMOKE CANISTER ACTIVE · 10 SECOND AREA DENIAL"};
+      group.visible=false;
+      const r=this.startAbility(id,camera,{x,z},now,890,()=>{
+        group.visible=true;
+        entry.end=performance.now()+10500;
+        entry.nextTick=performance.now();
+        return {message:"SMOKE · GAS CANISTER RELEASED · AREA DENIAL ACTIVE"};
+      });
+      if(!r.ok){
+        this.scene.remove(group);this.gasFields.splice(this.gasFields.indexOf(entry),1);
+      }else consume();
+      return r;
     }
     if(id==="castle"){
       if(!opening)return {ok:false,message:"FACE AN EMPTY DOOR OR WINDOW"};
       if(bars.hasBarricade(opening))return {ok:false,message:"REMOVE EXISTING BARRICADE FIRST"};
-      if(!bars.place(opening,true))return {ok:false,message:"ARMOR PANEL UNAVAILABLE"};
-      consume();return {ok:true,message:"CASTLE · REINFORCED ARMOR PANEL INSTALLED"};
+      const r=this.startAbility(id,camera,{x:opening.x,z:opening.z},now,2150,()=>{
+        const ok=bars.place(opening,true);
+        return {message:ok?"CASTLE · ARMOR PANEL INSTALLED":"ARMOR PANEL BLOCKED"};
+      });
+      if(r.ok)consume();return r;
     }
     if(id==="pulse"){
       if(now-this.specialLastAt<2200)return {ok:false,message:"HEARTBEAT SENSOR COOLING DOWN"};
       this.specialLastAt=now;
       const targets=round?.bots?.filter(b=>b.alive&&Math.hypot(b.x-player.x,b.z-player.z)<13)||[];
       this.scanUntil=now+2000;
-      return {ok:true,message:"HEARTBEAT SENSOR · "+targets.length+" SIGNALS WITHIN 13M"};
+      return this.startAbility(id,camera,{x:player.x,z:player.z},now,340,()=>
+        ({message:"HEARTBEAT SENSOR · "+targets.length+" SIGNALS WITHIN 13M"}));
     }
     if(id==="doc"){
       const ally=round?.allies?.filter(b=>b.alive&&b.health<b.healthMax&&
         Math.hypot(b.x-player.x,b.z-player.z)<5).sort((a,b)=>a.health-b.health)[0];
       if(player.health>=player.maxHealth&&!ally)
         return {ok:false,message:"NO INJURED OPERATOR IN RANGE"};
-      if(ally)ally.health=Math.min(ally.healthMax,ally.health+55);
-      else player.health=Math.min(player.maxHealth,player.health+55);
-      consume();return {ok:true,message:"DOC STIM · "+(ally?"FRIENDLY HEALED":"SELF HEALED")};
+      const r=this.startAbility(id,camera,{x:player.x,z:player.z},now,860,()=>{
+        if(ally?.alive)ally.health=Math.min(ally.healthMax,ally.health+55);
+        else player.health=Math.min(player.maxHealth,player.health+55);
+        return {message:"DOC STIM · "+(ally?.alive?"FRIENDLY HEALED":"SELF HEALED")};
+      });
+      if(r.ok)consume();return r;
     }
     return {ok:false,message:"OPERATOR ABILITY UNAVAILABLE"};
   }
@@ -302,10 +442,12 @@ export class Gadgets {
     p.previewReinforcement(.001);
     return {ok:true,message:"INSTALLING REINFORCEMENT · 3.0 SECONDS"};
   }
-  get busy(){return !!this.action;}
-  get actionProgress(){return this.action?.progress||0;}
+  get busy(){return !!(this.action||this.specialAction);}
+  get actionProgress(){return this.specialAction?.progress??this.action?.progress??0;}
+  get currentAction(){return this.specialAction||this.action;}
   tick(now,player,ping,hostileBots=[]){
     this.hostiles=hostileBots;
+    this.tickAbility(now,ping);
     if(this.action){
       const a=this.action;
       a.progress=Math.max(0,Math.min(1,(now-a.start)/3000));
