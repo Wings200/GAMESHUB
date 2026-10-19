@@ -240,7 +240,47 @@ export function updateDefenderPrep(round,now,dt,notify=()=>{}){
       bot.setupTask={kind,opening,goal,placed:false,progress:0};
     }
     const task=bot.setupTask;
-    if(task.placed)continue;
+    if(task.placed){
+      // A designated support operator reinforces the physical soft wall
+      // after deploying its primary gadget. This uses the same panel
+      // reinforcement animation/state and collider as the human player.
+      const helper=defenders.find(b=>b.alive&&b.operatorSpec?.id==="doc")||
+        defenders.find(b=>b.alive&&b.operatorSpec?.id==="pulse")||
+        defenders[defenders.length-1];
+      const panel=round.world.panels?.find(p=>p.x===0&&p.z===-37);
+      if(bot===helper&&panel&&!panel.destroyed&&!panel.reinforced&&
+         gadgets?.action?.panel!==panel){
+        if(!bot.extraSetup){
+          const possibilities=[{x:2.1,z:-35.5},{x:-2.1,z:-38.3},
+            {x:3.1,z:-35.3},{x:-3.1,z:-38.5}];
+          const goal=possibilities.filter(p=>canStand(round,p,.39)).
+            sort((a,b)=>distance(bot,a)-distance(bot,b))[0];
+          if(goal)bot.extraSetup={goal,progress:0,placed:false};
+        }
+        const extra=bot.extraSetup;
+        if(extra&&!extra.placed){
+          bot.allowBreach=false;
+          if(distance(bot,extra.goal)>1.4){
+            const speed=advanceTacticalBot(bot,extra.goal,round.world,dt,now);
+            bot.state="reinforce-approach";bot.animate(dt,now,speed);
+          }else{
+            extra.progress+=dt*1000;
+            bot.state="install-reinforcement";
+            bot.setupProgress=Math.min(1,extra.progress/3000);
+            panel.previewReinforcement(bot.setupProgress);
+            bot.animate(dt,now,0);
+            if(extra.progress>=3000){
+              extra.placed=true;bot.setupProgress=0;
+              panel.previewReinforcement(1);
+              const ok=panel.reinforce();
+              if(ok)notify("DEFENDER "+(bot.operatorSpec?.name||bot.id)+
+                " · CENTRAL WALL REINFORCED","click",bot);
+            }
+          }
+        }
+      }
+      continue;
+    }
     bot.allowBreach=false;
     if(distance(bot,task.goal)>1.35){
       const speed=advanceTacticalBot(bot,task.goal,round.world,dt,now);
