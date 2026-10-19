@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V3.1: Smoke throwable canisters with G throw/B remote detonation, chamber-aware tactical reloads and flat sandbox mechanics testing.">
+<meta name="description" content="BLACKOUT V3.2: gradual walk-through soft-wall destruction, drywall/plywood/glass/steel ballistics, learnable recoil and magazine/bolt animations.">
 <title>PROJECT BLACKOUT · THE LAB | GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v310-smoke-remote-stage2">
@@ -44,7 +44,7 @@
     <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
   </div>
   <div class="hud-left">
-    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.1</span></div>
+    <div class="overline"><span class="live-dot"></span> BLACKOUT / MECHANICS LAB <span class="dim">· V3.2</span></div>
     <h2 id="zoneLabel">OPEN MECHANICS RANGE</h2>
     <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
     <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
@@ -62,6 +62,7 @@
       <p>Q / E TOGGLE LEAN · ALT SLOW WALK</p>
       <p>F BARRICADE · SPACE WINDOW VAULT</p>
       <p>SMOKE: G THROW CANISTER · B REMOTE DETONATE</p>
+      <p>WALLS: SHOOT SOFT PANELS REPEATEDLY TO OPEN WALKABLE BREACHES</p>
     </div>
   </div>
   <div class="crosshair-caption" id="matchCaption">SITE A · BOMB LAB A · MECHANICS TRAINING</div>
@@ -93,7 +94,7 @@
 </header>
 <main id="menu" class="menu">
   <div class="menu-grain"></div>
-  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V3.1 // SMOKE + MECHANICS STAGE 2</span></div>
+  <div class="menu-header"><a href="/" class="home-link">‹ GAMESHUB</a><span><span class="status-indicator"></span> V3.2 // DESTRUCTION & GUNPLAY</span></div>
   <div class="menu-main lab-menu-main">
     <div class="eyebrow">BLACKOUT // TACTICAL OPERATIONS · PRIVATE ALPHA</div>
     <h1>BLACK<span>OUT</span><i>.</i></h1>
