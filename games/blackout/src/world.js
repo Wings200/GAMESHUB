@@ -304,6 +304,7 @@ export function buildRange(THREE,scene){
     placed.push(shield);return shield;
   }
   const sandboxColliders=colliders.slice(),sandboxShootables=shootables.slice();
+  const sandboxPanels=panels.slice();
   const originalSites={
     A:{...facility.sites.A,bounds:{...facility.sites.A.bounds},y:0},
     B:{...facility.sites.B,bounds:{...facility.sites.B.bounds},y:0}
@@ -324,18 +325,19 @@ export function buildRange(THREE,scene){
   function activateMap(id="lab"){
     const next=id==="switchyard"?"switchyard":"lab";
     if(next===liveMap)return false;
-    if(!switchyard)switchyard=createSwitchyard(THREE,scene);
+    if(!switchyard)switchyard=createSwitchyard(THREE,scene,state);
     liveMap=next;
     root.visible=next==="lab";
     switchyard.root.visible=next==="switchyard";
     colliders.splice(0,colliders.length,
       ...(next==="lab"?sandboxColliders:switchyard.colliders));
-    const labBoards=next==="lab"?
-      (this?.barricades?.openings||[]).flatMap(o=>
-        o.planks.map(p=>p.mesh)):[];
     shootables.splice(0,shootables.length,
-      ...(next==="lab"?[...sandboxShootables,...labBoards]:
-        switchyard.shootables));
+      ...(next==="lab"?sandboxShootables:switchyard.shootables));
+    panels.splice(0,panels.length,
+      ...(next==="lab"?sandboxPanels:switchyard.panels));
+    // Panel physics writes back into the live shared world collision list.
+    // Without this, reinforcements would only update an unused map snapshot.
+    if(next==="switchyard")switchyard.setActiveCollections(colliders,shootables);
     // Facility reference stays stable for gadgets and round controllers.
     Object.assign(facility,next==="lab"?originalFacility:switchyard.facilities);
     facility.sites=originalFacility.sites;
