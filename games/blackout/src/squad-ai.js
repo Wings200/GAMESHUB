@@ -8,8 +8,10 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const live=list=>list.filter(x=>x.alive);
 function visible(round,from,target){
   const origin=new round.THREE.Vector3(from.x,1.61,from.z);
-  const dest=target.camera?.position?.clone?.()||
-    new round.THREE.Vector3(target.x,1.55,target.z);
+  // Use the actual operator position; a remote-controlled drone must
+  // not teleport the operator's hit/visibility origin across the map.
+  const dest=new round.THREE.Vector3(target.x,
+    target.isPlayer?1.55:1.62,target.z);
   const dir=dest.sub(origin),dist=dir.length();
   if(dist<.25||dist>26)return false;
   round.ray.set(origin,dir.normalize());
