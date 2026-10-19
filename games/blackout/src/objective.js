@@ -152,6 +152,7 @@ export class ObjectiveDrill{
       const info=m.userData||{};
       return info.kind==="solid"||
         info.kind==="panel"&&!info.panel.destroyed||
+        info.kind==="barricade"&&!info.plank.broken||
         info.kind==="shield"&&info.shield.group.parent;
     });
     return !this.ray.intersectObjects(cover,false).length;
@@ -226,6 +227,22 @@ export class ObjectiveDrill{
           }
         }
       }else bot.working=0;
+      // Hostile attackers can dismantle a nearby barricade with gunfire
+      // instead of getting stuck forever on the wrong side of a doorway.
+      if(!visible&&goal&&now>=bot.nextShot&&this.world.barricades){
+        const obstructing=this.world.barricades.openings.find(o=>
+          this.world.barricades.hasBarricade(o)&&
+          Math.hypot(o.x-bot.x,o.z-bot.z)<2.35);
+        if(obstructing){
+          const plank=obstructing.planks.find(p=>!p.broken);
+          if(plank){
+            this.world.barricades.hit(plank,28);
+            bot.nextShot=now+750+(bot.id%3)*180;
+            bot.lastShotAt=now;
+            notify(null,"enemy-fire",bot);
+          }
+        }
+      }
       bot.group.updateMatrixWorld(true);
       bot.animate(dt,now,moved);
       if(now>=bot.nextShot&&visible&&playerDist<20){
