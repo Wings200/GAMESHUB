@@ -6,7 +6,8 @@ import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
 import {ObjectiveDrill} from "./src/objective.js?v=blackout-v330-advanced-ordnance";
-import {GameAudio} from "./src/audio.js?v=blackout-v330-advanced-ordnance";
+import {GameAudio} from "./src/audio.js?v=blackout-v400-competitive-ui";
+import {initCompetitiveUI,playTacticalPhaseAnnouncement} from "./src/competitive-ui.js?v=blackout-v400-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v330-advanced-ordnance";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
 import {createReconDrone} from "./src/drone.js?v=blackout-v330-advanced-ordnance";
@@ -157,7 +158,8 @@ function showMenu(){
   gadgets.cancelAction();barricades.cancel();
   document.body.classList.remove("playing","ads","spectating");hud.classList.add("hidden");
   menu.classList.remove("hidden");
-  if(started){start.textContent="RESUME TESTING";status.textContent="Training paused · select a role or resume.";}
+  if(started){start.innerHTML="RESUME TRAINING <b>›</b>";status.textContent="Training paused · reconfigure or resume.";}
+  window.dispatchEvent(new CustomEvent("blackout:menuopen",{detail:{started}}));
 }
 function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
@@ -172,8 +174,8 @@ function showGame(){
   }
   lastPhaseLabel="";phaseToastUntil=clock()+1500;
   document.body.classList.add("playing");
-  popup("SITE "+objectiveRound.siteId+" OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
-  sound("round-start");
+  popup("BOMB TRAINING · "+role.toUpperCase()+" · OFFLINE AI",2.3);
+  window.dispatchEvent(new Event("blackout:gamestart"));
 }
 async function lockMouse(){
   audioReady();
@@ -635,10 +637,12 @@ function drawTacticalHud(now){
     phase==="planted"?"DEFUSER DEPLOYED":"DEFUSER CARRIED":
     "DEFEND BOMB STATION";
   healthFill.style.width=Math.max(0,player.health/player.maxHealth*100).toFixed(1)+"%";
+  healthHud.closest(".bo-health-circle")?.style.setProperty("--bo-hp-angle",(Math.max(0,Math.min(1,player.health/player.maxHealth))*360).toFixed(1)+"deg");
   healthFill.classList.toggle("danger",player.health<=player.maxHealth*.35);
   if(phase!==lastPhaseLabel){
     lastPhaseLabel=phase;
-    phaseToastUntil=now+(phase==="prep"?2800:phase==="attack"||phase==="guard"?2600:0);
+    phaseToastUntil=now+(phase==="prep"?2800:phase==="attack"||phase==="guard"?3000:0);
+    if(locked)playTacticalPhaseAnnouncement({phase,role,roundNumber:round.roundNumber,audio});
   }
   // Show a brief phase change announcement; NEVER cover the aiming area
   // throughout the full 45-second fortification phase.
@@ -648,11 +652,11 @@ function drawTacticalHud(now){
   if(show){
     phaseAnnounceEyebrow.textContent="ROUND "+round.roundNumber+" · "+
       (role==="attacker"?"ATTACKERS":"DEFENDERS");
-    phaseAnnounceTitle.textContent=phase==="prep"?(role==="attacker"?"DRONE PREPARATION":"FORTIFICATION PHASE"):"ACTION PHASE";
+    phaseAnnounceTitle.textContent=phase==="prep"?(role==="attacker"?"PREPARATION PHASE":"PREPARATION PHASE"):"ACTION PHASE";
     phaseAnnounceHelp.textContent=phase==="prep"?
       role==="defender"?"PREPARE THE TWO BOMB LABS · TEST MECHANICS":
       "DRONE ACROSS TEST ZONES · X PING · SPAWN IN "+seconds+"S":
-      role==="attacker"?"LOCATE THE BOMB · PLANT YOUR DEFUSER":
+      role==="attacker"?"LOCATE THE BOMBS AND PLANT THE DEFUSER":
       "ELIMINATE ATTACKERS · DENY THE PLANT";
   }
 }
@@ -926,10 +930,11 @@ function updateFrame(now){
   }
 }
 setRole("attacker");
+const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator:()=>operator,getRole:()=>role});
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
-function noticeReady(){status.textContent="OPEN MECHANICS LAB · CHOOSE ATTACK OR DEFENSE · TEST WALLS, DRONES, GADGETS AND BOMBS";}
+function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "3.3.0-advanced-ordnance"},
+  get build(){return "4.0.0-competitive-ui"},
   get drone(){return {active:drone.active,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
