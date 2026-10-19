@@ -25,40 +25,74 @@ function visible(round,from,target){
   });
   return !round.ray.intersectObjects(occluders,false).length;
 }
+function canStand(round,p,r=.43){
+  return !round.world.colliders.some(c=>
+    c.maxY>.48&&c.minY<1.65&&p.x>c.minX-r&&p.x<c.maxX+r&&
+    p.z>c.minZ-r&&p.z<c.maxZ+r);
+}
 function chooseCover(round,bot,threat){
+  // Cover must conceal the operator from the threat and be physically
+  // reachable. Don't pick the nearest random desk regardless of its angle.
   const points=round.world.facility.coverPoints||[];
-  let best=null,score=Infinity;
+  let choice=null,best=Infinity;
   for(const p of points){
     const d=distance(bot,p),enemyDist=distance(threat,p);
-    if(d<.7||d>6.4||enemyDist<2.4)continue;
-    // Choose safe adjacent cover while maintaining a useful firing lane.
-    const candidate=d+Math.abs(enemyDist-7)*.28+
-      Math.abs(bot.id%3-1)*.02;
-    if(candidate<score){score=candidate;best=p;}
+    if(d<.7||d>7.5||enemyDist<2.8||!canStand(round,p))continue;
+    const sheltered=!visible(round,p,threat);
+    const score=d+(sheltered?-3.1:2)+Math.abs(enemyDist-7)*.12+
+      (bot.id%3)*.07;
+    if(score<best){choice=p;best=score;}
   }
-  return best;
+  return choice;
+}
+function isAttacking(round,bot){
+  return bot.team==="ally"?round.role==="attacker":round.role==="defender";
+}
+function nearestLiving(list,pos){
+  let chosen=null,dist=Infinity;
+  for(const unit of list){
+    if(!unit.alive)continue;
+    const d=distance(unit,pos);
+    if(d<dist){chosen=unit;dist=d;}
+  }
+  return chosen;
+}
+function attackingCarrier(round){
+  const list=round.role==="attacker"?round.allies:round.bots;
+  return list.find(b=>b.alive&&b.carrier)||null;
+}
+function designatedDefuser(round){
+  if(round.phase!=="planted"||!round.plantPosition)return null;
+  const defenders=round.role==="defender"?round.allies:round.bots;
+  return nearestLiving(defenders,round.plantPosition);
 }
 function assignedSite(round,bot){
   return bot.assignedSite||round.sites[bot.id%2===0?"B":"A"];
 }
 function desiredPosition(round,bot,player){
-  const site=assignedSite(round,bot),isAttack=bot.team==="ally"?
-    round.role==="attacker":round.role==="defender";
+  const site=assignedSite(round,bot),isAttack=isAttacking(round,bot);
   if(round.phase==="planted"){
+    const p=round.plantPosition||round.site;
     if(isAttack){
-      const p=round.plantPosition||round.site;
-      return {x:p.x+(bot.id%2?2.5:-2.5),
-        z:p.z+(bot.id%3-1)*2.2};
+      // Crossfire around the placed device: attackers take different
+      // positions instead of stacking directly on the defuser.
+      return {x:p.x+([-3,3,-1.5,1.5,0][bot.id%5]),
+        z:p.z+([-1,1,2.8,-2.8,3.4][bot.id%5])};
     }
-    return round.plantPosition||round.site;
+    if(bot===designatedDefuser(round))return p;
+    // One defender disables the device, survivors suppress/cover flanks.
+    return {x:p.x+(bot.id%2?2.9:-2.9),
+      z:p.z+(bot.id%3-1)*3.0};
   }
   if(isAttack){
     // Five attackers enter from different directions and clear two sites.
     // One objective runner aims for the plant; the rest take flank/cover lanes.
-    if(bot.carrier)return {x:site.x+(bot.id%2?.95:-.95),
-      z:site.z+(bot.id%3-1)*1.1};
-    return {x:site.x+(bot.id%2?1.9:-1.9),
-      z:site.z+(bot.id%3-1)*2.4};
+    if(bot.carrier)return {x:site.x+(bot.id%2?.85:-.85),
+      z:site.z+(bot.id%3-1)*.85};
+    // Entry pair fans out to clear corners; support covers crossfire lanes.
+    const flank=bot.id%4;
+    return {x:site.x+[-2.6,2.6,-1.4,1.4][flank],
+      z:site.z+[-3.2,2.7,3.2,-2.7][flank]};
   }
   // Defenders anchor BOTH devices, patrol nearby angles and reposition
   // only when they have heard or seen an actual threat.
@@ -66,10 +100,18 @@ function desiredPosition(round,bot,player){
 }
 function maybeWorkDevice(round,bot,now,dt,notify){
   if(round.phase==="planted"){
-    const isDefender=bot.team==="ally"?
-      round.role==="defender":round.role==="attacker";
-    if(!isDefender)return false;
+    const isDefender=!isAttacking(round,bot);
+    if(!isDefender||bot!==designatedDefuser(round))return false;
     if(distance(bot,round.plantPosition)>1.85){bot.working=0;return false;}
+    const threats=bot.team==="ally"?round.bots:round.allies;
+    const playerClose=bot.team==="enemy"&&round.playerAlive&&
+      distance(round.playerRef,bot)<4.1;
+    // Don't ignore enemies standing on top of the defuser unless the timer
+    // is about to expire and a risky last-second attempt is justified.
+    const urgent=round.bombEnd-now<9000;
+    if(!urgent&&(threats.some(x=>x.alive&&distance(bot,x)<3.3)||playerClose)){
+      bot.working=0;return false;
+    }
     bot.working=(bot.working||0)+dt*1000;
     if(bot.working>=7000){
       bot.working=0;round.defuser.hide();
@@ -77,15 +119,14 @@ function maybeWorkDevice(round,bot,now,dt,notify){
     }
     return true;
   }
-  const isAttack=bot.team==="ally"?
-    round.role==="attacker":round.role==="defender";
+  const isAttack=isAttacking(round,bot);
   if(!isAttack||round.phase!=="attack"&&round.phase!=="guard")return false;
   // Human attacker keeps the defuser unless eliminated. Enemy attackers
   // designate one objective carrier, while squadmates clear/cover.
   if(bot.team==="ally"&&round.role==="attacker"&&round.playerAlive)return false;
   if(!bot.carrier)return false;
   const site=round.siteAt(bot);
-  if(!site){bot.working=0;return false;}
+  if(!site||!canStand(round,bot,.19)){bot.working=0;return false;}
   const opponents=bot.team==="ally"?round.bots:round.allies;
   const nearbyOpponent=opponents.some(enemy=>enemy.alive&&distance(enemy,bot)<3.5);
   const playerThreat=bot.team==="enemy"&&round.role==="defender"&&
