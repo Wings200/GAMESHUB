@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0b131e">
+  <title>BLACKOUT | Developer Map Studio</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./dev-editor.css?v=blackout-editor-v1">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <a class="back-link" href="./index.html" title="Return to BLACKOUT">‹ BACK TO GAME</a>
+      <div class="brand">B<span>/</span> <strong>BLACKOUT</strong> <small>DEV MAP STUDIO</small></div>
+      <label class="map-name-label">MAP NAME <input id="mapName" maxlength="80" value="UNTITLED OPERATION" spellcheck="false"></label>
+      <div class="top-actions">
+        <span id="saveState" class="save-state">LOCAL AUTOSAVE</span>
+        <button id="newMap" class="subtle" type="button">NEW</button>
+        <button id="importMap" class="subtle" type="button">IMPORT JSON</button>
+        <button id="exportMap" class="primary" type="button">↓ DOWNLOAD BUILD</button>
+      </div>
+    </header>
+
+    <aside class="sidebar" aria-label="3D map builder tools">
+      <div class="pane-head"><span class="section-id">01 / TOOLKIT</span><h2>BUILDING PIECES</h2><p>Choose a piece, then click the 3D grid to place it. Click existing pieces to select and drag them.</p></div>
+      <section class="palette-category">
+        <h3>STRUCTURE</h3>
+        <div class="palette-grid">
+          <button type="button" data-piece="floor">▦ <span>FLOOR</span></button>
+          <button type="button" data-piece="ceiling">▤ <span>CEILING</span></button>
+          <button type="button" data-piece="hardWall">▰ <span>HARD WALL</span></button>
+          <button type="button" data-piece="softWall">▧ <span>SOFT WALL</span></button>
+          <button type="button" data-piece="reinforcedWall">▥ <span>REINFORCED</span></button>
+          <button type="button" data-piece="stairs">▨ <span>STAIRS</span></button>
+        </div>
+      </section>
+      <section class="palette-category">
+        <h3>OPENINGS & COVER</h3>
+        <div class="palette-grid">
+          <button type="button" data-piece="door">▯ <span>DOOR FRAME</span></button>
+          <button type="button" data-piece="window">⊞ <span>WINDOW</span></button>
+          <button type="button" data-piece="cover">▣ <span>CRATE / COVER</span></button>
+          <button type="button" data-piece="railing">⊟ <span>RAILING</span></button>
+        </div>
+      </section>
+      <section class="palette-category">
+        <h3>ROUND SPAWNS</h3>
+        <div class="palette-grid">
+          <button type="button" data-piece="attackerSpawn">⇢ <span>ATTACK SPAWN</span></button>
+          <button type="button" data-piece="defenderSpawn">⇠ <span>DEFEND SPAWN</span></button>
+        </div>
+      </section>
+      <section class="palette-category">
+        <h3>OBJECTIVES — CLICK TO REPOSITION</h3>
+        <div class="palette-grid">
+          <button type="button" data-site="A" class="site-a">A <span>BOMB A</span></button>
+          <button type="button" data-site="B" class="site-b">B <span>BOMB B</span></button>
+        </div>
+        <p class="hint">Bombs are assigned to the selected site pair. You can create multiple pairs and place bombs on any floor.</p>
+      </section>
+      <section class="palette-category">
+        <h3>MAP FLOORS</h3>
+        <label>ACTIVE BUILD HEIGHT (M)
+          <select id="floorLevel">
+            <option value="0">GROUND · 0m</option>
+            <option value="4">SECOND · 4m</option>
+            <option value="8">THIRD · 8m</option>
+            <option value="12">ROOF · 12m</option>
+          </select>
+        </label>
+        <label>CUSTOM ELEVATION (M)<input id="customLevel" type="number" min="-12" max="90" step=".25" value="0"></label>
+        <label>GRID SNAP (M)
+          <select id="gridStep"><option value=".25">0.25</option><option value=".5">0.5</option><option value="1" selected>1</option><option value="2">2</option><option value="4">4</option></select>
+        </label>
+      </section>
+      <div class="left-footer"><span>PRIVATE DEVELOPMENT BUILD</span><small>Protected by GAMESHUB's server-side BLACKOUT owner access. Drafts stay in this browser until exported.</small></div>
+    </aside>
+
+    <main class="viewport-shell">
+      <div class="viewport-toolbar">
+        <div class="tool-group">
+          <button id="selectTool" class="active" type="button">◈ SELECT / MOVE <kbd>V</kbd></button>
+          <button id="rotateLeft" type="button">↶ -90° <kbd>Q</kbd></button>
+          <button id="rotateRight" type="button">↷ +90° <kbd>E</kbd></button>
+          <button id="duplicate" type="button">DUPLICATE <kbd>CTRL+D</kbd></button>
+          <button id="deleteSelected" type="button">DELETE <kbd>DEL</kbd></button>
+        </div>
+        <div class="tool-group">
+          <button id="undo" type="button" title="Undo Ctrl+Z">↶ UNDO</button>
+          <button id="redo" type="button" title="Redo Ctrl+Y">↷ REDO</button>
+          <button id="topView" type="button">TOP</button>
+          <button id="perspectiveView" type="button">3D</button>
+          <button id="frameSelection" type="button">FOCUS <kbd>F</kbd></button>
+        </div>
+      </div>
+      <canvas id="editorCanvas" aria-label="Interactive 3D map builder"></canvas>
+      <div class="viewport-upper-left">
+        <span class="live-dot"></span> AUTHORING MODE · <strong id="toolStatus">SELECT</strong>
+        <span id="viewportCoords">X 0 · Y 0 · Z 0</span>
+      </div>
+      <div class="viewport-guide">LEFT CLICK: PLACE / SELECT / DRAG <span>·</span> RIGHT DRAG: ORBIT <span>·</span> MIDDLE DRAG: PAN <span>·</span> WHEEL: ZOOM <span>·</span> Q/E ROTATE <span>·</span> DELETE REMOVE</div>
+      <div class="viewport-lower-left">
+        <span id="objectCount">1 PIECE</span>
+        <span id="currentLayer">HEIGHT 0.0M</span>
+        <span id="selectedInfo">NO SELECTION</span>
+      </div>
+      <div id="notice" role="status" class="notice hidden"></div>
+    </main>
+
+    <aside class="inspector" aria-label="Property inspector and bomb rules">
+      <div class="pane-head"><span class="section-id">02 / PROPERTIES</span><h2>INSPECTOR</h2></div>
+      <section class="inspect-panel" id="pieceInspector">
+        <h3>SELECTED PIECE</h3>
+        <p id="selectionDescription" class="hint">Select a placed structure to edit its exact measurements. You can also drag it in the 3D view.</p>
+        <label>LABEL <input id="partName" placeholder="Piece label" maxlength="70" disabled></label>
+        <div class="triple" id="posFields">
+          <label>X<input data-field="px" type="number" step=".25" disabled></label>
+          <label>Y<input data-field="py" type="number" step=".25" disabled></label>
+          <label>Z<input data-field="pz" type="number" step=".25" disabled></label>
+        </div>
+        <div class="triple" id="sizeFields">
+          <label>WIDTH<input data-field="sx" type="number" min=".15" step=".25" disabled></label>
+          <label>HEIGHT / RISE<input data-field="sy" type="number" min=".12" step=".25" disabled></label>
+          <label>DEPTH / RUN<input data-field="sz" type="number" min=".12" step=".25" disabled></label>
+        </div>
+        <label>YAW / ROTATION (°)<input id="partRotation" type="number" step="15" disabled></label>
+        <p id="pieceTip" class="hint">Hard walls are structural. Soft walls can be reinforced or breached after the map is integrated into gameplay.</p>
+      </section>
+
+      <section class="inspect-panel bomb-editor">
+        <div class="section-row"><h3>BOMB SITE PAIRS</h3><button id="addPair" type="button" class="mini">+ PAIR</button></div>
+        <label>CONFIGURATION<select id="pairSelect"></select></label>
+        <label>PAIR NAME<input id="pairName" maxlength="75"></label>
+        <div class="site-tabs">
+          <button id="editSiteA" data-inspect-site="A" class="active" type="button">A / BOMB ONE</button>
+          <button id="editSiteB" data-inspect-site="B" type="button">B / BOMB TWO</button>
+        </div>
+        <div class="triple">
+          <label>X<input id="bombX" type="number" step=".25"></label>
+          <label>Y<input id="bombY" type="number" step=".25"></label>
+          <label>Z<input id="bombZ" type="number" step=".25"></label>
+        </div>
+        <label>PLANT ZONE RADIUS <strong id="plantRadiusValue">4.0m</strong><input id="plantRadius" type="range" min="1" max="22" step=".25"></label>
+        <label>DEFUSE INTERACTION RANGE <strong id="defuseRangeValue">2.25m</strong><input id="defuseRange" type="range" min=".5" max="12" step=".25"></label>
+        <p class="hint">Plant zone is how far from the bomb defenders/attackers can use that site. Defuse range is the maximum distance from a planted defuser for disabling it. Both values save separately for A and B.</p>
+        <div class="site-actions">
+          <button id="placeBomb" class="secondary" type="button">PLACE SELECTED BOMB</button>
+          <button id="removePair" class="danger" type="button">DELETE PAIR</button>
+        </div>
+      </section>
+      <section class="inspect-panel validation">
+        <h3>MAP CHECK</h3>
+        <div id="validationResults" class="validation-results">Ready to inspect geometry.</div>
+        <button id="validateMap" class="wide secondary" type="button">CHECK MAP SETUP</button>
+        <p class="hint">Exported .blackout-map.json files include every structure, floor, stair, spawn, both bombs and their ranges. Send that file back to ChatGPT for conversion into the playable map.</p>
+      </section>
+    </aside>
+  </div>
+  <input id="importFile" type="file" accept=".json,.blackout-map.json,application/json" hidden>
+  <dialog id="confirmNew">
+    <h2>START A NEW MAP?</h2><p>Your current draft stays backed up locally, but a new blank map replaces the active editor layout.</p>
+    <div><button id="cancelNew">CANCEL</button><button id="confirmNewButton" class="danger">CREATE BLANK MAP</button></div>
+  </dialog>
+  <script type="module" src="./src/map-editor.js?v=blackout-editor-v1"></script>
+</body>
+</html>
