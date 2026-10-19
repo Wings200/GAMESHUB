@@ -5,7 +5,7 @@ import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v330-advanced-ordnance";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v330-advanced-ordnance";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v410-ai-drone-fix";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
@@ -607,7 +607,7 @@ function drawTacticalHud(now){
   droneOverlay.classList.toggle("hidden",!drone.active&&!lostFeed);
   droneOverlay.classList.toggle("bo-feed-lost",lostFeed);
   droneSignal.textContent=lostFeed?"DRONE DESTROYED":
-    drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE";
+    drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE · "+drone.health+" HP · "+drone.remaining+" SPARE";
   phaseText.textContent=phaseName;
   matchScore.textContent=round.score.attacker+" — "+round.score.defender;
   // All ten slots are real participants in this OFFLINE PvE simulation.
@@ -969,7 +969,7 @@ const competitiveUI=initCompetitiveUI({menu,start,status,sightSelect,getOperator
 hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "4.0.0-competitive-ui"},
+  get build(){return "4.1.0-ai-drone-fixes"},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
     health:drone.health,remaining:drone.remaining,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
