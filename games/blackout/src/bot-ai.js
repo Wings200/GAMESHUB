@@ -71,10 +71,14 @@ export function findTacticalPath(world,from,to){
 }
 export function advanceTacticalBot(bot,goal,world,dt,now){
   const changingGoal=!bot.lastGoal||Math.hypot(bot.lastGoal.x-goal.x,bot.lastGoal.z-goal.z)>1.4;
-  if(changingGoal||now>bot.repathAt||!bot.path?.length){
+  // Never perform a full A* search every frame for an unreachable goal.
+  // A failed route is cached until its retry deadline or a collision change.
+  const changedWorld=bot.collisionRevision!==world.collisionRevision;
+  if(changingGoal||changedWorld||now>=bot.repathAt){
     bot.path=findTacticalPath(world,bot,goal);
-    bot.repathAt=now+1400+(bot.id%3)*240;
+    bot.repathAt=now+(bot.path.length?1600:2600)+(bot.id%3)*270;
     bot.lastGoal={...goal};
+    bot.collisionRevision=world.collisionRevision;
   }
   while(bot.path.length&&Math.hypot(bot.x-bot.path[0].x,bot.z-bot.path[0].z)<.52)
     bot.path.shift();
@@ -85,7 +89,7 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   const step=Math.min(len,dt*bot.walkSpeed);
   const nx=bot.x+dx/len*step,nz=bot.z+dz/len*step;
   if(blocked(world,nx,nz,.34)){
-    bot.path=[];bot.repathAt=now+1000;return 0;
+    bot.path=[];bot.repathAt=now+900;return 0;
   }
   bot.x=nx;bot.z=nz;bot.group.position.set(nx,0,nz);
   bot.group.rotation.y=Math.atan2(-dx,-dz);
@@ -142,7 +146,7 @@ export function makeTacticalBot(T,scene,world,id,x,z,stationary=false){
   const bot={id,group,body,head,hitboxes:[body,head],x,z,
     health:100,alive:true,stationary,healthMax:100,
     armor,walkSpeed:2.1+(id%3)*.19,nextShot:0,working:0,
-    path:[],lastGoal:null,repathAt:0,state:stationary?"hold":"approach",
+    path:[],lastGoal:null,repathAt:0,collisionRevision:-1,state:stationary?"hold":"approach",
     hearing:null,hearingUntil:0,suppressedUntil:0,hitAt:0,lastShotAt:0,
     moved:0,movePhase:0,muzzle,
     damage(amount){
