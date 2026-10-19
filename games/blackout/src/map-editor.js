@@ -42,6 +42,7 @@ const mat={
   stairs:new T.MeshStandardMaterial({color:0xabb5ba,metalness:.18,roughness:.75}),
   cover:new T.MeshStandardMaterial({color:0xa18b72,roughness:.95}),
   railing:new T.MeshStandardMaterial({color:0xf0bf69,metalness:.55,roughness:.4}),
+  rappelAnchor:new T.MeshStandardMaterial({color:0x50e6d1,metalness:.64,roughness:.35}),
   attackerSpawn:new T.MeshBasicMaterial({color:0x56c6ff,transparent:true,opacity:.9}),
   defenderSpawn:new T.MeshBasicMaterial({color:0xfc925e,transparent:true,opacity:.9}),
   outline:new T.LineBasicMaterial({color:0x80e6ed}),
@@ -336,6 +337,20 @@ function makeGeometry(piece,transparent=false){
     for(const x of [-w/2+.06,0,w/2-.06])
       box(group,cap,h,depth,x,h/2,0,material);
     box(group,w,cap,depth,0,h-.08,0,material);
+  }else if(type==="rappelAnchor"){
+    // Roof-edge rig: Y is roof hook elevation. size.y is cable length
+    // toward the ground, for future player-rappel system binding.
+    box(group,Math.max(.55,w),.16,Math.max(.50,depth),0,.02,0,material);
+    const ring=new T.Mesh(new T.TorusGeometry(.27,.08,8,20),material);
+    ring.rotation.x=Math.PI/2;ring.position.y=-.24;group.add(ring);
+    cylinder(group,.052,.052,h,0,-h/2,0,material,10);
+    const foot=new T.Mesh(new T.ConeGeometry(.21,.41,8),material);
+    foot.rotation.z=Math.PI;foot.position.y=-h;group.add(foot);
+    if(!transparent){
+      const marker=textSprite("RAPPEL / GRAPPLE",0x9bffed);
+      marker.position.y=.95;marker.scale.set(2.9,.67,1);
+      group.add(marker);
+    }
   }else if(type==="attackerSpawn"||type==="defenderSpawn"){
     cylinder(group,Math.max(.35,w/2),Math.max(.35,w/2),.06,0,.04,0,material);
     const pin=new T.Mesh(new T.ConeGeometry(.32,.7,4),material);
@@ -566,6 +581,7 @@ function updateInspector(){
   $("floorSizeTools").hidden=piece?.type!=="floor";
   const tips={
     stairs:"Stair HEIGHT is rise, DEPTH is horizontal run. Stairs climb from local -Z to +Z. Rotate the entire flight with Q/E.",
+    rappelAnchor:"Rappel/grappling attachment at a roof edge. Y is anchor height; HEIGHT is rope drop down toward the ground. Position outside a second-floor window. Blueprint only until live player-rappel physics is integrated.",
     floor:"The top is your walking surface; the underside is the ceiling below. Press R, drag an edge cube. The OPPOSITE edge stays anchored. Walls meet upper-floor undersides.",
     hardWall:"Solid structural wall. Not reinforceable or breachable during matches.",
     softWall:"Breachable drywall. Can receive bullet holes or a 3-second reinforcement by defenders.",
