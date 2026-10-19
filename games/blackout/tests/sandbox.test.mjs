@@ -52,7 +52,11 @@ const load=(name,deps,result)=>{
 };
 const facility=load("facility.js",{},"buildFacility");
 const ballistics=load("material-ballistics.js",{},"{materialStats,accumulatedBreach}");
-const build=load("world.js",{buildFacility:facility,...ballistics},"buildRange");
+const switchyard=load("switchyard.js",{},
+  "{createSwitchyard,SWITCHYARD_SITE_PAIRS,switchyardFloorAt}");
+const build=load("world.js",{buildFacility:facility,...ballistics,
+  createSwitchyard:switchyard.createSwitchyard,
+  SWITCHYARD_SITE_PAIRS:switchyard.SWITCHYARD_SITE_PAIRS},"buildRange");
 const Bar=load("barricades.js",{},"Barricades");
 const Player=load("player.js",{},"FirstPersonController");
 const AI=load("bot-ai.js",{},"{findTacticalPath,advanceTacticalBot}");
@@ -174,4 +178,31 @@ test("peripheral barricade training frames stay clear of both bomb zones",()=>{
     assert.ok(Math.abs(frame.x)>=20,
       "Nonessential door frames must stay in the peripheral practice lanes");
   }
+});
+
+test("SWITCHYARD and mechanics lab use separate collision and raycast lists",()=>{
+  const w=makeWorld();
+  const labCount=w.colliders.length,labShoot=w.shootables.length;
+  const labZones=Object.values(w.facility.sites).map(x=>({x:x.x,z:x.z}));
+  assert.equal(w.activateMap("switchyard"),true);
+  assert.equal(w.facility.mode,"switchyard");
+  assert.equal(w.mapId,"switchyard");
+  assert.equal(w.root.visible,false);
+  assert.ok(w.colliders.length>35);
+  assert.ok(w.shootables.length>90);
+  assert.ok(w.floorAt(-7,-41,4)===4);
+  assert.equal(w.setSitePair("rooftop"),true);
+  assert.equal(w.facility.sites.A.y,8);
+  assert.equal(w.facility.sites.B.y,8);
+  const pairBounds=w.facility.sites.A.bounds;
+  assert.ok(pairBounds.minX<w.facility.sites.A.x);
+  assert.equal(w.activateMap("lab"),true);
+  assert.equal(w.mapId,"lab");
+  assert.equal(w.facility.mode,"mechanics-sandbox");
+  assert.equal(w.root.visible,true);
+  assert.equal(w.colliders.length,labCount);
+  assert.equal(w.shootables.length,labShoot);
+  assert.equal(w.floorAt(-7,-41,4),0);
+  assert.deepEqual(Object.values(w.facility.sites).map(x=>({x:x.x,z:x.z})),labZones);
+  assert.equal(w.facility.sites.A.y,0);
 });
