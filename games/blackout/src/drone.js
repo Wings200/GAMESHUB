@@ -20,11 +20,11 @@ export function createReconDrone(T,scene,world,camera){
     hitMeshes.push(wheel);
   }
   cube(0,.225,-.18,.12,.065,.05,lens);
-  let x=0,z=-15.8,yaw=0,pitch=0,active=false;
+  let x=0,z=-15.8,y=0,yaw=0,pitch=0,active=false;
   let destroyed=false,health=35,lastDamageAt=-Infinity;
   let remaining=2,deployments=0;
   const device={get active(){return active},get destroyed(){return destroyed},
-    get health(){return health},get position(){return {x,z}}};
+    get health(){return health},get position(){return {x,z,y}}};
   for(const mesh of hitMeshes){
     mesh.userData={kind:"drone",drone:device};
     world.shootables.push(mesh);
@@ -59,7 +59,7 @@ export function createReconDrone(T,scene,world,camera){
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const scanRay=new T.Raycaster();
   function contactVisible(bot){
-    const start=new T.Vector3(x,.28,z),end=new T.Vector3(bot.x,1.5,bot.z);
+    const start=new T.Vector3(x,y+.28,z),end=new T.Vector3(bot.x,(bot.y||0)+1.5,bot.z);
     const direction=end.sub(start),distance=direction.length();
     if(distance>11||distance<.03)return false;
     scanRay.set(start,direction.normalize());
@@ -75,15 +75,17 @@ export function createReconDrone(T,scene,world,camera){
   }
   const canMove=(nx,nz)=>{
     if(nx<-28||nx>28||nz<-64||nz>24)return false;
-    return !world.colliders.some(c=>c.maxY>.08&&c.minY<.30&&
+    const floor=world.floorAt?.(nx,nz,y)||0;
+    if(floor>y+.23)return false;
+    return !world.colliders.some(c=>c.maxY>floor+.08&&c.minY<floor+.30&&
       nx>=c.minX-.155&&nx<=c.maxX+.155&&
       nz>=c.minZ-.155&&nz<=c.maxZ+.155);
   };
   function begin(now=0){
     if(active||remaining<=0)return false;
     remaining--;deployments++;destroyed=false;health=35;
-    x=0;z=-15.8;yaw=0;pitch=0;active=true;jammed=false;pingCount=0;
-    lastPing=now-1000;body.visible=true;body.position.set(x,.0,z);
+    x=0;z=-15.8;y=0;yaw=0;pitch=0;active=true;jammed=false;pingCount=0;
+    lastPing=now-1000;body.visible=true;body.position.set(x,y,z);
     camera.rotation.order="YXZ";
     update(0,new Set(),null);
     return true;
@@ -111,11 +113,12 @@ export function createReconDrone(T,scene,world,camera){
     const dx=(fx*f+rx*s)/len*speed,dz=(fz*f+rz*s)/len*speed;
     if(canMove(x+dx,z))x+=dx;
     if(canMove(x,z+dz))z+=dz;
-    body.position.set(x,0,z);body.rotation.y=yaw;
-    camera.position.set(x,.235,z);
+    y=world.floorAt?.(x,z,y)||0;
+    body.position.set(x,y,z);body.rotation.y=yaw;
+    camera.position.set(x,y+.235,z);
     camera.rotation.set(pitch,yaw,0);
     jammed=Boolean(gadgets?.jammedAt?.(x,z));
-    return {x,z,jammed};
+    return {x,z,y,jammed};
   }
   function ping(now,bots){
     if(!active)return {ok:false,message:"DRONE UNAVAILABLE"};
@@ -141,8 +144,8 @@ export function createReconDrone(T,scene,world,camera){
         // Visible turquoise electrical discharge from the actual drone
         // muzzle to the disabled jammer/sensor. Brief tracer, no fake hit.
         const geometry=new T.BufferGeometry().setFromPoints([
-          new T.Vector3(x,.30,z),
-          new T.Vector3(result.target.x,.35,result.target.z)
+          new T.Vector3(x,y+.30,z),
+          new T.Vector3(result.target.x,(result.target.y||0)+.35,result.target.z)
         ]);
         const line=new T.Line(geometry,new T.LineBasicMaterial({
           color:0x78f5ed,transparent:true,opacity:1,depthWrite:false
