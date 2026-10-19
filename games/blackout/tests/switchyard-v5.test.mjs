@@ -145,7 +145,7 @@ test("an attacking bot actually walks from exterior insertion onto the rooftop",
  const bot={id:1,x:17.1,z:-49.9,y:0,walkSpeed:2.8,
    group:new Node(),allowBreach:false,path:[],lastGoal:null,
    repathAt:0,collisionRevision:-1};
- const goal={x:7,z:-30,y:8};
+ const goal={x:7,z:-28,y:8}; // Actual roof Site B center, not a prop footprint.
  let maxY=0,steps=0;
  for(let i=0;i<1650;i++){
    AI.advanceTacticalBot(bot,goal,world,.05,1000+i*50);
