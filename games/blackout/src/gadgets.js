@@ -12,6 +12,12 @@ export class Gadgets {
       marker.position.set(t.x,2.95,t.z);
       marker.visible=false;scene.add(marker);this.scanMarkers.push({marker,target:t});
     }
+    this.botMarkers=[];
+    for(let i=0;i<6;i++){
+      const mesh=new THREE.Mesh(new THREE.RingGeometry(.30,.42,24),
+        new THREE.MeshBasicMaterial({color:0xffd48a,transparent:true,opacity:.98,depthTest:false}));
+      mesh.visible=false;scene.add(mesh);this.botMarkers.push(mesh);
+    }
     this.reset("attacker");
   }
   cancelAction(){
@@ -27,6 +33,7 @@ export class Gadgets {
       reinforce:spec?.kit.reinforce??2};
     this.scanUntil=0;
     for(const a of this.scanMarkers)a.marker.visible=false;
+    for(const marker of this.botMarkers)marker.visible=false;
     if(this.charge){
       this.scene.remove(this.charge.marker);
       this.charge.marker.geometry?.dispose?.();
@@ -78,7 +85,7 @@ export class Gadgets {
     if(this.counts.x<=0)return {ok:false,message:"NO SECONDARY GADGETS REMAIN"};
     if(this.role==="attacker"){
       this.counts.x--;this.scanUntil=now+4500;
-      return {ok:true,message:"RECON PULSE · DUMMIES MARKED FOR 4.5S"};
+      return {ok:true,message:"RECON PULSE · HOSTILE CONTACTS MARKED FOR 4.5S"};
     }
     const fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw);
     const x=player.x+fx*2,z=player.z+fz*2;
@@ -134,6 +141,17 @@ export class Gadgets {
     for(const {target,marker} of this.scanMarkers){
       marker.visible=scan&&target.alive;
       if(scan)marker.rotation.y=now*.0013;
+    }
+    // Recon is usable in actual objective rounds: mark REAL hostile bots,
+    // not just range dummies. These reusable meshes do not allocate per frame.
+    for(let i=0;i<this.botMarkers.length;i++){
+      const marker=this.botMarkers[i];
+      const bot=hostileBots.filter(b=>b.alive)[i];
+      marker.visible=Boolean(scan&&this.role==="attacker"&&bot);
+      if(marker.visible){
+        marker.position.set(bot.x,2.54,bot.z);
+        marker.rotation.y=now*.0018;
+      }
     }
     for(const sensor of this.sensors){
       const r=Math.hypot(player.x-sensor.x,player.z-sensor.z);
