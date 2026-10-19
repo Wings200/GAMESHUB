@@ -286,3 +286,6 @@ body:has(.bo-drone-overlay:not(.hidden)) .bo-drone-header span{animation:bo-sign
  color:#a5f4df;border-left:3px solid #5ce0c5;padding:5px 9px;
  font:800 10px/1.3 Arial,sans-serif;letter-spacing:.085em;
  max-width:min(440px,90vw);text-shadow:0 1px 3px #000a}
+
+/* V3.3 flashbang feedback: translucent white flash with timed fade. */
+.bo-flash-overlay{position:fixed;inset:0;background:radial-gradient(circle at 50% 48%,#fff 0%,#fffaf1 72%,#ffefcb 100%);pointer-events:none;z-index:8;opacity:0;transition:opacity 70ms linear;will-change:opacity}
