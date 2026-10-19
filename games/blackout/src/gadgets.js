@@ -192,7 +192,8 @@ export class Gadgets {
     if(!e)return {ok:false,message:"NO ENEMY ELECTRONICS WITHIN RANGE"};
     e.disabledUntil=now+12000;
     e.light.material.color.setHex(0x5a6974);
-    return {ok:true,message:"DRONE SHOCK · ELECTRONIC DEVICE DISABLED"};
+    return {ok:true,message:"DRONE SHOCK · ELECTRONIC DEVICE DISABLED",
+      target:{x:e.x,z:e.z}};
   }
   startAbility(type,camera,position,now,duration,onComplete){
     if(this.specialAction)return {ok:false,message:"FINISH THE CURRENT GADGET ANIMATION"};
