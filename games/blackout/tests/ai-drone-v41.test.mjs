@@ -35,7 +35,9 @@ function makeDrone(){
   const world={colliders:[],shootables:[]};
   const camera=new Node(),scene=new Node();
   const create=load("drone.js",{},"createReconDrone");
-  return {world,camera,scene,drone:create(T,scene,world,camera)};
+  const drone=create(T,scene,world,camera);
+  world.drone=drone; // Test fixture matches main.js world ownership.
+  return {world,camera,scene,drone};
 }
 test("physical drone stays in scene for enemy targeting but never obscures its camera",()=>{
   const {world,drone}=makeDrone();
