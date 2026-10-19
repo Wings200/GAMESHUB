@@ -70,7 +70,8 @@ export class ObjectiveDrill{
     this.pausedAt=0;this.lastHitNotice=0;this.lastFootstep=0;
     this.playerAlive=true;this.runoutPlayer=false;this.runoutUntil=0;
     this.runoutTarget=null;this.runoutAlly=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
-    this.defuser.hide();this.prepUntil=0;
+    this.defuser.hide();this.prepUntil=0;this.prepFortified=false;
+    this.teamIntel={ally:null,enemy:null};
     this.updateHoldRequirement();
     this.ring.material.color.setHex(role==="attacker"?0x62eee2:0xffb76d);
   }
@@ -166,7 +167,10 @@ export class ObjectiveDrill{
       if(b.nextShot)b.nextShot+=d;
       if(b.repathAt)b.repathAt+=d;
       if(b.hearingUntil)b.hearingUntil+=d;
+      if(b.coverUntil)b.coverUntil+=d;
+      if(b.intelUntil)b.intelUntil+=d;
     }
+    for(const intel of Object.values(this.teamIntel||{}))if(intel)intel.until+=d;
     this.pausedAt=0;
   }
   start(now){
@@ -288,6 +292,20 @@ export class ObjectiveDrill{
     this.bombStations.update(now,this.siteId);
     if(["ready","won","lost"].includes(this.phase))return;
     if(this.phase==="prep"){
+      // Defensive squads actually prepare the facility rather than sitting
+      // idle for 45 seconds. Leave external approaches available so neither
+      // attackers nor defenders become sealed into a corner.
+      if(!this.prepFortified&&now>=this.prepUntil-24500){
+        this.prepFortified=true;
+        const system=this.world.barricades;
+        let installed=0;
+        for(const id of ["west-hall","east-hall"]){
+          const door=system?.openings?.find(o=>o.id===id);
+          if(door&&!system.hasBarricade(door)&&system.place(door))
+            installed++;
+        }
+        if(installed)notify("DEFENSE SQUAD FORTIFIED "+installed+" INTERIOR ENTRANCES");
+      }
       if(now>=this.prepUntil)this.beginAction(now,notify);
       else return;
     }
