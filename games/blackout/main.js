@@ -73,6 +73,7 @@ let menuGuide=false,lastEmptyClick=0,aimBlend=0,muzzleUntil=0;
 let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0;
 let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
 let combatErrors=0,lastCombatError="",lastRuntimeReportAt=0;
+let droneActionMode=false;
 const audio=new GameAudio();
 const audioStatus=$("audioStatus"),audioTest=$("audioTest");
 const clock=()=>performance.now();
@@ -156,8 +157,13 @@ function showMenu(){
 function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
   objectiveRound.resume(clock());
-  if(objectiveRound.phase==="ready")objectiveRound.start(clock());
-  if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active)drone.begin(clock());
+  if(objectiveRound.phase==="ready"){
+    objectiveRound.start(clock());
+    if(role==="attacker")gadgets.populateEnemyDefenses(objectiveRound.sites);
+  }
+  if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active){
+    droneActionMode=false;drone.begin(clock());
+  }
   lastPhaseLabel="";phaseToastUntil=clock()+1500;
   document.body.classList.add("playing");
   popup("SITE "+objectiveRound.siteId+" OBJECTIVE ROUND ONLINE · "+role.toUpperCase(),2.5);
@@ -177,7 +183,7 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
   if(document.pointerLockElement===canvas)document.exitPointerLock();});
 
 function resetSimulation(){
-  drone.end();objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  drone.end();droneActionMode=false;objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
   const attackerSpawns={south:{x:0,z:16},west:{x:-14,z:-40},
@@ -287,17 +293,24 @@ document.addEventListener("keydown",e=>{
   if((objectiveRound.phase==="won"||objectiveRound.phase==="lost")){
     if(e.code==="Enter"){
       e.preventDefault();resetSimulation();objectiveRound.start(clock());
-      if(role==="attacker")drone.begin(clock());
+      if(role==="attacker"){
+        gadgets.populateEnemyDefenses(objectiveRound.sites);
+        droneActionMode=false;drone.begin(clock());
+      }
       popup("NEW ROUND · "+(role==="attacker"?"DRONE DEPLOYED":"DEFENSE PREP"));
     }
     return;
   }
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
-      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","KeyV","Digit1","Digit2","Space","AltLeft","AltRight"].includes(e.code))
+      "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyX","KeyZ","KeyV","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
     e.preventDefault();
   keys.add(e.code);
   if(e.repeat)return;
   if(drone.active){
+    if(e.code==="Digit3"&&objectiveRound.phase!=="prep"){
+      drone.end();droneActionMode=false;player.applyCamera();
+      popup("DRONE STOWED · BACK TO OPERATOR",1.4);return;
+    }
     if(e.code==="KeyX"){
       const scan=drone.ping(clock(),objectiveRound.bots);
       if(scan.ok)for(const bot of scan.contacts){
@@ -312,6 +325,11 @@ document.addEventListener("keydown",e=>{
       popup(result.message,1.5);if(result.ok)sound("click");
     }
     return;
+  }
+  if(e.code==="Digit3"&&role==="attacker"&&
+     ["attack","planted"].includes(objectiveRound.phase)){
+    droneActionMode=true;drone.begin(clock());
+    popup("DRONE DEPLOYED · DIGIT 3 TO RETURN",1.5);return;
   }
   if(gadgets.busy||barricades.busy)return;
   if(e.code==="KeyV"){
@@ -691,7 +709,7 @@ function updateFrame(now){
       if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
       else if(event)sound(event);
     });
-    if(drone.active&&objectiveRound.phase!=="prep"){
+    if(drone.active&&objectiveRound.phase!=="prep"&&!droneActionMode){
       drone.end();player.applyCamera();
       sound("round-start");popup("INSERTION COMPLETE · OPERATOR SPAWNED",2.5);
     }
@@ -771,7 +789,9 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="Choose an operator and side for a 5v5 solo tactical drill. Both bomb sites are active.";}
 window.BLACKOUT_DEV={
   get build(){return "2.0.0-site-builder-operators-45s-drone-ai-plant"},
-  get siteLayout(){return siteBuilder.layout},get drone(){return {active:drone.active,position:drone.position,jammed:drone.jammed}},
+  get siteLayout(){return siteBuilder.layout},
+  get drone(){return {active:drone.active,actionMode:droneActionMode,
+    position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
   get teams(){return {friendly:1+objectiveRound.allies.length,
