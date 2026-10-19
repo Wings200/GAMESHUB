@@ -10,7 +10,7 @@ import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v330-advanced-ordnance";
-import {createReconDrone} from "./src/drone.js?v=blackout-v330-advanced-ordnance";
+import {createReconDrone} from "./src/drone.js?v=blackout-v410-ai-drone-fix";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -71,6 +71,7 @@ world.barricades=barricades;
 const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 world.round=objectiveRound; // determines ownership when gadget AoE is simulated
 const drone=createReconDrone(THREE,scene,world,camera);
+world.drone=drone; // Defender AI can see, hit and destroy this physical device.
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
 let last=performance.now(),frames=0,elapsed=0,fps=0;
@@ -181,7 +182,8 @@ function showGame(){
     // Enemy Mute places real jammer equipment during the 45s defender prep.
   }
   if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active){
-    droneActionMode=false;drone.begin(clock());
+    droneActionMode=false;
+    if(drone.deployments===0)drone.begin(clock());
   }
   lastPhaseLabel="";phaseToastUntil=clock()+1500;
   document.body.classList.add("playing");
@@ -203,7 +205,7 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
 
 function resetSimulation(){
   resetTacticalCue();
-  drone.end();droneActionMode=false;objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  drone.reset();droneActionMode=false;objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
   const attackerSpawns={south:{x:0,z:16},west:{x:-14,z:-40},
@@ -370,9 +372,13 @@ document.addEventListener("keydown",e=>{
     return;
   }
   if(e.code==="Digit3"&&role==="attacker"&&
-     ["attack","planted"].includes(objectiveRound.phase)){
-    droneActionMode=true;drone.begin(clock());
-    popup("DRONE DEPLOYED · DIGIT 3 TO RETURN",1.5);return;
+     ["prep","attack","planted"].includes(objectiveRound.phase)){
+    if(!drone.begin(clock())){
+      popup("NO RECON DRONES IN RESERVE",1.5);return;
+    }
+    droneActionMode=objectiveRound.phase!=="prep";
+    popup("DRONE DEPLOYED · "+drone.remaining+" IN RESERVE · 3 TO RETURN",1.5);
+    return;
   }
   if(gadgets.busy||barricades.busy)return;
   if(e.code==="KeyV"){
@@ -493,6 +499,7 @@ function fireOnceSafe(now){
     if(info.kind==="panel")return !info.panel.destroyed&&o.visible!==false;
     if(info.kind==="target")return info.target.alive;
     if(info.kind==="bot")return info.bot.alive&&info.bot.team!=="ally";
+    if(info.kind==="drone")return info.drone.active;
     if(info.kind==="barricade")return !info.plank.broken;
     if(info.kind==="shield")return info.shield.group.parent!==null;
     return true;
@@ -519,6 +526,12 @@ function fireOnceSafe(now){
         continue;
       }
       impact(h.point,info.panel.materialProfile.impactColor);break;
+    }
+    if(info.kind==="drone"){
+      const destroyed=drone.damage(shot.damage*penetration,now);
+      sound("impact");impact(h.point,0x65d8d3,.055);
+      popup(destroyed?"RECON DRONE DESTROYED":"RECON DRONE DAMAGED",1);
+      break;
     }
     if(info.kind==="ordnance"){
       const disabled=gadgets.damageOrdnance(info.device,shot.damage*penetration);
@@ -590,8 +603,11 @@ function drawTacticalHud(now){
   attackAlive.textContent=atkCount+"/5";
   defendAlive.textContent=defCount+"/5";
   teamPopulation.textContent=atkCount+" ATTACKERS   VS   "+defCount+" DEFENDERS";
-  droneOverlay.classList.toggle("hidden",!drone.active);
-  droneSignal.textContent=drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE";
+  const lostFeed=role==="attacker"&&phase==="prep"&&drone.destroyed;
+  droneOverlay.classList.toggle("hidden",!drone.active&&!lostFeed);
+  droneOverlay.classList.toggle("bo-feed-lost",lostFeed);
+  droneSignal.textContent=lostFeed?"DRONE DESTROYED":
+    drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE";
   phaseText.textContent=phaseName;
   matchScore.textContent=round.score.attacker+" — "+round.score.defender;
   // All ten slots are real participants in this OFFLINE PvE simulation.
@@ -776,7 +792,8 @@ function updateFrame(now){
     if(gadgets.busy||barricades.busy){player.velX=0;player.velZ=0;}
     const alive=player.health>0;
     const beforeMove={x:player.x,z:player.z};
-    const report=alive&&!drone.active?player.update(dt,activeKeys):
+    const inDronePreparation=role==="attacker"&&objectiveRound.phase==="prep";
+    const report=alive&&!drone.active&&!inDronePreparation?player.update(dt,activeKeys):
       {sprinting:false,prone:false,crouched:false,lean:0,speed:0};
     if(!alive){
       if(drone.active){drone.end();droneActionMode=false;}
@@ -788,6 +805,10 @@ function updateFrame(now){
       }
     }
     if(drone.active)drone.update(dt,activeKeys,gadgets);
+    if(!drone.active&&drone.destroyed&&droneActionMode&&
+       objectiveRound.phase!=="prep"){
+      droneActionMode=false;player.applyCamera();
+    }
     // Attackers cannot move their physical operator during the drone phase;
     // their operator spawns only when preparation ends.
     if(alive&&role==="attacker"&&objectiveRound.phase==="prep"&&
@@ -938,7 +959,9 @@ function updateFrame(now){
   // every vsync while preserving responsive HTML menu and result controls.
   const renderInterval=ended?160:locked?0:160;
   if(!renderInterval||now-lastEndFrame>=renderInterval){
-    renderer.render(scene,camera);lastEndFrame=now;
+    const restoreDrone=drone.concealForOwnCamera();
+    try{renderer.render(scene,camera);}finally{restoreDrone();}
+    lastEndFrame=now;
   }
 }
 setRole("attacker");
@@ -947,7 +970,8 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
   get build(){return "4.0.0-competitive-ui"},
-  get drone(){return {active:drone.active,actionMode:droneActionMode,
+  get drone(){return {active:drone.active,destroyed:drone.destroyed,
+    health:drone.health,remaining:drone.remaining,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
   get combatErrors(){return {count:combatErrors,last:lastCombatError}},
   get aiHealth(){return objectiveRound.bots.filter(b=>b.alive).map(b=>({id:b.id,hp:b.health,x:b.x,z:b.z}))},
