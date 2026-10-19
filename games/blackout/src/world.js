@@ -182,9 +182,12 @@ export function buildRange(THREE,scene){
     return panel;
   }
   // Aligned with target lanes behind them so through-holes are testable.
+  // Five standalone wall rigs: soft material, reinforcement and
+  // Thermite tests remain collision-aware without constructing a building.
   makePanel(-12,-29);makePanel(12,-29);
-  // Two destructible/reinforceable partitions INSIDE the facility.
-  makePanel(0,-37); // Integrated into a structural opening, not floating in a room.
+  makePanel(-12,-44);makePanel(12,-44);
+  // The central wall is used by AI reinforcement and penetration tests.
+  makePanel(0,-37);
   const facility=buildFacility(THREE,scene,{root,colliders,shootables});
   function addShield(x,z,yaw){
     const forward={x:-Math.sin(yaw),z:-Math.cos(yaw)};
