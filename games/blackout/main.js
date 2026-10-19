@@ -161,7 +161,7 @@ function showGame(){
   objectiveRound.resume(clock());
   if(objectiveRound.phase==="ready"){
     objectiveRound.start(clock());
-    if(role==="attacker")gadgets.populateEnemyDefenses(objectiveRound.sites);
+    // Enemy Mute places real jammer equipment during the 45s defender prep.
   }
   if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active){
     droneActionMode=false;drone.begin(clock());
@@ -296,7 +296,7 @@ document.addEventListener("keydown",e=>{
     if(e.code==="Enter"){
       e.preventDefault();resetSimulation();objectiveRound.start(clock());
       if(role==="attacker"){
-        gadgets.populateEnemyDefenses(objectiveRound.sites);
+        // Defender AI installs jammer devices physically during preparation.
         droneActionMode=false;drone.begin(clock());
       }
       popup("NEW ROUND · "+(role==="attacker"?"DRONE DEPLOYED":"DEFENSE PREP"));
