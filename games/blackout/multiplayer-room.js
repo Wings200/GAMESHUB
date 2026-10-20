@@ -16,9 +16,17 @@ export class BlackoutRoom extends DurableObject {
  constructor(ctx,env){
   super(ctx,env);this.ctx=ctx;this.env=env;
   this.config=null;this.players=new Map();this.round=0;this.status="lobby";
+  this.winner=null;this.roundStartedAt=0;
   this.nextId=1;
   this.init=this.ctx.blockConcurrencyWhile(async()=>{
    this.config=await ctx.storage.get("room")||null;
+   const previous=await ctx.storage.get("match")||null;
+   if(previous){
+     this.round=previous.round||0;
+     this.status=previous.status||"lobby";
+     this.winner=previous.winner||null;
+     this.roundStartedAt=previous.startedAt||0;
+   }
    // After a Durable Object restart, connections are restored from
    // durable hibernating WebSockets; each stores its own identity.
    for(const ws of ctx.getWebSockets()){
@@ -45,7 +53,7 @@ export class BlackoutRoom extends DurableObject {
   if(!this.config)return reply({ok:false,error:"Room not found"},404);
   if(url.pathname.endsWith("/status"))
    return reply({ok:true,code:this.config.code,map:"ironvale",
-     mode:this.status,players:this.players.size,maxPlayers:MAX_PLAYERS,hostId:this.players.values().next().value?.id||null});
+     mode:this.status,winner:this.winner,round:this.round,players:this.players.size,maxPlayers:MAX_PLAYERS,hostId:this.players.values().next().value?.id||null});
   if(!url.pathname.endsWith("/ws")||
     request.headers.get("Upgrade")?.toLowerCase()!=="websocket")
     return reply({ok:false,error:"Expected WebSocket upgrade"},426);
@@ -82,8 +90,23 @@ export class BlackoutRoom extends DurableObject {
  send(p,event){try{p.ws.send(JSON.stringify(event))}catch{}}
  broadcast(extra){
   const state={type:"state",code:this.config?.code||"",mode:this.status,
-   round:this.round,players:this.snapshot(),hostId:this.players.values().next().value?.id||null,...extra};
+   round:this.round,winner:this.winner,players:this.snapshot(),hostId:this.players.values().next().value?.id||null,...extra};
   for(const p of this.players.values())this.send(p,state);
+ }
+ saveMatch(){
+  this.ctx.storage.put("match",{round:this.round,status:this.status,
+    winner:this.winner,startedAt:this.roundStartedAt});
+ }
+ finishIfEliminated(){
+  if(this.status!=="active")return;
+  const attack=[...this.players.values()].filter(p=>p.side==="attacker"&&p.alive).length;
+  const defend=[...this.players.values()].filter(p=>p.side==="defender"&&p.alive).length;
+  if(attack>0&&defend>0)return;
+  this.winner=attack>0?"attacker":defend>0?"defender":"draw";
+  this.status="intermission";this.saveMatch();
+  this.broadcast({event:"round-end",winner:this.winner,
+    message:this.winner==="draw"?"ROUND DRAW":
+      this.winner.toUpperCase()+" WIN BY ELIMINATION"});
  }
  webSocketMessage(ws,message){
   const p=[...this.players.values()].find(p=>p.ws===ws);
@@ -95,7 +118,15 @@ export class BlackoutRoom extends DurableObject {
   if(m.type==="start"){
    const host=this.players.values().next().value;
    if(host?.id!==p.id){this.send(p,{type:"notice",message:"Only the room host starts rounds"});return}
-   this.status="active";this.round++;
+   if(this.status==="active"){
+     this.send(p,{type:"notice",message:"Finish the current live round first"});return;
+   }
+   const sides=[...this.players.values()].map(p=>p.side);
+   if(!sides.includes("attacker")||!sides.includes("defender")){
+     this.send(p,{type:"notice",message:"NEED AT LEAST ONE REAL ATTACKER AND ONE REAL DEFENDER"});return;
+   }
+   this.status="active";this.round++;this.roundStartedAt=now;this.winner=null;
+   this.saveMatch();
    const count={attacker:0,defender:0};
    for(const user of this.players.values()){
     Object.assign(user,point(chooseSpawn(user.side,count[user.side]++)));
@@ -137,6 +168,7 @@ export class BlackoutRoom extends DurableObject {
       target.health=Math.max(0,target.health-25);
       target.alive=target.health>0;this.saveAttachment(target);
       this.broadcast({event:"hit",from:p.id,to:target.id,health:target.health});
+      if(!target.alive)this.finishIfEliminated();
     }
    }
    this.broadcast({event:"shot",from:p.id});
@@ -147,7 +179,8 @@ export class BlackoutRoom extends DurableObject {
   if(!player)return;
   this.players.delete(player.id);
   this.broadcast({event:"leave",id:player.id});
-  if(!this.players.size)this.status="lobby";
+  if(!this.players.size){this.status="lobby";this.winner=null;this.saveMatch()}
+  else this.finishIfEliminated();
  }
  webSocketClose(ws){this.close(ws)}
  webSocketError(ws){this.close(ws)}
