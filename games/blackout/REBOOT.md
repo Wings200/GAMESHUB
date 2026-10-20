@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.4
+# BLACKOUT — Clean Reboot V0.5
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.5 (video review and repairs):**
+- From the 21-second gameplay recording, the holographic reticle was below the real camera-center ray. ADS now uses a shared `OPTIC_CENTER` reference and centered `weaponPose(1)` with zero weapon pitch/roll; while aimed, the ballistics use exactly camera-forward direction with **zero spread**. The scope reticle is hidden during interpolation and visible only when fully calibrated, and the regular crosshair stays up until then.
+- **Q toggles left lean, E toggles right lean**; repeating the same key recenters. Lean persists while moving and ADS. The eye shifts at most 0.16m within the 0.34m player collision radius, while camera roll eases to +/-0.19 radians. The aim ray begins at this displaced camera so bullets respond consistently to peeking.
+- Upgraded the earlier placeholder BX-7 into an original Mk II multi-mesh carbine: chamfered receiver, magazine, handguard vents, muzzle, grip, adjustable stock, hardware and mounted optic. This remains a handcrafted procedural test model, **not** a finished imported high-poly production gun asset.
+- Source-only tests and CI cover lean logic and optic alignment. Real in-browser screenshot and control playtesting still needed. REDLINE, shared worker, and player data untouched.
+
+
 
 **2026-10-20 / V0.4:** Browser Ctrl+W cannot reliably be overridden: prone is now **tap Ctrl to toggle** or **tap Z to toggle**, then release Ctrl before walking forward. C remains hold-to-crouch. Release prone by tapping Ctrl or Z again. Jump is blocked while prone, and overhead collision safety remains.
 
@@ -28,7 +36,7 @@ The old game is preserved in Git commit history. Its working-tree files have bee
 - One flat test surface and four simple collision objects. No maps/buildings.
 - Minimal clean HUD for position, motion state, speed, grounding.
 - Synthesized, displacement-driven footsteps, crawling shuffles and landing sounds (M to mute).
-- R to reset player position.
+- R to reload carbine and P to reset player position.
 - Offline solo movement and weapon test. No AI or multiplayer representation.
 
 ## Rules for subsequent stages
@@ -44,7 +52,7 @@ The old game is preserved in Git commit history. Its working-tree files have bee
 
 `node --test games/blackout/reboot/*.test.mjs`
 
-CI in `.github/workflows/blackout-regression.yml` is reset to these V0.4 tests, not tests for removed V1–V8 gameplay. The workflow checks JavaScript syntax and collision/movement behavior. **A passing CI result is not a browser playtest.**
+CI in `.github/workflows/blackout-regression.yml` is reset to these V0.5 tests, not tests for removed V1–V8 gameplay. The workflow checks JavaScript syntax and collision/movement behavior. **A passing CI result is not a browser playtest.**
 
 ## Rollback
 
