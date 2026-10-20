@@ -37,11 +37,17 @@ export class ClubhouseRappel {
   get hint(){
     if(this.active){
       const w=this.nearestWindow();
-      if(w&&Math.abs(this.player.y-(w.y||0))<=.85)
+      if(w){
+        const diff=(w.y||0)-this.player.y;
+        if(Math.abs(diff)>1)
+          return "RAPPEL · WINDOW "+Math.abs(diff).toFixed(1)+"M "+
+            (diff>0?"ABOVE · HOLD W TO CLIMB":"BELOW · HOLD S TO DESCEND")+
+            " · T RELEASE";
         return this.barricades.hasBarricade(w)?
-          "RAPPEL · WINDOW BARRICADED · BREAK BOARDS · W/S CLIMB · T RELEASE":
+          "RAPPEL · WINDOW BARRICADED · CLEAR BOARDS BEFORE ENTRY":
           "RAPPEL · SPACE ENTER WINDOW · W/S CLIMB · T RELEASE";
-      return "RAPPEL · W CLIMB / S DESCEND · SPACE AT WINDOW · T RELEASE";
+      }
+      return "RAPPEL · W CLIMB / S DESCEND · T RELEASE";
     }
     const candidate=this.nearestAnchor(8);
     if(!candidate)return "";
