@@ -531,6 +531,33 @@ sitePairSelect.addEventListener("change",()=>{
     status.textContent="SITE PAIR LOCKED · "+sitePairSelect.selectedOptions[0]?.textContent;
   }
 });
+async function connectOnline(create){
+  if(network.connected)return;
+  onlineStatus.textContent="CONNECTING TO LIVE MULTIPLAYER SERVICE...";
+  try{
+    const options={name:onlineName.value,side:role,operator:operator.id,
+      code:onlineCode.value.trim().toUpperCase()};
+    if(world.mapId!=="ironvale")applyMap("ironvale");
+    if(create)await network.create(options);
+    else await network.join(options);
+    onlineCode.value=network.code;
+    onlineRefresh();popup("ROOM "+network.code+" CONNECTED · SHARE CODE",3.2);
+  }catch(error){
+    const message=String(error?.message||error);
+    onlineStatus.textContent="ONLINE CONNECTION FAILED · "+message;
+    status.textContent=message;
+    console.warn("BLACKOUT room connection:",error);
+  }
+}
+createRoom.addEventListener("click",()=>connectOnline(true));
+joinRoom.addEventListener("click",()=>connectOnline(false));
+leaveRoom.addEventListener("click",()=>{
+  network.disconnect();onlineStatus.textContent="OFFLINE · ROOM DISCONNECTED";
+  resetSimulation();onlineRefresh();
+});
+startRoom.addEventListener("click",()=>{
+  if(network.host&&network.connected)network.start();
+});
 attackButton.addEventListener("click",()=>{restartSeries("attacker");setRole("attacker");});
 defendButton.addEventListener("click",()=>{restartSeries("defender");setRole("defender");});
 reset.addEventListener("click",()=>{
@@ -562,11 +589,15 @@ $("guideToggle").addEventListener("click",()=>{menuGuide=!menuGuide;guide.classL
 document.addEventListener("keydown",e=>{
   if(e.code==="F3"){e.preventDefault();debug=!debug;debugPanel.classList.toggle("hidden",!debug);return;}
   if(!locked)return;
+  if(network.active&&e.code==="Enter"){e.preventDefault();return;}
   if((objectiveRound.phase==="won"||objectiveRound.phase==="lost")){
     if(e.code==="Enter"&&!e.repeat){
       e.preventDefault();launchNextSeriesRound();
     }
     return;
+  }
+  if(network.active&&["KeyG","KeyX","KeyF","KeyB","KeyV","Digit3"].includes(e.code)){
+    e.preventDefault();popup("ONLINE BETA · GADGET/DEFUSER SYNC COMING LATER",1.7);return;
   }
   if(["KeyW","KeyA","KeyS","KeyD","ShiftLeft","ShiftRight","ControlLeft","ControlRight",
       "KeyC","KeyQ","KeyE","KeyR","KeyF","KeyG","KeyB","KeyX","KeyZ","KeyV","KeyT","Digit1","Digit2","Digit3","Space","AltLeft","AltRight"].includes(e.code))
@@ -631,6 +662,7 @@ document.addEventListener("keydown",e=>{
     weapons.equip(e.code==="Digit1"?"primary":"secondary");sound("equip");popup(weapons.current.name);
   }else if(e.code==="KeyR"){
     const reloading=weapons.reload(clock());
+    if(reloading&&network.active)network.reload();
     if(reloading){sound("reload");weaponView.beginReload(clock(),weapons.slot,weapons.current.reloadDurationMs/1000,weapons.current.reloadType);}
     popup(reloading?"RELOADING "+weapons.current.name:"CANNOT RELOAD",1.2);
   }else if(e.code==="KeyZ"){
@@ -742,6 +774,14 @@ function fireOnceSafe(now){
   const aim={x:Math.cos(angle)*radial,y:Math.sin(angle)*radial};
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(aim,camera);raycaster.far=shot.range;
+  if(network.active){
+    const targetId=network.findTarget(raycaster,aim,camera,world.shootables);
+    network.shoot(targetId);
+    player.pitch=Math.min(1.37,player.pitch+shot.kick.vertical);
+    player.yaw+=shot.kick.horizontal;
+    gunKick=Math.min(.075,gunKick+.028);
+    player.applyCamera();return;
+  }
   // Trace all real ray intersections in order, so the actual wall hole
   // and the bullet's collision behavior share a world-space position.
   const hits=raycaster.intersectObjects(world.shootables.filter(o=>{
@@ -870,7 +910,10 @@ function drawTacticalHud(now){
   droneSignal.textContent=lostFeed?"DRONE DESTROYED":
     drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE · "+drone.health+" HP · "+drone.remaining+" SPARE";
   phaseText.textContent=phaseName;
-  matchScore.textContent="YOU "+matchSeries.yourWins+" — "+matchSeries.theirWins+" AI";
+  matchScore.textContent=network.connected?
+    "ONLINE "+network.players.filter(p=>p.side==="attacker").length+
+    " : "+network.players.filter(p=>p.side==="defender").length:
+    "YOU "+matchSeries.yourWins+" — "+matchSeries.theirWins+" AI";
   // All ten slots are real participants in this OFFLINE PvE simulation.
   const playerAlive=player.health>0;
   const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+
