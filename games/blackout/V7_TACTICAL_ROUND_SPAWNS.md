@@ -33,3 +33,27 @@ V7 now calculates spawn positions from the selected **site pair and each site's 
 ## Tests
 
 `node --test games/blackout/tests/*.test.mjs` includes `tests/round-v7.test.mjs` and a real authored-map collision integration case in `tests/clubhouse-v6.test.mjs`: all five defender positions for each of the 1F and 2F A/B pairs must be on valid floor slabs, inside playable bounds, clear of wall collisions and separated from teammates. The original tests still ensure no attacker bodies during prep, and that action spawns don't duplicate.
+
+---
+
+## V7.1 — Tactical Match Series, Side Switching & Spawn-peek Mitigation
+
+The single-player tactical match is a **first-to-four, maximum seven-round offline series**. The scoreboard tracks **YOUR SQUAD vs. OPPOSING AI** regardless of which side is attacking.
+
+- After **Round 3**, the next round automatically switches your operator's team between attack and defense. All accompanying AI team affiliations, selected default operator and attacker-drone/defender-setup states are rebuilt for the new side. The user confirms advancing by pressing **Enter** on the round result overlay; pressing **Esc** still opens the menu.
+- If the score reaches 3–3, **Round 7** is a tiebreaker with the side rotated back to the starting side. The match ends as soon as either side earns four wins. **Enter** on the final match result starts a new series with a fresh scoreboard.
+- The intermission overlay shows **ROUND VICTORY/DEFEAT**, persistent squad score, completed-round W/L pips, and explicit next-round side. The compact in-game HUD also labels the score as **YOU vs. AI** so it remains meaningful through halftime.
+- Training configuration changes—manual side selection, a new map, a different site pair, or the Reset Training Round button—start a fresh match series. The author-approved original maps and physical site geometry remain untouched.
+
+### Anti-spawn-peek logic
+
+- **Attackers do not physically exist during preparation**. Physical local/AI attacker bodies appear only at the action transition, preserving the existing drone-phase rule.
+- For the first **2.3 seconds** after action begins, an attacking operator within **3m** of their *real exterior insertion point* is protected from defender gunfire. This applies to both human and attacking AI targets and checks the actual action timestamp. The grace period ends early when an attacker fires or moves out of the insertion radius; it never applies to defenders or later in the round.
+- The protection is a **temporary offline safety rule**, not a networking/anti-cheat replacement. Full multiplayer will require authoritative spawn and damage validation rather than trusting a browser client.
+- Existing defender runout detection remains in place.
+
+### Verification
+
+`tests/match-v71.test.mjs` covers first-to-four scoring, duplicate-result rejection, halftime side rotation, 3–3 decider, final-match resets, action-only temporary insertion safety and gameplay/HUD wiring. All original movement, 1F/2F defender positions, bomb setup, AI, drones and weapon regression suites remain active.
+
+**Known limits:** The round summary is keyboard driven with Enter while in pointer-lock play; match scoreboard and side rotations are local training only. Live browser testing is still necessary, especially for side swapping mid-session.
