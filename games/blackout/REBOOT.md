@@ -1,0 +1,39 @@
+# BLACKOUT — Clean Reboot V0.1
+
+**2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
+
+## Decision
+
+User requested starting again from the beginning, without more incremental repairs to BLACKOUT V1–V8. The live `games/blackout/index.html` is now a **new build**: it imports only `reboot/main.js` → `reboot/physics.js`, not the old operator, weapon, gadget, building editor, AI, or network code.
+
+The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
+
+## Current playable contract
+
+- Desktop first-person camera, pointer lock and Escape to pause.
+- Normalized WASD movement (4.2m/s walk), Shift sprint (6.3m/s), Ctrl/C crouch (2.4m/s).
+- Jumping, gravity and landing.
+- Swept circle-versus-AABB collision with wall sliding, world boundary.
+- One flat test surface and four simple collision objects. No maps/buildings.
+- Minimal clean HUD for position, motion state, speed, grounding.
+- R to reset player position.
+- Offline solo movement test. No AI or multiplayer representation.
+
+## Rules for subsequent stages
+
+1. **Movement first**: user tests camera sensitivity, jump, crouch, speed, wall collision, comfort. Only change one mechanic family at a time.
+2. Weapons: implement a single original physically mounted model, muzzle, one reliable sight, bullet/raycast and impacts **only after movement passes hands-on testing**.
+3. Destruction and gadgets: introduce each with an isolated test and regression gate.
+4. Map/editor: create a custom editor and a real building only after movement, weapons, and collision work. Never generate several unfinished maps at once.
+5. Real multiplayer: separate BLACKOUT-specific backend, authoritative room and movement, and live two-browser smoke-test. Never claim AI are networked humans.
+6. Keep GAMESHUB and REDLINE unaffected. No changes to shared `worker.js` or `wrangler.json` without an explicit, separately verified release.
+
+## Testing
+
+`node --test games/blackout/reboot/*.test.mjs`
+
+CI in `.github/workflows/blackout-regression.yml` is reset to these V0.1 tests, not tests for removed V1–V8 gameplay. The workflow checks JavaScript syntax and collision/movement behavior. **A passing CI result is not a browser playtest.**
+
+## Rollback
+
+History still contains the full V8.1 implementation. Git can recover the older files if the user explicitly requests it. We do **not** delete Git history or touch REDLINE.
