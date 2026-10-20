@@ -134,3 +134,42 @@ test("successful join does not imply nine AI impostors or client-written damage"
  assert.equal(our.instance.players.get("2").operator,"sledge",
   "illegal operator side must fall back to valid operator");
 });
+
+test("online elimination ends on both real sockets, blocks restarts during fights, and host can rematch",async()=>{
+ const our=await setup();
+ const a=await connect(our,{name:"Attack",side:"attacker",operator:"twitch"});
+ const d=await connect(our,{name:"Defend",side:"defender",operator:"pulse"});
+ our.instance.webSocketMessage(a,JSON.stringify({type:"start"}));
+ assert.equal(our.instance.status,"active");
+ assert.equal(our.instance.round,1);
+ our.instance.webSocketMessage(a,JSON.stringify({type:"start"}));
+ assert.equal(our.instance.round,1,"host cannot restart while a live fight continues");
+ const shooter=our.instance.players.get("1");
+ const victim=our.instance.players.get("2");
+ Object.assign(shooter,{x:-41,y:0,z:-20,yaw:0,shots:30});
+ Object.assign(victim,{x:-41,y:0,z:-25,health:100,alive:true});
+ for(let i=0;i<4;i++){
+   shooter.lastShot=Date.now()-200;
+   our.instance.webSocketMessage(a,JSON.stringify({type:"shot",targetId:"2"}));
+ }
+ assert.equal(victim.health,0);
+ assert.equal(victim.alive,false);
+ assert.equal(our.instance.status,"intermission");
+ assert.equal(our.instance.winner,"attacker");
+ assert.ok(d.packets.some(x=>x.event==="round-end"&&x.winner==="attacker"));
+ assert.ok(a.packets.some(x=>x.event==="round-end"));
+ our.instance.webSocketMessage(a,JSON.stringify({type:"start"}));
+ assert.equal(our.instance.status,"active");
+ assert.equal(our.instance.round,2);
+ assert.equal(victim.health,100);
+ assert.equal(victim.alive,true);
+});
+test("host needs two real opposing sides, never creates placeholder AI",async()=>{
+ const our=await setup();
+ const host=await connect(our,{name:"Solo",side:"attacker"});
+ our.instance.webSocketMessage(host,JSON.stringify({type:"start"}));
+ assert.equal(our.instance.status,"lobby");
+ assert.equal(our.instance.players.size,1);
+ assert.ok(host.packets.some(x=>x.type==="notice"&&
+   x.message.includes("ONE REAL ATTACKER")));
+});
