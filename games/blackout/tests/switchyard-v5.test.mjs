@@ -129,9 +129,10 @@ test("site selector and map source both wired to visible UI",()=>{
  assert.match(main,/world\.setSitePair\(/);
  assert.match(main,/playerDefenderInsertion\(world,objectiveRound\.siteId\)/);
  assert.match(main,/y:insertion\.y\?\?0/);
- assert.match(main,/objectiveRound\.site\.y\|\|0/);
+ assert.match(main,/targetFloor\(objectiveRound\.site\)/);
+ assert.match(main,/world\.floorAt\(world\.spawn\.x,world\.spawn\.z/);
  assert.match(main,/world\.facility\.attackSpawns/);
- assert.match(main,/world\.facility\.defendSpawns/);
+ assert.match(main,/playerDefenderInsertion\(world,objectiveRound\.siteId\)/);
 });
 
 test("AI can route to a roof site and descend between floor pairs",()=>{
