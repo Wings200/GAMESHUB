@@ -46,7 +46,9 @@ function make(){
   };
   const createDefuserModel=()=>({hide(){},show(){},update(){}});
   const createBombStations=()=>({items:{A:{},B:{}},update(){}});
-  const dependencies={createDefuserModel,createBombStations,makeTacticalBot,
+  const roundSpawns=load("round-spawns.js",{},
+    "{defenderSetupPositions,targetFloor}");
+  const dependencies={...roundSpawns,createDefuserModel,createBombStations,makeTacticalBot,
     advanceTacticalBot:()=>0,updateSquadCombat:()=>{},
     updateDefenderPrep:()=>{},operatorsForSide:ops.operatorsForSide,
     ATTACK_SQUAD_SPAWNS:rules.ATTACK_SQUAD_SPAWNS,
