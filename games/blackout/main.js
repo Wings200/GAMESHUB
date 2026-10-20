@@ -13,6 +13,7 @@ import {Barricades} from "./src/barricades.js?v=blackout-v603-approved-clubhouse
 import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
 import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v650-rappel-stairs";
+import {playerDefenderInsertion,targetFloor} from "./src/round-spawns.js?v=blackout-v700-site-floors";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -242,20 +243,27 @@ function resetSimulation(){
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
   const attackers=world.facility.attackSpawns||[];
-  const defenders=world.facility.defendSpawns||[];
-  const selectedSpawn=world.mapId==="clubhouse"?
-    (role==="attacker"?attackers.find(s=>s.id===spawn)||
-      attackers[Math.max(0,Number(spawn)||0)]||attackers[0]:
-      defenders.find(s=>s.id===spawn)||
-      defenders[Math.max(0,Number(spawn)||0)]||defenders[0]):null;
-  const attackerSpawn=selectedSpawn||attackSpawnFor(spawn);
-  world.spawn.x=role==="defender"?
-    (selectedSpawn?.x??objectiveRound.site.x):attackerSpawn.x;
-  world.spawn.z=role==="defender"?
-    (selectedSpawn?.z??objectiveRound.site.z+(objectiveRound.siteId==="A"?4:2)):
-    attackerSpawn.z;
-  world.spawn.yaw=selectedSpawn?.yaw??(role==="defender"?Math.PI:0);
-  world.spawn.y=selectedSpawn?.y??(role==="defender"?(objectiveRound.site.y||0):0);
+  // Defender insertions follow the selected BOMB SITE and selected FLOOR.
+  // Old map markers were all ground-floor Y=0 and caused 2F defenders to
+  // start downstairs. Both the player and AI use the same valid room solver.
+  const defenderSpawn=world.mapId==="clubhouse"?
+    playerDefenderInsertion(world,objectiveRound.siteId):null;
+  const selectedAttacker=world.mapId==="clubhouse"?
+    attackers.find(s=>s.id===spawn)||
+      attackers[Math.max(0,Number(spawn)||0)]||attackers[0]:null;
+  const fallback=attackSpawnFor(spawn);
+  const insertion=role==="defender"?
+    defenderSpawn||{x:objectiveRound.site.x,z:objectiveRound.site.z,
+      y:targetFloor(objectiveRound.site),yaw:0}:
+    selectedAttacker||fallback;
+  Object.assign(world.spawn,{x:insertion.x,z:insertion.z,
+    y:insertion.y??0,yaw:insertion.yaw??0});
+  if(role==="defender"&&world.mapId==="clubhouse"&&
+    Math.abs(world.floorAt(world.spawn.x,world.spawn.z,world.spawn.y+.29)-
+      targetFloor(objectiveRound.site))>.35){
+    status.textContent="DEFENDER SPAWN ERROR · SELECT ANOTHER SITE OR FIX MAP FLOOR";
+    console.warn("BLACKOUT no supported defender spawn for selected site",objectiveRound.site);
+  }
   objectiveRound.setOperator(operator);
   player.setOperator(operator);player.reset();keys.clear();
   aimBlend=0;gunKick=0;gunKickSide=0;recoilRecovery=0;lastStepMark=0;fireHeld=false;ads=false;
@@ -304,17 +312,17 @@ function setRole(r){
   defendButton.classList.toggle("active",role==="defender");
   selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
   spawnSelect.replaceChildren();
-  const choices=world.mapId==="clubhouse"?
-    (role==="attacker"?world.facility.attackSpawns:world.facility.defendSpawns)
-      .map((p,i)=>[String(i),(role==="attacker"?"EXTERIOR INSERTION ":"DEFENDER POSITION ")+(i+1)]):
+  const choices=world.mapId==="clubhouse"&&role==="attacker"?
+    world.facility.attackSpawns.map((p,i)=>[String(i),"EXTERIOR INSERTION "+(i+1)]):
     role==="attacker"?
     [["south","SOUTH ENTRY"],["west","WEST FLANK"],["east","EAST FLANK"]]:
-    [["A","DEFEND SITE A"],["B","DEFEND SITE B"]];
+    [["A","DEFEND SITE A · "+targetFloor(world.facility.sites.A)+"M"],
+     ["B","DEFEND SITE B · "+targetFloor(world.facility.sites.B)+"M"]];
   for(const [id,label] of choices){
     const option=document.createElement("option");option.value=id;option.textContent=label;
     spawnSelect.appendChild(option);
   }
-  if(role==="defender"&&world.mapId!=="clubhouse")spawnSelect.value=objectiveRound.siteId;
+  if(role==="defender")spawnSelect.value=objectiveRound.siteId;
   operatorSelect.replaceChildren();
   for(const spec of operatorsForSide(role)){
     const option=document.createElement("option");option.value=spec.id;
@@ -1107,11 +1115,14 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "6.5.0-rappel-movement-fix"},
+  get build(){return "7.0.0-site-correct-defenders"},
   get rappel(){return {attached:rappel.attached,anchorId:rappel.active?.id||null,
     hint:rappel.hint,nearest:rappel.nearestAnchor(100)?.distance??null}},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
-    staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
+    staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed,
+    playerSpawn:{...world.spawn},
+    defenderLevels:[...objectiveRound.allies,...objectiveRound.bots].filter(b=>b.stationary)
+      .map(b=>({id:b.id,site:b.assignedSite?.id||null,y:b.y}))}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
     health:drone.health,remaining:drone.remaining,actionMode:droneActionMode,
     position:drone.position,jammed:drone.jammed}},
