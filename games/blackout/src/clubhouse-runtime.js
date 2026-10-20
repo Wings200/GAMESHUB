@@ -139,14 +139,15 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
         solidPartBox(g,side*(half-post/2),s.y/2,0,post,s.y,s.z,mats[type],true,"door-frame");
       solidPartBox(g,0,s.y-header/2,0,s.x,header,s.z,mats[type],true,"door-frame");
       if(sill)solidPartBox(g,0,sill/2,0,s.x,sill,s.z,mats.hardWall,true,"window-sill");
+      let glass=null;
       if(type==="window"){
-        const pane=solidPartBox(g,0,sill+openH/2,0,s.x-post*2,openH,.018,
+        glass=solidPartBox(g,0,sill+openH/2,0,s.x-post*2,openH,.018,
           mats.glass,false,"glass");
-        pane.userData.kind="glass"; // shoots through; viewport still shows real window
+        glass.userData.kind="glass"; // non-solid; visibly shatters on entry
       }
       const axis=Math.abs(Math.sin(g.rotation.y))>.7?"x":"z";
       openings.push({id:part.id,kind:type,axis,x:p.x,z:p.z,y:p.y,
-        width:s.x,height:openH,bottom:sill});
+        width:s.x,height:openH,bottom:sill,glass});
     }else if(type==="stairs"){
       const steps=Math.max(12,Math.ceil(s.y/.18));
       for(let k=0;k<steps;k++){
@@ -164,6 +165,16 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
       solidPartBox(g,0,.08,0,s.x,.16,s.z,mats.rope,false,"rappel-hook");
       const rope=new T.Mesh(new T.CylinderGeometry(.035,.035,s.y,8),mats.rope);
       rope.position.y=-s.y/2;g.add(rope);
+      // Strong ground-level locator: rope runs from hook to a marked
+      // attachment ring. No collision body is added around the cable.
+      const locator=new T.Mesh(new T.RingGeometry(.44,.59,24),
+        new T.MeshBasicMaterial({color:0x65f4e1,side:T.DoubleSide}));
+      locator.rotation.x=-Math.PI/2;
+      locator.position.y=-s.y+.045;
+      g.add(locator);
+      const base=new T.Mesh(new T.CylinderGeometry(.10,.10,.18,12),
+        mats.rope);
+      base.position.y=-s.y+.09;g.add(base);
       anchors.push({...p,id:part.id,length:s.y,rotationY:part.rotationY});
     }else if(type==="attackerSpawn"||type==="defenderSpawn"){
       const color=type==="attackerSpawn"?0x68c1fb:0xffb167;
