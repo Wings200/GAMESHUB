@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.6 — original BLACKOUT shooting / audio on clean modern range
+// BLACKOUT REBOOT V0.6.1 — verified ADS and unobstructed target head lanes
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-003";
@@ -6,8 +6,9 @@ import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-006";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
-import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-005";
+import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-007";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
+import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -115,7 +116,7 @@ window.addEventListener("resize",resize);
 function unlockMessage(){
  message.textContent=started?
    "PAUSED · PRESS ENTER TEST RANGE TO RESUME. YOUR POSITION IS PRESERVED.":
-   "OFFLINE SYSTEM · NO OPERATORS / NO GUNS / NO AI / NO MULTIPLAYER";
+   "OFFLINE WEAPON RANGE · NO AI OR MULTIPLAYER";
 }
 function enterRange(){
  started=true;
@@ -216,20 +217,25 @@ function fireShot(shot,sightAligned,now){
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=raycaster.intersectObjects(
   [...shootableSolids,...activeTargets.map(t=>t.group)],true);
- if(intersections.length){
-  const hit=intersections[0];
-  let node=hit.object;
-  while(node&&!node.userData?.targetId)node=node.parent;
-  const id=node?.userData?.targetId;
-  const target=id?activeTargets.find(t=>t.id===id):null;
-  shotEffects.mark(hit,Boolean(target));
-  if(target){
-   target.downTime=1.6;target.group.visible=false;target.hits++;
-   targetHits++;weapons.registerHit();
-   shotNotice.textContent="TARGET HIT · "+target.id.toUpperCase();
-   shotNoticeLeft=1.2;
-   shotAudio.play("impact");
-  }
+ const outcome=firstHitType(intersections,activeTargets);
+ if(outcome.hit)shotEffects.mark(outcome.hit,outcome.kind==="target");
+ if(outcome.kind==="target"){
+  const target=outcome.target;
+  target.downTime=1.6;target.group.visible=false;target.hits++;
+  targetHits++;weapons.registerHit();
+  shotNotice.textContent=outcome.hit.object.userData?.hitZone==="head"?
+    "HEADSHOT · "+target.id.toUpperCase():
+    "TARGET HIT · "+target.id.toUpperCase();
+  shotNoticeLeft=1.2;
+  shotAudio.play("impact");
+ }else if(sightAligned&&outcome.kind==="blocked"){
+  // Tell the player when the nearest geometry actually stops the bullet.
+  // Don't misrepresent wall impacts as bullets missing the holographic optic.
+  shotNotice.textContent="SHOT BLOCKED · "+outcome.obstacle.toUpperCase();
+  shotNoticeLeft=.55;
+ }else if(sightAligned&&outcome.kind==="miss"){
+  shotNotice.textContent="SHOT MISSED · CLEAR LINE";
+  shotNoticeLeft=.4;
  }
  // The historical predictable pattern physically shifts the player's view.
  // Apply AFTER the raycast so this round follows its pre-kick optic alignment.
@@ -294,7 +300,9 @@ function animate(now){
  if(locked){
   // Catch up at most three shots after a slow frame, as in original BLACKOUT.
   // No shot is allowed during reload or when sprinting.
-  const aligned=aimHeld&&aimMix>=.995;
+  // A held ADS button must never use the giant 0.18 hipfire cone, even
+  // during the first ~150 ms while the physical gun settles onto its optic.
+  const aligned=aimState(aimHeld,aimMix).accurate;
   const fired=cycleLegacyFire(weapons,now,{
    held:firing,adsAligned:aligned,canFire:!player.sprinting
   },shot=>fireShot(shot,aligned,now));
@@ -313,10 +321,10 @@ function animate(now){
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
  weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now);
- crosshair.classList.toggle("hidden",!locked||aimMix>=.995);
+ crosshair.classList.toggle("hidden",!locked||!aimState(aimHeld,aimMix).hipCrosshairVisible);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot original V8 shooting and audio",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot V0.6.1 ADS shooting and target-lane corrections",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
