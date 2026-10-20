@@ -75,9 +75,9 @@ test("authoritative hit cone matches real FPS yaw and blocks through solid walls
  assert.equal(p.lineBlocked({x:0,y:1.55,z:0},{x:0,y:1.2,z:-5},wall),true);
 });
 test("real Worker Durable Object is isolated from REDLINE and browser UI shows genuine roster",()=>{
- const worker=read("../worker.js");
+ const worker=read("../../worker.js");
  const backend=read("multiplayer-room.js");
- const wrangler=JSON.parse(read("../wrangler.json"));
+ const wrangler=JSON.parse(read("../../wrangler.json"));
  const frontend=read("src/network-client.js"),main=read("main.js"),
    html=read("index.html"),world=read("src/world.js");
  assert.match(worker,/import \{BlackoutRoom\} from/);
