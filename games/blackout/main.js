@@ -15,6 +15,7 @@ import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations"
 import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v650-rappel-stairs";
 import {playerDefenderInsertion,targetFloor} from "./src/round-spawns.js?v=blackout-v700-site-floors";
 import {TacticalSeries,attackInsertionProtected} from "./src/match-flow.js?v=blackout-v710-round-match";
+import {BlackoutNetworkClient} from "./src/network-client.js?v=blackout-v800-online-alpha";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -59,6 +60,10 @@ const secondarySelect=$("secondarySelect"),flashOverlay=$("flashOverlay");
 const reinforceBar=$("reinforceBar"),reinforceFill=$("reinforceFill");
 const reinforceCountdown=$("reinforceCountdown"),reinforceTitle=$("reinforceTitle");
 const reinforceHint=$("reinforceHint");
+const onlineName=$("boOnlineName"),onlineCode=$("boOnlineCode");
+const onlineStatus=$("boOnlineStatus"),onlineRoster=$("boOnlineRoster");
+const createRoom=$("boCreateRoom"),joinRoom=$("boJoinRoom");
+const leaveRoom=$("boLeaveRoom"),startRoom=$("boStartRoom");
 const SIGHTS=["holo-a","holo-b","red-dot","iron"];
 const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
 let sight="holo-a";
@@ -102,6 +107,64 @@ const objectiveRound=new ObjectiveDrill(THREE,world,scene);
 world.round=objectiveRound; // determines ownership when gadget AoE is simulated
 const drone=createReconDrone(THREE,scene,world,camera);
 const rappel=new ClubhouseRappel(world,player,barricades);
+const network=new BlackoutNetworkClient(THREE,scene,
+  message=>{onlineStatus.textContent=message;status.textContent=message},
+  message=>{
+    if(message.type==="disconnect"){
+      onlineRefresh();return;
+    }
+    if(message.type==="welcome"){
+      if(world.mapId!=="ironvale")applyMap("ironvale");
+      if(role!==network.me?.side)setRole(network.me.side);
+      onlineCode.value=network.code;
+    }
+    if(message.type==="state"&&message.event==="round-start"){
+      // Server owns insertion, sides, HP and the presence of other people.
+      if(role!==network.me?.side)setRole(network.me.side);
+      objectiveRound.reset(role);objectiveRound.phase=role==="attacker"?"attack":"guard";
+      objectiveRound.actionStartedAt=clock();
+      world.spawn.x=network.me.x;world.spawn.y=network.me.y;
+      world.spawn.z=network.me.z;world.spawn.yaw=network.me.yaw||0;
+      player.setOperator(operator);player.reset();weapons.reset();roundFrozen=false;
+      drone.reset();rappel.reset();keys.clear();
+      popup("ONLINE ROUND LIVE · "+network.players.length+" REAL PLAYERS",3);
+    }
+    if(message.type==="correction"&&network.active){
+      player.x=message.x;player.y=message.y;player.z=message.z;player.applyCamera();
+    }
+    if(message.type==="state"&&network.me){
+      player.health=Math.min(player.maxHealth,network.me.health);
+    }
+    if(message.type==="state"&&message.event==="hit"){
+      if(message.to===network.id)popup("YOU TOOK LIVE SERVER DAMAGE",1.3);
+    }
+    if(message.type==="state"&&message.event==="shot"&&message.from!==network.id)
+      sound("enemy-fire");
+    onlineRefresh();
+  });
+function onlineRefresh(){
+  const connected=network.connected;
+  leaveRoom.disabled=!connected;
+  startRoom.disabled=!connected||!network.host||network.mode!=="lobby";
+  createRoom.disabled=connected;joinRoom.disabled=connected;
+  attackButton.disabled=connected;defendButton.disabled=connected;
+  mapSelect.disabled=connected;
+  if(connected){
+    onlineStatus.textContent="ROOM "+network.code+" · "+
+      (network.mode==="active"?"LIVE PVP":"LOBBY / WAITING")+
+      " · "+network.players.length+"/10 REAL PLAYERS"+
+      (network.host?" · YOU ARE HOST":"");
+  }
+  onlineRoster.replaceChildren();
+  for(const p of network.players){
+    const line=document.createElement("div");
+    line.className="bo-online-person "+p.side;
+    line.textContent=(p.id===network.id?"YOU · ":"")+
+      p.name+" · "+p.side.toUpperCase()+" · "+p.operator.toUpperCase()+
+      (network.mode==="active"?" · "+p.health+" HP":"");
+    onlineRoster.appendChild(line);
+  }
+}
 world.drone=drone; // Defender AI can see, hit and destroy this physical device.
 const raycaster=new THREE.Raycaster(),keys=new Set(),effects=[];
 const debugRoot=new THREE.Group();scene.add(debugRoot);
@@ -255,21 +318,26 @@ function showGame(){
   locked=true;started=true;menu.classList.add("hidden");hud.classList.remove("hidden");
   objectiveRound.resume(clock());
   gadgets.ordnance.resume(clock());
-  if(objectiveRound.phase==="ready"){
+  if(objectiveRound.phase==="ready"&&!network.connected){
     objectiveRound.start(clock());
     stageLocalAttacker();
     // Enemy Mute places real jammer equipment during the 45s defender prep.
   }
-  if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active){
+  if(role==="attacker"&&objectiveRound.phase==="prep"&&!drone.active&&!network.connected){
     droneActionMode=false;
     if(drone.deployments===0)drone.begin(clock());
   }
   lastPhaseLabel="";phaseToastUntil=clock()+1500;
   document.body.classList.add("playing");
-  popup("BOMB TRAINING · "+role.toUpperCase()+" · OFFLINE AI",2.3);
+  popup(network.connected?"ONLINE · "+network.code+" · "+network.players.length+" CONNECTED":
+    "BOMB TRAINING · "+role.toUpperCase()+" · OFFLINE AI",2.3);
   window.dispatchEvent(new Event("blackout:gamestart"));
 }
 async function lockMouse(){
+  if(network.connected&&!network.active){
+    onlineStatus.textContent="WAIT FOR HOST TO START YOUR REAL ONLINE ROUND";
+    return;
+  }
   audioReady();
   try {await canvas.requestPointerLock();}
   catch(error){status.textContent="Mouse lock unavailable: "+String(error?.message||error);}
@@ -340,6 +408,7 @@ function chooseOperator(id){
     card.setAttribute("aria-pressed",String(active));
   }
   resetSimulation();
+  network.operator(selected.id);onlineRefresh();
   status.textContent=selected.name+" READY · FIXED OPERATOR SPEED AND HEALTH";
 }
 function setRole(r){
