@@ -1,4 +1,4 @@
-name: BLACKOUT REBOOT — foundation & sound checks
+name: BLACKOUT REBOOT — movement, audio & weapon checks
 on:
   push:
     paths:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.3 · movement, prone, collision, footsteps
+    name: Reboot V0.4 · movement, prone, footsteps, weapons
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -25,5 +25,7 @@ jobs:
           node --check games/blackout/reboot/main.js
           node --check games/blackout/reboot/physics.js
           node --check games/blackout/reboot/footsteps.js
-      - name: Run only the clean-reboot regression tests
+          node --check games/blackout/reboot/weapon.js
+          node --check games/blackout/reboot/weapon-view.js
+      - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
