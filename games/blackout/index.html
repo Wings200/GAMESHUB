@@ -163,6 +163,17 @@
           <option value="rooftop">ROOF · RELAY / RADIO CONTROL</option>
         </select>
       </label>
+      <section class="bo-online-panel" aria-label="Real online multiplayer room">
+        <div class="bo-online-heading"><span>05 / ONLINE BETA</span><strong>REAL PLAYER PRIVATE LOBBIES</strong></div>
+        <p>Create a private room or enter a friend's 6-character invite code. Only connected browsers appear; no AI players are inserted. Current beta syncs players and server-checked shooting, not the full bomb/defuse round.</p>
+        <div class="bo-online-fields">
+          <label class="bo-field">DISPLAY NAME<input id="boOnlineName" maxlength="22" placeholder="Operator" value="Operator"></label>
+          <label class="bo-field">INVITE CODE<input id="boOnlineCode" maxlength="6" placeholder="ABC234" autocomplete="off"></label>
+        </div>
+        <div class="bo-online-actions"><button type="button" id="boCreateRoom">CREATE ROOM</button><button type="button" id="boJoinRoom">JOIN ROOM</button><button type="button" id="boLeaveRoom" disabled>LEAVE</button><button type="button" id="boStartRoom" disabled>HOST: START ROUND</button></div>
+        <p id="boOnlineStatus" class="bo-online-status" role="status">OFFLINE · SELECT TEAM AND OPERATOR ABOVE FIRST</p>
+        <div id="boOnlineRoster" class="bo-online-roster" aria-live="polite"></div>
+      </section>
       <div class="bo-gear-header">04 <span>SECONDARY GADGET</span></div><label class="bo-field">EQUIPMENT<select id="secondarySelect" aria-label="Choose secondary gadget"><option value="recon">RECON PULSE (2)</option></select></label><div class="bo-gear-header">05 <span>INSERTION POINT</span></div><label class="bo-field">SPAWN LOCATION<select id="spawnSelect" aria-label="Choose training spawn"><option value="south">SOUTH ENTRY</option><option value="west">WEST FLANK</option><option value="east">EAST FLANK</option></select></label><div class="bo-gear-header">06 <span>OBJECTIVE</span></div><label class="bo-field">FOCUS SITE · DEFENDERS SPAWN ON SELECTED FLOOR<select id="siteSelect" aria-label="Choose bomb site"><option value="A">SITE A — BOMB LAB A</option><option value="B">SITE B — BOMB LAB B</option></select></label><div class="bo-ready-panel"><strong id="boReadyOperator">SLEDGE</strong><span>READY FOR INSERTION</span><p>45-second drone / defense preparation begins on deployment. Press ESC to pause or reconfigure.</p></div></div></div>
     <div class="bo-page-actions bo-deploy-actions"><button class="bo-secondary" type="button" data-bo-nav="operators">‹ OPERATORS</button><button id="start" type="button" class="bo-primary bo-deploy">DEPLOY OPERATOR <b>›</b></button></div>
   </section>
