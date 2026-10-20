@@ -45,7 +45,7 @@ export class BlackoutRoom extends DurableObject {
   if(!this.config)return reply({ok:false,error:"Room not found"},404);
   if(url.pathname.endsWith("/status"))
    return reply({ok:true,code:this.config.code,map:"ironvale",
-     mode:this.status,players:this.players.size,maxPlayers:MAX_PLAYERS});
+     mode:this.status,players:this.players.size,maxPlayers:MAX_PLAYERS,hostId:this.players.values().next().value?.id||null});
   if(!url.pathname.endsWith("/ws")||
     request.headers.get("Upgrade")?.toLowerCase()!=="websocket")
     return reply({ok:false,error:"Expected WebSocket upgrade"},426);
@@ -82,7 +82,7 @@ export class BlackoutRoom extends DurableObject {
  send(p,event){try{p.ws.send(JSON.stringify(event))}catch{}}
  broadcast(extra){
   const state={type:"state",code:this.config?.code||"",mode:this.status,
-   round:this.round,players:this.snapshot(),...extra};
+   round:this.round,players:this.snapshot(),hostId:this.players.values().next().value?.id||null,...extra};
   for(const p of this.players.values())this.send(p,state);
  }
  webSocketMessage(ws,message){
@@ -111,6 +111,7 @@ export class BlackoutRoom extends DurableObject {
   }
   if(this.status!=="active"||!p.alive)return;
   if(m.type==="move"){
+   if(now-p.lastMove<48)return;
    const dt=Math.max(.016,Math.min(.5,(now-p.lastMove)/1000));
    const next=acceptMovement(p,m,dt,ironvale.elements);
    if(next){
@@ -125,6 +126,7 @@ export class BlackoutRoom extends DurableObject {
   }else if(m.type==="shot"){
    if(now-p.lastShot<135||p.shots<1)return;
    p.lastShot=now;p.firedAt=now;p.shots--;
+   this.saveAttachment(p);
    const target=this.players.get(String(m.targetId||""));
    if(target&&target!==p&&validShot(p,target,ironvale.elements)){
     // Victims are not damage-authoritative. Damage and KOs originate here.
