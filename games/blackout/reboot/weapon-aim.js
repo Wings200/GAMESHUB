@@ -13,7 +13,7 @@ export function weaponPose(mix,recoil=0,bob=0){
   y:HIP_POSE.y*hip+ADS_POSE.y*t+hip*Number(bob||0)-kick*.025,
   z:HIP_POSE.z*hip+ADS_POSE.z*t+kick*.12,
   pitch:HIP_POSE.pitch*hip+kick*.065,
-  roll:HIP_POSE.roll*hip
+  roll:t===1?0:HIP_POSE.roll*hip
  };
 }
 export function shotSpread(isAiming){
