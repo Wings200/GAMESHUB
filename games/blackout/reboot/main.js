@@ -1,8 +1,8 @@
-// BLACKOUT REBOOT V0.1 — first playable contact, deliberately independent
+// BLACKOUT REBOOT V0.3 — first playable contact, deliberately independent
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-001";
-import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-002";
+import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-003";
+import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
 const play=$("play"),message=$("message"),error=$("error");
@@ -84,6 +84,7 @@ const keys=new Set();
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
+let cameraEye=1.65;
 let locked=false,started=false;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
@@ -132,11 +133,11 @@ document.addEventListener("mousemove",event=>{
  player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
 });
 document.addEventListener("keydown",event=>{
- if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code)&&locked)
+ if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
    event.preventDefault();
  if(!locked)return;
  if(event.code==="KeyR"&&!event.repeat){
-   player=initialPlayer();footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+   player=initialPlayer();cameraEye=1.65;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
  }
  if(event.code==="KeyM"&&!event.repeat){
    const muted=footstepAudio.toggleMute();
@@ -150,7 +151,7 @@ function hudFrame(){
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
  speedText.innerHTML=player.speed.toFixed(1)+" <span>M/S</span>";
  groundText.textContent=player.grounded?"STABLE":"AIRBORNE";
- modeText.textContent=player.crouched?"CROUCHED":player.sprinting?"SPRINTING":"STANDING";
+ modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCHED":player.sprinting?"SPRINTING":"STANDING";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
 }
 function animate(now){
@@ -164,7 +165,8 @@ function animate(now){
      right:Number(keys.has("KeyD")||keys.has("ArrowRight"))-
        Number(keys.has("KeyA")||keys.has("ArrowLeft")),
      sprint:keys.has("ShiftLeft")||keys.has("ShiftRight"),
-     crouch:keys.has("ControlLeft")||keys.has("ControlRight")||keys.has("KeyC"),
+     crouch:keys.has("KeyC"),
+     prone:keys.has("ControlLeft")||keys.has("ControlRight"),
      jump:keys.has("Space")
    };
    const before=player;
@@ -173,7 +175,10 @@ function animate(now){
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
  }
- camera.position.set(player.x,player.y+(player.crouched?1.08:1.65),player.z);
+ // Drop the camera immediately for low cover; smoothly raise when clearance allows.
+ const eyeTarget=player.prone?.44:player.crouched?1.08:1.65;
+ cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
+ camera.position.set(player.x,player.y+cameraEye,player.z);
  camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
