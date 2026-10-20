@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.2 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-001">
 </head>
@@ -16,16 +16,16 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.2</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> FOUNDATION / TEST 001</div>
+      <div class="section-tag"><span class="section-line"></span> FOUNDATION / TEST 002</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">STARTING FROM ZERO.</p>
-      <p class="description">The old BLACKOUT has been taken out of service. This is a fresh build: one clean test range, movement, collision and a proper first-person camera. Nothing else is being carried over into gameplay yet.</p>
-      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span></div>
+      <p class="description">A clean movement and audio testing range. Walk, sprint, crouch, jump, and listen to distance-based footsteps and landing impacts. More tactical systems will be added only after foundation testing.</p>
+      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE SYSTEM · NO OPERATORS / NO GUNS / NO AI / NO MULTIPLAYER</div>
     </div>
@@ -34,25 +34,26 @@
       <div class="board-label">FOUNDATION CHECKLIST</div>
       <div class="stage"><span>01</span><div><strong>PLAYER FEEL</strong><p>WASD / run / crouch / jump</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>02</span><div><strong>COLLISION</strong><p>No phasing through real solid props</p></div><b>ACTIVE</b></div>
-      <div class="stage muted"><span>03</span><div><strong>WEAPON PROTOTYPE</strong><p>Only after movement is approved</p></div><b>LATER</b></div>
-      <div class="stage muted"><span>04</span><div><strong>GAMEPLAY SYSTEMS</strong><p>Built individually and tested</p></div><b>LATER</b></div>
+      <div class="stage"><span>03</span><div><strong>FOOTSTEP AUDIO</strong><p>Walk / sprint / crouch / landing, M to mute</p></div><b>ACTIVE</b></div>
+      <div class="stage muted"><span>04</span><div><strong>WEAPON PROTOTYPE</strong><p>Only after movement is approved</p></div><b>LATER</b></div>
+      <div class="stage muted"><span>05</span><div><strong>GAMEPLAY SYSTEMS</strong><p>Built individually and tested</p></div><b>LATER</b></div>
       <div class="board-footer">ONE FEATURE AT A TIME. NOTHING FAKE.</div>
     </aside>
   </main>
 
   <section id="hud" class="hud hidden" aria-label="Movement test information">
-    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>001</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
+    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>002</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
     <div class="hud-center"><span id="mode">STANDING</span><span id="motion">IDLE</span></div>
     <div class="hud-bottom">
       <div class="readout"><small>POSITION</small><strong id="position">0.0 / 0.0</strong></div>
       <div class="readout"><small>SPEED</small><strong id="speed">0.0 <span>M/S</span></strong></div>
       <div class="readout"><small>GROUND</small><strong id="ground">STABLE</strong></div>
-      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> CTRL CROUCH <span>·</span> SPACE JUMP <span>·</span> R RESET <span>·</span> ESC PAUSE</div>
+      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> CTRL CROUCH <span>·</span> SPACE JUMP <span>·</span> M MUTE <span>·</span> R RESET <span>·</span> ESC PAUSE</div>
     </div>
-    <div id="hint" class="hint">TEST THE WALLS. MOVE, JUMP AND SLIDE ALONG THEIR EDGES.</div>
+    <div id="hint" class="hint">TEST WALKING, SPRINTING, CROUCHING AND LANDING FOOTSTEPS.</div>
   </section>
 
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-001"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-002"></script>
 </body>
 </html>
