@@ -1,0 +1,8876 @@
+{
+  "format": "blackout-editor-v1",
+  "name": "IRONVALE · OPERATIONS COMPLEX",
+  "units": "meters",
+  "grid": 1,
+  "elements": [
+    {
+      "id": "iron-0001",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Shipping Dock floor"
+    },
+    {
+      "id": "iron-0002",
+      "type": "cover",
+      "position": {
+        "x": -25.8,
+        "y": 0,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Shipping Dock furniture"
+    },
+    {
+      "id": "iron-0003",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Mechanical floor"
+    },
+    {
+      "id": "iron-0004",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Reception floor"
+    },
+    {
+      "id": "iron-0005",
+      "type": "cover",
+      "position": {
+        "x": -9.8,
+        "y": 0,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Reception furniture"
+    },
+    {
+      "id": "iron-0006",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby floor"
+    },
+    {
+      "id": "iron-0007",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Security floor"
+    },
+    {
+      "id": "iron-0008",
+      "type": "cover",
+      "position": {
+        "x": 6.2,
+        "y": 0,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Security furniture"
+    },
+    {
+      "id": "iron-0009",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Records floor"
+    },
+    {
+      "id": "iron-0010",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Electrical floor"
+    },
+    {
+      "id": "iron-0011",
+      "type": "cover",
+      "position": {
+        "x": 22.2,
+        "y": 0,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Electrical furniture"
+    },
+    {
+      "id": "iron-0012",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Logistics floor"
+    },
+    {
+      "id": "iron-0013",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Workshop floor"
+    },
+    {
+      "id": "iron-0014",
+      "type": "stairs",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 3,
+        "y": 4,
+        "z": 7
+      },
+      "rotationY": 0,
+      "name": "Workshop staircase"
+    },
+    {
+      "id": "iron-0015",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F West Service floor"
+    },
+    {
+      "id": "iron-0016",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Central Link floor"
+    },
+    {
+      "id": "iron-0017",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F IT Repair floor"
+    },
+    {
+      "id": "iron-0018",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Network floor"
+    },
+    {
+      "id": "iron-0019",
+      "type": "cover",
+      "position": {
+        "x": 14.2,
+        "y": 0,
+        "z": -6.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Network furniture"
+    },
+    {
+      "id": "iron-0020",
+      "type": "cover",
+      "position": {
+        "x": 17.6,
+        "y": 0,
+        "z": -9.7
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Network equipment"
+    },
+    {
+      "id": "iron-0021",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Generator floor"
+    },
+    {
+      "id": "iron-0022",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F West Gallery floor"
+    },
+    {
+      "id": "iron-0023",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Corridor floor"
+    },
+    {
+      "id": "iron-0024",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall floor"
+    },
+    {
+      "id": "iron-0025",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Atrium floor"
+    },
+    {
+      "id": "iron-0026",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall East floor"
+    },
+    {
+      "id": "iron-0027",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F East Gallery floor"
+    },
+    {
+      "id": "iron-0028",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Visitor Checkpoint floor"
+    },
+    {
+      "id": "iron-0029",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Staff Lockers floor"
+    },
+    {
+      "id": "iron-0030",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Break Room floor"
+    },
+    {
+      "id": "iron-0031",
+      "type": "cover",
+      "position": {
+        "x": -17.8,
+        "y": 0,
+        "z": 9.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Break Room furniture"
+    },
+    {
+      "id": "iron-0032",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Utility floor"
+    },
+    {
+      "id": "iron-0033",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F South Passage floor"
+    },
+    {
+      "id": "iron-0034",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Server Vault floor"
+    },
+    {
+      "id": "iron-0035",
+      "type": "cover",
+      "position": {
+        "x": 9.6,
+        "y": 0,
+        "z": 6.3
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Server Vault equipment"
+    },
+    {
+      "id": "iron-0036",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Server Prep floor"
+    },
+    {
+      "id": "iron-0037",
+      "type": "stairs",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 3,
+        "y": 4,
+        "z": 7
+      },
+      "rotationY": 0,
+      "name": "Server Prep staircase"
+    },
+    {
+      "id": "iron-0038",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Plant Control floor"
+    },
+    {
+      "id": "iron-0039",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Kitchen floor"
+    },
+    {
+      "id": "iron-0040",
+      "type": "cover",
+      "position": {
+        "x": -25.8,
+        "y": 0,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Kitchen furniture"
+    },
+    {
+      "id": "iron-0041",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Cafeteria floor"
+    },
+    {
+      "id": "iron-0042",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Stores floor"
+    },
+    {
+      "id": "iron-0043",
+      "type": "cover",
+      "position": {
+        "x": -9.8,
+        "y": 0,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Stores furniture"
+    },
+    {
+      "id": "iron-0044",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F South Entrance floor"
+    },
+    {
+      "id": "iron-0045",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Battery floor"
+    },
+    {
+      "id": "iron-0046",
+      "type": "cover",
+      "position": {
+        "x": 6.2,
+        "y": 0,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Battery furniture"
+    },
+    {
+      "id": "iron-0047",
+      "type": "cover",
+      "position": {
+        "x": 9.6,
+        "y": 0,
+        "z": 14.3
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Battery equipment"
+    },
+    {
+      "id": "iron-0048",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Emergency floor"
+    },
+    {
+      "id": "iron-0049",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "1F Service Annex floor"
+    },
+    {
+      "id": "iron-0050",
+      "type": "cover",
+      "position": {
+        "x": 22.2,
+        "y": 0,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Service Annex furniture"
+    },
+    {
+      "id": "iron-0051",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Shipping Dock facade left"
+    },
+    {
+      "id": "iron-0052",
+      "type": "window",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Shipping Dock facade opening"
+    },
+    {
+      "id": "iron-0053",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Shipping Dock facade right"
+    },
+    {
+      "id": "iron-0054",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Kitchen facade left"
+    },
+    {
+      "id": "iron-0055",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Kitchen facade opening"
+    },
+    {
+      "id": "iron-0056",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Kitchen facade right"
+    },
+    {
+      "id": "iron-0057",
+      "type": "hardWall",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Mechanical facade"
+    },
+    {
+      "id": "iron-0058",
+      "type": "hardWall",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Cafeteria facade"
+    },
+    {
+      "id": "iron-0059",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception facade left"
+    },
+    {
+      "id": "iron-0060",
+      "type": "window",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception facade opening"
+    },
+    {
+      "id": "iron-0061",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception facade right"
+    },
+    {
+      "id": "iron-0062",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Stores facade left"
+    },
+    {
+      "id": "iron-0063",
+      "type": "window",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Stores facade opening"
+    },
+    {
+      "id": "iron-0064",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Stores facade right"
+    },
+    {
+      "id": "iron-0065",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby facade left"
+    },
+    {
+      "id": "iron-0066",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby facade opening"
+    },
+    {
+      "id": "iron-0067",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby facade right"
+    },
+    {
+      "id": "iron-0068",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Entrance facade left"
+    },
+    {
+      "id": "iron-0069",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Entrance facade opening"
+    },
+    {
+      "id": "iron-0070",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Entrance facade right"
+    },
+    {
+      "id": "iron-0071",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Security facade left"
+    },
+    {
+      "id": "iron-0072",
+      "type": "window",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Security facade opening"
+    },
+    {
+      "id": "iron-0073",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Security facade right"
+    },
+    {
+      "id": "iron-0074",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Battery facade left"
+    },
+    {
+      "id": "iron-0075",
+      "type": "window",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Battery facade opening"
+    },
+    {
+      "id": "iron-0076",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Battery facade right"
+    },
+    {
+      "id": "iron-0077",
+      "type": "hardWall",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Records facade"
+    },
+    {
+      "id": "iron-0078",
+      "type": "hardWall",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Emergency facade"
+    },
+    {
+      "id": "iron-0079",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical facade left"
+    },
+    {
+      "id": "iron-0080",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical facade opening"
+    },
+    {
+      "id": "iron-0081",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical facade right"
+    },
+    {
+      "id": "iron-0082",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Service Annex facade left"
+    },
+    {
+      "id": "iron-0083",
+      "type": "window",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Service Annex facade opening"
+    },
+    {
+      "id": "iron-0084",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Service Annex facade right"
+    },
+    {
+      "id": "iron-0085",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0086",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0087",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0088",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0089",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0090",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0091",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0092",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0093",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0094",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0095",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0096",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0097",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0098",
+      "type": "door",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0099",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0100",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0101",
+      "type": "door",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0102",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0103",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0104",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0105",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0106",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0107",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0108",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0109",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0110",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0111",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 0,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0112",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior left"
+    },
+    {
+      "id": "iron-0113",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior opening"
+    },
+    {
+      "id": "iron-0114",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 0,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F side exterior right"
+    },
+    {
+      "id": "iron-0115",
+      "type": "softWall",
+      "position": {
+        "x": -26.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Logistics to West Gallery left"
+    },
+    {
+      "id": "iron-0116",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Logistics to West Gallery opening"
+    },
+    {
+      "id": "iron-0117",
+      "type": "softWall",
+      "position": {
+        "x": -21.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Logistics to West Gallery right"
+    },
+    {
+      "id": "iron-0118",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Gallery to Staff Lockers left"
+    },
+    {
+      "id": "iron-0119",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Gallery to Staff Lockers opening"
+    },
+    {
+      "id": "iron-0120",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Gallery to Staff Lockers right"
+    },
+    {
+      "id": "iron-0121",
+      "type": "softWall",
+      "position": {
+        "x": -26.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Staff Lockers to Kitchen left"
+    },
+    {
+      "id": "iron-0122",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Staff Lockers to Kitchen opening"
+    },
+    {
+      "id": "iron-0123",
+      "type": "softWall",
+      "position": {
+        "x": -21.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Staff Lockers to Kitchen right"
+    },
+    {
+      "id": "iron-0124",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Mechanical to Workshop left"
+    },
+    {
+      "id": "iron-0125",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Mechanical to Workshop opening"
+    },
+    {
+      "id": "iron-0126",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Mechanical to Workshop right"
+    },
+    {
+      "id": "iron-0127",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Workshop to Corridor left"
+    },
+    {
+      "id": "iron-0128",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Workshop to Corridor opening"
+    },
+    {
+      "id": "iron-0129",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Workshop to Corridor right"
+    },
+    {
+      "id": "iron-0130",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Corridor to Break Room left"
+    },
+    {
+      "id": "iron-0131",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Corridor to Break Room opening"
+    },
+    {
+      "id": "iron-0132",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Corridor to Break Room right"
+    },
+    {
+      "id": "iron-0133",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Break Room to Cafeteria left"
+    },
+    {
+      "id": "iron-0134",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Break Room to Cafeteria opening"
+    },
+    {
+      "id": "iron-0135",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Break Room to Cafeteria right"
+    },
+    {
+      "id": "iron-0136",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception to West Service left"
+    },
+    {
+      "id": "iron-0137",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception to West Service opening"
+    },
+    {
+      "id": "iron-0138",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Reception to West Service right"
+    },
+    {
+      "id": "iron-0139",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Service to Grand Hall left"
+    },
+    {
+      "id": "iron-0140",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Service to Grand Hall opening"
+    },
+    {
+      "id": "iron-0141",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F West Service to Grand Hall right"
+    },
+    {
+      "id": "iron-0142",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall to Utility left"
+    },
+    {
+      "id": "iron-0143",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall to Utility opening"
+    },
+    {
+      "id": "iron-0144",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall to Utility right"
+    },
+    {
+      "id": "iron-0145",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Utility to Stores left"
+    },
+    {
+      "id": "iron-0146",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Utility to Stores opening"
+    },
+    {
+      "id": "iron-0147",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Utility to Stores right"
+    },
+    {
+      "id": "iron-0148",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby to Central Link left"
+    },
+    {
+      "id": "iron-0149",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby to Central Link opening"
+    },
+    {
+      "id": "iron-0150",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Main Lobby to Central Link right"
+    },
+    {
+      "id": "iron-0151",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Central Link to Atrium left"
+    },
+    {
+      "id": "iron-0152",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Central Link to Atrium opening"
+    },
+    {
+      "id": "iron-0153",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Central Link to Atrium right"
+    },
+    {
+      "id": "iron-0154",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Atrium to South Passage left"
+    },
+    {
+      "id": "iron-0155",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Atrium to South Passage opening"
+    },
+    {
+      "id": "iron-0156",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Atrium to South Passage right"
+    },
+    {
+      "id": "iron-0157",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Passage to South Entrance left"
+    },
+    {
+      "id": "iron-0158",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Passage to South Entrance opening"
+    },
+    {
+      "id": "iron-0159",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F South Passage to South Entrance right"
+    },
+    {
+      "id": "iron-0160",
+      "type": "softWall",
+      "position": {
+        "x": 5.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F IT Repair to Grand Hall East left"
+    },
+    {
+      "id": "iron-0161",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F IT Repair to Grand Hall East opening"
+    },
+    {
+      "id": "iron-0162",
+      "type": "softWall",
+      "position": {
+        "x": 10.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F IT Repair to Grand Hall East right"
+    },
+    {
+      "id": "iron-0163",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall East to Server Vault left"
+    },
+    {
+      "id": "iron-0164",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall East to Server Vault opening"
+    },
+    {
+      "id": "iron-0165",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Grand Hall East to Server Vault right"
+    },
+    {
+      "id": "iron-0166",
+      "type": "softWall",
+      "position": {
+        "x": 5.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Vault to Battery left"
+    },
+    {
+      "id": "iron-0167",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Vault to Battery opening"
+    },
+    {
+      "id": "iron-0168",
+      "type": "softWall",
+      "position": {
+        "x": 10.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Vault to Battery right"
+    },
+    {
+      "id": "iron-0169",
+      "type": "softWall",
+      "position": {
+        "x": 13.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Records to Network left"
+    },
+    {
+      "id": "iron-0170",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Records to Network opening"
+    },
+    {
+      "id": "iron-0171",
+      "type": "softWall",
+      "position": {
+        "x": 18.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Records to Network right"
+    },
+    {
+      "id": "iron-0172",
+      "type": "softWall",
+      "position": {
+        "x": 13.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Network to East Gallery left"
+    },
+    {
+      "id": "iron-0173",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Network to East Gallery opening"
+    },
+    {
+      "id": "iron-0174",
+      "type": "softWall",
+      "position": {
+        "x": 18.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Network to East Gallery right"
+    },
+    {
+      "id": "iron-0175",
+      "type": "hardWall",
+      "position": {
+        "x": 13.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F East Gallery to Server Prep left"
+    },
+    {
+      "id": "iron-0176",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F East Gallery to Server Prep opening"
+    },
+    {
+      "id": "iron-0177",
+      "type": "hardWall",
+      "position": {
+        "x": 18.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F East Gallery to Server Prep right"
+    },
+    {
+      "id": "iron-0178",
+      "type": "softWall",
+      "position": {
+        "x": 13.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Prep to Emergency left"
+    },
+    {
+      "id": "iron-0179",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Prep to Emergency opening"
+    },
+    {
+      "id": "iron-0180",
+      "type": "softWall",
+      "position": {
+        "x": 18.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Server Prep to Emergency right"
+    },
+    {
+      "id": "iron-0181",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical to Generator left"
+    },
+    {
+      "id": "iron-0182",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical to Generator opening"
+    },
+    {
+      "id": "iron-0183",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Electrical to Generator right"
+    },
+    {
+      "id": "iron-0184",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Generator to Visitor Checkpoint left"
+    },
+    {
+      "id": "iron-0185",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Generator to Visitor Checkpoint opening"
+    },
+    {
+      "id": "iron-0186",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Generator to Visitor Checkpoint right"
+    },
+    {
+      "id": "iron-0187",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Visitor Checkpoint to Plant Control left"
+    },
+    {
+      "id": "iron-0188",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Visitor Checkpoint to Plant Control opening"
+    },
+    {
+      "id": "iron-0189",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Visitor Checkpoint to Plant Control right"
+    },
+    {
+      "id": "iron-0190",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Plant Control to Service Annex left"
+    },
+    {
+      "id": "iron-0191",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Plant Control to Service Annex opening"
+    },
+    {
+      "id": "iron-0192",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 0,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "1F Plant Control to Service Annex right"
+    },
+    {
+      "id": "iron-0193",
+      "type": "softWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Shipping Dock to Mechanical"
+    },
+    {
+      "id": "iron-0194",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Logistics to Workshop left"
+    },
+    {
+      "id": "iron-0195",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Logistics to Workshop opening"
+    },
+    {
+      "id": "iron-0196",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Logistics to Workshop right"
+    },
+    {
+      "id": "iron-0197",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Gallery to Corridor left"
+    },
+    {
+      "id": "iron-0198",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Gallery to Corridor opening"
+    },
+    {
+      "id": "iron-0199",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Gallery to Corridor right"
+    },
+    {
+      "id": "iron-0200",
+      "type": "softWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Staff Lockers to Break Room"
+    },
+    {
+      "id": "iron-0201",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Kitchen to Cafeteria"
+    },
+    {
+      "id": "iron-0202",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Mechanical to Reception"
+    },
+    {
+      "id": "iron-0203",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Workshop to West Service"
+    },
+    {
+      "id": "iron-0204",
+      "type": "softWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Corridor to Grand Hall left"
+    },
+    {
+      "id": "iron-0205",
+      "type": "door",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Corridor to Grand Hall opening"
+    },
+    {
+      "id": "iron-0206",
+      "type": "softWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Corridor to Grand Hall right"
+    },
+    {
+      "id": "iron-0207",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Break Room to Utility"
+    },
+    {
+      "id": "iron-0208",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Cafeteria to Stores left"
+    },
+    {
+      "id": "iron-0209",
+      "type": "door",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Cafeteria to Stores opening"
+    },
+    {
+      "id": "iron-0210",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Cafeteria to Stores right"
+    },
+    {
+      "id": "iron-0211",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Reception to Main Lobby left"
+    },
+    {
+      "id": "iron-0212",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Reception to Main Lobby opening"
+    },
+    {
+      "id": "iron-0213",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Reception to Main Lobby right"
+    },
+    {
+      "id": "iron-0214",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Service to Central Link left"
+    },
+    {
+      "id": "iron-0215",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Service to Central Link opening"
+    },
+    {
+      "id": "iron-0216",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F West Service to Central Link right"
+    },
+    {
+      "id": "iron-0217",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall to Atrium left"
+    },
+    {
+      "id": "iron-0218",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall to Atrium opening"
+    },
+    {
+      "id": "iron-0219",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall to Atrium right"
+    },
+    {
+      "id": "iron-0220",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Utility to South Passage left"
+    },
+    {
+      "id": "iron-0221",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Utility to South Passage opening"
+    },
+    {
+      "id": "iron-0222",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Utility to South Passage right"
+    },
+    {
+      "id": "iron-0223",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Stores to South Entrance left"
+    },
+    {
+      "id": "iron-0224",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Stores to South Entrance opening"
+    },
+    {
+      "id": "iron-0225",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 0,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Stores to South Entrance right"
+    },
+    {
+      "id": "iron-0226",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Main Lobby to Security left"
+    },
+    {
+      "id": "iron-0227",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Main Lobby to Security opening"
+    },
+    {
+      "id": "iron-0228",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Main Lobby to Security right"
+    },
+    {
+      "id": "iron-0229",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Central Link to IT Repair left"
+    },
+    {
+      "id": "iron-0230",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Central Link to IT Repair opening"
+    },
+    {
+      "id": "iron-0231",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Central Link to IT Repair right"
+    },
+    {
+      "id": "iron-0232",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Atrium to Grand Hall East left"
+    },
+    {
+      "id": "iron-0233",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Atrium to Grand Hall East opening"
+    },
+    {
+      "id": "iron-0234",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Atrium to Grand Hall East right"
+    },
+    {
+      "id": "iron-0235",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Passage to Server Vault left"
+    },
+    {
+      "id": "iron-0236",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Passage to Server Vault opening"
+    },
+    {
+      "id": "iron-0237",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Passage to Server Vault right"
+    },
+    {
+      "id": "iron-0238",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Entrance to Battery left"
+    },
+    {
+      "id": "iron-0239",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Entrance to Battery opening"
+    },
+    {
+      "id": "iron-0240",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 0,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F South Entrance to Battery right"
+    },
+    {
+      "id": "iron-0241",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Security to Records"
+    },
+    {
+      "id": "iron-0242",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F IT Repair to Network"
+    },
+    {
+      "id": "iron-0243",
+      "type": "softWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall East to East Gallery left"
+    },
+    {
+      "id": "iron-0244",
+      "type": "door",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall East to East Gallery opening"
+    },
+    {
+      "id": "iron-0245",
+      "type": "softWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Grand Hall East to East Gallery right"
+    },
+    {
+      "id": "iron-0246",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Server Vault to Server Prep left"
+    },
+    {
+      "id": "iron-0247",
+      "type": "door",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Server Vault to Server Prep opening"
+    },
+    {
+      "id": "iron-0248",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Server Vault to Server Prep right"
+    },
+    {
+      "id": "iron-0249",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Battery to Emergency"
+    },
+    {
+      "id": "iron-0250",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Records to Electrical"
+    },
+    {
+      "id": "iron-0251",
+      "type": "softWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Network to Generator"
+    },
+    {
+      "id": "iron-0252",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F East Gallery to Visitor Checkpoint left"
+    },
+    {
+      "id": "iron-0253",
+      "type": "door",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F East Gallery to Visitor Checkpoint opening"
+    },
+    {
+      "id": "iron-0254",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F East Gallery to Visitor Checkpoint right"
+    },
+    {
+      "id": "iron-0255",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Server Prep to Plant Control"
+    },
+    {
+      "id": "iron-0256",
+      "type": "softWall",
+      "position": {
+        "x": 20,
+        "y": 0,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "1F Emergency to Service Annex"
+    },
+    {
+      "id": "iron-0257",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack floor"
+    },
+    {
+      "id": "iron-0258",
+      "type": "cover",
+      "position": {
+        "x": -25.8,
+        "y": 4,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Archive Stack furniture"
+    },
+    {
+      "id": "iron-0259",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Administration floor"
+    },
+    {
+      "id": "iron-0260",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Training floor"
+    },
+    {
+      "id": "iron-0261",
+      "type": "cover",
+      "position": {
+        "x": -9.8,
+        "y": 4,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Training furniture"
+    },
+    {
+      "id": "iron-0262",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby floor"
+    },
+    {
+      "id": "iron-0263",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Library floor"
+    },
+    {
+      "id": "iron-0264",
+      "type": "cover",
+      "position": {
+        "x": 6.2,
+        "y": 4,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Library furniture"
+    },
+    {
+      "id": "iron-0265",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Finance floor"
+    },
+    {
+      "id": "iron-0266",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom floor"
+    },
+    {
+      "id": "iron-0267",
+      "type": "cover",
+      "position": {
+        "x": 22.2,
+        "y": 4,
+        "z": -14.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Boardroom furniture"
+    },
+    {
+      "id": "iron-0268",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F West Stairs floor"
+    },
+    {
+      "id": "iron-0269",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Observation floor"
+    },
+    {
+      "id": "iron-0270",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Upper Crossing floor"
+    },
+    {
+      "id": "iron-0271",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Operations Center floor"
+    },
+    {
+      "id": "iron-0272",
+      "type": "cover",
+      "position": {
+        "x": 9.6,
+        "y": 4,
+        "z": -9.7
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Operations Center equipment"
+    },
+    {
+      "id": "iron-0273",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Tech Control floor"
+    },
+    {
+      "id": "iron-0274",
+      "type": "cover",
+      "position": {
+        "x": 14.2,
+        "y": 4,
+        "z": -6.2
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Tech Control furniture"
+    },
+    {
+      "id": "iron-0275",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Encrypted Vault floor"
+    },
+    {
+      "id": "iron-0276",
+      "type": "cover",
+      "position": {
+        "x": 25.6,
+        "y": 4,
+        "z": -9.7
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Encrypted Vault equipment"
+    },
+    {
+      "id": "iron-0277",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F West Gallery floor"
+    },
+    {
+      "id": "iron-0278",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Upper Hall floor"
+    },
+    {
+      "id": "iron-0279",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F North Walk floor"
+    },
+    {
+      "id": "iron-0280",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Atrium Bridge floor"
+    },
+    {
+      "id": "iron-0281",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F South Walk floor"
+    },
+    {
+      "id": "iron-0282",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F East Gallery floor"
+    },
+    {
+      "id": "iron-0283",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Upper Security floor"
+    },
+    {
+      "id": "iron-0284",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Briefing floor"
+    },
+    {
+      "id": "iron-0285",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Comms floor"
+    },
+    {
+      "id": "iron-0286",
+      "type": "cover",
+      "position": {
+        "x": -17.8,
+        "y": 4,
+        "z": 9.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Comms furniture"
+    },
+    {
+      "id": "iron-0287",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Planning floor"
+    },
+    {
+      "id": "iron-0288",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Upper Passage floor"
+    },
+    {
+      "id": "iron-0289",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Command Office floor"
+    },
+    {
+      "id": "iron-0290",
+      "type": "cover",
+      "position": {
+        "x": 9.6,
+        "y": 4,
+        "z": 6.3
+      },
+      "size": {
+        "x": 1.8,
+        "y": 1.3,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Command Office equipment"
+    },
+    {
+      "id": "iron-0291",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Monitor floor"
+    },
+    {
+      "id": "iron-0292",
+      "type": "floor",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Medical floor"
+    },
+    {
+      "id": "iron-0293",
+      "type": "cover",
+      "position": {
+        "x": -25.8,
+        "y": 4,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Medical furniture"
+    },
+    {
+      "id": "iron-0294",
+      "type": "floor",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Director floor"
+    },
+    {
+      "id": "iron-0295",
+      "type": "floor",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Records Annex floor"
+    },
+    {
+      "id": "iron-0296",
+      "type": "cover",
+      "position": {
+        "x": -9.8,
+        "y": 4,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Records Annex furniture"
+    },
+    {
+      "id": "iron-0297",
+      "type": "floor",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Executive Hall floor"
+    },
+    {
+      "id": "iron-0298",
+      "type": "floor",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F War Room floor"
+    },
+    {
+      "id": "iron-0299",
+      "type": "cover",
+      "position": {
+        "x": 6.2,
+        "y": 4,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "War Room furniture"
+    },
+    {
+      "id": "iron-0300",
+      "type": "floor",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Ops Storage floor"
+    },
+    {
+      "id": "iron-0301",
+      "type": "floor",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 0.25,
+        "z": 8
+      },
+      "rotationY": 0,
+      "name": "2F Utility Room floor"
+    },
+    {
+      "id": "iron-0302",
+      "type": "cover",
+      "position": {
+        "x": 22.2,
+        "y": 4,
+        "z": 17.8
+      },
+      "size": {
+        "x": 1.5,
+        "y": 1.1,
+        "z": 1.1
+      },
+      "rotationY": 0,
+      "name": "Utility Room furniture"
+    },
+    {
+      "id": "iron-0303",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack facade left"
+    },
+    {
+      "id": "iron-0304",
+      "type": "window",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack facade opening"
+    },
+    {
+      "id": "iron-0305",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack facade right"
+    },
+    {
+      "id": "iron-0306",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Medical facade left"
+    },
+    {
+      "id": "iron-0307",
+      "type": "window",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Medical facade opening"
+    },
+    {
+      "id": "iron-0308",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Medical facade right"
+    },
+    {
+      "id": "iron-0309",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration facade left"
+    },
+    {
+      "id": "iron-0310",
+      "type": "window",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration facade opening"
+    },
+    {
+      "id": "iron-0311",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration facade right"
+    },
+    {
+      "id": "iron-0312",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Director facade left"
+    },
+    {
+      "id": "iron-0313",
+      "type": "window",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Director facade opening"
+    },
+    {
+      "id": "iron-0314",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Director facade right"
+    },
+    {
+      "id": "iron-0315",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training facade left"
+    },
+    {
+      "id": "iron-0316",
+      "type": "window",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training facade opening"
+    },
+    {
+      "id": "iron-0317",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training facade right"
+    },
+    {
+      "id": "iron-0318",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Records Annex facade left"
+    },
+    {
+      "id": "iron-0319",
+      "type": "window",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Records Annex facade opening"
+    },
+    {
+      "id": "iron-0320",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Records Annex facade right"
+    },
+    {
+      "id": "iron-0321",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby facade left"
+    },
+    {
+      "id": "iron-0322",
+      "type": "window",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby facade opening"
+    },
+    {
+      "id": "iron-0323",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby facade right"
+    },
+    {
+      "id": "iron-0324",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Executive Hall facade left"
+    },
+    {
+      "id": "iron-0325",
+      "type": "window",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Executive Hall facade opening"
+    },
+    {
+      "id": "iron-0326",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Executive Hall facade right"
+    },
+    {
+      "id": "iron-0327",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Library facade left"
+    },
+    {
+      "id": "iron-0328",
+      "type": "window",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Library facade opening"
+    },
+    {
+      "id": "iron-0329",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Library facade right"
+    },
+    {
+      "id": "iron-0330",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F War Room facade left"
+    },
+    {
+      "id": "iron-0331",
+      "type": "window",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F War Room facade opening"
+    },
+    {
+      "id": "iron-0332",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F War Room facade right"
+    },
+    {
+      "id": "iron-0333",
+      "type": "hardWall",
+      "position": {
+        "x": 13.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Finance facade left"
+    },
+    {
+      "id": "iron-0334",
+      "type": "window",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Finance facade opening"
+    },
+    {
+      "id": "iron-0335",
+      "type": "hardWall",
+      "position": {
+        "x": 18.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Finance facade right"
+    },
+    {
+      "id": "iron-0336",
+      "type": "hardWall",
+      "position": {
+        "x": 13.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Ops Storage facade left"
+    },
+    {
+      "id": "iron-0337",
+      "type": "window",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Ops Storage facade opening"
+    },
+    {
+      "id": "iron-0338",
+      "type": "hardWall",
+      "position": {
+        "x": 18.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Ops Storage facade right"
+    },
+    {
+      "id": "iron-0339",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom facade left"
+    },
+    {
+      "id": "iron-0340",
+      "type": "window",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom facade opening"
+    },
+    {
+      "id": "iron-0341",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": -20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom facade right"
+    },
+    {
+      "id": "iron-0342",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Utility Room facade left"
+    },
+    {
+      "id": "iron-0343",
+      "type": "window",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Utility Room facade opening"
+    },
+    {
+      "id": "iron-0344",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": 20
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Utility Room facade right"
+    },
+    {
+      "id": "iron-0345",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0346",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0347",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0348",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0349",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0350",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0351",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0352",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0353",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0354",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0355",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0356",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0357",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0358",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0359",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0360",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0361",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0362",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0363",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0364",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0365",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0366",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0367",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0368",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0369",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0370",
+      "type": "window",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0371",
+      "type": "hardWall",
+      "position": {
+        "x": -28,
+        "y": 4,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0372",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior left"
+    },
+    {
+      "id": "iron-0373",
+      "type": "window",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 2.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior opening"
+    },
+    {
+      "id": "iron-0374",
+      "type": "hardWall",
+      "position": {
+        "x": 28,
+        "y": 4,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F side exterior right"
+    },
+    {
+      "id": "iron-0375",
+      "type": "softWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack to West Stairs left"
+    },
+    {
+      "id": "iron-0376",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack to West Stairs opening"
+    },
+    {
+      "id": "iron-0377",
+      "type": "softWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Archive Stack to West Stairs right"
+    },
+    {
+      "id": "iron-0378",
+      "type": "softWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Stairs to West Gallery left"
+    },
+    {
+      "id": "iron-0379",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Stairs to West Gallery opening"
+    },
+    {
+      "id": "iron-0380",
+      "type": "softWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Stairs to West Gallery right"
+    },
+    {
+      "id": "iron-0381",
+      "type": "hardWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Gallery to Briefing left"
+    },
+    {
+      "id": "iron-0382",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Gallery to Briefing opening"
+    },
+    {
+      "id": "iron-0383",
+      "type": "hardWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F West Gallery to Briefing right"
+    },
+    {
+      "id": "iron-0384",
+      "type": "softWall",
+      "position": {
+        "x": -26.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Briefing to Medical left"
+    },
+    {
+      "id": "iron-0385",
+      "type": "door",
+      "position": {
+        "x": -24,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Briefing to Medical opening"
+    },
+    {
+      "id": "iron-0386",
+      "type": "softWall",
+      "position": {
+        "x": -21.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Briefing to Medical right"
+    },
+    {
+      "id": "iron-0387",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration to Conference left"
+    },
+    {
+      "id": "iron-0388",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration to Conference opening"
+    },
+    {
+      "id": "iron-0389",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Administration to Conference right"
+    },
+    {
+      "id": "iron-0390",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Conference to Upper Hall left"
+    },
+    {
+      "id": "iron-0391",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Conference to Upper Hall opening"
+    },
+    {
+      "id": "iron-0392",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Conference to Upper Hall right"
+    },
+    {
+      "id": "iron-0393",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Hall to Comms left"
+    },
+    {
+      "id": "iron-0394",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Hall to Comms opening"
+    },
+    {
+      "id": "iron-0395",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Hall to Comms right"
+    },
+    {
+      "id": "iron-0396",
+      "type": "hardWall",
+      "position": {
+        "x": -18.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Comms to Director left"
+    },
+    {
+      "id": "iron-0397",
+      "type": "door",
+      "position": {
+        "x": -16,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Comms to Director opening"
+    },
+    {
+      "id": "iron-0398",
+      "type": "hardWall",
+      "position": {
+        "x": -13.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Comms to Director right"
+    },
+    {
+      "id": "iron-0399",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training to Observation left"
+    },
+    {
+      "id": "iron-0400",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training to Observation opening"
+    },
+    {
+      "id": "iron-0401",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Training to Observation right"
+    },
+    {
+      "id": "iron-0402",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Observation to North Walk left"
+    },
+    {
+      "id": "iron-0403",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Observation to North Walk opening"
+    },
+    {
+      "id": "iron-0404",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Observation to North Walk right"
+    },
+    {
+      "id": "iron-0405",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F North Walk to Planning left"
+    },
+    {
+      "id": "iron-0406",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F North Walk to Planning opening"
+    },
+    {
+      "id": "iron-0407",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F North Walk to Planning right"
+    },
+    {
+      "id": "iron-0408",
+      "type": "hardWall",
+      "position": {
+        "x": -10.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Planning to Records Annex left"
+    },
+    {
+      "id": "iron-0409",
+      "type": "door",
+      "position": {
+        "x": -8,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Planning to Records Annex opening"
+    },
+    {
+      "id": "iron-0410",
+      "type": "hardWall",
+      "position": {
+        "x": -5.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Planning to Records Annex right"
+    },
+    {
+      "id": "iron-0411",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby to Upper Crossing left"
+    },
+    {
+      "id": "iron-0412",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby to Upper Crossing opening"
+    },
+    {
+      "id": "iron-0413",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Lobby to Upper Crossing right"
+    },
+    {
+      "id": "iron-0414",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Crossing to Atrium Bridge left"
+    },
+    {
+      "id": "iron-0415",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Crossing to Atrium Bridge opening"
+    },
+    {
+      "id": "iron-0416",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Crossing to Atrium Bridge right"
+    },
+    {
+      "id": "iron-0417",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Atrium Bridge to Upper Passage left"
+    },
+    {
+      "id": "iron-0418",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Atrium Bridge to Upper Passage opening"
+    },
+    {
+      "id": "iron-0419",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Atrium Bridge to Upper Passage right"
+    },
+    {
+      "id": "iron-0420",
+      "type": "hardWall",
+      "position": {
+        "x": -2.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Passage to Executive Hall left"
+    },
+    {
+      "id": "iron-0421",
+      "type": "door",
+      "position": {
+        "x": 0,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Passage to Executive Hall opening"
+    },
+    {
+      "id": "iron-0422",
+      "type": "hardWall",
+      "position": {
+        "x": 2.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Passage to Executive Hall right"
+    },
+    {
+      "id": "iron-0423",
+      "type": "softWall",
+      "position": {
+        "x": 5.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Operations Center to South Walk left"
+    },
+    {
+      "id": "iron-0424",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Operations Center to South Walk opening"
+    },
+    {
+      "id": "iron-0425",
+      "type": "softWall",
+      "position": {
+        "x": 10.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Operations Center to South Walk right"
+    },
+    {
+      "id": "iron-0426",
+      "type": "hardWall",
+      "position": {
+        "x": 5.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F South Walk to Command Office left"
+    },
+    {
+      "id": "iron-0427",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F South Walk to Command Office opening"
+    },
+    {
+      "id": "iron-0428",
+      "type": "hardWall",
+      "position": {
+        "x": 10.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F South Walk to Command Office right"
+    },
+    {
+      "id": "iron-0429",
+      "type": "softWall",
+      "position": {
+        "x": 5.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Command Office to War Room left"
+    },
+    {
+      "id": "iron-0430",
+      "type": "door",
+      "position": {
+        "x": 8,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Command Office to War Room opening"
+    },
+    {
+      "id": "iron-0431",
+      "type": "softWall",
+      "position": {
+        "x": 10.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Command Office to War Room right"
+    },
+    {
+      "id": "iron-0432",
+      "type": "softWall",
+      "position": {
+        "x": 13.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Tech Control to East Gallery left"
+    },
+    {
+      "id": "iron-0433",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Tech Control to East Gallery opening"
+    },
+    {
+      "id": "iron-0434",
+      "type": "softWall",
+      "position": {
+        "x": 18.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Tech Control to East Gallery right"
+    },
+    {
+      "id": "iron-0435",
+      "type": "hardWall",
+      "position": {
+        "x": 13.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Gallery to East Stairs left"
+    },
+    {
+      "id": "iron-0436",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Gallery to East Stairs opening"
+    },
+    {
+      "id": "iron-0437",
+      "type": "hardWall",
+      "position": {
+        "x": 18.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Gallery to East Stairs right"
+    },
+    {
+      "id": "iron-0438",
+      "type": "softWall",
+      "position": {
+        "x": 13.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Stairs to Ops Storage left"
+    },
+    {
+      "id": "iron-0439",
+      "type": "door",
+      "position": {
+        "x": 16,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Stairs to Ops Storage opening"
+    },
+    {
+      "id": "iron-0440",
+      "type": "softWall",
+      "position": {
+        "x": 18.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F East Stairs to Ops Storage right"
+    },
+    {
+      "id": "iron-0441",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom to Encrypted Vault left"
+    },
+    {
+      "id": "iron-0442",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom to Encrypted Vault opening"
+    },
+    {
+      "id": "iron-0443",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": -12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Boardroom to Encrypted Vault right"
+    },
+    {
+      "id": "iron-0444",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Encrypted Vault to Upper Security left"
+    },
+    {
+      "id": "iron-0445",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Encrypted Vault to Upper Security opening"
+    },
+    {
+      "id": "iron-0446",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": -4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Encrypted Vault to Upper Security right"
+    },
+    {
+      "id": "iron-0447",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Security to Monitor left"
+    },
+    {
+      "id": "iron-0448",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Security to Monitor opening"
+    },
+    {
+      "id": "iron-0449",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Upper Security to Monitor right"
+    },
+    {
+      "id": "iron-0450",
+      "type": "hardWall",
+      "position": {
+        "x": 21.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Monitor to Utility Room left"
+    },
+    {
+      "id": "iron-0451",
+      "type": "door",
+      "position": {
+        "x": 24,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Monitor to Utility Room opening"
+    },
+    {
+      "id": "iron-0452",
+      "type": "hardWall",
+      "position": {
+        "x": 26.5,
+        "y": 4,
+        "z": 12
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 0,
+      "name": "2F Monitor to Utility Room right"
+    },
+    {
+      "id": "iron-0453",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Archive Stack to Administration"
+    },
+    {
+      "id": "iron-0454",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Stairs to Conference left"
+    },
+    {
+      "id": "iron-0455",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Stairs to Conference opening"
+    },
+    {
+      "id": "iron-0456",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Stairs to Conference right"
+    },
+    {
+      "id": "iron-0457",
+      "type": "softWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Gallery to Upper Hall left"
+    },
+    {
+      "id": "iron-0458",
+      "type": "door",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Gallery to Upper Hall opening"
+    },
+    {
+      "id": "iron-0459",
+      "type": "softWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F West Gallery to Upper Hall right"
+    },
+    {
+      "id": "iron-0460",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Briefing to Comms"
+    },
+    {
+      "id": "iron-0461",
+      "type": "hardWall",
+      "position": {
+        "x": -20,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Medical to Director"
+    },
+    {
+      "id": "iron-0462",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Administration to Training"
+    },
+    {
+      "id": "iron-0463",
+      "type": "softWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Conference to Observation"
+    },
+    {
+      "id": "iron-0464",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Hall to North Walk left"
+    },
+    {
+      "id": "iron-0465",
+      "type": "door",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Hall to North Walk opening"
+    },
+    {
+      "id": "iron-0466",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Hall to North Walk right"
+    },
+    {
+      "id": "iron-0467",
+      "type": "hardWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Comms to Planning"
+    },
+    {
+      "id": "iron-0468",
+      "type": "softWall",
+      "position": {
+        "x": -12,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Director to Records Annex"
+    },
+    {
+      "id": "iron-0469",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Training to Upper Lobby left"
+    },
+    {
+      "id": "iron-0470",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Training to Upper Lobby opening"
+    },
+    {
+      "id": "iron-0471",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Training to Upper Lobby right"
+    },
+    {
+      "id": "iron-0472",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Observation to Upper Crossing left"
+    },
+    {
+      "id": "iron-0473",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Observation to Upper Crossing opening"
+    },
+    {
+      "id": "iron-0474",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Observation to Upper Crossing right"
+    },
+    {
+      "id": "iron-0475",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F North Walk to Atrium Bridge left"
+    },
+    {
+      "id": "iron-0476",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F North Walk to Atrium Bridge opening"
+    },
+    {
+      "id": "iron-0477",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F North Walk to Atrium Bridge right"
+    },
+    {
+      "id": "iron-0478",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Planning to Upper Passage left"
+    },
+    {
+      "id": "iron-0479",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Planning to Upper Passage opening"
+    },
+    {
+      "id": "iron-0480",
+      "type": "softWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Planning to Upper Passage right"
+    },
+    {
+      "id": "iron-0481",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Records Annex to Executive Hall left"
+    },
+    {
+      "id": "iron-0482",
+      "type": "door",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Records Annex to Executive Hall opening"
+    },
+    {
+      "id": "iron-0483",
+      "type": "hardWall",
+      "position": {
+        "x": -4,
+        "y": 4,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Records Annex to Executive Hall right"
+    },
+    {
+      "id": "iron-0484",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Lobby to Library left"
+    },
+    {
+      "id": "iron-0485",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Lobby to Library opening"
+    },
+    {
+      "id": "iron-0486",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Lobby to Library right"
+    },
+    {
+      "id": "iron-0487",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Crossing to Operations Center left"
+    },
+    {
+      "id": "iron-0488",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Crossing to Operations Center opening"
+    },
+    {
+      "id": "iron-0489",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Crossing to Operations Center right"
+    },
+    {
+      "id": "iron-0490",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Atrium Bridge to South Walk left"
+    },
+    {
+      "id": "iron-0491",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Atrium Bridge to South Walk opening"
+    },
+    {
+      "id": "iron-0492",
+      "type": "softWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Atrium Bridge to South Walk right"
+    },
+    {
+      "id": "iron-0493",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Passage to Command Office left"
+    },
+    {
+      "id": "iron-0494",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Passage to Command Office opening"
+    },
+    {
+      "id": "iron-0495",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Upper Passage to Command Office right"
+    },
+    {
+      "id": "iron-0496",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Executive Hall to War Room left"
+    },
+    {
+      "id": "iron-0497",
+      "type": "door",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Executive Hall to War Room opening"
+    },
+    {
+      "id": "iron-0498",
+      "type": "hardWall",
+      "position": {
+        "x": 4,
+        "y": 4,
+        "z": 18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Executive Hall to War Room right"
+    },
+    {
+      "id": "iron-0499",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Library to Finance"
+    },
+    {
+      "id": "iron-0500",
+      "type": "softWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Operations Center to Tech Control"
+    },
+    {
+      "id": "iron-0501",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F South Walk to East Gallery left"
+    },
+    {
+      "id": "iron-0502",
+      "type": "door",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F South Walk to East Gallery opening"
+    },
+    {
+      "id": "iron-0503",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F South Walk to East Gallery right"
+    },
+    {
+      "id": "iron-0504",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 5.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Command Office to East Stairs left"
+    },
+    {
+      "id": "iron-0505",
+      "type": "door",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Command Office to East Stairs opening"
+    },
+    {
+      "id": "iron-0506",
+      "type": "hardWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 10.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Command Office to East Stairs right"
+    },
+    {
+      "id": "iron-0507",
+      "type": "softWall",
+      "position": {
+        "x": 12,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F War Room to Ops Storage"
+    },
+    {
+      "id": "iron-0508",
+      "type": "softWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": -18.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Finance to Boardroom left"
+    },
+    {
+      "id": "iron-0509",
+      "type": "door",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": -16
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Finance to Boardroom opening"
+    },
+    {
+      "id": "iron-0510",
+      "type": "softWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": -13.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Finance to Boardroom right"
+    },
+    {
+      "id": "iron-0511",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": -8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Tech Control to Encrypted Vault"
+    },
+    {
+      "id": "iron-0512",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": -2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F East Gallery to Upper Security left"
+    },
+    {
+      "id": "iron-0513",
+      "type": "door",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": 0
+      },
+      "size": {
+        "x": 2,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F East Gallery to Upper Security opening"
+    },
+    {
+      "id": "iron-0514",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": 2.5
+      },
+      "size": {
+        "x": 3,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F East Gallery to Upper Security right"
+    },
+    {
+      "id": "iron-0515",
+      "type": "softWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": 8
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F East Stairs to Monitor"
+    },
+    {
+      "id": "iron-0516",
+      "type": "hardWall",
+      "position": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      },
+      "size": {
+        "x": 8,
+        "y": 3.75,
+        "z": 0.25
+      },
+      "rotationY": 90,
+      "name": "2F Ops Storage to Utility Room"
+    },
+    {
+      "id": "iron-0517",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -24,
+        "y": 7.75,
+        "z": -20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "North roof rappel"
+    },
+    {
+      "id": "iron-0518",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -24,
+        "y": 7.75,
+        "z": 20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "South roof rappel"
+    },
+    {
+      "id": "iron-0519",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -8,
+        "y": 7.75,
+        "z": -20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "North roof rappel"
+    },
+    {
+      "id": "iron-0520",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -8,
+        "y": 7.75,
+        "z": 20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "South roof rappel"
+    },
+    {
+      "id": "iron-0521",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 8,
+        "y": 7.75,
+        "z": -20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "North roof rappel"
+    },
+    {
+      "id": "iron-0522",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 8,
+        "y": 7.75,
+        "z": 20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "South roof rappel"
+    },
+    {
+      "id": "iron-0523",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 24,
+        "y": 7.75,
+        "z": -20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "North roof rappel"
+    },
+    {
+      "id": "iron-0524",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 24,
+        "y": 7.75,
+        "z": 20.9
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "South roof rappel"
+    },
+    {
+      "id": "iron-0525",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -28.9,
+        "y": 7.75,
+        "z": -16
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "West roof rappel"
+    },
+    {
+      "id": "iron-0526",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 28.9,
+        "y": 7.75,
+        "z": -16
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "East roof rappel"
+    },
+    {
+      "id": "iron-0527",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -28.9,
+        "y": 7.75,
+        "z": -8
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "West roof rappel"
+    },
+    {
+      "id": "iron-0528",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 28.9,
+        "y": 7.75,
+        "z": -8
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "East roof rappel"
+    },
+    {
+      "id": "iron-0529",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -28.9,
+        "y": 7.75,
+        "z": 8
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "West roof rappel"
+    },
+    {
+      "id": "iron-0530",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 28.9,
+        "y": 7.75,
+        "z": 8
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "East roof rappel"
+    },
+    {
+      "id": "iron-0531",
+      "type": "rappelAnchor",
+      "position": {
+        "x": -28.9,
+        "y": 7.75,
+        "z": 16
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "West roof rappel"
+    },
+    {
+      "id": "iron-0532",
+      "type": "rappelAnchor",
+      "position": {
+        "x": 28.9,
+        "y": 7.75,
+        "z": 16
+      },
+      "size": {
+        "x": 0.7,
+        "y": 7.75,
+        "z": 0.7
+      },
+      "rotationY": 0,
+      "name": "East roof rappel"
+    },
+    {
+      "id": "iron-0533",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -42,
+        "y": 0,
+        "z": -24
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 1"
+    },
+    {
+      "id": "iron-0534",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -43,
+        "y": 0,
+        "z": 5
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 2"
+    },
+    {
+      "id": "iron-0535",
+      "type": "attackerSpawn",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 28
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 3"
+    },
+    {
+      "id": "iron-0536",
+      "type": "attackerSpawn",
+      "position": {
+        "x": 41,
+        "y": 0,
+        "z": -6
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 4"
+    },
+    {
+      "id": "iron-0537",
+      "type": "attackerSpawn",
+      "position": {
+        "x": 9,
+        "y": 0,
+        "z": -33
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 5"
+    },
+    {
+      "id": "iron-0538",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -34,
+        "y": 0,
+        "z": 24
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 6"
+    },
+    {
+      "id": "iron-0539",
+      "type": "attackerSpawn",
+      "position": {
+        "x": -5,
+        "y": 0,
+        "z": -32
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "Attacker staging 7"
+    },
+    {
+      "id": "iron-0540",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 0,
+        "z": -11
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "1F defense setup"
+    },
+    {
+      "id": "iron-0541",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 4,
+        "z": -11
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F defense setup"
+    },
+    {
+      "id": "iron-0542",
+      "type": "defenderSpawn",
+      "position": {
+        "x": 11,
+        "y": 0,
+        "z": -11
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "1F defense setup"
+    },
+    {
+      "id": "iron-0543",
+      "type": "defenderSpawn",
+      "position": {
+        "x": 11,
+        "y": 4,
+        "z": -11
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F defense setup"
+    },
+    {
+      "id": "iron-0544",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 0,
+        "z": -3
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "1F defense setup"
+    },
+    {
+      "id": "iron-0545",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 4,
+        "z": -3
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F defense setup"
+    },
+    {
+      "id": "iron-0546",
+      "type": "defenderSpawn",
+      "position": {
+        "x": 11,
+        "y": 0,
+        "z": -3
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "1F defense setup"
+    },
+    {
+      "id": "iron-0547",
+      "type": "defenderSpawn",
+      "position": {
+        "x": 11,
+        "y": 4,
+        "z": -3
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F defense setup"
+    },
+    {
+      "id": "iron-0548",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 0,
+        "z": 5
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "1F defense setup"
+    },
+    {
+      "id": "iron-0549",
+      "type": "defenderSpawn",
+      "position": {
+        "x": -19,
+        "y": 4,
+        "z": 5
+      },
+      "size": {
+        "x": 1,
+        "y": 0.12,
+        "z": 1
+      },
+      "rotationY": 0,
+      "name": "2F defense setup"
+    }
+  ],
+  "sitePairs": [
+    {
+      "id": "iron-ground",
+      "name": "1F SERVER / PLANT CONTROL",
+      "A": {
+        "x": -12,
+        "y": 0,
+        "z": 12,
+        "plantRadius": 3,
+        "defuseRange": 2.25,
+        "plantZones": [
+          {
+            "id": "iron-ground-a",
+            "x": -12,
+            "y": 0,
+            "z": 12,
+            "width": 4.5,
+            "depth": 4.5,
+            "height": 2.5
+          }
+        ]
+      },
+      "B": {
+        "x": 12,
+        "y": 0,
+        "z": 12,
+        "plantRadius": 3,
+        "defuseRange": 2.25,
+        "plantZones": [
+          {
+            "id": "iron-ground-b",
+            "x": 12,
+            "y": 0,
+            "z": 12,
+            "width": 4.5,
+            "depth": 4.5,
+            "height": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "id": "iron-upper",
+      "name": "2F OPERATIONS / ENCRYPTED VAULT",
+      "A": {
+        "x": 12,
+        "y": 4,
+        "z": -8,
+        "plantRadius": 3,
+        "defuseRange": 2.25,
+        "plantZones": [
+          {
+            "id": "iron-upper-a",
+            "x": 12,
+            "y": 4,
+            "z": -8,
+            "width": 4.5,
+            "depth": 4.5,
+            "height": 2.5
+          }
+        ]
+      },
+      "B": {
+        "x": 20,
+        "y": 4,
+        "z": -8,
+        "plantRadius": 3,
+        "defuseRange": 2.25,
+        "plantZones": [
+          {
+            "id": "iron-upper-b",
+            "x": 20,
+            "y": 4,
+            "z": -8,
+            "width": 4.5,
+            "depth": 4.5,
+            "height": 2.5
+          }
+        ]
+      }
+    }
+  ],
+  "activeSitePair": "iron-ground",
+  "notes": "Original 56x40m two-storey complex, real connected rooms, practical central circulation spine, 16 rooftop rappel stations, paired bomb rooms and physical stairs."
+}
