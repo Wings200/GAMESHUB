@@ -26,7 +26,7 @@ export function stepWeapon(previous,input={},dt=1/60){
   state.reloading=WEAPON_SPEC.reloadSeconds;events.reloadStarted=true;
  }
  state.cooldown=Math.max(-WEAPON_SPEC.fireInterval,state.cooldown-elapsed);
- if(input.fire&&state.reloading===0&&state.ammo>0){
+ if(input.fire&&!reloadingAtStart&&state.reloading===0&&state.ammo>0){
   while(state.cooldown<=0&&state.ammo>0&&events.shots<3){
    state.ammo--;
    state.shotsFired++;
