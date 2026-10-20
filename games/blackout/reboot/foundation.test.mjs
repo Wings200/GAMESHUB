@@ -122,7 +122,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-006",
+ for(const src of ["./reboot/main.js?v=reboot-007",
    "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-003"'));
  assert.match(main,/requestPointerLock\(/);
@@ -140,7 +140,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./legacy-audio.js?v=reboot-006"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
- assert.ok(main.includes('from "./weapon-view.js?v=reboot-005"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-007"'));
  assert.ok(main.includes("legacyShotCone(shot"));
  assert.ok(main.includes("cycleLegacyFire(weapons,now"));
  assert.ok(main.includes('shotAudio.play("fire")'));
@@ -149,7 +149,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./lean.js?v=reboot-005"'));
  assert.ok(main.includes('toggleLean(leanTarget,event.code==="KeyQ"?-1:1)'));
  assert.ok(main.includes('camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ")'));
- assert.ok(main.includes("aligned=aimHeld&&aimMix>=.995"));
+ assert.ok(main.includes("aimState(aimHeld,aimMix).accurate"));
+ assert.ok(main.includes('from "./aim-resolver.js?v=reboot-007"'));
+ assert.ok(main.includes("firstHitType(intersections,activeTargets)"));
+ assert.ok(main.includes("raycaster.setFromCamera({x:cone.x,y:cone.y},camera)"));
+ assert.ok(main.includes("SHOT BLOCKED"));
+ assert.ok(html.includes("ADS FIX ACTIVE"));
  assert.ok(html.includes('id="lean-status"'));
  assert.ok(html.includes("CTRL/Z PRONE"));
  assert.ok(html.includes("Q/E LEAN"));
