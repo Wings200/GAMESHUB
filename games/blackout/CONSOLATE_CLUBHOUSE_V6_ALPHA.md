@@ -1,5 +1,22 @@
 # BLACKOUT V6.3 — Consolate + Clubhouse (Approved Authored Map)
 
+## V6.5 — Rappel usability and movement fix (October 19, 2026)
+Reported issue: **rappelling did not work reliably in actual play**. Original attachment required an unmarked 1.9m radius around extremely thin rope, provided no nearby HUD prompt, had no guidance for aligning with a second-floor window and tested only one of the nine anchors.
+
+Corrections:
+- Every authored rope now has a visible **turquoise ground-level attachment ring**. When on attack, the match HUD announces distance and **PRESS T** as the operator approaches (up to 8m awareness, attach within 2.85m).
+- Attachment tests the actual intervening wall colliders and refuses to pull players through the building from indoors; a blocked attempt explains to approach from outside.
+- On the rope, the HUD reports the upstairs window's vertical offset and tells the operator when to hold **W** to climb or **S** to descend, when **SPACE** can enter, and when the window is barricaded.
+- All nine ropes support climb/descent to the second floor. Window entry searches several safe positions across the actual aperture, checks the authored walkable slab and collision, honors barricades, performs the first-person vault, then detaches. On successful entry, the window pane disappears until the next round.
+- A reset restores the panes. Rope updates do not simultaneously invoke grounded walking/gravity. Defender rappelling remains disabled.
+- Simulated player movement tests on **both stairs** and end-to-end attach/climb/enter tests for **all nine anchors**, plus wall blocking, distance messages and barricade rejection, are part of the regression suite.
+
+**How to test V6.5:** Refresh BLACKOUT with Ctrl+Shift+R → choose **CONSOLATE + CLUBHOUSE** on ATTACK → finish drone preparation → walk toward any turquoise ground rope base outside the building → watch the HUD → press **T** within 2.85m → hold **W** to climb to the window at **4m**, not all the way to the 7.75m roof hook → press **SPACE** at the upper window when it is unbarricaded. **S** descends; **T** releases. If entry is blocked, the on-screen prompt explains why.
+
+Limitations: roof rope hooks still do not have a playable rooftop or horizontal swing mechanic. This pass focuses on reliable attachment and 2F window access for offline training. Browser playtesting is still necessary; automated success is not a substitute.
+
+---
+
 Author approval: October 19, 2026. This release is an **offline playable-map alpha** built from the user's approved BLACKOUT Dev Map Studio export.
 
 ## Original source of truth
