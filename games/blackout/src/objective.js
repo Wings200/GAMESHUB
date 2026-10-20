@@ -79,6 +79,7 @@ export class ObjectiveDrill{
     this.runoutTarget=null;this.runoutAlly=null;this.lastRunoutNotice=0;this.lastRunoutEnemy=0;
     this.defuser.hide();this.prepUntil=0;this.prepFortified=false;
     this.defuseOperatorId=null;
+    this.playerFiredAt=0;this.actionStartedAt=0;
     this.teamIntel={ally:null,enemy:null};
     this.stagedAttackers=[];this.prepAttackersDeployed=false;
     this.updateHoldRequirement();
@@ -284,6 +285,7 @@ export class ObjectiveDrill{
       // peeked during setup, even by an AI defender or reconnaissance drone.
       for(const position of this.stagedAttackers){
         const bot=this.spawnBot(position.x,position.z,false,"ally",position.site);
+        bot.insertion={x:bot.x,y:bot.y||0,z:bot.z};
         bot.nextShot=now+850+(bot.id%4)*170;
       }
       this.stagedAttackers=[];
@@ -295,6 +297,7 @@ export class ObjectiveDrill{
         ENEMY_ATTACK_SPAWNS;
       for(const [i,p] of incoming.entries()){
         const bot=this.spawnBot(p.x,p.z,false,"enemy",p.site);
+        bot.insertion={x:bot.x,y:bot.y||0,z:bot.z};
         bot.carrier=i===2;
         bot.nextShot=now+850+i*170;
       }
