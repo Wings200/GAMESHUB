@@ -1,6 +1,6 @@
 // BLACKOUT reboot · isolated footstep events and lightweight procedural audio.
 // No samples, network requests, game physics changes, or external audio dependencies.
-export const STEP_LENGTH=Object.freeze({walk:1.2,sprint:1.48,crouch:1.04});
+export const STEP_LENGTH=Object.freeze({walk:1.2,sprint:1.48,crouch:1.04,prone:.64});
 export function newFootstepTracker(){
  return {meters:0,active:false,wasGrounded:true,foot:0};
 }
@@ -21,7 +21,7 @@ export function advanceFootsteps(previous, before, after){
   tracker.meters=0;tracker.active=false;
   return {tracker,events};
  }
- const gait=after.crouched?"crouch":after.sprinting?"sprint":"walk";
+ const gait=after.prone?"prone":after.crouched?"crouch":after.sprinting?"sprint":"walk";
  const emit=()=>{
   events.push({type:"step",gait,foot:tracker.foot%2});
   tracker.foot++;
@@ -44,6 +44,7 @@ const SOUND={
  walk:{level:.50,low:150,high:1100,duration:.095},
  sprint:{level:.74,low:175,high:1560,duration:.113},
  crouch:{level:.22,low:115,high:720,duration:.075},
+ prone:{level:.12,low:85,high:480,duration:.16},
  land:{level:.92,low:110,high:930,duration:.17}
 };
 export class FootstepAudio{
@@ -108,7 +109,7 @@ export class FootstepAudio{
   thudEnvelope.gain.exponentialRampToValueAtTime(.0001,now+duration);
   thud.connect(thudEnvelope);thudEnvelope.connect(output);
   thud.start(now);thud.stop(now+duration+.003);
-  // Short, filtered shuffle/crunch for a dry concrete test floor.
+  // Short, filtered shuffle/crunch for a dry concrete test floor (soft dragging while prone).
   const noise=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),envelope=ctx.createGain();
   noise.buffer=this.noise;
   filter.type="bandpass";filter.frequency.value=settings.high*(.85+Math.random()*.3);
