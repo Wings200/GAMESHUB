@@ -83,12 +83,14 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-001",
+ for(const src of ["./reboot/main.js?v=reboot-002",
    "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
  assert.match(main,/from "\.\/physics\.js\?v=reboot-001"/);
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.match(main,/stepPlayer\(player,input,dt\)/);
+ assert.match(main,/advanceFootsteps/);
+ assert.match(main,/FootstepAudio/);
  assert.match(physics,/export function canOccupy/);
  assert.match(css,/\.menu/);
  for(const old of ["./main.js?","./style.css?","./competitive-ui.css?",
