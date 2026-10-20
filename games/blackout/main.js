@@ -157,6 +157,13 @@ function onlineRefresh(){
   createRoom.disabled=connected;joinRoom.disabled=connected;
   attackButton.disabled=connected;defendButton.disabled=connected;
   mapSelect.disabled=connected;
+  // A host-led live room owns its map and round. Disable local-only resets.
+  sitePairSelect.disabled=connected||world.mapId==="lab";
+  siteSelect.disabled=connected;spawnSelect.disabled=connected;
+  reset.disabled=connected;
+  operatorSelect.disabled=connected&&network.mode!=="lobby";
+  for(const card of operatorCards.querySelectorAll("button[data-operator]"))
+    card.disabled=connected&&network.mode!=="lobby";
   if(connected){
     onlineStatus.textContent="ROOM "+network.code+" · "+
       (network.mode==="active"?"LIVE PVP":
