@@ -118,6 +118,13 @@ const network=new BlackoutNetworkClient(THREE,scene,
       if(role!==network.me?.side)setRole(network.me.side);
       onlineCode.value=network.code;
     }
+    if(message.type==="state"&&message.event==="round-end"){
+      const line=message.winner===role?"YOUR TEAM WON":"YOUR TEAM LOST";
+      popup("ONLINE ROUND "+(message.round||network.round)+" · "+
+        (message.winner==="draw"?"DRAW":line)+" · ESC FOR LOBBY",4);
+      onlineStatus.textContent=(message.message||"ROUND ENDED")+
+        " · HOST MAY START ANOTHER ROUND";
+    }
     if(message.type==="state"&&message.event==="round-start"){
       // Server owns insertion, sides, HP and the presence of other people.
       if(role!==network.me?.side)setRole(network.me.side);
@@ -145,13 +152,17 @@ const network=new BlackoutNetworkClient(THREE,scene,
 function onlineRefresh(){
   const connected=network.connected;
   leaveRoom.disabled=!connected;
-  startRoom.disabled=!connected||!network.host||network.mode!=="lobby";
+  startRoom.disabled=!connected||!network.host||
+    !["lobby","intermission"].includes(network.mode);
   createRoom.disabled=connected;joinRoom.disabled=connected;
   attackButton.disabled=connected;defendButton.disabled=connected;
   mapSelect.disabled=connected;
   if(connected){
     onlineStatus.textContent="ROOM "+network.code+" · "+
-      (network.mode==="active"?"LIVE PVP":"LOBBY / WAITING")+
+      (network.mode==="active"?"LIVE PVP":
+       network.mode==="intermission"?
+         "ROUND COMPLETE · "+(network.winner||"draw").toUpperCase()+" WON · HOST CAN START NEXT":
+         "LOBBY / WAITING")+
       " · "+network.players.length+"/10 REAL PLAYERS"+
       (network.host?" · YOU ARE HOST":"");
   }
@@ -1119,7 +1130,8 @@ function updateFrame(now){
   const actualDt=Math.max(0,(now-last)/1000),dt=Math.min(actualDt,.043);last=now;
   frames++;elapsed+=actualDt;
   if(elapsed>=.6){fps=Math.round(frames/elapsed);frames=0;elapsed=0;}
-  const ended=!network.active&&["won","lost"].includes(objectiveRound.phase);
+  const ended=network.connected?network.mode!=="active":
+    ["won","lost"].includes(objectiveRound.phase);
   if(!ended)weapons.tick(now);
   if(locked&&!ended){
     // ADS reduces the move speed by removing sprint; it does NOT
@@ -1196,24 +1208,24 @@ function updateFrame(now){
       }
     }
     if(network.active)network.sendPosition(player,now);
-    if(!network.active)gadgets.tick(now,player,(message,event)=>{
+    if(!network.connected)gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(event)sound(event);
       if(message)popup(message);
     },objectiveRound.bots);
-    if(!network.active)barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
+    if(!network.connected)barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
       if(message)popup(message);
       if(event)sound(event);
     });
     const phaseBeforeSimulation=objectiveRound.phase;
-    if(!network.active)objectiveRound.update(now,dt,player,keys.has("KeyF")&&!drone.active&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
+    if(!network.connected)objectiveRound.update(now,dt,player,keys.has("KeyF")&&!drone.active&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
       if(message)popup(message);
       if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
       else if(event)sound(event);
     });
     if(phaseBeforeSimulation==="prep"&&objectiveRound.phase!=="prep")
       deployLocalAttacker();
-    if(!network.active&&(objectiveRound.phase==="won"||objectiveRound.phase==="lost"))
+    if(!network.connected&&(objectiveRound.phase==="won"||objectiveRound.phase==="lost"))
       recordRoundIfEnded();
     if(drone.active&&objectiveRound.phase!=="prep"&&!droneActionMode){
       drone.end();player.applyCamera();
@@ -1246,11 +1258,15 @@ function updateFrame(now){
         defendAlive.textContent=def.filter(p=>p.alive).length+"/"+def.length;
         teamPopulation.textContent="REAL HUMAN PLAYERS · "+network.players.length+
           "/10 · ROOM "+network.code;
-        phaseText.textContent=network.active?"ONLINE PvP ROUND":"ONLINE ROOM";
+        phaseText.textContent=network.active?"ONLINE PvP ROUND":
+          network.mode==="intermission"?"ROUND FINISHED":"ONLINE ROOM";
         matchClock.textContent=network.active?"LIVE":"WAIT";
-        roundScore.textContent="IRONVALE · REAL ONLINE ROOM "+network.code;
+        roundScore.textContent="IRONVALE · REAL ONLINE ROOM "+network.code+
+          " · ROUND "+network.round;
         matchCaption.textContent="LIVE PVP BETA · REAL PLAYERS ONLY";
-        objectiveHint.textContent="ONLINE BETA · SERVER-VERIFIED HITS · NO DEFUSER YET";
+        objectiveHint.textContent=network.mode==="intermission"?
+          "ONLINE "+(network.winner||"DRAW").toUpperCase()+" WIN · ESC FOR LOBBY":
+          "ONLINE BETA · SERVER-VERIFIED HITS · NO DEFUSER YET";
         squadStatus.textContent="ONLINE "+role.toUpperCase()+" · "+
           network.players.filter(p=>p.side===role).length+" HUMAN TEAMMATES";
         for(const [node,list] of [[friendlySlots,atk],[enemySlots,def]]){
@@ -1350,7 +1366,8 @@ function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO
 window.BLACKOUT_DEV={
   get build(){return "8.0.0-real-room-pvp-beta"},
   get multiplayer(){return {connected:network.connected,active:network.active,
-    code:network.code,host:network.host,id:network.id,players:network.players}},
+    code:network.code,host:network.host,id:network.id,players:network.players,
+    round:network.round,winner:network.winner}},
   get matchSeries(){return matchSeries.snapshot},
   get rappel(){return {attached:rappel.attached,anchorId:rappel.active?.id||null,
     hint:rappel.hint,nearest:rappel.nearestAnchor(100)?.distance??null}},
