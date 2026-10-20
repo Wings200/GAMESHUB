@@ -149,6 +149,60 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
           mats.techTrim);
         stripe.position.set(s.x*.32,.008,0);g.add(stripe);
       }
+      if(ironvale){
+        // A real building needs a roof above the second storey; this piece is
+        // intentionally NOT another walkable floor (floorAt remains Y=0/4).
+        if(p.y>=3.9){
+          const rooftop=new T.Group();
+          rooftop.position.set(p.x,8,p.z);root.add(rooftop);
+          solidPartBox(rooftop,0,-.125,0,s.x,.25,s.z,
+            mats.underside,false,"overhead-roof");
+        }
+        // Architectural room identity, legible from normal player eye
+        // height. Original canvas signage; no downloaded textures/assets.
+        const roomName=String(part.name||"ROOM")
+          .replace(/^\dF\s+/,"").replace(/\s+floor$/,"").slice(0,24);
+        const namePlate=document.createElement("canvas");
+        namePlate.width=512;namePlate.height=100;
+        const ink=namePlate.getContext("2d");
+        ink.fillStyle="#0b2834";ink.fillRect(0,0,512,100);
+        ink.fillStyle=tech?"#89f0db":hall?"#f0d8a3":"#c5ddec";
+        ink.fillRect(0,91,512,9);
+        ink.font="bold 32px Arial, sans-serif";
+        ink.textAlign="center";ink.textBaseline="middle";
+        ink.fillText(roomName.toUpperCase(),256,47,492);
+        const signTexture=new T.CanvasTexture(namePlate);
+        signTexture.colorSpace=T.SRGBColorSpace;
+        const sign=new T.Mesh(new T.PlaneGeometry(3.6,.64),
+          new T.MeshBasicMaterial({map:signTexture,side:T.DoubleSide}));
+        sign.position.set(0,3.32,-s.z/2+.17);
+        g.add(sign);
+        // Long ceiling fixtures make corridors and rooms readable while
+        // avoiding dozens of expensive actual runtime light objects.
+        for(const offset of [-1.45,1.45]){
+          const lamp=new T.Mesh(new T.BoxGeometry(1.6,.065,.18),
+            mats.techTrim);
+          lamp.position.set(offset,3.58,0);g.add(lamp);
+        }
+        // Distinct original props per department; physically blocked in
+        // the collision grid but all doorway centres stay unobstructed.
+        const storeroom=/Shipping|Warehouse|Logistics|Workshop|Plant|Generator|Utility|Stores|Electrical|Battery|Service/.test(roomName);
+        const office=/Office|Finance|Administration|Director|Briefing|Planning|Conference|Boardroom|Reception|Training/.test(roomName);
+        const medical=/Medical|Locker|Break Room|Kitchen|Cafeteria/.test(roomName);
+        const furnishing=tech?mats.floorTech:office?mats.deskTrim:
+          storeroom?mats.cover:medical?mats.floorOffice:mats.railing;
+        const tw=tech?1.25:office?1.75:medical?1.5:1.05;
+        const th=tech?1.95:office?.78:medical?.75:1.30;
+        solidPartBox(g,2.45,th/2,2.55,tw,th,.78,
+          furnishing||mats.cover,true,"department-prop");
+        if(tech){
+          for(const offset of [.32,.78,1.26]){
+            const led=new T.Mesh(new T.BoxGeometry(.86,.045,.03),
+              mats.techTrim);
+            led.position.set(2.45,offset,2.95);g.add(led);
+          }
+        }
+      }
     }else if(type==="hardWall"){
       solidPartBox(g,0,s.y/2,0,s.x,s.y,s.z,mats.hardWall);
     }else if(type==="cover"){
