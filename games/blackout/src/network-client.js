@@ -7,6 +7,7 @@ export class BlackoutNetworkClient {
   this.T=T;this.scene=scene;this.onStatus=onStatus;this.onEvent=onEvent;
   this.ws=null;this.id=null;this.code="";this.host=false;this.mode="offline";
   this.players=[];this.avatars=new Map();this.lastPositionAt=0;this.local=null;
+  this.winner=null;this.round=0;
  }
  get connected(){return this.ws?.readyState===WebSocket.OPEN}
  get active(){return this.connected&&this.mode==="active"}
@@ -37,6 +38,7 @@ export class BlackoutNetworkClient {
       let message;try{message=JSON.parse(event.data)}catch{return}
       if(message.type==="welcome"){
         this.id=message.id;this.host=Boolean(message.host);this.mode=message.mode||"lobby";
+        this.round=message.round||0;
         this.players=message.players||[];
         this.onStatus("CONNECTED · ROOM "+code+" · "+
           this.players.length+"/10 REAL PEOPLE");
@@ -44,6 +46,7 @@ export class BlackoutNetworkClient {
         if(!settled){settled=true;resolve(message)}
       }else if(message.type==="state"){
         this.mode=message.mode;this.players=message.players||[];
+        this.winner=message.winner||null;this.round=message.round||0;
         if(message.hostId)this.host=String(message.hostId)===this.id;
         this.syncAvatars();this.onEvent(message);
       }else if(message.type==="correction"){this.onEvent(message)}
@@ -75,7 +78,7 @@ export class BlackoutNetworkClient {
  disconnect(){
   if(this.ws){this.ws.onclose=null;this.ws.close();this.ws=null}
   this.id=null;this.host=false;this.code="";this.mode="offline";
-  this.players=[];this.clearAvatars();
+  this.players=[];this.winner=null;this.round=0;this.clearAvatars();
  }
  clearAvatars(){for(const group of this.avatars.values()){
   this.scene.remove(group);
