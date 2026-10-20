@@ -122,7 +122,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-003",
+ for(const src of ["./reboot/main.js?v=reboot-004",
    "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-003"'));
  assert.match(main,/requestPointerLock\(/);
@@ -130,8 +130,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.match(main,/stepPlayer\(player,input,dt\)/);
  assert.match(main,/advanceFootsteps/);
  assert.ok(main.includes('crouch:keys.has("KeyC")'));
- assert.ok(main.includes('prone:keys.has("ControlLeft")||keys.has("ControlRight")'));
- assert.ok(html.includes("CTRL PRONE"));
+ assert.ok(main.includes("prone:proneToggle"));
+ assert.ok(main.includes('event.code==="KeyZ"'));
+ assert.ok(main.includes("reloadPressed=true"));
+ assert.ok(main.includes('event.code==="KeyP"'));
+ assert.ok(html.includes('id="ammo"'));
+ assert.ok(html.includes('id="target-hits"'));
+ assert.ok(main.includes('from "./weapon.js?v=reboot-004"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-004"'));
+ assert.ok(html.includes("CTRL/Z PRONE"));
  assert.match(main,/FootstepAudio/);
  assert.match(physics,/export function canOccupy/);
  assert.match(css,/\.menu/);
