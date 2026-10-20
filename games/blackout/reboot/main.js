@@ -1,12 +1,14 @@
-// BLACKOUT REBOOT V0.5 — aligned ADS, persistent Q/E lean, upgraded weapon
+// BLACKOUT REBOOT V0.6 — original BLACKOUT shooting / audio on clean modern range
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-003";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
-import {WEAPON_SPEC,newWeaponState,stepWeapon} from "./weapon.js?v=reboot-004";
-import {createWeaponView,createTargetRange,createShotEffects,WeaponAudio} from "./weapon-view.js?v=reboot-005";
+import {Weapons} from "./legacy-weapons.js?v=reboot-006";
+import {GameAudio} from "./legacy-audio.js?v=reboot-006";
+import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
+import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-005";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
-import {shotSpread} from "./weapon-aim.js?v=reboot-005";
+
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
 const play=$("play"),message=$("message"),error=$("error");
@@ -89,7 +91,7 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
-const shotAudio=new WeaponAudio();
+const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const keys=new Set();
 const footstepAudio=new FootstepAudio();
@@ -98,9 +100,10 @@ let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let cameraEye=1.65;
 let locked=false,started=false;
 let proneToggle=false;
-let weaponState=newWeaponState();
+let weapons=new Weapons();
+let gunKick=0,recoilRecovery=0,lastShotAt=-Infinity,lastEmptyClick=-Infinity;
 let firing=false,aimHeld=false,reloadPressed=false,aimMix=0,targetHits=0;
-let shotNoticeLeft=0,pendingShots=0;
+let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
@@ -117,7 +120,8 @@ function unlockMessage(){
 function enterRange(){
  started=true;
  // User gesture unlocks Web Audio before browser pointer lock takes over.
- void footstepAudio.unlock().then(()=>shotAudio.connect(footstepAudio.context));
+ void footstepAudio.unlock();
+ void shotAudio.unlock(); // Original V8 multi-layer gun mixer; unlock only on user click.
  if(!canvas.requestPointerLock){
    error.textContent="This browser does not support pointer lock. Use a desktop browser.";
    error.classList.remove("hidden");return;
@@ -192,36 +196,49 @@ function hudFrame(){
  groundText.textContent=player.grounded?"STABLE":"AIRBORNE";
  modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCHED":player.sprinting?"SPRINTING":"STANDING";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
- ammoText.textContent=weaponState.ammo+" / "+weaponState.reserve;
- weaponStatus.textContent=weaponState.reloading>0?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"READY";
+ ammoText.textContent=weapons.current.ammo+" / "+weapons.current.remaining;
+ weaponStatus.textContent=weapons.reloading?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"READY";
  hitsText.textContent=String(targetHits);
  leanText.textContent=leanTarget<0?"LEFT":leanTarget>0?"RIGHT":"CENTER";
 }
-function fireShot(){
- weaponView.flash();shotAudio.fire();
- // At full ADS the 3D holo reticle lies on this exact camera-forward ray.
- // Hipfire uses spread; ADS has zero random divergence from the real sight.
+function fireShot(shot,sightAligned,now){
+ // Restored from BLACKOUT V8: high/low layered firing sound, true rate of fire,
+ // shot-pattern recoil, broad hip cone with stance and movement modifiers.
+ weaponView.flash();
+ shotAudio.play("fire");
+ lastShotAt=now;
+ const cone=legacyShotCone(shot,{
+  aligned:sightAligned,prone:player.prone,crouched:player.crouched,moving:player.moving
+ });
  camera.updateMatrixWorld(true);
- const spread=shotSpread(aimHeld);
- const direction=new THREE.Vector3((Math.random()*2-1)*spread,
-   (Math.random()*2-1)*spread,-1).normalize().applyQuaternion(camera.quaternion);
- raycaster.set(camera.position,direction);raycaster.far=150;
+ raycaster.setFromCamera({x:cone.x,y:cone.y},camera);
+ raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
- const collision=[...shootableSolids,...activeTargets.map(t=>t.group)];
- const intersections=raycaster.intersectObjects(collision,true);
- if(!intersections.length)return;
- const hit=intersections[0];
- let node=hit.object;
- while(node&&!node.userData.targetId)node=node.parent;
- const id=node?.userData?.targetId;
- const target=id?activeTargets.find(t=>t.id===id):null;
- shotEffects.mark(hit,Boolean(target));
- if(target){
-  target.downTime=1.6;target.group.visible=false;target.hits++;
-  targetHits++;
-  shotNotice.textContent="TARGET HIT · "+target.id.toUpperCase();
-  shotNoticeLeft=1.2;
+ const intersections=raycaster.intersectObjects(
+  [...shootableSolids,...activeTargets.map(t=>t.group)],true);
+ if(intersections.length){
+  const hit=intersections[0];
+  let node=hit.object;
+  while(node&&!node.userData?.targetId)node=node.parent;
+  const id=node?.userData?.targetId;
+  const target=id?activeTargets.find(t=>t.id===id):null;
+  shotEffects.mark(hit,Boolean(target));
+  if(target){
+   target.downTime=1.6;target.group.visible=false;target.hits++;
+   targetHits++;weapons.registerHit();
+   shotNotice.textContent="TARGET HIT · "+target.id.toUpperCase();
+   shotNoticeLeft=1.2;
+   shotAudio.play("impact");
+  }
  }
+ // The historical predictable pattern physically shifts the player's view.
+ // Apply AFTER the raycast so this round follows its pre-kick optic alignment.
+ player.pitch=Math.min(1.48,Math.max(-1.48,player.pitch+shot.kick.vertical));
+ player.yaw+=shot.kick.horizontal;
+ recoilRecovery+=shot.kick.vertical;
+ gunKick=Math.min(.25,gunKick+.085);
+ camera.rotation.set(player.pitch,player.yaw,camera.rotation.z,"YXZ");
+ camera.updateMatrixWorld(true);
 }
 function animate(now){
  requestAnimationFrame(animate);
@@ -243,21 +260,27 @@ function animate(now){
    const next=advanceFootsteps(footstepTracker,before,player);
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
-   const result=stepWeapon(weaponState,{fire:firing,ads:aimHeld,reload:reloadPressed},dt);
-   weaponState=result.state;
-   reloadPressed=false;
+   weapons.tick(now);
+   if(reloadPressed){
+    if(weapons.reload(now)){
+     shotAudio.play("reload");
+     shotNotice.textContent=weapons.current.reloadType.toUpperCase()+
+       " RELOAD · "+(weapons.current.reloadDurationMs/1000).toFixed(2)+"S";
+     shotNoticeLeft=1.2;
+    }
+    reloadPressed=false;
+   }
    const adsTarget=aimHeld?1:0;
    aimMix+=(adsTarget-aimMix)*Math.min(1,dt*20);
    if(Math.abs(adsTarget-aimMix)<.005)aimMix=adsTarget;
    leanAmount=smoothLean(leanAmount,leanTarget,dt);
    camera.fov=77-14*aimMix;
    camera.updateProjectionMatrix();
-   camera.updateMatrixWorld(true);
-   // Shots execute after the updated camera pose is applied below.
-   pendingShots=result.events.shots;
-   if(result.events.reloadStarted){
-    shotNotice.textContent="RELOADING · "+WEAPON_SPEC.reloadSeconds.toFixed(1)+"S";
-    shotNoticeLeft=.9;
+   gunKick=Math.max(0,gunKick-dt*2.5);
+   if(now-lastShotAt>140&&recoilRecovery>0){
+    const recover=Math.min(recoilRecovery,dt*.072);
+    player.pitch=Math.max(-1.48,player.pitch-recover);
+    recoilRecovery-=recover;
    }
  }
  // Drop the camera immediately for low cover; smoothly raise when clearance allows.
@@ -267,9 +290,20 @@ function animate(now){
  camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
  camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
  camera.updateMatrixWorld(true);
- if(locked&&pendingShots>0){
-  for(let i=0;i<pendingShots;i++)fireShot();
-  pendingShots=0;
+ if(locked){
+  // Catch up at most three shots after a slow frame, as in original BLACKOUT.
+  // No shot is allowed during reload or when sprinting.
+  const aligned=aimHeld&&aimMix>=.995;
+  const fired=cycleLegacyFire(weapons,now,{
+   held:firing,adsAligned:aligned,canFire:!player.sprinting
+  },shot=>fireShot(shot,aligned,now));
+  if(firing&&!fired&&weapons.current.ammo<=0&&
+      !weapons.reloading&&now-lastEmptyClick>600){
+   shotAudio.play("click");
+   shotNotice.textContent="MAGAZINE EMPTY · R TO RELOAD";
+   shotNoticeLeft=1;
+   lastEmptyClick=now;
+  }
  }
  for(const t of targets){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
@@ -277,11 +311,11 @@ function animate(now){
  shotEffects.tick(dt);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
- weaponView.update(dt,aimMix,weaponState.recoil,player.moving&&player.grounded);
+ weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded);
  crosshair.classList.toggle("hidden",!locked||aimMix>=.995);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot weapons and leaning",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot original V8 shooting and audio",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
