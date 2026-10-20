@@ -1,13 +1,14 @@
-// BLACKOUT REBOOT V0.1
+// BLACKOUT REBOOT V0.3 — standing, crouching and prone
 // Deterministic movement simulation. No guns, operators, map files or network.
 // All distances in metres, time in seconds; Y is foot height.
-export const FOUNDATION_VERSION="0.1.0";
+export const FOUNDATION_VERSION="0.3.0";
 export const PLAYER_RADIUS=.34;
 export const STAND_HEIGHT=1.78;
 export const CROUCH_HEIGHT=1.16;
+export const PRONE_HEIGHT=.62;
 export const GRAVITY=18;
 export const JUMP_SPEED=5.25;
-export const SPEED={walk:4.2,sprint:6.3,crouch:2.4};
+export const SPEED={walk:4.2,sprint:6.3,crouch:2.4,prone:1.1};
 export const WORLD_LIMIT=30;
 
 export const TEST_OBSTACLES=Object.freeze([
@@ -19,7 +20,7 @@ export const TEST_OBSTACLES=Object.freeze([
 
 export function initialPlayer(){
   return {x:0,y:0,z:8,vy:0,yaw:0,pitch:0,grounded:true,
-    crouched:false,moving:false,sprinting:false,speed:0};
+    crouched:false,prone:false,moving:false,sprinting:false,speed:0};
 }
 export function isFinitePlayer(state){
   return ["x","y","z","vy","yaw","pitch"].every(key=>Number.isFinite(state[key]));
@@ -28,7 +29,8 @@ export function canOccupy(x,y,z,height,objects=TEST_OBSTACLES){
   if(!Number.isFinite(x+y+z+height)||Math.abs(x)>WORLD_LIMIT-.35||
       Math.abs(z)>WORLD_LIMIT-.35||y<-.001)return false;
   return !objects.some(o=>{
-    if(y>=o.height||y+height<=0)return false;
+    const bottom=o.bottom??0;
+    if(y>=o.height||y+height<=bottom)return false;
     const closeX=Math.max(o.x-o.width/2,Math.min(x,o.x+o.width/2));
     const closeZ=Math.max(o.z-o.depth/2,Math.min(z,o.z+o.depth/2));
     const dx=x-closeX,dz=z-closeZ;
@@ -53,24 +55,29 @@ export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES){
   if(!isFinitePlayer(current))throw new Error("Invalid player coordinates");
   const state={...current};
   const delta=Math.min(0.05,Math.max(0,Number.isFinite(dt)?dt:0));
-  const crouch=Boolean(input.crouch);
-  // A low ceiling would forbid standing until the head has clearance.
-  state.crouched=crouch||
-    !canOccupy(state.x,state.y,state.z,STAND_HEIGHT,objects);
-  const height=state.crouched?CROUCH_HEIGHT:STAND_HEIGHT;
+  // Prone takes priority over crouch when both keys are held.
+  // Occupancy is tested before rising so the player cannot stand into a ceiling.
+  // Prone can begin only on the ground; it has a real, shorter collision height.
+  const wantProne=Boolean(input.prone)&&state.grounded;
+  const wantCrouch=Boolean(input.crouch);
+  const fitsStand=canOccupy(state.x,state.y,state.z,STAND_HEIGHT,objects);
+  const fitsCrouch=canOccupy(state.x,state.y,state.z,CROUCH_HEIGHT,objects);
+  state.prone=wantProne||(!wantProne&&!fitsCrouch);
+  state.crouched=!state.prone&&(wantCrouch||!fitsStand);
+  const height=state.prone?PRONE_HEIGHT:state.crouched?CROUCH_HEIGHT:STAND_HEIGHT;
   const forward=Math.max(-1,Math.min(1,Number(input.forward)||0));
   const right=Math.max(-1,Math.min(1,Number(input.right)||0));
   const magnitude=Math.hypot(forward,right);
   const normalized=magnitude>1?1/magnitude:1;
-  state.sprinting=!state.crouched&&input.sprint&&forward>0&&magnitude>0;
-  const baseSpeed=state.crouched?SPEED.crouch:state.sprinting?SPEED.sprint:SPEED.walk;
+  state.sprinting=!state.crouched&&!state.prone&&input.sprint&&forward>0&&magnitude>0;
+  const baseSpeed=state.prone?SPEED.prone:state.crouched?SPEED.crouch:state.sprinting?SPEED.sprint:SPEED.walk;
   const f=forward*normalized,r=right*normalized;
   const vx=(-Math.sin(state.yaw)*f+Math.cos(state.yaw)*r)*baseSpeed;
   const vz=(-Math.cos(state.yaw)*f-Math.sin(state.yaw)*r)*baseSpeed;
   sweep(state,vx*delta,vz*delta,height,objects);
   state.speed=magnitude?Math.hypot(vx,vz):0;
   state.moving=magnitude>0;
-  if(input.jump&&state.grounded&&!state.crouched){
+  if(input.jump&&state.grounded&&!state.crouched&&!state.prone){
     state.vy=JUMP_SPEED;state.grounded=false;
   }
   if(!state.grounded||state.vy>0){
