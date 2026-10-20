@@ -4,17 +4,18 @@ import {readFileSync} from "node:fs";
 import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {
- FOUNDATION_VERSION,TEST_OBSTACLES,STAND_HEIGHT,CROUCH_HEIGHT,SPEED,
+ FOUNDATION_VERSION,TEST_OBSTACLES,STAND_HEIGHT,CROUCH_HEIGHT,PRONE_HEIGHT,SPEED,
  initialPlayer,isFinitePlayer,canOccupy,stepPlayer
 } from "./physics.js";
 const home=join(dirname(fileURLToPath(import.meta.url)),"..");
 const read=p=>readFileSync(join(home,p),"utf8");
 
 test("new foundation is version zero, and the default spawn is clear",()=>{
- assert.equal(FOUNDATION_VERSION,"0.1.0");
+ assert.equal(FOUNDATION_VERSION,"0.3.0");
  const p=initialPlayer();
  assert.deepEqual([p.x,p.y,p.z],[0,0,8]);
  assert.equal(p.grounded,true);
+ assert.equal(p.prone,false);
  assert.equal(canOccupy(p.x,p.y,p.z,STAND_HEIGHT),true);
  assert.equal(TEST_OBSTACLES.length,4);
 });
@@ -42,8 +43,46 @@ test("sprinting and crouching change actual movement, not camera-only appearance
  assert.equal(run.sprinting,true);
  assert.equal(duck.sprinting,false);
  assert.equal(duck.crouched,true);
- assert.deepEqual([SPEED.walk,SPEED.sprint,SPEED.crouch],[4.2,6.3,2.4]);
+ assert.deepEqual([SPEED.walk,SPEED.sprint,SPEED.crouch,SPEED.prone],[4.2,6.3,2.4,1.1]);
  assert.ok(CROUCH_HEIGHT<STAND_HEIGHT);
+ assert.ok(PRONE_HEIGHT<CROUCH_HEIGHT);
+});
+test("prone overrides crouch and sprint, crawls slower, and prevents jumping",()=>{
+ const start=initialPlayer();
+ const walk=stepPlayer(start,{forward:1},.05);
+ const crouch=stepPlayer(start,{forward:1,crouch:true},.05);
+ const crawl=stepPlayer(start,{forward:1,crouch:true,prone:true,sprint:true,jump:true},.05);
+ assert.equal(crawl.prone,true);
+ assert.equal(crawl.crouched,false);
+ assert.equal(crawl.sprinting,false);
+ assert.equal(crawl.grounded,true);
+ assert.equal(crawl.y,0);
+ assert.equal(crawl.speed,SPEED.prone);
+ assert.ok(walk.z<crouch.z&&crouch.z<crawl.z);
+ assert.equal(stepPlayer(crawl,{crouch:true},.016).crouched,true);
+ assert.equal(stepPlayer(crawl,{},.016).prone,false);
+});
+test("low ceilings force prone until the player has sufficient head clearance",()=>{
+ const overhead=[{id:"low-beam",x:0,z:0,width:4,depth:4,bottom:.80,height:1.45}];
+ const under={...initialPlayer(),x:0,z:0,prone:true};
+ assert.equal(canOccupy(0,0,0,PRONE_HEIGHT,overhead),true);
+ assert.equal(canOccupy(0,0,0,CROUCH_HEIGHT,overhead),false);
+ let state=stepPlayer(under,{prone:true},.016,overhead);
+ state=stepPlayer(state,{},.016,overhead);
+ assert.equal(state.prone,true,"must not stand up into a solid ceiling");
+ state=stepPlayer(state,{crouch:true},.016,overhead);
+ assert.equal(state.prone,true,"must not crouch when the ceiling is too low");
+ state=stepPlayer({...state,z:4}, {crouch:true},.016,overhead);
+ assert.equal(state.crouched,true);
+ assert.equal(state.prone,false);
+ state=stepPlayer(state,{},.016,overhead);
+ assert.equal(state.crouched,false);
+});
+test("Ctrl cannot enter prone while airborne",()=>{
+ const airborne=stepPlayer(initialPlayer(),{jump:true},.016);
+ const next=stepPlayer(airborne,{prone:true},.016);
+ assert.equal(next.prone,false);
+ assert.equal(next.grounded,false);
 });
 test("jump uses real gravity, lands without falling through the ground, no air double jump",()=>{
  let p=stepPlayer(initialPlayer(),{jump:true},.016);
@@ -83,13 +122,16 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-002",
+ for(const src of ["./reboot/main.js?v=reboot-003",
    "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
- assert.match(main,/from "\.\/physics\.js\?v=reboot-001"/);
+ assert.ok(main.includes('from "./physics.js?v=reboot-003"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.match(main,/stepPlayer\(player,input,dt\)/);
  assert.match(main,/advanceFootsteps/);
+ assert.ok(main.includes('crouch:keys.has("KeyC")'));
+ assert.ok(main.includes('prone:keys.has("ControlLeft")||keys.has("ControlRight")'));
+ assert.ok(html.includes("CTRL PRONE"));
  assert.match(main,/FootstepAudio/);
  assert.match(physics,/export function canOccupy/);
  assert.match(css,/\.menu/);
