@@ -1,5 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v603-approved-clubhouse";
+import {buildRange} from "./src/world.js?v=blackout-v650-rappel-stairs";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
@@ -12,7 +12,7 @@ import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive
 import {Barricades} from "./src/barricades.js?v=blackout-v603-approved-clubhouse";
 import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
-import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v603-approved-clubhouse";
+import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v650-rappel-stairs";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
