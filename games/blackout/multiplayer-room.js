@@ -34,6 +34,9 @@ export class BlackoutRoom extends DurableObject {
     if(!entry?.id)continue;
     const p={...entry,id:entry.id,ws,connected:true,lastMove:Date.now(),
       lastShot:0,health:entry.health??100,alive:entry.alive??true,
+      shots:entry.shots??30,insertX:entry.insertX??entry.x,
+      insertZ:entry.insertZ??entry.z,
+      spawnedAt:entry.spawnedAt||0,firedAt:entry.firedAt||0,
       x:entry.x||0,y:entry.y||0,z:entry.z||0,yaw:entry.yaw||0,pitch:entry.pitch||0};
     this.players.set(p.id,p);
     this.nextId=Math.max(this.nextId,Number(p.id)+1);
@@ -84,7 +87,8 @@ export class BlackoutRoom extends DurableObject {
   // deliberately never stores raw request tokens or account secrets.
   try{p.ws.serializeAttachment({id:p.id,name:p.name,side:p.side,
    operator:p.operator,x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,
-   health:p.health,alive:p.alive});}catch{}
+   health:p.health,alive:p.alive,shots:p.shots,
+   insertX:p.insertX,insertZ:p.insertZ,spawnedAt:p.spawnedAt,firedAt:p.firedAt});}catch{}
  }
  snapshot(){return [...this.players.values()].map(freeze)}
  send(p,event){try{p.ws.send(JSON.stringify(event))}catch{}}
