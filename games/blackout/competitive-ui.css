@@ -256,3 +256,12 @@ body.playing .game-hud .debug-panel:not(.hidden){top:165px}
  .bo-online-fields{grid-template-columns:1fr}
  .bo-online-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* V8.1 distinct real-human private room entry, separate from fake AI queue. */
+.bo-online-entry{display:flex;flex-direction:column;gap:7px;width:100%;margin:13px 0;
+ padding:15px 17px;text-align:left;cursor:pointer;color:#e7fbff;
+ border:1px solid #75b8ba;background:linear-gradient(100deg,#143f48,#193449)}
+.bo-online-entry strong{font-size:12px;letter-spacing:.11em;font-weight:900}
+.bo-online-entry small{font-size:9px;letter-spacing:.05em;color:#a9d7db;line-height:1.5}
+.bo-online-entry:hover{border-color:#9decdf;background:linear-gradient(100deg,#225c60,#234d62)}
+.bo-operator-card:disabled{opacity:.58;cursor:not-allowed}
