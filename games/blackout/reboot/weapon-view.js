@@ -1,85 +1,27 @@
-// BLACKOUT V0.4 · original geometric BX-7 carbine and offline target range.
-// Visual model, optic, effects and dummies are THREE meshes, not HUD art.
+// BLACKOUT V0.5 · refined BX-7 Mk II model, calibrated ADS and target range.
+import {buildBX7Model} from "./weapon-model.js?v=reboot-005";
+import {weaponPose} from "./weapon-aim.js?v=reboot-005";
+
 export function createWeaponView(THREE,camera,scene){
  const root=new THREE.Group();
- root.name="BX-7 physically mounted weapon viewmodel";
+ root.name="BX-7 Mk II original camera-mounted carbine";
  camera.add(root);
  scene.add(camera);
- const metal=new THREE.MeshStandardMaterial({color:0x252f36,metalness:.68,roughness:.39});
- const polymer=new THREE.MeshStandardMaterial({color:0x151d23,metalness:.24,roughness:.74});
- const raised=new THREE.MeshStandardMaterial({color:0x485862,metalness:.67,roughness:.35});
- const trim=new THREE.MeshStandardMaterial({color:0x627984,metalness:.69,roughness:.31});
- const glow=new THREE.MeshBasicMaterial({color:0x7ef8dd,transparent:true,opacity:.92,depthWrite:false});
- const glass=new THREE.MeshPhysicalMaterial({color:0x4eaaa6,metalness:0,roughness:.12,
-  transmission:.42,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false});
- function box(parent,w,h,d,x,y,z,material=metal,rotX=0,rotZ=0){
-  const item=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
-  item.position.set(x,y,z);item.rotation.x=rotX;item.rotation.z=rotZ;
-  item.castShadow=false;parent.add(item);return item;
- }
- function tube(parent,r,length,x,y,z,material=metal){
-  const item=new THREE.Mesh(new THREE.CylinderGeometry(r,r,length,12),material);
-  item.rotation.x=Math.PI/2;item.position.set(x,y,z);parent.add(item);return item;
- }
- // Magazine-fed original compact carbine. Barrel is along camera-forward -Z.
- box(root,.245,.205,.48,0,-.06,-.18,metal);
- box(root,.235,.042,.75,0,.071,-.325,raised);
- box(root,.04,.03,.65,-.084,.10,-.32,trim);
- box(root,.04,.03,.65,.084,.10,-.32,trim);
- box(root,.218,.145,.36,0,-.041,-.57,polymer);
- for(let n=0;n<7;n++){
-  box(root,.23,.012,.017,0,.045,-.42-n*.045,raised);
-  box(root,.012,.060,.018,-.112,-.023,-.42-n*.045,raised);
-  box(root,.012,.060,.018,.112,-.023,-.42-n*.045,raised);
- }
- tube(root,.027,.48,0,-.021,-.82,metal);
- tube(root,.04,.075,0,-.021,-1.085,polymer);
- for(let i=0;i<3;i++)box(root,.044,.012,.012,0,-.021,-1.11+i*.025,raised);
- box(root,.17,.115,.22,0,-.065,.26,polymer);
- box(root,.20,.125,.065,0,-.065,.35,metal);
- box(root,.108,.225,.09,0,-.219,-.09,polymer,-.25);
- box(root,.122,.30,.13,0,-.237,-.29,raised,.17);
- box(root,.09,.012,.23,0,-.15,-.08,metal);
- box(root,.018,.09,.04,.01,-.167,-.12,trim);
- box(root,.07,.026,.07,.137,-.03,-.09,trim);
- for(const side of [-1,1]){
-  box(root,.017,.07,.075,side*.132,-.055,-.17,polymer);
-  box(root,.017,.06,.074,side*.113,-.038,-.60,raised);
- }
- // Real, attached holographic sight. ADS aligns the window with camera center.
- box(root,.19,.048,.24,0,.124,-.46,polymer);
- box(root,.18,.024,.05,0,.16,-.43,metal);
- for(const x of [-.077,.077])box(root,.026,.145,.051,x,.227,-.43,metal);
- box(root,.184,.032,.055,0,.305,-.43,metal);
- box(root,.148,.12,.009,0,.235,-.428,glass);
- const reticle=new THREE.Group();
- reticle.position.set(0,.233,-.418);
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.014,.0016,6,24),glow);
- reticle.add(ring);
- for(const [x,y,w,h] of [[0,.020,.002,.007],[0,-.020,.002,.007],
-    [.020,0,.007,.002],[-.020,0,.007,.002]]){
-  const tick=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glow);
-  tick.position.set(x,y,.002);reticle.add(tick);
- }
- root.add(reticle);
- const muzzleGlow=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),
-   new THREE.MeshBasicMaterial({color:0xffe4ad,transparent:true,opacity:.9,depthWrite:false}));
- muzzleGlow.position.set(0,-.021,-1.13);
- muzzleGlow.visible=false;root.add(muzzleGlow);
+ const parts=buildBX7Model(THREE,root);
  let flashLeft=0;
  function flash(){flashLeft=.045;}
  function update(dt,aimMix,recoil,moving){
-  const t=Math.min(1,Math.max(0,aimMix));
-  root.position.set(.265*(1-t),-.277+(.044*t)-recoil*.025,-.48+.035*t+recoil*.13);
-  root.rotation.set(-.026+recoil*.045,0,-.055*(1-t));
   const bob=moving?Math.sin(performance.now()*.012)*.003:0;
-  root.position.y+=bob*(1-t);
-  reticle.visible=t>.22;
+  const pose=weaponPose(aimMix,recoil,bob);
+  root.position.set(pose.x,pose.y,pose.z);
+  root.rotation.set(pose.pitch,0,pose.roll);
+  // Don't show an off-center optic mark while the gun is transitioning to ADS.
+  parts.reticle.visible=aimMix>=.995;
   flashLeft=Math.max(0,flashLeft-dt);
-  muzzleGlow.visible=flashLeft>0;
-  if(muzzleGlow.visible)muzzleGlow.scale.setScalar(.6+Math.random()*1.4);
+  parts.flash.visible=flashLeft>0;
+  if(parts.flash.visible)parts.flash.scale.setScalar(.8+Math.random()*.9);
  }
- return {root,update,flash};
+ return {root,update,flash,reticle:parts.reticle};
 }
 
 export function createTargetRange(THREE,scene){
