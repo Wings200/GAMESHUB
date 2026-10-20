@@ -98,7 +98,7 @@ test("real Worker Durable Object is isolated from REDLINE and browser UI shows g
  assert.match(frontend,/this\.players=message\.players/);
  assert.match(frontend,/this\.scene\.add\(root\)/);
  assert.match(main,/const network=new BlackoutNetworkClient/);
- assert.match(main,/if\(!network\.active\)objectiveRound\.update/);
+ assert.match(main,/if\(!network\.connected\)objectiveRound\.update/);
  assert.match(main,/network\.sendPosition\(player,now\)/);
  assert.match(main,/network\.shoot\(targetId\)/);
  for(const id of ["boCreateRoom","boJoinRoom","boLeaveRoom","boStartRoom",
