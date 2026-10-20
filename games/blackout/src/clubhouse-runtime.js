@@ -59,7 +59,7 @@ export function clubhouseStairEndpoints(part){
     top:{x:p.x+dx,z:p.z+dz,y:p.y+part.size.y}};
 }
 export function createClubhouse(T,scene,map,state={collisionRevision:0}){
-  const root=new T.Group();root.name="CONSOLATE / CLUBHOUSE · AUTHOR APPROVED";
+  const root=new T.Group();root.name=map.name||"CUSTOM TACTICAL COMPLEX";
   scene.add(root);root.visible=false;
   const colliders=[],shootables=[],panels=[],openings=[],coverPoints=[],anchors=[];
   const panelWorld={colliders,shootables,
@@ -104,7 +104,13 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
   const terrain=new T.Mesh(new T.PlaneGeometry(190,190),
     material(0x43545a,.015,.96));
   terrain.rotation.x=-Math.PI/2;
-  terrain.position.set(-16,-.025,-10);
+  terrain.position.set(
+    (Math.min(...map.elements.filter(e=>e.type==="floor").map(e=>e.position.x))+
+     Math.max(...map.elements.filter(e=>e.type==="floor").map(e=>e.position.x)))/2,
+    -.025,
+    (Math.min(...map.elements.filter(e=>e.type==="floor").map(e=>e.position.z))+
+     Math.max(...map.elements.filter(e=>e.type==="floor").map(e=>e.position.z)))/2
+  );
   terrain.userData.kind="solid";
   root.add(terrain);shootables.push(terrain);
   const groups=new Map();
@@ -186,16 +192,25 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
   const sitePairs=map.sitePairs.map(clubhouseSitePair);
   const defenders=clubhouseSpawnPoints(map,"defenderSpawn");
   const attackers=clubhouseSpawnPoints(map,"attackerSpawn");
-  const building={minX:-43,maxX:5,minZ:-21.1,maxZ:1};
+  // Derive structural extent from actual author-designed floor geometry,
+  // not the old Clubhouse hardcoded 48 × 22 metre rectangle.
+  const slabs=map.elements.filter(e=>e.type==="floor");
+  const building={
+    minX:Math.min(...slabs.map(e=>e.position.x-pieceFootprint(e).x/2)),
+    maxX:Math.max(...slabs.map(e=>e.position.x+pieceFootprint(e).x/2)),
+    minZ:Math.min(...slabs.map(e=>e.position.z-pieceFootprint(e).z/2)),
+    maxZ:Math.max(...slabs.map(e=>e.position.z+pieceFootprint(e).z/2))
+  };
   const facilities={
-    mode:"clubhouse",bounds:building,coverPoints,openings,sitePairs,
+    mode:"clubhouse",mapName:map.name,bounds:building,coverPoints,openings,sitePairs,
     anchors,attackSpawns:attackers,defendSpawns:defenders,
     stairConnectors:map.elements.filter(e=>e.type==="stairs").map(clubhouseStairEndpoints),
     shell:root,
     zoneAt(x,z,y=0){
       const inside=x>=building.minX&&x<=building.maxX&&
         z>=building.minZ&&z<=building.maxZ;
-      return inside?"CONSOLATE / "+(y>=3.6?"2F":"1F"):"CONSOLATE / EXTERIOR";
+      const label=(map.name||"TACTICAL COMPLEX").split("·")[0].trim();
+      return inside?label+" / "+(y>=3.6?"2F":"1F"):label+" / EXTERIOR";
     }
   };
   function dispose(){
