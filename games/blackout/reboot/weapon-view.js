@@ -1,6 +1,7 @@
 // BLACKOUT V0.5 · refined BX-7 Mk II model, calibrated ADS and target range.
 import {buildBX7Model} from "./weapon-model.js?v=reboot-005";
 import {weaponPose} from "./weapon-aim.js?v=reboot-005";
+import {TARGET_POSITIONS} from "./range-layout.js?v=reboot-007";
 
 export function createWeaponView(THREE,camera,scene){
  const root=new THREE.Group();
@@ -67,7 +68,7 @@ export function createTargetRange(THREE,scene){
  const dark=new THREE.MeshStandardMaterial({color:0x24323b,roughness:.83});
  const white=new THREE.MeshStandardMaterial({color:0xd4e5e8,roughness:.83});
  const stand=new THREE.MeshStandardMaterial({color:0x536675,metalness:.4,roughness:.64});
- const positions=[[-11,-18],[-2,-22],[7,-17],[13,-23]];
+ const positions=TARGET_POSITIONS;
  const targets=[];
  for(let i=0;i<positions.length;i++){
   const group=new THREE.Group();
@@ -85,7 +86,7 @@ export function createTargetRange(THREE,scene){
   const bullseye=new THREE.Mesh(new THREE.CircleGeometry(.072,24),white);
   bullseye.position.set(0,1.28,.128);bullseye.userData.targetId=id;group.add(bullseye);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.233,12,10),i%2?green:orange);
-  head.position.set(0,1.99,0);head.userData.targetId=id;group.add(head);
+  head.position.set(0,1.99,0);head.userData.targetId=id;head.userData.hitZone="head";group.add(head);
   scene.add(group);
   targets.push({id,group,downTime:0,hits:0});
  }
