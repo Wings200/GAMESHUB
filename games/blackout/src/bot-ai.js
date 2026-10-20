@@ -132,7 +132,7 @@ function levelWorld(world,level){
     barricades:world.barricades};
 }
 export function findTacticalPath(world,from,to,ignoreDoors=true){
-  if(world.mapId==="clubhouse")return findClubhousePath(world,from,to,ignoreDoors);
+  if((world.mapId==="clubhouse"||world.mapId==="ironvale"))return findClubhousePath(world,from,to,ignoreDoors);
   if(world.mapId!=="switchyard")
     return findTacticalPath2D(world,from,to,ignoreDoors);
   const quantize=y=>Math.max(0,Math.min(2,Math.round((y||0)/4)));
@@ -177,7 +177,7 @@ export function advanceTacticalBot(bot,goal,world,dt,now){
   // Timed replanning used to send a climber back to the staircase bottom.
   // Preserve active 3D route waypoints unless target/world changes or the
   // stuck-recovery logic explicitly discards its path.
-  const routeInProgress=(world.mapId==="switchyard"||world.mapId==="clubhouse")&&bot.path.length>0;
+  const routeInProgress=(world.mapId==="switchyard"||(world.mapId==="clubhouse"||world.mapId==="ironvale"))&&bot.path.length>0;
   if(changingGoal||changedWorld||now>=bot.repathAt&&!routeInProgress){
     bot.path=findTacticalPath(world,bot,goal,bot.allowBreach!==false);
     if(changedWorld)bot.blockingBarricade=null;
