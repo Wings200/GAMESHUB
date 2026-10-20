@@ -127,7 +127,8 @@ test("site selector and map source both wired to visible UI",()=>{
  assert.match(main,/applyMap\("switchyard"\)/);
  assert.match(main,/objectiveRound\.refreshMap\(\)/);
  assert.match(main,/world\.setSitePair\(/);
- assert.match(main,/world\.spawn\.y=selectedSpawn\?\.y\?\?/);
+ assert.match(main,/playerDefenderInsertion\(world,objectiveRound\.siteId\)/);
+ assert.match(main,/y:insertion\.y\?\?0/);
  assert.match(main,/objectiveRound\.site\.y\|\|0/);
  assert.match(main,/world\.facility\.attackSpawns/);
  assert.match(main,/world\.facility\.defendSpawns/);
