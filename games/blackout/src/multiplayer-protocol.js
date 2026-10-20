@@ -67,7 +67,8 @@ export function validShot(shooter,target,parts=[]){
   const dx=target.x-shooter.x,dz=target.z-shooter.z;
   const distance=Math.hypot(dx,dz);
   if(distance>.2&&distance<38){
-    const yaw=Math.atan2(dx,-dz);
+    // FPS forward vector = (-sin(yaw),-cos(yaw)); sign matters.
+    const yaw=-Math.atan2(dx,-dz);
     const wrapped=Math.atan2(Math.sin(yaw-shooter.yaw),Math.cos(yaw-shooter.yaw));
     if(Math.abs(wrapped)>.16)return false;
     const eye={x:shooter.x,y:shooter.y+1.55,z:shooter.z};
