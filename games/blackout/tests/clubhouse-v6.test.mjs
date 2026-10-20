@@ -269,3 +269,29 @@ test("V6.5 entering a window breaks the glass only for that round",()=>{
  assert.ok(result.ok,result.message);
  assert.equal(target.glass.visible,false,"window pane removed when entering");
 });
+
+test("V7 actual Clubhouse colliders and upper slabs support five site-correct defender spawns",()=>{
+ const planner=load("round-spawns.js",{},
+   "{defenderSetupPositions,playerDefenderInsertion,isSafeDefenderInsertion}");
+ for(const pair of make().map.sitePairs){
+   const {world}=make();
+   world.facility.sites={A:pair.A,B:pair.B};
+   for(const focus of ["A","B"]){
+     const all=planner.defenderSetupPositions(world,5,focus);
+     assert.equal(all.length,5,pair.name+"/"+focus+" needs 5 actual playable spawns");
+     const human=planner.playerDefenderInsertion(world,focus);
+     assert.ok(human&&human.site===focus);
+     assert.equal(human.y,world.facility.sites[focus].y,
+       "human defender must start on chosen site floor");
+     for(const p of all){
+       assert.equal(p.y,world.facility.sites[p.site].y,
+         "AI defenders must start on bomb's real floor");
+       assert.ok(planner.isSafeDefenderInsertion(world,
+         world.facility.sites[p.site],p,all.filter(other=>other!==p)),
+         "real world collision prohibits spawn "+JSON.stringify(p));
+       assert.equal(world.floorAt(p.x,p.z,p.y+.29),p.y,
+         "upper defender stands on a physically modelled floor");
+     }
+   }
+ }
+});
