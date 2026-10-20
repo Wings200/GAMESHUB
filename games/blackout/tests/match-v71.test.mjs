@@ -92,5 +92,6 @@ test("V7.1 actual gameplay wires score, automatic side changes, AI + player gun 
  assert.match(html,/blackout-v710-round-match/);
  assert.doesNotThrow(()=>new Function(code));
  assert.doesNotThrow(()=>new Function(obj.replace(/^import .*$/gm,"").replace(/^export /gm,"")));
- assert.doesNotThrow(()=>new Function(main.replace(/^import .*$/gm,"").replace(/^const\s+.*await.*$/gm,"")));
+ const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+ assert.doesNotThrow(()=>new AsyncFunction(main.replace(/^import .*$/gm,"")));
 });
