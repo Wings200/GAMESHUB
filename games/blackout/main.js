@@ -14,6 +14,7 @@ import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
 import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v650-rappel-stairs";
 import {playerDefenderInsertion,targetFloor} from "./src/round-spawns.js?v=blackout-v700-site-floors";
+import {TacticalSeries,attackInsertionProtected} from "./src/match-flow.js?v=blackout-v710-round-match";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
@@ -48,6 +49,9 @@ const attackAlive=$("attackAlive"),defendAlive=$("defendAlive");
 const operatorHud=$("operatorHud"),healthHud=$("healthHud");
 const objectiveHint=$("objectiveHint"),objectiveProgress=$("objectiveProgress");
 const objectiveAction=$("objectiveAction"),objectiveFill=$("objectiveFill"),roundResult=$("roundResult");
+const intermission=$("matchIntermission"),intermissionTitle=$("matchIntermissionTitle");
+const intermissionScore=$("matchIntermissionScore"),intermissionGuide=$("matchIntermissionGuide");
+const intermissionRounds=$("matchIntermissionRounds");
 const attackButton=$("attackRole"),defendButton=$("defendRole"),guide=$("guide");
 const sightSelect=$("sightSelect"),reticle=$("reticle");
 const primaryWeaponSelect=$("primaryWeaponSelect"),secondaryWeaponSelect=$("secondaryWeaponSelect");
@@ -59,6 +63,7 @@ const SIGHTS=["holo-a","holo-b","red-dot","iron"];
 const SIGHT_NAMES={"holo-a":"HOLO A","holo-b":"HOLO B","red-dot":"RED DOT","iron":"IRON"};
 let sight="holo-a";
 let role="attacker";
+const matchSeries=new TacticalSeries("attacker");
 let operator=defaultOperator(role);
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
@@ -98,6 +103,37 @@ let gunKick=0,gunKickSide=0,lastShotAt=0,recoilRecovery=0,lastStepMark=0,lastWal
 let roundFrozen=false,lastEndFrame=0,lastHudAt=0,lastPhaseLabel="",phaseToastUntil=0;
 let combatErrors=0,lastCombatError="",lastRuntimeReportAt=0;
 let droneActionMode=false,localAttackerDeployed=true;
+function restartSeries(startSide=role){
+  matchSeries.reset(startSide);
+  objectiveRound.roundNumber=1;
+  objectiveRound.score={attacker:0,defender:0};
+}
+function recordRoundIfEnded(){
+  if(objectiveRound.phase!=="won"&&objectiveRound.phase!=="lost")return;
+  if(matchSeries.record(objectiveRound.roundNumber,objectiveRound.phase==="won",
+    role,objectiveRound.result)){
+    status.textContent=matchSeries.resultLine;
+  }
+}
+function launchNextSeriesRound(){
+  recordRoundIfEnded();
+  if(matchSeries.finished){
+    restartSeries(role);
+    resetSimulation();
+  }else if(matchSeries.nextRole!==role){
+    // Halftime is automatic. Rebuild selection and loadout for the new side.
+    const previous=role;
+    setRole(matchSeries.nextRole);
+    popup("HALFTIME · "+previous.toUpperCase()+" → "+role.toUpperCase(),3);
+  }else resetSimulation();
+  objectiveRound.start(clock());
+  if(role==="attacker"){
+    stageLocalAttacker();droneActionMode=false;drone.begin(clock());
+  }
+  roundFrozen=false;lastPhaseLabel="";phaseToastUntil=clock()+2300;
+  popup("ROUND "+objectiveRound.roundNumber+" · "+
+    (role==="attacker"?"DRONE RECON":"DEFENSE FORTIFICATION"),2.8);
+}
 function stageLocalAttacker(){
   if(role!=="attacker"||objectiveRound.phase!=="prep")return;
   // Player controller has no world-space avatar during drone preparation.
@@ -376,6 +412,7 @@ function syncSiteChoice(){
   siteSelect.value=objectiveRound.siteId;
 }
 function applyMap(next){
+  restartSeries(role);
   // Remove every old round actor BEFORE changing collision and raycast lists.
   objectiveRound.reset(role);
   rappel.reset();drone.reset();gadgets.reset(role);barricades.reset(role);world.reset();
@@ -398,6 +435,7 @@ function applyMap(next){
 mapSelect.addEventListener("change",()=>applyMap(mapSelect.value));
 sitePairSelect.addEventListener("change",()=>{
   if(world.mapId==="lab")return;
+  restartSeries(role);
   objectiveRound.reset(role);
   rappel.reset();drone.reset();gadgets.reset(role);barricades.reset(role);
   if(world.setSitePair(sitePairSelect.value)){
@@ -407,9 +445,12 @@ sitePairSelect.addEventListener("change",()=>{
     status.textContent="SITE PAIR LOCKED · "+sitePairSelect.selectedOptions[0]?.textContent;
   }
 });
-attackButton.addEventListener("click",()=>setRole("attacker"));
-defendButton.addEventListener("click",()=>setRole("defender"));
-reset.addEventListener("click",()=>{resetSimulation();status.textContent="All targets and ammo reset.";});
+attackButton.addEventListener("click",()=>{restartSeries("attacker");setRole("attacker");});
+defendButton.addEventListener("click",()=>{restartSeries("defender");setRole("defender");});
+reset.addEventListener("click",()=>{
+  restartSeries(role);resetSimulation();
+  status.textContent="NEW OFFLINE MATCH · SCORE RESET · FIRST TO FOUR";
+});
 operatorSelect.addEventListener("change",()=>chooseOperator(operatorSelect.value));
 secondarySelect.addEventListener("change",()=>{
   gadgets.setSecondaryType(secondarySelect.value);
@@ -436,13 +477,8 @@ document.addEventListener("keydown",e=>{
   if(e.code==="F3"){e.preventDefault();debug=!debug;debugPanel.classList.toggle("hidden",!debug);return;}
   if(!locked)return;
   if((objectiveRound.phase==="won"||objectiveRound.phase==="lost")){
-    if(e.code==="Enter"){
-      e.preventDefault();resetSimulation();objectiveRound.start(clock());
-      if(role==="attacker"){
-        // Defender AI installs jammer devices physically during preparation.
-        stageLocalAttacker();droneActionMode=false;drone.begin(clock());
-      }
-      popup("NEW ROUND · "+(role==="attacker"?"DRONE DEPLOYED":"DEFENSE PREP"));
+    if(e.code==="Enter"&&!e.repeat){
+      e.preventDefault();launchNextSeriesRound();
     }
     return;
   }
@@ -606,6 +642,7 @@ function fireOnceSafe(now){
     if(shot.why==="empty"&&now-lastEmptyClick>600){sound("click");lastEmptyClick=now;popup("MAGAZINE EMPTY · R TO RELOAD",1);}
     return;
   }
+  objectiveRound.playerFiredAt=now;
   sound(shot.gun==="secondary"?"pistol":"fire");muzzleUntil=now+48;
   objectiveRound.onNoise(player.x,player.z,shot.gun==="primary"?27:17,now);
   weaponView.eject(shot.gun);
@@ -680,6 +717,16 @@ function fireOnceSafe(now){
       break;
     }
     if(info.kind==="bot"){
+      const protectedInsertion=role==="defender"&&
+        attackInsertionProtected({
+          now,actionStartedAt:objectiveRound.actionStartedAt,phase:objectiveRound.phase,
+          team:"attacker",position:info.bot,insertion:info.bot.insertion,
+          firedAt:info.bot.lastShotAt
+        });
+      if(protectedInsertion){
+        popup("ATTACKER INSERTION PROTECTED · 2.3S MAX",.75);
+        break;
+      }
       const head=info.hitZone==="head",base=head?shot.headDamage:shot.damage;
       const kill=info.bot.damage(Math.max(1,Math.round(base*penetration)));
       weapons.registerHit(kill);hitUntil=now+170;
@@ -737,7 +784,7 @@ function drawTacticalHud(now){
   droneSignal.textContent=lostFeed?"DRONE DESTROYED":
     drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE · "+drone.health+" HP · "+drone.remaining+" SPARE";
   phaseText.textContent=phaseName;
-  matchScore.textContent=round.score.attacker+" — "+round.score.defender;
+  matchScore.textContent=matchSeries.yourWins+" — "+matchSeries.theirWins;
   // All ten slots are real participants in this OFFLINE PvE simulation.
   const playerAlive=player.health>0;
   const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+
@@ -844,16 +891,40 @@ function updateHud(report){
   const squadText="AI SQUAD · "+squadLabel+" · "+(attacking&&objectiveRound.phase==="prep"?4:allies.length)+"/4 UP";
   if(squadStatus.textContent!==squadText)squadStatus.textContent=squadText;
   objective.textContent=objectiveRound.summary(clock());
-  roundScore.textContent=`ROUND ${objectiveRound.roundNumber} · ATK ${objectiveRound.score.attacker} : ${objectiveRound.score.defender} DEF`;
+  roundScore.textContent="ROUND "+objectiveRound.roundNumber+
+    " · YOUR SQUAD "+matchSeries.yourWins+" : "+matchSeries.theirWins+
+    " OPPONENTS · "+role.toUpperCase();
   objectiveHint.textContent=objectiveRound.hint;
   const progressing=objectiveRound.hold>0;
   objectiveProgress.classList.toggle("hidden",!progressing);
   objectiveAction.textContent=role==="attacker"?"PLANTING DEFUSER":"DISABLING DEFUSER";
   objectiveFill.style.width=objectiveRound.holdPercent.toFixed(1)+"%";
   const ended=objectiveRound.phase==="won"||objectiveRound.phase==="lost";
-  roundResult.classList.toggle("hidden",!ended);
-  roundResult.textContent=ended?(objectiveRound.phase==="won"?"VICTORY":"DEFEAT")+" · "+objectiveRound.result+" · ENTER: NEXT ROUND / ESC: MENU":"";
-  roundResult.classList.toggle("lost",objectiveRound.phase==="lost");
+  if(ended)recordRoundIfEnded();
+  roundResult.classList.add("hidden");
+  intermission.classList.toggle("hidden",!ended);
+  if(ended){
+    intermissionTitle.textContent=matchSeries.finished?
+      (matchSeries.winner==="YOUR SQUAD"?"MATCH VICTORY":"MATCH DEFEAT"):
+      (objectiveRound.phase==="won"?"ROUND VICTORY":"ROUND DEFEAT");
+    intermissionScore.textContent="YOUR SQUAD "+matchSeries.yourWins+
+      " — "+matchSeries.theirWins+" OPPONENTS · FIRST TO FOUR";
+    intermissionGuide.textContent=matchSeries.finished?
+      "MATCH COMPLETE · ENTER: START NEW MATCH · ESC: MENU":
+      "ENTER: ROUND "+matchSeries.round+" · NEXT SIDE "+
+      matchSeries.nextRole.toUpperCase()+
+      (matchSeries.history.length===3?" · HALFTIME SIDE SWITCH":"")+
+      " · ESC: MENU";
+    intermissionRounds.replaceChildren();
+    for(const game of matchSeries.history){
+      const pip=document.createElement("span");
+      pip.className="bo-series-pip "+(game.won?"win":"loss");
+      pip.textContent=game.number;
+      pip.title="ROUND "+game.number+" · "+game.role.toUpperCase()+
+        " · "+(game.won?"WON":"LOST")+" · "+game.reason;
+      intermissionRounds.appendChild(pip);
+    }
+  }
   operatorHud.textContent=operator.name+" · "+operator.speed+" SPEED / "+operator.armor+" ARMOR";
   healthHud.textContent=player.health+" / "+player.maxHealth+" HP";
   healthHud.classList.toggle("low-health",player.health<=player.maxHealth*.35);
@@ -1012,6 +1083,8 @@ function updateFrame(now){
     });
     if(phaseBeforeSimulation==="prep"&&objectiveRound.phase!=="prep")
       deployLocalAttacker();
+    if(objectiveRound.phase==="won"||objectiveRound.phase==="lost")
+      recordRoundIfEnded();
     if(drone.active&&objectiveRound.phase!=="prep"&&!droneActionMode){
       drone.end();player.applyCamera();
       sound("round-start");popup("INSERTION COMPLETE · OPERATOR SPAWNED",2.5);
@@ -1115,7 +1188,8 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "7.0.0-site-correct-defenders"},
+  get build(){return "7.1.0-round-swap-spawn-protection"},
+  get matchSeries(){return matchSeries.snapshot},
   get rappel(){return {attached:rappel.attached,anchorId:rappel.active?.id||null,
     hint:rappel.hint,nearest:rappel.nearestAnchor(100)?.distance??null}},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
