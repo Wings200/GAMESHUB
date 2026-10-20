@@ -82,7 +82,16 @@ try{
     throw Error("Approved map signature mismatch");
   clubhouseBlueprint=data;
 }catch(error){console.error("BLACKOUT CLUBHOUSE map unavailable",error);}
-const world=buildRange(THREE,scene,clubhouseBlueprint);
+let ironvaleBlueprint=null;
+try{
+  const res=await fetch("./maps/ironvale-operations.blackout-map.json?v=ironvale-beta-1");
+  if(!res.ok)throw Error("HTTP "+res.status);
+  const map=await res.json();
+  if(map.format!=="blackout-editor-v1"||map.elements?.length!==549)
+    throw Error("IRONVALE map content signature mismatch");
+  ironvaleBlueprint=map;
+}catch(error){console.error("BLACKOUT IRONVALE map unavailable",error);}
+const world=buildRange(THREE,scene,clubhouseBlueprint,ironvaleBlueprint);
 const player=new FirstPersonController(THREE,world,camera);
 const weapons=new Weapons();
 const gadgets=new Gadgets(THREE,world,scene);
@@ -283,9 +292,9 @@ function resetSimulation(){
   // Defender insertions follow the selected BOMB SITE and selected FLOOR.
   // Old map markers were all ground-floor Y=0 and caused 2F defenders to
   // start downstairs. Both the player and AI use the same valid room solver.
-  const defenderSpawn=world.mapId==="clubhouse"?
+  const defenderSpawn=(world.mapId==="clubhouse"||world.mapId==="ironvale")?
     playerDefenderInsertion(world,objectiveRound.siteId):null;
-  const selectedAttacker=world.mapId==="clubhouse"?
+  const selectedAttacker=(world.mapId==="clubhouse"||world.mapId==="ironvale")?
     attackers.find(s=>s.id===spawn)||
       attackers[Math.max(0,Number(spawn)||0)]||attackers[0]:null;
   const fallback=attackSpawnFor(spawn);
@@ -295,7 +304,7 @@ function resetSimulation(){
     selectedAttacker||fallback;
   Object.assign(world.spawn,{x:insertion.x,z:insertion.z,
     y:insertion.y??0,yaw:insertion.yaw??0});
-  if(role==="defender"&&world.mapId==="clubhouse"&&
+  if(role==="defender"&&(world.mapId==="clubhouse"||world.mapId==="ironvale")&&
     Math.abs(world.floorAt(world.spawn.x,world.spawn.z,world.spawn.y+.29)-
       targetFloor(objectiveRound.site))>.35){
     status.textContent="DEFENDER SPAWN ERROR · SELECT ANOTHER SITE OR FIX MAP FLOOR";
@@ -350,7 +359,7 @@ function setRole(r){
   defendButton.classList.toggle("active",role==="defender");
   selectedMode.textContent=role==="attacker"?"ATTACKER · PLANT AT EITHER SITE":"DEFENDER · PROTECT BOTH SITES";
   spawnSelect.replaceChildren();
-  const choices=world.mapId==="clubhouse"&&role==="attacker"?
+  const choices=(world.mapId==="clubhouse"||world.mapId==="ironvale")&&role==="attacker"?
     world.facility.attackSpawns.map((p,i)=>[String(i),"EXTERIOR INSERTION "+(i+1)]):
     role==="attacker"?
     [["south","SOUTH ENTRY"],["west","WEST FLANK"],["east","EAST FLANK"]]:
@@ -405,7 +414,8 @@ function syncSiteChoice(){
     sitePairSelect.appendChild(op);
   }
   if(map!=="lab")sitePairSelect.value=world.sitePairId;
-  mapLabel.textContent=map==="clubhouse"?"CONSOLATE + CLUBHOUSE · 2 FLOORS":
+  mapLabel.textContent=map==="ironvale"?"IRONVALE · 56 × 40M / TWO FLOORS":
+    map==="clubhouse"?"CONSOLATE + CLUBHOUSE · 2 FLOORS":
     map==="switchyard"?"SWITCHYARD · 3 FLOORS":"MECHANICS LAB";
   const a=world.facility.sites.A,b=world.facility.sites.B;
   siteSelect.replaceChildren();
@@ -432,7 +442,8 @@ function applyMap(next){
   objectiveRound.refreshMap();
   syncSiteChoice();
   setRole(role);
-  status.textContent=(world.mapId==="clubhouse"?
+  status.textContent=(world.mapId==="ironvale"?
+    "IRONVALE OPERATIONS · ROOM-BY-ROOM TACTICAL COMPLEX":world.mapId==="clubhouse"?
     "CONSOLATE + CLUBHOUSE · 2 FLOORS / RAPPEL ANCHORS":
     world.mapId==="switchyard"?
     "SWITCHYARD ACTIVE · 3 FLOORS / STAIRWELLS":"MECHANICS LAB ACTIVE")+
