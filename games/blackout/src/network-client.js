@@ -44,6 +44,7 @@ export class BlackoutNetworkClient {
         if(!settled){settled=true;resolve(message)}
       }else if(message.type==="state"){
         this.mode=message.mode;this.players=message.players||[];
+        if(message.hostId)this.host=String(message.hostId)===this.id;
         this.syncAvatars();this.onEvent(message);
       }else if(message.type==="correction"){this.onEvent(message)}
       else if(message.type==="notice")this.onStatus(message.message);
