@@ -144,7 +144,7 @@
           <option value="lab">MECHANICS LAB · ORIGINAL FLAT TEST RANGE</option>
         </select>
       </label>
-      <div class="bo-gear-header">BOMB <span>DEFENDER SITE SELECTION</span></div>
+      <div class="bo-gear-header">BOMB <span>DEFENDER SITE SELECTION · 1F / 2F</span></div>
       <label class="bo-field">SELECT ACTIVE BOMB PAIR
         <select id="sitePairSelect" aria-label="Choose active bomb site pair">
           <option value="operations">GROUND FLOOR · SWITCHROOM / DISPATCH</option>
@@ -152,7 +152,7 @@
           <option value="rooftop">ROOF · RELAY / RADIO CONTROL</option>
         </select>
       </label>
-      <div class="bo-gear-header">04 <span>SECONDARY GADGET</span></div><label class="bo-field">EQUIPMENT<select id="secondarySelect" aria-label="Choose secondary gadget"><option value="recon">RECON PULSE (2)</option></select></label><div class="bo-gear-header">05 <span>INSERTION POINT</span></div><label class="bo-field">SPAWN LOCATION<select id="spawnSelect" aria-label="Choose training spawn"><option value="south">SOUTH ENTRY</option><option value="west">WEST FLANK</option><option value="east">EAST FLANK</option></select></label><div class="bo-gear-header">06 <span>OBJECTIVE</span></div><label class="bo-field">FOCUS SITE · BOTH SITES REMAIN ACTIVE<select id="siteSelect" aria-label="Choose bomb site"><option value="A">SITE A — BOMB LAB A</option><option value="B">SITE B — BOMB LAB B</option></select></label><div class="bo-ready-panel"><strong id="boReadyOperator">SLEDGE</strong><span>READY FOR INSERTION</span><p>45-second drone / defense preparation begins on deployment. Press ESC to pause or reconfigure.</p></div></div></div>
+      <div class="bo-gear-header">04 <span>SECONDARY GADGET</span></div><label class="bo-field">EQUIPMENT<select id="secondarySelect" aria-label="Choose secondary gadget"><option value="recon">RECON PULSE (2)</option></select></label><div class="bo-gear-header">05 <span>INSERTION POINT</span></div><label class="bo-field">SPAWN LOCATION<select id="spawnSelect" aria-label="Choose training spawn"><option value="south">SOUTH ENTRY</option><option value="west">WEST FLANK</option><option value="east">EAST FLANK</option></select></label><div class="bo-gear-header">06 <span>OBJECTIVE</span></div><label class="bo-field">FOCUS SITE · DEFENDERS SPAWN ON SELECTED FLOOR<select id="siteSelect" aria-label="Choose bomb site"><option value="A">SITE A — BOMB LAB A</option><option value="B">SITE B — BOMB LAB B</option></select></label><div class="bo-ready-panel"><strong id="boReadyOperator">SLEDGE</strong><span>READY FOR INSERTION</span><p>45-second drone / defense preparation begins on deployment. Press ESC to pause or reconfigure.</p></div></div></div>
     <div class="bo-page-actions bo-deploy-actions"><button class="bo-secondary" type="button" data-bo-nav="operators">‹ OPERATORS</button><button id="start" type="button" class="bo-primary bo-deploy">DEPLOY OPERATOR <b>›</b></button></div>
   </section>
 
@@ -161,8 +161,8 @@
     <div class="bo-settings-grid"><div><h3>CONTROLS</h3><div class="tuning-grid"><label>MOUSE SENSITIVITY <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label></div><button id="guideToggle" type="button" class="bo-secondary">SHOW KEYBINDS</button><div id="guide" class="test-guide hidden"><p><strong>WASD</strong> MOVE · <strong>SHIFT</strong> SPRINT · <strong>CTRL</strong> CROUCH · <strong>Z</strong> PRONE · <strong>Q/E</strong> LEAN</p><p><strong>LMB</strong> FIRE · <strong>RMB</strong> AIM DOWN SIGHTS · <strong>1/2</strong> SWITCH WEAPON · <strong>R</strong> RELOAD · <strong>V</strong> CHANGE OPTIC</p><p><strong>G</strong> SPECIAL · <strong>X</strong> SECONDARY · <strong>B</strong> REMOTE DETONATION · <strong>3</strong> DRONE · <strong>F</strong> PLANT / DEFUSE / INTERACT</p><p><strong>SPACE</strong> VAULT · <strong>ESC</strong> MENU · <strong>F3</strong> DEBUG</p></div></div><div><h3>AUDIO & SESSION</h3><button id="audioTest" type="button" class="bo-secondary">TEST GAME AUDIO ♪</button><p id="audioStatus" class="audio-status">AUDIO READY AFTER USER INPUT</p><button id="reset" class="bo-secondary" type="button">RESET TRAINING ROUND</button><p class="bo-settings-note">BLACKOUT is currently an offline mechanics test: no live multiplayer, ranked points, Ubisoft account connection, or official Siege content.</p></div></div>
   </section>
 
-  <div class="bo-footer"><span id="status" class="notice" role="status">READY FOR LOCAL TRAINING</span><span>BLACKOUT V5.0 · SWITCHYARD MULTI-FLOOR ALPHA</span><span>OFFLINE · AI TRAINING</span></div>
+  <div class="bo-footer"><span id="status" class="notice" role="status">READY FOR LOCAL TRAINING</span><span>BLACKOUT V7.0 · TACTICAL ROUND / FLOOR-CORRECT SPAWNS</span><span>OFFLINE · AI TRAINING</span></div>
   <div id="boQueue" class="bo-queue hidden" role="status" aria-live="polite"><div class="bo-queue-box"><div class="bo-queue-spin" aria-hidden="true"></div><span class="bo-eyebrow">LOCAL SESSION // OFFLINE</span><h2>PREPARING YOUR MATCH</h2><p id="boQueueStatus">INITIALIZING AI SQUADS...</p><div class="bo-queue-progress"><span></span></div><button id="boCancelQueue" class="bo-secondary" type="button">CANCEL</button></div></div>
 </main>
-<script type="module" src="./main.js?v=blackout-v650-rappel-stairs"></script>
+<script type="module" src="./main.js?v=blackout-v700-site-floor-spawns"></script>
 </body></html>
