@@ -89,7 +89,7 @@ test("V7.1 actual gameplay wires score, automatic side changes, AI + player gun 
    "matchIntermissionScore","matchIntermissionGuide","matchIntermissionRounds"])
    assert.ok(html.includes('id="'+id+'"'),"missing visual scoreboard "+id);
  assert.match(css,/\.bo-match-intermission/);
- assert.match(html,/blackout-v710-round-match/);
+ assert.match(html,/blackout-v801-online-beta/);
  assert.doesNotThrow(()=>new Function(code));
  assert.doesNotThrow(()=>new Function(obj.replace(/^import .*$/gm,"").replace(/^export /gm,"")));
  const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
