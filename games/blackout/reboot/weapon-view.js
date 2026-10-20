@@ -8,20 +8,57 @@ export function createWeaponView(THREE,camera,scene){
  camera.add(root);
  scene.add(camera);
  const parts=buildBX7Model(THREE,root);
- let flashLeft=0;
+ let flashLeft=0,reload=null;
+ const shells=[];
+ const brass=new THREE.MeshStandardMaterial({color:0xb99a58,metalness:.88,roughness:.24});
  function flash(){flashLeft=.045;}
- function update(dt,aimMix,recoil,moving){
-  const bob=moving?Math.sin(performance.now()*.012)*.003:0;
+ function eject(){
+  // Restored from the old BLACKOUT: spent casings eject from the bolt.
+  const shell=new THREE.Mesh(new THREE.CylinderGeometry(.014,.016,.049,8),brass);
+  shell.rotation.x=Math.PI/2;
+  shell.position.set(.135,-.035,-.31);
+  root.add(shell);
+  shells.push({shell,xv:.7+Math.random()*.55,yv:.45+Math.random()*.22,
+    zv:.15+Math.random()*.3,age:0});
+  while(shells.length>22){
+   const old=shells.shift();root.remove(old.shell);old.shell.geometry.dispose();
+  }
+ }
+ function beginReload(now,durationMs,type="tactical"){
+  reload={at:now,duration:Math.max(100,durationMs),type};
+ }
+ function update(dt,aimMix,recoil,moving,now=performance.now()){
+  const bob=moving?Math.sin(now*.012)*.003:0;
   const pose=weaponPose(aimMix,recoil,bob);
   root.position.set(pose.x,pose.y,pose.z);
   root.rotation.set(pose.pitch,0,pose.roll);
-  // Don't show an off-center optic mark while the gun is transitioning to ADS.
   parts.reticle.visible=aimMix>=.995;
   flashLeft=Math.max(0,flashLeft-dt);
   parts.flash.visible=flashLeft>0;
   if(parts.flash.visible)parts.flash.scale.setScalar(.8+Math.random()*.9);
+  parts.magazine.position.y=-.307;
+  parts.magazine.rotation.x=-.12;
+  if(reload){
+   const t=(now-reload.at)/reload.duration;
+   if(t>=1)reload=null;
+   else{
+    const pull=t<.36?Math.sin(Math.min(1,t/.36)*Math.PI/2):
+      t<.58?1:Math.max(0,1-(t-.58)/.30);
+    parts.magazine.position.y-=pull*.21;
+    parts.magazine.rotation.x=-.12+pull*.24;
+   }
+  }
+  // Legacy casing motion in first-person gun-space with gravity and spin.
+  for(let i=shells.length-1;i>=0;i--){
+   const s=shells[i];s.age+=dt;s.yv-=2.7*dt;
+   s.shell.position.x+=s.xv*dt;s.shell.position.y+=s.yv*dt;
+   s.shell.position.z+=s.zv*dt;s.shell.rotation.z+=dt*14;
+   if(s.age>1.2){
+    root.remove(s.shell);s.shell.geometry.dispose();shells.splice(i,1);
+   }
+  }
  }
- return {root,update,flash,reticle:parts.reticle};
+ return {root,update,flash,eject,beginReload,reticle:parts.reticle};
 }
 
 export function createTargetRange(THREE,scene){
