@@ -1,4 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
+import {BlackoutRoom} from "./games/blackout/multiplayer-room.js";
+export {BlackoutRoom};
+
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
 import { REDLINE_CAR_IDS, STARTER_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
   from "./games/redline/car-catalog.js";
@@ -706,6 +709,34 @@ export default {
 
     }
 
+
+    /* BLACKOUT: independent invite-only real player rooms. REDLINE
+       URLs and durable objects are completely unaffected by these routes.
+       PUBLIC BETA: room codes act as the private access secret. */
+    if(url.pathname==="/api/blackout/rooms"&&request.method==="POST"){
+      if(!env.BLACKOUT_ROOMS)
+        return json({ok:false,error:"BLACKOUT Worker room binding not deployed."},503);
+      const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const bytes=new Uint8Array(6);
+      crypto.getRandomValues(bytes);
+      const code=[...bytes].map(x=>alphabet[x%alphabet.length]).join("");
+      const id=env.BLACKOUT_ROOMS.idFromName(code);
+      const stub=env.BLACKOUT_ROOMS.get(id);
+      const create=await stub.fetch(new Request(url.origin+
+        "/api/blackout/rooms/"+code+"/create",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({code})
+      }));
+      return create;
+    }
+    const blackoutMatch=url.pathname.match(/^\/api\/blackout\/rooms\/([A-HJ-NP-Z2-9]{6})\/(status|ws)$/i);
+    if(blackoutMatch){
+      if(!env.BLACKOUT_ROOMS)
+        return json({ok:false,error:"BLACKOUT Worker room binding not deployed."},503);
+      const code=blackoutMatch[1].toUpperCase();
+      const stub=env.BLACKOUT_ROOMS.get(env.BLACKOUT_ROOMS.idFromName(code));
+      return stub.fetch(request);
+    }
 
     /* =====================================================
        HEALTH
