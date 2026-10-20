@@ -334,6 +334,7 @@ function chooseOperator(id){
   status.textContent=selected.name+" READY · FIXED OPERATOR SPEED AND HEALTH";
 }
 function setRole(r){
+  const previousOperator=operator?.id;
   role=r==="defender"?"defender":"attacker";
   secondarySelect.replaceChildren();
   const equipment=role==="attacker"?
@@ -367,7 +368,11 @@ function setRole(r){
     operatorSelect.appendChild(option);
   }
   renderOperatorCards();
-  chooseOperator(defaultOperator(role).id);
+  // Changing map/site must not reset a player's selected specialist.
+  // Only switching to the opposite team requires a different operator.
+  const preserved=previousOperator&&OPERATORS[previousOperator]?.side===role?
+    previousOperator:defaultOperator(role).id;
+  chooseOperator(preserved);
   status.textContent=role==="attacker"?
     "ATTACK: locate bomb A or B, hold F while still to plant, then defend the defuser.":
     "DEFEND: protect both bomb units and disable any planted defuser.";
