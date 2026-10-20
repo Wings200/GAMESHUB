@@ -1,5 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v800-ironvale-online";
+import {buildRange} from "./src/world.js?v=blackout-v815-room-art";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
@@ -15,7 +15,7 @@ import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations"
 import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v800-ironvale-online";
 import {playerDefenderInsertion,targetFloor} from "./src/round-spawns.js?v=blackout-v700-site-floors";
 import {TacticalSeries,attackInsertionProtected} from "./src/match-flow.js?v=blackout-v710-round-match";
-import {BlackoutNetworkClient} from "./src/network-client.js?v=blackout-v801-online-beta";
+import {BlackoutNetworkClient} from "./src/network-client.js?v=blackout-v815-round-wins";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
