@@ -91,9 +91,15 @@ export class ObjectiveDrill{
     this.holdNeeded=this.role==="attacker"?5000:5500;
   }
   findSafeSpawn(x,z,y=0){
-    const clear=(px,pz)=>!this.world.colliders.some(c=>
-      c.maxY>y+.5&&c.minY<y+1.8&&px>c.minX-.41&&px<c.maxX+.41&&
-      pz>c.minZ-.41&&pz<c.maxZ+.41);
+    const clear=(px,pz)=>{
+      // Old fallback tested only walls. A collision-free XY point can still
+      // be suspended in midair beside a 2F floor slab or over a stair hole.
+      if(y>.2&&Math.abs(this.world.floorAt(px,pz,y+.29)-y)>.35)
+        return false;
+      return !this.world.colliders.some(c=>
+        c.maxY>y+.5&&c.minY<y+1.8&&px>c.minX-.41&&px<c.maxX+.41&&
+        pz>c.minZ-.41&&pz<c.maxZ+.41);
+    };
     if(clear(x,z))return {x,z};
     // Never spawn an AI body through a desk, bomb cabinet or wall.
     // Test compact rings around the intended team setup position.
@@ -104,6 +110,10 @@ export class ObjectiveDrill{
         if(clear(px,pz))return {x:px,z:pz};
       }
     }
+    // Never quietly relocate a 2F bot into an unsupported floor square.
+    // Log the map-design issue so the next map audit can fix the geometry.
+    if(y>.2&&!clear(x,z))
+      console.warn("BLACKOUT: no collision-clear floor spawn near",x,z,y);
     return {x,z};
   }
   spawnBot(x,z,stationary=false,team="enemy",siteId="A",explicitY=null){
