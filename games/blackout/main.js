@@ -5,7 +5,7 @@ import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v700-site-floor-spawns";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v711-round-match";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
@@ -275,7 +275,8 @@ window.addEventListener("blur",()=>{fireHeld=false;ads=false;keys.clear();
 
 function resetSimulation(){
   resetTacticalCue();
-  rappel.reset();drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
+  rappel.reset();drone.reset();droneActionMode=false;localAttackerDeployed=role!=="attacker";objectiveRound.reset(role);
+  objectiveRound.roundNumber=matchSeries.round;world.reset();gadgets.reset(role);barricades.reset(role);weapons.reset();weaponView.reset();
   roundFrozen=false;lastHudAt=0;lastEndFrame=0;lastPhaseLabel="";phaseToastUntil=0;
   const spawn=spawnSelect?.value||"south";
   const attackers=world.facility.attackSpawns||[];
