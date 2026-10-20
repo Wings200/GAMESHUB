@@ -122,7 +122,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-004",
+ for(const src of ["./reboot/main.js?v=reboot-005",
    "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-003"'));
  assert.match(main,/requestPointerLock\(/);
@@ -137,9 +137,20 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ammo"'));
  assert.ok(html.includes('id="target-hits"'));
  assert.ok(main.includes('from "./weapon.js?v=reboot-004"'));
- assert.ok(main.includes('from "./weapon-view.js?v=reboot-004"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-005"'));
+ assert.ok(main.includes('from "./weapon-aim.js?v=reboot-005"'));
+ assert.ok(main.includes('from "./lean.js?v=reboot-005"'));
+ assert.ok(main.includes('toggleLean(leanTarget,event.code==="KeyQ"?-1:1)'));
+ assert.ok(main.includes('camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ")'));
+ assert.ok(main.includes("shotSpread(aimHeld)"));
+ assert.ok(html.includes('id="lean-status"'));
  assert.ok(html.includes("CTRL/Z PRONE"));
+ assert.ok(html.includes("Q/E LEAN"));
  assert.match(main,/FootstepAudio/);
+ const view=read("reboot/weapon-view.js"),model=read("reboot/weapon-model.js");
+ assert.ok(view.includes("buildBX7Model"));
+ assert.ok(model.includes("OPTIC_CENTER"));
+ assert.ok(model.includes("ExtrudeGeometry"));
  assert.match(physics,/export function canOccupy/);
  assert.match(css,/\.menu/);
  for(const old of ["./main.js?","./style.css?","./competitive-ui.css?",
