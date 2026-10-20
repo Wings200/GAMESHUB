@@ -24,6 +24,14 @@ test("crouch and sprint use separate strides",()=>{
  r=advanceFootsteps(newFootstepTracker(),p,at(.1,{crouched:true}));
  assert.equal(r.events[0].gait,"crouch");
 });
+test("prone crawling uses a quieter separate gait without interrupting crouch footsteps",()=>{
+ const p=at(0),crawl=at(.1,{prone:true});
+ const r=advanceFootsteps(newFootstepTracker(),p,crawl);
+ assert.deepEqual(r.events,[{type:"step",gait:"prone",foot:0}]);
+ assert.ok(STEP_LENGTH.prone<STEP_LENGTH.crouch);
+ const next=advanceFootsteps(r.tracker,crawl,at(.2,{crouched:true}));
+ assert.equal(next.events.length,0,"switching stances does not fake a step");
+});
 test("airborne movement is silent; landing generates one thump",()=>{
  let r=advanceFootsteps(newFootstepTracker(),at(0),at(.1,{grounded:false,vy:4}));
  assert.deepEqual(r.events,[]);
