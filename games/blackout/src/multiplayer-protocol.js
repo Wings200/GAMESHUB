@@ -21,28 +21,64 @@ export function chooseSpawn(side,ordinal){
 export function validLoadout(side,operator){
   return OPERATOR_SIDES[operator]===side;
 }
+// Same floor rules as the playable editor map, but checked independently
+// inside the online Worker so a modified browser can't fly upstairs.
+export function supportedFloor(parts,x,z,height){
+  let best=0;
+  for(const p of parts){
+    if(p.type!=="floor")continue;
+    if(p.position.y>height+.32)continue;
+    if(Math.abs(p.position.x-x)<p.size.x/2&&
+       Math.abs(p.position.z-z)<p.size.z/2)
+      best=Math.max(best,p.position.y);
+  }
+  for(const p of parts){
+    if(p.type!=="stairs")continue;
+    const rot=(p.rotationY||0)*Math.PI/180,dx=x-p.position.x,dz=z-p.position.z;
+    const localX=Math.cos(rot)*dx-Math.sin(rot)*dz;
+    const localZ=Math.sin(rot)*dx+Math.cos(rot)*dz;
+    if(Math.abs(localX)>p.size.x/2+.2||
+       Math.abs(localZ)>p.size.z/2+.2)continue;
+    const ratio=Math.max(0,Math.min(1,(localZ+p.size.z/2)/p.size.z));
+    const step=p.position.y+p.size.y*ratio;
+    if(step<=height+.45)best=Math.max(best,step);
+  }
+  return best;
+}
+export function solidAt(parts,x,z,y){
+  return parts.some(p=>{
+    if(!["hardWall","softWall","reinforcedWall","cover","railing"].includes(p.type))return false;
+    const angle=(p.rotationY||0)*Math.PI/180,rot=Math.abs(Math.sin(angle))>.7;
+    const w=rot?p.size.z:p.size.x,d=rot?p.size.x:p.size.z;
+    return x>p.position.x-w/2-.25&&x<p.position.x+w/2+.25&&
+      z>p.position.z-d/2-.25&&z<p.position.z+d/2+.25&&
+      y+1.45>p.position.y&&y<p.position.y+p.size.y;
+  });
+}
 export function acceptMovement(before,attempt,dt,parts=[]){
   if(!attempt||!["x","y","z","yaw","pitch"].every(k=>Number.isFinite(attempt[k])))return null;
-  const time=Math.max(.015,Math.min(.5,dt));
+  const time=Math.max(.01,Math.min(.5,dt));
   const travel=Math.hypot(attempt.x-before.x,attempt.z-before.z);
-  // A 7.1m/s bound permits short speed bursts plus packet jitter but no
-  // teleporting between two windows in one frame.
-  const max=7.1*time+.42;
+  const max=7.4*time+.14;
   if(travel>max)return null;
   if(attempt.x< -86||attempt.x>86||attempt.z< -86||attempt.z>86||
     attempt.y<-.2||attempt.y>9)return null;
-  if(Math.abs(attempt.y-before.y)>Math.max(.42,7*time))return null;
-  // Solid structural collision / LOS are enforced by the server against
-  // hard/soft/reinforced walls and cover. Windows/door openings stay open.
-  const solid=parts.some(p=>{
-    if(!["hardWall","softWall","reinforcedWall","cover","railing"].includes(p.type))return false;
-    const a=p.rotationY*Math.PI/180,turn=Math.abs(Math.sin(a))>.7;
-    const w=turn?p.size.z:p.size.x,d=turn?p.size.x:p.size.z;
-    return attempt.x>p.position.x-w/2-.30&&attempt.x<p.position.x+w/2+.30&&
-      attempt.z>p.position.z-d/2-.30&&attempt.z<p.position.z+d/2+.30&&
-      attempt.y+1.6>p.position.y&&attempt.y<p.position.y+p.size.y;
-  });
-  if(solid)return null;
+  if(Math.abs(attempt.y-before.y)>Math.max(.21,7*time))return null;
+  // Sample the ENTIRE path. Checking just the destination let a client
+  // walk through thin structural walls between two 70ms packets.
+  const steps=Math.max(1,Math.ceil(Math.max(travel,
+    Math.abs(attempt.y-before.y))/.11));
+  const anchors=parts.filter(p=>p.type==="rappelAnchor");
+  for(let i=1;i<=steps;i++){
+    const t=i/steps;
+    const x=before.x+(attempt.x-before.x)*t;
+    const y=before.y+(attempt.y-before.y)*t;
+    const z=before.z+(attempt.z-before.z)*t;
+    if(solidAt(parts,x,z,y))return null;
+    const anchored=anchors.some(p=>Math.hypot(p.position.x-x,p.position.z-z)<1.0&&
+      y<=p.position.y+.2&&y>=p.position.y-p.size.y-.2);
+    if(!anchored&&y-supportedFloor(parts,x,z,y)>.82)return null;
+  }
   return {x:attempt.x,y:attempt.y,z:attempt.z,
     yaw:((attempt.yaw+Math.PI*2)%(Math.PI*2)),pitch:Math.max(-1.46,Math.min(1.46,attempt.pitch))};
 }
