@@ -204,7 +204,7 @@ function hudFrame(){
 function fireShot(shot,sightAligned,now){
  // Restored from BLACKOUT V8: high/low layered firing sound, true rate of fire,
  // shot-pattern recoil, broad hip cone with stance and movement modifiers.
- weaponView.flash();
+ weaponView.flash();weaponView.eject();
  shotAudio.play("fire");
  lastShotAt=now;
  const cone=legacyShotCone(shot,{
@@ -250,7 +250,7 @@ function animate(now){
        Number(keys.has("KeyS")||keys.has("ArrowDown")),
      right:Number(keys.has("KeyD")||keys.has("ArrowRight"))-
        Number(keys.has("KeyA")||keys.has("ArrowLeft")),
-     sprint:keys.has("ShiftLeft")||keys.has("ShiftRight"),
+     sprint:(keys.has("ShiftLeft")||keys.has("ShiftRight"))&&!aimHeld,
      crouch:keys.has("KeyC"),
      prone:proneToggle,
      jump:keys.has("Space")
@@ -264,6 +264,7 @@ function animate(now){
    if(reloadPressed){
     if(weapons.reload(now)){
      shotAudio.play("reload");
+     weaponView.beginReload(now,weapons.current.reloadDurationMs,weapons.current.reloadType);
      shotNotice.textContent=weapons.current.reloadType.toUpperCase()+
        " RELOAD · "+(weapons.current.reloadDurationMs/1000).toFixed(2)+"S";
      shotNoticeLeft=1.2;
@@ -311,7 +312,7 @@ function animate(now){
  shotEffects.tick(dt);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
- weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded);
+ weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now);
  crosshair.classList.toggle("hidden",!locked||aimMix>=.995);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
