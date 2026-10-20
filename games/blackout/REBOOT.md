@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.6
+# BLACKOUT — Clean Reboot V0.6.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,15 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.6.1 · Recorded ADS mismatch and blocked dummy head:**
+- Reviewed a 36-second user recording, particularly seconds 32–34: the physical holographic sight was held on a yellow dummy head, but the hit counter did not increase; there was also an existing left-block impact mark. This is not proof every mark was caused by the same shot.
+- Confirmed that old V8 shooting was still using wide 0.18 hipfire spread during the V0.6 ADS animation until `aimMix>=.995`. Now `aimState(aimHeld,aimMix).accurate` zeroes bullets whenever ADS is held; physical sight reticle remains hidden until centered, hipfire remains wide without RMB.
+- Verified the old orange/yellow target [13,-23] head from the recorded eye position (~1.1,1.65,-3.2) was actually occluded by `wall-two`. Moved it to [7,-25], with a pure 3D segment/AABB line-of-sight regression asserting its head is now exposed from that position. Other movement walls stay unchanged.
+- Shots use the same actual perspective camera `raycaster.setFromCamera` as the optic, with nearest-hit classification. A hit on solid wall reports `SHOT BLOCKED · WALL-TWO` (or its obstacle ID), while actual target heads produce `HEADSHOT` feedback. These messages help distinguish spread, blocked lanes, and misses.
+- No REDLINE files, shared Worker, old BLACKOUT map, AI or online code affected. Automated unit tests verify math and integration, but actual screenshot-level aiming still needs user playtesting.
+
+
 
 **2026-10-20 / V0.6 · Original BLACKOUT shooting/audio restoration:**
 - Retrieved original V8.1 source from Git commit `ca9800d2d7b225fb94471ec7ea80d7639319b18a`: `src/weapons.js`, `src/material-ballistics.js`, and `src/audio.js`. Their historical weapon class, recoil pattern, and procedural sound mixer are preserved in `reboot/legacy-weapons.js`, `reboot/legacy-ballistics.js`, and `reboot/legacy-audio.js` (with only local dependency import rewritten). These are **actively imported** by the clean reboot; legacy map/bot/network modules are not.
