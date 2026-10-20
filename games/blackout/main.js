@@ -70,6 +70,7 @@ let sight="holo-a";
 let role="attacker";
 const matchSeries=new TacticalSeries("attacker");
 let operator=defaultOperator(role);
+const selectedOperatorBySide={attacker:"sledge",defender:"mute"};
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -405,7 +406,8 @@ function resetSimulation(){
 function chooseOperator(id){
   const selected=OPERATORS[id];
   if(!selected||selected.side!==role)return;
-  operator=selected;operatorSelect.value=id;
+  operator=selected;selectedOperatorBySide[role]=selected.id;
+  operatorSelect.value=id;
   player.setOperator(selected);
   operatorDetails.textContent=selected.speed+" SPEED · "+selected.armor+" ARMOR · "+selected.health+
     " HP · "+selected.walk.toFixed(2)+" m/s WALK · "+selected.sprint.toFixed(2)+" m/s SPRINT";
@@ -467,7 +469,7 @@ function setRole(r){
   // Changing map/site must not reset a player's selected specialist.
   // Only switching to the opposite team requires a different operator.
   const preserved=previousOperator&&OPERATORS[previousOperator]?.side===role?
-    previousOperator:defaultOperator(role).id;
+    previousOperator:(selectedOperatorBySide[role]||defaultOperator(role).id);
   chooseOperator(preserved);
   status.textContent=role==="attacker"?
     "ATTACK: locate bomb A or B, hold F while still to plant, then defend the defuser.":
