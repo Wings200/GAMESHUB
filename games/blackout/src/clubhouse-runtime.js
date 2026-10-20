@@ -62,6 +62,7 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
   const root=new T.Group();root.name=map.name||"CUSTOM TACTICAL COMPLEX";
   scene.add(root);root.visible=false;
   const colliders=[],shootables=[],panels=[],openings=[],coverPoints=[],anchors=[];
+  const ironvale=map.name?.includes("IRONVALE");
   const panelWorld={colliders,shootables,
     get collisionRevision(){return state.collisionRevision},
     set collisionRevision(v){state.collisionRevision=v}};
@@ -70,6 +71,11 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
   const mats={
     hardWall:material(0x788a94,.14,.88),
     floor:material(0x596b75,.08,.95),
+    floorHall:material(0x536b77,.09,.81),
+    floorOffice:material(0x877b69,.03,.9),
+    floorTech:material(0x465b69,.22,.66),
+    techTrim:material(0x84cad5,.55,.3),
+    deskTrim:material(0xb7ae9b,.10,.8),
     underside:material(0x394957,.18,.84),
     door:material(0x637885,.52,.57),
     window:material(0x688a9e,.48,.6),
@@ -130,13 +136,43 @@ export function createClubhouse(T,scene,map,state={collisionRevision:0}){
     g.rotation.y=(part.rotationY||0)*Math.PI/180;root.add(g);groups.set(part.id,g);
     const half=s.x/2,halfDepth=s.z/2;
     if(type==="floor"){
+      const tech=/Server|Network|Vault|Battery|Electrical|Plant Control|Tech|Operations Center|Encrypted|Generator/.test(part.name);
+      const hall=/Hall|Corridor|Gallery|Passage|Atrium|Reception|Lobby|Stairs|Landing/.test(part.name);
+      const surface=ironvale?(tech?mats.floorTech:hall?mats.floorHall:mats.floorOffice):mats.floor;
       const node=solidPartBox(g,0,-s.y/2,0,s.x,s.y,s.z,
-        [mats.floor,mats.floor,mats.floor,mats.underside,mats.floor,mats.floor],false);
+        [surface,surface,surface,mats.underside,surface,surface],false);
       node.userData.kind="solid";
+      // Three-dimensional direction stripe differentiates the public
+      // connecting circulation spine from enclosed tactical rooms.
+      if(ironvale&&hall){
+        const stripe=new T.Mesh(new T.BoxGeometry(.11,.012,s.z*.82),
+          mats.techTrim);
+        stripe.position.set(s.x*.32,.008,0);g.add(stripe);
+      }
     }else if(type==="hardWall"){
       solidPartBox(g,0,s.y/2,0,s.x,s.y,s.z,mats.hardWall);
     }else if(type==="cover"){
-      solidPartBox(g,0,s.y/2,0,s.x,s.y,s.z,mats.cover);
+      const tech=ironvale&&/equipment|Network|Vault|Server|Operations|Battery/.test(part.name);
+      const artMat=tech?mats.floorTech:mats.cover;
+      solidPartBox(g,0,s.y/2,0,s.x,s.y,s.z,artMat);
+      if(ironvale){
+        // Original solid server rack/desk with a separate physical trim,
+        // rather than rows of identical untextured crates.
+        const top=new T.Mesh(new T.BoxGeometry(s.x+.06,.08,s.z+.06),
+          tech?mats.techTrim:mats.deskTrim);
+        top.position.y=s.y+.025;g.add(top);
+        if(tech){
+          for(let k=0;k<3;k++){
+            const slot=new T.Mesh(new T.BoxGeometry(s.x*.66,.07,.012),
+              mats.techTrim);
+            slot.position.set(0,.25+k*.28,s.z/2+.013);g.add(slot);
+          }
+        }else{
+          const apron=new T.Mesh(new T.BoxGeometry(s.x*.85,.08,.06),
+            mats.deskTrim);
+          apron.position.set(0,s.y*.65,s.z/2+.025);g.add(apron);
+        }
+      }
       coverPoints.push({x:p.x+1,z:p.z+1,y:p.y});
     }else if(type==="door"||type==="window"){
       const sill=type==="window"?.86:0,header=.26,post=.13,
