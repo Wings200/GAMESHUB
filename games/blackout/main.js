@@ -1,21 +1,21 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {buildRange} from "./src/world.js?v=blackout-v650-rappel-stairs";
+import {buildRange} from "./src/world.js?v=blackout-v800-ironvale-online";
 import {FirstPersonController} from "./src/player.js?v=blackout-v520-switchyard";
 import {Weapons} from "./src/weapons.js?v=blackout-v401-competitive-ui";
 import {Gadgets} from "./src/gadgets.js?v=blackout-v532-interactive-walls";
 import {createWeaponOptics} from "./src/weapon-optics.js?v=blackout-v330-advanced-ordnance";
 import {OPERATORS,operatorsForSide,defaultOperator} from "./src/operators.js?v=blackout-v330-advanced-ordnance";
-import {ObjectiveDrill} from "./src/objective.js?v=blackout-v711-round-match";
+import {ObjectiveDrill} from "./src/objective.js?v=blackout-v800-ironvale-online";
 import {GameAudio} from "./src/audio.js?v=blackout-v401-competitive-ui";
 import {initCompetitiveUI,playTacticalPhaseAnnouncement,stopTacticalNarration,resetTacticalCue} from "./src/competitive-ui.js?v=blackout-v402-competitive-ui";
 import {createWeaponView} from "./src/weapon-view.js?v=blackout-v401-competitive-ui";
 import {Barricades} from "./src/barricades.js?v=blackout-v603-approved-clubhouse";
 import {createReconDrone} from "./src/drone.js?v=blackout-v520-switchyard";
 import {attackSpawnFor} from "./src/spawn-rules.js?v=blackout-v420-ai-rotations";
-import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v650-rappel-stairs";
+import {ClubhouseRappel} from "./src/rappel.js?v=blackout-v800-ironvale-online";
 import {playerDefenderInsertion,targetFloor} from "./src/round-spawns.js?v=blackout-v700-site-floors";
 import {TacticalSeries,attackInsertionProtected} from "./src/match-flow.js?v=blackout-v710-round-match";
-import {BlackoutNetworkClient} from "./src/network-client.js?v=blackout-v800-online-alpha";
+import {BlackoutNetworkClient} from "./src/network-client.js?v=blackout-v801-online-beta";
 
 // BLACKOUT V0.2 - offline mechanics lab. No network/REDLINE dependencies.
 const $=id=>document.getElementById(id);
