@@ -5,7 +5,7 @@ import {createClubhouse} from "./clubhouse-runtime.js?v=blackout-v650-rappel-sta
 // BLACKOUT V0.7 — compact 2-site training facility inside the offline range.
 // Targets and breach-test panels are the only obstacles. All collidable
 // panel meshes share transforms with their real collision records.
-export function buildRange(THREE,scene,clubhouseBlueprint=null){
+export function buildRange(THREE,scene,clubhouseBlueprint=null,ironvaleBlueprint=null){
   scene.background=new THREE.Color(0x9db7c6);
   scene.fog=new THREE.FogExp2(0x9db7c6,.004);
   scene.add(new THREE.HemisphereLight(0xd7f0ff,0x3e4e61,2));
@@ -311,10 +311,11 @@ export function buildRange(THREE,scene,clubhouseBlueprint=null){
     B:{...facility.sites.B,bounds:{...facility.sites.B.bounds},y:0}
   };
   const originalFacility={...facility,sitePairs:null};
-  let liveMap="lab",sitePairId="operations",switchyard=null,clubhouse=null;
+  let liveMap="lab",sitePairId="operations",switchyard=null,clubhouse=null,ironvale=null;
   function activeSitePairs(){
     return liveMap==="switchyard"?SWITCHYARD_SITE_PAIRS:
-      liveMap==="clubhouse"?(clubhouse?.sitePairs||[]):[];
+      liveMap==="clubhouse"?(clubhouse?.sitePairs||[]):
+      liveMap==="ironvale"?(ironvale?.sitePairs||[]):[];
   }
   function setSitePair(id){
     if(liveMap==="lab")return false;
@@ -330,17 +331,22 @@ export function buildRange(THREE,scene,clubhouseBlueprint=null){
   }
   function activateMap(id="lab"){
     const next=id==="switchyard"?"switchyard":
-      id==="clubhouse"&&clubhouseBlueprint?"clubhouse":"lab";
+      id==="clubhouse"&&clubhouseBlueprint?"clubhouse":
+      id==="ironvale"&&ironvaleBlueprint?"ironvale":"lab";
     if(next===liveMap)return false;
     if(next==="switchyard"&&!switchyard)switchyard=createSwitchyard(THREE,scene,state);
     if(next==="clubhouse"&&!clubhouse)
       clubhouse=createClubhouse(THREE,scene,clubhouseBlueprint,state);
+    if(next==="ironvale"&&!ironvale)
+      ironvale=createClubhouse(THREE,scene,ironvaleBlueprint,state);
     liveMap=next;
     root.visible=next==="lab";
     if(switchyard)switchyard.root.visible=next==="switchyard";
     if(clubhouse)clubhouse.root.visible=next==="clubhouse";
+    if(ironvale)ironvale.root.visible=next==="ironvale";
     const active=next==="switchyard"?switchyard:
-      next==="clubhouse"?clubhouse:null;
+      next==="clubhouse"?clubhouse:
+      next==="ironvale"?ironvale:null;
     colliders.splice(0,colliders.length,
       ...(active?active.colliders:sandboxColliders));
     shootables.splice(0,shootables.length,
@@ -364,6 +370,7 @@ export function buildRange(THREE,scene,clubhouseBlueprint=null){
   function floorAt(x,z,footY=0){
     if(liveMap==="switchyard")return switchyard.floorAt(x,z,footY);
     if(liveMap==="clubhouse")return clubhouse.floorAt(x,z,footY);
+    if(liveMap==="ironvale")return ironvale.floorAt(x,z,footY);
     return 0;
   }
   function reset(){
@@ -383,6 +390,7 @@ export function buildRange(THREE,scene,clubhouseBlueprint=null){
     get mapId(){return liveMap},
     get sitePairId(){return sitePairId},
     get clubhouse(){return clubhouse},
+    get ironvale(){return ironvale},
     get sitePairs(){return activeSitePairs()},
     spawn:{x:0,y:0,z:16,yaw:0},
     state,
