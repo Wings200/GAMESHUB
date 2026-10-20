@@ -99,7 +99,8 @@ export class BlackoutRoom extends DurableObject {
    const count={attacker:0,defender:0};
    for(const user of this.players.values()){
     Object.assign(user,point(chooseSpawn(user.side,count[user.side]++)));
-    user.health=100;user.alive=true;user.lastMove=now;user.shots=30;
+    user.insertX=user.x;user.insertZ=user.z;
+    user.health=100;user.alive=true;user.lastMove=now;user.spawnedAt=now;user.firedAt=0;user.shots=30;
     user.lastShot=0;this.saveAttachment(user);
    }
    this.broadcast({event:"round-start"});return;
@@ -123,11 +124,13 @@ export class BlackoutRoom extends DurableObject {
    p.lastReload=now;p.shots=30;this.send(p,{type:"reload-ok"});
   }else if(m.type==="shot"){
    if(now-p.lastShot<135||p.shots<1)return;
-   p.lastShot=now;p.shots--;
+   p.lastShot=now;p.firedAt=now;p.shots--;
    const target=this.players.get(String(m.targetId||""));
    if(target&&target!==p&&validShot(p,target,ironvale.elements)){
     // Victims are not damage-authoritative. Damage and KOs originate here.
-    const protectedEntry=now-p.lastMove<2300;
+    const protectedEntry=target.side==="attacker"&&
+      now-(target.spawnedAt||0)<2300&&!(target.firedAt>=target.spawnedAt)&&
+      Math.hypot(target.x-target.insertX,target.z-target.insertZ)<3;
     if(!protectedEntry){
       target.health=Math.max(0,target.health-25);
       target.alive=target.health>0;this.saveAttachment(target);
