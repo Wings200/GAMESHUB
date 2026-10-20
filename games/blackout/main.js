@@ -869,9 +869,12 @@ function updateHud(report){
   flashOverlay.style.opacity=remain>0?
     String(Math.min(.94,blind.flashIntensity*Math.min(1,remain/550))):"0";
   const nearbyOpening=barricades.nearest(player,2.7);
-  gadgetInteract.textContent=rappel.attached?"RAPPEL · W UP / S DOWN · SPACE WINDOW · T RELEASE":
+  gadgetInteract.textContent=rappel.attached?rappel.hint:
     objectiveRound.canInteract(player)?
     (role==="attacker"?"F · HOLD TO PLANT":"F · HOLD TO DISABLE"):
+    role==="attacker"&&objectiveRound.phase==="prep"&&world.mapId==="clubhouse"?
+      "RAPPEL AVAILABLE AFTER DRONE PREPARATION":
+    role==="attacker"&&rappel.hint?rappel.hint:
     nearbyOpening?("F · "+(barricades.hasBarricade(nearbyOpening)?"REMOVE":"BARRICADE")+" "+
       nearbyOpening.kind.toUpperCase()):
     role==="defender"?`F · REINFORCE [${gadgets.counts.reinforce}]`:
@@ -1104,7 +1107,9 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "5.3.2-interactive-interiors"},
+  get build(){return "6.5.0-rappel-movement-fix"},
+  get rappel(){return {attached:rappel.attached,anchorId:rappel.active?.id||null,
+    hint:rappel.hint,nearest:rappel.nearestAnchor(100)?.distance??null}},
   get insertion(){return {deployed:localAttackerDeployed,phase:objectiveRound.phase,
     staged:objectiveRound.stagedAttackers.length,attackersDeployed:objectiveRound.prepAttackersDeployed}},
   get drone(){return {active:drone.active,destroyed:drone.destroyed,
