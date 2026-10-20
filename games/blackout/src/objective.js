@@ -4,6 +4,7 @@ import {makeTacticalBot,advanceTacticalBot} from "./bot-ai.js?v=blackout-v603-ap
 import {updateSquadCombat,updateDefenderPrep} from "./squad-ai.js?v=blackout-v604-approved-clubhouse";
 import {operatorsForSide} from "./operators.js?v=blackout-v330-advanced-ordnance";
 import {ATTACK_SQUAD_SPAWNS,ENEMY_ATTACK_SPAWNS} from "./spawn-rules.js?v=blackout-v420-ai-rotations";
+import {defenderSetupPositions,targetFloor} from "./round-spawns.js?v=blackout-v700-site-floors";
 // BLACKOUT V0.7 — two-site, single-player tactical attack/defend rounds.
 const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 export class ObjectiveDrill{
@@ -105,9 +106,11 @@ export class ObjectiveDrill{
     }
     return {x,z};
   }
-  spawnBot(x,z,stationary=false,team="enemy",siteId="A"){
-    const height=stationary&&this.world.mapId==="switchyard"?
-      (this.sites[siteId]?.y||0):0;
+  spawnBot(x,z,stationary=false,team="enemy",siteId="A",explicitY=null){
+    // Previously Clubhouse AI always spawned on Y=0, even when the entire
+    // selected A/B pair was on Y=4. Do not reset authored upper-level Y.
+    const height=Number.isFinite(explicitY)?
+      explicitY:stationary?targetFloor(this.sites[siteId]):0;
     const safe=this.findSafeSpawn(x,z,height);
     x=safe.x;z=safe.z;
     const bot=makeTacticalBot(this.THREE,this.scene,this.world,
@@ -228,9 +231,11 @@ export class ObjectiveDrill{
         ...p,operatorSpec:roster[i%roster.length],team:"ally",staged:true
       }));
       if(this.world.mapId==="clubhouse"){
-        const positions=this.world.facility.defendSpawns||[];
-        for(const [i,p] of positions.entries())
-          this.spawnBot(p.x,p.z,true,"enemy",i%2?"B":"A");
+        // All five defenders exist during prep, but only on actual selected
+        // bomb-site floors, with collision-aware positions around both sites.
+        const positions=defenderSetupPositions(this.world,5,this.siteId);
+        for(const p of positions)
+          this.spawnBot(p.x,p.z,true,"enemy",p.site,p.y);
       }else if(this.world.mapId==="switchyard"){
         const a=this.sites.A,b=this.sites.B;
         for(const [x,z,site] of [
@@ -243,9 +248,11 @@ export class ObjectiveDrill{
       ])this.spawnBot(x,z,true,"enemy",site);
     }else{
       if(this.world.mapId==="clubhouse"){
-        const positions=(this.world.facility.defendSpawns||[]).slice(0,4);
-        for(const [i,p] of positions.entries())
-          this.spawnBot(p.x,p.z,true,"ally",i%2?"B":"A");
+        const positions=defenderSetupPositions(this.world,5,this.siteId).slice(1);
+        // Slot 0 is reserved for the local player; four allied AI receive
+        // separate safe insertion points on the selected bomb floor.
+        for(const p of positions)
+          this.spawnBot(p.x,p.z,true,"ally",p.site,p.y);
       }else if(this.world.mapId==="switchyard"){
         const a=this.sites.A,b=this.sites.B;
         for(const [x,z,site] of [
