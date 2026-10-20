@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.3 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.4 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-001">
 </head>
@@ -16,44 +16,48 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.3</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.4</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> FOUNDATION / TEST 003</div>
+      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 004</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">STARTING FROM ZERO.</p>
-      <p class="description">A clean movement and audio testing range. C to crouch, Ctrl to go prone, plus walk, sprint, jump and movement sounds. We build more systems only after foundation testing.</p>
-      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span></div>
+      <p class="description">Test the first real 3D BX-7 carbine with a mounted holographic sight, ADS, automatic fire, reloads and target dummies. Tap Ctrl or Z to toggle prone, then release Ctrl before pressing W.</p>
+      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE SYSTEM · NO OPERATORS / NO GUNS / NO AI / NO MULTIPLAYER</div>
     </div>
     <aside class="menu-aside">
       <div class="vertical-line"></div>
       <div class="board-label">FOUNDATION CHECKLIST</div>
-      <div class="stage"><span>01</span><div><strong>PLAYER FEEL</strong><p>WASD / run / C crouch / Ctrl prone / jump</p></div><b>ACTIVE</b></div>
+      <div class="stage"><span>01</span><div><strong>PLAYER FEEL</strong><p>WASD / sprint / C crouch / tap Ctrl or Z prone / fire / ADS / reload</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>02</span><div><strong>COLLISION</strong><p>No phasing through real solid props</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>03</span><div><strong>FOOTSTEP AUDIO</strong><p>Walk / sprint / crouch / landing, M to mute</p></div><b>ACTIVE</b></div>
-      <div class="stage muted"><span>04</span><div><strong>WEAPON PROTOTYPE</strong><p>Only after movement is approved</p></div><b>LATER</b></div>
+      <div class="stage"><span>04</span><div><strong>WEAPON PROTOTYPE</strong><p>BX-7 model / sights / real raycast / reload / targets</p></div><b>ACTIVE</b></div>
       <div class="stage muted"><span>05</span><div><strong>GAMEPLAY SYSTEMS</strong><p>Built individually and tested</p></div><b>LATER</b></div>
       <div class="board-footer">ONE FEATURE AT A TIME. NOTHING FAKE.</div>
     </aside>
   </main>
 
   <section id="hud" class="hud hidden" aria-label="Movement test information">
-    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>003</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
+    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>004</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
     <div class="hud-center"><span id="mode">STANDING</span><span id="motion">IDLE</span></div>
     <div class="hud-bottom">
       <div class="readout"><small>POSITION</small><strong id="position">0.0 / 0.0</strong></div>
       <div class="readout"><small>SPEED</small><strong id="speed">0.0 <span>M/S</span></strong></div>
       <div class="readout"><small>GROUND</small><strong id="ground">STABLE</strong></div>
-      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> C CROUCH <span>·</span> CTRL PRONE <span>·</span> SPACE JUMP <span>·</span> M MUTE <span>·</span> R RESET <span>·</span> ESC PAUSE</div>
+      <div class="readout"><small>BX-7 / AMMO</small><strong id="ammo">30 / 90</strong></div>
+      <div class="readout"><small>WEAPON</small><strong id="weapon-status">READY</strong></div>
+      <div class="readout"><small>TARGETS HIT</small><strong id="target-hits">0</strong></div>
+      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> C CROUCH <span>·</span> TAP CTRL/Z PRONE <span>·</span> LMB FIRE <span>·</span> RMB AIM <span>·</span> R RELOAD <span>·</span> P RESET <span>·</span> M MUTE <span>·</span> ESC PAUSE</div>
     </div>
-    <div id="hint" class="hint">HOLD C TO CROUCH · HOLD CTRL TO CRAWL PRONE · RELEASE TO RISE.</div>
+    <div id="hint" class="hint">TAP CTRL OR Z TO TOGGLE PRONE · RELEASE CTRL BEFORE W · LEFT CLICK SHOOT · RIGHT CLICK ADS.</div>
+    <div id="shot-notice" class="shot-notice hidden" role="status"></div>
   </section>
 
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-003"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-004"></script>
 </body>
 </html>
