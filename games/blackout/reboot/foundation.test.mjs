@@ -1,0 +1,101 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {dirname,join} from "node:path";
+import {fileURLToPath} from "node:url";
+import {
+ FOUNDATION_VERSION,TEST_OBSTACLES,STAND_HEIGHT,CROUCH_HEIGHT,SPEED,
+ initialPlayer,isFinitePlayer,canOccupy,stepPlayer
+} from "./physics.js";
+const home=join(dirname(fileURLToPath(import.meta.url)),"..");
+const read=p=>readFileSync(join(home,p),"utf8");
+
+test("new foundation is version zero, and the default spawn is clear",()=>{
+ assert.equal(FOUNDATION_VERSION,"0.1.0");
+ const p=initialPlayer();
+ assert.deepEqual([p.x,p.y,p.z],[0,0,8]);
+ assert.equal(p.grounded,true);
+ assert.equal(canOccupy(p.x,p.y,p.z,STAND_HEIGHT),true);
+ assert.equal(TEST_OBSTACLES.length,4);
+});
+test("walking is deterministic and frame-rate independent within step precision",()=>{
+ let a=initialPlayer(),b=initialPlayer();
+ for(let i=0;i<100;i++)a=stepPlayer(a,{forward:1},.01);
+ for(let i=0;i<50;i++)b=stepPlayer(b,{forward:1},.02);
+ assert.ok(Math.abs(a.z-b.z)<.002);
+ assert.ok(Math.abs(a.z-3.8)<.01);
+ assert.equal(a.x,0);
+});
+test("diagonal movement is normalized and cannot gain free speed",()=>{
+ const start=initialPlayer();
+ const straight=stepPlayer(start,{forward:1},.04);
+ const diagonal=stepPlayer(start,{forward:1,right:1},.04);
+ assert.ok(Math.abs(Math.hypot(straight.x,straight.z-8)-
+   Math.hypot(diagonal.x,diagonal.z-8))<.001);
+});
+test("sprinting and crouching change actual movement, not camera-only appearance",()=>{
+ const start=initialPlayer();
+ const walk=stepPlayer(start,{forward:1},.05);
+ const run=stepPlayer(start,{forward:1,sprint:true},.05);
+ const duck=stepPlayer(start,{forward:1,crouch:true,sprint:true},.05);
+ assert.ok(run.z<walk.z&&walk.z<duck.z);
+ assert.equal(run.sprinting,true);
+ assert.equal(duck.sprinting,false);
+ assert.equal(duck.crouched,true);
+ assert.deepEqual([SPEED.walk,SPEED.sprint,SPEED.crouch],[4.2,6.3,2.4]);
+ assert.ok(CROUCH_HEIGHT<STAND_HEIGHT);
+});
+test("jump uses real gravity, lands without falling through the ground, no air double jump",()=>{
+ let p=stepPlayer(initialPlayer(),{jump:true},.016);
+ assert.ok(p.y>0&&!p.grounded);
+ const vy=p.vy;
+ p=stepPlayer(p,{jump:true},.016);
+ assert.ok(p.vy<vy,"second Space must not refresh jump velocity in air");
+ let highest=p.y;
+ for(let i=0;i<120;i++){p=stepPlayer(p,{},.016);highest=Math.max(p.y,highest);}
+ assert.ok(highest>.35);
+ assert.equal(p.y,0);assert.equal(p.vy,0);assert.equal(p.grounded,true);
+});
+test("wall collision sweep cannot tunnel at low frame rate or faster sprint speed",()=>{
+ let player=initialPlayer();
+ for(let i=0;i<400;i++){
+   player=stepPlayer(player,{forward:1,sprint:true},.05);
+   assert.ok(!(!canOccupy(player.x,player.y,player.z,STAND_HEIGHT)),
+     "physics body must not intersect any obstacle");
+ }
+ // The physical 2.3m wide centre obstruction is located at z=-6.
+ assert.ok(player.z>=-4.52,"player must stop at test box before crossing");
+ assert.ok(player.z<0,"player still approaches object instead of freezing");
+});
+test("wall sliding allows one axis to advance when the other is blocked",()=>{
+ const obstacles=[{id:"north-barrier",x:0,z:0,width:6,depth:.25,height:3.1}];
+ let p={...initialPlayer(),x:2.5,z:1.0};
+ for(let i=0;i<30;i++)p=stepPlayer(p,{forward:1,right:1},.04,obstacles);
+ assert.ok(p.x>3.0,"slide past wall edge when strafing");
+ assert.ok(canOccupy(p.x,p.y,p.z,STAND_HEIGHT,obstacles));
+});
+test("range boundary constrains player coordinates and invalid state is rejected",()=>{
+ let p={...initialPlayer(),x:29,z:29};
+ for(let i=0;i<200;i++)p=stepPlayer(p,{forward:-1,right:1,sprint:true},.05,[]);
+ assert.ok(p.x<=29.66&&p.z<=29.66);
+ assert.throws(()=>stepPlayer({...p,x:Infinity},{forward:1}),/Invalid player/);
+});
+test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
+ const html=read("index.html"),main=read("reboot/main.js"),
+   css=read("reboot/style.css"),physics=read("reboot/physics.js");
+ for(const src of ["./reboot/main.js?v=reboot-001",
+   "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
+ assert.match(main,/from "\.\/physics\.js\?v=reboot-001"/);
+ assert.match(main,/requestPointerLock\(/);
+ assert.match(main,/pointerlockchange/);
+ assert.match(main,/stepPlayer\(player,input,dt\)/);
+ assert.match(physics,/export function canOccupy/);
+ assert.match(css,/\.menu/);
+ for(const old of ["./main.js?","./style.css?","./competitive-ui.css?",
+   "./src/objective.js","./src/weapons.js","./src/network-client.js"]){
+   assert.equal(html.includes(old),false,"outdated entry "+old);
+   assert.equal(main.includes("import "+old),false,"legacy imported by reboot "+old);
+ }
+ assert.equal(html.includes("id=\"boCreateRoom\""),false);
+ assert.equal(html.includes("id=\"operatorCards\""),false);
+});
