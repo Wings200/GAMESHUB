@@ -6,7 +6,7 @@
 <title>BLACKOUT | Tactical Operations · GAMESHUB</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=blackout-v401-competitive-ui">
-<link rel="stylesheet" href="./competitive-ui.css?v=blackout-v410-ai-drone-fix">
+<link rel="stylesheet" href="./competitive-ui.css?v=blackout-v710-round-match">
 </head><body>
 <canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
 <div class="vignette" aria-hidden="true"></div>
@@ -58,6 +58,16 @@
   <div id="objectiveHint" class="objective-hint" aria-live="polite"></div>
   <div id="objectiveProgress" class="objective-progress hidden"><span id="objectiveAction">PLANTING</span><div class="objective-progress-track"><div id="objectiveFill"></div></div></div>
   <div id="roundResult" class="round-result hidden" role="status"></div>
+  <section id="matchIntermission" class="bo-match-intermission hidden" aria-live="polite" aria-label="Round result and match scoreboard">
+    <div class="bo-intermission-inner">
+      <div class="bo-intermission-eyebrow">BLACKOUT · OFFLINE TACTICAL MATCH</div>
+      <h2 id="matchIntermissionTitle">ROUND COMPLETE</h2>
+      <div id="matchIntermissionScore" class="bo-intermission-score">YOUR SQUAD 0 — 0 OPPONENTS</div>
+      <div id="matchIntermissionRounds" class="bo-intermission-history" aria-label="Completed round outcomes"></div>
+      <p id="matchIntermissionGuide">PRESS ENTER FOR THE NEXT ROUND</p>
+      <span class="bo-intermission-foot">FIRST TO FOUR · SIDE SWAP AFTER THREE · TRAINING AI</span>
+    </div>
+  </section>
   <div class="hud-bottom lab-bottom">
     <div class="weapon-hud">
       <div id="weaponName" class="weapon-name">CARBINE 556</div>
@@ -161,8 +171,8 @@
     <div class="bo-settings-grid"><div><h3>CONTROLS</h3><div class="tuning-grid"><label>MOUSE SENSITIVITY <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label></div><button id="guideToggle" type="button" class="bo-secondary">SHOW KEYBINDS</button><div id="guide" class="test-guide hidden"><p><strong>WASD</strong> MOVE · <strong>SHIFT</strong> SPRINT · <strong>CTRL</strong> CROUCH · <strong>Z</strong> PRONE · <strong>Q/E</strong> LEAN</p><p><strong>LMB</strong> FIRE · <strong>RMB</strong> AIM DOWN SIGHTS · <strong>1/2</strong> SWITCH WEAPON · <strong>R</strong> RELOAD · <strong>V</strong> CHANGE OPTIC</p><p><strong>G</strong> SPECIAL · <strong>X</strong> SECONDARY · <strong>B</strong> REMOTE DETONATION · <strong>3</strong> DRONE · <strong>F</strong> PLANT / DEFUSE / INTERACT</p><p><strong>SPACE</strong> VAULT · <strong>ESC</strong> MENU · <strong>F3</strong> DEBUG</p></div></div><div><h3>AUDIO & SESSION</h3><button id="audioTest" type="button" class="bo-secondary">TEST GAME AUDIO ♪</button><p id="audioStatus" class="audio-status">AUDIO READY AFTER USER INPUT</p><button id="reset" class="bo-secondary" type="button">RESET TRAINING ROUND</button><p class="bo-settings-note">BLACKOUT is currently an offline mechanics test: no live multiplayer, ranked points, Ubisoft account connection, or official Siege content.</p></div></div>
   </section>
 
-  <div class="bo-footer"><span id="status" class="notice" role="status">READY FOR LOCAL TRAINING</span><span>BLACKOUT V7.0 · TACTICAL ROUND / FLOOR-CORRECT SPAWNS</span><span>OFFLINE · AI TRAINING</span></div>
+  <div class="bo-footer"><span id="status" class="notice" role="status">READY FOR LOCAL TRAINING</span><span>BLACKOUT V7.1 · TACTICAL ROUNDS / SIDE SWITCHING</span><span>OFFLINE · AI TRAINING</span></div>
   <div id="boQueue" class="bo-queue hidden" role="status" aria-live="polite"><div class="bo-queue-box"><div class="bo-queue-spin" aria-hidden="true"></div><span class="bo-eyebrow">LOCAL SESSION // OFFLINE</span><h2>PREPARING YOUR MATCH</h2><p id="boQueueStatus">INITIALIZING AI SQUADS...</p><div class="bo-queue-progress"><span></span></div><button id="boCancelQueue" class="bo-secondary" type="button">CANCEL</button></div></div>
 </main>
-<script type="module" src="./main.js?v=blackout-v700-site-floor-spawns"></script>
+<script type="module" src="./main.js?v=blackout-v710-round-match"></script>
 </body></html>
