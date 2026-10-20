@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.1
+# BLACKOUT — Clean Reboot V0.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -10,12 +10,15 @@ The old game is preserved in Git commit history. Its working-tree files have bee
 
 ## Current playable contract
 
+**2026-10-20 / V0.2:** Movement-driven procedural footsteps added. Walk, sprint and crouch use different pace/timbre; landing plays a heavier impact. Audio starts after ENTER TEST RANGE (user gesture), and M toggles mute. Footsteps follow actual displacement: blocked and airborne travel make no footsteps. No external audio downloads or backend changes.
+
 - Desktop first-person camera, pointer lock and Escape to pause.
 - Normalized WASD movement (4.2m/s walk), Shift sprint (6.3m/s), Ctrl/C crouch (2.4m/s).
 - Jumping, gravity and landing.
 - Swept circle-versus-AABB collision with wall sliding, world boundary.
 - One flat test surface and four simple collision objects. No maps/buildings.
 - Minimal clean HUD for position, motion state, speed, grounding.
+- Synthesized, displacement-driven footsteps and landing sounds (M to mute), without changing physics.
 - R to reset player position.
 - Offline solo movement test. No AI or multiplayer representation.
 
