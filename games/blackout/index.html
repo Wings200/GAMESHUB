@@ -1,195 +1,58 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#081019">
-<meta name="description" content="BLACKOUT V5.0: SWITCHYARD original three-floor tactical FPS map with bomb-site selection, exterior stairs, preparation-phase staging and a separate mechanics lab.">
-<title>BLACKOUT | Tactical Operations · GAMESHUB</title>
-<link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=blackout-v401-competitive-ui">
-<link rel="stylesheet" href="./competitive-ui.css?v=blackout-v815-online-beta">
-</head><body>
-<canvas id="view" aria-label="BLACKOUT first-person training range"></canvas>
-<div class="vignette" aria-hidden="true"></div>
-<div class="reticle" id="reticle" aria-hidden="true"><span></span><i></i></div>
-<div id="hitmark" class="hitmark" aria-hidden="true">✕</div>
-<header id="gameHUD" class="game-hud hidden">
-  <div class="bo-matchbar" aria-label="Live round status">
-    <div class="bo-team bo-team-blue"><span class="bo-team-label">ATTACK <b id="attackAlive" class="bo-alive-count">5/5</b></span><div id="friendlySlots" class="bo-players"></div></div>
-    <div class="bo-match-center"><span id="phaseText" class="bo-phase-label">PREPARATION</span>
-      <div id="matchClock" class="bo-match-clock">0:00</div>
-      <span id="matchScore" class="bo-match-score">0 — 0</span>
-    </div>
-    <div class="bo-team bo-team-orange"><div id="enemySlots" class="bo-players"></div><span class="bo-team-label">DEFEND <b id="defendAlive" class="bo-alive-count">5/5</b></span></div>
-  </div>
-  <div id="phaseAnnounce" class="bo-phase-announce hidden" aria-live="polite">
-    <span id="phaseAnnounceEyebrow">TACTICAL ROUND</span>
-    <strong id="phaseAnnounceTitle">PREPARATION PHASE</strong>
-    <span id="phaseAnnounceHelp">FORTIFY THE OBJECTIVE</span>
-  </div>
-  <div id="runoutAlert" class="bo-runout-alert hidden" aria-live="polite">
-    <strong id="runoutAlertTitle">DEFENDER OUTSIDE</strong>
-    <span id="runoutAlertInfo">POSITION REVEALED TO ATTACKERS</span>
-  </div>
-  <div id="droneOverlay" class="bo-drone-overlay hidden" aria-live="polite">
-    <div class="bo-drone-header"><strong>RECON / DRONE FEED</strong><span id="droneSignal">SIGNAL STABLE</span></div>
-    <div class="bo-drone-center"><span class="bo-drone-bracket">⌖</span></div>
-    <div class="bo-drone-footer"><span>WASD DRIVE · MOUSE LOOK</span><strong>X SCAN · G SHOCK (TWITCH)</strong>
-      <span>ATTACKER SPAWNS AFTER PREPARATION</span></div>
-  </div>
-  <div class="bo-population" id="teamPopulation">5 ATTACKERS  ·  5 DEFENDERS</div>
-  <div id="spectatorAlert" class="bo-spectator-alert hidden" aria-live="polite">
-    YOU ARE ELIMINATED · SPECTATING YOUR SQUAD
-  </div>
-  <div id="bombCompass" class="bo-bomb-compass" aria-live="off">
-    <div class="bo-bomb-arrow" id="bombArrow">▲</div>
-    <div class="bo-bomb-guide"><strong id="bombRange">A · 00M</strong><span id="bombGuide">LOCATE BOMB</span></div>
-  </div>
-  <div class="hud-left">
-    <div class="overline">BLACKOUT <span class="dim">· TACTICAL OPERATIONS</span></div>
-    <h2 id="zoneLabel">OPEN MECHANICS RANGE</h2>
-    <p id="squadStatus" class="bo-squad-status">SQUAD · SCOUTING THE OBJECTIVE</p>
-    <p>SOLO 5V5 AI DRILL · <strong id="hudRole">ATTACKER</strong> <span class="line"></span> <span id="rangeInfo">0.0 m/s</span></p>
-  </div>
-  <div class="hud-right lab-right">
-    <div class="mission">TACTICAL OBJECTIVE <strong id="objective">LOCATE BOMB A</strong><small id="roundScore" class="round-score">ROUND 1 · ATK 0 : 0 DEF</small></div>
-    <div class="lab-card bo-utility"><p id="gadgetPrimary">G · SPECIAL GADGET</p><p id="gadgetSecondary">X · SECONDARY GADGET</p><p id="gadgetInteract">F · INTERACT</p></div>
-  </div>
-  <div class="crosshair-caption" id="matchCaption">SITE A · BOMB LAB A · MECHANICS TRAINING</div>
-  <div id="objectiveHint" class="objective-hint" aria-live="polite"></div>
-  <div id="objectiveProgress" class="objective-progress hidden"><span id="objectiveAction">PLANTING</span><div class="objective-progress-track"><div id="objectiveFill"></div></div></div>
-  <div id="roundResult" class="round-result hidden" role="status"></div>
-  <section id="matchIntermission" class="bo-match-intermission hidden" aria-live="polite" aria-label="Round result and match scoreboard">
-    <div class="bo-intermission-inner">
-      <div class="bo-intermission-eyebrow">BLACKOUT · OFFLINE TACTICAL MATCH</div>
-      <h2 id="matchIntermissionTitle">ROUND COMPLETE</h2>
-      <div id="matchIntermissionScore" class="bo-intermission-score">YOUR SQUAD 0 — 0 OPPONENTS</div>
-      <div id="matchIntermissionRounds" class="bo-intermission-history" aria-label="Completed round outcomes"></div>
-      <p id="matchIntermissionGuide">PRESS ENTER FOR THE NEXT ROUND</p>
-      <span class="bo-intermission-foot">FIRST TO FOUR · SIDE SWAP AFTER THREE · TRAINING AI</span>
-    </div>
-  </section>
-  <div class="hud-bottom lab-bottom">
-    <div class="weapon-hud">
-      <div id="weaponName" class="weapon-name">CARBINE 556</div>
-      <div class="ammo-row"><span id="ammoCount">30</span><span id="reserveCount">/ 120</span></div>
-      <div class="stat-row" id="combatStats">0 HITS · 0% ACC · 0 DOWN</div>
-      <div class="operator-health"><div class="bo-health-circle"><strong id="healthHud">110 / 110 HP</strong></div><strong id="operatorHud">SLEDGE · 2 SPEED / 2 ARMOR</strong></div>
-      <div class="bo-health-track"><div id="healthFill" class="bo-health-fill"></div></div>
-      <div class="sight-readout">OPTIC <span>V TO CYCLE</span> · <span id="defuserInventory">DEFUSER CARRIED</span></div>
-    </div>
-    <div class="side-controls">
-      <span><kbd>LMB</kbd> FIRE</span><span><kbd>RMB</kbd> AIM</span><span><kbd>R</kbd> RELOAD</span>
-      <span><kbd>1 / 2</kbd> SWITCH WEAPON</span><span><kbd>V</kbd> CHANGE SIGHT</span><span><kbd>B</kbd> SMOKE / C4 DETONATOR</span><span><kbd>ESC</kbd> PAUSE / SWITCH SIDE</span>
-    </div>
-    <div class="debug-mini"><span id="stateReadout">STANDING</span><span id="fpsReadout">-- FPS</span><span><kbd>F3</kbd> DEBUG</span></div>
-  </div>
-  <div id="debugPanel" class="debug-panel hidden">DEBUG <div id="positionReadout"></div></div>
-  <div id="toast" class="toast" role="status"></div>
-  <div id="flashOverlay" class="bo-flash-overlay" aria-hidden="true"></div>
-  <div id="reinforceBar" class="reinforce-progress hidden" role="status">
-    <div class="reinforce-title"><span id="reinforceTitle">INSTALLING REINFORCEMENT</span> <span id="reinforceCountdown">3.0S</span></div>
-    <div class="reinforce-track"><div id="reinforceFill" class="reinforce-fill"></div></div>
-    <div id="reinforceHint" class="reinforce-hint">KEEP HOLDING F · RELEASE TO CANCEL · ESC FOR MENU</div>
-  </div>
-</header>
-<main id="menu" class="bo-shell" data-bo-page="home">
-  <div class="bo-shell-texture" aria-hidden="true"></div>
-  <header class="bo-nav">
-    <a class="bo-brand" href="/" aria-label="GAMESHUB home"><span class="bo-brand-mark">B<span>/</span></span><span>BLACKOUT<small>TACTICAL OPERATIONS</small></span></a>
-    <nav class="bo-nav-links" aria-label="Game navigation">
-      <button type="button" data-bo-nav="home" class="active">HOME</button>
-      <button type="button" data-bo-nav="play">PLAY</button>
-      <button type="button" data-bo-nav="operators">OPERATORS</button>
-      <button type="button" data-bo-nav="loadout">LOADOUT</button>
-      <button type="button" data-bo-nav="settings">SETTINGS</button>
-      <a class="bo-editor-link" href="./dev-editor.html" title="Developer-only 3D map builder">MAP STUDIO <small>DEV</small></a>
-    </nav>
-    <div class="bo-profile"><span class="bo-profile-avatar">B</span><span>TACTICAL RECRUIT<small>LOCAL TRAINING · OFFLINE</small></span></div>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07101a">
+  <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
+  <title>BLACKOUT — REBOOT | GAMESHUB</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-001">
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
+  <div class="fade-edges" aria-hidden="true"></div>
+  <div class="crosshair" id="crosshair" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
+  <header class="topbar" id="topbar">
+    <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
+    <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.1</b></div>
   </header>
 
-  <section class="bo-page bo-home is-active" data-bo-screen="home" aria-labelledby="boHomeTitle">
-    <div class="bo-home-copy">
-      <div class="bo-eyebrow"><span class="bo-status-pip"></span> BLACKOUT // YEAR 01 // PRIVATE BUILD</div>
-      <h1 id="boHomeTitle">YOUR NEXT<br><em>OPERATION</em><br>STARTS HERE.</h1>
-      <p class="bo-hero-sub">Every second counts. Choose your operator, ready your equipment and take the objective in our tactical testing ground.</p>
-      <button class="bo-primary bo-hero-play" type="button" data-bo-nav="play"><span>PLAY TRAINING MATCH</span><b>›</b></button>
-      <div class="bo-hero-secondary"><span>5V5 AI SIMULATION</span><span>2 BOMB SITES</span><span>NO ONLINE MATCHMAKING YET</span></div>
+  <main id="menu" class="menu">
+    <div class="menu-content">
+      <div class="section-tag"><span class="section-line"></span> FOUNDATION / TEST 001</div>
+      <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
+      <p class="headline">STARTING FROM ZERO.</p>
+      <p class="description">The old BLACKOUT has been taken out of service. This is a fresh build: one clean test range, movement, collision and a proper first-person camera. Nothing else is being carried over into gameplay yet.</p>
+      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span></div>
+      <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
+      <div id="message" class="menu-message" role="status">OFFLINE SYSTEM · NO OPERATORS / NO GUNS / NO AI / NO MULTIPLAYER</div>
     </div>
-    <div class="bo-home-visual" aria-hidden="true"><div class="bo-visual-ring"></div><div class="bo-visual-operator">B</div><div class="bo-visual-lines"></div><span class="bo-visual-caption">OPERATION // BLACKOUT</span></div>
-    <div class="bo-home-bottom"><div><span class="bo-eyebrow">FEATURED MODE</span><strong>BOMB · TACTICAL TRAINING</strong><small>PREPARE / BREACH / DEFUSE</small></div><div><span class="bo-eyebrow">CURRENT BUILD</span><strong>COMPETITIVE UI OVERHAUL</strong><small>MECHANICS-FIRST SANDBOX</small></div></div>
-  </section>
+    <aside class="menu-aside">
+      <div class="vertical-line"></div>
+      <div class="board-label">FOUNDATION CHECKLIST</div>
+      <div class="stage"><span>01</span><div><strong>PLAYER FEEL</strong><p>WASD / run / crouch / jump</p></div><b>ACTIVE</b></div>
+      <div class="stage"><span>02</span><div><strong>COLLISION</strong><p>No phasing through real solid props</p></div><b>ACTIVE</b></div>
+      <div class="stage muted"><span>03</span><div><strong>WEAPON PROTOTYPE</strong><p>Only after movement is approved</p></div><b>LATER</b></div>
+      <div class="stage muted"><span>04</span><div><strong>GAMEPLAY SYSTEMS</strong><p>Built individually and tested</p></div><b>LATER</b></div>
+      <div class="board-footer">ONE FEATURE AT A TIME. NOTHING FAKE.</div>
+    </aside>
+  </main>
 
-  <section class="bo-page bo-play-page" data-bo-screen="play" aria-labelledby="boPlayTitle">
-    <div class="bo-page-heading"><span class="bo-eyebrow">PLAY // CHOOSE PLAYLIST</span><h2 id="boPlayTitle">FIND A MATCH</h2><p>Choose a local practice playlist. Online servers and human matchmaking are not implemented yet.</p></div>
-    <div class="bo-play-columns">
-      <button type="button" class="bo-playlist-card selected" id="boPlayBomb"><span class="bo-playlist-index">01 / PRIMARY PLAYLIST</span><span class="bo-playlist-graphic" aria-hidden="true">⌖</span><strong>BOMB</strong><span>5 vs 5 · OFFLINE AI</span><p>Drone in. Clear the site. Plant or deny the defuser. A full tactical drill with AI squads.</p><span class="bo-playlist-foot">SELECTED <b>✓</b></span></button>
-      <div class="bo-play-details"><div class="bo-play-brief"><span class="bo-eyebrow">MATCH SETTINGS</span><h3>LOCAL SQUAD SESSION</h3><p>Opposing and friendly players are simulated by AI. You can change your side, operator, spawn and equipment before deployment.</p><div class="bo-play-data"><div>PLAYERS <strong>1 HUMAN + 9 AI</strong></div><div>MAP <strong id="boSelectedMapLabel">SWITCHYARD · 3 FLOORS</strong></div><div>PREPARATION <strong>45 SECONDS</strong></div><div>OBJECTIVE <strong>BOMB</strong></div></div></div>
-        <button type="button" id="boOpenOnline" data-bo-nav="operators" class="bo-online-entry">
-          <strong>PRIVATE ONLINE ROOM · HUMAN PLAYERS</strong>
-          <small>SELECT OPERATOR → LOADOUT → CREATE OR JOIN WITH CODE · SERVER DEPLOYMENT REQUIRED</small>
-        </button>
-        <button type="button" id="boFindMatch" class="bo-primary"><span>FIND TRAINING MATCH</span><b>›</b></button><span class="bo-play-disclaimer">OFFLINE QUEUE · NO INTERNET OPPONENTS OR MATCHMAKING</span></div>
+  <section id="hud" class="hud hidden" aria-label="Movement test information">
+    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>001</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
+    <div class="hud-center"><span id="mode">STANDING</span><span id="motion">IDLE</span></div>
+    <div class="hud-bottom">
+      <div class="readout"><small>POSITION</small><strong id="position">0.0 / 0.0</strong></div>
+      <div class="readout"><small>SPEED</small><strong id="speed">0.0 <span>M/S</span></strong></div>
+      <div class="readout"><small>GROUND</small><strong id="ground">STABLE</strong></div>
+      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> CTRL CROUCH <span>·</span> SPACE JUMP <span>·</span> R RESET <span>·</span> ESC PAUSE</div>
     </div>
+    <div id="hint" class="hint">TEST THE WALLS. MOVE, JUMP AND SLIDE ALONG THEIR EDGES.</div>
   </section>
 
-  <section class="bo-page bo-operators-page" data-bo-screen="operators" aria-labelledby="boOpsTitle">
-    <div class="bo-page-heading"><span class="bo-eyebrow">MATCH FOUND // OFFLINE TACTICAL DRILL</span><h2 id="boOpsTitle">SELECT YOUR OPERATOR</h2><p>Choose your role and specialist before the preparation phase.</p></div>
-    <div class="bo-selection-top"><div class="role-picker" aria-label="Choose training side"><button id="attackRole" type="button" class="role-button active"><small>BLUE TEAM</small><strong>ATTACKERS</strong><span>BREACH & DEFUSE</span></button><button id="defendRole" type="button" class="role-button"><small>ORANGE TEAM</small><strong>DEFENDERS</strong><span>FORTIFY & DENY</span></button></div><div class="bo-selection-status"><span id="selectedMode">ATTACKER · PLANT AT EITHER SITE</span><small>ROUND 01 // BOMB</small></div></div>
-    <div class="bo-ops-layout"><div class="bo-ops-roster"><div class="bo-mini-heading">AVAILABLE OPERATORS <span>SELECT ONE</span></div><div id="operatorCards" class="bo-operator-grid" role="group" aria-label="Choose a tactical operator"></div><label class="bo-operator-fallback">OPERATOR LIST <select id="operatorSelect" aria-label="Choose operator"><option value="sledge">SLEDGE</option></select></label></div>
-      <div id="operatorPreview" class="bo-operator-preview" aria-live="polite"><span class="bo-eyebrow">YOUR OPERATOR</span><div id="operatorPreviewIcon" class="bo-preview-avatar">⌁</div><div class="bo-preview-copy"><span class="bo-preview-label">SPECIALIST SELECTED</span><h3 id="operatorPreviewName">SLEDGE</h3><p id="operatorPreviewDescription">Close-quarters breaching specialist.</p><div id="operatorPreviewPerk" class="bo-preview-perk">SOFT BREACH</div></div><div class="bo-preview-rating"><span id="operatorSpeed">SPEED ●●○</span><span id="operatorArmor">ARMOR ●●○</span><span id="operatorKit">SPECIAL EQUIPMENT</span></div><div id="operatorDetails" class="operator-details">2 SPEED · 2 ARMOR · 110 HP</div></div></div>
-    <div class="bo-squad-picks" aria-label="Training squad roster">
-      <div class="bo-squad-slot bo-player-select"><strong>YOU</strong><span id="boSquadSelected">SLEDGE</span><small>SELECTING</small></div>
-      <div class="bo-squad-slot"><strong>AI 01</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
-      <div class="bo-squad-slot"><strong>AI 02</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
-      <div class="bo-squad-slot"><strong>AI 03</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
-      <div class="bo-squad-slot"><strong>AI 04</strong><span>RESERVED</span><small>OFFLINE TEAMMATE</small></div>
-    </div>
-    <div class="bo-page-actions"><span class="bo-no-pick-timer">PICK TIMER DISABLED · PRACTICE SESSION</span><button type="button" class="bo-secondary" data-bo-nav="play">‹ PLAYLISTS</button><button type="button" class="bo-primary" id="boLockOperator">CONFIRM OPERATOR <b>›</b></button></div>
-  </section>
-
-  <section class="bo-page bo-loadout-page" data-bo-screen="loadout" aria-labelledby="boLoadoutTitle">
-    <div class="bo-page-heading"><span class="bo-eyebrow">MATCH PREPARATION // EQUIPMENT</span><h2 id="boLoadoutTitle">CHOOSE LOADOUT</h2><p>Real 3D gun optics and weapon controls remain connected to gameplay.</p></div>
-    <div class="bo-loadout-columns"><div class="bo-loadout-gear"><div class="bo-gear-header">01 <span>PRIMARY WEAPON</span></div><div class="bo-weapon-display"><span class="bo-gun-art" aria-hidden="true">▰━━━━━╦━━</span><strong id="boPrimaryName">CARBINE 556</strong><small>PRIMARY · IN-GAME KEY 1</small></div><label class="bo-field bo-gun-select-label">PRIMARY WEAPON<select id="primaryWeaponSelect" aria-label="Choose primary weapon"><option value="carbine">CARBINE 556 · BALANCED RIFLE</option><option value="smg">COMPACT-9 · FAST SMG</option><option value="dmr">MR-20 · MARKSMAN RIFLE</option></select></label><div class="bo-gear-header">02 <span>SECONDARY WEAPON</span></div><div class="bo-weapon-display bo-pistol-display"><span class="bo-gun-art" aria-hidden="true">▰━━┓</span><strong id="boSecondaryName">P9 SIDEARM</strong><small>SECONDARY · IN-GAME KEY 2</small></div><label class="bo-field bo-gun-select-label">SIDEARM<select id="secondaryWeaponSelect" aria-label="Choose sidearm"><option value="p9">P9 · STANDARD SIDEARM</option><option value="compact">C12 · COMPACT SIDEARM</option></select></label><div class="bo-gear-header">03 <span>PRIMARY OPTIC</span></div><label class="bo-field">SIGHT SELECTION<select id="sightSelect" aria-label="Select weapon sight"><option value="holo-a">HOLOGRAPHIC A — CIRCLE + DOT</option><option value="holo-b">HOLOGRAPHIC B — TACTICAL CROSS</option><option value="red-dot">REFLEX RED DOT — SINGLE POINT</option><option value="iron">IRON SIGHTS — POST</option></select></label><div class="bo-optics-pills"><button type="button" data-bo-optic="holo-a">HOLO A</button><button type="button" data-bo-optic="holo-b">HOLO B</button><button type="button" data-bo-optic="red-dot">RED DOT</button><button type="button" data-bo-optic="iron">IRON</button></div></div>
-      <div class="bo-gear-config">
-      <div class="bo-gear-header">MAP <span>REAL MAP OR MECHANICS LAB</span></div>
-      <label class="bo-field">SELECT ENVIRONMENT
-        <select id="mapSelect" aria-label="Choose training map">
-          <option value="ironvale">IRONVALE · OPERATIONS COMPLEX / 2F / 70 ROOMS</option>
-          <option value="clubhouse">CONSOLATE + CLUBHOUSE · AUTHOR APPROVED / RAPPEL</option>
-          <option value="switchyard">SWITCHYARD · 3-LEVEL TACTICAL MAP</option>
-          <option value="lab">MECHANICS LAB · ORIGINAL FLAT TEST RANGE</option>
-        </select>
-      </label>
-      <div class="bo-gear-header">BOMB <span>DEFENDER SITE SELECTION · 1F / 2F</span></div>
-      <label class="bo-field">SELECT ACTIVE BOMB PAIR
-        <select id="sitePairSelect" aria-label="Choose active bomb site pair">
-          <option value="operations">GROUND FLOOR · SWITCHROOM / DISPATCH</option>
-          <option value="control">UPPER FLOOR · CONTROL / SERVER</option>
-          <option value="rooftop">ROOF · RELAY / RADIO CONTROL</option>
-        </select>
-      </label>
-      <section class="bo-online-panel" aria-label="Real online multiplayer room">
-        <div class="bo-online-heading"><span>05 / ONLINE BETA</span><strong>REAL PLAYER PRIVATE LOBBIES</strong></div>
-        <p>Create a private room or enter a friend's 6-character invite code. Only connected browsers appear; no AI players are inserted. Current beta syncs players and server-checked shooting, not the full bomb/defuse round.</p>
-        <div class="bo-online-fields">
-          <label class="bo-field">DISPLAY NAME<input id="boOnlineName" maxlength="22" placeholder="Operator" value="Operator"></label>
-          <label class="bo-field">INVITE CODE<input id="boOnlineCode" maxlength="6" placeholder="ABC234" autocomplete="off"></label>
-        </div>
-        <div class="bo-online-actions"><button type="button" id="boCreateRoom">CREATE ROOM</button><button type="button" id="boJoinRoom">JOIN ROOM</button><button type="button" id="boLeaveRoom" disabled>LEAVE</button><button type="button" id="boStartRoom" disabled>HOST: START ROUND</button></div>
-        <p id="boOnlineStatus" class="bo-online-status" role="status">OFFLINE · SELECT TEAM AND OPERATOR ABOVE FIRST</p>
-        <div id="boOnlineRoster" class="bo-online-roster" aria-live="polite"></div>
-      </section>
-      <div class="bo-gear-header">04 <span>SECONDARY GADGET</span></div><label class="bo-field">EQUIPMENT<select id="secondarySelect" aria-label="Choose secondary gadget"><option value="recon">RECON PULSE (2)</option></select></label><div class="bo-gear-header">05 <span>INSERTION POINT</span></div><label class="bo-field">SPAWN LOCATION<select id="spawnSelect" aria-label="Choose training spawn"><option value="south">SOUTH ENTRY</option><option value="west">WEST FLANK</option><option value="east">EAST FLANK</option></select></label><div class="bo-gear-header">06 <span>OBJECTIVE</span></div><label class="bo-field">FOCUS SITE · DEFENDERS SPAWN ON SELECTED FLOOR<select id="siteSelect" aria-label="Choose bomb site"><option value="A">SITE A — BOMB LAB A</option><option value="B">SITE B — BOMB LAB B</option></select></label><div class="bo-ready-panel"><strong id="boReadyOperator">SLEDGE</strong><span>READY FOR INSERTION</span><p>45-second drone / defense preparation begins on deployment. Press ESC to pause or reconfigure.</p></div></div></div>
-    <div class="bo-page-actions bo-deploy-actions"><button class="bo-secondary" type="button" data-bo-nav="operators">‹ OPERATORS</button><button id="start" type="button" class="bo-primary bo-deploy">DEPLOY OPERATOR <b>›</b></button></div>
-  </section>
-
-  <section class="bo-page bo-settings-page" data-bo-screen="settings" aria-labelledby="boSettingsTitle">
-    <div class="bo-page-heading"><span class="bo-eyebrow">BLACKOUT // SETTINGS</span><h2 id="boSettingsTitle">GAME SETTINGS</h2><p>Adjust your gameplay and audio, or reset the testing session.</p></div>
-    <div class="bo-settings-grid"><div><h3>CONTROLS</h3><div class="tuning-grid"><label>MOUSE SENSITIVITY <output id="mouseValue">1.0×</output><input id="mouseSlider" type="range" min="0.4" max="2.5" step="0.1" value="1"></label></div><button id="guideToggle" type="button" class="bo-secondary">SHOW KEYBINDS</button><div id="guide" class="test-guide hidden"><p><strong>WASD</strong> MOVE · <strong>SHIFT</strong> SPRINT · <strong>CTRL</strong> CROUCH · <strong>Z</strong> PRONE · <strong>Q/E</strong> LEAN</p><p><strong>LMB</strong> FIRE · <strong>RMB</strong> AIM DOWN SIGHTS · <strong>1/2</strong> SWITCH WEAPON · <strong>R</strong> RELOAD · <strong>V</strong> CHANGE OPTIC</p><p><strong>G</strong> SPECIAL · <strong>X</strong> SECONDARY · <strong>B</strong> REMOTE DETONATION · <strong>3</strong> DRONE · <strong>F</strong> PLANT / DEFUSE / INTERACT</p><p><strong>SPACE</strong> VAULT · <strong>ESC</strong> MENU · <strong>F3</strong> DEBUG</p></div></div><div><h3>AUDIO & SESSION</h3><button id="audioTest" type="button" class="bo-secondary">TEST GAME AUDIO ♪</button><p id="audioStatus" class="audio-status">AUDIO READY AFTER USER INPUT</p><button id="reset" class="bo-secondary" type="button">RESET TRAINING ROUND</button><p class="bo-settings-note">BLACKOUT is currently an offline mechanics test: no live multiplayer, ranked points, Ubisoft account connection, or official Siege content.</p></div></div>
-  </section>
-
-  <div class="bo-footer"><span id="status" class="notice" role="status">READY FOR LOCAL TRAINING</span><span>BLACKOUT V8.1 · IRONVALE / ONLINE ROOM BETA</span><span>OFFLINE · AI TRAINING</span></div>
-  <div id="boQueue" class="bo-queue hidden" role="status" aria-live="polite"><div class="bo-queue-box"><div class="bo-queue-spin" aria-hidden="true"></div><span class="bo-eyebrow">LOCAL SESSION // OFFLINE</span><h2>PREPARING YOUR MATCH</h2><p id="boQueueStatus">INITIALIZING AI SQUADS...</p><div class="bo-queue-progress"><span></span></div><button id="boCancelQueue" class="bo-secondary" type="button">CANCEL</button></div></div>
-</main>
-<script type="module" src="./main.js?v=blackout-v815-online-beta"></script>
-</body></html>
+  <div id="error" class="error hidden" role="alert"></div>
+  <script type="module" src="./reboot/main.js?v=reboot-001"></script>
+</body>
+</html>
