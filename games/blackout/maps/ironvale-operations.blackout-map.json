@@ -8794,17 +8794,17 @@
       "id": "iron-ground",
       "name": "1F SERVER / PLANT CONTROL",
       "A": {
-        "x": -12,
+        "x": 8,
         "y": 0,
-        "z": 12,
+        "z": 8,
         "plantRadius": 3,
         "defuseRange": 2.25,
         "plantZones": [
           {
             "id": "iron-ground-a",
-            "x": -12,
+            "x": 8,
             "y": 0,
-            "z": 12,
+            "z": 8,
             "width": 4.5,
             "depth": 4.5,
             "height": 2.5
@@ -8812,17 +8812,17 @@
         ]
       },
       "B": {
-        "x": 12,
+        "x": 24,
         "y": 0,
-        "z": 12,
+        "z": 8,
         "plantRadius": 3,
         "defuseRange": 2.25,
         "plantZones": [
           {
             "id": "iron-ground-b",
-            "x": 12,
+            "x": 24,
             "y": 0,
-            "z": 12,
+            "z": 8,
             "width": 4.5,
             "depth": 4.5,
             "height": 2.5
@@ -8834,7 +8834,7 @@
       "id": "iron-upper",
       "name": "2F OPERATIONS / ENCRYPTED VAULT",
       "A": {
-        "x": 12,
+        "x": 8,
         "y": 4,
         "z": -8,
         "plantRadius": 3,
@@ -8842,7 +8842,7 @@
         "plantZones": [
           {
             "id": "iron-upper-a",
-            "x": 12,
+            "x": 8,
             "y": 4,
             "z": -8,
             "width": 4.5,
@@ -8852,7 +8852,7 @@
         ]
       },
       "B": {
-        "x": 20,
+        "x": 24,
         "y": 4,
         "z": -8,
         "plantRadius": 3,
@@ -8860,7 +8860,7 @@
         "plantZones": [
           {
             "id": "iron-upper-b",
-            "x": 20,
+            "x": 24,
             "y": 4,
             "z": -8,
             "width": 4.5,
