@@ -176,8 +176,8 @@ test("V6.5 every approved exterior rappel anchor supports attaching and a real u
    assert.equal(on.ok,true,anchor.id+": "+on.message);
    assert.equal(rappel.attached,true);
    assert.match(rappel.hint,/W CLIMB/);
-   for(let i=0;i<150;i++)rappel.update(.043,new Set(["KeyW"]));
-   assert.ok(player.y>4.0,anchor.id+" failed climb to second floor");
+   for(let i=0;i<40;i++)rappel.update(.043,new Set(["KeyW"]));
+   assert.ok(player.y>4.0&&player.y<5,anchor.id+" failed climb to upper window level");
    const result=rappel.enterWindow();
    assert.equal(result.ok,true,anchor.id+" cannot enter window: "+result.message);
    assert.equal(rappel.attached,false,anchor.id+" remains attached after vault");
@@ -188,7 +188,7 @@ test("V6.5 rappel gives useful out-of-range feedback and refuses wall-phasing",(
  const {map,world}=make();
  const player=new Player(T,world,new Node());
  const anchor=map.anchors[0];
- player.x=anchor.x+7;player.y=0;player.z=anchor.z;
+ player.x=145;player.y=0;player.z=145;
  const boards={openings:map.openings,hasBarricade:()=>false};
  const rappel=new Rappel(world,player,boards);
  const far=rappel.toggle();
