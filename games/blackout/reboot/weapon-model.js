@@ -141,5 +141,5 @@ export function buildBX7Model(THREE,root){
   new THREE.MeshBasicMaterial({color:0xffe5aa,transparent:true,opacity:.85,
     depthWrite:false}),0,-.015,-1.289);
  flash.visible=false;
- return {reticle:sight,flash,materials:mat};
+ return {reticle:sight,flash,magazine,materials:mat};
 }
