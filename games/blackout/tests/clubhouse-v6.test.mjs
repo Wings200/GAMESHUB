@@ -232,3 +232,40 @@ test("V6.5 rappel respects solid barricades and explicit window height",()=>{
  boarded=false;
  assert.equal(rappel.enterWindow().ok,true);
 });
+
+test("V6.5 physical player controller can climb each authored staircase without teleport",()=>{
+ const {world}=make();
+ for(const stair of world.facility.stairConnectors){
+   const player=new Player(T,world,new Node());
+   player.x=stair.bottom.x;player.z=stair.bottom.z;player.y=stair.bottom.y;
+   const stepX=(stair.top.x-stair.bottom.x)/165;
+   const stepZ=(stair.top.z-stair.bottom.z)/165;
+   let maxRise=0;
+   for(let i=0;i<165;i++){
+     const before=player.y;
+     player.moveAxis(stepX,stepZ);
+     const expected=world.floorAt(player.x,player.z,player.y);
+     player.y=Math.max(player.y,expected);
+     maxRise=Math.max(maxRise,player.y-before);
+     assert.ok(maxRise<.27,"stair should never teleport player vertically");
+   }
+   assert.ok(player.y>3.65,
+     "player movement must reach second floor on "+stair.bottom.x+
+     " and ended "+player.y+" at "+player.x+","+player.z);
+ }
+});
+test("V6.5 entering a window breaks the glass only for that round",()=>{
+ const {world,map}=make();
+ const anchor=map.anchors.find(a=>/north-archive/.test(a.id));
+ const player=new Player(T,world,new Node());
+ player.x=anchor.x;player.y=0;player.z=anchor.z;
+ const boards={openings:map.openings,hasBarricade:()=>false};
+ const rappel=new Rappel(world,player,boards);
+ assert.ok(rappel.toggle().ok);
+ for(let i=0;i<38;i++)rappel.update(.043,new Set(["KeyW"]));
+ const target=rappel.nearestWindow();
+ assert.ok(target?.glass?.visible);
+ const result=rappel.enterWindow();
+ assert.ok(result.ok,result.message);
+ assert.equal(target.glass.visible,false,"window pane removed when entering");
+});
