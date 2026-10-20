@@ -10,7 +10,7 @@ export class ClubhouseRappel {
   }
   get attached(){return Boolean(this.active)}
   reset(){this.active=null;this.hangOffset=0}
-  anchors(){return this.world.mapId==="clubhouse"?
+  anchors(){return (this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")?
     (this.world.facility.anchors||[]):[]}
   nearestAnchor(maxDistance=Infinity){
     const player=this.player;
@@ -63,7 +63,7 @@ export class ClubhouseRappel {
       // Release resets tether, then the player uses normal gravity next frame.
       this.reset();return {ok:true,message:"RAPPEL RELEASED"}
     }
-    if(this.world.mapId!=="clubhouse")
+    if(!(this.world.mapId==="clubhouse"||this.world.mapId==="ironvale"))
       return {ok:false,message:"RAPPEL ONLY ON CONSOLATE + CLUBHOUSE"};
     const candidate=this.nearestAnchor();
     if(!candidate)
