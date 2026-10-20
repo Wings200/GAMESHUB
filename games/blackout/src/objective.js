@@ -234,14 +234,14 @@ export class ObjectiveDrill{
       // collision meshes or bot hitboxes exist until action starts.
       // Keep display-only roster data for UI; it cannot be shot or spotted.
       const roster=operatorsForSide("attacker").filter(o=>o.id!==this.operator?.id);
-      const staged=this.world.mapId==="clubhouse"?
+      const staged=(this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")?
         (this.world.facility.attackSpawns||[]).slice(0,4)
           .map((p,i)=>({...p,site:i%2?"B":"A"})):
         ATTACK_SQUAD_SPAWNS;
       this.stagedAttackers=staged.map((p,i)=>({
         ...p,operatorSpec:roster[i%roster.length],team:"ally",staged:true
       }));
-      if(this.world.mapId==="clubhouse"){
+      if((this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")){
         // All five defenders exist during prep, but only on actual selected
         // bomb-site floors, with collision-aware positions around both sites.
         const positions=defenderSetupPositions(this.world,5,this.siteId);
@@ -258,7 +258,7 @@ export class ObjectiveDrill{
         [5,-24.6,"B"],[-6,-28,"B"]
       ])this.spawnBot(x,z,true,"enemy",site);
     }else{
-      if(this.world.mapId==="clubhouse"){
+      if((this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")){
         const positions=defenderSetupPositions(this.world,5,this.siteId).slice(1);
         // Slot 0 is reserved for the local player; four allied AI receive
         // separate safe insertion points on the selected bomb floor.
@@ -291,7 +291,7 @@ export class ObjectiveDrill{
       this.stagedAttackers=[];
       this.prepAttackersDeployed=true;
     }else{
-      const incoming=this.world.mapId==="clubhouse"?
+      const incoming=(this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")?
         (this.world.facility.attackSpawns||[])
           .map((p,i)=>({...p,site:i%2?"B":"A"})):
         ENEMY_ATTACK_SPAWNS;
@@ -320,7 +320,7 @@ export class ObjectiveDrill{
   }
   siteAt(p){
     return Object.values(this.sites).find(site=>{
-      if(this.world.mapId==="clubhouse"&&Array.isArray(site.plantZones))
+      if((this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")&&Array.isArray(site.plantZones))
         return site.plantZones.some(z=>
           Math.abs(p.x-z.x)<=z.width/2&&Math.abs(p.z-z.z)<=z.depth/2&&
           (p.y||0)>=z.y-.25&&(p.y||0)<=z.y+z.height);
@@ -333,7 +333,7 @@ export class ObjectiveDrill{
   canInteract(p){
     if(this.role==="attacker")return this.phase==="attack"&&this.atSite(p);
     return this.phase==="planted"&&!!this.plantPosition&&
-      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<(this.world.mapId==="clubhouse"?(this.sites[this.holdSiteId||this.siteId]?.defuseRange||2.25):2.25)&&
+      Math.hypot(p.x-this.plantPosition.x,p.z-this.plantPosition.z)<((this.world.mapId==="clubhouse"||this.world.mapId==="ironvale")?(this.sites[this.holdSiteId||this.siteId]?.defuseRange||2.25):2.25)&&
       Math.abs((p.y||0)-(this.plantPosition.y||0))<1.2;
   }
   end(won,reason,notify=()=>{}){
