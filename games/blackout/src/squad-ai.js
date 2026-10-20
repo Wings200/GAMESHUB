@@ -1,3 +1,4 @@
+import {attackInsertionProtected} from "./match-flow.js?v=blackout-v710-round-match";
 // BLACKOUT V1.0 — real bot-vs-bot squad combat for offline five-on-five drills.
 // Five operators per side means one human + four friendly AI versus five hostiles.
 // Do not misrepresent this as online multiplayer.
@@ -221,6 +222,20 @@ function fireAt(round,bot,target,now,notify){
     (bot.movedLast>.2?.12:0),.26,.79);
   if(Math.random()>=hitChance)return;
   const damage=(bot.team==="ally"?20:15)+Math.floor(Math.random()*11);
+  // Defenders can't instantly kill a newly deployed attacker while their
+  // original insertion animation is finishing. Firing or leaving the
+  // spawn circle removes this protection, and it expires after 2.3 seconds.
+  const isTargetAttacker=target.isPlayer?
+    round.role==="attacker":
+    (round.role==="attacker"&&target.team==="ally"||
+      round.role==="defender"&&target.team==="enemy");
+  const protectedEntry=isTargetAttacker&&attackInsertionProtected({
+    now,actionStartedAt:round.actionStartedAt,phase:round.phase,
+    team:"attacker",position:target,
+    insertion:target.isPlayer?round.world.spawn:target.insertion,
+    firedAt:target.isPlayer?round.playerFiredAt:target.lastShotAt
+  });
+  if(protectedEntry)return;
   if(target.isPlayer){
     round.playerRef.takeDamage(damage);
     notify(null,"hurt");
