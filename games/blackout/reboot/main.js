@@ -1,17 +1,19 @@
-// BLACKOUT REBOOT V0.4 — first playable weapon and target range, still offline
+// BLACKOUT REBOOT V0.5 — aligned ADS, persistent Q/E lean, upgraded weapon
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-003";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {WEAPON_SPEC,newWeaponState,stepWeapon} from "./weapon.js?v=reboot-004";
-import {createWeaponView,createTargetRange,createShotEffects,WeaponAudio} from "./weapon-view.js?v=reboot-004";
+import {createWeaponView,createTargetRange,createShotEffects,WeaponAudio} from "./weapon-view.js?v=reboot-005";
+import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
+import {shotSpread} from "./weapon-aim.js?v=reboot-005";
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
 const play=$("play"),message=$("message"),error=$("error");
 const positionText=$("position"),speedText=$("speed"),groundText=$("ground");
 const modeText=$("mode"),motionText=$("motion"),hint=$("hint");
 const crosshair=$("crosshair");
-const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice");
+const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice"),leanText=$("lean-status");
 let renderer;
 try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance"});
@@ -99,6 +101,7 @@ let proneToggle=false;
 let weaponState=newWeaponState();
 let firing=false,aimHeld=false,reloadPressed=false,aimMix=0,targetHits=0;
 let shotNoticeLeft=0,pendingShots=0;
+let leanTarget=0,leanAmount=0;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -134,7 +137,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  hud.classList.toggle("hidden",!locked);
  crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;unlockMessage();}
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -146,17 +149,22 @@ document.addEventListener("mousemove",event=>{
  player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
 });
 document.addEventListener("keydown",event=>{
- if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
+ if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","KeyQ","KeyE","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
    event.preventDefault();
  if(!locked)return;
  if(event.code==="KeyP"&&!event.repeat){
-   player=initialPlayer();cameraEye=1.65;proneToggle=false;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+   player=initialPlayer();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
    hint.textContent=proneToggle?
     "PRONE ON · RELEASE CTRL THEN MOVE · TAP CTRL OR Z TO STAND.":
     "PRONE OFF · HOLD C TO CROUCH.";
+ }
+ if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat){
+   leanTarget=toggleLean(leanTarget,event.code==="KeyQ"?-1:1);
+   hint.textContent=leanTarget===-1?"LEAN LEFT · Q TO RETURN CENTER":
+     leanTarget===1?"LEAN RIGHT · E TO RETURN CENTER":"LEAN CENTERED";
  }
  if(event.code==="KeyR"&&!event.repeat)reloadPressed=true;
  if(event.code==="KeyM"&&!event.repeat){
@@ -187,12 +195,14 @@ function hudFrame(){
  ammoText.textContent=weaponState.ammo+" / "+weaponState.reserve;
  weaponStatus.textContent=weaponState.reloading>0?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"READY";
  hitsText.textContent=String(targetHits);
+ leanText.textContent=leanTarget<0?"LEFT":leanTarget>0?"RIGHT":"CENTER";
 }
 function fireShot(){
  weaponView.flash();shotAudio.fire();
- // Aim from the eye, not from a fabricated 2D crosshair or the muzzle model.
+ // At full ADS the 3D holo reticle lies on this exact camera-forward ray.
+ // Hipfire uses spread; ADS has zero random divergence from the real sight.
  camera.updateMatrixWorld(true);
- const spread=aimMix>.78?.0005:.023;
+ const spread=shotSpread(aimHeld);
  const direction=new THREE.Vector3((Math.random()*2-1)*spread,
    (Math.random()*2-1)*spread,-1).normalize().applyQuaternion(camera.quaternion);
  raycaster.set(camera.position,direction);raycaster.far=150;
@@ -236,7 +246,10 @@ function animate(now){
    const result=stepWeapon(weaponState,{fire:firing,ads:aimHeld,reload:reloadPressed},dt);
    weaponState=result.state;
    reloadPressed=false;
-   aimMix+=((aimHeld?1:0)-aimMix)*Math.min(1,dt*13);
+   const adsTarget=aimHeld?1:0;
+   aimMix+=(adsTarget-aimMix)*Math.min(1,dt*20);
+   if(Math.abs(adsTarget-aimMix)<.005)aimMix=adsTarget;
+   leanAmount=smoothLean(leanAmount,leanTarget,dt);
    camera.fov=77-14*aimMix;
    camera.updateProjectionMatrix();
    camera.updateMatrixWorld(true);
@@ -250,8 +263,9 @@ function animate(now){
  // Drop the camera immediately for low cover; smoothly raise when clearance allows.
  const eyeTarget=player.prone?.44:player.crouched?1.08:1.65;
  cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
- camera.position.set(player.x,player.y+cameraEye,player.z);
- camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
+ const leanPose=leanCameraPose(player.yaw,leanAmount);
+ camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
+ camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
  camera.updateMatrixWorld(true);
  if(locked&&pendingShots>0){
   for(let i=0;i<pendingShots;i++)fireShot();
@@ -264,10 +278,10 @@ function animate(now){
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
  weaponView.update(dt,aimMix,weaponState.recoil,player.moving&&player.grounded);
- crosshair.classList.toggle("hidden",!locked||aimMix>.78);
+ crosshair.classList.toggle("hidden",!locked||aimMix>=.995);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT clean reboot",FOUNDATION_VERSION,
-  "standalone movement/collision; old game runtime not loaded");
+console.info("BLACKOUT reboot weapons and leaning",FOUNDATION_VERSION,
+  "offline weapon testing; old game runtime not loaded");
