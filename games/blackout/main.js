@@ -1119,7 +1119,7 @@ function updateFrame(now){
   const actualDt=Math.max(0,(now-last)/1000),dt=Math.min(actualDt,.043);last=now;
   frames++;elapsed+=actualDt;
   if(elapsed>=.6){fps=Math.round(frames/elapsed);frames=0;elapsed=0;}
-  const ended=["won","lost"].includes(objectiveRound.phase);
+  const ended=!network.active&&["won","lost"].includes(objectiveRound.phase);
   if(!ended)weapons.tick(now);
   if(locked&&!ended){
     // ADS reduces the move speed by removing sprint; it does NOT
@@ -1195,24 +1195,25 @@ function updateFrame(now){
         if(gun.ammo===previousAmmo)break;
       }
     }
-    gadgets.tick(now,player,(message,event)=>{
+    if(network.active)network.sendPosition(player,now);
+    if(!network.active)gadgets.tick(now,player,(message,event)=>{
       if(event==="proximity-beep")proximityAlarm();
       else if(event)sound(event);
       if(message)popup(message);
     },objectiveRound.bots);
-    barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
+    if(!network.active)barricades.tick(now,keys.has("KeyF"),player,(message,event)=>{
       if(message)popup(message);
       if(event)sound(event);
     });
     const phaseBeforeSimulation=objectiveRound.phase;
-    objectiveRound.update(now,dt,player,keys.has("KeyF")&&!drone.active&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
+    if(!network.active)objectiveRound.update(now,dt,player,keys.has("KeyF")&&!drone.active&&!gadgets.busy&&!barricades.busy,(message,event,origin)=>{
       if(message)popup(message);
       if(event&&origin&&audio.ready)audio.playAt(event,origin.x,origin.z,player.x,player.z,player.yaw);
       else if(event)sound(event);
     });
     if(phaseBeforeSimulation==="prep"&&objectiveRound.phase!=="prep")
       deployLocalAttacker();
-    if(objectiveRound.phase==="won"||objectiveRound.phase==="lost")
+    if(!network.active&&(objectiveRound.phase==="won"||objectiveRound.phase==="lost"))
       recordRoundIfEnded();
     if(drone.active&&objectiveRound.phase!=="prep"&&!droneActionMode){
       drone.end();player.applyCamera();
@@ -1238,6 +1239,36 @@ function updateFrame(now){
     }
     if(now-lastHudAt>90||["won","lost"].includes(objectiveRound.phase)){
       lastHudAt=now;updateHud(report);
+      if(network.connected){
+        const atk=network.players.filter(p=>p.side==="attacker"),
+          def=network.players.filter(p=>p.side==="defender");
+        attackAlive.textContent=atk.filter(p=>p.alive).length+"/"+atk.length;
+        defendAlive.textContent=def.filter(p=>p.alive).length+"/"+def.length;
+        teamPopulation.textContent="REAL HUMAN PLAYERS · "+network.players.length+
+          "/10 · ROOM "+network.code;
+        phaseText.textContent=network.active?"ONLINE PvP ROUND":"ONLINE ROOM";
+        matchClock.textContent=network.active?"LIVE":"WAIT";
+        roundScore.textContent="IRONVALE · REAL ONLINE ROOM "+network.code;
+        matchCaption.textContent="LIVE PVP BETA · REAL PLAYERS ONLY";
+        objectiveHint.textContent="ONLINE BETA · SERVER-VERIFIED HITS · NO DEFUSER YET";
+        squadStatus.textContent="ONLINE "+role.toUpperCase()+" · "+
+          network.players.filter(p=>p.side===role).length+" HUMAN TEAMMATES";
+        for(const [node,list] of [[friendlySlots,atk],[enemySlots,def]]){
+          node.replaceChildren();
+          for(const p of list){
+            const span=document.createElement("span");
+            span.className="bo-player-pip "+(p.side==="attacker"?"ally":"hostile")+
+              (p.alive?"":" down");
+            span.textContent=p.alive?"●":"×";
+            span.title=p.name+" · "+p.operator+" · "+p.health+" HP";
+            node.appendChild(span);
+          }
+        }
+        const dead=network.active&&network.me&&!network.me.alive;
+        spectatorAlert.classList.toggle("hidden",!dead);
+        if(dead)spectatorAlert.textContent=
+          "ELIMINATED · WAIT FOR HOST TO START THE NEXT ROUND";
+      }
     }
   }else if(locked&&!roundFrozen){
     // Freeze all simulation, movement, AI and weapon logic immediately at
@@ -1317,7 +1348,9 @@ hud.classList.add("hidden");noticeReady();requestAnimationFrame(frame);
 applyMap("switchyard");
 function noticeReady(){status.textContent="WELCOME TO BLACKOUT · CHOOSE PLAY TO FIND AN OFFLINE TRAINING MATCH";}
 window.BLACKOUT_DEV={
-  get build(){return "7.1.0-round-swap-spawn-protection"},
+  get build(){return "8.0.0-real-room-pvp-beta"},
+  get multiplayer(){return {connected:network.connected,active:network.active,
+    code:network.code,host:network.host,id:network.id,players:network.players}},
   get matchSeries(){return matchSeries.snapshot},
   get rappel(){return {attached:rappel.attached,anchorId:rappel.active?.id||null,
     hint:rappel.hint,nearest:rappel.nearestAnchor(100)?.distance??null}},
