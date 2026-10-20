@@ -86,6 +86,7 @@ let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let cameraEye=1.65;
 let locked=false,started=false;
+let proneToggle=false;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -121,7 +122,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  hud.classList.toggle("hidden",!locked);
  crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();unlockMessage();}
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -137,7 +138,13 @@ document.addEventListener("keydown",event=>{
    event.preventDefault();
  if(!locked)return;
  if(event.code==="KeyR"&&!event.repeat){
-   player=initialPlayer();cameraEye=1.65;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+   player=initialPlayer();cameraEye=1.65;proneToggle=false;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+ }
+ if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
+   proneToggle=!proneToggle;
+   hint.textContent=proneToggle?
+    "PRONE ON · RELEASE CTRL THEN MOVE · TAP CTRL OR Z TO STAND.":
+    "PRONE OFF · HOLD C TO CROUCH.";
  }
  if(event.code==="KeyM"&&!event.repeat){
    const muted=footstepAudio.toggleMute();
@@ -166,7 +173,7 @@ function animate(now){
        Number(keys.has("KeyA")||keys.has("ArrowLeft")),
      sprint:keys.has("ShiftLeft")||keys.has("ShiftRight"),
      crouch:keys.has("KeyC"),
-     prone:keys.has("ControlLeft")||keys.has("ControlRight"),
+     prone:proneToggle,
      jump:keys.has("Space")
    };
    const before=player;
