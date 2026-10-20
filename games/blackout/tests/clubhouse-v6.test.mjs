@@ -163,3 +163,72 @@ test("clubhouse bot physically walks from ground via real stairs to upstairs bom
  assert.ok(arrived,"bot should reach upstairs Archives site; final="+
    JSON.stringify({x:bot.x,z:bot.z,y:bot.y,path:bot.path.slice(0,2)}));
 });
+
+test("V6.5 every approved exterior rappel anchor supports attaching and a real upstairs window entry",()=>{
+ const {map,world}=make();
+ for(const anchor of map.anchors){
+   const player=new Player(T,world,new Node());
+   player.x=anchor.x;player.y=0;player.z=anchor.z;
+   player.applyCamera();
+   const boards={openings:map.openings,hasBarricade:()=>false};
+   const rappel=new Rappel(world,player,boards);
+   const on=rappel.toggle();
+   assert.equal(on.ok,true,anchor.id+": "+on.message);
+   assert.equal(rappel.attached,true);
+   assert.match(rappel.hint,/W CLIMB/);
+   for(let i=0;i<150;i++)rappel.update(.043,new Set(["KeyW"]));
+   assert.ok(player.y>4.0,anchor.id+" failed climb to second floor");
+   const result=rappel.enterWindow();
+   assert.equal(result.ok,true,anchor.id+" cannot enter window: "+result.message);
+   assert.equal(rappel.attached,false,anchor.id+" remains attached after vault");
+   assert.ok(player.vault,anchor.id+" player vault not started");
+ }
+});
+test("V6.5 rappel gives useful out-of-range feedback and refuses wall-phasing",()=>{
+ const {map,world}=make();
+ const player=new Player(T,world,new Node());
+ const anchor=map.anchors[0];
+ player.x=anchor.x+7;player.y=0;player.z=anchor.z;
+ const boards={openings:map.openings,hasBarricade:()=>false};
+ const rappel=new Rappel(world,player,boards);
+ const far=rappel.toggle();
+ assert.equal(far.ok,false);
+ assert.match(far.message,/M AWAY/);
+ player.x=anchor.x+2.2;player.z=anchor.z;
+ assert.ok(rappel.nearestAnchor(3));
+ assert.match(rappel.hint,/RAPPEL/);
+ // A narrow concrete bar directly between operator and attachment point
+ // must reject what would otherwise be a teleport through a solid wall.
+ const fake={minX:anchor.x+.9,maxX:anchor.x+1.1,
+   minZ:anchor.z-.4,maxZ:anchor.z+.4,minY:0,maxY:2,tag:"hard-wall"};
+ world.colliders.push(fake);
+ const blocked=rappel.toggle();
+ assert.equal(blocked.ok,false);
+ assert.match(blocked.message,/BLOCKED BY WALL/);
+ world.colliders.pop();
+ const success=rappel.toggle();
+ assert.equal(success.ok,true,success.message);
+ const yBefore=player.y;
+ for(let i=0;i<25;i++)rappel.update(.043,new Set(["KeyW"]));
+ assert.ok(player.y>yBefore+.4,"W must actually ascend the rope");
+ for(let i=0;i<15;i++)rappel.update(.043,new Set(["KeyS"]));
+ assert.ok(player.y<yBefore+25*.043*2.65,"S must descend");
+ assert.equal(rappel.toggle().ok,true);
+ assert.equal(rappel.attached,false);
+});
+test("V6.5 rappel respects solid barricades and explicit window height",()=>{
+ const {map,world}=make();
+ const anchor=map.anchors.find(x=>/north-archive/.test(x.id));
+ const player=new Player(T,world,new Node());
+ player.x=anchor.x;player.y=0;player.z=anchor.z;
+ let boarded=true;
+ const boards={openings:map.openings,hasBarricade:()=>boarded};
+ const rappel=new Rappel(world,player,boards);
+ assert.equal(rappel.toggle().ok,true);
+ assert.match(rappel.enterWindow().message,/CLIMB TO/);
+ player.y=4.1;player.applyCamera();
+ assert.match(rappel.enterWindow().message,/BARRICADED/);
+ assert.equal(rappel.attached,true);
+ boarded=false;
+ assert.equal(rappel.enterWindow().ok,true);
+});
