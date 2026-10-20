@@ -2,6 +2,7 @@
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-001";
+import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-002";
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
 const play=$("play"),message=$("message"),error=$("error");
@@ -80,6 +81,8 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
  ring.rotation.x=-Math.PI/2;ring.position.set(x,.035,z);scene.add(ring);
 }
 const keys=new Set();
+const footstepAudio=new FootstepAudio();
+let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let locked=false,started=false;
 function resize(){
@@ -96,6 +99,8 @@ function unlockMessage(){
 }
 function enterRange(){
  started=true;
+ // User gesture unlocks Web Audio before browser pointer lock takes over.
+ void footstepAudio.unlock();
  if(!canvas.requestPointerLock){
    error.textContent="This browser does not support pointer lock. Use a desktop browser.";
    error.classList.remove("hidden");return;
@@ -115,7 +120,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  hud.classList.toggle("hidden",!locked);
  crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();unlockMessage();}
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -131,12 +136,16 @@ document.addEventListener("keydown",event=>{
    event.preventDefault();
  if(!locked)return;
  if(event.code==="KeyR"&&!event.repeat){
-   player=initialPlayer();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+   player=initialPlayer();footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+ }
+ if(event.code==="KeyM"&&!event.repeat){
+   const muted=footstepAudio.toggleMute();
+   hint.textContent=muted?"FOOTSTEPS MUTED · PRESS M TO UNMUTE.":"FOOTSTEPS ENABLED · WALK, SPRINT AND CROUCH TO COMPARE.";
  }
  keys.add(event.code);
 });
 document.addEventListener("keyup",event=>keys.delete(event.code));
-window.addEventListener("blur",()=>keys.clear());
+window.addEventListener("blur",()=>{keys.clear();footstepTracker=newFootstepTracker();});
 function hudFrame(){
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
  speedText.innerHTML=player.speed.toFixed(1)+" <span>M/S</span>";
@@ -158,7 +167,11 @@ function animate(now){
      crouch:keys.has("ControlLeft")||keys.has("ControlRight")||keys.has("KeyC"),
      jump:keys.has("Space")
    };
+   const before=player;
    player=stepPlayer(player,input,dt);
+   const next=advanceFootsteps(footstepTracker,before,player);
+   footstepTracker=next.tracker;
+   footstepAudio.play(next.events);
  }
  camera.position.set(player.x,player.y+(player.crouched?1.08:1.65),player.z);
  camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
