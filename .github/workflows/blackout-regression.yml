@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.4 · movement, prone, footsteps, weapons
+    name: Reboot V0.5 · movement, leaning, sights and ballistics
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -27,5 +27,8 @@ jobs:
           node --check games/blackout/reboot/footsteps.js
           node --check games/blackout/reboot/weapon.js
           node --check games/blackout/reboot/weapon-view.js
+          node --check games/blackout/reboot/weapon-model.js
+          node --check games/blackout/reboot/weapon-aim.js
+          node --check games/blackout/reboot/lean.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
