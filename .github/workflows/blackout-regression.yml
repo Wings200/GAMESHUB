@@ -1,4 +1,4 @@
-name: BLACKOUT mechanic and UI regression
+name: BLACKOUT REBOOT — foundation checks
 on:
   push:
     paths:
@@ -8,9 +8,11 @@ on:
     paths:
       - 'games/blackout/**'
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  tests:
-    name: Mechanics and competitive UI source tests
+  foundation:
+    name: Reboot V0.1 · movement, collision and clean entry point
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -18,5 +20,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run all BLACKOUT regression tests
-        run: node --test games/blackout/tests/*.test.mjs
+      - name: Parse isolated foundation JS
+        run: |
+          node --check games/blackout/reboot/main.js
+          node --check games/blackout/reboot/physics.js
+      - name: Run only the clean-reboot regression tests
+        run: node --test games/blackout/reboot/*.test.mjs
