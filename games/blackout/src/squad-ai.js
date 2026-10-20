@@ -301,7 +301,7 @@ function patrolPosition(round,bot,now){
 export function updateDefenderPrep(round,now,dt,notify=()=>{}){
   const defenders=round.role==="defender"?round.allies:round.bots;
   const gadgets=round.world.gadgets,doors=round.world.barricades;
-  if(round.world.mapId==="switchyard"||round.world.mapId==="clubhouse"){
+  if(round.world.mapId==="switchyard"||(round.world.mapId==="clubhouse"||round.world.mapId==="ironvale")){
     // Defenders prepare their actual room: approach a physical, accessible
     // soft wall; show a three-second steel installation, then board a nearby
     // REAL door. Setup tasks are allocated once per bot, not on every frame.
