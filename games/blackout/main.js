@@ -785,7 +785,7 @@ function drawTacticalHud(now){
   droneSignal.textContent=lostFeed?"DRONE DESTROYED":
     drone.jammed?"SIGNAL JAMMED":"SIGNAL STABLE · "+drone.health+" HP · "+drone.remaining+" SPARE";
   phaseText.textContent=phaseName;
-  matchScore.textContent=matchSeries.yourWins+" — "+matchSeries.theirWins;
+  matchScore.textContent="YOU "+matchSeries.yourWins+" — "+matchSeries.theirWins+" AI";
   // All ten slots are real participants in this OFFLINE PvE simulation.
   const playerAlive=player.health>0;
   const onePip='<span class="bo-player-pip ally'+(playerAlive?"":" down")+
