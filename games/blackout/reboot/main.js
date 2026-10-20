@@ -98,7 +98,7 @@ let locked=false,started=false;
 let proneToggle=false;
 let weaponState=newWeaponState();
 let firing=false,aimHeld=false,reloadPressed=false,aimMix=0,targetHits=0;
-let shotNoticeLeft=0;
+let shotNoticeLeft=0,pendingShots=0;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -240,7 +240,8 @@ function animate(now){
    camera.fov=77-14*aimMix;
    camera.updateProjectionMatrix();
    camera.updateMatrixWorld(true);
-   for(let i=0;i<result.events.shots;i++)fireShot();
+   // Shots execute after the updated camera pose is applied below.
+   pendingShots=result.events.shots;
    if(result.events.reloadStarted){
     shotNotice.textContent="RELOADING · "+WEAPON_SPEC.reloadSeconds.toFixed(1)+"S";
     shotNoticeLeft=.9;
@@ -251,6 +252,11 @@ function animate(now){
  cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
  camera.position.set(player.x,player.y+cameraEye,player.z);
  camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
+ camera.updateMatrixWorld(true);
+ if(locked&&pendingShots>0){
+  for(let i=0;i<pendingShots;i++)fireShot();
+  pendingShots=0;
+ }
  for(const t of targets){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
