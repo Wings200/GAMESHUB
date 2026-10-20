@@ -175,7 +175,7 @@ test("V6.5 every approved exterior rappel anchor supports attaching and a real u
    const on=rappel.toggle();
    assert.equal(on.ok,true,anchor.id+": "+on.message);
    assert.equal(rappel.attached,true);
-   assert.match(rappel.hint,/W CLIMB/);
+   assert.match(rappel.hint,/HOLD W TO CLIMB/);
    for(let i=0;i<40;i++)rappel.update(.043,new Set(["KeyW"]));
    assert.ok(player.y>4.0&&player.y<5,anchor.id+" failed climb to upper window level");
    const result=rappel.enterWindow();
