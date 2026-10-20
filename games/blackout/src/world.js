@@ -369,6 +369,11 @@ export function buildRange(THREE,scene,clubhouseBlueprint=null){
   function reset(){
     for(const t of targets)t.reset();
     for(const p of panels)p.reset();
+    // Restoring a round must also restore the exterior window panes shattered
+    // by entry, including when switching between Clubhouse and the test maps.
+    for(const entry of facility.openings||[]){
+      if(entry.glass)entry.glass.visible=true;
+    }
     if(facility.mode==="mechanics-sandbox")preReinforcedTestPanel.reinforce();
     for(const s of [...placed])s.remove();
   }
