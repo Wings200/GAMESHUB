@@ -1,7 +1,7 @@
 // BLACKOUT REBOOT V0.15 — usable defender barbed wire, shooting and slowdown
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
+import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-006";
@@ -23,7 +23,7 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-027";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-028";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-028";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier} from "./barbed-wire.js?v=reboot-028";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-028";
