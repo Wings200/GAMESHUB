@@ -185,3 +185,88 @@ test("rotated walls preserve local face alignment when projected to world",()=>{
   assert.ok(Math.abs(impact.normal.z)<1e-9);
  }finally{restore();}
 });
+
+test("BOX-ONE front impact creates a visible child decal on the struck cube, not a distant scene mesh",()=>{
+ const {decals,scene,restore}=setup();
+ try{
+  const surface=box({x:-12,y:.675,z:-6,w:2.3,h:1.35,d:2.3});
+  surface.object.userData={physicsObstacleId:"box-one"};
+  surface.object.children=[];
+  surface.object.add=function(child){this.children.push(child);child.parent=this;};
+  const point=surface.toWorld(new V3(0,0,1.15));
+  assert.equal(decals.mark({point,object:surface.object,
+    face:{normal:new V3(0,0,1)}}),true);
+  assert.equal(decals.lastObjectId,"box-one");
+  assert.equal(decals.lastFace,"FRONT");
+  assert.equal(decals.count,1);
+  assert.equal(decals.getBoxCount("box-one"),1);
+  assert.equal(decals.boxPoolCount,1);
+  assert.equal(decals.mesh.count,0,"global wall pool must stay empty");
+  assert.equal(scene.children.length,1,"no new world-space decal mesh");
+  assert.equal(surface.object.children.length,1,"box must own its impact layer");
+  const child=surface.object.children[0];
+  assert.equal(child.name,"box-face-bullet-holes");
+  assert.equal(child.parent,surface.object);
+  assert.equal(child.frustumCulled,false);
+  assert.equal(child.matrices[0].position.y,0,"impact is local cube mid-height");
+  assert.ok(Math.abs(child.matrices[0].position.z-(1.15+SURFACE_OFFSET))<1e-9);
+  assert.equal(child.matrices[0].normal.z,1);
+  assert.ok(child.matrices[0].scale.x>=.1);
+ }finally{restore();}
+});
+test("BOX-ONE top and side hits use the same parent-local decal layer",()=>{
+ const {decals,restore}=setup();
+ try{
+  const s=box({x:-12,y:.675,z:-6,w:2.3,h:1.35,d:2.3});
+  s.object.userData={physicsObstacleId:"box-one"};
+  s.object.children=[];s.object.add=function(c){this.children.push(c);};
+  decals.mark({object:s.object,
+   point:s.toWorld(new V3(0,.675,0)),
+   face:{normal:new V3(0,1,0)}});
+  assert.equal(decals.lastFace,"TOP");
+  decals.mark({object:s.object,
+   point:s.toWorld(new V3(-1.15,0,0)),
+   face:{normal:new V3(-1,0,0)}});
+  assert.equal(decals.lastFace,"LEFT");
+  const pool=s.object.children[0];
+  assert.equal(pool.count,2);
+  assert.equal(pool.matrices[0].normal.y,1);
+  assert.equal(pool.matrices[1].normal.x,-1);
+ }finally{restore();}
+});
+test("BOX-TWO side impacts remain visible when struck from either direction",()=>{
+ const {decals,restore}=setup();
+ try{
+  const s=box({x:12,y:.875,z:3,w:2.4,h:1.75,d:2.4});
+  s.object.userData={physicsObstacleId:"box-two"};
+  s.object.children=[];s.object.add=function(c){this.children.push(c);};
+  for(const side of [-1,1]){
+   decals.mark({object:s.object,
+     point:s.toWorld(new V3(side*1.2,0,.3)),
+     face:{normal:new V3(side,0,0)}});
+  }
+  assert.equal(decals.getBoxCount("box-two"),2);
+  assert.equal(decals.count,2);
+  assert.equal(s.object.children.length,1);
+  assert.equal(decals.mesh.count,0);
+ }finally{restore();}
+});
+test("V clears both wall and box decals and the box pool can be reused",()=>{
+ const {decals,restore}=setup();
+ try{
+  const s=box({x:0,y:.675,z:-6,w:2.3,h:1.35,d:2.3});
+  s.object.userData={physicsObstacleId:"box-one"};
+  s.object.children=[];s.object.add=function(c){this.children.push(c);};
+  const h={object:s.object,point:s.toWorld(new V3(0,0,1.15)),
+    face:{normal:new V3(0,0,1)}};
+  decals.mark(hit());
+  decals.mark(h);
+  assert.equal(decals.count,2);
+  decals.clear();
+  assert.equal(decals.count,0);
+  assert.equal(decals.getBoxCount("box-one"),0);
+  decals.mark(h);
+  assert.equal(decals.getBoxCount("box-one"),1);
+  assert.equal(s.object.children.length,1,"do not create duplicate meshes");
+ }finally{restore();}
+});
