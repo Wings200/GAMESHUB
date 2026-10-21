@@ -230,3 +230,102 @@ body.range-active .fade-edges{background:linear-gradient(0deg,#00000034 0%,trans
  .siege-gun-name{font-size:6px}
  .siege-weapon-status{font-size:7px}
 }
+
+
+/* V0.8.1 · Screenshot-matched fine details and prepared device modes.
+   Player screen stays unblocked; unimplemented modes remain hidden. */
+body.range-active .siege-system{top:8px}
+body.range-active .siege-system .siege-metrics{
+ position:fixed;left:0;bottom:0;top:auto;margin:0;
+ background:#121d28c4;padding:4px 7px;color:#f5f6f6;
+ font:650 10px/1.1 "Segoe UI",Arial,sans-serif;z-index:15;
+ text-shadow:none;white-space:nowrap;
+}
+.siege-mission-copy{font-family:"Arial Narrow","Segoe UI",Arial,sans-serif}
+.siege-health{bottom:27px}
+.siege-quickslot .siege-quick-icon{font-family:Arial,sans-serif;line-height:29px}
+.siege-equipment .siege-gadget-icon{width:29px;text-align:center;font-size:23px}
+.siege-equipment .siege-gadget{width:61px;justify-content:space-around;opacity:.80}
+.siege-equipment small{opacity:.64}
+.siege-system .siege-tip{opacity:.75}
+.siege-weapon-row.secondary{height:34px}
+.siege-gun-name{letter-spacing:.01em}
+.siege-secondary-label{font-size:8px}
+.device-hud{
+ font-family:"Arial Narrow","Segoe UI",Arial,sans-serif;
+ position:fixed;inset:0;z-index:12;pointer-events:none;
+ color:#f1f5f9;text-shadow:0 1px 3px #000b;
+}
+.device-map-frame{
+ position:absolute;left:0;top:0;width:234px;height:214px;
+ background:#313b4645;border:2px solid #c0ccd6a3;
+ box-shadow:inset 0 0 18px #060b1a6b;
+}
+.device-map-wire{
+ position:absolute;inset:10px;opacity:.45;
+ background:linear-gradient(115deg,transparent 48%,#d2ecff 49%,#d2ecff 50%,transparent 51%),
+ repeating-linear-gradient(0deg,#aec1cd26 0 2px,transparent 2px 24px),
+ repeating-linear-gradient(90deg,#aec1cd26 0 2px,transparent 2px 29px);
+ clip-path:polygon(0 15%,45% 0,100% 18%,96% 85%,42% 100%,0 84%);
+}
+.device-map-ping{position:absolute;left:51%;top:49%;font-size:15px;color:#78deef}
+.device-nav{
+ position:absolute;bottom:20%;left:8%;width:455px;height:77px;
+ background:#182434b8;
+}
+.device-site-line{
+ height:27px;background:linear-gradient(90deg,#42668bdf,#1e8dc1df 52%,#4a5879c0);
+ position:relative;border-bottom:1px solid #deebf65e;
+}
+.site-marker{
+ position:absolute;top:-10px;width:22px;height:26px;
+ display:grid;place-items:center;background:#c3a553;
+ color:#101a29;clip-path:polygon(50% 0,100% 37%,88% 80%,50% 100%,12% 80%,0 37%);
+ font-size:12px;font-weight:900;
+}
+.site-marker:first-child{left:8px}
+.site-marker:last-child{right:25%}
+.device-nav-body{display:flex;align-items:center;justify-content:space-between;height:50px;padding:0 9px}
+.device-key{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:750}
+.device-key kbd{
+ background:#eff3f5;color:#26303a;text-shadow:none;border-radius:3px;
+ width:29px;height:29px;font:800 18px/29px Arial,sans-serif;text-align:center;
+}
+.device-camera-status{height:51px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.device-device-icon{
+ width:46px;height:28px;font-size:29px;line-height:27px;text-align:center;
+ color:#fafafa;background:#2195bbad
+}
+.device-pips{display:flex;gap:6px;margin-top:3px}
+.device-pips i{width:10px;height:10px;border-radius:100%;background:#f1f5f7}
+.device-pips .active{background:#f6cb5a;outline:2px solid #a39e8a}
+.device-actions{
+ position:absolute;right:3%;bottom:8%;display:flex;gap:20px;
+ align-items:flex-end;
+}
+.device-actions span{display:grid;justify-items:center;gap:5px}
+.device-actions b{font-size:30px}
+.device-actions kbd{
+ background:white;color:#172330;border-radius:3px;
+ width:27px;height:25px;text-align:center;font:800 17px/25px Arial,sans-serif;text-shadow:none
+}
+.device-camera-switcher{position:absolute;right:7%;bottom:6%;width:335px}
+.device-view-toggle{height:62px;background:#0d1724bb;display:flex;align-items:center;gap:32px;padding:0 22px}
+.device-eye{font-size:31px;font-weight:900}
+.device-eye-off{margin-left:auto;background:#f1f5f7;color:#1b2734;text-shadow:none;font-size:29px;width:78px;text-align:center}
+.device-view-toggle kbd{font:700 15px/30px Arial,sans-serif;background:#e7ecf3;color:#24313a;padding:0 7px;text-shadow:none}
+.device-view-caption{background:#1b273bd9;height:38px;display:flex;align-items:center;padding:0 18px;font-size:15px;letter-spacing:.03em}
+.device-feed-status{display:flex;align-items:center;gap:14px;height:45px;background:#182236cf;padding:3px 13px}
+.device-camera-glyph{font-size:30px}
+.device-feed-status b{font-size:25px}
+.device-bar{height:27px;background:linear-gradient(90deg,#1899d9 65%,#243a58 65%);flex:1}
+.device-caption{position:absolute;left:15px;bottom:10px;background:#0a1824ad;padding:5px 10px;font-size:10px;font-weight:800;letter-spacing:.08em}
+@media(max-width:780px){
+ .siege-health{bottom:25px}
+ .device-map-frame{width:122px;height:122px}
+ .device-nav{left:5%;bottom:18%;width:260px;max-width:85vw}
+ .device-actions{right:6%;bottom:10%}
+ .device-camera-switcher{width:225px;right:3%;bottom:5%}
+ .device-view-toggle{gap:7px;padding:0 7px}
+ .device-eye-off{width:55px}
+}
