@@ -248,6 +248,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("...reinforcement.shootables()"));
  assert.ok(main.includes("reinforcement.steelImpact(outcome.hit)"));
  assert.ok(main.includes("reinforcement.step({"));
+ assert.ok(main.includes("reinforcement.step({player,holding:false,dt:0})"),
+  "pausing during installation must discard unfinished armor");
  assert.ok(main.includes("reinforcement.remove(player)"));
  assert.ok(main.includes('event.code==="KeyY"'));
  assert.ok(main.includes('keys.has("KeyF")'));
