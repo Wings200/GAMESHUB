@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.7.1 — live aim probe and shot-accurate diagnostics
+// BLACKOUT REBOOT V0.7.2 — persistent, z-fighting-safe bullet-hole decals
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -6,7 +6,7 @@ import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-006";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
-import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-008";
+import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-010";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
@@ -183,6 +183,10 @@ document.addEventListener("keydown",event=>{
    if(debugShots)ballisticsDebug.textContent="LIVE AIM: SCANNING · LAST SHOT: "+lastShotReadout;
    hint.textContent=debugShots?"B TO HIDE AIM / LAST SHOT DIAGNOSTICS":
     "BALLISTICS DEBUG OFF · B TO ENABLE";
+ }
+ if(event.code==="KeyV"&&!event.repeat){
+   shotEffects.clear();
+   hint.textContent="BULLET HOLES CLEARED · NEW IMPACTS WILL PERSIST";
  }
  if(event.code==="KeyR"&&!event.repeat)reloadPressed=true;
  if(event.code==="KeyM"&&!event.repeat){
@@ -390,5 +394,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot V0.7.1 live sight probe and shot diagnostics",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot V0.7.2 persistent impact decals",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
