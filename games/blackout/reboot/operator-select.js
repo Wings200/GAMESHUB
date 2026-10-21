@@ -87,7 +87,7 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
     select.append(empty);
     for(const g of secondaryOptions(op.side)){
      const option=document.createElement("option");
-     option.value=g.id;option.textContent=g.name+" · PLANNED";
+     option.value=g.id;option.textContent=g.name+(g.implemented?" · READY":" · PLANNED");
      select.append(option);
     }
     select.value=picks[index]||"";
@@ -100,17 +100,21 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
      if(!rejected)onPlanChange(selectedOperator(selection),plans);
      planStatus.textContent=rejected?
       "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
-      "PLAN SAVED FOR "+op.name+" · NOT YET USABLE IN GAME";
+      "PLAN SAVED FOR "+op.name+(value==="barbed-wire"?
+        " · BARBED WIRE LIVE IN RANGE":" · OTHER GADGETS REMAIN PREVIEWS");
     });
     el.append(select);
    }
    const status=document.createElement("small");
    const planned=slot.type==="secondary"?gadgetById(picks[index]):null;
-   status.textContent=planned?
-    "DESIGN PICK · NO LIVE GADGET YET":"UNASSIGNED · GADGETS IN DEVELOPMENT";
+   status.textContent=planned?(planned.implemented?
+    "LIVE GADGET · READY IN RANGE":"DESIGN PICK · NOT BUILT YET"):
+    "UNASSIGNED · GADGETS IN DEVELOPMENT";
    el.append(status);slots.append(el);
   }
-  planStatus.textContent="DESIGN PREVIEW ONLY · NO EQUIPMENT IS FIELD-READY";
+  planStatus.textContent=picks.includes("barbed-wire")?
+   "BARBED WIRE IS LIVE · OTHER GADGETS REMAIN PREVIEWS":
+   "ONLY BARBED WIRE IS LIVE · OTHER GADGETS ARE PREVIEWS";
  }
  attackTab.addEventListener("click",()=>{
   selection=switchOperatorSide(selection,"attack");
