@@ -60,3 +60,20 @@ test("operator speed multipliers describe actual real movement classes, not fake
  assert.equal(operatorLoadout(operatorById("sentry")).speedMultiplier,1);
  assert.equal(operatorLoadout(null),null);
 });
+
+import {initialPlayer,stepPlayer,TEST_OBSTACLES} from "./physics.js";
+test("speed classes change REAL movement while preserving legacy 2/2 movement",()=>{
+ const simulate=multiplier=>{
+  let p=initialPlayer();
+  for(let i=0;i<60;i++)
+   p=stepPlayer(p,{forward:1,speedMultiplier:multiplier},1/60,TEST_OBSTACLES);
+  return p;
+ };
+ const slow=simulate(MOVEMENT_MULTIPLIERS[1]);
+ const standard=simulate(MOVEMENT_MULTIPLIERS[2]);
+ const fast=simulate(MOVEMENT_MULTIPLIERS[3]);
+ const legacy=simulate(undefined);
+ assert.ok(slow.z>standard.z&&standard.z>fast.z);
+ assert.ok(Math.abs(standard.z-legacy.z)<1e-8);
+ assert.ok(slow.z<8&&fast.z<8);
+});
