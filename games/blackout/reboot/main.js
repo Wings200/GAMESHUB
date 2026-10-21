@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.8.1 — live reference HUD; dormant drone/camera UI profiles
+// BLACKOUT REBOOT V0.9 — single physical wooden barricade test station
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -12,6 +12,8 @@ import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
 import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-013";
+import {BARRICADE} from "./barricade.js?v=reboot-015";
+import {createBarricadeStation} from "./barricade-view.js?v=reboot-015";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -23,6 +25,8 @@ const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits
 const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("area-name");
 const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
+const barricadePrompt=$("barricade-prompt"),barricadeProgress=$("barricade-progress"),
+ barricadeStatusText=$("barricade-status"),barricadeCount=$("barricade-count");
 let renderer;
 try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance"});
@@ -95,6 +99,7 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
  const ring=new THREE.Mesh(new THREE.TorusGeometry(.5,.065,6,32),floorBeacons);
  ring.rotation.x=-Math.PI/2;ring.position.set(x,.035,z);scene.add(ring);
 }
+const barricade=createBarricadeStation(THREE,scene);
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
@@ -115,7 +120,7 @@ const completedTargets=new Set();
 let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
-let debugShots=false;
+let debugShots=false,barricadeBuildTime=0;
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
 const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
 let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
@@ -159,7 +164,7 @@ document.addEventListener("pointerlockchange",()=>{
  // cannot be enabled until an actual drone or spectator camera is playable.
  document.body.dataset.hudProfile=locked?"player":"menu";
  crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;unlockMessage();}
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -218,7 +223,7 @@ document.addEventListener("mouseup",event=>{
  if(event.button===2)aimHeld=false;
 });
 canvas.addEventListener("contextmenu",event=>event.preventDefault());
-window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;footstepTracker=newFootstepTracker();});
 function hudFrame(){
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
@@ -239,6 +244,15 @@ function hudFrame(){
  compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
  drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets);
+ barricadeStatusText.textContent=barricade.status;
+ barricadeCount.textContent=barricade.remaining+" / "+BARRICADE.boardCount;
+ const near=barricade.near(player);
+ barricadePrompt.classList.toggle("hidden",!near);
+ if(near){
+  const damaged=barricade.status!=="INTACT";
+  barricadePrompt.dataset.rebuild=damaged?"available":"intact";
+  barricadeProgress.style.width=String(Math.min(100,barricadeBuildTime/BARRICADE.installSeconds*100))+"%";
+ }
 }
 // Aim probe reads exactly the same visible dot and collision meshes as shooting.
 // It does NOT consume ammunition, move targets or alter the player's recoil.
@@ -259,7 +273,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  shootableSolids,active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -305,11 +319,19 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  shootableSolids,activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
- if(outcome.hit)shotEffects.mark(outcome.hit,outcome.kind==="target");
+ // Plank marks are child meshes; global wall decals would float after breakage.
+ const woodHit=outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
+ if(outcome.hit&&!woodHit.handled)
+   shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(outcome.kind==="target"){
+ if(woodHit.handled){
+  shotNotice.textContent="BOARD "+String(woodHit.index).padStart(2,"0")+
+    (woodHit.broken?" DESTROYED · "+woodHit.remaining+" LEFT":" HIT · FIRE AGAIN");
+  shotNoticeLeft=.95;
+  shotAudio.play("impact");
+ }else if(outcome.kind==="target"){
   const target=outcome.target;
   target.downTime=1.6;target.group.visible=false;target.hits++;
   targetHits++;completedTargets.add(target.id);weapons.registerHit();
@@ -355,10 +377,24 @@ function animate(now){
      jump:keys.has("Space")
    };
    const before=player;
-   player=stepPlayer(player,input,dt);
+   // One active board list controls both movement and shooting.
+   player=stepPlayer(player,input,dt,
+     [...TEST_OBSTACLES,...barricade.blockers()]);
    const next=advanceFootsteps(footstepTracker,before,player);
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
+   // Hold F to rebuild only while damaged and near the frame.
+   if(keys.has("KeyF")&&barricade.near(player)&&
+      barricade.status!=="INTACT"&&!player.sprinting){
+     barricadeBuildTime=Math.min(BARRICADE.installSeconds,barricadeBuildTime+dt);
+     if(barricadeBuildTime>=BARRICADE.installSeconds){
+      if(barricade.rebuild()){
+       shotNotice.textContent="WOOD BARRICADE INSTALLED · SIX BOARDS";
+       shotNoticeLeft=1.5;
+      }
+      barricadeBuildTime=0;
+     }
+   }else barricadeBuildTime=0;
    weapons.tick(now);
    if(reloadPressed){
     if(weapons.reload(now)){
@@ -415,6 +451,7 @@ function animate(now){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
  shotEffects.tick(dt);
+ barricade.tick(dt);
  updateAimProbe(now);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
@@ -423,5 +460,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.8 screenshot-matched tactical HUD with actual range data",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.9 wooden barricade physics / damage sandbox",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
