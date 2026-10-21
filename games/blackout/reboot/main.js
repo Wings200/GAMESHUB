@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.7 — actual 3D optic shot zero and ballistic trace
+// BLACKOUT REBOOT V0.7.1 — live aim probe and shot-accurate diagnostics
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -9,7 +9,7 @@ import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006"
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-008";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
-import {shotScreenPoint,labelShot} from "./shot-ray.js?v=reboot-008";
+import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -95,6 +95,7 @@ const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
+const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
@@ -109,7 +110,8 @@ let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false;
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
-const shotTraces=[];
+const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
+let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -178,8 +180,8 @@ document.addEventListener("keydown",event=>{
  if(event.code==="KeyB"&&!event.repeat){
    debugShots=!debugShots;
    ballisticsDebug.classList.toggle("hidden",!debugShots);
-   if(debugShots)ballisticsDebug.textContent="BALLISTICS DEBUG ON · FIRE TO SEE ACTUAL HIT / AIM SOURCE";
-   hint.textContent=debugShots?"B TO HIDE BALLISTICS · SHOT RAYS TRACED IN WORLD":
+   if(debugShots)ballisticsDebug.textContent="LIVE AIM: SCANNING · LAST SHOT: "+lastShotReadout;
+   hint.textContent=debugShots?"B TO HIDE AIM / LAST SHOT DIAGNOSTICS":
     "BALLISTICS DEBUG OFF · B TO ENABLE";
  }
  if(event.code==="KeyR"&&!event.repeat)reloadPressed=true;
@@ -213,35 +215,40 @@ function hudFrame(){
  hitsText.textContent=String(targetHits);
  leanText.textContent=leanTarget<0?"LEFT":leanTarget>0?"RIGHT":"CENTER";
 }
-function markDebugShot(outcome,screen){
- if(!debugShots)return;
- const color=outcome.kind==="target"?0x5fffd2:outcome.kind==="blocked"?0xffa160:0x6eafff;
- const destination=outcome.hit?
-   outcome.hit.point.clone():raycaster.ray.at(raycaster.far,new THREE.Vector3());
- const geometry=new THREE.BufferGeometry().setFromPoints([
-   raycaster.ray.origin.clone(),destination
- ]);
- const material=new THREE.LineBasicMaterial({
-   color,transparent:true,opacity:.95,depthTest:false,depthWrite:false
- });
- const line=new THREE.Line(geometry,material);
- line.renderOrder=60;scene.add(line);
- shotTraces.push({line,time:.65});
- const where=outcome.kind==="target"?outcome.target.id:
-   outcome.obstacle||outcome.kind;
- ballisticsDebug.textContent="B / SHOT: "+where.toUpperCase()+
-   " · "+screen.origin.toUpperCase()+
-   " · NDC "+screen.x.toFixed(3)+","+screen.y.toFixed(3)+
-   " · "+destination.distanceTo(raycaster.ray.origin).toFixed(1)+"M";
-}
-function tickDebugShots(dt){
- for(let i=shotTraces.length-1;i>=0;i--){
-  const item=shotTraces[i];item.time-=dt;
-  if(item.time<=0){
-   scene.remove(item.line);item.line.geometry.dispose();item.line.material.dispose();
-   shotTraces.splice(i,1);
-  }
+// Aim probe reads exactly the same visible dot and collision meshes as shooting.
+// It does NOT consume ammunition, move targets or alter the player's recoil.
+function updateAimProbe(now){
+ if(!locked||!debugShots||now-lastAimProbe<90)return;
+ lastAimProbe=now;
+ camera.updateMatrixWorld(true);
+ const reticleVisible=aimHeld&&weaponView.reticle.visible;
+ if(reticleVisible){
+  weaponView.reticle.getWorldPosition(previewWorld);
+  previewNdc.copy(previewWorld).project(camera);
  }
+ const screen=shotScreenPoint({
+  aiming:aimHeld,reticleVisible,
+  reticleProjection:reticleVisible?previewNdc:null
+ });
+ aimRaycaster.setFromCamera({x:screen.x,y:screen.y},camera);
+ aimRaycaster.far=weapons.current.range;
+ const active=targets.filter(t=>t.downTime<=0);
+ const intersections=aimRaycaster.intersectObjects(
+  [...shootableSolids,...active.map(t=>t.group)],true);
+ const outcome=firstHitType(intersections,active);
+ liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
+   (outcome.kind==="target"?"body":""));
+ ballisticsDebug.textContent="LIVE SIGHT: "+liveAimReadout+
+  "\nLAST SHOT: "+lastShotReadout;
+}
+function markDebugShot(outcome,screen){
+ const distance=outcome.hit?outcome.hit.distance:raycaster.far;
+ const zone=outcome.hit?.object?.userData?.hitZone||"";
+ lastShotReadout=describeShot(outcome,screen,distance,zone)+
+  " · NDC "+screen.x.toFixed(3)+","+screen.y.toFixed(3);
+ // No long-lived 3D lines: the video showed old world-space tracers
+ // streaking across the scope while the camera moved. The normal bullet-hole
+ // decal remains at the true impact, and these readouts track the real ray.
 }
 function fireShot(shot,sightAligned,now){
  // Restored from BLACKOUT V8: high/low layered firing sound, true rate of fire,
@@ -375,7 +382,7 @@ function animate(now){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
  shotEffects.tick(dt);
- tickDebugShots(dt);
+ updateAimProbe(now);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
  crosshair.classList.toggle("hidden",!locked||!aimState(aimHeld,aimMix).hipCrosshairVisible);
@@ -383,5 +390,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot V0.7 optic-projected hit scan and ballistic diagnostics",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot V0.7.1 live sight probe and shot diagnostics",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
