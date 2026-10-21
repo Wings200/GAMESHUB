@@ -12,10 +12,12 @@ export const SPEED={walk:4.2,sprint:6.3,crouch:2.4,prone:1.1};
 export const WORLD_LIMIT=30;
 
 export const TEST_OBSTACLES=Object.freeze([
-  {id:"wall-one",x:-6,z:-8,width:8,depth:.4,height:3.2},
-  {id:"wall-two",x:5.8,z:-9,width:.4,depth:8,height:3.2},
-  {id:"box-one",x:0,z:-6,width:2.3,depth:2.3,height:1.35},
-  {id:"box-two",x:8,z:3,width:2.4,depth:2.4,height:1.75},
+  // Keep the center of the range clear for sight calibration. Collision
+  // stations remain fully physical, accessible in the west/east wings.
+  {id:"wall-one",x:-18,z:-8,width:8,depth:.4,height:3.2},
+  {id:"wall-two",x:18,z:-9,width:.4,depth:8,height:3.2},
+  {id:"box-one",x:-12,z:-6,width:2.3,depth:2.3,height:1.35},
+  {id:"box-two",x:12,z:3,width:2.4,depth:2.4,height:1.75},
 ]);
 
 export function initialPlayer(){
