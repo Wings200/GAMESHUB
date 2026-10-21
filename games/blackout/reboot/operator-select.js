@@ -100,8 +100,8 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
      if(!rejected)onPlanChange(selectedOperator(selection),plans);
      planStatus.textContent=rejected?
       "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
-      "PLAN SAVED FOR "+op.name+(value==="barbed-wire"?
-        " · BARBED WIRE LIVE IN RANGE":" · OTHER GADGETS REMAIN PREVIEWS");
+      "PLAN SAVED FOR "+op.name+(["barbed-wire","c4"].includes(value)?
+        " · FUNCTIONING GADGET READY":" · OTHER GADGETS REMAIN PREVIEWS");
     });
     el.append(select);
    }
@@ -112,9 +112,9 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
     "UNASSIGNED · GADGETS IN DEVELOPMENT";
    el.append(status);slots.append(el);
   }
-  planStatus.textContent=picks.includes("barbed-wire")?
-   "BARBED WIRE IS LIVE · OTHER GADGETS REMAIN PREVIEWS":
-   "ONLY BARBED WIRE IS LIVE · OTHER GADGETS ARE PREVIEWS";
+  planStatus.textContent=picks.some(id=>["barbed-wire","c4"].includes(id))?
+   "C4 + BARBED WIRE ARE LIVE · OTHER GADGETS REMAIN PREVIEWS":
+   "C4 + BARBED WIRE ARE LIVE · OTHERS ARE PREVIEWS";
  }
  attackTab.addEventListener("click",()=>{
   selection=switchOperatorSide(selection,"attack");
