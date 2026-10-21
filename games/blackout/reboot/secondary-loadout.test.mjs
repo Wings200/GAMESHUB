@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","c4","impact","barbed-wire"],"only four actually functional gadgets are marked ready");
+  ["frag","flash","c4","impact","barbed-wire"],"only five actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -56,8 +56,8 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
  assert.equal(planIsFieldReady(plans,striker),false);
  for(const g of secondaryOptions("attack")){
   const updated=planSecondary(plans,striker,0,g.id);
-  assert.equal(planIsFieldReady(updated,striker),g.id==="frag");
-  assert.equal(g.implemented,g.id==="frag");
+  assert.equal(planIsFieldReady(updated,striker),g.id==="frag"||g.id==="flash");
+  assert.equal(g.implemented,g.id==="frag"||g.id==="flash");
  }
 });
 
@@ -74,8 +74,10 @@ test("special middle-click and normal G reflect Striker plans without fake funct
  assert.deepEqual(rows.map(s=>s.key),["MMB","G"]);
  assert.deepEqual(rows.map(s=>s.role),["SPECIAL","NORMAL"]);
  assert.deepEqual(rows.map(s=>s.name),["Flashbangs","Soft Breach Charge"]);
- assert.ok(rows.every(s=>s.fieldReady===false&&s.status.includes("NOT BUILT")));
- assert.equal(utilityKeyPreview(plans,striker,"MouseMiddle"),"FLASHBANGS · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(rows[0].fieldReady,true);
+ assert.equal(rows[1].fieldReady,false);
+ assert.ok(rows[1].status.includes("NOT BUILT"));
+ assert.equal(utilityKeyPreview(plans,striker,"MouseMiddle"),"FLASHBANGS · LIVE GADGET · USE IN RANGE");
  assert.equal(utilityKeyPreview(plans,striker,"KeyG"),"SOFT BREACH CHARGE · PLANNED ONLY · NOT BUILT YET");
  assert.equal(utilityKeyPreview(plans,striker,"Digit3"),null);
  assert.equal(utilityKeyPreview(plans,striker,"Digit4"),null);
@@ -155,4 +157,17 @@ test("Striker can equip two frag charges and every unfinished attacker utility s
  assert.equal(planSecondary(plans,striker,0,"frag"),plans);
  plans=planSecondary(plans,striker,0,"smoke");
  assert.equal(planIsFieldReady(plans,striker),false);
+});
+
+test("flashbangs are live on both attacker utility slots but never selectable by defenders",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ let plan=newSecondaryPlans();
+ plan=planSecondary(plan,striker,0,"flash");
+ assert.equal(planIsFieldReady(plan,striker),true);
+ assert.equal(utilityHudRows(plan,striker)[0].status,"READY · LIVE GADGET");
+ assert.equal(utilityKeyPreview(plan,striker,"MouseMiddle"),
+  "FLASHBANGS · LIVE GADGET · USE IN RANGE");
+ const before=plan;
+ assert.equal(planSecondary(plan,sentry,0,"flash"),before);
+ assert.equal(planSecondary(plan,striker,1,"flash"),before);
 });

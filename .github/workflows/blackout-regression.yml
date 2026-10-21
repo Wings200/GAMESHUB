@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.16.2 · playable C4/Impact/Wire and attacker timed Frag
+    name: Reboot V0.17.0 · five real gadgets including attacker Flashbang
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -63,5 +63,7 @@ jobs:
           node --check games/blackout/reboot/impact-view.js
           node --check games/blackout/reboot/frag.js
           node --check games/blackout/reboot/frag-view.js
+          node --check games/blackout/reboot/flash.js
+          node --check games/blackout/reboot/flash-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

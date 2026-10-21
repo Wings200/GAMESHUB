@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-036",
+ for(const src of ["./reboot/main.js?v=reboot-037",
    "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -274,9 +274,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-034"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-037"'));
  assert.ok(main.includes("createOperatorPicker("));
- assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-034"'));
+ assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-037"'));
  assert.ok(main.includes('onPlanChange(){'));
  assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
@@ -297,10 +297,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.14: design plans are distinct from functioning equipment.
  assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
  assert.ok(html.includes('id="operator-plan-status"'));
- assert.ok(html.includes("Eight gadget options still await physical implementation"));
+ assert.ok(html.includes("Seven gadget options still await physical implementation"));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-034"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-037"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
@@ -362,7 +362,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
  assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
  assert.ok(html.includes("enemy-only contact damage"));
- assert.ok(html.includes("FOUR FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("FIVE FUNCTIONAL SECONDARY GADGETS"));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
  assert.ok(main.includes('from "./nitro.js?v=reboot-036"'));
@@ -378,6 +378,21 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('applyGadgetBlast(blast,"FRAG")'));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Timed explosive",implemented:true'));
  assert.ok(html.includes("Frag Grenades"));
+ // V0.17: actual physical flash throws, fuse and camera-facing eyesight effect.
+ assert.ok(main.includes('from "./flash.js?v=reboot-037"'));
+ assert.ok(main.includes('from "./flash-view.js?v=reboot-037"'));
+ assert.ok(main.includes('flashState=newFlashState()'));
+ assert.ok(main.includes('throwFlash(flashState,player)'));
+ assert.ok(main.includes('createFlashView(THREE,scene,result.device)'));
+ assert.ok(main.includes('tickFlash(flashState,dt,activeDroneObstacles())'));
+ assert.ok(main.includes('flashExposure(burst,{...player,eyeHeight:cameraEye},activeDroneObstacles())'));
+ assert.ok(main.includes('flashEffect=applyFlashEffect(flashEffect,exposure)'));
+ assert.ok(main.includes('flashOpacity(flashEffect)'));
+ assert.ok(read("reboot/secondary-loadout.js").includes('role:"Sight disruption",implemented:true'));
+ assert.ok(html.includes('id="flash-whiteout" class="flash-whiteout"'));
+ assert.ok(css.includes(".flash-whiteout"));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "gadget-flash"'));
+ assert.ok(html.includes("FLASH 1.75S"));
  assert.ok(main.includes('impactState=newImpactState()'));
  assert.ok(main.includes('throwImpact(impactState,player)'));
  assert.ok(main.includes('createImpactView(THREE,scene,result.device)'));
@@ -442,7 +457,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
  assert.ok(html.includes("WIRE V TO BREAK"));
- assert.ok(html.includes("Eight gadget options still await physical implementation"));
+ assert.ok(html.includes("Seven gadget options still await physical implementation"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));

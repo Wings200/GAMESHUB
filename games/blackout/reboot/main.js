@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.16.4 — live defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.17.0 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-034";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-034";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-037";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-037";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -36,6 +36,9 @@ import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot
 import {createImpactView} from "./impact-view.js?v=reboot-033";
 import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-036";
 import {createFragView} from "./frag-view.js?v=reboot-034";
+import {FLASH,newFlashState,throwFlash,tickFlash,flashExposure,newFlashEffect,
+ applyFlashEffect,stepFlashEffect,flashOpacity} from "./flash.js?v=reboot-037";
+import {createFlashView,createFlashBurst} from "./flash-view.js?v=reboot-037";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -58,6 +61,7 @@ const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
 const healthNumber=$("health-current"),healthCaption=$("health-caption");
+const flashOverlay=$("flash-whiteout");
 const healthSegments=[...document.querySelectorAll(".siege-health-bars span")];
 const utilityHud=$("utility-hud"),utilityHudNote=$("utility-hud-note");
 const utilityName=[$("utility-name-special"),$("utility-name-normal")];
@@ -155,6 +159,8 @@ let impactState=newImpactState();
 const impactViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
+let flashState=newFlashState(),flashEffect=newFlashEffect();
+const flashViews=new Map();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -192,6 +198,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   // persists across team changes so Striker can verify enemy-only damage.
   wireHealth=newWireHealth();
   wireSoundTracker=newWireSoundTracker();
+  flashEffect=newFlashEffect();
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -221,12 +228,16 @@ function refreshUtilityHud(){
    row.gadgetId==="impact"?
       "LIVE · "+impactState.charges+"/"+IMPACT.charges+" LEFT":
    row.gadgetId==="frag"?
-      "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":row.status;
+      "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":
+   row.gadgetId==="flash"?
+      "LIVE · "+flashState.charges+"/"+FLASH.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="frag")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="flash")?
+  activeOperator.name+" · FLASH 1.75S FUSE · FACE AWAY OR USE COVER":
+  rows.some(row=>row.gadgetId==="frag")?
   activeOperator.name+" · FRAG FUSE 3.2S · LIVE":
   rows.some(row=>row.gadgetId==="impact")?
   activeOperator.name+" · IMPACT CONTACT DETONATION · LIVE":
@@ -349,6 +360,18 @@ function usePlannedGadget(code){
   if(result.device){
    fragState=result.state;
    fragViews.set(result.device.id,createFragView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;
+  shotNoticeLeft=1.7;
+  return;
+ }
+ if(row.gadgetId==="flash"&&activeOperator.side==="attack"){
+  const result=throwFlash(flashState,player);
+  if(result.device){
+   flashState=result.state;
+   flashViews.set(result.device.id,createFlashView(THREE,scene,result.device));
    shotAudio.play("gadget-throw");
    refreshUtilityHud();
   }
@@ -608,7 +631,7 @@ document.addEventListener("keydown",event=>{
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
+   player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -901,6 +924,27 @@ function animate(now){
     shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
     shotNoticeLeft=1.7;
    }
+   // Flash grenades are thrown physical objects: one non-damaging burst at
+   // fuse expiry. The exposed camera depends on facing, range, and solid cover.
+   const flashTick=tickFlash(flashState,dt,activeDroneObstacles());
+   flashState=flashTick.state;
+   for(const device of flashState.devices){
+    const view=flashViews.get(device.id);
+    if(view){
+     view.sync(device);
+     if(!device.armed)flashViews.delete(device.id);
+    }
+   }
+   for(const burst of flashTick.bursts){
+    blastViews.push(createFlashBurst(THREE,scene,burst));
+    shotAudio.playAt("gadget-flash",burst.x,burst.z,player.x,player.z,player.yaw);
+    const exposure=flashExposure(burst,{...player,eyeHeight:cameraEye},activeDroneObstacles());
+    flashEffect=applyFlashEffect(flashEffect,exposure);
+    shotNotice.textContent=exposure.intensity>.05?
+     "FLASHED · TEMPORARY VISION IMPAIRMENT":
+     "FLASH DETONATED · LOOK AWAY OR USE COVER";
+    shotNoticeLeft=1.7;
+   }
    // Impact grenades advance through the actual Testing Range and detonate
    // immediately upon colliding with floor or physical cover.
    const impactTick=tickImpact(impactState,dt,activeDroneObstacles());
@@ -1057,6 +1101,8 @@ function animate(now){
  softWall.tick(dt);
  reinforcement.tick(dt);
  updateAimProbe(now);
+ if(locked&&controlMode==="player")flashEffect=stepFlashEffect(flashEffect,dt);
+ flashOverlay.style.opacity=String(locked&&controlMode==="player"?flashOpacity(flashEffect):0);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
  crosshair.classList.toggle("hidden",!locked||controlMode!=="player"||!aimState(aimHeld,aimMix).hipCrosshairVisible);
@@ -1064,5 +1110,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.16.4 recoverable C4 and compact impact radius: actual explosive gameplay",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.17.0 attacker flashbang: physical fuse, directional blindness, solid cover",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.16.4
+# BLACKOUT — Clean Reboot V0.17.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.17.0 · FIRST ATTACKER FLASHBANG, FUNCTIONAL**
+- The user confirmed the V0.16.4 smaller impact grenade (2.0m radius / max 60 HP) and pickup/redeploy F behavior for C4, then we advanced to next planned gadget: FLASHBANGS.
+- ATTACKER STRIKER can now equip **Flashbangs** in either MMB or G (2 carried). Press the selected key for a real visible grenade that throws with velocity/gravity, bounces against solid obstacles/floor and flashes after a **1.75-second fuse**. It consumes inventory and cannot be faked after both uses.
+- Detonation produces a short physical white world flash and an original positional flash sound. If the active player's camera looks toward the flash within **9m**, a bright full-screen whiteout fades over up to ~3.5 seconds based on distance and angle. Looking away or standing behind an actual wall blocks or reduces flash exposure; the flashbang does **no HP damage**, does not breach walls and does not alter C4/frag/impact lethality.
+- Flashbang handling uses an isolated pure flash.js simulation and exposure/cover test, a physical flash-view.js 3D model and burst, real main.js simulation, HTML whiteout overlay and non-interactive CSS. On switching operators or respawning, flash exposure resets. The build is still a SOLO mechanic-testing range: no live enemy actors are flashed yet.
+- Five gadgets genuinely implemented: defender C4, Impacts, Barbed Wire; attacker Frags and Flashbangs. Seven remaining conceptual gadgets (attack smoke, soft breach, hard breach, claymore; defend observation blocker, proximity alarm, deployable shield) are still NOT BUILT and remain clearly labeled PLANNED. No map, multiplayer, or REDLINE changes.
+- Regression tests validate throw physics, single detonation, inventory, direction-based exposure, distance, line-of-sight blockage, effects and UI wiring. This is an automated stage, not a substitute for browser testing. Next immediate browser check: Striker equip Flashbangs on G or MMB, throw toward a close wall while facing, experience whiteout and note time to clear; repeat looking away and behind a wall and confirm no/less impairment. Also test a frag in the opposite slot and ensure ordinary C4 pickup and 60HP impact still work on defender.
 
 **2026-10-21 / V0.16.4 · USER-REQUESTED IMPACT TUNING & REAL C4 PICKUP**
 - Impact Grenades have a **2.0-meter** maximum damage radius (previously 2.35), with the same maximum **60 HP** on a direct hit and the same distance falloff and physical contact detonation.

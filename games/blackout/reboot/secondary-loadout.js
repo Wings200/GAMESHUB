@@ -1,10 +1,8 @@
-// BLACKOUT V0.14.2 · side-locked SPECIAL (MMB) and NORMAL (G) gadget plans.
-// One gadget is field-ready: defender barbed wire. Others are previews:
-// never mark one equipped, grant ammunition, or create placeholder effects.
-// Future mechanics unlock each gadget individually only after testing.
+// BLACKOUT V0.17 · side-locked MMB and G secondary gadget loadouts.
+// Mark gadgets LIVE only after implementing their actual game mechanics.
 export const SECONDARY_GADGETS=Object.freeze([
  {id:"frag",name:"Frag Grenades",side:"attack",role:"Timed explosive",implemented:true},
- {id:"flash",name:"Flashbangs",side:"attack",role:"Sight disruption",implemented:false},
+ {id:"flash",name:"Flashbangs",side:"attack",role:"Sight disruption",implemented:true},
  {id:"smoke",name:"Smoke Grenades",side:"attack",role:"Vision cover",implemented:false},
  {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:false},
  {id:"hard-breach",name:"Hard Breach Charge",side:"attack",role:"Reinforced wall breach (unprotected)",implemented:false},
