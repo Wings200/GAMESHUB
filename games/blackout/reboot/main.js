@@ -496,6 +496,9 @@ function animate(now){
    drone=tickDrone(drone,input,dt,activeDroneObstacles());
  }
  if(locked&&controlMode==="player"){
+   // Disconnected reconnaissance drones are still physical world objects.
+   // Their battery charges, jump timer, boost timer and landing progress persist.
+   if(drone)drone=tickDrone(drone,{},dt,activeDroneObstacles());
    const input={
      forward:Number(keys.has("KeyW")||keys.has("ArrowUp"))-
        Number(keys.has("KeyS")||keys.has("ArrowDown")),
