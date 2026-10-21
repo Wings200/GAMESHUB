@@ -273,7 +273,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('activeOperator=operatorById("striker")'));
  assert.ok(main.includes("operatorHudName.textContent=operator.name"));
  // V0.13.2: every steel interaction must check the active faction.
- assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement}'));
+ assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones}'));
  assert.ok(main.includes('const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player)'));
  assert.ok(main.includes('player,holding:canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
  assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)'));
