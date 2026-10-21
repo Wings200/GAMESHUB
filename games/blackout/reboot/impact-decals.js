@@ -1,4 +1,4 @@
-// BLACKOUT V0.7.3 — persistent, face-anchored impact decals.
+// BLACKOUT V0.7.4 — box-local persistent impacts, wall decal fallback.
 // One instanced mesh / shared procedural alpha texture (not one render draw call
 // per bullet). Recycles oldest after MAX_DECALS; there is NO lifetime expiry.
 // Offset + depth bias prevent z-fighting against actual wall/box/floor surfaces.
@@ -62,16 +62,38 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
  decals.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
  decals.name="persistent-surface-bullet-holes";
  scene.add(decals);
+ // The shared scene-space instance pool works for walls, but in the recorded
+ // test BOX-ONE received hits without showing marks. Boxes now own a small
+ // dedicated instance pool IN THEIR LOCAL COORDINATE SYSTEM. This guarantees
+ // their front/side/top face impacts follow the actual struck mesh transform.
+ const boxPools=new Map(), BOX_CAPACITY=160;
+ function poolForBox(surface){
+  let entry=boxPools.get(surface);
+  if(entry)return entry;
+  const mesh=new THREE.InstancedMesh(geometry,material,BOX_CAPACITY);
+  mesh.count=0;
+  mesh.frustumCulled=false;
+  mesh.renderOrder=3;
+  mesh.name="box-face-bullet-holes";
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  surface.add(mesh);
+  entry={mesh,cursor:0,total:0};
+  boxPools.set(surface,entry);
+  return entry;
+ }
  const up=new THREE.Vector3(0,0,1);
  const quat=new THREE.Quaternion();
  const matrix=new THREE.Matrix4();
  const scale=new THREE.Vector3();
  const pos=new THREE.Vector3();
- let cursor=0,total=0,lastFace="NONE";
+ let cursor=0,total=0,lastFace="NONE",lastObjectId="NONE";
  function mark(hit,target=false){
   // Target dummies despawn on hit: a world-stuck decal would float when they do.
   if(target||!hit?.point||!hit?.object||!hit.face?.normal)return false;
   const surface=hit.object;
+  const objectId=surface.userData?.physicsObstacleId||"SURFACE";
+  const isBox=objectId.startsWith("box-");
+  lastObjectId=objectId;
   // Three.js raycaster points are WORLD coordinates, but the triangle normal
   // and the box's geometry dimensions are in the MESH'S LOCAL coordinates.
   // Compute decal position/rotation locally then transform the WHOLE plane
@@ -82,7 +104,7 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
   if(![normal.x,normal.y,normal.z].every(Number.isFinite))return false;
   pos.copy(hit.point);
   surface.worldToLocal(pos);
-  const size=.068+(total%4)*.004;
+  const size=isBox?.100+(total%4)*.005:.068+(total%4)*.004;
   const components=["x","y","z"];
   const facing=components.reduce((a,b)=>
     Math.abs(normal[b])>Math.abs(normal[a])?b:a,"x");
@@ -111,21 +133,46 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
   quat.setFromUnitVectors(up,normal);
   scale.set(size,size,1);
   matrix.compose(pos,quat,scale);
-  matrix.premultiply(surface.matrixWorld);
-  decals.setMatrixAt(cursor,matrix);
-  cursor=(cursor+1)%maximum;
+  if(isBox){
+   // No world-space conversion for box marks. The pool is a child of the
+   // box mesh, so Three's renderer uses its exact parent matrix.
+   const pool=poolForBox(surface);
+   pool.mesh.setMatrixAt(pool.cursor,matrix);
+   pool.cursor=(pool.cursor+1)%BOX_CAPACITY;
+   pool.total++;
+   pool.mesh.count=Math.min(pool.total,BOX_CAPACITY);
+   pool.mesh.instanceMatrix.needsUpdate=true;
+  }else{
+   matrix.premultiply(surface.matrixWorld);
+   decals.setMatrixAt(cursor,matrix);
+   cursor=(cursor+1)%maximum;
+   decals.count=Math.min(total+1,maximum);
+   decals.instanceMatrix.needsUpdate=true;
+  }
   total++;
-  decals.count=Math.min(total,maximum);
-  decals.instanceMatrix.needsUpdate=true;
   return true;
  }
  return {
   mark,
   tick(){/* Deliberately permanent. No 9-second timeout or per-frame scans. */},
-  clear(){cursor=total=0;decals.count=0;decals.instanceMatrix.needsUpdate=true;},
-  get count(){return decals.count;},
+  clear(){
+   cursor=total=0;decals.count=0;decals.instanceMatrix.needsUpdate=true;
+   for(const p of boxPools.values()){
+    p.cursor=p.total=0;p.mesh.count=0;p.mesh.instanceMatrix.needsUpdate=true;
+   }
+  },
+  get count(){return decals.count+
+    [...boxPools.values()].reduce((n,p)=>n+p.mesh.count,0);},
   get total(){return total;},
   get lastFace(){return lastFace;},
+  get lastObjectId(){return lastObjectId;},
+  get boxPoolCount(){return boxPools.size;},
+  getBoxCount(id){
+   for(const [surface,p] of boxPools){
+    if(surface.userData?.physicsObstacleId===id)return p.mesh.count;
+   }
+   return 0;
+  },
   mesh:decals,
  };
 }
