@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.13.1
+# BLACKOUT — Clean Reboot V0.13.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.13.2 · Attacker reinforcement interaction gating (user browser report):**
+- User confirms attacker/defender operator switching works after V0.13.1. User found Striker still showed defender reinforcement prompts and tried to interact with walls while intending to plant a defuser. **There is no defuser planting system yet**; this release intentionally does NOT simulate planting or objective rounds.
+- Role rule: only playable defenders (currently Sentry) may hold F for 3s to reinforce the gypsum wall, see reinforcement prompts or press Y to remove installed armor in the **Testing Range**. Striker sees **no reinforce prompt** and cannot start, finish or remove steel, even if standing directly at the wall and holding F. On switching sides, any partial reinforcement hold is cancelled.
+- Existing steel installed by Sentry remains real geometry/collision that attackers can encounter and shoot against. No new operators, gadgets, phases or combat mechanics introduced. All older movement, guns, barricade, soft-wall, drones and roster interactions must regress successfully.
+- Strict stage gate: automated CI then user browser verification on both Striker and Sentry before new gadgets. **In real 5v5 play, manual Y removal of placed steel remains forbidden**; it is a defender-only Testing Range reset, not a match feature.
+
+
 
 **2026-10-21 / V0.13.1 · Fix cross-faction operator tab activation:**
 - User's first V0.13 browser test found that attackers/defenders could not be switched. Root cause: `operator-select.js` queried the `#operator-current` **DEPLOY label** from inside `#operator-selection`, but the button is a sibling outside that section. That missing required element raised an exception before the tab listeners could be initialized. This is a genuine script initialization bug, not a disabled-faction feature.
