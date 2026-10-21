@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-011",
+ for(const src of ["./reboot/main.js?v=reboot-012",
    "./reboot/style.css?v=reboot-009"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
@@ -141,7 +141,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./legacy-audio.js?v=reboot-006"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
- assert.ok(main.includes('from "./weapon-view.js?v=reboot-011"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-012"'));
  assert.ok(main.includes("legacyShotCone(shot"));
  assert.ok(main.includes("cycleLegacyFire(weapons,now"));
  assert.ok(main.includes('shotAudio.play("fire")'));
@@ -169,14 +169,21 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ballistics-debug"'));
  // ADS bullet position is now projected from the actual rendered optic.
  assert.ok(main.includes("SHOT BLOCKED"));
- assert.ok(html.includes("WALL HOLES NOW FACE-ALIGNED"));
+ assert.ok(html.includes("BOX-ONE & BOX-TWO NOW RECEIVE BULLET HOLES"));
+ assert.ok(main.includes('from "./combat-raycast.js?v=reboot-012"'));
+ assert.ok(main.includes('combatIntersections(raycaster,'));
+ assert.ok(main.includes('combatIntersections(aimRaycaster,'));
+ assert.equal(main.includes('raycaster.intersectObjects(\n  [...shootableSolids'),false);
+ assert.ok(impact.includes('poolForBox(surface)'));
+ assert.ok(impact.includes('surface.add(mesh)'));
+ assert.ok(impact.includes('box-face-bullet-holes'));
  assert.ok(html.includes('id="lean-status"'));
  assert.ok(html.includes("CTRL/Z PRONE"));
  assert.ok(html.includes("Q/E LEAN"));
  assert.match(main,/FootstepAudio/);
  const view=read("reboot/weapon-view.js"),model=read("reboot/weapon-model.js");
  assert.ok(view.includes("buildBX7Model"));
- assert.ok(view.includes('from "./impact-decals.js?v=reboot-011"'));
+ assert.ok(view.includes('from "./impact-decals.js?v=reboot-012"'));
  assert.ok(view.includes("return createImpactDecals(THREE,scene)"));
  const impact=read("reboot/impact-decals.js");
  assert.ok(impact.includes("new THREE.InstancedMesh"));
