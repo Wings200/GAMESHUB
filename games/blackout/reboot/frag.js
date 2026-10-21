@@ -50,7 +50,7 @@ export function tickFrag(state,dt,obstacles=[]){
      z:Math.max(-29.5,Math.min(29.5,next.z)),vx:0,vz:0,resting:true};
    }
   }
-  if(time>=FRAG.fuse){
+  if(time+1e-8>=FRAG.fuse){
    blasts.push({x:next.x,y:Math.max(FRAG.size,next.y),z:next.z,
     radius:FRAG.radius,damage:FRAG.blastDamage,id:d.id});
    return {...next,armed:false};
