@@ -199,8 +199,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes('surface.add(mesh)'));
  assert.ok(impact.includes('box-face-bullet-holes'));
  assert.ok(html.includes('id="lean-status"'));
- assert.ok(html.includes("CTRL/Z PRONE"));
- assert.ok(html.includes("Q/E LEAN"));
+ assert.ok(main.includes('event.code==="KeyZ"'));
+ assert.ok(main.includes('event.code==="KeyQ"'));
  assert.match(main,/FootstepAudio/);
  const view=read("reboot/weapon-view.js"),model=read("reboot/weapon-model.js");
  assert.ok(view.includes("buildBX7Model"));
