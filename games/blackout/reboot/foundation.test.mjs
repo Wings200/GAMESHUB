@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-023",
+ for(const src of ["./reboot/main.js?v=reboot-024",
    "./reboot/style.css?v=reboot-021"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -261,7 +261,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
- assert.ok(main.includes('from "./operators.js?v=reboot-023"'));
+ assert.ok(main.includes('from "./operators.js?v=reboot-024"'));
  assert.ok(main.includes('from "./operator-select.js?v=reboot-022"'));
  assert.ok(main.includes("createOperatorPicker("));
  const operatorPickerSource=read("reboot/operator-select.js");
@@ -316,6 +316,21 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  
  assert.ok(main.includes('event.code==="Digit5"'));
  assert.ok(main.includes('event.code==="Digit6"'));
+ // V0.13.3: defender can SEE physical attacker drones, but never own or use
+ // them; recon quickbar and camera tip must not show on Sentry's HUD.
+ assert.ok(main.includes('canUseReinforcement,canUseReconDrones'));
+ assert.ok(main.includes('if(!canUseReconDrones(activeOperator))return false;'));
+ assert.ok(main.includes('function openDroneCameras(){\n if(!canUseReconDrones(activeOperator))return;'));
+ assert.ok(main.includes('if(controlMode!=="player"||!canUseReconDrones(activeOperator))return;'));
+ assert.ok(main.includes('if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player"'));
+ assert.ok(main.includes('droneEquipmentBar.classList.toggle("hidden",!hasRecon)'));
+ assert.ok(main.includes('droneKeyTip.classList.toggle("hidden",!hasRecon)'));
+ assert.ok(main.includes('defenderKeyTip.classList.toggle("hidden",hasRecon)'));
+ assert.ok(main.includes('refreshDroneEquipment(); // Hide attack-only quickslots immediately on defense.'));
+ for(const id of ["drone-equipment-bar","drone-key-tip","defender-key-tip"])
+   assert.ok(html.includes('id="'+id+'"'),"side-gated HUD element absent: "+id);
+ assert.ok(html.includes("NO RECON DRONES EQUIPPED"));
+
  assert.ok(main.includes('event.code==="KeyX"'));
  assert.ok(main.includes('controlMode==="drone"'));
  assert.ok(main.includes("tickDrone(drone,input,dt,activeDroneObstacles())"));
