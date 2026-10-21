@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {createOperatorPicker} from "./operator-select.js";
 
 class FakeElement{
@@ -19,13 +20,20 @@ function fixture(){
   "operator-role","operator-speed","operator-armor","operator-slots",
   "operator-playable-label","operator-current"];
  const elements=Object.fromEntries(ids.map(x=>[x,new FakeElement()]));
- return {elements,root:{querySelector(s){return elements[s.slice(1)]||null}}};
+ // Real HTML: #operator-current is in #play OUTSIDE this root.
+ return {elements,root:{querySelector(s){
+  const id=s.slice(1);return id==="operator-current"?null:elements[id]||null;
+ }}};
 }
 test("attacker screen initially shows six original concepts, only Striker is selectable",()=>{
  const old=globalThis.document;
- globalThis.document={createElement:tag=>new FakeElement(tag)};
+ const {root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
  try{
-  const {root,elements}=fixture(),selected=[];
+  const selected=[];
+  assert.equal(root.querySelector("#operator-current"),null,
+   "regression: deploy name is NOT a descendant of the picker");
   const picker=createOperatorPicker(root,{onSelect:op=>selected.push(op.id)});
   assert.equal(picker.operator.id,"striker");
   assert.equal(elements["operator-roster"].children.length,6);
@@ -42,9 +50,11 @@ test("attacker screen initially shows six original concepts, only Striker is sel
  }finally{globalThis.document=old;}
 });
 test("defender tab switches active operator to Sentry, back to Striker without paywalls",()=>{
- const old=globalThis.document;globalThis.document={createElement:tag=>new FakeElement(tag)};
+ const old=globalThis.document;
+ const {root,elements}=fixture(),events=[];
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
  try{
-  const {root,elements}=fixture(),events=[];
   const picker=createOperatorPicker(root,{onSelect:op=>events.push(op)});
   elements["operator-defend"].click();
   assert.equal(picker.operator.id,"sentry");
@@ -60,9 +70,11 @@ test("defender tab switches active operator to Sentry, back to Striker without p
  }finally{globalThis.document=old;}
 });
 test("nonplayable specialist concept has no click handler and cannot activate gadget",()=>{
- const old=globalThis.document;globalThis.document={createElement:tag=>new FakeElement(tag)};
+ const old=globalThis.document;
+ const {root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
  try{
-  const {root,elements}=fixture();
   const picker=createOperatorPicker(root);
   const planned=elements["operator-roster"].children[1];
   assert.equal(planned.tagName,"div");
@@ -71,4 +83,18 @@ test("nonplayable specialist concept has no click handler and cannot activate ga
   assert.equal(picker.operator.id,"striker");
   assert.equal(planned.listeners.size,0);
  }finally{globalThis.document=old;}
+});
+
+test("real page contract: DEPLOY label is outside operator selection section",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const sectionStart=html.indexOf('<section id="operator-selection"');
+ const sectionEnd=html.indexOf('</section>',sectionStart);
+ const current=html.indexOf('id="operator-current"');
+ assert.ok(sectionStart>=0&&sectionEnd>sectionStart);
+ assert.ok(current>sectionEnd,"the button is not a descendant of the picker");
+ const picker=readFileSync(new URL("./operator-select.js",import.meta.url),"utf8");
+ assert.ok(picker.includes('document.getElementById("operator-current")'),
+  "picker must resolve out-of-panel DEPLOY label at document scope");
+ assert.ok(!picker.includes('current=$("operator-current")'),
+  "regression: a scoped root lookup will silently break all operator tabs");
 });
