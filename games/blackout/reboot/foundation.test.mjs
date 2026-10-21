@@ -429,7 +429,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('activeOperator.side==="defend"'));
  assert.ok(physics.includes('Math.max(.35,Math.min(1,input.terrainMultiplier))'));
  assert.equal(read("reboot/secondary-loadout.js").includes('name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:false'),false);
- assert.ok(html.includes("Guns CANNOT destroy wire")||html.includes("GUNS CANNOT DESTROY WIRE"));
+ assert.ok(html.includes("WIRE: GUNS CANNOT DESTROY IT"));
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
   "5 must never automatically throw a drone");
