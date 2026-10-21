@@ -1,9 +1,9 @@
-// BLACKOUT V0.7.2 — persistent, surface-facing impact decals.
+// BLACKOUT V0.7.3 — persistent, face-anchored impact decals.
 // One instanced mesh / shared procedural alpha texture (not one render draw call
 // per bullet). Recycles oldest after MAX_DECALS; there is NO lifetime expiry.
 // Offset + depth bias prevent z-fighting against actual wall/box/floor surfaces.
 export const MAX_DECALS=400;
-export const SURFACE_OFFSET=.014;
+export const SURFACE_OFFSET=.008;
 
 function bulletTexture(THREE){
  const canvas=document.createElement("canvas");
@@ -67,21 +67,51 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
  const matrix=new THREE.Matrix4();
  const scale=new THREE.Vector3();
  const pos=new THREE.Vector3();
- let cursor=0,total=0;
+ let cursor=0,total=0,lastFace="NONE";
  function mark(hit,target=false){
   // Target dummies despawn on hit: a world-stuck decal would float when they do.
-  if(target||!hit?.point||!hit?.object)return false;
-  const normal=hit.face?.normal?.clone()
-    .transformDirection(hit.object.matrixWorld).normalize()||
-    new THREE.Vector3(0,0,1);
-  if(!Number.isFinite(normal.x)||!Number.isFinite(normal.y)||
-     !Number.isFinite(normal.z))return false;
-  // Visible from the hit surface, NOT coplanar with the wall's texture.
-  pos.copy(hit.point).addScaledVector(normal,SURFACE_OFFSET);
+  if(target||!hit?.point||!hit?.object||!hit.face?.normal)return false;
+  const surface=hit.object;
+  // Three.js raycaster points are WORLD coordinates, but the triangle normal
+  // and the box's geometry dimensions are in the MESH'S LOCAL coordinates.
+  // Compute decal position/rotation locally then transform the WHOLE plane
+  // back to world space. Mixing these coordinate spaces caused the edge
+  // clipping/orientation bug seen in the user's screenshot.
+  surface.updateWorldMatrix?.(true,false);
+  const normal=hit.face.normal.clone().normalize();
+  if(![normal.x,normal.y,normal.z].every(Number.isFinite))return false;
+  pos.copy(hit.point);
+  surface.worldToLocal(pos);
+  const size=.068+(total%4)*.004;
+  const components=["x","y","z"];
+  const facing=components.reduce((a,b)=>
+    Math.abs(normal[b])>Math.abs(normal[a])?b:a,"x");
+  lastFace=(facing==="y"?(normal.y>0?"TOP":"BOTTOM"):
+    facing==="x"?(normal.x>0?"RIGHT":"LEFT"):
+    normal.z>0?"FRONT":"BACK");
+  // Keep the entire mark inside the real mesh face. Decals centered at
+  // the top/side edge previously extended into thin air, then depth tests
+  // clipped part of the mark and made it look rotated above the wall.
+  const geometry=surface.geometry;
+  if(geometry&&!geometry.boundingBox)geometry.computeBoundingBox?.();
+  const bounds=geometry?.boundingBox;
+  if(bounds){
+    pos[facing]=normal[facing]>=0?bounds.max[facing]:bounds.min[facing];
+    for(const axis of components){
+      if(axis===facing)continue;
+      const min=bounds.min[axis]+size*.5+.003;
+      const max=bounds.max[axis]-size*.5-.003;
+      pos[axis]=Math.max(min,Math.min(max,pos[axis]));
+      if(max<min)pos[axis]=(bounds.min[axis]+bounds.max[axis])*.5;
+    }
+  }
+  // Apply bias in local face coordinates. The resulting instance world
+  // transform matches exactly the collision mesh's translation and rotation.
+  pos.addScaledVector(normal,SURFACE_OFFSET);
   quat.setFromUnitVectors(up,normal);
-  const size=.090+(total%5)*.006;
   scale.set(size,size,1);
   matrix.compose(pos,quat,scale);
+  matrix.premultiply(surface.matrixWorld);
   decals.setMatrixAt(cursor,matrix);
   cursor=(cursor+1)%maximum;
   total++;
@@ -95,6 +125,7 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
   clear(){cursor=total=0;decals.count=0;decals.instanceMatrix.needsUpdate=true;},
   get count(){return decals.count;},
   get total(){return total;},
+  get lastFace(){return lastFace;},
   mesh:decals,
  };
 }
