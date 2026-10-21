@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-024",
-   "./reboot/style.css?v=reboot-021"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-025",
+   "./reboot/style.css?v=reboot-025"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -261,9 +261,19 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
- assert.ok(main.includes('from "./operators.js?v=reboot-024"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-022"'));
+ assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-025"'));
  assert.ok(main.includes("createOperatorPicker("));
+ // V0.14: design plans are distinct from functioning equipment.
+ assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
+ assert.ok(html.includes('id="operator-plan-status"'));
+ assert.ok(html.includes("NOT usable equipment yet"));
+ assert.ok(css.includes(".operator-gadget-select"));
+ assert.ok(css.includes(".operator-plan-status"));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-025"'));
+ assert.equal(main.includes("throwPlannedGadget"),false,
+  "planning UI must not invent gameplay for unimplemented gadget concepts");
+
  const operatorPickerSource=read("reboot/operator-select.js");
  assert.ok(operatorPickerSource.includes('document.getElementById("operator-current")'),
   "deployment button lives outside the operator selection root");
