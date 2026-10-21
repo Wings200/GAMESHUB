@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.18.0
+# BLACKOUT — Clean Reboot V0.18.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.18.1 · HOLD G/MMB FOR REAL-PHYSICS THROW TRAJECTORY PREVIEW**
+- User picked **option B**, meaning show the trajectory only while holding the equipped throwable gadget's actual key/button; release **G** or **mouse wheel click (MMB)** to throw.
+- Works with all five LIVE throwable gadgets: attacker Frag, Flashbang, Smoke Grenade; defender Impact Grenade and C4/Nitro. The projected trajectory line and small end marker use distinctive colors for each grenade; it updates during mouse aim changes and while moving, sampled every 45ms for performance.
+- The path is calculated by invoking the same `throwX()` then `tickX()` functions from BLACKOUT's gadget systems on throwaway states, with the exact solid, wooden barricade, gypsum and reinforcement blockers. It predicts real bounces, fuse endpoint for timed grenades, physical impact detonation and eventual stuck position for C4. Smoke cloud deployment marker is based on the actual canister, not elevated cloud center.
+- Holding shows aim guidance but **does not consume a charge**. Releasing throws once, hides the line and consumes the real inventory once. C4 already deployed has no throwable preview and **second press detonates immediately**, as before. Barbed wire and disabled utility previews still work on press. The line is cancelled on pause, window blur, entering drones, switching operators, or elimination.
+- Added pure trajectory trace tests checking each gadget launch/endpoint against the actual physics, wall effects, dynamic aim, no inventory loss, and side/nonthrowable exclusion. The operator MMB/G and page assertions were updated; browser testing still required.
 
 **2026-10-21 / V0.18.0 · LIVE THROWABLE SMOKE GRENADE & DENSE 3D VISION COVER**
 - With flashbang opacity and timing confirmed by the user, the next gadget is the **attacker Smoke Grenade**. Striker can select it in either MMB or G alongside one other different gadget. Two 3D canisters can be thrown, bounce off solid walls/floors, and deploy after a **1.8-second fuse**.

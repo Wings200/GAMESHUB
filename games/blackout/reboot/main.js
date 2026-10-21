@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.18.0 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.18.1 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -42,6 +42,9 @@ import {createFlashView,createFlashBurst} from "./flash-view.js?v=reboot-037";
 import {SMOKE,newSmokeState,throwSmoke,tickSmoke,smokeCameraDensity}
  from "./smoke.js?v=reboot-040";
 import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040";
+import {THROW_PREVIEW_IDS,canPreviewThrow,traceThrownGadget}
+ from "./throw-preview.js?v=reboot-041";
+import {createThrowPreviewView} from "./throw-preview-view.js?v=reboot-041";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -164,6 +167,8 @@ let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
 const flashViews=new Map();
+const throwPreviewView=createThrowPreviewView(THREE,scene);
+let heldThrowCode=null,lastThrowPreviewAt=-Infinity;
 let smokeState=newSmokeState();
 const smokeViews=new Map(),smokeCloudViews=new Map();
 const weaponView=createWeaponView(THREE,camera,scene);
@@ -204,6 +209,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   wireHealth=newWireHealth();
   wireSoundTracker=newWireSoundTracker();
   flashEffect=newFlashEffect();
+  cancelHeldThrow();
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -345,6 +351,63 @@ function tryPickupCurrentNitro(){
  refreshUtilityHud();
  return true;
 }
+// Config shares the SAME projectile throw/tick functions used for live play.
+// Preview never alters gadget inventory; actual use is committed on release.
+const throwableConfigs={
+ frag:{makeState:newFragState,thrower:throwFrag,stepper:tickFrag},
+ flash:{makeState:newFlashState,thrower:throwFlash,stepper:tickFlash},
+ smoke:{makeState:newSmokeState,thrower:throwSmoke,stepper:tickSmoke},
+ impact:{makeState:newImpactState,thrower:throwImpact,stepper:tickImpact},
+ c4:{makeState:newNitroState,thrower:throwNitro,stepper:tickNitro}
+};
+function cancelHeldThrow(){
+ heldThrowCode=null;lastThrowPreviewAt=-Infinity;throwPreviewView.hide();
+}
+function gadgetCharges(gadgetId){
+ switch(gadgetId){
+  case "frag":return fragState.charges;
+  case "flash":return flashState.charges;
+  case "smoke":return smokeState.charges;
+  case "impact":return impactState.charges;
+  case "c4":return nitroState.charges;
+  default:return 0;
+ }
+}
+function startGadgetInput(code){
+ const row=utilityHudRows(operatorPicker.plans,activeOperator).find(r=>r.code===code);
+ if(!row)return;
+ if(heldThrowCode)return; // No simultaneous conflicting G/MMB trajectory.
+ const id=row.gadgetId;
+ const armedNitro=nitroState.devices.some(d=>d.armed);
+ if(THROW_PREVIEW_IDS.includes(id)&&canPreviewThrow(id,gadgetCharges(id),armedNitro)){
+  heldThrowCode=code;lastThrowPreviewAt=-Infinity;
+  shotNotice.textContent="AIM THROW · RELEASE "+row.key+" TO THROW";
+  shotNoticeLeft=1.1;
+  updateHeldThrowPreview(performance.now());
+ }else{
+  // C4's second press still detonates immediately; wire and planned
+  // non-throwable gadgets preserve original press behavior.
+  usePlannedGadget(code);
+ }
+}
+function releaseGadgetInput(code){
+ if(heldThrowCode!==code)return;
+ cancelHeldThrow();
+ if(locked&&controlMode==="player"&&wireHealth.hp>0)usePlannedGadget(code);
+}
+function updateHeldThrowPreview(now){
+ if(!heldThrowCode||!locked||controlMode!=="player"||wireHealth.hp<=0){
+  throwPreviewView.hide();return;
+ }
+ if(now-lastThrowPreviewAt<45)return; // keep preview inexpensive during aiming
+ lastThrowPreviewAt=now;
+ const row=utilityHudRows(operatorPicker.plans,activeOperator).find(r=>r.code===heldThrowCode);
+ const conf=throwableConfigs[row?.gadgetId];
+ if(!conf||!canPreviewThrow(row.gadgetId,gadgetCharges(row.gadgetId),
+   nitroState.devices.some(d=>d.armed))){cancelHeldThrow();return;}
+ const trajectory=traceThrownGadget({...conf,player,obstacles:activeDroneObstacles()});
+ throwPreviewView.update(row.gadgetId,trajectory);
+}
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
@@ -483,6 +546,7 @@ function setControlMode(nextMode){
  weaponView.root.visible=controlMode==="player";
  crosshair.classList.toggle("hidden",!active||controlMode!=="player");
  firing=false;aimHeld=false;reloadPressed=false;keys.clear();
+ cancelHeldThrow();
  droneBoostPressed=false;droneJumpPressed=false;
  // Never leave a first-person fist floating over the drone camera.
  meleeView.cancel();
@@ -599,7 +663,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){keys.clear();c4PickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -647,8 +711,8 @@ document.addEventListener("keydown",event=>{
   strikeMelee(performance.now());return;
  }
  if(event.code==="KeyG"&&!event.repeat){
-  // Reserved normal gadget G: no fake activation until gadget is built.
-  usePlannedGadget("KeyG");
+  // Hold for trajectory; release to throw. Nonthrowables activate on press.
+  startGadgetInput("KeyG");
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
@@ -696,6 +760,7 @@ document.addEventListener("keydown",event=>{
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
  if(event.code==="KeyF")c4PickupKeyConsumed=false;
+ if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
  if(!locked)return;
@@ -704,7 +769,7 @@ document.addEventListener("mousedown",event=>{
   // autoscroll. Camera control uses its own mode, not operator gadgets.
   event.preventDefault();
   if(controlMode==="player"&&wireHealth.hp>0){
-   usePlannedGadget("MouseMiddle");
+   startGadgetInput("MouseMiddle");
   }
   return;
  }
@@ -716,13 +781,14 @@ document.addEventListener("mousedown",event=>{
 document.addEventListener("mouseup",event=>{
  if(event.button===0)firing=false;
  if(event.button===2)aimHeld=false;
+ if(event.button===1){event.preventDefault();releaseGadgetInput("MouseMiddle");}
 });
 canvas.addEventListener("contextmenu",event=>event.preventDefault());
 canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{keys.clear();c4PickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1144,6 +1210,7 @@ function animate(now){
  softWall.tick(dt);
  reinforcement.tick(dt);
  updateAimProbe(now);
+ updateHeldThrowPreview(now);
  if(locked&&controlMode==="player")flashEffect=stepFlashEffect(flashEffect,dt);
  flashOverlay.style.opacity=String(locked&&controlMode==="player"?flashOpacity(flashEffect):0);
  smokeFog.style.opacity=String(locked&&controlMode==="player"?
@@ -1155,5 +1222,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.18.0 smoke grenade: deployed dense occluding cloud, fading over time",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.18.1 hold MMB or G for real-physics throwable trajectory; release to throw",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

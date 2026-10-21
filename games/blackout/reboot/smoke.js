@@ -54,7 +54,8 @@ export function tickSmoke(state,dt,obstacles=[]){
   }
   if(time+1e-8>=SMOKE.fuse){
    spawned.push(cloudAtAge({id:d.id,x:next.x,
-    y:Math.min(2.4,Math.max(1.45,next.y+1.25)),z:next.z},0));
+    y:Math.min(2.4,Math.max(1.45,next.y+1.25)),z:next.z,
+    projectileY:next.y},0));
    return {...next,armed:false};
   }
   return next;

@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-040",
+ for(const src of ["./reboot/main.js?v=reboot-041",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -284,8 +284,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?'));
  assert.ok(main.includes('refreshUtilityHud();\nfunction resize(){'),
    "initial HUD must render before first player deployment");
- assert.ok(main.includes('usePlannedGadget("KeyG")'));
- assert.ok(main.includes('usePlannedGadget("MouseMiddle")'));
+ assert.ok(main.includes('startGadgetInput("KeyG")'));
+ assert.ok(main.includes('startGadgetInput("MouseMiddle")'));
  assert.ok(main.includes('event.code==="KeyG"&&!event.repeat'));
  assert.ok(main.includes('if(event.button===1){'));
  assert.ok(main.includes('if(controlMode==="player"&&wireHealth.hp>0){'));
@@ -401,6 +401,20 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/flash.js").includes("holdSeconds:2.2,fadeSeconds:3.8"));
 
  // V0.18: physical smoke throw, cloud lifetime and visual sightline denial.
+ // V0.18.1 · hold-to-aim preview only for real physical throwable gadgets.
+ assert.ok(main.includes('from "./throw-preview.js?v=reboot-041"'));
+ assert.ok(main.includes('from "./throw-preview-view.js?v=reboot-041"'));
+ assert.ok(main.includes('createThrowPreviewView(THREE,scene)'));
+ assert.ok(main.includes('traceThrownGadget({...conf,player,obstacles:activeDroneObstacles()})'));
+ assert.ok(main.includes('releaseGadgetInput("KeyG")'));
+ assert.ok(main.includes('releaseGadgetInput("MouseMiddle")'));
+ assert.ok(main.includes("throwPreviewView.update(row.gadgetId,trajectory)"));
+ assert.ok(main.includes("cancelHeldThrow();"));
+ assert.ok(main.includes("if(heldThrowCode)return"));
+ assert.ok(html.includes("HOLD MMB/G TO AIM"));
+ assert.ok(read("reboot/throw-preview-view.js").includes("THREE.LineDashedMaterial"));
+ assert.ok(read("reboot/throw-preview.js").includes("stepper(state,frame,obstacles)"));
+ assert.ok(read("reboot/throw-preview.js").includes('["frag","flash","smoke","impact","c4"]'));
  assert.ok(main.includes('from "./smoke.js?v=reboot-040"'));
  assert.ok(main.includes('from "./smoke-view.js?v=reboot-040"'));
  assert.ok(main.includes("smokeState=newSmokeState()"));

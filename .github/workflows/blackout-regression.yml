@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.18.0 · six gadgets including smoke vision cover
+    name: Reboot V0.18.1 · hold-to-aim trajectories for five real throwables
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -67,5 +67,7 @@ jobs:
           node --check games/blackout/reboot/flash-view.js
           node --check games/blackout/reboot/smoke.js
           node --check games/blackout/reboot/smoke-view.js
+          node --check games/blackout/reboot/throw-preview.js
+          node --check games/blackout/reboot/throw-preview-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
