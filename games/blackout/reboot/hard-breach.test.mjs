@@ -219,7 +219,7 @@ test("duplicate hard breach target is refused without losing the remaining charg
  const previous=hardBreachReinforcement(installed,{
   x:SOFT_WALL.x,y:1.45,z:SOFT_WALL.z});
  const fresh=newHardBreachState();
- const same=placeHardBreach(fresh,{...player,pitch:.28},context(previous.state));
+ const same=placeHardBreach(fresh,{...player,pitch:.20},context(previous.state));
  assert.equal(same.device,null);
  assert.equal(same.state.charges,HARD_BREACH.charges);
  assert.match(same.reason,/ALREADY/);
