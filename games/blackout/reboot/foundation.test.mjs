@@ -230,8 +230,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("decals.frustumCulled=false"));
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
- assert.ok(main.includes('from "./barricade.js?v=reboot-016"'));
- assert.ok(main.includes('from "./barricade-view.js?v=reboot-016"'));
+ assert.ok(main.includes('from "./barricade.js?v=reboot-015"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-015"'));
  assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
  assert.ok(main.includes("...barricade.blockers()"));
  assert.ok(main.includes("...softWall.blockers()"));
