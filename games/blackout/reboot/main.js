@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.13.3 — attacker-only recon drone inventory, camera keys and HUD
+// BLACKOUT REBOOT V0.14 — operator-side secondary gadget design preview; no fake gameplay
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -22,8 +22,8 @@ import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
-import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-024";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-022";
+import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-025";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -714,5 +714,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.13.3 attacker-only R-1 recon drones; defender cannot open recon feeds",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.14 gadget plans only; attacker recon and defender steel preserved",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
