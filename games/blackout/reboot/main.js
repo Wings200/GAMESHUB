@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.13.2 — defender-only wall reinforcements; silent on attackers
+// BLACKOUT REBOOT V0.13.3 — attacker-only recon drone inventory, camera keys and HUD
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -22,7 +22,7 @@ import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
-import {operatorById,operatorLoadout,canUseReinforcement} from "./operators.js?v=reboot-023";
+import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-024";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-022";
 
 const $=id=>document.getElementById(id);
@@ -41,6 +41,7 @@ const droneBoostStatus=$("drone-boost"),droneJumpStatus=$("drone-jump"),
  droneSpeedStatus=$("drone-speed");
 const droneChargeMarkers=[$("drone-charge-1"),$("drone-charge-2"),$("drone-charge-3")];
 const droneCameraCount=$("camera-drone-count"),droneSpareCount=$("spare-drone-count");
+const droneEquipmentBar=$("drone-equipment-bar"),droneKeyTip=$("drone-key-tip"),defenderKeyTip=$("defender-key-tip");
 const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone-number");
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
@@ -161,6 +162,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   reinforcement.step({player,holding:false,dt:0});
   operatorHudName.textContent=operator.name;
   operatorHudSide.textContent=operator.side==="attack"?"ATTACKER":"DEFENDER";
+  refreshDroneEquipment(); // Hide attack-only quickslots immediately on defense.
   // Side changes are a training-range selection only. Do not invent teams or
   // a real match phase; exit a paused drone feed before spawning a new role.
   if(controlMode==="drone"&&!locked)setControlMode("player");
@@ -177,6 +179,9 @@ function activeDroneObstacles(){
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
 }
 function setControlMode(nextMode){
+ // Never enter a recon feed as a defender, including after switching teams
+ // while the camera was open and the Testing Range was paused.
+ if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
  controlMode=nextMode;
  const active=locked;
  hud.classList.toggle("hidden",!active||controlMode!=="player");
@@ -191,11 +196,16 @@ function setControlMode(nextMode){
  reinforcement.step({player,holding:false,dt:0});
 }
 function refreshDroneEquipment(){
+ const hasRecon=canUseReconDrones(activeOperator);
+ droneEquipmentBar.classList.toggle("hidden",!hasRecon);
+ droneKeyTip.classList.toggle("hidden",!hasRecon);
+ defenderKeyTip.classList.toggle("hidden",hasRecon);
  const info=droneEquipmentStatus(droneRoster);
  droneCameraCount.textContent=String(info.cameras);
  droneSpareCount.textContent=String(info.throwables);
 }
 function throwPhysicalDrone(kind){
+ if(!canUseReconDrones(activeOperator))return false;
  // 6 deploys either carried test-range drone. Future matches gate the
  // prep drone and action-phase spare separately. 5 creates no devices.
  const distance=.42;
@@ -223,6 +233,7 @@ function throwPhysicalDrone(kind){
  return true;
 }
 function openDroneCameras(){
+ if(!canUseReconDrones(activeOperator))return;
  if(controlMode==="drone"){setControlMode("player");return;}
  const request=cameraRequest(droneRoster);
  if(request.action==="open"){
@@ -234,7 +245,7 @@ function openDroneCameras(){
  }
 }
 function throwCarriedDrone(){
- if(controlMode!=="player")return;
+ if(controlMode!=="player"||!canUseReconDrones(activeOperator))return;
  const request=throwRequest(droneRoster,"range");
  if(request.action==="throw-only")throwPhysicalDrone(request.kind);
  else{
@@ -243,7 +254,7 @@ function throwCarriedDrone(){
  }
 }
 function switchDroneCamera(direction){
- if(droneRoster.drones.length<2)return false;
+ if(!canUseReconDrones(activeOperator)||droneRoster.drones.length<2)return false;
  droneRoster=selectDrone(droneRoster,direction);
  drone=selectedDrone(droneRoster);
  droneBoostPressed=false;droneJumpPressed=false;
@@ -703,5 +714,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.13 Striker / Sentry operator selection",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.13.3 attacker-only R-1 recon drones; defender cannot open recon feeds",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
