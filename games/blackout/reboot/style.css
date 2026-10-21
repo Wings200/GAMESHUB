@@ -364,3 +364,28 @@ body.range-active .siege-system .siege-metrics{
 .soft-wall-readout>span b{color:#fff}
 .soft-wall-readout small{display:block;margin-top:6px;color:#aecfcb;font-size:9px}
 @media(max-width:780px){.soft-wall-readout{right:9px;top:65px;min-width:170px;font-size:9px;padding:6px 8px}}
+
+/* BLACKOUT V0.11 · small Siege-inspired reinforcement station prompt.
+   Not a new match HUD; the old training UI remains intact. */
+.reinforce-prompt{
+ position:absolute;right:2.7%;top:155px;width:276px;
+ border-left:3px solid #a9c2c8;background:#13222eef;
+ padding:12px 13px;color:#f0f8f8;
+ box-shadow:0 5px 24px #0008;
+ font:700 11px/1.4 "Segoe UI",Arial,sans-serif;
+}
+.reinforce-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.reinforce-head strong{color:#e6eef1;font-size:10px;letter-spacing:.035em}
+.reinforce-head>span{font-size:9px;font-weight:900;color:#9ce2cd;white-space:nowrap}
+.reinforce-action{margin-top:9px;font-size:10px;font-weight:750;letter-spacing:.04em;color:#cedfdf}
+.reinforce-progress-track{height:5px;margin-top:8px;background:#526878;overflow:hidden;border-radius:1px}
+.reinforce-progress-track span{display:block;height:100%;width:0;
+ background:linear-gradient(90deg,#c3d0d3,#7ac2bc);transition:width .09s linear}
+.soft-wall-readout[data-reinforced="true"]>strong{color:#93bfc6}
+.soft-wall-readout[data-reinforced="true"]>small{color:#afc2c8}
+.hud .reinforce-prompt:not(.hidden)~.soft-wall-readout{top:270px}
+@media(max-width:780px){
+ .reinforce-prompt{top:56px;right:8px;width:194px;padding:7px 9px}
+ .reinforce-head{flex-direction:column;align-items:start}
+ .hud .reinforce-prompt:not(.hidden)~.soft-wall-readout{top:174px}
+}
