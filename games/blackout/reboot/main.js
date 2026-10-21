@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.12.2 — 5 cameras only; 6 throws two range drones; hide own camera body
+// BLACKOUT REBOOT V0.13 — playable Striker / Sentry selection, two utility slots per generalist
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -22,6 +22,8 @@ import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
+import {operatorById,operatorLoadout} from "./operators.js?v=reboot-021";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-021";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -41,6 +43,7 @@ const droneChargeMarkers=[$("drone-charge-1"),$("drone-charge-2"),$("drone-charg
 const droneCameraCount=$("camera-drone-count"),droneSpareCount=$("spare-drone-count");
 const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone-number");
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
+const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
 const softWallReadout=$("soft-wall-readout"),softWallStatusText=$("soft-wall-status"),
  softWallRemoved=$("soft-wall-removed");
 const reinforcePrompt=$("reinforce-prompt"),reinforceFill=$("reinforce-progress"),
@@ -145,9 +148,21 @@ let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false,barricadeBuildTime=0;
 let controlMode="player",drone=null,droneRoster=newDroneRoster("range"),droneBoostPressed=false,droneJumpPressed=false;
+let activeOperator=operatorById("striker");
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
 const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
 let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
+// Operator selection stays available from the first menu and on ESC pause.
+const operatorPicker=createOperatorPicker($("operator-selection"),{
+ onSelect(operator){
+  activeOperator=operator;
+  operatorHudName.textContent=operator.name;
+  operatorHudSide.textContent=operator.side==="attack"?"ATTACKER":"DEFENDER";
+  // Side changes are a training-range selection only. Do not invent teams or
+  // a real match phase; exit a paused drone feed before spawning a new role.
+  if(controlMode==="drone"&&!locked)setControlMode("player");
+ }
+});
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -574,7 +589,8 @@ function animate(now){
      sprint:(keys.has("ShiftLeft")||keys.has("ShiftRight"))&&!aimHeld,
      crouch:keys.has("KeyC"),
      prone:proneToggle,
-     jump:keys.has("Space")
+     jump:keys.has("Space"),
+     speedMultiplier:operatorLoadout(activeOperator).speedMultiplier
    };
    const before=player;
    // One active board list controls both movement and shooting.
@@ -684,5 +700,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.12.2 5 view-only, 6 throws 2 range drones",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.13 Striker / Sentry operator selection",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
