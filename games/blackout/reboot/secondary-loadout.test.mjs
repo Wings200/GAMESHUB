@@ -16,8 +16,8 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
   ["c4","impact","observation-blocker","barbed-wire","proximity-alarm","deployable-shield"]);
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
- assert.ok(SECONDARY_GADGETS.every(g=>g.implemented===false),
-  "do not represent planned concepts as gameplay-ready equipment");
+ assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
+  ["barbed-wire"],"only working physical gadget can be marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -30,7 +30,7 @@ test("Striker and Sentry have independent two-slot plans; changes persist across
  assert.deepEqual(plannedSecondaries(plans,striker),["flash","soft-breach"]);
  assert.deepEqual(plannedSecondaries(plans,sentry),["barbed-wire","c4"]);
  assert.equal(planIsFieldReady(plans,striker),false);
- assert.equal(planIsFieldReady(plans,sentry),false);
+ assert.equal(planIsFieldReady(plans,sentry),false,"C4 is not implemented even though wire is");
  plans=planSecondary(plans,striker,1,null);
  assert.deepEqual(plannedSecondaries(plans,striker),["flash",null]);
  assert.deepEqual(plannedSecondaries(plans,sentry),["barbed-wire","c4"]);
@@ -90,7 +90,7 @@ test("HUD representation follows Sentry independently, never leaks enemy gadgets
  plans=planSecondary(plans,sentry,1,"barbed-wire");
  assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.name),["C4 / Nitro Cell","Barbed Wire"]);
  assert.deepEqual(utilityHudRows(plans,striker).map(s=>s.name),["Flashbangs","EMPTY SLOT"]);
- assert.ok(utilityHudRows(plans,sentry).every(s=>s.fieldReady===false));
+ assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.fieldReady),[false,true]);
  plans=planSecondary(plans,sentry,1,null);
  assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.name),["C4 / Nitro Cell","EMPTY SLOT"]);
 });
@@ -108,8 +108,22 @@ test("Sentry C4 is shown on scroll-wheel click; normal wire on G, not old 3/4",(
  assert.equal(utilityKeyPreview(plans,sentry,"MouseMiddle"),
   "C4 / NITRO CELL · PLANNED ONLY · NOT BUILT YET");
  assert.equal(utilityKeyPreview(plans,sentry,"KeyG"),
-  "BARBED WIRE · PLANNED ONLY · NOT BUILT YET");
+  "BARBED WIRE · LIVE GADGET · USE IN RANGE");
  assert.equal(utilityKeyPreview(plans,sentry,"Digit3"),null);
  assert.equal(utilityKeyPreview(plans,sentry,"Digit4"),null);
  assert.ok(rows.every(row=>row.fieldReady===false));
+});
+
+test("single fully implemented barbed-wire slot is field-ready while C4 is not",()=>{
+ const sentry=operatorById("sentry");
+ let plans=newSecondaryPlans();
+ plans=planSecondary(plans,sentry,1,"barbed-wire");
+ assert.equal(planIsFieldReady(plans,sentry),true);
+ const rows=utilityHudRows(plans,sentry);
+ assert.equal(rows[1].status,"READY · LIVE GADGET");
+ assert.equal(rows[1].fieldReady,true);
+ assert.equal(rows[0].fieldReady,false);
+ plans=planSecondary(plans,sentry,0,"c4");
+ assert.equal(planIsFieldReady(plans,sentry),false);
+ assert.equal(gadgetById("c4").implemented,false);
 });
