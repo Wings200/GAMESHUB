@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.16.3 — live defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.16.4 — live defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -30,11 +30,11 @@ import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
 import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
-import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js?v=reboot-035";
-import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-032";
-import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-035";
+import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,pickupNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js?v=reboot-036";
+import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-036";
+import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-036";
 import {createImpactView} from "./impact-view.js?v=reboot-033";
-import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-035";
+import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-036";
 import {createFragView} from "./frag-view.js?v=reboot-034";
 
 const $=id=>document.getElementById(id);
@@ -164,6 +164,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
+let c4PickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -215,7 +216,7 @@ function refreshUtilityHud(){
   utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?
     "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":
    row.gadgetId==="c4"?
-    (nitroState.devices.some(d=>d.armed)?"ARMED · PRESS "+row.key+" TO DETONATE":
+    (nitroState.devices.some(d=>d.armed)?"ARMED · "+row.key+" DETONATE / LOOK + F PICKUP":
       "LIVE · "+nitroState.charges+"/"+NITRO.charges+" LEFT"):
    row.gadgetId==="impact"?
       "LIVE · "+impactState.charges+"/"+IMPACT.charges+" LEFT":
@@ -230,7 +231,7 @@ function refreshUtilityHud(){
   rows.some(row=>row.gadgetId==="impact")?
   activeOperator.name+" · IMPACT CONTACT DETONATION · LIVE":
   rows.some(row=>row.gadgetId==="c4")?
-  activeOperator.name+" · C4 THROW / REMOTE DETONATE · LIVE":
+  activeOperator.name+" · C4 REMOTE DETONATE · LOOK + F TO PICK UP":
   rows.some(row=>row.gadgetId==="barbed-wire")?
   activeOperator.name+" · WIRE LIVE · OTHER GADGETS PREVIEW":
   activeOperator.name+" · SPECIAL MMB / NORMAL G · PREVIEW ONLY";
@@ -279,14 +280,50 @@ function applyGadgetBlast(blast,label="C4"){
    damageTaken?" · SELF -"+damageTaken+" HP":"");
 }
 function detonateCurrentNitro(){
+ // Always dispose of the CURRENT charge, not a previously recovered one.
+ const active=nitroState.devices.find(d=>d.armed);
  const result=detonateNitro(nitroState);
  if(!result.blast)return result.reason;
  nitroState=result.state;
- const device=nitroState.devices.find(d=>!d.armed);
- nitroViews.get(device.id)?.sync(device);
+ if(active){
+  nitroViews.get(active.id)?.sync(nitroState.devices.find(d=>d.id===active.id));
+  nitroViews.delete(active.id);
+ }
  const feedback=applyGadgetBlast(result.blast,"C4");
  refreshUtilityHud();
  return feedback;
+}
+function tryPickupCurrentNitro(){
+ if(activeOperator.side!=="defend"||controlMode!=="player")return false;
+ const active=nitroState.devices.find(d=>d.armed&&d.stuck);
+ const view=active?nitroViews.get(active.id):null;
+ if(!view?.pickupTarget)return false;
+ // The transparent pickup collider is slightly larger than the visible C4.
+ // We check the closest ray collision against real walls, wood and steel.
+ // An obstructing wall beats the gadget, preventing through-wall recovery.
+ camera.updateMatrixWorld(true);
+ view.group.updateMatrixWorld(true);
+ const pickupRay=new THREE.Raycaster();
+ pickupRay.setFromCamera({x:0,y:0},camera);
+ pickupRay.far=NITRO.pickupRange+1.4;
+ const hits=pickupRay.intersectObjects([
+  view.pickupTarget,...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables()
+ ],false);
+ if(hits[0]?.object!==view.pickupTarget)return false;
+ const result=pickupNitro(nitroState,active.id,player);
+ if(!result.device)return false;
+ nitroState=result.state;
+ view.sync(null);nitroViews.delete(active.id);
+ // F was consumed for pickup. It must not simultaneously rebuild wood or
+ // finish a held steel reinforcement installation.
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;
+ shotNoticeLeft=1.65;
+ refreshUtilityHud();
+ return true;
 }
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
@@ -518,7 +555,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){keys.clear();c4PickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -554,6 +591,13 @@ document.addEventListener("keydown",event=>{
    droneBoostPressed=true;
   keys.add(event.code);
   return; // No player guns, wall rebuilding or crouching during drone control.
+ }
+ if(event.code==="KeyF"){
+  if(c4PickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentNitro()){
+   c4PickupKeyConsumed=true;
+   return;
+  }
  }
  if(event.code==="KeyV"&&!event.repeat){
   strikeMelee(performance.now());return;
@@ -605,7 +649,10 @@ document.addEventListener("keydown",event=>{
  }
  keys.add(event.code);
 });
-document.addEventListener("keyup",event=>keys.delete(event.code));
+document.addEventListener("keyup",event=>{
+ keys.delete(event.code);
+ if(event.code==="KeyF")c4PickupKeyConsumed=false;
+});
 document.addEventListener("mousedown",event=>{
  if(!locked)return;
  if(event.button===1){
@@ -631,7 +678,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{keys.clear();c4PickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1017,5 +1064,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.16.3 lethal-close-range explosives: actual explosive gameplay",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.16.4 recoverable C4 and compact impact radius: actual explosive gameplay",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

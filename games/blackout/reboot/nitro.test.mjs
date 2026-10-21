@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
+import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,pickupNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 const player={x:0,y:0,z:8,yaw:0,pitch:0,grounded:true};
 test("Sentry C4 throws actual moving device and spends exactly one inventory charge",()=>{
  const start=newNitroState(),thrown=throwNitro(start,player);
@@ -70,4 +70,40 @@ test("C4 exposure is the same on either side, and rejects invalid coordinates",(
  }
  assert.equal(nitroBlastIsLethal({...blast,lethalRadius:0},blast),false);
  assert.equal(nitroBlastDamage(blast,{x:NaN,y:0,z:0}),0);
+});
+
+test("F pickup recovers only a settled nearby C4 and returns its inventory charge",()=>{
+ const launch=throwNitro(newNitroState(),player);
+ assert.equal(pickupNitro(launch.state,launch.device.id,player).device,null,
+  "cannot snatch C4 out of midair");
+ let dropped=launch.state;
+ for(let i=0;i<80;i++)dropped=tickNitro(dropped,.05,[]);
+ const device=dropped.devices[0];
+ const nearby={...player,x:device.x,z:device.z};
+ const faraway={...nearby,x:nearby.x+NITRO.pickupRange+.1};
+ assert.equal(pickupNitro(dropped,device.id,faraway).device,null);
+ assert.equal(pickupNitro(dropped,device.id,{...nearby,y:device.y+NITRO.pickupHeight+1}).device,null);
+ assert.equal(pickupNitro(dropped,999,nearby).device,null);
+ const picked=pickupNitro(dropped,device.id,nearby);
+ assert.equal(picked.device.id,device.id);
+ assert.equal(picked.state.charges,1);
+ assert.equal(picked.state.devices.length,0,"recovered charge must leave the world");
+ assert.equal(detonateNitro(picked.state).blast,null,"retrieved C4 cannot explode");
+ assert.equal(pickupNitro(picked.state,device.id,nearby).device,null,"cannot duplicate pickup");
+});
+test("recovered C4 can be thrown and picked up repeatedly without duplicate stock",()=>{
+ let state=newNitroState();
+ for(let cycle=0;cycle<3;cycle++){
+  const launched=throwNitro(state,player);
+  assert.ok(launched.device&&launched.device.armed);
+  state=launched.state;
+  for(let i=0;i<75;i++)state=tickNitro(state,.05,[]);
+  const d=state.devices[0];
+  const returned=pickupNitro(state,d.id,{...player,x:d.x,z:d.z});
+  assert.ok(returned.device);
+  state=returned.state;
+  assert.equal(state.charges,1);
+  assert.equal(state.devices.length,0);
+ }
+ assert.equal(state.nextId,4,"every throw receives a fresh id");
 });

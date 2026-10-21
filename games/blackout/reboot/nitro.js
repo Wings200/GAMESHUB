@@ -3,7 +3,8 @@
 // detonation and bounded blast strength; deliberately no real-world instructions.
 export const NITRO=Object.freeze({
  charges:1,throwSpeed:8,upSpeed:3.3,gravity:18,radius:3.7,
- maxLife:60,blastDamage:280,fullDamageRadius:1.1,lethalRadius:1.8,boxSize:.32
+ maxLife:60,blastDamage:280,fullDamageRadius:1.1,lethalRadius:1.8,
+ boxSize:.32,pickupRange:2.2,pickupHeight:1.85
 });
 export function newNitroState(){
  return {charges:NITRO.charges,nextId:1,devices:[]};
@@ -23,6 +24,25 @@ export function throwNitro(state,player){
  const device={...position,id:state.nextId,age:0,armed:true,stuck:false};
  return {state:{charges:state.charges-1,nextId:state.nextId+1,
   devices:[...state.devices,device]},device,reason:"C4 THROWN · PRESS SAME KEY TO DETONATE"};
+}
+// Retrieving a planted (settled) charge is an inventory action, not a
+// detonation. Only the nearby defender can recover it; the main controller
+// separately requires center-screen aim and a clear line of sight.
+export function pickupNitro(state,deviceId,player){
+ if(!state||!Array.isArray(state.devices))return {state,device:null,reason:"NO C4 TO PICK UP"};
+ const device=state.devices.find(d=>d.id===deviceId&&d.armed);
+ if(!device)return {state,device:null,reason:"NO ARMED C4 TO PICK UP"};
+ if(!device.stuck)return {state,device:null,reason:"WAIT FOR C4 TO LAND"};
+ if(!player||![player.x,player.y,player.z].every(Number.isFinite))
+  return {state,device:null,reason:"INVALID PLAYER POSITION"};
+ if(Math.hypot(player.x-device.x,player.z-device.z)>NITRO.pickupRange||
+   Math.abs(player.y-device.y)>NITRO.pickupHeight)
+  return {state,device:null,reason:"MOVE CLOSER TO C4"};
+ // Remove rather than dearm the device. This keeps the current active charge
+ // unambiguous after repeated pickup -> throw -> pickup cycles.
+ return {state:{...state,charges:Math.min(NITRO.charges,state.charges+1),
+   devices:state.devices.filter(d=>d.id!==deviceId)},
+  device,reason:"C4 RETRIEVED · 1/1 READY"};
 }
 function contactsSolid(x,y,z,obstacles){
  return obstacles.some(o=>{

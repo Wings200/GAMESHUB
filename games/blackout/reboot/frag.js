@@ -1,6 +1,6 @@
 // BLACKOUT V0.16.2 · live attacker frag: physical toss, timed fuse, bounce.
 // Sandbox game behavior only; explosive effects reuse established blast mechanics.
-import {nitroThrowPosition} from "./nitro.js?v=reboot-035";
+import {nitroThrowPosition} from "./nitro.js?v=reboot-036";
 export const FRAG=Object.freeze({
  charges:2,fuse:3.2,gravity:18,radius:3.6,blastDamage:260,
  fullDamageRadius:.9,lethalRadius:1.6,

@@ -1,6 +1,6 @@
 // BLACKOUT V0.16 · compact tactical remote charge and brief volumetric detonation.
 // All THREE geometry is sandbox-original; each C4 mesh tracks its pure flight.
-import {NITRO} from "./nitro.js?v=reboot-032";
+import {NITRO} from "./nitro.js?v=reboot-036";
 export function createNitroView(THREE,scene,device){
  const group=new THREE.Group();group.name="BLACKOUT C4 "+device.id;
  const caseMat=new THREE.MeshStandardMaterial({color:0x2a4243,roughness:.77,metalness:.16});
@@ -16,6 +16,13 @@ export function createNitroView(THREE,scene,device){
  for(const x of [-.13,.13]){
   box(.023,.075,.39,x,-.107,0,trim);
  }
+ // Slightly larger invisible interaction area makes F pickup reliable while
+ // still requiring the player to look at the charge. It does not block shots.
+ const pickupTarget=new THREE.Mesh(new THREE.SphereGeometry(.37,10,8),
+  new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+ pickupTarget.position.y=.03;
+ pickupTarget.userData.c4PickupId=device.id;
+ group.add(pickupTarget);
  scene.add(group);
  function sync(d){
   if(!d?.armed){
@@ -27,7 +34,7 @@ export function createNitroView(THREE,scene,device){
   group.rotation.set(d.stuck?0:.38, d.age*2, d.stuck?0:.27);
  }
  sync(device);
- return {group,sync};
+ return {group,pickupTarget,sync};
 }
 export function createNitroBlast(THREE,scene,blast){
  const group=new THREE.Group();group.name="BLACKOUT C4 short blast";

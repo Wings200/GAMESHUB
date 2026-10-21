@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-035",
+ for(const src of ["./reboot/main.js?v=reboot-036",
    "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -365,11 +365,11 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("FOUR FUNCTIONAL SECONDARY GADGETS"));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
- assert.ok(main.includes('from "./nitro.js?v=reboot-035"'));
- assert.ok(main.includes('from "./nitro-view.js?v=reboot-032"'));
- assert.ok(main.includes('from "./impact.js?v=reboot-035"'));
+ assert.ok(main.includes('from "./nitro.js?v=reboot-036"'));
+ assert.ok(main.includes('from "./nitro-view.js?v=reboot-036"'));
+ assert.ok(main.includes('from "./impact.js?v=reboot-036"'));
  assert.ok(main.includes('from "./impact-view.js?v=reboot-033"'));
- assert.ok(main.includes('from "./frag.js?v=reboot-035"'));
+ assert.ok(main.includes('from "./frag.js?v=reboot-036"'));
  assert.ok(main.includes('from "./frag-view.js?v=reboot-034"'));
  assert.ok(main.includes('fragState=newFragState()'));
  assert.ok(main.includes('throwFrag(fragState,player)'));
@@ -390,6 +390,14 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("createNitroView(THREE,scene,result.device)"));
  assert.ok(main.includes("nitroState=tickNitro(nitroState,dt,activeDroneObstacles())"));
  assert.ok(main.includes("detonateNitro(nitroState)"));
+ assert.ok(main.includes("pickupNitro(nitroState,active.id,player)"));
+ assert.ok(main.includes("view.pickupTarget,...shootableSolids"));
+ assert.ok(main.includes("hits[0]?.object!==view.pickupTarget"));
+ assert.ok(main.includes("keys.delete(\"KeyF\")"));
+ assert.ok(main.includes("if(c4PickupKeyConsumed)return"));
+ assert.ok(main.includes("reinforcement.step({player,holding:false,dt:0})"));
+ assert.ok(read("reboot/nitro-view.js").includes("pickupTarget.userData.c4PickupId=device.id"));
+ assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes("reinforcement.installed?0:softWall.blastAt(blast)"));

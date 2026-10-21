@@ -58,3 +58,13 @@ test("impacts deal exactly 60 HP near direct contact regardless of side, but nev
  assert.ok(nitroBlastDamage(blast,far)>0&&nitroBlastDamage(blast,far)<60);
  assert.equal(nitroBlastDamage(blast,{x:IMPACT.radius+.1,y:.105,z:0}),0);
 });
+
+test("V0.16.4 impact blast radius is the reduced 2.0 meters at the same 60 HP peak",()=>{
+ assert.equal(IMPACT.radius,2.0);
+ assert.equal(IMPACT.blastDamage,60);
+ const b={x:0,y:.1,z:0,radius:IMPACT.radius,damage:IMPACT.blastDamage,
+  fullDamageRadius:IMPACT.fullDamageRadius};
+ assert.equal(nitroBlastDamage(b,{x:0,y:.1,z:0}),60);
+ assert.equal(nitroBlastDamage(b,{x:2.05,y:.1,z:0}),0);
+ assert.ok(nitroBlastDamage(b,{x:1.3,y:.1,z:0})<60);
+});

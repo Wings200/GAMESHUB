@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.16.3
+# BLACKOUT — Clean Reboot V0.16.4
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.16.4 · USER-REQUESTED IMPACT TUNING & REAL C4 PICKUP**
+- Impact Grenades have a **2.0-meter** maximum damage radius (previously 2.35), with the same maximum **60 HP** on a direct hit and the same distance falloff and physical contact detonation.
+- Defender SENTRY can now retrieve **his own fully landed, still armed C4** in the Testing Range: approach to 2.2m, look at it with the center crosshair and **tap F**. Its physical mesh disappears and 1/1 charge is returned, allowing unlimited pickup/rethrow cycles but still only one carried C4. Floating, already exploded, too-distant, obstructed, or un-aimed C4 cannot be retrieved.
+- C4 pickup F consumes only that keypress and never simultaneously triggers F hold for wood rebuilding or steel reinforcement. When not directly aiming at a nearby C4, existing F interactions continue normally. The current device (not a previously picked-up device) is always removed on detonation to prevent ghost charge meshes.
+- Added C4 pickup/rethrow/invalid-state tests and a smaller-impact-radius regression. No changes to grenades' lethality, wire, drone controls, maps, multiplayer or other game data. Browser testing is required before approval.
 
 **2026-10-21 / V0.16.3 · EXPLOSIVE DAMAGE CORRECTION (USER REQUESTED)**
 - Both **C4/Nitro** and **Frag** guarantee instant player elimination inside their close lethal core, regardless of team/owner or remaining HP. Radial damage then decreases smoothly and stops outside the blast radius. The health state remains finite (no Infinity display).
