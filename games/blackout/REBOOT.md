@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.6.1
+# BLACKOUT — Clean Reboot V0.7
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.7 · Third-pass aim fix after user reports V0.6.1 still misses:**
+- Discovered an integration issue: the previous firing flow updated the gun's 3D transform *after* calculating its raycast. In V0.7, the camera and physically mounted optic are updated *before* invoking historical weapon firing, with the real optic's world-space dot projected back into camera NDC to control the shot direction. During ADS entrance before the reticle is visible, the weapon shoots through screen center; when fully visible, **the exact rendered dot is the ray origin on-screen**. Hipfire still retains original wide cone.
+- Separated four unchanged-geometry solid wall/box collision stations into side bays instead of allowing physical props between the camera and dummy heads. All four head positions were tested to have clear lines of sight from spawn and the observed 2026-10-20 recording location. This avoids false "bad aim" when actual world geometry intercepts a visible target.
+- **B = ballistic debug toggle**. Every shot while on generates a short world-space line from the camera eye to the true hit/miss endpoint, colored by target/blocked/miss, and a HUD label containing hit type, optic/camera source, NDC and impact range. Exposes runtime evidence rather than guessing from decals.
+- Resolved potentially stale-cache module imports: the live HTML now cache-busts `main.js` and `style.css` as `reboot-008`, the active main imports newly changed `physics.js` and `weapon-view.js` as `reboot-008`, and the view imports updated `weapon-model.js` as `reboot-008`. Old query-string reuse could mix V0.5 and V0.6 code (particularly missing casing/reload methods), so this matters for live functionality.
+- Original BLACKOUT V8 firing sound, 710RPM, recoil and ammo model remain unchanged; REDLINE and shared Worker remain untouched. Requires real browser validation, beyond automated tests.
+
 
 **2026-10-20 / V0.6.1 · Recorded ADS mismatch and blocked dummy head:**
 - Reviewed a 36-second user recording, particularly seconds 32–34: the physical holographic sight was held on a yellow dummy head, but the hit counter did not increase; there was also an existing left-block impact mark. This is not proof every mark was caused by the same shot.
