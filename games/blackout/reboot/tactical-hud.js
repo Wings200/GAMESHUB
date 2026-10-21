@@ -12,13 +12,14 @@ export function compassHeading(yaw){
 }
 export function areaName(x,z){
  if(!Number.isFinite(x)||!Number.isFinite(z))return "EXT TEST RANGE";
+ if(Math.abs(x+7)<3&&Math.abs(z-3)<3)return "EXT BARRICADE STATION";
  if(x<=-9&&z<2)return "EXT WEST COVER";
  if(x>=9&&z<2)return "EXT EAST COVER";
  if(z< -13)return "EXT TARGET RANGE";
  if(z>=13)return "EXT SPAWN AREA";
  return "EXT TEST RANGE";
 }
-export function drawTrainingMap(ctx,player,obstacles,targets){
+export function drawTrainingMap(ctx,player,obstacles,targets,barricade=null){
  if(!ctx)return;
  const w=ctx.canvas.width,h=ctx.canvas.height;
  ctx.clearRect(0,0,w,h);
@@ -43,6 +44,12 @@ export function drawTrainingMap(ctx,player,obstacles,targets){
   ctx.arc(x(p.x),y(p.z),2.4,0,2*Math.PI);
   ctx.fillStyle=target.downTime>0?"rgba(191,226,218,.3)":"#e9c48e";
   ctx.fill();
+ }
+ if(barricade){
+  // Barricade test station is an actual destructible obstacle.
+  const bx=x(barricade.x),by=y(barricade.z);
+  ctx.fillStyle="#f0ca7e";
+  ctx.fillRect(bx-4,by-2,8,4);
  }
  const px=x(player.x),py=y(player.z),yaw=player.yaw||0;
  ctx.save();
