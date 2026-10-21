@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.9.0 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.10.0 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-015">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-016">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,16 +16,16 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.9.0</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.10.0</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 009.0</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 010.0</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">LIVE-FIRE + BARRICADE TESTING.</p>
-      <p class="description">V0.9 BARRICADE STATION · Turn left from spawn toward the signed wooden doorway at X -7 / Z 3. Fire twice at each individual board to break it. Removing lower boards creates real crawl and walking openings. Hold F for 2.2 seconds nearby to rebuild. All previous weapon and impact testing is preserved.</p>
-      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span></div>
+      <p class="headline">LIVE-FIRE · BARRICADE · SOFT WALL.</p>
+      <p class="description">V0.10 SOFT-WALL TEST · Turn right from spawn to the plaster wall marked X +7 / Z +3. Bullets carve small real openings. Fire through the holes, or carve a player-sized route. Press T to rebuild the plaster once you're clear of its face. Wooden barricades, original firing, ADS and persistent wall/box impacts are preserved.</p>
+      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
     </div>
@@ -37,7 +37,8 @@
       <div class="stage"><span>03</span><div><strong>FOOTSTEP AUDIO</strong><p>Walk / sprint / crouch / landing, M to mute</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>04</span><div><strong>WEAPON PROTOTYPE</strong><p>Original 710 RPM / chambered reloads / recoil / ejected casings</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>05</span><div><strong>WOODEN BARRICADE</strong><p>Six destructible boards / physical doorway / hold F to rebuild</p></div><b>TEST NOW</b></div>
-      <div class="stage muted"><span>06</span><div><strong>SOFT WALLS &amp; REINFORCEMENTS</strong><p>Not started until barricades pass browser testing</p></div><b>LATER</b></div>
+      <div class="stage"><span>06</span><div><strong>SOFT-WALL PENETRATION</strong><p>Carve real openings / pass rounds through / T reset</p></div><b>TEST NOW</b></div>
+      <div class="stage muted"><span>07</span><div><strong>REINFORCED WALLS</strong><p>Not started until soft-wall testing passes</p></div><b>LATER</b></div>
       <div class="board-footer">ONE FEATURE AT A TIME. NOTHING FAKE.</div>
     </aside>
   </main>
@@ -64,7 +65,7 @@
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
-      <div class="siege-tip">Press <kbd>F</kbd> near broken barricade to rebuild.</div>
+      <div class="siege-tip"><kbd>F</kbd> rebuild wood · <kbd>T</kbd> reset plaster.</div>
       <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
@@ -127,6 +128,11 @@
       <span id="position"></span><span id="speed"></span><span id="ground"></span>
       <span id="motion"></span>
     </div>
+    <div id="soft-wall-readout" class="soft-wall-readout hidden" aria-live="off">
+      <strong>GYPSUM SOFT-WALL TEST</strong>
+      <span>STATUS <b id="soft-wall-status">INTACT</b> · <b id="soft-wall-removed">0</b> OPEN CELLS</span>
+      <small>FIRE TO CARVE AN OPENING · T TO RESTORE</small>
+    </div>
     <div id="barricade-prompt" class="barricade-prompt hidden" data-rebuild="intact" aria-label="Barricade repair status">
       <div class="barricade-prompt-head">
         <span class="barricade-station-icon">▥</span>
@@ -182,6 +188,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-015"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-016"></script>
 </body>
 </html>
