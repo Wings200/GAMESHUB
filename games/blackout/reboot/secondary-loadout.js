@@ -9,7 +9,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:false},
  {id:"hard-breach",name:"Hard Breach Charge",side:"attack",role:"Reinforced wall breach (unprotected)",implemented:false},
  {id:"claymore",name:"Claymores",side:"attack",role:"Directional trap",implemented:false},
- {id:"c4",name:"C4 / Nitro Cell",side:"defend",role:"Remote explosive",implemented:false},
+ {id:"c4",name:"C4 / Nitro Cell",side:"defend",role:"Remote explosive",implemented:true},
  {id:"impact",name:"Impact Grenades",side:"defend",role:"Impact destruction",implemented:false},
  {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:false},
  {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:true},
