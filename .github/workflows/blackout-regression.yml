@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.13 · free operator selection / Striker + Sentry / legacy mechanics
+    name: Reboot V0.14 · two-slot secondary gadget design plans / legacy regression
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -51,5 +51,6 @@ jobs:
           node --check games/blackout/reboot/drone-roster.js
           node --check games/blackout/reboot/operators.js
           node --check games/blackout/reboot/operator-select.js
+          node --check games/blackout/reboot/secondary-loadout.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
