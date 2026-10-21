@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.6.1 — verified ADS and unobstructed target head lanes
+// BLACKOUT REBOOT V0.7 — actual 3D optic shot zero and ballistic trace
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-003";
@@ -9,6 +9,7 @@ import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006"
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-007";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
+import {shotScreenPoint,labelShot} from "./shot-ray.js?v=reboot-008";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -16,7 +17,7 @@ const play=$("play"),message=$("message"),error=$("error");
 const positionText=$("position"),speedText=$("speed"),groundText=$("ground");
 const modeText=$("mode"),motionText=$("motion"),hint=$("hint");
 const crosshair=$("crosshair");
-const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice"),leanText=$("lean-status");
+const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice"),leanText=$("lean-status"),ballisticsDebug=$("ballistics-debug");
 let renderer;
 try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance"});
@@ -106,6 +107,9 @@ let gunKick=0,recoilRecovery=0,lastShotAt=-Infinity,lastEmptyClick=-Infinity;
 let firing=false,aimHeld=false,reloadPressed=false,aimMix=0,targetHits=0;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
+let debugShots=false;
+const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
+const shotTraces=[];
 function resize(){
  const width=Math.max(1,window.innerWidth),height=Math.max(1,window.innerHeight);
  renderer.setSize(width,height,false);
@@ -171,6 +175,13 @@ document.addEventListener("keydown",event=>{
    hint.textContent=leanTarget===-1?"LEAN LEFT · Q TO RETURN CENTER":
      leanTarget===1?"LEAN RIGHT · E TO RETURN CENTER":"LEAN CENTERED";
  }
+ if(event.code==="KeyB"&&!event.repeat){
+   debugShots=!debugShots;
+   ballisticsDebug.classList.toggle("hidden",!debugShots);
+   if(debugShots)ballisticsDebug.textContent="BALLISTICS DEBUG ON · FIRE TO SEE ACTUAL HIT / AIM SOURCE";
+   hint.textContent=debugShots?"B TO HIDE BALLISTICS · SHOT RAYS TRACED IN WORLD":
+    "BALLISTICS DEBUG OFF · B TO ENABLE";
+ }
  if(event.code==="KeyR"&&!event.repeat)reloadPressed=true;
  if(event.code==="KeyM"&&!event.repeat){
    const muted=footstepAudio.toggleMute();
@@ -202,6 +213,36 @@ function hudFrame(){
  hitsText.textContent=String(targetHits);
  leanText.textContent=leanTarget<0?"LEFT":leanTarget>0?"RIGHT":"CENTER";
 }
+function markDebugShot(outcome,screen){
+ if(!debugShots)return;
+ const color=outcome.kind==="target"?0x5fffd2:outcome.kind==="blocked"?0xffa160:0x6eafff;
+ const destination=outcome.hit?
+   outcome.hit.point.clone():raycaster.ray.at(raycaster.far,new THREE.Vector3());
+ const geometry=new THREE.BufferGeometry().setFromPoints([
+   raycaster.ray.origin.clone(),destination
+ ]);
+ const material=new THREE.LineBasicMaterial({
+   color,transparent:true,opacity:.95,depthTest:false,depthWrite:false
+ });
+ const line=new THREE.Line(geometry,material);
+ line.renderOrder=60;scene.add(line);
+ shotTraces.push({line,time:.65});
+ const where=outcome.kind==="target"?outcome.target.id:
+   outcome.obstacle||outcome.kind;
+ ballisticsDebug.textContent="B / SHOT: "+where.toUpperCase()+
+   " · "+screen.origin.toUpperCase()+
+   " · NDC "+screen.x.toFixed(3)+","+screen.y.toFixed(3)+
+   " · "+destination.distanceTo(raycaster.ray.origin).toFixed(1)+"M";
+}
+function tickDebugShots(dt){
+ for(let i=shotTraces.length-1;i>=0;i--){
+  const item=shotTraces[i];item.time-=dt;
+  if(item.time<=0){
+   scene.remove(item.line);item.line.geometry.dispose();item.line.material.dispose();
+   shotTraces.splice(i,1);
+  }
+ }
+}
 function fireShot(shot,sightAligned,now){
  // Restored from BLACKOUT V8: high/low layered firing sound, true rate of fire,
  // shot-pattern recoil, broad hip cone with stance and movement modifiers.
@@ -211,13 +252,25 @@ function fireShot(shot,sightAligned,now){
  const cone=legacyShotCone(shot,{
   aligned:sightAligned,prone:player.prone,crouched:player.crouched,moving:player.moving
  });
+ // Use the dot THAT IS ACTUALLY ON SCREEN, not assumed NDC(0,0).
+ // The gun view has already been updated this frame before this method runs.
  camera.updateMatrixWorld(true);
- raycaster.setFromCamera({x:cone.x,y:cone.y},camera);
+ const reticleVisible=sightAligned&&weaponView.reticle.visible;
+ if(reticleVisible){
+  weaponView.reticle.getWorldPosition(opticWorld);
+  opticNdc.copy(opticWorld).project(camera);
+ }
+ const screen=shotScreenPoint({
+  aiming:sightAligned,reticleVisible,
+  reticleProjection:reticleVisible?opticNdc:null
+ });
+ raycaster.setFromCamera({x:screen.x+cone.x,y:screen.y+cone.y},camera);
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=raycaster.intersectObjects(
   [...shootableSolids,...activeTargets.map(t=>t.group)],true);
  const outcome=firstHitType(intersections,activeTargets);
+ markDebugShot(outcome,screen);
  if(outcome.hit)shotEffects.mark(outcome.hit,outcome.kind==="target");
  if(outcome.kind==="target"){
   const target=outcome.target;
@@ -298,6 +351,10 @@ function animate(now){
  camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
  camera.updateMatrixWorld(true);
  if(locked){
+  // The gun-mounted optic pose MUST update before ballistics. This prevents
+  // shooting with a previous-frame sight transform (including while leaning).
+  weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now,aimHeld);
+  camera.updateMatrixWorld(true);
   // Catch up at most three shots after a slow frame, as in original BLACKOUT.
   // No shot is allowed during reload or when sprinting.
   // A held ADS button must never use the giant 0.18 hipfire cone, even
@@ -318,13 +375,13 @@ function animate(now){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
  shotEffects.tick(dt);
+ tickDebugShots(dt);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
- weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now);
  crosshair.classList.toggle("hidden",!locked||!aimState(aimHeld,aimMix).hipCrosshairVisible);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot V0.6.1 ADS shooting and target-lane corrections",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot V0.7 optic-projected hit scan and ballistic diagnostics",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
