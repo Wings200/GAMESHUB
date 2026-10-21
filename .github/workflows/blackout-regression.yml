@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.7 · sight-projected bullets and clear ranges
+    name: Reboot V0.7.1 · live sight and actual shot diagnostics
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
