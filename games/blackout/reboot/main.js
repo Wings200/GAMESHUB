@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-032";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-032";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-033";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-033";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -816,8 +816,13 @@ function animate(now){
    // immediately upon colliding with floor or physical cover.
    const impactTick=tickImpact(impactState,dt,activeDroneObstacles());
    impactState=impactTick.state;
-   for(const device of impactState.devices)
-    impactViews.get(device.id)?.sync(device);
+   for(const device of impactState.devices){
+    const view=impactViews.get(device.id);
+    if(view){
+     view.sync(device);
+     if(!device.armed)impactViews.delete(device.id); // dispose exactly once
+    }
+   }
    for(const blast of impactTick.blasts){
     shotNotice.textContent=applyGadgetBlast(blast,"IMPACT");
     shotNoticeLeft=1.5;
