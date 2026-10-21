@@ -4,7 +4,7 @@
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
  operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-025";
 import {secondaryOptions,newSecondaryPlans,plannedSecondaries,
- planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-026";
+ planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-028";
 
 export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}={}){
  if(!root)throw new Error("Operator selection root is required");
