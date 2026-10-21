@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.12.1 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.12.2 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-019">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-020">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.12.1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.12.2</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 012.1</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 012.2</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">RECON DRONE · LIVE MECHANICS TEST.</p>
-      <p class="description">V0.12.1 REAL DRONE INVENTORY · Press 5 to open cameras. If none are deployed, your first R-1 is physically thrown and you enter its feed automatically. Press 6 to THROW your one spare drone without entering cameras. Two drones total: Q/E changes camera once both are out, mouse steers the selected drone, WASD drives, SPACE jumps, SHIFT uses three rechargeable boost charges. Press 5 again or X to return to your operator. In the Testing Range the spare is unlocked; future matches restrict spare throws until action phase.</p>
+      <p class="description">V0.12.2 DRONE CAMERA FIX · Press 6 to physically throw a drone (you carry TWO in this Testing Range). Press 5 to view a camera only AFTER a drone has been thrown; 5 never creates a drone. You cannot see your own drone's housing in its live camera view. Exit with X or 5, throw your second drone with 6, then use 5 and Q/E to cycle between the two feeds. Actual 5v5 rules will provide one prep drone and ONE spare after prep phase; match phases do not exist in the Testing Range yet.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
@@ -67,7 +67,7 @@
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
-      <div class="siege-tip"><kbd>5</kbd> cameras · <kbd>6</kbd> throw spare · <kbd>X</kbd> exit feed.</div>
+      <div class="siege-tip"><kbd>5</kbd> cameras ONLY · <kbd>6</kbd> throw drone · <kbd>X</kbd> exit feed.</div>
       <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
@@ -77,14 +77,14 @@
       <small>TRAINING · INVULNERABLE</small>
     </div>
 
-    <div class="siege-quickbar siege-equipment-bar" aria-label="Active drone equipment shortcuts">
+    <div class="siege-quickbar siege-equipment-bar" aria-label="Drone camera and throwable inventory shortcuts">
       <div class="siege-quickslot" title="Open drone cameras">
         <span class="siege-quick-icon">▣</span><kbd>5</kbd>
         <small>CAMERAS <b id="camera-drone-count">0</b></small>
       </div>
-      <div class="siege-quickslot" title="Throw remaining spare drone">
+      <div class="siege-quickslot" title="Throw carried drone">
         <span class="siege-quick-icon">◎</span><kbd>6</kbd>
-        <small>SPARE <b id="spare-drone-count">1</b></small>
+        <small>DRONES <b id="spare-drone-count">2</b></small>
       </div>
     </div>
 
@@ -214,6 +214,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-019"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-020"></script>
 </body>
 </html>
