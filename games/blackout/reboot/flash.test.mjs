@@ -56,7 +56,7 @@ test("flash effects are independent of team, apply zero HP damage and recover to
  const d=flashExposure(burst,{...player,z:0,side:"defend"});
  assert.deepEqual(a,d,"no friendly immunity to visual flash");
  let effect=applyFlashEffect(newFlashEffect(),a);
- assert.ok(flashOpacity(effect)>.6);
+ assert.equal(flashOpacity(effect),1,"a flash hit must completely white out the display");
  const before=effect.remaining;
  effect=stepFlashEffect(effect,.05);
  assert.ok(effect.remaining<before);
@@ -80,6 +80,7 @@ test("full whiteout holds for 2.2 seconds before slowly fading for another 3.8 s
  assert.ok(Math.abs(exposure.duration-6)<1e-8);
  let effect=applyFlashEffect(newFlashEffect(),exposure);
  const start=flashOpacity(effect);
+ assert.equal(start,1,"initial whiteout must be completely opaque pure white");
  // At 2.15 sec, no loss of whiteout strength is allowed.
  for(let i=0;i<43;i++)effect=stepFlashEffect(effect,.05);
  assert.ok(Math.abs(flashOpacity(effect)-start)<1e-7,
@@ -109,4 +110,27 @@ test("flashbangs remain harmless and face-away/cover behavior unaffected by long
  assert.equal(away.duration,0);
  assert.equal(flashOpacity(applyFlashEffect(newFlashEffect(),blocked)),0);
  assert.equal(flashOpacity(applyFlashEffect(newFlashEffect(),away)),0);
+});
+
+test("even a weaker valid hit is fully opaque instead of semi-transparent",()=>{
+ const p={...player,z:0};
+ const near=flashExposure({x:0,y:1.6,z:-1,radius:FLASH.radius},p);
+ const edge=flashExposure({x:0,y:1.6,z:-7.6,radius:FLASH.radius},p);
+ assert.ok(near.intensity>.7&&edge.intensity>0&&edge.intensity<.3,
+  "exposure strength still measures distance and angle");
+ const strongEffect=applyFlashEffect(newFlashEffect(),near);
+ const edgeEffect=applyFlashEffect(newFlashEffect(),edge);
+ assert.equal(flashOpacity(strongEffect),1);
+ assert.equal(flashOpacity(edgeEffect),1,
+  "farther flash may be less likely to hit, but a real hit has no transparent whiteout");
+ assert.equal(edgeEffect.intensity,1);
+ let held=edgeEffect;
+ for(let i=0;i<40;i++){
+  assert.equal(flashOpacity(held),1,
+   "whiteout remains fully opaque throughout the hold");
+  held=stepFlashEffect(held,.05);
+ }
+ const blocked=flashExposure({x:0,y:1.6,z:-4,radius:FLASH.radius},p,
+  [{x:0,z:-2,width:5,depth:.4,height:3}]);
+ assert.equal(flashOpacity(applyFlashEffect(newFlashEffect(),blocked)),0);
 });

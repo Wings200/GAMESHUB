@@ -604,12 +604,12 @@ button.operator-card.selected{border-color:#99e9d8;background:#24474d;box-shadow
 /* Mouse wheel click is a single button press, NOT wheel scrolling. */
 #utility-key-special{letter-spacing:-.01em}
 
-/* V0.17: sight disruption is a visual effect, not weapon/HP damage.
-   Fixed whiteout covers the player's entire view and HUD, but NEVER
-   captures pointer/keyboard input or covers the paused operator menu. */
+/* V0.17.2: opaque, pure #fff covers the entire display including HUD.
+   No tint/gradient/transparency until the timed fade actually begins.
+   The overlay is inert and remains beneath the pause/operator menu. */
 .flash-whiteout{
- position:fixed;inset:0;z-index:15;pointer-events:none;
- background:radial-gradient(ellipse at center,#ffffff 0%,#f7fcff 58%,#dce8f5 100%);
+ position:fixed;inset:0;z-index:19;pointer-events:none;
+ background:#ffffff;
  opacity:0;display:none;will-change:opacity
 }
 body.range-active .flash-whiteout{display:block}

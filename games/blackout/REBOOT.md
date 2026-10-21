@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.17.1
+# BLACKOUT — Clean Reboot V0.17.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,11 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.17.2 · FULLY OPAQUE FLASHBANG WHITEOUT**
+- User clarified that being flashed must leave their **entire screen uniformly pure white**, with zero view of the environment or HUD, not a semi-transparent whitening filter.
+- Any flash that actually hits the player (within range, looking toward it, clear sightline) now applies exactly **1.0 overlay opacity** for the complete **2.2-second hold**, regardless of the exposure intensity used for hit evaluation. Only after that can the image fade very gradually for **3.8 more seconds**. The screen overlay is now uniform **#ffffff** (no pale-blue radial gradient), covers the whole viewport above the HUD and never captures input.
+- The throwing physics, 1.75-second fuse, ability to avoid the flash by turning away or hiding behind solid cover, friendly/self flash rules, and zero HP damage are unchanged. Added tests verifying even a weaker valid hit fully blinds and that CSS is pure white. The browser must be hard-refreshed after the cache bump to load the new behavior.
 
 **2026-10-21 / V0.17.1 · FLASHBANG WHITEOUT TIMING (USER FEEDBACK)**
 - The user approved physical/directional flashbang behavior but requested the visible flash stay steady for **at least 2 seconds**, then fade **very slowly** rather than immediately fading.

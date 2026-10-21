@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.17.1 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.17.2 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -37,7 +37,7 @@ import {createImpactView} from "./impact-view.js?v=reboot-033";
 import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-036";
 import {createFragView} from "./frag-view.js?v=reboot-034";
 import {FLASH,newFlashState,throwFlash,tickFlash,flashExposure,newFlashEffect,
- applyFlashEffect,stepFlashEffect,flashOpacity} from "./flash.js?v=reboot-038";
+ applyFlashEffect,stepFlashEffect,flashOpacity} from "./flash.js?v=reboot-039";
 import {createFlashView,createFlashBurst} from "./flash-view.js?v=reboot-037";
 
 const $=id=>document.getElementById(id);
@@ -1110,5 +1110,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.17.1 flash holds 2.2s, fades slowly for 3.8s: physical fuse, directional blindness, solid cover",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.17.2 solid-white flash holds 2.2s, fades slowly for 3.8s: physical fuse, directional blindness, solid cover",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

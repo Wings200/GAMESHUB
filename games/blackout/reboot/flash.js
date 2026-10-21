@@ -1,4 +1,4 @@
-// BLACKOUT V0.17.1 · flashbang visual hold and extended recovery.
+// BLACKOUT V0.17.2 · full-strength opaque whiteout, then delayed smooth recovery.
 import {nitroThrowPosition} from "./nitro.js?v=reboot-036";
 export const FLASH=Object.freeze({
  charges:2,fuse:1.75,gravity:18,radius:9,fullRadius:1.4,
@@ -101,9 +101,12 @@ export function flashExposure(burst,player,obstacles=[]){
 export function newFlashEffect(){return {intensity:0,duration:0,remaining:0};}
 export function applyFlashEffect(state,exposure){
  if(!exposure||exposure.intensity<=0)return state;
- // Consecutive detonations can extend the effect but never weaken it.
- const strength=Math.min(1,Math.max(0,exposure.intensity));
- const duration=Math.max(.1,exposure.duration);
+ // Exposure determines IF a player is flashed, not a transparency value.
+ // Every valid flash hit must completely obscure the entire screen in white,
+ // including glancing flashes. Looking away or solid cover still prevents it.
+ // Consecutive flashes restart/extend the effect and never weaken it.
+ const strength=1;
+ const duration=Math.max(FLASH.holdSeconds+FLASH.fadeSeconds,exposure.duration);
  return {intensity:Math.max(strength,state?.intensity??0),
   duration:Math.max(duration,state?.duration??0),remaining:Math.max(duration,state?.remaining??0)};
 }
@@ -114,7 +117,7 @@ export function stepFlashEffect(state,dt){
 }
 export function flashOpacity(state){
  if(!state||state.remaining<=0||state.duration<=0)return 0;
- // A successful flash holds at its original brightness for >= 2 seconds.
+ // A successful flash stays 100% opaque white for at least 2 seconds.
  // ONLY after the hold does the long, smooth recovery begin.
  const fade=Math.min(FLASH.fadeSeconds,state.duration);
  if(state.remaining>fade)return Math.max(0,Math.min(1,state.intensity));
