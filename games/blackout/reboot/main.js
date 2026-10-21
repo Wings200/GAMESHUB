@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.7.3 — face-aligned, edge-clipped impact decals
+// BLACKOUT REBOOT V0.7.4 — ignore decorative outlines in bullet raycast
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -6,10 +6,11 @@ import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-006";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
-import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-011";
+import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
+import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -237,8 +238,8 @@ function updateAimProbe(now){
  aimRaycaster.setFromCamera({x:screen.x,y:screen.y},camera);
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
- const intersections=aimRaycaster.intersectObjects(
-  [...shootableSolids,...active.map(t=>t.group)],true);
+ const intersections=combatIntersections(aimRaycaster,
+  shootableSolids,active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -251,6 +252,8 @@ function markDebugShot(outcome,screen){
  lastShotReadout=describeShot(outcome,screen,distance,zone)+
   (outcome.hit&&outcome.kind!=="target"?
     " · SURFACE "+shotEffects.lastFace+
+    " · "+shotEffects.lastObjectId.toUpperCase()+
+    " · HOLES "+shotEffects.getBoxCount(shotEffects.lastObjectId)+
     " · Y "+outcome.hit.point.y.toFixed(2):"")+
   " · NDC "+screen.x.toFixed(3)+","+screen.y.toFixed(3);
  // No long-lived 3D lines: the video showed old world-space tracers
@@ -281,8 +284,8 @@ function fireShot(shot,sightAligned,now){
  raycaster.setFromCamera({x:screen.x+cone.x,y:screen.y+cone.y},camera);
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
- const intersections=raycaster.intersectObjects(
-  [...shootableSolids,...activeTargets.map(t=>t.group)],true);
+ const intersections=combatIntersections(raycaster,
+  shootableSolids,activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  if(outcome.hit)shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
@@ -397,5 +400,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot V0.7.3 face-aligned impact decals",FOUNDATION_VERSION,
+console.info("BLACKOUT reboot V0.7.4 combat raycast with box-face impacts",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
