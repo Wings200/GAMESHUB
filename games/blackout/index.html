@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.8.0 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.8.1 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-013">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-014">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,12 +16,12 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.8.0</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.8.1</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 008.0</div>
+      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 008.1</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">FIRST LIVE-FIRE PROTOTYPE.</p>
       <p class="description">BOX BULLET-HOLE FIX / TEST 008.0: Small test boxes now receive genuine face-attached, persistent bullet holes. Decorative edge outlines no longer intercept shots before the actual box surface. Press B to see exactly which box face was hit and its visible hole count. V clears all holes. Original BLACKOUT gunfire remains.</p>
@@ -43,7 +43,7 @@
 
   <!-- Tactical HUD V0.8. Deliberately close in screen composition to the
        provided Siege drill screenshot, but original BLACKOUT visual assets. -->
-  <section id="hud" class="hud hidden" aria-label="BLACKOUT tactical live-fire HUD">
+  <section id="hud" class="hud hidden" data-hud-mode="player" aria-label="BLACKOUT tactical live-fire HUD">
     <div class="siege-objective" aria-label="Training objective">
       <span id="mission-check" class="siege-mission-checkbox" aria-hidden="true"></span>
       <span class="siege-mission-copy">Eliminate <b id="target-hits">0</b> / 4 targets in <strong>TEST RANGE</strong></span>
@@ -62,20 +62,20 @@
 
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
-      <div class="siege-tip">Press <kbd>B</kbd> to toggle aim debug.</div>
-      <div class="siege-tip">Press <kbd>ESC</kbd> to pause training.</div>
+      <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
+      <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
     <div class="siege-health" aria-label="Training health display">
-      <div class="siege-health-numbers"><b>110</b><span>/ 110</span></div>
+      <div class="siege-health-numbers"><b>125</b><span>/ 125</span></div>
       <div class="siege-health-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-      <small>TRAINING · DAMAGE DISABLED</small>
+      <small>TRAINING · INVULNERABLE</small>
     </div>
 
     <div class="siege-quickbar" aria-label="Training quick actions">
-      <div class="siege-quickslot"><span class="siege-quick-icon">◈</span><kbd>7</kbd></div>
-      <div class="siege-quickslot"><span class="siege-quick-icon">▣</span><kbd>5</kbd></div>
-      <div class="siege-quickslot"><span class="siege-quick-icon">⌾</span><kbd>Z</kbd></div>
+      <div class="siege-quickslot" title="Lean left"><span class="siege-quick-icon">↶</span><kbd>Q</kbd></div>
+      <div class="siege-quickslot" title="Lean right"><span class="siege-quick-icon">↷</span><kbd>E</kbd></div>
+      <div class="siege-quickslot" title="Prone toggle"><span class="siege-quick-icon">↧</span><kbd>Z</kbd></div>
     </div>
 
     <div class="siege-nav">
@@ -92,9 +92,9 @@
 
     <div class="siege-gear" aria-label="Weapon and equipment">
       <div class="siege-equipment">
-        <div class="siege-gadget"><kbd>G</kbd><span class="siege-glyph">◉</span><strong>—</strong></div>
-        <div class="siege-gadget"><kbd>6</kbd><span class="siege-glyph">▤</span><strong>—</strong></div>
-        <small>UTILITY NOT EQUIPPED</small>
+        <div class="siege-gadget" aria-label="No primary gadget equipped"><span class="siege-gadget-icon">◉</span><strong>—</strong></div>
+        <div class="siege-gadget" aria-label="No secondary gadget equipped"><span class="siege-gadget-icon">▤</span><strong>—</strong></div>
+        <small>NO GADGETS YET</small>
       </div>
       <div class="siege-weapon-stack">
         <div class="siege-weapon-row active">
@@ -129,7 +129,47 @@
     <div id="shot-notice" class="shot-notice hidden" role="status"></div>
     <div id="ballistics-debug" class="ballistics-debug hidden" role="status" aria-live="off"></div>
   </section>
+  <!-- Prepared UI profiles from the user's real Siege screenshots.
+       Hidden: drone and camera mechanics are NOT implemented yet.
+       The game must switch profiles only when a playable device exists. -->
+  <section id="drone-hud" class="device-hud device-hud-drone hidden" data-hud-mode="drone"
+           aria-label="BLACKOUT drone camera interface">
+    <div class="device-map-frame" aria-hidden="true">
+      <div class="device-map-wire"></div><span class="device-map-ping">◆</span>
+    </div>
+    <div class="device-nav">
+      <div class="device-site-line"><span class="site-marker">B</span><span class="site-marker">A</span></div>
+      <div class="device-nav-body">
+        <span class="device-key"><b>‹</b><kbd>Q</kbd></span>
+        <div class="device-camera-status">
+          <span class="device-device-icon" aria-hidden="true">▣</span>
+          <div class="device-pips"><i></i><i class="active"></i><i></i><i></i><i></i></div>
+        </div>
+        <span class="device-key"><kbd>E</kbd><b>›</b></span>
+      </div>
+    </div>
+    <div class="device-actions" aria-hidden="true">
+      <span><b>⌁</b><kbd>7</kbd></span><span><b>⊞</b><kbd>X</kbd></span><span><b>⌖</b><kbd>Z</kbd></span>
+    </div>
+    <div class="device-caption">BLACKOUT / DRONE VIEW · HUD PROFILE ONLY</div>
+  </section>
+  <section id="camera-hud" class="device-hud device-hud-camera hidden" data-hud-mode="camera"
+           aria-label="BLACKOUT security and spectator camera interface">
+    <div class="device-camera-switcher">
+      <div class="device-view-toggle">
+        <span class="device-eye" aria-hidden="true">◉</span>
+        <span class="device-eye-off" aria-hidden="true">◉̸</span>
+        <kbd>CTRL</kbd>
+      </div>
+      <div class="device-view-caption">OBSERVATION / CAMERA</div>
+      <div class="device-feed-status">
+        <span class="device-camera-glyph" aria-hidden="true">◉</span>
+        <b id="device-camera-count">—</b><div class="device-bar"></div>
+      </div>
+    </div>
+    <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
+  </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-013"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-014"></script>
 </body>
 </html>
