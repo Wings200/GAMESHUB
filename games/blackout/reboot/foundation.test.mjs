@@ -361,7 +361,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-strike"'));
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
  assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
- assert.ok(html.includes("Barbed wire retains enemy-only damage"));
+ assert.ok(html.includes("wire still damages attackers only"));
  assert.ok(html.includes("THREE PLAYABLE DEFENDER GADGETS"));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
