@@ -9,7 +9,7 @@ export const BARRICADE=Object.freeze({
 });
 export function createBarricadeState(){
  return {boards:Array.from({length:BARRICADE.boardCount},()=>BARRICADE.boardHP),
-  hits:0,broken:0,rebuilds:0};
+  hits:0,broken:0,rebuilds:0,meleeHits:0};
 }
 export function boardBounds(index){
  if(!Number.isInteger(index)||index<0||index>=BARRICADE.boardCount)
@@ -35,7 +35,7 @@ export function barricadeDamage(state,index,points=1){
 export function barricadeRebuild(state){
  if(state.boards.every(hp=>hp===BARRICADE.boardHP))return state;
  return {...state,boards:state.boards.map(()=>BARRICADE.boardHP),
-  hits:0,broken:0,rebuilds:state.rebuilds+1};
+  hits:0,broken:0,rebuilds:state.rebuilds+1,meleeHits:0};
 }
 export function barricadeBlockers(state){
  const b=BARRICADE,opening=b.openingWidth/2;
@@ -69,4 +69,21 @@ export function barricadeStatus(state){
  if(state.boards.every(v=>v===BARRICADE.boardHP))return "INTACT";
  if(state.boards.every(v=>v===0))return "OPEN";
  return "DAMAGED";
+}
+
+// Melee destroys the ENTIRE wood barricade after three close-range hits.
+// Rifle fire remains independent per-board; this only applies to melee.
+export const BARRICADE_MELEE_HITS=3;
+export function barricadeMeleeDamage(state){
+ if(state.boards.every(hp=>hp===0))
+  return {state,handled:false,broken:false};
+ const hits=Math.min(BARRICADE_MELEE_HITS,(state.meleeHits||0)+1);
+ if(hits<BARRICADE_MELEE_HITS)
+  return {state:{...state,meleeHits:hits},handled:true,broken:false,hits};
+ const toBreak=state.boards.filter(hp=>hp>0).length;
+ return {
+  state:{...state,meleeHits:hits,boards:state.boards.map(()=>0),
+   broken:state.broken+toBreak,hits:state.hits+toBreak},
+  handled:true,broken:true,hits
+ };
 }
