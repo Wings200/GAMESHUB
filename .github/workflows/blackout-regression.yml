@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.11 · 3-second metal reinforcement and ballistic protection
+    name: Reboot V0.12 · recon drone boost, jump cooldown, and real collision
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -46,5 +46,7 @@ jobs:
           node --check games/blackout/reboot/soft-wall-view.js
           node --check games/blackout/reboot/reinforcement.js
           node --check games/blackout/reboot/reinforcement-view.js
+          node --check games/blackout/reboot/drone-physics.js
+          node --check games/blackout/reboot/drone-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
