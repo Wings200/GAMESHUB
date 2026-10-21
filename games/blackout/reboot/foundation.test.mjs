@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-037",
+ for(const src of ["./reboot/main.js?v=reboot-038",
    "./reboot/style.css?v=reboot-037"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -379,7 +379,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Timed explosive",implemented:true'));
  assert.ok(html.includes("Frag Grenades"));
  // V0.17: actual physical flash throws, fuse and camera-facing eyesight effect.
- assert.ok(main.includes('from "./flash.js?v=reboot-037"'));
+ assert.ok(main.includes('from "./flash.js?v=reboot-038"'));
  assert.ok(main.includes('from "./flash-view.js?v=reboot-037"'));
  assert.ok(main.includes('flashState=newFlashState()'));
  assert.ok(main.includes('throwFlash(flashState,player)'));
@@ -393,6 +393,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(css.includes(".flash-whiteout"));
  assert.ok(read("reboot/legacy-audio.js").includes('case "gadget-flash"'));
  assert.ok(html.includes("FLASH 1.75S"));
+ assert.ok(read("reboot/flash.js").includes("holdSeconds:2.2,fadeSeconds:3.8"));
  assert.ok(main.includes('impactState=newImpactState()'));
  assert.ok(main.includes('throwImpact(impactState,player)'));
  assert.ok(main.includes('createImpactView(THREE,scene,result.device)'));

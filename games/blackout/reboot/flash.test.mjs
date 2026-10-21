@@ -62,7 +62,7 @@ test("flash effects are independent of team, apply zero HP damage and recover to
  assert.ok(effect.remaining<before);
  const weaker=applyFlashEffect(effect,{intensity:.1,duration:.5});
  assert.equal(weaker.intensity,effect.intensity);
- for(let i=0;i<100;i++)effect=stepFlashEffect(effect,.05);
+ for(let i=0;i<130;i++)effect=stepFlashEffect(effect,.05);
  assert.equal(effect.remaining,0);
  assert.equal(flashOpacity(effect),0);
 });
@@ -70,4 +70,43 @@ test("no blindness for invalid inputs or when flash is directly behind",()=>{
  assert.equal(flashExposure(null,player).intensity,0);
  assert.equal(flashExposure({x:NaN,y:0,z:0},player).intensity,0);
  assert.equal(flashExposure({x:0,y:1.6,z:4}, {...player,z:0},[]).intensity,0);
+});
+
+test("full whiteout holds for 2.2 seconds before slowly fading for another 3.8 seconds",()=>{
+ const exposure=flashExposure({x:0,y:1.6,z:-1,radius:FLASH.radius},{...player,z:0});
+ assert.ok(exposure.intensity>.95);
+ assert.equal(FLASH.holdSeconds,2.2);
+ assert.equal(FLASH.fadeSeconds,3.8);
+ assert.ok(Math.abs(exposure.duration-6)<1e-8);
+ let effect=applyFlashEffect(newFlashEffect(),exposure);
+ const start=flashOpacity(effect);
+ // At 2.15 sec, no loss of whiteout strength is allowed.
+ for(let i=0;i<43;i++)effect=stepFlashEffect(effect,.05);
+ assert.ok(Math.abs(flashOpacity(effect)-start)<1e-7,
+  "flash must not fade during initial 2+ second hold");
+ // The next animation step ends the hold, the following one starts fading.
+ effect=stepFlashEffect(effect,.05);
+ assert.ok(Math.abs(flashOpacity(effect)-start)<1e-7);
+ effect=stepFlashEffect(effect,.05);
+ const firstFade=flashOpacity(effect);
+ assert.ok(firstFade<start&&firstFade>start*.98,
+  "whiteout must begin to recover very gradually, not vanish instantly");
+ // Another second into the fade still leaves the screen significantly white.
+ for(let i=0;i<20;i++)effect=stepFlashEffect(effect,.05);
+ assert.ok(flashOpacity(effect)>start*.5);
+ assert.ok(flashOpacity(effect)<start);
+ // The remaining fade completes at approximately 6 seconds total.
+ for(let i=0;i<85;i++)effect=stepFlashEffect(effect,.05);
+ assert.equal(effect.remaining,0);
+ assert.equal(flashOpacity(effect),0);
+});
+test("flashbangs remain harmless and face-away/cover behavior unaffected by longer visual effects",()=>{
+ const burst={x:0,y:1.6,z:-3,radius:FLASH.radius};
+ const p={...player,z:0};
+ const blocked=flashExposure(burst,p,[{x:0,z:-1.5,width:4,depth:.25,height:3}]);
+ const away=flashExposure(burst,{...p,yaw:Math.PI});
+ assert.equal(blocked.duration,0);
+ assert.equal(away.duration,0);
+ assert.equal(flashOpacity(applyFlashEffect(newFlashEffect(),blocked)),0);
+ assert.equal(flashOpacity(applyFlashEffect(newFlashEffect(),away)),0);
 });

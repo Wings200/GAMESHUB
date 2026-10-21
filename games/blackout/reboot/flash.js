@@ -1,8 +1,8 @@
-// BLACKOUT V0.17 · physically thrown attacker flashbang with direction and cover.
+// BLACKOUT V0.17.1 · flashbang visual hold and extended recovery.
 import {nitroThrowPosition} from "./nitro.js?v=reboot-036";
 export const FLASH=Object.freeze({
  charges:2,fuse:1.75,gravity:18,radius:9,fullRadius:1.4,
- maxDuration:3.25,size:.115,restSpeed:.68
+ holdSeconds:2.2,fadeSeconds:3.8,size:.115,restSpeed:.68
 });
 export function newFlashState(){return {charges:FLASH.charges,nextId:1,devices:[]};}
 export function throwFlash(state,player){
@@ -96,7 +96,7 @@ export function flashExposure(burst,player,obstacles=[]){
  const near=Math.min(1,Math.max(0,(max-distance)/(max-FLASH.fullRadius)));
  const facingFactor=Math.min(1,Math.max(0,(facing-.12)/.88));
  const intensity=Math.min(1,Math.max(0,near*facingFactor));
- return {intensity,duration:intensity>0?.3+FLASH.maxDuration*intensity:0,occluded:false};
+ return {intensity,duration:intensity>0?FLASH.holdSeconds+FLASH.fadeSeconds:0,occluded:false};
 }
 export function newFlashEffect(){return {intensity:0,duration:0,remaining:0};}
 export function applyFlashEffect(state,exposure){
@@ -114,6 +114,10 @@ export function stepFlashEffect(state,dt){
 }
 export function flashOpacity(state){
  if(!state||state.remaining<=0||state.duration<=0)return 0;
- const ratio=Math.max(0,Math.min(1,state.remaining/state.duration));
- return Math.max(0,Math.min(1,state.intensity*Math.pow(ratio,.65)));
+ // A successful flash holds at its original brightness for >= 2 seconds.
+ // ONLY after the hold does the long, smooth recovery begin.
+ const fade=Math.min(FLASH.fadeSeconds,state.duration);
+ if(state.remaining>fade)return Math.max(0,Math.min(1,state.intensity));
+ const progress=Math.max(0,Math.min(1,state.remaining/fade));
+ return Math.max(0,Math.min(1,state.intensity*Math.pow(progress,.78)));
 }

@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.17.0
+# BLACKOUT — Clean Reboot V0.17.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,11 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.17.1 · FLASHBANG WHITEOUT TIMING (USER FEEDBACK)**
+- The user approved physical/directional flashbang behavior but requested the visible flash stay steady for **at least 2 seconds**, then fade **very slowly** rather than immediately fading.
+- Successful facing, unblocked blasts now show their original intensity for **2.2 seconds**, then fade smoothly over a further **3.8 seconds** (up to **6 seconds** total whiteout). The display brightness is still governed by angle and distance; turning away, cover protection, zero flash damage, grenade fuse, inventory and physics are unchanged.
+- Added regression tests for opacity holding steady through the first 2.2s, slow reduction across recovery, and full clearing at 6s. Browser testing is still needed.
 
 **2026-10-21 / V0.17.0 · FIRST ATTACKER FLASHBANG, FUNCTIONAL**
 - The user confirmed the V0.16.4 smaller impact grenade (2.0m radius / max 60 HP) and pickup/redeploy F behavior for C4, then we advanced to next planned gadget: FLASHBANGS.
