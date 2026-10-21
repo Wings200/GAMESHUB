@@ -13,6 +13,13 @@ export function newDrone(x=0,z=6,yaw=0){
 }
 function finite(d){return ["x","y","z","yaw","pitch","speedX","speedZ","vy","charges"]
  .every(k=>Number.isFinite(d[k]));}
+// Real brief airborne toss: not an instant ground spawn. The same drone
+// physics and collision continue to run throughout the throw.
+export function throwDrone(x,z,yaw){
+ const drone=newDrone(x,z,yaw);
+ return {...drone,y:.58,grounded:false,vy:2.15,
+  speedX:-Math.sin(yaw)*6.4,speedZ:-Math.cos(yaw)*6.4,throwLeft:1.1};
+}
 export function canDroneOccupy(x,y,z,objects=[]){
  if(!Number.isFinite(x+y+z)||Math.abs(x)>DRONE.worldLimit||
     Math.abs(z)>DRONE.worldLimit||y<-.0001)return false;
@@ -36,7 +43,26 @@ export function tickDrone(previous,input={},dt=1/60,objects=[]){
    d.charges++;d.chargeTimer=0;
   }
  }else d.chargeTimer=0;
- if(input.boostPressed&&d.charges>0&&d.boostLeft===0){
+ if((d.throwLeft||0)>0){
+  // During deployment the drone travels through the world on a ballistic arc;
+  // it is already a real persistent world object, not a temporary animation.
+  d.throwLeft=Math.max(0,d.throwLeft-step);
+  const dx=d.speedX*step,dz=d.speedZ*step;
+  const n=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.055));
+  for(let i=0;i<n;i++){
+   const sx=dx/n,sz=dz/n;
+   if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects)){
+    d.x+=sx;d.z+=sz;
+   }else{
+    d.speedX=0;d.speedZ=0;d.throwLeft=0;break;
+   }
+  }
+  d.vy-=DRONE.gravity*step;
+  d.y=Math.max(0,d.y+d.vy*step);
+  if(d.y<=0){d.y=0;d.vy=0;d.grounded=true;d.throwLeft=0;}
+  return d;
+ }
+  if(input.boostPressed&&d.charges>0&&d.boostLeft===0){
   d.charges--;d.boosts++;d.boostLeft=DRONE.boostDuration;
   d.chargeTimer=0; // each use restarts the recharge window
  }
