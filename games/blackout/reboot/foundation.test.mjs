@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-030",
+ for(const src of ["./reboot/main.js?v=reboot-031",
    "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -189,7 +189,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ammo"'));
  assert.ok(html.includes('id="target-hits"'));
  assert.ok(main.includes('from "./legacy-weapons.js?v=reboot-006"'));
- assert.ok(main.includes('from "./legacy-audio.js?v=reboot-006"'));
+ assert.ok(main.includes('from "./legacy-audio.js?v=reboot-031"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
  assert.ok(main.includes('from "./weapon-view.js?v=reboot-012"'));
@@ -350,6 +350,19 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.15.2 enemy-only damage. Wire appears ONLY in the punch ray,
  // never in both firearm and aim-probe raycasts.
  assert.equal(main.split("...shootableWire()").length-1,1);
+ // V0.15.3: audible cues must be localized WORLD events, not synthetic UI text.
+ assert.ok(main.includes('from "./wire-sound.js?v=reboot-031"'));
+ assert.ok(main.includes('newWireSoundTracker()'));
+ assert.ok(main.includes('stepWireSounds(wireSoundTracker,wireState,before,player,'));
+ assert.ok(main.includes('wirePunchSound(result.destroyed,source)'));
+ assert.ok(main.includes('shotAudio.playAt(cue.type,cue.x,cue.z,player.x,player.z,player.yaw)'));
+ assert.ok(main.includes('shotAudio.playAt(wireCue.event.type,wireCue.event.x,wireCue.event.z,'));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "wire-rattle"'));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "wire-strike"'));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
+ assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
+ assert.ok(html.includes("ENEMY FOOTSTEPS RATTLE"));
+ assert.ok(html.includes("REAL POSITIONAL WIRE AUDIO"));
  assert.ok(main.includes("newWireHealth()"));
  assert.ok(main.includes("tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt)"));
  assert.ok(main.includes("wireHealth=newWireHealth()"));
