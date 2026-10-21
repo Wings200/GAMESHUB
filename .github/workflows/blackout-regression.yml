@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.15.3 · spatial wire audio / full mechanics regression
+    name: Reboot V0.16 · physical C4 and destructible blast regressions
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -57,5 +57,7 @@ jobs:
           node --check games/blackout/reboot/melee.js
           node --check games/blackout/reboot/melee-view.js
           node --check games/blackout/reboot/wire-sound.js
+          node --check games/blackout/reboot/nitro.js
+          node --check games/blackout/reboot/nitro-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
