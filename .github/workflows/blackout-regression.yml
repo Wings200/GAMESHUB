@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.14.2 · special MMB / normal G gadgets / legacy regression
+    name: Reboot V0.15 · physical Sentry barbed wire / prior mechanics
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -52,5 +52,7 @@ jobs:
           node --check games/blackout/reboot/operators.js
           node --check games/blackout/reboot/operator-select.js
           node --check games/blackout/reboot/secondary-loadout.js
+          node --check games/blackout/reboot/barbed-wire.js
+          node --check games/blackout/reboot/barbed-wire-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
