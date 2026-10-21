@@ -4,7 +4,7 @@
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
  operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-025";
 import {secondaryOptions,newSecondaryPlans,plannedSecondaries,
- planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-032";
+ planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-033";
 
 export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}={}){
  if(!root)throw new Error("Operator selection root is required");
@@ -100,7 +100,7 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
      if(!rejected)onPlanChange(selectedOperator(selection),plans);
      planStatus.textContent=rejected?
       "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
-      "PLAN SAVED FOR "+op.name+(["barbed-wire","c4"].includes(value)?
+      "PLAN SAVED FOR "+op.name+(["barbed-wire","c4","impact"].includes(value)?
         " · FUNCTIONING GADGET READY":" · OTHER GADGETS REMAIN PREVIEWS");
     });
     el.append(select);
@@ -112,9 +112,9 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
     "UNASSIGNED · GADGETS IN DEVELOPMENT";
    el.append(status);slots.append(el);
   }
-  planStatus.textContent=picks.some(id=>["barbed-wire","c4"].includes(id))?
-   "C4 + BARBED WIRE ARE LIVE · OTHER GADGETS REMAIN PREVIEWS":
-   "C4 + BARBED WIRE ARE LIVE · OTHERS ARE PREVIEWS";
+  planStatus.textContent=picks.some(id=>["barbed-wire","c4","impact"].includes(id))?
+   "C4 / IMPACT / WIRE LIVE · OTHER GADGETS REMAIN PREVIEWS":
+   "C4 / IMPACT / WIRE LIVE · OTHERS ARE PREVIEWS";
  }
  attackTab.addEventListener("click",()=>{
   selection=switchOperatorSide(selection,"attack");
