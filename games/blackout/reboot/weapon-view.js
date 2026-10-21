@@ -2,6 +2,7 @@
 import {buildBX7Model} from "./weapon-model.js?v=reboot-008";
 import {weaponPose} from "./weapon-aim.js?v=reboot-005";
 import {TARGET_POSITIONS} from "./range-layout.js?v=reboot-007";
+import {createImpactDecals} from "./impact-decals.js?v=reboot-010";
 
 export function createWeaponView(THREE,camera,scene){
  const root=new THREE.Group();
@@ -93,37 +94,9 @@ export function createTargetRange(THREE,scene){
  return targets;
 }
 
+// Real surface decals replace 9-second temporary discs. Uses one instanced draw.
 export function createShotEffects(THREE,scene){
- const impacts=[];
- const black=new THREE.MeshBasicMaterial({color:0x0a151a,polygonOffset:true,
-  polygonOffsetFactor:-1,polygonOffsetUnits:-1});
- const hitMat=new THREE.MeshBasicMaterial({color:0x8bffd8,polygonOffset:true,
-  polygonOffsetFactor:-1,polygonOffsetUnits:-1});
- return {
-  mark(hit,target=false){
-   const normal=hit.face?.normal?.clone().transformDirection(hit.object.matrixWorld)||
-      new THREE.Vector3(0,0,1);
-   const disc=new THREE.Mesh(new THREE.CircleGeometry(target?.055:.028,10),
-     target?hitMat:black);
-   disc.position.copy(hit.point).addScaledVector(normal,.015);
-   disc.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
-   disc.renderOrder=2;
-   scene.add(disc);
-   impacts.push({disc,age:0});
-   if(impacts.length>75){
-    const old=impacts.shift();scene.remove(old.disc);old.disc.geometry.dispose();
-   }
-  },
-  tick(dt){
-   for(let i=impacts.length-1;i>=0;i--){
-    impacts[i].age+=dt;
-    if(impacts[i].age>9){
-     const old=impacts.splice(i,1)[0];
-     scene.remove(old.disc);old.disc.geometry.dispose();
-    }
-   }
-  }
- };
+ return createImpactDecals(THREE,scene);
 }
 
 export class WeaponAudio{
