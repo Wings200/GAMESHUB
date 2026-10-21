@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.6.1 · scoped ADS accuracy and target LOS
+    name: Reboot V0.7 · sight-projected bullets and clear ranges
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -36,5 +36,6 @@ jobs:
           node --check games/blackout/reboot/legacy-shooting.js
           node --check games/blackout/reboot/aim-resolver.js
           node --check games/blackout/reboot/range-layout.js
+          node --check games/blackout/reboot/shot-ray.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
