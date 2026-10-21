@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.11 — 3-second steel reinforcements, stable V0.10 preserved
+// BLACKOUT REBOOT V0.12 — real wheeled drone with jump cooldown and 3 rechargeable boosts
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -18,6 +18,8 @@ import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-016";
 import {REINFORCEMENT} from "./reinforcement.js?v=reboot-017";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-017";
+import {DRONE,newDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-018";
+import {createDroneView} from "./drone-view.js?v=reboot-018";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -29,6 +31,11 @@ const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits
 const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("area-name");
 const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
+const droneHud=$("drone-hud"),droneMap=$("drone-range-map");
+const droneMapCtx=droneMap.getContext("2d");
+const droneBoostStatus=$("drone-boost"),droneJumpStatus=$("drone-jump"),
+ droneSpeedStatus=$("drone-speed");
+const droneChargeMarkers=[$("drone-charge-1"),$("drone-charge-2"),$("drone-charge-3")];
 const softWallReadout=$("soft-wall-readout"),softWallStatusText=$("soft-wall-status"),
  softWallRemoved=$("soft-wall-removed");
 const reinforcePrompt=$("reinforce-prompt"),reinforceFill=$("reinforce-progress"),
@@ -110,6 +117,7 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
 const barricade=createBarricadeStation(THREE,scene);
 const softWall=createSoftWallStation(THREE,scene);
 const reinforcement=createReinforcementStation(THREE,scene);
+const droneView=createDroneView(THREE,scene);
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
@@ -131,6 +139,7 @@ let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false,barricadeBuildTime=0;
+let controlMode="player",drone=null,droneBoostPressed=false,droneJumpPressed=false;
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
 const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
 let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
@@ -141,6 +150,46 @@ function resize(){
 }
 resize();
 window.addEventListener("resize",resize);
+function activeDroneObstacles(){
+ return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
+}
+function setControlMode(nextMode){
+ controlMode=nextMode;
+ const active=locked;
+ hud.classList.toggle("hidden",!active||controlMode!=="player");
+ droneHud.classList.toggle("hidden",!active||controlMode!=="drone");
+ document.body.dataset.hudProfile=active?controlMode:"menu";
+ weaponView.root.visible=controlMode==="player";
+ crosshair.classList.toggle("hidden",!active||controlMode!=="player");
+ firing=false;aimHeld=false;reloadPressed=false;keys.clear();
+ droneBoostPressed=false;droneJumpPressed=false;
+ // Changing devices must never complete a partially held F reinforcement.
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+}
+function deployDrone(){
+ if(!drone){
+  const x=player.x-Math.sin(player.yaw)*.9;
+  const z=player.z-Math.cos(player.yaw)*.9;
+  const p=canDroneOccupy(x,0,z,activeDroneObstacles())?{x,z}:{x:player.x,z:player.z};
+  if(!canDroneOccupy(p.x,0,p.z,activeDroneObstacles())){
+   shotNotice.textContent="DRONE DEPLOYMENT BLOCKED · MOVE TO CLEAR FLOOR";
+   shotNoticeLeft=1.6;return;
+  }
+  drone=newDrone(p.x,p.z,player.yaw);
+  droneView.place(drone);
+ }
+ setControlMode("drone");
+}
+function droneHudFrame(){
+ if(!drone)return;
+ droneBoostStatus.textContent=droneBoostLabel(drone);
+ droneJumpStatus.textContent=droneJumpLabel(drone);
+ droneSpeedStatus.textContent=Math.hypot(drone.speedX,drone.speedZ).toFixed(1);
+ for(let i=0;i<droneChargeMarkers.length;i++)
+  droneChargeMarkers[i].classList.toggle("active",i<drone.charges);
+ drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+}
 function unlockMessage(){
  message.textContent=started?
    "PAUSED · PRESS ENTER TEST RANGE TO RESUME. YOUR POSITION IS PRESERVED.":
@@ -168,13 +217,9 @@ play.addEventListener("click",enterRange);
 document.addEventListener("pointerlockchange",()=>{
  locked=document.pointerLockElement===canvas;
  menu.classList.toggle("hidden",locked);
- hud.classList.toggle("hidden",!locked);
  document.body.classList.toggle("range-active",locked);
- // Gameplay currently only supports the player camera. Inactive profile HTML
- // cannot be enabled until an actual drone or spectator camera is playable.
- document.body.dataset.hudProfile=locked?"player":"menu";
- crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ setControlMode(controlMode);
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -182,13 +227,29 @@ document.addEventListener("pointerlockerror",()=>{
 });
 document.addEventListener("mousemove",event=>{
  if(!locked)return;
- player.yaw-=event.movementX*.00215;
- player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
+ if(controlMode==="drone"&&drone){
+  drone.yaw-=event.movementX*.003;
+  drone.pitch=Math.max(-.75,Math.min(.75,drone.pitch-event.movementY*.0026));
+ }else{
+  player.yaw-=event.movementX*.00215;
+  player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
+ }
 });
 document.addEventListener("keydown",event=>{
  if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","KeyQ","KeyE","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
    event.preventDefault();
  if(!locked)return;
+ if(event.code==="Digit6"&&!event.repeat){
+  deployDrone();return;
+ }
+ if(controlMode==="drone"){
+  if(event.code==="KeyX"&&!event.repeat){setControlMode("player");return;}
+  if(event.code==="Space"&&!event.repeat)droneJumpPressed=true;
+  if((event.code==="ShiftLeft"||event.code==="ShiftRight")&&!event.repeat)
+   droneBoostPressed=true;
+  keys.add(event.code);
+  return; // No player guns, wall rebuilding or crouching during drone control.
+ }
  if(event.code==="KeyP"&&!event.repeat){
    player=initialPlayer();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
  }
@@ -233,7 +294,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>keys.delete(event.code));
 document.addEventListener("mousedown",event=>{
- if(!locked)return;
+ if(!locked||controlMode!=="player")return;
  if(event.button===0)firing=true;
  if(event.button===2)aimHeld=true;
  if(event.button===0||event.button===2)event.preventDefault();
@@ -243,8 +304,9 @@ document.addEventListener("mouseup",event=>{
  if(event.button===2)aimHeld=false;
 });
 canvas.addEventListener("contextmenu",event=>event.preventDefault());
-window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
+ if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
  speedText.textContent=player.speed.toFixed(1)+" M/S";
@@ -287,7 +349,7 @@ function hudFrame(){
 // Aim probe reads exactly the same visible dot and collision meshes as shooting.
 // It does NOT consume ammunition, move targets or alter the player's recoil.
 function updateAimProbe(now){
- if(!locked||!debugShots||now-lastAimProbe<90)return;
+ if(!locked||controlMode!=="player"||!debugShots||now-lastAimProbe<90)return;
  lastAimProbe=now;
  camera.updateMatrixWorld(true);
  const reticleVisible=aimHeld&&weaponView.reticle.visible;
@@ -419,6 +481,21 @@ function animate(now){
  if(locked){
    drillElapsedSeconds=Math.min(DRILL_LENGTH_SECONDS,drillElapsedSeconds+Math.min(realDt,1));
    if(realDt>0)fpsSmoothed=fpsSmoothed*.91+(1/realDt)*.09;
+ }
+ if(locked&&controlMode==="drone"&&drone){
+   const input={
+    forward:Number(keys.has("KeyW")||keys.has("ArrowUp"))-
+      Number(keys.has("KeyS")||keys.has("ArrowDown")),
+    right:Number(keys.has("KeyD")||keys.has("ArrowRight"))-
+      Number(keys.has("KeyA")||keys.has("ArrowLeft")),
+    jumpPressed:droneJumpPressed,boostPressed:droneBoostPressed
+   };
+   droneJumpPressed=false;droneBoostPressed=false;
+   if(keys.has("KeyQ"))drone.yaw+=dt*2.3;
+   if(keys.has("KeyE"))drone.yaw-=dt*2.3;
+   drone=tickDrone(drone,input,dt,activeDroneObstacles());
+ }
+ if(locked&&controlMode==="player"){
    const input={
      forward:Number(keys.has("KeyW")||keys.has("ArrowUp"))-
        Number(keys.has("KeyS")||keys.has("ArrowDown")),
@@ -483,13 +560,19 @@ function animate(now){
    }
  }
  // Drop the camera immediately for low cover; smoothly raise when clearance allows.
- const eyeTarget=player.prone?.44:player.crouched?1.08:1.65;
- cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
- const leanPose=leanCameraPose(player.yaw,leanAmount);
- camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
- camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
+ if(controlMode==="drone"&&drone){
+  camera.position.set(drone.x,drone.y+DRONE.eye,drone.z);
+  camera.rotation.set(drone.pitch,drone.yaw,0,"YXZ");
+  if(camera.fov!==87){camera.fov=87;camera.updateProjectionMatrix();}
+ }else{
+  const eyeTarget=player.prone?.44:player.crouched?1.08:1.65;
+  cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
+  const leanPose=leanCameraPose(player.yaw,leanAmount);
+  camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
+  camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
+ }
  camera.updateMatrixWorld(true);
- if(locked){
+ if(locked&&controlMode==="player"){
   // The gun-mounted optic pose MUST update before ballistics. This prevents
   // shooting with a previous-frame sight transform (including while leaning).
   weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now,aimHeld);
@@ -513,6 +596,7 @@ function animate(now){
  for(const t of targets){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
+ if(drone)droneView.update(drone,dt);
  shotEffects.tick(dt);
  barricade.tick(dt);
  softWall.tick(dt);
@@ -520,10 +604,10 @@ function animate(now){
  updateAimProbe(now);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
- crosshair.classList.toggle("hidden",!locked||!aimState(aimHeld,aimMix).hipCrosshairVisible);
+ crosshair.classList.toggle("hidden",!locked||controlMode!=="player"||!aimState(aimHeld,aimMix).hipCrosshairVisible);
  renderer.render(scene,camera);
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.11 steel reinforcement / 3-second assembly",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.12 real recon drone with jump and boost charges",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
