@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-027",
-   "./reboot/style.css?v=reboot-027"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-028",
+   "./reboot/style.css?v=reboot-028"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -273,18 +273,18 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-027"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-028"'));
  assert.ok(main.includes("createOperatorPicker("));
- assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-027"'));
+ assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-028"'));
  assert.ok(main.includes('onPlanChange(){'));
  assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
  assert.ok(main.includes('utilityName[i].textContent=row.name.toUpperCase()'));
- assert.ok(main.includes('utilityStatus[i].textContent=row.status'));
+ assert.ok(main.includes('utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?'));
  assert.ok(main.includes('refreshUtilityHud();\nfunction resize(){'),
    "initial HUD must render before first player deployment");
- assert.ok(main.includes('utilityKeyPreview(operatorPicker.plans,activeOperator,"KeyG")'));
- assert.ok(main.includes('utilityKeyPreview(operatorPicker.plans,activeOperator,"MouseMiddle")'));
+ assert.ok(main.includes('usePlannedGadget("KeyG")'));
+ assert.ok(main.includes('usePlannedGadget("MouseMiddle")'));
  assert.ok(main.includes('event.code==="KeyG"&&!event.repeat'));
  assert.ok(main.includes('if(event.button===1){'));
  assert.ok(main.includes('if(controlMode==="player"){'));
@@ -296,10 +296,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.14: design plans are distinct from functioning equipment.
  assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
  assert.ok(html.includes('id="operator-plan-status"'));
- assert.ok(html.includes("NOT usable equipment yet"));
+ assert.ok(html.includes("other 11 gadgets are NOT implemented"));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-027"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-028"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
@@ -321,7 +321,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("operatorHudSide.textContent="));
  assert.ok(main.includes('speedMultiplier:operatorLoadout(activeOperator).speedMultiplier'));
  assert.ok(physics.includes("const operatorMultiplier=Number.isFinite(input.speedMultiplier)"));
- assert.ok(physics.includes(")*operatorMultiplier"));
+ assert.ok(physics.includes(")*operatorMultiplier*terrainMultiplier"));
  for(const id of ["operator-selection","operator-roster","operator-attack","operator-defend",
    "operator-playable-label","operator-name","operator-role","operator-speed",
    "operator-armor","operator-slots","operator-current","operator-hud-name","operator-hud-side"])
@@ -336,6 +336,20 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(html.includes('id="utility-name-special">FLASHBANGS'),false,
   "dynamic gadget names must not be faked in static HTML");
 
+ // V0.15: FIRST live physical gadget. Existing guns, drones, walls untouched.
+ assert.ok(main.includes('from "./barbed-wire.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./barbed-wire-view.js?v=reboot-028"'));
+ assert.ok(main.includes("placeWire(wireState,player,obstacles)"));
+ assert.ok(main.includes("createWireView(THREE,scene,placement.device)"));
+ assert.ok(main.includes('terrainMultiplier:wireTerrainMultiplier(wireState,player)'));
+ assert.ok(main.includes("damageWire(wireState,wireId)"));
+ assert.ok(main.includes('wireViews.get(wireId)?.sync('));
+ assert.ok(main.includes("...shootableWire()"));
+ assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));
+ assert.ok(main.includes('activeOperator.side==="defend"'));
+ assert.ok(physics.includes('Math.max(.35,Math.min(1,input.terrainMultiplier))'));
+ assert.equal(read("reboot/secondary-loadout.js").includes('name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:false'),false);
+ assert.ok(html.includes("shoot it three times")||html.includes("shoot it three times".toUpperCase()));
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
   "5 must never automatically throw a drone");
