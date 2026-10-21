@@ -291,7 +291,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("NOT usable equipment yet"));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-025"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-026"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
