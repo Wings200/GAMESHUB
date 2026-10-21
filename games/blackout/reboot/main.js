@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.16 — throwable and remotely detonated physical C4 plus defender wire
+// BLACKOUT REBOOT V0.16.1 — playable C4 and contact-exploding impact grenades
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -32,6 +32,8 @@ import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
 import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage} from "./nitro.js?v=reboot-032";
 import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-032";
+import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-033";
+import {createImpactView} from "./impact-view.js?v=reboot-033";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -147,6 +149,8 @@ let wireHealth=newWireHealth();
 let wireSoundTracker=newWireSoundTracker();
 let nitroState=newNitroState();
 const nitroViews=new Map(),blastViews=[];
+let impactState=newImpactState();
+const impactViews=new Map();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -208,12 +212,16 @@ function refreshUtilityHud(){
     "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":
    row.gadgetId==="c4"?
     (nitroState.devices.some(d=>d.armed)?"ARMED · PRESS "+row.key+" TO DETONATE":
-      "LIVE · "+nitroState.charges+"/"+NITRO.charges+" LEFT"):row.status;
+      "LIVE · "+nitroState.charges+"/"+NITRO.charges+" LEFT"):
+   row.gadgetId==="impact"?
+      "LIVE · "+impactState.charges+"/"+IMPACT.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="c4")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="impact")?
+  activeOperator.name+" · IMPACT CONTACT DETONATION · LIVE":
+  rows.some(row=>row.gadgetId==="c4")?
   activeOperator.name+" · C4 THROW / REMOTE DETONATE · LIVE":
   rows.some(row=>row.gadgetId==="barbed-wire")?
   activeOperator.name+" · WIRE LIVE · OTHER GADGETS PREVIEW":
@@ -230,17 +238,10 @@ window.addEventListener("resize",resize);
 function activeDroneObstacles(){
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
 }
-function detonateCurrentNitro(){
- const result=detonateNitro(nitroState);
- if(!result.blast)return result.reason;
- nitroState=result.state;
- const device=nitroState.devices.find(d=>!d.armed);
- nitroViews.get(device.id)?.sync(device);
- const blast=result.blast;
+function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
  shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
- // A genuinely physical blast destroys nearby wooden panels and gypsum;
- // reinforced metal protects the layered soft wall until hard breach exists.
+ // Both gadgets cut real gypsum and boards, but never reinforced steel.
  const wood=barricade.blastAt(blast);
  const gypsum=reinforcement.installed?0:softWall.blastAt(blast);
  const self=nitroBlastDamage(blast,{x:player.x,y:player.y+1,z:player.z});
@@ -259,9 +260,18 @@ function detonateCurrentNitro(){
    hits++;
   }
  }
- refreshUtilityHud();
- return "C4 DETONATED · "+hits+" TARGETS · "+wood+" BOARDS · "+
+ return label+" DETONATED · "+hits+" TARGETS · "+wood+" BOARDS · "+
   gypsum+" GYPSUM CELLS"+(self?" · SELF -"+self+" HP":"");
+}
+function detonateCurrentNitro(){
+ const result=detonateNitro(nitroState);
+ if(!result.blast)return result.reason;
+ nitroState=result.state;
+ const device=nitroState.devices.find(d=>!d.armed);
+ nitroViews.get(device.id)?.sync(device);
+ const feedback=applyGadgetBlast(result.blast,"C4");
+ refreshUtilityHud();
+ return feedback;
 }
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
@@ -280,6 +290,18 @@ function usePlannedGadget(code){
    shotNotice.textContent=result.reason;
   }
   shotNoticeLeft=2.1;
+  return;
+ }
+ if(row.gadgetId==="impact"&&activeOperator.side==="defend"){
+  const result=throwImpact(impactState,player);
+  if(result.device){
+   impactState=result.state;
+   impactViews.set(result.device.id,createImpactView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;
+  shotNoticeLeft=1.7;
   return;
  }
  if(row.gadgetId==="barbed-wire"&&activeOperator.side==="defend"){
@@ -790,6 +812,16 @@ function animate(now){
    for(const device of nitroState.devices){
     if(device.armed)nitroViews.get(device.id)?.sync(device);
    }
+   // Impact grenades advance through the actual Testing Range and detonate
+   // immediately upon colliding with floor or physical cover.
+   const impactTick=tickImpact(impactState,dt,activeDroneObstacles());
+   impactState=impactTick.state;
+   for(const device of impactState.devices)
+    impactViews.get(device.id)?.sync(device);
+   for(const blast of impactTick.blasts){
+    shotNotice.textContent=applyGadgetBlast(blast,"IMPACT");
+    shotNoticeLeft=1.5;
+   }
    // Disconnected reconnaissance drones are still physical world objects.
    // Their battery charges, jump timer, boost timer and landing progress persist.
    if(droneRoster.drones.length){
@@ -938,5 +970,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.16 physical C4 throw / remote detonate; wood and gypsum real blast + HP",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.16.1 C4 remote and impact contact grenades with physical blast/HP/soft walls",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
