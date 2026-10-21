@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-033";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-033";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-034";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-034";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
