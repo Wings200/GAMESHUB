@@ -3,7 +3,8 @@
 // sandbox gadget, no 5v5 network replication, AI, melee, or live damage yet.
 export const WIRE=Object.freeze({
  charges:2,radius:1.18,slowingMultiplier:.48,placeDistance:1.65,
- footprint:.74,maxBuildHeight:.2,hp:3,worldLimit:29.2
+ footprint:.74,maxBuildHeight:.2,hp:3,worldLimit:29.2,
+ enemyDamage:10,damageInterval:.5,maxHealth:125
 });
 export function newWireState(){
  return {charges:WIRE.charges,nextId:1,devices:[]};
@@ -42,6 +43,7 @@ export function placeWire(state,player,obstacles=[]){
  return {state:{...state,charges:state.charges-1,nextId:state.nextId+1,
   devices:[...state.devices,device]},device,reason:"BARBED WIRE DEPLOYED"};
 }
+// MELEE ONLY. Never call this from gunfire or projectile hit paths.
 export function damageWire(state,id,damage=1){
  const device=state.devices.find(d=>d.id===id&&d.hp>0);
  if(!device||!Number.isFinite(damage)||damage<=0)
@@ -58,6 +60,29 @@ export function wireSlowsPlayer(state,player){
  return state.devices.some(d=>d.hp>0&&
   Math.hypot(d.x-player.x,d.z-player.z)<WIRE.radius);
 }
-export function wireTerrainMultiplier(state,player){
- return wireSlowsPlayer(state,player)?WIRE.slowingMultiplier:1;
+// Only attackers are enemies of defender Sentry's placed barbed wire.
+// In this solo Testing Range, team switching lets one tester verify both sides.
+export function enemyInWire(state,player,side){
+ return side==="attack"&&wireSlowsPlayer(state,player);
+}
+export function wireTerrainMultiplier(state,player,side){
+ return enemyInWire(state,player,side)?WIRE.slowingMultiplier:1;
+}
+export function newWireHealth(){
+ return {hp:WIRE.maxHealth,elapsed:0};
+}
+// Exact periodic injury, not once per animation frame or per 0.05s
+// physics substep. Leaving contact or switching to defense clears timer.
+export function tickWireHealth(current,state,player,side,dt){
+ if(!current||!Number.isFinite(current.hp))return newWireHealth();
+ const hp=Math.max(0,Math.min(WIRE.maxHealth,current.hp));
+ if(!enemyInWire(state,player,side)||hp===0)
+  return {hp,elapsed:0,damage:0};
+ const step=Number.isFinite(dt)?Math.max(0,dt):0;
+ const total=Math.max(0,(Number(current.elapsed)||0))+step;
+ const ticks=Math.floor((total+1e-9)/WIRE.damageInterval);
+ const nextHP=Math.max(0,hp-ticks*WIRE.enemyDamage);
+ return {hp:nextHP,
+  elapsed:nextHP===0?0:Math.max(0,total-ticks*WIRE.damageInterval),
+  damage:hp-nextHP};
 }
