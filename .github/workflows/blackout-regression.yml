@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.16.1 · real C4, impact grenades and destructible blast
+    name: Reboot V0.16.2 · playable C4/Impact/Wire and attacker timed Frag
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -61,5 +61,7 @@ jobs:
           node --check games/blackout/reboot/nitro-view.js
           node --check games/blackout/reboot/impact.js
           node --check games/blackout/reboot/impact-view.js
+          node --check games/blackout/reboot/frag.js
+          node --check games/blackout/reboot/frag-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
