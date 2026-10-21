@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.13
+# BLACKOUT — Clean Reboot V0.13.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.13.1 · Fix cross-faction operator tab activation:**
+- User's first V0.13 browser test found that attackers/defenders could not be switched. Root cause: `operator-select.js` queried the `#operator-current` **DEPLOY label** from inside `#operator-selection`, but the button is a sibling outside that section. That missing required element raised an exception before the tab listeners could be initialized. This is a genuine script initialization bug, not a disabled-faction feature.
+- The picker now looks up the external button label at document scope, while keeping all roster/detail controls scoped to the panel. Browser entry was bumped to V0.13.1 and the operator-select import cache refreshed. Tests now reproduce the *actual* HTML parent/child relationship, and assert side tabs select Striker/Sentry and update the external deploy label without throwing.
+- Full foundation suite passed **127/127** on commit `f08ea148709fc04c7aa840b0a35a84539da6ddb4`. User has NOT verified the fix in browser. **Do not proceed to gadgets or other stages until user confirms both team tabs and selection work.**
+
+
 
 **2026-10-20 / V0.13 · Attacker/Defender operator selection foundation (user approved V0.12.2):**
 - User confirmed **all five V0.12.2 in-browser drone tests passed**. This makes V0.12.2 the latest regression baseline. User chose a small **12-character roster** for a future 5v5 game (six attackers + six defenders), **ALL completed operators unlocked/free**, with distinctive signature gadgets for ten specialists and mirrored foundational **Striker** (attacker) and **Sentry** (defender) generalists that each get **two secondary gadget slots instead of a signature gadget**.
