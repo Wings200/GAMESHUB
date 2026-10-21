@@ -11,7 +11,7 @@ import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
 import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
-import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-013";
+import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-015";
 import {BARRICADE} from "./barricade.js?v=reboot-015";
 import {createBarricadeStation} from "./barricade-view.js?v=reboot-015";
 
@@ -243,7 +243,7 @@ function hudFrame(){
  headingLabel.textContent=String(heading).padStart(3,"0")+"°";
  compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
- drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets);
+ drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE);
  barricadeStatusText.textContent=barricade.status;
  barricadeCount.textContent=barricade.remaining+" / "+BARRICADE.boardCount;
  const near=barricade.near(player);
@@ -283,6 +283,12 @@ function updateAimProbe(now){
 function markDebugShot(outcome,screen){
  const distance=outcome.hit?outcome.hit.distance:raycaster.far;
  const zone=outcome.hit?.object?.userData?.hitZone||"";
+ const wood=outcome.hit?.object?.userData?.barricadeIndex;
+ if(Number.isInteger(wood)){
+  lastShotReadout="WOOD BOARD "+(wood+1)+" · "+barricade.status+
+    " · "+(barricade.remaining)+" PLANKS LEFT";
+  return;
+ }
  lastShotReadout=describeShot(outcome,screen,distance,zone)+
   (outcome.hit&&outcome.kind!=="target"?
     " · SURFACE "+shotEffects.lastFace+
