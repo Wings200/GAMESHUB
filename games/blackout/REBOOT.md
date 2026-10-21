@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.12
+# BLACKOUT — Clean Reboot V0.12.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,17 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.12.1 · Correct Siege-like drone equipment and keybinds — V0.12 user feedback:**
+- User reported the V0.12 drone drives and works, **but requested genuine throw-then-camera flow** and actual keybinds: **5 = open drone cameras**, **6 = throw one spare drone only after preparation** in real matches. The standalone range has no phase system, so the spare is deliberately unlocked for testing; the future match phase must gate 6 during preparation.
+- Press **5** in range player mode: if no drones have been deployed, physically throw the primary reconnaissance drone with a brief gravity/forward-flight arc, then automatically take its actual low camera feed. If a drone exists, 5 reconnects to a real deployed camera without spawning or replenishing anything. Press 5 again (or X) to return to the stationary operator.
+- Press **6** in operator mode to physically **throw the one spare**. 6 does not force remote camera mode; press 5 to view the available drones. The first drone and spare are separate persistent physical devices and preserve independent positions, boosts and jump cooldowns. One primary plus one spare is the maximum; the equipment HUD displays the real deployed-camera count and spare count.
+- If two drones exist, **Q/E cycle between actual camera feeds**. With one drone, Q/E remain optional steering inputs; mouse still steers the currently selected drone. Other movement and firing keybinds are unchanged.
+- Replace the basic Q/E/Z tutorial icons from the *bottom player quick-action bar* with a compact **5 CAMERAS / 6 SPARE** equipment pair and live quantities. The camera HUD now displays its selected index/total. It uses the existing V0.12 movement, cooldown, and 3 rechargeable Shift boost systems.
+- A new pure roster/phase contract and throw-physics tests protect against invented cameras, extra spares, phase misuse, instant ground teleportation and bouncing through walls. All original V0.9/V0.10/V0.11 systems must still pass CI. No 5v5 gameplay, prep-round flow or combat camera/spectator mechanics have been implemented.
+- **Stage gate:** user confirmation required before new mechanics; test 5 auto-throw, 6 separate spare, switching Q/E between both deployed feeds, operator reconnection, HUD quantity updates and previous game regression.
+
+
 
 **2026-10-20 / V0.12 · Playable R-1 recon drone — previous V0.11 user playtest approved:**
 - The user confirmed **V0.11 metal reinforcements work in-browser**. Keep stable V0.9 wood barricades, V0.10 gypsum and V0.11 reinforcement, including player weapon ballistics, scope, audio, collisions and test-only Y/T controls. This release introduces only a recon drone (no new map, operator, AI, explosive, spectator mode or multiplayer).
