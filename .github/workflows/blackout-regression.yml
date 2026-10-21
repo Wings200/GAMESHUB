@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.8 · screenshot-inspired tactical live-fire HUD
+    name: Reboot V0.8.1 · player, drone and spectator HUD reference contracts
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
