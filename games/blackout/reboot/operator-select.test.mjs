@@ -172,9 +172,9 @@ test("changing real picker utility dropdown emits HUD refresh with active operat
    onPlanChange:(operator,plans)=>updates.push({id:operator.id,plans})
   });
   const first=elements["operator-slots"].children[0];
-  assert.equal(first.children[0].textContent,"SECONDARY SLOT 1 · KEY 3");
+  assert.equal(first.children[0].textContent,"SPECIAL GADGET · MIDDLE MOUSE CLICK");
   assert.equal(elements["operator-slots"].children[1].children[0].textContent,
-   "SECONDARY SLOT 2 · KEY 4");
+   "NORMAL GADGET · G");
   const select=first.children[1];
   select.value="flash";select.listeners.get("change")();
   assert.equal(updates.length,1);
