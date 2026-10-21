@@ -63,7 +63,7 @@ h1 span{color:#74d5c9}h1 sup{position:relative;top:-2.5em;left:.2em;font-size:.1
 @media(max-width:850px){.menu{grid-template-columns:1fr}.menu-content{padding:75px 7vw 45px}.menu-aside{padding:35px 7vw}.hud-upper{font-size:9px}.controls{width:100%;margin:3px 0 0}.hint{white-space:normal;text-align:center;max-width:90vw}h1{font-size:clamp(58px,13vw,100px)}}
 
 /* BX-7 prototype: compact range feedback above the weapon status readouts. */
-.ballistics-debug{position:fixed;top:93px;right:24px;z-index:8;
+.ballistics-debug{white-space:pre-line;min-width:355px;position:fixed;top:93px;right:24px;z-index:8;
  max-width:min(520px,calc(100vw - 48px));padding:10px 14px;
  background:#041119e6;border:1px solid #4be8cb;
  color:#adffdb;font:700 12px/1.5 ui-monospace,monospace;
