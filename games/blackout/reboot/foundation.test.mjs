@@ -288,7 +288,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('usePlannedGadget("MouseMiddle")'));
  assert.ok(main.includes('event.code==="KeyG"&&!event.repeat'));
  assert.ok(main.includes('if(event.button===1){'));
- assert.ok(main.includes('if(controlMode==="player"){'));
+ assert.ok(main.includes('if(controlMode==="player"&&wireHealth.hp>0){'));
  assert.ok(main.includes('if(locked&&event.button===1)event.preventDefault()'));
  assert.ok(!main.includes('event.code==="Digit3"||event.code==="Digit4"'));
  assert.ok(read("reboot/secondary-loadout.js").includes('["MouseMiddle","KeyG"]'));
