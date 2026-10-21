@@ -108,7 +108,7 @@ test("reinforced metal gets a small raised window and four solid perimeter piece
  assert.ok(strips.every(p=>p.height-p.bottom>0&&p.width>0));
  assert.equal(result.state.breach.bottom,HARD_BREACH_WINDOW.bottom);
  assert.equal(result.state.breach.top,HARD_BREACH_WINDOW.top);
- assert.equal(result.state.breach.right-result.state.breach.left,HARD_BREACH_WINDOW.width);
+ assert.ok(Math.abs((result.state.breach.right-result.state.breach.left)-HARD_BREACH_WINDOW.width)<1e-9);
  assert.equal(canOccupy(SOFT_WALL.x,0,SOFT_WALL.z,1.78,
   [...TEST_OBSTACLES,...strips]),false,"walking must collide with the sill");
  assert.equal(canOccupy(SOFT_WALL.x,.74,SOFT_WALL.z,1.16,
