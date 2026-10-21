@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.15.0 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.15.1 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-028">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-029">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.15.0</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.15.1</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 015.0</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 015.1</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">BARBED WIRE · FIRST LIVE SECONDARY GADGET.</p>
-      <p class="description">V0.15 · FIRST REAL GADGET. Choose SENTRY (defense), set BARBED WIRE as the NORMAL gadget (G) or special (MMB), then deploy. Press its key to place one of TWO physical wire traps on clear ground ahead. Enter the wire to feel your movement slow; aim down and FIRE at the low steel mesh THREE TIMES to destroy it. The HUD shows remaining wire charges. C4 and the other gadgets remain PREVIEWS only. Striker still has recon drones but cannot place defender wire.</p>
+      <p class="headline">MELEE V · BARRICADE + BARBED WIRE DESTRUCTION.</p>
+      <p class="description">V0.15.1 LIVE MELEE · PRESS V TO PUNCH WITH AN ANIMATED FIRST-PERSON FIST. Stand within reach and aim at the wooden barricade; THREE V hits break ALL SIX boards (F rebuilds). Sentry can equip BARBED WIRE on G, place it on clear ground, then look DOWN and hit it TWICE with V to destroy it. The exposed wire strands now also receive real gunshot damage. A single V press is one strike, with cooldown. H clears debug bullet holes. Barbed wire SLOWS but does NOT reduce player health, as in Siege; the Testing Range remains invulnerable. All other gadget effects remain future work.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
@@ -64,7 +64,7 @@
       <div class="stage"><span>02</span><div><strong>COLLISION</strong><p>No phasing through real solid props</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>03</span><div><strong>FOOTSTEP AUDIO</strong><p>Walk / sprint / crouch / landing, M to mute</p></div><b>ACTIVE</b></div>
       <div class="stage"><span>04</span><div><strong>WEAPON PROTOTYPE</strong><p>Original 710 RPM / chambered reloads / recoil / ejected casings</p></div><b>ACTIVE</b></div>
-      <div class="stage"><span>05</span><div><strong>WOODEN BARRICADE</strong><p>Six destructible boards / physical doorway / hold F to rebuild</p></div><b>TEST NOW</b></div>
+      <div class="stage"><span>05</span><div><strong>WOODEN BARRICADE</strong><p>Bullet-damaged boards / V melee 3 hits breaks all / F rebuild</p></div><b>TEST NOW</b></div>
       <div class="stage"><span>06</span><div><strong>SOFT-WALL PENETRATION</strong><p>Carve real openings / pass rounds through / T reset</p></div><b>TEST NOW</b></div>
       <div class="stage"><span>07</span><div><strong>WALL REINFORCEMENTS</strong><p>F hold 3 seconds / steel bulletproof / Y remove in test range</p></div><b>TEST NOW</b></div>
       <div class="stage"><span>08</span><div><strong>R-1 RECON DRONE</strong><p>Real drive + collision / jump cooldown / three regenerating Shift boosts</p></div><b>TEST NOW</b></div>
@@ -95,6 +95,7 @@
 
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
+      <div class="siege-tip"><kbd>V</kbd> MELEE · 3 HITS BREAK BARRICADE · 2 BREAK WIRE · <kbd>H</kbd> CLEAR HOLES</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
       <div id="drone-key-tip" class="siege-tip"><kbd>5</kbd> attacker drone cameras · <kbd>6</kbd> throw attacker drone · <kbd>X</kbd> exit.</div>
       <div id="defender-key-tip" class="siege-tip hidden">DEFENDER · REINFORCE WALLS WITH F · NO RECON DRONES EQUIPPED.</div>
@@ -254,6 +255,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-028"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-029"></script>
 </body>
 </html>
