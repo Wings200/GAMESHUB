@@ -3,7 +3,7 @@
 // No fake black-hole decals painted onto an otherwise solid wall.
 import {SOFT_WALL,SOFT_WALL_TOTAL,newSoftWall,softWallRemove,
  softWallReset,softWallBlockers,softWallFrame,canResetSoftWall,softWallStatus,
- softWallWorld} from "./soft-wall.js?v=reboot-016";
+ softWallWorld,softWallBreachWindow} from "./soft-wall.js?v=reboot-046";
 
 export function createSoftWallStation(THREE,scene){
  const spec=SOFT_WALL;
@@ -125,6 +125,11 @@ export function createSoftWallStation(THREE,scene){
   if(removed)refresh(); // both visual cells and collision strips disappear
   return removed;
  }
+ function breachWindow(window){
+  const result=softWallBreachWindow(state,window);
+  if(result.removed){state=result.state;refresh();}
+  return result.removed;
+ }
  function reset(player){
   if(!canResetSoftWall(player))return {ok:false,reason:"STAND CLEAR OF WALL"};
   if(state.removed===0)return {ok:false,reason:"WALL ALREADY INTACT"};
@@ -143,7 +148,7 @@ export function createSoftWallStation(THREE,scene){
   }
  }
  return {
-  onHit,blastAt,reset,tick,
+  onHit,blastAt,breachWindow,reset,tick,
   shootables:()=>activeCount?[panel,...frameMeshes]:frameMeshes.slice(),
   blockers:()=>softWallBlockers(state),
   near:player=>Math.hypot(player.x-spec.x,player.z-spec.z)<4.5,

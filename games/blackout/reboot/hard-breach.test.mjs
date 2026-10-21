@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SOFT_WALL,newSoftWall,softWallWorld,softWallRemove,softWallBlockers} from "./soft-wall.js";
-import {REINFORCEMENT,newReinforcement,stepReinforcement,hardBreachReinforcement,
+import {SOFT_WALL,newSoftWall,softWallBreachWindow,softWallBlockers} from "./soft-wall.js";
+import {REINFORCEMENT,HARD_BREACH_WINDOW,hardBreachWindow,
+ newReinforcement,stepReinforcement,hardBreachReinforcement,
  reinforcementBlockers,reinforcementStatus} from "./reinforcement.js";
 import {TEST_OBSTACLES,canOccupy} from "./physics.js";
 import {HARD_BREACH,newHardBreachState,placeHardBreach,tickHardBreach,
@@ -93,7 +94,7 @@ test("pickup cannot occur at distance or through malformed player state; countdo
   assert.equal(p.state,placed);
  }
 });
-test("reinforced metal gets a true large opening with 3 remaining steel collision pieces",()=>{
+test("reinforced metal gets a small raised window and four solid perimeter pieces",()=>{
  const original=installMetal();
  const blast={x:SOFT_WALL.x,y:1.3,z:SOFT_WALL.z};
  const result=hardBreachReinforcement(original,blast);
@@ -101,36 +102,46 @@ test("reinforced metal gets a true large opening with 3 remaining steel collisio
  assert.equal(result.state.installed,true);
  assert.equal(reinforcementStatus(result.state),"BREACHED");
  const strips=reinforcementBlockers(result.state);
- assert.equal(strips.length,3);
- assert.ok(strips.some(p=>p.id.endsWith("-left")));
- assert.ok(strips.some(p=>p.id.endsWith("-right")));
- assert.ok(strips.some(p=>p.id.endsWith("-lintel")));
+ assert.equal(strips.length,4);
+ for(const name of ["left","right","sill","lintel"])
+  assert.ok(strips.some(p=>p.id.endsWith("-"+name)));
  assert.ok(strips.every(p=>p.height-p.bottom>0&&p.width>0));
+ assert.equal(result.state.breach.bottom,HARD_BREACH_WINDOW.bottom);
+ assert.equal(result.state.breach.top,HARD_BREACH_WINDOW.top);
+ assert.equal(result.state.breach.right-result.state.breach.left,HARD_BREACH_WINDOW.width);
  assert.equal(canOccupy(SOFT_WALL.x,0,SOFT_WALL.z,1.78,
-  [...TEST_OBSTACLES,...strips]),true);
- assert.equal(canOccupy(SOFT_WALL.x+1.6,0,SOFT_WALL.z,1.78,
-  [...TEST_OBSTACLES,...strips]),false);
+  [...TEST_OBSTACLES,...strips]),false,"walking must collide with the sill");
+ assert.equal(canOccupy(SOFT_WALL.x,.74,SOFT_WALL.z,1.16,
+  [...TEST_OBSTACLES,...strips]),true,"vault pose must fit");
+ assert.equal(canOccupy(SOFT_WALL.x,.74,SOFT_WALL.z,1.78,
+  [...TEST_OBSTACLES,...strips]),false,"standing body cannot fit");
+ assert.equal(canOccupy(SOFT_WALL.x+1.6,.74,SOFT_WALL.z,1.16,
+  [...TEST_OBSTACLES,...strips]),false,"surrounding steel remains solid");
  assert.equal(hardBreachReinforcement(result.state,blast).opened,false);
 });
-test("hard breach clears real gypsum behind steel all the way to a player-height passage",()=>{
+test("hard breach clears ONLY the gypsum inside the raised window, leaving the bottom and top intact",()=>{
  const planted=plant(),installed=stepFor(planted.state,1.45).state;
- const armed=armHardBreach(installed).state;
- const {blasts}=stepFor(armed,1.1);
+ const {blasts}=stepFor(armHardBreach(installed).state,1.1);
  const blast=blasts[0];assert.ok(blast);
  const steel=hardBreachReinforcement(installMetal(),blast);
  assert.equal(steel.opened,true);
- let gypsum=newSoftWall();
- for(let i=0;i<gypsum.solid.length;i++){
-  if(!gypsum.solid[i])continue;
-  const w=softWallWorld(i);
-  if(Math.hypot(w.x-blast.x,w.y-blast.y,w.z-blast.z)>blast.radius)continue;
-  gypsum=softWallRemove(gypsum,i).state;
- }
- assert.ok(gypsum.removed>250);
- const obstacles=[...TEST_OBSTACLES,...softWallBlockers(gypsum),
+ const window=hardBreachWindow(blast);
+ const result=softWallBreachWindow(newSoftWall(),window);
+ assert.ok(result.removed>100&&result.removed<260,"compact aperture, not huge doorway");
+ const obstacles=[...TEST_OBSTACLES,...softWallBlockers(result.state),
   ...reinforcementBlockers(steel.state)];
- assert.equal(canOccupy(SOFT_WALL.x,0,SOFT_WALL.z,1.78,obstacles),true,
-  "not a painted hole — entire player body can cross");
+ assert.equal(canOccupy(SOFT_WALL.x,0,SOFT_WALL.z,1.78,obstacles),false,
+  "hard breach still has a solid sill");
+ assert.equal(canOccupy(SOFT_WALL.x,.74,SOFT_WALL.z,1.16,obstacles),true,
+  "crouched vault pose clears steel and gypsum");
+ assert.equal(canOccupy(SOFT_WALL.x,.74,SOFT_WALL.z,1.78,obstacles),false,
+  "standing cannot pass through this smaller window");
+ const lowerIndex=2*SOFT_WALL.columns+16;
+ const centerIndex=11*SOFT_WALL.columns+16;
+ const upperIndex=19*SOFT_WALL.columns+16;
+ assert.equal(result.state.solid[lowerIndex],1,"gypsum beneath hole remains");
+ assert.equal(result.state.solid[centerIndex],0,"true opening in center");
+ assert.equal(result.state.solid[upperIndex],1,"gypsum above hole remains");
 });
 test("installed reinforcement state remains intact until a hard breach, and electric shield cannot be breached",()=>{
  const steel=installMetal();

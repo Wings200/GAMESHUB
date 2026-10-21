@@ -33,6 +33,24 @@ export function softWallRemove(state,index){
  return {state:{solid,removed:state.removed+1,shots:state.shots+1},
   removed:true,index};
 }
+// Hard breach replaces only the gypsum cells inside the steel vault window,
+// never the whole wall. Uses the SAME immutable cell state as hits/physics.
+export function softWallBreachWindow(state,window){
+ if(!state?.solid||!window||
+  ![window.left,window.right,window.bottom,window.top].every(Number.isFinite)||
+  window.right<=window.left||window.top<=window.bottom)
+  return {state,removed:0};
+ let current=state,removed=0;
+ for(let i=0;i<SOFT_WALL_TOTAL;i++){
+  if(!current.solid[i])continue;
+  const p=softWallWorld(i),half=SOFT_WALL.cell/2;
+  if(p.x+half<=window.left||p.x-half>=window.right||
+     p.y+half<=window.bottom||p.y-half>=window.top)continue;
+  const result=softWallRemove(current,i);
+  if(result.removed){current=result.state;removed++;}
+ }
+ return {state:current,removed};
+}
 export function softWallReset(state){
  if(state.removed===0)return state;
  return newSoftWall();

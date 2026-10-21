@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.20.0 — hard breach charges carve actual steel/gypsum opening + F recovery
+// BLACKOUT REBOOT V0.20.1 — small raised hard breach window and Space vault
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -14,10 +14,10 @@ import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-016";
 import {BARRICADE} from "./barricade.js?v=reboot-015";
 import {createBarricadeStation} from "./barricade-view.js?v=reboot-032";
-import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
-import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-032";
-import {REINFORCEMENT} from "./reinforcement.js?v=reboot-045";
-import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-045";
+import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
+import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
+import {REINFORCEMENT,hardBreachWindow} from "./reinforcement.js?v=reboot-046";
+import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-046";
 import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
@@ -52,6 +52,7 @@ import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
 import {HARD_BREACH,newHardBreachState,placeHardBreach,
  armHardBreach,tickHardBreach,pickupHardBreach} from "./hard-breach.js?v=reboot-045";
 import {createHardBreachView} from "./hard-breach-view.js?v=reboot-045";
+import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -195,6 +196,7 @@ let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickup
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
+let breachVault=null,lastHardBreachOpening=null;
 let cameraEye=1.65;
 let locked=false,started=false;
 let proneToggle=false;
@@ -310,7 +312,9 @@ function applyGadgetBlast(blast,label="C4"){
  // and C4 damage both wood and unreinforced gypsum; steel stays intact.
  const {wood,gypsum}=resolveStructuralBlast(label,{
   woodBlast:()=>barricade.blastAt(blast),
-  gypsumBlast:()=>softWall.blastAt(blast),
+  // Hard breach alone cuts a small rectangular opening in gypsum.
+  gypsumBlast:()=>label==="HARD BREACH"?
+   softWall.breachWindow(hardBreachWindow(blast)):softWall.blastAt(blast),
   reinforced:reinforcement.installed&&!reinforcement.breached
  });
  const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
@@ -343,9 +347,12 @@ function applyGadgetBlast(blast,label="C4"){
 function detonateCurrentHardBreach(blast){
  // Remove the steel center BEFORE gypsum blast routing, because a hard
  // breach is the only gadget allowed to cut reinforced collision geometry.
+ const opening=hardBreachWindow(blast);
  const steel=reinforcement.breachAt(blast);
  const message=applyGadgetBlast(blast,"HARD BREACH");
- return message+(steel.opened?" · STEEL OPENED":"");
+ if(opening)lastHardBreachOpening=opening;
+ return message+(steel.opened?" · VAULT-SIZED STEEL OPENING":
+   " · VAULT-SIZED SOFT WALL OPENING")+" · SPACE NEAR HOLE TO VAULT";
 }
 function detonateCurrentSoftBreach(){
  const active=softBreachState.devices.find(d=>d.armed);
@@ -864,6 +871,18 @@ document.addEventListener("keydown",event=>{
    return;
   }
  }
+ if(event.code==="Space"&&!event.repeat&&!breachVault){
+  const opening=reinforcement.installed?
+   reinforcement.state.breach:lastHardBreachOpening;
+  const result=beginBreachVault(player,opening,activeDroneObstacles());
+  if(result.vault){
+   breachVault=result.vault;
+   keys.delete("Space"); // Vault takes priority over ordinary jump.
+   shotNotice.textContent="HARD BREACH VAULT · CROSSING THE OPENING";
+   shotNoticeLeft=1.25;
+   return;
+  }
+ }
  if(event.code==="KeyV"&&!event.repeat){
   strikeMelee(performance.now());return;
  }
@@ -873,7 +892,7 @@ document.addEventListener("keydown",event=>{
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
+   breachVault=null;player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -952,7 +971,7 @@ function hudFrame(){
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
  speedText.textContent=player.speed.toFixed(1)+" M/S";
  groundText.textContent=player.grounded?"STABLE":"AIRBORNE";
- modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCH":player.sprinting?"SPRINT":"STAND";
+ modeText.textContent=player.vaulting?"VAULT":player.prone?"PRONE":player.crouched?"CROUCH":player.sprinting?"SPRINT":"STAND";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
  healthNumber.textContent=String(wireHealth.hp);
  healthCaption.textContent=wireHealth.hp===0?"ELIMINATED · P TO RESPAWN":
@@ -1271,16 +1290,26 @@ function animate(now){
      terrainMultiplier:wireTerrainMultiplier(wireState,player,activeOperator.side)
    };
    const before=player;
-   // A defeated attacker remains stationary until they press P to respawn.
-   if(wireHealth.hp>0)player=stepPlayer(player,input,dt,
-     [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()]);
+   // Vaulting is a special collision-checked crouched movement over the sill.
+   if(wireHealth.hp>0){
+    const obstacles=activeDroneObstacles();
+    if(breachVault){
+     const next=stepBreachVault(player,breachVault,dt,obstacles);
+     player=next.player;breachVault=next.vault;
+     if(next.event==="landed"||next.event==="blocked"){
+      shotNotice.textContent=next.event==="landed"?
+       "HARD BREACH VAULT COMPLETE":"VAULT BLOCKED · COLLISION";
+      shotNoticeLeft=1.4;
+     }
+    }else player=stepPlayer(player,input,dt,obstacles);
+   }
    const nextHealth=tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt);
    if(nextHealth.damage>0){
     shotNotice.textContent=nextHealth.hp===0?
      "ELIMINATED BY ENEMY BARBED WIRE · PRESS P TO RESPAWN":
      "ENEMY BARBED WIRE · -"+nextHealth.damage+" HP";
     shotNoticeLeft=nextHealth.hp===0?5:1;
-    if(nextHealth.hp===0){firing=false;aimHeld=false;keys.clear();}
+    if(nextHealth.hp===0){breachVault=null;firing=false;aimHeld=false;keys.clear();}
    }
    wireHealth=nextHealth;
    const wireCue=stepWireSounds(wireSoundTracker,wireState,before,player,
@@ -1402,5 +1431,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.20.0 hard breach steel openings, delayed detonation and F recovery",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.20.1 small raised hard breach window with Space collision-checked vault",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

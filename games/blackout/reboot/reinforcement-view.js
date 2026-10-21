@@ -4,7 +4,7 @@
 // Decorative ribs/rivets are not separate raycast blockers.
 import {REINFORCEMENT,newReinforcement,stepReinforcement,
  removeReinforcement,reinforcementBlockers,canWorkOnReinforcement,
- reinforcementStatus,hardBreachReinforcement} from "./reinforcement.js?v=reboot-045";
+ reinforcementStatus,hardBreachReinforcement} from "./reinforcement.js?v=reboot-046";
 
 export function createReinforcementStation(THREE,scene){
  const spec=REINFORCEMENT;

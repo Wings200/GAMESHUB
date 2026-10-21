@@ -5,7 +5,7 @@ import {REINFORCEMENT} from "./reinforcement.js?v=reboot-045";
 
 export const HARD_BREACH=Object.freeze({
  charges:2,range:2.8,pickupRange:2.8,installSeconds:1.45,
- detonationDelay:1.1,radius:2.65,damage:165,lethalRadius:.85
+ detonationDelay:1.1,radius:1.9,damage:165,lethalRadius:.85
 });
 export function newHardBreachState(){return {charges:HARD_BREACH.charges,nextId:1,devices:[]};}
 function placement(player,context){
@@ -27,7 +27,7 @@ function placement(player,context){
   return {point:null,reason:"ELECTRIFIED STEEL · HARD BREACH BLOCKED"};
  const inExistingHole=reinforcement?.installed&&reinforcement.breach&&
   x>reinforcement.breach.left&&x<reinforcement.breach.right&&
-  y<reinforcement.breach.top;
+  y>reinforcement.breach.bottom&&y<reinforcement.breach.top;
  if(inExistingHole)
   return {point:null,reason:"STEEL ALREADY BREACHED · AIM AT INTACT PANEL"};
  const col=Math.floor((x-(SOFT_WALL.x-half))/SOFT_WALL.cell);

@@ -88,7 +88,7 @@ test("Y removes metal, preserves original drywall and allows repeat installation
  assert.equal(station.state.installs,2);
 });
 
-test("hard breach removes the original monolithic visible steel and leaves real shootable fragments",()=>{
+test("compact vault breach leaves steel sill/lintel/sides as four real shootable fragments",()=>{
  const {station}=fixture();finish(station);
  const original=station.shootables()[0];
  assert.equal(original.visible,true);
@@ -97,8 +97,9 @@ test("hard breach removes the original monolithic visible steel and leaves real 
  assert.equal(station.breached,true);
  assert.equal(station.status,"BREACHED");
  assert.equal(original.visible,false);
- assert.equal(station.shootables().length,3);
- assert.equal(station.blockers().length,3);
+ assert.equal(station.shootables().length,4);
+ assert.equal(station.blockers().length,4);
+ assert.ok(station.blockers().some(p=>p.id.endsWith("-sill")));
  assert.equal(station.root.children.some(x=>x.name==="horizontal reinforcement rib"&&x.visible),false);
  assert.equal(station.shootables().every(x=>x.userData.reinforcementShield===true),true);
  assert.equal(station.shootables().every(x=>x.userData.physicsObstacleId?.includes("metal-reinforcement")),true);

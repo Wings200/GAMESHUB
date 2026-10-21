@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.20.0
+# BLACKOUT — Clean Reboot V0.20.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.20.1 · SMALL HARD BREACH WINDOW + REAL SPACE VAULT**
+- User explicitly rejected the prior huge Thermite-style doorway; Hard Breach now makes a **small raised rectangle ~1.62 m wide × 1.30 m high** with a **0.70m lower steel sill** and a steel lintel above. Remaining steel is physically modeled as four pieces (left, right, sill, lintel), all solid and bulletproof. This is not a walk-through door.
+- Gypsum destruction for **Hard Breach only** now cuts the corresponding rectangular hole out of the real 12cm wall cells, not a 2.65m spherical drywall blast. The existing spherical damage behavior of Impact, C4, Frag and Soft Breach remains unchanged. Hard Breach's HP blast radius is reduced to **1.9 m**, emphasizing the compact opening.
+- **Press Space when directly facing the small opening from close range** to vault. A ~0.76s raised crouch traversal lifts feet above the sill, moves through the hole, and lands on the opposite side. The entire trajectory checks existing collisions, including the actual steel frame and gypsum; blocked/too-small/closed holes cannot be vaulted. Ordinary walking or standing inside the opening is disallowed. Space elsewhere retains regular jumping; the vault can be approached from either side.
+- Modelled steel hole, actual gypsum hole, shooter/raycast blockers, movement collision and HUD are kept in sync. Unreinforced Hard Breach openings are vaultable as well when the drywall is gone, and reinstalled steel/reset drywall prevents phantom vaulting. Hard/soft charge counts, delayed detonation, mounting animation, F pickup/refund, and other gadgets remain unchanged.
+- Includes dedicated deterministic vault animation/traversal/occlusion tests and revised reinforcement + blast tests. Browser visuals and traversal still need user confirmation.
 
 **2026-10-21 / V0.20.0 · HARD BREACH CHARGES WITH REAL REINFORCED WALL CUTOUTS AND F PICKUP**
 - Eighth functional gadget: attacker Striker's **Hard Breach Charge** (2), available in either MMB or G slot. Tap the assigned key while aiming at the existing intact steel-reinforced station (or intact bare gypsum) within 2.8m to attach a modeled heavy explosive. **Electrified reinforcement is rejected** (the current test range has no active electricity systems).

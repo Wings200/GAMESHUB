@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.20.0 · hard breach cuts real reinforced walls and supports pickup
+    name: Reboot V0.20.1 · smaller hard breach vault window with Space traversal
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,5 +74,6 @@ jobs:
           node --check games/blackout/reboot/soft-breach-view.js
           node --check games/blackout/reboot/hard-breach.js
           node --check games/blackout/reboot/hard-breach-view.js
+          node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

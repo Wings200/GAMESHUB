@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-045",
+ for(const src of ["./reboot/main.js?v=reboot-046",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -253,8 +253,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('event.code==="KeyT"'));
  assert.ok(main.includes("softWall.tick(dt)"));
  // V0.11 metal reinforcement must be additive: preserve V0.9 and V0.10.
- assert.ok(main.includes('from "./reinforcement.js?v=reboot-045"'));
- assert.ok(main.includes('from "./reinforcement-view.js?v=reboot-045"'));
+ assert.ok(main.includes('from "./reinforcement.js?v=reboot-046"'));
+ assert.ok(main.includes('from "./reinforcement-view.js?v=reboot-046"'));
  assert.ok(main.includes("createReinforcementStation(THREE,scene)"));
  assert.ok(main.includes("...reinforcement.blockers()"));
  assert.ok(main.includes("...reinforcement.shootables()"));
@@ -453,6 +453,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/nitro-view.js").includes("pickupTarget.userData.c4PickupId=device.id"));
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
+ // V0.20.1: hard breach must create raised vault windows, not doorways.
+ assert.ok(main.includes('from "./breach-vault.js?v=reboot-046"'));
+ assert.ok(main.includes("beginBreachVault(player,opening,activeDroneObstacles())"));
+ assert.ok(main.includes("stepBreachVault(player,breachVault,dt,obstacles)"));
+ assert.ok(main.includes('keys.delete("Space")'));
+ assert.ok(main.includes("breachVault=null,lastHardBreachOpening=null"));
+ assert.ok(main.includes("reinforcement.state.breach:lastHardBreachOpening"));
+ assert.ok(read("reboot/soft-wall-view.js").includes("function breachWindow(window)"));
+ assert.ok(html.includes("PRESS SPACE AT SMALL HOLE TO VAULT"));
  // V0.20.0: reinforced walls have real cuttable, physical panels.
  assert.ok(main.includes('from "./hard-breach.js?v=reboot-045"'));
  assert.ok(main.includes('from "./hard-breach-view.js?v=reboot-045"'));
@@ -469,7 +478,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Reinforced wall breach (unprotected)",implemented:true'));
  assert.ok(read("reboot/reinforcement-view.js").includes("rebuildBreachMeshes()"));
  assert.ok(read("reboot/reinforcement.js").includes("hardBreachReinforcement(state,blast)"));
+ assert.ok(read("reboot/reinforcement.js").includes('add("sill"'));
  assert.ok(read("reboot/reinforcement.js").includes('add("lintel"'));
+ assert.ok(read("reboot/reinforcement.js").includes("bottom:.70,top:2.0"));
  assert.ok(html.includes("Look directly at the mounted charge and press F to pick it up"));
  assert.ok(html.includes("Four gadget options still await physical implementation"));
  // V0.19.0: physical soft breach charges with recoverable, mounted inventory.
@@ -498,7 +509,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("but cannot damage gypsum walls"));
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
- assert.ok(main.includes("gypsumBlast:()=>softWall.blastAt(blast)"));
+ assert.ok(main.includes('gypsumBlast:()=>label==="HARD BREACH"?'));
+ assert.ok(main.includes("softWall.breachWindow(hardBreachWindow(blast)):softWall.blastAt(blast)"));
  assert.ok(main.includes("reinforced:reinforcement.installed"));
  assert.ok(main.includes("nitroBlastDamage(blast,{x:player.x"));
  assert.ok(main.includes("nitroBlastIsLethal(blast,{x:player.x"));
@@ -625,8 +637,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(shield.includes("root.scale.y="));
  assert.ok(shield.includes("function steelImpact(hit)"));
 
- assert.ok(main.includes('from "./soft-wall.js?v=reboot-016"'));
- assert.ok(main.includes('from "./soft-wall-view.js?v=reboot-032"'));
+ assert.ok(main.includes('from "./soft-wall.js?v=reboot-046"'));
+ assert.ok(main.includes('from "./soft-wall-view.js?v=reboot-046"'));
  for(const id of ["soft-wall-readout","soft-wall-removed","soft-wall-status"]){
   assert.ok(html.includes('id="'+id+'"'),"soft-wall HUD absent: "+id);
  }

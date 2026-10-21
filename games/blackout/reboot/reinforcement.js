@@ -43,21 +43,30 @@ export function removeReinforcement(state,player){
  return {state:{...state,installed:false,progress:0,removals:state.removals+1,breach:null},
   removed:true,reason:"METAL REINFORCEMENT REMOVED"};
 }
-// Cut a rectangle that extends to the floor, so a full-height player
-// capsule can pass. Other steel pieces remain solid, visible, and shootable.
-// Do NOT remove the entire reinforcement or fake a doorway with a decal.
+// Small, raised vault-sized rectangle. The sill remains physical: walking
+// into the wall or ordinary jumping cannot turn it into a free doorway.
+// Only the dedicated Space vault can safely clear the lower steel support.
+export const HARD_BREACH_WINDOW=Object.freeze({
+ width:1.62,bottom:.70,top:2.0
+});
+export function hardBreachWindow(blast){
+ if(!blast||![blast.x,blast.y,blast.z].every(Number.isFinite)||
+   Math.abs(blast.z-REINFORCEMENT.z)>.5||
+   Math.abs(blast.x-REINFORCEMENT.x)>REINFORCEMENT.width/2-.3)return null;
+ const s=REINFORCEMENT;
+ // Keep a significant amount of steel on both sides.
+ const half=HARD_BREACH_WINDOW.width/2;
+ const maxOffset=s.width/2-half-.35;
+ const cx=Math.max(s.x-maxOffset,Math.min(s.x+maxOffset,blast.x));
+ return {left:cx-half,right:cx+half,
+  bottom:HARD_BREACH_WINDOW.bottom,top:HARD_BREACH_WINDOW.top};
+}
 export function hardBreachReinforcement(state,blast){
  if(!state?.installed||state.electrified)return {state,opened:false,reason:
   state?.electrified?"ELECTRIFIED REINFORCEMENT · DISABLE ELECTRICITY FIRST":
    "NO REINFORCEMENT TO BREACH"};
- if(!blast||![blast.x,blast.y,blast.z].every(Number.isFinite)||
-   Math.abs(blast.z-REINFORCEMENT.z)>.5||
-   Math.abs(blast.x-REINFORCEMENT.x)>REINFORCEMENT.width/2-.5)
-  return {state,opened:false,reason:"BREACH CHARGE NOT ON METAL"};
- const s=REINFORCEMENT;
- // Width leaves at least .4m of side support on either edge.
- const cx=Math.max(s.x-s.width/2+1.25,Math.min(s.x+s.width/2-1.25,blast.x));
- const opening={left:cx-1.19,right:cx+1.19,top:2.17};
+ const opening=hardBreachWindow(blast);
+ if(!opening)return {state,opened:false,reason:"BREACH CHARGE NOT ON METAL"};
  if(state.breach)return {state,opened:false,reason:"REINFORCEMENT ALREADY BREACHED"};
  return {state:{...state,breach:opening},opened:true,reason:"STEEL BREACH OPENED"};
 }
@@ -75,6 +84,7 @@ export function reinforcementBlockers(state){
  };
  add("left",edgeLeft,b.left,0,s.height);
  add("right",b.right,edgeRight,0,s.height);
+ add("sill",b.left,b.right,0,b.bottom);
  add("lintel",b.left,b.right,b.top,s.height);
  return parts;
 }
