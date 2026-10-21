@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-019",
-   "./reboot/style.css?v=reboot-019"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-020",
+   "./reboot/style.css?v=reboot-020"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -256,16 +256,30 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("reinforcement.tick(dt)"));
  // V0.12: drone is a real separate controller, not decorative HUD toggling.
  assert.ok(main.includes('from "./drone-physics.js?v=reboot-019"'));
- assert.ok(main.includes('from "./drone-view.js?v=reboot-018"'));
+ assert.ok(main.includes('from "./drone-view.js?v=reboot-020"'));
  assert.ok(main.includes("createDroneView(THREE,scene)"));
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
- assert.ok(main.includes('from "./drone-roster.js?v=reboot-019"'));
+ assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
- assert.ok(main.includes('throwPhysicalDrone("initial",true)'));
- assert.ok(main.includes('throwPhysicalDrone("spare",false)'));
- assert.ok(main.includes('spareRequest(droneRoster,"range")'));
+ assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
+  "5 must never automatically throw a drone");
+ assert.ok(main.includes('throwPhysicalDrone(request.kind)'));
+ assert.ok(main.includes('throwRequest(droneRoster,"range")'));
  assert.ok(main.includes("cameraRequest(droneRoster)"));
  assert.ok(main.includes("switchDroneCamera("));
+ assert.ok(main.includes('newDroneRoster("range")'));
+ assert.ok(main.includes('if(request.action==="open")'));
+ assert.ok(main.includes('throwPhysicalDrone(request.kind)'));
+ assert.ok(main.includes('setDroneCameraVisibility(droneViews,droneRoster.selected,'));
+ assert.ok(main.includes('locked&&controlMode==="drone"'));
+ assert.equal(main.includes('throw-first-and-open'),false,
+   "5 must NEVER create a camera by throwing");
+ assert.ok(html.includes('<small>DRONES <b id="spare-drone-count">2</b></small>'));
+ assert.ok(html.includes('title="Throw carried drone"'));
+ const droneView=read("reboot/drone-view.js");
+ assert.ok(droneView.includes("export function setDroneCameraVisibility("));
+ assert.ok(droneView.includes("views[i].root.visible=false"));
+ 
  assert.ok(main.includes('event.code==="Digit5"'));
  assert.ok(main.includes('event.code==="Digit6"'));
  assert.ok(main.includes('event.code==="KeyX"'));
@@ -293,7 +307,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  for(const oldLabel of ['title="Lean left"','title="Lean right"','title="Prone toggle"'])
   assert.equal(html.includes(oldLabel),false,"basic movement labels should leave bottom keybar");
  assert.ok(main.includes('droneCameraCount.textContent=String(info.cameras)'));
- assert.ok(main.includes('droneSpareCount.textContent=String(info.spare)'));
+ assert.ok(main.includes('droneSpareCount.textContent=String(info.throwables)'));
 
 
  assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
