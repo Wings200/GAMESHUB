@@ -124,7 +124,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
  for(const src of ["./reboot/main.js?v=reboot-037",
-   "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
+   "./reboot/style.css?v=reboot-037"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
