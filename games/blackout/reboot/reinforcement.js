@@ -30,7 +30,7 @@ export function stepReinforcement(state,{player,holding,dt,moving=false,sprintin
  const delta=Number.isFinite(dt)?Math.max(0,Math.min(.05,dt)):0;
  if(delta===0)return {state,event:"none"};
  const progress=Math.min(REINFORCEMENT.installSeconds,state.progress+delta);
- if(progress>=REINFORCEMENT.installSeconds){
+ if(progress+1e-8>=REINFORCEMENT.installSeconds){
   return {state:{...state,installed:true,progress:0,installs:state.installs+1},
    event:"installed"};
  }
