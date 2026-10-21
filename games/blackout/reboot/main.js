@@ -220,7 +220,7 @@ function throwCarriedDrone(){
  const request=throwRequest(droneRoster,"range");
  if(request.action==="throw-only")throwPhysicalDrone(request.kind);
  else{
-  shotNotice.textContent=request.reason||"NO SPARE DRONE";
+  shotNotice.textContent=request.reason||"NO DRONES REMAINING";
   shotNoticeLeft=1.3;
  }
 }
