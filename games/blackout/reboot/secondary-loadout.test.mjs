@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["c4","barbed-wire"],"only C4 and barbed wire are physically implemented");
+  ["c4","impact","barbed-wire"],"only 3 finished physical gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -127,4 +127,17 @@ test("fully implemented C4 and barbed wire can be equipped together",()=>{
  plans=planSecondary(plans,sentry,0,"c4");
  assert.equal(planIsFieldReady(plans,sentry),true);
  assert.equal(gadgetById("c4").implemented,true);
+});
+
+test("impact grenades are a third live defender gadget, side-locked and nonduplicate",()=>{
+ const sentry=operatorById("sentry"),striker=operatorById("striker");
+ let plans=newSecondaryPlans();
+ plans=planSecondary(plans,sentry,0,"impact");
+ plans=planSecondary(plans,sentry,1,"c4");
+ assert.equal(planIsFieldReady(plans,sentry),true);
+ assert.deepEqual(utilityHudRows(plans,sentry).map(row=>row.name),
+  ["Impact Grenades","C4 / Nitro Cell"]);
+ assert.deepEqual(utilityHudRows(plans,sentry).map(row=>row.fieldReady),[true,true]);
+ assert.equal(planSecondary(plans,striker,0,"impact"),plans);
+ assert.equal(planSecondary(plans,sentry,1,"impact"),plans);
 });
