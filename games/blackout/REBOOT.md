@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.14.2
+# BLACKOUT — Clean Reboot V0.15.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,17 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.15.0 · FIRST ACTUALLY WORKING GADGET — Sentry Barbed Wire (user asked to stop fake previews):**
+- User pointed out they cannot browser-test gadgets if none actually function. Implemented **the first real physical gadget, BARBED WIRE**, not another planning/UI mock. Latest GitHub Actions commit `d4dd2058d5c05d854cfb923be98e5b6c42a4da42` passed **147 tests / 0 failures** before this document.
+- From the selection menu: choose **DEFENDERS → SENTRY → NORMAL gadget slot (G) → Barbed Wire** (or alternatively the special slot MMB). On entering the Testing Range, press that same gadget key to place a real, visible, low-profile THREE.js wire coil **1.65 m ahead** on clear ground, respecting obstacles, other coils, map bounds, player grounded state and two-item carried inventory. The 3D mesh uses metal strands/crossbars/anchor spikes with a shootable center. HUD displays **LIVE · 2/2 LEFT**, then 1/2 and 0/2 as placed. Invalid placement does not consume charges.
+- Wire creates an actual **1.18 m-radius foot-level slowdown** in `physics.stepPlayer`: player speed multiplied by **0.48** while walking/sprinting/crouching/prone on the coil, without changing permanent operator speed class or drone speed. Jumping over the wire clears the slow once feet are >.36m high. The physics engine accepts a separate optional terrainMultiplier and preserves identical legacy movement for absent hazards.
+- **Real shooting interaction:** Wire core is included in exactly the same closest-solid raycast as wood, gypsum, steel, floor and targets. Aim downward into the metal wire, fire **three** shots: independent 3-HP object takes bullet hits, emits impact feedback, and **disappears from the 3D scene and all future collisions/slow effects** when destroyed. Destroyed wire cannot be shot repeatedly or restore spent charges. Decals are not placed on disappearing models.
+- Every other gadget (including C4 on MMB, flashes, smoke, impacts, breach charges, claymores, alarms, etc.) remains explicitly **not implemented**; the picker and right-side HUD label wire as **READY/LIVE**, the rest PLANNED/NOT BUILT. Striker cannot equip Sentry wire due to side-locked inventory; attacker drone key 5/6 and Sentry-only reinforcement F/Y in Testing Range remain unchanged. Other completed mechanics (wood barricade, gypsum cutouts, bullets, ADS/recoil, drones, animation/speed) must not regress.
+- Added isolated `barbed-wire.js`, `barbed-wire-view.js`, and `barbed-wire.test.mjs`. Automated tests verify two-charge inventory, safe terrain placement, no consumption when blocked, model state/damage status, physics slowdown vs normal walk, jump clearance, 3-hit destruction, zero replenishment after destroying, unrelated gadget readiness, cached import correctness and legacy regression. Still **requires user browser playtest** before advancing to second physical gadget.
+- Browser verification request: **Sentry G wire selected → press G on clear open ground → visible wire appears and remaining amount drops 2→1 → step onto it and observe actual slower movement → shoot wire three times and it vanishes → repeat second placement → confirm Striker cannot use wire and its 5/6 drones still work**. There is no 5v5 multiplayer or match-phase flow.
+
+
 
 **2026-10-21 / V0.14.2 · CORRECT special/normal keybinds after user browser feedback:**
 - User explicitly corrected the prior **3 / 4 gadget mapping**. New contract: **SPECIAL / signature or first generalist utility slot = pressing down the scroll wheel (middle mouse button, MMB)**; **NORMAL / second generalist utility slot = G**. Example: Sentry chooses **C4 in special slot** and **barbed wire in normal slot**, then his utility HUD says **MMB C4** and **G BARBED WIRE**. Future specialist signature ability should also use MMB, standard utility G. This is a player control contract, independent of weapon keys 1/2 and recon keys 5/6.
