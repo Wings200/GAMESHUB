@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.15 · physical Sentry barbed wire / prior mechanics
+    name: Reboot V0.15.1 · V melee and wire hit fixes / full prior mechanics
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -54,5 +54,7 @@ jobs:
           node --check games/blackout/reboot/secondary-loadout.js
           node --check games/blackout/reboot/barbed-wire.js
           node --check games/blackout/reboot/barbed-wire-view.js
+          node --check games/blackout/reboot/melee.js
+          node --check games/blackout/reboot/melee-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
