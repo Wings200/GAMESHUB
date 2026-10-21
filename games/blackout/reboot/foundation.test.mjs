@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-014",
-   "./reboot/style.css?v=reboot-014"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-015",
+   "./reboot/style.css?v=reboot-015"])assert.ok(html.includes(src));
  // Screen reference includes distinct HUD profiles but only player is playable.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -152,7 +152,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   assert.ok(html.includes('id="'+id+'"'),"required live HUD element: "+id);
  }
  for(const hook of ["completedTargets.add(target.id)","compassHeading(player.yaw)",
-  "drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets)",
+  "drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE)",
   "drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds)",
   'document.body.classList.toggle("range-active",locked)',
   "reserveCount.textContent=String(weapons.current.remaining)"]){
@@ -167,7 +167,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
- assert.match(main,/stepPlayer\(player,input,dt\)/);
+ assert.ok(main.includes("player=stepPlayer(player,input,dt,"));
  assert.match(main,/advanceFootsteps/);
  assert.ok(main.includes('crouch:keys.has("KeyC")'));
  assert.ok(main.includes("prone:proneToggle"));
@@ -210,7 +210,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("SHOT BLOCKED"));
  assert.ok(html.includes("Press <kbd>B</kbd> for ballistics diagnostics."));
  assert.ok(main.includes('from "./combat-raycast.js?v=reboot-012"'));
- assert.ok(main.includes('from "./tactical-hud.js?v=reboot-013"'));
+ assert.ok(main.includes('from "./tactical-hud.js?v=reboot-015"'));
  assert.ok(main.includes('combatIntersections(raycaster,'));
  assert.ok(main.includes('combatIntersections(aimRaycaster,'));
  assert.equal(main.includes('raycaster.intersectObjects(\n  [...shootableSolids'),false);
@@ -230,7 +230,25 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("decals.frustumCulled=false"));
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
- assert.ok(main.includes("shotEffects.clear()"));
+ assert.ok(main.includes('from "./barricade.js?v=reboot-015"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-015"'));
+ assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
+ assert.ok(main.includes("...barricade.blockers()"));
+ assert.ok(main.includes("...barricade.shootables()"));
+ assert.ok(main.includes("barricade.hitBoard(outcome.hit)"));
+ assert.ok(main.includes("barricade.rebuild()"));
+ assert.ok(main.includes('keys.has("KeyF")'));
+ assert.ok(main.includes('barricade.tick(dt)'));
+ for(const id of ["barricade-prompt","barricade-progress","barricade-status","barricade-count"]){
+   assert.ok(html.includes('id="'+id+'"'),"HUD barricade prompt missing "+id);
+ }
+ assert.ok(css.includes(".barricade-prompt"));
+ const barrView=read("reboot/barricade-view.js");
+ assert.ok(barrView.includes("function hitBoard(hit)"));
+ assert.ok(barrView.includes("markDamage(boards[index],hit)"));
+ assert.ok(barrView.includes("boards[index].visible=false"));
+ assert.ok(barrView.includes("shards(boards[index])"));
+  assert.ok(main.includes("shotEffects.clear()"));
  assert.ok(main.includes("shotEffects.lastFace"));
  assert.ok(main.includes("outcome.hit.point.y.toFixed(2)"));
  assert.ok(impact.includes("surface.worldToLocal(pos)"));
