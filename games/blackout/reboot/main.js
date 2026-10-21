@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.15.1 — V punch melee breaks barricades in 3 and wire in 2
+// BLACKOUT REBOOT V0.15.2 — Sentry wire only hurts attackers, gunfire cannot destroy it
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -25,7 +25,7 @@ import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-028";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-028";
-import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier} from "./barbed-wire.js?v=reboot-028";
+import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
@@ -50,6 +50,8 @@ const droneEquipmentBar=$("drone-equipment-bar"),droneKeyTip=$("drone-key-tip"),
 const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone-number");
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
+const healthNumber=$("health-current"),healthCaption=$("health-caption");
+const healthSegments=[...document.querySelectorAll(".siege-health-bars span")];
 const utilityHud=$("utility-hud"),utilityHudNote=$("utility-hud-note");
 const utilityName=[$("utility-name-special"),$("utility-name-normal")];
 const utilityStatus=[$("utility-status-special"),$("utility-status-normal")];
@@ -138,6 +140,7 @@ const reinforcement=createReinforcementStation(THREE,scene);
 const droneViews=[]; // physical model for each deployed drone
 const wireViews=new Map(); // deployed physical barbed-wire models
 let wireState=newWireState();
+let wireHealth=newWireHealth();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -170,6 +173,9 @@ let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
 const operatorPicker=createOperatorPicker($("operator-selection"),{
  onSelect(operator){
   activeOperator=operator;
+  // This fresh testing role starts at full health. Deployed defender wire
+  // persists across team changes so Striker can verify enemy-only damage.
+  wireHealth=newWireHealth();
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -249,7 +255,7 @@ function strikeMelee(now){
  const selected=selectedMeleeTarget(hits);
  let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
  if(selected.kind==="wire"){
-  // 3 rifle shots or 2 melee strikes: damage 2 vs wire's 3 HP.
+  // TWO melee strikes remove wire. Gunfire has no destruction effect.
   const result=damageWire(wireState,selected.id,2);
   if(result.handled){
    wireState=result.state;
@@ -432,6 +438,7 @@ document.addEventListener("keydown",event=>{
   keys.add(event.code);
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
+ if(wireHealth.hp===0&&event.code!=="KeyP")return;
  if(event.code==="KeyV"&&!event.repeat){
   strikeMelee(performance.now());return;
  }
@@ -441,7 +448,7 @@ document.addEventListener("keydown",event=>{
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   player=initialPlayer();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION RESET · TRY THE OBSTACLES AGAIN.";
+   player=initialPlayer();wireHealth=newWireHealth();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -494,7 +501,7 @@ document.addEventListener("mousedown",event=>{
   }
   return;
  }
- if(controlMode!=="player")return;
+ if(controlMode!=="player"||wireHealth.hp===0)return;
  if(event.button===0)firing=true;
  if(event.button===2)aimHeld=true;
  if(event.button===0||event.button===2)event.preventDefault();
@@ -517,6 +524,13 @@ function hudFrame(){
  groundText.textContent=player.grounded?"STABLE":"AIRBORNE";
  modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCH":player.sprinting?"SPRINT":"STAND";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
+ healthNumber.textContent=String(wireHealth.hp);
+ healthCaption.textContent=wireHealth.hp===0?"ELIMINATED · P TO RESPAWN":
+  activeOperator.side==="defend"?"DEFENDER · FRIENDLY WIRE IMMUNITY":
+  "ATTACKER · ENEMY WIRE 10 HP / 0.5 S";
+ healthSegments.forEach((bar,i)=>{
+  bar.style.opacity=wireHealth.hp>i*WIRE.maxHealth/healthSegments.length?"1":".15";
+ });
  ammoText.textContent=String(weapons.current.ammo);
  reserveCount.textContent=String(weapons.current.remaining);
  weaponStatus.textContent=weapons.reloading?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"AUTO";
@@ -569,7 +583,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableWire()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -625,29 +639,17 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableWire()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
- const wireId=outcome.hit?.object?.userData?.wireId;
- const wireHit=Number.isInteger(wireId)?damageWire(wireState,wireId):{handled:false};
- if(wireHit.handled){
-  wireState=wireHit.state;
-  wireViews.get(wireId)?.sync(wireState.devices.find(d=>d.id===wireId));
-  refreshUtilityHud();
- }
- const woodHit=!wireHit.handled&&outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
- const metalHit=outcome.hit&&!wireHit.handled?reinforcement.steelImpact(outcome.hit):false;
- const plasterHit=outcome.hit&&!metalHit&&!wireHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!wireHit.handled&&!woodHit.handled&&!plasterHit.handled&&!metalHit)
+ // Firearms never invoke wire damage; the wire is a melee-only device.
+ const woodHit=outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
+ const metalHit=outcome.hit?reinforcement.steelImpact(outcome.hit):false;
+ const plasterHit=outcome.hit&&!metalHit?softWall.onHit(outcome.hit):{handled:false};
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(wireHit.handled){
-  shotNotice.textContent=wireHit.destroyed?
-   "BARBED WIRE DESTROYED · SLOW FIELD CLEARED":
-   "BARBED WIRE HIT · "+wireHit.remainingHP+" HITS REMAIN";
-  shotNoticeLeft=1.3;
-  shotAudio.play("impact");
- }else if(woodHit.handled){
+ if(woodHit.handled){
   shotNotice.textContent="BOARD "+String(woodHit.index).padStart(2,"0")+
     (woodHit.broken?" DESTROYED · "+woodHit.remaining+" LEFT":" HIT · FIRE AGAIN");
   shotNoticeLeft=.95;
@@ -735,17 +737,26 @@ function animate(now){
      prone:proneToggle,
      jump:keys.has("Space"),
      speedMultiplier:operatorLoadout(activeOperator).speedMultiplier,
-     terrainMultiplier:wireTerrainMultiplier(wireState,player)
+     terrainMultiplier:wireTerrainMultiplier(wireState,player,activeOperator.side)
    };
    const before=player;
-   // One active board list controls both movement and shooting.
-   player=stepPlayer(player,input,dt,
+   // A defeated attacker remains stationary until they press P to respawn.
+   if(wireHealth.hp>0)player=stepPlayer(player,input,dt,
      [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()]);
+   const nextHealth=tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt);
+   if(nextHealth.damage>0){
+    shotNotice.textContent=nextHealth.hp===0?
+     "ELIMINATED BY ENEMY BARBED WIRE · PRESS P TO RESPAWN":
+     "ENEMY BARBED WIRE · -"+nextHealth.damage+" HP";
+    shotNoticeLeft=nextHealth.hp===0?5:1;
+    if(nextHealth.hp===0){firing=false;aimHeld=false;keys.clear();}
+   }
+   wireHealth=nextHealth;
    const next=advanceFootsteps(footstepTracker,before,player);
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
    // Hold F to rebuild only while damaged and near the frame.
-   if(keys.has("KeyF")&&barricade.near(player)&&
+   if(wireHealth.hp>0&&keys.has("KeyF")&&barricade.near(player)&&
       barricade.status!=="INTACT"&&!player.sprinting){
      barricadeBuildTime=Math.min(BARRICADE.installSeconds,barricadeBuildTime+dt);
      if(barricadeBuildTime>=BARRICADE.installSeconds){
@@ -759,7 +770,7 @@ function animate(now){
    // A different F action, gated by proximity: while stationary at the
    // gypsum station, construct a real metal shield bottom-up for 3 seconds.
    const reinforceStep=reinforcement.step({
-    player,holding:canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,
+    player,holding:wireHealth.hp>0&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,
     moving:player.moving,sprinting:player.sprinting
    });
    if(reinforceStep.event==="installed"){
@@ -816,9 +827,9 @@ function animate(now){
   // during the first ~150 ms while the physical gun settles onto its optic.
   const aligned=aimState(aimHeld,aimMix).accurate;
   const fired=cycleLegacyFire(weapons,now,{
-   held:firing&&!meleeView.active,adsAligned:aligned,canFire:!player.sprinting&&!meleeView.active
+   held:firing&&!meleeView.active&&wireHealth.hp>0,adsAligned:aligned,canFire:!player.sprinting&&!meleeView.active&&wireHealth.hp>0
   },shot=>fireShot(shot,aligned,now));
-  if(firing&&!fired&&weapons.current.ammo<=0&&
+  if(wireHealth.hp>0&&firing&&!fired&&weapons.current.ammo<=0&&
       !weapons.reloading&&now-lastEmptyClick>600){
    shotAudio.play("click");
    shotNotice.textContent="MAGAZINE EMPTY · R TO RELOAD";
@@ -847,5 +858,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.15.1 V melee 3x barricade 2x wire and visible wire shot fixes",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.15.2 enemy-only wire 10HP every half-second, bullet immunity, melee-only destruction",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
