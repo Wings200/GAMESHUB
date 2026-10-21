@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/C4 \/ IMPACT \/ WIRE LIVE/);
+  assert.match(elements["operator-plan-status"].textContent,/FOUR GADGETS WORK/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -226,6 +226,24 @@ test("Impact Grenades are marked LIVE and can occupy the normal G slot",()=>{
    "Impact Grenades · READY");
   menu.value="impact";menu.listeners.get("change")();
   assert.deepEqual(picker.plans.sentry,[null,"impact"]);
+  assert.equal(elements["operator-slots"].children[1].children[2].textContent,
+   "LIVE GADGET · READY IN RANGE");
+ }finally{globalThis.document=old;}
+});
+
+test("Striker gets a real selectable Frag Grenades option",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  const select=elements["operator-slots"].children[1].children[1];
+  assert.equal(select.children.find(x=>x.value==="frag").textContent,
+   "Frag Grenades · READY");
+  assert.equal(select.children.find(x=>x.value==="flash").textContent,
+   "Flashbangs · PLANNED");
+  select.value="frag";select.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,[null,"frag"]);
   assert.equal(elements["operator-slots"].children[1].children[2].textContent,
    "LIVE GADGET · READY IN RANGE");
  }finally{globalThis.document=old;}
