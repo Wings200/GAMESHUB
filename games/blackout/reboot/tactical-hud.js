@@ -13,13 +13,14 @@ export function compassHeading(yaw){
 export function areaName(x,z){
  if(!Number.isFinite(x)||!Number.isFinite(z))return "EXT TEST RANGE";
  if(Math.abs(x+7)<3&&Math.abs(z-3)<3)return "EXT BARRICADE STATION";
+ if(Math.abs(x-7)<3&&Math.abs(z-3)<3)return "EXT SOFT-WALL STATION";
  if(x<=-9&&z<2)return "EXT WEST COVER";
  if(x>=9&&z<2)return "EXT EAST COVER";
  if(z< -13)return "EXT TARGET RANGE";
  if(z>=13)return "EXT SPAWN AREA";
  return "EXT TEST RANGE";
 }
-export function drawTrainingMap(ctx,player,obstacles,targets,barricade=null){
+export function drawTrainingMap(ctx,player,obstacles,targets,barricade=null,softWall=null){
  if(!ctx)return;
  const w=ctx.canvas.width,h=ctx.canvas.height;
  ctx.clearRect(0,0,w,h);
@@ -50,6 +51,14 @@ export function drawTrainingMap(ctx,player,obstacles,targets,barricade=null){
   const bx=x(barricade.x),by=y(barricade.z);
   ctx.fillStyle="#f0ca7e";
   ctx.fillRect(bx-4,by-2,8,4);
+ }
+ if(softWall){
+   // True position and length of shoot-through gypsum test panel.
+   const left=x(softWall.x-softWall.columns*softWall.cell/2);
+   const right=x(softWall.x+softWall.columns*softWall.cell/2);
+   const cy=y(softWall.z);
+   ctx.fillStyle="#cfc5b1";
+   ctx.fillRect(left,cy-2,right-left,4);
  }
  const px=x(player.x),py=y(player.z),yaw=player.yaw||0;
  ctx.save();
