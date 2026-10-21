@@ -73,3 +73,160 @@ h1 span{color:#74d5c9}h1 sup{position:relative;top:-2.5em;left:.2em;font-size:.1
 #ammo{font-variant-numeric:tabular-nums}
 #weapon-status{font-size:14px;color:#9fe8df}
 @media(max-width:850px){.shot-notice{bottom:181px}.hud-bottom{left:12px;right:12px;bottom:12px;gap:6px}.readout{min-width:90px;padding:8px}.readout strong{font-size:15px}}
+
+
+/* ================================================================
+   BLACKOUT V0.8 · SIEGE-STYLE DRILL HUD
+   Layout intentionally follows supplied screenshot placement/scale.
+   All icons and crest are original BLACKOUT elements; no Siege assets.
+   ================================================================ */
+body.range-active .topbar{display:none}
+body.range-active .fade-edges{background:linear-gradient(0deg,#00000034 0%,transparent 17%,transparent 81%,#00000024 100%)}
+.hud{font-family:"Arial Narrow","Segoe UI",Arial,sans-serif;color:#f9fafb;text-shadow:0 1px 3px #000a}
+.siege-objective{
+ position:absolute;left:2.65%;top:22px;width:360px;max-width:38vw;
+ height:47px;padding:0 13px;display:flex;align-items:center;gap:12px;
+ color:#24292e;background:#e7e8e9e8;text-shadow:none;
+ font-size:14px;font-weight:650;box-shadow:0 1px 4px #0003
+}
+.siege-mission-checkbox{width:19px;height:19px;border:3px solid #76818a;display:inline-block;flex:none}
+.siege-mission-checkbox.complete{background:#b4dfd6;box-shadow:inset 0 0 0 3px #e7e8e9}
+.siege-mission-copy{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;letter-spacing:.005em}
+.siege-mission-copy b{font-weight:800}
+.siege-mission-copy strong{font-weight:800}
+.siege-minimap{
+ position:absolute;left:2.72%;top:106px;width:190px;height:190px;
+ background:#25364551;border:1px solid #c0d0de78;
+ box-shadow:inset 0 0 45px #17242a7c;overflow:hidden
+}
+#tactical-map{width:100%;height:100%;display:block;opacity:.92}
+.siege-map-compass{position:absolute;top:7px;left:calc(50% - 4px);font-size:11px;color:#88e5ea;font-weight:800}
+.siege-map-label{position:absolute;bottom:7px;left:11px;font-size:9px;letter-spacing:.1em;opacity:.68}
+.siege-round{
+ position:absolute;top:0;left:50%;transform:translateX(-50%);
+ display:flex;align-items:flex-start;height:66px;
+ filter:drop-shadow(0 2px 4px #0005);
+}
+.siege-squad-crest{
+ position:relative;width:41px;height:65px;background:#223748d9;
+ border-left:2px solid #8396a6;border-right:2px solid #576c78;
+ display:flex;justify-content:center;align-items:flex-start;padding-top:12px;
+ color:#fcfbf0;clip-path:polygon(0 0,100% 0,100% 83%,50% 100%,0 83%);
+ font-weight:1000;font-size:15px;letter-spacing:-.13em;
+}
+.siege-squad-crest>span span{color:#deaf74}
+.siege-squad-crest>i{position:absolute;bottom:10px;width:5px;height:4px;background:#bce2e6}
+.siege-squad-crest>i:nth-of-type(1){left:9px}
+.siege-squad-crest>i:nth-of-type(2){left:17px}
+.siege-squad-crest>i:nth-of-type(3){left:25px}
+.siege-clock{padding:8px 11px 8px 8px;background:#27374478;font-size:35px;line-height:42px;letter-spacing:.018em;font-weight:800;font-variant-numeric:tabular-nums}
+.siege-system{
+ position:absolute;right:2.7%;top:11px;display:flex;flex-direction:column;
+ align-items:flex-end;gap:5px;font-size:11px
+}
+.siege-metrics{color:#f3f6f9;font-weight:750;font-size:11px;opacity:.92;margin-bottom:1px}
+.siege-metrics span{font-weight:600}
+.siege-metrics i{height:10px;display:inline-block;width:1px;background:#ffffff95;margin:0 7px;vertical-align:middle}
+.siege-tip{background:#111b25d9;min-width:200px;padding:10px 11px;text-align:left;font-size:11px;font-weight:600}
+.siege-tip kbd{display:inline-block;margin:0 3px;padding:1px 4px;color:#18242a;background:#eef2f4;border-radius:2px;font:800 10px/1.5 "Segoe UI",sans-serif}
+.siege-health{position:absolute;bottom:20px;left:2.7%;width:165px}
+.siege-health-numbers{display:flex;align-items:baseline;gap:5px;letter-spacing:-.045em}
+.siege-health-numbers b{font-size:39px;line-height:43px;font-weight:900}
+.siege-health-numbers>span{font-size:19px;color:#fff;font-weight:700}
+.siege-health-bars{display:flex;gap:3px;height:14px;margin-top:3px}
+.siege-health-bars span{background:#fff;flex:1}
+.siege-health small{display:block;font-size:8px;letter-spacing:.11em;font-weight:650;opacity:.75;margin-top:4px}
+.siege-quickbar{position:absolute;bottom:18px;left:34%;display:flex;gap:21px;align-items:flex-end}
+.siege-quickslot{display:flex;flex-direction:column;gap:4px;align-items:center}
+.siege-quick-icon{font-family:Arial,sans-serif;font-size:27px;font-weight:900;color:#f2f5f5;text-shadow:0 1px 2px #000}
+.siege-quickslot kbd{font:900 14px/19px Arial,sans-serif;color:#25292d;background:#f3f4f5;width:20px;height:20px;border-radius:3px;text-align:center;text-shadow:none}
+.siege-nav{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:170px;text-align:center}
+.siege-area{font-size:14px;font-weight:650;margin-bottom:13px;white-space:nowrap}
+.siege-compass-wrap{position:relative;display:flex;justify-content:center;height:88px}
+.siege-compass-rose{
+ width:107px;height:107px;border-radius:50%;border:1px solid #a5afb753;
+ background:repeating-conic-gradient(from 0deg,#d4d9df8c 0deg 1deg,transparent 1deg 30deg);
+ transform:translateY(8px);
+ position:relative;box-shadow:inset 0 0 0 32px #1829329c,0 0 0 4px #28394222
+}
+.siege-compass-rose:after{content:"";position:absolute;inset:28px;border:1px solid #7b8b9280;border-radius:100%}
+.siege-compass-rose>span{position:absolute;color:#ecf5f5;font-size:11px;font-weight:800}
+.rose-n{top:4px;left:calc(50% - 4px)}.rose-e{right:6px;top:43px}.rose-s{bottom:5px;left:calc(50% - 3px)}.rose-w{left:6px;top:43px}
+.siege-direction-arrow{position:absolute;left:50%;top:50%;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:21px solid #7ccfef;transform-origin:50% 82%;transform:translate(-50%,-82%) rotate(0deg);filter:drop-shadow(0 0 4px #8dcee6b0)}
+.siege-center-dot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:#adb8c0}
+.siege-heading{position:absolute;top:-2px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:800;background:#25343ee8;padding:1px 3px}
+.siege-gear{
+ position:absolute;right:2.7%;bottom:17px;
+ display:flex;align-items:flex-end;gap:15px
+}
+.siege-equipment{display:flex;flex-direction:column;gap:9px;align-items:flex-end;padding-bottom:5px}
+.siege-gadget{display:flex;align-items:center;gap:9px;width:120px;font-size:21px;font-weight:900}
+.siege-gadget kbd{
+ background:#fff;border-radius:3px;text-shadow:none;color:#18242b;
+ font:900 15px/24px Arial,sans-serif;width:25px;height:25px;text-align:center
+}
+.siege-glyph{display:inline-block;font:24px/25px Arial,sans-serif;color:#f8ffff}
+.siege-gadget strong{margin-left:auto;font:900 25px/25px Arial,sans-serif}
+.siege-equipment small{font-size:8px;letter-spacing:.08em;opacity:.7}
+.siege-weapon-stack{width:252px;display:flex;flex-direction:column;gap:4px}
+.siege-weapon-row{position:relative;display:flex;align-items:center;height:50px;gap:8px;padding:4px 10px 4px 8px}
+.siege-weapon-row.active{background:#f2f3f2eb;color:#151f28;text-shadow:none}
+.siege-weapon-row.secondary{background:#151d25d5;color:#f8f8f8}
+.siege-slot{align-self:flex-start;width:19px;height:19px;background:#fff;border-radius:2px;color:#172027;font:900 14px/19px Arial,sans-serif;text-align:center;flex:none}
+.siege-weapon-row.active .siege-slot{background:#1d2931;color:#fff}
+.siege-rifle{width:72px;height:24px;flex:none;color:currentColor}
+.siege-pistol{width:66px;height:30px;flex:none}
+.siege-gun-name{position:absolute;top:2px;right:7px;font-size:8px;font-weight:900;letter-spacing:.055em;opacity:.75}
+.siege-ammo{display:flex;align-items:baseline;gap:5px;margin-left:auto;font-variant-numeric:tabular-nums}
+.siege-ammo strong{font-size:41px;font-weight:900;letter-spacing:-.07em;line-height:1}
+.siege-ammo span{font-size:17px;font-weight:800}
+.siege-ammo span b{font-weight:900}
+.siege-secondary-label{font-size:9px;font-weight:800;opacity:.76;letter-spacing:.025em}
+.siege-secondary-ammo{margin-left:auto;font-size:25px}
+.siege-weapon-status{display:flex;gap:9px;justify-content:flex-end;color:#e5f2f5;font-size:9px;font-weight:800;letter-spacing:.065em;text-transform:uppercase;min-height:11px}
+.siege-weapon-status>*{opacity:.9}
+#ammo{font-variant-numeric:tabular-nums}
+#weapon-status{font-size:9px;color:#f4fbfb}
+.hud .ballistics-debug{top:100px;right:2.7%;border-color:#ffffff80;color:#f2f7f9;background:#101a25e6}
+.hud .shot-notice{bottom:145px;border:0;background:#101a24d6;padding:8px 12px;font-size:11px;letter-spacing:.035em;color:#fff}
+@media (max-width:1150px){
+ .siege-objective{max-width:35vw;width:340px;font-size:12px}
+ .siege-minimap{width:155px;height:155px}
+ .siege-quickbar{left:29%;gap:11px}
+ .siege-weapon-stack{width:227px}
+ .siege-gear{gap:8px;right:15px}
+ .siege-gadget{width:83px}
+ .siege-equipment small{display:none}
+}
+@media (max-width:780px){
+ .siege-objective{left:10px;top:12px;max-width:49vw;height:40px;padding:5px 8px;font-size:10px}
+ .siege-mission-checkbox{width:14px;height:14px;border-width:2px}
+ .siege-minimap{top:68px;left:10px;width:107px;height:107px}
+ .siege-round{top:2px}
+ .siege-squad-crest{width:27px;height:47px;font-size:11px;padding-top:7px}
+ .siege-squad-crest>i{display:none}
+ .siege-clock{font-size:23px;line-height:29px;padding:6px}
+ .siege-system{top:6px;right:9px}
+ .siege-metrics{font-size:8px}
+ .siege-tip{display:none}
+ .siege-health{left:10px;bottom:9px;width:105px}
+ .siege-health-numbers b{font-size:26px;line-height:27px}
+ .siege-health-numbers span{font-size:13px}
+ .siege-health-bars{height:9px}
+ .siege-health small{font-size:7px}
+ .siege-nav{bottom:0;width:105px}
+ .siege-area{font-size:10px;margin-bottom:5px}
+ .siege-compass-rose{width:77px;height:77px}
+ .siege-compass-wrap{height:60px}
+ .siege-quickbar{display:none}
+ .siege-equipment{display:none}
+ .siege-gear{right:8px;bottom:8px}
+ .siege-weapon-stack{width:170px}
+ .siege-weapon-row{height:40px}
+ .siege-ammo strong{font-size:29px}
+ .siege-ammo span{font-size:12px}
+ .siege-rifle{width:48px}
+ .siege-secondary-label{font-size:7px}
+ .siege-gun-name{font-size:6px}
+ .siege-weapon-status{font-size:7px}
+}
