@@ -18,7 +18,7 @@ class FakeElement{
 function fixture(){
  const ids=["operator-attack","operator-defend","operator-roster","operator-name",
   "operator-role","operator-speed","operator-armor","operator-slots",
-  "operator-playable-label","operator-current"];
+  "operator-playable-label","operator-plan-status","operator-current"];
  const elements=Object.fromEntries(ids.map(x=>[x,new FakeElement()]));
  // Real HTML: #operator-current is in #play OUTSIDE this root.
  return {elements,root:{querySelector(s){
@@ -44,8 +44,11 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-speed"].children.filter(e=>e.className.includes("filled")).length,2);
   assert.equal(elements["operator-armor"].children.filter(e=>e.className.includes("filled")).length,2);
   assert.equal(elements["operator-slots"].children.length,2);
-  assert.equal(elements["operator-slots"].children[0].children[1].textContent,
-    "UNASSIGNED · GADGETS NEXT STAGE");
+  assert.equal(elements["operator-slots"].children[0].children[1].tagName,"select");
+  assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
+  assert.equal(elements["operator-slots"].children[0].children[2].textContent,
+    "UNASSIGNED · GADGETS IN DEVELOPMENT");
+  assert.match(elements["operator-plan-status"].textContent,/NO EQUIPMENT IS FIELD-READY/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -97,4 +100,64 @@ test("real page contract: DEPLOY label is outside operator selection section",()
   "picker must resolve out-of-panel DEPLOY label at document scope");
  assert.ok(!picker.includes('current=$("operator-current")'),
   "regression: a scoped root lookup will silently break all operator tabs");
+});
+
+test("two live dropdowns retain separate side plans without granting fake gadgets",()=>{
+ const old=globalThis.document;
+ const {root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  function changeSlot(i,id){
+   const select=elements["operator-slots"].children[i].children[1];
+   assert.equal(select.tagName,"select");
+   select.value=id;
+   select.listeners.get("change")();
+  }
+  changeSlot(0,"flash");
+  changeSlot(1,"smoke");
+  assert.deepEqual(picker.plans.striker,["flash","smoke"]);
+  assert.equal(elements["operator-slots"].children[0].children[1].value,"flash");
+  assert.match(elements["operator-plan-status"].textContent,/NOT YET USABLE IN GAME/);
+  elements["operator-defend"].click();
+  assert.equal(elements["operator-current"].textContent,"SENTRY");
+  assert.equal(elements["operator-slots"].children[0].children[1].value,"");
+  assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
+  changeSlot(0,"barbed-wire");
+  changeSlot(1,"c4");
+  assert.deepEqual(picker.plans.sentry,["barbed-wire","c4"]);
+  elements["operator-attack"].click();
+  assert.equal(elements["operator-slots"].children[0].children[1].value,"flash");
+  assert.equal(elements["operator-slots"].children[1].children[1].value,"smoke");
+  assert.equal(elements["operator-current"].textContent,"STRIKER");
+  elements["operator-defend"].click();
+  assert.equal(elements["operator-slots"].children[0].children[1].value,"barbed-wire");
+  assert.equal(elements["operator-slots"].children[1].children[1].value,"c4");
+ }finally{globalThis.document=old;}
+});
+test("duplicate and enemy-side equipment never survives the planning UI",()=>{
+ const old=globalThis.document;
+ const {root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  const first=elements["operator-slots"].children[0].children[1];
+  first.value="flash";first.listeners.get("change")();
+  let second=elements["operator-slots"].children[1].children[1];
+  second.value="flash";second.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,["flash",null]);
+  assert.equal(elements["operator-slots"].children[1].children[1].value,"");
+  assert.match(elements["operator-plan-status"].textContent,/INVALID SELECTION/);
+  second=elements["operator-slots"].children[1].children[1];
+  second.value="c4";second.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,["flash",null]);
+  second=elements["operator-slots"].children[1].children[1];
+  second.value="claymore";second.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,["flash","claymore"]);
+  const empty=elements["operator-slots"].children[0].children[1];
+  empty.value="";empty.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,[null,"claymore"]);
+ }finally{globalThis.document=old;}
 });
