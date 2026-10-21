@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.13.3
+# BLACKOUT — Clean Reboot V0.14.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,18 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.14.0 · 2-slot secondary loadout DESIGN-ONLY preview (user verified V0.13.3):**
+- User explicitly browser-verified V0.13.3: Sentry can no longer throw/view attacker recon drones and Striker retains his two-drone R-1 gear. V0.13.3 is the last browser-approved baseline.
+- User chose a **small roster (12 initially; 6 vs 6)**, with all fully built operators unlocked, 2 generalist secondary slots each, and specialist operators eventually receiving one signature and one secondary. Both Striker and Sentry now have two selectable **gadget design slots** in the operator menu. These are **PREVIEWS, NOT FIELD-READY GADGETS**. No pretend C4, frag, smoke, hard breach, or wire is equipped, rendered in-world, given ammo, or activated.
+- Attacker selection list (Striker): **frag grenade, flashbang, smoke grenade, soft breach charge, hard breach charge, claymore**. Defender selection list (Sentry): **C4/nitro cell, impact grenade, observation blocker, barbed wire, proximity alarm, deployable shield**. Every item has `implemented:false`, six options per faction; the menus say PLANNED.
+- The pure `secondary-loadout.js` stores **session-only operator-specific plans** with two independent slots. User can select two **different** choices or clear a slot. Duplicates, opposite-team gadgets, invalid IDs and non-playable specialists are rejected. Plans survive attacker/defender tabs and reopening the pause menu **within the running page only**. No account persistence and no live-field readiness until each gadget is built and user-tested in its own stage.
+- Browser UI: `operator-select.js` renders 2 accessible select menus and a clear status line from pure plans. The old `#operator-current` deploy label still resolves at **document scope** (V0.13.1 regression). No loadout deployment code or new gadget keybinds in `main.js`.
+- Striker still throws with 6, opens real drone cameras with 5, and **cannot reinforce**. Sentry has no recon drone camera/throw inventory but **can reinforce with F and range-remove metal with Y**. In actual future matches Y-removal must remain unavailable. Default defender security camera key **5** returns only when those cameras really exist.
+- CI syntax checks `secondary-loadout.js`; unit and browser-style DOM regressions validate all 12 options, duplicate/side restrictions, switched-side retention, and preserved legacy mechanics. **Do not begin V0.14.1 (first physical gadget, likely barbed wire) until user browser-verifies V0.14.0 UI.**
+- Note: proper defuser planting, 5v5 multiplayer, prep phase, electric reinforcement, and usable explosives are NOT part of the present Testing Range.
+
+
 
 **2026-10-21 / V0.13.3 · Recon drones are attacker equipment ONLY (user browser feedback):**
 - User asked why defenders were carrying attack recon drones. This came from the shared Testing Range inventory and HUD, not intended Sentry gameplay. Pure operator permission `canUseReconDrones` now allows only playable attack operators (currently Striker). Defenders do NOT have R-1 drones, cannot throw with **6**, cannot enter recon cameras with **5**, and cannot select feeds. These keys do nothing on Sentry.
