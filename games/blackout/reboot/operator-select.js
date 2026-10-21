@@ -1,12 +1,12 @@
-// BLACKOUT V0.14 · two-slot, side-specific gadget DESIGN preview in picker.
+// BLACKOUT V0.14.1 · operator gadget design plans also update the live HUD keys.
 // Every rendered card comes from operators.js. In-development concepts are
 // visibly labeled as such; they are not purchasable or selectable yet.
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
  operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-025";
 import {secondaryOptions,newSecondaryPlans,plannedSecondaries,
- planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-025";
+ planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-026";
 
-export function createOperatorPicker(root,{onSelect=()=>{}}={}){
+export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}={}){
  if(!root)throw new Error("Operator selection root is required");
  const $=id=>root.querySelector("#"+id);
  const attackTab=$("operator-attack"),defendTab=$("operator-defend");
@@ -76,7 +76,7 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
    const slot=loadout.slots[index];
    const el=document.createElement("div");el.className="operator-utility-slot";
    const label=document.createElement("strong");
-   label.textContent=slot.type==="signature"?"SIGNATURE · FUTURE":"SECONDARY SLOT "+(index+1);
+   label.textContent=slot.type==="signature"?"SIGNATURE · FUTURE":"SECONDARY SLOT "+(index+1)+" · KEY "+(index+3);
    el.append(label);
    if(slot.type==="secondary"&&op.playable){
     const select=document.createElement("select");
@@ -97,6 +97,7 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
      const rejected=next===plans&&value!==picks[index];
      if(!rejected)plans=next;
      render();
+     if(!rejected)onPlanChange(selectedOperator(selection),plans);
      planStatus.textContent=rejected?
       "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
       "PLAN SAVED FOR "+op.name+" · NOT YET USABLE IN GAME";
