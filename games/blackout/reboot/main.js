@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.15.3 — world-positioned wire movement, V strike and collapse audio
+// BLACKOUT REBOOT V0.16 — throwable and remotely detonated physical C4 plus defender wire
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -30,6 +30,8 @@ import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
 import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
+import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage} from "./nitro.js?v=reboot-032";
+import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-032";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -143,6 +145,8 @@ const wireViews=new Map(); // deployed physical barbed-wire models
 let wireState=newWireState();
 let wireHealth=newWireHealth();
 let wireSoundTracker=newWireSoundTracker();
+let nitroState=newNitroState();
+const nitroViews=new Map(),blastViews=[];
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -201,12 +205,17 @@ function refreshUtilityHud(){
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
   utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?
-    "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":row.status;
+    "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":
+   row.gadgetId==="c4"?
+    (nitroState.devices.some(d=>d.armed)?"ARMED · PRESS "+row.key+" TO DETONATE":
+      "LIVE · "+nitroState.charges+"/"+NITRO.charges+" LEFT"):row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="barbed-wire")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="c4")?
+  activeOperator.name+" · C4 THROW / REMOTE DETONATE · LIVE":
+  rows.some(row=>row.gadgetId==="barbed-wire")?
   activeOperator.name+" · WIRE LIVE · OTHER GADGETS PREVIEW":
   activeOperator.name+" · SPECIAL MMB / NORMAL G · PREVIEW ONLY";
 }
@@ -221,9 +230,58 @@ window.addEventListener("resize",resize);
 function activeDroneObstacles(){
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
 }
+function detonateCurrentNitro(){
+ const result=detonateNitro(nitroState);
+ if(!result.blast)return result.reason;
+ nitroState=result.state;
+ const device=nitroState.devices.find(d=>!d.armed);
+ nitroViews.get(device.id)?.sync(device);
+ const blast=result.blast;
+ blastViews.push(createNitroBlast(THREE,scene,blast));
+ shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
+ // A genuinely physical blast destroys nearby wooden panels and gypsum;
+ // reinforced metal protects the layered soft wall until hard breach exists.
+ const wood=barricade.blastAt(blast);
+ const gypsum=reinforcement.installed?0:softWall.blastAt(blast);
+ const self=nitroBlastDamage(blast,{x:player.x,y:player.y+1,z:player.z});
+ if(self>0&&wireHealth.hp>0){
+  wireHealth={...wireHealth,hp:Math.max(0,wireHealth.hp-self),damage:self,elapsed:0};
+  if(wireHealth.hp===0){firing=false;aimHeld=false;keys.clear();}
+ }
+ let hits=0;
+ for(const target of targets){
+  if(target.downTime>0)continue;
+  const dmg=nitroBlastDamage(blast,{x:target.group.position.x,y:1.25,
+   z:target.group.position.z});
+  if(dmg>=20){
+   target.downTime=1.6;target.group.visible=false;target.hits++;
+   targetHits++;completedTargets.add(target.id);weapons.registerHit();
+   hits++;
+  }
+ }
+ refreshUtilityHud();
+ return "C4 DETONATED · "+hits+" TARGETS · "+wood+" BOARDS · "+
+  gypsum+" GYPSUM CELLS"+(self?" · SELF -"+self+" HP":"");
+}
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="c4"&&activeOperator.side==="defend"){
+  if(nitroState.devices.some(d=>d.armed)){
+   shotNotice.textContent=detonateCurrentNitro();
+  }else{
+   const result=throwNitro(nitroState,player);
+   if(result.device){
+    nitroState=result.state;
+    nitroViews.set(result.device.id,createNitroView(THREE,scene,result.device));
+    shotAudio.play("gadget-throw");
+    refreshUtilityHud();
+   }
+   shotNotice.textContent=result.reason;
+  }
+  shotNoticeLeft=2.1;
+  return;
+ }
  if(row.gadgetId==="barbed-wire"&&activeOperator.side==="defend"){
   const obstacles=[...TEST_OBSTACLES,...barricade.blockers(),
    ...softWall.blockers(),...reinforcement.blockers()];
@@ -727,6 +785,11 @@ function animate(now){
    droneRoster=updateDrone(droneRoster,droneRoster.selected,drone);
  }
  if(locked&&controlMode==="player"){
+   // Actual thrown remote charges remain as movable THREE objects in range.
+   nitroState=tickNitro(nitroState,dt,activeDroneObstacles());
+   for(const device of nitroState.devices){
+    if(device.armed)nitroViews.get(device.id)?.sync(device);
+   }
    // Disconnected reconnaissance drones are still physical world objects.
    // Their battery charges, jump timer, boost timer and landing progress persist.
    if(droneRoster.drones.length){
@@ -862,6 +925,8 @@ function animate(now){
  setDroneCameraVisibility(droneViews,droneRoster.selected,
     locked&&controlMode==="drone");
  shotEffects.tick(dt);
+ for(let i=blastViews.length-1;i>=0;i--)
+  if(!blastViews[i].tick(dt))blastViews.splice(i,1);
  barricade.tick(dt);
  softWall.tick(dt);
  reinforcement.tick(dt);
@@ -873,5 +938,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.15.2 enemy-only wire 10HP every half-second, bullet immunity, melee-only destruction",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.16 physical C4 throw / remote detonate; wood and gypsum real blast + HP",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
