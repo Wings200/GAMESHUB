@@ -2,7 +2,7 @@
 import {buildBX7Model} from "./weapon-model.js?v=reboot-008";
 import {weaponPose} from "./weapon-aim.js?v=reboot-005";
 import {TARGET_POSITIONS} from "./range-layout.js?v=reboot-007";
-import {createImpactDecals} from "./impact-decals.js?v=reboot-011";
+import {createImpactDecals} from "./impact-decals.js?v=reboot-012";
 
 export function createWeaponView(THREE,camera,scene){
  const root=new THREE.Group();
