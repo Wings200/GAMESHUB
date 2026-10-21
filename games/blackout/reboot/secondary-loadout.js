@@ -53,3 +53,28 @@ export function planIsFieldReady(plans,operator){
  // Deliberately NEVER pretend the currently proposed gadgets can be deployed.
  return ids.length>0&&ids.every(id=>gadgetById(id)?.implemented===true);
 }
+
+/* Future secondary utility keys. 1/2 = weapons, 5/6 = recon equipment;
+   3/4 are only reserved here, NOT field-ready until the gadget exists. */
+export const SECONDARY_KEYBINDS=Object.freeze(["Digit3","Digit4"]);
+export function utilityHudRows(plans,operator){
+ const choices=plannedSecondaries(plans,operator);
+ return SECONDARY_KEYBINDS.map((code,index)=>{
+  const gadget=gadgetById(choices[index]);
+  return Object.freeze({
+   code,key:String(index+3),slot:index,
+   name:gadget?.name||"EMPTY SLOT",
+   gadgetId:gadget?.id||null,
+   // No false ammo counts, ready flags, or deployable state.
+   status:gadget?"PLANNED · NOT BUILT":"UNASSIGNED",
+   fieldReady:Boolean(gadget?.implemented)
+  });
+ });
+}
+export function utilityKeyPreview(plans,operator,code){
+ const row=utilityHudRows(plans,operator).find(x=>x.code===code);
+ if(!row)return null;
+ return row.gadgetId?
+  row.name.toUpperCase()+" · PLANNED ONLY · NOT BUILT YET":
+  "UTILITY "+row.key+" · EMPTY SLOT · CHOOSE IN OPERATOR MENU";
+}
