@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.14.2 — correct special MMB and normal G gadget inputs
+// BLACKOUT REBOOT V0.15 — usable defender barbed wire, shooting and slowdown
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -24,7 +24,9 @@ import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-027";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-027";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-028";
+import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier} from "./barbed-wire.js?v=reboot-028";
+import {createWireView} from "./barbed-wire-view.js?v=reboot-028";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -132,6 +134,8 @@ const barricade=createBarricadeStation(THREE,scene);
 const softWall=createSoftWallStation(THREE,scene);
 const reinforcement=createReinforcementStation(THREE,scene);
 const droneViews=[]; // physical model for each deployed drone
+const wireViews=new Map(); // deployed physical barbed-wire models
+let wireState=newWireState();
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
@@ -183,12 +187,15 @@ function refreshUtilityHud(){
  utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
-  utilityStatus[i].textContent=row.status;
+  utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?
+    "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=activeOperator.name+" · SPECIAL MMB / NORMAL G · PREVIEW ONLY";
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="barbed-wire")?
+  activeOperator.name+" · WIRE LIVE · OTHER GADGETS PREVIEW":
+  activeOperator.name+" · SPECIAL MMB / NORMAL G · PREVIEW ONLY";
 }
 refreshUtilityHud();
 function resize(){
@@ -200,6 +207,30 @@ resize();
 window.addEventListener("resize",resize);
 function activeDroneObstacles(){
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
+}
+function usePlannedGadget(code){
+ const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
+ if(!row)return;
+ if(row.gadgetId==="barbed-wire"&&activeOperator.side==="defend"){
+  const obstacles=[...TEST_OBSTACLES,...barricade.blockers(),
+   ...softWall.blockers(),...reinforcement.blockers()];
+  const placement=placeWire(wireState,player,obstacles);
+  if(placement.device){
+   wireState=placement.state;
+   wireViews.set(placement.device.id,createWireView(THREE,scene,placement.device));
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=placement.reason+
+   (placement.device?" · "+wireState.charges+" REMAIN":"");
+  shotNoticeLeft=1.7;
+  return;
+ }
+ shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,code);
+ shotNoticeLeft=1.6;
+}
+function shootableWire(){
+ return wireState.devices.filter(d=>d.hp>0)
+   .map(d=>wireViews.get(d.id)?.hitbox).filter(Boolean);
 }
 function setControlMode(nextMode){
  // Never enter a recon feed as a defender, including after switching teams
@@ -362,8 +393,7 @@ document.addEventListener("keydown",event=>{
  }
  if(event.code==="KeyG"&&!event.repeat){
   // Reserved normal gadget G: no fake activation until gadget is built.
-  shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,"KeyG");
-  shotNoticeLeft=1.6;
+  usePlannedGadget("KeyG");
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
@@ -416,8 +446,7 @@ document.addEventListener("mousedown",event=>{
   // autoscroll. Camera control uses its own mode, not operator gadgets.
   event.preventDefault();
   if(controlMode==="player"){
-   shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,"MouseMiddle");
-   shotNoticeLeft=1.6;
+   usePlannedGadget("MouseMiddle");
   }
   return;
  }
@@ -496,7 +525,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableWire()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -552,16 +581,29 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableWire()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
- const woodHit=outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
- const metalHit=outcome.hit?reinforcement.steelImpact(outcome.hit):false;
- const plasterHit=outcome.hit&&!metalHit?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)
+ const wireId=outcome.hit?.object?.userData?.wireId;
+ const wireHit=Number.isInteger(wireId)?damageWire(wireState,wireId):{handled:false};
+ if(wireHit.handled){
+  wireState=wireHit.state;
+  wireViews.get(wireId)?.sync(wireState.devices.find(d=>d.id===wireId));
+  refreshUtilityHud();
+ }
+ const woodHit=!wireHit.handled&&outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
+ const metalHit=outcome.hit&&!wireHit.handled?reinforcement.steelImpact(outcome.hit):false;
+ const plasterHit=outcome.hit&&!metalHit&&!wireHit.handled?softWall.onHit(outcome.hit):{handled:false};
+ if(outcome.hit&&!wireHit.handled&&!woodHit.handled&&!plasterHit.handled&&!metalHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(woodHit.handled){
+ if(wireHit.handled){
+  shotNotice.textContent=wireHit.destroyed?
+   "BARBED WIRE DESTROYED · SLOW FIELD CLEARED":
+   "BARBED WIRE HIT · "+wireHit.remainingHP+" HITS REMAIN";
+  shotNoticeLeft=1.3;
+  shotAudio.play("impact");
+ }else if(woodHit.handled){
   shotNotice.textContent="BOARD "+String(woodHit.index).padStart(2,"0")+
     (woodHit.broken?" DESTROYED · "+woodHit.remaining+" LEFT":" HIT · FIRE AGAIN");
   shotNoticeLeft=.95;
@@ -648,7 +690,8 @@ function animate(now){
      crouch:keys.has("KeyC"),
      prone:proneToggle,
      jump:keys.has("Space"),
-     speedMultiplier:operatorLoadout(activeOperator).speedMultiplier
+     speedMultiplier:operatorLoadout(activeOperator).speedMultiplier,
+     terrainMultiplier:wireTerrainMultiplier(wireState,player)
    };
    const before=player;
    // One active board list controls both movement and shooting.
@@ -758,5 +801,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.14.2 special MMB + normal G planned gadget controls",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.15 first real gadget: deploy Sentry wire, walk and shoot to destroy",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
