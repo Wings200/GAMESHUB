@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {OPERATOR_ROSTER,OPERATOR_CAP,MOVEMENT_MULTIPLIERS,
  newOperatorSelection,operatorsForSide,operatorById,switchOperatorSide,
- pickOperator,selectedOperator,operatorLoadout,isPlayableOperator,canUseReinforcement}
+ pickOperator,selectedOperator,operatorLoadout,isPlayableOperator,canUseReinforcement,canUseReconDrones}
  from "./operators.js";
 
 test("exactly 12 original free-availability roster entries, 6 per 5v5 side",()=>{
@@ -87,4 +87,29 @@ test("reinforcement belongs exclusively to playable defenders",()=>{
   "unimplemented specialist cannot activate utility");
  assert.equal(canUseReinforcement(undefined),false);
  assert.equal(canUseReinforcement({side:"attack",playable:true}),false);
+});
+
+test("only playable attackers have R-1 drones; never defenders or unfinished specialists",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ assert.equal(canUseReconDrones(striker),true);
+ assert.equal(canUseReconDrones(sentry),false);
+ assert.equal(canUseReconDrones(operatorById("volt")),false,
+  "unimplemented attacker specialist is not playable");
+ assert.equal(canUseReconDrones(operatorById("specter")),false);
+ assert.equal(canUseReconDrones(null),false);
+ assert.equal(canUseReconDrones({side:"defend",playable:true}),false);
+ assert.equal(canUseReconDrones({side:"attack",playable:true}),true);
+ assert.equal(canUseReinforcement(striker),false);
+ assert.equal(canUseReinforcement(sentry),true);
+});
+test("switching sides changes only permissions, never grants defender attacker inventory",()=>{
+ let selection=newOperatorSelection();
+ assert.equal(canUseReconDrones(selectedOperator(selection)),true);
+ selection=switchOperatorSide(selection,"defend");
+ assert.equal(selectedOperator(selection).id,"sentry");
+ assert.equal(canUseReconDrones(selectedOperator(selection)),false);
+ assert.equal(canUseReinforcement(selectedOperator(selection)),true);
+ selection=switchOperatorSide(selection,"attack");
+ assert.equal(selectedOperator(selection).id,"striker");
+ assert.equal(canUseReconDrones(selectedOperator(selection)),true);
 });
