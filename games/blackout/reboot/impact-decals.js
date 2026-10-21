@@ -49,7 +49,7 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
  const material=new THREE.MeshBasicMaterial({
   map:texture||null,
   color:texture?0xffffff:0x081218,
-  transparent:Boolean(texture),alphaTest:texture?.035:0,
+  transparent:Boolean(texture),alphaTest:texture?0.035:0,
   depthTest:true,depthWrite:false,
   side:THREE.DoubleSide,
   polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,
