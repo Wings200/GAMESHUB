@@ -74,3 +74,9 @@ export function isPlayableOperator(id){
 export function canUseReinforcement(operator){
  return Boolean(operator?.playable&&operator.side==="defend");
 }
+
+ // Recon drones belong to attackers. Defenders will eventually receive
+ // separate, deployable surveillance equipment, NOT a recon drone loadout.
+export function canUseReconDrones(operator){
+ return Boolean(operator?.playable&&operator.side==="attack");
+}
