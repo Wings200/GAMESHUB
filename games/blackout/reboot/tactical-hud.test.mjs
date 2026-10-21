@@ -19,6 +19,7 @@ test("compass headings follow real camera yaw without using decorative guessed h
 test("labels are grounded in actual test-station positions",()=>{
  assert.equal(areaName(0,8),"EXT TEST RANGE");
  assert.equal(areaName(-12,-6),"EXT WEST COVER");
+ assert.equal(areaName(-7,3),"EXT BARRICADE STATION");
  assert.equal(areaName(12,-6),"EXT EAST COVER");
  assert.equal(areaName(0,-25),"EXT TARGET RANGE");
  assert.equal(areaName(0,16),"EXT SPAWN AREA");
@@ -43,8 +44,8 @@ test("minimap draws real walls, targets and player without modifying game object
  };
  const player={x:0,z:8,yaw:Math.PI/2},obstacles=[{id:"box-one",x:-12,z:-6,width:2.3,depth:2.3}];
  const targets=[{group:{position:{x:7,z:-17}},downTime:0}];
- drawTrainingMap(ctx,player,obstacles,targets);
- assert.ok(instructions.filter(x=>x[0]==="fillRect").length>=2);
+ drawTrainingMap(ctx,player,obstacles,targets,{x:-7,z:3});
+ assert.ok(instructions.filter(x=>x[0]==="fillRect").length>=3);
  assert.ok(instructions.some(x=>x[0]==="translate"&&x[1]===100&&x[2]>100));
  assert.ok(instructions.some(x=>x[0]==="arc"));
  assert.equal(player.yaw,Math.PI/2);
