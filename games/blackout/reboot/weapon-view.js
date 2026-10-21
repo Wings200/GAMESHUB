@@ -28,12 +28,12 @@ export function createWeaponView(THREE,camera,scene){
  function beginReload(now,durationMs,type="tactical"){
   reload={at:now,duration:Math.max(100,durationMs),type};
  }
- function update(dt,aimMix,recoil,moving,now=performance.now()){
+ function update(dt,aimMix,recoil,moving,now=performance.now(),aimHeld=false){
   const bob=moving?Math.sin(now*.012)*.003:0;
   const pose=weaponPose(aimMix,recoil,bob);
   root.position.set(pose.x,pose.y,pose.z);
   root.rotation.set(pose.pitch,0,pose.roll);
-  parts.reticle.visible=aimMix>=.995;
+  parts.reticle.visible=aimHeld&&aimMix>=.995;
   flashLeft=Math.max(0,flashLeft-dt);
   parts.flash.visible=flashLeft>0;
   if(parts.flash.visible)parts.flash.scale.setScalar(.8+Math.random()*.9);
