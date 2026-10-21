@@ -1,4 +1,4 @@
-// BLACKOUT V0.14 · pure, side-locked TWO-SLOT SECONDARY GADGET PLAN.
+// BLACKOUT V0.14.2 · side-locked SPECIAL (MMB) and NORMAL (G) gadget plans.
 // This is a PREVIEW selection system. No gadgets below are field-ready yet:
 // never mark one equipped, grant ammunition, or create placeholder effects.
 // Future mechanics unlock each gadget individually only after testing.
@@ -54,15 +54,18 @@ export function planIsFieldReady(plans,operator){
  return ids.length>0&&ids.every(id=>gadgetById(id)?.implemented===true);
 }
 
-/* Future secondary utility keys. 1/2 = weapons, 5/6 = recon equipment;
-   3/4 are only reserved here, NOT field-ready until the gadget exists. */
-export const SECONDARY_KEYBINDS=Object.freeze(["Digit3","Digit4"]);
+/* Input plan: middle mouse = special/generalist primary utility,
+   G = normal secondary utility. Keys 5/6 remain recon equipment.
+   No gadget effect exists in this stage. */
+export const SECONDARY_KEYBINDS=Object.freeze(["MouseMiddle","KeyG"]);
+export const SECONDARY_KEY_LABELS=Object.freeze(["MMB","G"]);
+export const SECONDARY_SLOT_ROLES=Object.freeze(["SPECIAL","NORMAL"]);
 export function utilityHudRows(plans,operator){
  const choices=plannedSecondaries(plans,operator);
  return SECONDARY_KEYBINDS.map((code,index)=>{
   const gadget=gadgetById(choices[index]);
   return Object.freeze({
-   code,key:String(index+3),slot:index,
+   code,key:SECONDARY_KEY_LABELS[index],role:SECONDARY_SLOT_ROLES[index],slot:index,
    name:gadget?.name||"EMPTY SLOT",
    gadgetId:gadget?.id||null,
    // No false ammo counts, ready flags, or deployable state.
@@ -76,5 +79,5 @@ export function utilityKeyPreview(plans,operator,code){
  if(!row)return null;
  return row.gadgetId?
   row.name.toUpperCase()+" · PLANNED ONLY · NOT BUILT YET":
-  "UTILITY "+row.key+" · EMPTY SLOT · CHOOSE IN OPERATOR MENU";
+  row.role+" GADGET ("+row.key+") · EMPTY SLOT · CHOOSE IN OPERATOR MENU";
 }
