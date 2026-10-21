@@ -424,6 +424,9 @@ document.addEventListener("keydown",event=>{
  if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","KeyQ","KeyE","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
    event.preventDefault();
  if(!locked)return;
+ // Elimination freezes all attacks, drones and gadgets; P is the only
+ // player input allowed to restore the testing life.
+ if(wireHealth.hp===0&&event.code!=="KeyP")return;
  if(event.code==="Digit5"&&!event.repeat){openDroneCameras();return;}
  if(event.code==="Digit6"&&!event.repeat){throwCarriedDrone();return;}
  if(controlMode==="drone"){
@@ -438,7 +441,6 @@ document.addEventListener("keydown",event=>{
   keys.add(event.code);
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
- if(wireHealth.hp===0&&event.code!=="KeyP")return;
  if(event.code==="KeyV"&&!event.repeat){
   strikeMelee(performance.now());return;
  }
@@ -496,7 +498,7 @@ document.addEventListener("mousedown",event=>{
   // Middle-click must never fire, throw attacker drones or open browser
   // autoscroll. Camera control uses its own mode, not operator gadgets.
   event.preventDefault();
-  if(controlMode==="player"){
+  if(controlMode==="player"&&wireHealth.hp>0){
    usePlannedGadget("MouseMiddle");
   }
   return;
