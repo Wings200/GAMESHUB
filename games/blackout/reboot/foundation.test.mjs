@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-028",
-   "./reboot/style.css?v=reboot-028"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-029",
+   "./reboot/style.css?v=reboot-029"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -242,7 +242,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
  assert.ok(main.includes('from "./barricade.js?v=reboot-015"'));
- assert.ok(main.includes('from "./barricade-view.js?v=reboot-015"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-029"'));
  assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
  assert.ok(main.includes("...barricade.blockers()"));
  assert.ok(main.includes("...softWall.blockers()"));
@@ -338,13 +338,35 @@ test("reboot entry point contains no old game imports, operators, bots or networ
 
  // V0.15: FIRST live physical gadget. Existing guns, drones, walls untouched.
  assert.ok(main.includes('from "./barbed-wire.js?v=reboot-028"'));
- assert.ok(main.includes('from "./barbed-wire-view.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./barbed-wire-view.js?v=reboot-029"'));
  assert.ok(main.includes("placeWire(wireState,player,obstacles)"));
  assert.ok(main.includes("createWireView(THREE,scene,placement.device)"));
  assert.ok(main.includes('terrainMultiplier:wireTerrainMultiplier(wireState,player)'));
  assert.ok(main.includes("damageWire(wireState,wireId)"));
  assert.ok(main.includes('wireViews.get(wireId)?.sync('));
  assert.ok(main.includes("...shootableWire()"));
+ assert.ok(main.includes("wireViews.get(d.id)?.shootables"));
+ assert.ok(read("reboot/barbed-wire-view.js").includes("mesh.userData.wireId=device.id"));
+ assert.ok(read("reboot/barbed-wire-view.js").includes("return {root,hitbox,shootables,sync}"));
+ // V0.15.1 melee: enforce actual range/LOS, active animation and both
+ // destruction pathways (not fake text-only prompts).
+ assert.ok(main.includes('from "./melee.js?v=reboot-029"'));
+ assert.ok(main.includes('from "./melee-view.js?v=reboot-029"'));
+ assert.ok(main.includes("createMeleeView(THREE,camera)"));
+ assert.ok(main.includes("event.code===\"KeyV\"&&!event.repeat"));
+ assert.ok(main.includes("strikeMelee(performance.now())"));
+ assert.ok(main.includes("meleeRaycaster.far=MELEE.range"));
+ assert.ok(main.includes("selectedMeleeTarget(hits)"));
+ assert.ok(main.includes("const result=damageWire(wireState,selected.id,2)"));
+ assert.ok(main.includes("barricade.meleeHit(hits[0])"));
+ assert.ok(main.includes('held:firing&&!meleeView.active'));
+ assert.ok(main.includes("meleeView.update(dt)"));
+ assert.ok(main.includes("meleeView.cancel()"));
+ assert.ok(main.includes('event.code==="KeyH"'));
+ assert.ok(html.includes("<kbd>V</kbd> MELEE"));
+ assert.ok(html.includes("THREE V hits break ALL SIX boards"));
+ assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
+
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));
  assert.ok(main.includes('activeOperator.side==="defend"'));
  assert.ok(physics.includes('Math.max(.35,Math.min(1,input.terrainMultiplier))'));
