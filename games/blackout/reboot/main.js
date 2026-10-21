@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.7.4 — ignore decorative outlines in bullet raycast
+// BLACKOUT REBOOT V0.8 — Siege-proportioned solo drill HUD; shooting untouched
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -11,6 +11,7 @@ import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
 import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
+import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-013";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -19,6 +20,9 @@ const positionText=$("position"),speedText=$("speed"),groundText=$("ground");
 const modeText=$("mode"),motionText=$("motion"),hint=$("hint");
 const crosshair=$("crosshair");
 const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice"),leanText=$("lean-status"),ballisticsDebug=$("ballistics-debug");
+const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("area-name");
+const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
+const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
 let renderer;
 try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance"});
@@ -107,6 +111,8 @@ let proneToggle=false;
 let weapons=new Weapons();
 let gunKick=0,recoilRecovery=0,lastShotAt=-Infinity,lastEmptyClick=-Infinity;
 let firing=false,aimHeld=false,reloadPressed=false,aimMix=0,targetHits=0;
+const completedTargets=new Set();
+let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false;
@@ -148,6 +154,7 @@ document.addEventListener("pointerlockchange",()=>{
  locked=document.pointerLockElement===canvas;
  menu.classList.toggle("hidden",locked);
  hud.classList.toggle("hidden",!locked);
+ document.body.classList.toggle("range-active",locked);
  crosshair.classList.toggle("hidden",!locked);
  if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;unlockMessage();}
  lastTime=performance.now();
@@ -210,15 +217,25 @@ document.addEventListener("mouseup",event=>{
 canvas.addEventListener("contextmenu",event=>event.preventDefault());
 window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;footstepTracker=newFootstepTracker();});
 function hudFrame(){
+ // Siege-like HUD visuals use the live game state. No invented multiplayer data.
  positionText.textContent=player.x.toFixed(1)+" / "+player.z.toFixed(1);
- speedText.innerHTML=player.speed.toFixed(1)+" <span>M/S</span>";
+ speedText.textContent=player.speed.toFixed(1)+" M/S";
  groundText.textContent=player.grounded?"STABLE":"AIRBORNE";
- modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCHED":player.sprinting?"SPRINTING":"STANDING";
+ modeText.textContent=player.prone?"PRONE":player.crouched?"CROUCH":player.sprinting?"SPRINT":"STAND";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
- ammoText.textContent=weapons.current.ammo+" / "+weapons.current.remaining;
- weaponStatus.textContent=weapons.reloading?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"READY";
- hitsText.textContent=String(targetHits);
- leanText.textContent=leanTarget<0?"LEFT":leanTarget>0?"RIGHT":"CENTER";
+ ammoText.textContent=String(weapons.current.ammo);
+ reserveCount.textContent=String(weapons.current.remaining);
+ weaponStatus.textContent=weapons.reloading?"RELOADING":aimMix>.8?"ADS":firing?"FIRING":"AUTO";
+ hitsText.textContent=String(completedTargets.size);
+ missionCheck.classList.toggle("complete",completedTargets.size===targets.length);
+ leanText.textContent=leanTarget<0?"LEAN LEFT":leanTarget>0?"LEAN RIGHT":"CENTER";
+ roundClock.textContent=drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
+ areaLabel.textContent=areaName(player.x,player.z);
+ const heading=compassHeading(player.yaw);
+ headingLabel.textContent=String(heading).padStart(3,"0")+"°";
+ compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
+ fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
+ drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets);
 }
 // Aim probe reads exactly the same visible dot and collision meshes as shooting.
 // It does NOT consume ammunition, move targets or alter the player's recoil.
@@ -292,7 +309,7 @@ function fireShot(shot,sightAligned,now){
  if(outcome.kind==="target"){
   const target=outcome.target;
   target.downTime=1.6;target.group.visible=false;target.hits++;
-  targetHits++;weapons.registerHit();
+  targetHits++;completedTargets.add(target.id);weapons.registerHit();
   shotNotice.textContent=outcome.hit.object.userData?.hitZone==="head"?
     "HEADSHOT · "+target.id.toUpperCase():
     "TARGET HIT · "+target.id.toUpperCase();
@@ -318,9 +335,12 @@ function fireShot(shot,sightAligned,now){
 }
 function animate(now){
  requestAnimationFrame(animate);
- const dt=Math.min(.05,Math.max(0,(now-lastTime)/1000));
+ const realDt=Math.max(0,(now-lastTime)/1000);
+ const dt=Math.min(.05,realDt);
  lastTime=now;
  if(locked){
+   drillElapsedSeconds=Math.min(DRILL_LENGTH_SECONDS,drillElapsedSeconds+Math.min(realDt,1));
+   if(realDt>0)fpsSmoothed=fpsSmoothed*.91+(1/realDt)*.09;
    const input={
      forward:Number(keys.has("KeyW")||keys.has("ArrowUp"))-
        Number(keys.has("KeyS")||keys.has("ArrowDown")),
@@ -400,5 +420,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT reboot V0.7.4 combat raycast with box-face impacts",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.8 screenshot-matched tactical HUD with actual range data",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
