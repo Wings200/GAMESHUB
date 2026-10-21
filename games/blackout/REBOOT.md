@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.15.3
+# BLACKOUT — Clean Reboot V0.16.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,20 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.16.2 · GADGET-FIRST BUILD, FOUR PHYSICAL PLAYABLE GADGETS**
+- User explicitly paused polishing wire audio to make actual gameplay gadgets. Three additional gadgets are now implemented, on top of functioning defender barbed wire: **C4/Nitro Cell (defender), Impact Grenades (defender), and Frag Grenades (attacker)**. **Four of the twelve** secondary concepts are genuinely implemented; the other **eight remain NOT BUILT**: attacker flashes, smoke, soft breach, hard breach, claymores; defender observation blockers, proximity alarms and deployable shields. No fake activation or inventory for those unfinished items. Future exact equipment balance and loadout restrictions may be refined after testing.
+- **C4/Nitro:** Sentry selects one C4 in either MMB or G. First press throws a visible 3D charge using real velocity/gravity and collision against range solids; the charge lands and persists. Second press remotely detonates the existing charge at its true location; no re-use after one deployment. Explosion creates a brief light/flash sphere, original positional blast audio, real self-damage (scaled with distance), near-target down states, wood panel splinters and genuine destroyed gypsum cells. Steel-reinforced walls remain intact; no pretend hard breaching.
+- **Impacts:** Sentry selects two impact grenades on a utility slot. Each press throws a visible small grenade; the first surface or floor contact automatically triggers a smaller-radius explosion using the same real health/targets/wood/gypsum code. No remote detonation or fake UI-only damage. The 3D projectile is removed on contact.
+- **Frag:** Striker selects two physically bouncing timed grenades. Each throw moves under gravity, rebounds from obstacles/floor, then detonates after a **3.2-second fuse** irrespective of impact. The fuse uses epsilon-safe elapsed checking so frame rounding cannot push the blast one frame late. Explosion uses the same real target, health, wood and gypsum interactions; steel reinforcement remains protected.
+- **Barbed Wire (existing):** Defense has two placeable coils, friendly immunity, enemy 52% slowdown, enemy 10HP/0.5s of ongoing grounded contact, bullet immunity, two V punches to destroy. Its V0.15.3 positional audio was left unchanged, per user request to focus on gadgets.
+- The operator picker and HUD show **READY** only for these four working gadgets. MMB is the chosen special/generalist slot, G the normal slot, V is the existing melee button; attacker drone cameras/throws remain 5/6. The user can equip a maximum of two distinct side-correct gadgets. All existing movement, shooting, barricade, reinforcement, and drone systems remain.
+- Source additions: `nitro.js` / `nitro-view.js` / `nitro.test.mjs`; `impact.js` / `impact-view.js` / `impact.test.mjs`; `frag.js` / `frag-view.js` / `frag.test.mjs`. Soft-wall and barricade viewers gained genuine spatial `blastAt` destruction for all three explosive types. The common blast handler is in `main.js`; it changes actual player HP and target/geometry state.
+- GitHub Actions checked **180 tests passed / 0 failed** at commit `8003e78119d814fffa41a0c199a32b1b29aca3e6` before this changelog update. This is automated verification **ONLY**, not a claimed successful user browser test. Still requires browser check for thrown model positions, explosive effects and range controls before considering the gameplay approved.
+- Suggested manual test: Hard-refresh V0.16.2; Striker Frag in G, throw twice and observe bounce/delayed explosion; Sentry C4 MMB, throw once and middle-click again to detonate; Sentry Impact G, throw on cover/floor and observe instant impact blast. Test C4 near wooden barricade and unreinforced soft wall, confirm real openings and health effects. Check steel remains solid and wire rules remain unchanged.
+- Next gadget priority by side: attacker **Flashbang** or **Smoke**, defender **Proximity Alarm/Observation Blocker**; do not represent the eight remaining planned concepts as finished.
+
+
 
 **2026-10-21 / V0.15.3 · POSITIONAL BARBED WIRE SOUNDS (USER APPROVED STAGE)**
 - User approved adding audio cues before C4: **enemy movement through live wire → low metallic rattle/scrape; first V punch → pronounced steel crunch; second V punch → loud snap and collapsing metal clatter**. All three effects have distinct original procedural WebAudio recipes, with no external sound downloads and no copyrighted audio samples. Actual sounds only play after user clicks Enter Test Range, using the existing unlocked `GameAudio` mixer and its pooled spatial buses.
