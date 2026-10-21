@@ -123,9 +123,9 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-017",
-   "./reboot/style.css?v=reboot-017"])assert.ok(html.includes(src));
- // Screen reference includes distinct HUD profiles but only player is playable.
+ for(const src of ["./reboot/main.js?v=reboot-018",
+   "./reboot/style.css?v=reboot-018"])assert.ok(html.includes(src));
+ // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
  assert.ok(html.includes('id="camera-hud" class="device-hud device-hud-camera hidden"'));
@@ -137,7 +137,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('<kbd>CTRL</kbd>'));
  assert.ok(html.includes('NO GADGETS YET'));
  assert.ok(html.includes('TRAINING · INVULNERABLE'));
- assert.ok(main.includes('document.body.dataset.hudProfile=locked?"player":"menu"'));
+ assert.ok(main.includes('document.body.dataset.hudProfile=active?controlMode:"menu"'));
  // Verify the two future-mode shells aren't connected to fake gameplay modes.
  assert.equal(main.includes('document.getElementById("drone-hud").classList.remove("hidden")'),false);
  assert.equal(main.includes('document.getElementById("camera-hud").classList.remove("hidden")'),false);
@@ -254,6 +254,29 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('event.code==="KeyY"'));
  assert.ok(main.includes('keys.has("KeyF")'));
  assert.ok(main.includes("reinforcement.tick(dt)"));
+ // V0.12: drone is a real separate controller, not decorative HUD toggling.
+ assert.ok(main.includes('from "./drone-physics.js?v=reboot-018"'));
+ assert.ok(main.includes('from "./drone-view.js?v=reboot-018"'));
+ assert.ok(main.includes("createDroneView(THREE,scene)"));
+ assert.ok(main.includes("newDrone(p.x,p.z,player.yaw)"));
+ assert.ok(main.includes('event.code==="Digit6"'));
+ assert.ok(main.includes('event.code==="KeyX"'));
+ assert.ok(main.includes('controlMode==="drone"'));
+ assert.ok(main.includes("tickDrone(drone,input,dt,activeDroneObstacles())"));
+ assert.ok(main.includes('droneBoostPressed=true'));
+ assert.ok(main.includes('droneJumpPressed=true'));
+ assert.ok(main.includes('if(locked&&controlMode==="player")'));
+ assert.ok(main.includes('hud.classList.toggle("hidden",!active||controlMode!=="player")'));
+ assert.ok(main.includes('droneHud.classList.toggle("hidden",!active||controlMode!=="drone")'));
+ assert.ok(main.includes("droneView.update(drone,dt)"));
+ assert.ok(main.includes("camera.position.set(drone.x,drone.y+DRONE.eye,drone.z)"));
+ assert.ok(main.includes('drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL)'));
+ for(const id of ["drone-range-map","drone-charge-1","drone-charge-2",
+    "drone-charge-3","drone-boost","drone-jump","drone-speed"])
+   assert.ok(html.includes('id="'+id+'"'),"live drone field absent "+id);
+ assert.ok(css.includes(".drone-commands"));
+ assert.ok(css.includes(".drone-telemetry"));
+
  assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
  for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
   assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
