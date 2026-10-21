@@ -7,9 +7,9 @@ import {IMPACT} from "./impact.js";
 import {NITRO,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 
 test("frag destroys barricades but not soft walls; impact/C4 destroy both",()=>{
- assert.deepEqual(BARRICADE_BLASTS,["FRAG","IMPACT","C4"]);
- assert.deepEqual(SOFT_WALL_BLASTS,["IMPACT","C4"]);
- for(const label of ["FRAG","IMPACT","C4"])assert.equal(canDamageBarricades(label),true);
+ assert.deepEqual(BARRICADE_BLASTS,["FRAG","IMPACT","C4","SOFT BREACH"]);
+ assert.deepEqual(SOFT_WALL_BLASTS,["IMPACT","C4","SOFT BREACH"]);
+ for(const label of ["FRAG","IMPACT","C4","SOFT BREACH"])assert.equal(canDamageBarricades(label),true);
  assert.equal(canDamageSoftWalls("FRAG"),false);
  assert.equal(canDamageSoftWalls("IMPACT"),true);
  assert.equal(canDamageSoftWalls("C4"),true);
@@ -38,7 +38,7 @@ test("impact grenade still damages wood and unreinforced soft walls",()=>{
  assert.equal(soft,1);
 });
 test("reinforcement blocks gypsum destruction without preventing wooden barricade splintering",()=>{
- for(const label of ["FRAG","IMPACT","C4"]){
+ for(const label of ["FRAG","IMPACT","C4","SOFT BREACH"]){
   let soft=0;
   assert.deepEqual(resolveStructuralBlast(label,{
    woodBlast:()=>6,
@@ -73,4 +73,21 @@ test("impact stays 2m radius, 60 HP max and C4 keeps its own stronger blast",()=
  assert.equal(nitroBlastIsLethal(impact,{x:.3,y:1,z:0}),false);
  assert.equal(nitroBlastDamage(impact,{x:2.1,y:1,z:0}),0);
  assert.ok(NITRO.radius>IMPACT.radius);
+});
+
+test("soft breach charges intentionally destroy both barricades and unreinforced gypsum",()=>{
+ let wood=0,gypsum=0;
+ assert.equal(canDamageBarricades("SOFT BREACH"),true);
+ assert.equal(canDamageSoftWalls("SOFT BREACH"),true);
+ assert.deepEqual(resolveStructuralBlast("SOFT BREACH",{
+  woodBlast:()=>{wood++;return 6;},
+  gypsumBlast:()=>{gypsum++;return 217;}
+ }),{wood:6,gypsum:217});
+ assert.equal(wood,1);
+ assert.equal(gypsum,1);
+ assert.deepEqual(resolveStructuralBlast("SOFT BREACH",{
+  woodBlast:()=>4,
+  gypsumBlast:()=>{throw Error("reinforced steel cannot be damaged");},
+  reinforced:true
+ }),{wood:4,gypsum:0});
 });

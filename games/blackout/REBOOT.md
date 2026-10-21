@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.18.3
+# BLACKOUT — Clean Reboot V0.19.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.19.0 · SOFT BREACH CHARGE AND RECOVERABLE F PICKUP**
+- Seventh working gadget: Striker's Soft Breach Charge (two). Equip on MMB or G. Look at intact gypsum/wood barricade within 2.75m and tap the gadget key to attach the real 3D model; an approximately 0.9-second deployment animation completes before remote detonation. Invalid surface, too-far, already-open cells or reinforced steel block placement without consuming equipment.
+- Tap the selected gadget key again after installation to detonate. Existing wooden barricade and gypsum blast/destruction routines remove rendered surfaces **and physical collision cells**, leaving a large opening. The blast damages nearby players and targets. Reinforced steel remains unaffected.
+- As specifically requested, look directly at an undetonated charge from close range and tap **F** to recover it. The system verifies world-space aim, obstructing wall collision and proximity, removes the 3D charge and refunds one inventory charge (capped at two). The same F press cannot also rebuild a barricade or reinforce a wall. Pickup before the detonation is allowed, including during early deployment.
+- Soft breach uses tap-to-place and remote key detonation; it is not throwable and does not show the grenade aim arc. Existing six working gadgets, two-slot loadout logic, and REDLINE remain unchanged. This is still a solo mechanics sandbox.
+- Added unit/regression tests for true soft-wall and barricade holes, reach and facing, reinforcement immunity, placement progress, detonation, pickup and refund, and UI/source integration. Real-browser playtesting still needed.
 
 **2026-10-21 / V0.18.3 · FRAG GRENADES DESTROY WOOD BARRICADES, NOT WALLS**
 - User clarified desired balance: **Frag Grenades can damage and destroy wooden barricades but CANNOT damage soft gypsum walls**. This distinction leaves a meaningful role for future dedicated Soft Breach Charges. The V0.18.2 total structural immunity for Frags is superseded by this rule.

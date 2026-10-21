@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.18.3 — frags break barricades, not soft walls; impact/C4 breach both
+// BLACKOUT REBOOT V0.19.0 — soft breach charges place, detonate, carve openings and F pickup
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-040";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-040";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-044";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-044";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -45,7 +45,10 @@ import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040
 import {THROW_PREVIEW_IDS,canPreviewThrow,traceThrownGadget}
  from "./throw-preview.js?v=reboot-041";
 import {createThrowPreviewView} from "./throw-preview-view.js?v=reboot-041";
-import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-043";
+import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-044";
+import {SOFT_BREACH,newSoftBreachState,placeSoftBreach,tickSoftBreach,
+ pickupSoftBreach,detonateSoftBreach} from "./soft-breach.js?v=reboot-044";
+import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -164,6 +167,8 @@ let nitroState=newNitroState();
 const nitroViews=new Map(),blastViews=[];
 let impactState=newImpactState();
 const impactViews=new Map();
+let softBreachState=newSoftBreachState();
+const softBreachViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -181,7 +186,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -243,13 +248,21 @@ function refreshUtilityHud(){
       "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":
    row.gadgetId==="flash"?
       "LIVE · "+flashState.charges+"/"+FLASH.charges+" LEFT":
+   row.gadgetId==="soft-breach"?
+      (softBreachState.devices.some(d=>d.armed)?
+       (softBreachState.devices.find(d=>d.armed)?.installed?
+        "PLANTED · "+row.key+" DETONATE / LOOK + F RECOVER":
+        "PLANTING · WAIT 0.9S / LOOK + F RECOVER"):
+       "LIVE · "+softBreachState.charges+"/"+SOFT_BREACH.charges+" LEFT"):
    row.gadgetId==="smoke"?
       "LIVE · "+smokeState.charges+"/"+SMOKE.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="smoke")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="soft-breach")?
+  activeOperator.name+" · BREACH PLANT ON WALL/WOOD · F RECOVER":
+  rows.some(row=>row.gadgetId==="smoke")?
   activeOperator.name+" · SMOKE 1.8S FUSE · VISUAL COVER ~16S":
   rows.some(row=>row.gadgetId==="flash")?
   activeOperator.name+" · FLASH 1.75S FUSE · FACE AWAY OR USE COVER":
@@ -312,6 +325,21 @@ function applyGadgetBlast(blast,label="C4"){
   (playerEliminated?" · YOU WERE ELIMINATED":
    damageTaken?" · SELF -"+damageTaken+" HP":"");
 }
+function detonateCurrentSoftBreach(){
+ const active=softBreachState.devices.find(d=>d.armed);
+ const result=detonateSoftBreach(softBreachState);
+ if(!result.blast)return result.reason;
+ softBreachState=result.state;
+ if(active){
+  softBreachViews.get(active.id)?.dispose();
+  softBreachViews.delete(active.id);
+ }
+ // Dedicated structural charges reuse the same THREE explosion and real
+ // barricade/gypsum destructible functions as other working breach blasts.
+ const message=applyGadgetBlast(result.blast,"SOFT BREACH");
+ refreshUtilityHud();
+ return message;
+}
 function detonateCurrentNitro(){
  // Always dispose of the CURRENT charge, not a previously recovered one.
  const active=nitroState.devices.find(d=>d.armed);
@@ -350,6 +378,34 @@ function tryPickupCurrentNitro(){
  view.sync(null);nitroViews.delete(active.id);
  // F was consumed for pickup. It must not simultaneously rebuild wood or
  // finish a held steel reinforcement installation.
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;
+ shotNoticeLeft=1.65;
+ refreshUtilityHud();
+ return true;
+}
+function tryPickupCurrentSoftBreach(){
+ if(activeOperator.side!=="attack"||controlMode!=="player")return false;
+ const active=softBreachState.devices.find(d=>d.armed);
+ const view=active?softBreachViews.get(active.id):null;
+ if(!view?.pickupTarget)return false;
+ camera.updateMatrixWorld(true);
+ view.root.updateMatrixWorld(true);
+ const pickupRay=new THREE.Raycaster();
+ pickupRay.setFromCamera({x:0,y:0},camera);
+ pickupRay.far=SOFT_BREACH.pickupRange+.2;
+ const hits=pickupRay.intersectObjects([
+  view.pickupTarget,...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables()
+ ],false);
+ if(hits[0]?.object!==view.pickupTarget)return false;
+ const result=pickupSoftBreach(softBreachState,active.id,player);
+ if(!result.device)return false;
+ softBreachState=result.state;
+ view.dispose();softBreachViews.delete(active.id);
+ // Consumed F must not additionally repair wood or install reinforcement.
  barricadeBuildTime=0;
  reinforcement.step({player,holding:false,dt:0});
  keys.delete("KeyF");
@@ -418,6 +474,26 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="soft-breach"&&activeOperator.side==="attack"){
+  if(softBreachState.devices.some(d=>d.armed)){
+   shotNotice.textContent=detonateCurrentSoftBreach();
+  }else{
+   const result=placeSoftBreach(softBreachState,player,{
+    softState:softWall.state,barricadeState:barricade.state,
+    reinforced:reinforcement.installed
+   });
+   if(result.device){
+    softBreachState=result.state;
+    softBreachViews.set(result.device.id,
+     createSoftBreachView(THREE,scene,result.device));
+    shotAudio.play("gadget-throw");
+    refreshUtilityHud();
+   }
+   shotNotice.textContent=result.reason;
+  }
+  shotNoticeLeft=1.9;
+  return;
+ }
  if(row.gadgetId==="c4"&&activeOperator.side==="defend"){
   if(nitroState.devices.some(d=>d.armed)){
    shotNotice.textContent=detonateCurrentNitro();
@@ -670,7 +746,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -708,7 +784,11 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentSoftBreach()){
+   softBreachPickupKeyConsumed=true;
+   return;
+  }
   if(!event.repeat&&tryPickupCurrentNitro()){
    c4PickupKeyConsumed=true;
    return;
@@ -766,7 +846,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF")c4PickupKeyConsumed=false;
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -795,7 +875,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1018,6 +1098,14 @@ function animate(now){
     shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
     shotNoticeLeft=1.7;
    }
+   // Soft breaches are attached devices, not throwables. The 0.9-second
+   // planting animation completes before the same gadget key can detonate.
+   softBreachState=tickSoftBreach(softBreachState,dt);
+   for(const [id,view] of softBreachViews){
+    const d=softBreachState.devices.find(item=>item.id===id&&item.armed);
+    if(d)view.sync(d);
+    else{view.dispose();softBreachViews.delete(id);}
+   }
    // Flash grenades are thrown physical objects: one non-damaging burst at
    // fuse expiry. The exposed camera depends on facing, range, and solid cover.
    const flashTick=tickFlash(flashState,dt,activeDroneObstacles());
@@ -1229,5 +1317,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.18.3 frags break barricades but not soft walls; impacts/C4 breach both",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.19.0 soft breach charges: actual wall/barricade opening, F pickup, remote detonation",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

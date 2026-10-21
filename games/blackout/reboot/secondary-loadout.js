@@ -4,7 +4,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"frag",name:"Frag Grenades",side:"attack",role:"Timed explosive",implemented:true},
  {id:"flash",name:"Flashbangs",side:"attack",role:"Sight disruption",implemented:true},
  {id:"smoke",name:"Smoke Grenades",side:"attack",role:"Vision cover",implemented:true},
- {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:false},
+ {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:true},
  {id:"hard-breach",name:"Hard Breach Charge",side:"attack",role:"Reinforced wall breach (unprotected)",implemented:false},
  {id:"claymore",name:"Claymores",side:"attack",role:"Directional trap",implemented:false},
  {id:"c4",name:"C4 / Nitro Cell",side:"defend",role:"Remote explosive",implemented:true},

@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","flash","smoke","c4","impact","barbed-wire"],"only six actually functional gadgets are marked ready");
+  ["frag","flash","smoke","soft-breach","c4","impact","barbed-wire"],"only seven actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -29,7 +29,7 @@ test("Striker and Sentry have independent two-slot plans; changes persist across
  plans=planSecondary(plans,sentry,1,"c4");
  assert.deepEqual(plannedSecondaries(plans,striker),["flash","soft-breach"]);
  assert.deepEqual(plannedSecondaries(plans,sentry),["barbed-wire","c4"]);
- assert.equal(planIsFieldReady(plans,striker),false);
+ assert.equal(planIsFieldReady(plans,striker),true);
  assert.equal(planIsFieldReady(plans,sentry),true,"both C4 and wire now have physical mechanics");
  plans=planSecondary(plans,striker,1,null);
  assert.deepEqual(plannedSecondaries(plans,striker),["flash",null]);
@@ -56,8 +56,8 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
  assert.equal(planIsFieldReady(plans,striker),false);
  for(const g of secondaryOptions("attack")){
   const updated=planSecondary(plans,striker,0,g.id);
-  assert.equal(planIsFieldReady(updated,striker),g.id==="frag"||g.id==="flash"||g.id==="smoke");
-  assert.equal(g.implemented,g.id==="frag"||g.id==="flash"||g.id==="smoke");
+  assert.equal(planIsFieldReady(updated,striker),g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach");
+  assert.equal(g.implemented,g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach");
  }
 });
 
@@ -75,10 +75,10 @@ test("special middle-click and normal G reflect Striker plans without fake funct
  assert.deepEqual(rows.map(s=>s.role),["SPECIAL","NORMAL"]);
  assert.deepEqual(rows.map(s=>s.name),["Flashbangs","Soft Breach Charge"]);
  assert.equal(rows[0].fieldReady,true);
- assert.equal(rows[1].fieldReady,false);
- assert.ok(rows[1].status.includes("NOT BUILT"));
+ assert.equal(rows[1].fieldReady,true);
+ assert.ok(rows[1].status.includes("LIVE GADGET"));
  assert.equal(utilityKeyPreview(plans,striker,"MouseMiddle"),"FLASHBANGS · LIVE GADGET · USE IN RANGE");
- assert.equal(utilityKeyPreview(plans,striker,"KeyG"),"SOFT BREACH CHARGE · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"KeyG"),"SOFT BREACH CHARGE · LIVE GADGET · USE IN RANGE");
  assert.equal(utilityKeyPreview(plans,striker,"Digit3"),null);
  assert.equal(utilityKeyPreview(plans,striker,"Digit4"),null);
  assert.equal(utilityKeyPreview(plans,striker,"Digit5"),null);
