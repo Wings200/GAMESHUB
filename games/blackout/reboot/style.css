@@ -551,3 +551,17 @@ button.operator-card.selected{border-color:#99e9d8;background:#24474d;box-shadow
  .operator-slots{grid-template-columns:1fr}
  .operator-player-tag{bottom:120px}
 }
+
+/* V0.14 · two-slot secondary gadget DESIGN selections, never live equipment. */
+.operator-gadget-select{
+ width:100%;min-height:36px;border:1px solid #628d9a91;
+ background:#102330;color:#daeeee;padding:7px;
+ font:800 10px/1.4 "Segoe UI",Arial,sans-serif;
+ letter-spacing:.025em;cursor:pointer
+}
+.operator-gadget-select:focus-visible{outline:2px solid #93e3d2;outline-offset:2px}
+.operator-gadget-select option{background:#102330;color:#dceef1}
+.operator-plan-status{font-size:9px!important;line-height:1.6!important;
+ color:#f0c78b!important;font-weight:900;letter-spacing:.09em;margin:10px 0 4px!important;
+ border-left:3px solid #dcad73;padding:6px 9px;background:#4d352021}
+.operator-utility-slot:has(.operator-gadget-select){border-style:solid}
