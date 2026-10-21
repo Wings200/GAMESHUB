@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.7
+# BLACKOUT — Clean Reboot V0.7.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.7.1 · 50-second user video follow-up:**
+- Reviewed the actual uploaded V0.7 gameplay recording. The target hit counter rises to 16, verifying some successful target intersections and hit registration; other shots display `SHOT BLOCKED · BOX-ONE` or `SHOT MISSED`. The green/yellow wire lines sweeping across the sight are the *old debug visualization*: long-lived world-space lines with `depthTest:false` stay in place as the camera moves. They were mistaken for bullets shooting sideways.
+- Removed world-space debug shot lines entirely. Regular impact decals remain where bullets actually land. **B** now displays two independent readouts: `LIVE SIGHT` (nearest collision under the optic on the current frame, updated ~11x/sec using a separate raycaster) and `LAST SHOT` (actual last bullet result, surface/target/head, distance and optic/camera source). The live probe never fires, expends ammo, changes recoil or mutates targets.
+- Preserved the original BLACKOUT recoil pattern, chamber/ammo rules, rate of fire, gunshot and reload sound, 3D gun, and physical collision. Source import and CSS cache versions are bumped to `reboot-009`. No REDLINE or shared Worker changes.
+- Browser playtest remains necessary: compare `LIVE SIGHT: TARGET ... HEAD` with `LAST SHOT: HEADSHOT` during stationary single shots to isolate possible remaining accuracy issues. Movement and recoil can shift the optic between successive automatic rounds.
+
 
 **2026-10-20 / V0.7 · Third-pass aim fix after user reports V0.6.1 still misses:**
 - Discovered an integration issue: the previous firing flow updated the gun's 3D transform *after* calculating its raycast. In V0.7, the camera and physically mounted optic are updated *before* invoking historical weapon firing, with the real optic's world-space dot projected back into camera NDC to control the shot direction. During ADS entrance before the reticle is visible, the weapon shoots through screen center; when fully visible, **the exact rendered dot is the ray origin on-screen**. Hipfire still retains original wide cone.
