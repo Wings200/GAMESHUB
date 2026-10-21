@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.19.0
+# BLACKOUT — Clean Reboot V0.20.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.20.0 · HARD BREACH CHARGES WITH REAL REINFORCED WALL CUTOUTS AND F PICKUP**
+- Eighth functional gadget: attacker Striker's **Hard Breach Charge** (2), available in either MMB or G slot. Tap the assigned key while aiming at the existing intact steel-reinforced station (or intact bare gypsum) within 2.8m to attach a modeled heavy explosive. **Electrified reinforcement is rejected** (the current test range has no active electricity systems).
+- The charge takes **1.45s to attach**; a second key press activates a **1.1s remote detonation delay**. A live indicator shows arming and countdown. After detonation, the steel core is genuinely replaced by three **remaining pieces** (left/right structural sides and overhead lintel). The old steel slab AND decorative ribs stop obstructing the center. Physics blockers and bullet raycasting now use those three steel meshes. Underlying gypsum is removed with an actual wide blast, allowing a player to pass through instead of hitting invisible metal. Nearby player/target blast damage remains.
+- **Pickup/reuse:** look straight at the undetonated charge, get within 2.8m and tap F. A real raycast pickup target checks walls/steel occlusion and proximity, removes the 3D device and returns exactly one charge to inventory. Pressing F does not also reinforce or rebuild the nearby wall. Can recover before triggering and while its countdown is still active.
+- Existing defender reinforcement still takes 3s to install and remains solid/bulletproof unless hit by a Hard Breach. Defender Y removes the shield entirely and clears its breached state so the next reinforcement is intact. **Frag only breaks wood**; C4, Impact and Soft Breach still follow their prior structural rules. No REDLINE changes.
+- Added deterministic tests for range, aim, invalid/electrified placements, charge counts, plant/detonation timing, pickup/refund, genuine steel hit meshes and full-height collision cutout. CI verifies regressions; in-browser visuals and traversal still require the user's test.
 
 **2026-10-21 / V0.19.0 · SOFT BREACH CHARGE AND RECOVERABLE F PICKUP**
 - Seventh working gadget: Striker's Soft Breach Charge (two). Equip on MMB or G. Look at intact gypsum/wood barricade within 2.75m and tap the gadget key to attach the real 3D model; an approximately 0.9-second deployment animation completes before remote detonation. Invalid surface, too-far, already-open cells or reinforced steel block placement without consuming equipment.

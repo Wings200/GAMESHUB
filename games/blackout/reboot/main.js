@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.19.0 — soft breach charges place, detonate, carve openings and F pickup
+// BLACKOUT REBOOT V0.20.0 — hard breach charges carve actual steel/gypsum opening + F recovery
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -16,8 +16,8 @@ import {BARRICADE} from "./barricade.js?v=reboot-015";
 import {createBarricadeStation} from "./barricade-view.js?v=reboot-032";
 import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-032";
-import {REINFORCEMENT} from "./reinforcement.js?v=reboot-017";
-import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-017";
+import {REINFORCEMENT} from "./reinforcement.js?v=reboot-045";
+import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-045";
 import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
@@ -49,6 +49,9 @@ import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-044";
 import {SOFT_BREACH,newSoftBreachState,placeSoftBreach,tickSoftBreach,
  pickupSoftBreach,detonateSoftBreach} from "./soft-breach.js?v=reboot-044";
 import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
+import {HARD_BREACH,newHardBreachState,placeHardBreach,
+ armHardBreach,tickHardBreach,pickupHardBreach} from "./hard-breach.js?v=reboot-045";
+import {createHardBreachView} from "./hard-breach-view.js?v=reboot-045";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -169,6 +172,8 @@ let impactState=newImpactState();
 const impactViews=new Map();
 let softBreachState=newSoftBreachState();
 const softBreachViews=new Map();
+let hardBreachState=newHardBreachState();
+const hardBreachViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -186,7 +191,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -248,6 +253,14 @@ function refreshUtilityHud(){
       "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":
    row.gadgetId==="flash"?
       "LIVE · "+flashState.charges+"/"+FLASH.charges+" LEFT":
+   row.gadgetId==="hard-breach"?
+      (hardBreachState.devices.some(d=>d.armed)?
+       (hardBreachState.devices.find(d=>d.armed)?.countdown!==null?
+        "DETONATING · CLEAR THE AREA":
+        hardBreachState.devices.find(d=>d.armed)?.installed?
+        "ARMED · "+row.key+" ACTIVATE / LOOK + F RECOVER":
+        "PLANTING · 1.45S / LOOK + F RECOVER"):
+       "LIVE · "+hardBreachState.charges+"/"+HARD_BREACH.charges+" LEFT"):
    row.gadgetId==="soft-breach"?
       (softBreachState.devices.some(d=>d.armed)?
        (softBreachState.devices.find(d=>d.armed)?.installed?
@@ -260,7 +273,9 @@ function refreshUtilityHud(){
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="soft-breach")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="hard-breach")?
+  activeOperator.name+" · HARD BREACH STEEL / SOFT · F RECOVER · 1.1S DET":
+  rows.some(row=>row.gadgetId==="soft-breach")?
   activeOperator.name+" · BREACH PLANT ON WALL/WOOD · F RECOVER":
   rows.some(row=>row.gadgetId==="smoke")?
   activeOperator.name+" · SMOKE 1.8S FUSE · VISUAL COVER ~16S":
@@ -296,7 +311,7 @@ function applyGadgetBlast(blast,label="C4"){
  const {wood,gypsum}=resolveStructuralBlast(label,{
   woodBlast:()=>barricade.blastAt(blast),
   gypsumBlast:()=>softWall.blastAt(blast),
-  reinforced:reinforcement.installed
+  reinforced:reinforcement.installed&&!reinforcement.breached
  });
  const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
  const instantKill=nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
@@ -324,6 +339,13 @@ function applyGadgetBlast(blast,label="C4"){
    wood+" BOARDS · "+gypsum+" GYPSUM CELLS")+
   (playerEliminated?" · YOU WERE ELIMINATED":
    damageTaken?" · SELF -"+damageTaken+" HP":"");
+}
+function detonateCurrentHardBreach(blast){
+ // Remove the steel center BEFORE gypsum blast routing, because a hard
+ // breach is the only gadget allowed to cut reinforced collision geometry.
+ const steel=reinforcement.breachAt(blast);
+ const message=applyGadgetBlast(blast,"HARD BREACH");
+ return message+(steel.opened?" · STEEL OPENED":"");
 }
 function detonateCurrentSoftBreach(){
  const active=softBreachState.devices.find(d=>d.armed);
@@ -383,6 +405,31 @@ function tryPickupCurrentNitro(){
  keys.delete("KeyF");
  shotNotice.textContent=result.reason;
  shotNoticeLeft=1.65;
+ refreshUtilityHud();
+ return true;
+}
+function tryPickupCurrentHardBreach(){
+ if(activeOperator.side!=="attack"||controlMode!=="player")return false;
+ const active=hardBreachState.devices.find(d=>d.armed);
+ const view=active?hardBreachViews.get(active.id):null;
+ if(!view?.pickupTarget)return false;
+ camera.updateMatrixWorld(true);view.root.updateMatrixWorld(true);
+ const pickupRay=new THREE.Raycaster();
+ pickupRay.setFromCamera({x:0,y:0},camera);
+ pickupRay.far=HARD_BREACH.pickupRange+.25;
+ const hits=pickupRay.intersectObjects([
+  view.pickupTarget,...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables()
+ ],false);
+ if(hits[0]?.object!==view.pickupTarget)return false;
+ const result=pickupHardBreach(hardBreachState,active.id,player);
+ if(!result.device)return false;
+ hardBreachState=result.state;
+ view.dispose();hardBreachViews.delete(active.id);
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;shotNoticeLeft=1.65;
  refreshUtilityHud();
  return true;
 }
@@ -474,6 +521,25 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="hard-breach"&&activeOperator.side==="attack"){
+  if(hardBreachState.devices.some(d=>d.armed)){
+   const triggered=armHardBreach(hardBreachState);
+   if(triggered.ok){hardBreachState=triggered.state;refreshUtilityHud();}
+   shotNotice.textContent=triggered.reason;
+  }else{
+   const result=placeHardBreach(hardBreachState,player,{
+    softState:softWall.state,reinforcementState:reinforcement.state
+   });
+   if(result.device){
+    hardBreachState=result.state;
+    hardBreachViews.set(result.device.id,
+     createHardBreachView(THREE,scene,result.device));
+    shotAudio.play("gadget-throw");refreshUtilityHud();
+   }
+   shotNotice.textContent=result.reason;
+  }
+  shotNoticeLeft=1.9;return;
+ }
  if(row.gadgetId==="soft-breach"&&activeOperator.side==="attack"){
   if(softBreachState.devices.some(d=>d.armed)){
    shotNotice.textContent=detonateCurrentSoftBreach();
@@ -746,7 +812,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -784,7 +850,11 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentHardBreach()){
+   hardBreachPickupKeyConsumed=true;
+   return;
+  }
   if(!event.repeat&&tryPickupCurrentSoftBreach()){
    softBreachPickupKeyConsumed=true;
    return;
@@ -846,7 +916,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;}
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -875,7 +945,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1098,6 +1168,21 @@ function animate(now){
     shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
     shotNoticeLeft=1.7;
    }
+   // Hard breaches attach to reinforced steel or gypsum, then their armed
+   // countdown detonates after 1.1s. Physics and shooter colliders update
+   // with steel cutout fragments, not a whole-panel disappearance.
+   const hardTick=tickHardBreach(hardBreachState,dt);
+   hardBreachState=hardTick.state;
+   for(const [id,view] of hardBreachViews){
+    const d=hardBreachState.devices.find(x=>x.id===id&&x.armed);
+    if(d)view.sync(d);
+    else{view.dispose();hardBreachViews.delete(id);}
+   }
+   for(const blast of hardTick.blasts){
+    shotNotice.textContent=detonateCurrentHardBreach(blast);
+    shotNoticeLeft=2;
+    refreshUtilityHud();
+   }
    // Soft breaches are attached devices, not throwables. The 0.9-second
    // planting animation completes before the same gadget key can detonate.
    softBreachState=tickSoftBreach(softBreachState,dt);
@@ -1317,5 +1402,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.19.0 soft breach charges: actual wall/barricade opening, F pickup, remote detonation",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.20.0 hard breach steel openings, delayed detonation and F recovery",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

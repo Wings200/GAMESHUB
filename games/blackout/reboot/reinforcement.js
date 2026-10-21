@@ -11,7 +11,7 @@ export const REINFORCEMENT=Object.freeze({
  depth:.30,interactRadius:2.65,installSeconds:3,
 });
 export function newReinforcement(){
- return {installed:false,progress:0,installs:0,removals:0};
+ return {installed:false,progress:0,installs:0,removals:0,breach:null,electrified:false};
 }
 export function canWorkOnReinforcement(player){
  if(!player||!Number.isFinite(player.x)||!Number.isFinite(player.z))
@@ -31,7 +31,7 @@ export function stepReinforcement(state,{player,holding,dt,moving=false,sprintin
  if(delta===0)return {state,event:"none"};
  const progress=Math.min(REINFORCEMENT.installSeconds,state.progress+delta);
  if(progress+1e-8>=REINFORCEMENT.installSeconds){
-  return {state:{...state,installed:true,progress:0,installs:state.installs+1},
+  return {state:{...state,installed:true,progress:0,installs:state.installs+1,breach:null},
    event:"installed"};
  }
  return {state:{...state,progress},event:"building"};
@@ -40,15 +40,45 @@ export function removeReinforcement(state,player){
  if(!state.installed)return {state,removed:false,reason:"NO REINFORCEMENT INSTALLED"};
  if(!canWorkOnReinforcement(player))
   return {state,removed:false,reason:"MOVE CLOSE AND STAND CLEAR"};
- return {state:{...state,installed:false,progress:0,removals:state.removals+1},
+ return {state:{...state,installed:false,progress:0,removals:state.removals+1,breach:null},
   removed:true,reason:"METAL REINFORCEMENT REMOVED"};
+}
+// Cut a rectangle that extends to the floor, so a full-height player
+// capsule can pass. Other steel pieces remain solid, visible, and shootable.
+// Do NOT remove the entire reinforcement or fake a doorway with a decal.
+export function hardBreachReinforcement(state,blast){
+ if(!state?.installed||state.electrified)return {state,opened:false,reason:
+  state?.electrified?"ELECTRIFIED REINFORCEMENT · DISABLE ELECTRICITY FIRST":
+   "NO REINFORCEMENT TO BREACH"};
+ if(!blast||![blast.x,blast.y,blast.z].every(Number.isFinite)||
+   Math.abs(blast.z-REINFORCEMENT.z)>.5||
+   Math.abs(blast.x-REINFORCEMENT.x)>REINFORCEMENT.width/2-.5)
+  return {state,opened:false,reason:"BREACH CHARGE NOT ON METAL"};
+ const s=REINFORCEMENT;
+ // Width leaves at least .4m of side support on either edge.
+ const cx=Math.max(s.x-s.width/2+1.25,Math.min(s.x+s.width/2-1.25,blast.x));
+ const opening={left:cx-1.19,right:cx+1.19,top:2.17};
+ if(state.breach)return {state,opened:false,reason:"REINFORCEMENT ALREADY BREACHED"};
+ return {state:{...state,breach:opening},opened:true,reason:"STEEL BREACH OPENED"};
 }
 export function reinforcementBlockers(state){
  if(!state.installed)return [];
- const s=REINFORCEMENT;
- return [{id:s.id,x:s.x,z:s.z,width:s.width,depth:s.depth,
-  bottom:0,height:s.height}];
+ const s=REINFORCEMENT,edgeLeft=s.x-s.width/2,edgeRight=s.x+s.width/2;
+ if(!state.breach)
+  return [{id:s.id,x:s.x,z:s.z,width:s.width,depth:s.depth,
+   bottom:0,height:s.height}];
+ const b=state.breach,parts=[];
+ const add=(id,left,right,bottom,top)=>{
+  if(right-left<.005||top-bottom<.005)return;
+  parts.push({id:s.id+"-"+id,x:(left+right)/2,z:s.z,
+   width:right-left,depth:s.depth,bottom,height:top});
+ };
+ add("left",edgeLeft,b.left,0,s.height);
+ add("right",b.right,edgeRight,0,s.height);
+ add("lintel",b.left,b.right,b.top,s.height);
+ return parts;
 }
 export function reinforcementStatus(state){
- return state.installed?"REINFORCED":state.progress>0?"INSTALLING":"UNREINFORCED";
+ return state.installed?(state.breach?"BREACHED":"REINFORCED"):
+  state.progress>0?"INSTALLING":"UNREINFORCED";
 }

@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/SEVEN GADGETS WORK/);
+  assert.match(elements["operator-plan-status"].textContent,/EIGHT GADGETS WORK/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -269,5 +269,24 @@ test("Soft Breach Charges are LIVE in both attacker gadget slots, never on defen
   elements["operator-defend"].click();
   const defender=elements["operator-slots"].children[0].children[1];
   assert.equal(defender.children.find(x=>x.value==="soft-breach"),undefined);
+ }finally{globalThis.document=old;}
+});
+
+test("Hard Breach Charges show as READY attacker equipment but never defender equipment",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  const select=elements["operator-slots"].children[0].children[1];
+  assert.equal(select.children.find(o=>o.value==="hard-breach").textContent,
+   "Hard Breach Charge · READY");
+  select.value="hard-breach";select.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,["hard-breach",null]);
+  assert.equal(elements["operator-slots"].children[0].children[2].textContent,
+   "LIVE GADGET · READY IN RANGE");
+  elements["operator-defend"].click();
+  const defensive=elements["operator-slots"].children[0].children[1];
+  assert.equal(defensive.children.find(o=>o.value==="hard-breach"),undefined);
  }finally{globalThis.document=old;}
 });

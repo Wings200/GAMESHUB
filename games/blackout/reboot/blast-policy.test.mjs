@@ -8,7 +8,7 @@ import {NITRO,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 
 test("frag destroys barricades but not soft walls; impact/C4 destroy both",()=>{
  assert.deepEqual(BARRICADE_BLASTS,["FRAG","IMPACT","C4","SOFT BREACH"]);
- assert.deepEqual(SOFT_WALL_BLASTS,["IMPACT","C4","SOFT BREACH"]);
+ assert.deepEqual(SOFT_WALL_BLASTS,["IMPACT","C4","SOFT BREACH","HARD BREACH"]);
  for(const label of ["FRAG","IMPACT","C4","SOFT BREACH"])assert.equal(canDamageBarricades(label),true);
  assert.equal(canDamageSoftWalls("FRAG"),false);
  assert.equal(canDamageSoftWalls("IMPACT"),true);
@@ -90,4 +90,19 @@ test("soft breach charges intentionally destroy both barricades and unreinforced
   gypsumBlast:()=>{throw Error("reinforced steel cannot be damaged");},
   reinforced:true
  }),{wood:4,gypsum:0});
+});
+
+test("Hard Breach destroys gypsum but not barricades; steel cutting is a separate guarded action",()=>{
+ assert.equal(canDamageBarricades("HARD BREACH"),false);
+ assert.equal(canDamageSoftWalls("HARD BREACH"),true);
+ let wood=0,gypsum=0;
+ assert.deepEqual(resolveStructuralBlast("HARD BREACH",{
+  woodBlast:()=>{wood++;return 6;},
+  gypsumBlast:()=>{gypsum++;return 280;}
+ }),{wood:0,gypsum:280});
+ assert.equal(wood,0);assert.equal(gypsum,1);
+ assert.deepEqual(resolveStructuralBlast("HARD BREACH",{
+  gypsumBlast:()=>{throw Error("steel should protect uncut gypsum");},
+  reinforced:true
+ }),{wood:0,gypsum:0});
 });

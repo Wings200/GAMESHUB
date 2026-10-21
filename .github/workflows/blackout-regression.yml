@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.19.0 · soft breach charges with recoverable F pickup
+    name: Reboot V0.20.0 · hard breach cuts real reinforced walls and supports pickup
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -72,5 +72,7 @@ jobs:
           node --check games/blackout/reboot/blast-policy.js
           node --check games/blackout/reboot/soft-breach.js
           node --check games/blackout/reboot/soft-breach-view.js
+          node --check games/blackout/reboot/hard-breach.js
+          node --check games/blackout/reboot/hard-breach-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

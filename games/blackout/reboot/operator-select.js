@@ -4,7 +4,7 @@
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
  operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-025";
 import {secondaryOptions,newSecondaryPlans,plannedSecondaries,
- planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-044";
+ planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-045";
 
 export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}={}){
  if(!root)throw new Error("Operator selection root is required");
@@ -100,7 +100,7 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
      if(!rejected)onPlanChange(selectedOperator(selection),plans);
      planStatus.textContent=rejected?
       "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
-      "PLAN SAVED FOR "+op.name+(["barbed-wire","c4","impact","frag","flash","smoke","soft-breach"].includes(value)?
+      "PLAN SAVED FOR "+op.name+(["barbed-wire","c4","impact","frag","flash","smoke","soft-breach","hard-breach"].includes(value)?
         " · FUNCTIONING GADGET READY":" · OTHER GADGETS REMAIN PREVIEWS");
     });
     el.append(select);
@@ -112,9 +112,9 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
     "UNASSIGNED · GADGETS IN DEVELOPMENT";
    el.append(status);slots.append(el);
   }
-  planStatus.textContent=picks.some(id=>["barbed-wire","c4","impact","frag","flash","smoke","soft-breach"].includes(id))?
+  planStatus.textContent=picks.some(id=>["barbed-wire","c4","impact","frag","flash","smoke","soft-breach","hard-breach"].includes(id))?
    "READY GADGET SELECTED · OTHER OPTIONS STILL PREVIEWS":
-   "SEVEN GADGETS WORK · BREACH / SMOKE / FLASH / FRAG / C4 / IMPACT / WIRE";
+   "EIGHT GADGETS WORK · HARD / SOFT BREACH / SMOKE / FLASH / FRAG / C4 / IMPACT / WIRE";
  }
  attackTab.addEventListener("click",()=>{
   selection=switchOperatorSide(selection,"attack");

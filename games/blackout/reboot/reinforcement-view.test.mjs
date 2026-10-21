@@ -14,6 +14,7 @@ class Group{
  constructor(){this.children=[];this.position=new V3();this.scale=new V3(1,1,1);
   this.rotation={x:0,y:0,z:0};this.userData={};this.visible=true}
  add(mesh){this.children.push(mesh);mesh.parent=this}
+ remove(mesh){this.children=this.children.filter(x=>x!==mesh);}
 }
 class Mesh extends Group{
  constructor(geometry,material){super();this.geometry=geometry;this.material=material}
@@ -85,4 +86,32 @@ test("Y removes metal, preserves original drywall and allows repeat installation
  assert.deepEqual(station.blockers(),[]);
  assert.equal(finish(station),"installed");
  assert.equal(station.state.installs,2);
+});
+
+test("hard breach removes the original monolithic visible steel and leaves real shootable fragments",()=>{
+ const {station}=fixture();finish(station);
+ const original=station.shootables()[0];
+ assert.equal(original.visible,true);
+ const blast=station.breachAt({x:SOFT_WALL.x,y:1.35,z:SOFT_WALL.z});
+ assert.equal(blast.opened,true);
+ assert.equal(station.breached,true);
+ assert.equal(station.status,"BREACHED");
+ assert.equal(original.visible,false);
+ assert.equal(station.shootables().length,3);
+ assert.equal(station.blockers().length,3);
+ assert.equal(station.root.children.some(x=>x.name==="horizontal reinforcement rib"&&x.visible),false);
+ assert.equal(station.shootables().every(x=>x.userData.reinforcementShield===true),true);
+ assert.equal(station.shootables().every(x=>x.userData.physicsObstacleId?.includes("metal-reinforcement")),true);
+ const surviving=station.shootables()[0];
+ const fakeHit={object:surviving,point:new V3(SOFT_WALL.x,1.0,SOFT_WALL.z)};
+ assert.equal(station.steelImpact(fakeHit),true);
+ assert.equal(station.steelImpact({object:original,point:fakeHit.point}),false);
+ const removed=station.remove(player());
+ assert.equal(removed.removed,true);
+ assert.equal(station.shootables().length,0);
+ assert.equal(station.breached,false);
+ assert.equal(finish(station),"installed");
+ assert.equal(station.shootables().length,1);
+ assert.equal(station.shootables()[0],original);
+ assert.equal(original.visible,true);
 });

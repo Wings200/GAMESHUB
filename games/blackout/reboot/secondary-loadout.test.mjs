@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","flash","smoke","soft-breach","c4","impact","barbed-wire"],"only seven actually functional gadgets are marked ready");
+  ["frag","flash","smoke","soft-breach","hard-breach","c4","impact","barbed-wire"],"only eight actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -56,8 +56,8 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
  assert.equal(planIsFieldReady(plans,striker),false);
  for(const g of secondaryOptions("attack")){
   const updated=planSecondary(plans,striker,0,g.id);
-  assert.equal(planIsFieldReady(updated,striker),g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach");
-  assert.equal(g.implemented,g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach");
+  assert.equal(planIsFieldReady(updated,striker),g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach"||g.id==="hard-breach");
+  assert.equal(g.implemented,g.id==="frag"||g.id==="flash"||g.id==="smoke"||g.id==="soft-breach"||g.id==="hard-breach");
  }
 });
 
@@ -184,4 +184,17 @@ test("smoke can be equipped as a real two-charge attacker gadget in either slot"
  assert.equal(planIsFieldReady(plans,striker),true,"flash and smoke are independently playable");
  assert.equal(planSecondary(plans,striker,0,"smoke"),plans,"no duplicated smoke across MMB/G");
  assert.equal(planSecondary(plans,sentry,1,"smoke"),plans,"defenders cannot equip smoke");
+});
+
+test("hard breach is now a live Striker secondary with valid MMB/G selection",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ let plans=planSecondary(newSecondaryPlans(),striker,1,"hard-breach");
+ assert.equal(gadgetById("hard-breach").implemented,true);
+ assert.equal(planIsFieldReady(plans,striker),true);
+ assert.equal(utilityHudRows(plans,striker)[1].status,"READY · LIVE GADGET");
+ assert.equal(utilityKeyPreview(plans,striker,"KeyG"),
+  "HARD BREACH CHARGE · LIVE GADGET · USE IN RANGE");
+ assert.equal(planSecondary(plans,sentry,0,"hard-breach"),plans);
+ plans=planSecondary(plans,striker,0,"soft-breach");
+ assert.equal(planIsFieldReady(plans,striker),true);
 });
