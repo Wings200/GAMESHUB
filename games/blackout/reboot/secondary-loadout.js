@@ -3,7 +3,7 @@
 // never mark one equipped, grant ammunition, or create placeholder effects.
 // Future mechanics unlock each gadget individually only after testing.
 export const SECONDARY_GADGETS=Object.freeze([
- {id:"frag",name:"Frag Grenades",side:"attack",role:"Timed explosive",implemented:false},
+ {id:"frag",name:"Frag Grenades",side:"attack",role:"Timed explosive",implemented:true},
  {id:"flash",name:"Flashbangs",side:"attack",role:"Sight disruption",implemented:false},
  {id:"smoke",name:"Smoke Grenades",side:"attack",role:"Vision cover",implemented:false},
  {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:false},
