@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.14.0
+# BLACKOUT — Clean Reboot V0.14.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,16 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.14.1 · LIVE operator utility HUD keys 3 & 4 (user-reported UI omission):**
+- User confirmed the 12 gadgets appeared in V0.14.0's planning menu, but noted the in-game HUD did NOT update to display the utility choices and their keybinds. V0.14.1 connects the two systems; **this is still a visual/planning stage**, NOT permission to start coding actual gadgets.
+- The former fake/stale right-hand utility placeholders are replaced with two dedicated **3 / 4 utility HUD rows** beside the weapon panel. Each row derives the selected gadget name (or EMPTY SLOT) and truthful status (PLANNED · NOT BUILT / UNASSIGNED) from the **CURRENT operator's** `operatorPicker.plans`. Striker selections never leak into Sentry HUD and vice versa.
+- Menu labels show **SECONDARY SLOT 1 · KEY 3** and **SECONDARY SLOT 2 · KEY 4**. Picker now supports `onPlanChange`, triggering immediate HUD updates when a choice changes while paused. `onSelect` updates HUD on any team/operator change. `refreshUtilityHud()` renders the initial empty-slot HUD before gameplay starts.
+- Only while controlling a player, pressing **3 or 4** emits an honest `PLANNED ONLY · NOT BUILT YET` notice for that operator's selection, or a `CHOOSE IN OPERATOR MENU` notice if empty. It does NOT equip, throw, plant, detonate, create, or consume anything. Those behaviors arrive incrementally per gadget only after explicit playtesting. 1/2 weapon UI, attacker 5 cameras / 6 throws, Sentry's defender camera restriction, F reinforcement controls, walls, guns and drones remain untouched.
+- Responsive `style.css` keeps utility-name labels and keycaps visible at narrow viewports, without claiming equipment readiness. Unit tests protect operator-specific HUD models and 3/4 messages, DOM tests validate menu → HUD updates and duplicate rejection, and foundation regressions verify runtime callbacks and real HUD hooks.
+- Full suite on commit `cdc77b5901425c666d1e38e963e92e5410d36f8d`: **139 tests passed / 0 failed**. The next gate is USER browser confirmation of menu→HUD updates and preserved Striker/Sentry mechanics. Do not begin physical barbed wire (or any other gadget) until user approves this exact patch.
+
+
 
 **2026-10-21 / V0.14.0 · 2-slot secondary loadout DESIGN-ONLY preview (user verified V0.13.3):**
 - User explicitly browser-verified V0.13.3: Sentry can no longer throw/view attacker recon drones and Striker retains his two-drone R-1 gear. V0.13.3 is the last browser-approved baseline.
