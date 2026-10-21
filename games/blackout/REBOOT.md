@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.15.0
+# BLACKOUT — Clean Reboot V0.15.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,17 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.15.1 · TRUE V MELEE ATTACK + reliable wire bullet collision**
+- User reports V0.15 barbed wire "doesn't do damage" and requests V punch/knife melee like Siege: **3 hits destroy barricades**, **2 hits destroy barbed wire**, with extendable interaction to more destructibles later. Siege-style barbed wire itself should *slow* rather than subtract player HP; Testing Range still has no player health damage. Previous shooting failure came from the wire raycast targeting only one barely visible central hitbox. V0.15.1 labels EVERY rendered metal strand/post/coil and core as an independent shootable face, grouped under the same deployed wire ID.
+- Press **V** while playing (NOT inside recon drone feed) for a visible animated camera-mounted gloved-arm thrust (.32s), range 2.25m, with 0.57s repeat cooldown. True nearest-obstacle raycast prevents melee reaching through other walls or directly into distant objects. Player's gun hides momentarily, shooting is suspended during strike, and punch cancels if player opens drone view/pauses. On hit, existing audio impact cues and visible hit messages play.
+- Physical wooden barricade: **three V hits against planks** collapse **all six boards together** with real splinter shards; independent board bullet damage remains separate and unchanged. Frame and lintel remain solid, while passage becomes open. Defender/attacker testing-range hold F rebuilds boards, resetting melee count. Bullets still take two hits per individual plank.
+- Physical barbed wire: **two V strikes** against visible wire kill a device (2 damage each against 3HP); bullet damage still takes **3** hits (1 damage each). On destruction, physical Three.js model vanishes and real slow field ceases; stock is NOT returned. Striker still cannot select wire; Sentry can deploy at G (or MMB if chosen as special slot). Other equipment remains preview-only.
+- Former testing shortcut **V clears bullet holes** was reassigned to **H**. V now exclusively melee. HUD/system reminder now shows V/H. Attacker 5/6 drone controls, defender F/Y steel and old gun/soft wall/movement interactions are untouched.
+- Added pure `melee.js` (finite-range nearest-hit decision and cooldown), `melee-view.js` (actual animated fist), updated barricade/wire viewers and deterministic melee/wood/wire tests. Main script cache version is `reboot-029`; barricade-view now imports updated melee-enabled barricade logic. CI workflow syntax-checks new modules.
+- Full GitHub Actions on commit `8e3298a8792463e6144cd09f763fd25195a6ef55`: **152 passing / 0 failures** before this documentation update. **Await the user's direct browser hands-on check**, especially V visual strike, 3 hits collapse wood, F restores, Sentry G wire, looking down V twice destroys, shooting wire hits, no drone control regressions. Do not move to next gadget/melee target until that confirmation.
+
+
 
 **2026-10-21 / V0.15.0 · FIRST ACTUALLY WORKING GADGET — Sentry Barbed Wire (user asked to stop fake previews):**
 - User pointed out they cannot browser-test gadgets if none actually function. Implemented **the first real physical gadget, BARBED WIRE**, not another planning/UI mock. Latest GitHub Actions commit `d4dd2058d5c05d854cfb923be98e5b6c42a4da42` passed **147 tests / 0 failures** before this document.
