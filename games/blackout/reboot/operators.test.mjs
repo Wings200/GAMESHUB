@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {OPERATOR_ROSTER,OPERATOR_CAP,MOVEMENT_MULTIPLIERS,
  newOperatorSelection,operatorsForSide,operatorById,switchOperatorSide,
- pickOperator,selectedOperator,operatorLoadout,isPlayableOperator}
+ pickOperator,selectedOperator,operatorLoadout,isPlayableOperator,canUseReinforcement}
  from "./operators.js";
 
 test("exactly 12 original free-availability roster entries, 6 per 5v5 side",()=>{
@@ -76,4 +76,15 @@ test("speed classes change REAL movement while preserving legacy 2/2 movement",(
  assert.ok(slow.z>standard.z&&standard.z>fast.z);
  assert.ok(Math.abs(standard.z-legacy.z)<1e-8);
  assert.ok(slow.z<8&&fast.z<8);
+});
+
+test("reinforcement belongs exclusively to playable defenders",()=>{
+ assert.equal(canUseReinforcement(operatorById("striker")),false,
+  "attacker Striker cannot build or remove steel");
+ assert.equal(canUseReinforcement(operatorById("sentry")),true,
+  "defender Sentry is still allowed to reinforce");
+ assert.equal(canUseReinforcement(operatorById("bastion")),false,
+  "unimplemented specialist cannot activate utility");
+ assert.equal(canUseReinforcement(undefined),false);
+ assert.equal(canUseReinforcement({side:"attack",playable:true}),false);
 });
