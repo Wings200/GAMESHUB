@@ -121,7 +121,7 @@ test("two live dropdowns retain separate side plans without granting fake gadget
   assert.equal(elements["operator-slots"].children[1].children[2].textContent,
    "LIVE GADGET · READY IN RANGE");
   assert.equal(elements["operator-slots"].children[0].children[1].value,"flash");
-  assert.match(elements["operator-plan-status"].textContent,/OTHER GADGETS REMAIN PREVIEWS/);
+  assert.match(elements["operator-plan-status"].textContent,/FUNCTIONING GADGET READY/);
   elements["operator-defend"].click();
   assert.equal(elements["operator-current"].textContent,"SENTRY");
   assert.equal(elements["operator-slots"].children[0].children[1].value,"");
