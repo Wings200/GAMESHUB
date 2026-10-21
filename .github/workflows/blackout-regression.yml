@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.15.1 · V melee and wire hit fixes / full prior mechanics
+    name: Reboot V0.15.3 · spatial wire audio / full mechanics regression
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -56,5 +56,6 @@ jobs:
           node --check games/blackout/reboot/barbed-wire-view.js
           node --check games/blackout/reboot/melee.js
           node --check games/blackout/reboot/melee-view.js
+          node --check games/blackout/reboot/wire-sound.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
