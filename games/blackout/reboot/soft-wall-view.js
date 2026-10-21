@@ -110,6 +110,21 @@ export function createSoftWallStation(THREE,scene){
   refresh();
   return {handled:true,index,removed:state.removed,remaining:activeCount};
  }
+ function blastAt(blast){
+  if(!blast)return 0;
+  // Real holes across all cells within the blast sphere. Steel reinforcement
+  // protection is handled by the caller before this damage method runs.
+  let removed=0;
+  for(let index=0;index<SOFT_WALL_TOTAL;index++){
+   if(!state.solid[index])continue;
+   const world=softWallWorld(index);
+   if(Math.hypot(blast.x-world.x,blast.y-world.y,blast.z-world.z)>blast.radius)continue;
+   const result=softWallRemove(state,index);
+   if(result.removed){state=result.state;removed++;}
+  }
+  if(removed)refresh(); // both visual cells and collision strips disappear
+  return removed;
+ }
  function reset(player){
   if(!canResetSoftWall(player))return {ok:false,reason:"STAND CLEAR OF WALL"};
   if(state.removed===0)return {ok:false,reason:"WALL ALREADY INTACT"};
@@ -128,7 +143,7 @@ export function createSoftWallStation(THREE,scene){
   }
  }
  return {
-  onHit,reset,tick,
+  onHit,blastAt,reset,tick,
   shootables:()=>activeCount?[panel,...frameMeshes]:frameMeshes.slice(),
   blockers:()=>softWallBlockers(state),
   near:player=>Math.hypot(player.x-spec.x,player.z-spec.z)<4.5,
