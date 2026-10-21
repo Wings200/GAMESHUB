@@ -329,3 +329,24 @@ body.range-active .siege-system .siege-metrics{
  .device-view-toggle{gap:7px;padding:0 7px}
  .device-eye-off{width:55px}
 }
+
+/* BLACKOUT V0.9: contextual barricade station only (not a match HUD). */
+.barricade-prompt{
+ position:absolute;left:50%;bottom:149px;transform:translateX(-50%);
+ width:280px;background:#14212edc;color:#f1f7f9;border:1px solid #a9ccd081;
+ padding:10px 13px;box-shadow:0 6px 24px #0007;
+ font:700 11px/1.5 "Segoe UI",Arial,sans-serif;
+ text-shadow:0 1px 2px #000a;white-space:nowrap;
+}
+.barricade-prompt-head{display:flex;align-items:center;gap:9px}
+.barricade-station-icon{font:bold 35px/37px Arial,sans-serif;color:#e8c99f}
+.barricade-prompt-head strong{display:block;font-size:12px;letter-spacing:.04em}
+.barricade-prompt-head small{display:block;color:#d5d8d9;font-size:9px;letter-spacing:.06em}
+.barricade-action-intact,.barricade-action-rebuild{margin-top:7px;text-align:center;letter-spacing:.08em;color:#a2ead6}
+.barricade-action-rebuild{display:none}
+.barricade-action-rebuild kbd{background:#f4f6f7;color:#182531;padding:2px 5px;border-radius:2px;margin-right:4px;font-weight:900;text-shadow:none}
+.barricade-prompt[data-rebuild="available"] .barricade-action-rebuild{display:block}
+.barricade-prompt[data-rebuild="available"] .barricade-action-intact{display:none}
+.barricade-progress-track{height:3px;background:#526b77;margin-top:7px}
+.barricade-progress-track span{height:100%;display:block;background:#7be2c4;width:0;transition:width .09s linear}
+@media(max-width:780px){.barricade-prompt{bottom:130px;width:245px}}
