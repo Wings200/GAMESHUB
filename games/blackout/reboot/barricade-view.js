@@ -2,7 +2,7 @@
 // Each plank is its own hit-scan + player collision surface. Damage marks are
 // children of the affected plank, so destroying it cannot leave floating decals.
 import {BARRICADE,createBarricadeState,barricadeDamage,barricadeRebuild,
- barricadeBlockers,barricadeStatus,canInteractWithBarricade,boardBounds}
+ barricadeBlockers,barricadeStatus,canInteractWithBarricade,boardBounds,barricadeMeleeDamage,BARRICADE_MELEE_HITS}
  from "./barricade.js?v=reboot-015";
 
 export function createBarricadeStation(THREE,scene){
@@ -126,6 +126,24 @@ export function createBarricadeStation(THREE,scene){
   return {handled:true,index:index+1,broken:result.broken,
    remaining:stateRef.current.boards.filter(hp=>hp>0).length};
  }
+ function meleeHit(hit){
+  const index=hit?.object?.userData?.barricadeIndex;
+  if(!Number.isInteger(index)||!boards[index]?.visible)return {handled:false};
+  const outcome=barricadeMeleeDamage(stateRef.current);
+  if(!outcome.handled)return outcome;
+  stateRef.current=outcome.state;
+  if(outcome.broken){
+   // Destroy ALL six boards in one final physical melee impact, not one
+   // arbitrary tiny plank. Both model and collision state update together.
+   for(const board of boards){
+    if(board.visible){shards(board);board.visible=false;}
+   }
+  }else{
+   // A visible dent on the struck board after each nonfatal punch.
+   markDamage(boards[index],hit);
+  }
+  return {...outcome,remaining:Math.max(0,BARRICADE_MELEE_HITS-outcome.hits)};
+ }
  function rebuild(){
   const old=stateRef.current;
   const next=barricadeRebuild(old);
@@ -149,7 +167,7 @@ export function createBarricadeStation(THREE,scene){
   }
  }
  return {
-  hitBoard,rebuild,tick,
+  hitBoard,meleeHit,rebuild,tick,
   blockers:()=>barricadeBlockers(stateRef.current),
   shootables:()=>[...rawMeshes.filter(m=>m.userData.barricadeIndex===undefined),
     ...boards.filter((m,i)=>stateRef.current.boards[i]>0)],
