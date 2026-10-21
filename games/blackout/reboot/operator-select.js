@@ -1,4 +1,4 @@
-// BLACKOUT V0.13 · genuine browser operator picker, no fictional gadget action.
+// BLACKOUT V0.13.1 · fix out-of-panel deploy label selection lookup.
 // Every rendered card comes from operators.js. In-development concepts are
 // visibly labeled as such; they are not purchasable or selectable yet.
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
@@ -10,7 +10,9 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
  const attackTab=$("operator-attack"),defendTab=$("operator-defend");
  const grid=$("operator-roster"),name=$("operator-name"),description=$("operator-role");
  const speed=$("operator-speed"),armor=$("operator-armor"),slots=$("operator-slots");
- const stateLabel=$("operator-playable-label"),current=$("operator-current");
+ // The deploy button lives outside #operator-selection. Looking for its
+ // label through root.querySelector throws at startup and blocks both tabs.
+ const stateLabel=$("operator-playable-label"),current=document.getElementById("operator-current");
  if([attackTab,defendTab,grid,name,description,speed,armor,slots,stateLabel,current]
     .some(x=>!x))throw new Error("Operator picker markup is incomplete");
  let selection=newOperatorSelection();
