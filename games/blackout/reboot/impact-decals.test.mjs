@@ -84,7 +84,7 @@ test("a shot on a wall creates a front-facing visible impact, offset beyond the 
   assert.equal(decals.mark(hit()),true);
   assert.equal(decals.count,1);
   assert.equal(scene.children.length,1);
-  assert.equal(decals.mesh.matrices[0].position.z,-6+SURFACE_OFFSET);
+  assert.equal(decals.mesh.matrices[0].position.z,-6+.2+SURFACE_OFFSET);
   assert.equal(decals.lastFace,"FRONT");
   assert.equal(decals.mesh.matrices[0].normal.z,1);
   assert.ok(decals.mesh.matrices[0].scale.x>=.09);
@@ -105,7 +105,8 @@ test("bullet holes do NOT expire after 9 seconds and use a fixed-size ring buffe
   decals.mark(hit(5));
   assert.equal(decals.count,3);
   assert.equal(decals.total,4);
-  assert.equal(decals.mesh.matrices[0].position.x,5);
+  assert.ok(decals.mesh.matrices[0].position.x<4); // clamped to real wall width
+  assert.ok(decals.mesh.matrices[0].position.x>3.9);
   assert.equal(decals.mesh.instanceMatrix.needsUpdate,true);
   decals.clear();
   assert.equal(decals.count,0);
@@ -128,7 +129,8 @@ test("default pool supports hundreds of wall impacts without extra meshes",()=>{
   assert.equal(decals.count,400);
   assert.equal(decals.total,420);
   assert.equal(scene.children.length,1);
-  assert.equal(decals.mesh.matrices[19].position.x,419*.02);
+  assert.ok(decals.mesh.matrices[19].position.x<4); // no marks may hang outside face
+  assert.ok(decals.mesh.matrices[19].position.x>3.9);
  }finally{restore();}
 });
 
