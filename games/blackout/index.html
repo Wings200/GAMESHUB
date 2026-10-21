@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.13.2 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.13.3 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-021">
 </head>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.13.2</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.13.3</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 013.1</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 013.3</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">OPERATORS · TRAINING-READY ROSTER.</p>
-      <p class="description">V0.13 OPERATOR SELECTION · Choose an attacker or defender to enter the existing solo Testing Range. STRIKER and SENTRY are both free, balanced 2-speed / 2-armor generalists, each with two secondary-utility loadout slots. The ten original specialists are visible as future designs, not purchasable operators; their gadgets must be built and tested before they become playable. The range remains invulnerable, so armor/health damage is not simulated yet.</p>
+      <p class="description">V0.13 OPERATOR SELECTION · Choose an attacker or defender to enter the existing solo Testing Range. STRIKER and SENTRY are both free, balanced 2-speed / 2-armor generalists, each with two secondary-utility loadout slots. The ten original specialists are visible as future designs, not purchasable operators; their gadgets must be built and tested before they become playable. The range remains invulnerable, so armor/health damage is not simulated yet. Only attackers carry reconnaissance drones; defenders have no attacker drone controls. Defender surveillance equipment is a future system.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
@@ -95,7 +95,8 @@
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
-      <div class="siege-tip"><kbd>5</kbd> cameras ONLY · <kbd>6</kbd> throw drone · <kbd>X</kbd> exit feed.</div>
+      <div id="drone-key-tip" class="siege-tip"><kbd>5</kbd> attacker drone cameras · <kbd>6</kbd> throw attacker drone · <kbd>X</kbd> exit.</div>
+      <div id="defender-key-tip" class="siege-tip hidden">DEFENDER · REINFORCE WALLS WITH F · NO RECON DRONES EQUIPPED.</div>
       <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
@@ -109,7 +110,7 @@
       <small>TRAINING · INVULNERABLE</small>
     </div>
 
-    <div class="siege-quickbar siege-equipment-bar" aria-label="Drone camera and throwable inventory shortcuts">
+    <div id="drone-equipment-bar" class="siege-quickbar siege-equipment-bar" aria-label="Attacker-only drone camera and throwable inventory shortcuts">
       <div class="siege-quickslot" title="Open drone cameras">
         <span class="siege-quick-icon">▣</span><kbd>5</kbd>
         <small>CAMERAS <b id="camera-drone-count">0</b></small>
@@ -246,6 +247,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-023"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-024"></script>
 </body>
 </html>
