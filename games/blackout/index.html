@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.15.3 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.16.0 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-030">
 </head>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.15.3</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.16.0</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 015.3</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 016.0</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">BARBED WIRE · POSITIONAL METAL SOUND CUES.</p>
-      <p class="description">V0.15.3 · REAL POSITIONAL WIRE AUDIO. Choose SENTRY (defense), equip BARBED WIRE on G and deploy a coil. Walk across it as friendly Sentry: no injury or movement slowdown. ESC, change to STRIKER (attack), then MOVE through the existing coil to hear metallic rattling/scraping while HP decreases 10 every full 0.5s. Stand still or leave the coil to stop the rattles. Get close, look down at the wire and press V: first hit makes a crunch; second hit makes a louder snap and collapse clatter, removing the wire. The sounds originate from the placed wire's world position. Shoot it to verify bullets still CANNOT destroy it. Other secondary gadgets remain previews.</p>
+      <p class="headline">SECOND WORKING GADGET · C4 / NITRO CELL.</p>
+      <p class="description">V0.16 · C4 IS NOW ACTUALLY PLAYABLE. Choose SENTRY (defense), set C4 / Nitro Cell in your SPECIAL slot (middle click), and Barbed Wire in the NORMAL G slot. Enter the Testing Range: middle-click ONCE to THROW one real moving C4 charge; it lands/sticks to the ground or a surface. Middle-click AGAIN to DETONATE it remotely, with a real blast that damages health, downs nearby target dummies, blows apart wooden barricade boards, and tears true holes through unreinforced gypsum. Reinforced steel does not get breached by C4. The C4 cannot be recovered after detonation; P resets health only. Barbed wire retains enemy-only damage and V melee removal. Ten other secondary gadget concepts remain planned, not simulated.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
@@ -48,10 +48,10 @@
             <div><strong>SPEED</strong><div id="operator-speed" class="operator-pips" aria-label="2 out of 3"></div></div>
             <div><strong>ARMOR</strong><div id="operator-armor" class="operator-pips" aria-label="2 out of 3"></div></div>
           </div>
-          <div class="operator-loadout-head">SPECIAL (MIDDLE CLICK) + NORMAL (G) · SELECT WIRE TO TEST</div>
+          <div class="operator-loadout-head">SPECIAL MIDDLE CLICK / NORMAL G · C4 OR WIRE</div>
           <div id="operator-slots" class="operator-slots"></div>
-          <p id="operator-plan-status" class="operator-plan-status" role="status">BARBED WIRE WORKS · OTHER GADGETS REMAIN PREVIEWS</p>
-          <p class="operator-future-note">Sentry BARBED WIRE works: equip in G, deploy two coils, then switch to Striker. Only Striker suffers slow movement and 10 HP damage each 0.5 seconds while touching enemy wire. Guns CANNOT destroy wire; punch twice with V. Press P to restore 125 HP after elimination. The other 11 gadgets remain unimplemented.</p>
+          <p id="operator-plan-status" class="operator-plan-status" role="status">C4 + BARBED WIRE PLAYABLE · 10 MORE GADGETS PLANNED</p>
+          <p class="operator-future-note">C4/NITRO IS LIVE: Equip it on MMB, click once to throw the physical charge, click again to remotely detonate. Explosion damages targets, player HP, soft gypsum and wooden barricades; reinforced steel remains protected. BARBED WIRE IS ALSO LIVE on G, with 2 coils, V punch removal and enemy-only contact damage. The other 10 gadgets are still previews.</p>
         </div>
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> TO TEST RANGE <strong>↗</strong></button>
@@ -95,7 +95,7 @@
 
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
-      <div class="siege-tip"><kbd>V</kbd> PUNCH WIRE TWICE · 1ST HIT CRUNCH / 2ND HIT SNAP + CLATTER · ENEMY FOOTSTEPS RATTLE</div>
+      <div class="siege-tip"><kbd>MMB</kbd> C4 THROW / MMB AGAIN DETONATE · <kbd>G</kbd> WIRE DEPLOY · <kbd>V</kbd> PUNCH</div>
       <div class="siege-tip">WIRE: GUNS CANNOT DESTROY IT · ENEMY CONTACT -10 HP / 0.5S</div>
       <div class="siege-tip"><kbd>H</kbd> CLEAR HOLES · <kbd>P</kbd> RESET HP / POSITION</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
@@ -257,6 +257,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-031"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-032"></script>
 </body>
 </html>
