@@ -1,7 +1,8 @@
 // BLACKOUT V0.20.0 · Hard Breach: placed on real unprotected reinforced
 // steel or unreinforced gypsum, remote 1.1s countdown, F recovery while armed.
 import {SOFT_WALL,softWallIndex} from "./soft-wall.js?v=reboot-016";
-import {REINFORCEMENT} from "./reinforcement.js?v=reboot-045";
+import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches,
+ reinforcementWindowAddsHole} from "./reinforcement.js?v=reboot-047";
 
 export const HARD_BREACH=Object.freeze({
  charges:2,range:2.8,pickupRange:2.8,installSeconds:1.45,
@@ -25,11 +26,14 @@ function placement(player,context){
  const reinforcement=context?.reinforcementState;
  if(reinforcement?.installed&&reinforcement.electrified)
   return {point:null,reason:"ELECTRIFIED STEEL · HARD BREACH BLOCKED"};
- const inExistingHole=reinforcement?.installed&&reinforcement.breach&&
-  x>reinforcement.breach.left&&x<reinforcement.breach.right&&
-  y>reinforcement.breach.bottom&&y<reinforcement.breach.top;
- if(inExistingHole)
-  return {point:null,reason:"STEEL ALREADY BREACHED · AIM AT INTACT PANEL"};
+ if(reinforcement?.installed){
+  const holes=reinforcementBreaches(reinforcement);
+  if(holes.some(b=>x>b.left&&x<b.right&&y>b.bottom&&y<b.top))
+   return {point:null,reason:"STEEL ALREADY BREACHED · AIM AT INTACT PANEL"};
+  if(!reinforcementWindowAddsHole(reinforcement,
+    hardBreachWindow({x,y,z:SOFT_WALL.z})))
+   return {point:null,reason:"STEEL ALREADY OPEN · MOVE TO INTACT STEEL"};
+ }
  const col=Math.floor((x-(SOFT_WALL.x-half))/SOFT_WALL.cell);
  const row=Math.floor(y/SOFT_WALL.cell);
  const idx=softWallIndex(col,row);

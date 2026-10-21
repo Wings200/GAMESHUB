@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.20.1 — small raised hard breach window and Space vault
+// BLACKOUT REBOOT V0.20.2 — multiple hard breach windows persist after second detonation
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -16,8 +16,8 @@ import {BARRICADE} from "./barricade.js?v=reboot-015";
 import {createBarricadeStation} from "./barricade-view.js?v=reboot-032";
 import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
-import {REINFORCEMENT,hardBreachWindow} from "./reinforcement.js?v=reboot-046";
-import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-046";
+import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
+import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
 import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
@@ -50,7 +50,7 @@ import {SOFT_BREACH,newSoftBreachState,placeSoftBreach,tickSoftBreach,
  pickupSoftBreach,detonateSoftBreach} from "./soft-breach.js?v=reboot-044";
 import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
 import {HARD_BREACH,newHardBreachState,placeHardBreach,
- armHardBreach,tickHardBreach,pickupHardBreach} from "./hard-breach.js?v=reboot-045";
+ armHardBreach,tickHardBreach,pickupHardBreach} from "./hard-breach.js?v=reboot-047";
 import {createHardBreachView} from "./hard-breach-view.js?v=reboot-045";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
@@ -196,7 +196,7 @@ let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickup
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
-let breachVault=null,lastHardBreachOpening=null;
+let breachVault=null,lastHardBreachOpenings=[];
 let cameraEye=1.65;
 let locked=false,started=false;
 let proneToggle=false;
@@ -315,7 +315,7 @@ function applyGadgetBlast(blast,label="C4"){
   // Hard breach alone cuts a small rectangular opening in gypsum.
   gypsumBlast:()=>label==="HARD BREACH"?
    softWall.breachWindow(hardBreachWindow(blast)):softWall.blastAt(blast),
-  reinforced:reinforcement.installed&&!reinforcement.breached
+  reinforced:reinforcement.installed&&label!=="HARD BREACH"
  });
  const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
  const instantKill=nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
@@ -350,7 +350,7 @@ function detonateCurrentHardBreach(blast){
  const opening=hardBreachWindow(blast);
  const steel=reinforcement.breachAt(blast);
  const message=applyGadgetBlast(blast,"HARD BREACH");
- if(opening)lastHardBreachOpening=opening;
+ if(opening)lastHardBreachOpenings.push(opening);
  return message+(steel.opened?" · VAULT-SIZED STEEL OPENING":
    " · VAULT-SIZED SOFT WALL OPENING")+" · SPACE NEAR HOLE TO VAULT";
 }
@@ -872,9 +872,18 @@ document.addEventListener("keydown",event=>{
   }
  }
  if(event.code==="Space"&&!event.repeat&&!breachVault){
-  const opening=reinforcement.installed?
-   reinforcement.state.breach:lastHardBreachOpening;
-  const result=beginBreachVault(player,opening,activeDroneObstacles());
+  // Select the nearest ACTUAL opening. First charge's hole must never
+  // steal Space from a second one on the same reinforced wall.
+  const openings=reinforcement.installed?
+   reinforcementBreaches(reinforcement.state):lastHardBreachOpenings;
+  const closest=openings.slice().sort((a,b)=>
+   Math.abs((a.left+a.right)/2-player.x)-
+   Math.abs((b.left+b.right)/2-player.x));
+  let result={vault:null};
+  for(const opening of closest){
+   const candidate=beginBreachVault(player,opening,activeDroneObstacles());
+   if(candidate.vault){result=candidate;break;}
+  }
   if(result.vault){
    breachVault=result.vault;
    keys.delete("Space"); // Vault takes priority over ordinary jump.
@@ -1431,5 +1440,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.20.1 small raised hard breach window with Space collision-checked vault",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.20.2 cumulative hard breach openings: two charge holes and matching vaults",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

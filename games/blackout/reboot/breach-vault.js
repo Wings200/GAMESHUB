@@ -2,7 +2,7 @@
 // openings. All intermediate samples use the same collision system as movement.
 // A raised steel sill stays solid; walking/standing never treats it as a door.
 import {canOccupy,PLAYER_RADIUS,CROUCH_HEIGHT,STAND_HEIGHT} from "./physics.js?v=reboot-028";
-import {REINFORCEMENT} from "./reinforcement.js?v=reboot-046";
+import {REINFORCEMENT} from "./reinforcement.js?v=reboot-047";
 export const BREACH_VAULT=Object.freeze({duration:.76,lift:.74,startDistance:1.3,landingDistance:1.12});
 const lerp=(a,b,t)=>a+(b-a)*t;
 const clamp=n=>Math.max(0,Math.min(1,n));

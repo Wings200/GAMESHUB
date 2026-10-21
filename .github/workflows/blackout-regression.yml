@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.20.1 · smaller hard breach vault window with Space traversal
+    name: Reboot V0.20.2 · second hard breach preserves first aperture; supports two holes
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {SOFT_WALL,newSoftWall,softWallBreachWindow,softWallBlockers} from "./soft-wall.js";
 import {REINFORCEMENT,HARD_BREACH_WINDOW,hardBreachWindow,
  newReinforcement,stepReinforcement,hardBreachReinforcement,
+ reinforcementBreaches,mergedBreachWindows,reinforcementWindowAddsHole,
  reinforcementBlockers,reinforcementStatus} from "./reinforcement.js";
 import {TEST_OBSTACLES,canOccupy} from "./physics.js";
 import {HARD_BREACH,newHardBreachState,placeHardBreach,tickHardBreach,
@@ -150,4 +151,76 @@ test("installed reinforcement state remains intact until a hard breach, and elec
   {x:SOFT_WALL.x,y:1.2,z:SOFT_WALL.z}).opened,false);
  assert.equal(hardBreachReinforcement(steel,{x:100,y:1.2,z:SOFT_WALL.z}).opened,false);
  assert.equal(tickHardBreach(plant().state,0).state.devices[0].progress,0);
+});
+
+test("two actual charges on separate reinforced-wall panels leave BOTH vault holes and solid steel between",()=>{
+ const left={...player,x:SOFT_WALL.x-1.0};
+ const right={...player,x:SOFT_WALL.x+1.0};
+ const initial=installMetal();
+ let chargeState=newHardBreachState();
+ let armor=initial,plaster=newSoftWall();
+ const saved=[];
+ for(const thrower of [left,right]){
+  const placement=placeHardBreach(chargeState,thrower,context(armor));
+  assert.ok(placement.device,placement.reason);
+  chargeState=stepFor(placement.state,HARD_BREACH.installSeconds).state;
+  const active=armHardBreach(chargeState);
+  assert.ok(active.ok,active.reason);
+  const {state,blasts}=stepFor(active.state,HARD_BREACH.detonationDelay);
+  chargeState=state;
+  assert.equal(blasts.length,1);
+  const steel=hardBreachReinforcement(armor,blasts[0]);
+  assert.ok(steel.opened,steel.reason);
+  armor=steel.state;
+  const window=hardBreachWindow(blasts[0]);
+  plaster=softWallBreachWindow(plaster,window).state;
+  saved.push({window,armor,plaster});
+ }
+ assert.equal(chargeState.charges,0);
+ assert.equal(reinforcementBreaches(armor).length,2);
+ assert.equal(mergedBreachWindows(armor).length,2);
+ const blockers=[...TEST_OBSTACLES,...reinforcementBlockers(armor),...softWallBlockers(plaster)];
+ const middle=(saved[0].window.right+saved[1].window.left)/2;
+ assert.ok(saved[0].window.right<saved[1].window.left,"holes are separated by steel");
+ assert.equal(reinforcementBlockers(armor).length,7,"left/right/central wall + 2 sills + 2 lintels");
+ for(const {window} of saved){
+  const x=(window.left+window.right)/2;
+  assert.equal(canOccupy(x,.74,SOFT_WALL.z,1.16,blockers),true,
+   "both first and second opening must remain a working vault");
+  assert.equal(canOccupy(x,0,SOFT_WALL.z,1.78,blockers),false,
+   "both sills must remain solid");
+ }
+ assert.equal(canOccupy(middle,.74,SOFT_WALL.z,1.16,blockers),false,
+  "the remaining center steel must still block crossing");
+ const before=reinforcementBlockers(saved[0].armor);
+ assert.equal(before.length,4,"first opening stays intact and never narrows");
+ assert.equal(reinforcementWindowAddsHole(armor,saved[0].window),false,
+  "placing another charge on an already open area must not consume it");
+});
+test("partly overlapping second hard breach expands the first, never rebuilds or shrinks it",()=>{
+ const first=hardBreachReinforcement(installMetal(),{
+  x:SOFT_WALL.x-.5,y:1.4,z:SOFT_WALL.z});
+ assert.equal(first.opened,true);
+ const firstWindow=first.state.breach;
+ const second=hardBreachReinforcement(first.state,{
+  x:SOFT_WALL.x+.5,y:1.4,z:SOFT_WALL.z});
+ assert.equal(second.opened,true);
+ const union=mergedBreachWindows(second.state);
+ assert.equal(union.length,1);
+ assert.ok(union[0].left<=firstWindow.left);
+ assert.ok(union[0].right>firstWindow.right);
+ assert.equal(reinforcementBlockers(second.state).length,4);
+ assert.equal(hardBreachReinforcement(second.state,{
+  x:SOFT_WALL.x+.5,y:1.4,z:SOFT_WALL.z}).opened,false);
+ assert.equal(reinforcementBreaches(second.state).length,2);
+});
+test("duplicate hard breach target is refused without losing the remaining charge",()=>{
+ const installed=installMetal();
+ const previous=hardBreachReinforcement(installed,{
+  x:SOFT_WALL.x,y:1.45,z:SOFT_WALL.z});
+ const fresh=newHardBreachState();
+ const same=placeHardBreach(fresh,{...player,pitch:.28},context(previous.state));
+ assert.equal(same.device,null);
+ assert.equal(same.state.charges,HARD_BREACH.charges);
+ assert.match(same.reason,/ALREADY/);
 });

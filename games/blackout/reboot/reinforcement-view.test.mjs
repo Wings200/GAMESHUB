@@ -116,3 +116,27 @@ test("compact vault breach leaves steel sill/lintel/sides as four real shootable
  assert.equal(station.shootables()[0],original);
  assert.equal(original.visible,true);
 });
+
+test("second distant breach persists beside the first in model, hitscan, and collision",()=>{
+ const {station}=fixture();finish(station);
+ const left=station.breachAt({x:SOFT_WALL.x-1,y:1.4,z:SOFT_WALL.z});
+ assert.ok(left.opened);
+ const firstMeshes=station.shootables();
+ assert.equal(firstMeshes.length,4);
+ const right=station.breachAt({x:SOFT_WALL.x+1,y:1.4,z:SOFT_WALL.z});
+ assert.ok(right.opened,right.reason);
+ const pieces=station.shootables();
+ assert.equal(pieces.length,7);
+ assert.equal(station.blockers().length,7);
+ assert.equal(station.state.breaches.length,2);
+ assert.ok(firstMeshes.every(m=>!pieces.includes(m)),
+  "stale steel geometry is replaced, never overlaid over new holes");
+ assert.equal(pieces.every(m=>m.userData.reinforcementShield),true);
+ assert.equal(station.breachAt({x:SOFT_WALL.x+1,y:1.4,z:SOFT_WALL.z}).opened,false);
+ assert.equal(station.shootables().length,7,"duplicate blast must not shrink a hole");
+ assert.equal(station.remove(player()).removed,true);
+ assert.equal(station.shootables().length,0);
+ assert.equal(station.state.breaches.length,0);
+ assert.equal(finish(station),"installed");
+ assert.equal(station.shootables().length,1);
+});

@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.20.1
+# BLACKOUT — Clean Reboot V0.20.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.20.2 · HARD BREACH SECOND-CHARGE REPAIR**
+- Browser user confirmed the compact Space-vault hole worked but reported that a **second hard breach seemingly shrank the first hole instead of creating another one**. Root cause: reinforcement state previously held a single `breach` and refused every subsequent steel cut, while gypsum was independently cut again; vault control selected the first hole only.
+- Now reinforcement persists a list of **all** Hard Breach windows. A new blast subtracts previously solid steel; it **cannot replace, shrink or close** earlier openings. Independent nonoverlapping openings retain separate side/sill/lintel collision geometry and visibly separate bulletproof pieces; overlapping windows merge into a larger opening. Any duplicate blast over fully open steel is refused before consuming a second charge.
+- We preserve the legacy `state.breach` as a first-opening alias for old testing code, while new collision, visible Three.js geometry, and shooting all use `state.breaches`. Reinstallation/removal resets the list. Player Space vault selects the nearest valid opening among the cumulative list, with a separate list for unreinforced gypsum-only charges. The HP damage and two-charge inventory are unchanged.
+- Tests now simulate both full placement/detonation cycles on opposite sides of one reinforced panel; assert distinct passable raised holes, the intact center steel, persistence of the first aperture, no duplicate charge loss, visual mesh recreation, overlap union, and vault interaction at both centers. Still requires browser confirmation.
 
 **2026-10-21 / V0.20.1 · SMALL HARD BREACH WINDOW + REAL SPACE VAULT**
 - User explicitly rejected the prior huge Thermite-style doorway; Hard Breach now makes a **small raised rectangle ~1.62 m wide × 1.30 m high** with a **0.70m lower steel sill** and a steel lintel above. Remaining steel is physically modeled as four pieces (left, right, sill, lintel), all solid and bulletproof. This is not a walk-through door.

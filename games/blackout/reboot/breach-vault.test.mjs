@@ -119,3 +119,28 @@ test("zero/non-finite dt never accelerates the vault",()=>{
  assert.equal(stepBreachVault(player,vault,0,blockers).vault.elapsed,0);
  assert.equal(stepBreachVault(player,null,.05,blockers).event,"none");
 });
+
+test("both distinct hard breach holes remain independently vaultable after two detonations",()=>{
+ let state=newReinforcement();
+ for(let i=0;i<60;i++)state=stepReinforcement(state,{
+  player:{x:SOFT_WALL.x,z:wallZ+1.1},holding:true,dt:.05}).state;
+ let gypsum=newSoftWall();
+ const windows=[];
+ for(const x of [SOFT_WALL.x-1,SOFT_WALL.x+1]){
+  const blast={x,y:1.4,z:wallZ};
+  const result=hardBreachReinforcement(state,blast);
+  assert.equal(result.opened,true);
+  state=result.state;
+  const window=hardBreachWindow(blast);windows.push(window);
+  gypsum=softWallBreachWindow(gypsum,window).state;
+ }
+ const obstacles=[...TEST_OBSTACLES,...reinforcementBlockers(state),...softWallBlockers(gypsum)];
+ for(let i=0;i<windows.length;i++){
+  const x=(windows[i].left+windows[i].right)/2;
+  const who=character(x);
+  const begin=beginBreachVault(who,windows[i],obstacles);
+  assert.ok(begin.vault,"hole "+(i+1)+" must support vaulting");
+  assert.equal(beginBreachVault(who,windows[1-i],obstacles).vault,null,
+   "other breach must not steal the vault control");
+ }
+});

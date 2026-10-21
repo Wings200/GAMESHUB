@@ -4,7 +4,7 @@
 // Decorative ribs/rivets are not separate raycast blockers.
 import {REINFORCEMENT,newReinforcement,stepReinforcement,
  removeReinforcement,reinforcementBlockers,canWorkOnReinforcement,
- reinforcementStatus,hardBreachReinforcement} from "./reinforcement.js?v=reboot-046";
+ reinforcementStatus,hardBreachReinforcement,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 
 export function createReinforcementStation(THREE,scene){
  const spec=REINFORCEMENT;
@@ -61,8 +61,9 @@ export function createReinforcementStation(THREE,scene){
  const intactMeshes=[...root.children];
  let breachMeshes=[],breachSignature="";
  function rebuildBreachMeshes(){
-  const signature=state.installed&&state.breach?
-   [state.breach.left,state.breach.right,state.breach.top].join(":"):"";
+  const signature=state.installed?
+   reinforcementBreaches(state).map(b=>
+    [b.left,b.right,b.bottom,b.top].join(":")).join("|"):"";
   if(signature===breachSignature)return;
   for(const mesh of breachMeshes){root.remove(mesh);mesh.geometry.dispose();}
   breachMeshes=[];breachSignature=signature;
@@ -82,7 +83,7 @@ export function createReinforcementStation(THREE,scene){
  const sparks=[];
  const sparkMat=new THREE.MeshBasicMaterial({color:0xffda9a,depthWrite:false});
  function steelImpact(hit){
-  if(!state.installed||!(state.breach?breachMeshes.includes(hit?.object):hit?.object===core))return false;
+  if(!state.installed||!(reinforcementBreaches(state).length?breachMeshes.includes(hit?.object):hit?.object===core))return false;
   const flash=new THREE.Mesh(new THREE.SphereGeometry(.038,6,5),sparkMat);
   flash.position.copy(hit.point);
   flash.position.z+=(hit.point.z>=spec.z ? .018 : -.018);
@@ -93,7 +94,7 @@ export function createReinforcementStation(THREE,scene){
   rebuildBreachMeshes();
   const pct=state.installed?1:Math.max(0,state.progress/spec.installSeconds);
   root.visible=pct>0;
-  for(const mesh of intactMeshes)mesh.visible=!state.breach;
+  for(const mesh of intactMeshes)mesh.visible=!reinforcementBreaches(state).length;
   // No decorative metal ribs are left floating across a blasted opening.
   root.scale.y=Math.max(.00001,pct);
  }
@@ -125,14 +126,14 @@ export function createReinforcementStation(THREE,scene){
  }
  return {
   step,remove,tick,steelImpact,breachAt,
-  shootables:()=>state.installed?(state.breach?breachMeshes.slice():[core]):[],
+  shootables:()=>state.installed?(reinforcementBreaches(state).length?breachMeshes.slice():[core]):[],
   blockers:()=>reinforcementBlockers(state),
   near:player=>canWorkOnReinforcement(player),
   get state(){return state;},
   get status(){return reinforcementStatus(state);},
   get progress(){return state.installed?1:state.progress/spec.installSeconds;},
   get installed(){return state.installed;},
-  get breached(){return Boolean(state.breach);},
+  get breached(){return reinforcementBreaches(state).length>0;},
   get electrified(){return Boolean(state.electrified);},
   root,core
  };

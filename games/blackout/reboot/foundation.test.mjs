@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-046",
+ for(const src of ["./reboot/main.js?v=reboot-047",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -253,8 +253,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('event.code==="KeyT"'));
  assert.ok(main.includes("softWall.tick(dt)"));
  // V0.11 metal reinforcement must be additive: preserve V0.9 and V0.10.
- assert.ok(main.includes('from "./reinforcement.js?v=reboot-046"'));
- assert.ok(main.includes('from "./reinforcement-view.js?v=reboot-046"'));
+ assert.ok(main.includes('from "./reinforcement.js?v=reboot-047"'));
+ assert.ok(main.includes('from "./reinforcement-view.js?v=reboot-047"'));
  assert.ok(main.includes("createReinforcementStation(THREE,scene)"));
  assert.ok(main.includes("...reinforcement.blockers()"));
  assert.ok(main.includes("...reinforcement.shootables()"));
@@ -458,12 +458,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("beginBreachVault(player,opening,activeDroneObstacles())"));
  assert.ok(main.includes("stepBreachVault(player,breachVault,dt,obstacles)"));
  assert.ok(main.includes('keys.delete("Space")'));
- assert.ok(main.includes("breachVault=null,lastHardBreachOpening=null"));
- assert.ok(main.includes("reinforcement.state.breach:lastHardBreachOpening"));
+ assert.ok(main.includes("breachVault=null,lastHardBreachOpenings=[]"));
+ assert.ok(main.includes("reinforcementBreaches(reinforcement.state):lastHardBreachOpenings"));
+ assert.ok(main.includes("for(const opening of closest)"));
+ assert.ok(main.includes("if(opening)lastHardBreachOpenings.push(opening)"));
+ assert.ok(main.includes('from "./hard-breach.js?v=reboot-047"'));
  assert.ok(read("reboot/soft-wall-view.js").includes("function breachWindow(window)"));
  assert.ok(html.includes("PRESS SPACE AT SMALL HOLE TO VAULT"));
  // V0.20.0: reinforced walls have real cuttable, physical panels.
- assert.ok(main.includes('from "./hard-breach.js?v=reboot-045"'));
+ assert.ok(main.includes('from "./hard-breach.js?v=reboot-047"'));
  assert.ok(main.includes('from "./hard-breach-view.js?v=reboot-045"'));
  assert.ok(main.includes("hardBreachState=newHardBreachState()"));
  assert.ok(main.includes("placeHardBreach(hardBreachState,player,{"));
@@ -478,6 +481,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Reinforced wall breach (unprotected)",implemented:true'));
  assert.ok(read("reboot/reinforcement-view.js").includes("rebuildBreachMeshes()"));
  assert.ok(read("reboot/reinforcement.js").includes("hardBreachReinforcement(state,blast)"));
+ assert.ok(read("reboot/reinforcement.js").includes("reinforcementBreaches(state)"));
+ assert.ok(read("reboot/reinforcement.js").includes("mergedBreachWindows(state)"));
+ assert.ok(read("reboot/reinforcement.js").includes("reinforcementWindowAddsHole(state,opening)"));
+ assert.ok(read("reboot/reinforcement-view.js").includes("reinforcementBreaches(state).map(b=>"));
  assert.ok(read("reboot/reinforcement.js").includes('add("sill"'));
  assert.ok(read("reboot/reinforcement.js").includes('add("lintel"'));
  assert.ok(read("reboot/reinforcement.js").includes("bottom:.70,top:2.0"));
@@ -489,7 +496,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("softBreachState=newSoftBreachState()"));
  assert.ok(main.includes("placeSoftBreach(softBreachState,player,{"));
  assert.ok(main.includes("softState:softWall.state,barricadeState:barricade.state,"));
- assert.ok(main.includes("reinforced:reinforcement.installed"));
+ assert.ok(main.includes('reinforced:reinforcement.installed&&label!=="HARD BREACH"'));
  assert.ok(main.includes("tickSoftBreach(softBreachState,dt)"));
  assert.ok(main.includes("detonateSoftBreach(softBreachState)"));
  assert.ok(main.includes('applyGadgetBlast(result.blast,"SOFT BREACH")'));
@@ -511,7 +518,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes('gypsumBlast:()=>label==="HARD BREACH"?'));
  assert.ok(main.includes("softWall.breachWindow(hardBreachWindow(blast)):softWall.blastAt(blast)"));
- assert.ok(main.includes("reinforced:reinforcement.installed"));
+ assert.ok(main.includes('reinforced:reinforcement.installed&&label!=="HARD BREACH"'));
  assert.ok(main.includes("nitroBlastDamage(blast,{x:player.x"));
  assert.ok(main.includes("nitroBlastIsLethal(blast,{x:player.x"));
  assert.ok(main.includes("playerEliminated=wireHealth.hp===0"));
@@ -633,7 +640,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  const shield=read("reboot/reinforcement-view.js");
  assert.ok(shield.includes("new THREE.BoxGeometry"));
  assert.ok(shield.includes("core.userData.reinforcementShield=true"));
- assert.ok(shield.includes("shootables:()=>state.installed?(state.breach?breachMeshes.slice():[core]):[]"));
+ assert.ok(shield.includes("shootables:()=>state.installed?(reinforcementBreaches(state).length?breachMeshes.slice():[core]):[]"));
  assert.ok(shield.includes("root.scale.y="));
  assert.ok(shield.includes("function steelImpact(hit)"));
 
