@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.14.1
+# BLACKOUT — Clean Reboot V0.14.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,15 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.14.2 · CORRECT special/normal keybinds after user browser feedback:**
+- User explicitly corrected the prior **3 / 4 gadget mapping**. New contract: **SPECIAL / signature or first generalist utility slot = pressing down the scroll wheel (middle mouse button, MMB)**; **NORMAL / second generalist utility slot = G**. Example: Sentry chooses **C4 in special slot** and **barbed wire in normal slot**, then his utility HUD says **MMB C4** and **G BARBED WIRE**. Future specialist signature ability should also use MMB, standard utility G. This is a player control contract, independent of weapon keys 1/2 and recon keys 5/6.
+- Menu shows **SPECIAL GADGET · MIDDLE MOUSE CLICK** for slot 1 and **NORMAL GADGET · G** for slot 2; current operator's two gadget choices continue to be saved separately for the active page session. HUD now uses semantic IDs `utility-key-special`/`utility-key-normal` etc. and labels **MMB / G** instead of prior 3 / 4. Gadget names change immediately on loadout or operator change.
+- Input handling: with pointer lock and player mode, middle mouse button press (`mousedown.button===1`) previews the planned special gadget **without shooting or entering recon view**, preventing default browser action. `KeyG` previews the normal gadget in player mode. Neither does anything in drone mode. The old `Digit3/Digit4` special utility handlers are removed. A middle-button `auxclick` is canceled while pointer lock is held to prevent browser autoscroll. The clicks are informational placeholders **only**: no throwing/planting/explosion/effect/stock fake.
+- Full GitHub Actions at commit `cf485d3f330d3571c49c8cd5b63f46a364def3b3` passed **140 tests / 0 failures** before this documentation update. Still requires the user's in-browser playtest before new functionality. Do not begin actual gadgets until user confirms correct MMB/G input and HUD and previously approved behavior.
+- Existing drone camera 5, throw 6 on Striker, Sentry's no-drone restriction, F reinforcement on Sentry only, existing guns and obstacles remain unchanged.
+
+
 
 **2026-10-21 / V0.14.1 · LIVE operator utility HUD keys 3 & 4 (user-reported UI omission):**
 - User confirmed the 12 gadgets appeared in V0.14.0's planning menu, but noted the in-game HUD did NOT update to display the utility choices and their keybinds. V0.14.1 connects the two systems; **this is still a visual/planning stage**, NOT permission to start coding actual gadgets.
