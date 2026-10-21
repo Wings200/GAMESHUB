@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.12 — real wheeled drone with jump cooldown and 3 rechargeable boosts
+// BLACKOUT REBOOT V0.12.1 — throw-to-deploy, 5 cameras and 6 spare inventory
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -18,8 +18,10 @@ import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-016";
 import {REINFORCEMENT} from "./reinforcement.js?v=reboot-017";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-017";
-import {DRONE,newDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-018";
+import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
 import {createDroneView} from "./drone-view.js?v=reboot-018";
+import {newDroneRoster,cameraRequest,spareRequest,registerDrone,
+ updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-019";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -36,6 +38,9 @@ const droneMapCtx=droneMap.getContext("2d");
 const droneBoostStatus=$("drone-boost"),droneJumpStatus=$("drone-jump"),
  droneSpeedStatus=$("drone-speed");
 const droneChargeMarkers=[$("drone-charge-1"),$("drone-charge-2"),$("drone-charge-3")];
+const droneCameraCount=$("camera-drone-count"),droneSpareCount=$("spare-drone-count");
+const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone-number");
+const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const softWallReadout=$("soft-wall-readout"),softWallStatusText=$("soft-wall-status"),
  softWallRemoved=$("soft-wall-removed");
 const reinforcePrompt=$("reinforce-prompt"),reinforceFill=$("reinforce-progress"),
@@ -117,7 +122,7 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
 const barricade=createBarricadeStation(THREE,scene);
 const softWall=createSoftWallStation(THREE,scene);
 const reinforcement=createReinforcementStation(THREE,scene);
-const droneView=createDroneView(THREE,scene);
+const droneViews=[]; // physical model for each deployed drone
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
@@ -139,7 +144,7 @@ let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false,barricadeBuildTime=0;
-let controlMode="player",drone=null,droneBoostPressed=false,droneJumpPressed=false;
+let controlMode="player",drone=null,droneRoster=newDroneRoster(),droneBoostPressed=false,droneJumpPressed=false;
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
 const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
 let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
