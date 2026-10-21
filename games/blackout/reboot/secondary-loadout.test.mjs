@@ -111,7 +111,8 @@ test("Sentry C4 is shown on scroll-wheel click; normal wire on G, not old 3/4",(
   "BARBED WIRE · LIVE GADGET · USE IN RANGE");
  assert.equal(utilityKeyPreview(plans,sentry,"Digit3"),null);
  assert.equal(utilityKeyPreview(plans,sentry,"Digit4"),null);
- assert.ok(rows.every(row=>row.fieldReady===false));
+ assert.deepEqual(rows.map(row=>row.fieldReady),[false,true],
+  "C4 is still planned; real physical wire is deployable");
 });
 
 test("single fully implemented barbed-wire slot is field-ready while C4 is not",()=>{
