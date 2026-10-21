@@ -1,5 +1,5 @@
 // BLACKOUT V0.14.2 · side-locked SPECIAL (MMB) and NORMAL (G) gadget plans.
-// This is a PREVIEW selection system. No gadgets below are field-ready yet:
+// One gadget is field-ready: defender barbed wire. Others are previews:
 // never mark one equipped, grant ammunition, or create placeholder effects.
 // Future mechanics unlock each gadget individually only after testing.
 export const SECONDARY_GADGETS=Object.freeze([
@@ -12,7 +12,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"c4",name:"C4 / Nitro Cell",side:"defend",role:"Remote explosive",implemented:false},
  {id:"impact",name:"Impact Grenades",side:"defend",role:"Impact destruction",implemented:false},
  {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:false},
- {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:false},
+ {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:true},
  {id:"proximity-alarm",name:"Proximity Alarms",side:"defend",role:"Entry warning",implemented:false},
  {id:"deployable-shield",name:"Deployable Shields",side:"defend",role:"Portable cover",implemented:false}
 ].map(g=>Object.freeze(g)));
@@ -69,7 +69,7 @@ export function utilityHudRows(plans,operator){
    name:gadget?.name||"EMPTY SLOT",
    gadgetId:gadget?.id||null,
    // No false ammo counts, ready flags, or deployable state.
-   status:gadget?"PLANNED · NOT BUILT":"UNASSIGNED",
+   status:gadget?(gadget.implemented?"READY · LIVE GADGET":"PLANNED · NOT BUILT"):"UNASSIGNED",
    fieldReady:Boolean(gadget?.implemented)
   });
  });
@@ -78,6 +78,6 @@ export function utilityKeyPreview(plans,operator,code){
  const row=utilityHudRows(plans,operator).find(x=>x.code===code);
  if(!row)return null;
  return row.gadgetId?
-  row.name.toUpperCase()+" · PLANNED ONLY · NOT BUILT YET":
+  row.name.toUpperCase()+(row.fieldReady?" · LIVE GADGET · USE IN RANGE":" · PLANNED ONLY · NOT BUILT YET"):
   row.role+" GADGET ("+row.key+") · EMPTY SLOT · CHOOSE IN OPERATOR MENU";
 }
