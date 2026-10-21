@@ -174,7 +174,7 @@ document.addEventListener("pointerlockchange",()=>{
  // cannot be enabled until an actual drone or spectator camera is playable.
  document.body.dataset.hudProfile=locked?"player":"menu";
  crosshair.classList.toggle("hidden",!locked);
- if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;unlockMessage();}
+ if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
