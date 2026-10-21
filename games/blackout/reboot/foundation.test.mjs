@@ -430,7 +430,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.update(dt)"));
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
- assert.ok(html.includes("<kbd>V</kbd> PUNCH"));
+ assert.ok(html.includes("WIRE V TO BREAK"));
  assert.ok(html.includes("Eight gadget options still await physical implementation"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
