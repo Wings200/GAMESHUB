@@ -62,7 +62,7 @@ export function createReinforcementStation(THREE,scene){
   if(!state.installed||hit?.object!==core)return false;
   const flash=new THREE.Mesh(new THREE.SphereGeometry(.038,6,5),sparkMat);
   flash.position.copy(hit.point);
-  flash.position.z+=(hit.point.z>=spec.z?.018:-.018);
+  flash.position.z+=(hit.point.z>=spec.z ? .018 : -.018);
   scene.add(flash);sparks.push({mesh:flash,left:.095});
   return true;
  }
