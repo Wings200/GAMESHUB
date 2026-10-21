@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.9 — single physical wooden barricade test station
+// BLACKOUT REBOOT V0.10 — physical, shoot-through soft-wall cells
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -14,6 +14,8 @@ import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-015";
 import {BARRICADE} from "./barricade.js?v=reboot-015";
 import {createBarricadeStation} from "./barricade-view.js?v=reboot-015";
+import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
+import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-016";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -25,6 +27,8 @@ const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits
 const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("area-name");
 const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
+const softWallReadout=$("soft-wall-readout"),softWallStatusText=$("soft-wall-status"),
+ softWallRemoved=$("soft-wall-removed");
 const barricadePrompt=$("barricade-prompt"),barricadeProgress=$("barricade-progress"),
  barricadeStatusText=$("barricade-status"),barricadeCount=$("barricade-count");
 let renderer;
@@ -100,6 +104,7 @@ for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
  ring.rotation.x=-Math.PI/2;ring.position.set(x,.035,z);scene.add(ring);
 }
 const barricade=createBarricadeStation(THREE,scene);
+const softWall=createSoftWallStation(THREE,scene);
 const weaponView=createWeaponView(THREE,camera,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
@@ -200,6 +205,11 @@ document.addEventListener("keydown",event=>{
    hint.textContent=debugShots?"B TO HIDE AIM / LAST SHOT DIAGNOSTICS":
     "BALLISTICS DEBUG OFF · B TO ENABLE";
  }
+ if(event.code==="KeyT"&&!event.repeat){
+   const result=softWall.reset(player);
+   shotNotice.textContent=result.reason;
+   shotNoticeLeft=1.45;
+ }
  if(event.code==="KeyV"&&!event.repeat){
    shotEffects.clear();
    hint.textContent="BULLET HOLES CLEARED · NEW IMPACTS WILL PERSIST";
@@ -243,7 +253,10 @@ function hudFrame(){
  headingLabel.textContent=String(heading).padStart(3,"0")+"°";
  compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
- drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE);
+ drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+ softWallReadout.classList.toggle("hidden",!softWall.near(player));
+ softWallStatusText.textContent=softWall.status;
+ softWallRemoved.textContent=String(softWall.removed);
  barricadeStatusText.textContent=barricade.status;
  barricadeCount.textContent=barricade.remaining+" / "+BARRICADE.boardCount;
  const near=barricade.near(player);
@@ -273,7 +286,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -325,17 +338,25 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  const woodHit=outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled)
+ const plasterHit=outcome.hit?softWall.onHit(outcome.hit):{handled:false};
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
  if(woodHit.handled){
   shotNotice.textContent="BOARD "+String(woodHit.index).padStart(2,"0")+
     (woodHit.broken?" DESTROYED · "+woodHit.remaining+" LEFT":" HIT · FIRE AGAIN");
   shotNoticeLeft=.95;
+  shotAudio.play("impact");
+ }else if(plasterHit.handled){
+  shotNotice.textContent="GYPSUM PUNCTURED · "+plasterHit.removed+
+    " OPEN CELLS · BULLETS CAN PASS";
+  shotNoticeLeft=.75;
+  lastShotReadout="SOFT WALL · REMOVED CELL "+plasterHit.index+
+    " · "+plasterHit.remaining+" SOLID TILES";
   shotAudio.play("impact");
  }else if(outcome.kind==="target"){
   const target=outcome.target;
@@ -385,7 +406,7 @@ function animate(now){
    const before=player;
    // One active board list controls both movement and shooting.
    player=stepPlayer(player,input,dt,
-     [...TEST_OBSTACLES,...barricade.blockers()]);
+     [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers()]);
    const next=advanceFootsteps(footstepTracker,before,player);
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
@@ -458,6 +479,7 @@ function animate(now){
  }
  shotEffects.tick(dt);
  barricade.tick(dt);
+ softWall.tick(dt);
  updateAimProbe(now);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
@@ -466,5 +488,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.9 wooden barricade physics / damage sandbox",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.10 real soft-wall perforation and collision",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
