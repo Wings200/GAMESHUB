@@ -1,8 +1,10 @@
-// BLACKOUT V0.13.1 · fix out-of-panel deploy label selection lookup.
+// BLACKOUT V0.14 · two-slot, side-specific gadget DESIGN preview in picker.
 // Every rendered card comes from operators.js. In-development concepts are
 // visibly labeled as such; they are not purchasable or selectable yet.
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
- operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-021";
+ operatorsForSide,operatorLoadout,ARMOR_LABELS} from "./operators.js?v=reboot-025";
+import {secondaryOptions,newSecondaryPlans,plannedSecondaries,
+ planSecondary,gadgetById} from "./secondary-loadout.js?v=reboot-025";
 
 export function createOperatorPicker(root,{onSelect=()=>{}}={}){
  if(!root)throw new Error("Operator selection root is required");
@@ -10,12 +12,14 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
  const attackTab=$("operator-attack"),defendTab=$("operator-defend");
  const grid=$("operator-roster"),name=$("operator-name"),description=$("operator-role");
  const speed=$("operator-speed"),armor=$("operator-armor"),slots=$("operator-slots");
+ const planStatus=$("operator-plan-status");
  // The deploy button lives outside #operator-selection. Looking for its
  // label through root.querySelector throws at startup and blocks both tabs.
  const stateLabel=$("operator-playable-label"),current=document.getElementById("operator-current");
- if([attackTab,defendTab,grid,name,description,speed,armor,slots,stateLabel,current]
+ if([attackTab,defendTab,grid,name,description,speed,armor,slots,planStatus,stateLabel,current]
     .some(x=>!x))throw new Error("Operator picker markup is incomplete");
  let selection=newOperatorSelection();
+ let plans=newSecondaryPlans();
  function statPips(container,level){
   container.replaceChildren();
   for(let i=1;i<=3;i++){
@@ -67,14 +71,45 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
   statPips(speed,op.speed);statPips(armor,op.armor);
   armor.title=ARMOR_LABELS[op.armor];
   slots.replaceChildren();
+  const picks=plannedSecondaries(plans,op);
   for(let index=0;index<loadout.slots.length;index++){
    const slot=loadout.slots[index];
    const el=document.createElement("div");el.className="operator-utility-slot";
-   const label=document.createElement("strong");label.textContent=slot.label;
+   const label=document.createElement("strong");
+   label.textContent=slot.type==="signature"?"SIGNATURE · FUTURE":"SECONDARY SLOT "+(index+1);
+   el.append(label);
+   if(slot.type==="secondary"&&op.playable){
+    const select=document.createElement("select");
+    select.className="operator-gadget-select";
+    select.setAttribute("aria-label",op.name+" gadget plan slot "+(index+1));
+    const empty=document.createElement("option");
+    empty.value="";empty.textContent="— NONE PLANNED —";
+    select.append(empty);
+    for(const g of secondaryOptions(op.side)){
+     const option=document.createElement("option");
+     option.value=g.id;option.textContent=g.name+" · PLANNED";
+     select.append(option);
+    }
+    select.value=picks[index]||"";
+    select.addEventListener("change",()=>{
+     const value=select.value||null;
+     const next=planSecondary(plans,op,index,value);
+     const rejected=next===plans&&value!==picks[index];
+     if(!rejected)plans=next;
+     render();
+     planStatus.textContent=rejected?
+      "INVALID SELECTION · CHOOSE TWO DIFFERENT GADGETS FOR THIS SIDE":
+      "PLAN SAVED FOR "+op.name+" · NOT YET USABLE IN GAME";
+    });
+    el.append(select);
+   }
    const status=document.createElement("small");
-   status.textContent="UNASSIGNED · GADGETS NEXT STAGE";
-   el.append(label,status);slots.append(el);
+   const planned=slot.type==="secondary"?gadgetById(picks[index]):null;
+   status.textContent=planned?
+    "DESIGN PICK · NO LIVE GADGET YET":"UNASSIGNED · GADGETS IN DEVELOPMENT";
+   el.append(status);slots.append(el);
   }
+  planStatus.textContent="DESIGN PREVIEW ONLY · NO EQUIPMENT IS FIELD-READY";
  }
  attackTab.addEventListener("click",()=>{
   selection=switchOperatorSide(selection,"attack");
@@ -88,6 +123,7 @@ export function createOperatorPicker(root,{onSelect=()=>{}}={}){
  return {
   get operator(){return selectedOperator(selection);},
   get selection(){return selection;},
+  get plans(){return plans;},
   showSide(side){
    selection=switchOperatorSide(selection,side);
    render();onSelect(selectedOperator(selection));
