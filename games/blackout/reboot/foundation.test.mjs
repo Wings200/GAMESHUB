@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-031",
+ for(const src of ["./reboot/main.js?v=reboot-032",
    "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -243,7 +243,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
  assert.ok(main.includes('from "./barricade.js?v=reboot-015"'));
- assert.ok(main.includes('from "./barricade-view.js?v=reboot-029"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-032"'));
  assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
  assert.ok(main.includes("...barricade.blockers()"));
  assert.ok(main.includes("...softWall.blockers()"));
@@ -274,9 +274,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-032"'));
  assert.ok(main.includes("createOperatorPicker("));
- assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-032"'));
  assert.ok(main.includes('onPlanChange(){'));
  assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
@@ -297,10 +297,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.14: design plans are distinct from functioning equipment.
  assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
  assert.ok(html.includes('id="operator-plan-status"'));
- assert.ok(html.includes("The other 11 gadgets remain unimplemented."));
+ assert.ok(html.includes("Ten other secondary gadget concepts remain planned"));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-032"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
@@ -361,8 +361,26 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-strike"'));
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
  assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
- assert.ok(html.includes("ENEMY FOOTSTEPS RATTLE"));
- assert.ok(html.includes("REAL POSITIONAL WIRE AUDIO"));
+ assert.ok(html.includes("Barbed wire retains enemy-only damage"));
+ assert.ok(html.includes("C4 IS NOW ACTUALLY PLAYABLE"));
+ // V0.16: C4 must be real thrown, simulated, detonated, physically
+ // changing model, HP, wooden boards and gypsum tiles.
+ assert.ok(main.includes('from "./nitro.js?v=reboot-032"'));
+ assert.ok(main.includes('from "./nitro-view.js?v=reboot-032"'));
+ assert.ok(main.includes("nitroState=newNitroState()"));
+ assert.ok(main.includes("throwNitro(nitroState,player)"));
+ assert.ok(main.includes("createNitroView(THREE,scene,result.device)"));
+ assert.ok(main.includes("nitroState=tickNitro(nitroState,dt,activeDroneObstacles())"));
+ assert.ok(main.includes("detonateNitro(nitroState)"));
+ assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
+ assert.ok(main.includes("barricade.blastAt(blast)"));
+ assert.ok(main.includes("reinforcement.installed?0:softWall.blastAt(blast)"));
+ assert.ok(main.includes("nitroBlastDamage(blast,{x:player.x"));
+ assert.ok(main.includes("targetHits++;completedTargets.add(target.id);weapons.registerHit()"));
+ assert.ok(read("reboot/barricade-view.js").includes("function blastAt(blast)"));
+ assert.ok(read("reboot/soft-wall-view.js").includes("function blastAt(blast)"));
+ assert.ok(read("reboot/secondary-loadout.js").includes('role:"Remote explosive",implemented:true'));
+ assert.ok(html.includes("C4 THROW / MMB AGAIN DETONATE"));
  assert.ok(main.includes("newWireHealth()"));
  assert.ok(main.includes("tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt)"));
  assert.ok(main.includes("wireHealth=newWireHealth()"));
@@ -395,7 +413,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
  assert.ok(html.includes("<kbd>V</kbd> PUNCH WIRE TWICE"));
- assert.ok(html.includes("The other 11 gadgets remain unimplemented")||html.includes("Other secondary gadgets remain previews"));
+ assert.ok(html.includes("Ten other secondary gadget concepts remain planned"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));
@@ -480,7 +498,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(shield.includes("function steelImpact(hit)"));
 
  assert.ok(main.includes('from "./soft-wall.js?v=reboot-016"'));
- assert.ok(main.includes('from "./soft-wall-view.js?v=reboot-016"'));
+ assert.ok(main.includes('from "./soft-wall-view.js?v=reboot-032"'));
  for(const id of ["soft-wall-readout","soft-wall-removed","soft-wall-status"]){
   assert.ok(html.includes('id="'+id+'"'),"soft-wall HUD absent: "+id);
  }
