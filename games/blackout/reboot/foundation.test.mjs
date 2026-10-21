@@ -261,7 +261,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
- assert.ok(main.includes('from "./operators.js?v=reboot-021"'));
+ assert.ok(main.includes('from "./operators.js?v=reboot-023"'));
  assert.ok(main.includes('from "./operator-select.js?v=reboot-022"'));
  assert.ok(main.includes("createOperatorPicker("));
  const operatorPickerSource=read("reboot/operator-select.js");
@@ -272,6 +272,13 @@ test("reboot entry point contains no old game imports, operators, bots or networ
 
  assert.ok(main.includes('activeOperator=operatorById("striker")'));
  assert.ok(main.includes("operatorHudName.textContent=operator.name"));
+ // V0.13.2: every steel interaction must check the active faction.
+ assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement}'));
+ assert.ok(main.includes('const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player)'));
+ assert.ok(main.includes('player,holding:canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
+ assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)'));
+ assert.ok(main.includes('reinforcePrompt.classList.toggle("hidden",!reinfNearby)'));
+
  assert.ok(main.includes("operatorHudSide.textContent="));
  assert.ok(main.includes('speedMultiplier:operatorLoadout(activeOperator).speedMultiplier'));
  assert.ok(physics.includes("const operatorMultiplier=Number.isFinite(input.speedMultiplier)"));
