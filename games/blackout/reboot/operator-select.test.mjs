@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/C4 \+ BARBED WIRE ARE LIVE/);
+  assert.match(elements["operator-plan-status"].textContent,/C4 \/ IMPACT \/ WIRE LIVE/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -211,5 +211,22 @@ test("Sentry shows both physical wire and C4 as ready",()=>{
   assert.match(elements["operator-plan-status"].textContent,/FUNCTIONING GADGET READY/);
   assert.equal(elements["operator-slots"].children[1].children[2].textContent,
     "LIVE GADGET · READY IN RANGE");
+ }finally{globalThis.document=old;}
+});
+
+test("Impact Grenades are marked LIVE and can occupy the normal G slot",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  elements["operator-defend"].click();
+  const menu=elements["operator-slots"].children[1].children[1];
+  assert.equal(menu.children.find(x=>x.value==="impact").textContent,
+   "Impact Grenades · READY");
+  menu.value="impact";menu.listeners.get("change")();
+  assert.deepEqual(picker.plans.sentry,[null,"impact"]);
+  assert.equal(elements["operator-slots"].children[1].children[2].textContent,
+   "LIVE GADGET · READY IN RANGE");
  }finally{globalThis.document=old;}
 });
