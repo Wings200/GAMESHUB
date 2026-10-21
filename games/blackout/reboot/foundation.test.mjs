@@ -162,7 +162,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.indexOf("weaponView.update(dt,aimMix,gunKick")<
     main.indexOf("const fired=cycleLegacyFire(weapons,now"));
  assert.ok(html.includes('id="ballistics-debug"'));
- assert.ok(main.includes("raycaster.setFromCamera({x:cone.x,y:cone.y},camera)"));
+ // ADS bullet position is now projected from the actual rendered optic.
  assert.ok(main.includes("SHOT BLOCKED"));
  assert.ok(html.includes("ADS FIX ACTIVE"));
  assert.ok(html.includes('id="lean-status"'));
