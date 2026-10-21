@@ -172,25 +172,79 @@ function setControlMode(nextMode){
  barricadeBuildTime=0;
  reinforcement.step({player,holding:false,dt:0});
 }
-function deployDrone(){
- if(!drone){
-  const x=player.x-Math.sin(player.yaw)*.9;
-  const z=player.z-Math.cos(player.yaw)*.9;
-  const p=canDroneOccupy(x,0,z,activeDroneObstacles())?{x,z}:{x:player.x,z:player.z};
-  if(!canDroneOccupy(p.x,0,p.z,activeDroneObstacles())){
-   shotNotice.textContent="DRONE DEPLOYMENT BLOCKED · MOVE TO CLEAR FLOOR";
-   shotNoticeLeft=1.6;return;
-  }
-  drone=newDrone(p.x,p.z,player.yaw);
-  droneView.place(drone);
+function refreshDroneEquipment(){
+ const info=droneEquipmentStatus(droneRoster);
+ droneCameraCount.textContent=String(info.cameras);
+ droneSpareCount.textContent=String(info.spare);
+}
+function throwPhysicalDrone(kind,enterFeed=false){
+ // Only the first drone and one additional spare exist. In the range,
+ // spare throwing is unlocked; real matches will gate it after preparation.
+ const distance=.42;
+ const x=player.x-Math.sin(player.yaw)*distance;
+ const z=player.z-Math.cos(player.yaw)*distance;
+ const obstacles=activeDroneObstacles();
+ const clear=canDroneOccupy(x,.58,z,obstacles)?{x,z}:
+   canDroneOccupy(player.x,.58,player.z,obstacles)?{x:player.x,z:player.z}:null;
+ if(!clear){
+  shotNotice.textContent="DRONE THROW BLOCKED · MOVE AWAY FROM WALL";
+  shotNoticeLeft=1.5;return false;
  }
- setControlMode("drone");
+ const fresh=throwDrone(clear.x,clear.z,player.yaw);
+ const next=registerDrone(droneRoster,fresh,kind);
+ if(next===droneRoster)return false;
+ droneRoster=next;
+ const view=createDroneView(THREE,scene);
+ view.place(fresh);
+ droneViews.push(view);
+ drone=selectedDrone(droneRoster);
+ if(enterFeed)setControlMode("drone");
+ else{
+  shotNotice.textContent="SPARE DRONE THROWN · PRESS 5 FOR CAMERAS";
+  shotNoticeLeft=1.4;
+ }
+ refreshDroneEquipment();
+ return true;
+}
+function openDroneCameras(){
+ if(controlMode==="drone"){setControlMode("player");return;}
+ const request=cameraRequest(droneRoster);
+ if(request.action==="throw-first-and-open"){
+  throwPhysicalDrone("initial",true);
+ }else if(request.action==="open"){
+  drone=selectedDrone(droneRoster);
+  setControlMode("drone");
+ }else{
+  shotNotice.textContent=request.reason||"NO CAMERAS AVAILABLE";
+  shotNoticeLeft=1.2;
+ }
+}
+function throwSpareDrone(){
+ if(controlMode!=="player")return;
+ const request=spareRequest(droneRoster,"range");
+ if(request.action==="throw-only")throwPhysicalDrone("spare",false);
+ else{
+  shotNotice.textContent=request.reason||"NO SPARE DRONE";
+  shotNoticeLeft=1.3;
+ }
+}
+function switchDroneCamera(direction){
+ if(droneRoster.drones.length<2)return false;
+ droneRoster=selectDrone(droneRoster,direction);
+ drone=selectedDrone(droneRoster);
+ droneBoostPressed=false;droneJumpPressed=false;
+ return true;
 }
 function droneHudFrame(){
  if(!drone)return;
  droneBoostStatus.textContent=droneBoostLabel(drone);
  droneJumpStatus.textContent=droneJumpLabel(drone);
  droneSpeedStatus.textContent=Math.hypot(drone.speedX,drone.speedZ).toFixed(1);
+ droneActiveNumber.textContent=String(droneRoster.selected+1).padStart(2,"0");
+ droneTotalNumber.textContent=String(droneRoster.drones.length).padStart(2,"0");
+ const cameraSwitch=droneRoster.drones.length>1?"CAMERA":"TURN";
+ droneSwitchLeft.textContent=cameraSwitch;
+ droneSwitchRight.textContent=cameraSwitch;
  for(let i=0;i<droneChargeMarkers.length;i++)
   droneChargeMarkers[i].classList.toggle("active",i<drone.charges);
  drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
