@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["c4","impact","barbed-wire"],"only 3 finished physical gadgets are marked ready");
+  ["frag","c4","impact","barbed-wire"],"only four actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -56,8 +56,8 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
  assert.equal(planIsFieldReady(plans,striker),false);
  for(const g of secondaryOptions("attack")){
   const updated=planSecondary(plans,striker,0,g.id);
-  assert.equal(planIsFieldReady(updated,striker),false);
-  assert.equal(g.implemented,false);
+  assert.equal(planIsFieldReady(updated,striker),g.id==="frag");
+  assert.equal(g.implemented,g.id==="frag");
  }
 });
 
@@ -140,4 +140,19 @@ test("impact grenades are a third live defender gadget, side-locked and nondupli
  assert.deepEqual(utilityHudRows(plans,sentry).map(row=>row.fieldReady),[true,true]);
  assert.equal(planSecondary(plans,striker,0,"impact"),plans);
  assert.equal(planSecondary(plans,sentry,1,"impact"),plans);
+});
+
+test("Striker can equip two frag charges and every unfinished attacker utility stays blocked",()=>{
+ const striker=operatorById("striker");
+ let plans=newSecondaryPlans();
+ plans=planSecondary(plans,striker,1,"frag");
+ assert.equal(planIsFieldReady(plans,striker),true);
+ const rows=utilityHudRows(plans,striker);
+ assert.equal(rows[1].name,"Frag Grenades");
+ assert.equal(rows[1].fieldReady,true);
+ assert.equal(utilityKeyPreview(plans,striker,"KeyG"),
+  "FRAG GRENADES · LIVE GADGET · USE IN RANGE");
+ assert.equal(planSecondary(plans,striker,0,"frag"),plans);
+ plans=planSecondary(plans,striker,0,"smoke");
+ assert.equal(planIsFieldReady(plans,striker),false);
 });
