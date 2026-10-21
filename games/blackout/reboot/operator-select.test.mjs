@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/ONLY BARBED WIRE IS LIVE/);
+  assert.match(elements["operator-plan-status"].textContent,/C4 \+ BARBED WIRE ARE LIVE/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -194,7 +194,7 @@ test("changing real picker utility dropdown emits HUD refresh with active operat
  }finally{globalThis.document=old;}
 });
 
-test("Sentry shows actual deployable barbed wire, C4 remains visibly planned",()=>{
+test("Sentry shows both physical wire and C4 as ready",()=>{
  const old=globalThis.document,{root,elements}=fixture();
  globalThis.document={createElement:tag=>new FakeElement(tag),
   getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
@@ -205,10 +205,10 @@ test("Sentry shows actual deployable barbed wire, C4 remains visibly planned",()
   assert.equal(wire.children.find(x=>x.value==="barbed-wire")?.textContent,
    "Barbed Wire · READY");
   assert.equal(wire.children.find(x=>x.value==="c4")?.textContent,
-   "C4 / Nitro Cell · PLANNED");
+   "C4 / Nitro Cell · READY");
   wire.value="barbed-wire";wire.listeners.get("change")();
   assert.deepEqual(picker.plans.sentry,[null,"barbed-wire"]);
-  assert.match(elements["operator-plan-status"].textContent,/BARBED WIRE LIVE IN RANGE/);
+  assert.match(elements["operator-plan-status"].textContent,/FUNCTIONING GADGET READY/);
   assert.equal(elements["operator-slots"].children[1].children[2].textContent,
     "LIVE GADGET · READY IN RANGE");
  }finally{globalThis.document=old;}
