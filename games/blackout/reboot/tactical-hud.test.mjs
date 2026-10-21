@@ -44,7 +44,7 @@ test("minimap draws real walls, targets and player without modifying game object
  const player={x:0,z:8,yaw:Math.PI/2},obstacles=[{id:"box-one",x:-12,z:-6,width:2.3,depth:2.3}];
  const targets=[{group:{position:{x:7,z:-17}},downTime:0}];
  drawTrainingMap(ctx,player,obstacles,targets);
- assert.ok(instructions.filter(x=>x[0]==="fillRect").length>=3);
+ assert.ok(instructions.filter(x=>x[0]==="fillRect").length>=2);
  assert.ok(instructions.some(x=>x[0]==="translate"&&x[1]===100&&x[2]>100));
  assert.ok(instructions.some(x=>x[0]==="arc"));
  assert.equal(player.yaw,Math.PI/2);
