@@ -96,15 +96,16 @@ test("jump uses real gravity, lands without falling through the ground, no air d
  assert.equal(p.y,0);assert.equal(p.vy,0);assert.equal(p.grounded,true);
 });
 test("wall collision sweep cannot tunnel at low frame rate or faster sprint speed",()=>{
- let player=initialPlayer();
+ // Run directly toward the relocated west-wall collision station.
+ let player={...initialPlayer(),x:-18,z:0};
  for(let i=0;i<400;i++){
    player=stepPlayer(player,{forward:1,sprint:true},.05);
    assert.ok(!(!canOccupy(player.x,player.y,player.z,STAND_HEIGHT)),
      "physics body must not intersect any obstacle");
  }
- // The physical 2.3m wide centre obstruction is located at z=-6.
- assert.ok(player.z>=-4.52,"player must stop at test box before crossing");
- assert.ok(player.z<0,"player still approaches object instead of freezing");
+ // West station stays solid; no object sits in the central target lane.
+ assert.ok(player.z>=-7.48,"player must stop at west wall before crossing");
+ assert.ok(player.z<0,"player still approaches the west collision station");
 });
 test("wall sliding allows one axis to advance when the other is blocked",()=>{
  const obstacles=[{id:"north-barrier",x:0,z:0,width:6,depth:.25,height:3.1}];
