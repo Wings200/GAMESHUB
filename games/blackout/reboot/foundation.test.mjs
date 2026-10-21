@@ -448,7 +448,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("view.pickupTarget,...shootableSolids"));
  assert.ok(main.includes("hits[0]?.object!==view.pickupTarget"));
  assert.ok(main.includes("keys.delete(\"KeyF\")"));
- assert.ok(main.includes("if(c4PickupKeyConsumed)return"));
+ assert.ok(main.includes("if(c4PickupKeyConsumed||softBreachPickupKeyConsumed)return"));
  assert.ok(main.includes("reinforcement.step({player,holding:false,dt:0})"));
  assert.ok(read("reboot/nitro-view.js").includes("pickupTarget.userData.c4PickupId=device.id"));
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
