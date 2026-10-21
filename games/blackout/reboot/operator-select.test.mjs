@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/NO EQUIPMENT IS FIELD-READY/);
+  assert.match(elements["operator-plan-status"].textContent,/ONLY BARBED WIRE IS LIVE/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -119,7 +119,7 @@ test("two live dropdowns retain separate side plans without granting fake gadget
   changeSlot(1,"smoke");
   assert.deepEqual(picker.plans.striker,["flash","smoke"]);
   assert.equal(elements["operator-slots"].children[0].children[1].value,"flash");
-  assert.match(elements["operator-plan-status"].textContent,/NOT YET USABLE IN GAME/);
+  assert.match(elements["operator-plan-status"].textContent,/OTHER GADGETS REMAIN PREVIEWS/);
   elements["operator-defend"].click();
   assert.equal(elements["operator-current"].textContent,"SENTRY");
   assert.equal(elements["operator-slots"].children[0].children[1].value,"");
@@ -191,5 +191,25 @@ test("changing real picker utility dropdown emits HUD refresh with active operat
   assert.deepEqual(updates[1].plans.sentry,["c4",null]);
   assert.deepEqual(updates[1].plans.striker,["flash",null]);
   assert.equal(picker.operator.id,"sentry");
+ }finally{globalThis.document=old;}
+});
+
+test("Sentry shows actual deployable barbed wire, C4 remains visibly planned",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  elements["operator-defend"].click();
+  const wire=elements["operator-slots"].children[1].children[1];
+  assert.equal(wire.children.find(x=>x.value==="barbed-wire")?.textContent,
+   "Barbed Wire · READY");
+  assert.equal(wire.children.find(x=>x.value==="c4")?.textContent,
+   "C4 / Nitro Cell · PLANNED");
+  wire.value="barbed-wire";wire.listeners.get("change")();
+  assert.deepEqual(picker.plans.sentry,[null,"barbed-wire"]);
+  assert.match(elements["operator-plan-status"].textContent,/BARBED WIRE LIVE IN RANGE/);
+  assert.equal(elements["operator-slots"].children[1].children[2].textContent,
+    "LIVE GADGET · READY IN RANGE");
  }finally{globalThis.document=old;}
 });
