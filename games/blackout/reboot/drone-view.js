@@ -1,4 +1,4 @@
-// BLACKOUT V0.12 · original four-wheel physical drone visual.
+// BLACKOUT V0.12.2 · original 3D drone model, hide own model only while viewing its lens.
 // Driving uses drone-physics.js; this is only geometry/presentation.
 export function createDroneView(THREE,scene){
  const root=new THREE.Group();root.name="BLACKOUT RECON R-1 wheeled drone";
@@ -44,4 +44,14 @@ export function createDroneView(THREE,scene){
  }
  function place(state){oldX=state.x;oldZ=state.z;update(state,0)}
  return {root,update,place,wheels,lens};
+}
+
+// Camera-only visibility: no camera should render inside its own body.
+// World model stays visible to the operator and to *other drone cameras*.
+// Call after droneView.update(), which restores its deployed world visibility.
+export function setDroneCameraVisibility(views,selectedIndex,isViewingDrone){
+ for(let i=0;i<views.length;i++){
+  if(!views[i]?.root)continue;
+  if(isViewingDrone&&i===selectedIndex)views[i].root.visible=false;
+ }
 }
