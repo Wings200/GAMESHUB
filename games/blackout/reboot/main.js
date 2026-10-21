@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.12.1 — throw-to-deploy, 5 cameras and 6 spare inventory
+// BLACKOUT REBOOT V0.12.2 — 5 cameras only; 6 throws two range drones; hide own camera body
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -19,9 +19,9 @@ import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-016";
 import {REINFORCEMENT} from "./reinforcement.js?v=reboot-017";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-017";
 import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
-import {createDroneView} from "./drone-view.js?v=reboot-018";
-import {newDroneRoster,cameraRequest,spareRequest,registerDrone,
- updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-019";
+import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
+import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
+ updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -144,7 +144,7 @@ let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
 let debugShots=false,barricadeBuildTime=0;
-let controlMode="player",drone=null,droneRoster=newDroneRoster(),droneBoostPressed=false,droneJumpPressed=false;
+let controlMode="player",drone=null,droneRoster=newDroneRoster("range"),droneBoostPressed=false,droneJumpPressed=false;
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
 const previewWorld=new THREE.Vector3(),previewNdc=new THREE.Vector3();
 let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
@@ -175,11 +175,11 @@ function setControlMode(nextMode){
 function refreshDroneEquipment(){
  const info=droneEquipmentStatus(droneRoster);
  droneCameraCount.textContent=String(info.cameras);
- droneSpareCount.textContent=String(info.spare);
+ droneSpareCount.textContent=String(info.throwables);
 }
-function throwPhysicalDrone(kind,enterFeed=false){
- // Only the first drone and one additional spare exist. In the range,
- // spare throwing is unlocked; real matches will gate it after preparation.
+function throwPhysicalDrone(kind){
+ // 6 deploys either carried test-range drone. Future matches gate the
+ // prep drone and action-phase spare separately. 5 creates no devices.
  const distance=.42;
  const x=player.x-Math.sin(player.yaw)*distance;
  const z=player.z-Math.cos(player.yaw)*distance;
@@ -198,20 +198,16 @@ function throwPhysicalDrone(kind,enterFeed=false){
  view.place(fresh);
  droneViews.push(view);
  drone=selectedDrone(droneRoster);
- if(enterFeed)setControlMode("drone");
- else{
-  shotNotice.textContent="SPARE DRONE THROWN · PRESS 5 FOR CAMERAS";
-  shotNoticeLeft=1.4;
- }
+ shotNotice.textContent="DRONE THROWN · "+droneRoster.drones.length+
+   " DEPLOYED · PRESS 5 FOR CAMERAS";
+ shotNoticeLeft=1.4;
  refreshDroneEquipment();
  return true;
 }
 function openDroneCameras(){
  if(controlMode==="drone"){setControlMode("player");return;}
  const request=cameraRequest(droneRoster);
- if(request.action==="throw-first-and-open"){
-  throwPhysicalDrone("initial",true);
- }else if(request.action==="open"){
+ if(request.action==="open"){
   drone=selectedDrone(droneRoster);
   setControlMode("drone");
  }else{
@@ -219,10 +215,10 @@ function openDroneCameras(){
   shotNoticeLeft=1.2;
  }
 }
-function throwSpareDrone(){
+function throwCarriedDrone(){
  if(controlMode!=="player")return;
- const request=spareRequest(droneRoster,"range");
- if(request.action==="throw-only")throwPhysicalDrone("spare",false);
+ const request=throwRequest(droneRoster,"range");
+ if(request.action==="throw-only")throwPhysicalDrone(request.kind);
  else{
   shotNotice.textContent=request.reason||"NO SPARE DRONE";
   shotNoticeLeft=1.3;
@@ -299,7 +295,7 @@ document.addEventListener("keydown",event=>{
    event.preventDefault();
  if(!locked)return;
  if(event.code==="Digit5"&&!event.repeat){openDroneCameras();return;}
- if(event.code==="Digit6"&&!event.repeat){throwSpareDrone();return;}
+ if(event.code==="Digit6"&&!event.repeat){throwCarriedDrone();return;}
  if(controlMode==="drone"){
   if(event.code==="KeyX"&&!event.repeat){setControlMode("player");return;}
   if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat&&
@@ -672,6 +668,10 @@ function animate(now){
  }
  for(let i=0;i<droneViews.length;i++)
   droneViews[i].update(droneRoster.drones[i],dt);
+ // Camera sees the world, never its own housing or wheels. The other
+ // drone remains visible; operator view restores both physical models.
+ setDroneCameraVisibility(droneViews,droneRoster.selected,
+    locked&&controlMode==="drone");
  shotEffects.tick(dt);
  barricade.tick(dt);
  softWall.tick(dt);
@@ -684,5 +684,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.12.1 real 5 cameras / 6 throw spare",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.12.2 5 view-only, 6 throws 2 range drones",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
