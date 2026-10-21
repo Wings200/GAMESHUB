@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-026",
-   "./reboot/style.css?v=reboot-026"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-027",
+   "./reboot/style.css?v=reboot-027"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -137,12 +137,14 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('<kbd>CTRL</kbd>'));
  // Former placeholders must be replaced by TWO LIVE operator-specific rows.
  assert.equal(html.includes("NO GADGETS YET"),false);
- for(const id of ["utility-hud","utility-slot-3","utility-slot-4",
-  "utility-key-3","utility-key-4","utility-name-3","utility-name-4",
-  "utility-status-3","utility-status-4","utility-hud-note"])
+ for(const id of ["utility-hud","utility-slot-special","utility-slot-normal",
+  "utility-key-special","utility-key-normal","utility-name-special","utility-name-normal",
+  "utility-status-special","utility-status-normal","utility-hud-note"])
   assert.ok(html.includes('id="'+id+'"'),"missing live utility HUD element "+id);
- assert.ok(html.includes('id="utility-key-3">3</kbd>'));
- assert.ok(html.includes('id="utility-key-4">4</kbd>'));
+ assert.ok(html.includes('id="utility-key-special" title="Click the scroll wheel">MMB</kbd>'));
+ assert.ok(html.includes('id="utility-key-normal">G</kbd>'));
+ assert.equal(html.includes('id="utility-key-3"'),false);
+ assert.equal(html.includes('id="utility-key-4"'),false);
  assert.ok(css.includes(".utility-hud-slot"));
  assert.ok(css.includes(".utility-hud-copy"));
  assert.ok(html.includes('TRAINING · INVULNERABLE'));
@@ -271,18 +273,24 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-026"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-027"'));
  assert.ok(main.includes("createOperatorPicker("));
- assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-026"'));
+ assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-027"'));
  assert.ok(main.includes('onPlanChange(){'));
- assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s 3/4 gadget plan.'));
+ assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
  assert.ok(main.includes('utilityName[i].textContent=row.name.toUpperCase()'));
  assert.ok(main.includes('utilityStatus[i].textContent=row.status'));
  assert.ok(main.includes('refreshUtilityHud();\nfunction resize(){'),
    "initial HUD must render before first player deployment");
- assert.ok(main.includes('utilityKeyPreview(operatorPicker.plans,activeOperator,event.code)'));
- assert.ok(main.includes('event.code==="Digit3"||event.code==="Digit4"'));
+ assert.ok(main.includes('utilityKeyPreview(operatorPicker.plans,activeOperator,"KeyG")'));
+ assert.ok(main.includes('utilityKeyPreview(operatorPicker.plans,activeOperator,"MouseMiddle")'));
+ assert.ok(main.includes('event.code==="KeyG"&&!event.repeat'));
+ assert.ok(main.includes('if(event.button===1){'));
+ assert.ok(main.includes('if(controlMode==="player"){'));
+ assert.ok(main.includes('if(locked&&event.button===1)event.preventDefault()'));
+ assert.ok(!main.includes('event.code==="Digit3"||event.code==="Digit4"'));
+ assert.ok(read("reboot/secondary-loadout.js").includes('["MouseMiddle","KeyG"]'));
  assert.ok(main.includes('shotNoticeLeft=1.6;'));
  assert.ok(!main.includes("throwPlannedGadget("));
  // V0.14: design plans are distinct from functioning equipment.
@@ -291,7 +299,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("NOT usable equipment yet"));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-026"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-027"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
@@ -323,9 +331,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(css.includes(".operator-player-tag"));
  assert.ok(html.includes("2 PLAYABLE"));
  // UNASSIGNED is now the correct initial state of the LIVE operator utility HUD.
- assert.ok(html.includes('id="utility-name-3">EMPTY SLOT</strong>'));
- assert.ok(html.includes('id="utility-name-4">EMPTY SLOT</strong>'));
- assert.equal(html.includes('id="utility-name-3">FLASHBANGS'),false,
+ assert.ok(html.includes('id="utility-name-special">EMPTY SLOT</strong>'));
+ assert.ok(html.includes('id="utility-name-normal">EMPTY SLOT</strong>'));
+ assert.equal(html.includes('id="utility-name-special">FLASHBANGS'),false,
   "dynamic gadget names must not be faked in static HTML");
 
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
