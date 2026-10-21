@@ -1,4 +1,4 @@
-// BLACKOUT V0.14.1 · operator gadget design plans also update the live HUD keys.
+// BLACKOUT V0.14.2 · special MMB and normal G selected gadgets update live HUD.
 // Every rendered card comes from operators.js. In-development concepts are
 // visibly labeled as such; they are not purchasable or selectable yet.
 import {newOperatorSelection,switchOperatorSide,pickOperator,selectedOperator,
@@ -76,7 +76,7 @@ export function createOperatorPicker(root,{onSelect=()=>{},onPlanChange=()=>{}}=
    const slot=loadout.slots[index];
    const el=document.createElement("div");el.className="operator-utility-slot";
    const label=document.createElement("strong");
-   label.textContent=slot.type==="signature"?"SIGNATURE · FUTURE":"SECONDARY SLOT "+(index+1)+" · KEY "+(index+3);
+   label.textContent=slot.type==="signature"?"SIGNATURE · FUTURE · MIDDLE CLICK":index===0?"SPECIAL GADGET · MIDDLE MOUSE CLICK":"NORMAL GADGET · G";
    el.append(label);
    if(slot.type==="secondary"&&op.playable){
     const select=document.createElement("select");
