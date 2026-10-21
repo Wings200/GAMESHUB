@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.7.1 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.7.2 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-009">
 </head>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.7.1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.7.2</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 007.1</div>
+      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 007.2</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">FIRST LIVE-FIRE PROTOTYPE.</p>
-      <p class="description">AIM DIAGNOSTICS / TEST 007.1: Original gun sound and recoil stay intact. Press B to compare exactly what your holographic sight currently points at with what the last bullet hit. The misleading long debug lines are gone.</p>
+      <p class="description">IMPACT DECALS / TEST 007.2: Bullet holes are now persistent, depth-offset wall decals with visible chipped edges. Up to 400 impacts stay on the test surfaces; old marks are recycled when that cap is reached. B shows live aim debug, V clears the holes. Gunfire and recoil unchanged.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
@@ -42,7 +42,7 @@
   </main>
 
   <section id="hud" class="hud hidden" aria-label="Movement test information">
-    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>007.1</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
+    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>007.2</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
     <div class="hud-center"><span id="mode">STANDING</span><span id="motion">IDLE</span></div>
     <div class="hud-bottom">
       <div class="readout"><small>POSITION</small><strong id="position">0.0 / 0.0</strong></div>
@@ -52,14 +52,14 @@
       <div class="readout"><small>WEAPON</small><strong id="weapon-status">READY</strong></div>
       <div class="readout"><small>LEAN</small><strong id="lean-status">CENTER</strong></div>
       <div class="readout"><small>TARGETS HIT</small><strong id="target-hits">0</strong></div>
-      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> C CROUCH <span>·</span> Q/E LEAN <span>·</span> TAP CTRL/Z PRONE <span>·</span> LMB FIRE <span>·</span> RMB AIM <span>·</span> R RELOAD <span>·</span> B AIM DEBUG <span>·</span> P RESET <span>·</span> M MUTE <span>·</span> ESC PAUSE</div>
+      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> C CROUCH <span>·</span> Q/E LEAN <span>·</span> TAP CTRL/Z PRONE <span>·</span> LMB FIRE <span>·</span> RMB AIM <span>·</span> R RELOAD <span>·</span> B AIM DEBUG <span>·</span> V CLEAR HOLES <span>·</span> P RESET <span>·</span> M MUTE <span>·</span> ESC PAUSE</div>
     </div>
-    <div id="hint" class="hint">SIGHT-ALIGNED BULLETS · PRESS B FOR LIVE SIGHT + LAST SHOT · Q/E LEAN · R RELOAD.</div>
+    <div id="hint" class="hint">BULLET HOLES PERSIST ON WALLS · PRESS V TO CLEAR MARKS · B FOR LIVE AIM DEBUG.</div>
     <div id="shot-notice" class="shot-notice hidden" role="status"></div>
     <div id="ballistics-debug" class="ballistics-debug hidden" role="status" aria-live="off"></div>
   </section>
 
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-009"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-010"></script>
 </body>
 </html>
