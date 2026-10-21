@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.9 · wooden barricade board damage, collision and rebuilding
+    name: Reboot V0.10 · physical soft-wall penetration and passage
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -42,5 +42,7 @@ jobs:
           node --check games/blackout/reboot/tactical-hud.js
           node --check games/blackout/reboot/barricade.js
           node --check games/blackout/reboot/barricade-view.js
+          node --check games/blackout/reboot/soft-wall.js
+          node --check games/blackout/reboot/soft-wall-view.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
