@@ -61,22 +61,26 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
  }
 });
 
-test("keys 3/4 exactly reflect Striker gadget choices and never claim functionality",()=>{
+test("special middle-click and normal G reflect Striker plans without fake functionality",()=>{
  const striker=operatorById("striker");
  let plans=newSecondaryPlans();
- assert.deepEqual(SECONDARY_KEYBINDS,["Digit3","Digit4"]);
+ assert.deepEqual(SECONDARY_KEYBINDS,["MouseMiddle","KeyG"]);
  assert.deepEqual(utilityHudRows(plans,striker).map(s=>s.name),["EMPTY SLOT","EMPTY SLOT"]);
- assert.equal(utilityKeyPreview(plans,striker,"Digit3"),
-  "UTILITY 3 · EMPTY SLOT · CHOOSE IN OPERATOR MENU");
+ assert.equal(utilityKeyPreview(plans,striker,"MouseMiddle"),
+  "SPECIAL GADGET (MMB) · EMPTY SLOT · CHOOSE IN OPERATOR MENU");
  plans=planSecondary(plans,striker,0,"flash");
  plans=planSecondary(plans,striker,1,"soft-breach");
  const rows=utilityHudRows(plans,striker);
- assert.deepEqual(rows.map(s=>s.key),["3","4"]);
+ assert.deepEqual(rows.map(s=>s.key),["MMB","G"]);
+ assert.deepEqual(rows.map(s=>s.role),["SPECIAL","NORMAL"]);
  assert.deepEqual(rows.map(s=>s.name),["Flashbangs","Soft Breach Charge"]);
  assert.ok(rows.every(s=>s.fieldReady===false&&s.status.includes("NOT BUILT")));
- assert.equal(utilityKeyPreview(plans,striker,"Digit3"),"FLASHBANGS · PLANNED ONLY · NOT BUILT YET");
- assert.equal(utilityKeyPreview(plans,striker,"Digit4"),"SOFT BREACH CHARGE · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"MouseMiddle"),"FLASHBANGS · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"KeyG"),"SOFT BREACH CHARGE · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"Digit3"),null);
+ assert.equal(utilityKeyPreview(plans,striker,"Digit4"),null);
  assert.equal(utilityKeyPreview(plans,striker,"Digit5"),null);
+ assert.equal(utilityKeyPreview(plans,striker,"Digit6"),null);
 });
 test("HUD representation follows Sentry independently, never leaks enemy gadgets",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -89,4 +93,23 @@ test("HUD representation follows Sentry independently, never leaks enemy gadgets
  assert.ok(utilityHudRows(plans,sentry).every(s=>s.fieldReady===false));
  plans=planSecondary(plans,sentry,1,null);
  assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.name),["C4 / Nitro Cell","EMPTY SLOT"]);
+});
+
+test("Sentry C4 is shown on scroll-wheel click; normal wire on G, not old 3/4",()=>{
+ const sentry=operatorById("sentry");
+ let plans=newSecondaryPlans();
+ plans=planSecondary(plans,sentry,0,"c4");
+ plans=planSecondary(plans,sentry,1,"barbed-wire");
+ const rows=utilityHudRows(plans,sentry);
+ assert.equal(rows[0].key,"MMB");assert.equal(rows[0].code,"MouseMiddle");
+ assert.equal(rows[0].name,"C4 / Nitro Cell");
+ assert.equal(rows[1].key,"G");assert.equal(rows[1].code,"KeyG");
+ assert.equal(rows[1].name,"Barbed Wire");
+ assert.equal(utilityKeyPreview(plans,sentry,"MouseMiddle"),
+  "C4 / NITRO CELL · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,sentry,"KeyG"),
+  "BARBED WIRE · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,sentry,"Digit3"),null);
+ assert.equal(utilityKeyPreview(plans,sentry,"Digit4"),null);
+ assert.ok(rows.every(row=>row.fieldReady===false));
 });
