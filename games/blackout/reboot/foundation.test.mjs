@@ -174,6 +174,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('combatIntersections(raycaster,'));
  assert.ok(main.includes('combatIntersections(aimRaycaster,'));
  assert.equal(main.includes('raycaster.intersectObjects(\n  [...shootableSolids'),false);
+ const impact=read("reboot/impact-decals.js");
  assert.ok(impact.includes('poolForBox(surface)'));
  assert.ok(impact.includes('surface.add(mesh)'));
  assert.ok(impact.includes('box-face-bullet-holes'));
@@ -185,7 +186,6 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(view.includes("buildBX7Model"));
  assert.ok(view.includes('from "./impact-decals.js?v=reboot-012"'));
  assert.ok(view.includes("return createImpactDecals(THREE,scene)"));
- const impact=read("reboot/impact-decals.js");
  assert.ok(impact.includes("new THREE.InstancedMesh"));
  assert.ok(impact.includes("decals.frustumCulled=false"));
  assert.ok(impact.includes("polygonOffset:true"));
@@ -196,7 +196,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("surface.worldToLocal(pos)"));
  assert.ok(impact.includes("matrix.premultiply(surface.matrixWorld)"));
  assert.ok(impact.includes("geometry.computeBoundingBox"));
- assert.ok(html.includes("WALL HOLES NOW FACE-ALIGNED"));
+ assert.ok(html.includes("BOX-ONE & BOX-TWO NOW RECEIVE BULLET HOLES"));
  assert.ok(view.includes('from "./weapon-model.js?v=reboot-008"'));
  assert.ok(model.includes("OPTIC_CENTER"));
  assert.ok(model.includes("ExtrudeGeometry"));
