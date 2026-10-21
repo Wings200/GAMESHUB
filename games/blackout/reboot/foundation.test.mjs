@@ -297,7 +297,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.14: design plans are distinct from functioning equipment.
  assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
  assert.ok(html.includes('id="operator-plan-status"'));
- assert.ok(html.includes("other 11 gadgets are NOT implemented"));
+ assert.ok(html.includes("The other 11 gadgets remain unimplemented."));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
  assert.ok(main.includes('from "./operator-select.js?v=reboot-028"'));
