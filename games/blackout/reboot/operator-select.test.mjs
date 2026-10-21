@@ -161,3 +161,35 @@ test("duplicate and enemy-side equipment never survives the planning UI",()=>{
   assert.deepEqual(picker.plans.striker,[null,"claymore"]);
  }finally{globalThis.document=old;}
 });
+
+test("changing real picker utility dropdown emits HUD refresh with active operator and full plans",()=>{
+ const old=globalThis.document;
+ const {root,elements}=fixture(),updates=[];
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root,{
+   onPlanChange:(operator,plans)=>updates.push({id:operator.id,plans})
+  });
+  const first=elements["operator-slots"].children[0];
+  assert.equal(first.children[0].textContent,"SECONDARY SLOT 1 · KEY 3");
+  assert.equal(elements["operator-slots"].children[1].children[0].textContent,
+   "SECONDARY SLOT 2 · KEY 4");
+  const select=first.children[1];
+  select.value="flash";select.listeners.get("change")();
+  assert.equal(updates.length,1);
+  assert.equal(updates[0].id,"striker");
+  assert.deepEqual(updates[0].plans.striker,["flash",null]);
+  const duplicate=elements["operator-slots"].children[1].children[1];
+  duplicate.value="flash";duplicate.listeners.get("change")();
+  assert.equal(updates.length,1,"rejected duplicate must not change the live HUD");
+  elements["operator-defend"].click();
+  const sentry=elements["operator-slots"].children[0].children[1];
+  sentry.value="c4";sentry.listeners.get("change")();
+  assert.equal(updates.length,2);
+  assert.equal(updates[1].id,"sentry");
+  assert.deepEqual(updates[1].plans.sentry,["c4",null]);
+  assert.deepEqual(updates[1].plans.striker,["flash",null]);
+  assert.equal(picker.operator.id,"sentry");
+ }finally{globalThis.document=old;}
+});
