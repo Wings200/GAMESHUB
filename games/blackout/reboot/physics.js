@@ -74,8 +74,12 @@ export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES){
   state.sprinting=!state.crouched&&!state.prone&&input.sprint&&forward>0&&magnitude>0;
   const operatorMultiplier=Number.isFinite(input.speedMultiplier)?
     Math.max(.87,Math.min(1.13,input.speedMultiplier)):1;
+  // A physically placed floor hazard can impede movement without affecting
+  // the operator's permanent speed class or legacy no-hazard behavior.
+  const terrainMultiplier=Number.isFinite(input.terrainMultiplier)?
+    Math.max(.35,Math.min(1,input.terrainMultiplier)):1;
   const baseSpeed=(state.prone?SPEED.prone:state.crouched?SPEED.crouch:
-    state.sprinting?SPEED.sprint:SPEED.walk)*operatorMultiplier;
+    state.sprinting?SPEED.sprint:SPEED.walk)*operatorMultiplier*terrainMultiplier;
   const f=forward*normalized,r=right*normalized;
   const vx=(-Math.sin(state.yaw)*f+Math.cos(state.yaw)*r)*baseSpeed;
   const vz=(-Math.cos(state.yaw)*f-Math.sin(state.yaw)*r)*baseSpeed;
