@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-016",
-   "./reboot/style.css?v=reboot-016"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-017",
+   "./reboot/style.css?v=reboot-017"])assert.ok(html.includes(src));
  // Screen reference includes distinct HUD profiles but only player is playable.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -240,6 +240,29 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("softWall.reset(player)"));
  assert.ok(main.includes('event.code==="KeyT"'));
  assert.ok(main.includes("softWall.tick(dt)"));
+ // V0.11 metal reinforcement must be additive: preserve V0.9 and V0.10.
+ assert.ok(main.includes('from "./reinforcement.js?v=reboot-017"'));
+ assert.ok(main.includes('from "./reinforcement-view.js?v=reboot-017"'));
+ assert.ok(main.includes("createReinforcementStation(THREE,scene)"));
+ assert.ok(main.includes("...reinforcement.blockers()"));
+ assert.ok(main.includes("...reinforcement.shootables()"));
+ assert.ok(main.includes("reinforcement.steelImpact(outcome.hit)"));
+ assert.ok(main.includes("reinforcement.step({"));
+ assert.ok(main.includes("reinforcement.remove(player)"));
+ assert.ok(main.includes('event.code==="KeyY"'));
+ assert.ok(main.includes('keys.has("KeyF")'));
+ assert.ok(main.includes("reinforcement.tick(dt)"));
+ assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
+ for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
+  assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
+ assert.ok(css.includes(".reinforce-prompt"));
+ const shield=read("reboot/reinforcement-view.js");
+ assert.ok(shield.includes("new THREE.BoxGeometry"));
+ assert.ok(shield.includes("core.userData.reinforcementShield=true"));
+ assert.ok(shield.includes("shootables:()=>state.installed?[core]:[]"));
+ assert.ok(shield.includes("root.scale.y="));
+ assert.ok(shield.includes("function steelImpact(hit)"));
+
  assert.ok(main.includes('from "./soft-wall.js?v=reboot-016"'));
  assert.ok(main.includes('from "./soft-wall-view.js?v=reboot-016"'));
  for(const id of ["soft-wall-readout","soft-wall-removed","soft-wall-status"]){
