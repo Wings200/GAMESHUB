@@ -2,6 +2,7 @@
 // Driving uses drone-physics.js; this is only geometry/presentation.
 export function createDroneView(THREE,scene){
  const root=new THREE.Group();root.name="BLACKOUT RECON R-1 wheeled drone";
+ root.visible=false; // No unlaunched drone model at world origin.
  const bodyMat=new THREE.MeshStandardMaterial({color:0x30434f,metalness:.62,roughness:.48});
  const armor=new THREE.MeshStandardMaterial({color:0x6e8187,metalness:.7,roughness:.39});
  const rubber=new THREE.MeshStandardMaterial({color:0x141d22,metalness:.06,roughness:.91});
