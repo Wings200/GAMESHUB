@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.14.1 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.14.2 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-026">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-027">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.14.1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.14.2</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 014.1</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 014.2</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">OPERATORS · SECONDARY EQUIPMENT PLANNING.</p>
-      <p class="description">V0.14 TWO-SLOT LOADOUT DESIGN · Browse six attacker and six defender secondary-gadget concepts. Choose TWO DIFFERENT gadget plans per playable operator. Choices are remembered while you switch teams in this session, but they are NOT usable equipment yet. We will build, animate, and validate each real gadget separately in the Testing Range. Striker keeps recon drones; Sentry keeps reinforcement access and has no attacker drones.</p>
+      <p class="description">V0.14.2 GADGET KEYBINDS · Special gadget uses middle mouse click (scroll-wheel click); normal gadget uses G. Browse six attacker and six defender gadget concepts. Choose TWO DIFFERENT gadget plans per playable operator. Choices are remembered while you switch teams in this session, but they are NOT usable equipment yet. We will build, animate, and validate each real gadget separately in the Testing Range. Striker keeps recon drones; Sentry keeps reinforcement access and has no attacker drones.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
@@ -48,7 +48,7 @@
             <div><strong>SPEED</strong><div id="operator-speed" class="operator-pips" aria-label="2 out of 3"></div></div>
             <div><strong>ARMOR</strong><div id="operator-armor" class="operator-pips" aria-label="2 out of 3"></div></div>
           </div>
-          <div class="operator-loadout-head">SECONDARY GADGET DESIGN · TWO SLOTS PER GENERALIST</div>
+          <div class="operator-loadout-head">SPECIAL (MIDDLE CLICK) + NORMAL (G) · TWO GADGETS</div>
           <div id="operator-slots" class="operator-slots"></div>
           <p id="operator-plan-status" class="operator-plan-status" role="status">DESIGN PREVIEW ONLY · NO EQUIPMENT IS FIELD-READY</p>
           <p class="operator-future-note">This is a planning screen, NOT functioning equipment. Real gadgets will be activated only after individual mechanics and browser tests. Future specialists have one signature plus one secondary slot.</p>
@@ -135,16 +135,16 @@
     </div>
 
     <div class="siege-gear" aria-label="Weapon and equipment">
-      <div id="utility-hud" class="siege-equipment utility-hud" aria-label="Current operator secondary equipment planning and reserved keys">
-        <div class="siege-gadget utility-hud-slot" id="utility-slot-3" aria-label="Utility key 3, unassigned">
-          <kbd id="utility-key-3">3</kbd>
-          <span class="utility-hud-copy"><strong id="utility-name-3">EMPTY SLOT</strong><small id="utility-status-3">UNASSIGNED</small></span>
+      <div id="utility-hud" class="siege-equipment utility-hud" aria-label="Current operator special and normal gadget plan">
+        <div class="siege-gadget utility-hud-slot" id="utility-slot-special" aria-label="Special gadget, middle mouse click, unassigned">
+          <kbd id="utility-key-special" title="Click the scroll wheel">MMB</kbd>
+          <span class="utility-hud-copy"><strong id="utility-name-special">EMPTY SLOT</strong><small id="utility-status-special">UNASSIGNED</small></span>
         </div>
-        <div class="siege-gadget utility-hud-slot" id="utility-slot-4" aria-label="Utility key 4, unassigned">
-          <kbd id="utility-key-4">4</kbd>
-          <span class="utility-hud-copy"><strong id="utility-name-4">EMPTY SLOT</strong><small id="utility-status-4">UNASSIGNED</small></span>
+        <div class="siege-gadget utility-hud-slot" id="utility-slot-normal" aria-label="Normal gadget, G, unassigned">
+          <kbd id="utility-key-normal">G</kbd>
+          <span class="utility-hud-copy"><strong id="utility-name-normal">EMPTY SLOT</strong><small id="utility-status-normal">UNASSIGNED</small></span>
         </div>
-        <small id="utility-hud-note">GADGET KEYS 3 / 4 · PLANNING PREVIEW ONLY</small>
+        <small id="utility-hud-note">SPECIAL MMB · NORMAL G · PREVIEW ONLY</small>
       </div>
       <div class="siege-weapon-stack">
         <div class="siege-weapon-row active">
@@ -254,6 +254,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-026"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-027"></script>
 </body>
 </html>
