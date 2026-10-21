@@ -86,7 +86,7 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
  const matrix=new THREE.Matrix4();
  const scale=new THREE.Vector3();
  const pos=new THREE.Vector3();
- let cursor=0,total=0,lastFace="NONE",lastObjectId="NONE";
+ let cursor=0,total=0,wallTotal=0,lastFace="NONE",lastObjectId="NONE";
  function mark(hit,target=false){
   // Target dummies despawn on hit: a world-stuck decal would float when they do.
   if(target||!hit?.point||!hit?.object||!hit.face?.normal)return false;
@@ -146,7 +146,8 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
    matrix.premultiply(surface.matrixWorld);
    decals.setMatrixAt(cursor,matrix);
    cursor=(cursor+1)%maximum;
-   decals.count=Math.min(total+1,maximum);
+   wallTotal++;
+   decals.count=Math.min(wallTotal,maximum);
    decals.instanceMatrix.needsUpdate=true;
   }
   total++;
@@ -156,7 +157,7 @@ export function createImpactDecals(THREE,scene,{limit=MAX_DECALS}={}){
   mark,
   tick(){/* Deliberately permanent. No 9-second timeout or per-frame scans. */},
   clear(){
-   cursor=total=0;decals.count=0;decals.instanceMatrix.needsUpdate=true;
+   cursor=total=wallTotal=0;decals.count=0;decals.instanceMatrix.needsUpdate=true;
    for(const p of boxPools.values()){
     p.cursor=p.total=0;p.mesh.count=0;p.mesh.instanceMatrix.needsUpdate=true;
    }
