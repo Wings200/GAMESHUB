@@ -13,7 +13,7 @@ import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-0
 import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-016";
 import {BARRICADE} from "./barricade.js?v=reboot-015";
-import {createBarricadeStation} from "./barricade-view.js?v=reboot-015";
+import {createBarricadeStation} from "./barricade-view.js?v=reboot-029";
 import {SOFT_WALL} from "./soft-wall.js?v=reboot-016";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-016";
 import {REINFORCEMENT} from "./reinforcement.js?v=reboot-017";
@@ -284,6 +284,8 @@ function setControlMode(nextMode){
  crosshair.classList.toggle("hidden",!active||controlMode!=="player");
  firing=false;aimHeld=false;reloadPressed=false;keys.clear();
  droneBoostPressed=false;droneJumpPressed=false;
+ // Never leave a first-person fist floating over the drone camera.
+ meleeView.cancel();
  // Changing devices must never complete a partially held F reinforcement.
  barricadeBuildTime=0;
  reinforcement.step({player,holding:false,dt:0});
@@ -469,9 +471,9 @@ document.addEventListener("keydown",event=>{
    shotNotice.textContent=result.reason;
    shotNoticeLeft=1.45;
  }
- if(event.code==="KeyV"&&!event.repeat){
+ if(event.code==="KeyH"&&!event.repeat){
    shotEffects.clear();
-   hint.textContent="BULLET HOLES CLEARED · NEW IMPACTS WILL PERSIST";
+   hint.textContent="BULLET HOLES CLEARED · PRESS H AGAIN TO CLEAR";
  }
  if(event.code==="KeyR"&&!event.repeat)reloadPressed=true;
  if(event.code==="KeyM"&&!event.repeat){
