@@ -63,6 +63,12 @@ h1 span{color:#74d5c9}h1 sup{position:relative;top:-2.5em;left:.2em;font-size:.1
 @media(max-width:850px){.menu{grid-template-columns:1fr}.menu-content{padding:75px 7vw 45px}.menu-aside{padding:35px 7vw}.hud-upper{font-size:9px}.controls{width:100%;margin:3px 0 0}.hint{white-space:normal;text-align:center;max-width:90vw}h1{font-size:clamp(58px,13vw,100px)}}
 
 /* BX-7 prototype: compact range feedback above the weapon status readouts. */
+.ballistics-debug{position:fixed;top:93px;right:24px;z-index:8;
+ max-width:min(520px,calc(100vw - 48px));padding:10px 14px;
+ background:#041119e6;border:1px solid #4be8cb;
+ color:#adffdb;font:700 12px/1.5 ui-monospace,monospace;
+ letter-spacing:.05em;pointer-events:none;text-align:right;
+ box-shadow:0 4px 20px #0008}
 .shot-notice{position:absolute;bottom:132px;left:50%;transform:translateX(-50%);border:1px solid #66f1c5;background:#071e22db;color:#baffdf;padding:12px 22px;letter-spacing:.14em;font-size:12px;font-weight:900;text-align:center;pointer-events:none;box-shadow:0 7px 22px #0008}
 #ammo{font-variant-numeric:tabular-nums}
 #weapon-status{font-size:14px;color:#9fe8df}
