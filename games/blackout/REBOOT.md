@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.15.1
+# BLACKOUT — Clean Reboot V0.15.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,17 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.15.2 · WIRE IS PUNCH-ONLY; ENEMY ATTACKERS TAKE 10HP EVERY 0.5S**
+- Explicit user correction: **FOR THE ENEMY TEAM ONLY**. Sentry DEFENSE deploys wire (2 gadgets) in the solo Training Range. On an active enemy (currently Striker ATTACK) physically entering a defender coil, wire **slows movement by 52% and deals 10 HP per full 0.5 seconds of continuous grounded contact**. Friendly defenders (including Sentry) are entirely IMMUNE to slow and damage. The range preserves placed wire when switching teams to test this despite absent 5v5 networking.
+- Health was previously an invulnerable static 125 display. This release introduces a genuine bounded `wireHealth` state starting at 125 and true live HUD number/status segments. One damage tick arrives only after 0.5s; additional half-second intervals repeat until the attacker leaves the wire. Any exit, jump clear (>0.36m), wire destruction, or switch to defense resets the contact timer; excess elapsed time carries correctly between game frames while standing within a coil.
+- At **0 HP** the training attacker's movement and attacks freeze; press **P** to reset HP to 125 at spawn, keeping previously placed wire intact. Switching operators resets the active training life to full HP. Pausing to ESC does not keep accumulating wire damage. No other weapons/gadgets currently produce character HP damage; no multiplayer deaths/round elimination simulated.
+- BARBED WIRE IS **BULLET-IMMUNE**. Gun shot raycasting excludes wire (and cannot reach `damageWire`), so firing through it never damages or removes the device. It is still a physical model hit by the dedicated, close-range V melee raycaster. **Two V punches** against the wire eliminate the mesh and its movement/damage field. Wooden barricades remain destructible after 3 V hits and still take bullet damage by plank as before.
+- Code: pure `barbed-wire.js` supplies enemyInWire/wireTerrainMultiplier/newWireHealth/tickWireHealth. `main.js` owns faction guard, real frame-based ticking (while locked in player mode), health HUD/segments, health gate and P respawn. `index.html` has non-fake live health IDs and accurate enemy-only game instructions. No new equipment/specialist, match phase, map or AI added. Existing drones (attacker only), reinforcements (defender only), movement, weapon ADS/audio, barricades and melee remain intact.
+- Automated CI: `156 tests passed · 0 failed` at HEAD before docs update (`de550b907fd39c9053535bc0bf23549f7651793e`). Enemy-only tests check exact 0.5s ticks, friendly immunity, contact interruptions, health clamping and melee destruction; full foundation tests assert no firearm access to wire and live HP UI. **User must still browser test** before approving next gadget.
+- Browser test: hard refresh; Sentry choose wire on G; place coil; walk onto it as Sentry: NO slowdown/HP loss. ESC choose Striker; step on the existing coil: slowing + 10 HP each 0.5s; step off: HP stops draining. Shoot coil: remains. Press V TWICE close up: wire disappears and no longer injures. At 0 health, P respawns 125.
+
+
 
 **2026-10-21 / V0.15.1 · TRUE V MELEE ATTACK + reliable wire bullet collision**
 - User reports V0.15 barbed wire "doesn't do damage" and requests V punch/knife melee like Siege: **3 hits destroy barricades**, **2 hits destroy barbed wire**, with extendable interaction to more destructibles later. Siege-style barbed wire itself should *slow* rather than subtract player HP; Testing Range still has no player health damage. Previous shooting failure came from the wire raycast targeting only one barely visible central hitbox. V0.15.1 labels EVERY rendered metal strand/post/coil and core as an independent shootable face, grouped under the same deployed wire ID.
