@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {BARRICADE,createBarricadeState,barricadeDamage,barricadeBlockers,
- boardBounds,barricadeRebuild,canInteractWithBarricade,barricadeStatus} from "./barricade.js";
+ boardBounds,barricadeRebuild,canInteractWithBarricade,barricadeStatus,
+ barricadeMeleeDamage,BARRICADE_MELEE_HITS} from "./barricade.js";
 import {initialPlayer,canOccupy,stepPlayer,TEST_OBSTACLES} from "./physics.js";
 test("six boards each require two independent bullet hits; no whole-door HP",()=>{
  let s=createBarricadeState();
@@ -65,4 +66,38 @@ test("F rebuilds all boards, with proximity and no trapping in doorway",()=>{
  assert.equal(barricadeStatus(state),"INTACT");
  assert.equal(state.rebuilds,1);
  assert.equal(barricadeRebuild(state),state,"intact door should not rebuild");
+});
+
+test("3 V melee hits break the FULL barricade, all six boards and collision",()=>{
+ let state=createBarricadeState();
+ assert.equal(BARRICADE_MELEE_HITS,3);
+ for(let hits=1;hits<=3;hits++){
+  const r=barricadeMeleeDamage(state);
+  assert.equal(r.handled,true);
+  assert.equal(r.hits,hits);
+  assert.equal(r.broken,hits===3);
+  state=r.state;
+  if(hits<3){
+   assert.equal(barricadeStatus(state),"INTACT");
+   assert.equal(barricadeBlockers(state).length,9);
+  }
+ }
+ assert.equal(state.boards.filter(v=>v===0).length,6);
+ assert.equal(state.broken,6);
+ assert.equal(barricadeStatus(state),"OPEN");
+ assert.equal(barricadeBlockers(state).length,3);
+ assert.equal(canOccupy(BARRICADE.x,0,BARRICADE.z,1.78,
+  [...TEST_OBSTACLES,...barricadeBlockers(state)]),true);
+ assert.equal(barricadeMeleeDamage(state).handled,false);
+ state=barricadeRebuild(state);
+ assert.equal(state.meleeHits,0);
+ assert.equal(state.boards.every(hp=>hp===2),true);
+ assert.equal(barricadeMeleeDamage(state).hits,1);
+});
+test("gun-damaged barricades still break in three melee hits, preserving rifle board HP",()=>{
+ let state=barricadeDamage(createBarricadeState(),3).state;
+ assert.equal(state.boards[3],1);
+ for(let i=0;i<3;i++)state=barricadeMeleeDamage(state).state;
+ assert.ok(state.boards.every(hp=>hp===0));
+ assert.equal(barricadeStatus(state),"OPEN");
 });
