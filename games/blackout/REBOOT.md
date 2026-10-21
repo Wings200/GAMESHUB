@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.7.4
+# BLACKOUT — Clean Reboot V0.8
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.8 · User-requested close-to-Siege drill HUD:**
+- Replaced the large V0.7.x BLACKOUT prototype diagnostics dashboard with the user's precise UI reference screen composition: light upper-left "Eliminate 0/4 targets in TEST RANGE" rectangular objective with tickbox; small map below it; compact operator-like original B/O crest and real 60-minute countdown centered at the very top; FPS and tiny training tips upper-right.
+- Bottom: white 110/110 *training placeholder* health readout and segmented health bar bottom-left (no damage system exists, clearly labeled DAMAGE DISABLED), minimal quick-access key hints left of the compass, live location and circular compass centered bottom, and large contrasting active-primary ammo strip / secondary locked row / utility placeholders bottom-right.
+- All HUD values with working backing systems are live. Timer counts only while pointer locked and training (not during pause); ammo and reserve use original weapon; 4-target objective counts unique dummy IDs (and marks completed only when all four are struck), compass uses camera yaw; training-area names use actual test object locations; minimap draws physical collision stations, target positions, and moving/rotating player position; FPS based on frame timings. No fake multiplayer, team, CPU/GPU or network telemetry.
+- Kept current gun model, firing timing, original layered audio, Q/E leaning, movement, physics, decals, target hits, and B diagnostic overlay. Top navigation hides during the range. No Siege logos/copyrighted icon assets were imported; this is original BLACKOUT-themed UI with near-reference layout proportions, made from CSS/SVG.
+- V0.8 live values and layout tested in source/CI; actual in-browser visual feedback still required. Does not add real health/damage, equipment, alternate guns, objectives, multiplayer, or map buildings.
+
 
 **2026-10-20 / V0.7.4 · Missing small-box bullet holes in 35s user video:**
 - User clarified previous video was specifically demonstrating **no marks on test boxes**. Review of exact captured frames shows BOX-TWO did get visible holes while BOX-ONE displayed `SHOT BLOCKED · BOX-ONE` without visible marks. The old response misinterpreted this as only a wall hole quality issue.
