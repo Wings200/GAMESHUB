@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-042",
+ for(const src of ["./reboot/main.js?v=reboot-043",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -452,14 +452,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("reinforcement.step({player,holding:false,dt:0})"));
  assert.ok(read("reboot/nitro-view.js").includes("pickupTarget.userData.c4PickupId=device.id"));
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
- // V0.18.2 · only FRAG is nerfed structurally, not IMPACT or C4.
- assert.ok(main.includes('from "./blast-policy.js?v=reboot-042"'));
+ // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
+ assert.ok(main.includes('from "./blast-policy.js?v=reboot-043"'));
  assert.ok(main.includes("resolveStructuralBlast(label,{"));
  assert.ok(main.includes("woodBlast:()=>barricade.blastAt(blast)"));
- assert.ok(main.includes('label==="FRAG"?"NO STRUCTURAL DAMAGE"'));
+ assert.ok(main.includes('label==="FRAG"?wood+" BOARDS · SOFT WALL INTACT"'));
+ assert.ok(read("reboot/blast-policy.js").includes('["FRAG","IMPACT","C4"]'));
  assert.ok(read("reboot/blast-policy.js").includes('["IMPACT","C4"]'));
- assert.ok(html.includes("Impact Grenades and C4 STILL destroy destructible walls"));
- assert.ok(html.includes("Frag Grenades do not damage structures"));
+ assert.ok(html.includes("Frag Grenades splinter wooden barricades"));
+ assert.ok(html.includes("Frag Grenades cannot damage gypsum walls"));
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes("gypsumBlast:()=>softWall.blastAt(blast)"));

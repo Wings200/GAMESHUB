@@ -1,40 +1,44 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {STRUCTURAL_BLASTS,canDamageStructures,resolveStructuralBlast} from "./blast-policy.js";
+import {BARRICADE_BLASTS,SOFT_WALL_BLASTS,canDamageBarricades,
+ canDamageSoftWalls,resolveStructuralBlast} from "./blast-policy.js";
 import {FRAG} from "./frag.js";
 import {IMPACT} from "./impact.js";
 import {NITRO,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 
-test("only impact and C4 are structural explosions; frag never breaks walls",()=>{
- assert.deepEqual(STRUCTURAL_BLASTS,["IMPACT","C4"]);
- for(const id of ["FRAG","FLASH","SMOKE","invalid",null,undefined]){
-  assert.equal(canDamageStructures(id),false);
+test("frag destroys barricades but not soft walls; impact/C4 destroy both",()=>{
+ assert.deepEqual(BARRICADE_BLASTS,["FRAG","IMPACT","C4"]);
+ assert.deepEqual(SOFT_WALL_BLASTS,["IMPACT","C4"]);
+ for(const label of ["FRAG","IMPACT","C4"])assert.equal(canDamageBarricades(label),true);
+ assert.equal(canDamageSoftWalls("FRAG"),false);
+ assert.equal(canDamageSoftWalls("IMPACT"),true);
+ assert.equal(canDamageSoftWalls("C4"),true);
+ for(const label of ["FLASH","SMOKE","invalid",null,undefined]){
+  assert.equal(canDamageBarricades(label),false);
+  assert.equal(canDamageSoftWalls(label),false);
  }
- assert.equal(canDamageStructures("IMPACT"),true);
- assert.equal(canDamageStructures("C4"),true);
 });
-test("frag structure callbacks are never invoked, even when directly beside wood and gypsum",()=>{
+test("frag calls barricade destruction on every blast but never gypsum destruction",()=>{
  let wooden=0,soft=0;
  const actions={woodBlast:()=>{wooden++;return 5;},
   gypsumBlast:()=>{soft++;return 24;}};
  for(let i=0;i<3;i++){
-  assert.deepEqual(resolveStructuralBlast("FRAG",actions),{wood:0,gypsum:0});
+  assert.deepEqual(resolveStructuralBlast("FRAG",actions),{wood:5,gypsum:0});
  }
- assert.equal(wooden,0);
+ assert.equal(wooden,3);
  assert.equal(soft,0);
 });
-test("impact still breaks both wood and unreinforced gypsum",()=>{
+test("impact grenade still damages wood and unreinforced soft walls",()=>{
  let wooden=0,soft=0;
- const result=resolveStructuralBlast("IMPACT",{
+ assert.deepEqual(resolveStructuralBlast("IMPACT",{
   woodBlast:()=>{wooden++;return 3;},
   gypsumBlast:()=>{soft++;return 8;}
- });
- assert.deepEqual(result,{wood:3,gypsum:8});
+ }),{wood:3,gypsum:8});
  assert.equal(wooden,1);
  assert.equal(soft,1);
 });
-test("impact and C4 cannot breach reinforced gypsum and still damage unprotected wood",()=>{
- for(const label of ["IMPACT","C4"]){
+test("reinforcement blocks gypsum destruction without preventing wooden barricade splintering",()=>{
+ for(const label of ["FRAG","IMPACT","C4"]){
   let soft=0;
   assert.deepEqual(resolveStructuralBlast(label,{
    woodBlast:()=>6,
@@ -44,16 +48,24 @@ test("impact and C4 cannot breach reinforced gypsum and still damage unprotected
   assert.equal(soft,0);
  }
 });
-test("frag retains lethal player damage and falloff after structural nerf",()=>{
- const frag={x:0,y:1,z:0,radius:FRAG.radius,
+test("flash/smoke never call destruction functions even when next to destructibles",()=>{
+ for(const label of ["FLASH","SMOKE"]){
+  assert.deepEqual(resolveStructuralBlast(label,{
+   woodBlast:()=>{throw new Error("no barricade blast allowed");},
+   gypsumBlast:()=>{throw new Error("no soft wall blast allowed");}
+  }),{wood:0,gypsum:0});
+ }
+});
+test("frag still causes lethal player damage and radial falloff independently of wall policy",()=>{
+ const blast={x:0,y:1,z:0,radius:FRAG.radius,
   damage:FRAG.blastDamage,fullDamageRadius:FRAG.fullDamageRadius,
   lethalRadius:FRAG.lethalRadius};
- assert.equal(nitroBlastIsLethal(frag,{x:.5,y:1,z:0}),true);
- assert.equal(nitroBlastDamage(frag,{x:.5,y:1,z:0}),FRAG.blastDamage);
- assert.ok(nitroBlastDamage(frag,{x:FRAG.radius-.4,y:1,z:0})>0);
- assert.equal(nitroBlastDamage(frag,{x:FRAG.radius,y:1,z:0}),0);
+ assert.equal(nitroBlastIsLethal(blast,{x:.5,y:1,z:0}),true);
+ assert.equal(nitroBlastDamage(blast,{x:.5,y:1,z:0}),FRAG.blastDamage);
+ assert.ok(nitroBlastDamage(blast,{x:FRAG.radius-.4,y:1,z:0})>0);
+ assert.equal(nitroBlastDamage(blast,{x:FRAG.radius,y:1,z:0}),0);
 });
-test("impact retains the same 2m radius, 60 HP peak and target damage",()=>{
+test("impact stays 2m radius, 60 HP max and C4 keeps its own stronger blast",()=>{
  const impact={x:0,y:1,z:0,radius:IMPACT.radius,
   damage:IMPACT.blastDamage,fullDamageRadius:IMPACT.fullDamageRadius};
  assert.equal(IMPACT.radius,2);

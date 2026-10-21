@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.18.2 · FRAG combat only; Impact/C4 structural breaching intact
+    name: Reboot V0.18.3 · Frags break barricades only; Impact/C4 also breach walls
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

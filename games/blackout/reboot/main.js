@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.18.2 — frags are combat-only; impacts and C4 still breach
+// BLACKOUT REBOOT V0.18.3 — frags break barricades, not soft walls; impact/C4 breach both
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -45,7 +45,7 @@ import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040
 import {THROW_PREVIEW_IDS,canPreviewThrow,traceThrownGadget}
  from "./throw-preview.js?v=reboot-041";
 import {createThrowPreviewView} from "./throw-preview-view.js?v=reboot-041";
-import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-042";
+import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-043";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -278,8 +278,8 @@ function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
  shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
  // Explosions still damage BOTH sides and targets, including the thrower.
- // FRAG is combat-only: it cannot damage wood or gypsum. IMPACT and C4
- // still breach wood and unreinforced soft walls; steel remains protected.
+ // FRAG damages wood barricades but never gypsum soft walls. IMPACT
+ // and C4 damage both wood and unreinforced gypsum; steel stays intact.
  const {wood,gypsum}=resolveStructuralBlast(label,{
   woodBlast:()=>barricade.blastAt(blast),
   gypsumBlast:()=>softWall.blastAt(blast),
@@ -307,7 +307,8 @@ function applyGadgetBlast(blast,label="C4"){
   }
  }
  return label+" DETONATED · "+hits+" TARGETS · "+
-  (label==="FRAG"?"NO STRUCTURAL DAMAGE":wood+" BOARDS · "+gypsum+" GYPSUM CELLS")+
+  (label==="FRAG"?wood+" BOARDS · SOFT WALL INTACT":
+   wood+" BOARDS · "+gypsum+" GYPSUM CELLS")+
   (playerEliminated?" · YOU WERE ELIMINATED":
    damageTaken?" · SELF -"+damageTaken+" HP":"");
 }
@@ -1228,5 +1229,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.18.2 frags damage HP only; impacts and C4 still breach walls",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.18.3 frags break barricades but not soft walls; impacts/C4 breach both",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

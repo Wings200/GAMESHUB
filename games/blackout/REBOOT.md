@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.18.2
+# BLACKOUT — Clean Reboot V0.18.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.18.3 · FRAG GRENADES DESTROY WOOD BARRICADES, NOT WALLS**
+- User clarified desired balance: **Frag Grenades can damage and destroy wooden barricades but CANNOT damage soft gypsum walls**. This distinction leaves a meaningful role for future dedicated Soft Breach Charges. The V0.18.2 total structural immunity for Frags is superseded by this rule.
+- Impact Grenades and C4/Nitro still destroy **both** wooden barricades and unreinforced gypsum; reinforced steel remains immune.
+- The shared combat blast handler now invokes wooden barricade destruction for FRAG/IMPACT/C4, but invokes gypsum destruction **only** for IMPACT/C4. Full Frag player and target damage, 3.2s fuse, throwable trajectory, visuals and inventory are unchanged.
+- Tests check permitted destruction callbacks, forbid Frag gypsum damage, verify impacts/C4 still break both, and preserve human/target blast damage. Browser visual gameplay testing remains needed.
 
 **2026-10-21 / V0.18.2 · FRAG GRENADE WALL-DAMAGE NERF, IMPACT WALL BREAKING PRESERVED**
 - User corrected an earlier misunderstanding: **Impact Grenades must CONTINUE damaging wooden barricades and soft gypsum walls**, but normal **Frag Grenades must NOT deal any damage to walls or barricades**. This sets up a clear future purpose for the dedicated Soft Breach Charge while preserving the defender Impact Grenade utility.
