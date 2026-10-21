@@ -71,3 +71,26 @@ test("wire damage checks and placement are not available through misleading zero
  }
  assert.equal(damageWire(s,1,1).remainingHP,2);
 });
+
+test("V melee damage is two hits to remove wire; rifle damage stays three hits",()=>{
+ const p=start(),placed=placeWire(newWireState(),p,[]);
+ let s=placed.state;
+ const a=damageWire(s,placed.device.id,2);
+ assert.equal(a.handled,true);
+ assert.equal(a.destroyed,false);
+ assert.equal(a.remainingHP,1);
+ assert.equal(wireTerrainMultiplier(a.state,{...p,z:6.35}),WIRE.slowingMultiplier);
+ const b=damageWire(a.state,placed.device.id,2);
+ assert.equal(b.handled,true);
+ assert.equal(b.destroyed,true);
+ assert.equal(b.remainingHP,0);
+ assert.equal(wireTerrainMultiplier(b.state,{...p,z:6.35}),1);
+ assert.equal(b.state.charges,1);
+ assert.equal(damageWire(b.state,placed.device.id,2).handled,false);
+ let gun=placed.state;
+ for(let i=0;i<2;i++){
+  gun=damageWire(gun,placed.device.id,1).state;
+  assert.equal(gun.devices[0].hp,WIRE.hp-i-1);
+ }
+ assert.equal(damageWire(gun,placed.device.id,1).destroyed,true);
+});
