@@ -315,7 +315,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.13.2: every steel interaction must check the active faction.
  assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones}'));
  assert.ok(main.includes('const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player)'));
- assert.ok(main.includes('player,holding:canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
+ assert.ok(main.includes('player,holding:wireHealth.hp>0&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
  assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)'));
  assert.ok(main.includes('reinforcePrompt.classList.toggle("hidden",!reinfNearby)'));
 
@@ -382,7 +382,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
  assert.ok(html.includes("<kbd>V</kbd> PUNCH WIRE TWICE"));
- assert.ok(html.includes("THREE V hits break ALL SIX boards"));
+ assert.ok(html.includes("F still rebuilds a wooden barricade after 3 V punches"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));
