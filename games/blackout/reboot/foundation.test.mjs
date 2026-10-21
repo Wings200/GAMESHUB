@@ -123,9 +123,9 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-007",
-   "./reboot/style.css?v=reboot-001"])assert.ok(html.includes(src));
- assert.ok(main.includes('from "./physics.js?v=reboot-003"'));
+ for(const src of ["./reboot/main.js?v=reboot-008",
+   "./reboot/style.css?v=reboot-008"])assert.ok(html.includes(src));
+ assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.match(main,/stepPlayer\(player,input,dt\)/);
@@ -141,7 +141,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./legacy-audio.js?v=reboot-006"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
- assert.ok(main.includes('from "./weapon-view.js?v=reboot-007"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-008"'));
  assert.ok(main.includes("legacyShotCone(shot"));
  assert.ok(main.includes("cycleLegacyFire(weapons,now"));
  assert.ok(main.includes('shotAudio.play("fire")'));
@@ -153,6 +153,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("aimState(aimHeld,aimMix).accurate"));
  assert.ok(main.includes('from "./aim-resolver.js?v=reboot-007"'));
  assert.ok(main.includes("firstHitType(intersections,activeTargets)"));
+ assert.ok(main.includes('from "./shot-ray.js?v=reboot-008"'));
+ assert.ok(main.includes("shotScreenPoint("));
+ assert.ok(main.includes("weaponView.reticle.getWorldPosition(opticWorld)"));
+ assert.ok(main.includes("opticNdc.copy(opticWorld).project(camera)"));
+ assert.ok(main.includes("raycaster.setFromCamera({x:screen.x+cone.x,y:screen.y+cone.y},camera)"));
+ assert.ok(main.includes('weaponView.update(dt,aimMix,gunKick'));
+ assert.ok(main.indexOf("weaponView.update(dt,aimMix,gunKick")<
+    main.indexOf("const fired=cycleLegacyFire(weapons,now"));
+ assert.ok(html.includes('id="ballistics-debug"'));
  assert.ok(main.includes("raycaster.setFromCamera({x:cone.x,y:cone.y},camera)"));
  assert.ok(main.includes("SHOT BLOCKED"));
  assert.ok(html.includes("ADS FIX ACTIVE"));
@@ -162,6 +171,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.match(main,/FootstepAudio/);
  const view=read("reboot/weapon-view.js"),model=read("reboot/weapon-model.js");
  assert.ok(view.includes("buildBX7Model"));
+ assert.ok(view.includes('from "./weapon-model.js?v=reboot-008"'));
  assert.ok(model.includes("OPTIC_CENTER"));
  assert.ok(model.includes("ExtrudeGeometry"));
  assert.match(physics,/export function canOccupy/);
