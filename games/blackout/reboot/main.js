@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.15 — usable defender barbed wire, shooting and slowdown
+// BLACKOUT REBOOT V0.15.1 — V punch melee breaks barricades in 3 and wire in 2
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -26,7 +26,9 @@ import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from
 import {createOperatorPicker} from "./operator-select.js?v=reboot-028";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-028";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier} from "./barbed-wire.js?v=reboot-028";
-import {createWireView} from "./barbed-wire-view.js?v=reboot-028";
+import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
+import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
+import {createMeleeView} from "./melee-view.js?v=reboot-029";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -137,6 +139,8 @@ const droneViews=[]; // physical model for each deployed drone
 const wireViews=new Map(); // deployed physical barbed-wire models
 let wireState=newWireState();
 const weaponView=createWeaponView(THREE,camera,scene);
+const meleeView=createMeleeView(THREE,camera);
+const meleeRaycaster=new THREE.Raycaster();
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -156,7 +160,7 @@ const completedTargets=new Set();
 let drillElapsedSeconds=0,fpsSmoothed=60;
 let shotNoticeLeft=0;
 let leanTarget=0,leanAmount=0;
-let debugShots=false,barricadeBuildTime=0;
+let debugShots=false,barricadeBuildTime=0,lastMeleeAt=-Infinity;
 let controlMode="player",drone=null,droneRoster=newDroneRoster("range"),droneBoostPressed=false,droneJumpPressed=false;
 let activeOperator=operatorById("striker");
 const opticWorld=new THREE.Vector3(),opticNdc=new THREE.Vector3();
@@ -230,7 +234,42 @@ function usePlannedGadget(code){
 }
 function shootableWire(){
  return wireState.devices.filter(d=>d.hp>0)
-   .map(d=>wireViews.get(d.id)?.hitbox).filter(Boolean);
+  .flatMap(d=>wireViews.get(d.id)?.shootables||[]);
+}
+function strikeMelee(now){
+ if(!canPunch(now,lastMeleeAt)||!meleeView.trigger())return;
+ lastMeleeAt=now;
+ firing=false;
+ camera.updateMatrixWorld(true);
+ meleeRaycaster.setFromCamera({x:0,y:0},camera);
+ meleeRaycaster.far=MELEE.range;
+ const solids=[...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire()];
+ const hits=combatIntersections(meleeRaycaster,solids,[]);
+ const selected=selectedMeleeTarget(hits);
+ let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
+ if(selected.kind==="wire"){
+  // 3 rifle shots or 2 melee strikes: damage 2 vs wire's 3 HP.
+  const result=damageWire(wireState,selected.id,2);
+  if(result.handled){
+   wireState=result.state;
+   wireViews.get(selected.id)?.sync(wireState.devices.find(d=>d.id===selected.id));
+   description=result.destroyed?"BARBED WIRE CUT · REMOVED":
+    "BARBED WIRE STRUCK · HIT AGAIN TO DESTROY";
+   shotAudio.play("impact");
+  }
+ }else if(selected.kind==="barricade"){
+  const result=barricade.meleeHit(hits[0]);
+  if(result.handled){
+   description=result.broken?"BARRICADE KICKED OPEN · ALL BOARDS DESTROYED":
+    "BARRICADE MELEE "+result.hits+"/3 · "+result.remaining+" HITS LEFT";
+   shotAudio.play("impact");
+  }
+ }else if(selected.kind==="blocked"){
+  description="MELEE BLOCKED · HARD SURFACE";
+ }
+ shotNotice.textContent=description;
+ shotNoticeLeft=1.05;
 }
 function setControlMode(nextMode){
  // Never enter a recon feed as a defender, including after switching teams
@@ -390,6 +429,9 @@ document.addEventListener("keydown",event=>{
    droneBoostPressed=true;
   keys.add(event.code);
   return; // No player guns, wall rebuilding or crouching during drone control.
+ }
+ if(event.code==="KeyV"&&!event.repeat){
+  strikeMelee(performance.now());return;
  }
  if(event.code==="KeyG"&&!event.repeat){
   // Reserved normal gadget G: no fake activation until gadget is built.
@@ -760,6 +802,8 @@ function animate(now){
  }
  camera.updateMatrixWorld(true);
  if(locked&&controlMode==="player"){
+  meleeView.update(dt);
+  weaponView.root.visible=!meleeView.active;
   // The gun-mounted optic pose MUST update before ballistics. This prevents
   // shooting with a previous-frame sight transform (including while leaning).
   weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now,aimHeld);
@@ -770,7 +814,7 @@ function animate(now){
   // during the first ~150 ms while the physical gun settles onto its optic.
   const aligned=aimState(aimHeld,aimMix).accurate;
   const fired=cycleLegacyFire(weapons,now,{
-   held:firing,adsAligned:aligned,canFire:!player.sprinting
+   held:firing&&!meleeView.active,adsAligned:aligned,canFire:!player.sprinting&&!meleeView.active
   },shot=>fireShot(shot,aligned,now));
   if(firing&&!fired&&weapons.current.ammo<=0&&
       !weapons.reloading&&now-lastEmptyClick>600){
@@ -801,5 +845,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.15 first real gadget: deploy Sentry wire, walk and shoot to destroy",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.15.1 V melee 3x barricade 2x wire and visible wire shot fixes",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
