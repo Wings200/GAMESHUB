@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-029",
-   "./reboot/style.css?v=reboot-029"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-030",
+   "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -337,14 +337,31 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   "dynamic gadget names must not be faked in static HTML");
 
  // V0.15: FIRST live physical gadget. Existing guns, drones, walls untouched.
- assert.ok(main.includes('from "./barbed-wire.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./barbed-wire.js?v=reboot-030"'));
  assert.ok(main.includes('from "./barbed-wire-view.js?v=reboot-029"'));
  assert.ok(main.includes("placeWire(wireState,player,obstacles)"));
  assert.ok(main.includes("createWireView(THREE,scene,placement.device)"));
- assert.ok(main.includes('terrainMultiplier:wireTerrainMultiplier(wireState,player)'));
- assert.ok(main.includes("damageWire(wireState,wireId)"));
- assert.ok(main.includes('wireViews.get(wireId)?.sync('));
+ assert.ok(main.includes('terrainMultiplier:wireTerrainMultiplier(wireState,player,activeOperator.side)'));
+ assert.equal(main.includes("damageWire(wireState,wireId)"),false,
+  "guns must never damage wire");
+ assert.ok(main.includes("wireViews.get(selected.id)?.sync("));
  assert.ok(main.includes("...shootableWire()"));
+ // V0.15.2 enemy-only damage. Wire appears ONLY in the punch ray,
+ // never in both firearm and aim-probe raycasts.
+ assert.equal(main.split("...shootableWire()").length-1,1);
+ assert.ok(main.includes("newWireHealth()"));
+ assert.ok(main.includes("tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt)"));
+ assert.ok(main.includes("wireHealth=newWireHealth()"));
+ assert.ok(main.includes("if(wireHealth.hp>0)player=stepPlayer("));
+ assert.ok(main.includes("ENEMY BARBED WIRE · -"));
+ assert.ok(main.includes("healthNumber.textContent=String(wireHealth.hp)"));
+ assert.ok(main.includes("healthCaption.textContent="));
+ assert.ok(main.includes("if(wireHealth.hp===0&&event.code!==\"KeyP\")return"));
+ for(const id of ["health-current","health-caption"])
+  assert.ok(html.includes('id="'+id+'"'),"live HP HUD missing "+id);
+ assert.ok(!html.includes("TRAINING · INVULNERABLE"));
+ assert.ok(!main.includes('damageWire(wireState,wireId)'));
+
  assert.ok(main.includes("wireViews.get(d.id)?.shootables"));
  assert.ok(read("reboot/barbed-wire-view.js").includes("mesh.userData.wireId=device.id"));
  assert.ok(read("reboot/barbed-wire-view.js").includes("return {root,hitbox,shootables,sync}"));
@@ -363,7 +380,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.update(dt)"));
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
- assert.ok(html.includes("<kbd>V</kbd> MELEE"));
+ assert.ok(html.includes("<kbd>V</kbd> PUNCH WIRE TWICE"));
  assert.ok(html.includes("THREE V hits break ALL SIX boards"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
@@ -371,7 +388,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('activeOperator.side==="defend"'));
  assert.ok(physics.includes('Math.max(.35,Math.min(1,input.terrainMultiplier))'));
  assert.equal(read("reboot/secondary-loadout.js").includes('name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:false'),false);
- assert.ok(html.includes("shoot it three times")||html.includes("shoot it three times".toUpperCase()));
+ assert.ok(html.includes("Guns CANNOT destroy wire")||html.includes("GUNS CANNOT DESTROY WIRE"));
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
   "5 must never automatically throw a drone");
@@ -437,7 +454,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('droneSpareCount.textContent=String(info.throwables)'));
 
 
- assert.ok(main.includes("if(outcome.hit&&!wireHit.handled&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
+ assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
  for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
   assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
  assert.ok(css.includes(".reinforce-prompt"));
