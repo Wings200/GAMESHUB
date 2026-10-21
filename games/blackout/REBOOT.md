@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.13.2
+# BLACKOUT — Clean Reboot V0.13.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.13.3 · Recon drones are attacker equipment ONLY (user browser feedback):**
+- User asked why defenders were carrying attack recon drones. This came from the shared Testing Range inventory and HUD, not intended Sentry gameplay. Pure operator permission `canUseReconDrones` now allows only playable attack operators (currently Striker). Defenders do NOT have R-1 drones, cannot throw with **6**, cannot enter recon cameras with **5**, and cannot select feeds. These keys do nothing on Sentry.
+- Operator switch updates the real HUD: the drone 5/6 quickbar and attacker-recon control tip are hidden on defense; defenders get a factual **NO RECON DRONES EQUIPPED** note instead. Switching back to Striker restores the original 5/6 display, two-throw testing inventory, boost/jump/multiple-feed controls.
+- While testing, any real drones Striker already threw remain physically in the world as possible enemy objects for Sentry to observe. They are not Sentry's inventory and Sentry cannot operate them. This sandbox is not a multiplayer round; dedicated defender cameras, including a defender 5-key view, are **future mechanics not yet implemented**. Do not claim static surveillance cams currently work.
+- Attackers still cannot reinforce. Sentry still may build/remove steel in Testing Range; defender armor reset Y remains disallowed in actual future matches. No new gadgets, map, prep-phase, defuser or multiplayer in this fix. User browser verification required before V0.14.
+
+
 
 **2026-10-21 / V0.13.2 · Attacker reinforcement interaction gating (user browser report):**
 - User confirms attacker/defender operator switching works after V0.13.1. User found Striker still showed defender reinforcement prompts and tried to interact with walls while intending to plant a defuser. **There is no defuser planting system yet**; this release intentionally does NOT simulate planting or objective rounds.
