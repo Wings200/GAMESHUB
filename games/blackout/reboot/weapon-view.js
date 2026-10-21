@@ -1,5 +1,5 @@
 // BLACKOUT V0.5 · refined BX-7 Mk II model, calibrated ADS and target range.
-import {buildBX7Model} from "./weapon-model.js?v=reboot-005";
+import {buildBX7Model} from "./weapon-model.js?v=reboot-008";
 import {weaponPose} from "./weapon-aim.js?v=reboot-005";
 import {TARGET_POSITIONS} from "./range-layout.js?v=reboot-007";
 
