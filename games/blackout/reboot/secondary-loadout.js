@@ -1,9 +1,9 @@
-// BLACKOUT V0.17 · side-locked MMB and G secondary gadget loadouts.
+// BLACKOUT V0.18 · side-locked MMB and G secondary gadget loadouts.
 // Mark gadgets LIVE only after implementing their actual game mechanics.
 export const SECONDARY_GADGETS=Object.freeze([
  {id:"frag",name:"Frag Grenades",side:"attack",role:"Timed explosive",implemented:true},
  {id:"flash",name:"Flashbangs",side:"attack",role:"Sight disruption",implemented:true},
- {id:"smoke",name:"Smoke Grenades",side:"attack",role:"Vision cover",implemented:false},
+ {id:"smoke",name:"Smoke Grenades",side:"attack",role:"Vision cover",implemented:true},
  {id:"soft-breach",name:"Soft Breach Charge",side:"attack",role:"Soft wall destruction",implemented:false},
  {id:"hard-breach",name:"Hard Breach Charge",side:"attack",role:"Reinforced wall breach (unprotected)",implemented:false},
  {id:"claymore",name:"Claymores",side:"attack",role:"Directional trap",implemented:false},

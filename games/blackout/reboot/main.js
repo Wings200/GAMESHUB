@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.17.2 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.18.0 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-037";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-037";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-040";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-040";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -39,6 +39,9 @@ import {createFragView} from "./frag-view.js?v=reboot-034";
 import {FLASH,newFlashState,throwFlash,tickFlash,flashExposure,newFlashEffect,
  applyFlashEffect,stepFlashEffect,flashOpacity} from "./flash.js?v=reboot-039";
 import {createFlashView,createFlashBurst} from "./flash-view.js?v=reboot-037";
+import {SMOKE,newSmokeState,throwSmoke,tickSmoke,smokeCameraDensity}
+ from "./smoke.js?v=reboot-040";
+import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -61,7 +64,7 @@ const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
 const healthNumber=$("health-current"),healthCaption=$("health-caption");
-const flashOverlay=$("flash-whiteout");
+const flashOverlay=$("flash-whiteout"),smokeFog=$("smoke-fog");
 const healthSegments=[...document.querySelectorAll(".siege-health-bars span")];
 const utilityHud=$("utility-hud"),utilityHudNote=$("utility-hud-note");
 const utilityName=[$("utility-name-special"),$("utility-name-normal")];
@@ -161,6 +164,8 @@ let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
 const flashViews=new Map();
+let smokeState=newSmokeState();
+const smokeViews=new Map(),smokeCloudViews=new Map();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -230,12 +235,16 @@ function refreshUtilityHud(){
    row.gadgetId==="frag"?
       "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":
    row.gadgetId==="flash"?
-      "LIVE · "+flashState.charges+"/"+FLASH.charges+" LEFT":row.status;
+      "LIVE · "+flashState.charges+"/"+FLASH.charges+" LEFT":
+   row.gadgetId==="smoke"?
+      "LIVE · "+smokeState.charges+"/"+SMOKE.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="flash")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="smoke")?
+  activeOperator.name+" · SMOKE 1.8S FUSE · VISUAL COVER ~16S":
+  rows.some(row=>row.gadgetId==="flash")?
   activeOperator.name+" · FLASH 1.75S FUSE · FACE AWAY OR USE COVER":
   rows.some(row=>row.gadgetId==="frag")?
   activeOperator.name+" · FRAG FUSE 3.2S · LIVE":
@@ -372,6 +381,18 @@ function usePlannedGadget(code){
   if(result.device){
    flashState=result.state;
    flashViews.set(result.device.id,createFlashView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;
+  shotNoticeLeft=1.7;
+  return;
+ }
+ if(row.gadgetId==="smoke"&&activeOperator.side==="attack"){
+  const result=throwSmoke(smokeState,player);
+  if(result.device){
+   smokeState=result.state;
+   smokeViews.set(result.device.id,createSmokeView(THREE,scene,result.device));
    shotAudio.play("gadget-throw");
    refreshUtilityHud();
   }
@@ -945,6 +966,28 @@ function animate(now){
      "FLASH DETONATED · LOOK AWAY OR USE COVER";
     shotNoticeLeft=1.7;
    }
+   // Non-damaging smoke canisters bounce with gravity, then bloom into
+   // persistent cloud geometry. The dense core occludes objects behind it
+   // while player movement, gunfire, and wall collisions remain unchanged.
+   const smokeTick=tickSmoke(smokeState,dt,activeDroneObstacles());
+   smokeState=smokeTick.state;
+   const liveSmokeIds=new Set(smokeState.devices.map(d=>d.id));
+   for(const [id,view] of smokeViews){
+    const d=smokeState.devices.find(item=>item.id===id);
+    view.sync(d||null);
+    if(!liveSmokeIds.has(id))smokeViews.delete(id);
+   }
+   for(const cloud of smokeTick.spawned){
+    smokeCloudViews.set(cloud.id,createSmokeCloudView(THREE,scene,cloud));
+    shotAudio.playAt("smoke-trigger",cloud.x,cloud.z,player.x,player.z,player.yaw);
+    shotNotice.textContent="SMOKE DEPLOYED · THICK VISION COVER";
+    shotNoticeLeft=1.7;
+   }
+   const activeCloudIds=new Set(smokeState.clouds.map(c=>c.id));
+   for(const cloud of smokeState.clouds)smokeCloudViews.get(cloud.id)?.sync(cloud,now/1000);
+   for(const [id,view] of smokeCloudViews){
+    if(!activeCloudIds.has(id)){view.dispose();smokeCloudViews.delete(id);}
+   }
    // Impact grenades advance through the actual Testing Range and detonate
    // immediately upon colliding with floor or physical cover.
    const impactTick=tickImpact(impactState,dt,activeDroneObstacles());
@@ -1103,6 +1146,8 @@ function animate(now){
  updateAimProbe(now);
  if(locked&&controlMode==="player")flashEffect=stepFlashEffect(flashEffect,dt);
  flashOverlay.style.opacity=String(locked&&controlMode==="player"?flashOpacity(flashEffect):0);
+ smokeFog.style.opacity=String(locked&&controlMode==="player"?
+  smokeCameraDensity(smokeState.clouds,{x:camera.position.x,y:camera.position.y,z:camera.position.z}):0);
  shotNoticeLeft=Math.max(0,shotNoticeLeft-dt);
  shotNotice.classList.toggle("hidden",shotNoticeLeft<=0);
  crosshair.classList.toggle("hidden",!locked||controlMode!=="player"||!aimState(aimHeld,aimMix).hipCrosshairVisible);
@@ -1110,5 +1155,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.17.2 solid-white flash holds 2.2s, fades slowly for 3.8s: physical fuse, directional blindness, solid cover",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.18.0 smoke grenade: deployed dense occluding cloud, fading over time",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

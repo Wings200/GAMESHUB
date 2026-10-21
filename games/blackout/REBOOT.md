@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.17.2
+# BLACKOUT — Clean Reboot V0.18.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.18.0 · LIVE THROWABLE SMOKE GRENADE & DENSE 3D VISION COVER**
+- With flashbang opacity and timing confirmed by the user, the next gadget is the **attacker Smoke Grenade**. Striker can select it in either MMB or G alongside one other different gadget. Two 3D canisters can be thrown, bounce off solid walls/floors, and deploy after a **1.8-second fuse**.
+- Every deployment creates an independent world-space smoke volume, expands to roughly **3.4m radius** over **1.8 seconds**, maintains full density for **10.5 seconds**, and dissipates over a further **3.7 seconds** (roughly **16 seconds total**). A solid-depth-writing, organically shaded central volume hides objects, targets and walls behind it. Semi-transparent billowing puffs soften the silhouette; inside the smoke, the player's own camera is heavily obscured by grey haze.
+- Smoke is **not a blast**: no HP damage, no soft-wall/barricade destruction, no player collision, no bullet collision. Active clouds remain in place after switching sides; cloud meshes and materials are cleaned up once dissipated. Flash, frag, C4, impacts and barbed wire remain unchanged.
+- The operator selector, MMB/G live gadget UI, landing/deployment notices, inventory counts, smoke audio and page instructions now show real Smoke Grenades. **Six of twelve** secondary gadgets are built; the other six remain previews: attacker soft breach, hard breach and claymore; defender observation blocker, proximity alarm and deployable shield. This is still an offline solo mechanics sandbox, with no enemies to be hidden from yet.
+- Added pure simulation and integration tests for flight, fuse, wall bounce, growth, density, overlap, expiry, cleanup, UI, and absence of damage; the browser build still needs human visual testing.
 
 **2026-10-21 / V0.17.2 · FULLY OPAQUE FLASHBANG WHITEOUT**
 - User clarified that being flashed must leave their **entire screen uniformly pure white**, with zero view of the environment or HUD, not a semi-transparent whitening filter.
