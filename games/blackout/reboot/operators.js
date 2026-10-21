@@ -67,3 +67,10 @@ export function operatorLoadout(operator){
 export function isPlayableOperator(id){
  return Boolean(operatorById(id)?.playable);
 }
+
+// Role-specific interaction gate for the present testing range.
+// Attackers may approach/shoot reinforced walls, but never install/remove
+// defender steel or receive reinforcement interaction prompts.
+export function canUseReinforcement(operator){
+ return Boolean(operator?.playable&&operator.side==="defend");
+}
