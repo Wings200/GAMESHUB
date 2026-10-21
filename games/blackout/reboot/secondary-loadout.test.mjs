@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {SECONDARY_GADGETS,SECONDARY_SLOT_COUNT,gadgetById,secondaryOptions,
- newSecondaryPlans,plannedSecondaries,planSecondary,planIsFieldReady}
+ newSecondaryPlans,plannedSecondaries,planSecondary,planIsFieldReady,
+ SECONDARY_KEYBINDS,utilityHudRows,utilityKeyPreview}
  from "./secondary-loadout.js";
 import {operatorById} from "./operators.js";
 
@@ -58,4 +59,34 @@ test("no new equipment, stocks, or combat actions are unlocked in the planning s
   assert.equal(planIsFieldReady(updated,striker),false);
   assert.equal(g.implemented,false);
  }
+});
+
+test("keys 3/4 exactly reflect Striker gadget choices and never claim functionality",()=>{
+ const striker=operatorById("striker");
+ let plans=newSecondaryPlans();
+ assert.deepEqual(SECONDARY_KEYBINDS,["Digit3","Digit4"]);
+ assert.deepEqual(utilityHudRows(plans,striker).map(s=>s.name),["EMPTY SLOT","EMPTY SLOT"]);
+ assert.equal(utilityKeyPreview(plans,striker,"Digit3"),
+  "UTILITY 3 · EMPTY SLOT · CHOOSE IN OPERATOR MENU");
+ plans=planSecondary(plans,striker,0,"flash");
+ plans=planSecondary(plans,striker,1,"soft-breach");
+ const rows=utilityHudRows(plans,striker);
+ assert.deepEqual(rows.map(s=>s.key),["3","4"]);
+ assert.deepEqual(rows.map(s=>s.name),["Flashbangs","Soft Breach Charge"]);
+ assert.ok(rows.every(s=>s.fieldReady===false&&s.status.includes("NOT BUILT")));
+ assert.equal(utilityKeyPreview(plans,striker,"Digit3"),"FLASHBANGS · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"Digit4"),"SOFT BREACH CHARGE · PLANNED ONLY · NOT BUILT YET");
+ assert.equal(utilityKeyPreview(plans,striker,"Digit5"),null);
+});
+test("HUD representation follows Sentry independently, never leaks enemy gadgets",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ let plans=newSecondaryPlans();
+ plans=planSecondary(plans,striker,0,"flash");
+ plans=planSecondary(plans,sentry,0,"c4");
+ plans=planSecondary(plans,sentry,1,"barbed-wire");
+ assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.name),["C4 / Nitro Cell","Barbed Wire"]);
+ assert.deepEqual(utilityHudRows(plans,striker).map(s=>s.name),["Flashbangs","EMPTY SLOT"]);
+ assert.ok(utilityHudRows(plans,sentry).every(s=>s.fieldReady===false));
+ plans=planSecondary(plans,sentry,1,null);
+ assert.deepEqual(utilityHudRows(plans,sentry).map(s=>s.name),["C4 / Nitro Cell","EMPTY SLOT"]);
 });
