@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-008",
-   "./reboot/style.css?v=reboot-008"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-009",
+   "./reboot/style.css?v=reboot-009"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
@@ -153,7 +153,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("aimState(aimHeld,aimMix).accurate"));
  assert.ok(main.includes('from "./aim-resolver.js?v=reboot-007"'));
  assert.ok(main.includes("firstHitType(intersections,activeTargets)"));
- assert.ok(main.includes('from "./shot-ray.js?v=reboot-008"'));
+ assert.ok(main.includes('from "./shot-ray.js?v=reboot-009"'));
+ assert.ok(main.includes('function updateAimProbe(now)'));
+ assert.ok(main.includes('LIVE SIGHT: '));
+ assert.ok(main.includes('LAST SHOT: '));
+ assert.equal(main.includes('shotTraces.push('),false);
+ assert.ok(main.includes('const aimRaycaster=new THREE.Raycaster()'));
  assert.ok(main.includes("shotScreenPoint("));
  assert.ok(main.includes("weaponView.reticle.getWorldPosition(opticWorld)"));
  assert.ok(main.includes("opticNdc.copy(opticWorld).project(camera)"));
