@@ -144,6 +144,23 @@ export function createBarricadeStation(THREE,scene){
   }
   return {...outcome,remaining:Math.max(0,BARRICADE_MELEE_HITS-outcome.hits)};
  }
+ function blastAt(blast){
+  if(!blast)return 0;
+  let destroyed=0;
+  for(let i=0;i<boards.length;i++){
+   if(!boards[i].visible)continue;
+   const center=boardBounds(i).center;
+   const distance=Math.hypot(blast.x-b.x,blast.y-center,blast.z-b.z);
+   if(distance>blast.radius)continue;
+   const result=barricadeDamage(stateRef.current,i,b.boardHP);
+   if(!result.changed)continue;
+   stateRef.current=result.state;
+   boards[i].visible=false;
+   shards(boards[i]);
+   destroyed++;
+  }
+  return destroyed;
+ }
  function rebuild(){
   const old=stateRef.current;
   const next=barricadeRebuild(old);
@@ -167,7 +184,7 @@ export function createBarricadeStation(THREE,scene){
   }
  }
  return {
-  hitBoard,meleeHit,rebuild,tick,
+  hitBoard,meleeHit,blastAt,rebuild,tick,
   blockers:()=>barricadeBlockers(stateRef.current),
   shootables:()=>[...rawMeshes.filter(m=>m.userData.barricadeIndex===undefined),
     ...boards.filter((m,i)=>stateRef.current.boards[i]>0)],
