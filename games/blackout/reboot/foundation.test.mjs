@@ -147,7 +147,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(html.includes('id="utility-key-4"'),false);
  assert.ok(css.includes(".utility-hud-slot"));
  assert.ok(css.includes(".utility-hud-copy"));
- assert.ok(html.includes('TRAINING · INVULNERABLE'));
+ assert.ok(html.includes('id="health-current">125</b>'));
+ assert.ok(html.includes('id="health-caption">TRAINING · ENEMY WIRE DAMAGE ONLY</small>'));
  assert.ok(main.includes('document.body.dataset.hudProfile=active?controlMode:"menu"'));
  // Verify the two future-mode shells aren't connected to fake gameplay modes.
  assert.equal(main.includes('document.getElementById("drone-hud").classList.remove("hidden")'),false);
