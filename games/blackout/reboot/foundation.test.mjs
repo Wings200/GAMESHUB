@@ -460,7 +460,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/blast-policy.js").includes('["FRAG","IMPACT","C4"]'));
  assert.ok(read("reboot/blast-policy.js").includes('["IMPACT","C4"]'));
  assert.ok(html.includes("Frag Grenades splinter wooden barricades"));
- assert.ok(html.includes("Frag Grenades cannot damage gypsum walls"));
+ assert.ok(html.includes("but cannot damage gypsum walls"));
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes("gypsumBlast:()=>softWall.blastAt(blast)"));
