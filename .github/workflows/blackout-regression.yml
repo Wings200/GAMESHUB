@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.12.1 · thrown inventory / 5 cameras / 6 spare / legacy tests
+    name: Reboot V0.12.2 · 5 view-only / 6 throws twice / camera self-hide
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
