@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-020",
-   "./reboot/style.css?v=reboot-020"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-021",
+   "./reboot/style.css?v=reboot-021"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -260,6 +260,27 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("createDroneView(THREE,scene)"));
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
+ // V0.13: 12 planned free operators; only two working generalists selectable.
+ assert.ok(main.includes('from "./operators.js?v=reboot-021"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-021"'));
+ assert.ok(main.includes("createOperatorPicker("));
+ assert.ok(main.includes('activeOperator=operatorById("striker")'));
+ assert.ok(main.includes("operatorHudName.textContent=operator.name"));
+ assert.ok(main.includes("operatorHudSide.textContent="));
+ assert.ok(main.includes('speedMultiplier:operatorLoadout(activeOperator).speedMultiplier'));
+ assert.ok(physics.includes("const operatorMultiplier=Number.isFinite(input.speedMultiplier)"));
+ assert.ok(physics.includes(")*operatorMultiplier"));
+ for(const id of ["operator-selection","operator-roster","operator-attack","operator-defend",
+   "operator-playable-label","operator-name","operator-role","operator-speed",
+   "operator-armor","operator-slots","operator-current","operator-hud-name","operator-hud-side"])
+  assert.ok(html.includes('id="'+id+'"'),"operator interface field missing "+id);
+ assert.ok(css.includes(".operator-card"));
+ assert.ok(css.includes(".operator-utility-slot"));
+ assert.ok(css.includes(".operator-player-tag"));
+ assert.ok(html.includes("2 PLAYABLE"));
+ assert.ok(html.includes("UNASSIGNED")==false,
+  "utility slots should be populated dynamically, not fake hardcoded gadgets");
+
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
   "5 must never automatically throw a drone");
