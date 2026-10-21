@@ -1,22 +1,40 @@
-// BLACKOUT V0.12.1 · Attacker drone inventory and camera-menu rules.
-// Range has no preparation phase yet. Preserve the one prep drone and one
-// post-prep spare as distinct resources; match mode will unlock #6 after prep.
+// BLACKOUT V0.12.2 · honest drone inventory and camera-only controls.
+// Testing Range: two throwable drones, zero automatically deployed.
+// Actual match contract (future): one preparation drone + one action-phase spare.
+// 5 NEVER creates a device. 6 throws available drones; range ignores phase.
 export const DRONE_ROSTER_LIMIT=2;
-export function newDroneRoster(){
- return {drones:[],selected:-1,initialUsed:false,spareUsed:false};
+export function newDroneRoster(mode="range"){
+ if(!["range","match"].includes(mode))throw new RangeError("Invalid drone roster mode");
+ return {mode,drones:[],selected:-1,initialUsed:false,spareUsed:false};
 }
 export function cameraRequest(roster){
- if(roster.drones.length===0){
-  return roster.initialUsed?{action:"none",reason:"NO DRONES DEPLOYED"}:
-    {action:"throw-first-and-open",kind:"initial"};
- }
+ if(roster.drones.length===0)
+  return {action:"none",reason:"NO DRONES DEPLOYED · PRESS 6 TO THROW"};
  return {action:"open",index:roster.selected>=0?roster.selected:0};
 }
-export function spareRequest(roster,phase="range"){
- if(phase==="prep")return {action:"blocked",reason:"SPARE DRONE UNAVAILABLE DURING PREP"};
- if(roster.spareUsed)return {action:"none",reason:"NO SPARE DRONES REMAINING"};
- return {action:"throw-only",kind:"spare"};
+export function throwRequest(roster,phase="range"){
+ if(roster.drones.length>=DRONE_ROSTER_LIMIT)
+  return {action:"none",reason:"NO DRONES REMAINING"};
+ if(roster.mode==="range"){
+  if(!roster.initialUsed)return {action:"throw-only",kind:"initial"};
+  if(!roster.spareUsed)return {action:"throw-only",kind:"spare"};
+  return {action:"none",reason:"NO DRONES REMAINING"};
+ }
+ // The real round phase is NOT implemented yet; these are the phase rules
+ // for future 5v5 mode. The test range does not silently pretend it has prep.
+ if(phase==="prep")
+  return roster.initialUsed?
+   {action:"none",reason:"PREP DRONE ALREADY DEPLOYED"}:
+   {action:"throw-only",kind:"initial"};
+ if(phase==="action")
+  return roster.spareUsed?
+   {action:"none",reason:"NO POST-PREP SPARE REMAINING"}:
+   {action:"throw-only",kind:"spare"};
+ return {action:"blocked",reason:"DRONE PHASE NOT AVAILABLE"};
 }
+// Kept as a named alias for existing integrations; the single shared
+// phase-aware selector now owns *all* 6-key throw permissions.
+export const spareRequest=throwRequest;
 export function registerDrone(roster,drone,kind){
  if(!drone||!["initial","spare"].includes(kind))return roster;
  if(roster.drones.length>=DRONE_ROSTER_LIMIT)return roster;
@@ -40,7 +58,11 @@ export function selectDrone(roster,delta){
 export function selectedDrone(roster){
  return roster.drones[roster.selected]||null;
 }
-export function droneEquipmentStatus(roster){
- return {cameras:roster.drones.length,spare:roster.spareUsed?0:1,
-  initial:roster.initialUsed?0:1};
+export function droneEquipmentStatus(roster,phase="range"){
+ const throwables=roster.mode==="range"?
+  Number(!roster.initialUsed)+Number(!roster.spareUsed):
+  phase==="prep"?Number(!roster.initialUsed):
+  phase==="action"?Number(!roster.spareUsed):0;
+ return {cameras:roster.drones.length,throwables,
+  initial:roster.initialUsed?0:1,spare:roster.spareUsed?0:1};
 }
