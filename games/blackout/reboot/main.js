@@ -1,10 +1,10 @@
-// BLACKOUT REBOOT V0.15.2 — Sentry wire only hurts attackers, gunfire cannot destroy it
+// BLACKOUT REBOOT V0.15.3 — world-positioned wire movement, V strike and collapse audio
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-006";
+import {GameAudio} from "./legacy-audio.js?v=reboot-031";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -27,6 +27,7 @@ import {createOperatorPicker} from "./operator-select.js?v=reboot-028";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-028";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
+import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
 import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
 
@@ -141,6 +142,7 @@ const droneViews=[]; // physical model for each deployed drone
 const wireViews=new Map(); // deployed physical barbed-wire models
 let wireState=newWireState();
 let wireHealth=newWireHealth();
+let wireSoundTracker=newWireSoundTracker();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -176,6 +178,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   // This fresh testing role starts at full health. Deployed defender wire
   // persists across team changes so Striker can verify enemy-only damage.
   wireHealth=newWireHealth();
+  wireSoundTracker=newWireSoundTracker();
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -258,11 +261,14 @@ function strikeMelee(now){
   // TWO melee strikes remove wire. Gunfire has no destruction effect.
   const result=damageWire(wireState,selected.id,2);
   if(result.handled){
+   const source=wireState.devices.find(d=>d.id===selected.id);
    wireState=result.state;
    wireViews.get(selected.id)?.sync(wireState.devices.find(d=>d.id===selected.id));
+   const cue=wirePunchSound(result.destroyed,source);
+   if(cue)shotAudio.playAt(cue.type,cue.x,cue.z,player.x,player.z,player.yaw);
+   if(result.destroyed)wireSoundTracker=newWireSoundTracker();
    description=result.destroyed?"BARBED WIRE CUT · REMOVED":
     "BARBED WIRE STRUCK · HIT AGAIN TO DESTROY";
-   shotAudio.play("impact");
   }
  }else if(selected.kind==="barricade"){
   const result=barricade.meleeHit(hits[0]);
@@ -292,6 +298,7 @@ function setControlMode(nextMode){
  droneBoostPressed=false;droneJumpPressed=false;
  // Never leave a first-person fist floating over the drone camera.
  meleeView.cancel();
+ wireSoundTracker=newWireSoundTracker();
  // Changing devices must never complete a partially held F reinforcement.
  barricadeBuildTime=0;
  reinforcement.step({player,holding:false,dt:0});
@@ -450,7 +457,7 @@ document.addEventListener("keydown",event=>{
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   player=initialPlayer();wireHealth=newWireHealth();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
+   player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -754,6 +761,12 @@ function animate(now){
     if(nextHealth.hp===0){firing=false;aimHeld=false;keys.clear();}
    }
    wireHealth=nextHealth;
+   const wireCue=stepWireSounds(wireSoundTracker,wireState,before,player,
+    activeOperator.side,dt);
+   wireSoundTracker=wireHealth.hp>0?wireCue.tracker:newWireSoundTracker();
+   if(wireHealth.hp>0&&wireCue.event)
+    shotAudio.playAt(wireCue.event.type,wireCue.event.x,wireCue.event.z,
+     player.x,player.z,player.yaw);
    const next=advanceFootsteps(footstepTracker,before,player);
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
