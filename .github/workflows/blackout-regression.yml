@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.7.4 · box outlines ignored, box-local bullet impact layers
+    name: Reboot V0.8 · screenshot-inspired tactical live-fire HUD
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -39,5 +39,6 @@ jobs:
           node --check games/blackout/reboot/shot-ray.js
           node --check games/blackout/reboot/impact-decals.js
           node --check games/blackout/reboot/combat-raycast.js
+          node --check games/blackout/reboot/tactical-hud.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
