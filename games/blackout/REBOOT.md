@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.8.1
+# BLACKOUT — Clean Reboot V0.9
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,16 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.9 · Wooden barricades ONLY — explicit feature gate:**
+- User requires **every stage tested in-browser before starting another mechanic**. V0.9 implements only the first wooden barricade. Soft-wall holes, wall reinforcement, breaching, AI and map building are *not* started.
+- A signed physical door-testing frame is at `x=-7,z=3`. Six individually hittable, original procedural-textured wood boards, each requiring two bullet hits to break. First strike shows a small bullet hole parented to the actual plank; second strike removes just that plank and plays small-lived physical wood shards. Frame posts/header stay solid. Original firearm shot recoil, impacts and wall bullet holes are unchanged.
+- A single pure `barricade.js` state produces both the bullet-state and **actual height-specific player collision primitives**, used in `stepPlayer(...,[...TEST_OBSTACLES,...barricade.blockers()])`. Destroying the lower four boards opens prone clearance; the lower five permit walking. Frame corners stay solid even when the door is open.
+- **F hold 2.2s** while close to a damaged barricade reconstructs the six planks, clears board-local impact marks, and restores collisions. The action cancels when F is released or user moves away; prohibited inside the opening to avoid trapping the player. HUD prompt displays progress and 6/6 condition; minimap shows the actual test station location.
+- Pure logic tests cover independent damage, partial collision clearances, real walking through after breaking, no phantom rebuilding, and proximity. CI parsing and existing weapon / ballistics / audio regression remain required. The **user must confirm in-browser functionality** before V0.10 or soft-wall stage. GitHub CI cannot verify actual visuals/audio.
+- Separate match HUD remains future-only. Drone/camera HUD templates stay hidden. REDLINE, shared accounts, worker, original multiplayer remain untouched.
+
+
 
 **2026-10-20 / V0.8.1 · Follow-up screenshots of real Siege player, drone, and security-camera displays:**
 - Adjusted active player HUD toward the user's new in-game photos: compact bottom-left performance meter, 125/125 training-only (invulnerable) health, actual Q/E/Z shortcuts rather than invented gadget availability, compact utility unavailable markings, and tight lower-right stacked ammo/weapon treatment.
