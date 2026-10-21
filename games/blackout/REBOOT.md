@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.7.1
+# BLACKOUT — Clean Reboot V0.7.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.7.2 · User reports wall bullet holes disappearing (46-second screen recording):**
+- Observed visible dark bullet marks on the pale wall around 15–21s, but earlier holes disappeared or became hard to discern. The prior `createShotEffects()` explicitly deleted impact discs after **9 seconds** and discarded the oldest after **75 impacts**, which with 710 RPM automatic firing is under 7s of continuous fire. Tiny black circle geometry had insufficient visual detail, and depth/coplanar rendering could obscure marks from some angles.
+- Replaced old per-hit temporary circle geometry with `reboot/impact-decals.js`: **one GPU-instanced mesh**, shared procedurally generated soot/chipped-edge transparent texture, double-sided material with depth bias, actual world-space hit-face orientation, and a 14mm outward surface offset for stable wall visibility. The mesh disables frustum culling because instances span the whole arena. No time expiration. Recycles the oldest impact only after 400 hits to avoid unbounded memory/draw calls.
+- Target dummies temporarily hide/respawn when hit, so they intentionally do not leave a static world-space decal floating in their absence. Walls, crates and floors keep theirs. **V** explicitly clears decals for repeat testing. Recoil, sound, shooting ray, ammo, cover collision, and ADS alignment remain unchanged. REDLINE and shared infrastructure untouched.
+- Added tests that check face-normal position offset, material depth settings, capacity recycling and persistence across very long simulated time. Browser visual test still required.
+
 
 **2026-10-20 / V0.7.1 · 50-second user video follow-up:**
 - Reviewed the actual uploaded V0.7 gameplay recording. The target hit counter rises to 16, verifying some successful target intersections and hit registration; other shots display `SHOT BLOCKED · BOX-ONE` or `SHOT MISSED`. The green/yellow wire lines sweeping across the sight are the *old debug visualization*: long-lived world-space lines with `depthTest:false` stay in place as the camera moves. They were mistaken for bullets shooting sideways.
