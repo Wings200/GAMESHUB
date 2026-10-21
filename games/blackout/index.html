@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.11.0 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.12.0 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-017">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-018">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,16 +16,16 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.11.0</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.12.0</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 011.0</div>
+      <div class="section-tag"><span class="section-line"></span> MECHANICS / TEST 012.0</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">METAL REINFORCEMENTS · LIVE-FIRE TEST.</p>
-      <p class="description">V0.11 REINFORCEMENT TEST · At the eastern soft wall (X +7 / Z +3), hold F while standing still and clear of the wall for 3 seconds. Watch the metal plating install, then shoot and try to walk through it. It must stop gunfire and movement even if you shot holes in the gypsum first. Press Y nearby to remove steel for another test; T resets only plaster. West-side wooden barricades and all original weapon mechanics remain unchanged.</p>
-      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span></div>
+      <p class="headline">RECON DRONE · LIVE MECHANICS TEST.</p>
+      <p class="description">V0.12 RECON DRONE · Press 6 during range gameplay to deploy and control the R-1 wheeled drone. Drive with WASD, aim/steer with mouse or Q/E, jump with SPACE (1.8-second cooldown), and press SHIFT for up to three speed-boost charges that recharge over time. Press X to return to your operator; press 6 to reconnect. The wooden barricade, soft-wall holes, reinforcement and original gun systems stay untouched.</p>
+      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
     </div>
@@ -39,7 +39,8 @@
       <div class="stage"><span>05</span><div><strong>WOODEN BARRICADE</strong><p>Six destructible boards / physical doorway / hold F to rebuild</p></div><b>TEST NOW</b></div>
       <div class="stage"><span>06</span><div><strong>SOFT-WALL PENETRATION</strong><p>Carve real openings / pass rounds through / T reset</p></div><b>TEST NOW</b></div>
       <div class="stage"><span>07</span><div><strong>WALL REINFORCEMENTS</strong><p>F hold 3 seconds / steel bulletproof / Y remove in test range</p></div><b>TEST NOW</b></div>
-      <div class="stage muted"><span>08</span><div><strong>BREACHING / EXPLOSIVES</strong><p>Waiting for your wall reinforcement browser playtest</p></div><b>LATER</b></div>
+      <div class="stage"><span>08</span><div><strong>R-1 RECON DRONE</strong><p>Real drive + collision / jump cooldown / three regenerating Shift boosts</p></div><b>TEST NOW</b></div>
+      <div class="stage muted"><span>09</span><div><strong>BREACHING / EXPLOSIVES</strong><p>Not started until V0.12 drone controls pass browser testing</p></div><b>LATER</b></div>
       <div class="board-footer">ONE FEATURE AT A TIME. NOTHING FAKE.</div>
     </aside>
   </main>
@@ -66,7 +67,7 @@
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
       <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
-      <div class="siege-tip"><kbd>F</kbd> install steel · <kbd>Y</kbd> remove · <kbd>T</kbd> reset plaster.</div>
+      <div class="siege-tip"><kbd>6</kbd> drone · <kbd>F</kbd> install steel · <kbd>Y</kbd> remove.</div>
       <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
@@ -156,26 +157,40 @@
   <!-- Prepared UI profiles from the user's real Siege screenshots.
        Hidden: drone and camera mechanics are NOT implemented yet.
        The game must switch profiles only when a playable device exists. -->
+  <!-- Playable low-camera drone HUD: all displayed mechanics are real.
+       Device camera/spectator HUD beneath remains hidden until implemented. -->
   <section id="drone-hud" class="device-hud device-hud-drone hidden" data-hud-mode="drone"
-           aria-label="BLACKOUT drone camera interface">
-    <div class="device-map-frame" aria-hidden="true">
-      <div class="device-map-wire"></div><span class="device-map-ping">◆</span>
+           aria-label="BLACKOUT R-1 live reconnaissance drone interface">
+    <div class="device-map-frame" aria-label="Range map from live drone position">
+      <canvas id="drone-range-map" width="200" height="200"></canvas>
+      <span class="device-map-ping">◆</span>
     </div>
+    <div class="device-topline"><b>R-1 RECON DRONE</b><span>SIGNAL ONLINE · RANGE TEST</span></div>
     <div class="device-nav">
-      <div class="device-site-line"><span class="site-marker">B</span><span class="site-marker">A</span></div>
+      <div class="device-site-line">R-1 REMOTE CONTROL · WHEELED DRONE</div>
       <div class="device-nav-body">
-        <span class="device-key"><b>‹</b><kbd>Q</kbd></span>
+        <span class="device-key"><b>‹</b><kbd>Q</kbd><small>TURN</small></span>
         <div class="device-camera-status">
           <span class="device-device-icon" aria-hidden="true">▣</span>
-          <div class="device-pips"><i></i><i class="active"></i><i></i><i></i><i></i></div>
+          <div class="device-pips" aria-label="Available speed boosts">
+            <i id="drone-charge-1" class="active"></i><i id="drone-charge-2" class="active"></i><i id="drone-charge-3" class="active"></i>
+          </div>
         </div>
-        <span class="device-key"><kbd>E</kbd><b>›</b></span>
+        <span class="device-key"><small>TURN</small><kbd>E</kbd><b>›</b></span>
       </div>
     </div>
-    <div class="device-actions" aria-hidden="true">
-      <span><b>⌁</b><kbd>7</kbd></span><span><b>⊞</b><kbd>X</kbd></span><span><b>⌖</b><kbd>Z</kbd></span>
+    <div class="drone-telemetry">
+      <span>JUMP <b id="drone-jump">READY</b></span>
+      <span>BOOST <b id="drone-boost">3/3</b></span>
+      <span>SPEED <b id="drone-speed">0.0</b> M/S</span>
     </div>
-    <div class="device-caption">BLACKOUT / DRONE VIEW · HUD PROFILE ONLY</div>
+    <div class="drone-commands">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><small>DRIVE</small></div>
+      <div><kbd>SPACE</kbd><small>JUMP</small></div>
+      <div><kbd>SHIFT</kbd><small>BOOST</small></div>
+      <div><kbd>X</kbd><small>EXIT FEED</small></div>
+    </div>
+    <div class="device-caption">BLACKOUT / DRONE 01 · LIVE FEED · 6 TO CONNECT · X TO EXIT</div>
   </section>
   <section id="camera-hud" class="device-hud device-hud-camera hidden" data-hud-mode="camera"
            aria-label="BLACKOUT security and spectator camera interface">
@@ -194,6 +209,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-017"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-018"></script>
 </body>
 </html>
