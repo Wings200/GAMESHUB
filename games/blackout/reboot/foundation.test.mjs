@@ -123,8 +123,27 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-012",
-   "./reboot/style.css?v=reboot-009"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-013",
+   "./reboot/style.css?v=reboot-013"])assert.ok(html.includes(src));
+ // Screenshot-matched layout rather than the old multi-box debug HUD.
+ for(const id of ["mission-check","round-clock","tactical-map","area-name",
+  "heading","compass-arrow","fps","reserve-count","ammo","weapon-status",
+  "target-hits","ballistics-debug"]){
+  assert.ok(html.includes('id="'+id+'"'),"required live HUD element: "+id);
+ }
+ for(const hook of ["completedTargets.add(target.id)","compassHeading(player.yaw)",
+  "drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets)",
+  "drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds)",
+  'document.body.classList.toggle("range-active",locked)',
+  "reserveCount.textContent=String(weapons.current.remaining)"]){
+  assert.ok(main.includes(hook),"dynamic HUD hook "+hook);
+ }
+ for(const selector of [".siege-objective",".siege-minimap",".siege-round",
+  ".siege-health",".siege-nav",".siege-gear",".siege-weapon-row.active",
+  "body.range-active .topbar"]){
+  assert.ok(css.includes(selector),"CSS class for reference HUD "+selector);
+ }
+ assert.equal(html.includes('class="hud-bottom"'),false,"old debug dashboard must be replaced");
  assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
@@ -169,8 +188,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ballistics-debug"'));
  // ADS bullet position is now projected from the actual rendered optic.
  assert.ok(main.includes("SHOT BLOCKED"));
- assert.ok(html.includes("BOX-ONE & BOX-TWO NOW RECEIVE BULLET HOLES"));
+ assert.ok(html.includes("Press <kbd>B</kbd> to toggle aim debug."));
  assert.ok(main.includes('from "./combat-raycast.js?v=reboot-012"'));
+ assert.ok(main.includes('from "./tactical-hud.js?v=reboot-013"'));
  assert.ok(main.includes('combatIntersections(raycaster,'));
  assert.ok(main.includes('combatIntersections(aimRaycaster,'));
  assert.equal(main.includes('raycaster.intersectObjects(\n  [...shootableSolids'),false);
@@ -196,7 +216,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("surface.worldToLocal(pos)"));
  assert.ok(impact.includes("matrix.premultiply(surface.matrixWorld)"));
  assert.ok(impact.includes("geometry.computeBoundingBox"));
- assert.ok(html.includes("BOX-ONE & BOX-TWO NOW RECEIVE BULLET HOLES"));
+ assert.ok(html.includes("Press <kbd>B</kbd> to toggle aim debug."));
  assert.ok(view.includes('from "./weapon-model.js?v=reboot-008"'));
  assert.ok(model.includes("OPTIC_CENTER"));
  assert.ok(model.includes("ExtrudeGeometry"));
