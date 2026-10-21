@@ -15,3 +15,18 @@ export function labelShot(outcome,hitZone=""){
  if(outcome.kind==="surface")return "SHOT HIT SURFACE";
  return "SHOT MISSED";
 }
+
+// Labels are derived from the same nearest raycast hit as shooting, not from
+// the drawn debug line (which was previously misleading while turning).
+export function describeAim(outcome,zone=""){
+ if(outcome.kind==="target")return "TARGET "+outcome.target.id.toUpperCase()+
+  (zone==="head"?" · HEAD":zone==="body"?" · BODY":"");
+ if(outcome.kind==="blocked")return "BLOCKED BY "+String(outcome.obstacle).toUpperCase();
+ if(outcome.kind==="surface")return "FLOOR / SOLID SURFACE";
+ return "CLEAR · NO TARGET";
+}
+export function describeShot(outcome,screen,range,zone=""){
+ const title=labelShot(outcome,zone);
+ return title+" · "+screen.origin.toUpperCase()+" · "+
+  (Number.isFinite(range)?range.toFixed(1):"—")+"M";
+}
