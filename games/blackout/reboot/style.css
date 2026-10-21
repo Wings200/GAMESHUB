@@ -389,3 +389,65 @@ body.range-active .siege-system .siege-metrics{
  .reinforce-head{flex-direction:column;align-items:start}
  .hud .reinforce-prompt:not(.hidden)~.soft-wall-readout{top:174px}
 }
+
+/* V0.12 — real remote reconnaissance drone overlay (different from operator HUD).
+   Original HUD proportions from user screenshots; no fictional site markers. */
+.device-hud-drone{background:linear-gradient(0deg,#07131b69,transparent 28%,transparent 75%,#07131b3d)}
+.device-hud-drone .device-map-frame{
+ width:184px;height:184px;top:35px;left:2.8%;
+ border:1px solid #d7eaf28b;overflow:hidden;
+}
+#drone-range-map{display:block;width:100%;height:100%;opacity:.9}
+.device-hud-drone .device-map-ping{display:none}
+.device-topline{position:absolute;top:0;left:50%;transform:translateX(-50%);
+ background:#152635df;padding:10px 22px 11px;
+ display:flex;align-items:center;gap:18px;white-space:nowrap;
+ color:#e6f4f7;font-size:12px;letter-spacing:.055em;font-weight:800}
+.device-topline>span{color:#8bdecd;font-size:9px;font-weight:750}
+.device-hud-drone .device-nav{
+ width:345px;height:73px;left:3%;bottom:13.5%;
+ box-shadow:0 3px 13px #0006
+}
+.device-hud-drone .device-site-line{
+ background:#25516ca8;color:#dbf2f5;
+ font-weight:800;font-size:10px;letter-spacing:.13em;
+ padding:7px 12px;height:25px
+}
+.device-hud-drone .device-nav-body{height:48px}
+.device-hud-drone .device-key{gap:5px}
+.device-hud-drone .device-key small{font-size:8px;letter-spacing:.08em}
+.device-hud-drone .device-camera-status{height:44px}
+.device-hud-drone .device-device-icon{background:none;font-size:25px}
+.device-hud-drone .device-pips{margin-top:1px;gap:8px}
+.device-hud-drone .device-pips i{
+ width:17px;height:7px;border-radius:1px;background:#3a5669;outline:1px solid #cbdfe155
+}
+.device-hud-drone .device-pips i.active{background:#75e7cd;outline-color:#c4eee7}
+.drone-telemetry{
+ position:absolute;bottom:8.1%;left:3%;width:345px;
+ display:flex;justify-content:space-between;gap:7px;
+ background:#1b2b36cf;padding:8px 11px;font-size:10px;
+ font-weight:800;white-space:nowrap;letter-spacing:.03em
+}
+.drone-telemetry b{color:#93e4d4;font-variant-numeric:tabular-nums}
+.drone-commands{
+ position:absolute;right:3%;bottom:8%;display:flex;gap:12px;
+ align-items:flex-end;background:#15222bbd;padding:13px
+}
+.drone-commands>div{display:flex;flex-direction:column;gap:5px;align-items:center}
+.drone-commands kbd{
+ display:inline-block;background:#f2f5f7;color:#1c2e37;border-radius:2px;
+ padding:2px 6px;text-shadow:none;font:800 12px/20px "Segoe UI",Arial,sans-serif;
+ min-width:20px;text-align:center
+}
+.drone-commands small{font-size:9px;font-weight:800;letter-spacing:.04em}
+@media(max-width:820px){
+ .device-hud-drone .device-map-frame{width:105px;height:105px;top:50px}
+ .device-hud-drone .device-nav{left:8px;bottom:118px;width:260px;max-width:68vw}
+ .drone-telemetry{left:8px;bottom:83px;width:260px;max-width:68vw;padding:6px 7px;font-size:8px}
+ .drone-commands{right:6px;bottom:35px;gap:3px;padding:6px}
+ .drone-commands kbd{padding:1px 4px;font-size:9px;line-height:15px}
+ .drone-commands small{font-size:7px}
+ .device-topline{padding:5px 8px;gap:6px;font-size:8px}
+ .device-topline>span{font-size:7px}
+}
