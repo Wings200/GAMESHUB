@@ -322,8 +322,11 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(css.includes(".operator-utility-slot"));
  assert.ok(css.includes(".operator-player-tag"));
  assert.ok(html.includes("2 PLAYABLE"));
- assert.ok(html.includes("UNASSIGNED")==false,
-  "utility slots should be populated dynamically, not fake hardcoded gadgets");
+ // UNASSIGNED is now the correct initial state of the LIVE operator utility HUD.
+ assert.ok(html.includes('id="utility-name-3">EMPTY SLOT</strong>'));
+ assert.ok(html.includes('id="utility-name-4">EMPTY SLOT</strong>'));
+ assert.equal(html.includes('id="utility-name-3">FLASHBANGS'),false,
+  "dynamic gadget names must not be faked in static HTML");
 
  assert.ok(main.includes("registerDrone(droneRoster,fresh,kind)"));
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
