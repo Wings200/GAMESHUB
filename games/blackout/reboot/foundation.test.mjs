@@ -164,7 +164,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ballistics-debug"'));
  // ADS bullet position is now projected from the actual rendered optic.
  assert.ok(main.includes("SHOT BLOCKED"));
- assert.ok(html.includes("ADS FIX ACTIVE"));
+ assert.ok(html.includes("SIGHT-ALIGNED BULLETS"));
  assert.ok(html.includes('id="lean-status"'));
  assert.ok(html.includes("CTRL/Z PRONE"));
  assert.ok(html.includes("Q/E LEAN"));
