@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.14.1 — live per-operator HUD slots 3/4 for planned gadgets
+// BLACKOUT REBOOT V0.14.2 — correct special MMB and normal G gadget inputs
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-026";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-026";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-027";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-027";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -47,9 +47,9 @@ const droneActiveNumber=$("active-drone-number"),droneTotalNumber=$("total-drone
 const droneSwitchLeft=$("drone-switch-left"),droneSwitchRight=$("drone-switch-right");
 const operatorHudName=$("operator-hud-name"),operatorHudSide=$("operator-hud-side");
 const utilityHud=$("utility-hud"),utilityHudNote=$("utility-hud-note");
-const utilityName=[$("utility-name-3"),$("utility-name-4")];
-const utilityStatus=[$("utility-status-3"),$("utility-status-4")];
-const utilitySlots=[$("utility-slot-3"),$("utility-slot-4")];
+const utilityName=[$("utility-name-special"),$("utility-name-normal")];
+const utilityStatus=[$("utility-status-special"),$("utility-status-normal")];
+const utilitySlots=[$("utility-slot-special"),$("utility-slot-normal")];
 const softWallReadout=$("soft-wall-readout"),softWallStatusText=$("soft-wall-status"),
  softWallRemoved=$("soft-wall-removed");
 const reinforcePrompt=$("reinforce-prompt"),reinforceFill=$("reinforce-progress"),
@@ -168,7 +168,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   operatorHudName.textContent=operator.name;
   operatorHudSide.textContent=operator.side==="attack"?"ATTACKER":"DEFENDER";
   refreshDroneEquipment(); // Hide attack-only quickslots immediately on defense.
-  refreshUtilityHud(); // Always reflect THIS operator's 3/4 gadget plan.
+  refreshUtilityHud(); // Always reflect THIS operator's special/normal gadget plan.
   // Side changes are a training-range selection only. Do not invent teams or
   // a real match phase; exit a paused drone feed before spawning a new role.
   if(controlMode==="drone"&&!locked)setControlMode("player");
@@ -180,15 +180,15 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
 });
 function refreshUtilityHud(){
  const rows=utilityHudRows(operatorPicker.plans,activeOperator);
- utilityHud.setAttribute("aria-label",activeOperator.name+" utility keys 3 and 4, design previews");
+ utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
   utilityStatus[i].textContent=row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
-   activeOperator.name+" utility key "+row.key+": "+row.name+"; "+row.status);
+   activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=activeOperator.name+" · 3 / 4 PREVIEW ONLY · NOT EQUIPPED";
+ utilityHudNote.textContent=activeOperator.name+" · SPECIAL MMB / NORMAL G · PREVIEW ONLY";
 }
 refreshUtilityHud();
 function resize(){
@@ -360,10 +360,9 @@ document.addEventListener("keydown",event=>{
   keys.add(event.code);
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
- if((event.code==="Digit3"||event.code==="Digit4")&&!event.repeat){
-  // Reserved 3/4 input only tells the player what is planned.
-  // The physical gadget handler arrives in its OWN tested stage.
-  shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,event.code);
+ if(event.code==="KeyG"&&!event.repeat){
+  // Reserved normal gadget G: no fake activation until gadget is built.
+  shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,"KeyG");
   shotNoticeLeft=1.6;
   return;
  }
@@ -411,7 +410,18 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>keys.delete(event.code));
 document.addEventListener("mousedown",event=>{
- if(!locked||controlMode!=="player")return;
+ if(!locked)return;
+ if(event.button===1){
+  // Middle-click must never fire, throw attacker drones or open browser
+  // autoscroll. Camera control uses its own mode, not operator gadgets.
+  event.preventDefault();
+  if(controlMode==="player"){
+   shotNotice.textContent=utilityKeyPreview(operatorPicker.plans,activeOperator,"MouseMiddle");
+   shotNoticeLeft=1.6;
+  }
+  return;
+ }
+ if(controlMode!=="player")return;
  if(event.button===0)firing=true;
  if(event.button===2)aimHeld=true;
  if(event.button===0||event.button===2)event.preventDefault();
@@ -421,6 +431,10 @@ document.addEventListener("mouseup",event=>{
  if(event.button===2)aimHeld=false;
 });
 canvas.addEventListener("contextmenu",event=>event.preventDefault());
+canvas.addEventListener("auxclick",event=>{
+ // Middle-click inside the locked game must not start autoscroll/new tabs.
+ if(locked&&event.button===1)event.preventDefault();
+});
 window.addEventListener("blur",()=>{keys.clear();firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
@@ -744,5 +758,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.14.1 operator-specific utility HUD keys 3/4 are PREVIEW ONLY",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.14.2 special MMB + normal G planned gadget controls",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
