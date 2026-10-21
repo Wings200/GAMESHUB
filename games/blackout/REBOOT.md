@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.7.3
+# BLACKOUT — Clean Reboot V0.7.4
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.7.4 · Missing small-box bullet holes in 35s user video:**
+- User clarified previous video was specifically demonstrating **no marks on test boxes**. Review of exact captured frames shows BOX-TWO did get visible holes while BOX-ONE displayed `SHOT BLOCKED · BOX-ONE` without visible marks. The old response misinterpreted this as only a wall hole quality issue.
+- Root cause found in main source: the same `raycaster.intersectObjects([...shootableSolids,...targetGroups],true)` recursively raycast against **decorative LineSegments made from EdgesGeometry** under every obstacle. Three.js uses a default raycaster line threshold of **1 world unit**. That can intercept a shot at/near the outline of a 2.3m crate before the solid triangle and yields a **faceless hit**. `firstHitType()` climbs the hierarchy, labels `SHOT BLOCKED · BOX-ONE`, but `impactDecals.mark()` rejects hits without `hit.face.normal`, so nothing appears.
+- Added `combat-raycast.js` to raycast solid meshes **non-recursively** and target dummy groups recursively, require actual face normals, then sort by true distance. Used by both real firing and passive B live-aim probe.
+- Added **per-box InstancedMesh impact pools** as real *children* of BOX-ONE and BOX-TWO, with decal matrices stored in each box's local coordinates. These layers follow the actual surface directly and avoid scene-space registration issues; generic wall/floor decal pool retained. Each box pool is capped at 160 holes; old box holes are replaced on overflow. V clears all pools. B debug can show box object ID, face and number of stored holes.
+- Regression tests cover decorative-line exclusion and proximity ordering; front/top/side box hits from BOX-ONE/BOX-TWO; and V clearing and pool reuse. Gun firing, recoil, gun sounds and map layout are unchanged. Real browser verification still required.
+
 
 **2026-10-20 / V0.7.3 · User screenshot: decal circles rising above wall top:**
 - Latest user screenshot shows multiple prominent bullet-hole sprites half above the top edge of a pale box/wall, while the crosshair points at the vertical face. Thus the previous decal implementation (surface placement and visibility) was visually faulty.
