@@ -1,31 +1,51 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {DRONE_ROSTER_LIMIT,newDroneRoster,cameraRequest,spareRequest,
+import {DRONE_ROSTER_LIMIT,newDroneRoster,cameraRequest,throwRequest,spareRequest,
  registerDrone,selectDrone,updateDrone,selectedDrone,droneEquipmentStatus}
  from "./drone-roster.js";
-test("5 autothrows first camera drone only if zero are deployed",()=>{
- const roster=newDroneRoster();
+
+test("5 only opens deployed cameras; no drones means no view and no throw",()=>{
+ const initial=newDroneRoster("range");
  assert.equal(DRONE_ROSTER_LIMIT,2);
- assert.equal(cameraRequest(roster).action,"throw-first-and-open");
- const first={id:1,charges:2,x:12};
- const deployed=registerDrone(roster,first,"initial");
- assert.equal(cameraRequest(deployed).action,"open");
- assert.equal(cameraRequest(deployed).index,0);
- assert.equal(droneEquipmentStatus(deployed).spare,1);
- assert.equal(droneEquipmentStatus(deployed).cameras,1);
- assert.equal(roster.drones.length,0,"immutable resource tracking");
+ assert.equal(cameraRequest(initial).action,"none");
+ assert.match(cameraRequest(initial).reason,/PRESS 6 TO THROW/);
+ assert.equal(droneEquipmentStatus(initial).throwables,2);
+ assert.equal(droneEquipmentStatus(initial).cameras,0);
+ assert.equal(initial.drones.length,0);
 });
-test("6 throws post-prep spare; cannot spend it twice",()=>{
- let roster=newDroneRoster();
- assert.equal(spareRequest(roster,"prep").action,"blocked");
- assert.equal(spareRequest(roster,"range").action,"throw-only");
- roster=registerDrone(roster,{id:"spare",charges:3},"spare");
+test("testing range 6 throws twice, but never a third; 5 never spends inventory",()=>{
+ let roster=newDroneRoster("range");
+ assert.deepEqual(throwRequest(roster),{action:"throw-only",kind:"initial"});
+ const first={id:"first",charges:2,x:12};
+ roster=registerDrone(roster,first,throwRequest(roster).kind);
+ assert.deepEqual(cameraRequest(roster),{action:"open",index:0});
+ assert.equal(droneEquipmentStatus(roster).throwables,1);
+ assert.deepEqual(throwRequest(roster),{action:"throw-only",kind:"spare"});
+ const second={id:"second",charges:3,x:17};
+ roster=registerDrone(roster,second,throwRequest(roster).kind);
+ assert.equal(roster.drones.length,2);
+ assert.equal(droneEquipmentStatus(roster).throwables,0);
+ assert.equal(droneEquipmentStatus(roster).cameras,2);
+ assert.equal(throwRequest(roster).action,"none");
+ assert.deepEqual(roster.drones,[first,second]);
  assert.equal(spareRequest(roster).action,"none");
- assert.equal(droneEquipmentStatus(roster).spare,0);
- assert.equal(cameraRequest(roster).action,"open");
- assert.equal(roster.initialUsed,false,"initial drone remains independently unspent");
 });
-test("Q/E camera selection cycles two persistent real drones",()=>{
+test("future match: one prep drone available in prep, one spare available in action",()=>{
+ let roster=newDroneRoster("match");
+ assert.equal(throwRequest(roster,"prep").kind,"initial");
+ assert.equal(throwRequest(roster,"action").kind,"spare");
+ assert.equal(droneEquipmentStatus(roster,"prep").throwables,1);
+ assert.equal(droneEquipmentStatus(roster,"action").throwables,1);
+ assert.equal(throwRequest(roster,"range").action,"blocked");
+ roster=registerDrone(roster,{id:"prep",charges:3},"initial");
+ assert.equal(throwRequest(roster,"prep").action,"none");
+ assert.equal(droneEquipmentStatus(roster,"action").throwables,1);
+ assert.equal(cameraRequest(roster).action,"open");
+ roster=registerDrone(roster,{id:"action",charges:3},"spare");
+ assert.equal(throwRequest(roster,"action").action,"none");
+ assert.equal(droneEquipmentStatus(roster,"action").throwables,0);
+});
+test("Q/E cycles between independent deployed drone cameras",()=>{
  const first={id:"prep",x:5,charges:1};
  const second={id:"spare",x:17,charges:3};
  let roster=registerDrone(newDroneRoster(),first,"initial");
@@ -39,12 +59,13 @@ test("Q/E camera selection cycles two persistent real drones",()=>{
  assert.equal(selectedDrone(selectDrone(roster,-1)).charges,2);
  assert.equal(roster.drones[1],second,"other camera/drone remains unchanged");
 });
-test("cannot create third drone or duplicate initial/spare",()=>{
+test("cannot duplicate used drones, invent a third, or silently reset boosts",()=>{
  let roster=newDroneRoster();
- roster=registerDrone(roster,{id:"a"},"initial");
+ roster=registerDrone(roster,{id:"a",charges:1},"initial");
  assert.equal(registerDrone(roster,{id:"duplicate"},"initial"),roster);
- roster=registerDrone(roster,{id:"b"},"spare");
- assert.equal(registerDrone(roster,{id:"c"},"spare"),roster);
+ roster=registerDrone(roster,{id:"b",charges:2},"spare");
+ assert.equal(registerDrone(roster,{id:"third"},"spare"),roster);
  assert.equal(roster.drones.length,2);
- assert.equal(droneEquipmentStatus(roster).spare,0);
+ assert.deepEqual(roster.drones.map(d=>d.charges),[1,2]);
+ assert.equal(droneEquipmentStatus(roster).throwables,0);
 });
