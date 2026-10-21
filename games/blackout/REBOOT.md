@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.12.2
+# BLACKOUT — Clean Reboot V0.13
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,15 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.13 · Attacker/Defender operator selection foundation (user approved V0.12.2):**
+- User confirmed **all five V0.12.2 in-browser drone tests passed**. This makes V0.12.2 the latest regression baseline. User chose a small **12-character roster** for a future 5v5 game (six attackers + six defenders), **ALL completed operators unlocked/free**, with distinctive signature gadgets for ten specialists and mirrored foundational **Striker** (attacker) and **Sentry** (defender) generalists that each get **two secondary gadget slots instead of a signature gadget**.
+- A responsive operator selection screen is now in the pause/start menu, with working attacker/defender tabs, actual selected operator state, two playable generalists, their real 2-speed/2-armor profiles, a three-pip stat representation, and the two slot categories. Selecting a side updates the HUD and operator-based movement multiplier. Both generalists intentionally have balanced 1.0x movement. Real 1/2/3 speed-class multiplier plumbing and deterministic movement tests are added to the existing physics foundation. Stat labels show ARMOR; this range is INVULNERABLE, so there is no functioning combat damage/health system yet.
+- The ten original specialists (VOLT, RELAY, TRACE, CUTTER, FLARE, BASTION, SPECTER, ANCHOR, TRIPWIRE, STATIC) are **design concepts, marked IN DEVELOPMENT; they are neither paywalled nor selectable** until their signature gadgets actually work. Ten signatures are defined as proposed roles, not gameplay abilities. No nonexistent gadget buttons. Striker and Sentry currently have **two actual loadout-slot records each** labeled UNASSIGNED: slots are prepared, and equipment activation/selection is a later separate stage. Future specialists will have exactly one signature plus one secondary slot.
+- Selecting an operator while paused can exit a drone feed safely; opening the range resumes normal player input. All stable systems from V0.9 through V0.12.2 must remain intact: wooden barricades, soft-wall cutouts, 3-second steel reinforcement, BX-7 shooting and ADS/recoil/sounds, 5 view-only camera key, 6 two physical range throws, drone boost/jump/persistent two-drone feed switching.
+- **Do not start gadgets, maps, phases, operators beyond the first two, or multiplayer before user browser confirmation.** Automated test success is necessary but not a substitute for real browser screenshots/gameplay.
+
+
 
 **2026-10-20 / V0.12.2 · Corrected drone camera / throwable rules after user browser feedback:**
 - User confirmed original V0.12 drone could drive, jump and use boost charges, but pointed out two mistakes in the V0.12.1 workflow: the self-drone body obstructed the first-person camera, and **5 must NEVER deploy or throw a drone**. Only **6 throws**; **5 views already-deployed cameras**. This version is a *bugfix stage*, not an authorization to start new mechanics.
