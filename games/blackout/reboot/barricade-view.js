@@ -3,7 +3,7 @@
 // children of the affected plank, so destroying it cannot leave floating decals.
 import {BARRICADE,createBarricadeState,barricadeDamage,barricadeRebuild,
  barricadeBlockers,barricadeStatus,canInteractWithBarricade,boardBounds,barricadeMeleeDamage,BARRICADE_MELEE_HITS}
- from "./barricade.js?v=reboot-015";
+ from "./barricade.js?v=reboot-029";
 
 export function createBarricadeStation(THREE,scene){
  const b=BARRICADE;
