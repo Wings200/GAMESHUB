@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.15.2
+# BLACKOUT — Clean Reboot V0.15.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,16 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.15.3 · POSITIONAL BARBED WIRE SOUNDS (USER APPROVED STAGE)**
+- User approved adding audio cues before C4: **enemy movement through live wire → low metallic rattle/scrape; first V punch → pronounced steel crunch; second V punch → loud snap and collapsing metal clatter**. All three effects have distinct original procedural WebAudio recipes, with no external sound downloads and no copyrighted audio samples. Actual sounds only play after user clicks Enter Test Range, using the existing unlocked `GameAudio` mixer and its pooled spatial buses.
+- Events are world-positioned **at the deployed coil**, not hard-coded at the player/camera: `shotAudio.playAt(cue.type,wire.x,wire.z,player.x,player.z,player.yaw)`. Existing bus logic attenuates by distance and stereo-pans according to player direction; consequently the sound follows the wire even when looking away. This remains a solo sandbox, not a new other-player audio simulation.
+- Pure `wire-sound.js` determines which active **enemy wire** the moving attacker contacts and schedules a single immediate rattle followed by at most one every **0.34s** of continued movement. Standing still, leaving the wire, jumping above the coils, wire destruction, friendly-defender contact, player elimination, team switching, drone mode, pausing, and P-respawn stop/reset rattles. No idle looping or per-frame audio spam. Timers are not advanced while paused; player's original 10HP per 0.5s damage is independent.
+- V melee gets an entirely new `wire-strike` or `wire-destroy` positional effect in place of the generic `impact` cue, matching the actual first or final destruction hit. Destroyed mesh disappears and no further movement sounds occur; sound clatter may finish even though mesh is gone. Wood melee keeps its old impact sound. Bulletproof wire, 2 V melee hits, faction-only 10HP damage/0.5s, slowdown and all preexisting drone, gun, reinforcement, and camera behavior are preserved.
+- `wire-sound.test.mjs` tests immediate/intermittent rattle events, no stationary/friendly sounds, interruption/switch/jump/destroy, closest device source, distinct procedural sound recipes, and actual stereo panning/attenuation setup. Foundation test verifies runtime `playAt` wiring and page labels; CI parses `wire-sound.js`. **GitHub Actions green, 163 passing / 0 failing** at commit `f0b20f2e470c0d2efcbc8047b3a1a66c9f4312a4` before this documentation edit. **No browser verification yet; stop here until user confirms.**
+- Browser test: hard-refresh BLACKOUT V0.15.3; Sentry G deploy wire (notice friendly defenders still immune); ESC choose Striker then MOVE across coil, hear metallic scraping/rattling and real 10HP/0.5s while in wire; stand still or step away and confirm rattle stops; approach wire, look down and press V once for crunch, then again after melee cooldown for distinct snap/clatter. Try rotating to face away from the wire and compare left/right location cues, and check that shooting wire does not remove it. Do not begin C4 or subsequent gadgets before their confirmation.
+
+
 
 **2026-10-21 / V0.15.2 · WIRE IS PUNCH-ONLY; ENEMY ATTACKERS TAKE 10HP EVERY 0.5S**
 - Explicit user correction: **FOR THE ENEMY TEAM ONLY**. Sentry DEFENSE deploys wire (2 gadgets) in the solo Training Range. On an active enemy (currently Striker ATTACK) physically entering a defender coil, wire **slows movement by 52% and deals 10 HP per full 0.5 seconds of continuous grounded contact**. Friendly defenders (including Sentry) are entirely IMMUNE to slow and damage. The range preserves placed wire when switching teams to test this despite absent 5v5 networking.
