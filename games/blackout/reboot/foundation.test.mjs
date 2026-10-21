@@ -123,8 +123,28 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-013",
-   "./reboot/style.css?v=reboot-013"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-014",
+   "./reboot/style.css?v=reboot-014"])assert.ok(html.includes(src));
+ // Screen reference includes distinct HUD profiles but only player is playable.
+ assert.ok(html.includes('data-hud-mode="player"'));
+ assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
+ assert.ok(html.includes('id="camera-hud" class="device-hud device-hud-camera hidden"'));
+ assert.ok(html.includes('data-hud-mode="drone"'));
+ assert.ok(html.includes('data-hud-mode="camera"'));
+ assert.ok(html.includes('class="device-nav"'));
+ assert.ok(html.includes('class="device-view-toggle"'));
+ assert.ok(html.includes('<kbd>Q</kbd>')&&html.includes('<kbd>E</kbd>'));
+ assert.ok(html.includes('<kbd>CTRL</kbd>'));
+ assert.ok(html.includes('NO GADGETS YET'));
+ assert.ok(html.includes('TRAINING · INVULNERABLE'));
+ assert.ok(main.includes('document.body.dataset.hudProfile=locked?"player":"menu"'));
+ // Verify the two future-mode shells aren't connected to fake gameplay modes.
+ assert.equal(main.includes('document.getElementById("drone-hud").classList.remove("hidden")'),false);
+ assert.equal(main.includes('document.getElementById("camera-hud").classList.remove("hidden")'),false);
+ for(const selector of [".device-hud",".device-nav",".device-camera-switcher",
+  ".device-view-toggle",".device-actions",".siege-quickslot"]){
+  assert.ok(css.includes(selector),"missing visual profile "+selector);
+ }
  // Screenshot-matched layout rather than the old multi-box debug HUD.
  for(const id of ["mission-check","round-clock","tactical-map","area-name",
   "heading","compass-arrow","fps","reserve-count","ammo","weapon-status",
