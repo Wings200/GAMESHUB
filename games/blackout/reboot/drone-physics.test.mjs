@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {DRONE,newDrone,tickDrone,canDroneOccupy,droneJumpLabel,droneBoostLabel} from "./drone-physics.js";
+import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneJumpLabel,droneBoostLabel} from "./drone-physics.js";
 import {TEST_OBSTACLES} from "./physics.js";
 import {SOFT_WALL,newSoftWall,softWallIndex,softWallRemove,softWallBlockers} from "./soft-wall.js";
 import {REINFORCEMENT,newReinforcement,stepReinforcement,reinforcementBlockers} from "./reinforcement.js";
@@ -99,4 +99,29 @@ test("drone physics never moves operator coordinates or modifies old game object
  assert.deepEqual(op,{x:0,z:8,yaw:0});
  assert.equal(obstacles,TEST_OBSTACLES);
  assert.ok(d.x!==0&&d.z!==6);
+});
+
+test("5 or 6 physical throws start airborne and travel forward before settling",()=>{
+ const obstacles=TEST_OBSTACLES;
+ let d=throwDrone(0,7,0);
+ assert.ok(d.y>.5&&d.y<1);
+ assert.equal(d.grounded,false);
+ assert.ok(d.throwLeft>0);
+ assert.equal(d.charges,3);
+ d=stepN(d,8,{},obstacles);
+ assert.ok(d.z<7-0.4,"real thrown drone flies forward");
+ assert.ok(d.y>0,"it is still in the air early in the arc");
+ d=stepN(d,90,{},obstacles);
+ assert.equal(d.grounded,true);
+ assert.equal(d.y,0);
+ assert.equal(d.throwLeft,0);
+ assert.equal(d.charges,3,"throwing should not consume a Shift boost");
+});
+test("throw arc stops at high solid walls rather than teleporting through them",()=>{
+ const hardWall=[{id:"wall",x:0,z:5.7,width:6,depth:.35,
+  bottom:0,height:3.2}];
+ let d=throwDrone(0,7,0);
+ d=stepN(d,80,{},hardWall);
+ assert.ok(d.z>=5.7+.35/2+DRONE.radius-.08,
+  "thrown recon body must not pass through physical wall");
 });
