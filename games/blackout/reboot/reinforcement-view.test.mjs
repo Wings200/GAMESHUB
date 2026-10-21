@@ -30,9 +30,12 @@ function fixture(){
 }
 function player(){return {x:SOFT_WALL.x,z:SOFT_WALL.z+1.1}}
 function finish(station){
- let event;
- for(let i=0;i<60;i++)event=station.step({player:player(),holding:true,dt:.05}).event;
- return event;
+ let installed=false;
+ for(let i=0;i<60;i++){
+  const event=station.step({player:player(),holding:true,dt:.05}).event;
+  if(event==="installed")installed=true;
+ }
+ return installed?"installed":"incomplete";
 }
 test("original metal support art starts hidden and has no gun or player collision",()=>{
  const {station,scene}=fixture();
