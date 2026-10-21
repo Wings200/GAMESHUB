@@ -485,3 +485,69 @@ body.range-active .siege-system .siege-metrics{
  .siege-equipment-bar .siege-quickslot .siege-quick-icon{font-size:18px;line-height:21px}
  .siege-equipment-bar .siege-quickslot small{font-size:7px}
 }
+
+/* BLACKOUT V0.13 · actual operator roster, original visual design.
+   No paid/locked characters; silhouettes shown as type-letter icons.
+   Menu scrolls independently, live game still owns its original HUD. */
+.menu-content:has(.operator-selection){padding-top:clamp(35px,6vh,76px);max-width:1100px}
+.menu-content:has(.operator-selection) h1{font-size:clamp(64px,7.4vw,118px);margin:20px 0 14px}
+.menu-content:has(.operator-selection) .description{margin-bottom:17px;font-size:12px;line-height:1.65;max-width:800px}
+.menu-content:has(.operator-selection) .scope{margin-bottom:20px;gap:6px}
+.menu-content:has(.operator-selection) .scope span{padding:8px 10px;font-size:8px}
+.operator-selection{max-width:825px;margin:8px 0 20px;background:#0b202cca;border:1px solid #709ca54c;padding:15px 17px;box-shadow:0 14px 35px #0004}
+.operator-selector-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:13px}
+.operator-selector-heading>span{font-weight:900;letter-spacing:.16em;color:#edf5f5;font-size:12px}
+.operator-selector-heading small{color:#8bacba;font-weight:750;font-size:8px;letter-spacing:.08em}
+.operator-tabs{display:flex;gap:7px;margin-bottom:10px}
+.operator-tabs button{flex:1;min-height:38px;padding:9px;border:1px solid #5e8a9661;background:#142d3a;color:#8fb1c0;cursor:pointer;font-size:11px;letter-spacing:.13em;font-weight:900}
+.operator-tabs button.active{background:#a5e6d6;color:#14313d;border-color:#d2fff4}
+.operator-roster{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:13px}
+.operator-card{min-width:0;display:flex;align-items:center;gap:9px;text-align:left;border:1px solid #41687988;background:#102936c4;padding:10px 8px;color:#e6f3f5;min-height:59px}
+button.operator-card{cursor:pointer;font:inherit}
+button.operator-card:hover{border-color:#9be5db;background:#244956}
+button.operator-card.selected{border-color:#99e9d8;background:#24474d;box-shadow:inset 3px 0 #8ee7d2}
+.operator-card.planned{opacity:.54;border-style:dashed}
+.operator-card-mark{display:grid;place-items:center;flex:none;width:31px;height:34px;background:#284652;color:#a6f2df;font-size:19px;font-weight:950}
+.operator-card.planned .operator-card-mark{background:#203340;color:#9eafbc}
+.operator-card-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
+.operator-card-copy strong{font-weight:900;letter-spacing:.04em;font-size:11px}
+.operator-card-copy small{font-weight:750;letter-spacing:.04em;font-size:8px;color:#a4bfca;white-space:normal;line-height:1.3}
+.operator-detail{border-top:1px solid #507b855e;background:#0a1b25a6;padding:13px 14px}
+.operator-detail-top{display:flex;align-items:center;justify-content:space-between}
+.operator-label{font:900 9px/1.3 "Segoe UI",Arial,sans-serif;color:#8cead5;letter-spacing:.12em}
+.operator-detail h2{font-weight:1000;font-size:31px;letter-spacing:.08em;margin:2px 0 0;color:#f4fbfc}
+.operator-detail p{margin:2px 0;color:#a7c3cb;font-size:11px}
+.operator-detail-mark{font-weight:1000;font-size:29px;opacity:.16;letter-spacing:-.08em}
+.operator-stats{display:flex;gap:24px;margin:12px 0}
+.operator-stats>div{display:flex;align-items:center;gap:11px}
+.operator-stats strong{color:#c3d8df;font-size:10px;letter-spacing:.08em}
+.operator-pips{display:flex;align-items:center;gap:4px}
+.operator-pip{width:16px;height:9px;background:#3e5661}
+.operator-pip.filled{background:#8fdfd0}
+.operator-loadout-head{font-size:9px;font-weight:900;letter-spacing:.12em;color:#abc9d2;margin:6px 0}
+.operator-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.operator-utility-slot{padding:10px;border:1px dashed #638a916b;background:#102936;display:flex;flex-direction:column;gap:4px}
+.operator-utility-slot strong{font-size:10px;font-weight:900;letter-spacing:.07em;color:#d6e6e6}
+.operator-utility-slot small{font-size:8px;letter-spacing:.04em;font-weight:800;color:#93acb4}
+.operator-detail .operator-future-note{font-size:9px;color:#7899a7;line-height:1.45;margin-top:8px}
+.operator-player-tag{position:absolute;left:2.7%;bottom:128px;display:flex;gap:6px;flex-direction:column;padding:5px 0;font-size:10px;letter-spacing:.1em}
+.operator-player-tag span{color:#9fdccc;font-size:9px;font-weight:800}
+.operator-player-tag strong{color:#f6fbfa;font-size:14px;font-weight:950}
+@media(max-width:1000px){
+ .operator-roster{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .operator-selection{padding:12px}
+ .operator-selector-heading{flex-direction:column;align-items:flex-start}
+ .operator-detail h2{font-size:25px}
+}
+@media(max-width:600px){
+ .operator-roster{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .operator-card{min-height:51px;gap:5px;padding:6px}
+ .operator-card-mark{width:24px;height:28px;font-size:16px}
+ .operator-card-copy strong{font-size:9px}
+ .operator-card-copy small{font-size:7px}
+ .operator-stats{gap:10px}
+ .operator-stats>div{gap:5px}
+ .operator-pip{width:11px}
+ .operator-slots{grid-template-columns:1fr}
+ .operator-player-tag{bottom:120px}
+}
