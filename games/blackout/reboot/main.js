@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.13.1 — repair cross-faction operator picker initialization
+// BLACKOUT REBOOT V0.13.2 — defender-only wall reinforcements; silent on attackers
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -22,7 +22,7 @@ import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
-import {operatorById,operatorLoadout} from "./operators.js?v=reboot-021";
+import {operatorById,operatorLoadout,canUseReinforcement} from "./operators.js?v=reboot-023";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-022";
 
 const $=id=>document.getElementById(id);
@@ -156,6 +156,9 @@ let lastShotReadout="NO SHOTS YET",liveAimReadout="—",lastAimProbe=-Infinity;
 const operatorPicker=createOperatorPicker($("operator-selection"),{
  onSelect(operator){
   activeOperator=operator;
+  // Any pending construction must end when operator/team changes.
+  // Never carry a defender reinforcement interaction into attack.
+  reinforcement.step({player,holding:false,dt:0});
   operatorHudName.textContent=operator.name;
   operatorHudSide.textContent=operator.side==="attack"?"ATTACKER":"DEFENDER";
   // Side changes are a training-range selection only. Do not invent teams or
@@ -344,7 +347,7 @@ document.addEventListener("keydown",event=>{
    hint.textContent=debugShots?"B TO HIDE AIM / LAST SHOT DIAGNOSTICS":
     "BALLISTICS DEBUG OFF · B TO ENABLE";
  }
- if(event.code==="KeyY"&&!event.repeat){
+ if(event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)){
    const result=reinforcement.remove(player);
    shotNotice.textContent=result.reason;
    shotNoticeLeft=1.4;
@@ -402,7 +405,7 @@ function hudFrame(){
  softWallReadout.classList.toggle("hidden",!softWall.near(player));
  softWallStatusText.textContent=softWall.status;
  softWallRemoved.textContent=String(softWall.removed);
- const reinfNearby=reinforcement.near(player);
+ const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player);
  reinforcePrompt.classList.toggle("hidden",!reinfNearby);
  reinforceStatus.textContent=reinforcement.status;
  reinforceAction.textContent=reinforcement.installed?
@@ -614,7 +617,7 @@ function animate(now){
    // A different F action, gated by proximity: while stationary at the
    // gypsum station, construct a real metal shield bottom-up for 3 seconds.
    const reinforceStep=reinforcement.step({
-    player,holding:keys.has("KeyF"),dt,
+    player,holding:canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,
     moving:player.moving,sprinting:player.sprinting
    });
    if(reinforceStep.event==="installed"){
