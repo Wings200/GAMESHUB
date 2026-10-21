@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.7.4 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.8.0 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-009">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-013">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -16,15 +16,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.7.4</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.8.0</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 007.4</div>
+      <div class="section-tag"><span class="section-line"></span> WEAPONS / TEST 008.0</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">FIRST LIVE-FIRE PROTOTYPE.</p>
-      <p class="description">BOX BULLET-HOLE FIX / TEST 007.4: Small test boxes now receive genuine face-attached, persistent bullet holes. Decorative edge outlines no longer intercept shots before the actual box surface. Press B to see exactly which box face was hit and its visible hole count. V clears all holes. Original BLACKOUT gunfire remains.</p>
+      <p class="description">BOX BULLET-HOLE FIX / TEST 008.0: Small test boxes now receive genuine face-attached, persistent bullet holes. Decorative edge outlines no longer intercept shots before the actual box surface. Press B to see exactly which box face was hit and its visible hole count. V clears all holes. Original BLACKOUT gunfire remains.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span></div>
       <button id="play" class="primary" type="button">ENTER TEST RANGE <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
@@ -41,25 +41,95 @@
     </aside>
   </main>
 
-  <section id="hud" class="hud hidden" aria-label="Movement test information">
-    <div class="hud-upper"><div class="hud-title">BLACKOUT <span>/</span> TEST RANGE <b>007.4</b></div><div class="hud-status"><span class="live-dot"></span> MOVEMENT ONLINE · OFFLINE TRAINING</div></div>
-    <div class="hud-center"><span id="mode">STANDING</span><span id="motion">IDLE</span></div>
-    <div class="hud-bottom">
-      <div class="readout"><small>POSITION</small><strong id="position">0.0 / 0.0</strong></div>
-      <div class="readout"><small>SPEED</small><strong id="speed">0.0 <span>M/S</span></strong></div>
-      <div class="readout"><small>GROUND</small><strong id="ground">STABLE</strong></div>
-      <div class="readout"><small>BX-7 / AMMO</small><strong id="ammo">31 / 120</strong></div>
-      <div class="readout"><small>WEAPON</small><strong id="weapon-status">READY</strong></div>
-      <div class="readout"><small>LEAN</small><strong id="lean-status">CENTER</strong></div>
-      <div class="readout"><small>TARGETS HIT</small><strong id="target-hits">0</strong></div>
-      <div class="controls" aria-label="Controls">WASD MOVE <span>·</span> SHIFT RUN <span>·</span> C CROUCH <span>·</span> Q/E LEAN <span>·</span> TAP CTRL/Z PRONE <span>·</span> LMB FIRE <span>·</span> RMB AIM <span>·</span> R RELOAD <span>·</span> B AIM DEBUG <span>·</span> V CLEAR HOLES <span>·</span> P RESET <span>·</span> M MUTE <span>·</span> ESC PAUSE</div>
+  <!-- Tactical HUD V0.8. Deliberately close in screen composition to the
+       provided Siege drill screenshot, but original BLACKOUT visual assets. -->
+  <section id="hud" class="hud hidden" aria-label="BLACKOUT tactical live-fire HUD">
+    <div class="siege-objective" aria-label="Training objective">
+      <span id="mission-check" class="siege-mission-checkbox" aria-hidden="true"></span>
+      <span class="siege-mission-copy">Eliminate <b id="target-hits">0</b> / 4 targets in <strong>TEST RANGE</strong></span>
     </div>
-    <div id="hint" class="hint">BOX-ONE & BOX-TWO NOW RECEIVE BULLET HOLES · B DEBUG DISPLAYS FACE + HOLES · V CLEARS.</div>
+
+    <div class="siege-minimap" aria-label="Live training-range minimap">
+      <canvas id="tactical-map" width="200" height="200" aria-hidden="true"></canvas>
+      <span class="siege-map-compass">N</span>
+      <span class="siege-map-label">RANGE MAP</span>
+    </div>
+
+    <div class="siege-round" aria-label="Training timer">
+      <div class="siege-squad-crest" aria-hidden="true"><span>B<span>/</span>O</span><i></i><i></i><i></i></div>
+      <div id="round-clock" class="siege-clock" aria-label="Drill time remaining">60:00</div>
+    </div>
+
+    <div class="siege-system">
+      <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
+      <div class="siege-tip">Press <kbd>B</kbd> to toggle aim debug.</div>
+      <div class="siege-tip">Press <kbd>ESC</kbd> to pause training.</div>
+    </div>
+
+    <div class="siege-health" aria-label="Training health display">
+      <div class="siege-health-numbers"><b>110</b><span>/ 110</span></div>
+      <div class="siege-health-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <small>TRAINING · DAMAGE DISABLED</small>
+    </div>
+
+    <div class="siege-quickbar" aria-label="Training quick actions">
+      <div class="siege-quickslot"><span class="siege-quick-icon">◈</span><kbd>7</kbd></div>
+      <div class="siege-quickslot"><span class="siege-quick-icon">▣</span><kbd>5</kbd></div>
+      <div class="siege-quickslot"><span class="siege-quick-icon">⌾</span><kbd>Z</kbd></div>
+    </div>
+
+    <div class="siege-nav">
+      <div id="area-name" class="siege-area">EXT TEST RANGE</div>
+      <div class="siege-compass-wrap">
+        <div class="siege-compass-rose">
+          <span class="rose-n">N</span><span class="rose-e">E</span><span class="rose-s">S</span><span class="rose-w">W</span>
+          <div id="compass-arrow" class="siege-direction-arrow"></div>
+          <div class="siege-center-dot"></div>
+        </div>
+        <span id="heading" class="siege-heading">000°</span>
+      </div>
+    </div>
+
+    <div class="siege-gear" aria-label="Weapon and equipment">
+      <div class="siege-equipment">
+        <div class="siege-gadget"><kbd>G</kbd><span class="siege-glyph">◉</span><strong>—</strong></div>
+        <div class="siege-gadget"><kbd>6</kbd><span class="siege-glyph">▤</span><strong>—</strong></div>
+        <small>UTILITY NOT EQUIPPED</small>
+      </div>
+      <div class="siege-weapon-stack">
+        <div class="siege-weapon-row active">
+          <span class="siege-slot">1</span>
+          <svg class="siege-rifle" viewBox="0 0 150 42" aria-hidden="true" focusable="false">
+            <path d="M10 18H29L34 13H49V8H63V13H91L98 8H107V13H123L131 17V21H143V25H128L121 30H113L108 26H97L91 31H75L69 23H57L50 28H41L37 22H30L24 27H11Z" fill="currentColor"/>
+            <path d="M66 22H80L85 40H72Z" fill="currentColor"/>
+          </svg>
+          <span class="siege-gun-name">BX-7 MK II · AUTO</span>
+          <div class="siege-ammo" aria-label="Ammunition"><strong id="ammo">31</strong><span>/ <b id="reserve-count">120</b></span></div>
+        </div>
+        <div class="siege-weapon-row secondary">
+          <span class="siege-slot">2</span>
+          <svg class="siege-pistol" viewBox="0 0 95 34" aria-hidden="true" focusable="false">
+            <path d="M5 7H77L86 11V18H49L41 27H33L24 17H5Z" fill="currentColor"/>
+            <path d="M41 18H50L45 34H34Z" fill="currentColor"/>
+          </svg>
+          <span class="siege-secondary-label">SECONDARY · LOCKED</span>
+          <strong class="siege-secondary-ammo">—</strong>
+        </div>
+        <div class="siege-weapon-status"><span id="weapon-status">READY</span><span id="lean-status">CENTER</span><span id="mode">STANDING</span></div>
+      </div>
+    </div>
+
+    <!-- Compatibility-only metrics: kept for existing game hooks but not shown
+         as bulky test readouts over the player's view. -->
+    <div class="hud-technical hidden" aria-hidden="true">
+      <span id="position"></span><span id="speed"></span><span id="ground"></span>
+      <span id="motion"></span>
+    </div>
+    <div id="hint" class="hint hidden"></div>
     <div id="shot-notice" class="shot-notice hidden" role="status"></div>
     <div id="ballistics-debug" class="ballistics-debug hidden" role="status" aria-live="off"></div>
   </section>
-
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-012"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-013"></script>
 </body>
 </html>
