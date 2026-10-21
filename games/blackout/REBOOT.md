@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.10
+# BLACKOUT — Clean Reboot V0.11
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,15 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.11 · Metal reinforcement, soft-wall browser tests passed:**
+- User confirmed **all six V0.10 soft-wall playtests passed**, establishing V0.10 as stable. This stage implements only metal wall reinforcements; no breaching, explosives, multiplayer or new maps.
+- At the east gypsum station (X +7, Z +3), stand still beside the wall and **hold F for three uninterrupted seconds**. A double-faced, riveted armored steel panel visually rises from the ground. Installation cancels on release, movement or stepping away. Proximity and overlap checks prevent completing a reinforcement over a player inside the wall.
+- Once installed, the full-height steel plate becomes a proper Three.js bullet raycast mesh AND a solid player collision AABB. Gun rounds stop with a brief spark instead of carving a steel hole. It blocks both sides, including any holes already shot into the drywall; existing soft-wall geometry and removed-cell count are not modified.
+- For repeating tests, **Y** near the steel removes *only the armor*, revealing previously created gypsum holes; **T** resets the gypsum; **F** near the west wooden barricade still rebuilds the wood. No other controls changed.
+- Each functionality has focused pure deterministic and mock-Three visual tests plus all earlier regression tests. CI is necessary but **not sufficient** for final browser visual correctness. Stop after V0.11 and require the user's explicit in-browser confirmation before implementing anything else.
+
+
 
 **2026-10-20 / V0.10 · True soft-wall penetration (feature gate):**
 - User confirmed **all six V0.9 wooden barricade browser checks passed**, establishing the locked-in stability baseline. This stage introduces soft-wall mechanics ONLY; reinforcement, operator equipment, explosives, AI, online play and new building maps remain prohibited until another explicit user playtest.
