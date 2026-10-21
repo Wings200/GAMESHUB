@@ -565,3 +565,37 @@ button.operator-card.selected{border-color:#99e9d8;background:#24474d;box-shadow
  color:#f0c78b!important;font-weight:900;letter-spacing:.09em;margin:10px 0 4px!important;
  border-left:3px solid #dcad73;padding:6px 9px;background:#4d352021}
 .operator-utility-slot:has(.operator-gadget-select){border-style:solid}
+
+/* V0.14.1 · real-time, operator-specific utility HUD. Keys 3/4 are reserved,
+   but gadget visuals remain explicitly PREVIEW until the behavior is built. */
+.siege-equipment.utility-hud{display:flex;flex-direction:column;align-items:stretch;
+ min-width:185px;max-width:210px;gap:6px}
+.siege-equipment .siege-gadget.utility-hud-slot{
+ width:100%;min-height:41px;display:flex;align-items:center;justify-content:flex-start;gap:8px;
+ padding:7px 8px;opacity:1;border:1px solid #708e9659;background:#091b26db;
+}
+.utility-hud-slot.planned{border-color:#8dbcb064!important;background:#163039db!important}
+.utility-hud-slot kbd{
+ flex:none;background:#b9d0d3;color:#17242b;text-shadow:none;
+ font:900 14px/25px Arial,sans-serif;border-radius:2px;width:26px;height:26px;text-align:center
+}
+.utility-hud-copy{display:flex;flex-direction:column;min-width:0;gap:3px}
+.utility-hud-copy strong{display:block!important;margin:0!important;
+ font:900 10px/1.3 "Segoe UI",Arial,sans-serif!important;
+ color:#ebfbfb;letter-spacing:.01em;white-space:normal;overflow-wrap:anywhere}
+.utility-hud-copy small{display:block!important;font:800 8px/1.2 "Segoe UI",Arial,sans-serif!important;
+ color:#e4be88;letter-spacing:.03em;opacity:1!important}
+#utility-hud-note{display:block!important;font:800 8px/1.3 "Segoe UI",Arial,sans-serif!important;
+ letter-spacing:.05em;text-align:right;color:#d5a870;opacity:1}
+@media(max-width:1000px){
+ .siege-equipment.utility-hud{min-width:133px;max-width:160px}
+ .utility-hud-copy strong{font-size:9px!important}
+ .utility-hud-copy small{font-size:7px!important}
+}
+@media(max-width:780px){
+ .siege-equipment.utility-hud{display:flex;position:absolute;right:0;bottom:125px;max-width:154px;
+  min-width:135px}
+ .siege-equipment .siege-gadget.utility-hud-slot{min-height:32px;padding:4px}
+ .utility-hud-slot kbd{width:21px;height:22px;font-size:12px;line-height:22px}
+ #utility-hud-note{font-size:7px!important}
+}
