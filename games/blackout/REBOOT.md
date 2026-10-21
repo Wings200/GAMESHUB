@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.7.2
+# BLACKOUT — Clean Reboot V0.7.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.7.3 · User screenshot: decal circles rising above wall top:**
+- Latest user screenshot shows multiple prominent bullet-hole sprites half above the top edge of a pale box/wall, while the crosshair points at the vertical face. Thus the previous decal implementation (surface placement and visibility) was visually faulty.
+- Place marks in the struck **mesh's local geometry coordinates** using `object.worldToLocal(hit.point)` and `hit.face.normal`, clamp their in-plane centers to the actual `BoxGeometry` bounding extents with radius padding, shift 8mm outward from the face, then premultiply the entire instance transform by `object.matrixWorld`. This preserves correct geometry face orientation and prevents circle quads from hanging into the sky at wall edges. The visible impact diameter is slightly smaller than in the last build. Any direct shot onto the horizontal TOP is still horizontal; the B debug overlay shows `SURFACE TOP / FRONT / LEFT / RIGHT / BACK / BOTTOM` and world-space Y height to distinguish recoil and face hits.
+- Extended tests for hitting a vertical face center, clipping hits at the top edge, actual horizontal top-face impact, and 90-degree rotated wall. Existing 400 persistent impact ring and single instanced draw remain intact.
+- A future browser screenshot is still needed to confirm GPU texture orientation and depth rendering. Do not claim graphics visually verified from source-only tests. No changes to BLACKOUT weapon firing, recoil, SFX, old map, networking, REDLINE, or shared data.
+
 
 **2026-10-20 / V0.7.2 · User reports wall bullet holes disappearing (46-second screen recording):**
 - Observed visible dark bullet marks on the pale wall around 15–21s, but earlier holes disappeared or became hard to discern. The prior `createShotEffects()` explicitly deleted impact discs after **9 seconds** and discarded the oldest after **75 impacts**, which with 710 RPM automatic firing is under 7s of continuous fire. Tiny black circle geometry had insufficient visual detail, and depth/coplanar rendering could obscure marks from some angles.
