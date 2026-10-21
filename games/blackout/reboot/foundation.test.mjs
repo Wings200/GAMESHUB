@@ -263,6 +263,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('event.code==="KeyX"'));
  assert.ok(main.includes('controlMode==="drone"'));
  assert.ok(main.includes("tickDrone(drone,input,dt,activeDroneObstacles())"));
+ assert.ok(main.includes("if(drone)drone=tickDrone(drone,{},dt,activeDroneObstacles())"),
+ "parked drones must recharge and land while operator is active");
  assert.ok(main.includes('droneBoostPressed=true'));
  assert.ok(main.includes('droneJumpPressed=true'));
  assert.ok(main.includes('if(locked&&controlMode==="player")'));
