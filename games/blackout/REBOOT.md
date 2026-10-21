@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.11
+# BLACKOUT — Clean Reboot V0.12
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,17 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.12 · Playable R-1 recon drone — previous V0.11 user playtest approved:**
+- The user confirmed **V0.11 metal reinforcements work in-browser**. Keep stable V0.9 wood barricades, V0.10 gypsum and V0.11 reinforcement, including player weapon ballistics, scope, audio, collisions and test-only Y/T controls. This release introduces only a recon drone (no new map, operator, AI, explosive, spectator mode or multiplayer).
+- Press **6** while controlling the player to deploy an original four-wheel R-1 drone at the operator's feet/front, then hand the *actual camera* to its low forward lens. Press **X** to exit the feed, return to the stationary operator and his original weapon HUD; 6 re-enters the **same physical drone** with the same position and remaining charges. No duplicate free drones are spawned. Operator shooting/reloading/interactions are unavailable while controlling the drone.
+- Drone controls: **WASD** forward/back/strafing, **mouse** to steer and look, **Q/E** alternate heading adjustments, **SPACE** jumps with a 1.8-second cooldown even after landing, **SHIFT** triggers a 0.72-second boost and consumes one of **three charges**. Charges regenerate sequentially after a seven-second delay per available charge. The exact charge timing is a BLACKOUT prototype balancing choice, not a claim that these numbers are identical to Siege.
+- Separate pure `drone-physics.js` simulates drone momentum, radius/height-specific contact, jump gravity/cooldown, bounce-free wall sliding and finite arena boundaries. It uses the current physically present barricade boards, cut gypsum and metal reinforcement collision data. The world drone keeps recharging, landing and slowing when not actively controlled (while player gameplay runs). Drone visuals include a dark original shell, rolling wheels, camera lens and small LEDs.
+- Existing `drone-hud` is now real: low-camera feed, live simplified range minimap with actual drone position, three charge pip indicators, numeric boost recharge timer, jump status and controls. The previously planned spectator/security-camera HUD **remains hidden/inactive**.
+- Regression suite tests all three boosts and sequential recharge, jump cooldown, obstacle collisions, driving through a real soft-wall cutout but not metal armor, persistent drone model and POV, and unchanged old mechanics. GitHub CI passing **does not imply visual/browser playtest completion**.
+- User's strict stage gate remains: **STOP after V0.12. Do not start hard-breaching, AI, match maps or other new systems until explicit user confirmation following in-browser drone playtesting.**
+
+
 
 **2026-10-20 / V0.11 · Metal reinforcement, soft-wall browser tests passed:**
 - User confirmed **all six V0.10 soft-wall playtests passed**, establishing V0.10 as stable. This stage implements only metal wall reinforcements; no breaching, explosives, multiplayer or new maps.
