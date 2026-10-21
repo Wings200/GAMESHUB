@@ -223,6 +223,32 @@ export class GameAudio{
         this.noise(.19,.19,560,"lowpass");
         this.tone(105,.19,.11,"sawtooth",0,57);
         break;
+      case "wire-rattle":
+        // Footsteps brushing a coil: fine chain-link ring + short dry scrape.
+        // The sound position is set by playAt at the actual wire coordinates.
+        this.noise(.10,.12,3400,"highpass");
+        this.noise(.16,.13,1100,"bandpass",.025);
+        this.tone(790,.095,.071,"triangle",0,405);
+        this.tone(1240,.06,.040,"sine",.048,780);
+        break;
+      case "wire-strike":
+        // First V hit: crunchy steel stress without a full collapse.
+        this.noise(.13,.21,1800,"bandpass");
+        this.noise(.092,.14,4600,"highpass",.024);
+        this.tone(615,.16,.16,"triangle",0,238);
+        this.tone(1260,.12,.080,"sine",.024,690);
+        break;
+      case "wire-destroy":
+        // Second V hit: bright snap then a tumbling series of metal clatters.
+        this.noise(.16,.32,2200,"bandpass");
+        this.noise(.12,.26,4900,"highpass",.007);
+        this.tone(860,.23,.18,"sawtooth",0,190);
+        this.noise(.14,.19,1260,"bandpass",.105);
+        this.tone(640,.13,.11,"triangle",.126,300);
+        this.noise(.19,.15,2050,"bandpass",.23);
+        this.tone(470,.18,.085,"triangle",.255,170);
+        this.noise(.22,.10,650,"lowpass",.345);
+        break;
       case "impact":
         this.noise(.045,.065,3200,"highpass");
         break;
