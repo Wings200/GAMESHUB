@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.9
+# BLACKOUT — Clean Reboot V0.10
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,15 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.10 · True soft-wall penetration (feature gate):**
+- User confirmed **all six V0.9 wooden barricade browser checks passed**, establishing the locked-in stability baseline. This stage introduces soft-wall mechanics ONLY; reinforcement, operator equipment, explosives, AI, online play and new building maps remain prohibited until another explicit user playtest.
+- East test station at X +7 / Z +3 comprises 32×20 individually hittable plaster cells, each **12 cm square**, modeled by **one dynamic THREE.InstancedMesh** with visible thickness and a procedural plaster texture. A bullet removes only the exact struck instance, forming a real square-edged perforation through both faces instead of painting a deceptive black decal on intact collision. Repeated rounds through a removed cell continue downrange to other real raycast targets/surfaces. The entire wall does **not** collapse from arbitrary accumulated damage.
+- Each update rebuilds only the active instance matrices and the actual movement AABB collision strips derived from the same pure `soft-wall.js` state. One tiny hole lets bullets pass but cannot fit the player; carve a sufficiently wide/tall cluster and the player can crouch/crawl/walk through. Support posts and header remain solid. Full view-side geometry/raycast data and physical collision are synchronized.
+- **T** restores all cut-out cells and full collision, unless the player is currently intersecting the wall's footprint; the action does not reset wood, ammunition, real bullet holes, or the player. HUD shows live removed cells and area name; the minimap marks the east station. Gypsum fragments are short lived and capped. Original 710 RPM gun, ADS reticle, ballistic audio, barricade behavior and existing true wall/box decals are unaffected.
+- Automated tests verify tile removal and instance ID compaction, 3D representation, reset safety, actual movement passage, no whole-wall HP, and old game regression. These tests are **not proof of actual browser visual behavior**. User must complete an explicit browser checklist before work on wall reinforcement.
+
+
 
 **2026-10-20 / V0.9 · Wooden barricades ONLY — explicit feature gate:**
 - User requires **every stage tested in-browser before starting another mechanic**. V0.9 implements only the first wooden barricade. Soft-wall holes, wall reinforcement, breaching, AI and map building are *not* started.
