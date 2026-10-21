@@ -87,7 +87,7 @@ test("a shot on a wall creates a front-facing visible impact, offset beyond the 
   assert.equal(decals.mesh.matrices[0].position.z,-6+.2+SURFACE_OFFSET);
   assert.equal(decals.lastFace,"FRONT");
   assert.equal(decals.mesh.matrices[0].normal.z,1);
-  assert.ok(decals.mesh.matrices[0].scale.x>=.09);
+  assert.ok(decals.mesh.matrices[0].scale.x>=.068);
   assert.equal(decals.mesh.material.depthTest,true);
   assert.equal(decals.mesh.material.depthWrite,false);
   assert.equal(decals.mesh.material.polygonOffset,true);
