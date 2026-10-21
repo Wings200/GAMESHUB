@@ -45,7 +45,7 @@ import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040
 import {THROW_PREVIEW_IDS,canPreviewThrow,traceThrownGadget}
  from "./throw-preview.js?v=reboot-041";
 import {createThrowPreviewView} from "./throw-preview-view.js?v=reboot-041";
-import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-044";
+import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-045";
 import {SOFT_BREACH,newSoftBreachState,placeSoftBreach,tickSoftBreach,
  pickupSoftBreach,detonateSoftBreach} from "./soft-breach.js?v=reboot-044";
 import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
