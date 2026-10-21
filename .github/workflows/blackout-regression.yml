@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.7.3 · wall-local impacts and strict face clipping
+    name: Reboot V0.7.4 · box outlines ignored, box-local bullet impact layers
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -38,5 +38,6 @@ jobs:
           node --check games/blackout/reboot/range-layout.js
           node --check games/blackout/reboot/shot-ray.js
           node --check games/blackout/reboot/impact-decals.js
+          node --check games/blackout/reboot/combat-raycast.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs
