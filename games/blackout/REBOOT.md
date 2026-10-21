@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.12.1
+# BLACKOUT — Clean Reboot V0.12.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,16 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.12.2 · Corrected drone camera / throwable rules after user browser feedback:**
+- User confirmed original V0.12 drone could drive, jump and use boost charges, but pointed out two mistakes in the V0.12.1 workflow: the self-drone body obstructed the first-person camera, and **5 must NEVER deploy or throw a drone**. Only **6 throws**; **5 views already-deployed cameras**. This version is a *bugfix stage*, not an authorization to start new mechanics.
+- Testing Range starts with **TWO carried, throwable drones and ZERO deployed cameras**. The live 6 HUD displays **DRONES 2** at startup, then 1, then 0 as 6 throws one real drone at a time. The 5 HUD displays the number of physically deployed drones (0, 1, 2). Pressing 5 at 0 never creates one; it shows **NO DRONES DEPLOYED · PRESS 6 TO THROW**. 6 stays a physically thrown drone and does not automatically connect to camera.
+- After a 6 throw, press **5** to open that real deployed feed; 5/X closes it. Throw a second drone with 6 from player mode and use Q/E in camera mode to select the already-deployed feed. Both drones retain independent positions, jump cooldowns and Shift boost charges.
+- The 3D model of **only the currently viewed drone** is hidden from its own camera to avoid seeing its own case/wheels through the camera lens. The second drone remains visible. Exit cameras or switch feeds and the previous device is visible again. A targeted mock-Three regression protects the intended rendering state.
+- Match mode (future-only pure roster contract): one drone is usable during prep phase and **one remaining throwable spare after prep/action begins**, with phase gating. There is no actual match prep phase or attacker/defender game loop in this training build; never falsely claim it is working yet.
+- V0.9 wooden barricade, V0.10 drywall, V0.11 steel reinforcement, V0.12 drone collision/jumps/three regenerating Shift charges and original firearms are preserved. CI must pass; the user must verify the fixed 5/6 keys, counts and camera clipping in-browser before any next stage.
+
+
 
 **2026-10-20 / V0.12.1 · Correct Siege-like drone equipment and keybinds — V0.12 user feedback:**
 - User reported the V0.12 drone drives and works, **but requested genuine throw-then-camera flow** and actual keybinds: **5 = open drone cameras**, **6 = throw one spare drone only after preparation** in real matches. The standalone range has no phase system, so the spare is deliberately unlocked for testing; the future match phase must gate 6 during preparation.
