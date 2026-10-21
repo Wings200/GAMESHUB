@@ -298,11 +298,14 @@ document.addEventListener("keydown",event=>{
  if(locked&&(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyC","KeyQ","KeyE","ControlLeft","ControlRight"].includes(event.code)||event.ctrlKey))
    event.preventDefault();
  if(!locked)return;
- if(event.code==="Digit6"&&!event.repeat){
-  deployDrone();return;
- }
+ if(event.code==="Digit5"&&!event.repeat){openDroneCameras();return;}
+ if(event.code==="Digit6"&&!event.repeat){throwSpareDrone();return;}
  if(controlMode==="drone"){
   if(event.code==="KeyX"&&!event.repeat){setControlMode("player");return;}
+  if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat&&
+     droneRoster.drones.length>1){
+   switchDroneCamera(event.code==="KeyQ"?-1:1);return;
+  }
   if(event.code==="Space"&&!event.repeat)droneJumpPressed=true;
   if((event.code==="ShiftLeft"||event.code==="ShiftRight")&&!event.repeat)
    droneBoostPressed=true;
@@ -550,14 +553,23 @@ function animate(now){
     jumpPressed:droneJumpPressed,boostPressed:droneBoostPressed
    };
    droneJumpPressed=false;droneBoostPressed=false;
-   if(keys.has("KeyQ"))drone.yaw+=dt*2.3;
-   if(keys.has("KeyE"))drone.yaw-=dt*2.3;
+   if(droneRoster.drones.length===1){
+    if(keys.has("KeyQ"))drone.yaw+=dt*2.3;
+    if(keys.has("KeyE"))drone.yaw-=dt*2.3;
+   }
    drone=tickDrone(drone,input,dt,activeDroneObstacles());
+   droneRoster=updateDrone(droneRoster,droneRoster.selected,drone);
  }
  if(locked&&controlMode==="player"){
    // Disconnected reconnaissance drones are still physical world objects.
    // Their battery charges, jump timer, boost timer and landing progress persist.
-   if(drone)drone=tickDrone(drone,{},dt,activeDroneObstacles());
+   if(droneRoster.drones.length){
+    for(let i=0;i<droneRoster.drones.length;i++){
+     const parked=tickDrone(droneRoster.drones[i],{},dt,activeDroneObstacles());
+     droneRoster=updateDrone(droneRoster,i,parked);
+    }
+    drone=selectedDrone(droneRoster);
+   }
    const input={
      forward:Number(keys.has("KeyW")||keys.has("ArrowUp"))-
        Number(keys.has("KeyS")||keys.has("ArrowDown")),
@@ -658,7 +670,8 @@ function animate(now){
  for(const t of targets){
   if(t.downTime>0){t.downTime=Math.max(0,t.downTime-dt);if(t.downTime===0)t.group.visible=true;}
  }
- if(drone)droneView.update(drone,dt);
+ for(let i=0;i<droneViews.length;i++)
+  droneViews[i].update(droneRoster.drones[i],dt);
  shotEffects.tick(dt);
  barricade.tick(dt);
  softWall.tick(dt);
@@ -671,5 +684,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.12 real recon drone with jump and boost charges",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.12.1 real 5 cameras / 6 throw spare",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
