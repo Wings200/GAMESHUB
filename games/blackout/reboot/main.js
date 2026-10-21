@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.16.1 — playable C4 and contact-exploding impact grenades
+// BLACKOUT REBOOT V0.16.2 — live defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -34,6 +34,8 @@ import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage}
 import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-032";
 import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-033";
 import {createImpactView} from "./impact-view.js?v=reboot-033";
+import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-034";
+import {createFragView} from "./frag-view.js?v=reboot-034";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -151,6 +153,8 @@ let nitroState=newNitroState();
 const nitroViews=new Map(),blastViews=[];
 let impactState=newImpactState();
 const impactViews=new Map();
+let fragState=newFragState();
+const fragViews=new Map();
 const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
@@ -214,12 +218,16 @@ function refreshUtilityHud(){
     (nitroState.devices.some(d=>d.armed)?"ARMED · PRESS "+row.key+" TO DETONATE":
       "LIVE · "+nitroState.charges+"/"+NITRO.charges+" LEFT"):
    row.gadgetId==="impact"?
-      "LIVE · "+impactState.charges+"/"+IMPACT.charges+" LEFT":row.status;
+      "LIVE · "+impactState.charges+"/"+IMPACT.charges+" LEFT":
+   row.gadgetId==="frag"?
+      "LIVE · "+fragState.charges+"/"+FRAG.charges+" LEFT":row.status;
   utilitySlots[i].classList.toggle("planned",Boolean(row.gadgetId));
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="impact")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="frag")?
+  activeOperator.name+" · FRAG FUSE 3.2S · LIVE":
+  rows.some(row=>row.gadgetId==="impact")?
   activeOperator.name+" · IMPACT CONTACT DETONATION · LIVE":
   rows.some(row=>row.gadgetId==="c4")?
   activeOperator.name+" · C4 THROW / REMOTE DETONATE · LIVE":
@@ -290,6 +298,18 @@ function usePlannedGadget(code){
    shotNotice.textContent=result.reason;
   }
   shotNoticeLeft=2.1;
+  return;
+ }
+ if(row.gadgetId==="frag"&&activeOperator.side==="attack"){
+  const result=throwFrag(fragState,player);
+  if(result.device){
+   fragState=result.state;
+   fragViews.set(result.device.id,createFragView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;
+  shotNoticeLeft=1.7;
   return;
  }
  if(row.gadgetId==="impact"&&activeOperator.side==="defend"){
@@ -812,6 +832,21 @@ function animate(now){
    for(const device of nitroState.devices){
     if(device.armed)nitroViews.get(device.id)?.sync(device);
    }
+   // Timed attacker grenades use the same destructible blast API; they can
+   // bounce off a wall or the floor before their fuse expires.
+   const fragTick=tickFrag(fragState,dt,activeDroneObstacles());
+   fragState=fragTick.state;
+   for(const device of fragState.devices){
+    const view=fragViews.get(device.id);
+    if(view){
+     view.sync(device);
+     if(!device.armed)fragViews.delete(device.id);
+    }
+   }
+   for(const blast of fragTick.blasts){
+    shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
+    shotNoticeLeft=1.7;
+   }
    // Impact grenades advance through the actual Testing Range and detonate
    // immediately upon colliding with floor or physical cover.
    const impactTick=tickImpact(impactState,dt,activeDroneObstacles());
@@ -975,5 +1010,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.16.1 C4 remote and impact contact grenades with physical blast/HP/soft walls",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.16.2 C4 remote, Impact contact, Frag timed: actual explosive gameplay",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
