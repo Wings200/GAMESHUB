@@ -175,7 +175,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   assert.ok(css.includes(selector),"CSS class for reference HUD "+selector);
  }
  assert.equal(html.includes('class="hud-bottom"'),false,"old debug dashboard must be replaced");
- assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
+ assert.ok(main.includes('from "./physics.js?v=reboot-028"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.ok(main.includes("player=stepPlayer(player,input,dt,"));
