@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.8 — Siege-proportioned solo drill HUD; shooting untouched
+// BLACKOUT REBOOT V0.8.1 — live reference HUD; dormant drone/camera UI profiles
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -155,6 +155,9 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  hud.classList.toggle("hidden",!locked);
  document.body.classList.toggle("range-active",locked);
+ // Gameplay currently only supports the player camera. Inactive profile HTML
+ // cannot be enabled until an actual drone or spectator camera is playable.
+ document.body.dataset.hudProfile=locked?"player":"menu";
  crosshair.classList.toggle("hidden",!locked);
  if(!locked){keys.clear();footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;unlockMessage();}
  lastTime=performance.now();
