@@ -72,7 +72,10 @@ export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES){
   const magnitude=Math.hypot(forward,right);
   const normalized=magnitude>1?1/magnitude:1;
   state.sprinting=!state.crouched&&!state.prone&&input.sprint&&forward>0&&magnitude>0;
-  const baseSpeed=state.prone?SPEED.prone:state.crouched?SPEED.crouch:state.sprinting?SPEED.sprint:SPEED.walk;
+  const operatorMultiplier=Number.isFinite(input.speedMultiplier)?
+    Math.max(.87,Math.min(1.13,input.speedMultiplier)):1;
+  const baseSpeed=(state.prone?SPEED.prone:state.crouched?SPEED.crouch:
+    state.sprinting?SPEED.sprint:SPEED.walk)*operatorMultiplier;
   const f=forward*normalized,r=right*normalized;
   const vx=(-Math.sin(state.yaw)*f+Math.cos(state.yaw)*r)*baseSpeed;
   const vz=(-Math.cos(state.yaw)*f-Math.sin(state.yaw)*r)*baseSpeed;
