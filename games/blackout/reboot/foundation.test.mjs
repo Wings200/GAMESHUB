@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-009",
+ for(const src of ["./reboot/main.js?v=reboot-010",
    "./reboot/style.css?v=reboot-009"])assert.ok(html.includes(src));
  assert.ok(main.includes('from "./physics.js?v=reboot-008"'));
  assert.match(main,/requestPointerLock\(/);
@@ -141,7 +141,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./legacy-audio.js?v=reboot-006"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
- assert.ok(main.includes('from "./weapon-view.js?v=reboot-008"'));
+ assert.ok(main.includes('from "./weapon-view.js?v=reboot-010"'));
  assert.ok(main.includes("legacyShotCone(shot"));
  assert.ok(main.includes("cycleLegacyFire(weapons,now"));
  assert.ok(main.includes('shotAudio.play("fire")'));
@@ -176,6 +176,14 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.match(main,/FootstepAudio/);
  const view=read("reboot/weapon-view.js"),model=read("reboot/weapon-model.js");
  assert.ok(view.includes("buildBX7Model"));
+ assert.ok(view.includes('from "./impact-decals.js?v=reboot-010"'));
+ assert.ok(view.includes("return createImpactDecals(THREE,scene)"));
+ const impact=read("reboot/impact-decals.js");
+ assert.ok(impact.includes("new THREE.InstancedMesh"));
+ assert.ok(impact.includes("decals.frustumCulled=false"));
+ assert.ok(impact.includes("polygonOffset:true"));
+ assert.ok(impact.includes("Deliberately permanent"));
+ assert.ok(main.includes("shotEffects.clear()"));
  assert.ok(view.includes('from "./weapon-model.js?v=reboot-008"'));
  assert.ok(model.includes("OPTIC_CENTER"));
  assert.ok(model.includes("ExtrudeGeometry"));
