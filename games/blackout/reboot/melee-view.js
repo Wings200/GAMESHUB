@@ -33,5 +33,6 @@ export function createMeleeView(THREE,camera){
   root.rotation.set(-.4*power,.19*power,-.3*power);
   root.visible=timer>0;
  }
- return {root,trigger,update,get active(){return timer>0;}};
+ function cancel(){timer=0;root.visible=false;}
+ return {root,trigger,update,cancel,get active(){return timer>0;}};
 }
