@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.18.1 · hold-to-aim trajectories for five real throwables
+    name: Reboot V0.18.2 · FRAG combat only; Impact/C4 structural breaching intact
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -69,5 +69,6 @@ jobs:
           node --check games/blackout/reboot/smoke-view.js
           node --check games/blackout/reboot/throw-preview.js
           node --check games/blackout/reboot/throw-preview-view.js
+          node --check games/blackout/reboot/blast-policy.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

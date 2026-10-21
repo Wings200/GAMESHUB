@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.18.1
+# BLACKOUT — Clean Reboot V0.18.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.18.2 · FRAG GRENADE WALL-DAMAGE NERF, IMPACT WALL BREAKING PRESERVED**
+- User corrected an earlier misunderstanding: **Impact Grenades must CONTINUE damaging wooden barricades and soft gypsum walls**, but normal **Frag Grenades must NOT deal any damage to walls or barricades**. This sets up a clear future purpose for the dedicated Soft Breach Charge while preserving the defender Impact Grenade utility.
+- Only the structural damage routing of Frag Grenades changed. Frag **260 peak HP damage, lethal-radius handling, target dummy hits, thrown trajectory, 3.2-second fuse, VFX and audio remain unchanged**.
+- C4 and Impact Grenades still invoke the wooden-board and unreinforced gypsum destruction paths, and Impact remains 60 HP peak / 2.0m damage radius. Reinforced steel stays immune.
+- Implemented a separate tested blast-policy gate with explicit impact/C4 allowlist and spy tests proving Frag never calls wall-destruction functions while Impact/C4 still do. Flash and Smoke were already nonstructural. Browser testing still required.
 
 **2026-10-21 / V0.18.1 · HOLD G/MMB FOR REAL-PHYSICS THROW TRAJECTORY PREVIEW**
 - User picked **option B**, meaning show the trajectory only while holding the equipped throwable gadget's actual key/button; release **G** or **mouse wheel click (MMB)** to throw.

@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.18.1 — five working gadgets including attacker flashbangs defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.18.2 — frags are combat-only; impacts and C4 still breach
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -45,6 +45,7 @@ import {createSmokeView,createSmokeCloudView} from "./smoke-view.js?v=reboot-040
 import {THROW_PREVIEW_IDS,canPreviewThrow,traceThrownGadget}
  from "./throw-preview.js?v=reboot-041";
 import {createThrowPreviewView} from "./throw-preview-view.js?v=reboot-041";
+import {resolveStructuralBlast} from "./blast-policy.js?v=reboot-042";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -276,10 +277,14 @@ function activeDroneObstacles(){
 function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
  shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
- // Explosions damage BOTH sides, including the thrower. Unlike explosives,
- // barbed wire remains friendly-safe. Reinforced steel remains intact.
- const wood=barricade.blastAt(blast);
- const gypsum=reinforcement.installed?0:softWall.blastAt(blast);
+ // Explosions still damage BOTH sides and targets, including the thrower.
+ // FRAG is combat-only: it cannot damage wood or gypsum. IMPACT and C4
+ // still breach wood and unreinforced soft walls; steel remains protected.
+ const {wood,gypsum}=resolveStructuralBlast(label,{
+  woodBlast:()=>barricade.blastAt(blast),
+  gypsumBlast:()=>softWall.blastAt(blast),
+  reinforced:reinforcement.installed
+ });
  const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
  const instantKill=nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
  let damageTaken=0,playerEliminated=false;
@@ -301,8 +306,9 @@ function applyGadgetBlast(blast,label="C4"){
    hits++;
   }
  }
- return label+" DETONATED · "+hits+" TARGETS · "+wood+" BOARDS · "+
-  gypsum+" GYPSUM CELLS"+(playerEliminated?" · YOU WERE ELIMINATED":
+ return label+" DETONATED · "+hits+" TARGETS · "+
+  (label==="FRAG"?"NO STRUCTURAL DAMAGE":wood+" BOARDS · "+gypsum+" GYPSUM CELLS")+
+  (playerEliminated?" · YOU WERE ELIMINATED":
    damageTaken?" · SELF -"+damageTaken+" HP":"");
 }
 function detonateCurrentNitro(){
@@ -1222,5 +1228,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.18.1 hold MMB or G for real-physics throwable trajectory; release to throw",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.18.2 frags damage HP only; impacts and C4 still breach walls",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
