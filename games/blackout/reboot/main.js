@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.13 — playable Striker / Sentry selection, two utility slots per generalist
+// BLACKOUT REBOOT V0.13.1 — repair cross-faction operator picker initialization
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-008";
@@ -23,7 +23,7 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout} from "./operators.js?v=reboot-021";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-021";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-022";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
