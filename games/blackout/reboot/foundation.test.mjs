@@ -208,7 +208,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ballistics-debug"'));
  // ADS bullet position is now projected from the actual rendered optic.
  assert.ok(main.includes("SHOT BLOCKED"));
- assert.ok(html.includes("Press <kbd>B</kbd> to toggle aim debug."));
+ assert.ok(html.includes("Press <kbd>B</kbd> for ballistics diagnostics."));
  assert.ok(main.includes('from "./combat-raycast.js?v=reboot-012"'));
  assert.ok(main.includes('from "./tactical-hud.js?v=reboot-013"'));
  assert.ok(main.includes('combatIntersections(raycaster,'));
@@ -236,7 +236,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("surface.worldToLocal(pos)"));
  assert.ok(impact.includes("matrix.premultiply(surface.matrixWorld)"));
  assert.ok(impact.includes("geometry.computeBoundingBox"));
- assert.ok(html.includes("Press <kbd>B</kbd> to toggle aim debug."));
+ assert.ok(html.includes("Press <kbd>B</kbd> for ballistics diagnostics."));
  assert.ok(view.includes('from "./weapon-model.js?v=reboot-008"'));
  assert.ok(model.includes("OPTIC_CENTER"));
  assert.ok(model.includes("ExtrudeGeometry"));
