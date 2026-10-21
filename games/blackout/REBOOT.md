@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.8
+# BLACKOUT — Clean Reboot V0.8.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-20 / V0.8.1 · Follow-up screenshots of real Siege player, drone, and security-camera displays:**
+- Adjusted active player HUD toward the user's new in-game photos: compact bottom-left performance meter, 125/125 training-only (invulnerable) health, actual Q/E/Z shortcuts rather than invented gadget availability, compact utility unavailable markings, and tight lower-right stacked ammo/weapon treatment.
+- Added two complete but **hidden** DOM/CSS device HUD profiles from the photos: drone left-middle blue site/camera navigation strip with Q/E and bottom-right 7/X/Z icon row; camera/spectator bottom-right eye/crossed-eye and CTRL panel with camera status strip. These have original BLACKOUT visuals and contain **no buttons that pretend to control a drone/camera**.
+- The main runtime sets `data-hud-profile="player"` only when controlling the real player and `"menu"` when paused. Device HUDs are deliberately not exposed until matching simulated drone/camera entities, switching and spectator logic exist.
+- Existing weapon, audio, bullet-hole, movement, collision and FPS HUD mechanics remain intact. No operator selection, 5v5, drone mechanics or fake multiplayer introduced.
+
 
 **2026-10-20 / V0.8 · User-requested close-to-Siege drill HUD:**
 - Replaced the large V0.7.x BLACKOUT prototype diagnostics dashboard with the user's precise UI reference screen composition: light upper-left "Eliminate 0/4 targets in TEST RANGE" rectangular objective with tickbox; small map below it; compact operator-like original B/O crest and real 60-minute countdown centered at the very top; FPS and tiny training tips upper-right.
