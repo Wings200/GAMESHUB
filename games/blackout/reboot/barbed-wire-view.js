@@ -49,6 +49,15 @@ export function createWireView(THREE,scene,device){
   coil.rotation.x=-Math.PI/2;coil.position.y=y;
   root.add(coil);
  }
+ // Let bullets AND V melee hit the metal strands themselves, not just a
+ // barely visible thin box below the weave. Mark every shootable face.
+ const shootables=[];
+ root.traverse(mesh=>{
+  if(!mesh.isMesh)return;
+  mesh.userData.wireId=device.id;
+  mesh.userData.physicsObstacleId="barbed-wire-"+device.id;
+  shootables.push(mesh);
+ });
  scene.add(root);
  function sync(state){
   root.visible=Boolean(state?.hp>0);
@@ -59,5 +68,5 @@ export function createWireView(THREE,scene,device){
    scene.remove(root);
   }
  }
- return {root,hitbox,sync};
+ return {root,hitbox,shootables,sync};
 }
