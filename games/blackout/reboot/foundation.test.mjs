@@ -395,7 +395,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
  assert.ok(html.includes("<kbd>V</kbd> PUNCH WIRE TWICE"));
- assert.ok(html.includes("F still rebuilds a wooden barricade after 3 V punches"));
+ assert.ok(html.includes("The other 11 gadgets remain unimplemented")||html.includes("Other secondary gadgets remain previews"));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));
