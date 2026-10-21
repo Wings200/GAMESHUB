@@ -3,7 +3,7 @@
 // detonation and bounded blast strength; deliberately no real-world instructions.
 export const NITRO=Object.freeze({
  charges:1,throwSpeed:8,upSpeed:3.3,gravity:18,radius:3.7,
- maxLife:60,blastDamage:110,boxSize:.32
+ maxLife:60,blastDamage:280,fullDamageRadius:1.1,lethalRadius:1.8,boxSize:.32
 });
 export function newNitroState(){
  return {charges:NITRO.charges,nextId:1,devices:[]};
@@ -55,12 +55,27 @@ export function detonateNitro(state){
  const armed=state.devices.find(d=>d.armed);
  if(!armed)return {state,blast:null,reason:"THROW C4 BEFORE DETONATING"};
  return {state:{...state,devices:state.devices.map(d=>d.id===armed.id?{...d,armed:false}:d)},
-  blast:{x:armed.x,y:armed.y,z:armed.z,radius:NITRO.radius,damage:NITRO.blastDamage},
+  blast:{x:armed.x,y:armed.y,z:armed.z,radius:NITRO.radius,damage:NITRO.blastDamage,
+   fullDamageRadius:NITRO.fullDamageRadius,lethalRadius:NITRO.lethalRadius},
   reason:"NITRO CELL DETONATED"};
 }
+// Blast exposure is independent of faction, including the thrower.
+function blastDistance(blast,point){
+ if(!blast||!point||![blast.x,blast.y,blast.z,point.x,point.z,point.y??0].every(Number.isFinite))
+  return Infinity;
+ return Math.hypot(point.x-blast.x,(point.y??0)-blast.y,point.z-blast.z);
+}
 export function nitroBlastDamage(blast,point){
- if(!blast||!point)return 0;
- const distance=Math.hypot(point.x-blast.x,(point.y??0)-blast.y,point.z-blast.z);
+ if(!blast||!Number.isFinite(blast.radius)||blast.radius<=0||
+   !Number.isFinite(blast.damage)||blast.damage<=0)return 0;
+ const distance=blastDistance(blast,point);
  if(distance>=blast.radius)return 0;
- return Math.max(1,Math.ceil(blast.damage*(1-distance/blast.radius)));
+ const full=Math.min(blast.radius,Math.max(0,blast.fullDamageRadius??0));
+ const proportion=distance<=full?1:(blast.radius-distance)/(blast.radius-full);
+ return Math.max(1,Math.ceil(blast.damage*proportion));
+}
+export function nitroBlastIsLethal(blast,point){
+ if(!blast||!Number.isFinite(blast.lethalRadius)||blast.lethalRadius<=0||
+   !Number.isFinite(blast.radius)||blast.radius<=0)return false;
+ return blastDistance(blast,point)<=Math.min(blast.lethalRadius,blast.radius);
 }

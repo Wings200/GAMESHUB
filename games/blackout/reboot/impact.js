@@ -1,8 +1,9 @@
 // BLACKOUT V0.16.1 · impact grenades: real thrown projectile, contact detonation.
 // Uses common blast representation as C4 but a smaller radius and lower damage.
-import {nitroThrowPosition} from "./nitro.js?v=reboot-032";
+import {nitroThrowPosition} from "./nitro.js?v=reboot-035";
 export const IMPACT=Object.freeze({
- charges:2,speedScale:1.45,gravity:19,radius:2.35,blastDamage:55,size:.105
+ charges:2,speedScale:1.45,gravity:19,radius:2.35,blastDamage:60,
+ fullDamageRadius:.85,size:.105
 });
 export function newImpactState(){
  return {charges:IMPACT.charges,nextId:1,devices:[]};
@@ -34,7 +35,8 @@ export function tickImpact(state,dt,objects=[]){
   if(contact){
    blasts.push({x:Math.max(-29.5,Math.min(29.5,position.x)),
     y:Math.max(IMPACT.size,position.y),z:Math.max(-29.5,Math.min(29.5,position.z)),
-    radius:IMPACT.radius,damage:IMPACT.blastDamage,id:d.id});
+    radius:IMPACT.radius,damage:IMPACT.blastDamage,
+    fullDamageRadius:IMPACT.fullDamageRadius,id:d.id});
    return {...d,x:position.x,y:position.y,z:position.z,armed:false};
   }
   return {...d,...position,vy:d.vy-IMPACT.gravity*seconds};

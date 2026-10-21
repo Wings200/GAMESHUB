@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage} from "./nitro.js";
+import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 const player={x:0,y:0,z:8,yaw:0,pitch:0,grounded:true};
 test("Sentry C4 throws actual moving device and spends exactly one inventory charge",()=>{
  const start=newNitroState(),thrown=throwNitro(start,player);
@@ -48,4 +48,26 @@ test("C4 rejects malformed launch coordinates and invalid elapsed time",()=>{
  const s=throwNitro(newNitroState(),player).state;
  assert.equal(tickNitro(s,NaN),s);
  assert.equal(tickNitro(s,0),s);
+});
+
+test("C4 instantly eliminates at close range and falls off to zero at radius",()=>{
+ const blast=detonateNitro(throwNitro(newNitroState(),player).state).blast;
+ const adjacent={x:blast.x+NITRO.lethalRadius*.9,y:blast.y,z:blast.z};
+ const far={x:blast.x+NITRO.radius-.3,y:blast.y,z:blast.z};
+ assert.equal(nitroBlastIsLethal(blast,adjacent),true);
+ assert.ok(nitroBlastDamage(blast,adjacent)>125);
+ assert.equal(nitroBlastIsLethal(blast,far),false);
+ assert.ok(nitroBlastDamage(blast,far)>0&&nitroBlastDamage(blast,far)<125);
+ assert.equal(nitroBlastDamage(blast,{x:blast.x+NITRO.radius,y:blast.y,z:blast.z}),0);
+});
+test("C4 exposure is the same on either side, and rejects invalid coordinates",()=>{
+ const blast=detonateNitro(throwNitro(newNitroState(),player).state).blast;
+ for(const side of ["attack","defend"]){
+  const target={x:blast.x,y:blast.y,z:blast.z,side};
+  assert.ok(nitroBlastIsLethal(blast,target));
+  assert.equal(nitroBlastDamage(blast,target),NITRO.blastDamage);
+  assert.ok(Number.isFinite(nitroBlastDamage(blast,target)));
+ }
+ assert.equal(nitroBlastIsLethal({...blast,lethalRadius:0},blast),false);
+ assert.equal(nitroBlastDamage(blast,{x:NaN,y:0,z:0}),0);
 });

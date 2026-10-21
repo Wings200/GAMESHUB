@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-034",
+ for(const src of ["./reboot/main.js?v=reboot-035",
    "./reboot/style.css?v=reboot-030"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -148,7 +148,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(css.includes(".utility-hud-slot"));
  assert.ok(css.includes(".utility-hud-copy"));
  assert.ok(html.includes('id="health-current">125</b>'));
- assert.ok(html.includes('id="health-caption">TRAINING · ENEMY WIRE DAMAGE ONLY</small>'));
+ assert.ok(html.includes('id="health-caption">TRAINING · GADGET BLASTS & ENEMY WIRE</small>'));
  assert.ok(main.includes('document.body.dataset.hudProfile=active?controlMode:"menu"'));
  // Verify the two future-mode shells aren't connected to fake gameplay modes.
  assert.equal(main.includes('document.getElementById("drone-hud").classList.remove("hidden")'),false);
@@ -365,11 +365,11 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("FOUR FUNCTIONAL SECONDARY GADGETS"));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
- assert.ok(main.includes('from "./nitro.js?v=reboot-032"'));
+ assert.ok(main.includes('from "./nitro.js?v=reboot-035"'));
  assert.ok(main.includes('from "./nitro-view.js?v=reboot-032"'));
- assert.ok(main.includes('from "./impact.js?v=reboot-033"'));
+ assert.ok(main.includes('from "./impact.js?v=reboot-035"'));
  assert.ok(main.includes('from "./impact-view.js?v=reboot-033"'));
- assert.ok(main.includes('from "./frag.js?v=reboot-034"'));
+ assert.ok(main.includes('from "./frag.js?v=reboot-035"'));
  assert.ok(main.includes('from "./frag-view.js?v=reboot-034"'));
  assert.ok(main.includes('fragState=newFragState()'));
  assert.ok(main.includes('throwFrag(fragState,player)'));
@@ -394,6 +394,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes("reinforcement.installed?0:softWall.blastAt(blast)"));
  assert.ok(main.includes("nitroBlastDamage(blast,{x:player.x"));
+ assert.ok(main.includes("nitroBlastIsLethal(blast,{x:player.x"));
+ assert.ok(main.includes("playerEliminated=wireHealth.hp===0"));
+ assert.ok(main.includes("damageTaken=instantKill?wireHealth.hp"));
  assert.ok(main.includes("targetHits++;completedTargets.add(target.id);weapons.registerHit()"));
  assert.ok(read("reboot/barricade-view.js").includes("function blastAt(blast)"));
  assert.ok(read("reboot/soft-wall-view.js").includes("function blastAt(blast)"));

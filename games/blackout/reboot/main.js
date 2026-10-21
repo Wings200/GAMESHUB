@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.16.2 — live defender C4/Impact/Wire and attacker timed Frag
+// BLACKOUT REBOOT V0.16.3 — live defender C4/Impact/Wire and attacker timed Frag
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -30,11 +30,11 @@ import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
 import {MELEE,canPunch,selectedMeleeTarget} from "./melee.js?v=reboot-029";
 import {createMeleeView} from "./melee-view.js?v=reboot-029";
-import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage} from "./nitro.js?v=reboot-032";
+import {NITRO,newNitroState,throwNitro,tickNitro,detonateNitro,nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js?v=reboot-035";
 import {createNitroView,createNitroBlast} from "./nitro-view.js?v=reboot-032";
-import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-033";
+import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js?v=reboot-035";
 import {createImpactView} from "./impact-view.js?v=reboot-033";
-import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-034";
+import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js?v=reboot-035";
 import {createFragView} from "./frag-view.js?v=reboot-034";
 
 const $=id=>document.getElementById(id);
@@ -249,13 +249,19 @@ function activeDroneObstacles(){
 function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
  shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
- // Both gadgets cut real gypsum and boards, but never reinforced steel.
+ // Explosions damage BOTH sides, including the thrower. Unlike explosives,
+ // barbed wire remains friendly-safe. Reinforced steel remains intact.
  const wood=barricade.blastAt(blast);
  const gypsum=reinforcement.installed?0:softWall.blastAt(blast);
- const self=nitroBlastDamage(blast,{x:player.x,y:player.y+1,z:player.z});
- if(self>0&&wireHealth.hp>0){
-  wireHealth={...wireHealth,hp:Math.max(0,wireHealth.hp-self),damage:self,elapsed:0};
-  if(wireHealth.hp===0){firing=false;aimHeld=false;keys.clear();}
+ const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
+ const instantKill=nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
+ let damageTaken=0,playerEliminated=false;
+ if((self>0||instantKill)&&wireHealth.hp>0){
+  damageTaken=instantKill?wireHealth.hp:Math.min(wireHealth.hp,self);
+  wireHealth={...wireHealth,hp:Math.max(0,wireHealth.hp-damageTaken),
+   damage:damageTaken,elapsed:0};
+  playerEliminated=wireHealth.hp===0;
+  if(playerEliminated){firing=false;aimHeld=false;keys.clear();}
  }
  let hits=0;
  for(const target of targets){
@@ -269,7 +275,8 @@ function applyGadgetBlast(blast,label="C4"){
   }
  }
  return label+" DETONATED · "+hits+" TARGETS · "+wood+" BOARDS · "+
-  gypsum+" GYPSUM CELLS"+(self?" · SELF -"+self+" HP":"");
+  gypsum+" GYPSUM CELLS"+(playerEliminated?" · YOU WERE ELIMINATED":
+   damageTaken?" · SELF -"+damageTaken+" HP":"");
 }
 function detonateCurrentNitro(){
  const result=detonateNitro(nitroState);
@@ -1010,5 +1017,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.16.2 C4 remote, Impact contact, Frag timed: actual explosive gameplay",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.16.3 lethal-close-range explosives: actual explosive gameplay",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

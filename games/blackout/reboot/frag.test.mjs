@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FRAG,newFragState,throwFrag,tickFrag} from "./frag.js";
-import {nitroBlastDamage} from "./nitro.js";
+import {nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 const p={x:0,y:0,z:8,yaw:0,pitch:0,grounded:true};
 test("Striker gets 2 real timed frag throws; no false throw after empty",()=>{
  const fresh=newFragState();
@@ -41,4 +41,18 @@ test("invalid time and malformed throw inputs remain harmless",()=>{
  assert.equal(tickFrag(s,NaN).state,s);
  assert.equal(tickFrag(s,0).state,s);
  assert.equal(throwFrag(newFragState(),{...p,pitch:NaN}).device,null);
+});
+
+test("frag grenade guarantees close-range kills for either side with radial falloff",()=>{
+ const blast={x:0,y:.12,z:0,radius:FRAG.radius,damage:FRAG.blastDamage,
+  fullDamageRadius:FRAG.fullDamageRadius,lethalRadius:FRAG.lethalRadius};
+ for(const side of ["attack","defend"]){
+  const adjacent={x:.4,y:.6,z:0,side};
+  assert.equal(nitroBlastIsLethal(blast,adjacent),true);
+  assert.ok(nitroBlastDamage(blast,adjacent)>125);
+ }
+ const far={x:FRAG.radius-.4,y:.12,z:0};
+ assert.equal(nitroBlastIsLethal(blast,far),false);
+ assert.ok(nitroBlastDamage(blast,far)>0&&nitroBlastDamage(blast,far)<125);
+ assert.equal(nitroBlastDamage(blast,{x:FRAG.radius,y:.12,z:0}),0);
 });

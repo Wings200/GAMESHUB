@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.16.2
+# BLACKOUT — Clean Reboot V0.16.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.16.3 · EXPLOSIVE DAMAGE CORRECTION (USER REQUESTED)**
+- Both **C4/Nitro** and **Frag** guarantee instant player elimination inside their close lethal core, regardless of team/owner or remaining HP. Radial damage then decreases smoothly and stops outside the blast radius. The health state remains finite (no Infinity display).
+- **Impact Grenades** deliver up to **60 HP** on a direct nearby blast, fall off with distance, and do NOT have an instant-kill zone.
+- Ground-level explosive damage samples the lower body so point-blank grenade damage is not incorrectly weakened by full torso height. C4/Frag/Impact still hit actual barricades, destructible gypsum, dummies and player HP; steel reinforcement and enemy-only wire rules are unchanged. Multiplayer enemies do not exist in the sandbox yet.
+- Regression tests cover full damage, lethality, neutral sides, falloff, and zero damage beyond radius. Browser testing still required.
 
 **2026-10-21 / V0.16.2 · GADGET-FIRST BUILD, FOUR PHYSICAL PLAYABLE GADGETS**
 - User explicitly paused polishing wire audio to make actual gameplay gadgets. Three additional gadgets are now implemented, on top of functioning defender barbed wire: **C4/Nitro Cell (defender), Impact Grenades (defender), and Frag Grenades (attacker)**. **Four of the twelve** secondary concepts are genuinely implemented; the other **eight remain NOT BUILT**: attacker flashes, smoke, soft breach, hard breach, claymores; defender observation blockers, proximity alarms and deployable shields. No fake activation or inventory for those unfinished items. Future exact equipment balance and loadout restrictions may be refined after testing.

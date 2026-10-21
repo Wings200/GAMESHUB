@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {IMPACT,newImpactState,throwImpact,tickImpact} from "./impact.js";
-import {nitroBlastDamage} from "./nitro.js";
+import {nitroBlastDamage,nitroBlastIsLethal} from "./nitro.js";
 const p={x:0,y:0,z:8,yaw:0,pitch:0,grounded:true};
 test("two physical impact grenades consume charges, third throw impossible",()=>{
  let s=newImpactState();
@@ -44,4 +44,17 @@ test("invalid timing and depleted charge do not create phantom explosions",()=>{
  assert.equal(tickImpact(s,NaN).state,s);
  assert.deepEqual(tickImpact(s,0).blasts,[]);
  assert.equal(throwImpact(newImpactState(),{...p,pitch:NaN}).device,null);
+});
+
+test("impacts deal exactly 60 HP near direct contact regardless of side, but never instakill",()=>{
+ const blast={x:0,y:.105,z:0,radius:IMPACT.radius,damage:IMPACT.blastDamage,
+  fullDamageRadius:IMPACT.fullDamageRadius};
+ for(const side of ["attack","defend"]){
+  const direct={x:0,y:.6,z:0,side};
+  assert.equal(nitroBlastDamage(blast,direct),60);
+  assert.equal(nitroBlastIsLethal(blast,direct),false);
+ }
+ const far={x:1.5,y:.6,z:0};
+ assert.ok(nitroBlastDamage(blast,far)>0&&nitroBlastDamage(blast,far)<60);
+ assert.equal(nitroBlastDamage(blast,{x:IMPACT.radius+.1,y:.105,z:0}),0);
 });
