@@ -22,9 +22,9 @@ test("first 45 sec are prep, attacker remains unplanted with a choice to CARRY d
  assert.equal(start.defuser.status,"carried");
  assert.equal(start.defuser.carrier,"local");
  assert.equal(BOMB_RULES.sites.length,2);
- const preparatory=advance(start,35,{side:"attack",position:siteA,holdingF:true,holdingX:true});
+ const preparatory=advance(start,35,{side:"attack",position:siteA,holdingF:true});
  assert.equal(preparatory.state.phase,"prep");
- assert.equal(preparatory.state.defuser.status,"carried","prep cannot plant or drop");
+ assert.equal(preparatory.state.defuser.status,"carried","prep cannot plant with F");
  const started=advance(preparatory.state,10,{side:"attack",position:siteA,holdingF:true});
  assert.equal(started.state.phase,"action");
  assert.equal(started.state.time,180);
@@ -191,4 +191,18 @@ test("objective prompts reflect role, site, defuser location and round outcome",
  assert.match(bombPrompt(planted,"attack",siteA),/DEFUSER ACTIVE/);
  const ended=endBombRound(planted,"defend","DISABLED");
  assert.match(bombPrompt(ended,"defend",siteA),/DISABLED/);
+});
+
+test("holding X also drops defuser during 45s prep, at the attacker spawn",()=>{
+ let prep=newBombRound({choice:"carry"});
+ const before=advance(prep,.65,{side:"attack",position:spawn,holdingX:true});
+ assert.equal(before.state.phase,"prep");
+ assert.equal(before.state.defuser.status,"carried");
+ const dropped=stepBombRound(before.state,.05,{
+  side:"attack",position:spawn,holdingX:true});
+ assert.equal(dropped.state.phase,"prep");
+ assert.equal(dropped.state.defuser.status,"ground");
+ assert.deepEqual([dropped.state.defuser.x,dropped.state.defuser.z],[0,8]);
+ assert.ok(dropped.events.includes("dropped"));
+ assert.equal(pickupRoundDefuser(dropped.state,"attack",spawn).ok,true);
 });

@@ -94,6 +94,17 @@ export function stepBombRound(state,dt,{
   events.push("dropped");
  }
  if(next.phase==="prep"){
+  // X works during attacker preparation too: players can surrender the
+  // package at spawn before the action clock, as well as later in-round.
+  let dropProgress=0;
+  if(alive&&side==="attack"&&actor&&next.defuser.status==="carried"&&holdingX){
+   dropProgress=next.dropProgress+step;
+   if(dropProgress>=BOMB_RULES.dropHoldSeconds-1e-8){
+    next=dropRoundDefuser(next,actor).state;
+    events.push("dropped");dropProgress=0;
+   }
+  }
+  next={...next,dropProgress};
   if(next.time<=1e-8){next={...next,phase:"action",time:BOMB_RULES.actionSeconds};
    events.push("action");}
   return {state:next,events};
