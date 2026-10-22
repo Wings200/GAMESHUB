@@ -674,7 +674,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('droneSpareCount.textContent=String(info.throwables)'));
 
 
- assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)"));
+ assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled)"));
  for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
   assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
  assert.ok(css.includes(".reinforce-prompt"));
