@@ -499,7 +499,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("drawBombRoundMinimap(droneMapCtx,bombState)"));
  const bombView=read("reboot/bomb-round-view.js");
  for(const marker of ["REAL BOMB ","RED EXPLOSIVE CANISTER",
-   "TALL BEACON","SITE ","drawBombRoundMinimap","BOMB "+'site.id'])
+   "TALL BEACON","SITE ","drawBombRoundMinimap",'root.name="REAL BOMB "+site.id'])
   assert.ok(bombView.includes(marker),"bomb prop visualization "+marker);
  assert.ok(main.includes('bombHud.classList.toggle("hidden",!locked||controlMode!=="player"||!actionable)'));
  assert.ok(main.includes("bombObjectiveMini.classList.toggle"));
