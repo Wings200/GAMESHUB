@@ -188,6 +188,24 @@ export class GameAudio{
         this.noise(.025,.105,2100,"highpass");
         this.tone(760,.022,.06,"triangle",0,350);
         break;
+      case "defuser-tick":
+        // A short hard electronic double-tick from the planted unit.
+        this.tone(1120,.070,.105,"square",0,920);
+        this.tone(530,.085,.045,"sine",.022,370);
+        break;
+      case "defuser-tick-urgent":
+        // Final ten seconds: high, fast alarm with no sustained noise.
+        this.tone(1460,.078,.15,"square",0,1260);
+        this.tone(830,.075,.065,"sine",.042,720);
+        break;
+      case "defuser-arming":
+        this.noise(.10,.075,1900,"bandpass");
+        this.tone(480,.14,.085,"triangle",0,750);
+        break;
+      case "defuser-disabling":
+        this.noise(.08,.065,1200,"bandpass");
+        this.tone(680,.17,.082,"triangle",0,430);
+        break;
       case "plant-key":
       case "defuse-key":
         this.tone(name==="plant-key"?840:610,.055,.068,"sine");

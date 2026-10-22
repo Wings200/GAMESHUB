@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.25.2 · remove long gadget instructions from live HUD
+    name: Reboot V0.25.3 · bomb solid drone collision, 3D kneeling defuser animation and escalating beeps
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -85,6 +85,8 @@ jobs:
           node --check games/blackout/reboot/shield-vault.js
           node --check games/blackout/reboot/bomb-round.js
           node --check games/blackout/reboot/bomb-round-view.js
+          node --check games/blackout/reboot/bomb-presentation.js
+          node --check games/blackout/reboot/bomb-interaction-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

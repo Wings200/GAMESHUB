@@ -1,7 +1,8 @@
-// BLACKOUT V0.25.1 · visibly recognizable physical bomb devices at
+// BLACKOUT V0.25.3 · tangible bomb bodies block drones and bullets at
 // Sites A and B, clear objective markers, and the real dropped defuser.
 // Bomb props are objectives, not a second deployable gadget or fake team AI.
 import {BOMB_RULES} from "./bomb-round.js?v=reboot-053";
+import {BOMB_HARDWARE} from "./bomb-presentation.js?v=reboot-056";
 
 export function drawBombRoundMinimap(ctx,state){
  if(!ctx||!state||state.mode!=="bomb")return;
@@ -59,7 +60,9 @@ export function createBombRoundView(THREE,scene){
   const sprite=new THREE.Sprite(mat);sprite.scale.set(3.7,1.3,1);
   return sprite;
  }
- const bombs=[];
+ const bombs=[],bombColliders=[];
+ const collisionMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,
+  depthWrite:false,side:THREE.DoubleSide});toDispose.push(collisionMat);
  BOMB_RULES.sites.forEach((site,i)=>{
   const root=new THREE.Group();
   root.position.set(site.x,0,site.z);
@@ -114,6 +117,15 @@ export function createBombRoundView(THREE,scene){
   toDispose.push(beam.material);
   const label=labelSprite("BOMB "+site.id,color);
   label.position.set(0,4.1,0);root.add(label);
+  // Authoritative full-body bomb obstacle matches physics AABB and is
+  // included in combat raycasts. VISIBLE prop stays unchanged; drones,
+  // players and flying utility already receive the AABB from world physics.
+  const hitbox=mesh(root,new THREE.BoxGeometry(
+    BOMB_HARDWARE.width,BOMB_HARDWARE.height,BOMB_HARDWARE.depth),
+   collisionMat,"SOLID BOMB "+site.id+" · DRONE / BULLET OBSTACLE",
+   0,BOMB_HARDWARE.height/2,0);
+  hitbox.userData.bombSiteId=site.id;
+  bombColliders.push(hitbox);
   bombs.push({root,status,beacon});
  });
  // The portable DEFUSER is separate from the two fixed SITE BOMBS.
@@ -153,5 +165,5 @@ export function createBombRoundView(THREE,scene){
   scene.remove(group);
   for(const resource of toDispose)resource.dispose();
  }
- return {group,defuser,bombs,update,dispose};
+ return {group,defuser,bombs,bombColliders,update,dispose};
 }

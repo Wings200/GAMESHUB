@@ -1,10 +1,10 @@
-// BLACKOUT REBOOT V0.25.2 — decluttered gameplay HUD, help moved to menu
+// BLACKOUT REBOOT V0.25.3 — solid bomb collision, kneeling keyboard animation and active-defuser audio
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-031";
+import {GameAudio} from "./legacy-audio.js?v=reboot-056";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -74,7 +74,10 @@ import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-053";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-054";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-056";
+import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock}
+ from "./bomb-presentation.js?v=reboot-056";
+import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-056";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -226,6 +229,7 @@ const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
 const bombView=createBombRoundView(THREE,scene);
+const bombInteractionView=createBombInteractionView(THREE,camera);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -237,6 +241,7 @@ const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let gameMode="sandbox",bombState=null;
+let bombSoundClock=newBombSoundClock();
 function chosenDefuserChoice(){return bombChoice?.value==="leave"?"leave":"carry";}
 function roundObjectiveInteract(){
  if(gameMode!=="bomb"||!bombState||controlMode!=="player"||wireHealth.hp<=0)return false;
@@ -290,13 +295,47 @@ function syncRoundUI(){
  bombHud.dataset.phase=b.phase;
 }
 
+function currentBombInteraction(){
+ return liveBombInteraction(bombState,activeOperator.side,player,
+  controlMode==="player"&&keys.has("KeyF")&&locked,wireHealth.hp>0);
+}
+function bombRaycastColliders(){
+ return gameMode==="bomb"?bombView.bombColliders:[];
+}
 function advanceBombMode(dt){
  if(gameMode!=="bomb"||!bombState)return;
+ const beforeInteraction=currentBombInteraction();
+ const previousInteraction=bombSoundClock.interaction;
  const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
   holdingF:controlMode==="player"&&keys.has("KeyF"),
   holdingX:controlMode==="player"&&keys.has("KeyX"),alive:wireHealth.hp>0});
  bombState=result.state;
  bombView.update(bombState,dt);
+ const afterInteraction=currentBombInteraction();
+ const sound=tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction);
+ bombSoundClock=sound.clock;
+ if(beforeInteraction&&!previousInteraction)
+  shotAudio.play(beforeInteraction==="plant"?"defuser-arming":"defuser-disabling");
+ for(const name of sound.events){
+  if(name==="defuser-tick"){
+   shotAudio.playAt(bombState.time<=10?"defuser-tick-urgent":"defuser-tick",
+    bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
+  }else shotAudio.play(name);
+ }
+ if(result.events.includes("planted")){
+  shotAudio.playAt("plant",bombState.defuser.x,bombState.defuser.z,
+   player.x,player.z,player.yaw);
+  shotAudio.playAt("defuser-tick",bombState.defuser.x,bombState.defuser.z,
+   player.x,player.z,player.yaw);
+ }
+ if(result.events.includes("disabled")){
+  shotAudio.playAt("defuse",bombState.defuser.x,bombState.defuser.z,
+   player.x,player.z,player.yaw);
+ }
+ if(result.events.includes("detonated")){
+  shotAudio.playAt("gadget-blast",bombState.defuser.x,bombState.defuser.z,
+   player.x,player.z,player.yaw);
+ }
  if(result.events.includes("dropped")||result.events.includes("planted")||
     result.events.includes("disabled")||result.events.includes("detonated")||
     result.events.includes("ended")||result.events.includes("action")){
@@ -448,7 +487,7 @@ resize();
 window.addEventListener("resize",resize);
 function activeDroneObstacles(){
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),
-  ...reinforcement.blockers(),...shieldBlockers(shieldState)];
+  ...reinforcement.blockers(),...shieldBlockers(shieldState),...bombSiteBlockers(bombState)];
 }
 function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
@@ -1208,7 +1247,7 @@ function unlockMessage(){
 }
 function beginBombRound(){
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
- gameMode="bomb";bombState=newBombRound({choice});
+ gameMode="bomb";bombState=newBombRound({choice});bombSoundClock=newBombSoundClock();
  player=initialPlayer();wireHealth=newWireHealth();
  cameraEye=1.65;proneToggle=false;keys.clear();cancelHeldThrow();
  breachVault=null;shieldVault=null;
@@ -1221,7 +1260,7 @@ function beginBombRound(){
 function nextBombRound(){
  if(gameMode!=="bomb"||bombState?.phase!=="ended")return false;
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
- bombState=newFollowingRound(bombState,choice);
+ bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
  player=initialPlayer();wireHealth=newWireHealth();proneToggle=false;
  breachVault=null;shieldVault=null;keys.clear();
  bombView.update(bombState);syncRoundUI();
@@ -1251,7 +1290,7 @@ updateDeployMenu();
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   if(gameMode!=="sandbox"){
-   gameMode="sandbox";bombState=null;bombView.update(null);
+   gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);
   }
   syncRoundUI();enterRange();return;
  }
@@ -1308,6 +1347,8 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  // An explicit F press picks up unclaimed/dropped defusers. No proximity auto-pickup.
+ if(currentBombInteraction()&&event.code!=="KeyF"&&event.code!=="KeyX"&&
+    event.code!=="KeyN")return;
  if(event.code==="KeyF"&&gameMode==="bomb"&&bombState){
   if(!event.repeat&&nearbyDefuser(bombState,activeOperator.side,player)){
    const result=pickupRoundDefuser(bombState,activeOperator.side,player);
@@ -1533,7 +1574,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -1544,6 +1585,9 @@ function markDebugShot(outcome,screen){
  const distance=outcome.hit?outcome.hit.distance:raycaster.far;
  const zone=outcome.hit?.object?.userData?.hitZone||"";
  const wood=outcome.hit?.object?.userData?.barricadeIndex;
+ if(outcome.hit?.object?.userData?.bombSiteId){
+  lastShotReadout="BOMB "+outcome.hit.object.userData.bombSiteId+" · SOLID METAL HOUSING";return;
+ }
  if(outcome.hit?.object?.userData?.deployableShieldBallistic){
   lastShotReadout="DEPLOYABLE SHIELD · BULLET BLOCKED INCLUDING VIEWING WINDOW";
   return;
@@ -1593,10 +1637,11 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
+ const bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId);
  const shieldHit=Number.isInteger(outcome.hit?.object?.userData?.deployableShieldId);
  const proxId=outcome.hit?.object?.userData?.proximityAlarmId;
  const proxHit=Number.isInteger(proxId)?hitProximityAlarm(proxId,1):{handled:false};
@@ -1606,10 +1651,13 @@ function fireShot(shot,sightAligned,now){
    barricade.hitBoard(outcome.hit):{handled:false};
  const metalHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?reinforcement.steelImpact(outcome.hit):false;
  const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled&&!proxHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit)
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(shieldHit){
+ if(bombHit){
+  shotNotice.textContent="BOMB SITE DEVICE · SOLID METAL CASING BLOCKED SHOT";
+  shotNoticeLeft=.9;shotAudio.play("impact");
+ }else if(shieldHit){
    shotNotice.textContent="BULLETPROOF SHIELD BLOCKED ROUND · WINDOWS ARE BULLETPROOF";
    shotNoticeLeft=1.15;shotAudio.play("impact");
   }else if(proxHit.handled){
@@ -1862,10 +1910,16 @@ function animate(now){
      terrainMultiplier:wireTerrainMultiplier(wireState,player,activeOperator.side)
    };
    const before=player;
+   const bombWorking=currentBombInteraction();
    // Vaulting is a special collision-checked crouched movement over the sill.
    if(wireHealth.hp>0){
     const obstacles=activeDroneObstacles();
-    if(shieldVault){
+    if(bombWorking){
+     // Freeze horizontal movement during the uninterrupted 4s/7s task.
+     // Lower to kneeling for camera and first-person typing equipment.
+     player={...player,moving:false,sprinting:false,prone:false,
+      crouched:true,speed:0,vy:0,grounded:true};
+    }else if(shieldVault){
      const next=stepShieldVault(player,shieldVault,dt,obstacles);
      player=next.player;shieldVault=next.vault;
      if(next.event==="landed"||next.event==="blocked"){
@@ -1950,13 +2004,16 @@ function animate(now){
     recoilRecovery-=recover;
    }
  }
+ if(!locked||controlMode!=="player")
+  bombInteractionView.update(null,0,dt);
  // Drop the camera immediately for low cover; smoothly raise when clearance allows.
  if(controlMode==="drone"&&drone){
   camera.position.set(drone.x,drone.y+DRONE.eye,drone.z);
   camera.rotation.set(drone.pitch,drone.yaw,0,"YXZ");
   if(camera.fov!==87){camera.fov=87;camera.updateProjectionMatrix();}
  }else{
-  const eyeTarget=player.prone?.44:player.crouched?1.08:1.65;
+  const eyeTarget=currentBombInteraction()?.86:
+   player.prone?.44:player.crouched?1.08:1.65;
   cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
   const leanPose=leanCameraPose(player.yaw,leanAmount);
   camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
@@ -1965,7 +2022,12 @@ function animate(now){
  camera.updateMatrixWorld(true);
  if(locked&&controlMode==="player"){
   meleeView.update(dt);
-  weaponView.root.visible=!meleeView.active;
+  const bombTyping=currentBombInteraction();
+  const bombProgress=bombTyping==="plant"?
+   bombState.plantProgress/BOMB_RULES.plantSeconds:
+   bombTyping==="disable"?bombState.disableProgress/BOMB_RULES.disableSeconds:0;
+  bombInteractionView.update(bombTyping,bombProgress,dt);
+  weaponView.root.visible=!meleeView.active&&!bombTyping;
   // The gun-mounted optic pose MUST update before ballistics. This prevents
   // shooting with a previous-frame sight transform (including while leaning).
   weaponView.update(dt,aimMix,gunKick,player.moving&&player.grounded,now,aimHeld);
@@ -1978,7 +2040,7 @@ function animate(now){
   const fired=cycleLegacyFire(weapons,now,{
    held:firing&&!meleeView.active&&wireHealth.hp>0&&
     !(gameMode==="bomb"&&bombState?.phase==="ended"),adsAligned:aligned,
-    canFire:!player.sprinting&&!meleeView.active&&wireHealth.hp>0&&
+    canFire:!player.sprinting&&!meleeView.active&&!bombTyping&&wireHealth.hp>0&&
     !(gameMode==="bomb"&&bombState?.phase==="prep"&&activeOperator.side==="attack")&&
     !(gameMode==="bomb"&&bombState?.phase==="ended")
   },shot=>fireShot(shot,aligned,now));
@@ -2018,5 +2080,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.25.2 decluttered live HUD, controls in deployment menu",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.25.3 solid bomb collision, kneeling animated defuser typing, planted device beeps",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

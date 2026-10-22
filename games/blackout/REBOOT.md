@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.25.2
+# BLACKOUT — Clean Reboot V0.25.3
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.25.3 · SOLID BOMB OBJECTIVES + FIRST-PERSON DEFUSER ANIMATION + AUDIO**
+- User reported that drones could hide **inside the 3D A/B bomb props** because the site hardware was visual only. Added physical axis-aligned metal-casing colliders matching the bombs' actual three-dimensional dimensions (1.82m × 1.52m × 0.97m) to the shared world obstacle array during Bomb Round mode only. The same new obstacles block drones (including boosted/throwing), walking players, gadgets/projectiles, laser sightlines, and physical traversal. Added invisible but raycastable box targets on the same geometry so bullets cannot pass through the metal bomb casing; bombs remain indestructible objectives. Test Range remains unchanged with no bomb colliders.
+- Added a real **first-person kneeling, typing interaction** during hold-F planting (4s) or disabling (7s). The camera lowers to 0.86m, horizontal movement freezes, weapon hides, and a new camera-mounted 3D portable device appears. Two gloved forearms and multiple fingers repeatedly tap the physical keyboard while a live updating code display, typed characters and progress bar update on the actual defuser screen. Stopping/invalidating F removes the view and recovers normal stance and gun. Shooting is disabled mid-interaction so planting/defusing actually commits the player's attention.
+- Reused and enhanced the original WebAudio generator: planting and disabling have different initial arming tones and repeated mechanical keypress sounds, distinct confirmation chimes on completion, and **positional planted-defuser beeps** that repeat from the planted gadget and accelerate from about every 0.94s early to every 0.19s in the last five seconds. An urgent two-tone signal plays in the final 10 seconds, and the detonation sounds explosively from the site. Tick audio stops immediately when disabled, detonated, menu-paused, or switched back to Test Range.
+- Added deterministic collision and active-sound/interaction tests; no external audio files, no existing gameplay HUD overlay, no speculative online player functionality. Preserve all 12 gadgets, explicit X drop/F pickup and round timers. Await browser testing for visual/audio placement.
 
 **2026-10-21 / V0.25.2 · REMOVE HUD-SPANNING GADGET INSTRUCTION STRIP**
 - Removed the user-identified enormous SHIELDS/PROXIMITY/OBS BLOCKER/CLAYMORE etc. hard-coded in-game HUD tip. Also removed every other static tutorial tip from the top-right player HUD, leaving only the live FPS/LAT metrics. Existing tactical HUD, bomb widgets, weapons, minimap and controls remain unchanged.
