@@ -1,18 +1,21 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createPlantRecording,plantRecordingStage,PLANT_RECORDING} from "./bomb-plant-audio.js";
+import {createPlantRecording,createDefuseRecording,plantRecordingStage,
+ PLANT_RECORDING} from "./bomb-plant-audio.js";
 import {BOMB_RULES} from "./bomb-round.js";
 
 function fakeAudio(){
- const events=[];
- return {events,paused:true,currentTime:0,playbackRate:1,volume:0,
-  addEventListener(){},
+ const events=[],listeners={};
+ return {events,listeners,paused:true,ended:false,currentTime:0,playbackRate:1,volume:0,
+  addEventListener(event,fn){listeners[event]=fn;},
   play(){events.push("play");this.paused=false;return Promise.resolve();},
   pause(){events.push("pause");this.paused=true;}};
 }
-test("only an actual hold-F planting interaction starts the recording",()=>{
+
+test("original foley duration matches actual round planting and independent clock",()=>{
  assert.equal(PLANT_RECORDING.plantSeconds,BOMB_RULES.plantSeconds);
- assert.ok(Math.abs(PLANT_RECORDING.plantSeconds-(8.65-1.30))<.001);
+ assert.ok(PLANT_RECORDING.typingVolume>.7);
+ assert.ok(PLANT_RECORDING.disablingVolume>.6);
  const active={mode:"bomb",phase:"action"};
  assert.equal(plantRecordingStage(active,"plant"),"typing");
  assert.equal(plantRecordingStage(active,null),"off");
@@ -22,83 +25,80 @@ test("only an actual hold-F planting interaction starts the recording",()=>{
  assert.equal(plantRecordingStage({...active,phase:"ended",
   defuser:{status:"planted"}},null),"global");
  assert.equal(plantRecordingStage({...active,phase:"ended",winner:"defend",
-  defuser:{status:"planted"}},null),"off",
-  "successful counter-defuse cuts the active bomb recording");
- assert.equal(plantRecordingStage({...active,phase:"ended",winner:"attack",
-  defuser:{status:"planted"}},null),"global",
-  "other results preserve the previously requested complete outro");
+  defuser:{status:"planted"}},null),"off");
 });
-test("canceling F cuts sound and the next plant restarts",()=>{
- const sound=fakeAudio(),armed=fakeAudio();
- const recording=createPlantRecording(sound,armed);
- recording.sync("typing");
- assert.equal(sound.currentTime,0);
- assert.equal(sound.paused,false);
- assert.equal(armed.paused,true);
- assert.equal(sound.playbackRate,1);
- sound.currentTime=2.8;
- recording.sync("off");
- assert.equal(sound.paused,true);
- assert.equal(sound.currentTime,0);
- assert.equal(armed.paused,true);
- recording.sync("typing");
- assert.equal(sound.paused,false);
- assert.equal(sound.currentTime,0);
+
+test("cancelling a plant stops recorded foley, resets seek and permits retry",()=>{
+ const media=fakeAudio(),audio=createPlantRecording(media);
+ audio.sync("typing");
+ assert.equal(audio.stage,"typing");
+ assert.equal(media.paused,false);
+ assert.equal(media.volume,PLANT_RECORDING.typingVolume);
+ media.currentTime=2.8;
+ audio.sync("off");
+ assert.equal(media.paused,true);
+ assert.equal(media.currentTime,0);
+ audio.sync("typing");
+ assert.equal(media.paused,false);
+ assert.equal(media.events.filter(e=>e==="play").length,2);
 });
-test("success immediately starts the trimmed woo-woo and beeps, never replays typing",()=>{
- const sound=fakeAudio(),armed=fakeAudio();
- const recording=createPlantRecording(sound,armed);
- recording.sync("typing");
- sound.currentTime=7.3;
- const playsBefore=sound.events.filter(event=>event==="play").length;
- recording.sync("global");
- assert.equal(sound.paused,true);
- assert.equal(sound.currentTime,0);
- assert.equal(armed.currentTime,0);
- assert.equal(armed.volume,PLANT_RECORDING.globalVolume);
- assert.equal(armed.paused,false);
- assert.equal(sound.events.filter(event=>event==="play").length,playsBefore);
- recording.sync("global");
- assert.equal(sound.events.filter(event=>event==="play").length,playsBefore);
- assert.equal(armed.events.filter(event=>event==="play").length,1);
- recording.sync("off");
- assert.equal(sound.paused,true);
- assert.equal(armed.paused,true);
+
+test("plant success stops typing; global state does NOT start another MP3",()=>{
+ const media=fakeAudio(),audio=createPlantRecording(media);
+ audio.sync("typing");
+ media.currentTime=7.30;
+ audio.sync("global");
+ assert.equal(media.paused,true);
+ assert.equal(media.currentTime,0);
+ assert.equal(audio.stage,"global");
+ audio.sync("global");
+ audio.resume();
+ assert.equal(media.events.filter(e=>e==="play").length,1,
+  "beeps and arm confirmation come only from game-clock events");
 });
-test("pause on mouse unlock, then resume global audio without seeking",()=>{
- const sound=fakeAudio(),armed=fakeAudio(),recording=createPlantRecording(sound,armed);
- recording.sync("global");
- armed.currentTime=24;
- recording.pause();
- assert.equal(armed.paused,true);
- recording.resume();
- assert.equal(armed.paused,false);
- assert.equal(armed.currentTime,24);
+
+test("pointer lock pause/resume affects typing only, not post-plant clock",()=>{
+ const media=fakeAudio(),audio=createPlantRecording(media);
+ audio.sync("typing");
+ media.currentTime=3.4;
+ audio.pause();
+ assert.equal(media.paused,true);
+ audio.resume();
+ assert.equal(media.paused,false);
+ assert.equal(media.currentTime,3.4);
+ audio.sync("global");
+ audio.resume();
+ assert.equal(media.paused,true);
 });
-test("ended global audio is never restarted after the recording finishes",()=>{
- const sound=fakeAudio(),armed=fakeAudio();
- let onEnded=null;
- armed.addEventListener=(name,fn)=>{if(name==="ended")onEnded=fn;};
- const recording=createPlantRecording(sound,armed);
- recording.sync("global");
- armed.currentTime=45;
- onEnded();
- armed.paused=true;
- recording.resume();
- assert.equal(armed.events.filter(event=>event==="play").length,1);
- assert.equal(armed.currentTime,45);
- recording.sync("off");
- assert.equal(armed.currentTime,0);
+
+test("counter-defuse tablet foley starts, cancels and cuts at defender victory",()=>{
+ const media=fakeAudio(),audio=createDefuseRecording(media);
+ audio.sync(true);
+ assert.equal(audio.active,true);
+ assert.equal(media.paused,false);
+ assert.equal(media.volume,PLANT_RECORDING.disablingVolume);
+ media.currentTime=5.1;
+ audio.sync(false);
+ assert.equal(audio.active,false);
+ assert.equal(media.paused,true);
+ assert.equal(media.currentTime,0);
+ audio.sync(true);
+ assert.equal(media.events.filter(e=>e==="play").length,2);
+ audio.sync(false);
 });
-test("defender win cuts an already-playing bomb track instantly",()=>{
- const typing=fakeAudio(),armed=fakeAudio();
- const recording=createPlantRecording(typing,armed);
- recording.sync("global");
- armed.currentTime=26.4;
- const disabled={mode:"bomb",phase:"ended",winner:"defend",
-  defuser:{status:"planted"}};
- recording.sync(plantRecordingStage(disabled,null));
- assert.equal(armed.paused,true);
- assert.equal(armed.currentTime,0);
- assert.equal(recording.stage,"off");
+
+test("already completed counter-defuse clip never spontaneously restarts",()=>{
+ const media=fakeAudio(),audio=createDefuseRecording(media);
+ audio.sync(true);
+ media.ended=true;media.paused=true;
+ audio.resume();
+ assert.equal(media.events.filter(e=>e==="play").length,1);
+});
+
+test("missing CC0 recording sets fallback flag without crashing gameplay",()=>{
+ const media=fakeAudio(),audio=createDefuseRecording(media);
+ media.listeners.error();
+ assert.equal(audio.failed,true);
+ audio.sync(true);
+ assert.equal(media.events.filter(e=>e==="play").length,0);
 });

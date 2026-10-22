@@ -6,7 +6,7 @@ import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js
 import {createHouseView} from "./house-view.js?v=reboot-062";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-061";
+import {GameAudio} from "./legacy-audio.js?v=reboot-063";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -81,7 +81,8 @@ import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=r
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-062";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
-import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-061";
+import {createPlantRecording,createDefuseRecording,plantRecordingStage}
+ from "./bomb-plant-audio.js?v=reboot-063";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -247,12 +248,12 @@ const houseView=createHouseView(THREE,scene);
 const trainingShootables=shootableSolids.slice();
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
-// Pre-trimmed clips keep planting and postplant synchronized even if the
-// browser cannot seek an MP3 before its metadata loads. Postplant sound is
-// non-positional; multiplayer clients must broadcast plant events later.
+// New CC0 foley mixes. Neither has Ubisoft game samples. The game clock
+// produces the ONE shared beep after planting, independent of these clips.
 const plantAudio=createPlantRecording(
- new Audio(new URL("./audio/DefuseTyping.mp3",import.meta.url).href),
- new Audio(new URL("./audio/DefuseArmed.mp3",import.meta.url).href));
+ new Audio(new URL("./audio/DefuserPlantOriginal.ogg",import.meta.url).href));
+const defuseAudio=createDefuseRecording(
+ new Audio(new URL("./audio/DefuserDisableOriginal.ogg",import.meta.url).href));
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
@@ -366,7 +367,7 @@ function bombRaycastColliders(){
  return gameMode==="bomb"?bombView.bombColliders:[];
 }
 function advanceBombMode(dt){
- if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");return;}
+ if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");defuseAudio.sync(false);return;}
  const beforeInteraction=currentBombInteraction();
  const previousInteraction=bombSoundClock.interaction;
  const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
@@ -376,30 +377,28 @@ function advanceBombMode(dt){
  bombView.update(bombState,dt);
  const afterInteraction=currentBombInteraction();
  plantAudio.sync(plantRecordingStage(bombState,afterInteraction));
+ defuseAudio.sync(afterInteraction==="disable");
  const sound=tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction);
  bombSoundClock=sound.clock;
  if(beforeInteraction&&!previousInteraction&&
-    (beforeInteraction==="disable"||plantAudio.failed))
+    (beforeInteraction==="disable"||plantAudio.failed)){
   if(beforeInteraction==="disable")shotAudio.playAt("defuser-disabling",
    bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
-  else shotAudio.play("defuser-arming");
+  else shotAudio.play("defuser-case-open");
+ }
  for(const name of sound.events){
   if(name==="defuser-tick"){
-   if(plantAudio.failed)shotAudio.playAt(
-    bombState.time<=10?"defuser-tick-urgent":"defuser-tick",
-    bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
+   // One device clock, clearly audible even from the other floor.
+   shotAudio.play(bombState.time<=10?"defuser-tick-urgent":"defuser-tick");
   }else if(name==="defuse-key"){
-   shotAudio.playAt("defuse-key",bombState.defuser.x,bombState.defuser.z,
-    player.x,player.z,player.yaw);
+   if(defuseAudio.failed)shotAudio.playAt("defuse-key",bombState.defuser.x,
+    bombState.defuser.z,player.x,player.z,player.yaw);
   }else if(name!=="plant-key"||plantAudio.failed)shotAudio.play(name);
  }
  if(result.events.includes("planted")){
-  if(plantAudio.failed){
-   shotAudio.playAt("plant",bombState.defuser.x,bombState.defuser.z,
-    player.x,player.z,player.yaw);
-   shotAudio.playAt("defuser-tick",bombState.defuser.x,bombState.defuser.z,
-    player.x,player.z,player.yaw);
-  }
+  shotAudio.playAt("defuser-arming",bombState.defuser.x,bombState.defuser.z,
+   player.x,player.z,player.yaw);
+  shotAudio.play("defuser-tick");
  }
  if(result.events.includes("disabled")){
   shotAudio.playAt("defuse",bombState.defuser.x,bombState.defuser.z,
@@ -1326,6 +1325,7 @@ function unlockMessage(){
 }
 function beginBombRound(){
  plantAudio.sync("off");
+ defuseAudio.sync(false);
  setMapMode(playMode.value==="house"?"house":"sandbox");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  gameMode="bomb";bombState=newBombRound({choice,map:mapMode});bombSoundClock=newBombSoundClock();
@@ -1341,6 +1341,7 @@ function beginBombRound(){
 function nextBombRound(){
  if(gameMode!=="bomb"||bombState?.phase!=="ended")return false;
  plantAudio.sync("off");
+ defuseAudio.sync(false);
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
  player=roundSpawn();wireHealth=newWireHealth();proneToggle=false;
@@ -1372,6 +1373,7 @@ updateDeployMenu();
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   plantAudio.sync("off");
+  defuseAudio.sync(false);
   setMapMode("sandbox");
   if(gameMode!=="sandbox"){
    gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);
@@ -1390,8 +1392,8 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else if(bombState?.phase!=="ended")plantAudio.pause();bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
- else plantAudio.resume();
+ if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else if(bombState?.phase!=="ended")plantAudio.pause();defuseAudio.sync(false);bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ else {plantAudio.resume();defuseAudio.resume();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -2180,5 +2182,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.25.4 locked objective camera, raised defuser, authentic plant and post-plant audio",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.26.1 original CC0 defuser foley, single timer-driven bomb clock",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

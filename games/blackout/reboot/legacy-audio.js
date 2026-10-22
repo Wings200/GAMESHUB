@@ -13,7 +13,7 @@ export class GameAudio{
         if(!Context)return false;
         this.ctx=new Context({latencyHint:"interactive"});
         const c=this.ctx;
-        this.master=c.createGain();this.master.gain.value=.86;
+        this.master=c.createGain();this.master.gain.value=.96;
         const compressor=c.createDynamicsCompressor();
         compressor.threshold.value=-12;compressor.knee.value=12;
         compressor.ratio.value=5;compressor.attack.value=.002;compressor.release.value=.16;
@@ -189,18 +189,30 @@ export class GameAudio{
         this.tone(760,.022,.06,"triangle",0,350);
         break;
       case "defuser-tick":
-        // A short hard electronic double-tick from the planted unit.
-        this.tone(1120,.070,.105,"square",0,920);
-        this.tone(530,.085,.045,"sine",.022,370);
+        // BLACKOUT's one shared clock: rounded bell + dry hardware click.
+        // Do not overlay a second beep recording during counter-defusing.
+        this.tone(980,.102,.21,"sine",0,910);
+        this.tone(490,.110,.092,"triangle",.007,450);
+        this.noise(.018,.075,3100,"highpass");
         break;
       case "defuser-tick-urgent":
-        // Final ten seconds: high, fast alarm with no sustained noise.
-        this.tone(1460,.078,.15,"square",0,1260);
-        this.tone(830,.075,.065,"sine",.042,720);
+        // Urgent rhythm without introducing a competing second clock.
+        this.tone(1280,.115,.23,"sine",0,1150);
+        this.tone(640,.105,.10,"triangle",.012,575);
+        this.noise(.019,.09,3350,"highpass");
         break;
       case "defuser-arming":
-        this.noise(.10,.075,1900,"bandpass");
-        this.tone(480,.14,.085,"triangle",0,750);
+        // New original two-part arm acknowledgement, not the Siege recording.
+        this.noise(.062,.13,1900,"bandpass");
+        this.tone(610,.15,.21,"sine",0,820);
+        this.tone(910,.19,.22,"sine",.18,710);
+        this.noise(.043,.11,2300,"bandpass",.18);
+        break;
+      case "defuser-case-open":
+        // WebAudio fallback if the CC0 opening/typing recording cannot load.
+        this.noise(.13,.25,880,"bandpass");
+        this.noise(.08,.19,2800,"highpass",.21);
+        this.tone(230,.21,.09,"triangle",.07,100);
         break;
       case "defuser-disabling":
         // Tablet comes out of its pouch; no periodic alert tones. The
@@ -226,10 +238,11 @@ export class GameAudio{
         this.noise(.06,.06,2200,"bandpass");
         break;
       case "defuse":
-        // One tablet shutdown/success cue, distinct from the bomb's ticking.
-        this.noise(.080,.120,1250,"bandpass");
-        this.tone(320,.21,.085,"triangle",.04,175);
-        this.noise(.110,.060,500,"lowpass",.15);
+        // Original powered-down mechanical tablet and success cue.
+        this.noise(.11,.24,1200,"bandpass");
+        this.tone(360,.19,.15,"triangle",.04,180);
+        this.noise(.13,.13,430,"lowpass",.15);
+        this.tone(480,.15,.13,"sine",.22,320);
         break;
       case "barricade":
         this.noise(.09,.19,670,"bandpass");

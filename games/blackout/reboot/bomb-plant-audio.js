@@ -1,15 +1,12 @@
-// BLACKOUT V0.25.8 · synchronize the supplied plant and armed recordings.
-// The original recording has ~1.3s of leading near-silence. Its typing
-// section is pre-trimmed at 1.30s and split at the 8.65s confirmation onset.
-// Separate files avoid inaccurate currentTime seeks on an unloaded MP3.
+// BLACKOUT V0.26.1 · original CC0 defuser foley; no Ubisoft game recordings.
+// The game clock owns ALL post-plant beeps, not a long pre-recorded track.
 export const PLANT_RECORDING=Object.freeze({
- plantSeconds:7.35,typingVolume:.56,globalVolume:.96
+ plantSeconds:7.35,typingVolume:.88,disablingVolume:.76
 });
 
 export function plantRecordingStage(state,interaction){
  if(state?.mode!=="bomb")return "off";
- // Successful counter-defuse silences the planted hardware immediately.
- // Other round endings retain the previously chosen audio outro behavior.
+ // Defender success silences the device; other winners retain global state.
  if(state.phase==="ended"){
   if(state.winner==="defend"&&state.defuser?.status==="planted")return "off";
   return state.defuser?.status==="planted"?"global":"off";
@@ -18,52 +15,57 @@ export function plantRecordingStage(state,interaction){
  return state.phase==="action"&&interaction==="plant"?"typing":"off";
 }
 
-export function createPlantRecording(typingAudio,armedAudio,config=PLANT_RECORDING){
- let stage="off",failed=false,completed=false;
- for(const clip of [typingAudio,armedAudio]){
-  clip.preload="auto";
-  clip.addEventListener?.("error",()=>{failed=true;});
+function cancellableClip(media,volume){
+ let failed=false;
+ media.preload="auto";
+ media.volume=volume;
+ media.addEventListener?.("error",()=>{failed=true;});
+ function stop(){
+  media.pause();
+  try{media.currentTime=0;}catch{}
  }
- typingAudio.volume=config.typingVolume;
- armedAudio.volume=config.globalVolume;
- armedAudio.addEventListener?.("ended",()=>{completed=true;});
- // The postplant timer is 45s and the confirmation clip is over 50s.
- function stop(clip){
-  clip.pause();
-  try{clip.currentTime=0;}catch{}
- }
- function play(clip){
+ function play(){
   if(failed)return;
   try{
-   const pending=clip.play();
+   const pending=media.play();
    if(pending?.catch)pending.catch(error=>{
-    failed=true;
-    console.warn("BLACKOUT defuser audio unavailable",error);
+    failed=true;console.warn("BLACKOUT original defuser foley unavailable",error);
    });
-  }catch(error){failed=true;console.warn("BLACKOUT defuser audio unavailable",error);}
+  }catch(error){failed=true;console.warn("BLACKOUT original defuser foley unavailable",error);}
  }
- function sync(next){
-  if(next===stage)return;
-  stage=next;
-  if(next==="typing"){
-   completed=false;
-   stop(armedAudio);
-   stop(typingAudio);
-   play(typingAudio);
-  }else if(next==="global"){
-   completed=false;
-   // Finish the typing and immediately start at woo-woo, never from silence.
-   stop(typingAudio);
-   stop(armedAudio);
-   play(armedAudio);
-  }else{
-   completed=false;
-   // Cancelling the plant or ending the round stops everything.
-   stop(typingAudio);
-   stop(armedAudio);
-  }
- }
- function pause(){typingAudio.pause();armedAudio.pause();}
- function resume(){if(stage==="global"&&!completed&&armedAudio.paused)play(armedAudio);}
- return {sync,pause,resume,get stage(){return stage;},get failed(){return failed;}};
+ return {stop,play,pause(){media.pause();},
+  resume(){if(media.paused&&!media.ended)play();},get failed(){return failed;}};
+}
+
+export function createPlantRecording(typingAudio,config=PLANT_RECORDING){
+ const clip=cancellableClip(typingAudio,config.typingVolume);
+ let stage="off";
+ return {
+  sync(next){
+   if(stage===next)return;
+   stage=next;
+   clip.stop();
+   // Successful planting switches to procedural confirmation + timer-driven
+   // beeps; no copyrighted or duplicate long armed recording exists.
+   if(next==="typing")clip.play();
+  },
+  pause(){clip.pause();},resume(){if(stage==="typing")clip.resume();},
+  get stage(){return stage;},get failed(){return clip.failed;}
+ };
+}
+
+export function createDefuseRecording(disablingAudio,config=PLANT_RECORDING){
+ const clip=cancellableClip(disablingAudio,config.disablingVolume);
+ let active=false;
+ return {
+  sync(next){
+   const enabled=Boolean(next);
+   if(active===enabled)return;
+   active=enabled;
+   clip.stop();
+   if(active)clip.play();
+  },
+  pause(){clip.pause();},resume(){if(active)clip.resume();},
+  get active(){return active;},get failed(){return clip.failed;}
+ };
 }
