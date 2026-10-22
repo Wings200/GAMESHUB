@@ -41,7 +41,7 @@ test("projected screen has correct real-world width, height and yaw; can move ar
  const d=first().device;
  const screen=projectorCurtain(d);
  assert.equal(screen.width,OBS_BLOCKER.screenWidth);
- assert.equal(screen.top-screen.bottom,OBS_BLOCKER.screenHeight);
+ assert.ok(Math.abs((screen.top-screen.bottom)-OBS_BLOCKER.screenHeight)<1e-9);
  assert.ok(screen.z<d.z);
  assert.equal(screen.yaw,d.yaw);
  const rotated=blockerPosition({...defender,yaw:Math.PI/2});
@@ -134,7 +134,7 @@ test("coverage rotates accurately with Sentry aim so ghost and placed screen agr
   assert.ok(Math.abs(far.x-(p.x-Math.sin(yaw)*5.25))<1e-9);
   assert.ok(Math.abs(far.z-(p.z-Math.cos(yaw)*5.25))<1e-9);
   assert.equal(far.yaw,yaw);
-  assert.equal(far.top-far.bottom,3.4);
+  assert.ok(Math.abs((far.top-far.bottom)-3.4)<1e-9);
  }
 });
 test("projection can reach over 5m past emitter without blocking otherwise valid placement",()=>{
