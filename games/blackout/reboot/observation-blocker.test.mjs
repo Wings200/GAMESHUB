@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {TEST_OBSTACLES} from "./physics.js";
 import {OBS_BLOCKER,newObservationBlockerState,blockerPosition,projectorCurtain,
- canPlaceObservationBlocker,placeObservationBlocker,pickupObservationBlocker,
+ projectorCoverage,canPlaceObservationBlocker,placeObservationBlocker,pickupObservationBlocker,
  damageObservationBlocker,blockerScreenVisible,activeObservationBlockers}
  from "./observation-blocker.js";
 const defender={x:0,y:0,z:8,yaw:0,grounded:true};
@@ -107,4 +107,53 @@ test("damage and placement reject invalid or nonpositive hits",()=>{
   assert.equal(result.handled,false);
  }
  assert.equal(damageObservationBlocker(s,999,1).handled,false);
+});
+
+test("v0.22.1 range upgrade truly covers 7.2m width, 5.25m reach and 3.4m height",()=>{
+ assert.equal(OBS_BLOCKER.screenWidth,7.2);
+ assert.equal(OBS_BLOCKER.screenOffset,5.25);
+ assert.equal(OBS_BLOCKER.screenHeight,3.4);
+ assert.ok(OBS_BLOCKER.screenNearOffset<OBS_BLOCKER.screenOffset);
+ const d=first().device;
+ const levels=projectorCoverage(d);
+ assert.equal(levels.length,3);
+ assert.equal(levels[0].distance,OBS_BLOCKER.screenNearOffset);
+ assert.equal(levels[0].width,OBS_BLOCKER.screenNearWidth);
+ assert.equal(levels[2].distance,OBS_BLOCKER.screenOffset);
+ assert.equal(levels[2].width,OBS_BLOCKER.screenWidth);
+ assert.ok(levels[1].width>levels[0].width);
+ assert.ok(levels[1].width<levels[2].width);
+ assert.ok(levels[0].z>levels[1].z&&levels[1].z>levels[2].z);
+ assert.ok(Math.abs(projectorCurtain(d).z-levels[2].z)<1e-9);
+});
+test("coverage rotates accurately with Sentry aim so ghost and placed screen agree",()=>{
+ for(const yaw of [0,Math.PI/2,-Math.PI/2,Math.PI]){
+  const p=blockerPosition({...defender,yaw});
+  const levels=projectorCoverage(p);
+  const far=levels.at(-1);
+  assert.ok(Math.abs(far.x-(p.x-Math.sin(yaw)*5.25))<1e-9);
+  assert.ok(Math.abs(far.z-(p.z-Math.cos(yaw)*5.25))<1e-9);
+  assert.equal(far.yaw,yaw);
+  assert.equal(far.top-far.bottom,3.4);
+ }
+});
+test("projection can reach over 5m past emitter without blocking otherwise valid placement",()=>{
+ const p=blockerPosition(defender);
+ const far=projectorCurtain(p);
+ const obstacle={x:far.x,z:far.z,width:1.2,depth:1.0,bottom:0,height:2.5};
+ // The long field can visibly occlude behind real geometry; its distant
+ // endpoint is not a physical projector and shouldn't prevent deploying.
+ assert.equal(canPlaceObservationBlocker(newObservationBlockerState(),defender,[obstacle]).ok,true);
+ const near=projectorCoverage(p)[0];
+ const blocked={x:near.x,z:near.z,width:.4,depth:.4,bottom:0,height:2};
+ assert.equal(canPlaceObservationBlocker(newObservationBlockerState(),defender,[blocked]).ok,false);
+});
+test("even expanded camera-only coverage never becomes a movement obstacle",()=>{
+ const d=first().device,coverage=projectorCoverage(d);
+ for(const screen of coverage){
+  assert.equal(Object.hasOwn(screen,"depth"),false);
+  assert.equal(Object.hasOwn(screen,"height"),false);
+ }
+ assert.equal(blockerScreenVisible(d,"player"),false);
+ assert.equal(blockerScreenVisible(d,"drone"),true);
 });

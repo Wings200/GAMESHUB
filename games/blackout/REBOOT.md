@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.22.0
+# BLACKOUT — Clean Reboot V0.22.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.22.1 · LONGER OBS BLOCKER COVERAGE + DEFENDER VISUAL GUIDES**
+- User confirmed V0.22.0 worked but observed that **range was horrible** and defenders had no way to gauge coverage. Root cause: the drone-opaque pane covered just **2.8m width × 2.25m height** and sat only **0.45m** beyond the projector.
+- Increased effective projected range to **5.25m forward**, far width **7.2m**, height **3.4m**. Its frustum starts at 0.82m ahead of the floor device, increases from 1.6m width at the near plane, and passes through three independent real Three.js drone-only opaque camera planes, so coverage now extends both deep and wide. Every plane depth-tests with solid architecture; none adds player/drone collision, impacts gunfire or affects attackers' physical vision.
+- Sentry (and only Sentry) sees the deployed denial footprint as a pale cyan floor wedge and glowing translucent 3D perimeter including the entire near/far span. Attackers on foot see no electronic outline or opaque screen; recon drones see camera-blocking opaque planes instead. Placed-projector hardware stays visible on both sides.
+- **Placement preview:** Hold the designated gadget input **G or MMB**, see the exact same floor/3D denial outline projected at the current placement aim; cyan = clear, red = obstructed or otherwise invalid. Rotate/walk while holding to preview range and direction. **Release** to deploy if valid (no consumption on invalid placement). Grenade hold/release previews remain intact, and other gadgets preserve their old press behavior.
+- Placement tests validate real hardware and immediate emitter clearance, but **do not reject solely because a distant point 5m away contains a wall**; rendered projection depth-testing handles remote occlusion. Existing F recovery/refunds and V or two-bullet projector destruction still work.
+- Extended regression tests verify cone/plane width, range, aim rotation, camera-only status, far obstacles, and game wiring. Player-side browser visual check still required.
 
 **2026-10-21 / V0.22.0 · DEFENDER OBSERVATION BLOCKERS WITH REAL RECON VISION DENIAL**
 - Tenth implemented gadget: Sentry's **Observation Blockers** (2), available on MMB and G. Tap to place original modeled floor emitter 1.52m forward. Block placement on wall geometry / into a projector or past the edge; device persists when switching sides in the solo mechanics test range.

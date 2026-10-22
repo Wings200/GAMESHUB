@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.22.0 — observation blockers with camera-only shields and recovery
+// BLACKOUT REBOOT V0.22.1 — extended Observation Blocker range, live defender coverage and held placement preview
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -57,9 +57,11 @@ import {CLAYMORE,newClaymoreState,placeClaymore,pickupClaymore,
  claymoreBlastIsLethal} from "./claymore.js?v=reboot-048";
 import {createClaymoreView} from "./claymore-view.js?v=reboot-048";
 import {OBS_BLOCKER,newObservationBlockerState,placeObservationBlocker,
- pickupObservationBlocker,damageObservationBlocker,activeObservationBlockers}
- from "./observation-blocker.js?v=reboot-049";
-import {createObservationBlockerView} from "./observation-blocker-view.js?v=reboot-049";
+ canPlaceObservationBlocker,blockerPosition,pickupObservationBlocker,
+ damageObservationBlocker,activeObservationBlockers}
+ from "./observation-blocker.js?v=reboot-050";
+import {createObservationBlockerView,createObservationPlacementPreviewView}
+ from "./observation-blocker-view.js?v=reboot-050";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
@@ -187,6 +189,7 @@ let claymoreState=newClaymoreState();
 const claymoreViews=new Map();
 let observationBlockerState=newObservationBlockerState();
 const observationBlockerViews=new Map();
+const observationPreviewView=createObservationPlacementPreviewView(THREE,scene);
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -235,6 +238,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   wireSoundTracker=newWireSoundTracker();
   flashEffect=newFlashEffect();
   cancelHeldThrow();
+  syncObservationBlockerViews(); // Defender coverage visible only to Sentry.
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -247,7 +251,8 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   if(controlMode==="drone"&&!locked)setControlMode("player");
  },
  onPlanChange(){
-  // Changing either select while paused updates the next live player HUD.
+  // Prevent old visual placement previews after swapping utility slots.
+  cancelHeldThrow();
   refreshUtilityHud();
  }
 });
@@ -293,7 +298,8 @@ function refreshUtilityHud(){
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
  utilityHudNote.textContent=rows.some(row=>row.gadgetId==="observation-blocker")?
-  activeOperator.name+" · PROJECTS CAMERA-ONLY SCREEN · F RECOVER · V DESTROYS":
+  activeOperator.name+" · "+OBS_BLOCKER.screenWidth.toFixed(1)+"M WIDE × "+
+   OBS_BLOCKER.screenOffset.toFixed(2)+"M FORWARD · HOLD G/MMB TO PREVIEW · F RECOVER":
   rows.some(row=>row.gadgetId==="claymore")?
   activeOperator.name+" · 3 RED TRIP LASERS · ENEMY-ONLY SENSOR · LOOK + F RECOVER":
   rows.some(row=>row.gadgetId==="hard-breach")?
@@ -445,7 +451,7 @@ function tryPickupCurrentNitro(){
 function syncObservationBlockerViews(){
  for(const [id,view] of observationBlockerViews){
   const device=observationBlockerState.devices.find(d=>d.id===id&&d.hp>0);
-  if(device)view.setMode(controlMode,device);
+  if(device)view.setMode(controlMode,device,activeOperator.side);
   else{view.dispose();observationBlockerViews.delete(id);}
  }
 }
@@ -583,7 +589,8 @@ const throwableConfigs={
  c4:{makeState:newNitroState,thrower:throwNitro,stepper:tickNitro}
 };
 function cancelHeldThrow(){
- heldThrowCode=null;lastThrowPreviewAt=-Infinity;throwPreviewView.hide();
+ heldThrowCode=null;lastThrowPreviewAt=-Infinity;
+ throwPreviewView.hide();observationPreviewView.hide();
 }
 function gadgetCharges(gadgetId){
  switch(gadgetId){
@@ -600,6 +607,18 @@ function startGadgetInput(code){
  if(!row)return;
  if(heldThrowCode)return; // No simultaneous conflicting G/MMB trajectory.
  const id=row.gadgetId;
+ // Observation Blocker has a much larger projection and must show the
+ // exact area BEFORE using ammo. Hold assigned G/MMB; release to plant.
+ if(id==="observation-blocker"&&activeOperator.side==="defend"&&
+    observationBlockerState.charges>0){
+  heldThrowCode=code;lastThrowPreviewAt=-Infinity;
+  shotNotice.textContent="OBS COVERAGE "+OBS_BLOCKER.screenWidth.toFixed(1)+
+   "M W × "+OBS_BLOCKER.screenOffset.toFixed(2)+
+   "M REACH · RELEASE "+row.key+" TO PLACE";
+  shotNoticeLeft=1.35;
+  updateHeldThrowPreview(performance.now());
+  return;
+ }
  const armedNitro=nitroState.devices.some(d=>d.armed);
  if(THROW_PREVIEW_IDS.includes(id)&&canPreviewThrow(id,gadgetCharges(id),armedNitro)){
   heldThrowCode=code;lastThrowPreviewAt=-Infinity;
@@ -624,6 +643,13 @@ function updateHeldThrowPreview(now){
  if(now-lastThrowPreviewAt<45)return; // keep preview inexpensive during aiming
  lastThrowPreviewAt=now;
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(r=>r.code===heldThrowCode);
+ if(row?.gadgetId==="observation-blocker"&&activeOperator.side==="defend"){
+  const clearance=canPlaceObservationBlocker(observationBlockerState,player,activeDroneObstacles());
+  observationPreviewView.update(clearance.position||blockerPosition(player),clearance.ok);
+  throwPreviewView.hide();
+  return;
+ }
+ observationPreviewView.hide();
  const conf=throwableConfigs[row?.gadgetId];
  if(!conf||!canPreviewThrow(row.gadgetId,gadgetCharges(row.gadgetId),
    nitroState.devices.some(d=>d.armed))){cancelHeldThrow();return;}
@@ -639,7 +665,7 @@ function usePlannedGadget(code){
    observationBlockerState=result.state;
    const view=createObservationBlockerView(THREE,scene,result.device);
    observationBlockerViews.set(result.device.id,view);
-   view.setMode(controlMode,result.device);
+   view.setMode(controlMode,result.device,activeOperator.side);
    shotAudio.play("gadget-throw");
    refreshUtilityHud();
   }
@@ -1613,5 +1639,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.22.0 camera-only observation blocker shields, F pickup, gun/V destruction",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.22.1 expanded 7.2m observation blocker, Sentry outline and hold-to-preview placement",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.22.0 · Observation Blockers with camera-only projection and F pickup
+    name: Reboot V0.22.1 · long range observation blocker and Sentry live coverage/placement guides
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

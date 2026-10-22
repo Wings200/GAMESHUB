@@ -5,8 +5,9 @@
 export const OBS_BLOCKER=Object.freeze({
  charges:2,placeDistance:1.52,pickupRange:2.45,
  footprint:.30,worldLimit:29.1,health:2,
- screenWidth:2.8,screenHeight:2.25,
- screenOffset:.45,screenBottom:.07
+ screenWidth:7.2,screenHeight:3.4,
+ screenOffset:5.25,screenNearOffset:.82,screenNearWidth:1.6,
+ screenBottom:.055
 });
 export function newObservationBlockerState(){
  return {charges:OBS_BLOCKER.charges,nextId:1,devices:[]};
@@ -17,12 +18,29 @@ export function blockerPosition(player){
   y:0,z:player.z-Math.cos(player.yaw)*OBS_BLOCKER.placeDistance,
   yaw:player.yaw,hp:OBS_BLOCKER.health};
 }
+// A frustum, not a tiny wall: the camera-blocking field expands across
+// 5.25m of forward floor and 7.2m at its far end. Each physical screen is
+// drawn at one of the three bounds, exactly matching defender outlines.
+export function projectorCoverage(device){
+ if(!device||![device.x,device.z,device.yaw].every(Number.isFinite))return null;
+ const levels=[OBS_BLOCKER.screenNearOffset,
+  (OBS_BLOCKER.screenNearOffset+OBS_BLOCKER.screenOffset)/2,
+  OBS_BLOCKER.screenOffset];
+ return levels.map(distance=>{
+  const fraction=(distance-OBS_BLOCKER.screenNearOffset)/
+   (OBS_BLOCKER.screenOffset-OBS_BLOCKER.screenNearOffset);
+  const width=OBS_BLOCKER.screenNearWidth+
+   (OBS_BLOCKER.screenWidth-OBS_BLOCKER.screenNearWidth)*fraction;
+  return {x:device.x-Math.sin(device.yaw)*distance,
+   z:device.z-Math.cos(device.yaw)*distance,
+   width,distance,yaw:device.yaw,
+   bottom:OBS_BLOCKER.screenBottom,
+   top:OBS_BLOCKER.screenBottom+OBS_BLOCKER.screenHeight};
+ });
+}
 export function projectorCurtain(device){
  if(!device||!Number.isFinite(device.yaw))return null;
- return {x:device.x-Math.sin(device.yaw)*OBS_BLOCKER.screenOffset,
-  z:device.z-Math.cos(device.yaw)*OBS_BLOCKER.screenOffset,
-  bottom:OBS_BLOCKER.screenBottom,top:OBS_BLOCKER.screenBottom+OBS_BLOCKER.screenHeight,
-  width:OBS_BLOCKER.screenWidth,yaw:device.yaw};
+ return projectorCoverage(device)?.at(-1)||null;
 }
 function overlap(p,o,pad=0){
  if((o.bottom??0)>.35||(o.height??0)<=.05)return false;
@@ -36,11 +54,12 @@ export function canPlaceObservationBlocker(state,player,obstacles=[]){
  if(!p)return {ok:false,reason:"INVALID OBSERVATION BLOCKER AIM"};
  if(Math.abs(p.x)>OBS_BLOCKER.worldLimit||Math.abs(p.z)>OBS_BLOCKER.worldLimit)
   return {ok:false,reason:"OUTSIDE THE TRAINING RANGE"};
- const screen=projectorCurtain(p);
- // Prevent placing the base through a wall or projecting the field inside
- // a full solid panel; the field never becomes a player collision barrier.
+ const near=projectorCoverage(p)?.[0];
+ // Keep the *hardware and immediate emitter* clear, but allow a 5.25m
+ // projection to terminate naturally behind depth-tested world geometry.
+ // Testing against the FAR center previously prevented useful placements.
  if(obstacles.some(o=>overlap(p,o,OBS_BLOCKER.footprint)||
-  overlap({x:screen.x,z:screen.z},o,OBS_BLOCKER.footprint)))
+  overlap({x:near.x,z:near.z},o,OBS_BLOCKER.footprint)))
   return {ok:false,reason:"BLOCKER PROJECTOR OBSTRUCTED · MOVE AWAY FROM WALL"};
  if(state.devices.some(d=>d.hp>0&&Math.hypot(d.x-p.x,d.z-p.z)<1.25))
   return {ok:false,reason:"TOO CLOSE TO ANOTHER OBSERVATION BLOCKER"};

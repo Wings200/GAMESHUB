@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-049",
+ for(const src of ["./reboot/main.js?v=reboot-050",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -456,21 +456,34 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.22.0: camera-only observation blockers truly hide recon visuals.
- assert.ok(main.includes('from "./observation-blocker.js?v=reboot-049"'));
- assert.ok(main.includes('from "./observation-blocker-view.js?v=reboot-049"'));
+ assert.ok(main.includes('from "./observation-blocker.js?v=reboot-050"'));
+ assert.ok(main.includes('from "./observation-blocker-view.js?v=reboot-050"'));
  assert.ok(main.includes("observationBlockerState=newObservationBlockerState()"));
  assert.ok(main.includes("placeObservationBlocker(observationBlockerState,player,activeDroneObstacles())"));
  assert.ok(main.includes("tryPickupCurrentObservationBlocker()"));
  assert.ok(main.includes("pickupObservationBlocker(observationBlockerState,id,player)"));
  assert.ok(main.includes("observationPickupKeyConsumed=true"));
  assert.ok(main.includes("syncObservationBlockerViews(); // projected screens only render in drone mode"));
- assert.ok(main.includes("view.setMode(controlMode,result.device)"));
+ assert.ok(main.includes("view.setMode(controlMode,result.device,activeOperator.side)"));
  assert.ok(main.includes("hitObservationBlocker(obsId,1)"));
  assert.ok(main.includes("hitObservationBlocker(observationId,OBS_BLOCKER.health)"));
  assert.ok(main.includes("...shootableWire(),...shootableObservationBlockers()"));
  assert.ok(main.includes("...reinforcement.shootables(),...shootableObservationBlockers()]"));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Camera vision denial",implemented:true'));
  assert.ok(read("reboot/observation-blocker-view.js").includes('screenGroup.visible=blockerScreenVisible(state,mode)'));
+ assert.ok(read("reboot/observation-blocker-view.js").includes('outline.group.visible=Boolean(state?.hp>0&&mode==="player"&&side==="defend")'));
+ assert.ok(read("reboot/observation-blocker-view.js").includes("createObservationPlacementPreviewView(THREE,scene)"));
+ assert.ok(read("reboot/observation-blocker-view.js").includes("projectorCoverage(device)"));
+ assert.ok(read("reboot/observation-blocker.js").includes("screenWidth:7.2,screenHeight:3.4"));
+ assert.ok(read("reboot/observation-blocker.js").includes("screenOffset:5.25,screenNearOffset:.82"));
+ assert.ok(main.includes("const observationPreviewView=createObservationPlacementPreviewView(THREE,scene)"));
+ assert.ok(main.includes("observationPreviewView.update(clearance.position||blockerPosition(player),clearance.ok)"));
+ assert.ok(main.includes("heldThrowCode=code;lastThrowPreviewAt=-Infinity;"));
+ assert.ok(main.includes("throwPreviewView.hide();observationPreviewView.hide();"));
+ assert.ok(main.includes("view.setMode(controlMode,device,activeOperator.side)"));
+ assert.ok(html.includes("7.2m-wide"));
+ assert.ok(html.includes("5.25m forward"));
+ assert.ok(html.includes("HOLD the selected G or MMB"));
  assert.ok(read("reboot/observation-blocker-view.js").includes("depthWrite:true"));
  assert.ok(read("reboot/observation-blocker.js").includes('viewMode==="drone"'));
  assert.ok(html.includes("TEN FUNCTIONAL SECONDARY GADGETS"));
