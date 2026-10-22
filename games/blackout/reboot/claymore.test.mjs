@@ -103,6 +103,8 @@ test("directional blast hurts defenders and targets in front, never targets behi
  assert.equal(claymoreBlastDamage(blast,behind),0);
  assert.equal(claymoreBlastDamage(blast,flank),0);
  assert.equal(claymoreBlastIsLethal(blast,ahead),true);
+ assert.equal(claymoreBlastIsLethal(blast,{x:enemy.x,y:0,z:enemy.z}),true,
+  "defender crossing trip beam takes lethal forward damage");
  assert.equal(claymoreBlastIsLethal(blast,behind),false);
  const wall={x:blast.x,z:blast.z-.5,width:6,depth:.25,bottom:0,height:3};
  assert.equal(claymoreBlastDamage(blast,ahead,[wall]),0,"cover blocks a forward blast");
