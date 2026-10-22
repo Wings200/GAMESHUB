@@ -102,7 +102,7 @@ export function pickupProximity(state,id,player){
  if(Math.hypot(player.x-d.x,eye-d.y,player.z-d.z)>PROXIMITY.pickupRange)
   return {state,device:null,reason:"GET CLOSER TO YOUR ALARM"};
  return {state:{...state,charges:Math.min(PROXIMITY.charges,state.charges+1),
-  devices:state.devices.filter(p=>p.id!==id)},device,
+  devices:state.devices.filter(p=>p.id!==id)},device:d,
   reason:"PROXIMITY ALARM RECOVERED · +1"};
 }
 export function damageProximity(state,id,damage=1){
