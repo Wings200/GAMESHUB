@@ -601,7 +601,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("hitObservationBlocker(obsId,1)"));
  assert.ok(main.includes("hitObservationBlocker(observationId,OBS_BLOCKER.health)"));
  assert.ok(main.includes("...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()"));
- assert.ok(main.includes("...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()]"));
+ assert.ok(main.includes("...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()]"));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Camera vision denial",implemented:true'));
  assert.ok(read("reboot/observation-blocker-view.js").includes('screenGroup.visible=blockerScreenVisible(state,mode)'));
  assert.ok(read("reboot/observation-blocker-view.js").includes('outline.group.visible=Boolean(state?.hp>0&&mode==="player"&&side==="defend")'));
@@ -822,7 +822,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('droneSpareCount.textContent=String(info.throwables)'));
 
 
- assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit)"));
+ assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)"));
  for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
   assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
  assert.ok(css.includes(".reinforce-prompt"));
