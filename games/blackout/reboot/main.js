@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.25.1 — one Deploy flow, integrated bomb HUD, visible A/B bomb devices
+// BLACKOUT REBOOT V0.25.2 — decluttered gameplay HUD, help moved to menu
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -2018,5 +2018,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.25.1 compact integrated bomb HUD, one Deploy control, visible bombs at A/B",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.25.2 decluttered live HUD, controls in deployment menu",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

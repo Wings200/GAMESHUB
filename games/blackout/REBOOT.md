@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.25.1
+# BLACKOUT — Clean Reboot V0.25.2
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,11 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.25.2 · REMOVE HUD-SPANNING GADGET INSTRUCTION STRIP**
+- Removed the user-identified enormous SHIELDS/PROXIMITY/OBS BLOCKER/CLAYMORE etc. hard-coded in-game HUD tip. Also removed every other static tutorial tip from the top-right player HUD, leaving only the live FPS/LAT metrics. Existing tactical HUD, bomb widgets, weapons, minimap and controls remain unchanged.
+- Moved short useful controls into a default-collapsed CONTROLS & GADGET REFERENCE below the single Deploy button in the pause/main menu. Moved live side-gated drone/defender hints into this menu while preserving their element IDs for side selection.
+- Added CSS guard against old HUD tip styling and bumped client cache versions to reboot-055. Automated tests check that the giant text and gameplay tip boxes are gone.
 
 **2026-10-21 / V0.25.1 · BOMBS VISIBLE, SINGLE DEPLOY BUTTON, HUD NOT COVERING MATCH**
 - User reported the V0.25.0 menu's enormous patch-notes paragraph obstructed the UI, two conflicting Deploy buttons, and no recognizable bomb props. Replaced enormous headline description with concise instructions and removed the second launch button. Now ONE Deploy button serves selected **Bomb Round (default)** or **Gadget Test Range**; the adjacent PLAY MODE select controls which mode, and the adjacent Defuser CARRY/LEAVE selector is shown only for attacking Bomb Rounds. Paused Bomb Round resumes instead of accidentally starting over; the sandbox remains separately selectable without losing gadgets.

@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-054",
-   "./reboot/style.css?v=reboot-054"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-055",
+   "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -489,6 +489,13 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(css.includes(".bomb-objective-mini"));
  assert.ok(css.includes(".bomb-interaction"));
  assert.ok(css.includes(".bomb-action-track"));
+ assert.ok(html.includes('id="controls-reference"'));
+ assert.ok(html.includes('<summary>CONTROLS &amp; GADGET REFERENCE'));
+ assert.equal((html.match(/class="siege-tip"/g)||[]).length,0,
+  "no instructional overlays may cover gameplay");
+ assert.equal(html.includes("SHIELDS: HOLD SENTRY G/MMB"),false,
+  "old giant gadget instructions must be removed entirely");
+ assert.ok(css.includes(".siege-system .siege-tip{display:none!important}"));
  assert.ok(html.includes("Choose Bomb Round or the unrestricted Test Range."));
  assert.equal(html.includes('id="bomb-round-start"'),false,
   "duplicate Bomb Round deploy control must never return");

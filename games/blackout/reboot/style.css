@@ -682,3 +682,15 @@ body[data-match-mode="bomb"] .siege-objective{
  .bomb-score{top:49px;font-size:8px;padding:2px 5px}
  .bomb-interaction{bottom:120px;width:min(290px,63vw);font-size:9px;padding:6px}
 }
+
+/* V0.25.2 · instructional UI only in the paused deployment menu. */
+.siege-system .siege-tip{display:none!important}
+.controls-reference{max-width:780px;margin-top:14px;border:1px solid #5cbbb65b;background:#0b1b27d9;border-radius:5px;color:#d9eeee;font:650 11px/1.45 "Segoe UI",Arial,sans-serif}
+.controls-reference summary{cursor:pointer;padding:10px 13px;list-style:none;color:#8de8dc;font:900 10px/1.4 "Segoe UI",Arial,sans-serif;letter-spacing:.08em}
+.controls-reference summary::-webkit-details-marker{display:none}
+.controls-reference summary:after{content:"+";float:right;font-size:16px}
+.controls-reference[open] summary:after{content:"−"}
+.controls-reference-body{border-top:1px solid #549f9e40;padding:7px 14px 11px}
+.controls-reference-body p{margin:7px 0;max-width:680px}
+.controls-reference-body strong{color:#f2fbf9}
+.controls-reference-body kbd{display:inline-block;background:#c6dedc;color:#15303a;border-radius:2px;padding:1px 4px;font:900 10px "Segoe UI",Arial,sans-serif}

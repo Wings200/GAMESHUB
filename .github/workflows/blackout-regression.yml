@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.25.1 · Bomb props at sites, one Deploy button, compact integrated HUD
+    name: Reboot V0.25.2 · remove long gadget instructions from live HUD
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

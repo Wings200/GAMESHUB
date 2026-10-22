@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.25.1 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.25.2 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-054">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -18,12 +18,12 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.25.1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.25.2</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> TACTICAL / BOMB 025.1</div>
+      <div class="section-tag"><span class="section-line"></span> TACTICAL / BOMB 025.2</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">BOMB ROUNDS · 12 GADGETS READY.</p>
       <p class="description">Choose Bomb Round or the unrestricted Test Range. In Bomb Round, Sites A and B contain visible bomb devices. Attackers can carry or leave the defuser. Hold X to drop it, press F to collect it, and hold F to plant. Defenders hold F to disable.</p>
@@ -72,6 +72,19 @@
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">BOMB ROUND</span> <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
+      <details class="controls-reference" id="controls-reference">
+        <summary>CONTROLS &amp; GADGET REFERENCE</summary>
+        <div class="controls-reference-body">
+          <p><strong>Movement:</strong> WASD · Shift sprint · Q/E lean · Space vault · V melee · F interact · ESC pause.</p>
+          <p><strong>Utilities:</strong> MMB special · G normal · HOLD MMB/G TO AIM throwables · release to throw. F picks up recoverable gadgets.</p>
+          <p><strong>Explosives:</strong> SMOKE 1.8S · FLASH 1.75S · FRAG 3.2S · IMPACT ON CONTACT · C4 REMOTE · WIRE V TO BREAK.</p>
+          <p><strong>Barbed wire:</strong> WIRE: GUNS CANNOT DESTROY IT · ENEMY CONTACT -10 HP / 0.5S.</p>
+          <p><strong>Bomb Round:</strong> Hold X 0.7 seconds to drop defuser · F pickup · Hold F plant/disable · N next round.</p>
+          <p><strong>Sandbox:</strong> H clear holes · P reset. Press <kbd>B</kbd> for ballistics diagnostics.</p>
+          <p id="drone-key-tip"><kbd>5</kbd> attacker drone cameras · <kbd>6</kbd> throw drone · <kbd>X</kbd> exit.</p>
+          <p id="defender-key-tip" class="hidden">Defender: F to reinforce/rebuild. No attacker drones.</p>
+        </div>
+      </details>
     </div>
     <aside class="menu-aside">
       <div class="vertical-line"></div>
@@ -123,14 +136,6 @@
 
     <div class="siege-system">
       <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
-      <div class="siege-tip">SHIELDS: HOLD SENTRY G/MMB TO PREVIEW GREEN/RED · RELEASE TO PLACE · SPACE VAULT · LOOK + F RECOVER · IMPACT/C4/FRAG BREACH DESTROYS · BULLETPROOF WINDOWS · PROXIMITY: SENTRY G/MMB TAP · WALL/FLOOR · 4.35M DEFENDER RANGE · BEEP-BEEP-BEEP! · F PICKUP · TWO SHOTS OR V DESTROYS · OBS BLOCKER: HOLD SENTRY G/MMB TO PREVIEW CYAN/RED COVERAGE · RELEASE TO PLACE · 7.2M WIDE × 5.25M RANGE · F PICKUP · TWO GUN HITS OR V MELEE DESTROYS · DRONE CAMERA ONLY · CLAYMORE: TAP MMB/G TO PLACE · 3 RED TRIP LASERS · LOOK + F PICKUP · BREACH: TAP MMB/G TO PLANT / DETONATE · HARD 1.45S + 1.1S · PRESS SPACE AT SMALL HOLE TO VAULT · LOOK + F TO RECOVER · THROWABLES: HOLD MMB/G TO AIM · RELEASE TO THROW · SMOKE 1.8S / DENSE COVER · FLASH 1.75S / LOOK AWAY · FRAG 3.2S · C4 REMOTE / LOOK + F PICKUP · IMPACT ON CONTACT · 2.0M · WIRE V TO BREAK</div>
-      <div class="siege-tip">WIRE: GUNS CANNOT DESTROY IT · ENEMY CONTACT -10 HP / 0.5S</div>
-      <div class="siege-tip"><kbd>H</kbd> CLEAR HOLES · <kbd>P</kbd> RESET HP / POSITION</div>
-      <div class="siege-tip">Press <kbd>B</kbd> for ballistics diagnostics.</div>
-      <div id="drone-key-tip" class="siege-tip"><kbd>5</kbd> attacker drone cameras · <kbd>6</kbd> throw attacker drone · <kbd>X</kbd> exit.</div>
-      <div id="defender-key-tip" class="siege-tip hidden">DEFENDER · LOOK AT LANDED C4 + TAP F TO RECOVER · HOLD F TO REINFORCE / REBUILD · NO RECON DRONES EQUIPPED.</div>
-      <div class="siege-tip">BOMB MODE · <kbd>X</kbd> HOLD 0.7 S TO DROP DEFUSER · <kbd>F</kbd> PICK UP / HOLD TO PLANT OR DISABLE · <kbd>N</kbd> NEXT ROUND.</div>
-      <div class="siege-tip">Press <kbd>ESC</kbd> to pause.</div>
     </div>
 
     <div class="operator-player-tag" aria-label="Selected training operator">
@@ -286,6 +291,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-054"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-055"></script>
 </body>
 </html>
