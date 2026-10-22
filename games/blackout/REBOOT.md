@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.20.2
+# BLACKOUT — Clean Reboot V0.21.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.21.0 · PHYSICAL ATTACKER CLAYMORES + ENEMY DETECTION + F PICKUP**
+- Ninth implemented gadget: **Striker Claymores**, 2 per player on either MMB/G slot. Tap to place a 3D ground mine 1.65m ahead; reject airborne/un-grounded positions, colliding walls, map edge, proximity to another mine, and empty ammunition. Real laser trip beams are rendered in red, with three rays (left/center/right), arm after 0.7 seconds, and terminate at nearest existing solid collider.
+- Directionally detect approaching **defender enemies** only. In the current solo testing range, the attacker can plant then change operator side to Sentry and approach to trigger, or position a mine close to a standing training dummy facing the sensors. Striker will not trigger their own device. Solid walls block detection. This is deliberately **not multiplayer AI**.
+- Triggered Claymore automatically explodes forwards in an approximately 4.1m fan with falloff (up to 175 HP), hits health/target dummies in the real combat damage handler and will not breach wood/gypsum/steel. Blast does not hurt targets behind it or through solid obstacles. Consumed mine disappears and cannot trigger again.
+- As specifically requested, attacker can look directly at any undetonated live mine while nearby and press **F** to pick it up, restoring exactly one inventory charge. Raycast checks for solid-cover occlusion; pressing F does not simultaneously rebuild walls or install steel.
+- Mine inventory/model/laser state persists across the player-side switch to allow testing. This adds one live gadget without altering REDLINE, existing breaching physics, utility keys, or grenades. Regression tests cover invalid ground placement, orientation, three laser rays, environment occlusion, enemy/friendly gating, multiple simultaneous mines, directional combat damage, refund/reenabling and loadout/UI wiring.
+- Browser verification remains important; the sandbox has no networked opponent to autonomously run into a trap.
 
 **2026-10-21 / V0.20.2 · HARD BREACH SECOND-CHARGE REPAIR**
 - Browser user confirmed the compact Space-vault hole worked but reported that a **second hard breach seemingly shrank the first hole instead of creating another one**. Root cause: reinforcement state previously held a single `breach` and refused every subsequent steel cut, while gypsum was independently cut again; vault control selected the first hole only.

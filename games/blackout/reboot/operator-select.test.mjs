@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/EIGHT GADGETS WORK/);
+  assert.match(elements["operator-plan-status"].textContent,/NINE GADGETS WORK/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -288,5 +288,23 @@ test("Hard Breach Charges show as READY attacker equipment but never defender eq
   elements["operator-defend"].click();
   const defensive=elements["operator-slots"].children[0].children[1];
   assert.equal(defensive.children.find(o=>o.value==="hard-breach"),undefined);
+ }finally{globalThis.document=old;}
+});
+
+test("Claymores appear READY in Striker's MMB/G dropdowns, never Sentry's",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  const select=elements["operator-slots"].children[1].children[1];
+  assert.equal(select.children.find(o=>o.value==="claymore")?.textContent,
+   "Claymores · READY");
+  select.value="claymore";select.listeners.get("change")();
+  assert.deepEqual(picker.plans.striker,[null,"claymore"]);
+  assert.equal(elements["operator-slots"].children[1].children[2].textContent,
+   "LIVE GADGET · READY IN RANGE");
+  elements["operator-defend"].click();
+  assert.equal(elements["operator-slots"].children[0].children[1].children.some(o=>o.value==="claymore"),false);
  }finally{globalThis.document=old;}
 });

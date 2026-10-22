@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.20.2 · second hard breach preserves first aperture; supports two holes
+    name: Reboot V0.21.0 · attacker claymore traps with lasers, directional blast and pickup
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -74,6 +74,8 @@ jobs:
           node --check games/blackout/reboot/soft-breach-view.js
           node --check games/blackout/reboot/hard-breach.js
           node --check games/blackout/reboot/hard-breach-view.js
+          node --check games/blackout/reboot/claymore.js
+          node --check games/blackout/reboot/claymore-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.20.2 — multiple hard breach windows persist after second detonation
+// BLACKOUT REBOOT V0.21.0 — claymores with directional lasers, enemy-only triggers and F pickup
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-045";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-045";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-048";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-048";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -52,6 +52,10 @@ import {createSoftBreachView} from "./soft-breach-view.js?v=reboot-044";
 import {HARD_BREACH,newHardBreachState,placeHardBreach,
  armHardBreach,tickHardBreach,pickupHardBreach} from "./hard-breach.js?v=reboot-047";
 import {createHardBreachView} from "./hard-breach-view.js?v=reboot-045";
+import {CLAYMORE,newClaymoreState,placeClaymore,pickupClaymore,
+ tickClaymores,claymoreLaserEndpoints,claymoreBlastDamage,
+ claymoreBlastIsLethal} from "./claymore.js?v=reboot-048";
+import {createClaymoreView} from "./claymore-view.js?v=reboot-048";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
@@ -175,6 +179,8 @@ let softBreachState=newSoftBreachState();
 const softBreachViews=new Map();
 let hardBreachState=newHardBreachState();
 const hardBreachViews=new Map();
+let claymoreState=newClaymoreState();
+const claymoreViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -192,7 +198,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -244,7 +250,9 @@ function refreshUtilityHud(){
  utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
-  utilityStatus[i].textContent=row.gadgetId==="barbed-wire"?
+  utilityStatus[i].textContent=row.gadgetId==="claymore"?
+   "LIVE · "+claymoreState.charges+"/"+CLAYMORE.charges+" LEFT · "+claymoreState.devices.length+" PLANTED":
+   row.gadgetId==="barbed-wire"?
     "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":
    row.gadgetId==="c4"?
     (nitroState.devices.some(d=>d.armed)?"ARMED · "+row.key+" DETONATE / LOOK + F PICKUP":
@@ -275,7 +283,9 @@ function refreshUtilityHud(){
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="hard-breach")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="claymore")?
+  activeOperator.name+" · 3 RED TRIP LASERS · ENEMY-ONLY SENSOR · LOOK + F RECOVER":
+  rows.some(row=>row.gadgetId==="hard-breach")?
   activeOperator.name+" · HARD BREACH STEEL / SOFT · F RECOVER · 1.1S DET":
   rows.some(row=>row.gadgetId==="soft-breach")?
   activeOperator.name+" · BREACH PLANT ON WALL/WOOD · F RECOVER":
@@ -317,8 +327,12 @@ function applyGadgetBlast(blast,label="C4"){
    softWall.breachWindow(hardBreachWindow(blast)):softWall.blastAt(blast),
   reinforced:reinforcement.installed&&label!=="HARD BREACH"
  });
- const self=nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
- const instantKill=nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
+ const self=label==="CLAYMORE"?
+  claymoreBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z},activeDroneObstacles()):
+  nitroBlastDamage(blast,{x:player.x,y:player.y+.6,z:player.z});
+ const instantKill=label==="CLAYMORE"?
+  claymoreBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z},activeDroneObstacles()):
+  nitroBlastIsLethal(blast,{x:player.x,y:player.y+.6,z:player.z});
  let damageTaken=0,playerEliminated=false;
  if((self>0||instantKill)&&wireHealth.hp>0){
   damageTaken=instantKill?wireHealth.hp:Math.min(wireHealth.hp,self);
@@ -330,8 +344,10 @@ function applyGadgetBlast(blast,label="C4"){
  let hits=0;
  for(const target of targets){
   if(target.downTime>0)continue;
-  const dmg=nitroBlastDamage(blast,{x:target.group.position.x,y:1.25,
-   z:target.group.position.z});
+  const point={x:target.group.position.x,y:1.25,z:target.group.position.z};
+  const dmg=label==="CLAYMORE"?
+   claymoreBlastDamage(blast,point,activeDroneObstacles()):
+   nitroBlastDamage(blast,point);
   if(dmg>=20){
    target.downTime=1.6;target.group.visible=false;target.hits++;
    targetHits++;completedTargets.add(target.id);weapons.registerHit();
@@ -412,6 +428,33 @@ function tryPickupCurrentNitro(){
  keys.delete("KeyF");
  shotNotice.textContent=result.reason;
  shotNoticeLeft=1.65;
+ refreshUtilityHud();
+ return true;
+}
+function tryPickupCurrentClaymore(){
+ if(activeOperator.side!=="attack"||controlMode!=="player")return false;
+ camera.updateMatrixWorld(true);
+ const pickupRay=new THREE.Raycaster();
+ pickupRay.setFromCamera({x:0,y:0},camera);
+ pickupRay.far=CLAYMORE.pickupRange+.75;
+ const mineTargets=claymoreState.devices.filter(d=>d.armed)
+  .map(d=>claymoreViews.get(d.id)?.pickupTarget).filter(Boolean);
+ if(!mineTargets.length)return false;
+ for(const view of claymoreViews.values())view.root.updateMatrixWorld(true);
+ const hits=pickupRay.intersectObjects([
+  ...mineTargets,...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables()
+ ],false);
+ const id=hits[0]?.object?.userData?.claymorePickupId;
+ if(!Number.isInteger(id))return false;
+ const result=pickupClaymore(claymoreState,id,player);
+ if(!result.device)return false;
+ claymoreState=result.state;
+ claymoreViews.get(id)?.dispose();claymoreViews.delete(id);
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;shotNoticeLeft=1.65;
  refreshUtilityHud();
  return true;
 }
@@ -528,6 +571,16 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="claymore"&&activeOperator.side==="attack"){
+  const result=placeClaymore(claymoreState,player,activeDroneObstacles());
+  if(result.device){
+   claymoreState=result.state;
+   claymoreViews.set(result.device.id,createClaymoreView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;
+  shotNoticeLeft=1.7;return;
+ }
  if(row.gadgetId==="hard-breach"&&activeOperator.side==="attack"){
   if(hardBreachState.devices.some(d=>d.armed)){
    const triggered=armHardBreach(hardBreachState);
@@ -819,7 +872,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -857,7 +910,11 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentClaymore()){
+   claymorePickupKeyConsumed=true;
+   return;
+  }
   if(!event.repeat&&tryPickupCurrentHardBreach()){
    hardBreachPickupKeyConsumed=true;
    return;
@@ -944,7 +1001,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;}
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -973,7 +1030,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1195,6 +1252,30 @@ function animate(now){
    for(const blast of fragTick.blasts){
     shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
     shotNoticeLeft=1.7;
+   }
+   // Claymores stay in the range across side changes: live defender Sentry
+   // movement and the practice dummy targets are valid ENEMY sensors.
+   // Striker cannot trip their own claymore. Walls clip laser sensing.
+   const claymoreEnemies=[
+    ...(activeOperator.side==="defend"&&wireHealth.hp>0?
+     [{id:"sentry-player",x:player.x,y:player.y,z:player.z,
+       side:"defend",alive:true}]:[]),
+    ...targets.filter(t=>t.downTime<=0).map(t=>({
+     id:t.id,x:t.group.position.x,y:0,z:t.group.position.z,
+     side:"defend",alive:true}))
+   ];
+   const clayTick=tickClaymores(claymoreState,dt,claymoreEnemies,activeDroneObstacles());
+   claymoreState=clayTick.state;
+   for(const [id,view] of claymoreViews){
+    const d=claymoreState.devices.find(item=>item.id===id&&item.armed);
+    if(d)view.sync(d,claymoreLaserEndpoints(d,activeDroneObstacles()));
+    else{view.dispose();claymoreViews.delete(id);}
+   }
+   for(const blast of clayTick.blasts){
+    shotNotice.textContent=applyGadgetBlast(blast,"CLAYMORE")+
+     " · TRIPPED BY "+String(blast.trigger).toUpperCase();
+    shotNoticeLeft=2;
+    refreshUtilityHud();
    }
    // Hard breaches attach to reinforced steel or gypsum, then their armed
    // countdown detonates after 1.1s. Physics and shooter colliders update
@@ -1440,5 +1521,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.20.2 cumulative hard breach openings: two charge holes and matching vaults",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.21.0 claymores: directional laser triggers and F pickup",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");
