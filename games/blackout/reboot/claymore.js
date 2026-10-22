@@ -5,7 +5,7 @@ export const CLAYMORE=Object.freeze({
  charges:2,placeDistance:1.65,footprint:.35,worldLimit:29.0,
  pickupRange:2.5,armSeconds:.7,beamRange:3.1,
  beamAngles:Object.freeze([-.37,0,.37]),tripWidth:.34,
- blastRadius:4.1,blastDamage:175,lethalRadius:1.35,
+ blastRadius:4.1,blastDamage:175,lethalRadius:3.25,
  blastHalfAngle:1.15
 });
 export function newClaymoreState(){return {charges:CLAYMORE.charges,nextId:1,devices:[]};}
@@ -112,7 +112,7 @@ export function tickClaymores(state,dt,enemies=[],obstacles=[]){
   if(!trigger)return [next];
   blasts.push({id:d.id,x:d.x,y:.22,z:d.z,yaw:d.yaw,
    radius:CLAYMORE.blastRadius,damage:CLAYMORE.blastDamage,
-   lethalRadius:CLAYMORE.lethalRadius,fullDamageRadius:.6,
+   lethalRadius:CLAYMORE.lethalRadius,fullDamageRadius:2.8,
    trigger:trigger.id??"enemy"});
   return [];
  });
