@@ -659,7 +659,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("newWireHealth()"));
  assert.ok(main.includes("tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt)"));
  assert.ok(main.includes("wireHealth=newWireHealth()"));
- assert.ok(main.includes("}else player=stepPlayer(player,input,dt,obstacles);"));
+ assert.ok(main.includes('bombState.phase==="prep"&&activeOperator.side==="attack"'));
+ assert.ok(main.includes("player=stepPlayer(player,input,dt,obstacles);"));
  assert.ok(main.includes("ENEMY BARBED WIRE · -"));
  assert.ok(main.includes("healthNumber.textContent=String(wireHealth.hp)"));
  assert.ok(main.includes("healthCaption.textContent="));
