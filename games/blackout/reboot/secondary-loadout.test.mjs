@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","barbed-wire"],"only nine actually functional gadgets are marked ready");
+  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","observation-blocker","barbed-wire"],"only ten actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -211,4 +211,18 @@ test("attacker claymores are live, use exactly one MMB/G slot and are illegal fo
  assert.equal(planSecondary(plans,sentry,0,"claymore"),plans);
  plans=planSecondary(plans,striker,0,"hard-breach");
  assert.equal(planIsFieldReady(plans,striker),true);
+});
+
+test("Sentry observation blockers are live in both utility slots, impossible on attacker",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ let plans=planSecondary(newSecondaryPlans(),sentry,1,"observation-blocker");
+ assert.equal(gadgetById("observation-blocker").implemented,true);
+ assert.equal(planIsFieldReady(plans,sentry),true);
+ assert.equal(utilityHudRows(plans,sentry)[1].status,"READY · LIVE GADGET");
+ assert.equal(utilityKeyPreview(plans,sentry,"KeyG"),
+  "OBSERVATION BLOCKERS · LIVE GADGET · USE IN RANGE");
+ assert.equal(planSecondary(plans,sentry,0,"observation-blocker"),plans);
+ assert.equal(planSecondary(plans,striker,0,"observation-blocker"),plans);
+ plans=planSecondary(plans,sentry,0,"c4");
+ assert.equal(planIsFieldReady(plans,sentry),true);
 });

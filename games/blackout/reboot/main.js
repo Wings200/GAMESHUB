@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.21.0 — claymores with directional lasers, enemy-only triggers and F pickup
+// BLACKOUT REBOOT V0.22.0 — observation blockers with camera-only shields and recovery
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-048";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-048";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-049";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-049";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -56,6 +56,10 @@ import {CLAYMORE,newClaymoreState,placeClaymore,pickupClaymore,
  tickClaymores,claymoreLaserEndpoints,claymoreBlastDamage,
  claymoreBlastIsLethal} from "./claymore.js?v=reboot-048";
 import {createClaymoreView} from "./claymore-view.js?v=reboot-048";
+import {OBS_BLOCKER,newObservationBlockerState,placeObservationBlocker,
+ pickupObservationBlocker,damageObservationBlocker,activeObservationBlockers}
+ from "./observation-blocker.js?v=reboot-049";
+import {createObservationBlockerView} from "./observation-blocker-view.js?v=reboot-049";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
@@ -181,6 +185,8 @@ let hardBreachState=newHardBreachState();
 const hardBreachViews=new Map();
 let claymoreState=newClaymoreState();
 const claymoreViews=new Map();
+let observationBlockerState=newObservationBlockerState();
+const observationBlockerViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -198,7 +204,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false,observationPickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -250,7 +256,10 @@ function refreshUtilityHud(){
  utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
-  utilityStatus[i].textContent=row.gadgetId==="claymore"?
+  utilityStatus[i].textContent=row.gadgetId==="observation-blocker"?
+   "LIVE · "+observationBlockerState.charges+"/"+OBS_BLOCKER.charges+
+    " LEFT · "+activeObservationBlockers(observationBlockerState).length+" DEPLOYED":
+   row.gadgetId==="claymore"?
    "LIVE · "+claymoreState.charges+"/"+CLAYMORE.charges+" LEFT · "+claymoreState.devices.length+" PLANTED":
    row.gadgetId==="barbed-wire"?
     "LIVE · "+wireState.charges+"/"+WIRE.charges+" LEFT":
@@ -283,7 +292,9 @@ function refreshUtilityHud(){
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="claymore")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="observation-blocker")?
+  activeOperator.name+" · PROJECTS CAMERA-ONLY SCREEN · F RECOVER · V DESTROYS":
+  rows.some(row=>row.gadgetId==="claymore")?
   activeOperator.name+" · 3 RED TRIP LASERS · ENEMY-ONLY SENSOR · LOOK + F RECOVER":
   rows.some(row=>row.gadgetId==="hard-breach")?
   activeOperator.name+" · HARD BREACH STEEL / SOFT · F RECOVER · 1.1S DET":
@@ -431,6 +442,57 @@ function tryPickupCurrentNitro(){
  refreshUtilityHud();
  return true;
 }
+function syncObservationBlockerViews(){
+ for(const [id,view] of observationBlockerViews){
+  const device=observationBlockerState.devices.find(d=>d.id===id&&d.hp>0);
+  if(device)view.setMode(controlMode,device);
+  else{view.dispose();observationBlockerViews.delete(id);}
+ }
+}
+function tryPickupCurrentObservationBlocker(){
+ if(activeOperator.side!=="defend"||controlMode!=="player")return false;
+ camera.updateMatrixWorld(true);
+ const pickupRay=new THREE.Raycaster();
+ pickupRay.setFromCamera({x:0,y:0},camera);
+ pickupRay.far=OBS_BLOCKER.pickupRange+1.0;
+ const targets=activeObservationBlockers(observationBlockerState)
+  .map(d=>observationBlockerViews.get(d.id)?.pickupTarget).filter(Boolean);
+ if(!targets.length)return false;
+ for(const view of observationBlockerViews.values())view.root.updateMatrixWorld(true);
+ const hits=pickupRay.intersectObjects([
+  ...targets,...shootableSolids,...barricade.shootables(),
+  ...softWall.shootables(),...reinforcement.shootables()
+ ],false);
+ const id=hits[0]?.object?.userData?.observationBlockerPickupId;
+ if(!Number.isInteger(id))return false;
+ const result=pickupObservationBlocker(observationBlockerState,id,player);
+ if(!result.device)return false;
+ observationBlockerState=result.state;
+ syncObservationBlockerViews();
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;shotNoticeLeft=1.65;
+ refreshUtilityHud();
+ return true;
+}
+function shootableObservationBlockers(){
+ return activeObservationBlockers(observationBlockerState)
+  .flatMap(d=>observationBlockerViews.get(d.id)?.hardware||[]);
+}
+function hitObservationBlocker(id,damage){
+ const result=damageObservationBlocker(observationBlockerState,id,damage);
+ if(!result.handled)return {handled:false,destroyed:false};
+ observationBlockerState=result.state;
+ syncObservationBlockerViews();
+ refreshUtilityHud();
+ shotAudio.play("impact");
+ shotNotice.textContent=result.destroyed?
+  "OBSERVATION BLOCKER DESTROYED · DRONE VISION RESTORED":
+  "OBSERVATION BLOCKER HARDWARE HIT · "+result.remainingHP+" HP";
+ shotNoticeLeft=1.4;
+ return result;
+}
 function tryPickupCurrentClaymore(){
  if(activeOperator.side!=="attack"||controlMode!=="player")return false;
  camera.updateMatrixWorld(true);
@@ -571,6 +633,18 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="observation-blocker"&&activeOperator.side==="defend"){
+  const result=placeObservationBlocker(observationBlockerState,player,activeDroneObstacles());
+  if(result.device){
+   observationBlockerState=result.state;
+   const view=createObservationBlockerView(THREE,scene,result.device);
+   observationBlockerViews.set(result.device.id,view);
+   view.setMode(controlMode,result.device);
+   shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;shotNoticeLeft=1.7;return;
+ }
  if(row.gadgetId==="claymore"&&activeOperator.side==="attack"){
   const result=placeClaymore(claymoreState,player,activeDroneObstacles());
   if(result.device){
@@ -713,11 +787,16 @@ function strikeMelee(now){
  meleeRaycaster.setFromCamera({x:0,y:0},camera);
  meleeRaycaster.far=MELEE.range;
  const solids=[...shootableSolids,...barricade.shootables(),
-  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire()];
+  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers()];
  const hits=combatIntersections(meleeRaycaster,solids,[]);
  const selected=selectedMeleeTarget(hits);
  let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
- if(selected.kind==="wire"){
+ const observationId=hits[0]?.object?.userData?.observationBlockerId;
+ if(Number.isInteger(observationId)){
+  const result=hitObservationBlocker(observationId,OBS_BLOCKER.health);
+  description=result.destroyed?"OBSERVATION BLOCKER SMASHED · FIELD OFF":
+   "OBSERVATION BLOCKER HARDWARE STRUCK";
+ }else if(selected.kind==="wire"){
   // TWO melee strikes remove wire. Gunfire has no destruction effect.
   const result=damageWire(wireState,selected.id,2);
   if(result.handled){
@@ -748,6 +827,7 @@ function setControlMode(nextMode){
  // while the camera was open and the Testing Range was paused.
  if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
  controlMode=nextMode;
+ syncObservationBlockerViews(); // projected screens only render in drone mode
  const active=locked;
  hud.classList.toggle("hidden",!active||controlMode!=="player");
  droneHud.classList.toggle("hidden",!active||controlMode!=="drone");
@@ -872,7 +952,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -910,7 +990,11 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentObservationBlocker()){
+   observationPickupKeyConsumed=true;
+   return;
+  }
   if(!event.repeat&&tryPickupCurrentClaymore()){
    claymorePickupKeyConsumed=true;
    return;
@@ -1001,7 +1085,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;}
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -1030,7 +1114,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1098,7 +1182,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -1154,17 +1238,25 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
- const woodHit=outcome.hit?barricade.hitBoard(outcome.hit):{handled:false};
- const metalHit=outcome.hit?reinforcement.steelImpact(outcome.hit):false;
- const plasterHit=outcome.hit&&!metalHit?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit)
+ const obsId=outcome.hit?.object?.userData?.observationBlockerId;
+  const obsHit=Number.isInteger(obsId)?hitObservationBlocker(obsId,1):{handled:false};
+  const woodHit=outcome.hit&&!obsHit.handled?
+   barricade.hitBoard(outcome.hit):{handled:false};
+ const metalHit=outcome.hit&&!obsHit.handled?reinforcement.steelImpact(outcome.hit):false;
+ const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled?softWall.onHit(outcome.hit):{handled:false};
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(woodHit.handled){
+ if(obsHit.handled){
+   shotNotice.textContent=obsHit.destroyed?
+    "OBSERVATION BLOCKER DESTROYED · PROJECTION ENDED":
+    "OBSERVATION BLOCKER HIT · SHOOT AGAIN";
+   shotNoticeLeft=1.2;
+  }else if(woodHit.handled){
   shotNotice.textContent="BOARD "+String(woodHit.index).padStart(2,"0")+
     (woodHit.broken?" DESTROYED · "+woodHit.remaining+" LEFT":" HIT · FIRE AGAIN");
   shotNoticeLeft=.95;
@@ -1521,5 +1613,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.21.0 claymores: directional laser triggers and F pickup",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.22.0 camera-only observation blocker shields, F pickup, gun/V destruction",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

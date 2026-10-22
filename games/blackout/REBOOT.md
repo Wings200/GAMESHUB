@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.21.0
+# BLACKOUT — Clean Reboot V0.22.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.22.0 · DEFENDER OBSERVATION BLOCKERS WITH REAL RECON VISION DENIAL**
+- Tenth implemented gadget: Sentry's **Observation Blockers** (2), available on MMB and G. Tap to place original modeled floor emitter 1.52m forward. Block placement on wall geometry / into a projector or past the edge; device persists when switching sides in the solo mechanics test range.
+- A physical **opaque cyan-tinged electronic screen** is created as a real scene object 0.45m ahead of the emitter, 2.8m wide × 2.25m high. Screen is visible ONLY from **attacking drone camera mode** and rendered with depth testing to cover objects behind it. The player sees no opaque screen and may walk and fire right through it. Screen doesn't add physical collision. Solid walls still render in front of it in the drone feed.
+- Try it: Sentry chooses gadget, plants it, switches to Striker, throws a drone with 6, enters drone feed using 5 and faces the projector's curtain. Other defender cameras are not yet implemented; only the live drone viewport is affected. Player and drone body collision are unchanged.
+- Intact hardware is **recoverable via center-screen look + F** while nearby as Sentry, refunding one charge. Raycasts cannot recover through obstructing solid walls; the same F input cannot install reinforcement or rebuild barricades. All two projectors coexist independently. **Two direct bullet hits or one V punch destroy the hardware** and immediately remove the camera-only visual field, with no refund. Only hardware is targetable—projected screen has no gun collider and cannot be shot away.
+- Includes loadout and HUD counts, original THREE projector mesh and projected screen, source integration tests and state tests for sight-mode gating, placement, two units, pickup, range and durability. No multiplayer camera control or REDLINE changes.
 
 **2026-10-21 / V0.21.0 · PHYSICAL ATTACKER CLAYMORES + ENEMY DETECTION + F PICKUP**
 - Ninth implemented gadget: **Striker Claymores**, 2 per player on either MMB/G slot. Tap to place a 3D ground mine 1.65m ahead; reject airborne/un-grounded positions, colliding walls, map edge, proximity to another mine, and empty ammunition. Real laser trip beams are rendered in red, with three rays (left/center/right), arm after 0.7 seconds, and terminate at nearest existing solid collider.

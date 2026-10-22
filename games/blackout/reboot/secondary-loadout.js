@@ -9,7 +9,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"claymore",name:"Claymores",side:"attack",role:"Directional trap",implemented:true},
  {id:"c4",name:"C4 / Nitro Cell",side:"defend",role:"Remote explosive",implemented:true},
  {id:"impact",name:"Impact Grenades",side:"defend",role:"Impact destruction",implemented:true},
- {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:false},
+ {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:true},
  {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:true},
  {id:"proximity-alarm",name:"Proximity Alarms",side:"defend",role:"Entry warning",implemented:false},
  {id:"deployable-shield",name:"Deployable Shields",side:"defend",role:"Portable cover",implemented:false}
