@@ -56,7 +56,7 @@ test("wall detection respects yaw and the nearest physical face, never places th
 test("floor placement blocked when floor occupied or outside bounds and player airborne",()=>{
  const s=newProximityState();
  const p={...defender,z:0};
- const target={x:0,z:-1.45,width:1,depth:1,height:2};
+ const target={x:0,z:-1.45,width:1,depth:1,height:.3};
  assert.equal(canPlaceProximity(s,p,[target]).ok,false);
  for(const bad of [null,{...defender,grounded:false},{...defender,y:1},
   {...defender,x:NaN},{...defender,z:-29}]){
