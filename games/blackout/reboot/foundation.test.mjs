@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-063",
+  for(const src of ["./reboot/main.js?v=reboot-064",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -191,7 +191,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ammo"'));
  assert.ok(html.includes('id="target-hits"'));
  assert.ok(main.includes('from "./legacy-weapons.js?v=reboot-006"'));
- assert.ok(main.includes('from "./legacy-audio.js?v=reboot-063"'));
+ assert.ok(main.includes('from "./legacy-audio.js?v=reboot-064"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
  assert.ok(main.includes('from "./weapon-view.js?v=reboot-012"'));
@@ -463,9 +463,14 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.25.3: both real bombs occupy space, including the recon drone.
   assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-062"'));
   assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-060"'));
-  assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-063"'));
-  assert.ok(main.includes('DefuserPlantOriginal.ogg'));
-  assert.ok(main.includes('DefuserDisableOriginal.ogg'));
+  assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-064"'));
+  for(const sample of ['DefuserPlantV2.ogg','DefuserDisableV2.ogg',
+    'DefuserArmV2.ogg','DefuserTickV2.ogg','DefuserTickUrgentV2.ogg',
+    'DefuserShutdownV2.ogg'])assert.ok(main.includes(sample));
+  assert.ok(main.includes('createDefuserCuePlayer('));
+  assert.ok(main.includes('defuserCues.play(urgent?"urgent":"tick")'));
+  assert.ok(main.includes('defuserCues.play("arm")'));
+  assert.ok(main.includes('defuserCues.play("shutdown")'));
   assert.ok(!main.includes('DefuseTyping.mp3'));
   assert.ok(!main.includes('DefuseArmed.mp3'));
  assert.ok(main.includes("bombSiteBlockers(bombState)"));
@@ -481,12 +486,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("weaponView.root.visible=!meleeView.active&&!bombTyping"));
  assert.ok(main.includes("!meleeView.active&&!bombTyping&&wireHealth.hp>0"));
  assert.ok(main.includes('tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction)'));
-  assert.ok(main.includes('bombState.time<=10?"defuser-tick-urgent":"defuser-tick"'));
+  assert.ok(main.includes('const urgent=bombState.time<=10'));
  assert.ok(main.includes('shotAudio.playAt("defuser-disabling"'));
  assert.ok(main.includes('shotAudio.playAt("defuse-key"'));
  assert.ok(main.includes('shotAudio.playAt("defuser-arming"'));
  assert.ok(main.includes('defuseAudio.sync(afterInteraction==="disable")'));
- assert.ok(main.includes('shotAudio.play(bombState.time<=10?"defuser-tick-urgent":"defuser-tick")'));
+ assert.ok(main.includes('shotAudio.play(urgent?"defuser-tick-urgent":"defuser-tick")'));
  assert.ok(main.includes('shotAudio.playAt("defuse"'));
  assert.ok(main.includes('shotAudio.play(bombState.winner===activeOperator.side?"round-win":"round-loss")'));
  assert.ok(read("reboot/bomb-plant-audio.js").includes('state.winner==="defend"&&state.defuser?.status==="planted"'));

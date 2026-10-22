@@ -6,7 +6,7 @@ import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js
 import {createHouseView} from "./house-view.js?v=reboot-062";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-063";
+import {GameAudio} from "./legacy-audio.js?v=reboot-064";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -81,8 +81,8 @@ import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=r
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-062";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
-import {createPlantRecording,createDefuseRecording,plantRecordingStage}
- from "./bomb-plant-audio.js?v=reboot-063";
+import {createPlantRecording,createDefuseRecording,createDefuserCuePlayer,plantRecordingStage}
+ from "./bomb-plant-audio.js?v=reboot-064";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -248,12 +248,19 @@ const houseView=createHouseView(THREE,scene);
 const trainingShootables=shootableSolids.slice();
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
-// New CC0 foley mixes. Neither has Ubisoft game samples. The game clock
-// produces the ONE shared beep after planting, independent of these clips.
+// All six original/CC0 defuser sounds are independent, timed recordings:
+// unfold + real typing; two-stage arm; device tick; tablet taps; shutdown.
+// The clock drives the ONE shared, map-wide beep, not an oscillator loop.
 const plantAudio=createPlantRecording(
- new Audio(new URL("./audio/DefuserPlantOriginal.ogg",import.meta.url).href));
+ new Audio(new URL("./audio/DefuserPlantV2.ogg",import.meta.url).href));
 const defuseAudio=createDefuseRecording(
- new Audio(new URL("./audio/DefuserDisableOriginal.ogg",import.meta.url).href));
+ new Audio(new URL("./audio/DefuserDisableV2.ogg",import.meta.url).href));
+const defuserCues=createDefuserCuePlayer({
+ arm:new Audio(new URL("./audio/DefuserArmV2.ogg",import.meta.url).href),
+ tick:new Audio(new URL("./audio/DefuserTickV2.ogg",import.meta.url).href),
+ urgent:new Audio(new URL("./audio/DefuserTickUrgentV2.ogg",import.meta.url).href),
+ shutdown:new Audio(new URL("./audio/DefuserShutdownV2.ogg",import.meta.url).href)
+});
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
@@ -367,7 +374,7 @@ function bombRaycastColliders(){
  return gameMode==="bomb"?bombView.bombColliders:[];
 }
 function advanceBombMode(dt){
- if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");defuseAudio.sync(false);return;}
+ if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();return;}
  const beforeInteraction=currentBombInteraction();
  const previousInteraction=bombSoundClock.interaction;
  const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
@@ -388,26 +395,29 @@ function advanceBombMode(dt){
  }
  for(const name of sound.events){
   if(name==="defuser-tick"){
-   // One device clock, clearly audible even from the other floor.
-   shotAudio.play(bombState.time<=10?"defuser-tick-urgent":"defuser-tick");
+   // Rounded, physical beeps with the original clock rhythm, audible map-wide.
+   const urgent=bombState.time<=10;
+   if(!defuserCues.play(urgent?"urgent":"tick"))
+    shotAudio.play(urgent?"defuser-tick-urgent":"defuser-tick");
   }else if(name==="defuse-key"){
    if(defuseAudio.failed)shotAudio.playAt("defuse-key",bombState.defuser.x,
     bombState.defuser.z,player.x,player.z,player.yaw);
   }else if(name!=="plant-key"||plantAudio.failed)shotAudio.play(name);
  }
  if(result.events.includes("planted")){
-  shotAudio.playAt("defuser-arming",bombState.defuser.x,bombState.defuser.z,
-   player.x,player.z,player.yaw);
-  shotAudio.play("defuser-tick");
+  // Let the full woo-woo arming confirmation finish; the first regular beep
+  // arrives from the clock afterwards, never layered on the arming cue.
+  if(!defuserCues.play("arm"))shotAudio.playAt("defuser-arming",
+   bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
  }
  if(result.events.includes("disabled")){
-  shotAudio.playAt("defuse",bombState.defuser.x,bombState.defuser.z,
-   player.x,player.z,player.yaw);
-  // Silence the bomb's long recording first, then play a BLACKOUT-original
-  // outcome sting from the selected operator's perspective.
+  if(!defuserCues.play("shutdown"))shotAudio.playAt("defuse",
+   bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
+  // The device beep cuts immediately; only the shutdown and outcome remain.
   shotAudio.play(bombState.winner===activeOperator.side?"round-win":"round-loss");
  }
  if(result.events.includes("detonated")){
+  defuserCues.stopBeep();
   shotAudio.playAt("gadget-blast",bombState.defuser.x,bombState.defuser.z,
    player.x,player.z,player.yaw);
  }
@@ -1326,6 +1336,7 @@ function unlockMessage(){
 function beginBombRound(){
  plantAudio.sync("off");
  defuseAudio.sync(false);
+ defuserCues.reset();
  setMapMode(playMode.value==="house"?"house":"sandbox");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  gameMode="bomb";bombState=newBombRound({choice,map:mapMode});bombSoundClock=newBombSoundClock();
@@ -1342,6 +1353,7 @@ function nextBombRound(){
  if(gameMode!=="bomb"||bombState?.phase!=="ended")return false;
  plantAudio.sync("off");
  defuseAudio.sync(false);
+ defuserCues.reset();
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
  player=roundSpawn();wireHealth=newWireHealth();proneToggle=false;
@@ -1374,6 +1386,7 @@ play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   plantAudio.sync("off");
   defuseAudio.sync(false);
+  defuserCues.reset();
   setMapMode("sandbox");
   if(gameMode!=="sandbox"){
    gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);

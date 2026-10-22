@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {createPlantRecording,createDefuseRecording,plantRecordingStage,
+import {createPlantRecording,createDefuseRecording,createDefuserCuePlayer,plantRecordingStage,
  PLANT_RECORDING} from "./bomb-plant-audio.js";
 import {BOMB_RULES} from "./bomb-round.js";
 
@@ -101,4 +101,38 @@ test("missing CC0 recording sets fallback flag without crashing gameplay",()=>{
  assert.equal(audio.failed,true);
  audio.sync(true);
  assert.equal(media.events.filter(e=>e==="play").length,0);
+});
+
+test("independent recorded device cues create beats without synthesizer overlap",()=>{
+ const arm=fakeAudio(),tick=fakeAudio(),urgent=fakeAudio(),shutdown=fakeAudio();
+ const cues=createDefuserCuePlayer({arm,tick,urgent,shutdown});
+ assert.equal(cues.play("arm"),true);
+ assert.equal(arm.events.filter(e=>e==="play").length,1);
+ assert.equal(cues.play("tick"),true);
+ assert.equal(tick.paused,false);
+ assert.equal(urgent.paused,true);
+ tick.currentTime=.13;
+ assert.equal(cues.play("tick"),true);
+ assert.equal(tick.events.filter(e=>e==="play").length,2);
+ assert.equal(tick.currentTime,0,"each beat restarts exactly at the attack");
+ assert.equal(cues.play("urgent"),true);
+ assert.equal(tick.paused,true,"urgency never doubles the device beep");
+ assert.equal(urgent.paused,false);
+ assert.equal(cues.play("shutdown"),true);
+ assert.equal(arm.paused,true);
+ assert.equal(urgent.paused,true);
+ assert.equal(shutdown.paused,false);
+ cues.reset();
+ assert.equal(shutdown.paused,true);
+});
+
+test("missing rhythm sample falls back independently from all other recorded cues",()=>{
+ const arm=fakeAudio(),tick=fakeAudio(),urgent=fakeAudio(),shutdown=fakeAudio();
+ const cues=createDefuserCuePlayer({arm,tick,urgent,shutdown});
+ tick.listeners.error();
+ assert.equal(cues.failed("tick"),true);
+ assert.equal(cues.play("tick"),false);
+ assert.equal(cues.play("arm"),true);
+ assert.equal(cues.play("urgent"),true);
+ assert.equal(cues.play("shutdown"),true);
 });

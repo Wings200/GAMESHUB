@@ -1,7 +1,7 @@
-// BLACKOUT V0.26.1 · original CC0 defuser foley; no Ubisoft game recordings.
+// BLACKOUT V0.26.2 · rhythmic CC0 foley and original device confirmations.
 // The game clock owns ALL post-plant beeps, not a long pre-recorded track.
 export const PLANT_RECORDING=Object.freeze({
- plantSeconds:7.35,typingVolume:.88,disablingVolume:.76
+ plantSeconds:7.35,typingVolume:1,disablingVolume:1
 });
 
 export function plantRecordingStage(state,interaction){
@@ -25,13 +25,14 @@ function cancellableClip(media,volume){
   try{media.currentTime=0;}catch{}
  }
  function play(){
-  if(failed)return;
+  if(failed)return false;
   try{
    const pending=media.play();
    if(pending?.catch)pending.catch(error=>{
     failed=true;console.warn("BLACKOUT original defuser foley unavailable",error);
    });
-  }catch(error){failed=true;console.warn("BLACKOUT original defuser foley unavailable",error);}
+   return true;
+  }catch(error){failed=true;console.warn("BLACKOUT original defuser foley unavailable",error);return false;}
  }
  return {stop,play,pause(){media.pause();},
   resume(){if(media.paused&&!media.ended)play();},get failed(){return failed;}};
@@ -67,5 +68,33 @@ export function createDefuseRecording(disablingAudio,config=PLANT_RECORDING){
   },
   pause(){clip.pause();},resume(){if(active)clip.resume();},
   get active(){return active;},get failed(){return clip.failed;}
+ };
+}
+
+// Short recorded cues are played *on timer events*, never on top of synth
+// fallback. Stop the previous beep before the next, and silence both variants
+// the instant an objective ends. Each cue has a distinct physical beginning
+// and ending, avoiding the continuous oscillator buzz of earlier versions.
+export function createDefuserCuePlayer(media){
+ const clips={};
+ for(const name of ["arm","tick","urgent","shutdown"]){
+  if(!media[name])throw new TypeError("Missing defuser cue "+name);
+  clips[name]=cancellableClip(media[name],1);
+ }
+ function stopBeep(){clips.tick.stop();clips.urgent.stop();}
+ return {
+  play(name){
+   const clip=clips[name];
+   if(!clip)return false;
+   if(name==="tick"||name==="urgent")stopBeep();
+   if(name==="shutdown"){
+    stopBeep();clips.arm.stop();
+   }
+   clip.stop();
+   return clip.play();
+  },
+  stopBeep,
+  reset(){for(const clip of Object.values(clips))clip.stop();},
+  failed(name){return Boolean(clips[name]?.failed);}
  };
 }
