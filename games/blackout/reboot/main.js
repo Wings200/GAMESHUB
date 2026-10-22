@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.25.3 — solid bomb collision, kneeling keyboard animation and active-defuser audio
+// BLACKOUT REBOOT V0.25.4 — locked defuser camera and user-supplied disable audio
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -73,11 +73,12 @@ import {createShieldView,createShieldPlacementPreview}
 import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
- pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-053";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-056";
+ pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-057";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-057";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock}
- from "./bomb-presentation.js?v=reboot-056";
-import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-056";
+ from "./bomb-presentation.js?v=reboot-057";
+import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-057";
+import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-057";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -233,6 +234,12 @@ const bombInteractionView=createBombInteractionView(THREE,camera);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
+// The provided recording contains typing, the plant confirmation and long
+// post-plant beeps. The second phase is deliberately non-positional so it can
+// be heard everywhere on the local map; multiplayer will need to broadcast
+// the planted event to other clients once network matches are added.
+const plantAudio=createPlantRecording(
+ new Audio(new URL("./audio/Defuse.mp3",import.meta.url).href));
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
@@ -242,6 +249,17 @@ let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let gameMode="sandbox",bombState=null;
 let bombSoundClock=newBombSoundClock();
+let bombCameraLock=null;
+function interactionCameraLock(){
+ if(!currentBombInteraction()){
+  bombCameraLock=null;
+  return null;
+ }
+ // Preserve the direction from the first F press until the player releases
+ // it. Looking away cannot rotate the device through the ground mid-defuse.
+ if(!bombCameraLock)bombCameraLock={yaw:player.yaw,pitch:-.43};
+ return bombCameraLock;
+}
 function chosenDefuserChoice(){return bombChoice?.value==="leave"?"leave":"carry";}
 function roundObjectiveInteract(){
  if(gameMode!=="bomb"||!bombState||controlMode!=="player"||wireHealth.hp<=0)return false;
@@ -303,7 +321,7 @@ function bombRaycastColliders(){
  return gameMode==="bomb"?bombView.bombColliders:[];
 }
 function advanceBombMode(dt){
- if(gameMode!=="bomb"||!bombState)return;
+ if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");return;}
  const beforeInteraction=currentBombInteraction();
  const previousInteraction=bombSoundClock.interaction;
  const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
@@ -312,21 +330,26 @@ function advanceBombMode(dt){
  bombState=result.state;
  bombView.update(bombState,dt);
  const afterInteraction=currentBombInteraction();
+ plantAudio.sync(plantRecordingStage(bombState,afterInteraction));
  const sound=tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction);
  bombSoundClock=sound.clock;
- if(beforeInteraction&&!previousInteraction)
+ if(beforeInteraction&&!previousInteraction&&
+    (beforeInteraction==="disable"||plantAudio.failed))
   shotAudio.play(beforeInteraction==="plant"?"defuser-arming":"defuser-disabling");
  for(const name of sound.events){
   if(name==="defuser-tick"){
-   shotAudio.playAt(bombState.time<=10?"defuser-tick-urgent":"defuser-tick",
+   if(plantAudio.failed)shotAudio.playAt(
+    bombState.time<=10?"defuser-tick-urgent":"defuser-tick",
     bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
-  }else shotAudio.play(name);
+  }else if(name!=="plant-key"||plantAudio.failed)shotAudio.play(name);
  }
  if(result.events.includes("planted")){
-  shotAudio.playAt("plant",bombState.defuser.x,bombState.defuser.z,
-   player.x,player.z,player.yaw);
-  shotAudio.playAt("defuser-tick",bombState.defuser.x,bombState.defuser.z,
-   player.x,player.z,player.yaw);
+  if(plantAudio.failed){
+   shotAudio.playAt("plant",bombState.defuser.x,bombState.defuser.z,
+    player.x,player.z,player.yaw);
+   shotAudio.playAt("defuser-tick",bombState.defuser.x,bombState.defuser.z,
+    player.x,player.z,player.yaw);
+  }
  }
  if(result.events.includes("disabled")){
   shotAudio.playAt("defuse",bombState.defuser.x,bombState.defuser.z,
@@ -1305,7 +1328,8 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else plantAudio.pause();bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ else plantAudio.resume();
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -1313,6 +1337,7 @@ document.addEventListener("pointerlockerror",()=>{
 });
 document.addEventListener("mousemove",event=>{
  if(!locked)return;
+ if(currentBombInteraction())return; // Fixed viewpoint while planting/disabling.
  if(controlMode==="drone"&&drone){
   drone.yaw-=event.movementX*.003;
   drone.pitch=Math.max(-.75,Math.min(.75,drone.pitch-event.movementY*.0026));
@@ -1915,7 +1940,7 @@ function animate(now){
    if(wireHealth.hp>0){
     const obstacles=activeDroneObstacles();
     if(bombWorking){
-     // Freeze horizontal movement during the uninterrupted 4s/7s task.
+     // Freeze horizontal movement during the uninterrupted 7s plant/disable.
      // Lower to kneeling for camera and first-person typing equipment.
      player={...player,moving:false,sprinting:false,prone:false,
       crouched:true,speed:0,vy:0,grounded:true};
@@ -2012,12 +2037,18 @@ function animate(now){
   camera.rotation.set(drone.pitch,drone.yaw,0,"YXZ");
   if(camera.fov!==87){camera.fov=87;camera.updateProjectionMatrix();}
  }else{
-  const eyeTarget=currentBombInteraction()?.86:
+   const bombPose=interactionCameraLock();
+   const eyeTarget=bombPose?1.02:
    player.prone?.44:player.crouched?1.08:1.65;
   cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
-  const leanPose=leanCameraPose(player.yaw,leanAmount);
-  camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
-  camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
+   if(bombPose){
+    camera.position.set(player.x,player.y+cameraEye,player.z);
+    camera.rotation.set(bombPose.pitch,bombPose.yaw,0,"YXZ");
+   }else{
+    const leanPose=leanCameraPose(player.yaw,leanAmount);
+    camera.position.set(player.x+leanPose.dx,player.y+cameraEye,player.z+leanPose.dz);
+    camera.rotation.set(player.pitch,player.yaw,leanPose.roll,"YXZ");
+   }
  }
  camera.updateMatrixWorld(true);
  if(locked&&controlMode==="player"){
@@ -2080,5 +2111,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.25.3 solid bomb collision, kneeling animated defuser typing, planted device beeps",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.25.4 locked objective camera, raised defuser, authentic plant and post-plant audio",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

@@ -1,6 +1,6 @@
 // BLACKOUT V0.25.3 · physical objective obstacles, planting/disable stance,
 // and predictable timed device sounds.
-import {BOMB_RULES,roundSiteAt} from "./bomb-round.js?v=reboot-053";
+import {BOMB_RULES,roundSiteAt} from "./bomb-round.js?v=reboot-057";
 export const BOMB_HARDWARE=Object.freeze({width:1.82,depth:1.52,height:.97});
 export function bombSiteBlockers(state){
  if(state?.mode!=="bomb")return [];

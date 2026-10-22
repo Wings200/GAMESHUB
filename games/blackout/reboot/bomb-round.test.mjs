@@ -84,7 +84,7 @@ test("defuser can be manually dropped, left to teammate, recovered and dropped a
  assert.deepEqual([state.defuser.x,state.defuser.z],[-5,-4]);
  assert.equal(state.defuser.status,"ground");
 });
-test("only carrier in bomb site A or B may plant by holding F for 4 seconds",()=>{
+test("only carrier in bomb site A or B may plant by holding F for 7 seconds",()=>{
  let state=action();
  assert.equal(roundSiteAt(siteA).id,"A");
  assert.equal(roundSiteAt(siteB).id,"B");
@@ -93,9 +93,9 @@ test("only carrier in bomb site A or B may plant by holding F for 4 seconds",()=
  assert.equal(state.plantProgress,0);
  state=advance(state,3,{side:"defend",position:siteA,holdingF:true}).state;
  assert.equal(state.plantProgress,0);
- const progress=advance(state,3.95,{side:"attack",position:siteB,holdingF:true});
+ const progress=advance(state,6.95,{side:"attack",position:siteB,holdingF:true});
  assert.equal(progress.state.phase,"action");
- assert.ok(progress.state.plantProgress>3.9);
+ assert.ok(progress.state.plantProgress>6.9);
  const planted=stepBombRound(progress.state,.05,{side:"attack",position:siteB,holdingF:true});
  assert.equal(planted.state.phase,"postplant");
  assert.equal(planted.state.defuser.status,"planted");
@@ -118,11 +118,11 @@ test("dropped defuser cannot be planted; after explicit F pickup it can",()=>{
  const failed=advance(state,5,{side:"attack",position:siteA,holdingF:true});
  assert.equal(failed.state.phase,"action");
  state=pickupRoundDefuser(failed.state,"attack",spawn).state;
- const planted=advance(state,4.1,{side:"attack",position:siteA,holdingF:true});
+ const planted=advance(state,7.1,{side:"attack",position:siteA,holdingF:true});
  assert.equal(planted.state.phase,"postplant");
 });
 test("only defenders can disable a planted defuser, requiring seven uninterrupted seconds",()=>{
- let state=advance(action(),4.1,{side:"attack",position:siteA,holdingF:true}).state;
+ let state=advance(action(),7.1,{side:"attack",position:siteA,holdingF:true}).state;
  assert.equal(state.phase,"postplant");
  const attacker=advance(state,8,{side:"attack",position:siteA,holdingF:true});
  assert.equal(attacker.state.phase,"postplant");
@@ -137,7 +137,7 @@ test("only defenders can disable a planted defuser, requiring seven uninterrupte
  assert.ok(disabled.events.includes("disabled"));
 });
 test("defuse stops and resets on interruption, can't succeed instantly",()=>{
- let planted=advance(action(),4.1,{side:"attack",position:siteB,holdingF:true}).state;
+ let planted=advance(action(),7.1,{side:"attack",position:siteB,holdingF:true}).state;
  const mid=advance(planted,3,{side:"defend",position:siteB,holdingF:true}).state;
  assert.ok(mid.disableProgress>2.9);
  const cancelled=stepBombRound(mid,.05,{side:"defend",position:siteB,holdingF:false}).state;
@@ -149,7 +149,7 @@ test("action clock expiry gives defenders win; planted clock expiry gives attack
  assert.equal(defense.state.phase,"ended");
  assert.equal(defense.state.winner,"defend");
  assert.deepEqual(defense.state.score,{attack:0,defend:1});
- const planted=advance(action(),4.1,{side:"attack",position:siteA,holdingF:true}).state;
+ const planted=advance(action(),7.1,{side:"attack",position:siteA,holdingF:true}).state;
  const attack=advance(planted,46,{side:"defend",position:spawn});
  assert.equal(attack.state.phase,"ended");
  assert.equal(attack.state.winner,"attack");
@@ -186,7 +186,7 @@ test("objective prompts reflect role, site, defuser location and round outcome",
  assert.match(bombPrompt(newBombRound(),"attack",spawn),/PREPARATION/);
  assert.match(bombPrompt(action(),"attack",siteA),/HOLD F TO PLANT/);
  assert.match(bombPrompt(action("leave"),"attack",spawn),/PRESS F TO PICK UP/);
- const planted=advance(action(),4.1,{side:"attack",position:siteA,holdingF:true}).state;
+ const planted=advance(action(),7.1,{side:"attack",position:siteA,holdingF:true}).state;
  assert.match(bombPrompt(planted,"defend",siteA),/HOLD F TO DISABLE/);
  assert.match(bombPrompt(planted,"attack",siteA),/DEFUSER ACTIVE/);
  const ended=endBombRound(planted,"defend","DISABLED");

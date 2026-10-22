@@ -1,11 +1,13 @@
-// BLACKOUT V0.25.3 · original first-person 3D defuser interaction.
+// BLACKOUT V0.25.4 · original first-person 3D defuser interaction.
 // A camera-mounted device, animated gloved hands and real updating code
 // on its screen; only visible while holding F in a valid objective zone.
 export function createBombInteractionView(THREE,camera){
  const root=new THREE.Group();
  root.name="FIRST-PERSON DEFUSER · KNEEL AND TYPE";
  camera.add(root);
- root.position.set(0,-.47,-.79);
+ // Keep the case above the physical floor even when the player kneels and
+ // the interaction camera points down. The old -.47/-.79 mount sank through it.
+ root.position.set(0,-.27,-.64);
  root.visible=false;
  const resources=[];
  function mat(args){const m=new THREE.MeshStandardMaterial(args);resources.push(m);return m;}
