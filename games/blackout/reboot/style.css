@@ -621,3 +621,35 @@ body.range-active .flash-whiteout{display:block}
  background:#858f91;opacity:0;will-change:opacity
 }
 body.range-active .smoke-fog{display:block}
+
+/* BLACKOUT V0.25.0 — separate live bomb match with explicit defuser choice.
+   All elements are CSS and HTML, no temporary training HUD fakery. */
+.bomb-setup{border:1px solid #5de3d05e;background:linear-gradient(145deg,#0e313bcd,#081926e8);border-radius:8px;padding:14px 16px;margin:14px 0 12px;display:flex;flex-direction:column;gap:9px;max-width:690px}
+.bomb-setup-header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;font-weight:950;letter-spacing:.12em;color:#7ef3d9}
+.bomb-setup-header small{font-size:9px;color:#c2d5dc;letter-spacing:.07em}
+.bomb-setup label{font-size:10px;font-weight:900;letter-spacing:.1em;color:#d2edf1}
+#defuser-choice{appearance:auto;background:#112a35;border:1px solid #75d8cc;color:#edfefa;font:800 12px "Segoe UI",Arial,sans-serif;padding:12px;max-width:100%;border-radius:4px}
+.bomb-setup p{margin:0;font:600 11px/1.5 "Segoe UI",Arial,sans-serif;color:#c0d5dc}
+.bomb-launch{background:#53e8c7;border:1px solid #78ffdd;border-radius:4px;color:#09262e;cursor:pointer;padding:12px 15px;font-weight:950;font-size:12px;letter-spacing:.12em;transition:background .12s}
+.bomb-launch:hover{background:#9cffe3}
+.bomb-round-hud{position:fixed;z-index:18;pointer-events:none;top:78px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:stretch;gap:4px;width:min(620px,calc(100vw - 32px));padding:11px 18px 10px;background:linear-gradient(145deg,#061623ed,#102c39e6);border:1px solid #70e9d075;box-shadow:0 12px 30px #02080bcc;border-radius:3px;color:#f0fcfd;text-align:center}
+.bomb-round-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font:900 10px/1.35 "Segoe UI",Arial,sans-serif;letter-spacing:.11em;color:#a3d8da}
+#bomb-phase{color:#64f3cc;font:950 12px/1.35 "Segoe UI",Arial,sans-serif}
+.bomb-round-center{display:flex;align-items:center;justify-content:center;gap:18px}
+#bomb-clock{font:950 26px/1.25 "Segoe UI",Arial,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
+#bomb-defuser-status{font:850 10px/1.35 "Segoe UI",Arial,sans-serif;color:#b7fbe8;letter-spacing:.03em}
+.bomb-round-action{font:900 11px/1.4 "Segoe UI",Arial,sans-serif;letter-spacing:.065em;color:#fff3d0}
+.bomb-action-track{height:5px;overflow:hidden;background:#294754;border-radius:8px}
+#bomb-action-fill{display:block;height:100%;width:0;background:#52f6be;transition:width .08s linear}
+.bomb-round-hud[data-phase="postplant"]{border-color:#ffa15c}
+.bomb-round-hud[data-phase="postplant"] #bomb-phase{color:#ffc382}
+.bomb-round-hud[data-phase="ended"] #bomb-phase{color:#fff}
+@media(max-width:750px){
+ .bomb-round-hud{top:72px;padding:7px 10px}
+ .bomb-round-top{font-size:8px}
+ #bomb-phase{font-size:9px}
+ #bomb-clock{font-size:19px}
+ #bomb-defuser-status{font-size:9px}
+ .bomb-round-center{gap:8px}
+ .bomb-round-action{font-size:9px}
+}

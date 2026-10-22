@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.24.0 · Deployable Shields with bulletproof collision, Space vault, preview and F pickup
+    name: Reboot V0.25.0 · Bomb Rounds, hold-X defuser drop, optional pickup and Sites A/B
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -83,6 +83,8 @@ jobs:
           node --check games/blackout/reboot/deployable-shield.js
           node --check games/blackout/reboot/deployable-shield-view.js
           node --check games/blackout/reboot/shield-vault.js
+          node --check games/blackout/reboot/bomb-round.js
+          node --check games/blackout/reboot/bomb-round-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

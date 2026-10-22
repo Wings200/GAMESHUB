@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.24.0
+# BLACKOUT — Clean Reboot V0.25.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,14 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.25.0 · BOMB ROUND PHASES, REAL DEFUSER OWNERSHIP, HOLD X DROP**
+- Preserves original **unrestricted Test Range** as a separate menu mode, while adding **START / RESUME BOMB ROUND** with an explicit defuser choice: **PICK IT UP / I CARRY** or **LEAVE IT ON THE GROUND FOR MY TEAM**. The "leave" choice puts an actual world defuser model at attacker spawn (0,8), without inventing an AI teammate or auto-claiming it. A non-carrier attacker can choose to recover a dropped or unclaimed defuser with **F** within 2.3 m, not by merely walking over it. Defender F does not pick it up.
+- The carrier **HOLDS X for 0.7 s** to drop the package on the ground at their live position. Releasing X early cancels and resets progress. X still exits attacker drone camera without dropping while droning. Switching to Sentry while carrying or being eliminated also puts defuser physically on the ground. Other attackers can pick it up when networked team control exists later.
+- Actual time-driven **45s preparation / 180s action / 45s post-plant**. Attackers can throw and operate recon drones during preparation but cannot move or fire from operator viewpoint; defenders can reinforce and deploy equipment. Once live, hold F for 4s in **Site A (-6,-13)** or **B (6,-13)** to plant if carrying; planted site starts a 45s defender counterplay timer. Sentry holds F near placed defuser for **7s** to disable, with progress resetting when interaction stops or leaves range.
+- Timed attacker win when a planted defuser detonates; defender win for action timer expiration without planting or successfully disabled package. Win results score +1 once only; N starts another round with score preserved. ESC pauses timer through pointer-lock stop. Defuser pickup/plant/disable take F priority over station gadget interaction when appropriate. In Bomb Mode, P cannot bypass deaths with endless midround respawns.
+- World-space objectives A/B and an actual visible dropped/planted defuser model, phase/score/clock/carrier HUD and action progress meter. Game remains a **single-player mechanics sandbox** with no online teammates, enemy team or autonomous bomb bots. Side switching through the paused operator menu allows checking both plant and disable. Multiplayer comes in a later phase; do not imply this is networked 5v5.
+- Adds deterministic tests for defuser choice, voluntary pickup, 0.7s hold-X drop, early release, site eligibility, 4s plant, 7s disable, death drop, phase timing, no-imaginary-teammate behavior, result scoring and round reset. Existing 12 gadgets remain live; REDLINE unchanged. In-browser verification still required.
 
 **2026-10-21 / V0.24.0 · FINAL GADGET: REAL DEPLOYABLE SHIELDS, 12/12 SECONDARY GADGETS**
 - Sentry can equip two real Deployable Shields in either MMB or G. Hold the assigned key to aim a true-size green/red 3D placement model at the floor in front; release to deploy if clear. Shields snap to cardinal directions to exactly match the Training Range's axis-aligned physics colliders; blocked, airborne or overlapping placement consumes no charge.
