@@ -617,7 +617,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("if(opening)lastHardBreachOpenings.push(opening)"));
  assert.ok(main.includes('from "./hard-breach.js?v=reboot-047"'));
  assert.ok(read("reboot/soft-wall-view.js").includes("function breachWindow(window)"));
- assert.ok(html.includes("PRESS SPACE AT SMALL HOLE TO VAULT"));
+ assert.ok(main.includes("beginBreachVault(player,opening,activeDroneObstacles())"));
  // V0.20.0: reinforced walls have real cuttable, physical panels.
  assert.ok(main.includes('from "./hard-breach.js?v=reboot-047"'));
  assert.ok(main.includes('from "./hard-breach-view.js?v=reboot-045"'));
@@ -758,7 +758,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('refreshDroneEquipment(); // Hide attack-only quickslots immediately on defense.'));
  for(const id of ["drone-equipment-bar","drone-key-tip","defender-key-tip"])
    assert.ok(html.includes('id="'+id+'"'),"side-gated HUD element absent: "+id);
- assert.ok(html.includes("NO RECON DRONES EQUIPPED"));
+ assert.ok(html.includes("No attacker drones."));
 
  assert.ok(main.includes('event.code==="KeyX"'));
  assert.ok(main.includes('controlMode==="drone"'));
