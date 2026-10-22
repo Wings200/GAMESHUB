@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
- pickupRoundDefuser,dropRoundDefuser,endBombRound,stepBombRound,bombPrompt}
+ pickupRoundDefuser,dropRoundDefuser,endBombRound,stepBombRound,bombPrompt,
+ plantDefuserPosition}
  from "./bomb-round.js";
 const spawn={x:0,z:8};
 const siteA={x:BOMB_RULES.sites[0].x,z:BOMB_RULES.sites[0].z};
@@ -102,6 +103,18 @@ test("only carrier in bomb site A or B may plant over the 7.35-second typing cue
  assert.equal(planted.state.defuser.site,"B");
  assert.equal(planted.state.time,45);
  assert.ok(planted.events.includes("planted"));
+});
+test("planted terminal lands on ground ahead of the operator's facing direction",()=>{
+ const actor={...siteA,yaw:Math.PI/2};
+ const target=plantDefuserPosition(actor);
+ assert.ok(Math.abs(target.x-(siteA.x-.82))<.00001);
+ assert.ok(Math.abs(target.z-siteA.z)<.00001);
+ const planted=advance(action(),7.45,
+  {side:"attack",position:actor,holdingF:true}).state;
+ assert.equal(planted.phase,"postplant");
+ assert.equal(planted.defuser.x,target.x);
+ assert.equal(planted.defuser.z,target.z);
+ assert.equal(planted.defuser.yaw,actor.yaw);
 });
 test("planting progress is cancelled by releasing F, leaving site or holding X",()=>{
  let state=action();

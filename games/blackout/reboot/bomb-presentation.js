@@ -1,7 +1,16 @@
 // BLACKOUT V0.25.3 · physical objective obstacles, planting/disable stance,
 // and predictable timed device sounds.
-import {BOMB_RULES,roundSiteAt} from "./bomb-round.js?v=reboot-057";
+import {BOMB_RULES,roundSiteAt} from "./bomb-round.js?v=reboot-059";
 export const BOMB_HARDWARE=Object.freeze({width:1.82,depth:1.52,height:.97});
+// Describe the outcome from the *selected player's* perspective. A disabled
+// defuser is a defender win and an attacker loss, never a generic team banner.
+export function bombRoundOutcome(state,playerSide){
+ if(state?.phase!=="ended"||!["attack","defend"].includes(state.winner))
+  return null;
+ const won=playerSide===state.winner;
+ return {won,title:won?"ROUND WON":"ROUND LOST",
+  detail:state.reason,winningSide:state.winner==="attack"?"ATTACKERS":"DEFENDERS"};
+}
 export function bombSiteBlockers(state){
  if(state?.mode!=="bomb")return [];
  return BOMB_RULES.sites.map(site=>({

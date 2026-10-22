@@ -4,12 +4,20 @@ import {canOccupy,STAND_HEIGHT,PLAYER_RADIUS} from "./physics.js";
 import {newDrone,canDroneOccupy,tickDrone,DRONE} from "./drone-physics.js";
 import {BOMB_RULES,newBombRound,stepBombRound} from "./bomb-round.js";
 import {BOMB_HARDWARE,bombSiteBlockers,liveBombInteraction,
- defuserBeepInterval,newBombSoundClock,tickBombSoundClock}
+ defuserBeepInterval,newBombSoundClock,tickBombSoundClock,bombRoundOutcome}
  from "./bomb-presentation.js";
 const bomb=()=>newBombRound();
 const action=()=>({...newBombRound(),phase:"action",time:180});
 const siteA=BOMB_RULES.sites[0];
 const actor={x:siteA.x+1.8,y:0,z:siteA.z};
+test("bomb results say WON or LOST from the selected operator's team",()=>{
+ const disabled={...action(),phase:"ended",winner:"defend",
+  reason:"DEFUSER DISABLED · DEFENDERS WIN"};
+ assert.equal(bombRoundOutcome(disabled,"defend").title,"ROUND WON");
+ assert.equal(bombRoundOutcome(disabled,"attack").title,"ROUND LOST");
+ assert.equal(bombRoundOutcome({...disabled,winner:"attack"},"attack").title,"ROUND WON");
+ assert.equal(bombRoundOutcome(action(),"defend"),null);
+});
 test("exactly 2 physical bomb bodies only in Bomb Round, not Gadget Test Range",()=>{
  const solid=bombSiteBlockers(bomb());
  assert.equal(solid.length,2);

@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-058",
+  for(const src of ["./reboot/main.js?v=reboot-059",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -458,19 +458,19 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.25.3: both real bombs occupy space, including the recon drone.
-  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-057"'));
-  assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-057"'));
- assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-058"'));
+  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-059"'));
+ assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-059"'));
  assert.ok(main.includes("bombSiteBlockers(bombState)"));
  assert.ok(main.includes("...shootableShields(),...bombRaycastColliders()]"));
  assert.ok(main.includes("bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId)"));
  assert.ok(main.includes("bombRaycastColliders()"));
- assert.ok(main.includes("bombInteractionView=createBombInteractionView(THREE,camera)"));
+ assert.ok(main.includes("bombInteractionView=createBombInteractionView(THREE,scene)"));
  assert.ok(main.includes("const bombWorking=currentBombInteraction()"));
  assert.ok(main.includes("player={...player,moving:false,sprinting:false,prone:false,"));
   assert.ok(main.includes("const bombPose=interactionCameraLock()"));
   assert.ok(main.includes("camera.rotation.set(bombPose.pitch,bombPose.yaw,0"));
- assert.ok(main.includes("bombInteractionView.update(bombTyping,bombProgress,dt)"));
+ assert.ok(main.includes("bombInteractionView.update(bombTyping,bombProgress,dt,bombDevicePose)"));
  assert.ok(main.includes("weaponView.root.visible=!meleeView.active&&!bombTyping"));
  assert.ok(main.includes("!meleeView.active&&!bombTyping&&wireHealth.hp>0"));
  assert.ok(main.includes('tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction)'));
@@ -483,11 +483,18 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(bombPhysics.includes('liveBombInteraction('));
  assert.ok(bombPhysics.includes('defuserBeepInterval('));
  const typingView=read("reboot/bomb-interaction-view.js");
- assert.ok(typingView.includes("LEFT HAND TYPES DEFUSER"));
- assert.ok(typingView.includes("RIGHT HAND TYPES DEFUSER"));
+ assert.ok(typingView.includes("LEFT HAND PLACES AND TYPES"));
+ assert.ok(typingView.includes("RIGHT HAND PLACES AND TYPES"));
  assert.ok(typingView.includes("LIVE TYPING DEFUSER SCREEN"));
  assert.ok(typingView.includes("ANIMATED GLOVED HAND"));
+ assert.ok(typingView.includes("HINGED DEFUSER SCREEN LID"));
+ assert.ok(typingView.includes('scene.add(root)'));
  assert.ok(typingView.includes("tex.needsUpdate=true"));
+ assert.ok(main.includes("plantDefuserPosition(player)"));
+ assert.ok(main.includes("bombRoundOutcome(b,activeOperator.side)"));
+ for(const id of ["bomb-round-result","bomb-result-title",
+  "bomb-result-reason","bomb-result-winner"])
+  assert.ok(read("index.html").includes('id="'+id+'"'));
  const worldView=read("reboot/bomb-round-view.js");
  assert.ok(worldView.includes("bombColliders.push(hitbox)"));
  assert.ok(worldView.includes("SOLID BOMB "));
@@ -495,9 +502,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   assert.ok(read("reboot/legacy-audio.js").includes('case "'+cue+'"'),"missing bomb sound: "+cue);
  // V0.25.0: live round system with explicit defuser ownership/choice.
  assert.ok(read("reboot/bomb-round.js").includes("V0.25.0"));
- assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.3"));
- assert.ok(main.includes('from "./bomb-round.js?v=reboot-058"'));
-  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-057"'));
+ assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.6"));
+ assert.ok(main.includes('from "./bomb-round.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-059"'));
  assert.ok(main.includes('bombState=newBombRound({choice})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
  assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));

@@ -5,9 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.25.3 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.25.6 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
+  <style>
+    .bomb-round-result{position:absolute;top:32%;left:50%;transform:translateX(-50%);
+      width:min(560px,88vw);padding:26px 36px 23px;text-align:center;
+      border:1px solid #79f4ca99;background:linear-gradient(130deg,#07161aeb,#102c35ed);
+      box-shadow:0 18px 60px #000b,0 0 38px #5ff3be24;z-index:25;pointer-events:none}
+    .bomb-round-result[data-won="false"]{border-color:#ff777ea8;
+      background:linear-gradient(130deg,#201019ed,#322027eb);box-shadow:0 18px 60px #000b,0 0 35px #ff647624}
+    .bomb-round-result small{display:block;color:#a8c9cb;font-size:11px;
+      font-weight:800;letter-spacing:.20em}
+    .bomb-round-result h2{font-size:clamp(38px,6vw,66px);line-height:1.1;
+      color:#73ffd3;margin:9px 0;text-shadow:0 0 24px #29ffaa4a;
+      font-weight:1000;letter-spacing:.07em}
+    .bomb-round-result[data-won="false"] h2{color:#ff8c97;text-shadow:0 0 24px #ff66664a}
+    .bomb-round-result p{color:#e8f5f4;font-size:14px;font-weight:700;
+      letter-spacing:.04em;margin:8px 0 18px}
+  </style>
 </head>
 <body>
   <canvas id="game" tabindex="0" aria-label="First-person movement testing range"></canvas>
@@ -18,7 +34,7 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.25.3</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.25.6</b></div>
   </header>
 
   <main id="menu" class="menu">
@@ -108,6 +124,13 @@
   <!-- Tactical HUD V0.8. Deliberately close in screen composition to the
        provided Siege drill screenshot, but original BLACKOUT visual assets. -->
   <section id="hud" class="hud hidden" data-hud-mode="player" aria-label="BLACKOUT tactical live-fire HUD">
+    <section id="bomb-round-result" class="bomb-round-result hidden" data-won="false"
+      aria-live="polite" aria-label="Bomb round result">
+      <small id="bomb-result-winner">BOMB ROUND COMPLETE</small>
+      <h2 id="bomb-result-title">ROUND WON</h2>
+      <p id="bomb-result-reason">DEFUSER DISABLED</p>
+      <small>PRESS N FOR NEXT ROUND</small>
+    </section>
     <div id="bomb-round-hud" class="bomb-interaction hidden" aria-label="Bomb objective interaction">
       <span id="bomb-action"></span>
       <div class="bomb-action-track"><span id="bomb-action-fill"></span></div>
@@ -291,6 +314,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-058"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-059"></script>
 </body>
 </html>

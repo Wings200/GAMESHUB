@@ -1,8 +1,8 @@
-// BLACKOUT V0.25.3 · tangible bomb bodies block drones and bullets at
+// BLACKOUT V0.25.6 · tangible bomb bodies block drones and bullets at
 // Sites A and B, clear objective markers, and the real dropped defuser.
 // Bomb props are objectives, not a second deployable gadget or fake team AI.
-import {BOMB_RULES} from "./bomb-round.js?v=reboot-057";
-import {BOMB_HARDWARE} from "./bomb-presentation.js?v=reboot-057";
+import {BOMB_RULES} from "./bomb-round.js?v=reboot-059";
+import {BOMB_HARDWARE} from "./bomb-presentation.js?v=reboot-059";
 
 export function drawBombRoundMinimap(ctx,state){
  if(!ctx||!state||state.mode!=="bomb")return;
@@ -136,6 +136,14 @@ export function createBombRoundView(THREE,scene){
   "PORTABLE DEFUSER CONTROL PANEL",0,.33,0);
  const indicator=mesh(defuser,new THREE.BoxGeometry(.29,.012,.17),aGlow,
   "PORTABLE DEFUSER STATUS SCREEN",0,.36,-.04);
+ const portableLid=new THREE.Group();
+ portableLid.name="ACTUALLY HINGED PORTABLE DEFUSER SCREEN";
+ portableLid.position.set(0,.33,-.17);defuser.add(portableLid);
+ mesh(portableLid,new THREE.BoxGeometry(.48,.32,.038),rimMat,
+  "ARMORED LCD LID",0,.15,-.019);
+ const armedScreen=mesh(portableLid,new THREE.PlaneGeometry(.40,.25),
+  redGlow,"OPEN ARMED DEFUSER LCD",0,.15,.004);
+ armedScreen.material=redGlow;
  const handle=mesh(defuser,new THREE.TorusGeometry(.17,.035,8,22,Math.PI),blackMat,
   "DEFUSER HANDLE",0,.24,.24);handle.rotation.x=-Math.PI/2;
  const portableLight=new THREE.PointLight(0x37e7bd,.75,2.6);
@@ -152,6 +160,9 @@ export function createBombRoundView(THREE,scene){
   if(defuser.visible){
    defuser.position.set(d.x,0,d.z);
    const planted=d.status==="planted";
+   defuser.rotation.y=Number.isFinite(d.yaw)?d.yaw:0;
+   portableLid.rotation.x=planted?.10:Math.PI/2;
+   portableLid.visible=planted;
    indicator.material=planted?redGlow:aGlow;
    portableLight.color.setHex(planted?0xff575a:0x37e7bd);
   }

@@ -4,6 +4,7 @@
 export const BOMB_RULES=Object.freeze({
  prepSeconds:45,actionSeconds:180,defuserSeconds:45,
  plantSeconds:7.35,disableSeconds:7,dropHoldSeconds:.7,
+ plantForwardDistance:.82,
  pickupRadius:2.3,plantRadius:2.5,disableRadius:2.3,
  sites:Object.freeze([
   Object.freeze({id:"A",x:-6,z:-13,radius:3.4}),
@@ -31,6 +32,14 @@ export function newFollowingRound(state,choice="carry"){
 export function roundSiteAt(position){
  if(!finite(position))return null;
  return BOMB_RULES.sites.find(s=>dist(s,position)<=s.radius)||null;
+}
+// Place the portable terminal in front of the kneeling attacker, rather
+// than teleporting it into their feet at the end of the plant animation.
+export function plantDefuserPosition(actor){
+ if(!finite(actor))return null;
+ const yaw=Number.isFinite(actor.yaw)?actor.yaw:0;
+ return {x:actor.x-Math.sin(yaw)*BOMB_RULES.plantForwardDistance,
+  z:actor.z-Math.cos(yaw)*BOMB_RULES.plantForwardDistance,yaw};
 }
 export function nearbyDefuser(state,side,position){
  return Boolean(state?.phase!=="ended"&&side==="attack"&&
@@ -123,8 +132,9 @@ export function stepBombRound(state,dt,{
    if(site&&holdingF&&next.defuser.status==="carried"&&!holdingX){
     plantProgress=next.plantProgress+step;
     if(plantProgress>=BOMB_RULES.plantSeconds-1e-8){
+     const placed=plantDefuserPosition(actor);
      const planted={status:"planted",carrier:null,
-      x:actor.x,z:actor.z,site:site.id};
+      x:placed.x,z:placed.z,yaw:placed.yaw,site:site.id};
      next={...next,phase:"postplant",time:BOMB_RULES.defuserSeconds,
       defuser:planted,selectedSite:site.id,plantProgress:0,dropProgress:0};
      events.push("planted");

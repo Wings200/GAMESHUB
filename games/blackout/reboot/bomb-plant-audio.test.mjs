@@ -19,6 +19,8 @@ test("only an actual hold-F planting interaction starts the recording",()=>{
  assert.equal(plantRecordingStage({...active,phase:"prep"},"plant"),"off");
  assert.equal(plantRecordingStage({...active,phase:"postplant"},null),"global");
  assert.equal(plantRecordingStage({...active,phase:"ended"},null),"off");
+ assert.equal(plantRecordingStage({...active,phase:"ended",
+  defuser:{status:"planted"}},null),"global");
 });
 test("canceling F cuts sound and the next plant restarts",()=>{
  const sound=fakeAudio(),armed=fakeAudio();
@@ -66,4 +68,19 @@ test("pause on mouse unlock, then resume global audio without seeking",()=>{
  recording.resume();
  assert.equal(armed.paused,false);
  assert.equal(armed.currentTime,24);
+});
+test("ended global audio is never restarted after the recording finishes",()=>{
+ const sound=fakeAudio(),armed=fakeAudio();
+ let onEnded=null;
+ armed.addEventListener=(name,fn)=>{if(name==="ended")onEnded=fn;};
+ const recording=createPlantRecording(sound,armed);
+ recording.sync("global");
+ armed.currentTime=45;
+ onEnded();
+ armed.paused=true;
+ recording.resume();
+ assert.equal(armed.events.filter(event=>event==="play").length,1);
+ assert.equal(armed.currentTime,45);
+ recording.sync("off");
+ assert.equal(armed.currentTime,0);
 });

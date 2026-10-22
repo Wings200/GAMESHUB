@@ -73,12 +73,13 @@ import {createShieldView,createShieldPlacementPreview}
 import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
- pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-058";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-057";
-import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock}
- from "./bomb-presentation.js?v=reboot-057";
-import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-057";
-import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-058";
+ pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt,
+ plantDefuserPosition} from "./bomb-round.js?v=reboot-059";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-059";
+import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
+ bombRoundOutcome} from "./bomb-presentation.js?v=reboot-059";
+import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-059";
+import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-059";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -90,6 +91,8 @@ const bombHud=$("bomb-round-hud"),bombTitle=$("bomb-round-title"),
  bombPhase=$("bomb-phase"),bombScore=$("bomb-score"),
  bombDefuser=$("bomb-defuser-status"),bombAction=$("bomb-action"),
  bombActionFill=$("bomb-action-fill");
+const bombResult=$("bomb-round-result"),bombResultTitle=$("bomb-result-title"),
+ bombResultReason=$("bomb-result-reason"),bombResultWinner=$("bomb-result-winner");
 const positionText=$("position"),speedText=$("speed"),groundText=$("ground");
 const modeText=$("mode"),motionText=$("motion"),hint=$("hint");
 const crosshair=$("crosshair");
@@ -230,7 +233,7 @@ const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
 const bombView=createBombRoundView(THREE,scene);
-const bombInteractionView=createBombInteractionView(THREE,camera);
+const bombInteractionView=createBombInteractionView(THREE,scene);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -257,7 +260,7 @@ function interactionCameraLock(){
  }
  // Preserve the direction from the first F press until the player releases
  // it. Looking away cannot rotate the device through the ground mid-defuse.
- if(!bombCameraLock)bombCameraLock={yaw:player.yaw,pitch:-.43};
+ if(!bombCameraLock)bombCameraLock={yaw:player.yaw,pitch:-.77};
  return bombCameraLock;
 }
 function chosenDefuserChoice(){return bombChoice?.value==="leave"?"leave":"carry";}
@@ -284,8 +287,20 @@ function syncRoundUI(){
  missionCheck.classList.toggle("hidden",active);
  bombScore.classList.toggle("hidden",!active);
  document.body.dataset.matchMode=active?"bomb":"sandbox";
- if(!active){bombHud.classList.add("hidden");return;}
+ if(!active){
+  bombHud.classList.add("hidden");
+  bombResult.classList.add("hidden");
+  return;
+ }
  const b=bombState;
+ const outcome=bombRoundOutcome(b,activeOperator.side);
+ bombResult.classList.toggle("hidden",!outcome||!locked);
+ if(outcome){
+  bombResult.dataset.won=String(outcome.won);
+  bombResultTitle.textContent=outcome.title;
+  bombResultReason.textContent=outcome.detail;
+  bombResultWinner.textContent=outcome.winningSide+" VICTORY · BOMB ROUND "+b.round;
+ }
  bombTitle.textContent="BOMB · ROUND "+b.round;
  bombPhase.textContent=b.phase==="prep"?"PREP":
   b.phase==="action"?"ACTION":b.phase==="postplant"?"POST-PLANT":"ROUND ENDED";
@@ -365,8 +380,8 @@ function advanceBombMode(dt){
   shotNotice.textContent=result.events.includes("planted")?
    "DEFUSER PLANTED · DEFEND 45 SECONDS":
    result.events.includes("dropped")?"DEFUSER DROPPED · F TO RECOVER":
-   result.events.includes("disabled")?"DEFUSER DISABLED · DEFENDERS WIN":
-   result.events.includes("detonated")?"BOMB DETONATED · ATTACKERS WIN":
+   result.events.includes("disabled")||result.events.includes("detonated")?
+    bombRoundOutcome(bombState,activeOperator.side)?.title+" · "+bombState.reason:
    result.events.includes("action")?"ACTION PHASE LIVE · BOMB SITES A / B":
    bombState.reason;
   shotNoticeLeft=3;
@@ -1269,6 +1284,7 @@ function unlockMessage(){
    "OFFLINE WEAPON RANGE · NO AI OR MULTIPLAYER";
 }
 function beginBombRound(){
+ plantAudio.sync("off");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  gameMode="bomb";bombState=newBombRound({choice});bombSoundClock=newBombSoundClock();
  player=initialPlayer();wireHealth=newWireHealth();
@@ -1282,6 +1298,7 @@ function beginBombRound(){
 }
 function nextBombRound(){
  if(gameMode!=="bomb"||bombState?.phase!=="ended")return false;
+ plantAudio.sync("off");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
  player=initialPlayer();wireHealth=newWireHealth();proneToggle=false;
@@ -1312,6 +1329,7 @@ playMode.addEventListener("change",updateDeployMenu);
 updateDeployMenu();
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
+  plantAudio.sync("off");
   if(gameMode!=="sandbox"){
    gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);
   }
@@ -1328,7 +1346,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else plantAudio.pause();bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else if(bombState?.phase!=="ended")plantAudio.pause();bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  else plantAudio.resume();
  lastTime=performance.now();
 });
@@ -1940,8 +1958,8 @@ function animate(now){
    if(wireHealth.hp>0){
     const obstacles=activeDroneObstacles();
     if(bombWorking){
-     // Freeze horizontal movement during the uninterrupted 7s plant/disable.
-     // Lower to kneeling for camera and first-person typing equipment.
+     // Freeze horizontal movement through placement/opening/typing.
+     // The case is world-anchored on the floor as the camera kneels.
      player={...player,moving:false,sprinting:false,prone:false,
       crouched:true,speed:0,vy:0,grounded:true};
     }else if(shieldVault){
@@ -2040,7 +2058,7 @@ function animate(now){
    const bombPose=interactionCameraLock();
    const eyeTarget=bombPose?1.02:
    player.prone?.44:player.crouched?1.08:1.65;
-  cameraEye=eyeTarget<cameraEye?eyeTarget:cameraEye+(eyeTarget-cameraEye)*Math.min(1,dt*12);
+  cameraEye+=(eyeTarget-cameraEye)*Math.min(1,dt*12);
    if(bombPose){
     camera.position.set(player.x,player.y+cameraEye,player.z);
     camera.rotation.set(bombPose.pitch,bombPose.yaw,0,"YXZ");
@@ -2057,7 +2075,11 @@ function animate(now){
   const bombProgress=bombTyping==="plant"?
    bombState.plantProgress/BOMB_RULES.plantSeconds:
    bombTyping==="disable"?bombState.disableProgress/BOMB_RULES.disableSeconds:0;
-  bombInteractionView.update(bombTyping,bombProgress,dt);
+  const bombDevicePose=bombTyping==="plant"?plantDefuserPosition(player):
+   bombTyping==="disable"?{x:bombState.defuser.x,z:bombState.defuser.z,
+    yaw:player.yaw}:null;
+  bombInteractionView.update(bombTyping,bombProgress,dt,bombDevicePose);
+  if(bombTyping==="disable")bombView.defuser.visible=false;
   weaponView.root.visible=!meleeView.active&&!bombTyping;
   // The gun-mounted optic pose MUST update before ballistics. This prevents
   // shooting with a previous-frame sight transform (including while leaning).
