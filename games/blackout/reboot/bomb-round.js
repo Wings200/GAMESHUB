@@ -3,7 +3,7 @@
 // assign a dropped/left package or pretend an absent teammate collected it.
 export const BOMB_RULES=Object.freeze({
  prepSeconds:45,actionSeconds:180,defuserSeconds:45,
- plantSeconds:7,disableSeconds:7,dropHoldSeconds:.7,
+ plantSeconds:7.35,disableSeconds:7,dropHoldSeconds:.7,
  pickupRadius:2.3,plantRadius:2.5,disableRadius:2.3,
  sites:Object.freeze([
   Object.freeze({id:"A",x:-6,z:-13,radius:3.4}),

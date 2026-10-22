@@ -1,8 +1,9 @@
-// BLACKOUT V0.25.4 · a single recording bridges planting and post-plant.
-// Timings are tunable against the supplied Defuse.mp3 without touching rules.
+// BLACKOUT V0.25.5 · synchronize two parts of the supplied recording.
+// The original recording has ~1.3s of leading near-silence. Its typing
+// section is pre-trimmed at 1.30s and split at the 8.65s confirmation onset.
+// Separate files avoid inaccurate currentTime seeks on an unloaded MP3.
 export const PLANT_RECORDING=Object.freeze({
- startSeconds:1.5,confirmationSeconds:8.5,plantSeconds:7,
- typingVolume:.56,globalVolume:.96
+ plantSeconds:7.35,typingVolume:.56,globalVolume:.96
 });
 
 export function plantRecordingStage(state,interaction){
@@ -11,60 +12,48 @@ export function plantRecordingStage(state,interaction){
  return state.phase==="action"&&interaction==="plant"?"typing":"off";
 }
 
-export function createPlantRecording(audio,config=PLANT_RECORDING){
+export function createPlantRecording(typingAudio,armedAudio,config=PLANT_RECORDING){
  let stage="off",failed=false;
- audio.preload="auto";
- audio.volume=config.typingVolume;
- audio.addEventListener?.("error",()=>{failed=true;});
- function seek(seconds){
-  try{audio.currentTime=seconds;}catch(error){
-   // Some browsers defer seeks until metadata has loaded.
-   audio.addEventListener?.("loadedmetadata",()=>{
-    try{audio.currentTime=seconds;}catch{}
-   },{once:true});
-  }
+ for(const clip of [typingAudio,armedAudio]){
+  clip.preload="auto";
+  clip.addEventListener?.("error",()=>{failed=true;});
  }
- function play(){
+ typingAudio.volume=config.typingVolume;
+ armedAudio.volume=config.globalVolume;
+ // The postplant timer is 45s and the confirmation clip is over 50s.
+ function stop(clip){
+  clip.pause();
+  try{clip.currentTime=0;}catch{}
+ }
+ function play(clip){
   if(failed)return;
   try{
-   const pending=audio.play();
+   const pending=clip.play();
    if(pending?.catch)pending.catch(error=>{
     failed=true;
-    console.warn("BLACKOUT planting recording unavailable",error);
+    console.warn("BLACKOUT defuser audio unavailable",error);
    });
-  }catch(error){failed=true;console.warn("BLACKOUT planting recording unavailable",error);}
+  }catch(error){failed=true;console.warn("BLACKOUT defuser audio unavailable",error);}
  }
  function sync(next){
   if(next===stage)return;
-  const previous=stage;
   stage=next;
   if(next==="typing"){
-   audio.pause();
-   seek(config.startSeconds);
-   audio.playbackRate=(config.confirmationSeconds-config.startSeconds)/config.plantSeconds;
-   audio.volume=config.typingVolume;
-   play();
+   stop(armedAudio);
+   stop(typingAudio);
+   play(typingAudio);
   }else if(next==="global"){
-   // On a successful plant the same recording continues at the confirmation
-   // sound, then the long post-plant beeps are heard map-wide at full volume.
-   if(previous!=="typing"){
-    audio.pause();
-    seek(config.confirmationSeconds);
-   }else if(audio.currentTime<config.confirmationSeconds){
-    seek(config.confirmationSeconds);
-   }
-   audio.playbackRate=1;
-   audio.volume=config.globalVolume;
-   if(audio.paused)play();
+   // Finish the typing and immediately start at woo-woo, never from silence.
+   stop(typingAudio);
+   stop(armedAudio);
+   play(armedAudio);
   }else{
-   // Releasing F before the timed plant or ending the round stops
-   // everything immediately. The next attempt starts at the beginning.
-   audio.pause();
-   audio.playbackRate=1;
-   seek(config.startSeconds);
+   // Cancelling the plant or ending the round stops everything.
+   stop(typingAudio);
+   stop(armedAudio);
   }
  }
- function pause(){audio.pause();}
- function resume(){if(stage==="global"&&audio.paused)play();}
+ function pause(){typingAudio.pause();armedAudio.pause();}
+ function resume(){if(stage==="global"&&armedAudio.paused)play(armedAudio);}
  return {sync,pause,resume,get stage(){return stage;},get failed(){return failed;}};
 }

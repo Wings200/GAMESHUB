@@ -110,7 +110,7 @@ test("plant/disable key clicks repeat while holding F and cease on interruption"
 });
 test("postplant completion removes interaction and sound accumulation",()=>{
  let s=action();
- for(let i=0;i<141;i++)s=stepBombRound(s,.05,{side:"attack",position:actor,holdingF:true}).state;
+ for(let i=0;i<148;i++)s=stepBombRound(s,.05,{side:"attack",position:actor,holdingF:true}).state;
  assert.equal(s.phase,"postplant");
  assert.equal(liveBombInteraction(s,"attack",actor,true,true),null);
  for(let i=0;i<141;i++)s=stepBombRound(s,.05,{side:"defend",position:actor,holdingF:true}).state;

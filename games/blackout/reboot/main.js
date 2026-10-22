@@ -73,12 +73,12 @@ import {createShieldView,createShieldPlacementPreview}
 import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
- pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-057";
+ pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-058";
 import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-057";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock}
  from "./bomb-presentation.js?v=reboot-057";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-057";
-import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-057";
+import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-058";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -234,12 +234,12 @@ const bombInteractionView=createBombInteractionView(THREE,camera);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
-// The provided recording contains typing, the plant confirmation and long
-// post-plant beeps. The second phase is deliberately non-positional so it can
-// be heard everywhere on the local map; multiplayer will need to broadcast
-// the planted event to other clients once network matches are added.
+// Pre-trimmed clips keep planting and postplant synchronized even if the
+// browser cannot seek an MP3 before its metadata loads. Postplant sound is
+// non-positional; multiplayer clients must broadcast plant events later.
 const plantAudio=createPlantRecording(
- new Audio(new URL("./audio/Defuse.mp3",import.meta.url).href));
+ new Audio(new URL("./audio/DefuseTyping.mp3",import.meta.url).href),
+ new Audio(new URL("./audio/DefuseArmed.mp3",import.meta.url).href));
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
