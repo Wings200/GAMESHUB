@@ -557,7 +557,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("beginBreachVault(player,opening,activeDroneObstacles())"));
  assert.ok(main.includes("stepBreachVault(player,breachVault,dt,obstacles)"));
  assert.ok(main.includes('keys.delete("Space")'));
- assert.ok(main.includes("breachVault=null,lastHardBreachOpenings=[]"));
+ assert.ok(main.includes("breachVault=null,shieldVault=null,lastHardBreachOpenings=[]"));
  assert.ok(main.includes("reinforcementBreaches(reinforcement.state):lastHardBreachOpenings"));
  assert.ok(main.includes("for(const opening of closest)"));
  assert.ok(main.includes("if(opening)lastHardBreachOpenings.push(opening)"));
