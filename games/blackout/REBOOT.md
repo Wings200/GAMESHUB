@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.25.0
+# BLACKOUT — Clean Reboot V0.25.1
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,12 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.25.1 · BOMBS VISIBLE, SINGLE DEPLOY BUTTON, HUD NOT COVERING MATCH**
+- User reported the V0.25.0 menu's enormous patch-notes paragraph obstructed the UI, two conflicting Deploy buttons, and no recognizable bomb props. Replaced enormous headline description with concise instructions and removed the second launch button. Now ONE Deploy button serves selected **Bomb Round (default)** or **Gadget Test Range**; the adjacent PLAY MODE select controls which mode, and the adjacent Defuser CARRY/LEAVE selector is shown only for attacking Bomb Rounds. Paused Bomb Round resumes instead of accidentally starting over; the sandbox remains separately selectable without losing gadgets.
+- Removed giant independently overlaid top-center Bomb HUD that obscured the native Siege-style match controls. Instead, the **existing upper-left mission widget** contains Bomb Round phase, round number and defuser carry/drop status; the **existing centered match clock** doubles as the bomb phase clock; a narrow score badge sits directly beneath that clock. A small progress ribbon appears **only while a relevant F/X interaction is available**, low enough to keep reticle and game action unobstructed, and hides otherwise. This removes extraneous duplicate HUD layer.
+- The A and B bomb sites at (-6,-13) and (6,-13) now contain **real recognizable 3D bomb assemblies** including heavy metal casing, three red explosive canisters, visible red wiring, a control panel, warning lights, tall directional beacon and large legible BOMB A/B signs. Both are active in Bomb Round mode. Sites remain 3.4m planting zones, and a separate portable defuser appears on ground when left/dropped or on the site when planted; it is intentionally hidden when carried. **Both site bombs and the loose/planted defuser are marked on the existing tactical minimap**, including attacker drone map. No false collision or physics on decorative bombs.
+- Original explicit optional defuser pickup (F), hold-X for 0.7s to drop, carry-vs-leave, 45s prep/180s action, planting, disabling and result scoring are preserved. 12 gadgets and REDLINE untouched. Automated checks assert a single Deploy button, no huge old description, real modeled bombs and minimap labels, HUD integration and all round logic.
 
 **2026-10-21 / V0.25.0 · BOMB ROUND PHASES, REAL DEFUSER OWNERSHIP, HOLD X DROP**
 - Preserves original **unrestricted Test Range** as a separate menu mode, while adding **START / RESUME BOMB ROUND** with an explicit defuser choice: **PICK IT UP / I CARRY** or **LEAVE IT ON THE GROUND FOR MY TEAM**. The "leave" choice puts an actual world defuser model at attacker spawn (0,8), without inventing an AI teammate or auto-claiming it. A non-carrier attacker can choose to recover a dropped or unclaimed defuser with **F** within 2.3 m, not by merely walking over it. Defender F does not pick it up.

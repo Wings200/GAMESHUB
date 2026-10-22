@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.25.0 — Bomb Rounds, explicit defuser carry/leave, hold-X drop, plant and disable
+// BLACKOUT REBOOT V0.25.1 — one Deploy flow, integrated bomb HUD, visible A/B bomb devices
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -74,14 +74,16 @@ import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt} from "./bomb-round.js?v=reboot-053";
-import {createBombRoundView} from "./bomb-round-view.js?v=reboot-053";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-054";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
 const play=$("play"),message=$("message"),error=$("error");
-const bombStart=$("bomb-round-start"),bombChoice=$("defuser-choice");
+const playMode=$("play-mode"),bombChoice=$("defuser-choice"),
+ defuserChoiceWrap=$("defuser-choice-wrap"),deployModeName=$("deploy-mode-name"),
+ bombObjectiveMini=$("bomb-objective-mini"),sandboxObjective=$("sandbox-objective");
 const bombHud=$("bomb-round-hud"),bombTitle=$("bomb-round-title"),
- bombPhase=$("bomb-phase"),bombClock=$("bomb-clock"),bombScore=$("bomb-score"),
+ bombPhase=$("bomb-phase"),bombScore=$("bomb-score"),
  bombDefuser=$("bomb-defuser-status"),bombAction=$("bomb-action"),
  bombActionFill=$("bomb-action-fill");
 const positionText=$("position"),speedText=$("speed"),groundText=$("ground");
@@ -245,30 +247,49 @@ function roundObjectiveInteract(){
   return true;
  return false;
 }
+function updateDeployMenu(){
+ const chosen=playMode.value==="bomb"?"bomb":"sandbox";
+ deployModeName.textContent=chosen==="bomb"?"BOMB ROUND":"TEST RANGE";
+ defuserChoiceWrap.classList.toggle("hidden",chosen!=="bomb"||activeOperator.side!=="attack");
+ play.setAttribute("aria-label","Deploy "+activeOperator.name+" to "+
+  (chosen==="bomb"?"Bomb Round":"Test Range"));
+}
 function syncRoundUI(){
  const active=gameMode==="bomb"&&bombState!==null;
- bombHud.classList.toggle("hidden",!active);
- if(!active)return;
+ bombObjectiveMini.classList.toggle("hidden",!active);
+ sandboxObjective.classList.toggle("hidden",active);
+ missionCheck.classList.toggle("hidden",active);
+ bombScore.classList.toggle("hidden",!active);
+ document.body.dataset.matchMode=active?"bomb":"sandbox";
+ if(!active){bombHud.classList.add("hidden");return;}
  const b=bombState;
  bombTitle.textContent="BOMB · ROUND "+b.round;
- bombPhase.textContent=b.phase==="prep"?"PREPARATION":
-  b.phase==="action"?"ACTION":
-  b.phase==="postplant"?"DEFUSER ACTIVE":"ROUND ENDED";
- bombClock.textContent=drillClock(b.time);
+ bombPhase.textContent=b.phase==="prep"?"PREP":
+  b.phase==="action"?"ACTION":b.phase==="postplant"?"POST-PLANT":"ROUND ENDED";
  bombScore.textContent="ATK "+b.score.attack+" — "+b.score.defend+" DEF";
- bombDefuser.textContent=b.defuser.status==="carried"?
-  "DEFUSER: YOU ARE CARRYING · HOLD X TO DROP":
+ bombDefuser.textContent=b.phase==="ended"?b.reason:
+  b.defuser.status==="carried"?
+   (activeOperator.side==="attack"?
+    "DEFUSER IN YOUR HANDS · HOLD X TO DROP":"ATTACKER HAS DEFUSER"):
   b.defuser.status==="ground"?
-  "DEFUSER: ON THE GROUND · ATTACKER F TO PICK UP":
-  "DEFUSER: PLANTED AT SITE "+b.defuser.site;
- bombAction.textContent=bombPrompt(b,activeOperator.side,player);
+   (activeOperator.side==="attack"?"DEFUSER ON GROUND · F TO COLLECT":"DEFUSER DROPPED"):
+  "DEFUSER PLANTED · SITE "+b.defuser.site;
+ const prompt=bombPrompt(b,activeOperator.side,player);
+ bombAction.textContent=prompt;
  const progress=b.phase==="action"?Math.max(b.plantProgress/BOMB_RULES.plantSeconds,
   b.dropProgress/BOMB_RULES.dropHoldSeconds):
+  b.phase==="prep"?b.dropProgress/BOMB_RULES.dropHoldSeconds:
   b.phase==="postplant"?b.disableProgress/BOMB_RULES.disableSeconds:0;
  bombActionFill.style.width=Math.min(100,Math.max(0,progress*100)).toFixed(1)+"%";
+ const actionable=progress>0||nearbyDefuser(b,activeOperator.side,player)||
+  (b.phase==="action"&&activeOperator.side==="attack"&&
+   b.defuser.status==="carried"&&Boolean(roundSiteAt(player)))||
+  (b.phase==="postplant"&&activeOperator.side==="defend"&&
+   Math.hypot(player.x-b.defuser.x,player.z-b.defuser.z)<=BOMB_RULES.disableRadius);
+ bombHud.classList.toggle("hidden",!locked||controlMode!=="player"||!actionable);
  bombHud.dataset.phase=b.phase;
- bombHud.dataset.side=activeOperator.side;
 }
+
 function advanceBombMode(dt){
  if(gameMode!=="bomb"||!bombState)return;
  const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
@@ -316,7 +337,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
    bombState=dropped.state;bombView.update(bombState);
   }
   activeOperator=operator;
-  syncRoundUI();
+  updateDeployMenu();syncRoundUI();
   // This fresh testing role starts at full health. Deployed defender wire
   // persists across team changes so Striker can verify enemy-only damage.
   wireHealth=newWireHealth();
@@ -1176,6 +1197,7 @@ function droneHudFrame(){
  for(let i=0;i<droneChargeMarkers.length;i++)
   droneChargeMarkers[i].classList.toggle("active",i<drone.charges);
  drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+ if(gameMode==="bomb")drawBombRoundMinimap(droneMapCtx,bombState);
 }
 function unlockMessage(){
  message.textContent=gameMode==="bomb"&&bombState?
@@ -1224,13 +1246,18 @@ function enterRange(){
    message.textContent="MOUSE LOCK WAS BLOCKED. CLICK ENTER TEST RANGE AGAIN.";
  }
 }
+playMode.addEventListener("change",updateDeployMenu);
+updateDeployMenu();
 play.addEventListener("click",()=>{
- gameMode="sandbox";bombState=null;bombView.update(null);syncRoundUI();enterRange();
-});
-bombStart.addEventListener("click",()=>{
+ if(playMode.value==="sandbox"){
+  if(gameMode!=="sandbox"){
+   gameMode="sandbox";bombState=null;bombView.update(null);
+  }
+  syncRoundUI();enterRange();return;
+ }
  if(gameMode==="bomb"&&bombState){
   if(bombState.phase==="ended")nextBombRound();
-  enterRange();return;
+  syncRoundUI();enterRange();return;
  }
  beginBombRound();
 });
@@ -1466,6 +1493,7 @@ function hudFrame(){
  compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
  drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+ if(gameMode==="bomb")drawBombRoundMinimap(tacticalMapCtx,bombState);
  softWallReadout.classList.toggle("hidden",!softWall.near(player));
  softWallStatusText.textContent=softWall.status;
  softWallRemoved.textContent=String(softWall.removed);
@@ -1990,5 +2018,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.25.0 Bomb Round 45s prep/180s action, hold-X defuser drop and site A/B plant/disable",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.25.1 compact integrated bomb HUD, one Deploy control, visible bombs at A/B",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

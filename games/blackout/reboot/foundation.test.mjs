@@ -123,8 +123,8 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-053",
-   "./reboot/style.css?v=reboot-053"])assert.ok(html.includes(src));
+ for(const src of ["./reboot/main.js?v=reboot-054",
+   "./reboot/style.css?v=reboot-054"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
@@ -461,7 +461,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  for(const path of ["reboot/bomb-round.js","reboot/bomb-round-view.js"])
   assert.ok(read(path).includes("V0.25.0"),"Bomb round module not installed "+path);
  assert.ok(main.includes('from "./bomb-round.js?v=reboot-053"'));
- assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-053"'));
+ assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-054"'));
  assert.ok(main.includes('bombState=newBombRound({choice})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
  assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));
@@ -472,20 +472,38 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('dropRoundDefuser(bombState,player'));
  assert.ok(main.includes('if(roundObjectiveInteract()){keys.add("KeyF");return;}'));
  assert.ok(main.includes('if(gameMode==="bomb"&&event.code==="KeyN"'));
- assert.ok(main.includes('bombStart.addEventListener("click"'));
- assert.ok(main.includes('gameMode="sandbox";bombState=null'));
+ assert.ok(main.includes('playMode.addEventListener("change",updateDeployMenu)'));
+ assert.ok(main.includes('play.addEventListener("click"'));
+ assert.ok(!main.includes('bombStart.addEventListener("click"'));
+ assert.ok(main.includes('gameMode="sandbox";bombState=null;bombView.update(null)'));
  assert.ok(main.includes('drillClock(bombState.time)'));
  assert.ok(main.includes('bombActionFill.style.width'));
- for(const id of ["bomb-round-start","defuser-choice","bomb-round-hud",
-   "bomb-round-title","bomb-phase","bomb-clock","bomb-score",
-   "bomb-defuser-status","bomb-action","bomb-action-fill"])
+ for(const id of ["play-mode","deploy-mode-name","defuser-choice-wrap",
+   "defuser-choice","bomb-round-hud","bomb-objective-mini","sandbox-objective",
+   "bomb-round-title","bomb-phase","bomb-score","bomb-defuser-status",
+   "bomb-action","bomb-action-fill"])
    assert.ok(html.includes('id="'+id+'"'),"Bomb round UI missing "+id);
- assert.ok(html.includes("LEAVE IT ON THE GROUND FOR MY TEAM"));
+ assert.ok(html.includes("LEAVE DEFUSER FOR TEAM"));
  assert.ok(html.includes("HOLD X"));
- assert.ok(css.includes(".bomb-setup"));
- assert.ok(css.includes(".bomb-round-hud"));
+ assert.ok(css.includes(".deploy-options"));
+ assert.ok(css.includes(".bomb-objective-mini"));
+ assert.ok(css.includes(".bomb-interaction"));
  assert.ok(css.includes(".bomb-action-track"));
- assert.ok(html.includes("NEW BOMB ROUND MODE"));
+ assert.ok(html.includes("Choose Bomb Round or the unrestricted Test Range."));
+ assert.equal(html.includes('id="bomb-round-start"'),false,
+  "duplicate Bomb Round deploy control must never return");
+ assert.equal((html.match(/id="play"/g)||[]).length,1,
+  "exactly ONE Deploy button");
+ assert.ok(!html.includes("V0.25.0 · NEW BOMB ROUND MODE."));
+ assert.ok(main.includes("drawBombRoundMinimap(tacticalMapCtx,bombState)"));
+ assert.ok(main.includes("drawBombRoundMinimap(droneMapCtx,bombState)"));
+ const bombView=read("reboot/bomb-round-view.js");
+ for(const marker of ["REAL BOMB ","RED EXPLOSIVE CANISTER",
+   "TALL BEACON","SITE ","drawBombRoundMinimap","BOMB "+'site.id'])
+  assert.ok(bombView.includes(marker),"bomb prop visualization "+marker);
+ assert.ok(main.includes('bombHud.classList.toggle("hidden",!locked||controlMode!=="player"||!actionable)'));
+ assert.ok(main.includes("bombObjectiveMini.classList.toggle"));
+ assert.ok(main.includes("missionCheck.classList.toggle"));
  // V0.24.0: all twelve gadgets are live; final deployable shield has
  // ballistic cover, physical movement, preview, vaulting and explosion rules.
  assert.ok(main.includes('from "./deployable-shield.js?v=reboot-052"'));

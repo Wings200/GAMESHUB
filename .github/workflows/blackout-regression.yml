@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.25.0 · Bomb Rounds, hold-X defuser drop, optional pickup and Sites A/B
+    name: Reboot V0.25.1 · Bomb props at sites, one Deploy button, compact integrated HUD
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

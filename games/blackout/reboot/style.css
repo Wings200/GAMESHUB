@@ -622,34 +622,63 @@ body.range-active .flash-whiteout{display:block}
 }
 body.range-active .smoke-fog{display:block}
 
-/* BLACKOUT V0.25.0 — separate live bomb match with explicit defuser choice.
-   All elements are CSS and HTML, no temporary training HUD fakery. */
-.bomb-setup{border:1px solid #5de3d05e;background:linear-gradient(145deg,#0e313bcd,#081926e8);border-radius:8px;padding:14px 16px;margin:14px 0 12px;display:flex;flex-direction:column;gap:9px;max-width:690px}
-.bomb-setup-header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;font-weight:950;letter-spacing:.12em;color:#7ef3d9}
-.bomb-setup-header small{font-size:9px;color:#c2d5dc;letter-spacing:.07em}
-.bomb-setup label{font-size:10px;font-weight:900;letter-spacing:.1em;color:#d2edf1}
-#defuser-choice{appearance:auto;background:#112a35;border:1px solid #75d8cc;color:#edfefa;font:800 12px "Segoe UI",Arial,sans-serif;padding:12px;max-width:100%;border-radius:4px}
-.bomb-setup p{margin:0;font:600 11px/1.5 "Segoe UI",Arial,sans-serif;color:#c0d5dc}
-.bomb-launch{background:#53e8c7;border:1px solid #78ffdd;border-radius:4px;color:#09262e;cursor:pointer;padding:12px 15px;font-weight:950;font-size:12px;letter-spacing:.12em;transition:background .12s}
-.bomb-launch:hover{background:#9cffe3}
-.bomb-round-hud{position:fixed;z-index:18;pointer-events:none;top:78px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:stretch;gap:4px;width:min(620px,calc(100vw - 32px));padding:11px 18px 10px;background:linear-gradient(145deg,#061623ed,#102c39e6);border:1px solid #70e9d075;box-shadow:0 12px 30px #02080bcc;border-radius:3px;color:#f0fcfd;text-align:center}
-.bomb-round-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font:900 10px/1.35 "Segoe UI",Arial,sans-serif;letter-spacing:.11em;color:#a3d8da}
-#bomb-phase{color:#64f3cc;font:950 12px/1.35 "Segoe UI",Arial,sans-serif}
-.bomb-round-center{display:flex;align-items:center;justify-content:center;gap:18px}
-#bomb-clock{font:950 26px/1.25 "Segoe UI",Arial,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
-#bomb-defuser-status{font:850 10px/1.35 "Segoe UI",Arial,sans-serif;color:#b7fbe8;letter-spacing:.03em}
-.bomb-round-action{font:900 11px/1.4 "Segoe UI",Arial,sans-serif;letter-spacing:.065em;color:#fff3d0}
-.bomb-action-track{height:5px;overflow:hidden;background:#294754;border-radius:8px}
-#bomb-action-fill{display:block;height:100%;width:0;background:#52f6be;transition:width .08s linear}
-.bomb-round-hud[data-phase="postplant"]{border-color:#ffa15c}
-.bomb-round-hud[data-phase="postplant"] #bomb-phase{color:#ffc382}
-.bomb-round-hud[data-phase="ended"] #bomb-phase{color:#fff}
+
+/* BLACKOUT V0.25.1 · one deployment flow; bomb status lives inside
+   existing tactical objective/clock, not in a second giant HUD overlay. */
+.deploy-options{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+ border-top:1px solid #5bd5bd44;border-bottom:1px solid #5bd5bd44;
+ margin:15px 0 14px;padding:12px 0;max-width:780px;
+}
+.deploy-options>label,.defuser-choice-wrap>label{
+ font:900 9px/1.2 "Segoe UI",Arial,sans-serif;letter-spacing:.12em;
+ color:#b7eae3;white-space:nowrap;
+}
+#play-mode,#defuser-choice{
+ background:#0e2732;border:1px solid #69d4c2a3;color:#eefbf9;
+ padding:10px 12px;border-radius:4px;font:800 11px/1.4 "Segoe UI",Arial,sans-serif;
+ max-width:100%;cursor:pointer;
+}
+#play-mode{min-width:210px}
+.defuser-choice-wrap{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#defuser-choice{min-width:185px}
+body[data-match-mode="bomb"] .siege-objective{
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+ gap:0;height:66px;width:350px;max-width:38vw;
+ padding:6px 11px;
+}
+.bomb-objective-mini{display:flex;flex-direction:column;align-items:flex-start;
+ justify-content:center;gap:2px;min-width:0;width:100%;text-shadow:none;
+ font:900 10px/1.2 "Segoe UI",Arial,sans-serif;letter-spacing:.055em;color:#1c343b}
+.bomb-objective-mini strong{font-size:11px;letter-spacing:.06em}
+.bomb-objective-mini span{font-size:9px;color:#476269;font-weight:950}
+.bomb-objective-mini small{font-size:9px;white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis;max-width:100%;color:#376461;font-weight:900}
+.bomb-score{
+ position:absolute;top:64px;left:50%;transform:translateX(-50%);
+ color:#d9f9f2;background:#142b37dd;border:1px solid #5cd6c55f;
+ padding:3px 9px;white-space:nowrap;font:900 10px/1.35 "Segoe UI",Arial,sans-serif;
+ letter-spacing:.08em;text-shadow:0 1px 2px #000a;
+}
+.bomb-interaction{
+ position:absolute;z-index:1;left:50%;bottom:148px;transform:translateX(-50%);
+ width:min(320px,65vw);display:flex;flex-direction:column;gap:5px;
+ padding:8px 11px;background:#0b2535e8;border:1px solid #63dbbbab;
+ box-shadow:0 2px 11px #0005;text-align:center;pointer-events:none;
+ color:#edffff;font:900 11px/1.2 "Segoe UI",Arial,sans-serif;letter-spacing:.06em;
+}
+.bomb-action-track{height:4px;overflow:hidden;background:#294754;border-radius:4px}
+#bomb-action-fill{display:block;height:100%;width:0;background:#5df6c9}
+.bomb-interaction[data-phase="postplant"]{border-color:#ffb263}
 @media(max-width:750px){
- .bomb-round-hud{top:72px;padding:7px 10px}
- .bomb-round-top{font-size:8px}
- #bomb-phase{font-size:9px}
- #bomb-clock{font-size:19px}
- #bomb-defuser-status{font-size:9px}
- .bomb-round-center{gap:8px}
- .bomb-round-action{font-size:9px}
+ #play-mode{min-width:0}
+ .deploy-options{gap:8px}
+ body[data-match-mode="bomb"] .siege-objective{
+  height:61px;max-width:48vw;min-width:190px;padding:4px 7px;
+ }
+ .bomb-objective-mini{font-size:8px}
+ .bomb-objective-mini strong{font-size:9px}
+ .bomb-objective-mini small{font-size:8px}
+ .bomb-score{top:49px;font-size:8px;padding:2px 5px}
+ .bomb-interaction{bottom:120px;width:min(290px,63vw);font-size:9px;padding:6px}
 }
