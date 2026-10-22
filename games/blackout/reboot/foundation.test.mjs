@@ -664,7 +664,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("ENEMY BARBED WIRE · -"));
  assert.ok(main.includes("healthNumber.textContent=String(wireHealth.hp)"));
  assert.ok(main.includes("healthCaption.textContent="));
- assert.ok(main.includes("if(wireHealth.hp===0&&event.code!==\"KeyP\")return"));
+ assert.ok(main.includes('if(wireHealth.hp===0&&(gameMode==="bomb"||event.code!=="KeyP"))return;'));
  for(const id of ["health-current","health-caption"])
   assert.ok(html.includes('id="'+id+'"'),"live HP HUD missing "+id);
  assert.ok(!html.includes("TRAINING · INVULNERABLE"));
