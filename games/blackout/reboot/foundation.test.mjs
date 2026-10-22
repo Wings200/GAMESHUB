@@ -322,8 +322,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones}'));
  assert.ok(main.includes('const reinfNearby=mapMode!=="house"&&canUseReinforcement(activeOperator)&&reinforcement.near(player)'),
   "flat-range reinforcement prompts stay hidden in the house graybox");
- assert.ok(main.includes('player,holding:wireHealth.hp>0&&!roundObjectiveInteract()&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
- assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)'));
+ assert.ok(main.includes('player,holding:wireHealth.hp>0&&mapMode!=="house"&&!roundObjectiveInteract()&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
+ assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&mapMode!=="house"&&canUseReinforcement(activeOperator)'));
  assert.ok(main.includes('reinforcePrompt.classList.toggle("hidden",!reinfNearby)'));
 
  assert.ok(main.includes("operatorHudSide.textContent="));
