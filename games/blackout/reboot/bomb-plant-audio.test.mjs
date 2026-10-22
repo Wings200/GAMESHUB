@@ -21,6 +21,12 @@ test("only an actual hold-F planting interaction starts the recording",()=>{
  assert.equal(plantRecordingStage({...active,phase:"ended"},null),"off");
  assert.equal(plantRecordingStage({...active,phase:"ended",
   defuser:{status:"planted"}},null),"global");
+ assert.equal(plantRecordingStage({...active,phase:"ended",winner:"defend",
+  defuser:{status:"planted"}},null),"off",
+  "successful counter-defuse cuts the active bomb recording");
+ assert.equal(plantRecordingStage({...active,phase:"ended",winner:"attack",
+  defuser:{status:"planted"}},null),"global",
+  "other results preserve the previously requested complete outro");
 });
 test("canceling F cuts sound and the next plant restarts",()=>{
  const sound=fakeAudio(),armed=fakeAudio();
@@ -83,4 +89,16 @@ test("ended global audio is never restarted after the recording finishes",()=>{
  assert.equal(armed.currentTime,45);
  recording.sync("off");
  assert.equal(armed.currentTime,0);
+});
+test("defender win cuts an already-playing bomb track instantly",()=>{
+ const typing=fakeAudio(),armed=fakeAudio();
+ const recording=createPlantRecording(typing,armed);
+ recording.sync("global");
+ armed.currentTime=26.4;
+ const disabled={mode:"bomb",phase:"ended",winner:"defend",
+  defuser:{status:"planted"}};
+ recording.sync(plantRecordingStage(disabled,null));
+ assert.equal(armed.paused,true);
+ assert.equal(armed.currentTime,0);
+ assert.equal(recording.stage,"off");
 });

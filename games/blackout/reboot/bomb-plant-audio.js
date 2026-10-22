@@ -1,4 +1,4 @@
-// BLACKOUT V0.25.5 · synchronize two parts of the supplied recording.
+// BLACKOUT V0.25.8 · synchronize the supplied plant and armed recordings.
 // The original recording has ~1.3s of leading near-silence. Its typing
 // section is pre-trimmed at 1.30s and split at the 8.65s confirmation onset.
 // Separate files avoid inaccurate currentTime seeks on an unloaded MP3.
@@ -8,9 +8,12 @@ export const PLANT_RECORDING=Object.freeze({
 
 export function plantRecordingStage(state,interaction){
  if(state?.mode!=="bomb")return "off";
- // A planted recording gets to play its remaining outro even after the
- // round has finished; results appear independently. Fresh rounds stop it.
- if(state.phase==="ended")return state.defuser?.status==="planted"?"global":"off";
+ // Successful counter-defuse silences the planted hardware immediately.
+ // Other round endings retain the previously chosen audio outro behavior.
+ if(state.phase==="ended"){
+  if(state.winner==="defend"&&state.defuser?.status==="planted")return "off";
+  return state.defuser?.status==="planted"?"global":"off";
+ }
  if(state.phase==="postplant")return "global";
  return state.phase==="action"&&interaction==="plant"?"typing":"off";
 }

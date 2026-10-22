@@ -4,7 +4,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-060";
+import {GameAudio} from "./legacy-audio.js?v=reboot-061";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -79,7 +79,7 @@ import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=r
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-059";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
-import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-059";
+import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-061";
 
 const $=id=>document.getElementById(id);
 const canvas=$("game"),menu=$("menu"),hud=$("hud");
@@ -374,6 +374,9 @@ function advanceBombMode(dt){
  if(result.events.includes("disabled")){
   shotAudio.playAt("defuse",bombState.defuser.x,bombState.defuser.z,
    player.x,player.z,player.yaw);
+  // Silence the bomb's long recording first, then play a BLACKOUT-original
+  // outcome sting from the selected operator's perspective.
+  shotAudio.play(bombState.winner===activeOperator.side?"round-win":"round-loss");
  }
  if(result.events.includes("detonated")){
   shotAudio.playAt("gadget-blast",bombState.defuser.x,bombState.defuser.z,

@@ -242,9 +242,34 @@ export class GameAudio{
         this.tone(520,.086,.03,"triangle");
         break;
       case "proximity":
-        this.tone(720,.10,.10,"square");
-        this.tone(720,.10,.10,"square",.18);
-        this.tone(1080,.25,.12,"square",.38);
+        // Original paired-chirp warning, informed by the supplied ~3.55s
+        // proximity-alarm reference; no third-party recording is embedded.
+        // Two bursts fit the 3.25-second retrigger window without overlap.
+        for(const offset of [0,1.80]){
+          this.tone(790,.24,.12,"square",offset,960);
+          this.tone(1185,.20,.060,"sine",offset+.012,920);
+          this.noise(.045,.035,2800,"highpass",offset);
+          this.tone(865,.17,.13,"square",offset+.44,1080);
+          this.tone(1320,.16,.060,"sine",offset+.448,1020);
+          this.noise(.065,.035,2400,"highpass",offset+.44);
+        }
+        break;
+      case "round-win":
+        // BLACKOUT's own victorious stinger, not a sampled Siege cue.
+        this.noise(.16,.10,360,"lowpass",0);
+        for(const [hz,delay] of [[294,.06],[370,.20],[440,.36],[587,.53]]){
+          this.tone(hz,.30,.11,"triangle",delay,hz*.83);
+          this.tone(hz*2,.19,.034,"sine",delay+.012,hz*1.5);
+        }
+        this.tone(294,.69,.09,"triangle",.53,220);
+        break;
+      case "round-lose":
+      case "round-loss":
+        // Distinct subdued result cue when the opposing side wins.
+        this.noise(.15,.095,510,"lowpass",0);
+        this.tone(330,.25,.08,"triangle",.05,262);
+        this.tone(247,.32,.092,"triangle",.25,185);
+        this.tone(165,.48,.11,"triangle",.47,110);
         break;
       case "hurt":
         this.noise(.19,.19,560,"lowpass");
@@ -278,16 +303,6 @@ export class GameAudio{
         break;
       case "impact":
         this.noise(.045,.065,3200,"highpass");
-        break;
-      case "round-win":
-        this.tone(440,.20,.13,"sine");
-        this.tone(554,.21,.13,"sine",.23);
-        this.tone(659,.42,.15,"sine",.47);
-        break;
-      case "round-lose":
-        this.tone(490,.2,.12,"triangle");
-        this.tone(365,.2,.13,"triangle",.25);
-        this.tone(240,.46,.14,"triangle",.5);
         break;
       case "round-start":
         this.tone(480,.09,.11,"sine");

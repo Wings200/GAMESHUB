@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-060",
+  for(const src of ["./reboot/main.js?v=reboot-061",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -189,7 +189,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ammo"'));
  assert.ok(html.includes('id="target-hits"'));
  assert.ok(main.includes('from "./legacy-weapons.js?v=reboot-006"'));
- assert.ok(main.includes('from "./legacy-audio.js?v=reboot-060"'));
+ assert.ok(main.includes('from "./legacy-audio.js?v=reboot-061"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
  assert.ok(main.includes('from "./weapon-view.js?v=reboot-012"'));
@@ -460,7 +460,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.25.3: both real bombs occupy space, including the recon drone.
   assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-059"'));
   assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-060"'));
- assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-061"'));
  assert.ok(main.includes("bombSiteBlockers(bombState)"));
  assert.ok(main.includes("...shootableShields(),...bombRaycastColliders()]"));
  assert.ok(main.includes("bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId)"));
@@ -479,6 +479,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('shotAudio.playAt("defuse-key"'));
  assert.ok(main.includes('shotAudio.playAt("plant"'));
  assert.ok(main.includes('shotAudio.playAt("defuse"'));
+ assert.ok(main.includes('shotAudio.play(bombState.winner===activeOperator.side?"round-win":"round-loss")'));
+ assert.ok(read("reboot/bomb-plant-audio.js").includes('state.winner==="defend"&&state.defuser?.status==="planted"'));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "round-win":'));
+ assert.ok(read("reboot/legacy-audio.js").includes('case "round-loss":'));
  const bombPhysics=read("reboot/bomb-presentation.js");
  assert.ok(bombPhysics.includes('id:"bomb-site-"+site.id.toLowerCase()'));
  assert.ok(bombPhysics.includes('liveBombInteraction('));
