@@ -319,7 +319,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.13.2: every steel interaction must check the active faction.
  assert.ok(main.includes('import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones}'));
  assert.ok(main.includes('const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player)'));
- assert.ok(main.includes('player,holding:wireHealth.hp>0&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
+ assert.ok(main.includes('player,holding:wireHealth.hp>0&&!roundObjectiveInteract()&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,'));
  assert.ok(main.includes('event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)'));
  assert.ok(main.includes('reinforcePrompt.classList.toggle("hidden",!reinfNearby)'));
 
