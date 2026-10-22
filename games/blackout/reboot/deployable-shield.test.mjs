@@ -35,7 +35,7 @@ test("cardinal rotation correctly matches physics width/depth and mesh yaw",()=>
 test("floor and wall intersection blocks placement without consuming shields",()=>{
  const fresh=newShieldState();
  for(const bad of [null,{...player,y:1},{...player,grounded:false},
-  {...player,prone:true},{...player,x:NaN},{...player,z:29}]){
+  {...player,prone:true},{...player,x:NaN},{...player,x:29}]){
   const r=placeShield(fresh,bad,TEST_OBSTACLES);
   assert.equal(r.device,null);assert.equal(r.state,fresh);
  }
