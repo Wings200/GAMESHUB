@@ -484,7 +484,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   assert.ok(main.includes('bombState.time<=10?"defuser-tick-urgent":"defuser-tick"'));
  assert.ok(main.includes('shotAudio.playAt("defuser-disabling"'));
  assert.ok(main.includes('shotAudio.playAt("defuse-key"'));
- assert.ok(main.includes('shotAudio.playAt("plant"'));
+ assert.ok(main.includes('shotAudio.playAt("defuser-arming"'));
+ assert.ok(main.includes('defuseAudio.sync(afterInteraction==="disable")'));
+ assert.ok(main.includes('shotAudio.play(bombState.time<=10?"defuser-tick-urgent":"defuser-tick")'));
  assert.ok(main.includes('shotAudio.playAt("defuse"'));
  assert.ok(main.includes('shotAudio.play(bombState.winner===activeOperator.side?"round-win":"round-loss")'));
  assert.ok(read("reboot/bomb-plant-audio.js").includes('state.winner==="defend"&&state.defuser?.status==="planted"'));
