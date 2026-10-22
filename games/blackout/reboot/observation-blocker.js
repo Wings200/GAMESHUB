@@ -29,8 +29,10 @@ export function projectorCoverage(device){
  return levels.map(distance=>{
   const fraction=(distance-OBS_BLOCKER.screenNearOffset)/
    (OBS_BLOCKER.screenOffset-OBS_BLOCKER.screenNearOffset);
-  const width=OBS_BLOCKER.screenNearWidth+
-   (OBS_BLOCKER.screenWidth-OBS_BLOCKER.screenNearWidth)*fraction;
+  // Exact far-plane width avoids floating-point drift in geometry and HUD.
+  const width=distance===OBS_BLOCKER.screenOffset?OBS_BLOCKER.screenWidth:
+   OBS_BLOCKER.screenNearWidth+
+    (OBS_BLOCKER.screenWidth-OBS_BLOCKER.screenNearWidth)*fraction;
   return {x:device.x-Math.sin(device.yaw)*distance,
    z:device.z-Math.cos(device.yaw)*distance,
    width,distance,yaw:device.yaw,
