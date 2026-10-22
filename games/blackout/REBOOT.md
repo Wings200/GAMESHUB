@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.22.1
+# BLACKOUT — Clean Reboot V0.23.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.23.0 · PHYSICAL FLOOR/WALL PROXIMITY ALARMS + ENEMY-ONLY SOUND DETECTION**
+- Eleventh functional secondary gadget: Sentry's two **Proximity Alarms** in MMB/G. Single tap deploys a modeled ground unit 1.45m ahead, or targets a nearby actual vertical physics-obstacle face within 3m using crosshair yaw/pitch and segment-versus-AABB ray/normal geometry. Wall-mounted units sit outside the wall surface and orient toward the player. No placing through obstacles or in invalid ground, and charge count is server-independent sandbox state.
+- Each alarm scans **4.35m radius** and rejects friendlies, eliminated players and attackers behind real solid cover. Sensor-to-attacker 3D line-of-sight uses the same Testing Range blockers including wood, gypsum and reinforced steel. A cyan circle with radial spokes gives a real 4.35m defender-only preview of the deployed alarm's range. The ring turns orange when triggered; never appears on the attacker's screen or when droning.
+- The existing original WebAudio spatial **proximity** cue is three sequential oscillator chirps: **beep-beep-BEEP!**. It plays immediately when a visible attacker enters the detection range and every 3.25 seconds while they remain; resets when they leave, and never sounds for friendly defenders. In the single-player sandbox, place as Sentry and switch to Striker to walk into the sensor, or inspect the attacking training silhouettes while defending.
+- Intact gadgets can be raycast-picked up from a normal first-person view using **F** (2.6m), refunding exactly one charge; pickup consumes F without also reinforcing/repairing. Two bullet hits or one V melee punch destroy the modeled unit permanently and stop all future alerts (without refund). Independent sensors and audio locations persist across side switches.
+- Physical models and indicators never become opaque camera screens or player/drone collision objects. HUD and operator picker reflect 11/12 playable gadgets. Grenades, soft/hard breach, observation blockers, claymores, C4, barbed wire, and REDLINE unchanged. Automated tests cover wall normals, line-of-sight rejection, repeat/rearm cadence, team immunity, two devices, durability, F recovery, HUD and controls. Browser playtesting still needed.
 
 **2026-10-21 / V0.22.1 · LONGER OBS BLOCKER COVERAGE + DEFENDER VISUAL GUIDES**
 - User confirmed V0.22.0 worked but observed that **range was horrible** and defenders had no way to gauge coverage. Root cause: the drone-opaque pane covered just **2.8m width × 2.25m height** and sat only **0.45m** beyond the projector.

@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.22.1 — extended Observation Blocker range, live defender coverage and held placement preview
+// BLACKOUT REBOOT V0.23.0 — wall/floor Proximity Alarms with enemy beep-beep-BEEP!
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-049";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-049";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-051";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-051";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -62,6 +62,10 @@ import {OBS_BLOCKER,newObservationBlockerState,placeObservationBlocker,
  from "./observation-blocker.js?v=reboot-050";
 import {createObservationBlockerView,createObservationPlacementPreviewView}
  from "./observation-blocker-view.js?v=reboot-050";
+import {PROXIMITY,newProximityState,placeProximity,pickupProximity,
+ damageProximity,liveProximity,tickProximity}
+ from "./proximity-alarm.js?v=reboot-051";
+import {createProximityView} from "./proximity-alarm-view.js?v=reboot-051";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
@@ -190,6 +194,8 @@ const claymoreViews=new Map();
 let observationBlockerState=newObservationBlockerState();
 const observationBlockerViews=new Map();
 const observationPreviewView=createObservationPlacementPreviewView(THREE,scene);
+let proximityState=newProximityState();
+const proximityViews=new Map();
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -207,7 +213,7 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false,observationPickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false,observationPickupKeyConsumed=false,proximityPickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
@@ -239,6 +245,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   flashEffect=newFlashEffect();
   cancelHeldThrow();
   syncObservationBlockerViews(); // Defender coverage visible only to Sentry.
+  syncProximityViews(); // Proximity range overlays only on defense.
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -261,7 +268,10 @@ function refreshUtilityHud(){
  utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
-  utilityStatus[i].textContent=row.gadgetId==="observation-blocker"?
+  utilityStatus[i].textContent=row.gadgetId==="proximity-alarm"?
+   "LIVE · "+proximityState.charges+"/"+PROXIMITY.charges+
+    " LEFT · "+liveProximity(proximityState).length+" DEPLOYED":
+   row.gadgetId==="observation-blocker"?
    "LIVE · "+observationBlockerState.charges+"/"+OBS_BLOCKER.charges+
     " LEFT · "+activeObservationBlockers(observationBlockerState).length+" DEPLOYED":
    row.gadgetId==="claymore"?
@@ -297,7 +307,9 @@ function refreshUtilityHud(){
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="observation-blocker")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="proximity-alarm")?
+  activeOperator.name+" · "+PROXIMITY.range+"M DETECTION · BEEP BEEP BEEP! · WALL/FLOOR · F PICKUP":
+  rows.some(row=>row.gadgetId==="observation-blocker")?
   activeOperator.name+" · "+OBS_BLOCKER.screenWidth.toFixed(1)+"M WIDE × "+
    OBS_BLOCKER.screenOffset.toFixed(2)+"M FORWARD · HOLD G/MMB TO PREVIEW · F RECOVER":
   rows.some(row=>row.gadgetId==="claymore")?
@@ -454,6 +466,53 @@ function syncObservationBlockerViews(){
   if(device)view.setMode(controlMode,device,activeOperator.side);
   else{view.dispose();observationBlockerViews.delete(id);}
  }
+}
+function syncProximityViews(){
+ for(const [id,view] of proximityViews){
+  const d=proximityState.devices.find(device=>device.id===id&&device.hp>0);
+  if(d)view.sync(d,controlMode,activeOperator.side);
+  else{view.dispose();proximityViews.delete(id);}
+ }
+}
+function shootableProximityAlarms(){
+ return liveProximity(proximityState).flatMap(d=>proximityViews.get(d.id)?.hardware||[]);
+}
+function hitProximityAlarm(id,amount){
+ const result=damageProximity(proximityState,id,amount);
+ if(!result.handled)return {handled:false,destroyed:false};
+ proximityState=result.state;
+ syncProximityViews();refreshUtilityHud();
+ shotAudio.play("impact");
+ shotNotice.textContent=result.destroyed?
+  "PROXIMITY ALARM DESTROYED · BEEP DISABLED":
+  "PROXIMITY ALARM HIT · "+result.hp+" HP";
+ shotNoticeLeft=1.3;return result;
+}
+function tryPickupCurrentProximity(){
+ if(activeOperator.side!=="defend"||controlMode!=="player")return false;
+ const live=liveProximity(proximityState);
+ if(!live.length)return false;
+ camera.updateMatrixWorld(true);
+ for(const view of proximityViews.values())view.root.updateMatrixWorld(true);
+ const ray=new THREE.Raycaster();
+ ray.setFromCamera({x:0,y:0},camera);
+ ray.far=PROXIMITY.pickupRange+.9;
+ const hits=ray.intersectObjects([
+  ...live.map(d=>proximityViews.get(d.id)?.pickupTarget).filter(Boolean),
+  ...shootableSolids,...barricade.shootables(),...softWall.shootables(),
+  ...reinforcement.shootables()
+ ],false);
+ const id=hits[0]?.object?.userData?.proximityPickupId;
+ if(!Number.isInteger(id))return false;
+ const result=pickupProximity(proximityState,id,player);
+ if(!result.device)return false;
+ proximityState=result.state;
+ syncProximityViews();
+ barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ keys.delete("KeyF");
+ shotNotice.textContent=result.reason;shotNoticeLeft=1.65;
+ refreshUtilityHud();return true;
 }
 function tryPickupCurrentObservationBlocker(){
  if(activeOperator.side!=="defend"||controlMode!=="player")return false;
@@ -659,6 +718,16 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="proximity-alarm"&&activeOperator.side==="defend"){
+  const result=placeProximity(proximityState,player,activeDroneObstacles());
+  if(result.device){
+   proximityState=result.state;
+   proximityViews.set(result.device.id,createProximityView(THREE,scene,result.device));
+   syncProximityViews();shotAudio.play("gadget-throw");
+   refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;shotNoticeLeft=1.75;return;
+ }
  if(row.gadgetId==="observation-blocker"&&activeOperator.side==="defend"){
   const result=placeObservationBlocker(observationBlockerState,player,activeDroneObstacles());
   if(result.device){
@@ -813,12 +882,17 @@ function strikeMelee(now){
  meleeRaycaster.setFromCamera({x:0,y:0},camera);
  meleeRaycaster.far=MELEE.range;
  const solids=[...shootableSolids,...barricade.shootables(),
-  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers()];
+  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms()];
  const hits=combatIntersections(meleeRaycaster,solids,[]);
  const selected=selectedMeleeTarget(hits);
  let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
+ const proxId=hits[0]?.object?.userData?.proximityAlarmId;
  const observationId=hits[0]?.object?.userData?.observationBlockerId;
- if(Number.isInteger(observationId)){
+ if(Number.isInteger(proxId)){
+  const result=hitProximityAlarm(proxId,PROXIMITY.hp);
+  description=result.destroyed?"PROXIMITY ALARM PUNCHED · DESTROYED":
+   "PROXIMITY ALARM STRUCK";
+ }else if(Number.isInteger(observationId)){
   const result=hitObservationBlocker(observationId,OBS_BLOCKER.health);
   description=result.destroyed?"OBSERVATION BLOCKER SMASHED · FIELD OFF":
    "OBSERVATION BLOCKER HARDWARE STRUCK";
@@ -853,6 +927,7 @@ function setControlMode(nextMode){
  // while the camera was open and the Testing Range was paused.
  if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
  controlMode=nextMode;
+ syncProximityViews();
  syncObservationBlockerViews(); // projected screens only render in drone mode
  const active=locked;
  hud.classList.toggle("hidden",!active||controlMode!=="player");
@@ -978,7 +1053,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -1016,7 +1091,10 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed||proximityPickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentProximity()){
+   proximityPickupKeyConsumed=true;return;
+  }
   if(!event.repeat&&tryPickupCurrentObservationBlocker()){
    observationPickupKeyConsumed=true;
    return;
@@ -1111,7 +1189,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;}
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -1140,7 +1218,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1208,7 +1286,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -1264,20 +1342,27 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
+ const proxId=outcome.hit?.object?.userData?.proximityAlarmId;
+ const proxHit=Number.isInteger(proxId)?hitProximityAlarm(proxId,1):{handled:false};
  const obsId=outcome.hit?.object?.userData?.observationBlockerId;
-  const obsHit=Number.isInteger(obsId)?hitObservationBlocker(obsId,1):{handled:false};
-  const woodHit=outcome.hit&&!obsHit.handled?
+  const obsHit=Number.isInteger(obsId)&&!proxHit.handled?hitObservationBlocker(obsId,1):{handled:false};
+  const woodHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?
    barricade.hitBoard(outcome.hit):{handled:false};
- const metalHit=outcome.hit&&!obsHit.handled?reinforcement.steelImpact(outcome.hit):false;
- const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled)
+ const metalHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?reinforcement.steelImpact(outcome.hit):false;
+ const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled&&!proxHit.handled?softWall.onHit(outcome.hit):{handled:false};
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(obsHit.handled){
+ if(proxHit.handled){
+   shotNotice.textContent=proxHit.destroyed?
+    "PROXIMITY ALARM DESTROYED · SILENCED":
+    "PROXIMITY ALARM HIT · FIRE AGAIN";
+   shotNoticeLeft=1.3;
+  }else if(obsHit.handled){
    shotNotice.textContent=obsHit.destroyed?
     "OBSERVATION BLOCKER DESTROYED · PROJECTION ENDED":
     "OBSERVATION BLOCKER HIT · SHOOT AGAIN";
@@ -1370,6 +1455,29 @@ function animate(now){
    for(const blast of fragTick.blasts){
     shotNotice.textContent=applyGadgetBlast(blast,"FRAG");
     shotNoticeLeft=1.7;
+   }
+   // Persistent defender sensors listen only for ATTACKING intruders. The
+   // attacker player can switch sides in solo testing; target dummies are
+   // attack silhouettes only while defender mode is selected.
+   const proxEnemies=[
+    ...(activeOperator.side==="attack"&&wireHealth.hp>0?
+     [{id:"striker-player",x:player.x,y:player.y,z:player.z,
+       side:"attack",alive:true}]:[]),
+    ...(activeOperator.side==="defend"?targets.filter(t=>t.downTime<=0).map(t=>({
+     id:t.id,x:t.group.position.x,y:0,z:t.group.position.z,
+     side:"attack",alive:true})):[])
+   ];
+   const proxTick=tickProximity(proximityState,dt,proxEnemies,activeDroneObstacles());
+   proximityState=proxTick.state;
+   for(const [id,view] of proximityViews){
+    const d=proximityState.devices.find(item=>item.id===id&&item.hp>0);
+    if(d)view.sync(d,controlMode,activeOperator.side);
+    else{view.dispose();proximityViews.delete(id);}
+   }
+   for(const alarm of proxTick.alerts){
+    shotAudio.playAt("proximity",alarm.x,alarm.z,player.x,player.z,player.yaw);
+    shotNotice.textContent="PROXIMITY ALARM · INTRUDER DETECTED · "+alarm.enemyId.toUpperCase();
+    shotNoticeLeft=1.5;
    }
    // Claymores stay in the range across side changes: live defender Sentry
    // movement and the practice dummy targets are valid ENEMY sensors.
@@ -1639,5 +1747,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.22.1 expanded 7.2m observation blocker, Sentry outline and hold-to-preview placement",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.23.0 proximity alarm wall/floor, 4.35m defender radar, beep-beep-BEEP",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

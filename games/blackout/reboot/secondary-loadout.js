@@ -11,7 +11,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"impact",name:"Impact Grenades",side:"defend",role:"Impact destruction",implemented:true},
  {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:true},
  {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:true},
- {id:"proximity-alarm",name:"Proximity Alarms",side:"defend",role:"Entry warning",implemented:false},
+ {id:"proximity-alarm",name:"Proximity Alarms",side:"defend",role:"Entry warning",implemented:true},
  {id:"deployable-shield",name:"Deployable Shields",side:"defend",role:"Portable cover",implemented:false}
 ].map(g=>Object.freeze(g)));
 

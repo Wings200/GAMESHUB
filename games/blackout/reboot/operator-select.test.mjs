@@ -48,7 +48,7 @@ test("attacker screen initially shows six original concepts, only Striker is sel
   assert.equal(elements["operator-slots"].children[0].children[1].children.length,7);
   assert.equal(elements["operator-slots"].children[0].children[2].textContent,
     "UNASSIGNED · GADGETS IN DEVELOPMENT");
-  assert.match(elements["operator-plan-status"].textContent,/TEN GADGETS WORK/);
+  assert.match(elements["operator-plan-status"].textContent,/ELEVEN GADGETS WORK/);
   assert.deepEqual(selected,[],"constructing UI must not trigger a gameplay selection");
  }finally{globalThis.document=old;}
 });
@@ -323,6 +323,25 @@ test("Observation Blockers are READY in Sentry's selectable MMB/G loadout",()=>{
    "Observation Blockers · READY");
   menu.value="observation-blocker";menu.listeners.get("change")();
   assert.deepEqual(picker.plans.sentry,[null,"observation-blocker"]);
+  assert.equal(elements["operator-slots"].children[1].children[2].textContent,
+   "LIVE GADGET · READY IN RANGE");
+ }finally{globalThis.document=old;}
+});
+
+test("Sentry Proximity Alarms READY and never available to Striker",()=>{
+ const old=globalThis.document,{root,elements}=fixture();
+ globalThis.document={createElement:tag=>new FakeElement(tag),
+  getElementById:id=>id==="operator-current"?elements["operator-current"]:null};
+ try{
+  const picker=createOperatorPicker(root);
+  assert.equal(elements["operator-slots"].children[0].children[1].children
+   .some(x=>x.value==="proximity-alarm"),false);
+  elements["operator-defend"].click();
+  const drop=elements["operator-slots"].children[1].children[1];
+  assert.equal(drop.children.find(x=>x.value==="proximity-alarm")?.textContent,
+   "Proximity Alarms · READY");
+  drop.value="proximity-alarm";drop.listeners.get("change")();
+  assert.deepEqual(picker.plans.sentry,[null,"proximity-alarm"]);
   assert.equal(elements["operator-slots"].children[1].children[2].textContent,
    "LIVE GADGET · READY IN RANGE");
  }finally{globalThis.document=old;}

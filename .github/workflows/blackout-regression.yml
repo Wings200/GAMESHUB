@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.22.1 · long range observation blocker and Sentry live coverage/placement guides
+    name: Reboot V0.23.0 · Proximity Alarms floor/wall, beeps, enemy detection, F pickup
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -78,6 +78,8 @@ jobs:
           node --check games/blackout/reboot/claymore-view.js
           node --check games/blackout/reboot/observation-blocker.js
           node --check games/blackout/reboot/observation-blocker-view.js
+          node --check games/blackout/reboot/proximity-alarm.js
+          node --check games/blackout/reboot/proximity-alarm-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

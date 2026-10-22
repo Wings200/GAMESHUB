@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","observation-blocker","barbed-wire"],"only ten actually functional gadgets are marked ready");
+  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","observation-blocker","barbed-wire","proximity-alarm"],"only eleven actually functional gadgets are marked ready");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -225,4 +225,17 @@ test("Sentry observation blockers are live in both utility slots, impossible on 
  assert.equal(planSecondary(plans,striker,0,"observation-blocker"),plans);
  plans=planSecondary(plans,sentry,0,"c4");
  assert.equal(planIsFieldReady(plans,sentry),true);
+});
+
+test("proximity alarms selectable in either Sentry G/MMB slot but not attack or twice",()=>{
+ const striker=operatorById("striker"),sentry=operatorById("sentry");
+ const plan=planSecondary(newSecondaryPlans(),sentry,1,"proximity-alarm");
+ assert.equal(gadgetById("proximity-alarm").implemented,true);
+ assert.equal(planIsFieldReady(plan,sentry),true);
+ assert.equal(utilityKeyPreview(plan,sentry,"KeyG"),
+  "PROXIMITY ALARMS · LIVE GADGET · USE IN RANGE");
+ assert.equal(planSecondary(plan,sentry,0,"proximity-alarm"),plan);
+ assert.equal(planSecondary(plan,striker,0,"proximity-alarm"),plan);
+ const next=planSecondary(plan,sentry,0,"observation-blocker");
+ assert.deepEqual(plannedSecondaries(next,sentry),["observation-blocker","proximity-alarm"]);
 });
