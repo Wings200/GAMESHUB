@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-064",
+  for(const src of ["./reboot/main.js?v=reboot-065",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -461,12 +461,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.25.3: both real bombs occupy space, including the recon drone.
-  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-062"'));
+  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-065"'));
   assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-060"'));
   assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-064"'));
   for(const sample of ['DefuserPlantV2.ogg','DefuserDisableV2.ogg',
-    'DefuserArmV2.ogg','DefuserTickV2.ogg','DefuserTickUrgentV2.ogg',
-    'DefuserShutdownV2.ogg'])assert.ok(main.includes(sample));
+    'DefuserArmV3.ogg','DefuserTickV3.ogg','DefuserTickUrgentV3.ogg',
+    'DefuserShutdownV3.ogg'])assert.ok(main.includes(sample));
   assert.ok(main.includes('createDefuserCuePlayer('));
   assert.ok(main.includes('defuserCues.play(urgent?"urgent":"tick")'));
   assert.ok(main.includes('defuserCues.play("arm")'));

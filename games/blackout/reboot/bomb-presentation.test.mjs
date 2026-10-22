@@ -65,11 +65,10 @@ test("planting and disabling only trigger while live, in range and holding F",()
  assert.equal(liveBombInteraction(planted,"attack",actor,true,true),null);
  assert.equal(liveBombInteraction({...planted,phase:"ended"},"defend",actor,true,true),null);
 });
-test("planted defuser ticks accelerate toward last seconds",()=>{
+test("planted defuser maintains the 235ms rhythm from the supplied reference",()=>{
  const times=[45,29,19,9,4],periods=times.map(defuserBeepInterval);
- for(let i=1;i<periods.length;i++)assert.ok(periods[i]<periods[i-1]);
- assert.equal(defuserBeepInterval(NaN),.95);
- assert.ok(periods.at(-1)<=.20);
+ for(const period of periods)assert.equal(period,.235);
+ assert.equal(defuserBeepInterval(NaN),.235);
 });
 test("audio events occur throughout postplant, no ticks when unplanted or ended",()=>{
  const planted={...action(),phase:"postplant",time:45,
@@ -81,14 +80,14 @@ test("audio events occur throughout postplant, no ticks when unplanted or ended"
   const tick=tickBombSoundClock(clock,state,.05,null);
   clock=tick.clock;count+=tick.events.filter(e=>e==="defuser-tick").length;
  }
- assert.ok(count>=2&&count<=5,"regular postplant beeps");
+ assert.ok(count>=12&&count<=13,"regular 235ms postplant beeps");
  const silent=tickBombSoundClock(clock,action(),.05,null);
  assert.equal(silent.events.includes("defuser-tick"),false);
  const ended=tickBombSoundClock(clock,{...planted,phase:"ended"},.05,null);
  assert.deepEqual(ended.events,[]);
  assert.equal(ended.clock.phase,null);
 });
-test("faster defuser ticking as postplant timer reaches critical final seconds",()=>{
+test("defuser keeps its rhythmic pulse even during the final seconds",()=>{
  const late={...action(),phase:"postplant",time:4,
   defuser:{status:"planted",x:actor.x,z:actor.z,site:"B"}};
  let state=newBombSoundClock(),heard=0;
@@ -97,6 +96,17 @@ test("faster defuser ticking as postplant timer reaches critical final seconds",
   state=r.clock;heard+=r.events.length;
  }
  assert.ok(heard>=4,"urgent cue repeats often");
+});
+test("fractional beat phase survives 60fps frame quantization",()=>{
+ const planted={...action(),phase:"postplant",time:36,
+  defuser:{status:"planted",x:actor.x,z:actor.z,site:"A"}};
+ let state=newBombSoundClock(),ticks=0;
+ for(let i=0;i<720;i++){
+  const r=tickBombSoundClock(state,planted,1/60);
+  state=r.clock;ticks+=r.events.filter(e=>e==="defuser-tick").length;
+ }
+ assert.equal(ticks,51,"12 seconds at 235ms intervals should yield 51 ticks");
+ assert.ok(state.seconds>=0&&state.seconds<.235);
 });
 test("plant/disable key clicks repeat while holding F and cease on interruption",()=>{
  const working=action();let clock=newBombSoundClock(),events=[];

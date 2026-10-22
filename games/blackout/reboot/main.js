@@ -79,7 +79,7 @@ import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  plantDefuserPosition} from "./bomb-round.js?v=reboot-062";
 import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-062";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
- bombRoundOutcome} from "./bomb-presentation.js?v=reboot-062";
+ bombRoundOutcome} from "./bomb-presentation.js?v=reboot-065";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
 import {createPlantRecording,createDefuseRecording,createDefuserCuePlayer,plantRecordingStage}
  from "./bomb-plant-audio.js?v=reboot-064";
@@ -256,10 +256,10 @@ const plantAudio=createPlantRecording(
 const defuseAudio=createDefuseRecording(
  new Audio(new URL("./audio/DefuserDisableV2.ogg",import.meta.url).href));
 const defuserCues=createDefuserCuePlayer({
- arm:new Audio(new URL("./audio/DefuserArmV2.ogg",import.meta.url).href),
- tick:new Audio(new URL("./audio/DefuserTickV2.ogg",import.meta.url).href),
- urgent:new Audio(new URL("./audio/DefuserTickUrgentV2.ogg",import.meta.url).href),
- shutdown:new Audio(new URL("./audio/DefuserShutdownV2.ogg",import.meta.url).href)
+ arm:new Audio(new URL("./audio/DefuserArmV3.ogg",import.meta.url).href),
+ tick:new Audio(new URL("./audio/DefuserTickV3.ogg",import.meta.url).href),
+ urgent:new Audio(new URL("./audio/DefuserTickUrgentV3.ogg",import.meta.url).href),
+ shutdown:new Audio(new URL("./audio/DefuserShutdownV3.ogg",import.meta.url).href)
 });
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();

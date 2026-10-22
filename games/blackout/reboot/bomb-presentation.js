@@ -1,5 +1,5 @@
-// BLACKOUT V0.25.3 · physical objective obstacles, planting/disable stance,
-// and predictable timed device sounds.
+// BLACKOUT V0.26.3 · physical objective obstacles, planting/disable stance,
+// and reference-paced original device sounds.
 import {BOMB_RULES,roundSiteAt} from "./bomb-round.js?v=reboot-062";
 export const BOMB_HARDWARE=Object.freeze({width:1.82,depth:1.52,height:.97});
 // Describe the outcome from the *selected player's* perspective. A disabled
@@ -30,9 +30,11 @@ export function liveBombInteraction(state,side,player,holdingF=false,alive=true)
   return "disable";
  return null;
 }
-export function defuserBeepInterval(timeLeft){
- if(!Number.isFinite(timeLeft))return .95;
- return timeLeft<=5?.19:timeLeft<=10?.30:timeLeft<=20?.48:timeLeft<=30?.70:.94;
+export function defuserBeepInterval(_timeLeft){
+ // The supplied gameplay reference has a continuous 235 ms device cadence.
+ // Use its *timing*, never its recorded copyrighted waveform; do not ramp
+ // from one beep per second (which made the former device sound unrelated).
+ return 0.235;
 }
 export function newBombSoundClock(){return {phase:null,seconds:0,keys:0,interaction:null};}
 export function tickBombSoundClock(clock,state,dt,interaction=null){
@@ -48,7 +50,9 @@ export function tickBombSoundClock(clock,state,dt,interaction=null){
  if(phase==="postplant"){
   secs+=delta;
   const interval=defuserBeepInterval(state.time);
-  if(secs+1e-8>=interval){secs=0;events.push("defuser-tick");}
+  // Preserve the fractional remainder. Resetting to zero quantized a 235 ms
+  // beat to ~250 ms at 60fps, creating a perceptibly different rhythm.
+  if(secs+1e-8>=interval){secs-=interval;events.push("defuser-tick");}
  }else secs=0;
  if(interaction==="plant"||interaction==="disable"){
   keys+=delta;
