@@ -1,9 +1,11 @@
-// BLACKOUT V0.25.6 · floor-anchored, staged defuser placement.
-// Kneel/put the case down, open the hinged display, then type on its keys.
-// Timing follows the trimmed 7.35-second recording: the opening noises
-// precede typing. It is never a keyboard floating in front of the camera.
+// BLACKOUT V0.25.7 · attacker plants a floor-anchored hinged case;
+// defender brings out a distinct handheld counter-defuse tablet.
+// No second floor keyboard appears during the defender interaction.
 export const PLANT_MOTION=Object.freeze({
  placeSeconds:.55,openSeconds:.70,plantSeconds:7.35
+});
+export const COUNTER_DEFUSE_MOTION=Object.freeze({
+ drawSeconds:.45,disableSeconds:7
 });
 
 const clamp01=value=>Math.min(1,Math.max(0,value));
@@ -15,8 +17,12 @@ export function plantInteractionPhase(progress){
  if(elapsed<PLANT_MOTION.placeSeconds+PLANT_MOTION.openSeconds)return "opening";
  return "typing";
 }
+export function counterDefusePhase(progress){
+ return clamp01(progress)*COUNTER_DEFUSE_MOTION.disableSeconds<
+  COUNTER_DEFUSE_MOTION.drawSeconds?"drawing":"overriding";
+}
 
-export function createBombInteractionView(THREE,scene){
+export function createBombInteractionView(THREE,scene,camera){
  const root=new THREE.Group();
  root.name="FLOOR-ANCHORED DEFUSER · PLACE / OPEN / TYPE";
  scene.add(root);
@@ -91,6 +97,65 @@ export function createBombInteractionView(THREE,scene){
   }
   hands.push({arm,side});
  }
+ // Defender-specific device: a handheld touchscreen that controls the
+ // already-planted defuser. The bomb itself remains visible on the floor.
+ const tabletRoot=new THREE.Group();
+ tabletRoot.name="HANDHELD COUNTER-DEFUSE TABLET";
+ camera.add(tabletRoot);tabletRoot.visible=false;
+ const tablet=new THREE.Group();tabletRoot.add(tablet);
+ part(tablet,"TABLET IMPACT-PROOF SHELL",
+  new THREE.BoxGeometry(.57,.40,.047),caseMat,0,0,0);
+ part(tablet,"TABLET METAL BEZEL",
+  new THREE.BoxGeometry(.515,.345,.014),edgeMat,0,.015,.031);
+ const tabletCanvas=document.createElement("canvas");
+ tabletCanvas.width=512;tabletCanvas.height=384;
+ const tabletCtx=tabletCanvas.getContext("2d");
+ const tabletTexture=new THREE.CanvasTexture(tabletCanvas);
+ tabletTexture.colorSpace=THREE.SRGBColorSpace;resources.push(tabletTexture);
+ const tabletScreenMat=new THREE.MeshBasicMaterial({
+  map:tabletTexture,side:THREE.DoubleSide
+ });resources.push(tabletScreenMat);
+ part(tablet,"LIVE COUNTER-DEFUSE TOUCHSCREEN",
+  new THREE.PlaneGeometry(.485,.320),tabletScreenMat,0,.015,.042);
+ part(tablet,"HARDWARE AUTHENTICATION BUTTON",
+  new THREE.BoxGeometry(.075,.020,.013),keyMat,0,-.184,.033);
+ const tabletHands=[];
+ for(const side of [-1,1]){
+  const grip=new THREE.Group();tabletRoot.add(grip);
+  const forearm=part(grip,"TABLET SUPPORT SLEEVE",
+   new THREE.CylinderGeometry(.065,.084,.28,9),sleeveMat,
+   side*.02,-.17,.12);
+  forearm.rotation.x=-.67;forearm.rotation.z=-side*.20;
+  const palm=part(grip,"TABLET GLOVED GRIP",
+   new THREE.SphereGeometry(.072,10,8),gloveMat,0,0,0);
+  palm.scale.set(.8,1.0,1.4);
+  tabletHands.push({grip,side});
+ }
+ const touchFinger=part(tablet,"ACTIVE TABLET TOUCH FINGER",
+  new THREE.CapsuleGeometry(.018,.080,4,8),gloveMat,.13,-.10,.090);
+ touchFinger.rotation.x=Math.PI/2;
+ function drawTablet(progress,phase){
+  if(!tabletCtx)return;
+  const ctx=tabletCtx,pct=clamp01(progress);
+  ctx.fillStyle="#03121a";ctx.fillRect(0,0,512,384);
+  ctx.strokeStyle="#ffce71";ctx.lineWidth=7;ctx.strokeRect(6,6,500,372);
+  ctx.fillStyle="#ffdd9b";ctx.font="bold 33px monospace";
+  ctx.fillText("COUNTER-DEFUSE",24,55);
+  ctx.fillStyle="#8fcfcf";ctx.font="19px monospace";
+  ctx.fillText("SECURE WIRELESS OVERRIDE",24,93);
+  ctx.fillStyle=phase==="drawing"?"#ffd79a":"#8ffff3";
+  ctx.font="bold 26px monospace";
+  ctx.fillText(phase==="drawing"?"CONNECTING TABLET...":"DISARMING DETONATOR",24,141);
+  const remaining=Math.max(0,COUNTER_DEFUSE_MOTION.disableSeconds*(1-pct));
+  ctx.font="27px monospace";ctx.fillStyle="#e8f8fc";
+  ctx.fillText("REMAINING  "+remaining.toFixed(1)+" S",24,200);
+  ctx.fillStyle="#223941";ctx.fillRect(24,243,464,24);
+  ctx.fillStyle="#ffcd68";ctx.fillRect(24,243,464*pct,24);
+  ctx.font="20px monospace";ctx.fillStyle="#a5c8ce";
+  ctx.fillText("ENCRYPTION BYPASS  "+Math.floor(100*pct)+"%",24,306);
+  ctx.fillText("HOLD F TO MAINTAIN LINK",24,345);
+  tabletTexture.needsUpdate=true;
+ }
  let clock=0,renderAge=0,currentType=null,currentPhase=null;
  function draw(type,progress,phase){
   if(!ctx)return;
@@ -128,10 +193,31 @@ export function createBombInteractionView(THREE,scene){
  function update(type,progress,dt=0,pose=null){
   const active=(type==="plant"||type==="disable")&&
    Number.isFinite(pose?.x)&&Number.isFinite(pose?.z);
-  root.visible=active;
+  root.visible=active&&type==="plant";
+  tabletRoot.visible=active&&type==="disable";
   if(!active){currentType=null;currentPhase=null;renderAge=0;return;}
   const delta=Math.max(0,Math.min(.05,dt||0));
   clock+=delta;renderAge+=delta;
+  if(type==="disable"){
+   const phase=counterDefusePhase(progress);
+   const drawn=smooth(clamp01(progress)*
+    COUNTER_DEFUSE_MOTION.disableSeconds/COUNTER_DEFUSE_MOTION.drawSeconds);
+   tabletRoot.position.set(0,-.71+.43*drawn,-.48-.14*drawn);
+   tabletRoot.rotation.set(.24-.15*drawn,0,0);
+   for(const {grip,side} of tabletHands){
+    const tapping=side===1&&phase==="overriding"?
+     Math.max(0,Math.sin(clock*29)):0;
+    grip.position.set(side*.315,-.095+tapping*.025,.088);
+    grip.rotation.z=side===1?tapping*.045:0;
+   }
+   touchFinger.position.y=-.10+
+    (phase==="overriding"?Math.max(0,Math.sin(clock*29))*.021:0);
+   if(currentType!==type||currentPhase!==phase||renderAge>=.065){
+    currentType=type;currentPhase=phase;renderAge=0;
+    drawTablet(progress,phase);
+   }
+   return;
+  }
   root.position.set(pose.x,Number.isFinite(pose.y)?pose.y:0,pose.z);
   root.rotation.set(0,Number.isFinite(pose.yaw)?pose.yaw:0,0);
   const elapsed=clamp01(progress)*PLANT_MOTION.plantSeconds;
@@ -158,7 +244,8 @@ export function createBombInteractionView(THREE,scene){
  }
  function dispose(){
   scene.remove(root);
+  camera.remove(tabletRoot);
   for(const resource of resources)resource.dispose();
  }
- return {root,update,dispose};
+ return {root,tabletRoot,update,dispose};
 }

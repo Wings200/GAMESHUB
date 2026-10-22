@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-059",
+  for(const src of ["./reboot/main.js?v=reboot-060",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -189,7 +189,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes('id="ammo"'));
  assert.ok(html.includes('id="target-hits"'));
  assert.ok(main.includes('from "./legacy-weapons.js?v=reboot-006"'));
- assert.ok(main.includes('from "./legacy-audio.js?v=reboot-056"'));
+ assert.ok(main.includes('from "./legacy-audio.js?v=reboot-060"'));
  assert.ok(main.includes('from "./legacy-shooting.js?v=reboot-006"'));
  assert.equal(main.includes('from "./weapon.js?v=reboot-004"'),false);
  assert.ok(main.includes('from "./weapon-view.js?v=reboot-012"'));
@@ -459,13 +459,13 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.25.3: both real bombs occupy space, including the recon drone.
   assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-059"'));
-  assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-060"'));
  assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-059"'));
  assert.ok(main.includes("bombSiteBlockers(bombState)"));
  assert.ok(main.includes("...shootableShields(),...bombRaycastColliders()]"));
  assert.ok(main.includes("bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId)"));
  assert.ok(main.includes("bombRaycastColliders()"));
- assert.ok(main.includes("bombInteractionView=createBombInteractionView(THREE,scene)"));
+ assert.ok(main.includes("bombInteractionView=createBombInteractionView(THREE,scene,camera)"));
  assert.ok(main.includes("const bombWorking=currentBombInteraction()"));
  assert.ok(main.includes("player={...player,moving:false,sprinting:false,prone:false,"));
   assert.ok(main.includes("const bombPose=interactionCameraLock()"));
@@ -475,7 +475,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("!meleeView.active&&!bombTyping&&wireHealth.hp>0"));
  assert.ok(main.includes('tickBombSoundClock(bombSoundClock,bombState,dt,afterInteraction)'));
   assert.ok(main.includes('bombState.time<=10?"defuser-tick-urgent":"defuser-tick"'));
- assert.ok(main.includes('shotAudio.play(beforeInteraction==="plant"?"defuser-arming":"defuser-disabling")'));
+ assert.ok(main.includes('shotAudio.playAt("defuser-disabling"'));
+ assert.ok(main.includes('shotAudio.playAt("defuse-key"'));
  assert.ok(main.includes('shotAudio.playAt("plant"'));
  assert.ok(main.includes('shotAudio.playAt("defuse"'));
  const bombPhysics=read("reboot/bomb-presentation.js");
@@ -488,6 +489,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(typingView.includes("LIVE TYPING DEFUSER SCREEN"));
  assert.ok(typingView.includes("ANIMATED GLOVED HAND"));
  assert.ok(typingView.includes("HINGED DEFUSER SCREEN LID"));
+ assert.ok(typingView.includes("HANDHELD COUNTER-DEFUSE TABLET"));
+ assert.ok(typingView.includes("LIVE COUNTER-DEFUSE TOUCHSCREEN"));
+ assert.ok(typingView.includes("drawTablet(progress,phase)"));
  assert.ok(typingView.includes('scene.add(root)'));
  assert.ok(typingView.includes("tex.needsUpdate=true"));
  assert.ok(main.includes("plantDefuserPosition(player)"));
@@ -498,13 +502,15 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  const worldView=read("reboot/bomb-round-view.js");
  assert.ok(worldView.includes("bombColliders.push(hitbox)"));
  assert.ok(worldView.includes("SOLID BOMB "));
+ assert.ok(worldView.includes("tag.visible=!planted"));
+ assert.ok(read("reboot/legacy-audio.js").includes("Dry tactile touchscreen taps"));
  for(const cue of ["defuser-tick","defuser-tick-urgent","defuser-arming","defuser-disabling","plant-key","defuse-key"])
   assert.ok(read("reboot/legacy-audio.js").includes('case "'+cue+'"'),"missing bomb sound: "+cue);
  // V0.25.0: live round system with explicit defuser ownership/choice.
  assert.ok(read("reboot/bomb-round.js").includes("V0.25.0"));
  assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.6"));
  assert.ok(main.includes('from "./bomb-round.js?v=reboot-059"'));
-  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-060"'));
  assert.ok(main.includes('bombState=newBombRound({choice})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
  assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));

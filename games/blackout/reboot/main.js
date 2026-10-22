@@ -4,7 +4,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
-import {GameAudio} from "./legacy-audio.js?v=reboot-056";
+import {GameAudio} from "./legacy-audio.js?v=reboot-060";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
@@ -75,10 +75,10 @@ import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt,
  plantDefuserPosition} from "./bomb-round.js?v=reboot-059";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-059";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-060";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-059";
-import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-059";
+import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
 import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-059";
 
 const $=id=>document.getElementById(id);
@@ -233,7 +233,7 @@ const weaponView=createWeaponView(THREE,camera,scene);
 const meleeView=createMeleeView(THREE,camera);
 const meleeRaycaster=new THREE.Raycaster();
 const bombView=createBombRoundView(THREE,scene);
-const bombInteractionView=createBombInteractionView(THREE,scene);
+const bombInteractionView=createBombInteractionView(THREE,scene,camera);
 const targets=createTargetRange(THREE,scene);
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -350,12 +350,17 @@ function advanceBombMode(dt){
  bombSoundClock=sound.clock;
  if(beforeInteraction&&!previousInteraction&&
     (beforeInteraction==="disable"||plantAudio.failed))
-  shotAudio.play(beforeInteraction==="plant"?"defuser-arming":"defuser-disabling");
+  if(beforeInteraction==="disable")shotAudio.playAt("defuser-disabling",
+   bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
+  else shotAudio.play("defuser-arming");
  for(const name of sound.events){
   if(name==="defuser-tick"){
    if(plantAudio.failed)shotAudio.playAt(
     bombState.time<=10?"defuser-tick-urgent":"defuser-tick",
     bombState.defuser.x,bombState.defuser.z,player.x,player.z,player.yaw);
+  }else if(name==="defuse-key"){
+   shotAudio.playAt("defuse-key",bombState.defuser.x,bombState.defuser.z,
+    player.x,player.z,player.yaw);
   }else if(name!=="plant-key"||plantAudio.failed)shotAudio.play(name);
  }
  if(result.events.includes("planted")){
@@ -2079,7 +2084,8 @@ function animate(now){
    bombTyping==="disable"?{x:bombState.defuser.x,z:bombState.defuser.z,
     yaw:player.yaw}:null;
   bombInteractionView.update(bombTyping,bombProgress,dt,bombDevicePose);
-  if(bombTyping==="disable")bombView.defuser.visible=false;
+  // Defender's tablet is handheld; leave the original planted bomb on the
+  // floor and let its one recording own the beeping throughout the override.
   weaponView.root.visible=!meleeView.active&&!bombTyping;
   // The gun-mounted optic pose MUST update before ballistics. This prevents
   // shooting with a previous-frame sight transform (including while leaning).

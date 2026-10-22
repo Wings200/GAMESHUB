@@ -149,7 +149,9 @@ export function createBombRoundView(THREE,scene){
  const portableLight=new THREE.PointLight(0x37e7bd,.75,2.6);
  portableLight.position.set(0,.55,0);defuser.add(portableLight);
  const tag=labelSprite("DEFUSER","#b0fff0");
- tag.position.set(0,1.28,0);tag.scale.set(1.8,.65,1);defuser.add(tag);
+ // Small pickup identifier for dropped equipment only. The old huge
+ // billboard covered the player's whole screen beside a planted defuser.
+ tag.position.set(0,.82,0);tag.scale.set(1.05,.36,1);defuser.add(tag);
  group.add(defuser);
  group.visible=false;scene.add(group);
  function update(state){
@@ -160,6 +162,7 @@ export function createBombRoundView(THREE,scene){
   if(defuser.visible){
    defuser.position.set(d.x,0,d.z);
    const planted=d.status==="planted";
+   tag.visible=!planted;
    defuser.rotation.y=Number.isFinite(d.yaw)?d.yaw:0;
    portableLid.rotation.x=planted?.10:Math.PI/2;
    portableLid.visible=planted;

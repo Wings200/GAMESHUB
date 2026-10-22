@@ -203,13 +203,21 @@ export class GameAudio{
         this.tone(480,.14,.085,"triangle",0,750);
         break;
       case "defuser-disabling":
-        this.noise(.08,.065,1200,"bandpass");
-        this.tone(680,.17,.082,"triangle",0,430);
+        // Tablet comes out of its pouch; no periodic alert tones. The
+        // planted device's single audio track owns ALL bomb beeping.
+        this.noise(.075,.145,1450,"bandpass");
+        this.noise(.037,.105,3300,"highpass",.055);
+        this.tone(215,.090,.026,"triangle",.026,155);
         break;
       case "plant-key":
+        this.tone(840,.055,.068,"sine");
+        this.tone(430,.07,.028,"triangle",.015);
+        break;
       case "defuse-key":
-        this.tone(name==="plant-key"?840:610,.055,.068,"sine");
-        this.tone(name==="plant-key"?430:300,.07,.028,"triangle",.015);
+        // Dry tactile touchscreen taps. Repeating sine tones previously
+        // sounded like a second, unsynchronized planted-bomb beep.
+        this.noise(.023,.095,3900,"highpass");
+        this.noise(.032,.034,1450,"bandpass",.011);
         break;
       case "plant":
         this.tone(600,.11,.12,"sine");
@@ -218,9 +226,10 @@ export class GameAudio{
         this.noise(.06,.06,2200,"bandpass");
         break;
       case "defuse":
-        this.tone(940,.10,.10,"sine");
-        this.tone(670,.11,.10,"sine",.14);
-        this.tone(400,.23,.11,"sine",.28);
+        // One tablet shutdown/success cue, distinct from the bomb's ticking.
+        this.noise(.080,.120,1250,"bandpass");
+        this.tone(320,.21,.085,"triangle",.04,175);
+        this.noise(.110,.060,500,"lowpass",.15);
         break;
       case "barricade":
         this.noise(.09,.19,670,"bandpass");
