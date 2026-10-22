@@ -458,8 +458,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.25.0: live round system with explicit defuser ownership/choice.
- for(const path of ["reboot/bomb-round.js","reboot/bomb-round-view.js"])
-  assert.ok(read(path).includes("V0.25.0"),"Bomb round module not installed "+path);
+ assert.ok(read("reboot/bomb-round.js").includes("V0.25.0"));
+ assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.1"));
  assert.ok(main.includes('from "./bomb-round.js?v=reboot-053"'));
  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-054"'));
  assert.ok(main.includes('bombState=newBombRound({choice})'));
