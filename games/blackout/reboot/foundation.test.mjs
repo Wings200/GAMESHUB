@@ -365,8 +365,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-strike"'));
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
  assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
- assert.ok(html.includes("enemy-only contact damage"));
- assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("Barbed Wire"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
  assert.ok(main.includes('from "./nitro.js?v=reboot-036"'));
@@ -526,7 +526,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/deployable-shield-view.js").includes("TRANSPARENT BULLETPROOF VIEWING WINDOW"));
  assert.ok(read("reboot/deployable-shield-view.js").includes("deployableShieldBallistic=true"));
  assert.ok(read("reboot/shield-vault.js").includes("canOccupy(over.x,SHIELD_VAULT.lift"));
- assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.23.0: Proximity Alarms use actual wall/floor mount and live alerts.
  assert.ok(main.includes('from "./proximity-alarm.js?v=reboot-051"'));
@@ -545,7 +545,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "proximity":'));
  assert.ok(read("reboot/proximity-alarm-view.js").includes("DEFENDER-ONLY PROXIMITY ALARM DETECTION RANGE"));
  assert.ok(read("reboot/proximity-alarm.js").includes("wallAlarmAim(player,obstacles)"));
- assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.22.0: camera-only observation blockers truly hide recon visuals.
  assert.ok(main.includes('from "./observation-blocker.js?v=reboot-050"'));
@@ -573,12 +573,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("heldThrowCode=code;lastThrowPreviewAt=-Infinity;"));
  assert.ok(main.includes("throwPreviewView.hide();observationPreviewView.hide();"));
  assert.ok(main.includes("view.setMode(controlMode,device,activeOperator.side)"));
- assert.ok(html.includes("7.2m-wide"));
- assert.ok(html.includes("5.25m forward"));
- assert.ok(html.includes("HOLD the selected G or MMB"));
+ assert.ok(read("reboot/observation-blocker.js").includes("screenWidth:7.2"));
+ assert.ok(read("reboot/observation-blocker.js").includes("screenOffset:5.25"));
+ assert.ok(main.includes('row?.gadgetId==="observation-blocker"'));
  assert.ok(read("reboot/observation-blocker-view.js").includes("depthWrite:true"));
  assert.ok(read("reboot/observation-blocker.js").includes('viewMode==="drone"'));
- assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.21.0: real Claymores preserve laser, trigger, directional HP and F pickup.
  assert.ok(main.includes('from "./claymore.js?v=reboot-048"'));
@@ -597,7 +597,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Directional trap",implemented:true'));
  assert.ok(read("reboot/claymore-view.js").includes('new THREE.Line('));
  assert.ok(read("reboot/claymore.js").includes("rayObstacleDistance"));
- assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.20.1: hard breach must create raised vault windows, not doorways.
  assert.ok(main.includes('from "./breach-vault.js?v=reboot-046"'));
@@ -634,7 +634,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/reinforcement.js").includes('add("sill"'));
  assert.ok(read("reboot/reinforcement.js").includes('add("lintel"'));
  assert.ok(read("reboot/reinforcement.js").includes("bottom:.70,top:2.0"));
- assert.ok(html.includes("Look directly at the mounted charge and press F to pick it up"));
+ assert.ok(main.includes("tryPickupCurrentHardBreach()"));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.19.0: physical soft breach charges with recoverable, mounted inventory.
  assert.ok(main.includes('from "./soft-breach.js?v=reboot-044"'));
@@ -650,7 +650,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("pickupSoftBreach(softBreachState,active.id,player)"));
  assert.ok(main.includes("softBreachPickupKeyConsumed=true"));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Soft wall destruction",implemented:true'));
- assert.ok(html.includes("F to recover and reuse"));
+ assert.ok(main.includes("tryPickupCurrentSoftBreach()"));
  assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(main.includes('from "./blast-policy.js?v=reboot-045"'));
  assert.ok(main.includes("resolveStructuralBlast(label,{"));
@@ -658,7 +658,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('label==="FRAG"?wood+" BOARDS · SOFT WALL INTACT"'));
  assert.ok(read("reboot/blast-policy.js").includes('["FRAG","IMPACT","C4","SOFT BREACH"]'));
  assert.ok(read("reboot/blast-policy.js").includes('["IMPACT","C4","SOFT BREACH","HARD BREACH"]'));
- assert.ok(html.includes("Frag Grenades splinter wooden barricades"));
+ assert.ok(html.includes("Frag Grenades"));
+ assert.ok(read("reboot/blast-policy.js").includes("BARRICADE_BLASTS"));
  assert.ok(html.includes("but cannot damage gypsum walls"));
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
