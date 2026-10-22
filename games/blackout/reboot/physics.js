@@ -39,21 +39,30 @@ export function canOccupy(x,y,z,height,objects=TEST_OBSTACLES){
     return dx*dx+dz*dz<PLAYER_RADIUS*PLAYER_RADIUS;
   });
 }
-function sweep(state,dx,dz,height,objects){
+function sweep(state,dx,dz,height,objects,groundAt){
   // Small swept steps stop skipping through thin walls at low FPS.
   const segments=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.09));
   const stepX=dx/segments,stepZ=dz/segments;
+  const footAt=(x,z)=>state.grounded&&typeof groundAt==="function"?
+    groundAt(x,z,state.y):state.y;
+  const fits=(x,z)=>canOccupy(x,footAt(x,z),z,height,objects);
   for(let i=0;i<segments;i++){
-    if(canOccupy(state.x+stepX,state.y,state.z+stepZ,height,objects)){
-      state.x+=stepX;state.z+=stepZ;
+    if(fits(state.x+stepX,state.z+stepZ)){
+      state.x+=stepX;state.z+=stepZ;state.y=footAt(state.x,state.z);
     }else{
       // Slide along a wall rather than becoming stuck on its face.
-      if(canOccupy(state.x+stepX,state.y,state.z,height,objects))state.x+=stepX;
-      if(canOccupy(state.x,state.y,state.z+stepZ,height,objects))state.z+=stepZ;
+      if(fits(state.x+stepX,state.z)){
+       state.x+=stepX;state.y=footAt(state.x,state.z);
+      }
+      if(fits(state.x,state.z+stepZ)){
+       state.z+=stepZ;state.y=footAt(state.x,state.z);
+      }
     }
   }
 }
-export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES){
+// `groundAt` is optional so the original flat test range remains identical.
+// The house supplies a stair-height field for its accessible second floor.
+export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES,groundAt=null){
   if(!isFinitePlayer(current))throw new Error("Invalid player coordinates");
   const state={...current};
   const delta=Math.min(0.05,Math.max(0,Number.isFinite(dt)?dt:0));
@@ -83,16 +92,22 @@ export function stepPlayer(current,input={},dt=1/60,objects=TEST_OBSTACLES){
   const f=forward*normalized,r=right*normalized;
   const vx=(-Math.sin(state.yaw)*f+Math.cos(state.yaw)*r)*baseSpeed;
   const vz=(-Math.cos(state.yaw)*f-Math.sin(state.yaw)*r)*baseSpeed;
-  sweep(state,vx*delta,vz*delta,height,objects);
+  sweep(state,vx*delta,vz*delta,height,objects,groundAt);
   state.speed=magnitude?Math.hypot(vx,vz):0;
   state.moving=magnitude>0;
+  const groundValue=typeof groundAt==="function"?
+    groundAt(state.x,state.z,state.y):0;
+  const groundY=Number.isFinite(groundValue)?Math.max(0,Math.min(9,groundValue)):0;
   if(input.jump&&state.grounded&&!state.crouched&&!state.prone){
     state.vy=JUMP_SPEED;state.grounded=false;
   }
   if(!state.grounded||state.vy>0){
     state.vy-=GRAVITY*delta;
     state.y+=state.vy*delta;
-    if(state.y<=0){state.y=0;state.vy=0;state.grounded=true;}
-  }else{state.y=0;state.vy=0;state.grounded=true;}
+    if(state.y<=groundY){state.y=groundY;state.vy=0;state.grounded=true;}
+  }else if(groundY<state.y-.28){
+    // Leaving an upper balcony/landing initiates a fall, not teleportation.
+    state.grounded=false;state.vy=0;
+  }else{state.y=groundY;state.vy=0;state.grounded=true;}
   return state;
 }

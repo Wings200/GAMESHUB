@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.25.8 | GAMESHUB</title>
+  <title>BLACKOUT — REBOOT V0.26.0 | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
   <style>
@@ -41,7 +41,7 @@
     <div class="menu-content">
       <div class="section-tag"><span class="section-line"></span> TACTICAL / BOMB 025.3</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">BOMB ROUNDS · 12 GADGETS READY.</p>
+      <p class="headline">TWO-STORY HOUSE · BOMB ROUNDS · 12 GADGETS.</p>
       <p class="description">Choose Bomb Round or the unrestricted Test Range. In Bomb Round, Sites A and B contain solid bomb devices which block drones and bullets. Attackers can carry or leave the defuser. Hold X to drop it, press F to collect it, and hold F to kneel and type the plant code. Defenders hold F to kneel and disable. Active defusers beep faster as detonation approaches.</p>
       <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
@@ -75,7 +75,8 @@
       <section class="deploy-options" aria-label="Deployment settings">
         <label for="play-mode">PLAY MODE</label>
         <select id="play-mode" aria-label="Choose game mode">
-          <option value="bomb" selected>BOMB ROUND · SITES A / B</option>
+          <option value="house" selected>TWO-STORY HOUSE · BOMB SITES A / B</option>
+          <option value="bomb">FLAT BOMB TEST · SITES A / B</option>
           <option value="sandbox">GADGET TEST RANGE · NO TIMERS</option>
         </select>
         <div id="defuser-choice-wrap" class="defuser-choice-wrap">
@@ -86,7 +87,7 @@
           </select>
         </div>
       </section>
-      <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">BOMB ROUND</span> <strong>↗</strong></button>
+      <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">TWO-STORY HOUSE</span> <strong>↗</strong></button>
       <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
       <details class="controls-reference" id="controls-reference">
         <summary>CONTROLS &amp; GADGET REFERENCE</summary>
@@ -314,6 +315,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-061"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-062"></script>
 </body>
 </html>

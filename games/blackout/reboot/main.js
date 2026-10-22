@@ -1,7 +1,9 @@
-// BLACKOUT REBOOT V0.25.4 — locked defuser camera and user-supplied disable audio
+// BLACKOUT REBOOT V0.26.0 — functional two-floor house and retained test range
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
+import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-062";
+import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js?v=reboot-062";
+import {createHouseView} from "./house-view.js?v=reboot-062";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-061";
@@ -74,10 +76,10 @@ import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt,
- plantDefuserPosition} from "./bomb-round.js?v=reboot-059";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-060";
+ plantDefuserPosition} from "./bomb-round.js?v=reboot-062";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-062";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
- bombRoundOutcome} from "./bomb-presentation.js?v=reboot-059";
+ bombRoundOutcome} from "./bomb-presentation.js?v=reboot-062";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
 import {createPlantRecording,plantRecordingStage} from "./bomb-plant-audio.js?v=reboot-061";
 
@@ -99,6 +101,7 @@ const crosshair=$("crosshair");
 const ammoText=$("ammo"),weaponStatus=$("weapon-status"),hitsText=$("target-hits"),shotNotice=$("shot-notice"),leanText=$("lean-status"),ballisticsDebug=$("ballistics-debug");
 const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("area-name");
 const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
+const mapLabel=document.querySelector(".siege-map-label");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
 const droneHud=$("drone-hud"),droneMap=$("drone-range-map");
 const droneMapCtx=droneMap.getContext("2d");
@@ -172,13 +175,14 @@ const edgeMat=new THREE.MeshBasicMaterial({color:0x75d2c7,transparent:true,opaci
 const blockMat=new THREE.MeshStandardMaterial({color:0x798e9d,metalness:.22,roughness:.6});
 const wallMat=new THREE.MeshStandardMaterial({color:0x5b7383,metalness:.12,roughness:.85});
 const shootableSolids=[floor];
+const trainingObstacleMeshes=[];
 for(const obstacle of TEST_OBSTACLES){
   const geometry=new THREE.BoxGeometry(obstacle.width,obstacle.height,obstacle.depth);
   const mesh=new THREE.Mesh(geometry,obstacle.id.startsWith("wall")?wallMat:blockMat);
   mesh.position.set(obstacle.x,obstacle.height/2,obstacle.z);
   mesh.castShadow=true;mesh.receiveShadow=true;
   mesh.userData.physicsObstacleId=obstacle.id;
-  scene.add(mesh);shootableSolids.push(mesh);
+  scene.add(mesh);shootableSolids.push(mesh);trainingObstacleMeshes.push(mesh);
   const lines=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),
     new THREE.LineBasicMaterial({color:0x9fced5,transparent:true,opacity:.48}));
   mesh.add(lines);
@@ -191,13 +195,17 @@ for(const [x,z,w,d] of [[0,-30,60,.17],[0,30,60,.17],[-30,0,.17,60],[30,0,.17,60
 }
 const floorBeacons=new THREE.MeshStandardMaterial({color:0x3fe5bb,emissive:0x0d745f,
  emissiveIntensity:.4,roughness:.3});
+const trainingBeaconMeshes=[];
 for(const [x,z] of [[0,0],[-10,-11],[11,-11],[-10,10],[10,10]]){
  const ring=new THREE.Mesh(new THREE.TorusGeometry(.5,.065,6,32),floorBeacons);
  ring.rotation.x=-Math.PI/2;ring.position.set(x,.035,z);scene.add(ring);
+ trainingBeaconMeshes.push(ring);
 }
+const beforeStations=new Set(scene.children);
 const barricade=createBarricadeStation(THREE,scene);
 const softWall=createSoftWallStation(THREE,scene);
 const reinforcement=createReinforcementStation(THREE,scene);
+const trainingStations=scene.children.filter(node=>!beforeStations.has(node));
 const droneViews=[]; // physical model for each deployed drone
 const wireViews=new Map(); // deployed physical barbed-wire models
 let wireState=newWireState();
@@ -235,6 +243,8 @@ const meleeRaycaster=new THREE.Raycaster();
 const bombView=createBombRoundView(THREE,scene);
 const bombInteractionView=createBombInteractionView(THREE,scene,camera);
 const targets=createTargetRange(THREE,scene);
+const houseView=createHouseView(THREE,scene);
+const trainingShootables=shootableSolids.slice();
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
 // Pre-trimmed clips keep planting and postplant synchronized even if the
@@ -250,7 +260,25 @@ let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickup
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
-let gameMode="sandbox",bombState=null;
+let gameMode="sandbox",bombState=null,mapMode="sandbox";
+function setMapMode(next){
+ const house=next==="house";
+ mapMode=house?"house":"sandbox";
+ houseView.group.visible=house;
+ grid.visible=!house;
+ if(mapLabel)mapLabel.textContent=house?"HOUSE FLOORPLAN":"RANGE MAP";
+ for(const item of [...trainingObstacleMeshes,...trainingBeaconMeshes,...trainingStations])
+  item.visible=!house;
+ for(const target of targets)target.group.visible=!house;
+ shootableSolids.splice(0,shootableSolids.length,
+  ...(house?[floor,...houseView.shootables]:trainingShootables));
+}
+function roundSpawn(){
+ if(mapMode!=="house")return initialPlayer();
+ const loc=activeOperator.side==="defend"?HOUSE.defenderSpawn:HOUSE.attackerSpawn;
+ return {...initialPlayer(),...loc};
+}
+function visibleRangeTargets(){return mapMode==="house"?[]:targets.filter(t=>t.downTime<=0);}
 let bombSoundClock=newBombSoundClock();
 let bombCameraLock=null;
 function interactionCameraLock(){
@@ -267,15 +295,17 @@ function chosenDefuserChoice(){return bombChoice?.value==="leave"?"leave":"carry
 function roundObjectiveInteract(){
  if(gameMode!=="bomb"||!bombState||controlMode!=="player"||wireHealth.hp<=0)return false;
  if(bombState.phase==="action"&&activeOperator.side==="attack"&&
-    bombState.defuser.status==="carried"&&roundSiteAt(player))return true;
+    bombState.defuser.status==="carried"&&roundSiteAt(player,bombState.map))return true;
  if(bombState.phase==="postplant"&&activeOperator.side==="defend"&&
+    (bombState.map!=="house"||player.y<1.25)&&
     Math.hypot(player.x-bombState.defuser.x,player.z-bombState.defuser.z)<=BOMB_RULES.disableRadius)
   return true;
  return false;
 }
 function updateDeployMenu(){
- const chosen=playMode.value==="bomb"?"bomb":"sandbox";
- deployModeName.textContent=chosen==="bomb"?"BOMB ROUND":"TEST RANGE";
+ const chosen=playMode.value!=="sandbox"?"bomb":"sandbox";
+ deployModeName.textContent=playMode.value==="house"?"TWO-STORY HOUSE":
+  chosen==="bomb"?"BOMB ROUND · TEST RANGE":"TEST RANGE";
  defuserChoiceWrap.classList.toggle("hidden",chosen!=="bomb"||activeOperator.side!=="attack");
  play.setAttribute("aria-label","Deploy "+activeOperator.name+" to "+
   (chosen==="bomb"?"Bomb Round":"Test Range"));
@@ -321,7 +351,7 @@ function syncRoundUI(){
  bombActionFill.style.width=Math.min(100,Math.max(0,progress*100)).toFixed(1)+"%";
  const actionable=progress>0||nearbyDefuser(b,activeOperator.side,player)||
   (b.phase==="action"&&activeOperator.side==="attack"&&
-   b.defuser.status==="carried"&&Boolean(roundSiteAt(player)))||
+   b.defuser.status==="carried"&&Boolean(roundSiteAt(player,b.map)))||
   (b.phase==="postplant"&&activeOperator.side==="defend"&&
    Math.hypot(player.x-b.defuser.x,player.z-b.defuser.z)<=BOMB_RULES.disableRadius);
  bombHud.classList.toggle("hidden",!locked||controlMode!=="player"||!actionable);
@@ -532,6 +562,8 @@ function resize(){
 resize();
 window.addEventListener("resize",resize);
 function activeDroneObstacles(){
+ if(mapMode==="house")return [...houseView.colliders,
+  ...shieldBlockers(shieldState),...bombSiteBlockers(bombState)];
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),
   ...reinforcement.blockers(),...shieldBlockers(shieldState),...bombSiteBlockers(bombState)];
 }
@@ -1281,7 +1313,8 @@ function droneHudFrame(){
  droneSwitchRight.textContent=cameraSwitch;
  for(let i=0;i<droneChargeMarkers.length;i++)
   droneChargeMarkers[i].classList.toggle("active",i<drone.charges);
- drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+ if(mapMode==="house")drawHouseMinimap(droneMapCtx,drone);
+ else drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
  if(gameMode==="bomb")drawBombRoundMinimap(droneMapCtx,bombState);
 }
 function unlockMessage(){
@@ -1293,9 +1326,10 @@ function unlockMessage(){
 }
 function beginBombRound(){
  plantAudio.sync("off");
+ setMapMode(playMode.value==="house"?"house":"sandbox");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
- gameMode="bomb";bombState=newBombRound({choice});bombSoundClock=newBombSoundClock();
- player=initialPlayer();wireHealth=newWireHealth();
+ gameMode="bomb";bombState=newBombRound({choice,map:mapMode});bombSoundClock=newBombSoundClock();
+ player=roundSpawn();wireHealth=newWireHealth();
  cameraEye=1.65;proneToggle=false;keys.clear();cancelHeldThrow();
  breachVault=null;shieldVault=null;
  bombView.update(bombState);syncRoundUI();
@@ -1309,7 +1343,7 @@ function nextBombRound(){
  plantAudio.sync("off");
  const choice=activeOperator.side==="defend"?"leave":chosenDefuserChoice();
  bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
- player=initialPlayer();wireHealth=newWireHealth();proneToggle=false;
+ player=roundSpawn();wireHealth=newWireHealth();proneToggle=false;
  breachVault=null;shieldVault=null;keys.clear();
  bombView.update(bombState);syncRoundUI();
  shotNotice.textContent="NEW BOMB ROUND "+bombState.round+" · PREPARATION 45S";
@@ -1338,12 +1372,14 @@ updateDeployMenu();
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   plantAudio.sync("off");
+  setMapMode("sandbox");
   if(gameMode!=="sandbox"){
    gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);
   }
   syncRoundUI();enterRange();return;
  }
- if(gameMode==="bomb"&&bombState){
+ if(gameMode==="bomb"&&bombState&&
+   (mapMode==="house")===(playMode.value==="house")){
   if(bombState.phase==="ended")nextBombRound();
   syncRoundUI();enterRange();return;
  }
@@ -1482,7 +1518,7 @@ document.addEventListener("keydown",event=>{
   shotNoticeLeft=1.6;return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   breachVault=null;shieldVault=null;player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
+   breachVault=null;shieldVault=null;player=gameMode==="bomb"?roundSpawn():initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -1502,12 +1538,12 @@ document.addEventListener("keydown",event=>{
    hint.textContent=debugShots?"B TO HIDE AIM / LAST SHOT DIAGNOSTICS":
     "BALLISTICS DEBUG OFF · B TO ENABLE";
  }
- if(event.code==="KeyY"&&!event.repeat&&canUseReinforcement(activeOperator)){
+ if(event.code==="KeyY"&&!event.repeat&&mapMode!=="house"&&canUseReinforcement(activeOperator)){
    const result=reinforcement.remove(player);
    shotNotice.textContent=result.reason;
    shotNoticeLeft=1.4;
  }
- if(event.code==="KeyT"&&!event.repeat){
+ if(event.code==="KeyT"&&!event.repeat&&mapMode!=="house"){
    const result=softWall.reset(player);
    shotNotice.textContent=result.reason;
    shotNoticeLeft=1.45;
@@ -1579,17 +1615,18 @@ function hudFrame(){
  roundClock.textContent=gameMode==="bomb"&&bombState?
    drillClock(bombState.time):drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
  syncRoundUI();
- areaLabel.textContent=areaName(player.x,player.z);
+ areaLabel.textContent=mapMode==="house"?houseRoomAt(player):areaName(player.x,player.z);
  const heading=compassHeading(player.yaw);
  headingLabel.textContent=String(heading).padStart(3,"0")+"°";
  compassArrow.style.transform="translate(-50%,-82%) rotate("+heading+"deg)";
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
- drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
+ if(mapMode==="house")drawHouseMinimap(tacticalMapCtx,player);
+ else drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
  if(gameMode==="bomb")drawBombRoundMinimap(tacticalMapCtx,bombState);
- softWallReadout.classList.toggle("hidden",!softWall.near(player));
+ softWallReadout.classList.toggle("hidden",mapMode==="house"||!softWall.near(player));
  softWallStatusText.textContent=softWall.status;
  softWallRemoved.textContent=String(softWall.removed);
- const reinfNearby=canUseReinforcement(activeOperator)&&reinforcement.near(player);
+ const reinfNearby=mapMode!=="house"&&canUseReinforcement(activeOperator)&&reinforcement.near(player);
  reinforcePrompt.classList.toggle("hidden",!reinfNearby);
  reinforceStatus.textContent=reinforcement.status;
  reinforceAction.textContent=reinforcement.installed?
@@ -1598,7 +1635,7 @@ function hudFrame(){
  softWallReadout.dataset.reinforced=reinforcement.installed?"true":"false";
  barricadeStatusText.textContent=barricade.status;
  barricadeCount.textContent=barricade.remaining+" / "+BARRICADE.boardCount;
- const near=barricade.near(player);
+ const near=mapMode!=="house"&&barricade.near(player);
  barricadePrompt.classList.toggle("hidden",!near);
  if(near){
   const damaged=barricade.status!=="INTACT";
@@ -1623,7 +1660,7 @@ function updateAimProbe(now){
  });
  aimRaycaster.setFromCamera({x:screen.x,y:screen.y},camera);
  aimRaycaster.far=weapons.current.range;
- const active=targets.filter(t=>t.downTime<=0);
+ const active=visibleRangeTargets();
  const intersections=combatIntersections(aimRaycaster,
   [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
@@ -1686,7 +1723,7 @@ function fireShot(shot,sightAligned,now){
  });
  raycaster.setFromCamera({x:screen.x+cone.x,y:screen.y+cone.y},camera);
  raycaster.far=shot.range;
- const activeTargets=targets.filter(t=>t.downTime<=0);
+ const activeTargets=visibleRangeTargets();
  const intersections=combatIntersections(raycaster,
   [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
@@ -1818,7 +1855,7 @@ function animate(now){
     ...(activeOperator.side==="attack"&&wireHealth.hp>0?
      [{id:"striker-player",x:player.x,y:player.y,z:player.z,
        side:"attack",alive:true}]:[]),
-    ...(activeOperator.side==="defend"?targets.filter(t=>t.downTime<=0).map(t=>({
+    ...(activeOperator.side==="defend"?visibleRangeTargets().map(t=>({
      id:t.id,x:t.group.position.x,y:0,z:t.group.position.z,
      side:"attack",alive:true})):[])
    ];
@@ -1841,7 +1878,7 @@ function animate(now){
     ...(activeOperator.side==="defend"&&wireHealth.hp>0?
      [{id:"sentry-player",x:player.x,y:player.y,z:player.z,
        side:"defend",alive:true}]:[]),
-    ...targets.filter(t=>t.downTime<=0).map(t=>({
+    ...visibleRangeTargets().map(t=>({
      id:t.id,x:t.group.position.x,y:0,z:t.group.position.z,
      side:"defend",alive:true}))
    ];
@@ -1989,7 +2026,8 @@ function animate(now){
     }else if(!(gameMode==="bomb"&&bombState&&
     (bombState.phase==="ended"||
      (bombState.phase==="prep"&&activeOperator.side==="attack"))))
-     player=stepPlayer(player,input,dt,obstacles);
+     player=stepPlayer(player,input,dt,obstacles,
+      mapMode==="house"?houseFloorAt:null);
    }
    const nextHealth=tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt);
    if(nextHealth.damage>0){
@@ -2010,7 +2048,7 @@ function animate(now){
    footstepTracker=next.tracker;
    footstepAudio.play(next.events);
    // Hold F to rebuild only while damaged and near the frame.
-   if(wireHealth.hp>0&&!roundObjectiveInteract()&&keys.has("KeyF")&&barricade.near(player)&&
+   if(wireHealth.hp>0&&mapMode!=="house"&&!roundObjectiveInteract()&&keys.has("KeyF")&&barricade.near(player)&&
       barricade.status!=="INTACT"&&!player.sprinting){
      barricadeBuildTime=Math.min(BARRICADE.installSeconds,barricadeBuildTime+dt);
      if(barricadeBuildTime>=BARRICADE.installSeconds){
@@ -2024,7 +2062,7 @@ function animate(now){
    // A different F action, gated by proximity: while stationary at the
    // gypsum station, construct a real metal shield bottom-up for 3 seconds.
    const reinforceStep=reinforcement.step({
-    player,holding:wireHealth.hp>0&&!roundObjectiveInteract()&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,
+    player,holding:wireHealth.hp>0&&mapMode!=="house"&&!roundObjectiveInteract()&&canUseReinforcement(activeOperator)&&keys.has("KeyF"),dt,
     moving:player.moving,sprinting:player.sprinting
    });
    if(reinforceStep.event==="installed"){

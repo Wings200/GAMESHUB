@@ -1,4 +1,4 @@
-// BLACKOUT V0.25.0 · deterministic solo bomb-round rules.
+// BLACKOUT V0.26.0 · deterministic solo bomb-round rules + house site checks.
 // Explicit defuser ownership: carrying vs ground. Never automatically
 // assign a dropped/left package or pretend an absent teammate collected it.
 export const BOMB_RULES=Object.freeze({
@@ -19,19 +19,25 @@ const freshDefuser=choice=>({
  carrier:choice==="leave"?null:"local",
  x:BOMB_RULES.attackerDrop.x,z:BOMB_RULES.attackerDrop.z,site:null
 });
-export function newBombRound({choice="carry",score={attack:0,defend:0},round=1}={}){
- return {mode:"bomb",round,score:{attack:score.attack||0,defend:score.defend||0},
+export function newBombRound({choice="carry",score={attack:0,defend:0},round=1,map="sandbox"}={}){
+ return {mode:"bomb",map,round,score:{attack:score.attack||0,defend:score.defend||0},
   phase:"prep",time:BOMB_RULES.prepSeconds,winner:null,reason:"",
   defuser:freshDefuser(choice),plantProgress:0,disableProgress:0,
   dropProgress:0,selectedSite:null,events:[]};
 }
 export function newFollowingRound(state,choice="carry"){
  return newBombRound({choice,score:state?.score||{attack:0,defend:0},
-  round:(state?.round||0)+1});
+  round:(state?.round||0)+1,map:state?.map||"sandbox"});
 }
-export function roundSiteAt(position){
+export function roundSiteAt(position,map="sandbox"){
  if(!finite(position))return null;
- return BOMB_RULES.sites.find(s=>dist(s,position)<=s.radius)||null;
+ const site=BOMB_RULES.sites.find(s=>dist(s,position)<=s.radius)||null;
+ if(!site||map!=="house")return site;
+ // Site circles cannot leak through solid room walls or vertically through
+ // the upstairs floor. This also protects F-hold objective interactions.
+ if((position.y??0)>1.25||position.z<=-19.62||position.z>=-10.38)return null;
+ return site.id==="A"&&position.x>-9.62&&position.x<-2.38?site:
+  site.id==="B"&&position.x>2.38&&position.x<9.62?site:null;
 }
 // Place the portable terminal in front of the kneeling attacker, rather
 // than teleporting it into their feet at the end of the plant animation.
@@ -79,7 +85,7 @@ export function bombPrompt(state,side,position){
  if(side==="attack"){
   if(nearbyDefuser(state,side,position))return "DEFUSER ON FLOOR · PRESS F TO PICK UP";
   if(state.defuser.status==="ground")return "DEFUSER ON FLOOR · LEFT FOR TEAMMATE";
-  const site=roundSiteAt(position);
+  const site=roundSiteAt(position,state.map);
   if(site&&state.defuser.status==="carried")return "BOMB SITE "+site.id+" · HOLD F TO PLANT";
   return state.defuser.status==="carried"?"CARRYING DEFUSER · HOLD X TO DROP":
    "FIND AND PICK UP THE DEFUSER";
@@ -128,7 +134,7 @@ export function stepBombRound(state,dt,{
      events.push("dropped");dropProgress=0;
     }
    }
-   const site=roundSiteAt(actor);
+   const site=roundSiteAt(actor,next.map);
    if(site&&holdingF&&next.defuser.status==="carried"&&!holdingX){
     plantProgress=next.plantProgress+step;
     if(plantProgress>=BOMB_RULES.plantSeconds-1e-8){
@@ -149,6 +155,7 @@ export function stepBombRound(state,dt,{
  }else if(next.phase==="postplant"){
   let disableProgress=0;
   if(alive&&side==="defend"&&actor&&holdingF&&
+     (next.map!=="house"||(actor.y??0)<1.25)&&
      dist(actor,next.defuser)<=BOMB_RULES.disableRadius){
    disableProgress=next.disableProgress+step;
    if(disableProgress>=BOMB_RULES.disableSeconds-1e-8){

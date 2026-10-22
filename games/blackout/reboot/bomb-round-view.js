@@ -1,7 +1,7 @@
 // BLACKOUT V0.25.6 · tangible bomb bodies block drones and bullets at
 // Sites A and B, clear objective markers, and the real dropped defuser.
 // Bomb props are objectives, not a second deployable gadget or fake team AI.
-import {BOMB_RULES} from "./bomb-round.js?v=reboot-059";
+import {BOMB_RULES} from "./bomb-round.js?v=reboot-062";
 import {BOMB_HARDWARE} from "./bomb-presentation.js?v=reboot-059";
 
 export function drawBombRoundMinimap(ctx,state){

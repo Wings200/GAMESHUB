@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-061",
+  for(const src of ["./reboot/main.js?v=reboot-062",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -176,7 +176,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
   assert.ok(css.includes(selector),"CSS class for reference HUD "+selector);
  }
  assert.equal(html.includes('class="hud-bottom"'),false,"old debug dashboard must be replaced");
- assert.ok(main.includes('from "./physics.js?v=reboot-028"'));
+ assert.ok(main.includes('from "./physics.js?v=reboot-062"'));
+ assert.ok(main.includes('from "./house-layout.js?v=reboot-062"'));
+ assert.ok(main.includes('from "./house-view.js?v=reboot-062"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.ok(main.includes("player=stepPlayer(player,input,dt,"));
@@ -458,7 +460,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
  // V0.25.3: both real bombs occupy space, including the recon drone.
-  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-059"'));
+  assert.ok(main.includes('from "./bomb-presentation.js?v=reboot-062"'));
   assert.ok(main.includes('from "./bomb-interaction-view.js?v=reboot-060"'));
   assert.ok(main.includes('from "./bomb-plant-audio.js?v=reboot-061"'));
  assert.ok(main.includes("bombSiteBlockers(bombState)"));
@@ -511,11 +513,11 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  for(const cue of ["defuser-tick","defuser-tick-urgent","defuser-arming","defuser-disabling","plant-key","defuse-key"])
   assert.ok(read("reboot/legacy-audio.js").includes('case "'+cue+'"'),"missing bomb sound: "+cue);
  // V0.25.0: live round system with explicit defuser ownership/choice.
- assert.ok(read("reboot/bomb-round.js").includes("V0.25.0"));
+ assert.ok(read("reboot/bomb-round.js").includes("V0.26.0"));
  assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.6"));
- assert.ok(main.includes('from "./bomb-round.js?v=reboot-059"'));
-  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-060"'));
- assert.ok(main.includes('bombState=newBombRound({choice})'));
+ assert.ok(main.includes('from "./bomb-round.js?v=reboot-062"'));
+  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-062"'));
+ assert.ok(main.includes('bombState=newBombRound({choice,map:mapMode})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
  assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));
  assert.ok(main.includes('holdingX:controlMode==="player"&&keys.has("KeyX")'));
@@ -739,7 +741,12 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt)"));
  assert.ok(main.includes("wireHealth=newWireHealth()"));
  assert.ok(main.includes('bombState.phase==="prep"&&activeOperator.side==="attack"'));
- assert.ok(main.includes("player=stepPlayer(player,input,dt,obstacles);"));
+ assert.ok(main.includes("player=stepPlayer(player,input,dt,obstacles,"));
+ assert.ok(main.includes('mapMode==="house"?houseFloorAt:null'));
+ assert.ok(main.includes('setMapMode(playMode.value==="house"?"house":"sandbox")'));
+ assert.ok(main.includes('houseView.group.visible=house'));
+ assert.ok(read("index.html").includes('<option value="house" selected>'));
+ assert.ok(read("reboot/house-layout.js").includes('export const HOUSE_BLOCKERS='));
  assert.ok(main.includes("ENEMY BARBED WIRE · -"));
  assert.ok(main.includes("healthNumber.textContent=String(wireHealth.hp)"));
  assert.ok(main.includes("healthCaption.textContent="));
