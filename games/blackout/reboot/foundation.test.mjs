@@ -281,7 +281,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
  assert.ok(main.includes('utilityName[i].textContent=row.name.toUpperCase()'));
- assert.ok(main.includes('utilityStatus[i].textContent=row.gadgetId==="claymore"?'));
+ assert.ok(main.includes('utilityStatus[i].textContent=row.gadgetId==="observation-blocker"?'));
+ assert.ok(main.includes('row.gadgetId==="claymore"?'));
  assert.ok(main.includes('row.gadgetId==="barbed-wire"?'));
  assert.ok(main.includes('refreshUtilityHud();\nfunction resize(){'),
    "initial HUD must render before first player deployment");
