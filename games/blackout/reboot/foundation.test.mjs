@@ -484,7 +484,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
    "bomb-action","bomb-action-fill"])
    assert.ok(html.includes('id="'+id+'"'),"Bomb round UI missing "+id);
  assert.ok(html.includes("LEAVE DEFUSER FOR TEAM"));
- assert.ok(html.includes("HOLD X"));
+ assert.ok(html.includes("Hold X"));
  assert.ok(css.includes(".deploy-options"));
  assert.ok(css.includes(".bomb-objective-mini"));
  assert.ok(css.includes(".bomb-interaction"));
@@ -660,7 +660,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/blast-policy.js").includes('["IMPACT","C4","SOFT BREACH","HARD BREACH"]'));
  assert.ok(html.includes("Frag Grenades"));
  assert.ok(read("reboot/blast-policy.js").includes("BARRICADE_BLASTS"));
- assert.ok(html.includes("but cannot damage gypsum walls"));
+ assert.ok(read("reboot/blast-policy.js").includes("SOFT_WALL_BLASTS"));
  assert.ok(main.includes("createNitroBlast(THREE,scene,blast)"));
  assert.ok(main.includes("barricade.blastAt(blast)"));
  assert.ok(main.includes('gypsumBlast:()=>label==="HARD BREACH"?'));
