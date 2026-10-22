@@ -17,7 +17,7 @@ test("catalog has all requested six attacking and six defending gadgets",()=>{
  assert.equal(secondaryOptions("unknown").length,0);
  assert.equal(gadgetById("not-a-gadget"),null);
  assert.deepEqual(SECONDARY_GADGETS.filter(g=>g.implemented).map(g=>g.id),
-  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","observation-blocker","barbed-wire","proximity-alarm"],"only eleven actually functional gadgets are marked ready");
+  ["frag","flash","smoke","soft-breach","hard-breach","claymore","c4","impact","observation-blocker","barbed-wire","proximity-alarm","deployable-shield"],"all 12 gadgets now have functioning game mechanics");
 });
 test("Striker and Sentry have independent two-slot plans; changes persist across team switches",()=>{
  const striker=operatorById("striker"),sentry=operatorById("sentry");
@@ -238,4 +238,19 @@ test("proximity alarms selectable in either Sentry G/MMB slot but not attack or 
  assert.equal(planSecondary(plan,striker,0,"proximity-alarm"),plan);
  const next=planSecondary(plan,sentry,0,"observation-blocker");
  assert.deepEqual(plannedSecondaries(next,sentry),["observation-blocker","proximity-alarm"]);
+});
+
+test("final Deployable Shield is READY for either Sentry slot but denied to Striker",()=>{
+ const sentry=operatorById("sentry"),striker=operatorById("striker");
+ let plan=planSecondary(newSecondaryPlans(),sentry,1,"deployable-shield");
+ assert.equal(gadgetById("deployable-shield").implemented,true);
+ assert.equal(planIsFieldReady(plan,sentry),true);
+ assert.equal(utilityHudRows(plan,sentry)[1].status,"READY · LIVE GADGET");
+ assert.equal(utilityKeyPreview(plan,sentry,"KeyG"),
+  "DEPLOYABLE SHIELDS · LIVE GADGET · USE IN RANGE");
+ assert.equal(planSecondary(plan,sentry,0,"deployable-shield"),plan);
+ assert.equal(planSecondary(plan,striker,0,"deployable-shield"),plan);
+ const alongside=planSecondary(plan,sentry,0,"proximity-alarm");
+ assert.deepEqual(plannedSecondaries(alongside,sentry),["proximity-alarm","deployable-shield"]);
+ assert.equal(SECONDARY_GADGETS.filter(g=>g.implemented).length,12);
 });

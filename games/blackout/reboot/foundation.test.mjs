@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
- for(const src of ["./reboot/main.js?v=reboot-051",
+ for(const src of ["./reboot/main.js?v=reboot-052",
    "./reboot/style.css?v=reboot-040"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -274,9 +274,9 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-051"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-052"'));
  assert.ok(main.includes("createOperatorPicker("));
- assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-051"'));
+ assert.ok(main.includes('from "./secondary-loadout.js?v=reboot-052"'));
  assert.ok(main.includes('onPlanChange(){'));
  assert.ok(main.includes('refreshUtilityHud(); // Always reflect THIS operator\'s special/normal gadget plan.'));
  assert.ok(main.includes('utilityHudRows(operatorPicker.plans,activeOperator)'));
@@ -300,10 +300,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.14: design plans are distinct from functioning equipment.
  assert.ok(read("reboot/operator-select.js").includes("planSecondary(plans,op,index,value)"));
  assert.ok(html.includes('id="operator-plan-status"'));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(css.includes(".operator-gadget-select"));
  assert.ok(css.includes(".operator-plan-status"));
- assert.ok(main.includes('from "./operator-select.js?v=reboot-051"'));
+ assert.ok(main.includes('from "./operator-select.js?v=reboot-052"'));
  assert.equal(main.includes("throwPlannedGadget"),false,
   "planning UI must not invent gameplay for unimplemented gadget concepts");
 
@@ -365,7 +365,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "wire-destroy"'));
  assert.ok(main.includes('wireSoundTracker=newWireSoundTracker()'));
  assert.ok(html.includes("enemy-only contact damage"));
- assert.ok(html.includes("ELEVEN FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
  // V0.16: C4 must be real thrown, simulated, detonated, physically
  // changing model, HP, wooden boards and gypsum tiles.
  assert.ok(main.includes('from "./nitro.js?v=reboot-036"'));
@@ -451,11 +451,35 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("view.pickupTarget,...shootableSolids"));
  assert.ok(main.includes("hits[0]?.object!==view.pickupTarget"));
  assert.ok(main.includes("keys.delete(\"KeyF\")"));
- assert.ok(main.includes("if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed||proximityPickupKeyConsumed)return"));
+ assert.ok(main.includes("if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed||proximityPickupKeyConsumed||shieldPickupKeyConsumed)return"));
  assert.ok(main.includes("reinforcement.step({player,holding:false,dt:0})"));
  assert.ok(read("reboot/nitro-view.js").includes("pickupTarget.userData.c4PickupId=device.id"));
  assert.equal(read("reboot/impact.js").includes("radius:2.0"),true);
  // V0.18.3 · FRAG still splinters wood barricades but NEVER breaches gypsum.
+ // V0.24.0: all twelve gadgets are live; final deployable shield has
+ // ballistic cover, physical movement, preview, vaulting and explosion rules.
+ assert.ok(main.includes('from "./deployable-shield.js?v=reboot-052"'));
+ assert.ok(main.includes('from "./deployable-shield-view.js?v=reboot-052"'));
+ assert.ok(main.includes('from "./shield-vault.js?v=reboot-052"'));
+ assert.ok(main.includes("shieldState=newShieldState()"));
+ assert.ok(main.includes("shieldPreviewView=createShieldPlacementPreview(THREE,scene)"));
+ assert.ok(main.includes("shieldPreviewView.update(player,shieldState,activeDroneObstacles())"));
+ assert.ok(main.includes("placeShield(shieldState,player,activeDroneObstacles())"));
+ assert.ok(main.includes("tryPickupCurrentShield()"));
+ assert.ok(main.includes("pickupShield(shieldState,id,player)"));
+ assert.ok(main.includes("blastShields(shieldState,blast,label)"));
+ assert.ok(main.includes("...reinforcement.blockers(),...shieldBlockers(shieldState)"));
+ assert.ok(main.includes("beginShieldVault(player,shieldState,activeDroneObstacles())"));
+ assert.ok(main.includes("stepShieldVault(player,shieldVault,dt,obstacles)"));
+ assert.ok(main.includes('...shootableShields()'));
+ assert.ok(main.includes('shieldPickupKeyConsumed=true'));
+ assert.ok(main.includes("shieldHit=Number.isInteger"));
+ assert.ok(read("reboot/secondary-loadout.js").includes('role:"Portable cover",implemented:true'));
+ assert.ok(read("reboot/deployable-shield-view.js").includes("TRANSPARENT BULLETPROOF VIEWING WINDOW"));
+ assert.ok(read("reboot/deployable-shield-view.js").includes("deployableShieldBallistic=true"));
+ assert.ok(read("reboot/shield-vault.js").includes("canOccupy(over.x,SHIELD_VAULT.lift"));
+ assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.23.0: Proximity Alarms use actual wall/floor mount and live alerts.
  assert.ok(main.includes('from "./proximity-alarm.js?v=reboot-051"'));
  assert.ok(main.includes('from "./proximity-alarm-view.js?v=reboot-051"'));
@@ -473,8 +497,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/legacy-audio.js").includes('case "proximity":'));
  assert.ok(read("reboot/proximity-alarm-view.js").includes("DEFENDER-ONLY PROXIMITY ALARM DETECTION RANGE"));
  assert.ok(read("reboot/proximity-alarm.js").includes("wallAlarmAim(player,obstacles)"));
- assert.ok(html.includes("ELEVEN FUNCTIONAL SECONDARY GADGETS"));
- assert.ok(html.includes("Only Deployable Shields remain unimplemented."));
+ assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.22.0: camera-only observation blockers truly hide recon visuals.
  assert.ok(main.includes('from "./observation-blocker.js?v=reboot-050"'));
  assert.ok(main.includes('from "./observation-blocker-view.js?v=reboot-050"'));
@@ -487,8 +511,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("view.setMode(controlMode,result.device,activeOperator.side)"));
  assert.ok(main.includes("hitObservationBlocker(obsId,1)"));
  assert.ok(main.includes("hitObservationBlocker(observationId,OBS_BLOCKER.health)"));
- assert.ok(main.includes("...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms()"));
- assert.ok(main.includes("...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms()]"));
+ assert.ok(main.includes("...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()"));
+ assert.ok(main.includes("...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()]"));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Camera vision denial",implemented:true'));
  assert.ok(read("reboot/observation-blocker-view.js").includes('screenGroup.visible=blockerScreenVisible(state,mode)'));
  assert.ok(read("reboot/observation-blocker-view.js").includes('outline.group.visible=Boolean(state?.hp>0&&mode==="player"&&side==="defend")'));
@@ -506,8 +530,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(html.includes("HOLD the selected G or MMB"));
  assert.ok(read("reboot/observation-blocker-view.js").includes("depthWrite:true"));
  assert.ok(read("reboot/observation-blocker.js").includes('viewMode==="drone"'));
- assert.ok(html.includes("ELEVEN FUNCTIONAL SECONDARY GADGETS"));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.21.0: real Claymores preserve laser, trigger, directional HP and F pickup.
  assert.ok(main.includes('from "./claymore.js?v=reboot-048"'));
  assert.ok(main.includes('from "./claymore-view.js?v=reboot-048"'));
@@ -525,8 +549,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Directional trap",implemented:true'));
  assert.ok(read("reboot/claymore-view.js").includes('new THREE.Line('));
  assert.ok(read("reboot/claymore.js").includes("rayObstacleDistance"));
- assert.ok(html.includes("ELEVEN FUNCTIONAL SECONDARY GADGETS"));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("TWELVE FUNCTIONAL SECONDARY GADGETS"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.20.1: hard breach must create raised vault windows, not doorways.
  assert.ok(main.includes('from "./breach-vault.js?v=reboot-046"'));
  assert.ok(main.includes("beginBreachVault(player,opening,activeDroneObstacles())"));
@@ -563,7 +587,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(read("reboot/reinforcement.js").includes('add("lintel"'));
  assert.ok(read("reboot/reinforcement.js").includes("bottom:.70,top:2.0"));
  assert.ok(html.includes("Look directly at the mounted charge and press F to pick it up"));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  // V0.19.0: physical soft breach charges with recoverable, mounted inventory.
  assert.ok(main.includes('from "./soft-breach.js?v=reboot-044"'));
  assert.ok(main.includes('from "./soft-breach-view.js?v=reboot-044"'));
@@ -579,7 +603,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("softBreachPickupKeyConsumed=true"));
  assert.ok(read("reboot/secondary-loadout.js").includes('role:"Soft wall destruction",implemented:true'));
  assert.ok(html.includes("F to recover and reuse"));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(main.includes('from "./blast-policy.js?v=reboot-045"'));
  assert.ok(main.includes("resolveStructuralBlast(label,{"));
  assert.ok(main.includes("woodBlast:()=>barricade.blastAt(blast)"));
@@ -634,7 +658,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("meleeView.cancel()"));
  assert.ok(main.includes('event.code==="KeyH"'));
  assert.ok(html.includes("WIRE V TO BREAK"));
- assert.ok(html.includes("One defender gadget option still awaits physical implementation"));
+ assert.ok(html.includes("All twelve secondary gadgets are now implemented."));
  assert.ok(read("reboot/barricade-view.js").includes("barricadeMeleeDamage(stateRef.current)"));
 
  assert.ok(main.includes('wireState.charges+"/"+WIRE.charges+" LEFT"'));

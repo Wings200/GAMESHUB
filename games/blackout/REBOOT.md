@@ -1,4 +1,4 @@
-# BLACKOUT — Clean Reboot V0.23.0
+# BLACKOUT — Clean Reboot V0.24.0
 
 **2026-10-20 — Scope: BLACKOUT only.** REDLINE, GAMESHUB, saved garage/account data and production Cloudflare Worker are left untouched.
 
@@ -9,6 +9,13 @@ User requested starting again from the beginning, without more incremental repai
 The old game is preserved in Git commit history. Its working-tree files have been retired or removed; the old shared Worker imports remain as unused compatibility files until REDLINE's shared Worker can be safely separated. **Do not treat these compatibility files as active BLACKOUT V0.1 features.** No existing player data has been reset.
 
 ## Current playable contract
+
+**2026-10-21 / V0.24.0 · FINAL GADGET: REAL DEPLOYABLE SHIELDS, 12/12 SECONDARY GADGETS**
+- Sentry can equip two real Deployable Shields in either MMB or G. Hold the assigned key to aim a true-size green/red 3D placement model at the floor in front; release to deploy if clear. Shields snap to cardinal directions to exactly match the Training Range's axis-aligned physics colliders; blocked, airborne or overlapping placement consumes no charge.
+- The mesh has a solid armored base, heavy side/top framing, three **transparent viewing windows** and feet. A separate invisible full-face ballistic mesh is included in first-person shooting and melee raycasts; it stops ALL bullets, including those aimed through the transparent windows, without adding bullet holes or taking gun damage. The solid shield is also added to normal player walking, jumping, drone movement, thrown gadget collision, and proximity/laser occlusion using shared `activeDroneObstacles()`. Both placement and blast/removal immediately refresh physical obstacles.
+- **Space shield vault**: approach and face the shield; collision-checked 0.88s animation raises the crouched player above the steel, crosses it, and lands on the other side. Normal walking and ordinary jump cannot cross. The existing smaller Hard Breach hole Space vault still works independently.
+- **F pickup** requires crosshair aim, nearby ground player, and unobstructed line-of-sight. It removes the rendered shield and solid collider and refunds one charge. C4, Impact and Frag blasts and appropriate Soft/Hard Breach blasts destroy placed shields without refunds. Flash, smoke, ordinary guns, melee and Claymores do not remove shield armor.
+- Includes isolated tests for 2 charges, side gating, rotated axis-aligned colliders, overlap/out-of-range rejection, real bulletproof geometry, 3 windows, preview control, pickup, precise explosion radius, vault path with solid AABBs, and historical regression tests. REDLINE untouched; visual browser confirmation still needed.
 
 **2026-10-21 / V0.23.0 · PHYSICAL FLOOR/WALL PROXIMITY ALARMS + ENEMY-ONLY SOUND DETECTION**
 - Eleventh functional secondary gadget: Sentry's two **Proximity Alarms** in MMB/G. Single tap deploys a modeled ground unit 1.45m ahead, or targets a nearby actual vertical physics-obstacle face within 3m using crosshair yaw/pitch and segment-versus-AABB ray/normal geometry. Wall-mounted units sit outside the wall surface and orient toward the player. No placing through obstacles or in invalid ground, and charge count is server-independent sandbox state.

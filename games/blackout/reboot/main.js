@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.23.0 — wall/floor Proximity Alarms with enemy beep-beep-BEEP!
+// BLACKOUT REBOOT V0.24.0 — real bulletproof Deployable Shields with Space vault, preview, F pickup and explosive destruction
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-028";
@@ -23,8 +23,8 @@ import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
-import {createOperatorPicker} from "./operator-select.js?v=reboot-051";
-import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-051";
+import {createOperatorPicker} from "./operator-select.js?v=reboot-052";
+import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-052";
 import {WIRE,newWireState,placeWire,damageWire,wireTerrainMultiplier,newWireHealth,tickWireHealth} from "./barbed-wire.js?v=reboot-030";
 import {createWireView} from "./barbed-wire-view.js?v=reboot-029";
 import {newWireSoundTracker,stepWireSounds,wirePunchSound} from "./wire-sound.js?v=reboot-031";
@@ -66,6 +66,11 @@ import {PROXIMITY,newProximityState,placeProximity,pickupProximity,
  damageProximity,liveProximity,tickProximity}
  from "./proximity-alarm.js?v=reboot-051";
 import {createProximityView} from "./proximity-alarm-view.js?v=reboot-051";
+import {DEPLOYABLE_SHIELD,newShieldState,placeShield,pickupShield,
+ shieldBlockers,liveShields,blastShields} from "./deployable-shield.js?v=reboot-052";
+import {createShieldView,createShieldPlacementPreview}
+ from "./deployable-shield-view.js?v=reboot-052";
+import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 
 const $=id=>document.getElementById(id);
@@ -196,6 +201,9 @@ const observationBlockerViews=new Map();
 const observationPreviewView=createObservationPlacementPreviewView(THREE,scene);
 let proximityState=newProximityState();
 const proximityViews=new Map();
+let shieldState=newShieldState();
+const shieldViews=new Map();
+const shieldPreviewView=createShieldPlacementPreview(THREE,scene);
 let fragState=newFragState();
 const fragViews=new Map();
 let flashState=newFlashState(),flashEffect=newFlashEffect();
@@ -213,11 +221,11 @@ const shotAudio=new GameAudio();
 const raycaster=new THREE.Raycaster();
 const aimRaycaster=new THREE.Raycaster();
 const keys=new Set();
-let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false,observationPickupKeyConsumed=false,proximityPickupKeyConsumed=false;
+let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickupKeyConsumed=false,claymorePickupKeyConsumed=false,observationPickupKeyConsumed=false,proximityPickupKeyConsumed=false,shieldPickupKeyConsumed=false;
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
-let breachVault=null,lastHardBreachOpenings=[];
+let breachVault=null,shieldVault=null,lastHardBreachOpenings=[];
 let cameraEye=1.65;
 let locked=false,started=false;
 let proneToggle=false;
@@ -246,6 +254,7 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
   cancelHeldThrow();
   syncObservationBlockerViews(); // Defender coverage visible only to Sentry.
   syncProximityViews(); // Proximity range overlays only on defense.
+  shieldVault=null; // swapping operator cancels in-progress vault.
   // Any pending construction must end when operator/team changes.
   // Never carry a defender reinforcement interaction into attack.
   reinforcement.step({player,holding:false,dt:0});
@@ -268,7 +277,10 @@ function refreshUtilityHud(){
  utilityHud.setAttribute("aria-label",activeOperator.name+" special middle-click and normal G, design previews");
  rows.forEach((row,i)=>{
   utilityName[i].textContent=row.name.toUpperCase();
-  utilityStatus[i].textContent=row.gadgetId==="proximity-alarm"?
+  utilityStatus[i].textContent=row.gadgetId==="deployable-shield"?
+   "LIVE · "+shieldState.charges+"/"+DEPLOYABLE_SHIELD.charges+
+    " LEFT · "+liveShields(shieldState).length+" DEPLOYED":
+   row.gadgetId==="proximity-alarm"?
    "LIVE · "+proximityState.charges+"/"+PROXIMITY.charges+
     " LEFT · "+liveProximity(proximityState).length+" DEPLOYED":
    row.gadgetId==="observation-blocker"?
@@ -307,7 +319,9 @@ function refreshUtilityHud(){
   utilitySlots[i].setAttribute("aria-label",
    activeOperator.name+" "+row.role.toLowerCase()+" gadget ("+row.key+"): "+row.name+"; "+row.status);
  });
- utilityHudNote.textContent=rows.some(row=>row.gadgetId==="proximity-alarm")?
+ utilityHudNote.textContent=rows.some(row=>row.gadgetId==="deployable-shield")?
+  activeOperator.name+" · HOLD G/MMB TO PREVIEW · SPACE VAULT · F PICK UP · EXPLOSIVES DESTROY":
+  rows.some(row=>row.gadgetId==="proximity-alarm")?
   activeOperator.name+" · "+PROXIMITY.range+"M DETECTION · BEEP BEEP BEEP! · WALL/FLOOR · F PICKUP":
   rows.some(row=>row.gadgetId==="observation-blocker")?
   activeOperator.name+" · "+OBS_BLOCKER.screenWidth.toFixed(1)+"M WIDE × "+
@@ -341,10 +355,15 @@ function resize(){
 resize();
 window.addEventListener("resize",resize);
 function activeDroneObstacles(){
- return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),...reinforcement.blockers()];
+ return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),
+  ...reinforcement.blockers(),...shieldBlockers(shieldState)];
 }
 function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
+ // Shield armor stays bulletproof but selected blasts destroy it.
+ const shieldResult=blastShields(shieldState,blast,label);
+ shieldState=shieldResult.state;
+ if(shieldResult.destroyed.length){syncShieldViews();refreshUtilityHud();}
  shotAudio.playAt("gadget-blast",blast.x,blast.z,player.x,player.z,player.yaw);
  // Explosions still damage BOTH sides and targets, including the thrower.
  // FRAG damages wood barricades but never gypsum soft walls. IMPACT
@@ -466,6 +485,39 @@ function syncObservationBlockerViews(){
   if(device)view.setMode(controlMode,device,activeOperator.side);
   else{view.dispose();observationBlockerViews.delete(id);}
  }
+}
+function syncShieldViews(){
+ for(const [id,view] of shieldViews){
+  if(!liveShields(shieldState).some(d=>d.id===id)){
+   view.dispose();shieldViews.delete(id);
+  }
+ }
+}
+function shootableShields(){
+ return liveShields(shieldState).map(d=>shieldViews.get(d.id)?.ballistic).filter(Boolean);
+}
+function tryPickupCurrentShield(){
+ if(activeOperator.side!=="defend"||controlMode!=="player")return false;
+ camera.updateMatrixWorld(true);
+ const ray=new THREE.Raycaster();
+ ray.setFromCamera({x:0,y:0},camera);
+ ray.far=DEPLOYABLE_SHIELD.pickupRange+1;
+ for(const view of shieldViews.values())view.root.updateMatrixWorld(true);
+ const targets=liveShields(shieldState)
+  .map(d=>shieldViews.get(d.id)?.pickupTarget).filter(Boolean);
+ if(!targets.length)return false;
+ const hits=ray.intersectObjects([...targets,...shootableSolids,
+  ...barricade.shootables(),...softWall.shootables(),
+  ...reinforcement.shootables()],false);
+ const id=hits[0]?.object?.userData?.deployableShieldPickupId;
+ if(!Number.isInteger(id))return false;
+ const result=pickupShield(shieldState,id,player);
+ if(!result.device)return false;
+ shieldState=result.state;syncShieldViews();refreshUtilityHud();
+ keys.delete("KeyF");barricadeBuildTime=0;
+ reinforcement.step({player,holding:false,dt:0});
+ shotNotice.textContent=result.reason;shotNoticeLeft=1.65;
+ return true;
 }
 function syncProximityViews(){
  for(const [id,view] of proximityViews){
@@ -649,7 +701,7 @@ const throwableConfigs={
 };
 function cancelHeldThrow(){
  heldThrowCode=null;lastThrowPreviewAt=-Infinity;
- throwPreviewView.hide();observationPreviewView.hide();
+ throwPreviewView.hide();observationPreviewView.hide();shieldPreviewView.hide();
 }
 function gadgetCharges(gadgetId){
  switch(gadgetId){
@@ -668,6 +720,12 @@ function startGadgetInput(code){
  const id=row.gadgetId;
  // Observation Blocker has a much larger projection and must show the
  // exact area BEFORE using ammo. Hold assigned G/MMB; release to plant.
+ if(id==="deployable-shield"&&activeOperator.side==="defend"&&
+    shieldState.charges>0){
+  heldThrowCode=code;lastThrowPreviewAt=-Infinity;
+  shotNotice.textContent="SHIELD PLACEMENT PREVIEW · RELEASE "+row.key+" TO SET BULLETPROOF COVER";
+  shotNoticeLeft=1.5;updateHeldThrowPreview(performance.now());return;
+ }
  if(id==="observation-blocker"&&activeOperator.side==="defend"&&
     observationBlockerState.charges>0){
   heldThrowCode=code;lastThrowPreviewAt=-Infinity;
@@ -702,6 +760,11 @@ function updateHeldThrowPreview(now){
  if(now-lastThrowPreviewAt<45)return; // keep preview inexpensive during aiming
  lastThrowPreviewAt=now;
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(r=>r.code===heldThrowCode);
+ if(row?.gadgetId==="deployable-shield"&&activeOperator.side==="defend"){
+  shieldPreviewView.update(player,shieldState,activeDroneObstacles());
+  throwPreviewView.hide();observationPreviewView.hide();return;
+ }
+ shieldPreviewView.hide();
  if(row?.gadgetId==="observation-blocker"&&activeOperator.side==="defend"){
   const clearance=canPlaceObservationBlocker(observationBlockerState,player,activeDroneObstacles());
   observationPreviewView.update(clearance.position||blockerPosition(player),clearance.ok);
@@ -718,6 +781,15 @@ function updateHeldThrowPreview(now){
 function usePlannedGadget(code){
  const row=utilityHudRows(operatorPicker.plans,activeOperator).find(item=>item.code===code);
  if(!row)return;
+ if(row.gadgetId==="deployable-shield"&&activeOperator.side==="defend"){
+  const result=placeShield(shieldState,player,activeDroneObstacles());
+  if(result.device){
+   shieldState=result.state;
+   shieldViews.set(result.device.id,createShieldView(THREE,scene,result.device));
+   shotAudio.play("gadget-throw");refreshUtilityHud();
+  }
+  shotNotice.textContent=result.reason;shotNoticeLeft=1.75;return;
+ }
  if(row.gadgetId==="proximity-alarm"&&activeOperator.side==="defend"){
   const result=placeProximity(proximityState,player,activeDroneObstacles());
   if(result.device){
@@ -882,13 +954,17 @@ function strikeMelee(now){
  meleeRaycaster.setFromCamera({x:0,y:0},camera);
  meleeRaycaster.far=MELEE.range;
  const solids=[...shootableSolids,...barricade.shootables(),
-  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms()];
+  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()];
  const hits=combatIntersections(meleeRaycaster,solids,[]);
  const selected=selectedMeleeTarget(hits);
  let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
+ const shieldId=hits[0]?.object?.userData?.deployableShieldId;
  const proxId=hits[0]?.object?.userData?.proximityAlarmId;
  const observationId=hits[0]?.object?.userData?.observationBlockerId;
- if(Number.isInteger(proxId)){
+ if(Number.isInteger(shieldId)){
+  description="BULLETPROOF SHIELD · MELEE CANNOT DESTROY IT";
+  shotAudio.play("impact");
+ }else if(Number.isInteger(proxId)){
   const result=hitProximityAlarm(proxId,PROXIMITY.hp);
   description=result.destroyed?"PROXIMITY ALARM PUNCHED · DESTROYED":
    "PROXIMITY ALARM STRUCK";
@@ -926,6 +1002,7 @@ function setControlMode(nextMode){
  // Never enter a recon feed as a defender, including after switching teams
  // while the camera was open and the Testing Range was paused.
  if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
+ if(nextMode!=="player")shieldVault=null;
  controlMode=nextMode;
  syncProximityViews();
  syncObservationBlockerViews(); // projected screens only render in drone mode
@@ -1053,7 +1130,7 @@ document.addEventListener("pointerlockchange",()=>{
  menu.classList.toggle("hidden",locked);
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
- if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
+ if(!locked){cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  lastTime=performance.now();
 });
 document.addEventListener("pointerlockerror",()=>{
@@ -1091,7 +1168,10 @@ document.addEventListener("keydown",event=>{
   return; // No player guns, wall rebuilding or crouching during drone control.
  }
  if(event.code==="KeyF"){
-  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed||proximityPickupKeyConsumed)return;
+  if(c4PickupKeyConsumed||softBreachPickupKeyConsumed||hardBreachPickupKeyConsumed||claymorePickupKeyConsumed||observationPickupKeyConsumed||proximityPickupKeyConsumed||shieldPickupKeyConsumed)return;
+  if(!event.repeat&&tryPickupCurrentShield()){
+   shieldPickupKeyConsumed=true;return;
+  }
   if(!event.repeat&&tryPickupCurrentProximity()){
    proximityPickupKeyConsumed=true;return;
   }
@@ -1116,7 +1196,15 @@ document.addEventListener("keydown",event=>{
    return;
   }
  }
- if(event.code==="Space"&&!event.repeat&&!breachVault){
+ if(event.code==="Space"&&!event.repeat&&!breachVault&&!shieldVault){
+  const result=beginShieldVault(player,shieldState,activeDroneObstacles());
+  if(result.vault){
+   shieldVault=result.vault;keys.delete("Space");
+   shotNotice.textContent="DEPLOYABLE SHIELD VAULT · CROSSING COVER";
+   shotNoticeLeft=1.4;return;
+  }
+ }
+ if(event.code==="Space"&&!event.repeat&&!breachVault&&!shieldVault){
   // Select the nearest ACTUAL opening. First charge's hole must never
   // steal Space from a second one on the same reinforced wall.
   const openings=reinforcement.installed?
@@ -1146,7 +1234,7 @@ document.addEventListener("keydown",event=>{
   return;
  }
  if(event.code==="KeyP"&&!event.repeat){
-   breachVault=null;player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
+   breachVault=null;shieldVault=null;player=initialPlayer();wireHealth=newWireHealth();wireSoundTracker=newWireSoundTracker();flashEffect=newFlashEffect();cameraEye=1.65;proneToggle=false;leanTarget=0;leanAmount=0;footstepTracker=newFootstepTracker();hint.textContent="POSITION / HEALTH RESET · DEPLOYED WIRE REMAINS.";
  }
  if((event.code==="ControlLeft"||event.code==="ControlRight"||event.code==="KeyZ")&&!event.repeat){
    proneToggle=!proneToggle;
@@ -1189,7 +1277,7 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
- if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;}
+ if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
 document.addEventListener("mousedown",event=>{
@@ -1218,7 +1306,7 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1286,7 +1374,7 @@ function updateAimProbe(now){
  aimRaycaster.far=weapons.current.range;
  const active=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(aimRaycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms()],active.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()],active.map(t=>t.group));
  const outcome=firstHitType(intersections,active);
  liveAimReadout=describeAim(outcome,outcome.hit?.object?.userData?.hitZone||
    (outcome.kind==="target"?"body":""));
@@ -1297,6 +1385,10 @@ function markDebugShot(outcome,screen){
  const distance=outcome.hit?outcome.hit.distance:raycaster.far;
  const zone=outcome.hit?.object?.userData?.hitZone||"";
  const wood=outcome.hit?.object?.userData?.barricadeIndex;
+ if(outcome.hit?.object?.userData?.deployableShieldBallistic){
+  lastShotReadout="DEPLOYABLE SHIELD · BULLET BLOCKED INCLUDING VIEWING WINDOW";
+  return;
+ }
  if(outcome.hit?.object?.userData?.reinforcementShield){
   lastShotReadout="REINFORCED STEEL · BULLET BLOCKED · GYPSUM UNCHANGED";
   return;
@@ -1342,10 +1434,11 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=targets.filter(t=>t.downTime<=0);
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
+ const shieldHit=Number.isInteger(outcome.hit?.object?.userData?.deployableShieldId);
  const proxId=outcome.hit?.object?.userData?.proximityAlarmId;
  const proxHit=Number.isInteger(proxId)?hitProximityAlarm(proxId,1):{handled:false};
  const obsId=outcome.hit?.object?.userData?.observationBlockerId;
@@ -1354,10 +1447,13 @@ function fireShot(shot,sightAligned,now){
    barricade.hitBoard(outcome.hit):{handled:false};
  const metalHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?reinforcement.steelImpact(outcome.hit):false;
  const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled&&!proxHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled)
+ if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(proxHit.handled){
+ if(shieldHit){
+   shotNotice.textContent="BULLETPROOF SHIELD BLOCKED ROUND · WINDOWS ARE BULLETPROOF";
+   shotNoticeLeft=1.15;shotAudio.play("impact");
+  }else if(proxHit.handled){
    shotNotice.textContent=proxHit.destroyed?
     "PROXIMITY ALARM DESTROYED · SILENCED":
     "PROXIMITY ALARM HIT · FIRE AGAIN";
@@ -1609,7 +1705,15 @@ function animate(now){
    // Vaulting is a special collision-checked crouched movement over the sill.
    if(wireHealth.hp>0){
     const obstacles=activeDroneObstacles();
-    if(breachVault){
+    if(shieldVault){
+     const next=stepShieldVault(player,shieldVault,dt,obstacles);
+     player=next.player;shieldVault=next.vault;
+     if(next.event==="landed"||next.event==="blocked"){
+      shotNotice.textContent=next.event==="landed"?
+       "SHIELD VAULT COMPLETE":"SHIELD VAULT BLOCKED · COLLISION";
+      shotNoticeLeft=1.4;
+     }
+    }else if(breachVault){
      const next=stepBreachVault(player,breachVault,dt,obstacles);
      player=next.player;breachVault=next.vault;
      if(next.event==="landed"||next.event==="blocked"){
@@ -1625,7 +1729,7 @@ function animate(now){
      "ELIMINATED BY ENEMY BARBED WIRE · PRESS P TO RESPAWN":
      "ENEMY BARBED WIRE · -"+nextHealth.damage+" HP";
     shotNoticeLeft=nextHealth.hp===0?5:1;
-    if(nextHealth.hp===0){breachVault=null;firing=false;aimHeld=false;keys.clear();}
+    if(nextHealth.hp===0){breachVault=null;shieldVault=null;firing=false;aimHeld=false;keys.clear();}
    }
    wireHealth=nextHealth;
    const wireCue=stepWireSounds(wireSoundTracker,wireState,before,player,
@@ -1747,5 +1851,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.23.0 proximity alarm wall/floor, 4.35m defender radar, beep-beep-BEEP",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.24.0 shields bulletproof, placement preview, real collision, Space vault, explosive destruction",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

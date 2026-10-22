@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   foundation:
-    name: Reboot V0.23.0 · Proximity Alarms floor/wall, beeps, enemy detection, F pickup
+    name: Reboot V0.24.0 · Deployable Shields with bulletproof collision, Space vault, preview and F pickup
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -80,6 +80,9 @@ jobs:
           node --check games/blackout/reboot/observation-blocker-view.js
           node --check games/blackout/reboot/proximity-alarm.js
           node --check games/blackout/reboot/proximity-alarm-view.js
+          node --check games/blackout/reboot/deployable-shield.js
+          node --check games/blackout/reboot/deployable-shield-view.js
+          node --check games/blackout/reboot/shield-vault.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
         run: node --test games/blackout/reboot/*.test.mjs

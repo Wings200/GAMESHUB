@@ -12,7 +12,7 @@ export const SECONDARY_GADGETS=Object.freeze([
  {id:"observation-blocker",name:"Observation Blockers",side:"defend",role:"Camera vision denial",implemented:true},
  {id:"barbed-wire",name:"Barbed Wire",side:"defend",role:"Movement slowing",implemented:true},
  {id:"proximity-alarm",name:"Proximity Alarms",side:"defend",role:"Entry warning",implemented:true},
- {id:"deployable-shield",name:"Deployable Shields",side:"defend",role:"Portable cover",implemented:false}
+ {id:"deployable-shield",name:"Deployable Shields",side:"defend",role:"Portable cover",implemented:true}
 ].map(g=>Object.freeze(g)));
 
 export const SECONDARY_SLOT_COUNT=2;
