@@ -31,7 +31,7 @@ test("claymores start with two charges and two visible armed devices can coexist
 test("ground and collision placement reject invalid, airborne, wall, double plant",()=>{
  const s=newClaymoreState();
  for(const p of [null,{...player,grounded:false},{...player,y:1},
-  {...player,x:NaN},{...player,z:30},{...player,x:0,z:0}]){
+  {...player,x:NaN},{...player,z:-30},{...player,x:0,z:0}]){
   const result=placeClaymore(s,p,TEST_OBSTACLES);
   if(p?.z===0)continue;
   assert.equal(result.device,null);
