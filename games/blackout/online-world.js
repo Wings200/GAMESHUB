@@ -139,8 +139,7 @@ export function placeCharge(map,world,p){
  if(!part||world.walls[part.id]==="open")return null;
  if(world.walls[part.id]==="reinforced"&&p.operator!=="thermite")return null;
  const deployed=world.charges.filter(c=>c.owner===p.id).length;
- const used=world.charges.filter(c=>c.owner===p.id&&c.detonated).length;
- if(deployed+used>=2||world.charges.some(c=>!c.detonated&&c.target===part.id))return null;
+ if(deployed>=2||world.charges.some(c=>!c.detonated&&c.target===part.id))return null;
  const id="charge-"+world.nextCharge++;
  const charge={id,owner:p.id,target:part.id,position:{...part.position},detonated:false};
  world.charges.push(charge);return charge;

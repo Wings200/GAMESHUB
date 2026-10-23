@@ -54,7 +54,7 @@ test("main menu and firearm interaction expose honest feature state",()=>{
  assert.match(html,/TACTICAL AI/);
  assert.match(html,/ONLINE 5v5/);
  assert.match(html,/id="online-choice"/);
- assert.match(html,/online-multiplayer\.js\?v=033/);
+ assert.match(html,/online-multiplayer\.js\?v=034/);
  assert.match(html,/id="custom-choice"/);
  assert.match(html,/CUSTOM GAME/);
  const online=readFileSync(join(directory,"../online-multiplayer.js"),"utf8");
