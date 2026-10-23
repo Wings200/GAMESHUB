@@ -54,7 +54,9 @@ test("main menu and firearm interaction expose honest feature state",()=>{
  assert.match(html,/TACTICAL AI/);
  assert.match(html,/ONLINE 5v5/);
  assert.match(html,/id="online-choice"/);
- assert.match(html,/online-multiplayer\.js\?v=031/);
+ assert.match(html,/online-multiplayer\.js\?v=032/);
+ assert.match(html,/id="custom-choice"/);
+ assert.match(html,/CUSTOM GAME/);
  assert.match(html,/PRIVATE ROOM BETA/);
  assert.match(main,/shootableDrones\(\)/);
  assert.match(main,/destroyPhysicalDrone\(droneIndex\)/);
