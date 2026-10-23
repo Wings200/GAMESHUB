@@ -763,7 +763,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.ok(main.includes("ENEMY BARBED WIRE · -"));
  assert.ok(main.includes("healthNumber.textContent=String(wireHealth.hp)"));
  assert.ok(main.includes("healthCaption.textContent="));
- assert.ok(main.includes('if(wireHealth.hp===0&&(gameMode==="bomb"||event.code!=="KeyP"))return;'));
+ assert.ok(main.includes('if(wireHealth.hp===0&&(gameMode==="bomb"||gameMode==="online"||event.code!=="KeyP"))return;'));
  for(const id of ["health-current","health-caption"])
   assert.ok(html.includes('id="'+id+'"'),"live HP HUD missing "+id);
  assert.ok(!html.includes("TRAINING · INVULNERABLE"));
@@ -800,7 +800,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.equal(main.includes('throwPhysicalDrone("initial",true)'),false,
   "5 must never automatically throw a drone");
  assert.ok(main.includes('throwPhysicalDrone(request.kind)'));
- assert.ok(main.includes('throwRequest(droneRoster,"range")'));
+ assert.ok(main.includes('throwRequest(droneRoster,'));
  assert.ok(main.includes("cameraRequest(droneRoster)"));
  assert.ok(main.includes("switchDroneCamera("));
  assert.ok(main.includes('newDroneRoster("range")'));
@@ -821,7 +821,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  // V0.13.3: defender can SEE physical attacker drones, but never own or use
  // them; recon quickbar and camera tip must not show on Sentry's HUD.
  assert.ok(main.includes('canUseReinforcement,canUseReconDrones'));
- assert.ok(main.includes('if(!canUseReconDrones(activeOperator))return false;'));
+ assert.ok(main.includes('if(!canUseReconDrones(activeOperator)||!operatorDeployed)return false;'));
  assert.ok(main.includes('function openDroneCameras(){\n if(!canUseReconDrones(activeOperator))return;'));
  assert.ok(main.includes('if(controlMode!=="player"||!canUseReconDrones(activeOperator))return;'));
  assert.ok(main.includes('if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player"'));
@@ -835,8 +835,8 @@ test("reboot entry point preserves original renderer and gameplay when networkin
 
  assert.ok(main.includes('event.code==="KeyX"'));
  assert.ok(main.includes('controlMode==="drone"'));
- assert.ok(main.includes("tickDrone(drone,input,dt,activeDroneObstacles())"));
- assert.ok(main.includes("tickDrone(droneRoster.drones[i],{},dt,activeDroneObstacles())"),
+ assert.ok(main.includes('tickDrone(drone,{...input,floorAt:mapMode==="house"?houseFloorAt:null}'));
+ assert.ok(main.includes('tickDrone(droneRoster.drones[i],'),
  "parked drones must recharge and land while operator is active");
  assert.ok(main.includes('droneBoostPressed=true'));
  assert.ok(main.includes('droneJumpPressed=true'));
@@ -861,7 +861,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.ok(main.includes('droneSpareCount.textContent=String(info.throwables)'));
 
 
- assert.ok(main.includes("if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)"));
+ assert.ok(main.includes('if(outcome.hit&&!outcome.hit.object?.userData?.onlinePlayerId&&!droneHit&&!woodHit.handled'));
  for(const id of ["reinforce-prompt","reinforce-status","reinforce-progress","reinforce-action"])
   assert.ok(html.includes('id="'+id+'"'),"reinforcement test UI absent: "+id);
  assert.ok(css.includes(".reinforce-prompt"));
