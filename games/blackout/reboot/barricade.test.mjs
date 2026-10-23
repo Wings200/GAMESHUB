@@ -23,7 +23,10 @@ test("each board has separate height-specific player collision",()=>{
  assert.equal(canOccupy(BARRICADE.x,0,BARRICADE.z,1.78,obstacles),false);
  assert.equal(barricadeBlockers(state).length,9);
  const first=boardBounds(0),last=boardBounds(5);
- assert.ok(first.bottom>0);assert.ok(last.top<BARRICADE.openingHeight);
+ assert.ok(first.bottom>0);
+ assert.ok(last.top<=BARRICADE.postHeight);
+ assert.ok(last.top-BARRICADE.openingHeight<.07,
+   "top plank may shingle a little beneath the reinforced lintel");
  for(let i=0;i<4;i++)state=barricadeDamage(barricadeDamage(state,i).state,i).state;
  obstacles=[...TEST_OBSTACLES,...barricadeBlockers(state)];
  assert.equal(canOccupy(BARRICADE.x,0,BARRICADE.z,.62,obstacles),true,

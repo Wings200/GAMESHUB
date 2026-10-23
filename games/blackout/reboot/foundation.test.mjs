@@ -473,8 +473,8 @@ test("reboot entry point preserves original renderer and gameplay when networkin
   assert.ok(main.includes('defuserCues.play("shutdown")'));
   assert.ok(!main.includes('DefuseTyping.mp3'));
   assert.ok(!main.includes('DefuseArmed.mp3'));
- assert.ok(main.includes("bombSiteBlockers(bombState)"));
- assert.ok(main.includes("...shootableShields(),...bombRaycastColliders()]"));
+ assert.ok(main.includes('bombSiteBlockers(gameMode==="online"?onlineBombState:bombState)'));
+ assert.ok(main.includes("...remoteOperators.shootables(),...bombRaycastColliders()]"));
  assert.ok(main.includes("bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId)"));
  assert.ok(main.includes("bombRaycastColliders()"));
  assert.ok(main.includes("bombInteractionView=createBombInteractionView(THREE,scene,camera)"));

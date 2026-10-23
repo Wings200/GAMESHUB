@@ -8,10 +8,11 @@ class Vector{
 }
 class Node{
  constructor(){this.children=[];this.position=new Vector;this.rotation={x:0,y:0,z:0};
-  this.visible=true;this.castShadow=false}
+  this.visible=true;this.castShadow=false;this.userData={}}
  add(child){this.children.push(child)}
+ traverse(fn){fn(this);for(const child of this.children)child.traverse(fn)}
 }
-class Mesh extends Node{constructor(g,m){super();this.geometry=g;this.material=m}}
+class Mesh extends Node{constructor(g,m){super();this.geometry=g;this.material=m;this.isMesh=true}}
 class Geometry{constructor(...args){this.args=args}}
 class Material{constructor(data){this.data=data}}
 const THREE={Group:Node,Mesh,BoxGeometry:Geometry,CylinderGeometry:Geometry,
