@@ -11,10 +11,18 @@ import {newDroneRoster,registerDrone,removeDrone,selectedDrone,throwRequest,came
 test("intact wood barricade has genuine floor clearance for reconnaissance drones",()=>{
  const solids=barricadeBlockers(createBarricadeState());
  const first=solids.find(s=>s.id.endsWith("-board-0"));
- assert.ok(first.bottom>DRONE.height+.08);
+ assert.ok(first.bottom>DRONE.height+.02&&first.bottom<.30,
+  "drone clears the slim bottom slot, but it is not a waist-high gun angle");
  assert.equal(canDroneOccupy(BARRICADE.x,0,BARRICADE.z,solids),true);
  assert.equal(canDroneOccupy(BARRICADE.x,.36,BARRICADE.z,solids),false,
   "raised drone collides with the intact wood boards");
+ const boardSolids=solids.filter(s=>s.id.includes("-board-")).sort((a,b)=>a.bottom-b.bottom);
+ assert.equal(boardSolids.length,6);
+ for(let i=0;i<boardSolids.length-1;i++)
+  assert.ok(boardSolids[i].height-boardSolids[i+1].bottom>.05,
+   "neighboring intact boards overlap, leaving no straight shot through seams");
+ assert.ok(boardSolids.at(-1).height>=BARRICADE.openingHeight,
+  "top board fully seals against the door lintel");
 });
 
 test("house has real traversable under-wall drone ports",()=>{
