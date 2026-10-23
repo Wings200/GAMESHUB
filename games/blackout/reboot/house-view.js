@@ -1,5 +1,5 @@
 // BLACKOUT V0.26.0 · two-floor house graybox built from real collision cells.
-import {HOUSE,HOUSE_BLOCKERS} from "./house-layout.js?v=reboot-062";
+import {HOUSE,HOUSE_BLOCKERS} from "./house-layout.js?v=reboot-066";
 
 export function createHouseView(THREE,scene){
  const group=new THREE.Group();group.name="BLACKOUT · TWO-STORY HOUSE";
@@ -32,6 +32,22 @@ export function createHouseView(THREE,scene){
    b.x,b.bottom+h/2,b.z,materials[b.material]||materials.plaster,group,true);
   m.userData.physicsObstacleId=b.id;
   m.userData.houseLevel=b.bottom>=HOUSE.floorHeight?2:1;
+ }
+ // Painted safety rims make the floor-level drone cutouts recognizable.
+ // Trim is decorative and never seals the collision passage itself.
+ const ventMat=new THREE.MeshStandardMaterial({color:0x273e4b,metalness:.65,roughness:.45});
+ resources.push(ventMat);
+ for(const b of HOUSE_BLOCKERS.filter(item=>item.kind==="drone-lintel")){
+  const alongZ=b.width<b.depth,base=b.bottom-.44;
+  if(alongZ){
+   box("DRONE ACCESS · LINTEL TRIM",.23,.045,b.depth,b.x,base+.44,b.z,ventMat);
+   for(const side of [-1,1])box("DRONE ACCESS · SIDE TRIM",.23,.44,.045,
+    b.x,base+.22,b.z+side*b.depth/2,ventMat);
+  }else{
+   box("DRONE ACCESS · LINTEL TRIM",b.width,.045,.23,b.x,base+.44,b.z,ventMat);
+   for(const side of [-1,1])box("DRONE ACCESS · SIDE TRIM",.045,.44,.23,
+    b.x+side*b.width/2,base+.22,b.z,ventMat);
+  }
  }
  // Wood-and-metal stair treads follow the same continuous grade as the
  // player foot-height function. They are not separate blockers that could
