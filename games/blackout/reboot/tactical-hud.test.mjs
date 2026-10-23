@@ -50,3 +50,16 @@ test("minimap draws real walls, targets and player without modifying game object
  assert.ok(instructions.some(x=>x[0]==="arc"));
  assert.equal(player.yaw,Math.PI/2);
 });
+
+test("training minimap arrow uses the same world-west direction as movement",()=>{
+ const poses=[];
+ const noop=()=>{};
+ const ctx={canvas:{width:200,height:200},clearRect:noop,fillRect:noop,
+  beginPath:noop,moveTo:noop,lineTo:noop,stroke:noop,arc:noop,
+  fill:noop,save:noop,restore:noop,closePath:noop,
+  translate(x,y){poses.push(["position",x,y])},
+  rotate(value){poses.push(["heading",value])}};
+ drawTrainingMap(ctx,{x:-6,z:-13,yaw:Math.PI/2},[],[]);
+ assert.equal(poses[0][1],80);
+ assert.ok(Math.abs(poses[1][1]+Math.PI/2)<1e-10);
+});

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {HOUSE,HOUSE_BLOCKERS,houseFloorAt,houseRoomAt} from "./house-layout.js";
+import {HOUSE,HOUSE_BLOCKERS,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js";
 import {initialPlayer,stepPlayer,canOccupy,STAND_HEIGHT} from "./physics.js";
 import {BOMB_RULES,newBombRound,roundSiteAt,stepBombRound} from "./bomb-round.js";
 import {liveBombInteraction} from "./bomb-presentation.js";
@@ -83,4 +83,22 @@ test("location labels identify ground rooms, staircase and upstairs",()=>{
  assert.match(houseRoomAt({x:1,z:-8.5,y:1.6}),/STAIRCASE/);
  assert.match(houseRoomAt({x:6,z:-16,y:3.2}),/BEDROOM/);
  assert.match(houseRoomAt({x:0,z:8,y:0}),/OUTSIDE/);
+});
+
+test("house minimap faces west when the player faces west and maps west to left",()=>{
+ const poses=[];
+ const ctx={canvas:{width:200,height:200},
+  clearRect(){},fillRect(){},fillText(){},save(){},restore(){},
+  beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},
+  translate(x,y){poses.push({type:"position",x,y})},
+  rotate(rad){poses.push({type:"heading",rad})}};
+ drawHouseMinimap(ctx,{x:-6,z:-13,y:0,yaw:Math.PI/2});
+ assert.deepEqual(poses[0],{type:"position",x:80,y:56.666666666666664});
+ assert.ok(Math.abs(poses[1].rad+Math.PI/2)<1e-10,
+  "camera faces world-west; minimap pointer faces screen-left");
+ poses.length=0;
+ drawHouseMinimap(ctx,{x:6,z:-13,y:0,yaw:-Math.PI/2});
+ assert.equal(poses[0].x,120);
+ assert.ok(Math.abs(poses[1].rad-Math.PI/2)<1e-10,
+  "camera faces world-east; minimap pointer faces screen-right");
 });

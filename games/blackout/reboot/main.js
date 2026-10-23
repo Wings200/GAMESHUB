@@ -2,7 +2,7 @@
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-062";
-import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js?v=reboot-066";
+import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js?v=reboot-069";
 import {createHouseView} from "./house-view.js?v=reboot-066";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
