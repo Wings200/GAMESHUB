@@ -1,9 +1,9 @@
-// BLACKOUT REBOOT V0.26.0 — functional two-floor house and retained test range
+// BLACKOUT REBOOT V0.27.0 · mode separation + destructible drones + drone access — functional two-floor house and retained test range
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-062";
-import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js?v=reboot-062";
-import {createHouseView} from "./house-view.js?v=reboot-062";
+import {HOUSE,houseFloorAt,houseRoomAt,drawHouseMinimap} from "./house-layout.js?v=reboot-066";
+import {createHouseView} from "./house-view.js?v=reboot-066";
 import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?v=reboot-003";
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-064";
@@ -14,16 +14,16 @@ import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
 import {shotScreenPoint,describeAim,describeShot} from "./shot-ray.js?v=reboot-009";
 import {combatIntersections} from "./combat-raycast.js?v=reboot-012";
 import {DRILL_LENGTH_SECONDS,drillClock,compassHeading,areaName,drawTrainingMap} from "./tactical-hud.js?v=reboot-016";
-import {BARRICADE} from "./barricade.js?v=reboot-015";
-import {createBarricadeStation} from "./barricade-view.js?v=reboot-032";
+import {BARRICADE} from "./barricade.js?v=reboot-066";
+import {createBarricadeStation} from "./barricade-view.js?v=reboot-066";
 import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
 import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
 import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
-import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-020";
+import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
- updateDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-020";
+ updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-066";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-052";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-052";
@@ -1177,14 +1177,17 @@ function strikeMelee(now){
  meleeRaycaster.setFromCamera({x:0,y:0},camera);
  meleeRaycaster.far=MELEE.range;
  const solids=[...shootableSolids,...barricade.shootables(),
-  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields()];
+  ...softWall.shootables(),...reinforcement.shootables(),...shootableWire(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones()];
  const hits=combatIntersections(meleeRaycaster,solids,[]);
  const selected=selectedMeleeTarget(hits);
  let description="MELEE MISSED · GET CLOSER AND AIM AT TARGET";
  const shieldId=hits[0]?.object?.userData?.deployableShieldId;
  const proxId=hits[0]?.object?.userData?.proximityAlarmId;
  const observationId=hits[0]?.object?.userData?.observationBlockerId;
- if(Number.isInteger(shieldId)){
+ const droneIndex=hits[0]?.object?.userData?.reconDroneIndex;
+ if(Number.isInteger(droneIndex)&&destroyPhysicalDrone(droneIndex)){
+  description="ATTACKER DRONE DESTROYED · CAMERA OFFLINE";
+ }else if(Number.isInteger(shieldId)){
   description="BULLETPROOF SHIELD · MELEE CANNOT DESTROY IT";
   shotAudio.play("impact");
  }else if(Number.isInteger(proxId)){
@@ -1274,12 +1277,28 @@ function throwPhysicalDrone(kind){
  droneRoster=next;
  const view=createDroneView(THREE,scene);
  view.place(fresh);
+ view.setIndex(droneViews.length);
  droneViews.push(view);
  drone=selectedDrone(droneRoster);
  shotNotice.textContent="DRONE THROWN · "+droneRoster.drones.length+
    " DEPLOYED · PRESS 5 FOR CAMERAS";
  shotNoticeLeft=1.4;
  refreshDroneEquipment();
+ return true;
+}
+function shootableDrones(){
+ return droneViews.flatMap(view=>view.root.visible?view.shootables:[]);
+}
+function destroyPhysicalDrone(index){
+ if(!Number.isInteger(index)||index<0||index>=droneViews.length)return false;
+ droneViews[index].dispose();
+ droneViews.splice(index,1);
+ droneRoster=removeDrone(droneRoster,index);
+ droneViews.forEach((view,i)=>view.setIndex(i));
+ drone=selectedDrone(droneRoster);
+ if(controlMode==="drone"&&!drone)setControlMode("player");
+ refreshDroneEquipment();
+ shotAudio.play("impact");
  return true;
 }
 function openDroneCameras(){
@@ -1328,10 +1347,10 @@ function droneHudFrame(){
 }
 function unlockMessage(){
  message.textContent=gameMode==="bomb"&&bombState?
-   "PAUSED BOMB ROUND · PHASE "+bombState.phase.toUpperCase()+
-    " · SELECT RESUME BOMB ROUND TO CONTINUE · NO REAL TEAMMATES YET":
-   started?"PAUSED · PRESS ENTER TEST RANGE TO RESUME. YOUR POSITION IS PRESERVED.":
-   "OFFLINE WEAPON RANGE · NO AI OR MULTIPLAYER";
+   "PAUSED TRAINING BOMB ROUND · PHASE "+bombState.phase.toUpperCase()+
+    " · SELECT DEPLOY TO CONTINUE":
+   started?"PAUSED TRAINING · PRESS DEPLOY TO RESUME.":
+   "TRAINING OFFLINE · AI AND ONLINE 5V5 ARE IN DEVELOPMENT";
 }
 function beginBombRound(){
  plantAudio.sync("off");
@@ -1740,10 +1759,12 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=visibleRangeTargets();
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
+ const droneIndex=outcome.hit?.object?.userData?.reconDroneIndex;
+ const droneHit=Number.isInteger(droneIndex)&&destroyPhysicalDrone(droneIndex);
  const bombHit=Boolean(outcome.hit?.object?.userData?.bombSiteId);
  const shieldHit=Number.isInteger(outcome.hit?.object?.userData?.deployableShieldId);
  const proxId=outcome.hit?.object?.userData?.proximityAlarmId;
@@ -1754,10 +1775,13 @@ function fireShot(shot,sightAligned,now){
    barricade.hitBoard(outcome.hit):{handled:false};
  const metalHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?reinforcement.steelImpact(outcome.hit):false;
  const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled&&!proxHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)
+ if(outcome.hit&&!droneHit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
- if(bombHit){
+ if(droneHit){
+  shotNotice.textContent="ATTACKER DRONE DESTROYED · CAMERA OFFLINE";
+  shotNoticeLeft=1.5;
+ }else if(bombHit){
   shotNotice.textContent="BOMB SITE DEVICE · SOLID METAL CASING BLOCKED SHOT";
   shotNoticeLeft=.9;shotAudio.play("impact");
  }else if(shieldHit){
