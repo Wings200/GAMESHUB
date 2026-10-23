@@ -22,6 +22,10 @@ jobs:
           node-version: '22'
       - name: Parse isolated foundation JS
         run: |
+          node --check games/blackout/online-multiplayer.js
+          node --check games/blackout/online-state.js
+          node --check games/blackout/src/multiplayer-protocol.js
+          node --check games/blackout/multiplayer-room.js
           node --check games/blackout/reboot/main.js
           node --check games/blackout/reboot/physics.js
           node --check games/blackout/reboot/footsteps.js
@@ -89,4 +93,4 @@ jobs:
           node --check games/blackout/reboot/bomb-interaction-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
-        run: node --test games/blackout/reboot/*.test.mjs
+        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs
