@@ -1,10 +1,11 @@
 // BLACKOUT V0.9 — isolated, deterministic wooden barricade rules.
 // Boards are independently damageable AND separately solid in the movement engine.
+// A floor-level gap allows recon drones underneath intact wooden boards. 
 // No arbitrary whole-door hit counter, and no changes to existing wall materials.
 export const BARRICADE=Object.freeze({
  id:"door-station-01",x:-7,z:3,openingWidth:1.84,openingHeight:2.24,
  depth:.16,postWidth:.22,postHeight:2.58,boardCount:6,
- boardHeight:.335,firstCenter:.254,boardStep:.348,
+ boardHeight:.255,firstCenter:.50,boardStep:.32,
  boardHP:2,installSeconds:2.2,interactRadius:2.6,
 });
 export function createBarricadeState(){
