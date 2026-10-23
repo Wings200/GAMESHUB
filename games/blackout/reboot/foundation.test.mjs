@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-068",
+  for(const src of ["./reboot/main.js?v=reboot-069",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -177,7 +177,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  }
  assert.equal(html.includes('class="hud-bottom"'),false,"old debug dashboard must be replaced");
  assert.ok(main.includes('from "./physics.js?v=reboot-062"'));
- assert.ok(main.includes('from "./house-layout.js?v=reboot-066"'));
+ assert.ok(main.includes('from "./house-layout.js?v=reboot-069"'));
  assert.ok(main.includes('from "./house-view.js?v=reboot-066"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
