@@ -146,7 +146,9 @@ export async function onRequest(context) {
     url.pathname === "/privacy.html" ||
     url.pathname === "/terms" ||
     url.pathname === "/terms.html" ||
-    url.pathname === "/api/account/multiplayer-verify"
+    url.pathname === "/api/account/multiplayer-verify" ||
+    // The Worker must consume one-use BLACKOUT tickets without a browser cookie.
+    url.pathname === "/api/blackout-multiplayer-verify"
   ) {
     return context.next();
   }

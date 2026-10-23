@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {onRequestPost as issueTicket} from "../../functions/api/blackout-multiplayer-ticket.js";
 import {onRequestPost as verifyTicket} from "../../functions/api/blackout-multiplayer-verify.js";
+import {onRequest as pagesMiddleware} from "../../functions/_middleware.js";
 
 function fakeDb(usernameKey="dynamitedev7392"){
  const entries=new Map();
@@ -74,4 +75,24 @@ test("room creation and WebSocket require verified tickets server-side",()=>{
  assert.match(room,/if\(!authenticatedId\)return reply/);
  assert.match(lobby,/requestTicket\(\)/);
  assert.match(lobby,/address\.searchParams\.set\("ticket",joinTicket\)/);
+});
+
+
+test("BLACKOUT ticket verification is reachable server-to-server without a browser session",async()=>{
+ const forwarded=[];
+ const next=async()=>{forwarded.push(true);return new Response("verified route reached",{status:200})};
+ const verify=await pagesMiddleware({
+   request:new Request("https://site.test/api/blackout-multiplayer-verify",{method:"POST"}),
+   env:{},next
+ });
+ assert.equal(verify.status,200);
+ assert.equal(forwarded.length,1);
+ // Keep issuing tickets and other account-gated endpoints private.
+ const issue=await pagesMiddleware({
+   request:new Request("https://site.test/api/blackout-multiplayer-ticket",{method:"POST"}),
+   env:{},next
+ });
+ assert.equal(issue.status,302);
+ assert.equal(issue.headers.get("Location"),"/login");
+ assert.equal(forwarded.length,1);
 });
