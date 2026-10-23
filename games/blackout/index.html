@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="./online.css?v=031">
   <style>
     .menu-content{padding-top:clamp(35px,7vh,85px)}
+    .blackout-admin-link{border:1px solid #70d8bd;color:#a9ffe4;border-radius:5px;padding:8px 12px;font-size:10px;letter-spacing:.09em;font-weight:900;text-decoration:none;margin-left:auto}
+    .blackout-admin-link:hover{background:#214842}
+    .blackout-admin-link[hidden]{display:none}
     .mode-hub{margin:23px 0 28px;max-width:760px}
     .mode-hub h2{color:#afcbd1;font-size:11px;letter-spacing:.2em;margin:0 0 13px}
     .mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -55,6 +58,7 @@
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
     <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.31 · ONLINE TEST</b></div>
+    <a id="blackout-admin-link" class="blackout-admin-link" href="./admin.html" hidden>⚙ ADMIN COMMAND</a>
   </header>
 
   <main id="menu" class="menu">
@@ -354,5 +358,13 @@
   <div id="error" class="error hidden" role="alert"></div>
   <script type="module" src="./reboot/main.js?v=reboot-069"></script>
   <script type="module" src="./online-multiplayer.js?v=031"></script>
+  <script>
+    fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
+      .then(response=>response.ok?response.json():null)
+      .then(data=>{
+        if(data?.admin)document.getElementById("blackout-admin-link").hidden=false;
+      })
+      .catch(()=>{});
+  </script>
 </body>
 </html>

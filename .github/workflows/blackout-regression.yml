@@ -3,10 +3,18 @@ on:
   push:
     paths:
       - 'games/blackout/**'
+      - 'functions/_lib/blackout-access.js'
+      - 'functions/_middleware.js'
+      - 'functions/api/blackout*.js'
+      - 'index.html'
       - '.github/workflows/blackout-regression.yml'
   pull_request:
     paths:
       - 'games/blackout/**'
+      - 'functions/_lib/blackout-access.js'
+      - 'functions/_middleware.js'
+      - 'functions/api/blackout*.js'
+      - 'index.html'
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,6 +30,10 @@ jobs:
           node-version: '22'
       - name: Parse isolated foundation JS
         run: |
+          node --check functions/_lib/blackout-access.js
+          node --check functions/_middleware.js
+          node --check functions/api/blackout-access.js
+          node --check functions/api/blackout-admin.js
           node --check games/blackout/online-multiplayer.js
           node --check games/blackout/online-state.js
           node --check games/blackout/src/multiplayer-protocol.js
@@ -93,4 +105,4 @@ jobs:
           node --check games/blackout/reboot/bomb-interaction-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
-        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs
+        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs games/blackout/blackout-access.test.mjs

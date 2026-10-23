@@ -182,47 +182,6 @@
 
 
 
-    /* BLACKOUT's card is public, but its server-protected game route is not.
-       This browser check only updates the badge; never rely on it for access. */
-    const blackoutCard = document.getElementById("blackoutGameCard");
-    const blackoutStatus = document.getElementById("blackoutAccessStatus");
-    let blackoutAllowed = false;
-
-    function setBlackoutCardAccess(allowed) {
-      blackoutAllowed = allowed;
-      blackoutCard.classList.toggle("blackout-locked", !allowed);
-      blackoutCard.setAttribute("aria-disabled", String(!allowed));
-      blackoutStatus.classList.toggle("allowed", allowed);
-      blackoutStatus.textContent = allowed
-        ? "▶ PLAY BLACKOUT · DEVELOPER ACCESS"
-        : "🔒 PRIVATE · DEVELOPER ONLY";
-    }
-
-    async function refreshBlackoutAccess() {
-      try {
-        const response = await fetch("/api/account/me", {
-          credentials: "same-origin",
-          cache: "no-store"
-        });
-        if (!response.ok) throw new Error("Account request failed");
-        const account = await response.json();
-        setBlackoutCardAccess(Boolean(account.ok && account.signedIn &&
-          !account.guest && account.user?.username?.toLowerCase() === "dynamitedev7392"));
-      } catch (error) {
-        // Fail closed. The Cloudflare middleware independently rejects access.
-        setBlackoutCardAccess(false);
-      }
-    }
-
-    blackoutCard.addEventListener("click", (event) => {
-      if (blackoutAllowed) return;
-      event.preventDefault();
-      alert("BLACKOUT is a private developer build. Only the signed-in DynamiteDEV7392 account can enter.");
-    });
-    window.addEventListener("gameshub-account-change", refreshBlackoutAccess);
-    window.addEventListener("pageshow", refreshBlackoutAccess);
-    refreshBlackoutAccess();
-
     /* =====================================================
        LOGOUT
     ====================================================== */
@@ -1716,6 +1675,47 @@
   ====================================================== -->
 
   <script>
+
+
+    /* The badge is cosmetic; Cloudflare independently enforces account access. */
+    const blackoutCard = document.getElementById("blackoutGameCard");
+    const blackoutStatus = document.getElementById("blackoutAccessStatus");
+    let blackoutAllowed = false;
+
+    function setBlackoutCardAccess(role) {
+      const allowed = role === "admin" || role === "tester";
+      blackoutAllowed = allowed;
+      blackoutCard.classList.toggle("blackout-locked", !allowed);
+      blackoutCard.setAttribute("aria-disabled", String(!allowed));
+      blackoutStatus.classList.toggle("allowed", allowed);
+      blackoutStatus.textContent = role === "admin"
+        ? "▶ PLAY BLACKOUT · ADMIN ACCESS"
+        : role === "tester" ? "▶ PLAY BLACKOUT · TESTER ACCESS"
+        : role === "paused" ? "🔒 PRIVATE · TESTER MAINTENANCE"
+        : "🔒 PRIVATE · APPROVED ACCOUNTS";
+    }
+
+    async function refreshBlackoutAccess() {
+      try {
+        const response = await fetch("/api/blackout-access", {
+          credentials: "same-origin", cache: "no-store"
+        });
+        if (!response.ok) throw new Error("Access lookup failed");
+        const access = await response.json();
+        setBlackoutCardAccess(access.ok ? access.role : "locked");
+      } catch {
+        setBlackoutCardAccess("locked");
+      }
+    }
+
+    blackoutCard.addEventListener("click", (event) => {
+      if (blackoutAllowed) return;
+      event.preventDefault();
+      alert("BLACKOUT is a private test. Sign into an approved GamesHub account or ask a BLACKOUT admin for access.");
+    });
+    window.addEventListener("gameshub-account-change", refreshBlackoutAccess);
+    window.addEventListener("pageshow", refreshBlackoutAccess);
+    refreshBlackoutAccess();
 
     const searchInput =
       document.getElementById(
