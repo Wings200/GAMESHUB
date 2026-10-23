@@ -21,7 +21,7 @@ import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
 import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
-import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-070";
+import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-071";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";

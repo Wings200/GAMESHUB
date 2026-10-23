@@ -38,8 +38,16 @@ function overlapsFootprint(x,z,o){
  const cz=Math.max(o.z-o.depth/2,Math.min(z,o.z+o.depth/2));
  return (x-cx)**2+(z-cz)**2<DRONE.radius*DRONE.radius;
 }
+// A ramp is a walkable surface only when the drone can actually reach it
+// from its current height. The same X/Z can also be the empty space UNDER
+// the staircase; treating every ramp height as ground teleports drones up.
+const MAX_RAMP_RISE=.12;
+function reachableTerrain(x,z,y,floorAt){
+ const top=typeof floorAt==="function"?floorAt(x,z,y):0;
+ return top<=y+MAX_RAMP_RISE?top:0;
+}
 function hasSupport(x,y,z,objects,floorAt=null){
- const ramp=typeof floorAt==="function"?floorAt(x,z,y):0;
+ const ramp=reachableTerrain(x,z,y,floorAt);
  return Math.abs(y-ramp)<=.025||objects.some(o=>
   Math.abs(o.height-y)<=1e-4&&overlapsFootprint(x,z,o));
 }
@@ -50,6 +58,14 @@ function stepVertical(d,step,objects,floorAt=null){
  if(d.vy>0){
   // A real ceiling or upper-floor slab stops the drone's head.
   let headLimit=Infinity;
+  if(typeof floorAt==="function"){
+   const ramp=floorAt(d.x,d.z,previousY);
+   // Rising from BELOW a sloped stair tread hits its underside, whereas a
+   // drone already on the stairs is free to jump above the tread.
+   if(ramp>previousY+DRONE.height+1e-6&&
+      nextY+DRONE.height>=ramp)
+    headLimit=Math.min(headLimit,ramp-DRONE.height);
+  }
   for(const o of objects){
    const underside=o.bottom??0;
    if(underside>0&&overlapsFootprint(d.x,d.z,o)&&
@@ -61,7 +77,10 @@ function stepVertical(d,step,objects,floorAt=null){
  }else{
   // Snap to the highest solid top crossed *from above*. Landing is not
   // permitted from underneath a counter or shield.
-  let support=typeof floorAt==="function"?floorAt(d.x,d.z,previousY):0;
+  const terrain=reachableTerrain(d.x,d.z,previousY,floorAt);
+  // Only land on a surface crossed from above. Never pull a drone through
+  // the underside of stairs while it is falling underneath them.
+  let support=previousY>=terrain-1e-5?terrain:0;
   for(const o of objects){
    if(overlapsFootprint(d.x,d.z,o)&&o.height>support&&
       previousY>=o.height-1e-5&&nextY<=o.height+1e-5)
@@ -132,8 +151,15 @@ export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.world
  const count=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.055));
  function travel(x,z){
   const onTerrain=d.grounded&&floorAt&&
-   Math.abs(d.y-floorAt(d.x,d.z,d.y))<.03;
-  const nextY=onTerrain?floorAt(x,z,d.y):d.y;
+   Math.abs(d.y-reachableTerrain(d.x,d.z,d.y,floorAt))<.03;
+  const nextY=onTerrain?reachableTerrain(x,z,d.y,floorAt):d.y;
+  if(onTerrain&&floorAt){
+   const stairAbove=floorAt(x,z,d.y);
+   // Beneath a low tread there is not enough vertical room to drive
+   // through; either climb continuously from the foot or stop at its edge.
+   if(stairAbove>nextY+MAX_RAMP_RISE&&
+      stairAbove<nextY+DRONE.height)return false;
+  }
   if(!canDroneOccupy(x,nextY,z,objects,limit))return false;
   d.x=x;d.y=nextY;d.z=z;return true;
  }
