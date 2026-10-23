@@ -12,7 +12,9 @@ const reply=(obj,status=200)=>new Response(JSON.stringify(obj),{
  "Access-Control-Allow-Origin":"*"}});
 const point=([x,y,z])=>({x,y,z,yaw:0,pitch:0});
 const freeze=(p)=>({id:p.id,name:p.name,side:p.side,operator:p.operator,
- x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,health:p.health,alive:p.alive});
+ x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,health:p.health,alive:p.alive,
+ aiming:Boolean(p.aiming),crouched:Boolean(p.crouched),sprinting:Boolean(p.sprinting),
+ lean:p.lean||0,shots:p.shots,reloading:Boolean(p.reloadingUntil>Date.now())});
 export class BlackoutRoom extends DurableObject {
  constructor(ctx,env){
   super(ctx,env);this.ctx=ctx;this.env=env;
@@ -36,7 +38,10 @@ export class BlackoutRoom extends DurableObject {
     if(!entry?.id)continue;
     const p={...entry,id:entry.id,ws,connected:true,lastMove:Date.now(),
       lastShot:0,health:entry.health??100,alive:entry.alive??true,
-      shots:entry.shots??30,insertX:entry.insertX??entry.x,
+      shots:entry.shots??30,reloadingUntil:entry.reloadingUntil||0,
+      aiming:Boolean(entry.aiming),crouched:Boolean(entry.crouched),
+      sprinting:Boolean(entry.sprinting),lean:entry.lean||0,
+      insertX:entry.insertX??entry.x,
       insertZ:entry.insertZ??entry.z,
       spawnedAt:entry.spawnedAt||0,firedAt:entry.firedAt||0,
       x:entry.x||0,y:entry.y||0,z:entry.z||0,yaw:entry.yaw||0,pitch:entry.pitch||0};
@@ -81,7 +86,8 @@ export class BlackoutRoom extends DurableObject {
   this.ctx.acceptWebSocket(server);
   const player={...spawn,id,name,side,operator,ws:server,
     health:100,alive:true,connected:true,lastMove:Date.now(),lastShot:0,
-    lastReload:0,shots:30};
+    lastReload:0,shots:30,reloadingUntil:0,
+    aiming:false,crouched:false,sprinting:false,lean:0};
   this.players.set(id,player);this.saveAttachment(player);
   this.send(player,{type:"welcome",id,code:this.config.code,host:this.players.size===1,
     map:"ironvale",round:this.round,mode:this.status,settings:this.roomSettings(),players:this.snapshot()});
@@ -94,7 +100,9 @@ export class BlackoutRoom extends DurableObject {
   // deliberately never stores raw request tokens or account secrets.
   try{p.ws.serializeAttachment({id:p.id,name:p.name,side:p.side,
    operator:p.operator,x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,
-   health:p.health,alive:p.alive,shots:p.shots,
+   health:p.health,alive:p.alive,shots:p.shots,reloadingUntil:p.reloadingUntil||0,
+   aiming:Boolean(p.aiming),crouched:Boolean(p.crouched),
+   sprinting:Boolean(p.sprinting),lean:p.lean||0,
    insertX:p.insertX,insertZ:p.insertZ,spawnedAt:p.spawnedAt,firedAt:p.firedAt});}catch{}
  }
  snapshot(){return [...this.players.values()].map(freeze)}
@@ -129,6 +137,10 @@ export class BlackoutRoom extends DurableObject {
   let m;try{m=JSON.parse(String(message))}catch{return}
   if(!m||typeof m!=="object")return;
   const now=Date.now();
+  if(p.reloadingUntil&&now>=p.reloadingUntil){
+   p.reloadingUntil=0;p.shots=30;this.saveAttachment(p);
+   this.send(p,{type:"reload-ok",shots:30});this.broadcast({event:"reload-complete",from:p.id});
+  }
   if(m.type==="ping"){this.send(p,{type:"pong",time:now});return}
   if(m.type==="start"){
    const host=this.players.values().next().value;
@@ -149,7 +161,8 @@ export class BlackoutRoom extends DurableObject {
     Object.assign(user,point(chooseSpawn(user.side,count[user.side]++)));
     user.insertX=user.x;user.insertZ=user.z;
     user.health=100;user.alive=true;user.lastMove=now;user.spawnedAt=now;user.firedAt=0;user.shots=30;
-    user.lastShot=0;this.saveAttachment(user);
+    user.lastShot=0;user.reloadingUntil=0;user.aiming=false;user.crouched=false;
+    user.sprinting=false;user.lean=0;this.saveAttachment(user);
    }
    this.broadcast({event:"round-start"});return;
   }
@@ -194,18 +207,26 @@ export class BlackoutRoom extends DurableObject {
    const dt=Math.max(.016,Math.min(.5,(now-p.lastMove)/1000));
    const next=acceptMovement(p,m,dt,ironvale.elements);
    if(next){
-    Object.assign(p,next);p.lastMove=now;this.saveAttachment(p);
+    Object.assign(p,next);
+    p.aiming=m.aiming===true;p.crouched=m.crouched===true;
+    p.sprinting=m.sprinting===true&&!p.aiming&&!p.crouched;
+    p.lean=[-1,0,1].includes(m.lean)?m.lean:0;
+    p.lastMove=now;this.saveAttachment(p);
     if(!this.lastBroadcast||now-this.lastBroadcast>65){
       this.lastBroadcast=now;this.broadcast();
     }
    }else this.send(p,{type:"correction",x:p.x,y:p.y,z:p.z});
   }else if(m.type==="reload"){
-   if(now-(p.lastReload||0)<1750)return;
-   p.lastReload=now;p.shots=30;this.send(p,{type:"reload-ok"});
+   if(p.reloadingUntil>now||p.shots>=30||now-(p.lastReload||0)<1750){
+    this.send(p,{type:"reload-denied",shots:p.shots});return;
+   }
+   p.lastReload=now;p.reloadingUntil=now+1700;this.saveAttachment(p);
+   this.send(p,{type:"reload-start",durationMs:1700});
+   this.broadcast({event:"reload-start",from:p.id});return;
   }else if(m.type==="shot"){
-   if(now-p.lastShot<135||p.shots<1)return;
+   if(p.reloadingUntil>now||now-p.lastShot<135||p.shots<1)return;
    p.lastShot=now;p.firedAt=now;p.shots--;
-   this.saveAttachment(p);
+   this.saveAttachment(p);this.send(p,{type:"shot-ok",shots:p.shots});
    const target=this.players.get(String(m.targetId||""));
    if(target&&target!==p&&validShot(p,target,ironvale.elements)){
     // Victims are not damage-authoritative. Damage and KOs originate here.

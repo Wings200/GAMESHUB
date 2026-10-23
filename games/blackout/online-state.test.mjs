@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeRoomCode,roomSocketUrl,moveOnlinePlayer,blendPosition,
  selectShotTarget} from "./online-state.js";
+import {acceptMovement,validShot} from "./src/multiplayer-protocol.js";
 
 test("private room codes reject malformed or ambiguous characters",()=>{
  assert.equal(normalizeRoomCode(" ab-cd23 "),"ABCD23");
@@ -36,4 +37,27 @@ test("shot target selection never chooses a teammate",()=>{
  const all=[{id:"2",side:"attacker",x:0,y:0,z:-5,alive:true},
   {id:"3",side:"defender",x:0,y:0,z:-6,alive:true}];
  assert.equal(selectShotTarget(self,all),"3");
+});
+test("ADS, crouch and sprint use the matching Training stance speeds",()=>{
+ const p={x:0,y:0,z:0,yaw:0,pitch:0};
+ const f=new Set(["KeyW"]),sprint=new Set(["KeyW","ShiftLeft"]),crouch=new Set(["KeyW","KeyC"]);
+ assert.ok(Math.abs(moveOnlinePlayer(p,f,.05).z+.20)<.001);
+ assert.ok(Math.abs(moveOnlinePlayer(p,f,.05,[],{aiming:true}).z+.155)<.001);
+ assert.ok(Math.abs(moveOnlinePlayer(p,crouch,.05).z+.1025)<.001);
+ assert.ok(Math.abs(moveOnlinePlayer(p,sprint,.05).z+.305)<.001);
+ assert.ok(Math.abs(moveOnlinePlayer(p,sprint,.05,[],{aiming:true}).z+.155)<.001);
+});
+test("Worker rejects crouch speed hacks and off-axis shots",()=>{
+ const before={x:0,y:0,z:0,yaw:0,pitch:0};
+ const attempt={...before,z:-.34,crouched:true};
+ assert.equal(acceptMovement(before,attempt,.05),null);
+ assert.ok(acceptMovement(before,{...attempt,crouched:false},.05));
+ const target={x:0,y:0,z:-8,side:"defender",alive:true};
+ const shooter={...before,side:"attacker",alive:true,aiming:true};
+ assert.equal(validShot(shooter,target),true);
+ assert.equal(validShot({...shooter,pitch:-1},target),false);
+ assert.equal(validShot({...shooter,yaw:1},target),false);
+ const wall=[{type:"hardWall",position:{x:0,y:0,z:-4},
+   size:{x:3,y:3,z:.3}}];
+ assert.equal(validShot(shooter,target,wall),false);
 });

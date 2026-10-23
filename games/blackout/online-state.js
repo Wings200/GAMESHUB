@@ -1,4 +1,4 @@
-// BLACKOUT V0.31 · browser-side multiplayer helpers.
+// BLACKOUT V0.33 · shared movement helpers for multiplayer stance.
 // Keep online rooms isolated from the offline Training simulation.
 import {cleanName,validCode,solidAt,supportedFloor} from "./src/multiplayer-protocol.js";
 
@@ -25,7 +25,7 @@ export function roomSocketUrl(code,{side,name,operator},base=BLACKOUT_WORKER){
   if(operator)url.searchParams.set("operator",String(operator));
   return url.href;
 }
-export function moveOnlinePlayer(current,pressed,seconds,parts=[]){
+export function moveOnlinePlayer(current,pressed,seconds,parts=[],stance={}){
   const dt=Math.max(0,Math.min(seconds,.05));
   const yaw=Number.isFinite(current.yaw)?current.yaw:0;
   let forward=Number(pressed.has("KeyW")||pressed.has("ArrowUp"))-
@@ -34,8 +34,11 @@ export function moveOnlinePlayer(current,pressed,seconds,parts=[]){
     Number(pressed.has("KeyA")||pressed.has("ArrowLeft"));
   const length=Math.hypot(forward,right)||1;
   forward/=length;right/=length;
-  const speed=pressed.has("ShiftLeft")||pressed.has("ShiftRight")?6.1:
-    pressed.has("KeyC")?2.05:4;
+  const crouched=pressed.has("KeyC");
+  const aiming=stance.aiming===true;
+  const sprinting=!crouched&&!aiming&&
+    (pressed.has("ShiftLeft")||pressed.has("ShiftRight"));
+  const speed=crouched?2.05:aiming?3.1:sprinting?6.1:4;
   const dx=(-Math.sin(yaw)*forward+Math.cos(yaw)*right)*speed*dt;
   const dz=(-Math.cos(yaw)*forward-Math.sin(yaw)*right)*speed*dt;
   let x=current.x,z=current.z,y=current.y||0;

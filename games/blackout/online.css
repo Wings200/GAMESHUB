@@ -86,3 +86,9 @@
  #bo-online .bo-hud-top{top:65px;font-size:10px}
  #bo-online .bo-hud-left{top:15px;left:10px;font-size:10px}
 }
+/* V0.33 weapon and stance overlay */
+#bo-online .bo-hud-right{min-width:240px}
+#bo-online #bo-stance{display:block;margin-top:7px;color:#81e7d4;
+ font-size:10px;letter-spacing:.09em;font-weight:800}
+#bo-online .bo-reticle[hidden]{display:none}
+@media(max-width:680px){#bo-online .bo-hud-right{right:10px;bottom:53px;min-width:0}}

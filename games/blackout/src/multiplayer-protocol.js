@@ -59,7 +59,11 @@ export function acceptMovement(before,attempt,dt,parts=[]){
   if(!attempt||!["x","y","z","yaw","pitch"].every(k=>Number.isFinite(attempt[k])))return null;
   const time=Math.max(.01,Math.min(.5,dt));
   const travel=Math.hypot(attempt.x-before.x,attempt.z-before.z);
-  const max=7.4*time+.14;
+  const crouched=attempt.crouched===true;
+  const aiming=attempt.aiming===true;
+  const sprinting=attempt.sprinting===true&&!crouched&&!aiming;
+  const maxSpeed=crouched?2.25:aiming?3.4:sprinting?6.35:4.35;
+  const max=maxSpeed*time+.17;
   if(travel>max)return null;
   if(attempt.x< -86||attempt.x>86||attempt.z< -86||attempt.z>86||
     attempt.y<-.2||attempt.y>9)return null;
@@ -89,7 +93,7 @@ export function lineBlocked(from,to,parts=[]){
       y:from.y+(to.y-from.y)*t};
     if(parts.some(w=>{
       if(!["hardWall","softWall","reinforcedWall","cover"].includes(w.type))return false;
-      const a=w.rotationY*Math.PI/180,rot=Math.abs(Math.sin(a))>.7;
+      const a=(w.rotationY||0)*Math.PI/180,rot=Math.abs(Math.sin(a))>.7;
       const width=rot?w.size.z:w.size.x,depth=rot?w.size.x:w.size.z;
       return p.x>=w.position.x-width/2&&p.x<=w.position.x+width/2&&
         p.z>=w.position.z-depth/2&&p.z<=w.position.z+depth/2&&
@@ -106,9 +110,16 @@ export function validShot(shooter,target,parts=[]){
     // FPS forward vector = (-sin(yaw),-cos(yaw)); sign matters.
     const yaw=-Math.atan2(dx,-dz);
     const wrapped=Math.atan2(Math.sin(yaw-shooter.yaw),Math.cos(yaw-shooter.yaw));
-    if(Math.abs(wrapped)>.16)return false;
-    const eye={x:shooter.x,y:shooter.y+1.55,z:shooter.z};
-    const hit={x:target.x,y:target.y+1.2,z:target.z};
+    const headHeight=shooter.crouched?1.08:1.55;
+    const hitHeight=target.crouched ? 0.9 : 1.2;
+    const pitch=-Math.atan2(target.y+hitHeight-(shooter.y+headHeight),distance);
+    const pitchError=Math.abs(Math.atan2(
+      Math.sin(pitch-(shooter.pitch||0)),Math.cos(pitch-(shooter.pitch||0))));
+    // Server checks both axes; a client's targetId is only a hint.
+    if(Math.abs(wrapped)>(shooter.aiming ? .12 : .19)||
+       pitchError>(shooter.aiming ? .13 : .22))return false;
+    const eye={x:shooter.x,y:shooter.y+headHeight,z:shooter.z};
+    const hit={x:target.x,y:target.y+hitHeight,z:target.z};
     if(lineBlocked(eye,hit,parts))return false;
     return true;
   }

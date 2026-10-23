@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — V0.32 · CUSTOM GAME MAKER | GAMESHUB</title>
+  <title>BLACKOUT — V0.33 · MULTIPLAYER WEAPONS | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
-  <link rel="stylesheet" href="./online.css?v=032">
+  <link rel="stylesheet" href="./online.css?v=033">
   <style>
     .menu-content{padding-top:clamp(35px,7vh,85px)}
     .blackout-admin-link{border:1px solid #70d8bd;color:#a9ffe4;border-radius:5px;padding:8px 12px;font-size:10px;letter-spacing:.09em;font-weight:900;text-decoration:none;margin-left:auto}
@@ -57,7 +57,7 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.32 · CUSTOM GAMES</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.33 · WEAPONS ONLINE</b></div>
     <a id="blackout-admin-link" class="blackout-admin-link" href="./admin.html" hidden>⚙ ADMIN COMMAND</a>
   </header>
 
@@ -66,7 +66,7 @@
       <div class="section-tag"><span class="section-line"></span> TACTICAL / PRIVATE ONLINE + CUSTOM GAMES</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Custom Games now support solo Ironvale testing or real private rooms with adjustable host rules. Standard online rooms still require opposing teams. Training remains offline and available.</p>
+      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Custom Games now support BX-7 Mk II weapons, ADS, recoil, lean and timed reloads for real multiplayer rooms. Standard online rooms still require opposing teams. Training remains offline and available.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
@@ -361,7 +361,7 @@
   </section>
   <div id="error" class="error hidden" role="alert"></div>
   <script type="module" src="./reboot/main.js?v=reboot-069"></script>
-  <script type="module" src="./online-multiplayer.js?v=032"></script>
+  <script type="module" src="./online-multiplayer.js?v=033"></script>
   <script>
     fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
       .then(response=>response.ok?response.json():null)

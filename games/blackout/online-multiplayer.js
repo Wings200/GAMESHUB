@@ -1,6 +1,9 @@
-// BLACKOUT V0.31 · private WebSocket rooms and synchronized operator movement.
+// BLACKOUT V0.33 · multiplayer weapon view, ADS, stance and server-controlled reloads.
 // Isolated canvas: the offline Training simulation is never replaced.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import {createWeaponView} from "./reboot/weapon-view.js?v=reboot-012";
+import {toggleLean,smoothLean,leanCameraPose} from "./reboot/lean.js?v=reboot-005";
+import {GameAudio} from "./reboot/legacy-audio.js?v=reboot-064";
 import {cleanName,solidAt,normalizeBlackoutGameSettings,
  canStartBlackoutRound} from "./src/multiplayer-protocol.js";
 import {BLACKOUT_WORKER,normalizeRoomCode,roomSocketUrl,moveOnlinePlayer,
@@ -15,7 +18,7 @@ shell.innerHTML=[
  '<canvas id="bo-canvas" tabindex="0" aria-label="Live multiplayer Ironvale map"></canvas>',
  '<div class="bo-backdrop" id="bo-backdrop"></div>',
  '<section class="bo-panel" id="bo-panel">',
- '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.32 CUSTOM GAME MAKER</span>',
+ '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.33 WEAPONS ONLINE</span>',
  '<button type="button" class="bo-quiet" id="bo-back">← TRAINING MENU</button></div>',
  '<h2>PRIVATE CUSTOM GAMES</h2>',
  '<p>Create a solo game to explore Ironvale, or invite real players for up to 5v5. Hosts choose the player cap, starting requirements and round rules.</p>',
@@ -52,13 +55,14 @@ shell.innerHTML=[
  '<section class="bo-playing" id="bo-playing" hidden>',
  '<div class="bo-hud-left">IRONVALE · OPERATIONS<br><span id="bo-life">100 HP</span><br><span id="bo-side-hud"></span></div>',
  '<div class="bo-hud-top"><span id="bo-score">PRIVATE MATCH</span> · <span id="bo-online-count">0 CONNECTED</span></div>',
- '<div class="bo-hud-right" id="bo-weapon">BX-7 TEST RIFLE · 30 / 30</div>',
- '<div class="bo-reticle"></div><div class="bo-controls">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · C CROUCH · CLICK FIRE · R RELOAD · ESC RELEASE MOUSE</div>',
+ '<div class="bo-hud-right"><div id="bo-weapon">BX-7 MK II · 30 / 30</div>',
+ '<small id="bo-stance">STANDING · HIPFIRE · LEAN CENTER</small></div>',
+ '<div class="bo-reticle" id="bo-reticle"></div><div class="bo-controls">WASD MOVE · SHIFT SPRINT · HOLD C CROUCH · Q/E TOGGLE LEAN · RIGHT CLICK ADS · HOLD LEFT CLICK FIRE · R RELOAD · ESC CURSOR</div>',
  '<div class="bo-match-actions"><button type="button" class="bo-quiet" id="bo-end-round" hidden>END CUSTOM ROUND</button>',
  '<button type="button" class="bo-quiet" id="bo-exit">LEAVE MATCH</button></div>',
  '<div class="bo-match-notice" id="bo-notice" hidden></div>',
  '<div class="bo-enter" id="bo-enter"><h3>IRONVALE · OPERATIONS</h3>',
- '<p>Server-verified multiplayer movement test.</p>',
+ '<p>Training BX-7 Mk II · ADS / recoil / reload / lean multiplayer test.</p>',
  '<button type="button" class="bo-primary" id="bo-enter-button">CLICK TO CONTROL</button></div>',
  '</section>'
 ].join("");
@@ -71,6 +75,9 @@ let socket=null,roomCode=null,selfId=null,hostId=null,mode="lobby",round=0,roste
 let roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
 let appliedSettings="";
 let player=null,ammo=30,lastShot=0,pointerActive=false;
+let aimHeld=false,aimMix=0,firing=false,leanTarget=0,leanAmount=0,gunKick=0;
+let reloadPending=false,reloadingUntil=0,weaponView=null,lastFootstep=0;
+const sound=new GameAudio(),remoteFlashAt=new Map();
 let renderer=null,scene=null,camera=null,parts=[],sceneReady=false;
 let remote=new Map(),pressed=new Set(),lastFrame=performance.now(),lastSend=0;
 let session=0,noticeUntil=0,enteringRound=false;
@@ -152,11 +159,13 @@ function renderRoster(){
 function hideMatch(){
  $("playing").hidden=true;$("panel").hidden=false;$("backdrop").hidden=false;
  if(document.pointerLockElement===canvas)document.exitPointerLock();
- pressed.clear();pointerActive=false;
+ pressed.clear();pointerActive=false;firing=false;aimHeld=false;
 }
 function disconnect(quiet=false){
  ++session;
  const old=socket;socket=null;
+  aimHeld=false;firing=false;leanTarget=0;leanAmount=0;aimMix=0;
+  reloadPending=false;reloadingUntil=0;if(weaponView)weaponView.root.visible=false;
  if(old){old.onclose=null;old.onmessage=null;old.onerror=null;old.close()}
  roomCode=null;selfId=null;hostId=null;mode="lobby";round=0;roster=[];player=null;
  appliedSettings="";roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
@@ -223,6 +232,16 @@ async function connect(code){
     mode=data.mode||"lobby";round=data.round||0;
     if(data.settings)applySettingsFromServer(data.settings);
     renderRoster();
+    if(data.event==="shot"&&data.from!==selfId){
+     remoteFlashAt.set(String(data.from),performance.now()+90);
+     const shooter=roster.find(p=>p.id===String(data.from));
+     if(shooter&&player)sound.playAt("enemy-fire",
+      shooter.x,shooter.z,player.x,player.z,player.yaw);
+    }
+    if(data.event==="hit"){
+     if(data.to===selfId)notice("YOU WERE HIT",1100);
+     if(data.from===selfId)notice("HIT CONFIRMED",1100);
+    }
     if(mode==="active"){
      if($("playing").hidden&&!enteringRound)enterRound(token);
      else if(!roster.some(p=>p.id===selfId)){
@@ -235,8 +254,19 @@ async function connect(code){
       " REAL PLAYERS · WAITING FOR HOST");
    }else if(data.type==="correction"){
     if(player)Object.assign(player,{x:data.x,y:data.y,z:data.z});
+   }else if(data.type==="shot-ok"){
+    ammo=Number.isInteger(data.shots)?data.shots:ammo;
+    updateWeaponHud();
+   }else if(data.type==="reload-start"){
+    reloadPending=false;reloadingUntil=performance.now()+(data.durationMs||1700);
+    weaponView?.beginReload(performance.now(),data.durationMs||1700);
+    sound.play("reload");updateWeaponHud();
+   }else if(data.type==="reload-denied"){
+    reloadPending=false;if(Number.isInteger(data.shots))ammo=data.shots;
+    updateWeaponHud();
    }else if(data.type==="reload-ok"){
-    ammo=30;$("weapon").textContent="BX-7 TEST RIFLE · "+ammo+" / 30";
+    ammo=Number.isInteger(data.shots)?data.shots:30;
+    reloadPending=false;reloadingUntil=0;updateWeaponHud();
    }else if(data.type==="notice"){
     message(data.message||"Server notice");
     notice(data.message||"SERVER NOTICE");
@@ -284,22 +314,29 @@ $("end-round").addEventListener("click",()=>{
 function notice(text,duration=2200){
  $("notice").textContent=text;$("notice").hidden=false;noticeUntil=performance.now()+duration;
 }
-$("enter-button").addEventListener("click",()=>canvas.requestPointerLock?.());
+$("enter-button").addEventListener("click",()=>{
+ sound.unlock();canvas.requestPointerLock?.();
+});
 canvas.addEventListener("click",()=>{
- if(mode==="active"&&!pointerActive)canvas.requestPointerLock?.();
+ if(mode==="active"&&!pointerActive){sound.unlock();canvas.requestPointerLock?.();}
 });
 document.addEventListener("pointerlockchange",()=>{
  pointerActive=document.pointerLockElement===canvas;
  $("enter").hidden=pointerActive||$("playing").hidden;
- if(!pointerActive)pressed.clear();
+ if(!pointerActive){pressed.clear();firing=false;aimHeld=false;}
 });
 document.addEventListener("keydown",event=>{
  if(shell.hidden||$("playing").hidden||!pointerActive)return;
- if(["KeyW","KeyA","KeyS","KeyD","KeyC","KeyR","ShiftLeft","ShiftRight",
-   "ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code))
+ if(["KeyW","KeyA","KeyS","KeyD","KeyC","KeyR","KeyQ","KeyE",
+    "ShiftLeft","ShiftRight","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code))
    event.preventDefault();
+ if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat){
+  leanTarget=toggleLean(leanTarget,event.code==="KeyQ"?-1:1);
+  sound.play("equip");
+  return;
+ }
  pressed.add(event.code);
- if(event.code==="KeyR")send({type:"reload"});
+ if(event.code==="KeyR"&&!event.repeat)requestReload();
 });
 document.addEventListener("keyup",event=>pressed.delete(event.code));
 document.addEventListener("mousemove",event=>{
@@ -307,15 +344,47 @@ document.addEventListener("mousemove",event=>{
  player.yaw=((player.yaw-event.movementX*.0023)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
  player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-event.movementY*.0023));
 });
-document.addEventListener("mousedown",event=>{
- if(shell.hidden||!pointerActive||mode!=="active"||event.button!==0||!player?.alive)return;
- if(performance.now()-lastShot<150||ammo<1)return;
- lastShot=performance.now();ammo--;
- const side=roster.find(p=>p.id===selfId)?.side||"attacker";
- send({type:"shot",targetId:selectShotTarget({...player,side},
-    roster.filter(p=>p.id!==selfId))});
- $("weapon").textContent="BX-7 TEST RIFLE · "+ammo+" / 30";
+document.addEventListener("contextmenu",event=>{
+ if(!shell.hidden&&!$("playing").hidden)event.preventDefault();
 });
+document.addEventListener("mousedown",event=>{
+ if(shell.hidden||!pointerActive||mode!=="active"||!player?.alive)return;
+ if(event.button===2){aimHeld=true;sound.play("aim");event.preventDefault();}
+ if(event.button===0){firing=true;attemptShot();event.preventDefault();}
+});
+document.addEventListener("mouseup",event=>{
+ if(event.button===2)aimHeld=false;
+ if(event.button===0)firing=false;
+});
+window.addEventListener("blur",()=>{
+ firing=false;aimHeld=false;pressed.clear();
+});
+setInterval(()=>{if(socket?.readyState===WebSocket.OPEN&&mode==="active")
+ send({type:"ping"});},650);
+function updateWeaponHud(){
+ const reload=reloadPending||reloadingUntil>performance.now();
+ $("weapon").textContent="BX-7 MK II · "+ammo+" / 30"+(reload?" · RELOADING":"");
+}
+function requestReload(){
+ if(mode!=="active"||!player?.alive||ammo>=30||
+    reloadPending||reloadingUntil>performance.now())return;
+ reloadPending=true;send({type:"reload"});updateWeaponHud();
+}
+function attemptShot(){
+ const now=performance.now();
+ if(!player?.alive||mode!=="active"||!pointerActive||
+    reloadPending||reloadingUntil>now||now-lastShot<145)return;
+ if(ammo<=0){if(firing)requestReload();return;}
+ if(pressed.has("ShiftLeft")&&!aimHeld&&!pressed.has("KeyC"))return;
+ lastShot=now;ammo--;
+ player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch+.006+Math.random()*.008));
+ gunKick=Math.min(1,gunKick+.75);
+ const side=roster.find(p=>p.id===selfId)?.side||"attacker";
+ send({type:"shot",targetId:selectShotTarget({...player,side,
+    crouched:pressed.has("KeyC")},roster.filter(p=>p.id!==selfId))});
+ weaponView?.flash();weaponView?.eject();
+ sound.play("fire");updateWeaponHud();
+}
 const palette={floor:0x3b515e,hardWall:0x6f7e86,softWall:0xbdb09b,
  reinforcedWall:0x586d7e,cover:0x41545e,railing:0x82959c,
  door:0x4e6775,stairs:0x6e7d87,rappelAnchor:0xd8ba75};
@@ -368,21 +437,44 @@ async function loadMap(){
  outside.rotation.x=-Math.PI/2;outside.position.y=-.25;scene.add(outside);
  for(const part of parts)addMapItem(part);
  camera=new THREE.PerspectiveCamera(76,1,.06,250);camera.rotation.order="YXZ";
+ weaponView=createWeaponView(THREE,camera,scene);
+ weaponView.root.visible=false;
  sceneReady=true;
 }
 function makeAvatar(p){
- const group=new THREE.Group();
+ const group=new THREE.Group(),rig=new THREE.Group(),gun=new THREE.Group();
+ group.add(rig);
  const armor=new THREE.MeshStandardMaterial({
   color:p.side==="attacker"?0x2f9dc0:0xbd7e51,roughness:.77});
- const torso=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,1.1,8),armor);
- torso.position.y=1;group.add(torso);
- const helmet=new THREE.Mesh(new THREE.SphereGeometry(.26,10,8),
-  new THREE.MeshStandardMaterial({color:0xb5c6cd,roughness:.8}));
- helmet.position.y=1.68;group.add(helmet);
- const rifle=new THREE.Mesh(new THREE.BoxGeometry(.13,.14,.8),material("cover"));
- rifle.position.set(.28,1.24,-.28);group.add(rifle);
+ const dark=new THREE.MeshStandardMaterial({color:0x243039,metalness:.42,roughness:.5});
+ const steel=new THREE.MeshStandardMaterial({color:0x657982,metalness:.7,roughness:.32});
+ const torso=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,1.06,10),armor);
+ torso.position.y=1.05;rig.add(torso);
+ const helmet=new THREE.Mesh(new THREE.SphereGeometry(.26,14,10),dark);
+ helmet.position.y=1.72;rig.add(helmet);
+ const visor=new THREE.Mesh(new THREE.BoxGeometry(.38,.11,.09),steel);
+ visor.position.set(0,1.7,-.235);rig.add(visor);
+ for(const x of [-.36,.36]){
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(.10,.13,.77,8),armor);
+  arm.position.set(x,1.23,-.13);arm.rotation.x=Math.PI/4;rig.add(arm);
+ }
+ const legs=new THREE.Mesh(new THREE.CylinderGeometry(.29,.26,.79,10),dark);
+ legs.position.y=.39;rig.add(legs);
+ const box=(w,h,d,x,y,z,mat)=>{
+  const part=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  part.position.set(x,y,z);gun.add(part);return part;
+ };
+ box(.18,.16,.56,0,0,-.10,dark); // receiver
+ box(.10,.08,.65,0,.07,-.53,steel); // top rail / barrel cover
+ box(.08,.08,.38,0,.0,-.92,dark); // barrel
+ box(.13,.28,.16,0,-.19,-.10,dark); // magazine
+ box(.18,.10,.19,0,.22,-.18,steel); // holo sight
+ const flash=new THREE.Mesh(new THREE.SphereGeometry(.11,8,6),
+  new THREE.MeshBasicMaterial({color:0xffe6a1,transparent:true,opacity:.88}));
+ flash.position.set(0,0,-1.12);flash.visible=false;gun.add(flash);
+ gun.position.set(.26,1.22,-.25);rig.add(gun);
  scene.add(group);
- return {group,x:p.x,y:p.y,z:p.z};
+ return {group,rig,gun,flash,x:p.x,y:p.y,z:p.z};
 }
 async function enterRound(token){
  enteringRound=true;
@@ -407,19 +499,31 @@ function animate(now){
  const dt=Math.min(.05,Math.max(0,(now-lastFrame)/1000));lastFrame=now;
  if(shell.hidden||$("playing").hidden||!sceneReady||!player)return;
  const authoritative=roster.find(p=>p.id===selfId);
+ const alive=Boolean(authoritative?.alive);
+ const crouched=pressed.has("KeyC"),moving=
+  ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown",
+   "ArrowLeft","ArrowRight"].some(k=>pressed.has(k));
+ const sprinting=!aimHeld&&!crouched&&
+   (pressed.has("ShiftLeft")||pressed.has("ShiftRight"));
  if(authoritative){
   $("life").textContent=authoritative.health+" HP";
   $("online-count").textContent=roster.length+" CONNECTED";
  }
- if(pointerActive&&mode==="active"&&authoritative?.alive){
-  const next=moveOnlinePlayer(player,pressed,dt,parts);
+ if(pointerActive&&mode==="active"&&alive){
+  const next=moveOnlinePlayer(player,pressed,dt,parts,{aiming:aimHeld});
   if(!solidAt(parts,next.x,next.z,next.y))player=next;
+  if(firing)attemptShot();
+  const footstepMs=sprinting?275:crouched?660:430;
+  if(moving&&now-lastFootstep>footstepMs){
+   lastFootstep=now;sound.play(sprinting?"run-step":"step");
+  }
   if(now-lastSend>=75){
    lastSend=now;send({type:"move",x:player.x,y:player.y,z:player.z,
-    yaw:player.yaw,pitch:player.pitch});
+    yaw:player.yaw,pitch:player.pitch,aiming:aimHeld,
+    crouched,sprinting,lean:leanTarget});
   }
  }
- if(authoritative&&!authoritative.alive)pressed.clear();
+ if(!alive){pressed.clear();firing=false;aimHeld=false;}
  const seen=new Set();
  for(const p of roster){
   if(p.id===selfId||!p.alive)continue;
@@ -429,19 +533,42 @@ function animate(now){
   Object.assign(v,blendPosition(v,p,Math.min(1,dt*11)));
   v.group.position.set(v.x,v.y,v.z);
   v.group.rotation.y=p.yaw;
+  v.rig.scale.y=p.crouched ? .73 : 1;
+  v.rig.rotation.z=-(p.lean||0)*.13;
+  v.gun.position.y=p.aiming?1.32:1.22;
+  v.flash.visible=(remoteFlashAt.get(p.id)||0)>now;
  }
  for(const [id,v] of remote){
-  if(!seen.has(id)){scene.remove(v.group);remote.delete(id)}
+  if(!seen.has(id)){scene.remove(v.group);remote.delete(id);remoteFlashAt.delete(id)}
  }
  const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;
  if(canvas.width!==Math.round(w*renderer.getPixelRatio())||
     canvas.height!==Math.round(h*renderer.getPixelRatio())){
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
  }
- camera.position.set(player.x,player.y+(pressed.has("KeyC")?1.08:1.62),player.z);
- camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
+ const adsTarget=aimHeld&&alive?1:0;
+ aimMix+=(adsTarget-aimMix)*Math.min(1,dt*20);
+ if(Math.abs(adsTarget-aimMix)<.005)aimMix=adsTarget;
+ leanAmount=smoothLean(leanAmount,leanTarget,dt);
+ const pose=leanCameraPose(player.yaw,leanAmount);
+ const safe=solidAt(parts,player.x+pose.dx,player.z+pose.dz,player.y)?
+  leanCameraPose(player.yaw,0):pose;
+ camera.position.set(player.x+safe.dx,player.y+(crouched?1.08:1.62),
+  player.z+safe.dz);
+ camera.rotation.set(player.pitch,player.yaw,safe.roll,"YXZ");
+ const targetFov=76-13*aimMix;
+ if(Math.abs(camera.fov-targetFov)>.01){
+  camera.fov=targetFov;camera.updateProjectionMatrix();
+ }
+ gunKick=Math.max(0,gunKick-dt*6.5);
+ weaponView.root.visible=alive;
+ weaponView.update(dt,aimMix,gunKick,moving&&alive,now,aimHeld);
+ $("reticle").hidden=aimHeld||aimMix>.65||!alive;
+ $("stance").textContent=(crouched?"CROUCHED":sprinting?"SPRINTING":"STANDING")+
+   " · "+(aimHeld?"ADS":"HIPFIRE")+" · "+
+   (leanTarget<0?"LEFT LEAN":leanTarget>0?"RIGHT LEAN":"CENTERED");
  renderer.render(scene,camera);
  if(!$("notice").hidden&&now>noticeUntil)$("notice").hidden=true;
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.32 custom private rooms; solo start and adjustable host settings.");
+console.info("BLACKOUT V0.33 · BX-7 Mk II and synchronized ADS, lean, crouch, sprint and reload.");
