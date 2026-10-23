@@ -1,5 +1,5 @@
 // BLACKOUT V0.34 · shared training combat, recon, breach and bomb objectives.
-// Isolated canvas: the offline Training simulation is never replaced.
+// Connected rooms are separate while full existing mechanics are accessible in solo Custom.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {createWeaponView} from "./reboot/weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./reboot/lean.js?v=reboot-005";
@@ -21,17 +21,17 @@ shell.innerHTML=[
  '<div class="bo-backdrop" id="bo-backdrop"></div>',
  '<section class="bo-panel" id="bo-panel">',
  '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.34 TACTICAL MATCHES</span>',
- '<button type="button" class="bo-quiet" id="bo-back">← TRAINING MENU</button></div>',
+ '<button type="button" class="bo-quiet" id="bo-back">← CUSTOM GAME MENU</button></div>',
  '<h2>PRIVATE CUSTOM GAMES</h2>',
- '<p>Create a solo game to explore Ironvale, or invite real players for up to 5v5. Hosts choose the player cap, starting requirements and round rules.</p>',
+ '<p>Play solo with the original complete BLACKOUT mechanics, or create a connected Ironvale room for friends. Online shared-world mechanics are still being expanded.</p>',
  '<div class="bo-fields">',
  '<label>YOUR CALLSIGN<input id="bo-name" maxlength="22" autocomplete="nickname" placeholder="Operator"></label>',
  '<label>TEAM<select id="bo-side"><option value="attacker">ATTACKER</option><option value="defender">DEFENDER</option></select></label><label>OPERATOR<select id="bo-operator"></select></label>',
  '<label>ROOM CODE<input id="bo-code" maxlength="8" spellcheck="false" placeholder="6 CHARACTERS"></label>',
- '</div><section class="bo-config" id="bo-config-wrap" aria-label="Custom game settings">',
+ '</div><div class="bo-actions" id="bo-solo-actions"><button type="button" class="bo-primary" id="bo-solo-full">PLAY SOLO · FULL ORIGINAL MECHANICS</button></div><section class="bo-config" id="bo-config-wrap" aria-label="Custom game settings">',
  '<div class="bo-eyebrow">CUSTOM GAME MAKER · HOST SETTINGS</div>',
  '<div class="bo-setting-grid">',
- '<label>ROOM TYPE<select id="bo-kind"><option value="custom">CUSTOM GAME · SOLO ALLOWED</option><option value="standard">STANDARD PRIVATE 5V5</option></select></label>',
+ '<label>ROOM TYPE<select id="bo-kind"><option value="custom">CUSTOM ONLINE ROOM · SOLO ALLOWED</option><option value="standard">STANDARD PRIVATE 5V5</option></select></label>',
  '<label>ROOM NAME<input id="bo-room-name" maxlength="24" placeholder="CUSTOM OPERATIONS" value="CUSTOM OPERATIONS"></label>',
  '<label>PLAYER CAP<select id="bo-max"><option value="1">1 PLAYER</option><option value="2">2 PLAYERS</option><option value="4">4 PLAYERS</option><option value="6">6 PLAYERS</option><option value="8">8 PLAYERS</option><option value="10" selected>10 PLAYERS</option></select></label>',
  '<label>START RULE<select id="bo-start-rule"><option value="any">HOST CAN START SOLO</option><option value="opposing">ATTACKER + DEFENDER REQUIRED</option></select></label>',
@@ -52,7 +52,7 @@ shell.innerHTML=[
  '<button type="button" id="bo-switch">SWITCH TEAM</button>',
  '<button type="button" id="bo-copy">COPY ROOM CODE</button>',
  '<button type="button" id="bo-leave">LEAVE ROOM</button></div>',
- '<p class="bo-footnote">Custom games can start with just the host. Standard rooms require both sides. No AI teammates are generated. The Worker synchronizes drone reconnaissance, barricades, breach charges, site objectives and combat.</p>',
+ '<p class="bo-footnote">Connected rooms can start with just the host, but are still being brought to feature parity with full solo Custom. Standard rooms require both sides. No AI teammates are generated. The Worker synchronizes drone reconnaissance, barricades, breach charges, site objectives and combat.</p>',
  '</section></section>',
  '<section class="bo-playing" id="bo-playing" hidden>',
  '<div class="bo-hud-left">IRONVALE · OPERATIONS<br><span id="bo-life">100 HP</span><br><span id="bo-side-hud"></span></div>',
@@ -209,6 +209,12 @@ function openRoomMaker(kind){
   "STANDARD PRIVATE · AT LEAST ONE PLAYER ON EACH TEAM REQUIRED");
 }
 launch.addEventListener("click",()=>openRoomMaker("standard"));
+$("solo-full").addEventListener("click",()=>{
+ exitOnline();
+ const setup=document.getElementById("operator-selection");
+ setup?.scrollIntoView({behavior:"smooth",block:"start"});
+ document.getElementById("message").textContent="SOLO CUSTOM · FULL ORIGINAL GADGETS, DRONES, BOMB ROUNDS AND MAP TESTS · CHOOSE MAP THEN DEPLOY";
+});
 customLaunch.addEventListener("click",()=>openRoomMaker("custom"));
 $("back").addEventListener("click",exitOnline);
 $("exit").addEventListener("click",exitOnline);
@@ -803,4 +809,4 @@ function animate(now){
  if(!$("notice").hidden&&now>noticeUntil)$("notice").hidden=true;
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.33 · BX-7 Mk II and synchronized ADS, lean, crouch, sprint and reload.");
+console.info("BLACKOUT · Custom solo uses original full-mechanics engine; connected rooms remain separate.");
