@@ -38,6 +38,9 @@ function wall(axis,where,start,end,level,openings=[],material="plaster"){
   if(opening.kind==="window"){
    span(a,b,0,1.03,"window-sill");
    span(a,b,2.20,HOUSE.wallHeight,"window-lintel");
+  }else if(opening.kind==="drone"){
+   // Real under-wall opening: recon drone fits; standing operators do not.
+   span(a,b,.44,HOUSE.wallHeight,"drone-lintel");
   }else span(a,b,2.30,HOUSE.wallHeight,"door-lintel");
   cursor=b;
  }
@@ -45,6 +48,7 @@ function wall(axis,where,start,end,level,openings=[],material="plaster"){
 }
 const door=(center,width=1.86)=>({center,width,kind:"door"});
 const windowAt=(center,width=2.1)=>({center,width,kind:"window"});
+const droneAt=(center,width=.90)=>({center,width,kind:"drone"});
 
 for(const level of [0,1]){
  // Exterior: a proper front entrance, back exit, side service doors,
@@ -54,13 +58,13 @@ for(const level of [0,1]){
  wall("x",HOUSE.maxZ,-10,10,level,
   level?[windowAt(-6),windowAt(6)]:[door(0,2.6),windowAt(-6),windowAt(6)],"exterior");
  wall("z",HOUSE.minX,-20,-2,level,
-  level?[windowAt(-16),windowAt(-6)]:[door(-16,1.95),windowAt(-6)],"exterior");
+  level?[windowAt(-16),windowAt(-6)]:[door(-16,1.95),droneAt(-12.6),windowAt(-6)],"exterior");
  wall("z",HOUSE.maxX,-20,-2,level,
-  level?[windowAt(-16),windowAt(-6)]:[door(-16,1.95),windowAt(-6)],"exterior");
+  level?[windowAt(-16),windowAt(-6)]:[door(-16,1.95),droneAt(-12.6),windowAt(-6)],"exterior");
  // A full-length central corridor is the circulation spine. Four accessible
  // side doors connect rooms to it, plus inter-room paths for flanks.
- wall("z",-2,-20,-2,level,[door(-16),door(-9),door(-4.8)]);
- wall("z",2,-20,-2,level,[door(-16),door(-9),door(-4.8)]);
+ wall("z",-2,-20,-2,level,level?[door(-16),door(-9),door(-4.8)]:[door(-16),droneAt(-12.6),door(-9),door(-4.8)]);
+ wall("z",2,-20,-2,level,level?[door(-16),door(-9),door(-4.8)]:[door(-16),droneAt(-12.6),door(-9),door(-4.8)]);
  if(level===0){
   wall("x",-10,-10,-2,level,[door(-6)]);
   wall("x",-10,2,10,level,[door(6)]);
