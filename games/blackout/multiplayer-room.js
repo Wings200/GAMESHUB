@@ -50,7 +50,7 @@ export class BlackoutRoom extends DurableObject {
     if(!entry?.id)continue;
     const p={...entry,id:entry.id,ws,connected:true,lastMove:Date.now(),
       lastShot:0,health:entry.health??100,alive:entry.alive??true,
-      shots:entry.shots??30,reloadingUntil:entry.reloadingUntil||0,
+      shots:entry.shots??31,reloadingUntil:entry.reloadingUntil||0,
       aiming:Boolean(entry.aiming),crouched:Boolean(entry.crouched),
       sprinting:Boolean(entry.sprinting),lean:entry.lean||0,
       insertX:entry.insertX??entry.x,
@@ -100,7 +100,7 @@ export class BlackoutRoom extends DurableObject {
   this.ctx.acceptWebSocket(server);
   const player={...entry,id,name,side,operator,ws:server,
     health:100,alive:true,connected:true,lastMove:Date.now(),lastShot:0,
-    lastReload:0,shots:30,reloadingUntil:0,
+    lastReload:0,shots:31,reloadingUntil:0,
     aiming:false,crouched:false,sprinting:false,lean:0,
      drones:[],droneActive:false,droneIndex:0,lastDroneMove:Date.now()};
   this.players.set(id,player);this.saveAttachment(player);
@@ -227,8 +227,8 @@ export class BlackoutRoom extends DurableObject {
   const now=Date.now();
   if(this.status==="active")this.advanceWorld(now);
   if(p.reloadingUntil&&now>=p.reloadingUntil){
-   p.reloadingUntil=0;p.shots=30;this.saveAttachment(p);
-   this.send(p,{type:"reload-ok",shots:30});this.broadcast({event:"reload-complete",from:p.id});
+   p.reloadingUntil=0;p.shots=31;this.saveAttachment(p);
+   this.send(p,{type:"reload-ok",shots:31});this.broadcast({event:"reload-complete",from:p.id});
   }
   if(m.type==="ping"){this.send(p,{type:"pong",time:now});return}
   if(m.type==="start"){
@@ -249,7 +249,7 @@ export class BlackoutRoom extends DurableObject {
    for(const user of this.players.values()){
     Object.assign(user,spawn(user.side,count[user.side]++));
     user.insertX=user.x;user.insertZ=user.z;
-    user.health=100;user.alive=true;user.lastMove=now;user.spawnedAt=now;user.firedAt=0;user.shots=30;
+    user.health=100;user.alive=true;user.lastMove=now;user.spawnedAt=now;user.firedAt=0;user.shots=31;
     user.lastShot=0;user.reloadingUntil=0;user.aiming=false;user.crouched=false;
     user.sprinting=false;user.lean=0;
     user.drones=user.side==="attacker"?[
@@ -370,15 +370,15 @@ export class BlackoutRoom extends DurableObject {
    }else this.send(p,{type:"correction",x:p.x,y:p.y,z:p.z});
   }else if(m.type==="reload"){
    if(this.phase!=="action"||p.droneActive)return;
-   if(p.reloadingUntil>now||p.shots>=30||now-(p.lastReload||0)<1750){
+   if(p.reloadingUntil>now||p.shots>=31||now-(p.lastReload||0)<2250){
     this.send(p,{type:"reload-denied",shots:p.shots});return;
    }
-   p.lastReload=now;p.reloadingUntil=now+1700;this.saveAttachment(p);
-   this.send(p,{type:"reload-start",durationMs:1700});
+   p.lastReload=now;p.reloadingUntil=now+2250;this.saveAttachment(p);
+   this.send(p,{type:"reload-start",durationMs:2250});
    this.broadcast({event:"reload-start",from:p.id});return;
   }else if(m.type==="shot"){
    if((this.phase!=="action"&&!(this.phase==="prep"&&p.side==="defender"))||p.droneActive)return;
-   if(p.reloadingUntil>now||now-p.lastShot<135||p.shots<1)return;
+   if(p.reloadingUntil>now||now-p.lastShot<85||p.shots<1)return;
    p.lastShot=now;p.firedAt=now;p.shots--;
    this.saveAttachment(p);this.send(p,{type:"shot-ok",shots:p.shots});
    const target=this.players.get(String(m.targetId||""));

@@ -66,7 +66,7 @@
       <div class="section-tag"><span class="section-line"></span> TACTICAL / PRIVATE ONLINE + CUSTOM GAMES</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Test the complete original BLACKOUT game in Solo Custom. Connected Custom Games and Online 5v5 are temporarily unavailable while multiplayer is rebuilt from this same engine.</p>
+      <p class="description">The original BLACKOUT house and mechanics remain the single gameplay engine. Multiplayer is being integrated without a separate map or simplified client.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
@@ -74,17 +74,21 @@
             <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
             <small>Offline tactical matches against bots. Not playable yet.</small>
           </div>
-          <button id="online-choice" type="button" class="mode-choice planned" disabled aria-label="Online five versus five is being rebuilt">
-            <span>02 · REBUILDING</span><strong>ONLINE 5v5</strong>
-            <small>Multiplayer will return using the tested original gameplay engine.</small>
+          <button id="online-choice" type="button" class="mode-choice online-choice" aria-label="Open online five versus five lobby">
+            <span>03 · NETWORK PREVIEW</span><strong>ONLINE 5v5</strong>
+            <small>Connected standard matches using original house. Development preview.</small>
           </button>
-          <button id="custom-choice" type="button" class="mode-choice current online-choice" aria-label="Jump to Solo Custom Game setup">
-            <span>01 · LIVE TEST PHASE</span><strong>CUSTOM GAME</strong>
-            <small>Solo test with the original house, weapons, bombs, drones and gadgets.</small>
+          <button id="custom-choice" type="button" class="mode-choice online-choice" aria-label="Open private multiplayer room creator">
+            <span>02 · NETWORK PREVIEW</span><strong>CUSTOM GAME</strong>
+            <small>Create a private room, choose teams, invite friends by code.</small>
+          </button>
+          <button id="solo-choice" type="button" class="mode-choice current online-choice" aria-label="Jump to original solo testing setup">
+            <span>01 · STABLE</span><strong>SOLO TEST</strong>
+            <small>Original mechanics, complete gadgets, drones and bomb rounds.</small>
           </button>
         </div>
       </section>
-      <div class="training-head">CUSTOM GAME · SOLO DEPLOYMENT</div>
+      <div class="training-head">SOLO TEST · ORIGINAL ENGINE</div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
           <span>OPERATOR SELECT</span>
@@ -360,7 +364,7 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-071"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-072"></script>
   <script>
     fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
       .then(response=>response.ok?response.json():null)

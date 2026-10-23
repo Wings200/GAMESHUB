@@ -22,6 +22,8 @@ import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
 import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
 import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-071";
+import {createBlackoutNetwork} from "./network-lobby.js?v=reboot-072";
+import {createRemoteOperators} from "./remote-operators.js?v=reboot-072";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";
@@ -247,6 +249,7 @@ const bombView=createBombRoundView(THREE,scene);
 const bombInteractionView=createBombInteractionView(THREE,scene,camera);
 const targets=createTargetRange(THREE,scene);
 const houseView=createHouseView(THREE,scene);
+const remoteOperators=createRemoteOperators(THREE,scene);
 const trainingShootables=shootableSolids.slice();
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -271,6 +274,7 @@ const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let gameMode="sandbox",bombState=null,mapMode="sandbox",operatorDeployed=true;
+let onlineSession=null;
 function isAttackerPreparation(){return gameMode==="bomb"&&bombState?.phase==="prep"&&activeOperator.side==="attack";}
 function setMapMode(next){
  const house=next==="house";
@@ -1480,12 +1484,64 @@ function enterRange(){
 }
 playMode.addEventListener("change",updateDeployMenu);
 updateDeployMenu();
-// The legacy Ironvale multiplayer client is retired while the original
-// Training engine is validated. Custom Game leads straight to its setup.
-$("custom-choice")?.addEventListener("click",()=>{
- $("operator-selection")?.scrollIntoView({behavior:"smooth",block:"start"});
- message.textContent="SOLO CUSTOM TEST · SELECT OPERATOR, MAP AND GADGETS · THEN DEPLOY";
+// One game engine: network sessions reuse the original house, camera and weapon.
+onlineSession=createBlackoutNetwork({
+ onStart(snapshot){
+   const self=snapshot.self;if(!self)return;
+   activeOperator=operatorById(self.side==="defender"?"sentry":"striker");
+   gameMode="online";bombState=null;bombView.update(null);
+   setMapMode("house");resetRoundDrones();
+   player={...initialPlayer(),x:self.x,y:self.y,z:self.z,yaw:self.yaw,pitch:self.pitch};
+   wireHealth=newWireHealth();weapons.reset();cameraEye=1.65;
+   operatorHudName.textContent=activeOperator.name;
+   operatorHudSide.textContent=self.side==="defender"?"DEFENDER":"ATTACKER";
+   refreshUtilityHud();refreshDroneEquipment();syncRoundUI();
+   remoteOperators.sync(snapshot.players,snapshot.id);
+   shotNotice.textContent="CONNECTED · ORIGINAL BLACKOUT HOUSE";shotNoticeLeft=3;
+ },
+ onEnter(){enterRange()},
+ onState(snapshot){
+   if(!snapshot.self)return;
+   remoteOperators.sync(snapshot.players,snapshot.id);
+   if(gameMode==="online"){
+     wireHealth={...wireHealth,hp:Math.min(wireHealth.hp,snapshot.self.health)};
+     if(!snapshot.self.alive){firing=false;aimHeld=false}
+   }
+ },
+ onEnd(){
+   if(document.pointerLockElement===canvas)document.exitPointerLock();
+   remoteOperators.clear();gameMode="sandbox";bombState=null;
+   message.textContent="CONNECTED ROUND COMPLETE · HOST CAN START NEXT ROUND";
+ },
+ onLeave(){
+   if(document.pointerLockElement===canvas)document.exitPointerLock();
+   remoteOperators.clear();gameMode="sandbox";bombState=null;
+   setMapMode("sandbox");syncRoundUI();
+ },
+ onCorrection(fix){
+   if(gameMode==="online"&&[fix.x,fix.y,fix.z].every(Number.isFinite))
+     Object.assign(player,{x:fix.x,y:fix.y,z:fix.z});
+ },
+ onHit(snapshot,event){
+   if(String(event.to)===String(snapshot.id)){
+     wireHealth={...wireHealth,hp:Math.max(0,Number(event.health)||0)};
+     shotNotice.textContent=wireHealth.hp?"HIT · "+wireHealth.hp+" HP":"ELIMINATED · WAIT FOR NEXT ROUND";
+     shotNoticeLeft=2;
+   }
+ },
+ onAmmo(shots){if(gameMode==="online"&&Number.isInteger(shots))weapons.current.ammo=shots;},
+ onShot(snapshot,event){
+   if(String(event.from)===String(snapshot.id))return;
+   const source=snapshot.players.find(p=>String(p.id)===String(event.from));
+   if(source)shotAudio.playAt("enemy-fire",source.x,source.z,player.x,player.z,player.yaw);
+ }
 });
+$("solo-choice")?.addEventListener("click",()=>{
+ $("operator-selection")?.scrollIntoView({behavior:"smooth",block:"start"});
+ message.textContent="SOLO TEST · ORIGINAL HOUSE, GADGETS AND DRONES";
+});
+$("custom-choice")?.addEventListener("click",()=>onlineSession.open("custom"));
+$("online-choice")?.addEventListener("click",()=>onlineSession.open("standard"));
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   plantAudio.sync("off");
@@ -1508,7 +1564,8 @@ play.addEventListener("click",()=>{
 });
 document.addEventListener("pointerlockchange",()=>{
  locked=document.pointerLockElement===canvas;
- menu.classList.toggle("hidden",locked);
+ menu.classList.toggle("hidden",locked||Boolean(onlineSession?.active));
+ if(onlineSession?.active){if(locked)onlineSession.hidePause();else onlineSession.showPause();}
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
  if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else if(bombState?.phase!=="ended")plantAudio.pause();defuseAudio.sync(false);bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
@@ -1743,8 +1800,10 @@ function hudFrame(){
  hitsText.textContent=String(completedTargets.size);
  missionCheck.classList.toggle("complete",completedTargets.size===targets.length);
  leanText.textContent=leanTarget<0?"LEAN LEFT":leanTarget>0?"LEAN RIGHT":"CENTER";
- roundClock.textContent=gameMode==="bomb"&&bombState?
-   drillClock(bombState.time):drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
+ roundClock.textContent=onlineSession?.active?onlineSession.timeLabel():
+   gameMode==="bomb"&&bombState?drillClock(bombState.time):
+   drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
+ if(onlineSession?.active)sandboxObjective.textContent="CONNECTED · "+onlineSession.phase.toUpperCase()+" · ORIGINAL HOUSE";
  syncRoundUI();
  areaLabel.textContent=mapMode==="house"?houseRoomAt(player):areaName(player.x,player.z);
  const heading=compassHeading(player.yaw);
@@ -1856,8 +1915,12 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=visibleRangeTargets();
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones(),...remoteOperators.shootables(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
+ if(onlineSession?.active){
+   const targetId=outcome.hit?.object?.userData?.onlinePlayerId||null;
+   onlineSession.send({type:"shot",targetId});
+ }
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
  const droneIndex=outcome.hit?.object?.userData?.reconDroneIndex;
@@ -1872,7 +1935,7 @@ function fireShot(shot,sightAligned,now){
    barricade.hitBoard(outcome.hit):{handled:false};
  const metalHit=outcome.hit&&!obsHit.handled&&!proxHit.handled?reinforcement.steelImpact(outcome.hit):false;
  const plasterHit=outcome.hit&&!metalHit&&!obsHit.handled&&!proxHit.handled?softWall.onHit(outcome.hit):{handled:false};
- if(outcome.hit&&!droneHit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)
+ if(outcome.hit&&!outcome.hit.object?.userData?.onlinePlayerId&&!droneHit&&!woodHit.handled&&!plasterHit.handled&&!metalHit&&!obsHit.handled&&!proxHit.handled&&!shieldHit&&!bombHit)
    shotEffects.mark(outcome.hit,outcome.kind==="target");
  markDebugShot(outcome,screen);
  if(droneHit){
@@ -2162,11 +2225,12 @@ function animate(now){
        "HARD BREACH VAULT COMPLETE":"VAULT BLOCKED · COLLISION";
       shotNoticeLeft=1.4;
      }
-    }else if(!(gameMode==="bomb"&&bombState&&
+    }else if(!(onlineSession?.active&&onlineSession.phase==="prep"&&activeOperator.side==="attack")&&!(gameMode==="bomb"&&bombState&&
     (bombState.phase==="ended"||
      (bombState.phase==="prep"&&activeOperator.side==="attack"))))
      player=stepPlayer(player,input,dt,obstacles,
       mapMode==="house"?houseFloorAt:null);
+    if(onlineSession?.active)onlineSession.sendMovement(player,now,aimHeld,leanTarget);
    }
    const nextHealth=tickWireHealth(wireHealth,wireState,player,activeOperator.side,dt);
    if(nextHealth.damage>0){
@@ -2211,6 +2275,7 @@ function animate(now){
    weapons.tick(now);
    if(reloadPressed){
     if(weapons.reload(now)){
+     if(onlineSession?.active)onlineSession.send({type:"reload"});
      shotAudio.play("reload");
      weaponView.beginReload(now,weapons.current.reloadDurationMs,weapons.current.reloadType);
      shotNotice.textContent=weapons.current.reloadType.toUpperCase()+
@@ -2299,6 +2364,7 @@ function animate(now){
  }
  for(let i=0;i<droneViews.length;i++)
   droneViews[i].update(droneRoster.drones[i],dt);
+ remoteOperators.tick(dt);
  // Camera sees the world, never its own housing or wheels. The other
  // drone remains visible; operator view restores both physical models.
  setDroneCameraVisibility(droneViews,droneRoster.selected,

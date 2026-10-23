@@ -42,6 +42,8 @@ jobs:
           node --check games/blackout/src/multiplayer-protocol.js
           node --check games/blackout/multiplayer-room.js
           node --check games/blackout/reboot/main.js
+          node --check games/blackout/reboot/network-lobby.js
+          node --check games/blackout/reboot/remote-operators.js
           node --check games/blackout/reboot/physics.js
           node --check games/blackout/reboot/footsteps.js
           node --check games/blackout/reboot/weapon.js
@@ -108,4 +110,4 @@ jobs:
           node --check games/blackout/reboot/bomb-interaction-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
-        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs games/blackout/blackout-access.test.mjs games/blackout/custom-game.test.mjs
+        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs games/blackout/blackout-access.test.mjs games/blackout/custom-game.test.mjs games/blackout/src/house-online-map.test.mjs

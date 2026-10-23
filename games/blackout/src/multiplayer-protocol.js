@@ -3,8 +3,7 @@
 // authority over health/damage. The Worker decides session membership.
 export const MAX_PLAYERS=10,TEAM_LIMIT=5;
 export const OPERATOR_SIDES=Object.freeze({
-  sledge:"attacker",thatcher:"attacker",ash:"attacker",thermite:"attacker",twitch:"attacker",
-  smoke:"defender",mute:"defender",castle:"defender",pulse:"defender",doc:"defender"
+  striker:"attacker",sentry:"defender"
 });
 export const SPAWN_POINTS=Object.freeze({
   attacker:[[-42,0,-24],[-43,0,5],[0,0,28],[41,0,-6],[9,0,-33]],
