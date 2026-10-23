@@ -1,11 +1,14 @@
 // BLACKOUT V0.9 — isolated, deterministic wooden barricade rules.
 // Boards are independently damageable AND separately solid in the movement engine.
-// A floor-level gap allows recon drones underneath intact wooden boards. 
+// Shingled boards overlap vertically, closing every rifle sightline between planks.
+// Only the narrow bottom drone-clearance slot remains beneath intact wood.
 // No arbitrary whole-door hit counter, and no changes to existing wall materials.
 export const BARRICADE=Object.freeze({
  id:"door-station-01",x:-7,z:3,openingWidth:1.84,openingHeight:2.24,
  depth:.16,postWidth:.22,postHeight:2.58,boardCount:6,
- boardHeight:.255,firstCenter:.50,boardStep:.32,
+ // 7cm of vertical overlap between adjacent planks; 27.5cm floor slot
+ // lets the 25cm recon drone drive through, without the old 6.5cm seams.
+ boardHeight:.39,firstCenter:.47,boardStep:.32,
  boardHP:2,installSeconds:2.2,interactRadius:2.6,
 });
 export function createBarricadeState(){
