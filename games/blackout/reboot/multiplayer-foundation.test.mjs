@@ -50,13 +50,16 @@ test("main menu and firearm interaction expose honest feature state",()=>{
  const directory=dirname(fileURLToPath(import.meta.url));
  const html=readFileSync(join(directory,"../index.html"),"utf8");
  const main=readFileSync(join(directory,"main.js"),"utf8");
- assert.match(html,/TRAINING · DEPLOYMENT SETUP/);
+ assert.match(html,/CUSTOM GAME · SOLO DEPLOYMENT/);
  assert.match(html,/TACTICAL AI/);
  assert.match(html,/ONLINE 5v5/);
  assert.match(html,/id="online-choice"/);
  assert.match(html,/online-multiplayer\.js\?v=034/);
  assert.match(html,/id="custom-choice"/);
  assert.match(html,/CUSTOM GAME/);
+ assert.doesNotMatch(html,/<strong>TRAINING<\\/strong>/);
+ assert.match(online,/bo-solo-full/);
+ assert.match(online,/exitOnline\\(\\);[\\s\\S]*?scrollIntoView/);
  const online=readFileSync(join(directory,"../online-multiplayer.js"),"utf8");
  assert.match(online,/createWeaponView\(THREE,camera,scene\)/);
  assert.match(online,/toggleLean\(leanTarget/);
