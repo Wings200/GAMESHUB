@@ -531,9 +531,10 @@ test("reboot entry point preserves original renderer and gameplay when networkin
   assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-070"'));
  assert.ok(main.includes('bombState=newBombRound({choice,map:mapMode})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
- assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));
- assert.ok(main.includes('holdingX:controlMode==="player"&&keys.has("KeyX")'));
- assert.ok(main.includes('holdingF:controlMode==="player"&&keys.has("KeyF")'));
+ assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,"));
+ assert.ok(main.includes("position:operatorDeployed?player:null"));
+ assert.ok(main.includes('holdingX:operatorDeployed&&controlMode==="player"&&keys.has("KeyX")'));
+ assert.ok(main.includes('holdingF:operatorDeployed&&controlMode==="player"&&keys.has("KeyF")'));
  assert.ok(main.includes('pickupRoundDefuser(bombState,activeOperator.side,player)'));
  assert.ok(main.includes('nearbyDefuser(bombState,activeOperator.side,player)'));
  assert.ok(main.includes('dropRoundDefuser(bombState,player'));
