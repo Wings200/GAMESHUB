@@ -57,7 +57,7 @@ let socket=null,roomCode=null,selfId=null,hostId=null,mode="lobby",round=0,roste
 let player=null,ammo=30,lastShot=0,pointerActive=false;
 let renderer=null,scene=null,camera=null,parts=[],sceneReady=false;
 let remote=new Map(),pressed=new Set(),lastFrame=performance.now(),lastSend=0;
-let session=0,noticeUntil=0;
+let session=0,noticeUntil=0,enteringRound=false;
 function message(text,error=false){
  $("status").textContent=text;$("status").classList.toggle("error",error);
 }
@@ -146,7 +146,7 @@ async function connect(code){
     mode=data.mode||"lobby";round=data.round||0;
     renderRoster();
     if(mode==="active"){
-     if($("playing").hidden)enterRound(token);
+     if($("playing").hidden&&!enteringRound)enterRound(token);
      else if(!roster.some(p=>p.id===selfId)){
       disconnect(true);message("Server ended your session",true);
      }
@@ -291,6 +291,7 @@ function makeAvatar(p){
  return {group,x:p.x,y:p.y,z:p.z};
 }
 async function enterRound(token){
+ enteringRound=true;
  try{
   await loadMap();
   if(token!==session||mode!=="active"||!selfId)return;
@@ -305,6 +306,7 @@ async function enterRound(token){
   $("side-hud").textContent=own.side.toUpperCase();
   $("weapon").textContent="BX-7 TEST RIFLE · 30 / 30";
  }catch(e){message("ONLINE MAP ERROR · "+String(e?.message||e),true)}
+ finally{enteringRound=false}
 }
 function animate(now){
  requestAnimationFrame(animate);
@@ -338,7 +340,8 @@ function animate(now){
   if(!seen.has(id)){scene.remove(v.group);remote.delete(id)}
  }
  const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;
- if(renderer.domElement.clientWidth!==w||renderer.domElement.clientHeight!==h){
+ if(canvas.width!==Math.round(w*renderer.getPixelRatio())||
+    canvas.height!==Math.round(h*renderer.getPixelRatio())){
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
  }
  camera.position.set(player.x,player.y+(pressed.has("KeyC")?1.08:1.62),player.z);
