@@ -31,6 +31,8 @@ test("connected physics and shooting originate from original game runtime",()=>{
  assert.match(runtime,/onlineSession\.sendMovement\(player,now/);
  assert.match(runtime,/onlineSession\.send\(\{type:"shot",targetId\}\)/);
  assert.match(runtime,/remoteOperators\.shootables\(\)/);
+ assert.match(runtime,/onlineSession\.sendDrone\(drone,input,now\)/);
+ assert.match(runtime,/registerPhysicalDrone\(\{\.\.\.newDrone\(prepDrone\.x/);
  assert.match(peers,/onlinePlayerId/);
  assert.match(server,/validShot\(p,target,wallParts\(matchMap,this\.world\)\)/);
 });

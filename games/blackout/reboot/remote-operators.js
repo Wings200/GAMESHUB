@@ -23,14 +23,14 @@ export function createRemoteOperators(THREE,scene){
    return {root,torso,head,left,right,side:p.side,x:p.x,y:p.y,z:p.z,
       yaw:p.yaw,hitMeshes:root.children.filter(n=>n.isMesh)};
  }
- function sync(players,selfId){
+ function sync(players,selfId,phase="action"){
    const current=new Set();
    for(const p of players||[]){
      if(String(p.id)===String(selfId))continue;
      const id=String(p.id);current.add(id);
      let v=peers.get(id);
      if(!v){v=make(p);peers.set(id,v)}
-     v.target=p;v.root.visible=p.alive!==false;
+     v.target=p;v.root.visible=p.alive!==false&&!(phase==="prep"&&p.side==="attacker");
    }
    for(const [id,v] of peers)if(!current.has(id)){scene.remove(v.root);peers.delete(id)}
  }

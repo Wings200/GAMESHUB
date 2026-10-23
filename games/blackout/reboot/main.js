@@ -274,7 +274,7 @@ const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let gameMode="sandbox",bombState=null,mapMode="sandbox",operatorDeployed=true;
-let onlineSession=null;
+let onlineSession=null,onlinePhase="lobby";
 function isAttackerPreparation(){return gameMode==="bomb"&&bombState?.phase==="prep"&&activeOperator.side==="attack";}
 function setMapMode(next){
  const house=next==="house";
@@ -1253,7 +1253,9 @@ function strikeMelee(now){
 }
 function setControlMode(nextMode){
  // No attacker body exists in prep, so X and 5 cannot exit the feed.
- if(isAttackerPreparation()&&nextMode==="player")nextMode="drone";
+ if((isAttackerPreparation()||(gameMode==="online"&&onlineSession?.active&&
+     onlineSession.phase==="prep"&&activeOperator.side==="attack"))&&
+     nextMode==="player")nextMode="drone";
  // Never enter a recon feed as a defender, including after switching teams
  // while the camera was open and the Testing Range was paused.
  if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
@@ -1402,9 +1404,11 @@ function switchDroneCamera(direction){
  return true;
 }
 function droneHudFrame(){
- droneRoundClock.textContent=gameMode==="bomb"&&bombState?
-  drillClock(bombState.time):drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
- droneRoundPhase.textContent=gameMode==="bomb"&&bombState?
+ droneRoundClock.textContent=onlineSession?.active?onlineSession.timeLabel():
+  gameMode==="bomb"&&bombState?drillClock(bombState.time):
+  drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
+ droneRoundPhase.textContent=onlineSession?.active?onlineSession.phase.toUpperCase():
+  gameMode==="bomb"&&bombState?
   (bombState.phase==="prep"?"PREPARATION":bombState.phase==="action"?"ACTION":
    bombState.phase==="postplant"?"DEFUSER ACTIVE":"ROUND OVER"):"TEST RANGE";
  if(!drone)return;
@@ -1492,17 +1496,34 @@ onlineSession=createBlackoutNetwork({
    gameMode="online";bombState=null;bombView.update(null);
    setMapMode("house");resetRoundDrones();
    player={...initialPlayer(),x:self.x,y:self.y,z:self.z,yaw:self.yaw,pitch:self.pitch};
+   onlinePhase=snapshot.phase;
+   // The original drone controller/camera handles preparation, not another renderer.
+   const prepDrone=self.drones?.find(item=>item.deployed);
+   if(self.side==="attacker"&&snapshot.phase==="prep"&&prepDrone){
+     registerPhysicalDrone({...newDrone(prepDrone.x,prepDrone.z,prepDrone.yaw),
+       y:prepDrone.y,pitch:prepDrone.pitch},"initial");
+     operatorDeployed=false;setControlMode("drone");
+   }
    wireHealth=newWireHealth();weapons.reset();cameraEye=1.65;
    operatorHudName.textContent=activeOperator.name;
    operatorHudSide.textContent=self.side==="defender"?"DEFENDER":"ATTACKER";
    refreshUtilityHud();refreshDroneEquipment();syncRoundUI();
-   remoteOperators.sync(snapshot.players,snapshot.id);
+   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase);
    shotNotice.textContent="CONNECTED · ORIGINAL BLACKOUT HOUSE";shotNoticeLeft=3;
  },
  onEnter(){enterRange()},
  onState(snapshot){
    if(!snapshot.self)return;
-   remoteOperators.sync(snapshot.players,snapshot.id);
+   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase);
+   // The server owns the phase clock; the player body spawns only after prep.
+   if(onlinePhase==="prep"&&snapshot.phase==="action"&&
+      activeOperator.side==="attack"){
+     operatorDeployed=true;
+     Object.assign(player,{x:snapshot.self.x,y:snapshot.self.y,
+       z:snapshot.self.z,yaw:snapshot.self.yaw,pitch:snapshot.self.pitch});
+     setControlMode("player");refreshDroneEquipment();
+   }
+   onlinePhase=snapshot.phase;
    if(gameMode==="online"){
      wireHealth={...wireHealth,hp:Math.min(wireHealth.hp,snapshot.self.health)};
      if(!snapshot.self.alive){firing=false;aimHeld=false}
@@ -1510,12 +1531,12 @@ onlineSession=createBlackoutNetwork({
  },
  onEnd(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
-   remoteOperators.clear();gameMode="sandbox";bombState=null;
+   remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
    message.textContent="CONNECTED ROUND COMPLETE · HOST CAN START NEXT ROUND";
  },
  onLeave(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
-   remoteOperators.clear();gameMode="sandbox";bombState=null;
+   remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
    setMapMode("sandbox");syncRoundUI();
  },
  onCorrection(fix){
@@ -1608,7 +1629,8 @@ document.addEventListener("keydown",event=>{
  if(event.code==="Digit6"&&!event.repeat){throwCarriedDrone();return;}
  if(controlMode==="drone"){
   if(event.code==="KeyX"&&!event.repeat){
-   if(!isAttackerPreparation())setControlMode("player");
+   if(!isAttackerPreparation()&&!(onlineSession?.active&&
+      onlineSession.phase==="prep"))setControlMode("player");
    return;
   }
   if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat&&
@@ -2026,6 +2048,7 @@ function animate(now){
    }
     drone=tickDrone(drone,{...input,floorAt:mapMode==="house"?houseFloorAt:null},
      dt,activeDroneObstacles());
+   if(onlineSession?.active)onlineSession.sendDrone(drone,input,now);
    droneRoster=updateDrone(droneRoster,droneRoster.selected,drone);
  }
  if(locked&&controlMode==="player"){

@@ -160,7 +160,8 @@ export function createBlackoutNetwork(callbacks={}){
    panel(true);update();status("Ready to create or join a real-player room.");
  }
  function sendMovement(p,now,aiming,lean){
-   if(!isActive||phase!=="action"||!p||now-lastSentAt<75)return;
+   if(!isActive||!p||now-lastSentAt<75||
+     (phase!=="action"&&!(phase==="prep"&&state().self?.side==="defender")))return;
    lastSentAt=now;
    send({type:"move",x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,
      aiming:Boolean(aiming),crouched:Boolean(p.crouched),
