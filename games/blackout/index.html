@@ -5,9 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — REBOOT V0.26.3 | GAMESHUB</title>
+  <title>BLACKOUT — V0.27 · MULTIPLAYER FOUNDATION | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
+  <style>
+    .menu-content{padding-top:clamp(35px,7vh,85px)}
+    .mode-hub{margin:23px 0 28px;max-width:760px}
+    .mode-hub h2{color:#afcbd1;font-size:11px;letter-spacing:.2em;margin:0 0 13px}
+    .mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .mode-choice{min-height:154px;padding:18px 14px;background:#111e2cbd;border:1px solid #456176;display:flex;flex-direction:column;gap:9px;position:relative}
+    .mode-choice strong{font-size:20px;letter-spacing:.09em;color:#eaf8f9}
+    .mode-choice small{font-size:11px;color:#9db5c3;line-height:1.55}
+    .mode-choice span{font-size:9px;font-weight:900;letter-spacing:.1em;color:#8fa7b6}
+    .mode-choice.current{border:1px solid #64e0c2;background:linear-gradient(145deg,#173e48,#10232e)}
+    .mode-choice.current span{color:#7ff0cf}
+    .mode-choice.planned{opacity:.76}
+    .training-head{display:flex;align-items:center;gap:12px;margin:0 0 13px;font-size:11px;letter-spacing:.15em;font-weight:900;color:#77e6cd}
+    .training-head:after{content:"";flex:1;height:1px;background:#65b4a34a}
+    @media(max-width:650px){.mode-grid{grid-template-columns:1fr}.mode-choice{min-height:100px}}
+  </style>
   <style>
     .bomb-round-result{position:absolute;top:32%;left:50%;transform:translateX(-50%);
       width:min(560px,88vw);padding:26px 36px 23px;text-align:center;
@@ -34,16 +50,33 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.25.7</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.27 · STAGE 1</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> TACTICAL / BOMB 025.3</div>
+      <div class="section-tag"><span class="section-line"></span> TACTICAL / MULTIPLAYER FOUNDATION</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
-      <p class="headline">TWO-STORY HOUSE · BOMB ROUNDS · 12 GADGETS.</p>
-      <p class="description">Choose Bomb Round or the unrestricted Test Range. In Bomb Round, Sites A and B contain solid bomb devices which block drones and bullets. Attackers can carry or leave the defuser. Hold X to drop it, press F to collect it, and hold F to kneel and type the plant code. Defenders hold F to kneel and disable. Active defusers beep faster as detonation approaches.</p>
-      <div class="scope"><span>01 <b>MOVEMENT</b></span><span>02 <b>COLLISION</b></span><span>03 <b>CAMERA</b></span><span>04 <b>FOOTSTEPS</b></span><span>05 <b>PRONE</b></span><span>06 <b>WEAPONS</b></span><span>07 <b>WOOD BARRICADE</b></span><span>08 <b>SOFT WALL</b></span><span>09 <b>REINFORCEMENTS</b></span><span>10 <b>RECON DRONE</b></span><span>11 <b>OPERATORS</b></span></div>
+      <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
+      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Dedicated AI and online 5v5 sessions are separate experiences under development; training will remain available while those systems are built.</p>
+      <section class="mode-hub" aria-label="Game experiences">
+        <h2>SELECT EXPERIENCE</h2>
+        <div class="mode-grid">
+          <div class="mode-choice current" aria-label="Training available">
+            <span>01 · AVAILABLE NOW</span><strong>TRAINING</strong>
+            <small>House bomb tests, shooting range, gadgets and drone practice. Offline.</small>
+          </div>
+          <div class="mode-choice planned" aria-label="Tactical AI not yet available">
+            <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
+            <small>Offline tactical matches against bots. Not playable yet.</small>
+          </div>
+          <div class="mode-choice planned" aria-label="Online 5v5 not yet available">
+            <span>03 · IN DEVELOPMENT</span><strong>ONLINE 5v5</strong>
+            <small>Real teams, lobbies and a new multiplayer map. Not connected yet.</small>
+          </div>
+        </div>
+      </section>
+      <div class="training-head">TRAINING · DEPLOYMENT SETUP</div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
           <span>OPERATOR SELECT</span>
@@ -73,7 +106,7 @@
         </div>
       </section>
       <section class="deploy-options" aria-label="Deployment settings">
-        <label for="play-mode">PLAY MODE</label>
+        <label for="play-mode">TRAINING ENVIRONMENT</label>
         <select id="play-mode" aria-label="Choose game mode">
           <option value="house" selected>TWO-STORY HOUSE · BOMB SITES A / B</option>
           <option value="bomb">FLAT BOMB TEST · SITES A / B</option>
@@ -88,7 +121,7 @@
         </div>
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">TWO-STORY HOUSE</span> <strong>↗</strong></button>
-      <div id="message" class="menu-message" role="status">OFFLINE WEAPON TEST · ORIGINAL BLACKOUT FIRING / NO AI OR MULTIPLAYER</div>
+      <div id="message" class="menu-message" role="status">TRAINING IS OFFLINE · ONLINE 5V5 &amp; AI ARE IN DEVELOPMENT</div>
       <details class="controls-reference" id="controls-reference">
         <summary>CONTROLS &amp; GADGET REFERENCE</summary>
         <div class="controls-reference-body">
@@ -315,6 +348,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-065"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-066"></script>
 </body>
 </html>
