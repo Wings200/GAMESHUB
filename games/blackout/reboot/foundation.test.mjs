@@ -564,14 +564,14 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.equal(html.includes("SHIELDS: HOLD SENTRY G/MMB"),false,
   "old giant gadget instructions must be removed entirely");
  assert.ok(css.includes(".siege-system .siege-tip{display:none!important}"));
- assert.ok(html.includes("Choose Bomb Round or the unrestricted Test Range."));
+ assert.ok(html.includes("TWO-STORY HOUSE · BOMB SITES A / B"));
  assert.equal(html.includes('id="bomb-round-start"'),false,
   "duplicate Bomb Round deploy control must never return");
  assert.equal((html.match(/id="play"/g)||[]).length,1,
   "exactly ONE Deploy button");
  assert.ok(!html.includes("V0.25.0 · NEW BOMB ROUND MODE."));
- assert.ok(main.includes("drawBombRoundMinimap(tacticalMapCtx,bombState)"));
- assert.ok(main.includes("drawBombRoundMinimap(droneMapCtx,bombState)"));
+ assert.ok(main.includes("drawBombRoundMinimap(tacticalMapCtx,gameMode===\"online\"?onlineBombState:bombState)"));
+ assert.ok(main.includes("drawBombRoundMinimap(droneMapCtx,gameMode===\"online\"?onlineBombState:bombState)"));
  const bombView=read("reboot/bomb-round-view.js");
  for(const marker of ["REAL BOMB ","RED EXPLOSIVE CANISTER",
    "TALL BEACON","SITE ","drawBombRoundMinimap",'root.name="REAL BOMB "+site.id'])
