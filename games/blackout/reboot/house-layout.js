@@ -148,7 +148,10 @@ export function drawHouseMinimap(ctx,player){
  ctx.fillStyle="#ffc476";ctx.font="bold 11px Arial";ctx.textAlign="left";
  ctx.fillText(upper?"2F · HOUSE":"1F · HOUSE",8,15);
  if(player){
-  ctx.save();ctx.translate(tx(player.x),tz(player.z));ctx.rotate(player.yaw||0);
+  // World forward is (-sin(yaw),-cos(yaw)); canvas rotates clockwise
+  // toward +X, so invert the game's yaw just like the training minimap.
+  // Without this inversion west-facing players appeared to face east.
+  ctx.save();ctx.translate(tx(player.x),tz(player.z));ctx.rotate(-(player.yaw||0));
   ctx.fillStyle="#e8fffa";ctx.beginPath();
   ctx.moveTo(0,-7);ctx.lineTo(-4,5);ctx.lineTo(4,5);ctx.closePath();ctx.fill();
   ctx.restore();
