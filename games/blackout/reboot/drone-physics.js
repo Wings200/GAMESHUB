@@ -38,11 +38,12 @@ function overlapsFootprint(x,z,o){
  const cz=Math.max(o.z-o.depth/2,Math.min(z,o.z+o.depth/2));
  return (x-cx)**2+(z-cz)**2<DRONE.radius*DRONE.radius;
 }
-function hasSupport(x,y,z,objects){
- return y<=1e-5||objects.some(o=>
+function hasSupport(x,y,z,objects,floorAt=null){
+ const ramp=typeof floorAt==="function"?floorAt(x,z,y):0;
+ return Math.abs(y-ramp)<=.025||objects.some(o=>
   Math.abs(o.height-y)<=1e-4&&overlapsFootprint(x,z,o));
 }
-function stepVertical(d,step,objects){
+function stepVertical(d,step,objects,floorAt=null){
  const previousY=d.y;
  d.vy-=DRONE.gravity*step;
  let nextY=previousY+d.vy*step;
@@ -60,7 +61,7 @@ function stepVertical(d,step,objects){
  }else{
   // Snap to the highest solid top crossed *from above*. Landing is not
   // permitted from underneath a counter or shield.
-  let support=0;
+  let support=typeof floorAt==="function"?floorAt(d.x,d.z,previousY):0;
   for(const o of objects){
    if(overlapsFootprint(d.x,d.z,o)&&o.height>support&&
       previousY>=o.height-1e-5&&nextY<=o.height+1e-5)
@@ -77,6 +78,10 @@ export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.world
  if(!finite(previous))throw new Error("Invalid drone movement state");
  const d={...previous},step=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));
  if(step===0)return d;
+ // Houses have an actual sloped staircase represented by their floor-height
+ // resolver, not collision boxes. Grounded drones need the same terrain
+ // support as the player or their body is blocked at the first stair riser.
+ const floorAt=typeof input.floorAt==="function"?input.floorAt:null;
  d.jumpLeft=Math.max(0,d.jumpLeft-step);
  d.boostLeft=Math.max(0,d.boostLeft-step);
  if(d.charges<DRONE.maxCharges){
@@ -99,7 +104,7 @@ export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.world
     d.speedX=0;d.speedZ=0;d.throwLeft=0;break;
    }
   }
-  stepVertical(d,step,objects);
+  stepVertical(d,step,objects,floorAt);
   return d;
  }
   if(input.boostPressed&&d.charges>0&&d.boostLeft===0){
@@ -107,7 +112,7 @@ export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.world
   d.chargeTimer=0; // each use restarts the recharge window
  }
  // Leaving a shelf or a removed shield starts a real fall.
- if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects)){d.grounded=false;d.vy=0;}
+ if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects,floorAt)){d.grounded=false;d.vy=0;}
  if(input.jumpPressed&&d.grounded&&d.jumpLeft===0){
   d.vy=DRONE.jumpSpeed;d.grounded=false;
   d.jumpLeft=DRONE.jumpCooldown;d.jumps++;
@@ -125,19 +130,26 @@ export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.world
  // body radius, not the player's larger human capsule.
  const dx=d.speedX*step,dz=d.speedZ*step;
  const count=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.055));
+ function travel(x,z){
+  const onTerrain=d.grounded&&floorAt&&
+   Math.abs(d.y-floorAt(d.x,d.z,d.y))<.03;
+  const nextY=onTerrain?floorAt(x,z,d.y):d.y;
+  if(!canDroneOccupy(x,nextY,z,objects,limit))return false;
+  d.x=x;d.y=nextY;d.z=z;return true;
+ }
  for(let i=0;i<count;i++){
   const sx=dx/count,sz=dz/count;
-  if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects,limit)){
-   d.x+=sx;d.z+=sz;
+  if(travel(d.x+sx,d.z+sz)){
+   // Terrain height was resolved together with the collision sweep.
   }else{
-   if(canDroneOccupy(d.x+sx,d.y,d.z,objects,limit))d.x+=sx;
+   if(travel(d.x+sx,d.z)){}
    else d.speedX=0;
-   if(canDroneOccupy(d.x,d.y,d.z+sz,objects,limit))d.z+=sz;
+   if(travel(d.x,d.z+sz)){}
    else d.speedZ=0;
   }
  }
- if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects)){d.grounded=false;d.vy=0;}
- if(!d.grounded)stepVertical(d,step,objects);
+ if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects,floorAt)){d.grounded=false;d.vy=0;}
+ if(!d.grounded)stepVertical(d,step,objects,floorAt);
  return d;
 }
 export function droneBoostLabel(state){

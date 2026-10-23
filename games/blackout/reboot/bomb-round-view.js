@@ -4,6 +4,11 @@
 import {BOMB_RULES} from "./bomb-round.js?v=reboot-062";
 import {BOMB_HARDWARE} from "./bomb-presentation.js?v=reboot-059";
 
+export function defuserVisible(state){
+ return Boolean(state?.mode==="bomb"&&state.phase!=="prep"&&
+  state.defuser.status!=="carried");
+}
+
 export function drawBombRoundMinimap(ctx,state){
  if(!ctx||!state||state.mode!=="bomb")return;
  const width=ctx.canvas.width,height=ctx.canvas.height;
@@ -19,7 +24,7 @@ export function drawBombRoundMinimap(ctx,state){
   ctx.textAlign="center";ctx.textBaseline="middle";
   ctx.fillText(site.id,sx,sy+.5);
  }
- if(state.defuser.status!=="carried"){
+ if(defuserVisible(state)){
   const dx=x(state.defuser.x),dz=z(state.defuser.z);
   ctx.fillStyle=state.defuser.status==="planted"?"#ff5a55":"#f3f4ed";
   ctx.fillRect(dx-4,dz-4,8,8);
@@ -158,7 +163,9 @@ export function createBombRoundView(THREE,scene){
   group.visible=Boolean(state?.mode==="bomb");
   if(!group.visible)return;
   const d=state.defuser;
-  defuser.visible=d.status!=="carried";
+  // An unclaimed package may be queued for an attacking player, but should
+  // never materialize in front of defenders before preparation is over.
+  defuser.visible=defuserVisible(state);
   if(defuser.visible){
    defuser.position.set(d.x,0,d.z);
    const planted=d.status==="planted";

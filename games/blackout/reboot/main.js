@@ -8,6 +8,7 @@ import {newFootstepTracker,advanceFootsteps,FootstepAudio} from "./footsteps.js?
 import {Weapons} from "./legacy-weapons.js?v=reboot-006";
 import {GameAudio} from "./legacy-audio.js?v=reboot-064";
 import {cycleLegacyFire,legacyShotCone} from "./legacy-shooting.js?v=reboot-006";
+import {recordRecoilKick,consumeManualRecoil} from "./recoil-compensation.js?v=reboot-070";
 import {createWeaponView,createTargetRange,createShotEffects} from "./weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./lean.js?v=reboot-005";
 import {aimState,firstHitType} from "./aim-resolver.js?v=reboot-007";
@@ -20,7 +21,7 @@ import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
 import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
-import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-067";
+import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-070";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";
@@ -77,7 +78,7 @@ import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt,
  plantDefuserPosition} from "./bomb-round.js?v=reboot-067";
-import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-062";
+import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-070";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-065";
 import {createBombInteractionView} from "./bomb-interaction-view.js?v=reboot-060";
@@ -105,6 +106,7 @@ const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"
 const mapLabel=document.querySelector(".siege-map-label");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
 const droneHud=$("drone-hud"),droneMap=$("drone-range-map"),droneFeedState=$("drone-feed-state");
+const droneRoundClock=$("drone-round-clock"),droneRoundPhase=$("drone-round-phase");
 const droneMapCtx=droneMap.getContext("2d");
 const droneBoostStatus=$("drone-boost"),droneJumpStatus=$("drone-jump"),
  droneSpeedStatus=$("drone-speed");
@@ -1396,6 +1398,11 @@ function switchDroneCamera(direction){
  return true;
 }
 function droneHudFrame(){
+ droneRoundClock.textContent=gameMode==="bomb"&&bombState?
+  drillClock(bombState.time):drillClock(DRILL_LENGTH_SECONDS-drillElapsedSeconds);
+ droneRoundPhase.textContent=gameMode==="bomb"&&bombState?
+  (bombState.phase==="prep"?"PREPARATION":bombState.phase==="action"?"ACTION":
+   bombState.phase==="postplant"?"DEFUSER ACTIVE":"ROUND OVER"):"TEST RANGE";
  if(!drone)return;
  droneBoostStatus.textContent=droneBoostLabel(drone);
  droneJumpStatus.textContent=droneJumpLabel(drone);
@@ -1473,6 +1480,12 @@ function enterRange(){
 }
 playMode.addEventListener("change",updateDeployMenu);
 updateDeployMenu();
+// The legacy Ironvale multiplayer client is retired while the original
+// Training engine is validated. Custom Game leads straight to its setup.
+$("custom-choice")?.addEventListener("click",()=>{
+ $("operator-selection")?.scrollIntoView({behavior:"smooth",block:"start"});
+ message.textContent="SOLO CUSTOM TEST · SELECT OPERATOR, MAP AND GADGETS · THEN DEPLOY";
+});
 play.addEventListener("click",()=>{
  if(playMode.value==="sandbox"){
   plantAudio.sync("off");
@@ -1515,7 +1528,12 @@ document.addEventListener("mousemove",event=>{
   }
  }else{
   player.yaw-=event.movementX*.00215;
-  player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
+   const nextPitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
+   // Manual downward mouse compensation already brings the optic back.
+   // Subtract that distance from the unrecovered recoil so stopping fire
+   // never drags the crosshair down a second time.
+   recoilRecovery=consumeManualRecoil(recoilRecovery,player.pitch,nextPitch);
+   player.pitch=nextPitch;
  }
 });
 document.addEventListener("keydown",event=>{
@@ -1912,9 +1930,10 @@ function fireShot(shot,sightAligned,now){
  }
  // The historical predictable pattern physically shifts the player's view.
  // Apply AFTER the raycast so this round follows its pre-kick optic alignment.
+ const preKickPitch=player.pitch;
  player.pitch=Math.min(1.48,Math.max(-1.48,player.pitch+shot.kick.vertical));
  player.yaw+=shot.kick.horizontal;
- recoilRecovery+=shot.kick.vertical;
+ recoilRecovery=recordRecoilKick(recoilRecovery,preKickPitch,player.pitch);
  gunKick=Math.min(.25,gunKick+.085);
  camera.rotation.set(player.pitch,player.yaw,camera.rotation.z,"YXZ");
  camera.updateMatrixWorld(true);
@@ -1942,7 +1961,8 @@ function animate(now){
     if(keys.has("KeyQ"))drone.yaw+=dt*2.3;
     if(keys.has("KeyE"))drone.yaw-=dt*2.3;
    }
-   drone=tickDrone(drone,input,dt,activeDroneObstacles());
+    drone=tickDrone(drone,{...input,floorAt:mapMode==="house"?houseFloorAt:null},
+     dt,activeDroneObstacles());
    droneRoster=updateDrone(droneRoster,droneRoster.selected,drone);
  }
  if(locked&&controlMode==="player"){
@@ -2098,7 +2118,8 @@ function animate(now){
    // Their battery charges, jump timer, boost timer and landing progress persist.
    if(droneRoster.drones.length){
     for(let i=0;i<droneRoster.drones.length;i++){
-     const parked=tickDrone(droneRoster.drones[i],{},dt,activeDroneObstacles());
+      const parked=tickDrone(droneRoster.drones[i],
+       {floorAt:mapMode==="house"?houseFloorAt:null},dt,activeDroneObstacles());
      droneRoster=updateDrone(droneRoster,i,parked);
     }
     drone=selectedDrone(droneRoster);

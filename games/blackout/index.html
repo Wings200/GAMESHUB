@@ -7,7 +7,7 @@
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
   <title>BLACKOUT — V0.34 · TACTICAL MULTIPLAYER | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
-  <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
+  <link rel="stylesheet" href="./reboot/style.css?v=reboot-070">
   <link rel="stylesheet" href="./online.css?v=033">
   <style>
     .menu-content{padding-top:clamp(35px,7vh,85px)}
@@ -66,7 +66,7 @@
       <div class="section-tag"><span class="section-line"></span> TACTICAL / PRIVATE ONLINE + CUSTOM GAMES</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Custom Games are the home for the full BLACKOUT mechanics. Play solo with every existing gadget, operator and map test, or create a private room with friends. Online 5v5 is the separate networked mode; multiplayer mechanics are still being brought to parity.</p>
+      <p class="description">Test the complete original BLACKOUT game in Solo Custom. Connected Custom Games and Online 5v5 are temporarily unavailable while multiplayer is rebuilt from this same engine.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
@@ -74,13 +74,13 @@
             <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
             <small>Offline tactical matches against bots. Not playable yet.</small>
           </div>
-          <button id="online-choice" type="button" class="mode-choice current online-choice" aria-label="Open standard online private lobby">
-            <span>02 · PRIVATE ROOM BETA</span><strong>ONLINE 5v5</strong>
-            <small>Private standard scrims. One real attacker and defender needed to start.</small>
+          <button id="online-choice" type="button" class="mode-choice planned" disabled aria-label="Online five versus five is being rebuilt">
+            <span>02 · REBUILDING</span><strong>ONLINE 5v5</strong>
+            <small>Multiplayer will return using the tested original gameplay engine.</small>
           </button>
-          <button id="custom-choice" type="button" class="mode-choice current online-choice" aria-label="Open custom game maker">
-            <span>01 · SOLO OR FRIENDS</span><strong>CUSTOM GAME</strong>
-            <small>Full original mechanics solo, or a connected private match with friends.</small>
+          <button id="custom-choice" type="button" class="mode-choice current online-choice" aria-label="Jump to Solo Custom Game setup">
+            <span>01 · LIVE TEST PHASE</span><strong>CUSTOM GAME</strong>
+            <small>Solo test with the original house, weapons, bombs, drones and gadgets.</small>
           </button>
         </div>
       </section>
@@ -129,7 +129,7 @@
         </div>
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">TWO-STORY HOUSE</span> <strong>↗</strong></button>
-      <div id="message" class="menu-message" role="status">CUSTOM SOLO USES THE FULL ORIGINAL MECHANICS · CONNECTED MATCHES ARE STILL IN DEVELOPMENT</div>
+      <div id="message" class="menu-message" role="status">SOLO CUSTOM · COMPLETE ORIGINAL GAMEPLAY · PRIVATE MULTIPLAYER REBUILDING</div>
       <details class="controls-reference" id="controls-reference">
         <summary>CONTROLS &amp; GADGET REFERENCE</summary>
         <div class="controls-reference-body">
@@ -312,7 +312,11 @@
       <canvas id="drone-range-map" width="200" height="200"></canvas>
       <span class="device-map-ping">◆</span>
     </div>
-    <div class="device-topline"><b>R-1 RECON DRONE</b><span id="drone-feed-state">SIGNAL ONLINE · LIVE CAMERA</span></div>
+     <div class="device-topline"><b>R-1 RECON DRONE</b><span id="drone-feed-state">SIGNAL ONLINE · LIVE CAMERA</span></div>
+     <div class="drone-round-status" role="timer" aria-label="Round time remaining">
+       <span id="drone-round-phase">PREPARATION</span>
+       <b id="drone-round-clock">00:45</b>
+     </div>
     <div class="device-nav">
       <div class="device-site-line">CAMERA <b id="active-drone-number">01</b> / <b id="total-drone-number">01</b> · R-1 REMOTE CONTROL</div>
       <div class="device-nav-body">
@@ -356,8 +360,7 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-069"></script>
-  <script type="module" src="./online-multiplayer.js?v=035"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-070"></script>
   <script>
     fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
       .then(response=>response.ok?response.json():null)
