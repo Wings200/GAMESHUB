@@ -89,6 +89,17 @@ export function createBlackoutNetwork(callbacks={}){
    kind,roomName:by("room-name").value,maxPlayers:Number(by("max").value),
    startRule:kind==="custom"?by("rule").value:"opposing",
    winCondition:kind==="custom"?"freeplay":"elimination"});
+ async function requestTicket(){
+   const response=await fetch("/api/blackout-multiplayer-ticket",{
+     method:"POST",credentials:"same-origin",
+     headers:{"Content-Type":"application/json"},body:"{}",
+     cache:"no-store"
+   });
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||!result.ok||!result.token)
+     throw new Error(result.error||"BLACKOUT multiplayer authorization failed");
+   return result.token;
+ }
  async function connect(join){
    if(socket)return;
    const name=by("name").value.trim().slice(0,22)||"Operator";
@@ -103,15 +114,20 @@ export function createBlackoutNetwork(callbacks={}){
      let code;
      if(join)code=normalizeRoomCode(by("code").value);
      else {
+       const ticket=await requestTicket();
        const response=await fetch(BLACKOUT_WORKER+"/api/blackout/rooms",{
-         method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:roomSettings()})});
+         method:"POST",headers:{"Content-Type":"application/json"},
+         body:JSON.stringify({settings:roomSettings(),ticket})});
        const body=await response.json();
        if(!response.ok||!body.ok)throw new Error(body.error||"Room creation failed");
        code=normalizeRoomCode(body.code);
      }
      if(!code)throw new Error("Enter a valid six-character room code");
-     const ws=new WebSocket(roomSocketUrl(code,{name,side:by("side").value,
+     const joinTicket=await requestTicket();
+     const address=new URL(roomSocketUrl(code,{name,side:by("side").value,
        operator:by("side").value==="attacker"?"striker":"sentry"}));
+     address.searchParams.set("ticket",joinTicket);
+     const ws=new WebSocket(address.href);
      socket=ws;roomCode=code;status("Connecting to room "+code+"…");update();
      ws.onopen=()=>{if(socket===ws)status("Connected · waiting for players")};
      ws.onmessage=e=>{

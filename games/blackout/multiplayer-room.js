@@ -67,11 +67,14 @@ export class BlackoutRoom extends DurableObject {
  async fetch(request){
   await this.init;
   const url=new URL(request.url);
+  const authenticatedId=request.headers.get("X-Blackout-Verified-User");
+  const authenticatedName=request.headers.get("X-Blackout-Verified-Name");
   if(url.pathname.endsWith("/create")&&request.method==="POST"){
+   if(!authenticatedId)return reply({ok:false,error:"Verified BLACKOUT identity required"},401);
    if(this.config)return reply({ok:false,error:"Room code already occupied"},409);
    const body=await request.json().catch(()=>({}));
    const settings=normalizeBlackoutGameSettings(body.settings);
-   this.config={code:String(body.code||""),created:Date.now(),...settings};
+   this.config={code:String(body.code||""),created:Date.now(),createdBy:authenticatedId,...settings};
    await this.ctx.storage.put("room",this.config);
    return reply({ok:true,code:this.config.code,map:matchMap.id,
      maxPlayers:settings.maxPlayers,settings});
@@ -84,13 +87,14 @@ export class BlackoutRoom extends DurableObject {
   if(!url.pathname.endsWith("/ws")||
     request.headers.get("Upgrade")?.toLowerCase()!=="websocket")
     return reply({ok:false,error:"Expected WebSocket upgrade"},426);
+  if(!authenticatedId)return reply({ok:false,error:"Verified BLACKOUT identity required"},401);
   if(this.players.size>=this.roomSettings().maxPlayers)
     return reply({ok:false,error:"Room is full ("+this.roomSettings().maxPlayers+" players)"},409);
   const side=url.searchParams.get("side")==="defender"?"defender":"attacker";
   if([...this.players.values()].filter(p=>p.side===side).length>=TEAM_LIMIT)
     return reply({ok:false,error:side.toUpperCase()+" team is full (5/5)"},409);
   if(this.status==="active")return reply({ok:false,error:"Round in progress; join before host starts"},409);
-  const id=String(this.nextId++),name=cleanName(url.searchParams.get("name"));
+  const id=String(this.nextId++),name=cleanName(authenticatedName);
   const pick=url.searchParams.get("operator");
   const operator=validLoadout(side,pick)?pick:
     (side==="defender"?"sentry":"striker");
@@ -98,7 +102,7 @@ export class BlackoutRoom extends DurableObject {
   const pair=new WebSocketPair();
   const [client,server]=Object.values(pair);
   this.ctx.acceptWebSocket(server);
-  const player={...entry,id,name,side,operator,ws:server,
+  const player={...entry,id,name,accountId:authenticatedId,side,operator,ws:server,
     health:100,alive:true,connected:true,lastMove:Date.now(),lastShot:0,
     lastReload:0,shots:31,reloadingUntil:0,
     aiming:false,crouched:false,sprinting:false,lean:0,
@@ -115,7 +119,7 @@ export class BlackoutRoom extends DurableObject {
  saveAttachment(p){
   // The attachment contains a copy of player identity + position but
   // deliberately never stores raw request tokens or account secrets.
-  try{p.ws.serializeAttachment({id:p.id,name:p.name,side:p.side,
+  try{p.ws.serializeAttachment({id:p.id,name:p.name,accountId:p.accountId,side:p.side,
    operator:p.operator,x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,
    health:p.health,alive:p.alive,shots:p.shots,reloadingUntil:p.reloadingUntil||0,
    aiming:Boolean(p.aiming),crouched:Boolean(p.crouched),
