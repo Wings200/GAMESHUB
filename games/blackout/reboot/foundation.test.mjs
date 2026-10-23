@@ -528,7 +528,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.ok(read("reboot/bomb-round.js").includes("V0.26.0"));
  assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.6"));
  assert.ok(main.includes('from "./bomb-round.js?v=reboot-067"'));
-  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-062"'));
+  assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-070"'));
  assert.ok(main.includes('bombState=newBombRound({choice,map:mapMode})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
  assert.ok(main.includes("stepBombRound(bombState,dt,{side:activeOperator.side,position:player,"));
