@@ -131,7 +131,7 @@
           <p><strong>Barbed wire:</strong> WIRE: GUNS CANNOT DESTROY IT · ENEMY CONTACT -10 HP / 0.5S.</p>
           <p><strong>Bomb Round:</strong> Hold X 0.7 seconds to drop defuser · F pickup · Hold F to kneel and type the plant/disable code · Planted defuser emits escalating beeps · N next round.</p>
           <p><strong>Sandbox:</strong> H clear holes · P reset. Press <kbd>B</kbd> for ballistics diagnostics.</p>
-          <p id="drone-key-tip"><kbd>5</kbd> attacker drone cameras · <kbd>6</kbd> throw drone · <kbd>X</kbd> exit.</p>
+          <p id="drone-key-tip">Attacker prep: start driving your drone automatically; Space jumps onto shelves and shields. Action: <kbd>5</kbd> return to deployed camera · <kbd>6</kbd> throw spare · <kbd>X</kbd> exit camera.</p>
           <p id="defender-key-tip" class="hidden">Defender: F to reinforce/rebuild. No attacker drones.</p>
         </div>
       </details>
@@ -304,7 +304,7 @@
       <canvas id="drone-range-map" width="200" height="200"></canvas>
       <span class="device-map-ping">◆</span>
     </div>
-    <div class="device-topline"><b>R-1 RECON DRONE</b><span>SIGNAL ONLINE · RANGE TEST</span></div>
+    <div class="device-topline"><b>R-1 RECON DRONE</b><span id="drone-feed-state">SIGNAL ONLINE · LIVE CAMERA</span></div>
     <div class="device-nav">
       <div class="device-site-line">CAMERA <b id="active-drone-number">01</b> / <b id="total-drone-number">01</b> · R-1 REMOTE CONTROL</div>
       <div class="device-nav-body">
@@ -348,6 +348,6 @@
     <div class="device-caption">BLACKOUT / CAMERA VIEW · HUD PROFILE ONLY</div>
   </section>
   <div id="error" class="error hidden" role="alert"></div>
-  <script type="module" src="./reboot/main.js?v=reboot-066"></script>
+  <script type="module" src="./reboot/main.js?v=reboot-067"></script>
 </body>
 </html>
