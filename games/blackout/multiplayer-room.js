@@ -1,9 +1,11 @@
 // BLACKOUT real online room, isolated from REDLINE's racing Durable Objects.
+// Original Solo Custom house geometry drives the server world and validation.
 // The invited participants are actual browser WebSockets; NEVER replace absent
 // humans with bot avatars or claim matchmaking that is not implemented.
 import {DurableObject} from "cloudflare:workers";
-import ironvale from "./maps/ironvale-operations.blackout-map.json" with {type:"json"};
-import {MAX_PLAYERS,TEAM_LIMIT,OPERATOR_SIDES,cleanName,chooseSpawn,
+import {HOUSE_ONLINE_MAP,houseOnlineSpawn} from "./src/house-online-map.js";
+import {houseFloorAt} from "./reboot/house-layout.js";
+import {MAX_PLAYERS,TEAM_LIMIT,OPERATOR_SIDES,cleanName,
  validLoadout,acceptMovement,validShot,lineBlocked,normalizeBlackoutGameSettings,
  canStartBlackoutRound} from "./src/multiplayer-protocol.js";
 import {newDrone,tickDrone} from "./reboot/drone-physics.js";
@@ -14,7 +16,8 @@ import {PREP_SECONDS,ACTION_SECONDS,createOnlineWorld,wallParts,droneObstacles,
 const reply=(obj,status=200)=>new Response(JSON.stringify(obj),{
  status,headers:{"Content-Type":"application/json","Cache-Control":"no-store",
  "Access-Control-Allow-Origin":"*"}});
-const point=([x,y,z])=>({x,y,z,yaw:0,pitch:0});
+const matchMap=HOUSE_ONLINE_MAP;
+const spawn=(side,ordinal)=>({...houseOnlineSpawn(side,ordinal),pitch:0});
 const freeze=(p)=>({id:p.id,name:p.name,side:p.side,operator:p.operator,
  x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,health:p.health,alive:p.alive,
  aiming:Boolean(p.aiming),crouched:Boolean(p.crouched),sprinting:Boolean(p.sprinting),
@@ -70,12 +73,12 @@ export class BlackoutRoom extends DurableObject {
    const settings=normalizeBlackoutGameSettings(body.settings);
    this.config={code:String(body.code||""),created:Date.now(),...settings};
    await this.ctx.storage.put("room",this.config);
-   return reply({ok:true,code:this.config.code,map:"ironvale",
+   return reply({ok:true,code:this.config.code,map:matchMap.id,
      maxPlayers:settings.maxPlayers,settings});
   }
   if(!this.config)return reply({ok:false,error:"Room not found"},404);
   if(url.pathname.endsWith("/status"))
-   return reply({ok:true,code:this.config.code,map:"ironvale",settings:this.roomSettings(),
+   return reply({ok:true,code:this.config.code,map:matchMap.id,settings:this.roomSettings(),
      mode:this.status,winner:this.winner,round:this.round,players:this.players.size,
      maxPlayers:this.roomSettings().maxPlayers,hostId:this.players.values().next().value?.id||null});
   if(!url.pathname.endsWith("/ws")||
@@ -91,18 +94,18 @@ export class BlackoutRoom extends DurableObject {
   const pick=url.searchParams.get("operator");
   const operator=validLoadout(side,pick)?pick:
     (side==="defender"?"mute":"sledge");
-  const spawn=point(chooseSpawn(side,[...this.players.values()].filter(p=>p.side===side).length));
+  const entry=spawn(side,[...this.players.values()].filter(p=>p.side===side).length);
   const pair=new WebSocketPair();
   const [client,server]=Object.values(pair);
   this.ctx.acceptWebSocket(server);
-  const player={...spawn,id,name,side,operator,ws:server,
+  const player={...entry,id,name,side,operator,ws:server,
     health:100,alive:true,connected:true,lastMove:Date.now(),lastShot:0,
     lastReload:0,shots:30,reloadingUntil:0,
     aiming:false,crouched:false,sprinting:false,lean:0,
      drones:[],droneActive:false,droneIndex:0,lastDroneMove:Date.now()};
   this.players.set(id,player);this.saveAttachment(player);
   this.send(player,{type:"welcome",id,code:this.config.code,host:this.players.size===1,
-    map:"ironvale",round:this.round,mode:this.status,phase:this.phase,
+    map:matchMap.id,round:this.round,mode:this.status,phase:this.phase,
      phaseEndsAt:this.phaseEndsAt,world:this.world,
      settings:this.roomSettings(),players:this.snapshot()});
   this.broadcast();
@@ -171,7 +174,7 @@ export class BlackoutRoom extends DurableObject {
    }
    this.saveMatch();this.broadcast({event:"action-phase"});
   }
-  const outcomes=resolveInteractions(ironvale,this.world,[...this.players.values()],now);
+  const outcomes=resolveInteractions(matchMap,this.world,[...this.players.values()],now);
   for(const outcome of outcomes){
    if(outcome.winner){this.endRound(outcome.winner,"DEFUSER DISABLED · DEFENDERS WIN");return;}
    this.broadcast({event:outcome.kind,from:outcome.from});
@@ -207,7 +210,7 @@ export class BlackoutRoom extends DurableObject {
    if(yawDelta>.135||pitchDelta>.155)continue;
    const from={x:shooter.x,y:shooter.y+(shooter.crouched?1.05:1.58),z:shooter.z};
    const to={x:d.x,y:d.y+.14,z:d.z};
-   if(lineBlocked(from,to,wallParts(ironvale,this.world)))continue;
+   if(lineBlocked(from,to,wallParts(matchMap,this.world)))continue;
    if(!chosen||range<chosen.range)chosen={drone:d,range};
   }
   if(!chosen)return false;
@@ -244,7 +247,7 @@ export class BlackoutRoom extends DurableObject {
    this.round++;this.roundStartedAt=now;this.winner=null;
    const count={attacker:0,defender:0};
    for(const user of this.players.values()){
-    Object.assign(user,point(chooseSpawn(user.side,count[user.side]++)));
+    Object.assign(user,spawn(user.side,count[user.side]++));
     user.insertX=user.x;user.insertZ=user.z;
     user.health=100;user.alive=true;user.lastMove=now;user.spawnedAt=now;user.firedAt=0;user.shots=30;
     user.lastShot=0;user.reloadingUntil=0;user.aiming=false;user.crouched=false;
@@ -255,7 +258,7 @@ export class BlackoutRoom extends DurableObject {
     user.droneIndex=0;user.droneActive=user.side==="attacker";
     user.lastDroneMove=now;this.saveAttachment(user);
    }
-   this.world=createOnlineWorld(ironvale,[...this.players.values()],now);
+   this.world=createOnlineWorld(matchMap,[...this.players.values()],now);
    this.saveMatch();this.scheduleAlarm();
    this.broadcast({event:"round-start"});return;
   }
@@ -279,7 +282,7 @@ export class BlackoutRoom extends DurableObject {
      this.send(p,{type:"notice",message:"Selected team is full"});return;
    }
    p.side=side;p.operator=side==="defender"?"mute":"sledge";
-   Object.assign(p,point(chooseSpawn(side,[...this.players.values()].filter(x=>x.side===side).length-1)));
+   Object.assign(p,spawn(side,[...this.players.values()].filter(x=>x.side===side).length-1));
    this.saveAttachment(p);this.broadcast({event:"team-changed"});return;
   }
   if(m.type==="end") {
@@ -315,8 +318,9 @@ export class BlackoutRoom extends DurableObject {
    if(Number.isFinite(m.pitch))drone.pitch=Math.max(-.8,Math.min(.8,m.pitch));
    const input={forward:Math.max(-1,Math.min(1,Number(m.forward)||0)),
     right:Math.max(-1,Math.min(1,Number(m.right)||0)),
-    jumpPressed:m.jump===true,boostPressed:m.boost===true};
-   const obstacles=droneObstacles(ironvale,this.world);
+    jumpPressed:m.jump===true,boostPressed:m.boost===true,
+    floorAt:houseFloorAt};
+   const obstacles=droneObstacles(matchMap,this.world);
    let result=drone;
    for(let remaining=dt;remaining>.00001;){
     const step=Math.min(.05,remaining);
@@ -330,17 +334,17 @@ export class BlackoutRoom extends DurableObject {
    if(this.phase==="prep"&&p.side==="attacker")return;
    const kind=String(m.action||"");
    let event=null;
-   if(kind==="interact"){event=interactStart(ironvale,this.world,p,
+   if(kind==="interact"){event=interactStart(matchMap,this.world,p,
      [...this.players.values()],now);}
    if(kind==="stop"){interactStop(this.world,p.id);event="INTERACTION CANCELLED";}
    if(kind==="melee"){
      if(now-(p.lastMelee||0)<450)return;
      p.lastMelee=now;
-     const result=meleeWorld(ironvale,this.world,p);
+     const result=meleeWorld(matchMap,this.world,p);
      event=result?.kind||"NO BARRICADE IN RANGE";}
-   if(kind==="charge"){const result=placeCharge(ironvale,this.world,p);
+   if(kind==="charge"){const result=placeCharge(matchMap,this.world,p);
      event=result?"BREACH CHARGE PLACED":"NO COMPATIBLE WALL OR CHARGES LEFT";}
-   if(kind==="detonate"){const result=detonateCharge(ironvale,this.world,p);
+   if(kind==="detonate"){const result=detonateCharge(matchMap,this.world,p);
      event=result?"BREACH DETONATED":"NO CHARGE READY";}
    if(kind==="drop"){event=dropDefuser(this.world,p)?"DEFUSER DROPPED":"NO DEFUSER CARRIED";}
    if(event){this.saveMatch();this.scheduleAlarm();
@@ -353,7 +357,7 @@ export class BlackoutRoom extends DurableObject {
    if(p.droneActive)return;
    if(now-p.lastMove<48)return;
    const dt=Math.max(.016,Math.min(.5,(now-p.lastMove)/1000));
-   const next=acceptMovement(p,m,dt,wallParts(ironvale,this.world));
+   const next=acceptMovement(p,m,dt,wallParts(matchMap,this.world));
    if(next){
     Object.assign(p,next);
     p.aiming=m.aiming===true;p.crouched=m.crouched===true;
@@ -379,7 +383,7 @@ export class BlackoutRoom extends DurableObject {
    this.saveAttachment(p);this.send(p,{type:"shot-ok",shots:p.shots});
    const target=this.players.get(String(m.targetId||""));
    if(m.targetDrone)this.droneShot(p,this.players.get(String(m.targetDrone)));
-   if(this.phase==="action"&&target&&target!==p&&validShot(p,target,wallParts(ironvale,this.world))){
+   if(this.phase==="action"&&target&&target!==p&&validShot(p,target,wallParts(matchMap,this.world))){
     // Victims are not damage-authoritative. Damage and KOs originate here.
     const protectedEntry=target.side==="attacker"&&
       now-(target.spawnedAt||0)<2300&&!(target.firedAt>=target.spawnedAt)&&

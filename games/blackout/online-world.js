@@ -1,4 +1,4 @@
-// BLACKOUT V0.34 · shared, server-authoritative Ironvale interactions.
+// BLACKOUT · shared, server-authoritative room interaction primitives.
 // Both online and custom rooms use these same world-state rules.
 export const PREP_SECONDS=45, ACTION_SECONDS=180, PLANT_SECONDS=7.35, DISABLE_SECONDS=7;
 export function createOnlineWorld(map,players,now=Date.now()){
@@ -28,6 +28,9 @@ export function droneObstacles(map,world){
  const result=[];
  for(const p of wallParts(map,world)){
   if(!["hardWall","softWall","reinforcedWall","cover","railing","floor","stairs"].includes(p.type))continue;
+  // The original house stair is a sloped walkable surface, not a solid
+  // three-metre wall. Its height is resolved by houseFloorAt in the Worker.
+  if(map.id==="blackout-original-house"&&p.type==="stairs")continue;
   const a=(p.rotationY||0)*Math.PI/180;
   const sideways=Math.abs(Math.sin(a))>.7;
   const width=sideways?p.size.z:p.size.x,depth=sideways?p.size.x:p.size.z;

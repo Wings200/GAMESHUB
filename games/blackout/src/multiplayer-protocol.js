@@ -141,7 +141,7 @@ export function normalizeBlackoutGameSettings(input={}) {
     maxPlayers,
     startRule:custom&&input?.startRule!=="opposing"?"any":"opposing",
     winCondition:custom&&input?.winCondition==="freeplay"?"freeplay":"elimination",
-    map:"ironvale"
+    map:"blackout-original-house"
   };
 }
 export function canStartBlackoutRound(config,players) {
