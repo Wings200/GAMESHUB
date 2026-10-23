@@ -125,3 +125,49 @@ test("throw arc stops at high solid walls rather than teleporting through them",
  assert.ok(d.z>=5.7+.35/2+DRONE.radius-.08,
   "thrown recon body must not pass through physical wall");
 });
+
+test("boosted jump reaches realistic counter tops and stays grounded on them",()=>{
+ const counter=[{id:"counter",x:0,z:0,width:2,depth:1.1,bottom:0,height:.9}];
+ let d=newDrone(0,1.9,0);
+ let highest=0;
+ for(let i=0;i<90;i++){
+  d=tickDrone(d,{forward:i<30?1:0,jumpPressed:i===0},frame,counter);
+  highest=Math.max(highest,d.y);
+ }
+ assert.ok(highest>1.35,"drone can clear kitchen counters and hide on top");
+ assert.equal(d.grounded,true);
+ assert.ok(Math.abs(d.y-.9)<1e-4,"drone genuinely lands on the counter, not through it");
+ assert.equal(d.jumps,1);
+});
+
+test("deployable shield is jumpable and acts as a solid elevated landing surface",()=>{
+ const shield=[{id:"shield",x:0,z:0,width:1.65,depth:.21,bottom:0,height:1.28}];
+ let d=newDrone(0,1.4,0);
+ for(let i=0;i<75;i++)
+  d=tickDrone(d,{forward:i<23?1:0,jumpPressed:i===0},frame,shield);
+ assert.equal(d.grounded,true);
+ assert.ok(Math.abs(d.y-1.28)<1e-4);
+ assert.equal(canDroneOccupy(0,0,0,shield),false,
+  "shield still blocks driving or clipping through the bottom");
+});
+
+test("drone falls off a shelf and cannot remain suspended over empty space",()=>{
+ const counter=[{id:"counter",x:0,z:0,width:2,depth:1.1,bottom:0,height:.9}];
+ let d=newDrone(0,1.9,0);
+ for(let i=0;i<90;i++)
+  d=tickDrone(d,{forward:i<30?1:0,jumpPressed:i===0},frame,counter);
+ assert.equal(d.y,.9);
+ d=stepN(d,90,{forward:1},counter);
+ assert.equal(d.y,0);
+ assert.equal(d.grounded,true);
+ assert.ok(d.z<-2);
+});
+
+test("upper-floor slabs stop rising drones instead of allowing vertical phasing",()=>{
+ const slab=[{id:"slab",x:0,z:0,width:3,depth:3,bottom:1.05,height:1.2}];
+ let d=newDrone(0,0,0);
+ d=tickDrone(d,{jumpPressed:true},frame,slab);
+ d=stepN(d,35,{},slab);
+ assert.ok(d.y<=1.05-DRONE.height+1e-5,
+  "underside must stop the drone body during upward travel");
+});

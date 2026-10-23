@@ -1,4 +1,4 @@
-// BLACKOUT REBOOT V0.27.0 · mode separation + destructible drones + drone access — functional two-floor house and retained test range
+// BLACKOUT REBOOT V0.28.0 · automatic attacker prep drone and elevated drone traversal
 // from every BLACKOUT V1–V8 module, asset, operator and online service.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {FOUNDATION_VERSION,TEST_OBSTACLES,initialPlayer,stepPlayer} from "./physics.js?v=reboot-062";
@@ -20,10 +20,10 @@ import {SOFT_WALL} from "./soft-wall.js?v=reboot-046";
 import {createSoftWallStation} from "./soft-wall-view.js?v=reboot-046";
 import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcement.js?v=reboot-047";
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
-import {DRONE,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-019";
+import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-067";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
- updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-066";
+ updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";
 import {operatorById,operatorLoadout,canUseReinforcement,canUseReconDrones} from "./operators.js?v=reboot-025";
 import {createOperatorPicker} from "./operator-select.js?v=reboot-052";
 import {utilityHudRows,utilityKeyPreview} from "./secondary-loadout.js?v=reboot-052";
@@ -76,7 +76,7 @@ import {beginShieldVault,stepShieldVault} from "./shield-vault.js?v=reboot-052";
 import {beginBreachVault,stepBreachVault} from "./breach-vault.js?v=reboot-046";
 import {BOMB_RULES,newBombRound,newFollowingRound,roundSiteAt,nearbyDefuser,
  pickupRoundDefuser,dropRoundDefuser,stepBombRound,bombPrompt,
- plantDefuserPosition} from "./bomb-round.js?v=reboot-062";
+ plantDefuserPosition} from "./bomb-round.js?v=reboot-067";
 import {createBombRoundView,drawBombRoundMinimap} from "./bomb-round-view.js?v=reboot-062";
 import {bombSiteBlockers,liveBombInteraction,newBombSoundClock,tickBombSoundClock,
  bombRoundOutcome} from "./bomb-presentation.js?v=reboot-065";
@@ -104,7 +104,7 @@ const reserveCount=$("reserve-count"),roundClock=$("round-clock"),areaLabel=$("a
 const headingLabel=$("heading"),compassArrow=$("compass-arrow"),fpsLabel=$("fps"),missionCheck=$("mission-check");
 const mapLabel=document.querySelector(".siege-map-label");
 const tacticalMap=$("tactical-map"),tacticalMapCtx=tacticalMap.getContext("2d");
-const droneHud=$("drone-hud"),droneMap=$("drone-range-map");
+const droneHud=$("drone-hud"),droneMap=$("drone-range-map"),droneFeedState=$("drone-feed-state");
 const droneMapCtx=droneMap.getContext("2d");
 const droneBoostStatus=$("drone-boost"),droneJumpStatus=$("drone-jump"),
  droneSpeedStatus=$("drone-speed");
@@ -268,7 +268,8 @@ let c4PickupKeyConsumed=false,softBreachPickupKeyConsumed=false,hardBreachPickup
 const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
-let gameMode="sandbox",bombState=null,mapMode="sandbox";
+let gameMode="sandbox",bombState=null,mapMode="sandbox",operatorDeployed=true;
+function isAttackerPreparation(){return gameMode==="bomb"&&bombState?.phase==="prep"&&activeOperator.side==="attack";}
 function setMapMode(next){
  const house=next==="house";
  mapMode=house?"house":"sandbox";
@@ -375,12 +376,20 @@ function bombRaycastColliders(){
 }
 function advanceBombMode(dt){
  if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();return;}
+ const wasAttackerPrep=isAttackerPreparation();
  const beforeInteraction=currentBombInteraction();
  const previousInteraction=bombSoundClock.interaction;
- const result=stepBombRound(bombState,dt,{side:activeOperator.side,position:player,
-  holdingF:controlMode==="player"&&keys.has("KeyF"),
-  holdingX:controlMode==="player"&&keys.has("KeyX"),alive:wireHealth.hp>0});
+ const result=stepBombRound(bombState,dt,{side:activeOperator.side,
+  position:operatorDeployed?player:null,
+  holdingF:operatorDeployed&&controlMode==="player"&&keys.has("KeyF"),
+  holdingX:operatorDeployed&&controlMode==="player"&&keys.has("KeyX"),
+  alive:operatorDeployed&&wireHealth.hp>0});
  bombState=result.state;
+ if(wasAttackerPrep&&result.events.includes("action")){
+  // Spawn the attacker only at action start; retain their prep drone.
+  operatorDeployed=true;player=roundSpawn();cameraEye=1.65;
+  setControlMode("player");refreshDroneEquipment();
+ }
  bombView.update(bombState,dt);
  const afterInteraction=currentBombInteraction();
  plantAudio.sync(plantRecordingStage(bombState,afterInteraction));
@@ -460,7 +469,19 @@ const operatorPicker=createOperatorPicker($("operator-selection"),{
    const dropped=dropRoundDefuser(bombState,player,"DEFUSER LEFT FOR ATTACKING TEAM");
    bombState=dropped.state;bombView.update(bombState);
   }
+  const previousSide=activeOperator.side;
   activeOperator=operator;
+  if(gameMode==="bomb"&&bombState?.phase==="prep"&&previousSide!==operator.side){
+   // Switching teams in the paused solo testing lobby restarts prep for the
+   // selected side; never expose the staged attacker as a defender body.
+   bombState=newBombRound({choice:operator.side==="attack"?chosenDefuserChoice():"leave",
+    map:mapMode,round:bombState.round,score:bombState.score});
+   player=roundSpawn();
+   resetRoundDrones();
+   if(isAttackerPreparation())deployAutomaticPrepDrone();
+   else setControlMode("player");
+   bombView.update(bombState);
+  }
   updateDeployMenu();syncRoundUI();
   // This fresh testing role starts at full health. Deployed defender wire
   // persists across team changes so Striker can verify enemy-only damage.
@@ -1225,6 +1246,8 @@ function strikeMelee(now){
  shotNoticeLeft=1.05;
 }
 function setControlMode(nextMode){
+ // No attacker body exists in prep, so X and 5 cannot exit the feed.
+ if(isAttackerPreparation()&&nextMode==="player")nextMode="drone";
  // Never enter a recon feed as a defender, including after switching teams
  // while the camera was open and the Testing Range was paused.
  if(nextMode==="drone"&&!canUseReconDrones(activeOperator))nextMode="player";
@@ -1253,14 +1276,31 @@ function refreshDroneEquipment(){
  droneEquipmentBar.classList.toggle("hidden",!hasRecon);
  droneKeyTip.classList.toggle("hidden",!hasRecon);
  defenderKeyTip.classList.toggle("hidden",hasRecon);
- const info=droneEquipmentStatus(droneRoster);
+ const info=droneEquipmentStatus(droneRoster,
+  gameMode==="bomb"?bombState?.phase:"range");
  droneCameraCount.textContent=String(info.cameras);
  droneSpareCount.textContent=String(info.throwables);
+ droneFeedState.textContent=controlMode==="drone"&&!drone?
+  "SIGNAL LOST · CAMERA DESTROYED":
+  isAttackerPreparation()?"SIGNAL ONLINE · PREPARATION":
+  "SIGNAL ONLINE · LIVE CAMERA";
+}
+function registerPhysicalDrone(fresh,kind){
+ const next=registerDrone(droneRoster,fresh,kind);
+ if(next===droneRoster)return false;
+ droneRoster=next;
+ const view=createDroneView(THREE,scene);
+ view.place(fresh);
+ view.setIndex(droneViews.length);
+ droneViews.push(view);
+ drone=selectedDrone(droneRoster);
+ refreshDroneEquipment();
+ return true;
 }
 function throwPhysicalDrone(kind){
- if(!canUseReconDrones(activeOperator))return false;
- // 6 deploys either carried test-range drone. Future matches gate the
- // prep drone and action-phase spare separately. 5 creates no devices.
+ if(!canUseReconDrones(activeOperator)||!operatorDeployed)return false;
+ // Key 6 throws the action-phase spare or a regular testing-range drone.
+ // Key 5 only reconnects to an existing camera.
  const distance=.42;
  const x=player.x-Math.sin(player.yaw)*distance;
  const z=player.z-Math.cos(player.yaw)*distance;
@@ -1272,19 +1312,36 @@ function throwPhysicalDrone(kind){
   shotNoticeLeft=1.5;return false;
  }
  const fresh=throwDrone(clear.x,clear.z,player.yaw);
- const next=registerDrone(droneRoster,fresh,kind);
- if(next===droneRoster)return false;
- droneRoster=next;
- const view=createDroneView(THREE,scene);
- view.place(fresh);
- view.setIndex(droneViews.length);
- droneViews.push(view);
- drone=selectedDrone(droneRoster);
+ if(!registerPhysicalDrone(fresh,kind))return false;
  shotNotice.textContent="DRONE THROWN · "+droneRoster.drones.length+
    " DEPLOYED · PRESS 5 FOR CAMERAS";
  shotNoticeLeft=1.4;
- refreshDroneEquipment();
  return true;
+}
+function resetRoundDrones(mode="match"){
+ for(const view of droneViews)view.dispose();
+ droneViews.length=0;
+ droneRoster=newDroneRoster(mode);
+ drone=null;
+ operatorDeployed=true;
+ controlMode="player";
+ refreshDroneEquipment();
+}
+function deployAutomaticPrepDrone(){
+ if(!isAttackerPreparation())return;
+ operatorDeployed=false; // staged spawn is not a playable body
+ if(!droneRoster.initialUsed){
+  // Begin in a deployed floor drone; no invisible operator throws it.
+  const spawn=roundSpawn();
+  const x=spawn.x-Math.sin(spawn.yaw)*.65;
+  const z=spawn.z-Math.cos(spawn.yaw)*.65;
+  const location=canDroneOccupy(x,0,z,activeDroneObstacles())?
+   {x,z}:{x:spawn.x,z:spawn.z};
+  registerPhysicalDrone(newDrone(location.x,location.z,spawn.yaw),"initial");
+ }
+ drone=selectedDrone(droneRoster);
+ setControlMode("drone");
+ refreshDroneEquipment();
 }
 function shootableDrones(){
  return droneViews.flatMap(view=>view.root.visible?view.shootables:[]);
@@ -1296,14 +1353,22 @@ function destroyPhysicalDrone(index){
  droneRoster=removeDrone(droneRoster,index);
  droneViews.forEach((view,i)=>view.setIndex(i));
  drone=selectedDrone(droneRoster);
- if(controlMode==="drone"&&!drone)setControlMode("player");
+ if(controlMode==="drone"&&!drone){
+  if(isAttackerPreparation()){
+   shotNotice.textContent="DRONE DESTROYED · OPERATOR SPAWNS IN ACTION";
+   shotNoticeLeft=3;
+  }else setControlMode("player");
+ }
  refreshDroneEquipment();
  shotAudio.play("impact");
  return true;
 }
 function openDroneCameras(){
  if(!canUseReconDrones(activeOperator))return;
- if(controlMode==="drone"){setControlMode("player");return;}
+ if(controlMode==="drone"){
+  if(!isAttackerPreparation())setControlMode("player");
+  return;
+ }
  const request=cameraRequest(droneRoster);
  if(request.action==="open"){
   drone=selectedDrone(droneRoster);
@@ -1315,7 +1380,8 @@ function openDroneCameras(){
 }
 function throwCarriedDrone(){
  if(controlMode!=="player"||!canUseReconDrones(activeOperator))return;
- const request=throwRequest(droneRoster,"range");
+ const request=throwRequest(droneRoster,
+  gameMode==="bomb"?bombState?.phase:"range");
  if(request.action==="throw-only")throwPhysicalDrone(request.kind);
  else{
   shotNotice.textContent=request.reason||"NO DRONES REMAINING";
@@ -1362,10 +1428,13 @@ function beginBombRound(){
  player=roundSpawn();wireHealth=newWireHealth();
  cameraEye=1.65;proneToggle=false;keys.clear();cancelHeldThrow();
  breachVault=null;shieldVault=null;
+ resetRoundDrones();
+ if(isAttackerPreparation())deployAutomaticPrepDrone();
+ else setControlMode("player");
  bombView.update(bombState);syncRoundUI();
- message.textContent=choice==="carry"?
-  "BOMB ROUND · YOU HAVE DEFUSER · HOLD X TO DROP":
-  "BOMB ROUND · DEFUSER LEFT AT ATTACKER SPAWN · F TO PICK UP";
+ message.textContent=isAttackerPreparation()?
+  "ATTACKER PREP · DRONE AUTO-DEPLOYED · OPERATOR SPAWNS AT ACTION":
+  "DEFENDER PREP · REINFORCE AND PREPARE THE SITES";
  enterRange();
 }
 function nextBombRound(){
@@ -1377,6 +1446,9 @@ function nextBombRound(){
  bombState=newFollowingRound(bombState,choice);bombSoundClock=newBombSoundClock();
  player=roundSpawn();wireHealth=newWireHealth();proneToggle=false;
  breachVault=null;shieldVault=null;keys.clear();
+ resetRoundDrones();
+ if(isAttackerPreparation())deployAutomaticPrepDrone();
+ else setControlMode("player");
  bombView.update(bombState);syncRoundUI();
  shotNotice.textContent="NEW BOMB ROUND "+bombState.round+" · PREPARATION 45S";
  shotNoticeLeft=2.5;return true;
@@ -1409,12 +1481,14 @@ play.addEventListener("click",()=>{
   setMapMode("sandbox");
   if(gameMode!=="sandbox"){
    gameMode="sandbox";bombState=null;bombSoundClock=newBombSoundClock();bombView.update(null);
+   resetRoundDrones("range");player=initialPlayer();setControlMode("player");
   }
   syncRoundUI();enterRange();return;
  }
  if(gameMode==="bomb"&&bombState&&
    (mapMode==="house")===(playMode.value==="house")){
   if(bombState.phase==="ended")nextBombRound();
+  if(isAttackerPreparation())deployAutomaticPrepDrone();
   syncRoundUI();enterRange();return;
  }
  beginBombRound();
@@ -1434,9 +1508,11 @@ document.addEventListener("pointerlockerror",()=>{
 document.addEventListener("mousemove",event=>{
  if(!locked)return;
  if(currentBombInteraction())return; // Fixed viewpoint while planting/disabling.
- if(controlMode==="drone"&&drone){
-  drone.yaw-=event.movementX*.003;
-  drone.pitch=Math.max(-.75,Math.min(.75,drone.pitch-event.movementY*.0026));
+ if(controlMode==="drone"){
+  if(drone){
+   drone.yaw-=event.movementX*.003;
+   drone.pitch=Math.max(-.75,Math.min(.75,drone.pitch-event.movementY*.0026));
+  }
  }else{
   player.yaw-=event.movementX*.00215;
   player.pitch=Math.max(-1.48,Math.min(1.48,player.pitch-event.movementY*.00215));
@@ -1456,7 +1532,10 @@ document.addEventListener("keydown",event=>{
  if(event.code==="Digit5"&&!event.repeat){openDroneCameras();return;}
  if(event.code==="Digit6"&&!event.repeat){throwCarriedDrone();return;}
  if(controlMode==="drone"){
-  if(event.code==="KeyX"&&!event.repeat){setControlMode("player");return;}
+  if(event.code==="KeyX"&&!event.repeat){
+   if(!isAttackerPreparation())setControlMode("player");
+   return;
+  }
   if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat&&
      droneRoster.drones.length>1){
    switchDroneCamera(event.code==="KeyQ"?-1:1);return;
@@ -2135,9 +2214,12 @@ function animate(now){
  if(!locked||controlMode!=="player")
   bombInteractionView.update(null,0,dt);
  // Drop the camera immediately for low cover; smoothly raise when clearance allows.
- if(controlMode==="drone"&&drone){
-  camera.position.set(drone.x,drone.y+DRONE.eye,drone.z);
-  camera.rotation.set(drone.pitch,drone.yaw,0,"YXZ");
+ if(controlMode==="drone"){
+  // A destroyed prep camera cannot expose a playable attacker viewpoint.
+  if(drone){
+   camera.position.set(drone.x,drone.y+DRONE.eye,drone.z);
+   camera.rotation.set(drone.pitch,drone.yaw,0,"YXZ");
+  }else camera.position.set(0,-1000,0);
   if(camera.fov!==87){camera.fov=87;camera.updateProjectionMatrix();}
  }else{
    const bombPose=interactionCameraLock();
@@ -2219,5 +2301,5 @@ function animate(now){
  if(locked&&now-lastHud>110){hudFrame();lastHud=now;}
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.26.1 original CC0 defuser foley, single timer-driven bomb clock",FOUNDATION_VERSION,
+console.info("BLACKOUT V0.28.0 auto prep drone, elevated drone landing, live-action operator spawn",FOUNDATION_VERSION,
   "offline weapon testing; old game runtime not loaded");

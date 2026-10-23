@@ -1,10 +1,10 @@
-// BLACKOUT V0.12 · independent player-controlled reconnaissance drone.
+// BLACKOUT V0.28 · elevated-surface reconnaissance drone traversal.
 // Real low-profile collision with walls, boxes, barricades, gypsum cutouts,
 // and reinforced metal. Three regenerating Shift bursts and jump cooldown.
 export const DRONE=Object.freeze({
  radius:.19,height:.25,eye:.28,accel:13,friction:11,maxSpeed:4.1,
  boostSpeed:8.5,boostDuration:.72,maxCharges:3,chargeRecharge:7,
- jumpSpeed:3.7,jumpCooldown:1.8,gravity:17.5,worldLimit:29.77
+ jumpSpeed:7.25,jumpCooldown:1.8,gravity:17.5,worldLimit:29.77
 });
 export function newDrone(x=0,z=6,yaw=0){
  return {x,y:0,z,yaw,pitch:0,speedX:0,speedZ:0,vy:0,grounded:true,
@@ -30,6 +30,48 @@ export function canDroneOccupy(x,y,z,objects=[]){
   const cz=Math.max(o.z-o.depth/2,Math.min(z,o.z+o.depth/2));
   return (x-cx)**2+(z-cz)**2 < DRONE.radius*DRONE.radius;
  });
+}
+// Circular footprint matches the actual swept horizontal body, so corner
+// landings are consistent with collision against crates and deployable shields.
+function overlapsFootprint(x,z,o){
+ const cx=Math.max(o.x-o.width/2,Math.min(x,o.x+o.width/2));
+ const cz=Math.max(o.z-o.depth/2,Math.min(z,o.z+o.depth/2));
+ return (x-cx)**2+(z-cz)**2<DRONE.radius*DRONE.radius;
+}
+function hasSupport(x,y,z,objects){
+ return y<=1e-5||objects.some(o=>
+  Math.abs(o.height-y)<=1e-4&&overlapsFootprint(x,z,o));
+}
+function stepVertical(d,step,objects){
+ const previousY=d.y;
+ d.vy-=DRONE.gravity*step;
+ let nextY=previousY+d.vy*step;
+ if(d.vy>0){
+  // A real ceiling or upper-floor slab stops the drone's head.
+  let headLimit=Infinity;
+  for(const o of objects){
+   const underside=o.bottom??0;
+   if(underside>0&&overlapsFootprint(d.x,d.z,o)&&
+      previousY+DRONE.height<=underside+1e-6&&
+      nextY+DRONE.height>=underside)
+    headLimit=Math.min(headLimit,underside-DRONE.height);
+  }
+  if(Number.isFinite(headLimit)){nextY=Math.min(nextY,headLimit);d.vy=0;}
+ }else{
+  // Snap to the highest solid top crossed *from above*. Landing is not
+  // permitted from underneath a counter or shield.
+  let support=0;
+  for(const o of objects){
+   if(overlapsFootprint(d.x,d.z,o)&&o.height>support&&
+      previousY>=o.height-1e-5&&nextY<=o.height+1e-5)
+    support=o.height;
+  }
+  if(nextY<=support){
+   nextY=support;d.vy=0;d.grounded=true;d.throwLeft=0;
+  }
+ }
+ d.y=Math.max(0,nextY);
+ if(d.y===0){d.vy=0;d.grounded=true;d.throwLeft=0;}
 }
 export function tickDrone(previous,input={},dt=1/60,objects=[]){
  if(!finite(previous))throw new Error("Invalid drone movement state");
@@ -57,15 +99,15 @@ export function tickDrone(previous,input={},dt=1/60,objects=[]){
     d.speedX=0;d.speedZ=0;d.throwLeft=0;break;
    }
   }
-  d.vy-=DRONE.gravity*step;
-  d.y=Math.max(0,d.y+d.vy*step);
-  if(d.y<=0){d.y=0;d.vy=0;d.grounded=true;d.throwLeft=0;}
+  stepVertical(d,step,objects);
   return d;
  }
   if(input.boostPressed&&d.charges>0&&d.boostLeft===0){
   d.charges--;d.boosts++;d.boostLeft=DRONE.boostDuration;
   d.chargeTimer=0; // each use restarts the recharge window
  }
+ // Leaving a shelf or a removed shield starts a real fall.
+ if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects)){d.grounded=false;d.vy=0;}
  if(input.jumpPressed&&d.grounded&&d.jumpLeft===0){
   d.vy=DRONE.jumpSpeed;d.grounded=false;
   d.jumpLeft=DRONE.jumpCooldown;d.jumps++;
@@ -94,11 +136,8 @@ export function tickDrone(previous,input={},dt=1/60,objects=[]){
    else d.speedZ=0;
   }
  }
- if(!d.grounded){
-  d.vy-=DRONE.gravity*step;
-  d.y+=d.vy*step;
-  if(d.y<=0){d.y=0;d.vy=0;d.grounded=true;}
- }
+ if(d.grounded&&!hasSupport(d.x,d.y,d.z,objects)){d.grounded=false;d.vy=0;}
+ if(!d.grounded)stepVertical(d,step,objects);
  return d;
 }
 export function droneBoostLabel(state){

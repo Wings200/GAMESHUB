@@ -20,13 +20,13 @@ export function throwRequest(roster,phase="range"){
   if(!roster.spareUsed)return {action:"throw-only",kind:"spare"};
   return {action:"none",reason:"NO DRONES REMAINING"};
  }
- // The real round phase is NOT implemented yet; these are the phase rules
- // for future 5v5 mode. The test range does not silently pretend it has prep.
+ // Match inventory follows the actual preparation, action, and post-plant
+ // round phases. The test range still carries two ordinary throwables.
  if(phase==="prep")
   return roster.initialUsed?
    {action:"none",reason:"PREP DRONE ALREADY DEPLOYED"}:
    {action:"throw-only",kind:"initial"};
- if(phase==="action")
+ if(phase==="action"||phase==="postplant")
   return roster.spareUsed?
    {action:"none",reason:"NO POST-PREP SPARE REMAINING"}:
    {action:"throw-only",kind:"spare"};
@@ -71,7 +71,7 @@ export function droneEquipmentStatus(roster,phase="range"){
  const throwables=roster.mode==="range"?
   Number(!roster.initialUsed)+Number(!roster.spareUsed):
   phase==="prep"?Number(!roster.initialUsed):
-  phase==="action"?Number(!roster.spareUsed):0;
+  (phase==="action"||phase==="postplant")?Number(!roster.spareUsed):0;
  return {cameras:roster.drones.length,throwables,
   initial:roster.initialUsed?0:1,spare:roster.spareUsed?0:1};
 }
