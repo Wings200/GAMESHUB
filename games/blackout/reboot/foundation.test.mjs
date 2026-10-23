@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-066",
+  for(const src of ["./reboot/main.js?v=reboot-067",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -269,11 +269,11 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes('keys.has("KeyF")'));
  assert.ok(main.includes("reinforcement.tick(dt)"));
  // V0.12: drone is a real separate controller, not decorative HUD toggling.
- assert.ok(main.includes('from "./drone-physics.js?v=reboot-019"'));
+ assert.ok(main.includes('from "./drone-physics.js?v=reboot-067"'));
  assert.ok(main.includes('from "./drone-view.js?v=reboot-066"'));
  assert.ok(main.includes("createDroneView(THREE,scene)"));
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
- assert.ok(main.includes('from "./drone-roster.js?v=reboot-066"'));
+ assert.ok(main.includes('from "./drone-roster.js?v=reboot-067"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
  assert.ok(main.includes('from "./operator-select.js?v=reboot-052"'));
@@ -527,7 +527,7 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  // V0.25.0: live round system with explicit defuser ownership/choice.
  assert.ok(read("reboot/bomb-round.js").includes("V0.26.0"));
  assert.ok(read("reboot/bomb-round-view.js").includes("V0.25.6"));
- assert.ok(main.includes('from "./bomb-round.js?v=reboot-062"'));
+ assert.ok(main.includes('from "./bomb-round.js?v=reboot-067"'));
   assert.ok(main.includes('from "./bomb-round-view.js?v=reboot-062"'));
  assert.ok(main.includes('bombState=newBombRound({choice,map:mapMode})'));
  assert.ok(main.includes('bombState=newFollowingRound(bombState,choice)'));
