@@ -1,5 +1,7 @@
 // BLACKOUT · shared, server-authoritative room interaction primitives.
 // Both online and custom rooms use these same world-state rules.
+import {roundSiteAt} from "./reboot/bomb-round.js";
+
 export const PREP_SECONDS=45, ACTION_SECONDS=180, PLANT_SECONDS=7.35, DISABLE_SECONDS=7;
 export function createOnlineWorld(map,players,now=Date.now()){
  const carrier=players.find(p=>p.side==="attacker")?.id||null;
@@ -58,6 +60,10 @@ export function nearestPart(map,world,p,types,max=2.5){
 }
 const groundPair=(map,world)=>map.sitePairs?.find(p=>p.id===world.sitePair)||map.sitePairs?.[0];
 export function nearBombSite(map,world,p){
+ // The original house enforces exact room bounds and floor height.
+ // The circular site marker alone would permit planting from the corridor
+ // or through the upstairs floor near a bomb.
+ if(map.id==="blackout-original-house")return roundSiteAt(p,"house")?.id||null;
  const pair=groundPair(map,world);
  if(!pair)return null;
  for(const site of ["A","B"]){

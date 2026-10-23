@@ -2,6 +2,7 @@
 // come directly from Solo Custom; no second, hand-authored online building.
 import {HOUSE,HOUSE_BLOCKERS} from "../reboot/house-layout.js";
 import {BOMB_RULES} from "../reboot/bomb-round.js";
+import {BOMB_HARDWARE} from "../reboot/bomb-presentation.js";
 
 const surface=block=>{
  const width=block.width,depth=block.depth;
@@ -22,6 +23,12 @@ const elements=[
  Object.freeze({id:"house-ground",type:"floor",position:{x:0,y:0,z:0},
   size:{x:100,y:.2,z:100},rotationY:0}),
  ...HOUSE_BLOCKERS.map(surface),
+ ...BOMB_RULES.sites.map(site=>Object.freeze({
+   id:"bomb-site-"+site.id.toLowerCase(),type:"cover",material:"metal",
+   position:{x:site.x,y:0,z:site.z},
+   size:{x:BOMB_HARDWARE.width,y:BOMB_HARDWARE.height,z:BOMB_HARDWARE.depth},
+   rotationY:0
+ })),
  Object.freeze({id:"house-main-stairs",type:"stairs",
   position:{x:(stairs.minX+stairs.maxX)/2,y:0,
    z:(stairs.minZ+stairs.maxZ)/2},

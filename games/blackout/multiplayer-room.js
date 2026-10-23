@@ -331,8 +331,10 @@ export class BlackoutRoom extends DurableObject {
    this.broadcast({event:"drone-move",from:p.id});return;
   }
   if(m.type==="world"){
-   if(this.phase==="prep"&&p.side==="attacker")return;
    const kind=String(m.action||"");
+   // Attacker may choose to leave the defuser at spawn even during prep.
+   // Gadget/plant actions remain forbidden until the action phase.
+   if(this.phase==="prep"&&p.side==="attacker"&&kind!=="drop")return;
    let event=null;
    if(kind==="interact"){event=interactStart(matchMap,this.world,p,
      [...this.players.values()],now);}

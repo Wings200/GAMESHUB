@@ -24,6 +24,7 @@ import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
 import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-071";
 import {createBlackoutNetwork} from "./network-lobby.js?v=reboot-072";
 import {createRemoteOperators} from "./remote-operators.js?v=reboot-072";
+import {onlineBombView,onlineInteractPrompt,onlineObjectiveInteraction} from "./network-objectives.js?v=reboot-073";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";
@@ -274,7 +275,7 @@ const footstepAudio=new FootstepAudio();
 let footstepTracker=newFootstepTracker();
 let player=initialPlayer(),lastTime=performance.now(),lastHud=0;
 let gameMode="sandbox",bombState=null,mapMode="sandbox",operatorDeployed=true;
-let onlineSession=null,onlinePhase="lobby";
+let onlineSession=null,onlinePhase="lobby",onlineBombState=null,onlineDropStartedAt=0;
 function isAttackerPreparation(){return gameMode==="bomb"&&bombState?.phase==="prep"&&activeOperator.side==="attack";}
 function setMapMode(next){
  const house=next==="house";
@@ -326,7 +327,7 @@ function updateDeployMenu(){
   (chosen==="bomb"?"Bomb Round":"Test Range"));
 }
 function syncRoundUI(){
- const active=gameMode==="bomb"&&bombState!==null;
+ const active=gameMode==="online"?Boolean(onlineBombState):gameMode==="bomb"&&bombState!==null;
  bombObjectiveMini.classList.toggle("hidden",!active);
  sandboxObjective.classList.toggle("hidden",active);
  missionCheck.classList.toggle("hidden",active);
@@ -337,7 +338,7 @@ function syncRoundUI(){
   bombResult.classList.add("hidden");
   return;
  }
- const b=bombState;
+ const b=gameMode==="online"?onlineBombState:bombState;
  const outcome=bombRoundOutcome(b,activeOperator.side);
  bombResult.classList.toggle("hidden",!outcome||!locked);
  if(outcome){
@@ -353,11 +354,13 @@ function syncRoundUI(){
  bombDefuser.textContent=b.phase==="ended"?b.reason:
   b.defuser.status==="carried"?
    (activeOperator.side==="attack"?
-    "DEFUSER IN YOUR HANDS · HOLD X TO DROP":"ATTACKER HAS DEFUSER"):
+    (gameMode==="online"&&!b.localCarrier?
+      "YOUR TEAMMATE HAS THE DEFUSER":"DEFUSER IN YOUR HANDS · HOLD X TO DROP"):
+    "ATTACKER HAS DEFUSER"):
   b.defuser.status==="ground"?
    (activeOperator.side==="attack"?"DEFUSER ON GROUND · F TO COLLECT":"DEFUSER DROPPED"):
   "DEFUSER PLANTED · SITE "+b.defuser.site;
- const prompt=bombPrompt(b,activeOperator.side,player);
+ const prompt=gameMode==="online"?onlineInteractPrompt(b,activeOperator.side,player):bombPrompt(b,activeOperator.side,player);
  bombAction.textContent=prompt;
  const progress=b.phase==="action"?Math.max(b.plantProgress/BOMB_RULES.plantSeconds,
   b.dropProgress/BOMB_RULES.dropHoldSeconds):
@@ -366,7 +369,7 @@ function syncRoundUI(){
  bombActionFill.style.width=Math.min(100,Math.max(0,progress*100)).toFixed(1)+"%";
  const actionable=progress>0||nearbyDefuser(b,activeOperator.side,player)||
   (b.phase==="action"&&activeOperator.side==="attack"&&
-   b.defuser.status==="carried"&&Boolean(roundSiteAt(player,b.map)))||
+   b.defuser.status==="carried"&&(gameMode!=="online"||b.localCarrier)&&Boolean(roundSiteAt(player,b.map)))||
   (b.phase==="postplant"&&activeOperator.side==="defend"&&
    Math.hypot(player.x-b.defuser.x,player.z-b.defuser.z)<=BOMB_RULES.disableRadius);
  bombHud.classList.toggle("hidden",!locked||controlMode!=="player"||!actionable);
@@ -374,13 +377,41 @@ function syncRoundUI(){
 }
 
 function currentBombInteraction(){
+ if(gameMode==="online")return onlineSession?.active&&keys.has("KeyF")?
+   onlineObjectiveInteraction(onlineSession.state()):null;
  return liveBombInteraction(bombState,activeOperator.side,player,
   controlMode==="player"&&keys.has("KeyF")&&locked,wireHealth.hp>0);
 }
 function bombRaycastColliders(){
- return gameMode==="bomb"?bombView.bombColliders:[];
+ return gameMode==="bomb"||(gameMode==="online"&&onlineBombState)?bombView.bombColliders:[];
 }
 function advanceBombMode(dt){
+ if(gameMode==="online"&&onlineSession?.active){
+   // Render and play the ORIGINAL objective feedback, but only the server
+   // may advance phases or complete plants/defuses.
+   const snapshot=onlineSession.state();
+   const previous=onlineBombState;
+   onlineBombState=onlineBombView(snapshot);
+   if(!onlineBombState)return;
+   bombView.update(onlineBombState,dt);
+   const interaction=currentBombInteraction();
+   plantAudio.sync(plantRecordingStage(onlineBombState,interaction));
+   defuseAudio.sync(interaction==="disable");
+   const result=tickBombSoundClock(bombSoundClock,onlineBombState,dt,interaction);
+   bombSoundClock=result.clock;
+   if(previous?.phase!=="postplant"&&onlineBombState.phase==="postplant"){
+     if(!defuserCues.play("arm"))shotAudio.play("defuser-arming");
+   }
+   for(const cue of result.events){
+     if(cue==="defuser-tick"){
+       const urgent=onlineBombState.time<=10;
+       if(!defuserCues.play(urgent?"urgent":"tick"))
+         shotAudio.play(urgent?"defuser-tick-urgent":"defuser-tick");
+     }else if(cue==="defuse-key"&&defuseAudio.failed)shotAudio.play("defuse-key");
+     else if(cue==="plant-key"&&plantAudio.failed)shotAudio.play("plant-key");
+   }
+   return;
+ }
  if(gameMode!=="bomb"||!bombState){plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();return;}
  const wasAttackerPrep=isAttackerPreparation();
  const beforeInteraction=currentBombInteraction();
@@ -599,9 +630,9 @@ resize();
 window.addEventListener("resize",resize);
 function activeDroneObstacles(){
  if(mapMode==="house")return [...houseView.colliders,
-  ...shieldBlockers(shieldState),...bombSiteBlockers(bombState)];
+  ...shieldBlockers(shieldState),...bombSiteBlockers(gameMode==="online"?onlineBombState:bombState)];
  return [...TEST_OBSTACLES,...barricade.blockers(),...softWall.blockers(),
-  ...reinforcement.blockers(),...shieldBlockers(shieldState),...bombSiteBlockers(bombState)];
+  ...reinforcement.blockers(),...shieldBlockers(shieldState),...bombSiteBlockers(gameMode==="online"?onlineBombState:bombState)];
 }
 function applyGadgetBlast(blast,label="C4"){
  blastViews.push(createNitroBlast(THREE,scene,blast));
@@ -1424,7 +1455,7 @@ function droneHudFrame(){
   droneChargeMarkers[i].classList.toggle("active",i<drone.charges);
  if(mapMode==="house")drawHouseMinimap(droneMapCtx,drone);
  else drawTrainingMap(droneMapCtx,drone,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
- if(gameMode==="bomb")drawBombRoundMinimap(droneMapCtx,bombState);
+ if(gameMode==="bomb"||onlineSession?.active)drawBombRoundMinimap(droneMapCtx,gameMode==="online"?onlineBombState:bombState);
 }
 function unlockMessage(){
  message.textContent=gameMode==="bomb"&&bombState?
@@ -1493,7 +1524,8 @@ onlineSession=createBlackoutNetwork({
  onStart(snapshot){
    const self=snapshot.self;if(!self)return;
    activeOperator=operatorById(self.side==="defender"?"sentry":"striker");
-   gameMode="online";bombState=null;bombView.update(null);
+   gameMode="online";bombState=null;onlineBombState=onlineBombView(snapshot);
+   bombView.update(onlineBombState);bombSoundClock=newBombSoundClock();
    setMapMode("house");resetRoundDrones();
    player={...initialPlayer(),x:self.x,y:self.y,z:self.z,yaw:self.yaw,pitch:self.pitch};
    onlinePhase=snapshot.phase;
@@ -1504,7 +1536,7 @@ onlineSession=createBlackoutNetwork({
        y:prepDrone.y,pitch:prepDrone.pitch},"initial");
      operatorDeployed=false;setControlMode("drone");
    }
-   wireHealth=newWireHealth();weapons.reset();cameraEye=1.65;
+   wireHealth={...newWireHealth(),hp:100};weapons.reset();cameraEye=1.65;
    operatorHudName.textContent=activeOperator.name;
    operatorHudSide.textContent=self.side==="defender"?"DEFENDER":"ATTACKER";
    refreshUtilityHud();refreshDroneEquipment();syncRoundUI();
@@ -1515,6 +1547,8 @@ onlineSession=createBlackoutNetwork({
  onState(snapshot){
    if(!snapshot.self)return;
    remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase);
+   onlineBombState=onlineBombView(snapshot);
+   bombView.update(onlineBombState);
    // The server owns the phase clock; the player body spawns only after prep.
    if(onlinePhase==="prep"&&snapshot.phase==="action"&&
       activeOperator.side==="attack"){
@@ -1532,11 +1566,15 @@ onlineSession=createBlackoutNetwork({
  onEnd(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
    remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
+   onlineBombState=null;bombView.update(null);
+   plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();
    message.textContent="CONNECTED ROUND COMPLETE · HOST CAN START NEXT ROUND";
  },
  onLeave(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
    remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
+   onlineBombState=null;bombView.update(null);
+   plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();
    setMapMode("sandbox");syncRoundUI();
  },
  onCorrection(fix){
@@ -1589,6 +1627,7 @@ document.addEventListener("pointerlockchange",()=>{
  if(onlineSession?.active){if(locked)onlineSession.hidePause();else onlineSession.showPause();}
  document.body.classList.toggle("range-active",locked);
  setControlMode(controlMode);
+ if(!locked&&onlineSession?.active)onlineSession.send({type:"world",action:"stop"});
  if(!locked){if(plantAudio.stage==="typing")plantAudio.sync("off");else if(bombState?.phase!=="ended")plantAudio.pause();defuseAudio.sync(false);bombCameraLock=null;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;footstepTracker=newFootstepTracker();proneToggle=false;firing=false;aimHeld=false;reloadPressed=false;leanTarget=0;leanAmount=0;barricadeBuildTime=0;droneJumpPressed=false;reinforcement.step({player,holding:false,dt:0});unlockMessage();}
  else {plantAudio.resume();defuseAudio.resume();}
  lastTime=performance.now();
@@ -1623,14 +1662,27 @@ document.addEventListener("keydown",event=>{
  if(gameMode==="bomb"&&event.code==="KeyN"&&!event.repeat){
   nextBombRound();return;
  }
- if(wireHealth.hp===0&&(gameMode==="bomb"||event.code!=="KeyP"))return;
+ if(wireHealth.hp===0&&(gameMode==="bomb"||gameMode==="online"||event.code!=="KeyP"))return;
  if(gameMode==="bomb"&&bombState?.phase==="ended")return;
+ if(onlineSession?.active&&controlMode==="player"&&!event.repeat){
+   if(event.code==="KeyF"){
+     onlineSession.send({type:"world",action:"interact"});keys.add("KeyF");return;
+   }
+   if(event.code==="KeyX"){
+     onlineDropStartedAt=performance.now();keys.add("KeyX");return;
+   }
+   if(event.code==="KeyV"){
+     onlineSession.send({type:"world",action:"melee"});
+     strikeMelee(performance.now());return;
+   }
+ }
  if(event.code==="Digit5"&&!event.repeat){openDroneCameras();return;}
  if(event.code==="Digit6"&&!event.repeat){throwCarriedDrone();return;}
  if(controlMode==="drone"){
   if(event.code==="KeyX"&&!event.repeat){
-   if(!isAttackerPreparation()&&!(onlineSession?.active&&
-      onlineSession.phase==="prep"))setControlMode("player");
+   if(onlineSession?.active&&onlineSession.phase==="prep"){
+     onlineDropStartedAt=performance.now();keys.add("KeyX");
+   }else if(!isAttackerPreparation())setControlMode("player");
    return;
   }
   if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat&&
@@ -1771,6 +1823,10 @@ document.addEventListener("keydown",event=>{
 });
 document.addEventListener("keyup",event=>{
  keys.delete(event.code);
+ if(onlineSession?.active){
+   if(event.code==="KeyF")onlineSession.send({type:"world",action:"stop"});
+   if(event.code==="KeyX")onlineDropStartedAt=0;
+ }
  if(event.code==="KeyF"){c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;}
  if(event.code==="KeyG")releaseGadgetInput("KeyG");
 });
@@ -1800,7 +1856,9 @@ canvas.addEventListener("auxclick",event=>{
  // Middle-click inside the locked game must not start autoscroll/new tabs.
  if(locked&&event.button===1)event.preventDefault();
 });
-window.addEventListener("blur",()=>{cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
+window.addEventListener("blur",()=>{
+ if(onlineSession?.active)onlineSession.send({type:"world",action:"stop"});
+ onlineDropStartedAt=0;cancelHeldThrow();keys.clear();c4PickupKeyConsumed=false;softBreachPickupKeyConsumed=false;hardBreachPickupKeyConsumed=false;claymorePickupKeyConsumed=false;observationPickupKeyConsumed=false;proximityPickupKeyConsumed=false;shieldPickupKeyConsumed=false;firing=false;aimHeld=false;reloadPressed=false;barricadeBuildTime=0;droneJumpPressed=false;droneBoostPressed=false;reinforcement.step({player,holding:false,dt:0});footstepTracker=newFootstepTracker();});
 function hudFrame(){
  if(controlMode==="drone"){droneHudFrame();return;}
  // Siege-like HUD visuals use the live game state. No invented multiplayer data.
@@ -1810,7 +1868,7 @@ function hudFrame(){
  modeText.textContent=player.vaulting?"VAULT":player.prone?"PRONE":player.crouched?"CROUCH":player.sprinting?"SPRINT":"STAND";
  motionText.textContent=player.grounded?(player.moving?"MOVING":"IDLE"):"JUMP";
  healthNumber.textContent=String(wireHealth.hp);
- healthCaption.textContent=wireHealth.hp===0?"ELIMINATED · P TO RESPAWN":
+ healthCaption.textContent=wireHealth.hp===0?(gameMode==="online"?"ELIMINATED · WAIT FOR NEXT ROUND":"ELIMINATED · P TO RESPAWN"):
   activeOperator.side==="defend"?"DEFENDER · FRIENDLY WIRE IMMUNITY":
   "ATTACKER · ENEMY WIRE 10 HP / 0.5 S";
  healthSegments.forEach((bar,i)=>{
@@ -1834,7 +1892,7 @@ function hudFrame(){
  fpsLabel.textContent=String(Math.max(0,Math.round(fpsSmoothed)));
  if(mapMode==="house")drawHouseMinimap(tacticalMapCtx,player);
  else drawTrainingMap(tacticalMapCtx,player,TEST_OBSTACLES,targets,BARRICADE,SOFT_WALL);
- if(gameMode==="bomb")drawBombRoundMinimap(tacticalMapCtx,bombState);
+ if(gameMode==="bomb"||onlineSession?.active)drawBombRoundMinimap(tacticalMapCtx,gameMode==="online"?onlineBombState:bombState);
  softWallReadout.classList.toggle("hidden",mapMode==="house"||!softWall.near(player));
  softWallStatusText.textContent=softWall.status;
  softWallRemoved.textContent=String(softWall.removed);
@@ -2028,6 +2086,11 @@ function animate(now){
  const realDt=Math.max(0,(now-lastTime)/1000);
  const dt=Math.min(.05,realDt);
  lastTime=now;
+ if(onlineSession?.active&&onlineDropStartedAt>0&&keys.has("KeyX")&&
+    now-onlineDropStartedAt>=BOMB_RULES.dropHoldSeconds*1000){
+   onlineDropStartedAt=0;
+   onlineSession.send({type:"world",action:"drop"});
+ }
  if(locked){
    advanceBombMode(dt);
    drillElapsedSeconds=Math.min(DRILL_LENGTH_SECONDS,drillElapsedSeconds+Math.min(realDt,1));
@@ -2348,11 +2411,12 @@ function animate(now){
  if(locked&&controlMode==="player"){
   meleeView.update(dt);
   const bombTyping=currentBombInteraction();
+  const workingBomb=gameMode==="online"?onlineBombState:bombState;
   const bombProgress=bombTyping==="plant"?
-   bombState.plantProgress/BOMB_RULES.plantSeconds:
-   bombTyping==="disable"?bombState.disableProgress/BOMB_RULES.disableSeconds:0;
+   workingBomb.plantProgress/BOMB_RULES.plantSeconds:
+   bombTyping==="disable"?workingBomb.disableProgress/BOMB_RULES.disableSeconds:0;
   const bombDevicePose=bombTyping==="plant"?plantDefuserPosition(player):
-   bombTyping==="disable"?{x:bombState.defuser.x,z:bombState.defuser.z,
+   bombTyping==="disable"?{x:workingBomb.defuser.x,z:workingBomb.defuser.z,
     yaw:player.yaw}:null;
   bombInteractionView.update(bombTyping,bombProgress,dt,bombDevicePose);
   // Defender's tablet is handheld; leave the original planted bomb on the

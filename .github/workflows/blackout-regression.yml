@@ -43,6 +43,7 @@ jobs:
           node --check games/blackout/multiplayer-room.js
           node --check games/blackout/reboot/main.js
           node --check games/blackout/reboot/network-lobby.js
+          node --check games/blackout/reboot/network-objectives.js
           node --check games/blackout/reboot/remote-operators.js
           node --check games/blackout/reboot/physics.js
           node --check games/blackout/reboot/footsteps.js
