@@ -722,10 +722,11 @@ export default {
       const code=[...bytes].map(x=>alphabet[x%alphabet.length]).join("");
       const id=env.BLACKOUT_ROOMS.idFromName(code);
       const stub=env.BLACKOUT_ROOMS.get(id);
+      const body=await request.json().catch(()=>({}));
       const create=await stub.fetch(new Request(url.origin+
         "/api/blackout/rooms/"+code+"/create",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({code})
+        body:JSON.stringify({code,settings:body?.settings||{}})
       }));
       return create;
     }

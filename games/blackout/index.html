@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — V0.31 · ONLINE NETWORK TEST | GAMESHUB</title>
+  <title>BLACKOUT — V0.32 · CUSTOM GAME MAKER | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
-  <link rel="stylesheet" href="./online.css?v=031">
+  <link rel="stylesheet" href="./online.css?v=032">
   <style>
     .menu-content{padding-top:clamp(35px,7vh,85px)}
     .blackout-admin-link{border:1px solid #70d8bd;color:#a9ffe4;border-radius:5px;padding:8px 12px;font-size:10px;letter-spacing:.09em;font-weight:900;text-decoration:none;margin-left:auto}
@@ -16,7 +16,7 @@
     .blackout-admin-link[hidden]{display:none}
     .mode-hub{margin:23px 0 28px;max-width:760px}
     .mode-hub h2{color:#afcbd1;font-size:11px;letter-spacing:.2em;margin:0 0 13px}
-    .mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .mode-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
     .mode-choice{min-height:154px;padding:18px 14px;background:#111e2cbd;border:1px solid #456176;display:flex;flex-direction:column;gap:9px;position:relative}
     .mode-choice strong{font-size:20px;letter-spacing:.09em;color:#eaf8f9}
     .mode-choice small{font-size:11px;color:#9db5c3;line-height:1.55}
@@ -57,16 +57,16 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.31 · ONLINE TEST</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.32 · CUSTOM GAMES</b></div>
     <a id="blackout-admin-link" class="blackout-admin-link" href="./admin.html" hidden>⚙ ADMIN COMMAND</a>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> TACTICAL / MULTIPLAYER ONLINE TEST</div>
+      <div class="section-tag"><span class="section-line"></span> TACTICAL / PRIVATE ONLINE + CUSTOM GAMES</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Online now has real private room and two-player movement testing; full synchronized 5v5 rounds are still being built. Training remains offline and available.</p>
+      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Custom Games now support solo Ironvale testing or real private rooms with adjustable host rules. Standard online rooms still require opposing teams. Training remains offline and available.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
@@ -78,9 +78,13 @@
             <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
             <small>Offline tactical matches against bots. Not playable yet.</small>
           </div>
-          <button id="online-choice" type="button" class="mode-choice current online-choice" aria-label="Open online multiplayer lobby">
+          <button id="online-choice" type="button" class="mode-choice current online-choice" aria-label="Open standard online private lobby">
             <span>03 · PRIVATE ROOM BETA</span><strong>ONLINE 5v5</strong>
-            <small>Real player rooms · 2-player network test on Ironvale. Full 5v5 mechanics still in development.</small>
+            <small>Private standard scrims. One real attacker and defender needed to start.</small>
+          </button>
+          <button id="custom-choice" type="button" class="mode-choice current online-choice" aria-label="Open custom game maker">
+            <span>04 · SOLO OR FRIENDS</span><strong>CUSTOM GAME</strong>
+            <small>Build your own Ironvale room. Start alone, invite friends, change match rules.</small>
           </button>
         </div>
       </section>
@@ -357,7 +361,7 @@
   </section>
   <div id="error" class="error hidden" role="alert"></div>
   <script type="module" src="./reboot/main.js?v=reboot-069"></script>
-  <script type="module" src="./online-multiplayer.js?v=031"></script>
+  <script type="module" src="./online-multiplayer.js?v=032"></script>
   <script>
     fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
       .then(response=>response.ok?response.json():null)

@@ -4,7 +4,8 @@
 import {DurableObject} from "cloudflare:workers";
 import ironvale from "./maps/ironvale-operations.blackout-map.json" with {type:"json"};
 import {MAX_PLAYERS,TEAM_LIMIT,OPERATOR_SIDES,cleanName,chooseSpawn,
- validLoadout,acceptMovement,validShot} from "./src/multiplayer-protocol.js";
+ validLoadout,acceptMovement,validShot,normalizeBlackoutGameSettings,
+ canStartBlackoutRound} from "./src/multiplayer-protocol.js";
 
 const reply=(obj,status=200)=>new Response(JSON.stringify(obj),{
  status,headers:{"Content-Type":"application/json","Cache-Control":"no-store",
@@ -16,7 +17,7 @@ export class BlackoutRoom extends DurableObject {
  constructor(ctx,env){
   super(ctx,env);this.ctx=ctx;this.env=env;
   this.config=null;this.players=new Map();this.round=0;this.status="lobby";
-  this.winner=null;this.roundStartedAt=0;
+  this.winner=null;this.roundStartedAt=0;this.roundHadOpponents=false;
   this.nextId=1;
   this.init=this.ctx.blockConcurrencyWhile(async()=>{
    this.config=await ctx.storage.get("room")||null;
@@ -26,6 +27,7 @@ export class BlackoutRoom extends DurableObject {
      this.status=previous.status||"lobby";
      this.winner=previous.winner||null;
      this.roundStartedAt=previous.startedAt||0;
+     this.roundHadOpponents=Boolean(previous.hadOpponents);
    }
    // After a Durable Object restart, connections are restored from
    // durable hibernating WebSockets; each stores its own identity.
@@ -48,19 +50,23 @@ export class BlackoutRoom extends DurableObject {
   const url=new URL(request.url);
   if(url.pathname.endsWith("/create")&&request.method==="POST"){
    if(this.config)return reply({ok:false,error:"Room code already occupied"},409);
-   const config=await request.json().catch(()=>({}));
-   this.config={code:String(config.code||""),created:Date.now(),map:"ironvale"};
+   const body=await request.json().catch(()=>({}));
+   const settings=normalizeBlackoutGameSettings(body.settings);
+   this.config={code:String(body.code||""),created:Date.now(),...settings};
    await this.ctx.storage.put("room",this.config);
-   return reply({ok:true,code:this.config.code,map:"ironvale",maxPlayers:MAX_PLAYERS});
+   return reply({ok:true,code:this.config.code,map:"ironvale",
+     maxPlayers:settings.maxPlayers,settings});
   }
   if(!this.config)return reply({ok:false,error:"Room not found"},404);
   if(url.pathname.endsWith("/status"))
-   return reply({ok:true,code:this.config.code,map:"ironvale",
-     mode:this.status,winner:this.winner,round:this.round,players:this.players.size,maxPlayers:MAX_PLAYERS,hostId:this.players.values().next().value?.id||null});
+   return reply({ok:true,code:this.config.code,map:"ironvale",settings:this.roomSettings(),
+     mode:this.status,winner:this.winner,round:this.round,players:this.players.size,
+     maxPlayers:this.roomSettings().maxPlayers,hostId:this.players.values().next().value?.id||null});
   if(!url.pathname.endsWith("/ws")||
     request.headers.get("Upgrade")?.toLowerCase()!=="websocket")
     return reply({ok:false,error:"Expected WebSocket upgrade"},426);
-  if(this.players.size>=MAX_PLAYERS)return reply({ok:false,error:"Room is full (10/10)"},409);
+  if(this.players.size>=this.roomSettings().maxPlayers)
+    return reply({ok:false,error:"Room is full ("+this.roomSettings().maxPlayers+" players)"},409);
   const side=url.searchParams.get("side")==="defender"?"defender":"attacker";
   if([...this.players.values()].filter(p=>p.side===side).length>=TEAM_LIMIT)
     return reply({ok:false,error:side.toUpperCase()+" team is full (5/5)"},409);
@@ -78,10 +84,11 @@ export class BlackoutRoom extends DurableObject {
     lastReload:0,shots:30};
   this.players.set(id,player);this.saveAttachment(player);
   this.send(player,{type:"welcome",id,code:this.config.code,host:this.players.size===1,
-    map:"ironvale",round:this.round,mode:this.status,players:this.snapshot()});
+    map:"ironvale",round:this.round,mode:this.status,settings:this.roomSettings(),players:this.snapshot()});
   this.broadcast();
   return new Response(null,{status:101,webSocket:client});
  }
+ roomSettings(){return normalizeBlackoutGameSettings(this.config||{})}
  saveAttachment(p){
   // The attachment contains a copy of player identity + position but
   // deliberately never stores raw request tokens or account secrets.
@@ -94,15 +101,19 @@ export class BlackoutRoom extends DurableObject {
  send(p,event){try{p.ws.send(JSON.stringify(event))}catch{}}
  broadcast(extra){
   const state={type:"state",code:this.config?.code||"",mode:this.status,
-   round:this.round,winner:this.winner,players:this.snapshot(),hostId:this.players.values().next().value?.id||null,...extra};
+   round:this.round,winner:this.winner,settings:this.roomSettings(),
+   players:this.snapshot(),hostId:this.players.values().next().value?.id||null,...extra};
   for(const p of this.players.values())this.send(p,state);
  }
  saveMatch(){
   this.ctx.storage.put("match",{round:this.round,status:this.status,
-    winner:this.winner,startedAt:this.roundStartedAt});
+    winner:this.winner,startedAt:this.roundStartedAt,hadOpponents:this.roundHadOpponents});
  }
  finishIfEliminated(){
   if(this.status!=="active")return;
+  const settings=this.roomSettings();
+  if(settings.kind==="custom"&&
+     (settings.winCondition==="freeplay"||!this.roundHadOpponents))return;
   const attack=[...this.players.values()].filter(p=>p.side==="attacker"&&p.alive).length;
   const defend=[...this.players.values()].filter(p=>p.side==="defender"&&p.alive).length;
   if(attack>0&&defend>0)return;
@@ -125,10 +136,12 @@ export class BlackoutRoom extends DurableObject {
    if(this.status==="active"){
      this.send(p,{type:"notice",message:"Finish the current live round first"});return;
    }
-   const sides=[...this.players.values()].map(p=>p.side);
-   if(!sides.includes("attacker")||!sides.includes("defender")){
-     this.send(p,{type:"notice",message:"NEED AT LEAST ONE REAL ATTACKER AND ONE REAL DEFENDER"});return;
+   const members=[...this.players.values()];
+   if(!canStartBlackoutRound(this.roomSettings(),members)){
+     this.send(p,{type:"notice",message:"THIS ROOM REQUIRES ONE ATTACKER AND ONE DEFENDER"});return;
    }
+   this.roundHadOpponents=members.some(x=>x.side==="attacker")&&
+     members.some(x=>x.side==="defender");
    this.status="active";this.round++;this.roundStartedAt=now;this.winner=null;
    this.saveMatch();
    const count={attacker:0,defender:0};
@@ -139,6 +152,37 @@ export class BlackoutRoom extends DurableObject {
     user.lastShot=0;this.saveAttachment(user);
    }
    this.broadcast({event:"round-start"});return;
+  }
+  if(m.type==="settings") {
+   const host=this.players.values().next().value;
+   if(host?.id!==p.id){this.send(p,{type:"notice",message:"Only the host can edit custom settings"});return}
+   if(this.status==="active"){this.send(p,{type:"notice",message:"End the round before changing settings"});return}
+   const next=normalizeBlackoutGameSettings(m.settings);
+   if(next.maxPlayers<this.players.size){
+     this.send(p,{type:"notice",message:"Player cap cannot be below the number connected"});return;
+   }
+   this.config={...this.config,...next};
+   this.ctx.storage.put("room",this.config);
+   this.broadcast({event:"settings-updated"});return;
+  }
+  if(m.type==="side") {
+   if(this.status==="active"){this.send(p,{type:"notice",message:"Change teams between rounds"});return}
+   const side=m.side;
+   if(!["attacker","defender"].includes(side)||side===p.side)return;
+   if([...this.players.values()].filter(x=>x.side===side).length>=TEAM_LIMIT){
+     this.send(p,{type:"notice",message:"Selected team is full"});return;
+   }
+   p.side=side;p.operator=side==="defender"?"mute":"sledge";
+   Object.assign(p,point(chooseSpawn(side,[...this.players.values()].filter(x=>x.side===side).length-1)));
+   this.saveAttachment(p);this.broadcast({event:"team-changed"});return;
+  }
+  if(m.type==="end") {
+   const host=this.players.values().next().value;
+   if(host?.id!==p.id||this.roomSettings().kind!=="custom"||this.status!=="active"){
+     this.send(p,{type:"notice",message:"Only the custom game host can end the live round"});return;
+   }
+   this.status="intermission";this.winner=null;this.saveMatch();
+   this.broadcast({event:"round-end",message:"CUSTOM ROUND ENDED BY HOST"});return;
   }
   if(m.type==="operator"&&this.status==="lobby"){
    if(validLoadout(p.side,m.operator)){p.operator=m.operator;this.saveAttachment(p);this.broadcast()}

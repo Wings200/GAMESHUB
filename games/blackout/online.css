@@ -1,4 +1,4 @@
-/* BLACKOUT V0.31 · isolated private multiplayer test, no Training overrides. */
+/* BLACKOUT V0.32 · custom private matches, no Training overrides. */
 #bo-online[hidden],#bo-online [hidden]{display:none!important}
 #bo-online{position:fixed;inset:0;z-index:1500;color:#eef9fc;background:#08131d;
  font-family:Inter,Arial,sans-serif;letter-spacing:.025em}
@@ -30,6 +30,15 @@
 #bo-online input,#bo-online select{margin-top:8px;display:block;width:100%;background:#081621;
  color:#f0feff;border:1px solid #456b7c;padding:12px;border-radius:0;outline:none}
 #bo-online input:focus,#bo-online select:focus{border-color:#68e8ca}
+
+#bo-online .bo-config{margin:18px 0;border:1px solid #2c6070;background:#081d2bd6;padding:16px}
+#bo-online .bo-setting-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+#bo-online .bo-settings-meta{font-size:11px;color:#84e7cb;line-height:1.55;letter-spacing:.07em;margin:12px 0}
+#bo-online #bo-save-settings{margin:4px 0 0}
+#bo-online .bo-match-actions{position:absolute;top:19px;right:20px;
+ display:flex;gap:8px;pointer-events:auto}
+#bo-online .bo-match-actions .bo-quiet{position:static}
+#bo-online .bo-match-actions #bo-end-round{border-color:#d5a179;color:#ffdfbd}
 #bo-online .bo-code-line{display:flex;align-items:flex-end;gap:10px}
 #bo-online .bo-code-line label{flex:1}
 #bo-online .bo-actions{display:flex;gap:10px;flex-wrap:wrap}
@@ -71,6 +80,7 @@
  text-align:center;font-size:12px;color:#cde9e8}
 @media(max-width:680px){
  #bo-online .bo-fields{grid-template-columns:1fr}
+ #bo-online .bo-setting-grid{grid-template-columns:1fr}
  #bo-online .bo-players{grid-template-columns:1fr}
  #bo-online .bo-panel{max-height:96vh}
  #bo-online .bo-hud-top{top:65px;font-size:10px}

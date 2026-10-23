@@ -1,27 +1,39 @@
 // BLACKOUT V0.31 · private WebSocket rooms and synchronized operator movement.
 // Isolated canvas: the offline Training simulation is never replaced.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import {cleanName,solidAt} from "./src/multiplayer-protocol.js";
+import {cleanName,solidAt,normalizeBlackoutGameSettings,
+ canStartBlackoutRound} from "./src/multiplayer-protocol.js";
 import {BLACKOUT_WORKER,normalizeRoomCode,roomSocketUrl,moveOnlinePlayer,
  blendPosition,selectShotTarget} from "./online-state.js";
 
 const launch=document.getElementById("online-choice");
-if(!launch)throw new Error("BLACKOUT online button missing");
+const customLaunch=document.getElementById("custom-choice");
+if(!launch||!customLaunch)throw new Error("BLACKOUT online/custom buttons missing");
 const shell=document.createElement("section");
 shell.id="bo-online";shell.hidden=true;shell.setAttribute("aria-label","BLACKOUT online multiplayer");
 shell.innerHTML=[
  '<canvas id="bo-canvas" tabindex="0" aria-label="Live multiplayer Ironvale map"></canvas>',
  '<div class="bo-backdrop" id="bo-backdrop"></div>',
  '<section class="bo-panel" id="bo-panel">',
- '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.31 LIVE NETWORK TEST</span>',
+ '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.32 CUSTOM GAME MAKER</span>',
  '<button type="button" class="bo-quiet" id="bo-back">← TRAINING MENU</button></div>',
- '<h2>PRIVATE 5V5 ROOMS</h2>',
- '<p>Invite-only real players. First test: two browsers, opposing teams, synchronized movement on Ironvale. No bots or simulated teammates.</p>',
+ '<h2>PRIVATE CUSTOM GAMES</h2>',
+ '<p>Create a solo game to explore Ironvale, or invite real players for up to 5v5. Hosts choose the player cap, starting requirements and round rules.</p>',
  '<div class="bo-fields">',
  '<label>YOUR CALLSIGN<input id="bo-name" maxlength="22" autocomplete="nickname" placeholder="Operator"></label>',
  '<label>TEAM<select id="bo-side"><option value="attacker">ATTACKER</option><option value="defender">DEFENDER</option></select></label>',
  '<label>ROOM CODE<input id="bo-code" maxlength="8" spellcheck="false" placeholder="6 CHARACTERS"></label>',
- '</div><div class="bo-actions" id="bo-pre-room">',
+ '</div><section class="bo-config" id="bo-config-wrap" aria-label="Custom game settings">',
+ '<div class="bo-eyebrow">CUSTOM GAME MAKER · HOST SETTINGS</div>',
+ '<div class="bo-setting-grid">',
+ '<label>ROOM TYPE<select id="bo-kind"><option value="custom">CUSTOM GAME · SOLO ALLOWED</option><option value="standard">STANDARD PRIVATE 5V5</option></select></label>',
+ '<label>ROOM NAME<input id="bo-room-name" maxlength="24" placeholder="CUSTOM OPERATIONS" value="CUSTOM OPERATIONS"></label>',
+ '<label>PLAYER CAP<select id="bo-max"><option value="1">1 PLAYER</option><option value="2">2 PLAYERS</option><option value="4">4 PLAYERS</option><option value="6">6 PLAYERS</option><option value="8">8 PLAYERS</option><option value="10" selected>10 PLAYERS</option></select></label>',
+ '<label>START RULE<select id="bo-start-rule"><option value="any">HOST CAN START SOLO</option><option value="opposing">ATTACKER + DEFENDER REQUIRED</option></select></label>',
+ '<label>ROUND ENDING<select id="bo-end-rule"><option value="freeplay">FREE ROAM · HOST ENDS ROUND</option><option value="elimination">ELIMINATION (IF BOTH SIDES PRESENT)</option></select></label>',
+ '</div><div class="bo-settings-meta" id="bo-settings-meta">CUSTOM · IRONVALE · HOST CAN START ALONE</div>',
+ '<button type="button" id="bo-save-settings" class="bo-quiet" hidden>SAVE LOBBY SETTINGS</button>',
+ '</section><div class="bo-actions" id="bo-pre-room">',
  '<button type="button" class="bo-primary" id="bo-create">CREATE PRIVATE ROOM</button>',
  '<button type="button" id="bo-join">JOIN WITH CODE</button></div>',
  '<div id="bo-status" class="bo-message" role="status">Ready · Cloudflare Worker connection required.</div>',
@@ -31,17 +43,19 @@ shell.innerHTML=[
  '<div class="bo-team"><h4>ATTACKERS <span id="bo-attack-count">0 / 5</span></h4><ul id="bo-attack-list"></ul></div>',
  '<div class="bo-team defender"><h4>DEFENDERS <span id="bo-defend-count">0 / 5</span></h4><ul id="bo-defend-list"></ul></div>',
  '</div><div class="bo-actions">',
- '<button type="button" class="bo-primary" id="bo-start" hidden>START TWO-PLAYER TEST</button>',
+ '<button type="button" class="bo-primary" id="bo-start" hidden>START CUSTOM GAME</button>',
+ '<button type="button" id="bo-switch">SWITCH TEAM</button>',
  '<button type="button" id="bo-copy">COPY ROOM CODE</button>',
  '<button type="button" id="bo-leave">LEAVE ROOM</button></div>',
- '<p class="bo-footnote">Needs a real attacker and defender. Host starts. Team limits, movement, hits and eliminations are verified by the Worker. Synchronized prep/drone/gadgets come in later stages.</p>',
+ '<p class="bo-footnote">Custom games can start with just the host. Standard rooms require both sides. No AI teammates are generated. The Worker validates room rules, teams, health and shots. Full bomb rounds are still in development.</p>',
  '</section></section>',
  '<section class="bo-playing" id="bo-playing" hidden>',
  '<div class="bo-hud-left">IRONVALE · OPERATIONS<br><span id="bo-life">100 HP</span><br><span id="bo-side-hud"></span></div>',
  '<div class="bo-hud-top"><span id="bo-score">PRIVATE MATCH</span> · <span id="bo-online-count">0 CONNECTED</span></div>',
  '<div class="bo-hud-right" id="bo-weapon">BX-7 TEST RIFLE · 30 / 30</div>',
  '<div class="bo-reticle"></div><div class="bo-controls">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · C CROUCH · CLICK FIRE · R RELOAD · ESC RELEASE MOUSE</div>',
- '<button type="button" class="bo-exit bo-quiet" id="bo-exit">LEAVE MATCH</button>',
+ '<div class="bo-match-actions"><button type="button" class="bo-quiet" id="bo-end-round" hidden>END CUSTOM ROUND</button>',
+ '<button type="button" class="bo-quiet" id="bo-exit">LEAVE MATCH</button></div>',
  '<div class="bo-match-notice" id="bo-notice" hidden></div>',
  '<div class="bo-enter" id="bo-enter"><h3>IRONVALE · OPERATIONS</h3>',
  '<p>Server-verified multiplayer movement test.</p>',
@@ -54,6 +68,8 @@ const canvas=$("canvas"),nameKey="blackout-online-callsign";
 $("name").value=sessionStorage.getItem(nameKey)||
  "Operator"+String(Math.floor(Math.random()*900)+100);
 let socket=null,roomCode=null,selfId=null,hostId=null,mode="lobby",round=0,roster=[];
+let roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
+let appliedSettings="";
 let player=null,ammo=30,lastShot=0,pointerActive=false;
 let renderer=null,scene=null,camera=null,parts=[],sceneReady=false;
 let remote=new Map(),pressed=new Set(),lastFrame=performance.now(),lastSend=0;
@@ -64,6 +80,46 @@ function message(text,error=false){
 function send(obj){
  if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj));
 }
+function collectSettings(){
+ return normalizeBlackoutGameSettings({
+  kind:$("kind").value,roomName:$("room-name").value,
+  maxPlayers:Number($("max").value),startRule:$("start-rule").value,
+  winCondition:$("end-rule").value
+ });
+}
+function applySettingsFromServer(raw){
+ roomSettings=normalizeBlackoutGameSettings(raw);
+ const fingerprint=JSON.stringify(roomSettings);
+ if(fingerprint!==appliedSettings){
+  appliedSettings=fingerprint;
+  $("kind").value=roomSettings.kind;
+  $("room-name").value=roomSettings.roomName;
+  $("max").value=String(roomSettings.maxPlayers);
+  $("start-rule").value=roomSettings.startRule;
+  $("end-rule").value=roomSettings.winCondition;
+ }
+ updateSettingsPanel();
+}
+function updateSettingsPanel(){
+ const inRoom=Boolean(roomCode),host=inRoom&&selfId===hostId;
+ const kind=$("kind").value;
+ const locked=inRoom&&(!host||mode==="active");
+ $("kind").disabled=locked;
+ $("room-name").disabled=locked;
+ for(const id of ["max","start-rule","end-rule"])
+  $(id).disabled=locked||kind==="standard";
+ $("save-settings").hidden=!host;
+ $("save-settings").disabled=mode==="active";
+ const d=inRoom?roomSettings:collectSettings();
+ $("settings-meta").textContent=
+  d.kind.toUpperCase()+" · IRONVALE · MAX "+d.maxPlayers+" REAL PLAYERS · "+
+  (d.startRule==="any"?"SOLO START":"OPPOSING TEAMS")+" · "+
+  (d.winCondition==="freeplay"?"HOST-CONTROLLED END":"ELIMINATION");
+}
+for(const id of ["kind","room-name","max","start-rule","end-rule"]){
+ $(id).addEventListener("change",updateSettingsPanel);
+}
+updateSettingsPanel();
 function renderRoster(){
  const attack=roster.filter(p=>p.side==="attacker");
  const defend=roster.filter(p=>p.side==="defender");
@@ -82,9 +138,16 @@ function renderRoster(){
  $("room").hidden=!roomCode;$("pre-room").hidden=!!roomCode;
  for(const id of ["name","side","code"])$(id).disabled=!!roomCode;
  $("start").hidden=hostId!==selfId||!selfId;
- $("start").disabled=attack.length===0||defend.length===0||mode==="active";
- $("start").textContent=mode==="intermission"?"START NEXT ROUND":"START TWO-PLAYER TEST";
+ $("start").disabled=!canStartBlackoutRound(roomSettings,roster)||mode==="active";
+ $("start").textContent=mode==="intermission"?"START NEXT ROUND":
+  roomSettings.kind==="custom"?"START CUSTOM GAME":"START STANDARD ROUND";
+ $("switch").disabled=!roomCode||mode==="active";
+ $("switch").hidden=!roomCode;
+ $("end-round").hidden=hostId!==selfId||roomSettings.kind!=="custom"||mode!=="active";
+ const own=roster.find(p=>p.id===selfId);
+ if(own&&roomCode)$("side").value=own.side;
  $("online-count").textContent=roster.length+" CONNECTED";
+ updateSettingsPanel();
 }
 function hideMatch(){
  $("playing").hidden=true;$("panel").hidden=false;$("backdrop").hidden=false;
@@ -96,14 +159,26 @@ function disconnect(quiet=false){
  const old=socket;socket=null;
  if(old){old.onclose=null;old.onmessage=null;old.onerror=null;old.close()}
  roomCode=null;selfId=null;hostId=null;mode="lobby";round=0;roster=[];player=null;
+ appliedSettings="";roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
  for(const o of remote.values())scene?.remove(o.group);
  remote.clear();hideMatch();renderRoster();
  if(!quiet)message("Disconnected · You can rejoin a private room.");
 }
 function exitOnline(){disconnect(true);shell.hidden=true}
-launch.addEventListener("click",()=>{
- disconnect(true);shell.hidden=false;message("Create a room or join your friend's code.");
-});
+function openRoomMaker(kind){
+ disconnect(true);
+ $("kind").value=kind;
+ $("room-name").value=kind==="custom"?"CUSTOM OPERATIONS":"STANDARD PRIVATE";
+ $("max").value="10";
+ $("start-rule").value=kind==="custom"?"any":"opposing";
+ $("end-rule").value=kind==="custom"?"freeplay":"elimination";
+ updateSettingsPanel();
+ shell.hidden=false;
+ message(kind==="custom"?"CUSTOM GAME · SOLO START AVAILABLE":
+  "STANDARD PRIVATE · AT LEAST ONE PLAYER ON EACH TEAM REQUIRED");
+}
+launch.addEventListener("click",()=>openRoomMaker("standard"));
+customLaunch.addEventListener("click",()=>openRoomMaker("custom"));
 $("back").addEventListener("click",exitOnline);
 $("exit").addEventListener("click",exitOnline);
 $("leave").addEventListener("click",()=>disconnect());
@@ -120,9 +195,10 @@ async function connect(code){
  message("CONTACTING CLOUDFLARE MULTIPLAYER SERVER…");
  try{
   if(!code){
-   // Simple CORS POST without body avoids preflight on the existing Worker.
+   const settings=collectSettings();
    const response=await fetch(BLACKOUT_WORKER+"/api/blackout/rooms",
-    {method:"POST",cache:"no-store"});
+    {method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({settings})});
    const result=await response.json();
    if(!response.ok||!result.ok)throw new Error(result.error||"Could not create room");
    code=normalizeRoomCode(result.code);
@@ -139,11 +215,13 @@ async function connect(code){
     selfId=String(data.id);mode=data.mode||"lobby";round=data.round||0;
     roster=Array.isArray(data.players)?data.players:[];
     if(data.host)hostId=selfId;
+    if(data.settings)applySettingsFromServer(data.settings);
     renderRoster();
    }else if(data.type==="state"){
     roster=Array.isArray(data.players)?data.players:[];
     hostId=data.hostId==null?null:String(data.hostId);
     mode=data.mode||"lobby";round=data.round||0;
+    if(data.settings)applySettingsFromServer(data.settings);
     renderRoster();
     if(mode==="active"){
      if($("playing").hidden&&!enteringRound)enterRound(token);
@@ -151,8 +229,10 @@ async function connect(code){
       disconnect(true);message("Server ended your session",true);
      }
     }else if(!$("playing").hidden){
-     hideMatch();message("ROUND COMPLETE · "+(data.winner||"DRAW").toUpperCase());
-    }else message("CONNECTED · "+roster.length+"/10 REAL PLAYERS · WAITING FOR HOST");
+     hideMatch();message(data.message||
+      ("ROUND COMPLETE · "+(data.winner||"NO WINNER").toUpperCase()));
+    }else message("CONNECTED · "+roster.length+"/"+roomSettings.maxPlayers+
+      " REAL PLAYERS · WAITING FOR HOST");
    }else if(data.type==="correction"){
     if(player)Object.assign(player,{x:data.x,y:data.y,z:data.z});
    }else if(data.type==="reload-ok"){
@@ -182,10 +262,24 @@ $("join").addEventListener("click",()=>{
 });
 $("start").addEventListener("click",()=>{
  if(selfId!==hostId||mode==="active")return;
- if(!roster.some(p=>p.side==="attacker")||!roster.some(p=>p.side==="defender")){
-  message("NEED ONE REAL ATTACKER AND ONE REAL DEFENDER",true);return;
+ if(!canStartBlackoutRound(roomSettings,roster)){
+  message("ROOM START CONDITIONS NOT MET",true);return;
  }
  send({type:"start"});message("START REQUESTED · WAITING FOR SERVER");
+});
+$("save-settings").addEventListener("click",()=>{
+ if(selfId!==hostId||mode==="active")return;
+ send({type:"settings",settings:collectSettings()});
+ message("UPDATING CUSTOM GAME SETTINGS…");
+});
+$("switch").addEventListener("click",()=>{
+ if(mode==="active"||!roomCode)return;
+ const own=roster.find(p=>p.id===selfId);
+ send({type:"side",side:own?.side==="attacker"?"defender":"attacker"});
+});
+$("end-round").addEventListener("click",()=>{
+ if(selfId===hostId&&roomSettings.kind==="custom"&&mode==="active")
+  send({type:"end"});
 });
 function notice(text,duration=2200){
  $("notice").textContent=text;$("notice").hidden=false;noticeUntil=performance.now()+duration;
@@ -350,4 +444,4 @@ function animate(now){
  if(!$("notice").hidden&&now>noticeUntil)$("notice").hidden=true;
 }
 requestAnimationFrame(animate);
-console.info("BLACKOUT V0.31 real private online lobby; separate from Training.");
+console.info("BLACKOUT V0.32 custom private rooms; solo start and adjustable host settings.");

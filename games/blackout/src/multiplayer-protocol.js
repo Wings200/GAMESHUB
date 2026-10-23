@@ -114,3 +114,28 @@ export function validShot(shooter,target,parts=[]){
   }
   return false;
 }
+
+/* Custom rooms remain real multiplayer rooms, but can be explored solo.
+   These settings are normalized again inside the Durable Object. */
+export function normalizeBlackoutGameSettings(input={}) {
+  const custom=input?.kind==="custom";
+  const rawName=String(input?.roomName||"").replace(/[^a-zA-Z0-9 _-]/g,"").trim();
+  const roomName=(rawName|| (custom?"CUSTOM OPERATIONS":"STANDARD PRIVATE")).slice(0,24);
+  const requested=Math.floor(Number(input?.maxPlayers));
+  const maxPlayers=custom&&Number.isFinite(requested)?
+    Math.max(1,Math.min(MAX_PLAYERS,requested)):MAX_PLAYERS;
+  return {
+    kind:custom?"custom":"standard",
+    roomName,
+    maxPlayers,
+    startRule:custom&&input?.startRule!=="opposing"?"any":"opposing",
+    winCondition:custom&&input?.winCondition==="freeplay"?"freeplay":"elimination",
+    map:"ironvale"
+  };
+}
+export function canStartBlackoutRound(config,players) {
+  if(!Array.isArray(players)||players.length===0)return false;
+  if(config?.kind==="custom"&&config?.startRule==="any")return true;
+  return players.some(p=>p.side==="attacker")&&
+    players.some(p=>p.side==="defender");
+}

@@ -7,6 +7,7 @@ on:
       - 'functions/_middleware.js'
       - 'functions/api/blackout*.js'
       - 'index.html'
+      - 'worker.js'
       - '.github/workflows/blackout-regression.yml'
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - 'functions/_middleware.js'
       - 'functions/api/blackout*.js'
       - 'index.html'
+      - 'worker.js'
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,6 +36,7 @@ jobs:
           node --check functions/_middleware.js
           node --check functions/api/blackout-access.js
           node --check functions/api/blackout-admin.js
+          node --check worker.js
           node --check games/blackout/online-multiplayer.js
           node --check games/blackout/online-state.js
           node --check games/blackout/src/multiplayer-protocol.js
@@ -105,4 +108,4 @@ jobs:
           node --check games/blackout/reboot/bomb-interaction-view.js
           node --check games/blackout/reboot/breach-vault.js
       - name: Run clean-reboot movement, audio and weapon regression tests
-        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs games/blackout/blackout-access.test.mjs
+        run: node --test games/blackout/reboot/*.test.mjs games/blackout/online-state.test.mjs games/blackout/blackout-access.test.mjs games/blackout/custom-game.test.mjs
