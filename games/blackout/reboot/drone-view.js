@@ -43,7 +43,16 @@ export function createDroneView(THREE,scene){
   oldX=state.x;oldZ=state.z;
  }
  function place(state){oldX=state.x;oldZ=state.z;update(state,0)}
- return {root,update,place,wheels,lens};
+ // Include every physical component in hitscan. Parent Group is not raycastable.
+ const shootables=[];
+ root.traverse(node=>{if(node.isMesh)shootables.push(node);});
+ function setIndex(index){for(const mesh of shootables)mesh.userData.reconDroneIndex=index;}
+ function dispose(){
+  scene.remove(root);
+  for(const mesh of shootables)mesh.geometry.dispose();
+  for(const mat of [bodyMat,armor,rubber,lensMat,lightMat])mat.dispose();
+ }
+ return {root,update,place,wheels,lens,shootables,setIndex,dispose};
 }
 
 // Camera-only visibility: no camera should render inside its own body.
