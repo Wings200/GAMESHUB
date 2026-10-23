@@ -66,29 +66,25 @@
       <div class="section-tag"><span class="section-line"></span> TACTICAL / PRIVATE ONLINE + CUSTOM GAMES</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Custom Games now support BX-7 Mk II weapons, ADS, recoil, lean and timed reloads for real multiplayer rooms. Standard online rooms still require opposing teams. Training remains offline and available.</p>
+      <p class="description">Custom Games are the home for the full BLACKOUT mechanics. Play solo with every existing gadget, operator and map test, or create a private room with friends. Online 5v5 is the separate networked mode; multiplayer mechanics are still being brought to parity.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
-          <div class="mode-choice current" aria-label="Training available">
-            <span>01 · AVAILABLE NOW</span><strong>TRAINING</strong>
-            <small>House bomb tests, shooting range, gadgets and drone practice. Offline.</small>
-          </div>
           <div class="mode-choice planned" aria-label="Tactical AI not yet available">
             <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
             <small>Offline tactical matches against bots. Not playable yet.</small>
           </div>
           <button id="online-choice" type="button" class="mode-choice current online-choice" aria-label="Open standard online private lobby">
-            <span>03 · PRIVATE ROOM BETA</span><strong>ONLINE 5v5</strong>
+            <span>02 · PRIVATE ROOM BETA</span><strong>ONLINE 5v5</strong>
             <small>Private standard scrims. One real attacker and defender needed to start.</small>
           </button>
           <button id="custom-choice" type="button" class="mode-choice current online-choice" aria-label="Open custom game maker">
-            <span>04 · SOLO OR FRIENDS</span><strong>CUSTOM GAME</strong>
-            <small>Build your own Ironvale room. Start alone, invite friends, change match rules.</small>
+            <span>01 · SOLO OR FRIENDS</span><strong>CUSTOM GAME</strong>
+            <small>Full original mechanics solo, or a connected private match with friends.</small>
           </button>
         </div>
       </section>
-      <div class="training-head">TRAINING · DEPLOYMENT SETUP</div>
+      <div class="training-head">CUSTOM GAME · SOLO DEPLOYMENT</div>
       <section id="operator-selection" class="operator-selection" aria-label="BLACKOUT operator selection">
         <div class="operator-selector-heading">
           <span>OPERATOR SELECT</span>
@@ -118,7 +114,7 @@
         </div>
       </section>
       <section class="deploy-options" aria-label="Deployment settings">
-        <label for="play-mode">TRAINING ENVIRONMENT</label>
+        <label for="play-mode">CUSTOM GAME MAP</label>
         <select id="play-mode" aria-label="Choose game mode">
           <option value="house" selected>TWO-STORY HOUSE · BOMB SITES A / B</option>
           <option value="bomb">FLAT BOMB TEST · SITES A / B</option>
@@ -133,7 +129,7 @@
         </div>
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">TWO-STORY HOUSE</span> <strong>↗</strong></button>
-      <div id="message" class="menu-message" role="status">TRAINING IS OFFLINE · ONLINE PRIVATE LOBBY BETA AVAILABLE · AI IN DEVELOPMENT</div>
+      <div id="message" class="menu-message" role="status">CUSTOM SOLO USES THE FULL ORIGINAL MECHANICS · CONNECTED MATCHES ARE STILL IN DEVELOPMENT</div>
       <details class="controls-reference" id="controls-reference">
         <summary>CONTROLS &amp; GADGET REFERENCE</summary>
         <div class="controls-reference-body">
@@ -204,7 +200,7 @@
     </div>
 
     <div class="siege-system">
-      <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO TRAINING</div>
+      <div class="siege-metrics">FPS <span id="fps">—</span> <i></i> LAT <span>N/A</span> <i></i> SOLO CUSTOM</div>
     </div>
 
     <div class="operator-player-tag" aria-label="Selected training operator">
