@@ -269,7 +269,7 @@ test("reboot entry point preserves original renderer and gameplay when networkin
  assert.ok(main.includes('keys.has("KeyF")'));
  assert.ok(main.includes("reinforcement.tick(dt)"));
  // V0.12: drone is a real separate controller, not decorative HUD toggling.
- assert.match(main,/from "\\.\/drone-physics\\.js\\?v=reboot-\\d+"/);
+ assert.ok(main.includes('from "./drone-physics.js?v=reboot-071"'));
  assert.ok(main.includes('from "./drone-view.js?v=reboot-066"'));
  assert.ok(main.includes("createDroneView(THREE,scene)"));
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
