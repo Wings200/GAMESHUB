@@ -1,9 +1,11 @@
-// BLACKOUT V0.33 · multiplayer weapon view, ADS, stance and server-controlled reloads.
+// BLACKOUT V0.34 · shared training combat, recon, breach and bomb objectives.
 // Isolated canvas: the offline Training simulation is never replaced.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import {createWeaponView} from "./reboot/weapon-view.js?v=reboot-012";
 import {toggleLean,smoothLean,leanCameraPose} from "./reboot/lean.js?v=reboot-005";
 import {GameAudio} from "./reboot/legacy-audio.js?v=reboot-064";
+import {createDroneView} from "./reboot/drone-view.js?v=reboot-012";
+import {wallParts} from "./online-world.js?v=034";
 import {cleanName,solidAt,normalizeBlackoutGameSettings,
  canStartBlackoutRound} from "./src/multiplayer-protocol.js";
 import {BLACKOUT_WORKER,normalizeRoomCode,roomSocketUrl,moveOnlinePlayer,
@@ -18,13 +20,13 @@ shell.innerHTML=[
  '<canvas id="bo-canvas" tabindex="0" aria-label="Live multiplayer Ironvale map"></canvas>',
  '<div class="bo-backdrop" id="bo-backdrop"></div>',
  '<section class="bo-panel" id="bo-panel">',
- '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.33 WEAPONS ONLINE</span>',
+ '<div class="bo-top"><span class="bo-eyebrow">BLACKOUT · V0.34 TACTICAL MATCHES</span>',
  '<button type="button" class="bo-quiet" id="bo-back">← TRAINING MENU</button></div>',
  '<h2>PRIVATE CUSTOM GAMES</h2>',
  '<p>Create a solo game to explore Ironvale, or invite real players for up to 5v5. Hosts choose the player cap, starting requirements and round rules.</p>',
  '<div class="bo-fields">',
  '<label>YOUR CALLSIGN<input id="bo-name" maxlength="22" autocomplete="nickname" placeholder="Operator"></label>',
- '<label>TEAM<select id="bo-side"><option value="attacker">ATTACKER</option><option value="defender">DEFENDER</option></select></label>',
+ '<label>TEAM<select id="bo-side"><option value="attacker">ATTACKER</option><option value="defender">DEFENDER</option></select></label><label>OPERATOR<select id="bo-operator"></select></label>',
  '<label>ROOM CODE<input id="bo-code" maxlength="8" spellcheck="false" placeholder="6 CHARACTERS"></label>',
  '</div><section class="bo-config" id="bo-config-wrap" aria-label="Custom game settings">',
  '<div class="bo-eyebrow">CUSTOM GAME MAKER · HOST SETTINGS</div>',
@@ -50,19 +52,19 @@ shell.innerHTML=[
  '<button type="button" id="bo-switch">SWITCH TEAM</button>',
  '<button type="button" id="bo-copy">COPY ROOM CODE</button>',
  '<button type="button" id="bo-leave">LEAVE ROOM</button></div>',
- '<p class="bo-footnote">Custom games can start with just the host. Standard rooms require both sides. No AI teammates are generated. The Worker validates room rules, teams, health and shots. Full bomb rounds are still in development.</p>',
+ '<p class="bo-footnote">Custom games can start with just the host. Standard rooms require both sides. No AI teammates are generated. The Worker synchronizes drone reconnaissance, barricades, breach charges, site objectives and combat.</p>',
  '</section></section>',
  '<section class="bo-playing" id="bo-playing" hidden>',
  '<div class="bo-hud-left">IRONVALE · OPERATIONS<br><span id="bo-life">100 HP</span><br><span id="bo-side-hud"></span></div>',
- '<div class="bo-hud-top"><span id="bo-score">PRIVATE MATCH</span> · <span id="bo-online-count">0 CONNECTED</span></div>',
+ '<div class="bo-hud-top"><span id="bo-score">PRIVATE MATCH</span> · <span id="bo-phase">PREP</span> · <span id="bo-timer">0:45</span> · <span id="bo-online-count">0 CONNECTED</span></div>',
  '<div class="bo-hud-right"><div id="bo-weapon">BX-7 MK II · 30 / 30</div>',
- '<small id="bo-stance">STANDING · HIPFIRE · LEAN CENTER</small></div>',
- '<div class="bo-reticle" id="bo-reticle"></div><div class="bo-controls">WASD MOVE · SHIFT SPRINT · HOLD C CROUCH · Q/E TOGGLE LEAN · RIGHT CLICK ADS · HOLD LEFT CLICK FIRE · R RELOAD · ESC CURSOR</div>',
+ '<small id="bo-stance">STANDING · HIPFIRE · LEAN CENTER</small><br><small id="bo-objective">SECURE SITE</small><br><small id="bo-action">F INTERACT</small></div>',
+ '<div class="bo-reticle" id="bo-reticle"></div><div class="bo-controls">WASD MOVE · SHIFT SPRINT/DRONE BOOST · SPACE DRONE JUMP · 5 DRONE · F HOLD INTERACT · V MELEE · G BREACH · MIDDLE DETONATE · X DROP · ADS RIGHT CLICK · FIRE LEFT CLICK · ESC CURSOR</div>',
  '<div class="bo-match-actions"><button type="button" class="bo-quiet" id="bo-end-round" hidden>END CUSTOM ROUND</button>',
  '<button type="button" class="bo-quiet" id="bo-exit">LEAVE MATCH</button></div>',
  '<div class="bo-match-notice" id="bo-notice" hidden></div>',
  '<div class="bo-enter" id="bo-enter"><h3>IRONVALE · OPERATIONS</h3>',
- '<p>Training BX-7 Mk II · ADS / recoil / reload / lean multiplayer test.</p>',
+ '<p>TRAINING SYSTEMS · 45S DRONE PREP · BARRICADES · BREACHES · A/B PLANT · SERVER COMBAT.</p>',
  '<button type="button" class="bo-primary" id="bo-enter-button">CLICK TO CONTROL</button></div>',
  '</section>'
 ].join("");
@@ -74,7 +76,22 @@ $("name").value=sessionStorage.getItem(nameKey)||
 let socket=null,roomCode=null,selfId=null,hostId=null,mode="lobby",round=0,roster=[];
 let roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
 let appliedSettings="";
+const operatorChoices={attacker:["sledge","thatcher","ash","thermite","twitch"],
+ defender:["smoke","mute","castle","pulse","doc"]};
+function refreshOperators(chosen){
+ const options=operatorChoices[$("side").value]||operatorChoices.attacker;
+ $("operator").replaceChildren();
+ for(const id of options){const o=document.createElement("option");o.value=id;
+  o.textContent=id.toUpperCase()+(id==="thermite"?" · HARD BREACH":"");$("operator").append(o);}
+ $("operator").value=options.includes(chosen)?chosen:(options[0]||"");
+}
+$("side").addEventListener("change",()=>refreshOperators());
+refreshOperators("sledge");
 let player=null,ammo=30,lastShot=0,pointerActive=false;
+let phase="lobby",phaseEndsAt=0,world=null,mapData=null,collisionParts=[];
+let droneLook={yaw:0,pitch:0},wasDroning=false,jumpQueued=false,boostQueued=false;
+let mapMeshes=new Map(),worldLayer=null,bombModel=null,droneModels=new Map();
+let visualFingerprint="",worldVisualUpdate=0;
 let aimHeld=false,aimMix=0,firing=false,leanTarget=0,leanAmount=0,gunKick=0;
 let reloadPending=false,reloadingUntil=0,weaponView=null,lastFootstep=0;
 const sound=new GameAudio(),remoteFlashAt=new Map();
@@ -152,14 +169,18 @@ function renderRoster(){
  $("switch").hidden=!roomCode;
  $("end-round").hidden=hostId!==selfId||roomSettings.kind!=="custom"||mode!=="active";
  const own=roster.find(p=>p.id===selfId);
- if(own&&roomCode)$("side").value=own.side;
+ if(own&&roomCode){
+  if($("side").value!==own.side){$("side").value=own.side;refreshOperators(own.operator);}
+  $("operator").value=own.operator;
+ }
+ $("operator").disabled=mode==="active";
  $("online-count").textContent=roster.length+" CONNECTED";
  updateSettingsPanel();
 }
 function hideMatch(){
  $("playing").hidden=true;$("panel").hidden=false;$("backdrop").hidden=false;
  if(document.pointerLockElement===canvas)document.exitPointerLock();
- pressed.clear();pointerActive=false;firing=false;aimHeld=false;
+ pressed.clear();pointerActive=false;firing=false;aimHeld=false;wasDroning=false;
 }
 function disconnect(quiet=false){
  ++session;
@@ -168,6 +189,7 @@ function disconnect(quiet=false){
   reloadPending=false;reloadingUntil=0;if(weaponView)weaponView.root.visible=false;
  if(old){old.onclose=null;old.onmessage=null;old.onerror=null;old.close()}
  roomCode=null;selfId=null;hostId=null;mode="lobby";round=0;roster=[];player=null;
+  phase="lobby";phaseEndsAt=0;world=null;visualFingerprint="";
  appliedSettings="";roomSettings=normalizeBlackoutGameSettings({kind:"custom",winCondition:"freeplay"});
  for(const o of remote.values())scene?.remove(o.group);
  remote.clear();hideMatch();renderRoster();
@@ -214,7 +236,7 @@ async function connect(code){
   }
   if(!code)throw new Error("Invalid six-character room code");
   const token=++session;
-  const ws=new WebSocket(roomSocketUrl(code,{side,name}));
+  const ws=new WebSocket(roomSocketUrl(code,{side,name,operator:$("operator").value}));
   roomCode=code;socket=ws;
   ws.onopen=()=>{if(socket===ws)message("CONNECTED · WAITING FOR SERVER STATE")};
   ws.onmessage=event=>{
@@ -222,6 +244,7 @@ async function connect(code){
    let data;try{data=JSON.parse(event.data)}catch{return}
    if(data.type==="welcome"){
     selfId=String(data.id);mode=data.mode||"lobby";round=data.round||0;
+     phase=data.phase||"lobby";phaseEndsAt=data.phaseEndsAt||0;world=data.world||null;
     roster=Array.isArray(data.players)?data.players:[];
     if(data.host)hostId=selfId;
     if(data.settings)applySettingsFromServer(data.settings);
@@ -230,6 +253,7 @@ async function connect(code){
     roster=Array.isArray(data.players)?data.players:[];
     hostId=data.hostId==null?null:String(data.hostId);
     mode=data.mode||"lobby";round=data.round||0;
+    phase=data.phase||"lobby";phaseEndsAt=data.phaseEndsAt||0;world=data.world||null;
     if(data.settings)applySettingsFromServer(data.settings);
     renderRoster();
     if(data.event==="shot"&&data.from!==selfId){
@@ -238,6 +262,8 @@ async function connect(code){
      if(shooter&&player)sound.playAt("enemy-fire",
       shooter.x,shooter.z,player.x,player.z,player.yaw);
     }
+    if(data.event==="drone-destroyed"&&data.to===selfId)notice("DRONE DESTROYED",1800);
+    if(data.event==="planted")notice("DEFUSER PLANTED · PROTECT IT",2400);
     if(data.event==="hit"){
      if(data.to===selfId)notice("YOU WERE HIT",1100);
      if(data.from===selfId)notice("HIT CONFIRMED",1100);
@@ -302,6 +328,9 @@ $("save-settings").addEventListener("click",()=>{
  send({type:"settings",settings:collectSettings()});
  message("UPDATING CUSTOM GAME SETTINGS…");
 });
+$("operator").addEventListener("change",()=>{
+ if(roomCode&&mode!=="active")send({type:"operator",operator:$("operator").value});
+});
 $("switch").addEventListener("click",()=>{
  if(mode==="active"||!roomCode)return;
  const own=roster.find(p=>p.id===selfId);
@@ -323,32 +352,58 @@ canvas.addEventListener("click",()=>{
 document.addEventListener("pointerlockchange",()=>{
  pointerActive=document.pointerLockElement===canvas;
  $("enter").hidden=pointerActive||$("playing").hidden;
- if(!pointerActive){pressed.clear();firing=false;aimHeld=false;}
+ if(!pointerActive){pressed.clear();firing=false;aimHeld=false;
+  if(mode==="active")send({type:"world",action:"stop"});
+ }
 });
 document.addEventListener("keydown",event=>{
  if(shell.hidden||$("playing").hidden||!pointerActive)return;
  if(["KeyW","KeyA","KeyS","KeyD","KeyC","KeyR","KeyQ","KeyE",
-    "ShiftLeft","ShiftRight","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code))
-   event.preventDefault();
- if((event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat){
+  "KeyF","KeyG","KeyV","KeyX","Digit5","Digit1","Digit2","Space",
+  "ShiftLeft","ShiftRight","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code))
+  event.preventDefault();
+ const own=roster.find(p=>p.id===selfId),droning=Boolean(own?.droneActive);
+ if(event.code==="KeyF"&&!event.repeat){send({type:"world",action:"interact"});return;}
+ if(!droning&&event.code==="KeyV"&&!event.repeat){send({type:"world",action:"melee"});sound.play("melee");return;}
+ if(!droning&&event.code==="KeyG"&&!event.repeat){send({type:"world",action:"charge"});return;}
+ if(!droning&&event.code==="KeyX"&&!event.repeat){send({type:"world",action:"drop"});return;}
+ if(event.code==="Digit5"&&!event.repeat&&own?.side==="attacker"&&phase!=="prep"){
+  send({type:"drone-control",mode:droning?"leave":"enter",index:own.droneIndex||0});return;
+ }
+ if(droning&&(event.code==="Digit1"||event.code==="Digit2")&&!event.repeat){
+  send({type:"drone-control",mode:"enter",index:event.code==="Digit1"?0:1});return;
+ }
+ if(droning&&event.code==="Space"&&!event.repeat){jumpQueued=true;return;}
+ if(droning&&event.code.startsWith("Shift")&&!event.repeat)boostQueued=true;
+ if(!droning&&(event.code==="KeyQ"||event.code==="KeyE")&&!event.repeat){
   leanTarget=toggleLean(leanTarget,event.code==="KeyQ"?-1:1);
-  sound.play("equip");
-  return;
+  sound.play("equip");return;
  }
  pressed.add(event.code);
- if(event.code==="KeyR"&&!event.repeat)requestReload();
+ if(event.code==="KeyR"&&!event.repeat&&!droning)requestReload();
 });
-document.addEventListener("keyup",event=>pressed.delete(event.code));
+document.addEventListener("keyup",event=>{
+ pressed.delete(event.code);
+ if(event.code==="KeyF"&&mode==="active")send({type:"world",action:"stop"});
+});
 document.addEventListener("mousemove",event=>{
  if(!pointerActive||mode!=="active"||!player)return;
- player.yaw=((player.yaw-event.movementX*.0023)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
- player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-event.movementY*.0023));
+ const own=roster.find(p=>p.id===selfId);
+ if(own?.droneActive){
+  droneLook.yaw=((droneLook.yaw-event.movementX*.0027)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+  droneLook.pitch=Math.max(-.8,Math.min(.8,droneLook.pitch-event.movementY*.0027));
+ }else{
+  player.yaw=((player.yaw-event.movementX*.0023)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+  player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-event.movementY*.0023));
+ }
 });
 document.addEventListener("contextmenu",event=>{
  if(!shell.hidden&&!$("playing").hidden)event.preventDefault();
 });
 document.addEventListener("mousedown",event=>{
  if(shell.hidden||!pointerActive||mode!=="active"||!player?.alive)return;
+ if(event.button===1){send({type:"world",action:"detonate"});event.preventDefault();return;}
+ if(roster.find(p=>p.id===selfId)?.droneActive)return;
  if(event.button===2){aimHeld=true;sound.play("aim");event.preventDefault();}
  if(event.button===0){firing=true;attemptShot();event.preventDefault();}
 });
@@ -358,6 +413,7 @@ document.addEventListener("mouseup",event=>{
 });
 window.addEventListener("blur",()=>{
  firing=false;aimHeld=false;pressed.clear();
+ if(mode==="active")send({type:"world",action:"stop"});
 });
 setInterval(()=>{if(socket?.readyState===WebSocket.OPEN&&mode==="active")
  send({type:"ping"});},650);
@@ -366,13 +422,33 @@ function updateWeaponHud(){
  $("weapon").textContent="BX-7 MK II · "+ammo+" / 30"+(reload?" · RELOADING":"");
 }
 function requestReload(){
- if(mode!=="active"||!player?.alive||ammo>=30||
+ if(mode!=="active"||phase!=="action"||!player?.alive||ammo>=30||
     reloadPending||reloadingUntil>performance.now())return;
  reloadPending=true;send({type:"reload"});updateWeaponHud();
+}
+function selectDroneShotTarget(shooter,roster){
+ if(roster.find(p=>p.id===selfId)?.side!=="defender")return null;
+ let chosen=null,best=99;
+ for(const p of roster){
+  if(p.side!=="attacker")continue;
+  for(const d of p.drones||[]){
+   if(!d.deployed)continue;
+   const dx=d.x-shooter.x,dz=d.z-shooter.z,range=Math.hypot(dx,dz);
+   if(range<.2||range>35)continue;
+   const yaw=-Math.atan2(dx,-dz),angle=Math.abs(Math.atan2(
+    Math.sin(yaw-shooter.yaw),Math.cos(yaw-shooter.yaw)));
+   const pitch=-Math.atan2(d.y+.14-shooter.y-(pressed.has("KeyC")?1.05:1.58),range);
+   if(angle<.135&&Math.abs(pitch-shooter.pitch)<.155&&range<best){
+    best=range;chosen=p.id;
+   }
+  }
+ }
+ return chosen;
 }
 function attemptShot(){
  const now=performance.now();
  if(!player?.alive||mode!=="active"||!pointerActive||
+    (phase!=="action"&&!(phase==="prep"&&roster.find(p=>p.id===selfId)?.side==="defender"))||
     reloadPending||reloadingUntil>now||now-lastShot<145)return;
  if(ammo<=0){if(firing)requestReload();return;}
  if(pressed.has("ShiftLeft")&&!aimHeld&&!pressed.has("KeyC"))return;
@@ -380,8 +456,9 @@ function attemptShot(){
  player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch+.006+Math.random()*.008));
  gunKick=Math.min(1,gunKick+.75);
  const side=roster.find(p=>p.id===selfId)?.side||"attacker";
- send({type:"shot",targetId:selectShotTarget({...player,side,
-    crouched:pressed.has("KeyC")},roster.filter(p=>p.id!==selfId))});
+ send({type:"shot",targetId:phase==="action"?selectShotTarget({...player,side,
+    crouched:pressed.has("KeyC")},roster.filter(p=>p.id!==selfId)):null,
+    targetDrone:selectDroneShotTarget(player,roster)});
  weaponView?.flash();weaponView?.eject();
  sound.play("fire");updateWeaponHud();
 }
@@ -414,7 +491,113 @@ function addMapItem(part){
   Math.max(.12,s.x),h,Math.max(.12,s.z)),material(kind));
  mesh.position.set(p.x,kind==="floor"?p.y-h/2:p.y+h/2,p.z);
  mesh.rotation.y=(part.rotationY||0)*Math.PI/180;
- scene.add(mesh);
+ scene.add(mesh);mapMeshes.set(part.id,mesh);
+}
+function createSites(map){
+ const pair=map.sitePairs?.[0];if(!pair)return;
+ for(const site of ["A","B"]){
+  const p=pair[site],group=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:site==="A"?0xefb04f:0x6dcbf0,
+   emissive:site==="A"?0x4b2509:0x07324f,emissiveIntensity:.7,roughness:.5});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.4,.12,7,48),mat);
+  ring.rotation.x=-Math.PI/2;ring.position.y=.07;group.add(ring);
+  const beacon=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.3,10),mat);
+  beacon.position.y=.68;group.add(beacon);
+  const crown=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat);
+  crown.position.y=1.44;group.add(crown);
+  group.position.set(p.x,p.y,p.z);scene.add(group);
+ }
+}
+function renderWorldGeometry(){
+ if(!sceneReady||!world||!mapData)return;
+ const fingerprint=JSON.stringify([world.walls,world.barricades,world.charges,
+   world.bomb?.phase,world.bomb?.position]);
+ if(fingerprint===visualFingerprint)return;
+ visualFingerprint=fingerprint;
+ collisionParts=wallParts(mapData,world);
+ for(const part of parts){
+  if(part.type!=="softWall")continue;
+  const mesh=mapMeshes.get(part.id);if(!mesh)continue;
+  mesh.visible=world.walls[part.id]!=="open";
+  mesh.material=material(world.walls[part.id]==="reinforced"?"reinforcedWall":"softWall");
+ }
+ for(const node of [...worldLayer.children]){
+  worldLayer.remove(node);
+  node.traverse(child=>{if(child.isMesh)child.geometry.dispose();});
+ }
+ const wood=new THREE.MeshStandardMaterial({color:0x795440,roughness:.88}),
+  strip=new THREE.MeshStandardMaterial({color:0x5c3b2b,roughness:.93}),
+  tech=new THREE.MeshStandardMaterial({color:0x253644,metalness:.6,roughness:.36}),
+  orange=new THREE.MeshStandardMaterial({color:0xe89137,emissive:0x5d2600,emissiveIntensity:.35});
+ for(const [id,hp] of Object.entries(world.barricades||{})){
+  if(hp<1)continue;
+  const door=mapData.elements.find(x=>x.id===id);if(!door)continue;
+  const group=new THREE.Group();
+  group.position.set(door.position.x,door.position.y,door.position.z);
+  group.rotation.y=(door.rotationY||0)*Math.PI/180;
+  const h=Math.min(door.size.y-.35,2.8),wide=door.size.x-.05;
+  const backing=new THREE.Mesh(new THREE.BoxGeometry(wide,h,.18),strip);
+  backing.position.y=.35+h/2;group.add(backing);
+  const n=Math.ceil(h/.36);
+  for(let i=0;i<n;i++){
+   const plank=new THREE.Mesh(new THREE.BoxGeometry(wide,.34,.21),wood);
+   plank.position.set(0,.35+Math.min(h-.17,(i+.5)*h/n),.015);
+   group.add(plank);
+  }
+  for(const side of [-1,1]){
+   const brace=new THREE.Mesh(new THREE.BoxGeometry(.09,h,.24),strip);
+   brace.position.set(side*(wide/2-.18),.35+h/2,.035);group.add(brace);
+  }
+  worldLayer.add(group);
+ }
+ for(const charge of world.charges||[]){
+  if(charge.detonated)continue;
+  const part=mapData.elements.find(x=>x.id===charge.target);
+  if(!part)continue;
+  const group=new THREE.Group();
+  group.position.set(part.position.x,part.position.y+1.2,part.position.z);
+  group.rotation.y=(part.rotationY||0)*Math.PI/180;
+  const box=new THREE.Mesh(new THREE.BoxGeometry(.44,.33,.30),tech);
+  box.position.z=.12;group.add(box);
+  const light=new THREE.Mesh(new THREE.BoxGeometry(.26,.05,.08),orange);
+  light.position.set(0,.13,.30);group.add(light);
+  worldLayer.add(group);
+ }
+ if(world.bomb?.position&&["dropped","planted"].includes(world.bomb.phase)){
+  const b=world.bomb.position;
+  const group=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.BoxGeometry(.50,.16,.36),tech);
+  base.position.y=.11;group.add(base);
+  const screen=new THREE.Mesh(new THREE.BoxGeometry(.38,.02,.24),orange);
+  screen.position.set(0,.205,0);group.add(screen);
+  const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.015,.02,.23,8),tech);
+  antenna.position.set(.21,.33,-.12);group.add(antenna);
+  group.position.set(b.x,b.y,b.z);
+  worldLayer.add(group);
+ }
+}
+function updateReconModels(dt,own){
+ if(!sceneReady)return;
+ const used=new Set();
+ for(const p of roster){
+  for(let i=0;i<(p.drones||[]).length;i++){
+   const d=p.drones[i],key=p.id+":"+i;
+   if(!d?.deployed)continue;
+   used.add(key);
+   let view=droneModels.get(key);
+   if(!view){view=createDroneView(THREE,scene);droneModels.set(key,view);}
+   view.update(d,dt);
+   if(p.id===selfId&&own?.droneActive&&(own.droneIndex||0)===i)
+    view.root.visible=false;
+  }
+ }
+ for(const [key,view] of droneModels){
+  if(!used.has(key)){view.dispose();droneModels.delete(key);}
+ }
+}
+function formatRoundClock(milliseconds){
+ const seconds=Math.max(0,Math.ceil(milliseconds/1000));
+ return Math.floor(seconds/60)+":"+String(seconds%60).padStart(2,"0");
 }
 async function loadMap(){
  if(sceneReady)return;
@@ -423,7 +606,7 @@ async function loadMap(){
  const map=await response.json();
  if(!Array.isArray(map.elements)||map.elements.length<100)
   throw new Error("Ironvale map geometry missing");
- parts=map.elements;
+ parts=map.elements;mapData=map;collisionParts=parts;
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));
  renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -436,6 +619,8 @@ async function loadMap(){
   new THREE.MeshStandardMaterial({color:0x2e3d49,roughness:1}));
  outside.rotation.x=-Math.PI/2;outside.position.y=-.25;scene.add(outside);
  for(const part of parts)addMapItem(part);
+ worldLayer=new THREE.Group();worldLayer.name="Synced BLACKOUT match objects";scene.add(worldLayer);
+ createSites(map);
  camera=new THREE.PerspectiveCamera(76,1,.06,250);camera.rotation.order="YXZ";
  weaponView=createWeaponView(THREE,camera,scene);
  weaponView.root.visible=false;
@@ -500,33 +685,67 @@ function animate(now){
  if(shell.hidden||$("playing").hidden||!sceneReady||!player)return;
  const authoritative=roster.find(p=>p.id===selfId);
  const alive=Boolean(authoritative?.alive);
+ const droning=Boolean(authoritative?.droneActive&&
+  authoritative.drones?.[authoritative.droneIndex||0]?.deployed);
+ const drone=authoritative?.drones?.[authoritative.droneIndex||0];
+ if(droning&&!wasDroning&&drone)droneLook={yaw:drone.yaw,pitch:drone.pitch};
+ if(droning){firing=false;aimHeld=false;leanTarget=0;}
+ wasDroning=droning;
  const crouched=pressed.has("KeyC"),moving=
   ["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown",
    "ArrowLeft","ArrowRight"].some(k=>pressed.has(k));
  const sprinting=!aimHeld&&!crouched&&
-   (pressed.has("ShiftLeft")||pressed.has("ShiftRight"));
+  (pressed.has("ShiftLeft")||pressed.has("ShiftRight"));
  if(authoritative){
   $("life").textContent=authoritative.health+" HP";
   $("online-count").textContent=roster.length+" CONNECTED";
  }
+ $("phase").textContent=phase==="prep"?"PREPARATION":phase==="action"?"ACTION":"ROUND";
+ const clock=world?.bomb?.phase==="planted"?world.bomb.expiresAt:phaseEndsAt;
+ $("timer").textContent=formatRoundClock((clock||Date.now())-Date.now());
+ $("score").textContent="ROUND "+round+" · "+(world?.sitePair||"IRONVALE").toUpperCase();
+ const job=world?.interactions?.[selfId];
+ $("action").textContent=job?job.kind.toUpperCase().replace(/-/g," ")+" · "+
+  Math.max(0,(job.endsAt-Date.now())/1000).toFixed(1)+"S":
+  "F INTERACT · G BREACH · V MELEE · MIDDLE DETONATE";
+ const bomb=world?.bomb;
+ $("objective").textContent=bomb?.phase==="planted"?
+  "DEFUSER ACTIVE · SITE "+bomb.site+" · "+$("timer").textContent:
+  bomb?.phase==="dropped"?"DEFUSER DROPPED · PICK UP WITH F":
+  bomb?.carrierId===selfId?"YOU HAVE DEFUSER · HOLD F AT A/B":
+  "BOMB SITES A/B · "+(bomb?.phase||"WAITING").toUpperCase();
+ renderWorldGeometry();
  if(pointerActive&&mode==="active"&&alive){
-  const next=moveOnlinePlayer(player,pressed,dt,parts,{aiming:aimHeld});
-  if(!solidAt(parts,next.x,next.z,next.y))player=next;
-  if(firing)attemptShot();
-  const footstepMs=sprinting?275:crouched?660:430;
-  if(moving&&now-lastFootstep>footstepMs){
-   lastFootstep=now;sound.play(sprinting?"run-step":"step");
-  }
-  if(now-lastSend>=75){
-   lastSend=now;send({type:"move",x:player.x,y:player.y,z:player.z,
-    yaw:player.yaw,pitch:player.pitch,aiming:aimHeld,
-    crouched,sprinting,lean:leanTarget});
+  if(droning){
+   if(now-lastSend>=65){
+    lastSend=now;
+    send({type:"drone-step",yaw:droneLook.yaw,pitch:droneLook.pitch,
+     forward:(pressed.has("KeyW")||pressed.has("ArrowUp")?1:0)-
+      (pressed.has("KeyS")||pressed.has("ArrowDown")?1:0),
+     right:(pressed.has("KeyD")||pressed.has("ArrowRight")?1:0)-
+      (pressed.has("KeyA")||pressed.has("ArrowLeft")?1:0),
+     jump:jumpQueued,boost:boostQueued});
+    jumpQueued=false;boostQueued=false;
+   }
+  }else if(phase==="action"||authoritative?.side==="defender"){
+   const next=moveOnlinePlayer(player,pressed,dt,collisionParts,{aiming:aimHeld});
+   if(!solidAt(collisionParts,next.x,next.z,next.y))player=next;
+   if(firing)attemptShot();
+   const footstepMs=sprinting?275:crouched?660:430;
+   if(moving&&now-lastFootstep>footstepMs){
+    lastFootstep=now;sound.play(sprinting?"run-step":"step");
+   }
+   if(now-lastSend>=75){
+    lastSend=now;send({type:"move",x:player.x,y:player.y,z:player.z,
+     yaw:player.yaw,pitch:player.pitch,aiming:aimHeld,
+     crouched,sprinting,lean:leanTarget});
+   }
   }
  }
  if(!alive){pressed.clear();firing=false;aimHeld=false;}
  const seen=new Set();
  for(const p of roster){
-  if(p.id===selfId||!p.alive)continue;
+  if(p.id===selfId||!p.alive||(phase==="prep"&&p.side==="attacker"))continue;
   seen.add(p.id);
   let v=remote.get(p.id);
   if(!v){v=makeAvatar(p);remote.set(p.id,v)}
@@ -541,32 +760,45 @@ function animate(now){
  for(const [id,v] of remote){
   if(!seen.has(id)){scene.remove(v.group);remote.delete(id);remoteFlashAt.delete(id)}
  }
+ updateReconModels(dt,authoritative);
  const w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;
  if(canvas.width!==Math.round(w*renderer.getPixelRatio())||
     canvas.height!==Math.round(h*renderer.getPixelRatio())){
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
  }
- const adsTarget=aimHeld&&alive?1:0;
- aimMix+=(adsTarget-aimMix)*Math.min(1,dt*20);
- if(Math.abs(adsTarget-aimMix)<.005)aimMix=adsTarget;
- leanAmount=smoothLean(leanAmount,leanTarget,dt);
- const pose=leanCameraPose(player.yaw,leanAmount);
- const safe=solidAt(parts,player.x+pose.dx,player.z+pose.dz,player.y)?
-  leanCameraPose(player.yaw,0):pose;
- camera.position.set(player.x+safe.dx,player.y+(crouched?1.08:1.62),
-  player.z+safe.dz);
- camera.rotation.set(player.pitch,player.yaw,safe.roll,"YXZ");
- const targetFov=76-13*aimMix;
- if(Math.abs(camera.fov-targetFov)>.01){
-  camera.fov=targetFov;camera.updateProjectionMatrix();
- }
- gunKick=Math.max(0,gunKick-dt*6.5);
- weaponView.root.visible=alive;
- weaponView.update(dt,aimMix,gunKick,moving&&alive,now,aimHeld);
- $("reticle").hidden=aimHeld||aimMix>.65||!alive;
- $("stance").textContent=(crouched?"CROUCHED":sprinting?"SPRINTING":"STANDING")+
+ if(droning&&drone){
+  // The lens belongs to the persistent, server-controlled recon drone.
+  camera.position.set(drone.x,drone.y+.28,drone.z);
+  camera.rotation.set(droneLook.pitch,droneLook.yaw,0,"YXZ");
+  camera.fov=90;camera.updateProjectionMatrix();
+  weaponView.root.visible=false;$("reticle").hidden=false;
+  $("stance").textContent="R-1 RECON DRONE "+((authoritative.droneIndex||0)+1)+
+   " · "+drone.charges+" BOOSTS · "+(drone.grounded?"GROUNDED":"AIRBORNE");
+ }else{
+  const adsTarget=aimHeld&&alive&&phase==="action"?1:0;
+  aimMix+=(adsTarget-aimMix)*Math.min(1,dt*20);
+  if(Math.abs(adsTarget-aimMix)<.005)aimMix=adsTarget;
+  leanAmount=smoothLean(leanAmount,leanTarget,dt);
+  const pose=leanCameraPose(player.yaw,leanAmount);
+  const safe=solidAt(collisionParts,player.x+pose.dx,player.z+pose.dz,player.y)?
+   leanCameraPose(player.yaw,0):pose;
+  camera.position.set(player.x+safe.dx,player.y+(crouched?1.08:1.62),
+   player.z+safe.dz);
+  camera.rotation.set(player.pitch,player.yaw,safe.roll,"YXZ");
+  const targetFov=76-13*aimMix;
+  if(Math.abs(camera.fov-targetFov)>.01){
+   camera.fov=targetFov;camera.updateProjectionMatrix();
+  }
+  gunKick=Math.max(0,gunKick-dt*6.5);
+  weaponView.root.visible=alive&&(phase==="action"||authoritative?.side==="defender");
+  weaponView.update(dt,aimMix,gunKick,moving&&alive,now,aimHeld);
+  $("reticle").hidden=aimHeld||aimMix>.65||!weaponView.root.visible;
+  $("stance").textContent=phase==="prep"&&authoritative?.side==="attacker"?
+   "WAITING FOR ACTION · DRONE LOST":
+   (crouched?"CROUCHED":sprinting?"SPRINTING":"STANDING")+
    " · "+(aimHeld?"ADS":"HIPFIRE")+" · "+
    (leanTarget<0?"LEFT LEAN":leanTarget>0?"RIGHT LEAN":"CENTERED");
+ }
  renderer.render(scene,camera);
  if(!$("notice").hidden&&now>noticeUntil)$("notice").hidden=true;
 }

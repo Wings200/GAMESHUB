@@ -20,9 +20,9 @@ export function throwDrone(x,z,yaw){
  return {...drone,y:.58,grounded:false,vy:2.15,
   speedX:-Math.sin(yaw)*6.4,speedZ:-Math.cos(yaw)*6.4,throwLeft:1.1};
 }
-export function canDroneOccupy(x,y,z,objects=[]){
- if(!Number.isFinite(x+y+z)||Math.abs(x)>DRONE.worldLimit||
-    Math.abs(z)>DRONE.worldLimit||y<-.0001)return false;
+export function canDroneOccupy(x,y,z,objects=[],limit=DRONE.worldLimit){
+ if(!Number.isFinite(x+y+z)||Math.abs(x)>limit||
+    Math.abs(z)>limit||y<-.0001)return false;
  return !objects.some(o=>{
   const bottom=o.bottom??0,top=o.height;
   if(y>=top||y+DRONE.height<=bottom)return false;
@@ -73,7 +73,7 @@ function stepVertical(d,step,objects){
  d.y=Math.max(0,nextY);
  if(d.y===0){d.vy=0;d.grounded=true;d.throwLeft=0;}
 }
-export function tickDrone(previous,input={},dt=1/60,objects=[]){
+export function tickDrone(previous,input={},dt=1/60,objects=[],limit=DRONE.worldLimit){
  if(!finite(previous))throw new Error("Invalid drone movement state");
  const d={...previous},step=Math.max(0,Math.min(.05,Number.isFinite(dt)?dt:0));
  if(step===0)return d;
@@ -93,7 +93,7 @@ export function tickDrone(previous,input={},dt=1/60,objects=[]){
   const n=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.055));
   for(let i=0;i<n;i++){
    const sx=dx/n,sz=dz/n;
-   if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects)){
+   if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects,limit)){
     d.x+=sx;d.z+=sz;
    }else{
     d.speedX=0;d.speedZ=0;d.throwLeft=0;break;
@@ -127,12 +127,12 @@ export function tickDrone(previous,input={},dt=1/60,objects=[]){
  const count=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.055));
  for(let i=0;i<count;i++){
   const sx=dx/count,sz=dz/count;
-  if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects)){
+  if(canDroneOccupy(d.x+sx,d.y,d.z+sz,objects,limit)){
    d.x+=sx;d.z+=sz;
   }else{
-   if(canDroneOccupy(d.x+sx,d.y,d.z,objects))d.x+=sx;
+   if(canDroneOccupy(d.x+sx,d.y,d.z,objects,limit))d.x+=sx;
    else d.speedX=0;
-   if(canDroneOccupy(d.x,d.y,d.z+sz,objects))d.z+=sz;
+   if(canDroneOccupy(d.x,d.y,d.z+sz,objects,limit))d.z+=sz;
    else d.speedZ=0;
   }
  }
