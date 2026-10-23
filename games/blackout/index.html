@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07101a">
   <meta name="description" content="BLACKOUT Reboot — original tactical FPS, built from the movement foundation up.">
-  <title>BLACKOUT — V0.27 · MULTIPLAYER FOUNDATION | GAMESHUB</title>
+  <title>BLACKOUT — V0.31 · ONLINE NETWORK TEST | GAMESHUB</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="./reboot/style.css?v=reboot-055">
+  <link rel="stylesheet" href="./online.css?v=031">
   <style>
     .menu-content{padding-top:clamp(35px,7vh,85px)}
     .mode-hub{margin:23px 0 28px;max-width:760px}
@@ -20,6 +21,9 @@
     .mode-choice.current{border:1px solid #64e0c2;background:linear-gradient(145deg,#173e48,#10232e)}
     .mode-choice.current span{color:#7ff0cf}
     .mode-choice.planned{opacity:.76}
+    .mode-choice.online-choice{cursor:pointer;text-align:left;font-family:inherit}
+    .mode-choice.online-choice:hover,.mode-choice.online-choice:focus-visible{border-color:#9bffe2;background:#16374b}
+    .mode-choice.online-choice:focus-visible{outline:2px solid #7fe9d0;outline-offset:3px}
     .training-head{display:flex;align-items:center;gap:12px;margin:0 0 13px;font-size:11px;letter-spacing:.15em;font-weight:900;color:#77e6cd}
     .training-head:after{content:"";flex:1;height:1px;background:#65b4a34a}
     @media(max-width:650px){.mode-grid{grid-template-columns:1fr}.mode-choice{min-height:100px}}
@@ -50,15 +54,15 @@
   <header class="topbar" id="topbar">
     <a class="backlink" href="../../index.html" aria-label="Back to GAMESHUB">‹ GAMESHUB</a>
     <div class="brandmark">B<span>∕</span>O <small>BLACKOUT</small></div>
-    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.27 · STAGE 1</b></div>
+    <div class="buildtag"><span class="live-dot"></span> REBOOT <b>0.31 · ONLINE TEST</b></div>
   </header>
 
   <main id="menu" class="menu">
     <div class="menu-content">
-      <div class="section-tag"><span class="section-line"></span> TACTICAL / MULTIPLAYER FOUNDATION</div>
+      <div class="section-tag"><span class="section-line"></span> TACTICAL / MULTIPLAYER ONLINE TEST</div>
       <h1>BLACK<span>OUT</span><sup>R.</sup></h1>
       <p class="headline">CHOOSE YOUR EXPERIENCE.</p>
-      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Dedicated AI and online 5v5 sessions are separate experiences under development; training will remain available while those systems are built.</p>
+      <p class="description">Practice weapons, movement, drones, gadgets and bomb objectives in Training. Online now has real private room and two-player movement testing; full synchronized 5v5 rounds are still being built. Training remains offline and available.</p>
       <section class="mode-hub" aria-label="Game experiences">
         <h2>SELECT EXPERIENCE</h2>
         <div class="mode-grid">
@@ -70,10 +74,10 @@
             <span>02 · IN DEVELOPMENT</span><strong>TACTICAL AI</strong>
             <small>Offline tactical matches against bots. Not playable yet.</small>
           </div>
-          <div class="mode-choice planned" aria-label="Online 5v5 not yet available">
-            <span>03 · IN DEVELOPMENT</span><strong>ONLINE 5v5</strong>
-            <small>Real teams, lobbies and a new multiplayer map. Not connected yet.</small>
-          </div>
+          <button id="online-choice" type="button" class="mode-choice current online-choice" aria-label="Open online multiplayer lobby">
+            <span>03 · PRIVATE ROOM BETA</span><strong>ONLINE 5v5</strong>
+            <small>Real player rooms · 2-player network test on Ironvale. Full 5v5 mechanics still in development.</small>
+          </button>
         </div>
       </section>
       <div class="training-head">TRAINING · DEPLOYMENT SETUP</div>
@@ -121,7 +125,7 @@
         </div>
       </section>
       <button id="play" class="primary" type="button">DEPLOY <span id="operator-current">STRIKER</span> · <span id="deploy-mode-name">TWO-STORY HOUSE</span> <strong>↗</strong></button>
-      <div id="message" class="menu-message" role="status">TRAINING IS OFFLINE · ONLINE 5V5 &amp; AI ARE IN DEVELOPMENT</div>
+      <div id="message" class="menu-message" role="status">TRAINING IS OFFLINE · ONLINE PRIVATE LOBBY BETA AVAILABLE · AI IN DEVELOPMENT</div>
       <details class="controls-reference" id="controls-reference">
         <summary>CONTROLS &amp; GADGET REFERENCE</summary>
         <div class="controls-reference-body">
@@ -349,5 +353,6 @@
   </section>
   <div id="error" class="error hidden" role="alert"></div>
   <script type="module" src="./reboot/main.js?v=reboot-069"></script>
+  <script type="module" src="./online-multiplayer.js?v=031"></script>
 </body>
 </html>
