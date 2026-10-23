@@ -77,7 +77,7 @@ export function bombPrompt(state,side,position){
  if(state.phase==="ended")return state.reason+" · N FOR NEXT ROUND";
  if(state.phase==="prep")return side==="defend"?
   "PREPARATION · REINFORCE / SET DEFENSE GADGETS":
-  "PREPARATION · 5 DRONE / 6 DEPLOY DRONE · SPAWN LOCKED";
+  "PREPARATION · DRIVE AUTO-DEPLOYED DRONE · SPACE JUMP · OPERATOR SPAWNS AT ACTION";
  if(state.phase==="postplant")return side==="defend"?
   (finite(position)&&dist(position,state.defuser)<=BOMB_RULES.disableRadius?
    "HOLD F TO DISABLE DEFUSER":"LOCATE THE ACTIVE DEFUSER"):
