@@ -37,7 +37,7 @@ test("connected physics and shooting originate from original game runtime",()=>{
 test("server accepts only original playable generalists, not old Ironvale operators",()=>{
  assert.match(protocol,/striker:"attacker",sentry:"defender"/);
  assert.doesNotMatch(protocol,/sledge:"attacker"/);
- assert.match(server,/side==="defender"\?"sentry":"striker"/);
+ assert.match(server,/side==="defender"\s*\?\s*"sentry":"striker"/);
 });
 test("network room creator checks existing developer access before connecting",()=>{
  assert.match(lobby,/fetch\("\/api\/blackout-access"/);

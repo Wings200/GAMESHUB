@@ -93,7 +93,7 @@ export class BlackoutRoom extends DurableObject {
   const id=String(this.nextId++),name=cleanName(url.searchParams.get("name"));
   const pick=url.searchParams.get("operator");
   const operator=validLoadout(side,pick)?pick:
-    (side==="defender"?"mute":"sledge");
+    (side==="defender"?"sentry":"striker");
   const entry=spawn(side,[...this.players.values()].filter(p=>p.side===side).length);
   const pair=new WebSocketPair();
   const [client,server]=Object.values(pair);
@@ -281,7 +281,7 @@ export class BlackoutRoom extends DurableObject {
    if([...this.players.values()].filter(x=>x.side===side).length>=TEAM_LIMIT){
      this.send(p,{type:"notice",message:"Selected team is full"});return;
    }
-   p.side=side;p.operator=side==="defender"?"mute":"sledge";
+   p.side=side;p.operator=side==="defender"?"sentry":"striker";
    Object.assign(p,spawn(side,[...this.players.values()].filter(x=>x.side===side).length-1));
    this.saveAttachment(p);this.broadcast({event:"team-changed"});return;
   }

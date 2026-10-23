@@ -50,7 +50,7 @@ test("main menu and firearm interaction expose honest feature state",()=>{
  const directory=dirname(fileURLToPath(import.meta.url));
  const html=readFileSync(join(directory,"../index.html"),"utf8");
  const main=readFileSync(join(directory,"main.js"),"utf8");
- assert.match(html,/CUSTOM GAME · SOLO DEPLOYMENT/);
+ assert.match(html,/SOLO TEST · ORIGINAL ENGINE/);
  assert.match(html,/TACTICAL AI/);
  assert.match(html,/ONLINE 5v5/);
  assert.match(html,/id="online-choice"/);
@@ -58,10 +58,11 @@ test("main menu and firearm interaction expose honest feature state",()=>{
  assert.match(html,/id="custom-choice"/);
  assert.match(html,/CUSTOM GAME/);
  assert.doesNotMatch(html,/<strong>TRAINING<\/strong>/);
- assert.match(html,/id="online-choice"[^>]+disabled/);
+ assert.match(html,/id="solo-choice"/);
+ assert.match(html,/NETWORK PREVIEW/);
  assert.match(main,/custom-choice/);
  assert.match(main,/scrollIntoView/);
- assert.match(html,/LIVE TEST PHASE/);
+ assert.match(main,/createBlackoutNetwork/);
  assert.match(main,/shootableDrones\(\)/);
  assert.match(main,/destroyPhysicalDrone\(droneIndex\)/);
 });

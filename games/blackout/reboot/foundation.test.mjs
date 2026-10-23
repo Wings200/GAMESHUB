@@ -120,11 +120,11 @@ test("range boundary constrains player coordinates and invalid state is rejected
  assert.ok(p.x<=29.66&&p.z<=29.66);
  assert.throws(()=>stepPlayer({...p,x:Infinity},{forward:1}),/Invalid player/);
 });
-test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
+test("reboot entry point preserves original renderer and gameplay when networking is enabled",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-069",
-   "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
+  for(const src of ["./reboot/main.js?v=reboot-072",
+   "./reboot/style.css?v=reboot-070"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
  assert.ok(html.includes('id="drone-hud" class="device-hud device-hud-drone hidden"'));
