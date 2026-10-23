@@ -34,7 +34,8 @@ test("main runtime gates player existence until action and retains drone on phas
  const main=readFileSync(join(dirname(fileURLToPath(import.meta.url)),"main.js"),"utf8");
  assert.match(main,/function deployAutomaticPrepDrone\(\)/);
  assert.match(main,/registerPhysicalDrone\(newDrone\(location\.x,location\.z,spawn\.yaw\),"initial"\)/);
- assert.match(main,/if\(isAttackerPreparation\(\)\&\&nextMode==="player"\)nextMode="drone"/);
+ assert.match(main,/isAttackerPreparation\(\)\|\|\(gameMode==="online"/);
+ assert.match(main,/nextMode==="player"\)nextMode="drone"/);
  assert.match(main,/position:operatorDeployed\?player:null/);
  assert.match(main,/if\(wasAttackerPrep\&\&result\.events\.includes\("action"\)\)/);
  assert.match(main,/operatorDeployed=true;player=roundSpawn\(\);cameraEye=1\.65/);
