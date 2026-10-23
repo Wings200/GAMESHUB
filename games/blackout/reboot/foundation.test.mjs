@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-065",
+  for(const src of ["./reboot/main.js?v=reboot-066",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -177,8 +177,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  }
  assert.equal(html.includes('class="hud-bottom"'),false,"old debug dashboard must be replaced");
  assert.ok(main.includes('from "./physics.js?v=reboot-062"'));
- assert.ok(main.includes('from "./house-layout.js?v=reboot-062"'));
- assert.ok(main.includes('from "./house-view.js?v=reboot-062"'));
+ assert.ok(main.includes('from "./house-layout.js?v=reboot-066"'));
+ assert.ok(main.includes('from "./house-view.js?v=reboot-066"'));
  assert.match(main,/requestPointerLock\(/);
  assert.match(main,/pointerlockchange/);
  assert.ok(main.includes("player=stepPlayer(player,input,dt,"));
@@ -244,8 +244,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("decals.frustumCulled=false"));
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
- assert.ok(main.includes('from "./barricade.js?v=reboot-015"'));
- assert.ok(main.includes('from "./barricade-view.js?v=reboot-032"'));
+ assert.ok(main.includes('from "./barricade.js?v=reboot-066"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-066"'));
  assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
  assert.ok(main.includes("...barricade.blockers()"));
  assert.ok(main.includes("...softWall.blockers()"));
@@ -270,10 +270,10 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(main.includes("reinforcement.tick(dt)"));
  // V0.12: drone is a real separate controller, not decorative HUD toggling.
  assert.ok(main.includes('from "./drone-physics.js?v=reboot-019"'));
- assert.ok(main.includes('from "./drone-view.js?v=reboot-020"'));
+ assert.ok(main.includes('from "./drone-view.js?v=reboot-066"'));
  assert.ok(main.includes("createDroneView(THREE,scene)"));
  assert.ok(main.includes("throwDrone(clear.x,clear.z,player.yaw)"));
- assert.ok(main.includes('from "./drone-roster.js?v=reboot-020"'));
+ assert.ok(main.includes('from "./drone-roster.js?v=reboot-066"'));
  // V0.13: 12 planned free operators; only two working generalists selectable.
  assert.ok(main.includes('from "./operators.js?v=reboot-025"'));
  assert.ok(main.includes('from "./operator-select.js?v=reboot-052"'));

@@ -55,6 +55,15 @@ export function selectDrone(roster,delta){
  if(!length)return roster;
  return {...roster,selected:((roster.selected+delta)%length+length)%length};
 }
+// Remove a destroyed camera without refunding its preparation/action throw.
+export function removeDrone(roster,index){
+ if(!Number.isInteger(index)||index<0||index>=roster.drones.length)return roster;
+ const drones=roster.drones.filter((_,i)=>i!==index);
+ const selected=drones.length===0?-1:
+  roster.selected>index?roster.selected-1:
+  roster.selected===index?Math.min(index,drones.length-1):roster.selected;
+ return {...roster,drones,selected};
+}
 export function selectedDrone(roster){
  return roster.drones[roster.selected]||null;
 }
