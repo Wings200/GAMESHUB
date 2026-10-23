@@ -16,7 +16,7 @@
     .blackout-admin-link[hidden]{display:none}
     .mode-hub{margin:23px 0 28px;max-width:760px}
     .mode-hub h2{color:#afcbd1;font-size:11px;letter-spacing:.2em;margin:0 0 13px}
-    .mode-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .mode-choice{min-height:154px;padding:18px 14px;background:#111e2cbd;border:1px solid #456176;display:flex;flex-direction:column;gap:9px;position:relative}
     .mode-choice strong{font-size:20px;letter-spacing:.09em;color:#eaf8f9}
     .mode-choice small{font-size:11px;color:#9db5c3;line-height:1.55}
@@ -357,7 +357,7 @@
   </section>
   <div id="error" class="error hidden" role="alert"></div>
   <script type="module" src="./reboot/main.js?v=reboot-069"></script>
-  <script type="module" src="./online-multiplayer.js?v=034"></script>
+  <script type="module" src="./online-multiplayer.js?v=035"></script>
   <script>
     fetch("/api/blackout-access", {credentials:"same-origin",cache:"no-store"})
       .then(response=>response.ok?response.json():null)
