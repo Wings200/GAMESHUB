@@ -9,12 +9,13 @@ export function normalizeRoomCode(value){
   return validCode(code)?code:null;
 }
 export function roomEndpoint(code,action,base=BLACKOUT_WORKER){
-  if(!normalizeRoomCode(code)||!["ws","status"].includes(action))
+  const canonical=normalizeRoomCode(code);
+  if(!canonical||!["ws","status"].includes(action))
     throw new Error("Invalid room request");
   const origin=new URL(base);
   if(origin.protocol!=="https:"&&origin.hostname!=="localhost")
     throw new Error("Secure multiplayer endpoint required");
-  return origin.origin+"/api/blackout/rooms/"+code+"/"+action;
+  return origin.origin+"/api/blackout/rooms/"+canonical+"/"+action;
 }
 export function roomSocketUrl(code,{side,name,operator},base=BLACKOUT_WORKER){
   const url=new URL(roomEndpoint(code,"ws",base));
