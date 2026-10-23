@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point contains no old game imports, operators, bots or networking",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-067",
+  for(const src of ["./reboot/main.js?v=reboot-068",
    "./reboot/style.css?v=reboot-055"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
@@ -244,8 +244,8 @@ test("reboot entry point contains no old game imports, operators, bots or networ
  assert.ok(impact.includes("decals.frustumCulled=false"));
  assert.ok(impact.includes("polygonOffset:true"));
  assert.ok(impact.includes("Deliberately permanent"));
- assert.ok(main.includes('from "./barricade.js?v=reboot-066"'));
- assert.ok(main.includes('from "./barricade-view.js?v=reboot-066"'));
+ assert.ok(main.includes('from "./barricade.js?v=reboot-068"'));
+ assert.ok(main.includes('from "./barricade-view.js?v=reboot-068"'));
  assert.ok(main.includes("createBarricadeStation(THREE,scene)"));
  assert.ok(main.includes("...barricade.blockers()"));
  assert.ok(main.includes("...softWall.blockers()"));
