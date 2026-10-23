@@ -3,7 +3,7 @@
 // children of the affected plank, so destroying it cannot leave floating decals.
 import {BARRICADE,createBarricadeState,barricadeDamage,barricadeRebuild,
  barricadeBlockers,barricadeStatus,canInteractWithBarricade,boardBounds,barricadeMeleeDamage,BARRICADE_MELEE_HITS}
- from "./barricade.js?v=reboot-066";
+ from "./barricade.js?v=reboot-068";
 
 export function createBarricadeStation(THREE,scene){
  const b=BARRICADE;
@@ -72,8 +72,10 @@ export function createBarricadeStation(THREE,scene){
  const boards=[];
  for(let i=0;i<b.boardCount;i++){
   const {center}=boardBounds(i);
+  // Alternate the plank face by 6mm so vertically overlapping wood has
+  // no coplanar z-fighting shimmer or see-through cracks in the renderer.
   const board=mesh("wood plank "+(i+1),b.openingWidth,b.boardHeight,b.depth,
-    b.x,center,b.z,plankMat,b.id+"-board-"+i);
+    b.x,center,b.z+(i%2===0?.006:-.006),plankMat,b.id+"-board-"+i);
   board.userData.barricadeIndex=i;
   const boltGeometry=new THREE.CylinderGeometry(.023,.023,.009,8);
   const boltMat=metal;
