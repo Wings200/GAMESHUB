@@ -23,8 +23,10 @@ import {REINFORCEMENT,hardBreachWindow,reinforcementBreaches} from "./reinforcem
 import {createReinforcementStation} from "./reinforcement-view.js?v=reboot-047";
 import {DRONE,newDrone,throwDrone,tickDrone,canDroneOccupy,droneBoostLabel,droneJumpLabel} from "./drone-physics.js?v=reboot-071";
 import {createBlackoutNetwork} from "./network-lobby.js?v=reboot-072";
-import {createRemoteOperators} from "./remote-operators.js?v=reboot-072";
-import {onlineBombView,onlineInteractPrompt,onlineObjectiveInteraction} from "./network-objectives.js?v=reboot-073";
+import {createRemoteOperators} from "./remote-operators.js?v=reboot-074";
+import {createRemoteDrones} from "./remote-drones.js?v=reboot-074";
+import {createRemoteObjectiveAudio} from "./remote-objective-audio.js?v=reboot-074";
+import {onlineBombView,onlineInteractPrompt,onlineObjectiveInteraction} from "./network-objectives.js?v=reboot-074";
 import {createDroneView,setDroneCameraVisibility} from "./drone-view.js?v=reboot-066";
 import {newDroneRoster,cameraRequest,throwRequest,registerDrone,
  updateDrone,removeDrone,selectDrone,selectedDrone,droneEquipmentStatus} from "./drone-roster.js?v=reboot-067";
@@ -251,6 +253,11 @@ const bombInteractionView=createBombInteractionView(THREE,scene,camera);
 const targets=createTargetRange(THREE,scene);
 const houseView=createHouseView(THREE,scene);
 const remoteOperators=createRemoteOperators(THREE,scene);
+const remoteDrones=createRemoteDrones(THREE,scene);
+const remoteObjectiveAudio=createRemoteObjectiveAudio({
+ plant:new URL("./audio/DefuserPlantV2.ogg",import.meta.url).href,
+ disable:new URL("./audio/DefuserDisableV2.ogg",import.meta.url).href
+});
 const trainingShootables=shootableSolids.slice();
 const shotEffects=createShotEffects(THREE,scene);
 const shotAudio=new GameAudio();
@@ -395,6 +402,7 @@ function advanceBombMode(dt){
    if(!onlineBombState)return;
    bombView.update(onlineBombState,dt);
    const interaction=currentBombInteraction();
+   remoteObjectiveAudio.sync(snapshot,player);
    plantAudio.sync(plantRecordingStage(onlineBombState,interaction));
    defuseAudio.sync(interaction==="disable");
    const result=tickBombSoundClock(bombSoundClock,onlineBombState,dt,interaction);
@@ -1352,6 +1360,7 @@ function throwPhysicalDrone(kind){
  }
  const fresh=throwDrone(clear.x,clear.z,player.yaw);
  if(!registerPhysicalDrone(fresh,kind))return false;
+ if(onlineSession?.active)onlineSession.send({type:"drone-throw"});
  shotNotice.textContent="DRONE THROWN · "+droneRoster.drones.length+
    " DEPLOYED · PRESS 5 FOR CAMERAS";
  shotNoticeLeft=1.4;
@@ -1405,13 +1414,17 @@ function destroyPhysicalDrone(index){
 function openDroneCameras(){
  if(!canUseReconDrones(activeOperator))return;
  if(controlMode==="drone"){
-  if(!isAttackerPreparation())setControlMode("player");
+  if(!(isAttackerPreparation()||(onlineSession?.active&&onlineSession.phase==="prep"&&activeOperator.side==="attack"))){
+   setControlMode("player");
+   if(onlineSession?.active)onlineSession.send({type:"drone-control",mode:"exit"});
+  }
   return;
  }
  const request=cameraRequest(droneRoster);
  if(request.action==="open"){
   drone=selectedDrone(droneRoster);
   setControlMode("drone");
+  if(onlineSession?.active)onlineSession.send({type:"drone-control",mode:"enter",index:droneRoster.selected});
  }else{
   shotNotice.textContent=request.reason||"NO CAMERAS AVAILABLE";
   shotNoticeLeft=1.2;
@@ -1420,7 +1433,7 @@ function openDroneCameras(){
 function throwCarriedDrone(){
  if(controlMode!=="player"||!canUseReconDrones(activeOperator))return;
  const request=throwRequest(droneRoster,
-  gameMode==="bomb"?bombState?.phase:"range");
+  onlineSession?.active?onlineSession.phase:gameMode==="bomb"?bombState?.phase:"range");
  if(request.action==="throw-only")throwPhysicalDrone(request.kind);
  else{
   shotNotice.textContent=request.reason||"NO DRONES REMAINING";
@@ -1431,6 +1444,8 @@ function switchDroneCamera(direction){
  if(!canUseReconDrones(activeOperator)||droneRoster.drones.length<2)return false;
  droneRoster=selectDrone(droneRoster,direction);
  drone=selectedDrone(droneRoster);
+ if(onlineSession?.active&&controlMode==="drone")
+  onlineSession.send({type:"drone-control",mode:"enter",index:droneRoster.selected});
  droneBoostPressed=false;droneJumpPressed=false;
  return true;
 }
@@ -1540,13 +1555,15 @@ onlineSession=createBlackoutNetwork({
    operatorHudName.textContent=activeOperator.name;
    operatorHudSide.textContent=self.side==="defender"?"DEFENDER":"ATTACKER";
    refreshUtilityHud();refreshDroneEquipment();syncRoundUI();
-   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase);
+   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase,snapshot.world);
+   remoteDrones.sync(snapshot.players,snapshot.id);
    shotNotice.textContent="CONNECTED · ORIGINAL BLACKOUT HOUSE";shotNoticeLeft=3;
  },
  onEnter(){enterRange()},
  onState(snapshot){
    if(!snapshot.self)return;
-   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase);
+   remoteOperators.sync(snapshot.players,snapshot.id,snapshot.phase,snapshot.world);
+   remoteDrones.sync(snapshot.players,snapshot.id);
    onlineBombState=onlineBombView(snapshot);
    bombView.update(onlineBombState);
    // The server owns the phase clock; the player body spawns only after prep.
@@ -1565,14 +1582,14 @@ onlineSession=createBlackoutNetwork({
  },
  onEnd(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
-   remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
+   remoteOperators.clear();remoteDrones.clear();remoteObjectiveAudio.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
    onlineBombState=null;bombView.update(null);
    plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();
    message.textContent="CONNECTED ROUND COMPLETE · HOST CAN START NEXT ROUND";
  },
  onLeave(){
    if(document.pointerLockElement===canvas)document.exitPointerLock();
-   remoteOperators.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
+   remoteOperators.clear();remoteDrones.clear();remoteObjectiveAudio.clear();resetRoundDrones();onlinePhase="lobby";gameMode="sandbox";bombState=null;
    onlineBombState=null;bombView.update(null);
    plantAudio.sync("off");defuseAudio.sync(false);defuserCues.stopBeep();
    setMapMode("sandbox");syncRoundUI();
@@ -1995,11 +2012,12 @@ function fireShot(shot,sightAligned,now){
  raycaster.far=shot.range;
  const activeTargets=visibleRangeTargets();
  const intersections=combatIntersections(raycaster,
-  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones(),...remoteOperators.shootables(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
+  [...shootableSolids,...barricade.shootables(),...softWall.shootables(),...reinforcement.shootables(),...shootableObservationBlockers(),...shootableProximityAlarms(),...shootableShields(),...shootableDrones(),...remoteDrones.shootables(),...remoteOperators.shootables(),...bombRaycastColliders()],activeTargets.map(t=>t.group));
  const outcome=firstHitType(intersections,activeTargets);
  if(onlineSession?.active){
    const targetId=outcome.hit?.object?.userData?.onlinePlayerId||null;
-   onlineSession.send({type:"shot",targetId});
+   const targetDrone=outcome.hit?.object?.userData?.onlineDroneOwnerId||null;
+   onlineSession.send({type:"shot",targetId,targetDrone});
  }
  // Plank marks are child meshes; global wall decals would float after breakage.
  // Firearms never invoke wire damage; the wire is a melee-only device.
@@ -2452,6 +2470,7 @@ function animate(now){
  for(let i=0;i<droneViews.length;i++)
   droneViews[i].update(droneRoster.drones[i],dt);
  remoteOperators.tick(dt);
+ remoteDrones.tick(dt);
  // Camera sees the world, never its own housing or wheels. The other
  // drone remains visible; operator view restores both physical models.
  setDroneCameraVisibility(droneViews,droneRoster.selected,

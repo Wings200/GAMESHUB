@@ -10,7 +10,7 @@ const server=source("../multiplayer-room.js");
 const protocol=source("../src/multiplayer-protocol.js");
 
 test("one BLACKOUT renderer owns both original solo testing and connected multiplayer",()=>{
- assert.match(entry,/reboot\/main\.js\?v=reboot-072/);
+ assert.match(entry,/reboot\/main\.js\?v=reboot-074/);
  assert.doesNotMatch(entry,/<script[^>]*online-multiplayer\.js/);
  assert.match(runtime,/createHouseView\(THREE,scene\)/);
  assert.match(runtime,/createBlackoutNetwork\(/);
@@ -45,4 +45,14 @@ test("network room creator checks existing developer access before connecting",(
  assert.match(lobby,/fetch\("\/api\/blackout-access"/);
  assert.match(lobby,/BLACKOUT developer access required/);
  assert.match(lobby,/BLACKOUT_WORKER/);
+});
+
+test("remote attacker drones and objective interactions render in the original scene",()=>{
+ assert.match(runtime,/remoteDrones\.sync\(snapshot\.players,snapshot\.id\)/);
+ assert.match(runtime,/onlineSession\.send\(\{type:"drone-throw"\}\)/);
+ assert.match(server,/if\(m\.type==="drone-throw"\)/);
+ assert.match(runtime,/remoteDrones\.shootables\(\)/);
+ assert.match(runtime,/onlineDroneOwnerId/);
+ assert.match(runtime,/remoteObjectiveAudio\.sync\(snapshot,player\)/);
+ assert.match(runtime,/remoteOperators\.sync\(snapshot\.players,snapshot\.id,snapshot\.phase,snapshot\.world\)/);
 });

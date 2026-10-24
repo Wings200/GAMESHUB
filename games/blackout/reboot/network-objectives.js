@@ -4,6 +4,15 @@
 import {BOMB_RULES} from "./bomb-round.js";
 const clamp=(n,low,high)=>Math.min(high,Math.max(low,Number(n)||0));
 const secondsUntil=(when,now)=>Math.max(0,(Number(when||0)-now)/1000);
+// Job start and end stamps are the shared timeline for HUD and 3D motion.
+export function authoritativeProgress(job,now,totalSeconds){
+ const end=Number(job?.endsAt),start=Number(job?.startedAt);
+ if(!Number.isFinite(end)||end<=0)return 0;
+ const duration=Number.isFinite(start)&&start>0&&end>start?(end-start)/1000:totalSeconds;
+ if(duration<=0)return 0;
+ return clamp((duration-secondsUntil(end,now))*totalSeconds/duration,0,totalSeconds);
+}
+
 export function onlineBombView(snapshot,now=Date.now()){
  if(!snapshot||snapshot.mode!=="active"||!snapshot.world?.bomb)return null;
  const b=snapshot.world.bomb;
@@ -17,9 +26,9 @@ export function onlineBombView(snapshot,now=Date.now()){
  const status=planted?"planted":b.phase==="dropped"?"ground":"carried";
  const job=snapshot.world.interactions?.[snapshot.id]||null;
  const plantProgress=job?.kind==="plant"?
-   clamp(BOMB_RULES.plantSeconds-secondsUntil(job.endsAt,now),0,BOMB_RULES.plantSeconds):0;
+   authoritativeProgress(job,now,BOMB_RULES.plantSeconds):0;
  const disableProgress=job?.kind==="disable"?
-   clamp(BOMB_RULES.disableSeconds-secondsUntil(job.endsAt,now),0,BOMB_RULES.disableSeconds):0;
+   authoritativeProgress(job,now,BOMB_RULES.disableSeconds):0;
  const self=snapshot.self;
  return {
    mode:"bomb",map:"house",round:snapshot.round||1,

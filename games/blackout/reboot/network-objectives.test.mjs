@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {onlineBombView,onlineInteractPrompt,onlineObjectiveInteraction} from "./network-objectives.js";
+import {onlineBombView,onlineInteractPrompt,onlineObjectiveInteraction,authoritativeProgress} from "./network-objectives.js";
 import {defuserVisible} from "./bomb-round-view.js";
 import {BOMB_RULES} from "./bomb-round.js";
 import {HOUSE_ONLINE_MAP} from "../src/house-online-map.js";
@@ -65,4 +65,13 @@ test("original house rejects plant positions outside the real room/floor",()=>{
   assert.equal(nearBombSite(HOUSE_ONLINE_MAP,world,{x:site.x,y:1.35,z:site.z}),null);
   assert.equal(nearBombSite(HOUSE_ONLINE_MAP,world,{x:site.x,y:3.2,z:site.z}),null);
  }
+});
+
+test("server interaction timestamps govern exact 7.35s plant and 7s disable motion",()=>{
+ const plant={kind:"plant",startedAt:now,endsAt:now+7350};
+ assert.equal(authoritativeProgress(plant,now,BOMB_RULES.plantSeconds),0);
+ assert.equal(authoritativeProgress(plant,now+3675,BOMB_RULES.plantSeconds),BOMB_RULES.plantSeconds/2);
+ assert.equal(authoritativeProgress(plant,now+7350,BOMB_RULES.plantSeconds),BOMB_RULES.plantSeconds);
+ const disable={kind:"disable",startedAt:now,endsAt:now+7000};
+ assert.equal(authoritativeProgress(disable,now+3500,BOMB_RULES.disableSeconds),3.5);
 });

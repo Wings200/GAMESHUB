@@ -303,7 +303,15 @@ export class BlackoutRoom extends DurableObject {
    return;
   }
   if(this.status!=="active"||!p.alive)return;
-  if(m.type==="drone-control"){
+  if(m.type==="drone-throw"){
+    if(this.phase!=="action"||p.side!=="attacker"||!p.drones[1]||p.drones[1].deployed)return;
+    // The server creates the real spare; a client-only prop is never authoritative.
+    const fresh=newDrone(p.x-Math.sin(p.yaw)*.65,p.z-Math.cos(p.yaw)*.65,p.yaw);
+    fresh.y=p.y;fresh.deployed=true;
+    p.drones[1]=fresh;this.saveAttachment(p);
+    this.broadcast({event:"drone-thrown",from:p.id});return;
+   }
+   if(m.type==="drone-control"){
    if(p.side!=="attacker")return;
    if(m.mode==="enter"){
     const index=Math.min(1,Math.max(0,m.index|0));

@@ -81,12 +81,15 @@ export function interactStart(map,world,p,players,now=Date.now()){
    b.phase="carried";b.carrierId=p.id;b.position=null;return "DEFUSER PICKED UP";
   }
   const site=b.carrierId===p.id&&b.phase==="carried"?nearBombSite(map,world,p):null;
-  if(site){world.interactions[p.id]={kind:"plant",site,endsAt:now+PLANT_SECONDS*1000,
+  if(site){
+    if(world.interactions[p.id]?.kind==="plant"&&world.interactions[p.id].endsAt>now)return "PLANTING · HOLD F";
+    world.interactions[p.id]={kind:"plant",site,startedAt:now,endsAt:now+PLANT_SECONDS*1000,
     x:p.x,y:p.y,z:p.z};return "PLANTING · HOLD F";}
  }else{
   if(b.phase==="planted"&&b.position&&dist(p,b.position)<2.25&&
     Math.abs(p.y-b.position.y)<1.4){
-   world.interactions[p.id]={kind:"disable",endsAt:now+DISABLE_SECONDS*1000,
+   if(world.interactions[p.id]?.kind==="disable"&&world.interactions[p.id].endsAt>now)return "DISABLING · HOLD F";
+    world.interactions[p.id]={kind:"disable",startedAt:now,endsAt:now+DISABLE_SECONDS*1000,
     x:p.x,y:p.y,z:p.z};return "DISABLING · HOLD F";
   }
   const door=nearestPart(map,world,p,["door","window"],2.0);
