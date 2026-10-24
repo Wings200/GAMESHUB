@@ -29,7 +29,7 @@ test("custom lobby, online lobby, and solo test remain separate controls",()=>{
 test("connected physics and shooting originate from original game runtime",()=>{
  assert.match(runtime,/player=stepPlayer\(player,input,dt,obstacles/);
  assert.match(runtime,/onlineSession\.sendMovement\(player,now/);
- assert.match(runtime,/onlineSession\.send\(\{type:"shot",targetId\}\)/);
+ assert.match(runtime,/onlineSession\.send\(\{type:"shot",targetId,targetDrone\}\)/);
  assert.match(runtime,/remoteOperators\.shootables\(\)/);
  assert.match(runtime,/onlineSession\.sendDrone\(drone,input,now\)/);
  assert.match(runtime,/registerPhysicalDrone\(\{\.\.\.newDrone\(prepDrone\.x/);

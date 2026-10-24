@@ -123,7 +123,7 @@ test("range boundary constrains player coordinates and invalid state is rejected
 test("reboot entry point preserves original renderer and gameplay when networking is enabled",()=>{
  const html=read("index.html"),main=read("reboot/main.js"),
    css=read("reboot/style.css"),physics=read("reboot/physics.js");
-  for(const src of ["./reboot/main.js?v=reboot-072",
+  for(const src of ["./reboot/main.js?v=reboot-074",
    "./reboot/style.css?v=reboot-070"])assert.ok(html.includes(src));
  // Drone UI is now live; spectator camera remains intentionally hidden.
  assert.ok(html.includes('data-hud-mode="player"'));
