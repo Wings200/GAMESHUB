@@ -1,4 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import { createWeaponView } from '../reboot/weapon-view.js?v=reboot-012';
+import { createBombInteractionView } from '../reboot/bomb-interaction-view.js?v=reboot-060';
+import { spendRound } from './combat-rules.mjs';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const mat = (hex, metalness = 0, roughness = 0.76) => new THREE.MeshStandardMaterial({ color: hex, metalness, roughness });
@@ -21,6 +24,7 @@ function cylinder(group, rt, rb, h, material, x, y, z, sides = 12) {
 // are constructed by this exact function, never separate unrelated artwork.
 export function createOperator(id = 'specter') {
   const group = new THREE.Group();
+  const arms=[];const legs=[];
   const isWarden = id === 'warden';
   const armor = isWarden ? mat(0x333d48,.23,.78) : mat(0x4d5b63,.21,.8);
   box(group, .79, .91, .43, fabric, 0, 1.28, 0);
@@ -28,11 +32,15 @@ export function createOperator(id = 'specter') {
   box(group, .7, .29, .53, black, 0, 1.05, -.01);
   box(group, .57, .26, .45, fabric, 0, .91, 0);
   for (const side of [-1, 1]) {
-    box(group, .27, .8, .28, armor, side*.58, 1.23, -.01);
-    box(group, .31, .27, .35, black, side*.58, .85, -.01);
-    box(group, .3, .88, .32, fabric, side*.21, .43, 0);
-    box(group, .35, .17, .49, black, side*.21, .13, -.09);
-    box(group, .14, .31, .46, black, side*.38, 1.48, -.24);
+    const arm=new THREE.Group();arm.position.set(side*.58,1.57,0);group.add(arm);
+    box(arm,.27,.8,.28,armor,0,-.34,-.01);
+    box(arm,.31,.27,.35,black,0,-.72,-.01);
+    box(arm,.14,.31,.46,black,side*-.20,-.09,-.24);
+    arms.push(arm);
+    const leg=new THREE.Group();leg.position.set(side*.21,.85,0);group.add(leg);
+    box(leg,.3,.88,.32,fabric,0,-.42,0);
+    box(leg,.35,.17,.49,black,0,-.72,-.09);
+    legs.push(leg);
   }
   const head = new THREE.Mesh(new THREE.SphereGeometry(.32, 12, 10), black);
   head.position.set(0, 1.96, 0); group.add(head);
@@ -52,6 +60,7 @@ export function createOperator(id = 'specter') {
   box(group, .15, .27, .24, isWarden?steel:accent, .46, 1.44, .25);
   box(group, .21, .32, .22, black, -.46, 1.46, .25);
   group.userData.role = id;
+  group.userData.limbs = {arms,legs};
   return group;
 }
 
@@ -75,10 +84,12 @@ export class TacticalWorld {
     this.gameScene.add(this.camera);
     this.player={x:-12,z:11,yaw:0,pitch:0,health:100,ammo:30,reserve:120,crouch:false};
     this.drone={x:-12,z:11,yaw:0,pitch:0,jump:0,alive:true};
-    this.side='attack';this.botHealth=100;this.botAlive=true;this.botPlantProgress=0;this.botDefuseProgress=0;
+    this.side='attack';this.botHealth=100;this.botAlive=true;this.training=false;this.trainingRespawn=0;this.botPlantProgress=0;this.botDefuseProgress=0;
     this.walls=[];this.wallMeshes=[];this.siteMarkers=[];this.reinforced=0;
     this.botShootDelay=1.8;this.shotDelay=0;this.reloadDelay=0;this.flash=0;
     this.sight='holo';this.barrel='standard';this.ads=false;
+    this.aimMix=0;this.recoil=0;this.interactionKind=null;this.interactionProgress=0;
+    this.impacts=[];this.lastBotX=0;this.lastBotZ=0;
     this._buildMenu();this._buildLevel();this._buildWeapon();this.resize();
     window.addEventListener('resize',()=>this.resize());
   }
@@ -182,19 +193,18 @@ export class TacticalWorld {
     this.gameScene.add(this.droneModel);
   }
   _buildWeapon() {
-    this.weapon=new THREE.Group();this.camera.add(this.weapon);
-    box(this.weapon,.17,.2,.78,black,0,-.02,-.4);
-    box(this.weapon,.19,.15,.32,steel,0,.05,-.08);
-    box(this.weapon,.12,.12,.47,mat(0x222e36,.58,.44),0,.015,-.94);
-    box(this.weapon,.14,.18,.23,steel,0,-.2,-.18);
-    this.optic=box(this.weapon,.13,.14,.23,black,0,.19,-.42);
-    box(this.weapon,.12,.03,.03,accent,0,.27,-.42);
-    this.suppressor=box(this.weapon,.17,.17,.33,black,0,.015,-1.22);
-    this.weapon.position.set(.35,-.3,-.6);
+    // Use BLACKOUT V1's actual first-person BX-7, including its moving magazine,
+    // muzzle flash, spent brass and calibrated sight. V1 itself is untouched.
+    this.weaponView=createWeaponView(THREE,this.camera,this.gameScene);
+    this.weapon=this.weaponView.root;
+    this.suppressor=cylinder(this.weapon,.042,.042,.27,black,0,-.015,-1.39,16);
+    this.suppressor.rotation.x=Math.PI/2;
+    this.suppressor.visible=false;
+    this.bombInteraction=createBombInteractionView(THREE,this.gameScene,this.camera);
   }
   setLoadout(sight,barrel) {
     this.sight=sight;this.barrel=barrel;
-    this.optic.visible=sight!=='iron';this.suppressor.visible=barrel==='suppressor';
+    this.suppressor.visible=barrel==='suppressor';
   }
   _blocked(x,z,r=.31) {
     if(x<-16.45+r||x>16.45-r||z<-13.45+r||z>13.45-r)return true;
@@ -215,13 +225,17 @@ export class TacticalWorld {
       this.enemyHitbox=box(this.enemy,1.1,2.25,.9,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}),0,1.12,0);
     }
     this.drone={x:side==='attack'?(spawn==='west'?-12:12):-9,z:side==='attack'?10:-9,yaw:0,pitch:0,jump:0,alive:true};
-    this.botAlive=true;this.botHealth=100;this.botPlantProgress=0;this.botDefuseProgress=0;this.botShootDelay=2;
+    this.botAlive=true;this.botHealth=100;this.trainingRespawn=0;this.botPlantProgress=0;this.botDefuseProgress=0;this.botShootDelay=2;
     this.enemy.visible=true;this.enemy.position.set(side==='attack'?-8:-8,0,side==='attack'?-7:10);
     this.enemy.rotation.y=side==='attack'?0:Math.PI;
     this.defuser.visible=false;this.reinforced=0;
     this.wallMeshes.forEach(w=>{if(w.userData.reinforced){w.material=mat(0x394d5a,.16,.86);w.userData.reinforced=false}});
     this.droneModel.position.set(this.drone.x,0,this.drone.z);
     this.camera.fov=75;this.camera.updateProjectionMatrix();
+    this.ads=false;this.aimMix=0;this.recoil=0;this.shotDelay=0;this.reloadDelay=0;
+    this.interactionKind=null;this.interactionProgress=0;
+    this.bombInteraction.update(null,0);
+    this.impacts.forEach(hit=>{this.gameScene.remove(hit);hit.geometry.dispose();hit.material.dispose()});this.impacts.length=0;
     this.setView('player');
   }
   setView(view) {this.view=view;this.weapon.visible=view==='player';this.droneModel.visible=view==='player'&&this.side==='attack'&&this.drone.alive}
@@ -230,11 +244,20 @@ export class TacticalWorld {
     target.yaw-=dx*.0021;target.pitch=clamp(target.pitch-dy*.002,-1.3,1.3);
   }
   _cameraUpdate(input) {
+    if(this.view==='spectator'){
+      const target=this.botAlive?this.enemy.position:this.defuser.position;
+      this.camera.position.set(target.x+3.6,2.75,target.z+4.4);
+      this.camera.lookAt(target.x,1.1,target.z);
+      this.camera.fov=75;this.camera.updateProjectionMatrix();
+      return;
+    }
     const p=this.view==='drone'?this.drone:this.player;
-    this.camera.position.set(p.x,this.view==='drone'?.4+Math.max(0,p.jump):p.crouch?1.17:1.65,p.z);
-    this.camera.rotation.order='YXZ';this.camera.rotation.set(p.pitch,p.yaw,this.view==='drone'?0:(input.leanRight?-.075:input.leanLeft?.075:0));
-    this.camera.fov=this.ads&&this.view==='player'?53:75;this.camera.updateProjectionMatrix();
-    this.weapon.position.lerp(new THREE.Vector3(this.ads?0:.35,this.ads?-.21:-.3,this.ads?-.45:-.6),.18);
+    const planting=this.interactionKind==='plant';
+    const interacting=Boolean(this.interactionKind);
+    this.camera.position.set(p.x,this.view==='drone'?.4+Math.max(0,p.jump):interacting?1.06:p.crouch?1.17:1.65,p.z);
+    this.camera.rotation.order='YXZ';
+    this.camera.rotation.set(planting?Math.min(-.56,p.pitch):p.pitch,p.yaw,this.view==='drone'?0:(input.leanRight?-.075:input.leanLeft?.075:0));
+    this.camera.fov=75-22*this.aimMix;this.camera.updateProjectionMatrix();
   }
   _seeBot() {
     if(!this.botAlive)return false;
@@ -259,21 +282,48 @@ export class TacticalWorld {
     return !ray.intersectObjects(this.wallMeshes,false)[0];
   }
   shoot() {
-    if(this.view!=='player'||this.shotDelay>0||this.reloadDelay>0||this.player.ammo<=0)return {fired:false};
-    this.shotDelay=.105;this.player.ammo--;
-    const offset=this.ads?.013:.055;
+    const round=spendRound({view:this.view,shotDelay:this.shotDelay,reloadDelay:this.reloadDelay,ammo:this.player.ammo});
+    if(!round.fired)return round;
+    this.shotDelay=.105;this.player.ammo=round.ammo;
+    const offset=this.ads?.002:.055;
     const direction=new THREE.Vector3((Math.random()-.5)*offset,(Math.random()-.5)*offset,-1).normalize().applyEuler(this.camera.rotation);
     const ray=new THREE.Raycaster(this.camera.position,direction,.1,65);
     const blockers=ray.intersectObjects(this.wallMeshes,false);
     const enemyHit=ray.intersectObject(this.enemyHitbox,false)[0];
     const hitBot=this.botAlive&&enemyHit&&(!blockers.length||enemyHit.distance<blockers[0].distance);
-    if(hitBot){this.botHealth-=this.ads?49:35;if(this.botHealth<=0){this.botHealth=0;this.botAlive=false;this.enemy.visible=false;}}
-    this.flash=.13;
+    if(hitBot){this.botHealth-=this.ads?49:35;if(this.botHealth<=0){this.botHealth=0;this.botAlive=false;this.enemy.visible=false;if(this.training)this.trainingRespawn=2.5;}}
+    if(blockers.length&&!hitBot)this._bulletImpact(blockers[0]);
+    this.flash=.13;this.recoil=Math.min(1.7,this.recoil+.75);
+    this.weaponView.flash();this.weaponView.eject();
     return {fired:true,hitBot:!!hitBot,enemyDead:!this.botAlive,ammo:this.player.ammo};
+  }
+  _bulletImpact(hit) {
+    if(!hit.face)return;
+    const normal=hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+    const mark=new THREE.Mesh(new THREE.CircleGeometry(.023,12),new THREE.MeshBasicMaterial({color:0x0a1721,side:THREE.DoubleSide,depthWrite:false}));
+    mark.position.copy(hit.point).addScaledVector(normal,.008);
+    mark.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+    this.gameScene.add(mark);this.impacts.push(mark);
+    if(this.impacts.length>90){const first=this.impacts.shift();this.gameScene.remove(first);first.geometry.dispose();first.material.dispose()}
   }
   reload() {
     if(this.reloadDelay>0||this.player.ammo>=30||this.player.reserve<=0)return false;
-    this.reloadDelay=1.6;return true;
+    this.reloadDelay=1.6;this.weaponView.beginReload(performance.now(),1600);return true;
+  }
+  animateInteraction(kind,progress=0,dt=0) {
+    this.interactionKind=kind==='plant'||kind==='defuse'?kind:null;
+    this.interactionProgress=progress;
+    const type=kind==='plant'?'plant':kind==='defuse'?'disable':null;
+    this.bombInteraction.update(type,progress,dt,{...this.player,y:0});
+    this.weapon.visible=this.view==='player'&&!type;
+  }
+  _animateOperator(actor,seconds,moving=false) {
+    const limbs=actor.userData.limbs;if(!limbs)return;
+    const stride=moving?Math.sin(seconds*11)*.42:0;
+    limbs.legs[0].rotation.x=stride;limbs.legs[1].rotation.x=-stride;
+    limbs.arms[0].rotation.x=-stride*.65-.08;
+    limbs.arms[1].rotation.x=stride*.65-.08;
+    actor.userData.breath=Math.sin(seconds*1.8)*.004;
   }
   placeDefuser(site) {
     const spot={A:{x:-8,z:-6},B:{x:8,z:-6}}[site];if(!spot)return;
@@ -281,16 +331,22 @@ export class TacticalWorld {
   }
   reinforceClosest() {
     const p=this.player;
-    const candidate=this.walls.filter(w=>w.kind==='wall'&&w.mesh.position.y<2&&Math.hypot(p.x-w.x,p.z-w.z)<4).sort((a,b)=>Math.hypot(p.x-a.x,p.z-a.z)-Math.hypot(p.x-b.x,p.z-b.z))[0];
-    if(!candidate||candidate.mesh.userData.reinforced)return false;
+    const candidate=this.walls.filter(w=>w.kind==='wall'&&!w.mesh.userData.reinforced&&w.mesh.position.y<2&&Math.hypot(p.x-w.x,p.z-w.z)<4).sort((a,b)=>Math.hypot(p.x-a.x,p.z-a.z)-Math.hypot(p.x-b.x,p.z-b.z))[0];
+    if(!candidate)return false;
     candidate.mesh.material=mat(0x6d8293,.85,.3);candidate.mesh.userData.reinforced=true;this.reinforced++;
     return true;
   }
-  nearWall() {return this.walls.some(w=>w.kind==='wall'&&!w.mesh.userData.reinforced&&Math.hypot(this.player.x-w.x,this.player.z-w.z)<3.8)}
+  nearWall() {return this.walls.some(w=>w.kind==='wall'&&w.mesh.position.y<2&&!w.mesh.userData.reinforced&&Math.hypot(this.player.x-w.x,this.player.z-w.z)<3.8)}
   update(dt,input,phase,difficulty='recruit') {
     dt=Math.min(dt,.06);this.shotDelay=Math.max(0,this.shotDelay-dt);
     if(this.reloadDelay>0){this.reloadDelay-=dt;if(this.reloadDelay<=0){const n=Math.min(30-this.player.ammo,this.player.reserve);this.player.ammo+=n;this.player.reserve-=n;}}
     this.flash=Math.max(0,this.flash-dt);
+    const targetAim=this.ads&&this.view==='player'&&!this.interactionKind?1:0;
+    this.aimMix+=(targetAim-this.aimMix)*Math.min(1,dt*13);
+    this.recoil=Math.max(0,this.recoil-dt*4.3);
+    this.weaponView.update(dt,this.aimMix,this.recoil,this.view==='player'&&(input.w||input.s||input.a||input.d),performance.now(),this.ads);
+    if(this.sight==='iron')this.weaponView.reticle.visible=false;
+    const oldBotX=this.enemy.position.x,oldBotZ=this.enemy.position.z;
     if(phase==='preparation'&&this.view==='drone'&&this.drone.alive) {
       const d=this.drone;const speed=input.shift?7:4.8;
       const f=(input.w?1:0)-(input.s?1:0),s=(input.d?1:0)-(input.a?1:0);
@@ -309,7 +365,11 @@ export class TacticalWorld {
     }
     this._cameraUpdate(input);
     const events={};
-    if(phase==='action'||phase==='postplant') {
+    if(this.training&&!this.botAlive){
+      this.trainingRespawn-=dt;
+      if(this.trainingRespawn<=0){this.botHealth=100;this.botAlive=true;this.enemy.visible=true;}
+    }
+    if(!this.training&&(phase==='action'||phase==='postplant')) {
       if(this.side==='attack'&&phase==='postplant'&&this.botAlive&&this.defuser.visible){
         const target=this.defuser.position;
         const vector=new THREE.Vector2(target.x-this.enemy.position.x,target.z-this.enemy.position.z);
@@ -327,7 +387,7 @@ export class TacticalWorld {
         if(this.side==='defense'&&phase==='action'&&distance>2.1) {
           const dir=new THREE.Vector2(-8-this.enemy.position.x,-6-this.enemy.position.z);
           const length=Math.max(.001,dir.length());
-          if(length>1.6){this.enemy.position.x+=dir.x/length*dt*1.9;this.enemy.position.z+=dir.y/length*dt*1.9;}
+          if(length>1.6){const next=this._move(this.enemy.position.x,this.enemy.position.z,dir.x/length*dt*1.9,dir.y/length*dt*1.9,.37);this.enemy.position.x=next.x;this.enemy.position.z=next.z;}
         }
         this.botShootDelay-=dt;
         if(this.botShootDelay<=0&&this._botCanSeePlayer()&&distance<17) {
@@ -343,6 +403,7 @@ export class TacticalWorld {
         }
       }
     }
+    this._animateOperator(this.enemy,performance.now()*.001,Math.hypot(this.enemy.position.x-oldBotX,this.enemy.position.z-oldBotZ)>.0001);
     return events;
   }
   render(isGame,timestamp=0) {
@@ -350,6 +411,7 @@ export class TacticalWorld {
     const time=timestamp*.001;
     this.hero.rotation.y=-.28+Math.sin(time*.3)*.12;
     this.hero.position.y=Math.sin(time*.95)*.018;
+    this._animateOperator(this.hero,time,false);
     this.renderer.render(this.menuScene,this.menuCamera);
   }
   captureModeArtwork() {
