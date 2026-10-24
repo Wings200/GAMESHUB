@@ -286,7 +286,11 @@ function fireWeapon() {
   const shot=world.shoot();
   if(!shot.fired){if(world.player.ammo===0&&!state.ammoWarning){toast('MAGAZINE EMPTY · PRESS R',.8);state.ammoWarning=true;}return;}
   state.ammoWarning=false;
-  const context=ensureAudio();if(context){weaponAudio.connect(context);weaponAudio.fire();}
+  const context=ensureAudio();if(context){
+    weaponAudio.connect(context);
+    if(context.state==='running')weaponAudio.fire();
+    else context.resume().then(()=>weaponAudio.fire()).catch(()=>{});
+  }
   if(shot.hitBot)toast('TARGET HIT',.5);
   if(shot.enemyDead){
     if(state.mode==='testing')toast('TARGET ELIMINATED · RESPAWNING',1.4);
