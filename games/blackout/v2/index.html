@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09111a">
+  <meta name="description" content="BLACKOUT 2.0 — first playable tactical FPS prototype">
+  <title>BLACKOUT 2.0 · FIRST PLAYABLE | GAMESHUB</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="world" aria-label="3D tactical training environment"></canvas>
+  <div class="cinematic-grade" aria-hidden="true"></div>
+  <div class="topbar" id="topbar"><b class="brand-mini">B<span>.</span></b><span>BLACKOUT 2.0 <i>/</i> FIELD PROTOTYPE P0</span><small><i class="live-dot"></i> SINGLE-PLAYER TEST SYSTEM</small></div>
+
+  <main class="screen active home" id="home">
+    <div class="home-copy">
+      <p class="eyebrow">TACTICAL OPERATIONS / PROTOTYPE 01</p>
+      <h1 class="logo">BLACK<span>OUT</span><b>.</b></h1>
+      <p class="tagline">INFORMATION IS YOUR GREATEST WEAPON.</p>
+      <nav class="main-menu" aria-label="Main menu">
+        <button class="primary" data-open="play"><small>01</small>PLAY<span>↗</span></button>
+        <button data-info="settings"><small>02</small>SETTINGS<span>↗</span></button>
+        <button data-info="faq"><small>03</small>FAQ<span>↗</span></button>
+        <button data-info="credits"><small>04</small>CREDITS<span>↗</span></button>
+        <button data-info="fixes"><small>05</small>BUG FIXES<span>↗</span></button>
+      </nav>
+      <p class="home-foot">ONE WORLD. ONE ROUND SYSTEM. <b>2026 / P0</b></p>
+    </div>
+    <div class="character-credit"><span>FEATURED OPERATOR <b id="heroName">SPECTER</b></span><small>SAME CHARACTER MODEL USED IN GAME</small></div>
+  </main>
+
+  <section class="screen panel-screen" id="play">
+    <header class="panel-head"><div><p class="eyebrow">01 / OPERATIONS</p><h2>SELECT <em>MODE</em></h2><p class="subheading">CHOOSE YOUR NEXT DEPLOYMENT.</p></div><button class="close" data-close aria-label="Return to main menu">×</button></header>
+    <div class="mode-list">
+      <button class="mode-card" data-mode="testing"><span class="mode-num">01</span><span class="mode-symbol">⌖</span><span class="mode-copy"><b>TESTING</b><small>Explore the training wing, weapons and movement.</small></span><span class="mode-status">PLAYABLE P0</span><span class="arrow">↗</span></button>
+      <button class="mode-card" data-mode="ai"><span class="mode-num">02</span><span class="mode-symbol">⬡</span><span class="mode-copy"><b>AI 5V5</b><small>Solo AI encounter for now; full teams and co-op come later.</small></span><span class="mode-status">SOLO SLICE</span><span class="arrow">↗</span></button>
+      <button class="mode-card disabled" disabled><span class="mode-num">03</span><span class="mode-symbol">⌁</span><span class="mode-copy"><b>ONLINE 5V5</b><small>10 real players. Network play is not implemented in P0.</small></span><span class="mode-status">FUTURE MILESTONE</span><span class="arrow">—</span></button>
+      <button class="mode-card disabled" disabled><span class="mode-num">04</span><span class="mode-symbol">▦</span><span class="mode-copy"><b>CUSTOM GAME</b><small>Flexible lobbies and AI backfill are planned.</small></span><span class="mode-status">FUTURE MILESTONE</span><span class="arrow">—</span></button>
+    </div>
+    <p class="fineprint">P0 intentionally shows unavailable features as unavailable. No fake multiplayer or disconnected training replacement.</p>
+  </section>
+
+  <section class="screen panel-screen" id="setup">
+    <header class="panel-head"><div><p class="eyebrow">02 / DEPLOYMENT</p><h2 id="setupTitle">AI <em>ENCOUNTER</em></h2><p class="subheading">CONFIGURE YOUR FIRST OPERATION.</p></div><button class="close" data-close aria-label="Close setup">×</button></header>
+    <div class="setup-grid"><div class="setting-tile"><span>MAP</span><b>IRONVALE / TRAINING WING</b><small>Compact two-site environment · P0 only</small></div>
+      <div class="setting-tile"><label for="difficulty">AI DIFFICULTY</label><select id="difficulty"><option value="recruit">RECRUIT — LEARNING</option><option value="veteran">VETERAN — PRESSURE</option></select><small>One opponent in this prototype</small></div>
+      <div class="setting-tile wide"><span>STARTING SIDE</span><div class="choices"><button data-side="attack" class="selected">ATTACKERS</button><button data-side="defense">DEFENDERS</button></div><small>Both bomb locations are active; site voting comes with full maps.</small></div></div>
+    <div class="panel-bottom"><button class="action" id="beginSelection">CONTINUE TO OPERATOR SELECTION <b>→</b></button><span class="fineprint">PROTOTYPE SCOPE: ONE HUMAN / ONE AI OR TRAINING</span></div>
+  </section>
+
+  <section class="screen panel-screen" id="selection">
+    <header class="panel-head"><div><p class="eyebrow" id="selectSide">ATTACK / ROUND 01</p><h2>SELECT <em>OPERATOR</em></h2><p class="subheading">CHOOSE YOUR LOADOUT AND POSITION.</p></div><div class="phase-clock"><small>SELECTION</small><b id="selectionTime">0:30</b></div></header>
+    <div class="select-layout"><div class="operator-list"><span class="small-label">OPERATORS</span><button data-operator="specter" class="op-item selected"><b>S</b><span>SPECTER<small>RECON / ASSAULT</small></span></button><button data-operator="warden" class="op-item"><b>W</b><span>WARDEN<small>DEFENSE / ANCHOR</small></span></button><p class="fineprint">Two original operator models for P0. Full roster is later.</p></div>
+    <div class="select-detail"><div class="tabs"><button data-tab="profile" class="selected">PROFILE</button><button data-tab="loadout">LOADOUT</button><button data-tab="position">POSITION</button></div>
+      <div class="tab-content active" id="profile"><span class="small-label">CURRENT SELECTION</span><h3 id="selectedName">SPECTER</h3><p id="selectedDescription">Recon specialist, mobile and lightly armored.</p><div class="op-specs"><span>ARMOR <b id="armorRating">● ● ○</b></span><span>SPEED <b id="speedRating">● ● ●</b></span></div></div>
+      <div class="tab-content" id="loadout"><span class="small-label">SAVED PER OPERATOR / THIS BROWSER</span><label for="sight">SIGHT</label><select id="sight"><option value="holo">HOLO A</option><option value="reflex">REFLEX</option><option value="iron">IRON</option></select><label for="barrel">BARREL</label><select id="barrel"><option value="standard">STANDARD</option><option value="suppressor">SUPPRESSOR</option></select><p class="fineprint">Future: weapon skins and account-synced loadouts.</p></div>
+      <div class="tab-content" id="position"><span class="small-label">ATTACKER SPAWN / DEFENDER SITE PAIR</span><div class="choices"><button data-spawn="west" class="selected">WEST</button><button data-spawn="east">EAST</button></div><p class="fineprint">P0 uses the fixed Storage A / Server B objective pair.</p></div>
+    </div></div>
+    <div class="panel-bottom"><span class="fineprint" id="selectStatus">THE ROUND AUTOMATICALLY ADVANCES WHEN TIME EXPIRES.</span><button id="confirmSelect" class="action">CONFIRM SELECTION <b>✓</b></button></div>
+  </section>
+
+  <section class="screen panel-screen" id="info"><header class="panel-head"><div><p class="eyebrow">BLACKOUT / SYSTEM</p><h2 id="infoTitle">SETTINGS</h2></div><button class="close" data-close aria-label="Close panel">×</button></header><div id="infoContent" class="info-content"></div></section>
+
+  <div id="hud" class="hud hidden"><div class="hud-top"><span id="hudSide">ATTACK</span><span id="hudPhase">PREPARATION</span><b id="hudTime">0:45</b><span class="hud-round">ROUND 01 <b id="score">0 — 0</b></span></div><div class="site-flags"><span>A / STORAGE</span><span>B / SERVER</span></div><canvas id="radar" width="180" height="180" aria-label="Tactical map"></canvas><div id="compass" class="compass">N / 000°</div><div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i></div><div id="droneBanner" class="drone-banner hidden">◉ R-1 RECON DRONE <small>SPACE JUMP · E SCAN · MIDDLE CLICK PING</small></div><div id="interact" class="interact hidden"><strong id="interactTitle">HOLD E TO PLANT</strong><div><span id="interactFill"></span></div><small id="interactHint">DEFUSER READY</small></div><div class="hud-bottom"><div class="vitals"><small>HEALTH</small><b id="health">100</b></div><div class="mission-status"><b id="missionText">SECURE THE OBJECTIVE</b><small id="controlsText">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · C CROUCH · RMB ADS · LMB FIRE</small></div><div class="ammo"><small>BX-7 CARBINE</small><b><span id="bullets">30</span><small>/ <span id="reserve">120</span></small></b></div></div><div id="damageFlash" class="damage-flash"></div></div>
+
+  <div id="roundResult" class="round-result hidden"><p class="eyebrow">ROUND 01 COMPLETE</p><h2 id="resultHeading">ROUND WON</h2><p id="resultWhy">OBJECTIVE SECURED</p><div class="result-line">BLACKOUT FIELD TEST <b id="resultScore">1 — 0</b></div><button class="action" id="retry">PLAY ANOTHER ROUND <b>→</b></button><button class="ghost-action" id="backHome">RETURN TO MENU</button></div>
+  <div id="pause" class="pause hidden"><div><p class="eyebrow">FIELD OPERATIONS</p><h2>PAUSED</h2><button id="resume">RESUME</button><button id="quit">EXIT TO MENU</button></div></div>
+  <div class="dev-tools"><button id="toggleDev">P0 TEST TOOLS <span>⌄</span></button><div id="devActions" class="hidden"><button id="skipPhase">SKIP CURRENT PHASE</button><button id="resetSession">RESET SESSION</button><small>Prototype testing only. Not part of final HUD.</small></div></div>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
