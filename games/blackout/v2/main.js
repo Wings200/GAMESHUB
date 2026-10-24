@@ -1,10 +1,22 @@
 import { TacticalWorld } from './world.mjs';
+import { WeaponAudio } from '../reboot/weapon-view.js?v=reboot-012';
+import { createPlantRecording, createDefuseRecording, createDefuserCuePlayer } from '../reboot/bomb-plant-audio.js?v=reboot-064';
+import { canFireInput } from './combat-rules.mjs';
 import { DURATIONS, newMatch, advanceClock, nearestSite, completePlant,
   cancelPlant, completeDefuse, eliminationResult, formatTime } from './rules.mjs';
 
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const canvas = $('world');
+const weaponAudio=new WeaponAudio();
+const plantAudio=createPlantRecording(new Audio(new URL('../reboot/audio/DefuserPlantV2.ogg',import.meta.url).href));
+const disableAudio=createDefuseRecording(new Audio(new URL('../reboot/audio/DefuserDisableV2.ogg',import.meta.url).href));
+const defuserCues=createDefuserCuePlayer({
+  arm:new Audio(new URL('../reboot/audio/DefuserArmV3.ogg',import.meta.url).href),
+  tick:new Audio(new URL('../reboot/audio/DefuserTickV3.ogg',import.meta.url).href),
+  urgent:new Audio(new URL('../reboot/audio/DefuserTickUrgentV3.ogg',import.meta.url).href),
+  shutdown:new Audio(new URL('../reboot/audio/DefuserShutdownV3.ogg',import.meta.url).href)
+});
 let world;
 try { world = new TacticalWorld(canvas); }
 catch(error) {
@@ -19,8 +31,8 @@ const state = {
   tab:'profile', difficulty:'recruit', match:null, confirmed:false,
   keys:new Set(), pause:false, uiReady:false, lastTime:performance.now(),
   interaction:null, interactionProgress:0, lastKnown:null, ping:null,
-  score:{attack:0,defense:0}, testTools:false, audio:null, toastUntil:0,
-  lean:0, running:true, firedOnce:false
+  score:{attack:0,defense:0}, testTools:false, audio:null, toastUntil:0, ammoWarning:false,
+  lean:0, running:true, fireHeld:false, lastDeviceBeep:0
 };
 
 function toast(message, seconds=2.6) {
@@ -29,6 +41,10 @@ function toast(message, seconds=2.6) {
 }
 function showScreen(name) {
   state.screen=name;
+  if(name!=='game'){
+    state.fireHeld=false;world.ads=false;
+    plantAudio.sync('off');disableAudio.sync(false);
+  }
   all('.screen').forEach(el=>el.classList.toggle('active',el.id===name));
   $('hud').classList.toggle('hidden',name!=='game');
   $('roundResult').classList.toggle('hidden',name!=='result');
@@ -102,10 +118,12 @@ function confirmSelection() {
 function enterGame() {
   world.start(state.side,state.spawn,state.operator);
   world.setLoadout($('sight').value,$('barrel').value);
-  world.botAlive=state.mode!=='testing';world.enemy.visible=world.botAlive;
+  world.training=state.mode==='testing';world.botAlive=true;world.enemy.visible=true;
   if(state.match.phase==='preparation'&&state.side==='attack')world.setView('drone');
   else world.setView('player');
   state.keys.clear();state.interaction=null;state.interactionProgress=0;
+  state.fireHeld=false;
+  defuserCues.reset();state.lastDeviceBeep=0;
   showScreen('game');
   if(state.match.phase==='preparation') {
     toast(state.side==='attack'?'Preparation: control your reconnaissance drone.':'Preparation: reinforce and defend both sites.',3.5);
@@ -119,14 +137,15 @@ function phaseChanged(before,after) {
     signal(540,.11);
   }
   if(after==='postplant') {
-    toast('DEFUSER PLANTED · 45 SECONDS REMAIN');signal(820,.22);
+    toast('DEFUSER PLANTED · 45 SECONDS REMAIN');defuserCues.play('arm');state.lastDeviceBeep=0;
   }
   if(after==='result') endRound();
 }
 function endRound() {
   if(state.screen==='result')return;
-  state.keys.clear();state.interaction=null;
+  state.keys.clear();state.interaction=null;state.fireHeld=false;world.animateInteraction(null,0);
   if(state.match.winner)state.score[state.match.winner]++;
+  defuserCues.reset();
   const won=state.match.winner===state.side;
   $('resultHeading').textContent=won?'ROUND WON':'ROUND LOST';
   $('resultHeading').style.color=won?'#e7f8ff':'#ffaab4';
@@ -141,6 +160,12 @@ function updatePhase(dt) {
   const before=match.remaining;
   const planting=state.interaction==='plant'&&state.interactionProgress>0;
   state.match=advanceClock(match,dt,planting);
+  if(state.match.phase==='postplant'){
+    const remaining=Math.ceil(state.match.remaining);
+    if(remaining!==state.lastDeviceBeep&&remaining>0&&remaining%2===0){
+      state.lastDeviceBeep=remaining;defuserCues.play(remaining<=10?'urgent':'tick');
+    }
+  }
   if(was==='selection')$('selectionTime').textContent=formatTime(state.match.remaining);
   if(was!==state.match.phase)phaseChanged(was,state.match.phase);
   else if(before>0&&state.match.remaining===0&&state.match.overtimePlant)toast('OVERTIME PLANT · DO NOT RELEASE F',1.8);
@@ -148,6 +173,7 @@ function updatePhase(dt) {
 function finishInteraction() {
   const kind=state.interaction;
   state.interaction=null;state.interactionProgress=0;
+  world.animateInteraction(null,0);
   if(kind==='reinforce') {
     if(world.reinforced<10&&world.reinforceClosest()){toast('Wall reinforced · '+(10-world.reinforced)+' team reinforcements left.');signal(440,.16);}
     return;
@@ -159,12 +185,12 @@ function finishInteraction() {
     world.placeDefuser(site.id);phaseChanged(before,state.match.phase);
   }
   if(kind==='defuse') {
-    state.match=completeDefuse(state.match);endRound();
+    state.match=completeDefuse(state.match);endRound();defuserCues.play('shutdown');
   }
 }
 function availableInteraction() {
   const m=state.match;if(!m||world.player.health<=0||world.view!=='player')return null;
-  if(m.phase==='preparation'&&state.side==='defense'&&world.reinforced<10&&world.nearWall())return {kind:'reinforce',duration:DURATIONS.reinforce,label:'HOLD F TO REINFORCE',hint:'TEAM POOL '+(10-world.reinforced)+'/10'};
+  if(['preparation','action'].includes(m.phase)&&state.side==='defense'&&world.reinforced<10&&world.nearWall())return {kind:'reinforce',duration:DURATIONS.reinforce,label:'HOLD F TO REINFORCE',hint:'TEAM POOL '+(10-world.reinforced)+'/10'};
   const player=world.getPosition();
   if(m.phase==='action'&&state.side==='attack'&&nearestSite(player.x,player.z))return {kind:'plant',duration:DURATIONS.plant,label:'HOLD F TO PLANT DEFUSER',hint:'7 SECONDS · STAY IN THE BOMB SITE'};
   if(m.phase==='postplant'&&state.side==='defense'&&world.defuser.visible&&Math.hypot(player.x-world.defuser.position.x,player.z-world.defuser.position.z)<2.2)return {kind:'defuse',duration:DURATIONS.defuse,label:'HOLD F TO DISABLE',hint:'7 SECONDS · DO NOT RELEASE'};
@@ -185,13 +211,17 @@ function updateInteraction(dt) {
       if(state.match.overtimePlant){state.match=cancelPlant(state.match);endRound();}
     }
     $('interactFill').style.width=(state.interaction?Math.min(100,state.interactionProgress/available.duration*100):0)+'%';
+    world.animateInteraction(state.interaction,state.interactionProgress/available.duration,dt);
   } else {
     $('interact').classList.add('hidden');
     if(state.interaction){
       state.interaction=null;state.interactionProgress=0;
       if(state.match.overtimePlant){state.match=cancelPlant(state.match);endRound();}
     }
+    world.animateInteraction(null,0,dt);
   }
+  plantAudio.sync(state.interaction==='plant'?'typing':'off');
+  disableAudio.sync(state.interaction==='defuse');
 }
 function updateHud() {
   const m=state.match;if(!m)return;
@@ -234,24 +264,43 @@ function drawRadar() {
   const p=data.player;ctx.fillStyle='#f7f9ff';ctx.beginPath();ctx.arc(toX(p.x),toY(p.z),5,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#fff';ctx.beginPath();ctx.moveTo(toX(p.x),toY(p.z));ctx.lineTo(toX(p.x)-Math.sin(p.yaw)*15,toY(p.z)-Math.cos(p.yaw)*15);ctx.stroke();
 }
-function signal(frequency=540,length=.14) {
+function ensureAudio() {
   try {
     if(!state.audio)state.audio=new (window.AudioContext||window.webkitAudioContext)();
     if(state.audio.state==='suspended')state.audio.resume();
+    return state.audio;
+  }catch(error){return null;}
+}
+function signal(frequency=540,length=.14) {
+  try {
+    const context=ensureAudio();if(!context)return;
     const o=state.audio.createOscillator(),g=state.audio.createGain();
     o.type='sine';o.frequency.value=frequency;g.gain.setValueAtTime(.04,state.audio.currentTime);
     g.gain.exponentialRampToValueAtTime(.001,state.audio.currentTime+length);
     o.connect(g).connect(state.audio.destination);o.start();o.stop(state.audio.currentTime+length);
   }catch(error){ /* Audio is optional; never block the game. */ }
 }
+function fireWeapon() {
+  if(!state.match||!canFireInput({screen:state.screen,paused:state.pause,view:world.view,
+     phase:state.match.phase,interaction:state.interaction}))return;
+  const shot=world.shoot();
+  if(!shot.fired){if(world.player.ammo===0&&!state.ammoWarning){toast('MAGAZINE EMPTY · PRESS R',.8);state.ammoWarning=true;}return;}
+  state.ammoWarning=false;
+  const context=ensureAudio();if(context){weaponAudio.connect(context);weaponAudio.fire();}
+  if(shot.hitBot)toast('TARGET HIT',.5);
+  if(shot.enemyDead){
+    if(state.mode==='testing')toast('TARGET ELIMINATED · RESPAWNING',1.4);
+    else {state.match=eliminationResult(state.match,state.side==='attack'?'defense':'attack');endRound();}
+  }
+  updateHud();
+}
 function onWorldClick(event) {
   if(state.screen!=='game'||state.pause)return;
-  if(document.pointerLockElement!==canvas){canvas.requestPointerLock?.();toast('Mouse captured · ESC to release / pause');return;}
-  if(event.button===0&&['action','postplant'].includes(state.match.phase)) {
-    const shot=world.shoot();
-    if(shot.fired){signal(world.barrel==='suppressor'?170:100,.07);if(shot.hitBot)toast('TARGET HIT',.5);if(shot.enemyDead){state.match=eliminationResult(state.match,state.side==='attack'?'defense':'attack');endRound();}}
-    else if(world.player.ammo===0)toast('MAGAZINE EMPTY · PRESS R');
+  if(document.pointerLockElement!==canvas){
+    try {const request=canvas.requestPointerLock?.();request?.catch?.(()=>toast('Mouse capture blocked. Click the game view again.',2));}
+    catch(error){toast('Mouse capture blocked. Click the game view again.',2);}
   }
+  if(event.button===0){state.fireHeld=true;fireWeapon();}
 }
 canvas.addEventListener('pointerdown',event=>{
   if(event.button===2)world.ads=true;
@@ -260,7 +309,11 @@ canvas.addEventListener('pointerdown',event=>{
   }
   if(event.button===0)onWorldClick(event);
 });
-window.addEventListener('pointerup',event=>{if(event.button===2)world.ads=false;});
+window.addEventListener('pointerup',event=>{if(event.button===2)world.ads=false;if(event.button===0)state.fireHeld=false;});
+window.addEventListener('pointercancel',()=>{state.fireHeld=false;world.ads=false;});
+document.addEventListener('pointerlockchange',()=>{
+  if(document.pointerLockElement!==canvas){state.fireHeld=false;world.ads=false;state.keys.clear();}
+});
 window.addEventListener('contextmenu',event=>event.preventDefault());
 window.addEventListener('mousemove',event=>{
   if(state.screen==='game'&&!state.pause&&document.pointerLockElement===canvas)world.look(event.movementX,event.movementY);
@@ -276,7 +329,7 @@ window.addEventListener('keydown',event=>{
   if([' ','tab'].includes(k))event.preventDefault();
   state.keys.add(k===' '?'space':k);
   if(event.repeat)return;
-  if(k==='r'&&world.reload())toast('RELOADING...');
+  if(k==='r'&&world.reload()){state.ammoWarning=false;toast('RELOADING · 1.6 SECONDS');}
   if(k==='q'){state.lean=state.lean===-1?0:-1;}
   if(k==='e'){
     if(world.view==='drone'){
@@ -289,7 +342,7 @@ window.addEventListener('keydown',event=>{
   if(k===' '&&world.view==='drone'&&world.drone.jump<=0)world.drone.jump=.63;
 });
 window.addEventListener('keyup',event=>state.keys.delete(event.key.toLowerCase()===' '?'space':event.key.toLowerCase()));
-window.addEventListener('blur',()=>{state.keys.clear();world.ads=false;});
+window.addEventListener('blur',()=>{state.keys.clear();state.fireHeld=false;world.ads=false;});
 
 all('[data-open]').forEach(btn=>btn.addEventListener('click',()=>showScreen(btn.dataset.open)));
 all('[data-close]').forEach(btn=>btn.addEventListener('click',()=>showScreen('home')));
@@ -341,8 +394,10 @@ function frame(now) {
   }
   if(state.screen==='selection'&&!state.pause&&state.match&&state.mode==='ai')updatePhase(dt);
   if(state.screen==='game'&&!state.pause&&state.match){
-    const input={w:state.keys.has('w'),s:state.keys.has('s'),a:state.keys.has('a'),d:state.keys.has('d'),c:state.keys.has('c'),shift:state.keys.has('shift'),leanLeft:state.lean===-1,leanRight:state.lean===1};
+    const locked=state.interaction==='plant'||state.interaction==='defuse';
+    const input={w:!locked&&state.keys.has('w'),s:!locked&&state.keys.has('s'),a:!locked&&state.keys.has('a'),d:!locked&&state.keys.has('d'),c:locked||state.keys.has('c'),shift:!locked&&state.keys.has('shift'),leanLeft:!locked&&state.lean===-1,leanRight:!locked&&state.lean===1};
     const events=world.update(dt,input,state.match.phase,state.difficulty);
+    if(state.fireHeld)fireWeapon();
     if(events.playerHit){$('damageFlash').classList.add('active');setTimeout(()=>$('damageFlash').classList.remove('active'),130);signal(120,.08);}
     if(events.botPlanted&&state.match.phase==='action'){
       const previous=state.match.phase;state.match={...state.match,phase:'postplant',remaining:DURATIONS.postplant,planted:true,plantedSite:events.botPlanted};
