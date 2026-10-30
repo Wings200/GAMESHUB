@@ -304,7 +304,7 @@ function makeDummyLabel(dummy){
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=160;
   const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
-  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false});
+  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:true,depthWrite:false});
   const sprite=new THREE.Sprite(material);
   sprite.position.set(dummy.position.x,2.96,dummy.position.z);
   sprite.scale.set(3.2,1.02,1);
@@ -438,7 +438,7 @@ function spawnDamagePopup(point,result){
   ctx.fillStyle=result.critical?'#f6cf7b':result.blocked>0?'#a5d7f3':'#e8f3eb';
   ctx.fillText(text,128,60);
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false});
+  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:true,depthWrite:false});
   const sprite=new THREE.Sprite(material);
   sprite.position.copy(point).add(new THREE.Vector3(0,.45,0));
   sprite.scale.set(1.0,.5,1);
@@ -578,27 +578,26 @@ const enemySpecs=[
 const locatorCanvas=document.createElement('canvas');
 locatorCanvas.width=768;locatorCanvas.height=160;
 const locatorCtx=locatorCanvas.getContext('2d');
-locatorCtx.fillStyle='rgba(22,31,37,.92)';
-locatorCtx.fillRect(0,0,768,160);
-locatorCtx.strokeStyle='#ffa65f';locatorCtx.lineWidth=9;
-locatorCtx.strokeRect(4,4,760,152);
-locatorCtx.font='bold 60px system-ui';
-locatorCtx.fillStyle='#ffdb93';
-locatorCtx.fillText('3 RAIDERS · LIVE',38,99);
 const locatorTex=new THREE.CanvasTexture(locatorCanvas);
 locatorTex.colorSpace=THREE.SRGBColorSpace;
 const locator=new THREE.Sprite(new THREE.SpriteMaterial({
-  map:locatorTex,transparent:true,depthTest:false}));
+  map:locatorTex,transparent:true,depthTest:true,depthWrite:false}));
 locator.position.set(39,4.2,42);
 locator.scale.set(6.1,1.28,1);
 scene.add(locator);
-for(const [x,z] of [[39,42],[43,46],[46,36.8]]){
-  const waypoint=new THREE.Mesh(
-    new THREE.CylinderGeometry(.43,.43,.08,16),
-    new THREE.MeshBasicMaterial({color:0xffa253}));
-  waypoint.position.set(x,.09,z);
-  scene.add(waypoint);
+function updateArenaSign(){
+  const alive=[...enemies.values()].filter(e=>e.state.alive).length;
+  locatorCtx.clearRect(0,0,locatorCanvas.width,locatorCanvas.height);
+  locatorCtx.fillStyle='rgba(22,31,37,.92)';
+  locatorCtx.fillRect(0,0,768,160);
+  locatorCtx.strokeStyle='#ffa65f';locatorCtx.lineWidth=9;
+  locatorCtx.strokeRect(4,4,760,152);
+  locatorCtx.font='bold 58px system-ui';locatorCtx.fillStyle='#ffdb93';
+  locatorCtx.fillText('RAIDERS ALIVE · '+alive+' / '+enemies.size,27,99);
+  locatorTex.needsUpdate=true;
 }
+// The old permanent orange spawn pads stayed behind after a kill.
+// Each living enemy now owns its own ground marker, which disappears on death.
 function enemyMaterial(color,metallic=false){
   return new THREE.MeshStandardMaterial({color,
     roughness:metallic?.45:.88,metalness:metallic?.67:.05});
@@ -611,7 +610,8 @@ function createEnemy(spec){
   const state=createDummy(spec.armor);
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
-    fireCooldown:1.3+enemies.size*.45,gunGlow:0};
+    fireCooldown:1.3+enemies.size*.45,gunGlow:0,
+    deathTimer:0};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -663,17 +663,18 @@ function createEnemy(spec){
   // High-contrast visible identification beacons, even when the character
   // model is small or fogged against the scenery.
   const beacon=new THREE.Mesh(new THREE.TorusGeometry(.55,.065,6,22),
-    new THREE.MeshBasicMaterial({color:0xf19668,depthTest:false}));
+    new THREE.MeshBasicMaterial({color:0xf19668,depthTest:true,depthWrite:true}));
   beacon.rotation.x=-Math.PI/2;
-  beacon.position.y=.085;root.add(beacon);
+  beacon.position.y=.085;root.add(beacon);enemy.beacon=beacon;
   const shoulderMark=new THREE.Mesh(new THREE.BoxGeometry(.7,.11,.075),
-    new THREE.MeshBasicMaterial({color:0xf2ad66,depthTest:false}));
+    new THREE.MeshBasicMaterial({color:0xf2ad66,depthTest:true,depthWrite:true}));
   shoulderMark.position.set(0,1.85,.25);root.add(shoulderMark);
+  enemy.shoulderMark=shoulderMark;
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
   const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
   const labelMesh=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:texture,transparent:true,depthTest:false}));
+    map:texture,transparent:true,depthTest:true,depthWrite:false}));
   labelMesh.scale.set(2.7,.72,1);
   labelMesh.position.set(spec.x,2.84,spec.z);
   scene.add(labelMesh);
@@ -702,6 +703,7 @@ function refreshEnemyLabel(enemy,mode){
   texture.needsUpdate=true;
 }
 enemySpecs.forEach(createEnemy);
+updateArenaSign();
 $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
@@ -710,11 +712,15 @@ function resetEnemies(){
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
+    enemy.root.visible=true;enemy.billboard.mesh.visible=true;
+    enemy.beacon.visible=true;enemy.shoulderMark.visible=true;
+    enemy.deathTimer=0;
     enemy.flash=0;enemy.shake=0;enemy.statusText='';
     enemy.fireCooldown=1.3;enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
     refreshEnemyLabel(enemy,'PATROL');
   }
+  updateArenaSign();
   $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
@@ -753,14 +759,16 @@ function updateEnemies(dt){
   const active=inAIArena();
   const ticking=active&&controls.isLocked&&enemyAIEnabled;
   const statuses=[];
-  let visibleCount=0;
+  let aliveCount=0;
   for(const enemy of enemies.values()){
-    // Do not remove NPCs from the 3D scene based on the station selection.
-    // That concealed all NPC geometry while debugging the station switch.
-    enemy.root.visible=true;
-    enemy.billboard.mesh.visible=true;
+    // Keep living NPCs rendered across the lab. On death show only a brief
+    // collapse, then remove every body part; J restores the original actor.
+    enemy.root.visible=enemy.state.alive||enemy.deathTimer<.7;
+    enemy.billboard.mesh.visible=enemy.state.alive;
+    enemy.beacon.visible=enemy.state.alive;
+    enemy.shoulderMark.visible=enemy.state.alive;
     if(!active)continue;
-    visibleCount++;
+    if(enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
         {enabled:ticking&&playerHealth.alive,playerInArena:active});
@@ -797,7 +805,10 @@ function updateEnemies(dt){
         }
       }
     }else{
+      enemy.deathTimer+=dt;
+      // One short fall, then despawn: no permanent corpse/ring clutter.
       enemy.root.rotation.z+=(-1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
+      if(enemy.deathTimer>=.7)enemy.root.visible=false;
     }
     enemy.gunGlow=Math.max(0,enemy.gunGlow-dt);
     enemy.muzzleLight.intensity=enemy.gunGlow>0?5:0;
@@ -816,10 +827,11 @@ function updateEnemies(dt){
   $('playerDamageFlash').style.opacity=(playerHitFlash*.52).toFixed(2);
   $('enemyHud').classList.toggle('hidden',!active);
   if(active){
-    const nearest=Math.min(...[...enemies.values()].map(e=>
-      Math.hypot(e.brain.x-player.x,e.brain.z-player.z)));
-    $('enemyCount').textContent=visibleCount+' NPCs LOADED · NEAREST '+
-      nearest.toFixed(1)+' m';
+    const surviving=[...enemies.values()].filter(e=>e.state.alive);
+    const nearest=surviving.length?Math.min(...surviving.map(e=>
+      Math.hypot(e.brain.x-player.x,e.brain.z-player.z))):null;
+    $('enemyCount').textContent=aliveCount+' / '+enemies.size+' RAIDERS ALIVE'+
+      (nearest===null?' · ALL ELIMINATED':' · NEAREST '+nearest.toFixed(1)+' m');
     $('enemyList').textContent=statuses.join('  ·  ');
     $('enemyMode').textContent=!enemyAIEnabled?'AI PAUSED · K TO RESUME':
       playerHealth.alive?'ENEMIES CAN FIRE · WATCH HEALTH':'PLAYER DOWN · H TO RESPAWN';
@@ -978,8 +990,16 @@ function shoot(){
     if(hit.applied){
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
-      if(hit.killed)enemy.brain.active=false;
-      else alertEnemy(enemy.brain,{x:player.x,z:player.z});
+      if(hit.killed){
+        enemy.brain.active=false;
+        enemy.deathTimer=0;
+        enemy.beacon.visible=false;
+        enemy.shoulderMark.visible=false;
+        enemy.billboard.mesh.visible=false;
+        enemy.muzzleLight.intensity=0;
+        enemy.gunGlow=0;
+        updateArenaSign();
+      }else alertEnemy(enemy.brain,{x:player.x,z:player.z});
       enemy.statusText='';
       refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
       spawnDamagePopup(first.point,hit);

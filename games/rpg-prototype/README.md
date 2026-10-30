@@ -1,6 +1,13 @@
-# Untitled RPG · Mechanics Lab W04.1.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.1.2 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.1.2 — enemy elimination cleanup and proper wall occlusion
+- Responds to visual browser feedback showing 0 HP raiders piled into permanent geometry, plus orange rings, nameplates and the arena locator drawing through concrete walls.
+- On a lethal pistol hit the NPC is immediately marked inactive, stops shooting, hides its orange torus, shoulder indicator and independent world-space health/nameplate sprite. A short **0.7-second** collapse runs, then the entire body group is hidden. Dead hitboxes are still excluded from pistol raycast, and no kill-spawn debris or permanent static spawn pads remain. Press **J** to completely restore every character, hit zone, marker, full HP and patrol state.
+- The old ground pads were unrelated to enemy lives and could not be removed when their owner died. Those static pads are deleted; each living NPC has its own marker, which hides immediately on death.
+- Previously the enemy torus, shoulder stripe, nameplates and arena sprite all used `depthTest:false`, making them draw through walls. These now explicitly enable depth testing; world-space damage popups and stationary dummy labels are also occluded correctly. No scene-world overlay bypasses depth testing.
+- The arena sign and HUD now show the **actual number of raiders alive**, decreasing with each kill and restoring on J. Cached JS version advanced to **W04.1.2**. CI integration smoke assertions cover exact death cleanup wiring, depth testing and reset behavior. Manual browser test is required for visual approval.
 
 ## W04.1.1 — reliable station 9 entry and visibility diagnosis
 - Second user report confirms enemies are still not seen even after W04.1. The Three.js source contains all three enemy groups, but we cannot verify the Cloudflare browser render from GitHub CI alone. This pass adds explicit debug affordances rather than calling the problem resolved without browser confirmation.
