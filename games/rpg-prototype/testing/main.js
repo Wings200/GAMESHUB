@@ -11,6 +11,9 @@ import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
+import {createSquadIntel,clearSquadIntel,reportSquadContact,
+  stepSquadIntel,shareSquadContact,squadSeparation,
+  occupiedSquadCover} from '../enemy-squad.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   ENEMY_ATTACK } from '../player-combat.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
@@ -573,6 +576,7 @@ aiCrate(53.0,37.0,2.3,2.2,1.6,rustySteel);
 for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
 let enemyAIEnabled=true;
+const squadIntel=createSquadIntel();
 const enemySpecs=[
   {id:'scout',label:'SCOUT',x:39,z:42,
     armor:'none',color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
@@ -622,7 +626,8 @@ function createEnemy(spec){
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
     tactics:makeEnemyTactics(spec.id),gunGlow:0,
-    deathTimer:0,upperBody,crouchBlend:0};
+    deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
+    recoilPose:0};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -722,7 +727,7 @@ updateArenaSign();
 $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
-  clearBulletHoles();
+  clearBulletHoles();clearSquadIntel(squadIntel);
   for(const enemy of enemies.values()){
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
@@ -730,6 +735,8 @@ function resetEnemies(){
     enemy.root.visible=true;enemy.billboard.mesh.visible=true;
     enemy.beacon.visible=true;enemy.shoulderMark.visible=true;
     enemy.deathTimer=0;enemy.crouchBlend=0;enemy.upperBody.position.y=0;
+    enemy.upperBody.rotation.set(0,0,0);
+    enemy.combatPose=0;enemy.reloadPose=0;enemy.recoilPose=0;
     for(const {pivot,kind,side} of enemy.limbs){
       if(kind==='leg'){pivot.position.y=.97;pivot.scale.y=1;}
       pivot.rotation.x=0;
@@ -779,6 +786,7 @@ function updateEnemies(dt){
   const ticking=active&&controls.isLocked&&enemyAIEnabled;
   const statuses=[];
   let aliveCount=0;
+  stepSquadIntel(squadIntel,dt,ticking&&playerHealth.alive);
   for(const enemy of enemies.values()){
     // Keep living NPCs rendered across the lab. On death show only a brief
     // collapse, then remove every body part; J restores the original actor.
@@ -789,15 +797,21 @@ function updateEnemies(dt){
     if(!active)continue;
     if(enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
+      const wasSpotted=enemy.brain.spotted;
       tickEnemyTactics(enemy.tactics,enemy.brain,player,dt,aiObstacles,
-        {enabled:ticking&&playerHealth.alive});
+        {enabled:ticking&&playerHealth.alive,
+          lowHealth:enemy.state.health<35,
+          occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
+          separation:squadSeparation(enemy.brain,[...enemies.values()])});
       const tactic=enemy.tactics;
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
         {enabled:ticking&&playerHealth.alive,playerInArena:active,
           combatGoal:tactic.goal,
-          combatHold:tactic.phase==='hold',
+          combatHold:tactic.phase==='hold'||tactic.phase==='peek',
           combatFacePlayer:true,
           combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed});
+      if(ticking&&playerHealth.alive&&enemy.brain.spotted&&!wasSpotted)
+        reportSquadContact(squadIntel,enemy.id,player);
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
       // Visibly duck behind low cover, with consistent LOWERED hitboxes.
       // ~0.82 m of crouch travel keeps the head under the 1.45 m crate.
@@ -805,11 +819,26 @@ function updateEnemies(dt){
       enemy.crouchBlend+=(wantedCrouch-enemy.crouchBlend)*
         (1-Math.exp(-13*dt));
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
+      // Animated ready pose, short lean while peeking, rifle dip while
+      // reloading, and a quick shoulder kick after actual shots.
+      const shouldAim=enemy.brain.mode==='chase'&&
+        !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
+      enemy.combatPose+=(Number(shouldAim)-enemy.combatPose)*
+        (1-Math.exp(-7*dt));
+      enemy.reloadPose+=(Number(enemy.tactics.reloadRemaining>0)-enemy.reloadPose)*
+        (1-Math.exp(-10*dt));
+      enemy.recoilPose=Math.max(0,enemy.recoilPose-dt*6);
+      const peeking=enemy.tactics.phase==='peek'||enemy.tactics.phase==='peek-move';
+      enemy.upperBody.rotation.z+=( (peeking?.11*enemy.tactics.strafeSign:0)-
+        enemy.upperBody.rotation.z)*(1-Math.exp(-8*dt));
+      enemy.upperBody.rotation.x=-.16*enemy.reloadPose+
+        .08*enemy.recoilPose;
       enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
       const move=enemy.brain.moving?1:0;
       for(const {pivot,side,kind} of enemy.limbs){
         pivot.rotation.x=Math.sin(enemy.walkPhase+side*Math.PI/2)*
-          (kind==='leg'?.38:.23)*move;
+          (kind==='leg'?.38:.23)*move+
+          (kind==='arm'?(.20*enemy.combatPose-.38*enemy.reloadPose):0);
         if(kind==='leg'){
           pivot.position.y=.97-.30*enemy.crouchBlend;
           pivot.scale.y=1-.34*enemy.crouchBlend;
@@ -826,12 +855,12 @@ function updateEnemies(dt){
         // A shot is only attempted when the NPC can see the player and has
         // a clear trajectory; mags, reloads and accuracy are authoritative.
         if(canEnemyFire(enemy.brain,player,aiObstacles,attack.range)&&
-          enemy.tactics.phase!=='cover'&&enemy.tactics.phase!=='hold'){
+          !['cover','hold','peek-move','reload'].includes(enemy.tactics.phase)){
           const shot=attemptEnemyShot(enemy.tactics,
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
             enemy.brain.moving,Math.random);
           if(shot.fired){
-            enemy.gunGlow=.11;
+            enemy.gunGlow=.11;enemy.recoilPose=1;
             sound.gunshot();
             const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
             const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
@@ -869,7 +898,11 @@ function updateEnemies(dt){
       !enemyAIEnabled?'PAUSED':!playerHealth.alive?'PLAYER DOWN':
         enemy.tactics.reloadRemaining>0?'RELOAD':
         enemy.tactics.crouching?'CROUCHED':
+        enemy.tactics.phase==='peek'?'PEEK & FIRE':
+        enemy.tactics.phase==='peek-move'?'PEEKING':
         enemy.tactics.phase==='cover'?'SEEK COVER':
+        enemy.tactics.phase==='flank'?'FLANKING':
+        enemy.tactics.phase==='suppress'?'SUPPRESSING':
         enemy.tactics.phase==='strafe'?'STRAFE':
         enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
@@ -878,6 +911,8 @@ function updateEnemies(dt){
     statuses.push(enemy.label+': '+mode+' ['+
       enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
   }
+  if(ticking&&playerHealth.alive)
+    shareSquadContact(squadIntel,[...enemies.values()],aiObstacles,player);
   for(let i=enemyTracers.length-1;i>=0;i--){
     const t=enemyTracers[i];t.time-=dt;
     if(t.time<=0){scene.remove(t.line);t.line.geometry.dispose();enemyTracers.splice(i,1);}
@@ -1418,6 +1453,7 @@ function shoot(){
       }else{
         alertEnemy(enemy.brain,{x:player.x,z:player.z});
         markEnemyThreat(enemy.tactics);
+        reportSquadContact(squadIntel,enemy.id,player);
       }
       enemy.statusText='';
       refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
@@ -1567,13 +1603,17 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       reserve:weaponState.reserve,reloadRemaining:weaponState.reloadRemaining,
       cooldown:weaponState.cooldown},
     triggerHeld,emptyClickLatched,dryFireClicks,
+    squad:{remaining:squadIntel.remaining,source:squadIntel.source,
+      alerts:squadIntel.alerts},
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
     player:{x:player.x,z:player.z},
     enemies:[...enemies.values()].map(e=>({
       id:e.id,x:e.brain.x,z:e.brain.z,
-      mode:e.brain.mode,health:e.state.health,alive:e.state.alive
+      mode:e.brain.mode,health:e.state.health,alive:e.state.alive,
+      tacticalPhase:e.tactics.phase,crouching:e.tactics.crouching,
+      coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
   });
 }

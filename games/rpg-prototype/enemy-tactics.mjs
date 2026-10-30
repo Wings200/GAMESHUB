@@ -4,11 +4,11 @@ import {AI_TUNING,lineIntersectsBox} from './enemy-ai.mjs';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
-    accuracy:.48,falloff:.20,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4}),
+    accuracy:.48,falloff:.20,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4,role:'flanker'}),
   raider:Object.freeze({magazine:12,reserve:48,reloadSeconds:1.95,shotInterval:1.05,
-    accuracy:.63,falloff:.16,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0}),
+    accuracy:.63,falloff:.16,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0,role:'skirmisher'}),
   enforcer:Object.freeze({magazine:18,reserve:54,reloadSeconds:2.65,shotInterval:1.20,
-    accuracy:.76,falloff:.12,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5})
+    accuracy:.76,falloff:.12,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor'})
 });
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -21,7 +21,10 @@ export function makeEnemyTactics(kind){
     reloadRemaining:0,cooldown:1.2,shots:0,hits:0,misses:0,
     phase:'patrol',threat:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
-    goal:null,crouching:false,coverHold:0
+    goal:null,crouching:false,coverHold:0,
+    peekPoint:null,peekSeconds:0,peekCooldown:0,holdSeconds:0,
+    stuckSeconds:0,stuckEvents:0,lastPosition:null,
+    avoidCoverIndex:-1,avoidCoverSeconds:0
   };
 }
 export function resetEnemyTactics(tactics){
@@ -39,6 +42,8 @@ export function beginReload(tactics){
 export function markEnemyThreat(tactics){
   tactics.threat=ENEMY_PROFILES[tactics.kind].coverSeconds;
   tactics.coverPoint=null;
+  tactics.coverIndex=-1;
+  tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
   tactics.moveTime=0;
 }
 // A cover position is valid only if a SOLID obstacle lies BETWEEN the
@@ -56,10 +61,12 @@ export function isBehindCover(player,point,obstacle){
   if(px*dx+pz*dz<=0)return false;
   return lineIntersectsBox(player,point,obstacle,-.10);
 }
-export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area){
+export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area,
+  occupied=[],avoidIndex=-1){
   const clearance=AI_TUNING.collisionRadius+.46;
   const candidates=[];
   for(let i=0;i<obstacles.length;i++){
+    if(i===avoidIndex&&obstacles.length>1)continue;
     const b=obstacles[i],cx=(b.minX+b.maxX)/2,cz=(b.minZ+b.maxZ)/2;
     // Cover must be at least tall enough to shield a crouching enemy.
     if(b.height!==undefined&&b.height<1.35)continue;
@@ -80,7 +87,10 @@ export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area){
       if(walk>16||distance(p,player)<3)continue;
       // Avoid unnecessary long runs into the open when closer real
       // cover exists. Prefer crate centre-line shielded points.
-      candidates.push({point:p,index:i,score:walk+distance(p,player)*.045});
+      const crowding=occupied.reduce((sum,other)=>sum+
+        (distance(p,other)<2.1?14:0),0);
+      candidates.push({point:p,index:i,
+        score:walk+distance(p,player)*.045+crowding});
     }
   }
   candidates.sort((a,b)=>a.score-b.score);
@@ -109,12 +119,55 @@ export function routeAroundCrates(from,goal,obstacles){
     (distance(from,b)+distance(b,goal)));
   return candidates[0];
 }
+// A peek is genuinely outside the obstacle silhouette as seen by the player.
+// Enemies must leave crouch to shoot, then withdraw behind their crate.
+export function pickPeekPoint(shelter,player,obstacles,coverIndex,
+  area=AI_TUNING.area){
+  const b=obstacles[coverIndex];if(!b||!shelter)return null;
+  const clearance=AI_TUNING.collisionRadius+.42;
+  const points=[
+    {x:shelter.x,z:b.minZ-clearance},
+    {x:shelter.x,z:b.maxZ+clearance},
+    {x:b.minX-clearance,z:shelter.z},
+    {x:b.maxX+clearance,z:shelter.z}
+  ];
+  const valid=points.filter(p=>
+    p.x>area.minX+.35&&p.x<area.maxX-.35&&
+    p.z>area.minZ+.35&&p.z<area.maxZ-.35&&
+    !obstacles.some(o=>inside(p,o,AI_TUNING.collisionRadius+.06))&&
+    !obstacles.some(o=>lineIntersectsBox(player,p,o,.035))&&
+    distance(p,shelter)>1.0&&distance(p,shelter)<4.5);
+  valid.sort((a,b)=>distance(shelter,a)-distance(shelter,b));
+  return valid[0]||null;
+}
+function trackStuck(tactics,brain,step){
+  if(!tactics.lastPosition){
+    tactics.lastPosition={x:brain.x,z:brain.z};return;
+  }
+  const moved=distance(brain,tactics.lastPosition);
+  tactics.lastPosition={x:brain.x,z:brain.z};
+  if(tactics.goal&&distance(brain,tactics.goal)>.95&&moved<.004)
+    tactics.stuckSeconds+=step;
+  else tactics.stuckSeconds=0;
+  if(tactics.stuckSeconds>1.3){
+    tactics.stuckEvents++;
+    tactics.avoidCoverIndex=tactics.coverIndex;
+    tactics.avoidCoverSeconds=2.8;
+    tactics.coverPoint=null;tactics.coverIndex=-1;
+    tactics.peekPoint=null;tactics.peekSeconds=0;
+    tactics.moveTime=0;tactics.stuckSeconds=0;
+  }
+}
 export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}){
   const enabled=options.enabled!==false&&brain.active;
   const step=clamp(Number.isFinite(dt)?dt:0,0,AI_TUNING.maxDelta);
   if(!enabled||step<=0)return tactics;
   const spec=ENEMY_PROFILES[tactics.kind];
+  trackStuck(tactics,brain,step);
   tactics.cooldown=Math.max(0,tactics.cooldown-step);
+  tactics.peekCooldown=Math.max(0,tactics.peekCooldown-step);
+  tactics.avoidCoverSeconds=Math.max(0,tactics.avoidCoverSeconds-step);
+  if(tactics.avoidCoverSeconds===0)tactics.avoidCoverIndex=-1;
   const memory=brain.mode==='chase'||brain.mode==='investigate'||brain.memory>0;
   if(tactics.reloadRemaining>0){
     tactics.reloadRemaining=Math.max(0,tactics.reloadRemaining-step);
@@ -127,21 +180,22 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   tactics.goal=null;
   if(!memory){
     tactics.phase='patrol';tactics.coverPoint=null;tactics.coverIndex=-1;
-    tactics.crouching=false;return tactics;
+    tactics.crouching=false;tactics.holdSeconds=0;tactics.peekPoint=null;
+    return tactics;
   }
   const defensive=tactics.threat>0||tactics.reloadRemaining>0||
     (brain.mode==='chase'&&options.lowHealth===true);
   tactics.crouching=false;
   if(defensive){
-    // Recheck against the player's CURRENT position on every update.
-    // Otherwise running around a crate leaves an enemy 'in cover'
-    // while exposed on the player's side.
     const selected=tactics.coverIndex>=0?obstacles[tactics.coverIndex]:null;
     if(tactics.coverPoint&&!isBehindCover(player,tactics.coverPoint,selected)){
       tactics.coverPoint=null;tactics.coverIndex=-1;
+      tactics.peekPoint=null;tactics.peekSeconds=0;
+      tactics.holdSeconds=0;
     }
     if(!tactics.coverPoint){
-      const cover=pickCoverPoint(brain,player,obstacles);
+      const cover=pickCoverPoint(brain,player,obstacles,AI_TUNING.area,
+        options.occupiedCover||[],tactics.avoidCoverIndex);
       tactics.coverPoint=cover?.point||null;
       tactics.coverIndex=cover?.index??-1;
     }
@@ -149,16 +203,44 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       const d=distance(brain,tactics.coverPoint);
       const sheltered=d<=.53&&isBehindCover(player,brain,
         obstacles[tactics.coverIndex]);
+      if(sheltered&&!tactics.peekPoint)tactics.holdSeconds+=step;
+      // Briefly step around the crate, take a shot if sight is clear, then
+      // return and crouch. Never shoot while hidden behind solid cover.
+      if(sheltered&&tactics.holdSeconds>=.95&&
+        tactics.peekCooldown===0&&tactics.reloadRemaining===0){
+        tactics.peekPoint=pickPeekPoint(tactics.coverPoint,player,
+          obstacles,tactics.coverIndex);
+        if(tactics.peekPoint){
+          tactics.peekSeconds=.95;
+          tactics.peekCooldown=2.65;
+        }else tactics.peekCooldown=1.2;
+        tactics.holdSeconds=0;
+      }
+      if(tactics.peekPoint){
+        const peekDistance=distance(brain,tactics.peekPoint);
+        const clearShot=!obstacles.some(box=>
+          lineIntersectsBox(brain,player,box,.035));
+        if(peekDistance<.55){
+          tactics.peekSeconds=Math.max(0,tactics.peekSeconds-step);
+          tactics.goal=null;
+          tactics.phase='peek';
+          if(tactics.peekSeconds===0)tactics.peekPoint=null;
+        }else{
+          tactics.goal=routeAroundCrates(brain,tactics.peekPoint,obstacles);
+          tactics.phase='peek-move';
+        }
+        if(!clearShot&&tactics.phase==='peek')tactics.peekSeconds=0;
+        return tactics;
+      }
       tactics.crouching=sheltered;
-      // Don't hide in front of a crate: only call it IN COVER when
-      // player-to-enemy line is actually blocked by the crate.
       tactics.goal=sheltered?null:routeAroundCrates(brain,tactics.coverPoint,obstacles);
       tactics.phase=sheltered?'hold':tactics.reloadRemaining>0?'reload':'cover';
       return tactics;
     }
-  }else{tactics.coverPoint=null;tactics.coverIndex=-1;}
-  // When a shot is available, strafe in alternating directions rather than
-  // running directly at the player. This remains collision bounded.
+  }else{
+    tactics.coverPoint=null;tactics.coverIndex=-1;tactics.peekPoint=null;
+    tactics.holdSeconds=0;
+  }
   if(brain.mode==='chase'){
     tactics.moveTime-=step;
     if(tactics.moveTime<=0){
@@ -168,19 +250,33 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     const d=distance(brain,player);
     const dx=(brain.x-player.x)/Math.max(d,.001);
     const dz=(brain.z-player.z)/Math.max(d,.001);
-    if(d<15&&d>2.4){
-      const offset=2.7*tactics.strafeSign;
-      const desired={x:brain.x+dz*offset,z:brain.z-dx*offset};
+    if(d<16&&d>2.4){
+      const role=spec.role,side=tactics.strafeSign;
+      // Scout flanks wider; Raider circles; heavy Enforcer deliberately
+      // holds a covering line rather than blindly chasing.
+      const lateral=role==='flanker'?4.7:role==='skirmisher'?2.5:1.15;
+      const approach=role==='flanker'?-1.3:role==='anchor'?-0.8:0;
+      const desired={
+        x:brain.x+dz*lateral*side+dx*approach,
+        z:brain.z-dx*lateral*side+dz*approach
+      };
       desired.x=clamp(desired.x,AI_TUNING.area.minX+.4,AI_TUNING.area.maxX-.4);
       desired.z=clamp(desired.z,AI_TUNING.area.minZ+.4,AI_TUNING.area.maxZ-.4);
+      const separation=options.separation||{x:0,z:0};
+      desired.x=clamp(desired.x+separation.x*1.8,
+        AI_TUNING.area.minX+.4,AI_TUNING.area.maxX-.4);
+      desired.z=clamp(desired.z+separation.z*1.8,
+        AI_TUNING.area.minZ+.4,AI_TUNING.area.maxZ-.4);
       tactics.goal=routeAroundCrates(brain,desired,obstacles);
-      tactics.phase='strafe';
+      tactics.phase=role==='flanker'?'flank':
+        role==='anchor'?'suppress':'strafe';
       return tactics;
     }
   }
   tactics.phase='pursue';
   return tactics;
 }
+
 export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
   const spec=ENEMY_PROFILES[tactics.kind];
   if(tactics.reloadRemaining>0)return {fired:false,reason:'reloading'};

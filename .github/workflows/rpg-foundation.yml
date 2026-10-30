@@ -41,6 +41,8 @@ jobs:
           node --check games/rpg-prototype/enemy-ai.test.mjs
           node --check games/rpg-prototype/enemy-tactics.mjs
           node --check games/rpg-prototype/enemy-tactics.test.mjs
+          node --check games/rpg-prototype/enemy-squad.mjs
+          node --check games/rpg-prototype/enemy-squad.test.mjs
           node --check games/rpg-prototype/player-combat.mjs
           node --check games/rpg-prototype/player-combat.test.mjs
           node --check games/rpg-prototype/station9.test.mjs
@@ -52,7 +54,7 @@ jobs:
           node --check games/rpg-prototype/rules.mjs
           node --check games/rpg-prototype/rules.test.mjs
       - name: Test collision, terrain and first quest
-        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/station9.test.mjs games/rpg-prototype/arena-activation.test.mjs
+        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/enemy-squad.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/station9.test.mjs games/rpg-prototype/arena-activation.test.mjs
 
   browser-gameplay:
     runs-on: ubuntu-latest

@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.3\.1/);
+  assert.match(page,/main\.js\?v=W05\.4/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -156,7 +156,7 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
   assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
   assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
   assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
 });
 
 test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{
@@ -219,4 +219,29 @@ test('W05.3.1 limits empty automatic dry fire to one click per trigger pull',()=
   assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
   assert.match(source,/triggerHeld=false;emptyClickLatched=false/);
   assert.match(source,/if\(startWeaponReload\(weaponState,activeSpec\)\)\{\s*emptyClickLatched=false/);
+});
+
+test('W05.4 actual arena AI integrates shared squad sightings and distinct roles',()=>{
+  assert.match(source,/import \{createSquadIntel,clearSquadIntel,reportSquadContact,/);
+  assert.match(source,/const squadIntel=createSquadIntel\(\)/);
+  assert.match(source,/stepSquadIntel\(squadIntel,dt,ticking&&playerHealth\.alive\)/);
+  assert.match(source,/shareSquadContact\(squadIntel,\[\.\.\.enemies\.values\(\)\],aiObstacles,player\)/);
+  assert.match(source,/reportSquadContact\(squadIntel,enemy\.id,player\)/);
+  assert.match(source,/occupiedCover:occupiedSquadCover\(\[\.\.\.enemies\.values\(\)\],enemy\.id\)/);
+  assert.match(source,/separation:squadSeparation\(enemy\.brain,\[\.\.\.enemies\.values\(\)\]\)/);
+  assert.match(source,/clearSquadIntel\(squadIntel\)/);
+  assert.match(source,/enemy\.tactics\.phase==='flank'\?'FLANKING'/);
+  assert.match(source,/enemy\.tactics\.phase==='suppress'\?'SUPPRESSING'/);
+  assert.match(source,/enemy\.tactics\.phase==='peek'\?'PEEK & FIRE'/);
+});
+test('W05.4 enemy 3D animation and shooting respond to stance and peek',()=>{
+  assert.match(source,/enemy\.combatPose\+=/);
+  assert.match(source,/enemy\.reloadPose\+=/);
+  assert.match(source,/enemy\.recoilPose=1/);
+  assert.match(source,/enemy\.upperBody\.rotation\.z\+=/);
+  assert.match(source,/enemy\.upperBody\.rotation\.x=/);
+  assert.match(source,/combatHold:tactic\.phase==='hold'\|\|tactic\.phase==='peek'/);
+  assert.match(source,/!\['cover','hold','peek-move','reload'\]\.includes\(enemy\.tactics\.phase\)/);
+  assert.match(source,/enemy\.upperBody\.rotation\.set\(0,0,0\)/);
+  assert.match(source,/stuckEvents:e\.tactics\.stuckEvents/);
 });

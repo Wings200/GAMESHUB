@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEnemyBrain,stepEnemyBrain} from './enemy-ai.mjs';
 import {ENEMY_PROFILES,makeEnemyTactics,resetEnemyTactics,markEnemyThreat,
-  pickCoverPoint,isBehindCover,routeAroundCrates,tickEnemyTactics,beginReload,
+  pickCoverPoint,isBehindCover,pickPeekPoint,routeAroundCrates,tickEnemyTactics,beginReload,
   attemptEnemyShot} from './enemy-tactics.mjs';
 const box={minX:40,maxX:42,minZ:39,maxZ:41};
 const player={x:30,z:40};
@@ -61,13 +61,13 @@ test('No cover geometry causes safe strafing instead of broken state',()=>{
   // The bot only strafes within its 15-metre combat range.
   const closePlayer={x:34,z:40};
   tickEnemyTactics(t,b,closePlayer,.05,[]);
-  assert.equal(t.phase,'strafe');
+  assert.equal(t.phase,'flank');
   assert.ok(Number.isFinite(t.goal.x));
   assert.ok(Number.isFinite(t.goal.z));
   markEnemyThreat(t);
   tickEnemyTactics(t,b,closePlayer,.05,[]);
   assert.equal(t.coverPoint,null);
-  assert.ok(['strafe','pursue'].includes(t.phase));
+  assert.ok(['flank','pursue'].includes(t.phase));
 });
 test('Pausing AI freezes timers/ammo; resets restore ammo, state and counters',()=>{
   const t=makeEnemyTactics('enforcer'),b=brain();
@@ -160,4 +160,75 @@ test('Very low objects are not accepted as protective crouching cover',()=>{
   const tall={minX:40,maxX:42,minZ:39,maxZ:41,height:1.6};
   assert.equal(pickCoverPoint(brain(),player,[low]),null);
   assert.ok(pickCoverPoint(brain(),player,[tall]));
+});
+
+test('Three enemy profiles select different genuine combat roles',()=>{
+  const roles={scout:'flanker',raider:'skirmisher',enforcer:'anchor'};
+  const expected={scout:'flank',raider:'strafe',enforcer:'suppress'};
+  const target={x:34,z:40};
+  for(const type of Object.keys(roles)){
+    const t=makeEnemyTactics(type),b=brain();
+    assert.equal(ENEMY_PROFILES[type].role,roles[type]);
+    tickEnemyTactics(t,b,target,.05,[]);
+    assert.equal(t.phase,expected[type]);
+    assert.ok(t.goal&&Number.isFinite(t.goal.x));
+  }
+});
+test('Cover peek point is OUTSIDE the crate sightline, never through crate',()=>{
+  const crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  const shelter={x:42.8,z:40};
+  const peek=pickPeekPoint(shelter,{x:30,z:40},[crate],0);
+  assert.ok(peek,'must find an exposed corner reachable from shelter');
+  assert.ok(Math.hypot(peek.x-shelter.x,peek.z-shelter.z)<4.5);
+  assert.equal(isBehindCover({x:30,z:40},peek,crate),false);
+});
+test('Enemy ducks, advances to peek, then withdraws back behind cover',()=>{
+  const crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  const target={x:30,z:40},b=brain(),t=makeEnemyTactics('raider');
+  b.x=42.8;b.z=40;
+  markEnemyThreat(t);
+  let sawCover=false,sawPeek=false,sawReturn=false;
+  for(let i=0;i<185;i++){
+    tickEnemyTactics(t,b,target,.05,[crate]);
+    if(t.phase==='hold'){sawCover=true;assert.equal(t.crouching,true);}
+    if(t.phase==='peek'||t.phase==='peek-move'){
+      sawPeek=true;assert.equal(t.crouching,false);
+    }
+    if(sawPeek&&t.phase==='cover')sawReturn=true;
+    stepEnemyBrain(b,target,.05,[crate],{
+      combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
+      combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
+    });
+  }
+  assert.equal(sawCover,true,'enemy must initially duck behind crate');
+  assert.equal(sawPeek,true,'enemy must attempt to peek out of cover');
+  assert.equal(sawReturn,true,'enemy must return behind cover after peek');
+});
+test('Occupied squad cover gets a crowding penalty',()=>{
+  const boxes=[
+    {minX:40,maxX:42,minZ:39,maxZ:41,height:1.6},
+    {minX:47,maxX:49,minZ:39,maxZ:41,height:1.6}
+  ];
+  const target={x:30,z:40};
+  const enemy={x:45,z:40};
+  const baseline=pickCoverPoint(enemy,target,boxes);
+  assert.ok(baseline);
+  const occupied=[baseline.point];
+  const reserved=pickCoverPoint(enemy,target,boxes,undefined,occupied);
+  assert.ok(reserved);
+  assert.notDeepEqual(reserved.point,baseline.point,
+    'Second raider should avoid reserving identical crate corner');
+});
+test('Stuck NPC recognizes failed motion and attempts a different tactic',()=>{
+  const t=makeEnemyTactics('raider'),b=brain();
+  markEnemyThreat(t);
+  const obstacles=[
+    {minX:40,maxX:42,minZ:39,maxZ:41,height:1.45},
+    {minX:48,maxX:50,minZ:38,maxZ:40,height:1.45}
+  ];
+  for(let i=0;i<65;i++)tickEnemyTactics(t,b,player,.05,obstacles);
+  assert.ok(t.stuckEvents>0,'a bot not moving toward a goal must detect it');
+  assert.ok(Number.isFinite(t.stuckSeconds));
+  assert.ok(['cover','reload','hold','flank','strafe','suppress','pursue',
+    'peek-move','peek'].includes(t.phase));
 });
