@@ -28,7 +28,7 @@ test('Enemy render visibility is never gated by the station selector',()=>{
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);
   assert.doesNotMatch(source,/enemy\.root\.visible=active/);
   assert.match(source,/Number\(e\.code\.slice\(5\)\)<=9/);
-  assert.match(source,/updateEnemies\(dt\);\s*renderer\.render\(scene,camera\)/);
+  assert.match(source,/updateEnemies\(dt\);[\s\S]*renderer\.render\(scene,camera\)/);
 });
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
@@ -37,7 +37,7 @@ test('Health and enemies have real connected HUD elements',()=>{
     assert.ok(page.includes('id="'+id+'"'),'Missing HUD element '+id);
     if(id!=='playerHealthHud')assert.ok(source.includes("'"+id+"'"),'Missing scene wiring '+id);
   }
-  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\)/);
+  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\*\(1-armor\.reduction\)\)/);
   assert.match(source,/resetPlayerHealth\(playerHealth\)/);
   assert.match(source,/canEnemyFire\(enemy\.brain,player,aiObstacles,attack\.range\)/);
 });
