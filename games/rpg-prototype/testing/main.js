@@ -923,9 +923,12 @@ barrel.rotation.x=-Math.PI/2;
 const muzzle=gunPart(new THREE.TorusGeometry(.050,.012,8,16),sights,0,.057,-.57);
 gunPart(new THREE.BoxGeometry(.14,.27,.12),wood,0,-.19,.16).rotation.x=-.18;
 gunPart(new THREE.TorusGeometry(.08,.014,8,20),metal,0,-.12,.017);
-for(const side of [-1,1])gunPart(new THREE.BoxGeometry(.026,.055,.035),
-  sights,.078*side,.1795,.10,slideGroup);
-gunPart(new THREE.BoxGeometry(.035,.060,.040),sights,0,.177,-.42,slideGroup);
+// Narrow rear notch: the front blade is framed, not lost between wide posts.
+for(const side of [-1,1])gunPart(new THREE.BoxGeometry(.018,.055,.035),
+  sights,.043*side,.1795,.10,slideGroup);
+const pistolFrontSight=gunPart(new THREE.BoxGeometry(.028,.060,.040),
+  sights,0,.177,-.42,slideGroup);
+pistolFrontSight.userData.sightReference=true;
 // Layered slide, detailed grip and ejection port, keeping W02 animations.
 gunPart(new THREE.BoxGeometry(.205,.026,.31),metal,0,.119,-.13,slideGroup);
 for(const side of [-1,1]){
@@ -965,7 +968,8 @@ const muzzleFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
   new THREE.MeshBasicMaterial({map:flareTex,transparent:true,depthWrite:false,
     blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
 muzzleFlare.position.set(0,.057,-.595);
-muzzleFlare.visible=false;pistol.add(muzzleFlare);
+muzzleFlare.visible=false;muzzleFlare.userData.ignoreSightProbe=true;
+pistol.add(muzzleFlare);
 
 // Six visually distinct 3D models; the approved pistol model stays intact.
 // Each non-pistol model owns a muzzle, moving magazine and reload hand.
@@ -973,7 +977,8 @@ const weaponVisuals=new Map();
 weaponVisuals.set(SCRAP_PISTOL.id,{
   root:pistol,slideGroup,magazine,magazineBase,reloadHand,muzzleGlow,muzzleFlare,
   magBaseY:-.34,magFootY:-.445,flashScale:1,defaultX:.32,
-  sightLocal:new THREE.Vector3(0,.207,-.16)
+  sightLocal:new THREE.Vector3(0,.207,-.16),
+  ejectionLocal:new THREE.Vector3(.12,.12,-.115)
 });
 // W05.1: upgraded original low-poly procedural weapon models.
 // All mounted sights are ACTUAL in-world geometry using weapon-sights.mjs.
@@ -1044,6 +1049,7 @@ function buildArsenalView(spec){
     box(.12,.15,.12,walnut,0,-.22,.20);
   }
   // Barrel, fore-end and distinct furniture, shaped per archetype.
+  let pumpGrip=null,cylinderBody=null;
   const boreY=.045;
   const barrelZ=-.27-length*.38,barrelEnd=-.27-length*.84;
   cylinder(shotgun?.052:scoped?.037:revolver?.052:.036,
@@ -1051,8 +1057,8 @@ function buildArsenalView(spec){
   cylinder(shotgun?.057:scoped?.043:.044,.04,trim,0,boreY,barrelEnd);
   if(shotgun){
     cylinder(.028,length*.72,oxide,0,-.025,barrelZ);
-    const pump=box(.24,.125,.25,walnut,0,.012,-.34);
-    pump.rotation.x=.02;
+    pumpGrip=box(.24,.125,.25,walnut,0,.012,-.34);
+    pumpGrip.rotation.x=.02;
     for(const side of [-1,1])for(let z=-.43;z<-.24;z+=.042)
       box(.008,.05,.016,black,side*.124,.012,z);
   }else if(scoped){
@@ -1079,14 +1085,19 @@ function buildArsenalView(spec){
       box(.15,.016,.022,oxide,0,.166,z);
     box(.10,.12,.14,polymer,0,-.04,-.35);
   }else if(revolver){
-    const drum=cylinder(.104,.185,oxide,0,.055,-.10);
-    drum.rotation.x=0;drum.rotation.z=Math.PI/2;
+    // Cylinder axis is along the barrel (-Z), not across the frame (X).
+    const drum=cylinder(.099,.182,oxide,0,.036,-.10);
+    cylinderBody=drum;
     for(let i=0;i<6;i++){
       const a=i*Math.PI/3;
-      const stud=part(new THREE.SphereGeometry(.022,8,6),steel,
-        Math.sin(a)*.098,.055+Math.cos(a)*.098,-.10);
+      const stud=part(new THREE.SphereGeometry(.017,8,6),black,
+        Math.sin(a)*.069,.036+Math.cos(a)*.069,-.201);
     }
-    box(.15,.065,.31,trim,0,.132,-.23);
+    // The old .065-high top button peaked at y=.1645 (the ADS sight is
+    // y=.165) and completely blocked the notch. Real low top-strap here.
+    box(.15,.035,.25,trim,0,.106,-.23);
+    // Put the cylinder release latch to the left of the sight line.
+    box(.028,.044,.058,steel,-.126,.12,-.055);
   }
   for(const side of [-1,1]){
     // Ejection-port and asymmetrical bolt panels.
@@ -1094,7 +1105,7 @@ function buildArsenalView(spec){
     if(rifle||smg)box(.016,.028,.18,oxide,side*.109,-.01,-.16);
   }
   const slideGroup=new THREE.Group();root.add(slideGroup);
-  box(.12,.035,.12,trim,0,.14,-.055,slideGroup);
+  if(!revolver)box(.12,.022,.095,trim,0,.124,-.055,slideGroup);
   // Actual optic centres have the exact calibrated y from SIGHT_MOUNTS.
   // No tall fake scopes or rotated ring planes.
   if(mount.optic==='scope'){
@@ -1124,37 +1135,65 @@ function buildArsenalView(spec){
     // Front and rear aperture aligned on camera ray; no giant high optic.
     part(new THREE.TorusGeometry(holo?.069:.052,.009,8,22),
       trim,0,mount.y,mount.z-.07);
-    part(new THREE.SphereGeometry(.008,8,8),
+    const redDot=part(new THREE.SphereGeometry(.008,8,8),
       new THREE.MeshBasicMaterial({color:0xea5e42,depthTest:true}),
       0,mount.y,mount.z-.073);
+    redDot.userData.sightReference=true;
   }else{
     // Matched-height iron front and rear sights.
-    box(.095,.036,.042,steel,0,mount.y-.025,.115);
-    for(const side of [-1,1])box(.016,.037,.029,trim,side*.052,mount.y-.0185,.115);
-    box(.025,.051,.026,trim,0,mount.y-.0255,barrelEnd-.02,slideGroup);
+    // Open notch with the front blade tip precisely at the ADS line.
+    // Rear posts never overlap x=0; the centre stays clear.
+    box(.11,.022,.038,steel,0,mount.y-.041,.115);
+    for(const side of [-1,1])
+      box(.017,.055,.032,trim,side*.042,mount.y-.0275,.115);
+    const frontBlade=box(.025,.052,.026,trim,0,
+      mount.y-.026,barrelEnd-.02,slideGroup);
+    frontBlade.userData.sightReference=true;
     // Iron front tip and rear notch are at equal world-space height.
   }
-  const magBaseY=shotgun?-.235:-.275;
+  // Revolvers use a cylinder and shotguns feed through a tube, not a
+  // pistol-style bottom box magazine. Keep an animated shell/loader prop
+  // for the shared reload UI while hiding the irrelevant mag assembly.
+  const enclosed=revolver||shotgun;
+  const magBaseY=enclosed?-.235:-.275;
   const magFootY=magBaseY-.132;
-  const magLength=shotgun?.12:scoped?.15:smg?.31:.24;
-  const magZ=shotgun?.12:smg?-.01:.03;
+  const magLength=scoped?.15:smg?.31:.24;
+  const magZ=smg?-.01:.03;
   const magazine=box(.126,magLength,.13,oxide,0,magBaseY,magZ);
   const magazineBase=box(.145,.028,.15,black,0,magFootY,magZ);
+  magazine.visible=!enclosed;
+  magazineBase.visible=!enclosed;
   const reloadHand=new THREE.Group();root.add(reloadHand);
   part(new THREE.SphereGeometry(.094,10,8),glove,0,0,0,reloadHand);
   box(.12,.15,.14,glove,-.045,-.09,.04,reloadHand);
   reloadHand.visible=false;
+  // A visible cylinder release (revolver) or shell-port (shotgun) moves
+  // during reload; firearm-specific rather than a floating pistol mag.
+  const reloadAction=new THREE.Group();root.add(reloadAction);
+  if(revolver){
+    const reloadDrum=part(new THREE.CylinderGeometry(.102,.102,.19,12),
+      oxide,0,.037,-.10,reloadAction);
+    reloadDrum.rotation.x=Math.PI/2;
+    reloadAction.visible=false;
+  }else if(shotgun){
+    const loadingShell=part(new THREE.CylinderGeometry(.023,.023,.09,9),
+      oxide,.065,-.075,-.12,reloadAction);
+    loadingShell.rotation.x=Math.PI/2;
+    reloadAction.visible=false;
+  }
   const muzzleGlow=new THREE.PointLight(0xffa55a,0,2,2);
   muzzleGlow.position.set(0,boreY,barrelEnd-.02);root.add(muzzleGlow);
   const modelFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
     muzzleFlare.material.clone());
   modelFlare.position.set(0,boreY,barrelEnd-.036);
-  modelFlare.visible=false;root.add(modelFlare);
+  modelFlare.visible=false;modelFlare.userData.ignoreSightProbe=true;
+  root.add(modelFlare);
   root.visible=false;
   return {root,slideGroup,magazine,magazineBase,reloadHand,
     muzzleGlow,muzzleFlare:modelFlare,magBaseY,magFootY,
     flashScale:shotgun?1.65:scoped?1.25:1,
-    defaultX:rifle?.23:.34,
+    defaultX:rifle?.23:.34,reloadAction,pumpGrip,cylinderBody,
+    ejectionLocal:new THREE.Vector3(revolver?.11:.14,.08,-.08),
     sightLocal:new THREE.Vector3(mount.x,mount.y,mount.z)};
 }
 
@@ -1211,8 +1250,12 @@ function clearCasings(){
   while(casings.length)scene.remove(casings.pop().mesh);
 }
 function ejectCasing(){
-  camera.updateMatrixWorld(true);
-  casingOrigin.set(.18,-.08,-.47).applyMatrix4(camera.matrixWorld);
+  // Brass comes from the *equipped receiver*, never a universal pistol
+  // position in camera coordinates. Revolvers keep spent brass until reload.
+  if(activeSpec.kind==='revolver')return;
+  const visual=weaponVisuals.get(activeWeaponId);
+  visual.root.updateWorldMatrix(true,false);
+  casingOrigin.copy(visual.ejectionLocal).applyMatrix4(visual.root.matrixWorld);
   casingRight.set(1,0,0).applyQuaternion(camera.quaternion);
   casingForward.set(0,0,-1).applyQuaternion(camera.quaternion);
   const state=createCasingState(casingOrigin,casingRight,casingForward);
@@ -1239,6 +1282,26 @@ function updateCasings(dt){
 }
 const firingRaycaster=new THREE.Raycaster();
 firingRaycaster.far=105;
+// Runtime ADS sanity check: only raycast against the visible viewmodel,
+// ignoring intentionally centered front blades and reticle dots.
+const sightProbe=new THREE.Raycaster();
+sightProbe.near=.05;sightProbe.far=2.5;
+const sightProbeOrigin=new THREE.Vector3();
+const sightProbeDirection=new THREE.Vector3();
+let sightProbeTime=0;
+function inspectSightClearance(){
+  const visual=weaponVisuals.get(activeWeaponId);
+  camera.updateWorldMatrix(true,true);
+  camera.getWorldPosition(sightProbeOrigin);
+  camera.getWorldDirection(sightProbeDirection);
+  sightProbe.set(sightProbeOrigin,sightProbeDirection);
+  const hits=sightProbe.intersectObject(visual.root,true);
+  const obstruction=hits.find(h=>!h.object.userData.sightReference&&
+    !h.object.userData.ignoreSightProbe);
+  const output=$('weaponSightCheck');
+  output.textContent=obstruction?'ADS BLOCKED · MODEL OBSTRUCTION':'ADS SIGHT LINE CLEAR';
+  output.style.color=obstruction?'#ffa27d':'#abd8ae';
+}
 const shotVector=new THREE.Vector3();
 let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
@@ -1270,7 +1333,7 @@ function shoot(){
     sound.dryFire();showShotNotice('EMPTY · PRESS R');return;
   }
   if(result.status!=='fired')return;
-  sound.gunshot();
+  sound.gunshot(activeSpec.kind||'pistol');
   recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees/1.25);
   muzzleFlash=.085;
   slideCycle=.13;
@@ -1363,7 +1426,7 @@ function shoot(){
 function reload(){
   if(startWeaponReload(weaponState,activeSpec)){
     slideCycle=0;
-    sound.reload();
+    sound.reload(activeSpec.kind||'pistol',activeSpec.reloadSeconds);
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
 }
@@ -1539,6 +1602,25 @@ function frame(){
   visual.magazineBase.rotation.z=handling.magazineAngle;
   visual.reloadHand.visible=handling.handVisible;
   visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
+  if(visual.pumpGrip)
+    visual.pumpGrip.position.z=-.34+slideTravel(slideCycle)*1.5;
+  if(visual.reloadAction){
+    const action=visual.reloadAction;
+    action.visible=handling.active&&
+      (activeSpec.kind==='revolver'||activeSpec.kind==='shotgun');
+    if(activeSpec.kind==='revolver'){
+      // Cylinder swings out and returns, instead of dropping a box mag.
+      action.position.x=.17*Math.sin(Math.PI*handling.progress);
+      action.rotation.y=.40*Math.sin(Math.PI*handling.progress);
+    }else{
+      // A shell dips toward the loading port and slides back.
+      action.position.y=-.09*Math.sin(Math.PI*handling.progress);
+      action.position.z=.17*Math.sin(Math.PI*handling.progress);
+    }
+    visual.reloadHand.visible=false;
+    visual.magazine.visible=false;visual.magazineBase.visible=false;
+    if(visual.cylinderBody)visual.cylinderBody.visible=!handling.active;
+  }
   // Distinct idle/ADS movement sway, with substantially steadier sights in ADS.
   handlingTime+=dt;
   const moving=Math.min(1,(weaponMotion.speed||0)/4.5);
@@ -1563,6 +1645,13 @@ function frame(){
   camera.fov+=(targetFOV-camera.fov)*(1-Math.exp(-16*dt));
   camera.updateProjectionMatrix();
   $('crosshair').classList.toggle('hidden',weaponState.aiming);
+  const sightCheck=$('weaponSightCheck');
+  sightCheck.style.display=weaponState.aiming&&!handling.active?'block':'none';
+  sightProbeTime-=dt;
+  if(sightCheck.style.display==='block'&&sightProbeTime<=0){
+    inspectSightClearance();
+    sightProbeTime=.20;
+  }
   for(const {back} of targetData.values()){
     const flash=back.userData.flash||0;
     if(flash>0){

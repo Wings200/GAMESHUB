@@ -82,13 +82,24 @@ export class WeaponAudio {
     oscillator.connect(volume); volume.connect(ctx.destination);
     oscillator.start(time); oscillator.stop(time + duration + .01);
   }
-  gunshot() {
+  gunshot(kind='pistol') {
     if (!this.unlock()) return;
     const t = this.context.currentTime + .005;
-    this._noiseBurst(t, .115, .27, 330, 6800);
-    this._noiseBurst(t + .011, .19, .15, 85, 1350);
-    this._tone(t, 158, 58, .14, .22, 'triangle');
-    this._tone(t + .008, 840, 400, .085, .036, 'sawtooth');
+    // Different acoustic signatures per gun instead of the old universal pop.
+    const sounds={
+      pistol:{crack:.115,body:.19,level:.27,freq:158},
+      revolver:{crack:.14,body:.24,level:.30,freq:120},
+      smg:{crack:.065,body:.12,level:.20,freq:235},
+      carbine:{crack:.09,body:.20,level:.26,freq:180},
+      shotgun:{crack:.17,body:.28,level:.31,freq:95},
+      rifle:{crack:.15,body:.27,level:.29,freq:105}
+    };
+    const v=sounds[kind]||sounds.pistol;
+    this._noiseBurst(t,v.crack,v.level,kind==='shotgun'?120:330,
+      kind==='smg'?7500:6800);
+    this._noiseBurst(t+.011,v.body,Math.min(.22,v.level*.55),85,1350);
+    this._tone(t,v.freq,Math.max(38,v.freq*.36),Math.min(.25,v.body),.22,'triangle');
+    this._tone(t+.008,kind==='smg'?1300:840,400,.085,.036,'sawtooth');
   }
   impact(type = 'concrete', delaySeconds = 0) {
     if (!this.unlock()) return;
@@ -123,16 +134,18 @@ export class WeaponAudio {
         break;
     }
   }
-  reload() {
+  reload(kind='pistol',duration=1.65) {
     if (!this.unlock()) return;
-    const t = this.context.currentTime + .005;
-    // Magazine release, slide rattle and final lock-in, scheduled against the
-    // AudioContext clock rather than using background timers.
-    this._tone(t, 1050, 540, .07, .055, 'square');
-    this._noiseBurst(t + .36, .115, .095, 780, 4100);
-    this._tone(t + .45, 450, 660, .11, .045, 'triangle');
-    this._tone(t + 1.23, 1250, 610, .08, .08, 'square');
-    this._noiseBurst(t + 1.26, .06, .055, 1100, 6100);
+    const t=this.context.currentTime+.005;
+    // Mechanical sounds scale with each weapon's ACTUAL reload timeline.
+    // Do not trigger the final chamber click before the gun is reloaded.
+    const d=Math.max(.5,Number.isFinite(duration)?duration:1.65);
+    const initial=kind==='revolver'?750:kind==='shotgun'?590:1050;
+    this._tone(t,initial,540,.07,.055,'square');
+    this._noiseBurst(t+d*.22,.11,.09,780,4100);
+    this._tone(t+d*.33,450,660,.11,.045,'triangle');
+    this._tone(t+d*.88,1250,610,.08,.08,'square');
+    this._noiseBurst(t+d*.90,.06,.055,1100,6100);
   }
   dryFire() {
     if (!this.unlock()) return;
