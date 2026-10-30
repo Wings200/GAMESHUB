@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Enemy Visibility Fix W04.1.1 | GAMESHUB RPG</title>
+<title>Enemy Elimination and Occlusion W04.1.2 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -121,7 +121,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W04.1.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W04.1.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -136,8 +136,8 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W04.1.1 · ENEMY TEST</strong>
-  <div id="enemyCount" style="color:#f4c497;font-size:13px">3 NPCs LOADED</div>
+  <strong>W04.1.2 · ENEMY TEST</strong>
+  <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">ENEMIES CAN FIRE · WATCH HEALTH</div>
   <div id="enemyList">SCOUT: PATROL · RAIDER: PATROL · ENFORCER: PATROL</div>
   <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
@@ -146,7 +146,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W04.1.1 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W04.1.2 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -162,9 +162,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.1.1</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.1.2</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W04.1.1 adds a direct enemy-arena launch button, a bright 3D enemy marker and an on-screen engine status so we can isolate the missing-enemy bug. Player health and enemy damage are still included. The full pistol, armor and movement labs remain intact.</p>
+    <p>W04.1.2 fixes enemy eliminations and wall visibility. Defeated raiders now disappear after a short fall, including their glowing rings and nameplates; world markers no longer show through solid walls. J resets all three. The 100 HP player health bar, weapons, modular armor and earlier stations remain.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -173,7 +173,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W04.1.1</div>
     <div class="menu-meta"><span class="pill">3 VISIBLE AI RAIDERS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Click ENTER ENEMY ARENA DIRECTLY instead of relying on the 9 key. The main menu must show ENGINE READY · 3 RAIDERS LOADED. You should see a large 3 RAIDERS sign, orange pads and three humanoids. If the label says WAITING FOR 3D ENGINE, tell me exactly what error is shown instead.</p>
+    <p style="font-size:11px;margin-top:22px">Click ENTER ENEMY ARENA DIRECTLY. Shoot an enemy until its HP reaches zero: the body vanishes shortly afterward, its orange foot marker and nameplate disappear immediately, and the arena sign updates the number alive. J restores all three raiders. Walk behind a solid wall to confirm that the orange markers and nameplates do not show through it.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -209,6 +209,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W04.1.1"></script>
+<script type="module" src="./main.js?v=W04.1.2"></script>
 </body>
 </html>
