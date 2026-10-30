@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { stepMovement, requestJump, MOVE_TUNING } from '../movement.mjs';
+import { stepMovement, requestJump, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING } from '../movement.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -119,6 +119,21 @@ for(let n=0;n<stairCount;n++){
 box(22+stairWidth*stairCount+3,1,16,6,2,13,floorPaint);
 function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
+let labEndurance=ENDURANCE_TUNING.defaultPoints;
+try{const last=Number(localStorage.getItem('rpg-lab-endurance'));if(last>=1&&last<=10)labEndurance=Math.round(last);}catch{}
+setEndurance(player,labEndurance);
+function adjustEndurance(change){
+  labEndurance=setEndurance(player,labEndurance+change);
+  $('enduranceValue').textContent=String(labEndurance);
+  $('enduranceHUD').textContent=String(labEndurance);
+  $('sprintTime').textContent=maximumStamina(labEndurance)+' seconds of sprint';
+  $('staminaFill').style.width='100%';
+  $('staminaNumber').textContent='100%';
+  try{localStorage.setItem('rpg-lab-endurance',String(labEndurance));}catch{}
+}
+$('endDown').addEventListener('click',()=>adjustEndurance(-1));
+$('endUp').addEventListener('click',()=>adjustEndurance(1));
+adjustEndurance(0);
 const keys=new Set();
 const forward=new THREE.Vector3();
 const clock=new THREE.Clock();
@@ -126,6 +141,7 @@ let stationIndex=0,qualityHigh=true;
 function resetPlayer(i){
   stationIndex=i;const s=stations[i];
   player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
+  // Reset location only, not stamina. Press [ or ] to refill for a test. 
   camera.rotation.set(0,-Math.PI/2,0);
   $('stationName').textContent=s.title;$('stationInfo').textContent=s.info;
   camera.position.set(player.x,groundHeight(player.x,player.z)+MOVE_TUNING.eyeHeight,player.z);
@@ -143,6 +159,9 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='BracketLeft'||e.code==='BracketRight'){
+    e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
+  }
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
   if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=5){
     resetPlayer(Number(e.code.slice(5))-1);return;
@@ -161,6 +180,10 @@ function updateHUD(info){
   $('speed').textContent=info.speed.toFixed(1)+' m/s';
   $('state').textContent=info.airborne?'JUMP':info.moving?(info.sprinting?'SPRINT':'WALK'):'IDLE';
   $('height').textContent=(info.ground+player.jump).toFixed(1)+' m';
+  $('staminaFill').style.width=(info.staminaFraction*100).toFixed(1)+'%';
+  $('staminaNumber').textContent=Math.round(info.staminaFraction*100)+'%';
+  $('staminaState').textContent=info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':info.recovering?'RECOVERING':'READY';
+  $('staminaFill').classList.toggle('empty',info.exhausted);
 }
 function frame(){
   requestAnimationFrame(frame);

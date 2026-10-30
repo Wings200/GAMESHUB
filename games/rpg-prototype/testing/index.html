@@ -15,9 +15,23 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #hud{position:fixed;left:18px;right:18px;top:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;pointer-events:none}
 .block{background:rgba(8,20,29,.87);border:1px solid #89a7ae66;box-shadow:0 12px 40px #0005;border-radius:4px;padding:13px 16px;backdrop-filter:blur(11px)}
 .logo{display:flex;align-items:center;gap:13px;font-weight:950;letter-spacing:.14em;font-size:13px}.logo b{background:#e8bf80;color:#13232b;padding:7px 9px;border-radius:2px}.logo small{display:block;color:#a9bac0;font-size:10px;letter-spacing:.16em;margin-top:4px}
+.lab-status{width:min(430px,55vw);display:grid;gap:8px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(73px,1fr));gap:15px;text-align:right;min-width:min(400px,55vw)}
 .stat label{display:block;font-size:9px;color:#a5b9c0;font-weight:850;letter-spacing:.15em;margin-bottom:4px}
 .stat strong{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.stamina-panel{display:grid;gap:7px}
+.stamina-line{display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:850;letter-spacing:.1em}
+.stamina-line span{color:#cbd8d5}
+.stamina-line strong{color:#e9c58d}
+.stamina-track{height:9px;overflow:hidden;border-radius:2px;background:#14202b;border:1px solid #819c9866}
+#staminaFill{display:block;width:100%;height:100%;background:linear-gradient(90deg,#4a9c82,#b7d8a2);transition:width .12s linear}
+#staminaFill.empty{background:#c36d5a}
+.endurance-picker{display:flex;align-items:center;gap:9px;margin-top:15px;flex-wrap:wrap;color:#d8e2df;font-size:12px;font-weight:900;letter-spacing:.07em}
+.endurance-picker button{border:1px solid #dcbd86;background:#132833;color:#e9d6b2;width:35px;height:32px;border-radius:3px;font-weight:950}
+.endurance-picker button:hover{background:#244350}
+#enduranceValue{font-size:23px;color:#e7c387;font-variant-numeric:tabular-nums}
+#sprintTime{color:#b0c7c7;font-size:11px;font-weight:700;letter-spacing:0}
+
 #bottom{position:fixed;left:18px;bottom:18px;right:18px;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none;gap:20px}
 #station{max-width:395px}.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:950;color:#e6c38c}
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
@@ -34,7 +48,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .menu-links{display:flex;gap:21px;flex-wrap:wrap;margin-top:25px;font-size:12px;font-weight:750;color:#e3bb81}
 #quality{position:fixed;right:18px;top:94px;color:#d1e5e4;background:#0b2024cc;border:1px solid #92b3ab77;border-radius:3px;font-size:10px;letter-spacing:.12em;font-weight:900;padding:9px 11px}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
-@media(max-width:690px){#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+@media(max-width:690px){.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
 </style>
 </head>
 <body>
@@ -42,10 +56,16 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="vignette"></div>
 <div id="hud">
   <div class="block logo"><b>M01</b><div>MOVEMENT LAB<small>UNTITLED RPG / SHARED CONTROLLER</small></div></div>
+  <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
     <div class="stat"><label>STATE</label><strong id="state">IDLE</strong></div>
     <div class="stat"><label>HEIGHT</label><strong id="height">0.0 m</strong></div>
+  </div>
+  <div class="block stamina-panel">
+    <div class="stamina-line"><span>STAMINA · E<span id="enduranceHUD">3</span></span><strong id="staminaNumber">100%</strong><span id="staminaState">READY</span></div>
+    <div class="stamina-track"><span id="staminaFill"></span></div>
+  </div>
   </div>
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
@@ -54,13 +74,15 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · SPACE JUMP<br>1 SPRINT · 2 HURDLES · 3 COLLISION · 4 RAMP · 5 STAIRS<br>R RESET STATION · ESC PAUSE</div>
+  <div id="keys">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · SPACE JUMP<br>1 SPRINT · 2 HURDLES · 3 COLLISION · 4 RAMP · 5 STAIRS<br>[ / ] ENDURANCE · R RESET STATION · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
     <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / M01</div>
     <h1>MOVEMENT<span>FIRST.</span></h1>
     <p>Our clean mechanics test field. Verify camera feel, movement speed, collision, jump clearance, ramps, and stairs before we carry the system into the open world.</p>
+    <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">12 seconds of sprint</span></div>
+    <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends your sprint time. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <div class="menu-meta"><span class="pill">ONE SHARED MOVEMENT MODULE</span><span class="pill">5 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
