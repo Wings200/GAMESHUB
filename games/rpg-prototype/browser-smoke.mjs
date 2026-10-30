@@ -75,6 +75,7 @@ try{
   await page.keyboard.press('k');
   let frozen=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(frozen.aiEnabled,false);
+  await page.evaluate(()=>window.__rpgSmokeAimAtScout());
   const initialHp=frozen.enemies.find(e=>e.id==='scout').health;
   // A coordinate click AFTER pointer lock moves the view in Chrome.
   // Dispatch mouse-button events directly on the locked window instead,
@@ -99,11 +100,66 @@ try{
   }));
   assert.ok(scoutHealth<initialHp,
     'Player pistol must cause real damage to an enemy in 3D hit detection');
+  // Reproduce the reported continuous buzz with the automatic Pipe SMG.
+  // Hold its trigger past the final bullet and verify a SINGLE empty click
+  // for the entire uninterrupted hold (including a few extra render frames).
+  await page.evaluate(()=>{
+    const menu=document.getElementById('weaponSelect');
+    menu.value='pipe-smg';
+    menu.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  // Reduce to one round only for this smoke run: software WebGL does not
+  // guarantee 30 shots in realtime, but one final shot tests the same path.
+  await page.evaluate(()=>window.__rpgSmokeSetMagazine(1));
+  const smgStart=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(smgStart.weapon.id,'pipe-smg');
+  assert.equal(smgStart.weapon.magazine,1);
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mousedown',{button:0,bubbles:true})));
+  await page.waitForFunction(()=>window.__rpgSmokeState().weapon.magazine===0,
+    null,{timeout:12000});
+  await page.waitForFunction(()=>window.__rpgSmokeState().dryFireClicks===1,
+    null,{timeout:12000});
+  const emptyA=await page.evaluate(()=>window.__rpgSmokeState());
+  await page.waitForTimeout(650);
+  const emptyB=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(emptyB.dryFireClicks,emptyA.dryFireClicks,
+    'A held empty automatic weapon must NOT make a buzzing stream of clicks');
+  assert.equal(emptyB.dryFireClicks,1);
+  assert.equal(emptyB.emptyClickLatched,true);
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mouseup',{button:0,bubbles:true})));
+  // A SECOND intentional trigger pull should produce exactly one more click.
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mousedown',{button:0,bubbles:true})));
+  await page.waitForTimeout(200);
+  const second=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(second.dryFireClicks,2,
+    'After releasing the trigger, one new empty click must be possible');
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mouseup',{button:0,bubbles:true})));
+  // Reloading restores firing and does not leave the latch stuck on empty.
+  await page.keyboard.press('r');
+  const reloading=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.ok(reloading.weapon.reloadRemaining>0,'R must start a reload');
+  await page.evaluate(()=>window.__rpgSmokeFinishReload());
+  await page.waitForFunction(()=>window.__rpgSmokeState().weapon.magazine===30,
+    null,{timeout:12000});
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mousedown',{button:0,bubbles:true})));
+  await page.waitForTimeout(190);
+  await page.evaluate(()=>window.dispatchEvent(
+    new MouseEvent('mouseup',{button:0,bubbles:true})));
+  const recovered=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.ok(recovered.weapon.magazine<30,
+    'Automatic fire must work after empty magazine and successful reload');
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
     smoke:'PASS',aiMoved:true,scoutHealthBefore:initialHp,
-    scoutHealthAfter:scoutHealth,enemies:result.enemies.length
+    scoutHealthAfter:scoutHealth,enemies:result.enemies.length,
+    heldEmptyClicks:emptyB.dryFireClicks,secondPullClicks:second.dryFireClicks,
+    smgAfterReloadMagazine:recovered.weapon.magazine
   }));
   await page.close();
 }finally{
