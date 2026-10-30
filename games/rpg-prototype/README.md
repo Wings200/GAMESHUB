@@ -2,6 +2,15 @@
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 
+## M03 — advanced movement testing
+- Uses the exact shared `movement.mjs` controller in the lab and the preserved forest preview.
+- Hold Left/Right Ctrl to crouch, or press C to toggle crouch. Crouch speed is 2.35 m/s and disables sprint and jumping.
+- Standing is physically forbidden under low ceilings; the player remains crouched after releasing C until they exit.
+- Walking and sprinting ease into full speed and ease out when released, with near-instant collision slide response and no endless momentum.
+- Shared procedural first-person camera uses a smooth crouching eye height and subtle, grounded head bob.
+- Test station 6 offers a physical low tunnel with a collidable roof; press 6 to teleport to it. Stations 1–5 and the previous mechanics remain.
+- No humanoid skeleton or third-person character animation rig has been implemented in this milestone.
+
 ## Endurance and stamina (Movement Lab M02)
 - Shared `movement.mjs` stamina controller is used in the test field and the forest.
 - Endurance is an RPG skill from 1 to 10: max continuous sprint = 3 + Endurance seconds, from 4 seconds at E1 to 13 at E10 (half the prior sprint time).

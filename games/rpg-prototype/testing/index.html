@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Movement Lab M01 | GAMESHUB RPG</title>
+<title>Movement Lab M03 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -55,7 +55,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
 <div id="hud">
-  <div class="block logo"><b>M01</b><div>MOVEMENT LAB<small>UNTITLED RPG / SHARED CONTROLLER</small></div></div>
+  <div class="block logo"><b>M03</b><div>MOVEMENT LAB<small>UNTITLED RPG / SHARED CONTROLLER</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -74,17 +74,17 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · SPACE JUMP<br>1 SPRINT · 2 HURDLES · 3 COLLISION · 4 RAMP · 5 STAIRS<br>[ / ] ENDURANCE · R RESET STATION · ESC PAUSE</div>
+  <div id="keys">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · SPACE JUMP · C TOGGLE CROUCH · CTRL HOLD CROUCH<br>1 SPRINT · 2 HURDLES · 3 COLLISION · 4 RAMP · 5 STAIRS · 6 TUNNEL<br>[ / ] ENDURANCE · R RESET STATION · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / M01</div>
-    <h1>MOVEMENT<span>FIRST.</span></h1>
-    <p>Our clean mechanics test field. Verify camera feel, movement speed, collision, jump clearance, ramps, and stairs before we carry the system into the open world.</p>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / M03</div>
+    <h1>ADVANCED<span>MOVEMENT.</span></h1>
+    <p>Our clean mechanics test field. Verify smooth starts and stops, crouching, low-ceiling collisions, and gentle camera bob alongside the existing sprint, jump, and stairs tests.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <button id="start" class="primary" type="button">ENTER TEST FIELD</button>
-    <div class="menu-meta"><span class="pill">ONE SHARED MOVEMENT MODULE</span><span class="pill">5 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-meta"><span class="pill">ONE SHARED MOVEMENT MODULE</span><span class="pill">6 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">This is a testing ground, not the final map. No weapon or power armor mechanics are claimed complete yet.</p>
   </div>
