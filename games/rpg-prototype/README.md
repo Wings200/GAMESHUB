@@ -1,4 +1,9 @@
-# Untitled RPG · Mechanics Lab W06.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.1 + Forest Foundation 0.1
+
+## W06.1 — upward camera recoil + enemy helmet balancing
+- User-reported bug fix: `kickViewRecoil` previously subtracted camera pitch, which points DOWN in Three.js YXZ view coordinates. Gunfire now adds positive pitch to kick the aim upward; the same capped, damped recoil naturally recovers down to the original viewing angle without affecting yaw or roll. Regression tests assert the correct direction, restoration, rapid-fire cap and upper pitch limit.
+- Scouts now wear Scrap Iron head protection and Raiders wear Ranger Guard helmets, while Enforcers keep full Citadel armor. NPC loadouts are independent of the intentionally bare/light/heavy armory dummies. Existing helmet geometry is automatically rendered and matched to the raycast head damage zone. Two 38-damage revolver headshots can no longer defeat any of the three enemies, while headshots still outdamage torso hits.
+- No changes to the player's inventory, weapon base damage, armor damage formula, enemy AI behavior or forest exploration. W06.1 awaits user gameplay confirmation.
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 

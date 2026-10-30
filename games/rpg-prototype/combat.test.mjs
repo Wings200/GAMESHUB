@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ARMOR_SLOTS,ARMOR_ITEMS,ARMOR_STYLES,ARMOR_PRESETS,createLoadout,
+import {ARMOR_SLOTS,ARMOR_ITEMS,ARMOR_STYLES,ARMOR_PRESETS,ENEMY_ARMOR_PRESETS,createLoadout,
   getArmorPiece,armorPointsForSlot,damageReductionForPoints,
   createDummy,equipArmor,applyDamage,resetDummy,HIT_ZONES} from './combat.mjs';
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8, a+' != '+b);
@@ -23,6 +23,25 @@ test('Three default dummies are bare, partially equipped, and fully protected',(
   assert.ok(armorPointsForSlot(heavy,'head')>0);
   assert.ok(armorPointsForSlot(heavy,'chest')>armorPointsForSlot(light,'chest'));
   assert.equal(ARMOR_PRESETS.heavy.rightArm,'citadel-rightArm');
+});
+test('All three enemy roles have visible protective head armor and distinct survivability',()=>{
+  const scout=createDummy(ENEMY_ARMOR_PRESETS.scout);
+  const raider=createDummy(ENEMY_ARMOR_PRESETS.raider);
+  const enforcer=createDummy(ENEMY_ARMOR_PRESETS.enforcer);
+  assert.ok(armorPointsForSlot(scout,'head')>0);
+  assert.ok(armorPointsForSlot(raider,'head')>armorPointsForSlot(scout,'head'));
+  assert.ok(armorPointsForSlot(enforcer,'head')>armorPointsForSlot(raider,'head'));
+  // The 38-damage revolver must no longer two-tap Scout or Raider heads.
+  for(const enemy of [scout,raider,enforcer]){
+    assert.equal(applyDamage(enemy,38,'head').killed,false);
+    assert.equal(applyDamage(enemy,38,'head').killed,false);
+    assert.ok(enemy.health>0);
+  }
+  // But headshots still do appreciably more than protected torso hits.
+  const first=createDummy(ENEMY_ARMOR_PRESETS.raider);
+  const head=applyDamage(first,20,'head').damage;
+  const chest=applyDamage(createDummy(ENEMY_ARMOR_PRESETS.raider),20,'chest').damage;
+  assert.ok(head>chest);
 });
 test('Headshot, body and limb base damage apply even without armor',()=>{
   close(applyDamage(createDummy(),20,'head').damage,50);
