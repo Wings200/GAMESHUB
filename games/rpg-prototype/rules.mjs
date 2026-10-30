@@ -50,3 +50,17 @@ export function finishQuest(q){
   if(!q.started||q.collected<2||q.finished)return q;
   return {...q,finished:true,credits:q.credits+20};
 }
+export function revealNearby(visited, x, z, grid=36) {
+  const cell=WORLD/grid;
+  const ix=Math.floor((x+WORLD/2)/cell);
+  const iz=Math.floor((z+WORLD/2)/cell);
+  let changed=false;
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){
+    if(Math.hypot(dx,dz)>2.25)continue;
+    const col=ix+dx,row=iz+dz;
+    if(col<0||col>=grid||row<0||row>=grid)continue;
+    const key=row*grid+col;
+    if(!visited.has(key)){visited.add(key);changed=true;}
+  }
+  return changed;
+}

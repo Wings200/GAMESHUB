@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { WORLD, LANDMARKS, groundHeight, movePoint, collision,
-  initialQuest, questStage, beginQuest, collectCase, finishQuest } from './rules.mjs';
+  initialQuest, questStage, beginQuest, collectCase, finishQuest, revealNearby } from './rules.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('view');
@@ -187,16 +187,6 @@ function ruin(name,x,z,w,d,wallMat,broken=false) {
     const rx=x+(rand()-.5)*(w+7),rz=z+(rand()-.5)*(d+7);
     groundBox(.4+rand()*.9,.2,.5,rx,rz,mats.rust);
   }
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:textTexture(name),transparent:true,depthWrite:false}));
-  label.position.set(x,y+h+2,z);label.scale.set(10,2.25,1);scene.add(label);
-}
-function textTexture(str){
-  const c=document.createElement('canvas');c.width=512;c.height=96;
-  const ctx=c.getContext('2d');ctx.fillStyle='rgba(7,22,20,.78)';
-  ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle='#d4bc83';ctx.strokeRect(3,3,506,90);
-  ctx.fillStyle='#e8e5d9';ctx.font='700 29px system-ui';ctx.textAlign='center';
-  ctx.fillText(str,256,58);
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 ruin('OLD CABIN',-48,-37,11,10,mats.oldWood,true);
 ruin('HILLSIDE COTTAGE',-7,11,12,11,mats.oldWood2,false);
@@ -229,8 +219,6 @@ function camp(){
   box(.72,1.15,.4,scoutX,y+.95,scoutZ,mats.blue);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.28,10,8),new THREE.MeshStandardMaterial({color:0xb88d6d}));
   head.position.set(scoutX,y+1.74,scoutZ);scene.add(head);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:textTexture('HEARTHGUARD · SCOUT MARA'),transparent:true,depthWrite:false}));
-  label.position.set(scoutX,y+3,scoutZ);label.scale.set(11.5,2.15,1);scene.add(label);
   interactables.push({id:'scout',type:'scout',x:scoutX,z:scoutZ,label:'Talk to Scout Mara'});
 }
 camp();
@@ -253,18 +241,28 @@ camera.rotation.y=Math.PI;
 let gameStarted=false,showMap=false,dayPhase=.15,last=performance.now();
 let quest=initialQuest();
 let collected=new Set();
+const fogGrid=36;
+const visited=new Set();
+let fogDirty=true;
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-foundation-01')||'null');
   if(saved&&Array.isArray(saved.taken)&&saved.quest){
     collected=new Set(saved.taken.filter(x=>x==='cabin'||x==='cottage'));
     quest={...initialQuest(),...saved.quest,collected:collected.size};
   }
+  if(saved&&Array.isArray(saved.explored)){
+    for(const cell of saved.explored){
+      if(Number.isInteger(cell)&&cell>=0&&cell<fogGrid*fogGrid)visited.add(cell);
+    }
+  }
 }catch{}
 for(const obj of interactables)if(obj.type==='case'&&collected.has(obj.id)){
   obj.used=true;for(const m of obj.meshes)m.visible=false;
 }
 function save(){
-  try{localStorage.setItem('rpg-foundation-01',JSON.stringify({quest,taken:[...collected]}));}catch{}
+  try{localStorage.setItem('rpg-foundation-01',JSON.stringify({
+    quest,taken:[...collected],explored:[...visited]
+  }));}catch{}
 }
 function refreshObjective(){
   const stage=questStage(quest);
@@ -330,6 +328,33 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&controls.i
 function worldToMap(x,z){
   const s=600/WORLD;return {x:300+x*s,y:300+z*s};
 }
+// Map exploration is persistent: only nearby cells become visible.
+const fogCanvas=document.createElement('canvas');
+fogCanvas.width=600;fogCanvas.height=600;
+const fogCtx=fogCanvas.getContext('2d');
+function markExplored(){
+  if(revealNearby(visited,player.x,player.z,fogGrid)){fogDirty=true;save();}
+}
+function rebuildFog(){
+  fogCtx.globalCompositeOperation='source-over';
+  fogCtx.clearRect(0,0,600,600);
+  fogCtx.fillStyle='rgba(4,13,13,.99)';
+  fogCtx.fillRect(0,0,600,600);
+  fogCtx.globalCompositeOperation='destination-out';
+  const cell=WORLD/fogGrid;
+  for(const key of visited){
+    const x=key%fogGrid,z=Math.floor(key/fogGrid);
+    const p=worldToMap(-WORLD/2+(x+.5)*cell,-WORLD/2+(z+.5)*cell);
+    const g=fogCtx.createRadialGradient(p.x,p.y,21,p.x,p.y,43);
+    g.addColorStop(0,'rgba(0,0,0,1)');
+    g.addColorStop(.7,'rgba(0,0,0,.94)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    fogCtx.fillStyle=g;
+    fogCtx.fillRect(p.x-43,p.y-43,86,86);
+  }
+  fogCtx.globalCompositeOperation='source-over';
+  fogDirty=false;
+}
 function drawMap(){
   const ctx=$('mapCanvas').getContext('2d');ctx.clearRect(0,0,600,600);
   ctx.fillStyle='#1c3c31';ctx.fillRect(0,0,600,600);
@@ -346,6 +371,8 @@ function drawMap(){
     const m=worldToMap(p.x,p.z);ctx.fillStyle='#e3d3a4';ctx.fillRect(m.x-13,m.y-13,26,26);
     ctx.fillStyle='#273a2f';ctx.fillText(letter,m.x,m.y+1);
   }
+  if(fogDirty)rebuildFog();
+  ctx.drawImage(fogCanvas,0,0);
   const p=worldToMap(player.x,player.z);
   ctx.fillStyle='#f3ba67';ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#fff4d0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.stroke();
@@ -401,7 +428,7 @@ function refreshInteraction(){
 let mapUpdate=0;
 function tick(now){
   const dt=Math.min(.045,(now-last)/1000||0);last=now;
-  updateClock(dt);updateMovement(dt);refreshInteraction();
+  updateClock(dt);updateMovement(dt);markExplored();refreshInteraction();
   if(showMap&&(mapUpdate+=dt)>.18){drawMap();mapUpdate=0;}
   renderer.render(scene,camera);requestAnimationFrame(tick);
 }
