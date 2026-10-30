@@ -1,5 +1,3 @@
-import { blackoutGamePath, blackoutAdminPage, verifiedBlackoutAccount, blackoutRole } from "./_lib/blackout-access.js";
-
 function getCookie(request, name) {
   const cookieHeader =
     request.headers.get("Cookie") || "";
@@ -110,19 +108,6 @@ async function validSession(request, secret) {
 }
 
 
-function privateBlackoutResponse(response) {
-  const headers = new Headers(response.headers);
-  headers.set("Cache-Control", "private, no-store, max-age=0");
-  headers.set("Vary", "Cookie");
-  headers.set("X-Robots-Tag", "noindex, nofollow");
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
-}
-
-
 export async function onRequest(context) {
   const url =
     new URL(
@@ -146,9 +131,7 @@ export async function onRequest(context) {
     url.pathname === "/privacy.html" ||
     url.pathname === "/terms" ||
     url.pathname === "/terms.html" ||
-    url.pathname === "/api/account/multiplayer-verify" ||
-    // The Worker must consume one-use BLACKOUT tickets without a browser cookie.
-    url.pathname === "/api/blackout-multiplayer-verify"
+    url.pathname === "/api/account/multiplayer-verify"
   ) {
     return context.next();
   }
@@ -210,41 +193,6 @@ export async function onRequest(context) {
     );
   }
 
-
-  if (blackoutGamePath(url.pathname)) {
-    try {
-      const account = await verifiedBlackoutAccount(context);
-      const role = await blackoutRole(context, account);
-      if (
-        (role !== "admin" && role !== "tester") ||
-        (blackoutAdminPage(url.pathname) && role !== "admin")
-      ) {
-        return new Response(
-          role === "paused"
-            ? "BLACKOUT tester access is temporarily paused by an admin."
-            : "BLACKOUT is private. Sign in with an approved GamesHub account.",
-          {
-            status: 403,
-            headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              "Cache-Control": "private, no-store",
-              "X-Robots-Tag": "noindex, nofollow"
-            }
-          }
-        );
-      }
-      return privateBlackoutResponse(await context.next());
-    } catch (error) {
-      console.error("BLACKOUT authorization failed", error);
-      return new Response("BLACKOUT access verification unavailable.", {
-        status: 503,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "private, no-store"
-        }
-      });
-    }
-  }
 
   return context.next();
 }
