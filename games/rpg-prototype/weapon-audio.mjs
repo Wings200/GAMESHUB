@@ -1,5 +1,14 @@
 // W01.2: short procedural weapon sounds, synthesised after a user gesture.
 // No external sound files, downloads, autoplay, or additional dependencies.
+// Materials are explicitly tagged on the raycasted mesh. Missing tags fall
+// back to concrete instead of treating all hits as the same material.
+export const IMPACT_MATERIALS=Object.freeze(['paper','wood','metal','concrete']);
+export function getImpactMaterial(hit) {
+  if(!hit || !hit.object)return null;
+  const tag=hit.object.userData?.impactMaterial;
+  if(IMPACT_MATERIALS.includes(tag))return tag;
+  return hit.object.userData?.targetId != null?'paper':'concrete';
+}
 export class WeaponAudio {
   constructor(contextFactory = null) {
     this.contextFactory = contextFactory;
@@ -81,16 +90,37 @@ export class WeaponAudio {
     this._tone(t, 158, 58, .14, .22, 'triangle');
     this._tone(t + .008, 840, 400, .085, .036, 'sawtooth');
   }
-  impact(type = 'concrete') {
+  impact(type = 'concrete', delaySeconds = 0) {
     if (!this.unlock()) return;
-    const t = this.context.currentTime + .005;
-    if (type === 'paper') {
-      this._noiseBurst(t, .048, .077, 680, 4300);
-      this._tone(t, 420, 270, .045, .024);
-    } else {
-      this._noiseBurst(t, .10, .1, 160, 3200);
-      this._tone(t, type === 'metal' ? 1100 : 220,
-        type === 'metal' ? 550 : 90, .13, type === 'metal' ? .068 : .041);
+    // Put the impact AFTER the gunshot transient, rather than burying
+    // different material sounds under the same loud muzzle blast.
+    const t = this.context.currentTime + .005 +
+      Math.max(0, Math.min(.45, Number.isFinite(delaySeconds)?delaySeconds:0));
+    switch(type) {
+      case 'paper':
+        // Thin, high tearing slap with almost no low-frequency body.
+        this._noiseBurst(t,.095,.19,1200,7800);
+        this._noiseBurst(t+.025,.055,.08,2400,8500);
+        this._tone(t,1050,680,.065,.07,'triangle');
+        break;
+      case 'wood':
+        // Hollow wooden thock followed by a low resonant knock.
+        this._noiseBurst(t,.09,.14,125,1500);
+        this._tone(t,205,91,.18,.19,'triangle');
+        this._tone(t+.015,515,185,.07,.085,'triangle');
+        break;
+      case 'metal':
+        // Clear, long high-pitched clang and shorter ricochet ring.
+        this._noiseBurst(t,.055,.12,1700,9000);
+        this._tone(t,1750,1250,.38,.23,'sine');
+        this._tone(t+.026,2920,2320,.24,.11,'triangle');
+        break;
+      default:
+        // Low, gritty masonry crack and short dull crumble.
+        this._noiseBurst(t,.16,.19,80,2100);
+        this._noiseBurst(t+.035,.105,.11,290,2300);
+        this._tone(t,145,63,.17,.17,'triangle');
+        break;
     }
   }
   reload() {

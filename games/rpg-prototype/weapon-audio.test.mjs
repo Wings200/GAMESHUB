@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WeaponAudio } from './weapon-audio.mjs';
+import { WeaponAudio, IMPACT_MATERIALS, getImpactMaterial } from './weapon-audio.mjs';
 
 class Parameter {
-  setValueAtTime() {}
-  exponentialRampToValueAtTime() {}
+  constructor(calls,kind){this.calls=calls;this.kind=kind;}
+  setValueAtTime(value,time){this.calls.push({kind:this.kind,mode:'set',value,time});}
+  exponentialRampToValueAtTime(value,time){this.calls.push({kind:this.kind,mode:'ramp',value,time});}
 }
 class Node {
-  constructor(events) {
+  constructor(events,calls) {
     this.events=events;
-    this.gain=new Parameter();
-    this.frequency=new Parameter();
+    this.gain=new Parameter(calls,'gain');
+    this.frequency=new Parameter(calls,'frequency');
   }
   connect() {return this;}
   start(at) {this.events.push(['start',at]);}
@@ -23,6 +24,7 @@ class FakeAudioContext {
     this.currentTime=10;
     this.destination={};
     this.events=[];
+    this.calls=[];
     this.buffers=0;
   }
   resume(){this.state='running';return Promise.resolve();}
@@ -31,10 +33,10 @@ class FakeAudioContext {
     assert.equal(channels,1);
     return {getChannelData:()=>new Float32Array(length)};
   }
-  createGain(){return new Node(this.events);}
-  createBiquadFilter(){return new Node(this.events);}
-  createBufferSource(){return new Node(this.events);}
-  createOscillator(){return new Node(this.events);}
+  createGain(){return new Node(this.events,this.calls);}
+  createBiquadFilter(){return new Node(this.events,this.calls);}
+  createBufferSource(){return new Node(this.events,this.calls);}
+  createOscillator(){return new Node(this.events,this.calls);}
 }
 test('Sounds do not create an AudioContext before the first user action',()=>{
   const audio=new WeaponAudio(FakeAudioContext);
@@ -74,4 +76,33 @@ test('AudioContext initialization failures do not crash firing',()=>{
   const audio=new WeaponAudio(class BadContext { constructor(){throw Error('audio blocked');} });
   assert.equal(audio.unlock(),false);
   assert.doesNotThrow(()=>{audio.gunshot();audio.impact();audio.reload();audio.dryFire();});
+});
+
+test('Every material sample routes through its own impact type',()=>{
+  assert.deepEqual(IMPACT_MATERIALS,['paper','wood','metal','concrete']);
+  for(const type of IMPACT_MATERIALS){
+    assert.equal(getImpactMaterial({object:{userData:{impactMaterial:type}}}),type);
+  }
+  assert.equal(getImpactMaterial({object:{userData:{targetId:42}}}),'paper');
+  assert.equal(getImpactMaterial({object:{userData:{impactMaterial:'unknown'}}}),'concrete');
+  assert.equal(getImpactMaterial({object:{}}),'concrete');
+  assert.equal(getImpactMaterial(null),null);
+});
+test('Paper, wood, metal and concrete produce different audio signatures',()=>{
+  const audio=new WeaponAudio(FakeAudioContext);
+  audio.unlock();
+  const signatures=new Map();
+  for(const type of IMPACT_MATERIALS){
+    const start=audio.context.calls.length;
+    const beforeEvents=audio.context.events.length;
+    audio.impact(type,.22);
+    const params=audio.context.calls.slice(start)
+      .filter(x=>x.kind==='frequency'&&x.mode==='set').map(x=>x.value);
+    signatures.set(type,params.join(','));
+    assert.ok(params.length>=3,'frequency envelope defined for '+type);
+    const events=audio.context.events.slice(beforeEvents).filter(e=>e[0]==='start');
+    assert.ok(events.length>=2,'impact scheduled at least two sounds for '+type);
+    assert.ok(events.every(e=>e[1]>=10.22),'impact happens after firing for '+type);
+  }
+  assert.equal(new Set(signatures.values()).size,4,'materials have distinct timbres');
 });

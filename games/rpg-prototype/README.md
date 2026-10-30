@@ -2,6 +2,13 @@
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 
+## W01.3 — audible material-specific impacts
+- Station 7 now has clearly labeled sample panels for WOOD, METAL and CONCRETE alongside the existing PAPER targets.
+- The firing raycast reads explicit surface material tags instead of assuming every non-paper hit is concrete. Surface hit text also identifies the material.
+- Web Audio impact sounds use noticeably different timbres: sharp paper tear, wooden thock, ringing metal ping, and low concrete crack/crumble. They are deliberately scheduled about 0.15–0.26 seconds after the shot, so the loud muzzle report no longer masks them.
+- Effects remain procedural (no external files), respect N/mute, use the same capped bullet-hole decals and preserve W01.1 camera recoil and approved movement.
+- Regression tests verify all four material routes, unique sound-frequency signatures, and delayed scheduling. Player listening test still needed.
+
 ## W01.2 — bullet impact decals and weapon sound
 - W01 test-lab bullets now make dark scorch/impact marks at the actual first raycast hit, whether the surface is a paper target or a solid wall, floor, obstacle or range prop.
 - Decals orient to the surface normal with a small depth offset, are excluded from hit detection, and are capped at 140 visible marks for performance. Press T to reset your station and clear the marks.
