@@ -1,6 +1,14 @@
-# Untitled RPG · Mechanics Lab W04.1.2 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.2 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.2 — advanced tactical combat, cover, repositioning, magazines, accuracy
+- Station 9's Scout, Raider and Enforcer now use `enemy-tactics.mjs`, a deterministic and independently tested tactical combat layer. Their different magazines, reload duration, movement speeds, shot intervals, distance-dependent hit chance and side-to-side repositioning can be tuned separately.
+- **Finite ammo magazines**: every NPC shot removes one round. At zero it automatically begins a timed reload, during which the NPC cannot shoot. Reserve ammunition is tracked. Reload timers pause with **K** or when the arena is paused. **J** resets ammo, reload state, health, AI and accuracy counters.
+- **Cover system**: being shot makes an enemy seek the back side of a real arena crate, with cover candidates tested for line-of-sight occlusion and collision. Reloading enemies also favor cover. A basic corner detour guides around solid obstacles. NPCs briefly stay in cover and then reposition when the threat wears off.
+- **Combat movement**: hostile NPCs alternate lateral strafes to avoid standing still, with speed dependent on NPC type. The existing AI brain accepts optional combat movement/hold goals without changing station 1–8 movement, patrols, chase/search rules or visibility fixes.
+- **Accuracy & player health**: each shot now makes a real accuracy roll; distance and movement lower hit chance, and missed tracers visibly pass the player without reducing health. Shots still require a valid range and clear view. Enemies show STRAFE, SEEK COVER, IN COVER or RELOAD and magazine ammo in floating labels and the combat HUD.
+- All prior W01–W04.1.2 systems are preserved: six-slot permanent armor, pistol/recoil, player HP, dead raider cleanup, depth-correct rings/labels, and separate RPG forest scene. Enemy combat remains a controlled test arena, not final animation/navmesh AI. Manual browser testing required for approval.
 
 ## W04.1.2 — enemy elimination cleanup and proper wall occlusion
 - Responds to visual browser feedback showing 0 HP raiders piled into permanent geometry, plus orange rings, nameplates and the arena locator drawing through concrete walls.

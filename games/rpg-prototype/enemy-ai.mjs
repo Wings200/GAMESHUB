@@ -107,7 +107,18 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   }else if(enemy.mode==='chase'||enemy.mode==='investigate'){
     enemy.mode='search';enemy.searchLeft=AI_TUNING.searchSeconds;
   }
-  if(enemy.mode==='chase'&&seen){
+  if(options.combatHold&&(seen||enemy.memory>0)){
+    enemy.moving=false;
+    enemy.yaw=Math.atan2(player.x-enemy.x,player.z-enemy.z);
+  }else if(options.combatGoal&&(seen||enemy.memory>0)){
+    // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
+    moveToward(enemy,options.combatGoal,
+      Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
+      step,obstacles,area,AI_TUNING);
+    if(options.combatFacePlayer){
+      enemy.yaw=Math.atan2(player.x-enemy.x,player.z-enemy.z);
+    }
+  }else if(enemy.mode==='chase'&&seen){
     if(enemy.distanceToPlayer>AI_TUNING.stopDistance)
       moveToward(enemy,player,AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
     else{enemy.moving=false;enemy.yaw=Math.atan2(player.x-enemy.x,player.z-enemy.z);}

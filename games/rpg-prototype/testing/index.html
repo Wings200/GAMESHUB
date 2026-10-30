@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Enemy Elimination and Occlusion W04.1.2 | GAMESHUB RPG</title>
+<title>Advanced Enemy Combat W04.2 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -121,7 +121,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W04.1.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W04.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -136,17 +136,17 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W04.1.2 · ENEMY TEST</strong>
+  <strong>W04.2 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
-  <div id="enemyMode">ENEMIES CAN FIRE · WATCH HEALTH</div>
-  <div id="enemyList">SCOUT: PATROL · RAIDER: PATROL · ENFORCER: PATROL</div>
+  <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
+  <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
   <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
 </div>
 <div id="crosshair"></div>
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W04.1.2 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W04.2 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -158,22 +158,22 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 9 LIVE ENEMIES · H HEALTH RESET · J RESET BOTS · K PAUSE AI · B ARMORY</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 9 ENEMY COMBAT · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.1.2</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.2</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W04.1.2 fixes enemy eliminations and wall visibility. Defeated raiders now disappear after a short fall, including their glowing rings and nameplates; world markers no longer show through solid walls. J resets all three. The 100 HP player health bar, weapons, modular armor and earlier stations remain.</p>
+    <p>W04.2 upgrades Scout, Raider and Enforcer to advanced combat: they strafe, take cover after being hit, reload real magazines and can MISS their shots. Their accuracy, speed, reloads and magazine sizes are different. All approved death cleanup, modular armor, player health and movement are preserved.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
     <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W04.1.1</div>
-    <div class="menu-meta"><span class="pill">3 VISIBLE AI RAIDERS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-meta"><span class="pill">COVER / STRAFE / RELOAD</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Click ENTER ENEMY ARENA DIRECTLY. Shoot an enemy until its HP reaches zero: the body vanishes shortly afterward, its orange foot marker and nameplate disappear immediately, and the arena sign updates the number alive. J restores all three raiders. Walk behind a solid wall to confirm that the orange markers and nameplates do not show through it.</p>
+    <p style="font-size:11px;margin-top:22px">Click ENTER ENEMY ARENA DIRECTLY. Watch the raiders STRAFE as they fight, shoot one to make it SEEK COVER behind crates, and wait for their RELOAD states. Shots can MISS so the player health bar does not drop every time an enemy fires. J resets health, ammo, and combat tactics; K pauses AI and reload timers.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -209,6 +209,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W04.1.2"></script>
+<script type="module" src="./main.js?v=W04.2"></script>
 </body>
 </html>

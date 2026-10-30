@@ -5,6 +5,8 @@ import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updat
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
+import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
+  markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   ENEMY_ATTACK } from '../player-combat.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
@@ -562,6 +564,7 @@ function aiCrate(x,z,w,d,h,material){
 const rustySteel=mat(0x62686b,.74);
 aiCrate(39.5,38.0,2.6,2.3,1.45,rustySteel);
 aiCrate(49.0,44.2,2.8,1.8,1.85,dark);
+aiCrate(53.0,37.0,2.3,2.2,1.6,rustySteel);
 for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
 let enemyAIEnabled=true;
@@ -610,7 +613,7 @@ function createEnemy(spec){
   const state=createDummy(spec.armor);
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
-    fireCooldown:1.3+enemies.size*.45,gunGlow:0,
+    tactics:makeEnemyTactics(spec.id),gunGlow:0,
     deathTimer:0};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
@@ -684,7 +687,11 @@ function createEnemy(spec){
   return enemy;
 }
 function refreshEnemyLabel(enemy,mode){
-  const current=enemy.label+'-'+mode+'-'+Math.ceil(enemy.state.health);
+  const t=enemy.tactics;
+  const magazine=t.magazine+'/'+ENEMY_PROFILES[t.kind].magazine;
+  const loading=t.reloadRemaining>0?'RELOADING '+t.reloadRemaining.toFixed(1)+'s':
+    magazine+' AMMO';
+  const current=enemy.label+'-'+mode+'-'+Math.ceil(enemy.state.health)+'-'+loading;
   if(current===enemy.statusText)return;
   enemy.statusText=current;
   const {ctx,canvas,texture}=enemy.billboard;
@@ -697,7 +704,7 @@ function refreshEnemyLabel(enemy,mode){
   ctx.fillStyle=mode==='CHASE'?'#f89176':mode==='INVESTIGATE'?'#f3c47c':'#abcbd2';
   ctx.fillText(mode,265,37);
   ctx.fillStyle='#f4e2cf';ctx.font='bold 21px system-ui';
-  ctx.fillText(Math.ceil(enemy.state.health)+' / 100 HP',18,76);
+  ctx.fillText(Math.ceil(enemy.state.health)+' HP · '+loading,18,76);
   ctx.fillStyle='#263c47';ctx.fillRect(18,93,480,14);
   ctx.fillStyle='#a6c58e';ctx.fillRect(18,93,480*enemy.state.health/100,14);
   texture.needsUpdate=true;
@@ -716,7 +723,8 @@ function resetEnemies(){
     enemy.beacon.visible=true;enemy.shoulderMark.visible=true;
     enemy.deathTimer=0;
     enemy.flash=0;enemy.shake=0;enemy.statusText='';
-    enemy.fireCooldown=1.3;enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
+    resetEnemyTactics(enemy.tactics);
+    enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
     refreshEnemyLabel(enemy,'PATROL');
   }
@@ -770,8 +778,15 @@ function updateEnemies(dt){
     if(!active)continue;
     if(enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
+      tickEnemyTactics(enemy.tactics,enemy.brain,player,dt,aiObstacles,
+        {enabled:ticking&&playerHealth.alive});
+      const tactic=enemy.tactics;
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
-        {enabled:ticking&&playerHealth.alive,playerInArena:active});
+        {enabled:ticking&&playerHealth.alive,playerInArena:active,
+          combatGoal:tactic.goal,
+          combatHold:tactic.phase==='hold',
+          combatFacePlayer:true,
+          combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed});
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
       enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
       const move=enemy.brain.moving?1:0;
@@ -785,22 +800,37 @@ function updateEnemies(dt){
       if(enemy.flash===0)for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
       const attack=ENEMY_ATTACK[enemy.id];
       if(ticking&&playerHealth.alive){
-        enemy.fireCooldown=Math.max(0,enemy.fireCooldown-dt);
-        if(enemy.fireCooldown===0&&
-          canEnemyFire(enemy.brain,player,aiObstacles,attack.range)){
-          enemy.fireCooldown=attack.interval;
-          enemy.gunGlow=.11;
-          sound.gunshot(); // borrowed procedural shot; separate enemy mix comes later
-          const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
-          const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
-          enemyTracer(origin,target);
-          const result=hitPlayer(playerHealth,attack.damage);
-          if(result.applied){
-            if(!playerHealth.alive)keys.clear();
-            refreshPlayerHealth();playerHitFlash=.48;
-            showShotNotice(playerHealth.alive?
-              enemy.label+' FIRED · -'+result.damage+' HP':
-              'YOU ARE DOWN · PRESS H TO RESPAWN');
+        // A shot is only attempted when the NPC can see the player and has
+        // a clear trajectory; mags, reloads and accuracy are authoritative.
+        if(canEnemyFire(enemy.brain,player,aiObstacles,attack.range)&&
+          enemy.tactics.phase!=='cover'&&enemy.tactics.phase!=='hold'){
+          const shot=attemptEnemyShot(enemy.tactics,
+            Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
+            enemy.brain.moving,Math.random);
+          if(shot.fired){
+            enemy.gunGlow=.11;
+            sound.gunshot();
+            const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
+            const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
+            if(!shot.hit){
+              // Miss tracers visibly pass beside the player rather than
+              // striking the exact position yet dealing zero damage.
+              const side=enemy.tactics.strafeSign;
+              target.x+=side*(1.8+(1-shot.accuracy)*2.0);
+              target.y+=.4;
+              target.z+=side*.9;
+            }
+            enemyTracer(origin,target);
+            if(shot.hit){
+              const result=hitPlayer(playerHealth,attack.damage);
+              if(result.applied){
+                if(!playerHealth.alive)keys.clear();
+                refreshPlayerHealth();playerHitFlash=.48;
+                showShotNotice(playerHealth.alive?
+                  enemy.label+' HIT · -'+result.damage+' HP':
+                  'YOU ARE DOWN · PRESS H TO RESPAWN');
+              }
+            }
           }
         }
       }
@@ -814,10 +844,15 @@ function updateEnemies(dt){
     enemy.muzzleLight.intensity=enemy.gunGlow>0?5:0;
     const mode=!enemy.state.alive?'DOWN':
       !enemyAIEnabled?'PAUSED':!playerHealth.alive?'PLAYER DOWN':
+        enemy.tactics.reloadRemaining>0?'RELOAD':
+        enemy.tactics.phase==='hold'?'IN COVER':
+        enemy.tactics.phase==='cover'?'SEEK COVER':
+        enemy.tactics.phase==='strafe'?'STRAFE':
         enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
     enemy.billboard.mesh.position.set(enemy.brain.x,2.86,enemy.brain.z);
-    statuses.push(enemy.label+': '+mode);
+    statuses.push(enemy.label+': '+mode+' ['+
+      enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
   }
   for(let i=enemyTracers.length-1;i>=0;i--){
     const t=enemyTracers[i];t.time-=dt;
@@ -999,7 +1034,10 @@ function shoot(){
         enemy.muzzleLight.intensity=0;
         enemy.gunGlow=0;
         updateArenaSign();
-      }else alertEnemy(enemy.brain,{x:player.x,z:player.z});
+      }else{
+        alertEnemy(enemy.brain,{x:player.x,z:player.z});
+        markEnemyThreat(enemy.tactics);
+      }
       enemy.statusText='';
       refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
       spawnDamagePopup(first.point,hit);
