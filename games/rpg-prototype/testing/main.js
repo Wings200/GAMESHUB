@@ -1547,7 +1547,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     camera.rotation.y=Math.atan2(-dx,-dz);
     // Sight a real solid chest hitbox, avoiding the narrow gap between
     // the chest and head at the player's default 1.7 m eye height.
-    camera.rotation.x=Math.atan2(camera.position.y-1.34,Math.hypot(dx,dz));
+    camera.rotation.x=-Math.atan2(camera.position.y-1.34,Math.hypot(dx,dz));
     viewRecoil.unrecovered=0;
   };
   window.__rpgSmokeFinishReload=()=>{
