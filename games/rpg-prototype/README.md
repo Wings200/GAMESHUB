@@ -1,6 +1,14 @@
-# Untitled RPG · Mechanics Lab W04.2.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W05.0 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W05.0 — six-weapon selectable arsenal, weapon variety priority
+- The user reports that current enemies still feel weak and there's only one weapon. This milestone prioritizes a **meaningful arsenal** over more unapproved enemy tweaks; a deeper AI overhaul will follow user playtesting.
+- Adds six playable weapon archetypes: original Worn Scrap Pistol (unchanged defaults), Iron Six-Shooter revolver, Pipe SMG, Service Carbine, Scrap Pump Shotgun and Wasteland Hunting Rifle. The roster is authored in shared `weapons.mjs`, each with unique damage, magazine, reserve, rate of fire, recoil, hipfire/ADS spread and reload.
+- Add a weapons selector on the launch menu plus **Z/X to cycle in game**; HUD displays selected name, fire mode, DPS-related stats and ammo. A separate state per weapon prevents ammo and reload from carrying across switches.
+- SMG and carbine fire automatically while mouse button is held; pistol, revolver, shotgun and hunting rifle use semi-auto fire. Shotgun fires **eight independently spread pellet raycasts for one consumed shell** with actual armor/damage by hit zone.
+- Create five new first-person 3D procedural models with independent receiver, barrel, sights, grips, stocks, magazines and muzzle lights. Original pistol model is preserved. All views use sway/ADS/reload/flash and player movement, and the former per-weapon reload duration now drives each animation.
+- W04.2.1 enemies, modular armor, projectile effects, and other RPG test stations remain intact. W05.0 is not considered approved until user browser-tests model switching, automatic bursts, shotgun pellets, reloads, and distinct damage.
 
 ## W04.2.1 — cover on the far side of crates + actual enemy crouching
 - Fixes user playtest feedback: raiders sometimes chose the face of a crate toward the player and had no crouch ability. The cover sampler now checks each candidate is on the **opposite side of the obstacle from the player** and the player-to-destination line intersects the crate's **interior**, not merely a grazed corner.

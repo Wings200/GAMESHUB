@@ -13,6 +13,41 @@ export const SCRAP_PISTOL = Object.freeze({
   recoilDegrees: 1.25
 });
 
+// W05.0 arsenal: authored, genuinely different test weapons. The original
+// Worn Scrap Pistol is preserved unchanged as the default for regression tests.
+export const ARSENAL=Object.freeze([
+  SCRAP_PISTOL,
+  Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
+    magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,
+    damage:38,hipSpreadDegrees:2.2,adsSpreadDegrees:.28,recoilDegrees:3.5,
+    pellets:1,automatic:false}),
+  Object.freeze({id:'pipe-smg',name:'Pipe SMG',kind:'smg',
+    magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.1,
+    damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:1.08,recoilDegrees:.64,
+    pellets:1,automatic:true}),
+  Object.freeze({id:'service-carbine',name:'Service Carbine',kind:'carbine',
+    magazineSize:24,startingReserve:120,fireInterval:.17,reloadSeconds:2.45,
+    damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.45,recoilDegrees:1.45,
+    pellets:1,automatic:true}),
+  Object.freeze({id:'scrap-shotgun',name:'Scrap Pump Shotgun',kind:'shotgun',
+    magazineSize:6,startingReserve:36,fireInterval:.92,reloadSeconds:2.7,
+    damage:8,hipSpreadDegrees:7.4,adsSpreadDegrees:4.0,recoilDegrees:5.2,
+    pellets:8,automatic:false}),
+  Object.freeze({id:'hunting-rifle',name:'Wasteland Hunting Rifle',kind:'rifle',
+    magazineSize:5,startingReserve:35,fireInterval:1.1,reloadSeconds:2.85,
+    damage:54,hipSpreadDegrees:3.7,adsSpreadDegrees:.17,recoilDegrees:4.1,
+    pellets:1,automatic:false})
+]);
+export const ARSENAL_IDS=Object.freeze(ARSENAL.map(w=>w.id));
+export function getWeaponSpec(id){
+  const weapon=ARSENAL.find(w=>w.id===id);
+  if(!weapon)throw Error('Unknown weapon: '+id);
+  return weapon;
+}
+export function createArsenalStates(){
+  return Object.fromEntries(ARSENAL.map(w=>[w.id,createWeaponState(w)]));
+}
+
 export function createWeaponState(spec = SCRAP_PISTOL) {
   return { magazine: spec.magazineSize, reserve: spec.startingReserve,
     cooldown: 0, reloadRemaining: 0, aiming: false, shotsFired: 0,
@@ -90,8 +125,17 @@ export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random, mot
   const theta = random() * Math.PI * 2;
   const spreadDegrees=shotSpreadDegrees(spec,state.aiming,motion);
   const spread = Math.tan(spreadDegrees * Math.PI / 180);
-  return { status: 'fired', spreadX: Math.cos(theta) * r * spread,
-    spreadY: Math.sin(theta) * r * spread,
+  const directions=[{spreadX:Math.cos(theta)*r*spread,
+    spreadY:Math.sin(theta)*r*spread}];
+  // One shell consumes one round; each pellet independently samples spread.
+  for(let i=1;i<(spec.pellets||1);i++){
+    const radius=Math.sqrt(Math.max(0,Math.min(1,random())));
+    const angle=random()*Math.PI*2;
+    directions.push({spreadX:Math.cos(angle)*radius*spread,
+      spreadY:Math.sin(angle)*radius*spread});
+  }
+  return { status: 'fired', spreadX: directions[0].spreadX,
+    spreadY: directions[0].spreadY, directions,
     recoilDegrees: spec.recoilDegrees, damage: spec.damage,
     spreadDegrees, magazine: state.magazine };
 }

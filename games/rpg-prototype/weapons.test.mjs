@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -118,4 +118,59 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   const shot=fireWeapon(w,SCRAP_PISTOL,()=>.5);
   assert.equal(shot.spreadDegrees,SCRAP_PISTOL.hipSpreadDegrees);
   assert.equal(w.magazine,11);
+});
+
+test('Six playable weapons have unique identities, different fire characteristics and models',()=>{
+  assert.equal(ARSENAL.length,6);
+  assert.equal(ARSENAL_IDS.length,6);
+  assert.equal(new Set(ARSENAL_IDS).size,6);
+  assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
+  assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
+  for(const w of ARSENAL){
+    assert.ok(w.magazineSize>0&&w.damage>0);
+    assert.ok(w.fireInterval>0&&w.reloadSeconds>0&&w.startingReserve>0);
+    assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
+  }
+  const damage=new Set(ARSENAL.map(w=>w.damage));
+  assert.equal(damage.size,6);
+  assert.ok(getWeaponSpec('pipe-smg').automatic);
+  assert.ok(getWeaponSpec('service-carbine').automatic);
+  assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);
+});
+test('Individual weapons own independent magazines and reloading timers',()=>{
+  const states=createArsenalStates();
+  const revolver=getWeaponSpec('iron-revolver');
+  const smg=getWeaponSpec('pipe-smg');
+  fireWeapon(states[revolver.id],revolver,()=>.5);
+  fireWeapon(states[smg.id],smg,()=>.5);
+  assert.equal(states[revolver.id].magazine,5);
+  assert.equal(states[smg.id].magazine,29);
+  assert.equal(states[SCRAP_PISTOL.id].magazine,SCRAP_PISTOL.magazineSize);
+  startWeaponReload(states[smg.id],smg);
+  assert.ok(states[smg.id].reloadRemaining>0);
+  assert.equal(states[revolver.id].reloadRemaining,0);
+  updateWeapon(states[smg.id],smg.reloadSeconds,smg);
+  assert.equal(states[smg.id].magazine,30);
+  assert.equal(states[smg.id].reserve,149);
+});
+test('Shotgun fires eight distinct directions but consumes one shell',()=>{
+  const spec=getWeaponSpec('scrap-shotgun'),state=createWeaponState(spec);
+  let seed=0;
+  const shot=fireWeapon(state,spec,()=>((++seed%11)+.5)/12);
+  assert.equal(shot.status,'fired');
+  assert.equal(state.magazine,spec.magazineSize-1);
+  assert.equal(shot.directions.length,8);
+  assert.ok(new Set(shot.directions.map(p=>p.spreadX.toFixed(6))).size>2);
+  assert.equal(shot.damage,8);
+  assert.equal(shot.recoilDegrees,spec.recoilDegrees);
+  assert.equal(fireWeapon(state,spec).status,'cooldown');
+});
+test('Automatic weapons have meaningfully shorter cadence, heavy guns kick more',()=>{
+  assert.ok(getWeaponSpec('pipe-smg').fireInterval<SCRAP_PISTOL.fireInterval);
+  assert.ok(getWeaponSpec('hunting-rifle').recoilDegrees>SCRAP_PISTOL.recoilDegrees);
+  const w=getWeaponSpec('hunting-rifle'),state=createWeaponState(w);
+  setWeaponAim(state,true);
+  const shot=fireWeapon(state,w,()=>.5);
+  assert.equal(shot.damage,54);
+  assert.ok(shot.spreadDegrees<.2);
 });

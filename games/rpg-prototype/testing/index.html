@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Cover & Crouch W04.2.1 | GAMESHUB RPG</title>
+<title>Weapon Arsenal W05.0 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,6 +37,13 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+.arsenal-picker{display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  padding:14px 16px;margin:20px 0;border:1px solid #7b735d;background:#14232c}
+.arsenal-picker label{color:#f0c58f;font-size:12px;font-weight:900;letter-spacing:.08em}
+.arsenal-picker select{background:#102430;border:1px solid #8d9a92;
+  color:#f7ecdb;padding:12px 16px;font-size:13px;min-width:230px;
+  max-width:100%;border-radius:3px}
+.arsenal-picker span{color:#b6c6c0;font-size:11px}
 #playerDamageFlash{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse at center,transparent 37%,rgba(202,32,27,.8) 100%);opacity:0}
 #playerHealthHud{position:fixed;bottom:136px;left:18px;width:min(320px,38vw);
@@ -121,7 +128,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W04.2.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W05.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -136,7 +143,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W04.2.1 · ENEMY TEST</strong>
+  <strong>W05.0 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -146,7 +153,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W04.2.1 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W05.0 · WEAPON ARSENAL</div>
+  <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
+  <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -158,22 +167,25 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 9 ENEMY COMBAT · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY</div>
+  <div id="keys">Z / X CHANGE WEAPON · HOLD CLICK FOR AUTOMATICS · R RELOAD · F RESTOCK · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · N SOUND<br>1–9 STATIONS · 9 ENEMY COMBAT · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.2.1</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.0</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W04.2.1 improves enemy cover: raiders move to the side of a crate AWAY from the player and crouch when actually hidden. Their head and body hitboxes lower with the animation. If you flank, they stand and reposition. All approved gunplay, reloading, health and armor remain.</p>
+    <p>W05.0 adds SIX DIFFERENT PLAYABLE WEAPONS, not reskins: scrap pistol, iron revolver, pipe SMG, service carbine, pump shotgun and hunting rifle. Each has its own 3D model, magazine, damage, spread, recoil, reload speed and firing mode. All 96 permanent armor parts and the AI test arena remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
+    <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
+    <select id="weaponSelect" aria-label="Choose current weapon"></select>
+    <span>In game: Z / X to cycle · hold fire for automatic weapons</span></div>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W04.1.1</div>
-    <div class="menu-meta"><span class="pill">REAL COVER + CROUCH</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.0</div>
+    <div class="menu-meta"><span class="pill">6 DISTINCT WEAPONS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Enter Station 9 and shoot a raider without killing it. It should run BEHIND a crate relative to your position, then visibly crouch with its head and chest behind the obstacle. Move to the other side of the crate: the raider should stand and choose a new hiding place. J resets enemies; K freezes their AI.</p>
+    <p style="font-size:11px;margin-top:22px">Select a weapon here or press Z / X during play. Try the fast-firing SMG and carbine, the heavy revolver, the eight-pellet shotgun and the precise hunting rifle. Each weapon keeps its own ammo and reload state. In Station 9, hit armored body parts to compare damage. We will tackle deeper enemy-AI improvements as a separate pass after the arsenal is tested.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -209,6 +221,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W04.2.1"></script>
+<script type="module" src="./main.js?v=W05.0"></script>
 </body>
 </html>
