@@ -53,3 +53,30 @@ test('Terrain allows gradual ramps and short steps, rejects abrupt walls',()=>{
   stepMovement(cliff,new Set(['KeyW']),{x:1,z:0},.1,{...env,groundHeight:x=>x<.2?0:2});
   near(cliff.x,0);
 });
+
+test('Holding W while jumping across a hurdle never freezes horizontal motion',()=>{
+  const hurdle={minX:1,maxX:2.6,minZ:-3.5,maxZ:3.5,top:.75};
+  const player=p(-.3,0);
+  const e={...env,boxes:[hurdle]};
+  requestJump(player);
+  let stalled=0,landedOnTop=false;
+  for(let i=0;i<90;i++){
+    const result=stepMovement(player,new Set(['KeyW']),{x:1,z:0},1/60,e);
+    if(result.speed<.01)stalled++;
+    landedOnTop ||= !!player.supported;
+  }
+  assert.equal(stalled,0,'forward must keep moving during and after hurdle landing');
+  assert.ok(landedOnTop,'a short barrier provides a landing surface');
+  assert.ok(player.x>hurdle.maxX+2,'holding W carried the player completely past it');
+  near(player.jump,0);
+});
+test('A player can jump again from the top of a short hurdle',()=>{
+  const player={...p(1.8,0),jump:1,vertical:-2};
+  const e={...env,boxes:[{minX:1,maxX:2.6,minZ:-1,maxZ:1,top:.75}]};
+  for(let i=0;i<30;i++)stepMovement(player,new Set(),{x:1,z:0},1/60,e);
+  assert.equal(player.supported,true);
+  assert.equal(requestJump(player),true);
+  assert.equal(player.supported,false);
+  stepMovement(player,new Set(),{x:1,z:0},1/60,e);
+  assert.ok(player.jump>.79);
+});

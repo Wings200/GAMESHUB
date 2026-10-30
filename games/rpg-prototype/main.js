@@ -317,7 +317,7 @@ $('startButton').addEventListener('click',()=>controls.lock());
 renderer.domElement.addEventListener('click',()=>{if(gameStarted&&!controls.isLocked)controls.lock();});
 window.addEventListener('keydown',e=>{
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
-  if(e.repeat&&['KeyE','KeyM'].includes(e.code))return;
+  if(e.repeat&&['KeyE','KeyM','Space'].includes(e.code))return;
   keys.add(e.code);
   if(e.code==='KeyE'&&controls.isLocked&&!showMap)interact();
   if(e.code==='KeyM'&&controls.isLocked){showMap=!showMap;$('map').classList.toggle('visible',showMap);}
