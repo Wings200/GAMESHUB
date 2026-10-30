@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LANDMARKS,groundHeight,collision,movePoint,
-  initialQuest,questStage,beginQuest,collectCase,finishQuest} from './rules.mjs';
+  initialQuest,questStage,beginQuest,collectCase,finishQuest,revealNearby} from './rules.mjs';
 test('terrain is finite and consistent across landmarks',()=>{
   for(const {x,z} of Object.values(LANDMARKS)) {
     assert.ok(Number.isFinite(groundHeight(x,z)));
@@ -31,4 +31,15 @@ test('quest cannot reward early or twice',()=>{
   q=finishQuest(q);
   assert.equal(questStage(q),'finished');
   assert.equal(finishQuest(q).credits,20);
+});
+test('field map uncovers nearby cells, never the whole map, and does not repeat discovery',()=>{
+  const seen=new Set();
+  assert.equal(revealNearby(seen,-102,-89),true);
+  assert.ok(seen.size>5&&seen.size<30);
+  const original=seen.size;
+  assert.equal(revealNearby(seen,-102,-89),false);
+  assert.equal(seen.size,original);
+  assert.equal(revealNearby(seen,108,105),true);
+  assert.ok(seen.size>original);
+  assert.ok(seen.size<100);
 });
