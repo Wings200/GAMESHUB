@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stepMovement, requestJump, MOVE_TUNING, ENDURANCE_TUNING, setEndurance, maximumStamina } from './movement.mjs';
+import { stepMovement, requestJump, MOVE_TUNING, ENDURANCE_TUNING, setEndurance, maximumStamina, staminaRecoveryRate } from './movement.mjs';
 
 const env={boxes:[],trees:[],groundHeight:()=>0};
 const p=(x=0,z=0)=>({x,z,jump:0,vertical:0});
@@ -82,19 +82,19 @@ test('A player can jump again from the top of a short hurdle',()=>{
 });
 
 test('Endurance controls full-speed running duration and uses a 1–10 scale',()=>{
-  assert.equal(maximumStamina(1),8);
-  assert.equal(maximumStamina(3),12);
-  assert.equal(maximumStamina(10),26);
-  assert.equal(maximumStamina(0),8);
-  assert.equal(maximumStamina(99),26);
-  assert.equal(maximumStamina(undefined),12);
+  assert.equal(maximumStamina(1),4);
+  assert.equal(maximumStamina(3),6);
+  assert.equal(maximumStamina(10),13);
+  assert.equal(maximumStamina(0),4);
+  assert.equal(maximumStamina(99),13);
+  assert.equal(maximumStamina(undefined),6);
 });
 test('Stamina depletes while moving and forces walking when exhausted',()=>{
   const runner=p();
   setEndurance(runner,1);
   let last;
   // Run within a distant, unobstructed map while holding Shift and W.
-  for(let n=0;n<80;n++)last=stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
+  for(let n=0;n<40;n++)last=stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
   near(runner.stamina,0);
   assert.equal(runner.exhausted,true);
   last=stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
@@ -115,10 +115,10 @@ test('More Endurance means longer sprint at same movement speed',()=>{
 });
 test('Walking replenishes stamina after a delay and unlocks sprint at threshold',()=>{
   const runner=p();setEndurance(runner,1);
-  for(let i=0;i<80;i++)stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
+  for(let i=0;i<40;i++)stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
   assert.equal(runner.exhausted,true);
   const empty=runner.stamina;
-  for(let i=0;i<9;i++)stepMovement(runner,new Set(['KeyW']),{x:0,z:-1},.1,env);
+  for(let i=0;i<4;i++)stepMovement(runner,new Set(['KeyW']),{x:0,z:-1},.1,env);
   near(runner.stamina,empty);
   for(let i=0;i<40;i++)stepMovement(runner,new Set(['KeyW']),{x:0,z:-1},.1,env);
   assert.ok(runner.stamina>=maximumStamina(1)*ENDURANCE_TUNING.resumeFraction);
@@ -142,4 +142,44 @@ test('Changing Endurance in lab resets stamina for a fair comparison',()=>{
   assert.equal(setEndurance(runner,10),10);
   near(runner.stamina,maximumStamina(10));
   assert.equal(runner.exhausted,false);
+});
+
+test('Recovery rate scales with Endurance and halves the old default recovery rate',()=>{
+  near(staminaRecoveryRate(1),.45);
+  near(staminaRecoveryRate(3),.9);
+  near(staminaRecoveryRate(10),2.475);
+  assert.ok(staminaRecoveryRate(10)>staminaRecoveryRate(3));
+  assert.ok(staminaRecoveryRate(3)>staminaRecoveryRate(1));
+});
+test('Higher Endurance fully regenerates faster even with a larger stamina pool',()=>{
+  const elapsedToFull=endurance=>{
+    const runner=p();
+    setEndurance(runner,endurance);
+    runner.stamina=0;
+    runner.exhausted=true;
+    runner.staminaCooldown=0;
+    for(let i=1;i<300;i++){
+      stepMovement(runner,new Set(),{x:0,z:-1},.1,env);
+      if(runner.stamina>=maximumStamina(endurance)-1e-8)return i*.1;
+    }
+    throw Error('did not refill');
+  };
+  const low=elapsedToFull(1),mid=elapsedToFull(3),high=elapsedToFull(10);
+  assert.ok(high<mid&&mid<low, 'higher Endurance shortens complete recovery time');
+});
+test('Regeneration waits for the new half-second cooldown after sprinting',()=>{
+  const runner=p();setEndurance(runner,3);
+  stepMovement(runner,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
+  const afterSprint=runner.stamina;
+  for(let i=0;i<4;i++)stepMovement(runner,new Set(['KeyW']),{x:0,z:-1},.1,env);
+  near(runner.stamina,afterSprint);
+  for(let i=0;i<3;i++)stepMovement(runner,new Set(['KeyW']),{x:0,z:-1},.1,env);
+  assert.ok(runner.stamina>afterSprint);
+});
+test('Endurance updates the recovery rate while the lab stays on the same character',()=>{
+  const runner=p();setEndurance(runner,1);
+  const e1=stepMovement(runner,new Set(),{x:0,z:-1},.1,env);
+  setEndurance(runner,10);
+  const e10=stepMovement(runner,new Set(),{x:0,z:-1},.1,env);
+  assert.ok(e10.recoveryPerSecond>e1.recoveryPerSecond);
 });

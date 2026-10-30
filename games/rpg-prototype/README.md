@@ -4,9 +4,9 @@ An isolated first-person 3D prototype for GAMESHUB. The game has no permanent na
 
 ## Endurance and stamina (Movement Lab M02)
 - Shared `movement.mjs` stamina controller is used in the test field and the forest.
-- Endurance is an RPG skill from 1 to 10: max continuous sprint = 6 + 2 × Endurance seconds, from 8 seconds at E1 to 26 at E10.
+- Endurance is an RPG skill from 1 to 10: max continuous sprint = 3 + Endurance seconds, from 4 seconds at E1 to 13 at E10 (half the prior sprint time).
 - Sprint drains one stamina unit per second *while actually moving*. Holding Shift against a wall or stationary does not drain it.
-- After 1.1 seconds without sprinting, stamina regenerates at 1.8 units/second. An exhausted player walks until 30% has returned, even when Shift remains held.
+- After 0.55 seconds without sprinting, stamina regenerates according to Endurance: 0.225 × (Endurance + 1) units/second (E1 0.45/s, E3 0.9/s, E10 2.475/s). High-Endurance characters refill their entire bar faster despite having a larger pool. An exhausted player walks until 30% has returned, even when Shift remains held.
 - M02's testing control (menu +/- or in-game [ / ]) temporarily changes Endurance and refills the bar; it is **not** a skill-point award system. A future level-up/perk system will supply the earned Endurance value.
 - Stamina is visible in the lab and forest HUD; no power armor or combat endurance drain is implemented yet.
 

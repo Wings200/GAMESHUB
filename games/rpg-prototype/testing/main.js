@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { stepMovement, requestJump, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING } from '../movement.mjs';
+import { stepMovement, requestJump, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -126,7 +126,7 @@ function adjustEndurance(change){
   labEndurance=setEndurance(player,labEndurance+change);
   $('enduranceValue').textContent=String(labEndurance);
   $('enduranceHUD').textContent=String(labEndurance);
-  $('sprintTime').textContent=maximumStamina(labEndurance)+' seconds of sprint';
+  $('sprintTime').textContent=maximumStamina(labEndurance)+' sec sprint · '+(maximumStamina(labEndurance)/staminaRecoveryRate(labEndurance)).toFixed(1)+' sec full recovery';
   $('staminaFill').style.width='100%';
   $('staminaNumber').textContent='100%';
   try{localStorage.setItem('rpg-lab-endurance',String(labEndurance));}catch{}
