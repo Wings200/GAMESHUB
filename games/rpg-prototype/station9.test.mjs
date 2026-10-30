@@ -131,7 +131,7 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/for\(const spec of ARSENAL\)updateWeapon\(arsenalStates\[spec\.id\],dt,spec\)/);
   assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=true;shoot\(\);\}/);
-  assert.match(source,/if\(e\.button===0\)triggerHeld=false/);
+  assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
   assert.match(source,/new THREE\.CylinderGeometry/);
 });
 
