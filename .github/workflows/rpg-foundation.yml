@@ -44,9 +44,25 @@ jobs:
           node --check games/rpg-prototype/player-combat.mjs
           node --check games/rpg-prototype/player-combat.test.mjs
           node --check games/rpg-prototype/station9.test.mjs
+          node --check games/rpg-prototype/arena-activation.mjs
+          node --check games/rpg-prototype/arena-activation.test.mjs
+          node --check games/rpg-prototype/browser-smoke.mjs
           node --check games/rpg-prototype/weapon-audio.mjs
           node --check games/rpg-prototype/weapon-audio.test.mjs
           node --check games/rpg-prototype/rules.mjs
           node --check games/rpg-prototype/rules.test.mjs
       - name: Test collision, terrain and first quest
-        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/station9.test.mjs
+        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/station9.test.mjs games/rpg-prototype/arena-activation.test.mjs
+
+  browser-gameplay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser harness and locally served Three.js
+        run: npm install --no-save --no-package-lock playwright-core three@0.180.0
+      - name: Actually load 3D lab, move AI and damage a raider
+        run: node games/rpg-prototype/browser-smoke.mjs

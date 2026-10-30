@@ -13,6 +13,7 @@ import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   ENEMY_ATTACK } from '../player-combat.mjs';
+import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   applyDamage, resetDummy } from '../combat.mjs';
@@ -743,10 +744,9 @@ function resetEnemies(){
   $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
-// This is keyed to the station ID, NOT a narrow position box: the old
-// position condition made the scene vanish as soon as the player stepped
-// outside it. Station 9 bots stay visible across the entire lab station.
-function inAIArena(){return stationIndex===8;}
+// Combat is available in Station 9 AND when physically entering the
+// arena on foot from another station. Keep Station 9 alive on roaming.
+function inAIArena(){return isArenaActive(stationIndex,player);}
 const playerHealth=createPlayerHealth();
 let playerHitFlash=0;
 const enemyTracers=[];
@@ -892,8 +892,10 @@ function updateEnemies(dt){
     $('enemyCount').textContent=aliveCount+' / '+enemies.size+' RAIDERS ALIVE'+
       (nearest===null?' · ALL ELIMINATED':' · NEAREST '+nearest.toFixed(1)+' m');
     $('enemyList').textContent=statuses.join('  ·  ');
-    $('enemyMode').textContent=!enemyAIEnabled?'AI PAUSED · K TO RESUME':
-      playerHealth.alive?'ENEMIES CAN FIRE · WATCH HEALTH':'PLAYER DOWN · H TO RESPAWN';
+    $('enemyMode').textContent=combatRuntimeStatus({
+      active,locked:controls.isLocked,aiEnabled:enemyAIEnabled,
+      playerAlive:playerHealth.alive,aliveCount
+    });
   }
 }
 
@@ -1340,14 +1342,18 @@ function shoot(){
   ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
+  let enemyDamageHits=0;
+  let totalEnemyDamage=0;
   for(const pellet of result.directions){
     shotVector.set(pellet.spreadX,pellet.spreadY,-1)
       .normalize().applyQuaternion(camera.quaternion);
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
-  const enemyParts=inAIArena()?enemyHitMeshes.filter(mesh=>
-    enemies.get(mesh.userData.enemyId).state.alive):[];
+  // NEVER remove enemy hitboxes based on a stale station selection.
+  // The old condition made enemies invulnerable when approaching on foot.
+  const enemyParts=enemyHitMeshes.filter(mesh=>
+    shouldRaycastEnemy(enemies.get(mesh.userData.enemyId)));
   const hits=firingRaycaster.intersectObjects(
     [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
   const first=hits[0];
@@ -1365,6 +1371,8 @@ function shoot(){
     const enemy=enemies.get(first.object.userData.enemyId);
     const hit=applyDamage(enemy.state,activeSpec.damage,first.object.userData.hitZone);
     if(hit.applied){
+      enemyDamageHits++;
+      totalEnemyDamage+=hit.damage;
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
@@ -1419,6 +1427,13 @@ function shoot(){
   } else if(first)showShotNotice(impactMaterial.toUpperCase()+' IMPACT');
   else showShotNotice('MISS');
   } // all projectiles from one round
+  // Shotguns fire eight pellets: the LAST pellet might miss even after a
+  // previous pellet dealt damage, so never announce a false overall MISS.
+  if(enemyDamageHits>0){
+    showShotNotice('AI DAMAGE CONFIRMED · '+enemyDamageHits+
+      ' HIT'+(enemyDamageHits!==1?'S':'')+' · -'+
+      Math.ceil(totalEnemyDamage)+' HP');
+  }
   // Vertical recoil only. Yaw and roll are never touched.
   camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
   refreshWeaponHUD();
@@ -1487,6 +1502,19 @@ function resetPlayer(i){
 }
 resetPlayer(0);
 if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
+// Read-only smoke instrumentation. Active ONLY with ?smoke=1 so CI can
+// check actual Three.js gameplay rather than matching code strings.
+if(new URLSearchParams(location.search).get('smoke')==='1'){
+  window.__rpgSmokeState=()=>({
+    stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
+    aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
+    player:{x:player.x,z:player.z},
+    enemies:[...enemies.values()].map(e=>({
+      id:e.id,x:e.brain.x,z:e.brain.z,
+      mode:e.brain.mode,health:e.state.health,alive:e.state.alive
+    }))
+  });
+}
 $('enterAI').addEventListener('click',()=>{
   resetPlayer(8);
   sound.unlock();
