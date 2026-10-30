@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W02 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W03 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W03 — damage, zones and armor durability
+- Station **8** is a dedicated combat test range with three humanoid training dummies: **Unarmored (100 HP)**, **Light Vest (100 HP, 60 armor)**, **Heavy Armor (100 HP, 120 armor, helmet)**.
+- Uses the existing W02 scrap pistol, 20 base damage, current raycast and ammunition rules, not a parallel shooting system. Headshots deal 2.5× damage; torso 1×; arms/legs 0.7×.
+- Light vest absorbs 30% of torso damage, while the heavy armor absorbs 55% of torso and 40% of helmeted head damage. Armor durability depletes by the amount blocked and eventually breaks; uncovered parts take full damage. No damage to destroyed dummies.
+- Floating health and armor bars, transient damage numbers, hit-flash/knockdown reactions, armor-broken feedback, and center hit notices help validate damage.
+- Press **8** to reach dummies, **Y** to reset all dummies to full HP/armor and clear bullet holes; **T** still resets the current station and clears brass/holes.
+- All stats and damage calculation live in renderer-independent `combat.mjs` with automated tests. Dummy geometry, hit zones and visual reactions live only in the lab.
+- W02 pistol, recoil, animations, material sounds, movement and stamina unchanged. No enemy AI, player inventory/armor, or real-world integration claimed. Requires user visual playtest.
 
 ## W02 — advanced weapon handling
 - In the same test field, the original scrap pistol has an animated top slide cycling during each successful shot and during the final part of a timed reload. A physically modeled magazine is withdrawn/reinserted with a procedural gloved-hand gesture. **No skeleton or finished character art** is claimed.
