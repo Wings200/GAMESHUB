@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Weapon Lab W02 | GAMESHUB RPG</title>
+<title>Combat Lab W03 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,6 +37,7 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+#damageReport{color:#f0cd9a;font-size:10px;font-weight:850;line-height:1.45;margin-top:9px;max-width:290px;min-height:15px}
 #soundToggle{position:fixed;left:18px;top:246px;z-index:2;
   border:1px solid #adbdad;background:rgba(9,23,32,.9);color:#e8d1ac;
   border-radius:3px;padding:8px 11px;cursor:pointer;font-weight:900;
@@ -69,7 +70,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
 <div id="hud">
-  <div class="block logo"><b>W02</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W03</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -87,30 +88,31 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W02 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W03 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
   <div style="font-size:10px;color:#c1c9c3;margin-top:7px">RANGE HITS: <strong id="targetHits">0</strong></div>
+  <div id="damageReport" aria-live="polite">STATION 8: ARMOR DAMAGE TESTING</div>
   <div id="weaponBar"><span id="reloadProgress"></span></div>
 </div>
 <div id="bottom">
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–7 TEST STATIONS · T CLEAR BULLET HOLES + RESET · [ / ] ENDURANCE · ESC PAUSE</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–8 TEST STATIONS · 8 ARMOR DUMMIES · Y RESET DUMMIES · T CLEAR + RESET · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W02</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W03</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W02 upgrades the scrap pistol with a moving slide, visible magazine and reload hand animation, falling brass, stronger muzzle flash, steadier aiming, and movement-dependent accuracy. The approved movement courses, bullet impacts, and four material sounds remain. The six approved movement courses remain.</p>
+    <p>W03 adds a dedicated armor-testing lane at station 8. Shoot the head, chest, arms and legs of three dummies: unarmored, light vest, or heavy armor with a helmet. Compare HP, absorbed damage, armor wear and knockdown. All approved W02 weapon and M01–M03 movement mechanics remain.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <button id="start" class="primary" type="button">ENTER TEST FIELD</button>
-    <div class="menu-meta"><span class="pill">ANIMATED RELOAD + BRASS PHYSICS</span><span class="pill">7 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-meta"><span class="pill">HEAD / BODY / LIMB DAMAGE</span><span class="pill">8 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">First weapon prototype only. Damage currently applies to range targets; enemies, inventory, weapon crafting, power armor and the full open world come later.</p>
+    <p style="font-size:11px;margin-top:22px">W03 damage applies to stationary training dummies only. Enemy AI, animations, inventory, wearable player armor, power armor and the full open world come in later milestones.</p>
   </div>
 </div>
 <div id="fatal">This testing browser could not initialize WebGL. Try a browser with hardware-accelerated graphics and reload.</div>

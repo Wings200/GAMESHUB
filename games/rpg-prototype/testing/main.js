@@ -4,6 +4,7 @@ import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setE
 import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil, shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
+import { ARMOR_TYPES, createDummy, applyDamage, resetDummy } from '../combat.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -60,7 +61,8 @@ const stations=[
   {title:'04 · Ramp ascent',info:'Walk and sprint uphill, then back down. Watch the ground-height readout.',x:15,z:-27,tag:'04 / SLOPES',color:0x6b9b77},
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
-  {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63}
+  {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
+  {title:'08 · Damage and armor dummies',info:'W03: shoot the head, chest, arms and legs of the unarmored, light vest, and heavy armor dummies. Compare damage and armor durability. Press Y to reset all dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -200,7 +202,7 @@ const impactMaterials={
     depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2
   })
 };
-function markBulletHole(hit,isPaper){
+function markBulletHole(hit,isPaper,followSurface=false){
   if(!hit.face)return;
   hit.object.updateWorldMatrix(true,false);
   impactNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
@@ -212,12 +214,20 @@ function markBulletHole(hit,isPaper){
   mesh.position.copy(hit.point).addScaledVector(impactWorldNormal,.022);
   mesh.quaternion.setFromUnitVectors(decalFacing,impactWorldNormal);
   mesh.renderOrder=2;
-  scene.add(mesh);
+  if(followSurface){
+    const worldRotation=hit.object.getWorldQuaternion(new THREE.Quaternion());
+    hit.object.worldToLocal(mesh.position);
+    mesh.quaternion.premultiply(worldRotation.invert());
+    hit.object.add(mesh);
+  } else scene.add(mesh);
   impactMarks.push(mesh);
-  if(impactMarks.length>IMPACT_MARK_LIMIT)scene.remove(impactMarks.shift());
+  if(impactMarks.length>IMPACT_MARK_LIMIT){
+    const oldest=impactMarks.shift();
+    oldest.parent?.remove(oldest);
+  }
 }
 function clearBulletHoles(){
-  for(const mesh of impactMarks)scene.remove(mesh);
+  for(const mesh of impactMarks)mesh.parent?.remove(mesh);
   impactMarks.length=0;
 }
 
@@ -273,6 +283,153 @@ for(const sample of materialSamples){
     new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));
   label.position.set(sample.x,2.89,z+.29);
   scene.add(label);
+}
+
+
+// W03 static damage lab. Each visible body part has an explicit hit zone,
+// and these meshes share the exact same pistol raycast as the existing range.
+const dummies=new Map(),dummyHitMeshes=[],damagePopups=[];
+const dummyKinds=[
+  {id:'none',label:'UNARMORED',x:-28,z:-8.7,body:0x7e6e55},
+  {id:'light',label:'LIGHT VEST',x:-9,z:-15.2,body:0x6b795b},
+  {id:'heavy',label:'HEAVY ARMOR',x:12,z:-9,body:0x495a69}
+];
+const popupsMax=16;
+function makeDummyLabel(dummy){
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=160;
+  const ctx=canvas.getContext('2d');
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(material);
+  sprite.position.set(dummy.position.x,2.86,dummy.position.z);
+  sprite.scale.set(3.1,.98,1);
+  scene.add(sprite);
+  return {canvas,ctx,texture,sprite};
+}
+function updateDummyLabel(dummy){
+  const {ctx,canvas,texture}=dummy.labelVisual,s=dummy.state;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='rgba(9,23,28,.88)';ctx.fillRect(4,4,504,151);
+  ctx.strokeStyle=s.alive?'#bfcdba':'#d25f53';ctx.lineWidth=5;ctx.strokeRect(4,4,504,151);
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.font='bold 29px system-ui';ctx.fillStyle='#f1d9ac';
+  ctx.fillText(dummy.title,22,33);
+  ctx.font='bold 24px system-ui';ctx.fillStyle=s.alive?'#e9f6df':'#e98d7a';
+  ctx.fillText(s.alive?Math.ceil(s.health)+' / '+s.maxHealth+' HP':'DOWN · Y RESET',22,73);
+  ctx.fillStyle='#273b39';ctx.fillRect(21,95,470,17);
+  ctx.fillStyle=s.health>40?'#93c89c':'#cb7567';
+  ctx.fillRect(21,95,470*s.health/s.maxHealth,17);
+  ctx.font='bold 20px system-ui';ctx.fillStyle='#cbd3df';
+  if(s.maxArmor){
+    ctx.fillText('ARMOR '+Math.ceil(s.armor)+' / '+s.maxArmor,22,137);
+    ctx.fillStyle='#465369';ctx.fillRect(255,124,236,13);
+    ctx.fillStyle='#79aac6';ctx.fillRect(255,124,236*s.armor/s.maxArmor,13);
+  }else ctx.fillText('NO ARMOR · 100% DAMAGE',22,137);
+  texture.needsUpdate=true;
+}
+function makeDummy(entry){
+  const group=new THREE.Group();
+  group.position.set(entry.x,0,entry.z);
+  group.rotation.y=-Math.PI/2; // armor faces the firing station to the west
+  scene.add(group);
+  const state=createDummy(entry.id);
+  const dummy={id:entry.id,title:entry.label,state,group,
+    position:{x:entry.x,z:entry.z},pieces:[],flash:0,hitMesh:null,
+    impulse:0};
+  const wooden=new THREE.MeshStandardMaterial({color:entry.body,roughness:.85});
+  const armorColor=entry.id==='light'?0x819083:0x556a78;
+  const armored=new THREE.MeshStandardMaterial({color:armorColor,metalness:.65,roughness:.55});
+  const darkJoint=new THREE.MeshStandardMaterial({color:0x343c3d,roughness:.94});
+  function part(geometry,material,x,y,z,zone,impactMaterial='wood'){
+    const mesh=new THREE.Mesh(geometry,material.clone());
+    mesh.position.set(x,y,z);
+    mesh.castShadow=true;mesh.receiveShadow=true;
+    mesh.userData.dummyId=dummy.id;
+    mesh.userData.hitZone=zone;
+    mesh.userData.impactMaterial=impactMaterial;
+    group.add(mesh);dummy.pieces.push(mesh);dummyHitMeshes.push(mesh);
+    return mesh;
+  }
+  part(new THREE.BoxGeometry(.66,.82,.33),wooden,0,1.32,0,'torso');
+  part(new THREE.BoxGeometry(.12,.18,.15),darkJoint,0,1.82,0,'torso');
+  part(new THREE.SphereGeometry(.225,16,12),wooden,0,2.07,0,'head');
+  for(const side of [-1,1]){
+    part(new THREE.BoxGeometry(.19,.73,.22),wooden,side*.49,1.38,0,'limb');
+    part(new THREE.CylinderGeometry(.12,.14,1.01,10),wooden,side*.20,.52,0,'limb');
+  }
+  if(entry.id!=='none'){
+    dummy.vest=part(new THREE.BoxGeometry(.71,.67,.42),
+      armored,0,1.37,.05,'torso','metal');
+  }
+  if(entry.id==='heavy'){
+    dummy.helmet=part(new THREE.SphereGeometry(.242,16,10,0,Math.PI*2,0,Math.PI*.60),
+      armored,0,2.09,0,'head','metal');
+  }
+  const base=box(entry.x,.07,entry.z,1.55,.14,1.25,dark);
+  base.userData.impactMaterial='metal';
+  bounds.push({minX:entry.x-.39,maxX:entry.x+.39,minZ:entry.z-.39,maxZ:entry.z+.39});
+  dummy.labelVisual=makeDummyLabel(dummy);
+  dummies.set(dummy.id,dummy);
+  updateDummyLabel(dummy);
+  return dummy;
+}
+dummyKinds.forEach(makeDummy);
+
+function resetAllDummies(){
+  for(const dummy of dummies.values()){
+    resetDummy(dummy.state);
+    dummy.impulse=0;dummy.flash=0;
+    dummy.group.rotation.z=0;
+    if(dummy.vest)dummy.vest.material.color.setHex(dummy.id==='light'?0x819083:0x556a78);
+    if(dummy.helmet)dummy.helmet.material.color.setHex(0x556a78);
+    for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x000000);
+    updateDummyLabel(dummy);
+  }
+  clearBulletHoles();
+  showShotNotice('DUMMIES RESET · 100 HP EACH');
+}
+function spawnDamagePopup(point,result){
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
+  const ctx=canvas.getContext('2d');
+  ctx.font='bold 55px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.shadowColor='#081011';ctx.shadowBlur=10;
+  ctx.lineWidth=7;ctx.strokeStyle='#09151c';
+  const text=(result.critical?'★ ':'')+'-'+Math.ceil(result.damage);
+  ctx.strokeText(text,128,60);
+  ctx.fillStyle=result.critical?'#f6cf7b':result.blocked>0?'#a5d7f3':'#e8f3eb';
+  ctx.fillText(text,128,60);
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(material);
+  sprite.position.copy(point).add(new THREE.Vector3(0,.45,0));
+  sprite.scale.set(1.0,.5,1);
+  scene.add(sprite);
+  damagePopups.push({sprite,texture,material,age:0});
+  if(damagePopups.length>popupsMax)removeDamagePopup(damagePopups.shift());
+}
+function removeDamagePopup(popup){
+  scene.remove(popup.sprite);popup.material.dispose();popup.texture.dispose();
+}
+function updateCombatVisuals(dt){
+  for(const dummy of dummies.values()){
+    const target=dummy.state.alive?0:-1.22;
+    const shake=dummy.state.alive?Math.sin(dummy.flash*29)*dummy.impulse*.08:0;
+    dummy.group.rotation.z+=(target+shake-dummy.group.rotation.z)*(1-Math.exp(-9*dt));
+    dummy.impulse=Math.max(0,dummy.impulse-dt*3);
+    dummy.flash=Math.max(0,dummy.flash-dt);
+    if(dummy.flash===0){
+      for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0);
+    }
+  }
+  for(let i=damagePopups.length-1;i>=0;i--){
+    const p=damagePopups[i];p.age+=dt;
+    p.sprite.position.y+=dt*.6;
+    p.material.opacity=Math.max(0,1-p.age/.9);
+    if(p.age>=.9){
+      damagePopups.splice(i,1);removeDamagePopup(p);
+    }
+  }
 }
 
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
@@ -404,18 +561,41 @@ function shoot(){
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
   shotVector.set(result.spreadX,result.spreadY,-1).normalize().applyQuaternion(camera.quaternion);
   firingRaycaster.set(camera.position,shotVector);
-  const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes],false);
+  // Downed dummies remain visible but no longer block shots behind them.
+  const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
+  const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes,...livingParts],false);
   const first=hits[0];
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
     const isPaper=impactMaterial==='paper';
-    markBulletHole(first,isPaper);
+    markBulletHole(first,isPaper,!!first.object.userData.dummyId);
     // AudioContext scheduling creates an audible gap after the gunshot.
     // A little extra distance adds a subtle travel-time effect.
     sound.impact(impactMaterial,.15+Math.min(.11,first.distance*.0017));
   }
-  if(first&&first.object.userData.targetId){
+  if(first&&first.object.userData.dummyId){
+    const dummy=dummies.get(first.object.userData.dummyId);
+    const result=applyDamage(dummy.state,SCRAP_PISTOL.damage,first.object.userData.hitZone);
+    if(result.applied){
+      dummy.flash=.2;dummy.impulse=1;
+      for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x553d20);
+      if(result.armorBroken){
+        if(dummy.vest)dummy.vest.material.color.setHex(0x746d62);
+        if(dummy.helmet)dummy.helmet.material.color.setHex(0x746d62);
+      }
+      updateDummyLabel(dummy);
+      spawnDamagePopup(first.point,result);
+      $('damageReport').textContent=dummy.title+' · '+result.zone.toUpperCase()+
+        ' · '+Math.ceil(result.damage)+' HP'+
+        (result.blocked>0?' · '+Math.ceil(result.blocked)+' BLOCKED':'')+
+        (result.killed?' · DOWN':result.armorBroken?' · ARMOR BROKEN':'');
+      showShotNotice(result.killed?'DUMMY DOWN · '+dummy.title:
+        (result.critical?'HEADSHOT':'HIT '+result.zone.toUpperCase())+
+        ' · -'+Math.ceil(result.damage)+' HP'+
+        (result.blocked>0?' · ARMOR -'+Math.ceil(result.blocked):''));
+    }
+  } else if(first&&first.object.userData.targetId){
     const target=targetData.get(first.object.userData.targetId);
     target.hits++;totalHits++;
     target.back.material.emissive.setHex(0x956c2f);
@@ -504,11 +684,12 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
-  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=7){
+  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=8){
     resetPlayer(Number(e.code.slice(5))-1);return;
   }
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
   if(e.code==='KeyF'&&!e.repeat&&controls.isLocked){resupply();return;}
+  if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
   if(e.code==='KeyT'&&!e.repeat){
     clearBulletHoles();
     clearCasings();
@@ -599,6 +780,7 @@ function frame(){
   }
   if(shotNoticeTime>0){shotNoticeTime-=dt;if(shotNoticeTime<=0)$('shotNotice').classList.remove('visible');}
   updateCasings(dt);
+  updateCombatVisuals(dt);
   refreshWeaponHUD();
   if(controls.isLocked){
     controls.getDirection(forward);
