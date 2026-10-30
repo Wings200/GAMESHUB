@@ -573,6 +573,32 @@ const enemySpecs=[
   {id:'enforcer',label:'ENFORCER',x:46,z:36.8,
     armor:'heavy',color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
 ];
+// Unmissable station-9 locator: visible from the teleport spawn even if
+// individual low-poly characters are hidden by a browser graphics issue.
+const locatorCanvas=document.createElement('canvas');
+locatorCanvas.width=768;locatorCanvas.height=160;
+const locatorCtx=locatorCanvas.getContext('2d');
+locatorCtx.fillStyle='rgba(22,31,37,.92)';
+locatorCtx.fillRect(0,0,768,160);
+locatorCtx.strokeStyle='#ffa65f';locatorCtx.lineWidth=9;
+locatorCtx.strokeRect(4,4,760,152);
+locatorCtx.font='bold 60px system-ui';
+locatorCtx.fillStyle='#ffdb93';
+locatorCtx.fillText('3 RAIDERS · LIVE',38,99);
+const locatorTex=new THREE.CanvasTexture(locatorCanvas);
+locatorTex.colorSpace=THREE.SRGBColorSpace;
+const locator=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:locatorTex,transparent:true,depthTest:false}));
+locator.position.set(39,4.2,42);
+locator.scale.set(6.1,1.28,1);
+scene.add(locator);
+for(const [x,z] of [[39,42],[43,46],[46,36.8]]){
+  const waypoint=new THREE.Mesh(
+    new THREE.CylinderGeometry(.43,.43,.08,16),
+    new THREE.MeshBasicMaterial({color:0xffa253}));
+  waypoint.position.set(x,.09,z);
+  scene.add(waypoint);
+}
 function enemyMaterial(color,metallic=false){
   return new THREE.MeshStandardMaterial({color,
     roughness:metallic?.45:.88,metalness:metallic?.67:.05});
@@ -676,6 +702,8 @@ function refreshEnemyLabel(enemy,mode){
   texture.needsUpdate=true;
 }
 enemySpecs.forEach(createEnemy);
+$('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
+$('engineStatus').style.color='#abddb2';
 function resetEnemies(){
   clearBulletHoles();
   for(const enemy of enemies.values()){
@@ -727,8 +755,10 @@ function updateEnemies(dt){
   const statuses=[];
   let visibleCount=0;
   for(const enemy of enemies.values()){
-    enemy.root.visible=active;
-    enemy.billboard.mesh.visible=active;
+    // Do not remove NPCs from the 3D scene based on the station selection.
+    // That concealed all NPC geometry while debugging the station switch.
+    enemy.root.visible=true;
+    enemy.billboard.mesh.visible=true;
     if(!active)continue;
     visibleCount++;
     if(enemy.state.alive){
@@ -786,7 +816,10 @@ function updateEnemies(dt){
   $('playerDamageFlash').style.opacity=(playerHitFlash*.52).toFixed(2);
   $('enemyHud').classList.toggle('hidden',!active);
   if(active){
-    $('enemyCount').textContent=visibleCount+' / 3 ENEMIES SPAWNED';
+    const nearest=Math.min(...[...enemies.values()].map(e=>
+      Math.hypot(e.brain.x-player.x,e.brain.z-player.z)));
+    $('enemyCount').textContent=visibleCount+' NPCs LOADED · NEAREST '+
+      nearest.toFixed(1)+' m';
     $('enemyList').textContent=statuses.join('  ·  ');
     $('enemyMode').textContent=!enemyAIEnabled?'AI PAUSED · K TO RESUME':
       playerHealth.alive?'ENEMIES CAN FIRE · WATCH HEALTH':'PLAYER DOWN · H TO RESPAWN';
@@ -1040,12 +1073,24 @@ function resetPlayer(i){
   resetMotion(player);
   // Reset both the view direction and the unrecovered weapon kick.
   viewRecoil.unrecovered=0;
-  // Reset location only, not stamina. Press [ or ] to refill for a test. 
-  camera.rotation.set(0,-Math.PI/2,0);
+  // Face the enemy rather than relying on a hard-coded lab bearing.
+  // Three.js camera forward after yaw is (-sin(yaw), 0, -cos(yaw)).
+  // Snap toward the scout on station 9, even if future spawns move.
+  const scout=enemies.get('scout');
+  const lookYaw=i===8&&scout?
+    Math.atan2(-(scout.brain.x-player.x),-(scout.brain.z-player.z)):
+    -Math.PI/2;
+  camera.rotation.set(0,lookYaw,0);
   $('stationName').textContent=s.title;$('stationInfo').textContent=s.info;
   camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
 }
 resetPlayer(0);
+if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
+$('enterAI').addEventListener('click',()=>{
+  resetPlayer(8);
+  sound.unlock();
+  controls.lock();
+});
 $('start').addEventListener('click',()=>{
   // The audio engine is unlocked only after the player initiates playback.
   sound.unlock();
