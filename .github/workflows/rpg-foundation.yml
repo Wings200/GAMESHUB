@@ -26,7 +26,10 @@ jobs:
       - name: Check JavaScript module syntax
         run: |
           node --check games/rpg-prototype/main.js
+          node --check games/rpg-prototype/testing/main.js
+          node --check games/rpg-prototype/movement.mjs
+          node --check games/rpg-prototype/movement.test.mjs
           node --check games/rpg-prototype/rules.mjs
           node --check games/rpg-prototype/rules.test.mjs
       - name: Test collision, terrain and first quest
-        run: node --test games/rpg-prototype/rules.test.mjs
+        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs

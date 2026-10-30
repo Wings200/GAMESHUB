@@ -24,9 +24,10 @@ export function groundHeight(x,z) {
   }
   return y;
 }
-export function collision(x,z,boxes=[],trees=[],radius=.5) {
+export function collision(x,z,boxes=[],trees=[],radius=.5,height=0) {
   if(Math.abs(x)>WORLD/2-3||Math.abs(z)>WORLD/2-3)return true;
   for(const b of boxes){
+    if(Number.isFinite(b.top)&&height>=b.top+.03)continue;
     const px=Math.max(b.minX,Math.min(x,b.maxX));
     const pz=Math.max(b.minZ,Math.min(z,b.maxZ));
     if((x-px)**2+(z-pz)**2<radius**2)return true;
@@ -34,10 +35,10 @@ export function collision(x,z,boxes=[],trees=[],radius=.5) {
   for(const t of trees)if(Math.hypot(x-t.x,z-t.z)<radius+t.r)return true;
   return false;
 }
-export function movePoint(pos,dx,dz,boxes,trees) {
+export function movePoint(pos,dx,dz,boxes,trees,height=0) {
   let x=pos.x,z=pos.z;
-  if(!collision(x+dx,z,boxes,trees))x+=dx;
-  if(!collision(x,z+dz,boxes,trees))z+=dz;
+  if(!collision(x+dx,z,boxes,trees,.5,height))x+=dx;
+  if(!collision(x,z+dz,boxes,trees,.5,height))z+=dz;
   return {x,z};
 }
 export function initialQuest(){return {started:false,collected:0,finished:false,credits:0};}
