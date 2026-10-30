@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.0/);
+  assert.match(page,/main\.js\?v=W05\.1/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/6 DISTINCT WEAPONS/);
+  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/6 DISTINCT WEAPONS/);
+  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -133,4 +133,28 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=true;shoot\(\);\}/);
   assert.match(source,/if\(e\.button===0\)triggerHeld=false/);
   assert.match(source,/new THREE\.CylinderGeometry/);
+});
+
+test('W05.1 sight mounts are actually used for stable camera-space ADS',()=>{
+  assert.match(source,/import \{ sightMount, adsWeaponPosition \} from '\.\.\/weapon-sights\.mjs'/);
+  assert.match(source,/const mount=sightMount\(spec\.id\)/);
+  assert.match(source,/function alignActiveSight\(\)\{/);
+  assert.match(source,/const anchor=adsWeaponPosition\(activeWeaponId\)/);
+  assert.match(source,/visual\.root\.position\.set\(anchor\.x,anchor\.y,anchor\.z\)/);
+  assert.match(source,/visual\.root\.rotation\.set\(0,0,0\)/);
+  assert.match(source,/if\(weaponState\.aiming&&!handling\.active\)\{/);
+  assert.match(source,/alignActiveSight\(\)/);
+  assert.doesNotMatch(source,/const desired=weaponState\.aiming\?/);
+  assert.match(source,/const targetFOV=weaponState\.aiming\?sightMount\(activeWeaponId\)\.fov:76/);
+});
+test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=>{
+  assert.match(source,/const scopeBody=part\(new THREE\.CylinderGeometry\(\.069,\.069,\.40,18,1,true\)/);
+  assert.match(source,/0,mount\.y,mount\.z\)/);
+  assert.match(source,/scopeBody\.rotation\.x=Math\.PI\/2/);
+  assert.match(source,/new THREE\.TorusGeometry\(\.069,\.014,9,22\)/);
+  assert.match(source,/new THREE\.TorusGeometry\(holo\?\.069:\.052,\.009,8,22\)/);
+  assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
+  assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
+  assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
+  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
 });

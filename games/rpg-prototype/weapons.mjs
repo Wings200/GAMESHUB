@@ -9,7 +9,7 @@ export const SCRAP_PISTOL = Object.freeze({
   reloadSeconds: 1.65,
   damage: 20,
   hipSpreadDegrees: 2.65,
-  adsSpreadDegrees: .38,
+  adsSpreadDegrees: .12,
   recoilDegrees: 1.25
 });
 
@@ -19,15 +19,15 @@ export const ARSENAL=Object.freeze([
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,
-    damage:38,hipSpreadDegrees:2.2,adsSpreadDegrees:.28,recoilDegrees:3.5,
+    damage:38,hipSpreadDegrees:2.2,adsSpreadDegrees:.16,recoilDegrees:3.5,
     pellets:1,automatic:false}),
   Object.freeze({id:'pipe-smg',name:'Pipe SMG',kind:'smg',
     magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.1,
-    damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:1.08,recoilDegrees:.64,
+    damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.34,recoilDegrees:.64,
     pellets:1,automatic:true}),
   Object.freeze({id:'service-carbine',name:'Service Carbine',kind:'carbine',
     magazineSize:24,startingReserve:120,fireInterval:.17,reloadSeconds:2.45,
-    damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.45,recoilDegrees:1.45,
+    damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.10,recoilDegrees:1.45,
     pellets:1,automatic:true}),
   Object.freeze({id:'scrap-shotgun',name:'Scrap Pump Shotgun',kind:'shotgun',
     magazineSize:6,startingReserve:36,fireInterval:.92,reloadSeconds:2.7,
@@ -35,7 +35,7 @@ export const ARSENAL=Object.freeze([
     pellets:8,automatic:false}),
   Object.freeze({id:'hunting-rifle',name:'Wasteland Hunting Rifle',kind:'rifle',
     magazineSize:5,startingReserve:35,fireInterval:1.1,reloadSeconds:2.85,
-    damage:54,hipSpreadDegrees:3.7,adsSpreadDegrees:.17,recoilDegrees:4.1,
+    damage:54,hipSpreadDegrees:3.7,adsSpreadDegrees:.035,recoilDegrees:4.1,
     pellets:1,automatic:false})
 ]);
 export const ARSENAL_IDS=Object.freeze(ARSENAL.map(w=>w.id));

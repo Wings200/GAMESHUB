@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W05.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W05.1 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W05.1 — weapon viewmodel quality, lower optics and calibrated ADS
+- Fixes user playtest complaints: the six W05.0 weapons were too blocky, optical sights sat very high above the receiver, and ADS did not match the actual bullet trajectory. The prior shared ADS offset (x=0, y=-.176) was wrong for optics mounted at different y positions and the rifle scope tube was solid.
+- Adds `weapon-sights.mjs`: six explicitly calibrated 3D sight mounts with their actual x/y/z positions and per-optic ADS FOV; `adsWeaponPosition()` makes the physically modelled sight center x=0,y=0 in camera space. Each weapon enters ADS at this exact position, with recoil recovery tracked by the camera rather than shifting the optic off center.
+- Gun sway and root rotation are disabled while aiming (outside reload). This ensures an optically centered iron sight, holo/red-dot or rifle scope corresponds to the center of the same camera-ray used by the firing raycaster. For the hunting rifle and carbine, base ADS dispersion is reduced so aimed shots more closely track sight center; shotgun still shoots realistic multi-pellet scatter.
+- Hunting-rifle optic is now a hollow, open-ended tube with correctly oriented front/rear rings in the camera-facing XY plane, a low mount, and center reticle. Carbine and SMG use small low-profile holographic/reflex frames, while revolver/pistol/shotgun use physically matched-height iron sights. All optics are model geometry rather than a fake UI overlay.
+- Replaces the five W05.0 additional gun constructions with custom extruded/chamfered receiver profiles and identifiable handguards, furniture, barrel groups, metal accents, magazine/grip/trigger details. Pistol gets extra metal slide and grip detailing while keeping its proven animations.
+- All existing six weapon types, firing modes, separate magazine states, pistol/shotgun damage, six-slot armor, AI arena, controls and testing stations remain. W05.1 is not approved until the user's in-browser evaluation of actual model quality and sight picture.
+- Unit tests assert per-weapon ADS mounts truly center their geometry, optic heights are bounded and the hunting rifle/carbine maintain low ADS dispersion. Source integration tests ensure the real mounts and hollow scopes are wired correctly.
 
 ## W05.0 — six-weapon selectable arsenal, weapon variety priority
 - The user reports that current enemies still feel weak and there's only one weapon. This milestone prioritizes a **meaningful arsenal** over more unapproved enemy tweaks; a deeper AI overhaul will follow user playtesting.
