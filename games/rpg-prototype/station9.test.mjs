@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W04\.2\.1/);
+  assert.match(page,/main\.js\?v=W05\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -102,4 +102,35 @@ test('Existing armor and pistol systems remain in the same script',()=>{
   assert.match(source,/fireWeapon\(weaponState,SCRAP_PISTOL/);
   assert.match(source,/markBulletHole/);
   assert.match(source,/updateCombatVisuals\(dt\)/);
+});
+
+test('Six selectable unique models and independent weapon states are wired',()=>{
+  assert.match(page,/id="weaponSelect"/);
+  assert.match(page,/id="weaponName"/);
+  assert.match(page,/id="weaponStats"/);
+  assert.match(page,/6 DISTINCT WEAPONS/);
+  assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
+  assert.match(source,/const weaponVisuals=new Map\(\)/);
+  assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
+  assert.match(source,/function buildArsenalView\(spec\)/);
+  assert.match(source,/function selectWeapon\(id\)/);
+  assert.match(source,/function cycleWeapon\(direction\)/);
+  assert.match(source,/weaponVisuals\.get\(activeWeaponId\)\.root\.visible=false/);
+  assert.match(source,/weaponVisuals\.get\(id\)\.root\.visible=true/);
+  assert.match(source,/if\(e\.code==='KeyZ'/);
+  assert.match(source,/if\(e\.code==='KeyX'/);
+  assert.match(source,/getWeaponSpec\(id\)/);
+});
+test('Automatic shooting, shotgun pellet traces and independent reloading use selected weapon',()=>{
+  assert.match(source,/fireWeapon\(weaponState,activeSpec,Math\.random,weaponMotion\)/);
+  assert.match(source,/for\(const pellet of result\.directions\)/);
+  assert.match(source,/applyDamage\(enemy\.state,activeSpec\.damage/);
+  assert.match(source,/applyDamage\(dummy\.state,activeSpec\.damage/);
+  assert.match(source,/startWeaponReload\(weaponState,activeSpec\)/);
+  assert.match(source,/createWeaponState\(activeSpec\)/);
+  assert.match(source,/for\(const spec of ARSENAL\)updateWeapon\(arsenalStates\[spec\.id\],dt,spec\)/);
+  assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
+  assert.match(source,/if\(e\.button===0\)\{triggerHeld=true;shoot\(\);\}/);
+  assert.match(source,/if\(e\.button===0\)triggerHeld=false/);
+  assert.match(source,/new THREE\.CylinderGeometry/);
 });

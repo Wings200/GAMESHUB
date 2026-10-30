@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil, shotSpreadDegrees } from '../weapons.mjs';
+import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+  createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon,
+  createViewRecoilState, kickViewRecoil, recoverViewRecoil,
+  shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
@@ -895,7 +898,11 @@ function updateEnemies(dt){
 
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
-const weaponState=createWeaponState();
+const arsenalStates=createArsenalStates();
+let activeWeaponId=SCRAP_PISTOL.id;
+let activeSpec=SCRAP_PISTOL;
+let weaponState=arsenalStates[activeWeaponId];
+let triggerHeld=false,aimHeld=false;
 const viewRecoil=createViewRecoilState();
 const pistol=new THREE.Group();
 camera.add(pistol);
@@ -948,6 +955,121 @@ const muzzleFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
     blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
 muzzleFlare.position.set(0,.057,-.595);
 muzzleFlare.visible=false;pistol.add(muzzleFlare);
+
+// Six visually distinct 3D models; the approved pistol model stays intact.
+// Each non-pistol model owns a muzzle, moving magazine and reload hand.
+const weaponVisuals=new Map();
+weaponVisuals.set(SCRAP_PISTOL.id,{
+  root:pistol,slideGroup,magazine,magazineBase,reloadHand,muzzleGlow,muzzleFlare,
+  magBaseY:-.34,magFootY:-.445,flashScale:1,defaultX:.32
+});
+function buildArsenalView(spec){
+  const root=new THREE.Group();camera.add(root);
+  root.position.set(.32,-.31,-.77);
+  const gunmetal=mat(0x576269,.55),accent=mat(0x987b5d,.76),
+    darkSteel=mat(0x232e35,.6),timber=mat(0x79573c,.87);
+  const part=(geometry,material,x,y,z,parent=root)=>{
+    const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);parent.add(m);return m;
+  };
+  const rifle=['carbine','rifle','shotgun'].includes(spec.kind);
+  const smg=spec.kind==='smg',revolver=spec.kind==='revolver';
+  const length=spec.kind==='rifle'?.74:spec.kind==='shotgun'?.69:
+    spec.kind==='carbine'?.53:smg?.38:.32;
+  const y=.055;
+  part(new THREE.BoxGeometry(rifle?.21:.18,.18,length*.59),gunmetal,0,y,-.12);
+  part(new THREE.BoxGeometry(.15,.10,.15),darkSteel,0,.18,-.02);
+  const stock=part(new THREE.BoxGeometry(rifle?.15:.125,.23,.27),
+    timber,0,-.06,.22);
+  stock.rotation.x=rifle?-.08:-.26;
+  const barrel=part(new THREE.CylinderGeometry(rifle?.033:.039,.045,length,10),
+    darkSteel,0,y,-.15-length*.48);
+  barrel.rotation.x=Math.PI/2;
+  part(new THREE.TorusGeometry(.044,.011,7,14),gunmetal,0,y,-.15-length*.98);
+  // Specific silhouettes, not recolors.
+  if(revolver){
+    const cyl=part(new THREE.CylinderGeometry(.102,.102,.18,8),
+      accent,0,.06,-.17);cyl.rotation.z=Math.PI/2;
+    for(const side of [-1,1])part(new THREE.BoxGeometry(.02,.12,.19),
+      darkSteel,side*.097,.075,-.15);
+  }else if(smg){
+    part(new THREE.BoxGeometry(.19,.20,.27),accent,0,.075,-.09);
+    part(new THREE.BoxGeometry(.06,.07,.25),darkSteel,0,.205,-.19);
+    part(new THREE.BoxGeometry(.09,.12,.23),gunmetal,.01,-.15,-.10);
+  }else if(spec.kind==='shotgun'){
+    const tube=part(new THREE.CylinderGeometry(.031,.031,length*.85,9),
+      accent,0,-.02,-.15-length*.45);tube.rotation.x=Math.PI/2;
+    part(new THREE.BoxGeometry(.22,.13,.24),timber,0,.03,-.26);
+    part(new THREE.BoxGeometry(.17,.20,.25),timber,0,-.03,.09);
+  }else if(spec.kind==='rifle'){
+    part(new THREE.BoxGeometry(.17,.09,.35),timber,0,.035,-.32);
+    const scope=part(new THREE.CylinderGeometry(.085,.085,.35,12),
+      darkSteel,0,.29,-.16);scope.rotation.x=Math.PI/2;
+    part(new THREE.BoxGeometry(.12,.055,.07),gunmetal,0,.205,-.16);
+    for(const z of [-.34,.02]){
+      const ring=part(new THREE.TorusGeometry(.083,.02,8,14),
+        gunmetal,0,.29,z);ring.rotation.y=Math.PI/2;
+    }
+  }else{
+    part(new THREE.BoxGeometry(.20,.10,.31),accent,0,.165,-.13);
+    part(new THREE.BoxGeometry(.18,.08,.25),darkSteel,0,-.01,.08);
+    part(new THREE.BoxGeometry(.14,.15,.24),timber,0,-.075,.25);
+  }
+  const slideGroup=new THREE.Group();root.add(slideGroup);
+  const sight=part(new THREE.BoxGeometry(.05,.045,.035),darkSteel,
+    0,.23,-.15-length*.74,slideGroup);
+  part(new THREE.TorusGeometry(.045,.011,6,12),darkSteel,0,.235,.13,slideGroup);
+  const magBaseY=spec.kind==='shotgun'?-.23:-.28;
+  const magFootY=magBaseY-.135;
+  const magazine=part(new THREE.BoxGeometry(.115,.21,.13),
+    spec.kind==='shotgun'?timber:accent,0,magBaseY,.055);
+  const magazineBase=part(new THREE.BoxGeometry(.13,.035,.15),darkSteel,
+    0,magFootY,.055);
+  const reloadHand=new THREE.Group();root.add(reloadHand);
+  part(new THREE.SphereGeometry(.097,10,8),glove,0,0,0,reloadHand);
+  part(new THREE.BoxGeometry(.13,.15,.14),glove,-.05,-.08,.04,reloadHand);
+  reloadHand.visible=false;
+  const muzzleZ=-.15-length*.98;
+  const muzzleGlow=new THREE.PointLight(0xffaa58,0,2,2);
+  muzzleGlow.position.set(0,y,muzzleZ);root.add(muzzleGlow);
+  const newFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
+    muzzleFlare.material.clone());
+  newFlare.position.set(0,y,muzzleZ-.03);
+  newFlare.visible=false;root.add(newFlare);
+  root.visible=false;
+  return {root,slideGroup,magazine,magazineBase,reloadHand,
+    muzzleGlow,muzzleFlare:newFlare,magBaseY,magFootY,
+    flashScale:spec.kind==='shotgun'?1.7:spec.kind==='rifle'?1.3:1,
+    defaultX:rifle?.18:.32};
+}
+for(const spec of ARSENAL)if(spec.id!==SCRAP_PISTOL.id)
+  weaponVisuals.set(spec.id,buildArsenalView(spec));
+function selectWeapon(id){
+  const spec=getWeaponSpec(id);
+  if(id===activeWeaponId)return;
+  weaponVisuals.get(activeWeaponId).root.visible=false;
+  activeWeaponId=id;activeSpec=spec;
+  weaponState=arsenalStates[id];
+  setWeaponAim(weaponState,aimHeld);
+  weaponVisuals.get(id).root.visible=true;
+  $('weaponSelect').value=id;
+  // Weapon switch prevents a held mouse from continuing its old burst.
+  triggerHeld=false;slideCycle=0;muzzleFlash=0;recoilKick=0;
+  showShotNotice('EQUIPPED · '+spec.name.toUpperCase());
+  refreshWeaponHUD();
+}
+function cycleWeapon(direction){
+  const i=ARSENAL_IDS.indexOf(activeWeaponId);
+  selectWeapon(ARSENAL_IDS[(i+direction+ARSENAL_IDS.length)%ARSENAL_IDS.length]);
+}
+for(const spec of ARSENAL){
+  const option=document.createElement('option');option.value=spec.id;
+  option.textContent=spec.name+' · '+spec.damage+' DMG'+
+    ((spec.pellets||1)>1?' × '+spec.pellets:'');
+  $('weaponSelect').append(option);
+}
+$('weaponSelect').value=activeWeaponId;
+$('weaponSelect').addEventListener('change',()=>selectWeapon($('weaponSelect').value));
+
 // Reusable low-poly brass casing geometry and limited world-space physics.
 const casingGeometry=new THREE.CylinderGeometry(.029,.029,.105,8);
 const casingCapGeometry=new THREE.CylinderGeometry(.031,.031,.008,8);
@@ -1000,27 +1122,34 @@ function refreshWeaponHUD(){
   $('weaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
     weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY';
   $('targetHits').textContent=totalHits;
-  $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(SCRAP_PISTOL,
+  $('weaponName').textContent=activeSpec.name.toUpperCase();
+  $('weaponStats').textContent=activeSpec.damage+' DAMAGE'+
+    ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
+    ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
+    ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC';
+  $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(activeSpec,
     weaponState.aiming,weaponMotion).toFixed(2)+'°'+
     (weaponMotion.airborne?' · AIRBORNE':weaponMotion.crouched?' · CROUCHED':
       weaponMotion.speed>2?' · MOVING':' · STEADY');
   $('reloadProgress').style.width=(weaponState.reloadRemaining>0?
-    100*(1-weaponState.reloadRemaining/SCRAP_PISTOL.reloadSeconds):0).toFixed(1)+'%';
+    100*(1-weaponState.reloadRemaining/activeSpec.reloadSeconds):0).toFixed(1)+'%';
 }
 function shoot(){
-  const result=fireWeapon(weaponState,SCRAP_PISTOL,Math.random,weaponMotion);
+  const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
   if(result.status==='empty'){
     sound.dryFire();showShotNotice('EMPTY · PRESS R');return;
   }
   if(result.status!=='fired')return;
   sound.gunshot();
-  recoilKick=Math.min(.30,recoilKick+.14);
+  recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees/1.25);
   muzzleFlash=.085;
   slideCycle=.13;
   ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
-  shotVector.set(result.spreadX,result.spreadY,-1).normalize().applyQuaternion(camera.quaternion);
+  for(const pellet of result.directions){
+    shotVector.set(pellet.spreadX,pellet.spreadY,-1)
+      .normalize().applyQuaternion(camera.quaternion);
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
@@ -1041,7 +1170,7 @@ function shoot(){
   }
   if(first&&first.object.userData.enemyId){
     const enemy=enemies.get(first.object.userData.enemyId);
-    const hit=applyDamage(enemy.state,SCRAP_PISTOL.damage,first.object.userData.hitZone);
+    const hit=applyDamage(enemy.state,activeSpec.damage,first.object.userData.hitZone);
     if(hit.applied){
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
@@ -1070,7 +1199,7 @@ function shoot(){
     }
   }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
-    const result=applyDamage(dummy.state,SCRAP_PISTOL.damage,first.object.userData.hitZone);
+    const result=applyDamage(dummy.state,activeSpec.damage,first.object.userData.hitZone);
     if(result.applied){
       dummy.flash=.2;dummy.impulse=1;
       for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x553d20);
@@ -1096,19 +1225,20 @@ function shoot(){
     showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE · PAPER');
   } else if(first)showShotNotice(impactMaterial.toUpperCase()+' IMPACT');
   else showShotNotice('MISS');
+  } // all projectiles from one round
   // Vertical recoil only. Yaw and roll are never touched.
   camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
   refreshWeaponHUD();
 }
 function reload(){
-  if(startWeaponReload(weaponState)){
+  if(startWeaponReload(weaponState,activeSpec)){
     slideCycle=0;
     sound.reload();
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
 }
 function resupply(){
-  const fresh=createWeaponState();
+  const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
   showShotNotice('TEST AMMO RESTOCKED');
   // Do not leave the old reload hand suspended if F is used mid-reload.
@@ -1177,7 +1307,7 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
-  $('menu').classList.remove('hidden');keys.clear();
+  $('menu').classList.remove('hidden');keys.clear();triggerHeld=false;aimHeld=false;
   setWeaponAim(weaponState,false);
 });
 $('quality').addEventListener('click',()=>{
@@ -1191,6 +1321,8 @@ window.addEventListener('keydown',e=>{
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
     e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
   }
+  if(e.code==='KeyZ'&&!e.repeat&&controls.isLocked){cycleWeapon(-1);return;}
+  if(e.code==='KeyX'&&!e.repeat&&controls.isLocked){cycleWeapon(1);return;}
   if(e.code==='KeyN'&&!e.repeat){
     toggleSound();return;
   }
@@ -1222,16 +1354,19 @@ window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
-  if(e.button===0)shoot();
-  if(e.button===2)setWeaponAim(weaponState,true);
+  if(e.button===0){triggerHeld=true;shoot();}
+  if(e.button===2){aimHeld=true;setWeaponAim(weaponState,true);}
 });
 window.addEventListener('mouseup',e=>{
-  if(e.button===2)setWeaponAim(weaponState,false);
+  if(e.button===0)triggerHeld=false;
+  if(e.button===2){aimHeld=false;setWeaponAim(weaponState,false);}
 });
 window.addEventListener('mousemove',e=>{
   if(controls.isLocked)mouseSway=Math.max(-.08,Math.min(.08,mouseSway+e.movementX*.00025));
 });
-window.addEventListener('blur',()=>{keys.clear();setWeaponAim(weaponState,false);});
+window.addEventListener('blur',()=>{
+  keys.clear();triggerHeld=false;aimHeld=false;setWeaponAim(weaponState,false);
+});
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
@@ -1248,7 +1383,7 @@ function updateHUD(info){
 function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
-  updateWeapon(weaponState,dt);
+  for(const spec of ARSENAL)updateWeapon(arsenalStates[spec.id],dt,spec);
   // Ease camera pitch back to the player's original view. This applies in
   // YXZ space, so mouse-look cannot leave the camera permanently tilted.
   if(viewRecoil.unrecovered>0){
@@ -1258,21 +1393,22 @@ function frame(){
   mouseSway*=Math.exp(-9*dt);
   muzzleFlash=Math.max(0,muzzleFlash-dt);
   slideCycle=Math.max(0,slideCycle-dt);
-  muzzleGlow.intensity=muzzleFlash>0?5.5:0;
-  muzzleFlare.visible=muzzleFlash>0;
-  if(muzzleFlare.visible){
+  const visual=weaponVisuals.get(activeWeaponId);
+  visual.muzzleGlow.intensity=muzzleFlash>0?5.5:0;
+  visual.muzzleFlare.visible=muzzleFlash>0;
+  if(visual.muzzleFlare.visible){
     const q=muzzleFlash/.085;
-    muzzleFlare.scale.setScalar(.65+q*.8);
-    muzzleFlare.material.opacity=q;
+    visual.muzzleFlare.scale.setScalar((.65+q*.8)*visual.flashScale);
+    visual.muzzleFlare.material.opacity=q;
   }
-  const handling=reloadVisualState(weaponState.reloadRemaining,SCRAP_PISTOL.reloadSeconds);
-  slideGroup.position.z=slideTravel(slideCycle)+handling.slideOffset;
-  magazine.position.y=-.34-handling.magazineOffset;
-  magazineBase.position.y=-.445-handling.magazineOffset;
-  magazine.rotation.z=handling.magazineAngle;
-  magazineBase.rotation.z=handling.magazineAngle;
-  reloadHand.visible=handling.handVisible;
-  reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
+  const handling=reloadVisualState(weaponState.reloadRemaining,activeSpec.reloadSeconds);
+  visual.slideGroup.position.z=slideTravel(slideCycle)+handling.slideOffset;
+  visual.magazine.position.y=visual.magBaseY-handling.magazineOffset;
+  visual.magazineBase.position.y=visual.magFootY-handling.magazineOffset;
+  visual.magazine.rotation.z=handling.magazineAngle;
+  visual.magazineBase.rotation.z=handling.magazineAngle;
+  visual.reloadHand.visible=handling.handVisible;
+  visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
   // Distinct idle/ADS movement sway, with substantially steadier sights in ADS.
   handlingTime+=dt;
   const moving=Math.min(1,(weaponMotion.speed||0)/4.5);
@@ -1280,14 +1416,14 @@ function frame(){
   const swayX=Math.sin(handlingTime*(2.1+moving*6))*(.0035+moving*.011)*steadiness;
   const swayY=Math.cos(handlingTime*(2.7+moving*5))*(.0025+moving*.008)*steadiness;
   const desired=weaponState.aiming?new THREE.Vector3(0,-.176,-.61):
-    new THREE.Vector3(.32,-.31,-.77);
+    new THREE.Vector3(visual.defaultX,-.31,-.77);
   desired.x+=swayX;desired.y+=swayY;
   if(weaponMotion.sprinting)desired.y-=.10;
   if(handling.active){desired.x+=.045;desired.y-=.04;}
-  pistol.position.lerp(desired,1-Math.exp(-16*dt));
-  pistol.rotation.x=recoilKick+handling.tilt;
-  pistol.rotation.y=mouseSway*steadiness;
-  pistol.rotation.z=mouseSway*.28*steadiness;
+  visual.root.position.lerp(desired,1-Math.exp(-16*dt));
+  visual.root.rotation.x=recoilKick+handling.tilt;
+  visual.root.rotation.y=mouseSway*steadiness;
+  visual.root.rotation.z=mouseSway*.28*steadiness;
   camera.fov+=( (weaponState.aiming?58:76)-camera.fov)*(1-Math.exp(-13*dt));
   camera.updateProjectionMatrix();
   $('crosshair').classList.toggle('hidden',weaponState.aiming);
@@ -1301,6 +1437,8 @@ function frame(){
   if(shotNoticeTime>0){shotNoticeTime-=dt;if(shotNoticeTime<=0)$('shotNotice').classList.remove('visible');}
   updateCasings(dt);
   updateCombatVisuals(dt);
+  if(controls.isLocked&&triggerHeld&&activeSpec.automatic)
+    shoot();
   refreshWeaponHUD();
   if(controls.isLocked){
     controls.getDirection(forward);
