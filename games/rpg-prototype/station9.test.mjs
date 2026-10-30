@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W04\.2/);
+  assert.match(page,/main\.js\?v=W04\.2\.1/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,18 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/COVER \/ STRAFE \/ RELOAD/);
+  assert.match(page,/REAL COVER \+ CROUCH/);
+});
+test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
+  assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
+  assert.match(source,/part\(upperBody,new THREE.BoxGeometry\(\.57,\.72,\.35\)/);
+  assert.match(source,/part\(upperBody,new THREE.SphereGeometry\(\.225,14,10\)/);
+  assert.match(source,/armPivot\.position\.set\(side\*\.43,1\.65,0\);upperBody\.add\(armPivot\)/);
+  assert.match(source,/enemy\.upperBody\.position\.y=-\.82\*enemy\.crouchBlend/);
+  assert.match(source,/enemy\.tactics\.crouching\?'CROUCHED'/);
+  assert.match(source,/enemy\.billboard\.mesh\.position\.set\(enemy\.brain\.x,/);
+  assert.match(source,/enemy\.deathTimer=0;enemy\.crouchBlend=0;enemy\.upperBody\.position\.y=0/);
+  assert.match(source,/const collider=\{minX:.*height:h\}/);
 });
 test('Existing armor and pistol systems remain in the same script',()=>{
   assert.match(source,/rebuildDummyArmor/);
