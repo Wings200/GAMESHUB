@@ -125,7 +125,7 @@ const clock=new THREE.Clock();
 let stationIndex=0,qualityHigh=true;
 function resetPlayer(i){
   stationIndex=i;const s=stations[i];
-  player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;
+  player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
   camera.rotation.set(0,-Math.PI/2,0);
   $('stationName').textContent=s.title;$('stationInfo').textContent=s.info;
   camera.position.set(player.x,groundHeight(player.x,player.z)+MOVE_TUNING.eyeHeight,player.z);
@@ -143,6 +143,7 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
   if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=5){
     resetPlayer(Number(e.code.slice(5))-1);return;
   }
