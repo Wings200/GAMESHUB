@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W04\.1\.2/);
+  assert.match(page,/main\.js\?v=W04\.2/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -72,6 +72,19 @@ test('3D world markers, hit labels and arena sign respect obstacle occlusion',()
   assert.match(source,/map:texture,transparent:true,depthTest:true,depthWrite:false/);
   assert.match(source,/map:locatorTex,transparent:true,depthTest:true,depthWrite:false/);
   assert.doesNotMatch(source,/for\(const \[x,z\] of \[\[39,42\],\[43,46\],\[46,36\.8\]\]\)/);
+});
+test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
+  assert.match(source,/tickEnemyTactics\(enemy\.tactics,enemy\.brain,player,dt,aiObstacles/);
+  assert.match(source,/attemptEnemyShot\(enemy\.tactics/);
+  assert.match(source,/markEnemyThreat\(enemy\.tactics\)/);
+  assert.match(source,/resetEnemyTactics\(enemy\.tactics\)/);
+  assert.match(source,/if\(shot\.hit\)\{/);
+  assert.match(source,/if\(!shot\.hit\)\{/);
+  assert.match(source,/combatGoal:tactic\.goal/);
+  assert.match(source,/combatHold:tactic\.phase==='hold'/);
+  assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
+  assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
+  assert.match(page,/COVER \/ STRAFE \/ RELOAD/);
 });
 test('Existing armor and pistol systems remain in the same script',()=>{
   assert.match(source,/rebuildDummyArmor/);
