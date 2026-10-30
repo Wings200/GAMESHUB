@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W03.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.0 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.0 — enemy AI foundation (patrol / sight / chase / search)
+- **Station 9** adds a small dedicated three-bot patrol arena in the northeast of the original test lab. Press **9** to teleport there; the eight approved stations remain.
+- Three test raiders (Scout / Raider / Enforcer) have inert original 3D humanoid models, patrol paths, facing directions, sight distance and field of view, line-of-sight blockage by test crates, movement collision and arena boundaries.
+- Enemies detect and pursue the player when visible, remember the last seen position for a short time, investigate when sight is lost, then search and return to patrol. Shooting a raider alerts it regardless of facing. Bot movements are paused when the lab menu/armory is open or when the player leaves station 9.
+- The player uses the same W02 scrap pistol raycast, bullet decals, material sounds, and W03.1 six-slot permanent armor damage model against NPC hit zones, with health labels, hit numbers and defeat reactions.
+- **K** pauses/resumes AI for armor and movement comparisons; **J** resets bot health/position and patrol. Buttons and HUD explicitly state **NO ENEMY GUNFIRE YET**. Enemy weapons are placeholder 3D props, not functioning firearms in this first pass.
+- Enemy brain math and state transitions live in renderer-independent `enemy-ai.mjs` with Node regression tests (vision, cover occlusion, chase, investigation, collision and reset).
+- **Next W04 phases:** basic reciprocal combat and player health, then cover tactics and advanced ranged behavior—subject to this pass being approved by the user's browser playtest.
 
 ## W03.1 — full modular armor overhaul (supersedes W03 armor durability)
 - W03's pooled, breakable armor has been **removed**. Armor equipment is permanent until swapped, and repeated damage never reduces armor points or protection.

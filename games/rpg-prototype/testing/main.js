@@ -4,6 +4,7 @@ import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setE
 import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil, shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
+import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   applyDamage, resetDummy } from '../combat.mjs';
@@ -64,7 +65,8 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular armor dummies',info:'W03.1: every HEAD, CHEST, LEFT/RIGHT ARM and LEG has its own permanent armor rating. Press B to equip one of 96 different pieces. Y resets HP without removing armor.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078}
+  {title:'08 · Modular armor dummies',info:'W03.1: every HEAD, CHEST, LEFT/RIGHT ARM and LEG has its own permanent armor rating. Press B to equip one of 96 different pieces. Y resets HP without removing armor.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'09 · Enemy AI arena',info:'W04.0: watch three raiders patrol, spot and pursue you, lose sight behind obstacles, and react to the scrap pistol. K freezes AI; J resets raiders. No enemy shooting yet.',x:28,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -544,6 +546,175 @@ $('armoryReset').addEventListener('click',()=>{
   refreshArmory();
 });
 
+
+// W04.0: an isolated, deliberately modest test arena in the northeast.
+// Patrol/spot/chase/search is separate from cover/fire/AI-player-damage passes.
+const aiObstacles=[];
+function aiCrate(x,z,w,d,h,material){
+  const mesh=box(x,h/2,z,w,h,d,material);
+  mesh.userData.impactMaterial='metal';
+  const collider={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2};
+  aiObstacles.push(collider);bounds.push(collider);
+  return mesh;
+}
+const rustySteel=mat(0x62686b,.74);
+aiCrate(39.5,38.0,2.6,2.3,1.45,rustySteel);
+aiCrate(49.0,44.2,2.8,1.8,1.85,dark);
+for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
+const enemies=new Map(),enemyHitMeshes=[];
+let enemyAIEnabled=true;
+const enemySpecs=[
+  {id:'scout',label:'SCOUT',x:44,z:41,
+    armor:'none',color:0x8d7761,patrol:[{x:43,z:41},{x:52,z:41}]},
+  {id:'raider',label:'RAIDER',x:51,z:47,
+    armor:'light',color:0x66775c,patrol:[{x:50,z:47},{x:44,z:47}]},
+  {id:'enforcer',label:'ENFORCER',x:56,z:39,
+    armor:'heavy',color:0x4d6075,patrol:[{x:55,z:39},{x:53,z:45}]}
+];
+function enemyMaterial(color,metallic=false){
+  return new THREE.MeshStandardMaterial({color,
+    roughness:metallic?.45:.88,metalness:metallic?.67:.05});
+}
+function createEnemy(spec){
+  const brain=createEnemyBrain({x:spec.x,z:spec.z,
+    yaw:-Math.PI/2,patrol:spec.patrol});
+  const root=new THREE.Group();root.position.set(spec.x,0,spec.z);
+  scene.add(root);
+  const state=createDummy(spec.armor);
+  const enemy={id:spec.id,label:spec.label,brain,root,state,
+    meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:''};
+  const flesh=enemyMaterial(spec.color);
+  const darkCloth=enemyMaterial(0x29353b);
+  function part(parent,geometry,material,x,y,z,slot,armored=false){
+    const mesh=new THREE.Mesh(geometry,material.clone());
+    mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
+    mesh.userData={enemyId:spec.id,hitZone:slot,
+      impactMaterial:armored?'metal':'wood'};
+    parent.add(mesh);enemy.meshes.push(mesh);enemyHitMeshes.push(mesh);
+    return mesh;
+  }
+  part(root,new THREE.BoxGeometry(.57,.72,.35),flesh,0,1.34,0,'chest');
+  part(root,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
+  const chest=getArmorPiece('chest',state.loadout.chest);
+  if(chest.points)part(root,new THREE.BoxGeometry(.65,.63,.43),
+    enemyMaterial(chest.color,true),0,1.37,.055,'chest',true);
+  const helmet=getArmorPiece('head',state.loadout.head);
+  if(helmet.points)part(root,
+    new THREE.SphereGeometry(.241,14,10,0,Math.PI*2,0,Math.PI*.68),
+    enemyMaterial(helmet.color,true),0,2.075,0,'head',true);
+  for(const side of [-1,1]){
+    const name=side<0?'left':'right';
+    const armPivot=new THREE.Group();
+    armPivot.position.set(side*.43,1.65,0);root.add(armPivot);
+    enemy.limbs.push({pivot:armPivot,side,kind:'arm'});
+    part(armPivot,new THREE.BoxGeometry(.20,.68,.23),
+      flesh,0,-.35,0,name+'Arm');
+    const armArmor=getArmorPiece(name+'Arm',state.loadout[name+'Arm']);
+    if(armArmor.points)part(armPivot,new THREE.BoxGeometry(.25,.54,.30),
+      enemyMaterial(armArmor.color,true),0,-.32,.02,name+'Arm',true);
+    const legPivot=new THREE.Group();
+    legPivot.position.set(side*.19,.97,0);root.add(legPivot);
+    enemy.limbs.push({pivot:legPivot,side,kind:'leg'});
+    part(legPivot,new THREE.CylinderGeometry(.135,.15,.9,10),
+      darkCloth,0,-.46,0,name+'Leg');
+    const legArmor=getArmorPiece(name+'Leg',state.loadout[name+'Leg']);
+    if(legArmor.points)part(legPivot,new THREE.CylinderGeometry(.16,.17,.75,10),
+      enemyMaterial(legArmor.color,true),0,-.45,.025,name+'Leg',true);
+  }
+  // Original game-world scrap-rifle silhouette (visual prop only in W04.0).
+  const rifle=new THREE.Group();rifle.position.set(.19,1.38,.33);
+  root.add(rifle);
+  const stock=new THREE.Mesh(new THREE.BoxGeometry(.10,.15,.48),rustySteel);
+  rifle.add(stock);
+  const muzzle=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.56,8),darkCloth);
+  muzzle.rotation.x=Math.PI/2;muzzle.position.z=.32;rifle.add(muzzle);
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
+  const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  const labelMesh=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:texture,transparent:true,depthTest:false}));
+  labelMesh.scale.set(2.7,.72,1);
+  labelMesh.position.set(spec.x,2.84,spec.z);
+  scene.add(labelMesh);
+  enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
+  enemies.set(spec.id,enemy);
+  refreshEnemyLabel(enemy,'PATROL');
+  return enemy;
+}
+function refreshEnemyLabel(enemy,mode){
+  const current=enemy.label+'-'+mode+'-'+Math.ceil(enemy.state.health);
+  if(current===enemy.statusText)return;
+  enemy.statusText=current;
+  const {ctx,canvas,texture}=enemy.billboard;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='rgba(10,20,28,.92)';ctx.fillRect(3,3,506,126);
+  ctx.strokeStyle=enemy.state.alive?'#d7a77d':'#df685d';
+  ctx.lineWidth=4;ctx.strokeRect(3,3,506,126);
+  ctx.fillStyle='#f3dec0';ctx.textAlign='left';
+  ctx.font='bold 26px system-ui';ctx.fillText(enemy.label,18,37);
+  ctx.fillStyle=mode==='CHASE'?'#f89176':mode==='INVESTIGATE'?'#f3c47c':'#abcbd2';
+  ctx.fillText(mode,265,37);
+  ctx.fillStyle='#f4e2cf';ctx.font='bold 21px system-ui';
+  ctx.fillText(Math.ceil(enemy.state.health)+' / 100 HP',18,76);
+  ctx.fillStyle='#263c47';ctx.fillRect(18,93,480,14);
+  ctx.fillStyle='#a6c58e';ctx.fillRect(18,93,480*enemy.state.health/100,14);
+  texture.needsUpdate=true;
+}
+enemySpecs.forEach(createEnemy);
+function resetEnemies(){
+  clearBulletHoles();
+  for(const enemy of enemies.values()){
+    resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
+    enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
+    enemy.root.rotation.set(0,enemy.brain.yaw,0);
+    enemy.flash=0;enemy.shake=0;enemy.statusText='';
+    for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
+    refreshEnemyLabel(enemy,'PATROL');
+  }
+  $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
+  showShotNotice('ENEMIES RESET · PATROL RESTARTED');
+}
+function inAIArena(){return stationIndex===8&&
+  player.x>=25&&player.x<=61&&player.z>=33&&player.z<=51;}
+function updateEnemies(dt){
+  const active=inAIArena();
+  const ticking=active&&controls.isLocked&&enemyAIEnabled;
+  const statuses=[];
+  for(const enemy of enemies.values()){
+    enemy.root.visible=active;
+    enemy.billboard.mesh.visible=active;
+    if(!active)continue;
+    if(enemy.state.alive){
+      stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
+        {enabled:ticking,playerInArena:active});
+      enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
+      enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
+      const move=enemy.brain.moving?1:0;
+      for(const {pivot,side,kind} of enemy.limbs)
+        pivot.rotation.x=Math.sin(enemy.walkPhase+side*Math.PI/2)*
+          (kind==='leg'?.38:.23)*move;
+      enemy.root.rotation.y=enemy.brain.yaw;
+      enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
+      enemy.shake=Math.max(0,enemy.shake-dt*3);
+      enemy.flash=Math.max(0,enemy.flash-dt);
+      if(enemy.flash===0)for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
+    }else{
+      enemy.root.rotation.z+=( -1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
+    }
+    const mode=!enemy.state.alive?'DOWN':
+      !enemyAIEnabled?'PAUSED':enemy.brain.mode.toUpperCase();
+    refreshEnemyLabel(enemy,mode);
+    enemy.billboard.mesh.position.set(enemy.brain.x,2.86,enemy.brain.z);
+    statuses.push(enemy.label+': '+mode);
+  }
+  $('enemyHud').classList.toggle('hidden',!active);
+  if(active){
+    $('enemyList').textContent=statuses.join('  ·  ');
+    $('enemyMode').textContent=enemyAIEnabled?'AI ACTIVE · NO GUNFIRE YET':
+      'AI PAUSED · K TO RESUME';
+  }
+}
+
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
 const weaponState=createWeaponState();
@@ -675,18 +846,40 @@ function shoot(){
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
-  const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes,...livingParts],false);
+  const enemyParts=inAIArena()?enemyHitMeshes.filter(mesh=>
+    enemies.get(mesh.userData.enemyId).state.alive):[];
+  const hits=firingRaycaster.intersectObjects(
+    [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
   const first=hits[0];
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
     const isPaper=impactMaterial==='paper';
-    markBulletHole(first,isPaper,!!first.object.userData.dummyId);
+    markBulletHole(first,isPaper,
+      !!(first.object.userData.dummyId||first.object.userData.enemyId));
     // AudioContext scheduling creates an audible gap after the gunshot.
     // A little extra distance adds a subtle travel-time effect.
     sound.impact(impactMaterial,.15+Math.min(.11,first.distance*.0017));
   }
-  if(first&&first.object.userData.dummyId){
+  if(first&&first.object.userData.enemyId){
+    const enemy=enemies.get(first.object.userData.enemyId);
+    const hit=applyDamage(enemy.state,SCRAP_PISTOL.damage,first.object.userData.hitZone);
+    if(hit.applied){
+      enemy.flash=.22;enemy.shake=1;
+      for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
+      if(hit.killed)enemy.brain.active=false;
+      else alertEnemy(enemy.brain,{x:player.x,z:player.z});
+      enemy.statusText='';
+      refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
+      spawnDamagePopup(first.point,hit);
+      $('damageReport').textContent=enemy.label+' · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
+        ' · '+Math.ceil(hit.damage)+' HP · '+hit.points+' AP · '+
+        Math.ceil(hit.blocked)+' BLOCKED'+(hit.killed?' · DOWN':'');
+      showShotNotice(hit.killed?'ENEMY DOWN · '+enemy.label:
+        'ENEMY HIT · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
+        ' · -'+Math.ceil(hit.damage)+' HP');
+    }
+  }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
     const result=applyDamage(dummy.state,SCRAP_PISTOL.damage,first.object.userData.hitZone);
     if(result.applied){
@@ -794,13 +987,19 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
-  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=8){
+  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=9){
     resetPlayer(Number(e.code.slice(5))-1);return;
   }
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
   if(e.code==='KeyF'&&!e.repeat&&controls.isLocked){resupply();return;}
   if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
   if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){openArmory();return;}
+  if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked){resetEnemies();return;}
+  if(e.code==='KeyK'&&!e.repeat&&controls.isLocked){
+    enemyAIEnabled=!enemyAIEnabled;
+    showShotNotice(enemyAIEnabled?'ENEMY AI RESUMED':'ENEMY AI FROZEN');
+    return;
+  }
   if(e.code==='KeyT'&&!e.repeat){
     clearBulletHoles();
     clearCasings();
@@ -900,6 +1099,7 @@ function frame(){
     camera.position.set(player.x,info.ground+info.eyeHeight+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
+  updateEnemies(dt);
   renderer.render(scene,camera);
 }
 frame();
