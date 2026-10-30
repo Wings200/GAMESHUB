@@ -81,6 +81,9 @@ try{
   await page.mouse.up({button:'right'});
   const result=await page.evaluate(()=>window.__rpgSmokeState());
   const scoutHealth=result.enemies.find(e=>e.id==='scout').health;
+  console.log('BROWSER DAMAGE DEBUG',JSON.stringify({
+    before:frozen,after:result,errors
+  }));
   assert.ok(scoutHealth<initialHp,
     'Player pistol must cause real damage to an enemy in 3D hit detection');
   assert.equal(errors.length,0,

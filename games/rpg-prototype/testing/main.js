@@ -1305,6 +1305,7 @@ function inspectSightClearance(){
   output.style.color=obstruction?'#ffa27d':'#abd8ae';
 }
 const shotVector=new THREE.Vector3();
+let lastShotDebug=null;
 let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
 function showShotNotice(message){
@@ -1357,6 +1358,22 @@ function shoot(){
   const hits=firingRaycaster.intersectObjects(
     [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
   const first=hits[0];
+  if(new URLSearchParams(location.search).get('smoke')==='1'){
+    lastShotDebug={
+      when:performance.now(),selectedWeapon:activeSpec.id,
+      ray:{x:shotVector.x,y:shotVector.y,z:shotVector.z},
+      origin:{x:camera.position.x,y:camera.position.y,z:camera.position.z},
+      first:first?{distance:first.distance,id:first.object.userData.enemyId||null,
+        target:first.object.userData.targetId||null,
+        material:first.object.userData.impactMaterial||null,
+        point:{x:first.point.x,y:first.point.y,z:first.point.z}}:null,
+      hits:hits.slice(0,5).map(h=>({
+        distance:h.distance,enemyId:h.object.userData.enemyId||null,
+        targetId:h.object.userData.targetId||null,
+        point:{x:h.point.x,y:h.point.y,z:h.point.z}
+      }))
+    };
+  }
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
@@ -1507,6 +1524,9 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 if(new URLSearchParams(location.search).get('smoke')==='1'){
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
+    shot: lastShotDebug,weaponShots:weaponState.shotsFired,
+    camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
+      yaw:camera.rotation.y,pitch:camera.rotation.x},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
     player:{x:player.x,z:player.z},
     enemies:[...enemies.values()].map(e=>({
