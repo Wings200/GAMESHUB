@@ -17,6 +17,10 @@ import {createSquadIntel,clearSquadIntel,reportSquadContact,
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   ENEMY_ATTACK } from '../player-combat.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
+import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
+  equipFromInventory,useSupply,playerArmorReduction,createLootBag,
+  takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
+  totalInventoryValue} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   applyDamage, resetDummy } from '../combat.mjs';
@@ -575,6 +579,14 @@ aiCrate(49.0,44.2,2.8,1.8,1.85,dark);
 aiCrate(53.0,37.0,2.3,2.2,1.6,rustySteel);
 for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
+const lootBags=new Map();
+let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
+let inventoryOpen=false,lootOpen=false;
+let backpack=createBackpack();
+try{
+  const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
+  if(saved)backpack=safeBackpackSnapshot(saved);
+}catch{ /* Storage may be unavailable or corrupted. */ }
 let enemyAIEnabled=true;
 const squadIntel=createSquadIntel();
 const enemySpecs=[
@@ -728,6 +740,13 @@ $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
   clearBulletHoles();clearSquadIntel(squadIntel);
+  // Each J round produces fresh, singular loot drops. Inventory persists.
+  for(const drop of lootBags.values()){
+    scene.remove(drop.mesh);
+    disposeLootMarker(drop.mesh);
+  }
+  lootBags.clear();selectedLootId=null;
+  if(lootOpen)closeLootOverlay();
   for(const enemy of enemies.values()){
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
@@ -751,6 +770,200 @@ function resetEnemies(){
   $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
+// World loot is independent of the enemy corpse. A downed bot fades after
+// 0.7s, but its searchable bag remains until looted or J resets the arena.
+function disposeLootMarker(root){
+  root.traverse(obj=>{
+    if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();}
+    if(obj.isSprite){obj.material.map?.dispose();obj.material.dispose();}
+  });
+}
+function makeLootMarker(bag){
+  const group=new THREE.Group();
+  group.position.set(bag.x,0,bag.z);
+  const rarest=bag.items.reduce((a,b)=>
+    (['common','uncommon','rare','epic'].indexOf(getItem(b.itemId).rarity)>
+     ['common','uncommon','rare','epic'].indexOf(a)?getItem(b.itemId).rarity:a),'common');
+  const tint={common:0xaba991,uncommon:0x71c68d,rare:0x80b4ee,epic:0xc498f3}[rarest];
+  const base=new THREE.Mesh(new THREE.BoxGeometry(.65,.38,.47),
+    new THREE.MeshStandardMaterial({color:0x3f4c44,roughness:.88,
+      emissive:tint,emissiveIntensity:.12}));
+  base.position.y=.3;group.add(base);
+  const strip=new THREE.Mesh(new THREE.BoxGeometry(.67,.075,.48),
+    new THREE.MeshBasicMaterial({color:tint}));
+  strip.position.y=.44;group.add(strip);
+  const sign=document.createElement('canvas');sign.width=256;sign.height=64;
+  const ctx=sign.getContext('2d');
+  ctx.fillStyle='rgba(7,18,27,.93)';ctx.fillRect(0,0,256,64);
+  ctx.font='bold 24px system-ui';ctx.fillStyle='#f4e7cb';
+  ctx.textAlign='center';ctx.fillText('LOOT · E TO SEARCH',128,40);
+  const texture=new THREE.CanvasTexture(sign);
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:texture,depthTest:true,transparent:true}));
+  sprite.position.y=1.18;sprite.scale.set(2.45,.61,1);group.add(sprite);
+  scene.add(group);
+  return group;
+}
+function spawnWorldLoot(contents,x,z,source='world'){
+  const bag=createLootBag('bag-'+(++lootSerial),x,z,contents,source);
+  if(!bag.items.length)return null;
+  const marker=makeLootMarker(bag);
+  lootBags.set(bag.id,{...bag,mesh:marker});
+  return bag.id;
+}
+function spawnEnemyLoot(enemy){
+  return spawnWorldLoot(generateEnemyLoot(enemy.id),enemy.brain.x,
+    enemy.brain.z,'enemy-'+enemy.id);
+}
+function discardEmptyLootBags(){
+  for(const [id,bag] of lootBags){
+    if(bag.items.length)continue;
+    scene.remove(bag.mesh);disposeLootMarker(bag.mesh);
+    lootBags.delete(id);
+    if(selectedLootId===id)selectedLootId=null;
+  }
+}
+function nearestLootBag(){
+  let best=null,meters=2.7;
+  for(const bag of lootBags.values()){
+    const d=Math.hypot(player.x-bag.x,player.z-bag.z);
+    if(d<meters){meters=d;best=bag;}
+  }
+  return best;
+}
+function saveBackpack(){
+  try{localStorage.setItem('rpg-lab-player-inventory',JSON.stringify(backpack));}catch{}
+}
+function inventoryLine(item){
+  const row=document.createElement('div');
+  row.className='loot-entry';
+  row.style.borderLeftColor=RARITIES[item.rarity].color;
+  const summary=document.createElement('div');summary.className='loot-description';
+  const name=document.createElement('strong');name.textContent=item.name;
+  name.style.color=RARITIES[item.rarity].color;
+  const detail=document.createElement('small');
+  detail.textContent=RARITIES[item.rarity].label+' · '+item.category.toUpperCase()+
+    ' · '+item.value+' CAPS';
+  summary.append(name,detail);row.append(summary);
+  return row;
+}
+function lootButton(row,label,callback){
+  const b=document.createElement('button');b.type='button';b.textContent=label;
+  b.className='loot-action';b.addEventListener('click',callback);row.append(b);
+  return b;
+}
+function refreshInventoryUI(){
+  $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
+  $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
+  $('inventoryWeapon').textContent=getWeaponSpec(backpack.equipment.weapon).name;
+  $('inventoryArmor').textContent='CHEST '+
+    playerArmorReduction(backpack,'chest').points+' AP · '+
+    Math.round(playerArmorReduction(backpack,'chest').reduction*100)+'% DAMAGE BLOCK';
+  const area=$('inventoryItems');area.replaceChildren();
+  if(!backpack.items.length){
+    const empty=document.createElement('p');
+    empty.textContent='BACKPACK EMPTY · DEFEAT A RAIDER AND SEARCH ITS LOOT (E).';
+    area.append(empty);
+  }
+  for(const entry of backpack.items){
+    const item=getItem(entry.itemId),row=inventoryLine(item);
+    const count=document.createElement('span');count.textContent='×'+entry.quantity;
+    count.className='loot-quantity';row.append(count);
+    if(item.category==='armor'||item.category==='weapon'){
+      lootButton(row,'EQUIP',()=>{
+        const r=equipFromInventory(backpack,entry.uid);
+        if(!r.ok)return;
+        if(r.category==='weapon')selectWeapon(r.key);
+        saveBackpack();refreshInventoryUI();
+      });
+    }
+    if(item.category==='ammo'||item.id==='supply:medkit'){
+      lootButton(row,item.category==='ammo'?'LOAD RESERVE':'USE',()=>{
+        if(item.category==='ammo'){
+          const amount=entry.quantity;
+          removeItem(backpack,entry.uid,amount);
+          arsenalStates[item.key].reserve+=amount;
+          showShotNotice('+'+amount+' '+getWeaponSpec(item.key).name.toUpperCase()+' AMMO');
+        }else{
+          const used=useSupply(backpack,entry.uid,playerHealth);
+          if(!used.ok){showShotNotice('MEDKIT · HEALTH MUST BE BELOW 100');return;}
+          refreshPlayerHealth();showShotNotice('HEALED · +'+Math.ceil(used.restored)+' HP');
+        }
+        saveBackpack();refreshInventoryUI();refreshWeaponHUD();
+      });
+    }
+    lootButton(row,'DROP',()=>{
+      const dropped=removeItem(backpack,entry.uid,1);
+      if(!dropped.removed)return;
+      const item=getItem(dropped.itemId);
+      if(item.category==='weapon'&&
+        backpack.equipment.weapon===item.key&&
+        !backpack.items.some(e=>e.itemId===item.id)){
+        backpack.equipment.weapon='scrap-pistol';selectWeapon('scrap-pistol');
+      }
+      if(item.category==='armor'&&backpack.equipment.armor[item.slot]===item.key&&
+         !backpack.items.some(e=>e.itemId===item.id))
+        backpack.equipment.armor[item.slot]='none';
+      spawnWorldLoot([{itemId:dropped.itemId,quantity:1}],
+        player.x+Math.sin(camera.rotation.y)*.8,player.z-.8,'player-drop');
+      saveBackpack();refreshInventoryUI();
+    });
+    area.append(row);
+  }
+}
+function refreshLootUI(){
+  const bag=lootBags.get(selectedLootId),area=$('lootItems');
+  area.replaceChildren();
+  $('lootTitle').textContent=bag?'SEARCH · '+bag.source.toUpperCase():'LOOT BAG EMPTY';
+  if(!bag){const p=document.createElement('p');p.textContent='NO ITEMS REMAINING';area.append(p);return;}
+  for(let i=0;i<bag.items.length;i++){
+    const entry=bag.items[i],item=getItem(entry.itemId),row=inventoryLine(item);
+    const count=document.createElement('span');count.textContent='×'+entry.quantity;
+    count.className='loot-quantity';row.append(count);
+    lootButton(row,'TAKE',()=>{
+      const result=takeFromBag(backpack,bag,i);
+      if(!result.added){showShotNotice('BACKPACK FULL');return;}
+      saveBackpack();discardEmptyLootBags();
+      refreshLootUI();refreshInventoryUI();
+    });
+    area.append(row);
+  }
+}
+function beginLootOverlay(id=null){
+  const fromField=controls.isLocked;
+  if(fromField)controls.unlock();
+  lootOverlayFromField=fromField;
+  if(id){
+    selectedLootId=id;lootOpen=true;inventoryOpen=false;
+    $('inventoryPanel').classList.add('hidden');
+    $('lootPanel').classList.remove('hidden');
+    refreshLootUI();
+  }else{
+    lootOpen=false;inventoryOpen=true;
+    $('lootPanel').classList.add('hidden');
+    $('inventoryPanel').classList.remove('hidden');
+    refreshInventoryUI();
+  }
+  $('menu').classList.add('hidden');
+}
+function closeLootOverlay(){
+  lootOpen=false;inventoryOpen=false;selectedLootId=null;
+  $('inventoryPanel').classList.add('hidden');
+  $('lootPanel').classList.add('hidden');
+  if(lootOverlayFromField){
+    lootOverlayFromField=false;controls.lock();
+  }else $('menu').classList.remove('hidden');
+}
+$('inventoryOpen').addEventListener('click',()=>beginLootOverlay());
+$('inventoryClose').addEventListener('click',closeLootOverlay);
+$('lootClose').addEventListener('click',closeLootOverlay);
+$('lootTakeAll').addEventListener('click',()=>{
+  const bag=lootBags.get(selectedLootId);if(!bag)return;
+  const result=takeAllFromBag(backpack,bag);
+  if(result.remaining)showShotNotice('BACKPACK FULL · SOME LOOT LEFT');
+  saveBackpack();discardEmptyLootBags();refreshLootUI();refreshInventoryUI();
+});
+
 // Combat is available in Station 9 AND when physically entering the
 // arena on foot from another station. Keep Station 9 alive on roaming.
 function inAIArena(){return isArenaActive(stationIndex,player);}
@@ -874,7 +1087,8 @@ function updateEnemies(dt){
             }
             enemyTracer(origin,target);
             if(shot.hit){
-              const result=hitPlayer(playerHealth,attack.damage);
+              const armor=playerArmorReduction(backpack,'chest');
+              const result=hitPlayer(playerHealth,attack.damage*(1-armor.reduction));
               if(result.applied){
                 if(!playerHealth.alive)keys.clear();
                 refreshPlayerHealth();playerHitFlash=.48;
@@ -1259,6 +1473,8 @@ function selectWeapon(id){
   weaponState=arsenalStates[id];
   setWeaponAim(weaponState,aimHeld);
   weaponVisuals.get(id).root.visible=true;
+  backpack.equipment.weapon=id;
+  saveBackpack();
   if(aimHeld&&weaponState.reloadRemaining<=0)alignActiveSight();
   $('weaponSelect').value=id;
   // Weapon switch prevents a held mouse from continuing its old burst.
@@ -1278,7 +1494,14 @@ for(const spec of ARSENAL){
   $('weaponSelect').append(option);
 }
 $('weaponSelect').value=activeWeaponId;
-$('weaponSelect').addEventListener('change',()=>selectWeapon($('weaponSelect').value));
+$('weaponSelect').addEventListener('change',()=>{
+  selectWeapon($('weaponSelect').value);
+  backpack.equipment.weapon=activeWeaponId;
+  saveBackpack();
+});
+if(backpack.equipment.weapon!=='scrap-pistol'){
+  selectWeapon(backpack.equipment.weapon);
+}
 
 // Reusable low-poly brass casing geometry and limited world-space physics.
 const casingGeometry=new THREE.CylinderGeometry(.029,.029,.105,8);
@@ -1449,6 +1672,7 @@ function shoot(){
         enemy.billboard.mesh.visible=false;
         enemy.muzzleLight.intensity=0;
         enemy.gunGlow=0;
+        spawnEnemyLoot(enemy);
         updateArenaSign();
       }else{
         alertEnemy(enemy.brain,{x:player.x,z:player.z});
@@ -1596,6 +1820,18 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       Math.floor(Number.isFinite(count)?count:0)));
     weaponState.cooldown=0;
   };
+  window.__rpgSmokeSpawnLoot=(enemyId='scout')=>{
+    // CI-only fixture exercises the very same spawn routine used by an
+    // actual enemy death, without another 30 seconds of headless shooting.
+    return spawnEnemyLoot(enemies.get(enemyId));
+  };
+  window.__rpgSmokeApproachLoot=()=>{
+    const bag=[...lootBags.values()][0];
+    if(!bag)return false;
+    player.x=bag.x+.75;player.z=bag.z+.25;
+    camera.position.x=player.x;camera.position.z=player.z;
+    return !!nearestLootBag();
+  };
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
@@ -1605,6 +1841,13 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     triggerHeld,emptyClickLatched,dryFireClicks,
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
       alerts:squadIntel.alerts},
+    inventory:{slots:backpack.items.length,
+      items:backpack.items.map(e=>({...e})),
+      armor:{...backpack.equipment.armor},
+      equippedWeapon:backpack.equipment.weapon},
+    loot:[...lootBags.values()].map(b=>({id:b.id,x:b.x,z:b.z,
+      source:b.source,items:b.items.map(i=>({...i}))})),
+    lootOpen,inventoryOpen,
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
@@ -1630,7 +1873,8 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
-  $('menu').classList.remove('hidden');keys.clear();
+  if(!inventoryOpen&&!lootOpen)$('menu').classList.remove('hidden');
+  keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
 });
@@ -1642,6 +1886,19 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&(inventoryOpen||lootOpen)){closeLootOverlay();return;}
+  if(e.code==='KeyI'&&!e.repeat){
+    if(inventoryOpen||lootOpen)closeLootOverlay();
+    else beginLootOverlay();
+    return;
+  }
+  if(inventoryOpen||lootOpen)return;
+  if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
+    const bag=nearestLootBag();
+    if(bag)beginLootOverlay(bag.id);
+    else showShotNotice('NO LOOT WITHIN REACH');
+    return;
+  }
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
     e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
   }
@@ -1804,6 +2061,13 @@ function frame(){
     updateHUD(info);
   }
   updateEnemies(dt);
+  // Loot prompt follows world-space proximity; it does not require
+  // the target enemy body to stay rendered after defeat.
+  const nearby=nearestLootBag();
+  $('lootPrompt').classList.toggle('hidden',
+    !controls.isLocked||inventoryOpen||lootOpen||!nearby);
+  if(nearby)$('lootPrompt').textContent='E · SEARCH '+nearby.source.toUpperCase()+
+    ' · '+nearby.items.length+' ITEM TYPES';
   renderer.render(scene,camera);
 }
 frame();
