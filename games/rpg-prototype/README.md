@@ -1,8 +1,18 @@
-# Untitled RPG · Mechanics Lab W03 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W03.1 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 
-## W03 — damage, zones and armor durability
+## W03.1 — full modular armor overhaul (supersedes W03 armor durability)
+- W03's pooled, breakable armor has been **removed**. Armor equipment is permanent until swapped, and repeated damage never reduces armor points or protection.
+- Six independently equipped armor slots: **head, chest, left arm, right arm, left leg, right leg**. A bullet uses the hit part's equipped armor points; the right arm cannot borrow points from the left arm or chest.
+- Sixteen authored armor styles for **each slot**, totaling **96 equippable pieces** plus No Armor in each slot. Pieces have distinct ratings, colors, and visible 3D overlays with additional high-tier plating.
+- Damage blocking follows `armorPoints / (armorPoints + 25)` capped at 85%. Higher armor yields materially greater protection; head damage 2.5x, chest 1x, arms/legs .7x remain.
+- From the main menu choose **CUSTOMIZE ARMOR**, or press **B** in-game, to change all six slots on any of the three test dummies. Quick presets, selected dummy HP, individual point ratings and block percentages are visible. Changes persist via browser localStorage.
+- **Y** resets dummy HP and hit reactions without changing any armor piece. T clears casings and bullet marks as before.
+- Dummy damage feedback displays named exact hit zone, HP damage, armor points, and blocked amount. Existing W01–W02 shooting, recoil, bullet holes, procedural sounds and M01–M03 movement remain unchanged.
+- NPC inventory, wearable player armor, power armor and final art assets are not part of this test pass. The older W03 durability design described below is historical and is no longer in use.
+
+## W03 — historical superseded damage and durability (not current)
 - Station **8** is a dedicated combat test range with three humanoid training dummies: **Unarmored (100 HP)**, **Light Vest (100 HP, 60 armor)**, **Heavy Armor (100 HP, 120 armor, helmet)**.
 - Uses the existing W02 scrap pistol, 20 base damage, current raycast and ammunition rules, not a parallel shooting system. Headshots deal 2.5× damage; torso 1×; arms/legs 0.7×.
 - Light vest absorbs 30% of torso damage, while the heavy armor absorbs 55% of torso and 40% of helmeted head damage. Armor durability depletes by the amount blocked and eventually breaks; uncovered parts take full damage. No damage to destroyed dummies.

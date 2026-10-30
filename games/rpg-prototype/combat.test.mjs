@@ -1,65 +1,96 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HIT_ZONES,ARMOR_TYPES,createDummy,applyDamage,resetDummy} from './combat.mjs';
-const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,a+' != '+b);
-
-test('All targets begin with 100 health and configured armor pool',()=>{
-  const raw=createDummy('none'),light=createDummy('light'),heavy=createDummy('heavy');
-  assert.equal(raw.health,100);assert.equal(raw.armor,0);
-  assert.equal(light.armor,60);assert.equal(heavy.armor,120);
-  assert.deepEqual(Object.keys(HIT_ZONES),['head','torso','limb']);
-  assert.throws(()=>createDummy('godmode'),/Unknown armor type/);
+import {ARMOR_SLOTS,ARMOR_ITEMS,ARMOR_STYLES,ARMOR_PRESETS,createLoadout,
+  getArmorPiece,armorPointsForSlot,damageReductionForPoints,
+  createDummy,equipArmor,applyDamage,resetDummy,HIT_ZONES} from './combat.mjs';
+const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8, a+' != '+b);
+test('Six independent armor slots each have sixteen distinct pieces and an unequipped option',()=>{
+  assert.deepEqual(ARMOR_SLOTS,['head','chest','leftArm','rightArm','leftLeg','rightLeg']);
+  assert.equal(ARMOR_STYLES.length,16);
+  assert.equal(ARMOR_SLOTS.reduce((n,s)=>n+ARMOR_ITEMS[s].length-1,0),96);
+  for(const slot of ARMOR_SLOTS){
+    assert.equal(ARMOR_ITEMS[slot].length,17);
+    assert.equal(new Set(ARMOR_ITEMS[slot].map(p=>p.id)).size,17);
+    assert.equal(ARMOR_ITEMS[slot][0].points,0);
+    assert.ok(ARMOR_ITEMS[slot][16].points>ARMOR_ITEMS[slot][1].points);
+  }
 });
-test('Unarmored pistol body damage, headshot and limb damage',()=>{
-  near(applyDamage(createDummy('none'),20,'torso').damage,20);
-  near(applyDamage(createDummy('none'),20,'head').damage,50);
-  near(applyDamage(createDummy('none'),20,'limb').damage,14);
+test('Three default dummies are bare, partially equipped, and fully protected',()=>{
+  const bare=createDummy('none'),light=createDummy('light'),heavy=createDummy('heavy');
+  assert.equal(bare.health,100);assert.equal(armorPointsForSlot(bare,'rightArm'),0);
+  assert.equal(armorPointsForSlot(light,'head'),0);
+  assert.ok(armorPointsForSlot(light,'rightLeg')>0);
+  assert.ok(armorPointsForSlot(heavy,'head')>0);
+  assert.ok(armorPointsForSlot(heavy,'chest')>armorPointsForSlot(light,'chest'));
+  assert.equal(ARMOR_PRESETS.heavy.rightArm,'citadel-rightArm');
 });
-test('Light vest reduces torso damage but leaves head and limbs unprotected',()=>{
-  const light=createDummy('light');
-  const chest=applyDamage(light,20,'torso');
-  near(chest.blocked,6);near(chest.damage,14);near(light.armor,54);
-  near(applyDamage(light,20,'head').damage,50);
-  near(applyDamage(light,20,'limb').damage,14);
+test('Headshot, body and limb base damage apply even without armor',()=>{
+  close(applyDamage(createDummy(),20,'head').damage,50);
+  close(applyDamage(createDummy(),20,'chest').damage,20);
+  close(applyDamage(createDummy(),20,'rightArm').damage,14);
+  close(applyDamage(createDummy(),20,'leftLeg').damage,14);
 });
-test('Heavy armor protects the chest and also has a helmet',()=>{
-  const heavy=createDummy('heavy');
-  let chest=applyDamage(heavy,20,'torso');
-  near(chest.blocked,11);near(chest.damage,9);
-  let helmet=applyDamage(heavy,20,'head');
-  near(helmet.blocked,20);near(helmet.damage,30);
-  near(heavy.armor,89);
-});
-test('Armor depletes and future hits become full damage',()=>{
-  const d=createDummy('light',500);
-  let broke=false;
-  for(let i=0;i<12;i++)broke ||=applyDamage(d,20,'torso').armorBroken;
-  assert.equal(broke,true);near(d.armor,0);
-  near(applyDamage(d,20,'torso').damage,20);
-});
-test('Damage cannot take HP negative, and dead targets are immune until reset',()=>{
+test('Right arm armor only protects the right arm, not the left or legs',()=>{
   const d=createDummy();
-  const shot=applyDamage(d,20,'head');
-  assert.equal(shot.killed,false);
-  const lethal=applyDamage(d,20,'head');
-  assert.equal(lethal.killed,true);near(lethal.health,0);
-  const ignored=applyDamage(d,20,'head');
-  assert.equal(ignored.applied,false);assert.equal(ignored.killed,false);
-  assert.equal(d.hits,2);
+  equipArmor(d,'rightArm','aegis-rightArm');
+  const right=applyDamage(d,20,'rightArm');
+  const left=applyDamage(d,20,'leftArm');
+  const leg=applyDamage(d,20,'rightLeg');
+  assert.ok(right.damage<left.damage);
+  assert.ok(right.blocked>0);
+  close(left.damage,14);close(leg.damage,14);
+  assert.equal(d.loadout.leftArm,'none');
+});
+test('Ratings produce meaningful, stable non-breakable damage reductions',()=>{
+  const d=createDummy('heavy',1000);
+  const rating=armorPointsForSlot(d,'chest');
+  const first=applyDamage(d,20,'chest');
+  assert.ok(first.reduction>.7);
+  assert.ok(first.damage<6);
+  for(let i=0;i<25;i++){
+    const next=applyDamage(d,20,'chest');
+    close(next.damage,first.damage);
+    close(next.points,rating);
+  }
+  close(armorPointsForSlot(d,'chest'),rating);
+  assert.equal(Object.hasOwn(d,'armor'),false);
+  assert.equal(Object.hasOwn(d,'maxArmor'),false);
+});
+test('Equipping and removing one piece preserves HP and every other slot',()=>{
+  const d=createDummy('light');
+  applyDamage(d,20,'leftLeg');
+  const hp=d.health,arm=d.loadout.leftArm;
+  equipArmor(d,'head','ceramic-head');
+  assert.equal(d.loadout.leftArm,arm);
+  close(d.health,hp);
+  equipArmor(d,'head','none');
+  close(armorPointsForSlot(d,'head'),0);
   resetDummy(d);
-  assert.equal(d.alive,true);near(d.health,100);assert.equal(d.hits,0);
+  assert.equal(d.health,100);
+  assert.equal(d.loadout.head,'none');
+  assert.equal(d.loadout.leftArm,arm);
 });
-test('Armor cannot absorb more damage than its remaining capacity',()=>{
-  const d=createDummy('heavy',300);d.armor=3;
-  const result=applyDamage(d,20,'head');
-  near(result.blocked,3);near(result.damage,47);
-  assert.equal(result.armorBroken,true);near(d.armor,0);
-});
-test('Bad damage values never heal and zone validation is explicit',()=>{
+test('Invalid IDs cannot equip armor to the wrong slot',()=>{
   const d=createDummy();
-  assert.equal(applyDamage(d,-100).damage,0);
-  assert.equal(applyDamage(d,NaN).damage,0);
-  near(d.health,100);
-  assert.throws(()=>applyDamage(d,20,'foot'),/Unknown hit zone/);
-  assert.ok(ARMOR_TYPES.heavy.torsoReduction>ARMOR_TYPES.light.torsoReduction);
+  assert.throws(()=>getArmorPiece('foot','none'),/Invalid armor slot/);
+  assert.throws(()=>equipArmor(d,'rightLeg','ceramic-leftLeg'),/Invalid armor piece/);
+  assert.throws(()=>createLoadout('godmode'),/Unknown armor preset/);
+  assert.throws(()=>applyDamage(d,20,'limb'),/Invalid hit zone/);
+  assert.ok(HIT_ZONES.head>HIT_ZONES.chest);
+});
+test('Dead targets cannot take additional damage until reset',()=>{
+  const d=createDummy();
+  applyDamage(d,20,'head');const last=applyDamage(d,20,'head');
+  assert.equal(last.killed,true);
+  const extra=applyDamage(d,20,'head');
+  assert.equal(extra.applied,false);
+  close(d.health,0);
+  resetDummy(d);assert.equal(d.health,100);assert.equal(d.hits,0);
+});
+test('Armor reduction has no negative values or immunity',()=>{
+  close(damageReductionForPoints(-100),0);
+  close(damageReductionForPoints(25),.5);
+  close(damageReductionForPoints(75),.75);
+  assert.ok(damageReductionForPoints(10000)<=.85);
+  close(applyDamage(createDummy(),NaN).damage,0);
 });
