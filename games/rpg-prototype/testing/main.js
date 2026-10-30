@@ -557,7 +557,7 @@ const aiObstacles=[];
 function aiCrate(x,z,w,d,h,material){
   const mesh=box(x,h/2,z,w,h,d,material);
   mesh.userData.impactMaterial='metal';
-  const collider={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2};
+  const collider={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,height:h};
   aiObstacles.push(collider);bounds.push(collider);
   return mesh;
 }
@@ -610,11 +610,14 @@ function createEnemy(spec){
     yaw:-Math.PI/2,patrol:spec.patrol});
   const root=new THREE.Group();root.position.set(spec.x,0,spec.z);
   scene.add(root);
+  // Crouching lowers the ACTUAL head/torso/arm hitboxes. It is not
+  // just a cosmetic mesh squash; the player's raycaster uses these meshes.
+  const upperBody=new THREE.Group();root.add(upperBody);
   const state=createDummy(spec.armor);
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
     tactics:makeEnemyTactics(spec.id),gunGlow:0,
-    deathTimer:0};
+    deathTimer:0,upperBody,crouchBlend:0};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -625,19 +628,19 @@ function createEnemy(spec){
     parent.add(mesh);enemy.meshes.push(mesh);enemyHitMeshes.push(mesh);
     return mesh;
   }
-  part(root,new THREE.BoxGeometry(.57,.72,.35),flesh,0,1.34,0,'chest');
-  part(root,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
+  part(upperBody,new THREE.BoxGeometry(.57,.72,.35),flesh,0,1.34,0,'chest');
+  part(upperBody,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
   const chest=getArmorPiece('chest',state.loadout.chest);
-  if(chest.points)part(root,new THREE.BoxGeometry(.65,.63,.43),
+  if(chest.points)part(upperBody,new THREE.BoxGeometry(.65,.63,.43),
     enemyMaterial(chest.color,true),0,1.37,.055,'chest',true);
   const helmet=getArmorPiece('head',state.loadout.head);
-  if(helmet.points)part(root,
+  if(helmet.points)part(upperBody,
     new THREE.SphereGeometry(.241,14,10,0,Math.PI*2,0,Math.PI*.68),
     enemyMaterial(helmet.color,true),0,2.075,0,'head',true);
   for(const side of [-1,1]){
     const name=side<0?'left':'right';
     const armPivot=new THREE.Group();
-    armPivot.position.set(side*.43,1.65,0);root.add(armPivot);
+    armPivot.position.set(side*.43,1.65,0);upperBody.add(armPivot);
     enemy.limbs.push({pivot:armPivot,side,kind:'arm'});
     part(armPivot,new THREE.BoxGeometry(.20,.68,.23),
       flesh,0,-.35,0,name+'Arm');
@@ -655,14 +658,14 @@ function createEnemy(spec){
   }
   // Original game-world scrap-rifle silhouette (visual prop only in W04.0).
   const rifle=new THREE.Group();rifle.position.set(.19,1.38,.33);
-  root.add(rifle);
+  upperBody.add(rifle);
   const stock=new THREE.Mesh(new THREE.BoxGeometry(.10,.15,.48),rustySteel);
   rifle.add(stock);
   const muzzle=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.56,8),darkCloth);
   muzzle.rotation.x=Math.PI/2;muzzle.position.z=.32;rifle.add(muzzle);
   const muzzleLight=new THREE.PointLight(0xffa65f,0,2.2);
   muzzleLight.position.set(.19,1.38,.68);
-  root.add(muzzleLight);enemy.muzzleLight=muzzleLight;
+  upperBody.add(muzzleLight);enemy.muzzleLight=muzzleLight;
   // High-contrast visible identification beacons, even when the character
   // model is small or fogged against the scenery.
   const beacon=new THREE.Mesh(new THREE.TorusGeometry(.55,.065,6,22),
@@ -671,7 +674,7 @@ function createEnemy(spec){
   beacon.position.y=.085;root.add(beacon);enemy.beacon=beacon;
   const shoulderMark=new THREE.Mesh(new THREE.BoxGeometry(.7,.11,.075),
     new THREE.MeshBasicMaterial({color:0xf2ad66,depthTest:true,depthWrite:true}));
-  shoulderMark.position.set(0,1.85,.25);root.add(shoulderMark);
+  shoulderMark.position.set(0,1.85,.25);upperBody.add(shoulderMark);
   enemy.shoulderMark=shoulderMark;
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
   const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
@@ -721,7 +724,11 @@ function resetEnemies(){
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
     enemy.root.visible=true;enemy.billboard.mesh.visible=true;
     enemy.beacon.visible=true;enemy.shoulderMark.visible=true;
-    enemy.deathTimer=0;
+    enemy.deathTimer=0;enemy.crouchBlend=0;enemy.upperBody.position.y=0;
+    for(const {pivot,kind,side} of enemy.limbs){
+      if(kind==='leg'){pivot.position.y=.97;pivot.scale.y=1;}
+      pivot.rotation.x=0;
+    }
     enemy.flash=0;enemy.shake=0;enemy.statusText='';
     resetEnemyTactics(enemy.tactics);
     enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
@@ -788,11 +795,23 @@ function updateEnemies(dt){
           combatFacePlayer:true,
           combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed});
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
+      // Visibly duck behind low cover, with consistent LOWERED hitboxes.
+      // ~0.82 m of crouch travel keeps the head under the 1.45 m crate.
+      const wantedCrouch=enemy.tactics.crouching?1:0;
+      enemy.crouchBlend+=(wantedCrouch-enemy.crouchBlend)*
+        (1-Math.exp(-13*dt));
+      enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
       const move=enemy.brain.moving?1:0;
-      for(const {pivot,side,kind} of enemy.limbs)
+      for(const {pivot,side,kind} of enemy.limbs){
         pivot.rotation.x=Math.sin(enemy.walkPhase+side*Math.PI/2)*
           (kind==='leg'?.38:.23)*move;
+        if(kind==='leg'){
+          pivot.position.y=.97-.30*enemy.crouchBlend;
+          pivot.scale.y=1-.34*enemy.crouchBlend;
+          pivot.rotation.z=side*.25*enemy.crouchBlend;
+        }
+      }
       enemy.root.rotation.y=enemy.brain.yaw;
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
       enemy.shake=Math.max(0,enemy.shake-dt*3);
@@ -845,12 +864,13 @@ function updateEnemies(dt){
     const mode=!enemy.state.alive?'DOWN':
       !enemyAIEnabled?'PAUSED':!playerHealth.alive?'PLAYER DOWN':
         enemy.tactics.reloadRemaining>0?'RELOAD':
-        enemy.tactics.phase==='hold'?'IN COVER':
+        enemy.tactics.crouching?'CROUCHED':
         enemy.tactics.phase==='cover'?'SEEK COVER':
         enemy.tactics.phase==='strafe'?'STRAFE':
         enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
-    enemy.billboard.mesh.position.set(enemy.brain.x,2.86,enemy.brain.z);
+    enemy.billboard.mesh.position.set(enemy.brain.x,
+      2.86-.78*enemy.crouchBlend,enemy.brain.z);
     statuses.push(enemy.label+': '+mode+' ['+
       enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
   }

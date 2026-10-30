@@ -21,7 +21,7 @@ export function makeEnemyTactics(kind){
     reloadRemaining:0,cooldown:1.2,shots:0,hits:0,misses:0,
     phase:'patrol',threat:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
-    goal:null
+    goal:null,crouching:false,coverHold:0
   };
 }
 export function resetEnemyTactics(tactics){
@@ -41,27 +41,45 @@ export function markEnemyThreat(tactics){
   tactics.coverPoint=null;
   tactics.moveTime=0;
 }
+// A cover position is valid only if a SOLID obstacle lies BETWEEN the
+// player and the planned position, not simply near either combatant.
+// Shrinking the rectangle prevents glancing hits on a crate corner from
+// counting as protection.
+export function isBehindCover(player,point,obstacle){
+  if(!obstacle||!player||!point)return false;
+  const cx=(obstacle.minX+obstacle.maxX)/2;
+  const cz=(obstacle.minZ+obstacle.maxZ)/2;
+  const dx=cx-player.x,dz=cz-player.z;
+  const px=point.x-cx,pz=point.z-cz;
+  if(dx*dx+dz*dz<.3*.3)return false;
+  // Position must be beyond the obstacle's centre, away from the player.
+  if(px*dx+pz*dz<=0)return false;
+  return lineIntersectsBox(player,point,obstacle,-.10);
+}
 export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area){
-  // Sample the four far faces of each obstacle. A candidate only counts as
-  // cover if the obstacle blocks the segment from the player to that position.
-  // Reject points within any crate or outside the arena.
-  const clearance=AI_TUNING.collisionRadius+.55;
+  const clearance=AI_TUNING.collisionRadius+.46;
   const candidates=[];
   for(let i=0;i<obstacles.length;i++){
     const b=obstacles[i],cx=(b.minX+b.maxX)/2,cz=(b.minZ+b.maxZ)/2;
+    // Cover must be at least tall enough to shield a crouching enemy.
+    if(b.height!==undefined&&b.height<1.35)continue;
+    const dx=cx-player.x,dz=cz-player.z;
+    if(Math.hypot(dx,dz)<.35)continue;
+    // Only sample the player's OPPOSITE sides. Do not offer the faces
+    // on the player's side even if a ray grazes their corners.
     const points=[
-      {x:b.minX-clearance,z:cz},
-      {x:b.maxX+clearance,z:cz},
-      {x:cx,z:b.minZ-clearance},
-      {x:cx,z:b.maxZ+clearance}
+      {x:dx>=0?b.maxX+clearance:b.minX-clearance,z:cz},
+      {x:cx,z:dz>=0?b.maxZ+clearance:b.minZ-clearance}
     ];
     for(const p of points){
       if(p.x<area.minX+.3||p.x>area.maxX-.3||
         p.z<area.minZ+.3||p.z>area.maxZ-.3)continue;
       if(obstacles.some(box=>inside(p,box,AI_TUNING.collisionRadius+.07)))continue;
-      if(!lineIntersectsBox(player,p,b,.015))continue;
-      const walk=distance(enemy,p),enemyPlayer=distance(enemy,player);
-      if(walk>15||distance(p,player)<3||enemyPlayer<.5)continue;
+      if(!isBehindCover(player,p,b))continue;
+      const walk=distance(enemy,p);
+      if(walk>16||distance(p,player)<3)continue;
+      // Avoid unnecessary long runs into the open when closer real
+      // cover exists. Prefer crate centre-line shielded points.
       candidates.push({point:p,index:i,score:walk+distance(p,player)*.045});
     }
   }
@@ -107,10 +125,21 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   }else if(tactics.magazine===0&&tactics.reserve>0)beginReload(tactics);
   tactics.threat=Math.max(0,tactics.threat-step);
   tactics.goal=null;
-  if(!memory){tactics.phase='patrol';tactics.coverPoint=null;return tactics;}
+  if(!memory){
+    tactics.phase='patrol';tactics.coverPoint=null;tactics.coverIndex=-1;
+    tactics.crouching=false;return tactics;
+  }
   const defensive=tactics.threat>0||tactics.reloadRemaining>0||
     (brain.mode==='chase'&&options.lowHealth===true);
+  tactics.crouching=false;
   if(defensive){
+    // Recheck against the player's CURRENT position on every update.
+    // Otherwise running around a crate leaves an enemy 'in cover'
+    // while exposed on the player's side.
+    const selected=tactics.coverIndex>=0?obstacles[tactics.coverIndex]:null;
+    if(tactics.coverPoint&&!isBehindCover(player,tactics.coverPoint,selected)){
+      tactics.coverPoint=null;tactics.coverIndex=-1;
+    }
     if(!tactics.coverPoint){
       const cover=pickCoverPoint(brain,player,obstacles);
       tactics.coverPoint=cover?.point||null;
@@ -118,11 +147,16 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     }
     if(tactics.coverPoint){
       const d=distance(brain,tactics.coverPoint);
-      tactics.goal=d>.72?routeAroundCrates(brain,tactics.coverPoint,obstacles):null;
-      tactics.phase=d>.72?(tactics.reloadRemaining>0?'reload':'cover'):'hold';
+      const sheltered=d<=.53&&isBehindCover(player,brain,
+        obstacles[tactics.coverIndex]);
+      tactics.crouching=sheltered;
+      // Don't hide in front of a crate: only call it IN COVER when
+      // player-to-enemy line is actually blocked by the crate.
+      tactics.goal=sheltered?null:routeAroundCrates(brain,tactics.coverPoint,obstacles);
+      tactics.phase=sheltered?'hold':tactics.reloadRemaining>0?'reload':'cover';
       return tactics;
     }
-  }else tactics.coverPoint=null;
+  }else{tactics.coverPoint=null;tactics.coverIndex=-1;}
   // When a shot is available, strafe in alternating directions rather than
   // running directly at the player. This remains collision bounded.
   if(brain.mode==='chase'){

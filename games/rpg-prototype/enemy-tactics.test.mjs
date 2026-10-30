@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEnemyBrain,stepEnemyBrain} from './enemy-ai.mjs';
 import {ENEMY_PROFILES,makeEnemyTactics,resetEnemyTactics,markEnemyThreat,
-  pickCoverPoint,routeAroundCrates,tickEnemyTactics,beginReload,
+  pickCoverPoint,isBehindCover,routeAroundCrates,tickEnemyTactics,beginReload,
   attemptEnemyShot} from './enemy-tactics.mjs';
 const box={minX:40,maxX:42,minZ:39,maxZ:41};
 const player={x:30,z:40};
@@ -115,4 +115,49 @@ test('Combat strafing moves NPC without crossing arena boundary',()=>{
   }
   assert.ok(Math.hypot(b.x-original.x,b.z-original.z)>.1);
   assert.ok(b.x>=33.6&&b.x<=58.4&&b.z>=34.9&&b.z<=49.3);
+});
+
+test('A crate on the PLAYER side is not considered cover (both directions)',()=>{
+  const crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  const west={x:30,z:40},east={x:51,z:40};
+  const westCover=pickCoverPoint({x:45,z:43},west,[crate]);
+  const eastCover=pickCoverPoint({x:37,z:43},east,[crate]);
+  assert.ok(westCover&&eastCover);
+  assert.ok(westCover.point.x>crate.maxX,'must shelter on east side against west player');
+  assert.ok(eastCover.point.x<crate.minX,'must shelter on west side against east player');
+  assert.equal(isBehindCover(west,{x:39,z:40},crate),false);
+  assert.equal(isBehindCover(west,westCover.point,crate),true);
+  assert.equal(isBehindCover(east,westCover.point,crate),false);
+  assert.equal(isBehindCover(east,eastCover.point,crate),true);
+});
+test('Enemy crouches only behind a real blocker and stands when flanked',()=>{
+  const crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  const t=makeEnemyTactics('raider'),b=brain();
+  markEnemyThreat(t);
+  let crouched=false;
+  for(let i=0;i<200;i++){
+    tickEnemyTactics(t,b,player,.05,[crate]);
+    stepEnemyBrain(b,player,.05,[crate],{
+      combatGoal:t.goal,combatHold:t.phase==='hold',
+      combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
+    });
+    if(t.crouching){crouched=true;break;}
+  }
+  assert.ok(crouched,'must eventually crouch behind the crate');
+  assert.equal(t.phase,'hold');
+  assert.equal(t.goal,null);
+  assert.equal(isBehindCover(player,b,crate),true);
+  const previous=t.coverPoint;
+  const flankingPlayer={x:53,z:40};
+  tickEnemyTactics(t,b,flankingPlayer,.05,[crate]);
+  assert.equal(t.crouching,false,'must stand when flanked');
+  assert.equal(t.phase,'cover');
+  assert.notDeepEqual(t.coverPoint,previous,'must change side of crate after flank');
+  assert.ok(t.coverPoint.x<crate.minX);
+});
+test('Very low objects are not accepted as protective crouching cover',()=>{
+  const low={minX:40,maxX:42,minZ:39,maxZ:41,height:.5};
+  const tall={minX:40,maxX:42,minZ:39,maxZ:41,height:1.6};
+  assert.equal(pickCoverPoint(brain(),player,[low]),null);
+  assert.ok(pickCoverPoint(brain(),player,[tall]));
 });

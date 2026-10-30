@@ -1,6 +1,13 @@
-# Untitled RPG · Mechanics Lab W04.2 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.2.1 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.2.1 — cover on the far side of crates + actual enemy crouching
+- Fixes user playtest feedback: raiders sometimes chose the face of a crate toward the player and had no crouch ability. The cover sampler now checks each candidate is on the **opposite side of the obstacle from the player** and the player-to-destination line intersects the crate's **interior**, not merely a grazed corner.
+- On each tactical update, the existing cover location is revalidated against the **player's current position**. If the player flanks around the crate, the enemy exits crouch, selects a new sheltered side and repositions.
+- Enemies now actually **crouch on arriving at sheltered cover**: 3D chest/head/arm meshes are under a moveable upper-body group that sinks by ~0.82 m, leg pivots bend and compress, rifle/shoulder markers follow the upper body, and label position follows stance. The raycast uses these same moved head/torso/limb meshes, so crouching behind a 1.45 m-high crate shields their hitboxes instead of merely changing the label.
+- Low or unsuitable objects cannot qualify as true crouch cover. The W04.2 reload, strafe, damage, permanent armor and death/respawn systems remain; **J** resets crouch fully. Tests cover player-side vs far-side shelter, flanking reacquisition, low cover rejection, real movement and lowering of hitbox geometry.
+- Versioned client script is **W04.2.1**; manual browser playtest is required.
 
 ## W04.2 — advanced tactical combat, cover, repositioning, magazines, accuracy
 - Station 9's Scout, Raider and Enforcer now use `enemy-tactics.mjs`, a deterministic and independently tested tactical combat layer. Their different magazines, reload duration, movement speeds, shot intervals, distance-dependent hit chance and side-to-side repositioning can be tuned separately.
