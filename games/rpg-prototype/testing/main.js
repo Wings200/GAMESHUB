@@ -906,6 +906,9 @@ let activeWeaponId=SCRAP_PISTOL.id;
 let activeSpec=SCRAP_PISTOL;
 let weaponState=arsenalStates[activeWeaponId];
 let triggerHeld=false,aimHeld=false;
+// The dry-fire click is a trigger-edge event, NOT a frame-loop sound.
+let emptyClickLatched=false;
+let dryFireClicks=0;
 const viewRecoil=createViewRecoilState();
 const pistol=new THREE.Group();
 camera.add(pistol);
@@ -1224,7 +1227,8 @@ function selectWeapon(id){
   if(aimHeld&&weaponState.reloadRemaining<=0)alignActiveSight();
   $('weaponSelect').value=id;
   // Weapon switch prevents a held mouse from continuing its old burst.
-  triggerHeld=false;slideCycle=0;muzzleFlash=0;recoilKick=0;
+  triggerHeld=false;emptyClickLatched=false;
+  slideCycle=0;muzzleFlash=0;recoilKick=0;
   showShotNotice('EQUIPPED · '+spec.name.toUpperCase());
   refreshWeaponHUD();
 }
@@ -1333,9 +1337,19 @@ function refreshWeaponHUD(){
 function shoot(){
   const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
   if(result.status==='empty'){
-    sound.dryFire();showShotNotice('EMPTY · PRESS R');return;
+    // Automatic guns call shoot() every animation frame while the trigger
+    // is held. Without this latch, sound.dryFire() was called 60+ times
+    // per second, creating the reported loud continuous buzzing.
+    if(!emptyClickLatched){
+      emptyClickLatched=true;
+      dryFireClicks++;
+      sound.dryFire();
+      showShotNotice('EMPTY · PRESS R');
+    }
+    return;
   }
   if(result.status!=='fired')return;
+  emptyClickLatched=false;
   sound.gunshot(activeSpec.kind||'pistol');
   recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees/1.25);
   muzzleFlash=.085;
@@ -1457,6 +1471,7 @@ function shoot(){
 }
 function reload(){
   if(startWeaponReload(weaponState,activeSpec)){
+    emptyClickLatched=false;
     slideCycle=0;
     sound.reload(activeSpec.kind||'pistol',activeSpec.reloadSeconds);
     showShotNotice('RELOADING');refreshWeaponHUD();
@@ -1465,6 +1480,7 @@ function reload(){
 function resupply(){
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
+  emptyClickLatched=false;
   showShotNotice('TEST AMMO RESTOCKED');
   // Do not leave the old reload hand suspended if F is used mid-reload.
   slideCycle=0;
@@ -1525,6 +1541,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
+    weapon:{id:activeSpec.id,magazine:weaponState.magazine,
+      reserve:weaponState.reserve,reloadRemaining:weaponState.reloadRemaining,
+      cooldown:weaponState.cooldown},
+    triggerHeld,emptyClickLatched,dryFireClicks,
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
@@ -1548,7 +1568,8 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
-  $('menu').classList.remove('hidden');keys.clear();triggerHeld=false;
+  $('menu').classList.remove('hidden');keys.clear();
+  triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
 });
 $('quality').addEventListener('click',()=>{
@@ -1599,14 +1620,14 @@ window.addEventListener('mousedown',e=>{
   if(e.button===2)changeAim(true);
 });
 window.addEventListener('mouseup',e=>{
-  if(e.button===0)triggerHeld=false;
+  if(e.button===0){triggerHeld=false;emptyClickLatched=false;}
   if(e.button===2)changeAim(false);
 });
 window.addEventListener('mousemove',e=>{
   if(controls.isLocked)mouseSway=Math.max(-.08,Math.min(.08,mouseSway+e.movementX*.00025));
 });
 window.addEventListener('blur',()=>{
-  keys.clear();triggerHeld=false;changeAim(false);
+  keys.clear();triggerHeld=false;emptyClickLatched=false;changeAim(false);
 });
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();

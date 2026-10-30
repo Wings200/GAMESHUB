@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W05.3 · AI Combat Reliability Fix | GAMESHUB RPG</title>
+<title>W05.3.1 · Automatic Weapon Empty-Magazine Sound Fix | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -128,7 +128,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W05.3</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W05.3.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -143,7 +143,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W05.3 · ENEMY TEST</strong>
+  <strong>W05.3.1 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -153,7 +153,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W05.3 · SIX-GUN QA & ADS</div>
+  <div class="weapon-head">W05.3.1 · SIX-GUN QA & ADS</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
@@ -173,9 +173,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.3</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.3.1</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W05.3 fixes a shared gameplay regression: AI combat and enemy hitboxes previously relied on the last selected test station, even when you walked into the arena. Now enemies activate when you enter the physical arena, and all living enemies remain damageable regardless of the station menu. The enemy HUD explains whether combat is active, paused, frozen or waiting for you to press H/J. All six weapons and their models are preserved.</p>
+    <p>W05.3.1 fixes the loud buzzing you hear when holding fire with an empty automatic weapon. The gun now makes one dry-fire click per trigger pull—not one click every animation frame. Release to click again, reload to resume normal firing. All six guns and the working enemy combat system remain.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -184,10 +184,10 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.3</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.3.1</div>
     <div class="menu-meta"><span class="pill">AI + ENEMY DAMAGE CHECK</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">START WITH THE ENTER ENEMY ARENA DIRECTLY button (or press 9). Watch an enemy walk, aim at its torso, and fire: the health label should decrease and the game should show AI DAMAGE CONFIRMED. K freezes/unfreezes enemies, J resets them, H restores your health. Walking to the arena from other stations also activates AI. GitHub now runs a real headless 3D movement-and-damage test.</p>
+    <p style="font-size:11px;margin-top:22px">Test the Pipe SMG or Service Carbine: hold left click until ammo reaches zero. You should hear ONE empty click, not a buzz. Release and click again for exactly one more click, then press R to reload. The automated browser suite now also checks the full-magazine drain, dry-fire click count, reload and resumed firing.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -223,6 +223,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W05.3"></script>
+<script type="module" src="./main.js?v=W05.3.1"></script>
 </body>
 </html>

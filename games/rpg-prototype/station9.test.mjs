@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.3/);
+  assert.match(page,/main\.js\?v=W05\.3\.1/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -207,4 +207,16 @@ test('W05.3 damage hitboxes do not depend on previously selected station',()=>{
   assert.match(source,/AI DAMAGE CONFIRMED · /);
   assert.match(source,/enemyDamageHits\+\+/);
   assert.match(source,/if\(new URLSearchParams\(location\.search\)\.get\('smoke'\)==='1'\)/);
+});
+
+test('W05.3.1 limits empty automatic dry fire to one click per trigger pull',()=>{
+  assert.match(source,/let emptyClickLatched=false/);
+  assert.match(source,/if\(result\.status==='empty'\)\{\s*\/\/ Automatic guns/);
+  assert.match(source,/if\(!emptyClickLatched\)\{/);
+  assert.match(source,/emptyClickLatched=true;\s*dryFireClicks\+\+;\s*sound\.dryFire\(\)/);
+  assert.match(source,/if\(result\.status!=='fired'\)return;\s*emptyClickLatched=false/);
+  assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
+  assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
+  assert.match(source,/triggerHeld=false;emptyClickLatched=false/);
+  assert.match(source,/if\(startWeaponReload\(weaponState,activeSpec\)\)\{\s*emptyClickLatched=false/);
 });
