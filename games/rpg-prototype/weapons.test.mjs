@@ -77,7 +77,7 @@ test('Firing sequence cannot exceed current magazine capacity',()=>{
 test('Camera pitch-only recoil recovers to the original aim after one shot',()=>{
   const recoil=createViewRecoilState();const before=.2;
   let pitch=kickViewRecoil(recoil,before,SCRAP_PISTOL.recoilDegrees);
-  assert.ok(pitch<before);
+  assert.ok(pitch>before, 'Recoil must kick the camera upward, not down');
   for(let i=0;i<180;i++)pitch=recoverViewRecoil(recoil,pitch,1/60);
   assert.ok(Math.abs(pitch-before)<.00001);
   assert.equal(recoil.unrecovered,0);
@@ -95,7 +95,7 @@ test('Repeated rapid shots cannot create a permanent camera offset',()=>{
   assert.equal(recoil.unrecovered,0);
 });
 test('Recoil handles extreme pitch without flipping the view and ignores bad delta time',()=>{
-  const recoil=createViewRecoilState();const almostUp=-Math.PI/2+.035;
+  const recoil=createViewRecoilState();const almostUp=Math.PI/2-.035;
   const kicked=kickViewRecoil(recoil,almostUp,1.25);
   assert.equal(kicked,almostUp);assert.equal(recoil.unrecovered,0);
   assert.equal(recoverViewRecoil(recoil,almostUp,-1),almostUp);

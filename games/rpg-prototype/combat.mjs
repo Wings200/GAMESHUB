@@ -45,6 +45,14 @@ export const ARMOR_PRESETS=Object.freeze({
   heavy:Object.freeze(Object.fromEntries(ARMOR_SLOTS.map(slot=>
     [slot,'citadel-'+slot])))
 });
+// The test dummies deliberately retain their original bare/light/heavy presets.
+// Actual Station 9 combatants need helmets: leaving Scout/Raider heads at
+// zero armor made them disproportionately easy two-shot kills.
+export const ENEMY_ARMOR_PRESETS=Object.freeze({
+  scout:Object.freeze({...ARMOR_PRESETS.none,head:'scrap-head'}),
+  raider:Object.freeze({...ARMOR_PRESETS.light,head:'ranger-head'}),
+  enforcer:ARMOR_PRESETS.heavy
+});
 export function getArmorPiece(slot,id='none'){
   if(!ARMOR_SLOTS.includes(slot))throw Error('Invalid armor slot: '+slot);
   const piece=ARMOR_ITEMS[slot].find(v=>v.id===id);

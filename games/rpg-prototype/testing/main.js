@@ -23,6 +23,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   totalInventoryValue} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
+  ENEMY_ARMOR_PRESETS,
   applyDamage, resetDummy } from '../combat.mjs';
 
 const $ = id => document.getElementById(id);
@@ -591,11 +592,11 @@ let enemyAIEnabled=true;
 const squadIntel=createSquadIntel();
 const enemySpecs=[
   {id:'scout',label:'SCOUT',x:39,z:42,
-    armor:'none',color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
+    armor:ENEMY_ARMOR_PRESETS.scout,color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
   {id:'raider',label:'RAIDER',x:43,z:46,
-    armor:'light',color:0x66775c,patrol:[{x:43,z:46},{x:47,z:46}]},
+    armor:ENEMY_ARMOR_PRESETS.raider,color:0x66775c,patrol:[{x:43,z:46},{x:47,z:46}]},
   {id:'enforcer',label:'ENFORCER',x:46,z:36.8,
-    armor:'heavy',color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
+    armor:ENEMY_ARMOR_PRESETS.enforcer,color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
 ];
 // Unmissable station-9 locator: visible from the teleport spawn even if
 // individual low-poly characters are hidden by a browser graphics issue.
