@@ -403,9 +403,11 @@ const forward=new THREE.Vector3();
 function updateMovement(dt){
   if(!controls.isLocked||showMap)return;
   controls.getDirection(forward);
-  stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{
+  const motion=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{
     groundHeight,boxes:solids,trees:treeSolids
   });
+  $('staminaFill').style.width=(motion.staminaFraction*100).toFixed(1)+'%';
+  $('staminaText').textContent='ENDURANCE '+motion.endurance+' · STAMINA '+Math.round(motion.staminaFraction*100)+'%'+(motion.exhausted?' · EXHAUSTED':'');
   camera.position.set(player.x,groundHeight(player.x,player.z)+eye+player.jump,player.z);
 }
 function refreshInteraction(){
