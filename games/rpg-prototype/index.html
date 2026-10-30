@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#0a1316"/>
+<title>Untitled RPG · Foundation 0.1 | GAMESHUB</title>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0a1413;color:#eaf1e7;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+button{font:inherit;cursor:pointer}#view{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 48%,rgba(4,13,13,.43) 100%)}
+#hud{position:fixed;left:23px;right:23px;top:18px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;pointer-events:none}
+.brand{display:flex;align-items:center;gap:11px;color:#f0f5ef;letter-spacing:.17em;font-size:11px;font-weight:900;text-shadow:0 2px 14px #000}
+.brand>span:first-child{background:#e4bc7f;color:#13221d;padding:8px 9px;border-radius:2px}
+.eyebrow{font-size:10px;letter-spacing:.2em;color:#b7d2be;font-weight:900}
+.hud-box{background:rgba(8,23,24,.74);border:1px solid rgba(213,229,207,.2);backdrop-filter:blur(12px);border-radius:5px;box-shadow:0 12px 45px #07121133;padding:13px 16px}
+#objective{max-width:340px;text-align:right}#objectiveText{margin-top:6px;font-size:13px;line-height:1.42;color:#eef1e7;font-weight:600}
+#subhud{position:fixed;left:24px;bottom:24px;display:grid;gap:9px;pointer-events:none}
+.hud-line{font-size:12px;color:#e4e8df;font-weight:700;letter-spacing:.03em}
+.hud-line small{display:block;color:#a8baa9;font-size:10px;letter-spacing:.13em;margin-bottom:3px;text-transform:uppercase}
+#clock{font-variant-numeric:tabular-nums}#qualityButton{position:fixed;right:24px;bottom:24px;background:rgba(8,23,24,.8);border:1px solid #89ad9180;color:#dce8d9;padding:10px 13px;border-radius:4px;font-size:10px;letter-spacing:.12em;font-weight:900}
+#crosshair{position:fixed;top:50%;left:50%;height:8px;width:8px;transform:translate(-50%,-50%);border:1px solid #e9f1e3b3;border-radius:50%;box-shadow:0 1px 10px #0008;pointer-events:none}
+#interact{position:fixed;bottom:21%;left:50%;transform:translateX(-50%);pointer-events:none;background:#102520d9;border:1px solid #d4bf91a0;border-radius:4px;padding:10px 15px;font-size:12px;letter-spacing:.04em;white-space:nowrap;display:none}
+#interact strong{display:inline-block;margin-right:8px;background:#d5b57d;color:#1b2824;padding:4px 6px;border-radius:2px}
+#toast{position:fixed;top:21%;left:50%;transform:translateX(-50%);background:#13291fef;border-left:3px solid #e9ba70;color:#fff;padding:14px 18px;max-width:min(550px,90vw);font-size:13px;line-height:1.5;box-shadow:0 18px 40px #0008;opacity:0;transition:opacity .2s;pointer-events:none;text-align:center}
+#toast.show{opacity:1}
+#menu{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(110deg,rgba(5,17,17,.95),rgba(5,17,17,.78) 56%,rgba(6,17,15,.35)),linear-gradient(0deg,#0b1d16b0,transparent 50%)}
+#menu.hidden{display:none}.menu-inner{width:min(620px,100%)}.menu-top{display:flex;gap:11px;align-items:center;color:#c4d5c7;letter-spacing:.21em;font-size:11px;font-weight:900}
+.menu-top i{display:block;width:32px;height:2px;background:#dab276}
+h1{font-size:clamp(45px,7vw,90px);letter-spacing:-.07em;line-height:.91;margin:20px 0 18px;font-weight:900}
+h1 em{display:block;color:#dfb67e;font-style:normal}
+.menu-copy{max-width:480px;font-size:15px;line-height:1.7;color:#c1d0c2;margin:0 0 28px}
+.btn{border:1px solid #e6c389;background:#dbb57c;color:#10211c;font-size:12px;font-weight:950;letter-spacing:.13em;border-radius:3px;padding:16px 28px;min-width:200px}
+.btn:hover{background:#f3d2a0}
+.menu-foot{display:flex;gap:18px;flex-wrap:wrap;margin-top:33px;padding-top:20px;border-top:1px solid #bed0bc38;font-size:11px;color:#acbdae;letter-spacing:.07em}
+.menu-note{font-size:11px;line-height:1.6;color:#97ae9e;margin-top:20px;max-width:480px}
+#map{position:fixed;inset:0;z-index:4;background:rgba(5,14,13,.89);display:none;align-items:center;justify-content:center;padding:30px;pointer-events:none}
+#map.visible{display:flex}.map-card{position:relative;width:min(640px,95vw);background:#102720;border:1px solid #a4bca67f;box-shadow:0 25px 80px #000a;padding:22px}
+.map-header{display:flex;justify-content:space-between;gap:10px;font-size:12px;letter-spacing:.16em;font-weight:950;color:#e7c48a;margin-bottom:14px}
+#mapCanvas{width:100%;height:auto;aspect-ratio:1;display:block;background:#18362c}
+.map-note{font-size:11px;color:#b9d0bc;margin-top:13px;line-height:1.6}
+#fatal{display:none;position:fixed;inset:0;z-index:9;background:#111b18;color:white;padding:12vw 8vw;font-size:17px;line-height:1.6}
+@media(max-width:650px){#hud{left:12px;right:12px;top:10px}.brand{font-size:9px}.hud-box{padding:9px 10px}#objective{max-width:220px}#objectiveText{font-size:11px}#subhud{left:12px;bottom:12px}.menu-foot{gap:11px}#qualityButton{bottom:12px;right:12px}h1{font-size:51px}}
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="3D exploration scene"></canvas>
+<div id="vignette"></div>
+<div id="hud">
+  <div class="brand"><span>G/H</span><span>UNTITLED RPG <span style="color:#d8b47b">/ F-01</span></span></div>
+  <div id="objective" class="hud-box"><div class="eyebrow">CURRENT LEAD</div><div id="objectiveText">Find the Hearthguard scout by the campfire.</div></div>
+</div>
+<div id="subhud"><div class="hud-box"><div class="hud-line"><small>Location</small><span id="location">Northwest woodlands</span></div><div class="hud-line" style="margin-top:9px"><small>Time &amp; supplies</small><span id="clock">Morning</span><span style="opacity:.5"> · </span><span id="supplies">0 / 2 cases</span></div><div style="color:#b8cbbb;font-size:10px;margin-top:8px;letter-spacing:.08em">WASD MOVE · SHIFT SPRINT · E INTERACT · M MAP · ESC PAUSE</div></div></div>
+<div id="crosshair"></div>
+<div id="interact"></div><div id="toast"></div>
+<button id="qualityButton" type="button" aria-label="Toggle performance quality">QUALITY: HIGH</button>
+<div id="map"><div class="map-card"><div class="map-header"><span>FIELD SURVEY / NORTHWEST</span><span>PRESS M TO CLOSE</span></div><canvas id="mapCanvas" width="600" height="600"></canvas><div class="map-note">A rough field survey, not a GPS. Paths, ruins and landmarks are approximate. Gold marker is your location.</div></div></div>
+<div id="menu">
+  <div class="menu-inner">
+    <div class="menu-top"><i></i> GAMESHUB / NEW WORLD PROJECT / FOUNDATION 0.1</div>
+    <h1>A WORLD<br><em>WORTH REBUILDING.</em></h1>
+    <p class="menu-copy">A first playable piece of our 3D open-world RPG: rolling forest, the remains of a rural community, and a Hearthguard supply request. Explore at your own pace.</p>
+    <button id="startButton" class="btn" type="button">EXPLORE THE WOODLANDS</button>
+    <div class="menu-foot"><span>FIRST-PERSON 3D</span><span>FREE EXPLORATION</span><span>DAY / NIGHT</span><span>CHROMEBOOK MODE</span></div>
+    <p class="menu-note">This is an early mechanics foundation, not the finished game's visuals or world. Combat, power armor, creatures, cars and multiplayer come in later tested milestones.</p>
+    <p style="margin-top:15px"><a href="/" style="color:#e1bc84;font-size:12px">← BACK TO GAMESHUB</a></p>
+  </div>
+</div>
+<div id="fatal">The 3D engine could not load. Check your internet connection or WebGL support and reload the page. The game requires a modern browser.</div>
+<script>
+window.addEventListener('error',function(){ document.getElementById('fatal').style.display='block'; });
+window.addEventListener('unhandledrejection',function(){ document.getElementById('fatal').style.display='block'; });
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
