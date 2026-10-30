@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { stepMovement, requestJump, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
+import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -49,7 +49,8 @@ const stations=[
   {title:'02 · Jump hurdles',info:'Jump with Space to clear the low concrete barriers. Collision should stop you if you walk into one.',x:-45,z:0,tag:'02 / JUMP',color:0xc1784f},
   {title:'03 · Collision maze',info:'Press against walls and corners. Movement should slide along obstacles and never pass through them.',x:-47,z:26,tag:'03 / COLLISION',color:0x468fa8},
   {title:'04 · Ramp ascent',info:'Walk and sprint uphill, then back down. Watch the ground-height readout.',x:15,z:-27,tag:'04 / SLOPES',color:0x6b9b77},
-  {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588}
+  {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
+  {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -85,6 +86,16 @@ const maze=[
   [-1,27,8,1.5],[20,31,2,10]
 ];
 for(const a of maze)collider(a[0],a[1],a[2],a[3],blue,2.5);
+// Dedicated crouch station: a real low ceiling that blocks upright bodies.
+const ceilings=[{minX:-43,maxX:-12,minZ:36,maxZ:46,bottom:1.32}];
+box(-27.5,1.48,41,31,.32,10,blue); // roof underside at 1.32 metres
+collider(-27.5,41-4.95,31,.3,dark,1.3);
+collider(-27.5,41+4.95,31,.3,dark,1.3);
+for(const x of [-42.7,-12.3]){
+  box(x,.72,36.2,.35,1.44,.35,pale);
+  box(x,.72,45.8,.35,1.44,.35,pale);
+}
+
 // West-to-east ramp: level ground to a raised platform, then a descending run.
 const rampStart=22,rampEnd=43,rampTop=2.3;
 function rampHeight(x,z){
@@ -141,10 +152,11 @@ let stationIndex=0,qualityHigh=true;
 function resetPlayer(i){
   stationIndex=i;const s=stations[i];
   player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
+  resetMotion(player);
   // Reset location only, not stamina. Press [ or ] to refill for a test. 
   camera.rotation.set(0,-Math.PI/2,0);
   $('stationName').textContent=s.title;$('stationInfo').textContent=s.info;
-  camera.position.set(player.x,groundHeight(player.x,player.z)+MOVE_TUNING.eyeHeight,player.z);
+  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
 }
 resetPlayer(0);
 $('start').addEventListener('click',()=>controls.lock());
@@ -162,8 +174,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
     e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
   }
+  if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
-  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=5){
+  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=6){
     resetPlayer(Number(e.code.slice(5))-1);return;
   }
   if(e.code==='KeyR'){resetPlayer(stationIndex);return;}
@@ -178,7 +191,7 @@ window.addEventListener('resize',()=>{
 });
 function updateHUD(info){
   $('speed').textContent=info.speed.toFixed(1)+' m/s';
-  $('state').textContent=info.airborne?'JUMP':info.moving?(info.sprinting?'SPRINT':'WALK'):'IDLE';
+  $('state').textContent=info.airborne?'JUMP':info.crouched?'CROUCH':info.moving?(info.sprinting?'SPRINT':'WALK'):'IDLE';
   $('height').textContent=(info.ground+player.jump).toFixed(1)+' m';
   $('staminaFill').style.width=(info.staminaFraction*100).toFixed(1)+'%';
   $('staminaNumber').textContent=Math.round(info.staminaFraction*100)+'%';
@@ -190,8 +203,8 @@ function frame(){
   const dt=Math.min(.036,clock.getDelta());
   if(controls.isLocked){
     controls.getDirection(forward);
-    const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],groundHeight});
-    camera.position.set(player.x,info.ground+MOVE_TUNING.eyeHeight+player.jump,player.z);
+    const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
+    camera.position.set(player.x,info.ground+info.eyeHeight+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
   renderer.render(scene,camera);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { WORLD, LANDMARKS, groundHeight,
   initialQuest, questStage, beginQuest, collectCase, finishQuest, revealNearby } from './rules.mjs';
-import { stepMovement, requestJump } from './movement.mjs';
+import { stepMovement, requestJump, toggleCrouch } from './movement.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('view');
@@ -321,6 +321,7 @@ window.addEventListener('keydown',e=>{
   keys.add(e.code);
   if(e.code==='KeyE'&&controls.isLocked&&!showMap)interact();
   if(e.code==='KeyM'&&controls.isLocked){showMap=!showMap;$('map').classList.toggle('visible',showMap);}
+  if(e.code==='KeyC'&&controls.isLocked&&!showMap)toggleCrouch(player);
   if(e.code==='Space'&&controls.isLocked&&!showMap)requestJump(player);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
@@ -408,7 +409,7 @@ function updateMovement(dt){
   });
   $('staminaFill').style.width=(motion.staminaFraction*100).toFixed(1)+'%';
   $('staminaText').textContent='ENDURANCE '+motion.endurance+' · STAMINA '+Math.round(motion.staminaFraction*100)+'%'+(motion.exhausted?' · EXHAUSTED':'');
-  camera.position.set(player.x,groundHeight(player.x,player.z)+eye+player.jump,player.z);
+  camera.position.set(player.x,groundHeight(player.x,player.z)+motion.eyeHeight+motion.cameraBob+player.jump,player.z);
 }
 function refreshInteraction(){
   const obj=closestInteraction();
