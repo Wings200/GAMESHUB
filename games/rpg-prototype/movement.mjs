@@ -12,8 +12,8 @@ export const MOVE_TUNING = Object.freeze({
 
 export const ENDURANCE_TUNING = Object.freeze({
   min: 1, max: 10, defaultPoints: 3,
-  sprintSecondsBase: 6, secondsPerPoint: 2,
-  recoveryDelay: 1.1, recoveryPerSecond: 1.8, resumeFraction: .3
+  sprintSecondsBase: 3, secondsPerPoint: 1,
+  recoveryDelay: .55, recoveryBase: .225, recoveryPerPoint: .225, resumeFraction: .3
 });
 
 function level(points) {
@@ -22,9 +22,15 @@ function level(points) {
 }
 
 // One stamina unit is one second of sprint at full speed.
-// E1 = 8 seconds; E3 = 12; E10 = 26. Tweak these values after player tests.
+// E1 = 4 seconds; E3 = 6; E10 = 13. Tweak after player tests.
 export function maximumStamina(points) {
   return ENDURANCE_TUNING.sprintSecondsBase + level(points) * ENDURANCE_TUNING.secondsPerPoint;
+}
+
+// Higher Endurance replenishes more stamina every second, and reaches full
+// proportionally faster: E1 = 0.45/s, E3 = 0.9/s, E10 = 2.475/s.
+export function staminaRecoveryRate(points) {
+  return ENDURANCE_TUNING.recoveryBase + level(points) * ENDURANCE_TUNING.recoveryPerPoint;
 }
 
 // Lab debug control now, future earned SPECIAL-style skill allocation later.
@@ -119,7 +125,7 @@ export function stepMovement(player, keys, look, dt, environment) {
     player.staminaCooldown=Math.max(0,player.staminaCooldown-dt);
     if(player.staminaCooldown===0){
       player.stamina=Math.min(maximumStamina(player.endurance),
-        player.stamina+ENDURANCE_TUNING.recoveryPerSecond*dt);
+        player.stamina+staminaRecoveryRate(player.endurance)*dt);
     }
     if(player.exhausted&&player.stamina>=maximumStamina(player.endurance)*ENDURANCE_TUNING.resumeFraction){
       player.exhausted=false;
@@ -131,7 +137,7 @@ export function stepMovement(player, keys, look, dt, environment) {
     moving:actual>.1,airborne:player.jump>0&&!player.supported,
     ground:environment.groundHeight(player.x,player.z),
     endurance:player.endurance,stamina:player.stamina,staminaMax:max,
-    staminaFraction:player.stamina/max,exhausted:player.exhausted,
+    staminaFraction:player.stamina/max,recoveryPerSecond:staminaRecoveryRate(player.endurance),exhausted:player.exhausted,
     recovering:!sprint&&player.staminaCooldown===0&&player.stamina<max
   };
 }
