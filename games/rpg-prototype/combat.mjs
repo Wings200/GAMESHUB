@@ -1,51 +1,103 @@
-// W03: renderer-independent damage and armor rules for the RPG.
-// Targets in the lab are deliberately inert; no combat AI is implied here.
-export const HIT_ZONES=Object.freeze({
-  head:2.5, torso:1, limb:.7
-});
-export const ARMOR_TYPES=Object.freeze({
-  none:Object.freeze({label:'Unarmored',durability:0,torsoReduction:0,headReduction:0}),
-  light:Object.freeze({label:'Light Vest',durability:60,torsoReduction:.30,headReduction:0}),
-  heavy:Object.freeze({label:'Heavy Armor',durability:120,torsoReduction:.55,headReduction:.40})
-});
+// RPG modular armor W03.1. Independent, permanent armor ratings per body slot.
+export const ARMOR_SLOTS=Object.freeze(['head','chest','leftArm','rightArm','leftLeg','rightLeg']);
+export const HIT_ZONES=Object.freeze({head:2.5,chest:1,leftArm:.7,rightArm:.7,leftLeg:.7,rightLeg:.7});
 export const DUMMY_HEALTH=100;
-
-export function createDummy(armorType='none',maximumHealth=DUMMY_HEALTH){
-  if(!Object.hasOwn(ARMOR_TYPES,armorType))throw Error('Unknown armor type: '+armorType);
+export const ARMOR_STYLES=Object.freeze([
+  {id:'cloth',name:'Field Wrap',points:5,color:0x777361,style:'wrap'},
+  {id:'canvas',name:'Canvas Patrol',points:9,color:0x8b8870,style:'wrap'},
+  {id:'hide',name:'Wasteland Hide',points:13,color:0x795842,style:'wrap'},
+  {id:'patchwork',name:'Patchwork Leather',points:17,color:0x74513f,style:'vest'},
+  {id:'mesh',name:'Rusted Mesh',points:21,color:0x8b7967,style:'mesh'},
+  {id:'scrap',name:'Scrap Iron',points:27,color:0x817c70,style:'plate'},
+  {id:'ranger',name:'Ranger Guard',points:33,color:0x647363,style:'vest'},
+  {id:'road',name:'Roadwarden Shell',points:39,color:0x5b6766,style:'plate'},
+  {id:'militia',name:'Militia Steel',points:45,color:0x667780,style:'plate'},
+  {id:'composite',name:'Composite Weave',points:52,color:0x57676c,style:'mesh'},
+  {id:'ceramic',name:'Ceramic Barrier',points:59,color:0xc0c3b7,style:'plate'},
+  {id:'industrial',name:'Industrial Laminates',points:66,color:0x8c7e67,style:'plate'},
+  {id:'tactical',name:'Tactical Alloy',points:74,color:0x354e55,style:'plate'},
+  {id:'citadel',name:'Citadel Bulwark',points:83,color:0x414c65,style:'plate'},
+  {id:'carbon',name:'Carbon Carapace',points:91,color:0x303b3e,style:'shell'},
+  {id:'aegis',name:'Aegis Prototype',points:105,color:0x526982,style:'shell'}
+]);
+export const ARMOR_SLOT_LABELS=Object.freeze({
+  head:'Head',chest:'Chest',leftArm:'Left Arm',rightArm:'Right Arm',
+  leftLeg:'Left Leg',rightLeg:'Right Leg'
+});
+const slotMultiplier=Object.freeze({
+  head:.9,chest:1.15,leftArm:.88,rightArm:.88,leftLeg:.99,rightLeg:.99
+});
+const generated=Object.fromEntries(ARMOR_SLOTS.map(slot=>[
+  slot,Object.freeze([
+    Object.freeze({id:'none',slot,name:'No Armor',points:0,color:0,style:'none'}),
+    ...ARMOR_STYLES.map(style=>Object.freeze({
+      id:style.id+'-'+slot,slot,name:style.name+' · '+ARMOR_SLOT_LABELS[slot],
+      points:Math.round(style.points*slotMultiplier[slot]),
+      color:style.color,style:style.style
+    }))
+  ])
+]));
+export const ARMOR_ITEMS=Object.freeze(generated);
+export const ARMOR_PRESETS=Object.freeze({
+  none:Object.freeze(Object.fromEntries(ARMOR_SLOTS.map(slot=>[slot,'none']))),
+  light:Object.freeze(Object.fromEntries(ARMOR_SLOTS.map(slot=>
+    [slot,slot==='head'?'none':'ranger-'+slot]))),
+  heavy:Object.freeze(Object.fromEntries(ARMOR_SLOTS.map(slot=>
+    [slot,'citadel-'+slot])))
+});
+export function getArmorPiece(slot,id='none'){
+  if(!ARMOR_SLOTS.includes(slot))throw Error('Invalid armor slot: '+slot);
+  const piece=ARMOR_ITEMS[slot].find(v=>v.id===id);
+  if(!piece)throw Error('Invalid armor piece for '+slot+': '+id);
+  return piece;
+}
+export function createLoadout(source='none'){
+  const proposed=typeof source==='string'?ARMOR_PRESETS[source]:source;
+  if(!proposed||typeof proposed!=='object')throw Error('Unknown armor preset');
+  const loadout={};
+  for(const slot of ARMOR_SLOTS){
+    const id=proposed[slot]??'none';
+    loadout[slot]=getArmorPiece(slot,id).id;
+  }
+  return loadout;
+}
+export function armorPointsForSlot(dummy,slot){
+  return getArmorPiece(slot,dummy.loadout[slot]).points;
+}
+export function damageReductionForPoints(points){
+  const p=Math.max(0,Number.isFinite(points)?points:0);
+  // 25 points blocks 50%, 75 points blocks 75%, never immune.
+  return Math.min(.85,p/(p+25));
+}
+export function createDummy(armor='none',maximumHealth=DUMMY_HEALTH){
   const maxHealth=Number.isFinite(maximumHealth)&&maximumHealth>0?maximumHealth:DUMMY_HEALTH;
-  return {
-    armorType,health:maxHealth,maxHealth,
-    armor:ARMOR_TYPES[armorType].durability,
-    maxArmor:ARMOR_TYPES[armorType].durability,
-    alive:true,hits:0
-  };
+  return {loadout:createLoadout(armor),health:maxHealth,maxHealth,alive:true,hits:0};
+}
+export function equipArmor(dummy,slot,id){
+  const piece=getArmorPiece(slot,id);
+  dummy.loadout[slot]=piece.id; // HP and other armor slots are unchanged.
+  return piece;
 }
 export function resetDummy(dummy){
-  Object.assign(dummy,createDummy(dummy.armorType,dummy.maxHealth));
+  Object.assign(dummy,createDummy(dummy.loadout,dummy.maxHealth));
   return dummy;
 }
-export function applyDamage(dummy,baseDamage,zone='torso'){
-  if(!Object.hasOwn(HIT_ZONES,zone))throw Error('Unknown hit zone: '+zone);
+export function applyDamage(dummy,baseDamage,zone='chest'){
+  if(!ARMOR_SLOTS.includes(zone))throw Error('Invalid hit zone: '+zone);
+  const points=armorPointsForSlot(dummy,zone);
+  const reduction=damageReductionForPoints(points);
   if(!dummy.alive)return {
-    applied:false,damage:0,blocked:0,killed:false,armorBroken:false,zone,
-    health:dummy.health,armor:dummy.armor
+    applied:false,zone,damage:0,blocked:0,points,reduction,
+    health:dummy.health,killed:false
   };
-  const initialHealth=dummy.health;
   const raw=Math.max(0,Number.isFinite(baseDamage)?baseDamage:0)*HIT_ZONES[zone];
-  const type=ARMOR_TYPES[dummy.armorType];
-  const resistance=zone==='torso'?type.torsoReduction:zone==='head'?type.headReduction:0;
-  const hadArmor=dummy.armor>0;
-  // Armor absorbs damage instead of magically negating it forever. Once armor
-  // is depleted, subsequent hits reach flesh without protection.
-  const blocked=hadArmor?Math.min(dummy.armor,raw*resistance):0;
-  dummy.armor=Math.max(0,dummy.armor-blocked);
-  const damage=Math.min(initialHealth,Math.max(0,raw-blocked));
-  dummy.health=Math.max(0,initialHealth-damage);
+  const blocked=raw*reduction;
+  const damage=Math.min(dummy.health,raw-blocked);
+  dummy.health=Math.max(0,dummy.health-damage);
   dummy.hits++;
   dummy.alive=dummy.health>0;
   return {
-    applied:true,zone,critical:zone==='head',raw,damage,blocked,
-    killed:!dummy.alive,armorBroken:hadArmor&&dummy.armor<=0,
-    health:dummy.health,armor:dummy.armor,hitCount:dummy.hits
+    applied:true,zone,critical:zone==='head',raw,damage,blocked,points,
+    reduction,health:dummy.health,killed:!dummy.alive,hitCount:dummy.hits
   };
 }

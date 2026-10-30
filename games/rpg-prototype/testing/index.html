@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Combat Lab W03 | GAMESHUB RPG</title>
+<title>Modular Armor W03.1 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -62,6 +62,33 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .menu-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}.pill{font-size:9px;letter-spacing:.12em;font-weight:900;border:1px solid #b1c7cc5b;padding:7px 9px;color:#c6d4d8;border-radius:2px}
 .menu-links{display:flex;gap:21px;flex-wrap:wrap;margin-top:25px;font-size:12px;font-weight:750;color:#e3bb81}
 #quality{position:fixed;right:18px;top:94px;color:#d1e5e4;background:#0b2024cc;border:1px solid #92b3ab77;border-radius:3px;font-size:10px;letter-spacing:.12em;font-weight:900;padding:9px 11px}
+#menu .menu-buttons{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.secondary{background:#142b35;border:1px solid #dcbd86;color:#f1d8ac;
+  padding:13px 18px;border-radius:3px;font-weight:900;letter-spacing:.07em;font-size:11px}
+.secondary:hover{background:#294450}
+#armory{position:fixed;inset:0;overflow:auto;background:rgba(3,13,20,.98);
+  z-index:5;padding:4vh 5vw}
+#armory.hidden{display:none}
+.armory-inner{max-width:1120px;margin:0 auto;padding:14px 0 32px}
+.armory-header{display:flex;align-items:start;justify-content:space-between;gap:25px}
+#armory h2{font-size:clamp(34px,5vw,68px);letter-spacing:-.055em;margin:15px 0}
+#armory p{max-width:830px}
+.armory-tools{display:flex;gap:14px;flex-wrap:wrap;align-items:end;
+  padding:16px 0;border-top:1px solid #3e5153;border-bottom:1px solid #3e5153}
+.armory-tools label,.armor-slots label{font-size:11px;font-weight:950;letter-spacing:.11em;
+  color:#e9d2a8;display:flex;gap:8px;flex-direction:column}
+#armory select{appearance:auto;background:#142934;color:#f1f3e6;border:1px solid #70838a;
+  border-radius:3px;padding:13px;font-size:13px;font-weight:750;min-height:42px;max-width:100%}
+.armory-tools select{min-width:210px}
+.armor-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;padding:25px 0}
+.armor-slots label{border:1px solid #6d7a7970;background:#101e27;padding:17px}
+.armor-slots small{font-size:11px;font-weight:800;color:#9cc4cc;letter-spacing:normal}
+.armor-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;
+  border-top:1px solid #5e736e;padding:17px 4px;color:#c0d2cc}
+.armor-footer>strong{color:#efc989}
+@media(max-width:850px){.armor-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.armory-header{flex-direction:column}.armor-slots{grid-template-columns:1fr}}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
 @media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
 </style>
@@ -70,7 +97,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
 <div id="hud">
-  <div class="block logo"><b>W03</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W03.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -88,7 +115,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W03 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W03.1 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -100,19 +127,48 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–8 TEST STATIONS · 8 ARMOR DUMMIES · Y RESET DUMMIES · T CLEAR + RESET · ESC PAUSE</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–8 TEST STATIONS · 8 MODULAR ARMOR · B ARMORY · Y RESET HP · T CLEAR · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W03</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W03.1</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W03 adds a dedicated armor-testing lane at station 8. Shoot the head, chest, arms and legs of three dummies: unarmored, light vest, or heavy armor with a helmet. Compare HP, absorbed damage, armor wear and knockdown. All approved W02 weapon and M01–M03 movement mechanics remain.</p>
+    <p>W03.1 rebuilds armor into six independent slots: head, chest, both arms and both legs. Equip from 96 pieces with different permanent armor-point ratings, then shoot the exact covered body part. Armor NEVER breaks or wears down. The W02 pistol and movement lab remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
-    <button id="start" class="primary" type="button">ENTER TEST FIELD</button>
-    <div class="menu-meta"><span class="pill">HEAD / BODY / LIMB DAMAGE</span><span class="pill">8 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
+    <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
+    <div class="menu-meta"><span class="pill">96 EQUIPPABLE PIECES</span><span class="pill">6 INDEPENDENT SLOTS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">W03 damage applies to stationary training dummies only. Enemy AI, animations, inventory, wearable player armor, power armor and the full open world come in later milestones.</p>
+    <p style="font-size:11px;margin-top:22px">B opens the armor loadout editor while playing. Your choices save in this browser. Station 8 still uses inert test dummies; NPC combat, player equipment and power armor are separate future systems.</p>
+  </div>
+</div>
+<div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
+  <div class="armory-inner">
+    <div class="armory-header">
+      <div><div class="kicker">W03.1 · ARMOR DEVELOPMENT</div><h2>MODULAR ARMORY</h2>
+        <p>Equip a different piece on all six body areas. Each slot has <b>16 armor pieces</b> plus No Armor. Points permanently reduce damage to <b>only that body part</b>.</p></div>
+      <button id="armoryClose" type="button" class="secondary">DONE / RETURN</button>
+    </div>
+    <div class="armory-tools">
+      <label for="armoryDummy">EDIT TEST DUMMY <select id="armoryDummy"></select></label>
+      <label for="armoryPreset">QUICK LOADOUT <select id="armoryPreset">
+        <option value="none">Unarmored — no pieces</option><option value="light">Field kit — mixed light armor</option>
+        <option value="heavy">Citadel — armored all six slots</option>
+      </select></label>
+      <button id="armoryReset" class="secondary" type="button">EQUIP QUICK LOADOUT</button>
+    </div>
+    <div class="armor-slots">
+      <label>HEAD <select id="armor-head"></select><small id="rating-head">0 AP</small></label>
+      <label>CHEST <select id="armor-chest"></select><small id="rating-chest">0 AP</small></label>
+      <label>LEFT ARM <select id="armor-leftArm"></select><small id="rating-leftArm">0 AP</small></label>
+      <label>RIGHT ARM <select id="armor-rightArm"></select><small id="rating-rightArm">0 AP</small></label>
+      <label>LEFT LEG <select id="armor-leftLeg"></select><small id="rating-leftLeg">0 AP</small></label>
+      <label>RIGHT LEG <select id="armor-rightLeg"></select><small id="rating-rightLeg">0 AP</small></label>
+    </div>
+    <div class="armor-footer"><strong id="armoryTotal">0 AP equipped · no wear</strong>
+      <span>Dummy health: <strong id="armoryHP">100 / 100 HP</strong>. Press Y in the lab to reset HP without changing the equipped pieces.</span></div>
+    <p style="font-size:11px">The armor catalog is for testing balance and looks. None of these pieces is automatically awarded to your RPG player yet. Loadouts are saved locally in this browser.</p>
   </div>
 </div>
 <div id="fatal">This testing browser could not initialize WebGL. Try a browser with hardware-accelerated graphics and reload.</div>

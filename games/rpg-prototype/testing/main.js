@@ -4,7 +4,9 @@ import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setE
 import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil, shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
-import { ARMOR_TYPES, createDummy, applyDamage, resetDummy } from '../combat.mjs';
+import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
+  createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
+  applyDamage, resetDummy } from '../combat.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -62,7 +64,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Damage and armor dummies',info:'W03: shoot the head, chest, arms and legs of the unarmored, light vest, and heavy armor dummies. Compare damage and armor durability. Press Y to reset all dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078}
+  {title:'08 · Modular armor dummies',info:'W03.1: every HEAD, CHEST, LEFT/RIGHT ARM and LEG has its own permanent armor rating. Press B to equip one of 96 different pieces. Y resets HP without removing armor.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -286,108 +288,140 @@ for(const sample of materialSamples){
 }
 
 
-// W03 static damage lab. Each visible body part has an explicit hit zone,
-// and these meshes share the exact same pistol raycast as the existing range.
+// W03.1 modular armor lab. Six independently raycastable and equipable slots.
 const dummies=new Map(),dummyHitMeshes=[],damagePopups=[];
 const dummyKinds=[
   {id:'none',label:'UNARMORED',x:-28,z:-8.7,body:0x7e6e55},
-  {id:'light',label:'LIGHT VEST',x:-9,z:-15.2,body:0x6b795b},
-  {id:'heavy',label:'HEAVY ARMOR',x:12,z:-9,body:0x495a69}
+  {id:'light',label:'FIELD KIT',x:-9,z:-15.2,body:0x6b795b},
+  {id:'heavy',label:'CITADEL',x:12,z:-9,body:0x495a69}
 ];
 const popupsMax=16;
 function makeDummyLabel(dummy){
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=160;
-  const ctx=canvas.getContext('2d');
-  const texture=new THREE.CanvasTexture(canvas);
+  const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
   const material=new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false});
   const sprite=new THREE.Sprite(material);
-  sprite.position.set(dummy.position.x,2.86,dummy.position.z);
-  sprite.scale.set(3.1,.98,1);
+  sprite.position.set(dummy.position.x,2.96,dummy.position.z);
+  sprite.scale.set(3.2,1.02,1);
   scene.add(sprite);
   return {canvas,ctx,texture,sprite};
 }
 function updateDummyLabel(dummy){
   const {ctx,canvas,texture}=dummy.labelVisual,s=dummy.state;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='rgba(9,23,28,.88)';ctx.fillRect(4,4,504,151);
+  ctx.fillStyle='rgba(9,23,28,.91)';ctx.fillRect(4,4,504,151);
   ctx.strokeStyle=s.alive?'#bfcdba':'#d25f53';ctx.lineWidth=5;ctx.strokeRect(4,4,504,151);
   ctx.textAlign='left';ctx.textBaseline='middle';
   ctx.font='bold 29px system-ui';ctx.fillStyle='#f1d9ac';
   ctx.fillText(dummy.title,22,33);
-  ctx.font='bold 24px system-ui';ctx.fillStyle=s.alive?'#e9f6df':'#e98d7a';
+  ctx.font='bold 25px system-ui';ctx.fillStyle=s.alive?'#e9f6df':'#e98d7a';
   ctx.fillText(s.alive?Math.ceil(s.health)+' / '+s.maxHealth+' HP':'DOWN · Y RESET',22,73);
   ctx.fillStyle='#273b39';ctx.fillRect(21,95,470,17);
   ctx.fillStyle=s.health>40?'#93c89c':'#cb7567';
   ctx.fillRect(21,95,470*s.health/s.maxHealth,17);
-  ctx.font='bold 20px system-ui';ctx.fillStyle='#cbd3df';
-  if(s.maxArmor){
-    ctx.fillText('ARMOR '+Math.ceil(s.armor)+' / '+s.maxArmor,22,137);
-    ctx.fillStyle='#465369';ctx.fillRect(255,124,236,13);
-    ctx.fillStyle='#79aac6';ctx.fillRect(255,124,236*s.armor/s.maxArmor,13);
-  }else ctx.fillText('NO ARMOR · 100% DAMAGE',22,137);
+  const rating=ARMOR_SLOTS.reduce((sum,slot)=>sum+armorPointsForSlot(s,slot),0);
+  ctx.font='bold 21px system-ui';ctx.fillStyle='#cbd3df';
+  ctx.fillText('EQUIPPED RATING: '+rating+' AP · NO WEAR',22,136);
   texture.needsUpdate=true;
 }
 function makeDummy(entry){
   const group=new THREE.Group();
   group.position.set(entry.x,0,entry.z);
-  group.rotation.y=-Math.PI/2; // armor faces the firing station to the west
+  group.rotation.y=-Math.PI/2;
   scene.add(group);
-  const state=createDummy(entry.id);
-  const dummy={id:entry.id,title:entry.label,state,group,
-    position:{x:entry.x,z:entry.z},pieces:[],flash:0,hitMesh:null,
-    impulse:0};
+  const dummy={id:entry.id,title:entry.label,state:createDummy(entry.id),group,
+    position:{x:entry.x,z:entry.z},pieces:[],armorMeshes:[],
+    flash:0,impulse:0};
   const wooden=new THREE.MeshStandardMaterial({color:entry.body,roughness:.85});
-  const armorColor=entry.id==='light'?0x819083:0x556a78;
-  const armored=new THREE.MeshStandardMaterial({color:armorColor,metalness:.65,roughness:.55});
   const darkJoint=new THREE.MeshStandardMaterial({color:0x343c3d,roughness:.94});
-  function part(geometry,material,x,y,z,zone,impactMaterial='wood'){
+  function part(geometry,material,x,y,z,slot,armor=false){
     const mesh=new THREE.Mesh(geometry,material.clone());
-    mesh.position.set(x,y,z);
-    mesh.castShadow=true;mesh.receiveShadow=true;
-    mesh.userData.dummyId=dummy.id;
-    mesh.userData.hitZone=zone;
-    mesh.userData.impactMaterial=impactMaterial;
-    group.add(mesh);dummy.pieces.push(mesh);dummyHitMeshes.push(mesh);
+    mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
+    mesh.userData={dummyId:dummy.id,hitZone:slot,
+      impactMaterial:armor?'metal':'wood'};
+    group.add(mesh);
+    dummy.pieces.push(mesh);dummyHitMeshes.push(mesh);
+    if(armor)dummy.armorMeshes.push(mesh);
     return mesh;
   }
-  part(new THREE.BoxGeometry(.66,.82,.33),wooden,0,1.32,0,'torso');
-  part(new THREE.BoxGeometry(.12,.18,.15),darkJoint,0,1.82,0,'torso');
-  part(new THREE.SphereGeometry(.225,16,12),wooden,0,2.07,0,'head');
-  for(const side of [-1,1]){
-    part(new THREE.BoxGeometry(.19,.73,.22),wooden,side*.49,1.38,0,'limb');
-    part(new THREE.CylinderGeometry(.12,.14,1.01,10),wooden,side*.20,.52,0,'limb');
-  }
-  if(entry.id!=='none'){
-    dummy.vest=part(new THREE.BoxGeometry(.71,.67,.42),
-      armored,0,1.37,.05,'torso','metal');
-  }
-  if(entry.id==='heavy'){
-    dummy.helmet=part(new THREE.SphereGeometry(.242,16,10,0,Math.PI*2,0,Math.PI*.60),
-      armored,0,2.09,0,'head','metal');
+  dummy.part=part;
+  part(new THREE.BoxGeometry(.64,.80,.32),wooden,0,1.34,0,'chest');
+  part(new THREE.BoxGeometry(.12,.16,.15),darkJoint,0,1.83,0,'chest');
+  part(new THREE.SphereGeometry(.217,16,12),wooden,0,2.07,0,'head');
+  for(const [side,sideName] of [[-1,'left'],[1,'right']]){
+    part(new THREE.BoxGeometry(.19,.73,.22),wooden,side*.49,1.39,0,sideName+'Arm');
+    part(new THREE.CylinderGeometry(.12,.14,1.01,10),wooden,side*.20,.52,0,sideName+'Leg');
   }
   const base=box(entry.x,.07,entry.z,1.55,.14,1.25,dark);
   base.userData.impactMaterial='metal';
   bounds.push({minX:entry.x-.39,maxX:entry.x+.39,minZ:entry.z-.39,maxZ:entry.z+.39});
   dummy.labelVisual=makeDummyLabel(dummy);
   dummies.set(dummy.id,dummy);
+  rebuildDummyArmor(dummy);
   updateDummyLabel(dummy);
   return dummy;
 }
+function rebuildDummyArmor(dummy){
+  for(const mesh of dummy.armorMeshes){
+    mesh.parent?.remove(mesh);
+    const partIndex=dummy.pieces.indexOf(mesh);
+    if(partIndex!==-1)dummy.pieces.splice(partIndex,1);
+    const hitIndex=dummyHitMeshes.indexOf(mesh);
+    if(hitIndex!==-1)dummyHitMeshes.splice(hitIndex,1);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+  dummy.armorMeshes.length=0;
+  for(const slot of ARMOR_SLOTS){
+    const item=getArmorPiece(slot,dummy.state.loadout[slot]);
+    if(item.points===0)continue;
+    const p=item.points/110;
+    const metallic=['plate','shell','mesh'].includes(item.style);
+    const base=new THREE.MeshStandardMaterial({color:item.color,
+      metalness:metallic?.73:.18,roughness:metallic?.53:.87});
+    const dark=new THREE.MeshStandardMaterial({color:0x232e34,
+      metalness:.35,roughness:.76});
+    const side=slot.startsWith('left')?-1:1;
+    if(slot==='chest'){
+      dummy.part(new THREE.BoxGeometry(.70+p*.12,.69+p*.13,.35+p*.13),
+        base,0,1.37,.07,'chest',true);
+      // Higher-tier chest pieces have an extra central reinforcement plate.
+      if(p>.3)dummy.part(new THREE.BoxGeometry(.23,.49,.06),
+        dark,0,1.40,.30+p*.065,'chest',true);
+      if(p>.55)for(const s of [-1,1])dummy.part(new THREE.BoxGeometry(.18,.21,.10),
+        base,s*.22,1.64,.23,'chest',true);
+    }else if(slot==='head'){
+      dummy.part(new THREE.SphereGeometry(.225+p*.06,14,10,0,Math.PI*2,
+        0,Math.PI*.67),base,0,2.10,0,'head',true);
+      if(p>.28)dummy.part(new THREE.BoxGeometry(.35,.11,.15),
+        dark,0,2.10,.21+p*.02,'head',true);
+      if(p>.6)dummy.part(new THREE.BoxGeometry(.28,.07,.12),
+        base,0,2.27,.07,'head',true);
+    }else if(slot.endsWith('Arm')){
+      dummy.part(new THREE.BoxGeometry(.22+p*.13,.57+p*.10,.27+p*.12),
+        base,side*.49,1.39,.04,slot,true);
+      if(p>.43)dummy.part(new THREE.BoxGeometry(.24+p*.10,.16,.30),
+        dark,side*.49,1.69,.08,slot,true);
+    }else{
+      dummy.part(new THREE.CylinderGeometry(.135+p*.042,.145+p*.06,
+        .81+p*.1,10),base,side*.20,.52,.02,slot,true);
+      if(p>.36)dummy.part(new THREE.BoxGeometry(.25,.18,.26+p*.11),
+        dark,side*.20,.83,.06,slot,true);
+    }
+  }
+  updateDummyLabel(dummy);
+}
 dummyKinds.forEach(makeDummy);
-
 function resetAllDummies(){
   for(const dummy of dummies.values()){
-    resetDummy(dummy.state);
-    dummy.impulse=0;dummy.flash=0;
-    dummy.group.rotation.z=0;
-    if(dummy.vest)dummy.vest.material.color.setHex(dummy.id==='light'?0x819083:0x556a78);
-    if(dummy.helmet)dummy.helmet.material.color.setHex(0x556a78);
-    for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x000000);
+    resetDummy(dummy.state);dummy.impulse=0;dummy.flash=0;dummy.group.rotation.z=0;
+    for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0);
     updateDummyLabel(dummy);
   }
   clearBulletHoles();
-  showShotNotice('DUMMIES RESET · 100 HP EACH');
+  $('damageReport').textContent='ALL DUMMIES RESET · ARMOR LOADOUTS PRESERVED';
+  showShotNotice('DUMMIES RESET · EQUIPMENT UNCHANGED');
 }
 function spawnDamagePopup(point,result){
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
@@ -426,11 +460,89 @@ function updateCombatVisuals(dt){
     const p=damagePopups[i];p.age+=dt;
     p.sprite.position.y+=dt*.6;
     p.material.opacity=Math.max(0,1-p.age/.9);
-    if(p.age>=.9){
-      damagePopups.splice(i,1);removeDamagePopup(p);
-    }
+    if(p.age>=.9){damagePopups.splice(i,1);removeDamagePopup(p);}
   }
 }
+
+// W03.1 armory UI: change all six independent parts on any dummy.
+// Open from the pause menu or press B in the lab. No drag-and-drop needed.
+let armoryFromField=false;
+function selectedDummy(){return dummies.get($('armoryDummy').value);}
+function refreshArmory(){
+  const dummy=selectedDummy();
+  if(!dummy)return;
+  let total=0;
+  for(const slot of ARMOR_SLOTS){
+    const item=getArmorPiece(slot,dummy.state.loadout[slot]);
+    $('armor-'+slot).value=item.id;
+    $('rating-'+slot).textContent=item.points+' AP · '+
+      Math.round(damageReductionForPoints(item.points)*100)+'% blocked';
+    total+=item.points;
+  }
+  $('armoryTotal').textContent=total+' AP equipped · no armor durability / no breakage';
+  $('armoryHP').textContent=Math.ceil(dummy.state.health)+' / '+dummy.state.maxHealth+' HP';
+}
+function openArmory(){
+  armoryFromField=controls.isLocked;
+  if(controls.isLocked)controls.unlock();
+  $('armory').classList.remove('hidden');
+  refreshArmory();
+}
+function closeArmory(){
+  $('armory').classList.add('hidden');
+  if(armoryFromField){
+    armoryFromField=false;controls.lock();
+  }
+}
+for(const dummy of dummyKinds){
+  const opt=document.createElement('option');opt.value=dummy.id;
+  opt.textContent=dummy.label;$('armoryDummy').append(opt);
+}
+$('armoryDummy').addEventListener('change',refreshArmory);
+function saveArmorLoadouts(){
+  try{
+    localStorage.setItem('rpg-lab-armor-loadouts',
+      JSON.stringify(Object.fromEntries([...dummies].map(([id,d])=>[id,d.state.loadout]))));
+  }catch{}
+}
+try{
+  const saved=JSON.parse(localStorage.getItem('rpg-lab-armor-loadouts')||'{}');
+  for(const [id,dummy] of dummies){
+    if(saved[id]){
+      dummy.state.loadout=createLoadout(saved[id]);
+      rebuildDummyArmor(dummy);
+    }
+  }
+}catch{ /* Ignore malformed or blocked storage. */ }
+for(const slot of ARMOR_SLOTS){
+  const control=$('armor-'+slot);
+  for(const item of ARMOR_ITEMS[slot]){
+    const opt=document.createElement('option');opt.value=item.id;
+    opt.textContent=item.name+' — '+item.points+' AP';
+    control.append(opt);
+  }
+  control.addEventListener('change',()=>{
+    const dummy=selectedDummy();
+    equipArmor(dummy.state,slot,control.value);
+    clearBulletHoles();
+    rebuildDummyArmor(dummy);
+    saveArmorLoadouts();
+    refreshArmory();
+    $('damageReport').textContent=dummy.title+' · '+ARMOR_SLOT_LABELS[slot].toUpperCase()+
+      ' · '+getArmorPiece(slot,control.value).points+' AP · PERMANENT';
+  });
+}
+$('armoryOpen').addEventListener('click',openArmory);
+$('armoryClose').addEventListener('click',closeArmory);
+$('armoryReset').addEventListener('click',()=>{
+  const dummy=selectedDummy();
+  const preset=$('armoryPreset').value;
+  dummy.state.loadout=createLoadout(preset);
+  clearBulletHoles();
+  rebuildDummyArmor(dummy);
+  saveArmorLoadouts();
+  refreshArmory();
+});
 
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
@@ -580,20 +692,18 @@ function shoot(){
     if(result.applied){
       dummy.flash=.2;dummy.impulse=1;
       for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x553d20);
-      if(result.armorBroken){
-        if(dummy.vest)dummy.vest.material.color.setHex(0x746d62);
-        if(dummy.helmet)dummy.helmet.material.color.setHex(0x746d62);
-      }
       updateDummyLabel(dummy);
       spawnDamagePopup(first.point,result);
-      $('damageReport').textContent=dummy.title+' · '+result.zone.toUpperCase()+
+      $('damageReport').textContent=dummy.title+' · '+ARMOR_SLOT_LABELS[result.zone].toUpperCase()+
         ' · '+Math.ceil(result.damage)+' HP'+
         (result.blocked>0?' · '+Math.ceil(result.blocked)+' BLOCKED':'')+
-        (result.killed?' · DOWN':result.armorBroken?' · ARMOR BROKEN':'');
+        ' · '+result.points+' AP · '+Math.round(result.reduction*100)+'% REDUCTION'+
+        (result.killed?' · DOWN':'');
       showShotNotice(result.killed?'DUMMY DOWN · '+dummy.title:
-        (result.critical?'HEADSHOT':'HIT '+result.zone.toUpperCase())+
+        (result.critical?'HEADSHOT':'HIT '+ARMOR_SLOT_LABELS[result.zone].toUpperCase())+
         ' · -'+Math.ceil(result.damage)+' HP'+
-        (result.blocked>0?' · ARMOR -'+Math.ceil(result.blocked):''));
+        (result.blocked>0?' · '+Math.ceil(result.blocked)+' BLOCKED':''));
+      if($('armory').classList.contains('hidden')===false)refreshArmory();
     }
   } else if(first&&first.object.userData.targetId){
     const target=targetData.get(first.object.userData.targetId);
@@ -690,6 +800,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
   if(e.code==='KeyF'&&!e.repeat&&controls.isLocked){resupply();return;}
   if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
+  if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){openArmory();return;}
   if(e.code==='KeyT'&&!e.repeat){
     clearBulletHoles();
     clearCasings();
