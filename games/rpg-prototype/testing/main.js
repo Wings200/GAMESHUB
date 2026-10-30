@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil } from '../weapons.mjs';
-import { WeaponAudio } from '../weapon-audio.mjs';
+import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -59,7 +59,7 @@ const stations=[
   {title:'04 · Ramp ascent',info:'Walk and sprint uphill, then back down. Watch the ground-height readout.',x:15,z:-27,tag:'04 / SLOPES',color:0x6b9b77},
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
-  {title:'07 · Weapon firing lane',info:'Left click to fire · right click to aim down sights · R to reload · F to resupply for testing. Shoot the distant targets.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63}
+  {title:'07 · Weapon firing lane',info:'Shoot PAPER targets or aim at the labeled WOOD, METAL and CONCRETE samples along the side. Compare the sounds. R reloads; F restocks.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -223,7 +223,9 @@ function clearBulletHoles(){
 const paper=mat(0xe9e2c8), black=mat(0x202c2e), bull=mat(0xd85e51);
 function makeTarget(id,x,z){
   const support=box(x,.82,z,.16,1.65,.19,dark);
+  support.userData.impactMaterial='metal';
   const stand=box(x,.07,z,1.1,.14,.8,floorPaint);
+  stand.userData.impactMaterial='concrete';
   const group=new THREE.Group();
   group.position.set(x,1.82,z);
   group.rotation.y=-Math.PI/2; // face the player looking along +X
@@ -231,12 +233,14 @@ function makeTarget(id,x,z){
   const back=new THREE.Mesh(new THREE.PlaneGeometry(2.1,2.35),paper.clone());
   back.material.side=THREE.DoubleSide;
   back.userData.targetId=id;
+  back.userData.impactMaterial='paper';
   back.material.emissive=new THREE.Color(0x000000);
   group.add(back);
   targetMeshes.push(back);
   const disk=(radius,color,zdepth)=>{
     const mesh=new THREE.Mesh(new THREE.CircleGeometry(radius,32),color.clone());
     mesh.position.z=zdepth;mesh.userData.targetId=id;
+    mesh.userData.impactMaterial='paper';
     mesh.material.side=THREE.DoubleSide;group.add(mesh);targetMeshes.push(mesh);
   };
   disk(.68,black,.015);disk(.43,paper,.025);disk(.18,bull,.036);
@@ -244,6 +248,31 @@ function makeTarget(id,x,z){
 }
 const targetPositions=[[-27,-42],[-12,-39],[4,-44],[20,-40],[36,-46]];
 targetPositions.forEach(([x,z],i)=>makeTarget(i+1,x,z));
+
+// Three distinct material samples along the edge of station 7. All three
+// have collider geometry and explicit impact tags, so the player can compare
+// sounds without having to guess what a random scenery prop is made from.
+const materialSamples=[
+  {name:'WOOD',x:-25,material:mat(0x866447),impact:'wood'},
+  {name:'METAL',x:-8,material:mat(0x6b7e8b,.38),impact:'metal'},
+  {name:'CONCRETE',x:9,material:concrete,impact:'concrete'}
+];
+for(const sample of materialSamples){
+  const z=-48.2;
+  const plate=box(sample.x,1.33,z,2.65,2.5,.42,sample.material);
+  plate.userData.impactMaterial=sample.impact;
+  bounds.push({minX:sample.x-1.325,maxX:sample.x+1.325,minZ:z-.21,maxZ:z+.21});
+  const c=document.createElement('canvas');c.width=512;c.height=128;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#101d23';ctx.fillRect(0,0,512,128);
+  ctx.font='bold 52px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#e8d5ad';ctx.fillText(sample.name,256,68);
+  const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
+  const label=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.6),
+    new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));
+  label.position.set(sample.x,2.89,z+.29);
+  scene.add(label);
+}
 
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
@@ -303,10 +332,14 @@ function shoot(){
   firingRaycaster.set(camera.position,shotVector);
   const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes],false);
   const first=hits[0];
+  let impactMaterial=null;
   if(first){
-    const isPaper=!!first.object.userData.targetId;
+    impactMaterial=getImpactMaterial(first);
+    const isPaper=impactMaterial==='paper';
     markBulletHole(first,isPaper);
-    sound.impact(isPaper?'paper':'concrete');
+    // AudioContext scheduling creates an audible gap after the gunshot.
+    // A little extra distance adds a subtle travel-time effect.
+    sound.impact(impactMaterial,.15+Math.min(.11,first.distance*.0017));
   }
   if(first&&first.object.userData.targetId){
     const target=targetData.get(first.object.userData.targetId);
@@ -314,8 +347,8 @@ function shoot(){
     target.back.material.emissive.setHex(0x956c2f);
     target.back.material.emissiveIntensity=.75;
     target.back.userData.flash=.22;
-    showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE');
-  } else if(first)showShotNotice('SURFACE IMPACT');
+    showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE · PAPER');
+  } else if(first)showShotNotice(impactMaterial.toUpperCase()+' IMPACT');
   else showShotNotice('MISS');
   // Vertical recoil only. Yaw and roll are never touched.
   camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
