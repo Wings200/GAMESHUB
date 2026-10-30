@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil} from './weapons.mjs';
+import {SCRAP_PISTOL,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -99,4 +99,23 @@ test('Recoil handles extreme pitch without flipping the view and ignores bad del
   const kicked=kickViewRecoil(recoil,almostUp,1.25);
   assert.equal(kicked,almostUp);assert.equal(recoil.unrecovered,0);
   assert.equal(recoverViewRecoil(recoil,almostUp,-1),almostUp);
+});
+
+test('Movement increases weapon spread, crouching reduces it',()=>{
+  const aim=shotSpreadDegrees(SCRAP_PISTOL,true);
+  const moving=shotSpreadDegrees(SCRAP_PISTOL,true,{speed:4.5});
+  const jumping=shotSpreadDegrees(SCRAP_PISTOL,true,{speed:4.5,airborne:true});
+  const crouching=shotSpreadDegrees(SCRAP_PISTOL,true,{crouched:true});
+  assert.equal(aim,SCRAP_PISTOL.adsSpreadDegrees);
+  assert.ok(moving>aim&&jumping>moving);
+  assert.ok(crouching<aim);
+  const w=createWeaponState();setWeaponAim(w,true);
+  const f=fireWeapon(w,SCRAP_PISTOL,()=>.75,{speed:4.5,airborne:true});
+  assert.equal(f.status,'fired');assert.equal(f.spreadDegrees,jumping);
+});
+test('Stationary approved hipfire remains identical and valid regardless of motion object',()=>{
+  const w=createWeaponState();
+  const shot=fireWeapon(w,SCRAP_PISTOL,()=>.5);
+  assert.equal(shot.spreadDegrees,SCRAP_PISTOL.hipSpreadDegrees);
+  assert.equal(w.magazine,11);
 });

@@ -63,7 +63,20 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL) {
   }
   state.recoil *= Math.exp(-10 * step);
 }
-export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random) {
+// Advanced handling factors movement into shot spread, without changing the
+// approved stationary hipfire/ADS precision or ammo economy.
+export function shotSpreadDegrees(spec = SCRAP_PISTOL, aiming = false, motion = {}) {
+  const speed = Math.min(8, Math.max(0, Number.isFinite(motion.speed) ? motion.speed : 0));
+  const movingPenalty = aiming ? speed * .19 : speed * .30;
+  const sprintPenalty = motion.sprinting ? 1.25 : 0;
+  const airbornePenalty = motion.airborne ? 2.5 : 0;
+  const stanceMultiplier = motion.crouched && !motion.airborne ? .78 : 1;
+  return Math.max(.12,
+    ((aiming ? spec.adsSpreadDegrees : spec.hipSpreadDegrees) +
+      movingPenalty + sprintPenalty + airbornePenalty) * stanceMultiplier);
+}
+
+export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random, motion = {}) {
   if (state.reloadRemaining > 0) return { status: 'reloading' };
   if (state.cooldown > 1e-7) return { status: 'cooldown' };
   if (state.magazine <= 0) return { status: 'empty' };
@@ -75,10 +88,10 @@ export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random) {
   // Uniform shot distribution over a cone projected onto the sight plane.
   const r = Math.sqrt(Math.max(0, Math.min(1, random())));
   const theta = random() * Math.PI * 2;
-  const spread = Math.tan((state.aiming ? spec.adsSpreadDegrees : spec.hipSpreadDegrees)
-    * Math.PI / 180);
+  const spreadDegrees=shotSpreadDegrees(spec,state.aiming,motion);
+  const spread = Math.tan(spreadDegrees * Math.PI / 180);
   return { status: 'fired', spreadX: Math.cos(theta) * r * spread,
     spreadY: Math.sin(theta) * r * spread,
     recoilDegrees: spec.recoilDegrees, damage: spec.damage,
-    magazine: state.magazine };
+    spreadDegrees, magazine: state.magazine };
 }
