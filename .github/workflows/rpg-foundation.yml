@@ -31,7 +31,9 @@ jobs:
           node --check games/rpg-prototype/movement.test.mjs
           node --check games/rpg-prototype/weapons.mjs
           node --check games/rpg-prototype/weapons.test.mjs
+          node --check games/rpg-prototype/weapon-audio.mjs
+          node --check games/rpg-prototype/weapon-audio.test.mjs
           node --check games/rpg-prototype/rules.mjs
           node --check games/rpg-prototype/rules.test.mjs
       - name: Test collision, terrain and first quest
-        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs
+        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-audio.test.mjs

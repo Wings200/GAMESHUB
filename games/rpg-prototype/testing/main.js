@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil } from '../weapons.mjs';
+import { WeaponAudio } from '../weapon-audio.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -140,6 +141,85 @@ box(22+stairWidth*stairCount+3,1,16,6,2,13,floorPaint);
 // Weapons test lane: five original targets spaced across a clear firing lane.
 // All meshes are real raycastable geometry, not screen-space hitboxes.
 const targetData=new Map();
+const sound=new WeaponAudio();
+function soundCaption(){
+  $('soundToggle').textContent=sound.enabled?'SOUND: ON · N TO MUTE':'SOUND: MUTED · N TO UNMUTE';
+  $('soundToggle').setAttribute('aria-pressed',String(sound.enabled));
+}
+function toggleSound(){
+  sound.setEnabled(!sound.enabled);
+  soundCaption();
+}
+$('soundToggle').addEventListener('click',toggleSound);
+soundCaption();
+
+// Small, persistent raycast decals. Decal meshes are NOT included in the
+// raycast array, so consecutive shots can still hit the surface beneath them.
+const impactMarks=[];
+const IMPACT_MARK_LIMIT=140;
+const impactGeometry=new THREE.PlaneGeometry(1,1);
+const impactNormalMatrix=new THREE.Matrix3();
+const impactWorldNormal=new THREE.Vector3();
+const decalFacing=new THREE.Vector3(0,0,1);
+function impactTexture(paperSurface){
+  const canvas=document.createElement('canvas');
+  canvas.width=canvas.height=128;
+  const ctx=canvas.getContext('2d');
+  const cx=64,cy=64;
+  const ring=ctx.createRadialGradient(cx,cy,5,cx,cy,57);
+  ring.addColorStop(0,paperSurface?'rgba(28,25,23,1)':'rgba(10,13,13,1)');
+  ring.addColorStop(.20,'rgba(18,20,21,1)');
+  ring.addColorStop(.32,paperSurface?'rgba(93,73,53,.95)':'rgba(58,54,48,.95)');
+  ring.addColorStop(.57,paperSurface?'rgba(156,126,89,.55)':'rgba(51,51,50,.50)');
+  ring.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=ring;
+  ctx.beginPath();ctx.arc(cx,cy,57,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=paperSurface?'rgba(70,49,33,.6)':'rgba(20,19,18,.8)';
+  ctx.lineWidth=2.5;
+  for(let k=0;k<12;k++){
+    const angle=k*Math.PI*2/12;
+    const inner=16+(k%3)*3;
+    const outer=24+(k%4)*4;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(angle)*inner,cy+Math.sin(angle)*inner);
+    ctx.lineTo(cx+Math.cos(angle+.06)*outer,cy+Math.sin(angle+.06)*outer);
+    ctx.stroke();
+  }
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  return texture;
+}
+const impactMaterials={
+  paper:new THREE.MeshBasicMaterial({
+    map:impactTexture(true),transparent:true,alphaTest:.035,
+    depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2
+  }),
+  solid:new THREE.MeshBasicMaterial({
+    map:impactTexture(false),transparent:true,alphaTest:.035,
+    depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2
+  })
+};
+function markBulletHole(hit,isPaper){
+  if(!hit.face)return;
+  hit.object.updateWorldMatrix(true,false);
+  impactNormalMatrix.getNormalMatrix(hit.object.matrixWorld);
+  impactWorldNormal.copy(hit.face.normal).applyMatrix3(impactNormalMatrix).normalize();
+  if(impactWorldNormal.dot(shotVector)>0)impactWorldNormal.negate();
+  const mesh=new THREE.Mesh(impactGeometry,isPaper?impactMaterials.paper:impactMaterials.solid);
+  const size=isPaper?.22:.16;
+  mesh.scale.set(size,size,1);
+  mesh.position.copy(hit.point).addScaledVector(impactWorldNormal,.022);
+  mesh.quaternion.setFromUnitVectors(decalFacing,impactWorldNormal);
+  mesh.renderOrder=2;
+  scene.add(mesh);
+  impactMarks.push(mesh);
+  if(impactMarks.length>IMPACT_MARK_LIMIT)scene.remove(impactMarks.shift());
+}
+function clearBulletHoles(){
+  for(const mesh of impactMarks)scene.remove(mesh);
+  impactMarks.length=0;
+}
+
 const paper=mat(0xe9e2c8), black=mat(0x202c2e), bull=mat(0xd85e51);
 function makeTarget(id,x,z){
   const support=box(x,.82,z,.16,1.65,.19,dark);
@@ -210,8 +290,11 @@ function refreshWeaponHUD(){
 }
 function shoot(){
   const result=fireWeapon(weaponState);
-  if(result.status==='empty'){showShotNotice('EMPTY · PRESS R');return;}
+  if(result.status==='empty'){
+    sound.dryFire();showShotNotice('EMPTY · PRESS R');return;
+  }
   if(result.status!=='fired')return;
+  sound.gunshot();
   recoilKick=Math.min(.30,recoilKick+.14);
   muzzleFlash=.055;
   // Determine the projectile direction from the pre-recoil sight orientation.
@@ -220,6 +303,11 @@ function shoot(){
   firingRaycaster.set(camera.position,shotVector);
   const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes],false);
   const first=hits[0];
+  if(first){
+    const isPaper=!!first.object.userData.targetId;
+    markBulletHole(first,isPaper);
+    sound.impact(isPaper?'paper':'concrete');
+  }
   if(first&&first.object.userData.targetId){
     const target=targetData.get(first.object.userData.targetId);
     target.hits++;totalHits++;
@@ -227,13 +315,17 @@ function shoot(){
     target.back.material.emissiveIntensity=.75;
     target.back.userData.flash=.22;
     showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE');
-  } else showShotNotice('MISS');
+  } else if(first)showShotNotice('SURFACE IMPACT');
+  else showShotNotice('MISS');
   // Vertical recoil only. Yaw and roll are never touched.
   camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
   refreshWeaponHUD();
 }
 function reload(){
-  if(startWeaponReload(weaponState)){showShotNotice('RELOADING');refreshWeaponHUD();}
+  if(startWeaponReload(weaponState)){
+    sound.reload();
+    showShotNotice('RELOADING');refreshWeaponHUD();
+  }
 }
 function resupply(){
   const fresh=createWeaponState();
@@ -275,7 +367,11 @@ function resetPlayer(i){
   camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
 }
 resetPlayer(0);
-$('start').addEventListener('click',()=>controls.lock());
+$('start').addEventListener('click',()=>{
+  // The audio engine is unlocked only after the player initiates playback.
+  sound.unlock();
+  controls.lock();
+});
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
@@ -293,6 +389,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
     e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
   }
+  if(e.code==='KeyN'&&!e.repeat){
+    toggleSound();return;
+  }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
   if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=7){
@@ -300,7 +399,10 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
   if(e.code==='KeyF'&&!e.repeat&&controls.isLocked){resupply();return;}
-  if(e.code==='KeyT'&&!e.repeat){resetPlayer(stationIndex);return;}
+  if(e.code==='KeyT'&&!e.repeat){
+    clearBulletHoles();
+    resetPlayer(stationIndex);return;
+  }
   if(e.code==='Space'){e.preventDefault();if(controls.isLocked)requestJump(player);}
   keys.add(e.code);
 });
