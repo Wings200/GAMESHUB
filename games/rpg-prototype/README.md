@@ -1,6 +1,13 @@
-# Untitled RPG · Mechanics Lab W04.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.1.1 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.1.1 — reliable station 9 entry and visibility diagnosis
+- Second user report confirms enemies are still not seen even after W04.1. The Three.js source contains all three enemy groups, but we cannot verify the Cloudflare browser render from GitHub CI alone. This pass adds explicit debug affordances rather than calling the problem resolved without browser confirmation.
+- NPC groups and their nameplates are **always rendered in the 3D scene**, independently of which station is selected. Their AI still runs only in station 9, avoiding any behavior change in stations 1–8. Direct **ENTER ENEMY ARENA DIRECTLY** action resets position, faces the scout using computed camera bearing, and engages pointer lock with no keyboard shortcut required.
+- A large bright 3D "3 RAIDERS · LIVE" sign marks the arena, with orange foot pads. The in-game enemy HUD shows live NPC count and distance to nearest enemy.
+- Menu shows **ENGINE READY · 3 RAIDERS LOADED** only after all three NPC models and scene have initialized. If user sees "WAITING FOR 3D ENGINE", browser loaded HTML but did not finish the JS initialization.
+- Script URL uses `main.js?v=W04.1.1` to force new asset retrieval after Pages deploy. Optional `?station=9` loads directly into station 9 on page entry (click ENTER TEST FIELD afterward). Unit smoke tests verify visibility gates removed, camera faces NPCs and direct entry + diagnostics stay wired. Actual browser playtest still needed.
 
 ## W04.1 — enemy visibility fix and live player health
 - Fixes W04.0 testing report of no visible enemies. Station 9 visibility is now controlled by the **selected station** rather than also requiring the player to remain inside a small world-coordinate box; enemies cannot disappear when you move across the station. All three initial spawns are now closer and in the intended forward view, with orange floor rings, shoulder identifiers, name/HP sprites and explicit 3/3 enemy counter.
