@@ -16,8 +16,10 @@ test('Shift sprints; diagonal speed is normalized',()=>{
   const forward=p(),diagonal=p();
   stepMovement(forward,new Set(['KeyW','ShiftLeft']),{x:0,z:-1},.1,env);
   stepMovement(diagonal,new Set(['KeyW','KeyD','ShiftLeft']),{x:0,z:-1},.1,env);
-  near(Math.hypot(forward.x,forward.z),MOVE_TUNING.sprint*.1);
-  near(Math.hypot(diagonal.x,diagonal.z),MOVE_TUNING.sprint*.1);
+  // M03 eases into sprint instead of snapping to full speed on frame one.
+  const expected=MOVE_TUNING.sprint*.1*(1-Math.exp(-MOVE_TUNING.acceleration*.1));
+  near(Math.hypot(forward.x,forward.z),expected);
+  near(Math.hypot(diagonal.x,diagonal.z),expected);
 });
 test('Solid walls stop forward motion and allow lateral sliding',()=>{
   const e={...env,boxes:[{minX:1,maxX:2,minZ:-3,maxZ:3}]};
