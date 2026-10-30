@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab M01 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W01 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W01 — weapon range (first weapon pass)
+- The existing testing facility now includes station 7, a clear lane of five shootable geometric targets (press 7).
+- Adds one original worn scrap pistol, with a real camera-relative 3D model built from metal and wood components, muzzle flash, sight posts, smooth aim transitions, viewmodel recoil, and shots calculated from the camera.
+- Primary mouse click fires one semi-auto shot; hold right mouse button for aimed-down-sights (narrower spread and zoom); press R to reload and F to refill **test-only** ammunition. Press T to reset the current test station (was R).
+- Finite 12-round magazine and 48 rounds in reserve; reload 1.65 seconds, .24-second shot cooldown. No shooting through solid world geometry to hit targets.
+- `weapons.mjs` is renderer-independent and holds authoritative ammo, cooldown, ADS spread, recoil, and reload rules. It is exercised by `weapons.test.mjs` and will be imported into the real RPG world as weapon mechanics roll out.
+- Real range target hits and damage indication work. Enemy health, humanoid animations, third-person weapon models, inventory, crafting and combat AI **do not** exist yet.
+- Existing movement and forest preview preserved; do not accidentally introduce weapon combat into the forest until tested.
 
 ## M03 — advanced movement testing
 - Uses the exact shared `movement.mjs` controller in the lab and the preserved forest preview.
@@ -39,6 +48,6 @@ Click Explore to capture the mouse; Escape to pause; E interact; M survey map.
 Combat, mutated creatures, power armor, additional factions, vehicles, large city interiors, multiplayer, final art or the main story. Do not mark these completed.
 
 ## Regression
-Run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs
+Run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs
 
 Future updates extend these files in place with tests and a bug log. REDLINE must remain separate.
