@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W05.4 · Enemy Tactical Intelligence Overhaul | GAMESHUB RPG</title>
+<title>W06.0 · Loot & Player Inventory | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -91,6 +91,41 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .secondary{background:#142b35;border:1px solid #dcbd86;color:#f1d8ac;
   padding:13px 18px;border-radius:3px;font-weight:900;letter-spacing:.07em;font-size:11px}
 .secondary:hover{background:#294450}
+
+#lootPrompt{position:fixed;left:50%;bottom:154px;transform:translateX(-50%);
+  z-index:2;padding:12px 21px;background:#101e27e8;border:1px solid #b3cf9d;
+  color:#ebf8d5;font-size:13px;font-weight:900;letter-spacing:.08em;pointer-events:none}
+#lootPrompt.hidden,.loot-overlay.hidden{display:none}
+.loot-overlay{position:fixed;inset:0;z-index:7;background:#071019f5;
+  overflow:auto;padding:5vh 4vw;color:#eaf0e8}
+.loot-container{max-width:1100px;margin:auto}
+.loot-panel-top{display:flex;align-items:start;justify-content:space-between;
+  gap:16px;border-bottom:1px solid #425d59;padding-bottom:20px}
+.loot-eyebrow{font-size:12px;color:#e5c690;letter-spacing:.16em;font-weight:950}
+.loot-overlay h2{font-size:clamp(28px,4.5vw,59px);letter-spacing:-.045em;margin:10px 0}
+.loot-overlay h2 span{color:#88b8a3}
+.loot-overlay p{font-size:13px;color:#a9bfbe;line-height:1.55}
+.loot-overlay button{font-size:11px;letter-spacing:.075em;min-height:39px;
+  border:1px solid #9ba9a5;color:#f5e9c6;background:#253841;
+  padding:9px 14px;font-weight:850;border-radius:3px;cursor:pointer}
+.loot-overlay button:hover{background:#38585b}
+.loot-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:20px 0;color:#e4d6b3;font-size:11px;letter-spacing:.07em}
+.loot-meta span{color:#b4c9c5}
+.loot-meta b{color:#e8cf9d}
+.loot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+  gap:12px;padding:10px 0 36px}
+.loot-entry{border:1px solid #354c4b;border-left:4px solid #a8b7af;
+  display:flex;align-items:center;gap:8px;padding:13px;background:#11232b}
+.loot-description{flex:1;min-width:100px;display:flex;flex-direction:column;gap:5px}
+.loot-description strong{font-size:13px}
+.loot-description small{color:#afbfbc;font-size:10px;letter-spacing:.055em}
+.loot-quantity{font-size:13px;color:#e6d4ad;font-weight:900}
+.loot-entry .loot-action{padding:9px;font-size:10px;min-height:32px}
+.loot-footer{border-top:1px solid #334d4b;padding:15px 0;color:#a9bbb5;
+  font-size:11px;line-height:1.7}
+@media(max-width:680px){.loot-panel-top{flex-direction:column}
+ .loot-grid{grid-template-columns:1fr}.loot-entry{flex-wrap:wrap}}
 #armory{position:fixed;inset:0;overflow:auto;background:rgba(3,13,20,.98);
   z-index:5;padding:4vh 5vw}
 #armory.hidden{display:none}
@@ -128,7 +163,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W05.4</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W06.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -143,7 +178,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W05.4 · ENEMY TEST</strong>
+  <strong>W06.0 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -151,9 +186,10 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="crosshair"></div>
 <div id="shotNotice" aria-live="polite"></div>
+<div id="lootPrompt" class="hidden" aria-live="polite">E · SEARCH LOOT</div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W05.4 · SIX-GUN QA & ADS</div>
+  <div class="weapon-head">W06.0 · SIX-GUN QA & ADS</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
@@ -169,13 +205,13 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">Z / X CHANGE WEAPON · HOLD CLICK FOR AUTOMATICS · R RELOAD · F RESTOCK · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · N SOUND<br>1–9 STATIONS · 9 ENEMY COMBAT · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY</div>
+  <div id="keys">Z / X CHANGE WEAPON · HOLD CLICK FOR AUTOMATICS · R RELOAD · F RESTOCK · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · N SOUND<br>1–9 STATIONS · E SEARCH LOOT · I BACKPACK · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.4</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W06.0</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W05.4 overhauls enemy tactics. Scout circles to flank, Raider skirmishes, and Enforcer anchors the firing line. Enemies share recent sightings without shooting through walls, choose separate cover, detect when stuck, and peek out to attack before crouching back behind the crate. New ready/reload/peek/recoil poses help show their decisions. Previous weapon, armor, AI damage, and empty-magazine sound fixes remain.</p>
+    <p>W06.0 introduces real RPG loot! Defeated enemies leave searchable world bags after their bodies disappear. Press E nearby to search, TAKE individual items or TAKE ALL, and press I to open your persistent 30-slot backpack. Equip looted guns and player armor, transfer ammo to reserves, use medkits and drop unwanted items. Rarity and cap values are shown on every item. Existing six-gun training and smarter enemies remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -183,11 +219,47 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <span>In game: Z / X to cycle · hold fire for automatic weapons</span></div>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
-    <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.4</div>
-    <div class="menu-meta"><span class="pill">SQUAD TACTICS + COVER PEEK</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
+    <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button></div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W06.0</div>
+    <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Enter Station 9 and let Scout, Raider and Enforcer find you. Watch them move differently: Scout attempts to flank, Raider strafes, Enforcer supports. Shoot an enemy and watch it choose cover, crouch, then try a brief peek. Move around the crate to force repositioning. J resets combat, K freezes AI. Existing six guns and armor are still available.</p>
+    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, LOAD RESERVE ammunition, USE medkits, or DROP items. J resets enemies and world loot without erasing the backpack. This is the player inventory; B still edits test-dummy armor.</p>
+  </div>
+</div>
+<div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-label="Player inventory">
+  <div class="loot-container">
+    <div class="loot-panel-top">
+      <div><div class="loot-eyebrow">W06.0 · PLAYER SYSTEMS</div>
+        <h2>BACKPACK<span> & GEAR.</span></h2>
+        <p>Find loot on defeated enemies · I to open · Equip armor to reduce incoming enemy damage.</p>
+      </div>
+      <button id="inventoryClose" type="button">CLOSE / RESUME</button>
+    </div>
+    <div class="loot-meta">
+      <strong id="inventoryCapacity">0 / 30 SLOTS</strong>
+      <strong id="inventoryValue">0 CAPS VALUE</strong>
+      <span>EQUIPPED WEAPON · <b id="inventoryWeapon">Worn Scrap Pistol</b></span>
+      <span>PLAYER ARMOR · <b id="inventoryArmor">CHEST 0 AP</b></span>
+    </div>
+    <div id="inventoryItems" class="loot-grid"></div>
+    <div class="loot-footer">LOOT ENEMIES · E SEARCH · WEAPONS EQUIP FROM BACKPACK · AMMO LOADS INTO RESERVES · DROPPED ITEMS STAY ON THE GROUND</div>
+  </div>
+</div>
+<div id="lootPanel" class="loot-overlay hidden" role="dialog" aria-label="Search loot">
+  <div class="loot-container">
+    <div class="loot-panel-top">
+      <div><div class="loot-eyebrow">W06.0 · WORLD LOOT</div>
+        <h2 id="lootTitle">SEARCH LOOT BAG</h2>
+        <p>Items left behind by enemies are yours to discover. Backpack space is limited.</p>
+      </div>
+      <button id="lootClose" type="button">CLOSE / RESUME</button>
+    </div>
+    <div class="loot-meta">
+      <strong>COMMON · UNCOMMON · RARE · EPIC</strong>
+      <button id="lootTakeAll" type="button">TAKE ALL</button>
+    </div>
+    <div id="lootItems" class="loot-grid"></div>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -223,6 +295,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W05.4"></script>
+<script type="module" src="./main.js?v=W06.0"></script>
 </body>
 </html>

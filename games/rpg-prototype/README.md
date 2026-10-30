@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W05.4 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.0 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W06.0 — world loot, 30-slot player backpack, armor, ammo and supplies
+- User approved a full RPG Loot & Inventory first pass. Every NPC defeated in Station 9 spawns an independent glowing world loot crate that persists after the 0.7s corpse despawn. E within 2.7m opens a searchable loot UI with per-item TAKE or TAKE ALL; partial fills leave the uncollected items inside. J resets enemy rounds and cleans up leftover bags but does not wipe the player backpack.
+- I opens a 30-slot saved backpack (`localStorage`), showing item quantities, rarity tiers (common, uncommon, rare, epic) and cap values; stacks use finite caps and overflowing quantities stay in the loot bag. DROP creates an interactable ground bag. All items are validated against the same catalog when restoring saves.
+- Loot includes original weapon catalog entries (actual weapon model via EQUIP), ammo stacks that transfer into their real weapon reserves, medkits restoring 40 HP up to maximum, salvaged supplies, and six-slot armor items matching existing `combat.mjs` armor piece IDs. Equipped player armor reduces enemy chest shots using the same armor reduction formula used on practice dummies.
+- Existing six test weapons remain unrestricted to avoid removing approved combat testing. B is still the separate dummy armor sandbox; the new player inventory equipment is a genuine new system, not a replacement.
+- Drop tables: Scout gives SMG ammo, medkit and salvage; Raider gives Pipe SMG, ammo and ranger chest armor; Enforcer gives Service Carbine, ammo, militia chest armor and medkit. Deterministic drops allow reproducible W06.0 tests; random rarity-based loot is a future tuning phase.
+- New `inventory.mjs` pure, render-free catalog and transaction module, independent item quantities and equipment; the browser suite tests actual 3D loot bag generation, approach, search, TAKE ALL, equipped weapon and armor while preserving existing AI, damage and empty-trigger smoke checks.
+- W06.0 remains awaiting user visual and gameplay approval.
 
 ## W05.4 — coordinated enemy AI with cover peeking and role-based combat
 - The next priority after W05.3.1 was user-approved enemy AI overhaul. Scout is now a wide flanker, Raider a medium-range skirmisher, and Enforcer a steadier supporting anchor. Their movement goals use distinct offsets, speeds and reload/accuracy profiles, with separation forces to prevent stacking.

@@ -153,13 +153,43 @@ try{
   const recovered=await page.evaluate(()=>window.__rpgSmokeState());
   assert.ok(recovered.weapon.magazine<30,
     'Automatic fire must work after empty magazine and successful reload');
+  // W06.0: The world loot bag must be searchable and its inventory items
+  // must transfer, equip and reduce armor damage in the real 3D browser.
+  const lootId=await page.evaluate(()=>window.__rpgSmokeSpawnLoot('raider'));
+  assert.ok(lootId);
+  const nearby=await page.evaluate(()=>window.__rpgSmokeApproachLoot());
+  assert.equal(nearby,true);
+  await page.keyboard.press('e');
+  await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:7000});
+  assert.ok(await page.locator('#lootItems .loot-entry').count()>=3);
+  await page.locator('#lootTakeAll').click();
+  const inventoryAfterLoot=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(inventoryAfterLoot.loot.length,0,
+    'A fully looted bag must disappear from the 3D world');
+  assert.ok(inventoryAfterLoot.inventory.items.some(i=>
+    i.itemId==='armor:ranger-chest'));
+  await page.locator('#lootClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:7000});
+  await page.keyboard.press('i');
+  await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
+  await page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Ranger Guard'}).getByRole('button',{name:'EQUIP'}).click();
+  await page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Pipe SMG'}).first().getByRole('button',{name:'EQUIP'}).click();
+  const equipped=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(equipped.inventory.armor.chest,'ranger-chest');
+  assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
+  await page.locator('#inventoryClose').click();
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
     smoke:'PASS',aiMoved:true,scoutHealthBefore:initialHp,
     scoutHealthAfter:scoutHealth,enemies:result.enemies.length,
     heldEmptyClicks:emptyB.dryFireClicks,secondPullClicks:second.dryFireClicks,
-    smgAfterReloadMagazine:recovered.weapon.magazine
+    smgAfterReloadMagazine:recovered.weapon.magazine,
+    lootPickup:true,equippedArmor:equipped.inventory.armor.chest,
+    equippedWeapon:equipped.inventory.equippedWeapon
   }));
   await page.close();
 }finally{

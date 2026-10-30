@@ -28,7 +28,7 @@ test('Enemy render visibility is never gated by the station selector',()=>{
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);
   assert.doesNotMatch(source,/enemy\.root\.visible=active/);
   assert.match(source,/Number\(e\.code\.slice\(5\)\)<=9/);
-  assert.match(source,/updateEnemies\(dt\);\s*renderer\.render\(scene,camera\)/);
+  assert.match(source,/updateEnemies\(dt\);[\s\S]*renderer\.render\(scene,camera\)/);
 });
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
@@ -37,7 +37,7 @@ test('Health and enemies have real connected HUD elements',()=>{
     assert.ok(page.includes('id="'+id+'"'),'Missing HUD element '+id);
     if(id!=='playerHealthHud')assert.ok(source.includes("'"+id+"'"),'Missing scene wiring '+id);
   }
-  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\)/);
+  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\*\(1-armor\.reduction\)\)/);
   assert.match(source,/resetPlayerHealth\(playerHealth\)/);
   assert.match(source,/canEnemyFire\(enemy\.brain,player,aiObstacles,attack\.range\)/);
 });
@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.4/);
+  assert.match(page,/main\.js\?v=W06\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
+  assert.match(page,/SEARCHABLE LOOT \+ INVENTORY/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
+  assert.match(page,/SEARCHABLE LOOT \+ INVENTORY/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -156,7 +156,7 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
   assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
   assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
   assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
-  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
+  assert.match(page,/SEARCHABLE LOOT \+ INVENTORY/);
 });
 
 test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{
@@ -244,4 +244,47 @@ test('W05.4 enemy 3D animation and shooting respond to stance and peek',()=>{
   assert.match(source,/!\['cover','hold','peek-move','reload'\]\.includes\(enemy\.tactics\.phase\)/);
   assert.match(source,/enemy\.upperBody\.rotation\.set\(0,0,0\)/);
   assert.match(source,/stuckEvents:e\.tactics\.stuckEvents/);
+});
+
+test('W06.0 world loot follows actual enemy death, not corpse visibility',()=>{
+  assert.match(source,/function spawnEnemyLoot\(enemy\)\{/);
+  assert.match(source,/spawnEnemyLoot\(enemy\);/);
+  assert.match(source,/createLootBag\('bag-'\+\(\+\+lootSerial\)/);
+  assert.match(source,/lootBags\.set\(bag\.id,\{\.\.\.bag,mesh:marker\}\)/);
+  assert.match(source,/function nearestLootBag\(\)\{/);
+  assert.match(source,/if\(bag\)beginLootOverlay\(bag\.id\)/);
+  assert.match(source,/scene\.remove\(drop\.mesh\)/);
+  assert.match(source,/disposeLootMarker\(drop\.mesh\)/);
+});
+test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=>{
+  assert.match(page,/id="inventoryPanel"/);
+  assert.match(page,/id="lootPanel"/);
+  assert.match(page,/id="inventoryItems"/);
+  assert.match(page,/id="lootItems"/);
+  assert.match(page,/id="lootTakeAll"/);
+  assert.match(page,/id="inventoryOpen"/);
+  assert.match(page,/id="lootPrompt"/);
+  assert.match(source,/let backpack=createBackpack\(\)/);
+  assert.match(source,/safeBackpackSnapshot\(saved\)/);
+  assert.match(source,/localStorage\.setItem\('rpg-lab-player-inventory'/);
+  assert.match(source,/equipFromInventory\(backpack,entry\.uid\)/);
+  assert.match(source,/arsenalStates\[item\.key\]\.reserve\+=amount/);
+  assert.match(source,/useSupply\(backpack,entry\.uid,playerHealth\)/);
+  assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:1\}\]/);
+  assert.match(source,/playerArmorReduction\(backpack,'chest'\)/);
+  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\*\(1-armor\.reduction\)\)/);
+  assert.match(source,/if\(e\.code==='KeyE'&&!e\.repeat&&controls\.isLocked\)/);
+  assert.match(source,/if\(e\.code==='KeyI'&&!e\.repeat\)/);
+});
+test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
+  assert.match(page,/E SEARCH LOOT · I BACKPACK/);
+  assert.match(page,/main\.js\?v=W06\.0/);
+  assert.match(source,/function beginLootOverlay\(id=null\)/);
+  assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
+  assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
+  assert.match(source,/function closeLootOverlay\(\)/);
+  assert.match(source,/if\(lootOverlayFromField\)\{/);
+  assert.match(source,/function discardEmptyLootBags\(\)/);
+  assert.match(source,/selectedLootId=null/);
+  assert.match(source,/window\.__rpgSmokeSpawnLoot=/);
 });
