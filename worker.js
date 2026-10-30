@@ -1,6 +1,4 @@
 import { DurableObject } from "cloudflare:workers";
-import {BlackoutRoom} from "./games/blackout/multiplayer-room.js";
-export {BlackoutRoom};
 
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
 import { REDLINE_CAR_IDS, STARTER_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
@@ -709,69 +707,6 @@ export default {
 
     }
 
-
-    /* BLACKOUT developer multiplayer: Pages issues a fresh, one-use ticket
-       only to verified BLACKOUT admins/testers. The Worker validates it
-       before forwarding an identity to the private Durable Object binding.
-       Room codes locate a lobby but NEVER authorize a player. */
-    async function verifyBlackoutTicket(token){
-      if(typeof token!=="string"||!/^[a-f0-9]{96}$/i.test(token))
-        return null;
-      try{
-        const check=await fetch(
-          "https://redline-dnk.pages.dev/api/blackout-multiplayer-verify",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({token}),
-            signal:AbortSignal.timeout(6000)
-          });
-        if(!check.ok)return null;
-        const identity=await check.json();
-        return identity?.ok&&typeof identity.id==="string"&&identity.id?
-          {id:identity.id,username:String(identity.username||"Operator")}:null;
-      }catch{return null}
-    }
-    if(url.pathname==="/api/blackout/rooms"&&request.method==="POST"){
-      if(!env.BLACKOUT_ROOMS)
-        return json({ok:false,error:"BLACKOUT Worker room binding not deployed."},503);
-      const body=await request.json().catch(()=>({}));
-      const identity=await verifyBlackoutTicket(body?.ticket);
-      if(!identity)return json({ok:false,error:"BLACKOUT developer ticket required"},401);
-      const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      const bytes=new Uint8Array(6);
-      crypto.getRandomValues(bytes);
-      const code=[...bytes].map(x=>alphabet[x%alphabet.length]).join("");
-      const id=env.BLACKOUT_ROOMS.idFromName(code);
-      const stub=env.BLACKOUT_ROOMS.get(id);
-      const create=await stub.fetch(new Request(url.origin+
-        "/api/blackout/rooms/"+code+"/create",{
-        method:"POST",headers:{
-          "Content-Type":"application/json",
-          "X-Blackout-Verified-User":identity.id,
-          "X-Blackout-Verified-Name":identity.username
-        },
-        body:JSON.stringify({code,settings:body?.settings||{}})
-      }));
-      return create;
-    }
-    const blackoutMatch=url.pathname.match(/^\/api\/blackout\/rooms\/([A-HJ-NP-Z2-9]{6})\/(status|ws)$/i);
-    if(blackoutMatch){
-      if(!env.BLACKOUT_ROOMS)
-        return json({ok:false,error:"BLACKOUT Worker room binding not deployed."},503);
-      const code=blackoutMatch[1].toUpperCase();
-      const stub=env.BLACKOUT_ROOMS.get(env.BLACKOUT_ROOMS.idFromName(code));
-      if(blackoutMatch[2].toLowerCase()==="status")return stub.fetch(request);
-      const identity=await verifyBlackoutTicket(url.searchParams.get("ticket"));
-      if(!identity)return json({ok:false,error:"BLACKOUT developer ticket required"},401);
-      const trustedHeaders=new Headers(request.headers);
-      trustedHeaders.set("X-Blackout-Verified-User",identity.id);
-      trustedHeaders.set("X-Blackout-Verified-Name",identity.username);
-      const targetUrl=new URL(request.url);
-      targetUrl.searchParams.delete("ticket");
-      return stub.fetch(new Request(targetUrl, {
-        method:request.method,headers:trustedHeaders
-      }));
-    }
 
     /* =====================================================
        HEALTH

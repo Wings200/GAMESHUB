@@ -1223,62 +1223,6 @@
     }
 
 
-    /* BLACKOUT: public library listing, private developer access. */
-    .blackout-thumb {
-      display: grid;
-      place-items: center;
-      background:
-        radial-gradient(circle at 50% 44%, rgba(86,222,207,.13), transparent 42%),
-        repeating-linear-gradient(0deg,transparent 0 21px,rgba(90,181,170,.035) 22px 23px),
-        linear-gradient(145deg,#0e2830,#09131c 72%);
-      border-bottom: 1px solid rgba(95,230,216,.15);
-    }
-    .blackout-thumb::before {
-      content: "";
-      position: absolute;
-      width: 150px;
-      height: 150px;
-      border: 2px solid rgba(102,239,220,.32);
-      border-radius: 50%;
-      box-shadow: 0 0 0 18px rgba(65,203,191,.055),0 0 42px rgba(65,203,191,.12);
-    }
-    .blackout-thumb::after {
-      content: "";
-      position: absolute;
-      width: 75px;
-      height: 75px;
-      border: 2px dashed rgba(106,248,225,.35);
-      transform: rotate(45deg);
-    }
-    .blackout-mark {
-      z-index: 1;
-      font-size: 66px;
-      font-weight: 1000;
-      font-style: italic;
-      letter-spacing: -.1em;
-      color: #d0fff3;
-      text-shadow: 0 2px 30px rgba(70,234,202,.23);
-    }
-    .blackout-access {
-      display: inline-block;
-      margin-top: 12px;
-      padding: 6px 9px;
-      border: 1px solid rgba(241,184,107,.30);
-      border-radius: 5px;
-      font-size: 9px;
-      font-weight: 900;
-      letter-spacing: .08em;
-      color: #f4c48b;
-      background: rgba(112,71,30,.12);
-    }
-    .blackout-access.allowed {
-      color: #9ef5d8;
-      border-color: rgba(77,239,173,.4);
-      background: rgba(26,119,83,.15);
-    }
-    .game-card.blackout-locked { cursor: not-allowed; }
-    .game-card.blackout-locked:hover { transform: none; }
-
   </style>
 </head>
 
@@ -1578,36 +1522,6 @@
 
 
 
-        <!-- BLACKOUT: visible to everyone; verified developer account only. -->
-        <a
-          href="/games/blackout/"
-          id="blackoutGameCard"
-          class="game-card blackout-locked"
-          data-name="blackout"
-          data-categories="action tactical fps private"
-          aria-describedby="blackoutAccessStatus"
-          aria-disabled="true"
-        >
-          <div class="game-thumb blackout-thumb" aria-hidden="true">
-            <div class="blackout-mark">B.</div>
-          </div>
-          <div class="game-card-content">
-            <h3 class="game-card-title">BLACKOUT</h3>
-            <p class="game-card-description">
-              Tactical FPS development build. Two bomb sites,
-              barricades, and attack / defend rounds.
-            </p>
-            <div class="card-tags">
-              <span class="card-tag">FPS</span>
-              <span class="card-tag">TACTICAL</span>
-              <span class="card-tag">PRIVATE TEST</span>
-            </div>
-            <span id="blackoutAccessStatus" class="blackout-access">
-              VERIFYING DEVELOPER ACCESS
-            </span>
-          </div>
-        </a>
-
         <!-- FUTURE GAME -->
 
         <article
@@ -1676,46 +1590,6 @@
 
   <script>
 
-
-    /* The badge is cosmetic; Cloudflare independently enforces account access. */
-    const blackoutCard = document.getElementById("blackoutGameCard");
-    const blackoutStatus = document.getElementById("blackoutAccessStatus");
-    let blackoutAllowed = false;
-
-    function setBlackoutCardAccess(role) {
-      const allowed = role === "admin" || role === "tester";
-      blackoutAllowed = allowed;
-      blackoutCard.classList.toggle("blackout-locked", !allowed);
-      blackoutCard.setAttribute("aria-disabled", String(!allowed));
-      blackoutStatus.classList.toggle("allowed", allowed);
-      blackoutStatus.textContent = role === "admin"
-        ? "▶ PLAY BLACKOUT · ADMIN ACCESS"
-        : role === "tester" ? "▶ PLAY BLACKOUT · TESTER ACCESS"
-        : role === "paused" ? "🔒 PRIVATE · TESTER MAINTENANCE"
-        : "🔒 PRIVATE · APPROVED ACCOUNTS";
-    }
-
-    async function refreshBlackoutAccess() {
-      try {
-        const response = await fetch("/api/blackout-access", {
-          credentials: "same-origin", cache: "no-store"
-        });
-        if (!response.ok) throw new Error("Access lookup failed");
-        const access = await response.json();
-        setBlackoutCardAccess(access.ok ? access.role : "locked");
-      } catch {
-        setBlackoutCardAccess("locked");
-      }
-    }
-
-    blackoutCard.addEventListener("click", (event) => {
-      if (blackoutAllowed) return;
-      event.preventDefault();
-      alert("BLACKOUT is a private test. Sign into an approved GamesHub account or ask a BLACKOUT admin for access.");
-    });
-    window.addEventListener("gameshub-account-change", refreshBlackoutAccess);
-    window.addEventListener("pageshow", refreshBlackoutAccess);
-    refreshBlackoutAccess();
 
     const searchInput =
       document.getElementById(

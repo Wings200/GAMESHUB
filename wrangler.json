@@ -15,10 +15,6 @@
       {
         "name": "STATS",
         "class_name": "RedlineStats"
-      },
-      {
-        "name": "BLACKOUT_ROOMS",
-        "class_name": "BlackoutRoom"
       }
     ]
   },
@@ -32,10 +28,6 @@
       "storage": "sqlite"
     },
     "RedlineStats": {
-      "type": "durable-object",
-      "storage": "sqlite"
-    },
-    "BlackoutRoom": {
       "type": "durable-object",
       "storage": "sqlite"
     }
