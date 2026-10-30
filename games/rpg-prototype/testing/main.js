@@ -5,6 +5,8 @@ import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updat
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
+import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
+  ENEMY_ATTACK } from '../player-combat.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   applyDamage, resetDummy } from '../combat.mjs';
@@ -66,7 +68,7 @@ const stations=[
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
   {title:'08 · Modular armor dummies',info:'W03.1: every HEAD, CHEST, LEFT/RIGHT ARM and LEG has its own permanent armor rating. Press B to equip one of 96 different pieces. Y resets HP without removing armor.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
-  {title:'09 · Enemy AI arena',info:'W04.0: watch three raiders patrol, spot and pursue you, lose sight behind obstacles, and react to the scrap pistol. K freezes AI; J resets raiders. No enemy shooting yet.',x:28,z:42,tag:'09 / AI TEST',color:0xe77d68}
+  {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -564,12 +566,12 @@ for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
 let enemyAIEnabled=true;
 const enemySpecs=[
-  {id:'scout',label:'SCOUT',x:44,z:41,
-    armor:'none',color:0x8d7761,patrol:[{x:43,z:41},{x:52,z:41}]},
-  {id:'raider',label:'RAIDER',x:51,z:47,
-    armor:'light',color:0x66775c,patrol:[{x:50,z:47},{x:44,z:47}]},
-  {id:'enforcer',label:'ENFORCER',x:56,z:39,
-    armor:'heavy',color:0x4d6075,patrol:[{x:55,z:39},{x:53,z:45}]}
+  {id:'scout',label:'SCOUT',x:39,z:42,
+    armor:'none',color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
+  {id:'raider',label:'RAIDER',x:43,z:46,
+    armor:'light',color:0x66775c,patrol:[{x:43,z:46},{x:47,z:46}]},
+  {id:'enforcer',label:'ENFORCER',x:46,z:36.8,
+    armor:'heavy',color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
 ];
 function enemyMaterial(color,metallic=false){
   return new THREE.MeshStandardMaterial({color,
@@ -582,7 +584,8 @@ function createEnemy(spec){
   scene.add(root);
   const state=createDummy(spec.armor);
   const enemy={id:spec.id,label:spec.label,brain,root,state,
-    meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:''};
+    meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
+    fireCooldown:1.3+enemies.size*.45,gunGlow:0};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -628,6 +631,18 @@ function createEnemy(spec){
   rifle.add(stock);
   const muzzle=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.56,8),darkCloth);
   muzzle.rotation.x=Math.PI/2;muzzle.position.z=.32;rifle.add(muzzle);
+  const muzzleLight=new THREE.PointLight(0xffa65f,0,2.2);
+  muzzleLight.position.set(.19,1.38,.68);
+  root.add(muzzleLight);enemy.muzzleLight=muzzleLight;
+  // High-contrast visible identification beacons, even when the character
+  // model is small or fogged against the scenery.
+  const beacon=new THREE.Mesh(new THREE.TorusGeometry(.55,.065,6,22),
+    new THREE.MeshBasicMaterial({color:0xf19668,depthTest:false}));
+  beacon.rotation.x=-Math.PI/2;
+  beacon.position.y=.085;root.add(beacon);
+  const shoulderMark=new THREE.Mesh(new THREE.BoxGeometry(.7,.11,.075),
+    new THREE.MeshBasicMaterial({color:0xf2ad66,depthTest:false}));
+  shoulderMark.position.set(0,1.85,.25);root.add(shoulderMark);
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
   const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
@@ -668,25 +683,57 @@ function resetEnemies(){
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
     enemy.flash=0;enemy.shake=0;enemy.statusText='';
+    enemy.fireCooldown=1.3;enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
     refreshEnemyLabel(enemy,'PATROL');
   }
   $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
-function inAIArena(){return stationIndex===8&&
-  player.x>=25&&player.x<=61&&player.z>=33&&player.z<=51;}
+// This is keyed to the station ID, NOT a narrow position box: the old
+// position condition made the scene vanish as soon as the player stepped
+// outside it. Station 9 bots stay visible across the entire lab station.
+function inAIArena(){return stationIndex===8;}
+const playerHealth=createPlayerHealth();
+let playerHitFlash=0;
+const enemyTracers=[];
+const tracerMat=new THREE.LineBasicMaterial({color:0xffa760,transparent:true,opacity:.92});
+function enemyTracer(from,to){
+  const geo=new THREE.BufferGeometry().setFromPoints([from,to]);
+  const line=new THREE.Line(geo,tracerMat);scene.add(line);
+  enemyTracers.push({line,time:.15});
+  if(enemyTracers.length>12){
+    const old=enemyTracers.shift();scene.remove(old.line);old.line.geometry.dispose();
+  }
+}
+function refreshPlayerHealth(){
+  const fraction=playerHealth.health/playerHealth.maxHealth;
+  $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
+  $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
+  $('healthFill').classList.toggle('low',fraction<=.35);
+  $('healthStatus').textContent=!playerHealth.alive?'DOWN · H TO RESPAWN':
+    fraction<=.35?'CRITICAL · H TO HEAL':'H TO HEAL / RESET';
+}
+function healPlayer(){
+  resetPlayerHealth(playerHealth);playerHitFlash=0;
+  refreshPlayerHealth();
+  if(inAIArena())resetPlayer(8);
+  showShotNotice('HEALTH RESTORED · 100 HP');
+}
+refreshPlayerHealth();
 function updateEnemies(dt){
   const active=inAIArena();
   const ticking=active&&controls.isLocked&&enemyAIEnabled;
   const statuses=[];
+  let visibleCount=0;
   for(const enemy of enemies.values()){
     enemy.root.visible=active;
     enemy.billboard.mesh.visible=active;
     if(!active)continue;
+    visibleCount++;
     if(enemy.state.alive){
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
-        {enabled:ticking,playerInArena:active});
+        {enabled:ticking&&playerHealth.alive,playerInArena:active});
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
       enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
       const move=enemy.brain.moving?1:0;
@@ -698,20 +745,51 @@ function updateEnemies(dt){
       enemy.shake=Math.max(0,enemy.shake-dt*3);
       enemy.flash=Math.max(0,enemy.flash-dt);
       if(enemy.flash===0)for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
+      const attack=ENEMY_ATTACK[enemy.id];
+      if(ticking&&playerHealth.alive){
+        enemy.fireCooldown=Math.max(0,enemy.fireCooldown-dt);
+        if(enemy.fireCooldown===0&&
+          canEnemyFire(enemy.brain,player,aiObstacles,attack.range)){
+          enemy.fireCooldown=attack.interval;
+          enemy.gunGlow=.11;
+          sound.gunshot(); // borrowed procedural shot; separate enemy mix comes later
+          const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
+          const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
+          enemyTracer(origin,target);
+          const result=hitPlayer(playerHealth,attack.damage);
+          if(result.applied){
+            if(!playerHealth.alive)keys.clear();
+            refreshPlayerHealth();playerHitFlash=.48;
+            showShotNotice(playerHealth.alive?
+              enemy.label+' FIRED · -'+result.damage+' HP':
+              'YOU ARE DOWN · PRESS H TO RESPAWN');
+          }
+        }
+      }
     }else{
-      enemy.root.rotation.z+=( -1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
+      enemy.root.rotation.z+=(-1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
     }
+    enemy.gunGlow=Math.max(0,enemy.gunGlow-dt);
+    enemy.muzzleLight.intensity=enemy.gunGlow>0?5:0;
     const mode=!enemy.state.alive?'DOWN':
-      !enemyAIEnabled?'PAUSED':enemy.brain.mode.toUpperCase();
+      !enemyAIEnabled?'PAUSED':!playerHealth.alive?'PLAYER DOWN':
+        enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
     enemy.billboard.mesh.position.set(enemy.brain.x,2.86,enemy.brain.z);
     statuses.push(enemy.label+': '+mode);
   }
+  for(let i=enemyTracers.length-1;i>=0;i--){
+    const t=enemyTracers[i];t.time-=dt;
+    if(t.time<=0){scene.remove(t.line);t.line.geometry.dispose();enemyTracers.splice(i,1);}
+  }
+  playerHitFlash=Math.max(0,playerHitFlash-dt);
+  $('playerDamageFlash').style.opacity=(playerHitFlash*.52).toFixed(2);
   $('enemyHud').classList.toggle('hidden',!active);
   if(active){
+    $('enemyCount').textContent=visibleCount+' / 3 ENEMIES SPAWNED';
     $('enemyList').textContent=statuses.join('  ·  ');
-    $('enemyMode').textContent=enemyAIEnabled?'AI ACTIVE · NO GUNFIRE YET':
-      'AI PAUSED · K TO RESUME';
+    $('enemyMode').textContent=!enemyAIEnabled?'AI PAUSED · K TO RESUME':
+      playerHealth.alive?'ENEMIES CAN FIRE · WATCH HEALTH':'PLAYER DOWN · H TO RESPAWN';
   }
 }
 
@@ -949,7 +1027,15 @@ const forward=new THREE.Vector3();
 const clock=new THREE.Clock();
 let stationIndex=0,qualityHigh=true;
 function resetPlayer(i){
+  const previousStation=stationIndex;
   stationIndex=i;const s=stations[i];
+  if(i===8&&previousStation!==8){
+    enemyAIEnabled=true;
+    resetPlayerHealth(playerHealth);
+    refreshPlayerHealth();
+    // Ensure a clear, repeatable view of every enemy on first entry.
+    resetEnemies();
+  }
   player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
   resetMotion(player);
   // Reset both the view direction and the unrecovered weapon kick.
@@ -995,6 +1081,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
   if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){openArmory();return;}
   if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked){resetEnemies();return;}
+  if(e.code==='KeyH'&&!e.repeat&&controls.isLocked){healPlayer();return;}
   if(e.code==='KeyK'&&!e.repeat&&controls.isLocked){
     enemyAIEnabled=!enemyAIEnabled;
     showShotNotice(enemyAIEnabled?'ENEMY AI RESUMED':'ENEMY AI FROZEN');

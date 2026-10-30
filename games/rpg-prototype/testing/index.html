@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Enemy AI Lab W04.0 | GAMESHUB RPG</title>
+<title>Live Combat Lab W04.1 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,6 +37,19 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+#playerDamageFlash{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 37%,rgba(202,32,27,.8) 100%);opacity:0}
+#playerHealthHud{position:fixed;bottom:136px;left:18px;width:min(320px,38vw);
+  z-index:2;pointer-events:none;display:grid;gap:7px}
+#playerHealthHud .health-head{display:flex;justify-content:space-between;
+  gap:8px;align-items:center;letter-spacing:.07em;font-size:11px;font-weight:900}
+#playerHealthHud .health-head span{color:#f0cda0}
+#playerHealthHud .health-head strong{color:#edeeee;font-size:16px;font-variant-numeric:tabular-nums}
+#healthTrack{height:16px;background:#2c3033;border:1px solid #819a91;overflow:hidden;border-radius:2px}
+#healthFill{display:block;width:100%;height:100%;
+  background:linear-gradient(90deg,#578c6f,#a8d1a1);transition:width .15s ease}
+#healthFill.low{background:linear-gradient(90deg,#a34037,#ee8476)}
+#healthStatus{font-size:10px;color:#b8cfcc;letter-spacing:.08em;font-weight:850}
 #enemyHud{position:fixed;right:18px;top:140px;z-index:2;max-width:340px;
   pointer-events:none;display:grid;gap:5px}
 #enemyHud.hidden{display:none}
@@ -95,14 +108,20 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 @media(max-width:850px){.armor-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.armory-header{flex-direction:column}.armor-slots{grid-template-columns:1fr}}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
-@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#enemyHud{right:8px;top:121px;max-width:220px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#enemyHud{right:8px;top:121px;max-width:220px}#playerHealthHud{left:8px;bottom:154px;width:min(280px,65vw);padding:8px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
 </style>
 </head>
 <body>
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
+<div id="playerDamageFlash"></div>
+<div id="playerHealthHud" class="block" aria-live="polite">
+  <div class="health-head"><span>PLAYER HEALTH</span><strong id="healthReadout">100 / 100 HP</strong></div>
+  <div id="healthTrack"><span id="healthFill"></span></div>
+  <div id="healthStatus">H TO HEAL / RESET</div>
+</div>
 <div id="hud">
-  <div class="block logo"><b>W04.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W04.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -117,8 +136,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W04.0 · ENEMY AI TEST</strong>
-  <div id="enemyMode">AI ACTIVE · NO GUNFIRE YET</div>
+  <strong>W04.1 · LIVE ENEMY ARENA</strong>
+  <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 ENEMIES SPAWNED</div>
+  <div id="enemyMode">ENEMIES CAN FIRE · WATCH HEALTH</div>
   <div id="enemyList">SCOUT: PATROL · RAIDER: PATROL · ENFORCER: PATROL</div>
   <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
 </div>
@@ -126,7 +146,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W04.0 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W04.1 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -138,20 +158,20 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 8 ARMOR + B ARMORY · 9 AI TEST · J RESET AI · K FREEZE AI · ESC PAUSE</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 9 LIVE ENEMIES · H HEALTH RESET · J RESET BOTS · K PAUSE AI · B ARMORY</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.0</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.1</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W04.0 adds Station 9: three original raider bots with patrols, sight checks, obstacle awareness, pursuit, search behaviour and damage reactions. Their rifles do not fire yet. Station 8's full six-slot 96-piece armor editor, approved pistol and movement lab remain intact.</p>
+    <p>W04.1 corrects Station 9 visibility: all three enemy raiders spawn directly ahead, stay visible throughout the selected station, pursue you, and fire basic test shots. You now have a real 100 HP health bar, hit feedback, and H to respawn. All approved pistol, armor, and movement systems are preserved.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div class="menu-meta"><span class="pill">3 ACTIVE AI RAIDERS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-meta"><span class="pill">3 VISIBLE AI RAIDERS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Test station 9 by standing in front of the raiders, hiding behind crates, and firing at head/chest/arms/legs. Press K to pause their movement and J to restore their health and restart patrols. Enemy shooting, cover tactics and player health will come in later W04 passes.</p>
+    <p style="font-size:11px;margin-top:22px">Press 9 to enter live combat. All three raiders start directly ahead and should appear with orange foot rings and health/nameplates. Enemy shots reduce player HP; H restores health, J resets bots, and K pauses AI. Advanced cover tactics and full enemy weapon mechanics are later steps.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">

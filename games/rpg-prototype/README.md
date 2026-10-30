@@ -1,6 +1,14 @@
-# Untitled RPG · Mechanics Lab W04.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W04.1 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W04.1 — enemy visibility fix and live player health
+- Fixes W04.0 testing report of no visible enemies. Station 9 visibility is now controlled by the **selected station** rather than also requiring the player to remain inside a small world-coordinate box; enemies cannot disappear when you move across the station. All three initial spawns are now closer and in the intended forward view, with orange floor rings, shoulder identifiers, name/HP sprites and explicit 3/3 enemy counter.
+- Player receives a real persistent on-screen **100 HP** health bar in the lab. A simple enemy-hit system reduces health, triggers a red damage vignette and hit notice, and can knock the player down. Press **H** to heal/respawn.
+- Enemy basic test fire happens only while spotted, in range and unobstructed by station-9 crates, with per-enemy damage and cooldown. Basic enemy tracers and muzzle flashes show where damage originates. **This is not yet advanced cover tactics or a fully simulated weapon inventory/reload system.**
+- Entering station 9 from another test station initializes HP and bot positions; **J** resets enemies, **K** still pauses AI and all enemy attacks, and switching stations suspends enemy visibility and updates.
+- The player’s previous pistol, 96 permanent modular armor pieces, bullet effects, sounds, stamina and earlier stations are preserved. Player armor integration follows later; the current health tests use unarmored player HP.
+- New render-independent player-combat.mjs and tests cover HP, death/respawn, occlusion, angle and range checks. Manual WebGL playtest is still required.
 
 ## W04.0 — enemy AI foundation (patrol / sight / chase / search)
 - **Station 9** adds a small dedicated three-bot patrol arena in the northeast of the original test lab. Press **9** to teleport there; the eight approved stations remain.
