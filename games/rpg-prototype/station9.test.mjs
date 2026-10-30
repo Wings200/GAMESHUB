@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/REAL COVER \+ CROUCH/);
+  assert.match(page,/6 DISTINCT WEAPONS/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -99,7 +99,7 @@ test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
 });
 test('Existing armor and pistol systems remain in the same script',()=>{
   assert.match(source,/rebuildDummyArmor/);
-  assert.match(source,/fireWeapon\(weaponState,SCRAP_PISTOL/);
+  assert.match(source,/fireWeapon\(weaponState,activeSpec/);
   assert.match(source,/markBulletHole/);
   assert.match(source,/updateCombatVisuals\(dt\)/);
 });
