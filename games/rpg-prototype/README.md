@@ -5,7 +5,7 @@ An isolated first-person 3D prototype for GAMESHUB. The game has no permanent na
 ## W05.3.1 — one dry-fire click per empty-magazine trigger pull
 - Fixes user-reported loud buzzing when holding down the trigger on an empty automatic gun. Previously `frame()` called `shoot()` every animation frame for the SMG and carbine, and every empty result called `sound.dryFire()`, stacking dozens of high-pitched audio pulses per second.
 - Add an `emptyClickLatched` trigger-edge guard in live game code. The first attempted empty shot sounds once; no repeated empty sounds occur until the player releases and pulls the trigger again. Reloading, weapon switching, restocking and pointer-lock cancellation clear the latch. Genuine fired rounds still clear it and behave normally.
-- Extend the actual headless Chrome gameplay test: drain the SMG's full 30-round magazine using a held trigger, verify exactly one dry-fire event despite extra hold time, verify a second intentional trigger pull sounds once, then reload and confirm firing resumes. Existing AI movement and bullet-damage browser checks remain.
+- Extend the actual headless Chrome gameplay test: start the SMG with a one-round CI-only test fixture and hold through the final shot, verify exactly one dry-fire event despite extra hold time, verify a second intentional trigger pull sounds once, then reload and confirm firing resumes. Existing AI movement and bullet-damage browser checks remain.
 - All six weapon profiles, sound synthesis, armor, AI, 3D models and ADS unchanged. Manual browser test still required for final approval.
 
 ## W05.3 — fix inactive arena AI and enemy damage, with real browser smoke tests

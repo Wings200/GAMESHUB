@@ -1538,6 +1538,13 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 // Read-only smoke instrumentation. Active ONLY with ?smoke=1 so CI can
 // check actual Three.js gameplay rather than matching code strings.
 if(new URLSearchParams(location.search).get('smoke')==='1'){
+  // CI-only ammo fixture: makes the empty-trigger regression test fast on
+  // software WebGL, without wasting many slow render frames on a full mag.
+  window.__rpgSmokeSetMagazine=(count)=>{
+    weaponState.magazine=Math.max(0,Math.min(activeSpec.magazineSize,
+      Math.floor(Number.isFinite(count)?count:0)));
+    weaponState.cooldown=0;
+  };
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
