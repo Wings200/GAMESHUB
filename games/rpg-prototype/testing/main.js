@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon } from '../weapons.mjs';
+import { SCRAP_PISTOL, createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon, createViewRecoilState, kickViewRecoil, recoverViewRecoil } from '../weapons.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -9,6 +9,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa4c0cb);
 scene.fog = new THREE.Fog(0xa4c0cb, 60, 165);
 const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, .08, 270);
+// PointerLockControls uses YXZ yaw/pitch. Keep the camera's Euler in that
+// same order: an XYZ pitch applied at non-zero yaw causes sideways tilt/roll.
+camera.rotation.order = 'YXZ';
 scene.add(camera); // the held weapon is a camera-relative 3D child
 const controls = new PointerLockControls(camera, document.body);
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
@@ -165,6 +168,7 @@ targetPositions.forEach(([x,z],i)=>makeTarget(i+1,x,z));
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
 const weaponState=createWeaponState();
+const viewRecoil=createViewRecoilState();
 const pistol=new THREE.Group();
 camera.add(pistol);
 pistol.position.set(.32,-.31,-.77);
@@ -210,7 +214,8 @@ function shoot(){
   if(result.status!=='fired')return;
   recoilKick=Math.min(.30,recoilKick+.14);
   muzzleFlash=.055;
-  camera.rotation.x=Math.min(1.5,camera.rotation.x+result.recoilDegrees*Math.PI/180);
+  // Determine the projectile direction from the pre-recoil sight orientation.
+  // Applying recoil before raycasting incorrectly shifts the bullet off target.
   shotVector.set(result.spreadX,result.spreadY,-1).normalize().applyQuaternion(camera.quaternion);
   firingRaycaster.set(camera.position,shotVector);
   const hits=firingRaycaster.intersectObjects([...worldGeometry,...targetMeshes],false);
@@ -223,6 +228,8 @@ function shoot(){
     target.back.userData.flash=.22;
     showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE');
   } else showShotNotice('MISS');
+  // Vertical recoil only. Yaw and roll are never touched.
+  camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
   refreshWeaponHUD();
 }
 function reload(){
@@ -260,6 +267,8 @@ function resetPlayer(i){
   stationIndex=i;const s=stations[i];
   player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
   resetMotion(player);
+  // Reset both the view direction and the unrecovered weapon kick.
+  viewRecoil.unrecovered=0;
   // Reset location only, not stamina. Press [ or ] to refill for a test. 
   camera.rotation.set(0,-Math.PI/2,0);
   $('stationName').textContent=s.title;$('stationInfo').textContent=s.info;
@@ -326,6 +335,11 @@ function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
   updateWeapon(weaponState,dt);
+  // Ease camera pitch back to the player's original view. This applies in
+  // YXZ space, so mouse-look cannot leave the camera permanently tilted.
+  if(viewRecoil.unrecovered>0){
+    camera.rotation.x=recoverViewRecoil(viewRecoil,camera.rotation.x,dt);
+  }
   recoilKick*=Math.exp(-11*dt);
   mouseSway*=Math.exp(-9*dt);
   muzzleFlash=Math.max(0,muzzleFlash-dt);

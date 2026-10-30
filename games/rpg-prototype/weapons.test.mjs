@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon} from './weapons.mjs';
+import {SCRAP_PISTOL,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -72,4 +72,31 @@ test('Firing sequence cannot exceed current magazine capacity',()=>{
   assert.equal(fired,12);
   assert.equal(w.magazine,0);
   assert.equal(w.shotsFired,12);
+});
+
+test('Camera pitch-only recoil recovers to the original aim after one shot',()=>{
+  const recoil=createViewRecoilState();const before=.2;
+  let pitch=kickViewRecoil(recoil,before,SCRAP_PISTOL.recoilDegrees);
+  assert.ok(pitch<before);
+  for(let i=0;i<180;i++)pitch=recoverViewRecoil(recoil,pitch,1/60);
+  assert.ok(Math.abs(pitch-before)<.00001);
+  assert.equal(recoil.unrecovered,0);
+});
+test('Repeated rapid shots cannot create a permanent camera offset',()=>{
+  const recoil=createViewRecoilState();const before=-.12;
+  let pitch=before;
+  for(let i=0;i<12;i++){
+    pitch=kickViewRecoil(recoil,pitch,SCRAP_PISTOL.recoilDegrees);
+    pitch=recoverViewRecoil(recoil,pitch,.08);
+  }
+  assert.ok(recoil.unrecovered>0 && recoil.unrecovered<=.14000001);
+  for(let i=0;i<240;i++)pitch=recoverViewRecoil(recoil,pitch,1/60);
+  assert.ok(Math.abs(pitch-before)<.00001);
+  assert.equal(recoil.unrecovered,0);
+});
+test('Recoil handles extreme pitch without flipping the view and ignores bad delta time',()=>{
+  const recoil=createViewRecoilState();const almostUp=-Math.PI/2+.035;
+  const kicked=kickViewRecoil(recoil,almostUp,1.25);
+  assert.equal(kicked,almostUp);assert.equal(recoil.unrecovered,0);
+  assert.equal(recoverViewRecoil(recoil,almostUp,-1),almostUp);
 });

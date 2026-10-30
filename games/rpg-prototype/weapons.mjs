@@ -18,6 +18,28 @@ export function createWeaponState(spec = SCRAP_PISTOL) {
     cooldown: 0, reloadRemaining: 0, aiming: false, shotsFired: 0,
     recoil: 0 };
 }
+// Only adjusts vertical pitch; camera Euler order MUST be YXZ in the scene.
+// No fixed roll or yaw offset is ever added by firing.
+export function createViewRecoilState() { return {unrecovered: 0}; }
+export function kickViewRecoil(state, pitch, degrees) {
+  const limit=Math.PI/2-.035;
+  const maximumUnrecovered=.14; // cap rapid shots at about 8° total kick
+  const requested=Math.max(0,degrees)*Math.PI/180;
+  const allowed=Math.min(requested, Math.max(0,maximumUnrecovered-state.unrecovered));
+  const next=Math.max(-limit,Math.min(limit,pitch-allowed));
+  state.unrecovered+=pitch-next;
+  return next;
+}
+export function recoverViewRecoil(state, pitch, dt) {
+  if(state.unrecovered<=0)return pitch;
+  const limit=Math.PI/2-.035;
+  const step=state.unrecovered*(1-Math.exp(-11*Math.max(0,dt)));
+  const next=Math.max(-limit,Math.min(limit,pitch+step));
+  state.unrecovered=Math.max(0,state.unrecovered-(next-pitch));
+  if(state.unrecovered<1e-6)state.unrecovered=0;
+  return next;
+}
+
 export function setWeaponAim(state, aiming) {
   state.aiming = !!aiming;
 }

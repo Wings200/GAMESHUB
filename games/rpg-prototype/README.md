@@ -2,6 +2,12 @@
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 
+## W01.1 — camera recoil correction
+- Camera rotation is now YXZ, matching `PointerLockControls` instead of mixing XYZ pitch with mouse-look yaw. This prevents unintended sideways camera tilt when shooting while turned.
+- First-person camera kick is pitch-only, capped, and smoothly recovered; the pistol viewmodel still kicks independently.
+- Raycast direction is measured **before** applying recoil, so shot direction corresponds to the current sights/crosshair.
+- Regression tests verify a single shot and rapid shots return the camera to its pre-shot pitch. Browser playtest remains required.
+
 ## W01 — weapon range (first weapon pass)
 - The existing testing facility now includes station 7, a clear lane of five shootable geometric targets (press 7).
 - Adds one original worn scrap pistol, with a real camera-relative 3D model built from metal and wood components, muzzle flash, sight posts, smooth aim transitions, viewmodel recoil, and shots calculated from the camera.
