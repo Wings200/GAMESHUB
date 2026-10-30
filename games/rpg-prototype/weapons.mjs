@@ -106,7 +106,7 @@ export function shotSpreadDegrees(spec = SCRAP_PISTOL, aiming = false, motion = 
   const sprintPenalty = motion.sprinting ? 1.25 : 0;
   const airbornePenalty = motion.airborne ? 2.5 : 0;
   const stanceMultiplier = motion.crouched && !motion.airborne ? .78 : 1;
-  return Math.max(.12,
+  return Math.max(.025,
     ((aiming ? spec.adsSpreadDegrees : spec.hipSpreadDegrees) +
       movingPenalty + sprintPenalty + airbornePenalty) * stanceMultiplier);
 }
