@@ -106,3 +106,30 @@ test('Paper, wood, metal and concrete produce different audio signatures',()=>{
   }
   assert.equal(new Set(signatures.values()).size,4,'materials have distinct timbres');
 });
+
+test('All six weapon archetypes have distinct gunshot synthesis',()=>{
+  const audio=new WeaponAudio(FakeAudioContext);
+  audio.unlock();
+  const signatures=[];
+  for(const kind of ['pistol','revolver','smg','carbine','shotgun','rifle']){
+    const before=audio.context.calls.length;
+    audio.gunshot(kind);
+    const frequencies=audio.context.calls.slice(before)
+      .filter(c=>c.kind==='frequency'&&c.mode==='set')
+      .map(c=>c.value).join(',');
+    signatures.push(frequencies);
+  }
+  assert.equal(new Set(signatures).size,6,
+    'Every weapon type should have a distinct pitched gunshot signature');
+});
+test('Reload cues follow each weapon reload duration instead of fixed pistol timing',()=>{
+  const pistol=new WeaponAudio(FakeAudioContext);
+  pistol.unlock();pistol.reload('pistol',1.65);
+  const slow=new WeaponAudio(FakeAudioContext);
+  slow.unlock();slow.reload('rifle',2.85);
+  const latest=audio=>Math.max(...audio.context.events.map(e=>e[1]));
+  assert.ok(latest(slow)>latest(pistol)+.7);
+  const revolver=new WeaponAudio(FakeAudioContext);
+  revolver.unlock();revolver.reload('revolver',2.6);
+  assert.ok(revolver.context.events.length>6);
+});

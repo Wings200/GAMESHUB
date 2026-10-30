@@ -1,6 +1,17 @@
-# Untitled RPG · Mechanics Lab W05.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W05.2 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W05.2 — comprehensive weapon QA, sight obstruction and model consistency
+- User reports the Iron Six-Shooter has a button on top obstructing ADS, and requests fixes across **all six guns, including the Worn Scrap Pistol**. W05.1 remains unapproved pending direct visual retest.
+- **Revolver optics/cylinder**: lowered its raised top strap from top y≈0.1645 (essentially identical to sight y=0.165) to y≈0.1235; relocates cylinder-release latch off the centerline; rotates the cylinder along the muzzle direction instead of across the frame; corrects visible chambers. Retains an unobstructed rear notch and front blade geometry.
+- **Pistol irons**: narrows the far-too-wide rear notch so the front blade is properly framed, and marks the precisely centred front sight as an intentional alignment reference.
+- **All weapon ADS QA**: a camera-centred raycaster inspects only the currently equipped first-person model while aiming; the weapon HUD reports `ADS SIGHT LINE CLEAR` or `ADS BLOCKED · MODEL OBSTRUCTION`. Only the intended optical reticle or front-sight tip is excluded from obstruction detection; flashlight/muzzle particles are ignored. This is a runtime diagnostic and still requires real browser QA.
+- **Reload visuals corrected**: revolver and pump shotgun do not display fake detachable box magazines; revolver exposes a swing-out cylinder during reload and shotgun displays shell-feeding motion plus an animated pump. Existing timed ammo mechanics and animations remain intact.
+- **Brass ejection**: previously all guns spawned casings from a hard-coded pistol camera offset, even on rifles. Now uses each equipped viewmodel's local receiver ejection port transformed into world space; revolver brass is retained during firing.
+- **Sound variety**: firearm archetypes have distinct synthesised gunshot envelopes and reload cues time against their real weapon reload duration instead of the pistol's fixed duration.
+- Preserves the original pistol weapon parameters, six-weapon selection and independent ammo states, ADS math, 8-pellet shotgun damage, player HP, armor, enemy systems and other stations. Adds regression tests for viewmodel geometry and behavior, the ADS clearance HUD, shell ejection and sound signatures.
+- Manual browser visual confirmation is required; do not mark W05.2 as approved based on CI alone.
 
 ## W05.1 — weapon viewmodel quality, lower optics and calibrated ADS
 - Fixes user playtest complaints: the six W05.0 weapons were too blocky, optical sights sat very high above the receiver, and ADS did not match the actual bullet trajectory. The prior shared ADS offset (x=0, y=-.176) was wrong for optics mounted at different y positions and the rifle scope tube was solid.

@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.1/);
+  assert.match(page,/main\.js\?v=W05\.2/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
+  assert.match(page,/6-GUN QA & SIGHT CHECK/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
+  assert.match(page,/6-GUN QA & SIGHT CHECK/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -156,5 +156,45 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
   assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
   assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
   assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
-  assert.match(page,/6 ALIGNED SIGHT PICTURES/);
+  assert.match(page,/6-GUN QA & SIGHT CHECK/);
+});
+
+test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{
+  assert.match(source,/box\(\.15,\.035,\.25,trim,0,\.106,-\.23\)/);
+  assert.match(source,/box\(\.028,\.044,\.058,steel,-\.126,\.12,-\.055\)/);
+  assert.match(source,/const drum=cylinder\(\.099,\.182,oxide,0,\.036,-\.10\)/);
+  assert.doesNotMatch(source,/box\(\.15,\.065,\.31,trim,0,\.132,-\.23\)/);
+  assert.match(source,/sights,\.043\*side,\.1795,\.10,slideGroup/);
+  assert.match(source,/sights,0,\.177,-\.42,slideGroup/);
+  assert.match(source,/pistolFrontSight\.userData\.sightReference=true/);
+  assert.match(source,/frontBlade\.userData\.sightReference=true/);
+  assert.match(source,/redDot\.userData\.sightReference=true/);
+});
+test('Shotgun and revolver have no fake visible mags and have real moving actions',()=>{
+  assert.match(source,/const enclosed=revolver\|\|shotgun/);
+  assert.match(source,/magazine\.visible=!enclosed/);
+  assert.match(source,/magazineBase\.visible=!enclosed/);
+  assert.match(source,/reloadAction\.visible=false/);
+  assert.match(source,/if\(visual\.cylinderBody\)visual\.cylinderBody\.visible=!handling\.active/);
+  assert.match(source,/visual\.pumpGrip\.position\.z=-\.34\+slideTravel\(slideCycle\)\*1\.5/);
+  assert.match(source,/visual\.reloadHand\.visible=false/);
+});
+test('Shell casings eject from actual selected gun and revolvers retain spent cases',()=>{
+  assert.match(source,/if\(activeSpec\.kind==='revolver'\)return;/);
+  assert.match(source,/visual\.root\.updateWorldMatrix\(true,false\)/);
+  assert.match(source,/casingOrigin\.copy\(visual\.ejectionLocal\)\.applyMatrix4\(visual\.root\.matrixWorld\)/);
+  assert.doesNotMatch(source,/casingOrigin\.set\(\.18,-\.08,-\.47\)\.applyMatrix4\(camera\.matrixWorld\)/);
+});
+test('Actual ADS viewmodel ray diagnostic is available per weapon',()=>{
+  assert.match(page,/id="weaponSightCheck"/);
+  assert.match(source,/function inspectSightClearance\(\)\{/);
+  assert.match(source,/sightProbe\.intersectObject\(visual\.root,true\)/);
+  assert.match(source,/!h\.object\.userData\.sightReference/);
+  assert.match(source,/ADS BLOCKED · MODEL OBSTRUCTION/);
+  assert.match(source,/ADS SIGHT LINE CLEAR/);
+  assert.match(source,/sightCheck\.style\.display=weaponState\.aiming&&!handling\.active/);
+});
+test('Player weapon sound/reload select the actual weapon profile',()=>{
+  assert.match(source,/sound\.gunshot\(activeSpec\.kind\|\|'pistol'\)/);
+  assert.match(source,/sound\.reload\(activeSpec\.kind\|\|'pistol',activeSpec\.reloadSeconds\)/);
 });

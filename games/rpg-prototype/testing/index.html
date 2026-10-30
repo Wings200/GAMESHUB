@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W05.1 · Aligned Optics & Refined Weapons | GAMESHUB RPG</title>
+<title>W05.2 · Six-Gun Reliability & Sight Fixes | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -128,7 +128,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W05.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W05.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -143,7 +143,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W05.1 · ENEMY TEST</strong>
+  <strong>W05.2 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -153,12 +153,14 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W05.1 · REBUILT VIEWMODELS + TRUE ADS</div>
+  <div class="weapon-head">W05.2 · SIX-GUN QA & ADS</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
+  <div id="weaponSightCheck" style="display:none;font-size:10px;font-weight:800;
+    letter-spacing:.07em;color:#abd8ae;margin-top:6px">ADS CHECK</div>
   <div style="font-size:10px;color:#c1c9c3;margin-top:7px">RANGE HITS: <strong id="targetHits">0</strong></div>
   <div id="damageReport" aria-live="polite">STATION 8: ARMOR DAMAGE TESTING</div>
   <div id="weaponBar"><span id="reloadProgress"></span></div>
@@ -171,9 +173,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.1</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W05.2</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W05.1 repairs the sights that were far above the gun and didn't match where bullets landed. Each weapon now aims through its actual 3D sight, centred on the firing ray. Lower hollow rifle scope, smaller carbine optic and rebuilt contoured weapon models replace the previous blocky shapes. All six weapon types and the established armor/combat mechanics remain.</p>
+    <p>W05.2 audits all six guns, including the original pistol. The six-shooter now has an unobstructed iron sight and correctly oriented cylinder; the pistol has a tighter rear notch. The revolver and shotgun no longer pretend to have detachable box magazines, the shotgun pump animates, casing ejection follows the equipped gun, and each gun has distinct firing sounds. While aiming, the HUD checks for model geometry crossing the center of your sight picture. All six guns and combat systems remain.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -182,10 +184,10 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.1</div>
-    <div class="menu-meta"><span class="pill">6 ALIGNED SIGHT PICTURES</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W05.2</div>
+    <div class="menu-meta"><span class="pill">6-GUN QA & SIGHT CHECK</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Test right-click ADS with the pistol, carbine and hunting rifle first. The iron sights, holographic dot and hollow rifle scope should all sit centrally on screen, and shots should follow the actual sight line. Shoot a paper target at Station 7, then test targets and armored enemies. Z / X switches weapons, R reloads. Tell me which models or sight pictures still need work.</p>
+    <p style="font-size:11px;margin-top:22px">Test ADS with each gun, especially the six-shooter and original pistol. The small ADS line below the ammo counter should say SIGHT LINE CLEAR when the middle of the optic is unobstructed; if it says BLOCKED, tell me which gun. Test shots at Station 7, switch weapons with Z / X, and reload the revolver and shotgun. We still need your browser confirmation for final visual quality.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -221,6 +223,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
 window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
 </script>
-<script type="module" src="./main.js?v=W05.1"></script>
+<script type="module" src="./main.js?v=W05.2"></script>
 </body>
 </html>
