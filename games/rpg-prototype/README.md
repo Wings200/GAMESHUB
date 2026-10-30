@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W05.3.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W05.4 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W05.4 — coordinated enemy AI with cover peeking and role-based combat
+- The next priority after W05.3.1 was user-approved enemy AI overhaul. Scout is now a wide flanker, Raider a medium-range skirmisher, and Enforcer a steadier supporting anchor. Their movement goals use distinct offsets, speeds and reload/accuracy profiles, with separation forces to prevent stacking.
+- New `enemy-squad.mjs` broadcasts **last known player positions** to nearby allies when an enemy first sees or takes damage from the player. Allies investigate but may not fire without their own verified line of sight. Intel expires and freezes while AI is paused; J resets it.
+- NPCs reserve cover positions from teammates to avoid three characters piling up behind the same crate. Cover AI detects failed movement/stuck paths and temporarily tries a different obstacle.
+- NPCs who crouch behind protective cover may now **stand, peek around a real exposed corner, shoot if unobstructed, retreat and crouch again**. Sightlines, collision, movement bounds, reload limits, and real moved body hitboxes are retained. Player flanking still invalidates stale cover.
+- Visible ready/aim, peeking lean, reload weapon dip and brief weapon recoil poses help communicate enemy behavior. NPC labels include FLANKING, SUPPRESSING, PEEKING and PEEK & FIRE.
+- New deterministic squad and tactical simulations test role differences, cover selection, crowding, peek/return sequence and stuck detection, in addition to existing headless browser tests verifying the 3D scene loads, enemies move, gunshot reduces enemy HP and empty-fire buzz is gone.
+- Approval requires manual browser playtest; the tactical AI remains arena-scale (not yet production navmesh, animated skeletal characters, or multiplayer).
 
 ## W05.3.1 — one dry-fire click per empty-magazine trigger pull
 - Fixes user-reported loud buzzing when holding down the trigger on an empty automatic gun. Previously `frame()` called `shoot()` every animation frame for the SMG and carbine, and every empty result called `sound.dryFire()`, stacking dozens of high-pitched audio pulses per second.
