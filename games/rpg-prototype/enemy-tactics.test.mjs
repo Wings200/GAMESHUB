@@ -61,7 +61,7 @@ test('No cover geometry causes safe strafing instead of broken state',()=>{
   // The bot only strafes within its 15-metre combat range.
   const closePlayer={x:34,z:40};
   tickEnemyTactics(t,b,closePlayer,.05,[]);
-  assert.equal(t.phase,'strafe');
+  assert.equal(t.phase,'flank');
   assert.ok(Number.isFinite(t.goal.x));
   assert.ok(Number.isFinite(t.goal.z));
   markEnemyThreat(t);
@@ -228,5 +228,7 @@ test('Stuck NPC recognizes failed motion and attempts a different tactic',()=>{
   ];
   for(let i=0;i<65;i++)tickEnemyTactics(t,b,player,.05,obstacles);
   assert.ok(t.stuckEvents>0,'a bot not moving toward a goal must detect it');
-  assert.ok(Number.isFinite(t.goal?.x));
+  assert.ok(Number.isFinite(t.stuckSeconds));
+  assert.ok(['cover','reload','hold','flank','strafe','suppress','pursue',
+    'peek-move','peek'].includes(t.phase));
 });

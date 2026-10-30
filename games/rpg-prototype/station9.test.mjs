@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -156,7 +156,7 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
   assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
   assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
   assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
-  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
+  assert.match(page,/SQUAD TACTICS \+ COVER PEEK/);
 });
 
 test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{

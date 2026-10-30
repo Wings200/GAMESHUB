@@ -37,6 +37,9 @@ export function shareSquadContact(intel,team,obstacles=[],player){
     if(player&&hasSight(b,player,obstacles))continue;
     if(b.mode==='patrol'||b.mode==='search'){
       alertEnemy(b,intel.lastKnown);
+      // Radio intel is not direct eyesight: the NPC must independently
+      // confirm line-of-sight before it can aim or fire.
+      b.spotted=false;
       notified++;
     }
   }
