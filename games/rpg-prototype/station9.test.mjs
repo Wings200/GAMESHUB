@@ -23,7 +23,7 @@ test('Station nine has 3 declared enemies in front of an east-facing player',()=
   assert.match(source,/camera\.rotation\.set\(0,lookYaw,0\)/);
 });
 test('Enemy render visibility is never gated by the station selector',()=>{
-  assert.match(source,/function inAIArena\(\)\{return stationIndex===8;\}/);
+  assert.match(source,/function inAIArena\(\)\{return isArenaActive\(stationIndex,player\);\}/);
   assert.match(source,/enemy\.root\.visible=enemy\.state\.alive\|\|enemy\.deathTimer<\.7/);
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);
   assert.doesNotMatch(source,/enemy\.root\.visible=active/);
@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W05\.2/);
+  assert.match(page,/main\.js\?v=W05\.3/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
@@ -84,7 +84,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
   assert.match(source,/ENEMY_PROFILES\[enemy\.id\]\.moveSpeed/);
   assert.match(source,/enemy\.tactics\.reloadRemaining>0\?'RELOAD'/);
-  assert.match(page,/6-GUN QA & SIGHT CHECK/);
+  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
@@ -108,7 +108,7 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(page,/id="weaponSelect"/);
   assert.match(page,/id="weaponName"/);
   assert.match(page,/id="weaponStats"/);
-  assert.match(page,/6-GUN QA & SIGHT CHECK/);
+  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
   assert.match(source,/const arsenalStates=createArsenalStates\(\)/);
   assert.match(source,/const weaponVisuals=new Map\(\)/);
   assert.match(source,/for\(const spec of ARSENAL\)if\(spec\.id!==SCRAP_PISTOL\.id\)/);
@@ -156,7 +156,7 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
   assert.match(source,/new THREE\.SphereGeometry\(\.008,8,8\)/);
   assert.match(source,/new THREE\.ExtrudeGeometry\(outline/);
   assert.match(source,/sightLocal:new THREE\.Vector3\(0,\.207,-\.16\)/);
-  assert.match(page,/6-GUN QA & SIGHT CHECK/);
+  assert.match(page,/AI \+ ENEMY DAMAGE CHECK/);
 });
 
 test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{
@@ -197,4 +197,14 @@ test('Actual ADS viewmodel ray diagnostic is available per weapon',()=>{
 test('Player weapon sound/reload select the actual weapon profile',()=>{
   assert.match(source,/sound\.gunshot\(activeSpec\.kind\|\|'pistol'\)/);
   assert.match(source,/sound\.reload\(activeSpec\.kind\|\|'pistol',activeSpec\.reloadSeconds\)/);
+});
+
+test('W05.3 damage hitboxes do not depend on previously selected station',()=>{
+  assert.match(source,/const enemyParts=enemyHitMeshes\.filter\(mesh=>/);
+  assert.match(source,/shouldRaycastEnemy\(enemies\.get\(mesh\.userData\.enemyId\)\)/);
+  assert.doesNotMatch(source,/const enemyParts=inAIArena\(\)\?/);
+  assert.match(source,/combatRuntimeStatus\(\{/);
+  assert.match(source,/AI DAMAGE CONFIRMED · /);
+  assert.match(source,/enemyDamageHits\+\+/);
+  assert.match(source,/if\(new URLSearchParams\(location\.search\)\.get\('smoke'\)==='1'\)/);
 });

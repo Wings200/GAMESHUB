@@ -1,6 +1,15 @@
-# Untitled RPG · Mechanics Lab W05.2 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W05.3 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W05.3 — fix inactive arena AI and enemy damage, with real browser smoke tests
+- After W05.2, user reports guns shoot but AI never takes damage and bots do not function. Root cause found in shared station-gating: `inAIArena()` only checked `stationIndex===8`. Enemies are always rendered and may be approached on foot or via the W05.2 direct Station 7 link, but their AI was disabled and enemy meshes omitted from player raycasts outside station ID 9.
+- Introduce `arena-activation.mjs` containing pure, testable physical-zone detection plus persistence of existing Station 9 behavior. The in-game AI simulation engages when the player actually enters arena coordinates, regardless of previously selected test station.
+- Every living and visible NPC now remains in the weapon raycast hit list independent of station mode. Dead bodies are still excluded. Existing line-of-sight, cover behavior, armor and finite ammo stay intact.
+- Add a plain-language `enemyMode` status showing AI ACTIVE, paused pointer lock, frozen via K, player down, all enemies down, or not in arena; so in-game bugs are easier to diagnose.
+- Shotgun multi-pellet impacts now summarize confirmed damage after all pellets are processed rather than displaying the **last pellet MISS** and obscuring earlier successful damage.
+- Add a **real headless Chrome WebGL gameplay smoke test** (local Three.js, real game page, pointer lock, enemy movement and pistol damage) and run it as a blocking GitHub Actions job alongside existing unit tests. Read-only smoke instrumentation exists only with `?smoke=1`.
+- Manual live Cloudflare Pages browser confirmation still required. W05.2 weapon model fidelity is not considered separately approved.
 
 ## W05.2 — comprehensive weapon QA, sight obstruction and model consistency
 - User reports the Iron Six-Shooter has a button on top obstructing ADS, and requests fixes across **all six guns, including the Worn Scrap Pistol**. W05.1 remains unapproved pending direct visual retest.
