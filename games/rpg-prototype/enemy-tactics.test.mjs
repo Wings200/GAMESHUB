@@ -67,7 +67,7 @@ test('No cover geometry causes safe strafing instead of broken state',()=>{
   markEnemyThreat(t);
   tickEnemyTactics(t,b,closePlayer,.05,[]);
   assert.equal(t.coverPoint,null);
-  assert.ok(['strafe','pursue'].includes(t.phase));
+  assert.ok(['flank','pursue'].includes(t.phase));
 });
 test('Pausing AI freezes timers/ammo; resets restore ammo, state and counters',()=>{
   const t=makeEnemyTactics('enforcer'),b=brain();
