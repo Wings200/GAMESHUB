@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Modular Armor W03.1 | GAMESHUB RPG</title>
+<title>Enemy AI Lab W04.0 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,6 +37,11 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+#enemyHud{position:fixed;right:18px;top:140px;z-index:2;max-width:340px;
+  pointer-events:none;display:grid;gap:5px}
+#enemyHud.hidden{display:none}
+#enemyHud strong{font-size:11px;color:#f2be95;letter-spacing:.13em}
+#enemyHud div{font-size:10px;font-weight:800;color:#d4e2e1;line-height:1.55}
 #damageReport{color:#f0cd9a;font-size:10px;font-weight:850;line-height:1.45;margin-top:9px;max-width:290px;min-height:15px}
 #soundToggle{position:fixed;left:18px;top:246px;z-index:2;
   border:1px solid #adbdad;background:rgba(9,23,32,.9);color:#e8d1ac;
@@ -90,14 +95,14 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 @media(max-width:850px){.armor-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.armory-header{flex-direction:column}.armor-slots{grid-template-columns:1fr}}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
-@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#enemyHud{right:8px;top:121px;max-width:220px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
 </style>
 </head>
 <body>
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
 <div id="hud">
-  <div class="block logo"><b>W03.1</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W04.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -111,11 +116,17 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   </div>
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
+<div id="enemyHud" class="block hidden" aria-live="polite">
+  <strong>W04.0 · ENEMY AI TEST</strong>
+  <div id="enemyMode">AI ACTIVE · NO GUNFIRE YET</div>
+  <div id="enemyList">SCOUT: PATROL · RAIDER: PATROL · ENFORCER: PATROL</div>
+  <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
+</div>
 <div id="crosshair"></div>
 <div id="shotNotice" aria-live="polite"></div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W03.1 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W04.0 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div id="weaponAccuracy" style="font-size:10px;color:#e1c899;margin-top:7px">SPREAD 2.65° · STEADY</div>
@@ -127,20 +138,20 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–8 TEST STATIONS · 8 MODULAR ARMOR · B ARMORY · Y RESET HP · T CLEAR · ESC PAUSE</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R ANIMATED RELOAD · F RESTOCK · N SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–9 STATIONS · 8 ARMOR + B ARMORY · 9 AI TEST · J RESET AI · K FREEZE AI · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W03.1</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W04.0</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W03.1 rebuilds armor into six independent slots: head, chest, both arms and both legs. Equip from 96 pieces with different permanent armor-point ratings, then shoot the exact covered body part. Armor NEVER breaks or wears down. The W02 pistol and movement lab remain intact.</p>
+    <p>W04.0 adds Station 9: three original raider bots with patrols, sight checks, obstacle awareness, pursuit, search behaviour and damage reactions. Their rifles do not fire yet. Station 8's full six-slot 96-piece armor editor, approved pistol and movement lab remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button></div>
-    <div class="menu-meta"><span class="pill">96 EQUIPPABLE PIECES</span><span class="pill">6 INDEPENDENT SLOTS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-meta"><span class="pill">3 ACTIVE AI RAIDERS</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">B opens the armor loadout editor while playing. Your choices save in this browser. Station 8 still uses inert test dummies; NPC combat, player equipment and power armor are separate future systems.</p>
+    <p style="font-size:11px;margin-top:22px">Test station 9 by standing in front of the raiders, hiding behind crates, and firing at head/chest/arms/legs. Press K to pause their movement and J to restore their health and restart patrols. Enemy shooting, cover tactics and player health will come in later W04 passes.</p>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
