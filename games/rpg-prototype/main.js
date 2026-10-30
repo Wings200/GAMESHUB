@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { WORLD, LANDMARKS, groundHeight, movePoint, collision,
+import { WORLD, LANDMARKS, groundHeight,
   initialQuest, questStage, beginQuest, collectCase, finishQuest, revealNearby } from './rules.mjs';
+import { stepMovement, requestJump } from './movement.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('view');
@@ -320,7 +321,7 @@ window.addEventListener('keydown',e=>{
   keys.add(e.code);
   if(e.code==='KeyE'&&controls.isLocked&&!showMap)interact();
   if(e.code==='KeyM'&&controls.isLocked){showMap=!showMap;$('map').classList.toggle('visible',showMap);}
-  if(e.code==='Space'&&controls.isLocked&&!showMap&&player.jump===0)player.vertical=6.4;
+  if(e.code==='Space'&&controls.isLocked&&!showMap)requestJump(player);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&controls.isLocked)controls.unlock();});
@@ -398,24 +399,13 @@ function updateClock(dt){
   else if(dayPhase<.78)part='Night';
   $('clock').textContent=part;
 }
-const direction=new THREE.Vector3(),forward=new THREE.Vector3(),right=new THREE.Vector3();
+const forward=new THREE.Vector3();
 function updateMovement(dt){
   if(!controls.isLocked||showMap)return;
-  const f=(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);
-  const r=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
-  controls.getDirection(forward);forward.y=0;forward.normalize();
-  right.crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
-  direction.copy(forward).multiplyScalar(f).addScaledVector(right,r);
-  if(direction.lengthSq()>1)direction.normalize();
-  const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?7.2:4.5;
-  const dx=direction.x*speed*dt,dz=direction.z*speed*dt;
-  const next=movePoint(player,dx,dz,solids,treeSolids);
-  const oldGround=groundHeight(player.x,player.z),newGround=groundHeight(next.x,next.z);
-  // Avoid walking up implausibly steep changes between frames.
-  if(newGround-oldGround<.65||player.jump>.2){player.x=next.x;player.z=next.z;}
-  player.vertical-=17*dt;
-  player.jump=Math.max(0,player.jump+player.vertical*dt);
-  if(player.jump===0)player.vertical=0;
+  controls.getDirection(forward);
+  stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{
+    groundHeight,boxes:solids,trees:treeSolids
+  });
   camera.position.set(player.x,groundHeight(player.x,player.z)+eye+player.jump,player.z);
 }
 function refreshInteraction(){

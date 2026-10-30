@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0b131a"/>
+<title>Movement Lab M01 | GAMESHUB RPG</title>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e8f0e8;background:#07131a}
+button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0;width:100%;height:100%;display:block}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(4,9,14,.35) 100%)}
+#hud{position:fixed;left:18px;right:18px;top:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;pointer-events:none}
+.block{background:rgba(8,20,29,.87);border:1px solid #89a7ae66;box-shadow:0 12px 40px #0005;border-radius:4px;padding:13px 16px;backdrop-filter:blur(11px)}
+.logo{display:flex;align-items:center;gap:13px;font-weight:950;letter-spacing:.14em;font-size:13px}.logo b{background:#e8bf80;color:#13232b;padding:7px 9px;border-radius:2px}.logo small{display:block;color:#a9bac0;font-size:10px;letter-spacing:.16em;margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(73px,1fr));gap:15px;text-align:right;min-width:min(400px,55vw)}
+.stat label{display:block;font-size:9px;color:#a5b9c0;font-weight:850;letter-spacing:.15em;margin-bottom:4px}
+.stat strong{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+#bottom{position:fixed;left:18px;bottom:18px;right:18px;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none;gap:20px}
+#station{max-width:395px}.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:950;color:#e6c38c}
+#stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
+#stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
+#keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+#crosshair{position:fixed;left:50%;top:50%;width:8px;height:8px;transform:translate(-50%,-50%);border:1px solid #d8ede8b0;border-radius:50%;pointer-events:none}
+#menu{position:fixed;inset:0;background:linear-gradient(90deg,rgba(5,18,24,.97),rgba(5,17,24,.85) 65%,rgba(7,19,22,.55));display:flex;align-items:center;padding:7vw;z-index:3}
+#menu.hidden{display:none}.menu-inner{width:min(610px,100%)}.kicker{display:flex;align-items:center;gap:9px;color:#e7c387;font-weight:950;letter-spacing:.18em;font-size:11px}.kicker:before{content:"";width:35px;height:2px;background:#e7c387}
+h1{margin:19px 0 16px;font-size:clamp(52px,8vw,100px);line-height:.91;letter-spacing:-.068em;font-weight:950}
+h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1.65;max-width:500px}
+.primary{margin:18px 0 0;border:1px solid #e7c387;background:#e7c387;padding:16px 25px;min-width:220px;color:#0b1a20;font-size:12px;font-weight:950;letter-spacing:.12em;border-radius:3px}
+.primary:hover{background:#f7d9a6}
+.menu-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}.pill{font-size:9px;letter-spacing:.12em;font-weight:900;border:1px solid #b1c7cc5b;padding:7px 9px;color:#c6d4d8;border-radius:2px}
+.menu-links{display:flex;gap:21px;flex-wrap:wrap;margin-top:25px;font-size:12px;font-weight:750;color:#e3bb81}
+#quality{position:fixed;right:18px;top:94px;color:#d1e5e4;background:#0b2024cc;border:1px solid #92b3ab77;border-radius:3px;font-size:10px;letter-spacing:.12em;font-weight:900;padding:9px 11px}
+#fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
+@media(max-width:690px){#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
+<div id="vignette"></div>
+<div id="hud">
+  <div class="block logo"><b>M01</b><div>MOVEMENT LAB<small>UNTITLED RPG / SHARED CONTROLLER</small></div></div>
+  <div class="block stats">
+    <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
+    <div class="stat"><label>STATE</label><strong id="state">IDLE</strong></div>
+    <div class="stat"><label>HEIGHT</label><strong id="height">0.0 m</strong></div>
+  </div>
+</div>
+<button id="quality" type="button">QUALITY: HIGH</button>
+<div id="crosshair"></div>
+<div id="bottom">
+  <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
+    <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
+  </div>
+  <div id="keys">WASD MOVE · MOUSE LOOK · SHIFT SPRINT · SPACE JUMP<br>1 SPRINT · 2 HURDLES · 3 COLLISION · 4 RAMP · 5 STAIRS<br>R RESET STATION · ESC PAUSE</div>
+</div>
+<div id="menu">
+  <div class="menu-inner">
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / M01</div>
+    <h1>MOVEMENT<span>FIRST.</span></h1>
+    <p>Our clean mechanics test field. Verify camera feel, movement speed, collision, jump clearance, ramps, and stairs before we carry the system into the open world.</p>
+    <button id="start" class="primary" type="button">ENTER TEST FIELD</button>
+    <div class="menu-meta"><span class="pill">ONE SHARED MOVEMENT MODULE</span><span class="pill">5 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
+    <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
+    <p style="font-size:11px;margin-top:22px">This is a testing ground, not the final map. No weapon or power armor mechanics are claimed complete yet.</p>
+  </div>
+</div>
+<div id="fatal">This testing browser could not initialize WebGL. Try a browser with hardware-accelerated graphics and reload.</div>
+<script>
+window.addEventListener('error',()=>document.getElementById('fatal').style.display='block');
+window.addEventListener('unhandledrejection',()=>document.getElementById('fatal').style.display='block');
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
