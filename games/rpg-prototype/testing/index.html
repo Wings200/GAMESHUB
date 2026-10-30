@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>Weapon Lab W01 | GAMESHUB RPG</title>
+<title>Weapon Lab W01.2 | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,6 +37,11 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
+#soundToggle{position:fixed;left:18px;top:246px;z-index:2;
+  border:1px solid #adbdad;background:rgba(9,23,32,.9);color:#e8d1ac;
+  border-radius:3px;padding:8px 11px;cursor:pointer;font-weight:900;
+  font-size:10px;letter-spacing:.1em}
+#soundToggle:hover{background:#273b45}
 #weaponHud{position:fixed;top:94px;left:18px;z-index:1;pointer-events:none;min-width:215px}
 #weaponHud .weapon-head{font-size:10px;font-weight:950;letter-spacing:.14em;color:#e3be83}
 #weaponAmmo{font-size:27px;font-weight:950;font-variant-numeric:tabular-nums}
@@ -57,14 +62,14 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .menu-links{display:flex;gap:21px;flex-wrap:wrap;margin-top:25px;font-size:12px;font-weight:750;color:#e3bb81}
 #quality{position:fixed;right:18px;top:94px;color:#d1e5e4;background:#0b2024cc;border:1px solid #92b3ab77;border-radius:3px;font-size:10px;letter-spacing:.12em;font-weight:900;padding:9px 11px}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
-@media(max-width:690px){#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
 </style>
 </head>
 <body>
 <canvas id="scene" aria-label="Three-dimensional movement testing field"></canvas>
 <div id="vignette"></div>
 <div id="hud">
-  <div class="block logo"><b>W01</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W01.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -80,8 +85,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="crosshair"></div>
 <div id="shotNotice" aria-live="polite"></div>
+<button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W01 · WORN SCRAP PISTOL</div>
+  <div class="weapon-head">W01.2 · WORN SCRAP PISTOL</div>
   <div id="weaponAmmo">12 / 48</div>
   <div id="weaponState">READY</div>
   <div style="font-size:10px;color:#c1c9c3;margin-top:7px">RANGE HITS: <strong id="targetHits">0</strong></div>
@@ -91,13 +97,13 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R RELOAD · F RESTOCK TEST AMMO<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–7 TEST STATIONS · T RESET STATION · [ / ] ENDURANCE · ESC PAUSE</div>
+  <div id="keys">LEFT CLICK FIRE · RIGHT CLICK ADS · R RELOAD · F RESTOCK · N TOGGLE SOUND<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP<br>1–7 TEST STATIONS · T CLEAR BULLET HOLES + RESET · [ / ] ENDURANCE · ESC PAUSE</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W01</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W01.2</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>Start with a worn scrap pistol: see the gun model, aim down sights, feel recoil, reload a finite magazine, and shoot real targets at station 7. The six approved movement courses remain.</p>
+    <p>The scrap pistol now has gunshot sounds, reload clicks, empty-mag clicks and actual bullet impact marks on surfaces. Head to station 7 to compare aiming, shooting and reloading. The six approved movement courses remain.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <button id="start" class="primary" type="button">ENTER TEST FIELD</button>

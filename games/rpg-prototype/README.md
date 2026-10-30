@@ -2,6 +2,12 @@
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
 
+## W01.2 — bullet impact decals and weapon sound
+- W01 test-lab bullets now make dark scorch/impact marks at the actual first raycast hit, whether the surface is a paper target or a solid wall, floor, obstacle or range prop.
+- Decals orient to the surface normal with a small depth offset, are excluded from hit detection, and are capped at 140 visible marks for performance. Press T to reset your station and clear the marks.
+- Procedural Web Audio gunshot, paper/concrete impact, reload mechanical clicks and empty-magazine dry click. Sound is synthesised only on user interaction and requires no remote audio files. N or the Sound button mutes/unmutes it; audio is unlocked by Enter Test Field.
+- Shooting still uses the corrected YXZ pitch-only camera recoil and preserved W01 ammo rules. Sound synthesis is tested with a mocked AudioContext, and manual browser/WebGL playtest remains necessary.
+
 ## W01.1 — camera recoil correction
 - Camera rotation is now YXZ, matching `PointerLockControls` instead of mixing XYZ pitch with mouse-look yaw. This prevents unintended sideways camera tilt when shooting while turned.
 - First-person camera kick is pitch-only, capped, and smoothly recovered; the pistol viewmodel still kicks independently.
