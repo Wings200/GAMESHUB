@@ -1,6 +1,14 @@
-# Untitled RPG · Mechanics Lab W01 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W02 + Forest Foundation 0.1
 
 An isolated first-person 3D prototype for GAMESHUB. The game has no permanent name yet.
+
+## W02 — advanced weapon handling
+- In the same test field, the original scrap pistol has an animated top slide cycling during each successful shot and during the final part of a timed reload. A physically modeled magazine is withdrawn/reinserted with a procedural gloved-hand gesture. **No skeleton or finished character art** is claimed.
+- Every successful shot ejects a small 3D brass casing with gravity, bounces, ground settling and rotation. Visible casings are capped at 38 (no GPU accumulation); T clears casings alongside bullet holes.
+- Procedural muzzle-flash plane and stronger flash light at the barrel; ADS and hip position blend with calmer ADS sway. Camera stays in YXZ pitch-only recoil mode to prevent the approved permanent-lean bug.
+- Accuracy factors in actual movement, crouching, sprinting and jumping. Stationary W01.3 hip/ADS spread numbers, 12/48 ammunition, 1.65-second reload, bullet-impact decals, distinct paper/wood/metal/concrete sounds and approved M01–M03 movement are unchanged.
+- `weapon-handling.mjs` supplies pure render-independent reload animation and casing physics; `weapons.mjs` computes movement spread. Their automated tests run in GitHub Actions.
+- **Test:** press 7, fire several shots and check brass/slide, press R after using ammo, hold RMB while walking and crouching to compare spread, and press T to clear marks and casings. Visual feel requires an in-browser playtest before approval.
 
 ## W01.3 — audible material-specific impacts
 - Station 7 now has clearly labeled sample panels for WOOD, METAL and CONCRETE alongside the existing PAPER targets.
