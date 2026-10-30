@@ -75,6 +75,7 @@ try{
   await page.keyboard.press('k');
   let frozen=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(frozen.aiEnabled,false);
+  await page.evaluate(()=>window.__rpgSmokeAimAtScout());
   const initialHp=frozen.enemies.find(e=>e.id==='scout').health;
   // A coordinate click AFTER pointer lock moves the view in Chrome.
   // Dispatch mouse-button events directly on the locked window instead,
@@ -139,8 +140,11 @@ try{
     new MouseEvent('mouseup',{button:0,bubbles:true})));
   // Reloading restores firing and does not leave the latch stuck on empty.
   await page.keyboard.press('r');
+  const reloading=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.ok(reloading.weapon.reloadRemaining>0,'R must start a reload');
+  await page.evaluate(()=>window.__rpgSmokeFinishReload());
   await page.waitForFunction(()=>window.__rpgSmokeState().weapon.magazine===30,
-    null,{timeout:15000});
+    null,{timeout:12000});
   await page.evaluate(()=>window.dispatchEvent(
     new MouseEvent('mousedown',{button:0,bubbles:true})));
   await page.waitForTimeout(190);

@@ -1540,6 +1540,21 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 if(new URLSearchParams(location.search).get('smoke')==='1'){
   // CI-only ammo fixture: makes the empty-trigger regression test fast on
   // software WebGL, without wasting many slow render frames on a full mag.
+  window.__rpgSmokeAimAtScout=()=>{
+    const target=enemies.get('scout');
+    const dx=target.brain.x-camera.position.x;
+    const dz=target.brain.z-camera.position.z;
+    camera.rotation.y=Math.atan2(-dx,-dz);
+    // Sight a real solid chest hitbox, avoiding the narrow gap between
+    // the chest and head at the player's default 1.7 m eye height.
+    camera.rotation.x=Math.atan2(camera.position.y-1.34,Math.hypot(dx,dz));
+    viewRecoil.unrecovered=0;
+  };
+  window.__rpgSmokeFinishReload=()=>{
+    // Run the real reload-completion path on the next update, without
+    // waiting for 60 slow software-WebGL animation frames in CI.
+    if(weaponState.reloadRemaining>0)weaponState.reloadRemaining=.001;
+  };
   window.__rpgSmokeSetMagazine=(count)=>{
     weaponState.magazine=Math.max(0,Math.min(activeSpec.magazineSize,
       Math.floor(Number.isFinite(count)?count:0)));
