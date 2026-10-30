@@ -58,12 +58,14 @@ test('Threat makes an alerted enemy choose actual occluded cover',()=>{
 });
 test('No cover geometry causes safe strafing instead of broken state',()=>{
   const t=makeEnemyTactics('scout'),b=brain();
-  tickEnemyTactics(t,b,player,.05,[]);
+  // The bot only strafes within its 15-metre combat range.
+  const closePlayer={x:34,z:40};
+  tickEnemyTactics(t,b,closePlayer,.05,[]);
   assert.equal(t.phase,'strafe');
   assert.ok(Number.isFinite(t.goal.x));
   assert.ok(Number.isFinite(t.goal.z));
   markEnemyThreat(t);
-  tickEnemyTactics(t,b,player,.05,[]);
+  tickEnemyTactics(t,b,closePlayer,.05,[]);
   assert.equal(t.coverPoint,null);
   assert.ok(['strafe','pursue'].includes(t.phase));
 });
