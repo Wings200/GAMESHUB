@@ -139,7 +139,7 @@ export async function mountRiggedCharacter(parent,id,targetHeight=1.85){
   return {
     root,mixer,source:id,animations:gltf.animations.map(a=>a.name),
     baseScale:scale,
-    get metrics(){return {height:lastHeight,repairs,scale:root.scale.x,clip:action?.getClip().name||'none'};},
+    get metrics(){return {height:lastHeight,expectedHeight:targetHeight*(1-.35*visualCrouch),repairs,scale:root.scale.x,clip:action?.getClip().name||'none'};},
     update(dt,moving=false,crouch=0){
       if(action){
         action.paused=!moving;
