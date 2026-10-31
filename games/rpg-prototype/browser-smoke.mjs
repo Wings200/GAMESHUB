@@ -184,8 +184,30 @@ try{
   await page.locator('#lootClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
+  // W07.1: Taking a second identical gun from another kill is valid.
+  const firstCopies=inventoryAfterLoot.inventory.items.filter(
+    i=>i.itemId==='weapon:pipe-smg');
+  assert.equal(firstCopies.length,1);
+  await page.evaluate(()=>window.__rpgSmokeSpawnLoot('raider'));
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeApproachLoot()),true);
+  await page.keyboard.press('e');
+  await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:7000});
+  await page.locator('#lootItems .loot-entry').filter({hasText:'Pipe SMG'})
+    .first().getByRole('button',{name:'TAKE'}).click();
+  const duplicateInventory=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(duplicateInventory.inventory.items.filter(
+    i=>i.itemId==='weapon:pipe-smg').length,2,
+    'A second identical Pipe SMG must enter a separate backpack slot');
+  assert.ok((await page.locator('#lootFeedback').textContent()).includes('2 COPIES'),
+    'The player should see explicit duplicate-loot confirmation');
+  await page.locator('#lootClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:7000});
   await page.keyboard.press('i');
   await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
+  assert.equal(await page.locator('#inventoryItems .loot-description strong')
+    .getByText('Pipe SMG',{exact:true}).count(),2);
+  assert.ok((await page.locator('#inventoryItems').textContent()).includes('COPY 2 / 2'));
   await page.locator('#inventoryItems .loot-entry')
     .filter({hasText:testArmor.name}).getByRole('button',{name:'EQUIP'}).click();
   await page.locator('#inventoryItems .loot-entry')
@@ -203,6 +225,9 @@ try{
     null,{timeout:30000});
   const restoredInventory=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(restoredInventory.inventory.equippedWeapon,'pipe-smg');
+  assert.equal(restoredInventory.inventory.items.filter(
+    i=>i.itemId==='weapon:pipe-smg').length,2,
+    'Duplicate weapons must survive loading a saved game');
   assert.equal(restoredInventory.inventory.armor[testArmor.slot],testArmor.key);
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
