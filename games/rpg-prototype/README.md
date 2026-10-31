@@ -1,4 +1,14 @@
-# Untitled RPG · Mechanics Lab W07.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W08.0 + Forest Foundation 0.1
+
+## W08.0 — real powered exoskeleton and six-slot suit
+
+- Station 8 now contains a visible, original low-poly hydraulic power armor chassis with a mechanical rib frame, opening chest doors, hinged helmet, arm and leg servos, pistons, and a glowing power core.
+- Six independently fitted panels—helmet, torso, both arms and both legs—visually change or disappear with the loadout. The editor offers an empty frame plus Salvaged Steel, Ranger Composite and Citadel Reinforced plates.
+- Walk up to the frame and press **P** to enter it; press **P** again to exit. Entry and exit are timed (1.65 seconds), with the suit visibly opening and closing. **O** opens the power armor editor; the main menu has a direct Power Armor Bay button.
+- While inside, a first-person mechanical cockpit appears and incoming NPC hits use normal armor plus the chassis and the equipped power plate on the struck body area. The chassis protects even if all its plates are removed.
+- The suit is parked in the game world when exited, not left permanently equipped. Plate settings and occupancy survive page reloads; interrupted animations are safely discarded on load.
+- The first pass supplies QA plates through the editor rather than enemy loot; Fusion Cores, powered locomotion, durability, and merchant access are later milestones. Unit and real 3D browser tests cover state, damage, plate visibility, opening doors, entering/exiting, and save/reload.
+
 
 ## W07.1 — cleaner scope reticle and clearer duplicate loot
 

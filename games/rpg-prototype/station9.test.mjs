@@ -72,7 +72,7 @@ test('Health and enemies have real connected HUD elements',()=>{
     assert.ok(page.includes('id="'+id+'"'),'Missing HUD element '+id);
     if(id!=='playerHealthHud')assert.ok(source.includes("'"+id+"'"),'Missing scene wiring '+id);
   }
-  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\*\(1-armor\.reduction\)\)/);
+  assert.ok(source.includes('attack.damage*(1-powered.combinedReduction)'));
   assert.match(source,/resetPlayerHealth\(playerHealth\)/);
   assert.match(source,/canEnemyFire\(enemy\.brain,player,aiObstacles,attack\.range\)/);
 });
@@ -82,7 +82,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W07\.1/);
+  assert.match(page,/main\.js\?v=W08\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -183,8 +183,8 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/startWeaponReload\(weaponState,activeSpec\)/);
   assert.match(source,/createWeaponState\(activeSpec\)/);
   assert.match(source,/for\(const spec of ARSENAL\)updateWeapon\(arsenalStates\[spec\.id\],dt,spec\)/);
-  assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
-  assert.match(source,/if\(e\.button===0\)\{triggerHeld=true;shoot\(\);\}/);
+  assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
+  assert.ok(source.includes("if(e.button===0&&powerArmorState.phase==='idle'){triggerHeld=true;shoot();}"));
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
   assert.match(source,/new THREE\.CylinderGeometry/);
 });
@@ -270,7 +270,7 @@ test('W05.3.1 limits empty automatic dry fire to one click per trigger pull',()=
   assert.match(source,/emptyClickLatched=true;\s*dryFireClicks\+\+;\s*sound\.dryFire\(\)/);
   assert.match(source,/if\(result\.status!=='fired'\)return;\s*emptyClickLatched=false/);
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
-  assert.match(source,/if\(controls\.isLocked&&triggerHeld&&activeSpec\.automatic\)/);
+  assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
   assert.match(source,/triggerHeld=false;emptyClickLatched=false/);
   assert.match(source,/if\(startWeaponReload\(weaponState,activeSpec\)\)\{\s*emptyClickLatched=false/);
 });
@@ -326,16 +326,16 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
   assert.match(source,/useSupply\(backpack,entry\.uid,playerHealth\)/);
   assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:1\}\]/);
   assert.match(source,/playerArmorReduction\(backpack,'chest'\)/);
-  assert.match(source,/hitPlayer\(playerHealth,attack\.damage\*\(1-armor\.reduction\)\)/);
+  assert.ok(source.includes('attack.damage*(1-powered.combinedReduction)'));
   assert.match(source,/if\(e\.code==='KeyE'&&!e\.repeat&&controls\.isLocked\)/);
   assert.match(source,/if\(e\.code==='KeyI'&&!e\.repeat\)/);
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W07\.1/);
+  assert.match(page,/main\.js\?v=W08\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
-  assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen)$('menu').classList.remove('hidden')"));
+  assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
   assert.match(source,/function closeLootOverlay\(\)/);
   assert.match(source,/if\(lootOverlayFromField\)\{/);
   assert.match(source,/function discardEmptyLootBags\(\)/);
@@ -363,4 +363,19 @@ test('W07.1 scope reticle has four fine semi-transparent arms near center',()=>{
   assert.match(source,/vertical\.userData\.sightReference=true/);
   assert.match(page,/id="lootFeedback"/);
   assert.match(source,/NOW OWN /);
+});
+
+test('W08.0 real powered suit has six removable meshes and timed entry controls',()=>{
+  for(const id of ['powerArmorPanel','powerArmorStatus','powerArmorDetail',
+    'powerBayOpen','powerArmorControl','power-head','power-chest',
+    'power-leftArm','power-rightArm','power-leftLeg','power-rightLeg'])
+    assert.ok(page.includes('id="'+id+'"'),id);
+  for(const phrase of ['buildPowerArmorVisual(scene,powerArmorBay,powerArmorState)',
+    'buildPowerArmorCockpit(camera)','poweredSuit.updatePlates(powerArmorState)',
+    'beginPowerArmorTransition(powerArmorState)','stepPowerArmor(powerArmorState,dt)',
+    'powerArmorProtection(powerArmorState,zone,armor.reduction)',
+    "e.code==='KeyP'","e.code==='KeyO'",
+    'window.__rpgSmokePowerVisual='])
+    assert.ok(source.includes(phrase),phrase);
+  assert.ok(page.includes('W08.0'));
 });

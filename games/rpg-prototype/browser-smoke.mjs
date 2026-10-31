@@ -312,6 +312,45 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='raider').enemyShots>0,
     null,{timeout:25000});
+  // W08.0: the entire power armor experience is exercised in real Three.js.
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
+  await page.keyboard.press('o');
+  await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
+  await page.locator('#power-head').selectOption('citadel');
+  await page.locator('#power-leftLeg').selectOption('ranger');
+  assert.ok((await page.locator('#power-rating-head').textContent()).includes('72'));
+  const armorVisible=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
+  assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
+  await page.locator('#powerBayClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:10000});
+  await page.keyboard.press('p');
+  await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='entering',
+    null,{timeout:10000});
+  await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
+  await page.waitForFunction(()=>Math.abs(window.__rpgSmokePowerVisual().chestOpenAngle)>.4,
+    null,{timeout:15000});
+  await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
+  await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
+    null,{timeout:15000});
+  const inSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
+  assert.equal(inSuit.visible,false,'Chassis is worn, not duplicated in the bay');
+  assert.equal(inSuit.cockpit,true,'Power armor cockpit must appear in first person');
+  await page.keyboard.press('p');
+  await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
+    null,{timeout:10000});
+  await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
+  await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='idle'&&
+    !window.__rpgSmokeState().powerArmor.occupied,null,{timeout:15000});
+  const outSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
+  assert.equal(outSuit.visible,true,'Exited power armor remains a world-space mesh');
+  assert.equal(outSuit.cockpit,false);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().powerArmor?.plates?.head==='citadel',
+    null,{timeout:30000});
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .powerArmor.plates.leftLeg,'ranger','Plate changes persist across page reload');
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
