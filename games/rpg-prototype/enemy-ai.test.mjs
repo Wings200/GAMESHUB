@@ -30,6 +30,12 @@ test('Facing away and crate occlusion prevent detection',()=>{
   assert.equal(hasSight(e,{x:36,z:40},[wall]),false);
   assert.equal(lineIntersectsBox({x:45,z:40},{x:36,z:28},wall),false);
 });
+test('Enemies can spot exposed long-range targets but not across cover or beyond sight range',()=>{
+  const e=bot(45,40);
+  assert.equal(hasSight(e,{x:12,z:40}),true);
+  assert.equal(hasSight(e,{x:-2,z:40}),false);
+  assert.equal(hasSight(e,{x:12,z:40},[{minX:29,maxX:31,minZ:38,maxZ:42}]),false);
+});
 test('A hit alerts an enemy even when their back is turned',()=>{
   const e=bot();
   e.yaw=Math.PI/2;
