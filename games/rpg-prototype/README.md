@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W06.7 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W07.0 + Forest Foundation 0.1
+
+## W07.0 — optics workbench and reliable aim
+
+- At Station 7, approach the physical optics bench and press **E**, or press **U** in the field. You can also use **WEAPONS WORKBENCH** from the menu.
+- Scavenge **Salvaged Parts** and **Optic Glass** from enemy loot bags. Craft compatible Holo A/B sights or 2×, 4× and 6× magnified rifle scopes. The hunting rifle supports all of them. You only pay for each sight once per weapon; owned optics can be switched freely.
+- Installing a sight rebuilds that weapon's actual first-person optic geometry. Scoped ADS changes the real camera field of view, not merely a HUD reticle. Weapon-specific selections survive reloads.
+- Standing still while aiming now zeros the center projectile for every single-projectile firearm; shotguns center one pellet while keeping seven scattered pellets. Hipfire, walking, jumping and sprinting still affect precision. The firing ray is computed from the same camera-space sight line.
+- Unit tests cover sight compatibility, crafting material consumption, persistence and zeroed ADS. A headless 3D browser test also crafts a 4× scope, reloads and measures the magnified FOV.
+
 
 ## W06.7 — longer-range enemy sight and return fire
 
