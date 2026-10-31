@@ -101,14 +101,14 @@ test('Recoil handles extreme pitch without flipping the view and ignores bad del
   assert.equal(recoverViewRecoil(recoil,almostUp,-1),almostUp);
 });
 
-test('Movement increases weapon spread, crouching reduces it',()=>{
+test('Planted ADS shots are zeroed; moving and jumping still increase spread',()=>{
   const aim=shotSpreadDegrees(SCRAP_PISTOL,true);
   const moving=shotSpreadDegrees(SCRAP_PISTOL,true,{speed:4.5});
   const jumping=shotSpreadDegrees(SCRAP_PISTOL,true,{speed:4.5,airborne:true});
   const crouching=shotSpreadDegrees(SCRAP_PISTOL,true,{crouched:true});
-  assert.equal(aim,SCRAP_PISTOL.adsSpreadDegrees);
+  assert.equal(aim,0,'A planted aimed shot must follow the visible reticle');
   assert.ok(moving>aim&&jumping>moving);
-  assert.ok(crouching<aim);
+  assert.equal(crouching,0,'Crouching keeps the aimed sight zeroed');
   const w=createWeaponState();setWeaponAim(w,true);
   const f=fireWeapon(w,SCRAP_PISTOL,()=>.75,{speed:4.5,airborne:true});
   assert.equal(f.status,'fired');assert.equal(f.spreadDegrees,jumping);
@@ -173,4 +173,18 @@ test('Automatic weapons have meaningfully shorter cadence, heavy guns kick more'
   const shot=fireWeapon(state,w,()=>.5);
   assert.equal(shot.damage,54);
   assert.ok(shot.spreadDegrees<.2);
+});
+
+test('Every single-projectile gun hits the exact sight center when planted in ADS',()=>{
+  for(const spec of ARSENAL.filter(s=>(s.pellets||1)===1)){
+    const state=createWeaponState(spec);setWeaponAim(state,true);
+    const result=fireWeapon(state,spec,()=>.9,{speed:0});
+    assert.equal(result.spreadDegrees,0,spec.id);
+    assert.deepEqual(result.directions,[{spreadX:0,spreadY:0}],spec.id);
+  }
+  const shotgun=getWeaponSpec('scrap-shotgun'),state=createWeaponState(shotgun);
+  setWeaponAim(state,true);
+  const result=fireWeapon(state,shotgun,()=>.9,{speed:0});
+  assert.deepEqual(result.directions[0],{spreadX:0,spreadY:0});
+  assert.ok(result.directions.slice(1).some(p=>p.spreadX!==0||p.spreadY!==0));
 });
