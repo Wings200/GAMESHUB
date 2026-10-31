@@ -17,6 +17,16 @@ test('Scout, Raider and Enforcer have different accuracy, magazines, reload time
   assert.ok(ENEMY_PROFILES.scout.accuracy<ENEMY_PROFILES.raider.accuracy);
   assert.ok(ENEMY_PROFILES.raider.accuracy<ENEMY_PROFILES.enforcer.accuracy);
 });
+test('Enforcer holds clear long-range angles while weaker roles must reposition',()=>{
+  const b=brain(),t=makeEnemyTactics('enforcer'),far={x:16,z:43};
+  tickEnemyTactics(t,b,far,.05,[]);
+  assert.equal(t.phase,'suppress-long');assert.equal(t.goal,null);
+  const oldX=b.x;
+  stepEnemyBrain(b,far,.05,[],{combatHold:t.phase==='suppress-long'});
+  assert.equal(b.x,oldX,'Enforcer should anchor instead of rushing across open ground');
+  const shot=attemptEnemyShot(t,30,false,()=>0);
+  assert.equal(shot.fired,true);assert.ok(shot.accuracy>.4);
+});
 test('Magazine is consumed and reload blocks shots until completed',()=>{
   const t=makeEnemyTactics('scout');t.cooldown=0;
   const spec=ENEMY_PROFILES.scout;
