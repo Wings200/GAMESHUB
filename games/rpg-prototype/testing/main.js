@@ -1487,6 +1487,11 @@ function changeAim(enabled){
   setWeaponAim(weaponState,aimHeld);
   if(aimHeld&&weaponState.reloadRemaining<=0)alignActiveSight();
 }
+// These values must exist BEFORE restoring a saved non-default weapon.
+// selectWeapon() updates recoil, notice and HUD state during page startup.
+let lastShotDebug=null;
+let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
+let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
 function selectWeapon(id){
   const spec=getWeaponSpec(id);
   if(id===activeWeaponId)return;
@@ -1589,9 +1594,7 @@ function inspectSightClearance(){
   output.style.color=obstruction?'#ffa27d':'#abd8ae';
 }
 const shotVector=new THREE.Vector3();
-let lastShotDebug=null;
-let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
-let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
+
 function showShotNotice(message){
   $('shotNotice').textContent=message;
   $('shotNotice').classList.add('visible');

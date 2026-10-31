@@ -181,6 +181,19 @@ try{
   assert.equal(equipped.inventory.armor.chest,'ranger-chest');
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
   await page.locator('#inventoryClose').click();
+  // Regression: restored non-default weapons previously called selectWeapon()
+  // before slideCycle/shotNoticeTime/weaponMotion had initialized, crashing
+  // the page only for returning players with a saved inventory.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>
+    window.__rpgSmokeState?.().weapon?.id==='pipe-smg',
+    null,{timeout:30000});
+  const restoredInventory=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(restoredInventory.inventory.equippedWeapon,'pipe-smg');
+  assert.equal(restoredInventory.inventory.armor.chest,'ranger-chest');
+  assert.equal(await page.locator('#fatal').evaluate(el=>
+    getComputedStyle(el).display),'none',
+    'Saved player weapon must not cause a startup exception');
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
