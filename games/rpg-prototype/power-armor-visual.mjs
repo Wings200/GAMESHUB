@@ -215,13 +215,14 @@ export function buildPowerArmorVisual(scene,position,state){
   // Articulated human pilot is much smaller than the armor: visible during
   // the existing approach/climb/exit choreography, not a second armored bot.
   const pilot=makeGroup(root,0,0,1.72);
+  const fallbackPilot=makeGroup(pilot);
   const uniform=new THREE.MeshStandardMaterial({color:0x657166,roughness:.93});
   const fabric=new THREE.MeshStandardMaterial({color:0x30383a,roughness:1});
   const skin=new THREE.MeshStandardMaterial({color:0x9f8065,roughness:.96});
   const belt=new THREE.MeshStandardMaterial({color:0x9c8e69,roughness:.82});
-  const hips=makeGroup(pilot,0,.98,0);
+  const hips=makeGroup(fallbackPilot,0,.98,0);
   ellipsoid(hips,.23,.13,.14,fabric,0,0,0);
-  const pilotBody=makeGroup(pilot,0,1.06,0);
+  const pilotBody=makeGroup(fallbackPilot,0,1.06,0);
   ellipsoid(pilotBody,.28,.39,.18,uniform,0,.16,0);
   box(pilotBody,.075,.58,.032,belt,0,.12,.184);
   const pilotHead=makeGroup(pilotBody,0,.65,0);
@@ -289,7 +290,8 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate};
+  return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate,
+    revealRiggedPilot(){fallbackPilot.visible=false;}};
 }
 
 // The full helmet is a world model; the first-person visor is a very slim
