@@ -11,7 +11,7 @@ import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
   setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
-  powerArmorProtection,safePowerArmorSnapshot} from '../power-armor.mjs';
+  POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
@@ -464,7 +464,7 @@ function rebuildDummyArmor(dummy){
 }
 dummyKinds.forEach(makeDummy);
 
-// W08.0: a full 3D powered chassis at Station 8, independent of
+// W08.1: a redesigned, oversized 3D powered chassis at Station 8, independent of
 // normal player armor and of the static test-dummy equipment.
 const powerArmorBay={x:-49,z:-12};
 let powerArmorState=createPowerArmorState();
@@ -478,6 +478,28 @@ const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
 poweredCockpit.visible=powerArmorState.occupied;
 let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false;
+let powerCinematic=null;
+const powerCameraUp=new THREE.Vector3(0,1,0);
+function powerEase(a,b,value){
+  const v=Math.min(1,Math.max(0,(value-a)/(b-a)));
+  return v*v*(3-2*v);
+}
+// See the human-scale pilot climb inside from a cinematic third-person camera.
+// Restore the normal first-person camera only after the hatch latches.
+function updatePowerCinematic(progress){
+  if(!powerCinematic)return;
+  const p=Math.min(1,Math.max(0,progress));
+  const framing=powerEase(0,.17,p)*(1-powerEase(.81,1,p));
+  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(3.15,2.63,4.85));
+  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.74,.54));
+  const route=powerCinematic.from.clone().lerp(powerCinematic.to,p);
+  camera.position.copy(route).lerp(heroPosition,framing);
+  const look=new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().lookAt(heroPosition,focalPoint,powerCameraUp));
+  camera.quaternion.copy(powerCinematic.fromRotation)
+    .slerp(powerCinematic.toRotation,p)
+    .slerp(look,framing);
+}
 function savePowerArmor(){
   try{localStorage.setItem('rpg-lab-powered-chassis',JSON.stringify(powerArmorState));}catch{}
 }
@@ -522,16 +544,27 @@ function togglePoweredSuit(){
   if(!powerArmorState.occupied&&!nearPoweredSuit()){
     showShotNotice('GET CLOSER TO THE POWER ARMOR FRAME AT STATION 8');return;
   }
-  if(powerArmorState.occupied){
-    const facing=new THREE.Vector3();controls.getDirection(facing);
-    poweredSuit.root.position.set(player.x+facing.x*2,0,player.z+facing.z*2);
-    poweredSuit.root.rotation.y=Math.atan2(player.x-poweredSuit.root.position.x,
-      player.z-poweredSuit.root.position.z);
+  const exiting=powerArmorState.occupied;
+  if(exiting){
+    // The shell is worn at the player location and then parks there.
+    poweredSuit.root.position.set(player.x,0,player.z);
+    poweredSuit.root.rotation.y=camera.rotation.y+Math.PI;
     poweredSuit.root.visible=true;
   }
   const result=beginPowerArmorTransition(powerArmorState);
   if(!result.ok)return;
+  const offset=exiting?2.32:0;
+  const target=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,offset));
+  const destY=groundHeight(target.x,target.z)+(exiting?player.eyeHeight:2.82);
+  const endPosition=new THREE.Vector3(target.x,destY,target.z);
+  const endingRotation=exiting?new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().lookAt(endPosition,
+      poweredSuit.root.localToWorld(new THREE.Vector3(0,1.7,.1)),powerCameraUp)):
+    camera.quaternion.clone();
+  powerCinematic={from:camera.position.clone(),fromRotation:camera.quaternion.clone(),
+    to:endPosition,toRotation:endingRotation};
   keys.clear();triggerHeld=false;changeAim(false);
+  weaponVisuals.get(activeWeaponId).root.visible=false;
   sound.reload('rifle',1.65);
   showShotNotice(result.phase==='entering'?'HYDRAULICS OPEN · ENTERING CHASSIS':
     'RELEASING LOCKS · EXITING CHASSIS');
@@ -2071,17 +2104,26 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
   window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
   window.__rpgSmokeSetPowerProgress=(fraction)=>{
     if(powerArmorState.phase!=='idle')
-      powerArmorState.elapsed=Math.min(1.64,Math.max(0,fraction*1.65));
+      powerArmorState.elapsed=Math.min(POWER_ARMOR_TRANSITION_SECONDS-.01,
+        Math.max(0,fraction*POWER_ARMOR_TRANSITION_SECONDS));
   };
   window.__rpgSmokePowerVisual=()=>({
     chestOpenAngle:poweredSuit.doors.left.rotation.y,
     helmetOpenAngle:poweredSuit.helmetPivot.rotation.x,
     visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
-      [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length]))
+      [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
+    pilotVisible:poweredSuit.pilot.visible,
+    pilotDepth:poweredSuit.pilot.position.z,
+    cameraHeightAboveGround:camera.position.y-groundHeight(player.x,player.z),
+    chassisHeight:poweredSuit.size.y,
+    chassisWidth:poweredSuit.size.x,
+    cinematic:powerCinematic!==null,
+    cameraDistanceToHero:camera.position.distanceTo(
+      poweredSuit.root.localToWorld(new THREE.Vector3(3.15,2.63,4.85)))
   });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
-      powerArmorState.elapsed=1.649;
+      powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
   };
   window.__rpgSmokeGiveBenchMaterials=()=>{
     addItem(backpack,'supply:salvage',30);
@@ -2390,12 +2432,20 @@ function frame(){
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
   poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime);
-  poweredSuit.root.visible=!powerArmorState.occupied||
-    powerArmorState.phase==='exiting';
-  poweredCockpit.visible=powerArmorState.occupied;
+  poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
+  poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
+  if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
   poweredCockpit.position.y=powerArmorState.occupied?
     Math.sin(poweredArmorTime*(3+weaponMotion.speed*1.5))*.0035:0;
   if(powerStep.completed){
+    if(powerCinematic){
+      player.x=powerCinematic.to.x;player.z=powerCinematic.to.z;
+      player.jump=0;player.vertical=0;resetMotion(player);
+      camera.position.copy(powerCinematic.to);
+      camera.quaternion.copy(powerCinematic.toRotation);
+      powerCinematic=null;
+    }
+    weaponVisuals.get(activeWeaponId).root.visible=true;
     savePowerArmor();refreshPowerArmorHUD();refreshInventoryUI();
     showShotNotice(powerArmorState.occupied?'POWER ARMOR LOCKED · READY':
       'POWER ARMOR PARKED · STEP CLEAR');
@@ -2404,7 +2454,8 @@ function frame(){
     controls.getDirection(forward);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
-    camera.position.set(player.x,info.ground+info.eyeHeight+info.cameraBob+player.jump,player.z);
+    const eye=powerArmorState.occupied?2.82:info.eyeHeight;
+    camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
   updateEnemies(dt);

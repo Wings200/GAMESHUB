@@ -18,6 +18,10 @@ test('Power armor has its own chassis and six independently removable visible sl
   assert.ok(POWER_ARMOR_PLATES.citadel.points>POWER_ARMOR_PLATES.ranger.points);
 });
 
+test('Entering and exiting take long enough for a visible climbing sequence',()=>{
+  assert.ok(POWER_ARMOR_TRANSITION_SECONDS>=3,
+    'Pilot needs time to approach, step into the shell and latch the doors');
+});
 test('Entering and exiting take time, reject repeat actions and preserve state',()=>{
   const state=createPowerArmorState();
   assert.deepEqual(beginPowerArmorTransition(state),{ok:true,phase:'entering'});
@@ -40,7 +44,7 @@ test('Powered frame and six plate tiers reduce damage only when occupied',()=>{
   const normal=powerArmorProtection(state,'chest',.2);
   assert.equal(normal.combinedReduction,.2);
   beginPowerArmorTransition(state);
-  stepPowerArmor(state,2);
+  stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
   const withChassis=powerArmorProtection(state,'head',.2);
   const chest=powerArmorProtection(state,'chest',.2);
   assert.ok(chest.combinedReduction>withChassis.combinedReduction);
