@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARMOR_SLOTS,ARMOR_ITEMS,ARMOR_STYLES,ARMOR_PRESETS,ENEMY_ARMOR_PRESETS,createLoadout,
   getArmorPiece,armorPointsForSlot,damageReductionForPoints,
+  ENEMY_ARMOR_VARIANTS,enemyArmorForRound,
   createDummy,equipArmor,applyDamage,resetDummy,HIT_ZONES} from './combat.mjs';
 const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8, a+' != '+b);
 test('Six independent armor slots each have sixteen distinct pieces and an unequipped option',()=>{
@@ -42,6 +43,21 @@ test('All three enemy roles have visible protective head armor and distinct surv
   const head=applyDamage(first,20,'head').damage;
   const chest=applyDamage(createDummy(ENEMY_ARMOR_PRESETS.raider),20,'chest').damage;
   assert.ok(head>chest);
+});
+test('W06.5 modular enemy outfits range from one leg piece to a full suit',()=>{
+  const single=enemyArmorForRound('scout',1);
+  assert.deepEqual(ARMOR_SLOTS.filter(slot=>single[slot]!=='none'),['leftLeg']);
+  const complete=enemyArmorForRound('enforcer',0);
+  assert.equal(ARMOR_SLOTS.filter(slot=>complete[slot]!=='none').length,6);
+  for(const id of Object.keys(ENEMY_ARMOR_VARIANTS)){
+    const variants=ENEMY_ARMOR_VARIANTS[id];
+    for(let round=0;round<variants.length;round++){
+      const armor=enemyArmorForRound(id,round);
+      for(const slot of ARMOR_SLOTS)getArmorPiece(slot,armor[slot]);
+    }
+    assert.deepEqual(enemyArmorForRound(id,0),enemyArmorForRound(id,variants.length));
+  }
+  assert.throws(()=>enemyArmorForRound('unknown'),/Unknown enemy/);
 });
 test('Headshot, body and limb base damage apply even without armor',()=>{
   close(applyDamage(createDummy(),20,'head').damage,50);

@@ -53,6 +53,36 @@ export const ENEMY_ARMOR_PRESETS=Object.freeze({
   raider:Object.freeze({...ARMOR_PRESETS.light,head:'ranger-head'}),
   enforcer:ARMOR_PRESETS.heavy
 });
+// Variant outfits rotate when the player resets the Mechanics Lab arena.
+// Missing slots are intentionally bare: NPCs can wear one piece or six.
+export const ENEMY_ARMOR_VARIANTS=Object.freeze({
+  scout:Object.freeze([
+    {head:'scrap-head',leftLeg:'ranger-leftLeg'},
+    {leftLeg:'ranger-leftLeg'},
+    {head:'scrap-head',rightArm:'scrap-rightArm',rightLeg:'ranger-rightLeg'},
+    {head:'ranger-head',chest:'ranger-chest'}
+  ]),
+  raider:Object.freeze([
+    {head:'ranger-head',chest:'ranger-chest',leftArm:'ranger-leftArm',rightLeg:'ranger-rightLeg'},
+    {head:'ranger-head',chest:'ranger-chest',leftLeg:'ranger-leftLeg'},
+    {head:'militia-head',leftArm:'ranger-leftArm',rightArm:'ranger-rightArm',rightLeg:'militia-rightLeg'},
+    {head:'ranger-head',rightArm:'ranger-rightArm'}
+  ]),
+  enforcer:Object.freeze([
+    {head:'citadel-head',chest:'citadel-chest',leftArm:'citadel-leftArm',
+      rightArm:'citadel-rightArm',leftLeg:'citadel-leftLeg',rightLeg:'citadel-rightLeg'},
+    {head:'citadel-head',chest:'citadel-chest',rightArm:'militia-rightArm',
+      leftLeg:'citadel-leftLeg',rightLeg:'citadel-rightLeg'},
+    {head:'citadel-head',chest:'citadel-chest',leftArm:'militia-leftArm',
+      rightArm:'citadel-rightArm'}
+  ])
+});
+export function enemyArmorForRound(enemyId,round=0){
+  const variants=ENEMY_ARMOR_VARIANTS[enemyId];
+  if(!variants)throw Error('Unknown enemy: '+enemyId);
+  const index=Math.max(0,Math.floor(Number.isFinite(round)?round:0))%variants.length;
+  return createLoadout(variants[index]);
+}
 export function getArmorPiece(slot,id='none'){
   if(!ARMOR_SLOTS.includes(slot))throw Error('Invalid armor slot: '+slot);
   const piece=ARMOR_ITEMS[slot].find(v=>v.id===id);

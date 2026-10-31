@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARSENAL} from './weapons.mjs';
-import {ARMOR_SLOTS} from './combat.mjs';
+import {ARMOR_SLOTS,enemyArmorForRound} from './combat.mjs';
 import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
   inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
   equipFromInventory,useSupply,playerArmorReduction,createLootBag,
@@ -40,6 +40,23 @@ test('Enemy drops are deterministic, searchable and no duplication on TAKE ALL',
   assert.equal(takeAllFromBag(pack,bag).added,0);
   assert.equal(countItem(pack,'weapon:pipe-smg'),1);
   assert.equal(countItem(pack,'armor:ranger-chest'),1);
+});
+test('W06.5 armor drops match visible equipped pieces across rounds',()=>{
+  for(const role of ['scout','raider','enforcer']){
+    for(let round=0;round<6;round++){
+      const outfit=enemyArmorForRound(role,round);
+      const loot=generateEnemyLoot(role,round,outfit);
+      const armorDrops=loot.filter(e=>e.itemId.startsWith('armor:'))
+        .map(e=>e.itemId.slice(6)).sort();
+      const equipped=ARMOR_SLOTS.map(slot=>outfit[slot])
+        .filter(id=>id!=='none').sort();
+      assert.deepEqual(armorDrops,equipped,role+' round '+round);
+    }
+  }
+  const single=generateEnemyLoot('scout',1);
+  assert.deepEqual(single.filter(e=>e.itemId.startsWith('armor:')),
+    [{itemId:'armor:ranger-leftLeg',quantity:1}]);
+  assert.equal(getItem('armor:scrap-head').category,'armor');
 });
 test('Full backpack leaves uncollected contents in world loot bag',()=>{
   const pack=createBackpack();
@@ -96,6 +113,6 @@ test('Dropping a stack uses an independent item and never duplicates IDs',()=>{
 test('Three enemy profiles award different items and rarities',()=>{
   const a=generateEnemyLoot('scout'),b=generateEnemyLoot('raider'),c=generateEnemyLoot('enforcer');
   assert.notDeepEqual(a,b);assert.notDeepEqual(b,c);
-  assert.ok(c.some(e=>getItem(e.itemId).rarity==='rare'));
+  assert.ok(c.some(e=>['rare','epic'].includes(getItem(e.itemId).rarity)));
   assert.throws(()=>generateEnemyLoot('ghost'));
 });

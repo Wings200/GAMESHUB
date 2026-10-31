@@ -23,7 +23,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   totalInventoryValue} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
-  ENEMY_ARMOR_PRESETS,
+  enemyArmorForRound,
   applyDamage, resetDummy } from '../combat.mjs';
 
 const $ = id => document.getElementById(id);
@@ -613,11 +613,11 @@ let enemyAIEnabled=true;
 const squadIntel=createSquadIntel();
 const enemySpecs=[
   {id:'scout',label:'SCOUT',x:39,z:42,
-    armor:ENEMY_ARMOR_PRESETS.scout,color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
+    color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
   {id:'raider',label:'RAIDER',x:43,z:46,
-    armor:ENEMY_ARMOR_PRESETS.raider,color:0x66775c,patrol:[{x:43,z:46},{x:47,z:46}]},
+    color:0x66775c,patrol:[{x:43,z:46},{x:47,z:46}]},
   {id:'enforcer',label:'ENFORCER',x:46,z:36.8,
-    armor:ENEMY_ARMOR_PRESETS.enforcer,color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
+    color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
 ];
 // Unmissable station-9 locator: visible from the teleport spawn even if
 // individual low-poly characters are hidden by a browser graphics issue.
@@ -656,9 +656,9 @@ function createEnemy(spec){
   // Crouching lowers the ACTUAL head/torso/arm hitboxes. It is not
   // just a cosmetic mesh squash; the player's raycaster uses these meshes.
   const upperBody=new THREE.Group();root.add(upperBody);
-  const state=createDummy(spec.armor);
+  const state=createDummy(enemyArmorForRound(spec.id,0));
   const enemy={id:spec.id,label:spec.label,brain,root,state,
-    meshes:[],limbs:[],flash:0,shake:0,walkPhase:0,statusText:'',
+    meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
     tactics:makeEnemyTactics(spec.id),gunGlow:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
     recoilPose:0};
@@ -678,13 +678,13 @@ function createEnemy(spec){
   // Treat this as chest damage so helmets keep their existing balance.
   part(upperBody,new THREE.CylinderGeometry(.13,.15,.28,10),
     flesh,0,1.76,0,'chest');
-  const chest=getArmorPiece('chest',state.loadout.chest);
-  if(chest.points)part(upperBody,new THREE.BoxGeometry(.65,.63,.43),
-    enemyMaterial(chest.color,true),0,1.37,.055,'chest',true);
-  const helmet=getArmorPiece('head',state.loadout.head);
-  if(helmet.points)part(upperBody,
+  // Build all six armor meshes once, then show/hide and recolor them
+  // from the same actual loadout used by damage and loot rules.
+  enemy.armorMeshes.set('chest',part(upperBody,new THREE.BoxGeometry(.65,.63,.43),
+    enemyMaterial(0x647363,true),0,1.37,.055,'chest',true));
+  enemy.armorMeshes.set('head',part(upperBody,
     new THREE.SphereGeometry(.241,14,10,0,Math.PI*2,0,Math.PI*.68),
-    enemyMaterial(helmet.color,true),0,2.075,0,'head',true);
+    enemyMaterial(0x647363,true),0,2.075,0,'head',true));
   for(const side of [-1,1]){
     const name=side<0?'left':'right';
     const armPivot=new THREE.Group();
@@ -692,17 +692,15 @@ function createEnemy(spec){
     enemy.limbs.push({pivot:armPivot,side,kind:'arm'});
     part(armPivot,new THREE.BoxGeometry(.20,.68,.23),
       flesh,0,-.35,0,name+'Arm');
-    const armArmor=getArmorPiece(name+'Arm',state.loadout[name+'Arm']);
-    if(armArmor.points)part(armPivot,new THREE.BoxGeometry(.25,.54,.30),
-      enemyMaterial(armArmor.color,true),0,-.32,.02,name+'Arm',true);
+    enemy.armorMeshes.set(name+'Arm',part(armPivot,new THREE.BoxGeometry(.25,.54,.30),
+      enemyMaterial(0x647363,true),0,-.32,.02,name+'Arm',true));
     const legPivot=new THREE.Group();
     legPivot.position.set(side*.19,.97,0);root.add(legPivot);
     enemy.limbs.push({pivot:legPivot,side,kind:'leg'});
     part(legPivot,new THREE.CylinderGeometry(.135,.15,.9,10),
       darkCloth,0,-.46,0,name+'Leg');
-    const legArmor=getArmorPiece(name+'Leg',state.loadout[name+'Leg']);
-    if(legArmor.points)part(legPivot,new THREE.CylinderGeometry(.16,.17,.75,10),
-      enemyMaterial(legArmor.color,true),0,-.45,.025,name+'Leg',true);
+    enemy.armorMeshes.set(name+'Leg',part(legPivot,new THREE.CylinderGeometry(.16,.17,.75,10),
+      enemyMaterial(0x647363,true),0,-.45,.025,name+'Leg',true));
   }
   // Original game-world scrap-rifle silhouette (visual prop only in W04.0).
   const rifle=new THREE.Group();rifle.position.set(.19,1.38,.33);
@@ -734,8 +732,17 @@ function createEnemy(spec){
   scene.add(labelMesh);
   enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
   enemies.set(spec.id,enemy);
+  refreshEnemyArmorVisuals(enemy);
   refreshEnemyLabel(enemy,'PATROL');
   return enemy;
+}
+function refreshEnemyArmorVisuals(enemy){
+  for(const slot of ARMOR_SLOTS){
+    const mesh=enemy.armorMeshes.get(slot);
+    const piece=getArmorPiece(slot,enemy.state.loadout[slot]);
+    mesh.visible=piece.points>0;
+    if(piece.points)mesh.material.color.setHex(piece.color);
+  }
 }
 function refreshEnemyLabel(enemy,mode){
   const t=enemy.tactics;
@@ -760,11 +767,13 @@ function refreshEnemyLabel(enemy,mode){
   ctx.fillStyle='#a6c58e';ctx.fillRect(18,93,480*enemy.state.health/100,14);
   texture.needsUpdate=true;
 }
+let arenaRound=-1;
 enemySpecs.forEach(createEnemy);
 updateArenaSign();
 $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
+  arenaRound++;
   clearBulletHoles();clearSquadIntel(squadIntel);
   // Each J round produces fresh, singular loot drops. Inventory persists.
   for(const drop of lootBags.values()){
@@ -774,7 +783,9 @@ function resetEnemies(){
   lootBags.clear();selectedLootId=null;
   if(lootOpen)closeLootOverlay();
   for(const enemy of enemies.values()){
+    enemy.state.loadout=enemyArmorForRound(enemy.id,arenaRound);
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
+    refreshEnemyArmorVisuals(enemy);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
     enemy.root.visible=true;enemy.billboard.mesh.visible=true;
@@ -793,7 +804,7 @@ function resetEnemies(){
     refreshEnemyLabel(enemy,'PATROL');
   }
   updateArenaSign();
-  $('damageReport').textContent='W04 AI BOTS RESET · ARMOR LOADOUTS FIXED';
+  $('damageReport').textContent='AI BOTS RESET · NEW MIXED ARMOR LOADOUTS';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
 // World loot is independent of the enemy corpse. A downed bot fades after
@@ -838,7 +849,7 @@ function spawnWorldLoot(contents,x,z,source='world'){
   return bag.id;
 }
 function spawnEnemyLoot(enemy){
-  return spawnWorldLoot(generateEnemyLoot(enemy.id),enemy.brain.x,
+  return spawnWorldLoot(generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout),enemy.brain.x,
     enemy.brain.z,'enemy-'+enemy.id);
 }
 function markEnemyDefeated(enemy){
@@ -1669,7 +1680,7 @@ function shoot(){
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
   // NEVER remove enemy hitboxes based on a stale station selection.
   // The old condition made enemies invulnerable when approaching on foot.
-  const enemyParts=enemyHitMeshes.filter(mesh=>
+  const enemyParts=enemyHitMeshes.filter(mesh=>mesh.visible&&
     shouldRaycastEnemy(enemies.get(mesh.userData.enemyId)));
   const hits=firingRaycaster.intersectObjects(
     [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
@@ -1911,6 +1922,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       id:e.id,x:e.brain.x,z:e.brain.z,
       mode:e.brain.mode,health:e.state.health,alive:e.state.alive,
       visible:e.root.visible,deathTimer:e.deathTimer,flash:e.flash,
+      armor:{...e.state.loadout},
+      armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,crouching:e.tactics.crouching,
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
