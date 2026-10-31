@@ -108,7 +108,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular armor & power suit',info:'W08.0: inspect the real hydraulic exoskeleton, press P nearby to enter or exit, O to fit all six power armor plates. Existing training dummies still use B and Y.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'08 · Modular armor & power suit',info:'W08.2: inspect the new armor entrance and clear visor. Press P near the chassis to climb in or out; O fits six armor plates. B and Y still control training dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -489,16 +489,16 @@ function powerEase(a,b,value){
 function updatePowerCinematic(progress){
   if(!powerCinematic)return;
   const p=Math.min(1,Math.max(0,progress));
-  const framing=powerEase(0,.17,p)*(1-powerEase(.81,1,p));
-  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(3.15,2.63,4.85));
-  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.74,.54));
-  const route=powerCinematic.from.clone().lerp(powerCinematic.to,p);
-  camera.position.copy(route).lerp(heroPosition,framing);
+  // Cut immediately to a clear three-quarter view, rather than moving
+  // THROUGH the torso first. Hold for the climb and fade toward the visor
+  // only during the final 8% of the locking animation.
+  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(2.62,2.34,3.52));
+  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.67,.26));
+  const handoff=powerEase(.92,1,p);
+  camera.position.copy(heroPosition).lerp(powerCinematic.to,handoff);
   const look=new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(heroPosition,focalPoint,powerCameraUp));
-  camera.quaternion.copy(powerCinematic.fromRotation)
-    .slerp(powerCinematic.toRotation,p)
-    .slerp(look,framing);
+  camera.quaternion.copy(look).slerp(powerCinematic.toRotation,handoff);
 }
 function savePowerArmor(){
   try{localStorage.setItem('rpg-lab-powered-chassis',JSON.stringify(powerArmorState));}catch{}
@@ -513,8 +513,11 @@ function refreshPowerArmorHUD(){
     powerArmorState.phase==='exiting'?'EXITING CHASSIS…':
     powerArmorState.occupied?'POWER ARMOR ACTIVE':'FRAME PARKED · P TO ENTER';
   const fitted=POWER_ARMOR_SLOTS.filter(s=>powerArmorState.plates[s]!=='none').length;
+  const suitReduction=powerArmorProtection(
+    {...powerArmorState,occupied:true},'chest').frameReduction;
   $('powerArmorDetail').textContent=fitted+' / 6 POWER PLATES · '+
-    (powerArmorState.occupied?'FRAME PROTECTION ONLINE':'FRAME AT STATION 8');
+    (powerArmorState.occupied?'CHEST '+Math.round(suitReduction*100)+
+      '% BASE DAMAGE BLOCK':'FRAME AT STATION 8');
 }
 function refreshPowerArmorUI(){
   for(const slot of POWER_ARMOR_SLOTS){
@@ -865,7 +868,9 @@ function createEnemy(spec){
   texture.colorSpace=THREE.SRGBColorSpace;
   const labelMesh=new THREE.Sprite(new THREE.SpriteMaterial({
     map:texture,transparent:true,depthTest:true,depthWrite:false}));
-  labelMesh.scale.set(2.7,.72,1);
+  // Smaller contextual tags: the old billboards filled a quarter of the
+  // screen when the player was near an NPC.
+  labelMesh.scale.set(1.85,.51,1);
   labelMesh.position.set(spec.x,2.84,spec.z);
   scene.add(labelMesh);
   enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
@@ -1378,8 +1383,10 @@ function updateEnemies(dt){
               if(result.applied){
                 if(!playerHealth.alive)keys.clear();
                 refreshPlayerHealth();playerHitFlash=.48;
+                const blocked=(attack.damage-result.damage).toFixed(1);
                 showShotNotice(playerHealth.alive?
-                  enemy.label+' HIT · -'+result.damage+' HP':
+                  enemy.label+' HIT · -'+result.damage.toFixed(1)+
+                  ' HP · '+blocked+' BLOCKED':
                   'YOU ARE DOWN · PRESS H TO RESPAWN');
               }
             }
@@ -1408,7 +1415,7 @@ function updateEnemies(dt){
         enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
     enemy.billboard.mesh.position.set(enemy.brain.x,
-      2.86-.78*enemy.crouchBlend,enemy.brain.z);
+      2.72-.78*enemy.crouchBlend,enemy.brain.z);
     statuses.push(enemy.label+': '+mode+' ['+
       enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
   }
@@ -2119,7 +2126,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
     cameraDistanceToHero:camera.position.distanceTo(
-      poweredSuit.root.localToWorld(new THREE.Vector3(3.15,2.63,4.85)))
+      poweredSuit.root.localToWorld(new THREE.Vector3(2.62,2.34,3.52)))
   });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
