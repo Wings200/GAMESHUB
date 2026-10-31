@@ -365,7 +365,7 @@ test('W07.1 scope reticle has four fine semi-transparent arms near center',()=>{
   assert.match(source,/NOW OWN /);
 });
 
-test('W08.0 real powered suit has six removable meshes and timed entry controls',()=>{
+test('W08.1 real powered suit has six removable meshes and timed entry controls',()=>{
   for(const id of ['powerArmorPanel','powerArmorStatus','powerArmorDetail',
     'powerBayOpen','powerArmorControl','power-head','power-chest',
     'power-leftArm','power-rightArm','power-leftLeg','power-rightLeg'])
@@ -377,5 +377,5 @@ test('W08.0 real powered suit has six removable meshes and timed entry controls'
     "e.code==='KeyP'","e.code==='KeyO'",
     'window.__rpgSmokePowerVisual='])
     assert.ok(source.includes(phrase),phrase);
-  assert.ok(page.includes('W08.0'));
+  assert.ok(page.includes('W08.1'));
 });
