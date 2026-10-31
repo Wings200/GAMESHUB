@@ -26,3 +26,31 @@ export function isAlignedToBore(weaponId,root=adsWeaponPosition(weaponId),tolera
   const sight=alignedSightPosition(weaponId,root);
   return Math.abs(sight.x)<=tolerance&&Math.abs(sight.y)<=tolerance;
 }
+
+ // Optics are real sight geometry with distinct camera magnification, not HUD decals.
+ export const OPTIC_MODS=Object.freeze({
+   factory:Object.freeze({id:'factory',name:'Factory sight',kind:null,fov:null,cost:{salvage:0,glass:0}}),
+   'holo-a':Object.freeze({id:'holo-a',name:'Holo A · red dot',kind:'reflex',fov:61,cost:{salvage:2,glass:1}}),
+   'holo-b':Object.freeze({id:'holo-b',name:'Holo B · ring dot',kind:'holo',fov:57,cost:{salvage:3,glass:1}}),
+   'scope-2x':Object.freeze({id:'scope-2x',name:'Scout scope · 2×',kind:'scope',fov:38,cost:{salvage:4,glass:2}}),
+   'scope-4x':Object.freeze({id:'scope-4x',name:'Marksman scope · 4×',kind:'scope',fov:19,cost:{salvage:6,glass:3}}),
+   'scope-6x':Object.freeze({id:'scope-6x',name:'Sniper scope · 6×',kind:'scope',fov:12,cost:{salvage:9,glass:4}})
+ });
+ const allowedOptics=Object.freeze({
+   'scrap-pistol':['factory'], 'iron-revolver':['factory'],
+   'pipe-smg':['factory','holo-a','holo-b','scope-2x'],
+   'service-carbine':['factory','holo-a','holo-b','scope-2x','scope-4x'],
+   'scrap-shotgun':['factory','holo-a','holo-b'],
+   'hunting-rifle':['factory','holo-a','holo-b','scope-2x','scope-4x','scope-6x']
+ });
+ export function compatibleOptics(weaponId){
+   if(!allowedOptics[weaponId])throw Error('Unknown weapon optics: '+weaponId);
+   return allowedOptics[weaponId];
+ }
+ export function sightForOptic(weaponId,opticId='factory'){
+   const factory=sightMount(weaponId);
+   if(!compatibleOptics(weaponId).includes(opticId))return factory;
+   const mod=OPTIC_MODS[opticId];
+   if(!mod||opticId==='factory')return factory;
+   return {...factory,optic:mod.kind,fov:mod.fov};
+ }

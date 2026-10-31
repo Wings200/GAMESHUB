@@ -5,7 +5,8 @@ import {ARMOR_SLOTS,enemyArmorForRound} from './combat.mjs';
 import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
   inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
   equipFromInventory,useSupply,playerArmorReduction,createLootBag,
-  takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot} from './inventory.mjs';
+  takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
+  installWeaponOptic,installedWeaponOptic} from './inventory.mjs';
 test('Catalog includes all real guns, ammunition, six armor slots and rarity/value',()=>{
   for(const gun of ARSENAL){
     assert.equal(getItem('weapon:'+gun.id).category,'weapon');
@@ -127,4 +128,25 @@ test('Three enemy profiles award different items and rarities',()=>{
   assert.notDeepEqual(a,b);assert.notDeepEqual(b,c);
   assert.ok(c.some(e=>['rare','epic'].includes(getItem(e.itemId).rarity)));
   assert.throws(()=>generateEnemyLoot('ghost'));
+});
+
+test('Optics consume real materials once, persist and stay weapon-specific',()=>{
+  const pack=createBackpack();
+  assert.deepEqual(installWeaponOptic(pack,'hunting-rifle','scope-4x'),
+    {ok:false,reason:'materials',missing:['supply:salvage','supply:optic-glass']});
+  addItem(pack,'supply:salvage',20);
+  addItem(pack,'supply:optic-glass',10);
+  const installed=installWeaponOptic(pack,'hunting-rifle','scope-4x');
+  assert.deepEqual(installed,{ok:true,crafted:true,opticId:'scope-4x'});
+  assert.equal(countItem(pack,'supply:salvage'),14);
+  assert.equal(countItem(pack,'supply:optic-glass'),7);
+  assert.equal(installedWeaponOptic(pack,'hunting-rifle'),'scope-4x');
+  assert.equal(installedWeaponOptic(pack,'service-carbine'),'factory');
+  assert.equal(installWeaponOptic(pack,'hunting-rifle','factory').ok,true);
+  assert.equal(installWeaponOptic(pack,'hunting-rifle','scope-4x').crafted,false);
+  assert.equal(countItem(pack,'supply:salvage'),14,'Reinstall costs nothing');
+  assert.equal(installWeaponOptic(pack,'scrap-pistol','scope-4x').reason,'incompatible');
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(installedWeaponOptic(restored,'hunting-rifle'),'scope-4x');
+  assert.deepEqual(restored.unlockedOptics['hunting-rifle'],['scope-4x']);
 });

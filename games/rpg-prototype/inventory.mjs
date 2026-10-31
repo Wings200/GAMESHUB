@@ -1,5 +1,6 @@
 // W06.0 original RPG loot and inventory rules. Pure game-state logic.
 import {ARSENAL,getWeaponSpec} from './weapons.mjs';
+import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
 export const BACKPACK_LIMIT=30;
@@ -38,6 +39,9 @@ templates.set('supply:medkit',Object.freeze({
 templates.set('supply:salvage',Object.freeze({
   id:'supply:salvage',category:'supply',key:'salvage',name:'Salvaged Parts',
   rarity:'common',value:12,maxStack:40}));
+templates.set('supply:optic-glass',Object.freeze({
+  id:'supply:optic-glass',category:'supply',key:'optic-glass',name:'Optic Glass',
+  rarity:'uncommon',value:25,maxStack:30}));
 export const ITEM_CATALOG=Object.freeze(Object.fromEntries(templates));
 export function getItem(id){
   const item=templates.get(id);
@@ -45,8 +49,8 @@ export function getItem(id){
   return item;
 }
 export function createBackpack(){
-  return {items:[],equipment:{weapon:'scrap-pistol',armor:createLoadout('none')},
-    nextId:1};
+  return {items:[],equipment:{weapon:'scrap-pistol',armor:createLoadout('none'),optics:{}},
+    unlockedOptics:{},nextId:1};
 }
 export function inventorySlotsUsed(pack){return pack.items.length;}
 export function totalInventoryValue(pack){
@@ -82,6 +86,44 @@ export function removeItem(pack,uid,quantity=1){
   if(entry.quantity<=0)pack.items.splice(index,1);
   return {removed:n,itemId:entry.itemId};
 }
+
+// An attachment is paid for once, then can be swapped freely on its weapon.
+// All costs come from genuine backpack material stacks.
+export function installWeaponOptic(pack,weaponId,opticId){
+  getWeaponSpec(weaponId);
+  if(!compatibleOptics(weaponId).includes(opticId))
+    return {ok:false,reason:'incompatible'};
+  const mod=OPTIC_MODS[opticId],owned=pack.unlockedOptics?.[weaponId]||[];
+  const crafting=opticId!=='factory'&&!owned.includes(opticId);
+  if(crafting){
+    const missing=[];
+    for(const [material,needed] of Object.entries(mod.cost)){
+      const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
+      if(countItem(pack,itemId)<needed)missing.push(itemId);
+    }
+    if(missing.length)return {ok:false,reason:'materials',missing};
+    for(const [material,needed] of Object.entries(mod.cost)){
+      let remaining=needed;
+      const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
+      for(const entry of [...pack.items]){
+        if(entry.itemId!==itemId||!remaining)continue;
+        remaining-=removeItem(pack,entry.uid,remaining).removed;
+      }
+    }
+    if(!pack.unlockedOptics)pack.unlockedOptics={};
+    pack.unlockedOptics[weaponId]=[...owned,opticId];
+  }
+  if(!pack.equipment.optics)pack.equipment.optics={};
+  pack.equipment.optics[weaponId]=opticId;
+  return {ok:true,crafted:crafting,opticId};
+}
+export function installedWeaponOptic(pack,weaponId){
+  const chosen=pack?.equipment?.optics?.[weaponId]||'factory';
+  return compatibleOptics(weaponId).includes(chosen)&&
+    (chosen==='factory'||pack?.unlockedOptics?.[weaponId]?.includes(chosen))?
+    chosen:'factory';
+}
+
 export function equipFromInventory(pack,uid){
   const entry=pack.items.find(e=>e.uid===uid);
   if(!entry)return {ok:false,reason:'missing'};
@@ -145,12 +187,17 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
   const base={
     scout:[{itemId:'ammo:pipe-smg',quantity:22},
       {itemId:'supply:medkit',quantity:1},
-      {itemId:'supply:salvage',quantity:2}],
+      {itemId:'supply:salvage',quantity:2},
+       {itemId:'supply:optic-glass',quantity:1}],
     raider:[{itemId:'weapon:pipe-smg',quantity:1},
-      {itemId:'ammo:pipe-smg',quantity:40}],
+      {itemId:'ammo:pipe-smg',quantity:40},
+       {itemId:'supply:salvage',quantity:3},
+       {itemId:'supply:optic-glass',quantity:1}],
     enforcer:[{itemId:'weapon:service-carbine',quantity:1},
       {itemId:'ammo:service-carbine',quantity:45},
-      {itemId:'supply:medkit',quantity:1}]
+      {itemId:'supply:medkit',quantity:1},
+       {itemId:'supply:salvage',quantity:4},
+       {itemId:'supply:optic-glass',quantity:2}]
   };
   if(!base[enemyId])throw Error('Unknown raider: '+enemyId);
   const equipped=createLoadout(loadout||enemyArmorForRound(enemyId,round));
@@ -183,6 +230,17 @@ export function safeBackpackSnapshot(pack){
   }
   if(templates.has('weapon:'+pack.equipment?.weapon))
     result.equipment.weapon=pack.equipment.weapon;
+  for(const spec of ARSENAL){
+    const valid=compatibleOptics(spec.id);
+    const unlocked=pack.unlockedOptics?.[spec.id];
+    if(Array.isArray(unlocked)){
+      result.unlockedOptics[spec.id]=[...new Set(unlocked.filter(
+        id=>id!=='factory'&&valid.includes(id)))];
+    }
+    const selected=pack.equipment?.optics?.[spec.id];
+    if(selected==='factory'||result.unlockedOptics[spec.id]?.includes(selected))
+      result.equipment.optics[spec.id]=selected;
+  }
   for(const slot of ARMOR_SLOTS){
     const id=pack.equipment?.armor?.[slot];
     try{

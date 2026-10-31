@@ -6,7 +6,8 @@ import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
   shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
-import { sightMount, adsWeaponPosition } from '../weapon-sights.mjs';
+import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
+  compatibleOptics } from '../weapon-sights.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
@@ -20,7 +21,7 @@ import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-a
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
-  totalInventoryValue} from '../inventory.mjs';
+  totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -127,6 +128,11 @@ for(let x=-47;x<55;x+=5){
   if((x+47)%20===0)box(x,.07,-25,.35,.14,9,pale);
 }
 box(0,.085,-25,112,.04,.06,pale);
+// Solid optics bench next to Station 7, reachable with E.
+const opticBench={x:-55,z:-43};
+box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
+box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
+textSign('OPTICS BENCH · E',-61,-39,0xe4c38b);
 markLane(0,orange);
 for(let i=0;i<5;i++){
   const x=-31+i*13,h=.65+(i%3)*.11;
@@ -603,7 +609,7 @@ for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
 const lootBags=new Map();
 let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
-let inventoryOpen=false,lootOpen=false;
+let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
 let backpack=createBackpack();
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
@@ -1009,6 +1015,75 @@ $('lootTakeAll').addEventListener('click',()=>{
   saveBackpack();discardEmptyLootBags();refreshLootUI();refreshInventoryUI();
 });
 
+
+function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
+function refreshWorkbenchUI(){
+  const weaponId=$('benchWeapon').value;
+  const attached=installedWeaponOptic(backpack,weaponId);
+  $('benchMaterials').textContent='SALVAGED PARTS '+countItem(backpack,'supply:salvage')+
+    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass');
+  const area=$('benchOptics');area.replaceChildren();
+  for(const id of compatibleOptics(weaponId)){
+    const mod=OPTIC_MODS[id],row=document.createElement('div');
+    row.className='loot-entry';
+    const detail=document.createElement('div');detail.className='loot-description';
+    const title=document.createElement('strong');title.textContent=mod.name;
+    const owned=id==='factory'||backpack.unlockedOptics?.[weaponId]?.includes(id);
+    const requirements=document.createElement('small');
+    requirements.textContent=owned?'OWNED · NO MATERIAL COST':
+      'CRAFT · '+mod.cost.salvage+' SALVAGED PARTS + '+mod.cost.glass+' OPTIC GLASS';
+    detail.append(title,requirements);row.append(detail);
+    if(id===attached){
+      const equipped=document.createElement('strong');equipped.textContent='INSTALLED';
+      equipped.style.color='#a8e9bd';row.append(equipped);
+    }else{
+      lootButton(row,owned?'INSTALL':'CRAFT + INSTALL',()=>{
+        const outcome=installWeaponOptic(backpack,weaponId,id);
+        if(!outcome.ok){
+          showShotNotice(outcome.reason==='materials'?'NOT ENOUGH WORKBENCH MATERIALS':
+            'SIGHT INCOMPATIBLE');return;
+        }
+        // Rebuild only this weapon's 3D optic; everything else stays mounted.
+        if(weaponId!=='scrap-pistol'){
+          const old=weaponVisuals.get(weaponId);
+          camera.remove(old.root);
+          const replacement=buildArsenalView(getWeaponSpec(weaponId));
+          replacement.root.visible=weaponId===activeWeaponId;
+          weaponVisuals.set(weaponId,replacement);
+          if(weaponId===activeWeaponId&&aimHeld)alignActiveSight();
+        }
+        saveBackpack();refreshWorkbenchUI();refreshInventoryUI();refreshWeaponHUD();
+        showShotNotice((outcome.crafted?'CRAFTED + INSTALLED · ':'INSTALLED · ')+
+          mod.name.toUpperCase());
+      });
+    }
+    area.append(row);
+  }
+}
+function beginWorkbench(){
+  if(inventoryOpen||lootOpen)closeLootOverlay();
+  workbenchFromField=controls.isLocked;
+  if(workbenchFromField)controls.unlock();
+  workbenchOpen=true;
+  $('benchWeapon').value=activeWeaponId;
+  refreshWorkbenchUI();
+  $('workbenchPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+}
+function closeWorkbench(){
+  workbenchOpen=false;$('workbenchPanel').classList.add('hidden');
+  if(workbenchFromField){workbenchFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+for(const spec of ARSENAL){
+  const option=document.createElement('option');
+  option.value=spec.id;option.textContent=spec.name;
+  $('benchWeapon').append(option);
+}
+$('benchWeapon').addEventListener('change',refreshWorkbenchUI);
+$('workbenchOpen').addEventListener('click',beginWorkbench);
+$('benchClose').addEventListener('click',closeWorkbench);
+
 // Combat is available in Station 9 AND when physically entering the
 // arena on foot from another station. Keep Station 9 alive on roaming.
 function inAIArena(){return isArenaActive(stationIndex,player);}
@@ -1290,6 +1365,7 @@ weaponVisuals.set(SCRAP_PISTOL.id,{
 // The optic center is exactly on the camera -Z firing ray during ADS.
 function buildArsenalView(spec){
   const mount=sightMount(spec.id);
+  const opticKind=sightForOptic(spec.id,installedWeaponOptic(backpack,spec.id)).optic;
   const root=new THREE.Group();camera.add(root);
   root.position.set(.29,-.27,-.77);
   const rifle=['carbine','rifle','shotgun'].includes(spec.kind);
@@ -1413,7 +1489,7 @@ function buildArsenalView(spec){
   if(!revolver)box(.12,.022,.095,trim,0,.124,-.055,slideGroup);
   // Actual optic centres have the exact calibrated y from SIGHT_MOUNTS.
   // No tall fake scopes or rotated ring planes.
-  if(mount.optic==='scope'){
+  if(opticKind==='scope'){
     // Hollow scope tube: open at BOTH ends so the player can see through.
     const scopeBody=part(new THREE.CylinderGeometry(.069,.069,.40,18,1,true),
       new THREE.MeshStandardMaterial({color:0x202d33,metalness:.45,
@@ -1433,8 +1509,8 @@ function buildArsenalView(spec){
       box(.030,.0025,.002,crosshair,side*.028,mount.y,mount.z-.197);
       box(.0025,.030,.002,crosshair,0,mount.y+side*.028,mount.z-.197);
     }
-  }else if(mount.optic==='holo'||mount.optic==='reflex'){
-    const holo=mount.optic==='holo';
+  }else if(opticKind==='holo'||opticKind==='reflex'){
+    const holo=opticKind==='holo';
     box(holo?.13:.105,.035,.15,black,0,mount.y-.074,mount.z);
     for(const x of [-.065,.065])box(.013,.11,.043,steel,x,mount.y-.008,mount.z);
     // Front and rear aperture aligned on camera ray; no giant high optic.
@@ -1639,6 +1715,7 @@ function refreshWeaponHUD(){
     ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
     ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
     ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC';
+  $('weaponOptic').textContent='SIGHT · '+OPTIC_MODS[installedWeaponOptic(backpack,activeWeaponId)].name.toUpperCase();
   $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(activeSpec,
     weaponState.aiming,weaponMotion).toFixed(2)+'°'+
     (weaponMotion.airborne?' · AIRBORNE':weaponMotion.crouched?' · CROUCHED':
@@ -1672,8 +1749,11 @@ function shoot(){
   let enemyDamageHits=0;
   let totalEnemyDamage=0;
   for(const pellet of result.directions){
+    // Sight and shot are both derived from the camera's current world-space
+    // orientation, including the same yaw and pitch used to render the reticle.
+    camera.updateWorldMatrix(true,false);
     shotVector.set(pellet.spreadX,pellet.spreadY,-1)
-      .normalize().applyQuaternion(camera.quaternion);
+      .normalize().applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
@@ -1847,6 +1927,11 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 if(new URLSearchParams(location.search).get('smoke')==='1'){
   // CI-only ammo fixture: makes the empty-trigger regression test fast on
   // software WebGL, without wasting many slow render frames on a full mag.
+  window.__rpgSmokeGiveBenchMaterials=()=>{
+    addItem(backpack,'supply:salvage',30);
+    addItem(backpack,'supply:optic-glass',15);
+    saveBackpack();return true;
+  };
   window.__rpgSmokeAimAtScout=()=>{
     const target=enemies.get('scout');
     const dx=target.brain.x-camera.position.x;
@@ -1916,6 +2001,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     triggerHeld,emptyClickLatched,dryFireClicks,
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
       alerts:squadIntel.alerts},
+    workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
+    scopedFOV:camera.fov,
     inventory:{slots:backpack.items.length,
       items:backpack.items.map(e=>({...e})),
       armor:{...backpack.equipment.armor},
@@ -1952,7 +2039,7 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
-  if(!inventoryOpen&&!lootOpen)$('menu').classList.remove('hidden');
+  if(!inventoryOpen&&!lootOpen&&!workbenchOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -1965,17 +2052,20 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&workbenchOpen){closeWorkbench();return;}
   if(e.code==='Escape'&&(inventoryOpen||lootOpen)){closeLootOverlay();return;}
   if(e.code==='KeyI'&&!e.repeat){
     if(inventoryOpen||lootOpen)closeLootOverlay();
     else beginLootOverlay();
     return;
   }
-  if(inventoryOpen||lootOpen)return;
+  if(workbenchOpen||inventoryOpen||lootOpen)return;
+  if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
-    else showShotNotice('NO LOOT WITHIN REACH');
+    else if(benchWithinReach())beginWorkbench();
+    else showShotNotice('NO LOOT OR WORKBENCH WITHIN REACH');
     return;
   }
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
@@ -2108,7 +2198,8 @@ function frame(){
     visual.root.rotation.y=mouseSway*steadiness;
     visual.root.rotation.z=mouseSway*.28*steadiness;
   }
-  const targetFOV=weaponState.aiming?sightMount(activeWeaponId).fov:76;
+  const targetFOV=weaponState.aiming?
+    sightForOptic(activeWeaponId,installedWeaponOptic(backpack,activeWeaponId)).fov:76;
   camera.fov+=(targetFOV-camera.fov)*(1-Math.exp(-16*dt));
   camera.updateProjectionMatrix();
   $('crosshair').classList.toggle('hidden',weaponState.aiming);

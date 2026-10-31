@@ -103,7 +103,11 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL) {
 // approved stationary hipfire/ADS precision or ammo economy.
 export function shotSpreadDegrees(spec = SCRAP_PISTOL, aiming = false, motion = {}) {
   const speed = Math.min(8, Math.max(0, Number.isFinite(motion.speed) ? motion.speed : 0));
-  const movingPenalty = aiming ? speed * .19 : speed * .30;
+  // The first shot while ADS and planted must travel through the exact
+  // center of the visual sight. Moving, jumping and hipfire still disperse.
+  const stableADS=aiming&&speed<.65&&!motion.sprinting&&!motion.airborne;
+  if(stableADS&&(spec.pellets||1)===1)return 0;
+  const movingPenalty = aiming ? speed * .065 : speed * .30;
   const sprintPenalty = motion.sprinting ? 1.25 : 0;
   const airbornePenalty = motion.airborne ? 2.5 : 0;
   const stanceMultiplier = motion.crouched && !motion.airborne ? .78 : 1;
@@ -126,8 +130,13 @@ export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random, mot
   const theta = random() * Math.PI * 2;
   const spreadDegrees=shotSpreadDegrees(spec,state.aiming,motion);
   const spread = Math.tan(spreadDegrees * Math.PI / 180);
-  const directions=[{spreadX:Math.cos(theta)*r*spread,
-    spreadY:Math.sin(theta)*r*spread}];
+  // A carefully aimed shotgun has one center pellet; its seven remaining
+  // pellets preserve their characteristic scatter and damage distribution.
+  const centerPellet=state.aiming&&
+    (Number.isFinite(motion.speed)?motion.speed:0)<.65&&
+    !motion.sprinting&&!motion.airborne;
+  const directions=[{spreadX:centerPellet?0:Math.cos(theta)*r*spread,
+    spreadY:centerPellet?0:Math.sin(theta)*r*spread}];
   // One shell consumes one round; each pellet independently samples spread.
   for(let i=1;i<(spec.pellets||1);i++){
     const radius=Math.sqrt(Math.max(0,Math.min(1,random())));
