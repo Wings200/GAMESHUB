@@ -1,4 +1,4 @@
-// W08.1: oversized six-slot industrial power armor and a visible pilot-entry sequence.
+// W08.2: footage-driven power armor revisions: real hatch hinges, readable entry, clear visor.
 // Gameplay, plate ratings and persistence are owned by power-armor.mjs.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate} from './power-armor.mjs';
@@ -79,15 +79,17 @@ export function buildPowerArmorVisual(scene,position,state){
   }
   // Front armored breastplate separates at a central seam. Each panel
   // swings on a real offset hinge, revealing the human-scale entry cavity.
-  const doors={left:mount(root,-.045,1.87,.47),right:mount(root,.045,1.87,.47)};
+  const doors={left:mount(root,-.69,1.87,.47),right:mount(root,.69,1.87,.47)};
   for(const [side,key] of [[-1,'left'],[1,'right']]){
     const door=doors[key];
-    const center=side*.365;
+    const center=-side*.325;
     bevel(door,.69,1.12,.17,iron,center,0,.04,.14);
     plating('chest',door,.72,1.14,.12,center,0,.18,.16);
-    bevel(door,.15,1.1,.08,brass,side*.68,0,.24,.03);
-    cylinder(door,.048,.048,1.2,bright,side*.04,0,-.04);
+    bevel(door,.11,1.06,.08,brass,side*.03,0,.24,.03);
+    cylinder(door,.052,.052,1.18,bright,-side*.045,0,-.04);
     bevel(door,.28,.22,.09,gunmetal,center,-.30,.27,.05);
+    bevel(door,.44,.26,.065,gunmetal,center,.30,.30,.07);
+    for(const x of [-.13,0,.13])box(door,.057,.19,.032,brass,center+x,.295,.346);
   }
   // Helmet is mounted ABOVE the entry cavity, on a rear mechanical collar.
   const helmetPivot=mount(root,0,2.74,-.19);
@@ -191,8 +193,8 @@ export function buildPowerArmorVisual(scene,position,state){
     const transitioning=phase==='entering'||phase==='exiting';
     const t=Math.max(0,Math.min(1,progress));
     const open=transitioning?ease(0,.23,t)*(1-ease(.76,1,t)):0;
-    doors.left.rotation.y=open*1.40;
-    doors.right.rotation.y=-open*1.40;
+    doors.left.rotation.y=-open*1.56;
+    doors.right.rotation.y=open*1.56;
     helmetPivot.rotation.x=-open*.58;
     armPivots[0].rotation.z=-open*.22;
     armPivots[1].rotation.z=open*.22;
@@ -202,17 +204,20 @@ export function buildPowerArmorVisual(scene,position,state){
     if(transitioning){
       const move=ease(.19,.81,t);
       const journey=phase==='entering'?move:1-move;
-      pilot.position.z=1.86-journey*1.65;
-      pilot.position.y=.29*Math.sin(Math.PI*journey);
-      pilotBody.rotation.x=-.21*Math.sin(Math.PI*journey);
-      pilotHead.rotation.x=.12*Math.sin(Math.PI*journey);
-      const stepping=Math.sin(Math.PI*4*journey);
-      pilotLegs[0].rotation.x=.45*Math.max(0,stepping);
-      pilotLegs[1].rotation.x=.45*Math.max(0,-stepping);
-      pilotArms[0].rotation.x=-.65*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.x=-.65*Math.sin(Math.PI*journey);
-      pilotArms[0].rotation.z=-.27*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.z=.27*Math.sin(Math.PI*journey);
+      // A real approach to the cockpit: two steps, raised boot, then arms
+      // gripping the frame. Finish BEHIND the chest plates, not in front of them.
+      pilot.position.z=1.86-journey*2.17;
+      const climb=ease(.25,.65,journey);
+      pilot.position.y=.19*climb+.24*Math.sin(Math.PI*journey);
+      pilotBody.rotation.x=-.38*Math.sin(Math.PI*journey);
+      pilotHead.rotation.x=.15*Math.sin(Math.PI*journey);
+      const stepping=Math.sin(Math.PI*3.5*journey);
+      pilotLegs[0].rotation.x=.72*Math.max(0,stepping);
+      pilotLegs[1].rotation.x=.72*Math.max(0,-stepping);
+      pilotArms[0].rotation.x=-1.02*Math.sin(Math.PI*journey);
+      pilotArms[1].rotation.x=-1.02*Math.sin(Math.PI*journey);
+      pilotArms[0].rotation.z=-.42*Math.sin(Math.PI*journey);
+      pilotArms[1].rotation.z=.42*Math.sin(Math.PI*journey);
     }
   }
   updatePlates(state);
@@ -225,20 +230,25 @@ export function buildPowerArmorVisual(scene,position,state){
   return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate};
 }
 
-// First-person visor/shoulder frame, shaped to leave the sights unobscured.
+// W08.2: sparse industrial HUD framing. The old 12cm beams were only 49cm
+// from the camera; perspective made them occupy huge strips of the screen.
+// Keep both sides of the scope, NPCs and the world fully visible.
 export function buildPowerArmorCockpit(camera){
   const group=new THREE.Group();camera.add(group);
-  const shell=new THREE.MeshStandardMaterial({color:0x233840,roughness:.47,metalness:.79});
-  const glass=new THREE.MeshBasicMaterial({color:0x82ddc4,transparent:true,opacity:.30,depthWrite:false});
+  const shell=new THREE.MeshStandardMaterial({color:0x283941,roughness:.55,metalness:.75});
+  const ledMat=new THREE.MeshBasicMaterial({color:0x92d9b4,transparent:true,opacity:.28,depthWrite:false});
   for(const side of [-1,1]){
-    const beam=new THREE.Mesh(new THREE.BoxGeometry(.12,.47,.18),shell);
-    beam.position.set(side*.37,-.04,-.49);beam.rotation.z=-side*.13;
-    group.add(beam);
-    const led=new THREE.Mesh(new THREE.BoxGeometry(.012,.19,.025),glass);
-    led.position.set(side*.32,-.07,-.388);group.add(led);
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(.026,.31,.052),shell);
+    rail.position.set(side*.78,-.22,-.85);
+    rail.rotation.z=-side*.11;group.add(rail);
+    const light=new THREE.Mesh(new THREE.BoxGeometry(.007,.17,.01),ledMat);
+    light.position.set(side*.759,-.22,-.796);
+    group.add(light);
+    const corner=new THREE.Mesh(new THREE.BoxGeometry(.19,.035,.05),shell);
+    corner.position.set(side*.70,-.05,-.85);group.add(corner);
   }
-  const breast=new THREE.Mesh(new THREE.BoxGeometry(.80,.21,.29),shell);
-  breast.position.set(0,-.48,-.67);group.add(breast);
+  const chestRim=new THREE.Mesh(new THREE.BoxGeometry(.56,.045,.08),shell);
+  chestRim.position.set(0,-.61,-.88);group.add(chestRim);
   group.visible=false;
   return group;
 }

@@ -82,7 +82,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W08\.1/);
+  assert.match(page,/main\.js\?v=W08\.2/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -332,7 +332,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W08\.1/);
+  assert.match(page,/main\.js\?v=W08\.2/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -365,7 +365,7 @@ test('W07.1 scope reticle has four fine semi-transparent arms near center',()=>{
   assert.match(source,/NOW OWN /);
 });
 
-test('W08.1 real powered suit has six removable meshes and timed entry controls',()=>{
+test('W08.2 real powered suit has six removable meshes and timed entry controls',()=>{
   for(const id of ['powerArmorPanel','powerArmorStatus','powerArmorDetail',
     'powerBayOpen','powerArmorControl','power-head','power-chest',
     'power-leftArm','power-rightArm','power-leftLeg','power-rightLeg'])
@@ -377,5 +377,5 @@ test('W08.1 real powered suit has six removable meshes and timed entry controls'
     "e.code==='KeyP'","e.code==='KeyO'",
     'window.__rpgSmokePowerVisual='])
     assert.ok(source.includes(phrase),phrase);
-  assert.ok(page.includes('W08.1'));
+  assert.ok(page.includes('W08.2'));
 });
