@@ -37,10 +37,31 @@ const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, .08, 27
 camera.rotation.order = 'YXZ';
 scene.add(camera); // the held weapon is a camera-relative 3D child
 const controls = new PointerLockControls(camera, document.body);
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+// Prefer the standard WebGL 2 context so browsers may choose their own GPU
+// or software-backed implementation. Retry with fewer framebuffer demands
+// on systems where multisampling or the preferred adapter is unavailable.
+let renderer;
+let reducedRenderer=false;
+try{
+  renderer=new THREE.WebGLRenderer({
+    canvas,antialias:true,powerPreference:'default',
+    failIfMajorPerformanceCaveat:false
+  });
+}catch(primaryError){
+  try{
+    renderer=new THREE.WebGLRenderer({
+      canvas,antialias:false,powerPreference:'low-power',
+      failIfMajorPerformanceCaveat:false
+    });
+    reducedRenderer=true;
+  }catch(fallbackError){
+    throw new Error('WebGL 2 context unavailable in this browser (hardware or software). '
+      +(fallbackError?.message||primaryError?.message||'Context creation failed'));
+  }
+}
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
-renderer.shadowMap.enabled = true;
+renderer.setPixelRatio(Math.min(devicePixelRatio,reducedRenderer?1:1.6));
+renderer.shadowMap.enabled = !reducedRenderer;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -1768,7 +1789,8 @@ adjustEndurance(0);
 const keys=new Set();
 const forward=new THREE.Vector3();
 const clock=new THREE.Clock();
-let stationIndex=0,qualityHigh=true;
+let stationIndex=0,qualityHigh=!reducedRenderer;
+$('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 function resetPlayer(i){
   const previousStation=stationIndex;
   stationIndex=i;const s=stations[i];

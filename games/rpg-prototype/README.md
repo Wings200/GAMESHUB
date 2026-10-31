@@ -1,4 +1,9 @@
-# Untitled RPG · Mechanics Lab W06.1 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.2 + Forest Foundation 0.1
+
+## W06.2 — startup compatibility and truthful browser diagnostics
+- The user's normal Edge browser displayed a generic WebGL failure. Previously, *any* JavaScript error or rejected promise displayed the same "could not initialize WebGL" banner, even when the real issue was unrelated. The fatal panel now shows the reported startup error and asks for the first Console error.
+- The 3D Mechanics Lab now requests a standard WebGL 2 renderer with no mandatory high-performance adapter or major-performance-caveat failure; if that fails, it retries without multisampling using low-power preference. On fallback it starts at 1x pixel ratio, with shadows disabled and UI quality marked LOW to reduce software-rendering load.
+- Hardware acceleration is **not** required by application logic, but this Three.js version still needs the browser to provide a WebGL 2 context, including any supported software backend. It cannot render if the browser disables WebGL 2 entirely. No gameplay or forest-world behavior changed.
 
 ## W06.1 — upward camera recoil + enemy helmet balancing
 - User-reported bug fix: `kickViewRecoil` previously subtracted camera pitch, which points DOWN in Three.js YXZ view coordinates. Gunfire now adds positive pitch to kick the aim upward; the same capped, damped recoil naturally recovers down to the original viewing angle without affecting yaw or roll. Regression tests assert the correct direction, restoration, rapid-fire cap and upper pitch limit.
