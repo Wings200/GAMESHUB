@@ -24,6 +24,7 @@ test('Enforcer holds clear long-range angles while weaker roles must reposition'
   const oldX=b.x;
   stepEnemyBrain(b,far,.05,[],{combatHold:t.phase==='suppress-long'});
   assert.equal(b.x,oldX,'Enforcer should anchor instead of rushing across open ground');
+  t.cooldown=0; // test immediate accuracy without the deliberate spawn delay
   const shot=attemptEnemyShot(t,30,false,()=>0);
   assert.equal(shot.fired,true);assert.ok(shot.accuracy>.4);
 });
