@@ -46,6 +46,13 @@ test('Powered frame and six plate tiers reduce damage only when occupied',()=>{
   beginPowerArmorTransition(state);
   stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
   const withChassis=powerArmorProtection(state,'head',.2);
+  assert.ok(withChassis.combinedReduction>=.6,
+    'Unplated powered armor must protect every zone significantly better than street clothes');
+  for(const zone of POWER_ARMOR_SLOTS){
+    const powered=powerArmorProtection(state,zone,.12);
+    assert.ok(powered.combinedReduction>.12,
+      zone+' must never increase incoming damage');
+  }
   const chest=powerArmorProtection(state,'chest',.2);
   assert.ok(chest.combinedReduction>withChassis.combinedReduction);
   assert.ok(withChassis.combinedReduction>.2,'Bare chassis grants some protection');
