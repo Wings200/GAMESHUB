@@ -403,6 +403,7 @@ test('W09.0 detailed characters use a real rigged GLB loader and safe fallbacks'
   }
   assert.match(assetProxy,/Object\.prototype\.hasOwnProperty\.call\(SOURCES,id\)/);
   assert.match(source,/mountRiggedCharacter\(root,spec\.id,2\.20\)/);
+  assert.match(page,/id="riggedStatus"/);
   assert.match(source,/hitbox\.material\.visible=false/);
   assert.match(source,/enemy\.modelStatus='fallback'/);
   assert.match(source,/mountRiggedCharacter\(poweredSuit\.pilot,'raider',1\.74\)/);
