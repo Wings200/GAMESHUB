@@ -718,10 +718,6 @@ function createEnemy(spec){
     new THREE.MeshBasicMaterial({color:0xf19668,depthTest:true,depthWrite:true}));
   beacon.rotation.x=-Math.PI/2;
   beacon.position.y=.085;root.add(beacon);enemy.beacon=beacon;
-  const shoulderMark=new THREE.Mesh(new THREE.BoxGeometry(.7,.11,.075),
-    new THREE.MeshBasicMaterial({color:0xf2ad66,depthTest:true,depthWrite:true}));
-  shoulderMark.position.set(0,1.85,.25);upperBody.add(shoulderMark);
-  enemy.shoulderMark=shoulderMark;
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
   const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
@@ -789,7 +785,7 @@ function resetEnemies(){
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
     enemy.root.visible=true;enemy.billboard.mesh.visible=true;
-    enemy.beacon.visible=true;enemy.shoulderMark.visible=true;
+    enemy.beacon.visible=true;
     enemy.deathTimer=0;enemy.crouchBlend=0;enemy.upperBody.position.y=0;
     enemy.upperBody.rotation.set(0,0,0);
     enemy.combatPose=0;enemy.reloadPose=0;enemy.recoilPose=0;
@@ -858,7 +854,6 @@ function markEnemyDefeated(enemy){
   enemy.flash=0;enemy.shake=0;
   for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
   enemy.beacon.visible=false;
-  enemy.shoulderMark.visible=false;
   enemy.billboard.mesh.visible=false;
   enemy.muzzleLight.intensity=0;
   enemy.gunGlow=0;
@@ -1059,7 +1054,6 @@ function updateEnemies(dt){
     enemy.root.visible=enemy.state.alive||enemy.deathTimer<.7;
     enemy.billboard.mesh.visible=enemy.state.alive;
     enemy.beacon.visible=enemy.state.alive;
-    enemy.shoulderMark.visible=enemy.state.alive;
     if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
       const wasSpotted=enemy.brain.spotted;
