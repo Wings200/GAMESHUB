@@ -9,6 +9,10 @@ import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_T
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
+import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
+  setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
+  powerArmorProtection,safePowerArmorSnapshot} from '../power-armor.mjs';
+import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
@@ -104,7 +108,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular armor dummies',info:'W03.1: every HEAD, CHEST, LEFT/RIGHT ARM and LEG has its own permanent armor rating. Press B to equip one of 96 different pieces. Y resets HP without removing armor.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'08 · Modular armor & power suit',info:'W08.0: inspect the real hydraulic exoskeleton, press P nearby to enter or exit, O to fit all six power armor plates. Existing training dummies still use B and Y.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -459,6 +463,105 @@ function rebuildDummyArmor(dummy){
   updateDummyLabel(dummy);
 }
 dummyKinds.forEach(makeDummy);
+
+// W08.0: a full 3D powered chassis at Station 8, independent of
+// normal player armor and of the static test-dummy equipment.
+const powerArmorBay={x:-49,z:-12};
+let powerArmorState=createPowerArmorState();
+try{
+  const raw=JSON.parse(localStorage.getItem('rpg-lab-powered-chassis')||'null');
+  if(raw)powerArmorState=safePowerArmorSnapshot(raw);
+}catch{}
+const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
+textSign('POWER SUIT · P TO ENTER',-55,-6,0x8fbba4);
+const poweredCockpit=buildPowerArmorCockpit(camera);
+poweredSuit.root.visible=!powerArmorState.occupied;
+poweredCockpit.visible=powerArmorState.occupied;
+let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false;
+function savePowerArmor(){
+  try{localStorage.setItem('rpg-lab-powered-chassis',JSON.stringify(powerArmorState));}catch{}
+}
+function nearPoweredSuit(){
+  return Math.hypot(player.x-poweredSuit.root.position.x,
+    player.z-poweredSuit.root.position.z)<3.8;
+}
+function refreshPowerArmorHUD(){
+  const status=$('powerArmorStatus');
+  status.textContent=powerArmorState.phase==='entering'?'ENTERING CHASSIS…':
+    powerArmorState.phase==='exiting'?'EXITING CHASSIS…':
+    powerArmorState.occupied?'POWER ARMOR ACTIVE':'FRAME PARKED · P TO ENTER';
+  const fitted=POWER_ARMOR_SLOTS.filter(s=>powerArmorState.plates[s]!=='none').length;
+  $('powerArmorDetail').textContent=fitted+' / 6 POWER PLATES · '+
+    (powerArmorState.occupied?'FRAME PROTECTION ONLINE':'FRAME AT STATION 8');
+}
+function refreshPowerArmorUI(){
+  for(const slot of POWER_ARMOR_SLOTS){
+    $('power-'+slot).value=powerArmorState.plates[slot];
+    const p=POWER_ARMOR_PLATES[powerArmorState.plates[slot]];
+    $('power-rating-'+slot).textContent=p.points+' PLATE AP · '+p.name.toUpperCase();
+  }
+  $('powerArmorControl').textContent=powerArmorState.occupied?
+    'EXIT THE FRAME · P':'ENTER THE FRAME NEAR STATION 8 · P';
+  refreshPowerArmorHUD();
+}
+function openPowerArmorBay(){
+  powerUIFromField=controls.isLocked;
+  if(powerUIFromField)controls.unlock();
+  powerUIOpen=true;
+  $('powerArmorPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  refreshPowerArmorUI();
+}
+function closePowerArmorBay(){
+  powerUIOpen=false;$('powerArmorPanel').classList.add('hidden');
+  if(powerUIFromField){powerUIFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+function togglePoweredSuit(){
+  if(powerArmorState.phase!=='idle')return;
+  if(!powerArmorState.occupied&&!nearPoweredSuit()){
+    showShotNotice('GET CLOSER TO THE POWER ARMOR FRAME AT STATION 8');return;
+  }
+  if(powerArmorState.occupied){
+    const facing=new THREE.Vector3();controls.getDirection(facing);
+    poweredSuit.root.position.set(player.x+facing.x*2,0,player.z+facing.z*2);
+    poweredSuit.root.rotation.y=Math.atan2(player.x-poweredSuit.root.position.x,
+      player.z-poweredSuit.root.position.z);
+    poweredSuit.root.visible=true;
+  }
+  const result=beginPowerArmorTransition(powerArmorState);
+  if(!result.ok)return;
+  keys.clear();triggerHeld=false;changeAim(false);
+  sound.reload('rifle',1.65);
+  showShotNotice(result.phase==='entering'?'HYDRAULICS OPEN · ENTERING CHASSIS':
+    'RELEASING LOCKS · EXITING CHASSIS');
+  refreshPowerArmorHUD();
+}
+for(const slot of POWER_ARMOR_SLOTS){
+  const picker=$('power-'+slot);
+  for(const p of Object.values(POWER_ARMOR_PLATES)){
+    const option=document.createElement('option');
+    option.value=p.id;option.textContent=p.name+' · '+p.points+' AP';
+    picker.append(option);
+  }
+  picker.addEventListener('change',()=>{
+    const update=setPowerPlate(powerArmorState,slot,picker.value);
+    if(!update.ok)return;
+    poweredSuit.updatePlates(powerArmorState);
+    savePowerArmor();refreshPowerArmorUI();
+    showShotNotice('POWER '+slot.toUpperCase()+' · '+POWER_ARMOR_PLATES[picker.value].name.toUpperCase());
+  });
+}
+$('powerBayOpen').addEventListener('click',openPowerArmorBay);
+$('powerBayClose').addEventListener('click',closePowerArmorBay);
+$('powerArmorControl').addEventListener('click',()=>{
+  closePowerArmorBay();
+  if(!powerArmorState.occupied&&!nearPoweredSuit())
+    resetPlayer(7); // place the tester near the power-armor bay
+  if(!controls.isLocked)controls.lock();
+  togglePoweredSuit();
+});
+refreshPowerArmorHUD();
 function resetAllDummies(){
   for(const dummy of dummies.values()){
     resetDummy(dummy.state);dummy.impulse=0;dummy.flash=0;dummy.group.rotation.z=0;
@@ -907,9 +1010,11 @@ function refreshInventoryUI(){
   $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryWeapon').textContent=getWeaponSpec(backpack.equipment.weapon).name;
-  $('inventoryArmor').textContent='CHEST '+
-    playerArmorReduction(backpack,'chest').points+' AP · '+
-    Math.round(playerArmorReduction(backpack,'chest').reduction*100)+'% DAMAGE BLOCK';
+  const ordinary=playerArmorReduction(backpack,'chest');
+  const powered=powerArmorProtection(powerArmorState,'chest',ordinary.reduction);
+  $('inventoryArmor').textContent='CHEST '+ordinary.points+' AP · '+
+    Math.round(powered.combinedReduction*100)+'% DAMAGE BLOCK'+
+    (powerArmorState.occupied?' · POWER ARMOR ACTIVE':'');
   const area=$('inventoryItems');area.replaceChildren();
   if(!backpack.items.length){
     const empty=document.createElement('p');
@@ -1230,8 +1335,13 @@ function updateEnemies(dt){
             }
             enemyTracer(origin,target);
             if(shot.hit){
-              const armor=playerArmorReduction(backpack,'chest');
-              const result=hitPlayer(playerHealth,attack.damage*(1-armor.reduction));
+              const bodySlots=['chest','chest','chest','head','leftArm',
+                'rightArm','leftLeg','rightLeg'];
+              const zone=bodySlots[Math.floor(Math.random()*bodySlots.length)];
+              const armor=playerArmorReduction(backpack,zone);
+              const powered=powerArmorProtection(powerArmorState,zone,armor.reduction);
+              const result=hitPlayer(playerHealth,
+                attack.damage*(1-powered.combinedReduction));
               if(result.applied){
                 if(!playerHealth.alive)keys.clear();
                 refreshPlayerHealth();playerHitFlash=.48;
@@ -1954,6 +2064,15 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 if(new URLSearchParams(location.search).get('smoke')==='1'){
   // CI-only ammo fixture: makes the empty-trigger regression test fast on
   // software WebGL, without wasting many slow render frames on a full mag.
+  window.__rpgSmokeTeleportToPowerBay=()=>{
+    resetPlayer(7);
+    return nearPoweredSuit();
+  };
+  window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
+  window.__rpgSmokeCompletePowerTransition=()=>{
+    if(powerArmorState.phase!=='idle')
+      powerArmorState.elapsed=1.649;
+  };
   window.__rpgSmokeGiveBenchMaterials=()=>{
     addItem(backpack,'supply:salvage',30);
     addItem(backpack,'supply:optic-glass',15);
@@ -2030,6 +2149,9 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       alerts:squadIntel.alerts},
     workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
     scopedFOV:camera.fov,
+    powerArmor:{occupied:powerArmorState.occupied,phase:powerArmorState.phase,
+      plates:{...powerArmorState.plates},visible:poweredSuit.root.visible,
+      cockpit:poweredCockpit.visible},
     inventory:{slots:backpack.items.length,
       items:backpack.items.map(e=>({...e})),
       armor:{...backpack.equipment.armor},
@@ -2066,7 +2188,7 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
-  if(!inventoryOpen&&!lootOpen&&!workbenchOpen)$('menu').classList.remove('hidden');
+  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -2079,6 +2201,7 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&powerUIOpen){closePowerArmorBay();return;}
   if(e.code==='Escape'&&workbenchOpen){closeWorkbench();return;}
   if(e.code==='Escape'&&(inventoryOpen||lootOpen)){closeLootOverlay();return;}
   if(e.code==='KeyI'&&!e.repeat){
@@ -2086,12 +2209,15 @@ window.addEventListener('keydown',e=>{
     else beginLootOverlay();
     return;
   }
-  if(workbenchOpen||inventoryOpen||lootOpen)return;
+  if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen)return;
+  if(e.code==='KeyO'&&!e.repeat&&controls.isLocked){openPowerArmorBay();return;}
+  if(e.code==='KeyP'&&!e.repeat&&controls.isLocked){togglePoweredSuit();return;}
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
     else if(benchWithinReach())beginWorkbench();
+    else if(!powerArmorState.occupied&&nearPoweredSuit())togglePoweredSuit();
     else showShotNotice('NO LOOT OR WORKBENCH WITHIN REACH');
     return;
   }
@@ -2131,7 +2257,7 @@ window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
-  if(e.button===0){triggerHeld=true;shoot();}
+  if(e.button===0&&powerArmorState.phase==='idle'){triggerHeld=true;shoot();}
   if(e.button===2)changeAim(true);
 });
 window.addEventListener('mouseup',e=>{
@@ -2247,10 +2373,24 @@ function frame(){
   if(shotNoticeTime>0){shotNoticeTime-=dt;if(shotNoticeTime<=0)$('shotNotice').classList.remove('visible');}
   updateCasings(dt);
   updateCombatVisuals(dt);
-  if(controls.isLocked&&triggerHeld&&activeSpec.automatic)
+  if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
   refreshWeaponHUD();
-  if(controls.isLocked){
+  // Entrance / exit is a physical, timed chest-door and hydraulic animation.
+  poweredArmorTime+=dt;
+  const powerStep=stepPowerArmor(powerArmorState,dt);
+  poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime);
+  poweredSuit.root.visible=!powerArmorState.occupied||
+    powerArmorState.phase==='exiting';
+  poweredCockpit.visible=powerArmorState.occupied;
+  poweredCockpit.position.y=powerArmorState.occupied?
+    Math.sin(poweredArmorTime*(3+weaponMotion.speed*1.5))*.0035:0;
+  if(powerStep.completed){
+    savePowerArmor();refreshPowerArmorHUD();refreshInventoryUI();
+    showShotNotice(powerArmorState.occupied?'POWER ARMOR LOCKED · READY':
+      'POWER ARMOR PARKED · STEP CLEAR');
+  }
+  if(controls.isLocked&&powerArmorState.phase==='idle'){
     controls.getDirection(forward);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
@@ -2258,6 +2398,7 @@ function frame(){
     updateHUD(info);
   }
   updateEnemies(dt);
+  refreshPowerArmorHUD();
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.
   const nearby=nearestLootBag();
