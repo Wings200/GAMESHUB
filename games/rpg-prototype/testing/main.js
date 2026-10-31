@@ -916,9 +916,16 @@ function refreshInventoryUI(){
     empty.textContent='BACKPACK EMPTY · DEFEAT A RAIDER AND SEARCH ITS LOOT (E).';
     area.append(empty);
   }
+  const copyNumbers=new Map();
   for(const entry of backpack.items){
     const item=getItem(entry.itemId),row=inventoryLine(item);
-    const count=document.createElement('span');count.textContent='×'+entry.quantity;
+    const count=document.createElement('span');
+    const duplicateCount=(item.category==='weapon'||item.category==='armor')?
+      countItem(backpack,item.id):0;
+    const copy=(copyNumbers.get(item.id)||0)+1;
+    copyNumbers.set(item.id,copy);
+    count.textContent=duplicateCount>1?'COPY '+copy+' / '+duplicateCount:
+      '×'+entry.quantity;
     count.className='loot-quantity';row.append(count);
     if(item.category==='armor'||item.category==='weapon'){
       lootButton(row,'EQUIP',()=>{
@@ -973,7 +980,15 @@ function refreshLootUI(){
     count.className='loot-quantity';row.append(count);
     lootButton(row,'TAKE',()=>{
       const result=takeFromBag(backpack,bag,i);
-      if(!result.added){showShotNotice('BACKPACK FULL');return;}
+      if(!result.added){
+        $('lootFeedback').textContent='BACKPACK FULL · '+backpack.items.length+
+          ' / '+BACKPACK_LIMIT+' SLOTS. DROP SOMETHING TO MAKE ROOM.';
+        return;
+      }
+      const total=countItem(backpack,entry.itemId);
+      $('lootFeedback').textContent='TAKEN · '+item.name.toUpperCase()+
+        ' ×'+result.added+' · NOW OWN '+total+
+        (total===1?' COPY':' COPIES');
       saveBackpack();discardEmptyLootBags();
       refreshLootUI();refreshInventoryUI();
     });
@@ -986,6 +1001,7 @@ function beginLootOverlay(id=null){
   lootOverlayFromField=fromField;
   if(id){
     selectedLootId=id;lootOpen=true;inventoryOpen=false;
+    $('lootFeedback').textContent='DUPLICATE WEAPONS AND ARMOR ARE ALLOWED · 30 SLOTS MAX';
     $('inventoryPanel').classList.add('hidden');
     $('lootPanel').classList.remove('hidden');
     refreshLootUI();
@@ -1011,7 +1027,9 @@ $('lootClose').addEventListener('click',closeLootOverlay);
 $('lootTakeAll').addEventListener('click',()=>{
   const bag=lootBags.get(selectedLootId);if(!bag)return;
   const result=takeAllFromBag(backpack,bag);
-  if(result.remaining)showShotNotice('BACKPACK FULL · SOME LOOT LEFT');
+  $('lootFeedback').textContent=result.remaining?
+    'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
+    'TAKEN ALL · DUPLICATE GEAR KEPT AS SEPARATE INVENTORY COPIES';
   saveBackpack();discardEmptyLootBags();refreshLootUI();refreshInventoryUI();
 });
 
@@ -1504,10 +1522,19 @@ function buildArsenalView(spec){
       box(.10,.046,.028,steel,0,mount.y-.085,z);
       box(.17,.018,.038,black,0,mount.y-.113,z);
     }
-    const crosshair=mat(0xb5b9a9,.47);
+    // Four thin semi-transparent reticle arms. The old 0.026 m center
+    // gap swallowed distant targets. New 0.006 m gap stays zeroed without
+    // covering the exact point of impact.
+    const crosshair=new THREE.MeshBasicMaterial({
+      color:0xcbe2d6,transparent:true,opacity:.66,depthWrite:false
+    });
     for(const side of [-1,1]){
-      box(.030,.0025,.002,crosshair,side*.028,mount.y,mount.z-.197);
-      box(.0025,.030,.002,crosshair,0,mount.y+side*.028,mount.z-.197);
+      const horizontal=box(.034,.0018,.001,crosshair,
+        side*.020,mount.y,mount.z-.197);
+      const vertical=box(.0018,.034,.001,crosshair,
+        0,mount.y+side*.020,mount.z-.197);
+      horizontal.userData.sightReference=true;
+      vertical.userData.sightReference=true;
     }
   }else if(opticKind==='holo'||opticKind==='reflex'){
     const holo=opticKind==='holo';
