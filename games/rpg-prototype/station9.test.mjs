@@ -335,7 +335,7 @@ test('W06.0 loot modal, game pause and persistence have a browser gameplay check
   assert.match(page,/main\.js\?v=W07\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
-  assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
+  assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen)$('menu').classList.remove('hidden')"));
   assert.match(source,/function closeLootOverlay\(\)/);
   assert.match(source,/if\(lootOverlayFromField\)\{/);
   assert.match(source,/function discardEmptyLootBags\(\)/);
