@@ -1,4 +1,11 @@
-# Untitled RPG · Mechanics Lab W06.3 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.4 + Forest Foundation 0.1
+
+## W06.4 — distant AI updates, death cleanup and neck hitbox
+
+- NPC patrol and hit reactions continue outside the arena; enemy attacks remain limited to an active encounter to keep other mechanics stations safe.
+- Defeated enemies immediately clear the red damage flash, collapse for 0.7 seconds and despawn without requiring the player to approach. Loot bags remain searchable.
+- A solid neck collider connects the chest and head geometry. It uses chest damage and armor to preserve helmet balance.
+- Source-level and real 3D browser regressions check distant patrol, defeat cleanup and neck shots.
 
 ## W06.3 — saved weapon startup crash
 - Fixed a user-reported error: "Cannot access 'slideCycle' before initialization". A returning player with a saved non-default weapon triggered `selectWeapon()` during startup, before the `let` declarations for slide/recoil/shot-notice/HUD state, so JavaScript stopped loading before the 3D field appeared.
