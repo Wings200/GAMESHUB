@@ -11,7 +11,7 @@ import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
   setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
-  POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,safePowerArmorSnapshot} from '../power-armor.mjs';
+  POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
@@ -558,7 +558,8 @@ function togglePoweredSuit(){
   if(!result.ok)return;
   const offset=exiting?2.32:0;
   const target=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,offset));
-  const destY=groundHeight(target.x,target.z)+(exiting?player.eyeHeight:2.82);
+  const destY=groundHeight(target.x,target.z)+powerArmorEyeHeight(
+    {occupied:!exiting},exiting?player.eyeHeight:MOVE_TUNING.eyeHeight);
   const endPosition=new THREE.Vector3(target.x,destY,target.z);
   const endingRotation=exiting?new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(endPosition,
@@ -2221,7 +2222,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
-    player:{x:player.x,z:player.z},
+    player:{x:player.x,z:player.z,crouched:!!player.crouched,
+      crouchToggle:!!player.crouchToggle,eyeHeight:player.eyeHeight},
     enemies:[...enemies.values()].map(e=>({
       id:e.id,x:e.brain.x,z:e.brain.z,
       mode:e.brain.mode,health:e.state.health,alive:e.state.alive,
@@ -2461,7 +2463,7 @@ function frame(){
     controls.getDirection(forward);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
-    const eye=powerArmorState.occupied?2.82:info.eyeHeight;
+    const eye=powerArmorEyeHeight(powerArmorState,info.eyeHeight);
     camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
