@@ -2554,6 +2554,12 @@ function frame(){
   if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
   refreshWeaponHUD();
+  const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='rigged').length;
+  const failedModels=[...enemies.values()].filter(e=>e.modelStatus==='fallback').length;
+  const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED'+
+    (failedModels?' · '+failedModels+' FALLBACK':'')+
+    (riggedPilot?' · PILOT LOADED':' · PILOT LOADING/FALLBACK');
+  if($('riggedStatus').textContent!==modelLabel)$('riggedStatus').textContent=modelLabel;
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
