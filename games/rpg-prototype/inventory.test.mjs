@@ -150,3 +150,25 @@ test('Optics consume real materials once, persist and stay weapon-specific',()=>
   assert.equal(installedWeaponOptic(restored,'hunting-rifle'),'scope-4x');
   assert.deepEqual(restored.unlockedOptics['hunting-rifle'],['scope-4x']);
 });
+
+test('Repeated identical weapon and armor pickups keep separate sellable copies',()=>{
+  const pack=createBackpack();
+  for(let i=0;i<3;i++){
+    const bag=createLootBag('raider-'+i,43,46,[
+      {itemId:'weapon:pipe-smg',quantity:1},
+      {itemId:'armor:ranger-leftLeg',quantity:1}
+    ]);
+    const result=takeAllFromBag(pack,bag);
+    assert.equal(result.added,2);
+    assert.equal(result.remaining,0);
+  }
+  assert.equal(countItem(pack,'weapon:pipe-smg'),3);
+  assert.equal(countItem(pack,'armor:ranger-leftLeg'),3);
+  assert.equal(pack.items.length,6,'Gear has one inventory slot per copy');
+  assert.equal(new Set(pack.items.map(i=>i.uid)).size,6,'Each copy needs its own UID');
+  const saved=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(countItem(saved,'weapon:pipe-smg'),3,'All guns survive reloading a save');
+  assert.equal(countItem(saved,'armor:ranger-leftLeg'),3);
+  assert.equal(removeItem(saved,saved.items[0].uid,1).removed,1);
+  assert.equal(countItem(saved,'weapon:pipe-smg'),2,'Dropping one keeps the other copies');
+});
