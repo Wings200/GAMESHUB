@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W06.5 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.6 + Forest Foundation 0.1
+
+## W06.6 — remove misplaced orange collar marker
+
+- Removed the bright orange shoulder identification strip that crossed the neck/chest and looked like a floating bar.
+- Kept the solid neck hitbox, modular armor meshes, loot drops and ground beacons unchanged.
+- Added a regression assertion that the orange strip cannot return to the 3D NPC model.
 
 ## W06.5 — varied, visible, lootable armor equipment
 
