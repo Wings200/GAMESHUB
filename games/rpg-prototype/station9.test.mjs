@@ -342,3 +342,14 @@ test('W06.0 loot modal, game pause and persistence have a browser gameplay check
   assert.match(source,/selectedLootId=null/);
   assert.match(source,/window\.__rpgSmokeSpawnLoot=/);
 });
+
+test('W07.0 workbench and all-weapon ADS zeroing are wired',()=>{
+  assert.match(page,/id="workbenchPanel"/);
+  assert.match(page,/id="benchMaterials"/);
+  assert.match(page,/id="weaponOptic"/);
+  assert.match(source,/installWeaponOptic\\(backpack,weaponId,id\\)/);
+  assert.match(source,/function beginWorkbench\\(\\)/);
+  assert.match(source,/function benchWithinReach\\(\\)/);
+  assert.match(source,/camera\\.getWorldQuaternion/);
+  assert.match(source,/installedWeaponOptic\\(backpack,activeWeaponId\\)/);
+});
