@@ -10,6 +10,13 @@ export const POWER_ARMOR_PLATES=Object.freeze({
   citadel:Object.freeze({id:'citadel',name:'Citadel reinforced',points:72,color:0x475f7b,scale:1.13})
 });
 export const POWER_ARMOR_FRAME_AP=30;
+// A powered chassis should not turn an ordinary first-person character into
+// a 2.82m camera. Crouch and normal eye-height interpolation stay authoritative.
+export function powerArmorEyeHeight(state,normalEyeHeight){
+  const safe=Number.isFinite(normalEyeHeight)?normalEyeHeight:1.70;
+  return safe+(state.occupied?.10:0);
+}
+
 export function createPowerArmorState(){
   return {occupied:false,phase:'idle',elapsed:0,
     plates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>

@@ -1,5 +1,5 @@
-// W08.2: footage-driven power armor revisions: real hatch hinges, readable entry, clear visor.
-// Gameplay, plate ratings and persistence are owned by power-armor.mjs.
+// W08.3: a compact, fully armored industrial exosuit. Original procedural art.
+// Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate} from './power-armor.mjs';
 
@@ -8,180 +8,243 @@ export function buildPowerArmorVisual(scene,position,state){
   root.position.set(position.x,0,position.z);
   root.rotation.y=-Math.PI/2;
   scene.add(root);
-  const iron=new THREE.MeshStandardMaterial({color:0x34464c,roughness:.52,metalness:.76});
-  const gunmetal=new THREE.MeshStandardMaterial({color:0x17282f,roughness:.59,metalness:.74});
-  const bright=new THREE.MeshStandardMaterial({color:0x9faaa0,roughness:.36,metalness:.85});
-  const brass=new THREE.MeshStandardMaterial({color:0xb79b63,roughness:.45,metalness:.69});
-  const rubber=new THREE.MeshStandardMaterial({color:0x111d23,roughness:.96,metalness:.08});
-  const visor=new THREE.MeshStandardMaterial({color:0x102f38,roughness:.19,metalness:.63,emissive:0x17677b,emissiveIntensity:.5});
-  const illuminated=new THREE.MeshBasicMaterial({color:0x88e1ce});
-  const mount=(parent,x=0,y=0,z=0)=>{
+  const steel=new THREE.MeshStandardMaterial({color:0x55636a,metalness:.69,roughness:.48});
+  const armor=new THREE.MeshStandardMaterial({color:0x556b64,metalness:.55,roughness:.64});
+  const shaded=new THREE.MeshStandardMaterial({color:0x32464c,metalness:.65,roughness:.60});
+  const edge=new THREE.MeshStandardMaterial({color:0x9aa7a2,metalness:.82,roughness:.39});
+  const joint=new THREE.MeshStandardMaterial({color:0x111c20,metalness:.25,roughness:.92});
+  const brass=new THREE.MeshStandardMaterial({color:0xa58c62,metalness:.76,roughness:.47});
+  const orange=new THREE.MeshStandardMaterial({color:0xbb874e,metalness:.5,roughness:.59});
+  const visor=new THREE.MeshStandardMaterial({
+    color:0x182f34,metalness:.61,roughness:.22,emissive:0x3a967e,emissiveIntensity:.34
+  });
+  const glow=new THREE.MeshBasicMaterial({color:0x8bcbb4});
+  const makeGroup=(parent,x=0,y=0,z=0)=>{
     const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g;
   };
   const mesh=(parent,geometry,material,x=0,y=0,z=0)=>{
-    const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);
-    m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+    const m=new THREE.Mesh(geometry,material);
+    m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;
+    parent.add(m);return m;
   };
-  const box=(parent,w,h,d,mat,x=0,y=0,z=0)=>
-    mesh(parent,new THREE.BoxGeometry(w,h,d),mat,x,y,z);
-  const cylinder=(parent,r1,r2,h,mat,x=0,y=0,z=0)=>
-    mesh(parent,new THREE.CylinderGeometry(r1,r2,h,12),mat,x,y,z);
-  const sphere=(parent,r,mat,x=0,y=0,z=0)=>
-    mesh(parent,new THREE.SphereGeometry(r,16,12),mat,x,y,z);
-  const bevel=(parent,w,h,d,mat,x=0,y=0,z=0,tip=.13)=>{
-    const s=new THREE.Shape();
-    s.moveTo(-w/2+tip,-h/2);s.lineTo(w/2-tip,-h/2);
-    s.lineTo(w/2,-h/2+tip);s.lineTo(w/2,h/2-tip);
-    s.lineTo(w/2-tip,h/2);s.lineTo(-w/2+tip,h/2);
-    s.lineTo(-w/2,h/2-tip);s.lineTo(-w/2,-h/2+tip);s.closePath();
-    const geo=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,
-      bevelSegments:1,steps:1,bevelThickness:.025,bevelSize:.03});
+  const box=(parent,w,h,d,material,x=0,y=0,z=0)=>
+    mesh(parent,new THREE.BoxGeometry(w,h,d),material,x,y,z);
+  const cyl=(parent,rTop,rBottom,h,material,x=0,y=0,z=0,n=12)=>
+    mesh(parent,new THREE.CylinderGeometry(rTop,rBottom,h,n),material,x,y,z);
+  const ball=(parent,r,material,x=0,y=0,z=0)=>
+    mesh(parent,new THREE.SphereGeometry(r,14,10),material,x,y,z);
+  const ellipsoid=(parent,xr,yr,zr,material,x=0,y=0,z=0)=>{
+    const m=ball(parent,1,material,x,y,z);m.scale.set(xr,yr,zr);return m;
+  };
+  // Contoured armor shell: a softened eight-point forged plate with a
+  // beveled thickness, not a flat box suspended in front of the body.
+  const forged=(parent,w,h,d,material,x=0,y=0,z=0,cut=.15)=>{
+    const shape=new THREE.Shape();
+    const a=w/2,b=h/2,c=Math.min(cut,a*.50,b*.50);
+    shape.moveTo(-a+c,-b);
+    shape.lineTo(a-c,-b);shape.lineTo(a,-b+c);
+    shape.lineTo(a,b-c);shape.lineTo(a-c,b);
+    shape.lineTo(-a+c,b);shape.lineTo(-a,b-c);
+    shape.lineTo(-a,-b+c);shape.closePath();
+    const geo=new THREE.ExtrudeGeometry(shape,{
+      depth:d,bevelEnabled:true,bevelThickness:.022,bevelSize:.025,
+      bevelSegments:2,steps:1,curveSegments:2
+    });
     geo.translate(0,0,-d/2);
-    return mesh(parent,geo,mat,x,y,z);
+    return mesh(parent,geo,material,x,y,z);
   };
-  const strut=(parent,a,b,r,mat)=>{
-    const from=new THREE.Vector3(...a),to=new THREE.Vector3(...b);
-    const diff=to.clone().sub(from);
-    const shaft=mesh(parent,new THREE.CylinderGeometry(r,r,diff.length(),10),mat,
-      (from.x+to.x)/2,(from.y+to.y)/2,(from.z+to.z)/2);
-    shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),diff.normalize());
-    return shaft;
+  const rod=(parent,a,b,r,material)=>{
+    const one=new THREE.Vector3(...a),two=new THREE.Vector3(...b);
+    const v=two.clone().sub(one);
+    const m=cyl(parent,r,r,v.length(),material,
+      (one.x+two.x)/2,(one.y+two.y)/2,(one.z+two.z)/2,10);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());
+    return m;
+  };
+  // Curved metal hoses are independent from movable armor.
+  const hose=(parent,points,r,material)=>{
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+    return mesh(parent,new THREE.TubeGeometry(curve,18,r,7,false),material);
   };
   const plateMeshes=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,[]]));
-  const plating=(slot,parent,w,h,d,x,y,z,tip=.12)=>{
-    const material=iron.clone();
-    const piece=bevel(parent,w,h,d,material,x,y,z,tip);
-    plateMeshes[slot].push(piece);return piece;
+  const plate=(slot,parent,w,h,d,x,y,z,cut=.12)=>{
+    const shell=forged(parent,w,h,d,armor.clone(),x,y,z,cut);
+    plateMeshes[slot].push(shell);
+    return shell;
+  };
+  const bolt=(parent,x,y,z)=>{
+    const m=cyl(parent,.027,.027,.012,brass,x,y,z,8);
+    m.rotation.x=Math.PI/2;
+    return m;
   };
 
-  // The empty exoskeleton is 3.3m tall and almost 3m across; the person
-  // entering is deliberately only 1.72m tall.
-  box(root,1.50,1.29,.85,gunmetal,0,1.87,-.18);
-  bevel(root,1.52,1.36,.19,iron,0,1.88,-.58,.22);
-  box(root,.78,.98,.10,rubber,0,1.75,.32); // visible open cockpit, not a solid mannequin
-  bevel(root,.58,.91,.08,bright,0,1.78,.38,.09); // the pilot's seat
+  // Human-scale cavity, encased by side rails and a rear spine.
+  // No solid 1.5m-wide cuboid behind the hinged breastplates.
+  const spine=forged(root,.75,1.11,.21,shaded,0,1.83,-.42,.16);
+  forged(root,.87,.24,.39,steel,0,1.29,-.13,.07); // pelvic harness
+  ellipsoid(root,.46,.30,.37,joint,0,1.41,-.13);
   for(const side of [-1,1]){
-    strut(root,[side*.67,1.26,-.42],[side*.75,2.61,-.42],.075,bright);
-    strut(root,[side*.49,1.16,.1],[side*.56,2.45,.26],.045,brass);
-    bevel(root,.31,.48,.45,iron,side*.60,1.10,-.14,.07);
-    box(root,.16,.92,.12,rubber,side*.34,1.81,.45);
-    cylinder(root,.13,.13,.08,brass,side*.73,2.48,-.08).rotation.z=Math.PI/2;
+    rod(root,[side*.43,1.30,-.29],[side*.55,2.46,-.29],.073,edge);
+    rod(root,[side*.33,1.33,.10],[side*.56,2.24,.09],.051,steel);
+    forged(root,.22,.49,.28,shaded,side*.48,1.52,-.27,.06);
+    hose(root,[[side*.52,1.48,-.35],[side*.60,1.75,-.49],
+      [side*.55,2.18,-.37],[side*.48,2.31,-.31]],.046,joint);
   }
-  // Rear reactor, exhaust stacks and exposed hydraulic return lines.
-  const reactor=cylinder(root,.36,.36,.18,bright,0,1.76,-.76);
-  reactor.rotation.x=Math.PI/2;
-  sphere(root,.24,illuminated,0,1.76,-.87);
+  // Compact backpack reactor, vent banks and luminous power-core iris.
+  const reactor=makeGroup(root,0,1.90,-.60);
+  cyl(reactor,.34,.34,.21,steel,0,0,0).rotation.x=Math.PI/2;
+  cyl(reactor,.255,.255,.025,joint,0,0,-.125).rotation.x=Math.PI/2;
+  cyl(reactor,.135,.135,.027,glow,0,0,-.149).rotation.x=Math.PI/2;
+  for(let i=0;i<8;i++){
+    const a=2*Math.PI*i/8;
+    const vane=box(reactor,.058,.118,.032,brass,
+      Math.cos(a)*.20,Math.sin(a)*.20,-.154);
+    vane.rotation.z=a;
+  }
   for(const side of [-1,1]){
-    box(root,.22,.83,.24,iron,side*.54,2.00,-.71);
-    cylinder(root,.11,.14,.45,gunmetal,side*.53,2.54,-.73);
-    strut(root,[side*.45,2.53,-.58],[side*.79,2.30,-.30],.045,rubber);
-    sphere(root,.16,brass,side*.65,1.48,-.68);
+    const tank=forged(root,.23,.72,.33,steel,side*.52,1.99,-.52,.06);
+    for(let i=0;i<4;i++)box(root,.245,.038,.11,joint,side*.52,
+      1.77+i*.145,-.714);
+    hose(root,[[side*.52,2.23,-.53],[side*.75,2.34,-.48],
+      [side*.79,2.22,-.23]],.055,joint);
   }
-  // Front armored breastplate separates at a central seam. Each panel
-  // swings on a real offset hinge, revealing the human-scale entry cavity.
-  const doors={left:mount(root,-.69,1.87,.47),right:mount(root,.69,1.87,.47)};
+  // Waist protection remains part of the fixed frame, even without plates.
+  for(const side of [-1,1]){
+    forged(root,.41,.28,.43,steel,side*.44,1.27,.08,.10);
+    forged(root,.27,.26,.14,shaded,side*.56,1.16,.18,.06);
+  }
+
+  // Wing doors now visually resemble two sculpted halves of a breastplate.
+  const doors={left:makeGroup(root,-.68,1.93,.33),
+    right:makeGroup(root,.68,1.93,.33)};
   for(const [side,key] of [[-1,'left'],[1,'right']]){
     const door=doors[key];
-    const center=-side*.325;
-    bevel(door,.69,1.12,.17,iron,center,0,.04,.14);
-    plating('chest',door,.72,1.14,.12,center,0,.18,.16);
-    bevel(door,.11,1.06,.08,brass,side*.03,0,.24,.03);
-    cylinder(door,.052,.052,1.18,bright,-side*.045,0,-.04);
-    bevel(door,.28,.22,.09,gunmetal,center,-.30,.27,.05);
-    bevel(door,.44,.26,.065,gunmetal,center,.30,.30,.07);
-    for(const x of [-.13,0,.13])box(door,.057,.19,.032,brass,center+x,.295,.346);
+    const cx=-side*.33;
+    forged(door,.67,1.01,.19,steel,cx,0,.055,.17);
+    plate('chest',door,.67,.85,.115,cx,.06,.18,.16);
+    forged(door,.51,.18,.16,shaded,cx,-.34,.23,.06);
+    // Upper and lower reinforcement ribs cross the chest without becoming
+    // an uninterrupted square slab.
+    forged(door,.39,.12,.08,edge,cx,.33,.265,.045);
+    box(door,.065,.55,.041,joint,cx+side*.16,-.01,.276);
+    forged(door,.21,.16,.065,orange,cx,-.17,.282,.04);
+    for(const y of [-.39,.38])bolt(door,cx+side*.18,y,.29);
+    cyl(door,.047,.047,1.07,brass,-side*.02,0,-.08);
   }
-  // Helmet is mounted ABOVE the entry cavity, on a rear mechanical collar.
-  const helmetPivot=mount(root,0,2.74,-.19);
-  cylinder(helmetPivot,.29,.35,.25,gunmetal,0,.04,0);
-  bevel(helmetPivot,.77,.63,.58,iron,0,.35,-.03,.19);
-  bevel(helmetPivot,.64,.22,.075,visor,0,.32,.30,.08);
-  plating('head',helmetPivot,.80,.43,.11,0,.57,.08,.15);
-  plating('head',helmetPivot,.66,.105,.11,0,.13,.35,.025);
+  // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
+  // dual cheek filters and respirator; no floating rectangular robot head.
+  const helmetPivot=makeGroup(root,0,2.36,-.08);
+  ellipsoid(helmetPivot,.38,.35,.38,joint,0,.10,0);
+  forged(helmetPivot,.69,.47,.51,steel,0,.21,.025,.18);
+  forged(helmetPivot,.66,.16,.18,edge,0,.37,.23,.055);
+  forged(helmetPivot,.56,.12,.095,visor,0,.19,.306,.035);
+  forged(helmetPivot,.45,.16,.19,shaded,0,.055,.29,.05);
+  forged(helmetPivot,.24,.20,.12,steel,0,-.035,.39,.05);
+  plate('head',helmetPivot,.68,.22,.13,0,.43,.08,.075);
+  plate('head',helmetPivot,.57,.13,.095,0,-.12,.27,.045);
   for(const side of [-1,1]){
-    bevel(helmetPivot,.18,.37,.36,brass,side*.40,.23,.02,.05);
-    cylinder(helmetPivot,.07,.07,.23,bright,side*.33,-.04,-.08);
+    ellipsoid(helmetPivot,.17,.19,.20,steel,side*.34,.04,.15);
+    cyl(helmetPivot,.11,.11,.07,joint,side*.32,-.045,.345).rotation.x=Math.PI/2;
+    for(let i=0;i<3;i++)box(helmetPivot,.15,.018,.037,edge,
+      side*.32,-.087+i*.039,.383);
+    hose(root,[[side*.35,2.36,.19],[side*.53,2.24,.07],
+      [side*.62,2.04,-.21]],.04,joint);
   }
+  // Neck seal and bolted shoulder collar.
+  cyl(root,.28,.34,.22,joint,0,2.31,-.14,12);
+  forged(root,.91,.17,.47,steel,0,2.36,-.24,.05);
 
   const armPivots=[],legPivots=[];
   for(const side of [-1,1]){
-    // Massive separate shoulder housings / pauldrons carry the arm actuators.
-    const arm=mount(root,side*.99,2.48,-.06);armPivots.push(arm);
-    sphere(arm,.29,gunmetal,0,0,0);
-    cylinder(arm,.16,.16,.24,brass,0,0,0).rotation.z=Math.PI/2;
-    bevel(arm,.71,.49,.73,iron,side*.12,-.12,0,.17);
-    plating(side<0?'leftArm':'rightArm',arm,.77,.54,.78,side*.13,-.14,.03,.19);
-    box(arm,.35,.68,.34,gunmetal,side*.11,-.63,0);
-    cylinder(arm,.16,.16,.41,bright,side*.13,-.99,0);
-    bevel(arm,.48,.57,.52,iron,side*.13,-.93,.10,.10);
-    plating(side<0?'leftArm':'rightArm',arm,.50,.61,.18,side*.13,-.93,.39,.10);
-    for(const z of [-.23,.23]){
-      strut(arm,[side*.25,-.49,z],[side*.23,-1.12,z],.055,brass);
-      cylinder(arm,.08,.08,.23,bright,side*.23,-.88,z);
+    const armName=side<0?'leftArm':'rightArm';
+    const legName=side<0?'leftLeg':'rightLeg';
+    // Broad but rounded shoulder cups with segmented biceps, black rubber
+    // elbow gap, forged forearm guards, and articulated mechanical hands.
+    const arm=makeGroup(root,side*.86,2.26,-.11);armPivots.push(arm);
+    ball(arm,.25,joint);
+    cyl(arm,.16,.16,.26,edge,0,0,0).rotation.z=Math.PI/2;
+    ellipsoid(arm,.43,.30,.38,steel,side*.07,-.09,.0);
+    plate(armName,arm,.69,.33,.37,side*.08,-.13,.27,.13);
+    forged(arm,.33,.52,.33,shaded,side*.07,-.53,.04,.09);
+    rod(arm,[side*.20,-.26,-.12],[side*.18,-.79,-.12],.055,edge);
+    rod(arm,[side*.07,-.29,.23],[side*.07,-.79,.22],.043,brass);
+    ellipsoid(arm,.20,.21,.20,joint,side*.08,-.85,.04);
+    forged(arm,.42,.52,.46,steel,side*.08,-1.10,.08,.10);
+    plate(armName,arm,.43,.48,.15,side*.08,-1.08,.32,.10);
+    for(let i=-1;i<=1;i++){
+      const finger=forged(arm,.106,.23,.18,steel,
+        side*.08+i*.112,-1.46,.20,.038);
+      finger.rotation.x=.10;
+      box(arm,.075,.032,.155,joint,
+        side*.08+i*.112,-1.57,.22);
     }
-    // Powered gauntlets with individually recognizable metal fingers.
-    bevel(arm,.51,.33,.55,gunmetal,side*.13,-1.37,.06,.10);
-    for(let i=-1;i<=1;i++)
-      box(arm,.095,.18,.25,bright,side*.12+i*.15,-1.59,.14);
-    // Hip and leg mechanisms are independently jointed.
-    const leg=mount(root,side*.41,1.23,-.18);legPivots.push(leg);
-    sphere(leg,.24,gunmetal,0,0,0);
-    bevel(leg,.54,.63,.57,iron,0,-.30,-.04,.14);
-    plating(side<0?'leftLeg':'rightLeg',leg,.60,.66,.32,0,-.33,.28,.13);
-    cylinder(leg,.20,.20,.18,brass,0,-.68,0);
-    bevel(leg,.61,.68,.65,iron,0,-.88,-.045,.14);
-    plating(side<0?'leftLeg':'rightLeg',leg,.64,.66,.18,0,-.88,.34,.15);
-    for(const x of [-.28,.28]){
-      strut(leg,[x,-.25,-.14],[x,-1.09,-.19],.056,bright);
-      cylinder(leg,.073,.073,.32,gunmetal,x,-.70,-.19);
+    // Legs: visible hip pistons, armored quads, recessed knee pivots,
+    // shin shells and broad planted boots.
+    const leg=makeGroup(root,side*.41,1.27,-.16);legPivots.push(leg);
+    ball(leg,.23,joint);
+    ellipsoid(leg,.26,.37,.27,shaded,0,-.31,.04);
+    plate(legName,leg,.45,.49,.25,0,-.33,.285,.105);
+    rod(leg,[side*.23,-.11,-.10],[side*.22,-.70,-.10],.051,edge);
+    rod(leg,[-side*.17,-.10,.21],[-side*.17,-.67,.21],.043,brass);
+    ellipsoid(leg,.21,.18,.21,joint,0,-.71,.06);
+    cyl(leg,.13,.13,.14,brass,0,-.71,.24).rotation.x=Math.PI/2;
+    ellipsoid(leg,.29,.35,.31,steel,0,-1.02,.045);
+    plate(legName,leg,.49,.56,.19,0,-1.03,.32,.115);
+    for(const x of [-.20,.20]){
+      rod(leg,[x,-.79,-.08],[x,-1.25,-.07],.047,edge);
     }
-    bevel(leg,.67,.32,.89,gunmetal,0,-1.10,.19,.13);
-    bevel(leg,.62,.12,.38,brass,0,-1.18,.52,.07);
-    for(const x of [-.21,0,.21])
-      box(leg,.08,.035,.18,bright,x,-1.29,.58);
+    const boot=forged(leg,.64,.24,.78,shaded,0,-1.28,.21,.095);
+    forged(leg,.57,.095,.20,steel,0,-1.37,.50,.035);
+    for(const x of [-.20,0,.20])box(leg,.095,.035,.13,edge,x,-1.40,.56);
   }
-  // Manufacturer-like machine markings and warning bands, away from the neck.
-  bevel(root,.30,.09,.045,brass,0,1.20,.28,.02);
-  bevel(root,.25,.065,.04,illuminated,0,2.46,.47,.02);
-  const light=new THREE.PointLight(0x69d4cf,.75,4.5,2);
-  light.position.set(0,1.92,.20);root.add(light);
+  // Stencil markings on the front face of the machine.
+  const badgeCanvas=document.createElement('canvas');badgeCanvas.width=256;badgeCanvas.height=96;
+  const ctx=badgeCanvas.getContext('2d');
+  ctx.fillStyle='#27383a';ctx.fillRect(0,0,256,96);
+  ctx.strokeStyle='#bd995f';ctx.lineWidth=4;ctx.strokeRect(6,6,244,84);
+  ctx.font='bold 47px monospace';ctx.fillStyle='#ddceb2';ctx.textAlign='center';
+  ctx.fillText('PWR-09',128,62);
+  const badgeTexture=new THREE.CanvasTexture(badgeCanvas);
+  badgeTexture.colorSpace=THREE.SRGBColorSpace;
+  const badgeMesh=mesh(root,new THREE.PlaneGeometry(.47,.175),
+    new THREE.MeshBasicMaterial({map:badgeTexture,side:THREE.DoubleSide}),
+    0,1.21,.19);
+  const warningLight=new THREE.PointLight(0x7bdac6,.45,3,2);
+  warningLight.position.set(0,2.31,.25);root.add(warningLight);
 
-  // Independent unarmored human-scale pilot: seen walking up the front ramp,
-  // lifting a foot into the cockpit, then being sealed inside the frame.
-  const pilot=mount(root,0,0,1.86);
-  const suit=new THREE.MeshStandardMaterial({color:0x59645d,roughness:.91,metalness:.12});
-  const cloth=new THREE.MeshStandardMaterial({color:0x292f30,roughness:.98});
-  const skin=new THREE.MeshStandardMaterial({color:0x9d7b61,roughness:.95});
-  const harness=new THREE.MeshStandardMaterial({color:0xc8a665,roughness:.77});
-  const hips=mount(pilot,0,.97,0);
-  box(hips,.41,.17,.22,cloth,0,0,0);
-  const pilotBody=mount(pilot,0,1.08,0);
-  bevel(pilotBody,.51,.66,.27,suit,0,.13,0,.10);
-  box(pilotBody,.10,.59,.035,harness,0,.11,.165);
-  for(const side of [-1,1]){
-    box(pilotBody,.22,.08,.06,cloth,side*.16,.34,.16);
-  }
-  const pilotHead=mount(pilotBody,0,.60,0);
-  sphere(pilotHead,.155,skin,0,0,0);
-  bevel(pilotHead,.28,.075,.21,cloth,0,.115,-.02,.035);
+  // Articulated human pilot is much smaller than the armor: visible during
+  // the existing approach/climb/exit choreography, not a second armored bot.
+  const pilot=makeGroup(root,0,0,1.72);
+  const uniform=new THREE.MeshStandardMaterial({color:0x657166,roughness:.93});
+  const fabric=new THREE.MeshStandardMaterial({color:0x30383a,roughness:1});
+  const skin=new THREE.MeshStandardMaterial({color:0x9f8065,roughness:.96});
+  const belt=new THREE.MeshStandardMaterial({color:0x9c8e69,roughness:.82});
+  const hips=makeGroup(pilot,0,.98,0);
+  ellipsoid(hips,.23,.13,.14,fabric,0,0,0);
+  const pilotBody=makeGroup(pilot,0,1.06,0);
+  ellipsoid(pilotBody,.28,.39,.18,uniform,0,.16,0);
+  box(pilotBody,.075,.58,.032,belt,0,.12,.184);
+  const pilotHead=makeGroup(pilotBody,0,.65,0);
+  ellipsoid(pilotHead,.15,.18,.16,skin);
+  forged(pilotHead,.30,.09,.28,fabric,0,.17,-.015,.04);
   const pilotArms=[],pilotLegs=[];
   for(const side of [-1,1]){
-    const arm=mount(pilotBody,side*.32,.39,0);pilotArms.push(arm);
-    box(arm,.18,.55,.18,suit,0,-.27,0);
-    box(arm,.18,.12,.19,cloth,0,-.53,0);
-    const leg=mount(hips,side*.13,-.06,0);pilotLegs.push(leg);
-    box(leg,.21,.73,.23,suit,0,-.39,0);
-    bevel(leg,.23,.14,.39,cloth,0,-.78,.09,.04);
+    const arm=makeGroup(pilotBody,side*.30,.42,0);pilotArms.push(arm);
+    ellipsoid(arm,.11,.30,.10,uniform,0,-.28,0);
+    ellipsoid(arm,.09,.095,.09,fabric,0,-.56,.01);
+    const leg=makeGroup(hips,side*.14,-.06,0);pilotLegs.push(leg);
+    ellipsoid(leg,.125,.38,.13,uniform,0,-.40,0);
+    ellipsoid(leg,.13,.075,.21,fabric,0,-.77,.065);
   }
   pilot.visible=false;
 
   function updatePlates(currentState){
     for(const slot of POWER_ARMOR_SLOTS){
-      const plate=getPowerPlate(slot,currentState.plates[slot]);
-      for(const panel of plateMeshes[slot]){
-        panel.visible=plate.points>0;
-        panel.material.color.setHex(plate.color);
-        panel.scale.setScalar(plate.points>0 ? Math.min(1.11,.96+plate.scale*.08):1);
+      const entry=getPowerPlate(slot,currentState.plates[slot]);
+      for(const shell of plateMeshes[slot]){
+        shell.visible=entry.points>0;
+        shell.material.color.setHex(entry.color);
+        shell.scale.setScalar(entry.points>0?Math.min(1.10,.95+entry.scale*.09):1);
       }
     }
   }
@@ -195,60 +258,52 @@ export function buildPowerArmorVisual(scene,position,state){
     const open=transitioning?ease(0,.23,t)*(1-ease(.76,1,t)):0;
     doors.left.rotation.y=-open*1.56;
     doors.right.rotation.y=open*1.56;
-    helmetPivot.rotation.x=-open*.58;
-    armPivots[0].rotation.z=-open*.22;
-    armPivots[1].rotation.z=open*.22;
-    for(const leg of legPivots)leg.rotation.x=Math.sin(time*1.5)*.006;
-    light.intensity=.65+open*.9;
+    helmetPivot.rotation.x=-open*.46;
+    armPivots[0].rotation.z=-open*.16;
+    armPivots[1].rotation.z=open*.16;
+    for(const leg of legPivots)leg.rotation.x=Math.sin(time*1.2)*.004;
+    warningLight.intensity=.45+open*.9;
     pilot.visible=transitioning;
     if(transitioning){
       const move=ease(.19,.81,t);
       const journey=phase==='entering'?move:1-move;
-      // A real approach to the cockpit: two steps, raised boot, then arms
-      // gripping the frame. Finish BEHIND the chest plates, not in front of them.
-      pilot.position.z=1.86-journey*2.17;
+      pilot.position.z=1.72-journey*2.04;
       const climb=ease(.25,.65,journey);
-      pilot.position.y=.19*climb+.24*Math.sin(Math.PI*journey);
-      pilotBody.rotation.x=-.38*Math.sin(Math.PI*journey);
-      pilotHead.rotation.x=.15*Math.sin(Math.PI*journey);
+      pilot.position.y=.16*climb+.18*Math.sin(Math.PI*journey);
+      pilotBody.rotation.x=-.31*Math.sin(Math.PI*journey);
+      pilotHead.rotation.x=.14*Math.sin(Math.PI*journey);
       const stepping=Math.sin(Math.PI*3.5*journey);
-      pilotLegs[0].rotation.x=.72*Math.max(0,stepping);
-      pilotLegs[1].rotation.x=.72*Math.max(0,-stepping);
-      pilotArms[0].rotation.x=-1.02*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.x=-1.02*Math.sin(Math.PI*journey);
-      pilotArms[0].rotation.z=-.42*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.z=.42*Math.sin(Math.PI*journey);
+      pilotLegs[0].rotation.x=.63*Math.max(0,stepping);
+      pilotLegs[1].rotation.x=.63*Math.max(0,-stepping);
+      pilotArms[0].rotation.x=-.90*Math.sin(Math.PI*journey);
+      pilotArms[1].rotation.x=-.90*Math.sin(Math.PI*journey);
+      pilotArms[0].rotation.z=-.38*Math.sin(Math.PI*journey);
+      pilotArms[1].rotation.z=.38*Math.sin(Math.PI*journey);
     }
   }
   updatePlates(state);
-  // Exclude the human when measuring suit proportions.
+  // Measure in suit-local orientation, not the bay's -90-degree yaw.
   const originalYaw=root.rotation.y;
-  root.rotation.y=0;root.updateMatrixWorld(true);
-  const bounds=new THREE.Box3().setFromObject(root);
-  const size=bounds.getSize(new THREE.Vector3());
+  const pilotWasVisible=pilot.visible;
+  pilot.visible=false;root.rotation.y=0;root.updateMatrixWorld(true);
+  const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
+  pilot.visible=pilotWasVisible;
   return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate};
 }
 
-// W08.2: sparse industrial HUD framing. The old 12cm beams were only 49cm
-// from the camera; perspective made them occupy huge strips of the screen.
-// Keep both sides of the scope, NPCs and the world fully visible.
+// The full helmet is a world model; the first-person visor is a very slim
+// visual hint, not two giant panels crossing the firing line.
 export function buildPowerArmorCockpit(camera){
   const group=new THREE.Group();camera.add(group);
-  const shell=new THREE.MeshStandardMaterial({color:0x283941,roughness:.55,metalness:.75});
-  const ledMat=new THREE.MeshBasicMaterial({color:0x92d9b4,transparent:true,opacity:.28,depthWrite:false});
+  const dark=new THREE.MeshBasicMaterial({color:0x263d40,transparent:true,opacity:.82});
+  const indicator=new THREE.MeshBasicMaterial({color:0x8ad5b0,transparent:true,opacity:.38,depthWrite:false});
   for(const side of [-1,1]){
-    const rail=new THREE.Mesh(new THREE.BoxGeometry(.026,.31,.052),shell);
-    rail.position.set(side*.78,-.22,-.85);
-    rail.rotation.z=-side*.11;group.add(rail);
-    const light=new THREE.Mesh(new THREE.BoxGeometry(.007,.17,.01),ledMat);
-    light.position.set(side*.759,-.22,-.796);
-    group.add(light);
-    const corner=new THREE.Mesh(new THREE.BoxGeometry(.19,.035,.05),shell);
-    corner.position.set(side*.70,-.05,-.85);group.add(corner);
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(.017,.14,.024),dark);
+    strip.position.set(side*.83,-.25,-1.08);group.add(strip);
+    const led=new THREE.Mesh(new THREE.BoxGeometry(.010,.073,.015),indicator);
+    led.position.set(side*.81,-.25,-1.05);group.add(led);
   }
-  const chestRim=new THREE.Mesh(new THREE.BoxGeometry(.56,.045,.08),shell);
-  chestRim.position.set(0,-.61,-.88);group.add(chestRim);
   group.visible=false;
   return group;
 }

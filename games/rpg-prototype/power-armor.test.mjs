@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
   createPowerArmorState,getPowerPlate,setPowerPlate,beginPowerArmorTransition,
-  stepPowerArmor,powerArmorProtection,safePowerArmorSnapshot} from './power-armor.mjs';
+  stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from './power-armor.mjs';
 
 test('Power armor has its own chassis and six independently removable visible slots',()=>{
   const state=createPowerArmorState();
@@ -76,4 +76,14 @@ test('Saved plates and occupied state restore, malformed or interrupted input re
   assert.equal(corrupted.occupied,false);
   assert.equal(corrupted.plates.head,'none');
   assert.equal(corrupted.plates.chest,'citadel');
+});
+
+test('Power armor standing and crouch heights follow player movement',()=>{
+  const state=createPowerArmorState();
+  assert.equal(powerArmorEyeHeight(state,1.70),1.70);
+  beginPowerArmorTransition(state);
+  stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-1.80)<.00001);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.13)<.00001);
+  assert.ok(powerArmorEyeHeight(state,1.70)-powerArmorEyeHeight(state,1.03)>.60);
 });
