@@ -44,6 +44,15 @@ test('W06.4 neck hitbox overlaps the chest and head geometry',()=>{
   assert.ok(center-height/2<1.34+.72/2,'Neck must overlap chest');
   assert.ok(center+height/2>2.03-.225,'Neck must overlap head');
 });
+test('W06.5 visible armor and loot share the same six-slot NPC outfit',()=>{
+  assert.match(source,/enemyArmorForRound\(enemy\.id,arenaRound\)/);
+  assert.match(source,/refreshEnemyArmorVisuals\(enemy\)/);
+  assert.match(source,/mesh\.visible=piece\.points>0/);
+  assert.match(source,/mesh\.material\.color\.setHex\(piece\.color\)/);
+  assert.match(source,/mesh\.visible&&\s*shouldRaycastEnemy/);
+  assert.match(source,/generateEnemyLoot\(enemy\.id,arenaRound,enemy\.state\.loadout\)/);
+  assert.match(source,/armorVisible:Object\.fromEntries/);
+});
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
     'playerDamageFlash','enemyHud','enemyCount','enemyMode','enemyList'];
@@ -61,7 +70,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.4/);
+  assert.match(page,/main\.js\?v=W06\.5/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -312,7 +321,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.4/);
+  assert.match(page,/main\.js\?v=W06\.5/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
