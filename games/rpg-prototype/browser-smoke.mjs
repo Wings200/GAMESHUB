@@ -7,6 +7,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,join,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
+import {getItem} from './inventory.mjs';
 const root=process.cwd();
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript',
   '.css':'text/css','.png':'image/png','.json':'application/json'};
@@ -162,8 +163,13 @@ try{
     .filter(id=>id!=='none').sort();
   const dropped=gearLoot.loot[0].items.filter(e=>e.itemId.startsWith('armor:'))
     .map(e=>e.itemId.slice(6)).sort();
-  assert.deepEqual(dropped,worn,
-    'A downed raider must drop the exact armor pieces visible on their model');
+  assert.ok(dropped.length>=1&&dropped.length<=2,
+    'Raiders should drop only one or two armor pieces');
+  assert.ok(dropped.length<worn.length,
+    'A raider must not drop their whole equipped suit');
+  assert.ok(dropped.every(id=>worn.includes(id)),
+    'Every dropped armor item must actually be worn by the NPC');
+  const testArmor=getItem('armor:'+dropped[0]);
   const nearby=await page.evaluate(()=>window.__rpgSmokeApproachLoot());
   assert.equal(nearby,true);
   await page.keyboard.press('e');
@@ -174,18 +180,18 @@ try{
   assert.equal(inventoryAfterLoot.loot.length,0,
     'A fully looted bag must disappear from the 3D world');
   assert.ok(inventoryAfterLoot.inventory.items.some(i=>
-    i.itemId==='armor:ranger-chest'));
+    i.itemId===testArmor.id));
   await page.locator('#lootClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
   await page.keyboard.press('i');
   await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
   await page.locator('#inventoryItems .loot-entry')
-    .filter({hasText:'Ranger Guard · Chest'}).getByRole('button',{name:'EQUIP'}).click();
+    .filter({hasText:testArmor.name}).getByRole('button',{name:'EQUIP'}).click();
   await page.locator('#inventoryItems .loot-entry')
     .filter({hasText:'Pipe SMG'}).first().getByRole('button',{name:'EQUIP'}).click();
   const equipped=await page.evaluate(()=>window.__rpgSmokeState());
-  assert.equal(equipped.inventory.armor.chest,'ranger-chest');
+  assert.equal(equipped.inventory.armor[testArmor.slot],testArmor.key);
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
   await page.locator('#inventoryClose').click();
   // Regression: restored non-default weapons previously called selectWeapon()
@@ -197,7 +203,7 @@ try{
     null,{timeout:30000});
   const restoredInventory=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(restoredInventory.inventory.equippedWeapon,'pipe-smg');
-  assert.equal(restoredInventory.inventory.armor.chest,'ranger-chest');
+  assert.equal(restoredInventory.inventory.armor[testArmor.slot],testArmor.key);
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
     'Saved player weapon must not cause a startup exception');
@@ -247,7 +253,7 @@ try{
     scoutHealthAfter:scoutHealth,enemies:result.enemies.length,
     heldEmptyClicks:emptyB.dryFireClicks,secondPullClicks:second.dryFireClicks,
     smgAfterReloadMagazine:recovered.weapon.magazine,
-    lootPickup:true,equippedArmor:equipped.inventory.armor.chest,
+    lootPickup:true,equippedArmor:equipped.inventory.armor[testArmor.slot],
     equippedWeapon:equipped.inventory.equippedWeapon
   }));
   await page.close();

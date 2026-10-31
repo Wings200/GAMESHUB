@@ -139,9 +139,9 @@ export function takeAllFromBag(pack,bag){
   }
   return {added,remaining:bag.items.reduce((n,e)=>n+e.quantity,0)};
 }
-export function generateEnemyLoot(enemyId,round=0,loadout=null){
-  // Every worn armor piece can be looted. Visible armor, damage reduction
-  // and bag contents use the SAME six-slot enemy loadout.
+export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.random){
+  // Armor is rolled from the NPC's real visible loadout, but only a small
+  // subset survives as loot. High-tier full suits are never guaranteed.
   const base={
     scout:[{itemId:'ammo:pipe-smg',quantity:22},
       {itemId:'supply:medkit',quantity:1},
@@ -154,8 +154,23 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null){
   };
   if(!base[enemyId])throw Error('Unknown raider: '+enemyId);
   const equipped=createLoadout(loadout||enemyArmorForRound(enemyId,round));
-  const armor=ARMOR_SLOTS.filter(slot=>equipped[slot]!=='none')
+  const worn=ARMOR_SLOTS.filter(slot=>equipped[slot]!=='none')
     .map(slot=>({itemId:'armor:'+equipped[slot],quantity:1}));
+  // Scouts can yield zero or one piece, raiders one or two, and a fully
+  // equipped Citadel enforcer at most one (or sometimes none).
+  const roll=()=>{
+    const value=Number(random());
+    return Number.isFinite(value)?Math.max(0,Math.min(.999999,value)):0;
+  };
+  const chance=roll();
+  const desired=enemyId==='scout'?(chance<.35?0:1):
+    enemyId==='raider'?(chance<.75?1:2):(chance<.4?0:1);
+  const count=Math.min(desired,worn.length);
+  for(let i=0;i<count;i++){
+    const j=i+Math.floor(roll()*(worn.length-i));
+    [worn[i],worn[j]]=[worn[j],worn[i]];
+  }
+  const armor=worn.slice(0,count);
   for(const entry of armor)getItem(entry.itemId);
   return [...base[enemyId].map(e=>({...e})),...armor];
 }

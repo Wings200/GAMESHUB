@@ -31,7 +31,7 @@ test('Loot stacks ammo, enforces thirty slots and never loses overflow',()=>{
 });
 test('Enemy drops are deterministic, searchable and no duplication on TAKE ALL',()=>{
   const pack=createBackpack();
-  const bag=createLootBag('raider-1',43,46,generateEnemyLoot('raider'));
+  const bag=createLootBag('raider-1',43,46,generateEnemyLoot('raider',0,null,()=>.5));
   const expected=bag.items.reduce((sum,e)=>sum+e.quantity,0);
   const r=takeAllFromBag(pack,bag);
   assert.equal(r.added,expected);
@@ -39,23 +39,33 @@ test('Enemy drops are deterministic, searchable and no duplication on TAKE ALL',
   assert.equal(bag.items.length,0);
   assert.equal(takeAllFromBag(pack,bag).added,0);
   assert.equal(countItem(pack,'weapon:pipe-smg'),1);
-  assert.equal(countItem(pack,'armor:ranger-chest'),1);
+  assert.equal(pack.items.filter(i=>i.itemId.startsWith('armor:')).length,1);
 });
-test('W06.5 armor drops match visible equipped pieces across rounds',()=>{
+test('W06.6 armor drops are random subsets of gear actually worn',()=>{
   for(const role of ['scout','raider','enforcer']){
-    for(let round=0;round<6;round++){
+    for(let round=0;round<8;round++){
       const outfit=enemyArmorForRound(role,round);
-      const loot=generateEnemyLoot(role,round,outfit);
-      const armorDrops=loot.filter(e=>e.itemId.startsWith('armor:'))
-        .map(e=>e.itemId.slice(6)).sort();
-      const equipped=ARMOR_SLOTS.map(slot=>outfit[slot])
-        .filter(id=>id!=='none').sort();
-      assert.deepEqual(armorDrops,equipped,role+' round '+round);
+      const equipped=ARMOR_SLOTS.map(slot=>outfit[slot]).filter(id=>id!=='none');
+      for(const roll of [0,.2,.5,.8,.99]){
+        const loot=generateEnemyLoot(role,round,outfit,()=>roll);
+        const drops=loot.filter(e=>e.itemId.startsWith('armor:'))
+          .map(e=>e.itemId.slice(6));
+        assert.equal(new Set(drops).size,drops.length,'Never duplicate armor');
+        assert.ok(drops.every(id=>equipped.includes(id)),
+          'Never drop an armor piece the NPC did not wear');
+        assert.ok(drops.length<=(role==='raider'?2:1));
+        if(role==='enforcer')assert.ok(drops.length<equipped.length,
+          'Full Citadel suits must not drop in one kill');
+      }
     }
   }
-  const single=generateEnemyLoot('scout',1);
-  assert.deepEqual(single.filter(e=>e.itemId.startsWith('armor:')),
+  assert.equal(generateEnemyLoot('scout',1,null,()=>0)
+    .filter(e=>e.itemId.startsWith('armor:')).length,0);
+  assert.deepEqual(generateEnemyLoot('scout',1,null,()=>.6)
+    .filter(e=>e.itemId.startsWith('armor:')),
     [{itemId:'armor:ranger-leftLeg',quantity:1}]);
+  assert.equal(generateEnemyLoot('raider',0,null,()=>.99)
+    .filter(e=>e.itemId.startsWith('armor:')).length,2);
   assert.equal(getItem('armor:scrap-head').category,'armor');
 });
 test('Full backpack leaves uncollected contents in world loot bag',()=>{
@@ -111,7 +121,9 @@ test('Dropping a stack uses an independent item and never duplicates IDs',()=>{
   assert.notEqual(pack.items[0].uid,pack.items[1].uid);
 });
 test('Three enemy profiles award different items and rarities',()=>{
-  const a=generateEnemyLoot('scout'),b=generateEnemyLoot('raider'),c=generateEnemyLoot('enforcer');
+  const a=generateEnemyLoot('scout',0,null,()=>.9),
+    b=generateEnemyLoot('raider',0,null,()=>.9),
+    c=generateEnemyLoot('enforcer',0,null,()=>.9);
   assert.notDeepEqual(a,b);assert.notDeepEqual(b,c);
   assert.ok(c.some(e=>['rare','epic'].includes(getItem(e.itemId).rarity)));
   assert.throws(()=>generateEnemyLoot('ghost'));

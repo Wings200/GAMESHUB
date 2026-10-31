@@ -53,6 +53,11 @@ test('W06.5 visible armor and loot share the same six-slot NPC outfit',()=>{
   assert.match(source,/generateEnemyLoot\(enemy\.id,arenaRound,enemy\.state\.loadout\)/);
   assert.match(source,/armorVisible:Object\.fromEntries/);
 });
+test('W06.6 neck remains hittable without an orange chest strip',()=>{
+  assert.doesNotMatch(source,/shoulderMark/);
+  assert.doesNotMatch(source,/new THREE\.BoxGeometry\(\.7,\.11,\.075\)/);
+  assert.match(source,/new THREE\.CylinderGeometry\(\.13,\.15,\.28,10\)/);
+});
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
     'playerDamageFlash','enemyHud','enemyCount','enemyMode','enemyList'];
@@ -70,7 +75,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.5/);
+  assert.match(page,/main\.js\?v=W06\.6/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -97,13 +102,12 @@ test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
   assert.match(source,/enemy\.deathTimer\+=dt/);
   assert.match(source,/if\(enemy\.deathTimer>=\.7\)enemy\.root\.visible=false/);
   assert.match(source,/enemy\.beacon\.visible=enemy\.state\.alive/);
-  assert.match(source,/enemy\.shoulderMark\.visible=enemy\.state\.alive/);
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);
   assert.match(source,/if\(hit\.killed\)\{/);
   assert.match(source,/enemy\.brain\.active=false/);
   assert.match(source,/enemy\.deathTimer=0/);
   assert.match(source,/enemy\.root\.visible=true;enemy\.billboard\.mesh\.visible=true/);
-  assert.match(source,/enemy\.beacon\.visible=true;enemy\.shoulderMark\.visible=true/);
+  assert.match(source,/enemy\.beacon\.visible=true/);
   assert.match(source,/updateArenaSign\(\)/);
   assert.match(source,/function resetEnemies\(\)/);
   assert.match(source,/KeyJ/);
@@ -111,7 +115,7 @@ test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
 test('3D world markers, hit labels and arena sign respect obstacle occlusion',()=>{
   assert.doesNotMatch(source,/depthTest:false/);
   assert.match(source,/color:0xf19668,depthTest:true/);
-  assert.match(source,/color:0xf2ad66,depthTest:true/);
+  assert.doesNotMatch(source,/color:0xf2ad66,depthTest:true/);
   assert.match(source,/map:texture,transparent:true,depthTest:true,depthWrite:false/);
   assert.match(source,/map:locatorTex,transparent:true,depthTest:true,depthWrite:false/);
   assert.doesNotMatch(source,/for\(const \[x,z\] of \[\[39,42\],\[43,46\],\[46,36\.8\]\]\)/);
@@ -321,7 +325,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.5/);
+  assert.match(page,/main\.js\?v=W06\.6/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
