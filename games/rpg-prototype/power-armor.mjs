@@ -1,8 +1,8 @@
-// W08.0 power armor: an independent powered chassis with six removable plates.
+// W08.1 power armor: an independent powered chassis with six removable plates.
 // The mechanical state is renderer-free; visuals and audio live in the lab.
 import {ARMOR_SLOTS,damageReductionForPoints} from './combat.mjs';
 export const POWER_ARMOR_SLOTS=ARMOR_SLOTS;
-export const POWER_ARMOR_TRANSITION_SECONDS=1.65;
+export const POWER_ARMOR_TRANSITION_SECONDS=3.4;
 export const POWER_ARMOR_PLATES=Object.freeze({
   none:Object.freeze({id:'none',name:'Bare chassis',points:0,color:0x29383d,scale:0}),
   scrap:Object.freeze({id:'scrap',name:'Salvaged steel',points:26,color:0x867967,scale:.86}),
