@@ -13,6 +13,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
   setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
+import {mountRiggedCharacter} from '../character-assets.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
@@ -473,6 +474,12 @@ try{
   if(raw)powerArmorState=safePowerArmorSnapshot(raw);
 }catch{}
 const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
+// A skinned, textured human is mounted over the old pilot fallback.
+let riggedPilot=null;
+mountRiggedCharacter(poweredSuit.pilot,'raider',1.74).then(model=>{
+  riggedPilot=model;
+  poweredSuit.revealRiggedPilot();
+}).catch(error=>console.warn('Detailed pilot unavailable; using fallback:',error));
 textSign('POWER SUIT · P TO ENTER',-55,-6,0x8fbba4);
 const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
@@ -807,7 +814,7 @@ function createEnemy(spec){
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
     tactics:makeEnemyTactics(spec.id),gunGlow:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
-    recoilPose:0};
+    recoilPose:0,rigged:null,modelStatus:'loading'};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -850,7 +857,7 @@ function createEnemy(spec){
   }
   // Original game-world scrap-rifle silhouette (visual prop only in W04.0).
   const rifle=new THREE.Group();rifle.position.set(.19,1.38,.33);
-  upperBody.add(rifle);
+  upperBody.add(rifle);enemy.rifleVisual=rifle;
   const stock=new THREE.Mesh(new THREE.BoxGeometry(.10,.15,.48),rustySteel);
   rifle.add(stock);
   const muzzle=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.56,8),darkCloth);
@@ -876,6 +883,15 @@ function createEnemy(spec){
   scene.add(labelMesh);
   enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
   enemies.set(spec.id,enemy);
+  // Preserve original meshes as invisible, authoritative armor hitboxes.
+  mountRiggedCharacter(root,spec.id,2.20).then(model=>{
+    enemy.rigged=model;enemy.modelStatus='rigged';
+    for(const hitbox of enemy.meshes)hitbox.material.visible=false;
+    enemy.rifleVisual.visible=false;
+  }).catch(error=>{
+    enemy.modelStatus='fallback';
+    console.warn('Detailed NPC asset unavailable for '+spec.id,error);
+  });
   refreshEnemyArmorVisuals(enemy);
   refreshEnemyLabel(enemy,'PATROL');
   return enemy;
@@ -1366,6 +1382,7 @@ function updateEnemies(dt){
           pivot.rotation.z=side*.25*enemy.crouchBlend;
         }
       }
+      enemy.rigged?.update(dt,enemy.brain.moving,enemy.crouchBlend);
       enemy.root.rotation.y=enemy.brain.yaw;
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
       enemy.shake=Math.max(0,enemy.shake-dt*3);
@@ -2330,6 +2347,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       armor:{...e.state.loadout},
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
+       modelStatus:e.modelStatus,
       crouching:e.tactics.crouching,
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
@@ -2536,10 +2554,17 @@ function frame(){
   if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
   refreshWeaponHUD();
+  const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='rigged').length;
+  const failedModels=[...enemies.values()].filter(e=>e.modelStatus==='fallback').length;
+  const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED'+
+    (failedModels?' · '+failedModels+' FALLBACK':'')+
+    (riggedPilot?' · PILOT LOADED':' · PILOT LOADING/FALLBACK');
+  if($('riggedStatus').textContent!==modelLabel)$('riggedStatus').textContent=modelLabel;
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
   poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime);
+  riggedPilot?.update(dt,powerStep.phase!=='idle');
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);

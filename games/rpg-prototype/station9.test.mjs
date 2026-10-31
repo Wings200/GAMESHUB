@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
 const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
+const characterAssets=readFileSync(new URL('./character-assets.mjs',import.meta.url),'utf8');
+const assetProxy=readFileSync(new URL('../../functions/api/rpg-models/[model].js',import.meta.url),'utf8');
+const armorVisual=readFileSync(new URL('./power-armor-visual.mjs',import.meta.url),'utf8');
 
 test('Station nine has 3 declared enemies in front of an east-facing player',()=>{
   const section=source.slice(source.indexOf('const enemySpecs=['),source.indexOf('function enemyMaterial'));
@@ -82,7 +85,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W08\.4/);
+  assert.match(page,/main\.js\?v=W09\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -334,7 +337,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W08\.4/);
+  assert.match(page,/main\.js\?v=W09\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -386,4 +389,23 @@ test('W08.3 uses crouch-aware camera heights instead of the old fixed 2.82m',()=
   assert.match(source,/powerArmorEyeHeight\(powerArmorState,info\.eyeHeight\)/);
   assert.doesNotMatch(source,/powerArmorState\.occupied\?2\.82:info\.eyeHeight/);
   assert.match(source,/crouched:!!player\.crouched/);
+});
+
+test('W09.0 detailed characters use a real rigged GLB loader and safe fallbacks',()=>{
+  assert.match(characterAssets,/GLTFLoader/);
+  assert.match(characterAssets,/DRACOLoader/);
+  assert.match(characterAssets,/cloneSkinned/);
+  assert.match(characterAssets,/AnimationMixer/);
+  assert.match(characterAssets,/mountRiggedCharacter/);
+  for(const id of ['scout','raider','enforcer']){
+    assert.ok(characterAssets.includes("id:'"+id+"'"));
+    assert.ok(assetProxy.includes(id+':'));
+  }
+  assert.match(assetProxy,/Object\.prototype\.hasOwnProperty\.call\(SOURCES,id\)/);
+  assert.match(source,/mountRiggedCharacter\(root,spec\.id,2\.20\)/);
+  assert.match(page,/id="riggedStatus"/);
+  assert.match(source,/hitbox\.material\.visible=false/);
+  assert.match(source,/enemy\.modelStatus='fallback'/);
+  assert.match(source,/mountRiggedCharacter\(poweredSuit\.pilot,'raider',1\.74\)/);
+  assert.match(armorVisual,/revealRiggedPilot\(\)\{fallbackPilot\.visible=false/);
 });
