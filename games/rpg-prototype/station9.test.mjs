@@ -184,7 +184,7 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/createWeaponState\(activeSpec\)/);
   assert.match(source,/for\(const spec of ARSENAL\)updateWeapon\(arsenalStates\[spec\.id\],dt,spec\)/);
   assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
-  assert.match(source,/if\(e\.button===0\)\{triggerHeld=true;shoot\(\);\}/);
+  assert.ok(source.includes("if(e.button===0&&powerArmorState.phase==='idle'){triggerHeld=true;shoot();}"));
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
   assert.match(source,/new THREE\.CylinderGeometry/);
 });
