@@ -218,13 +218,16 @@ try{
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
   // W08.4: a partial stack drop must reduce the backpack by exactly the
   // chosen count and spawn world loot with that same quantity.
+  const salvageBefore=(await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.items.find(i=>i.itemId==='supply:salvage').quantity;
+  assert.ok(salvageBefore>=7);
   let salvageRow=page.locator('#inventoryItems .loot-entry')
     .filter({hasText:'Salvaged Parts'});
   await salvageRow.locator('input.drop-amount').fill('7');
   await salvageRow.getByRole('button',{name:'DROP'}).click();
   const afterPartial=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(afterPartial.inventory.items.find(
-    i=>i.itemId==='supply:salvage').quantity,23);
+    i=>i.itemId==='supply:salvage').quantity,salvageBefore-7);
   assert.ok(afterPartial.loot.some(b=>b.source==='player-drop'&&
     b.items.some(i=>i.itemId==='supply:salvage'&&i.quantity===7)),
     'Only the seven selected salvage pieces should appear in world loot');
@@ -233,10 +236,10 @@ try{
   await salvageRow.locator('input.drop-amount').fill('999');
   await salvageRow.getByRole('button',{name:'DROP'}).click();
   assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
-    .inventory.items.find(i=>i.itemId==='supply:salvage').quantity,23,
+    .inventory.items.find(i=>i.itemId==='supply:salvage').quantity,salvageBefore-7,
     'Invalid drop counts must leave the backpack unchanged');
   await salvageRow.getByRole('button',{name:'MAX'}).click();
-  assert.equal(await salvageRow.locator('input.drop-amount').inputValue(),'23');
+  assert.equal(await salvageRow.locator('input.drop-amount').inputValue(),String(salvageBefore-7));
   await salvageRow.getByRole('button',{name:'DROP'}).click();
   assert.ok(!(await page.evaluate(()=>window.__rpgSmokeState()))
     .inventory.items.some(i=>i.itemId==='supply:salvage'),
