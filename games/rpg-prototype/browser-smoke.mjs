@@ -203,6 +203,7 @@ try{
   await page.locator('#lootClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
+  await page.evaluate(()=>window.__rpgSmokeGiveBenchMaterials());
   await page.keyboard.press('i');
   await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
   assert.equal(await page.locator('#inventoryItems .loot-description strong')
@@ -215,6 +216,34 @@ try{
   const equipped=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(equipped.inventory.armor[testArmor.slot],testArmor.key);
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
+  // W08.4: a partial stack drop must reduce the backpack by exactly the
+  // chosen count and spawn world loot with that same quantity.
+  const salvageBefore=(await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.items.find(i=>i.itemId==='supply:salvage').quantity;
+  assert.ok(salvageBefore>=7);
+  let salvageRow=page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Salvaged Parts'});
+  await salvageRow.locator('input.drop-amount').fill('7');
+  await salvageRow.getByRole('button',{name:'DROP'}).click();
+  const afterPartial=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(afterPartial.inventory.items.find(
+    i=>i.itemId==='supply:salvage').quantity,salvageBefore-7);
+  assert.ok(afterPartial.loot.some(b=>b.source==='player-drop'&&
+    b.items.some(i=>i.itemId==='supply:salvage'&&i.quantity===7)),
+    'Only the seven selected salvage pieces should appear in world loot');
+  salvageRow=page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Salvaged Parts'});
+  await salvageRow.locator('input.drop-amount').fill('999');
+  await salvageRow.getByRole('button',{name:'DROP'}).click();
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.items.find(i=>i.itemId==='supply:salvage').quantity,salvageBefore-7,
+    'Invalid drop counts must leave the backpack unchanged');
+  await salvageRow.getByRole('button',{name:'MAX'}).click();
+  assert.equal(await salvageRow.locator('input.drop-amount').inputValue(),String(salvageBefore-7));
+  await salvageRow.getByRole('button',{name:'DROP'}).click();
+  assert.ok(!(await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.items.some(i=>i.itemId==='supply:salvage'),
+    'MAX must drop only the remaining count in this stack');
   await page.locator('#inventoryClose').click();
   // Regression: restored non-default weapons previously called selectWeapon()
   // before slideCycle/shotNoticeTime/weaponMotion had initialized, crashing
@@ -237,6 +266,19 @@ try{
   await page.evaluate(()=>window.__rpgSmokeGiveBenchMaterials());
   await page.locator('#workbenchOpen').click();
   await page.waitForSelector('#workbenchPanel:not(.hidden)',{timeout:7000});
+  await page.locator('#benchWeapon').selectOption('service-carbine');
+  await page.locator('#benchOptics .loot-entry').filter({hasText:'Holo A'})
+    .getByRole('button',{name:'CRAFT + INSTALL'}).click();
+  assert.deepEqual(await page.evaluate(()=>
+    window.__rpgSmokeSightVisual('service-carbine')),
+    {variant:'holo-a',count:1},
+    'NATO Holo A must have its own actual 3D sight housing');
+  await page.locator('#benchOptics .loot-entry').filter({hasText:'Holo B'})
+    .getByRole('button',{name:'CRAFT + INSTALL'}).click();
+  assert.deepEqual(await page.evaluate(()=>
+    window.__rpgSmokeSightVisual('service-carbine')),
+    {variant:'holo-b',count:1},
+    'Russian Holo B must replace Holo A with distinct actual geometry');
   await page.locator('#benchWeapon').selectOption('hunting-rifle');
   assert.ok((await page.locator('#benchMaterials').textContent()).includes('OPTIC GLASS'));
   await page.locator('#benchOptics .loot-entry').filter({hasText:'Marksman scope'})

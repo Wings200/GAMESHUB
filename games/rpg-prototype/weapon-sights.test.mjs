@@ -59,7 +59,11 @@ test('Modular sights give real increasing magnification and respect weapons',()=
     sightForOptic('hunting-rifle','scope-4x').fov);
   assert.ok(sightForOptic('hunting-rifle','scope-4x').fov<
     sightForOptic('hunting-rifle','scope-2x').fov);
-  assert.equal(sightForOptic('service-carbine','holo-a').optic,'reflex');
+  assert.equal(sightForOptic('service-carbine','holo-a').optic,'holo');
+  assert.equal(sightForOptic('service-carbine','holo-a').variant,'holo-a');
+  assert.equal(sightForOptic('service-carbine','holo-b').variant,'holo-b');
+  assert.equal(sightForOptic('service-carbine','holo-a').fov,
+    sightForOptic('service-carbine','holo-b').fov);
   assert.equal(sightForOptic('service-carbine','holo-b').optic,'holo');
   assert.ok(OPTIC_MODS['scope-6x'].cost.glass>OPTIC_MODS['holo-a'].cost.glass);
 });
