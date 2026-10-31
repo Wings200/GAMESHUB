@@ -30,6 +30,20 @@ test('Enemy render visibility is never gated by the station selector',()=>{
   assert.match(source,/Number\(e\.code\.slice\(5\)\)<=9/);
   assert.match(source,/updateEnemies\(dt\);[\s\S]*renderer\.render\(scene,camera\)/);
 });
+test('W06.4 distant NPCs continue moving and deaths finish outside the arena',()=>{
+  assert.match(source,/const simulating=controls\.isLocked&&enemyAIEnabled/);
+  assert.match(source,/enabled:simulating&&playerHealth\.alive/);
+  assert.doesNotMatch(source,/if\(!active\)continue/);
+  assert.match(source,/function markEnemyDefeated\(enemy\)/);
+  assert.match(source,/enemy\.flash=0;enemy\.shake=0/);
+});
+test('W06.4 neck hitbox overlaps the chest and head geometry',()=>{
+  const match=source.match(/new THREE\.CylinderGeometry\(\.13,\.15,([\d.]+),10\),\s*flesh,0,([\d.]+),0,'chest'/);
+  assert.ok(match,'A solid neck hitbox must be present');
+  const height=Number(match[1]),center=Number(match[2]);
+  assert.ok(center-height/2<1.34+.72/2,'Neck must overlap chest');
+  assert.ok(center+height/2>2.03-.225,'Neck must overlap head');
+});
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
     'playerDamageFlash','enemyHud','enemyCount','enemyMode','enemyList'];
@@ -47,7 +61,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.3/);
+  assert.match(page,/main\.js\?v=W06\.4/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -298,7 +312,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.3/);
+  assert.match(page,/main\.js\?v=W06\.4/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
