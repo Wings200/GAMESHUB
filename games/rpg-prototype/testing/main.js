@@ -2559,8 +2559,9 @@ function frame(){
   const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='rigged').length;
   const failedModels=[...enemies.values()].filter(e=>e.modelStatus==='fallback').length;
   const modelSizeOK=[...enemies.values()].filter(e=>
-    e.modelStatus==='rigged'&&e.rigged.metrics.height>=1.75&&
-    e.rigged.metrics.height<=2.65).length;
+    e.modelStatus==='rigged'&&
+    e.rigged.metrics.height>=e.rigged.metrics.expectedHeight*.8&&
+    e.rigged.metrics.height<=e.rigged.metrics.expectedHeight*1.2).length;
   const modelCorrections=[...enemies.values()].reduce((n,e)=>n+(e.rigged?.metrics.repairs||0),0);
   const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED · '+
     modelSizeOK+' SIZE OK'+(modelCorrections?' · '+modelCorrections+' AUTO-FIXES':'')+
