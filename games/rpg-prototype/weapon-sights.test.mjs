@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARSENAL} from './weapons.mjs';
 import {SIGHT_MOUNTS,sightMount,adsWeaponPosition,alignedSightPosition,
-  isAlignedToBore} from './weapon-sights.mjs';
+  isAlignedToBore,OPTIC_MODS,compatibleOptics,sightForOptic} from './weapon-sights.mjs';
 test('Every playable weapon has a dedicated real-world sight reference',()=>{
   assert.equal(Object.keys(SIGHT_MOUNTS).length,ARSENAL.length);
   for(const w of ARSENAL){
@@ -46,4 +46,20 @@ test('Scoped and open sights have intentionally low ADS dispersion',()=>{
   assert.ok(specs['scrap-pistol'].adsSpreadDegrees<=.12);
   assert.ok(specs['scrap-shotgun'].adsSpreadDegrees>3,
     'shotgun pellet scatter must remain even while aiming');
+});
+
+test('Modular sights give real increasing magnification and respect weapons',()=>{
+  const rifle=compatibleOptics('hunting-rifle');
+  for(const id of ['factory','holo-a','holo-b','scope-2x','scope-4x','scope-6x'])
+    assert.ok(rifle.includes(id));
+  assert.deepEqual(compatibleOptics('scrap-pistol'),['factory']);
+  assert.equal(sightForOptic('scrap-pistol','scope-6x').optic,'iron');
+  assert.equal(sightForOptic('hunting-rifle','scope-6x').optic,'scope');
+  assert.ok(sightForOptic('hunting-rifle','scope-6x').fov<
+    sightForOptic('hunting-rifle','scope-4x').fov);
+  assert.ok(sightForOptic('hunting-rifle','scope-4x').fov<
+    sightForOptic('hunting-rifle','scope-2x').fov);
+  assert.equal(sightForOptic('service-carbine','holo-a').optic,'reflex');
+  assert.equal(sightForOptic('service-carbine','holo-b').optic,'holo');
+  assert.ok(OPTIC_MODS['scope-6x'].cost.glass>OPTIC_MODS['holo-a'].cost.glass);
 });
