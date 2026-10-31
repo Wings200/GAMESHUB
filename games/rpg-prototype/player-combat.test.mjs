@@ -27,7 +27,9 @@ test('Enemies cannot shoot beyond range, while patrolling or behind cover',()=>{
   assert.equal(canEnemyFire(e,p),false);
   e.mode='chase';
   assert.equal(canEnemyFire(e,p),true);
-  assert.equal(canEnemyFire(e,{x:15,z:42}),false);
+  assert.equal(canEnemyFire(e,{x:15,z:42}),true);
+  assert.equal(canEnemyFire(e,{x:-10,z:42}),false);
+  assert.equal(canEnemyFire(e,{x:10,z:42},[],ENEMY_ATTACK.raider.range),true);
   assert.equal(canEnemyFire(e,p,[{minX:35,maxX:36,minZ:40,maxZ:44}]),false);
   assert.equal(canEnemyFire({...e,yaw:Math.PI/2},p),false);
   e.active=false;
@@ -38,6 +40,6 @@ test('Each enemy uses finite per-attack damage, timing and distance',()=>{
     assert.ok(['scout','raider','enforcer'].includes(name));
     assert.ok(attack.damage>=4&&attack.damage<=12);
     assert.ok(attack.interval>=2);
-    assert.ok(attack.range>10);
+    assert.ok(attack.range>=30&&attack.range<=45);
   }
 });
