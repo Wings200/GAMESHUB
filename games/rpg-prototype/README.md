@@ -1,4 +1,11 @@
-# Untitled RPG · Mechanics Lab W06.4 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.5 + Forest Foundation 0.1
+
+## W06.5 — varied, visible, lootable armor equipment
+
+- Every enemy now spawns with a role-appropriate, six-slot modular armor outfit. Press J to rotate prebuilt outfits for consistent testing, including a lone leg plate and a complete armored suit.
+- Meshes for helmets, chest plates, both arms and both legs reflect the actual equipped armor. Unworn plates are invisible and cannot intercept bullet rays; armor colors match material types.
+- Loot bags contain each armor piece an enemy really wore, plus their weapon/ammunition/supplies. The pieces are equippable and affect the correct player body zones. Scrap-level armor is also in the item catalog.
+- Both inventory and browser tests verify visible equipment, changes on reset and matching dropped contents. The previous W06.4 distant-body and neck fixes remain.
 
 ## W06.4 — distant AI updates, death cleanup and neck hitbox
 
