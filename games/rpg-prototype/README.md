@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W07.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W07.1 + Forest Foundation 0.1
+
+## W07.1 — cleaner scope reticle and clearer duplicate loot
+
+- The hunting-rifle and compatible marksman scopes retain their real 3D reticles, but the four fine arms have a smaller 0.006 m center gap instead of 0.026 m. Their pale lines are 66% opaque to keep heads visible through the center.
+- Weapons and armor have always been eligible to drop in multiple copies; each non-stackable copy occupies one of the 30 backpack slots. W07.1 labels copies separately (COPY 1 / 2, etc.) and shows the exact owned quantity immediately after pickup.
+- The loot panel reports when the 30-slot backpack is full, so a denied pickup is explained rather than showing an invisible notice behind the overlay.
+- A browser gameplay test now loots two identical Pipe SMGs from separate raider bags, sees the duplicate count, and confirms both survive a full reload. Pure inventory tests cover three copies and dropping one without losing the rest.
+
 
 ## W07.0 — optics workbench and reliable aim
 
