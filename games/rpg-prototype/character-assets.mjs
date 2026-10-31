@@ -16,7 +16,7 @@ draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/li
 loader.setDRACOLoader(draco);
 const library=new Map();
 const MIN_HEIGHT=0.001;
-const CHECK_INTERVAL=.28;
+const CHECK_INTERVAL=.85; // detailed skinned meshes are expensive to measure
 function fetchCharacter(id){
   const spec=CHARACTER_ASSETS[id];
   if(!spec)return Promise.reject(new Error('Unknown character asset: '+id));
@@ -95,7 +95,7 @@ export async function mountRiggedCharacter(parent,id,targetHeight=1.85){
       object.frustumCulled=false;
     }
   });
-  let elapsed=0;
+  let elapsed=0,visualCrouch=0;
   const liveBounds=new THREE.Box3();
   const anchor=new THREE.Vector3();
   const liveCenter=new THREE.Vector3();
@@ -110,8 +110,9 @@ export async function mountRiggedCharacter(parent,id,targetHeight=1.85){
     let height=liveBounds.max.y-liveBounds.min.y;
     // As a final defence against unusually authored animation tracks,
     // clamp height on the unanimated parent, never an animated GLB node.
-    if(height>targetHeight*1.2||height<targetHeight*.65){
-      const ratio=targetHeight/height;
+    const expectedHeight=targetHeight*(1-.35*visualCrouch);
+    if(height>expectedHeight*1.2||height<expectedHeight*.65){
+      const ratio=expectedHeight/height;
       root.scale.multiplyScalar(ratio);
       repairs++;
       root.updateWorldMatrix(true,true);
@@ -145,7 +146,8 @@ export async function mountRiggedCharacter(parent,id,targetHeight=1.85){
         if(moving)mixer.update(dt);
       }
       // Crouch changes the visual only. The NPC controller owns the hitboxes.
-      root.scale.y=root.scale.x*(1-.35*Math.max(0,Math.min(1,crouch)));
+      visualCrouch=Math.max(0,Math.min(1,crouch));
+      root.scale.y=root.scale.x*(1-.35*visualCrouch);
       elapsed+=dt;
       if(elapsed>=CHECK_INTERVAL){elapsed=0;inspectAndRepair();}
     },
