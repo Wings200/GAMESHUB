@@ -85,7 +85,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.0/);
+  assert.match(page,/main\.js\?v=W09\.1/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -337,7 +337,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.0/);
+  assert.match(page,/main\.js\?v=W09\.1/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -391,7 +391,7 @@ test('W08.3 uses crouch-aware camera heights instead of the old fixed 2.82m',()=
   assert.match(source,/crouched:!!player\.crouched/);
 });
 
-test('W09.0 detailed characters use a real rigged GLB loader and safe fallbacks',()=>{
+test('W09.1 detailed characters use a real rigged GLB loader and safe fallbacks',()=>{
   assert.match(characterAssets,/GLTFLoader/);
   assert.match(characterAssets,/DRACOLoader/);
   assert.match(characterAssets,/cloneSkinned/);
@@ -408,4 +408,22 @@ test('W09.0 detailed characters use a real rigged GLB loader and safe fallbacks'
   assert.match(source,/enemy\.modelStatus='fallback'/);
   assert.match(source,/mountRiggedCharacter\(poweredSuit\.pilot,'raider',1\.74\)/);
   assert.match(armorVisual,/revealRiggedPilot\(\)\{fallbackPilot\.visible=false/);
+});
+
+test('W09.1 normalization survives animated GLB transforms and repairs huge NPCs',()=>{
+  // The giant models shown in W09.0 were caused by fitting the imported scene
+  // node itself, which animation tracks can overwrite at runtime.
+  assert.doesNotMatch(characterAssets,/skeleton\.scale\.setScalar/);
+  assert.doesNotMatch(characterAssets,/skeleton\.position\.set\(-center/);
+  assert.match(characterAssets,/const root=new THREE\.Group\(\)/);
+  assert.match(characterAssets,/root\.scale\.setScalar\(scale\)/);
+  assert.match(characterAssets,/offset\.position\.set\(-center\.x,-box\.min\.y,-center\.z\)/);
+  assert.match(characterAssets,/stationaryClip\(gltf\.animations/);
+  assert.match(characterAssets,/if\(property==='scale'\)return false/);
+  assert.match(characterAssets,/root\.scale\.multiplyScalar\(ratio\)/);
+  assert.match(characterAssets,/if\(Math\.abs\(bottom\)>\.22\)/);
+  assert.match(characterAssets,/inspectAndRepair\(\)/);
+  assert.match(source,/modelHeight:e\.rigged\?\.metrics\.height/);
+  assert.match(source,/modelRepairs:e\.rigged\?\.metrics\.repairs/);
+  assert.match(source,/SIZE OK/);
 });

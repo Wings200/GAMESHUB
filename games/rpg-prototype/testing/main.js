@@ -2345,6 +2345,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       mode:e.brain.mode,health:e.state.health,alive:e.state.alive,
       visible:e.root.visible,deathTimer:e.deathTimer,flash:e.flash,
       armor:{...e.state.loadout},
+      modelHeight:e.rigged?.metrics.height??null,
+      modelRepairs:e.rigged?.metrics.repairs??0,
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
        modelStatus:e.modelStatus,
@@ -2556,7 +2558,13 @@ function frame(){
   refreshWeaponHUD();
   const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='rigged').length;
   const failedModels=[...enemies.values()].filter(e=>e.modelStatus==='fallback').length;
-  const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED'+
+  const modelSizeOK=[...enemies.values()].filter(e=>
+    e.modelStatus==='rigged'&&
+    e.rigged.metrics.height>=e.rigged.metrics.expectedHeight*.8&&
+    e.rigged.metrics.height<=e.rigged.metrics.expectedHeight*1.2).length;
+  const modelCorrections=[...enemies.values()].reduce((n,e)=>n+(e.rigged?.metrics.repairs||0),0);
+  const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED · '+
+    modelSizeOK+' SIZE OK'+(modelCorrections?' · '+modelCorrections+' AUTO-FIXES':'')+
     (failedModels?' · '+failedModels+' FALLBACK':'')+
     (riggedPilot?' · PILOT LOADED':' · PILOT LOADING/FALLBACK');
   if($('riggedStatus').textContent!==modelLabel)$('riggedStatus').textContent=modelLabel;
