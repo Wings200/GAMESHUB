@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate} from './power-armor.mjs';
 export function buildPowerArmorVisual(scene,position,state){
   const root=new THREE.Group();root.position.set(position.x,0,position.z);
-  root.rotation.y=Math.PI;scene.add(root);
+  root.rotation.y=-Math.PI/2;scene.add(root);
   const metal=new THREE.MeshStandardMaterial({color:0x344750,roughness:.55,metalness:.73});
   const dark=new THREE.MeshStandardMaterial({color:0x18292f,roughness:.64,metalness:.7});
   const trim=new THREE.MeshStandardMaterial({color:0xb5a889,roughness:.42,metalness:.68});
