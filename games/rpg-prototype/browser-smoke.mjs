@@ -157,6 +157,13 @@ try{
   // must transfer, equip and reduce armor damage in the real 3D browser.
   const lootId=await page.evaluate(()=>window.__rpgSmokeSpawnLoot('raider'));
   assert.ok(lootId);
+  const gearLoot=await page.evaluate(()=>window.__rpgSmokeState());
+  const worn=Object.values(gearLoot.enemies.find(e=>e.id==='raider').armor)
+    .filter(id=>id!=='none').sort();
+  const dropped=gearLoot.loot[0].items.filter(e=>e.itemId.startsWith('armor:'))
+    .map(e=>e.itemId.slice(6)).sort();
+  assert.deepEqual(dropped,worn,
+    'A downed raider must drop the exact armor pieces visible on their model');
   const nearby=await page.evaluate(()=>window.__rpgSmokeApproachLoot());
   assert.equal(nearby,true);
   await page.keyboard.press('e');
@@ -174,7 +181,7 @@ try{
   await page.keyboard.press('i');
   await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
   await page.locator('#inventoryItems .loot-entry')
-    .filter({hasText:'Ranger Guard'}).getByRole('button',{name:'EQUIP'}).click();
+    .filter({hasText:'Ranger Guard · Chest'}).getByRole('button',{name:'EQUIP'}).click();
   await page.locator('#inventoryItems .loot-entry')
     .filter({hasText:'Pipe SMG'}).first().getByRole('button',{name:'EQUIP'}).click();
   const equipped=await page.evaluate(()=>window.__rpgSmokeState());
@@ -194,12 +201,27 @@ try{
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
     'Saved player weapon must not cause a startup exception');
-  // W06.4: exercise the real Three.js hitbox and distant defeat animation.
+  // W06.5: visible armor must exactly match the real equipped slots.
+  const gearInitial=await page.evaluate(()=>window.__rpgSmokeState().enemies);
+  for(const enemy of gearInitial){
+    for(const [slot,id] of Object.entries(enemy.armor))
+      assert.equal(enemy.armorVisible[slot],id!=='none',
+        enemy.id+' should render armor consistently on '+slot);
+  }
+  // The neck hitbox and remote-death regression must still work.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeNeckHit()),'chest',
     'A neck shot must intersect an NPC hitbox');
   await page.locator('#enterAI').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
+  await page.keyboard.press('j');
+  const gearAfterReset=await page.evaluate(()=>window.__rpgSmokeState().enemies);
+  assert.notDeepEqual(gearAfterReset.map(e=>e.armor),gearInitial.map(e=>e.armor),
+    'J reset should rotate each enemy into a new visible armor outfit');
+  for(const enemy of gearAfterReset){
+    for(const [slot,id] of Object.entries(enemy.armor))
+      assert.equal(enemy.armorVisible[slot],id!=='none');
+  }
   assert.equal(await page.evaluate(()=>window.__rpgSmokeMoveOutsideArena()),true);
   const distantBefore=await page.evaluate(()=>window.__rpgSmokeState().enemies);
   await page.waitForTimeout(1400);
