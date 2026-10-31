@@ -194,6 +194,26 @@ try{
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
     'Saved player weapon must not cause a startup exception');
+  // W06.4: exercise the real Three.js hitbox and distant defeat animation.
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeNeckHit()),'chest',
+    'A neck shot must intersect an NPC hitbox');
+  await page.locator('#enterAI').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:7000});
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeMoveOutsideArena()),true);
+  const distantBefore=await page.evaluate(()=>window.__rpgSmokeState().enemies);
+  await page.waitForTimeout(1400);
+  const distantAfter=await page.evaluate(()=>window.__rpgSmokeState().enemies);
+  assert.ok(distantAfter.some((e,i)=>
+    Math.hypot(e.x-distantBefore[i].x,e.z-distantBefore[i].z)>.08),
+    'NPC patrol must continue when the player is outside the arena');
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeDownEnemy('scout')),true);
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).enemies
+    .find(e=>e.id==='scout').flash,0,
+    'Defeated enemies must immediately clear the red hit flash');
+  await page.waitForFunction(()=>window.__rpgSmokeState().enemies
+    .find(e=>e.id==='scout').visible===false,
+    null,{timeout:20000});
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
