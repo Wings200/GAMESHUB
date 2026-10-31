@@ -82,7 +82,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.7/);
+  assert.match(page,/main\.js\?v=W07\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -190,7 +190,7 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
 });
 
 test('W05.1 sight mounts are actually used for stable camera-space ADS',()=>{
-  assert.match(source,/import \{ sightMount, adsWeaponPosition \} from '\.\.\/weapon-sights\.mjs'/);
+  assert.ok(source.includes("import { sightMount, adsWeaponPosition, sightForOptic"));
   assert.match(source,/const mount=sightMount\(spec\.id\)/);
   assert.match(source,/function alignActiveSight\(\)\{/);
   assert.match(source,/const anchor=adsWeaponPosition\(activeWeaponId\)/);
@@ -199,7 +199,7 @@ test('W05.1 sight mounts are actually used for stable camera-space ADS',()=>{
   assert.match(source,/if\(weaponState\.aiming&&!handling\.active\)\{/);
   assert.match(source,/alignActiveSight\(\)/);
   assert.doesNotMatch(source,/const desired=weaponState\.aiming\?/);
-  assert.match(source,/const targetFOV=weaponState\.aiming\?sightMount\(activeWeaponId\)\.fov:76/);
+  assert.ok(source.includes("sightForOptic(activeWeaponId,installedWeaponOptic(backpack,activeWeaponId)).fov:76"));
 });
 test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=>{
   assert.match(source,/const scopeBody=part\(new THREE\.CylinderGeometry\(\.069,\.069,\.40,18,1,true\)/);
@@ -332,7 +332,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.7/);
+  assert.match(page,/main\.js\?v=W07\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
