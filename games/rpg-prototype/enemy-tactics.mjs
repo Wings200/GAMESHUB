@@ -4,11 +4,11 @@ import {AI_TUNING,lineIntersectsBox} from './enemy-ai.mjs';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
-    accuracy:.48,falloff:.20,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4,role:'flanker'}),
+    accuracy:.53,falloff:.15,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4,role:'flanker'}),
   raider:Object.freeze({magazine:12,reserve:48,reloadSeconds:1.95,shotInterval:1.05,
-    accuracy:.63,falloff:.16,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0,role:'skirmisher'}),
+    accuracy:.68,falloff:.12,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0,role:'skirmisher'}),
   enforcer:Object.freeze({magazine:18,reserve:54,reloadSeconds:2.65,shotInterval:1.20,
-    accuracy:.76,falloff:.12,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor'})
+    accuracy:.79,falloff:.10,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor'})
 });
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -248,6 +248,14 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       tactics.moveTime=spec.repositionSeconds;
     }
     const d=distance(brain,player);
+    // The heavy enforcer anchors a clear long sightline and suppresses
+    // from range, while scouts and raiders close the gap to maneuver.
+    if(spec.role==='anchor'&&d>=16&&d<=35&&
+      !obstacles.some(box=>lineIntersectsBox(brain,player,box,.035))){
+      tactics.phase='suppress-long';
+      tactics.goal=null;
+      return tactics;
+    }
     const dx=(brain.x-player.x)/Math.max(d,.001);
     const dz=(brain.z-player.z)/Math.max(d,.001);
     if(d<16&&d>2.4){
@@ -287,7 +295,7 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
   if(tactics.cooldown>0)return {fired:false,reason:'cooldown'};
   tactics.magazine--;
   tactics.cooldown=spec.shotInterval;
-  const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,40);
+  const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,45);
   const accuracy=clamp(spec.accuracy-spec.falloff*d/16-(moving?.13:0),.08,.90);
   const sampled=rng();
   const roll=clamp(Number.isFinite(sampled)?sampled:1,0,1);
