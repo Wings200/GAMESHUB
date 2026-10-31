@@ -1896,6 +1896,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     resetMotion(player);camera.position.set(16,1.7,46);
     const raider=enemies.get('raider');
     alertEnemy(raider.brain,{x:player.x,z:player.z});
+    raider.tactics.cooldown=0; // CI fixture skips initial no-fire grace period
     return {distance:Math.hypot(raider.brain.x-player.x,raider.brain.z-player.z),
       insideArena:inAIArena(),memory:raider.brain.memory};
   };
