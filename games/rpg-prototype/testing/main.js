@@ -1752,7 +1752,7 @@ function buildArsenalView(spec){
         0,mount.y+.001,front-.004);
       glass.userData.ignoreSightProbe=true;
       const reticleMat=new THREE.MeshBasicMaterial({
-        color:0xff5847,depthTest:false,depthWrite:false
+        color:0xff5847,depthTest:true,depthWrite:false
       });
       const reticleZ=front-.013;
       const circle=part(new THREE.TorusGeometry(nato?.021:.019,.0016,5,48,
