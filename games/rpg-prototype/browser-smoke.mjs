@@ -312,7 +312,7 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='raider').enemyShots>0,
     null,{timeout:25000});
-  // W08.1: ensure the redesigned shell, human pilot and actual cinematic entry render.
+  // W08.3: ensure the redesigned shell, human pilot and actual cinematic entry render.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
   await page.keyboard.press('o');
   await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
@@ -320,8 +320,10 @@ try{
   await page.locator('#power-leftLeg').selectOption('ranger');
   assert.ok((await page.locator('#power-rating-head').textContent()).includes('72'));
   const armorVisible=await page.evaluate(()=>window.__rpgSmokePowerVisual());
-  assert.ok(armorVisible.chassisHeight>3.1,'Industrial chassis must tower over its pilot');
-  assert.ok(armorVisible.chassisWidth>2.4,'Broad armor shoulders must not read as a mannequin');
+  assert.ok(armorVisible.chassisHeight>2.65&&armorVisible.chassisHeight<3.15,
+    'Power armor must be human-sized, not a towering construction robot');
+  assert.ok(armorVisible.chassisWidth>2.1&&armorVisible.chassisWidth<3.1,
+    'Armored shoulders should be broad but remain human-proportioned');
   assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
   assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
   await page.locator('#powerBayClose').click();
@@ -342,8 +344,24 @@ try{
   const inSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
   assert.equal(inSuit.visible,false,'Chassis is worn, not duplicated in the bay');
   assert.equal(inSuit.cockpit,true,'Power armor cockpit must appear in first person');
-  await page.waitForFunction(()=>window.__rpgSmokePowerVisual().cameraHeightAboveGround>2.6,
-    null,{timeout:10000});
+  await page.waitForFunction(()=>{
+    const s=window.__rpgSmokeState();
+    const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
+    return !s.player.crouched&&h>1.62&&h<2.0;
+  },null,{timeout:12000});
+  // The old suit hard-coded 2.82m every frame, so C and CTRL looked broken.
+  await page.keyboard.press('c');
+  await page.waitForFunction(()=>{
+    const s=window.__rpgSmokeState();
+    return s.player.crouched &&
+      window.__rpgSmokePowerVisual().cameraHeightAboveGround<1.42;
+  },null,{timeout:12000});
+  await page.keyboard.press('c');
+  await page.waitForFunction(()=>{
+    const s=window.__rpgSmokeState();
+    const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
+    return !s.player.crouched && h>1.62&&h<2.0;
+  },null,{timeout:12000});
   await page.keyboard.press('p');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
     null,{timeout:10000});
