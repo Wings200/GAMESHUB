@@ -1,6 +1,7 @@
 // W06.0 original RPG loot and inventory rules. Pure game-state logic.
 import {ARSENAL,getWeaponSpec} from './weapons.mjs';
-import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints} from './combat.mjs';
+import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
+  enemyArmorForRound} from './combat.mjs';
 export const BACKPACK_LIMIT=30;
 export const RARITIES=Object.freeze({
   common:Object.freeze({label:'COMMON',color:'#a8b7af',multiplier:1}),
@@ -20,12 +21,14 @@ for(const spec of ARSENAL)templates.set(idOf('ammo',spec.id),Object.freeze({
   id:idOf('ammo',spec.id),category:'ammo',key:spec.id,
   name:spec.name+' Ammo',rarity:'common',value:2,maxStack:180}));
 for(const slot of ARMOR_SLOTS){
-  for(const piece of ['ranger','militia','citadel']){
+  for(const piece of ['scrap','ranger','militia','citadel']){
     const p=getArmorPiece(slot,piece+'-'+slot);
-    const rarity=piece==='citadel'?'epic':piece==='militia'?'rare':'uncommon';
+    const rarity=piece==='citadel'?'epic':piece==='militia'?'rare':
+      piece==='ranger'?'uncommon':'common';
     templates.set(idOf('armor',p.id),Object.freeze({
       id:idOf('armor',p.id),category:'armor',key:p.id,slot,name:p.name,
-      rarity,value:Math.round(p.points*(piece==='citadel'?3.1:piece==='militia'?2:1.5)),
+      rarity,value:Math.round(p.points*(piece==='citadel'?3.1:piece==='militia'?2:
+        piece==='ranger'?1.5:1)),
       maxStack:1}));
   }
 }
@@ -136,23 +139,25 @@ export function takeAllFromBag(pack,bag){
   }
   return {added,remaining:bag.items.reduce((n,e)=>n+e.quantity,0)};
 }
-export function generateEnemyLoot(enemyId,deathNumber=0){
-  // Deterministic, testable first-kill drops with varying rarities.
-  // A reset creates a new test round rather than duplicating a corpse.
+export function generateEnemyLoot(enemyId,round=0,loadout=null){
+  // Every worn armor piece can be looted. Visible armor, damage reduction
+  // and bag contents use the SAME six-slot enemy loadout.
   const base={
     scout:[{itemId:'ammo:pipe-smg',quantity:22},
       {itemId:'supply:medkit',quantity:1},
       {itemId:'supply:salvage',quantity:2}],
     raider:[{itemId:'weapon:pipe-smg',quantity:1},
-      {itemId:'ammo:pipe-smg',quantity:40},
-      {itemId:'armor:ranger-chest',quantity:1}],
+      {itemId:'ammo:pipe-smg',quantity:40}],
     enforcer:[{itemId:'weapon:service-carbine',quantity:1},
       {itemId:'ammo:service-carbine',quantity:45},
-      {itemId:'armor:militia-chest',quantity:1},
       {itemId:'supply:medkit',quantity:1}]
   };
   if(!base[enemyId])throw Error('Unknown raider: '+enemyId);
-  return base[enemyId].map(e=>({...e}));
+  const equipped=createLoadout(loadout||enemyArmorForRound(enemyId,round));
+  const armor=ARMOR_SLOTS.filter(slot=>equipped[slot]!=='none')
+    .map(slot=>({itemId:'armor:'+equipped[slot],quantity:1}));
+  for(const entry of armor)getItem(entry.itemId);
+  return [...base[enemyId].map(e=>({...e})),...armor];
 }
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();
