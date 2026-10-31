@@ -207,6 +207,27 @@ try{
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
     'Saved player weapon must not cause a startup exception');
+  // W07: craft a genuine 4× rifle optic from backpack materials in the UI,
+  // verify it survives a reload rather than becoming a temporary HUD label.
+  await page.evaluate(()=>window.__rpgSmokeGiveBenchMaterials());
+  await page.locator('#workbenchOpen').click();
+  await page.waitForSelector('#workbenchPanel:not(.hidden)',{timeout:7000});
+  await page.locator('#benchWeapon').selectOption('hunting-rifle');
+  assert.ok((await page.locator('#benchMaterials').textContent()).includes('OPTIC GLASS'));
+  await page.locator('#benchOptics .loot-entry').filter({hasText:'Marksman scope'})
+    .getByRole('button',{name:'CRAFT + INSTALL'}).click();
+  assert.equal((await page.locator('#benchOptics .loot-entry')
+    .filter({hasText:'Marksman scope'}).textContent()).includes('INSTALLED'),true);
+  await page.locator('#benchClose').click();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies?.length===3,
+    null,{timeout:30000});
+  await page.locator('#workbenchOpen').click();
+  await page.locator('#benchWeapon').selectOption('hunting-rifle');
+  assert.ok((await page.locator('#benchOptics .loot-entry')
+    .filter({hasText:'Marksman scope'}).textContent()).includes('INSTALLED'),
+    'Crafted scope must survive page reload');
+  await page.locator('#benchClose').click();
   // W06.5: visible armor must exactly match the real equipped slots.
   const gearInitial=await page.evaluate(()=>window.__rpgSmokeState().enemies);
   for(const enemy of gearInitial){
@@ -220,6 +241,19 @@ try{
   await page.locator('#enterAI').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
+  // This is the actual camera's FOV, not a CSS-only scope overlay.
+  await page.evaluate(()=>{
+    const select=document.getElementById('weaponSelect');
+    select.value='hunting-rifle';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    window.dispatchEvent(new MouseEvent('mousedown',{button:2,bubbles:true}));
+  });
+  await page.waitForFunction(()=>window.__rpgSmokeState().scopedFOV<35,
+    null,{timeout:20000});
+  const zoomed=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(zoomed.optic,'scope-4x');
+  assert.equal(zoomed.weapon.id,'hunting-rifle');
+  await page.evaluate(()=>window.dispatchEvent(new MouseEvent('mouseup',{button:2,bubbles:true})));
   await page.keyboard.press('j');
   const gearAfterReset=await page.evaluate(()=>window.__rpgSmokeState().enemies);
   assert.notDeepEqual(gearAfterReset.map(e=>e.armor),gearInitial.map(e=>e.armor),
