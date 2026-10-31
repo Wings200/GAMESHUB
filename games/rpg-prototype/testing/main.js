@@ -1094,8 +1094,29 @@ function refreshInventoryUI(){
         saveBackpack();refreshInventoryUI();refreshWeaponHUD();
       });
     }
+    // Each entry is a physical stack. Let the player choose an exact count
+    // without affecting copies in other slots or silently dropping everything.
+    let dropAmount=null;
+    if(entry.quantity>1){
+      const quantityLabel=document.createElement('label');
+      quantityLabel.className='drop-quantity';
+      quantityLabel.textContent='QTY';
+      dropAmount=document.createElement('input');
+      dropAmount.className='drop-amount';
+      dropAmount.type='number';dropAmount.min='1';
+      dropAmount.max=String(entry.quantity);dropAmount.step='1';
+      dropAmount.value='1';
+      dropAmount.setAttribute('aria-label','Drop quantity for '+item.name);
+      quantityLabel.append(dropAmount);row.append(quantityLabel);
+      lootButton(row,'MAX',()=>{dropAmount.value=String(entry.quantity);});
+    }
     lootButton(row,'DROP',()=>{
-      const dropped=removeItem(backpack,entry.uid,1);
+      const amount=dropAmount?Number(dropAmount.value):1;
+      if(!Number.isSafeInteger(amount)||amount<1||amount>entry.quantity){
+        showShotNotice('CHOOSE A DROP QUANTITY FROM 1 TO '+entry.quantity);
+        dropAmount?.focus();return;
+      }
+      const dropped=removeItem(backpack,entry.uid,amount);
       if(!dropped.removed)return;
       const item=getItem(dropped.itemId);
       if(item.category==='weapon'&&
@@ -1106,7 +1127,7 @@ function refreshInventoryUI(){
       if(item.category==='armor'&&backpack.equipment.armor[item.slot]===item.key&&
          !backpack.items.some(e=>e.itemId===item.id))
         backpack.equipment.armor[item.slot]='none';
-      spawnWorldLoot([{itemId:dropped.itemId,quantity:1}],
+      spawnWorldLoot([{itemId:dropped.itemId,quantity:dropped.removed}],
         player.x+Math.sin(camera.rotation.y)*.8,player.z-.8,'player-drop');
       saveBackpack();refreshInventoryUI();
     });
@@ -1534,7 +1555,8 @@ weaponVisuals.set(SCRAP_PISTOL.id,{
 // The optic center is exactly on the camera -Z firing ray during ADS.
 function buildArsenalView(spec){
   const mount=sightMount(spec.id);
-  const opticKind=sightForOptic(spec.id,installedWeaponOptic(backpack,spec.id)).optic;
+  const opticId=installedWeaponOptic(backpack,spec.id);
+  const opticKind=sightForOptic(spec.id,opticId).optic;
   const root=new THREE.Group();camera.add(root);
   root.position.set(.29,-.27,-.77);
   const rifle=['carbine','rifle','shotgun'].includes(spec.kind);
@@ -1688,16 +1710,85 @@ function buildArsenalView(spec){
       vertical.userData.sightReference=true;
     }
   }else if(opticKind==='holo'||opticKind==='reflex'){
-    const holo=opticKind==='holo';
-    box(holo?.13:.105,.035,.15,black,0,mount.y-.074,mount.z);
-    for(const x of [-.065,.065])box(.013,.11,.043,steel,x,mount.y-.008,mount.z);
-    // Front and rear aperture aligned on camera ray; no giant high optic.
-    part(new THREE.TorusGeometry(holo?.069:.052,.009,8,22),
-      trim,0,mount.y,mount.z-.07);
-    const redDot=part(new THREE.SphereGeometry(.008,8,8),
-      new THREE.MeshBasicMaterial({color:0xea5e42,depthTest:true}),
-      0,mount.y,mount.z-.073);
-    redDot.userData.sightReference=true;
+    if(opticId==='holo-a'||opticId==='holo-b'){
+      // Two separate 1x housings based on the recognizable Siege layouts:
+      // A: NATO rectangular protective hood and circle-dot.
+      // B: low-profile Russian trapezoid and open-top circle crosshair.
+      // Reticles sit inside the real 3D aperture, not an overlay on the HUD.
+      const nato=opticId==='holo-a',front=mount.z-.075;
+      const mark=box(nato?.181:.155,.022,.145,black,0,mount.y-.088,mount.z);
+      mark.userData.opticVariant=opticId;
+      // Picatinny clamp, side adjustment and a rear-to-front optic body.
+      box(nato?.142:.125,.018,.159,steel,0,mount.y-.113,mount.z);
+      const dial=part(new THREE.CylinderGeometry(.020,.020,.022,14),
+        oxide,nato?.103:.088,mount.y-.040,mount.z+.018);
+      dial.rotation.z=Math.PI/2;
+      const frame=mat(nato?0x30383a:0x353b38,.62);
+      if(nato){
+        // Squared EOTech-style shroud with generous straight-sided window.
+        for(const x of [-.092,.092]){
+          box(.020,.158,.046,frame,x,mount.y+.002,front);
+          box(.012,.095,.12,steel,x,mount.y-.025,mount.z);
+        }
+        box(.199,.024,.051,frame,0,mount.y+.089,front);
+        box(.182,.019,.053,frame,0,mount.y-.080,front);
+        for(const x of [-.064,.064])
+          box(.024,.012,.037,oxide,x,mount.y+.078,front);
+      }else{
+        // Russian-style thinner, sloped side frame and shallow rounded roof.
+        for(const side of [-1,1]){
+          const sideRail=box(.015,.137,.038,frame,
+            side*.074,mount.y+.001,front);
+          sideRail.rotation.z=side*.24;
+          box(.012,.093,.10,steel,side*.078,mount.y-.030,mount.z);
+        }
+        box(.126,.016,.041,frame,0,mount.y+.078,front);
+        box(.142,.018,.045,frame,0,mount.y-.075,front);
+      }
+      // Faint glass pane preserves the readable opening and doesn't block ADS.
+      const glass=part(new THREE.PlaneGeometry(nato?.15:.115,.119),
+        new THREE.MeshBasicMaterial({color:0x83b8a8,transparent:true,
+          opacity:.055,depthWrite:false,side:THREE.DoubleSide}),
+        0,mount.y+.001,front-.004);
+      glass.userData.ignoreSightProbe=true;
+      const reticleMat=new THREE.MeshBasicMaterial({
+        color:0xff5847,depthTest:false,depthWrite:false
+      });
+      const reticleZ=front-.013;
+      const circle=part(new THREE.TorusGeometry(nato?.021:.019,.0016,5,48,
+        nato?Math.PI*2:Math.PI*1.50),reticleMat,0,mount.y,reticleZ);
+      if(!nato)circle.rotation.z=3*Math.PI/4; // Holo B's missing top arc
+      circle.userData.sightReference=true;
+      const dot=part(new THREE.SphereGeometry(nato?.0036:.0025,10,8),
+        reticleMat,0,mount.y,reticleZ+.001);
+      dot.userData.sightReference=true;
+      if(nato){
+        for(const angle of [0,Math.PI/2,Math.PI,3*Math.PI/2]){
+          const tick=box(.006,.0018,.001,reticleMat,
+            Math.cos(angle)*.025,mount.y+Math.sin(angle)*.025,reticleZ);
+          tick.rotation.z=angle;
+          tick.userData.sightReference=true;
+        }
+      }else{
+        for(const side of [-1,1]){
+          const tick=box(.010,.0015,.001,reticleMat,
+            side*.027,mount.y-.003,reticleZ);
+          tick.userData.sightReference=true;
+        }
+      }
+    }else{
+      // Factory reflex/holographic optics keep their original housing.
+      const holo=opticKind==='holo';
+      box(holo?.13:.105,.035,.15,black,0,mount.y-.074,mount.z);
+      for(const x of [-.065,.065])
+        box(.013,.11,.043,steel,x,mount.y-.008,mount.z);
+      part(new THREE.TorusGeometry(holo?.069:.052,.009,8,22),
+        trim,0,mount.y,mount.z-.07);
+      const redDot=part(new THREE.SphereGeometry(.008,8,8),
+        new THREE.MeshBasicMaterial({color:0xea5e42,depthTest:true}),
+        0,mount.y,mount.z-.073);
+      redDot.userData.sightReference=true;
+    }
   }else{
     // Matched-height iron front and rear sights.
     // Open notch with the front blade tip precisely at the ADS line.
@@ -2137,6 +2228,14 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     addItem(backpack,'supply:salvage',30);
     addItem(backpack,'supply:optic-glass',15);
     saveBackpack();return true;
+  };
+  window.__rpgSmokeSightVisual=(weaponId=activeWeaponId)=>{
+    const root=weaponVisuals.get(weaponId)?.root;
+    const variants=[];
+    root?.traverse(object=>{
+      if(object.userData.opticVariant)variants.push(object.userData.opticVariant);
+    });
+    return {variant:variants[0]||'factory',count:variants.length};
   };
   window.__rpgSmokeAimAtScout=()=>{
     const target=enemies.get('scout');
