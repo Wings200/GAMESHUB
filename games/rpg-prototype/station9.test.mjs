@@ -82,7 +82,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W08\.3/);
+  assert.match(page,/main\.js\?v=W08\.4/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -324,7 +324,9 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
   assert.match(source,/equipFromInventory\(backpack,entry\.uid\)/);
   assert.match(source,/arsenalStates\[item\.key\]\.reserve\+=amount/);
   assert.match(source,/useSupply\(backpack,entry\.uid,playerHealth\)/);
-  assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:1\}\]/);
+  assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:dropped\.removed\}\]/);
+  assert.match(source,/dropAmount\.max=String\(entry\.quantity\)/);
+  assert.match(source,/Number\.isSafeInteger\(amount\)/);
   assert.match(source,/playerArmorReduction\(backpack,'chest'\)/);
   assert.ok(source.includes('attack.damage*(1-powered.combinedReduction)'));
   assert.match(source,/if\(e\.code==='KeyE'&&!e\.repeat&&controls\.isLocked\)/);
@@ -332,7 +334,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W08\.3/);
+  assert.match(page,/main\.js\?v=W08\.4/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
