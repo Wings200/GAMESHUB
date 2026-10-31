@@ -347,9 +347,9 @@ test('W07.0 workbench and all-weapon ADS zeroing are wired',()=>{
   assert.match(page,/id="workbenchPanel"/);
   assert.match(page,/id="benchMaterials"/);
   assert.match(page,/id="weaponOptic"/);
-  assert.match(source,/installWeaponOptic\\(backpack,weaponId,id\\)/);
-  assert.match(source,/function beginWorkbench\\(\\)/);
-  assert.match(source,/function benchWithinReach\\(\\)/);
-  assert.match(source,/camera\\.getWorldQuaternion/);
-  assert.match(source,/installedWeaponOptic\\(backpack,activeWeaponId\\)/);
+  for(const expected of ['installWeaponOptic(backpack,weaponId,id)',
+    'function beginWorkbench()','function benchWithinReach()',
+    'camera.getWorldQuaternion','installedWeaponOptic(backpack,activeWeaponId)']){
+    assert.ok(source.includes(expected),expected);
+  }
 });
