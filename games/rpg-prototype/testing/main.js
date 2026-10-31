@@ -2069,6 +2069,16 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     return nearPoweredSuit();
   };
   window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
+  window.__rpgSmokeSetPowerProgress=(fraction)=>{
+    if(powerArmorState.phase!=='idle')
+      powerArmorState.elapsed=Math.min(1.64,Math.max(0,fraction*1.65));
+  };
+  window.__rpgSmokePowerVisual=()=>({
+    chestOpenAngle:poweredSuit.doors.left.rotation.y,
+    helmetOpenAngle:poweredSuit.helmetPivot.rotation.x,
+    visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
+      [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length]))
+  });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
       powerArmorState.elapsed=1.649;
