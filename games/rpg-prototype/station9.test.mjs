@@ -58,6 +58,13 @@ test('W06.6 neck remains hittable without an orange chest strip',()=>{
   assert.doesNotMatch(source,/new THREE\.BoxGeometry\(\.7,\.11,\.075\)/);
   assert.match(source,/new THREE\.CylinderGeometry\(\.13,\.15,\.28,10\)/);
 });
+test('W06.7 distant hits activate combat and long-range suppression',()=>{
+  assert.match(source,/e\.state\.alive&&e\.brain\.memory>0/);
+  assert.match(source,/tactic\.phase==='suppress-long'/);
+  assert.match(source,/LONG-RANGE SUPPRESSION/);
+  assert.match(source,/window\.__rpgSmokeLongRangeEngage/);
+  assert.match(source,/enemyShots:e\.tactics\.shots/);
+});
 test('Health and enemies have real connected HUD elements',()=>{
   const ids=['playerHealthHud','healthReadout','healthFill','healthStatus',
     'playerDamageFlash','enemyHud','enemyCount','enemyMode','enemyList'];
@@ -75,7 +82,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.6/);
+  assert.match(page,/main\.js\?v=W06\.7/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -325,7 +332,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.6/);
+  assert.match(page,/main\.js\?v=W06\.7/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);

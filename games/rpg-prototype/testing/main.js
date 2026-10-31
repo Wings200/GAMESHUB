@@ -1040,7 +1040,10 @@ function healPlayer(){
 }
 refreshPlayerHealth();
 function updateEnemies(dt){
-  const active=inAIArena();
+  // A confirmed hit outside the arena wakes combat while the enemy still
+  // remembers the shooter. Otherwise other mechanics stations stay safe.
+  const active=inAIArena()||[...enemies.values()].some(e=>
+    e.state.alive&&e.brain.memory>0);
   const ticking=active&&controls.isLocked&&enemyAIEnabled;
   // Patrol, hit reactions and death cleanup update even at long range.
   // Actual attacks remain inside an active arena encounter.
@@ -1066,7 +1069,8 @@ function updateEnemies(dt){
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,playerInArena:active,
           combatGoal:tactic.goal,
-          combatHold:tactic.phase==='hold'||tactic.phase==='peek',
+          combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
+            tactic.phase==='suppress-long',
           combatFacePlayer:true,
           combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed});
       if(ticking&&playerHealth.alive&&enemy.brain.spotted&&!wasSpotted)
@@ -1162,6 +1166,7 @@ function updateEnemies(dt){
         enemy.tactics.phase==='peek-move'?'PEEKING':
         enemy.tactics.phase==='cover'?'SEEK COVER':
         enemy.tactics.phase==='flank'?'FLANKING':
+        enemy.tactics.phase==='suppress-long'?'LONG-RANGE SUPPRESSION':
         enemy.tactics.phase==='suppress'?'SUPPRESSING':
         enemy.tactics.phase==='strafe'?'STRAFE':
         enemy.brain.mode.toUpperCase();
@@ -1885,6 +1890,16 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     if(hit.killed)markEnemyDefeated(enemy);
     return hit.killed;
   };
+  window.__rpgSmokeLongRangeEngage=()=>{
+    resetEnemies();
+    stationIndex=0;player.x=16;player.z=46;
+    resetMotion(player);camera.position.set(16,1.7,46);
+    const raider=enemies.get('raider');
+    alertEnemy(raider.brain,{x:player.x,z:player.z});
+    raider.tactics.cooldown=0; // CI fixture skips initial no-fire grace period
+    return {distance:Math.hypot(raider.brain.x-player.x,raider.brain.z-player.z),
+      insideArena:inAIArena(),memory:raider.brain.memory};
+  };
   window.__rpgSmokeApproachLoot=()=>{
     const bag=[...lootBags.values()][0];
     if(!bag)return false;
@@ -1918,7 +1933,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       visible:e.root.visible,deathTimer:e.deathTimer,flash:e.flash,
       armor:{...e.state.loadout},
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
-      tacticalPhase:e.tactics.phase,crouching:e.tactics.crouching,
+      tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
+      crouching:e.tactics.crouching,
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
   });

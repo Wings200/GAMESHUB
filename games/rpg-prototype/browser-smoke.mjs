@@ -246,6 +246,13 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='scout').visible===false,
     null,{timeout:20000});
+  // W06.7: a hit from outside the arena must wake AI return fire past 14 m.
+  const distantEngage=await page.evaluate(()=>window.__rpgSmokeLongRangeEngage());
+  assert.equal(distantEngage.insideArena,false);
+  assert.ok(distantEngage.distance>25&&distantEngage.distance<37);
+  await page.waitForFunction(()=>window.__rpgSmokeState().enemies
+    .find(e=>e.id==='raider').enemyShots>0,
+    null,{timeout:25000});
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({

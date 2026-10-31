@@ -1,12 +1,12 @@
 // W04.1 first player health and basic enemy attacks; no player armor yet.
 // Standalone math enables deterministic testing apart from Three.js.
-import { hasSight } from './enemy-ai.mjs';
+import { AI_TUNING, hasSight } from './enemy-ai.mjs';
 
 export const PLAYER_MAX_HEALTH=100;
 export const ENEMY_ATTACK=Object.freeze({
-  scout:Object.freeze({damage:5,interval:2.5,range:13}),
-  raider:Object.freeze({damage:7,interval:2.7,range:14}),
-  enforcer:Object.freeze({damage:9,interval:3.1,range:13})
+  scout:Object.freeze({damage:5,interval:2.5,range:32}),
+  raider:Object.freeze({damage:7,interval:2.7,range:37}),
+  enforcer:Object.freeze({damage:9,interval:3.1,range:42})
 });
 export function createPlayerHealth(maxHealth=PLAYER_MAX_HEALTH){
   const max=Number.isFinite(maxHealth)&&maxHealth>0?maxHealth:PLAYER_MAX_HEALTH;
@@ -25,7 +25,7 @@ export function resetPlayerHealth(state){
   state.health=state.maxHealth;state.alive=true;state.hits=0;
   return state;
 }
-export function canEnemyFire(enemyBrain,player,obstacles=[],range=13){
+export function canEnemyFire(enemyBrain,player,obstacles=[],range=AI_TUNING.sight){
   if(!enemyBrain.active||enemyBrain.mode!=='chase')return false;
   if(Math.hypot(enemyBrain.x-player.x,enemyBrain.z-player.z)>range)return false;
   // Respect both facing direction and crate occlusion from the AI vision model.

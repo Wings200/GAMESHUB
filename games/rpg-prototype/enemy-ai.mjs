@@ -1,7 +1,7 @@
 // W04.0: deterministic, render-free test-lab enemy perception and locomotion.
 // Basic patrol/spot/chase/search only. Shooting and cover tactics are later passes.
 export const AI_TUNING=Object.freeze({
-  sight:22, fieldOfViewDegrees:165,
+  sight:45, fieldOfViewDegrees:165,
   patrolSpeed:1.25, chaseSpeed:2.75,
   stopDistance:2.7, waypointRadius:.48,
   lastSeenSeconds:3.2, searchSeconds:3.0,
