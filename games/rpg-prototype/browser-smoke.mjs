@@ -205,8 +205,8 @@ try{
     null,{timeout:7000});
   await page.keyboard.press('i');
   await page.waitForSelector('#inventoryPanel:not(.hidden)',{timeout:7000});
-  assert.equal(await page.locator('#inventoryItems .loot-entry')
-    .filter({hasText:'Pipe SMG'}).count(),2);
+  assert.equal(await page.locator('#inventoryItems .loot-description strong')
+    .getByText('Pipe SMG',{exact:true}).count(),2);
   assert.ok((await page.locator('#inventoryItems').textContent()).includes('COPY 2 / 2'));
   await page.locator('#inventoryItems .loot-entry')
     .filter({hasText:testArmor.name}).getByRole('button',{name:'EQUIP'}).click();
