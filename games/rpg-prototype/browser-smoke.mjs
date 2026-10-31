@@ -342,6 +342,8 @@ try{
   const inSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
   assert.equal(inSuit.visible,false,'Chassis is worn, not duplicated in the bay');
   assert.equal(inSuit.cockpit,true,'Power armor cockpit must appear in first person');
+  await page.waitForFunction(()=>window.__rpgSmokePowerVisual().cameraHeightAboveGround>2.6,
+    null,{timeout:10000});
   await page.keyboard.press('p');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
     null,{timeout:10000});
