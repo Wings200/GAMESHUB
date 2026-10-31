@@ -312,7 +312,7 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='raider').enemyShots>0,
     null,{timeout:25000});
-  // W08.0: the entire power armor experience is exercised in real Three.js.
+  // W08.1: ensure the redesigned shell, human pilot and actual cinematic entry render.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
   await page.keyboard.press('o');
   await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
@@ -320,6 +320,8 @@ try{
   await page.locator('#power-leftLeg').selectOption('ranger');
   assert.ok((await page.locator('#power-rating-head').textContent()).includes('72'));
   const armorVisible=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.ok(armorVisible.chassisHeight>3.1,'Industrial chassis must tower over its pilot');
+  assert.ok(armorVisible.chassisWidth>2.4,'Broad armor shoulders must not read as a mannequin');
   assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
   assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
   await page.locator('#powerBayClose').click();
@@ -329,8 +331,11 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='entering',
     null,{timeout:10000});
   await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
-  await page.waitForFunction(()=>Math.abs(window.__rpgSmokePowerVisual().chestOpenAngle)>.4,
-    null,{timeout:15000});
+  await page.waitForFunction(()=>{
+      const v=window.__rpgSmokePowerVisual();
+      return Math.abs(v.chestOpenAngle)>.4 && v.pilotVisible &&
+        v.pilotDepth<1.4 && v.cinematic && v.cameraDistanceToHero<.8;
+    },null,{timeout:15000});
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
     null,{timeout:15000});
@@ -340,6 +345,10 @@ try{
   await page.keyboard.press('p');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
     null,{timeout:10000});
+  await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
+  await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotVisible &&
+    window.__rpgSmokePowerVisual().pilotDepth<1.4,
+    null,{timeout:15000});
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='idle'&&
     !window.__rpgSmokeState().powerArmor.occupied,null,{timeout:15000});
