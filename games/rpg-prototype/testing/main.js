@@ -555,7 +555,7 @@ function togglePoweredSuit(){
   if(!result.ok)return;
   const offset=exiting?2.32:0;
   const target=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,offset));
-  const destY=groundHeight(target.x,target.z)+player.eyeHeight;
+  const destY=groundHeight(target.x,target.z)+(exiting?player.eyeHeight:2.82);
   const endPosition=new THREE.Vector3(target.x,destY,target.z);
   const endingRotation=exiting?new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(endPosition,
@@ -2114,6 +2114,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
     pilotVisible:poweredSuit.pilot.visible,
     pilotDepth:poweredSuit.pilot.position.z,
+    cameraHeightAboveGround:camera.position.y-groundHeight(player.x,player.z),
     chassisHeight:poweredSuit.size.y,
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
@@ -2453,7 +2454,8 @@ function frame(){
     controls.getDirection(forward);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
-    camera.position.set(player.x,info.ground+info.eyeHeight+info.cameraBob+player.jump,player.z);
+    const eye=powerArmorState.occupied?2.82:info.eyeHeight;
+    camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
   updateEnemies(dt);
