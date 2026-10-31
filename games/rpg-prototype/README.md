@@ -4,13 +4,15 @@
 
 - Removed the bright orange shoulder identification strip that crossed the neck/chest and looked like a floating bar.
 - Kept the solid neck hitbox, modular armor meshes, loot drops and ground beacons unchanged.
-- Added a regression assertion that the orange strip cannot return to the 3D NPC model.
+- Loot is now limited to a random subset of equipped armor: Scouts drop zero or one piece, Raiders one or two, Enforcers zero or one. A fully suited Citadel enemy no longer drops all six pieces.
+- The actual 3D NPC armor is still the source of eligible drops; no invisible or unworn armor appears in the bag.
+- Added regression coverage for the orange strip and partial armor drops, including a browser loot/equip/save test.
 
 ## W06.5 — varied, visible, lootable armor equipment
 
 - Every enemy now spawns with a role-appropriate, six-slot modular armor outfit. Press J to rotate prebuilt outfits for consistent testing, including a lone leg plate and a complete armored suit.
 - Meshes for helmets, chest plates, both arms and both legs reflect the actual equipped armor. Unworn plates are invisible and cannot intercept bullet rays; armor colors match material types.
-- Loot bags contain each armor piece an enemy really wore, plus their weapon/ammunition/supplies. The pieces are equippable and affect the correct player body zones. Scrap-level armor is also in the item catalog.
+- Loot bags can contain armor pieces from the enemy's real outfit, plus weapons, ammo and supplies. W06.6 limits how many pieces survive as loot. The pieces remain equippable and affect their body zones.
 - Both inventory and browser tests verify visible equipment, changes on reset and matching dropped contents. The previous W06.4 distant-body and neck fixes remain.
 
 ## W06.4 — distant AI updates, death cleanup and neck hitbox
