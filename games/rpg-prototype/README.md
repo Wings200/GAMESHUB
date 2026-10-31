@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W06.6 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.7 + Forest Foundation 0.1
+
+## W06.7 — longer-range enemy sight and return fire
+
+- NPCs can detect exposed targets up to 45 m instead of 22 m. Combat ranges are Scout 32 m, Raider 37 m and Enforcer 42 m instead of 13–14 m.
+- Shots that land from outside the arena activate an alert engagement. Enemies return fire while they see or remember the attacker, but cannot attack from other stations without first being provoked.
+- Enforcers suppress from clear 16–35 m sightlines instead of rushing blindly, while faster Scouts/Raiders keep closing and maneuvering.
+- Accuracy remains distance- and movement-dependent; obstacles still interrupt visibility, and ammo/reload rules remain active.
+- Added unit and real 3D browser checks for long-range sight, cover, firing, and aggression after a distant hit.
 
 ## W06.6 — remove misplaced orange collar marker
 
