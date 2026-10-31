@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W06.2 · Loot & Player Inventory | GAMESHUB RPG</title>
+<title>W06.3 · Loot & Player Inventory | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -163,7 +163,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W06.2</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W06.3</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -178,7 +178,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W06.2 · ENEMY TEST</strong>
+  <strong>W06.3 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -189,7 +189,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="lootPrompt" class="hidden" aria-live="polite">E · SEARCH LOOT</div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W06.2 · SIX-GUN QA & ADS</div>
+  <div class="weapon-head">W06.3 · SIX-GUN QA & ADS</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
@@ -209,9 +209,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W06.2</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W06.3</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W06.2 introduces real RPG loot! Defeated enemies leave searchable world bags after their bodies disappear. Press E nearby to search, TAKE individual items or TAKE ALL, and press I to open your persistent 30-slot backpack. Equip looted guns and player armor, transfer ammo to reserves, use medkits and drop unwanted items. Rarity and cap values are shown on every item. Existing six-gun training and smarter enemies remain intact.</p>
+    <p>W06.3 introduces real RPG loot! Defeated enemies leave searchable world bags after their bodies disappear. Press E nearby to search, TAKE individual items or TAKE ALL, and press I to open your persistent 30-slot backpack. Equip looted guns and player armor, transfer ammo to reserves, use medkits and drop unwanted items. Rarity and cap values are shown on every item. Existing six-gun training and smarter enemies remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -221,7 +221,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W06.2</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W06.3</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, LOAD RESERVE ammunition, USE medkits, or DROP items. J resets enemies and world loot without erasing the backpack. This is the player inventory; B still edits test-dummy armor.</p>
@@ -230,7 +230,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-label="Player inventory">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W06.2 · PLAYER SYSTEMS</div>
+      <div><div class="loot-eyebrow">W06.3 · PLAYER SYSTEMS</div>
         <h2>BACKPACK<span> & GEAR.</span></h2>
         <p>Find loot on defeated enemies · I to open · Equip armor to reduce incoming enemy damage.</p>
       </div>
@@ -249,7 +249,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="lootPanel" class="loot-overlay hidden" role="dialog" aria-label="Search loot">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W06.2 · WORLD LOOT</div>
+      <div><div class="loot-eyebrow">W06.3 · WORLD LOOT</div>
         <h2 id="lootTitle">SEARCH LOOT BAG</h2>
         <p>Items left behind by enemies are yours to discover. Backpack space is limited.</p>
       </div>
@@ -309,6 +309,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W06.2"></script>
+<script type="module" src="./main.js?v=W06.3"></script>
 </body>
 </html>

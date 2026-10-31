@@ -1,4 +1,9 @@
-# Untitled RPG · Mechanics Lab W06.2 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W06.3 + Forest Foundation 0.1
+
+## W06.3 — saved weapon startup crash
+- Fixed a user-reported error: "Cannot access 'slideCycle' before initialization". A returning player with a saved non-default weapon triggered `selectWeapon()` during startup, before the `let` declarations for slide/recoil/shot-notice/HUD state, so JavaScript stopped loading before the 3D field appeared.
+- Initialize all weapon visual, announcement and HUD values before restoring the selected weapon from the persistent backpack. The new real Chromium smoke test equips the Pipe SMG from looted gear, reloads the full page with the saved inventory, and confirms that the correct weapon and armor restore without an error overlay. Source-level tests also pin this initialization order.
+- No changes to software WebGL fallback, recoil tuning, NPC armor, loot transactions or forest exploration.
 
 ## W06.2 — startup compatibility and truthful browser diagnostics
 - The user's normal Edge browser displayed a generic WebGL failure. Previously, *any* JavaScript error or rejected promise displayed the same "could not initialize WebGL" banner, even when the real issue was unrelated. The fatal panel now shows the reported startup error and asks for the first Console error.

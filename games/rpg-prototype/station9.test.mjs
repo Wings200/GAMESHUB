@@ -47,7 +47,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W06\.2/);
+  assert.match(page,/main\.js\?v=W06\.3/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -59,6 +59,16 @@ test('WebGL startup accepts software contexts and reports actual errors',()=>{
   assert.doesNotMatch(page,/This testing browser could not initialize WebGL/);
   assert.match(page,/event\.error\?\.message\|\|event\.message/);
   assert.match(page,/event\.reason\?\.message/);
+});
+test('A returning player restores weapon state only after all HUD/recoil variables initialize',()=>{
+  const restore=source.indexOf("if(backpack.equipment.weapon!=='scrap-pistol')");
+  assert.ok(restore>0);
+  for(const key of ['let lastShotDebug=null','let totalHits=0','let slideCycle=0']){
+    const declaration=source.indexOf(key);
+    assert.ok(declaration>0&&declaration<restore,
+      key+' must initialize before saved weapon restoration');
+  }
+  assert.match(source,/selectWeapon\(backpack\.equipment\.weapon\)/);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
   assert.match(source,/enemy\.deathTimer\+=dt/);
@@ -288,7 +298,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W06\.2/);
+  assert.match(page,/main\.js\?v=W06\.3/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.match(source,/if\(!inventoryOpen&&!lootOpen\)\$\('menu'\)\.classList\.remove\('hidden'\)/);
