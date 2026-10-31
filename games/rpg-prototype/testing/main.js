@@ -674,6 +674,10 @@ function createEnemy(spec){
   }
   part(upperBody,new THREE.BoxGeometry(.57,.72,.35),flesh,0,1.34,0,'chest');
   part(upperBody,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
+  // Fill the former gap between chest and skull with a physical neck.
+  // Treat this as chest damage so helmets keep their existing balance.
+  part(upperBody,new THREE.CylinderGeometry(.13,.15,.28,10),
+    flesh,0,1.76,0,'chest');
   const chest=getArmorPiece('chest',state.loadout.chest);
   if(chest.points)part(upperBody,new THREE.BoxGeometry(.65,.63,.43),
     enemyMaterial(chest.color,true),0,1.37,.055,'chest',true);
@@ -836,6 +840,19 @@ function spawnWorldLoot(contents,x,z,source='world'){
 function spawnEnemyLoot(enemy){
   return spawnWorldLoot(generateEnemyLoot(enemy.id),enemy.brain.x,
     enemy.brain.z,'enemy-'+enemy.id);
+}
+function markEnemyDefeated(enemy){
+  enemy.brain.active=false;
+  enemy.deathTimer=0;
+  enemy.flash=0;enemy.shake=0;
+  for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
+  enemy.beacon.visible=false;
+  enemy.shoulderMark.visible=false;
+  enemy.billboard.mesh.visible=false;
+  enemy.muzzleLight.intensity=0;
+  enemy.gunGlow=0;
+  spawnEnemyLoot(enemy);
+  updateArenaSign();
 }
 function discardEmptyLootBags(){
   for(const [id,bag] of lootBags){
@@ -1019,6 +1036,9 @@ refreshPlayerHealth();
 function updateEnemies(dt){
   const active=inAIArena();
   const ticking=active&&controls.isLocked&&enemyAIEnabled;
+  // Patrol, hit reactions and death cleanup update even at long range.
+  // Actual attacks remain inside an active arena encounter.
+  const simulating=controls.isLocked&&enemyAIEnabled;
   const statuses=[];
   let aliveCount=0;
   stepSquadIntel(squadIntel,dt,ticking&&playerHealth.alive);
@@ -1029,18 +1049,17 @@ function updateEnemies(dt){
     enemy.billboard.mesh.visible=enemy.state.alive;
     enemy.beacon.visible=enemy.state.alive;
     enemy.shoulderMark.visible=enemy.state.alive;
-    if(!active)continue;
-    if(enemy.state.alive)aliveCount++;
+    if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
       const wasSpotted=enemy.brain.spotted;
       tickEnemyTactics(enemy.tactics,enemy.brain,player,dt,aiObstacles,
-        {enabled:ticking&&playerHealth.alive,
+        {enabled:simulating&&playerHealth.alive,
           lowHealth:enemy.state.health<35,
           occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
           separation:squadSeparation(enemy.brain,[...enemies.values()])});
       const tactic=enemy.tactics;
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,aiObstacles,
-        {enabled:ticking&&playerHealth.alive,playerInArena:active,
+        {enabled:simulating&&playerHealth.alive,playerInArena:active,
           combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek',
           combatFacePlayer:true,
@@ -1690,15 +1709,7 @@ function shoot(){
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
-        enemy.brain.active=false;
-        enemy.deathTimer=0;
-        enemy.beacon.visible=false;
-        enemy.shoulderMark.visible=false;
-        enemy.billboard.mesh.visible=false;
-        enemy.muzzleLight.intensity=0;
-        enemy.gunGlow=0;
-        spawnEnemyLoot(enemy);
-        updateArenaSign();
+        markEnemyDefeated(enemy);
       }else{
         alertEnemy(enemy.brain,{x:player.x,z:player.z});
         markEnemyThreat(enemy.tactics);
@@ -1851,6 +1862,24 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     // actual enemy death, without another 30 seconds of headless shooting.
     return spawnEnemyLoot(enemies.get(enemyId));
   };
+  window.__rpgSmokeNeckHit=()=>{
+    const enemy=enemies.get('scout');
+    const origin=new THREE.Vector3(enemy.brain.x,1.76,enemy.brain.z+3);
+    const ray=new THREE.Raycaster(origin,new THREE.Vector3(0,0,-1),0,6);
+    scene.updateMatrixWorld(true);
+    return ray.intersectObjects(enemy.meshes,false)[0]?.object.userData.hitZone||null;
+  };
+  window.__rpgSmokeMoveOutsideArena=()=>{
+    stationIndex=0;player.x=8;player.z=8;
+    camera.position.set(8,player.eyeHeight,8);
+    return !inAIArena();
+  };
+  window.__rpgSmokeDownEnemy=(id='scout')=>{
+    const enemy=enemies.get(id);
+    const hit=applyDamage(enemy.state,100000,'chest');
+    if(hit.killed)markEnemyDefeated(enemy);
+    return hit.killed;
+  };
   window.__rpgSmokeApproachLoot=()=>{
     const bag=[...lootBags.values()][0];
     if(!bag)return false;
@@ -1881,6 +1910,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     enemies:[...enemies.values()].map(e=>({
       id:e.id,x:e.brain.x,z:e.brain.z,
       mode:e.brain.mode,health:e.state.health,alive:e.state.alive,
+      visible:e.root.visible,deathTimer:e.deathTimer,flash:e.flash,
       tacticalPhase:e.tactics.phase,crouching:e.tactics.crouching,
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
