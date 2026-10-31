@@ -282,10 +282,12 @@ export function buildPowerArmorVisual(scene,position,state){
     }
   }
   updatePlates(state);
-  root.updateMatrixWorld(true);
-  // Exclude pilot geometry from body measurements.
-  const pilotWasVisible=pilot.visible;pilot.visible=false;
+  // Measure in suit-local orientation, not the bay's -90-degree yaw.
+  const originalYaw=root.rotation.y;
+  const pilotWasVisible=pilot.visible;
+  pilot.visible=false;root.rotation.y=0;root.updateMatrixWorld(true);
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+  root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
   return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate};
 }
