@@ -223,12 +223,16 @@ try{
       assert.equal(enemy.armorVisible[slot],id!=='none');
   }
   assert.equal(await page.evaluate(()=>window.__rpgSmokeMoveOutsideArena()),true);
-  const distantBefore=await page.evaluate(()=>window.__rpgSmokeState().enemies);
-  await page.waitForTimeout(1400);
-  const distantAfter=await page.evaluate(()=>window.__rpgSmokeState().enemies);
-  assert.ok(distantAfter.some((e,i)=>
-    Math.hypot(e.x-distantBefore[i].x,e.z-distantBefore[i].z)>.08),
-    'NPC patrol must continue when the player is outside the arena');
+  const distantStart=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(distantStart.aiEnabled,true,'AI must be enabled for patrol test');
+  assert.equal(distantStart.locked,true,'Player must retain pointer lock');
+  assert.ok(distantStart.playerHealth>0,'Player must be alive for AI testing');
+  // SwiftShader can render only a couple of frames per second in CI. Wait
+  // for real simulation distance rather than an unreliable wall-clock pause.
+  await page.waitForFunction(start=>{
+    const now=window.__rpgSmokeState().enemies;
+    return now.some((e,i)=>Math.hypot(e.x-start[i].x,e.z-start[i].z)>.08);
+  },distantStart.enemies,{timeout:25000});
   assert.equal(await page.evaluate(()=>window.__rpgSmokeDownEnemy('scout')),true);
   assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).enemies
     .find(e=>e.id==='scout').flash,0,
