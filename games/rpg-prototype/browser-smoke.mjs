@@ -84,6 +84,13 @@ try{
   await page.evaluate(()=>window.dispatchEvent(
     new MouseEvent('mousedown',{button:2,bubbles:true})));
   for(let i=0;i<7;i++){
+    // Software WebGL can render fewer than four frames per second on CI.
+    // Force the regular cooldown to finish between test attempts so a
+    // missed random-spread shot does not leave six ignored clicks.
+    await page.evaluate(()=>{
+      const s=window.__rpgSmokeState();
+      window.__rpgSmokeSetMagazine(s.weapon.magazine);
+    });
     await page.evaluate(()=>window.dispatchEvent(
       new MouseEvent('mousedown',{button:0,bubbles:true})));
     await page.waitForTimeout(300);
@@ -245,9 +252,29 @@ try{
     .inventory.items.some(i=>i.itemId==='supply:salvage'),
     'MAX must drop only the remaining count in this stack');
   await page.locator('#inventoryClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:10000});
   // Regression: restored non-default weapons previously called selectWeapon()
   // before slideCycle/shotNoticeTime/weaponMotion had initialized, crashing
   // the page only for returning players with a saved inventory.
+  // W09.3: the original player body renders in third-person without
+  // changing the authoritative first-person combat camera.
+  await page.keyboard.press('v');
+  await page.waitForFunction(()=>{
+    const p=window.__rpgSmokeState().playerVisual;
+    return p.thirdPersonActive&&p.visible;
+  },null,{timeout:12000});
+  const third=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(third.playerVisual.name,'OriginalPixelSurvivor');
+  assert.ok(third.playerVisual.height>1.6&&third.playerVisual.height<2.05,
+    'Standing player model must remain near human height');
+  await page.keyboard.press('c');
+  await page.waitForFunction(()=>window.__rpgSmokeState().playerVisual.crouch>.65,
+    null,{timeout:12000});
+  await page.keyboard.press('c');
+  await page.keyboard.press('v');
+  await page.waitForFunction(()=>!window.__rpgSmokeState().playerVisual.thirdPersonActive,
+    null,{timeout:12000});
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>
     window.__rpgSmokeState?.().weapon?.id==='pipe-smg',
