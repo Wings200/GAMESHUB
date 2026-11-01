@@ -132,7 +132,7 @@ test('3D world markers, hit labels and arena sign respect obstacle occlusion',()
   assert.doesNotMatch(source,/for\(const \[x,z\] of \[\[39,42\],\[43,46\],\[46,36\.8\]\]\)/);
 });
 test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
-  assert.match(source,/tickEnemyTactics\(enemy\.tactics,enemy\.brain,player,dt,aiObstacles/);
+  assert.match(source,/tickEnemyTactics\(enemy\.tactics,enemy\.brain,tacticalTarget,dt,aiObstacles/);
   assert.match(source,/attemptEnemyShot\(enemy\.tactics/);
   assert.match(source,/markEnemyThreat\(enemy\.tactics\)/);
   assert.match(source,/resetEnemyTactics\(enemy\.tactics\)/);
