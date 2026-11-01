@@ -14,6 +14,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import {mountRiggedCharacter} from '../character-assets.mjs';
+import {createPlayerAvatar} from '../player-avatar.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
@@ -43,6 +44,10 @@ const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, .08, 27
 camera.rotation.order = 'YXZ';
 scene.add(camera); // the held weapon is a camera-relative 3D child
 const controls = new PointerLockControls(camera, document.body);
+const thirdPersonCamera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.08,270);
+const thirdPersonRay=new THREE.Raycaster();
+const viewHeading=new THREE.Vector3(),viewRight=new THREE.Vector3();
+const viewFocus=new THREE.Vector3(),viewDesired=new THREE.Vector3();
 // Prefer the standard WebGL 2 context so browsers may choose their own GPU
 // or software-backed implementation. Retry with fewer framebuffer demands
 // on systems where multisampling or the preferred adapter is unavailable.
@@ -2161,6 +2166,9 @@ function resupply(){
 refreshWeaponHUD();
 function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
+const playerAvatar=createPlayerAvatar(scene);
+playerAvatar.root.visible=false;
+let thirdPersonEnabled=false,thirdPersonActive=false;
 let labEndurance=ENDURANCE_TUNING.defaultPoints;
 try{const last=Number(localStorage.getItem('rpg-lab-endurance'));if(last>=1&&last<=10)labEndurance=Math.round(last);}catch{}
 setEndurance(player,labEndurance);
@@ -2297,6 +2305,9 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     if(hit.killed)markEnemyDefeated(enemy);
     return hit.killed;
   };
+  window.__rpgSmokeSetThirdPerson=enabled=>{
+    thirdPersonEnabled=!!enabled;return thirdPersonEnabled;
+  };
   window.__rpgSmokeLongRangeEngage=()=>{
     resetEnemies();
     stationIndex=0;player.x=16;player.z=46;
@@ -2337,6 +2348,11 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     lootOpen,inventoryOpen,
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
+    playerVisual:{thirdPersonEnabled,thirdPersonActive,
+      visible:playerAvatar.root.visible,
+      height:playerAvatar.metrics.height,
+      crouch:playerAvatar.metrics.crouched,
+      name:playerAvatar.root.name},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
     player:{x:player.x,z:player.z,crouched:!!player.crouched,
       crouchToggle:!!player.crouchToggle,eyeHeight:player.eyeHeight},
@@ -2390,6 +2406,12 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen)return;
+  if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
+    thirdPersonEnabled=!thirdPersonEnabled;
+    showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
+      'FIRST-PERSON VIEW · V TO TOGGLE');
+    return;
+  }
   if(e.code==='KeyO'&&!e.repeat&&controls.isLocked){openPowerArmorBay();return;}
   if(e.code==='KeyP'&&!e.repeat&&controls.isLocked){togglePoweredSuit();return;}
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
@@ -2452,6 +2474,8 @@ window.addEventListener('blur',()=>{
 });
 window.addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  thirdPersonCamera.aspect=innerWidth/innerHeight;
+  thirdPersonCamera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
 function updateHUD(info){
@@ -2608,6 +2632,40 @@ function frame(){
     !controls.isLocked||inventoryOpen||lootOpen||!nearby);
   if(nearby)$('lootPrompt').textContent='E · SEARCH '+nearby.source.toUpperCase()+
     ' · '+nearby.items.length+' ITEM TYPES';
-  renderer.render(scene,camera);
+  // Cosmetic player body and the inspection camera are separate from the FPS
+  // movement, hitboxes, weapon ADS and authoritative hitscan camera.
+  const playerGround=groundHeight(player.x,player.z);
+  playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
+    yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
+    sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
+    aiming:!!weaponState.aiming,alive:playerHealth.alive});
+  thirdPersonActive=thirdPersonEnabled&&powerArmorState.phase==='idle'&&
+    !powerArmorState.occupied&&!weaponState.aiming;
+  playerAvatar.root.visible=thirdPersonActive;
+  for(const [id,weapon] of weaponVisuals)
+    weapon.root.visible=id===activeWeaponId&&!thirdPersonActive&&
+      powerArmorState.phase==='idle';
+  if(thirdPersonActive){
+    controls.getDirection(viewHeading);
+    viewHeading.y=0;
+    if(viewHeading.lengthSq()<.0001)viewHeading.set(0,0,-1);
+    viewHeading.normalize();
+    viewRight.set(-viewHeading.z,0,viewHeading.x);
+    viewFocus.set(player.x,playerGround+player.jump+1.18-(player.crouched?0.23:0),player.z);
+    viewDesired.copy(viewFocus).addScaledVector(viewHeading,-3.1)
+      .addScaledVector(viewRight,.60);
+    viewDesired.y+=.72;
+    const offset=viewDesired.clone().sub(viewFocus);
+    const distance=offset.length();
+    thirdPersonRay.set(viewFocus,offset.normalize());thirdPersonRay.far=distance;
+    const obstructed=thirdPersonRay.intersectObjects(worldGeometry,false)
+      .find(hit=>hit.distance>.23);
+    if(obstructed)viewDesired.copy(viewFocus).addScaledVector(offset,
+      Math.max(.55,obstructed.distance-.20));
+    thirdPersonCamera.position.copy(viewDesired);
+    thirdPersonCamera.fov=camera.fov;thirdPersonCamera.updateProjectionMatrix();
+    thirdPersonCamera.lookAt(viewFocus.clone().addScaledVector(viewHeading,.55));
+    renderer.render(scene,thirdPersonCamera);
+  }else renderer.render(scene,camera);
 }
 frame();
