@@ -9,6 +9,7 @@ const characterAssets=readFileSync(new URL('./character-assets.mjs',import.meta.
 const assetProxy=readFileSync(new URL('../../functions/api/rpg-models/[model].js',import.meta.url),'utf8');
 const armorVisual=readFileSync(new URL('./power-armor-visual.mjs',import.meta.url),'utf8');
 const playerAvatar=readFileSync(new URL('./player-avatar.mjs',import.meta.url),'utf8');
+const remoteAvatar=readFileSync(new URL('./remote-avatar.mjs',import.meta.url),'utf8');
 
 test('Station nine has 3 declared enemies in front of an east-facing player',()=>{
   const section=source.slice(source.indexOf('const enemySpecs=['),source.indexOf('function enemyMaterial'));
@@ -86,7 +87,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.4/);
+  assert.match(page,/main\.js\?v=W09\.5/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -338,7 +339,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.4/);
+  assert.match(page,/main\.js\?v=W09\.5/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -461,5 +462,18 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W09\.4/);
+  assert.match(page,/main\.js\?v=W09\.5/);
+});
+
+test('W09.5 second survivor stays rendered independently of local V camera',()=>{
+  assert.match(source,/createRemotePlayerVisual\(scene,'station8-preview'\)/);
+  assert.match(source,/remotePreview\.sync\(\{\.\.\.remotePreviewPose,armor:remotePreviewArmor\},dt\)/);
+  assert.match(source,/remotePreview:remotePreview\.state/);
+  assert.match(source,/playerAvatar\.root\.visible=thirdPersonActive/);
+  assert.match(remoteAvatar,/export function createRemotePlayerVisual\(scene,playerId\)/);
+  assert.match(remoteAvatar,/avatar\.root\.visible=snapshot\.connected!==false/);
+  assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
+  assert.match(playerAvatar,/edge:pixelFabric/);
+  assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
+  assert.match(page,/main\.js\?v=W09\.5/);
 });

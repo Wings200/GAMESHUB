@@ -264,6 +264,11 @@ try{
   // Regression: restored non-default weapons previously called selectWeapon()
   // before slideCycle/shotNoticeTime/weaponMotion had initialized, crashing
   // the page only for returning players with a saved inventory.
+  // W09.5: a separate remote survivor remains visible in both local views.
+  const remoteBefore=await page.evaluate(()=>window.__rpgSmokeState().remotePreview);
+  assert.equal(remoteBefore.visible,true,'Other player must render in first-person');
+  assert.ok(remoteBefore.armorPieces.chest>0,
+    'Remote chest armor must mount on the remote body');
   // W09.3: the original player body renders in third-person without
   // changing the authoritative first-person combat camera.
   await page.keyboard.press('v');
@@ -276,6 +281,18 @@ try{
   assert.equal(third.playerVisual.armor[testArmor.slot],testArmor.key);
   assert.ok(third.playerVisual.armorPieces[testArmor.slot]>0,
     'Equipped ordinary armor must render on the third-person survivor');
+  assert.equal(third.remotePreview.visible,true,
+    'Switching V must never hide the other survivor');
+  await page.evaluate(()=>window.__rpgSmokeSetRemotePreviewArmor('chest','none'));
+  await page.waitForFunction(()=>{
+    const v=window.__rpgSmokeState().remotePreview;
+    return v.armor.chest==='none'&&v.armorPieces.chest===0;
+  },null,{timeout:12000});
+  await page.evaluate(()=>window.__rpgSmokeSetRemotePreviewArmor('chest','citadel-chest'));
+  await page.waitForFunction(()=>{
+    const v=window.__rpgSmokeState().remotePreview;
+    return v.armor.chest==='citadel-chest'&&v.armorPieces.chest>0;
+  },null,{timeout:12000});
   assert.ok(third.playerVisual.height>1.6&&third.playerVisual.height<2.05,
     'Standing player model must remain near human height');
   await page.keyboard.press('c');
@@ -285,6 +302,8 @@ try{
   await page.keyboard.press('v');
   await page.waitForFunction(()=>!window.__rpgSmokeState().playerVisual.thirdPersonActive,
     null,{timeout:12000});
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).remotePreview.visible,true,
+    'The remote model stays visible when the local player returns to first-person');
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>
     window.__rpgSmokeState?.().weapon?.id==='pipe-smg',
