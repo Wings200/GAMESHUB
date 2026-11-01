@@ -5,8 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
 const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
-const characterAssets=readFileSync(new URL('./character-assets.mjs',import.meta.url),'utf8');
-const assetProxy=readFileSync(new URL('../../functions/api/rpg-models/[model].js',import.meta.url),'utf8');
+const npcAvatar=readFileSync(new URL('./npc-avatar.mjs',import.meta.url),'utf8');
 const armorVisual=readFileSync(new URL('./power-armor-visual.mjs',import.meta.url),'utf8');
 const playerAvatar=readFileSync(new URL('./player-avatar.mjs',import.meta.url),'utf8');
 const remoteAvatar=readFileSync(new URL('./remote-avatar.mjs',import.meta.url),'utf8');
@@ -87,7 +86,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.5/);
+  assert.match(page,/main\.js\?v=W09\.6/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -339,7 +338,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.5/);
+  assert.match(page,/main\.js\?v=W09\.6/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -393,46 +392,44 @@ test('W08.3 uses crouch-aware camera heights instead of the old fixed 2.82m',()=
   assert.match(source,/crouched:!!player\.crouched/);
 });
 
-test('W09.1 detailed characters use a real rigged GLB loader and safe fallbacks',()=>{
-  assert.match(characterAssets,/GLTFLoader/);
-  assert.match(characterAssets,/DRACOLoader/);
-  assert.match(characterAssets,/cloneSkinned/);
-  assert.match(characterAssets,/AnimationMixer/);
-  assert.match(characterAssets,/mountRiggedCharacter/);
-  for(const id of ['scout','raider','enforcer']){
-    assert.ok(characterAssets.includes("id:'"+id+"'"));
-    assert.ok(assetProxy.includes(id+':'));
-  }
-  assert.match(assetProxy,/Object\.prototype\.hasOwnProperty\.call\(SOURCES,id\)/);
-  assert.match(source,/mountRiggedCharacter\(root,spec\.id,2\.20\)/);
-  assert.match(page,/id="riggedStatus"/);
+test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs',()=>{
+  assert.match(npcAvatar,/export function createNpcAvatar\(parent,kind\)/);
+  assert.match(npcAvatar,/scout:Object\.freeze/);
+  assert.match(npcAvatar,/raider:Object\.freeze/);
+  assert.match(npcAvatar,/enforcer:Object\.freeze/);
+  assert.match(npcAvatar,/createPlayerAvatar\(parent,\{variant:kind\}\)/);
+  assert.match(playerAvatar,/variant==='scout'/);
+  assert.match(playerAvatar,/variant==='raider'/);
+  assert.match(playerAvatar,/variant==='enforcer'/);
+  assert.match(playerAvatar,/THREE\.NearestFilter/);
+  assert.doesNotMatch(source,/mountRiggedCharacter\(root/);
+  assert.match(source,/enemy\.rigged=createNpcAvatar\(root,spec\.id\)/);
   assert.match(source,/hitbox\.material\.visible=false/);
-  assert.match(source,/enemy\.modelStatus='fallback'/);
-  assert.doesNotMatch(source,/mountRiggedCharacter\(poweredSuit\.pilot/);
-  assert.match(source,/createPlayerAvatar\(poweredSuit\.pilot\)/);
-  assert.match(armorVisual,/useOriginalPilot\(\)\{fallbackPilot\.visible=false/);
+  assert.match(source,/enemy\.rifleVisual\.visible=false/);
+  assert.match(source,/modelStatus:'original'/);
+  assert.match(page,/main\.js\?v=W09\.6/);
 });
-
-test('W09.1 normalization survives animated GLB transforms and repairs huge NPCs',()=>{
-  // The giant models shown in W09.0 were caused by fitting the imported scene
-  // node itself, which animation tracks can overwrite at runtime.
-  assert.doesNotMatch(characterAssets,/skeleton\.scale\.setScalar/);
-  assert.doesNotMatch(characterAssets,/skeleton\.position\.set\(-center/);
-  assert.match(characterAssets,/const root=new THREE\.Group\(\)/);
-  assert.match(characterAssets,/root\.scale\.setScalar\(scale\)/);
-  assert.match(characterAssets,/offset\.position\.set\(-center\.x,-box\.min\.y,-center\.z\)/);
-  assert.match(characterAssets,/stationaryClip\(gltf\.animations/);
-  assert.match(characterAssets,/if\(property==='scale'\)return false/);
-  assert.match(characterAssets,/root\.scale\.multiplyScalar\(ratio\)/);
-  assert.match(characterAssets,/if\(Math\.abs\(bottom\)>\.22\)/);
-  assert.match(characterAssets,/inspectAndRepair\(\)/);
+test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
+  for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
+    assert.ok(npcAvatar.includes("'"+slot+"'"),'Missing '+slot+' armor slot');
+  for(const family of ['scrap','ranger','militia','citadel'])
+    assert.ok(npcAvatar.includes("'"+family+"'"),'Missing '+family+' armor mapping');
+  assert.match(npcAvatar,/avatar\.setArmor\(npcCosmeticArmor\(loadout\)\)/);
+  assert.match(npcAvatar,/avatar\.weaponSocket/);
+  assert.match(npcAvatar,/gun\.rotation\.x=/);
+  assert.match(npcAvatar,/magazine\.position\.y=/);
+  assert.match(npcAvatar,/avatar\.update\(\{dt,x:0,z:0,ground:0,yaw:0/);
+  assert.match(source,/enemy\.rigged\?\.setArmor\(enemy\.state\.loadout\)/);
+  assert.match(source,/enemy\.rigged\?\.update\(dt,\{/);
+  assert.match(source,/reloading:enemy\.tactics\.reloadRemaining>0/);
+  assert.match(source,/recoil:enemy\.recoilPose/);
+  assert.match(source,/originalVisual:e\.rigged\?\.state/);
   assert.match(source,/modelHeight:e\.rigged\?\.metrics\.height/);
-  assert.match(source,/modelRepairs:e\.rigged\?\.metrics\.repairs/);
-  assert.match(source,/SIZE OK/);
+  assert.match(source,/enemy\.root\.visible=enemy\.state\.alive\|\|enemy\.deathTimer<\.7/);
+  assert.match(source,/generateEnemyLoot\(enemy\.id,arenaRound,enemy\.state\.loadout\)/);
 });
-
 test('W09.3 builds an original pixel-textured player and a separate third-person preview',()=>{
-  assert.match(playerAvatar,/export function createPlayerAvatar\(scene\)/);
+  assert.match(playerAvatar,/export function createPlayerAvatar\(scene,/);
   assert.match(playerAvatar,/CanvasTexture/);
   assert.match(playerAvatar,/THREE\.NearestFilter/);
   assert.match(playerAvatar,/OriginalPixelSurvivor/);
@@ -462,7 +459,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W09\.5/);
+  assert.match(page,/main\.js\?v=W09\.6/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -475,5 +472,5 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W09\.5/);
+  assert.match(page,/main\.js\?v=W09\.6/);
 });
