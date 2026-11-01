@@ -245,6 +245,8 @@ try{
     .inventory.items.some(i=>i.itemId==='supply:salvage'),
     'MAX must drop only the remaining count in this stack');
   await page.locator('#inventoryClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:10000});
   // Regression: restored non-default weapons previously called selectWeapon()
   // before slideCycle/shotNoticeTime/weaponMotion had initialized, crashing
   // the page only for returning players with a saved inventory.
