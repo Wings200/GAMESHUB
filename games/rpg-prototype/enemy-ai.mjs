@@ -4,7 +4,7 @@ export const AI_TUNING=Object.freeze({
   sight:45, fieldOfViewDegrees:165,
   patrolSpeed:1.25, chaseSpeed:2.75,
   stopDistance:2.7, waypointRadius:.48,
-  lastSeenSeconds:3.2, searchSeconds:3.0,
+  lastSeenSeconds:3.2, hitRetaliationSeconds:9, searchSeconds:3.0,
   collisionRadius:.34, maxDelta:.05,
   area:Object.freeze({minX:33.6,maxX:58.4,minZ:34.9,maxZ:49.3})
 });
@@ -53,13 +53,14 @@ export function createEnemyBrain(config){
     x:config.x,z:config.z,yaw:Number.isFinite(config.yaw)?config.yaw:-Math.PI/2,
     spawn:{x:config.x,z:config.z},patrol,patrolIndex:0,
     mode:'patrol',lastSeen:null,memory:0,searchLeft:0,
-    spotted:false,moving:false,active:true,
+    spotted:false,moving:false,active:true,retaliationTime:0,
     distanceToPlayer:Infinity
   };
 }
 export function alertEnemy(enemy,player){
   if(!enemy.active)return enemy;
-  enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.lastSeenSeconds;
+  enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.hitRetaliationSeconds;
+  enemy.retaliationTime=AI_TUNING.hitRetaliationSeconds;
   enemy.mode='chase';enemy.searchLeft=0;enemy.spotted=true;
   return enemy;
 }
@@ -68,6 +69,7 @@ export function resetEnemyBrain(enemy){
   enemy.patrolIndex=0;enemy.mode='patrol';enemy.lastSeen=null;
   enemy.memory=0;enemy.searchLeft=0;enemy.spotted=false;
   enemy.moving=false;enemy.active=true;enemy.distanceToPlayer=Infinity;
+  enemy.retaliationTime=0;
   return enemy;
 }
 function blockedAt(x,z,obstacles,radius){
@@ -96,6 +98,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   if(!enabled){enemy.moving=false;return enemy;}
   const area=options.area||AI_TUNING.area;
   enemy.distanceToPlayer=distance(enemy.x,enemy.z,player.x,player.z);
+  enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
   const seen=options.playerInArena!==false&&hasSight(enemy,player,obstacles);
   enemy.spotted=seen;
   if(seen){
