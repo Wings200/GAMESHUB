@@ -56,6 +56,15 @@ test('Shots can hit or miss; accuracy decreases with distance and movement',()=>
   assert.equal(t.hits,1);assert.equal(t.misses,1);
   assert.equal(t.shots,2);
 });
+test('Distant return fire has visibly lower hit probability than mid-range fire',()=>{
+  const tactics=makeEnemyTactics('enforcer');tactics.cooldown=0;
+  const near=attemptEnemyShot(tactics,25,false,()=>.99);
+  tactics.cooldown=0;
+  const far=attemptEnemyShot(tactics,85,false,()=>.99);
+  assert.equal(far.fired,true);
+  assert.ok(far.accuracy<near.accuracy);
+  assert.ok(far.accuracy<=.3);
+});
 test('Threat makes an alerted enemy choose actual occluded cover',()=>{
   const t=makeEnemyTactics('raider'),b=brain();
   const cover=pickCoverPoint(b,player,[box]);

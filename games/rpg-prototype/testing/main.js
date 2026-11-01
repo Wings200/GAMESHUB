@@ -1358,7 +1358,7 @@ function updateEnemies(dt){
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       // Animated ready pose, short lean while peeking, rifle dip while
       // reloading, and a quick shoulder kick after actual shots.
-      const shouldAim=enemy.brain.mode==='chase'&&
+      const shouldAim=(enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
         !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
       enemy.combatPose+=(Number(shouldAim)-enemy.combatPose)*
         (1-Math.exp(-7*dt));

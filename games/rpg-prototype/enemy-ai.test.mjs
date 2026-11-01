@@ -47,10 +47,11 @@ test('A hit alerts an enemy even when their back is turned',()=>{
 test('Lost enemies investigate last seen location, search, then patrol',()=>{
   const e=bot();
   alertEnemy(e,{x:36,z:40});
-  for(let i=0;i<80;i++)stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
+  for(let i=0;i<185;i++)stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
   assert.equal(e.mode,'search');
   for(let i=0;i<65;i++)stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
   assert.equal(e.mode,'patrol');
+  assert.equal(e.retaliationTime,0);
 });
 test('Disabled/out-of-station AI pauses and reset clears state',()=>{
   const e=bot();
