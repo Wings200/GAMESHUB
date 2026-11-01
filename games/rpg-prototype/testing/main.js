@@ -479,12 +479,10 @@ try{
   if(raw)powerArmorState=safePowerArmorSnapshot(raw);
 }catch{}
 const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
-// A skinned, textured human is mounted over the old pilot fallback.
-let riggedPilot=null;
-mountRiggedCharacter(poweredSuit.pilot,'raider',1.74).then(model=>{
-  riggedPilot=model;
-  poweredSuit.revealRiggedPilot();
-}).catch(error=>console.warn('Detailed pilot unavailable; using fallback:',error));
+// Power-armor transitions now show the SAME original survivor as third person.
+// No photorealistic Raider GLB is mounted for the player anymore.
+const pilotAvatar=createPlayerAvatar(poweredSuit.pilot);
+poweredSuit.useOriginalPilot();
 textSign('POWER SUIT · P TO ENTER',-55,-6,0x8fbba4);
 const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
@@ -2237,6 +2235,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
     pilotVisible:poweredSuit.pilot.visible,
+    pilotModel:pilotAvatar.root.name,
+    pilotArmor:pilotAvatar.armor,
     pilotDepth:poweredSuit.pilot.position.z,
     cameraHeightAboveGround:camera.position.y-groundHeight(player.x,player.z),
     chassisHeight:poweredSuit.size.y,
@@ -2352,6 +2352,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       visible:playerAvatar.root.visible,
       height:playerAvatar.metrics.height,
       crouch:playerAvatar.metrics.crouched,
+      armor:playerAvatar.armor,
+      armorPieces:playerAvatar.visibleArmorPieces,
       name:playerAvatar.root.name},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
     player:{x:player.x,z:player.z,crouched:!!player.crouched,
@@ -2590,13 +2592,19 @@ function frame(){
   const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED · '+
     modelSizeOK+' SIZE OK'+(modelCorrections?' · '+modelCorrections+' AUTO-FIXES':'')+
     (failedModels?' · '+failedModels+' FALLBACK':'')+
-    (riggedPilot?' · PILOT LOADED':' · PILOT LOADING/FALLBACK');
+    ' · ORIGINAL SURVIVOR PILOT';
   if($('riggedStatus').textContent!==modelLabel)$('riggedStatus').textContent=modelLabel;
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
   poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime);
-  riggedPilot?.update(dt,powerStep.phase!=='idle');
+  // Cosmetic inventory visuals are driven by the same six real armor slots
+  // in third-person play and while entering/exiting powered armor.
+  playerAvatar.setArmor(backpack.equipment.armor);
+  pilotAvatar.setArmor(backpack.equipment.armor);
+  pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
+    speed:powerStep.phase==='idle'?0:1.8,
+    sprinting:false,crouched:false,aiming:false,alive:true});
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
