@@ -32,17 +32,26 @@ function pixelFabric(primary,secondary,seed=7){
   });
 }
 
-export function createPlayerAvatar(scene){
+export function createPlayerAvatar(scene,{variant='survivor'}={}){
+  // Shared silhouette and pixel-texel scale, but each NPC gets its own
+  // clothing, equipment details, and identity rather than an imported GLB.
+  const palette={
+    survivor:['#536c59','#81927a','#5b5d50','#353d3b','#373638','#b58c72','#7d6348'],
+    scout:['#796c4a','#9a8d63','#575e46','#343b32','#38352d','#b28a6b','#91764e'],
+    raider:['#795247','#ab7060','#534747','#392f36','#342a31','#ab806d','#754332'],
+    enforcer:['#435967','#728a92','#394758','#293340','#242b35','#9f7969','#485661']
+  }[variant]||['#536c59','#81927a','#5b5d50','#353d3b','#373638','#b58c72','#7d6348'];
   const root=new THREE.Group();root.name='OriginalPixelSurvivor';
+  root.userData.npcVariant=variant;
   root.scale.setScalar(.80);
   scene.add(root);
-  const jacket=pixelFabric('#536c59','#283e37',9);
-  const jacketLight=pixelFabric('#81927a','#3f5c4f',21);
-  const pants=pixelFabric('#5b5d50','#303b35',33);
-  const cloth=pixelFabric('#353d3b','#172728',47);
-  const boot=pixelFabric('#373638','#151c21',51);
-  const skin=pixelFabric('#b58c72','#845c4a',55);
-  const leather=pixelFabric('#7d6348','#3c322b',61);
+  const jacket=pixelFabric(palette[0],'#283e37',9);
+  const jacketLight=pixelFabric(palette[1],'#3f5c4f',21);
+  const pants=pixelFabric(palette[2],'#303b35',33);
+  const cloth=pixelFabric(palette[3],'#172728',47);
+  const boot=pixelFabric(palette[4],'#151c21',51);
+  const skin=pixelFabric(palette[5],'#845c4a',55);
+  const leather=pixelFabric(palette[6],'#3c322b',61);
   const metal=new THREE.MeshStandardMaterial({color:0x84968b,roughness:.88,metalness:.16});
   const dark=new THREE.MeshStandardMaterial({color:0x1a292d,roughness:1});
   const glass=new THREE.MeshStandardMaterial({color:0xb4c69c,roughness:.36,metalness:.12});
@@ -128,6 +137,45 @@ export function createPlayerAvatar(scene){
   // Mesh ponytail / hood tie.
   oval(head,.075,.115,.063,cloth,0,.03,.174);
   strap(head,[0,-.04,.175],[0,-.20,.22],.022,leather);
+
+  // W09.6: silhouettes and gear that identify the three enemy roles even
+  // when their randomized armor slots are empty.
+  if(variant==='scout'){
+    // Lightweight scouting hood, desert shoulder cape and antenna radio.
+    roundedBox(torso,.59,.47,.065,.065,leather,0,.36,.266);
+    roundedBox(torso,.47,.08,.08,.022,jacketLight,0,.55,.310);
+    roundedBox(head,.39,.082,.29,.034,jacketLight,0,.227,-.045);
+    roundedBox(head,.31,.055,.14,.02,leather,0,.184,-.185);
+    roundedBox(torso,.15,.20,.13,.03,cloth,.34,.35,.08);
+    strap(torso,[.34,.48,.12],[.34,.86,.12],.009,metal);
+    for(const side of [-1,1])roundedBox(torso,.095,.17,.09,.02,leather,
+      side*.27,.21,.22);
+  }else if(variant==='raider'){
+    // Asymmetric red scavenger scarf, strapped canisters and patched hood.
+    roundedBox(torso,.67,.14,.46,.055,jacketLight,0,.57,.01);
+    const scarf=roundedBox(torso,.26,.28,.068,.03,jacketLight,-.14,.42,-.255);
+    scarf.rotation.z=.23;
+    roundedBox(head,.33,.105,.13,.04,leather,0,-.02,-.172);
+    roundedBox(head,.42,.045,.30,.012,jacketLight,0,.174,.017);
+    for(let n=0;n<3;n++)roundedBox(torso,.096,.15,.09,.021,leather,
+      .30,.19+n*.14,.258);
+    roundedBox(torso,.13,.21,.16,.042,cloth,-.34,.19,.16);
+  }else if(variant==='enforcer'){
+    // Heavy blue-grey collar, armored radio pack, full respirator visor.
+    roundedBox(torso,.80,.14,.56,.07,metal,0,.63,.015);
+    roundedBox(torso,.52,.49,.20,.073,cloth,0,.31,.33);
+    roundedBox(torso,.30,.22,.13,.05,metal,0,.35,.44);
+    roundedBox(head,.40,.25,.35,.08,metal,0,.17,.055);
+    roundedBox(head,.32,.12,.075,.027,glass,0,.068,-.211);
+    roundedBox(head,.22,.11,.13,.029,dark,0,-.045,-.215);
+    for(const side of [-1,1]){
+      roundedBox(torso,.17,.22,.22,.055,metal,side*.39,.51,.015);
+      roundedBox(head,.07,.13,.12,.021,cloth,side*.18,-.025,-.035);
+    }
+  }
+  // Guns attach to an animated torso joint instead of hovering in world space.
+  const weaponSocket=group(torso,.21,.35,-.34);
+  weaponSocket.name='TorsoWeaponSocket';
 
   // W09.4: each real inventory armor slot has a matching removable mesh,
   // independently skinned onto the same articulated parent as the clothing.
@@ -301,7 +349,7 @@ export function createPlayerAvatar(scene){
     }
   }
   return {
-    root,materials,setArmor,
+    root,materials,setArmor,weaponSocket,
     get armor(){return {...equippedArmor};},
     get visibleArmorPieces(){return Object.fromEntries(armorSlots.map(slot=>
       [slot,armorKinds.reduce((count,kind)=>count+
