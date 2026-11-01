@@ -64,6 +64,24 @@ try{
   await page.locator('#enterAI').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     {timeout:7000});
+  // W09.3: the original player body renders in third-person without
+  // changing the authoritative first-person combat camera.
+  await page.keyboard.press('v');
+  await page.waitForFunction(()=>{
+    const p=window.__rpgSmokeState().playerVisual;
+    return p.thirdPersonActive&&p.visible;
+  },null,{timeout:12000});
+  const third=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(third.playerVisual.name,'OriginalPixelSurvivor');
+  assert.ok(third.playerVisual.height>1.6&&third.playerVisual.height<2.05,
+    'Standing player model must remain near human height');
+  await page.keyboard.press('c');
+  await page.waitForFunction(()=>window.__rpgSmokeState().playerVisual.crouch>.65,
+    null,{timeout:12000});
+  await page.keyboard.press('c');
+  await page.keyboard.press('v');
+  await page.waitForFunction(()=>!window.__rpgSmokeState().playerVisual.thirdPersonActive,
+    null,{timeout:12000});
   const before=await page.evaluate(()=>window.__rpgSmokeState());
   await page.waitForTimeout(1400);
   const after=await page.evaluate(()=>window.__rpgSmokeState());
