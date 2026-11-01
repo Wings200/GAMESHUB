@@ -115,7 +115,7 @@ test('Shot raider reaches an occluded cover point using the real movement brain'
   for(let i=0;i<120;i++){
     tickEnemyTactics(t,b,player,.05,[box]);
     stepEnemyBrain(b,player,.05,[box],{
-      combatGoal:t.goal,combatHold:t.phase==='hold',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
     if(t.phase==='hold'){reached=true;break;}
@@ -158,7 +158,7 @@ test('Enemy crouches only behind a real blocker and stands when flanked',()=>{
   for(let i=0;i<200;i++){
     tickEnemyTactics(t,b,player,.05,[crate]);
     stepEnemyBrain(b,player,.05,[crate],{
-      combatGoal:t.goal,combatHold:t.phase==='hold',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
     if(t.crouching){crouched=true;break;}
@@ -216,7 +216,7 @@ test('Enemy ducks, advances to peek, then withdraws back behind cover',()=>{
     }
     if(sawPeek&&t.phase==='cover')sawReturn=true;
     stepEnemyBrain(b,target,.05,[crate],{
-      combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
   }
