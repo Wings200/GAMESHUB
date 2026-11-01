@@ -136,7 +136,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
   assert.match(source,/attemptEnemyShot\(enemy\.tactics/);
   assert.match(source,/markEnemyThreat\(enemy\.tactics\)/);
   assert.match(source,/resetEnemyTactics\(enemy\.tactics\)/);
-  assert.match(source,/if\(shot\.hit\)\{/);
+  assert.match(source,/if\(shot\.hit&&!obstruction\)\{/);
   assert.match(source,/if\(!shot\.hit\)\{/);
   assert.match(source,/combatGoal:tactic\.goal/);
   assert.match(source,/combatHold:tactic\.phase==='hold'/);
