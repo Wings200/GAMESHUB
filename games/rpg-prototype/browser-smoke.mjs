@@ -61,6 +61,15 @@ try{
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
   assert.equal(state.enemies.length,3);
+  // W09.9: the actual Three.js lab's tall maze wall must obstruct both
+  // enemy damage and the visible bullet tracer. A higher shot clears it.
+  const wallBlock=await page.evaluate(()=>
+    window.__rpgSmokeShotBlock({x:-22,y:1.43,z:32},{x:-14,y:1.52,z:32}));
+  assert.ok(wallBlock&&wallBlock.t<1,
+    'Solid maze wall must stop an NPC tracer before reaching a player');
+  const aboveWall=await page.evaluate(()=>
+    window.__rpgSmokeShotBlock({x:-22,y:3.2,z:32},{x:-14,y:3.2,z:32}));
+  assert.equal(aboveWall,null,'Shots above the wall should remain clear');
   // The ordinary survivor must have no headwear, pack or visible armor.
   assert.deepEqual(state.playerVisual.clothing,{head:'none',back:'none'});
   assert.deepEqual(state.playerVisual.visibleClothing,{head:false,back:false});
@@ -89,6 +98,13 @@ try{
   const moved=after.enemies.some((e,i)=>
     Math.hypot(e.x-before.enemies[i].x,e.z-before.enemies[i].z)>.08);
   assert.ok(moved,'At least one live AI must physically move in the arena');
+  for(const enemy of after.enemies){
+    assert.ok(Number.isFinite(enemy.pace)&&enemy.pace>=0,
+      'Each NPC must have an actual tactical walk/run speed');
+    assert.equal(typeof enemy.decision,'string');
+    if(enemy.crouching)assert.ok(enemy.coverPoint,
+      'A crouching NPC must occupy an actual cover position');
+  }
   // Freeze AI for a stable sightline, reset enemy positions and then aim at
   // the Scout's centre with real pointer-locked browser mouse input.
   await page.keyboard.press('j');

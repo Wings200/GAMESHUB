@@ -252,3 +252,28 @@ test('Stuck NPC recognizes failed motion and attempts a different tactic',()=>{
   assert.ok(['cover','reload','hold','flank','strafe','suppress','pursue',
     'peek-move','peek'].includes(t.phase));
 });
+
+
+test('W09.9 NPC roles pick different movement paces and never crouch in open space',()=>{
+  const target={x:34,z:40},speeds={};
+  for(const role of ['scout','raider','enforcer']){
+    const t=makeEnemyTactics(role),b=brain();
+    tickEnemyTactics(t,b,target,.05,[]);
+    assert.equal(t.crouching,false,'No cover means no protective crouch');
+    assert.ok(t.pace>0,'A repositioning NPC must move');
+    assert.ok(t.decisionReason.length>5,'Tactical choice explains its reason');
+    speeds[role]=t.pace;
+  }
+  assert.ok(speeds.scout>speeds.raider);
+  assert.ok(speeds.raider>speeds.enforcer);
+});
+test('W09.9 NPC flanks away from an occupied route instead of fixed side-stepping',()=>{
+  const t=makeEnemyTactics('raider'),b=brain();
+  const blockedSide={minX:44.9,maxX:45.9,minZ:44.9,maxZ:45.9,height:1.7};
+  tickEnemyTactics(t,b,{x:34,z:40},.05,[blockedSide]);
+  assert.equal(t.crouching,false);
+  assert.equal(t.phase,'strafe');
+  assert.equal(t.strafeSign,1,'AI should choose the safer available side');
+  assert.ok(t.goal.z<43,'The chosen lane must avoid the blocked upper side');
+  assert.ok(Number.isFinite(t.goal.x)&&Number.isFinite(t.goal.z));
+});

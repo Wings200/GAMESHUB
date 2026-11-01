@@ -47,9 +47,11 @@ test('A hit alerts an enemy even when their back is turned',()=>{
 test('Lost enemies investigate last seen location, search, then patrol',()=>{
   const e=bot();
   alertEnemy(e,{x:36,z:40});
-  for(let i=0;i<185;i++)stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
+  for(let i=0;i<Math.ceil((AI_TUNING.lastSeenSeconds+1)/.05);i++)
+    stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
   assert.equal(e.mode,'search');
-  for(let i=0;i<65;i++)stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
+  for(let i=0;i<Math.ceil((AI_TUNING.searchSeconds+1)/.05);i++)
+    stepEnemyBrain(e,{x:-300,z:0},.05,[],{playerInArena:false});
   assert.equal(e.mode,'patrol');
   assert.equal(e.retaliationTime,0);
 });
@@ -75,4 +77,47 @@ test('Large frame time is clamped and invalid spawn is rejected',()=>{
   const e=bot();
   stepEnemyBrain(e,{x:-100,z:0},100,[],{playerInArena:false});
   assert.ok(Math.hypot(e.x-45,e.z-40)<.1);
+});
+
+
+test('W09.9 losing sight behind a wall preserves last known location, not live player tracking',()=>{
+  const e=bot(45,40),seen={x:36,z:40};
+  const wall={minX:39,maxX:41,minZ:38,maxZ:42,height:2.8};
+  stepEnemyBrain(e,seen,.05,[],{combatHold:true});
+  assert.deepEqual(e.lastSeen,seen);
+  const hidden={x:30,z:41};
+  assert.equal(hasSight(e,hidden,[wall]),false);
+  stepEnemyBrain(e,hidden,.05,[wall],{combatHold:true});
+  assert.equal(e.mode,'investigate');
+  assert.deepEqual(e.lastSeen,seen,'Behind a wall cannot update exact player position');
+  assert.ok(Math.abs(e.yaw-(-Math.PI/2))<1e-6,
+    'Facing tracks last sighting, not the current hidden position');
+  stepEnemyBrain(e,hidden,.05,[wall],{
+    combatGoal:{x:44,z:41},combatFacePlayer:true
+  });
+  const expected=Math.atan2(seen.x-e.x,seen.z-e.z);
+  assert.ok(Math.abs(e.yaw-expected)<1e-6,
+    'Tactical motion also faces last known location while sight is blocked');
+});
+
+
+test('W09.9 NPC searches corners for 30 to 60 seconds after losing sight',()=>{
+  const total=AI_TUNING.lastSeenSeconds+AI_TUNING.searchSeconds;
+  assert.ok(total>=30&&total<=60,'Pursuit/search must last 30–60 seconds');
+  const e=bot(45,40);
+  alertEnemy(e,{x:43,z:40});
+  const hidden={x:-200,z:0};
+  let movedFar=false,sawSearch=false;
+  for(let i=0;i<Math.ceil((total-2)/.05);i++){
+    stepEnemyBrain(e,hidden,.05,[],{playerInArena:false});
+    if(Math.hypot(e.x-45,e.z-40)>1.1)movedFar=true;
+    if(e.mode==='search')sawSearch=true;
+    assert.deepEqual(e.lastSeen,{x:43,z:40});
+  }
+  assert.ok(movedFar,'NPC must physically inspect nearby positions');
+  assert.ok(sawSearch,'NPC should scan its last known area before relaxing');
+  assert.notEqual(e.mode,'patrol','Enemy should remain alerted near 43 seconds');
+  for(let i=0;i<80;i++)stepEnemyBrain(e,hidden,.05,[],{playerInArena:false});
+  assert.equal(e.mode,'patrol','NPC relaxes only after the alert window');
+  assert.equal(e.lastSeen,null);
 });
