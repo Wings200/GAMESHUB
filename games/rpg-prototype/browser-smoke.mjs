@@ -61,6 +61,11 @@ try{
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
   assert.equal(state.enemies.length,3);
+  // The ordinary survivor must have no headwear, pack or visible armor.
+  assert.deepEqual(state.playerVisual.clothing,{head:'none',back:'none'});
+  assert.deepEqual(state.playerVisual.visibleClothing,{head:false,back:false});
+  assert.equal(Object.values(state.playerVisual.armorPieces).reduce(
+    (a,b)=>a+b,0),0);
   // W09.6: all three on-screen NPCs are our own pixel-textured models.
   // Their six cosmetic armor slots must track the authoritative loadout.
   for(const enemy of state.enemies){
@@ -244,6 +249,28 @@ try{
       visual.armorPieces[piece.slot]>0;
   },{slot:testArmor.slot,key:testArmor.key},{timeout:12000});
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
+  // W09.7: Raider loot supplies a wearable canvas backpack. Equipping and
+  // removing it must actually toggle the animated model, not just a label.
+  let packRow=page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Canvas Field Backpack'});
+  assert.equal(await packRow.count(),1);
+  await packRow.getByRole('button',{name:'EQUIP'}).click();
+  await page.waitForFunction(()=>{
+    const p=window.__rpgSmokeState().playerVisual;
+    return p.clothing.back==='field-backpack'&&p.visibleClothing.back;
+  },null,{timeout:12000});
+  packRow=page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Canvas Field Backpack'});
+  await packRow.getByRole('button',{name:'UNEQUIP'}).click();
+  await page.waitForFunction(()=>{
+    const p=window.__rpgSmokeState().playerVisual;
+    return p.clothing.back==='none'&&!p.visibleClothing.back;
+  },null,{timeout:12000});
+  packRow=page.locator('#inventoryItems .loot-entry')
+    .filter({hasText:'Canvas Field Backpack'});
+  await packRow.getByRole('button',{name:'EQUIP'}).click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().playerVisual
+    .visibleClothing.back,null,{timeout:12000});
   // W08.4: a partial stack drop must reduce the backpack by exactly the
   // chosen count and spawn world loot with that same quantity.
   const salvageBefore=(await page.evaluate(()=>window.__rpgSmokeState()))
@@ -292,6 +319,8 @@ try{
   },null,{timeout:12000});
   const third=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(third.playerVisual.name,'OriginalPixelSurvivor');
+  assert.equal(third.playerVisual.visibleClothing.back,true,
+    'Equipped backpack must appear on third-person survivor');
   assert.equal(third.playerVisual.armor[testArmor.slot],testArmor.key);
   assert.ok(third.playerVisual.armorPieces[testArmor.slot]>0,
     'Equipped ordinary armor must render on the third-person survivor');
@@ -328,6 +357,10 @@ try{
     i=>i.itemId==='weapon:pipe-smg').length,2,
     'Duplicate weapons must survive loading a saved game');
   assert.equal(restoredInventory.inventory.armor[testArmor.slot],testArmor.key);
+  assert.equal(restoredInventory.inventory.clothing.back,'field-backpack',
+    'Backpack gear must persist after reload');
+  await page.waitForFunction(()=>window.__rpgSmokeState().playerVisual
+    .visibleClothing.back,null,{timeout:12000});
   assert.equal(await page.locator('#fatal').evaluate(el=>
     getComputedStyle(el).display),'none',
     'Saved player weapon must not cause a startup exception');
