@@ -268,7 +268,7 @@ try{
   const remoteBefore=await page.evaluate(()=>window.__rpgSmokeState().remotePreview);
   assert.equal(remoteBefore.visible,true,'Other player must render in first-person');
   assert.ok(remoteBefore.armorPieces.chest>0,
-    'Remote player's chest armor must mount on the remote body');
+    'Remote chest armor must mount on the remote body');
   // W09.3: the original player body renders in third-person without
   // changing the authoritative first-person combat camera.
   await page.keyboard.press('v');
