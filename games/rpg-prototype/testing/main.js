@@ -15,6 +15,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import {mountRiggedCharacter} from '../character-assets.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
+import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
@@ -114,7 +115,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular armor & power suit',info:'W08.2: inspect the new armor entrance and clear visor. Press P near the chassis to climb in or out; O fits six armor plates. B and Y still control training dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'08 · Modular armor & power suit',info:'Inspect ordinary armor on the second survivor preview nearby. V only changes your own camera; the other character stays visible. P enters the chassis; O fits powered plates. B and Y edit dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -2166,6 +2167,16 @@ function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
 const playerAvatar=createPlayerAvatar(scene);
 playerAvatar.root.visible=false;
+// Independent world-space survivor: a two-character visibility and armor
+// preview at Station 8. This is NOT a networked player or a combat hitbox.
+const remotePreview=createRemotePlayerVisual(scene,'station8-preview');
+const remotePreviewArmor={
+  head:'ranger-head',chest:'citadel-chest',
+  leftArm:'scrap-leftArm',rightArm:'militia-rightArm',
+  leftLeg:'ranger-leftLeg',rightLeg:'citadel-rightLeg'
+};
+const remotePreviewPose={x:-57,z:-9,ground:0,yaw:.62,speed:0,alive:true};
+remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},.016);
 let thirdPersonEnabled=false,thirdPersonActive=false;
 let labEndurance=ENDURANCE_TUNING.defaultPoints;
 try{const last=Number(localStorage.getItem('rpg-lab-endurance'));if(last>=1&&last<=10)labEndurance=Math.round(last);}catch{}
@@ -2277,6 +2288,12 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     // waiting for 60 slow software-WebGL animation frames in CI.
     if(weaponState.reloadRemaining>0)weaponState.reloadRemaining=.001;
   };
+  window.__rpgSmokeSetRemotePreviewArmor=(slot,id)=>{
+    if(!Object.prototype.hasOwnProperty.call(remotePreviewArmor,slot))return false;
+    remotePreviewArmor[slot]=id;
+    remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},.016);
+    return true;
+  };
   window.__rpgSmokeSetMagazine=(count)=>{
     weaponState.magazine=Math.max(0,Math.min(activeSpec.magazineSize,
       Math.floor(Number.isFinite(count)?count:0)));
@@ -2346,6 +2363,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     loot:[...lootBags.values()].map(b=>({id:b.id,x:b.x,z:b.z,
       source:b.source,items:b.items.map(i=>({...i}))})),
     lootOpen,inventoryOpen,
+    remotePreview:remotePreview.state,
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     playerVisual:{thirdPersonEnabled,thirdPersonActive,
@@ -2647,6 +2665,8 @@ function frame(){
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
     aiming:!!weaponState.aiming,alive:playerHealth.alive});
+  // Remote bodies update independently of local V / ADS / camera mode.
+  remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},dt);
   thirdPersonActive=thirdPersonEnabled&&powerArmorState.phase==='idle'&&
     !powerArmorState.occupied&&!weaponState.aiming;
   playerAvatar.root.visible=thirdPersonActive;
