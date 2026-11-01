@@ -61,6 +61,20 @@ try{
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
   assert.equal(state.enemies.length,3);
+  // W09.6: all three on-screen NPCs are our own pixel-textured models.
+  // Their six cosmetic armor slots must track the authoritative loadout.
+  for(const enemy of state.enemies){
+    assert.equal(enemy.modelStatus,'original');
+    assert.equal(enemy.originalVisual.type,enemy.id);
+    assert.equal(enemy.originalVisual.model,'OriginalNpc_'+enemy.id);
+    assert.ok(enemy.modelHeight>=1.7&&enemy.modelHeight<=2.15,
+      enemy.id+' needs a normal human-size original model');
+    for(const [slot,id] of Object.entries(enemy.armor)){
+      assert.equal(enemy.originalVisual.equipped[slot],id);
+      assert.equal(enemy.originalVisual.armorPieces[slot]>0,id!=='none',
+        enemy.id+' equipped '+slot+' must match its visible plates');
+    }
+  }
   await page.locator('#enterAI').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     {timeout:7000});
@@ -379,6 +393,13 @@ try{
   await page.evaluate(()=>window.dispatchEvent(new MouseEvent('mouseup',{button:2,bubbles:true})));
   await page.keyboard.press('j');
   const gearAfterReset=await page.evaluate(()=>window.__rpgSmokeState().enemies);
+  for(const enemy of gearAfterReset){
+    for(const [slot,id] of Object.entries(enemy.armor)){
+      assert.equal(enemy.originalVisual.equipped[slot],id,
+        'NPC armor must re-render after J reset');
+      assert.equal(enemy.originalVisual.armorPieces[slot]>0,id!=='none');
+    }
+  }
   assert.notDeepEqual(gearAfterReset.map(e=>e.armor),gearInitial.map(e=>e.armor),
     'J reset should rotate each enemy into a new visible armor outfit');
   for(const enemy of gearAfterReset){
