@@ -146,11 +146,14 @@ export function equipFromInventory(pack,uid){
   }
   if(item.category==='armor'){
     pack.equipment.armor[item.slot]=getArmorPiece(item.slot,item.key).id;
+    if(item.slot==='head'&&pack.equipment.clothing)
+      pack.equipment.clothing.head='none'; // helmet replaces cap
     return {ok:true,category:'armor',slot:item.slot,key:item.key};
   }
   if(item.category==='clothing'){
     pack.equipment.clothing??={head:'none',back:'none'};
     pack.equipment.clothing[item.slot]=item.key;
+    if(item.slot==='head')pack.equipment.armor.head='none'; // cap replaces helmet
     return {ok:true,category:'clothing',slot:item.slot,key:item.key};
   }
   return {ok:false,reason:'not-equippable'};
@@ -288,7 +291,8 @@ export function safeBackpackSnapshot(pack){
   for(const slot of ['head','back']){
     const key=pack.equipment?.clothing?.[slot];
     const piece=CLOTHING_GEAR[key];
-    if(piece?.slot===slot&&countItem(result,piece.id)>0)
+    if(piece?.slot===slot&&countItem(result,piece.id)>0&&
+        (slot!=='head'||result.equipment.armor.head==='none'))
       result.equipment.clothing[slot]=key;
   }
   return result;
