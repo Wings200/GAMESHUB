@@ -26,7 +26,7 @@ import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   ENEMY_ATTACK } from '../player-combat.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
-  equipFromInventory,useSupply,playerArmorReduction,createLootBag,
+  equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
@@ -1068,6 +1068,9 @@ function refreshInventoryUI(){
   $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryWeapon').textContent=getWeaponSpec(backpack.equipment.weapon).name;
+  const wear=backpack.equipment.clothing||{head:'none',back:'none'};
+  $('inventoryClothing').textContent='HAT: '+(wear.head==='none'?'NONE':'FIELD CAP')+
+    ' · BACKPACK: '+(wear.back==='none'?'NONE':'CANVAS FIELD PACK');
   const ordinary=playerArmorReduction(backpack,'chest');
   const powered=powerArmorProtection(powerArmorState,'chest',ordinary.reduction);
   $('inventoryArmor').textContent='CHEST '+ordinary.points+' AP · '+
@@ -1083,20 +1086,32 @@ function refreshInventoryUI(){
   for(const entry of backpack.items){
     const item=getItem(entry.itemId),row=inventoryLine(item);
     const count=document.createElement('span');
-    const duplicateCount=(item.category==='weapon'||item.category==='armor')?
+    const duplicateCount=(item.category==='weapon'||item.category==='armor'||item.category==='clothing')?
       countItem(backpack,item.id):0;
     const copy=(copyNumbers.get(item.id)||0)+1;
     copyNumbers.set(item.id,copy);
     count.textContent=duplicateCount>1?'COPY '+copy+' / '+duplicateCount:
       '×'+entry.quantity;
     count.className='loot-quantity';row.append(count);
-    if(item.category==='armor'||item.category==='weapon'){
-      lootButton(row,'EQUIP',()=>{
-        const r=equipFromInventory(backpack,entry.uid);
-        if(!r.ok)return;
-        if(r.category==='weapon')selectWeapon(r.key);
-        saveBackpack();refreshInventoryUI();
-      });
+    if(item.category==='armor'||item.category==='weapon'||item.category==='clothing'){
+      const currentlyEquipped=item.category==='armor'?
+        backpack.equipment.armor[item.slot]===item.key:
+        item.category==='clothing'?
+          backpack.equipment.clothing?.[item.slot]===item.key:
+          backpack.equipment.weapon===item.key;
+      if(currentlyEquipped&&item.category!=='weapon'){
+        lootButton(row,'UNEQUIP',()=>{
+          const outcome=unequipWearable(backpack,item.category,item.slot);
+          if(outcome.ok){saveBackpack();refreshInventoryUI();}
+        });
+      }else{
+        lootButton(row,'EQUIP',()=>{
+          const result=equipFromInventory(backpack,entry.uid);
+          if(!result.ok)return;
+          if(result.category==='weapon')selectWeapon(result.key);
+          saveBackpack();refreshInventoryUI();
+        });
+      }
     }
     if(item.category==='ammo'||item.id==='supply:medkit'){
       lootButton(row,item.category==='ammo'?'LOAD RESERVE':'USE',()=>{
@@ -1146,6 +1161,9 @@ function refreshInventoryUI(){
       if(item.category==='armor'&&backpack.equipment.armor[item.slot]===item.key&&
          !backpack.items.some(e=>e.itemId===item.id))
         backpack.equipment.armor[item.slot]='none';
+      if(item.category==='clothing'&&backpack.equipment.clothing?.[item.slot]===item.key&&
+         !backpack.items.some(e=>e.itemId===item.id))
+        backpack.equipment.clothing[item.slot]='none';
       spawnWorldLoot([{itemId:dropped.itemId,quantity:dropped.removed}],
         player.x+Math.sin(camera.rotation.y)*.8,player.z-.8,'player-drop');
       saveBackpack();refreshInventoryUI();
@@ -2364,6 +2382,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     inventory:{slots:backpack.items.length,
       items:backpack.items.map(e=>({...e})),
       armor:{...backpack.equipment.armor},
+      clothing:{...backpack.equipment.clothing},
       equippedWeapon:backpack.equipment.weapon},
     loot:[...lootBags.values()].map(b=>({id:b.id,x:b.x,z:b.z,
       source:b.source,items:b.items.map(i=>({...i}))})),
@@ -2377,6 +2396,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       crouch:playerAvatar.metrics.crouched,
       armor:playerAvatar.armor,
       armorPieces:playerAvatar.visibleArmorPieces,
+      clothing:playerAvatar.clothing,
+      visibleClothing:playerAvatar.visibleClothing,
       name:playerAvatar.root.name},
     aiEnabled:enemyAIEnabled,playerHealth:playerHealth.health,
     player:{x:player.x,z:player.z,crouched:!!player.crouched,
@@ -2618,6 +2639,8 @@ function frame(){
   // in third-person play and while entering/exiting powered armor.
   playerAvatar.setArmor(backpack.equipment.armor);
   pilotAvatar.setArmor(backpack.equipment.armor);
+  playerAvatar.setClothing(backpack.equipment.clothing);
+  pilotAvatar.setClothing(backpack.equipment.clothing);
   pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
     speed:powerStep.phase==='idle'?0:1.8,
     sprinting:false,crouched:false,aiming:false,alive:true});
