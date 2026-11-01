@@ -295,7 +295,7 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
   if(tactics.cooldown>0)return {fired:false,reason:'cooldown'};
   tactics.magazine--;
   tactics.cooldown=spec.shotInterval;
-  const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,45);
+  const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,90);
   const accuracy=clamp(spec.accuracy-spec.falloff*d/16-(moving?.13:0),.08,.90);
   const sampled=rng();
   const roll=clamp(Number.isFinite(sampled)?sampled:1,0,1);
