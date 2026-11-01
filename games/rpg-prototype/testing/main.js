@@ -13,7 +13,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
   setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
-import {mountRiggedCharacter} from '../character-assets.mjs';
+import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
@@ -818,7 +818,7 @@ function createEnemy(spec){
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
     tactics:makeEnemyTactics(spec.id),gunGlow:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
-    recoilPose:0,rigged:null,modelStatus:'loading'};
+    recoilPose:0,rigged:null,modelStatus:'original'};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
@@ -887,20 +887,19 @@ function createEnemy(spec){
   scene.add(labelMesh);
   enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
   enemies.set(spec.id,enemy);
-  // Preserve original meshes as invisible, authoritative armor hitboxes.
-  mountRiggedCharacter(root,spec.id,2.20).then(model=>{
-    enemy.rigged=model;enemy.modelStatus='rigged';
-    for(const hitbox of enemy.meshes)hitbox.material.visible=false;
-    enemy.rifleVisual.visible=false;
-  }).catch(error=>{
-    enemy.modelStatus='fallback';
-    console.warn('Detailed NPC asset unavailable for '+spec.id,error);
-  });
+  // The visible character is an authored, pixel-textured model. Keep ALL
+  // six existing collision meshes for authoritative body-part raycasts, but
+  // hide their primitive geometry so players never see the old mannequin.
+  enemy.rigged=createNpcAvatar(root,spec.id);
+  for(const hitbox of enemy.meshes)hitbox.material.visible=false;
+  enemy.rifleVisual.visible=false;
   refreshEnemyArmorVisuals(enemy);
   refreshEnemyLabel(enemy,'PATROL');
   return enemy;
 }
 function refreshEnemyArmorVisuals(enemy){
+  // Appearance follows the SAME six-slot loadout used for damage and loot.
+  enemy.rigged?.setArmor(enemy.state.loadout);
   for(const slot of ARMOR_SLOTS){
     const mesh=enemy.armorMeshes.get(slot);
     const piece=getArmorPiece(slot,enemy.state.loadout[slot]);
@@ -1386,7 +1385,13 @@ function updateEnemies(dt){
           pivot.rotation.z=side*.25*enemy.crouchBlend;
         }
       }
-      enemy.rigged?.update(dt,enemy.brain.moving,enemy.crouchBlend);
+      enemy.rigged?.update(dt,{
+        moving:enemy.brain.moving,
+        speed:ENEMY_PROFILES[enemy.id].moveSpeed,
+        crouched:enemy.tactics.crouching,
+        aiming:shouldAim,reloading:enemy.tactics.reloadRemaining>0,
+        recoil:enemy.recoilPose,alive:enemy.state.alive
+      });
       enemy.root.rotation.y=enemy.brain.yaw;
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
       enemy.shake=Math.max(0,enemy.shake-dt*3);
@@ -2383,6 +2388,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       armor:{...e.state.loadout},
       modelHeight:e.rigged?.metrics.height??null,
       modelRepairs:e.rigged?.metrics.repairs??0,
+      originalVisual:e.rigged?.state??null,
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
        modelStatus:e.modelStatus,
@@ -2600,17 +2606,9 @@ function frame(){
   if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
   refreshWeaponHUD();
-  const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='rigged').length;
-  const failedModels=[...enemies.values()].filter(e=>e.modelStatus==='fallback').length;
-  const modelSizeOK=[...enemies.values()].filter(e=>
-    e.modelStatus==='rigged'&&
-    e.rigged.metrics.height>=e.rigged.metrics.expectedHeight*.8&&
-    e.rigged.metrics.height<=e.rigged.metrics.expectedHeight*1.2).length;
-  const modelCorrections=[...enemies.values()].reduce((n,e)=>n+(e.rigged?.metrics.repairs||0),0);
-  const modelLabel='3D CHARACTERS · '+readyModels+'/3 LOADED · '+
-    modelSizeOK+' SIZE OK'+(modelCorrections?' · '+modelCorrections+' AUTO-FIXES':'')+
-    (failedModels?' · '+failedModels+' FALLBACK':'')+
-    ' · ORIGINAL SURVIVOR PILOT';
+  const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='original').length;
+  const modelLabel='ORIGINAL PIXEL NPCs · '+readyModels+'/3 READY · '+
+    'SCOUT / RAIDER / ENFORCER · 6 ARMOR SLOTS';
   if($('riggedStatus').textContent!==modelLabel)$('riggedStatus').textContent=modelLabel;
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
