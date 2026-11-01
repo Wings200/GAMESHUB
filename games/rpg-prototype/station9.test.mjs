@@ -8,6 +8,7 @@ const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const characterAssets=readFileSync(new URL('./character-assets.mjs',import.meta.url),'utf8');
 const assetProxy=readFileSync(new URL('../../functions/api/rpg-models/[model].js',import.meta.url),'utf8');
 const armorVisual=readFileSync(new URL('./power-armor-visual.mjs',import.meta.url),'utf8');
+const playerAvatar=readFileSync(new URL('./player-avatar.mjs',import.meta.url),'utf8');
 
 test('Station nine has 3 declared enemies in front of an east-facing player',()=>{
   const section=source.slice(source.indexOf('const enemySpecs=['),source.indexOf('function enemyMaterial'));
@@ -85,7 +86,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.1/);
+  assert.match(page,/main\.js\?v=W09\.3/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -426,4 +427,22 @@ test('W09.1 normalization survives animated GLB transforms and repairs huge NPCs
   assert.match(source,/modelHeight:e\.rigged\?\.metrics\.height/);
   assert.match(source,/modelRepairs:e\.rigged\?\.metrics\.repairs/);
   assert.match(source,/SIZE OK/);
+});
+
+test('W09.3 builds an original pixel-textured player and a separate third-person preview',()=>{
+  assert.match(playerAvatar,/export function createPlayerAvatar\(scene\)/);
+  assert.match(playerAvatar,/CanvasTexture/);
+  assert.match(playerAvatar,/THREE\.NearestFilter/);
+  assert.match(playerAvatar,/OriginalPixelSurvivor/);
+  assert.match(playerAvatar,/const arms=\[\],legs=\[\]/);
+  assert.match(playerAvatar,/crouchBlend/);
+  assert.doesNotMatch(playerAvatar,/GLTFLoader|mountRiggedCharacter/);
+  assert.match(source,/createPlayerAvatar\(scene\)/);
+  assert.match(source,/e\.code==='KeyV'/);
+  assert.match(source,/thirdPersonRay\.intersectObjects\(worldGeometry,false\)/);
+  assert.match(source,/playerAvatar\.update\(\{dt/);
+  assert.match(source,/renderer\.render\(scene,thirdPersonCamera\)/);
+  assert.match(source,/else renderer\.render\(scene,camera\)/);
+  assert.match(source,/playerVisual:\{thirdPersonEnabled,thirdPersonActive/);
+  assert.match(page,/V THIRD PERSON/);
 });
