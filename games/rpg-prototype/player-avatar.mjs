@@ -135,12 +135,16 @@ export function createPlayerAvatar(scene){
   const armorKinds=['scrap','ranger','militia','citadel'];
   const armorSlots=['head','chest','leftArm','rightArm','leftLeg','rightLeg'];
   const armorStyle={
-    scrap:{main:pixelFabric('#857765','#4a4741',72),bulk:.88,detail:leather},
-    ranger:{main:pixelFabric('#637862','#354b39',73),bulk:.98,detail:cloth},
-    militia:{main:pixelFabric('#718993','#3b5661',74),bulk:1.09,detail:metal},
-    citadel:{main:pixelFabric('#475774','#262d43',75),bulk:1.18,detail:dark}
+    scrap:{main:pixelFabric('#857765','#4a4741',72),
+      edge:pixelFabric('#e5ba77','#8f5d35',81),bulk:.94,detail:leather},
+    ranger:{main:pixelFabric('#637862','#354b39',73),
+      edge:pixelFabric('#b7ce86','#576e49',82),bulk:1.02,detail:cloth},
+    militia:{main:pixelFabric('#718993','#3b5661',74),
+      edge:pixelFabric('#a8d1d2','#547d87',83),bulk:1.10,detail:metal},
+    citadel:{main:pixelFabric('#475774','#262d43',75),
+      edge:pixelFabric('#c4b6e6','#69648d',84),bulk:1.22,detail:dark}
   };
-  materials.push(...Object.values(armorStyle).map(style=>style.main));
+  materials.push(...Object.values(armorStyle).flatMap(style=>[style.main,style.edge]));
   const armorGroups=Object.fromEntries(armorSlots.map(slot=>
     [slot,Object.fromEntries(armorKinds.map(kind=>[kind,[]]))]));
   const equippedArmor=Object.fromEntries(armorSlots.map(slot=>[slot,'none']));
@@ -152,31 +156,35 @@ export function createPlayerAvatar(scene){
     armorGroups[slot][kind].push(layer);
   }
   for(const kind of armorKinds){
-    armorLayer('head',kind,head,(layer,{main,detail,bulk},tier)=>{
-      // Helmet wraps the back of the hood; a distinct brow/cheek guard
-      // is visible from the front without reusing an enemy model.
-      roundedBox(layer,.34*bulk,.18,.32*bulk,.07,main,0,.20,.045);
-      roundedBox(layer,.35*bulk,.075,.34*bulk,.03,detail,0,.11,0);
-      roundedBox(layer,.34*bulk,.082,.085,.028,main,0,.099,-.19);
-      for(const side of [-1,1])
-        roundedBox(layer,.08,.15,.19,.028,main,side*.155,-.035,-.025);
-      if(tier==='citadel')
-        roundedBox(layer,.29,.07,.048,.022,metal,0,.025,-.216);
-    });
-    armorLayer('chest',kind,torso,(layer,{main,detail,bulk},tier)=>{
-      // Matching front AND back plates matter: the rear camera sees
-      // the back of the survivor, while a frontal view sees the vest.
-      roundedBox(layer,.59*bulk,.45,.115,.077,main,0,.36,-.278);
-      roundedBox(layer,.57*bulk,.42,.108,.077,main,0,.36,.270);
-      roundedBox(layer,.37*bulk,.11,.07,.035,detail,0,.27,-.349);
-      roundedBox(layer,.33*bulk,.10,.07,.035,detail,0,.28,.338);
+    armorLayer('head',kind,head,(layer,{main,edge,detail,bulk},tier)=>{
+      // Helmet shell protrudes past the hood in every camera direction.
+      roundedBox(layer,.36*bulk,.23,.36*bulk,.08,main,0,.19,.055);
+      roundedBox(layer,.35*bulk,.06,.37*bulk,.02,edge,0,.115,.03);
+      roundedBox(layer,.36*bulk,.09,.10,.028,main,0,.09,-.211);
+      roundedBox(layer,.25*bulk,.045,.035,.014,edge,0,.065,-.269);
       for(const side of [-1,1]){
-        strap(layer,[side*.255,.58,-.22],[side*.25,.13,-.23],
-          .025,detail);
-        roundedBox(layer,.13,.13,.06,.03,main,side*.22,.14,-.332);
+        roundedBox(layer,.08,.18,.20,.028,main,side*.168,-.035,-.026);
+        roundedBox(layer,.042,.11,.06,.012,edge,side*.188,-.035,-.112);
+      }
+      if(tier==='citadel')
+        roundedBox(layer,.28,.07,.05,.022,detail,0,.015,-.267);
+    });
+    armorLayer('chest',kind,torso,(layer,{main,edge,detail,bulk},tier)=>{
+      // Raised armor must visibly change the silhouette from BEHIND as well
+      // as from the front, because third-person follows the survivor's back.
+      roundedBox(layer,.66*bulk,.52,.17,.085,main,0,.35,-.315);
+      roundedBox(layer,.64*bulk,.50,.17,.085,main,0,.35,.308);
+      roundedBox(layer,.54*bulk,.075,.05,.025,edge,0,.52,-.416);
+      roundedBox(layer,.54*bulk,.075,.05,.025,edge,0,.52,.411);
+      roundedBox(layer,.37*bulk,.12,.07,.035,detail,0,.24,-.414);
+      roundedBox(layer,.34*bulk,.11,.07,.035,detail,0,.24,.410);
+      for(const side of [-1,1]){
+        strap(layer,[side*.28,.59,-.28],[side*.27,.11,-.29],.028,edge);
+        roundedBox(layer,.16,.17,.075,.029,main,side*.24,.16,.395);
+        roundedBox(layer,.16,.17,.075,.029,main,side*.24,.16,-.396);
       }
       if(tier==='militia'||tier==='citadel')
-        roundedBox(layer,.28*bulk,.12,.075,.035,main,0,.52,-.325);
+        roundedBox(layer,.33*bulk,.13,.095,.035,edge,0,.36,.420);
     });
   }
   function setArmor(loadout={}){
@@ -211,15 +219,16 @@ export function createPlayerAvatar(scene){
     }
     const armSlot=side<0?'leftArm':'rightArm';
     for(const kind of armorKinds){
-      armorLayer(armSlot,kind,shoulder,(layer,{main,detail,bulk})=>{
-        oval(layer,.148*bulk,.16,.185*bulk,main,0,-.115,0);
-        roundedBox(layer,.29*bulk,.18,.07,.047,main,0,-.14,.165);
-        roundedBox(layer,.25*bulk,.14,.07,.035,detail,0,-.15,-.16);
+      armorLayer(armSlot,kind,shoulder,(layer,{main,edge,bulk})=>{
+        oval(layer,.16*bulk,.18,.19*bulk,main,0,-.115,0);
+        roundedBox(layer,.31*bulk,.20,.09,.047,main,0,-.14,.179);
+        roundedBox(layer,.26*bulk,.055,.09,.023,edge,0,-.08,.241);
+        roundedBox(layer,.29*bulk,.18,.09,.045,main,0,-.15,-.179);
       });
-      armorLayer(armSlot,kind,elbow,(layer,{main,detail,bulk})=>{
-        roundedBox(layer,.205*bulk,.28,.09,.045,main,0,-.20,-.119);
-        roundedBox(layer,.205*bulk,.26,.09,.045,main,0,-.20,.119);
-        strap(layer,[-.11,-.16,.0],[.11,-.16,.0],.016,detail);
+      armorLayer(armSlot,kind,elbow,(layer,{main,edge,bulk})=>{
+        roundedBox(layer,.23*bulk,.30,.11,.045,main,0,-.20,-.135);
+        roundedBox(layer,.23*bulk,.30,.11,.045,main,0,-.20,.145);
+        roundedBox(layer,.20*bulk,.045,.06,.016,edge,0,-.10,.214);
       });
     }
 
@@ -242,16 +251,16 @@ export function createPlayerAvatar(scene){
     roundedBox(foot,.23,.045,.055,.015,metal,0,-.045,-.285);
     const legSlot=side<0?'leftLeg':'rightLeg';
     for(const kind of armorKinds){
-      armorLayer(legSlot,kind,hip,(layer,{main,detail,bulk})=>{
-        roundedBox(layer,.26*bulk,.28,.10,.055,main,0,-.26,-.159);
-        roundedBox(layer,.25*bulk,.26,.095,.05,main,0,-.26,.157);
-        roundedBox(layer,.23,.057,.08,.02,detail,0,-.31,-.225);
+      armorLayer(legSlot,kind,hip,(layer,{main,edge,bulk})=>{
+        roundedBox(layer,.29*bulk,.30,.12,.055,main,0,-.26,-.181);
+        roundedBox(layer,.29*bulk,.30,.12,.055,main,0,-.26,.184);
+        roundedBox(layer,.24*bulk,.055,.065,.02,edge,0,-.19,.257);
       });
-      armorLayer(legSlot,kind,knee,(layer,{main,detail,bulk})=>{
-        roundedBox(layer,.24*bulk,.19,.10,.05,main,0,-.015,-.144);
-        roundedBox(layer,.24*bulk,.28,.09,.052,main,0,-.23,-.112);
-        roundedBox(layer,.235*bulk,.28,.09,.052,main,0,-.23,.118);
-        strap(layer,[-.115,-.23,0],[.115,-.23,0],.016,detail);
+      armorLayer(legSlot,kind,knee,(layer,{main,edge,bulk})=>{
+        roundedBox(layer,.26*bulk,.21,.12,.05,main,0,-.015,-.16);
+        roundedBox(layer,.26*bulk,.30,.12,.052,main,0,-.23,-.134);
+        roundedBox(layer,.26*bulk,.30,.12,.052,main,0,-.23,.15);
+        roundedBox(layer,.22*bulk,.05,.06,.016,edge,0,-.16,.22);
       });
     }
 
