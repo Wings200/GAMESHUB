@@ -14,6 +14,12 @@ export const AI_TUNING=Object.freeze({
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const distance=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
 const angleDelta=(target,heading)=>Math.atan2(Math.sin(target-heading),Math.cos(target-heading));
+function facePoint(enemy,point,dt){
+  const desired=Math.atan2(point.x-enemy.x,point.z-enemy.z);
+  // Tracking takes time. A bot cannot instantly spin to a newly exposed player.
+  const maxTurn=3.1*dt;
+  enemy.yaw+=clamp(angleDelta(desired,enemy.yaw),-maxTurn,maxTurn);
+}
 const copy=point=>({x:point.x,z:point.z});
 function insideBox(x,z,b,padding=0){
   return x>=b.minX-padding&&x<=b.maxX+padding&&
@@ -57,7 +63,7 @@ export function createEnemyBrain(config){
     spawn:{x:config.x,z:config.z},patrol,patrolIndex:0,
     mode:'patrol',lastSeen:null,memory:0,searchLeft:0,
     spotted:false,moving:false,active:true,retaliationTime:0,
-    distanceToPlayer:Infinity,
+    distanceToPlayer:Infinity,aimLockSeconds:0,
     searchIndex:0,searchPause:0,detour:null
   };
 }
@@ -66,6 +72,7 @@ export function alertEnemy(enemy,player){
   enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.lastSeenSeconds;
   enemy.retaliationTime=AI_TUNING.hitRetaliationSeconds;
   enemy.mode='chase';enemy.searchLeft=0;enemy.spotted=true;
+  enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
   return enemy;
 }
@@ -74,7 +81,7 @@ export function resetEnemyBrain(enemy){
   enemy.patrolIndex=0;enemy.mode='patrol';enemy.lastSeen=null;
   enemy.memory=0;enemy.searchLeft=0;enemy.spotted=false;
   enemy.moving=false;enemy.active=true;enemy.distanceToPlayer=Infinity;
-  enemy.retaliationTime=0;
+  enemy.retaliationTime=0;enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
   return enemy;
 }
@@ -162,12 +169,15 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   const enabled=options.enabled!==false&&enemy.active&&step>0;
   if(!enabled){enemy.moving=false;return enemy;}
   const area=options.area||AI_TUNING.area;
-  enemy.distanceToPlayer=distance(enemy.x,enemy.z,player.x,player.z);
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
   const seen=options.playerInArena!==false&&
     (typeof options.targetVisible==='boolean'?options.targetVisible:
       hasSight(enemy,player,obstacles));
   enemy.spotted=seen;
+  enemy.aimLockSeconds=seen?Math.min(3,(enemy.aimLockSeconds||0)+step):0;
+  // Do not even retain the exact distance of a hidden, moving player.
+  enemy.distanceToPlayer=seen?distance(enemy.x,enemy.z,player.x,player.z):
+    (enemy.lastSeen?distance(enemy.x,enemy.z,enemy.lastSeen.x,enemy.lastSeen.z):Infinity);
   if(seen){
     enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.lastSeenSeconds;
     enemy.searchLeft=0;enemy.mode='chase';
@@ -185,19 +195,30 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   // Otherwise the investigation/search path must take over locomotion.
   if(options.combatHold&&seen){
     enemy.moving=false;
-    enemy.yaw=Math.atan2(knownTarget.x-enemy.x,knownTarget.z-enemy.z);
+    facePoint(enemy,knownTarget,step);
   }else if(options.combatGoal&&seen){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
     moveToward(enemy,options.combatGoal,
       Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
       step,obstacles,area,AI_TUNING);
     if(options.combatFacePlayer){
-      enemy.yaw=Math.atan2(knownTarget.x-enemy.x,knownTarget.z-enemy.z);
+      facePoint(enemy,knownTarget,step);
     }
   }else if(enemy.mode==='chase'&&seen){
     if(enemy.distanceToPlayer>AI_TUNING.stopDistance)
       moveToward(enemy,player,AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
-    else{enemy.moving=false;enemy.yaw=Math.atan2(player.x-enemy.x,player.z-enemy.z);}
+    else{enemy.moving=false;facePoint(enemy,player,step);}
+  }else if(!seen&&enemy.lastSeen&&options.lostContactOrder?.type==='watch'){
+    // One squad member can briefly guard the last observed angle, but the
+    // guard expires and does not know where the hidden target moved.
+    enemy.moving=false;facePoint(enemy,options.lostContactOrder.contact||enemy.lastSeen,step);
+  }else if(!seen&&enemy.lastSeen&&options.lostContactOrder?.goal&&
+           distance(enemy.x,enemy.z,options.lostContactOrder.goal.x,
+             options.lostContactOrder.goal.z)>.65){
+    // Flank or support using confirmed intel, never the hidden player's position.
+    navigateAroundCover(enemy,options.lostContactOrder.goal,
+      AI_TUNING.chaseSpeed*(options.lostContactOrder.type==='flank'?1.1:.72),
+      step,obstacles,area,AI_TUNING);
   }else if(enemy.mode==='investigate'){
     // Reach the last known location, then systematically check nearby
     // corners. The search begins before the alert timer expires.

@@ -22,6 +22,7 @@ import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
+import {createSquadDirector,resetSquadDirector,planSquadOrders} from '../enemy-squad-director.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
@@ -770,6 +771,7 @@ try{
 }catch{ /* Storage may be unavailable or corrupted. */ }
 let enemyAIEnabled=true;
 const squadIntel=createSquadIntel();
+const squadDirector=createSquadDirector();
 const enemySpecs=[
   {id:'scout',label:'SCOUT',x:39,z:42,
     color:0x8d7761,patrol:[{x:39,z:42},{x:44,z:42}]},
@@ -939,7 +941,7 @@ $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
   arenaRound++;
-  clearBulletHoles();clearSquadIntel(squadIntel);
+  clearBulletHoles();clearSquadIntel(squadIntel);resetSquadDirector(squadDirector);
   // Each J round produces fresh, singular loot drops. Inventory persists.
   for(const drop of lootBags.values()){
     scene.remove(drop.mesh);
@@ -1390,6 +1392,14 @@ function updateEnemies(dt){
   const statuses=[];
   let aliveCount=0;
   stepSquadIntel(squadIntel,dt,ticking&&playerHealth.alive);
+  const roster=[...enemies.values()];
+  const perceptions=new Map(roster.map(e=>[e.id,
+    e.state.alive&&hasSight(e.brain,player,bounds)]));
+  // Assign independent orders BEFORE updating individual brains. The director
+  // receives confirmed observations only, never the hidden player's position.
+  const lostContactOrders=planSquadOrders(squadDirector,ticking?roster.map(e=>({
+    id:e.id,brain:e.brain,tactics:e.tactics,state:e.state,
+    visible:perceptions.get(e.id)})):[],dt,aiObstacles);
   for(const enemy of enemies.values()){
     // Keep living NPCs rendered across the lab. On death show only a brief
     // collapse, then remove every body part; J restores the original actor.
@@ -1401,12 +1411,13 @@ function updateEnemies(dt){
       const wasSpotted=enemy.brain.spotted;
       // Keep tactical decisions on last-seen intel when a wall hides us.
       // Feeding the live player to an investigating NPC is wallhack tracking.
-      const directlyVisible=hasSight(enemy.brain,player,bounds);
+      const directlyVisible=perceptions.get(enemy.id);
+      const lostContactOrder=lostContactOrders.get(enemy.id);
       const tacticalTarget=directlyVisible?player:
         (enemy.brain.lastSeen||{x:enemy.brain.x,z:enemy.brain.z});
       tickEnemyTactics(enemy.tactics,enemy.brain,tacticalTarget,dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,
-          targetVisible:directlyVisible,
+          targetVisible:directlyVisible,lostContactOrder,
           lowHealth:enemy.state.health<35,
           occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
           separation:squadSeparation(enemy.brain,[...enemies.values()])});
@@ -1415,7 +1426,7 @@ function updateEnemies(dt){
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,bounds,
         {enabled:simulating&&playerHealth.alive,playerInArena:active,
           targetVisible:directlyVisible,area:AI_TUNING.navigationArea,
-          combatGoal:tactic.goal,
+          lostContactOrder,combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
             tactic.phase==='suppress-long',
           combatFacePlayer:true,
@@ -1472,7 +1483,9 @@ function updateEnemies(dt){
       if(ticking&&playerHealth.alive){
         // A shot is only attempted when the NPC can see the player and has
         // a clear trajectory; mags, reloads and accuracy are authoritative.
-        if(canEnemyFire(enemy.brain,player,bounds,attack.range)&&
+        if(enemy.brain.aimLockSeconds>=
+            ENEMY_PROFILES[enemy.tactics.kind].reactionSeconds&&
+          canEnemyFire(enemy.brain,player,bounds,attack.range)&&
           !['cover','hold','peek-move','reload'].includes(enemy.tactics.phase)){
           const shot=attemptEnemyShot(enemy.tactics,
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
@@ -1533,6 +1546,9 @@ function updateEnemies(dt){
         enemy.tactics.phase==='peek'?'PEEK & FIRE':
         enemy.tactics.phase==='peek-move'?'PEEKING':
         enemy.tactics.phase==='cover'?'SEEK COVER':
+        enemy.tactics.phase==='guard-angle'?'HOLDING LAST ANGLE':
+        enemy.tactics.phase==='flank-search'?'SEARCHING FLANK':
+        enemy.tactics.phase==='support-search'?'COVERING APPROACH':
         enemy.tactics.phase==='flank'?'FLANKING':
         enemy.tactics.phase==='suppress-long'?'LONG-RANGE SUPPRESSION':
         enemy.tactics.phase==='suppress'?'SUPPRESSING':
@@ -2508,6 +2524,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
        modelStatus:e.modelStatus,
       crouching:e.tactics.crouching,pace:e.tactics.pace,
       decision:e.tactics.decisionReason,
+      squadOrder:squadDirector.orders.get(e.id)?.type||null,
+      aimLockSeconds:e.brain.aimLockSeconds,
       yaw:e.brain.yaw,lastSeen:e.brain.lastSeen,
       seesPlayer:hasSight(e.brain,player,bounds),
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents

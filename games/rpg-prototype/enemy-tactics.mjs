@@ -4,11 +4,11 @@ import {AI_TUNING,lineIntersectsBox} from './enemy-ai.mjs';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
-    accuracy:.53,falloff:.15,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4,role:'flanker'}),
+    accuracy:.53,falloff:.15,moveSpeed:3.25,repositionSeconds:1.7,coverSeconds:2.4,role:'flanker',reactionSeconds:.28}),
   raider:Object.freeze({magazine:12,reserve:48,reloadSeconds:1.95,shotInterval:1.05,
-    accuracy:.68,falloff:.12,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0,role:'skirmisher'}),
+    accuracy:.68,falloff:.12,moveSpeed:2.5,repositionSeconds:2.2,coverSeconds:3.0,role:'skirmisher',reactionSeconds:.40}),
   enforcer:Object.freeze({magazine:18,reserve:54,reloadSeconds:2.65,shotInterval:1.20,
-    accuracy:.79,falloff:.10,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor'})
+    accuracy:.79,falloff:.10,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor',reactionSeconds:.52})
 });
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -188,12 +188,21 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   // Breaking line of sight cancels defensive holds, peek plans and flanks.
   // Let the navigation brain physically visit the last confirmed sighting.
   if(options.targetVisible===false){
-    tactics.phase=brain.mode==='search'?'search':'investigate';
+    const order=options.lostContactOrder;
+    tactics.phase=order?.type==='watch'?'guard-angle':
+      order?.type==='flank'?'flank-search':
+      order?.type==='support'?'support-search':
+      brain.mode==='search'?'search':'investigate';
     tactics.crouching=false;tactics.coverPoint=null;tactics.coverIndex=-1;
     tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
     tactics.plannedGoal=null;tactics.moveTime=0;
-    tactics.pace=brain.mode==='search'?.75:1.1;
-    tactics.decisionReason='lost sight; searching last known position';
+    tactics.pace=order?.type==='flank'?1.1:
+      order?.type==='watch'?0:order?.type==='support'?.7:
+      brain.mode==='search'?.75:1.1;
+    tactics.decisionReason=order?.type==='watch'?'guarding last confirmed angle':
+      order?.type==='flank'?'checking a side approach from last contact':
+      order?.type==='support'?'covering a separate approach':
+      'checking last known location; target unconfirmed';
     return tactics;
   }
   const defensive=tactics.threat>0||tactics.reloadRemaining>0||
