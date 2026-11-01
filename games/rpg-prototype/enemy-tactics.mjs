@@ -185,6 +185,17 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     tactics.plannedGoal=null;tactics.decisionReason='patrol';
     return tactics;
   }
+  // Breaking line of sight cancels defensive holds, peek plans and flanks.
+  // Let the navigation brain physically visit the last confirmed sighting.
+  if(options.targetVisible===false){
+    tactics.phase=brain.mode==='search'?'search':'investigate';
+    tactics.crouching=false;tactics.coverPoint=null;tactics.coverIndex=-1;
+    tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
+    tactics.plannedGoal=null;tactics.moveTime=0;
+    tactics.pace=brain.mode==='search'?.75:1.1;
+    tactics.decisionReason='lost sight; searching last known position';
+    return tactics;
+  }
   const defensive=tactics.threat>0||tactics.reloadRemaining>0||
     (brain.mode==='chase'&&options.lowHealth===true);
   tactics.crouching=false;

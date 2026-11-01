@@ -16,7 +16,7 @@ import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visua
 import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
-import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
+import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
@@ -1406,6 +1406,7 @@ function updateEnemies(dt){
         (enemy.brain.lastSeen||{x:enemy.brain.x,z:enemy.brain.z});
       tickEnemyTactics(enemy.tactics,enemy.brain,tacticalTarget,dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,
+          targetVisible:directlyVisible,
           lowHealth:enemy.state.health<35,
           occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
           separation:squadSeparation(enemy.brain,[...enemies.values()])});
@@ -1413,6 +1414,7 @@ function updateEnemies(dt){
       // Perception must include every solid lab wall, not just arena crates.
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,bounds,
         {enabled:simulating&&playerHealth.alive,playerInArena:active,
+          targetVisible:directlyVisible,area:AI_TUNING.navigationArea,
           combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
             tactic.phase==='suppress-long',
@@ -1429,7 +1431,8 @@ function updateEnemies(dt){
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       // Animated ready pose, short lean while peeking, rifle dip while
       // reloading, and a quick shoulder kick after actual shots.
-      const shouldAim=(enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
+      const shouldAim=directlyVisible&&
+        (enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
         !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
       enemy.combatPose+=(Number(shouldAim)-enemy.combatPose)*
         (1-Math.exp(-7*dt));
@@ -2342,6 +2345,31 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
   };
   window.__rpgSmokeShotBlock=(from,to)=>firstSolidHit(from,to,bounds);
+  // W09.10 browser regression: changing the position of a hidden player
+  // must not steer or freeze an alerted bot on its way to a last sighting.
+  window.__rpgSmokeOccludedPursuit=()=>{
+    const wall={minX:39,maxX:41,minZ:38,maxZ:42,height:2.8};
+    const e=createEnemyBrain({x:45,z:40,yaw:-Math.PI/2,
+      patrol:[{x:45,z:40}]});
+    const t=makeEnemyTactics('raider');
+    alertEnemy(e,{x:43,z:40});markEnemyThreat(t);
+    let nearest=Infinity,hiddenFrames=0,stuckHolds=0;
+    for(let i=0;i<70;i++){
+      const hidden={x:36,z:i%2===0?39:41};
+      const visible=hasSight(e,hidden,[wall]);
+      if(!visible)hiddenFrames++;
+      const known=visible?hidden:e.lastSeen;
+      tickEnemyTactics(t,e,known,.05,[wall],{targetVisible:visible});
+      if(!visible&&(t.crouching||t.goal||t.phase==='hold'))stuckHolds++;
+      stepEnemyBrain(e,hidden,.05,[wall],{targetVisible:visible,
+        area:AI_TUNING.navigationArea,combatGoal:t.goal,
+        combatHold:t.phase==='hold',combatFacePlayer:true});
+      nearest=Math.min(nearest,Math.hypot(e.x-43,e.z-40));
+      if(nearest<.7)break;
+    }
+    return {nearest,hiddenFrames,stuckHolds,lastSeen:e.lastSeen,
+      mode:e.mode,finalX:e.x};
+  };
   window.__rpgSmokeGiveAmmo=(weaponId='scrap-pistol',amount=1000)=>{
     const result=addItem(backpack,'ammo:'+weaponId,amount);
     syncAmmoToWeapons();saveBackpack();refreshInventoryUI();refreshWeaponHUD();
@@ -2480,6 +2508,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
        modelStatus:e.modelStatus,
       crouching:e.tactics.crouching,pace:e.tactics.pace,
       decision:e.tactics.decisionReason,
+      yaw:e.brain.yaw,lastSeen:e.brain.lastSeen,
+      seesPlayer:hasSight(e.brain,player,bounds),
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
   });
