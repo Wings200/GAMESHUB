@@ -291,7 +291,7 @@ export function buildPowerArmorVisual(scene,position,state){
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
   return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate,
-    revealRiggedPilot(){fallbackPilot.visible=false;}};
+    useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 
 // The full helmet is a world model; the first-person visor is a very slim

@@ -222,6 +222,13 @@ try{
     .filter({hasText:'Pipe SMG'}).first().getByRole('button',{name:'EQUIP'}).click();
   const equipped=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(equipped.inventory.armor[testArmor.slot],testArmor.key);
+  // Ordinary inventory armor must actually drive visible mesh layers on
+  // our original player, not just an invisible damage-reduction number.
+  await page.waitForFunction(piece=>{
+    const visual=window.__rpgSmokeState().playerVisual;
+    return visual.armor[piece.slot]===piece.key&&
+      visual.armorPieces[piece.slot]>0;
+  },{slot:testArmor.slot,key:testArmor.key},{timeout:12000});
   assert.equal(equipped.inventory.equippedWeapon,'pipe-smg');
   // W08.4: a partial stack drop must reduce the backpack by exactly the
   // chosen count and spawn world loot with that same quantity.
@@ -266,6 +273,9 @@ try{
   },null,{timeout:12000});
   const third=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(third.playerVisual.name,'OriginalPixelSurvivor');
+  assert.equal(third.playerVisual.armor[testArmor.slot],testArmor.key);
+  assert.ok(third.playerVisual.armorPieces[testArmor.slot]>0,
+    'Equipped ordinary armor must render on the third-person survivor');
   assert.ok(third.playerVisual.height>1.6&&third.playerVisual.height<2.05,
     'Standing player model must remain near human height');
   await page.keyboard.press('c');
@@ -402,6 +412,11 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='entering',
     null,{timeout:10000});
   await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
+  await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotModel===
+    'OriginalPixelSurvivor',null,{timeout:12000});
+  const pilotWithArmor=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.equal(pilotWithArmor.pilotArmor[testArmor.slot],testArmor.key,
+    'Power-armor entry must use the same equipped ordinary armor');
   await page.waitForFunction(()=>{
       const v=window.__rpgSmokePowerVisual();
       return Math.abs(v.chestOpenAngle)>.4 && v.pilotVisible &&

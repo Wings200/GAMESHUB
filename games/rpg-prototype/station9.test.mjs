@@ -86,7 +86,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.3/);
+  assert.match(page,/main\.js\?v=W09\.4/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -338,7 +338,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.3/);
+  assert.match(page,/main\.js\?v=W09\.4/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -407,8 +407,9 @@ test('W09.1 detailed characters use a real rigged GLB loader and safe fallbacks'
   assert.match(page,/id="riggedStatus"/);
   assert.match(source,/hitbox\.material\.visible=false/);
   assert.match(source,/enemy\.modelStatus='fallback'/);
-  assert.match(source,/mountRiggedCharacter\(poweredSuit\.pilot,'raider',1\.74\)/);
-  assert.match(armorVisual,/revealRiggedPilot\(\)\{fallbackPilot\.visible=false/);
+  assert.doesNotMatch(source,/mountRiggedCharacter\(poweredSuit\.pilot/);
+  assert.match(source,/createPlayerAvatar\(poweredSuit\.pilot\)/);
+  assert.match(armorVisual,/useOriginalPilot\(\)\{fallbackPilot\.visible=false/);
 });
 
 test('W09.1 normalization survives animated GLB transforms and repairs huge NPCs',()=>{
@@ -445,4 +446,20 @@ test('W09.3 builds an original pixel-textured player and a separate third-person
   assert.match(source,/else renderer\.render\(scene,camera\)/);
   assert.match(source,/playerVisual:\{thirdPersonEnabled,thirdPersonActive/);
   assert.match(page,/V THIRD PERSON/);
+});
+
+test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',()=>{
+  for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
+    assert.ok(playerAvatar.includes("'"+slot+"'"),'Missing '+slot+' visual armor');
+  for(const kind of ['scrap','ranger','militia','citadel'])
+    assert.ok(playerAvatar.includes(kind+':{main:pixelFabric'),'Missing '+kind+' armor material');
+  assert.match(playerAvatar,/function setArmor\(loadout=\{\}\)/);
+  assert.match(playerAvatar,/armorLayer\('chest',kind,torso/);
+  assert.match(playerAvatar,/armorLayer\(armSlot,kind,elbow/);
+  assert.match(playerAvatar,/armorLayer\(legSlot,kind,knee/);
+  assert.match(source,/playerAvatar\.setArmor\(backpack\.equipment\.armor\)/);
+  assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
+  assert.match(source,/pilotAvatar\.update\(\{dt/);
+  assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
+  assert.match(page,/main\.js\?v=W09\.4/);
 });
