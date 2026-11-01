@@ -16,7 +16,7 @@ import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visua
 import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
-import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain } from '../enemy-ai.mjs';
+import { createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
@@ -1399,7 +1399,12 @@ function updateEnemies(dt){
     if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
       const wasSpotted=enemy.brain.spotted;
-      tickEnemyTactics(enemy.tactics,enemy.brain,player,dt,aiObstacles,
+      // Keep tactical decisions on last-seen intel when a wall hides us.
+      // Feeding the live player to an investigating NPC is wallhack tracking.
+      const directlyVisible=hasSight(enemy.brain,player,bounds);
+      const tacticalTarget=directlyVisible?player:
+        (enemy.brain.lastSeen||{x:enemy.brain.x,z:enemy.brain.z});
+      tickEnemyTactics(enemy.tactics,enemy.brain,tacticalTarget,dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,
           lowHealth:enemy.state.health<35,
           occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
@@ -1412,7 +1417,7 @@ function updateEnemies(dt){
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
             tactic.phase==='suppress-long',
           combatFacePlayer:true,
-          combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed});
+          combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace});
       if(ticking&&playerHealth.alive&&enemy.brain.spotted&&!wasSpotted)
         reportSquadContact(squadIntel,enemy.id,player);
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
@@ -1436,7 +1441,7 @@ function updateEnemies(dt){
         enemy.upperBody.rotation.z)*(1-Math.exp(-8*dt));
       enemy.upperBody.rotation.x=-.16*enemy.reloadPose+
         .08*enemy.recoilPose;
-      enemy.walkPhase+=dt*(enemy.brain.moving?9:0);
+      enemy.walkPhase+=dt*(enemy.brain.moving?9*Math.max(.65,enemy.tactics.pace):0);
       const move=enemy.brain.moving?1:0;
       for(const {pivot,side,kind} of enemy.limbs){
         pivot.rotation.x=Math.sin(enemy.walkPhase+side*Math.PI/2)*
@@ -1450,7 +1455,7 @@ function updateEnemies(dt){
       }
       enemy.rigged?.update(dt,{
         moving:enemy.brain.moving,
-        speed:ENEMY_PROFILES[enemy.id].moveSpeed,
+        speed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
         crouched:enemy.tactics.crouching,
         aiming:shouldAim,reloading:enemy.tactics.reloadRemaining>0,
         recoil:enemy.recoilPose,alive:enemy.state.alive
@@ -1537,7 +1542,7 @@ function updateEnemies(dt){
       enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
   }
   if(ticking&&playerHealth.alive)
-    shareSquadContact(squadIntel,[...enemies.values()],aiObstacles,player);
+    shareSquadContact(squadIntel,[...enemies.values()],bounds,player);
   for(let i=enemyTracers.length-1;i>=0;i--){
     const t=enemyTracers[i];t.time-=dt;
     if(t.time<=0){scene.remove(t.line);t.line.geometry.dispose();enemyTracers.splice(i,1);}
@@ -2473,7 +2478,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
        modelStatus:e.modelStatus,
-      crouching:e.tactics.crouching,
+      crouching:e.tactics.crouching,pace:e.tactics.pace,
+      decision:e.tactics.decisionReason,
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
   });

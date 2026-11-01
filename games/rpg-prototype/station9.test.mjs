@@ -284,7 +284,7 @@ test('W05.4 actual arena AI integrates shared squad sightings and distinct roles
   assert.match(source,/import \{createSquadIntel,clearSquadIntel,reportSquadContact,/);
   assert.match(source,/const squadIntel=createSquadIntel\(\)/);
   assert.match(source,/stepSquadIntel\(squadIntel,dt,ticking&&playerHealth\.alive\)/);
-  assert.match(source,/shareSquadContact\(squadIntel,\[\.\.\.enemies\.values\(\)\],aiObstacles,player\)/);
+  assert.match(source,/shareSquadContact\(squadIntel,\[\.\.\.enemies\.values\(\)\],bounds,player\)/);
   assert.match(source,/reportSquadContact\(squadIntel,enemy\.id,player\)/);
   assert.match(source,/occupiedCover:occupiedSquadCover\(\[\.\.\.enemies\.values\(\)\],enemy\.id\)/);
   assert.match(source,/separation:squadSeparation\(enemy\.brain,\[\.\.\.enemies\.values\(\)\]\)/);
@@ -514,4 +514,20 @@ test('W09.9 all solid lab walls block NPC vision, hits and tracers',()=>{
   assert.match(source,/if\(shot\.hit&&!obstruction\)/);
   assert.match(source,/enemyTracer\(origin,endpoint\)/);
   assert.match(source,/window\.__rpgSmokeShotBlock=/);
+});
+
+
+test('W09.9 investigating NPCs use last seen or radio intel, never hidden live coordinates',()=>{
+  assert.match(source,/const directlyVisible=hasSight\(enemy\.brain,player,bounds\)/);
+  assert.match(source,/const tacticalTarget=directlyVisible\?player:/);
+  assert.match(source,/enemy\.brain\.lastSeen\|\|\{x:enemy\.brain\.x,z:enemy\.brain\.z\}/);
+  assert.match(source,/tickEnemyTactics\(enemy\.tactics,enemy\.brain,tacticalTarget,dt,aiObstacles/);
+  assert.match(source,/shareSquadContact\(squadIntel,\[\.\.\.enemies\.values\(\)\],bounds,player\)/);
+});
+
+
+test('W09.9 NPC combat uses adaptive pace, meaningful roles and physical cover',()=>{
+  assert.match(source,/combatSpeed:ENEMY_PROFILES\[enemy\.id\]\.moveSpeed\*enemy\.tactics\.pace/);
+  assert.match(source,/decision:e\.tactics\.decisionReason/);
+  assert.match(source,/const tacticalTarget=directlyVisible\?player:/);
 });

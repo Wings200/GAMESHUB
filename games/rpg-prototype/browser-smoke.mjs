@@ -98,6 +98,13 @@ try{
   const moved=after.enemies.some((e,i)=>
     Math.hypot(e.x-before.enemies[i].x,e.z-before.enemies[i].z)>.08);
   assert.ok(moved,'At least one live AI must physically move in the arena');
+  for(const enemy of after.enemies){
+    assert.ok(Number.isFinite(enemy.pace)&&enemy.pace>=0,
+      'Each NPC must have an actual tactical walk/run speed');
+    assert.equal(typeof enemy.decision,'string');
+    if(enemy.crouching)assert.ok(enemy.coverPoint,
+      'A crouching NPC must occupy an actual cover position');
+  }
   // Freeze AI for a stable sightline, reset enemy positions and then aim at
   // the Scout's centre with real pointer-locked browser mouse input.
   await page.keyboard.press('j');
