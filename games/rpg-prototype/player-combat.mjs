@@ -33,3 +33,45 @@ export function canEnemyFire(enemyBrain,player,obstacles=[],range=AI_TUNING.sigh
   // detection radius. A return shot still requires facing and clear LOS.
   return hasSight(enemyBrain,player,obstacles,{...AI_TUNING,sight:range});
 }
+
+
+// W09.9: authoritative 3D obstruction for NPC bullets and tracers.
+// Movement colliders describe the same solid walls/cover. A bullet stops at
+// the first hit, even when the NPC remembers a player behind the obstacle.
+export function firstSolidHit(from,to,obstacles=[],padding=.015){
+  if(!from||!to)return null;
+  const dx=to.x-from.x,dy=to.y-from.y,dz=to.z-from.z;
+  if(![dx,dy,dz,from.x,from.y,from.z].every(Number.isFinite))return null;
+  const pad=Math.max(0,Number.isFinite(padding)?padding:0);
+  let nearest=null;
+  for(const box of obstacles){
+    if(!box)continue;
+    const bottom=Number.isFinite(box.bottom)?box.bottom:0;
+    const top=Number.isFinite(box.top)?box.top:
+      Number.isFinite(box.height)?bottom+box.height:Infinity;
+    if(!(box.minX<=box.maxX&&box.minZ<=box.maxZ&&top>bottom))continue;
+    let enter=0,exit=1;
+    const slabs=[
+      [from.x,dx,box.minX-pad,box.maxX+pad],
+      [from.y,dy,bottom,top],
+      [from.z,dz,box.minZ-pad,box.maxZ+pad]
+    ];
+    for(const [start,delta,min,max] of slabs){
+      if(Math.abs(delta)<1e-9){
+        if(start<min||start>max){enter=2;break;}
+        continue;
+      }
+      let a=(min-start)/delta,b=(max-start)/delta;
+      if(a>b)[a,b]=[b,a];
+      enter=Math.max(enter,a);exit=Math.min(exit,b);
+      if(enter>exit)break;
+    }
+    if(enter<=exit&&enter>=0&&enter<=1&&
+       (nearest===null||enter<nearest.t)){
+      nearest={t:enter,point:{
+        x:from.x+dx*enter,y:from.y+dy*enter,z:from.z+dz*enter
+      }};
+    }
+  }
+  return nearest;
+}
