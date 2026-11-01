@@ -6,7 +6,10 @@ export const AI_TUNING=Object.freeze({
   stopDistance:2.7, waypointRadius:.48,
   lastSeenSeconds:24, hitRetaliationSeconds:9, searchSeconds:21,
   collisionRadius:.34, maxDelta:.05,
-  area:Object.freeze({minX:33.6,maxX:58.4,minZ:34.9,maxZ:49.3})
+  area:Object.freeze({minX:33.6,maxX:58.4,minZ:34.9,maxZ:49.3}),
+  // Combat search may follow a last sighting beyond Station 9; normal patrol
+  // waypoints still stay inside its original arena.
+  navigationArea:Object.freeze({minX:-60.5,maxX:60.5,minZ:-51.5,maxZ:51.5})
 });
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const distance=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
@@ -161,7 +164,9 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   const area=options.area||AI_TUNING.area;
   enemy.distanceToPlayer=distance(enemy.x,enemy.z,player.x,player.z);
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
-  const seen=options.playerInArena!==false&&hasSight(enemy,player,obstacles);
+  const seen=options.playerInArena!==false&&
+    (typeof options.targetVisible==='boolean'?options.targetVisible:
+      hasSight(enemy,player,obstacles));
   enemy.spotted=seen;
   if(seen){
     enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.lastSeenSeconds;
@@ -176,10 +181,12 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   // When vision is broken, turn toward the last confirmed position.
   // Memory must never grant perfect knowledge of the moving player's location.
   const knownTarget=seen?player:(enemy.lastSeen||enemy.spawn);
-  if(options.combatHold&&(seen||enemy.memory>0)){
+  // Tactical holds and cover goals are ONLY valid with confirmed sight.
+  // Otherwise the investigation/search path must take over locomotion.
+  if(options.combatHold&&seen){
     enemy.moving=false;
     enemy.yaw=Math.atan2(knownTarget.x-enemy.x,knownTarget.z-enemy.z);
-  }else if(options.combatGoal&&(seen||enemy.memory>0)){
+  }else if(options.combatGoal&&seen){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
     moveToward(enemy,options.combatGoal,
       Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),

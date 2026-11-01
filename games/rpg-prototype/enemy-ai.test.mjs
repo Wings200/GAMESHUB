@@ -80,24 +80,40 @@ test('Large frame time is clamped and invalid spawn is rejected',()=>{
 });
 
 
-test('W09.9 losing sight behind a wall preserves last known location, not live player tracking',()=>{
-  const e=bot(45,40),seen={x:36,z:40};
+test('W09.10 a hidden player cannot steer NPC turning or cancel last-known pursuit',()=>{
+  const e=bot(45,40),sighting={x:43,z:40};
   const wall={minX:39,maxX:41,minZ:38,maxZ:42,height:2.8};
-  stepEnemyBrain(e,seen,.05,[],{combatHold:true});
-  assert.deepEqual(e.lastSeen,seen);
-  const hidden={x:30,z:41};
-  assert.equal(hasSight(e,hidden,[wall]),false);
-  stepEnemyBrain(e,hidden,.05,[wall],{combatHold:true});
+  alertEnemy(e,sighting);
+  const hiddenA={x:36,z:39},hiddenB={x:35,z:41};
+  assert.equal(hasSight(e,hiddenA,[wall]),false);
+  assert.equal(hasSight(e,hiddenB,[wall]),false);
+  const original=e.x;
+  // A previous cover/hold order must not prevent investigation.
+  stepEnemyBrain(e,hiddenA,.05,[wall],{combatHold:true});
   assert.equal(e.mode,'investigate');
-  assert.deepEqual(e.lastSeen,seen,'Behind a wall cannot update exact player position');
-  assert.ok(Math.abs(e.yaw-(-Math.PI/2))<1e-6,
-    'Facing tracks last sighting, not the current hidden position');
-  stepEnemyBrain(e,hidden,.05,[wall],{
-    combatGoal:{x:44,z:41},combatFacePlayer:true
+  assert.deepEqual(e.lastSeen,sighting);
+  assert.ok(e.x<original,'NPC must move toward its last actual sighting');
+  const a=structuredClone(e),b=structuredClone(e);
+  stepEnemyBrain(a,hiddenA,.05,[wall],{
+    combatGoal:{x:50,z:45},combatFacePlayer:true
   });
-  const expected=Math.atan2(seen.x-e.x,seen.z-e.z);
-  assert.ok(Math.abs(e.yaw-expected)<1e-6,
-    'Tactical motion also faces last known location while sight is blocked');
+  stepEnemyBrain(b,hiddenB,.05,[wall],{
+    combatGoal:{x:50,z:45},combatFacePlayer:true
+  });
+  assert.deepEqual({x:a.x,z:a.z,yaw:a.yaw,mode:a.mode},
+    {x:b.x,z:b.z,yaw:b.yaw,mode:b.mode},
+    'Moving behind an opaque wall must never change the bot direction');
+  assert.deepEqual(a.lastSeen,sighting);
+});
+test('W09.10 alerted NPC can inspect a last sighting beyond arena boundary',()=>{
+  const e=bot(45,40);
+  alertEnemy(e,{x:30,z:40});
+  for(let i=0;i<115;i++)
+    stepEnemyBrain(e,{x:-10,z:-10},.05,[],{
+      playerInArena:false,area:AI_TUNING.navigationArea
+    });
+  assert.ok(e.x<AI_TUNING.area.minX-1,
+    'Station 9 boundary must not stop a pursuit at an invisible line');
 });
 
 

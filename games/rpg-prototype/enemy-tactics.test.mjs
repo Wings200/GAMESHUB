@@ -115,7 +115,7 @@ test('Shot raider reaches an occluded cover point using the real movement brain'
   for(let i=0;i<120;i++){
     tickEnemyTactics(t,b,player,.05,[box]);
     stepEnemyBrain(b,player,.05,[box],{
-      combatGoal:t.goal,combatHold:t.phase==='hold',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
     if(t.phase==='hold'){reached=true;break;}
@@ -158,7 +158,7 @@ test('Enemy crouches only behind a real blocker and stands when flanked',()=>{
   for(let i=0;i<200;i++){
     tickEnemyTactics(t,b,player,.05,[crate]);
     stepEnemyBrain(b,player,.05,[crate],{
-      combatGoal:t.goal,combatHold:t.phase==='hold',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
     if(t.crouching){crouched=true;break;}
@@ -216,7 +216,7 @@ test('Enemy ducks, advances to peek, then withdraws back behind cover',()=>{
     }
     if(sawPeek&&t.phase==='cover')sawReturn=true;
     stepEnemyBrain(b,target,.05,[crate],{
-      combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
+      targetVisible:true,combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
       combatFacePlayer:true,combatSpeed:ENEMY_PROFILES.raider.moveSpeed
     });
   }
@@ -276,4 +276,27 @@ test('W09.9 NPC flanks away from an occupied route instead of fixed side-steppin
   assert.equal(t.strafeSign,1,'AI should choose the safer available side');
   assert.ok(t.goal.z<43,'The chosen lane must avoid the blocked upper side');
   assert.ok(Number.isFinite(t.goal.x)&&Number.isFinite(t.goal.z));
+});
+
+test('W09.10 losing sight releases cover holds and really investigates last contact',()=>{
+  const wall={minX:39,maxX:41,minZ:38,maxZ:42,height:2.8};
+  const e=createEnemyBrain({x:45,z:40,yaw:-Math.PI/2,
+    patrol:[{x:45,z:40}]}),t=makeEnemyTactics('raider');
+  e.mode='chase';e.memory=24;e.spotted=true;e.lastSeen={x:43,z:40};
+  markEnemyThreat(t);
+  t.phase='hold';t.coverPoint={x:45,z:40};t.coverIndex=0;
+  let nearest=Infinity;
+  for(let frame=0;frame<80;frame++){
+    tickEnemyTactics(t,e,e.lastSeen,.05,[wall],{targetVisible:false});
+    assert.equal(t.goal,null,'No combat goal can override searching');
+    assert.equal(t.crouching,false,'NPC must stand to investigate');
+    assert.ok(['investigate','search'].includes(t.phase));
+    stepEnemyBrain(e,{x:36,z:40},.05,[wall],{
+      combatGoal:{x:51,z:45},combatHold:true,combatFacePlayer:true
+    });
+    nearest=Math.min(nearest,Math.hypot(e.x-43,e.z-40));
+    if(nearest<.7)break;
+  }
+  assert.ok(nearest<.7,'NPC must physically check the last seen spot');
+  assert.deepEqual(e.lastSeen,{x:43,z:40});
 });

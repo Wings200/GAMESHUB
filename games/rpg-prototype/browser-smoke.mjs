@@ -70,6 +70,15 @@ try{
   const aboveWall=await page.evaluate(()=>
     window.__rpgSmokeShotBlock({x:-22,y:3.2,z:32},{x:-14,y:3.2,z:32}));
   assert.equal(aboveWall,null,'Shots above the wall should remain clear');
+  // W09.10: real browser modules must not track moving hidden coordinates,
+  // and an old defensive hold must not stop the last-known-location search.
+  const occluded=await page.evaluate(()=>
+    window.__rpgSmokeOccludedPursuit());
+  assert.ok(occluded.hiddenFrames>5,'Fixture must remain behind an opaque wall');
+  assert.equal(occluded.stuckHolds,0,'Lost-sight AI may not hold or crouch in place');
+  assert.ok(occluded.nearest<.7,'NPC must visit the place it last saw the player');
+  assert.deepEqual(occluded.lastSeen,{x:43,z:40},
+    'Moving behind a wall must not update the last known position');
   // The ordinary survivor must have no headwear, pack or visible armor.
   assert.deepEqual(state.playerVisual.clothing,{head:'none',back:'none'});
   assert.deepEqual(state.playerVisual.visibleClothing,{head:false,back:false});
