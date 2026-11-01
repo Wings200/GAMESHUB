@@ -41,6 +41,7 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
     raider:['#795247','#ab7060','#534747','#392f36','#342a31','#ab806d','#754332'],
     enforcer:['#435967','#728a92','#394758','#293340','#242b35','#9f7969','#485661']
   }[variant]||['#536c59','#81927a','#5b5d50','#353d3b','#373638','#b58c72','#7d6348'];
+  const plainSurvivor=variant==='survivor';
   const root=new THREE.Group();root.name='OriginalPixelSurvivor';
   root.userData.npcVariant=variant;
   root.scale.setScalar(.80);
@@ -52,10 +53,13 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   const boot=pixelFabric(palette[4],'#151c21',51);
   const skin=pixelFabric(palette[5],'#845c4a',55);
   const leather=pixelFabric(palette[6],'#3c322b',61);
+  const hair=pixelFabric('#322b27','#1d1b1b',66);
+  const capFabric=pixelFabric('#687665','#37483b',68);
+  const packFabric=pixelFabric('#68715d','#343f36',69);
   const metal=new THREE.MeshStandardMaterial({color:0x84968b,roughness:.88,metalness:.16});
   const dark=new THREE.MeshStandardMaterial({color:0x1a292d,roughness:1});
   const glass=new THREE.MeshStandardMaterial({color:0xb4c69c,roughness:.36,metalness:.12});
-  const materials=[jacket,jacketLight,pants,cloth,boot,skin,leather,metal,dark,glass];
+  const materials=[jacket,jacketLight,pants,cloth,boot,skin,leather,hair,capFabric,packFabric,metal,dark,glass];
 
   function group(parent,x=0,y=0,z=0){
     const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g;
@@ -103,40 +107,89 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   chest.scale.z=.22; // fitted torso, not a broad cylindrical mannequin
   oval(torso,.36,.34,.24,jacket,0,.33,0);
   oval(torso,.29,.19,.21,cloth,0,.04,0);
-  roundedBox(torso,.67,.11,.40,.04,jacketLight,0,.60,0);
-  // Jacket lapels, zipper, stitched pockets and crossing utility harness.
-  for(const side of [-1,1]){
-    const lapel=roundedBox(torso,.15,.43,.045,.028,jacketLight,
-      side*.15,.39,-.235);lapel.rotation.z=-side*.24;
-    roundedBox(torso,.21,.18,.065,.027,leather,side*.205,.14,-.242);
-    roundedBox(torso,.16,.038,.05,.015,metal,side*.205,.20,-.288);
-    strap(torso,[side*.27,.58,-.205],[side*.11,.09,-.274],.036,leather);
+  // Default player appearance is plain cloth. No fake body armor,
+  // backpack, straps, hat, mask or pouches until real equipment is worn.
+  if(plainSurvivor){
+    roundedBox(torso,.55,.06,.38,.027,jacketLight,0,.57,-.01);
+    roundedBox(torso,.034,.33,.025,.012,cloth,0,.35,-.245);
+    for(const side of [-1,1]){
+      const collar=roundedBox(torso,.145,.16,.028,.016,jacketLight,
+        side*.10,.55,-.235);
+      collar.rotation.z=-side*.28;
+    }
+  }else{
+    roundedBox(torso,.67,.11,.40,.04,jacketLight,0,.60,0);
+    // Existing NPC role-specific survival outfits retain their field gear.
+    for(const side of [-1,1]){
+      const lapel=roundedBox(torso,.15,.43,.045,.028,jacketLight,
+        side*.15,.39,-.235);lapel.rotation.z=-side*.24;
+      roundedBox(torso,.21,.18,.065,.027,leather,side*.205,.14,-.242);
+      roundedBox(torso,.16,.038,.05,.015,metal,side*.205,.20,-.288);
+      strap(torso,[side*.27,.58,-.205],[side*.11,.09,-.274],.036,leather);
+    }
+    strap(torso,[-.25,.58,-.21],[.22,.11,-.27],.034,cloth);
+    roundedBox(torso,.045,.44,.040,.014,dark,0,.38,-.247);
+    roundedBox(torso,.19,.16,.12,.035,leather,.34,.26,.02);
+    roundedBox(torso,.12,.08,.06,.02,metal,.35,.29,-.065);
   }
-  strap(torso,[-.25,.58,-.21],[.22,.11,-.27],.034,cloth);
-  roundedBox(torso,.045,.44,.040,.014,dark,0,.38,-.247);
-  roundedBox(torso,.19,.16,.12,.035,leather,.34,.26,.02); // radio pouch
-  roundedBox(torso,.12,.08,.06,.02,metal,.35,.29,-.065);
   // Rounded hood and scarf allow a stylized, original face at low texture res.
   const neck=group(torso,0,.66,0);
   taper(neck,.115,.14,.16,skin,0,.035,0);
-  oval(neck,.22,.10,.21,cloth,0,-.035,.015);
+  if(!plainSurvivor)oval(neck,.22,.10,.21,cloth,0,-.035,.015);
   const head=group(neck,0,.18,0);
   oval(head,.177,.224,.166,skin,0,.035,0);
-  oval(head,.194,.184,.17,cloth,0,.105,.08); // cloth hood at back
   oval(head,.178,.183,.152,skin,0,.018,-.019);
   oval(head,.075,.035,.045,skin,0,-.055,-.162);
-  // Angular tinted goggles and half-mask: visible identity without noisy faces.
-  roundedBox(head,.335,.095,.060,.025,dark,0,.074,-.154);
-  for(const side of [-1,1]){
-    roundedBox(head,.139,.070,.013,.018,glass,side*.084,.075,-.190);
-    roundedBox(head,.10,.035,.055,.016,cloth,side*.10,-.051,-.147);
+  if(plainSurvivor){
+    // Uncovered head, hair and readable eyes instead of permanent headgear.
+    oval(head,.167,.071,.153,hair,0,.209,.015);
+    for(const side of [-1,1]){
+      oval(head,.038,.019,.016,dark,side*.081,.072,-.164);
+      roundedBox(head,.080,.012,.015,.005,hair,
+        side*.082,.113,-.157);
+      oval(head,.043,.054,.022,skin,side*.169,-.007,.005);
+    }
+    oval(head,.036,.054,.027,skin,0,-.016,-.168);
+    roundedBox(head,.083,.009,.01,.004,leather,0,-.094,-.162);
+  }else{
+    oval(head,.194,.184,.17,cloth,0,.105,.08);
+    roundedBox(head,.335,.095,.060,.025,dark,0,.074,-.154);
+    for(const side of [-1,1]){
+      roundedBox(head,.139,.070,.013,.018,glass,side*.084,.075,-.190);
+      roundedBox(head,.10,.035,.055,.016,cloth,side*.10,-.051,-.147);
+    }
+    roundedBox(head,.24,.115,.045,.034,cloth,0,-.041,-.176);
+    for(let i=-1;i<=1;i++)roundedBox(head,.034,.024,.014,.009,metal,
+      i*.062,-.045,-.205);
+    oval(head,.075,.115,.063,cloth,0,.03,.174);
+    strap(head,[0,-.04,.175],[0,-.20,.22],.022,leather);
   }
-  roundedBox(head,.24,.115,.045,.034,cloth,0,-.041,-.176);
-  for(let i=-1;i<=1;i++)roundedBox(head,.034,.024,.014,.009,metal,
-    i*.062,-.045,-.205);
-  // Mesh ponytail / hood tie.
-  oval(head,.075,.115,.063,cloth,0,.03,.174);
-  strap(head,[0,-.04,.175],[0,-.20,.22],.022,leather);
+  // Both are INVISIBLE by default and follow genuine equipped clothing items.
+  const clothCap=group(head);
+  clothCap.name='EquippedHeadwear';
+  roundedBox(clothCap,.355,.105,.325,.049,capFabric,0,.219,.03);
+  roundedBox(clothCap,.30,.026,.22,.012,capFabric,0,.170,-.208);
+  roundedBox(clothCap,.11,.035,.045,.015,leather,0,.246,-.155);
+  clothCap.visible=false;
+  const clothBackpack=group(torso);
+  clothBackpack.name='EquippedBackpack';
+  roundedBox(clothBackpack,.51,.59,.24,.075,packFabric,0,.32,.393);
+  roundedBox(clothBackpack,.45,.10,.27,.029,leather,0,.52,.435);
+  roundedBox(clothBackpack,.44,.21,.13,.042,packFabric,0,.14,.545);
+  roundedBox(clothBackpack,.20,.06,.05,.018,metal,0,.20,.618);
+  for(const side of [-1,1]){
+    strap(clothBackpack,[side*.22,.54,.28],[side*.25,.10,-.215],.028,leather);
+    roundedBox(clothBackpack,.11,.15,.13,.025,packFabric,
+      side*.28,.28,.425);
+  }
+  clothBackpack.visible=false;
+  const clothingSlots={head:'none',back:'none'};
+  function setClothing(loadout={}){
+    clothingSlots.head=loadout.head==='field-cap'?'field-cap':'none';
+    clothingSlots.back=loadout.back==='field-backpack'?'field-backpack':'none';
+    clothBackpack.visible=clothingSlots.back==='field-backpack';
+    clothCap.visible=clothingSlots.head==='field-cap'&&equippedArmor.head==='none';
+  }
 
   // W09.6: silhouettes and gear that identify the three enemy roles even
   // when their randomized armor slots are empty.
@@ -246,6 +299,8 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
           layer.visible=kind===tier;
       equippedArmor[slot]=tier==='none'?'none':tier+'-'+slot;
     }
+    // Armor helmets cover cloth hats rather than clipping through them.
+    clothCap.visible=clothingSlots.head==='field-cap'&&equippedArmor.head==='none';
   }
 
   const arms=[],legs=[];
@@ -349,7 +404,11 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
     }
   }
   return {
-    root,materials,setArmor,weaponSocket,
+    root,materials,setArmor,setClothing,weaponSocket,
+    get clothing(){return {...clothingSlots};},
+    get visibleClothing(){return {
+      head:clothCap.visible,back:clothBackpack.visible
+    };},
     get armor(){return {...equippedArmor};},
     get visibleArmorPieces(){return Object.fromEntries(armorSlots.map(slot=>
       [slot,armorKinds.reduce((count,kind)=>count+
