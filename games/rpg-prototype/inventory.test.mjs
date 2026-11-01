@@ -4,7 +4,7 @@ import {ARSENAL} from './weapons.mjs';
 import {ARMOR_SLOTS,enemyArmorForRound} from './combat.mjs';
 import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
   inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
-  equipFromInventory,useSupply,playerArmorReduction,createLootBag,
+  equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   installWeaponOptic,installedWeaponOptic} from './inventory.mjs';
 test('Catalog includes all real guns, ammunition, six armor slots and rarity/value',()=>{
@@ -171,4 +171,58 @@ test('Repeated identical weapon and armor pickups keep separate sellable copies'
   assert.equal(countItem(saved,'armor:ranger-leftLeg'),3);
   assert.equal(removeItem(saved,saved.items[0].uid,1).removed,1);
   assert.equal(countItem(saved,'weapon:pipe-smg'),2,'Dropping one keeps the other copies');
+});
+
+test('W09.7 starts with no worn helmet, field cap, backpack or armor',()=>{
+  const pack=createBackpack();
+  assert.equal(pack.equipment.armor.head,'none');
+  assert.equal(pack.equipment.armor.chest,'none');
+  assert.deepEqual(pack.equipment.clothing,{head:'none',back:'none'});
+  assert.equal(pack.items.length,0);
+});
+
+test('W09.7 hats and backpacks are real loot and correctly persist',()=>{
+  const pack=createBackpack();
+  assert.equal(generateEnemyLoot('scout',0,null,()=>.5).some(
+    e=>e.itemId==='clothing:field-cap'),true);
+  assert.equal(generateEnemyLoot('raider',0,null,()=>.5).some(
+    e=>e.itemId==='clothing:field-backpack'),true);
+  addItem(pack,'clothing:field-cap',1);
+  addItem(pack,'clothing:field-backpack',1);
+  addItem(pack,'armor:citadel-head',1);
+  const cap=pack.items.find(e=>e.itemId==='clothing:field-cap');
+  const backpack=pack.items.find(e=>e.itemId==='clothing:field-backpack');
+  const helmet=pack.items.find(e=>e.itemId==='armor:citadel-head');
+  assert.equal(equipFromInventory(pack,cap.uid).ok,true);
+  assert.equal(equipFromInventory(pack,backpack.uid).ok,true);
+  assert.deepEqual(pack.equipment.clothing,
+    {head:'field-cap',back:'field-backpack'});
+  // Head armor replaces cap so gear is never equipped but invisible.
+  assert.equal(equipFromInventory(pack,helmet.uid).ok,true);
+  assert.equal(pack.equipment.clothing.head,'none');
+  assert.equal(pack.equipment.armor.head,'citadel-head');
+  assert.equal(equipFromInventory(pack,cap.uid).ok,true);
+  assert.equal(pack.equipment.armor.head,'none');
+  const restored=safeBackpackSnapshot(pack);
+  assert.deepEqual(restored.equipment.clothing,
+    {head:'field-cap',back:'field-backpack'});
+  assert.equal(unequipWearable(restored,'clothing','back').ok,true);
+  assert.equal(restored.equipment.clothing.back,'none');
+  assert.equal(countItem(restored,'clothing:field-backpack'),1,
+    'Unequipping must not delete a wearable item');
+  assert.equal(unequipWearable(restored,'clothing','head').ok,true);
+  assert.equal(restored.equipment.clothing.head,'none');
+  assert.equal(equipFromInventory(restored,restored.items.find(
+    e=>e.itemId==='armor:citadel-head').uid).ok,true);
+  assert.equal(unequipWearable(restored,'armor','head').ok,true);
+  assert.equal(restored.equipment.armor.head,'none');
+});
+
+test('W09.7 never restores headwear that was dropped from inventory',()=>{
+  const pack=createBackpack();
+  addItem(pack,'clothing:field-cap',1);
+  const uid=pack.items[0].uid;
+  equipFromInventory(pack,uid);
+  removeItem(pack,uid);
+  assert.equal(safeBackpackSnapshot(pack).equipment.clothing.head,'none');
 });

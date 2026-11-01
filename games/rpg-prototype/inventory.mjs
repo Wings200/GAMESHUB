@@ -33,6 +33,17 @@ for(const slot of ARMOR_SLOTS){
       maxStack:1}));
   }
 }
+// Wearables are cosmetic and separate from protective head/chest armor.
+export const CLOTHING_GEAR=Object.freeze({
+  'field-cap':Object.freeze({id:'clothing:field-cap',category:'clothing',
+    key:'field-cap',slot:'head',name:'Wasteland Field Cap',
+    rarity:'common',value:18,maxStack:1}),
+  'field-backpack':Object.freeze({id:'clothing:field-backpack',
+    category:'clothing',key:'field-backpack',slot:'back',
+    name:'Canvas Field Backpack',rarity:'uncommon',value:48,maxStack:1})
+});
+for(const clothing of Object.values(CLOTHING_GEAR))
+  templates.set(clothing.id,clothing);
 templates.set('supply:medkit',Object.freeze({
   id:'supply:medkit',category:'supply',key:'medkit',name:'Field Medkit',
   rarity:'uncommon',value:35,maxStack:6,heal:40}));
@@ -49,7 +60,8 @@ export function getItem(id){
   return item;
 }
 export function createBackpack(){
-  return {items:[],equipment:{weapon:'scrap-pistol',armor:createLoadout('none'),optics:{}},
+  return {items:[],equipment:{weapon:'scrap-pistol',
+    armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{}},
     unlockedOptics:{},nextId:1};
 }
 export function inventorySlotsUsed(pack){return pack.items.length;}
@@ -134,9 +146,32 @@ export function equipFromInventory(pack,uid){
   }
   if(item.category==='armor'){
     pack.equipment.armor[item.slot]=getArmorPiece(item.slot,item.key).id;
+    if(item.slot==='head'&&pack.equipment.clothing)
+      pack.equipment.clothing.head='none'; // helmet replaces cap
     return {ok:true,category:'armor',slot:item.slot,key:item.key};
   }
+  if(item.category==='clothing'){
+    pack.equipment.clothing??={head:'none',back:'none'};
+    pack.equipment.clothing[item.slot]=item.key;
+    if(item.slot==='head')pack.equipment.armor.head='none'; // cap replaces helmet
+    return {ok:true,category:'clothing',slot:item.slot,key:item.key};
+  }
   return {ok:false,reason:'not-equippable'};
+}
+// Removing worn armor or clothing never destroys the inventory item.
+export function unequipWearable(pack,category,slot){
+  if(category==='armor'&&ARMOR_SLOTS.includes(slot)){
+    const previous=pack.equipment.armor[slot];
+    pack.equipment.armor[slot]='none';
+    return {ok:true,previous,category,slot};
+  }
+  if(category==='clothing'&&['head','back'].includes(slot)){
+    pack.equipment.clothing??={head:'none',back:'none'};
+    const previous=pack.equipment.clothing[slot];
+    pack.equipment.clothing[slot]='none';
+    return {ok:true,previous,category,slot};
+  }
+  return {ok:false,reason:'invalid-slot'};
 }
 export function useSupply(pack,uid,health){
   const entry=pack.items.find(e=>e.uid===uid);
@@ -219,7 +254,12 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
   }
   const armor=worn.slice(0,count);
   for(const entry of armor)getItem(entry.itemId);
-  return [...base[enemyId].map(e=>({...e})),...armor];
+  // Field wearables are genuine loot rather than welded-on player props.
+  const wearables=enemyId==='scout'?
+    [{itemId:'clothing:field-cap',quantity:1}]:
+    enemyId==='raider'?
+    [{itemId:'clothing:field-backpack',quantity:1}]:[];
+  return [...base[enemyId].map(e=>({...e})),...armor,...wearables];
 }
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();
@@ -247,6 +287,13 @@ export function safeBackpackSnapshot(pack){
       if(id&&id!=='none'&&countItem(result,'armor:'+id)>0)
         result.equipment.armor[slot]=getArmorPiece(slot,id).id;
     }catch{}
+  }
+  for(const slot of ['head','back']){
+    const key=pack.equipment?.clothing?.[slot];
+    const piece=CLOTHING_GEAR[key];
+    if(piece?.slot===slot&&countItem(result,piece.id)>0&&
+        (slot!=='head'||result.equipment.armor.head==='none'))
+      result.equipment.clothing[slot]=key;
   }
   return result;
 }

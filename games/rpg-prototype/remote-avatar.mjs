@@ -11,6 +11,7 @@ export function createRemotePlayerVisual(scene,playerId){
   avatar.root.name='RemotePlayer:'+playerId;
   function sync(snapshot={},dt=0){
     avatar.setArmor(snapshot.armor||{});
+    avatar.setClothing(snapshot.clothing||{});
     avatar.update({
       dt,x:Number.isFinite(snapshot.x)?snapshot.x:0,
       z:Number.isFinite(snapshot.z)?snapshot.z:0,
@@ -30,7 +31,9 @@ export function createRemotePlayerVisual(scene,playerId){
     root:avatar.root,sync,
     get state(){return {
       id:playerId,visible:avatar.root.visible,armor:avatar.armor,
-      armorPieces:avatar.visibleArmorPieces,height:avatar.metrics.height
+      armorPieces:avatar.visibleArmorPieces,
+      clothing:avatar.clothing,visibleClothing:avatar.visibleClothing,
+      height:avatar.metrics.height
     };},
     dispose:()=>avatar.dispose()
   };
