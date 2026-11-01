@@ -308,12 +308,12 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
     const shoulder=group(torso,side*.392,.53,0);
     oval(shoulder,.15,.16,.175,jacketLight,0,-.055,0);
     taper(shoulder,.135,.113,.34,jacket,side*.025,-.20,0);
-    roundedBox(shoulder,.255,.18,.29,.055,jacketLight,
+    if(!plainSurvivor)roundedBox(shoulder,.255,.18,.29,.055,jacketLight,
       side*.02,-.18,-.025);
     const elbow=group(shoulder,side*.035,-.40,0);
     oval(elbow,.115,.105,.12,cloth);
     taper(elbow,.119,.091,.29,jacket,0,-.18,0);
-    for(let k=0;k<3;k++)strap(elbow,[-.10,-.10-k*.057,-.03],
+    if(!plainSurvivor)for(let k=0;k<3;k++)strap(elbow,[-.10,-.10-k*.057,-.03],
       [.10,-.10-k*.057,-.03],.013,leather);
     const hand=group(elbow,0,-.36,-.016);
     oval(hand,.095,.11,.083,boot,0,-.045,-.01);
@@ -340,12 +340,12 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
     const hip=group(pelvis,side*.164,-.12,0);
     oval(hip,.167,.20,.155,pants,0,-.055,0);
     taper(hip,.15,.12,.45,pants,0,-.29,0);
-    roundedBox(hip,.24,.19,.16,.05,cloth,0,-.31,-.13);
+    if(!plainSurvivor)roundedBox(hip,.24,.19,.16,.05,cloth,0,-.31,-.13);
     const knee=group(hip,0,-.42,0);
     oval(knee,.135,.13,.128,cloth);
-    roundedBox(knee,.205,.18,.12,.045,leather,0,-.02,-.12);
+    if(!plainSurvivor)roundedBox(knee,.205,.18,.12,.045,leather,0,-.02,-.12);
     taper(knee,.123,.088,.39,pants,0,-.245,0);
-    for(let k=0;k<2;k++)strap(knee,[-.10,-.20-k*.07,-.015],
+    if(!plainSurvivor)for(let k=0;k<2;k++)strap(knee,[-.10,-.20-k*.07,-.015],
       [.10,-.20-k*.07,-.015],.012,leather);
     const foot=group(knee,0,-.25,-.035);
     oval(foot,.139,.11,.182,boot,0,-.03,-.07);
