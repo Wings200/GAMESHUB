@@ -10,7 +10,25 @@ export const RARITIES=Object.freeze({
   rare:Object.freeze({label:'RARE',color:'#86b9ff',multiplier:2.6}),
   epic:Object.freeze({label:'EPIC',color:'#d2a5fb',multiplier:4.2})
 });
-const cap=(n)=>Math.max(0,Math.floor(Number.isFinite(n)?n:0));
+const cap=(n)=>Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,
+  Math.floor(Number.isFinite(n)?n:0)));
+export const INVENTORY_CATEGORIES=Object.freeze([
+  {id:'all',label:'All Items'},
+  {id:'weapon',label:'Weapons'},
+  {id:'armor',label:'Armor'},
+  {id:'clothing',label:'Clothing'},
+  {id:'aid',label:'Aid'},
+  {id:'junk',label:'Junk'},
+  {id:'quest',label:'Quest Items'}
+]);
+export function inventorySection(item){
+  if(item.category==='supply')return item.key==='medkit'?'aid':'junk';
+  return item.category;
+}
+export function displayAmmoCount(value){const n=cap(value);return n>999?'999+':String(n);}
+export function ammoReserve(pack,weaponId){getWeaponSpec(weaponId);
+  return cap(pack?.ammoReserves?.[weaponId]??0);
+}
 const idOf=(category,key)=>category+':'+key;
 const templates=new Map();
 for(const spec of ARSENAL)templates.set(idOf('weapon',spec.id),Object.freeze({
@@ -60,7 +78,8 @@ export function getItem(id){
   return item;
 }
 export function createBackpack(){
-  return {items:[],equipment:{weapon:'scrap-pistol',
+  return {items:[],ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
+    [spec.id,spec.startingReserve])),equipment:{weapon:'scrap-pistol',
     armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{}},
     unlockedOptics:{},nextId:1};
 }
@@ -69,11 +88,21 @@ export function totalInventoryValue(pack){
   return pack.items.reduce((sum,entry)=>sum+getItem(entry.itemId).value*entry.quantity,0);
 }
 export function countItem(pack,itemId){
+  const item=getItem(itemId);
+  if(item.category==='ammo')return ammoReserve(pack,item.key);
   return pack.items.filter(e=>e.itemId===itemId).reduce((n,e)=>n+e.quantity,0);
 }
 export function addItem(pack,itemId,quantity=1){
   const template=getItem(itemId);let remaining=cap(quantity);
   const addedStart=remaining;
+  // Ammunition lives in the correct weapon's reserve, never a backpack slot.
+  if(template.category==='ammo'){
+    pack.ammoReserves??={};
+    const current=cap(pack.ammoReserves[template.key]??0);
+    const added=Math.min(remaining,Number.MAX_SAFE_INTEGER-current);
+    pack.ammoReserves[template.key]=current+added;
+    return {added,leftover:remaining-added,full:remaining>added};
+  }
   if(template.maxStack>1){
     for(const e of pack.items){
       if(e.itemId!==itemId)continue;
@@ -264,6 +293,12 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();
   if(!pack||!Array.isArray(pack.items))return result;
+  // W09.8: preserve saved reserves; old saves held loose ammo as inventory
+  // stacks, so the addItem loop below migrates those stacks automatically.
+  for(const spec of ARSENAL){
+    const saved=pack.ammoReserves?.[spec.id];
+    if(Number.isSafeInteger(saved)&&saved>=0)result.ammoReserves[spec.id]=saved;
+  }
   for(const e of pack.items){
     if(!templates.has(e?.itemId))continue;
     addItem(result,e.itemId,Math.min(cap(e.quantity),180));

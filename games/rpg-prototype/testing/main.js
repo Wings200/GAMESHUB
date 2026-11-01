@@ -28,7 +28,8 @@ import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-a
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
-  totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem} from '../inventory.mjs';
+  totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -761,6 +762,7 @@ const enemies=new Map(),enemyHitMeshes=[];
 const lootBags=new Map();
 let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
 let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
+let inventoryCategory='all';
 let backpack=createBackpack();
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
@@ -1043,7 +1045,13 @@ function nearestLootBag(){
   }
   return best;
 }
+function syncAmmoToWeapons(){
+  for(const spec of ARSENAL)arsenalStates[spec.id].reserve=ammoReserve(backpack,spec.id);
+}
 function saveBackpack(){
+  // Reserve counts are owned by live weapons during reloads and shooting.
+  // Synchronize before persistence so reloading a save cannot restore spent ammo.
+  for(const spec of ARSENAL)backpack.ammoReserves[spec.id]=arsenalStates[spec.id].reserve;
   try{localStorage.setItem('rpg-lab-player-inventory',JSON.stringify(backpack));}catch{}
 }
 function inventoryLine(item){
@@ -1054,7 +1062,7 @@ function inventoryLine(item){
   const name=document.createElement('strong');name.textContent=item.name;
   name.style.color=RARITIES[item.rarity].color;
   const detail=document.createElement('small');
-  detail.textContent=RARITIES[item.rarity].label+' · '+item.category.toUpperCase()+
+  detail.textContent=RARITIES[item.rarity].label+' · '+inventorySection(item).toUpperCase()+
     ' · '+item.value+' CAPS';
   summary.append(name,detail);row.append(summary);
   return row;
@@ -1076,14 +1084,53 @@ function refreshInventoryUI(){
   $('inventoryArmor').textContent='CHEST '+ordinary.points+' AP · '+
     Math.round(powered.combinedReduction*100)+'% DAMAGE BLOCK'+
     (powerArmorState.occupied?' · POWER ARMOR ACTIVE':'');
+  const nav=$('inventoryCategories');nav.replaceChildren();
+  const areas=INVENTORY_CATEGORIES.map(category=>({
+    ...category,count:backpack.items.filter(e=>
+      category.id==='all'||inventorySection(getItem(e.itemId))===category.id).length
+  }));
+  for(const category of areas){
+    const button=document.createElement('button');
+    button.type='button';button.className='inventory-category';
+    button.dataset.category=category.id;
+    button.setAttribute('aria-pressed',String(inventoryCategory===category.id));
+    const name=document.createElement('span');name.textContent=category.label;
+    const count=document.createElement('b');count.textContent=String(category.count);
+    button.append(name,count);
+    if(inventoryCategory===category.id)button.classList.add('selected');
+    button.addEventListener('click',()=>{
+      inventoryCategory=category.id;refreshInventoryUI();
+    });
+    nav.append(button);
+  }
+  const chosen=areas.find(c=>c.id===inventoryCategory)||areas[0];
+  $('inventorySectionTitle').textContent=chosen.label.toUpperCase();
+  $('inventorySectionCount').textContent=chosen.count+' ITEM SLOTS';
+  const visibleEntries=backpack.items.filter(entry=>
+    inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory);
   const area=$('inventoryItems');area.replaceChildren();
-  if(!backpack.items.length){
-    const empty=document.createElement('p');
-    empty.textContent='BACKPACK EMPTY · DEFEAT A RAIDER AND SEARCH ITS LOOT (E).';
+  if(!visibleEntries.length){
+    const empty=document.createElement('p');empty.className='inventory-empty';
+    empty.textContent=inventoryCategory==='quest'?
+      'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
+      inventoryCategory==='weapon'?'NO LOOSE WEAPONS · YOUR STARTING PISTOL IS EQUIPPED.':
+      'NOTHING IN THIS SECTION YET · SEARCH LOOT WITH E.';
     area.append(empty);
   }
+  $('inventoryAmmo').replaceChildren();
+  if(inventoryCategory==='weapon'){
+    const heading=document.createElement('h3');heading.textContent='AMMO RESERVES · AUTO-STORED';
+    $('inventoryAmmo').append(heading);
+    for(const spec of ARSENAL){
+      const row=document.createElement('div');row.className='inventory-ammo-line';
+      const name=document.createElement('span');name.textContent=spec.name;
+      const amount=document.createElement('strong');
+      amount.textContent=displayAmmoCount(arsenalStates[spec.id].reserve);
+      row.append(name,amount);$('inventoryAmmo').append(row);
+    }
+  }
   const copyNumbers=new Map();
-  for(const entry of backpack.items){
+  for(const entry of visibleEntries){
     const item=getItem(entry.itemId),row=inventoryLine(item);
     const count=document.createElement('span');
     const duplicateCount=(item.category==='weapon'||item.category==='armor'||item.category==='clothing')?
@@ -1113,18 +1160,11 @@ function refreshInventoryUI(){
         });
       }
     }
-    if(item.category==='ammo'||item.id==='supply:medkit'){
-      lootButton(row,item.category==='ammo'?'LOAD RESERVE':'USE',()=>{
-        if(item.category==='ammo'){
-          const amount=entry.quantity;
-          removeItem(backpack,entry.uid,amount);
-          arsenalStates[item.key].reserve+=amount;
-          showShotNotice('+'+amount+' '+getWeaponSpec(item.key).name.toUpperCase()+' AMMO');
-        }else{
-          const used=useSupply(backpack,entry.uid,playerHealth);
-          if(!used.ok){showShotNotice('MEDKIT · HEALTH MUST BE BELOW 100');return;}
-          refreshPlayerHealth();showShotNotice('HEALED · +'+Math.ceil(used.restored)+' HP');
-        }
+    if(item.id==='supply:medkit'){
+      lootButton(row,'USE',()=>{
+        const used=useSupply(backpack,entry.uid,playerHealth);
+        if(!used.ok){showShotNotice('MEDKIT · HEALTH MUST BE BELOW 100');return;}
+        refreshPlayerHealth();showShotNotice('HEALED · +'+Math.ceil(used.restored)+' HP');
         saveBackpack();refreshInventoryUI();refreshWeaponHUD();
       });
     }
@@ -1187,11 +1227,14 @@ function refreshLootUI(){
           ' / '+BACKPACK_LIMIT+' SLOTS. DROP SOMETHING TO MAKE ROOM.';
         return;
       }
+      if(item.category==='ammo')syncAmmoToWeapons();
       const total=countItem(backpack,entry.itemId);
-      $('lootFeedback').textContent='TAKEN · '+item.name.toUpperCase()+
-        ' ×'+result.added+' · NOW OWN '+total+
+      $('lootFeedback').textContent=item.category==='ammo'?
+        'AUTO-STORED · +'+result.added+' '+item.name.toUpperCase()+
+        ' · RESERVE '+displayAmmoCount(total):
+        'TAKEN · '+item.name.toUpperCase()+' ×'+result.added+' · NOW OWN '+total+
         (total===1?' COPY':' COPIES');
-      saveBackpack();discardEmptyLootBags();
+      saveBackpack();refreshWeaponHUD();discardEmptyLootBags();
       refreshLootUI();refreshInventoryUI();
     });
     area.append(row);
@@ -1229,6 +1272,7 @@ $('lootClose').addEventListener('click',closeLootOverlay);
 $('lootTakeAll').addEventListener('click',()=>{
   const bag=lootBags.get(selectedLootId);if(!bag)return;
   const result=takeAllFromBag(backpack,bag);
+  syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
     'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
     'TAKEN ALL · DUPLICATE GEAR KEPT AS SEPARATE INVENTORY COPIES';
@@ -1511,6 +1555,7 @@ function updateEnemies(dt){
 // Recognisable first-person makeshift pistol rather than a HUD-only crosshair.
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
 const arsenalStates=createArsenalStates();
+for(const spec of ARSENAL)arsenalStates[spec.id].reserve=ammoReserve(backpack,spec.id);
 let activeWeaponId=SCRAP_PISTOL.id;
 let activeSpec=SCRAP_PISTOL;
 let weaponState=arsenalStates[activeWeaponId];
@@ -2019,7 +2064,7 @@ function showShotNotice(message){
   shotNoticeTime=.8;
 }
 function refreshWeaponHUD(){
-  $('weaponAmmo').textContent=weaponState.magazine+' / '+weaponState.reserve;
+  $('weaponAmmo').textContent=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
   $('weaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
     weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY';
   $('targetHits').textContent=totalHits;
@@ -2179,6 +2224,7 @@ function reload(){
 function resupply(){
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
+  saveBackpack();
   emptyClickLatched=false;
   showShotNotice('TEST AMMO RESTOCKED');
   // Do not leave the old reload hand suspended if F is used mid-reload.
@@ -2283,6 +2329,11 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     if(powerArmorState.phase!=='idle')
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
   };
+  window.__rpgSmokeGiveAmmo=(weaponId='scrap-pistol',amount=1000)=>{
+    const result=addItem(backpack,'ammo:'+weaponId,amount);
+    syncAmmoToWeapons();saveBackpack();refreshInventoryUI();refreshWeaponHUD();
+    return result;
+  };
   window.__rpgSmokeGiveBenchMaterials=()=>{
     addItem(backpack,'supply:salvage',30);
     addItem(backpack,'supply:optic-glass',15);
@@ -2381,6 +2432,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       cockpit:poweredCockpit.visible},
     inventory:{slots:backpack.items.length,
       items:backpack.items.map(e=>({...e})),
+      ammoReserves:{...backpack.ammoReserves},
       armor:{...backpack.equipment.armor},
       clothing:{...backpack.equipment.clothing},
       equippedWeapon:backpack.equipment.weapon},
@@ -2537,7 +2589,13 @@ function updateHUD(info){
 function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
-  for(const spec of ARSENAL)updateWeapon(arsenalStates[spec.id],dt,spec);
+  let ammoSpentOnReload=false;
+  for(const spec of ARSENAL){
+    const state=arsenalStates[spec.id],before=state.reserve;
+    updateWeapon(state,dt,spec);
+    if(state.reserve!==before)ammoSpentOnReload=true;
+  }
+  if(ammoSpentOnReload)saveBackpack();
   // Ease camera pitch back to the player's original view. This applies in
   // YXZ space, so mouse-look cannot leave the camera permanently tilted.
   if(viewRecoil.unrecovered>0){

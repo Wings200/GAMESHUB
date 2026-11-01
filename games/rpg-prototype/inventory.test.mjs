@@ -6,7 +6,8 @@ import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
   inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
-  installWeaponOptic,installedWeaponOptic} from './inventory.mjs';
+  installWeaponOptic,installedWeaponOptic,INVENTORY_CATEGORIES,inventorySection,
+  ammoReserve,displayAmmoCount} from './inventory.mjs';
 test('Catalog includes all real guns, ammunition, six armor slots and rarity/value',()=>{
   for(const gun of ARSENAL){
     assert.equal(getItem('weapon:'+gun.id).category,'weapon');
@@ -17,17 +18,19 @@ test('Catalog includes all real guns, ammunition, six armor slots and rarity/val
   assert.ok(Object.keys(ITEM_CATALOG).length>=32);
   assert.throws(()=>getItem('weapon:unknown'));
 });
-test('Loot stacks ammo, enforces thirty slots and never loses overflow',()=>{
+test('W09.8 ammunition auto-routes into per-weapon reserves without occupying slots',()=>{
   const pack=createBackpack();
+  const initial=ammoReserve(pack,'pipe-smg');
   assert.deepEqual(addItem(pack,'ammo:pipe-smg',200),{added:200,leftover:0,full:false});
-  assert.equal(inventorySlotsUsed(pack),2);
-  assert.equal(countItem(pack,'ammo:pipe-smg'),200);
-  assert.equal(pack.items[0].quantity,180);
-  for(let i=0;i<28;i++)addItem(pack,'weapon:iron-revolver',1);
+  assert.equal(inventorySlotsUsed(pack),0);
+  assert.equal(countItem(pack,'ammo:pipe-smg'),initial+200);
+  for(let i=0;i<BACKPACK_LIMIT;i++)addItem(pack,'weapon:iron-revolver',1);
   assert.equal(pack.items.length,BACKPACK_LIMIT);
   const r=addItem(pack,'weapon:pipe-smg',1);
   assert.equal(r.added,0);assert.equal(r.leftover,1);
-  assert.equal(addItem(pack,'ammo:pipe-smg',20).added,20);
+  assert.equal(addItem(pack,'ammo:pipe-smg',900).added,900);
+  assert.equal(displayAmmoCount(ammoReserve(pack,'pipe-smg')),'999+');
+  assert.equal(pack.items.length,BACKPACK_LIMIT,'Ammo never consumes a slot');
   assert.ok(totalInventoryValue(pack)>0);
 });
 test('Enemy drops are deterministic, searchable and no duplication on TAKE ALL',()=>{
@@ -111,12 +114,12 @@ test('Reconstructed saves reject unknown items and unowned armor',()=>{
   assert.equal(pack.equipment.armor.chest,'none');
   assert.equal(pack.items.length,2);
 });
-test('Dropping a stack uses an independent item and never duplicates IDs',()=>{
+test('Dropping a supply stack uses an independent item and never duplicates IDs',()=>{
   const pack=createBackpack();
-  addItem(pack,'ammo:service-carbine',12);
+  addItem(pack,'supply:salvage',12);
   const uid=pack.items[0].uid;
-  assert.deepEqual(removeItem(pack,uid,7),{removed:7,itemId:'ammo:service-carbine'});
-  assert.equal(countItem(pack,'ammo:service-carbine'),5);
+  assert.deepEqual(removeItem(pack,uid,7),{removed:7,itemId:'supply:salvage'});
+  assert.equal(countItem(pack,'supply:salvage'),5);
   addItem(pack,'supply:medkit',1);
   assert.equal(pack.items.length,2);
   assert.notEqual(pack.items[0].uid,pack.items[1].uid);
@@ -225,4 +228,44 @@ test('W09.7 never restores headwear that was dropped from inventory',()=>{
   equipFromInventory(pack,uid);
   removeItem(pack,uid);
   assert.equal(safeBackpackSnapshot(pack).equipment.clothing.head,'none');
+});
+
+
+test('W09.8 category navigation maps supplies, equipment and future quests',()=>{
+  assert.deepEqual(INVENTORY_CATEGORIES.map(c=>c.id),
+    ['all','weapon','armor','clothing','aid','junk','quest']);
+  assert.equal(inventorySection(getItem('supply:salvage')),'junk');
+  assert.equal(inventorySection(getItem('supply:optic-glass')),'junk');
+  assert.equal(inventorySection(getItem('supply:medkit')),'aid');
+  assert.equal(inventorySection(getItem('armor:ranger-chest')),'armor');
+  assert.equal(inventorySection(getItem('clothing:field-cap')),'clothing');
+  assert.equal(displayAmmoCount(998),'998');
+  assert.equal(displayAmmoCount(999),'999');
+  assert.equal(displayAmmoCount(1000),'999+');
+  assert.equal(displayAmmoCount(2500),'999+');
+});
+
+test('W09.8 ammo routes on TAKE and TAKE ALL, saves and migrates old loose stacks',()=>{
+  const pack=createBackpack();
+  const initial=ammoReserve(pack,'service-carbine');
+  const bag=createLootBag('ammo-drop',0,0,[
+    {itemId:'ammo:service-carbine',quantity:1200},
+    {itemId:'supply:medkit',quantity:1}
+  ]);
+  assert.equal(takeFromBag(pack,bag,0).added,1200);
+  assert.equal(ammoReserve(pack,'service-carbine'),initial+1200);
+  assert.equal(pack.items.length,0);
+  assert.equal(takeAllFromBag(pack,bag).added,1);
+  assert.equal(pack.items.length,1);
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(ammoReserve(restored,'service-carbine'),initial+1200);
+  assert.equal(restored.items.filter(e=>e.itemId.startsWith('ammo:')).length,0);
+  const old=safeBackpackSnapshot({
+    items:[{itemId:'ammo:pipe-smg',quantity:180},
+      {itemId:'ammo:pipe-smg',quantity:30}],
+    equipment:{weapon:'scrap-pistol'}
+  });
+  assert.equal(ammoReserve(old,'pipe-smg'),ARSENAL.find(w=>w.id==='pipe-smg').startingReserve+210);
+  assert.equal(old.items.length,0);
+  assert.equal(displayAmmoCount(998),'998');
 });

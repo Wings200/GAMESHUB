@@ -207,6 +207,10 @@ try{
     'A fully looted bag must disappear from the 3D world');
   assert.ok(inventoryAfterLoot.inventory.items.some(i=>
     i.itemId===testArmor.id));
+  assert.ok(inventoryAfterLoot.inventory.ammoReserves['pipe-smg']>150,
+    'Taking a loot bag automatically transfers its ammunition to the SMG reserve');
+  assert.equal(inventoryAfterLoot.inventory.items.some(i=>
+    i.itemId.startsWith('ammo:')),false,'Ammo cannot crowd the backpack');
   await page.locator('#lootClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:7000});
@@ -235,6 +239,16 @@ try{
   assert.equal(await page.locator('#inventoryItems .loot-description strong')
     .getByText('Pipe SMG',{exact:true}).count(),2);
   assert.ok((await page.locator('#inventoryItems').textContent()).includes('COPY 2 / 2'));
+  // W09.8: navigate a real two-panel categorized inventory without losing gear.
+  assert.equal(await page.locator('#inventoryCategories button').count(),7);
+  await page.locator('#inventoryCategories button[data-category="junk"]').click();
+  assert.ok((await page.locator('#inventoryItems').textContent()).includes('Salvaged Parts'));
+  assert.equal(await page.locator('#inventoryItems').getByText('Pipe SMG',{exact:true}).count(),0);
+  await page.locator('#inventoryCategories button[data-category="quest"]').click();
+  assert.ok((await page.locator('#inventoryItems').textContent()).includes('NO QUEST ITEMS YET'));
+  await page.locator('#inventoryCategories button[data-category="weapon"]').click();
+  assert.ok((await page.locator('#inventoryAmmo').textContent()).includes('AMMO RESERVES'));
+  await page.locator('#inventoryCategories button[data-category="all"]').click();
   await page.locator('#inventoryItems .loot-entry')
     .filter({hasText:testArmor.name}).getByRole('button',{name:'EQUIP'}).click();
   await page.locator('#inventoryItems .loot-entry')
@@ -299,6 +313,15 @@ try{
   assert.ok(!(await page.evaluate(()=>window.__rpgSmokeState()))
     .inventory.items.some(i=>i.itemId==='supply:salvage'),
     'MAX must drop only the remaining count in this stack');
+  // Even a four-digit reserve renders as 999+, while storing the real total.
+  const beforeAmmo=(await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.ammoReserves['pipe-smg'];
+  await page.evaluate(()=>window.__rpgSmokeGiveAmmo('pipe-smg',1200));
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.ammoReserves['pipe-smg'],beforeAmmo+1200);
+  assert.ok((await page.locator('#weaponAmmo').textContent()).includes('999+'));
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .inventory.items.some(e=>e.itemId.startsWith('ammo:')),false);
   await page.locator('#inventoryClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:10000});
@@ -353,6 +376,8 @@ try{
     null,{timeout:30000});
   const restoredInventory=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(restoredInventory.inventory.equippedWeapon,'pipe-smg');
+  assert.equal(restoredInventory.inventory.ammoReserves['pipe-smg'],beforeAmmo+1200,
+    'The true reserve survives a reload, not a capped 999 value');
   assert.equal(restoredInventory.inventory.items.filter(
     i=>i.itemId==='weapon:pipe-smg').length,2,
     'Duplicate weapons must survive loading a saved game');

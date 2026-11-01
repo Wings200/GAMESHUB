@@ -86,7 +86,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.7/);
+  assert.match(page,/main\.js\?v=W09\.8/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -186,7 +186,8 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/applyDamage\(dummy\.state,activeSpec\.damage/);
   assert.match(source,/startWeaponReload\(weaponState,activeSpec\)/);
   assert.match(source,/createWeaponState\(activeSpec\)/);
-  assert.match(source,/for\(const spec of ARSENAL\)updateWeapon\(arsenalStates\[spec\.id\],dt,spec\)/);
+  assert.match(source,/updateWeapon\(state,dt,spec\)/);
+  assert.match(source,/if\(ammoSpentOnReload\)saveBackpack\(\)/);
   assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
   assert.ok(source.includes("if(e.button===0&&powerArmorState.phase==='idle'){triggerHeld=true;shoot();}"));
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
@@ -326,7 +327,8 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
   assert.match(source,/safeBackpackSnapshot\(saved\)/);
   assert.match(source,/localStorage\.setItem\('rpg-lab-player-inventory'/);
   assert.match(source,/equipFromInventory\(backpack,entry\.uid\)/);
-  assert.match(source,/arsenalStates\[item\.key\]\.reserve\+=amount/);
+  assert.match(source,/if\(item\.category==='ammo'\)syncAmmoToWeapons\(\)/);
+  assert.match(source,/function syncAmmoToWeapons\(\)/);
   assert.match(source,/useSupply\(backpack,entry\.uid,playerHealth\)/);
   assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:dropped\.removed\}\]/);
   assert.match(source,/dropAmount\.max=String\(entry\.quantity\)/);
@@ -338,7 +340,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.7/);
+  assert.match(page,/main\.js\?v=W09\.8/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -407,7 +409,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/hitbox\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W09\.7/);
+  assert.match(page,/main\.js\?v=W09\.8/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -459,7 +461,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W09\.7/);
+  assert.match(page,/main\.js\?v=W09\.8/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -472,7 +474,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W09\.7/);
+  assert.match(page,/main\.js\?v=W09\.8/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -491,4 +493,16 @@ test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack
   assert.match(source,/visibleClothing:playerAvatar\.visibleClothing/);
   assert.match(page,/id="inventoryClothing"/);
   assert.match(page,/W09\.7/);
+});
+
+
+test('W09.8 uses real inventory sections and automatic weapon ammo pickup',()=>{
+  assert.match(page,/id="inventoryCategories"/);
+  assert.match(page,/id="inventorySectionTitle"/);
+  assert.match(page,/id="inventoryAmmo"/);
+  assert.match(source,/INVENTORY_CATEGORIES\.map\(category=>/);
+  assert.match(source,/inventorySection\(getItem\(entry\.itemId\)\)/);
+  assert.match(source,/displayAmmoCount\(weaponState\.reserve\)/);
+  assert.match(source,/if\(item\.category==='ammo'\)syncAmmoToWeapons\(\)/);
+  assert.doesNotMatch(source,/LOAD RESERVE/);
 });

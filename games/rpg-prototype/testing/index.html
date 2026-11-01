@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W09.7 · Loot & Player Inventory | GAMESHUB RPG</title>
+<title>W09.8 · Loot & Player Inventory | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -136,7 +136,43 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .loot-entry .drop-amount{width:58px;min-width:0;height:32px;padding:4px 5px;
   border:1px solid #8eaba4;border-radius:3px;color:#e8f0e8;background:#10242d;
   font:700 13px system-ui,sans-serif}
-#inventoryItems .loot-entry{flex-wrap:wrap}
+#inventoryPanel .loot-container{max-width:1280px}
+.inventory-shell{display:grid;grid-template-columns:225px minmax(0,1fr);
+  gap:24px;padding:16px 0 20px;align-items:start}
+.inventory-nav{display:flex;flex-direction:column;gap:7px;position:sticky;top:15px}
+.inventory-category{display:flex;align-items:center;justify-content:space-between;
+  width:100%;text-align:left;gap:14px;background:#10232b!important;
+  border:1px solid #365450!important;padding:15px 17px!important;
+  font-size:12px!important;letter-spacing:.07em}
+.inventory-category b{color:#91b5a9;font-variant-numeric:tabular-nums}
+.inventory-category.selected{border-color:#e9c48b!important;
+  background:#34483f!important;color:#ffe3ae!important}
+.inventory-content{min-width:0;background:#0c1c24;border:1px solid #36504c;
+  padding:20px 22px;border-radius:4px}
+.inventory-content-head{display:flex;justify-content:space-between;
+  align-items:center;gap:12px;border-bottom:1px solid #37534e;padding-bottom:14px}
+.inventory-content-head h3{margin:0;font-size:18px;letter-spacing:.07em}
+.inventory-content-head span{font-size:10px;color:#b8ccbf;font-weight:850}
+#inventoryItems{grid-template-columns:repeat(auto-fill,minmax(315px,1fr));gap:13px;
+  padding:20px 0;min-height:185px}
+#inventoryItems .loot-entry{flex-wrap:wrap;align-content:start}
+#inventoryItems .loot-action{min-height:35px;padding:9px 12px}
+.inventory-empty{grid-column:1/-1;border:1px dashed #49625f;padding:20px;
+  max-width:none!important}
+#inventoryAmmo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#inventoryAmmo:empty{display:none}
+#inventoryAmmo h3{grid-column:1/-1;margin:0 0 7px;font-size:12px;color:#ebcd96;
+  letter-spacing:.1em}
+.inventory-ammo-line{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;background:#142931;border:1px solid #35544e;padding:12px;font-size:12px}
+.inventory-ammo-line strong{font-size:16px;color:#f1d99d;font-variant-numeric:tabular-nums}
+@media(max-width:850px){.inventory-shell{grid-template-columns:185px minmax(0,1fr);gap:12px}
+  .inventory-content{padding:14px}#inventoryAmmo{grid-template-columns:1fr}}
+@media(max-width:600px){.inventory-shell{grid-template-columns:1fr}
+  .inventory-nav{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .inventory-category{padding:11px!important}
+  #inventoryItems{grid-template-columns:1fr}}
+
 .loot-footer{border-top:1px solid #334d4b;padding:15px 0;color:#a9bbb5;
   font-size:11px;line-height:1.7}
 @media(max-width:680px){.loot-panel-top{flex-direction:column}
@@ -182,7 +218,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W09.7</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
+  <div class="block logo"><b>W09.8</b><div>RPG SYSTEMS LAB<small>MOVEMENT APPROVED · WEAPON TEST 01</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -197,7 +233,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W09.7 · ENEMY TEST</strong>
+  <strong>W09.8 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
@@ -208,7 +244,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="lootPrompt" class="hidden" aria-live="polite">E · SEARCH LOOT</div>
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W09.7 · SIX-GUN QA & ADS</div>
+  <div class="weapon-head">W09.8 · SIX-GUN QA & ADS</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
@@ -230,9 +266,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W09.7</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W09.8</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p>W09.7 removes all pre-equipped-looking headwear, goggles, chest gear, shoulder padding and knee pads from the ordinary survivor; the base outfit is now visibly just clothing. A field cap and canvas backpack are genuine looted inventory equipment, with EQUIP and UNEQUIP buttons. Six real armor slots appear only while equipped. Helmets automatically replace caps, and the player's worn appearance persists on reload. W09.6 replaces the imported hyper-realistic NPCs with original pixel-textured Scout, Raider, and Enforcer characters. Each role has a distinct silhouette, outfit, animated weapon, and visible equipped armor. Their existing tactical AI, body-part damage hitboxes, and loot are unchanged. W09.5 made regular armor plates bolder and added a second survivor preview near Station 8. That remote-preview body stays rendered when V toggles the local first-/third-person camera. It is a local visual test only, not online multiplayer. W09.4 connected ordinary armor to all six equipment slots, with distinct Scrap, Ranger, Militia and Citadel pixel-textured gear. The same survivor and equipped gear now appear during powered-armor entry and exit, replacing the imported realistic pilot. W09.3 introduced the first original playable survivor and V-key third-person inspection camera, while preserving the real FPS hitboxes and weapon raycasts. The powered chassis shell and its combat behavior remain unchanged. W08.4 added distinct NATO-style Holo A and Russian-style Holo B housings with their own reticles, plus an exact quantity selector and MAX option for dropping inventory stacks. W08.3 replaced the angular mannequin with a more compact armored exosuit: sculpted helmet and respirator, two-piece breastplate, rounded shoulder housings, articulated arms, hydraulic knees, and grounded armored boots. The cinematic entry remains, but the first-person eye height now follows standing and crouching normally while wearing power armor. Chest protection and all six optional armor plates are preserved. The six removable plates, armored cockpit and real damage protection still work. Get near the frame and press P to enter or leave, and press O to customize its armor. Previously W07.1 tightened and lightly faded the four lines of magnified scope reticles, and makes duplicate weapon pickups and inventory capacity easier to see. W07.0 brought an optics workbench with salvaged-material crafting, Holo A/B sights and actual 2×, 4× and 6× magnification. Station 7 has a physical bench (E), or press U to open it. Aiming uses the same camera line as the shot, with zero spread while standing still and aiming down sights. Previously, W06.7 improved long-range NPC combat: enemies now spot and shoot farther, Enforcers hold distant sightlines, and distant hits trigger return fire outside the arena. W06.6 removed the orange neck strip and balanced armor loot. NPCs still visibly wear mixed armor, but a defeat yields only a small random subset of the pieces they wore, never an entire Citadel suit. W06.5 added visible mixed armor on every NPC and matching drops. Reset the arena with J to see new outfits, from a single leg plate to a full suit. W06.4 fixed distant enemy updates, death cleanup and neck hitboxes. W06.0 introduced real RPG loot! Defeated enemies leave searchable world bags after their bodies disappear. Press E nearby to search, TAKE individual items or TAKE ALL, and press I to open your persistent 30-slot backpack. Equip looted guns and player armor, transfer ammo to reserves, use medkits and drop unwanted items. Rarity and cap values are shown on every item. Existing six-gun training and smarter enemies remain intact.</p>
+    <p>W09.8 adds inventory categories (Weapons, Armor, Clothing, Aid, Junk and Quest Items) and automatic ammo routing to weapon reserves. Ammo no longer consumes backpack slots and the HUD shows 999+ without capping the actual total. W09.7 removes all pre-equipped-looking headwear, goggles, chest gear, shoulder padding and knee pads from the ordinary survivor; the base outfit is now visibly just clothing. A field cap and canvas backpack are genuine looted inventory equipment, with EQUIP and UNEQUIP buttons. Six real armor slots appear only while equipped. Helmets automatically replace caps, and the player's worn appearance persists on reload. W09.6 replaces the imported hyper-realistic NPCs with original pixel-textured Scout, Raider, and Enforcer characters. Each role has a distinct silhouette, outfit, animated weapon, and visible equipped armor. Their existing tactical AI, body-part damage hitboxes, and loot are unchanged. W09.5 made regular armor plates bolder and added a second survivor preview near Station 8. That remote-preview body stays rendered when V toggles the local first-/third-person camera. It is a local visual test only, not online multiplayer. W09.4 connected ordinary armor to all six equipment slots, with distinct Scrap, Ranger, Militia and Citadel pixel-textured gear. The same survivor and equipped gear now appear during powered-armor entry and exit, replacing the imported realistic pilot. W09.3 introduced the first original playable survivor and V-key third-person inspection camera, while preserving the real FPS hitboxes and weapon raycasts. The powered chassis shell and its combat behavior remain unchanged. W08.4 added distinct NATO-style Holo A and Russian-style Holo B housings with their own reticles, plus an exact quantity selector and MAX option for dropping inventory stacks. W08.3 replaced the angular mannequin with a more compact armored exosuit: sculpted helmet and respirator, two-piece breastplate, rounded shoulder housings, articulated arms, hydraulic knees, and grounded armored boots. The cinematic entry remains, but the first-person eye height now follows standing and crouching normally while wearing power armor. Chest protection and all six optional armor plates are preserved. The six removable plates, armored cockpit and real damage protection still work. Get near the frame and press P to enter or leave, and press O to customize its armor. Previously W07.1 tightened and lightly faded the four lines of magnified scope reticles, and makes duplicate weapon pickups and inventory capacity easier to see. W07.0 brought an optics workbench with salvaged-material crafting, Holo A/B sights and actual 2×, 4× and 6× magnification. Station 7 has a physical bench (E), or press U to open it. Aiming uses the same camera line as the shot, with zero spread while standing still and aiming down sights. Previously, W06.7 improved long-range NPC combat: enemies now spot and shoot farther, Enforcers hold distant sightlines, and distant hits trigger return fire outside the arena. W06.6 removed the orange neck strip and balanced armor loot. NPCs still visibly wear mixed armor, but a defeat yields only a small random subset of the pieces they wore, never an entire Citadel suit. W06.5 added visible mixed armor on every NPC and matching drops. Reset the arena with J to see new outfits, from a single leg plate to a full suit. W06.4 fixed distant enemy updates, death cleanup and neck hitboxes. W06.0 introduced real RPG loot! Defeated enemies leave searchable world bags after their bodies disappear. Press E nearby to search, TAKE individual items or TAKE ALL, and press I to open your persistent 30-slot backpack. Equip looted guns and player armor, automatically collect ammo into each weapon reserve, use medkits and drop unwanted items. Rarity and cap values are shown on every item. Existing six-gun training and smarter enemies remain intact.</p>
     <div class="endurance-picker"><span>TEST ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance">−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Levels 1–10. Higher Endurance extends sprint time and speeds up stamina recovery. Changing this test value refills stamina. While playing, use [ and ] to adjust it.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -244,16 +280,16 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">POWER ARMOR BAY · O</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W09.7</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W09.8</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, LOAD RESERVE ammunition, USE medkits, or DROP items. J resets enemies and world loot without erasing the backpack. This is the player inventory; B still edits test-dummy armor.</p>
+    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemies and world loot without erasing the backpack. This is the player inventory; B still edits test-dummy armor.</p>
   </div>
 </div>
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.7 · POWERED EXOSKELETON</div>
+      <div><div class="loot-eyebrow">W09.8 · POWERED EXOSKELETON</div>
         <h2>BUILD<span> YOUR POWER ARMOR.</span></h2>
         <p>The oversized mechanical chassis and six armored pieces are separate. Fit Salvaged Steel, Ranger Composite or Citadel Reinforced plating independently on your helmet, torso, arms and legs. The actual suit at Station 8 updates to match.</p>
       </div>
@@ -277,7 +313,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-label="Weapons optic workbench">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.7 · WEAPONS WORKBENCH</div>
+      <div><div class="loot-eyebrow">W09.8 · WEAPONS WORKBENCH</div>
         <h2>CRAFT<span> YOUR SIGHT.</span></h2>
         <p>Scavenge Salvaged Parts and Optic Glass from NPC loot. Craft an optic once, then reinstall it for free. What you install changes the 3D gun and its actual ADS zoom.</p>
       </div>
@@ -294,9 +330,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 <div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-label="Player inventory">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.7 · PLAYER SYSTEMS</div>
+      <div><div class="loot-eyebrow">W09.8 · PLAYER SYSTEMS</div>
         <h2>BACKPACK<span> & GEAR.</span></h2>
-        <p>Find loot on defeated enemies · I to open · Equip or unequip armor, headwear and backpacks. Your character starts with plain clothing only.</p>
+        <p>Inventory categories on the left, equipment on the right. Ammo automatically enters its weapon's reserve when collected, without using backpack slots.</p>
       </div>
       <button id="inventoryClose" type="button">CLOSE / RESUME</button>
     </div>
@@ -307,14 +343,24 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
       <span>PLAYER ARMOR · <b id="inventoryArmor">CHEST 0 AP</b></span>
       <span>PLAYER CLOTHING · <b id="inventoryClothing">HAT: NONE · BACKPACK: NONE</b></span>
     </div>
-    <div id="inventoryItems" class="loot-grid"></div>
-    <div class="loot-footer">LOOT ENEMIES · E SEARCH · EQUIP OR UNEQUIP WEARABLES · CHOOSE QTY OR MAX TO DROP · AMMO LOADS INTO RESERVES</div>
+    <div class="inventory-shell">
+      <nav id="inventoryCategories" class="inventory-nav" aria-label="Inventory categories"></nav>
+      <section class="inventory-content" aria-label="Selected inventory category">
+        <div class="inventory-content-head">
+          <h3 id="inventorySectionTitle">ALL ITEMS</h3>
+          <span id="inventorySectionCount">0 ITEM SLOTS</span>
+        </div>
+        <div id="inventoryItems" class="loot-grid"></div>
+        <div id="inventoryAmmo" aria-label="Weapon ammunition reserves"></div>
+      </section>
+    </div>
+    <div class="loot-footer">E SEARCH · I INVENTORY · EQUIP OR UNEQUIP GEAR · QTY OR MAX TO DROP · AMMO PICKUPS AUTO-SORT INTO WEAPON RESERVES · THE HUD SHOWS 999+ FOR LARGER COUNTS</div>
   </div>
 </div>
 <div id="lootPanel" class="loot-overlay hidden" role="dialog" aria-label="Search loot">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.7 · WORLD LOOT</div>
+      <div><div class="loot-eyebrow">W09.8 · WORLD LOOT</div>
         <h2 id="lootTitle">SEARCH LOOT BAG</h2>
         <p>Items left behind by enemies are yours to discover. Backpack space is limited.</p>
       </div>
@@ -375,6 +421,6 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W09.7"></script>
+<script type="module" src="./main.js?v=W09.8"></script>
 </body>
 </html>
