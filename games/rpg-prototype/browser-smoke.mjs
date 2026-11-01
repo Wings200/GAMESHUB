@@ -84,6 +84,13 @@ try{
   await page.evaluate(()=>window.dispatchEvent(
     new MouseEvent('mousedown',{button:2,bubbles:true})));
   for(let i=0;i<7;i++){
+    // Software WebGL can render fewer than four frames per second on CI.
+    // Force the regular cooldown to finish between test attempts so a
+    // missed random-spread shot does not leave six ignored clicks.
+    await page.evaluate(()=>{
+      const s=window.__rpgSmokeState();
+      window.__rpgSmokeSetMagazine(s.weapon.magazine);
+    });
     await page.evaluate(()=>window.dispatchEvent(
       new MouseEvent('mousedown',{button:0,bubbles:true})));
     await page.waitForTimeout(300);
