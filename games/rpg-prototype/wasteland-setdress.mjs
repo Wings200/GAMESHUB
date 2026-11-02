@@ -330,7 +330,7 @@ export function buildWastelandSet(scene,THREE,{highQuality=true}={}){
     for(const light of hazardLights)light.visible=!!high;
   }
   setQuality(highQuality);
-  return {root,update,setQuality,metrics:{
+  return {root:world,update,setQuality,metrics:{
     shacks:shackCount,wrecks:wreckCount,radioMasts:2,
     waterTowers:2,signs:4,individualMeshes:meshCount,
     groundInstances:(highQuality?260+175+120:125+85+60),
