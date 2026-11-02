@@ -2817,6 +2817,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
     return nearestLootBag()?.source==='power-cache';
   };
+  // Hold the exact phase during visual smoke checks, independent of GPU frame rate.
+  window.__rpgSmokeReloadHold=null;
   window.__rpgSmokeSetReloadAnimation=(id,progress=.5)=>{
     if(!ARSENAL_IDS.includes(id))return false;
     selectWeapon(id);
@@ -2824,6 +2826,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     state.magazine=Math.min(state.magazine,spec.magazineSize-1);
     state.reserve=Math.max(state.reserve,spec.magazineSize);
     state.reloadRemaining=spec.reloadSeconds*(1-Math.max(.01,Math.min(.98,progress)));
+    window.__rpgSmokeReloadHold={id,remaining:state.reloadRemaining};
     return true;
   };
   window.__rpgSmokeReloadGeometry=()=>{
@@ -3249,6 +3252,8 @@ function frame(){
     if(state.reserve!==before)ammoSpentOnReload=true;
   }
   if(ammoSpentOnReload)saveBackpack();
+  if(window.__rpgSmokeReloadHold?.id===activeWeaponId)
+    weaponState.reloadRemaining=window.__rpgSmokeReloadHold.remaining;
   // Ease camera pitch back to the player's original view. This applies in
   // YXZ space, so mouse-look cannot leave the camera permanently tilted.
   if(viewRecoil.unrecovered>0){

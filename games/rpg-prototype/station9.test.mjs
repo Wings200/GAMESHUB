@@ -276,7 +276,8 @@ test('W05.3.1 limits empty automatic dry fire to one click per trigger pull',()=
   assert.match(source,/if\(result\.status==='empty'\)\{\s*\/\/ Automatic guns/);
   assert.match(source,/if\(!emptyClickLatched\)\{/);
   assert.match(source,/emptyClickLatched=true;\s*dryFireClicks\+\+;\s*sound\.dryFire\(\)/);
-  assert.match(source,/if\(result\.status!=='fired'\)return;\s*emptyClickLatched=false/);
+  assert.match(source,/if\(result\.status!=='fired'\)return;/);
+  assert.match(source,/emptyClickLatched=false;\s*sound\.gunshot/);
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
   assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
   assert.match(source,/triggerHeld=false;emptyClickLatched=false/);
