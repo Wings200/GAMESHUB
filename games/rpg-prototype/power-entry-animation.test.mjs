@@ -38,3 +38,17 @@ test('No motion in idle phase and invalid progress remains bounded',()=>{
   const pose=powerEntryPose('entering',Infinity);
   assert.ok(Number.isFinite(pose.z)&&Number.isFinite(pose.yaw));
 });
+
+test('Boarding steps advance with world-space distance and never lift the body root',()=>{
+  const origin={x:.4,z:-2.75,yaw:0};
+  const first=powerEntryPose('entering',.41,origin);
+  const later=powerEntryPose('entering',.66,origin);
+  assert.ok(first.walking&&later.walking);
+  assert.ok(later.distance>first.distance);
+  assert.ok(later.footPhase>first.footPhase);
+  assert.ok(Math.abs((later.footPhase-first.footPhase)-
+    (later.distance-first.distance)*Math.PI*2/.84)<.000001);
+  assert.equal(first.y,0);assert.equal(later.y,0);
+  const exit=powerEntryPose('exiting',.57);
+  assert.ok(exit.footPhase>0&&exit.walking);
+});

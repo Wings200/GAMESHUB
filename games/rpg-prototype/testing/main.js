@@ -2876,6 +2876,20 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     pilotFacing:poweredSuit.pilot.rotation.y,
     pilotFloorHeight:poweredSuit.pilot.position.y,
     pilotStride:poweredSuit.pilot.userData.entryPose?.step||0,
+    pilotStrideDistance:poweredSuit.pilot.userData.entryPose?.distance||0,
+    pilotLegJoints:pilotAvatar.root.userData.boardingJointAngles,
+    jointRig:{
+      arms:poweredSuit.rig.arms.map(a=>({
+        shoulder:a.shoulder.rotation.z,elbow:a.elbow.rotation.x,
+        wrist:a.wrist.rotation.x,fingers:a.fingerJoints.length
+      })),
+      legs:poweredSuit.rig.legs.map(a=>({
+        hip:a.hip.rotation.x,knee:a.knee.rotation.x,
+        ankle:a.ankle.rotation.x,toe:a.toeHinge.rotation.x
+      })),
+      activePistons:poweredSuit.rig.actuators.filter(a=>
+        Number.isFinite(a.shaft.scale.y)&&a.shaft.scale.y>.01).length
+    },
     pilotWalking:poweredSuit.pilot.userData.entryPose?.walking||false,
     cameraHeightAboveGround:camera.position.y-groundHeight(player.x,player.z),
     chassisHeight:poweredSuit.size.y,
@@ -2884,6 +2898,17 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     cameraDistanceToHero:camera.position.distanceTo(
       poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36)))
   });
+  window.__rpgSmokeRigPreview=(side='front')=>{
+    // CI-only fixed-view inspection; never changes player collision or saves.
+    const suit=poweredSuit.root;
+    const aim=suit.localToWorld(new THREE.Vector3(0,1.50,0));
+    const viewpoint=suit.localToWorld(new THREE.Vector3(0,1.55,
+      side==='front'?3.55:-3.55));
+    camera.position.copy(viewpoint);camera.lookAt(aim);
+    player.x=viewpoint.x;player.z=viewpoint.z;
+    $('menu').classList.add('hidden');
+    return true;
+  };
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
@@ -3379,7 +3404,8 @@ function frame(){
   pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
     speed:pilotChoreography?.walkSpeed||0,
     sprinting:false,crouched:false,aiming:false,alive:true,
-    bracing:pilotChoreography?.brace>.25});
+    bracing:pilotChoreography?.brace>.25,
+    boardingPose:powerStep.phase!=='idle'?pilotChoreography:null});
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);

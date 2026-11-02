@@ -36,9 +36,14 @@ export function powerEntryPose(phase,progress,origin={x:0,z:-2.3,yaw:0}){
     walk=(t>.21&&t<.78);
   }
   // The body root stays on the ground; only individual legs may lift.
-  const step=walk?Math.sin((entering?t-.20:t-.21)*Math.PI*9):0;
+  // Stride phase is based on ground traveled, not elapsed animation time:
+  // easing in/out cannot make the feet pedal while the pilot stands still.
+  const distance=entering?Math.hypot(x-startX,z-startZ):
+    Math.abs(z+.28);
+  const footPhase=distance*Math.PI*2/.84;
+  const step=walk?Math.sin(footPhase):0;
   const brace=entering?smooth(.62,.78,t)*(1-smooth(.82,1,t)):
     smooth(0,.14,t)*(1-smooth(.25,.39,t));
   return {x,y:0,z,yaw,walking:walk,walkSpeed:walk?1.75:0,
-    step,hatch,brace,seated:entering?t>=.82:t<=.21};
+    step,footPhase,distance,hatch,brace,seated:entering?t>=.82:t<=.21};
 }

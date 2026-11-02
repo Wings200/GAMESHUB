@@ -433,7 +433,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
-    reloadStyle=null}){
+    reloadStyle=null,boardingPose=null}){
     const pose=stepCharacterAnimation(animation,dt,{
       speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit,bracing
     });
@@ -442,7 +442,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     const stride=pose.stride,move=pose.move;
     const roundsReload=['iron-revolver','scrap-shotgun','hunting-rifle'].includes(
       reloadStyle||heldWeaponId);
-    root.position.set(x,ground+jump+pose.bob-.32*crouchBlend-
+    root.position.set(x,ground+jump+(boardingPose?0:pose.bob)-.32*crouchBlend-
       (plainSurvivor?.62:0)*deathBlend,z);
     // Keep forward exactly aligned with the authoritative camera/AI yaw.
     root.rotation.y=yaw;
@@ -473,7 +473,25 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       arm.elbow.rotation.x=-.18-.64*aimBlend-
         pose.reload*(i===0?(roundsReload ? .94 : .70):.32);
       arm.elbow.rotation.z=sign*(.18*aimBlend+.28*pose.reload);
+      if(boardingPose){
+        // Frame-local rear-hatch walk. Drive real hip/knee/ankle and
+        // shoulder/elbow joints from distance traveled, with grounded toes.
+        const wave=Math.sin((boardingPose.footPhase||0)+(i===0?0:Math.PI));
+        const motion=boardingPose.walking?1:0;
+        const brace=boardingPose.brace||0;
+        leg.hip.rotation.x=wave*.36*motion+brace*.12;
+        leg.knee.rotation.x=Math.max(0,wave)*.54*motion+brace*.16;
+        leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
+        arm.shoulder.rotation.x=-wave*.22*motion-.68*brace;
+        arm.shoulder.rotation.z=-sign*(.10+.22*brace);
+        arm.elbow.rotation.x=-.19-.72*brace;
+        arm.elbow.rotation.z=sign*.14*brace;
+      }
     }
+    root.userData.boardingJointAngles=boardingPose?legs.map(leg=>({
+      hip:leg.hip.rotation.x,knee:leg.knee.rotation.x,
+      ankle:leg.foot.rotation.x
+    })):null;
     if(heldWeapon){
       const stage=clamp(reloadProgress,0,1);
       const gunPose=reloadPoseForWeapon(heldWeaponId,

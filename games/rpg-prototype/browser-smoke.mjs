@@ -591,6 +591,16 @@ try{
     'An empty arm slot must show exposed frame, not old permanently armored mesh');
   assert.ok(bareArm.moduleSections.leftArm>0,'The fitted left arm must retain its armor');
   assert.equal(bareArm.frameFeatures.rearHatch,true,'Frame must have an actual rear cage');
+  // W17: this is now a joint hierarchy with telescoping rods, not two
+  // rigid mannequin arms attached to two rigid mannequin legs.
+  assert.equal(bareArm.frameFeatures.elbows,2);
+  assert.equal(bareArm.frameFeatures.wrists,2);
+  assert.equal(bareArm.frameFeatures.knees,2);
+  assert.equal(bareArm.frameFeatures.ankles,2);
+  assert.equal(bareArm.frameFeatures.fingerHinges,16);
+  assert.equal(bareArm.frameFeatures.hydraulics,8);
+  assert.equal(bareArm.jointRig.activePistons,8);
+  assert.ok(bareArm.jointRig.arms.every(a=>a.fingers===4));
   assert.ok(bareArm.frameFeatures.torsoRibs>=4,'The torso needs a continuous mechanical ribcage');
   assert.ok(bareArm.frameFeatures.armLinks>=18,
     'Both skeletal arms must have elbow-to-wrist connections independent of armor');
@@ -673,6 +683,16 @@ try{
     'Pilot must FACE INTO the chassis, never moonwalk backwards');
   assert.equal(entryPose.pilotFloorHeight,0,
     'Power-armor boarding must keep both feet on the ground');
+  assert.ok(entryPose.jointRig.arms.every(a=>a.elbow<-.20&&a.wrist>.15),
+    'Hatch approach must flex both real elbows and wrist joints');
+  assert.ok(entryPose.jointRig.legs.every(a=>a.knee>.025),
+    'Frame should absorb entry weight using real articulated knees');
+  assert.equal(entryPose.jointRig.activePistons,8,
+    'All eight hydraulic shafts must follow their segment joints');
+  assert.ok(entryPose.pilotStrideDistance>0,
+    'Pilot step cycle must track distance traveled');
+  assert.equal(entryPose.pilotLegJoints?.length,2,
+    'Actual survivor knees and ankles must animate during boarding');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
     null,{timeout:15000});
@@ -768,6 +788,14 @@ try{
   assert.ok(reloadChecks['hunting-rifle'].boltOffset>-.03);
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
+  // Temporary image-based QA: see the actual 3D chassis, not just source
+  // counts or pose values. JPEG keeps Action logs small.
+  for(const side of ['front','rear']){
+    await page.evaluate(side=>window.__rpgSmokeRigPreview(side),side);
+    await page.waitForTimeout(450);
+    console.log('W17_FRAME_'+side.toUpperCase()+'='+
+      (await page.screenshot({type:'jpeg',quality:28})).toString('base64'));
+  }
   console.log(JSON.stringify({
     smoke:'PASS',aiMoved:true,scoutHealthBefore:initialHp,
     scoutHealthAfter:scoutHealth,enemies:result.enemies.length,

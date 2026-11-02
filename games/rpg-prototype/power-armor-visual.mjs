@@ -223,6 +223,46 @@ export function buildPowerArmorVisual(scene,position,state){
     forged(root,.27,.26,.14,shaded,side*.56,1.16,.18,.06);
   }
 
+  // Cast-metal rib cage with open spaces for the pilot, reinforced sternum,
+  // and a dorsal shock spine. None of this disappears with an armor module.
+  for(const side of [-1,1]){
+    for(let i=0;i<4;i++){
+      const y=1.62+i*.17;
+      hose(root,[[side*.18,y+.09,.24],[side*.41,y+.02,.24],
+        [side*.56,y-.035,.045],[side*.48,y+.07,-.31]],.037,edge);
+      const tether=rod(root,[side*.21,y+.08,.20],
+        [side*.41,y+.015,.14],.018,brass);
+      frameFeatures.torsoRibs+=2;
+    }
+    const shoulderLoop=mesh(root,new THREE.TorusGeometry(.26,.048,8,19),
+      steel,side*.52,2.35,-.19);
+    shoulderLoop.rotation.y=Math.PI/2;
+    forged(root,.24,.27,.18,joint,side*.46,1.46,-.37,.05);
+    for(const yy of [1.61,1.87,2.13])
+      ball(root,.045,orange,side*.45,yy,-.39);
+  }
+  for(let i=0;i<6;i++){
+    const y=1.46+i*.17;
+    const vertebra=forged(root,.23,.095,.17,i%2?steel:shaded,
+      0,y,-.39,.032);
+    vertebra.rotation.x=.06;
+    box(root,.16,.036,.09,brass,0,y,-.495);
+  }
+  const waistDial=cyl(root,.21,.21,.11,joint,0,1.37,.29,18);
+  waistDial.rotation.x=Math.PI/2;
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    ball(root,.022,brass,Math.sin(a)*.16,1.37+Math.cos(a)*.16,.36);
+  }
+  // A thin pilot seat and retaining struts are inside the open cage;
+  // the rear half remains visibly unobstructed for boarding.
+  const cradle=forged(root,.36,.37,.12,joint,0,1.49,.025,.09);
+  cradle.rotation.x=.12;
+  for(const side of [-1,1]){
+    rod(root,[side*.16,1.22,-.22],[side*.33,1.52,-.26],.048,steel);
+    forged(root,.16,.12,.23,brass,side*.24,1.19,-.13,.035);
+  }
+
   // Chest armor remains mounted at the FRONT while the back opens for entry.
   const chestMounts={left:makeGroup(root,-.68,1.93,.33),
     right:makeGroup(root,.68,1.93,.33)};
@@ -280,82 +320,177 @@ export function buildPowerArmorVisual(scene,position,state){
     rod(root,[side*.48,2.37,-.35],[side*.83,2.30,-.12],.08,edge);
   }
 
+  // True servo skeleton. Armor plates are attached to the segment that
+  // moves; neither an elbow nor a knee is painted onto a rigid limb anymore.
   const armPivots=[],legPivots=[];
-  // Shoulder yokes extend from the chest cage into the upper arm pivots.
+  const rig={arms:[],legs:[],actuators:[]};
+  const upAxis=new THREE.Vector3(0,1,0);
+  function telescopingActuator(aGroup,aPoint,bGroup,bPoint,side,thick=.055){
+    const jacket=cyl(root,thick,thick,1,shaded,0,0,0,12);
+    const shaft=cyl(root,thick*.56,thick*.56,1,brass,0,0,0,12);
+    const capA=ball(aGroup,thick*1.35,orange,...aPoint);
+    const capB=ball(bGroup,thick*1.25,brass,...bPoint);
+    // Geometry is rooted in the frame and spans the two articulated segments
+    // after their matrices update. The brass piston actually extends.
+    const setSpan=(m,from,to)=>{
+      const vector=to.clone().sub(from),length=vector.length();
+      m.position.copy(from).add(to).multiplyScalar(.5);
+      m.quaternion.setFromUnitVectors(upAxis,vector.multiplyScalar(1/Math.max(length,.0001)));
+      m.scale.y=Math.max(length,.001);
+    };
+    const actuator={jacket,shaft,capA,capB,update(){
+      const a=root.worldToLocal(aGroup.localToWorld(new THREE.Vector3(...aPoint)));
+      const b=root.worldToLocal(bGroup.localToWorld(new THREE.Vector3(...bPoint)));
+      const d=b.clone().sub(a);
+      setSpan(jacket,a,a.clone().addScaledVector(d,.62));
+      setSpan(shaft,a.clone().addScaledVector(d,.42),b);
+    }};
+    rig.actuators.push(actuator);frameFeatures.hydraulics++;
+    return actuator;
+  }
+  frameFeatures.elbows=2;frameFeatures.wrists=2;
+  frameFeatures.knees=2;frameFeatures.ankles=2;
+  frameFeatures.fingerHinges=16;frameFeatures.hydraulics=0;
+  // Stiff shoulder yokes carry the load into the movable upper arms.
   for(const side of [-1,1]){
-    rod(root,[side*.49,2.37,-.22],[side*.88,2.33,-.13],.09,edge);
-    rod(root,[side*.54,2.25,-.35],[side*.84,2.20,-.27],.065,steel);
-    cyl(root,.15,.15,.12,orange,side*.84,2.25,-.12).rotation.z=Math.PI/2;
+    rod(root,[side*.45,2.39,-.20],[side*.84,2.30,-.13],.095,edge);
+    rod(root,[side*.50,2.24,-.39],[side*.87,2.20,-.28],.066,steel);
+    const servo=cyl(root,.18,.18,.14,orange,side*.84,2.26,-.13,16);
+    servo.rotation.z=Math.PI/2;
+    const bearing=cyl(root,.12,.12,.17,joint,side*.84,2.26,-.13,16);
+    bearing.rotation.z=Math.PI/2;
+    for(let i=0;i<6;i++){
+      const theta=i*Math.PI/3;
+      ball(root,.023,brass,side*.91,2.26+Math.cos(theta)*.11,
+        -.13+Math.sin(theta)*.11);
+    }
   }
   for(const side of [-1,1]){
     const armName=side<0?'leftArm':'rightArm';
     const legName=side<0?'leftLeg':'rightLeg';
-    // Broad but rounded shoulder cups with segmented biceps, black rubber
-    // elbow gap, forged forearm guards, and articulated mechanical hands.
-    const arm=makeGroup(root,side*.86,2.26,-.11);armPivots.push(arm);
-    ball(arm,.25,joint);
-    cyl(arm,.16,.16,.26,edge,0,0,0).rotation.z=Math.PI/2;
-    // Even an unarmored arm is a continuous mechanical shoulder-to-finger
-    // assembly; its wrist and palm cannot float below the elbow anymore.
-    rod(arm,[side*.04,-.05,-.20],[side*.05,-.81,-.22],.067,steel);
-    rod(arm,[side*.21,-.09,.02],[side*.20,-.80,.04],.047,brass);
-    const shoulderRam=cyl(arm,.10,.10,.31,orange,side*.22,-.40,-.04);
-    shoulderRam.rotation.z=side*.15;
-    frameFeatures.armLinks+=3;
-    modulePart(armName,ellipsoid(arm,.43,.30,.38,steel,side*.07,-.09,.0));
-    plate(armName,arm,.69,.33,.37,side*.08,-.13,.27,.13);
-    modulePart(armName,forged(arm,.33,.52,.33,shaded,side*.07,-.53,.04,.09));
-    rod(arm,[side*.20,-.26,-.12],[side*.18,-.79,-.12],.055,edge);
-    rod(arm,[side*.07,-.29,.23],[side*.07,-.79,.22],.043,brass);
-    ellipsoid(arm,.20,.21,.20,joint,side*.08,-.85,.04);
-    cyl(arm,.18,.18,.14,orange,side*.08,-.84,.04).rotation.z=Math.PI/2;
-    rod(arm,[side*.03,-.88,-.13],[side*.03,-1.34,-.13],.073,edge);
-    rod(arm,[side*.22,-.86,.11],[side*.19,-1.36,.12],.063,steel);
-    rod(arm,[side*.08,-.92,.23],[side*.08,-1.29,.24],.039,brass);
-    cyl(arm,.13,.13,.10,joint,side*.08,-1.38,.07,12);
-    forged(arm,.39,.19,.28,steel,side*.08,-1.43,.13,.055);
-    forged(arm,.17,.27,.18,shaded,side*.08+side*.24,-1.45,.18,.04);
-    frameFeatures.armLinks+=6;
-    modulePart(armName,forged(arm,.42,.52,.46,steel,side*.08,-1.10,.08,.10));
-    plate(armName,arm,.43,.48,.15,side*.08,-1.08,.32,.10);
-    for(let i=-1;i<=1;i++){
-      const finger=forged(arm,.106,.23,.18,steel,
-        side*.08+i*.112,-1.46,.20,.038);
-      finger.rotation.x=.10;
-      box(arm,.075,.032,.155,joint,
-        side*.08+i*.112,-1.57,.22);
+
+    // SHOULDER -> ELBOW -> WRIST -> PALM -> PHALANGES.
+    const shoulder=makeGroup(root,side*.86,2.26,-.11);
+    armPivots.push(shoulder);
+    ball(shoulder,.235,joint);
+    const shoulderHub=cyl(shoulder,.18,.18,.19,edge,0,0,0,16);
+    shoulderHub.rotation.z=Math.PI/2;
+    for(const sx of [-.18,.18]){
+      rod(shoulder,[sx,-.10,-.14],[sx,-.59,-.12],.056,steel);
+      rod(shoulder,[sx,-.09,.14],[sx,-.55,.12],.038,brass);
+      frameFeatures.armLinks+=2;
     }
-    // Legs: visible hip pistons, armored quads, recessed knee pivots,
-    // shin shells and broad planted boots.
-    const leg=makeGroup(root,side*.41,1.27,-.16);legPivots.push(leg);
-    ball(leg,.23,joint);
-    cyl(leg,.20,.20,.16,orange,0,-.08,-.02).rotation.z=Math.PI/2;
-    rod(leg,[-.17,-.12,-.14],[-.17,-.69,-.13],.071,steel);
-    rod(leg,[.17,-.12,-.14],[.17,-.69,-.13],.071,steel);
-    rod(leg,[0,-.15,.10],[0,-.64,.12],.057,brass);
-    frameFeatures.legLinks+=3;
-    modulePart(legName,ellipsoid(leg,.26,.37,.27,shaded,0,-.31,.04));
-    plate(legName,leg,.45,.49,.25,0,-.33,.285,.105);
-    rod(leg,[side*.23,-.11,-.10],[side*.22,-.70,-.10],.051,edge);
-    rod(leg,[-side*.17,-.10,.21],[-side*.17,-.67,.21],.043,brass);
-    ellipsoid(leg,.21,.18,.21,joint,0,-.71,.06);
-    cyl(leg,.16,.16,.20,orange,0,-.71,.24).rotation.x=Math.PI/2;
-    for(const x of [-.19,.19]){
-      rod(leg,[x,-.77,-.12],[x,-1.28,-.10],.069,steel);
-      rod(leg,[x,-.78,.17],[x,-1.27,.18],.052,edge);
+    forged(shoulder,.23,.41,.17,shaded,side*.22,-.34,-.08,.065);
+    modulePart(armName,ellipsoid(shoulder,.42,.30,.37,steel,side*.05,-.12,0));
+    plate(armName,shoulder,.66,.35,.34,side*.07,-.15,.29,.13);
+    modulePart(armName,forged(shoulder,.28,.38,.28,shaded,side*.04,-.39,.11,.08));
+
+    const elbow=makeGroup(shoulder,side*.065,-.68,.025);
+    ball(elbow,.205,joint);
+    const elbowDrum=cyl(elbow,.164,.164,.27,orange,0,0,0,16);
+    elbowDrum.rotation.z=Math.PI/2;
+    for(const x of [-.18,.18]){
+      const pin=cyl(elbow,.078,.078,.033,brass,x,0,0,12);
+      pin.rotation.z=Math.PI/2;
+    }
+    // Distinct forearm segment with a protective lattice but no glued elbow.
+    for(const x of [-.15,.15]){
+      rod(elbow,[x,-.07,-.13],[x*.88,-.48,-.11],.065,edge);
+      rod(elbow,[x,-.07,.15],[x*.90,-.46,.17],.043,steel);
+      frameFeatures.armLinks+=2;
+    }
+    const forearmRam=forged(elbow,.28,.42,.22,joint,0,-.27,.035,.045);
+    forearmRam.rotation.z=side*.025;
+    modulePart(armName,forged(elbow,.48,.48,.36,steel,0,-.25,.09,.12));
+    plate(armName,elbow,.46,.44,.18,0,-.25,.32,.10);
+    modulePart(armName,forged(elbow,.23,.39,.18,edge,side*.22,-.23,.05,.05));
+    const wrist=makeGroup(elbow,0,-.55,.015);
+    ball(wrist,.15,joint);
+    const wristCollar=cyl(wrist,.15,.15,.18,brass,0,-.035,0,14);
+    wristCollar.rotation.z=Math.PI/2;
+    forged(wrist,.34,.12,.31,steel,0,-.09,.07,.035);
+
+    const palm=makeGroup(wrist,0,-.12,.08);
+    forged(palm,.42,.22,.25,steel,0,-.09,.025,.075);
+    forged(palm,.33,.12,.09,shaded,0,-.15,.17,.035);
+    const fingerJoints=[];
+    for(let i=0;i<4;i++){
+      const x=(i-1.5)*.106;
+      const digit=makeGroup(palm,x,-.19,.10);
+      cyl(digit,.039,.045,.18,edge,0,-.09,0,8);
+      ball(digit,.048,brass,0,-.17,0);
+      const tip=makeGroup(digit,0,-.18,0);
+      forged(tip,.092,.15,.13,steel,0,-.07,.015,.023);
+      fingerJoints.push({digit,tip});
+    }
+    const thumb=makeGroup(palm,side*.255,-.085,.13);
+    ball(thumb,.065,orange);
+    rod(thumb,[0,0,0],[side*.06,-.18,.07],.046,edge);
+    const thumbTip=makeGroup(thumb,side*.06,-.18,.07);
+    forged(thumbTip,.105,.13,.13,steel,0,-.055,.015,.025);
+    frameFeatures.armLinks+=8;
+    rig.arms.push({side,shoulder,elbow,wrist,palm,fingerJoints,thumb,thumbTip});
+
+    // HIP -> KNEE -> ANKLE -> TARSUS -> TOES. The boot has a genuine
+    // ankle pivot, so the foot can stay flat when the knee compresses.
+    const hip=makeGroup(root,side*.43,1.30,-.11);
+    legPivots.push(hip);
+    ball(hip,.25,joint);
+    const hipHub=cyl(hip,.21,.21,.20,orange,0,-.05,-.02,16);
+    hipHub.rotation.z=Math.PI/2;
+    for(const x of [-.18,.18]){
+      rod(hip,[x,-.11,-.13],[x,-.57,-.12],.078,steel);
+      rod(hip,[x,-.08,.13],[x,-.56,.16],.045,brass);
       frameFeatures.legLinks+=2;
     }
-    forged(leg,.32,.12,.29,edge,0,-1.25,.06,.038);
-    modulePart(legName,ellipsoid(leg,.29,.35,.31,steel,0,-1.02,.045));
-    plate(legName,leg,.49,.56,.19,0,-1.03,.32,.115);
-    for(const x of [-.20,.20]){
-      rod(leg,[x,-.79,-.08],[x,-1.25,-.07],.047,edge);
+    modulePart(legName,ellipsoid(hip,.28,.36,.29,shaded,0,-.28,.055));
+    plate(legName,hip,.47,.47,.26,0,-.28,.30,.105);
+    modulePart(legName,forged(hip,.21,.40,.24,steel,side*.22,-.30,-.035,.065));
+
+    const knee=makeGroup(hip,0,-.61,.035);
+    ball(knee,.215,joint);
+    const kneeDrum=cyl(knee,.168,.168,.28,orange,0,0,0,16);
+    kneeDrum.rotation.z=Math.PI/2;
+    const kneeGuard=forged(knee,.39,.20,.22,edge,0,.015,.23,.07);
+    kneeGuard.rotation.x=-.18;
+    for(const x of [-.17,.17]){
+      rod(knee,[x,-.07,-.125],[x*.89,-.39,-.11],.072,steel);
+      rod(knee,[x,-.07,.135],[x*.85,-.38,.16],.044,brass);
+      frameFeatures.legLinks+=2;
     }
-    const boot=forged(leg,.64,.24,.78,shaded,0,-1.28,.21,.095);
-    cyl(leg,.13,.13,.13,orange,0,-1.29,-.17).rotation.x=Math.PI/2;
-    forged(leg,.41,.14,.36,steel,0,-1.35,.32,.06);
-    modulePart(legName,forged(leg,.57,.095,.20,steel,0,-1.37,.50,.035));
-    for(const x of [-.20,0,.20])modulePart(legName,box(leg,.095,.035,.13,edge,x,-1.40,.56));
+    modulePart(legName,ellipsoid(knee,.285,.30,.285,steel,0,-.25,.02));
+    plate(legName,knee,.50,.46,.19,0,-.235,.32,.095);
+    modulePart(legName,forged(knee,.24,.31,.25,shaded,side*.20,-.24,-.035,.06));
+
+    const ankle=makeGroup(knee,0,-.44,-.02);
+    ball(ankle,.17,joint);
+    const ankleAxle=cyl(ankle,.145,.145,.24,brass,0,0,0,14);
+    ankleAxle.rotation.z=Math.PI/2;
+    const foot=makeGroup(ankle,0,-.02,.03);
+    // Ground contact: the outsole sits at frame-local y approximately zero.
+    const sole=forged(foot,.67,.22,.84,joint,0,-.12,.25,.10);
+    forged(foot,.58,.20,.60,steel,0,-.08,.22,.09);
+    forged(foot,.38,.13,.25,edge,0,-.07,-.035,.05);
+    modulePart(legName,forged(foot,.57,.095,.29,steel,0,-.01,.52,.035));
+    const toeHinge=makeGroup(foot,0,-.125,.52);
+    forged(toeHinge,.56,.10,.31,shaded,0,0,.105,.05);
+    for(const x of [-.21,0,.21]){
+      forged(toeHinge,.125,.09,.24,edge,x,.045,.13,.03);
+      ball(toeHinge,.031,brass,x,.075,-.03);
+    }
+    for(const x of [-.23,.23]){
+      rod(foot,[x,-.05,-.02],[x,-.15,.31],.036,brass);
+      frameFeatures.legLinks++;
+    }
+    rig.legs.push({side,hip,knee,ankle,foot,toeHinge});
+    telescopingActuator(shoulder,[side*.22,-.19,-.13],elbow,
+      [side*.16,-.20,-.16],side,.052);
+    telescopingActuator(elbow,[side*.13,-.12,.18],wrist,
+      [side*.10,.02,.16],side,.039);
+    telescopingActuator(hip,[side*.23,-.13,-.14],knee,
+      [side*.22,-.10,-.15],side,.067);
+    telescopingActuator(knee,[side*.19,-.11,.17],ankle,
+      [side*.16,.025,.15],side,.047);
   }
   // Stencil markings on the front face of the machine.
   const badgeCanvas=document.createElement('canvas');badgeCanvas.width=256;badgeCanvas.height=96;
@@ -440,31 +575,62 @@ export function buildPowerArmorVisual(scene,position,state){
     const transitioning=phase==='entering'||phase==='exiting';
     const pose=powerEntryPose(phase,progress,origin||undefined);
     const open=pose.hatch;
-    doors.left.rotation.y=open*1.48;
-    doors.right.rotation.y=-open*1.48;
-    helmetPivot.rotation.x=-open*.12;
-    armPivots[0].rotation.z=-open*.16;
-    armPivots[1].rotation.z=open*.16;
-    for(const leg of legPivots)leg.rotation.x=Math.sin(time*1.2)*.004;
-    warningLight.intensity=.45+open*.9;
+    const load=pose.brace;
+    doors.left.rotation.y=open*1.55;
+    doors.right.rotation.y=-open*1.55;
+    helmetPivot.rotation.x=-open*.13+load*.05;
+    for(const segment of rig.arms){
+      const {side,shoulder,elbow,wrist,palm,fingerJoints,thumb,thumbTip}=segment;
+      // Servo shoulders unlock and raise the elbow assemblies, then the
+      // wrists and hand digits uncurl to receive the entering pilot.
+      shoulder.rotation.z=side*(.026+open*.23);
+      shoulder.rotation.x=-.045*open+.035*load;
+      elbow.rotation.x=-.12-.36*open+.18*load;
+      elbow.rotation.z=side*(.025+.045*open);
+      wrist.rotation.x=.11+.19*open-.08*load;
+      wrist.rotation.z=-side*.045*load;
+      palm.rotation.y=side*.045*open;
+      fingerJoints.forEach(({digit,tip},i)=>{
+        digit.rotation.x=.17+open*.21+load*.08+i*.012;
+        tip.rotation.x=.28+open*.18-load*.09;
+      });
+      thumb.rotation.z=-side*(.22+open*.22);
+      thumbTip.rotation.x=.12+open*.20;
+    }
+    for(const segment of rig.legs){
+      const {side,hip,knee,ankle,foot,toeHinge}=segment;
+      const servoHum=Math.sin(time*2.15+side)*.0025;
+      hip.rotation.x=.006+servoHum+open*.027-load*.015;
+      hip.rotation.z=side*(.008+open*.012);
+      knee.rotation.x=.022+open*.085+load*.018;
+      ankle.rotation.x=-.65*(hip.rotation.x+knee.rotation.x);
+      ankle.rotation.z=-hip.rotation.z*.85;
+      toeHinge.rotation.x=Math.max(0,load*.07-open*.025);
+      foot.rotation.y=side*.008*open;
+    }
+    // Each exposed piston is re-solved against both actual joint transforms.
+    // No cylinder remains hovering when an elbow or knee bends.
+    root.updateMatrixWorld(true);
+    for(const actuator of rig.actuators)actuator.update();
+    warningLight.intensity=.44+open*.85+load*.4;
     pilot.visible=transitioning;
     pilot.userData.entryPose=pose;
     if(transitioning){
-      // Survivor faces INTO the suit when entering, and turns around
-      // before walking OUT. No reverse-facing moonwalk or body levitation.
+      // The pilot uses the survivor's own hip/knee/elbow animation rig.
+      // Its parent stays at floor height throughout the whole operation.
       pilot.position.set(pose.x,pose.y,pose.z);
       pilot.rotation.y=pose.yaw;
-      pilotBody.rotation.x=-.12*pose.brace;
-      pilotHead.rotation.x=.08*pose.brace;
+      pilotBody.rotation.x=-.12*load;
+      pilotHead.rotation.x=.08*load;
       pilotLegs[0].rotation.x=.40*pose.step;
       pilotLegs[1].rotation.x=-.40*pose.step;
-      pilotArms[0].rotation.x=-.8*pose.brace+.28*pose.step;
-      pilotArms[1].rotation.x=-.8*pose.brace-.28*pose.step;
-      pilotArms[0].rotation.z=-.22*pose.brace;
-      pilotArms[1].rotation.z=.22*pose.brace;
+      pilotArms[0].rotation.x=-.8*load+.28*pose.step;
+      pilotArms[1].rotation.x=-.8*load-.28*pose.step;
+      pilotArms[0].rotation.z=-.22*load;
+      pilotArms[1].rotation.z=.22*load;
     }
   }
-  updatePlates(state);updateCore(state);
+  updatePlates(state);updateCore(state);animate('idle',0,0);
   // Measure in suit-local orientation, not the bay's -90-degree yaw.
   const originalYaw=root.rotation.y;
   const pilotWasVisible=pilot.visible;
@@ -472,7 +638,7 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,updatePlates,updateCore,animate,
+  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,rig,updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 

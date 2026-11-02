@@ -614,12 +614,12 @@ test('W11.0 has one exposed modular frame, tap-E service, and hold-E entry',()=>
 test('W12.0 bare power frame is mechanically connected and entered from behind',()=>{
   for(const phrase of [
     'const frameFeatures={torsoRibs:0,armLinks:0,legLinks:0,rearHatch:true}',
-    'frameFeatures.armLinks+=6','frameFeatures.legLinks+=2',
+    'frameFeatures.armLinks+=2','frameFeatures.legLinks+=2',
     'const neckRing=mesh(root,new THREE.TorusGeometry(',
     'const chestMounts={left:makeGroup(root,',
     'const doors={left:makeGroup(root,-.50,1.89,-.43)',
     'pilot.position.set(pose.x,pose.y,pose.z)',
-    'doors.left.rotation.y=open*1.48'])
+    'doors.left.rotation.y=open*1.55'])
     assert.ok(armorVisual.includes(phrase),phrase);
   assert.match(source,/function nearRearHatch\(\)/);
   assert.match(source,/if\(!powerArmorState\.occupied&&!nearRearHatch\(\)\)/);
@@ -735,4 +735,23 @@ test('W16.0 reload has real six-gun actions and synced NPC hands',()=>{
   assert.match(npcAvatar,/npcBolt\.position\.z=/);
   assert.match(npcAvatar,/drum\.position\.y=/);
   assert.match(playerAvatar,/reloadPoseForWeapon\(heldWeaponId/);
+});
+
+test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
+  for(const phrase of [
+    'const elbow=makeGroup(shoulder,',
+    'const wrist=makeGroup(elbow,',
+    'const knee=makeGroup(hip,',
+    'const ankle=makeGroup(knee,',
+    'const toeHinge=makeGroup(foot,',
+    'const fingerJoints=[]',
+    'function telescopingActuator(',
+    'for(const actuator of rig.actuators)actuator.update()'])
+    assert.ok(armorVisual.includes(phrase),phrase);
+  assert.match(armorVisual,/frameFeatures\.elbows=2/);
+  assert.match(armorVisual,/frameFeatures\.knees=2/);
+  assert.match(armorVisual,/frameFeatures\.hydraulics\+\+/);
+  assert.match(playerAvatar,/if\(boardingPose\)\{/);
+  assert.match(powerEntryAnimation,/const footPhase=distance\*Math\.PI\*2\/\.84/);
+  assert.match(source,/boardingPose:powerStep\.phase!=='idle'/);
 });
