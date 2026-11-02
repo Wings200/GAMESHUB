@@ -347,7 +347,8 @@ test('W06.0 loot modal, game pause and persistence have a browser gameplay check
   assert.match(page,/main\.js\?v=W18\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
-  assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen)$('menu').classList.remove('hidden')"));
+  assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
+    'Pointer unlock keeps the pause menu hidden while quest overlays are open');
   assert.match(source,/function closeLootOverlay\(\)/);
   assert.match(source,/if\(lootOverlayFromField\)\{/);
   assert.match(source,/function discardEmptyLootBags\(\)/);
@@ -762,4 +763,7 @@ test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   assert.ok(page.includes('main.js?v=W18.0'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
+  const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
+  const suitHold=source.indexOf("beginPowerHold();return;",source.indexOf("if(e.code==='KeyE'"));
+  assert.ok(contactFirst>0&&suitHold>contactFirst,'Quest contacts work inside power armor');
 });

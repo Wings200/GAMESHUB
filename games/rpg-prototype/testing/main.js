@@ -3454,12 +3454,14 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     e.preventDefault();
+    // Physical contacts remain usable while the player is wearing power armor.
+    // Only start a frame entry/exit hold when no terminal is within reach.
+    const contact=nearCampaignNode();
+    if(contact){openCampaignDialogue(contact);return;}
     if(powerArmorState.phase==='idle'&&
        (powerArmorState.occupied||nearPoweredSuit())){
       beginPowerHold();return;
     }
-    const contact=nearCampaignNode();
-    if(contact){openCampaignDialogue(contact);return;}
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
     else if(benchWithinReach())beginWorkbench();
@@ -3745,7 +3747,9 @@ function frame(){
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||!promptAvailable);
-  if(frameInReach){
+  if(questContact){
+    $('lootPrompt').textContent='E · TALK / USE '+questContact.name+' · Q JOURNAL';
+  }else if(frameInReach){
     $('lootPrompt').textContent=powerArmorState.occupied?
       'HOLD E · EXIT POWER ARMOR':
       nearRearHatch()?'TAP E · CONFIGURE FRAME     HOLD E · ENTER FROM REAR':
@@ -3756,9 +3760,7 @@ function frame(){
       $('lootPrompt').textContent='HOLD E · '+pct+'% TO '+
         (powerArmorState.occupied?'EXIT':'ENTER');
     }
-  }else if(questContact)$('lootPrompt').textContent='E · TALK / USE '+
-    questContact.name+' · Q JOURNAL';
-  else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
+  }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
     nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
