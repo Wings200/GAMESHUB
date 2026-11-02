@@ -84,6 +84,26 @@ try{
   assert.deepEqual(state.playerVisual.visibleClothing,{head:false,back:false});
   assert.equal(Object.values(state.playerVisual.armorPieces).reduce(
     (a,b)=>a+b,0),0);
+  // W09.14 browser integration: real NPC gun damage and armor protection.
+  const balance=await page.evaluate(()=>{
+    const scenarios={};
+    for(const id of ['compact-smg','scout-carbine','pipe-rifle',
+      'raider-auto','heavy-rifle','heavy-lmg']){
+      scenarios[id]={
+        naked:window.__rpgSmokeIncomingDamage(id,'none',false),
+        regular:window.__rpgSmokeIncomingDamage(id,'aegis',false),
+        powered:window.__rpgSmokeIncomingDamage(id,'aegis',true)
+      };
+    }
+    return scenarios;
+  });
+  for(const [id,b] of Object.entries(balance)){
+    assert.ok(b.naked.damage>=8,id+' unarmored damage');
+    assert.ok(b.regular.damage>=2.5,id+' top armor must not make hits harmless');
+    assert.ok(b.regular.damage<b.naked.damage);
+    assert.ok(b.powered.damage<b.regular.damage);
+    assert.ok(b.powered.combinedReduction>=.85);
+  }
   // W09.6: all three on-screen NPCs are our own pixel-textured models.
   // Their six cosmetic armor slots must track the authoritative loadout.
   for(const enemy of state.enemies){
