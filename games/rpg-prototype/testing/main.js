@@ -26,6 +26,7 @@ import {createSquadIntel,clearSquadIntel,reportSquadContact,
 import {createSquadDirector,resetSquadDirector,planSquadOrders} from '../enemy-squad-director.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
+import {calculateIncomingShot} from '../player-ballistics.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
@@ -1094,9 +1095,9 @@ function refreshInventoryUI(){
   $('inventoryClothing').textContent='HAT: '+(wear.head==='none'?'NONE':'FIELD CAP')+
     ' · BACKPACK: '+(wear.back==='none'?'NONE':'CANVAS FIELD PACK');
   const ordinary=playerArmorReduction(backpack,'chest');
-  const powered=powerArmorProtection(powerArmorState,'chest',ordinary.reduction);
+  const powered=calculateIncomingShot(100,ordinary.points,powerArmorState,'chest');
   $('inventoryArmor').textContent='CHEST '+ordinary.points+' AP · '+
-    Math.round(powered.combinedReduction*100)+'% DAMAGE BLOCK'+
+    Math.round(powered.combinedReduction*100)+'% BALLISTIC BLOCK'+
     (powerArmorState.occupied?' · POWER ARMOR ACTIVE':'');
   const nav=$('inventoryCategories');nav.replaceChildren();
   const areas=INVENTORY_CATEGORIES.map(category=>({
@@ -1527,9 +1528,9 @@ function updateEnemies(dt){
                 'rightArm','leftLeg','rightLeg'];
               const zone=bodySlots[Math.floor(Math.random()*bodySlots.length)];
               const armor=playerArmorReduction(backpack,zone);
-              const powered=powerArmorProtection(powerArmorState,zone,armor.reduction);
-              const result=hitPlayer(playerHealth,
-                attack.damage*(1-powered.combinedReduction));
+              const incoming=calculateIncomingShot(attack.damage,armor.points,
+                powerArmorState,zone);
+              const result=hitPlayer(playerHealth,incoming.damage);
               if(result.applied){
                 if(!playerHealth.alive)keys.clear();
                 refreshPlayerHealth();playerHitFlash=.48;
@@ -2376,6 +2377,17 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
   };
   window.__rpgSmokeShotBlock=(from,to)=>firstSolidHit(from,to,bounds);
+  window.__rpgSmokeIncomingDamage=(weaponId='heavy-rifle',armorTier='aegis',
+    powered=false)=>{
+    const gun=getEnemyWeapon(weaponId);
+    if(!gun)return null;
+    const slot='chest';
+    const armor=getArmorPiece(slot,armorTier==='none'?'none':armorTier+'-'+slot);
+    const suit=createPowerArmorState();
+    suit.occupied=!!powered;
+    for(const s of POWER_ARMOR_SLOTS)suit.plates[s]='citadel';
+    return calculateIncomingShot(gun.damage,armor.points,suit,slot);
+  };
   // W09.10 browser regression: changing the position of a hidden player
   // must not steer or freeze an alerted bot on its way to a last sighting.
   window.__rpgSmokeOccludedPursuit=()=>{

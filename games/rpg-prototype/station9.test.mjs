@@ -76,7 +76,7 @@ test('Health and enemies have real connected HUD elements',()=>{
     assert.ok(page.includes('id="'+id+'"'),'Missing HUD element '+id);
     if(id!=='playerHealthHud')assert.ok(source.includes("'"+id+"'"),'Missing scene wiring '+id);
   }
-  assert.ok(source.includes('attack.damage*(1-powered.combinedReduction)'));
+  assert.ok(source.includes('calculateIncomingShot(attack.damage,armor.points,'));
   assert.match(source,/resetPlayerHealth\(playerHealth\)/);
   assert.match(source,/canEnemyFire\(enemy\.brain,player,bounds,attack\.range\)/);
 });
@@ -86,7 +86,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -334,13 +334,13 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
   assert.match(source,/dropAmount\.max=String\(entry\.quantity\)/);
   assert.match(source,/Number\.isSafeInteger\(amount\)/);
   assert.match(source,/playerArmorReduction\(backpack,'chest'\)/);
-  assert.ok(source.includes('attack.damage*(1-powered.combinedReduction)'));
+  assert.ok(source.includes('calculateIncomingShot(attack.damage,armor.points,'));
   assert.match(source,/if\(e\.code==='KeyE'&&!e\.repeat&&controls\.isLocked\)/);
   assert.match(source,/if\(e\.code==='KeyI'&&!e\.repeat\)/);
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden')"));
@@ -381,7 +381,7 @@ test('W08.3 real powered suit has six removable meshes and timed entry controls'
   for(const phrase of ['buildPowerArmorVisual(scene,powerArmorBay,powerArmorState)',
     'buildPowerArmorCockpit(camera)','poweredSuit.updatePlates(powerArmorState)',
     'beginPowerArmorTransition(powerArmorState)','stepPowerArmor(powerArmorState,dt)',
-    'powerArmorProtection(powerArmorState,zone,armor.reduction)',
+    'calculateIncomingShot(attack.damage,armor.points,',
     "e.code==='KeyP'","e.code==='KeyO'",
     'window.__rpgSmokePowerVisual='])
     assert.ok(source.includes(phrase),phrase);
@@ -409,7 +409,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -461,7 +461,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -474,7 +474,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -547,14 +547,22 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W09\.13/);
+  assert.match(page,/main\.js\?v=W09\.14/);
 });
 
-test('W09.13 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
+test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
   assert.match(source,/mesh\.visible=false;mesh\.castShadow=false;mesh\.receiveShadow=false/);
   assert.match(source,/mesh\.material\.visible=false;mesh\.material\.colorWrite=false/);
   assert.match(source,/mesh\.userData\.equipped=piece\.points>0/);
   assert.match(source,/e\.meshes\.filter\(m=>m\.visible\|\|/);
   assert.match(source,/avatarRoots:e\.root\.children\.filter/);
   assert.match(source,/mesh\.userData\.equipped!==false&&/);
+});
+
+test('W09.14 NPC damage uses the real gun and wearable armor points',()=>{
+  assert.match(source,/import \{calculateIncomingShot\} from '\.\.\/player-ballistics\.mjs'/);
+  assert.match(source,/calculateIncomingShot\(attack\.damage,armor\.points,/);
+  assert.match(source,/hitPlayer\(playerHealth,incoming\.damage\)/);
+  assert.match(source,/window\.__rpgSmokeIncomingDamage=/);
+  assert.match(source,/100,ordinary\.points,powerArmorState,'chest'/);
 });
