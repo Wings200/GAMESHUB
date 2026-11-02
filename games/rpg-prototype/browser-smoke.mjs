@@ -61,6 +61,10 @@ try{
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
   assert.equal(state.enemies.length,3);
+  assert.equal(state.worldArt.shacks,7,'W19 must instantiate scrap-built houses');
+  assert.equal(state.worldArt.wrecks,3,'W19 must instantiate real 3D road wrecks');
+  assert.equal(state.worldArt.radioMasts,2);
+  assert.ok(state.worldArt.groundInstances>=250);
   // W13.0: the field HUD replaces the old debug wall by default.
   assert.equal(state.hud.mode,'field');
   assert.equal(state.hud.fieldVisible,true);

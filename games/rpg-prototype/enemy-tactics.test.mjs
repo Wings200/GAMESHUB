@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createEnemyBrain,stepEnemyBrain} from './enemy-ai.mjs';
 import {ENEMY_PROFILES,makeEnemyTactics,resetEnemyTactics,markEnemyThreat,
   pickCoverPoint,isBehindCover,pickPeekPoint,routeAroundCrates,tickEnemyTactics,beginReload,
-  attemptEnemyShot} from './enemy-tactics.mjs';
+  attemptEnemyShot,equipEnemyWeapon,getEnemyWeapon,markEnemySuppressed} from './enemy-tactics.mjs';
 const box={minX:40,maxX:42,minZ:39,maxZ:41};
 const player={x:30,z:40};
 const brain=()=>{const b=createEnemyBrain({
@@ -299,4 +299,36 @@ test('W09.10 losing sight releases cover holds and really investigates last cont
   }
   assert.ok(nearest<.7,'NPC must physically check the last seen spot');
   assert.deepEqual(e.lastSeen,{x:43,z:40});
+});
+
+test('Equipped enemy guns reload to their own capacity, not generic role capacity',()=>{
+  for(const [kind,weapon] of [['scout','compact-smg'],
+    ['raider','raider-auto'],['enforcer','heavy-lmg']]){
+    const t=makeEnemyTactics(kind);
+    equipEnemyWeapon(t,weapon);
+    const full=getEnemyWeapon(weapon).magazine;
+    t.magazine=0;
+    const previousReserve=t.reserve;
+    assert.equal(beginReload(t),true);
+    const brain={active:true,mode:'patrol',memory:0,x:40,z:40};
+    for(let i=0;i<120;i++)tickEnemyTactics(t,brain,{x:40,z:30},.05,[],{});
+    assert.equal(t.reloadRemaining,0,weapon);
+    assert.equal(t.magazine,full,weapon);
+    assert.equal(t.reserve,previousReserve-full,weapon);
+  }
+});
+
+test('Near-miss suppression reduces fallible aim and fades when fire stops',()=>{
+  const t=makeEnemyTactics('raider');
+  equipEnemyWeapon(t,'raider-auto');
+  t.cooldown=0;
+  const accuracyFresh=attemptEnemyShot(t,8,false,()=>.99).accuracy;
+  markEnemySuppressed(t,.95);
+  assert.ok(t.suppression>.9&&t.threat>0);
+  t.cooldown=0;
+  const accuracyShaken=attemptEnemyShot(t,8,false,()=>.99).accuracy;
+  assert.ok(accuracyShaken<accuracyFresh*.65);
+  const brain={active:true,mode:'patrol',memory:0,x:40,z:40};
+  for(let i=0;i<100;i++)tickEnemyTactics(t,brain,{x:40,z:30},.05,[],{});
+  assert.equal(t.suppression,0);
 });

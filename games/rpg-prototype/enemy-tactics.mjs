@@ -71,7 +71,7 @@ export function makeEnemyTactics(kind){
   return {
     kind,weaponId:null,burstCount:0,magazine:profile.magazine,reserve:profile.reserve,
     reloadRemaining:0,cooldown:1.2,shots:0,hits:0,misses:0,
-    phase:'patrol',threat:0,coverPoint:null,coverIndex:-1,
+    phase:'patrol',threat:0,suppression:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
     goal:null,crouching:false,coverHold:0,
     peekPoint:null,peekSeconds:0,peekCooldown:0,holdSeconds:0,
@@ -92,6 +92,15 @@ export function beginReload(tactics){
   tactics.burstCount=0;
   tactics.phase='reload';
   return true;
+}
+export function markEnemySuppressed(tactics,intensity=.35){
+  // A near miss rattles aim and triggers a search for genuine solid cover.
+  // The value decays; simply firing elsewhere never lowers enemy accuracy.
+  const amount=clamp(Number.isFinite(intensity)?intensity:0,0,1);
+  tactics.suppression=clamp((tactics.suppression||0)+amount,0,1);
+  tactics.threat=Math.max(tactics.threat,1.65+tactics.suppression*1.2);
+  tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
+  return tactics;
 }
 export function markEnemyThreat(tactics){
   tactics.threat=ENEMY_PROFILES[tactics.kind].coverSeconds;
@@ -217,6 +226,9 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   const step=clamp(Number.isFinite(dt)?dt:0,0,AI_TUNING.maxDelta);
   if(!enabled||step<=0)return tactics;
   const spec=ENEMY_PROFILES[tactics.kind];
+  // Reload capacity follows the ACTUAL equipped firearm, not the obsolete
+  // generic role magazine (9/12/18). Otherwise a 48-round LMG reloads to 18.
+  const gun=weaponForTactics(tactics);
   trackStuck(tactics,brain,step);
   // Preserve sub-frame time debt so fast guns really fire at their own RPM.
   tactics.cooldown=Math.max(-.05,tactics.cooldown-step);
@@ -227,11 +239,12 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   if(tactics.reloadRemaining>0){
     tactics.reloadRemaining=Math.max(0,tactics.reloadRemaining-step);
     if(tactics.reloadRemaining===0){
-      const amount=Math.min(spec.magazine-tactics.magazine,tactics.reserve);
+      const amount=Math.min(gun.magazine-tactics.magazine,tactics.reserve);
       tactics.magazine+=amount;tactics.reserve-=amount;
     }
   }else if(tactics.magazine===0&&tactics.reserve>0)beginReload(tactics);
   tactics.threat=Math.max(0,tactics.threat-step);
+  tactics.suppression=Math.max(0,(tactics.suppression||0)-step*.22);
   tactics.goal=null;tactics.pace=1;tactics.decisionReason='observe';
   if(!memory){
     tactics.phase='patrol';tactics.coverPoint=null;tactics.coverIndex=-1;
@@ -404,7 +417,8 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
     }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
   }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
   const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,90);
-  const accuracy=clamp(spec.accuracy-spec.falloff*d/16-(moving?.13:0),.08,.90);
+  const accuracy=clamp((spec.accuracy-spec.falloff*d/16-(moving?.13:0))*
+    (1-.42*(tactics.suppression||0)),.08,.90);
   const sampled=rng();
   const roll=clamp(Number.isFinite(sampled)?sampled:1,0,1);
   const hit=roll<accuracy;

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import {buildWastelandSet} from '../wasteland-setdress.mjs';
+import {projectileNearMiss} from '../combat-suppression.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
   initialCampaignState,safeCampaignSnapshot,startCampaignQuest,
   advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal
@@ -25,7 +27,7 @@ import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
-  markEnemyThreat, tickEnemyTactics, attemptEnemyShot,
+  markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
   chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
@@ -182,8 +184,8 @@ $('specialClose').addEventListener('click',closeSpecialPanel);
 refreshSpecialUI();
 const canvas = $('scene');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa4c0cb);
-scene.fog = new THREE.Fog(0xa4c0cb, 60, 165);
+scene.background = new THREE.Color(0x7b8788);
+scene.fog = new THREE.FogExp2(0x8c8980, .0064);
 const camera = new THREE.PerspectiveCamera(76, innerWidth / innerHeight, .08, 270);
 // PointerLockControls uses YXZ yaw/pitch. Keep the camera's Euler in that
 // same order: an XYZ pitch applied at non-zero yaw causes sideways tilt/roll.
@@ -222,10 +224,10 @@ renderer.shadowMap.enabled = !reducedRenderer;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-scene.add(new THREE.HemisphereLight(0xdaf6ff,0x647269,2.2));
-const sun = new THREE.DirectionalLight(0xffebc3,3.0);
-sun.position.set(-34,60,18);
+renderer.toneMappingExposure = 1.13;
+scene.add(new THREE.HemisphereLight(0xc1d0da,0x746454,1.92));
+const sun = new THREE.DirectionalLight(0xffd3a4,2.8);
+sun.position.set(-48,46,19);
 sun.castShadow = true;
 sun.shadow.mapSize.set(1024,1024);
 sun.shadow.camera.left = -80;sun.shadow.camera.right = 80;
@@ -242,7 +244,7 @@ function box(x,y,z,w,h,d,material,receive=true){
   o.castShadow=true;o.receiveShadow=receive;scene.add(o);worldGeometry.push(o);return o;
 }
 const floor=box(0,-.35,0,124,.7,106,concrete);
-const grid = new THREE.GridHelper(124,62,0x45626d,0x3c5059);
+const grid = new THREE.GridHelper(124,62,0x465251,0x394647);
 grid.position.y=.015;scene.add(grid);
 const bounds=[];
 function collider(x,z,w,d,material=dark,height=2.8){
@@ -278,6 +280,9 @@ function textSign(label,x,z,color){
   box(x,1.4,z,.1,2.8,.1,dark);
 }
 for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
+// Beyond the solid perimeter: original shacks, wrecks, aerials, water towers,
+// skyline, patinated ground, flags and atmospheric dust.
+const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:!reducedRenderer});
 
 // W18.0 story contacts: physical, discoverable terminals and faction beacons.
 // They're prototypes for future settlement NPCs, not invisible quest buttons.
@@ -2665,6 +2670,17 @@ function shoot(){
   const hits=firingRaycaster.intersectObjects(
     [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
   const first=hits[0];
+  // Suppression is earned by an actual close bullet pass. The nearest solid
+  // impact truncates the ray, so shots stopped by walls cannot scare guards
+  // hiding behind them. Engaged NPCs seek cover and briefly lose accuracy.
+  for(const enemy of enemies.values()){
+    if(!enemy.state.alive||enemy.brain.mode==='patrol'||
+       enemy.id===first?.object.userData.enemyId)continue;
+    if(projectileNearMiss(camera.position,shotVector,
+      {x:enemy.brain.x,y:1.25,z:enemy.brain.z},
+      {blockDistance:first?.distance??90,radius:1.55,range:90}))
+      markEnemySuppressed(enemy.tactics,activeSpec.kind==='shotgun'?.13:.37);
+  }
   if(new URLSearchParams(location.search).get('smoke')==='1'){
     lastShotDebug={
       when:performance.now(),selectedWeapon:activeSpec.id,
@@ -3084,6 +3100,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
   };
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
+    worldArt:wastelandArt.metrics,
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
     weapon:{id:activeSpec.id,magazine:weaponState.magazine,
       reserve:weaponState.reserve,reloadRemaining:weaponState.reloadRemaining,
@@ -3417,6 +3434,7 @@ $('quality').addEventListener('click',()=>{
   sun.castShadow=qualityHigh;
   renderer.shadowMap.enabled=qualityHigh;
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
+  wastelandArt.setQuality(qualityHigh);
 });
 window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
@@ -3552,6 +3570,7 @@ function updateHUD(info){
 function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
+  wastelandArt.update(dt);
   let ammoSpentOnReload=false;
   for(const spec of ARSENAL){
     const state=arsenalStates[spec.id],before=state.reserve;
