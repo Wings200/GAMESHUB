@@ -18,7 +18,8 @@ import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
-  markEnemyThreat, tickEnemyTactics, attemptEnemyShot } from '../enemy-tactics.mjs';
+  markEnemyThreat, tickEnemyTactics, attemptEnemyShot,
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
@@ -895,6 +896,8 @@ function createEnemy(spec){
   // six existing collision meshes for authoritative body-part raycasts, but
   // hide their primitive geometry so players never see the old mannequin.
   enemy.rigged=createNpcAvatar(root,spec.id);
+  equipEnemyWeapon(enemy.tactics,chooseEnemyWeapon(spec.id,0).id);
+  enemy.rigged.setWeapon(enemy.tactics.weaponId);
   for(const hitbox of enemy.meshes)hitbox.material.visible=false;
   enemy.rifleVisual.visible=false;
   refreshEnemyArmorVisuals(enemy);
@@ -914,8 +917,9 @@ function refreshEnemyArmorVisuals(enemy){
 function refreshEnemyLabel(enemy,mode){
   const t=enemy.tactics;
   const magazine=t.magazine+'/'+ENEMY_PROFILES[t.kind].magazine;
+  const gunName=getEnemyWeapon(t.weaponId)?.name||t.kind;
   const loading=t.reloadRemaining>0?'RELOADING '+t.reloadRemaining.toFixed(1)+'s':
-    magazine+' AMMO';
+    magazine+' · '+gunName.toUpperCase();
   const current=enemy.label+'-'+mode+'-'+Math.ceil(enemy.state.health)+'-'+loading;
   if(current===enemy.statusText)return;
   enemy.statusText=current;
@@ -966,6 +970,8 @@ function resetEnemies(){
     }
     enemy.flash=0;enemy.shake=0;enemy.statusText='';
     resetEnemyTactics(enemy.tactics);
+    equipEnemyWeapon(enemy.tactics,chooseEnemyWeapon(enemy.id,arenaRound).id);
+    enemy.rigged?.setWeapon(enemy.tactics.weaponId);
     enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
     refreshEnemyLabel(enemy,'PATROL');
@@ -1479,7 +1485,7 @@ function updateEnemies(dt){
       enemy.shake=Math.max(0,enemy.shake-dt*3);
       enemy.flash=Math.max(0,enemy.flash-dt);
       if(enemy.flash===0)for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
-      const attack=ENEMY_ATTACK[enemy.id];
+      const attack=getEnemyWeapon(enemy.tactics.weaponId)||ENEMY_ATTACK[enemy.id];
       if(ticking&&playerHealth.alive){
         // A shot is only attempted when the NPC can see the player and has
         // a clear trajectory; mags, reloads and accuracy are authoritative.
@@ -1492,7 +1498,7 @@ function updateEnemies(dt){
             enemy.brain.moving,Math.random);
           if(shot.fired){
             enemy.gunGlow=.11;enemy.recoilPose=1;
-            sound.gunshot();
+            sound.gunshot(attack.soundKind||'rifle');
             const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
             const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
             if(!shot.hit){
@@ -1558,7 +1564,8 @@ function updateEnemies(dt){
     enemy.billboard.mesh.position.set(enemy.brain.x,
       2.72-.78*enemy.crouchBlend,enemy.brain.z);
     statuses.push(enemy.label+': '+mode+' ['+
-      enemy.tactics.magazine+'/'+ENEMY_PROFILES[enemy.id].magazine+']');
+      enemy.tactics.magazine+'/'+(getEnemyWeapon(enemy.tactics.weaponId)?.magazine||
+        ENEMY_PROFILES[enemy.id].magazine)+']');
   }
   if(ticking&&playerHealth.alive)
     shareSquadContact(squadIntel,[...enemies.values()],bounds,player);
@@ -2521,6 +2528,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       originalVisual:e.rigged?.state??null,
       armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
+      weaponId:e.tactics.weaponId,burstCount:e.tactics.burstCount,
        modelStatus:e.modelStatus,
       crouching:e.tactics.crouching,pace:e.tactics.pace,
       decision:e.tactics.decisionReason,

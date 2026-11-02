@@ -1,5 +1,6 @@
 // W04.0: deterministic, render-free test-lab enemy perception and locomotion.
 // Basic patrol/spot/chase/search only. Shooting and cover tactics are later passes.
+import {planNavigationRoute} from './enemy-navigation.mjs';
 export const AI_TUNING=Object.freeze({
   sight:45, fieldOfViewDegrees:165,
   patrolSpeed:1.25, chaseSpeed:2.75,
@@ -64,7 +65,8 @@ export function createEnemyBrain(config){
     mode:'patrol',lastSeen:null,memory:0,searchLeft:0,
     spotted:false,moving:false,active:true,retaliationTime:0,
     distanceToPlayer:Infinity,aimLockSeconds:0,
-    searchIndex:0,searchPause:0,detour:null
+    searchIndex:0,searchPause:0,detour:null,
+    routeGoal:null,route:[],routeFail:0
   };
 }
 export function alertEnemy(enemy,player){
@@ -74,6 +76,7 @@ export function alertEnemy(enemy,player){
   enemy.mode='chase';enemy.searchLeft=0;enemy.spotted=true;
   enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+  enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
   return enemy;
 }
 export function resetEnemyBrain(enemy){
@@ -83,6 +86,7 @@ export function resetEnemyBrain(enemy){
   enemy.moving=false;enemy.active=true;enemy.distanceToPlayer=Infinity;
   enemy.retaliationTime=0;enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+  enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
   return enemy;
 }
 function blockedAt(x,z,obstacles,radius){
@@ -91,7 +95,7 @@ function blockedAt(x,z,obstacles,radius){
 function moveToward(enemy,goal,speed,dt,obstacles,area,tuning){
   const dx=goal.x-enemy.x,dz=goal.z-enemy.z,dist=Math.hypot(dx,dz);
   if(dist<.0001){enemy.moving=false;return;}
-  enemy.yaw=Math.atan2(dx,dz);
+  facePoint(enemy,goal,dt);
   const step=Math.min(dist,speed*dt);
   const sx=dx/dist*step,sz=dz/dist*step;
   const x=clamp(enemy.x+sx,area.minX,area.maxX);
@@ -112,32 +116,27 @@ const SEARCH_OFFSETS=Object.freeze([
   [-3.6,0],[-3.2,-3.2],[0,-3.6],[3.2,-3.2]
 ]);
 function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
-  let waypoint=null;
-  if(enemy.detour&&distance(enemy.x,enemy.z,enemy.detour.x,enemy.detour.z)>.55)
-    waypoint=enemy.detour;
-  else enemy.detour=null;
-  if(!waypoint){
-    const clearance=tuning.collisionRadius+.28;
-    const blocked=obstacles.find(box=>
-      lineIntersectsBox(enemy,goal,box,tuning.collisionRadius*.65));
-    if(blocked){
-      const corners=[
-        {x:blocked.minX-clearance,z:blocked.minZ-clearance},
-        {x:blocked.minX-clearance,z:blocked.maxZ+clearance},
-        {x:blocked.maxX+clearance,z:blocked.minZ-clearance},
-        {x:blocked.maxX+clearance,z:blocked.maxZ+clearance}
-      ].filter(p=>
-        p.x>=area.minX+.2&&p.x<=area.maxX-.2&&
-        p.z>=area.minZ+.2&&p.z<=area.maxZ-.2&&
-        !blockedAt(p.x,p.z,obstacles,tuning.collisionRadius+.04)&&
-        !obstacles.some(box=>lineIntersectsBox(enemy,p,box,tuning.collisionRadius*.6)));
-      corners.sort((a,b)=>
-        distance(enemy.x,enemy.z,a.x,a.z)+distance(a.x,a.z,goal.x,goal.z)-
-        distance(enemy.x,enemy.z,b.x,b.z)-distance(b.x,b.z,goal.x,goal.z));
-      if(corners.length)enemy.detour=waypoint=corners[0];
-    }
+  // One stable route for the active tactical goal; choosing a new corner every
+  // frame made cover seekers walk into crates or repeatedly reverse direction.
+  const changed=!enemy.routeGoal||
+    distance(enemy.routeGoal.x,enemy.routeGoal.z,goal.x,goal.z)>.55;
+  if(changed||!Array.isArray(enemy.route)){
+    enemy.routeGoal=copy(goal);
+    enemy.route=planNavigationRoute(enemy,goal,obstacles,area,tuning.collisionRadius);
+    enemy.routeFail=0;
   }
-  moveToward(enemy,waypoint||goal,speed,dt,obstacles,area,tuning);
+  while(enemy.route.length&&
+    distance(enemy.x,enemy.z,enemy.route[0].x,enemy.route[0].z)<.37)
+    enemy.route.shift();
+  const point=enemy.route[0]||goal;
+  moveToward(enemy,point,speed,dt,obstacles,area,tuning);
+  if(!enemy.moving&&distance(enemy.x,enemy.z,point.x,point.z)>.48){
+    enemy.routeFail+=dt;
+    if(enemy.routeFail>.5){
+      enemy.route=planNavigationRoute(enemy,goal,obstacles,area,tuning.collisionRadius);
+      enemy.routeFail=0;
+    }
+  }else enemy.routeFail=0;
 }
 function searchLastSeen(enemy,step,obstacles,area,tuning){
   if(!enemy.lastSeen){enemy.moving=false;return;}
@@ -198,7 +197,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     facePoint(enemy,knownTarget,step);
   }else if(options.combatGoal&&seen){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
-    moveToward(enemy,options.combatGoal,
+    navigateAroundCover(enemy,options.combatGoal,
       Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
       step,obstacles,area,AI_TUNING);
     if(options.combatFacePlayer){
@@ -236,6 +235,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     if(enemy.searchLeft<=0){
       enemy.mode='patrol';enemy.lastSeen=null;
       enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+  enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
     }
   }else {
     const dest=enemy.patrol[enemy.patrolIndex];
