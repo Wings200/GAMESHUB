@@ -549,6 +549,11 @@ try{
     null,{timeout:25000});
   // W08.3: ensure the redesigned shell, human pilot and actual cinematic entry render.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
+  const bareArm=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.equal(bareArm.visiblePlates.rightArm,0,'Starter T-45 must have no right arm plate');
+  assert.equal(bareArm.moduleSections.rightArm,0,
+    'An empty arm slot must show exposed frame, not old permanently armored mesh');
+  assert.ok(bareArm.moduleSections.leftArm>0,'The fitted left arm must retain its armor');
   assert.equal(await page.evaluate(()=>window.__rpgSmokeApproachPowerCache()),true);
   await page.keyboard.press('e');
   await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:10000});
@@ -557,8 +562,14 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:10000});
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
-  await page.keyboard.press('o');
+  await page.keyboard.press('e');
   await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
+  await page.locator('#power-head').selectOption('remove');
+  assert.equal((await page.evaluate(()=>window.__rpgSmokePowerVisual())).moduleSections.head,0,
+    'Taking off a helmet must expose the actual frame collar');
+  assert.ok((await page.evaluate(()=>window.__rpgSmokeState())).inventory.items
+    .some(e=>e.itemId==='power-plate:t45-head'),
+    'Removed armor is a real preserved inventory item');
   const helmetChoice=await page.locator('#power-head option')
     .filter({hasText:'T-60'}).getAttribute('value');
   const armChoice=await page.locator('#power-rightArm option')
@@ -582,13 +593,16 @@ try{
   assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
   assert.equal(armorVisible.modelDetails.head.t60,true,'T-60 head has its own geometry');
   assert.equal(armorVisible.modelDetails.rightArm.t45,true,'T-45 arm style is visible');
+  assert.ok(armorVisible.moduleSections.rightArm>0,'Installing the right arm adds its armor shell');
+  assert.ok(armorVisible.moduleSections.head>0,'Installing the helmet restores its armor shell');
   assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
   await page.locator('#powerBayClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:10000});
-  await page.keyboard.press('p');
+  await page.keyboard.down('e');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='entering',
     null,{timeout:10000});
+  await page.keyboard.up('e');
   await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
   await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotModel===
     'OriginalPixelSurvivor',null,{timeout:12000});
@@ -624,9 +638,10 @@ try{
     const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
     return !s.player.crouched && h>1.62&&h<2.0;
   },null,{timeout:12000});
-  await page.keyboard.press('p');
+  await page.keyboard.down('e');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
     null,{timeout:10000});
+  await page.keyboard.up('e');
   await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
   await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotVisible &&
     window.__rpgSmokePowerVisual().pilotDepth<1.4,

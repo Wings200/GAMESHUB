@@ -122,7 +122,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular armor & power suit',info:'Inspect ordinary armor on the second survivor preview nearby. V only changes your own camera; the other character stays visible. P enters the chassis; O fits powered plates. B and Y edit dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'08 · Modular power-armor frame',info:'The frame has six physical armor mounts. TAP E at the parked frame to install, repair or remove pieces; HOLD E to climb in or out. The purple salvage cache nearby contains starter pieces and fusion cores. B and Y still edit dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -478,7 +478,7 @@ function rebuildDummyArmor(dummy){
 }
 dummyKinds.forEach(makeDummy);
 
-// W08.1: a redesigned, oversized 3D powered chassis at Station 8, independent of
+// W11.0: one modular, exposed 3D chassis at Station 8, independent of
 // normal player armor and of the static test-dummy equipment.
 const powerArmorBay={x:-49,z:-12};
 let powerArmorState=createPowerArmorState();
@@ -491,12 +491,41 @@ const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
 // No photorealistic Raider GLB is mounted for the player anymore.
 const pilotAvatar=createPlayerAvatar(poweredSuit.pilot);
 poweredSuit.useOriginalPilot();
-textSign('POWER SUIT · P TO ENTER',-55,-6,0x8fbba4);
+textSign('POWER FRAME · TAP E / HOLD E',-55,-6,0x8fbba4);
 textSign('SALVAGE CACHE · E TO SEARCH',-54,-8,0xd7b4ee);
 const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
 poweredCockpit.visible=powerArmorState.occupied;
 let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false,lastFusionSave=0;
+const POWER_HOLD_MS=650;
+let powerHoldTimer=null,powerHoldPending=false,powerHoldTriggered=false,powerHoldStartedAt=0;
+function cancelPowerHold(){
+  if(powerHoldTimer!==null)clearTimeout(powerHoldTimer);
+  powerHoldTimer=null;powerHoldPending=false;powerHoldTriggered=false;powerHoldStartedAt=0;
+}
+function beginPowerHold(){
+  if(powerHoldPending||powerArmorState.phase!=='idle')return;
+  powerHoldPending=true;powerHoldTriggered=false;powerHoldStartedAt=performance.now();
+  powerHoldTimer=setTimeout(()=>{
+    powerHoldTimer=null;
+    if(!powerHoldPending||!controls.isLocked||powerUIOpen||
+       powerArmorState.phase!=='idle'||
+       (!powerArmorState.occupied&&!nearPoweredSuit()))return;
+    powerHoldPending=false;powerHoldTriggered=true;
+    togglePoweredSuit();
+  },POWER_HOLD_MS);
+}
+function finishPowerHold(){
+  if(!powerHoldPending&&!powerHoldTriggered)return false;
+  const tap=powerHoldPending&&!powerHoldTriggered;
+  if(powerHoldTimer!==null)clearTimeout(powerHoldTimer);
+  powerHoldTimer=null;powerHoldPending=false;powerHoldTriggered=false;
+  if(tap&&controls.isLocked&&powerArmorState.phase==='idle'){
+    if(powerArmorState.occupied)showShotNotice('HOLD E TO EXIT THE FRAME');
+    else if(nearPoweredSuit())openPowerArmorBay();
+  }
+  return true;
+}
 let powerCinematic=null;
 const powerCameraUp=new THREE.Vector3(0,1,0);
 function powerEase(a,b,value){
@@ -533,7 +562,7 @@ function refreshPowerArmorHUD(){
     powerArmorState.phase==='exiting'?'EXITING CHASSIS…':
     powerArmorState.occupied?(powered?'POWER ARMOR · POWERED':
       'POWER ARMOR · CORE DEPLETED · LIMP MODE'):
-    'FRAME PARKED · P TO ENTER';
+    'FRAME PARKED · TAP E TO CONFIGURE · HOLD E TO ENTER';
   const fitted=POWER_ARMOR_SLOTS.filter(slot=>powerArmorState.plates[slot]!=='none').length;
   const broken=POWER_ARMOR_SLOTS.filter(slot=>plateCondition(powerArmorState,slot).broken).length;
   const suitReduction=powerArmorProtection(
@@ -610,8 +639,7 @@ function refreshPowerArmorUI(){
     'SALVAGE '+countItem(backpack,'supply:salvage')+
     ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
     ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
-  $('powerArmorControl').textContent=powerArmorState.occupied?
-    'EXIT THE FRAME · P':'ENTER THE FRAME NEAR STATION 8 · P';
+  $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerArmorHUD();
 }
 function openPowerArmorBay(){
@@ -776,15 +804,14 @@ $('powerCraftButton').addEventListener('click',()=>{
     ' · '+slot.toUpperCase()+' · FULL DURABILITY';
   savePowerService();
 });
-$('powerBayOpen').addEventListener('click',openPowerArmorBay);
-$('powerBayClose').addEventListener('click',closePowerArmorBay);
-$('powerArmorControl').addEventListener('click',()=>{
-  closePowerArmorBay();
-  if(!powerArmorState.occupied&&!nearPoweredSuit())
-    resetPlayer(7); // place the tester near the power-armor bay
-  if(!controls.isLocked)controls.lock();
-  togglePoweredSuit();
+$('powerBayOpen').addEventListener('click',()=>{
+  resetPlayer(7);
+  sound.unlock();
+  controls.lock();
+  showShotNotice('FRAME AT STATION 8 · TAP E TO CONFIGURE · HOLD E TO ENTER');
 });
+$('powerBayClose').addEventListener('click',closePowerArmorBay);
+$('powerArmorControl').addEventListener('click',closePowerArmorBay);
 refreshPowerArmorHUD();
 function resetAllDummies(){
   for(const dummy of dummies.values()){
@@ -2583,6 +2610,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     helmetOpenAngle:poweredSuit.helmetPivot.rotation.x,
     visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
+    moduleSections:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
+      [slot,poweredSuit.moduleMeshes[slot].filter(mesh=>mesh.visible).length])),
     modelDetails:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,Object.fromEntries(['t45','t60','t01'].map(tier=>
         [tier,poweredSuit.plateMeshes[slot].some(shell=>
@@ -2810,6 +2839,7 @@ $('start').addEventListener('click',()=>{
 canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
+  cancelPowerHold();
   if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
@@ -2838,15 +2868,17 @@ window.addEventListener('keydown',e=>{
       'FIRST-PERSON VIEW · V TO TOGGLE');
     return;
   }
-  if(e.code==='KeyO'&&!e.repeat&&controls.isLocked){openPowerArmorBay();return;}
-  if(e.code==='KeyP'&&!e.repeat&&controls.isLocked){togglePoweredSuit();return;}
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
+    e.preventDefault();
+    if(powerArmorState.phase==='idle'&&
+       (powerArmorState.occupied||nearPoweredSuit())){
+      beginPowerHold();return;
+    }
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
     else if(benchWithinReach())beginWorkbench();
-    else if(!powerArmorState.occupied&&nearPoweredSuit())togglePoweredSuit();
-    else showShotNotice('NO LOOT OR WORKBENCH WITHIN REACH');
+    else showShotNotice('NO INTERACTION WITHIN REACH');
     return;
   }
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
@@ -2883,7 +2915,11 @@ window.addEventListener('keydown',e=>{
     else if(controls.isLocked&&powerArmorState.occupied)showShotNotice('NO CORE · HYDRAULICS CANNOT JUMP');}
   keys.add(e.code);
 });
-window.addEventListener('keyup',e=>keys.delete(e.code));
+window.addEventListener('keyup',e=>{
+  if(e.code==='KeyE'&&finishPowerHold()){e.preventDefault();return;}
+  keys.delete(e.code);
+});
+window.addEventListener('blur',cancelPowerHold);
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
@@ -3075,10 +3111,24 @@ function frame(){
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.
   const nearby=nearestLootBag();
+  const frameInReach=powerArmorState.phase==='idle'&&
+    (powerArmorState.occupied||nearPoweredSuit());
+  const promptAvailable=frameInReach||!!nearby;
   $('lootPrompt').classList.toggle('hidden',
-    !controls.isLocked||inventoryOpen||lootOpen||!nearby);
-  if(nearby)$('lootPrompt').textContent='E · SEARCH '+nearby.source.toUpperCase()+
-    ' · '+nearby.items.length+' ITEM TYPES';
+    !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
+    !promptAvailable);
+  if(frameInReach){
+    $('lootPrompt').textContent=powerArmorState.occupied?
+      'HOLD E · EXIT POWER ARMOR':
+      'TAP E · CONFIGURE POWER FRAME     HOLD E · ENTER';
+    if(powerHoldPending){
+      const pct=Math.min(99,Math.floor(
+        (performance.now()-powerHoldStartedAt)/POWER_HOLD_MS*100));
+      $('lootPrompt').textContent='HOLD E · '+pct+'% TO '+
+        (powerArmorState.occupied?'EXIT':'ENTER');
+    }
+  }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
+    nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);

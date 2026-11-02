@@ -382,7 +382,7 @@ test('W08.3 real powered suit has six removable meshes and timed entry controls'
     'buildPowerArmorCockpit(camera)','poweredSuit.updatePlates(powerArmorState)',
     'beginPowerArmorTransition(powerArmorState)','stepPowerArmor(powerArmorState,dt)',
     'calculateIncomingShot(attack.damage,armor.points,',
-    "e.code==='KeyP'","e.code==='KeyO'",
+    'beginPowerHold()','finishPowerHold()',
     'window.__rpgSmokePowerVisual='])
     assert.ok(source.includes(phrase),phrase);
   assert.ok(page.includes('W08.3'));
@@ -592,4 +592,19 @@ test('W10.0 power armor uses owned modular pieces, local repair and real core fu
   assert.match(source,/stepFusionCore\(powerArmorState,dt,/);
   assert.match(source,/speedMultiplier:mobility\.factor,allowSprint:mobility\.canSprint/);
   assert.match(source,/window\.__rpgSmokeApproachPowerCache=/);
+});
+
+test('W11.0 has one exposed modular frame, tap-E service, and hold-E entry',()=>{
+  assert.match(source,/const POWER_HOLD_MS=650/);
+  assert.match(source,/powerHoldTimer=setTimeout/);
+  assert.match(source,/if\(e\.code==='KeyE'&&!e\.repeat&&controls\.isLocked\)/);
+  assert.match(source,/beginPowerHold\(\);return/);
+  assert.match(source,/if\(e\.code==='KeyE'&&finishPowerHold\(\)\)/);
+  assert.match(source,/powerArmorState\.occupied\?\s*'HOLD E · EXIT POWER ARMOR'/);
+  assert.doesNotMatch(source,/e\.code==='KeyP'/);
+  assert.doesNotMatch(source,/e\.code==='KeyO'/);
+  assert.match(armorVisual,/const moduleMeshes=Object\.fromEntries/);
+  assert.match(armorVisual,/for\(const part of moduleMeshes\[slot\]\)part\.visible=entry\.points>0/);
+  assert.match(page,/TAP E AT FRAME TO CONFIGURE/);
+  assert.match(page,/HOLD E TO ENTER\/EXIT/);
 });

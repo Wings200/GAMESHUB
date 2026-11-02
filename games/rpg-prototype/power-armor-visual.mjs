@@ -67,6 +67,10 @@ export function buildPowerArmorVisual(scene,position,state){
     return mesh(parent,new THREE.TubeGeometry(curve,18,r,7,false),material);
   };
   const plateMeshes=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,[]]));
+  // Structural pistons, joints and rails remain; every decorative armor shell
+  // belongs to a physical slot and vanishes when that slot is empty.
+  const moduleMeshes=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,[]]));
+  const modulePart=(slot,part)=>{moduleMeshes[slot].push(part);return part;};
   // Each collected model changes the silhouette of its own plate, not the
   // whole frame. T-45 has cast ribs, T-60 gets double raised armor channels,
   // and T-01 has a faceted prototype chevron and vents.
@@ -151,33 +155,35 @@ export function buildPowerArmorVisual(scene,position,state){
   for(const [side,key] of [[-1,'left'],[1,'right']]){
     const door=doors[key];
     const cx=-side*.33;
-    forged(door,.67,1.01,.19,steel,cx,0,.055,.17);
+    modulePart('chest',forged(door,.67,1.01,.19,steel,cx,0,.055,.17));
     plate('chest',door,.67,.85,.115,cx,.06,.18,.16);
-    forged(door,.51,.18,.16,shaded,cx,-.34,.23,.06);
+    modulePart('chest',forged(door,.51,.18,.16,shaded,cx,-.34,.23,.06));
     // Upper and lower reinforcement ribs cross the chest without becoming
     // an uninterrupted square slab.
-    forged(door,.39,.12,.08,edge,cx,.33,.265,.045);
-    box(door,.065,.55,.041,joint,cx+side*.16,-.01,.276);
-    forged(door,.21,.16,.065,orange,cx,-.17,.282,.04);
-    for(const y of [-.39,.38])bolt(door,cx+side*.18,y,.29);
+    modulePart('chest',forged(door,.39,.12,.08,edge,cx,.33,.265,.045));
+    modulePart('chest',box(door,.065,.55,.041,joint,cx+side*.16,-.01,.276));
+    modulePart('chest',forged(door,.21,.16,.065,orange,cx,-.17,.282,.04));
+    for(const y of [-.39,.38])modulePart('chest',bolt(door,cx+side*.18,y,.29));
     cyl(door,.047,.047,1.07,brass,-side*.02,0,-.08);
   }
   // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
   // dual cheek filters and respirator; no floating rectangular robot head.
   const helmetPivot=makeGroup(root,0,2.36,-.08);
-  ellipsoid(helmetPivot,.38,.35,.38,joint,0,.10,0);
-  forged(helmetPivot,.69,.47,.51,steel,0,.21,.025,.18);
-  forged(helmetPivot,.66,.16,.18,edge,0,.37,.23,.055);
-  forged(helmetPivot,.56,.12,.095,visor,0,.19,.306,.035);
-  forged(helmetPivot,.45,.16,.19,shaded,0,.055,.29,.05);
-  forged(helmetPivot,.24,.20,.12,steel,0,-.035,.39,.05);
+  modulePart('head',ellipsoid(helmetPivot,.38,.35,.38,joint,0,.10,0));
+  modulePart('head',forged(helmetPivot,.69,.47,.51,steel,0,.21,.025,.18));
+  modulePart('head',forged(helmetPivot,.66,.16,.18,edge,0,.37,.23,.055));
+  modulePart('head',forged(helmetPivot,.56,.12,.095,visor,0,.19,.306,.035));
+  modulePart('head',forged(helmetPivot,.45,.16,.19,shaded,0,.055,.29,.05));
+  modulePart('head',forged(helmetPivot,.24,.20,.12,steel,0,-.035,.39,.05));
   plate('head',helmetPivot,.68,.22,.13,0,.43,.08,.075);
   plate('head',helmetPivot,.57,.13,.095,0,-.12,.27,.045);
   for(const side of [-1,1]){
-    ellipsoid(helmetPivot,.17,.19,.20,steel,side*.34,.04,.15);
-    cyl(helmetPivot,.11,.11,.07,joint,side*.32,-.045,.345).rotation.x=Math.PI/2;
-    for(let i=0;i<3;i++)box(helmetPivot,.15,.018,.037,edge,
-      side*.32,-.087+i*.039,.383);
+    modulePart('head',ellipsoid(helmetPivot,.17,.19,.20,steel,side*.34,.04,.15));
+    const cheekFilter=modulePart('head',
+      cyl(helmetPivot,.11,.11,.07,joint,side*.32,-.045,.345));
+    cheekFilter.rotation.x=Math.PI/2;
+    for(let i=0;i<3;i++)modulePart('head',box(helmetPivot,.15,.018,.037,edge,
+      side*.32,-.087+i*.039,.383));
     hose(root,[[side*.35,2.36,.19],[side*.53,2.24,.07],
       [side*.62,2.04,-.21]],.04,joint);
   }
@@ -194,13 +200,13 @@ export function buildPowerArmorVisual(scene,position,state){
     const arm=makeGroup(root,side*.86,2.26,-.11);armPivots.push(arm);
     ball(arm,.25,joint);
     cyl(arm,.16,.16,.26,edge,0,0,0).rotation.z=Math.PI/2;
-    ellipsoid(arm,.43,.30,.38,steel,side*.07,-.09,.0);
+    modulePart(armName,ellipsoid(arm,.43,.30,.38,steel,side*.07,-.09,.0));
     plate(armName,arm,.69,.33,.37,side*.08,-.13,.27,.13);
-    forged(arm,.33,.52,.33,shaded,side*.07,-.53,.04,.09);
+    modulePart(armName,forged(arm,.33,.52,.33,shaded,side*.07,-.53,.04,.09));
     rod(arm,[side*.20,-.26,-.12],[side*.18,-.79,-.12],.055,edge);
     rod(arm,[side*.07,-.29,.23],[side*.07,-.79,.22],.043,brass);
     ellipsoid(arm,.20,.21,.20,joint,side*.08,-.85,.04);
-    forged(arm,.42,.52,.46,steel,side*.08,-1.10,.08,.10);
+    modulePart(armName,forged(arm,.42,.52,.46,steel,side*.08,-1.10,.08,.10));
     plate(armName,arm,.43,.48,.15,side*.08,-1.08,.32,.10);
     for(let i=-1;i<=1;i++){
       const finger=forged(arm,.106,.23,.18,steel,
@@ -213,20 +219,20 @@ export function buildPowerArmorVisual(scene,position,state){
     // shin shells and broad planted boots.
     const leg=makeGroup(root,side*.41,1.27,-.16);legPivots.push(leg);
     ball(leg,.23,joint);
-    ellipsoid(leg,.26,.37,.27,shaded,0,-.31,.04);
+    modulePart(legName,ellipsoid(leg,.26,.37,.27,shaded,0,-.31,.04));
     plate(legName,leg,.45,.49,.25,0,-.33,.285,.105);
     rod(leg,[side*.23,-.11,-.10],[side*.22,-.70,-.10],.051,edge);
     rod(leg,[-side*.17,-.10,.21],[-side*.17,-.67,.21],.043,brass);
     ellipsoid(leg,.21,.18,.21,joint,0,-.71,.06);
     cyl(leg,.13,.13,.14,brass,0,-.71,.24).rotation.x=Math.PI/2;
-    ellipsoid(leg,.29,.35,.31,steel,0,-1.02,.045);
+    modulePart(legName,ellipsoid(leg,.29,.35,.31,steel,0,-1.02,.045));
     plate(legName,leg,.49,.56,.19,0,-1.03,.32,.115);
     for(const x of [-.20,.20]){
       rod(leg,[x,-.79,-.08],[x,-1.25,-.07],.047,edge);
     }
     const boot=forged(leg,.64,.24,.78,shaded,0,-1.28,.21,.095);
-    forged(leg,.57,.095,.20,steel,0,-1.37,.50,.035);
-    for(const x of [-.20,0,.20])box(leg,.095,.035,.13,edge,x,-1.40,.56);
+    modulePart(legName,forged(leg,.57,.095,.20,steel,0,-1.37,.50,.035));
+    for(const x of [-.20,0,.20])modulePart(legName,box(leg,.095,.035,.13,edge,x,-1.40,.56));
   }
   // Stencil markings on the front face of the machine.
   const badgeCanvas=document.createElement('canvas');badgeCanvas.width=256;badgeCanvas.height=96;
@@ -274,6 +280,7 @@ export function buildPowerArmorVisual(scene,position,state){
     for(const slot of POWER_ARMOR_SLOTS){
       const entry=getPowerPlate(slot,currentState.plates[slot]);
       const condition=plateCondition(currentState,slot);
+      for(const part of moduleMeshes[slot])part.visible=entry.points>0;
       for(const shell of plateMeshes[slot]){
         // A broken plate is still physically attached and visible. Its rating
         // is zero until repaired, but its mesh and inventory identity survive.
@@ -331,7 +338,7 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,updateCore,animate,
+  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 
