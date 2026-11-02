@@ -554,6 +554,14 @@ try{
   assert.equal(bareArm.moduleSections.rightArm,0,
     'An empty arm slot must show exposed frame, not old permanently armored mesh');
   assert.ok(bareArm.moduleSections.leftArm>0,'The fitted left arm must retain its armor');
+  assert.equal(bareArm.frameFeatures.rearHatch,true,'Frame must have an actual rear cage');
+  assert.ok(bareArm.frameFeatures.torsoRibs>=4,'The torso needs a continuous mechanical ribcage');
+  assert.ok(bareArm.frameFeatures.armLinks>=18,
+    'Both skeletal arms must have elbow-to-wrist connections independent of armor');
+  assert.ok(bareArm.frameFeatures.legLinks>=14,
+    'Both skeletal legs require complete actuator linkages');
+  assert.equal(bareArm.rearHatchInReach,true,
+    'Station 8 must place the tester behind the frame, ready to climb in');
   assert.equal(await page.evaluate(()=>window.__rpgSmokeApproachPowerCache()),true);
   await page.keyboard.press('e');
   await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:10000});
@@ -611,8 +619,9 @@ try{
     'Power-armor entry must use the same equipped ordinary armor');
   await page.waitForFunction(()=>{
       const v=window.__rpgSmokePowerVisual();
-      return Math.abs(v.chestOpenAngle)>.4 && v.pilotVisible &&
-        v.pilotDepth<1.4 && v.cinematic && v.cameraDistanceToHero<.8;
+      return Math.abs(v.rearHatchOpenAngle)>.4 && v.pilotVisible &&
+        v.pilotDepth<-.65 && v.pilotDepth>-1.9 &&
+        v.cinematic && v.cameraDistanceToHero<.8;
     },null,{timeout:15000});
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
@@ -644,7 +653,7 @@ try{
   await page.keyboard.up('e');
   await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.5));
   await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotVisible &&
-    window.__rpgSmokePowerVisual().pilotDepth<1.4,
+    window.__rpgSmokePowerVisual().pilotDepth<-.65,
     null,{timeout:15000});
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='idle'&&

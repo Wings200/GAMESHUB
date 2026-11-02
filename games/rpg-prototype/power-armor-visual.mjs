@@ -1,4 +1,4 @@
-// W08.3: a compact, fully armored industrial exosuit. Original procedural art.
+// W12.0: original ivory-steel exoskeleton with a rear-entry cage, mechanical limbs and a modular shell.
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
@@ -8,13 +8,13 @@ export function buildPowerArmorVisual(scene,position,state){
   root.position.set(position.x,0,position.z);
   root.rotation.y=-Math.PI/2;
   scene.add(root);
-  const steel=new THREE.MeshStandardMaterial({color:0x55636a,metalness:.69,roughness:.48});
+  const steel=new THREE.MeshStandardMaterial({color:0xaeb8af,metalness:.65,roughness:.53});
   const armor=new THREE.MeshStandardMaterial({color:0x556b64,metalness:.55,roughness:.64});
-  const shaded=new THREE.MeshStandardMaterial({color:0x32464c,metalness:.65,roughness:.60});
-  const edge=new THREE.MeshStandardMaterial({color:0x9aa7a2,metalness:.82,roughness:.39});
-  const joint=new THREE.MeshStandardMaterial({color:0x111c20,metalness:.25,roughness:.92});
+  const shaded=new THREE.MeshStandardMaterial({color:0x425157,metalness:.63,roughness:.61});
+  const edge=new THREE.MeshStandardMaterial({color:0xdee0cd,metalness:.72,roughness:.43});
+  const joint=new THREE.MeshStandardMaterial({color:0x263138,metalness:.33,roughness:.86});
   const brass=new THREE.MeshStandardMaterial({color:0xa58c62,metalness:.76,roughness:.47});
-  const orange=new THREE.MeshStandardMaterial({color:0xbb874e,metalness:.5,roughness:.59});
+  const orange=new THREE.MeshStandardMaterial({color:0xaa523b,metalness:.62,roughness:.52});
   const visor=new THREE.MeshStandardMaterial({
     color:0x182f34,metalness:.61,roughness:.22,emissive:0x3a967e,emissiveIntensity:.34
   });
@@ -112,11 +112,38 @@ export function buildPowerArmorVisual(scene,position,state){
     return m;
   };
 
-  // Human-scale cavity, encased by side rails and a rear spine.
-  // No solid 1.5m-wide cuboid behind the hinged breastplates.
-  const spine=forged(root,.75,1.11,.21,shaded,0,1.83,-.42,.16);
-  forged(root,.87,.24,.39,steel,0,1.29,-.13,.07); // pelvic harness
-  ellipsoid(root,.46,.30,.37,joint,0,1.41,-.13);
+  // The solid torso block is gone: a ribcage, sternum, waist bellows and
+  // two rear upright rails form a continuous, back-accessible exoskeleton.
+  const frameFeatures={torsoRibs:0,armLinks:0,legLinks:0,rearHatch:true};
+  for(const side of [-1,1]){
+    rod(root,[side*.36,1.36,-.39],[side*.43,2.48,-.43],.085,steel);
+    rod(root,[side*.43,2.46,-.43],[side*.68,2.31,-.16],.08,edge);
+    rod(root,[side*.66,2.28,.03],[side*.39,1.80,.29],.071,steel);
+    rod(root,[side*.39,1.80,.29],[side*.26,1.42,.17],.058,edge);
+    frameFeatures.torsoRibs+=2;
+  }
+  forged(root,.87,.24,.39,steel,0,1.29,-.13,.07);
+  ellipsoid(root,.46,.25,.33,joint,0,1.40,-.13);
+  rod(root,[0,2.36,.10],[0,1.74,.29],.09,edge);
+  forged(root,.34,.38,.17,steel,0,2.05,.21,.07);
+  for(const side of [-1,1]){
+    rod(root,[0,2.29,.17],[side*.54,2.41,.04],.063,edge);
+    rod(root,[side*.51,2.27,.12],[side*.24,1.84,.34],.056,steel);
+    const brace=ellipsoid(root,.17,.20,.14,orange,side*.35,1.78,.28);
+    brace.rotation.z=side*.25;
+    cyl(root,.09,.09,.18,joint,side*.35,1.78,.40).rotation.x=Math.PI/2;
+  }
+  for(let i=0;i<5;i++){
+    const rib=cyl(root,.31-i*.013,.32-i*.012,.067,i%2?shaded:joint,
+      0,1.44+i*.078,-.16,18);
+    rib.scale.z=.72;
+  }
+  const neckRing=mesh(root,new THREE.TorusGeometry(.31,.073,9,24),edge,0,2.56,-.14);
+  neckRing.rotation.x=Math.PI/2;
+  for(const side of [-1,1]){
+    ellipsoid(root,.14,.16,.18,orange,side*.66,2.29,-.16);
+    cyl(root,.082,.082,.16,brass,side*.66,2.28,.01).rotation.x=Math.PI/2;
+  }
   for(const side of [-1,1]){
     rod(root,[side*.43,1.30,-.29],[side*.55,2.46,-.29],.073,edge);
     rod(root,[side*.33,1.33,.10],[side*.56,2.24,.09],.051,steel);
@@ -125,7 +152,7 @@ export function buildPowerArmorVisual(scene,position,state){
       [side*.55,2.18,-.37],[side*.48,2.31,-.31]],.046,joint);
   }
   // Compact backpack reactor, vent banks and luminous power-core iris.
-  const reactor=makeGroup(root,0,1.90,-.60);
+  const reactor=makeGroup(root,.67,1.95,-.63);
   cyl(reactor,.34,.34,.21,steel,0,0,0).rotation.x=Math.PI/2;
   cyl(reactor,.255,.255,.025,joint,0,0,-.125).rotation.x=Math.PI/2;
   const coreLight=cyl(reactor,.135,.135,.027,glow.clone(),0,0,-.149);
@@ -149,11 +176,11 @@ export function buildPowerArmorVisual(scene,position,state){
     forged(root,.27,.26,.14,shaded,side*.56,1.16,.18,.06);
   }
 
-  // Wing doors now visually resemble two sculpted halves of a breastplate.
-  const doors={left:makeGroup(root,-.68,1.93,.33),
+  // Chest armor remains mounted at the FRONT while the back opens for entry.
+  const chestMounts={left:makeGroup(root,-.68,1.93,.33),
     right:makeGroup(root,.68,1.93,.33)};
   for(const [side,key] of [[-1,'left'],[1,'right']]){
-    const door=doors[key];
+    const door=chestMounts[key];
     const cx=-side*.33;
     modulePart('chest',forged(door,.67,1.01,.19,steel,cx,0,.055,.17));
     plate('chest',door,.67,.85,.115,cx,.06,.18,.16);
@@ -165,6 +192,18 @@ export function buildPowerArmorVisual(scene,position,state){
     modulePart('chest',forged(door,.21,.16,.065,orange,cx,-.17,.282,.04));
     for(const y of [-.39,.38])modulePart('chest',bolt(door,cx+side*.18,y,.29));
     cyl(door,.047,.047,1.07,brass,-side*.02,0,-.08);
+  }
+  // Swinging rear-cage halves and red hinges are part of the bare frame.
+  const doors={left:makeGroup(root,-.50,1.89,-.43),
+    right:makeGroup(root,.50,1.89,-.43)};
+  for(const [side,key] of [[-1,'left'],[1,'right']]){
+    const hatch=doors[key],inner=-side*.24;
+    rod(hatch,[0,.54,-.04],[inner,.42,-.13],.052,edge);
+    rod(hatch,[inner,.42,-.13],[inner,-.39,-.14],.061,steel);
+    rod(hatch,[inner,-.39,-.14],[0,-.53,-.05],.051,edge);
+    forged(hatch,.25,.27,.085,steel,inner,.02,-.15,.05);
+    for(const h of [-.44,.42])
+      cyl(hatch,.095,.095,.16,orange,0,h,-.03).rotation.x=Math.PI/2;
   }
   // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
   // dual cheek filters and respirator; no floating rectangular robot head.
@@ -187,11 +226,20 @@ export function buildPowerArmorVisual(scene,position,state){
     hose(root,[[side*.35,2.36,.19],[side*.53,2.24,.07],
       [side*.62,2.04,-.21]],.04,joint);
   }
-  // Neck seal and bolted shoulder collar.
-  cyl(root,.28,.34,.22,joint,0,2.31,-.14,12);
-  forged(root,.91,.17,.47,steel,0,2.36,-.24,.05);
+  // Open neck ring and bolted shoulder clips remain without the helmet.
+  cyl(root,.25,.28,.12,joint,0,2.31,-.14,12);
+  for(const side of [-1,1]){
+    forged(root,.26,.15,.42,steel,side*.43,2.39,-.23,.05);
+    rod(root,[side*.48,2.37,-.35],[side*.83,2.30,-.12],.08,edge);
+  }
 
   const armPivots=[],legPivots=[];
+  // Shoulder yokes extend from the chest cage into the upper arm pivots.
+  for(const side of [-1,1]){
+    rod(root,[side*.49,2.37,-.22],[side*.88,2.33,-.13],.09,edge);
+    rod(root,[side*.54,2.25,-.35],[side*.84,2.20,-.27],.065,steel);
+    cyl(root,.15,.15,.12,orange,side*.84,2.25,-.12).rotation.z=Math.PI/2;
+  }
   for(const side of [-1,1]){
     const armName=side<0?'leftArm':'rightArm';
     const legName=side<0?'leftLeg':'rightLeg';
@@ -200,12 +248,27 @@ export function buildPowerArmorVisual(scene,position,state){
     const arm=makeGroup(root,side*.86,2.26,-.11);armPivots.push(arm);
     ball(arm,.25,joint);
     cyl(arm,.16,.16,.26,edge,0,0,0).rotation.z=Math.PI/2;
+    // Even an unarmored arm is a continuous mechanical shoulder-to-finger
+    // assembly; its wrist and palm cannot float below the elbow anymore.
+    rod(arm,[side*.04,-.05,-.20],[side*.05,-.81,-.22],.067,steel);
+    rod(arm,[side*.21,-.09,.02],[side*.20,-.80,.04],.047,brass);
+    const shoulderRam=cyl(arm,.10,.10,.31,orange,side*.22,-.40,-.04);
+    shoulderRam.rotation.z=side*.15;
+    frameFeatures.armLinks+=3;
     modulePart(armName,ellipsoid(arm,.43,.30,.38,steel,side*.07,-.09,.0));
     plate(armName,arm,.69,.33,.37,side*.08,-.13,.27,.13);
     modulePart(armName,forged(arm,.33,.52,.33,shaded,side*.07,-.53,.04,.09));
     rod(arm,[side*.20,-.26,-.12],[side*.18,-.79,-.12],.055,edge);
     rod(arm,[side*.07,-.29,.23],[side*.07,-.79,.22],.043,brass);
     ellipsoid(arm,.20,.21,.20,joint,side*.08,-.85,.04);
+    cyl(arm,.18,.18,.14,orange,side*.08,-.84,.04).rotation.z=Math.PI/2;
+    rod(arm,[side*.03,-.88,-.13],[side*.03,-1.34,-.13],.073,edge);
+    rod(arm,[side*.22,-.86,.11],[side*.19,-1.36,.12],.063,steel);
+    rod(arm,[side*.08,-.92,.23],[side*.08,-1.29,.24],.039,brass);
+    cyl(arm,.13,.13,.10,joint,side*.08,-1.38,.07,12);
+    forged(arm,.39,.19,.28,steel,side*.08,-1.43,.13,.055);
+    forged(arm,.17,.27,.18,shaded,side*.08+side*.24,-1.45,.18,.04);
+    frameFeatures.armLinks+=6;
     modulePart(armName,forged(arm,.42,.52,.46,steel,side*.08,-1.10,.08,.10));
     plate(armName,arm,.43,.48,.15,side*.08,-1.08,.32,.10);
     for(let i=-1;i<=1;i++){
@@ -219,18 +282,31 @@ export function buildPowerArmorVisual(scene,position,state){
     // shin shells and broad planted boots.
     const leg=makeGroup(root,side*.41,1.27,-.16);legPivots.push(leg);
     ball(leg,.23,joint);
+    cyl(leg,.20,.20,.16,orange,0,-.08,-.02).rotation.z=Math.PI/2;
+    rod(leg,[-.17,-.12,-.14],[-.17,-.69,-.13],.071,steel);
+    rod(leg,[.17,-.12,-.14],[.17,-.69,-.13],.071,steel);
+    rod(leg,[0,-.15,.10],[0,-.64,.12],.057,brass);
+    frameFeatures.legLinks+=3;
     modulePart(legName,ellipsoid(leg,.26,.37,.27,shaded,0,-.31,.04));
     plate(legName,leg,.45,.49,.25,0,-.33,.285,.105);
     rod(leg,[side*.23,-.11,-.10],[side*.22,-.70,-.10],.051,edge);
     rod(leg,[-side*.17,-.10,.21],[-side*.17,-.67,.21],.043,brass);
     ellipsoid(leg,.21,.18,.21,joint,0,-.71,.06);
-    cyl(leg,.13,.13,.14,brass,0,-.71,.24).rotation.x=Math.PI/2;
+    cyl(leg,.16,.16,.20,orange,0,-.71,.24).rotation.x=Math.PI/2;
+    for(const x of [-.19,.19]){
+      rod(leg,[x,-.77,-.12],[x,-1.28,-.10],.069,steel);
+      rod(leg,[x,-.78,.17],[x,-1.27,.18],.052,edge);
+      frameFeatures.legLinks+=2;
+    }
+    forged(leg,.32,.12,.29,edge,0,-1.25,.06,.038);
     modulePart(legName,ellipsoid(leg,.29,.35,.31,steel,0,-1.02,.045));
     plate(legName,leg,.49,.56,.19,0,-1.03,.32,.115);
     for(const x of [-.20,.20]){
       rod(leg,[x,-.79,-.08],[x,-1.25,-.07],.047,edge);
     }
     const boot=forged(leg,.64,.24,.78,shaded,0,-1.28,.21,.095);
+    cyl(leg,.13,.13,.13,orange,0,-1.29,-.17).rotation.x=Math.PI/2;
+    forged(leg,.41,.14,.36,steel,0,-1.35,.32,.06);
     modulePart(legName,forged(leg,.57,.095,.20,steel,0,-1.37,.50,.035));
     for(const x of [-.20,0,.20])modulePart(legName,box(leg,.095,.035,.13,edge,x,-1.40,.56));
   }
@@ -251,7 +327,7 @@ export function buildPowerArmorVisual(scene,position,state){
 
   // Articulated human pilot is much smaller than the armor: visible during
   // the existing approach/climb/exit choreography, not a second armored bot.
-  const pilot=makeGroup(root,0,0,1.72);
+  const pilot=makeGroup(root,0,0,-1.93);
   const fallbackPilot=makeGroup(pilot);
   const uniform=new THREE.MeshStandardMaterial({color:0x657166,roughness:.93});
   const fabric=new THREE.MeshStandardMaterial({color:0x30383a,roughness:1});
@@ -305,9 +381,9 @@ export function buildPowerArmorVisual(scene,position,state){
     const transitioning=phase==='entering'||phase==='exiting';
     const t=Math.max(0,Math.min(1,progress));
     const open=transitioning?ease(0,.23,t)*(1-ease(.76,1,t)):0;
-    doors.left.rotation.y=-open*1.56;
-    doors.right.rotation.y=open*1.56;
-    helmetPivot.rotation.x=-open*.46;
+    doors.left.rotation.y=open*1.48;
+    doors.right.rotation.y=-open*1.48;
+    helmetPivot.rotation.x=-open*.12;
     armPivots[0].rotation.z=-open*.16;
     armPivots[1].rotation.z=open*.16;
     for(const leg of legPivots)leg.rotation.x=Math.sin(time*1.2)*.004;
@@ -316,7 +392,7 @@ export function buildPowerArmorVisual(scene,position,state){
     if(transitioning){
       const move=ease(.19,.81,t);
       const journey=phase==='entering'?move:1-move;
-      pilot.position.z=1.72-journey*2.04;
+      pilot.position.z=-1.93+journey*1.65;
       const climb=ease(.25,.65,journey);
       pilot.position.y=.16*climb+.18*Math.sin(Math.PI*journey);
       pilotBody.rotation.x=-.31*Math.sin(Math.PI*journey);
@@ -338,7 +414,7 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,updatePlates,updateCore,animate,
+  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 

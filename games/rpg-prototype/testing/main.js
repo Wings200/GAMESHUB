@@ -122,7 +122,7 @@ const stations=[
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Modular power-armor frame',info:'The frame has six physical armor mounts. TAP E at the parked frame to install, repair or remove pieces; HOLD E to climb in or out. The purple salvage cache nearby contains starter pieces and fusion cores. B and Y still edit dummies.',x:-52,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. The purple cache nearby has starter parts and fusion cores.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -478,7 +478,7 @@ function rebuildDummyArmor(dummy){
 }
 dummyKinds.forEach(makeDummy);
 
-// W11.0: one modular, exposed 3D chassis at Station 8, independent of
+// W12.0: connected skeletal, rear-entry chassis at Station 8, independent of
 // normal player armor and of the static test-dummy equipment.
 const powerArmorBay={x:-49,z:-12};
 let powerArmorState=createPowerArmorState();
@@ -491,7 +491,8 @@ const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
 // No photorealistic Raider GLB is mounted for the player anymore.
 const pilotAvatar=createPlayerAvatar(poweredSuit.pilot);
 poweredSuit.useOriginalPilot();
-textSign('POWER FRAME · TAP E / HOLD E',-55,-6,0x8fbba4);
+textSign('POWER FRAME · TAP E TO CONFIGURE',-55,-6,0x8fbba4);
+textSign('REAR HATCH · HOLD E TO ENTER',-43,-6,0x8fbba4);
 textSign('SALVAGE CACHE · E TO SEARCH',-54,-8,0xd7b4ee);
 const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
@@ -540,8 +541,8 @@ function updatePowerCinematic(progress){
   // Cut immediately to a clear three-quarter view, rather than moving
   // THROUGH the torso first. Hold for the climb and fade toward the visor
   // only during the final 8% of the locking animation.
-  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(2.62,2.34,3.52));
-  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.67,.26));
+  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36));
+  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.67,-.42));
   const handoff=powerEase(.92,1,p);
   camera.position.copy(heroPosition).lerp(powerCinematic.to,handoff);
   const look=new THREE.Quaternion().setFromRotationMatrix(
@@ -555,7 +556,15 @@ function nearPoweredSuit(){
   return Math.hypot(player.x-poweredSuit.root.position.x,
     player.z-poweredSuit.root.position.z)<3.8;
 }
+function nearRearHatch(){
+  const hatch=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,-1.32));
+  return Math.hypot(player.x-hatch.x,player.z-hatch.z)<2.35;
+}
 function refreshPowerArmorHUD(){
+  // The obsolete plate-count widget is gone. Only core status appears while
+  // WEARING the frame; six-slot condition lives in the E service interface.
+  $('powerArmorHud').classList.toggle('hidden',
+    !powerArmorState.occupied||powerArmorState.phase!=='idle');
   const status=$('powerArmorStatus');
   const powered=hasFusionPower(powerArmorState);
   status.textContent=powerArmorState.phase==='entering'?'ENTERING CHASSIS…':
@@ -563,16 +572,9 @@ function refreshPowerArmorHUD(){
     powerArmorState.occupied?(powered?'POWER ARMOR · POWERED':
       'POWER ARMOR · CORE DEPLETED · LIMP MODE'):
     'FRAME PARKED · TAP E TO CONFIGURE · HOLD E TO ENTER';
-  const fitted=POWER_ARMOR_SLOTS.filter(slot=>powerArmorState.plates[slot]!=='none').length;
-  const broken=POWER_ARMOR_SLOTS.filter(slot=>plateCondition(powerArmorState,slot).broken).length;
-  const suitReduction=powerArmorProtection(
-    {...powerArmorState,occupied:true},'chest').frameReduction;
   const core=powerArmorState.coreCharge;
-  $('powerArmorDetail').textContent=fitted+' / 6 PLATES · '+
-    (broken?broken+' BROKEN · ':'')+
-    (core===null?'NO CORE':Math.ceil(core)+'% FUSION CORE')+' · '+
-    (powerArmorState.occupied?'CHEST '+Math.round(suitReduction*100)+
-      '% FRAME BLOCK':'FRAME AT STATION 8');
+  $('powerArmorDetail').textContent=core===null?'NO FUSION CORE':
+    Math.ceil(core)+'% FUSION CORE'+(core<=0?' · REPLACE AT FRAME':'');
 }
 function powerServiceAvailable(){
   if(powerArmorState.phase!=='idle'||powerArmorState.occupied){
@@ -660,6 +662,9 @@ function togglePoweredSuit(){
   if(!powerArmorState.occupied&&!nearPoweredSuit()){
     showShotNotice('GET CLOSER TO THE POWER ARMOR FRAME AT STATION 8');return;
   }
+  if(!powerArmorState.occupied&&!nearRearHatch()){
+    showShotNotice('MOVE BEHIND THE FRAME · ENTER THROUGH THE REAR HATCH');return;
+  }
   const exiting=powerArmorState.occupied;
   if(exiting){
     // The shell is worn at the player location and then parks there.
@@ -669,14 +674,14 @@ function togglePoweredSuit(){
   }
   const result=beginPowerArmorTransition(powerArmorState);
   if(!result.ok)return;
-  const offset=exiting?2.32:0;
+  const offset=exiting?-2.32:0;
   const target=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,offset));
   const destY=groundHeight(target.x,target.z)+powerArmorEyeHeight(
     {occupied:!exiting},exiting?player.eyeHeight:MOVE_TUNING.eyeHeight);
   const endPosition=new THREE.Vector3(target.x,destY,target.z);
   const endingRotation=exiting?new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(endPosition,
-      poweredSuit.root.localToWorld(new THREE.Vector3(0,1.7,.1)),powerCameraUp)):
+      poweredSuit.root.localToWorld(new THREE.Vector3(0,1.7,-.3)),powerCameraUp)):
     camera.quaternion.clone();
   powerCinematic={from:camera.position.clone(),fromRotation:camera.quaternion.clone(),
     to:endPosition,toRotation:endingRotation};
@@ -2606,7 +2611,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
         Math.max(0,fraction*POWER_ARMOR_TRANSITION_SECONDS));
   };
   window.__rpgSmokePowerVisual=()=>({
-    chestOpenAngle:poweredSuit.doors.left.rotation.y,
+    rearHatchOpenAngle:poweredSuit.doors.left.rotation.y,
+    rearHatch:true,
+    frameFeatures:{...poweredSuit.frameFeatures},
+    rearHatchInReach:nearRearHatch(),
     helmetOpenAngle:poweredSuit.helmetPivot.rotation.x,
     visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
@@ -2625,7 +2633,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
     cameraDistanceToHero:camera.position.distanceTo(
-      poweredSuit.root.localToWorld(new THREE.Vector3(2.62,2.34,3.52)))
+      poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36)))
   });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
@@ -3120,7 +3128,8 @@ function frame(){
   if(frameInReach){
     $('lootPrompt').textContent=powerArmorState.occupied?
       'HOLD E · EXIT POWER ARMOR':
-      'TAP E · CONFIGURE POWER FRAME     HOLD E · ENTER';
+      nearRearHatch()?'TAP E · CONFIGURE FRAME     HOLD E · ENTER FROM REAR':
+        'TAP E · CONFIGURE FRAME     MOVE BEHIND FRAME TO ENTER';
     if(powerHoldPending){
       const pct=Math.min(99,Math.floor(
         (performance.now()-powerHoldStartedAt)/POWER_HOLD_MS*100));
