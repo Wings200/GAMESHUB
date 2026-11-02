@@ -9,8 +9,11 @@ import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_T
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
-import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,createPowerArmorState,
-  setPowerPlate,beginPowerArmorTransition,stepPowerArmor,
+import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
+  createPowerArmorState,getPowerPlate,plateCondition,setPowerPlate,
+  removePowerPlate,repairPowerPlate,damagePowerPlate,
+  installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
+  beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
 import {createNpcAvatar} from '../npc-avatar.mjs';
@@ -489,10 +492,11 @@ const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
 const pilotAvatar=createPlayerAvatar(poweredSuit.pilot);
 poweredSuit.useOriginalPilot();
 textSign('POWER SUIT · P TO ENTER',-55,-6,0x8fbba4);
+textSign('SALVAGE CACHE · E TO SEARCH',-54,-8,0xd7b4ee);
 const poweredCockpit=buildPowerArmorCockpit(camera);
 poweredSuit.root.visible=!powerArmorState.occupied;
 poweredCockpit.visible=powerArmorState.occupied;
-let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false;
+let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false,lastFusionSave=0;
 let powerCinematic=null;
 const powerCameraUp=new THREE.Vector3(0,1,0);
 function powerEase(a,b,value){
@@ -524,22 +528,88 @@ function nearPoweredSuit(){
 }
 function refreshPowerArmorHUD(){
   const status=$('powerArmorStatus');
+  const powered=hasFusionPower(powerArmorState);
   status.textContent=powerArmorState.phase==='entering'?'ENTERING CHASSIS…':
     powerArmorState.phase==='exiting'?'EXITING CHASSIS…':
-    powerArmorState.occupied?'POWER ARMOR ACTIVE':'FRAME PARKED · P TO ENTER';
-  const fitted=POWER_ARMOR_SLOTS.filter(s=>powerArmorState.plates[s]!=='none').length;
+    powerArmorState.occupied?(powered?'POWER ARMOR · POWERED':
+      'POWER ARMOR · CORE DEPLETED · LIMP MODE'):
+    'FRAME PARKED · P TO ENTER';
+  const fitted=POWER_ARMOR_SLOTS.filter(slot=>powerArmorState.plates[slot]!=='none').length;
+  const broken=POWER_ARMOR_SLOTS.filter(slot=>plateCondition(powerArmorState,slot).broken).length;
   const suitReduction=powerArmorProtection(
     {...powerArmorState,occupied:true},'chest').frameReduction;
-  $('powerArmorDetail').textContent=fitted+' / 6 POWER PLATES · '+
+  const core=powerArmorState.coreCharge;
+  $('powerArmorDetail').textContent=fitted+' / 6 PLATES · '+
+    (broken?broken+' BROKEN · ':'')+
+    (core===null?'NO CORE':Math.ceil(core)+'% FUSION CORE')+' · '+
     (powerArmorState.occupied?'CHEST '+Math.round(suitReduction*100)+
-      '% BASE DAMAGE BLOCK':'FRAME AT STATION 8');
+      '% FRAME BLOCK':'FRAME AT STATION 8');
+}
+function powerServiceAvailable(){
+  if(powerArmorState.phase!=='idle'||powerArmorState.occupied){
+    $('powerServiceFeedback').textContent='EXIT THE SUIT BEFORE SERVICING PARTS OR CORES';
+    return false;
+  }
+  if(!nearPoweredSuit()){
+    $('powerServiceFeedback').textContent='STAND BY THE FRAME AT STATION 8 TO SERVICE IT';
+    return false;
+  }
+  return true;
 }
 function refreshPowerArmorUI(){
   for(const slot of POWER_ARMOR_SLOTS){
-    $('power-'+slot).value=powerArmorState.plates[slot];
-    const p=POWER_ARMOR_PLATES[powerArmorState.plates[slot]];
-    $('power-rating-'+slot).textContent=p.points+' PLATE AP · '+p.name.toUpperCase();
+    const current=plateCondition(powerArmorState,slot);
+    const picker=$('power-'+slot);picker.replaceChildren();
+    const fitted=document.createElement('option');
+    fitted.value='installed';fitted.textContent=current.tier==='none'?
+      'EMPTY · SELECT A COLLECTED PART':
+      getPowerPlate(slot,current.tier).name+' · INSTALLED';
+    picker.append(fitted);
+    if(current.tier!=='none'){
+      const remove=document.createElement('option');
+      remove.value='remove';remove.textContent='REMOVE TO BACKPACK';picker.append(remove);
+    }
+    for(const entry of backpack.items){
+      const item=getItem(entry.itemId);
+      if(item.category!=='power-plate'||item.slot!==slot)continue;
+      const option=document.createElement('option');option.value=entry.uid;
+      option.textContent=item.name+' · '+Math.ceil(entry.condition)+' / '+
+        item.maxDurability+' DURABILITY'+(entry.condition<=0?' · BROKEN':'');
+      picker.append(option);
+    }
+    picker.value='installed';
+    const spec=getPowerPlate(slot,current.tier);
+    $('power-rating-'+slot).textContent=current.tier==='none'?'EMPTY SLOT':
+      spec.points+' AP · '+Math.ceil(current.current)+' / '+current.max+
+      ' DURABILITY'+(current.broken?' · BROKEN / 0 PLATE AP':'');
+    $('power-repair-'+slot).disabled=current.tier==='none'||
+      current.current>=current.max||powerArmorState.occupied;
   }
+  const corePicker=$('powerCoreChoice');corePicker.replaceChildren();
+  let available=0;
+  for(const entry of backpack.items){
+    if(entry.itemId!=='supply:fusion-core')continue;
+    const option=document.createElement('option');option.value=entry.uid;
+    option.textContent='FUSION CORE · '+Math.ceil(entry.charge)+'%'+
+      (entry.charge<=0?' · SPENT':'');
+    corePicker.append(option);available++;
+  }
+  if(!available){
+    const empty=document.createElement('option');empty.value='';
+    empty.textContent='NO STORED CORES';corePicker.append(empty);
+  }
+  $('powerCoreStatus').textContent=powerArmorState.coreCharge===null?
+    'REACTOR EMPTY · NO CORE INSTALLED':
+    'REACTOR CORE · '+Math.ceil(powerArmorState.coreCharge)+'% CHARGE'+
+    (hasFusionPower(powerArmorState)?'':' · DEPLETED');
+  $('powerInsertCore').disabled=!available||powerArmorState.occupied||
+    powerArmorState.coreCharge!==null;
+  $('powerEjectCore').disabled=powerArmorState.coreCharge===null||
+    powerArmorState.occupied;
+  $('powerMaterialStatus').textContent=
+    'SALVAGE '+countItem(backpack,'supply:salvage')+
+    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
+    ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
   $('powerArmorControl').textContent=powerArmorState.occupied?
     'EXIT THE FRAME · P':'ENTER THE FRAME NEAR STATION 8 · P';
   refreshPowerArmorHUD();
@@ -589,21 +659,123 @@ function togglePoweredSuit(){
     'RELEASING LOCKS · EXITING CHASSIS');
   refreshPowerArmorHUD();
 }
+function savePowerService(){
+  poweredSuit.updatePlates(powerArmorState);
+  poweredSuit.updateCore(powerArmorState);
+  savePowerArmor();saveBackpack();
+  refreshPowerArmorUI();refreshInventoryUI();
+}
+function spendPowerMaterials(cost){
+  for(const [itemId,needed] of [['supply:salvage',cost.salvage||0],
+    ['supply:optic-glass',cost.glass||0]]){
+    let remaining=needed;
+    for(const entry of [...backpack.items]){
+      if(entry.itemId!==itemId||!remaining)continue;
+      remaining-=removeItem(backpack,entry.uid,remaining).removed;
+    }
+  }
+}
 for(const slot of POWER_ARMOR_SLOTS){
   const picker=$('power-'+slot);
-  for(const p of Object.values(POWER_ARMOR_PLATES)){
-    const option=document.createElement('option');
-    option.value=p.id;option.textContent=p.name+' · '+p.points+' AP';
-    picker.append(option);
-  }
   picker.addEventListener('change',()=>{
-    const update=setPowerPlate(powerArmorState,slot,picker.value);
-    if(!update.ok)return;
-    poweredSuit.updatePlates(powerArmorState);
-    savePowerArmor();refreshPowerArmorUI();
-    showShotNotice('POWER '+slot.toUpperCase()+' · '+POWER_ARMOR_PLATES[picker.value].name.toUpperCase());
+    if(!powerServiceAvailable()){refreshPowerArmorUI();return;}
+    const choice=picker.value;
+    if(choice==='installed')return;
+    const current=plateCondition(powerArmorState,slot);
+    if(choice==='remove'){
+      if(backpack.items.length>=BACKPACK_LIMIT){
+        $('powerServiceFeedback').textContent='BACKPACK FULL · FREE A SLOT FIRST';
+        refreshPowerArmorUI();return;
+      }
+      const removed=removePowerPlate(powerArmorState,slot);
+      if(removed.ok)addItem(backpack,'power-plate:'+removed.tier+'-'+slot,1,
+        {condition:removed.current});
+      $('powerServiceFeedback').textContent='REMOVED '+getPowerPlate(slot,current.tier).name+
+        ' · CONDITION PRESERVED';
+      savePowerService();return;
+    }
+    const owned=backpack.items.find(entry=>entry.uid===choice);
+    const item=owned&&getItem(owned.itemId);
+    if(!item||item.category!=='power-plate'||item.slot!==slot){
+      refreshPowerArmorUI();return;
+    }
+    const taken=removeItem(backpack,owned.uid,1);
+    if(current.tier!=='none'){
+      const returned=addItem(backpack,'power-plate:'+current.tier+'-'+slot,1,
+        {condition:current.current});
+      if(!returned.added){
+        addItem(backpack,taken.itemId,1,{condition:taken.condition});
+        $('powerServiceFeedback').textContent='BACKPACK FULL · INSTALL ABORTED';
+        refreshPowerArmorUI();return;
+      }
+    }
+    setPowerPlate(powerArmorState,slot,item.tier,taken.condition);
+    $('powerServiceFeedback').textContent='INSTALLED '+item.name.toUpperCase()+
+      (taken.condition<=0?' · BROKEN UNTIL REPAIRED':' · SECURED TO FRAME');
+    savePowerService();
+  });
+  $('power-repair-'+slot).addEventListener('click',()=>{
+    if(!powerServiceAvailable())return;
+    const available=countItem(backpack,'supply:salvage');
+    const result=repairPowerPlate(powerArmorState,slot,available);
+    if(!result.ok){
+      $('powerServiceFeedback').textContent=result.reason==='materials'?
+        'REPAIR NEEDS '+result.cost+' SALVAGED PARTS':'NO REPAIR NEEDED';
+      return;
+    }
+    spendPowerMaterials({salvage:result.cost});
+    $('powerServiceFeedback').textContent=slot.toUpperCase()+
+      ' REPAIRED · '+result.durability+' DURABILITY · -'+result.cost+' PARTS';
+    savePowerService();
   });
 }
+$('powerInsertCore').addEventListener('click',()=>{
+  if(!powerServiceAvailable())return;
+  const uid=$('powerCoreChoice').value;
+  const entry=backpack.items.find(v=>v.uid===uid);
+  if(!entry||entry.itemId!=='supply:fusion-core')return;
+  const fitted=installFusionCore(powerArmorState,entry.charge);
+  if(!fitted.ok){
+    $('powerServiceFeedback').textContent=fitted.reason==='spent-core'?
+      'THAT CORE IS SPENT · FIND A CHARGED ONE':'EJECT THE EXISTING CORE FIRST';
+    return;
+  }
+  removeItem(backpack,uid,1);
+  $('powerServiceFeedback').textContent='FUSION CORE INSERTED · '+
+    Math.ceil(fitted.charge)+'% · POWER SYSTEMS ONLINE';
+  savePowerService();
+});
+$('powerEjectCore').addEventListener('click',()=>{
+  if(!powerServiceAvailable())return;
+  if(backpack.items.length>=BACKPACK_LIMIT){
+    $('powerServiceFeedback').textContent='BACKPACK FULL · CANNOT EJECT';return;
+  }
+  const result=ejectFusionCore(powerArmorState);
+  if(result.ok)addItem(backpack,'supply:fusion-core',1,{charge:result.charge});
+  $('powerServiceFeedback').textContent='CORE EJECTED · '+
+    Math.ceil(result.charge)+'% REMAINING';
+  savePowerService();
+});
+$('powerCraftButton').addEventListener('click',()=>{
+  if(!powerServiceAvailable())return;
+  const tier=$('powerCraftTier').value,slot=$('powerCraftSlot').value;
+  const recipe=POWER_ARMOR_RECIPES[tier];
+  if(!recipe||!POWER_ARMOR_SLOTS.includes(slot))return;
+  if(countItem(backpack,'supply:salvage')<recipe.salvage||
+     countItem(backpack,'supply:optic-glass')<recipe.glass){
+    $('powerServiceFeedback').textContent='MISSING MATERIALS · NEED '+
+      recipe.salvage+' SALVAGE AND '+recipe.glass+' OPTIC GLASS';
+    return;
+  }
+  if(backpack.items.length>=BACKPACK_LIMIT){
+    $('powerServiceFeedback').textContent='BACKPACK FULL · MAKE ROOM TO CRAFT';return;
+  }
+  spendPowerMaterials(recipe);
+  addItem(backpack,'power-plate:'+tier+'-'+slot,1);
+  $('powerServiceFeedback').textContent='CRAFTED '+getPowerPlate(slot,tier).name+
+    ' · '+slot.toUpperCase()+' · FULL DURABILITY';
+  savePowerService();
+});
 $('powerBayOpen').addEventListener('click',openPowerArmorBay);
 $('powerBayClose').addEventListener('click',closePowerArmorBay);
 $('powerArmorControl').addEventListener('click',()=>{
@@ -957,11 +1129,11 @@ function resetEnemies(){
   arenaRound++;
   clearBulletHoles();clearSquadIntel(squadIntel);resetSquadDirector(squadDirector);
   // Each J round produces fresh, singular loot drops. Inventory persists.
-  for(const drop of lootBags.values()){
-    scene.remove(drop.mesh);
-    disposeLootMarker(drop.mesh);
+  for(const [id,drop] of lootBags){
+    if(drop.source==='power-cache')continue; // the salvage cache is finite
+    scene.remove(drop.mesh);disposeLootMarker(drop.mesh);lootBags.delete(id);
   }
-  lootBags.clear();selectedLootId=null;
+  selectedLootId=null;
   if(lootOpen)closeLootOverlay();
   for(const enemy of enemies.values()){
     enemy.state.loadout=enemyArmorForRound(enemy.id,arenaRound);
@@ -1016,7 +1188,8 @@ function makeLootMarker(bag){
   const ctx=sign.getContext('2d');
   ctx.fillStyle='rgba(7,18,27,.93)';ctx.fillRect(0,0,256,64);
   ctx.font='bold 24px system-ui';ctx.fillStyle='#f4e7cb';
-  ctx.textAlign='center';ctx.fillText('LOOT · E TO SEARCH',128,40);
+  ctx.textAlign='center';ctx.fillText(bag.source==='power-cache'?
+    'POWER CACHE · E':'LOOT · E TO SEARCH',128,40);
   const texture=new THREE.CanvasTexture(sign);
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
     map:texture,depthTest:true,transparent:true}));
@@ -1031,6 +1204,31 @@ function spawnWorldLoot(contents,x,z,source='world'){
   lootBags.set(bag.id,{...bag,mesh:marker});
   return bag.id;
 }
+// W10.0: finite test-world salvage cache, persistent even across J resets.
+// The future open world will distribute these pieces through exploration and quests.
+const POWER_CACHE_KEY='rpg-lab-power-salvage-cache-v1';
+const STARTER_POWER_CACHE=[
+  {itemId:'power-plate:t45-rightArm',quantity:1,condition:55},
+  {itemId:'power-plate:t60-head',quantity:1,condition:105},
+  {itemId:'power-plate:t01-rightLeg',quantity:1,condition:75},
+  {itemId:'supply:fusion-core',quantity:1,charge:100},
+  {itemId:'supply:fusion-core',quantity:1,charge:80},
+  {itemId:'supply:salvage',quantity:16},
+  {itemId:'supply:optic-glass',quantity:6}
+];
+function savePowerCache(contents){
+  try{localStorage.setItem(POWER_CACHE_KEY,JSON.stringify(contents));}catch{}
+}
+let powerCacheContents=STARTER_POWER_CACHE;
+try{
+  const stored=JSON.parse(localStorage.getItem(POWER_CACHE_KEY)||'null');
+  if(Array.isArray(stored))powerCacheContents=stored.filter(e=>{
+    try{return getItem(e.itemId)&&Number.isFinite(e.quantity)&&e.quantity>0;}
+    catch{return false;}
+  });
+}catch{}
+if(powerCacheContents.length)
+  spawnWorldLoot(powerCacheContents,-53,-9,'power-cache');
 function spawnEnemyLoot(enemy){
   return spawnWorldLoot(generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout),enemy.brain.x,
     enemy.brain.z,'enemy-'+enemy.id);
@@ -1155,7 +1353,10 @@ function refreshInventoryUI(){
       countItem(backpack,item.id):0;
     const copy=(copyNumbers.get(item.id)||0)+1;
     copyNumbers.set(item.id,copy);
-    count.textContent=duplicateCount>1?'COPY '+copy+' / '+duplicateCount:
+    count.textContent=item.category==='power-plate'?
+      Math.ceil(entry.condition)+' / '+item.maxDurability+' DUR':
+      item.category==='fusion-core'?Math.ceil(entry.charge)+'% CORE':
+      duplicateCount>1?'COPY '+copy+' / '+duplicateCount:
       '×'+entry.quantity;
     count.className='loot-quantity';row.append(count);
     if(item.category==='armor'||item.category==='weapon'||item.category==='clothing'){
@@ -1222,7 +1423,9 @@ function refreshInventoryUI(){
       if(item.category==='clothing'&&backpack.equipment.clothing?.[item.slot]===item.key&&
          !backpack.items.some(e=>e.itemId===item.id))
         backpack.equipment.clothing[item.slot]='none';
-      spawnWorldLoot([{itemId:dropped.itemId,quantity:dropped.removed}],
+      spawnWorldLoot([{itemId:dropped.itemId,quantity:dropped.removed,
+        ...(Number.isFinite(dropped.condition)?{condition:dropped.condition}:{}),
+        ...(Number.isFinite(dropped.charge)?{charge:dropped.charge}:{})}],
         player.x+Math.sin(camera.rotation.y)*.8,player.z-.8,'player-drop');
       saveBackpack();refreshInventoryUI();
     });
@@ -1236,10 +1439,14 @@ function refreshLootUI(){
   if(!bag){const p=document.createElement('p');p.textContent='NO ITEMS REMAINING';area.append(p);return;}
   for(let i=0;i<bag.items.length;i++){
     const entry=bag.items[i],item=getItem(entry.itemId),row=inventoryLine(item);
-    const count=document.createElement('span');count.textContent='×'+entry.quantity;
+    const count=document.createElement('span');
+    count.textContent=item.category==='power-plate'?
+      Math.ceil(entry.condition)+' / '+item.maxDurability+' DUR':
+      item.category==='fusion-core'?Math.ceil(entry.charge)+'% CORE':'×'+entry.quantity;
     count.className='loot-quantity';row.append(count);
     lootButton(row,'TAKE',()=>{
       const result=takeFromBag(backpack,bag,i);
+      if(result.added&&bag.source==='power-cache')savePowerCache(bag.items);
       if(!result.added){
         $('lootFeedback').textContent='BACKPACK FULL · '+backpack.items.length+
           ' / '+BACKPACK_LIMIT+' SLOTS. DROP SOMETHING TO MAKE ROOM.';
@@ -1290,6 +1497,7 @@ $('lootClose').addEventListener('click',closeLootOverlay);
 $('lootTakeAll').addEventListener('click',()=>{
   const bag=lootBags.get(selectedLootId);if(!bag)return;
   const result=takeAllFromBag(backpack,bag);
+  if(bag.source==='power-cache')savePowerCache(bag.items);
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
     'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
@@ -1534,6 +1742,13 @@ function updateEnemies(dt){
               const incoming=calculateIncomingShot(attack.damage,armor.points,
                 powerArmorState,zone);
               const result=hitPlayer(playerHealth,incoming.damage);
+              if(powerArmorState.occupied){
+                const wear=damagePowerPlate(powerArmorState,zone,attack.damage);
+                if(wear.worn>0){
+                  savePowerArmor();
+                  if(wear.broken)poweredSuit.updatePlates(powerArmorState);
+                }
+              }
               if(result.applied){
                 if(!playerHealth.alive)keys.clear();
                 refreshPlayerHealth();playerHitFlash=.48;
@@ -2353,6 +2568,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     resetPlayer(7);
     return nearPoweredSuit();
   };
+  window.__rpgSmokeApproachPowerCache=()=>{
+    player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
+    return nearestLootBag()?.source==='power-cache';
+  };
   window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
   window.__rpgSmokeSetPowerProgress=(fraction)=>{
     if(powerArmorState.phase!=='idle')
@@ -2364,6 +2583,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     helmetOpenAngle:poweredSuit.helmetPivot.rotation.x,
     visiblePlates:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
+    modelDetails:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
+      [slot,Object.fromEntries(['t45','t60','t01'].map(tier=>
+        [tier,poweredSuit.plateMeshes[slot].some(shell=>
+          shell.userData.modelDetails?.[tier]?.visible===true)]))])),
     pilotVisible:poweredSuit.pilot.visible,
     pilotModel:pilotAvatar.root.name,
     pilotArmor:pilotAvatar.armor,
@@ -2515,7 +2738,9 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
     scopedFOV:camera.fov,
     powerArmor:{occupied:powerArmorState.occupied,phase:powerArmorState.phase,
-      plates:{...powerArmorState.plates},visible:poweredSuit.root.visible,
+      plates:{...powerArmorState.plates},plateDurability:{...powerArmorState.plateDurability},
+      coreCharge:powerArmorState.coreCharge,mobility:powerArmorMobility(powerArmorState),
+      visible:poweredSuit.root.visible,
       cockpit:poweredCockpit.visible},
     inventory:{slots:backpack.items.length,
       items:backpack.items.map(e=>({...e})),
@@ -2653,7 +2878,9 @@ window.addEventListener('keydown',e=>{
     clearCasings();
     resetPlayer(stationIndex);return;
   }
-  if(e.code==='Space'){e.preventDefault();if(controls.isLocked)requestJump(player);}
+  if(e.code==='Space'){e.preventDefault();
+    if(controls.isLocked&&powerArmorMobility(powerArmorState).canJump)requestJump(player);
+    else if(controls.isLocked&&powerArmorState.occupied)showShotNotice('NO CORE · HYDRAULICS CANNOT JUMP');}
   keys.add(e.code);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
@@ -2824,8 +3051,21 @@ function frame(){
   }
   if(controls.isLocked&&powerArmorState.phase==='idle'){
     controls.getDirection(forward);
-    const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,{boxes:bounds,trees:[],ceilings,groundHeight});
+    const mobility=powerArmorMobility(powerArmorState);
+    const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
+      {boxes:bounds,trees:[],ceilings,groundHeight,
+        speedMultiplier:mobility.factor,allowSprint:mobility.canSprint});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
+    const core=stepFusionCore(powerArmorState,dt,
+      {moving:info.speed>.2,sprinting:info.sprinting});
+    if(core.drained>0&&poweredArmorTime-lastFusionSave>3){
+      lastFusionSave=poweredArmorTime;savePowerArmor();
+    }
+    if(core.drained>0&&core.depleted){
+      poweredSuit.updateCore(powerArmorState);
+      savePowerArmor();
+      showShotNotice('FUSION CORE DEPLETED · LIMP MODE · SWAP AT FRAME');
+    }
     const eye=powerArmorEyeHeight(powerArmorState,info.eyeHeight);
     camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     updateHUD(info);

@@ -549,17 +549,39 @@ try{
     null,{timeout:25000});
   // W08.3: ensure the redesigned shell, human pilot and actual cinematic entry render.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeApproachPowerCache()),true);
+  await page.keyboard.press('e');
+  await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:10000});
+  await page.locator('#lootTakeAll').click();
+  await page.locator('#lootClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
   await page.keyboard.press('o');
   await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
-  await page.locator('#power-head').selectOption('citadel');
-  await page.locator('#power-leftLeg').selectOption('ranger');
-  assert.ok((await page.locator('#power-rating-head').textContent()).includes('72'));
+  const helmetChoice=await page.locator('#power-head option')
+    .filter({hasText:'T-60'}).getAttribute('value');
+  const armChoice=await page.locator('#power-rightArm option')
+    .filter({hasText:'T-45'}).getAttribute('value');
+  assert.ok(helmetChoice&&armChoice,'salvaged modular plates should be owned');
+  await page.locator('#power-head').selectOption(helmetChoice);
+  await page.locator('#power-rightArm').selectOption(armChoice);
+  await page.locator('#powerInsertCore').click();
+  assert.ok((await page.locator('#powerCoreStatus').textContent()).includes('100%'));
+  assert.ok((await page.locator('#power-rating-head').textContent()).includes('57 AP'));
+  const fitted=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
+  assert.equal(fitted.plates.head,'t60');
+  assert.equal(fitted.plates.rightArm,'t45');
+  assert.ok(fitted.plateDurability.head>0);
+  assert.ok(fitted.coreCharge>0);
   const armorVisible=await page.evaluate(()=>window.__rpgSmokePowerVisual());
   assert.ok(armorVisible.chassisHeight>2.65&&armorVisible.chassisHeight<3.15,
     'Power armor must be human-sized, not a towering construction robot');
   assert.ok(armorVisible.chassisWidth>2.1&&armorVisible.chassisWidth<3.1,
     'Armored shoulders should be broad but remain human-proportioned');
   assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
+  assert.equal(armorVisible.modelDetails.head.t60,true,'T-60 head has its own geometry');
+  assert.equal(armorVisible.modelDetails.rightArm.t45,true,'T-45 arm style is visible');
   assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
   await page.locator('#powerBayClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
@@ -616,10 +638,11 @@ try{
   assert.equal(outSuit.visible,true,'Exited power armor remains a world-space mesh');
   assert.equal(outSuit.cockpit,false);
   await page.reload({waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.__rpgSmokeState?.().powerArmor?.plates?.head==='citadel',
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().powerArmor?.plates?.head==='t60',
     null,{timeout:30000});
-  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
-    .powerArmor.plates.leftLeg,'ranger','Plate changes persist across page reload');
+  const restoredPower=(await page.evaluate(()=>window.__rpgSmokeState())).powerArmor;
+  assert.equal(restoredPower.plates.rightArm,'t45','Salvaged arm persists across reload');
+  assert.ok(restoredPower.coreCharge>0,'Inserted fusion core charge persists');
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({

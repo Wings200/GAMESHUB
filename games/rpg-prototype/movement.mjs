@@ -122,8 +122,14 @@ export function stepMovement(player, keys, look, dt, environment) {
   const len=Math.hypot(x,z);
   if(len>1){x/=len;z/=len;}
   const wantsSprint=keys.has('ShiftLeft')||keys.has('ShiftRight');
-  const sprint=wantsSprint&&len>0&&!player.crouched&&!player.exhausted&&player.stamina>0;
-  const speed=player.crouched?MOVE_TUNING.crouchSpeed:(sprint?MOVE_TUNING.sprint:MOVE_TUNING.walk);
+  const sprint=wantsSprint&&environment.allowSprint!==false&&len>0&&
+    !player.crouched&&!player.exhausted&&player.stamina>0;
+  // A depleted power-armor core makes the heavy chassis crawl. Normal
+  // movement paths omit this option and keep their established speeds.
+  const mobility=Math.max(.1,Math.min(1.5,
+    Number.isFinite(environment.speedMultiplier)?environment.speedMultiplier:1));
+  const speed=(player.crouched?MOVE_TUNING.crouchSpeed:
+    (sprint?MOVE_TUNING.sprint:MOVE_TUNING.walk))*mobility;
   // Exponential acceleration/deceleration is frame-rate independent.
   const blend=1-Math.exp(-(len>0?MOVE_TUNING.acceleration:MOVE_TUNING.deceleration)*dt);
   player.velocityX+=(x*speed-player.velocityX)*blend;

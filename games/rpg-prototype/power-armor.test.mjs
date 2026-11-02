@@ -1,14 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
-  createPowerArmorState,getPowerPlate,setPowerPlate,beginPowerArmorTransition,
-  stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from './power-armor.mjs';
+  createPowerArmorState,getPowerPlate,setPowerPlate,removePowerPlate,
+  plateCondition,repairPowerPlate,damagePowerPlate,installFusionCore,ejectFusionCore,
+  stepFusionCore,powerArmorMobility,hasFusionPower,POWER_ARMOR_RECIPES,
+  stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
+  FUSION_CORE_DRAIN} from './power-armor.mjs';
 
 test('Power armor has its own chassis and six independently removable visible slots',()=>{
   const state=createPowerArmorState();
   assert.equal(POWER_ARMOR_SLOTS.length,6);
-  assert.equal(state.plates.chest,'scrap');
-  assert.equal(state.plates.head,'none');
+  assert.equal(state.plates.chest,'t45');
+  assert.equal(state.plates.head,'t45');
+  assert.equal(state.plates.rightArm,'none');
   assert.equal(getPowerPlate('head','none').points,0);
   assert.equal(setPowerPlate(state,'head','citadel').ok,true);
   assert.equal(state.plates.head,'citadel');
@@ -41,6 +45,7 @@ test('Entering and exiting take time, reject repeat actions and preserve state',
 
 test('Powered frame and six plate tiers reduce damage only when occupied',()=>{
   const state=createPowerArmorState();
+  setPowerPlate(state,'head','none');
   const normal=powerArmorProtection(state,'chest',.2);
   assert.equal(normal.combinedReduction,.2);
   beginPowerArmorTransition(state);
@@ -74,7 +79,7 @@ test('Saved plates and occupied state restore, malformed or interrupted input re
   const corrupted=safePowerArmorSnapshot({occupied:'true',plates:{
     head:'admin',chest:'citadel',leftArm:null}});
   assert.equal(corrupted.occupied,false);
-  assert.equal(corrupted.plates.head,'none');
+  assert.equal(corrupted.plates.head,'t45');
   assert.equal(corrupted.plates.chest,'citadel');
 });
 
@@ -86,4 +91,73 @@ test('Power armor standing and crouch heights follow player movement',()=>{
   assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-1.80)<.00001);
   assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.13)<.00001);
   assert.ok(powerArmorEyeHeight(state,1.70)-powerArmorEyeHeight(state,1.03)>.60);
+});
+
+test('Three unique armor families can mix by slot and retain broken pieces',()=>{
+  const rig=createPowerArmorState();
+  setPowerPlate(rig,'head','t60',18);
+  setPowerPlate(rig,'chest','t45',100);
+  setPowerPlate(rig,'rightLeg','t01',75);
+  assert.equal(rig.plates.head,'t60');
+  assert.equal(rig.plates.chest,'t45');
+  assert.equal(rig.plates.rightLeg,'t01');
+  assert.equal(plateCondition(rig,'head').current,18);
+  rig.occupied=true;
+  const first=powerArmorProtection(rig,'head',0).points;
+  const hit=damagePowerPlate(rig,'head',100);
+  assert.equal(hit.broken,true);
+  assert.equal(rig.plates.head,'t60','Broken plate is not deleted');
+  assert.equal(plateCondition(rig,'head').current,0);
+  const after=powerArmorProtection(rig,'head',0).points;
+  assert.ok(after<first,'Broken plate loses protection but stays mounted');
+  rig.occupied=false;
+  assert.deepEqual(repairPowerPlate(rig,'head',0).reason,'materials');
+  const price=Math.ceil(POWER_ARMOR_PLATES.t60.maxDurability/25);
+  const repaired=repairPowerPlate(rig,'head',price);
+  assert.equal(repaired.ok,true);
+  assert.equal(repaired.cost,price);
+  assert.equal(plateCondition(rig,'head').current,POWER_ARMOR_PLATES.t60.maxDurability);
+  const removed=removePowerPlate(rig,'head');
+  assert.equal(removed.tier,'t60');
+  assert.equal(removed.current,POWER_ARMOR_PLATES.t60.maxDurability);
+  assert.equal(rig.plates.head,'none');
+  assert.ok(POWER_ARMOR_RECIPES.t01.salvage>POWER_ARMOR_RECIPES.t45.salvage);
+});
+test('Fusion cores power a chassis, drain with movement, and can be ejected',()=>{
+  const rig=createPowerArmorState();
+  assert.equal(hasFusionPower(rig),false);
+  assert.equal(installFusionCore(rig,60).ok,true);
+  assert.equal(installFusionCore(rig,100).reason,'occupied-slot');
+  rig.occupied=true;
+  assert.equal(powerArmorMobility(rig).factor,1);
+  assert.equal(ejectFusionCore(rig).reason,'in-use');
+  const idle=stepFusionCore(rig,1,{moving:false});
+  const walking=stepFusionCore(rig,1,{moving:true});
+  const sprint=stepFusionCore(rig,1,{moving:true,sprinting:true});
+  assert.equal(idle.drained,FUSION_CORE_DRAIN.idle);
+  assert.equal(walking.drained,FUSION_CORE_DRAIN.walking);
+  assert.equal(sprint.drained,FUSION_CORE_DRAIN.sprinting);
+  stepFusionCore(rig,100000,{moving:true});
+  assert.equal(rig.coreCharge,0);
+  assert.equal(hasFusionPower(rig),false);
+  assert.ok(powerArmorMobility(rig).factor<.3);
+  assert.equal(powerArmorMobility(rig).canSprint,false);
+  assert.equal(powerArmorMobility(rig).canJump,false);
+  assert.equal(powerArmorMobility(rig).canFastTravel,false);
+  rig.occupied=false;
+  assert.equal(ejectFusionCore(rig).charge,0);
+  assert.equal(installFusionCore(rig,0).reason,'spent-core');
+  assert.equal(installFusionCore(rig,80).ok,true);
+  assert.equal(safePowerArmorSnapshot(rig).coreCharge,80);
+});
+test('Old saves acquire full condition without inventing fusion cores',()=>{
+  const old=safePowerArmorSnapshot({occupied:false,plates:{head:'citadel',
+    chest:'scrap',rightArm:'none'}});
+  assert.equal(plateCondition(old,'head').current,POWER_ARMOR_PLATES.citadel.maxDurability);
+  assert.equal(plateCondition(old,'chest').current,POWER_ARMOR_PLATES.scrap.maxDurability);
+  assert.equal(old.coreCharge,null);
+  const damaged=safePowerArmorSnapshot({plates:{head:'t60'},
+    plateDurability:{head:0},coreCharge:23.5});
+  assert.equal(plateCondition(damaged,'head').broken,true);
+  assert.equal(damaged.coreCharge,23.5);
 });

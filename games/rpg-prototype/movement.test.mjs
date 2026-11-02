@@ -252,3 +252,14 @@ test('Camera movement settles at idle and interpolates smoothly into crouch',()=
   assert.ok(Math.abs(moving.cameraBob)<1e-4);
   assert.ok(Math.abs(moving.eyeHeight-MOVE_TUNING.crouchEyeHeight)<.01);
 });
+
+test('An unpowered chassis crawls and cannot sprint despite Shift being held',()=>{
+  const normal=p(),limping=p();
+  const n=stepMovement(normal,new Set(['KeyW','ShiftLeft']),{x:1,z:0},.1,env);
+  const l=stepMovement(limping,new Set(['KeyW','ShiftLeft']),{x:1,z:0},.1,
+    {...env,speedMultiplier:.23,allowSprint:false});
+  assert.equal(l.sprinting,false);
+  near(l.requestedSpeed,MOVE_TUNING.walk*.23);
+  assert.ok(l.speed<n.speed*.3);
+  near(limping.x,normal.x*(MOVE_TUNING.walk*.23/MOVE_TUNING.sprint));
+});

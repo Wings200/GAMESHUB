@@ -233,7 +233,7 @@ test('W09.7 never restores headwear that was dropped from inventory',()=>{
 
 test('W09.8 category navigation maps supplies, equipment and future quests',()=>{
   assert.deepEqual(INVENTORY_CATEGORIES.map(c=>c.id),
-    ['all','weapon','armor','clothing','aid','junk','quest']);
+    ['all','weapon','armor','power','clothing','aid','junk','quest']);
   assert.equal(inventorySection(getItem('supply:salvage')),'junk');
   assert.equal(inventorySection(getItem('supply:optic-glass')),'junk');
   assert.equal(inventorySection(getItem('supply:medkit')),'aid');
@@ -268,4 +268,33 @@ test('W09.8 ammo routes on TAKE and TAKE ALL, saves and migrates old loose stack
   assert.equal(ammoReserve(old,'pipe-smg'),ARSENAL.find(w=>w.id==='pipe-smg').startingReserve+210);
   assert.equal(old.items.length,0);
   assert.equal(displayAmmoCount(998),'998');
+});
+test('Power-armor loot preserves individual broken plate condition and core charge',()=>{
+  const pack=createBackpack();
+  const found=createLootBag('power-salvage',2,4,[
+    {itemId:'power-plate:t60-head',quantity:1,condition:0},
+    {itemId:'power-plate:t45-rightArm',quantity:1,condition:55},
+    {itemId:'supply:fusion-core',quantity:1,charge:37.5},
+    {itemId:'supply:fusion-core',quantity:1,charge:100}
+  ]);
+  assert.equal(inventorySection(getItem('power-plate:t60-head')),'power');
+  assert.equal(inventorySection(getItem('supply:fusion-core')),'power');
+  assert.equal(takeAllFromBag(pack,found).added,4);
+  assert.equal(found.items.length,0);
+  const broken=pack.items.find(i=>i.itemId==='power-plate:t60-head');
+  assert.equal(broken.condition,0,'Broken piece remains a real item');
+  assert.equal(pack.items.find(i=>i.itemId==='power-plate:t45-rightArm').condition,55);
+  assert.deepEqual(pack.items.filter(i=>i.itemId==='supply:fusion-core')
+    .map(i=>i.charge).sort((a,b)=>a-b),[37.5,100]);
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(restored.items.find(i=>i.itemId==='power-plate:t60-head').condition,0);
+  assert.equal(restored.items.find(i=>i.itemId==='supply:fusion-core').charge,37.5);
+  const removed=removeItem(pack,broken.uid,1);
+  assert.equal(removed.condition,0);
+  assert.equal(removed.itemId,'power-plate:t60-head');
+  assert.equal(pack.items.some(i=>i.uid===broken.uid),false);
+  const plain=addItem(pack,'armor:ranger-head',1);
+  assert.equal(plain.added,1);
+  assert.equal(Object.hasOwn(pack.items.find(i=>i.itemId==='armor:ranger-head'),
+    'condition'),false,'Normal armor still has no durability');
 });

@@ -3,6 +3,7 @@ import {ARSENAL,getWeaponSpec} from './weapons.mjs';
 import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
+import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs';
 export const BACKPACK_LIMIT=30;
 export const RARITIES=Object.freeze({
   common:Object.freeze({label:'COMMON',color:'#a8b7af',multiplier:1}),
@@ -16,12 +17,14 @@ export const INVENTORY_CATEGORIES=Object.freeze([
   {id:'all',label:'All Items'},
   {id:'weapon',label:'Weapons'},
   {id:'armor',label:'Armor'},
+  {id:'power',label:'Power Armor'},
   {id:'clothing',label:'Clothing'},
   {id:'aid',label:'Aid'},
   {id:'junk',label:'Junk'},
   {id:'quest',label:'Quest Items'}
 ]);
 export function inventorySection(item){
+  if(item.category==='power-plate'||item.category==='fusion-core')return 'power';
   if(item.category==='supply')return item.key==='medkit'?'aid':'junk';
   return item.category;
 }
@@ -62,6 +65,20 @@ export const CLOTHING_GEAR=Object.freeze({
 });
 for(const clothing of Object.values(CLOTHING_GEAR))
   templates.set(clothing.id,clothing);
+// Genuine collectible parts; each copy has independent condition.
+for(const slot of POWER_ARMOR_SLOTS){
+  for(const tier of ['scrap','ranger','citadel','t45','t60','t01']){
+    const plate=POWER_ARMOR_PLATES[tier],id='power-plate:'+tier+'-'+slot;
+    templates.set(id,Object.freeze({id,category:'power-plate',key:tier+'-'+slot,
+      tier,slot,name:plate.name+' · '+slot,
+      rarity:tier==='t01'||tier==='citadel'?'epic':
+        tier==='t60'||tier==='ranger'?'rare':'uncommon',
+      value:Math.round(plate.points*2.1),maxDurability:plate.maxDurability,maxStack:1}));
+  }
+}
+templates.set('supply:fusion-core',Object.freeze({
+  id:'supply:fusion-core',category:'fusion-core',key:'fusion-core',
+  name:'Fusion Core',rarity:'rare',value:220,maxStack:1}));
 templates.set('supply:medkit',Object.freeze({
   id:'supply:medkit',category:'supply',key:'medkit',name:'Field Medkit',
   rarity:'uncommon',value:35,maxStack:6,heal:40}));
@@ -92,7 +109,7 @@ export function countItem(pack,itemId){
   if(item.category==='ammo')return ammoReserve(pack,item.key);
   return pack.items.filter(e=>e.itemId===itemId).reduce((n,e)=>n+e.quantity,0);
 }
-export function addItem(pack,itemId,quantity=1){
+export function addItem(pack,itemId,quantity=1,condition={}){
   const template=getItem(itemId);let remaining=cap(quantity);
   const addedStart=remaining;
   // Ammunition lives in the correct weapon's reserve, never a backpack slot.
@@ -113,7 +130,14 @@ export function addItem(pack,itemId,quantity=1){
   }
   while(remaining&&pack.items.length<BACKPACK_LIMIT){
     const n=Math.min(remaining,template.maxStack);
-    pack.items.push({uid:'i'+pack.nextId++,itemId,quantity:n});
+    const entry={uid:'i'+pack.nextId++,itemId,quantity:n};
+    if(template.category==='power-plate')
+      entry.condition=Math.max(0,Math.min(template.maxDurability,
+        Number.isFinite(condition.condition)?condition.condition:template.maxDurability));
+    if(template.category==='fusion-core')
+      entry.charge=Math.max(0,Math.min(FUSION_CORE_CAPACITY,
+        Number.isFinite(condition.charge)?condition.charge:FUSION_CORE_CAPACITY));
+    pack.items.push(entry);
     remaining-=n;
   }
   return {added:addedStart-remaining,leftover:remaining,full:remaining>0};
@@ -125,7 +149,9 @@ export function removeItem(pack,uid,quantity=1){
   const n=Math.min(entry.quantity,cap(quantity));
   entry.quantity-=n;
   if(entry.quantity<=0)pack.items.splice(index,1);
-  return {removed:n,itemId:entry.itemId};
+  return {removed:n,itemId:entry.itemId,
+    ...(Number.isFinite(entry.condition)?{condition:entry.condition}:{}),
+    ...(Number.isFinite(entry.charge)?{charge:entry.charge}:{})};
 }
 
 // An attachment is paid for once, then can be swapped freely on its weapon.
@@ -224,13 +250,15 @@ export function createLootBag(id,x,z,contents,source='world'){
   for(const entry of contents||[]){
     if(!entry||!Number.isFinite(entry.quantity)||entry.quantity<=0)continue;
     getItem(entry.itemId);
-    items.push({itemId:entry.itemId,quantity:cap(entry.quantity)});
+    items.push({itemId:entry.itemId,quantity:cap(entry.quantity),
+      ...(Number.isFinite(entry.condition)?{condition:entry.condition}:{}),
+      ...(Number.isFinite(entry.charge)?{charge:entry.charge}:{})});
   }
   return {id,x,z,source,items,opened:false};
 }
 export function takeFromBag(pack,bag,index){
   const entry=bag?.items?.[index];if(!entry)return {added:0,leftover:0};
-  const result=addItem(pack,entry.itemId,entry.quantity);
+  const result=addItem(pack,entry.itemId,entry.quantity,entry);
   entry.quantity=result.leftover;
   if(entry.quantity===0)bag.items.splice(index,1);
   bag.opened=true;
@@ -301,7 +329,7 @@ export function safeBackpackSnapshot(pack){
   }
   for(const e of pack.items){
     if(!templates.has(e?.itemId))continue;
-    addItem(result,e.itemId,Math.min(cap(e.quantity),180));
+    addItem(result,e.itemId,Math.min(cap(e.quantity),180),e);
   }
   if(templates.has('weapon:'+pack.equipment?.weapon))
     result.equipment.weapon=pack.equipment.weapon;

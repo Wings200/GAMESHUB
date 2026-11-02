@@ -1,7 +1,7 @@
 // W08.3: a compact, fully armored industrial exosuit. Original procedural art.
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
-import {POWER_ARMOR_SLOTS,getPowerPlate} from './power-armor.mjs';
+import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
 
 export function buildPowerArmorVisual(scene,position,state){
   const root=new THREE.Group();
@@ -67,8 +67,38 @@ export function buildPowerArmorVisual(scene,position,state){
     return mesh(parent,new THREE.TubeGeometry(curve,18,r,7,false),material);
   };
   const plateMeshes=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,[]]));
+  // Each collected model changes the silhouette of its own plate, not the
+  // whole frame. T-45 has cast ribs, T-60 gets double raised armor channels,
+  // and T-01 has a faceted prototype chevron and vents.
   const plate=(slot,parent,w,h,d,x,y,z,cut=.12)=>{
     const shell=forged(parent,w,h,d,armor.clone(),x,y,z,cut);
+    shell.userData.modelDetails={};
+    function styling(tier,draw){
+      const detail=makeGroup(shell,0,0,d/2+.045);
+      detail.name=tier.toUpperCase()+'_'+slot+'_details';
+      draw(detail);detail.visible=false;
+      shell.userData.modelDetails[tier]=detail;
+    }
+    styling('t45',group=>{
+      forged(group,w*.72,h*.13,.047,edge,0,-h*.19,0,.025);
+      for(const sign of [-1,1]){
+        const rivet=cyl(group,.027,.027,.027,brass,sign*w*.31,h*.23,.04,8);
+        rivet.rotation.x=Math.PI/2;
+      }
+    });
+    styling('t60',group=>{
+      for(const sign of [-1,1]){
+        forged(group,w*.15,h*.78,.09,edge,sign*w*.27,0,0,.018);
+        forged(group,w*.08,h*.60,.045,shaded,sign*w*.27,0,.06,.012);
+      }
+      forged(group,w*.55,h*.13,.08,brass,0,h*.30,.02,.025);
+    });
+    styling('t01',group=>{
+      forged(group,w*.56,h*.27,.12,shaded,0,h*.13,.01,.085);
+      forged(group,w*.35,h*.14,.08,edge,0,-h*.11,.08,.045);
+      for(let i=-1;i<=1;i++)
+        forged(group,w*.09,h*.12,.10,brass,i*w*.19,-h*.27,.06,.02);
+    });
     plateMeshes[slot].push(shell);
     return shell;
   };
@@ -94,7 +124,8 @@ export function buildPowerArmorVisual(scene,position,state){
   const reactor=makeGroup(root,0,1.90,-.60);
   cyl(reactor,.34,.34,.21,steel,0,0,0).rotation.x=Math.PI/2;
   cyl(reactor,.255,.255,.025,joint,0,0,-.125).rotation.x=Math.PI/2;
-  cyl(reactor,.135,.135,.027,glow,0,0,-.149).rotation.x=Math.PI/2;
+  const coreLight=cyl(reactor,.135,.135,.027,glow.clone(),0,0,-.149);
+  coreLight.rotation.x=Math.PI/2;
   for(let i=0;i<8;i++){
     const a=2*Math.PI*i/8;
     const vane=box(reactor,.058,.118,.032,brass,
@@ -242,12 +273,22 @@ export function buildPowerArmorVisual(scene,position,state){
   function updatePlates(currentState){
     for(const slot of POWER_ARMOR_SLOTS){
       const entry=getPowerPlate(slot,currentState.plates[slot]);
+      const condition=plateCondition(currentState,slot);
       for(const shell of plateMeshes[slot]){
+        // A broken plate is still physically attached and visible. Its rating
+        // is zero until repaired, but its mesh and inventory identity survive.
         shell.visible=entry.points>0;
-        shell.material.color.setHex(entry.color);
+        shell.material.color.setHex(condition.broken?0x594e49:entry.color);
         shell.scale.setScalar(entry.points>0?Math.min(1.10,.95+entry.scale*.09):1);
+        for(const [tier,detail] of Object.entries(shell.userData.modelDetails||{}))
+          detail.visible=entry.model===tier;
       }
     }
+  }
+  function updateCore(currentState){
+    const powered=hasFusionPower(currentState);
+    coreLight.material.color.setHex(powered?0x8bcbb4:0xb26b3e);
+    coreLight.material.needsUpdate=true;
   }
   const ease=(a,b,t)=>{
     const v=Math.max(0,Math.min(1,(t-a)/(b-a)));
@@ -282,7 +323,7 @@ export function buildPowerArmorVisual(scene,position,state){
       pilotArms[1].rotation.z=.38*Math.sin(Math.PI*journey);
     }
   }
-  updatePlates(state);
+  updatePlates(state);updateCore(state);
   // Measure in suit-local orientation, not the bay's -90-degree yaw.
   const originalYaw=root.rotation.y;
   const pilotWasVisible=pilot.visible;
@@ -290,7 +331,7 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,animate,
+  return {root,doors,helmetPivot,plateMeshes,pilot,size,updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 
