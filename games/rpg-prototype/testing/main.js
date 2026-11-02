@@ -664,8 +664,8 @@ function updatePowerCinematic(progress){
   // Cut immediately to a clear three-quarter view, rather than moving
   // THROUGH the torso first. Hold for the climb and fade toward the visor
   // only during the final 8% of the locking animation.
-  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36));
-  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.67,-.42));
+  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(1.07,2.00,-3.65));
+  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.62,-.34));
   const handoff=powerEase(.82,1,p);
   camera.position.copy(heroPosition).lerp(powerCinematic.to,handoff);
   const look=new THREE.Quaternion().setFromRotationMatrix(
@@ -2896,7 +2896,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
     cameraDistanceToHero:camera.position.distanceTo(
-      poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36)))
+      poweredSuit.root.localToWorld(new THREE.Vector3(1.07,2.00,-3.65)))
   });
   window.__rpgSmokeBareFramePreview=()=>{
     for(const slot of POWER_ARMOR_SLOTS){
