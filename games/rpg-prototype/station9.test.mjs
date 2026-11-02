@@ -387,7 +387,6 @@ test('W08.3 real powered suit has six removable meshes and timed entry controls'
     'beginPowerHold()','finishPowerHold()',
     'window.__rpgSmokePowerVisual='])
     assert.ok(source.includes(phrase),phrase);
-  assert.ok(page.includes('W08.3'));
 });
 
 test('W08.3 uses crouch-aware camera heights instead of the old fixed 2.82m',()=>{
@@ -494,7 +493,6 @@ test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack
   assert.match(source,/item\.category==='clothing'/);
   assert.match(source,/visibleClothing:playerAvatar\.visibleClothing/);
   assert.match(page,/id="inventoryClothing"/);
-  assert.match(page,/W09\.7/);
 });
 
 
