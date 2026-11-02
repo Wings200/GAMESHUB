@@ -605,7 +605,7 @@ test('W11.0 has one exposed modular frame, tap-E service, and hold-E entry',()=>
   assert.doesNotMatch(source,/e\.code==='KeyP'/);
   assert.doesNotMatch(source,/e\.code==='KeyO'/);
   assert.match(armorVisual,/const moduleMeshes=Object\.fromEntries/);
-  assert.match(armorVisual,/for\(const part of moduleMeshes\[slot\]\)part\.visible=entry\.points>0/);
+  assert.match(armorVisual,/for\(const part of moduleMeshes\[slot\]\)\{\s*part\.visible=entry\.points>0/);
   assert.match(page,/TAP E AT FRAME TO CONFIGURE/);
   assert.match(page,/HOLD E TO ENTER\/EXIT/);
 });
