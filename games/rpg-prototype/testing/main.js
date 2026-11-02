@@ -2719,8 +2719,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     return {distance:Math.hypot(raider.brain.x-player.x,raider.brain.z-player.z),
       insideArena:inAIArena(),memory:raider.brain.memory};
   };
-  window.__rpgSmokeApproachLoot=()=>{
-    const bag=[...lootBags.values()][0];
+  window.__rpgSmokeApproachLoot=(bagId)=>{
+    const bag=bagId?lootBags.get(bagId):[...lootBags.values()].find(b=>b.source!=='power-cache');
     if(!bag)return false;
     player.x=bag.x+.75;player.z=bag.z+.25;
     camera.position.x=player.x;camera.position.z=player.z;

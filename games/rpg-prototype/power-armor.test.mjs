@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
-  createPowerArmorState,getPowerPlate,setPowerPlate,removePowerPlate,
+  createPowerArmorState,getPowerPlate,setPowerPlate,beginPowerArmorTransition,
+  removePowerPlate,
   plateCondition,repairPowerPlate,damagePowerPlate,installFusionCore,ejectFusionCore,
   stepFusionCore,powerArmorMobility,hasFusionPower,POWER_ARMOR_RECIPES,
   stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
@@ -16,7 +17,7 @@ test('Power armor has its own chassis and six independently removable visible sl
   assert.equal(getPowerPlate('head','none').points,0);
   assert.equal(setPowerPlate(state,'head','citadel').ok,true);
   assert.equal(state.plates.head,'citadel');
-  assert.equal(state.plates.chest,'scrap');
+  assert.equal(state.plates.chest,'t45');
   assert.equal(setPowerPlate(state,'missing','citadel').ok,false);
   assert.equal(setPowerPlate(state,'head','fake').ok,false);
   assert.ok(POWER_ARMOR_PLATES.citadel.points>POWER_ARMOR_PLATES.ranger.points);

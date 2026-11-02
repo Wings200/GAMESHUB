@@ -330,7 +330,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
   assert.match(source,/if\(item\.category==='ammo'\)syncAmmoToWeapons\(\)/);
   assert.match(source,/function syncAmmoToWeapons\(\)/);
   assert.match(source,/useSupply\(backpack,entry\.uid,playerHealth\)/);
-  assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:dropped\.removed\}\]/);
+  assert.match(source,/spawnWorldLoot\(\[\{itemId:dropped\.itemId,quantity:dropped\.removed,/);
   assert.match(source,/dropAmount\.max=String\(entry\.quantity\)/);
   assert.match(source,/Number\.isSafeInteger\(amount\)/);
   assert.match(source,/playerArmorReduction\(backpack,'chest'\)/);

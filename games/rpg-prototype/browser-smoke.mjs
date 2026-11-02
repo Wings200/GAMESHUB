@@ -245,7 +245,7 @@ try{
   const gearLoot=await page.evaluate(()=>window.__rpgSmokeState());
   const worn=Object.values(gearLoot.enemies.find(e=>e.id==='raider').armor)
     .filter(id=>id!=='none').sort();
-  const dropped=gearLoot.loot[0].items.filter(e=>e.itemId.startsWith('armor:'))
+  const dropped=gearLoot.loot.find(b=>b.id===lootId).items.filter(e=>e.itemId.startsWith('armor:'))
     .map(e=>e.itemId.slice(6)).sort();
   assert.ok(dropped.length>=1&&dropped.length<=2,
     'Raiders should drop only one or two armor pieces');
@@ -254,15 +254,15 @@ try{
   assert.ok(dropped.every(id=>worn.includes(id)),
     'Every dropped armor item must actually be worn by the NPC');
   const testArmor=getItem('armor:'+dropped[0]);
-  const nearby=await page.evaluate(()=>window.__rpgSmokeApproachLoot());
+  const nearby=await page.evaluate(id=>window.__rpgSmokeApproachLoot(id),lootId);
   assert.equal(nearby,true);
   await page.keyboard.press('e');
   await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:7000});
   assert.ok(await page.locator('#lootItems .loot-entry').count()>=3);
   await page.locator('#lootTakeAll').click();
   const inventoryAfterLoot=await page.evaluate(()=>window.__rpgSmokeState());
-  assert.equal(inventoryAfterLoot.loot.length,0,
-    'A fully looted bag must disappear from the 3D world');
+  assert.equal(inventoryAfterLoot.loot.some(b=>b.id===lootId),false,
+    'A fully looted enemy bag must disappear from the 3D world');
   assert.ok(inventoryAfterLoot.inventory.items.some(i=>
     i.itemId===testArmor.id));
   assert.ok(inventoryAfterLoot.inventory.ammoReserves['pipe-smg']>150,
@@ -276,8 +276,8 @@ try{
   const firstCopies=inventoryAfterLoot.inventory.items.filter(
     i=>i.itemId==='weapon:pipe-smg');
   assert.equal(firstCopies.length,1);
-  await page.evaluate(()=>window.__rpgSmokeSpawnLoot('raider'));
-  assert.equal(await page.evaluate(()=>window.__rpgSmokeApproachLoot()),true);
+  const secondLootId=await page.evaluate(()=>window.__rpgSmokeSpawnLoot('raider'));
+  assert.equal(await page.evaluate(id=>window.__rpgSmokeApproachLoot(id),secondLootId),true);
   await page.keyboard.press('e');
   await page.waitForSelector('#lootPanel:not(.hidden)',{timeout:7000});
   await page.locator('#lootItems .loot-entry').filter({hasText:'Pipe SMG'})
@@ -298,7 +298,7 @@ try{
     .getByText('Pipe SMG',{exact:true}).count(),2);
   assert.ok((await page.locator('#inventoryItems').textContent()).includes('COPY 2 / 2'));
   // W09.8: navigate a real two-panel categorized inventory without losing gear.
-  assert.equal(await page.locator('#inventoryCategories button').count(),7);
+  assert.equal(await page.locator('#inventoryCategories button').count(),8);
   await page.locator('#inventoryCategories button[data-category="junk"]').click();
   assert.ok((await page.locator('#inventoryItems').textContent()).includes('Salvaged Parts'));
   assert.equal(await page.locator('#inventoryItems').getByText('Pipe SMG',{exact:true}).count(),0);
