@@ -420,7 +420,7 @@ test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   assert.match(npcAvatar,/avatar\.weaponSocket/);
   assert.match(npcAvatar,/gun\.rotation\.x=/);
   assert.match(npcAvatar,/magazine\.position\.y=/);
-  assert.match(npcAvatar,/avatar\.update\(\{dt,x:0,z:0,ground:0,yaw:0/);
+  assert.match(npcAvatar,/avatar\.update\(\{dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET/);
   assert.match(source,/enemy\.rigged\?\.setArmor\(enemy\.state\.loadout\)/);
   assert.match(source,/enemy\.rigged\?\.update\(dt,\{/);
   assert.match(source,/reloading:enemy\.tactics\.reloadRemaining>0/);
