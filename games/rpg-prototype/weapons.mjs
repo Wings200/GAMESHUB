@@ -85,11 +85,13 @@ export function startWeaponReload(state, spec = SCRAP_PISTOL) {
   state.reloadRemaining = spec.reloadSeconds;
   return true;
 }
-export function updateWeapon(state, dt, spec = SCRAP_PISTOL) {
+export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
   const step = Math.max(0, Number.isFinite(dt) ? dt : 0);
   state.cooldown = Math.max(0, state.cooldown - step);
   if (state.reloadRemaining > 0) {
-    state.reloadRemaining = Math.max(0, state.reloadRemaining - step);
+    const reloadRate = Number.isFinite(options.reloadSpeedMultiplier) ?
+      Math.max(.85, Math.min(1.6, options.reloadSpeedMultiplier)) : 1;
+    state.reloadRemaining = Math.max(0, state.reloadRemaining - step * reloadRate);
     if (state.reloadRemaining === 0) {
       const needed = spec.magazineSize - state.magazine;
       const loaded = Math.min(Math.max(0, needed), state.reserve);

@@ -64,13 +64,14 @@ export function removePowerPlate(state,slot){
   state.plates[slot]='none';state.plateDurability[slot]=0;
   return {ok:true,...current};
 }
-export function repairPowerPlate(state,slot,availableSalvage){
+export function repairPowerPlate(state,slot,availableSalvage,discount=0){
   if(!POWER_ARMOR_SLOTS.includes(slot))return {ok:false,reason:'invalid-slot'};
   if(state.occupied||state.phase!=='idle')return {ok:false,reason:'in-use'};
   const condition=plateCondition(state,slot);
   if(condition.tier==='none')return {ok:false,reason:'empty'};
   if(condition.current===condition.max)return {ok:false,reason:'full'};
-  const cost=Math.ceil((condition.max-condition.current)/25);
+  const discountFactor=1-Math.max(0,Math.min(.5,Number.isFinite(discount)?discount:0));
+  const cost=Math.max(1,Math.ceil(Math.ceil((condition.max-condition.current)/25)*discountFactor));
   if(availableSalvage<cost)return {ok:false,reason:'materials',cost};
   state.plateDurability[slot]=condition.max;
   return {ok:true,cost,slot,durability:condition.max};

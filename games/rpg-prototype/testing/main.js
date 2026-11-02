@@ -41,7 +41,130 @@ import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoado
   enemyArmorForRound,
   applyDamage, resetDummy } from '../combat.mjs';
 
+import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
+  allocateSpecialPoint,purchaseSpecialPerk,gainSpecialXP,specialBonuses,
+  xpForNextLevel,discountedMaterials} from '../special.mjs';
+
 const $ = id => document.getElementById(id);
+let specialState=createSpecialState();
+try{
+  const saved=JSON.parse(localStorage.getItem('rpg-lab-special-v1')||'null');
+  if(saved)specialState=safeSpecialSnapshot(saved);
+  else{
+    // One-time migration from the old free-adjustment Endurance lab setting.
+    const legacy=Number(localStorage.getItem('rpg-lab-endurance'));
+    if(Number.isInteger(legacy)&&legacy>=1&&legacy<=10)
+      specialState.attributes.endurance=legacy;
+  }
+}catch{}
+let specialModifiers=specialBonuses(specialState);
+let specialOpen=false,specialFromField=false;
+function saveSpecialState(){
+  try{localStorage.setItem('rpg-lab-special-v1',JSON.stringify(specialState));}catch{}
+}
+function updateSpecialBonuses(){
+  specialModifiers=specialBonuses(specialState);
+  saveSpecialState();
+  refreshSpecialUI();
+  if(typeof player!=='undefined')adjustEndurance(0);
+}
+function awardSpecialExperience(amount,source='combat'){
+  const result=gainSpecialXP(specialState,amount,source);
+  saveSpecialState();
+  refreshSpecialUI();
+  if(result.levels)showShotNotice('LEVEL '+result.level+' · +'+result.levels+
+    ' PERK POINT'+(result.levels===1?'':'S')+' · OPEN SPECIAL WITH L');
+  return result;
+}
+function refreshSpecialUI(){
+  $('specialLevel').textContent='LEVEL '+specialState.level;
+  $('fieldLevel').textContent='LVL '+specialState.level;
+  $('specialXp').textContent=specialState.level>=50?'MAX LEVEL':
+    specialState.xp+' / '+xpForNextLevel(specialState.level)+' XP';
+  $('specialXpFill').style.width=(specialState.level>=50?100:
+    100*specialState.xp/xpForNextLevel(specialState.level)).toFixed(1)+'%';
+  $('specialStatPoints').textContent=specialState.statPoints;
+  $('specialPerkPoints').textContent=specialState.perkPoints;
+  const grid=$('specialGrid');grid.replaceChildren();
+  for(const a of SPECIAL_ATTRIBUTES){
+    const stat=specialState.attributes[a.id];
+    const card=document.createElement('section');
+    card.className='special-branch';
+    card.style.setProperty('--stat-color',a.color);
+    const header=document.createElement('header');header.className='special-branch-head';
+    const letter=document.createElement('div');letter.className='special-letter';
+    letter.textContent=a.letter;
+    const identity=document.createElement('div');identity.className='special-identity';
+    const name=document.createElement('h3');name.textContent=a.name;
+    const value=document.createElement('p');value.textContent='ATTRIBUTE '+stat+' / 10';
+    identity.append(name,value);
+    const upgrade=document.createElement('button');upgrade.type='button';
+    upgrade.className='special-upgrade';upgrade.textContent='+';
+    upgrade.setAttribute('aria-label','Increase '+a.name);
+    upgrade.disabled=specialState.statPoints===0||stat>=10;
+    upgrade.addEventListener('click',()=>{
+      const result=allocateSpecialPoint(specialState,a.id);
+      if(result.ok){
+        $('specialFeedback').textContent=a.name+' INCREASED TO '+result.value+
+          ' · '+result.remaining+' ATTRIBUTE POINTS LEFT';
+        updateSpecialBonuses();
+      }
+    });
+    header.append(letter,identity,upgrade);card.append(header);
+    const desc=document.createElement('p');desc.className='special-stat-desc';
+    desc.textContent=a.description;card.append(desc);
+    const track=document.createElement('div');track.className='special-stat-track';
+    const fill=document.createElement('span');fill.style.width=(stat*10)+'%';
+    track.append(fill);card.append(track);
+    for(const p of SPECIAL_PERKS.filter(p=>p.stat===a.id)){
+      const rank=specialState.perks[p.id]||0;
+      const locked=stat<p.required;
+      const maxed=rank>=p.maxRank;
+      const node=document.createElement('button');node.type='button';
+      node.className='special-perk'+(locked?' locked':'')+(rank?' unlocked':'');
+      node.disabled=locked||maxed||specialState.perkPoints<=0;
+      const title=document.createElement('strong');
+      title.textContent=p.name.toUpperCase();
+      const ranks=document.createElement('span');ranks.className='special-ranks';
+      ranks.textContent=rank+' / '+p.maxRank;
+      const label=document.createElement('small');
+      label.textContent=p.description;
+      const requirement=document.createElement('em');
+      requirement.textContent=maxed?'MAXED':locked?'REQUIRES '+a.letter+' '+p.required:
+        'REQUIRES '+a.letter+' '+p.required+' · 1 PERK POINT';
+      node.append(title,ranks,label,requirement);
+      node.addEventListener('click',()=>{
+        const result=purchaseSpecialPerk(specialState,p.id);
+        if(result.ok){
+          $('specialFeedback').textContent=p.name.toUpperCase()+' RANK '+result.rank+
+            ' UNLOCKED · '+result.remaining+' PERK POINTS LEFT';
+          updateSpecialBonuses();
+        }
+      });
+      card.append(node);
+    }
+    grid.append(card);
+  }
+}
+function openSpecialPanel(){
+  if(specialOpen||powerUIOpen||workbenchOpen||lootOpen||inventoryOpen)return;
+  specialFromField=controls.isLocked;
+  specialOpen=true;
+  $('specialPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  refreshSpecialUI();
+  if(controls.isLocked)controls.unlock();
+}
+function closeSpecialPanel(){
+  specialOpen=false;
+  $('specialPanel').classList.add('hidden');
+  if(specialFromField){
+    specialFromField=false;controls.lock();
+  }else $('menu').classList.remove('hidden');
+}
+$('specialOpen').addEventListener('click',openSpecialPanel);
+$('specialClose').addEventListener('click',closeSpecialPanel);
+refreshSpecialUI();
 const canvas = $('scene');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa4c0cb);
@@ -770,7 +893,7 @@ for(const slot of POWER_ARMOR_SLOTS){
   $('power-repair-'+slot).addEventListener('click',()=>{
     if(!powerServiceAvailable())return;
     const available=countItem(backpack,'supply:salvage');
-    const result=repairPowerPlate(powerArmorState,slot,available);
+    const result=repairPowerPlate(powerArmorState,slot,available,specialModifiers.repairDiscount);
     if(!result.ok){
       $('powerServiceFeedback').textContent=result.reason==='materials'?
         'REPAIR NEEDS '+result.cost+' SALVAGED PARTS':'NO REPAIR NEEDED';
@@ -814,16 +937,17 @@ $('powerCraftButton').addEventListener('click',()=>{
   const tier=$('powerCraftTier').value,slot=$('powerCraftSlot').value;
   const recipe=POWER_ARMOR_RECIPES[tier];
   if(!recipe||!POWER_ARMOR_SLOTS.includes(slot))return;
-  if(countItem(backpack,'supply:salvage')<recipe.salvage||
-     countItem(backpack,'supply:optic-glass')<recipe.glass){
+  const cost=discountedMaterials(recipe,specialModifiers.craftDiscount);
+  if(countItem(backpack,'supply:salvage')<cost.salvage||
+     countItem(backpack,'supply:optic-glass')<cost.glass){
     $('powerServiceFeedback').textContent='MISSING MATERIALS · NEED '+
-      recipe.salvage+' SALVAGE AND '+recipe.glass+' OPTIC GLASS';
+      cost.salvage+' SALVAGE AND '+cost.glass+' OPTIC GLASS';
     return;
   }
   if(backpack.items.length>=BACKPACK_LIMIT){
     $('powerServiceFeedback').textContent='BACKPACK FULL · MAKE ROOM TO CRAFT';return;
   }
-  spendPowerMaterials(recipe);
+  spendPowerMaterials(cost);
   addItem(backpack,'power-plate:'+tier+'-'+slot,1);
   $('powerServiceFeedback').textContent='CRAFTED '+getPowerPlate(slot,tier).name+
     ' · '+slot.toUpperCase()+' · FULL DURABILITY';
@@ -1295,6 +1419,7 @@ function markEnemyDefeated(enemy){
   enemy.muzzleLight.intensity=0;
   enemy.gunGlow=0;
   spawnEnemyLoot(enemy);
+  awardSpecialExperience(({scout:45,raider:70,enforcer:105})[enemy.id]||45,'combat');
   updateArenaSign();
 }
 function discardEmptyLootBags(){
@@ -1499,6 +1624,11 @@ function refreshLootUI(){
     lootButton(row,'TAKE',()=>{
       const result=takeFromBag(backpack,bag,i);
       if(result.added&&bag.source==='power-cache')savePowerCache(bag.items);
+      if(result.added&&bag.source.startsWith('enemy-')&&!bag.xpGranted){
+        bag.xpGranted=true;awardSpecialExperience(15,'loot');
+        if(Math.random()<specialModifiers.salvageChance)
+          addItem(backpack,'supply:salvage',1);
+      }
       if(!result.added){
         $('lootFeedback').textContent='BACKPACK FULL · '+backpack.items.length+
           ' / '+BACKPACK_LIMIT+' SLOTS. DROP SOMETHING TO MAKE ROOM.';
@@ -1549,6 +1679,10 @@ $('lootClose').addEventListener('click',closeLootOverlay);
 $('lootTakeAll').addEventListener('click',()=>{
   const bag=lootBags.get(selectedLootId);if(!bag)return;
   const result=takeAllFromBag(backpack,bag);
+  if(result.added>0&&bag.source.startsWith('enemy-')&&!bag.xpGranted){
+    bag.xpGranted=true;awardSpecialExperience(15,'loot');
+    if(Math.random()<specialModifiers.salvageChance)addItem(backpack,'supply:salvage',1);
+  }
   if(bag.source==='power-cache')savePowerCache(bag.items);
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
@@ -1798,7 +1932,7 @@ function updateEnemies(dt){
               const armor=playerArmorReduction(backpack,zone);
               const incoming=calculateIncomingShot(attack.damage,armor.points,
                 powerArmorState,zone);
-              const result=hitPlayer(playerHealth,incoming.damage);
+              const result=hitPlayer(playerHealth,incoming.damage*specialModifiers.damageTakenMultiplier);
               if(powerArmorState.occupied){
                 const wear=damagePowerPlate(powerArmorState,zone,attack.damage);
                 if(wear.worn>0){
@@ -2427,7 +2561,7 @@ function shoot(){
   if(result.status!=='fired')return;
   emptyClickLatched=false;
   sound.gunshot(activeSpec.kind||'pistol');
-  recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees/1.25);
+  recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
   slideCycle=.13;
   ejectCasing();
@@ -2439,7 +2573,8 @@ function shoot(){
     // Sight and shot are both derived from the camera's current world-space
     // orientation, including the same yaw and pitch used to render the reticle.
     camera.updateWorldMatrix(true,false);
-    shotVector.set(pellet.spreadX,pellet.spreadY,-1)
+    shotVector.set(pellet.spreadX*specialModifiers.aimSpreadMultiplier,
+      pellet.spreadY*specialModifiers.aimSpreadMultiplier,-1)
       .normalize().applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
@@ -2481,7 +2616,12 @@ function shoot(){
   }
   if(first&&first.object.userData.enemyId){
     const enemy=enemies.get(first.object.userData.enemyId);
-    const hit=applyDamage(enemy.state,activeSpec.damage,first.object.userData.hitZone);
+    const critical=Math.random()<specialModifiers.critChance;
+    const zone=first.object.userData.hitZone;
+    const boostedDamage=activeSpec.damage*specialModifiers.gunDamageMultiplier*
+      (zone==='head'?specialModifiers.headshotMultiplier:1)*
+      (critical?specialModifiers.critDamageMultiplier:1);
+    const hit=applyDamage(enemy.state,boostedDamage,zone);
     if(hit.applied){
       enemyDamageHits++;
       totalEnemyDamage+=hit.damage;
@@ -2541,7 +2681,7 @@ function shoot(){
       Math.ceil(totalEnemyDamage)+' HP');
   }
   // Vertical recoil only. Yaw and roll are never touched.
-  camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees);
+  camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees*specialModifiers.recoilMultiplier);
   refreshWeaponHUD();
 }
 function reload(){
@@ -2578,19 +2718,26 @@ const remotePreviewArmor={
 const remotePreviewPose={x:-57,z:-9,ground:0,yaw:.62,speed:0,alive:true};
 remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},.016);
 let thirdPersonEnabled=false,thirdPersonActive=false;
-let labEndurance=ENDURANCE_TUNING.defaultPoints;
-try{const last=Number(localStorage.getItem('rpg-lab-endurance'));if(last>=1&&last<=10)labEndurance=Math.round(last);}catch{}
+let labEndurance=specialState.attributes.endurance;
 setEndurance(player,labEndurance);
-function adjustEndurance(change){
-  labEndurance=setEndurance(player,labEndurance+change);
+function adjustEndurance(change=0){
+  if(change>0){
+    const outcome=allocateSpecialPoint(specialState,'endurance');
+    if(outcome.ok)updateSpecialBonuses();
+    else showShotNotice(outcome.reason==='no-stat-points'?
+      'NO SPECIAL POINTS · EARN LEVELS FOR MORE':'ENDURANCE IS MAXED');
+  }
+  if(change<0)showShotNotice('ENDURANCE IS PERMANENT · OPEN SPECIAL WITH L');
+  labEndurance=setEndurance(player,specialState.attributes.endurance);
   $('enduranceValue').textContent=String(labEndurance);
   $('enduranceHUD').textContent=String(labEndurance);
-  $('sprintTime').textContent=maximumStamina(labEndurance)+' sec sprint · '+(maximumStamina(labEndurance)/staminaRecoveryRate(labEndurance)).toFixed(1)+' sec full recovery';
-  $('staminaFill').style.width='100%';
-  $('staminaNumber').textContent='100%';
-  try{localStorage.setItem('rpg-lab-endurance',String(labEndurance));}catch{}
+  $('sprintTime').textContent=maximumStamina(labEndurance)+' sec sprint · '+
+    (maximumStamina(labEndurance)/staminaRecoveryRate(labEndurance)).toFixed(1)+
+    ' sec full recovery';
+  $('staminaFill').style.width=(100*player.stamina/maximumStamina(labEndurance)).toFixed(1)+'%';
+  $('staminaNumber').textContent=Math.round(100*player.stamina/maximumStamina(labEndurance))+'%';
 }
-$('endDown').addEventListener('click',()=>adjustEndurance(-1));
+$('endDown').disabled=true;
 $('endUp').addEventListener('click',()=>adjustEndurance(1));
 adjustEndurance(0);
 const keys=new Set();
@@ -2815,6 +2962,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
       alerts:squadIntel.alerts},
     workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
+    special:{...specialState,attributes:{...specialState.attributes},
+      perks:{...specialState.perks},bonuses:{...specialModifiers},open:specialOpen},
     scopedFOV:camera.fov,
     hud:{mode:document.body.classList.contains('in-power-armor')?'visor':'field',
       fieldVisible:!$('fieldHud').classList.contains('hidden'),
@@ -2896,7 +3045,7 @@ canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
-  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen)$('menu').classList.remove('hidden');
+  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -2909,6 +3058,7 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&specialOpen){closeSpecialPanel();return;}
   if(e.code==='Escape'&&powerUIOpen){closePowerArmorBay();return;}
   if(e.code==='Escape'&&workbenchOpen){closeWorkbench();return;}
   if(e.code==='Escape'&&(inventoryOpen||lootOpen)){closeLootOverlay();return;}
@@ -2919,12 +3069,15 @@ window.addEventListener('keydown',e=>{
       'LAB DIAGNOSTICS SHOWN · F3 TO HIDE':'FIELD HUD · DIAGNOSTICS HIDDEN');
     return;
   }
+  if(e.code==='KeyL'&&!e.repeat){
+    e.preventDefault();if(specialOpen)closeSpecialPanel();else openSpecialPanel();return;
+  }
   if(e.code==='KeyI'&&!e.repeat){
     if(inventoryOpen||lootOpen)closeLootOverlay();
     else beginLootOverlay();
     return;
   }
-  if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen)return;
+  if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||specialOpen)return;
   if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
     thirdPersonEnabled=!thirdPersonEnabled;
     showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
@@ -3031,7 +3184,7 @@ function frame(){
   let ammoSpentOnReload=false;
   for(const spec of ARSENAL){
     const state=arsenalStates[spec.id],before=state.reserve;
-    updateWeapon(state,dt,spec);
+    updateWeapon(state,dt,spec,{reloadSpeedMultiplier:specialModifiers.reloadSpeedMultiplier});
     if(state.reserve!==before)ammoSpentOnReload=true;
   }
   if(ammoSpentOnReload)saveBackpack();
@@ -3164,7 +3317,9 @@ function frame(){
     const mobility=powerArmorMobility(powerArmorState);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
       {boxes:bounds,trees:[],ceilings,groundHeight,
-        speedMultiplier:mobility.factor,allowSprint:mobility.canSprint});
+        speedMultiplier:mobility.factor*specialModifiers.speedMultiplier,
+        staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier,
+        allowSprint:mobility.canSprint});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
     const core=stepFusionCore(powerArmorState,dt,
       {moving:info.speed>.2,sprinting:info.sprinting});

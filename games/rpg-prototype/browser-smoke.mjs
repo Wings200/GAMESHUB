@@ -67,6 +67,23 @@ try{
   assert.equal(state.hud.visorVisible,false);
   assert.equal(state.hud.debug,false);
   assert.equal(state.hud.fieldAmmo,await page.locator('#weaponAmmo').textContent());
+  // W14.0: real seven-branch SPECIAL interface, purchases and save data.
+  assert.equal(state.special.attributes.strength,3);
+  assert.equal(state.special.statPoints,5);
+  assert.equal(await page.locator('#specialGrid .special-branch').count(),7);
+  await page.keyboard.press('l');
+  await page.locator('#specialPanel:not(.hidden)').waitFor();
+  await page.getByRole('button',{name:'Increase STRENGTH'}).click();
+  await page.locator('#specialGrid .special-branch').first()
+    .locator('button.special-perk').first().click();
+  let progressed=await page.evaluate(()=>window.__rpgSmokeState().special);
+  assert.equal(progressed.attributes.strength,4);
+  assert.equal(progressed.perks['steady-grip'],1);
+  assert.equal(progressed.statPoints,4);
+  assert.equal(progressed.perkPoints,1);
+  assert.ok(progressed.bonuses.recoilMultiplier<1);
+  await page.keyboard.press('Escape');
+  await page.locator('#specialPanel.hidden').waitFor();
   // W09.9: the actual Three.js lab's tall maze wall must obstruct both
   // enemy damage and the visible bullet tracer. A higher shot clears it.
   const wallBlock=await page.evaluate(()=>
@@ -439,6 +456,10 @@ try{
     window.__rpgSmokeState?.().weapon?.id==='pipe-smg',
     null,{timeout:30000});
   const restoredInventory=await page.evaluate(()=>window.__rpgSmokeState());
+  assert.equal(restoredInventory.special.attributes.strength,4);
+  assert.equal(restoredInventory.special.perks['steady-grip'],1,
+    'SPECIAL attribute purchases and perk ranks survive a reload');
+  assert.equal(restoredInventory.special.statPoints,4);
   assert.equal(restoredInventory.inventory.equippedWeapon,'pipe-smg');
   assert.equal(restoredInventory.inventory.ammoReserves['pipe-smg'],beforeAmmo+1200,
     'The true reserve survives a reload, not a capped 999 value');

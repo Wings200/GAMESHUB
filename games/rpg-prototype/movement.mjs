@@ -188,7 +188,9 @@ export function stepMovement(player, keys, look, dt, environment) {
   // Only motion actually achieved consumes stamina: holding Shift against
   // a wall or while stationary cannot drain the player.
   if(sprint && actual>.1){
-    player.stamina=Math.max(0,player.stamina-dt);
+    const drain=Number.isFinite(environment.staminaDrainMultiplier)?
+      Math.max(.4,Math.min(1.3,environment.staminaDrainMultiplier)):1;
+    player.stamina=Math.max(0,player.stamina-dt*drain);
     player.staminaCooldown=ENDURANCE_TUNING.recoveryDelay;
     if(player.stamina<=1e-6){player.stamina=0;player.exhausted=true;}
   }else{

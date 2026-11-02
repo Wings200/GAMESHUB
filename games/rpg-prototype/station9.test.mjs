@@ -586,7 +586,7 @@ test('W10.0 power armor uses owned modular pieces, local repair and real core fu
   assert.match(source,/takeFromBag\(backpack,bag,i\)/);
   assert.match(source,/removeItem\(backpack,owned\.uid,1\)/);
   assert.match(source,/setPowerPlate\(powerArmorState,slot,item\.tier,taken\.condition\)/);
-  assert.match(source,/repairPowerPlate\(powerArmorState,slot,available\)/);
+  assert.match(source,/repairPowerPlate\(powerArmorState,slot,available,specialModifiers\.repairDiscount\)/);
   assert.match(source,/installFusionCore\(powerArmorState,entry\.charge\)/);
   assert.match(source,/ejectFusionCore\(powerArmorState\)/);
   assert.match(source,/damagePowerPlate\(powerArmorState,zone,attack\.damage\)/);
@@ -661,4 +661,29 @@ test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
     assert.ok(powerArmor.includes(color),color);
   assert.match(source,/plateAppearance:Object\.fromEntries/);
   assert.match(source,/modelContours:\{\.\.\.poweredSuit\.plateMeshes\.head\[0\]\.userData\.profileOutlines\}/);
+});
+
+test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
+  for(const id of ['specialPanel','specialGrid','specialClose','specialOpen',
+    'specialLevel','specialXp','specialXpFill','specialStatPoints',
+    'specialPerkPoints','specialFeedback','fieldLevel'])
+    assert.ok(page.includes('id="'+id+'"'),id);
+  assert.match(page,/\.special-grid\{display:grid/);
+  assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
+  assert.match(page,/main\.js\?v=W14\.0/);
+  assert.match(source,/from '\.\.\/special\.mjs'/);
+  assert.match(source,/safeSpecialSnapshot\(saved\)/);
+  assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
+  assert.match(source,/allocateSpecialPoint\(specialState,a\.id\)/);
+  assert.match(source,/purchaseSpecialPerk\(specialState,p\.id\)/);
+  assert.match(source,/awardSpecialExperience\(\(\{scout:45,raider:70,enforcer:105\}\)/);
+  assert.match(source,/specialModifiers\.gunDamageMultiplier/);
+  assert.match(source,/specialModifiers\.aimSpreadMultiplier/);
+  assert.match(source,/specialModifiers\.damageTakenMultiplier/);
+  assert.match(source,/specialModifiers\.staminaDrainMultiplier/);
+  assert.match(source,/specialModifiers\.speedMultiplier/);
+  assert.match(source,/specialModifiers\.reloadSpeedMultiplier/);
+  assert.match(source,/discountedMaterials\(recipe,specialModifiers\.craftDiscount\)/);
+  assert.match(source,/if\(e\.code==='KeyL'&&!e\.repeat\)/);
+  assert.match(source,/localStorage\.setItem\('rpg-lab-special-v1'/);
 });
