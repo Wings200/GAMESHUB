@@ -2898,25 +2898,6 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     cameraDistanceToHero:camera.position.distanceTo(
       poweredSuit.root.localToWorld(new THREE.Vector3(1.07,2.00,-3.65)))
   });
-  window.__rpgSmokeBareFramePreview=()=>{
-    for(const slot of POWER_ARMOR_SLOTS){
-      poweredSuit.plateMeshes[slot].forEach(mesh=>{mesh.visible=false;});
-      poweredSuit.moduleMeshes[slot].forEach(mesh=>{mesh.visible=false;});
-    }
-    return true;
-  };
-  window.__rpgSmokeRigPreview=(side='front')=>{
-    // CI-only fixed-view inspection; never changes player collision or saves.
-    const suit=poweredSuit.root;
-    const aim=suit.localToWorld(new THREE.Vector3(0,1.50,0));
-    const viewpoint=suit.localToWorld(new THREE.Vector3(0,1.55,
-      side==='front'?3.55:-3.55));
-    camera.position.copy(viewpoint);camera.lookAt(aim);
-    player.x=viewpoint.x;player.z=viewpoint.z;
-    $('menu').classList.add('hidden');
-    window.__rpgSmokeHideWeapon=true;
-    return true;
-  };
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
@@ -3507,7 +3488,7 @@ function frame(){
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=id===activeWeaponId&&!thirdPersonActive&&
-      powerArmorState.phase==='idle'&&!window.__rpgSmokeHideWeapon;
+      powerArmorState.phase==='idle';
   if(thirdPersonActive){
     controls.getDirection(viewHeading);
     viewHeading.y=0;
