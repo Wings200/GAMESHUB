@@ -101,6 +101,9 @@ try{
     assert.ok(b.naked.damage>=8,id+' unarmored damage');
     assert.ok(b.regular.damage>=2.5,id+' top armor must not make hits harmless');
     assert.ok(b.regular.damage<b.naked.damage);
+    assert.ok(Math.abs(b.regular.damage-
+      b.naked.damage*(1-b.regular.regularReduction))<1e-9,
+      id+' armor must block the equipped percentage');
     assert.ok(b.powered.damage<b.regular.damage);
     assert.ok(b.powered.combinedReduction>=.85);
   }
@@ -116,6 +119,10 @@ try{
       enemy.id+' old collision mannequin must never render');
     assert.equal(enemy.avatarRoots,1,
       enemy.id+' must have exactly one world-space visible avatar');
+    assert.equal(enemy.legacyGroupVisible,false,
+      enemy.id+' old physics body must stay invisible as a group');
+    assert.ok(Math.abs(enemy.visualLocalYaw-Math.PI)<1e-6,
+      enemy.id+' model must look in AI +Z forward direction');
     assert.ok(enemy.weaponRpm>100&&enemy.weaponRpm<1600,
       enemy.id+' must have an actual firearm RPM');
     for(const [slot,id] of Object.entries(enemy.armor)){

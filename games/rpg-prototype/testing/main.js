@@ -819,6 +819,9 @@ function createEnemy(spec){
   // Crouching lowers the ACTUAL head/torso/arm hitboxes. It is not
   // just a cosmetic mesh squash; the player's raycaster uses these meshes.
   const upperBody=new THREE.Group();root.add(upperBody);
+  // This entire old mannequin is hitboxes only: no duplicate body, even if
+  // a child material or armor loadout later becomes renderable by mistake.
+  upperBody.visible=false;
   const state=createDummy(enemyArmorForRound(spec.id,0));
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
@@ -2551,6 +2554,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
         [slot,(e.rigged?.state?.armorPieces?.[slot]||0)>0])),
       legacyRenderMeshes:e.meshes.filter(m=>m.visible||
         m.material.visible||m.castShadow).length,
+      legacyGroupVisible:e.upperBody.visible,
+      visualLocalYaw:e.rigged?.root.rotation.y??null,
       avatarRoots:e.root.children.filter(child=>child===e.rigged?.root).length,
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
       weaponId:e.tactics.weaponId,burstCount:e.tactics.burstCount,

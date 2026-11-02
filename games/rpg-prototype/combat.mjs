@@ -2,6 +2,9 @@
 export const ARMOR_SLOTS=Object.freeze(['head','chest','leftArm','rightArm','leftLeg','rightLeg']);
 export const HIT_ZONES=Object.freeze({head:2.5,chest:1,leftArm:.7,rightArm:.7,leftLeg:.7,rightLeg:.7});
 export const DUMMY_HEALTH=100;
+// Shared, adjustable armor-resistance curve. Item AP determines the percentage;
+// weapons change raw damage, never how armor converts AP to protection.
+export const ARMOR_RESISTANCE=Object.freeze({ratingDivisor:25,maxReduction:.85});
 export const ARMOR_STYLES=Object.freeze([
   {id:'cloth',name:'Field Wrap',points:5,color:0x777361,style:'wrap'},
   {id:'canvas',name:'Canvas Patrol',points:9,color:0x8b8870,style:'wrap'},
@@ -104,8 +107,9 @@ export function armorPointsForSlot(dummy,slot){
 }
 export function damageReductionForPoints(points){
   const p=Math.max(0,Number.isFinite(points)?points:0);
-  // 25 points blocks 50%, 75 points blocks 75%, never immune.
-  return Math.min(.85,p/(p+25));
+  // Default: 25 AP blocks 50%, 75 AP blocks 75%, never full immunity.
+  return Math.min(ARMOR_RESISTANCE.maxReduction,
+    p/(p+ARMOR_RESISTANCE.ratingDivisor));
 }
 export function createDummy(armor='none',maximumHealth=DUMMY_HEALTH){
   const maxHealth=Number.isFinite(maximumHealth)&&maximumHealth>0?maximumHealth:DUMMY_HEALTH;

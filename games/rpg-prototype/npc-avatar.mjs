@@ -2,6 +2,9 @@
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
 import {createPlayerAvatar} from './player-avatar.mjs';
+// AI yaw 0 looks toward +Z; the survivor mesh is modeled facing -Z.
+// Rotate only the visual 180°, so its front and gun point where the brain aims.
+export const NPC_VISUAL_YAW_OFFSET=Math.PI;
 
 export const NPC_VISUAL_ROLES=Object.freeze({
   scout:Object.freeze({name:'Wasteland Scout',weapon:'compact-carbine',
@@ -35,6 +38,7 @@ export function createNpcAvatar(parent,kind){
   if(!role)throw Error('Unknown NPC role: '+kind);
   const avatar=createPlayerAvatar(parent,{variant:kind});
   avatar.root.name='OriginalNpc_'+kind;
+  avatar.root.rotation.y=NPC_VISUAL_YAW_OFFSET;
   avatar.root.scale.multiplyScalar(kind==='scout'?.97:kind==='enforcer'?1.07:1.02);
   const mount=avatar.weaponSocket;
   const gun=new THREE.Group();
@@ -124,7 +128,7 @@ export function createNpcAvatar(parent,kind){
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,
     reloading=false,recoil=0,alive=true}={}){
     time+=Math.min(.05,Math.max(0,dt));
-    avatar.update({dt,x:0,z:0,ground:0,yaw:0,
+    avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
       crouched,aiming,alive,pitch:0});
     // Torso socket follows crouch and movement, while the gun reacts to

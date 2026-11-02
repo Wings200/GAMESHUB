@@ -1,33 +1,47 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ARMOR_SLOTS,getArmorPiece} from './combat.mjs';
+import {ARMOR_SLOTS,getArmorPiece,damageReductionForPoints,ARMOR_RESISTANCE} from './combat.mjs';
 import {createPowerArmorState,beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS} from './power-armor.mjs';
 import {ENEMY_WEAPONS} from './enemy-tactics.mjs';
 import {regularBallisticReduction,calculateIncomingShot}
   from './player-ballistics.mjs';
 
-test('regular armor remains useful but no longer makes bullets negligible',()=>{
-  assert.equal(regularBallisticReduction(0),0);
-  assert.ok(regularBallisticReduction(33)>.20);
-  assert.ok(regularBallisticReduction(121)>.58);
-  assert.ok(regularBallisticReduction(121)<.62);
-  assert.equal(regularBallisticReduction(Infinity),0);
-  assert.ok(regularBallisticReduction(1e8)<=.62);
+test('incoming bullets use exactly the normal item armor percentage',()=>{
+  assert.equal(ARMOR_RESISTANCE.ratingDivisor,25);
+  assert.equal(ARMOR_RESISTANCE.maxReduction,.85);
+  for(const points of [0,10,25,33,75,100,121,1e8,NaN]){
+    assert.equal(regularBallisticReduction(points),damageReductionForPoints(points));
+  }
+  const bare=createPowerArmorState();
+  const unarmored=calculateIncomingShot(25,0,bare);
+  const half=calculateIncomingShot(25,25,bare);
+  const threeQuarters=calculateIncomingShot(25,75,bare);
+  assert.equal(unarmored.damage,25);
+  assert.equal(half.damage,12.5);
+  assert.equal(half.blocked,12.5);
+  assert.equal(threeQuarters.damage,6.25);
+  assert.equal(threeQuarters.regularReduction,.75);
+  assert.equal(regularBallisticReduction(1e8),.85);
 });
-test('all six guns threaten top regular armor while power armor remains toughest',()=>{
+test('all six NPC guns have stronger base damage while armor still blocks a percentage',()=>{
   const bare=createPowerArmorState();
   const bestChest=getArmorPiece('chest','aegis-chest').points;
   const topSuit=createPowerArmorState();topSuit.occupied=true;
   for(const slot of ARMOR_SLOTS)topSuit.plates[slot]='citadel';
+  const expected={'compact-smg':16,'scout-carbine':25,'pipe-rifle':30,
+    'raider-auto':25,'heavy-rifle':32,'heavy-lmg':20};
   for(const [id,gun] of Object.entries(ENEMY_WEAPONS)){
+    assert.equal(gun.damage,expected[id],id+' base damage');
     const none=calculateIncomingShot(gun.damage,0,bare);
     const top=calculateIncomingShot(gun.damage,bestChest,bare);
     const suit=calculateIncomingShot(gun.damage,bestChest,topSuit);
-    assert.ok(none.damage>=8&&none.damage<=20,id+' raw damage');
-    assert.ok(top.damage>=2.5&&top.damage<=8,id+' Aegis protection');
-    assert.ok(suit.damage>0&&suit.damage<top.damage,id+' chassis protection');
     assert.equal(none.damage,gun.damage);
+    assert.ok(top.damage>0&&top.damage<none.damage,id+' Aegis protection');
+    assert.ok(Math.abs(top.damage-
+      gun.damage*(1-damageReductionForPoints(bestChest)))<1e-10,
+      id+' must preserve armor percent');
+    assert.ok(suit.damage>0&&suit.damage<top.damage,id+' chassis protection');
     assert.equal(suit.combinedReduction,.90);
   }
 });

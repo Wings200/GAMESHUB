@@ -1,12 +1,10 @@
-// W09.14: balanced incoming ballistic damage for player characters.
+// W09.15: preserve the shared, per-piece percentage armor resistance.
+// NPC weapon base damage is tuned separately from armor effectiveness.
+import {damageReductionForPoints} from './combat.mjs';
 import {powerArmorProtection} from './power-armor.mjs';
-export const PLAYER_BALLISTIC_TUNING=Object.freeze({
-  armorDivisor:80,maximumRegularReduction:.62
-});
+
 export function regularBallisticReduction(points){
-  const p=Math.max(0,Number.isFinite(points)?points:0);
-  return Math.min(PLAYER_BALLISTIC_TUNING.maximumRegularReduction,
-    p/(p+PLAYER_BALLISTIC_TUNING.armorDivisor));
+  return damageReductionForPoints(points);
 }
 export function calculateIncomingShot(rawDamage,armorPoints,powerState,zone='chest'){
   const raw=Math.max(0,Number.isFinite(rawDamage)?rawDamage:0);
