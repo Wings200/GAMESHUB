@@ -83,7 +83,7 @@ try{
   assert.equal(progressed.perkPoints,1);
   assert.ok(progressed.bonuses.recoilMultiplier<1);
   await page.keyboard.press('Escape');
-  await page.locator('#specialPanel.hidden').waitFor();
+  await page.locator('#specialPanel').waitFor({state:'hidden'});
   // W09.9: the actual Three.js lab's tall maze wall must obstruct both
   // enemy damage and the visible bullet tracer. A higher shot clears it.
   const wallBlock=await page.evaluate(()=>
