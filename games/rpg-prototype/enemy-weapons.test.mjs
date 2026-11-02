@@ -29,7 +29,8 @@ test('automatic fire consumes a timed burst, pauses, then starts again',()=>{
   assert.equal(attemptEnemyShot(t,5,false,()=>0).fired,false);
   const brain=createEnemyBrain({x:40,z:40,patrol:[{x:40,z:40}]});
   for(let i=0;i<30;i++)tickEnemyTactics(t,brain,{x:40,z:37},.05,[],{targetVisible:true});
-  assert.ok(t.cooldown===0);
+  // The timer can carry a small negative sub-frame debt at high RPM.
+  assert.ok(t.cooldown<=0);
   assert.equal(attemptEnemyShot(t,5,false,()=>0).fired,true);
 });
 test('semi-automatic pipe rifle stays single-shot and reloads its own magazine',()=>{

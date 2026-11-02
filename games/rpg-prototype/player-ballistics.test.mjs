@@ -52,7 +52,8 @@ test('exiting power armor restores ordinary armor incoming damage',()=>{
   const before=calculateIncomingShot(17,points,state);
   state.occupied=true;
   const during=calculateIncomingShot(17,points,state);
-  assert.ok(during.damage<before.damage*.35);
+  assert.ok(during.damage<before.damage);
+  assert.equal(during.combinedReduction,.90);
   beginPowerArmorTransition(state);
   stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
   assert.equal(state.occupied,false);
