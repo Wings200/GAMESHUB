@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
+  initialCampaignState,safeCampaignSnapshot,startCampaignQuest,
+  advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal
+} from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
@@ -46,6 +50,17 @@ import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   xpForNextLevel,discountedMaterials} from '../special.mjs';
 
 const $ = id => document.getElementById(id);
+let campaignState=initialCampaignState();
+try{
+  const saved=JSON.parse(localStorage.getItem('rpg-lab-campaign-v1')||'null');
+  if(saved)campaignState=safeCampaignSnapshot(saved);
+}catch{}
+let questPanelOpen=false,dialogueOpen=false;
+let questFromField=false,dialogueFromField=false,activeDialogueNode=null;
+function saveCampaign(){
+  try{localStorage.setItem('rpg-lab-campaign-v1',JSON.stringify(campaignState));}catch{}
+}
+
 let specialState=createSpecialState();
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-special-v1')||'null');
@@ -263,6 +278,35 @@ function textSign(label,x,z,color){
   box(x,1.4,z,.1,2.8,.1,dark);
 }
 for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
+
+// W18.0 story contacts: physical, discoverable terminals and faction beacons.
+// They're prototypes for future settlement NPCs, not invisible quest buttons.
+const campaignMarkers=[];
+for(const node of CAMPAIGN_NODES){
+  const shell=new THREE.MeshStandardMaterial({color:0x33454b,metalness:.62,roughness:.55});
+  const light=new THREE.MeshStandardMaterial({color:node.color,emissive:node.color,
+    emissiveIntensity:.48,metalness:.30,roughness:.40});
+  box(node.x,.50,node.z,.85,1.0,.64,shell);
+  box(node.x,1.04,node.z,.94,.12,.72,light);
+  box(node.x,1.22,node.z,.52,.25,.18,light);
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=112;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0a1720';ctx.fillRect(0,0,512,112);
+  ctx.fillStyle='#'+node.color.toString(16).padStart(6,'0');
+  ctx.fillRect(0,0,10,112);
+  ctx.textAlign='center';ctx.fillStyle='#e5eee8';
+  ctx.font='bold 33px monospace';ctx.fillText(node.name,256,67);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,
+    transparent:true,depthTest:true}));
+  label.position.set(node.x,2.20,node.z);label.scale.set(3.3,.72,1);
+  scene.add(label);
+  campaignMarkers.push({id:node.id,label});
+  bounds.push({minX:node.x-.45,maxX:node.x+.45,
+    minZ:node.z-.35,maxZ:node.z+.35,top:1.13});
+}
+
 markLane(-25,pale);
 for(let x=-47;x<55;x+=5){
   box(x,.065,-25,.14,.13,4,floorPaint);
@@ -1430,6 +1474,7 @@ function markEnemyDefeated(enemy){
   enemy.muzzleLight.intensity=0;
   enemy.gunGlow=0;
   spawnEnemyLoot(enemy);
+  if(enemy.id==='raider')recordCampaignObjective('raider-defeated');
   awardSpecialExperience(({scout:45,raider:70,enforcer:105})[enemy.id]||45,'combat');
   updateArenaSign();
 }
@@ -2809,6 +2854,17 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 if(new URLSearchParams(location.search).get('smoke')==='1'){
   // CI-only ammo fixture: makes the empty-trigger regression test fast on
   // software WebGL, without wasting many slow render frames on a full mag.
+  window.__rpgSmokeVisitCampaignNode=id=>{
+    const node=CAMPAIGN_NODES.find(node=>node.id===id);
+    if(!node)return false;
+    player.x=node.x+1.4;player.z=node.z;
+    player.jump=0;player.vertical=0;resetMotion(player);
+    return nearCampaignNode()?.id===id;
+  };
+  window.__rpgSmokeCampaignGrantSalvage=(quantity=2)=>{
+    const result=addItem(backpack,'supply:salvage',quantity);
+    saveBackpack();refreshInventoryUI();return result.added;
+  };
   window.__rpgSmokeTeleportToPowerBay=()=>{
     resetPlayer(7);
     return nearPoweredSuit();
@@ -3038,6 +3094,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
     special:{...specialState,attributes:{...specialState.attributes},
       perks:{...specialState.perks},bonuses:{...specialModifiers},open:specialOpen},
+    campaign:{...safeCampaignSnapshot(campaignState),journal:campaignJournal(campaignState),
+      panelOpen:questPanelOpen,dialogueOpen},
     scopedFOV:camera.fov,
     hud:{mode:document.body.classList.contains('in-power-armor')?'visor':'field',
       fieldVisible:!$('fieldHud').classList.contains('hidden'),
@@ -3109,6 +3167,230 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     }))
   });
 }
+// W18.0 playable campaign: no quest rewards or reputations live in the DOM.
+const CAMPAIGN_DIALOGUE={
+  dispatch:'The relay woke up after years of silence. Its records could rebuild the region—or put it under martial law.',
+  relay:'An old encrypted uplink is pulsing through the dead network. Its memory banks are still intact.',
+  water:'Haven Junction has families waiting on clean water. Our pump is missing critical components.',
+  pump:'The purifier motor is seized. Two units of salvage can rebuild the drive coupling.',
+  dominion:'Supply convoys are being attacked. An armed Raider is operating in the eastern combat sector.',
+  courier:'A courier transmitted one last distress ping before disappearing into the contested zone.'
+};
+let selectedCampaignQuest=null;
+function nearCampaignNode(){
+  let best=null,range=2.8;
+  for(const node of CAMPAIGN_NODES){
+    const d=Math.hypot(player.x-node.x,player.z-node.z);
+    if(d<range){best=node;range=d;}
+  }
+  return best;
+}
+function refreshCampaignUI(){
+  const journal=campaignJournal(campaignState);
+  const tracked=journal.find(q=>q.tracked);
+  $('questTracker').classList.toggle('hidden',!tracked);
+  $('questTrackerTitle').textContent=tracked?.title.toUpperCase()||'';
+  $('questTrackerObjective').textContent=tracked?.objective||'';
+  $('campaignCaps').textContent=campaignState.caps+' CAPS';
+  const rep=$('campaignReputation');rep.replaceChildren();
+  for(const [id,faction] of Object.entries(CAMPAIGN_FACTIONS)){
+    const row=document.createElement('div');row.className='campaign-faction';
+    const name=document.createElement('span');name.textContent=faction.name;
+    const score=document.createElement('b');const value=campaignState.reputation[id];
+    score.textContent=(value>=0?'+':'')+value;
+    score.style.color=value<0?'#f2a38e':faction.color;
+    row.append(name,score);rep.append(row);
+  }
+  const visible=journal.filter(q=>q.status!=='available');
+  const list=$('campaignQuestList');list.replaceChildren();
+  if(!visible.length){
+    const hint=document.createElement('p');hint.className='campaign-hint';
+    hint.textContent='No quests discovered. Talk to RELAY DISPATCH at Station 7, or explore the colored world terminals.';
+    list.append(hint);
+  }
+  if(!visible.some(q=>q.id===selectedCampaignQuest))
+    selectedCampaignQuest=tracked?.id||visible[0]?.id||null;
+  for(const quest of visible){
+    const button=document.createElement('button');button.type='button';
+    button.className='campaign-quest'+(selectedCampaignQuest===quest.id?' selected':'');
+    const heading=document.createElement('strong');heading.textContent=quest.title;
+    const meta=document.createElement('small');
+    meta.textContent=quest.type.toUpperCase()+' · '+quest.status.toUpperCase();
+    button.append(heading,meta);
+    button.addEventListener('click',()=>{
+      selectedCampaignQuest=quest.id;refreshCampaignUI();
+    });
+    list.append(button);
+  }
+  const selected=visible.find(q=>q.id===selectedCampaignQuest);
+  $('campaignQuestTitle').textContent=selected?.title||'NO ACTIVE QUEST';
+  $('campaignQuestDescription').textContent=selected?.description||
+    'Investigate the terminals at the testing stations to begin the story.';
+  $('campaignQuestObjective').textContent=selected?.objective||'EXPLORE THE FRONTIER';
+  $('campaignQuestReward').textContent=selected?.reward||'';
+  $('campaignTrack').disabled=!selected||selected.status!=='active'||selected.tracked;
+  $('campaignTrack').textContent=selected?.tracked?'TRACKING':'TRACK QUEST';
+}
+function applyCampaignResult(result){
+  if(!result.changed)return false;
+  campaignState=result.state;
+  saveCampaign();
+  if(result.type==='completed'){
+    awardSpecialExperience(result.xp,'quest');
+    const title=CAMPAIGN_QUESTS[result.questId].title.toUpperCase();
+    showShotNotice('QUEST COMPLETE · '+title+' · +'+result.xp+' XP · +'+result.caps+' CAPS');
+  }else if(result.type==='started'){
+    showShotNotice('NEW QUEST · '+CAMPAIGN_QUESTS[result.questId].title.toUpperCase()+' · Q JOURNAL');
+  }else if(result.advanced?.length){
+    showShotNotice('OBJECTIVE UPDATED · '+CAMPAIGN_QUESTS[result.advanced[0]].title.toUpperCase());
+  }
+  refreshCampaignUI();
+  return true;
+}
+function recordCampaignObjective(event){
+  return applyCampaignResult(advanceCampaignEvent(campaignState,event));
+}
+function consumeCampaignSalvage(amount){
+  if(countItem(backpack,'supply:salvage')<amount)return false;
+  let remaining=amount;
+  for(const stack of [...backpack.items]){
+    if(stack.itemId!=='supply:salvage'||remaining<=0)continue;
+    const result=removeItem(backpack,stack.uid,remaining);
+    remaining-=result.removed;
+  }
+  saveBackpack();refreshInventoryUI();return remaining===0;
+}
+function closeCampaignDialogue(){
+  if(!dialogueOpen)return;
+  dialogueOpen=false;activeDialogueNode=null;
+  $('campaignDialogue').classList.add('hidden');
+  if(dialogueFromField){dialogueFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+function closeCampaignJournal(){
+  if(!questPanelOpen)return;
+  questPanelOpen=false;$('campaignPanel').classList.add('hidden');
+  if(questFromField){questFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+function openCampaignJournal(){
+  if(questPanelOpen||dialogueOpen||specialOpen||powerUIOpen||
+    lootOpen||inventoryOpen||workbenchOpen)return;
+  questFromField=controls.isLocked;questPanelOpen=true;
+  $('campaignPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');refreshCampaignUI();
+  if(controls.isLocked)controls.unlock();
+}
+function renderCampaignDialogue(){
+  const node=activeDialogueNode;
+  if(!node)return;
+  $('campaignDialogueTitle').textContent=node.name;
+  $('campaignDialogueBody').textContent=CAMPAIGN_DIALOGUE[node.id];
+  const choices=$('campaignDialogueChoices');choices.replaceChildren();
+  function choice(label,action,disabled=false){
+    const button=document.createElement('button');
+    button.type='button';button.textContent=label;
+    button.disabled=disabled;
+    button.addEventListener('click',()=>{
+      if(disabled)return;
+      action();
+      if(dialogueOpen)renderCampaignDialogue();
+    });
+    choices.append(button);
+  }
+  function progress(id){return campaignState.quests[id];}
+  function accept(id){
+    const result=startCampaignQuest(campaignState,id);
+    applyCampaignResult(result);
+  }
+  function finish(id,outcome){
+    const result=resolveCampaignQuest(campaignState,id,outcome);
+    applyCampaignResult(result);
+  }
+  switch(node.id){
+    case 'dispatch':{
+      const q=progress('dead-signals');
+      if(!q)choice('ACCEPT · Dead Signals',()=>accept('dead-signals'));
+      else if(q.status==='active'&&q.stage===1){
+        choice('Give records to FREE SETTLEMENTS',()=>finish('dead-signals','settlers'));
+        choice('Deliver records to IRON DOMINION',()=>finish('dead-signals','dominion'));
+      }else if(q.status==='active')
+        choice('Relay coordinates logged · investigate Station 6',()=>{},true);
+      else choice('Dead Signals · CONTRACT COMPLETE',()=>{},true);
+      break;
+    }
+    case 'relay':{
+      const main=progress('dead-signals'),courier=progress('lost-courier');
+      if(main?.status==='active'&&main.stage===0)
+        choice('DOWNLOAD · Military relay records',()=>recordCampaignObjective('relay-scanned'));
+      if(courier?.status==='active'&&courier.stage===0)
+        choice('RECOVER · Courier transmission',()=>recordCampaignObjective('courier-evidence'));
+      if((!main||main.stage!==0)&&(!courier||courier.stage!==0))
+        choice('No active signals to recover · Check Q',()=>{},true);
+      break;
+    }
+    case 'water':{
+      const q=progress('water-debt');
+      if(!q)choice('ACCEPT · Water Debt',()=>accept('water-debt'));
+      else if(q.status==='active'&&q.stage===1){
+        choice('Give the repaired pump to the settlement',()=>finish('water-debt','help'));
+        choice('Demand extra caps for the work',()=>finish('water-debt','charge'));
+      }else if(q.status==='active')
+        choice('Repair the purifier at Station 2',()=>{},true);
+      else choice('Water Debt · CONTRACT COMPLETE',()=>{},true);
+      break;
+    }
+    case 'pump':{
+      const q=progress('water-debt'),salvage=countItem(backpack,'supply:salvage');
+      if(q?.status==='active'&&q.stage===0)
+        choice('REPAIR · Spend 2 salvage ('+salvage+' owned)',()=>{
+          if(consumeCampaignSalvage(2))recordCampaignObjective('pump-repaired');
+        },salvage<2);
+      else choice('A damaged filtration pump · Talk to the water coordinator',()=>{},true);
+      break;
+    }
+    case 'dominion':{
+      const q=progress('border-watch');
+      if(!q)choice('ACCEPT · Border Watch',()=>accept('border-watch'));
+      else if(q.status==='active'&&q.stage===1)
+        choice('REPORT · Raider eliminated',()=>finish('border-watch','report'));
+      else if(q.status==='active')
+        choice('Eliminate the Raider at Station 9',()=>{},true);
+      else choice('Border Watch · CONTRACT COMPLETE',()=>{},true);
+      break;
+    }
+    case 'courier':{
+      const q=progress('lost-courier');
+      if(!q)choice('INVESTIGATE · The Missing Courier',()=>accept('lost-courier'));
+      else if(q.status==='active'&&q.stage===1){
+        choice('Share the plans with FREE SETTLEMENTS',()=>finish('lost-courier','settlers'));
+        choice('Sell the plans to THE DIRECTORATE',()=>finish('lost-courier','directorate'));
+      }else if(q.status==='active')
+        choice('Find the courier recording at the relay',()=>{},true);
+      else choice('The Missing Courier · CONTRACT COMPLETE',()=>{},true);
+      break;
+    }
+  }
+  choice('LEAVE CONVERSATION',closeCampaignDialogue);
+}
+function openCampaignDialogue(node){
+  if(!node||questPanelOpen||dialogueOpen||specialOpen||powerUIOpen||
+    lootOpen||inventoryOpen||workbenchOpen)return;
+  activeDialogueNode=node;dialogueOpen=true;
+  dialogueFromField=controls.isLocked;
+  $('campaignDialogue').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  renderCampaignDialogue();
+  if(controls.isLocked)controls.unlock();
+}
+$('campaignClose').addEventListener('click',closeCampaignJournal);
+$('campaignTrack').addEventListener('click',()=>{
+  if(!selectedCampaignQuest)return;
+  applyCampaignResult(trackCampaignQuest(campaignState,selectedCampaignQuest));
+  refreshCampaignUI();
+});
+$('campaignDialogueClose').addEventListener('click',closeCampaignDialogue);
+
 $('enterAI').addEventListener('click',()=>{
   resetPlayer(8);
   sound.unlock();
@@ -3123,7 +3405,8 @@ canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
-  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen)$('menu').classList.remove('hidden');
+  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen&&
+    !questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -3136,6 +3419,8 @@ $('quality').addEventListener('click',()=>{
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
+  if(e.code==='Escape'&&questPanelOpen){closeCampaignJournal();return;}
   if(e.code==='Escape'&&specialOpen){closeSpecialPanel();return;}
   if(e.code==='Escape'&&powerUIOpen){closePowerArmorBay();return;}
   if(e.code==='Escape'&&workbenchOpen){closeWorkbench();return;}
@@ -3147,6 +3432,9 @@ window.addEventListener('keydown',e=>{
       'LAB DIAGNOSTICS SHOWN · F3 TO HIDE':'FIELD HUD · DIAGNOSTICS HIDDEN');
     return;
   }
+  if(e.code==='KeyQ'&&!e.repeat){
+    e.preventDefault();if(questPanelOpen)closeCampaignJournal();else openCampaignJournal();return;
+  }
   if(e.code==='KeyL'&&!e.repeat){
     e.preventDefault();if(specialOpen)closeSpecialPanel();else openSpecialPanel();return;
   }
@@ -3155,7 +3443,8 @@ window.addEventListener('keydown',e=>{
     else beginLootOverlay();
     return;
   }
-  if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||specialOpen)return;
+  if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||specialOpen||
+    questPanelOpen||dialogueOpen)return;
   if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
     thirdPersonEnabled=!thirdPersonEnabled;
     showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
@@ -3169,6 +3458,8 @@ window.addEventListener('keydown',e=>{
        (powerArmorState.occupied||nearPoweredSuit())){
       beginPowerHold();return;
     }
+    const contact=nearCampaignNode();
+    if(contact){openCampaignDialogue(contact);return;}
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
     else if(benchWithinReach())beginWorkbench();
@@ -3447,12 +3738,13 @@ function frame(){
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.
   const nearby=nearestLootBag();
+  const questContact=nearCampaignNode();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
-  const promptAvailable=frameInReach||!!nearby;
+  const promptAvailable=frameInReach||!!questContact||!!nearby;
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
-    !promptAvailable);
+    questPanelOpen||dialogueOpen||!promptAvailable);
   if(frameInReach){
     $('lootPrompt').textContent=powerArmorState.occupied?
       'HOLD E · EXIT POWER ARMOR':
@@ -3464,7 +3756,9 @@ function frame(){
       $('lootPrompt').textContent='HOLD E · '+pct+'% TO '+
         (powerArmorState.occupied?'EXIT':'ENTER');
     }
-  }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
+  }else if(questContact)$('lootPrompt').textContent='E · TALK / USE '+
+    questContact.name+' · Q JOURNAL';
+  else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
     nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
@@ -3512,4 +3806,5 @@ function frame(){
     renderer.render(scene,thirdPersonCamera);
   }else renderer.render(scene,camera);
 }
+refreshCampaignUI();
 frame();

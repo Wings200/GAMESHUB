@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W17.0 · Articulated Power-Armor Frame and Grounded Boarding | GAMESHUB RPG</title>
+<title>W18.0 · Factions, Quests and Dialogue | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -406,6 +406,62 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
  .special-currency{padding:10px}
  .special-currency strong{font-size:24px}
  #fieldHud .field-level{display:none}}
+
+/* W18 — compact campaign tracker and full PIP-BOY quest journal */
+#questTracker{position:fixed;top:69px;left:18px;z-index:5;
+  width:min(320px,40vw);border-left:3px solid #91d6ac;
+  padding:9px 13px;background:#081b20d9;pointer-events:none;
+  box-shadow:0 8px 26px #0006}
+#questTracker .campaign-kicker{color:#9ddbb9;font-size:9px;
+  letter-spacing:.17em;font-weight:900}
+#questTrackerTitle{display:block;font-size:12px;color:#f2e9c7;
+  letter-spacing:.055em;margin:5px 0}
+#questTrackerObjective{display:block;color:#b7cbc5;font-size:11px;line-height:1.45}
+.campaign-shell{max-width:1050px;margin:0 auto}
+.campaign-top{display:flex;justify-content:space-between;gap:16px;
+  padding-bottom:17px;border-bottom:1px solid #426059}
+.campaign-top h2{margin:7px 0 2px!important}
+.campaign-top p{margin:0}
+.campaign-top small{color:#d0bb91;letter-spacing:.12em}
+.campaign-grid{display:grid;grid-template-columns:minmax(220px,300px) 1fr;
+  gap:14px;margin:16px 0}
+.campaign-list{display:flex;flex-direction:column;gap:8px}
+.campaign-list .campaign-quest{width:100%;text-align:left;
+  display:flex;flex-direction:column;gap:5px}
+.campaign-list .campaign-quest small{color:#a9c2bc;font-size:10px}
+.campaign-list .campaign-quest.selected{border-color:#a8dfb6;
+  background:#1c443e}
+.campaign-hint{border:1px dashed #45665d;padding:15px}
+.campaign-details{background:#10252a;border:1px solid #476059;
+  min-height:265px;padding:22px}
+.campaign-details h3{font-size:25px;margin:0 0 12px}
+.campaign-details .campaign-objective{background:#1a3536;border-left:3px solid #d0ae78;
+  padding:13px;color:#f0e2be;font-size:13px;line-height:1.5}
+.campaign-details .campaign-reward{color:#aacfc1;font-size:12px;
+  margin:15px 0;letter-spacing:.055em}
+.campaign-rep-wrap{border-top:1px solid #426059;padding:15px 0}
+.campaign-rep-wrap h3{color:#e8c895;margin:0 0 10px;
+  font-size:12px;letter-spacing:.13em}
+.campaign-reputation{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.campaign-faction{display:flex;justify-content:space-between;gap:8px;
+  padding:12px;background:#102830;border:1px solid #3a5554;font-size:11px}
+.campaign-faction b{font-size:15px}
+.campaign-dialogue-shell{max-width:670px;margin:5vh auto;
+  background:#10252d;border:1px solid #709387;padding:24px 29px;
+  box-shadow:0 20px 70px #000b}
+.campaign-dialogue-shell h2{font-size:clamp(25px,4vw,43px);margin:10px 0}
+.campaign-dialogue-shell p{font-size:15px;line-height:1.65}
+.campaign-dialogue-choices{display:grid;gap:9px;margin-top:25px}
+.campaign-dialogue-choices button{text-align:left;font-size:13px;
+  letter-spacing:.035em;padding:14px 17px;border-left:4px solid #a5d4b6}
+.campaign-dialogue-choices button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:760px){
+  #questTracker{width:min(310px,72vw);top:57px}
+  .campaign-grid{grid-template-columns:1fr}
+  .campaign-reputation{grid-template-columns:repeat(2,1fr)}
+  .campaign-dialogue-shell{padding:16px}
+}
+
 </style>
 </head>
 <body class="hud-modern">
@@ -490,6 +546,12 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
 <div id="crosshair"></div>
 <div id="shotNotice" aria-live="polite"></div>
 <div id="lootPrompt" class="hidden" aria-live="polite">E · SEARCH LOOT</div>
+<div id="questTracker" class="hidden" aria-live="polite">
+  <span class="campaign-kicker">TRACKED QUEST · Q JOURNAL</span>
+  <strong id="questTrackerTitle"></strong>
+  <span id="questTrackerObjective"></span>
+</div>
+
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
   <div class="weapon-head">W13.0 · SIX-GUN QA & ADS</div>
@@ -510,14 +572,14 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">Z / X CHANGE WEAPON · HOLD CLICK FOR AUTOMATICS · R RELOAD · F RESTOCK · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH LOOT · I BACKPACK · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · U OPTICS BENCH · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
+  <div id="keys">Z / X CHANGE WEAPON · HOLD CLICK FOR AUTOMATICS · R RELOAD · F RESTOCK · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH LOOT · I BACKPACK · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · U OPTICS BENCH · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W17.0</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W18.0</div>
     <h1>WEAPON<span>TESTING.</span></h1>
-    <p><strong>W17.0 · POWER-FRAME REBUILD:</strong> Articulated shoulders, elbows, wrists, fingers, hips, knees and ankles, with live hydraulic pistons and a grounded pilot boarding animation. Hold E at the rear hatch.</p>
-    <p><strong>W16.0 · WEAPON MOTION:</strong> Six gun-specific reloads and smoother combat animations. Press V for third-person, R to reload, or L for S.P.E.C.I.A.L.</p>
+    <p><strong>W18.0 · STORY BEGINS:</strong> Four playable quests, faction reputation, conversations, choices, persistent rewards and a new journal. Press Q to open it; talk at colored terminals with E.</p>
+    <p><strong>W17.0 · POWER FRAME:</strong> Articulated frame and grounded rear entry. Press L for S.P.E.C.I.A.L., I for inventory, and V for third-person.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -530,7 +592,7 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W17.0</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W18.0</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -625,6 +687,47 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
     <div class="special-footer">STRENGTH · PERCEPTION · ENDURANCE · CHARISMA · INTELLIGENCE · AGILITY · LUCK</div>
   </div>
 </div>
+
+<div id="campaignPanel" class="loot-overlay hidden" role="dialog" aria-label="Quest journal and faction reputation">
+  <div class="campaign-shell">
+    <div class="campaign-top">
+      <div>
+        <div class="loot-eyebrow">PIP-BOY / CAMPAIGN SYSTEMS / W18.0</div>
+        <h2>QUESTS<span> & FACTIONS.</span></h2>
+        <p>Main story, side missions, faction choices and permanent consequences.</p>
+      </div>
+      <div><small id="campaignCaps">0 CAPS</small>
+        <button id="campaignClose" type="button">CLOSE / RESUME · ESC</button>
+      </div>
+    </div>
+    <div class="campaign-grid">
+      <div id="campaignQuestList" class="campaign-list" aria-label="Discovered quests"></div>
+      <div class="campaign-details">
+        <div class="loot-eyebrow">ACTIVE CASE FILE</div>
+        <h3 id="campaignQuestTitle">NO ACTIVE QUEST</h3>
+        <p id="campaignQuestDescription">Explore to find contacts.</p>
+        <div class="campaign-objective" id="campaignQuestObjective"></div>
+        <div class="campaign-reward" id="campaignQuestReward"></div>
+        <button id="campaignTrack" type="button">TRACK QUEST</button>
+      </div>
+    </div>
+    <div class="campaign-rep-wrap">
+      <h3>FACTION REPUTATION · -100 HOSTILE TO +100 ALLIED</h3>
+      <div id="campaignReputation" class="campaign-reputation"></div>
+    </div>
+    <p>Talk to physical contacts with E. A choice can change reputation, quest rewards and future allegiances. Progress saves automatically.</p>
+  </div>
+</div>
+<div id="campaignDialogue" class="loot-overlay hidden" role="dialog" aria-label="NPC dialogue">
+  <div class="campaign-dialogue-shell">
+    <div class="loot-eyebrow">FRONTIER / CONVERSATION</div>
+    <h2 id="campaignDialogueTitle">CONTACT</h2>
+    <p id="campaignDialogueBody"></p>
+    <div id="campaignDialogueChoices" class="campaign-dialogue-choices"></div>
+    <button id="campaignDialogueClose" type="button">LEAVE / ESC</button>
+  </div>
+</div>
+
 <div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-label="Player inventory">
   <div class="loot-container">
     <div class="loot-panel-top">
@@ -719,6 +822,6 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W17.0"></script>
+<script type="module" src="./main.js?v=W18.0"></script>
 </body>
 </html>

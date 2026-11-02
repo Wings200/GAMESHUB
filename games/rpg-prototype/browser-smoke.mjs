@@ -786,6 +786,65 @@ try{
   assert.equal(reloadChecks['scrap-shotgun'].roundVisible,true);
   assert.equal(reloadChecks['hunting-rifle'].magazineVisible,false);
   assert.ok(reloadChecks['hunting-rifle'].boltOffset>-.03);
+  // W18: launch and complete the first story quest through the ACTUAL
+  // journal, physical contact interaction and dialogue choice UI.
+  const freshCampaign=await page.evaluate(()=>window.__rpgSmokeState().campaign);
+  assert.equal(freshCampaign.caps,0);
+  assert.equal(freshCampaign.journal.filter(q=>q.status==='active').length,0);
+  await page.keyboard.press('q');
+  await page.locator('#campaignPanel:not(.hidden)').waitFor({timeout:10000});
+  assert.ok((await page.locator('#campaignQuestList').textContent())
+    .includes('No quests discovered'));
+  await page.locator('#campaignClose').click();
+  await page.locator('#start').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+    null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>
+    window.__rpgSmokeVisitCampaignNode('dispatch')),true);
+  await page.keyboard.press('e');
+  await page.locator('#campaignDialogue:not(.hidden)').waitFor({timeout:10000});
+  await page.locator('#campaignDialogueChoices button')
+    .filter({hasText:'ACCEPT · Dead Signals'}).click();
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .campaign.quests['dead-signals'].stage,0);
+  await page.locator('#campaignDialogueClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>
+    window.__rpgSmokeVisitCampaignNode('relay')),true);
+  await page.keyboard.press('e');
+  await page.locator('#campaignDialogue:not(.hidden)').waitFor({timeout:10000});
+  await page.locator('#campaignDialogueChoices button')
+    .filter({hasText:'DOWNLOAD · Military relay records'}).click();
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .campaign.quests['dead-signals'].stage,1);
+  await page.locator('#campaignDialogueClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>
+    window.__rpgSmokeVisitCampaignNode('dispatch')),true);
+  await page.keyboard.press('e');
+  await page.locator('#campaignDialogue:not(.hidden)').waitFor({timeout:10000});
+  await page.locator('#campaignDialogueChoices button')
+    .filter({hasText:'Give records to FREE SETTLEMENTS'}).click();
+  const solvedCampaign=(await page.evaluate(()=>window.__rpgSmokeState())).campaign;
+  assert.equal(solvedCampaign.quests['dead-signals'].status,'completed');
+  assert.equal(solvedCampaign.reputation.settlers,18);
+  assert.equal(solvedCampaign.reputation.dominion,-7);
+  assert.equal(solvedCampaign.caps,85);
+  assert.equal(solvedCampaign.journal.find(q=>q.id==='dead-signals').status,
+    'completed');
+  assert.equal(JSON.parse(await page.evaluate(()=>
+    localStorage.getItem('rpg-lab-campaign-v1'))).caps,85,
+    'Quest rewards and decisions persist outside transient UI state');
+  await page.locator('#campaignDialogueClose').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:10000});
+  await page.keyboard.press('q');
+  await page.locator('#campaignPanel:not(.hidden)').waitFor({timeout:10000});
+  assert.ok((await page.locator('#campaignQuestList').textContent())
+    .includes('Dead Signals'));
+  assert.ok((await page.locator('#campaignReputation').textContent())
+    .includes('Free Settlements'));
+  await page.keyboard.press('Escape');
+  await page.locator('#campaignPanel').waitFor({state:'hidden'});
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({
