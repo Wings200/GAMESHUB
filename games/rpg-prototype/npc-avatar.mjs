@@ -81,6 +81,37 @@ export function createNpcAvatar(parent,kind){
     for(let j=0;j<4;j++)piece(.18,.012,.02,highlight,0,.105,-.52+j*.063);
     piece(.15,.18,.14,finish,0,-.04,.24);
   }
+  // Visible variant-specific furniture. Alternate firearms are not just
+  // different damage numbers: they have their own stocks, rails or magazines.
+  const alternate=new THREE.Group();gun.add(alternate);
+  function alternateBox(w,h,d,m,x,y,z){
+    const obj=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+    obj.position.set(x,y,z);obj.castShadow=true;alternate.add(obj);
+    return obj;
+  }
+  alternateBox(.23,.14,.36,finish,0,.03,-.38);
+  alternateBox(.17,.045,.33,highlight,0,.15,-.35);
+  alternateBox(.14,.17,.24,wood,0,-.065,.28);
+  const drum=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.15,16),black);
+  drum.rotation.x=Math.PI/2;drum.position.set(0,-.23,-.21);
+  alternate.add(drum);
+  const extraBarrel=alternateBox(.08,.08,.28,finish,0,.035,-.69);
+  let currentWeapon=role.weapon;
+  function setWeapon(id=role.weapon){
+    currentWeapon=id;
+    const variant=id==='scout-carbine'||id==='raider-auto'||id==='heavy-lmg';
+    alternate.visible=variant;
+    // Short SMGs, long rifles and heavy automatic weapons have distinct
+    // silhouettes and visible feed systems.
+    gun.scale.set(1,1,id==='compact-smg'?.77:
+      id==='scout-carbine'?.97:id==='raider-auto'?1.03:
+      id==='heavy-lmg'?1.21:id==='heavy-rifle'?1.09:1);
+    magazine.visible=id!=='heavy-lmg';
+    drum.visible=id==='heavy-lmg';
+    extraBarrel.visible=id==='scout-carbine'||id==='raider-auto'||id==='heavy-lmg';
+    magazine.scale.y=id==='raider-auto'?1.45:1;
+  }
+  setWeapon(role.weapon);
   const flash=new THREE.PointLight(0xffbd73,0,1.45);
   flash.position.copy(muzzle.position);
   gun.add(flash);
@@ -106,13 +137,13 @@ export function createNpcAvatar(parent,kind){
   }
   setArmor({});
   return {
-    root:avatar.root,update,setArmor,
+    root:avatar.root,update,setArmor,setWeapon,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,
       source:'original-procedural'
     };},
     get state(){return {
-      type:kind,model:avatar.root.name,weapon:role.weapon,
+      type:kind,model:avatar.root.name,weapon:currentWeapon,
       rendered:avatar.root.visible,
       equipped:{...lastArmor},armor:avatar.armor,
       armorPieces:avatar.visibleArmorPieces

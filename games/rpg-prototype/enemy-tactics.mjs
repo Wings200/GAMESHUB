@@ -10,6 +10,55 @@ export const ENEMY_PROFILES=Object.freeze({
   enforcer:Object.freeze({magazine:18,reserve:54,reloadSeconds:2.65,shotInterval:1.20,
     accuracy:.79,falloff:.10,moveSpeed:1.85,repositionSeconds:2.9,coverSeconds:3.5,role:'anchor',reactionSeconds:.52})
 });
+// Actual NPC weapon loadouts. These control firing AND the held 3D gun.
+export const ENEMY_WEAPONS=Object.freeze({
+  'compact-smg':Object.freeze({id:'compact-smg',name:'Compact SMG',kind:'scout',
+    automatic:true,magazine:24,reserve:96,reloadSeconds:1.9,
+    shotInterval:.105,burstSize:5,burstPause:.63,damage:2.8,range:45,
+    accuracy:.49,falloff:.16,soundKind:'smg'}),
+  'scout-carbine':Object.freeze({id:'scout-carbine',name:'Scout Carbine',kind:'scout',
+    automatic:true,magazine:21,reserve:84,reloadSeconds:2.2,
+    shotInterval:.15,burstSize:3,burstPause:.76,damage:4.2,range:65,
+    accuracy:.59,falloff:.13,soundKind:'carbine'}),
+  'pipe-rifle':Object.freeze({id:'pipe-rifle',name:'Pipe Rifle',kind:'raider',
+    automatic:false,magazine:12,reserve:60,reloadSeconds:2.05,
+    shotInterval:.68,damage:7,range:76,
+    accuracy:.67,falloff:.13,soundKind:'rifle'}),
+  'raider-auto':Object.freeze({id:'raider-auto',name:'Scrap Assault Rifle',kind:'raider',
+    automatic:true,magazine:30,reserve:90,reloadSeconds:2.45,
+    shotInterval:.135,burstSize:4,burstPause:.82,damage:3.7,range:67,
+    accuracy:.57,falloff:.13,soundKind:'carbine'}),
+  'heavy-rifle':Object.freeze({id:'heavy-rifle',name:'Heavy Rifle',kind:'enforcer',
+    automatic:true,magazine:30,reserve:120,reloadSeconds:2.65,
+    shotInterval:.17,burstSize:3,burstPause:.85,damage:5.6,range:86,
+    accuracy:.73,falloff:.10,soundKind:'rifle'}),
+  'heavy-lmg':Object.freeze({id:'heavy-lmg',name:'Belt-Fed Machine Gun',kind:'enforcer',
+    automatic:true,magazine:48,reserve:144,reloadSeconds:4.0,
+    shotInterval:.11,burstSize:7,burstPause:1.25,damage:3.5,range:78,
+    accuracy:.52,falloff:.16,soundKind:'rifle'})
+});
+const enemyLoadouts=Object.freeze({
+  scout:['compact-smg','scout-carbine'],
+  raider:['pipe-rifle','raider-auto'],
+  enforcer:['heavy-rifle','heavy-lmg']
+});
+export function chooseEnemyWeapon(role,round=0){
+  const pool=enemyLoadouts[role];
+  if(!pool)throw Error('Unknown enemy weapon role: '+role);
+  const index=Math.abs(Math.trunc(Number.isFinite(round)?round:0))%pool.length;
+  return ENEMY_WEAPONS[pool[index]];
+}
+export function getEnemyWeapon(id){return ENEMY_WEAPONS[id]||null;}
+export function weaponForTactics(tactics){
+  return getEnemyWeapon(tactics.weaponId)||ENEMY_PROFILES[tactics.kind];
+}
+export function equipEnemyWeapon(tactics,id){
+  const spec=getEnemyWeapon(id);
+  if(!spec||spec.kind!==tactics.kind)throw Error('Incompatible NPC weapon: '+id);
+  tactics.weaponId=id;tactics.magazine=spec.magazine;tactics.reserve=spec.reserve;
+  tactics.reloadRemaining=0;tactics.burstCount=0;tactics.cooldown=.6;
+  return tactics;
+}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const inside=(p,b,r)=>p.x>b.minX-r&&p.x<b.maxX+r&&p.z>b.minZ-r&&p.z<b.maxZ+r;
@@ -17,7 +66,7 @@ export function makeEnemyTactics(kind){
   const profile=ENEMY_PROFILES[kind];
   if(!profile)throw Error('Unknown enemy profile: '+kind);
   return {
-    kind,magazine:profile.magazine,reserve:profile.reserve,
+    kind,weaponId:null,burstCount:0,magazine:profile.magazine,reserve:profile.reserve,
     reloadRemaining:0,cooldown:1.2,shots:0,hits:0,misses:0,
     phase:'patrol',threat:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
@@ -33,10 +82,11 @@ export function resetEnemyTactics(tactics){
   return tactics;
 }
 export function beginReload(tactics){
-  const spec=ENEMY_PROFILES[tactics.kind];
+  const spec=weaponForTactics(tactics);
   if(tactics.reloadRemaining>0||tactics.magazine>=spec.magazine||tactics.reserve<=0)
     return false;
   tactics.reloadRemaining=spec.reloadSeconds;
+  tactics.burstCount=0;
   tactics.phase='reload';
   return true;
 }
@@ -341,7 +391,13 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
   }
   if(tactics.cooldown>0)return {fired:false,reason:'cooldown'};
   tactics.magazine--;
-  tactics.cooldown=spec.shotInterval;
+  if(spec.automatic){
+    tactics.burstCount=(tactics.burstCount||0)+1;
+    if(tactics.burstCount>=spec.burstSize){
+      tactics.burstCount=0;
+      tactics.cooldown=spec.burstPause;
+    }else tactics.cooldown=spec.shotInterval;
+  }else tactics.cooldown=spec.shotInterval;
   const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,90);
   const accuracy=clamp(spec.accuracy-spec.falloff*d/16-(moving?.13:0),.08,.90);
   const sampled=rng();

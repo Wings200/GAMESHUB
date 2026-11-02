@@ -103,9 +103,9 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   roundedBox(pelvis,.53,.13,.31,.06,leather,0,.10,.01);
   roundedBox(pelvis,.13,.10,.035,.018,metal,0,.12,-.20);
   const torso=group(pelvis,0,.14,0);
-  const chest=oval(torso,.37,.39,.25,jacket,0,.34,0);
-  chest.scale.z=.22; // fitted torso, not a broad cylindrical mannequin
-  oval(torso,.36,.34,.24,jacket,0,.33,0);
+  // One continuous torso mesh. The previous pair occupied the same space,
+  // making the inner mesh flicker visibly through the outer character.
+  oval(torso,.36,.39,.24,jacket,0,.33,0);
   oval(torso,.29,.19,.21,cloth,0,.04,0);
   // Default player appearance is plain cloth. No fake body armor,
   // backpack, straps, hat, mask or pouches until real equipment is worn.
@@ -137,8 +137,8 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   taper(neck,.115,.14,.16,skin,0,.035,0);
   if(!plainSurvivor)oval(neck,.22,.10,.21,cloth,0,-.035,.015);
   const head=group(neck,0,.18,0);
+  // A single face volume prevents a second head peeking through in motion.
   oval(head,.177,.224,.166,skin,0,.035,0);
-  oval(head,.178,.183,.152,skin,0,.018,-.019);
   oval(head,.075,.035,.045,skin,0,-.055,-.162);
   if(plainSurvivor){
     // Uncovered head, hair and readable eyes instead of permanent headgear.
