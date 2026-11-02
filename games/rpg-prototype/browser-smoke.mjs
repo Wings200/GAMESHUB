@@ -92,6 +92,12 @@ try{
     assert.equal(enemy.originalVisual.model,'OriginalNpc_'+enemy.id);
     assert.ok(enemy.modelHeight>=1.7&&enemy.modelHeight<=2.15,
       enemy.id+' needs a normal human-size original model');
+    assert.equal(enemy.legacyRenderMeshes,0,
+      enemy.id+' old collision mannequin must never render');
+    assert.equal(enemy.avatarRoots,1,
+      enemy.id+' must have exactly one world-space visible avatar');
+    assert.ok(enemy.weaponRpm>100&&enemy.weaponRpm<1600,
+      enemy.id+' must have an actual firearm RPM');
     for(const [slot,id] of Object.entries(enemy.armor)){
       assert.equal(enemy.originalVisual.equipped[slot],id);
       assert.equal(enemy.originalVisual.armorPieces[slot]>0,id!=='none',

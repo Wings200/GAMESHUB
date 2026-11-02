@@ -14,27 +14,27 @@ export const ENEMY_PROFILES=Object.freeze({
 export const ENEMY_WEAPONS=Object.freeze({
   'compact-smg':Object.freeze({id:'compact-smg',name:'Compact SMG',kind:'scout',
     automatic:true,magazine:24,reserve:96,reloadSeconds:1.9,
-    shotInterval:.105,burstSize:5,burstPause:.63,damage:2.8,range:45,
+    rpm:850,shotInterval:60/850,burstSize:8,burstPause:0.22,damage:2.8,range:45,
     accuracy:.49,falloff:.16,soundKind:'smg'}),
   'scout-carbine':Object.freeze({id:'scout-carbine',name:'Scout Carbine',kind:'scout',
     automatic:true,magazine:21,reserve:84,reloadSeconds:2.2,
-    shotInterval:.15,burstSize:3,burstPause:.76,damage:4.2,range:65,
+    rpm:640,shotInterval:60/640,burstSize:4,burstPause:0.28,damage:4.2,range:65,
     accuracy:.59,falloff:.13,soundKind:'carbine'}),
   'pipe-rifle':Object.freeze({id:'pipe-rifle',name:'Pipe Rifle',kind:'raider',
     automatic:false,magazine:12,reserve:60,reloadSeconds:2.05,
-    shotInterval:.68,damage:7,range:76,
+    rpm:180,shotInterval:60/180,damage:7,range:76,
     accuracy:.67,falloff:.13,soundKind:'rifle'}),
   'raider-auto':Object.freeze({id:'raider-auto',name:'Scrap Assault Rifle',kind:'raider',
     automatic:true,magazine:30,reserve:90,reloadSeconds:2.45,
-    shotInterval:.135,burstSize:4,burstPause:.82,damage:3.7,range:67,
+    rpm:720,shotInterval:60/720,burstSize:6,burstPause:0.32,damage:3.7,range:67,
     accuracy:.57,falloff:.13,soundKind:'carbine'}),
   'heavy-rifle':Object.freeze({id:'heavy-rifle',name:'Heavy Rifle',kind:'enforcer',
     automatic:true,magazine:30,reserve:120,reloadSeconds:2.65,
-    shotInterval:.17,burstSize:3,burstPause:.85,damage:5.6,range:86,
+    rpm:500,shotInterval:60/500,burstSize:4,burstPause:0.4,damage:5.6,range:86,
     accuracy:.73,falloff:.10,soundKind:'rifle'}),
   'heavy-lmg':Object.freeze({id:'heavy-lmg',name:'Belt-Fed Machine Gun',kind:'enforcer',
     automatic:true,magazine:48,reserve:144,reloadSeconds:4.0,
-    shotInterval:.11,burstSize:7,burstPause:1.25,damage:3.5,range:78,
+    rpm:750,shotInterval:60/750,burstSize:12,burstPause:0.46,damage:3.5,range:78,
     accuracy:.52,falloff:.16,soundKind:'rifle'})
 });
 const enemyLoadouts=Object.freeze({
@@ -49,6 +49,7 @@ export function chooseEnemyWeapon(role,round=0){
   return ENEMY_WEAPONS[pool[index]];
 }
 export function getEnemyWeapon(id){return ENEMY_WEAPONS[id]||null;}
+export function enemyFireRateRpm(tactics){return weaponForTactics(tactics).rpm||Math.round(60/weaponForTactics(tactics).shotInterval);}
 export function weaponForTactics(tactics){
   return getEnemyWeapon(tactics.weaponId)||ENEMY_PROFILES[tactics.kind];
 }
@@ -215,7 +216,8 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   if(!enabled||step<=0)return tactics;
   const spec=ENEMY_PROFILES[tactics.kind];
   trackStuck(tactics,brain,step);
-  tactics.cooldown=Math.max(0,tactics.cooldown-step);
+  // Preserve sub-frame time debt so fast guns really fire at their own RPM.
+  tactics.cooldown=Math.max(-.05,tactics.cooldown-step);
   tactics.peekCooldown=Math.max(0,tactics.peekCooldown-step);
   tactics.avoidCoverSeconds=Math.max(0,tactics.avoidCoverSeconds-step);
   if(tactics.avoidCoverSeconds===0)tactics.avoidCoverIndex=-1;
@@ -383,7 +385,8 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
 }
 
 export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
-  const spec=ENEMY_PROFILES[tactics.kind];
+  // W09.13: read the equipped firearm, NOT the NPC's outdated generic role.
+  const spec=weaponForTactics(tactics);
   if(tactics.reloadRemaining>0)return {fired:false,reason:'reloading'};
   if(tactics.magazine<=0){
     beginReload(tactics);
@@ -395,9 +398,9 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
     tactics.burstCount=(tactics.burstCount||0)+1;
     if(tactics.burstCount>=spec.burstSize){
       tactics.burstCount=0;
-      tactics.cooldown=spec.burstPause;
-    }else tactics.cooldown=spec.shotInterval;
-  }else tactics.cooldown=spec.shotInterval;
+      tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.burstPause;
+    }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
+  }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
   const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,90);
   const accuracy=clamp(spec.accuracy-spec.falloff*d/16-(moving?.13:0),.08,.90);
   const sampled=rng();

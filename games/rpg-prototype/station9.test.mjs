@@ -51,9 +51,9 @@ test('W06.4 neck hitbox overlaps the chest and head geometry',()=>{
 test('W06.5 visible armor and loot share the same six-slot NPC outfit',()=>{
   assert.match(source,/enemyArmorForRound\(enemy\.id,arenaRound\)/);
   assert.match(source,/refreshEnemyArmorVisuals\(enemy\)/);
-  assert.match(source,/mesh\.visible=piece\.points>0/);
+  assert.match(source,/mesh\.userData\.equipped=piece\.points>0/);
   assert.match(source,/mesh\.material\.color\.setHex\(piece\.color\)/);
-  assert.match(source,/mesh\.visible&&\s*shouldRaycastEnemy/);
+  assert.match(source,/mesh\.userData\.equipped!==false&&\s*shouldRaycastEnemy/);
   assert.match(source,/generateEnemyLoot\(enemy\.id,arenaRound,enemy\.state\.loadout\)/);
   assert.match(source,/armorVisible:Object\.fromEntries/);
 });
@@ -548,4 +548,13 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
   assert.match(page,/main\.js\?v=W09\.12/);
+});
+
+test('W09.13 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
+  assert.match(source,/mesh\.visible=false;mesh\.castShadow=false;mesh\.receiveShadow=false/);
+  assert.match(source,/mesh\.material\.visible=false;mesh\.material\.colorWrite=false/);
+  assert.match(source,/mesh\.userData\.equipped=piece\.points>0/);
+  assert.match(source,/e\.meshes\.filter\(m=>m\.visible\|\|/);
+  assert.match(source,/avatarRoots:e\.root\.children\.filter/);
+  assert.match(source,/mesh\.userData\.equipped!==false&&/);
 });

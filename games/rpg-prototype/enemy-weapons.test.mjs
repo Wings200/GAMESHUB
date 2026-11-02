@@ -48,3 +48,25 @@ test('different firearms have meaningful damage, audio and capacity',()=>{
   assert.notEqual(a.soundKind,b.soundKind);
   assert.ok(a.damage<b.damage);
 });
+
+test('each equipped weapon sets its own real RPM, not generic NPC role cadence',()=>{
+  for(const gun of Object.values(ENEMY_WEAPONS)){
+    const t=makeEnemyTactics(gun.kind);
+    equipEnemyWeapon(t,gun.id);
+    t.cooldown=0;
+    const shot=attemptEnemyShot(t,4,false,()=>0);
+    assert.equal(shot.fired,true,gun.id);
+    assert.equal(t.cooldown,60/gun.rpm,gun.id+' needs its own shot timer');
+    assert.notEqual(t.cooldown,({scout:.85,raider:1.05,enforcer:1.2})[gun.kind]);
+  }
+});
+test('sub-frame cooldown debt preserves fast cyclic firing between frames',()=>{
+  const t=makeEnemyTactics('scout');equipEnemyWeapon(t,'compact-smg');
+  t.cooldown=0;attemptEnemyShot(t,4,false,()=>0);
+  const brain=createEnemyBrain({x:40,z:40,patrol:[{x:40,z:40}]});
+  tickEnemyTactics(t,brain,{x:37,z:40},.05,[],{targetVisible:true});
+  tickEnemyTactics(t,brain,{x:37,z:40},.05,[],{targetVisible:true});
+  assert.ok(t.cooldown<0);
+  assert.equal(attemptEnemyShot(t,4,false,()=>0).fired,true);
+  assert.ok(t.cooldown<(60/850),'the next interval must credit elapsed time');
+});
