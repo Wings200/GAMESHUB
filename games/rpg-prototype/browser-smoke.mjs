@@ -744,9 +744,20 @@ try{
     'service-carbine','scrap-shotgun','hunting-rifle']){
     assert.equal(await page.evaluate(id=>
       window.__rpgSmokeSetReloadAnimation(id,.5),id),true);
-    await page.waitForTimeout(210);
+    // Wait for an actual rendered animation update. On software WebGL the
+    // frame rate can be slower than a hardcoded wall-clock sleep.
+    await page.waitForFunction(id=>{
+      const g=window.__rpgSmokeReloadGeometry?.();
+      if(!g||g.id!==id||!g.state.active)return false;
+      if(id==='iron-revolver')return g.cylinderOpen>.5&&!g.magazineVisible;
+      if(id==='scrap-shotgun')return g.roundVisible&&!g.magazineVisible;
+      if(id==='hunting-rifle')
+        return !g.magazineVisible&&g.boltOffset>-.03;
+      return g.magazineVisible&&g.magazineOffset>.1;
+    },id,{timeout:30000});
     reloadChecks[id]=await page.evaluate(()=>window.__rpgSmokeReloadGeometry());
   }
+  console.log('W16 reload mesh poses:',JSON.stringify(reloadChecks));
   assert.ok(reloadChecks['scrap-pistol'].magazineOffset>.1);
   assert.ok(reloadChecks['pipe-smg'].magazineOffset>.1);
   assert.ok(reloadChecks['service-carbine'].magazineOffset>.1);
