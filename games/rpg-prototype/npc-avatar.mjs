@@ -2,6 +2,7 @@
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
 import {createPlayerAvatar} from './player-avatar.mjs';
+import {reloadPoseForWeapon} from './weapon-handling.mjs';
 // AI yaw 0 looks toward +Z; the survivor mesh is modeled facing -Z.
 // Rotate only the visual 180°, so its front and gun point where the brain aims.
 export const NPC_VISUAL_YAW_OFFSET=Math.PI;
@@ -116,6 +117,15 @@ export function createNpcAvatar(parent,kind){
     magazine.scale.y=id==='raider-auto'?1.45:1;
   }
   setWeapon(role.weapon);
+  const npcBolt=new THREE.Group();gun.add(npcBolt);
+  npcBolt.position.set(.12,.10,-.11);
+  const boltSteel=new THREE.MeshStandardMaterial({
+    color:0xa0aaa4,metalness:.58,roughness:.42
+  });
+  ownedMaterials.push(boltSteel);
+  const handle=new THREE.Mesh(new THREE.BoxGeometry(.11,.045,.08),boltSteel);
+  npcBolt.add(handle);
+  npcBolt.visible=false;
   const flash=new THREE.PointLight(0xffbd73,0,1.45);
   flash.position.copy(muzzle.position);
   gun.add(flash);
@@ -126,32 +136,38 @@ export function createNpcAvatar(parent,kind){
     avatar.setArmor(npcCosmeticArmor(loadout));
   }
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,
-    reloading=false,recoil=0,hit=0,alive=true}={}){
+    reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
     if(reloading&&!wasReloading)reloadClock=0;
     wasReloading=reloading;
-    reloadClock=reloading?Math.min(2.5,reloadClock+step):0;
-    const reloadStage=Math.min(1,reloadClock/1.4);
+    reloadClock=reloading?Math.min(4.5,reloadClock+step):0;
+    const reloadStage=reloading?Math.max(0,Math.min(1,reloadProgress)):0;
+    const motionWeapon=currentWeapon==='compact-smg'?'pipe-smg':
+      currentWeapon==='pipe-rifle'?'hunting-rifle':
+      currentWeapon==='heavy-lmg'?'heavy-lmg':'service-carbine';
+    const action=reloadPoseForWeapon(motionWeapon,reloading?1-reloadStage:0,1);
     hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
     recoilBlend=Math.max(recoilBlend*Math.exp(-17*step),Math.min(1,Math.max(0,recoil)));
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
       crouched,aiming,alive,pitch:0,reloading,reloadProgress:reloadStage,
-      recoil:recoilBlend,hit:hitBlend});
-    // A magazine is lowered, swung outward, then seated; the receiver
-    // recoils during shots, and shoulder/head poses react to actual hits.
-    const magDrop=reloading?reloadStage<.5?
-      Math.sin(Math.PI*reloadStage)*.27:
-      Math.sin(Math.PI*(reloadStage-.5))* .19:0;
+      recoil:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon});
+    // The NPC uses the same firearm-specific action stages as the player.
+    // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
     mount.rotation.x=aiming?-.15:.11;
     mount.rotation.z=hitBlend*.12;
-    gun.rotation.x=(reloading?-.35:0)+recoilBlend*.15;
-    gun.rotation.z=reloading?.18*Math.sin(Math.PI*reloadStage):
+    gun.rotation.x=action.tilt+recoilBlend*.15;
+    gun.rotation.z=reloading?.08*Math.sin(Math.PI*reloadStage):
       Math.sin(time*2.8)*.012;
     gun.position.z=-.04+recoilBlend*.07;
-    magazine.position.y=-.18-magDrop;
-    magazine.rotation.z=reloading?.32*Math.sin(Math.PI*reloadStage):0;
+    magazine.position.y=-.18-action.magazineOffset;
+    magazine.rotation.z=action.magazineAngle;
+    drum.position.y=-.23-action.magazineOffset*.70;
+    drum.rotation.z=action.boltHandleLift*.18;
+    npcBolt.visible=currentWeapon==='pipe-rifle';
+    npcBolt.position.z=-.11+action.boltOffset;
+    npcBolt.rotation.z=action.boltHandleLift*.55;
     flash.intensity=recoilBlend>.65?2.2:0;
   }
   setArmor({});

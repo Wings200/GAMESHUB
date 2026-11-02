@@ -3,6 +3,7 @@
 // Mesh joints are hierarchical and animated independently of player hitboxes.
 import * as THREE from 'three';
 import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
+import {reloadPoseForWeapon} from './weapon-handling.mjs';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -235,6 +236,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   const heldWeapon=plainSurvivor&&heldWeaponEnabled?group(weaponSocket,0,-.07,0):null;
   let heldWeaponId=null;
   let heldMagazine=null,heldBarrel=null,heldReceiver=null,heldStock=null,heldScope=null;
+  let heldCylinder=null,heldPump=null,heldBolt=null,heldRound=null;
   if(heldWeapon){
     heldWeapon.name='SurvivorHeldWeapon';
     const part=(w,h,d,mat,x,y,z)=>{
@@ -250,6 +252,10 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     heldBarrel.castShadow=true;heldWeapon.add(heldBarrel);
     heldScope=part(.09,.095,.20,dark,0,.155,-.26);
     part(.045,.055,.05,metal,0,.21,-.26);
+    heldCylinder=part(.19,.16,.19,metal,0,.025,-.16);
+    heldPump=part(.23,.12,.24,leather,0,-.015,-.39);
+    heldBolt=part(.10,.05,.09,metal,.10,.10,-.08);
+    heldRound=part(.04,.10,.04,metal,.065,.12,-.13);
   }
   function setHeldWeapon(id='scrap-pistol'){
     if(heldWeaponId===id)return;
@@ -270,7 +276,12 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     heldReceiver.scale.z=model.length>1?1.23:1;
     heldStock.visible=model.stock;
     heldMagazine.scale.y=model.mag;
+    heldMagazine.visible=!['iron-revolver','scrap-shotgun','hunting-rifle'].includes(id);
     heldScope.visible=model.optic;
+    heldCylinder.visible=id==='iron-revolver';
+    heldPump.visible=id==='scrap-shotgun';
+    heldBolt.visible=id==='hunting-rifle';
+    heldRound.visible=false;
   }
   setHeldWeapon();
 
@@ -421,13 +432,16 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   const animation=createCharacterAnimation();
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
-    reloading=false,reloadProgress=0,recoil=0,hit=0}){
+    reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
+    reloadStyle=null}){
     const pose=stepCharacterAnimation(animation,dt,{
-      speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit
+      speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit,bracing
     });
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
     const crouchBlend=pose.crouch,aimBlend=pose.aim,deathBlend=pose.death;
     const stride=pose.stride,move=pose.move;
+    const roundsReload=['iron-revolver','scrap-shotgun','hunting-rifle'].includes(
+      reloadStyle||heldWeaponId);
     root.position.set(x,ground+jump+pose.bob-.32*crouchBlend-
       (plainSurvivor?.62:0)*deathBlend,z);
     // Keep forward exactly aligned with the authoritative camera/AI yaw.
@@ -437,7 +451,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       1-Math.exp(-9*step));
     pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint;
     torso.rotation.x=.30*crouchBlend+.055*pose.sprint+
-      .017*Math.sin(pose.phase*.7)-pose.hit*.13+pose.recoil*.055;
+      .017*Math.sin(pose.phase*.7)-pose.hit*.13+pose.recoil*.055+pose.brace*.07;
     torso.rotation.z=Math.sin(pose.phase)*.025*move+pose.hit*.12;
     torso.rotation.y=Math.sin(pose.phase*.5)*.018*move;
     head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+pose.hit*.10;
@@ -451,22 +465,32 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       leg.foot.rotation.x=-.24*leg.knee.rotation.x-.18*crouchBlend-
         .20*pose.land;
       arm.shoulder.rotation.x=-sign*stride*.72-(.87+.08*sign)*aimBlend-
-        .42*pose.sprint+pose.reload*(i===0?-.65:.24)+
-        pose.recoil*.19+pose.hit*.19;
-      arm.shoulder.rotation.z=-sign*(.13+.20*aimBlend)+
+        .42*pose.sprint+pose.reload*(i===0?(roundsReload ? -.95 : -.65):
+          (roundsReload ? .06 : .24))+
+        pose.recoil*.19+pose.hit*.19-pose.brace*.8;
+      arm.shoulder.rotation.z=-sign*(.13+.20*aimBlend+.13*pose.brace)+
         (i===0?-.09:.14)*pose.reload+sign*.10*pose.jump;
       arm.elbow.rotation.x=-.18-.64*aimBlend-
-        pose.reload*(i===0?.70:.32);
+        pose.reload*(i===0?(roundsReload ? .94 : .70):.32);
       arm.elbow.rotation.z=sign*(.18*aimBlend+.28*pose.reload);
     }
     if(heldWeapon){
       const stage=clamp(reloadProgress,0,1);
-      heldWeapon.rotation.x=-pose.recoil*.14+pose.reload*.31;
-      heldWeapon.rotation.z=pose.reload*.22;
-      heldMagazine.position.y=-.17-
-        pose.reload*(stage<.50?.18*Math.sin(Math.PI*stage/.5):
-          .12*(1-stage));
-      heldWeapon.position.y=-.07-pose.reload*.05;
+      const gunPose=reloadPoseForWeapon(heldWeaponId,
+        reloading?1-stage:0,1);
+      heldWeapon.rotation.x=-pose.recoil*.14+pose.reload*gunPose.tilt;
+      heldWeapon.rotation.z=pose.reload*(gunPose.cylinderOpen*.1+.03);
+      heldMagazine.position.y=-.17-gunPose.magazineOffset*.55;
+      heldMagazine.rotation.z=gunPose.magazineAngle;
+      heldCylinder.position.x=-.03-.10*gunPose.cylinderOpen;
+      heldCylinder.rotation.y=.8*gunPose.cylinderOpen;
+      heldPump.position.z=-.39+gunPose.pumpOffset;
+      heldBolt.position.z=-.08+gunPose.boltOffset;
+      heldBolt.rotation.z=gunPose.boltHandleLift*.4;
+      heldRound.visible=gunPose.roundVisible;
+      heldRound.position.y=.12-.10*gunPose.shellProgress;
+      heldRound.position.z=-.13-.10*gunPose.shellProgress;
+      heldWeapon.position.y=-.07-pose.reload*.025;
     }
   }
   return {

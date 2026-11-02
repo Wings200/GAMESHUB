@@ -48,3 +48,11 @@ test('Downed characters settle independently of movement commands',()=>{
   assert.equal(state.pose,'down');
   assert.ok(state.death>.7&&state.move<.01&&state.aim<.01);
 });
+
+test('Pilot entry braces both arms without altering collisions',()=>{
+  const state=createCharacterAnimation();
+  for(let i=0;i<15;i++)stepCharacterAnimation(state,.016,{bracing:true});
+  assert.ok(state.brace>.9);
+  for(let i=0;i<20;i++)stepCharacterAnimation(state,.016,{});
+  assert.ok(state.brace<.02);
+});

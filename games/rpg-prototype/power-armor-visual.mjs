@@ -2,6 +2,7 @@
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
+import {powerEntryPose} from './power-entry-animation.mjs';
 
 export function buildPowerArmorVisual(scene,position,state){
   const root=new THREE.Group();
@@ -435,10 +436,10 @@ export function buildPowerArmorVisual(scene,position,state){
     const v=Math.max(0,Math.min(1,(t-a)/(b-a)));
     return v*v*(3-2*v);
   };
-  function animate(phase='idle',progress=0,time=0){
+  function animate(phase='idle',progress=0,time=0,origin=null){
     const transitioning=phase==='entering'||phase==='exiting';
-    const t=Math.max(0,Math.min(1,progress));
-    const open=transitioning?ease(0,.23,t)*(1-ease(.76,1,t)):0;
+    const pose=powerEntryPose(phase,progress,origin||undefined);
+    const open=pose.hatch;
     doors.left.rotation.y=open*1.48;
     doors.right.rotation.y=-open*1.48;
     helmetPivot.rotation.x=-open*.12;
@@ -447,21 +448,20 @@ export function buildPowerArmorVisual(scene,position,state){
     for(const leg of legPivots)leg.rotation.x=Math.sin(time*1.2)*.004;
     warningLight.intensity=.45+open*.9;
     pilot.visible=transitioning;
+    pilot.userData.entryPose=pose;
     if(transitioning){
-      const move=ease(.19,.81,t);
-      const journey=phase==='entering'?move:1-move;
-      pilot.position.z=-1.93+journey*1.65;
-      const climb=ease(.25,.65,journey);
-      pilot.position.y=.16*climb+.18*Math.sin(Math.PI*journey);
-      pilotBody.rotation.x=-.31*Math.sin(Math.PI*journey);
-      pilotHead.rotation.x=.14*Math.sin(Math.PI*journey);
-      const stepping=Math.sin(Math.PI*3.5*journey);
-      pilotLegs[0].rotation.x=.63*Math.max(0,stepping);
-      pilotLegs[1].rotation.x=.63*Math.max(0,-stepping);
-      pilotArms[0].rotation.x=-.90*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.x=-.90*Math.sin(Math.PI*journey);
-      pilotArms[0].rotation.z=-.38*Math.sin(Math.PI*journey);
-      pilotArms[1].rotation.z=.38*Math.sin(Math.PI*journey);
+      // Survivor faces INTO the suit when entering, and turns around
+      // before walking OUT. No reverse-facing moonwalk or body levitation.
+      pilot.position.set(pose.x,pose.y,pose.z);
+      pilot.rotation.y=pose.yaw;
+      pilotBody.rotation.x=-.12*pose.brace;
+      pilotHead.rotation.x=.08*pose.brace;
+      pilotLegs[0].rotation.x=.40*pose.step;
+      pilotLegs[1].rotation.x=-.40*pose.step;
+      pilotArms[0].rotation.x=-.8*pose.brace+.28*pose.step;
+      pilotArms[1].rotation.x=-.8*pose.brace-.28*pose.step;
+      pilotArms[0].rotation.z=-.22*pose.brace;
+      pilotArms[1].rotation.z=.22*pose.brace;
     }
   }
   updatePlates(state);updateCore(state);

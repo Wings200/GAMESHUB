@@ -668,6 +668,11 @@ try{
         v.pilotDepth<-.65 && v.pilotDepth>-1.9 &&
         v.cinematic && v.cameraDistanceToHero<.8;
     },null,{timeout:15000});
+  const entryPose=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.ok(Math.cos(entryPose.pilotFacing)<-.98,
+    'Pilot must FACE INTO the chassis, never moonwalk backwards');
+  assert.equal(entryPose.pilotFloorHeight,0,
+    'Power-armor boarding must keep both feet on the ground');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
     null,{timeout:15000});
@@ -708,6 +713,11 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotVisible &&
     window.__rpgSmokePowerVisual().pilotDepth<-.65,
     null,{timeout:15000});
+  const exitPose=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.ok(Math.cos(exitPose.pilotFacing)>.98,
+    'Pilot turns toward the back before walking out');
+  assert.equal(exitPose.pilotFloorHeight,0,
+    'Power-armor exit must remain grounded');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='idle'&&
     !window.__rpgSmokeState().powerArmor.occupied,null,{timeout:15000});
@@ -728,6 +738,23 @@ try{
   const restoredPower=(await page.evaluate(()=>window.__rpgSmokeState())).powerArmor;
   assert.equal(restoredPower.plates.rightArm,'t45','Salvaged arm persists across reload');
   assert.ok(restoredPower.coreCharge>0,'Inserted fusion core charge persists');
+  // W16.0: scene meshes actually follow six independent reload paths.
+  const reloadChecks={};
+  for(const id of ['scrap-pistol','iron-revolver','pipe-smg',
+    'service-carbine','scrap-shotgun','hunting-rifle']){
+    assert.equal(await page.evaluate(id=>
+      window.__rpgSmokeSetReloadAnimation(id,.5),id),true);
+    await page.waitForTimeout(210);
+    reloadChecks[id]=await page.evaluate(()=>window.__rpgSmokeReloadGeometry());
+  }
+  assert.ok(reloadChecks['scrap-pistol'].magazineOffset>.1);
+  assert.ok(reloadChecks['pipe-smg'].magazineOffset>.1);
+  assert.ok(reloadChecks['service-carbine'].magazineOffset>.1);
+  assert.ok(reloadChecks['iron-revolver'].cylinderOpen>.5);
+  assert.equal(reloadChecks['iron-revolver'].magazineVisible,false);
+  assert.equal(reloadChecks['scrap-shotgun'].roundVisible,true);
+  assert.equal(reloadChecks['hunting-rifle'].magazineVisible,false);
+  assert.ok(reloadChecks['hunting-rifle'].boltOffset>-.03);
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({

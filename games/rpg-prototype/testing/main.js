@@ -5,7 +5,7 @@ import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
   shotSpreadDegrees } from '../weapons.mjs';
-import { reloadVisualState, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
 import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
@@ -666,7 +666,7 @@ function updatePowerCinematic(progress){
   // only during the final 8% of the locking animation.
   const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36));
   const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.67,-.42));
-  const handoff=powerEase(.92,1,p);
+  const handoff=powerEase(.82,1,p);
   camera.position.copy(heroPosition).lerp(powerCinematic.to,handoff);
   const look=new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(heroPosition,focalPoint,powerCameraUp));
@@ -680,8 +680,11 @@ function nearPoweredSuit(){
     player.z-poweredSuit.root.position.z)<3.8;
 }
 function nearRearHatch(){
-  const hatch=poweredSuit.root.localToWorld(new THREE.Vector3(0,0,-1.32));
-  return Math.hypot(player.x-hatch.x,player.z-hatch.z)<2.35;
+  // A radius check alone also accepted players standing in FRONT of the
+  // suit. Entry is legal only in the clear rear lane behind its hatch.
+  const local=poweredSuit.root.worldToLocal(
+    new THREE.Vector3(player.x,0,player.z));
+  return Math.abs(local.x)<1.55&&local.z<=-1.30&&local.z>=-3.55;
 }
 function refreshPowerArmorHUD(){
   // The obsolete plate-count widget is gone. Only core status appears while
@@ -809,6 +812,13 @@ function togglePoweredSuit(){
     showShotNotice('MOVE BEHIND THE FRAME · ENTER THROUGH THE REAR HATCH');return;
   }
   const exiting=powerArmorState.occupied;
+  poweredSuit.root.updateMatrixWorld(true);
+  const arrival=exiting?null:poweredSuit.root.worldToLocal(
+    new THREE.Vector3(player.x,0,player.z));
+  const origin=exiting?{x:0,z:-.28,yaw:Math.PI}:{
+    x:arrival.x,z:arrival.z,
+    yaw:camera.rotation.y-poweredSuit.root.rotation.y
+  };
   if(exiting){
     // The shell is worn at the player location and then parks there.
     poweredSuit.root.position.set(player.x,0,player.z);
@@ -822,12 +832,13 @@ function togglePoweredSuit(){
   const destY=groundHeight(target.x,target.z)+powerArmorEyeHeight(
     {occupied:!exiting},exiting?player.eyeHeight:MOVE_TUNING.eyeHeight);
   const endPosition=new THREE.Vector3(target.x,destY,target.z);
-  const endingRotation=exiting?new THREE.Quaternion().setFromRotationMatrix(
-    new THREE.Matrix4().lookAt(endPosition,
-      poweredSuit.root.localToWorld(new THREE.Vector3(0,1.7,-.3)),powerCameraUp)):
-    camera.quaternion.clone();
+  // The installed pilot looks through the FRONT visor (+Z in suit space).
+  const lookPoint=poweredSuit.root.localToWorld(new THREE.Vector3(
+    0,destY,exiting?-.4:2.4));
+  const endingRotation=new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().lookAt(endPosition,lookPoint,powerCameraUp));
   powerCinematic={from:camera.position.clone(),fromRotation:camera.quaternion.clone(),
-    to:endPosition,toRotation:endingRotation};
+    origin,to:endPosition,toRotation:endingRotation};
   keys.clear();triggerHeld=false;changeAim(false);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   sound.reload('rifle',1.65);
@@ -1887,6 +1898,9 @@ function updateEnemies(dt){
         speed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
         crouched:enemy.tactics.crouching,
         aiming:shouldAim,reloading:enemy.tactics.reloadRemaining>0,
+        reloadProgress:enemy.tactics.reloadRemaining>0?1-
+          enemy.tactics.reloadRemaining/
+          (getEnemyWeapon(enemy.tactics.weaponId)?.reloadSeconds||2):0,
         recoil:enemy.recoilPose,hit:enemy.flash/.22,
         alive:enemy.state.alive
       });
@@ -2166,7 +2180,8 @@ function buildArsenalView(spec){
     box(.12,.15,.12,walnut,0,-.22,.20);
   }
   // Barrel, fore-end and distinct furniture, shaped per archetype.
-  let pumpGrip=null,cylinderBody=null;
+  let pumpGrip=null,cylinderBody=null,cylinderYoke=null,
+    cylinderSpinGroup=null,boltHandle=null;
   const boreY=.045;
   const barrelZ=-.27-length*.38,barrelEnd=-.27-length*.84;
   cylinder(shotgun?.052:scoped?.037:revolver?.052:.036,
@@ -2184,9 +2199,13 @@ function buildArsenalView(spec){
       box(.018,.018,.26,trim,side*.106,.12,-.32);
       for(let z=-.42;z<-.20;z+=.073)box(.018,.04,.017,steel,side*.105,.073,z);
     }
-    const bolt=box(.10,.038,.06,trim,.11,.084,-.035);
+    // The bolt handle and knob are ONE articulated assembly, so the
+    // shooter can lift, draw, chamber rounds, and lock it shut.
+    boltHandle=new THREE.Group();boltHandle.position.set(.11,.084,-.035);
+    root.add(boltHandle);
+    const bolt=box(.10,.038,.06,trim,0,0,0,boltHandle);
     bolt.rotation.z=.14;
-    const knob=part(new THREE.SphereGeometry(.037,9,7),black,.19,.045,-.02);
+    part(new THREE.SphereGeometry(.037,9,7),black,.08,-.039,.015,boltHandle);
   }else if(spec.kind==='carbine'){
     const handguard=box(.25,.18,.39,polymer,0,.06,-.41);
     for(const side of [-1,1]){
@@ -2203,12 +2222,19 @@ function buildArsenalView(spec){
     box(.10,.12,.14,polymer,0,-.04,-.35);
   }else if(revolver){
     // Cylinder axis is along the barrel (-Z), not across the frame (X).
-    const drum=cylinder(.099,.182,oxide,0,.036,-.10);
-    cylinderBody=drum;
+    // The ACTUAL six-shot cylinder swings left on its yoke. Previously a
+    // fake second cylinder appeared while the real one vanished.
+    cylinderYoke=new THREE.Group();
+    cylinderYoke.position.set(-.13,.036,-.10);root.add(cylinderYoke);
+    cylinderSpinGroup=new THREE.Group();
+    cylinderSpinGroup.position.x=.13;cylinderYoke.add(cylinderSpinGroup);
+    const drum=part(new THREE.CylinderGeometry(.099,.099,.182,12),oxide,
+      0,0,0,cylinderSpinGroup);
+    drum.rotation.x=Math.PI/2;cylinderBody=drum;
     for(let i=0;i<6;i++){
-      const a=i*Math.PI/3;
-      const stud=part(new THREE.SphereGeometry(.017,8,6),black,
-        Math.sin(a)*.069,.036+Math.cos(a)*.069,-.201);
+      const angle=i*Math.PI/3;
+      part(new THREE.SphereGeometry(.017,8,6),black,
+        Math.sin(angle)*.069,Math.cos(angle)*.069,-.101,cylinderSpinGroup);
     }
     // The old .065-high top button peaked at y=.1645 (the ADS sight is
     // y=.165) and completely blocked the notch. Real low top-strap here.
@@ -2365,17 +2391,17 @@ function buildArsenalView(spec){
   // A visible cylinder release (revolver) or shell-port (shotgun) moves
   // during reload; firearm-specific rather than a floating pistol mag.
   const reloadAction=new THREE.Group();root.add(reloadAction);
-  if(revolver){
-    const reloadDrum=part(new THREE.CylinderGeometry(.102,.102,.19,12),
-      oxide,0,.037,-.10,reloadAction);
-    reloadDrum.rotation.x=Math.PI/2;
-    reloadAction.visible=false;
-  }else if(shotgun){
+  if(revolver||shotgun||scoped){
+    // One authored cartridge cycles through the loading port, with its
+    // progress repeated six times for revolver/shotgun or five for rifle.
     const loadingShell=part(new THREE.CylinderGeometry(.023,.023,.09,9),
-      oxide,.065,-.075,-.12,reloadAction);
+      oxide,0,0,0,reloadAction);
     loadingShell.rotation.x=Math.PI/2;
-    reloadAction.visible=false;
+    const primer=part(new THREE.CylinderGeometry(.024,.024,.009,8),
+      trim,0,0,.05,reloadAction);
+    primer.rotation.x=Math.PI/2;
   }
+  reloadAction.visible=false;
   const muzzleGlow=new THREE.PointLight(0xffa55a,0,2,2);
   muzzleGlow.position.set(0,boreY,barrelEnd-.02);root.add(muzzleGlow);
   const modelFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
@@ -2388,6 +2414,7 @@ function buildArsenalView(spec){
     muzzleGlow,muzzleFlare:modelFlare,magBaseY,magFootY,
     flashScale:shotgun?1.65:scoped?1.25:1,
     defaultX:rifle?.23:.34,reloadAction,pumpGrip,cylinderBody,
+    cylinderYoke,cylinderSpinGroup,boltHandle,
     ejectionLocal:new THREE.Vector3(revolver?.11:.14,.08,-.08),
     sightLocal:new THREE.Vector3(mount.x,mount.y,mount.z)};
 }
@@ -2561,11 +2588,14 @@ function shoot(){
     return;
   }
   if(result.status!=='fired')return;
+  if(activeSpec.kind==='revolver')
+    weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
   sound.gunshot(activeSpec.kind||'pistol');
   recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
-  slideCycle=.13;
+  slideCycle=activeSpec.kind==='shotgun'?.48:
+    activeSpec.kind==='rifle'?.52:.13;
   ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
@@ -2787,6 +2817,27 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
     return nearestLootBag()?.source==='power-cache';
   };
+  window.__rpgSmokeSetReloadAnimation=(id,progress=.5)=>{
+    if(!ARSENAL_IDS.includes(id))return false;
+    selectWeapon(id);
+    const spec=getWeaponSpec(id),state=arsenalStates[id];
+    state.magazine=Math.min(state.magazine,spec.magazineSize-1);
+    state.reserve=Math.max(state.reserve,spec.magazineSize);
+    state.reloadRemaining=spec.reloadSeconds*(1-Math.max(.01,Math.min(.98,progress)));
+    return true;
+  };
+  window.__rpgSmokeReloadGeometry=()=>{
+    const visual=weaponVisuals.get(activeWeaponId);
+    return {id:activeWeaponId,
+      magazineVisible:visual.magazine.visible,
+      magazineOffset:visual.magBaseY-visual.magazine.position.y,
+      cylinderOpen:visual.cylinderYoke?.rotation.y||0,
+      roundVisible:visual.reloadAction?.visible||false,
+      boltOffset:visual.boltHandle?.position.z||0,
+      pumpOffset:visual.pumpGrip?.position.z||0,
+      state:reloadPoseForWeapon(activeWeaponId,
+        weaponState.reloadRemaining,activeSpec.reloadSeconds)};
+  };
   window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
   window.__rpgSmokeSetPowerProgress=(fraction)=>{
     if(powerArmorState.phase!=='idle')
@@ -2819,6 +2870,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     pilotModel:pilotAvatar.root.name,
     pilotArmor:pilotAvatar.armor,
     pilotDepth:poweredSuit.pilot.position.z,
+    pilotFacing:poweredSuit.pilot.rotation.y,
+    pilotFloorHeight:poweredSuit.pilot.position.y,
+    pilotStride:poweredSuit.pilot.userData.entryPose?.step||0,
+    pilotWalking:poweredSuit.pilot.userData.entryPose?.walking||false,
     cameraHeightAboveGround:camera.position.y-groundHeight(player.x,player.z),
     chassisHeight:poweredSuit.size.y,
     chassisWidth:poweredSuit.size.x,
@@ -3211,32 +3266,49 @@ function frame(){
     visual.muzzleFlare.scale.setScalar((.65+q*.8)*visual.flashScale);
     visual.muzzleFlare.material.opacity=q;
   }
-  const handling=reloadVisualState(weaponState.reloadRemaining,activeSpec.reloadSeconds);
-  visual.slideGroup.position.z=slideTravel(slideCycle)+handling.slideOffset;
+  const handling=reloadPoseForWeapon(activeWeaponId,
+    weaponState.reloadRemaining,activeSpec.reloadSeconds);
+  const cycleDuration=activeSpec.kind==='shotgun'?.48:
+    activeSpec.kind==='rifle'?.52:.13;
+  const cycling=slideTravel(slideCycle,cycleDuration);
+  visual.slideGroup.position.z=cycling+handling.slideOffset;
   visual.magazine.position.y=visual.magBaseY-handling.magazineOffset;
   visual.magazineBase.position.y=visual.magFootY-handling.magazineOffset;
   visual.magazine.rotation.z=handling.magazineAngle;
   visual.magazineBase.rotation.z=handling.magazineAngle;
+  const detachable=['scrap-pistol','pipe-smg','service-carbine']
+    .includes(activeWeaponId);
+  visual.magazine.visible=detachable&&handling.magazineVisible;
+  visual.magazineBase.visible=detachable&&handling.magazineVisible;
   visual.reloadHand.visible=handling.handVisible;
   visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
   if(visual.pumpGrip)
-    visual.pumpGrip.position.z=-.34+slideTravel(slideCycle)*1.5;
+    visual.pumpGrip.position.z=-.34+cycling*1.5+handling.pumpOffset;
+  if(visual.cylinderYoke){
+    // The six-shot DRUM itself swings out, not a fake overlapping copy.
+    visual.cylinderYoke.rotation.y=handling.cylinderOpen*1.12;
+    visual.cylinderYoke.position.x=-.13-.06*handling.cylinderOpen;
+    visual.cylinderSpinGroup.rotation.z=
+      (visual.chamberIndex||0)*Math.PI/3+handling.cylinderSpin;
+  }
+  if(visual.boltHandle){
+    visual.boltHandle.position.z=-.035+handling.boltOffset+cycling*.85;
+    visual.boltHandle.rotation.z=handling.boltHandleLift*.65+cycling*.9;
+  }
   if(visual.reloadAction){
     const action=visual.reloadAction;
-    action.visible=handling.active&&
-      (activeSpec.kind==='revolver'||activeSpec.kind==='shotgun');
-    if(activeSpec.kind==='revolver'){
-      // Cylinder swings out and returns, instead of dropping a box mag.
-      action.position.x=.17*Math.sin(Math.PI*handling.progress);
-      action.rotation.y=.40*Math.sin(Math.PI*handling.progress);
-    }else{
-      // A shell dips toward the loading port and slides back.
-      action.position.y=-.09*Math.sin(Math.PI*handling.progress);
-      action.position.z=.17*Math.sin(Math.PI*handling.progress);
+    action.visible=handling.roundVisible;
+    if(activeWeaponId==='iron-revolver'){
+      action.position.set(-.26,
+        .08+.08*Math.sin(Math.PI*handling.shellProgress),
+        -.05-.12*handling.shellProgress);
+    }else if(activeWeaponId==='scrap-shotgun'){
+      action.position.set(.065,-.09-.11*handling.shellProgress,
+        .04-.16*handling.shellProgress);
+    }else if(activeWeaponId==='hunting-rifle'){
+      action.position.set(.075,.19-.12*handling.shellProgress,
+        -.07-.10*handling.shellProgress);
     }
-    visual.reloadHand.visible=false;
-    visual.magazine.visible=false;visual.magazineBase.visible=false;
-    if(visual.cylinderBody)visual.cylinderBody.visible=!handling.active;
   }
   // Distinct idle/ADS movement sway, with substantially steadier sights in ADS.
   handlingTime+=dt;
@@ -3290,16 +3362,19 @@ function frame(){
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
-  poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime);
+  poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime,
+    powerCinematic?.origin);
   // Cosmetic inventory visuals are driven by the same six real armor slots
   // in third-person play and while entering/exiting powered armor.
   playerAvatar.setArmor(backpack.equipment.armor);
   pilotAvatar.setArmor(backpack.equipment.armor);
   playerAvatar.setClothing(backpack.equipment.clothing);
   pilotAvatar.setClothing(backpack.equipment.clothing);
+  const pilotChoreography=poweredSuit.pilot.userData.entryPose;
   pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
-    speed:powerStep.phase==='idle'?0:1.8,
-    sprinting:false,crouched:false,aiming:false,alive:true});
+    speed:pilotChoreography?.walkSpeed||0,
+    sprinting:false,crouched:false,aiming:false,alive:true,
+    bracing:pilotChoreography?.brace>.25});
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
@@ -3381,6 +3456,7 @@ function frame(){
     aiming:!!weaponState.aiming,alive:playerHealth.alive,
     airborne:Math.abs(player.jump)>.045||Math.abs(player.vertical)>.1,
     reloading:weaponState.reloadRemaining>0,
+    reloadStyle:activeWeaponId,
     reloadProgress:weaponState.reloadRemaining>0?
       1-weaponState.reloadRemaining/activeSpec.reloadSeconds:0,
     recoil:Math.min(1,muzzleFlash/.085),

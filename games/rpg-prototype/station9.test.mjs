@@ -11,6 +11,7 @@ const powerArmor=readFileSync(new URL('./power-armor.mjs',import.meta.url),'utf8
 const playerAvatar=readFileSync(new URL('./player-avatar.mjs',import.meta.url),'utf8');
 const remoteAvatar=readFileSync(new URL('./remote-avatar.mjs',import.meta.url),'utf8');
 const characterAnimation=readFileSync(new URL('./character-animation.mjs',import.meta.url),'utf8');
+const powerEntryAnimation=readFileSync(new URL('./power-entry-animation.mjs',import.meta.url),'utf8');
 
 test('Station nine has 3 declared enemies in front of an east-facing player',()=>{
   const section=source.slice(source.indexOf('const enemySpecs=['),source.indexOf('function enemyMaterial'));
@@ -88,7 +89,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -223,7 +224,7 @@ test('W05.1 3D optics are lowered, hollow, and centered on the actual sight',()=
 test('W05.2 fixes six-shooter sight obstruction and pistol notch geometry',()=>{
   assert.match(source,/box\(\.15,\.035,\.25,trim,0,\.106,-\.23\)/);
   assert.match(source,/box\(\.028,\.044,\.058,steel,-\.126,\.12,-\.055\)/);
-  assert.match(source,/const drum=cylinder\(\.099,\.182,oxide,0,\.036,-\.10\)/);
+  assert.match(source,/cylinderSpinGroup=new THREE\.Group\(\)/);
   assert.doesNotMatch(source,/box\(\.15,\.065,\.31,trim,0,\.132,-\.23\)/);
   assert.match(source,/sights,\.043\*side,\.1795,\.10,slideGroup/);
   assert.match(source,/sights,0,\.177,-\.42,slideGroup/);
@@ -236,9 +237,9 @@ test('Shotgun and revolver have no fake visible mags and have real moving action
   assert.match(source,/magazine\.visible=!enclosed/);
   assert.match(source,/magazineBase\.visible=!enclosed/);
   assert.match(source,/reloadAction\.visible=false/);
-  assert.match(source,/if\(visual\.cylinderBody\)visual\.cylinderBody\.visible=!handling\.active/);
-  assert.match(source,/visual\.pumpGrip\.position\.z=-\.34\+slideTravel\(slideCycle\)\*1\.5/);
-  assert.match(source,/visual\.reloadHand\.visible=false/);
+  assert.match(source,/visual\.cylinderYoke\.rotation\.y=handling\.cylinderOpen/);
+  assert.match(source,/visual\.pumpGrip\.position\.z=-\.34\+cycling\*1\.5\+handling\.pumpOffset/);
+  assert.match(source,/visual\.reloadHand\.visible=handling\.handVisible/);
 });
 test('Shell casings eject from actual selected gun and revolvers retain spent cases',()=>{
   assert.match(source,/if\(activeSpec\.kind==='revolver'\)return;/);
@@ -342,7 +343,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen)$('menu').classList.remove('hidden')"));
@@ -410,7 +411,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -462,7 +463,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -475,7 +476,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -547,7 +548,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -616,7 +617,7 @@ test('W12.0 bare power frame is mechanically connected and entered from behind',
     'const neckRing=mesh(root,new THREE.TorusGeometry(',
     'const chestMounts={left:makeGroup(root,',
     'const doors={left:makeGroup(root,-.50,1.89,-.43)',
-    'pilot.position.z=-1.93+journey*1.65',
+    'pilot.position.set(pose.x,pose.y,pose.z)',
     'doors.left.rotation.y=open*1.48'])
     assert.ok(armorVisual.includes(phrase),phrase);
   assert.match(source,/function nearRearHatch\(\)/);
@@ -669,7 +670,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W15\.0/);
+  assert.match(page,/main\.js\?v=W16\.0/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -688,8 +689,8 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W15\.0/);
-  assert.match(page,/W15\.0.*Procedural Character/);
+  assert.match(page,/main\.js\?v=W16\.0/);
+  assert.match(page,/W16\.0.*Grounded Power-Armor/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
   assert.match(characterAnimation,/state\.land=/);
@@ -707,4 +708,30 @@ test('W15.0 original characters use blended locomotion and visible weapon animat
   assert.match(source,/reloading:weaponState\.reloadRemaining>0/);
   assert.match(source,/enemy\.rigged\?\.update\(dt,\{alive:false/);
   assert.match(source,/poweredCockpit\.rotation\.z=poweredGait/);
+});
+
+test('W16.0 entry faces forward, stays grounded and uses a rear-only lane',()=>{
+  assert.match(powerEntryAnimation,/export function powerEntryPose\(/);
+  assert.match(powerEntryAnimation,/y:0/);
+  assert.match(armorVisual,/pilot\.rotation\.y=pose\.yaw/);
+  assert.match(armorVisual,/pilot\.position\.set\(pose\.x,pose\.y,pose\.z\)/);
+  assert.match(armorVisual,/pilot\.userData\.entryPose=pose/);
+  assert.match(source,/function nearRearHatch\(\)/);
+  assert.match(source,/local\.z<=-1\.30&&local\.z>=-3\.55/);
+  assert.match(source,/origin,to:endPosition,toRotation:endingRotation/);
+  assert.match(source,/poweredSuit\.animate\(powerStep\.phase,powerStep\.progress,poweredArmorTime,/);
+  assert.match(source,/pilotFloorHeight:poweredSuit\.pilot\.position\.y/);
+  assert.match(source,/pilotFacing:poweredSuit\.pilot\.rotation\.y/);
+});
+test('W16.0 reload has real six-gun actions and synced NPC hands',()=>{
+  assert.match(source,/reloadPoseForWeapon\(activeWeaponId,/);
+  assert.match(source,/visual\.cylinderSpinGroup\.rotation\.z=/);
+  assert.match(source,/visual\.boltHandle\.position\.z=/);
+  assert.match(source,/visual\.pumpGrip\.position\.z=/);
+  assert.match(source,/action\.visible=handling\.roundVisible/);
+  assert.match(source,/reloadStyle:activeWeaponId/);
+  assert.match(npcAvatar,/reloadPoseForWeapon\(motionWeapon/);
+  assert.match(npcAvatar,/npcBolt\.position\.z=/);
+  assert.match(npcAvatar,/drum\.position\.y=/);
+  assert.match(playerAvatar,/reloadPoseForWeapon\(heldWeaponId/);
 });

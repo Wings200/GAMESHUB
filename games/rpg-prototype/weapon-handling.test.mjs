@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {reloadVisualState,slideTravel,createCasingState,stepCasing,CASING_TUNING} from './weapon-handling.mjs';
+import {reloadVisualState,reloadPoseForWeapon,slideTravel,createCasingState,stepCasing,CASING_TUNING} from './weapon-handling.mjs';
 
 test('Inactive reload has a fully inserted magazine and no hand animation',()=>{
   const idle=reloadVisualState(0);
@@ -45,4 +45,47 @@ test('Casing step clamps unusual deltas to prevent physics explosions',()=>{
   stepCasing(b,10,0);
   assert.ok(b.age<=.05);
   assert.equal(CASING_TUNING.maxVisible,38);
+});
+
+test('Six guns have different reload trajectories appropriate to their actions',()=>{
+  const ids=['scrap-pistol','iron-revolver','pipe-smg','service-carbine',
+    'scrap-shotgun','hunting-rifle'];
+  const poses=ids.map(id=>reloadPoseForWeapon(id,.5,1));
+  assert.equal(new Set(poses.map(p=>p.style)).size,6);
+  assert.ok(poses[0].magazineOffset>0&&poses[0].cylinderOpen===0);
+  assert.ok(poses[1].cylinderOpen>.8&&poses[1].magazineVisible===false);
+  assert.ok(poses[2].magazineOffset>poses[3].magazineOffset);
+  assert.equal(poses[4].magazineVisible,false);
+  assert.ok(poses[4].roundVisible&&poses[4].roundIndex>=0);
+  assert.ok(poses[5].boltOffset>.05&&poses[5].roundVisible);
+});
+test('Revolver opens cylinder, loads individual rounds, then closes',()=>{
+  const at=p=>reloadPoseForWeapon('iron-revolver',1-p,1);
+  assert.equal(at(.05).cylinderOpen,0);
+  assert.ok(at(.5).cylinderOpen>.9);
+  assert.equal(at(.5).roundVisible,true);
+  assert.ok(at(.65).roundIndex>at(.43).roundIndex);
+  assert.ok(at(.98).cylinderOpen<.01);
+});
+test('Shotgun shells load sequentially; hunting rifle cycles its bolt',()=>{
+  const shot=p=>reloadPoseForWeapon('scrap-shotgun',1-p,1);
+  const rifle=p=>reloadPoseForWeapon('hunting-rifle',1-p,1);
+  assert.equal(shot(.5).roundVisible,true);
+  assert.ok(shot(.7).roundIndex>shot(.3).roundIndex);
+  assert.ok(shot(.93).pumpOffset>.05);
+  assert.ok(rifle(.45).boltOffset>.1&&rifle(.45).boltHandleLift>.9);
+  assert.ok(rifle(.75).roundIndex>rifle(.37).roundIndex);
+  assert.equal(rifle(.99).boltOffset,0);
+});
+test('Reload endpoints settle all moving parts without affecting ammo',()=>{
+  for(const id of ['scrap-pistol','iron-revolver','pipe-smg',
+      'service-carbine','scrap-shotgun','hunting-rifle']){
+    const pose=reloadPoseForWeapon(id,0,2);
+    assert.equal(pose.active,false);
+    assert.equal(pose.magazineOffset,0);
+    assert.equal(pose.cylinderOpen,0);
+    assert.equal(pose.boltOffset,0);
+    assert.equal(pose.pumpOffset,0);
+    assert.equal(pose.roundVisible,false);
+  }
 });

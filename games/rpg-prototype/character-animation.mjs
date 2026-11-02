@@ -4,7 +4,7 @@ const clamp=(n,low,high)=>Math.max(low,Math.min(high,n));
 const toward=(current,target,rate,dt)=>current+(target-current)*(1-Math.exp(-rate*dt));
 export function createCharacterAnimation(){
   return {phase:0,move:0,sprint:0,crouch:0,aim:0,death:0,
-    jump:0,land:0,reload:0,reloadClock:0,recoil:0,hit:0,
+    jump:0,land:0,brace:0,reload:0,reloadClock:0,recoil:0,hit:0,
     wasAirborne:false,stride:0,bob:0,pose:'idle'};
 }
 export function stepCharacterAnimation(state,dt,action={}){
@@ -16,6 +16,7 @@ export function stepCharacterAnimation(state,dt,action={}){
   state.sprint=toward(state.sprint,moving&&action.sprinting?1:0,9,t);
   state.crouch=toward(state.crouch,action.crouched?1:0,12,t);
   state.aim=toward(state.aim,action.aiming&&alive?1:0,15,t);
+  state.brace=toward(state.brace,action.bracing&&alive?1:0,14,t);
   state.death=toward(state.death,alive?0:1,7,t);
   const airborne=!!action.airborne&&alive;
   if(state.wasAirborne&&!airborne)state.land=1;
