@@ -119,25 +119,40 @@ export function createNpcAvatar(parent,kind){
   const flash=new THREE.PointLight(0xffbd73,0,1.45);
   flash.position.copy(muzzle.position);
   gun.add(flash);
-  let time=0;
+  let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
   let lastArmor={};
   function setArmor(loadout={}){
     lastArmor={...loadout};
     avatar.setArmor(npcCosmeticArmor(loadout));
   }
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,
-    reloading=false,recoil=0,alive=true}={}){
-    time+=Math.min(.05,Math.max(0,dt));
+    reloading=false,recoil=0,hit=0,alive=true}={}){
+    const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
+    time+=step;
+    if(reloading&&!wasReloading)reloadClock=0;
+    wasReloading=reloading;
+    reloadClock=reloading?Math.min(2.5,reloadClock+step):0;
+    const reloadStage=Math.min(1,reloadClock/1.4);
+    hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
+    recoilBlend=Math.max(recoilBlend*Math.exp(-17*step),Math.min(1,Math.max(0,recoil)));
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
-      crouched,aiming,alive,pitch:0});
-    // Torso socket follows crouch and movement, while the gun reacts to
-    // actual AI states. The empty-mag animation is a magazine drop and tilt.
+      crouched,aiming,alive,pitch:0,reloading,reloadProgress:reloadStage,
+      recoil:recoilBlend,hit:hitBlend});
+    // A magazine is lowered, swung outward, then seated; the receiver
+    // recoils during shots, and shoulder/head poses react to actual hits.
+    const magDrop=reloading?reloadStage<.5?
+      Math.sin(Math.PI*reloadStage)*.27:
+      Math.sin(Math.PI*(reloadStage-.5))* .19:0;
     mount.rotation.x=aiming?-.15:.11;
-    gun.rotation.x=(reloading?-.48:0)+recoil*.15;
-    gun.rotation.z=reloading?.24:Math.sin(time*2.8)*.012;
-    magazine.position.y=-.18-(reloading?.12:0);
-    flash.intensity=recoil>.7?2.2:0;
+    mount.rotation.z=hitBlend*.12;
+    gun.rotation.x=(reloading?-.35:0)+recoilBlend*.15;
+    gun.rotation.z=reloading?.18*Math.sin(Math.PI*reloadStage):
+      Math.sin(time*2.8)*.012;
+    gun.position.z=-.04+recoilBlend*.07;
+    magazine.position.y=-.18-magDrop;
+    magazine.rotation.z=reloading?.32*Math.sin(Math.PI*reloadStage):0;
+    flash.intensity=recoilBlend>.65?2.2:0;
   }
   setArmor({});
   return {
@@ -148,6 +163,7 @@ export function createNpcAvatar(parent,kind){
     };},
     get state(){return {
       type:kind,model:avatar.root.name,weapon:currentWeapon,
+      pose:avatar.metrics.pose,reloading:reloadClock>0,
       rendered:avatar.root.visible,
       equipped:{...lastArmor},armor:avatar.armor,
       armorPieces:avatar.visibleArmorPieces

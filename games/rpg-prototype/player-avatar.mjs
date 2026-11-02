@@ -2,6 +2,7 @@
 // This is authored in-game rather than loading the photorealistic enemy GLBs.
 // Mesh joints are hierarchical and animated independently of player hitboxes.
 import * as THREE from 'three';
+import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -32,7 +33,7 @@ function pixelFabric(primary,secondary,seed=7){
   });
 }
 
-export function createPlayerAvatar(scene,{variant='survivor'}={}){
+export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=true}={}){
   // Shared silhouette and pixel-texel scale, but each NPC gets its own
   // clothing, equipment details, and identity rather than an imported GLB.
   const palette={
@@ -229,6 +230,49 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   // Guns attach to an animated torso joint instead of hovering in world space.
   const weaponSocket=group(torso,.21,.35,-.34);
   weaponSocket.name='TorsoWeaponSocket';
+  // Third-person held weapon: the old rig had a socket, but no visible gun.
+  // These meshes are purely cosmetic and follow the same animated torso.
+  const heldWeapon=plainSurvivor&&heldWeaponEnabled?group(weaponSocket,0,-.07,0):null;
+  let heldWeaponId=null;
+  let heldMagazine=null,heldBarrel=null,heldReceiver=null,heldStock=null,heldScope=null;
+  if(heldWeapon){
+    heldWeapon.name='SurvivorHeldWeapon';
+    const part=(w,h,d,mat,x,y,z)=>{
+      const item=mesh(heldWeapon,new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+      item.userData.playerCosmetic=true;return item;
+    };
+    heldReceiver=part(.18,.15,.45,metal,0,0,-.18);
+    part(.13,.20,.14,dark,0,-.18,-.07).rotation.x=-.16;
+    heldStock=part(.15,.12,.33,leather,0,-.02,.18);
+    heldMagazine=part(.11,.22,.14,dark,0,-.17,-.19);
+    heldBarrel=new THREE.Mesh(new THREE.CylinderGeometry(.035,.039,.58,10),dark);
+    heldBarrel.rotation.x=Math.PI/2;heldBarrel.position.set(0,.015,-.56);
+    heldBarrel.castShadow=true;heldWeapon.add(heldBarrel);
+    heldScope=part(.09,.095,.20,dark,0,.155,-.26);
+    part(.045,.055,.05,metal,0,.21,-.26);
+  }
+  function setHeldWeapon(id='scrap-pistol'){
+    if(heldWeaponId===id)return;
+    heldWeaponId=id;
+    if(!heldWeapon)return;
+    const configs={
+      'scrap-pistol':{length:.58,mag:1.0,stock:false,optic:false},
+      'iron-revolver':{length:.69,mag:.65,stock:false,optic:false},
+      'pipe-smg':{length:.95,mag:1.2,stock:true,optic:false},
+      'service-carbine':{length:1.22,mag:1.25,stock:true,optic:true},
+      'scrap-shotgun':{length:1.32,mag:.65,stock:true,optic:false},
+      'hunting-rifle':{length:1.55,mag:.7,stock:true,optic:true}
+    };
+    const model=configs[id]||configs['scrap-pistol'];
+    heldWeapon.scale.z=model.length;
+    heldWeapon.scale.x=id==='scrap-shotgun'?1.3:1;
+    heldBarrel.scale.y=model.length;
+    heldReceiver.scale.z=model.length>1?1.23:1;
+    heldStock.visible=model.stock;
+    heldMagazine.scale.y=model.mag;
+    heldScope.visible=model.optic;
+  }
+  setHeldWeapon();
 
   // W09.4: each real inventory armor slot has a matching removable mesh,
   // independently skinned onto the same articulated parent as the clothing.
@@ -374,37 +418,59 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
   // The geometry is created at realistic dimensions. This group is a visual,
   // never a collider or a raycast target; hit detection stays authoritative.
   root.traverse(child=>{if(child.isMesh)child.userData.playerCosmetic=true;});
-  let phase=0,crouchBlend=0,aimBlend=0,deathBlend=0;
+  const animation=createCharacterAnimation();
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
-    crouched=false,aiming=false,alive=true,pitch=0}){
+    crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
+    reloading=false,reloadProgress=0,recoil=0,hit=0}){
+    const pose=stepCharacterAnimation(animation,dt,{
+      speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit
+    });
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
-    const move=clamp(speed/4,0,1);
-    phase+=step*(2.5+speed*1.8);
-    crouchBlend=lerp(crouchBlend,crouched?1:0,1-Math.exp(-12*step));
-    aimBlend=lerp(aimBlend,aiming?1:0,1-Math.exp(-12*step));
-    deathBlend=lerp(deathBlend,alive?0:1,1-Math.exp(-7*step));
-    const stride=Math.sin(phase)*(sprinting?.72:.43)*move;
-    const bob=Math.abs(Math.sin(phase))*.016*move;
-    root.position.set(x,ground+jump+bob-.32*crouchBlend-.62*deathBlend,z);
-    // The modeled front faces local -Z, and the FPS camera faces -Z at yaw 0.
+    const crouchBlend=pose.crouch,aimBlend=pose.aim,deathBlend=pose.death;
+    const stride=pose.stride,move=pose.move;
+    root.position.set(x,ground+jump+pose.bob-.32*crouchBlend-
+      (plainSurvivor?.62:0)*deathBlend,z);
+    // Keep forward exactly aligned with the authoritative camera/AI yaw.
     root.rotation.y=yaw;
-    root.rotation.z=lerp(root.rotation.z,deathBlend*1.18,1-Math.exp(-9*step));
-    pelvis.rotation.x=.10*crouchBlend;
-    torso.rotation.x=.30*crouchBlend+.018*Math.sin(phase*.7);
-    head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend;
+    root.rotation.z=lerp(root.rotation.z,
+      (plainSurvivor?deathBlend*1.18:0)+pose.hit*.14,
+      1-Math.exp(-9*step));
+    pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint;
+    torso.rotation.x=.30*crouchBlend+.055*pose.sprint+
+      .017*Math.sin(pose.phase*.7)-pose.hit*.13+pose.recoil*.055;
+    torso.rotation.z=Math.sin(pose.phase)*.025*move+pose.hit*.12;
+    torso.rotation.y=Math.sin(pose.phase*.5)*.018*move;
+    head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+pose.hit*.10;
+    head.rotation.z=-pose.hit*.10;
     for(let i=0;i<2;i++){
       const leg=legs[i],arm=arms[i],sign=i===0?1:-1;
-      leg.hip.rotation.x=sign*stride+.69*crouchBlend;
-      leg.knee.rotation.x=Math.max(0,-sign*Math.sin(phase))*.46*move-1.03*crouchBlend;
-      leg.foot.rotation.x=-.24*leg.knee.rotation.x-.18*crouchBlend;
-      arm.shoulder.rotation.x=-sign*stride*.72-(.87+.08*sign)*aimBlend;
-      arm.shoulder.rotation.z=-sign*(.13+.20*aimBlend);
-      arm.elbow.rotation.x=-.18-.64*aimBlend;
-      arm.elbow.rotation.z=sign*.18*aimBlend;
+      leg.hip.rotation.x=sign*stride+.69*crouchBlend+
+        (i===0?-.32:.20)*pose.jump+.20*pose.land;
+      leg.knee.rotation.x=Math.max(0,-sign*Math.sin(pose.phase))*.46*move-
+        1.03*crouchBlend+.53*pose.jump+.18*pose.land;
+      leg.foot.rotation.x=-.24*leg.knee.rotation.x-.18*crouchBlend-
+        .20*pose.land;
+      arm.shoulder.rotation.x=-sign*stride*.72-(.87+.08*sign)*aimBlend-
+        .42*pose.sprint+pose.reload*(i===0?-.65:.24)+
+        pose.recoil*.19+pose.hit*.19;
+      arm.shoulder.rotation.z=-sign*(.13+.20*aimBlend)+
+        (i===0?-.09:.14)*pose.reload+sign*.10*pose.jump;
+      arm.elbow.rotation.x=-.18-.64*aimBlend-
+        pose.reload*(i===0?.70:.32);
+      arm.elbow.rotation.z=sign*(.18*aimBlend+.28*pose.reload);
+    }
+    if(heldWeapon){
+      const stage=clamp(reloadProgress,0,1);
+      heldWeapon.rotation.x=-pose.recoil*.14+pose.reload*.31;
+      heldWeapon.rotation.z=pose.reload*.22;
+      heldMagazine.position.y=-.17-
+        pose.reload*(stage<.50?.18*Math.sin(Math.PI*stage/.5):
+          .12*(1-stage));
+      heldWeapon.position.y=-.07-pose.reload*.05;
     }
   }
   return {
-    root,materials,setArmor,setClothing,weaponSocket,
+    root,materials,setArmor,setClothing,weaponSocket,setHeldWeapon,heldWeapon,
     get clothing(){return {...clothingSlots};},
     get visibleClothing(){return {
       head:clothCap.visible,back:clothBackpack.visible
@@ -413,7 +479,9 @@ export function createPlayerAvatar(scene,{variant='survivor'}={}){
     get visibleArmorPieces(){return Object.fromEntries(armorSlots.map(slot=>
       [slot,armorKinds.reduce((count,kind)=>count+
         armorGroups[slot][kind].filter(layer=>layer.visible).length,0)]));},
-    get metrics(){return {height:naturalHeight,crouched:crouchBlend,aiming:aimBlend};},
+    get metrics(){return {height:naturalHeight,crouched:animation.crouch,
+      aiming:animation.aim,pose:animation.pose,land:animation.land,
+      recoil:animation.recoil,heldWeapon:heldWeapon?heldWeaponId:null};},
     update,
     dispose(){
       scene.remove(root);

@@ -612,7 +612,7 @@ try{
 const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
 // Power-armor transitions now show the SAME original survivor as third person.
 // No photorealistic Raider GLB is mounted for the player anymore.
-const pilotAvatar=createPlayerAvatar(poweredSuit.pilot);
+const pilotAvatar=createPlayerAvatar(poweredSuit.pilot,{heldWeaponEnabled:false});
 poweredSuit.useOriginalPilot();
 textSign('POWER FRAME · TAP E TO CONFIGURE',-55,-6,0x8fbba4);
 textSign('REAR HATCH · HOLD E TO ENTER',-43,-6,0x8fbba4);
@@ -1887,7 +1887,8 @@ function updateEnemies(dt){
         speed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
         crouched:enemy.tactics.crouching,
         aiming:shouldAim,reloading:enemy.tactics.reloadRemaining>0,
-        recoil:enemy.recoilPose,alive:enemy.state.alive
+        recoil:enemy.recoilPose,hit:enemy.flash/.22,
+        alive:enemy.state.alive
       });
       enemy.root.rotation.y=enemy.brain.yaw;
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
@@ -1955,6 +1956,7 @@ function updateEnemies(dt){
       }
     }else{
       enemy.deathTimer+=dt;
+      enemy.rigged?.update(dt,{alive:false,moving:false,hit:0,recoil:0});
       // One short fall, then despawn: no permanent corpse/ring clutter.
       enemy.root.rotation.z+=(-1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
       if(enemy.deathTimer>=.7)enemy.root.visible=false;
@@ -2991,6 +2993,10 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     playerVisual:{thirdPersonEnabled,thirdPersonActive,
       visible:playerAvatar.root.visible,
       height:playerAvatar.metrics.height,
+      pose:playerAvatar.metrics.pose,
+      heldWeapon:playerAvatar.metrics.heldWeapon,
+      landing:playerAvatar.metrics.land,
+      recoil:playerAvatar.metrics.recoil,
       crouch:playerAvatar.metrics.crouched,
       armor:playerAvatar.armor,
       armorPieces:playerAvatar.visibleArmorPieces,
@@ -3297,8 +3303,14 @@ function frame(){
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
-  poweredCockpit.position.y=powerArmorState.occupied?
-    Math.sin(poweredArmorTime*(3+weaponMotion.speed*1.5))*.0035:0;
+  // Heavy servo gait is visible in the pilot's visor: steps have a strong
+  // vertical impact and subtle counter-roll, unlike an unpowered walk.
+  const poweredGait=powerArmorState.occupied?Math.min(1,weaponMotion.speed/5):0;
+  const poweredStepPhase=poweredArmorTime*(weaponMotion.sprinting?9.2:6.3);
+  poweredCockpit.position.y=poweredGait*
+    (-.010*Math.abs(Math.sin(poweredStepPhase))+.006*Math.cos(poweredStepPhase*2));
+  poweredCockpit.rotation.z=poweredGait*Math.sin(poweredStepPhase)*.006;
+  poweredCockpit.rotation.x=poweredGait*Math.cos(poweredStepPhase)*.003;
   if(powerStep.completed){
     if(powerCinematic){
       player.x=powerCinematic.to.x;player.z=powerCinematic.to.z;
@@ -3362,10 +3374,17 @@ function frame(){
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
+  playerAvatar.setHeldWeapon(activeWeaponId);
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
-    aiming:!!weaponState.aiming,alive:playerHealth.alive});
+    aiming:!!weaponState.aiming,alive:playerHealth.alive,
+    airborne:Math.abs(player.jump)>.045||Math.abs(player.vertical)>.1,
+    reloading:weaponState.reloadRemaining>0,
+    reloadProgress:weaponState.reloadRemaining>0?
+      1-weaponState.reloadRemaining/activeSpec.reloadSeconds:0,
+    recoil:Math.min(1,muzzleFlash/.085),
+    hit:Math.min(1,playerHitFlash/.48)});
   // Remote bodies update independently of local V / ADS / camera mode.
   remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},dt);
   thirdPersonActive=thirdPersonEnabled&&powerArmorState.phase==='idle'&&

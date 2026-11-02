@@ -423,6 +423,10 @@ try{
   },null,{timeout:12000});
   const third=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(third.playerVisual.name,'OriginalPixelSurvivor');
+  assert.equal(third.playerVisual.heldWeapon,third.weapon.id,
+    'Third-person survivor must visibly carry the selected gun');
+  assert.ok(['idle','walk','sprint','aim','crouch','reload','jump','down']
+    .includes(third.playerVisual.pose));
   assert.equal(third.playerVisual.visibleClothing.back,true,
     'Equipped backpack must appear on third-person survivor');
   assert.equal(third.playerVisual.armor[testArmor.slot],testArmor.key);
@@ -445,6 +449,8 @@ try{
   await page.keyboard.press('c');
   await page.waitForFunction(()=>window.__rpgSmokeState().playerVisual.crouch>.65,
     null,{timeout:12000});
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState()))
+    .playerVisual.pose,'crouch');
   await page.keyboard.press('c');
   await page.keyboard.press('v');
   await page.waitForFunction(()=>!window.__rpgSmokeState().playerVisual.thirdPersonActive,
@@ -567,6 +573,9 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='scout').visible===false,
     null,{timeout:20000});
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).enemies
+    .find(e=>e.id==='scout').originalVisual.pose,'down',
+    'NPC fall animation must enter the downed pose before despawning');
   // W06.7: a hit from outside the arena must wake AI return fire past 14 m.
   const distantEngage=await page.evaluate(()=>window.__rpgSmokeLongRangeEngage());
   assert.equal(distantEngage.insideArena,false);
