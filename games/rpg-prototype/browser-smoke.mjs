@@ -55,8 +55,17 @@ try{
   await page.goto('http://127.0.0.1:'+port+
     '/games/rpg-prototype/testing/?station=9&smoke=1',
     {waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
-    {timeout:30000});
+  try{
+    await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
+      {timeout:30000});
+  }catch(error){
+    console.error('GAME STARTUP ERRORS:',JSON.stringify(errors));
+    console.error('DOCUMENT READY:',await page.evaluate(()=>({
+      readyState:document.readyState,title:document.title,
+      scripts:[...document.querySelectorAll('script[src]')].map(s=>s.src)
+    })));
+    throw error;
+  }
   let state=await page.evaluate(()=>window.__rpgSmokeState());
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
