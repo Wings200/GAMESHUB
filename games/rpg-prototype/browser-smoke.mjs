@@ -796,6 +796,22 @@ try{
     console.log('W17_FRAME_'+side.toUpperCase()+'='+
       (await page.screenshot({type:'jpeg',quality:28})).toString('base64'));
   }
+  await page.evaluate(()=>{
+    window.__rpgSmokeBareFramePreview();
+    window.__rpgSmokeRigPreview('front');
+  });
+  await page.waitForTimeout(450);
+  console.log('W17_FRAME_BARE='+
+    (await page.screenshot({type:'jpeg',quality:28})).toString('base64'));
+  await page.evaluate(()=>{
+    window.__rpgSmokeTeleportToPowerBay();
+    window.__rpgSmokePowerTransition();
+    window.__rpgSmokeSetPowerProgress(.58);
+    window.__rpgSmokeRigPreview('rear');
+  });
+  await page.waitForTimeout(450);
+  console.log('W17_FRAME_BOARDING='+
+    (await page.screenshot({type:'jpeg',quality:28})).toString('base64'));
   console.log(JSON.stringify({
     smoke:'PASS',aiMoved:true,scoutHealthBefore:initialHp,
     scoutHealthAfter:scoutHealth,enemies:result.enemies.length,

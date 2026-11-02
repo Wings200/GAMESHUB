@@ -2898,6 +2898,13 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     cameraDistanceToHero:camera.position.distanceTo(
       poweredSuit.root.localToWorld(new THREE.Vector3(2.35,2.32,-3.36)))
   });
+  window.__rpgSmokeBareFramePreview=()=>{
+    for(const slot of POWER_ARMOR_SLOTS){
+      poweredSuit.plateMeshes[slot].forEach(mesh=>{mesh.visible=false;});
+      poweredSuit.moduleMeshes[slot].forEach(mesh=>{mesh.visible=false;});
+    }
+    return true;
+  };
   window.__rpgSmokeRigPreview=(side='front')=>{
     // CI-only fixed-view inspection; never changes player collision or saves.
     const suit=poweredSuit.root;
