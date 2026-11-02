@@ -563,10 +563,30 @@ function nearRearHatch(){
 function refreshPowerArmorHUD(){
   // The obsolete plate-count widget is gone. Only core status appears while
   // WEARING the frame; six-slot condition lives in the E service interface.
-  $('powerArmorHud').classList.toggle('hidden',
-    !powerArmorState.occupied||powerArmorState.phase!=='idle');
+  const visorActive=powerArmorState.occupied&&powerArmorState.phase==='idle';
+  const cinematic=powerArmorState.phase!=='idle';
+  $('powerArmorHud').classList.toggle('hidden',!visorActive);
+  $('fieldHud').classList.toggle('hidden',visorActive||cinematic);
+  $('powerVisorHud').classList.toggle('hidden',!visorActive);
+  document.body.classList.toggle('in-power-armor',visorActive);
+  document.body.classList.toggle('power-transition',cinematic);
   const status=$('powerArmorStatus');
   const powered=hasFusionPower(powerArmorState);
+  const charge=Math.max(0,Number(powerArmorState.coreCharge)||0);
+  $('visorCoreNumber').textContent=powerArmorState.coreCharge===null?
+    'CORE MISSING':Math.ceil(charge)+'%';
+  $('visorCoreFill').style.width=charge+'%';
+  $('powerVisorHud').classList.toggle('low-core',charge<=15);
+  const conditions=POWER_ARMOR_SLOTS.map(slot=>plateCondition(powerArmorState,slot))
+    .filter(piece=>piece.tier!=='none');
+  const integrity=conditions.length?Math.round(100*conditions.reduce((sum,piece)=>
+    sum+piece.current/piece.max,0)/conditions.length):0;
+  const broken=conditions.filter(piece=>piece.broken).length;
+  $('visorIntegrity').textContent=integrity+'%';
+  $('visorIntegrityFill').style.width=integrity+'%';
+  $('visorWarning').textContent=!powered?'CORE OFFLINE · LIMP MODE':
+    broken?broken+' ARMOR MODULE'+(broken===1?'':'S')+' BROKEN':
+      charge<=15?'LOW FUSION CORE · SEEK REPLACEMENT':'HYDRAULICS ONLINE · FRAME STABLE';
   status.textContent=powerArmorState.phase==='entering'?'ENTERING CHASSIS…':
     powerArmorState.phase==='exiting'?'EXITING CHASSIS…':
     powerArmorState.occupied?(powered?'POWER ARMOR · POWERED':
@@ -1623,6 +1643,11 @@ function enemyTracer(from,to){
 }
 function refreshPlayerHealth(){
   const fraction=playerHealth.health/playerHealth.maxHealth;
+  $('fieldHealth').textContent=Math.ceil(playerHealth.health);
+  $('fieldHealthFill').style.width=(fraction*100).toFixed(1)+'%';
+  $('fieldHud').classList.toggle('critical',fraction<=.35);
+  $('visorHealth').textContent=Math.ceil(playerHealth.health)+' / '+
+    playerHealth.maxHealth+' HP';
   $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
   $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
   $('healthFill').classList.toggle('low',fraction<=.35);
@@ -2359,7 +2384,16 @@ function showShotNotice(message){
   shotNoticeTime=.8;
 }
 function refreshWeaponHUD(){
-  $('weaponAmmo').textContent=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
+  const loaded=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
+  $('fieldAmmo').textContent=loaded;
+  $('visorAmmo').textContent=loaded;
+  $('fieldWeaponName').textContent=activeSpec.name.toUpperCase();
+  $('visorWeaponName').textContent=activeSpec.name.toUpperCase();
+  $('fieldWeaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
+    weaponState.magazine===0?'EMPTY · R TO RELOAD':
+    weaponState.aiming?'ADS':activeSpec.automatic?'AUTO · READY':'SEMI · READY';
+  document.body.classList.toggle('ads-active',!!weaponState.aiming);
+  $('weaponAmmo').textContent=loaded;
   $('weaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
     weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY';
   $('targetHits').textContent=totalHits;
@@ -2620,6 +2654,14 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       [slot,poweredSuit.plateMeshes[slot].filter(mesh=>mesh.visible).length])),
     moduleSections:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,poweredSuit.moduleMeshes[slot].filter(mesh=>mesh.visible).length])),
+    plateAppearance:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>{
+      const tier=powerArmorState.plates[slot];
+      const shell=poweredSuit.plateMeshes[slot][0];
+      const face=shell?.userData.tierFaces?.[tier];
+      return [slot,{tier,color:face?.material.color.getHex()??null,
+        contour:face?.geometry.type??null}];
+    })),
+    modelContours:{...poweredSuit.plateMeshes.head[0].userData.profileOutlines},
     modelDetails:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,Object.fromEntries(['t45','t60','t01'].map(tier=>
         [tier,poweredSuit.plateMeshes[slot].some(shell=>
@@ -2774,6 +2816,12 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       alerts:squadIntel.alerts},
     workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
     scopedFOV:camera.fov,
+    hud:{mode:document.body.classList.contains('in-power-armor')?'visor':'field',
+      fieldVisible:!$('fieldHud').classList.contains('hidden'),
+      visorVisible:!$('powerVisorHud').classList.contains('hidden'),
+      debug:document.body.classList.contains('debug-hud'),
+      fieldAmmo:$('fieldAmmo').textContent,visorAmmo:$('visorAmmo').textContent,
+      core:$('visorCoreNumber').textContent,integrity:$('visorIntegrity').textContent},
     powerArmor:{occupied:powerArmorState.occupied,phase:powerArmorState.phase,
       plates:{...powerArmorState.plates},plateDurability:{...powerArmorState.plateDurability},
       coreCharge:powerArmorState.coreCharge,mobility:powerArmorMobility(powerArmorState),
@@ -2864,6 +2912,13 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&powerUIOpen){closePowerArmorBay();return;}
   if(e.code==='Escape'&&workbenchOpen){closeWorkbench();return;}
   if(e.code==='Escape'&&(inventoryOpen||lootOpen)){closeLootOverlay();return;}
+  if(e.code==='F3'&&!e.repeat){
+    e.preventDefault();
+    document.body.classList.toggle('debug-hud');
+    showShotNotice(document.body.classList.contains('debug-hud')?
+      'LAB DIAGNOSTICS SHOWN · F3 TO HIDE':'FIELD HUD · DIAGNOSTICS HIDDEN');
+    return;
+  }
   if(e.code==='KeyI'&&!e.repeat){
     if(inventoryOpen||lootOpen)closeLootOverlay();
     else beginLootOverlay();
@@ -2951,6 +3006,17 @@ window.addEventListener('resize',()=>{
   renderer.setSize(innerWidth,innerHeight);
 });
 function updateHUD(info){
+  const staminaPct=Math.max(0,Math.round(info.staminaFraction*100));
+  $('fieldStamina').textContent=staminaPct+'%';
+  $('fieldStaminaFill').style.width=staminaPct+'%';
+  $('fieldLocation').textContent=stations[stationIndex].title.toUpperCase();
+  const bearing=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
+  const cardinal=['N','NE','E','SE','S','SW','W','NW'][
+    Math.round(bearing/45)%8];
+  $('fieldHeading').textContent=cardinal+' · '+Math.round(bearing).toString().padStart(3,'0')+'°';
+  const threat=inAIArena();
+  $('fieldThreat').textContent=threat?'LIVE FIRE':'EXPLORATION';
+  $('fieldThreat').classList.toggle('danger',threat);
   $('speed').textContent=info.speed.toFixed(1)+' m/s';
   $('state').textContent=info.airborne?'JUMP':info.crouched?'CROUCH':info.moving?(info.sprinting?'SPRINT':'WALK'):'IDLE';
   $('height').textContent=(info.ground+player.jump).toFixed(1)+' m';

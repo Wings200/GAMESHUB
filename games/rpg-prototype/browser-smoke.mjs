@@ -61,6 +61,12 @@ try{
   assert.equal(state.stationIndex,8,'URL should open Station 9');
   assert.equal(state.arenaActive,true);
   assert.equal(state.enemies.length,3);
+  // W13.0: the field HUD replaces the old debug wall by default.
+  assert.equal(state.hud.mode,'field');
+  assert.equal(state.hud.fieldVisible,true);
+  assert.equal(state.hud.visorVisible,false);
+  assert.equal(state.hud.debug,false);
+  assert.equal(state.hud.fieldAmmo,await page.locator('#weaponAmmo').textContent());
   // W09.9: the actual Three.js lab's tall maze wall must obstruct both
   // enemy damage and the visible bullet tracer. A higher shot clears it.
   const wallBlock=await page.evaluate(()=>
@@ -601,6 +607,15 @@ try{
   assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
   assert.equal(armorVisible.modelDetails.head.t60,true,'T-60 head has its own geometry');
   assert.equal(armorVisible.modelDetails.rightArm.t45,true,'T-45 arm style is visible');
+  assert.equal(armorVisible.plateAppearance.head.color,0x4f7585,
+    'T-60 should use its own blue-steel pigment');
+  assert.equal(armorVisible.plateAppearance.rightArm.color,0xb1a48b,
+    'T-45 should use warm cast-steel coloring');
+  assert.notDeepEqual(armorVisible.modelContours.t45,armorVisible.modelContours.t60,
+    'T-45 rounded plates and T-60 flared plates need different 3D outlines');
+  assert.notDeepEqual(armorVisible.modelContours.t60,armorVisible.modelContours.t01,
+    'T-01 angular plates require a distinct faceted silhouette');
+  assert.equal(armorVisible.plateAppearance.head.contour,'ExtrudeGeometry');
   assert.ok(armorVisible.moduleSections.rightArm>0,'Installing the right arm adds its armor shell');
   assert.ok(armorVisible.moduleSections.head>0,'Installing the helmet restores its armor shell');
   assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
@@ -629,6 +644,14 @@ try{
   const inSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
   assert.equal(inSuit.visible,false,'Chassis is worn, not duplicated in the bay');
   assert.equal(inSuit.cockpit,true,'Power armor cockpit must appear in first person');
+  await page.waitForFunction(()=>window.__rpgSmokeState().hud.mode==='visor',
+    null,{timeout:10000});
+  const activeHud=(await page.evaluate(()=>window.__rpgSmokeState())).hud;
+  assert.equal(activeHud.visorVisible,true,'Power armor must activate the full visor');
+  assert.equal(activeHud.fieldVisible,false,'Field vitals must be replaced by visor vitals');
+  assert.ok(activeHud.core.includes('%'),'Visor reactor gauge must display live charge');
+  assert.ok(activeHud.integrity.includes('%'),'Visor tracks module condition');
+  assert.equal(activeHud.visorAmmo,await page.locator('#weaponAmmo').textContent());
   await page.waitForFunction(()=>{
     const s=window.__rpgSmokeState();
     const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
@@ -661,6 +684,14 @@ try{
   const outSuit=await page.evaluate(()=>window.__rpgSmokeState().powerArmor);
   assert.equal(outSuit.visible,true,'Exited power armor remains a world-space mesh');
   assert.equal(outSuit.cockpit,false);
+  await page.waitForFunction(()=>window.__rpgSmokeState().hud.mode==='field'&&
+    window.__rpgSmokeState().hud.fieldVisible&&
+    !window.__rpgSmokeState().hud.visorVisible,null,{timeout:10000});
+  await page.keyboard.press('F3');
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).hud.debug,true,
+    'F3 should reveal the detailed lab diagnostics');
+  await page.keyboard.press('F3');
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).hud.debug,false);
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.__rpgSmokeState?.().powerArmor?.plates?.head==='t60',
     null,{timeout:30000});

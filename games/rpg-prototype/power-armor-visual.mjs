@@ -70,38 +70,84 @@ export function buildPowerArmorVisual(scene,position,state){
   // Structural pistons, joints and rails remain; every decorative armor shell
   // belongs to a physical slot and vanishes when that slot is empty.
   const moduleMeshes=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,[]]));
-  const modulePart=(slot,part)=>{moduleMeshes[slot].push(part);return part;};
-  // Each collected model changes the silhouette of its own plate, not the
-  // whole frame. T-45 has cast ribs, T-60 gets double raised armor channels,
-  // and T-01 has a faceted prototype chevron and vents.
+  const modulePart=(slot,part)=>{
+    // Clone paint per physical piece: changing a T-60 arm must never recolor
+    // the T-45 leg or any shared metal on the underlying frame.
+    if([steel,shaded,edge].includes(part.material)){
+      part.material=part.material.clone();
+      part.userData.moduleBaseColor=part.material.color.getHex();
+    }
+    moduleMeshes[slot].push(part);return part;
+  };
+  const tierPaint={
+    t45:new THREE.MeshStandardMaterial({color:0xb1a48b,metalness:.48,roughness:.69}),
+    t60:new THREE.MeshStandardMaterial({color:0x4f7585,metalness:.71,roughness:.46}),
+    t01:new THREE.MeshStandardMaterial({color:0x694781,metalness:.69,roughness:.39})
+  };
+  const protoTrim=new THREE.MeshStandardMaterial({color:0xb8aed5,metalness:.72,roughness:.34});
+  // These are three DISTINCT forged outlines, rather than three paints
+  // applied to one old slab: T-45 round cast, T-60 flared heavy shoulders,
+  // and a sharply peaked T-01 prototype.
+  const profilePlate=(parent,w,h,d,material,outline)=>{
+    const shape=new THREE.Shape();
+    for(let i=0;i<outline.length;i++){
+      const [u,v]=outline[i];
+      if(i===0)shape.moveTo(u*w,v*h);else shape.lineTo(u*w,v*h);
+    }
+    shape.closePath();
+    const geo=new THREE.ExtrudeGeometry(shape,{
+      depth:d,bevelEnabled:true,bevelThickness:.018,bevelSize:.02,
+      bevelSegments:2,steps:1
+    });
+    geo.translate(0,0,-d/2);
+    return mesh(parent,geo,material.clone());
+  };
+  const profiles={
+    t45:[[-.40,-.50],[.40,-.50],[.50,-.40],[.50,.36],[.39,.50],
+      [-.39,.50],[-.50,.36],[-.50,-.40]],
+    t60:[[-.44,-.50],[.44,-.50],[.56,-.29],[.62,.32],[.43,.50],
+      [-.43,.50],[-.62,.32],[-.56,-.29]],
+    t01:[[-.31,-.50],[.31,-.50],[.56,-.18],[.63,.19],[0,.56],
+      [-.63,.19],[-.56,-.18]]
+  };
   const plate=(slot,parent,w,h,d,x,y,z,cut=.12)=>{
     const shell=forged(parent,w,h,d,armor.clone(),x,y,z,cut);
     shell.userData.modelDetails={};
+    shell.userData.tierFaces={};
+    shell.userData.profileOutlines=profiles;
     function styling(tier,draw){
-      const detail=makeGroup(shell,0,0,d/2+.045);
-      detail.name=tier.toUpperCase()+'_'+slot+'_details';
+      const detail=makeGroup(shell,0,0,d/2+.055);
+      detail.name=tier.toUpperCase()+'_'+slot+'_profile';
+      const face=profilePlate(detail,w,h,d*.45,tierPaint[tier],profiles[tier]);
+      shell.userData.tierFaces[tier]=face;
       draw(detail);detail.visible=false;
       shell.userData.modelDetails[tier]=detail;
     }
     styling('t45',group=>{
-      forged(group,w*.72,h*.13,.047,edge,0,-h*.19,0,.025);
+      forged(group,w*.73,h*.12,.047,edge,0,-h*.22,.065,.025);
       for(const sign of [-1,1]){
-        const rivet=cyl(group,.027,.027,.027,brass,sign*w*.31,h*.23,.04,8);
+        const rivet=cyl(group,.032,.032,.027,brass,sign*w*.31,h*.26,.08,8);
         rivet.rotation.x=Math.PI/2;
       }
     });
     styling('t60',group=>{
       for(const sign of [-1,1]){
-        forged(group,w*.15,h*.78,.09,edge,sign*w*.27,0,0,.018);
-        forged(group,w*.08,h*.60,.045,shaded,sign*w*.27,0,.06,.012);
+        forged(group,w*.16,h*.82,.09,edge,sign*w*.31,0,.07,.018);
+        forged(group,w*.08,h*.64,.045,shaded,sign*w*.31,0,.12,.012);
+        forged(group,w*.13,h*.18,.09,brass,sign*w*.44,h*.30,.09,.025);
       }
-      forged(group,w*.55,h*.13,.08,brass,0,h*.30,.02,.025);
+      forged(group,w*.51,h*.13,.075,steel,0,h*.32,.11,.025);
     });
     styling('t01',group=>{
-      forged(group,w*.56,h*.27,.12,shaded,0,h*.13,.01,.085);
-      forged(group,w*.35,h*.14,.08,edge,0,-h*.11,.08,.045);
+      const ridge=forged(group,w*.24,h*.65,.16,protoTrim,0,h*.01,.11,.075);
+      ridge.rotation.z=.04;
+      for(const sign of [-1,1]){
+        const wing=forged(group,w*.24,h*.42,.14,shaded,sign*w*.33,h*.035,.08,.045);
+        wing.rotation.z=-sign*.30;
+        forged(group,w*.08,h*.23,.13,protoTrim,sign*w*.34,-h*.25,.13,.025);
+      }
       for(let i=-1;i<=1;i++)
-        forged(group,w*.09,h*.12,.10,brass,i*w*.19,-h*.27,.06,.02);
+        forged(group,w*.08,h*.10,.10,brass,i*w*.22,-h*.36,.14,.02);
     });
     plateMeshes[slot].push(shell);
     return shell;
@@ -356,15 +402,27 @@ export function buildPowerArmorVisual(scene,position,state){
     for(const slot of POWER_ARMOR_SLOTS){
       const entry=getPowerPlate(slot,currentState.plates[slot]);
       const condition=plateCondition(currentState,slot);
-      for(const part of moduleMeshes[slot])part.visible=entry.points>0;
+      const tone=new THREE.Color(entry.color);
+      for(const part of moduleMeshes[slot]){
+        part.visible=entry.points>0;
+        if(part.userData.moduleBaseColor!==undefined){
+          part.material.color.setHex(part.userData.moduleBaseColor);
+          part.material.color.lerp(tone,.53);
+          if(condition.broken)part.material.color.multiplyScalar(.45);
+        }
+      }
       for(const shell of plateMeshes[slot]){
-        // A broken plate is still physically attached and visible. Its rating
-        // is zero until repaired, but its mesh and inventory identity survive.
+        // 0 durability makes a shell battered/dark, never invisible or deleted.
         shell.visible=entry.points>0;
-        shell.material.color.setHex(condition.broken?0x594e49:entry.color);
+        shell.material.color.setHex(condition.broken?0x493d3d:entry.color);
+        shell.material.color.multiplyScalar(.65);
         shell.scale.setScalar(entry.points>0?Math.min(1.10,.95+entry.scale*.09):1);
         for(const [tier,detail] of Object.entries(shell.userData.modelDetails||{}))
           detail.visible=entry.model===tier;
+        for(const [tier,face] of Object.entries(shell.userData.tierFaces||{})){
+          face.material.color.copy(tierPaint[tier].color);
+          if(condition.broken)face.material.color.setHex(0x544644);
+        }
       }
     }
   }
