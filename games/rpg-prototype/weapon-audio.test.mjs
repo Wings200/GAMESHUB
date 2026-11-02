@@ -133,3 +133,20 @@ test('Reload cues follow each weapon reload duration instead of fixed pistol tim
   revolver.unlock();revolver.reload('revolver',2.6);
   assert.ok(revolver.context.events.length>6);
 });
+
+test('Steps have distinct normal and power-armor weight without autoplay',()=>{
+  const silent=new WeaponAudio(FakeAudioContext);
+  silent.footstep();assert.equal(silent.context,null);
+  silent.unlock();
+  silent.footstep(false);
+  const count=silent.context.events.length;
+  assert.ok(count>=4);
+  silent.footstep(true);
+  assert.ok(silent.context.events.length>count);
+  const pitch=silent.context.calls.filter(c=>c.kind==='frequency'&&c.mode==='set').map(c=>c.value);
+  assert.ok(pitch.includes(75)&&pitch.includes(175));
+  silent.setEnabled(false);
+  const mutedCount=silent.context.events.length;
+  silent.footstep(true);
+  assert.equal(silent.context.events.length,mutedCount);
+});

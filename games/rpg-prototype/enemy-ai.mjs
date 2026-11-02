@@ -6,6 +6,7 @@ export const AI_TUNING=Object.freeze({
   patrolSpeed:1.25, chaseSpeed:2.75,
   stopDistance:2.7, waypointRadius:.48,
   lastSeenSeconds:24, hitRetaliationSeconds:9, searchSeconds:21,
+  hearingRange:50,noiseMemorySeconds:10,
   collisionRadius:.34, maxDelta:.05,
   area:Object.freeze({minX:33.6,maxX:58.4,minZ:34.9,maxZ:49.3}),
   // Combat search may follow a last sighting beyond Station 9; normal patrol
@@ -66,8 +67,26 @@ export function createEnemyBrain(config){
     spotted:false,moving:false,active:true,retaliationTime:0,
     distanceToPlayer:Infinity,aimLockSeconds:0,
     searchIndex:0,searchPause:0,detour:null,
+    noiseTarget:null,noiseTime:0,
     routeGoal:null,route:[],routeFail:0
   };
+}
+// Sound provides an approximate INVESTIGATION lead, never a confirmed
+// player sighting or aim lock. Dense walls attenuate it.
+export function hearEnemyGunshot(enemy,origin,obstacles=[],rng=Math.random){
+  if(!enemy.active||!origin||
+    !Number.isFinite(origin.x)||!Number.isFinite(origin.z))return false;
+  const distanceToSound=distance(enemy.x,enemy.z,origin.x,origin.z);
+  const blocked=obstacles.some(box=>lineIntersectsBox(enemy,origin,box,.03));
+  const hearing=AI_TUNING.hearingRange*(blocked?.55:1);
+  if(distanceToSound>hearing||enemy.memory>0||enemy.spotted)return false;
+  const sample=()=>{const value=rng();return clamp(Number.isFinite(value)?value:.5,0,1);};
+  enemy.noiseTarget={x:origin.x+(sample()-.5)*3.2,
+    z:origin.z+(sample()-.5)*3.2};
+  enemy.noiseTime=AI_TUNING.noiseMemorySeconds;
+  enemy.mode='investigate-noise';enemy.searchPause=0;
+  enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
+  return true;
 }
 export function alertEnemy(enemy,player){
   if(!enemy.active)return enemy;
@@ -76,6 +95,7 @@ export function alertEnemy(enemy,player){
   enemy.mode='chase';enemy.searchLeft=0;enemy.spotted=true;
   enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+  enemy.noiseTarget=null;enemy.noiseTime=0;
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
   return enemy;
 }
@@ -86,6 +106,7 @@ export function resetEnemyBrain(enemy){
   enemy.moving=false;enemy.active=true;enemy.distanceToPlayer=Infinity;
   enemy.retaliationTime=0;enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+  enemy.noiseTarget=null;enemy.noiseTime=0;
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
   return enemy;
 }
@@ -169,6 +190,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   if(!enabled){enemy.moving=false;return enemy;}
   const area=options.area||AI_TUNING.area;
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
+  enemy.noiseTime=Math.max(0,(enemy.noiseTime||0)-step);
   const seen=options.playerInArena!==false&&
     (typeof options.targetVisible==='boolean'?options.targetVisible:
       hasSight(enemy,player,obstacles));
@@ -181,15 +203,20 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     enemy.lastSeen=copy(player);enemy.memory=AI_TUNING.lastSeenSeconds;
     enemy.searchLeft=0;enemy.mode='chase';
     enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
+    enemy.noiseTarget=null;enemy.noiseTime=0;
   }else if(enemy.memory>0){
     enemy.memory=Math.max(0,enemy.memory-step);
     enemy.mode='investigate';
+  }else if(enemy.noiseTime>0&&enemy.noiseTarget){
+    enemy.mode='investigate-noise';
+  }else if(enemy.mode==='investigate-noise'){
+    enemy.mode='patrol';enemy.noiseTarget=null;enemy.routeGoal=null;enemy.route=[];
   }else if(enemy.mode==='chase'||enemy.mode==='investigate'){
     enemy.mode='search';enemy.searchLeft=AI_TUNING.searchSeconds;
   }
   // When vision is broken, turn toward the last confirmed position.
   // Memory must never grant perfect knowledge of the moving player's location.
-  const knownTarget=seen?player:(enemy.lastSeen||enemy.spawn);
+  const knownTarget=seen?player:(enemy.lastSeen||enemy.noiseTarget||enemy.spawn);
   // Tactical holds and cover goals are ONLY valid with confirmed sight.
   // Otherwise the investigation/search path must take over locomotion.
   if(options.combatHold&&seen){
@@ -207,6 +234,15 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     if(enemy.distanceToPlayer>AI_TUNING.stopDistance)
       moveToward(enemy,player,AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
     else{enemy.moving=false;facePoint(enemy,player,step);}
+  }else if(enemy.mode==='investigate-noise'&&enemy.noiseTarget){
+    const approximate=enemy.noiseTarget;
+    if(distance(enemy.x,enemy.z,approximate.x,approximate.z)>.85)
+      navigateAroundCover(enemy,approximate,AI_TUNING.chaseSpeed*.74,
+        step,obstacles,area,AI_TUNING);
+    else{
+      enemy.moving=false;
+      enemy.yaw+=step*.85; // scan the origin, not the hidden player's position
+    }
   }else if(!seen&&enemy.lastSeen&&options.lostContactOrder?.type==='watch'){
     // One squad member can briefly guard the last observed angle, but the
     // guard expires and does not know where the hidden target moved.

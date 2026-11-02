@@ -147,6 +147,20 @@ export class WeaponAudio {
     this._tone(t+d*.88,1250,610,.08,.08,'square');
     this._noiseBurst(t+d*.90,.06,.055,1100,6100);
   }
+  footstep(heavy=false) {
+    // Frame-driven steps use an already unlocked context; do not try to
+    // create or resume audio outside an actual user gesture.
+    if(!this.ready)return;
+    const t=this.context.currentTime+.006;
+    if(heavy){
+      this._noiseBurst(t,.19,.078,48,540);
+      this._tone(t,75,38,.20,.14,'triangle');
+      this._tone(t+.037,340,98,.075,.036,'sine');
+    }else{
+      this._noiseBurst(t,.085,.035,180,1700);
+      this._tone(t,175,82,.095,.028,'triangle');
+    }
+  }
   dryFire() {
     if (!this.unlock()) return;
     const t = this.context.currentTime + .005;

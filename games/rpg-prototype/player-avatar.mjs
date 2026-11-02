@@ -430,14 +430,21 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   // never a collider or a raycast target; hit detection stays authoritative.
   root.traverse(child=>{if(child.isMesh)child.userData.playerCosmetic=true;});
   const animation=createCharacterAnimation();
+  let previousYaw=null;
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
-    reloadStyle=null,boardingPose=null}){
-    const pose=stepCharacterAnimation(animation,dt,{
-      speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit,bracing
-    });
+    reloadStyle=null,boardingPose=null,turnRate=null}){
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
+    const deltaYaw=previousYaw===null?0:
+      Math.atan2(Math.sin(yaw-previousYaw),Math.cos(yaw-previousYaw));
+    const actualTurn=Number.isFinite(turnRate)?turnRate:
+      step>0?deltaYaw/step:0;
+    previousYaw=yaw;
+    const pose=stepCharacterAnimation(animation,dt,{
+      speed,sprinting,crouched,aiming,alive,airborne,reloading,recoil,hit,bracing,
+      turnRate:actualTurn
+    });
     const crouchBlend=pose.crouch,aimBlend=pose.aim,deathBlend=pose.death;
     const stride=pose.stride,move=pose.move;
     const roundsReload=['iron-revolver','scrap-shotgun','hunting-rifle'].includes(
@@ -449,13 +456,18 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     root.rotation.z=lerp(root.rotation.z,
       (plainSurvivor?deathBlend*1.18:0)+pose.hit*.14,
       1-Math.exp(-9*step));
-    pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint;
+    pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint+
+      pose.startLean*.055;
+    pelvis.rotation.z=-pose.turn*.045;
     torso.rotation.x=.30*crouchBlend+.055*pose.sprint+
-      .017*Math.sin(pose.phase*.7)-pose.hit*.13+pose.recoil*.055+pose.brace*.07;
-    torso.rotation.z=Math.sin(pose.phase)*.025*move+pose.hit*.12;
+      pose.breath*.7+pose.startLean*.09-
+      pose.hit*.13+pose.recoil*.055+pose.brace*.07;
+    torso.rotation.z=Math.sin(pose.phase)*.025*move+pose.hit*.12-
+      pose.turn*.09;
     torso.rotation.y=Math.sin(pose.phase*.5)*.018*move;
-    head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+pose.hit*.10;
-    head.rotation.z=-pose.hit*.10;
+    head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+
+      pose.hit*.10+pose.breath*.42;
+    head.rotation.z=-pose.hit*.10+pose.turn*.06;
     for(let i=0;i<2;i++){
       const leg=legs[i],arm=arms[i],sign=i===0?1:-1;
       leg.hip.rotation.x=sign*stride+.69*crouchBlend+
@@ -463,7 +475,11 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       leg.knee.rotation.x=Math.max(0,-sign*Math.sin(pose.phase))*.46*move-
         1.03*crouchBlend+.53*pose.jump+.18*pose.land;
       leg.foot.rotation.x=-.24*leg.knee.rotation.x-.18*crouchBlend-
-        .20*pose.land;
+        .20*pose.land+Math.max(0,-sign*Math.sin(pose.phase))*.12*move;
+      // Toe lift happens on the forward swing, while the opposite foot
+      // remains planted. Feet never move the authoritative collision body.
+      leg.foot.position.y=-.25+
+        Math.max(0,sign*Math.sin(pose.phase))*.045*move*(1-crouchBlend);
       arm.shoulder.rotation.x=-sign*stride*.72-(.87+.08*sign)*aimBlend-
         .42*pose.sprint+pose.reload*(i===0?(roundsReload ? -.95 : -.65):
           (roundsReload ? .06 : .24))+
@@ -473,6 +489,8 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       arm.elbow.rotation.x=-.18-.64*aimBlend-
         pose.reload*(i===0?(roundsReload ? .94 : .70):.32);
       arm.elbow.rotation.z=sign*(.18*aimBlend+.28*pose.reload);
+      arm.hand.rotation.x=.10*pose.reload+.08*pose.recoil;
+      arm.hand.rotation.z=sign*.08*pose.brace;
       if(boardingPose){
         // Frame-local rear-hatch walk. Drive real hip/knee/ankle and
         // shoulder/elbow joints from distance traveled, with grounded toes.
@@ -482,6 +500,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         leg.hip.rotation.x=wave*.36*motion+brace*.12;
         leg.knee.rotation.x=Math.max(0,wave)*.54*motion+brace*.16;
         leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
+        leg.foot.position.y=-.25+Math.max(0,wave)*.035*motion;
         arm.shoulder.rotation.x=-wave*.22*motion-.68*brace;
         arm.shoulder.rotation.z=-sign*(.10+.22*brace);
         arm.elbow.rotation.x=-.19-.72*brace;

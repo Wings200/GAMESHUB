@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {projectileNearMiss} from '../combat-suppression.mjs';
+import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
   initialCampaignState,safeCampaignSnapshot,startCampaignQuest,
   advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal
@@ -25,7 +26,8 @@ import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visua
 import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
-import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
+import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
+  resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
   chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs';
@@ -238,6 +240,7 @@ function mat(color,roughness=.9){return new THREE.MeshStandardMaterial({color,ro
 const concrete=mat(0x26353d), floorPaint=mat(0x516a74), pale=mat(0xe7c588), dark=mat(0x13242e), orange=mat(0xc1784f), blue=mat(0x468fa8), green=mat(0x6b9b77);
 const worldGeometry=[];
 const targetMeshes=[];
+const impactEffects=createImpactEffects(scene,THREE);
 function box(x,y,z,w,h,d,material,receive=true){
   const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
   o.position.set(x,y,z);
@@ -2297,6 +2300,56 @@ function buildArsenalView(spec){
     if(side===1&& !revolver)box(.014,.055,.12,black,.108,.087,-.035);
     if(rifle||smg)box(.016,.028,.18,oxide,side*.109,-.01,-.16);
   }
+  // W19.1: salvaged receivers, seams and mismatched fittings. Each
+  // firearm has unique side furniture, without blocking calibrated ADS.
+  const chip=mat(0xa18b71,.81),tape=mat(0x50584b,.94),
+    copper=mat(0x9e6847,.53);
+  for(const side of [-1,1]){
+    const panel=box(.014,.12,rifle?.34:.22,
+      side<0?oxide:base,side*.117,.013,-.15);
+    panel.rotation.z=side*.045;
+    for(let n=0;n<4;n++){
+      const pin=part(new THREE.SphereGeometry(.011,7,6),chip,
+        side*.129,.064-n*.030,-.26+(n%2)*.17);
+      pin.userData.gunDetail=true;
+    }
+    const wristBand=box(.018,.05,.18,tape,
+      side*(rifle?.122:.105),-.056,-.34);
+    wristBand.rotation.y=side*.06;
+  }
+  if(smg){
+    for(let i=0;i<5;i++){
+      const coil=part(new THREE.TorusGeometry(.048,.007,5,16),
+        copper,0,.048,-.49+i*.053);
+      coil.userData.gunDetail=true;
+    }
+    box(.028,.12,.16,chip,.135,.043,-.15).rotation.z=-.17;
+  }else if(shotgun){
+    for(let i=0;i<3;i++){
+      const shell=cylinder(.018,.088,i===1?copper:rust,0,-.03,.21+i*.07);
+      shell.rotation.z=.12;
+    }
+    box(.23,.028,.12,tape,0,.075,-.38);
+  }else if(scoped){
+    for(let i=0;i<3;i++){
+      box(.017,.025,.18,copper,.124,-.005,-.28-i*.09);
+      box(.018,.014,.15,tape,-.12,.050,-.34-i*.065);
+    }
+    box(.048,.045,.21,chip,-.135,.04,.11).rotation.z=-.18;
+  }else if(spec.kind==='carbine'){
+    for(let z=-.52;z<-.27;z+=.059){
+      box(.255,.018,.017,copper,0,-.002,z);
+    }
+    box(.024,.16,.20,oxide,.137,.025,-.09);
+    box(.020,.13,.23,tape,-.143,.020,-.12);
+  }else if(revolver){
+    for(const sign of [-1,1]){
+      box(.018,.14,.17,walnut,sign*.077,-.20,.13);
+      for(let j=0;j<3;j++)
+        part(new THREE.SphereGeometry(.009,7,6),chip,
+          sign*.092,-.25+j*.04,.20);
+    }
+  }
   const slideGroup=new THREE.Group();root.add(slideGroup);
   if(!revolver)box(.12,.022,.095,trim,0,.124,-.055,slideGroup);
   // Actual optic centres have the exact calibrated y from SIGHT_MOUNTS.
@@ -2452,6 +2505,43 @@ function buildArsenalView(spec){
     primer.rotation.x=Math.PI/2;
   }
   reloadAction.visible=false;
+  // The camera's arms are now articulated meshes attached to the actual
+  // weapon, with wrists and separated fingers. The support arm pulls away
+  // during a reload instead of leaving a third floating hand on the gun.
+  const sleeve=mat(0x526052,.95),gloveRubber=mat(0x242e30,.91),
+    gloveSeam=mat(0x7c806e,.79);
+  function forearm(parent,a,b,r=.092){
+    const delta=new THREE.Vector3(...b).sub(new THREE.Vector3(...a));
+    const mid=new THREE.Vector3(...a).addScaledVector(delta,.5);
+    const partMesh=part(new THREE.CylinderGeometry(r*.83,r,delta.length(),10),
+      sleeve,mid.x,mid.y,mid.z,parent);
+    partMesh.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0,1,0),delta.normalize());
+    return partMesh;
+  }
+  function gauntlet(parent,x,y,z,side){
+    part(new THREE.SphereGeometry(.105,10,8),gloveRubber,
+      x,y,z,parent);
+    const cuff=box(.19,.105,.18,sleeve,x,y-.11,z+.055,parent);
+    cuff.rotation.x=-.24;
+    for(let f=0;f<4;f++){
+      const finger=part(new THREE.CapsuleGeometry(.024,.12,3,6),
+        gloveRubber,x+(f-1.5)*.042,y-.11,z-.067,parent);
+      finger.rotation.x=-.43;
+    }
+    box(.22,.023,.09,gloveSeam,x,y+.04,z-.034,parent);
+    const thumb=part(new THREE.CapsuleGeometry(.030,.093,3,6),
+      gloveRubber,x+side*.09,y-.065,z-.013,parent);
+    thumb.rotation.z=side*.55;
+  }
+  const gripHand=new THREE.Group();root.add(gripHand);
+  forearm(gripHand,[.32,-.67,.46],[.17,-.29,.16],.105);
+  gauntlet(gripHand,.13,-.24,.135,-1);
+  const supportHand=new THREE.Group();root.add(supportHand);
+  const supportZ=shotgun?-.39:scoped?-.46:smg?-.25:revolver?-.15:-.38;
+  forearm(supportHand,[-.34,-.64,.18],[-.19,-.20,supportZ],.10);
+  gauntlet(supportHand,-.15,-.15,supportZ,-1);
+  supportHand.visible=true;
   const muzzleGlow=new THREE.PointLight(0xffa55a,0,2,2);
   muzzleGlow.position.set(0,boreY,barrelEnd-.02);root.add(muzzleGlow);
   const modelFlare=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),
@@ -2464,7 +2554,7 @@ function buildArsenalView(spec){
     muzzleGlow,muzzleFlare:modelFlare,magBaseY,magFootY,
     flashScale:shotgun?1.65:scoped?1.25:1,
     defaultX:rifle?.23:.34,reloadAction,pumpGrip,cylinderBody,
-    cylinderYoke,cylinderSpinGroup,boltHandle,
+    cylinderYoke,cylinderSpinGroup,boltHandle,gripHand,supportHand,
     ejectionLocal:new THREE.Vector3(revolver?.11:.14,.08,-.08),
     sightLocal:new THREE.Vector3(mount.x,mount.y,mount.z)};
 }
@@ -2488,6 +2578,7 @@ function changeAim(enabled){
 let lastShotDebug=null;
 let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
+let groundedStepProgress=0;
 function selectWeapon(id){
   const spec=getWeaponSpec(id);
   if(id===activeWeaponId)return;
@@ -2642,6 +2733,11 @@ function shoot(){
     weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
   sound.gunshot(activeSpec.kind||'pistol');
+  // Hearing is not sight: unalerted guards investigate the last shot with
+  // positional uncertainty, and never aim at a hidden moving player.
+  for(const enemy of enemies.values())
+    if(enemy.state.alive)
+      hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
   recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
   slideCycle=activeSpec.kind==='shotgun'?.48:
@@ -2700,6 +2796,8 @@ function shoot(){
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
+    impactEffects.spawn(first.point,
+      first.object.userData.enemyId?'flesh':impactMaterial);
     const isPaper=impactMaterial==='paper';
     markBulletHole(first,isPaper,
       !!(first.object.userData.dummyId||first.object.userData.enemyId));
@@ -2910,6 +3008,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       roundVisible:visual.reloadAction?.visible||false,
       boltOffset:visual.boltHandle?.position.z||0,
       pumpOffset:visual.pumpGrip?.position.z||0,
+      supportArmPieces:visual.supportHand?.children.length||0,
+      supportHandVisible:visual.supportHand?.visible??null,
       state:reloadPoseForWeapon(activeWeaponId,
         weaponState.reloadRemaining,activeSpec.reloadSeconds)};
   };
@@ -3100,7 +3200,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
   };
   window.__rpgSmokeState=()=>({
     stationIndex,arenaActive:inAIArena(),locked:controls.isLocked,
-    worldArt:wastelandArt.metrics,
+    worldArt:wastelandArt.metrics,impactEffects:impactEffects.metrics,
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
     weapon:{id:activeSpec.id,magazine:weaponState.magazine,
       reserve:weaponState.reserve,reloadRemaining:weaponState.reloadRemaining,
@@ -3571,6 +3671,7 @@ function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
   wastelandArt.update(dt);
+  impactEffects.update(dt);
   let ammoSpentOnReload=false;
   for(const spec of ARSENAL){
     const state=arsenalStates[spec.id],before=state.reserve;
@@ -3612,6 +3713,10 @@ function frame(){
   visual.magazine.visible=detachable&&handling.magazineVisible;
   visual.magazineBase.visible=detachable&&handling.magazineVisible;
   visual.reloadHand.visible=handling.handVisible;
+  if(visual.supportHand){
+    visual.supportHand.visible=!handling.handVisible;
+    visual.supportHand.rotation.z=Math.sin(handlingTime*2.1)*.009;
+  }
   visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
   if(visual.pumpGrip)
     visual.pumpGrip.position.z=-.34+cycling*1.5+handling.pumpOffset;
@@ -3740,6 +3845,14 @@ function frame(){
         staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier,
         allowSprint:mobility.canSprint});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
+    if(info.speed>.55&&!info.airborne){
+      groundedStepProgress+=info.speed*dt;
+      const strideLength=powerArmorState.occupied?1.05:info.sprinting?.91:.70;
+      if(groundedStepProgress>=strideLength){
+        groundedStepProgress%=strideLength;
+        sound.footstep(powerArmorState.occupied);
+      }
+    }else groundedStepProgress=Math.min(.20,groundedStepProgress);
     const core=stepFusionCore(powerArmorState,dt,
       {moving:info.speed>.2,sprinting:info.sprinting});
     if(core.drained>0&&poweredArmorTime-lastFusionSave>3){

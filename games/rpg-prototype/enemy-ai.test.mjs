@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AI_TUNING,createEnemyBrain,alertEnemy,resetEnemyBrain,hasSight,
-  lineIntersectsBox,stepEnemyBrain} from './enemy-ai.mjs';
+  lineIntersectsBox,stepEnemyBrain,hearEnemyGunshot} from './enemy-ai.mjs';
 const bot=(x=45,z=40)=>createEnemyBrain({
   x,z,yaw:-Math.PI/2,patrol:[{x:44,z:40},{x:53,z:40}]
 });
@@ -136,4 +136,33 @@ test('W09.9 NPC searches corners for 30 to 60 seconds after losing sight',()=>{
   for(let i=0;i<80;i++)stepEnemyBrain(e,hidden,.05,[],{playerInArena:false});
   assert.equal(e.mode,'patrol','NPC relaxes only after the alert window');
   assert.equal(e.lastSeen,null);
+});
+
+test('W19 enemies hear nearby gunfire without cheating on hidden player position',()=>{
+  const e=bot(45,40);
+  e.yaw=Math.PI/2; // looking away
+  assert.equal(hearEnemyGunshot(e,{x:36,z:40},[],()=>.5),true);
+  assert.deepEqual(e.noiseTarget,{x:36,z:40});
+  assert.equal(e.lastSeen,null);
+  assert.equal(e.mode,'investigate-noise');
+  const start=e.x;
+  for(let i=0;i<60;i++)
+    stepEnemyBrain(e,{x:58,z:49},.05,[],{playerInArena:false,
+      area:AI_TUNING.navigationArea});
+  assert.ok(e.x<start-1,'Sound leads to a physical investigation');
+  assert.equal(e.lastSeen,null,'Noise never creates a visual sighting');
+  for(let i=0;i<220;i++)
+    stepEnemyBrain(e,{x:58,z:49},.05,[],{playerInArena:false,
+      area:AI_TUNING.navigationArea});
+  assert.equal(e.mode,'patrol','Unconfirmed sound eventually expires');
+});
+test('Solid walls reduce hearing distance and active sightings remain authoritative',()=>{
+  const wall={minX:38,maxX:40,minZ:30,maxZ:50,height:2.8};
+  const e=bot(45,40);
+  assert.equal(hearEnemyGunshot(e,{x:13,z:40},[wall],()=>.5),false);
+  assert.equal(hearEnemyGunshot(e,{x:18,z:40},[],()=>.5),true);
+  assert.ok(e.noiseTarget);
+  alertEnemy(e,{x:36,z:40});
+  assert.equal(hearEnemyGunshot(e,{x:18,z:40},[],()=>.5),false);
+  assert.equal(e.noiseTarget,null);
 });

@@ -73,6 +73,7 @@ try{
   assert.equal(state.worldArt.shacks,7,'W19 must instantiate scrap-built houses');
   assert.equal(state.worldArt.wrecks,3,'W19 must instantiate real 3D road wrecks');
   assert.equal(state.worldArt.radioMasts,2);
+  assert.equal(state.impactEffects.capacity,190);
   assert.ok(state.worldArt.groundInstances>=250);
   // W13.0: the field HUD replaces the old debug wall by default.
   assert.equal(state.hud.mode,'field');
@@ -799,6 +800,8 @@ try{
   assert.equal(reloadChecks['scrap-shotgun'].roundVisible,true);
   assert.equal(reloadChecks['hunting-rifle'].magazineVisible,false);
   assert.ok(reloadChecks['hunting-rifle'].boltOffset>-.03);
+  assert.ok(reloadChecks['service-carbine'].supportArmPieces>=7);
+  assert.equal(reloadChecks['service-carbine'].supportHandVisible,false);
   // W18: launch and complete the first story quest through the ACTUAL
   // journal, physical contact interaction and dialogue choice UI.
   const freshCampaign=await page.evaluate(()=>window.__rpgSmokeState().campaign);

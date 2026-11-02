@@ -5,7 +5,8 @@ const toward=(current,target,rate,dt)=>current+(target-current)*(1-Math.exp(-rat
 export function createCharacterAnimation(){
   return {phase:0,move:0,sprint:0,crouch:0,aim:0,death:0,
     jump:0,land:0,brace:0,reload:0,reloadClock:0,recoil:0,hit:0,
-    wasAirborne:false,stride:0,bob:0,pose:'idle'};
+    wasAirborne:false,stride:0,bob:0,breath:0,turn:0,footLift:0,
+    startLean:0,previousSpeed:0,elapsed:0,pose:'idle'};
 }
 export function stepCharacterAnimation(state,dt,action={}){
   const t=clamp(Number.isFinite(dt)?dt:0,0,.05);
@@ -23,8 +24,21 @@ export function stepCharacterAnimation(state,dt,action={}){
   state.wasAirborne=airborne;
   state.jump=toward(state.jump,airborne?1:0,11,t);
   state.land=Math.max(0,state.land-t*3.9);
+  // Independently blended body language. The feet do not instantly snap
+  // into a sprint when a key is pressed, and a quick pivot plants one foot.
+  const speedDelta=t>0?(speed-state.previousSpeed)/Math.max(t,.012):0;
+  state.startLean=toward(state.startLean,
+    clamp(speedDelta/20,-1,1)*state.move,7,t);
+  state.previousSpeed=speed;
+  state.turn=toward(state.turn,
+    clamp(Number.isFinite(action.turnRate)?action.turnRate/4.5:0,-1,1),10,t);
+  state.elapsed+=t;
+  state.breath=Math.sin(state.elapsed*2.15)*(.006+.009*(1-state.move))*
+    (1-state.death);
   state.phase+=t*(4.3+Math.min(speed,7)*1.1)*state.move;
   state.stride=Math.sin(state.phase)*(.43+.34*state.sprint)*state.move;
+  state.footLift=Math.max(0,Math.sin(state.phase))*.076*state.move*
+    (1-.65*state.crouch);
   state.bob=Math.abs(Math.sin(state.phase))*.024*state.move*
     (1-.55*state.crouch)-.085*state.land;
   const reloading=!!action.reloading&&alive;

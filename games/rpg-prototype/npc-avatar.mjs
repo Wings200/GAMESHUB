@@ -131,6 +131,7 @@ export function createNpcAvatar(parent,kind){
   gun.add(flash);
   let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
   let lastArmor={};
+  let previousBodyYaw=null;
   function setArmor(loadout={}){
     lastArmor={...loadout};
     avatar.setArmor(npcCosmeticArmor(loadout));
@@ -139,6 +140,11 @@ export function createNpcAvatar(parent,kind){
     reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
+    const parentYaw=parent.rotation.y;
+    const yawDelta=previousBodyYaw===null?0:
+      Math.atan2(Math.sin(parentYaw-previousBodyYaw),
+        Math.cos(parentYaw-previousBodyYaw));
+    previousBodyYaw=parentYaw;
     if(reloading&&!wasReloading)reloadClock=0;
     wasReloading=reloading;
     reloadClock=reloading?Math.min(4.5,reloadClock+step):0;
@@ -152,12 +158,14 @@ export function createNpcAvatar(parent,kind){
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
       crouched,aiming,alive,pitch:0,reloading,reloadProgress:reloadStage,
-      recoil:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon});
+      recoil:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon,
+      turnRate:step>0?yawDelta/step:0});
     // The NPC uses the same firearm-specific action stages as the player.
     // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
     mount.rotation.x=aiming?-.15:.11;
     mount.rotation.z=hitBlend*.12;
-    gun.rotation.x=action.tilt+recoilBlend*.15;
+    gun.rotation.x=action.tilt+recoilBlend*.15-hitBlend*.08;
+    gun.rotation.y=Math.sin(time*3.1)*.009+hitBlend*.09;
     gun.rotation.z=reloading?.08*Math.sin(Math.PI*reloadStage):
       Math.sin(time*2.8)*.012;
     gun.position.z=-.04+recoilBlend*.07;
