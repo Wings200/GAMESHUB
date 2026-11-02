@@ -828,8 +828,12 @@ function createEnemy(spec){
   const darkCloth=enemyMaterial(0x29353b);
   function part(parent,geometry,material,x,y,z,slot,armored=false){
     const mesh=new THREE.Mesh(geometry,material.clone());
-    mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
-    mesh.userData={enemyId:spec.id,hitZone:slot,
+    mesh.position.set(x,y,z);
+    // This is a physics-only hitbox, never a second renderable body.
+    // The player raycaster intersects these directly even when hidden.
+    mesh.visible=false;mesh.castShadow=false;mesh.receiveShadow=false;
+    mesh.material.visible=false;mesh.material.colorWrite=false;
+    mesh.userData={enemyId:spec.id,hitZone:slot,equipped:true,
       impactMaterial:armored?'metal':'wood'};
     parent.add(mesh);enemy.meshes.push(mesh);enemyHitMeshes.push(mesh);
     return mesh;
@@ -892,13 +896,12 @@ function createEnemy(spec){
   scene.add(labelMesh);
   enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
   enemies.set(spec.id,enemy);
-  // The visible character is an authored, pixel-textured model. Keep ALL
-  // six existing collision meshes for authoritative body-part raycasts, but
-  // hide their primitive geometry so players never see the old mannequin.
+  // ONE visible character. Primitive body and armor meshes remain physics-only
+  // and cannot render, including after reset or a changed armor loadout.
   enemy.rigged=createNpcAvatar(root,spec.id);
   equipEnemyWeapon(enemy.tactics,chooseEnemyWeapon(spec.id,0).id);
   enemy.rigged.setWeapon(enemy.tactics.weaponId);
-  for(const hitbox of enemy.meshes)hitbox.material.visible=false;
+  for(const hitbox of enemy.meshes)hitbox.visible=false;
   enemy.rifleVisual.visible=false;
   refreshEnemyArmorVisuals(enemy);
   refreshEnemyLabel(enemy,'PATROL');
@@ -910,13 +913,16 @@ function refreshEnemyArmorVisuals(enemy){
   for(const slot of ARMOR_SLOTS){
     const mesh=enemy.armorMeshes.get(slot);
     const piece=getArmorPiece(slot,enemy.state.loadout[slot]);
-    mesh.visible=piece.points>0;
+    // The old armor hitbox is never visible. Equipment determines whether
+    // it participates in hit detection; cosmetic armor is on enemy.rigged.
+    mesh.userData.equipped=piece.points>0;
+    mesh.visible=false;
     if(piece.points)mesh.material.color.setHex(piece.color);
   }
 }
 function refreshEnemyLabel(enemy,mode){
   const t=enemy.tactics;
-  const magazine=t.magazine+'/'+ENEMY_PROFILES[t.kind].magazine;
+  const magazine=t.magazine+'/'+(getEnemyWeapon(t.weaponId)?.magazine||ENEMY_PROFILES[t.kind].magazine);
   const gunName=getEnemyWeapon(t.weaponId)?.name||t.kind;
   const loading=t.reloadRemaining>0?'RELOADING '+t.reloadRemaining.toFixed(1)+'s':
     magazine+' · '+gunName.toUpperCase();
@@ -2155,7 +2161,9 @@ function shoot(){
   const livingParts=dummyHitMeshes.filter(mesh=>dummies.get(mesh.userData.dummyId).state.alive);
   // NEVER remove enemy hitboxes based on a stale station selection.
   // The old condition made enemies invulnerable when approaching on foot.
-  const enemyParts=enemyHitMeshes.filter(mesh=>mesh.visible&&
+  // Intentionally raycast explicit invisible collision meshes. Their visibility
+  // is not a gameplay or armor state and cannot turn old mannequin limbs on.
+  const enemyParts=enemyHitMeshes.filter(mesh=>mesh.userData.equipped!==false&&
     shouldRaycastEnemy(enemies.get(mesh.userData.enemyId)));
   const hits=firingRaycaster.intersectObjects(
     [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
@@ -2526,9 +2534,16 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       modelHeight:e.rigged?.metrics.height??null,
       modelRepairs:e.rigged?.metrics.repairs??0,
       originalVisual:e.rigged?.state??null,
-      armorVisible:Object.fromEntries([...e.armorMeshes].map(([slot,mesh])=>[slot,mesh.visible])),
+      // Report the ACTUAL visible cosmetic armor, never ghost hitboxes.
+      armorVisible:Object.fromEntries(ARMOR_SLOTS.map(slot=>
+        [slot,(e.rigged?.state?.armorPieces?.[slot]||0)>0])),
+      legacyRenderMeshes:e.meshes.filter(m=>m.visible||
+        m.material.visible||m.castShadow).length,
+      avatarRoots:e.root.children.filter(child=>child===e.rigged?.root).length,
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
       weaponId:e.tactics.weaponId,burstCount:e.tactics.burstCount,
+      weaponRpm:getEnemyWeapon(e.tactics.weaponId)?.rpm||null,
+      fireCooldown:e.tactics.cooldown,
        modelStatus:e.modelStatus,
       crouching:e.tactics.crouching,pace:e.tactics.pace,
       decision:e.tactics.decisionReason,
