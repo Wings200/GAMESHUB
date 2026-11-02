@@ -2907,6 +2907,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     camera.position.copy(viewpoint);camera.lookAt(aim);
     player.x=viewpoint.x;player.z=viewpoint.z;
     $('menu').classList.add('hidden');
+    window.__rpgSmokeHideWeapon=true;
     return true;
   };
   window.__rpgSmokeCompletePowerTransition=()=>{
@@ -3499,7 +3500,7 @@ function frame(){
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=id===activeWeaponId&&!thirdPersonActive&&
-      powerArmorState.phase==='idle';
+      powerArmorState.phase==='idle'&&!window.__rpgSmokeHideWeapon;
   if(thirdPersonActive){
     controls.getDirection(viewHeading);
     viewHeading.y=0;

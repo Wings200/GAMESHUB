@@ -263,22 +263,37 @@ export function buildPowerArmorVisual(scene,position,state){
     forged(root,.16,.12,.23,brass,side*.24,1.19,-.13,.035);
   }
 
-  // Chest armor remains mounted at the FRONT while the back opens for entry.
+  // Split breastplates: exposed centre sternum and rib gaps make even a
+  // fully fitted suit read as an exoskeleton, never a huge rectangular box.
   const chestMounts={left:makeGroup(root,-.68,1.93,.33),
     right:makeGroup(root,.68,1.93,.33)};
   for(const [side,key] of [[-1,'left'],[1,'right']]){
-    const door=chestMounts[key];
-    const cx=-side*.33;
-    modulePart('chest',forged(door,.67,1.01,.19,steel,cx,0,.055,.17));
-    plate('chest',door,.67,.85,.115,cx,.06,.18,.16);
-    modulePart('chest',forged(door,.51,.18,.16,shaded,cx,-.34,.23,.06));
-    // Upper and lower reinforcement ribs cross the chest without becoming
-    // an uninterrupted square slab.
-    modulePart('chest',forged(door,.39,.12,.08,edge,cx,.33,.265,.045));
-    modulePart('chest',box(door,.065,.55,.041,joint,cx+side*.16,-.01,.276));
-    modulePart('chest',forged(door,.21,.16,.065,orange,cx,-.17,.282,.04));
-    for(const y of [-.39,.38])modulePart('chest',bolt(door,cx+side*.18,y,.29));
-    cyl(door,.047,.047,1.07,brass,-side*.02,0,-.08);
+    const carrier=chestMounts[key],cx=-side*.33;
+    // A curved clavicle cap and under-rib skirt ride on separate rails.
+    const clavicle=modulePart('chest',forged(carrier,.48,.19,.16,
+      steel,cx+side*.025,.43,.06,.075));
+    clavicle.rotation.z=side*.12;
+    const upper=plate('chest',carrier,.47,.34,.105,
+      cx+side*.025,.205,.17,.11);
+    upper.rotation.z=side*.17;
+    const lower=plate('chest',carrier,.36,.31,.10,
+      cx+side*.02,-.22,.21,.095);
+    lower.rotation.z=-side*.13;
+    const skirt=modulePart('chest',forged(carrier,.36,.12,.11,
+      shaded,cx+side*.02,-.44,.16,.05));
+    skirt.rotation.z=-side*.09;
+    // Reinforced lateral edge; no broad backing slab blocks the pilot cage.
+    const rail=modulePart('chest',forged(carrier,.105,.71,.12,
+      edge,cx+side*.24,0,.02,.04));
+    rail.rotation.z=side*.14;
+    modulePart('chest',forged(carrier,.20,.14,.10,orange,
+      cx-side*.035,-.015,.19,.055));
+    for(const y of [-.35,.34]){
+      modulePart('chest',bolt(carrier,cx+side*.16,y,.26));
+      modulePart('chest',ball(carrier,.041,brass,cx-side*.13,y,.24));
+    }
+    // This carrier spindle is permanent even with the armor removed.
+    rod(carrier,[0,-.49,-.13],[0,.49,-.13],.045,brass);
   }
   // Swinging rear-cage halves and red hinges are part of the bare frame.
   const doors={left:makeGroup(root,-.50,1.89,-.43),
@@ -382,7 +397,7 @@ export function buildPowerArmorVisual(scene,position,state){
     }
     forged(shoulder,.23,.41,.17,shaded,side*.22,-.34,-.08,.065);
     modulePart(armName,ellipsoid(shoulder,.42,.30,.37,steel,side*.05,-.12,0));
-    plate(armName,shoulder,.66,.35,.34,side*.07,-.15,.29,.13);
+    plate(armName,shoulder,.56,.29,.25,side*.07,-.15,.28,.11);
     modulePart(armName,forged(shoulder,.28,.38,.28,shaded,side*.04,-.39,.11,.08));
 
     const elbow=makeGroup(shoulder,side*.065,-.68,.025);
