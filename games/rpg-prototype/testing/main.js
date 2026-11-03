@@ -379,7 +379,16 @@ for(const node of CAMPAIGN_NODES){
   }
 }
 const havenPowerLamp=new THREE.PointLight(0xffdb91,0,9,2);
-havenPowerLamp.position.set(-39,2.7,-40);scene.add(havenPowerLamp);
+havenPowerLamp.position.set(-25,2.7,-16);scene.add(havenPowerLamp);
+const havenStreetLamp=new THREE.PointLight(0xffce8d,0,8,2);
+havenStreetLamp.position.set(-38,3.1,-18);scene.add(havenStreetLamp);
+const liveCable=new THREE.MeshStandardMaterial({color:0x493c34,metalness:.3,
+  roughness:.86,emissive:0xf8b25f,emissiveIntensity:0});
+const powerPath=new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-25,2.25,-16),new THREE.Vector3(-30,3.4,-16.2),
+  new THREE.Vector3(-34,3.25,-17.0),new THREE.Vector3(-38,2.8,-18)]);
+const powerCable=new THREE.Mesh(new THREE.TubeGeometry(powerPath,24,.038,6,false),liveCable);
+scene.add(powerCable);
 markLane(-25,pale);
 for(let x=-47;x<55;x+=5){
   box(x,.065,-25,.14,.13,4,floorPaint);
@@ -3422,7 +3431,14 @@ function refreshCampaignUI(){
   const powered=campaignState.quests['haven-first-light']?.status==='completed';
   const cleanWater=campaignState.quests['water-debt']?.status==='completed';
   havenPowerLamp.intensity=powered?(qualityHigh?2.3:.9):0;
+  havenStreetLamp.intensity=powered?(qualityHigh?1.6:.6):0;
+  liveCable.emissiveIntensity=powered?.68:0;
+  const relayOutcome=campaignState.quests['dead-signals']?.outcome;
   for(const marker of campaignMarkers){
+    if(marker.id==='relay'&&relayOutcome){
+      const c=relayOutcome==='dominion'?0x83bbff:0x8be9b1;
+      marker.indicator.color.setHex(c);marker.indicator.emissive.setHex(c);
+    }
     marker.indicator.emissiveIntensity=marker.id==='generator'&&powered?1.65:
       marker.id==='pump'&&cleanWater?1.3:.48;
   }
@@ -3477,11 +3493,32 @@ function openCampaignJournal(){
   $('menu').classList.add('hidden');refreshCampaignUI();
   if(controls.isLocked)controls.unlock();
 }
+function campaignConversationText(node){
+  const q=id=>campaignState.quests[id];
+  if(node.id==='foreman'){
+    const quest=q('haven-first-light');
+    if(quest?.status==='completed')return quest.outcome==='settlers'?
+      'The school lights came back on first. We finally own something that no army can switch off. You gave this place a future.':
+      'We have electricity, but Dominion guards now hold the keys. I hope their protection is worth what we signed away.';
+    if(quest?.stage===3)return 'The crew made it. The junction is stable. Now the Dominion is offering guards if they get permanent control. The settlers want to run it ourselves. You decide.';
+    if(quest?.stage===2)return 'The generator is ready but a Raider knows we have new parts. Unless someone stops him, the repair crew will not risk switching it on.';
+    if(quest?.stage===1)return 'The regulator is ruined, just like I feared. Salvage four decent parts and I can splice the bus together.';
+  }
+  if(node.id==='courier'&&q('last-broadcast')?.stage===2)
+    return 'The orders are genuine. The brass knew the evacuation route was full of civilians. Publishing this will give the region the truth—and make us enemies.';
+  if(node.id==='water'&&q('water-debt')?.status==='completed')
+    return 'The filters are running again. Children are carrying clean water home instead of spending all day searching for it.';
+  if(node.id==='dispatch'&&q('dead-signals')?.status==='completed')
+    return q('dead-signals').outcome==='settlers'?
+      'The settlement engineers have already started decoding the archive. Maybe we can rebuild something that belongs to everybody.':
+      'The Dominion seized the archive at dawn. They promised to share the findings, but their radios went quiet.';
+  return CAMPAIGN_DIALOGUE[node.id]||'An unfamiliar voice crackles over the battered terminal.';
+}
 function renderCampaignDialogue(){
   const node=activeDialogueNode;
   if(!node)return;
   $('campaignDialogueTitle').textContent=node.name;
-  $('campaignDialogueBody').textContent=CAMPAIGN_DIALOGUE[node.id];
+  $('campaignDialogueBody').textContent=campaignConversationText(node);
   const choices=$('campaignDialogueChoices');choices.replaceChildren();
   function choice(label,action,disabled=false){
     const button=document.createElement('button');

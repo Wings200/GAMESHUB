@@ -90,14 +90,14 @@ export const CAMPAIGN_QUESTS=Object.freeze({
   }
 });
 export const CAMPAIGN_NODES=Object.freeze([
-  {id:'dispatch',name:'RELAY DISPATCH',x:-47,z:-42,faction:'settlers',color:0x73c9a9},
+  {id:'dispatch',name:'RELAY DISPATCH',x:-54,z:-47,faction:'settlers',color:0x73c9a9},
   {id:'relay',name:'SIGNAL RELAY',x:-59,z:42,faction:'directorate',color:0x9f91d4},
-  {id:'water',name:'WATER COORDINATOR',x:-49,z:-25,faction:'settlers',color:0x71b5cb},
+  {id:'water',name:'WATER COORDINATOR',x:-49,z:-18,faction:'settlers',color:0x71b5cb},
   {id:'pump',name:'BROKEN PURIFIER',x:-51,z:2,faction:'settlers',color:0xd8b77e},
-  {id:'dominion',name:'DOMINION OFFICER',x:15,z:-25,faction:'dominion',color:0xb0c7dc},
+  {id:'dominion',name:'DOMINION OFFICER',x:13,z:-18,faction:'dominion',color:0xb0c7dc},
   {id:'courier',name:'COURIER BEACON',x:-56,z:34,faction:'directorate',color:0xb99bd2},
-  {id:'foreman',name:'HAVEN FOREMAN',x:-38,z:-25,faction:'settlers',color:0xd9bd75},
-  {id:'generator',name:'HAVEN GENERATOR',x:-39,z:-40,faction:'settlers',color:0xe8b65b}
+  {id:'foreman',name:'HAVEN FOREMAN',x:-38,z:-18,faction:'settlers',color:0xd9bd75},
+  {id:'generator',name:'HAVEN GENERATOR',x:-25,z:-16,faction:'settlers',color:0xe8b65b}
 ]);
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const validNumber=(value,otherwise=0)=>Number.isFinite(value)?value:otherwise;

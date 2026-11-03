@@ -802,6 +802,8 @@ test('W19.2 turns new story choices into physical world outcomes and grounded NP
   const campaign=readFileSync(new URL('./campaign.mjs',import.meta.url),'utf8');
   assert.ok(source.includes('QuestResident_'));
   assert.ok(source.includes('havenPowerLamp.intensity=powered'));
+  assert.ok(source.includes('havenStreetLamp.intensity=powered'));
+  assert.ok(source.includes('campaignConversationText(node)'));
   assert.ok(source.includes("recordCampaignObjective('haven-defense')"));
   assert.ok(source.includes('questNavigationClock'));
   assert.ok(campaign.includes("id:'haven-first-light'"));

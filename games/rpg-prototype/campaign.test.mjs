@@ -99,3 +99,16 @@ test('Last Broadcast requires corroboration and supports opposite faction outcom
   assert.ok(buried.state.caps>published.state.caps);
   assert.equal(published.state.reputation.dominion,-15);
 });
+
+test('Story terminals are beside, not inside, critical movement and shooting lanes',()=>{
+  const at=id=>CAMPAIGN_NODES.find(node=>node.id===id);
+  const shotLaneBlocked=node=>node.x>-52&&node.x<-27&&
+    node.z>-45&&node.z<-39;
+  assert.equal(shotLaneBlocked(at('dispatch')),false);
+  assert.equal(shotLaneBlocked(at('generator')),false);
+  assert.ok(at('foreman').z>=-19&&at('water').z>=-19,
+    'Settler contacts remain just north of the main sprint lane');
+  assert.ok(Math.hypot(at('foreman').x-at('generator').x,
+    at('foreman').z-at('generator').z)<17,
+    'Settlement generator stays close enough to investigate on foot');
+});
