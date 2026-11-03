@@ -625,7 +625,7 @@ test('W12.0 bare power frame is mechanically connected and entered from behind',
   assert.match(source,/function nearRearHatch\(\)/);
   assert.match(source,/if\(!powerArmorState\.occupied&&!nearRearHatch\(\)\)/);
   assert.match(source,/const offset=exiting\?-2\.32:0/);
-  assert.match(source,/new THREE\.Vector3\(1\.07,2\.00,-3\.65\)/);
+  assert.match(source,/new THREE\.Vector3\(3\.10,2\.60,-3\.30\)/);
   assert.match(source,/rearHatchOpenAngle:poweredSuit\.doors\.left\.rotation\.y/);
   assert.match(page,/id="powerArmorHud" class="hidden"/);
   assert.match(page,/#powerArmorHud\.hidden\{display:none\}/);
@@ -760,7 +760,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W19.4'));
+  assert.ok(page.includes('main.js?v=W20.0'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
