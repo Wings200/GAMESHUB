@@ -93,10 +93,14 @@ export function powerEntryPose(phase,progress,origin={x:0,z:-2.35,yaw:Math.PI}){
       stage==='upper-step'?POWER_BOARDING.high.y:POWER_BOARDING.low.y);
     plantedHeight=level;
   }
+  // Reach the rear handholds BEFORE placing the first boot, then pull
+  // the upper body up. These arm cues are separate from the suit servos.
+  const grip=entering?smooth(.23,.36,t)*(1-smooth(.83,.93,t)):
+    smooth(.04,.14,t)*(1-smooth(.78,.90,t));
   const brace=entering?smooth(.77,.86,t)*(1-smooth(.91,1,t)):
     smooth(.04,.13,t)*(1-smooth(.25,.32,t));
   return {x,y,z,yaw,walking,walkSpeed:walking?1.55:0,
     step:walking?Math.sin(footPhase):0,footPhase,distance:stride,
-    hatch,brace,seated:entering?t>=.81:t<=.28,
+    hatch,brace,grip,seated:entering?t>=.81:t<=.28,
     stage,footLifts,plantedLeg,plantedHeight};
 }

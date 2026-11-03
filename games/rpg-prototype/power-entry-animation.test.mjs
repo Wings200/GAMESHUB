@@ -74,5 +74,6 @@ test('a planted boot stays on its previous tread while the other foot lifts',()=
     assert.ok(Math.abs(p.y-level)<=.24,'body stays near the planted tread while the leg extends or bends');
     assert.equal(p.footLifts[leg],0,'the planted foot must stay down');
     assert.ok(p.footLifts[1-leg]>0,'the other foot must be stepping up or down');
+    assert.ok(p.grip>.6,'pilot should already be using the frame handholds');
   }
 });

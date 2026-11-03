@@ -57,6 +57,9 @@ try{
       animations:'allow'});
     console.log('W20_IMAGE_'+name+':'+snap.toString('base64'));
   };
+  // Capture both sides of the ACTUAL finished model, not just entry.
+  await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(true));
+  await capture('front');
   await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(false));
   await capture('rear');
   await page.evaluate(()=>window.__rpgSmokePowerTransition());

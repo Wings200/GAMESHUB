@@ -346,6 +346,19 @@ export function buildPowerArmorVisual(scene,position,state){
     box(spineHatch,.16,.036,.09,brass,0,localY,-.105);
   }
   frameFeatures.dorsalHatch=true;
+  // Hinge-mounted rear handholds stow upright against the back while parked
+  // and swing out with the hatch BEFORE the pilot lifts a boot. The player's
+  // animated shoulders/elbows now reach toward these real frame components.
+  const serviceHandles=[];
+  for(const sign of [-1,1]){
+    const hinge=makeGroup(root,sign*.65,1.62,-.50);
+    ball(hinge,.073,orange);
+    rod(hinge,[0,0,0],[0,-.055,-.81],.043,edge);
+    forged(hinge,.17,.11,.17,brass,0,-.05,-.83,.04);
+    rod(hinge,[sign*.08,-.05,-.84],[-sign*.12,-.05,-.84],.035,steel);
+    serviceHandles.push(hinge);
+  }
+  frameFeatures.handholds=serviceHandles.length;
 
   // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
   // dual cheek filters and respirator; no floating rectangular robot head.
@@ -669,6 +682,8 @@ export function buildPowerArmorVisual(scene,position,state){
     const load=pose.brace;
     doors.left.rotation.y=open*1.55;
     doors.right.rotation.y=-open*1.55;
+    for(const handle of serviceHandles)
+      handle.rotation.x=(1-open)*Math.PI*.49;
     // Ramps never retract under a moving foot: both treads are fully deployed
     // from t=.20 until the pilot has cleared the last step.
     lowerTread.position.z=-.87-.60*open;
@@ -737,7 +752,7 @@ export function buildPowerArmorVisual(scene,position,state){
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
   return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,rig,
-    steps:{lowerTread,upperTread,cabinTread},spineHatch,
+    steps:{lowerTread,upperTread,cabinTread},spineHatch,serviceHandles,
     updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }

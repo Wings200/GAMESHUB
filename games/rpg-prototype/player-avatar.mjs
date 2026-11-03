@@ -514,10 +514,14 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
           brace*.16+Math.abs(ankleCompensation)*.9;
         leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
         leg.foot.position.y=-.25+lift*.65-ankleCompensation*.90;
-        arm.shoulder.rotation.x=-wave*.20*motion-.68*brace;
-        arm.shoulder.rotation.z=-sign*(.10+.22*brace);
-        arm.elbow.rotation.x=-.19-.72*brace;
-        arm.elbow.rotation.z=sign*.14*brace;
+        // A deliberate two-hand grab before the climb. Previously arms
+        // hung at the side until the last few frames, so it read as sliding.
+        const grip=boardingPose.grip||0;
+        arm.shoulder.rotation.x=-wave*.12*motion-1.08*grip-.24*brace;
+        arm.shoulder.rotation.z=-sign*(.10+.27*grip);
+        arm.elbow.rotation.x=-.19-.83*grip-.12*brace;
+        arm.elbow.rotation.z=sign*(.14*grip);
+        arm.hand.rotation.x=-.28*grip;
       }
     }
     root.userData.boardingJointAngles=boardingPose?legs.map(leg=>({

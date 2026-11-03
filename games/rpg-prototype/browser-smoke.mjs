@@ -626,6 +626,8 @@ try{
     'Rear spinal bulkhead must swing out with the opening door');
   assert.equal(bareArm.frameFeatures.boardingSteps,2,
     'Both physical climbing treads must be part of the model');
+  assert.equal(bareArm.frameFeatures.handholds,2,
+    'Both hands need a real physical rail to grip while climbing');
   // W17: this is now a joint hierarchy with telescoping rods, not two
   // rigid mannequin arms attached to two rigid mannequin legs.
   assert.equal(bareArm.frameFeatures.elbows,2);
