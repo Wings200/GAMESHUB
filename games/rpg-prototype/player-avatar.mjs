@@ -505,11 +505,13 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         // boot stays planted rather than both feet floating through a frame.
         const lift=Math.max(0,boardingPose.footLifts?.[i]||0);
         const anchored=i===boardingPose.plantedLeg;
-        const ankleCompensation=anchored?Math.min(.24,
-          Math.max(0,boardingPose.y-boardingPose.plantedHeight)):0;
+        // Signed support offset: on entry the standing boot reaches DOWN
+        // to the previous step; on exit it reaches UP to that step.
+        const ankleCompensation=anchored?clamp(
+          boardingPose.y-boardingPose.plantedHeight,-.24,.24):0;
         leg.hip.rotation.x=wave*.18*motion+lift*1.65+brace*.12;
         leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.65+
-          brace*.16+ankleCompensation*.9;
+          brace*.16+Math.abs(ankleCompensation)*.9;
         leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
         leg.foot.position.y=-.25+lift*.65-ankleCompensation*.90;
         arm.shoulder.rotation.x=-wave*.20*motion-.68*brace;

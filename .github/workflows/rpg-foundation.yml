@@ -35,6 +35,8 @@ jobs:
           node --check games/rpg-prototype/weapon-sights.test.mjs
           node --check games/rpg-prototype/power-armor.mjs
           node --check games/rpg-prototype/power-armor-visual.mjs
+          node --check games/rpg-prototype/power-entry-animation.mjs
+          node --check games/rpg-prototype/power-entry-animation.test.mjs
           node --check games/rpg-prototype/power-armor.test.mjs
           node --check games/rpg-prototype/weapon-handling.mjs
           node --check games/rpg-prototype/weapon-handling.test.mjs
@@ -72,7 +74,7 @@ jobs:
           node --check games/rpg-prototype/combat-suppression.test.mjs
           node --check games/rpg-prototype/wasteland-setdress.mjs
       - name: Test campaign, combat, animation, AI, inventory and movement
-        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/power-armor.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/enemy-squad.test.mjs games/rpg-prototype/inventory.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/player-ballistics.test.mjs games/rpg-prototype/enemy-weapons.test.mjs games/rpg-prototype/station9.test.mjs games/rpg-prototype/arena-activation.test.mjs games/rpg-prototype/campaign.test.mjs games/rpg-prototype/character-animation.test.mjs games/rpg-prototype/enemy-squad-director.test.mjs games/rpg-prototype/combat-suppression.test.mjs
+        run: node --test games/rpg-prototype/rules.test.mjs games/rpg-prototype/movement.test.mjs games/rpg-prototype/weapons.test.mjs games/rpg-prototype/weapon-sights.test.mjs games/rpg-prototype/power-armor.test.mjs games/rpg-prototype/power-entry-animation.test.mjs games/rpg-prototype/weapon-audio.test.mjs games/rpg-prototype/weapon-handling.test.mjs games/rpg-prototype/combat.test.mjs games/rpg-prototype/enemy-ai.test.mjs games/rpg-prototype/enemy-tactics.test.mjs games/rpg-prototype/enemy-squad.test.mjs games/rpg-prototype/inventory.test.mjs games/rpg-prototype/player-combat.test.mjs games/rpg-prototype/player-ballistics.test.mjs games/rpg-prototype/enemy-weapons.test.mjs games/rpg-prototype/station9.test.mjs games/rpg-prototype/arena-activation.test.mjs games/rpg-prototype/campaign.test.mjs games/rpg-prototype/character-animation.test.mjs games/rpg-prototype/enemy-squad-director.test.mjs games/rpg-prototype/combat-suppression.test.mjs
 
   browser-gameplay:
     runs-on: ubuntu-latest

@@ -307,13 +307,21 @@ export function buildPowerArmorVisual(scene,position,state){
   // Top faces match POWER_BOARDING's .22 / .43 / .49 foot-contact heights.
   const steps=makeGroup(root);
   const industrialGrip=new THREE.MeshStandardMaterial({
-    color:0x4c5551,metalness:.7,roughness:.73
+    color:0x6c7771,metalness:.58,roughness:.69
+  });
+  const hazardEdge=new THREE.MeshStandardMaterial({
+    color:0xd7a461,metalness:.58,roughness:.44,
+    emissive:0x47220b,emissiveIntensity:.21
   });
   const tread=(z,height,depth)=>{
     const assembly=makeGroup(steps,0,0,z);
     forged(assembly,.89,.095,depth,industrialGrip,0,height-.048,0,.07);
     for(let n=-3;n<=3;n++)
       box(assembly,.08,.010,depth*.75,brass,n*.105,height+.006,0);
+    // Painted front edges are visible while the pilot climbs instead of
+    // disappearing into black mechanics in the exterior cinematic.
+    forged(assembly,.86,.065,.060,hazardEdge,0,height-.025,
+      -depth*.50,.035);
     for(const sign of [-1,1]){
       forged(assembly,.08,.16,depth,shaded,sign*.45,height-.078,0,.035);
       // Welded triangular gusset makes each tread read as load-bearing.

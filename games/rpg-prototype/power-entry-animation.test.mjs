@@ -71,7 +71,7 @@ test('a planted boot stays on its previous tread while the other foot lifts',()=
     const p=powerEntryPose(phase,t);
     assert.equal(p.plantedLeg,leg,phase+' at '+t);
     assert.equal(p.plantedHeight,level,phase+' stance height '+t);
-    assert.ok(p.y>=level,'the pilot body must not sink below the supporting tread');
+    assert.ok(Math.abs(p.y-level)<=.24,'body stays near the planted tread while the leg extends or bends');
     assert.equal(p.footLifts[leg],0,'the planted foot must stay down');
     assert.ok(p.footLifts[1-leg]>0,'the other foot must be stepping up or down');
   }
