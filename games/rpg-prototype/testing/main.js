@@ -3121,6 +3121,17 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     weaponVisuals.get(activeWeaponId).root.visible=false;
     return {rear:nearRearHatch(),front};
   };
+  // Snapshot-only visual QA fixture: gives screenshot tests a deterministic
+  // complete T-45 / T-60 / T-01 suit without minting save items, consuming
+  // loot, or changing public gameplay. Only installed with ?smoke=1.
+  window.__rpgSmokePowerVisualLoadout=(tier='none')=>{
+    if(!['none','t45','t60','t01'].includes(tier))return false;
+    if(powerArmorState.phase!=='idle'||powerArmorState.occupied)return false;
+    for(const slot of POWER_ARMOR_SLOTS)
+      setPowerPlate(powerArmorState,slot,tier);
+    poweredSuit.updatePlates(powerArmorState);
+    return true;
+  };
   window.__rpgSmokeApproachPowerCache=()=>{
     player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
     return nearestLootBag()?.source==='power-cache';

@@ -60,6 +60,15 @@ try{
   // Capture both sides of the ACTUAL finished model, not just entry.
   await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(true));
   await capture('front');
+  // Review all three FULLY EQUIPPED variants. The old visual check looked
+  // only at the bare rig and missed poor helmet/chest/greave silhouettes.
+  for(const tier of ['t45','t60','t01']){
+    const fitted=await page.evaluate(tier=>
+      window.__rpgSmokePowerVisualLoadout(tier),tier);
+    if(!fitted)throw Error('Could not preview complete '+tier+' armour');
+    await capture('front-'+tier);
+  }
+  await page.evaluate(()=>window.__rpgSmokePowerVisualLoadout('none'));
   await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(false));
   await capture('rear');
   await page.evaluate(()=>window.__rpgSmokePowerTransition());
