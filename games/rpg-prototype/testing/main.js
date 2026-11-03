@@ -3086,6 +3086,9 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     const look=poweredSuit.root.localToWorld(
       new THREE.Vector3(0,1.62,0));
     camera.lookAt(look);
+    // The inspection capture must show the ENTIRE chest/leg silhouette;
+    // a weapon drawn across its middle hid the defects in earlier QA.
+    weaponVisuals.get(activeWeaponId).root.visible=false;
     return {rear:nearRearHatch(),front};
   };
   window.__rpgSmokeApproachPowerCache=()=>{

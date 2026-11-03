@@ -653,11 +653,13 @@ test('W13.0 normal field HUD and power visor are separate live displays',()=>{
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
-  assert.match(armorVisual,/const profilePlate=\(parent,w,h,d,material,outline\)=>/);
-  assert.match(armorVisual,/new THREE\.ExtrudeGeometry\(shape/);
+  assert.match(armorVisual,/const profilePlate=\(parent,w,h,d,material,outline,bulge=\.06\)=>/);
+  assert.match(armorVisual,/new THREE\\.ExtrudeGeometry\\(shape/);
+  assert.match(armorVisual,/pos\\.setZ\\(i,pos\\.getZ\\(i\\)\\+dome\\)/);
+  assert.match(armorVisual,/function wornMetalTexture\\(seed\\)/);
   assert.match(armorVisual,/shell\.userData\.tierFaces=\{\}/);
   assert.match(armorVisual,/shell\.userData\.profileOutlines=profiles/);
-  assert.match(armorVisual,/part\.material\.color\.lerp\(tone,\.53\)/);
+  assert.match(armorVisual,/part\.material\.color\.lerp\(tone,\.15\)/);
   assert.match(armorVisual,/if\(condition\.broken\)face\.material\.color\.setHex/);
   for(const color of ['0xb1a48b','0x4f7585','0x694781'])
     assert.ok(powerArmor.includes(color),color);

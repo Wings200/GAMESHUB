@@ -80,16 +80,47 @@ export function buildPowerArmorVisual(scene,position,state){
     }
     moduleMeshes[slot].push(part);return part;
   };
+  // Small authored weathering maps multiply the actual alloy pigment.
+  // All three styles keep their own scrapes and oxidation rather than
+  // looking like smooth, flat plastic rectangles.
+  function wornMetalTexture(seed){
+    const canvas=document.createElement('canvas');canvas.width=96;canvas.height=96;
+    const ctx=canvas.getContext('2d');
+    let state=seed>>>0;
+    const next=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;
+      return state/4294967296;};
+    ctx.fillStyle='#e4e5df';ctx.fillRect(0,0,96,96);
+    for(let i=0;i<270;i++){
+      const x=next()*96,y=next()*96;
+      ctx.fillStyle=next()>.35?'rgba(34,36,35,.13)':'rgba(255,250,232,.38)';
+      ctx.fillRect(x,y,1+next()*4,.4+next()*2.3);
+    }
+    for(let i=0;i<22;i++){
+      ctx.strokeStyle=next()>.48?'rgba(42,39,31,.34)':'rgba(255,255,240,.52)';
+      ctx.lineWidth=.55+next()*.9;
+      const x=next()*96,y=next()*96;
+      ctx.beginPath();ctx.moveTo(x,y);
+      ctx.lineTo(x+4+next()*23,y-2+next()*6);ctx.stroke();
+    }
+    const tex=new THREE.CanvasTexture(canvas);
+    tex.colorSpace=THREE.SRGBColorSpace;
+    tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.RepeatWrapping;
+    tex.anisotropy=2;
+    return tex;
+  }
   const tierPaint={
-    t45:new THREE.MeshStandardMaterial({color:0xb1a48b,metalness:.48,roughness:.69}),
-    t60:new THREE.MeshStandardMaterial({color:0x4f7585,metalness:.71,roughness:.46}),
-    t01:new THREE.MeshStandardMaterial({color:0x694781,metalness:.69,roughness:.39})
+    t45:new THREE.MeshStandardMaterial({color:0xb1a48b,
+      map:wornMetalTexture(71),metalness:.48,roughness:.69}),
+    t60:new THREE.MeshStandardMaterial({color:0x4f7585,
+      map:wornMetalTexture(105),metalness:.71,roughness:.46}),
+    t01:new THREE.MeshStandardMaterial({color:0x694781,
+      map:wornMetalTexture(117),metalness:.69,roughness:.39})
   };
   const protoTrim=new THREE.MeshStandardMaterial({color:0xb8aed5,metalness:.72,roughness:.34});
   // These are three DISTINCT forged outlines, rather than three paints
   // applied to one old slab: T-45 round cast, T-60 flared heavy shoulders,
   // and a sharply peaked T-01 prototype.
-  const profilePlate=(parent,w,h,d,material,outline)=>{
+  const profilePlate=(parent,w,h,d,material,outline,bulge=.06)=>{
     const shape=new THREE.Shape();
     for(let i=0;i<outline.length;i++){
       const [u,v]=outline[i];
@@ -101,15 +132,30 @@ export function buildPowerArmorVisual(scene,position,state){
       bevelSegments:2,steps:1
     });
     geo.translate(0,0,-d/2);
+    // Convex cast armour: the centre stands forward of the borders.
+    // This creates a proper curved silhouette from side and 3/4 views,
+    // not a pile of rectangular extrusions stuck onto a mannequin.
+    const pos=geo.getAttribute('position');
+    for(let i=0;i<pos.count;i++){
+      const nx=Math.min(1,Math.abs(pos.getX(i))/(w*.62));
+      const ny=Math.min(1,Math.abs(pos.getY(i))/(h*.65));
+      const dome=bulge*Math.max(0,1-nx*nx)*Math.max(0,1-ny*ny);
+      pos.setZ(i,pos.getZ(i)+dome);
+    }
+    pos.needsUpdate=true;geo.computeVertexNormals();
     return mesh(parent,geo,material.clone());
   };
   const profiles={
-    t45:[[-.40,-.50],[.40,-.50],[.50,-.40],[.50,.36],[.39,.50],
-      [-.39,.50],[-.50,.36],[-.50,-.40]],
-    t60:[[-.44,-.50],[.44,-.50],[.56,-.29],[.62,.32],[.43,.50],
-      [-.43,.50],[-.62,.32],[-.56,-.29]],
-    t01:[[-.31,-.50],[.31,-.50],[.56,-.18],[.63,.19],[0,.56],
-      [-.63,.19],[-.56,-.18]]
+    t45:[[-.28,-.50],[.28,-.50],[.39,-.45],[.48,-.31],
+      [.51,-.05],[.49,.18],[.39,.40],[.24,.52],
+      [-.24,.52],[-.39,.40],[-.49,.18],[-.51,-.05],
+      [-.48,-.31],[-.39,-.45]],
+    t60:[[-.32,-.50],[.32,-.50],[.43,-.39],[.56,-.20],
+      [.64,.23],[.47,.46],[.26,.52],[-.26,.52],
+      [-.47,.46],[-.64,.23],[-.56,-.20],[-.43,-.39]],
+    t01:[[-.25,-.50],[.25,-.50],[.42,-.38],[.59,-.19],
+      [.66,.16],[.45,.33],[0,.58],[-.45,.33],
+      [-.66,.16],[-.59,-.19],[-.42,-.38]]
   };
   const plate=(slot,parent,w,h,d,x,y,z,cut=.12)=>{
     const shell=forged(parent,w,h,d,armor.clone(),x,y,z,cut);
@@ -119,7 +165,8 @@ export function buildPowerArmorVisual(scene,position,state){
     function styling(tier,draw){
       const detail=makeGroup(shell,0,0,d/2+.055);
       detail.name=tier.toUpperCase()+'_'+slot+'_profile';
-      const face=profilePlate(detail,w,h,d*.45,tierPaint[tier],profiles[tier]);
+      const face=profilePlate(detail,w,h,d*.45,tierPaint[tier],profiles[tier],
+        tier==='t45' ? .115 : tier==='t60' ? .075 : .045);
       shell.userData.tierFaces[tier]=face;
       draw(detail);detail.visible=false;
       shell.userData.modelDetails[tier]=detail;
@@ -465,7 +512,7 @@ export function buildPowerArmorVisual(scene,position,state){
     const crossRail=modulePart(armName,forged(shoulder,.12,.33,.20,edge,
       side*.31,-.26,-.07,.055));
     crossRail.rotation.z=side*.16;
-    plate(armName,shoulder,.56,.29,.25,side*.07,-.15,.28,.11);
+    plate(armName,shoulder,.40,.19,.20,side*.07,-.44,.29,.075);
     // Broad, beveled shoulder flares give the rig a recognisable industrial
     // weight profile; the shells stay bound to the upper-arm joint.
     const pauldron=plate(armName,shoulder,.73,.43,.23,
@@ -552,7 +599,7 @@ export function buildPowerArmorVisual(scene,position,state){
       frameFeatures.legLinks+=2;
     }
     modulePart(legName,forged(knee,.30,.48,.24,steel,0,-.25,.005,.085));
-    plate(legName,knee,.50,.46,.19,0,-.235,.32,.095);
+    plate(legName,knee,.48,.17,.19,0,.07,.33,.07);
     const heavyShin=plate(legName,knee,.57,.57,.24,0,-.23,.27,.13);
     heavyShin.rotation.x=-.07;
     for(const sign of [-1,1])
@@ -647,7 +694,7 @@ export function buildPowerArmorVisual(scene,position,state){
         part.visible=entry.points>0;
         if(part.userData.moduleBaseColor!==undefined){
           part.material.color.setHex(part.userData.moduleBaseColor);
-          part.material.color.lerp(tone,.53);
+          part.material.color.lerp(tone,.15);
           if(condition.broken)part.material.color.multiplyScalar(.45);
         }
       }
