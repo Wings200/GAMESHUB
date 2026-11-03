@@ -1,4 +1,4 @@
-// W20.0: rebuilt industrial power frame, functional rear service steps, moving dorsal hatch and articulated limbs.
+// W20.8: distinct cast cuirass, pauldron, vambrace, greave and helmet silhouettes.
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
@@ -90,12 +90,12 @@ export function buildPowerArmorVisual(scene,position,state){
     const next=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;
       return state/4294967296;};
     ctx.fillStyle='#e4e5df';ctx.fillRect(0,0,96,96);
-    for(let i=0;i<270;i++){
+    for(let i=0;i<92;i++){
       const x=next()*96,y=next()*96;
-      ctx.fillStyle=next()>.35?'rgba(34,36,35,.13)':'rgba(255,250,232,.38)';
+      ctx.fillStyle=next()>.35?'rgba(34,36,35,.09)':'rgba(255,250,232,.20)';
       ctx.fillRect(x,y,1+next()*4,.4+next()*2.3);
     }
-    for(let i=0;i<22;i++){
+    for(let i=0;i<14;i++){
       ctx.strokeStyle=next()>.48?'rgba(42,39,31,.34)':'rgba(255,255,240,.52)';
       ctx.lineWidth=.55+next()*.9;
       const x=next()*96,y=next()*96;
@@ -157,16 +157,49 @@ export function buildPowerArmorVisual(scene,position,state){
       [.66,.16],[.45,.33],[0,.58],[-.45,.33],
       [-.66,.16],[-.59,-.19],[-.42,-.38]]
   };
-  const plate=(slot,parent,w,h,d,x,y,z,cut=.12)=>{
+  // Geometry is authored for the BODY REGION. A shoulder shell is a
+  // winged pauldron; a breastplate wraps the rib cage; a greave tapers
+  // into the ankle. Simply repeating a hexagon had produced the old
+  // checkerboard/stack-of-tiles silhouette.
+  const contourFor=(tier,role)=>{
+    const outline=profiles[tier];
+    return outline.map(([u,v])=>{
+      let width=1,up=v;
+      if(role==='cuirass'){
+        width=.80+.41*Math.max(0,v+.5);
+        up=v+(.48-Math.abs(u))*.055;
+      }else if(role==='pauldron'){
+        width=.79+.40*Math.max(0,v+.5);
+        up=v+.055*Math.max(0,Math.abs(u)-.20);
+      }else if(role==='vambrace'){
+        width=.76+.30*(v+.5);
+      }else if(role==='cuisse'){
+        width=.82+.24*(v+.5);
+      }else if(role==='greave'){
+        width=.66+.37*(v+.5);
+        up=v+.07*Math.abs(u);
+      }else if(role==='helmet'){
+        width=.74+.35*(v+.5);
+        up=v+.035*Math.max(0,.4-Math.abs(u));
+      }else if(role==='knee'){
+        width=.85+.08*(v+.5);
+      }
+      return [u*width,up];
+    });
+  };
+  const plate=(slot,parent,w,h,d,x,y,z,cut=.12,role=slot)=>{
     const shell=forged(parent,w,h,d,armor.clone(),x,y,z,cut);
     shell.userData.modelDetails={};
     shell.userData.tierFaces={};
     shell.userData.profileOutlines=profiles;
+    shell.userData.plateRole=role;
     function styling(tier,draw){
       const detail=makeGroup(shell,0,0,d/2+.055);
       detail.name=tier.toUpperCase()+'_'+slot+'_profile';
-      const face=profilePlate(detail,w,h,d*.45,tierPaint[tier],profiles[tier],
+      const face=profilePlate(detail,w,h,d*.45,tierPaint[tier],
+        contourFor(tier,role),
         tier==='t45' ? .115 : tier==='t60' ? .075 : .045);
+      face.userData.plateRole=role;
       shell.userData.tierFaces[tier]=face;
       draw(detail);detail.visible=false;
       shell.userData.modelDetails[tier]=detail;
@@ -316,15 +349,17 @@ export function buildPowerArmorVisual(scene,position,state){
     const clavicle=modulePart('chest',forged(carrier,.48,.19,.16,
       steel,cx+side*.025,.43,.06,.075));
     clavicle.rotation.z=side*.12;
-    const upper=plate('chest',carrier,.47,.34,.105,
-      cx+side*.025,.205,.17,.11);
-    upper.rotation.z=side*.17;
-    const lower=plate('chest',carrier,.36,.31,.10,
-      cx+side*.02,-.22,.21,.095);
-    lower.rotation.z=-side*.13;
-    const skirt=modulePart('chest',forged(carrier,.36,.12,.11,
-      shaded,cx+side*.02,-.44,.16,.05));
-    skirt.rotation.z=-side*.09;
+    // One large formed breastplate per side: the old four little badges
+    // made the torso look like stacked luggage rather than heavy armour.
+    const cuirass=plate('chest',carrier,.67,.70,.20,
+      cx+side*.01,.02,.22,.20,'cuirass');
+    cuirass.rotation.z=side*.085;
+    const skirt=modulePart('chest',forged(carrier,.41,.13,.14,
+      shaded,cx-side*.04,-.44,.19,.075));
+    skirt.rotation.z=-side*.11;
+    const waistFin=modulePart('chest',forged(carrier,.20,.23,.13,
+      steel,cx-side*.18,-.36,.18,.075));
+    waistFin.rotation.z=side*.20;
     // Reinforced lateral edge; no broad backing slab blocks the pilot cage.
     const rail=modulePart('chest',forged(carrier,.105,.71,.12,
       edge,cx+side*.24,0,.02,.04));
@@ -418,11 +453,13 @@ export function buildPowerArmorVisual(scene,position,state){
   modulePart('head',forged(helmetPivot,.56,.12,.095,visor,0,.19,.306,.035));
   modulePart('head',forged(helmetPivot,.45,.16,.19,shaded,0,.055,.29,.05));
   modulePart('head',forged(helmetPivot,.24,.20,.12,steel,0,-.035,.39,.05));
-  plate('head',helmetPivot,.68,.22,.13,0,.43,.08,.075);
-  plate('head',helmetPivot,.57,.13,.095,0,-.12,.27,.045);
-  // A deeply inset, narrow sight band separates the heavy skull-shell from
-  // the bolted jaw instead of leaving a flat cartoon face.
-  modulePart('head',forged(helmetPivot,.79,.19,.22,shaded,0,.31,.09,.08));
+  const helmetShell=plate('head',helmetPivot,.84,.48,.22,0,.24,.17,.15,'helmet');
+  helmetShell.rotation.x=-.08;
+  modulePart('head',forged(helmetPivot,.55,.14,.16,
+    shaded,0,-.09,.36,.055));
+  // Front-facing vision band set into the forged helmet, not a floating box.
+  modulePart('head',forged(helmetPivot,.72,.14,.13,shaded,0,.25,.34,.06));
+  modulePart('head',forged(helmetPivot,.58,.08,.09,visor,0,.26,.417,.025));
   for(const side of [-1,1]){
     const temple=modulePart('head',forged(helmetPivot,.22,.28,.19,
       steel,side*.36,.13,.22,.055));
@@ -512,12 +549,13 @@ export function buildPowerArmorVisual(scene,position,state){
     const crossRail=modulePart(armName,forged(shoulder,.12,.33,.20,edge,
       side*.31,-.26,-.07,.055));
     crossRail.rotation.z=side*.16;
-    plate(armName,shoulder,.40,.19,.20,side*.07,-.44,.29,.075);
-    // Broad, beveled shoulder flares give the rig a recognisable industrial
-    // weight profile; the shells stay bound to the upper-arm joint.
-    const pauldron=plate(armName,shoulder,.73,.43,.23,
-      side*.12,-.10,.28,.12);
-    pauldron.rotation.z=side*.17;
+    // Single pauldron follows the shoulder hinge, not two identical badges.
+    const pauldron=plate(armName,shoulder,.83,.59,.25,
+      side*.13,-.18,.28,.16,'pauldron');
+    pauldron.rotation.z=side*.15;
+    const undercut=modulePart(armName,forged(shoulder,.43,.10,.17,
+      shaded,side*.09,-.50,.24,.035));
+    undercut.rotation.z=-side*.09;
     const outerLip=modulePart(armName,forged(shoulder,.14,.43,.24,
       shaded,side*.48,-.15,.16,.055));
     outerLip.rotation.z=side*.19;
@@ -540,7 +578,9 @@ export function buildPowerArmorVisual(scene,position,state){
     const forearmRam=forged(elbow,.28,.42,.22,joint,0,-.27,.035,.045);
     forearmRam.rotation.z=side*.025;
     modulePart(armName,forged(elbow,.48,.48,.36,steel,0,-.25,.09,.12));
-    plate(armName,elbow,.46,.44,.18,0,-.25,.32,.10);
+    // Continuous forearm vambrace, tapered toward the wrist.
+    const vambrace=plate(armName,elbow,.54,.64,.20,0,-.30,.30,.15,'vambrace');
+    vambrace.rotation.z=-side*.035;
     modulePart(armName,forged(elbow,.23,.39,.18,edge,side*.22,-.23,.05,.05));
     const wrist=makeGroup(elbow,0,-.55,.015);
     ball(wrist,.15,joint);
@@ -584,7 +624,8 @@ export function buildPowerArmorVisual(scene,position,state){
     // Both leg housings now show twin external linear actuators rather
     // than big rounded solid limbs that never look like a frame.
     modulePart(legName,forged(hip,.26,.51,.23,shaded,0,-.30,.045,.075));
-    plate(legName,hip,.47,.47,.26,0,-.28,.30,.105);
+    const cuisse=plate(legName,hip,.59,.68,.26,0,-.29,.29,.17,'cuisse');
+    cuisse.rotation.z=-side*.027;
     modulePart(legName,forged(hip,.21,.40,.24,steel,side*.22,-.30,-.035,.065));
 
     const knee=makeGroup(hip,0,-.61,.035);
@@ -599,8 +640,9 @@ export function buildPowerArmorVisual(scene,position,state){
       frameFeatures.legLinks+=2;
     }
     modulePart(legName,forged(knee,.30,.48,.24,steel,0,-.25,.005,.085));
-    plate(legName,knee,.48,.17,.19,0,.07,.33,.07);
-    const heavyShin=plate(legName,knee,.57,.57,.24,0,-.23,.27,.13);
+    // Distinct small patella and long protective greave.
+    plate(legName,knee,.46,.18,.21,0,.08,.32,.085,'knee');
+    const heavyShin=plate(legName,knee,.62,.62,.27,0,-.28,.27,.16,'greave');
     heavyShin.rotation.x=-.07;
     for(const sign of [-1,1])
       modulePart(legName,forged(knee,.105,.52,.16,shaded,

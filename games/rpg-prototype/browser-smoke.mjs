@@ -696,7 +696,14 @@ try{
     'Power armor must be human-sized, not a towering construction robot');
   assert.ok(armorVisible.chassisWidth>2.1&&armorVisible.chassisWidth<3.1,
     'Armored shoulders should be broad but remain human-proportioned');
-  assert.equal(armorVisible.visiblePlates.head,2,'Helmet and visor pieces must appear');
+  assert.equal(armorVisible.visiblePlates.head,1,
+    'A continuous cast helmet shell must replace the old stacked brow strips');
+  assert.deepEqual(armorVisible.plateRoles.head,['helmet']);
+  assert.deepEqual(armorVisible.plateRoles.chest,['cuirass','cuirass']);
+  assert.ok(armorVisible.plateRoles.leftArm.includes('pauldron'));
+  assert.ok(armorVisible.plateRoles.leftArm.includes('vambrace'));
+  assert.ok(armorVisible.plateRoles.leftLeg.includes('greave'));
+  assert.ok(armorVisible.plateRoles.leftLeg.includes('cuisse'));
   assert.equal(armorVisible.modelDetails.head.t60,true,'T-60 head has its own geometry');
   assert.equal(armorVisible.modelDetails.rightArm.t45,true,'T-45 arm style is visible');
   assert.equal(armorVisible.plateAppearance.head.color,0x4f7585,

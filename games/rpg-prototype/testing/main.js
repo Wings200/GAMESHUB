@@ -3189,6 +3189,9 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
         contour:face?.geometry.type??null}];
     })),
     modelContours:{...poweredSuit.plateMeshes.head[0].userData.profileOutlines},
+    plateRoles:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
+      [slot,poweredSuit.plateMeshes[slot].map(mesh=>
+        mesh.userData.plateRole)])),
     modelDetails:Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
       [slot,Object.fromEntries(['t45','t60','t01'].map(tier=>
         [tier,poweredSuit.plateMeshes[slot].some(shell=>

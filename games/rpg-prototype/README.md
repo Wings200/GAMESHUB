@@ -1,4 +1,11 @@
-# Untitled RPG · Mechanics Lab W20.7 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.8 + Forest Foundation 0.1
+
+## W20.8 — Rebuilt armour silhouette after visual screenshot review
+
+- Captured front views of fully plated T-45, T-60 and T-01 from the live browser. Those revealed a repeating square-tile shape across nearly every body region, despite the previous colour and normal-map improvements.
+- Replaced paired little chest plaques with **single cast cuirass panels**, double-stacked pauldrons with broad shoulder shells, square forearms with long vambraces, and short leg plates with thigh cuisses, articulated knee caps and calf greaves. The helmet uses one continuous forged upper shell with an inset visor and jaw instead of stacked brow bars.
+- Profile outlines are now warped specifically for helmet, cuirass, pauldron, vambrace, cuisse, knee and greave, in addition to the separate T-45/T-60/T-01 tier shapes. Worn alloy scrapes are much subtler. The rendered QA state exposes each role and regression tests confirm anatomy-specific assemblies.
+- This continues the mechanics sandbox only; no terrain, missions, or changes to REDLINE were added. Full-suit visual approval is pending review of new WebGL screenshots.
 
 ## W20.7 — Actual two-bone hand placement on moving frame handles
 
