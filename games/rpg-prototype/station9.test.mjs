@@ -698,7 +698,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
   assert.match(page,/main\.js\?v=W20\.8/);
-  assert.match(page,/W20\.8.*JOINTED REAR-ENTRY RIG/);
+  assert.match(page,/W20\.8.*ANATOMICAL ARMOR REBUILD/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
   assert.match(characterAnimation,/state\.land=/);
