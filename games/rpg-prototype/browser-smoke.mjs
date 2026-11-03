@@ -591,14 +591,14 @@ try{
   await page.waitForFunction(start=>{
     const now=window.__rpgSmokeState().enemies;
     return now.some((e,i)=>Math.hypot(e.x-start[i].x,e.z-start[i].z)>.08);
-  },distantStart.enemies,{timeout:25000});
+  },distantStart.enemies,{timeout:25000,polling:500});
   assert.equal(await page.evaluate(()=>window.__rpgSmokeDownEnemy('scout')),true);
   assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).enemies
     .find(e=>e.id==='scout').flash,0,
     'Defeated enemies must immediately clear the red hit flash');
   await page.waitForFunction(()=>window.__rpgSmokeState().enemies
     .find(e=>e.id==='scout').visible===false,
-    null,{timeout:20000});
+    null,{timeout:20000,polling:500});
   assert.equal((await page.evaluate(()=>window.__rpgSmokeState())).enemies
     .find(e=>e.id==='scout').originalVisual.pose,'down',
     'NPC fall animation must enter the downed pose before despawning');

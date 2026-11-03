@@ -1936,7 +1936,7 @@ function healPlayer(){
   showShotNotice('HEALTH RESTORED · 100 HP');
 }
 refreshPlayerHealth();
-function updateEnemies(dt){
+function updateEnemies(dt,elapsed=dt){
   // A confirmed hit outside the arena wakes combat while the enemy still
   // remembers the shooter. Otherwise other mechanics stations stay safe.
   const active=inAIArena()||[...enemies.values()].some(e=>
@@ -2099,7 +2099,8 @@ function updateEnemies(dt){
         }
       }
     }else{
-      enemy.deathTimer+=dt;
+      // Death cleanup must follow actual elapsed time under slow software rendering.
+      enemy.deathTimer+=Math.max(0,elapsed);
       enemy.rigged?.update(dt,{alive:false,moving:false,hit:0,recoil:0});
       // One short fall, then despawn: no permanent corpse/ring clutter.
       enemy.root.rotation.z+=(-1.18-enemy.root.rotation.z)*(1-Math.exp(-10*dt));
@@ -3838,7 +3839,8 @@ function updateHUD(info){
 let questNavigationClock=0;
 function frame(){
   requestAnimationFrame(frame);
-  const dt=Math.min(.036,clock.getDelta());
+  const elapsed=clock.getDelta();
+  const dt=Math.min(.036,elapsed);
   wastelandArt.update(dt);
   impactEffects.update(dt);
   let ammoSpentOnReload=false;
@@ -4037,7 +4039,7 @@ function frame(){
     camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     updateHUD(info);
   }
-  updateEnemies(dt);
+  updateEnemies(dt,elapsed);
   // Quest residents use the same articulated rig as the player, but never
   // enter the hostile hit list. They watch approaching visitors naturally.
   for(const resident of campaignResidents){

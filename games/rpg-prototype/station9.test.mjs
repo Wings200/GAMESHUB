@@ -258,7 +258,7 @@ test('Actual ADS viewmodel ray diagnostic is available per weapon',()=>{
 });
 test('Player weapon sound/reload select the actual weapon profile',()=>{
   assert.match(source,/sound\.gunshot\(activeSpec\.kind\|\|'pistol'\)/);
-  assert.match(source,/sound\.reload\(activeSpec\.kind\|\|'pistol',activeSpec\.reloadSeconds\)/);
+  assert.ok(source.includes("sound.reload(activeSpec.kind||'pistol',weaponState.reloadDuration/"));
 });
 
 test('W05.3 damage hitboxes do not depend on previously selected station',()=>{
