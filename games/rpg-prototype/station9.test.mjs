@@ -625,7 +625,7 @@ test('W12.0 bare power frame is mechanically connected and entered from behind',
   assert.match(source,/function nearRearHatch\(\)/);
   assert.match(source,/if\(!powerArmorState\.occupied&&!nearRearHatch\(\)\)/);
   assert.match(source,/const offset=exiting\?-2\.32:0/);
-  assert.match(source,/new THREE\.Vector3\(3\.10,2\.60,-3\.30\)/);
+  assert.match(source,/new THREE\.Vector3\(2\.42,1\.95,-2\.92\)/);
   assert.match(source,/rearHatchOpenAngle:poweredSuit\.doors\.left\.rotation\.y/);
   assert.match(page,/id="powerArmorHud" class="hidden"/);
   assert.match(page,/#powerArmorHud\.hidden\{display:none\}/);

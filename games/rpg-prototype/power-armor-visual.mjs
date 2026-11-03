@@ -314,8 +314,13 @@ export function buildPowerArmorVisual(scene,position,state){
     forged(assembly,.89,.095,depth,industrialGrip,0,height-.048,0,.07);
     for(let n=-3;n<=3;n++)
       box(assembly,.08,.010,depth*.75,brass,n*.105,height+.006,0);
-    for(const sign of [-1,1])
+    for(const sign of [-1,1]){
       forged(assembly,.08,.16,depth,shaded,sign*.45,height-.078,0,.035);
+      // Welded triangular gusset makes each tread read as load-bearing.
+      rod(assembly,[sign*.35,height-.045,-depth*.28],
+        [sign*.35,Math.max(.045,height-.22),depth*.34],.035,steel);
+      ball(assembly,.042,orange,sign*.35,height-.045,-depth*.28);
+    }
     return assembly;
   };
   const lowerTread=tread(-1.47,.22,.43);
@@ -337,7 +342,9 @@ export function buildPowerArmorVisual(scene,position,state){
   // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
   // dual cheek filters and respirator; no floating rectangular robot head.
   const helmetPivot=makeGroup(root,0,2.36,-.08);
-  modulePart('head',ellipsoid(helmetPivot,.38,.35,.38,joint,0,.10,0));
+  // Smaller formed skull cradle: the original oversized oval made an
+  // empty frame read like a toy robot instead of a wearable harness.
+  modulePart('head',forged(helmetPivot,.46,.28,.22,joint,0,.14,.015,.095));
   modulePart('head',forged(helmetPivot,.69,.47,.51,steel,0,.21,.025,.18));
   modulePart('head',forged(helmetPivot,.66,.16,.18,edge,0,.37,.23,.055));
   modulePart('head',forged(helmetPivot,.56,.12,.095,visor,0,.19,.306,.035));
@@ -431,7 +438,12 @@ export function buildPowerArmorVisual(scene,position,state){
       frameFeatures.armLinks+=2;
     }
     forged(shoulder,.23,.41,.17,shaded,side*.22,-.34,-.08,.065);
-    modulePart(armName,ellipsoid(shoulder,.42,.30,.37,steel,side*.05,-.12,0));
+    // Triangular bearer plate and exposed pivot, not the former round
+    // balloon shoulder. The swappable pauldron remains a separate shell.
+    modulePart(armName,forged(shoulder,.58,.18,.26,steel,side*.06,.02,.08,.075));
+    const crossRail=modulePart(armName,forged(shoulder,.12,.33,.20,edge,
+      side*.31,-.26,-.07,.055));
+    crossRail.rotation.z=side*.16;
     plate(armName,shoulder,.56,.29,.25,side*.07,-.15,.28,.11);
     // Broad, beveled shoulder flares give the rig a recognisable industrial
     // weight profile; the shells stay bound to the upper-arm joint.
@@ -501,7 +513,9 @@ export function buildPowerArmorVisual(scene,position,state){
       rod(hip,[x,-.08,.13],[x,-.56,.16],.045,brass);
       frameFeatures.legLinks+=2;
     }
-    modulePart(legName,ellipsoid(hip,.28,.36,.29,shaded,0,-.28,.055));
+    // Both leg housings now show twin external linear actuators rather
+    // than big rounded solid limbs that never look like a frame.
+    modulePart(legName,forged(hip,.26,.51,.23,shaded,0,-.30,.045,.075));
     plate(legName,hip,.47,.47,.26,0,-.28,.30,.105);
     modulePart(legName,forged(hip,.21,.40,.24,steel,side*.22,-.30,-.035,.065));
 
@@ -516,7 +530,7 @@ export function buildPowerArmorVisual(scene,position,state){
       rod(knee,[x,-.07,.135],[x*.85,-.38,.16],.044,brass);
       frameFeatures.legLinks+=2;
     }
-    modulePart(legName,ellipsoid(knee,.285,.30,.285,steel,0,-.25,.02));
+    modulePart(legName,forged(knee,.30,.48,.24,steel,0,-.25,.005,.085));
     plate(legName,knee,.50,.46,.19,0,-.235,.32,.095);
     const heavyShin=plate(legName,knee,.57,.57,.24,0,-.23,.27,.13);
     heavyShin.rotation.x=-.07;
@@ -567,8 +581,14 @@ export function buildPowerArmorVisual(scene,position,state){
   const badgeMesh=mesh(root,new THREE.PlaneGeometry(.47,.175),
     new THREE.MeshBasicMaterial({map:badgeTexture,side:THREE.DoubleSide}),
     0,1.21,.19);
-  const warningLight=new THREE.PointLight(0x7bdac6,.45,3,2);
+  const warningLight=new THREE.PointLight(0xf4b96a,.55,3,2);
   warningLight.position.set(0,2.31,.25);root.add(warningLight);
+  // Narrow workshop inspection spots reveal the silhouette and the
+  // footholds in a dark test field without brightening the entire map.
+  const workshopKey=new THREE.PointLight(0xffebcf,2.2,6.2,2);
+  workshopKey.position.set(2.2,3.25,-2.65);root.add(workshopKey);
+  const workshopRim=new THREE.PointLight(0x88bec7,1.15,5.5,2);
+  workshopRim.position.set(-1.8,2.8,-1.5);root.add(workshopRim);
 
   // Articulated human pilot is much smaller than the armor: visible during
   // the existing approach/climb/exit choreography, not a second armored bot.

@@ -77,15 +77,26 @@ export function powerEntryPose(phase,progress,origin={x:0,z:-2.35,yaw:Math.PI}){
     stage==='cabin-step'?[.28,.45,1]:
     stage==='upper-step'?[.45,.60,0]:
     stage==='lower-step'?[.60,.77,1]:null);
+  let plantedLeg=null,plantedHeight=y;
   if(stepWindow){
     const [a,b,leg]=stepWindow;
     const phaseProgress=clamp((t-a)/(b-a),0,1);
     footLifts[leg]=Math.sin(Math.PI*phaseProgress)*.24;
+    // While the stepping boot moves to the next tread, keep the OTHER
+    // boot aligned with the prior tread rather than lifting it along with
+    // the root. This is the first constraint of the climb-contact rig.
+    plantedLeg=1-leg;
+    const level=entering?(
+      stage==='lower-step'?0:
+      stage==='upper-step'?POWER_BOARDING.low.y:POWER_BOARDING.high.y):(
+      stage==='cabin-step'?POWER_BOARDING.cabin.y:
+      stage==='upper-step'?POWER_BOARDING.high.y:POWER_BOARDING.low.y);
+    plantedHeight=level;
   }
   const brace=entering?smooth(.77,.86,t)*(1-smooth(.91,1,t)):
     smooth(.04,.13,t)*(1-smooth(.25,.32,t));
   return {x,y,z,yaw,walking,walkSpeed:walking?1.55:0,
     step:walking?Math.sin(footPhase):0,footPhase,distance:stride,
     hatch,brace,seated:entering?t>=.81:t<=.28,
-    stage,footLifts};
+    stage,footLifts,plantedLeg,plantedHeight};
 }

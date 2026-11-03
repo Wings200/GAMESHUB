@@ -793,9 +793,9 @@ function updatePowerCinematic(progress){
   // changes only once, while the screen is dark after the hatch latches.
   poweredSuit.root.updateMatrixWorld(true);
   const exterior=poweredSuit.root.localToWorld(
-    new THREE.Vector3(3.10,2.60,-3.30));
+    new THREE.Vector3(2.42,1.95,-2.92));
   const focus=poweredSuit.pilot.getWorldPosition(new THREE.Vector3())
-    .add(new THREE.Vector3(0,1.05,0));
+    .add(new THREE.Vector3(0,.86,0));
   camera.position.copy(exterior);
   camera.quaternion.setFromRotationMatrix(
     new THREE.Matrix4().lookAt(exterior,focus,powerCameraUp));
@@ -3182,7 +3182,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
     cameraDistanceToHero:camera.position.distanceTo(
-      poweredSuit.root.localToWorld(new THREE.Vector3(3.10,2.60,-3.30)))
+      poweredSuit.root.localToWorld(new THREE.Vector3(2.42,1.95,-2.92)))
   });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')

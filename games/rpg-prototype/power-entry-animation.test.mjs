@@ -58,3 +58,21 @@ test('invalid time is bounded and idle pose stays inside cabin',()=>{
   assert.equal(powerEntryPose('idle',.5).seated,true);
   assert.equal(powerEntryPose('idle',.5).hatch,0);
 });
+
+test('a planted boot stays on its previous tread while the other foot lifts',()=>{
+  for(const [phase,t,leg,level] of [
+    ['entering',.42,1,0],
+    ['entering',.56,0,POWER_BOARDING.low.y],
+    ['entering',.73,1,POWER_BOARDING.high.y],
+    ['exiting',.36,0,POWER_BOARDING.cabin.y],
+    ['exiting',.53,1,POWER_BOARDING.high.y],
+    ['exiting',.68,0,POWER_BOARDING.low.y]
+  ]){
+    const p=powerEntryPose(phase,t);
+    assert.equal(p.plantedLeg,leg,phase+' at '+t);
+    assert.equal(p.plantedHeight,level,phase+' stance height '+t);
+    assert.ok(p.y>=level,'the pilot body must not sink below the supporting tread');
+    assert.equal(p.footLifts[leg],0,'the planted foot must stay down');
+    assert.ok(p.footLifts[1-leg]>0,'the other foot must be stepping up or down');
+  }
+});

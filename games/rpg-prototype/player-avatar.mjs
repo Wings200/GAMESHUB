@@ -456,8 +456,12 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     root.rotation.z=lerp(root.rotation.z,
       (plainSurvivor?deathBlend*1.18:0)+pose.hit*.14,
       1-Math.exp(-9*step));
+    // During rear-frame boarding the pelvis dips as a real person steps
+    // up; this keeps the torso's centre of mass over the supporting boot.
+    pelvis.position.y=.99-(boardingPose?.walking ? .10 : 0);
     pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint+
       pose.startLean*.055;
+    if(boardingPose?.walking)pelvis.rotation.x+=.14;
     pelvis.rotation.z=-pose.turn*.045;
     torso.rotation.x=.30*crouchBlend+.055*pose.sprint+
       pose.breath*.7+pose.startLean*.09-
@@ -500,10 +504,14 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         // Each raised boot now clears an actual service stair. The other
         // boot stays planted rather than both feet floating through a frame.
         const lift=Math.max(0,boardingPose.footLifts?.[i]||0);
-        leg.hip.rotation.x=wave*.20*motion+lift*1.68+brace*.12;
-        leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.85+brace*.16;
+        const anchored=i===boardingPose.plantedLeg;
+        const ankleCompensation=anchored?Math.min(.24,
+          Math.max(0,boardingPose.y-boardingPose.plantedHeight)):0;
+        leg.hip.rotation.x=wave*.18*motion+lift*1.65+brace*.12;
+        leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.65+
+          brace*.16+ankleCompensation*.9;
         leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
-        leg.foot.position.y=-.25+lift*.65;
+        leg.foot.position.y=-.25+lift*.65-ankleCompensation*.90;
         arm.shoulder.rotation.x=-wave*.20*motion-.68*brace;
         arm.shoulder.rotation.z=-sign*(.10+.22*brace);
         arm.elbow.rotation.x=-.19-.72*brace;
