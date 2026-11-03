@@ -769,6 +769,10 @@ try{
     'Both original character legs must solve real tread-contact targets');
   assert.ok(entryPose.pilotLegIK.every(leg=>!leg.unreachable&&leg.error<.02),
     'IK must actually reach the two visible foot platforms while boarding');
+  assert.equal(entryPose.pilotGripDistances?.length,2,
+    'Both independent hands need an actual rail target');
+  assert.ok(entryPose.pilotGripDistances.every(hand=>hand.distance<.14),
+    'Both survivor palms must reach the real 3D handhold joints');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
     null,{timeout:15000});

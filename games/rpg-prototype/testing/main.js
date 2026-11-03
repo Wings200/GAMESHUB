@@ -3192,6 +3192,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     pilotStrideDistance:poweredSuit.pilot.userData.entryPose?.distance||0,
     pilotLegJoints:pilotAvatar.root.userData.boardingJointAngles,
     pilotLegIK:pilotAvatar.root.userData.boardingLegIK,
+    pilotGripDistances:pilotAvatar.root.userData.boardingGripDistances||null,
     pilotFootTargets:poweredSuit.pilot.userData.entryPose?.footTargets||null,
     pilotStage:poweredSuit.pilot.userData.entryPose?.stage||'parked',
     pilotFootLifts:poweredSuit.pilot.userData.entryPose?.footLifts||[0,0],
@@ -4046,6 +4047,17 @@ function frame(){
   playerAvatar.setClothing(backpack.equipment.clothing);
   pilotAvatar.setClothing(backpack.equipment.clothing);
   const pilotChoreography=poweredSuit.pilot.userData.entryPose;
+  if(pilotChoreography&&powerStep.phase!=='idle'){
+    // Resolve ACTUAL moving handhold positions in the pilot's local space,
+    // so an animated hand can grab a real rail instead of reaching toward
+    // an approximate fixed angle. Sorting after inversion handles turning.
+    poweredSuit.root.updateMatrixWorld(true);
+    const grips=poweredSuit.serviceHandles.map(handle=>
+      poweredSuit.pilot.worldToLocal(handle.localToWorld(
+        new THREE.Vector3(0,-.05,-.84))));
+    grips.sort((a,b)=>a.x-b.x);
+    pilotChoreography.handTargets=grips.map(point=>point.toArray());
+  }
   pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
     speed:pilotChoreography?.walkSpeed||0,
     sprinting:false,crouched:false,aiming:false,alive:true,

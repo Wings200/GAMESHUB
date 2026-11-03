@@ -497,6 +497,13 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       arm.elbow.rotation.z=sign*(.18*aimBlend+.28*pose.reload);
       arm.hand.rotation.x=.10*pose.reload+.08*pose.recoil;
       arm.hand.rotation.z=sign*.08*pose.brace;
+      // Return every shoulder and wrist degree of freedom from a previous
+      // boarding pose to a neutral value before ordinary locomotion.
+      arm.shoulder.rotation.y=0;
+      arm.elbow.rotation.y=0;
+      arm.hand.rotation.y=0;
+      arm.elbow.position.x=arm.side*.035;
+      arm.hand.position.z=-.016;
       if(boardingPose){
         // Frame-local rear-hatch walk. Drive real hip/knee/ankle and
         // shoulder/elbow joints from distance traveled, with grounded toes.
@@ -535,16 +542,66 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
             .48*leg.knee.rotation.x;
           leg.foot.position.y=-.25+lift*.65-offset*.90;
         }
-        // A deliberate two-hand grab before the climb. Previously arms
-        // hung at the side until the last few frames, so it read as sliding.
-        const grip=boardingPose.grip||0;
-        arm.shoulder.rotation.x=-wave*.12*motion-1.08*grip-.24*brace;
-        arm.shoulder.rotation.z=-sign*(.10+.27*grip);
-        arm.elbow.rotation.x=-.19-.83*grip-.12*brace;
-        arm.elbow.rotation.z=sign*(.14*grip);
-        arm.hand.rotation.x=-.28*grip;
+        // Set an ordinary relaxed transition pose, then aim the actual
+        // upper arm, elbow and wrist at the moving service handle.
+        arm.shoulder.rotation.x=-wave*.12*motion-.10*brace;
+        arm.shoulder.rotation.z=sign*.08;
+        arm.elbow.rotation.x=-.22;
+        arm.elbow.rotation.z=0;
+        arm.hand.rotation.x=0;
+        const grip=clamp(boardingPose.grip||0,0,1);
+        const handTarget=boardingPose.handTargets?.[i];
+        if(handTarget&&grip>.001&&root.parent){
+          // Target is authored in the parent pilot's actual world-space
+          // frame, including frame rotation and moving handle hinges.
+          const worldTarget=root.parent.localToWorld(
+            new THREE.Vector3(...handTarget));
+          const relative=arm.shoulder.parent.worldToLocal(worldTarget)
+            .sub(arm.shoulder.position);
+          const upperLength=.40,lowerLength=.36;
+          const distance=relative.length();
+          if(distance>.0001){
+            const direction=relative.normalize();
+            const reach=clamp(distance,Math.abs(upperLength-lowerLength)+.01,
+              upperLength+lowerLength-.008);
+            const target=direction.clone().multiplyScalar(reach);
+            const along=(upperLength**2-lowerLength**2+reach**2)/(2*reach);
+            const across=Math.sqrt(Math.max(0,upperLength**2-along**2));
+            // The elbow naturally hangs below the handhold, not out
+            // sideways in a fixed, T-pose-like shoulder rotation.
+            const down=new THREE.Vector3(0,-1,0)
+              .addScaledVector(direction,direction.y);
+            if(down.lengthSq()<.001)down.set(0,0,-1);
+            down.normalize();
+            const elbowPoint=target.clone().multiplyScalar(along/reach)
+              .addScaledVector(down,across);
+            const shoulderTarget=new THREE.Quaternion()
+              .setFromUnitVectors(new THREE.Vector3(0,-1,0),
+                elbowPoint.clone().normalize());
+            const forearmDir=target.clone().sub(elbowPoint)
+              .applyQuaternion(shoulderTarget.clone().invert()).normalize();
+            const elbowTarget=new THREE.Quaternion()
+              .setFromUnitVectors(new THREE.Vector3(0,-1,0),forearmDir);
+            // Remove the small cosmetic joint offsets while gripping:
+            // these would otherwise keep the palm .04m off the rail.
+            arm.elbow.position.x=0;
+            arm.hand.position.z=0;
+            arm.shoulder.quaternion.slerp(shoulderTarget,grip);
+            arm.elbow.quaternion.slerp(elbowTarget,grip);
+            arm.hand.rotation.x=-.16*grip;
+          }
+        }
       }
     }
+    // Physical validation in local and real 3D browser tests: each palm
+    // must be within a small tolerance of its frame-mounted handhold.
+    root.userData.boardingGripDistances=
+      boardingPose?.handTargets&&root.parent?arms.map((arm,i)=>{
+        const worldGoal=root.parent.localToWorld(
+          new THREE.Vector3(...boardingPose.handTargets[i]));
+        return {hand:i,distance:arm.hand.getWorldPosition(
+          new THREE.Vector3()).distanceTo(worldGoal)};
+      }):null;
     root.userData.boardingLegIK=boardingPose?boardingLegIKDebug:null;
     root.userData.boardingJointAngles=boardingPose?legs.map(leg=>({
       hip:leg.hip.rotation.x,knee:leg.knee.rotation.x,

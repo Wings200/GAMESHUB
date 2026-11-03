@@ -84,6 +84,10 @@ try{
     rig.pilotLegIK.some(leg=>leg.unreachable||leg.error>.02))
     throw Error('Pilot foot solver did not reach boarding treads: '+
       JSON.stringify(rig.pilotLegIK));
+  if(rig.pilotGripDistances?.length!==2||
+    rig.pilotGripDistances.some(hand=>hand.distance>.14))
+    throw Error('Hands did not attach to the actual frame rails: '+
+      JSON.stringify(rig.pilotGripDistances));
   if(problems.length)throw Error('Browser errors: '+problems.join(' | '));
   console.log('VISUAL_QA_PASS');
 } finally {

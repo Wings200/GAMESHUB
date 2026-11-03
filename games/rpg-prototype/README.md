@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.6 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.7 + Forest Foundation 0.1
+
+## W20.7 — Actual two-bone hand placement on moving frame handles
+
+- During a rear-entry transition the animated survivor now reaches for physical handhold tips computed using the actual scene transform of the hinged rails and the pilot's position/orientation. Both hand targets change with the hatch as it opens and the character turns.
+- A geometric shoulder-and-elbow solver now places each palm on its assigned handle rather than raising arms through fixed pitch/roll values. The pilot's hands release the frame during the final lock sequence; arms reset correctly when leaving the frame.
+- The 3D browser test reads both real wrist-to-handle distances and requires close contact during boarding, in addition to knee/ankle and platform tests. No map changes.
 
 ## W20.6 — Tread-constrained two-joint survivor leg rig
 
