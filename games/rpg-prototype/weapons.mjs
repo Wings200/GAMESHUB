@@ -60,8 +60,8 @@ export function createWeaponState(spec = SCRAP_PISTOL) {
 export function createViewRecoilState() { return {unrecovered: 0}; }
 export function kickViewRecoil(state, pitch, degrees) {
   const limit=Math.PI/2-.035;
-  const maximumUnrecovered=.14; // cap rapid shots at about 8° total kick
-  const requested=Math.max(0,degrees)*Math.PI/180;
+  const maximumUnrecovered=.085; // limit view climb to ~5° during a burst
+  const requested=Math.max(0,degrees)*Math.PI/180*.65;
   const allowed=Math.min(requested, Math.max(0,maximumUnrecovered-state.unrecovered));
   const next=Math.max(-limit,Math.min(limit,pitch+allowed));
   state.unrecovered+=next-pitch;
@@ -70,7 +70,7 @@ export function kickViewRecoil(state, pitch, degrees) {
 export function recoverViewRecoil(state, pitch, dt) {
   if(state.unrecovered<=0)return pitch;
   const limit=Math.PI/2-.035;
-  const step=state.unrecovered*(1-Math.exp(-11*Math.max(0,dt)));
+  const step=state.unrecovered*(1-Math.exp(-15*Math.max(0,dt)));
   const next=Math.max(-limit,Math.min(limit,pitch-step));
   state.unrecovered=Math.max(0,state.unrecovered-(pitch-next));
   if(state.unrecovered<1e-6)state.unrecovered=0;

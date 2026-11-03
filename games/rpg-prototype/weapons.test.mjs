@@ -89,7 +89,7 @@ test('Repeated rapid shots cannot create a permanent camera offset',()=>{
     pitch=kickViewRecoil(recoil,pitch,SCRAP_PISTOL.recoilDegrees);
     pitch=recoverViewRecoil(recoil,pitch,.08);
   }
-  assert.ok(recoil.unrecovered>0 && recoil.unrecovered<=.14000001);
+  assert.ok(recoil.unrecovered>0 && recoil.unrecovered<=.08500001);
   for(let i=0;i<240;i++)pitch=recoverViewRecoil(recoil,pitch,1/60);
   assert.ok(Math.abs(pitch-before)<.00001);
   assert.equal(recoil.unrecovered,0);
@@ -234,4 +234,18 @@ test('Magazine swaps stay atomic and switching cancels without free ammo',()=>{
   assert.equal(startWeaponReload(state,smg),true);
   updateWeapon(state,smg.reloadSeconds,smg);
   assert.equal(state.magazine,30);assert.equal(state.reserve,42);
+});
+
+test('Recoil is restrained under bursts and settles quickly without pitching below the original view',()=>{
+  const recoil=createViewRecoilState(),origin=-.25;
+  let pitch=origin;
+  for(let shot=0;shot<16;shot++)pitch=kickViewRecoil(recoil,pitch,5.2);
+  assert.ok(pitch-origin<=.08500001,'Bursts must not force an eight-degree climb');
+  let previous=pitch;
+  for(let frame=0;frame<90;frame++){
+    pitch=recoverViewRecoil(recoil,pitch,1/60);
+    assert.ok(pitch<=previous+1e-9&&pitch>=origin-1e-8);
+    previous=pitch;
+  }
+  assert.ok(Math.abs(pitch-origin)<.00001);
 });

@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W19.3 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W19.4 + Forest Foundation 0.1
+
+## W19.4 — Combat Comfort, Protective Gear, and Low-FPS Cleanup
+
+- Sustained view recoil is capped at approximately five degrees, individual shot kicks are softened, and both camera recovery and weapon model return use real elapsed time. This prevents the gun or aim from hanging at an exaggerated offset at low frame rates while retaining distinct heavy-weapon recoil.
+- Every rotating Scout, Raider, and Enforcer outfit now has an actual helmet. The formerly helmetless Scout variant has a Ranger helmet; two 38-damage revolver headshots no longer kill a fresh NPC just because of its randomized outfit. Each helmet remains a real visible armor mesh with matching damage reduction.
+- Dead enemies fade on real time rather than slowed physics ticks. Browser smoke tests poll expensive state snapshots less often; QA assertions were updated to use the current reload and timing behavior.
 
 ## W19.3 — Weapon Reload Fidelity and Interruption
 

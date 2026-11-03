@@ -61,7 +61,7 @@ export const ENEMY_ARMOR_PRESETS=Object.freeze({
 export const ENEMY_ARMOR_VARIANTS=Object.freeze({
   scout:Object.freeze([
     {head:'scrap-head',leftLeg:'ranger-leftLeg'},
-    {leftLeg:'ranger-leftLeg'},
+    {head:'ranger-head',leftLeg:'ranger-leftLeg'},
     {head:'scrap-head',rightArm:'scrap-rightArm',rightLeg:'ranger-rightLeg'},
     {head:'ranger-head',chest:'ranger-chest'}
   ]),

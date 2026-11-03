@@ -35,7 +35,7 @@ test('Enemy render visibility is never gated by the station selector',()=>{
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);
   assert.doesNotMatch(source,/enemy\.root\.visible=active/);
   assert.match(source,/Number\(e\.code\.slice\(5\)\)<=9/);
-  assert.match(source,/updateEnemies\(dt\);[\s\S]*renderer\.render\(scene,camera\)/);
+  assert.match(source,/updateEnemies\(dt,elapsed\);[\s\S]*renderer\.render\(scene,camera\)/);
 });
 test('W06.4 distant NPCs continue moving and deaths finish outside the arena',()=>{
   assert.match(source,/const simulating=controls\.isLocked&&enemyAIEnabled/);
@@ -113,7 +113,7 @@ test('A returning player restores weapon state only after all HUD/recoil variabl
   assert.match(source,/selectWeapon\(backpack\.equipment\.weapon\)/);
 });
 test('Dead NPC bodies and indicators despawn, then J restores them',()=>{
-  assert.match(source,/enemy\.deathTimer\+=dt/);
+  assert.match(source,/enemy\.deathTimer\+=Math\.max\(0,elapsed\)/);
   assert.match(source,/if\(enemy\.deathTimer>=\.7\)enemy\.root\.visible=false/);
   assert.match(source,/enemy\.beacon\.visible=enemy\.state\.alive/);
   assert.match(source,/enemy\.billboard\.mesh\.visible=enemy\.state\.alive/);

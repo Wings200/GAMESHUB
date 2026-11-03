@@ -2818,7 +2818,7 @@ function shoot(){
   for(const enemy of enemies.values())
     if(enemy.state.alive)
       hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
-  recoilKick=Math.min(.55,recoilKick+.12*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
+  recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
   slideCycle=activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -3855,9 +3855,9 @@ function frame(){
   // Ease camera pitch back to the player's original view. This applies in
   // YXZ space, so mouse-look cannot leave the camera permanently tilted.
   if(viewRecoil.unrecovered>0){
-    camera.rotation.x=recoverViewRecoil(viewRecoil,camera.rotation.x,dt);
+    camera.rotation.x=recoverViewRecoil(viewRecoil,camera.rotation.x,elapsed);
   }
-  recoilKick*=Math.exp(-11*dt);
+  recoilKick*=Math.exp(-15*elapsed);
   mouseSway*=Math.exp(-9*dt);
   muzzleFlash=Math.max(0,muzzleFlash-dt);
   slideCycle=Math.max(0,slideCycle-dt);

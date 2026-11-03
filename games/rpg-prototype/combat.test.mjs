@@ -46,7 +46,7 @@ test('All three enemy roles have visible protective head armor and distinct surv
 });
 test('W06.5 modular enemy outfits range from one leg piece to a full suit',()=>{
   const single=enemyArmorForRound('scout',1);
-  assert.deepEqual(ARMOR_SLOTS.filter(slot=>single[slot]!=='none'),['leftLeg']);
+  assert.deepEqual(ARMOR_SLOTS.filter(slot=>single[slot]!=='none'),['head','leftLeg']);
   const complete=enemyArmorForRound('enforcer',0);
   assert.equal(ARMOR_SLOTS.filter(slot=>complete[slot]!=='none').length,6);
   for(const id of Object.keys(ENEMY_ARMOR_VARIANTS)){
@@ -54,6 +54,11 @@ test('W06.5 modular enemy outfits range from one leg piece to a full suit',()=>{
     for(let round=0;round<variants.length;round++){
       const armor=enemyArmorForRound(id,round);
       for(const slot of ARMOR_SLOTS)getArmorPiece(slot,armor[slot]);
+      assert.notEqual(armor.head,'none','Every enemy outfit must include a visible helmet');
+      const target=createDummy(armor);
+      assert.equal(applyDamage(target,38,'head').killed,false);
+      assert.equal(applyDamage(target,38,'head').killed,false,
+        'No outfit should allow a two-tap revolver headshot');
     }
     assert.deepEqual(enemyArmorForRound(id,0),enemyArmorForRound(id,variants.length));
   }
