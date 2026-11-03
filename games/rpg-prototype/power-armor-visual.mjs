@@ -205,30 +205,67 @@ export function buildPowerArmorVisual(scene,position,state){
       shell.userData.modelDetails[tier]=detail;
     }
     styling('t45',group=>{
-      forged(group,w*.73,h*.12,.047,edge,0,-h*.22,.065,.025);
+      // Warm cast-steel: a clean shoulder skirt, tapered calf reinforcements
+      // and paired stamped breastribs, never one horizontal stripe per plate.
+      if(role==='cuirass'){
+        const collar=forged(group,w*.62,h*.08,.045,edge,0,h*.31,.085,.023);
+        collar.rotation.z=-.06;
+        forged(group,w*.30,h*.07,.039,shaded,0,-h*.24,.10,.022);
+      }else if(role==='pauldron'){
+        const flange=forged(group,w*.78,h*.08,.066,edge,0,-h*.36,.07,.022);
+        flange.rotation.z=-.035;
+      }else if(role==='helmet'){
+        forged(group,w*.59,h*.065,.043,brass,0,h*.34,.09,.024);
+      }else{
+        forged(group,w*.11,h*.56,.048,edge,-w*.31,0,.085,.024);
+      }
       for(const sign of [-1,1]){
-        const rivet=cyl(group,.032,.032,.027,brass,sign*w*.31,h*.26,.08,8);
+        const rivet=cyl(group,.022,.022,.020,brass,
+          sign*w*.28,h*.26,.10,8);
         rivet.rotation.x=Math.PI/2;
       }
     });
     styling('t60',group=>{
-      for(const sign of [-1,1]){
-        forged(group,w*.16,h*.82,.09,edge,sign*w*.31,0,.07,.018);
-        forged(group,w*.08,h*.64,.045,shaded,sign*w*.31,0,.12,.012);
-        forged(group,w*.13,h*.18,.09,brass,sign*w*.44,h*.30,.09,.025);
+      // T-60 has heavy upper roll cages and ONE structural vent per limb.
+      if(role==='cuirass'||role==='pauldron'){
+        for(const sign of [-1,1]){
+          forged(group,w*.11,h*.70,.09,edge,sign*w*.30,0,.075,.023);
+          forged(group,w*.065,h*.52,.05,shaded,sign*w*.30,0,.125,.016);
+        }
+        forged(group,w*.55,h*.08,.068,steel,0,h*.29,.112,.024);
+      }else if(role==='helmet'){
+        forged(group,w*.61,h*.055,.07,steel,0,h*.28,.11,.02);
+      }else{
+        const rib=forged(group,w*.12,h*.72,.058,edge,
+          w*.28,-h*.025,.085,.018);
+        rib.rotation.z=-.045;
+        forged(group,w*.30,h*.07,.058,brass,-w*.09,-h*.30,.09,.018);
       }
-      forged(group,w*.51,h*.13,.075,steel,0,h*.32,.11,.025);
     });
     styling('t01',group=>{
-      const ridge=forged(group,w*.24,h*.65,.16,protoTrim,0,h*.01,.11,.075);
-      ridge.rotation.z=.04;
-      for(const sign of [-1,1]){
-        const wing=forged(group,w*.24,h*.42,.14,shaded,sign*w*.33,h*.035,.08,.045);
-        wing.rotation.z=-sign*.30;
-        forged(group,w*.08,h*.23,.13,protoTrim,sign*w*.34,-h*.25,.13,.025);
+      // Experimental angular armour concentrates pointed fins on the
+      // collar and shoulders. The legs use ONE recessed keel instead of
+      // repeating pink knobs on every plate.
+      if(role==='cuirass'||role==='pauldron'||role==='helmet'){
+        const ridge=forged(group,w*.18,h*.59,.11,protoTrim,
+          0,h*.025,.11,.045);
+        ridge.rotation.z=.04;
+        for(const sign of [-1,1]){
+          const wing=forged(group,w*.20,h*.27,.095,shaded,
+            sign*w*.33,h*.14,.083,.035);
+          wing.rotation.z=-sign*.38;
+          forged(group,w*.05,h*.22,.078,protoTrim,
+            sign*w*.31,-h*.21,.13,.019);
+        }
+      }else{
+        const keel=forged(group,w*.12,h*.64,.075,protoTrim,
+          w*.10,0,.10,.035);
+        keel.rotation.z=-.18;
+        forged(group,w*.26,h*.08,.062,shaded,
+          -w*.20,-h*.28,.088,.022);
       }
-      for(let i=-1;i<=1;i++)
-        forged(group,w*.08,h*.10,.10,brass,i*w*.22,-h*.36,.14,.02);
+      for(const sign of [-1,1])
+        ball(group,.022,brass,sign*w*.25,-h*.27,.12);
     });
     plateMeshes[slot].push(shell);
     return shell;
@@ -460,6 +497,26 @@ export function buildPowerArmorVisual(scene,position,state){
   // Front-facing vision band set into the forged helmet, not a floating box.
   modulePart('head',forged(helmetPivot,.72,.14,.13,shaded,0,.25,.34,.06));
   modulePart('head',forged(helmetPivot,.58,.08,.09,visor,0,.26,.417,.025));
+  // Actual paired armoured optics, backed by a dark inset and surrounded
+  // by metal maskwork. Distinct from the previous tiny gold slit.
+  const opticalGlass=new THREE.MeshStandardMaterial({
+    color:0x276276,metalness:.30,roughness:.19,
+    emissive:0x3c8294,emissiveIntensity:.36
+  });
+  for(const side of [-1,1]){
+    const aperture=modulePart('head',forged(helmetPivot,.235,.132,.078,
+      shaded,side*.178,.185,.433,.034));
+    aperture.rotation.z=-side*.09;
+    const glass=modulePart('head',forged(helmetPivot,.180,.072,.037,
+      opticalGlass.clone(),side*.178,.191,.489,.023));
+    glass.rotation.z=-side*.09;
+  }
+  // Large central filter with staggered vents, independent of helmet
+  // pigmentation. The hoses connect under the cheeks and into the suit.
+  modulePart('head',forged(helmetPivot,.28,.19,.18,joint,0,-.045,.454,.068));
+  for(const height of [-.108,-.06,-.012])
+    modulePart('head',forged(helmetPivot,.20,.021,.052,edge,
+      0,height,.55,.008));
   for(const side of [-1,1]){
     const temple=modulePart('head',forged(helmetPivot,.22,.28,.19,
       steel,side*.36,.13,.22,.055));

@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.8 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.9 + Forest Foundation 0.1
+
+## W20.9 — Tier-specific detail and working mask optics
+
+- After checking actual fully equipped T-45/T-60/T-01 screenshots, removed duplicated horizontal plate badges, paired vertical vent strips on every limb, and repeated pink keels/bolts across the entire T-01 body. Each tier now uses different details on the cuirass, pauldron, mask and limb segments instead of copying one decoration to every plate.
+- Added inset paired helmet eye optics, thick cast respirator housing and actual mechanical vent slats. Changed the Tier 45 stamped collar/pauldron, Tier 60 cage/vent and Tier 01 experimental ridge/fins. All remain separate, removable, structurally mounted meshes and preserve the rear-entry test path.
+- The live 3D visual-probe renders bare and fully equipped fronts and rear climbing stages. Requires human evaluation of the current art after browser tests pass.
 
 ## W20.8 — Rebuilt armour silhouette after visual screenshot review
 
