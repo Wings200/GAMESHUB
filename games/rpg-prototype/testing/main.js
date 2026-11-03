@@ -3191,6 +3191,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     pilotStride:poweredSuit.pilot.userData.entryPose?.step||0,
     pilotStrideDistance:poweredSuit.pilot.userData.entryPose?.distance||0,
     pilotLegJoints:pilotAvatar.root.userData.boardingJointAngles,
+    pilotLegIK:pilotAvatar.root.userData.boardingLegIK,
+    pilotFootTargets:poweredSuit.pilot.userData.entryPose?.footTargets||null,
     pilotStage:poweredSuit.pilot.userData.entryPose?.stage||'parked',
     pilotFootLifts:poweredSuit.pilot.userData.entryPose?.footLifts||[0,0],
     stepsDeployed:{lowerZ:poweredSuit.steps.lowerTread.position.z,

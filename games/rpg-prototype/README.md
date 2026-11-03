@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.5 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.6 + Forest Foundation 0.1
+
+## W20.6 — Tread-constrained two-joint survivor leg rig
+
+- Added pure geometric inverse kinematics for the survivor's original animated hip and knee joints. Both boots follow distinct ground, lower-step, upper-step and cabin contact targets with independent swing arcs. Root translation deliberately lags the leading foot instead of vertically lifting the entire body first; an independently solved ankle keeps each boot level on a tread.
+- Stepping now starts with a real hold on the frame handholds; the pelvis transfers weight during each rise. Unit tests check leg reach, finite joint angles, each tread's two foot targets, and extreme input clamping. Real Three.js browser smoke tests check numerical reach of both legs and a third cabin boarding screenshot.
+- No new map or quest expansion in this milestone. Manual player evaluation remains required to approve the visuals.
 
 ## W20.5 — Bare chassis, sculpted alloy modules and hand-assisted climbing
 

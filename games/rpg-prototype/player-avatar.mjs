@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
+import {solveBoardingLeg} from './boarding-ik.mjs';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -458,7 +459,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       1-Math.exp(-9*step));
     // During rear-frame boarding the pelvis dips as a real person steps
     // up; this keeps the torso's centre of mass over the supporting boot.
-    pelvis.position.y=.99-(boardingPose?.walking ? .10 : 0);
+    pelvis.position.y=.99-(boardingPose?.walking ? .19 : 0);
     pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint+
       pose.startLean*.055;
     if(boardingPose?.walking)pelvis.rotation.x+=.14;
@@ -472,6 +473,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+
       pose.hit*.10+pose.breath*.42;
     head.rotation.z=-pose.hit*.10+pose.turn*.06;
+    const boardingLegIKDebug=[];
     for(let i=0;i<2;i++){
       const leg=legs[i],arm=arms[i],sign=i===0?1:-1;
       leg.hip.rotation.x=sign*stride+.69*crouchBlend+
@@ -504,16 +506,35 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         // Each raised boot now clears an actual service stair. The other
         // boot stays planted rather than both feet floating through a frame.
         const lift=Math.max(0,boardingPose.footLifts?.[i]||0);
-        const anchored=i===boardingPose.plantedLeg;
-        // Signed support offset: on entry the standing boot reaches DOWN
-        // to the previous step; on exit it reaches UP to that step.
-        const ankleCompensation=anchored?clamp(
-          boardingPose.y-boardingPose.plantedHeight,-.24,.24):0;
-        leg.hip.rotation.x=wave*.18*motion+lift*1.65+brace*.12;
-        leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.65+
-          brace*.16+Math.abs(ankleCompensation)*.9;
-        leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
-        leg.foot.position.y=-.25+lift*.65-ankleCompensation*.90;
+        const contact=boardingPose.footTargets?.[i];
+        if(contact){
+          // Solve a real ankle target on the tread, in the survivor's
+          // sagittal plane. Root yaw PI reverses local Z relative to the
+          // frame. The boot sole is approximately .17m below the ankle.
+          const hipHeight=boardingPose.y+pelvis.position.y-.12;
+          const ankleY=contact.y+.17-hipHeight;
+          const ankleZ=boardingPose.z-contact.z+.10;
+          const ik=solveBoardingLeg(ankleY,ankleZ);
+          leg.hip.rotation.x=ik.hip;
+          leg.knee.rotation.x=ik.knee;
+          leg.foot.rotation.x=ik.ankle;
+          leg.foot.position.y=-.25;
+          boardingLegIKDebug.push({leg:i,error:ik.error,
+            unreachable:ik.unreachable,targetY:ankleY,
+            targetZ:ankleZ,hip:ik.hip,knee:ik.knee});
+        }else{
+          // Approach and clear-hatch strides use regular gait until the
+          // feet enter or leave the service stair contact zone.
+          const anchored=i===boardingPose.plantedLeg;
+          const offset=anchored?clamp(
+            boardingPose.y-boardingPose.plantedHeight,-.24,.24):0;
+          leg.hip.rotation.x=wave*.18*motion+lift*1.65+brace*.12;
+          leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.65+
+            brace*.16+Math.abs(offset)*.9;
+          leg.foot.rotation.x=-.72*leg.hip.rotation.x-
+            .48*leg.knee.rotation.x;
+          leg.foot.position.y=-.25+lift*.65-offset*.90;
+        }
         // A deliberate two-hand grab before the climb. Previously arms
         // hung at the side until the last few frames, so it read as sliding.
         const grip=boardingPose.grip||0;
@@ -524,6 +545,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         arm.hand.rotation.x=-.28*grip;
       }
     }
+    root.userData.boardingLegIK=boardingPose?boardingLegIKDebug:null;
     root.userData.boardingJointAngles=boardingPose?legs.map(leg=>({
       hip:leg.hip.rotation.x,knee:leg.knee.rotation.x,
       ankle:leg.foot.rotation.x

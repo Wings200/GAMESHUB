@@ -73,6 +73,17 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotStage==='upper-step',
     null,{timeout:12000});
   await capture('secondstep');
+  // Hold a third contact keyframe in the cockpit-entry stair and validate
+  // the actual articulated rig coordinates after a rendered WebGL frame.
+  await page.evaluate(()=>window.__rpgSmokeSetPowerProgress(.73));
+  await page.waitForFunction(()=>window.__rpgSmokePowerVisual().pilotStage==='cabin-step',
+    null,{timeout:12000});
+  await capture('cabinstep');
+  const rig=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  if(rig.pilotLegIK?.length!==2||
+    rig.pilotLegIK.some(leg=>leg.unreachable||leg.error>.02))
+    throw Error('Pilot foot solver did not reach boarding treads: '+
+      JSON.stringify(rig.pilotLegIK));
   if(problems.length)throw Error('Browser errors: '+problems.join(' | '));
   console.log('VISUAL_QA_PASS');
 } finally {

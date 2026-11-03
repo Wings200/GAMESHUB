@@ -765,6 +765,10 @@ try{
     'Pilot step cycle must track distance traveled');
   assert.equal(entryPose.pilotLegJoints?.length,2,
     'Actual survivor knees and ankles must animate during boarding');
+  assert.equal(entryPose.pilotLegIK?.length,2,
+    'Both original character legs must solve real tread-contact targets');
+  assert.ok(entryPose.pilotLegIK.every(leg=>!leg.unreachable&&leg.error<.02),
+    'IK must actually reach the two visible foot platforms while boarding');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.occupied,
     null,{timeout:15000});
