@@ -71,6 +71,13 @@ try{
   await page.evaluate(()=>window.__rpgSmokePowerVisualLoadout('none'));
   await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(false));
   await capture('rear');
+  const enemyQA=await page.evaluate(()=>window.__rpgSmokePreviewEnemy('scout'));
+  if(!enemyQA||enemyQA.frontDot<.995||
+     !enemyQA.muzzle?.every(Number.isFinite))
+    throw Error('Visible NPC must face toward viewer with real barrel: '+
+      JSON.stringify(enemyQA));
+  await capture('npc-facing');
+  await page.evaluate(()=>window.__rpgSmokePreviewPowerFrame(false));
   await page.evaluate(()=>window.__rpgSmokePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='entering',
     null,{timeout:12000});

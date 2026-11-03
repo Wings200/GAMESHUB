@@ -3132,6 +3132,31 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     poweredSuit.updatePlates(powerArmorState);
     return true;
   };
+  // Real 3D QA for the long-standing "enemies shoot backwards" report.
+  // Place the viewer on the model's intended front axis with combat frozen.
+  // Screenshot and world-forward vector must both show a facing rifle.
+  window.__rpgSmokePreviewEnemy=(id='scout')=>{
+    const target=enemies.get(id);
+    if(!target?.state.alive)return null;
+    enemyAIEnabled=false;
+    stationIndex=8;
+    player.x=target.brain.x;
+    player.z=target.brain.z-6.0;
+    player.jump=0;player.vertical=0;resetMotion(player);
+    target.brain.yaw=Math.atan2(player.x-target.brain.x,
+      player.z-target.brain.z);
+    target.root.rotation.y=target.brain.yaw;
+    target.rigged?.root.updateMatrixWorld(true);
+    camera.position.set(player.x,1.70,player.z);
+    camera.lookAt(target.brain.x,1.62,target.brain.z);
+    weaponVisuals.get(activeWeaponId).root.visible=false;
+    const aim=target.rigged?.getWorldForward();
+    const expected=new THREE.Vector3(player.x-target.brain.x,0,
+      player.z-target.brain.z).normalize();
+    return {id,yaw:target.brain.yaw,
+      frontDot:aim?.dot(expected)??null,
+      muzzle:target.rigged?.getMuzzleWorldPosition()?.toArray()||null};
+  };
   window.__rpgSmokeApproachPowerCache=()=>{
     player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
     return nearestLootBag()?.source==='power-cache';
