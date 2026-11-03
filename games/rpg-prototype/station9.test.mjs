@@ -89,7 +89,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -344,7 +344,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
@@ -413,7 +413,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -465,7 +465,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -478,7 +478,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -550,7 +550,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -672,7 +672,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W19\.2/);
+  assert.match(page,/main\.js\?v=W19\.3/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -691,8 +691,8 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W19\.2/);
-  assert.match(page,/W19\.2.*FRONTIER REBUILD/);
+  assert.match(page,/main\.js\?v=W19\.3/);
+  assert.match(page,/W19\.3.*WASTELAND GAMEPLAY/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
   assert.match(characterAnimation,/state\.land=/);
@@ -760,7 +760,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W19.2'));
+  assert.ok(page.includes('main.js?v=W19.3'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
@@ -781,7 +781,7 @@ test('W19.0 loads scrap-built scenery, proper firearm reloads and suppression',(
     assert.ok(scene.includes(prop),prop);
 });
 
-test('W19.2 has jointed gait, physical first-person hands, impacts and sound awareness',()=>{
+test('W19.3 has jointed gait, physical first-person hands, impacts and sound awareness',()=>{
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
   const avatar=readFileSync(new URL('./player-avatar.mjs',import.meta.url),'utf8');
   const animation=readFileSync(new URL('./character-animation.mjs',import.meta.url),'utf8');
@@ -797,7 +797,7 @@ test('W19.2 has jointed gait, physical first-person hands, impacts and sound awa
   assert.ok(ai.includes("enemy.mode='investigate-noise'"));
 });
 
-test('W19.2 turns new story choices into physical world outcomes and grounded NPCs',()=>{
+test('W19.3 turns new story choices into physical world outcomes and grounded NPCs',()=>{
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
   const campaign=readFileSync(new URL('./campaign.mjs',import.meta.url),'utf8');
   assert.ok(source.includes('QuestResident_'));
@@ -808,4 +808,15 @@ test('W19.2 turns new story choices into physical world outcomes and grounded NP
   assert.ok(source.includes('questNavigationClock'));
   assert.ok(campaign.includes("id:'haven-first-light'"));
   assert.ok(campaign.includes("id:'last-broadcast'"));
+});
+
+test('W19.3 ammo loading matches physical round motion and interrupts on weapon switch',()=>{
+  const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
+  const weapons=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
+  const hands=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
+  assert.ok(source.includes('cancelWeaponReload(weaponState)'));
+  assert.ok(source.includes('weaponState.reloadRounds||null'));
+  assert.ok(weapons.includes('const individualReload='));
+  assert.ok(weapons.includes('const inserted='));
+  assert.ok(hands.includes('roundCount=null'));
 });

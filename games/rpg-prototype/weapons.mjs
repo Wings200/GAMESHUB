@@ -50,8 +50,9 @@ export function createArsenalStates(){
 
 export function createWeaponState(spec = SCRAP_PISTOL) {
   return { magazine: spec.magazineSize, reserve: spec.startingReserve,
-    cooldown: 0, reloadRemaining: 0, aiming: false, shotsFired: 0,
-    recoil: 0 };
+    cooldown: 0, reloadRemaining: 0, reloadDuration: 0,
+    reloadRounds: 0, reloadLoaded: 0,
+    aiming: false, shotsFired: 0, recoil: 0 };
 }
 // Three.js YXZ camera pitch is POSITIVE when looking up. Gun recoil
 // must therefore ADD pitch; subtracting it shoved the player's aim down.
@@ -79,10 +80,26 @@ export function recoverViewRecoil(state, pitch, dt) {
 export function setWeaponAim(state, aiming) {
   state.aiming = !!aiming;
 }
+const individualReload=spec=>['revolver','shotgun','rifle'].includes(spec.kind);
+export function cancelWeaponReload(state){
+  const wasReloading=state.reloadRemaining>0;
+  // Rounds already seated in a cylinder, tube or chamber stay usable.
+  state.reloadRemaining=0;state.reloadDuration=0;
+  state.reloadRounds=0;state.reloadLoaded=0;
+  return wasReloading;
+}
 export function startWeaponReload(state, spec = SCRAP_PISTOL) {
   if (state.reloadRemaining > 0 || state.magazine >= spec.magazineSize ||
       state.reserve <= 0) return false;
-  state.reloadRemaining = spec.reloadSeconds;
+  const missing=Math.min(spec.magazineSize-state.magazine,state.reserve);
+  const perRound=individualReload(spec);
+  state.reloadRounds=perRound?missing:0;
+  state.reloadLoaded=0;
+  // A one-shell top-up is faster than filling an empty tube or cylinder.
+  const timing={revolver:[.74,.31],shotgun:[.64,.34],rifle:[.80,.41]}[spec.kind];
+  state.reloadDuration=perRound&&timing?
+    Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):spec.reloadSeconds;
+  state.reloadRemaining=state.reloadDuration;
   return true;
 }
 export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
@@ -92,11 +109,30 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
     const reloadRate = Number.isFinite(options.reloadSpeedMultiplier) ?
       Math.max(.85, Math.min(1.6, options.reloadSpeedMultiplier)) : 1;
     state.reloadRemaining = Math.max(0, state.reloadRemaining - step * reloadRate);
-    if (state.reloadRemaining === 0) {
+    if(state.reloadRounds>0){
+      const duration=Math.max(.001,state.reloadDuration||spec.reloadSeconds);
+      const progress=Math.max(0,Math.min(1,1-state.reloadRemaining/duration));
+      // Match the physical insertion window of each animated action: first
+      // open the cylinder/bolt or reach the tube; only then seat live rounds.
+      const interval={revolver:[.40,.79],shotgun:[.16,.86],rifle:[.30,.80]}[spec.kind]||[0,1];
+      const inserted=Math.max(0,Math.min(1,
+        (progress-interval[0])/(interval[1]-interval[0])));
+      const due=Math.min(state.reloadRounds,
+        Math.floor(inserted*state.reloadRounds+1e-7));
+      const add=Math.min(Math.max(0,due-state.reloadLoaded),
+        state.reserve,Math.max(0,spec.magazineSize-state.magazine));
+      if(add>0){
+        state.magazine+=add;state.reserve-=add;state.reloadLoaded+=add;
+      }
+    }else if(state.reloadRemaining===0){
+      // Detachable magazines remain an atomic swap at the end of the action.
       const needed = spec.magazineSize - state.magazine;
       const loaded = Math.min(Math.max(0, needed), state.reserve);
       state.magazine += loaded;
       state.reserve -= loaded;
+    }
+    if(state.reloadRemaining===0){
+      state.reloadDuration=0;state.reloadRounds=0;state.reloadLoaded=0;
     }
   }
   state.recoil *= Math.exp(-10 * step);
@@ -119,7 +155,10 @@ export function shotSpreadDegrees(spec = SCRAP_PISTOL, aiming = false, motion = 
 }
 
 export function fireWeapon(state, spec = SCRAP_PISTOL, random = Math.random, motion = {}) {
-  if (state.reloadRemaining > 0) return { status: 'reloading' };
+  if(state.reloadRemaining>0){
+    if(state.reloadRounds>0&&state.magazine>0)cancelWeaponReload(state);
+    else return {status:'reloading'};
+  }
   if (state.cooldown > 1e-7) return { status: 'cooldown' };
   if (state.magazine <= 0) return { status: 'empty' };
 

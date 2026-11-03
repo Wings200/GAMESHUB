@@ -434,7 +434,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
-    reloadStyle=null,boardingPose=null,turnRate=null}){
+    reloadStyle=null,reloadRounds=null,boardingPose=null,turnRate=null}){
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
     const deltaYaw=previousYaw===null?0:
       Math.atan2(Math.sin(yaw-previousYaw),Math.cos(yaw-previousYaw));
@@ -514,7 +514,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     if(heldWeapon){
       const stage=clamp(reloadProgress,0,1);
       const gunPose=reloadPoseForWeapon(heldWeaponId,
-        reloading?1-stage:0,1);
+        reloading?1-stage:0,1,reloadRounds);
       heldWeapon.rotation.x=-pose.recoil*.14+pose.reload*gunPose.tilt;
       heldWeapon.rotation.z=pose.reload*(gunPose.cylinderOpen*.1+.03);
       heldMagazine.position.y=-.17-gunPose.magazineOffset*.55;

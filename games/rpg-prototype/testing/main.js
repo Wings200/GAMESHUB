@@ -9,7 +9,7 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
-  createWeaponState, setWeaponAim, startWeaponReload, updateWeapon, fireWeapon,
+  createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
   shotSpreadDegrees } from '../weapons.mjs';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
@@ -2659,6 +2659,8 @@ let groundedStepProgress=0;
 function selectWeapon(id){
   const spec=getWeaponSpec(id);
   if(id===activeWeaponId)return;
+  // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
+  cancelWeaponReload(weaponState);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   activeWeaponId=id;activeSpec=spec;
   weaponState=arsenalStates[id];
@@ -2789,7 +2791,7 @@ function refreshWeaponHUD(){
     (weaponMotion.airborne?' · AIRBORNE':weaponMotion.crouched?' · CROUCHED':
       weaponMotion.speed>2?' · MOVING':' · STEADY');
   $('reloadProgress').style.width=(weaponState.reloadRemaining>0?
-    100*(1-weaponState.reloadRemaining/activeSpec.reloadSeconds):0).toFixed(1)+'%';
+    100*(1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds)):0).toFixed(1)+'%';
 }
 function shoot(){
   const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
@@ -2956,7 +2958,8 @@ function reload(){
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
     slideCycle=0;
-    sound.reload(activeSpec.kind||'pistol',activeSpec.reloadSeconds);
+    sound.reload(activeSpec.kind||'pistol',weaponState.reloadDuration/
+      Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
 }
@@ -3072,6 +3075,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     const spec=getWeaponSpec(id),state=arsenalStates[id];
     state.magazine=Math.min(state.magazine,spec.magazineSize-1);
     state.reserve=Math.max(state.reserve,spec.magazineSize);
+    cancelWeaponReload(state);
+    state.reloadDuration=spec.reloadSeconds;
     state.reloadRemaining=spec.reloadSeconds*(1-Math.max(.01,Math.min(.98,progress)));
     window.__rpgSmokeReloadHold={id,remaining:state.reloadRemaining};
     return true;
@@ -3088,7 +3093,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       supportArmPieces:visual.supportHand?.children.length||0,
       supportHandVisible:visual.supportHand?.visible??null,
       state:reloadPoseForWeapon(activeWeaponId,
-        weaponState.reloadRemaining,activeSpec.reloadSeconds)};
+        weaponState.reloadRemaining,weaponState.reloadDuration||activeSpec.reloadSeconds,
+        weaponState.reloadRounds||null)};
   };
   window.__rpgSmokePowerTransition=()=>togglePoweredSuit();
   window.__rpgSmokeSetPowerProgress=(fraction)=>{
@@ -3281,6 +3287,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     shot: lastShotDebug,weaponShots:weaponState.shotsFired,
     weapon:{id:activeSpec.id,magazine:weaponState.magazine,
       reserve:weaponState.reserve,reloadRemaining:weaponState.reloadRemaining,
+      reloadDuration:weaponState.reloadDuration,reloadRounds:weaponState.reloadRounds,
+      reloadLoaded:weaponState.reloadLoaded,
       cooldown:weaponState.cooldown},
     triggerHeld,emptyClickLatched,dryFireClicks,
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
@@ -3860,7 +3868,8 @@ function frame(){
     visual.muzzleFlare.material.opacity=q;
   }
   const handling=reloadPoseForWeapon(activeWeaponId,
-    weaponState.reloadRemaining,activeSpec.reloadSeconds);
+    weaponState.reloadRemaining,weaponState.reloadDuration||activeSpec.reloadSeconds,
+    weaponState.reloadRounds||null);
   const cycleDuration=activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
   const cycling=slideTravel(slideCycle,cycleDuration);
@@ -4096,7 +4105,8 @@ function frame(){
     reloading:weaponState.reloadRemaining>0,
     reloadStyle:activeWeaponId,
     reloadProgress:weaponState.reloadRemaining>0?
-      1-weaponState.reloadRemaining/activeSpec.reloadSeconds:0,
+      1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds):0,
+    reloadRounds:weaponState.reloadRounds,
     recoil:Math.min(1,muzzleFlash/.085),
     hit:Math.min(1,playerHitFlash/.48)});
   // Remote bodies update independently of local V / ADS / camera mode.

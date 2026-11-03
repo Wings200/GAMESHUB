@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -187,4 +187,51 @@ test('Every single-projectile gun hits the exact sight center when planted in AD
   const result=fireWeapon(state,shotgun,()=>.9,{speed:0});
   assert.deepEqual(result.directions[0],{spreadX:0,spreadY:0});
   assert.ok(result.directions.slice(1).some(p=>p.spreadX!==0||p.spreadY!==0));
+});
+
+test('Shell-fed reloads insert real rounds progressively, and a shot cancels the rest',()=>{
+  for(const id of ['scrap-shotgun','hunting-rifle','iron-revolver']){
+    const spec=getWeaponSpec(id),state=createWeaponState(spec);
+    state.magazine=0;state.reserve=spec.magazineSize;
+    assert.equal(startWeaponReload(state,spec),true,id);
+    const duration=state.reloadDuration;
+    assert.ok(duration>0&&duration<=spec.reloadSeconds);
+    updateWeapon(state,duration*.62,spec);
+    const loaded=state.magazine;
+    assert.ok(loaded>=1&&loaded<spec.magazineSize,
+      id+' must have usable partially loaded rounds');
+    assert.equal(state.reserve,spec.magazineSize-loaded);
+    const shot=fireWeapon(state,spec,()=>.5);
+    assert.equal(shot.status,'fired',id+' can interrupt with a real shot');
+    assert.equal(state.reloadRemaining,0);
+    assert.equal(state.magazine,loaded-1);
+    assert.equal(state.reserve,spec.magazineSize-loaded,
+      'Interruption cannot duplicate ammunition');
+    updateWeapon(state,20,spec);
+    assert.equal(state.magazine,loaded-1,
+      'Cancelled reload cannot add phantom rounds later');
+  }
+});
+test('Single-round top-ups are faster and remaining shell count is accurate',()=>{
+  const shotgun=getWeaponSpec('scrap-shotgun'),state=createWeaponState(shotgun);
+  state.magazine=5;state.reserve=4;
+  assert.equal(startWeaponReload(state,shotgun),true);
+  assert.equal(state.reloadRounds,1);
+  assert.ok(state.reloadDuration<shotgun.reloadSeconds*.6);
+  updateWeapon(state,state.reloadDuration,shotgun);
+  assert.equal(state.magazine,6);assert.equal(state.reserve,3);
+  assert.equal(state.reloadRounds,0);
+  assert.equal(startWeaponReload(state,shotgun),false);
+});
+test('Magazine swaps stay atomic and switching cancels without free ammo',()=>{
+  const smg=getWeaponSpec('pipe-smg'),state=createWeaponState(smg);
+  state.magazine=12;state.reserve=60;
+  startWeaponReload(state,smg);
+  updateWeapon(state,smg.reloadSeconds*.6,smg);
+  assert.equal(state.magazine,12);
+  assert.equal(cancelWeaponReload(state),true);
+  assert.equal(state.magazine,12);assert.equal(state.reserve,60);
+  assert.equal(startWeaponReload(state,smg),true);
+  updateWeapon(state,smg.reloadSeconds,smg);
+  assert.equal(state.magazine,30);assert.equal(state.reserve,42);
 });

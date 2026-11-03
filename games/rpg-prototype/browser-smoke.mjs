@@ -172,11 +172,23 @@ try{
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     {timeout:7000});
   const before=await page.evaluate(()=>window.__rpgSmokeState());
-  await page.waitForTimeout(1400);
+  // Software WebGL can render fewer than 10 frames in the first second after
+  // entering the arena. Wait for real movement instead of a fixed wall clock.
+  try{
+    await page.waitForFunction((prior)=>{
+      const current=window.__rpgSmokeState();
+      return current.enemies.some((e,i)=>
+        Math.hypot(e.x-prior[i].x,e.z-prior[i].z)>.08);
+    },before.enemies.map(e=>({x:e.x,z:e.z})),{timeout:15000,polling:250});
+  }catch(error){
+    const actual=await page.evaluate(()=>window.__rpgSmokeState());
+    console.error('AI movement diagnostic',JSON.stringify({
+      locked:actual.locked,arenaActive:actual.arenaActive,aiEnabled:actual.aiEnabled,
+      enemies:actual.enemies.map(e=>({id:e.id,x:e.x,z:e.z,mode:e.mode,
+        moving:e.moving,alive:e.alive,decision:e.decision}))}));
+    throw error;
+  }
   const after=await page.evaluate(()=>window.__rpgSmokeState());
-  const moved=after.enemies.some((e,i)=>
-    Math.hypot(e.x-before.enemies[i].x,e.z-before.enemies[i].z)>.08);
-  assert.ok(moved,'At least one live AI must physically move in the arena');
   for(const enemy of after.enemies){
     assert.ok(Number.isFinite(enemy.pace)&&enemy.pace>=0,
       'Each NPC must have an actual tactical walk/run speed');

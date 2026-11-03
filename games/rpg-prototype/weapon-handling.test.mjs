@@ -89,3 +89,15 @@ test('Reload endpoints settle all moving parts without affecting ammo',()=>{
     assert.equal(pose.roundVisible,false);
   }
 });
+
+test('Ammo presentation respects an actual two-shell top-up instead of six phantom shells',()=>{
+  const pose=reloadPoseForWeapon('scrap-shotgun',.12,1,2);
+  assert.equal(pose.roundVisible,true);
+  assert.ok(pose.roundIndex>=0&&pose.roundIndex<2);
+  const rifle=reloadPoseForWeapon('hunting-rifle',.50,1,2);
+  assert.ok(rifle.roundIndex>=0&&rifle.roundIndex<2);
+  const revolver=reloadPoseForWeapon('iron-revolver',.50,1,1);
+  assert.ok(revolver.roundIndex>=0&&revolver.roundIndex<1);
+  assert.ok(revolver.cylinderSpin<Math.PI,
+    'A one-cartridge top-up does not spin the whole cylinder twice');
+});

@@ -42,7 +42,7 @@ const rise=(p,a,b)=>smooth((p-a)/(b-a));
 const pulse=(p,a,b)=>p<a||p>b?0:Math.sin(Math.PI*(p-a)/(b-a));
 // Distinct *mechanical* reload paths for the six guns, not the old shared
 // detachable-mag hand swipe. Completion still belongs to weapons.mjs.
-export function reloadPoseForWeapon(id,remaining,duration=1.65){
+export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
   const base=reloadVisualState(remaining,duration);
   const pose={...base,style:id,roundVisible:false,roundIndex:-1,
     shellProgress:0,cylinderOpen:0,cylinderSpin:0,boltOffset:0,
@@ -65,11 +65,12 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65){
     pose.magazineVisible=false;
     pose.magazineOffset=0;pose.slideOffset=0;
     pose.cylinderOpen=rise(p,.11,.26)*(1-rise(p,.81,.94));
-    pose.cylinderSpin=rise(p,.38,.79)*Math.PI*2;
+    const count=Math.max(1,Math.min(6,Number.isInteger(roundCount)?roundCount:6));
+    pose.cylinderSpin=rise(p,.38,.79)*Math.PI*2*count/6;
     pose.ejector=pulse(p,.27,.38)*.20;
     pose.roundVisible=p>=.40&&p<.79;
-    const u=clamp01((p-.40)/.39)*6;
-    pose.roundIndex=Math.min(5,Math.floor(u));
+    const u=clamp01((p-.40)/.39)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(u));
     pose.shellProgress=u-Math.floor(u);
     pose.handX=-.27;
     pose.handY=-.16+.10*pulse(p,.39,.79);
@@ -96,8 +97,9 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65){
     pose.magazineVisible=false;
     pose.magazineOffset=0;pose.slideOffset=0;
     pose.roundVisible=p>=.16&&p<.86;
-    const rounds=clamp01((p-.16)/.70)*6;
-    pose.roundIndex=Math.min(5,Math.floor(rounds));
+    const count=Math.max(1,Math.min(6,Number.isInteger(roundCount)?roundCount:6));
+    const rounds=clamp01((p-.16)/.70)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(rounds));
     pose.shellProgress=rounds-Math.floor(rounds);
     pose.handX=-.20;
     pose.handY=-.20+.13*Math.sin(Math.PI*pose.shellProgress);
@@ -121,8 +123,9 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65){
     pose.boltOffset=.21*rise(p,.17,.29)*(1-rise(p,.81,.93));
     pose.slideOffset=pose.boltOffset;
     pose.roundVisible=p>=.30&&p<.80;
-    const rounds=clamp01((p-.30)/.50)*5;
-    pose.roundIndex=Math.min(4,Math.floor(rounds));
+    const count=Math.max(1,Math.min(5,Number.isInteger(roundCount)?roundCount:5));
+    const rounds=clamp01((p-.30)/.50)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(rounds));
     pose.shellProgress=rounds-Math.floor(rounds);
     pose.handX=-.08;
     pose.handY=.02+.09*Math.sin(Math.PI*pose.shellProgress);

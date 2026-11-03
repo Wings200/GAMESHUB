@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W19.2 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W19.3 + Forest Foundation 0.1
+
+## W19.3 — Weapon Reload Fidelity and Interruption
+
+- Shotgun, hunting rifle and six-shooter now **seat ammunition round by round at the same points their mechanical reload animation shows it**. Starting a reload with one missing shell takes less time than loading an empty weapon. Magazine-fed pistol, SMG and service carbine remain complete magazine swaps.
+- Pulling the trigger can interrupt an unfinished shell/cylinder/bolt reload once at least one round is loaded. Switching weapons cancels an in-progress reload and keeps already inserted rounds; no reserve ammo is duplicated or silently refilled. Ammo capacity and damage values are unchanged.
+- First- and third-person animations use the real number of shells being loaded rather than showing six phantom insertions every time. HUD progress, sound timing and reload speed perks use the actual duration. Regression tests cover cancellation, partial loads, top-ups, frame-step consistency, and preservation of magazine reload behavior.
 
 ## W19.2 — Frontier Rebuild (mission, model, AI and terrain quality pass)
 
