@@ -86,3 +86,16 @@ jobs:
         run: npm install --no-save --no-package-lock playwright-core three@0.180.0
       - name: Actually load 3D lab, move AI and damage a raider
         run: node games/rpg-prototype/browser-smoke.mjs
+
+  visual-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless 3D animation inspector
+        run: npm install --no-save --no-package-lock playwright-core three@0.180.0
+      - name: Capture live rear entry and both powered stair steps
+        run: node games/rpg-prototype/browser-visual-probe.mjs

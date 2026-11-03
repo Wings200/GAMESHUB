@@ -3073,6 +3073,21 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     resetPlayer(7);
     return nearPoweredSuit();
   };
+  // Visual QA only: park a free observer at the actual rear/front of the rig.
+  // This never runs in the public game without ?smoke=1.
+  window.__rpgSmokePreviewPowerFrame=(front=false)=>{
+    stationIndex=7;
+    poweredSuit.root.updateMatrixWorld(true);
+    const position=poweredSuit.root.localToWorld(
+      new THREE.Vector3(0,0,front?3.2:-2.90));
+    player.x=position.x;player.z=position.z;
+    player.jump=0;player.vertical=0;resetMotion(player);
+    camera.position.set(player.x,1.82,player.z);
+    const look=poweredSuit.root.localToWorld(
+      new THREE.Vector3(0,1.62,0));
+    camera.lookAt(look);
+    return {rear:nearRearHatch(),front};
+  };
   window.__rpgSmokeApproachPowerCache=()=>{
     player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
     return nearestLootBag()?.source==='power-cache';
