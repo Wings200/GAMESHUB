@@ -71,3 +71,15 @@ test('W19 footsteps plant, breathe at idle and blend turns without snapping',()=
   assert.ok(Math.abs(state.breath)>.0001);
   assert.ok(state.footLift<.01);
 });
+
+test('W19.2 footfalls follow traveled distance and freeze immediately at rest',()=>{
+  const walk=createCharacterAnimation(),run=createCharacterAnimation();
+  for(let i=0;i<60;i++){
+    stepCharacterAnimation(walk,.02,{speed:2,sprinting:false});
+    stepCharacterAnimation(run,.02,{speed:4,sprinting:false});
+  }
+  assert.ok(run.phase>walk.phase*1.95&&run.phase<walk.phase*2.05);
+  const halted=walk.phase;
+  for(let i=0;i<15;i++)stepCharacterAnimation(walk,.02,{speed:0});
+  assert.equal(walk.phase,halted,'No ghost stepping after movement stops');
+});

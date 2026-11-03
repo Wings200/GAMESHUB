@@ -1,4 +1,4 @@
-// W18.0 — persistent, render-independent faction campaign.
+// W19.2 — persistent faction campaign, with settlement defense and political consequences.
 export const CAMPAIGN_FACTIONS=Object.freeze({
   settlers:{name:'Free Settlements',color:'#9fd9b4',
     description:'Independent survivors rebuilding towns without military rule.'},
@@ -15,8 +15,8 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     description:'A buried relay is transmitting records from before the ceasefire. Decide who deserves its secrets.',
     giver:'dispatch',xp:160,caps:85,
     stages:[
-      {event:'relay-scanned',text:'Investigate the damaged relay terminal near Station 6.'},
-      {event:'dispatch-turnin',text:'Return to Relay Dispatch at Station 7 and choose who receives the records.'}
+      {event:'relay-scanned',node:'relay',text:'Investigate the damaged relay terminal near Station 6.'},
+      {event:'dispatch-turnin',node:'dispatch',text:'Return to Relay Dispatch at Station 7 and choose who receives the records.'}
     ],
     outcomes:{
       settlers:{label:'Give the records to the Free Settlements',reputation:{settlers:18,dominion:-7,directorate:-4}},
@@ -28,8 +28,8 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     description:'A settlement purifier is failing. Salvaged machine parts can bring clean water back.',
     giver:'water',xp:90,caps:45,
     stages:[
-      {event:'pump-repaired',text:'Use 2 salvaged parts to repair the pump at Station 2.'},
-      {event:'water-return',text:'Return to the water coordinator at Station 1.'}
+      {event:'pump-repaired',node:'pump',text:'Use 2 salvaged parts to repair the pump at Station 2.'},
+      {event:'water-return',node:'water',text:'Return to the water coordinator at Station 1.'}
     ],
     outcomes:{
       help:{label:'Give the repaired purifier to the settlement',reputation:{settlers:12}},
@@ -41,8 +41,8 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     description:'The Iron Dominion wants a dangerous Raider removed before the next supply convoy.',
     giver:'dominion',xp:130,caps:65,
     stages:[
-      {event:'raider-defeated',text:'Defeat the Raider in the Station 9 combat arena.'},
-      {event:'border-return',text:'Report to the Dominion field officer at Station 4.'}
+      {event:'raider-defeated',node:'arena',text:'Defeat the Raider in the Station 9 combat arena.'},
+      {event:'border-return',node:'dominion',text:'Report to the Dominion field officer at Station 4.'}
     ],
     outcomes:{report:{label:'File a successful patrol report',reputation:{dominion:14,vultures:-9}}}
   },
@@ -51,12 +51,41 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     description:'A courier vanished carrying encrypted infrastructure plans. Their distress beacon is still active.',
     giver:'courier',xp:110,caps:60,
     stages:[
-      {event:'courier-evidence',text:'Recover the courier transmission at the relay near Station 6.'},
-      {event:'courier-turnin',text:'Return to the distress beacon and decide who receives the plans.'}
+      {event:'courier-evidence',node:'relay',text:'Recover the courier transmission at the relay near Station 6.'},
+      {event:'courier-turnin',node:'courier',text:'Return to the distress beacon and decide who receives the plans.'}
     ],
     outcomes:{
       settlers:{label:'Share the plans with the Free Settlements',reputation:{settlers:10,directorate:-5}},
       directorate:{label:'Sell the plans to the Directorate',reputation:{directorate:16,settlers:-8},caps:80}
+    }
+  },
+  'haven-first-light':{
+    id:'haven-first-light',type:'main',title:"Haven's First Light",
+    description:'Haven Junction can survive the winter if its generator comes online. Survey the damage, rebuild its electrical bus, protect the work crew, then decide who controls the power.',
+    giver:'foreman',xp:240,caps:120,
+    stages:[
+      {event:'power-surveyed',node:'generator',text:'Inspect the scorched generator and identify what failed.'},
+      {event:'power-repaired',node:'generator',text:'Rebuild its power bus using 4 salvaged parts.'},
+      {event:'haven-defense',node:'arena',text:'Stop the Raider threatening Haven’s repair crew in the eastern combat zone.'},
+      {event:'haven-return',node:'foreman',text:'Return to Haven Junction and decide who gets electricity.'}
+    ],
+    outcomes:{
+      settlers:{label:'Keep the lights under community control',reputation:{settlers:22,dominion:-8,directorate:4}},
+      dominion:{label:'Accept Dominion guards and their control of the grid',reputation:{dominion:18,settlers:-12},caps:65}
+    }
+  },
+  'last-broadcast':{
+    id:'last-broadcast',type:'side',title:'The Last Broadcast',
+    description:'A courier claims the old military network carries evidence of an atrocity. Verify it before deciding whether the region deserves to hear it.',
+    giver:'courier',xp:165,caps:75,
+    stages:[
+      {event:'blackout-log',node:'relay',text:'Recover the scrambled pre-war broadcast from the signal relay.'},
+      {event:'orders-verified',node:'dominion',text:'Cross-check the message against the Dominion officer’s old orders.'},
+      {event:'broadcast-return',node:'courier',text:'Return to the courier beacon and decide whether to publish the evidence.'}
+    ],
+    outcomes:{
+      publish:{label:'Transmit the evidence to every settlement',reputation:{settlers:16,dominion:-15,directorate:5}},
+      bury:{label:'Sell the evidence to the Directorate and silence the signal',reputation:{directorate:20,settlers:-10},caps:85}
     }
   }
 });
@@ -66,7 +95,9 @@ export const CAMPAIGN_NODES=Object.freeze([
   {id:'water',name:'WATER COORDINATOR',x:-49,z:-25,faction:'settlers',color:0x71b5cb},
   {id:'pump',name:'BROKEN PURIFIER',x:-51,z:2,faction:'settlers',color:0xd8b77e},
   {id:'dominion',name:'DOMINION OFFICER',x:15,z:-25,faction:'dominion',color:0xb0c7dc},
-  {id:'courier',name:'COURIER BEACON',x:-56,z:34,faction:'directorate',color:0xb99bd2}
+  {id:'courier',name:'COURIER BEACON',x:-56,z:34,faction:'directorate',color:0xb99bd2},
+  {id:'foreman',name:'HAVEN FOREMAN',x:-38,z:-25,faction:'settlers',color:0xd9bd75},
+  {id:'generator',name:'HAVEN GENERATOR',x:-39,z:-40,faction:'settlers',color:0xe8b65b}
 ]);
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const validNumber=(value,otherwise=0)=>Number.isFinite(value)?value:otherwise;

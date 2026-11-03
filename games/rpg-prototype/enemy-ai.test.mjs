@@ -166,3 +166,23 @@ test('Solid walls reduce hearing distance and active sightings remain authoritat
   assert.equal(hearEnemyGunshot(e,{x:18,z:40},[],()=>.5),false);
   assert.equal(e.noiseTarget,null);
 });
+
+test('A fresh hidden gunshot redirects stale visual memory without exposing the player',()=>{
+  const e=bot(45,40);
+  alertEnemy(e,{x:36,z:40});
+  stepEnemyBrain(e,{x:99,z:99},.05,[],{playerInArena:false,
+    area:AI_TUNING.navigationArea});
+  assert.equal(e.spotted,false);
+  const prior=e.lastSeen;
+  assert.equal(hearEnemyGunshot(e,{x:51,z:42},[],()=>.85),true);
+  assert.equal(e.memory>0,true);
+  assert.deepEqual(e.lastSeen,prior,'Hearing is never a new precise sighting');
+  stepEnemyBrain(e,{x:-52,z:-42},.05,[],{playerInArena:false,
+    area:AI_TUNING.navigationArea});
+  assert.equal(e.mode,'investigate-noise');
+  assert.notDeepEqual(e.noiseTarget,prior);
+  for(let i=0;i<220;i++)stepEnemyBrain(e,{x:-52,z:-42},.05,[],{
+    playerInArena:false,area:AI_TUNING.navigationArea});
+  assert.equal(e.mode,'investigate',
+    'After a sound fades, the earlier visual memory is still usable');
+});

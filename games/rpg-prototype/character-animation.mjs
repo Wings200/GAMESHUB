@@ -35,7 +35,9 @@ export function stepCharacterAnimation(state,dt,action={}){
   state.elapsed+=t;
   state.breath=Math.sin(state.elapsed*2.15)*(.006+.009*(1-state.move))*
     (1-state.death);
-  state.phase+=t*(4.3+Math.min(speed,7)*1.1)*state.move;
+  // Drive gait by real distance traveled: a slow turn no longer cycles feet
+  // at nearly jogging speed, and halting movement stops the step phase.
+  state.phase+=speed*t*(1.78+.16*state.sprint)*(1-.22*state.crouch);
   state.stride=Math.sin(state.phase)*(.43+.34*state.sprint)*state.move;
   state.footLift=Math.max(0,Math.sin(state.phase))*.076*state.move*
     (1-.65*state.crouch);

@@ -861,6 +861,30 @@ try{
     .includes('Free Settlements'));
   await page.keyboard.press('Escape');
   await page.locator('#campaignPanel').waitFor({state:'hidden'});
+  // W19.2: test the physical repair-and-defense route, not a source-only string.
+  async function useQuestContact(node,buttonText){
+    await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:10000});
+    assert.equal(await page.evaluate(id=>window.__rpgSmokeVisitCampaignNode(id),node),true);
+    await page.keyboard.press('e');
+    await page.locator('#campaignDialogue:not(.hidden)').waitFor({timeout:10000});
+    await page.locator('#campaignDialogueChoices button').filter({hasText:buttonText}).click();
+    await page.locator('#campaignDialogueClose').click();
+  }
+  await useQuestContact('foreman',"ACCEPT · Haven's First Light");
+  await useQuestContact('generator','SURVEY · Inspect destroyed bus');
+  await page.evaluate(()=>window.__rpgSmokeCampaignGrantSalvage(4));
+  await useQuestContact('generator','REBUILD · Spend 4 salvage');
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState().campaign))
+    .quests['haven-first-light'].stage,2);
+  assert.equal(await page.evaluate(()=>window.__rpgSmokeDownEnemy('raider')),true);
+  assert.equal((await page.evaluate(()=>window.__rpgSmokeState().campaign))
+    .quests['haven-first-light'].stage,3);
+  await useQuestContact('foreman','POWER TO THE PEOPLE');
+  const haven=await page.evaluate(()=>window.__rpgSmokeState().campaign);
+  assert.equal(haven.quests['haven-first-light'].status,'completed');
+  assert.equal(haven.worldPowered,true,'Power restoration changes in-world light');
+  assert.ok(haven.residents>=3,'Quest givers have articulated world-space models');
+  assert.ok(haven.reputation.settlers>solvedCampaign.reputation.settlers);
   assert.equal(errors.length,0,
     'No runtime JavaScript/WebGL errors allowed: '+errors.join('; '));
   console.log(JSON.stringify({

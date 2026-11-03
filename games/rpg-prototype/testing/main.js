@@ -246,9 +246,40 @@ function box(x,y,z,w,h,d,material,receive=true){
   o.position.set(x,y,z);
   o.castShadow=true;o.receiveShadow=receive;scene.add(o);worldGeometry.push(o);return o;
 }
-const floor=box(0,-.35,0,124,.7,106,concrete);
+// Hand-authored procedural cracked soil rather than a featureless lab slab.
+// The low-resolution repeating canvas is GPU-light and works without assets.
+const soilCanvas=document.createElement('canvas');
+soilCanvas.width=256;soilCanvas.height=256;
+const soil=soilCanvas.getContext('2d');
+soil.fillStyle='#555149';soil.fillRect(0,0,256,256);
+let soilSeed=0x4ae9d;
+const soilRandom=()=>{soilSeed=(Math.imul(soilSeed,1664525)+1013904223)>>>0;
+  return soilSeed/4294967296;};
+const soilPalette=['#605b4f','#504f48','#6a5f4f','#444a47','#746753'];
+for(let i=0;i<410;i++){
+  const x=soilRandom()*256,y=soilRandom()*256;
+  soil.fillStyle=soilPalette[Math.floor(soilRandom()*soilPalette.length)];
+  soil.fillRect(x,y,2+soilRandom()*23,1+soilRandom()*10);
+}
+soil.strokeStyle='rgba(21,26,24,.38)';soil.lineWidth=1.2;
+for(let i=0;i<18;i++){
+  let x=soilRandom()*256,y=soilRandom()*256;
+  soil.beginPath();soil.moveTo(x,y);
+  for(let j=0;j<6;j++){
+    x+=soilRandom()*17-8;y+=soilRandom()*14-4;soil.lineTo(x,y);
+  }
+  soil.stroke();
+}
+const soilTexture=new THREE.CanvasTexture(soilCanvas);
+soilTexture.colorSpace=THREE.SRGBColorSpace;
+soilTexture.wrapS=soilTexture.wrapT=THREE.RepeatWrapping;
+soilTexture.repeat.set(27,23);
+soilTexture.magFilter=THREE.NearestFilter;
+const groundMaterial=new THREE.MeshStandardMaterial({map:soilTexture,
+  color:0x9b998d,roughness:1,metalness:0});
+const floor=box(0,-.35,0,124,.7,106,groundMaterial);
 const grid = new THREE.GridHelper(124,62,0x465251,0x394647);
-grid.position.y=.015;scene.add(grid);
+grid.position.y=.015;grid.visible=false;scene.add(grid);
 const bounds=[];
 function collider(x,z,w,d,material=dark,height=2.8){
   box(x,height/2,z,w,height,d,material);
@@ -290,31 +321,65 @@ const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:!reducedRenderer})
 // W18.0 story contacts: physical, discoverable terminals and faction beacons.
 // They're prototypes for future settlement NPCs, not invisible quest buttons.
 const campaignMarkers=[];
+const campaignResidents=[];
+const questPostGeometry=new THREE.CylinderGeometry(.035,.035,1.8,8);
 for(const node of CAMPAIGN_NODES){
-  const shell=new THREE.MeshStandardMaterial({color:0x33454b,metalness:.62,roughness:.55});
+  const shell=new THREE.MeshStandardMaterial({color:0x33454b,metalness:.62,roughness:.76});
   const light=new THREE.MeshStandardMaterial({color:node.color,emissive:node.color,
     emissiveIntensity:.48,metalness:.30,roughness:.40});
-  box(node.x,.50,node.z,.85,1.0,.64,shell);
-  box(node.x,1.04,node.z,.94,.12,.72,light);
+  const steel=new THREE.MeshStandardMaterial({color:0x58615a,metalness:.7,roughness:.62});
+  const copper=new THREE.MeshStandardMaterial({color:0x9d7254,metalness:.75,roughness:.52});
+  // World-mounted instruments, not billboard NPC names floating through walls.
+  box(node.x,.50,node.z,.92,1.0,.70,shell);
+  box(node.x,1.04,node.z,.94,.12,.74,light);
   box(node.x,1.22,node.z,.52,.25,.18,light);
-  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=112;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#0a1720';ctx.fillRect(0,0,512,112);
-  ctx.fillStyle='#'+node.color.toString(16).padStart(6,'0');
-  ctx.fillRect(0,0,10,112);
-  ctx.textAlign='center';ctx.fillStyle='#e5eee8';
-  ctx.font='bold 33px monospace';ctx.fillText(node.name,256,67);
-  const texture=new THREE.CanvasTexture(canvas);
-  texture.colorSpace=THREE.SRGBColorSpace;
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,
-    transparent:true,depthTest:true}));
-  label.position.set(node.x,2.20,node.z);label.scale.set(3.3,.72,1);
-  scene.add(label);
-  campaignMarkers.push({id:node.id,label});
-  bounds.push({minX:node.x-.45,maxX:node.x+.45,
-    minZ:node.z-.35,maxZ:node.z+.35,top:1.13});
+  box(node.x,1.24,node.z-.39,.71,.06,.055,copper);
+  for(const side of [-1,1]){
+    box(node.x+side*.39,.73,node.z-.38,.045,.70,.035,steel);
+    box(node.x+side*.33,.47,node.z-.39,.055,.08,.042,copper);
+  }
+  if(node.id==='relay'||node.id==='courier'){
+    const mast=new THREE.Mesh(questPostGeometry,steel);
+    mast.position.set(node.x,2.14,node.z+.27);scene.add(mast);
+    box(node.x,2.98,node.z+.27,.46,.11,.11,steel);
+    const dish=new THREE.Mesh(new THREE.TorusGeometry(.26,.045,6,12),copper);
+    dish.position.set(node.x,2.68,node.z+.29);dish.rotation.x=.32;
+    scene.add(dish);
+  }
+  if(node.id==='pump'||node.id==='water'){
+    for(const side of [-1,1]){
+      const tube=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,1.23,10),copper);
+      tube.position.set(node.x+side*.55,.62,node.z+.12);scene.add(tube);
+    }
+    box(node.x,.80,node.z-.46,.52,.38,.10,steel);
+  }
+  if(node.id==='generator'){
+    // Open coils, copper feed pipes and ventilated engine casing read as a
+    // machine that can actually be surveyed and repaired in the quest.
+    box(node.x,1.67,node.z,.98,.48,1.10,shell);
+    for(let i=0;i<5;i++){
+      box(node.x-.38+i*.19,1.99,node.z,.085,.20,1.05,steel);
+      box(node.x-.38+i*.19,1.69,node.z-.58,.055,.31,.055,copper);
+    }
+    const motor=new THREE.Mesh(new THREE.CylinderGeometry(.31,.31,.96,12),steel);
+    motor.rotation.z=Math.PI/2;motor.position.set(node.x,1.64,node.z+.75);scene.add(motor);
+  }
+  campaignMarkers.push({id:node.id,indicator:light});
+  bounds.push({minX:node.x-.46,maxX:node.x+.46,
+    minZ:node.z-.38,maxZ:node.z+.38,top:1.22});
+  if(['dispatch','dominion','foreman'].includes(node.id)){
+    // These contacts are real jointed survivor models with idle breathing;
+    // their bodies stay cosmetic and do not alter damage or combat targeting.
+    const avatar=createPlayerAvatar(scene,{
+      variant:node.id==='dominion'?'enforcer':'survivor',heldWeaponEnabled:false});
+    avatar.root.name='QuestResident_'+node.id;
+    const x=node.x+1.54,z=node.z+1.25;
+    campaignResidents.push({avatar,x,z,yaw:.8});
+    bounds.push({minX:x-.28,maxX:x+.28,minZ:z-.28,maxZ:z+.28,top:1.85});
+  }
 }
-
+const havenPowerLamp=new THREE.PointLight(0xffdb91,0,9,2);
+havenPowerLamp.position.set(-39,2.7,-40);scene.add(havenPowerLamp);
 markLane(-25,pale);
 for(let x=-47;x<55;x+=5){
   box(x,.065,-25,.14,.13,4,floorPaint);
@@ -1482,7 +1547,10 @@ function markEnemyDefeated(enemy){
   enemy.muzzleLight.intensity=0;
   enemy.gunGlow=0;
   spawnEnemyLoot(enemy);
-  if(enemy.id==='raider')recordCampaignObjective('raider-defeated');
+  if(enemy.id==='raider'){
+    recordCampaignObjective('raider-defeated');
+    recordCampaignObjective('haven-defense');
+  }
   awardSpecialExperience(({scout:45,raider:70,enforcer:105})[enemy.id]||45,'combat');
   updateArenaSign();
 }
@@ -3212,7 +3280,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     special:{...specialState,attributes:{...specialState.attributes},
       perks:{...specialState.perks},bonuses:{...specialModifiers},open:specialOpen},
     campaign:{...safeCampaignSnapshot(campaignState),journal:campaignJournal(campaignState),
-      panelOpen:questPanelOpen,dialogueOpen},
+      panelOpen:questPanelOpen,dialogueOpen,
+      worldPowered:havenPowerLamp.intensity>0,residents:campaignResidents.length},
     scopedFOV:camera.fov,
     hud:{mode:document.body.classList.contains('in-power-armor')?'visor':'field',
       fieldVisible:!$('fieldHud').classList.contains('hidden'),
@@ -3291,7 +3360,9 @@ const CAMPAIGN_DIALOGUE={
   water:'Haven Junction has families waiting on clean water. Our pump is missing critical components.',
   pump:'The purifier motor is seized. Two units of salvage can rebuild the drive coupling.',
   dominion:'Supply convoys are being attacked. An armed Raider is operating in the eastern combat sector.',
-  courier:'A courier transmitted one last distress ping before disappearing into the contested zone.'
+  courier:'The courier was carrying infrastructure plans and proof that the old military command lied about what happened to the frontier. Both could save lives—or start another war.',
+  foreman:'I am the last electrician left in Haven Junction. The old generator is burned out, the crew is terrified, and everybody has a different idea of who should own the lights.',
+  generator:'The junction bus is blackened. A cracked regulator leaks power, and the intake coils need fresh copper. Four units of salvage should restore it.'
 };
 let selectedCampaignQuest=null;
 function nearCampaignNode(){
@@ -3347,6 +3418,14 @@ function refreshCampaignUI(){
   $('campaignQuestReward').textContent=selected?.reward||'';
   $('campaignTrack').disabled=!selected||selected.status!=='active'||selected.tracked;
   $('campaignTrack').textContent=selected?.tracked?'TRACKING':'TRACK QUEST';
+  // Consequences are physical and persistent, not just numbers in a menu.
+  const powered=campaignState.quests['haven-first-light']?.status==='completed';
+  const cleanWater=campaignState.quests['water-debt']?.status==='completed';
+  havenPowerLamp.intensity=powered?(qualityHigh?2.3:.9):0;
+  for(const marker of campaignMarkers){
+    marker.indicator.emissiveIntensity=marker.id==='generator'&&powered?1.65:
+      marker.id==='pump'&&cleanWater?1.3:.48;
+  }
 }
 function applyCampaignResult(result){
   if(!result.changed)return false;
@@ -3442,7 +3521,11 @@ function renderCampaignDialogue(){
         choice('DOWNLOAD · Military relay records',()=>recordCampaignObjective('relay-scanned'));
       if(courier?.status==='active'&&courier.stage===0)
         choice('RECOVER · Courier transmission',()=>recordCampaignObjective('courier-evidence'));
-      if((!main||main.stage!==0)&&(!courier||courier.stage!==0))
+      const broadcast=progress('last-broadcast');
+      if(broadcast?.status==='active'&&broadcast.stage===0)
+        choice('DECRYPT · Pre-war emergency broadcast',()=>recordCampaignObjective('blackout-log'));
+      if((!main||main.stage!==0)&&(!courier||courier.stage!==0)&&
+        (!broadcast||broadcast.stage!==0))
         choice('No active signals to recover · Check Q',()=>{},true);
       break;
     }
@@ -3474,6 +3557,9 @@ function renderCampaignDialogue(){
       else if(q.status==='active')
         choice('Eliminate the Raider at Station 9',()=>{},true);
       else choice('Border Watch · CONTRACT COMPLETE',()=>{},true);
+      const broadcast=progress('last-broadcast');
+      if(broadcast?.status==='active'&&broadcast.stage===1)
+        choice('COMPARE · Archived Dominion orders',()=>recordCampaignObjective('orders-verified'));
       break;
     }
     case 'courier':{
@@ -3485,6 +3571,41 @@ function renderCampaignDialogue(){
       }else if(q.status==='active')
         choice('Find the courier recording at the relay',()=>{},true);
       else choice('The Missing Courier · CONTRACT COMPLETE',()=>{},true);
+      const broadcast=progress('last-broadcast');
+      if(!broadcast)choice('INVESTIGATE · The Last Broadcast',()=>accept('last-broadcast'));
+      else if(broadcast.status==='active'&&broadcast.stage===2){
+        choice('BROADCAST · Warn every settlement',()=>finish('last-broadcast','publish'));
+        choice('BURY · Sell the evidence to the Directorate',()=>finish('last-broadcast','bury'));
+      }else if(broadcast.status==='active')
+        choice('Decrypt the relay, then verify military orders',()=>{},true);
+      else choice('The Last Broadcast · COMPLETE',()=>{},true);
+      break;
+    }
+    case 'foreman':{
+      const q=progress('haven-first-light');
+      if(!q)choice("ACCEPT · Haven's First Light",()=>accept('haven-first-light'));
+      else if(q.status==='active'&&q.stage===3){
+        choice('POWER TO THE PEOPLE · Community owns the grid',()=>finish('haven-first-light','settlers'));
+        choice('DOMINION SECURITY · Exchange control for protection',()=>finish('haven-first-light','dominion'));
+      }else if(q.status==='active')
+        choice('Survey, repair and defend the generator before returning',()=>{},true);
+      else choice('Haven Junction is powered · Decisions remembered',()=>{},true);
+      break;
+    }
+    case 'generator':{
+      const q=progress('haven-first-light');
+      if(q?.status==='active'&&q.stage===0)
+        choice('SURVEY · Inspect destroyed bus and regulator',()=>recordCampaignObjective('power-surveyed'));
+      else if(q?.status==='active'&&q.stage===1){
+        const salvage=countItem(backpack,'supply:salvage');
+        choice('REBUILD · Spend 4 salvage ('+salvage+' owned)',()=>{
+          if(consumeCampaignSalvage(4))recordCampaignObjective('power-repaired');
+        },salvage<4);
+      }else if(q?.status==='active'&&q.stage===2)
+        choice('Repair complete · Defend the crew from a Raider (J resets the encounter)',()=>{},true);
+      else if(q?.status==='completed')
+        choice('Junction generator stable · Powered',()=>{},true);
+      else choice('The generator is dead · Find the Haven foreman',()=>{},true);
       break;
     }
   }
@@ -3535,6 +3656,7 @@ $('quality').addEventListener('click',()=>{
   renderer.shadowMap.enabled=qualityHigh;
   $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
   wastelandArt.setQuality(qualityHigh);
+  refreshCampaignUI();
 });
 window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
@@ -3546,6 +3668,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='F3'&&!e.repeat){
     e.preventDefault();
     document.body.classList.toggle('debug-hud');
+    grid.visible=document.body.classList.contains('debug-hud');
     showShotNotice(document.body.classList.contains('debug-hud')?
       'LAB DIAGNOSTICS SHOWN · F3 TO HIDE':'FIELD HUD · DIAGNOSTICS HIDDEN');
     return;
@@ -3667,6 +3790,7 @@ function updateHUD(info){
   $('staminaState').textContent=info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':info.recovering?'RECOVERING':'READY';
   $('staminaFill').classList.toggle('empty',info.exhausted);
 }
+let questNavigationClock=0;
 function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(.036,clock.getDelta());
@@ -3868,6 +3992,33 @@ function frame(){
     updateHUD(info);
   }
   updateEnemies(dt);
+  // Quest residents use the same articulated rig as the player, but never
+  // enter the hostile hit list. They watch approaching visitors naturally.
+  for(const resident of campaignResidents){
+    const dx=player.x-resident.x,dz=player.z-resident.z;
+    const distance=Math.hypot(dx,dz);
+    if(distance<7){
+      const target=Math.atan2(-dx,-dz);
+      const difference=Math.atan2(Math.sin(target-resident.yaw),Math.cos(target-resident.yaw));
+      resident.yaw+=Math.max(-dt*1.4,Math.min(dt*1.4,difference));
+    }
+    resident.avatar.update({dt,x:resident.x,z:resident.z,
+      ground:groundHeight(resident.x,resident.z),yaw:resident.yaw,speed:0});
+  }
+  questNavigationClock+=dt;
+  if(questNavigationClock>.42){
+    questNavigationClock=0;
+    const trackedId=campaignState.tracked;
+    const quest=CAMPAIGN_QUESTS[trackedId];
+    const stage=quest?.stages[campaignState.quests[trackedId]?.stage];
+    if(stage){
+      const point=stage.node==='arena'?{x:45,z:40}:
+        CAMPAIGN_NODES.find(node=>node.id===stage.node);
+      const meters=point?Math.round(Math.hypot(player.x-point.x,player.z-point.z)):null;
+      $('questTrackerObjective').textContent=stage.text+
+        (meters!==null?' · '+meters+' m':'');
+    }
+  }
   refreshPowerArmorHUD();
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.
@@ -3880,7 +4031,9 @@ function frame(){
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||!promptAvailable);
   if(questContact){
-    $('lootPrompt').textContent='E · TALK / USE '+questContact.name+' · Q JOURNAL';
+    $('lootPrompt').textContent='E · '+
+      (['dispatch','dominion','foreman'].includes(questContact.id)?'SPEAK WITH ':'USE ')+
+      questContact.name+' · Q JOURNAL';
   }else if(frameInReach){
     $('lootPrompt').textContent=powerArmorState.occupied?
       'HOLD E · EXIT POWER ARMOR':

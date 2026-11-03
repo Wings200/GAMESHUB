@@ -1,4 +1,14 @@
-# Untitled RPG · Mechanics Lab W08.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W19.2 + Forest Foundation 0.1
+
+## W19.2 — Frontier Rebuild (mission, model, AI and terrain quality pass)
+
+- Added **Haven's First Light**, a persistent four-step main quest: diagnose the Haven Junction generator, repair its bus with salvaged parts, defend the work crew from the Raider, and decide who controls the repaired grid. The choice changes faction reputation and rewards. Completing it physically lights the generator and its station.
+- Added **The Last Broadcast**, a three-stage side story with evidence collection, corroboration against Dominion orders, and a publish-or-bury choice. Original four quests and existing saved progress remain compatible.
+- Three key campaign contacts now have in-world articulated survivor models and idle/turn reactions. Contacts retain their usable stations, but the old always-visible floating name sprites are gone; nearby interaction prompts remain. Relay, courier, water and generator stations have distinct mechanical detailing.
+- Tracked mission objectives display approximate distance to the next location, refreshing while exploring. The journal still uses Q, conversations E, and all rewards and decisions are saved locally.
+- Built original tiled cracked-ground material and hid the development grid by default (toggle with F3), while keeping the collision, station markers and existing scrap scenery.
+- AI now investigates a *new audible gunshot* even with old last-seen memory. Hearing does not grant perfect sight; after the noise fades, NPCs resume their earlier search. Character step phase now follows distance traveled so idle or slow movement does not animate impossible running legs.
+- Expanded campaign, AI, animation, source and real 3D browser smoke checks. Existing shooting, loot, power armor, faction saves, and REDLINE are unchanged in their authoritative mechanics.
 
 ## W08.0 — real powered exoskeleton and six-slot suit
 

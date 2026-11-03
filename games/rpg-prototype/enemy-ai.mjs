@@ -79,7 +79,9 @@ export function hearEnemyGunshot(enemy,origin,obstacles=[],rng=Math.random){
   const distanceToSound=distance(enemy.x,enemy.z,origin.x,origin.z);
   const blocked=obstacles.some(box=>lineIntersectsBox(enemy,origin,box,.03));
   const hearing=AI_TUNING.hearingRange*(blocked?.55:1);
-  if(distanceToSound>hearing||enemy.memory>0||enemy.spotted)return false;
+  // A confirmed visual target takes priority, but a stale last sighting
+  // cannot make an NPC deaf to an entirely new gunshot elsewhere.
+  if(distanceToSound>hearing||enemy.spotted)return false;
   const sample=()=>{const value=rng();return clamp(Number.isFinite(value)?value:.5,0,1);};
   enemy.noiseTarget={x:origin.x+(sample()-.5)*3.2,
     z:origin.z+(sample()-.5)*3.2};
@@ -191,6 +193,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   const area=options.area||AI_TUNING.area;
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
   enemy.noiseTime=Math.max(0,(enemy.noiseTime||0)-step);
+  if(enemy.noiseTime===0)enemy.noiseTarget=null;
   const seen=options.playerInArena!==false&&
     (typeof options.targetVisible==='boolean'?options.targetVisible:
       hasSight(enemy,player,obstacles));
@@ -204,11 +207,14 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     enemy.searchLeft=0;enemy.mode='chase';
     enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
     enemy.noiseTarget=null;enemy.noiseTime=0;
+  }else if(enemy.noiseTime>0&&enemy.noiseTarget){
+    // Investigate approximate audible evidence ahead of older visual memory.
+    // No exact player coordinates are used unless the NPC actually sees them.
+    enemy.mode='investigate-noise';
+    enemy.memory=Math.max(0,enemy.memory-step);
   }else if(enemy.memory>0){
     enemy.memory=Math.max(0,enemy.memory-step);
     enemy.mode='investigate';
-  }else if(enemy.noiseTime>0&&enemy.noiseTarget){
-    enemy.mode='investigate-noise';
   }else if(enemy.mode==='investigate-noise'){
     enemy.mode='patrol';enemy.noiseTarget=null;enemy.routeGoal=null;enemy.route=[];
   }else if(enemy.mode==='chase'||enemy.mode==='investigate'){
