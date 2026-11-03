@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W20.0 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.5 + Forest Foundation 0.1
+
+## W20.5 — Bare chassis, sculpted alloy modules and hand-assisted climbing
+
+- New characters receive an EMPTY six-slot power frame; the old pre-fitted five T-45 modules no longer hide the base exoskeleton. Existing saved loadouts are preserved. The E configuration interface adds a non-destructive REMOVE ALL SIX MODULES action which transfers every plate (including broken pieces and durability) to the backpack when capacity allows.
+- Station 8's one-time salvage cache has each T-45 slot as its own collected part plus special T-60 and T-01 modules, so all modular equipment can be examined without inventing gear on the frame.
+- The plated variants use convex alloy shells with curved profiles and deterministic scraped weathering, with the structural core metal remaining visible instead of every chassis component turning the plate color. Knee guards and shin guards no longer double-stack. The articulated pilot reaches for mechanical folding handholds before stepping onto two service treads, while a supporting foot remains constrained to the prior tread on both climbing up and descending.
+- Real WebGL screenshots of front/rear and both entry steps are produced by a separate CI visual-probe run. Unit tests now include the dedicated rear-entry choreography suite, plus full browser interaction tests for installing and removing modules.
+- The main map remains untouched; test Stations 8 and 9 first. Visual quality remains subject to manual review, not just automated math passing.
 
 ## W20.0 — Physical power-armour boarding & facing verification (testing sandbox only)
 

@@ -1048,6 +1048,29 @@ for(const slot of POWER_ARMOR_SLOTS){
     savePowerService();
   });
 }
+// Non-destructive teardown: return the actual six durable pieces to
+// the backpack. Necessary for older saves whose rig starts pre-armoured.
+$('powerStripAll').addEventListener('click',()=>{
+  if(!powerServiceAvailable())return;
+  const fitted=POWER_ARMOR_SLOTS.filter(slot=>
+    powerArmorState.plates[slot]!=='none');
+  if(!fitted.length){
+    $('powerServiceFeedback').textContent='FRAME ALREADY BARE · ALL SIX SLOTS EMPTY';
+    return;
+  }
+  if(backpack.items.length+fitted.length>BACKPACK_LIMIT){
+    $('powerServiceFeedback').textContent='BACKPACK NEEDS '+
+      fitted.length+' FREE SLOTS TO REMOVE ALL PARTS';return;
+  }
+  for(const slot of fitted){
+    const removed=removePowerPlate(powerArmorState,slot);
+    if(removed.ok)addItem(backpack,'power-plate:'+removed.tier+'-'+slot,1,
+      {condition:removed.current});
+  }
+  $('powerServiceFeedback').textContent='BARE FRAME READY · '+fitted.length+
+    ' PARTS RETURNED TO BACKPACK · CONDITION PRESERVED';
+  savePowerService();
+});
 $('powerInsertCore').addEventListener('click',()=>{
   if(!powerServiceAvailable())return;
   const uid=$('powerCoreChoice').value;
@@ -1527,7 +1550,14 @@ function spawnWorldLoot(contents,x,z,source='world'){
 // The future open world will distribute these pieces through exploration and quests.
 const POWER_CACHE_KEY='rpg-lab-power-salvage-cache-v1';
 const STARTER_POWER_CACHE=[
+  // Every T-45 section is a separate object in the finite test cache.
+  // A brand-new chassis is empty until the player installs these parts.
+  {itemId:'power-plate:t45-head',quantity:1,condition:80},
+  {itemId:'power-plate:t45-chest',quantity:1,condition:80},
+  {itemId:'power-plate:t45-leftArm',quantity:1,condition:75},
   {itemId:'power-plate:t45-rightArm',quantity:1,condition:55},
+  {itemId:'power-plate:t45-leftLeg',quantity:1,condition:75},
+  {itemId:'power-plate:t45-rightLeg',quantity:1,condition:75},
   {itemId:'power-plate:t60-head',quantity:1,condition:105},
   {itemId:'power-plate:t01-rightLeg',quantity:1,condition:75},
   {itemId:'supply:fusion-core',quantity:1,charge:100},

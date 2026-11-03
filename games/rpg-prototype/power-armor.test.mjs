@@ -11,13 +11,13 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
 test('Power armor has its own chassis and six independently removable visible slots',()=>{
   const state=createPowerArmorState();
   assert.equal(POWER_ARMOR_SLOTS.length,6);
-  assert.equal(state.plates.chest,'t45');
-  assert.equal(state.plates.head,'t45');
+  assert.equal(state.plates.chest,'none');
+  assert.equal(state.plates.head,'none');
   assert.equal(state.plates.rightArm,'none');
   assert.equal(getPowerPlate('head','none').points,0);
   assert.equal(setPowerPlate(state,'head','citadel').ok,true);
   assert.equal(state.plates.head,'citadel');
-  assert.equal(state.plates.chest,'t45');
+  assert.equal(state.plates.chest,'none');
   assert.equal(setPowerPlate(state,'missing','citadel').ok,false);
   assert.equal(setPowerPlate(state,'head','fake').ok,false);
   assert.ok(POWER_ARMOR_PLATES.citadel.points>POWER_ARMOR_PLATES.ranger.points);
@@ -47,6 +47,7 @@ test('Entering and exiting take time, reject repeat actions and preserve state',
 test('Powered frame and six plate tiers reduce damage only when occupied',()=>{
   const state=createPowerArmorState();
   setPowerPlate(state,'head','none');
+  setPowerPlate(state,'chest','t45');
   const normal=powerArmorProtection(state,'chest',.2);
   assert.equal(normal.combinedReduction,.2);
   beginPowerArmorTransition(state);
@@ -80,7 +81,7 @@ test('Saved plates and occupied state restore, malformed or interrupted input re
   const corrupted=safePowerArmorSnapshot({occupied:'true',plates:{
     head:'admin',chest:'citadel',leftArm:null}});
   assert.equal(corrupted.occupied,false);
-  assert.equal(corrupted.plates.head,'t45');
+  assert.equal(corrupted.plates.head,'none');
   assert.equal(corrupted.plates.chest,'citadel');
 });
 

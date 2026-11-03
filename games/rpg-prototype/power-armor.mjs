@@ -31,11 +31,10 @@ export function getPowerPlate(slot,tier){
   return POWER_ARMOR_PLATES[tier]||POWER_ARMOR_PLATES.none;
 }
 export function createPowerArmorState(){
-  // An incomplete, worn early T-45 rig: the missing right arm can be salvaged.
-  const plates=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
-    [slot,slot==='rightArm'?'none':'t45']));
-  const plateDurability=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>
-    [slot,plates[slot]==='none'?0:70]));
+  // The chassis is a BARE mechanical frame. Armor belongs in inventory,
+  // not silently welded onto a new survivor's starter rig.
+  const plates=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,'none']));
+  const plateDurability=Object.fromEntries(POWER_ARMOR_SLOTS.map(slot=>[slot,0]));
   return {occupied:false,phase:'idle',elapsed:0,plates,plateDurability,
     coreCharge:null};
 }

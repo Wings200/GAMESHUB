@@ -617,10 +617,13 @@ try{
   // W08.3: ensure the redesigned shell, human pilot and actual cinematic entry render.
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
   const bareArm=await page.evaluate(()=>window.__rpgSmokePowerVisual());
-  assert.equal(bareArm.visiblePlates.rightArm,0,'Starter T-45 must have no right arm plate');
+  assert.equal(bareArm.visiblePlates.rightArm,0,'A bare chassis has no fitted right arm');
+  assert.ok(Object.values(bareArm.visiblePlates).every(v=>v===0),
+    'Every physical armor module must be absent on a fresh chassis');
   assert.equal(bareArm.moduleSections.rightArm,0,
     'An empty arm slot must show exposed frame, not old permanently armored mesh');
-  assert.ok(bareArm.moduleSections.leftArm>0,'The fitted left arm must retain its armor');
+  assert.equal(bareArm.moduleSections.leftArm,0,
+    'A bare frame displays mechanical elbow structure, not a plated arm');
   assert.equal(bareArm.frameFeatures.rearHatch,true,'Frame must have an actual rear cage');
   assert.equal(bareArm.frameFeatures.dorsalHatch,true,
     'Rear spinal bulkhead must swing out with the opening door');
@@ -655,19 +658,31 @@ try{
   assert.equal(await page.evaluate(()=>window.__rpgSmokeTeleportToPowerBay()),true);
   await page.keyboard.press('e');
   await page.waitForSelector('#powerArmorPanel:not(.hidden)',{timeout:10000});
+  assert.equal((await page.evaluate(()=>window.__rpgSmokePowerVisual())).moduleSections.head,0,
+    'An unplated starter rig must expose the frame collar');
+  const starterHelmet=await page.locator('#power-head option')
+    .filter({hasText:'T-45'}).getAttribute('value');
+  assert.ok(starterHelmet,'A separate T-45 helmet must exist in salvage');
+  await page.locator('#power-head').selectOption(starterHelmet);
+  assert.ok((await page.evaluate(()=>window.__rpgSmokePowerVisual())).moduleSections.head>0,
+    'Installing the helmet adds real removable geometry');
   await page.locator('#power-head').selectOption('remove');
   assert.equal((await page.evaluate(()=>window.__rpgSmokePowerVisual())).moduleSections.head,0,
-    'Taking off a helmet must expose the actual frame collar');
+    'Removing the helmet re-exposes the bare frame collar');
   assert.ok((await page.evaluate(()=>window.__rpgSmokeState())).inventory.items
     .some(e=>e.itemId==='power-plate:t45-head'),
-    'Removed armor is a real preserved inventory item');
+    'Removed armor is preserved as inventory, not deleted');
   const helmetChoice=await page.locator('#power-head option')
     .filter({hasText:'T-60'}).getAttribute('value');
   const armChoice=await page.locator('#power-rightArm option')
     .filter({hasText:'T-45'}).getAttribute('value');
-  assert.ok(helmetChoice&&armChoice,'salvaged modular plates should be owned');
+  const legChoice=await page.locator('#power-leftLeg option')
+    .filter({hasText:'T-45'}).getAttribute('value');
+  assert.ok(helmetChoice&&armChoice&&legChoice,
+    'All six T-45 parts are independent salvage items');
   await page.locator('#power-head').selectOption(helmetChoice);
   await page.locator('#power-rightArm').selectOption(armChoice);
+  await page.locator('#power-leftLeg').selectOption(legChoice);
   await page.locator('#powerInsertCore').click();
   assert.ok((await page.locator('#powerCoreStatus').textContent()).includes('100%'));
   assert.ok((await page.locator('#power-rating-head').textContent()).includes('57 AP'));
@@ -697,6 +712,20 @@ try{
   assert.ok(armorVisible.moduleSections.head>0,'Installing the helmet restores its armor shell');
   assert.ok(armorVisible.visiblePlates.leftLeg>=3,
     'New industrial greave must have a reinforced shin silhouette');
+  // A saved, pre-armoured chassis must be strip-able without deleting or
+  // repairing any of the fitted items. Re-install to verify both paths.
+  await page.locator('#powerStripAll').click();
+  const stripped=await page.evaluate(()=>window.__rpgSmokePowerVisual());
+  assert.ok(Object.values(stripped.moduleSections).every(n=>n===0),
+    'STRIP ALL should reveal the true exposed frame in every slot');
+  for(const [slot,model] of [['head','T-60'],['rightArm','T-45'],['leftLeg','T-45']]){
+    const value=await page.locator('#power-'+slot+' option')
+      .filter({hasText:model}).getAttribute('value');
+    assert.ok(value,'Stripped '+model+' '+slot+' must return to backpack');
+    await page.locator('#power-'+slot).selectOption(value);
+  }
+  assert.equal((await page.evaluate(()=>window.__rpgSmokePowerVisual())).moduleSections.head>0,true,
+    'Stripped pieces must reattach and retain their geometry');
   await page.locator('#powerBayClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:10000});
