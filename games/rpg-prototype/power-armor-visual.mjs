@@ -169,7 +169,7 @@ export function buildPowerArmorVisual(scene,position,state){
         width=.80+.41*Math.max(0,v+.5);
         up=v+(.48-Math.abs(u))*.055;
       }else if(role==='pauldron'){
-        width=.79+.40*Math.max(0,v+.5);
+        width=.75+.29*Math.max(0,v+.5);
         up=v+.055*Math.max(0,Math.abs(u)-.20);
       }else if(role==='vambrace'){
         width=.76+.30*(v+.5);
@@ -607,8 +607,8 @@ export function buildPowerArmorVisual(scene,position,state){
       side*.31,-.26,-.07,.055));
     crossRail.rotation.z=side*.16;
     // Single pauldron follows the shoulder hinge, not two identical badges.
-    const pauldron=plate(armName,shoulder,.83,.59,.25,
-      side*.13,-.18,.28,.16,'pauldron');
+    const pauldron=plate(armName,shoulder,.72,.58,.24,
+      side*.09,-.18,.28,.15,'pauldron');
     pauldron.rotation.z=side*.15;
     const undercut=modulePart(armName,forged(shoulder,.43,.10,.17,
       shaded,side*.09,-.50,.24,.035));

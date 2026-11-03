@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.9 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.10 + Forest Foundation 0.1
+
+## W20.10 — Shoulder silhouette and entry-visibility corrections
+
+- Reduced both shoulder pauldrons in width and offset to address the real-browser full-suit proportion regression, keeping the new anatomy-specific cast shells and articulated arm joints.
+- During power-armor entry/exit, the combat notification and crosshair are hidden to keep the rear-step climb visible. This is a narrow QA correction, not a new map or quest expansion.
+- Requires the full gameplay browser test to pass before marking the build finished.
 
 ## W20.9 — Tier-specific detail and working mask optics
 
