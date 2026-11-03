@@ -24,7 +24,7 @@ export const POWER_ARMOR_FRAME_AP=30;
 const clamp=(n,low,high)=>Math.max(low,Math.min(high,Number.isFinite(n)?n:low));
 export function powerArmorEyeHeight(state,normalEyeHeight){
   const safe=Number.isFinite(normalEyeHeight)?normalEyeHeight:1.70;
-  return safe+(state.occupied?.10:0);
+  return safe+(state.occupied?.80:0);
 }
 export function getPowerPlate(slot,tier){
   if(!POWER_ARMOR_SLOTS.includes(slot))throw Error('Unknown powered armor slot: '+slot);

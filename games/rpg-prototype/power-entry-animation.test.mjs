@@ -1,54 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {powerEntryPose} from './power-entry-animation.mjs';
+import {powerEntryPose,POWER_BOARDING} from './power-entry-animation.mjs';
 
-test('Power armor entry turns the real survivor toward the suit front',()=>{
-  const origin={x:1,z:-2.8,yaw:0};
-  const start=powerEntryPose('entering',0,origin);
-  const turn=powerEntryPose('entering',.17,origin);
-  const board=powerEntryPose('entering',.64,origin);
-  const finish=powerEntryPose('entering',1,origin);
-  assert.equal(start.x,1);assert.equal(start.z,-2.8);
-  assert.ok(Math.abs(turn.yaw-Math.PI)<.00001);
-  assert.equal(board.yaw,Math.PI);
-  assert.ok(board.walking&&board.z>-1.94&&board.z<-.28);
-  assert.equal(finish.z,-.28);assert.equal(finish.walking,false);
-  assert.equal(finish.hatch,0);
+test('pilot stands behind, turns to face +Z, then climbs actual treads',()=>{
+  const origin={x:.4,z:-2.7,yaw:0};
+  const at=t=>powerEntryPose('entering',t,origin);
+  assert.equal(at(0).z,origin.z);
+  assert.equal(at(0).y,0);
+  assert.ok(at(.18).hatch>.7);
+  assert.ok(Math.abs(at(.20).yaw-Math.PI)<1e-6);
+  for(const [t,expectedZ,expectedY] of [
+    [.49,POWER_BOARDING.low.z,POWER_BOARDING.low.y],
+    [.64,POWER_BOARDING.high.z,POWER_BOARDING.high.y],
+    [.81,POWER_BOARDING.cabin.z,POWER_BOARDING.cabin.y]
+  ]){
+    const pose=at(t);
+    assert.ok(Math.abs(pose.z-expectedZ)<1e-7,JSON.stringify(pose));
+    assert.ok(Math.abs(pose.y-expectedY)<1e-7,JSON.stringify(pose));
+    assert.ok(pose.hatch>.98,'hatch must be open while stepping');
+  }
+  assert.equal(at(1).hatch,0);
 });
-test('Pilot never floats: root feet remain at floor level throughout entry and exit',()=>{
-  for(const phase of ['entering','exiting'])
-    for(let i=0;i<=100;i++){
-      const pose=powerEntryPose(phase,i/100,{x:.8,z:-3,yaw:.5});
-      assert.equal(pose.y,0);
-      assert.ok(Number.isFinite(pose.x)&&Number.isFinite(pose.z));
-      assert.ok(pose.hatch>=0&&pose.hatch<=1);
-    }
+test('entry never slides through the shut rear hatch or drops under a tread',()=>{
+  for(let i=0;i<=1000;i++){
+    const t=i/1000,p=powerEntryPose('entering',t,{x:.85,z:-3.2,yaw:.35});
+    assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.z)&&Number.isFinite(p.y));
+    assert.ok(p.y>=0&&p.y<=POWER_BOARDING.cabin.y);
+    assert.ok(p.z>=-3.2&&p.z<=POWER_BOARDING.cabin.z);
+    if(p.z>-1.9&&t<.87)assert.ok(p.hatch>.99,'moving into frame requires open hatch at t='+t);
+    assert.ok(p.footLifts.every(v=>v>=0&&v<=.241));
+  }
 });
-test('Exit faces the rear before walking out, then ends behind the hatch',()=>{
-  const early=powerEntryPose('exiting',.08),turn=powerEntryPose('exiting',.19);
-  const mid=powerEntryPose('exiting',.50),end=powerEntryPose('exiting',1);
-  assert.ok(early.yaw>0&&early.yaw<Math.PI);
-  assert.ok(Math.abs(turn.yaw)<.001);
-  assert.ok(mid.walking&&mid.z<-.28&&mid.z>-2.35);
-  assert.equal(end.z,-2.35);assert.equal(end.yaw,0);
+test('exit walks FORWARD toward -Z, descends both steps and clears hatch',()=>{
+  const at=t=>powerEntryPose('exiting',t);
+  assert.equal(at(0).y,POWER_BOARDING.cabin.y);
+  assert.ok(Math.abs(at(.23).yaw)<.00001);
+  for(const [t,z,y] of [[.45,POWER_BOARDING.high.z,POWER_BOARDING.high.y],
+    [.60,POWER_BOARDING.low.z,POWER_BOARDING.low.y],[.77,-1.93,0],
+    [1,POWER_BOARDING.rearExit,0]]){
+    assert.ok(Math.abs(at(t).z-z)<1e-7,'z '+t);
+    assert.ok(Math.abs(at(t).y-y)<1e-7,'y '+t);
+  }
+  assert.equal(at(1).yaw,0);
+  assert.equal(at(1).walking,false);
 });
-test('No motion in idle phase and invalid progress remains bounded',()=>{
-  assert.deepEqual(powerEntryPose('idle',.5),{x:0,y:0,z:-.28,yaw:Math.PI,
-    walking:false,walkSpeed:0,step:0,hatch:0,brace:0,seated:true});
-  const pose=powerEntryPose('entering',Infinity);
-  assert.ok(Number.isFinite(pose.z)&&Number.isFinite(pose.yaw));
+test('separate legs lift for each step and planted foot stays down',()=>{
+  for(const [t,index] of [[.41,0],[.56,1],[.72,0]]){
+    const p=powerEntryPose('entering',t);
+    assert.ok(p.footLifts[index]>.05);
+    assert.equal(p.footLifts[1-index],0);
+    assert.ok(p.walking);
+  }
 });
-
-test('Boarding steps advance with world-space distance and never lift the body root',()=>{
-  const origin={x:.4,z:-2.75,yaw:0};
-  const first=powerEntryPose('entering',.41,origin);
-  const later=powerEntryPose('entering',.66,origin);
-  assert.ok(first.walking&&later.walking);
-  assert.ok(later.distance>first.distance);
-  assert.ok(later.footPhase>first.footPhase);
-  assert.ok(Math.abs((later.footPhase-first.footPhase)-
-    (later.distance-first.distance)*Math.PI*2/.84)<.000001);
-  assert.equal(first.y,0);assert.equal(later.y,0);
-  const exit=powerEntryPose('exiting',.57);
-  assert.ok(exit.footPhase>0&&exit.walking);
+test('invalid time is bounded and idle pose stays inside cabin',()=>{
+  const p=powerEntryPose('entering',Infinity);
+  assert.ok(Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z));
+  assert.equal(powerEntryPose('idle',.5).seated,true);
+  assert.equal(powerEntryPose('idle',.5).hatch,0);
 });

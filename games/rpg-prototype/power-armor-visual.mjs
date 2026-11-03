@@ -1,4 +1,4 @@
-// W12.0: original ivory-steel exoskeleton with a rear-entry cage, mechanical limbs and a modular shell.
+// W20.0: rebuilt industrial power frame, functional rear service steps, moving dorsal hatch and articulated limbs.
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
 import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
@@ -9,17 +9,17 @@ export function buildPowerArmorVisual(scene,position,state){
   root.position.set(position.x,0,position.z);
   root.rotation.y=-Math.PI/2;
   scene.add(root);
-  const steel=new THREE.MeshStandardMaterial({color:0xaeb8af,metalness:.65,roughness:.53});
-  const armor=new THREE.MeshStandardMaterial({color:0x556b64,metalness:.55,roughness:.64});
-  const shaded=new THREE.MeshStandardMaterial({color:0x425157,metalness:.63,roughness:.61});
-  const edge=new THREE.MeshStandardMaterial({color:0xdee0cd,metalness:.72,roughness:.43});
+  const steel=new THREE.MeshStandardMaterial({color:0x677675,metalness:.76,roughness:.48});
+  const armor=new THREE.MeshStandardMaterial({color:0x384b4e,metalness:.65,roughness:.56});
+  const shaded=new THREE.MeshStandardMaterial({color:0x26343a,metalness:.70,roughness:.55});
+  const edge=new THREE.MeshStandardMaterial({color:0x9aabac,metalness:.78,roughness:.41});
   const joint=new THREE.MeshStandardMaterial({color:0x263138,metalness:.33,roughness:.86});
   const brass=new THREE.MeshStandardMaterial({color:0xa58c62,metalness:.76,roughness:.47});
-  const orange=new THREE.MeshStandardMaterial({color:0xaa523b,metalness:.62,roughness:.52});
+  const orange=new THREE.MeshStandardMaterial({color:0xb36937,metalness:.64,roughness:.51});
   const visor=new THREE.MeshStandardMaterial({
-    color:0x182f34,metalness:.61,roughness:.22,emissive:0x3a967e,emissiveIntensity:.34
+    color:0x132226,metalness:.63,roughness:.19,emissive:0xc49343,emissiveIntensity:.32
   });
-  const glow=new THREE.MeshBasicMaterial({color:0x8bcbb4});
+  const glow=new THREE.MeshBasicMaterial({color:0xf4bd69});
   const makeGroup=(parent,x=0,y=0,z=0)=>{
     const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g;
   };
@@ -241,13 +241,9 @@ export function buildPowerArmorVisual(scene,position,state){
     for(const yy of [1.61,1.87,2.13])
       ball(root,.045,orange,side*.45,yy,-.39);
   }
-  for(let i=0;i<6;i++){
-    const y=1.46+i*.17;
-    const vertebra=forged(root,.23,.095,.17,i%2?steel:shaded,
-      0,y,-.39,.032);
-    vertebra.rotation.x=.06;
-    box(root,.16,.036,.09,brass,0,y,-.495);
-  }
+  // The central dorsal spine used to be a fixed, SOLID wall behind the
+  // pilot. It is now attached to the outward-swinging hatch below, so the
+  // entrance is open before the pilot sets foot on a stair.
   const waistDial=cyl(root,.21,.21,.11,joint,0,1.37,.29,18);
   waistDial.rotation.x=Math.PI/2;
   for(let i=0;i<8;i++){
@@ -307,6 +303,37 @@ export function buildPowerArmorVisual(scene,position,state){
     for(const h of [-.44,.42])
       cyl(hatch,.095,.095,.16,orange,0,h,-.03).rotation.x=Math.PI/2;
   }
+  // Two low service steps deploy behind the suit when the hatch unlocks.
+  // Top faces match POWER_BOARDING's .22 / .43 / .49 foot-contact heights.
+  const steps=makeGroup(root);
+  const industrialGrip=new THREE.MeshStandardMaterial({
+    color:0x4c5551,metalness:.7,roughness:.73
+  });
+  const tread=(z,height,depth)=>{
+    const assembly=makeGroup(steps,0,0,z);
+    forged(assembly,.89,.095,depth,industrialGrip,0,height-.048,0,.07);
+    for(let n=-3;n<=3;n++)
+      box(assembly,.08,.010,depth*.75,brass,n*.105,height+.006,0);
+    for(const sign of [-1,1])
+      forged(assembly,.08,.16,depth,shaded,sign*.45,height-.078,0,.035);
+    return assembly;
+  };
+  const lowerTread=tread(-1.47,.22,.43);
+  const upperTread=tread(-1.07,.43,.39);
+  const cabinTread=tread(-.60,.49,.54);
+  frameFeatures.boardingSteps=2;
+  // The old fixed dorsal column is now a hinged service bulkhead. It swings
+  // WITH the left hatch instead of allowing the pilot to ghost through it.
+  const spineHatch=makeGroup(doors.left,.50,-.20,.04);
+  for(let i=0;i<6;i++){
+    const localY=1.46+i*.17-1.69;
+    const rib=forged(spineHatch,.23,.095,.17,i%2?steel:shaded,
+      0,localY,0,.032);
+    rib.rotation.x=.06;
+    box(spineHatch,.16,.036,.09,brass,0,localY,-.105);
+  }
+  frameFeatures.dorsalHatch=true;
+
   // Helmet: armored jaw, brow ridge, horizontal illuminated eye band,
   // dual cheek filters and respirator; no floating rectangular robot head.
   const helmetPivot=makeGroup(root,0,2.36,-.08);
@@ -318,6 +345,14 @@ export function buildPowerArmorVisual(scene,position,state){
   modulePart('head',forged(helmetPivot,.24,.20,.12,steel,0,-.035,.39,.05));
   plate('head',helmetPivot,.68,.22,.13,0,.43,.08,.075);
   plate('head',helmetPivot,.57,.13,.095,0,-.12,.27,.045);
+  // A deeply inset, narrow sight band separates the heavy skull-shell from
+  // the bolted jaw instead of leaving a flat cartoon face.
+  modulePart('head',forged(helmetPivot,.79,.19,.22,shaded,0,.31,.09,.08));
+  for(const side of [-1,1]){
+    const temple=modulePart('head',forged(helmetPivot,.22,.28,.19,
+      steel,side*.36,.13,.22,.055));
+    temple.rotation.z=side*.16;
+  }
   for(const side of [-1,1]){
     modulePart('head',ellipsoid(helmetPivot,.17,.19,.20,steel,side*.34,.04,.15));
     const cheekFilter=modulePart('head',
@@ -398,6 +433,14 @@ export function buildPowerArmorVisual(scene,position,state){
     forged(shoulder,.23,.41,.17,shaded,side*.22,-.34,-.08,.065);
     modulePart(armName,ellipsoid(shoulder,.42,.30,.37,steel,side*.05,-.12,0));
     plate(armName,shoulder,.56,.29,.25,side*.07,-.15,.28,.11);
+    // Broad, beveled shoulder flares give the rig a recognisable industrial
+    // weight profile; the shells stay bound to the upper-arm joint.
+    const pauldron=plate(armName,shoulder,.73,.43,.23,
+      side*.12,-.10,.28,.12);
+    pauldron.rotation.z=side*.17;
+    const outerLip=modulePart(armName,forged(shoulder,.14,.43,.24,
+      shaded,side*.48,-.15,.16,.055));
+    outerLip.rotation.z=side*.19;
     modulePart(armName,forged(shoulder,.28,.38,.28,shaded,side*.04,-.39,.11,.08));
 
     const elbow=makeGroup(shoulder,side*.065,-.68,.025);
@@ -475,6 +518,11 @@ export function buildPowerArmorVisual(scene,position,state){
     }
     modulePart(legName,ellipsoid(knee,.285,.30,.285,steel,0,-.25,.02));
     plate(legName,knee,.50,.46,.19,0,-.235,.32,.095);
+    const heavyShin=plate(legName,knee,.57,.57,.24,0,-.23,.27,.13);
+    heavyShin.rotation.x=-.07;
+    for(const sign of [-1,1])
+      modulePart(legName,forged(knee,.105,.52,.16,shaded,
+        sign*.30,-.24,.12,.04));
     modulePart(legName,forged(knee,.24,.31,.25,shaded,side*.20,-.24,-.035,.06));
 
     const ankle=makeGroup(knee,0,-.44,-.02);
@@ -579,7 +627,7 @@ export function buildPowerArmorVisual(scene,position,state){
   }
   function updateCore(currentState){
     const powered=hasFusionPower(currentState);
-    coreLight.material.color.setHex(powered?0x8bcbb4:0xb26b3e);
+    coreLight.material.color.setHex(powered?0xf4bd69:0x6d5348);
     coreLight.material.needsUpdate=true;
   }
   const ease=(a,b,t)=>{
@@ -593,6 +641,13 @@ export function buildPowerArmorVisual(scene,position,state){
     const load=pose.brace;
     doors.left.rotation.y=open*1.55;
     doors.right.rotation.y=-open*1.55;
+    // Ramps never retract under a moving foot: both treads are fully deployed
+    // from t=.20 until the pilot has cleared the last step.
+    lowerTread.position.z=-.87-.60*open;
+    upperTread.position.z=-.72-.35*open;
+    lowerTread.rotation.x=-.95*(1-open);
+    upperTread.rotation.x=-.55*(1-open);
+    cabinTread.visible=true;
     helmetPivot.rotation.x=-open*.13+load*.05;
     for(const segment of rig.arms){
       const {side,shoulder,elbow,wrist,palm,fingerJoints,thumb,thumbTip}=segment;
@@ -653,7 +708,9 @@ export function buildPowerArmorVisual(scene,position,state){
   const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
   root.rotation.y=originalYaw;root.updateMatrixWorld(true);
   pilot.visible=pilotWasVisible;
-  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,rig,updatePlates,updateCore,animate,
+  return {root,doors,helmetPivot,plateMeshes,moduleMeshes,pilot,size,frameFeatures,rig,
+    steps:{lowerTread,upperTread,cabinTread},spineHatch,
+    updatePlates,updateCore,animate,
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 

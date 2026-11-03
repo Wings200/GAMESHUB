@@ -25,10 +25,26 @@ export function resetPlayerHealth(state){
   state.health=state.maxHealth;state.alive=true;state.hits=0;
   return state;
 }
+// Awareness is intentionally wider than gun alignment. An NPC may see
+// the player from the side but cannot fire until its visible body turns.
+export function enemyAimErrorRadians(brain,player){
+  const dx=player.x-brain.x,dz=player.z-brain.z;
+  if(!Number.isFinite(dx)||!Number.isFinite(dz)||!Number.isFinite(brain.yaw))
+    return Infinity;
+  if(Math.hypot(dx,dz)<.0001)return 0;
+  const desired=Math.atan2(dx,dz);
+  return Math.abs(Math.atan2(Math.sin(desired-brain.yaw),
+    Math.cos(desired-brain.yaw)));
+}
+export function isEnemyAimAligned(brain,player,toleranceDegrees=12){
+  return enemyAimErrorRadians(brain,player)<=
+    Math.max(0,Math.min(45,toleranceDegrees))*Math.PI/180;
+}
 export function canEnemyFire(enemyBrain,player,obstacles=[],range=AI_TUNING.sight){
   if(!enemyBrain.active||!(enemyBrain.mode==='chase'||
     (enemyBrain.mode==='investigate'&&enemyBrain.retaliationTime>0)))return false;
   if(Math.hypot(enemyBrain.x-player.x,enemyBrain.z-player.z)>range)return false;
+  if(!isEnemyAimAligned(enemyBrain,player))return false;
   // A hit alerts the NPC to the shooter beyond its normal 45 m patrol
   // detection radius. A return shot still requires facing and clear LOS.
   return hasSight(enemyBrain,player,obstacles,{...AI_TUNING,sight:range});

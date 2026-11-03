@@ -777,6 +777,7 @@ function finishPowerHold(){
   return true;
 }
 let powerCinematic=null;
+let powerCinematicFadeLeft=0;
 const powerCameraUp=new THREE.Vector3(0,1,0);
 function powerEase(a,b,value){
   const v=Math.min(1,Math.max(0,(value-a)/(b-a)));
@@ -787,16 +788,19 @@ function powerEase(a,b,value){
 function updatePowerCinematic(progress){
   if(!powerCinematic)return;
   const p=Math.min(1,Math.max(0,progress));
-  // Cut immediately to a clear three-quarter view, rather than moving
-  // THROUGH the torso first. Hold for the climb and fade toward the visor
-  // only during the final 8% of the locking animation.
-  const heroPosition=poweredSuit.root.localToWorld(new THREE.Vector3(1.07,2.00,-3.65));
-  const focalPoint=poweredSuit.root.localToWorld(new THREE.Vector3(0,1.62,-.34));
-  const handoff=powerEase(.82,1,p);
-  camera.position.copy(heroPosition).lerp(powerCinematic.to,handoff);
-  const look=new THREE.Quaternion().setFromRotationMatrix(
-    new THREE.Matrix4().lookAt(heroPosition,focalPoint,powerCameraUp));
-  camera.quaternion.copy(look).slerp(powerCinematic.toRotation,handoff);
+  // View the actual survivor outside the suit during the whole climb.
+  // DO NOT translate the camera through the back plate. The final POV
+  // changes only once, while the screen is dark after the hatch latches.
+  poweredSuit.root.updateMatrixWorld(true);
+  const exterior=poweredSuit.root.localToWorld(
+    new THREE.Vector3(3.10,2.60,-3.30));
+  const focus=poweredSuit.pilot.getWorldPosition(new THREE.Vector3())
+    .add(new THREE.Vector3(0,1.05,0));
+  camera.position.copy(exterior);
+  camera.quaternion.setFromRotationMatrix(
+    new THREE.Matrix4().lookAt(exterior,focus,powerCameraUp));
+  $('powerTransitionFade').style.opacity=
+    String(powerEase(.91,1,p));
 }
 function savePowerArmor(){
   try{localStorage.setItem('rpg-lab-powered-chassis',JSON.stringify(powerArmorState));}catch{}
@@ -965,6 +969,8 @@ function togglePoweredSuit(){
     new THREE.Matrix4().lookAt(endPosition,lookPoint,powerCameraUp));
   powerCinematic={from:camera.position.clone(),fromRotation:camera.quaternion.clone(),
     origin,to:endPosition,toRotation:endingRotation};
+  powerCinematicFadeLeft=0;
+  $('powerTransitionFade').style.opacity='0';
   keys.clear();triggerHeld=false;changeAim(false);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   sound.reload('rifle',1.65);
@@ -2053,7 +2059,10 @@ function updateEnemies(dt,elapsed=dt){
           if(shot.fired){
             enemy.gunGlow=.11;enemy.recoilPose=1;
             sound.gunshot(attack.soundKind||'rifle');
-            const origin=new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
+            // Match the visible rifle muzzle rather than firing from a
+            // fixed point in the centre of the NPC's chest.
+            const origin=enemy.rigged?.getMuzzleWorldPosition()||
+              new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
             const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
             if(!shot.hit){
               // Miss tracers visibly pass beside the player rather than
@@ -3134,6 +3143,12 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     pilotStride:poweredSuit.pilot.userData.entryPose?.step||0,
     pilotStrideDistance:poweredSuit.pilot.userData.entryPose?.distance||0,
     pilotLegJoints:pilotAvatar.root.userData.boardingJointAngles,
+    pilotStage:poweredSuit.pilot.userData.entryPose?.stage||'parked',
+    pilotFootLifts:poweredSuit.pilot.userData.entryPose?.footLifts||[0,0],
+    stepsDeployed:{lowerZ:poweredSuit.steps.lowerTread.position.z,
+      upperZ:poweredSuit.steps.upperTread.position.z},
+    dorsalHatchAngle:poweredSuit.spineHatch.parent.rotation.y,
+    cameraFade:Number($('powerTransitionFade').style.opacity||0),
     jointRig:{
       arms:poweredSuit.rig.arms.map(a=>({
         shoulder:a.shoulder.rotation.z,elbow:a.elbow.rotation.x,
@@ -3152,7 +3167,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     chassisWidth:poweredSuit.size.x,
     cinematic:powerCinematic!==null,
     cameraDistanceToHero:camera.position.distanceTo(
-      poweredSuit.root.localToWorld(new THREE.Vector3(1.07,2.00,-3.65)))
+      poweredSuit.root.localToWorld(new THREE.Vector3(3.10,2.60,-3.30)))
   });
   window.__rpgSmokeCompletePowerTransition=()=>{
     if(powerArmorState.phase!=='idle')
@@ -3355,6 +3370,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
         m.material.visible||m.castShadow).length,
       legacyGroupVisible:e.upperBody.visible,
       visualLocalYaw:e.rigged?.root.rotation.y??null,
+      frontVector:e.rigged?.getWorldForward()?.toArray()||null,
+      muzzlePosition:e.rigged?.getMuzzleWorldPosition()?.toArray()||null,
       avatarRoots:e.root.children.filter(child=>child===e.rigged?.root).length,
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
       weaponId:e.tactics.weaponId,burstCount:e.tactics.burstCount,
@@ -4002,11 +4019,18 @@ function frame(){
       camera.position.copy(powerCinematic.to);
       camera.quaternion.copy(powerCinematic.toRotation);
       powerCinematic=null;
+      powerCinematicFadeLeft=.34;
+      $('powerTransitionFade').style.opacity='1';
     }
     weaponVisuals.get(activeWeaponId).root.visible=true;
     savePowerArmor();refreshPowerArmorHUD();refreshInventoryUI();
     showShotNotice(powerArmorState.occupied?'POWER ARMOR LOCKED · READY':
       'POWER ARMOR PARKED · STEP CLEAR');
+  }
+  if(powerCinematicFadeLeft>0&&powerStep.phase==='idle'){
+    powerCinematicFadeLeft=Math.max(0,powerCinematicFadeLeft-elapsed);
+    $('powerTransitionFade').style.opacity=String(Math.min(
+      1,powerCinematicFadeLeft/.27));
   }
   if(controls.isLocked&&powerArmorState.phase==='idle'){
     controls.getDirection(forward);

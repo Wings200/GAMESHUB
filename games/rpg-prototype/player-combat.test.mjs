@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEnemyBrain,alertEnemy,stepEnemyBrain} from './enemy-ai.mjs';
 import {PLAYER_MAX_HEALTH,ENEMY_ATTACK,createPlayerHealth,hitPlayer,
-  resetPlayerHealth,canEnemyFire,firstSolidHit} from './player-combat.mjs';
+  resetPlayerHealth,canEnemyFire,firstSolidHit,isEnemyAimAligned,
+  enemyAimErrorRadians} from './player-combat.mjs';
 test('HUD starts with 100 health and valid death/reset rules',()=>{
   const p=createPlayerHealth();
   assert.equal(p.health,PLAYER_MAX_HEALTH);assert.equal(p.maxHealth,100);
@@ -90,4 +91,21 @@ test('W09.9 solid wall checking uses the same colliders as enemy sight',()=>{
   const worldWalls=[{minX:34,maxX:36,minZ:39,maxZ:45,height:2.8}];
   assert.equal(canEnemyFire(enemy,player,worldWalls,70),false);
   assert.ok(firstSolidHit({x:40,y:1.43,z:42},{x:28,y:1.52,z:42},worldWalls));
+});
+
+test('W20: a visible guard cannot fire until the entire body faces the target',()=>{
+  const e=createEnemyBrain({x:0,z:0,yaw:0});
+  const east={x:10,z:0},north={x:0,z:10},south={x:0,z:-10};
+  e.mode='chase';
+  assert.equal(isEnemyAimAligned(e,east),false);
+  assert.equal(canEnemyFire(e,east),false,'a sideways rifle cannot hit directly east');
+  assert.equal(canEnemyFire(e,south),false,'firing out of back is impossible');
+  assert.equal(canEnemyFire(e,north),true);
+  e.yaw=Math.PI/2-16*Math.PI/180;
+  assert.equal(canEnemyFire(e,east),false,'16-degree alignment error must block shots');
+  e.yaw=Math.PI/2-9*Math.PI/180;
+  assert.equal(canEnemyFire(e,east),true,'a 9-degree gun-to-target angle is valid');
+  assert.ok(enemyAimErrorRadians(e,east)<12*Math.PI/180);
+  e.yaw=5*Math.PI/2;
+  assert.equal(canEnemyFire(e,east),true,'angle wrapping must be stable');
 });

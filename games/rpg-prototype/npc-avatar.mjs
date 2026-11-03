@@ -128,7 +128,21 @@ export function createNpcAvatar(parent,kind){
   npcBolt.visible=false;
   const flash=new THREE.PointLight(0xffbd73,0,1.45);
   flash.position.copy(muzzle.position);
+  // The tracer starts at the actual barrel tip, not the enemy's stomach.
+  flash.position.z-=.08;
   gun.add(flash);
+  const frontAxis=new THREE.Vector3(0,0,-1);
+  const muzzlePoint=new THREE.Vector3();
+  const facingVector=new THREE.Vector3();
+  function getMuzzleWorldPosition(){
+    flash.updateWorldMatrix(true,false);
+    return flash.getWorldPosition(muzzlePoint.clone());
+  }
+  function getWorldForward(){
+    avatar.root.updateWorldMatrix(true,false);
+    return facingVector.copy(frontAxis).transformDirection(
+      avatar.root.matrixWorld).clone();
+  }
   let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
   let lastArmor={};
   let previousBodyYaw=null;
@@ -181,6 +195,7 @@ export function createNpcAvatar(parent,kind){
   setArmor({});
   return {
     root:avatar.root,update,setArmor,setWeapon,
+    getMuzzleWorldPosition,getWorldForward,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,
       source:'original-procedural'

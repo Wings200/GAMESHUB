@@ -89,8 +89,8 @@ test('Power armor standing and crouch heights follow player movement',()=>{
   assert.equal(powerArmorEyeHeight(state,1.70),1.70);
   beginPowerArmorTransition(state);
   stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
-  assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-1.80)<.00001);
-  assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.13)<.00001);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-2.50)<.00001);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.83)<.00001);
   assert.ok(powerArmorEyeHeight(state,1.70)-powerArmorEyeHeight(state,1.03)>.60);
 });
 

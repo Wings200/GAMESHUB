@@ -160,6 +160,11 @@ try{
       enemy.id+' old physics body must stay invisible as a group');
     assert.ok(Math.abs(enemy.visualLocalYaw-Math.PI)<1e-6,
       enemy.id+' model must look in AI +Z forward direction');
+    const expected=[Math.sin(enemy.yaw),0,Math.cos(enemy.yaw)];
+    const alignment=enemy.frontVector.reduce((sum,v,i)=>sum+v*expected[i],0);
+    assert.ok(alignment>.9999,enemy.id+' mesh face must match brain yaw');
+    assert.ok(enemy.muzzlePosition?.every(Number.isFinite),
+      enemy.id+' must have a real world-space weapon muzzle');
     assert.ok(enemy.weaponRpm>100&&enemy.weaponRpm<1600,
       enemy.id+' must have an actual firearm RPM');
     for(const [slot,id] of Object.entries(enemy.armor)){
@@ -617,6 +622,10 @@ try{
     'An empty arm slot must show exposed frame, not old permanently armored mesh');
   assert.ok(bareArm.moduleSections.leftArm>0,'The fitted left arm must retain its armor');
   assert.equal(bareArm.frameFeatures.rearHatch,true,'Frame must have an actual rear cage');
+  assert.equal(bareArm.frameFeatures.dorsalHatch,true,
+    'Rear spinal bulkhead must swing out with the opening door');
+  assert.equal(bareArm.frameFeatures.boardingSteps,2,
+    'Both physical climbing treads must be part of the model');
   // W17: this is now a joint hierarchy with telescoping rods, not two
   // rigid mannequin arms attached to two rigid mannequin legs.
   assert.equal(bareArm.frameFeatures.elbows,2);
@@ -684,7 +693,8 @@ try{
   assert.equal(armorVisible.plateAppearance.head.contour,'ExtrudeGeometry');
   assert.ok(armorVisible.moduleSections.rightArm>0,'Installing the right arm adds its armor shell');
   assert.ok(armorVisible.moduleSections.head>0,'Installing the helmet restores its armor shell');
-  assert.equal(armorVisible.visiblePlates.leftLeg,2,'Only the fitted leg gets its plates');
+  assert.ok(armorVisible.visiblePlates.leftLeg>=3,
+    'New industrial greave must have a reinforced shin silhouette');
   await page.locator('#powerBayClose').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,
     null,{timeout:10000});
@@ -707,8 +717,13 @@ try{
   const entryPose=await page.evaluate(()=>window.__rpgSmokePowerVisual());
   assert.ok(Math.cos(entryPose.pilotFacing)<-.98,
     'Pilot must FACE INTO the chassis, never moonwalk backwards');
-  assert.equal(entryPose.pilotFloorHeight,0,
-    'Power-armor boarding must keep both feet on the ground');
+  assert.ok(entryPose.pilotFloorHeight>.20&&entryPose.pilotFloorHeight<.50,
+    'Pilot must physically climb ABOVE floor height onto the service steps');
+  assert.ok(entryPose.stepsDeployed.lowerZ<-1.4&&
+    entryPose.stepsDeployed.upperZ<-1.0,
+    'Stairs must deploy completely before the pilot steps on them');
+  assert.ok(entryPose.dorsalHatchAngle>.4,
+    'Rear spinal bulkhead must open before the pilot moves through the cage');
   assert.ok(entryPose.jointRig.arms.every(a=>a.elbow<-.20&&a.wrist>.15),
     'Hatch approach must flex both real elbows and wrist joints');
   assert.ok(entryPose.jointRig.legs.every(a=>a.knee>.025),
@@ -736,20 +751,20 @@ try{
   await page.waitForFunction(()=>{
     const s=window.__rpgSmokeState();
     const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
-    return !s.player.crouched&&h>1.62&&h<2.0;
+    return !s.player.crouched&&h>2.25&&h<2.7;
   },null,{timeout:12000});
   // The old suit hard-coded 2.82m every frame, so C and CTRL looked broken.
   await page.keyboard.press('c');
   await page.waitForFunction(()=>{
     const s=window.__rpgSmokeState();
     return s.player.crouched &&
-      window.__rpgSmokePowerVisual().cameraHeightAboveGround<1.42;
+      window.__rpgSmokePowerVisual().cameraHeightAboveGround<2.23;
   },null,{timeout:12000});
   await page.keyboard.press('c');
   await page.waitForFunction(()=>{
     const s=window.__rpgSmokeState();
     const h=window.__rpgSmokePowerVisual().cameraHeightAboveGround;
-    return !s.player.crouched && h>1.62&&h<2.0;
+    return !s.player.crouched && h>2.25&&h<2.7;
   },null,{timeout:12000});
   await page.keyboard.down('e');
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='exiting',
@@ -762,8 +777,8 @@ try{
   const exitPose=await page.evaluate(()=>window.__rpgSmokePowerVisual());
   assert.ok(Math.cos(exitPose.pilotFacing)>.98,
     'Pilot turns toward the back before walking out');
-  assert.equal(exitPose.pilotFloorHeight,0,
-    'Power-armor exit must remain grounded');
+  assert.ok(exitPose.pilotFloorHeight>.20&&exitPose.pilotFloorHeight<.50,
+    'Pilot must descend the actual steps, not phase through the armour shell');
   await page.evaluate(()=>window.__rpgSmokeCompletePowerTransition());
   await page.waitForFunction(()=>window.__rpgSmokeState().powerArmor.phase==='idle'&&
     !window.__rpgSmokeState().powerArmor.occupied,null,{timeout:15000});

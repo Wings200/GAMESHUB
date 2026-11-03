@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W19.4 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.0 + Forest Foundation 0.1
+
+## W20.0 — Physical power-armour boarding & facing verification (testing sandbox only)
+
+- Power armour entry is now a four-stage climb from behind rather than a flat horizontal translation: the pilot turns to face forward, approaches the rear hatch, steps onto two physical service treads (0.22 m and 0.43 m), then mounts the internal 0.49 m foot platform. Each step moves the pilot's root vertically and lifts the correct articulated boot; the other foot remains planted. Exiting reverses the sequence while facing backward out of the suit.
+- A formerly solid centre-back spinal column is now attached to the opening hatch; the two service steps extend only while the rear doors are open. The helmet, shoulder caps and greaves received a heavier industrial silhouette and dark base alloy instead of the old ivory mannequin finish. Modular T-45/T-60/T-01 loadouts, durability and fusion cores are preserved.
+- The camera stays in an external view of the pilot while boarding; it never flies through the armour. Once the hatch closes, a brief dark visor handoff moves the camera to the worn-suit eye point. Crouch offsets remain active.
+- Enemy awareness remains broad, but weapons can fire **only if the enemy's actual facing yaw is within 12 degrees of the player**. Enemy tracers now originate at the weapon model's muzzle, rather than an invisible chest point. Browser smoke checks validate the visible model's world forward vector matches the AI brain bearing. Original non-rendering physics hitboxes remain separate.
+- This pass **does not build or replace the map**; the nine mechanics stations are still the evaluation environment. Unit tests check climb heights, alternating feet, hatch timing, direction gating and distance; browser smoke tests inspect visible step deployment, spine yaw, NPC heading and camera heights. Appearance and choreography still require player approval after browser testing.
 
 ## W19.4 — Combat Comfort, Protective Gear, and Low-FPS Cleanup
 

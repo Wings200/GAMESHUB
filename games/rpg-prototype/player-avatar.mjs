@@ -497,11 +497,14 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
         const wave=Math.sin((boardingPose.footPhase||0)+(i===0?0:Math.PI));
         const motion=boardingPose.walking?1:0;
         const brace=boardingPose.brace||0;
-        leg.hip.rotation.x=wave*.36*motion+brace*.12;
-        leg.knee.rotation.x=Math.max(0,wave)*.54*motion+brace*.16;
+        // Each raised boot now clears an actual service stair. The other
+        // boot stays planted rather than both feet floating through a frame.
+        const lift=Math.max(0,boardingPose.footLifts?.[i]||0);
+        leg.hip.rotation.x=wave*.20*motion+lift*1.68+brace*.12;
+        leg.knee.rotation.x=Math.max(0,wave)*.13*motion-lift*1.85+brace*.16;
         leg.foot.rotation.x=-.72*leg.hip.rotation.x-.48*leg.knee.rotation.x;
-        leg.foot.position.y=-.25+Math.max(0,wave)*.035*motion;
-        arm.shoulder.rotation.x=-wave*.22*motion-.68*brace;
+        leg.foot.position.y=-.25+lift*.65;
+        arm.shoulder.rotation.x=-wave*.20*motion-.68*brace;
         arm.shoulder.rotation.z=-sign*(.10+.22*brace);
         arm.elbow.rotation.x=-.19-.72*brace;
         arm.elbow.rotation.z=sign*.14*brace;
