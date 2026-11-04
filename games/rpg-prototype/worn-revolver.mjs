@@ -122,8 +122,40 @@ export function createWornRevolver(THREE,parent,{thirdPerson=false,flareTexture=
   const supportHand=new THREE.Group();root.add(supportHand);
   const gripHand=new THREE.Group();root.add(gripHand);
   if(!thirdPerson){
-    box(.142,.164,.183,glove,.121,-.260,.215,gripHand);
-    box(.133,.139,.160,glove,-.196,-.137,-.295,supportHand);
+    // Both resting hands meet the same wooden handle, not the air below
+    // the barrel. The strong hand encloses the right side; the support hand
+    // cups the grip and strong hand from the left in a two-handed stance.
+    box(.126,.175,.160,glove,.106,-.256,.223,gripHand)
+      .name='RevolverStrongHandPalmOnGrip';
+    box(.125,.167,.151,glove,-.105,-.262,.223,supportHand)
+      .name='RevolverSupportHandPalmOnGrip';
+    for(let i=0;i<4;i++){
+      const rightFinger=part(new THREE.CapsuleGeometry(.018,.090,4,7),
+        glove,.046,-.181-i*.043,.137,gripHand);
+      rightFinger.rotation.z=1.04;
+      rightFinger.name='RevolverStrongFingerWrappingGrip';
+      const leftFinger=part(new THREE.CapsuleGeometry(.018,.090,4,7),
+        glove,-.046,-.183-i*.043,.137,supportHand);
+      leftFinger.rotation.z=-1.04;
+      leftFinger.name='RevolverSupportFingerWrappingGrip';
+    }
+    const rightThumb=part(new THREE.CapsuleGeometry(.026,.093,4,7),
+      glove,.080,-.161,.289,gripHand);
+    rightThumb.rotation.z=-.55;rightThumb.name='RevolverStrongThumbOnBackstrap';
+    const leftThumb=part(new THREE.CapsuleGeometry(.026,.087,4,7),
+      glove,-.080,-.162,.288,supportHand);
+    leftThumb.rotation.z=.55;leftThumb.name='RevolverSupportThumbOnBackstrap';
+    // Cuffs and forearms overlap both palms; no disconnected hand blocks.
+    box(.135,.088,.165,glove,.111,-.368,.259,gripHand)
+      .name='RevolverStrongWristCuff';
+    box(.135,.088,.165,glove,-.109,-.371,.256,supportHand)
+      .name='RevolverSupportWristCuff';
+    const rightArm=part(new THREE.CylinderGeometry(.075,.097,.320,10),
+      glove,.150,-.480,.343,gripHand);
+    rightArm.rotation.z=-.16;rightArm.name='RevolverAttachedStrongForearm';
+    const leftArm=part(new THREE.CylinderGeometry(.075,.097,.320,10),
+      glove,-.148,-.485,.344,supportHand);
+    leftArm.rotation.z=.16;leftArm.name='RevolverAttachedSupportForearm';
     box(.157,.140,.176,glove,0,0,0,reloadHand);
     for(let i=0;i<4;i++)
       box(.033,.076,.097,glove,-.055+i*.037,.082,-.006,reloadHand);

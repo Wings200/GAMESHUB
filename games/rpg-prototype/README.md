@@ -1,3 +1,7 @@
+## W20.33 — Revolver two-handed grip alignment
+
+Replaced the floating idle support-hand block with a supported two-handed revolver stance. Both glove palms now overlap the actual wood grip, with four individually modeled wrapping fingers and thumbs each, wrist cuffs, and forearms physically connected to each palm. The reload-hand choreography and first-/third-person revolver mechanics stay unchanged. Added geometry and source-level regression tests.
+
 ## W20.32 — Worn Six-Shooter
 
 The eighth approved-weapon candidate is a new procedural revolver with an actual cylinder/yoke, connected barrel, frame, walnut grip and front/rear iron sights. Six separate chamber bores rotate during firing. The hammer cocks and falls, while reloading swings the drum out, ejects spent cases, and loads missing cartridges individually. No automatic casing ejection occurs on trigger pulls. Existing seven weapons and NPC weapon-free testing mode remain unchanged. New geometry, balance, reload, audio and source-level tests guard the behavior.

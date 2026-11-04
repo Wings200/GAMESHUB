@@ -25,7 +25,7 @@ class Shape{
   closePath(){}}
 const THREE={Group,Mesh,Vector3:Vec,BoxGeometry,ExtrudeGeometry,Shape,
   CylinderGeometry:Geometry,TorusGeometry:Geometry,PlaneGeometry:Geometry,
-  SphereGeometry:Geometry,MeshStandardMaterial:Geometry,MeshBasicMaterial:Geometry,
+  SphereGeometry:Geometry,CapsuleGeometry:Geometry,MeshStandardMaterial:Geometry,MeshBasicMaterial:Geometry,
   PointLight:Group,AdditiveBlending:1,DoubleSide:2};
 const find=(root,name)=>root.children.find(c=>c.name===name);
 const zRange=obj=>obj.geometry.profile?
@@ -104,4 +104,31 @@ test('World-held version preserves the physical cylinder and rear barrel connect
   assert.ok(find(r.root,'RevolverContinuousBarrel'));
   assert.ok(find(r.cylinderSpinGroup,'RevolverActualCylinder'));
   assert.equal(r.reloadAction.visible,false);
+});
+
+test('W20.33 both visible resting palms and fingers physically clasp wood grip',()=>{
+  const r=createWornRevolver(THREE,new Group());
+  const wood=find(r.root,'RevolverSolidWalnutGrip');
+  const palms=[
+    r.gripHand.children.find(c=>c.name==='RevolverStrongHandPalmOnGrip'),
+    r.supportHand.children.find(c=>c.name==='RevolverSupportHandPalmOnGrip')
+  ];
+  assert.equal(palms.length,2);
+  palms.forEach(p=>{
+    assert.ok(p,'missing hand palm');
+    assert.ok(Math.abs(p.position.x)-p.geometry.width/2<
+      wood.geometry.width/2,'palm overlaps actual grip across x');
+    assert.ok(Math.abs(p.position.z-wood.position.z)<
+      (p.geometry.depth+wood.geometry.depth)/2,'palm overlaps grip depth');
+    assert.ok(Math.abs(p.position.y-wood.position.y)<
+      (p.geometry.height+wood.geometry.height)/2,'palm overlaps grip height');
+  });
+  assert.equal(r.gripHand.children.filter(c=>
+    c.name==='RevolverStrongFingerWrappingGrip').length,4);
+  assert.equal(r.supportHand.children.filter(c=>
+    c.name==='RevolverSupportFingerWrappingGrip').length,4);
+  assert.ok(r.gripHand.children.some(c=>c.name==='RevolverAttachedStrongForearm'));
+  assert.ok(r.supportHand.children.some(c=>c.name==='RevolverAttachedSupportForearm'));
+  assert.equal(r.supportHand.visible,true);
+  assert.equal(r.reloadHand.visible,false);
 });
