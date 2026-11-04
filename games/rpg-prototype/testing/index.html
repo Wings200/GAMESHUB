@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.47 · Quiet Combat Feedback | GAMESHUB RPG</title>
+<title>W20.48 · Contextual NPC Health | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -67,6 +67,32 @@ body.weapon-rebuild #workbenchOpen{display:none!important}
 #enemyHud.hidden{display:none}
 #enemyHud strong{font-size:11px;color:#f2be95;letter-spacing:.13em}
 #enemyHud div{font-size:10px;font-weight:800;color:#d4e2e1;line-height:1.55}
+/* Fallout-style identification for the field HUD and the power-armor visor. */
+#targetHealthHud{position:fixed;left:50%;top:71px;transform:translateX(-50%);
+  z-index:4;width:min(380px,57vw);padding:8px 13px 10px;pointer-events:none;
+  background:linear-gradient(90deg,#141b1ee8,#272222eb,#141b1ee8);
+  border-top:1px solid #aa6c5e;border-bottom:1px solid #91483e;
+  color:#f3d6c8;text-align:center;text-shadow:0 2px 6px #000c;
+  box-shadow:0 7px 16px #0007}
+#targetHealthHud.hidden{display:none!important}
+#targetHealthHud .target-line{display:flex;align-items:baseline;
+  justify-content:space-between;gap:10px;margin-bottom:6px;font-weight:950}
+#targetHealthHud #targetName{font-size:14px;letter-spacing:.08em}
+#targetHealthHud #targetAttitude{font-size:9px;letter-spacing:.13em;color:#f18a78}
+#targetHealthHud .target-bar{height:9px;border:1px solid #9d7771;
+  background:#311d1c;overflow:hidden;border-radius:2px}
+#targetHealthHud #targetHealthFill{display:block;height:100%;width:100%;
+  background:linear-gradient(90deg,#91312d,#e26d58);transition:width .12s ease}
+#targetHealthHud .target-health-value{font-size:10px;font-weight:850;
+  color:#e8bcb0;letter-spacing:.06em;margin-top:4px}
+#targetHealthHud.friendly{border-color:#69b391;background:linear-gradient(90deg,#152620e8,#1e3028ed,#152620e8);color:#d0f1dd}
+#targetHealthHud.friendly #targetAttitude{color:#9addb7}
+#targetHealthHud.friendly .target-bar{border-color:#67957e;background:#193428}
+#targetHealthHud.friendly #targetHealthFill{background:linear-gradient(90deg,#447b5a,#a0ddad)}
+#targetHealthHud.wounded:not(.friendly) #targetHealthFill{background:linear-gradient(90deg,#aa342b,#ff725b)}
+#targetHealthHud.down #targetAttitude{color:#ff8171}
+body.power-transition #targetHealthHud{display:none!important}
+@media(max-width:690px){#targetHealthHud{top:57px;width:min(320px,75vw);padding:7px 9px}#targetHealthHud #targetName{font-size:11px}#targetHealthHud #targetAttitude{font-size:8px}}
 #damageReport{color:#f0cd9a;font-size:10px;font-weight:850;line-height:1.45;margin-top:9px;max-width:290px;min-height:15px}
 #soundToggle{position:fixed;left:18px;top:246px;z-index:2;
   border:1px solid #adbdad;background:rgba(9,23,32,.9);color:#e8d1ac;
@@ -687,11 +713,16 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <button id="quality" type="button">QUALITY: HIGH</button>
 <div id="enemyHud" class="block hidden" aria-live="polite">
-  <strong>W20.47 · ENEMY TEST</strong>
+  <strong>W20.48 · ENEMY TEST</strong>
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
   <div>K FREEZE / UNFREEZE · J RESET ENEMIES · M INFINITE AMMO</div>
+</div>
+<div id="targetHealthHud" class="hidden" role="status" aria-label="Character health">
+  <div class="target-line"><span id="targetName"></span><span id="targetAttitude"></span></div>
+  <div class="target-bar"><span id="targetHealthFill"></span></div>
+  <div class="target-health-value" id="targetHealthValue"></div>
 </div>
 <div id="crosshair"></div>
 <div id="sniperScope" aria-hidden="true">
@@ -722,7 +753,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 
 <button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
 <div id="weaponHud" class="block">
-  <div class="weapon-head">W20.47 · WEAPON TESTING</div>
+  <div class="weapon-head">W20.48 · WEAPON TESTING</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
@@ -745,9 +776,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.47</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.48</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <div class="weapon-reset-notice"><b>W20.47 · QUIET COMBAT FEEDBACK</b>No more center-screen or spoken callouts for enemy hits, concrete impacts, target hits, or misses. Your guns, impacts, recoil, damage numbers, and bullet marks still work. At Station 8 the TEMP TEST ONLY core-refill control remains available. At Station 9 the Raider retains his W20.45 vertical aiming and cover tactics; the Scout and Enforcer remain unarmed.</div>
+    <div class="weapon-reset-notice"><b>W20.48 · CONTEXTUAL NPC HEALTH</b>Look directly at a Raider or protected story character to see their name and health bar at the top. Hostiles are red, friendly quest contacts green. Enemy health updates on every hit, briefly remaining visible after a shot; terrain and cover hide concealed characters. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
     <p><strong>W20.16 · COMBAT & POWER FRAME:</strong> Compact armor silhouette and clearance, deeper rear boarding, softer boot impacts, fusion cores lasting 25% longer, close-quarters enemy tracking, single-render-layer NPCs, concealed enemy tactics, and a bottom red-dot hostile compass.</p>
@@ -769,7 +800,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.47</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.48</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -1002,6 +1033,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.47"></script>
+<script type="module" src="./main.js?v=W20.48"></script>
 </body>
 </html>

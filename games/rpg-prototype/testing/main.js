@@ -59,6 +59,7 @@ import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
 import {calculateIncomingShot} from '../player-ballistics.mjs';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
+import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
@@ -353,7 +354,7 @@ const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:!reducedRenderer})
 // W18.0 story contacts: physical, discoverable terminals and faction beacons.
 // They're prototypes for future settlement NPCs, not invisible quest buttons.
 const campaignMarkers=[];
-const campaignResidents=[];
+const campaignResidents=[],residentHitMeshes=[];
 const questPostGeometry=new THREE.CylinderGeometry(.035,.035,1.8,8);
 for(const node of CAMPAIGN_NODES){
   const shell=new THREE.MeshStandardMaterial({color:0x33454b,metalness:.62,roughness:.76});
@@ -406,7 +407,16 @@ for(const node of CAMPAIGN_NODES){
       variant:node.id==='dominion'?'enforcer':'survivor',heldWeaponEnabled:false});
     avatar.root.name='QuestResident_'+node.id;
     const x=node.x+1.54,z=node.z+1.25;
-    campaignResidents.push({avatar,x,z,yaw:.8});
+    // Protected story contacts are noncombatants for now. Their visible
+    // health starts full; they are excluded from the weapon damage raycast.
+    const resident={id:node.id,label:node.name,faction:node.faction,
+      avatar,x,z,yaw:.8,health:100,maxHealth:100};
+    campaignResidents.push(resident);
+    avatar.root.traverse(object=>{
+      if(!object.isMesh)return;
+      object.userData.targetResidentId=node.id;
+      residentHitMeshes.push(object);
+    });
     bounds.push({minX:x-.28,maxX:x+.28,minZ:z-.28,maxZ:z+.28,top:1.85});
   }
 }
@@ -3241,6 +3251,59 @@ const firingRaycaster=new THREE.Raycaster();
 // Cast into both visible world surfaces and non-rendering enemy hitboxes.
 firingRaycaster.layers.enable(ENEMY_COLLISION_LAYER);
 firingRaycaster.far=105;
+// This is a separate sight ray: it never alters bullet spread, gun damage,
+// or the collision layers used by the actual weapon raycaster.
+const targetSightRaycaster=new THREE.Raycaster();
+targetSightRaycaster.layers.enable(ENEMY_COLLISION_LAYER);
+targetSightRaycaster.far=48;
+const targetSightDirection=new THREE.Vector3();
+let targetSightClock=0,aimedCharacter=null;
+let lastDamagedEnemyId=null,lastDamagedEnemySeconds=0;
+function updateTargetHealthHud(dt){
+  const hud=$('targetHealthHud');
+  const blocked=!controls.isLocked||powerArmorState.phase!=='idle'||
+    inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||questPanelOpen||
+    dialogueOpen||!playerHealth.alive;
+  if(blocked){hud.classList.add('hidden');aimedCharacter=null;return;}
+  lastDamagedEnemySeconds=Math.max(0,lastDamagedEnemySeconds-dt);
+  targetSightClock-=dt;
+  if(targetSightClock<=0){
+    targetSightClock=.09;
+    camera.updateWorldMatrix(true,false);
+    camera.getWorldDirection(targetSightDirection);
+    targetSightRaycaster.set(camera.position,targetSightDirection);
+    // Update animated joints so the aim point is not one frame behind.
+    for(const resident of campaignResidents)
+      resident.avatar.root.updateWorldMatrix(true,true);
+    for(const enemy of enemies.values())
+      if(enemy.state.alive)enemy.rigged?.root.updateWorldMatrix(true,true);
+    const liveEnemies=enemyHitMeshes.filter(mesh=>mesh.userData.equipped!==false&&
+      shouldRaycastEnemy(enemies.get(mesh.userData.enemyId)));
+    const liveDummies=dummyHitMeshes.filter(mesh=>
+      dummies.get(mesh.userData.dummyId)?.state.alive);
+    const hits=targetSightRaycaster.intersectObjects([
+      ...worldGeometry,...targetMeshes,...liveDummies,...liveEnemies,...residentHitMeshes],false);
+    aimedCharacter=characterUnderCrosshair(hits);
+  }
+  const target=aimedCharacter||(lastDamagedEnemySeconds>0&&lastDamagedEnemyId?
+    {kind:'hostile',id:lastDamagedEnemyId}:null);
+  const enemy=target?.kind==='hostile'?enemies.get(target.id):null;
+  const resident=target?.kind==='friendly'?campaignResidents.find(r=>r.id===target.id):null;
+  const character=enemy||resident;
+  if(!character){hud.classList.add('hidden');return;}
+  const maxHP=Math.max(1,enemy?.state.maxHealth??resident?.maxHealth??100);
+  const hp=Math.max(0,Math.min(maxHP,enemy?.state.health??resident?.health??0));
+  const isFriendly=!!resident;
+  hud.classList.toggle('friendly',isFriendly);
+  hud.classList.toggle('hidden',false);
+  $('targetName').textContent=character.label;
+  $('targetAttitude').textContent=isFriendly?'FRIENDLY · PROTECTED':hp===0?'DOWN':'HOSTILE';
+  $('targetHealthValue').textContent=Math.ceil(hp)+' / '+Math.ceil(maxHP)+' HP';
+  const fraction=targetHealthFraction(hp,maxHP);
+  $('targetHealthFill').style.width=(fraction*100).toFixed(1)+'%';
+  hud.classList.toggle('wounded',fraction<=.3);
+  hud.classList.toggle('down',!isFriendly&&hp===0);
+}
 // Runtime ADS sanity check: only raycast against the visible viewmodel,
 // ignoring intentionally centered front blades and reticle dots.
 const sightProbe=new THREE.Raycaster();
@@ -3502,6 +3565,8 @@ function shoot(){
       (critical?specialModifiers.critDamageMultiplier:1);
     const hit=applyDamage(enemy.state,boostedDamage,zone);
     if(hit.applied){
+      lastDamagedEnemyId=enemy.id;
+      lastDamagedEnemySeconds=1.15;
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
@@ -5096,6 +5161,7 @@ function frame(){
     resident.avatar.update({dt,x:resident.x,z:resident.z,
       ground:groundHeight(resident.x,resident.z),yaw:resident.yaw,speed:0});
   }
+  updateTargetHealthHud(dt);
   questNavigationClock+=dt;
   if(questNavigationClock>.42){
     questNavigationClock=0;
