@@ -1,3 +1,7 @@
+## W20.43 — NPC combat frame ReferenceError fix
+
+Fixed `liveNpcGun is not defined` from W20.42: the per-NPC weapon gate is now declared in the surrounding enemy loop, so it is available to aiming, shooting, reloading, death cleanup and the status HUD. The HUD explicitly reports that only the Raider is armed. Added regression coverage checking that the declaration precedes both the alive/dead branches and status read, and bumps the test page/module URLs to W20.43 to clear stale browser module caches. Raider Pipe Rifle trial remains otherwise unchanged.
+
 ## W20.42 — Controlled Raider Pipe Rifle live-combat trial
 
 - Equipped **only the Raider** in Station 9 with the same authored rusted Pipe Rifle 3D model used by the player. Its duplicate legacy mesh is hidden, so the visible barrel/stock/magazine and aim points are real model geometry.

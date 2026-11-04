@@ -10,13 +10,13 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, HEAVY_SNIPER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.42';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.43';
 import {createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
-  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.42';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.42';
+  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.43';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.43';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.42';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.42';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.43';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.43';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -25,8 +25,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.42';
-import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.42';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.43';
+import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.43';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
@@ -38,8 +38,8 @@ import {pumpCyclePose,pumpPelletDamage,PUMP_ACTION_TUNING} from '../pump-action-
 import {createHuntingRifle} from '../hunting-rifle.mjs?v=W20.31';
 import {createWornRevolver} from '../worn-revolver.mjs?v=W20.33';
 import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
-import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.42';
-import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.42';
+import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.43';
+import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.43';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
@@ -49,7 +49,7 @@ import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunsh
   resetEnemyBrain, hasSight } from '../enemy-ai.mjs?v=W20.39';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.42';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.43';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
@@ -62,7 +62,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.42';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.43';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -2228,6 +2228,10 @@ function updateEnemies(dt,elapsed=dt){
     id:e.id,brain:e.brain,tactics:e.tactics,state:e.state,
     visible:perceptions.get(e.id)})):[],dt,aiObstacles);
   for(const enemy of enemies.values()){
+    // Trial gun gate belongs to the entire enemy loop, including status and
+    // dead-NPC cleanup. Never declare this only inside the alive branch.
+    const liveNpcGun=!WEAPON_REBUILD_MODE||
+      (enemy.id===NPC_GUN_TRIAL_ROLE&&enemy.tactics.weaponId==='pipe-rifle');
     // Keep living NPCs rendered across the lab. On death show only a brief
     // collapse, then remove every body part; J restores the original actor.
     enemy.root.visible=enemy.state.alive||enemy.deathTimer<.7;
@@ -2278,8 +2282,6 @@ function updateEnemies(dt,elapsed=dt){
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       // Animated ready pose, short lean while peeking, rifle dip while
       // reloading, and a quick shoulder kick after actual shots.
-      const liveNpcGun=!WEAPON_REBUILD_MODE||
-        (enemy.id===NPC_GUN_TRIAL_ROLE&&enemy.tactics.weaponId==='pipe-rifle');
       const shouldAim=liveNpcGun&&directlyVisible&&
         (enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
         !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
@@ -2435,7 +2437,7 @@ function updateEnemies(dt,elapsed=dt){
     $('enemyCount').textContent=aliveCount+' / '+enemies.size+' RAIDERS ALIVE'+
       (nearest===null?' · ALL ELIMINATED':' · NEAREST '+nearest.toFixed(1)+' m');
     $('enemyList').textContent=statuses.join('  ·  ');
-    $('enemyMode').textContent=WEAPON_REBUILD_MODE?'AI MOVEMENT TEST · ALL NPC GUNS REMOVED':combatRuntimeStatus({
+    $('enemyMode').textContent=WEAPON_REBUILD_MODE?'PIPE RIFLE TRIAL · ONLY RAIDER ARMED':combatRuntimeStatus({
       active,locked:controls.isLocked,aiEnabled:enemyAIEnabled,
       playerAlive:playerHealth.alive,aliveCount
     });
