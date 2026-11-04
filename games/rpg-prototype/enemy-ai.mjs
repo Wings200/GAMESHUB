@@ -70,7 +70,8 @@ export function createEnemyBrain(config){
     x:config.x,z:config.z,yaw:Number.isFinite(config.yaw)?config.yaw:-Math.PI/2,
     spawn:{x:config.x,z:config.z},patrol,patrolIndex:0,
     mode:'patrol',lastSeen:null,memory:0,searchLeft:0,
-    spotted:false,moving:false,active:true,retaliationTime:0,
+    spotted:false,moving:false,actualSpeed:0,currentSpeed:0,
+    patrolPause:0,active:true,retaliationTime:0,
     distanceToPlayer:Infinity,aimLockSeconds:0,
     searchIndex:0,searchPause:0,detour:null,
     noiseTarget:null,noiseTime:0,
@@ -111,7 +112,8 @@ export function resetEnemyBrain(enemy){
   enemy.x=enemy.spawn.x;enemy.z=enemy.spawn.z;enemy.yaw=-Math.PI/2;
   enemy.patrolIndex=0;enemy.mode='patrol';enemy.lastSeen=null;
   enemy.memory=0;enemy.searchLeft=0;enemy.spotted=false;
-  enemy.moving=false;enemy.active=true;enemy.distanceToPlayer=Infinity;
+  enemy.moving=false;enemy.actualSpeed=0;enemy.currentSpeed=0;
+  enemy.patrolPause=0;enemy.active=true;enemy.distanceToPlayer=Infinity;
   enemy.retaliationTime=0;enemy.aimLockSeconds=0;
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
   enemy.noiseTarget=null;enemy.noiseTime=0;
@@ -123,9 +125,12 @@ function blockedAt(x,z,obstacles,radius){
 }
 function moveToward(enemy,goal,speed,dt,obstacles,area,tuning){
   const dx=goal.x-enemy.x,dz=goal.z-enemy.z,dist=Math.hypot(dx,dz);
-  if(dist<.0001){enemy.moving=false;return;}
+  if(dist<.0001){enemy.moving=false;enemy.currentSpeed=0;return;}
   facePoint(enemy,goal,dt);
-  const step=Math.min(dist,speed*dt);
+  // Smooth acceleration prevents sprint-speed starts from a dead stop.
+  enemy.currentSpeed=Math.min(Math.max(.15,speed),
+    (enemy.currentSpeed||0)+6.8*dt);
+  const step=Math.min(dist,enemy.currentSpeed*dt);
   const sx=dx/dist*step,sz=dz/dist*step;
   const x=clamp(enemy.x+sx,area.minX,area.maxX);
   const z=clamp(enemy.z+sz,area.minZ,area.maxZ);
@@ -144,6 +149,16 @@ const SEARCH_OFFSETS=Object.freeze([
   [0,0],[3.6,0],[3.2,3.2],[0,3.6],[-3.2,3.2],
   [-3.6,0],[-3.2,-3.2],[0,-3.6],[3.2,-3.2]
 ]);
+// Only nearby collision volumes participate in graph construction; world
+// perimeter scenery should not make short arena routes expensive.
+function routeBlockers(start,goal,obstacles,padding=6){
+  const minX=Math.min(start.x,goal.x)-padding;
+  const maxX=Math.max(start.x,goal.x)+padding;
+  const minZ=Math.min(start.z,goal.z)-padding;
+  const maxZ=Math.max(start.z,goal.z)+padding;
+  return obstacles.filter(b=>b.maxX>=minX&&b.minX<=maxX&&
+    b.maxZ>=minZ&&b.minZ<=maxZ);
+}
 function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
   // One stable route for the active tactical goal; choosing a new corner every
   // frame made cover seekers walk into crates or repeatedly reverse direction.
@@ -151,7 +166,7 @@ function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
     distance(enemy.routeGoal.x,enemy.routeGoal.z,goal.x,goal.z)>.55;
   if(changed||!Array.isArray(enemy.route)){
     enemy.routeGoal=copy(goal);
-    enemy.route=planNavigationRoute(enemy,goal,obstacles,area,tuning.collisionRadius);
+    enemy.route=planNavigationRoute(enemy,goal,routeBlockers(enemy,goal,obstacles),area,tuning.collisionRadius);
     enemy.routeFail=0;
   }
   while(enemy.route.length&&
@@ -162,7 +177,7 @@ function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
   if(!enemy.moving&&distance(enemy.x,enemy.z,point.x,point.z)>.48){
     enemy.routeFail+=dt;
     if(enemy.routeFail>.5){
-      enemy.route=planNavigationRoute(enemy,goal,obstacles,area,tuning.collisionRadius);
+      enemy.route=planNavigationRoute(enemy,goal,routeBlockers(enemy,goal,obstacles),area,tuning.collisionRadius);
       enemy.routeFail=0;
     }
   }else enemy.routeFail=0;
@@ -195,7 +210,8 @@ function searchLastSeen(enemy,step,obstacles,area,tuning){
 export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   const step=clamp(Number.isFinite(dt)?dt:0,0,AI_TUNING.maxDelta);
   const enabled=options.enabled!==false&&enemy.active&&step>0;
-  if(!enabled){enemy.moving=false;return enemy;}
+  if(!enabled){enemy.moving=false;enemy.actualSpeed=0;return enemy;}
+  const previousX=enemy.x,previousZ=enemy.z;
   const area=options.area||AI_TUNING.area;
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
   enemy.noiseTime=Math.max(0,(enemy.noiseTime||0)-step);
@@ -231,10 +247,13 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   const knownTarget=seen?player:(enemy.lastSeen||enemy.noiseTarget||enemy.spawn);
   // Tactical holds and cover goals are ONLY valid with confirmed sight.
   // Otherwise the investigation/search path must take over locomotion.
-  if(options.combatHold&&seen){
-    enemy.moving=false;
+  // A route to real cover remains valid briefly after losing sight;
+  // hidden-player coordinates are never used to generate this goal.
+  const committed=!seen&&options.combatCoverCommitted&&!!enemy.lastSeen;
+  if(options.combatHold&&(seen||committed)){
+    enemy.moving=false;enemy.currentSpeed=0;
     facePoint(enemy,knownTarget,step);
-  }else if(options.combatGoal&&seen){
+  }else if(options.combatGoal&&(seen||committed)){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
     navigateAroundCover(enemy,options.combatGoal,
       Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
@@ -286,13 +305,37 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
     }
   }else {
+    // Pause to face the next patrol leg instead of skating through turns.
     const dest=enemy.patrol[enemy.patrolIndex];
-    if(distance(enemy.x,enemy.z,dest.x,dest.z)<AI_TUNING.waypointRadius)
+    if(distance(enemy.x,enemy.z,dest.x,dest.z)<AI_TUNING.waypointRadius&&
+       enemy.patrolPause<=0){
       enemy.patrolIndex=(enemy.patrolIndex+1)%enemy.patrol.length;
-    moveToward(enemy,enemy.patrol[enemy.patrolIndex],
+      enemy.patrolPause=.40+(enemy.patrolIndex%3)*.13;
+    }
+    if(enemy.patrolPause>0){
+      enemy.patrolPause=Math.max(0,enemy.patrolPause-step);
+      enemy.moving=false;enemy.currentSpeed=0;
+      facePoint(enemy,enemy.patrol[enemy.patrolIndex],step);
+    }else moveToward(enemy,enemy.patrol[enemy.patrolIndex],
       AI_TUNING.patrolSpeed,step,obstacles,area,AI_TUNING);
+  }
+  // Real bodies keep a personal-space radius even while pursuing one goal.
+  for(const neighbor of options.neighbors||[]){
+    if(!neighbor||neighbor===enemy)continue;
+    const dx=enemy.x-neighbor.x,dz=enemy.z-neighbor.z;
+    const d=Math.hypot(dx,dz),gap=AI_TUNING.collisionRadius*2+.10;
+    if(d>=gap)continue;
+    const nx=d>.00001?dx/d:1,nz=d>.00001?dz/d:0;
+    const push=Math.min((gap-d)*.52,1.6*step);
+    const x=clamp(enemy.x+nx*push,area.minX,area.maxX);
+    const z=clamp(enemy.z+nz*push,area.minZ,area.maxZ);
+    if(!blockedAt(x,z,obstacles,AI_TUNING.collisionRadius)){
+      enemy.x=x;enemy.z=z;
+    }
   }
   enemy.x=clamp(enemy.x,area.minX,area.maxX);
   enemy.z=clamp(enemy.z,area.minZ,area.maxZ);
+  enemy.actualSpeed=Math.hypot(enemy.x-previousX,enemy.z-previousZ)/step;
+  enemy.moving=enemy.actualSpeed>.018;
   return enemy;
 }

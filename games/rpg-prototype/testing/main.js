@@ -44,10 +44,10 @@ import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
-  resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
+  resetEnemyBrain, hasSight } from '../enemy-ai.mjs?v=W20.39';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.39';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
@@ -322,7 +322,7 @@ const stations=[
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
   {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. The purple cache nearby has starter parts and fusion cores.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
-  {title:'09 · Live enemy arena',info:'W04.1: 3 visible enemies directly ahead. They patrol, chase and fire when they see you. Watch your HP. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
+  {title:'09 · Live enemy arena',info:'W20.39: Three raiders patrol, flank, retreat to solid cover and peek. Shoot or approach to provoke reactions. Weapons stay disabled during model testing. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -2239,8 +2239,8 @@ function updateEnemies(dt,elapsed=dt){
         {enabled:simulating&&playerHealth.alive,
           targetVisible:directlyVisible,lostContactOrder,
           lowHealth:enemy.state.health<35,
-          occupiedCover:occupiedSquadCover([...enemies.values()],enemy.id),
-          separation:squadSeparation(enemy.brain,[...enemies.values()])});
+          occupiedCover:occupiedSquadCover(roster,enemy.id),
+          separation:squadSeparation(enemy.brain,roster)});
       const tactic=enemy.tactics;
       // Perception must include every solid lab wall, not just arena crates.
       stepEnemyBrain(enemy.brain,{x:player.x,z:player.z},dt,bounds,
@@ -2249,6 +2249,10 @@ function updateEnemies(dt,elapsed=dt){
           lostContactOrder,combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
             tactic.phase==='suppress-long',
+          combatCoverCommitted:tactic.coverCommit>0&&
+            ['cover','reload','hold','peek','peek-move'].includes(tactic.phase),
+          neighbors:roster.filter(other=>other.id!==enemy.id&&
+            other.state.alive).map(other=>other.brain),
           combatFacePlayer:true,
           combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace});
       // First confirmed enemy contact unlocks the red marker. During a
@@ -2292,9 +2296,12 @@ function updateEnemies(dt,elapsed=dt){
           pivot.rotation.z=side*.25*enemy.crouchBlend;
         }
       }
+      // Apply the actual facing before computing torso turns, then animate
+      // from measured velocity so blocked NPCs never run in place.
+      enemy.root.rotation.y=enemy.brain.yaw;
       enemy.rigged?.update(dt,{
         moving:enemy.brain.moving,
-        speed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
+        speed:enemy.brain.actualSpeed,
         crouched:enemy.tactics.crouching,
         aiming:shouldAim,reloading:!WEAPON_REBUILD_MODE&&enemy.tactics.reloadRemaining>0,
         reloadProgress:enemy.tactics.reloadRemaining>0?1-
@@ -2303,7 +2310,6 @@ function updateEnemies(dt,elapsed=dt){
         recoil:enemy.recoilPose,hit:enemy.flash/.22,
         alive:enemy.state.alive
       });
-      enemy.root.rotation.y=enemy.brain.yaw;
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
       enemy.shake=Math.max(0,enemy.shake-dt*3);
       enemy.flash=Math.max(0,enemy.flash-dt);
@@ -4126,6 +4132,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       muzzlePosition:e.rigged?.getMuzzleWorldPosition()?.toArray()||null,
       avatarRoots:e.root.children.filter(child=>child===e.rigged?.root).length,
       tacticalPhase:e.tactics.phase,enemyShots:e.tactics.shots,
+      measuredSpeed:e.brain.actualSpeed,coverCommit:e.tactics.coverCommit,
+      coverGoal:e.tactics.coverPoint,navWaypoints:e.brain.route.length,
       weaponId:e.tactics.weaponId,burstCount:e.tactics.burstCount,
       weaponRpm:getEnemyWeapon(e.tactics.weaponId)?.rpm||null,
       fireCooldown:e.tactics.cooldown,

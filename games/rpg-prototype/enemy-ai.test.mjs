@@ -211,3 +211,52 @@ test('W20.16 a close circling player stays trackable after the guard is alerted'
   }
   assert.ok(maxLock>.45,'a nearby orbit does not reset every reaction windup');
 });
+
+
+test('W20.39 patrol turns pause naturally and actual speed reflects movement',()=>{
+  const e=createEnemyBrain({x:45,z:40,patrol:[{x:45,z:40},{x:53,z:40}]});
+  stepEnemyBrain(e,{x:-100,z:0},.05,[],{playerInArena:false});
+  assert.equal(e.moving,false);
+  assert.equal(e.actualSpeed,0);
+  assert.ok(e.patrolPause>.3);
+  const start=e.x;
+  for(let i=0;i<25;i++)
+    stepEnemyBrain(e,{x:-100,z:0},.05,[],{playerInArena:false});
+  assert.ok(e.x>start+.4,'moves after a perceptible turn pause');
+  assert.ok(e.actualSpeed>0&&e.actualSpeed<=AI_TUNING.patrolSpeed+.01);
+  stepEnemyBrain(e,{x:-100,z:0},.05,[],{enabled:false});
+  assert.equal(e.actualSpeed,0,'frozen NPCs do not play running animation');
+});
+
+test('W20.39 neighboring NPCs leave space and respect solid geometry',()=>{
+  const e=createEnemyBrain({x:43,z:40,patrol:[{x:43,z:40},{x:54,z:40}]});
+  const other=createEnemyBrain({x:43.15,z:40,patrol:[{x:43.15,z:40},{x:54,z:40}]});
+  for(let i=0;i<50;i++){
+    stepEnemyBrain(e,{x:-100,z:0},.05,[],{
+      playerInArena:false,neighbors:[other]});
+    stepEnemyBrain(other,{x:-100,z:0},.05,[],{
+      playerInArena:false,neighbors:[e]});
+  }
+  const gap=Math.hypot(e.x-other.x,e.z-other.z);
+  assert.ok(gap>=AI_TUNING.collisionRadius*2+.07,
+    'actors should not occupy the same capsule');
+  for(const npc of [e,other])
+    assert.ok(Number.isFinite(npc.actualSpeed)&&npc.actualSpeed>=0);
+});
+
+test('W20.39 brief cover commitment never uses the actual hidden player position',()=>{
+  const target={x:37,z:40},cover={x:48,z:43};
+  const first=createEnemyBrain({x:45,z:40});
+  const second=createEnemyBrain({x:45,z:40});
+  for(const e of [first,second])alertEnemy(e,target);
+  const opts={targetVisible:false,combatCoverCommitted:true,combatGoal:cover,
+    combatFacePlayer:true,area:AI_TUNING.navigationArea};
+  for(let i=0;i<30;i++){
+    stepEnemyBrain(first,{x:-40,z:-45},.05,[],opts);
+    stepEnemyBrain(second,{x:59,z:49},.05,[],opts);
+  }
+  assert.deepEqual([first.x,first.z,first.yaw],[second.x,second.z,second.yaw],
+    'different unseen player positions cannot steer cover movement');
+  assert.ok(Math.hypot(first.x-45,first.z-40)>1);
+  assert.deepEqual(first.lastSeen,target);
+});

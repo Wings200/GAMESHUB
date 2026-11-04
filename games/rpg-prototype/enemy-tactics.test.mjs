@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createEnemyBrain,stepEnemyBrain} from './enemy-ai.mjs';
+import {AI_TUNING,createEnemyBrain,stepEnemyBrain,lineIntersectsBox} from './enemy-ai.mjs';
+import {squadSeparation,occupiedSquadCover} from './enemy-squad.mjs';
 import {ENEMY_PROFILES,makeEnemyTactics,resetEnemyTactics,markEnemyThreat,
   pickCoverPoint,isBehindCover,pickPeekPoint,routeAroundCrates,tickEnemyTactics,beginReload,
   attemptEnemyShot,equipEnemyWeapon,getEnemyWeapon,markEnemySuppressed} from './enemy-tactics.mjs';
@@ -331,4 +332,152 @@ test('Near-miss suppression reduces fallible aim and fades when fire stops',()=>
   const brain={active:true,mode:'patrol',memory:0,x:40,z:40};
   for(let i=0;i<100;i++)tickEnemyTactics(t,brain,{x:40,z:30},.05,[],{});
   assert.equal(t.suppression,0);
+});
+
+
+test('W20.39 scout flanking at the arena edge chooses a reachable movement goal',()=>{
+  const e=createEnemyBrain({x:34,z:48.9,patrol:[{x:34,z:48.9}]});
+  const t=makeEnemyTactics('scout');
+  const player={x:30,z:42};
+  e.mode='chase';e.memory=8;e.lastSeen={...player};
+  tickEnemyTactics(t,e,player,.05,[],{targetVisible:true});
+  assert.equal(t.phase,'flank');
+  assert.ok(Math.hypot(t.goal.x-e.x,t.goal.z-e.z)>1,
+    'clipping a flank to the edge must never pick the NPC own feet');
+  const start={x:e.x,z:e.z};
+  for(let i=0;i<40;i++){
+    tickEnemyTactics(t,e,player,.05,[],{targetVisible:true});
+    stepEnemyBrain(e,player,.05,[],{
+      targetVisible:true,combatGoal:t.goal,combatSpeed:3.2,
+      area:AI_TUNING.navigationArea});
+  }
+  assert.ok(Math.hypot(e.x-start.x,e.z-start.z)>1.5,
+    'scout should physically relocate, rather than appear to plan while idle');
+});
+
+test('W20.39 occupied squad cover spreads raiders across different positions',()=>{
+  const crates=[
+    {minX:38.2,maxX:40.8,minZ:36.85,maxZ:39.15,height:1.45},
+    {minX:47.6,maxX:50.4,minZ:43.3,maxZ:45.1,height:1.85},
+    {minX:51.85,maxX:54.15,minZ:35.9,maxZ:38.1,height:1.6}
+  ];
+  const origin={x:43,z:46},threat={x:30,z:42};
+  const first=pickCoverPoint(origin,threat,crates,undefined,[]);
+  assert.ok(first&&isBehindCover(threat,first.point,crates[first.index]));
+  const other=pickCoverPoint(origin,threat,crates,undefined,[first.point]);
+  assert.ok(other&&isBehindCover(threat,other.point,crates[other.index]));
+  assert.ok(Math.hypot(first.point.x-other.point.x,
+    first.point.z-other.point.z)>2,'squadmates must not pack one small corner');
+});
+
+test('W20.39 a hit raider finishes retreat behind solid cover after sight breaks',()=>{
+  const crate={minX:38.2,maxX:40.8,minZ:36.85,maxZ:39.15,height:1.45};
+  const threat={x:30,z:42},hidden={x:-38,z:-41};
+  const e=createEnemyBrain({x:43,z:46,patrol:[{x:43,z:46}]});
+  const t=makeEnemyTactics('raider');
+  e.mode='chase';e.memory=12;e.lastSeen={...threat};
+  markEnemyThreat(t);
+  tickEnemyTactics(t,e,threat,.05,[crate],{targetVisible:true});
+  assert.ok(t.coverPoint&&t.coverCommit>3);
+  const selected={...t.coverPoint};
+  let reached=false;
+  for(let i=0;i<70;i++){
+    tickEnemyTactics(t,e,e.lastSeen,.05,[crate],{targetVisible:false});
+    stepEnemyBrain(e,hidden,.05,[crate],{
+      targetVisible:false,combatGoal:t.goal,combatHold:t.phase==='hold',
+      combatCoverCommitted:t.coverCommit>0&&
+        ['cover','reload','hold','peek','peek-move'].includes(t.phase),
+      area:AI_TUNING.navigationArea,combatSpeed:3.0});
+    assert.ok(!(e.x>crate.minX-.32&&e.x<crate.maxX+.32&&
+      e.z>crate.minZ-.32&&e.z<crate.maxZ+.32),
+      'retreat may not phase into a metal crate');
+    if(Math.hypot(e.x-selected.x,e.z-selected.z)<.6)reached=true;
+  }
+  assert.ok(reached,'NPC must actually make it behind the crate');
+  assert.ok(t.crouching||t.phase==='peek'||t.phase==='peek-move',
+    'cover should lead to crouching or a short peek');
+  assert.deepEqual(e.lastSeen,threat,
+    'hidden player never silently updates last known position');
+  for(let i=0;i<90;i++){
+    tickEnemyTactics(t,e,e.lastSeen,.05,[crate],{targetVisible:false});
+    stepEnemyBrain(e,hidden,.05,[crate],{
+      targetVisible:false,area:AI_TUNING.navigationArea,
+      combatGoal:t.goal,
+      combatCoverCommitted:t.coverCommit>0&&
+        ['cover','reload','hold','peek','peek-move'].includes(t.phase)});
+  }
+  assert.equal(t.coverPoint,null,'cover commitment eventually expires');
+  assert.ok(['investigate','search'].includes(t.phase));
+});
+
+test('W20.39 enforcers proactively seek cover while unhurt scouts flank',()=>{
+  const crate={minX:38.2,maxX:40.8,minZ:36.85,maxZ:39.15,height:1.45};
+  const target={x:30,z:42};
+  const enforcer=createEnemyBrain({x:43,z:46}),anchor=makeEnemyTactics('enforcer');
+  const scout=createEnemyBrain({x:43,z:46}),flanker=makeEnemyTactics('scout');
+  for(const e of [enforcer,scout]){
+    e.mode='chase';e.memory=12;e.lastSeen={...target};
+  }
+  for(let i=0;i<45;i++){
+    tickEnemyTactics(anchor,enforcer,target,.05,[crate],{targetVisible:true});
+    tickEnemyTactics(flanker,scout,target,.05,[crate],{targetVisible:true});
+  }
+  assert.ok(anchor.coverPoint,'stationary exposed enforcer seeks solid cover');
+  assert.ok(['cover','hold','peek-move'].includes(anchor.phase));
+  assert.equal(flanker.phase,'flank','unhurt scout keeps moving to new angles');
+});
+
+
+test('W20.39 three-actor arena keeps independent flanks, cover and collision',()=>{
+  const crates=[
+    {minX:38.2,maxX:40.8,minZ:36.85,maxZ:39.15,height:1.45},
+    {minX:47.6,maxX:50.4,minZ:43.3,maxZ:45.1,height:1.85},
+    {minX:51.85,maxX:54.15,minZ:35.9,maxZ:38.1,height:1.6}
+  ];
+  const player={x:30,z:42};
+  const team=[['scout',39,42],['raider',43,46],['enforcer',46,36.8]]
+    .map(([id,x,z])=>({id,brain:createEnemyBrain({x,z}),
+      tactics:makeEnemyTactics(id),state:{alive:true}}));
+  for(const e of team){
+    e.brain.mode='chase';e.brain.memory=12;e.brain.lastSeen={...player};
+    if(e.id!=='scout')markEnemyThreat(e.tactics);
+  }
+  let flank=0,crouch=0,peek=0,movement=0;
+  const coverSlots=new Set();
+  for(let frame=0;frame<220;frame++){
+    for(const enemy of team){
+      const target=enemy.brain.lastSeen;
+      const visible=!crates.some(box=>lineIntersectsBox(
+        enemy.brain,target,box,.035));
+      tickEnemyTactics(enemy.tactics,enemy.brain,target,.05,crates,{
+        targetVisible:visible,
+        occupiedCover:occupiedSquadCover(team,enemy.id),
+        separation:squadSeparation(enemy.brain,team)});
+      const t=enemy.tactics;
+      stepEnemyBrain(enemy.brain,player,.05,crates,{
+        targetVisible:visible,area:AI_TUNING.navigationArea,
+        combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
+        combatCoverCommitted:t.coverCommit>0&&
+          ['cover','reload','hold','peek','peek-move'].includes(t.phase),
+        neighbors:team.filter(e=>e!==enemy).map(e=>e.brain),
+        combatFacePlayer:true,
+        combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*t.pace});
+      if(t.phase==='flank')flank++;
+      if(t.crouching)crouch++;
+      if(t.phase==='peek'||t.phase==='peek-move')peek++;
+      if(enemy.brain.actualSpeed>.1)movement++;
+      if(t.coverPoint)
+        coverSlots.add(enemy.id+':'+t.coverPoint.x.toFixed(1)+':'+t.coverPoint.z.toFixed(1));
+      for(const box of crates)
+        assert.ok(!(enemy.brain.x>box.minX-.33&&enemy.brain.x<box.maxX+.33&&
+          enemy.brain.z>box.minZ-.33&&enemy.brain.z<box.maxZ+.33),
+          'no actor may walk through any obstacle');
+    }
+    for(let a=0;a<team.length;a++)for(let b=a+1;b<team.length;b++)
+      assert.ok(Math.hypot(team[a].brain.x-team[b].brain.x,
+        team[a].brain.z-team[b].brain.z)>.72,
+        'the team must retain personal space');
+  }
+  assert.ok(flank>50&&crouch>30&&peek>5&&movement>100);
+  assert.ok(coverSlots.size>=2,'raider and enforcer take separate shelter');
 });

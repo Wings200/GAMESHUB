@@ -73,7 +73,8 @@ export function makeEnemyTactics(kind){
     reloadRemaining:0,cooldown:1.2,shots:0,hits:0,misses:0,
     phase:'patrol',threat:0,suppression:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
-    goal:null,crouching:false,coverHold:0,
+    goal:null,crouching:false,coverHold:0,coverCommit:0,
+    engagementSeconds:0,
     peekPoint:null,peekSeconds:0,peekCooldown:0,holdSeconds:0,
     stuckSeconds:0,stuckEvents:0,lastPosition:null,
     avoidCoverIndex:-1,avoidCoverSeconds:0,
@@ -137,9 +138,15 @@ export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area,
     if(Math.hypot(dx,dz)<.35)continue;
     // Only sample the player's OPPOSITE sides. Do not offer the faces
     // on the player's side even if a ray grazes their corners.
+    // Multiple genuine shielding positions around each far face let squad
+    // members occupy different corners instead of stacking at one point.
+    const farX=dx>=0?b.maxX+clearance:b.minX-clearance;
+    const farZ=dz>=0?b.maxZ+clearance:b.minZ-clearance;
+    const spreadX=Math.min((b.maxX-b.minX)*.30,.65);
+    const spreadZ=Math.min((b.maxZ-b.minZ)*.30,.65);
     const points=[
-      {x:dx>=0?b.maxX+clearance:b.minX-clearance,z:cz},
-      {x:cx,z:dz>=0?b.maxZ+clearance:b.minZ-clearance}
+      {x:farX,z:cz},{x:farX,z:cz-spreadZ},{x:farX,z:cz+spreadZ},
+      {x:cx,z:farZ},{x:cx-spreadX,z:farZ},{x:cx+spreadX,z:farZ}
     ];
     for(const p of points){
       if(p.x<area.minX+.3||p.x>area.maxX-.3||
@@ -216,7 +223,7 @@ function trackStuck(tactics,brain,step){
     tactics.stuckEvents++;
     tactics.avoidCoverIndex=tactics.coverIndex;
     tactics.avoidCoverSeconds=2.8;
-    tactics.coverPoint=null;tactics.coverIndex=-1;
+    tactics.coverPoint=null;tactics.coverIndex=-1;tactics.coverCommit=0;
     tactics.peekPoint=null;tactics.peekSeconds=0;
     tactics.moveTime=0;tactics.plannedGoal=null;tactics.stuckSeconds=0;
   }
@@ -245,22 +252,33 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   }else if(tactics.magazine===0&&tactics.reserve>0)beginReload(tactics);
   tactics.threat=Math.max(0,tactics.threat-step);
   tactics.suppression=Math.max(0,(tactics.suppression||0)-step*.22);
+  const visible=options.targetVisible!==false;
+  if(visible&&brain.mode==='chase')
+    tactics.engagementSeconds=Math.min(15,tactics.engagementSeconds+step);
+  else tactics.engagementSeconds=Math.max(0,tactics.engagementSeconds-step*.18);
+  if(!visible)tactics.coverCommit=Math.max(0,tactics.coverCommit-step);
   tactics.goal=null;tactics.pace=1;tactics.decisionReason='observe';
   if(!memory){
     tactics.phase='patrol';tactics.coverPoint=null;tactics.coverIndex=-1;
     tactics.crouching=false;tactics.holdSeconds=0;tactics.peekPoint=null;
+    tactics.coverCommit=0;tactics.engagementSeconds=0;
     tactics.plannedGoal=null;tactics.decisionReason='patrol';
     return tactics;
   }
-  // Breaking line of sight cancels defensive holds, peek plans and flanks.
-  // Let the navigation brain physically visit the last confirmed sighting.
-  if(options.targetVisible===false){
+  // A defender already retreating behind confirmed cover finishes that
+  // retreat using the LAST KNOWN position, even if the crate blocks sight.
+  // The commitment expires; a guard won't crouch forever at a vanished foe.
+  const committedCover=!visible&&tactics.coverCommit>0&&
+    tactics.coverPoint&&brain.lastSeen&&
+    ['cover','reload','hold','peek','peek-move'].includes(tactics.phase);
+  if(!visible&&!committedCover){
     const order=options.lostContactOrder;
     tactics.phase=order?.type==='watch'?'guard-angle':
       order?.type==='flank'?'flank-search':
       order?.type==='support'?'support-search':
       brain.mode==='search'?'search':'investigate';
     tactics.crouching=false;tactics.coverPoint=null;tactics.coverIndex=-1;
+    tactics.coverCommit=0;
     tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
     tactics.plannedGoal=null;tactics.moveTime=0;
     tactics.pace=order?.type==='flank'?1.1:
@@ -272,13 +290,18 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       'checking last known location; target unconfirmed';
     return tactics;
   }
-  const defensive=tactics.threat>0||tactics.reloadRemaining>0||
-    (brain.mode==='chase'&&options.lowHealth===true);
+  // Raiders and enforcers also choose cover after staying exposed under
+  // observation; scouts prefer mobility unless actually threatened.
+  const exposedForLong=tactics.kind!=='scout'&&visible&&
+    brain.mode==='chase'&&tactics.engagementSeconds>
+      (tactics.kind==='enforcer'?1.1:1.55)&&distance(brain,player)<19;
+  const defensive=committedCover||exposedForLong||tactics.threat>0||
+    tactics.reloadRemaining>0||(brain.mode==='chase'&&options.lowHealth===true);
   tactics.crouching=false;
   if(defensive){
     const selected=tactics.coverIndex>=0?obstacles[tactics.coverIndex]:null;
     if(tactics.coverPoint&&!isBehindCover(player,tactics.coverPoint,selected)){
-      tactics.coverPoint=null;tactics.coverIndex=-1;
+      tactics.coverPoint=null;tactics.coverIndex=-1;tactics.coverCommit=0;
       tactics.peekPoint=null;tactics.peekSeconds=0;
       tactics.holdSeconds=0;
     }
@@ -287,6 +310,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
         options.occupiedCover||[],tactics.avoidCoverIndex);
       tactics.coverPoint=cover?.point||null;
       tactics.coverIndex=cover?.index??-1;
+      if(cover)tactics.coverCommit=3.8;
     }
     if(tactics.coverPoint){
       const d=distance(brain,tactics.coverPoint);
@@ -316,7 +340,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
           tactics.phase='peek';
           if(tactics.peekSeconds===0)tactics.peekPoint=null;
         }else{
-          tactics.goal=routeAroundCrates(brain,tactics.peekPoint,obstacles);
+          tactics.goal=tactics.peekPoint;
           tactics.pace=.72;tactics.decisionReason='slow corner peek';
           tactics.phase='peek-move';
         }
@@ -329,7 +353,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
         obstacles.some(box=>(box.height??Infinity)>=1.35&&
           isBehindCover(player,brain,box));
       tactics.crouching=shielded;
-      tactics.goal=shielded?null:routeAroundCrates(brain,tactics.coverPoint,obstacles);
+      tactics.goal=shielded?null:tactics.coverPoint;
       tactics.pace=shielded?0:1.25;
       tactics.decisionReason=shielded?'protected and holding':
         tactics.reloadRemaining>0?'retreat while reloading':'sprinting to real cover';
@@ -337,8 +361,8 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       return tactics;
     }
   }else{
-    tactics.coverPoint=null;tactics.coverIndex=-1;tactics.peekPoint=null;
-    tactics.holdSeconds=0;
+    tactics.coverPoint=null;tactics.coverIndex=-1;tactics.coverCommit=0;
+    tactics.peekPoint=null;tactics.holdSeconds=0;
   }
   if(brain.mode==='chase'){
     tactics.moveTime=Math.max(0,tactics.moveTime-step);
@@ -375,8 +399,11 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
             lineIntersectsBox(brain,goal,box,AI_TUNING.collisionRadius*.7));
           const crowding=(options.occupiedCover||[]).reduce((sum,p)=>
             sum+(distance(goal,p)<2?5:0),0);
+          const travel=distance(brain,goal);
+          // Clamping a flank at the arena edge can produce a waypoint at
+          // our own feet; reject it rather than repeatedly choosing to idle.
           const score=(blocked?100:0)+(occludedRoute?10:0)+crowding+
-            distance(brain,goal)*.06+(side===tactics.strafeSign?0:.15);
+            (travel<1?120:0)+travel*.06+(side===tactics.strafeSign?0:.15);
           return {goal,side,score};
         });
         choices.sort((a,b)=>a.score-b.score);
@@ -385,7 +412,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
         tactics.moveTime=spec.repositionSeconds*
           (role==='flanker'?.85:role==='anchor'?1.25:1);
       }
-      tactics.goal=routeAroundCrates(brain,tactics.plannedGoal,obstacles);
+      tactics.goal=tactics.plannedGoal;
       tactics.pace=role==='flanker'?1.2:role==='anchor'?.65:.88;
       tactics.decisionReason=role==='flanker'?'wide flank to open angle':
         role==='anchor'?'hold firing lane while shifting':'reposition to a clear lane';

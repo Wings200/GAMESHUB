@@ -1,3 +1,12 @@
+## W20.39 — NPC navigation, cover discipline, and motion fidelity
+
+- Fixed combat flank planning selecting the NPC’s current location as a waypoint or repeatedly choosing a clamped, zero-distance goal at the arena boundary. Navigation now receives the actual tactical destination and computes local obstacle-safe detours.
+- Raiders and enforcers look for solid cover after sustained exposure; threatened scouts will also retreat, but otherwise favor lateral flanks. Cover candidates sample multiple genuinely shielded positions rather than only a narrow pair.
+- NPCs commit to a chosen cover route for a short interval after sight is broken, using their **last confirmed** player position rather than tracking the player through crates. They crouch only when sheltered, peek briefly, then return. When commitment expires, they investigate confirmed contact intel.
+- Movement has finite acceleration, momentary patrol waypoint stops, nearby-actor spacing, and obstacle-aware routing. Third-person NPC animation follows measured displacement, and character facing is applied before animation updates so their turn response matches motion.
+- Station 9 remains an open mechanics arena. Enemy weapons remain disabled under weapon-rebuild mode; this pass does not reinstate combat fire or add a map. Use H to heal, J to reset NPCs, K to freeze AI. Debug state exposes measured speeds, cover commitment and remaining path waypoints.
+- Expanded enemy AI, tactics and station integration tests for cover retention, occlusion, flanking, personal space, movement, and version wiring. Preserves W20.38’s higher recoil and all weapon/armor work.
+
 ## W20.38 — Stronger default recoil, Strength bonus preserved
 
 Raised each of the nine rebuilt guns' camera recoil impulse by roughly 2.2x while aiming, with stronger horizontal movement, larger first-person weapon kick and backward displacement, slower recoil return, and a more generous maximum burst climb. A 10mm sighted shot now rises about 3 degrees; a sighted hunting rifle or shotgun jumps around 9–10 degrees, while each Pipe SMG round raises the sights by roughly 1.3 degrees before recovery. Aiming and crouching still reduce the kick but do not nullify it. Bullets still fire along the optic line *before* the recoil changes view direction; manual countersteer still consumes the return debt instead of pulling the aim downward. Existing SPECIAL Strength scaling and the Steady Grip perk remain untouched for a future balancing pass. Two new tests verify minimum per-weapon impact and bounded model displacement.
