@@ -23,7 +23,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
   beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
-  POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
+  POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
+  FUSION_CORE_CAPACITY} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.45';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
@@ -76,6 +77,9 @@ const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
 // Legacy player guns stay disabled. Only the raider holds a test Pipe Rifle.
 const WEAPON_REBUILD_MODE=true;
+// TEMPORARY Station 8 test-lab convenience only. Remove this switch and its
+// panel control before the finite-core survival economy ships beyond testing.
+const TEMP_TEST_CORE_REFILL_ENABLED=true;
 const NPC_GUN_TRIAL_ROLE='raider';
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
 const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id,PIPE_SMG.id,HEAVY_SNIPER.id]);
@@ -1055,6 +1059,9 @@ function refreshPowerArmorUI(){
     powerArmorState.coreCharge!==null;
   $('powerEjectCore').disabled=powerArmorState.coreCharge===null||
     powerArmorState.occupied;
+  $('powerTestCoreRefill').hidden=!TEMP_TEST_CORE_REFILL_ENABLED;
+  $('powerTestCoreRefill').disabled=!TEMP_TEST_CORE_REFILL_ENABLED||
+    powerArmorState.phase!=='idle'||powerArmorState.occupied;
   $('powerMaterialStatus').textContent=
     'SALVAGE '+countItem(backpack,'supply:salvage')+
     ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
@@ -1240,6 +1247,17 @@ $('powerEjectCore').addEventListener('click',()=>{
   if(result.ok)addItem(backpack,'supply:fusion-core',1,{charge:result.charge});
   $('powerServiceFeedback').textContent='CORE EJECTED · '+
     Math.ceil(result.charge)+'% REMAINING';
+  savePowerService();
+});
+// Temporary testing control: charge the parked frame directly without
+// generating collectible cores, altering salvage, or changing RPG loot.
+$('powerTestCoreRefill').addEventListener('click',()=>{
+  if(!TEMP_TEST_CORE_REFILL_ENABLED||!powerServiceAvailable())return;
+  if(powerArmorState.coreCharge===null)
+    installFusionCore(powerArmorState,FUSION_CORE_CAPACITY);
+  else powerArmorState.coreCharge=FUSION_CORE_CAPACITY;
+  $('powerServiceFeedback').textContent=
+    'TEMP TEST REFILL · REACTOR 100% · NO FUSION CORE CONSUMED';
   savePowerService();
 });
 $('powerCraftButton').addEventListener('click',()=>{
