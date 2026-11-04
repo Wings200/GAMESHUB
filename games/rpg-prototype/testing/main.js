@@ -22,7 +22,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
   beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
-import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs';
+import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.15';
 import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';

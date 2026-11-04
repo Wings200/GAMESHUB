@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.14 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.15 + Forest Foundation 0.1
+
+## W20.15 — Remove obsolete camera-mounted cockpit LED strips
+
+- Two narrow teal indicators were still physically parented to the first-person camera even after the HUD was redesigned, so they appeared to follow the player while wearing power armor.
+- Removed only those 3D meshes, retaining the empty cockpit transform hook to avoid changing suit transitions, gait or camera animation code.
+- Kept W20.14 condition silhouette and W20.13 analog visor intact. Regression tests verify that the cockpit factory attaches no visible children to the camera.
 
 ## W20.14 — Six-part power armor condition silhouette
 

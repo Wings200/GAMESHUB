@@ -903,18 +903,12 @@ export function buildPowerArmorVisual(scene,position,state){
     useOriginalPilot(){fallbackPilot.visible=false;}};
 }
 
-// The full helmet is a world model; the first-person visor is a very slim
-// visual hint, not two giant panels crossing the firing line.
+// W20.15: the amber 2D helmet instruments have replaced the old camera
+// mounted cockpit strips. Retain the empty Group for existing gait/visibility
+// animation hooks, but attach NO visible geometry to the camera.
 export function buildPowerArmorCockpit(camera){
-  const group=new THREE.Group();camera.add(group);
-  const dark=new THREE.MeshBasicMaterial({color:0x263d40,transparent:true,opacity:.82});
-  const indicator=new THREE.MeshBasicMaterial({color:0x8ad5b0,transparent:true,opacity:.38,depthWrite:false});
-  for(const side of [-1,1]){
-    const strip=new THREE.Mesh(new THREE.BoxGeometry(.017,.14,.024),dark);
-    strip.position.set(side*.83,-.25,-1.08);group.add(strip);
-    const led=new THREE.Mesh(new THREE.BoxGeometry(.010,.073,.015),indicator);
-    led.position.set(side*.81,-.25,-1.05);group.add(led);
-  }
+  const group=new THREE.Group();
+  camera.add(group);
   group.visible=false;
   return group;
 }

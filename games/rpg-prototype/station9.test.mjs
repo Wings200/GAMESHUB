@@ -867,3 +867,24 @@ test('W19.3 ammo loading matches physical round motion and interrupts on weapon 
   assert.ok(weapons.includes('const inserted='));
   assert.ok(hands.includes('roundCount=null'));
 });
+
+test('W20.15 removes the two legacy teal camera-locked cockpit bars',()=>{
+  const position=armorVisual.indexOf('export function buildPowerArmorCockpit(camera){');
+  assert.ok(position>0,'power-armor cockpit factory exists');
+  const cockpit=armorVisual.slice(position);
+  assert.doesNotMatch(cockpit,/BoxGeometry|MeshBasicMaterial|group\.add\(/);
+  assert.match(source,/power-armor-visual\.mjs\?v=W20\.15/);
+  assert.match(page,/main\.js\?v=W20\.15/);
+  class FakeGroup{
+    constructor(){this.children=[];this.visible=true;}
+    add(child){this.children.push(child);}
+  }
+  const camera={children:[],add(child){this.children.push(child);}};
+  const factory=new Function('THREE',cockpit.replace('export ','')+
+    '\nreturn buildPowerArmorCockpit;')({Group:FakeGroup});
+  const group=factory(camera);
+  assert.equal(camera.children.length,1);
+  assert.equal(camera.children[0],group);
+  assert.equal(group.children.length,0,'no strips or LEDs attached to camera');
+  assert.equal(group.visible,false);
+});
