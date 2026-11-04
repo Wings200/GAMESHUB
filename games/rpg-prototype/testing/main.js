@@ -3419,8 +3419,6 @@ function shoot(){
   }else if(!laserActive&&activeWeaponId!==DOUBLE_BARREL_SHOTGUN.id&&activeWeaponId!==IRON_REVOLVER.id)ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
-  let enemyDamageHits=0;
-  let totalEnemyDamage=0;
   // Refresh the animated skeleton's world transforms before raycasting.
   // Otherwise a click between render frames can hit a head's LAST pose.
   for(const enemy of enemies.values())
@@ -3504,8 +3502,6 @@ function shoot(){
       (critical?specialModifiers.critDamageMultiplier:1);
     const hit=applyDamage(enemy.state,boostedDamage,zone);
     if(hit.applied){
-      enemyDamageHits++;
-      totalEnemyDamage+=hit.damage;
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
@@ -3522,9 +3518,6 @@ function shoot(){
       $('damageReport').textContent=enemy.label+' · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
         ' · '+Math.ceil(hit.damage)+' HP · '+hit.points+' AP · '+
         Math.ceil(hit.blocked)+' BLOCKED'+(hit.killed?' · DOWN':'');
-      showShotNotice(hit.killed?'ENEMY DOWN · '+enemy.label:
-        'ENEMY HIT · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
-        ' · -'+Math.ceil(hit.damage)+' HP');
     }
   }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
@@ -3539,10 +3532,6 @@ function shoot(){
         (dummyDamage.blocked>0?' · '+Math.ceil(dummyDamage.blocked)+' BLOCKED':'')+
         ' · '+dummyDamage.points+' AP · '+Math.round(dummyDamage.reduction*100)+'% REDUCTION'+
         (dummyDamage.killed?' · DOWN':'');
-      showShotNotice(dummyDamage.killed?'DUMMY DOWN · '+dummy.title:
-        (dummyDamage.critical?'HEADSHOT':'HIT '+ARMOR_SLOT_LABELS[dummyDamage.zone].toUpperCase())+
-        ' · -'+Math.ceil(dummyDamage.damage)+' HP'+
-        (dummyDamage.blocked>0?' · '+Math.ceil(dummyDamage.blocked)+' BLOCKED':''));
       if($('armory').classList.contains('hidden')===false)refreshArmory();
     }
   } else if(first&&first.object.userData.targetId){
@@ -3551,17 +3540,10 @@ function shoot(){
     target.back.material.emissive.setHex(0x956c2f);
     target.back.material.emissiveIntensity=.75;
     target.back.userData.flash=.22;
-    showShotNotice('TARGET HIT · +'+result.damage+' DAMAGE · PAPER');
-  } else if(first)showShotNotice(impactMaterial.toUpperCase()+' IMPACT');
-  else showShotNotice('MISS');
-  } // all projectiles from one round
-  // Shotguns fire eight pellets: the LAST pellet might miss even after a
-  // previous pellet dealt damage, so never announce a false overall MISS.
-  if(enemyDamageHits>0){
-    showShotNotice('AI DAMAGE CONFIRMED · '+enemyDamageHits+
-      ' HIT'+(enemyDamageHits!==1?'S':'')+' · -'+
-      Math.ceil(totalEnemyDamage)+' HP');
   }
+  // No spoken or center-screen shot-result callouts. Recoil, material audio,
+  // hit sparks, damage numbers, and bullet decals remain the feedback.
+  } // all projectiles from one round
   // All pellets have already fired along the pre-kick sight ray.
   // The camera rises and receives a small authored horizontal pattern AFTER the shot.
   const kick=applyWeaponRecoil(viewRecoil,camera.rotation.x,camera.rotation.y,
