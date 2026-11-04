@@ -123,6 +123,28 @@ export class WeaponAudio {
     this._tone(t,v.freq,Math.max(38,v.freq*.36),Math.min(.25,v.body),.22,'triangle');
     this._tone(t+.008,kind==='smg'?1300:840,400,.085,.036,'sawtooth');
   }
+  laserCrank(chargeLevel=1) {
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const level=Math.max(1,Math.min(6,chargeLevel));
+    // Three ratchet contacts as the user's hand rotates the full wheel;
+    // a rising electrical coil tone locks the charge into the capacitor.
+    for(const offset of [0,.23,.46]){
+      this._noiseBurst(t+offset,.082,.066,300,2250);
+      this._tone(t+offset,92,57,.084,.065,'triangle');
+    }
+    this._tone(t+.18,260+level*45,730+level*52,.41,.07,'sawtooth');
+    this._tone(t+.57,800+level*70,610+level*56,.09,.042,'triangle');
+  }
+  laserBlast(chargeLevel=1) {
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const level=Math.max(1,Math.min(6,chargeLevel));
+    this._noiseBurst(t,.11,.14+level*.012,420,6200);
+    this._tone(t,1050+level*145,106+level*18,.43,.14+level*.015,'sawtooth');
+    this._tone(t+.022,1470+level*100,390,.34,.08,'triangle');
+    this._noiseBurst(t+.09,.32,.055+level*.005,120,1700);
+  }
   impact(type = 'concrete', delaySeconds = 0) {
     if (!this.unlock()) return;
     // Put the impact AFTER the gunshot transient, rather than burying

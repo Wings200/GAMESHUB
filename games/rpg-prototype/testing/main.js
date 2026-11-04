@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.24';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.24';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.26';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.26';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.24';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.24';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.26';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.26';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -28,6 +28,9 @@ import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.23';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
+import {createLaserMusket} from '../laser-musket.mjs?v=W20.26';
+import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.26';
+import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
@@ -62,7 +65,7 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id]);
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id]);
 const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
@@ -252,6 +255,7 @@ const concrete=mat(0x26353d), floorPaint=mat(0x516a74), pale=mat(0xe7c588), dark
 const worldGeometry=[];
 const targetMeshes=[];
 const impactEffects=createImpactEffects(scene,THREE);
+const laserTrails=createLaserTrails(scene,THREE);
 function box(x,y,z,w,h,d,material,receive=true){
   const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
   o.position.set(x,y,z);
@@ -1789,6 +1793,7 @@ function nearestLootBag(){
 }
 function syncAmmoToWeapons(){
   for(const spec of ARSENAL)arsenalStates[spec.id].reserve=ammoReserve(backpack,spec.id);
+ensureLaserState(arsenalStates[LASER_MUSKET.id]);
 }
 function saveBackpack(){
   // Reserve counts are owned by live weapons during reloads and shooting.
@@ -2911,6 +2916,9 @@ weaponVisuals.set(PIPE_PISTOL.id,pipePistolVisual);
 const pipeRifleVisual=createPipeRifle(THREE,camera,{flareTexture:flareTex});
 pipeRifleVisual.root.visible=false;
 weaponVisuals.set(PIPE_RIFLE.id,pipeRifleVisual);
+const laserMusketVisual=createLaserMusket(THREE,camera,{flareTexture:flareTex});
+laserMusketVisual.root.visible=false;
+weaponVisuals.set(LASER_MUSKET.id,laserMusketVisual);
 // Retire all legacy viewmodels, keeping only newly authored weapons.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
   if(REBUILT_WEAPON_IDS.includes(id))continue;
@@ -2942,6 +2950,7 @@ function selectWeapon(id){
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
   cancelWeaponReload(weaponState);
+  if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   activeWeaponId=id;activeSpec=spec;
   weaponState=arsenalStates[id];
@@ -3089,34 +3098,47 @@ function refreshWeaponHUD(){
     document.body.classList.remove('ads-active');
     return;
   }
-  const loaded=infiniteAmmo?'∞ / ∞':weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
+  const laserEquipped=activeWeaponId===LASER_MUSKET.id;
+  const laserLevel=laserEquipped?ensureLaserState(weaponState).laserCharge:0;
+  const cellCount=infiniteAmmo?'∞':weaponState.magazine;
+  const loaded=laserEquipped?
+    laserLevel+'/6 CHARGE · '+cellCount+'/'+(infiniteAmmo?'∞':displayAmmoCount(weaponState.reserve))+' CELLS':
+    infiniteAmmo?'∞ / ∞':weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
   $('fieldAmmo').textContent=loaded;
   $('visorAmmo').textContent=loaded;
-  $('visorAmmoLoaded').textContent=infiniteAmmo?'INF':String(weaponState.magazine).padStart(3,'0');
+  $('visorAmmoLoaded').textContent=laserEquipped?String(laserLevel).padStart(3,'0'):
+    infiniteAmmo?'INF':String(weaponState.magazine).padStart(3,'0');
   const reserveDisplay=displayAmmoCount(weaponState.reserve);
   $('visorAmmoReserve').textContent=infiniteAmmo?'INF':String(reserveDisplay).padStart(3,'0');
   $('fieldWeaponName').textContent=activeSpec.name.toUpperCase();
   $('visorWeaponName').textContent=activeSpec.name.toUpperCase();
-  $('fieldWeaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
+  const laserStatus=laserEquipped?weaponState.reloadRemaining>0?'RELOADING CELLS':
+    weaponState.crankRemaining>0?'CRANKING · '+laserLevel+'/6':
+    laserLevel>0?'CHARGED · '+laserLevel+'/6':
+    weaponState.magazine<=0&&!infiniteAmmo?'NO CELLS · R TO RELOAD':
+    'UNCHARGED · R TO CRANK':null;
+  $('fieldWeaponState').textContent=laserStatus??(weaponState.reloadRemaining>0?'RELOADING':
     weaponState.magazine===0?'EMPTY · R TO RELOAD':
-    weaponState.aiming?'ADS':activeSpec.automatic?'AUTO · READY':'SEMI · READY';
+    weaponState.aiming?'ADS':activeSpec.automatic?'AUTO · READY':'SEMI · READY');
   document.body.classList.toggle('ads-active',!!weaponState.aiming);
   $('weaponAmmo').textContent=loaded;
-  $('weaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
-    weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY';
+  $('weaponState').textContent=laserStatus??(weaponState.reloadRemaining>0?'RELOADING':
+    weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY');
   $('targetHits').textContent=totalHits;
   $('weaponName').textContent=activeSpec.name.toUpperCase();
-  $('weaponStats').textContent=activeSpec.damage+' DAMAGE'+
+  $('weaponStats').textContent=(laserEquipped?(activeSpec.damage+'–'+Math.round(activeSpec.damage*(1+.82*5))+' CHARGE DAMAGE'):activeSpec.damage+' DAMAGE')+
     ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
-    ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
-    ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC';
+    (laserEquipped?' · R CRANK · CLICK FIRE':
+      ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
+      ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC');
   $('weaponOptic').textContent=REBUILT_WEAPON_IDS.includes(activeWeaponId)?'FACTORY IRON SIGHTS · MODS LATER':
     'SIGHT · '+OPTIC_MODS[installedWeaponOptic(backpack,activeWeaponId)].name.toUpperCase();
   $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(activeSpec,
     weaponState.aiming,weaponMotion).toFixed(2)+'°'+
     (weaponMotion.airborne?' · AIRBORNE':weaponMotion.crouched?' · CROUCHED':
       weaponMotion.speed>2?' · MOVING':' · STEADY');
-  $('reloadProgress').style.width=(weaponState.reloadRemaining>0?
+  $('reloadProgress').style.width=(laserEquipped&&weaponState.crankRemaining>0?
+    100*laserCrankProgress(weaponState):weaponState.reloadRemaining>0?
     100*(1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds)):0).toFixed(1)+'%';
 }
 function shoot(){
@@ -3127,7 +3149,10 @@ function shoot(){
     cancelWeaponReload(weaponState);
     weaponState.magazine=activeSpec.magazineSize;
   }
-  const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
+  const laserActive=activeWeaponId===LASER_MUSKET.id;
+  const result=laserActive?
+    fireChargedLaser(weaponState,activeSpec,Math.random,weaponMotion):
+    fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
   if(infiniteAmmo&&result.status==='fired')
     weaponState.magazine=activeSpec.magazineSize;
   if(result.status==='empty'){
@@ -3142,11 +3167,16 @@ function shoot(){
     }
     return;
   }
+  if(result.status==='uncharged'){
+    if(!emptyClickLatched){showShotNotice('LASER MUSKET · PRESS R TO CRANK');sound.dryFire();emptyClickLatched=true;}
+    return;
+  }
   if(result.status!=='fired')return;
   if(activeSpec.kind==='revolver')
     weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
-  sound.gunshot(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
+  if(laserActive)sound.laserBlast(result.chargeLevel);
+  else sound.gunshot(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
     activeWeaponId===PIPE_PISTOL.id?'pipe':
     activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol');
   // Hearing is not sight: unalerted guards investigate the last shot with
@@ -3156,10 +3186,10 @@ function shoot(){
       hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
   recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
-  slideCycle=activeWeaponId===PIPE_RIFLE.id?.23:
+  slideCycle=laserActive?0:activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
-  ejectCasing();
+  if(!laserActive)ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
   let enemyDamageHits=0;
@@ -3214,6 +3244,14 @@ function shoot(){
       }))
     };
   }
+  if(laserActive){
+    const origin=new THREE.Vector3();
+    const muzzle=thirdPersonActive?heldLaserMusket.muzzleGlow:
+      weaponVisuals.get(LASER_MUSKET.id).muzzleGlow;
+    muzzle.getWorldPosition(origin);
+    const destination=first?.point||camera.position.clone().addScaledVector(shotVector,85);
+    laserTrails.spawn(origin,destination,result.chargeLevel);
+  }
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
@@ -3230,7 +3268,7 @@ function shoot(){
     const enemy=enemies.get(first.object.userData.enemyId);
     const critical=Math.random()<specialModifiers.critChance;
     const zone=first.object.userData.hitZone;
-    const boostedDamage=activeSpec.damage*specialModifiers.gunDamageMultiplier*
+    const boostedDamage=result.damage*specialModifiers.gunDamageMultiplier*
       (zone==='head'?specialModifiers.headshotMultiplier:1)*
       (critical?specialModifiers.critDamageMultiplier:1);
     const hit=applyDamage(enemy.state,boostedDamage,zone);
@@ -3259,21 +3297,21 @@ function shoot(){
     }
   }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
-    const result=applyDamage(dummy.state,activeSpec.damage,first.object.userData.hitZone);
-    if(result.applied){
+    const dummyDamage=applyDamage(dummy.state,result.damage,first.object.userData.hitZone);
+    if(dummyDamage.applied){
       dummy.flash=.2;dummy.impulse=1;
       for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x553d20);
       updateDummyLabel(dummy);
-      spawnDamagePopup(first.point,result);
-      $('damageReport').textContent=dummy.title+' · '+ARMOR_SLOT_LABELS[result.zone].toUpperCase()+
-        ' · '+Math.ceil(result.damage)+' HP'+
-        (result.blocked>0?' · '+Math.ceil(result.blocked)+' BLOCKED':'')+
-        ' · '+result.points+' AP · '+Math.round(result.reduction*100)+'% REDUCTION'+
-        (result.killed?' · DOWN':'');
-      showShotNotice(result.killed?'DUMMY DOWN · '+dummy.title:
-        (result.critical?'HEADSHOT':'HIT '+ARMOR_SLOT_LABELS[result.zone].toUpperCase())+
-        ' · -'+Math.ceil(result.damage)+' HP'+
-        (result.blocked>0?' · '+Math.ceil(result.blocked)+' BLOCKED':''));
+      spawnDamagePopup(first.point,dummyDamage);
+      $('damageReport').textContent=dummy.title+' · '+ARMOR_SLOT_LABELS[dummyDamage.zone].toUpperCase()+
+        ' · '+Math.ceil(dummyDamage.damage)+' HP'+
+        (dummyDamage.blocked>0?' · '+Math.ceil(dummyDamage.blocked)+' BLOCKED':'')+
+        ' · '+dummyDamage.points+' AP · '+Math.round(dummyDamage.reduction*100)+'% REDUCTION'+
+        (dummyDamage.killed?' · DOWN':'');
+      showShotNotice(dummyDamage.killed?'DUMMY DOWN · '+dummy.title:
+        (dummyDamage.critical?'HEADSHOT':'HIT '+ARMOR_SLOT_LABELS[dummyDamage.zone].toUpperCase())+
+        ' · -'+Math.ceil(dummyDamage.damage)+' HP'+
+        (dummyDamage.blocked>0?' · '+Math.ceil(dummyDamage.blocked)+' BLOCKED':''));
       if($('armory').classList.contains('hidden')===false)refreshArmory();
     }
   } else if(first&&first.object.userData.targetId){
@@ -3298,22 +3336,46 @@ function shoot(){
   refreshWeaponHUD();
 }
 function reload(){
-  if(infiniteAmmo){showShotNotice('INFINITE AMMO · RELOAD NOT REQUIRED');return;}
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled())return;
+  if(activeWeaponId===LASER_MUSKET.id){
+    const action=startLaserCrank(weaponState,{infiniteAmmo});
+    if(action.status==='started'){
+      emptyClickLatched=false;
+      sound.laserCrank(action.level);
+      showShotNotice('CRANKING FUSION CHARGE '+action.level+'/'+LASER_MUSKET_TUNING.maxCharges);
+      if(!infiniteAmmo)saveBackpack();
+      refreshWeaponHUD();return;
+    }
+    if(action.status==='fully-charged'){
+      showShotNotice('MAX CHARGE · FIRE THE LASER');return;
+    }
+    if(action.status==='no-cells'){
+      if(startWeaponReload(weaponState,activeSpec)){
+        sound.reload('laser-musket',weaponState.reloadDuration/
+          Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
+        showShotNotice('LOADING FUSION CELLS');refreshWeaponHUD();
+      }else showShotNotice('NO FUSION CELLS · PRESS F TO RESTOCK');
+    }
+    return;
+  }
+  if(infiniteAmmo){showShotNotice('INFINITE AMMO · RELOAD NOT REQUIRED');return;}
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
     slideCycle=0;
     sound.reload(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
       activeWeaponId===PIPE_PISTOL.id?'pipe':
-      activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol',weaponState.reloadDuration/
+      activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol',
+      weaponState.reloadDuration/
       Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
 }
 function resupply(){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){showShotNotice('NO AMMUNITION NEEDED · UNARMED');return;}
+  if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
+  if(activeWeaponId===LASER_MUSKET.id)ensureLaserState(weaponState);
   saveBackpack();
   emptyClickLatched=false;
   showShotNotice('TEST AMMO RESTOCKED');
@@ -3327,16 +3389,21 @@ function toggleInfiniteAmmo(){
     preInfiniteAmmo.clear();
     for(const id of REBUILT_WEAPON_IDS){
       const state=arsenalStates[id];
-      preInfiniteAmmo.set(id,{magazine:state.magazine,reserve:state.reserve});
+      if(id===LASER_MUSKET.id)cancelLaserCrank(state);
+      preInfiniteAmmo.set(id,{magazine:state.magazine,reserve:state.reserve,
+        laserCharge:id===LASER_MUSKET.id?ensureLaserState(state).laserCharge:undefined});
       cancelWeaponReload(state);
       state.magazine=getWeaponSpec(id).magazineSize;
     }
     emptyClickLatched=false;
   }else{
     for(const [id,ammo] of preInfiniteAmmo){
-      arsenalStates[id].magazine=ammo.magazine;
-      arsenalStates[id].reserve=ammo.reserve;
-      cancelWeaponReload(arsenalStates[id]);
+      const state=arsenalStates[id];
+      if(id===LASER_MUSKET.id)cancelLaserCrank(state,{refund:false});
+      state.magazine=ammo.magazine;
+      state.reserve=ammo.reserve;
+      if(id===LASER_MUSKET.id)state.laserCharge=ammo.laserCharge??0;
+      cancelWeaponReload(state);
     }
     preInfiniteAmmo.clear();
   }
@@ -3355,6 +3422,7 @@ playerAvatar.setHeldWeapon(null);
 const heldTenMM=createTenMillimeterPistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPipePistol=createPipePistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPipeRifle=createPipeRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldLaserMusket=createLaserMusket(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4323,6 +4391,7 @@ function frame(){
   const dt=Math.min(.036,elapsed);
   wastelandArt.update(dt);
   impactEffects.update(dt);
+  laserTrails.update(dt); // the red beam holds briefly, then dissolves over .66s
   let ammoSpentOnReload=false;
   for(const spec of ARSENAL){
     const state=arsenalStates[spec.id],before=state.reserve;
@@ -4330,6 +4399,9 @@ function frame(){
     if(state.reserve!==before)ammoSpentOnReload=true;
   }
   if(ammoSpentOnReload)saveBackpack();
+  const chargeUpdate=updateLaserCrank(arsenalStates[LASER_MUSKET.id],dt);
+  if(chargeUpdate.completed&&activeWeaponId===LASER_MUSKET.id)
+    showShotNotice('CHARGE STORED · '+chargeUpdate.charge+'/6 · R AGAIN OR FIRE');
   if(window.__rpgSmokeReloadHold?.id===activeWeaponId)
     weaponState.reloadRemaining=window.__rpgSmokeReloadHold.remaining;
   // Ease camera pitch back to the player's original view. This applies in
@@ -4352,7 +4424,8 @@ function frame(){
   const handling=reloadPoseForWeapon(activeWeaponId,
     weaponState.reloadRemaining,weaponState.reloadDuration||activeSpec.reloadSeconds,
     weaponState.reloadRounds||null);
-  const cycleDuration=activeWeaponId===PIPE_RIFLE.id?.23:
+  const cycleDuration=activeWeaponId===LASER_MUSKET.id?0:
+    activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
   const cycling=slideTravel(slideCycle,cycleDuration);
@@ -4360,6 +4433,13 @@ function frame(){
     (activeWeaponId===NEW_WEAPON_ID&&weaponState.magazine===0&&
       weaponState.reloadRemaining<=0?.095:0);
   if(visual.trigger)visual.trigger.rotation.x=-.24-recoilKick*.7;
+  if(visual.crankPivot){
+    const activeCrank=weaponState.crankRemaining>0;
+    visual.crankPivot.rotation.x=activeCrank?-Math.PI*2*laserCrankProgress(weaponState):0;
+    visual.chargeHand.visible=activeCrank;
+    visual.capacitor.material.emissiveIntensity=.18+
+      (weaponState.laserCharge||0)*.27+(activeCrank?.7:0);
+  }
   if(activeWeaponId===PIPE_PISTOL.id){
     // Side-fed pipe magazine pulls OUTWARD from receiver, never through grip.
     visual.magazine.position.x=visual.magBaseX-handling.magazineOffset;
@@ -4380,7 +4460,7 @@ function frame(){
   visual.magazineBase.visible=detachable&&handling.magazineVisible;
   visual.reloadHand.visible=handling.handVisible;
   if(visual.supportHand){
-    visual.supportHand.visible=!handling.handVisible;
+    visual.supportHand.visible=!handling.handVisible&&!(weaponState.crankRemaining>0);
     visual.supportHand.rotation.z=Math.sin(handlingTime*2.1)*.009;
   }
   visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
@@ -4632,6 +4712,11 @@ function frame(){
   heldTenMM.root.visible=activeWeaponId===TEN_MM_PISTOL.id;
   heldPipePistol.root.visible=activeWeaponId===PIPE_PISTOL.id;
   heldPipeRifle.root.visible=activeWeaponId===PIPE_RIFLE.id;
+  heldLaserMusket.root.visible=activeWeaponId===LASER_MUSKET.id;
+  heldLaserMusket.crankPivot.rotation.x=activeWeaponId===LASER_MUSKET.id&&
+    weaponState.crankRemaining>0?-Math.PI*2*laserCrankProgress(weaponState):0;
+  heldLaserMusket.capacitor.material.emissiveIntensity=.18+
+    (arsenalStates[LASER_MUSKET.id].laserCharge||0)*.27;
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,

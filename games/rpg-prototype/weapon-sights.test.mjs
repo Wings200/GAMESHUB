@@ -115,3 +115,12 @@ test('Pipe rifle front tip is truly zeroed for first-person ADS',()=>{
   assert.equal(anchor.y,-.258);
   assert.ok(isAlignedToBore('pipe-rifle',anchor));
 });
+
+test('Laser musket keeps factory irons and zeroed front blade',()=>{
+  const sight=sightMount('laser-musket');
+  assert.equal(sight.y,.263);
+  assert.equal(sight.adsZ,-1.20);
+  assert.deepEqual(compatibleOptics('laser-musket'),['factory']);
+  assert.equal(sightForOptic('laser-musket','scope-6x').optic,'iron');
+  assert.ok(isAlignedToBore('laser-musket'));
+});

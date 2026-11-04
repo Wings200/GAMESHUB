@@ -35,10 +35,17 @@ export const PIPE_RIFLE=Object.freeze({
   damage:34,hipSpreadDegrees:3.15,adsSpreadDegrees:.13,
   recoilDegrees:2.85,pellets:1,automatic:false
 });
+export const LASER_MUSKET=Object.freeze({
+  id:'laser-musket',name:'Laser Musket',kind:'carbine',
+  magazineSize:6,startingReserve:84,fireInterval:.85,reloadSeconds:2.70,
+  damage:40,hipSpreadDegrees:3.25,adsSpreadDegrees:.12,
+  recoilDegrees:2.9,pellets:1,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
   PIPE_RIFLE,
+  LASER_MUSKET,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,

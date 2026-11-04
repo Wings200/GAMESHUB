@@ -95,7 +95,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -193,7 +193,7 @@ test('Automatic shooting, shotgun pellet traces and independent reloading use se
   assert.match(source,/fireWeapon\(weaponState,activeSpec,Math\.random,weaponMotion\)/);
   assert.match(source,/for\(const pellet of result\.directions\)/);
   assert.match(source,/applyDamage\(enemy\.state,boostedDamage/);
-  assert.match(source,/applyDamage\(dummy\.state,activeSpec\.damage/);
+  assert.match(source,/applyDamage\(dummy\.state,result\.damage/);
   assert.match(source,/startWeaponReload\(weaponState,activeSpec\)/);
   assert.match(source,/createWeaponState\(activeSpec\)/);
   assert.match(source,/updateWeapon\(state,dt,spec,\{reloadSpeedMultiplier:specialModifiers\.reloadSpeedMultiplier\}\)/);
@@ -284,7 +284,7 @@ test('W05.3.1 limits empty automatic dry fire to one click per trigger pull',()=
   assert.match(source,/if\(!emptyClickLatched\)\{/);
   assert.match(source,/emptyClickLatched=true;\s*dryFireClicks\+\+;\s*sound\.dryFire\(\)/);
   assert.match(source,/if\(result\.status!=='fired'\)return;/);
-  assert.match(source,/emptyClickLatched=false;\s*sound\.gunshot/);
+  assert.match(source,/emptyClickLatched=false;\s*if\(laserActive\)sound\.laserBlast/);
   assert.match(source,/if\(e\.button===0\)\{triggerHeld=false;emptyClickLatched=false;\}/);
   assert.ok(source.includes("controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle'"));
   assert.match(source,/triggerHeld=false;emptyClickLatched=false/);
@@ -351,7 +351,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
@@ -420,7 +420,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -472,7 +472,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -485,7 +485,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -557,7 +557,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -696,7 +696,7 @@ test('W20.14 armor status figure has six independently driven sections',()=>{
   assert.match(source,/powerArmorIndicatorStatus\(powerArmorState,slot\)/);
   assert.match(source,/visualClass='armor-segment '\+part\.status/);
   assert.match(source,/id="visorArmorIndicator"|indicatorDescriptions\.join\(', '\)/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
@@ -725,7 +725,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -744,7 +744,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
   assert.match(page,/W20\.10.*REAR ENTRY & SUIT SILHOUETTE/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
@@ -814,7 +814,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W20.24'));
+  assert.ok(page.includes('main.js?v=W20.26'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
@@ -881,7 +881,7 @@ test('W20.15 removes the two legacy teal camera-locked cockpit bars',()=>{
   const cockpit=armorVisual.slice(position);
   assert.doesNotMatch(cockpit,/BoxGeometry|MeshBasicMaterial|group\.add\(/);
   assert.match(source,/power-armor-visual\.mjs\?v=W20\.16/);
-  assert.match(page,/main\.js\?v=W20\.24/);
+  assert.match(page,/main\.js\?v=W20\.26/);
   class FakeGroup{
     constructor(){this.children=[];this.visible=true;}
     add(child){this.children.push(child);}
@@ -928,15 +928,15 @@ test('W20.17 tap E searches nearby enemy drops and crates while suited; hold E e
 });
 
 
-test('W20.24 keeps only three rebuilt guns active after pipe rifle addition',()=>{
+test('W20.26 keeps only four rebuilt guns active during laser musket rollout',()=>{
   const tenModel=readFileSync(new URL('./tenmm-pistol.mjs',import.meta.url),'utf8');
   const pipeModel=readFileSync(new URL('./pipe-pistol.mjs',import.meta.url),'utf8');
   const weaponRules=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
   const handling=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
-  assert.match(page,/W20\.24 · Pipe Rifle Build/);
-  assert.match(page,/EQUIP REBUILT WEAPON · 3 AVAILABLE/);
+  assert.match(page,/W20\.26 · Laser Musket/);
+  assert.match(page,/EQUIP REBUILT WEAPON · 4 AVAILABLE/);
   assert.match(source,/const WEAPON_REBUILD_MODE=true/);
-  assert.match(source,/const REBUILT_WEAPON_IDS=Object\.freeze\(\[TEN_MM_PISTOL\.id,PIPE_PISTOL\.id,PIPE_RIFLE\.id\]\)/);
+  assert.match(source,/const REBUILT_WEAPON_IDS=Object\.freeze\(\[TEN_MM_PISTOL\.id,PIPE_PISTOL\.id,PIPE_RIFLE\.id,LASER_MUSKET\.id\]\)/);
   assert.match(source,/if\(REBUILT_WEAPON_IDS\.includes\(id\)\)continue/);
   assert.match(source,/visual\.root\.removeFromParent\(\)/);
   assert.match(source,/enemy\.rigged\.disarm\(\)/);
@@ -959,7 +959,7 @@ test('W20.24 keeps only three rebuilt guns active after pipe rifle addition',()=
   assert.match(source,/activeWeaponId===PIPE_PISTOL\.id/);
   assert.match(source,/visual\.magazine\.position\.x=visual\.magBaseX-handling\.magazineOffset/);
   assert.match(source,/if\(ticking&&playerHealth\.alive&&!WEAPON_REBUILD_MODE\)/);
-  assert.match(source,/if\(WEAPON_REBUILD_MODE&&!playerGunEnabled\(\)\)return;[\s\S]*?const result=fireWeapon/);
+  assert.match(source,/if\(WEAPON_REBUILD_MODE&&!playerGunEnabled\(\)\)return;[\s\S]*?const result=laserActive/);
   assert.match(source,/function refreshInventoryUI\(\)/);
   assert.match(source,/function updateEnemyRadar\(\)/);
 });
@@ -969,7 +969,7 @@ test('The live weapon view aims each rebuilt front tip through the camera ray',(
   assert.match(source,/function alignActiveSight\(\)\{[\s\S]*?adsWeaponPosition\(activeWeaponId\)/);
   assert.match(source,/camera\.updateWorldMatrix\(true,false\)/);
   assert.match(source,/firingRaycaster\.set\(camera\.position,shotVector\)/);
-  assert.match(source,/weapon-sights\.mjs\?v=W20\.24/);
+  assert.match(source,/weapon-sights\.mjs\?v=W20\.26/);
   assert.match(source,/tenmm-pistol\.mjs\?v=W20\.23/);
   assert.match(source,/pipe-pistol\.mjs\?v=W20\.23/);
 });
@@ -1004,12 +1004,15 @@ test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
   assert.ok(start>0&&end>start);
   const toggleSource=source.slice(start,end);
   const script=[
-    "const REBUILT_WEAPON_IDS=['10mm-pistol','pipe-pistol','pipe-rifle'];",
-    "const arsenalStates={'10mm-pistol':{magazine:2,reserve:14,reloadRemaining:1},'pipe-pistol':{magazine:0,reserve:8,reloadRemaining:0},'pipe-rifle':{magazine:4,reserve:90,reloadRemaining:0}};",
+    "const REBUILT_WEAPON_IDS=['10mm-pistol','pipe-pistol','pipe-rifle','laser-musket'];",
+    "const arsenalStates={'10mm-pistol':{magazine:2,reserve:14,reloadRemaining:1},'pipe-pistol':{magazine:0,reserve:8,reloadRemaining:0},'pipe-rifle':{magazine:4,reserve:90,reloadRemaining:0},'laser-musket':{magazine:3,reserve:84,reloadRemaining:0,laserCharge:2}};",
     "const preInfiniteAmmo=new Map();",
+    "const LASER_MUSKET={id:'laser-musket'};",
+    "const cancelLaserCrank=()=>false;",
+    "const ensureLaserState=state=>state;",
     "let infiniteAmmo=false,emptyClickLatched=true;",
     "let notice='',refreshes=0;",
-    "const getWeaponSpec=id=>({magazineSize:id==='10mm-pistol'?12:id==='pipe-rifle'?15:8});",
+    "const getWeaponSpec=id=>({magazineSize:id==='10mm-pistol'?12:id==='pipe-rifle'?15:id==='laser-musket'?6:8});",
     "const cancelWeaponReload=state=>{state.reloadRemaining=0;};",
     "const refreshWeaponHUD=()=>refreshes++;",
     "const showShotNotice=s=>notice=s;",
@@ -1019,6 +1022,7 @@ test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
     "assert.equal(arsenalStates['10mm-pistol'].magazine,12);",
     "assert.equal(arsenalStates['pipe-pistol'].magazine,8);",
     "assert.equal(arsenalStates['pipe-rifle'].magazine,15);",
+    "assert.equal(arsenalStates['laser-musket'].magazine,6);",
     "assert.equal(arsenalStates['10mm-pistol'].reserve,14);",
     "assert.equal(emptyClickLatched,false);",
     "toggleInfiniteAmmo();",
@@ -1029,6 +1033,8 @@ test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
     "assert.equal(arsenalStates['pipe-pistol'].reserve,8);",
     "assert.equal(arsenalStates['pipe-rifle'].magazine,4);",
     "assert.equal(arsenalStates['pipe-rifle'].reserve,90);",
+    "assert.equal(arsenalStates['laser-musket'].magazine,3);",
+    "assert.equal(arsenalStates['laser-musket'].laserCharge,2);",
     "assert.equal(preInfiniteAmmo.size,0);",
     "assert.equal(refreshes,2);",
     "return notice;"
@@ -1043,7 +1049,7 @@ test('W20.24 pipe rifle is selectable and really rendered in first/third person'
   const handling=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
   assert.match(weapons,/export const PIPE_RIFLE=Object\.freeze/);
   assert.match(weapons,/id:'pipe-rifle',name:'Pipe Rifle',kind:'carbine'/);
-  assert.match(source,/PIPE_PISTOL, PIPE_RIFLE, ARSENAL/);
+  assert.match(source,/PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, ARSENAL/);
   assert.match(source,/createPipeRifle\(THREE,camera,\{flareTexture:flareTex\}\)/);
   assert.match(source,/weaponVisuals\.set\(PIPE_RIFLE\.id,pipeRifleVisual\)/);
   assert.match(source,/createPipeRifle\(THREE,playerAvatar\.weaponSocket,\{thirdPerson:true\}\)/);
@@ -1051,12 +1057,40 @@ test('W20.24 pipe rifle is selectable and really rendered in first/third person'
   assert.match(source,/activeWeaponId===PIPE_RIFLE\.id\?'pipe-rifle'/);
   assert.match(source,/activeWeaponId===PIPE_RIFLE\.id\?\.23/);
   assert.match(handling,/if\(id==='pipe-rifle'\)/);
-  assert.match(source,/pipe-rifle\.mjs\?v=W20\.24/);
+  assert.match(source,/pipe-rifle\.mjs\?v=W20\.25/);
   assert.match(source,/visual\.defaultZ\?\?-\.77/);
   assert.match(model,/name='PipeRifleStockBody'/);
   assert.match(model,/name='PipeRifleHandguardShell'/);
   assert.match(model,/name='PipeRifleReceiverShell'/);
   assert.match(model,/name='PipeRifleFrontSightTip'/);
-  assert.match(page,/3 AVAILABLE/);
+  assert.match(page,/4 AVAILABLE/);
   assert.match(page,/PIPE RIFLE/);
+});
+
+test('W20.26 hand-cranked Laser Musket is playable in both views with lasting beams',()=>{
+  const gun=readFileSync(new URL('./laser-musket.mjs',import.meta.url),'utf8');
+  const math=readFileSync(new URL('./laser-musket-mechanics.mjs',import.meta.url),'utf8');
+  const trails=readFileSync(new URL('./laser-musket-trails.mjs',import.meta.url),'utf8');
+  const specs=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
+  const sights=readFileSync(new URL('./weapon-sights.mjs',import.meta.url),'utf8');
+  assert.match(specs,/export const LASER_MUSKET=Object.freeze/);
+  assert.match(source,/weaponVisuals.set\(LASER_MUSKET.id,laserMusketVisual\)/);
+  assert.match(source,/createLaserMusket\(THREE,playerAvatar.weaponSocket,\{thirdPerson:true\}\)/);
+  assert.match(source,/heldLaserMusket.root.visible=activeWeaponId===LASER_MUSKET.id/);
+  assert.match(source,/startLaserCrank\(weaponState,\{infiniteAmmo\}\)/);
+  assert.match(source,/fireChargedLaser\(weaponState,activeSpec/);
+  assert.match(source,/sound.laserCrank\(action.level\)/);
+  assert.match(source,/sound.laserBlast\(result.chargeLevel\)/);
+  assert.match(source,/laserTrails.spawn\(origin,destination,result.chargeLevel\)/);
+  assert.match(source,/laserTrails.update\(dt\)/);
+  assert.match(source,/if\(!laserActive\)ejectCasing\(\)/);
+  assert.match(source,/const boostedDamage=result.damage\*/);
+  assert.match(gun,/name='LaserMusketRotatingCrank'/);
+  assert.match(gun,/name='LaserMusketChargeCrystal'/);
+  assert.match(math,/crankSeconds:\.68,beamSeconds:\.66,beamHoldSeconds:\.13/);
+  assert.match(trails,/function laserTrailOpacity/);
+  assert.match(sights,/'laser-musket':Object.freeze\(\{x:0,y:\.263/);
+  assert.match(page,/EQUIP REBUILT WEAPON · 4 AVAILABLE/);
+  assert.match(page,/0.66 seconds/);
+  assert.match(page,/main.js\?v=W20.26/);
 });

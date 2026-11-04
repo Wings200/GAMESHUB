@@ -132,3 +132,11 @@ test('Pipe rifle performs a downward magazine change followed by bolt rack',()=>
   assert.ok(overlap(rack.handY,.145,.125,.072));
   assert.ok(overlap(rack.handZ,.170,.072+rack.slideOffset,.277));
 });
+
+test('Laser six-cell bank reload clears the underside then reseats',()=>{
+  const at=p=>reloadPoseForWeapon('laser-musket',2.7*(1-p),2.7);
+  assert.ok(at(.36).magazineOffset>.25);
+  assert.ok(at(.72).magazineOffset<.20);
+  assert.equal(at(.99).magazineOffset,0);
+  assert.equal(at(.87).slideOffset,0,'cranking uses separate actual rotary wheel');
+});

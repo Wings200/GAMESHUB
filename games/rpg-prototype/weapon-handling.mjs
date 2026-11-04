@@ -53,7 +53,15 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     const down=rise(p,a,b),up=rise(p,c,d);
     return size*Math.max(0,down-up);
   };
-  if(id==='pipe-rifle'){
+  if(id==='laser-musket'){
+    // Swap the six-cell capacitor pack with a deliberate vertical motion.
+    pose.magazineOffset=magSwap(.15,.39,.55,.78,.40);
+    pose.magazineAngle=pose.magazineOffset*.13;
+    pose.slideOffset=0;pose.handX=-.10;
+    pose.handY=-.23-pose.magazineOffset*.88;
+    pose.handZ=-.15;
+    pose.tilt=.11*pulse(p,.14,.83);
+  }else if(id==='pipe-rifle'){
     // The 15-round box magazine releases straight DOWN from its real well,
     // then the charging carrier cycles after the new magazine seats.
     pose.magazineOffset=magSwap(.13,.36,.51,.74,.39);

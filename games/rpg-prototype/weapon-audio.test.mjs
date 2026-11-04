@@ -200,3 +200,16 @@ test('W20.16 armor entry and exit boot contacts use low thuds, never bell tones'
     }
   }
 });
+
+test('Hand-cranked laser has ratchet contacts and an electrical beam release',()=>{
+  const audio=new WeaponAudio(FakeAudioContext);
+  audio.laserCrank(3);
+  const before=audio.context.events.length;
+  assert.ok(before>=12,'three physical ratchet steps and capacitor charge');
+  const lastCrank=Math.max(...audio.context.events.map(x=>x[1]));
+  assert.ok(lastCrank>10.65,'charge completes near end of 0.68s turn');
+  audio.laserBlast(6);
+  assert.ok(audio.context.events.length>=before+8);
+  const notes=audio.context.calls.filter(x=>x.kind==='frequency'&&x.mode==='set').map(x=>x.value);
+  assert.ok(notes.some(x=>x>1500),'electronic discharge has a high initial pitch');
+});

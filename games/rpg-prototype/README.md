@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W20.25 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.26 + Forest Foundation 0.1
+
+## W20.26 · Hand-cranked Laser Musket + lingering red beam
+
+- Fourth rebuilt weapon: original old-world wooden musket and scavenged electrical assembly with copper barrel coils, glowing capacitor, removable six-cell power pack, and a full turnable hand crank.
+- **R** rotates a real wheel with the character's hand for 0.68 seconds, consumes one fusion cell and stores one of six energy charges. Click fires the entire stored charge (40 damage at one crank; 204 at six). R reloads the cell pack when empty. Infinite ammo still requires actual cranking, but never consumes cells.
+- Red energy beams spawn along the real aim ray and remain frozen in world space. The beam holds at full brightness for 0.13 seconds, then smoothly dissolves over a total **0.66-second lifetime**, including misses and hits on NPCs/world targets.
+- Distinct electrical blast and ratchet audio, clean sights, compatible power-armor/third-person visual assembly, and no casing ejection from laser weapons. Existing three guns and disabled NPC weapons remain unchanged. Attachments are still reserved for the later settlement workbench.
+- New model, charge economy, beam fade, and integration regressions.
 
 ## W20.25 · Pipe Rifle corrosion and salvage finish
 
