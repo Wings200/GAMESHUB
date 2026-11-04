@@ -772,6 +772,11 @@ function finishPowerHold(){
   if(powerHoldTimer!==null)clearTimeout(powerHoldTimer);
   powerHoldTimer=null;powerHoldPending=false;powerHoldTriggered=false;
   if(tap&&controls.isLocked&&powerArmorState.phase==='idle'){
+    // Short press = contextual pickup/search even while wearing armor.
+    // Long press = enter/exit. Never lose the long-press exit gesture.
+    const bag=nearestLootBag();
+    if(bag){beginLootOverlay(bag.id);return true;}
+    if(benchWithinReach()){beginWorkbench();return true;}
     if(powerArmorState.occupied)showShotNotice('HOLD E TO EXIT THE FRAME');
     else if(nearPoweredSuit())openPowerArmorBay();
   }
@@ -1453,7 +1458,7 @@ function createEnemy(spec){
   const state=createDummy(enemyArmorForRound(spec.id,0));
   const enemy={id:spec.id,label:spec.label,brain,root,state,
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
-    tactics:makeEnemyTactics(spec.id),gunGlow:0,
+    tactics:makeEnemyTactics(spec.id),gunGlow:0,radarAlertSeconds:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
     recoilPose:0,rigged:null,modelStatus:'original'};
   const flesh=enemyMaterial(spec.color);
@@ -1602,6 +1607,7 @@ function resetEnemies(){
     enemy.root.visible=true;enemy.billboard.mesh.visible=true;
     enemy.beacon.visible=true;
     enemy.deathTimer=0;enemy.crouchBlend=0;enemy.upperBody.position.y=0;
+    enemy.radarAlertSeconds=0;
     enemy.upperBody.rotation.set(0,0,0);
     enemy.combatPose=0;enemy.reloadPose=0;enemy.recoilPose=0;
     for(const {pivot,kind,side} of enemy.limbs){
@@ -2089,8 +2095,8 @@ function healPlayer(){
   showShotNotice('HEALTH RESTORED · 100 HP');
 }
 refreshPlayerHealth();
-// A complete 360° hostile indicator. All living enemies have a red dot,
-// including enemies behind the player; no tactical intentions are revealed.
+// Combat radar only reveals enemies who have detected or engaged the
+// player. Contacts linger briefly after sight breaks to prevent UI flicker.
 const enemyRadarDots=new Map();
 function updateEnemyRadar(){
   const radar=$('enemyRadar');
@@ -2107,8 +2113,9 @@ function updateEnemyRadar(){
       dot.setAttribute('role','img');track.append(dot);
       enemyRadarDots.set(enemy.id,dot);
     }
-    dot.style.display=enemy.state.alive?'block':'none';
-    if(!enemy.state.alive)continue;
+    const alerted=enemy.state.alive&&enemy.radarAlertSeconds>0;
+    dot.style.display=alerted?'block':'none';
+    if(!alerted)continue;
     shown++;
     const towards=((Math.atan2(enemy.brain.x-player.x,
       -(enemy.brain.z-player.z))*180/Math.PI)+360)%360;
@@ -2120,7 +2127,7 @@ function updateEnemyRadar(){
     dot.setAttribute('aria-label',enemy.label+' · '+meters+' metres');
     dot.title=enemy.label+' · '+meters+' m';
   }
-  radar.setAttribute('aria-label',shown+' surviving enemies shown as red dots on a 360 degree compass');
+  radar.setAttribute('aria-label',shown+' alerted enemies shown as red dots on a 360 degree compass');
 }
 function updateEnemies(dt,elapsed=dt){
   // A confirmed hit outside the arena wakes combat while the enemy still
@@ -2173,6 +2180,11 @@ function updateEnemies(dt,elapsed=dt){
             tactic.phase==='suppress-long',
           combatFacePlayer:true,
           combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace});
+      // First confirmed enemy contact unlocks the red marker. During a
+      // brief LOS break it persists for only 3 seconds; passive patrols,
+      // unheard enemies and mere gunshot investigations stay unmarked.
+      if(enemyAIEnabled&&enemy.brain.spotted)enemy.radarAlertSeconds=3;
+      else enemy.radarAlertSeconds=Math.max(0,enemy.radarAlertSeconds-dt);
       if(ticking&&playerHealth.alive&&enemy.brain.spotted&&!wasSpotted)
         reportSquadContact(squadIntel,enemy.id,player);
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
@@ -3097,6 +3109,7 @@ function shoot(){
         markEnemyDefeated(enemy);
       }else{
         alertEnemy(enemy.brain,{x:player.x,z:player.z});
+        enemy.radarAlertSeconds=3; // player hit this target: already engaged
         markEnemyThreat(enemy.tactics);
         reportSquadContact(squadIntel,enemy.id,player);
       }
@@ -4004,8 +4017,8 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     e.preventDefault();
-    // Physical contacts remain usable while the player is wearing power armor.
-    // Only start a frame entry/exit hold when no terminal is within reach.
+    // The power-frame hold also recognizes a short contextual tap on keyup.
+    // This lets suited players loot nearby bodies/crates without exiting.
     const contact=nearCampaignNode();
     if(contact){openCampaignDialogue(contact);return;}
     if(powerArmorState.phase==='idle'&&
@@ -4394,10 +4407,13 @@ function frame(){
       (['dispatch','dominion','foreman'].includes(questContact.id)?'SPEAK WITH ':'USE ')+
       questContact.name+' · Q JOURNAL';
   }else if(frameInReach){
-    $('lootPrompt').textContent=powerArmorState.occupied?
-      'HOLD E · EXIT POWER ARMOR':
-      nearRearHatch()?'TAP E · CONFIGURE FRAME     HOLD E · ENTER FROM REAR':
-        'TAP E · CONFIGURE FRAME     MOVE BEHIND FRAME TO ENTER';
+    $('lootPrompt').textContent=nearby?
+      'TAP E · SEARCH '+nearby.source.toUpperCase()+'     HOLD E · '+
+        (powerArmorState.occupied?'EXIT POWER ARMOR':'ENTER POWER ARMOR'):
+      powerArmorState.occupied?
+        'HOLD E · EXIT POWER ARMOR':
+        nearRearHatch()?'TAP E · CONFIGURE FRAME     HOLD E · ENTER FROM REAR':
+          'TAP E · CONFIGURE FRAME     MOVE BEHIND FRAME TO ENTER';
     if(powerHoldPending){
       const pct=Math.min(99,Math.floor(
         (performance.now()-powerHoldStartedAt)/POWER_HOLD_MS*100));

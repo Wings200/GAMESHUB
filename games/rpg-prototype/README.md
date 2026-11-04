@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.16 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.17 + Forest Foundation 0.1
+
+## W20.17 · Fair hostile compass
+
+- Red enemy markers appear only after confirmed hostile awareness or a direct player attack. Unaware patrols and enemies merely investigating distant noises remain hidden.
+- Alerts persist for only three seconds after line-of-sight breaks to avoid a constantly flashing compass; death and enemy resets remove contacts.
+- While in power armor, tapping E searches nearby enemy loot drops/crates; holding E still exits the frame. The prompt now shows both actions.
 
 ## W20.16 · Armor boarding, sound, enemy combat and bottom compass
 
@@ -8,7 +14,7 @@
 - Fusion-core idle, walking and sprint drain rates are multiplied by 0.8, making each core last exactly 25% longer.
 - Alerted NPCs track close circling players more effectively, with finite fast turning and a wider near-field firing cone. Cover and solid walls still block all rounds.
 - Legacy mannequin limbs live exclusively on an unrendered collision layer, with one visible animated NPC rig. Floating overhead labels show only enemy name and HP, not planned tactics or reloads.
-- A bottom 360-degree contact strip shows every living enemy as a red dot in both field and power-armor modes, including targets behind the player.
+- A bottom 360-degree contact strip shows alerted hostiles as red dots in both field and power-armor modes, including targets behind the player.
 - Regression tests cover fuel ratios, boarding end position, combat tracking, wall occlusion, ceiling clearance, audio cues and enemy HUD/source integrity.
 
 
