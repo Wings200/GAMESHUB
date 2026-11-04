@@ -109,6 +109,7 @@ export class WeaponAudio {
       'double-barrel':{crack:.20,body:.33,level:.32,freq:81},
       'pump-action':{crack:.17,body:.29,level:.29,freq:96},
       'hunting-bolt':{crack:.19,body:.32,level:.30,freq:104},
+      'heavy-sniper':{crack:.27,body:.46,level:.35,freq:66},
       'pipe-smg':{crack:.088,body:.155,level:.22,freq:202},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
@@ -118,7 +119,7 @@ export class WeaponAudio {
       rifle:{crack:.15,body:.27,level:.29,freq:105}
     };
     const v=sounds[kind]||sounds.pistol;
-    this._noiseBurst(t,v.crack,v.level,(['shotgun','double-barrel','pump-action','hunting-bolt'].includes(kind))?120:330,
+    this._noiseBurst(t,v.crack,v.level,(['shotgun','double-barrel','pump-action','hunting-bolt','heavy-sniper'].includes(kind))?120:330,
       kind==='smg'?7500:6800);
     this._noiseBurst(t+.011,v.body,Math.min(.22,v.level*.55),85,1350);
     // Low report and a quieter atmospheric tail stop shots from sounding
@@ -201,7 +202,7 @@ export class WeaponAudio {
   boltActionCycle(duration=.88){
     if(!this.unlock())return;
     const t=this.context.currentTime+.005;
-    const d=Math.max(.56,Math.min(1.25,duration));
+    const d=Math.max(.56,Math.min(1.6,duration));
     this._tone(t+d*.13,570,210,.075,.043,'triangle');  // lift
     this._noiseBurst(t+d*.36,.14,.071,220,3500);        // retract
     this._tone(t+d*.49,880,430,.12,.038,'triangle');    // fired brass
@@ -284,7 +285,7 @@ export class WeaponAudio {
     // Mechanical sounds scale with each weapon's ACTUAL reload timeline.
     // Do not trigger the final chamber click before the gun is reloaded.
     const d=Math.max(.5,Number.isFinite(duration)?duration:1.65);
-    const initial=kind==='revolver'?750:kind==='shotgun'?590:1050;
+    const initial=kind==='heavy-sniper'?520:kind==='revolver'?750:kind==='shotgun'?590:1050;
     this._tone(t,initial,540,.07,.055,'square');
     this._noiseBurst(t+d*.22,.11,.09,780,4100);
     this._tone(t+d*.33,450,660,.11,.045,'triangle');

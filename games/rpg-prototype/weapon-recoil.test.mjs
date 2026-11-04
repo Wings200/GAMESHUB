@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,
   DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,
-  IRON_REVOLVER,PIPE_SMG} from './weapons.mjs';
+  IRON_REVOLVER,PIPE_SMG,HEAVY_SNIPER} from './weapons.mjs';
 import {WEAPON_RECOIL_PROFILES,weaponRecoilProfile,
   createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
   countersteerWeaponRecoil,stepWeaponRecoil} from './weapon-recoil.mjs';
 
 const arsenal=[TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,
   DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,
-  IRON_REVOLVER,PIPE_SMG];
-test('all nine rebuilt firearms have distinct authored recoil profiles',()=>{
+  IRON_REVOLVER,PIPE_SMG,HEAVY_SNIPER];
+test('all ten rebuilt firearms have distinct authored recoil profiles',()=>{
   for(const gun of arsenal)assert.ok(WEAPON_RECOIL_PROFILES[gun.id],gun.id);
-  assert.equal(new Set(arsenal.map(g=>JSON.stringify(weaponRecoilProfile(g)))).size,9);
+  assert.equal(new Set(arsenal.map(g=>JSON.stringify(weaponRecoilProfile(g)))).size,10);
 });
 test('every first shot kicks upward with a finite view and visibly moving model',()=>{
   for(const gun of arsenal){
@@ -106,7 +106,8 @@ test('W20.38 each rebuilt gun has a distinctly forceful ADS kick',()=>{
     'pump-action-shotgun':8.7,
     'bolt-hunting-rifle':8.2,
     'iron-revolver':6.8,
-    'pipe-smg':1.15
+    'pipe-smg':1.15,
+    'heavy-sniper':8.5
   };
   for(const spec of arsenal){
     const recoil=createWeaponRecoilState();
@@ -124,4 +125,13 @@ test('W20.38 model movement grows with the heavier recoil without losing finite 
     assert.ok(s.modelBack>0&&s.modelBack<=.16);
     assert.ok(s.pitchDebt<=.58);
   }
+});
+
+
+test('W20.40 heavy sniper has distinct forceful recoil and a long return',()=>{
+ const heavy=weaponRecoilProfile(HEAVY_SNIPER);
+ const hunt=weaponRecoilProfile(BOLT_HUNTING_RIFLE);
+ assert.ok(heavy.pitch>1);
+ assert.ok(heavy.recover>2);
+ assert.notDeepEqual(heavy,hunt);
 });

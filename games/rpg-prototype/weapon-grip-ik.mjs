@@ -10,7 +10,8 @@ export const WORLD_WEAPON_GRIPS=Object.freeze({
   'pump-action-shotgun':Object.freeze({right:[.080,-.275,.207],left:[-.105,-.110,-.540],scale:.68}),
   'bolt-hunting-rifle':Object.freeze({right:[.078,-.253,.197],left:[-.105,-.070,-.500],scale:.68}),
   'iron-revolver':Object.freeze({right:[.105,-.246,.226],left:[-.092,-.245,.221],scale:.76,holdOffsetZ:-.18}),
-  'pipe-smg':Object.freeze({right:[.088,-.185,.239],left:[-.098,-.046,-.470],scale:.70})
+  'pipe-smg':Object.freeze({right:[.088,-.185,.239],left:[-.098,-.046,-.470],scale:.70}),
+  'heavy-sniper':Object.freeze({right:[.082,-.262,.239],left:[-.105,-.083,-.500],scale:.68})
 });
 export const GRIP_ARM_LENGTHS=Object.freeze({upper:.40,lower:.36});
 // Returns joint locations relative to an avatar shoulder in the torso frame.

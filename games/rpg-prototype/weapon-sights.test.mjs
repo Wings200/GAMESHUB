@@ -9,8 +9,8 @@ test('Every playable weapon has a dedicated real-world sight reference',()=>{
     const s=sightMount(w.id);
     assert.ok(Number.isFinite(s.x)&&Number.isFinite(s.y)&&Number.isFinite(s.z));
     assert.ok(s.adsZ<-.5&&s.adsZ>-1.3);
-    assert.ok(s.y>=.15&&s.y<=.29,'optics and pistol irons must clear the receiver top');
-    assert.ok(s.fov>=45&&s.fov<=66);
+    assert.ok(s.y>=.15&&s.y<=.38,'optics and pistol irons must clear the receiver top');
+    assert.ok(s.fov>=12&&s.fov<=66);
   }
   assert.equal(sightMount('hunting-rifle').optic,'scope');
   assert.equal(sightMount('service-carbine').optic,'holo');
@@ -166,4 +166,16 @@ test('Pipe SMG is factory iron only and the tip is in the camera center ray',()=
   assert.equal(mount.optic,'iron');
   assert.deepEqual(compatibleOptics('pipe-smg'),['factory']);
   assert.ok(isAlignedToBore('pipe-smg'));
+});
+
+
+test('W20.40 sniper has a genuine 6x factory scope at the bore zero',()=>{
+ const sight=sightMount('heavy-sniper');
+ assert.equal(sight.optic,'scope');
+ assert.equal(sight.fov,12);
+ assert.deepEqual(compatibleOptics('heavy-sniper'),['factory']);
+ assert.equal(sightForOptic('heavy-sniper','factory').fov,12);
+ assert.ok(isAlignedToBore('heavy-sniper'));
+ const aiming=adsWeaponPosition('heavy-sniper');
+ assert.equal(alignedSightPosition('heavy-sniper',aiming).y,0);
 });

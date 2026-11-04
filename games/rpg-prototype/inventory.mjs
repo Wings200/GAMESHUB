@@ -1,6 +1,6 @@
 // W06.0 original RPG loot and inventory rules. Pure game-state logic.
-import {ARSENAL,getWeaponSpec} from './weapons.mjs';
-import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs';
+import {ARSENAL,getWeaponSpec} from './weapons.mjs?v=W20.40';
+import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs?v=W20.40';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
 import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs';

@@ -1,3 +1,12 @@
+## W20.40 — Heavy Sniper Rifle + genuine 6× scoped aiming
+
+- Added **Wasteland Heavy Sniper** as rebuilt firearm #10, alongside the existing hunting rifle rather than replacing it. Its original procedural model has a full-length steel barrel, muzzle brake, vented sleeve, folded bipod, adjustable stock, detachable five-round box magazine, bolt handle, weathering, and a physically modeled optical tube with front/rear glass and adjustment turrets.
+- Aim with **right mouse** to look through a circular 6× sniper scope (12° camera FOV) with thin mil-hash markings and an illuminated center dot. The sight uses the same center-zero camera ray as actual hitscan fire; aiming leaves the third-person view automatically for a usable sight picture. Hip view retains the rifle model and scope body.
+- Five-round detachable magazine, high per-shot damage, 1.85-second firing interval, deliberate 1.42-second animated bolt cycle with physical brass ejection, 4.15-second magazine reload and bolt chambering, and distinct heavy recoil and firing/reload sound. This is a slow high-impact weapon, not an automatic rifle or a reskinned hunting gun.
+- Sniper rests on the **right shoulder** in third-person. Two in-weapon grip markers guide the player's arms, and the support hand was moved to a reachable position so sprinting still lowers the muzzle with both hands attached.
+- New named 3D geometry and bolt-cycle tests plus expanded arsenal, sight-zero, recoil, audio, inventory, physical arm-reach and Station 9 integration tests. All 220 focused tests pass under an isolated logic and source-level validation harness. No full WebGL visual smoke test has been performed in the current browser environment.
+- The existing Station 9 testing arena, hunting rifle, other rebuilt weapons, player armor and AI remain available. **NPC firearms remain disabled** until the planned NPC-gun work is complete.
+
 ## W20.39 — NPC navigation, cover discipline, and motion fidelity
 
 - Fixed combat flank planning selecting the NPC’s current location as a waypoint or repeatedly choosing a clamped, zero-distance goal at the arena boundary. Navigation now receives the actual tactical destination and computes local obstacle-safe detours.

@@ -81,6 +81,18 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     pose.handX=.055;pose.handY=-.31+.108*pose.shellProgress;
     pose.handZ=.042-.185*pose.shellProgress;
     pose.tilt=.09*pulse(p,.09,.92);
+  }else if(id==='heavy-sniper'){
+    // Slow release, heavy box magazine drops from a true well, seats again,
+    // then the bolt is lifted and cycled to chamber a live round.
+    pose.magazineOffset=magSwap(.13,.38,.55,.78,.49);
+    pose.magazineAngle=-pose.magazineOffset*.09;
+    pose.handX=-.10+rise(p,.79,.87)*.31;
+    pose.handY=-.31-pose.magazineOffset*.85+rise(p,.79,.87)*.40;
+    pose.handZ=-.06+rise(p,.79,.87)*.15;
+    pose.boltHandleLift=1.06*pulse(p,.79,.97);
+    pose.boltOffset=.26*pulse(p,.84,.98);
+    pose.slideOffset=0;
+    pose.tilt=-.14*pulse(p,.13,.95);
   }else if(id==='bolt-hunting-rifle'){
     // An actual bolt locks up, lifts, retracts, stays open while individual
     // cartridges enter the top of the fixed magazine, then seats and locks.

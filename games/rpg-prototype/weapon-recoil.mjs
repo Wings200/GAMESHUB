@@ -21,6 +21,7 @@ const profiles={
   'bolt-hunting-rifle':{pitch:1.12,yaw:.14,pattern:[-.28,.4],recover:4.05,hold:.15,model:.15,travel:.050},
   'iron-revolver':     {pitch:1.14,yaw:.31,pattern:[.45,-.6,.3,-.5],recover:4.3,hold:.14,model:.115,travel:.034},
   'pipe-smg':          {pitch:.91,yaw:.33,pattern:[.15,-.5,-.8,.3,.9,.7,-.2,1],recover:3.4,hold:.12,model:.039,travel:.008},
+  'heavy-sniper':      {pitch:1.18,yaw:.16,pattern:[-.18,.16,-.09],recover:2.65,hold:.23,model:.20,travel:.071},
   'scrap-pistol':      {pitch:.90,yaw:.13,pattern:[.1,-.3,.3],recover:5.3,hold:.09,model:.054,travel:.012},
   'service-carbine':   {pitch:.84,yaw:.17,pattern:[.1,-.45,.6,-.35],recover:4.6,hold:.08,model:.054,travel:.011},
   'scrap-shotgun':     {pitch:1.14,yaw:.2,pattern:[-.3,.5],recover:3.75,hold:.15,model:.17,travel:.050},

@@ -7,7 +7,8 @@ const worldRootOffsets=Object.freeze({
   'double-barrel-shotgun':[0,-.085,.045],
   'pump-action-shotgun':[0,-.09,.038],
   'bolt-hunting-rifle':[0,-.075,.033],
-  'iron-revolver':[0,-.035,.03],'pipe-smg':[0,-.05,.02]
+  'iron-revolver':[0,-.035,.03],'pipe-smg':[0,-.05,.02],
+  'heavy-sniper':[0,-.078,.025]
 });
 const socket=[.17,.50,-.20];
 const toShoulder=(id,hand,pitch=0)=>{
@@ -22,7 +23,7 @@ const toShoulder=(id,hand,pitch=0)=>{
   ];
 };
 test('Every rebuilt weapon has two physical grip markers and true world scale',()=>{
-  assert.equal(Object.keys(WORLD_WEAPON_GRIPS).length,9);
+  assert.equal(Object.keys(WORLD_WEAPON_GRIPS).length,10);
   for(const [id,g] of Object.entries(WORLD_WEAPON_GRIPS)){
     assert.ok(worldRootOffsets[id],id);
     assert.equal(g.right.length,3);assert.equal(g.left.length,3);
@@ -30,7 +31,7 @@ test('Every rebuilt weapon has two physical grip markers and true world scale',(
     for(const hand of [g.right,g.left])hand.forEach(n=>assert.ok(Number.isFinite(n)));
   }
 });
-test('All nine gun models put left and right wrist within the real two-bone reach',()=>{
+test('All ten gun models put left and right wrist within the real two-bone reach',()=>{
   for(const id of Object.keys(WORLD_WEAPON_GRIPS)){
     for(const [hand,side] of [['left',-1],['right',1]]){
       const solution=solveWeaponArmReach(toShoulder(id,hand),side);
@@ -44,7 +45,7 @@ test('All nine gun models put left and right wrist within the real two-bone reac
 test('Pistols extend in front of the torso but long-gun stocks stay against it',()=>{
   for(const id of ['10mm-pistol','pipe-pistol','iron-revolver'])
     assert.ok(WORLD_WEAPON_GRIPS[id].holdOffsetZ<=-.18);
-  for(const id of ['pipe-rifle','laser-musket','double-barrel-shotgun','pump-action-shotgun','bolt-hunting-rifle','pipe-smg'])
+  for(const id of ['pipe-rifle','laser-musket','double-barrel-shotgun','pump-action-shotgun','bolt-hunting-rifle','pipe-smg','heavy-sniper'])
     assert.equal(WORLD_WEAPON_GRIPS[id].holdOffsetZ,undefined);
 });
 test('SMG support hand meets wood and revolver support hand cups shared grip',()=>{

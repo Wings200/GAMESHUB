@@ -289,3 +289,15 @@ test('Automatic Pipe SMG report and physical magazine reload have timed sounds',
   assert.ok(onsets.length>=6);
   assert.ok(onsets.some(t=>t>10+2.75*.8));
 });
+
+
+test('W20.40 sniper fires a deep report and keeps all bolt contacts in 1.42s window',()=>{
+ const sniper=new WeaponAudio(FakeAudioContext);sniper.unlock();
+ sniper.gunshot('heavy-sniper');
+ assert.ok(sniper.context.events.filter(e=>e[0]==='start').length>=3);
+ const mechanical=new WeaponAudio(FakeAudioContext);mechanical.unlock();
+ mechanical.boltActionCycle(1.42);
+ const starts=mechanical.context.events.filter(e=>e[0]==='start').map(e=>e[1]);
+ assert.ok(starts.some(t=>t>10+1.42*.89));
+ assert.ok(starts.some(t=>t>10+1.42*.45&&t<10+1.42*.7));
+});

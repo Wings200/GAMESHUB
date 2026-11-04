@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,IRON_REVOLVER,PIPE_SMG,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,IRON_REVOLVER,PIPE_SMG,HEAVY_SNIPER,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -120,10 +120,10 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   assert.equal(w.magazine,11);
 });
 
-test('Thirteen weapon specifications have unique identities and different fire characteristics',()=>{
-  assert.equal(ARSENAL.length,13);
-  assert.equal(ARSENAL_IDS.length,13);
-  assert.equal(new Set(ARSENAL_IDS).size,13);
+test('Fourteen weapon specifications have unique identities and different fire characteristics',()=>{
+  assert.equal(ARSENAL.length,14);
+  assert.equal(ARSENAL_IDS.length,14);
+  assert.equal(new Set(ARSENAL_IDS).size,14);
   assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
   assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
   for(const w of ARSENAL){
@@ -132,7 +132,7 @@ test('Thirteen weapon specifications have unique identities and different fire c
     assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
   }
   const damage=new Set(ARSENAL.map(w=>w.damage));
-  assert.equal(damage.size,13);
+  assert.equal(damage.size,14);
   assert.ok(getWeaponSpec('pipe-smg').automatic);
   assert.ok(getWeaponSpec('service-carbine').automatic);
   assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);
@@ -397,4 +397,22 @@ test('Pipe SMG magazine swap reloads atomically rather than phantom bullets',()=
   updateWeapon(state,.02,PIPE_SMG);
   assert.equal(state.magazine,30);
   assert.equal(state.reserve,127);
+});
+
+
+test('W20.40 Wasteland Heavy Sniper is a distinct five-round bolt-action rifle',()=>{
+  assert.equal(HEAVY_SNIPER.id,'heavy-sniper');
+  assert.equal(HEAVY_SNIPER.kind,'sniper');
+  assert.equal(HEAVY_SNIPER.magazineSize,5);
+  assert.equal(HEAVY_SNIPER.automatic,false);
+  assert.ok(HEAVY_SNIPER.damage>BOLT_HUNTING_RIFLE.damage);
+  assert.ok(HEAVY_SNIPER.fireInterval>1.42);
+  assert.ok(ARSENAL_IDS.includes(HEAVY_SNIPER.id));
+  const state=createWeaponState(HEAVY_SNIPER);
+  const first=fireWeapon(state,HEAVY_SNIPER,()=>.5);
+  assert.equal(first.status,'fired');
+  assert.equal(state.magazine,4);
+  assert.notEqual(fireWeapon(state,HEAVY_SNIPER,()=>.5).status,'fired');
+  updateWeapon(state,2.0,HEAVY_SNIPER);
+  assert.equal(fireWeapon(state,HEAVY_SNIPER,()=>.5).status,'fired');
 });

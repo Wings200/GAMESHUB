@@ -71,6 +71,12 @@ export const PIPE_SMG=Object.freeze({
   damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.25,recoilDegrees:.78,
   pellets:1,automatic:true
 });
+export const HEAVY_SNIPER=Object.freeze({
+  id:'heavy-sniper',name:'Wasteland Heavy Sniper',kind:'sniper',
+  magazineSize:5,startingReserve:35,fireInterval:1.85,reloadSeconds:4.15,
+  damage:88,hipSpreadDegrees:6.5,adsSpreadDegrees:.025,
+  recoilDegrees:6.6,pellets:1,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
@@ -82,6 +88,7 @@ export const ARSENAL=Object.freeze([
   SCRAP_PISTOL,
   IRON_REVOLVER,
   PIPE_SMG,
+  HEAVY_SNIPER,
   Object.freeze({id:'service-carbine',name:'Service Carbine',kind:'carbine',
     magazineSize:24,startingReserve:120,fireInterval:.17,reloadSeconds:2.45,
     damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.10,recoilDegrees:1.45,
