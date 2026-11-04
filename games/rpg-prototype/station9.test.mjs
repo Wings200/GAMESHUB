@@ -95,7 +95,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -351,7 +351,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
@@ -420,7 +420,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -472,7 +472,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -485,7 +485,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -557,7 +557,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -696,7 +696,7 @@ test('W20.14 armor status figure has six independently driven sections',()=>{
   assert.match(source,/powerArmorIndicatorStatus\(powerArmorState,slot\)/);
   assert.match(source,/visualClass='armor-segment '\+part\.status/);
   assert.match(source,/id="visorArmorIndicator"|indicatorDescriptions\.join\(', '\)/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
@@ -725,7 +725,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -744,7 +744,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   assert.match(page,/W20\.10.*REAR ENTRY & SUIT SILHOUETTE/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
@@ -814,7 +814,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W20.37'));
+  assert.ok(page.includes('main.js?v=W20.38'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
@@ -881,7 +881,7 @@ test('W20.15 removes the two legacy teal camera-locked cockpit bars',()=>{
   const cockpit=armorVisual.slice(position);
   assert.doesNotMatch(cockpit,/BoxGeometry|MeshBasicMaterial|group\.add\(/);
   assert.match(source,/power-armor-visual\.mjs\?v=W20\.16/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   class FakeGroup{
     constructor(){this.children=[];this.visible=true;}
     add(child){this.children.push(child);}
@@ -1134,7 +1134,7 @@ test('W20.28 double barrel operates as a real twin-bore break action in both vie
   assert.match(sound,/breakActionReload\(rounds=2,duration=2\.65\)/);
   assert.match(sights,/'double-barrel-shotgun':Object\.freeze\(\{x:0,y:\.270/);
   assert.match(source,/double-barrel-ballistics\.mjs\?v=W20\.28/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W20.29 pump-action gun is a six-shell tube-fed weapon with synchronized cycling',()=>{
@@ -1144,7 +1144,7 @@ test('W20.29 pump-action gun is a six-shell tube-fed weapon with synchronized cy
   const sights=readFileSync(new URL('./weapon-sights.mjs',import.meta.url),'utf8');
   const handling=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
   const audio=readFileSync(new URL('./weapon-audio.mjs',import.meta.url),'utf8');
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
   assert.match(page,/EQUIP REBUILT WEAPON · 9 AVAILABLE/);
   assert.match(source,/createPumpActionShotgun\(THREE,camera,\{flareTexture:flareTex\}\)/);
   assert.match(source,/weaponVisuals\.set\(PUMP_ACTION_SHOTGUN.id,pumpActionVisual\)/);
@@ -1176,7 +1176,7 @@ test('W20.29 pump-action gun is a six-shell tube-fed weapon with synchronized cy
   assert.match(math,/export function pumpCyclePose\(/);
   assert.match(math,/export function pumpPelletDamage\(/);
   assert.match(source,/pump-action-shotgun\.mjs\?v=W20\.29/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W20.30 hunting rifle uses a five-round animated bolt and individual top-loaded brass',()=>{
@@ -1211,7 +1211,7 @@ test('W20.30 hunting rifle uses a five-round animated bolt and individual top-lo
   assert.match(hands,/id==='bolt-hunting-rifle'/);
   assert.match(audio,/boltActionCycle\(duration=\.88\)/);
   assert.match(audio,/boltActionReload\(rounds=1,duration=1\.51\)/);
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
   assert.match(page,/EQUIP REBUILT WEAPON · 9 AVAILABLE/);
 });
 
@@ -1223,7 +1223,7 @@ test('W20.31 green glowing thin hunting rifle sight is narrower without changing
   assert.match(gun,/HuntingFrontSightGlow/);
   assert.match(gun,/sightLocal:new THREE\.Vector3\(0,\.290,-\.239\)/);
   assert.match(source,/hunting-rifle\.mjs\?v=W20\.31/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W20.32 Six-Shooter is an eight-weapon real-cylinder rebuild',()=>{
@@ -1254,7 +1254,7 @@ test('W20.32 Six-Shooter is an eight-weapon real-cylinder rebuild',()=>{
   assert.match(handling,/id==='iron-revolver'/);
   assert.match(sight,/'iron-revolver':Object\.freeze\(\{x:0,y:\.275/);
   assert.match(audio,/revolverReload\(rounds=6,duration=3\.48\)/);
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
   assert.match(page,/EQUIP REBUILT WEAPON · 9 AVAILABLE/);
 });
 
@@ -1271,7 +1271,7 @@ test('W20.33 resting revolver hands clasp the actual grip without floating',()=>
   assert.match(source,/visual\.gripHand\.visible=!handling\.active/);
   assert.match(source,/visual\.supportHand\.visible=!handling\.handVisible/);
   assert.match(source,/worn-revolver\.mjs\?v=W20\.33/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W20.34 Pipe SMG is the ninth rebuilt gun and the first fully automatic',()=>{
@@ -1303,7 +1303,7 @@ test('W20.34 Pipe SMG is the ninth rebuilt gun and the first fully automatic',()
   assert.match(sight,/'pipe-smg':Object\.freeze\(\{x:0,y:\.285,z:\.029/);
   assert.match(audio,/pipeSMGReload\(duration=2\.75\)/);
   assert.match(handling,/id==='pipe-smg'/);
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
   assert.match(page,/EQUIP REBUILT WEAPON · 9 AVAILABLE/);
 });
 
@@ -1338,8 +1338,8 @@ test('W20.35 third-person avatars physically grip nine world-held guns, includin
   assert.ok(npc.indexOf('gun.rotation.x=action.tilt')<npc.indexOf('avatar.update({dt'));
   assert.match(npc,/weaponPitch:aiming\?-.15:.11/);
   assert.match(source,/if\(WEAPON_REBUILD_MODE\)enemy\.rigged\.disarm\(\)/);
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });
 
 test('W20.36 right-side carry remains two-handed while sprint tilts each weapon down',()=>{
@@ -1360,15 +1360,15 @@ test('W20.36 right-side carry remains two-handed while sprint tilts each weapon 
   assert.match(source,/weapon-grip-ik\.mjs\?v=W20\.36/);
   assert.match(grip,/'pipe-smg':Object\.freeze/);
   assert.match(grip,/'pump-action-shotgun':Object\.freeze/);
-  assert.match(page,/W20\.37 · PER-WEAPON RECOIL/);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
+  assert.match(page,/main\.js\?v=W20\.38/);
   // Existing NPC gun-removal testing mode must remain honored.
   assert.match(source,/if\(WEAPON_REBUILD_MODE\)enemy\.rigged\.disarm\(\)/);
 });
 
 test('W20.37 nine per-weapon recoil curves affect firing, mouse compensation, ADS and third person',()=>{
   const recoil=readFileSync(new URL('./weapon-recoil.mjs',import.meta.url),'utf8');
-  assert.match(source,/from '\.\.\/weapon-recoil\.mjs\?v=W20\.37'/);
+  assert.match(source,/from '\.\.\/weapon-recoil\.mjs\?v=W20\.38'/);
   assert.match(source,/const viewRecoil=createWeaponRecoilState\(\)/);
   assert.match(source,/applyWeaponRecoil\(viewRecoil,camera\.rotation\.x,camera\.rotation\.y/);
   assert.match(source,/stepWeaponRecoil\(viewRecoil,camera\.rotation\.x,camera\.rotation\.y/);
@@ -1381,5 +1381,19 @@ test('W20.37 nine per-weapon recoil curves affect firing, mouse compensation, AD
     'double-barrel-shotgun','pump-action-shotgun','bolt-hunting-rifle',
     'iron-revolver','pipe-smg'])
     assert.ok(recoil.includes("'"+id+"'"),id);
-  assert.match(page,/main\.js\?v=W20\.37/);
+  assert.match(page,/main\.js\?v=W20\.38/);
+});
+
+test('W20.38 stronger default recoil preserves bullets-first shots and existing SPECIAL perks',()=>{
+  const recoil=readFileSync(new URL('./weapon-recoil.mjs',import.meta.url),'utf8');
+  const special=readFileSync(new URL('./special.mjs',import.meta.url),'utf8');
+  assert.match(recoil,/const BASE_CAMERA_KICK=2\.0/);
+  assert.match(recoil,/const MODEL_PUNCH=1\.65/);
+  assert.match(recoil,/const RECOVERY_SLOWDOWN=\.74/);
+  assert.match(source,/from '\.\.\/weapon-recoil\.mjs\?v=W20\.38'/);
+  assert.match(source,/multiplier:specialModifiers\.recoilMultiplier/);
+  assert.match(source,/const kick=applyWeaponRecoil/);
+  assert.match(special,/perk\('steady-grip','strength'/);
+  assert.match(page,/W20\.38 · HIGH-IMPACT RECOIL/);
+  assert.match(page,/main\.js\?v=W20\.38/);
 });

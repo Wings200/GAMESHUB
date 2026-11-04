@@ -1,10 +1,13 @@
-// W20.37: camera/viewmodel recoil for the nine rebuilt GAMESHUB firearms.
+// W20.38: deliberate high-impact recoil for nine rebuilt GAMESHUB firearms.
 // Shoot the projectile along the current sight before calling applyWeaponRecoil.
 // All angles supplied to and returned from this module are radians.
 const DEG=Math.PI/180;
 const PITCH_LIMIT=Math.PI/2-.035;
-const MAX_PITCH_DEBT=.36; // long bursts can climb ~20 degrees, not the old 5-degree ceiling
-const MAX_YAW_DEBT=.095;
+const MAX_PITCH_DEBT=.58; // sustained automatic fire can climb ~33 degrees
+const MAX_YAW_DEBT=.16;
+const BASE_CAMERA_KICK=2.0;
+const MODEL_PUNCH=1.65;
+const RECOVERY_SLOWDOWN=.74;
 const limit=(v,low,high)=>Math.max(low,Math.min(high,v));
 const finite=(v,fallback=0)=>Number.isFinite(v)?v:fallback;
 
@@ -50,19 +53,19 @@ export function applyWeaponRecoil(state,pitch,yaw,spec,options={}){
   state.sinceShot=0;
   const degrees=limit(finite(spec?.recoilDegrees,1.5),0,15);
   const multiplier=limit(finite(options.multiplier,1),0,4);
-  const stance=(options.aiming?.82:1)*(options.crouched?.87:1);
-  const requested=degrees*profile.pitch*multiplier*stance*DEG;
+  const stance=(options.aiming?.92:1)*(options.crouched?.90:1);
+  const requested=degrees*profile.pitch*BASE_CAMERA_KICK*multiplier*stance*DEG;
   const pitchAllowance=Math.min(requested,Math.max(0,MAX_PITCH_DEBT-state.pitchDebt),
     Math.max(0,PITCH_LIMIT-finite(pitch)));
   const nextPitch=limit(finite(pitch)+pitchAllowance,-PITCH_LIMIT,PITCH_LIMIT);
   state.pitchDebt=limit(state.pitchDebt+nextPitch-finite(pitch),0,MAX_PITCH_DEBT);
   const pattern=profile.pattern[shotIndex%profile.pattern.length];
-  const requestedYaw=profile.yaw*pattern*multiplier*stance*DEG;
+  const requestedYaw=profile.yaw*pattern*1.65*multiplier*stance*DEG;
   const nextYawDebt=limit(state.yawDebt+requestedYaw,-MAX_YAW_DEBT,MAX_YAW_DEBT);
   const appliedYaw=nextYawDebt-state.yawDebt;
   state.yawDebt=nextYawDebt;
-  state.modelPitch=limit(state.modelPitch+profile.model*multiplier*(options.aiming?.82:1),0,.28);
-  state.modelBack=limit(state.modelBack+profile.travel*multiplier,0,.11);
+  state.modelPitch=limit(state.modelPitch+profile.model*MODEL_PUNCH*multiplier*(options.aiming?.92:1),0,.38);
+  state.modelBack=limit(state.modelBack+profile.travel*1.6*multiplier,0,.16);
   return {pitch:nextPitch,yaw:finite(yaw)+appliedYaw,
     pitchKick:nextPitch-finite(pitch),yawKick:appliedYaw,
     shotInBurst:shotIndex+1};
@@ -84,15 +87,15 @@ export function stepWeaponRecoil(state,pitch,yaw,dt,spec){
   dt=limit(finite(dt),0,.1);
   const profile=weaponRecoilProfile(spec);
   state.sinceShot=Math.min(99,state.sinceShot+dt);
-  const modelDecay=Math.exp(-(profile.recover+5)*dt);
+  const modelDecay=Math.exp(-(profile.recover+4)*dt);
   state.modelPitch*=modelDecay;
-  state.modelBack*=Math.exp(-(profile.recover+7)*dt);
+  state.modelBack*=Math.exp(-(profile.recover+5)*dt);
   if(state.modelPitch<.00001)state.modelPitch=0;
   if(state.modelBack<.00001)state.modelBack=0;
   // Brief recoil impulse followed by a smooth, non-snapping return.
-  if(state.sinceShot<profile.hold)
+  if(state.sinceShot<profile.hold+.035)
     return {pitch:finite(pitch),yaw:finite(yaw)};
-  const recoveryFraction=1-Math.exp(-profile.recover*dt);
+  const recoveryFraction=1-Math.exp(-profile.recover*RECOVERY_SLOWDOWN*dt);
   const verticalReturn=Math.min(state.pitchDebt,state.pitchDebt*recoveryFraction);
   const nextPitch=limit(finite(pitch)-verticalReturn,-PITCH_LIMIT,PITCH_LIMIT);
   state.pitchDebt=Math.max(0,state.pitchDebt-Math.max(0,finite(pitch)-nextPitch));

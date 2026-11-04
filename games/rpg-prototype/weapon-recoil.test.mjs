@@ -49,7 +49,7 @@ test('SMG sustained fire accumulates view climb beyond legacy five-degree cap',(
     }
   }
   assert.ok(pitch>.085,'15 rounds should have noticeable upward climb');
-  assert.ok(pitch<.36,'bounded even for sustained spray');
+  assert.ok(pitch<.58,'bounded even for sustained spray');
   assert.ok(Math.abs(yaw)<.095,'horizontal drift remains bounded');
 });
 test('camera recovery is gradual, and never forces a downward firing kick',()=>{
@@ -94,4 +94,34 @@ test('recoil respects steep camera-pitch limits without accumulating phantom deb
   const hit=applyWeaponRecoil(s,almostVertical,0,DOUBLE_BARREL_SHOTGUN,{});
   assert.ok(hit.pitch<=Math.PI/2-.035+1e-9);
   assert.ok(s.pitchDebt<=.0010001);
+});
+
+test('W20.38 each rebuilt gun has a distinctly forceful ADS kick',()=>{
+  const minimumDegrees={
+    '10mm-pistol':2.6,
+    'pipe-pistol':4.2,
+    'pipe-rifle':4.9,
+    'laser-musket':3.0,
+    'double-barrel-shotgun':9.0,
+    'pump-action-shotgun':8.7,
+    'bolt-hunting-rifle':8.2,
+    'iron-revolver':6.8,
+    'pipe-smg':1.15
+  };
+  for(const spec of arsenal){
+    const recoil=createWeaponRecoilState();
+    const shot=applyWeaponRecoil(recoil,0,0,spec,{aiming:true});
+    assert.ok(shot.pitch*180/Math.PI>minimumDegrees[spec.id],
+      spec.id+' recoil should visibly move the camera, even in ADS');
+  }
+});
+test('W20.38 model movement grows with the heavier recoil without losing finite bounds',()=>{
+  for(const gun of arsenal){
+    const s=createWeaponRecoilState();
+    const hit=applyWeaponRecoil(s,0,0,gun,{});
+    assert.ok(Number.isFinite(hit.pitch)&&Number.isFinite(hit.yaw));
+    assert.ok(s.modelPitch>0&&s.modelPitch<=.38);
+    assert.ok(s.modelBack>0&&s.modelBack<=.16);
+    assert.ok(s.pitchDebt<=.58);
+  }
 });
