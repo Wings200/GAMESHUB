@@ -298,3 +298,15 @@ test('Power-armor loot preserves individual broken plate condition and core char
   assert.equal(Object.hasOwn(pack.items.find(i=>i.itemId==='armor:ranger-head'),
     'condition'),false,'Normal armor still has no durability');
 });
+
+test('Pipe rifle enters inventory catalog and preserves finite reserve on reload',()=>{
+  const backpack=createBackpack();
+  assert.equal(getItem('weapon:pipe-rifle').name,'Pipe Rifle');
+  assert.equal(getItem('ammo:pipe-rifle').category,'ammo');
+  assert.equal(ammoReserve(backpack,'pipe-rifle'),90);
+  assert.deepEqual(addItem(backpack,'ammo:pipe-rifle',37),
+    {added:37,leftover:0,full:false});
+  assert.equal(ammoReserve(backpack,'pipe-rifle'),127);
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(backpack)));
+  assert.equal(ammoReserve(restored,'pipe-rifle'),127);
+});

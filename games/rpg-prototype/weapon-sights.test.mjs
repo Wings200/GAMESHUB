@@ -8,7 +8,7 @@ test('Every playable weapon has a dedicated real-world sight reference',()=>{
   for(const w of ARSENAL){
     const s=sightMount(w.id);
     assert.ok(Number.isFinite(s.x)&&Number.isFinite(s.y)&&Number.isFinite(s.z));
-    assert.ok(s.adsZ<-.5&&s.adsZ>-.9);
+    assert.ok(s.adsZ<-.5&&s.adsZ>-1.3);
     assert.ok(s.y>=.15&&s.y<=.29,'optics and pistol irons must clear the receiver top');
     assert.ok(s.fov>=45&&s.fov<=66);
   }
@@ -102,4 +102,16 @@ test('Actual 10mm and pipe pistol bead TIPS are on the firing ray in ADS',()=>{
     assert.ok(Math.abs(ads.y+tipY)<1e-8,id+' ADS camera misses front tip');
     assert.ok(isAlignedToBore(id,ads));
   }
+});
+
+test('Pipe rifle front tip is truly zeroed for first-person ADS',()=>{
+  const s=sightMount('pipe-rifle');
+  assert.equal(s.optic,'iron');
+  assert.equal(s.y,.258);
+  assert.ok(s.adsZ<=-1,'long stock must not sit behind camera');
+  assert.deepEqual(compatibleOptics('pipe-rifle'),['factory']);
+  assert.equal(sightForOptic('pipe-rifle','scope-4x').optic,'iron');
+  const anchor=adsWeaponPosition('pipe-rifle');
+  assert.equal(anchor.y,-.258);
+  assert.ok(isAlignedToBore('pipe-rifle',anchor));
 });

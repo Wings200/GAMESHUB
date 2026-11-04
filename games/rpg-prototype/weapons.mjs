@@ -29,9 +29,16 @@ export const PIPE_PISTOL=Object.freeze({
   damage:17,hipSpreadDegrees:3.35,adsSpreadDegrees:.24,
   recoilDegrees:2.35,pellets:1,automatic:false
 });
+export const PIPE_RIFLE=Object.freeze({
+  id:'pipe-rifle',name:'Pipe Rifle',kind:'carbine',
+  magazineSize:15,startingReserve:90,fireInterval:.44,reloadSeconds:2.65,
+  damage:34,hipSpreadDegrees:3.15,adsSpreadDegrees:.13,
+  recoilDegrees:2.85,pellets:1,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
+  PIPE_RIFLE,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,

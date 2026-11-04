@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.20';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.20';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.24';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.24';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.23';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.20';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.24';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.24';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -27,6 +27,7 @@ import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visua
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.23';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
+import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.24';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
@@ -61,7 +62,7 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id]);
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id]);
 const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
@@ -2907,7 +2908,10 @@ weaponVisuals.set(NEW_WEAPON_ID,createTenMillimeterPistol(THREE,camera,{flareTex
 const pipePistolVisual=createPipePistol(THREE,camera,{flareTexture:flareTex});
 pipePistolVisual.root.visible=false;
 weaponVisuals.set(PIPE_PISTOL.id,pipePistolVisual);
-// Retire all legacy viewmodels, keeping only the new pistol on the camera.
+const pipeRifleVisual=createPipeRifle(THREE,camera,{flareTexture:flareTex});
+pipeRifleVisual.root.visible=false;
+weaponVisuals.set(PIPE_RIFLE.id,pipeRifleVisual);
+// Retire all legacy viewmodels, keeping only newly authored weapons.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
   if(REBUILT_WEAPON_IDS.includes(id))continue;
   visual.root.visible=false;
@@ -3143,7 +3147,8 @@ function shoot(){
     weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
   sound.gunshot(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
-    activeWeaponId===PIPE_PISTOL.id?'pipe':activeSpec.kind||'pistol');
+    activeWeaponId===PIPE_PISTOL.id?'pipe':
+    activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol');
   // Hearing is not sight: unalerted guards investigate the last shot with
   // positional uncertainty, and never aim at a hidden moving player.
   for(const enemy of enemies.values())
@@ -3151,7 +3156,8 @@ function shoot(){
       hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
   recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
-  slideCycle=activeSpec.kind==='shotgun'?.48:
+  slideCycle=activeWeaponId===PIPE_RIFLE.id?.23:
+    activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
   ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
@@ -3298,7 +3304,8 @@ function reload(){
     emptyClickLatched=false;
     slideCycle=0;
     sound.reload(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
-      activeWeaponId===PIPE_PISTOL.id?'pipe':activeSpec.kind||'pistol',weaponState.reloadDuration/
+      activeWeaponId===PIPE_PISTOL.id?'pipe':
+      activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol',weaponState.reloadDuration/
       Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
@@ -3347,6 +3354,7 @@ const playerAvatar=createPlayerAvatar(scene);
 playerAvatar.setHeldWeapon(null);
 const heldTenMM=createTenMillimeterPistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPipePistol=createPipePistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldPipeRifle=createPipeRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4344,7 +4352,8 @@ function frame(){
   const handling=reloadPoseForWeapon(activeWeaponId,
     weaponState.reloadRemaining,weaponState.reloadDuration||activeSpec.reloadSeconds,
     weaponState.reloadRounds||null);
-  const cycleDuration=activeSpec.kind==='shotgun'?.48:
+  const cycleDuration=activeWeaponId===PIPE_RIFLE.id?.23:
+    activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
   const cycling=slideTravel(slideCycle,cycleDuration);
   visual.slideGroup.position.z=cycling+handling.slideOffset+
@@ -4414,7 +4423,8 @@ function frame(){
     // No procedural sway or rotation may shift it during ADS.
     alignActiveSight();
   }else{
-    const desired=new THREE.Vector3(visual.defaultX,-.31,-.77);
+    const desired=new THREE.Vector3(visual.defaultX,
+      visual.defaultY??-.31,visual.defaultZ??-.77);
     desired.x+=swayX;desired.y+=swayY;
     if(weaponMotion.sprinting)desired.y-=.10;
     if(handling.active){desired.x+=.045;desired.y-=.04;}
@@ -4621,6 +4631,7 @@ function frame(){
   playerAvatar.setHeldWeapon(WEAPON_REBUILD_MODE?null:activeWeaponId);
   heldTenMM.root.visible=activeWeaponId===TEN_MM_PISTOL.id;
   heldPipePistol.root.visible=activeWeaponId===PIPE_PISTOL.id;
+  heldPipeRifle.root.visible=activeWeaponId===PIPE_RIFLE.id;
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,

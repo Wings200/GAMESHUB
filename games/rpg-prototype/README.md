@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W20.23 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.24 + Forest Foundation 0.1
+
+## W20.24 · Third rebuilt weapon: Pipe Rifle
+
+- Added an original semi-automatic, 15-round **Pipe Rifle** (34 damage, 0.44s between shots, 2.65s reload, 90 starting reserve) as the third unlocked weapon. Cycle with Z/X or choose in the start menu. All legacy player/NPC weapons stay disabled.
+- Constructed the rifle from contiguous beveled metal shell, full-length barrel shroud, a formed wood stock and shoulder plate, real magazine well, right-side moving charging carrier, front/rear iron sights, trigger assembly and separate support/reload hands.
+- Sight beads are physically zeroed at **local Y=.258** and align with the camera center during planted ADS shots; no automatic spread reduction while moving.
+- Added a unique pipe-rifle gunshot signature, magazine-drop/rack reload choreography, ejected brass and muzzle effects. Infinite ammo mode applies to the new rifle; disabling the cheat restores finite reserves.
+- Third-person rifle uses the same authored components at a smaller scale; the old pistols, NPC collision fixes, armor and loot are preserved.
+- Added procedural model-fit, reload and sight tests plus integration smoke assertions. Workbench weapon modifiers remain intentionally disabled for a later settlement workbench phase.
 
 ## W20.23 · NPC hitbox alignment + infinite testing ammo
 

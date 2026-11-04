@@ -105,6 +105,7 @@ export class WeaponAudio {
     const sounds={
       '10mm':{crack:.17,body:.26,level:.31,freq:116},
       pipe:{crack:.13,body:.21,level:.26,freq:148},
+      'pipe-rifle':{crack:.16,body:.25,level:.28,freq:124},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
       smg:{crack:.065,body:.12,level:.20,freq:235},

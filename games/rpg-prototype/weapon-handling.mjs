@@ -53,7 +53,18 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     const down=rise(p,a,b),up=rise(p,c,d);
     return size*Math.max(0,down-up);
   };
-  if(id==='pipe-pistol'){
+  if(id==='pipe-rifle'){
+    // The 15-round box magazine releases straight DOWN from its real well,
+    // then the charging carrier cycles after the new magazine seats.
+    pose.magazineOffset=magSwap(.13,.36,.51,.74,.39);
+    pose.magazineAngle=pose.magazineOffset*.19;
+    pose.slideOffset=pulse(p,.79,.94)*.205;
+    const rackReach=rise(p,.74,.82);
+    pose.handX=-.09+rackReach*.25;
+    pose.handY=-.29-pose.magazineOffset*.93+rackReach*.40;
+    pose.handZ=-.14+rackReach*.28;
+    pose.tilt=.12*pulse(p,.14,.88);
+  }else if(id==='pipe-pistol'){
     // Side-loaded scrap magazine moves out to the left, not down the grip.
     pose.magazineOffset=magSwap(.13,.36,.53,.76,.38);
     pose.magazineAngle=-pose.magazineOffset*.38;

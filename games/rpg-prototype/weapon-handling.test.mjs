@@ -111,3 +111,24 @@ test('Pipe pistol reload removes its side magazine before pulling charging bolt'
   assert.equal(at(.99).magazineOffset,0);
   assert.equal(at(.99).slideOffset,0);
 });
+
+test('Pipe rifle performs a downward magazine change followed by bolt rack',()=>{
+  const pose=p=>reloadPoseForWeapon('pipe-rifle',2.65*(1-p),2.65);
+  const reach=pose(.08),pull=pose(.38),seat=pose(.66),rack=pose(.87),done=pose(1);
+  assert.equal(reach.magazineOffset,0);
+  assert.ok(pull.magazineOffset>.35);
+  assert.ok(seat.magazineOffset<pull.magazineOffset);
+  assert.equal(done.magazineOffset,0);
+  assert.equal(done.slideOffset,0);
+  assert.ok(rack.slideOffset>.12);
+  assert.ok(rack.handVisible);
+  assert.ok(rack.handZ>pull.handZ,'charging hand reaches back to the bolt');
+  assert.ok(rack.handX>pull.handX,'charging hand moves right to the carrier');
+  assert.ok(rack.handY>pull.handY,'charging hand rises from magazine to receiver');
+  assert.equal(rack.style,'pipe-rifle');
+  // Reload glove and charging carrier physically intersect at the rack phase.
+  const overlap=(a,aw,b,bw)=>Math.abs(a-b)<(aw+bw)/2;
+  assert.ok(overlap(rack.handX,.161,.128,.069));
+  assert.ok(overlap(rack.handY,.145,.125,.072));
+  assert.ok(overlap(rack.handZ,.170,.072+rack.slideOffset,.277));
+});
