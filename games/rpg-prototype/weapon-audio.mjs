@@ -109,6 +109,7 @@ export class WeaponAudio {
       'double-barrel':{crack:.20,body:.33,level:.32,freq:81},
       'pump-action':{crack:.17,body:.29,level:.29,freq:96},
       'hunting-bolt':{crack:.19,body:.32,level:.30,freq:104},
+      'pipe-smg':{crack:.088,body:.155,level:.22,freq:202},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
       smg:{crack:.065,body:.12,level:.20,freq:235},
@@ -169,6 +170,17 @@ export class WeaponAudio {
       this._tone(at,270,114,.11,.054,'triangle');
     }
     this._tone(t+d*.92,530,195,.075,.044,'triangle');
+  }
+  pipeSMGReload(duration=2.75){
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const d=Math.max(1.3,Math.min(4.0,Number.isFinite(duration)?duration:2.75));
+    this._tone(t+d*.09,690,260,.055,.044,'triangle'); // release latch
+    this._noiseBurst(t+d*.31,.14,.064,400,2700); // magazine out
+    this._tone(t+d*.56,385,150,.09,.054,'triangle'); // fresh magazine
+    this._noiseBurst(t+d*.75,.13,.070,340,3000); // magazine seats
+    this._tone(t+d*.86,610,195,.085,.054,'triangle'); // bolt catch
+    this._noiseBurst(t+d*.89,.08,.046,460,3100);
   }
   revolverReload(rounds=6,duration=3.48){
     if(!this.unlock())return;

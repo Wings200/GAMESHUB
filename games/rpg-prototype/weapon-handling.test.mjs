@@ -54,7 +54,8 @@ test('Six guns have different reload trajectories appropriate to their actions',
   assert.equal(new Set(poses.map(p=>p.style)).size,6);
   assert.ok(poses[0].magazineOffset>0&&poses[0].cylinderOpen===0);
   assert.ok(poses[1].cylinderOpen>.8&&poses[1].magazineVisible===false);
-  assert.ok(poses[2].magazineOffset>poses[3].magazineOffset);
+  assert.ok(poses[2].magazineOffset>0&&poses[2].magazineOffset<poses[3].magazineOffset);
+  assert.ok(poses[2].magazineAngle<0&&poses[3].magazineAngle>0);
   assert.equal(poses[4].magazineVisible,false);
   assert.ok(poses[4].roundVisible&&poses[4].roundIndex>=0);
   assert.ok(poses[5].boltOffset>.05&&poses[5].roundVisible);
@@ -201,4 +202,16 @@ test('Six-Shooter swings the actual cylinder, ejects and loads six shells one by
   assert.ok(at(.95).cylinderOpen<.01);
   assert.ok(Math.abs(at(.90).cylinderSpin-Math.PI*2)<1e-8);
   assert.equal(at(.53).magazineVisible,false);
+});
+
+test('Pipe SMG magazine slides sideways out before returning and bolt racks last',()=>{
+  const at=p=>reloadPoseForWeapon('pipe-smg',2.75*(1-p),2.75);
+  assert.ok(at(.15).magazineOffset<.001);
+  assert.ok(at(.42).magazineOffset>.24);
+  assert.ok(at(.64).magazineOffset>.10);
+  assert.ok(at(.93).magazineOffset<.001);
+  assert.ok(at(.85).slideOffset>.03);
+  assert.ok(at(.43).handX<-.30);
+  assert.equal(at(.42).roundVisible,false);
+  assert.equal(at(.99).slideOffset,0);
 });

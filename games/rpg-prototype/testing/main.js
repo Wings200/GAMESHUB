@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.32';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.32';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.34';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.34';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.32';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.32';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.34';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.34';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -35,6 +35,7 @@ import {createPumpActionShotgun} from '../pump-action-shotgun.mjs?v=W20.29';
 import {pumpCyclePose,pumpPelletDamage,PUMP_ACTION_TUNING} from '../pump-action-mechanics.mjs?v=W20.29';
 import {createHuntingRifle} from '../hunting-rifle.mjs?v=W20.31';
 import {createWornRevolver} from '../worn-revolver.mjs?v=W20.33';
+import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
@@ -72,7 +73,7 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id]);
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id,PIPE_SMG.id]);
 const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
@@ -2938,6 +2939,9 @@ weaponVisuals.set(BOLT_HUNTING_RIFLE.id,huntingRifleVisual);
 const wornRevolverVisual=createWornRevolver(THREE,camera,{flareTexture:flareTex});
 wornRevolverVisual.root.visible=false;
 weaponVisuals.set(IRON_REVOLVER.id,wornRevolverVisual);
+const pipeSMGVisual=createPipeSMG(THREE,camera,{flareTexture:flareTex});
+pipeSMGVisual.root.visible=false;
+weaponVisuals.set(PIPE_SMG.id,pipeSMGVisual);
 // Retire all legacy viewmodels, keeping only newly authored weapons.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
   if(REBUILT_WEAPON_IDS.includes(id))continue;
@@ -3287,7 +3291,8 @@ function shoot(){
   }
   emptyClickLatched=false;
   if(laserActive)sound.laserBlast(result.chargeLevel);
-  else sound.gunshot(activeWeaponId===BOLT_HUNTING_RIFLE.id?'hunting-bolt':
+  else sound.gunshot(activeWeaponId===PIPE_SMG.id?'pipe-smg':
+    activeWeaponId===BOLT_HUNTING_RIFLE.id?'hunting-bolt':
     activeWeaponId===PUMP_ACTION_SHOTGUN.id?'pump-action':
     activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?'double-barrel':
     activeWeaponId===TEN_MM_PISTOL.id?'10mm':
@@ -3305,6 +3310,7 @@ function shoot(){
     activeWeaponId===PUMP_ACTION_SHOTGUN.id?PUMP_ACTION_TUNING.cycleSeconds:
     activeWeaponId===BOLT_HUNTING_RIFLE.id?HUNTING_RIFLE_TUNING.cycleSeconds:
     activeWeaponId===IRON_REVOLVER.id?.26:
+    activeWeaponId===PIPE_SMG.id?.095:
     activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -3517,6 +3523,17 @@ function reload(){
       showShotNotice('NO SHOTGUN SHELLS · F TO RESTOCK');
     return;
   }
+  if(activeWeaponId===PIPE_SMG.id){
+    if(startWeaponReload(weaponState,activeSpec)){
+      emptyClickLatched=false;slideCycle=0;
+      sound.pipeSMGReload(weaponState.reloadDuration/
+        Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
+      showShotNotice('SIDE MAGAZINE · RELEASE / INSERT / CHARGE');
+      refreshWeaponHUD();
+    }else if(weaponState.magazine<activeSpec.magazineSize&&weaponState.reserve===0)
+      showShotNotice('NO SMG AMMO · F TO RESTOCK');
+    return;
+  }
   if(activeWeaponId===IRON_REVOLVER.id){
     const missing=Math.min(activeSpec.magazineSize-weaponState.magazine,weaponState.reserve);
     if(startWeaponReload(weaponState,activeSpec)){
@@ -3616,6 +3633,7 @@ const heldDoubleBarrel=createDoubleBarrelShotgun(THREE,playerAvatar.weaponSocket
 const heldPumpShotgun=createPumpActionShotgun(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldHuntingRifle=createHuntingRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldWornRevolver=createWornRevolver(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldPipeSMG=createPipeSMG(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4621,6 +4639,7 @@ function frame(){
     activeWeaponId===PUMP_ACTION_SHOTGUN.id?PUMP_ACTION_TUNING.cycleSeconds:
     activeWeaponId===BOLT_HUNTING_RIFLE.id?HUNTING_RIFLE_TUNING.cycleSeconds:
     activeWeaponId===IRON_REVOLVER.id?.26:
+    activeWeaponId===PIPE_SMG.id?.095:
     activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -4636,7 +4655,14 @@ function frame(){
     visual.capacitor.material.emissiveIntensity=.18+
       (weaponState.laserCharge||0)*.27+(activeCrank?.7:0);
   }
-  if(activeWeaponId===PIPE_PISTOL.id){
+  if(activeWeaponId===PIPE_SMG.id){
+    // Detachable 30-round stick slides out of its real side-mounted dock.
+    const travel=handling.magazineOffset;
+    visual.magazine.position.set(visual.magBaseX-travel*.72,
+      visual.magBaseY-travel*.40,visual.magBaseZ);
+    visual.magazine.rotation.z=handling.magazineAngle;
+    visual.magazineBase.visible=false;
+  }else if(activeWeaponId===PIPE_PISTOL.id){
     // Side-fed pipe magazine pulls OUTWARD from receiver, never through grip.
     visual.magazine.position.x=visual.magBaseX-handling.magazineOffset;
     visual.magazineBase.position.x=visual.magFootX-handling.magazineOffset;
@@ -4993,6 +5019,14 @@ function frame(){
   heldPumpShotgun.root.visible=activeWeaponId===PUMP_ACTION_SHOTGUN.id;
   heldHuntingRifle.root.visible=activeWeaponId===BOLT_HUNTING_RIFLE.id;
   heldWornRevolver.root.visible=activeWeaponId===IRON_REVOLVER.id;
+  heldPipeSMG.root.visible=activeWeaponId===PIPE_SMG.id;
+  heldPipeSMG.slideGroup.position.z=heldPipeSMG.root.visible?
+    slideTravel(slideCycle,.095)+handling.slideOffset:0;
+  if(heldPipeSMG.root.visible){
+    const travel=handling.magazineOffset;
+    heldPipeSMG.magazine.position.set(-.182-travel*.72,.060-travel*.40,-.153);
+    heldPipeSMG.magazine.rotation.z=handling.magazineAngle;
+  }
   if(heldWornRevolver.root.visible){
     const open=handling.active?handling.cylinderOpen:0;
     heldWornRevolver.cylinderYoke.rotation.y=open*1.12;

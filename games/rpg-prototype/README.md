@@ -1,3 +1,7 @@
+## W20.34 — First fully automatic rebuilt weapon: Pipe SMG
+
+New authored rusted Pipe SMG model with overlapping welded steel receiver, continuous barrel, wood handguard, connected stock, side-loaded 30-round stick magazine, and animated bolt. Both first-person hands visibly touch the grip/handguard; third-person rig has the same mechanical bolt and detachable magazine. The 10.5-round/sec automatic fire uses the established held-fire cooldown loop, with a new SMG report, casing ejection on each shot, and staged side magazine swap + bolt rack. Factory iron sights are aligned to the actual 3D front tip. All eight approved guns and the NPC disarm testing mode remain untouched.
+
 ## W20.33 — Revolver two-handed grip alignment
 
 Replaced the floating idle support-hand block with a supported two-handed revolver stance. Both glove palms now overlap the actual wood grip, with four individually modeled wrapping fingers and thumbs each, wrist cuffs, and forearms physically connected to each palm. The reload-hand choreography and first-/third-person revolver mechanics stay unchanged. Added geometry and source-level regression tests.

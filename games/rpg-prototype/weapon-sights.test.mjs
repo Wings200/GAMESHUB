@@ -159,3 +159,11 @@ test('Six-Shooter raised notch and slim front bead exactly center ADS',()=>{
   assert.deepEqual(compatibleOptics('iron-revolver'),['factory']);
   assert.ok(isAlignedToBore('iron-revolver'));
 });
+
+test('Pipe SMG is factory iron only and the tip is in the camera center ray',()=>{
+  const mount=sightMount('pipe-smg');
+  assert.equal(mount.y,.285);assert.equal(mount.z,.029);
+  assert.equal(mount.optic,'iron');
+  assert.deepEqual(compatibleOptics('pipe-smg'),['factory']);
+  assert.ok(isAlignedToBore('pipe-smg'));
+});

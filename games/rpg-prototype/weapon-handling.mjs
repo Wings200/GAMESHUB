@@ -158,13 +158,16 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     pose.handZ=-.217-.082*pose.shellProgress;
     pose.tilt=-.13*pulse(p,.11,.95);
   }else if(id==='pipe-smg'){
-    pose.magazineOffset=magSwap(.12,.34,.51,.70,.46);
+    // The real stick magazine slides LEFT from its side socket, dips down,
+    // then a fresh one comes back into the receiver at the same connection.
+    pose.magazineOffset=magSwap(.15,.38,.51,.76,.29);
     pose.magazineAngle=-pose.magazineOffset*.38;
-    pose.slideOffset=pulse(p,.76,.92)*.20;
-    pose.handX=-.24+rise(p,.75,.82)*.25;
-    pose.handY=-.22-pose.magazineOffset*.70;
-    pose.handZ=.08-.30*pulse(p,.76,.92);
-    pose.tilt=.11*pulse(p,.12,.76);
+    pose.slideOffset=pulse(p,.79,.95)*.175;
+    const rack=rise(p,.77,.82);
+    pose.handX=-.19-pose.magazineOffset*.76+rack*.36;
+    pose.handY=-.065-pose.magazineOffset*.48+rack*.30;
+    pose.handZ=-.16-rack*.12;
+    pose.tilt=.09*pulse(p,.12,.87);
   }else if(id==='service-carbine'){
     pose.magazineOffset=magSwap(.17,.38,.55,.72,.34);
     pose.magazineAngle=pose.magazineOffset*.34;

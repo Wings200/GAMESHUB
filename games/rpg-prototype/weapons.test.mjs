@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,IRON_REVOLVER,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,IRON_REVOLVER,PIPE_SMG,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -371,4 +371,30 @@ test('Six-Shooter chamber reload progressively transfers real reserve rounds',()
   assert.ok(Math.abs(gun.reloadDuration-(.96+.42*(6-loaded)))<1e-9);
   updateWeapon(gun,gun.reloadDuration+.01,IRON_REVOLVER);
   assert.equal(gun.magazine,6);assert.equal(gun.reserve,42);
+});
+
+test('Pipe SMG is a 30-round full-auto weapon with a measured burst cooldown',()=>{
+  assert.strictEqual(getWeaponSpec('pipe-smg'),PIPE_SMG);
+  assert.equal(PIPE_SMG.automatic,true);
+  assert.equal(PIPE_SMG.magazineSize,30);
+  assert.equal(PIPE_SMG.fireInterval,.095);
+  const state=createWeaponState(PIPE_SMG);
+  assert.equal(state.magazine,30);
+  for(let i=0;i<12;i++){
+    assert.equal(fireWeapon(state,PIPE_SMG,()=>.5).status,'fired');
+    assert.equal(fireWeapon(state,PIPE_SMG,()=>.5).status,'cooldown');
+    updateWeapon(state,.095,PIPE_SMG);
+  }
+  assert.equal(state.magazine,18);
+  assert.equal(state.reserve,150);
+});
+test('Pipe SMG magazine swap reloads atomically rather than phantom bullets',()=>{
+  const state=createWeaponState(PIPE_SMG);state.magazine=7;
+  assert.equal(startWeaponReload(state,PIPE_SMG),true);
+  assert.equal(state.reloadDuration,2.75);
+  updateWeapon(state,2.74,PIPE_SMG);
+  assert.equal(state.magazine,7);
+  updateWeapon(state,.02,PIPE_SMG);
+  assert.equal(state.magazine,30);
+  assert.equal(state.reserve,127);
 });

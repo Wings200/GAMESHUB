@@ -65,6 +65,12 @@ export const IRON_REVOLVER=Object.freeze({
   damage:38,hipSpreadDegrees:2.85,adsSpreadDegrees:.085,recoilDegrees:3.65,
   pellets:1,automatic:false
 });
+export const PIPE_SMG=Object.freeze({
+  id:'pipe-smg',name:'Pipe SMG',kind:'smg',
+  magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.75,
+  damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.25,recoilDegrees:.78,
+  pellets:1,automatic:true
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
@@ -75,10 +81,7 @@ export const ARSENAL=Object.freeze([
   BOLT_HUNTING_RIFLE,
   SCRAP_PISTOL,
   IRON_REVOLVER,
-  Object.freeze({id:'pipe-smg',name:'Pipe SMG',kind:'smg',
-    magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.1,
-    damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.34,recoilDegrees:.64,
-    pellets:1,automatic:true}),
+  PIPE_SMG,
   Object.freeze({id:'service-carbine',name:'Service Carbine',kind:'carbine',
     magazineSize:24,startingReserve:120,fireInterval:.17,reloadSeconds:2.45,
     damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.10,recoilDegrees:1.45,

@@ -277,3 +277,15 @@ test('Six-Shooter report and timed shell loading sound different from pistols',(
   const starts=full.context.events.filter(x=>x[0]==='start').map(x=>x[1]);
   assert.ok(starts.some(t=>t>10+3.48*.8));
 });
+
+test('Automatic Pipe SMG report and physical magazine reload have timed sounds',()=>{
+  const shot=new WeaponAudio(FakeAudioContext);shot.unlock();
+  shot.gunshot('pipe-smg');
+  const shotOnsets=shot.context.events.filter(x=>x[0]==='start').length;
+  assert.ok(shotOnsets>=3);
+  const loading=new WeaponAudio(FakeAudioContext);loading.unlock();
+  loading.pipeSMGReload(2.75);
+  const onsets=loading.context.events.filter(x=>x[0]==='start').map(x=>x[1]);
+  assert.ok(onsets.length>=6);
+  assert.ok(onsets.some(t=>t>10+2.75*.8));
+});
