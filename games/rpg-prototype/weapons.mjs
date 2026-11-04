@@ -15,7 +15,16 @@ export const SCRAP_PISTOL = Object.freeze({
 
 // W05.0 arsenal: authored, genuinely different test weapons. The original
 // Worn Scrap Pistol is preserved unchanged as the default for regression tests.
+export const TEN_MM_PISTOL=Object.freeze({
+  id:'10mm-pistol',name:'10mm Pistol',kind:'pistol',
+  magazineSize:12,startingReserve:72,fireInterval:.26,reloadSeconds:2.05,
+  damage:29,hipSpreadDegrees:2.45,adsSpreadDegrees:.14,
+  recoilDegrees:1.85,pellets:1,automatic:false
+});
+// New weapons come first. Six old definitions are retained for legacy tests,
+// but cannot be equipped in the active weapon-rebuild runtime.
 export const ARSENAL=Object.freeze([
+  TEN_MM_PISTOL,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -120,10 +120,10 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   assert.equal(w.magazine,11);
 });
 
-test('Six playable weapons have unique identities, different fire characteristics and models',()=>{
-  assert.equal(ARSENAL.length,6);
-  assert.equal(ARSENAL_IDS.length,6);
-  assert.equal(new Set(ARSENAL_IDS).size,6);
+test('Seven weapon specifications have unique identities and different fire characteristics',()=>{
+  assert.equal(ARSENAL.length,7);
+  assert.equal(ARSENAL_IDS.length,7);
+  assert.equal(new Set(ARSENAL_IDS).size,7);
   assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
   assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
   for(const w of ARSENAL){
@@ -132,7 +132,7 @@ test('Six playable weapons have unique identities, different fire characteristic
     assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
   }
   const damage=new Set(ARSENAL.map(w=>w.damage));
-  assert.equal(damage.size,6);
+  assert.equal(damage.size,7);
   assert.ok(getWeaponSpec('pipe-smg').automatic);
   assert.ok(getWeaponSpec('service-carbine').automatic);
   assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);
@@ -248,4 +248,22 @@ test('Recoil is restrained under bursts and settles quickly without pitching bel
     previous=pitch;
   }
   assert.ok(Math.abs(pitch-origin)<.00001);
+});
+
+test('New 10mm pistol is semi-auto and performs a finite, atomic magazine reload',()=>{
+  const spec=TEN_MM_PISTOL,state=createWeaponState(spec);
+  assert.equal(spec.magazineSize,12);
+  assert.equal(state.reserve,72);
+  assert.equal(spec.automatic,false);
+  const shot=fireWeapon(state,spec,()=>.5);
+  assert.equal(shot.status,'fired');
+  assert.equal(state.magazine,11);
+  assert.equal(fireWeapon(state,spec).status,'cooldown');
+  assert.equal(startWeaponReload(state,spec),true);
+  updateWeapon(state,spec.reloadSeconds*.5,spec);
+  assert.equal(state.magazine,11,'the physical magazine is still out');
+  updateWeapon(state,spec.reloadSeconds*.5,spec);
+  assert.equal(state.magazine,12);
+  assert.equal(state.reserve,71);
+  assert.equal(state.reloadRemaining,0);
 });

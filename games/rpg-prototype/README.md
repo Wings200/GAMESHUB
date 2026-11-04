@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W20.18 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.19 + Forest Foundation 0.1
+
+## W20.19 · First new gun: 10mm pistol
+
+- A brand-new original, heavyweight 10mm pistol is the only equipable player firearm in the testing area. Six legacy gun models and all NPC guns remain disabled and detached.
+- New first-person and third-person sidearm geometry has a separate slide, muzzle, iron sights, ejection port, grip, trigger, detachable magazine, and reload hand. Casing ejection, muzzle flash, sound and recoil use the physical model's components.
+- The 12-round magazine and 72-round test reserve use the existing authoritative ammo, hit detection, and staged reload state; stable ADS aligns its physical sight to the camera. F restores test ammunition.
+- Weapon modifications and the optics tab stay disabled until a later settlement-only weapons-workbench phase; next planned weapons: pipe pistol, pipe rifle, laser musket and shotgun.
+- The enemy AI keeps moving and detecting players but cannot use its retired guns. Nonweapon looting, armor, powered armor, and radar remain intact.
+
 
 ## W20.18 · Weapon-free reset before new firearm pass
 

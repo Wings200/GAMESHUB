@@ -9,7 +9,7 @@ test('Every playable weapon has a dedicated real-world sight reference',()=>{
     const s=sightMount(w.id);
     assert.ok(Number.isFinite(s.x)&&Number.isFinite(s.y)&&Number.isFinite(s.z));
     assert.ok(s.adsZ<-.5&&s.adsZ>-.9);
-    assert.ok(s.y>=.15&&s.y<=.23,'optic must be mounted low on the receiver');
+    assert.ok(s.y>=.15&&s.y<=.27,'optics and pistol irons must clear the receiver top');
     assert.ok(s.fov>=45&&s.fov<=66);
   }
   assert.equal(sightMount('hunting-rifle').optic,'scope');
@@ -66,4 +66,13 @@ test('Modular sights give real increasing magnification and respect weapons',()=
     sightForOptic('service-carbine','holo-b').fov);
   assert.equal(sightForOptic('service-carbine','holo-b').optic,'holo');
   assert.ok(OPTIC_MODS['scope-6x'].cost.glass>OPTIC_MODS['holo-a'].cost.glass);
+});
+
+test('New 10mm fixed iron sights zero the center of the camera ray',()=>{
+  const irons=sightMount('10mm-pistol');
+  assert.equal(irons.optic,'iron');
+  assert.ok(irons.y>.23);
+  assert.deepEqual(compatibleOptics('10mm-pistol'),['factory']);
+  assert.ok(isAlignedToBore('10mm-pistol'));
+  assert.equal(sightForOptic('10mm-pistol','scope-6x').optic,'iron');
 });

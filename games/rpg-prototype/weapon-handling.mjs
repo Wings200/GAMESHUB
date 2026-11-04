@@ -53,7 +53,16 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     const down=rise(p,a,b),up=rise(p,c,d);
     return size*Math.max(0,down-up);
   };
-  if(id==='scrap-pistol'){
+  if(id==='10mm-pistol'){
+    // Real magazine exchange then deliberate final slide rack.
+    pose.magazineOffset=magSwap(.16,.38,.58,.77,.42);
+    pose.magazineAngle=pose.magazineOffset*.23;
+    pose.slideOffset=pulse(p,.79,.95)*.15;
+    pose.handX=-.19+rise(p,.79,.90)*.17;
+    pose.handY=-.16-pose.magazineOffset*.84+pose.slideOffset*.8;
+    pose.handZ=.12-pose.slideOffset;
+    pose.tilt=.07*pulse(p,.11,.82);
+  }else if(id==='scrap-pistol'){
     pose.magazineOffset=magSwap(.16,.36,.56,.73,.39);
     pose.magazineAngle=pose.magazineOffset*.32;
     pose.slideOffset=pulse(p,.80,.95)*.17;

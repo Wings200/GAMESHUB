@@ -103,6 +103,7 @@ export class WeaponAudio {
     const t = this.context.currentTime + .005;
     // Different acoustic signatures per gun instead of the old universal pop.
     const sounds={
+      '10mm':{crack:.17,body:.26,level:.31,freq:116},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
       smg:{crack:.065,body:.12,level:.20,freq:235},
