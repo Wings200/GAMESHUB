@@ -1,4 +1,11 @@
-# Untitled RPG · Mechanics Lab W20.21 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.22 + Forest Foundation 0.1
+
+## W20.22 · Iron sight and bullet alignment
+
+- Re-zeroed the two active pistols to the **visible brass front blade tip**, not the receiver center: 10mm at .274 and pipe pistol at .247 local Y.
+- Aligned the pipe pistol's two rear brass dots with the front sight tip, for a level physical sight picture.
+- Grounded ADS shots still use the zero-spread camera-center ray. The weapon now visibly lines up with that ray; moving/jumping/hipfire spread remains by design.
+- Added explicit sight-tip and runtime pipe pistol geometry regression tests. No changes to gun silhouettes, damage, AI, ammo or power armor.
 
 ## W20.21 · Pipe pistol joined-geometry visual polish
 

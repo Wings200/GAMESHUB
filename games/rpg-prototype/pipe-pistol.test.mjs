@@ -76,7 +76,7 @@ test('Both iron sight supports meet the weapon instead of floating above it',()=
   assert.ok(rear.position.y-rear.geometry.height/2<.191,
     'rear rail must meet receiver');
   assert.ok(shroud.geometry instanceof ExtrudeGeometry);
-  assert.equal(model.sightLocal.y,.214);
+  assert.equal(model.sightLocal.y,.247);
 });
 
 test('World-held pistol shares the same connected parts at smaller scale',()=>{
@@ -86,4 +86,23 @@ test('World-held pistol shares the same connected parts at smaller scale',()=>{
   assert.ok(find(model.root,'MagazineSocket'));
   assert.ok(model.reloadHand);
   assert.ok(model.muzzleFlare);
+});
+
+test('Pipe pistol front/rear brass sight tips are at the ADS firing height',()=>{
+  const model=createPipePistol(THREE,new Group());
+  const bead=model.root.children.find(o=>
+    o.geometry instanceof BoxGeometry&&
+    Math.abs(o.geometry.height-.016)<1e-8&&
+    Math.abs(o.position.z+.683)<1e-8);
+  assert.ok(bead,'visible front brass bead exists');
+  const tipY=bead.position.y+bead.geometry.height/2;
+  assert.ok(Math.abs(tipY-model.sightLocal.y)<1e-8);
+  const rearBeads=model.root.children.filter(o=>
+    o.geometry instanceof BoxGeometry&&
+    Math.abs(o.geometry.height-.015)<1e-8&&
+    Math.abs(o.position.z-.163)<1e-8);
+  assert.equal(rearBeads.length,2);
+  for(const rear of rearBeads)
+    assert.ok(Math.abs(rear.position.y+rear.geometry.height/2-tipY)<1e-8,
+      'rear sight dots and front blade must form one level sight picture');
 });

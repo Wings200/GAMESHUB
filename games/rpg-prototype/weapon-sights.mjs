@@ -2,8 +2,8 @@
 // z is viewmodel distance from camera. x/y are real 3D sight coordinates,
 // never separately guessed "weapon ADS" offsets.
 export const SIGHT_MOUNTS=Object.freeze({
-  '10mm-pistol':Object.freeze({x:0,y:.238,z:-.14,adsZ:-.68,fov:63,optic:'iron'}),
-  'pipe-pistol':Object.freeze({x:0,y:.214,z:-.12,adsZ:-.72,fov:65,optic:'iron'}),
+  '10mm-pistol':Object.freeze({x:0,y:.274,z:-.14,adsZ:-.68,fov:63,optic:'iron'}),
+  'pipe-pistol':Object.freeze({x:0,y:.247,z:-.12,adsZ:-.72,fov:65,optic:'iron'}),
   'scrap-pistol':Object.freeze({x:0,y:.207,z:-.16,adsZ:-.64,fov:64,optic:'iron'}),
   'iron-revolver':Object.freeze({x:0,y:.165,z:-.19,adsZ:-.65,fov:62,optic:'iron'}),
   'pipe-smg':Object.freeze({x:0,y:.225,z:-.15,adsZ:-.62,fov:61,optic:'reflex'}),

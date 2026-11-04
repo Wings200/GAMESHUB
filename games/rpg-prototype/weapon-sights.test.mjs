@@ -9,7 +9,7 @@ test('Every playable weapon has a dedicated real-world sight reference',()=>{
     const s=sightMount(w.id);
     assert.ok(Number.isFinite(s.x)&&Number.isFinite(s.y)&&Number.isFinite(s.z));
     assert.ok(s.adsZ<-.5&&s.adsZ>-.9);
-    assert.ok(s.y>=.15&&s.y<=.27,'optics and pistol irons must clear the receiver top');
+    assert.ok(s.y>=.15&&s.y<=.29,'optics and pistol irons must clear the receiver top');
     assert.ok(s.fov>=45&&s.fov<=66);
   }
   assert.equal(sightMount('hunting-rifle').optic,'scope');
@@ -84,4 +84,22 @@ test('Pipe pistol iron sight and factory-only optics stay centered on bore',()=>
   assert.deepEqual(compatibleOptics('pipe-pistol'),['factory']);
   assert.ok(isAlignedToBore('pipe-pistol'));
   assert.equal(sightForOptic('pipe-pistol','scope-4x').optic,'iron');
+});
+
+test('Actual 10mm and pipe pistol bead TIPS are on the firing ray in ADS',()=>{
+  // Geometry is the top of the visible brass bead in each authored model.
+  // Checking just the model's old receiver-center anchor missed the mismatch:
+  // a few centimetres at the muzzle become serious vertical error at distance.
+  const tips=[
+    ['10mm-pistol',.267,.014],
+    ['pipe-pistol',.239,.016]
+  ];
+  for(const [id,beadY,beadHeight] of tips){
+    const mount=sightMount(id);
+    const tipY=beadY+beadHeight/2;
+    assert.ok(Math.abs(mount.y-tipY)<1e-8,id+' front blade tip is not zeroed');
+    const ads=adsWeaponPosition(id);
+    assert.ok(Math.abs(ads.y+tipY)<1e-8,id+' ADS camera misses front tip');
+    assert.ok(isAlignedToBore(id,ads));
+  }
 });

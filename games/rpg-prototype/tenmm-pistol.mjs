@@ -147,7 +147,7 @@ export function createTenMillimeterPistol(THREE,parent,{thirdPerson=false,flareT
   // reload and flash code. They map to actual mechanical components.
   return {root,slideGroup,magazine,magazineBase,reloadHand,
     muzzleGlow,muzzleFlare,trigger,magBaseY:-.325,magFootY:-.436,
-    flashScale:1.1,defaultX:.29,sightLocal:new THREE.Vector3(0,.238,-.14),
+    flashScale:1.1,defaultX:.29,sightLocal:new THREE.Vector3(0,.274,-.14),
     ejectionLocal:new THREE.Vector3(.13,.154,-.177),
     materials};
 }

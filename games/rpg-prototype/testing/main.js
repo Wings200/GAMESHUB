@@ -14,7 +14,7 @@ import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, ARSENAL, ARSENAL_IDS, getWeap
   shotSpreadDegrees } from '../weapons.mjs?v=W20.20';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.20';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.20';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.22';
 import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.20';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
@@ -25,8 +25,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.20';
-import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.20';
-import {createPipePistol} from '../pipe-pistol.mjs?v=W20.21';
+import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.22';
+import {createPipePistol} from '../pipe-pistol.mjs?v=W20.22';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.20';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,

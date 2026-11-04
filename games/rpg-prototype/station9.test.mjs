@@ -808,7 +808,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W20.21'));
+  assert.ok(page.includes('main.js?v=W20.22'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
@@ -922,7 +922,7 @@ test('W20.17 tap E searches nearby enemy drops and crates while suited; hold E e
 });
 
 
-test('W20.21 keeps only rebuilt pistols active after the pipe model fit pass',()=>{
+test('W20.22 keeps only rebuilt pistols active after the pipe model fit pass',()=>{
   const tenModel=readFileSync(new URL('./tenmm-pistol.mjs',import.meta.url),'utf8');
   const pipeModel=readFileSync(new URL('./pipe-pistol.mjs',import.meta.url),'utf8');
   const weaponRules=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
@@ -956,4 +956,14 @@ test('W20.21 keeps only rebuilt pistols active after the pipe model fit pass',()
   assert.match(source,/if\(WEAPON_REBUILD_MODE&&!playerGunEnabled\(\)\)return;\s*const result=fireWeapon/);
   assert.match(source,/function refreshInventoryUI\(\)/);
   assert.match(source,/function updateEnemyRadar\(\)/);
+});
+
+test('The live weapon view aims each rebuilt front tip through the camera ray',()=>{
+  assert.match(source,/import \{ sightMount, adsWeaponPosition, sightForOptic/);
+  assert.match(source,/function alignActiveSight\(\)\{[\s\S]*?adsWeaponPosition\(activeWeaponId\)/);
+  assert.match(source,/camera\.updateWorldMatrix\(true,false\)/);
+  assert.match(source,/firingRaycaster\.set\(camera\.position,shotVector\)/);
+  assert.match(source,/weapon-sights\.mjs\?v=W20\.22/);
+  assert.match(source,/tenmm-pistol\.mjs\?v=W20\.22/);
+  assert.match(source,/pipe-pistol\.mjs\?v=W20\.22/);
 });

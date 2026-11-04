@@ -98,7 +98,7 @@ export function createPipePistol(THREE,parent,{thirdPerson=false,flareTexture=nu
   rearSightRail.name='RearSightRail';
   for(const side of [-1,1]){
     box(.023,.061,.033,dark,side*.056,.228,.163);
-    box(.010,.015,.013,band,side*.056,.257,.163);
+    box(.010,.015,.013,band,side*.056,.2395,.163);
   }
   // Front pedestal connects to the *shroud*, instead of floating in air.
   const frontPedestal=box(.057,.094,.084,dark,0,.174,-.683);
@@ -174,6 +174,6 @@ export function createPipePistol(THREE,parent,{thirdPerson=false,flareTexture=nu
   return {root,slideGroup,magazine,magazineBase,reloadHand,trigger,
     muzzleGlow,muzzleFlare,magBaseX:-.211,magFootX:-.211,
     magBaseY:-.057,magFootY:-.197,flashScale:.83,defaultX:.29,
-    sightLocal:new THREE.Vector3(0,.214,-.12),
+    sightLocal:new THREE.Vector3(0,.247,-.12),
     ejectionLocal:new THREE.Vector3(.145,.137,.09)};
 }
