@@ -651,6 +651,18 @@ test('W13.0 normal field HUD and power visor are separate live displays',()=>{
   assert.match(source,/\$\('visorAmmo'\)\.textContent=loaded/);
   assert.match(source,/if\(e\.code==='F3'&&!e\.repeat\)/);
 });
+test('W20.12 power visor shows a live sprint-stamina bar apart from fusion fuel',()=>{
+  for(const id of ['visorStamina','visorStaminaFill','visorStaminaTrack','visorStaminaState'])
+    assert.ok(page.includes('id="'+id+'"'),id);
+  assert.match(page,/id="visorStaminaTrack" role="progressbar"/);
+  assert.match(page,/#powerVisorHud \.visor-stamina-track/);
+  assert.match(source,/\$\('fieldHud'\)\.classList\.toggle\('hidden',visorActive\|\|cinematic\)/);
+  assert.match(source,/const visorSprintAvailable=powerArmorMobility\(powerArmorState\)\.canSprint/);
+  assert.match(source,/\$\('visorStamina'\)\.textContent=staminaPct\+'%'/);
+  assert.match(source,/\$\('visorStaminaFill'\)\.style\.width=staminaPct\+'%'/);
+  assert.match(source,/\$\('visorStaminaTrack'\)\.setAttribute\('aria-valuenow',String\(staminaPct\)\)/);
+  assert.match(source,/\$\('visorStaminaState'\)\.textContent=!visorSprintAvailable\?'CORE OFFLINE'/);
+});
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
   assert.match(armorVisual,/const profilePlate=\(parent,w,h,d,material,outline,bulge=\.06\)=>/);
