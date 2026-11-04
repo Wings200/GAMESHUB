@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
 import {solveBoardingLeg} from './boarding-ik.mjs';
-import {solveWeaponArmReach} from './weapon-grip-ik.mjs?v=W20.35';
+import {solveWeaponArmReach} from './weapon-grip-ik.mjs?v=W20.36';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -231,7 +231,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     }
   }
   // Guns attach to an animated torso joint instead of hovering in world space.
-  const weaponSocket=group(torso,.025,.50,-.20);
+  const weaponSocket=group(torso,.17,.50,-.20);
   weaponSocket.name='TorsoWeaponSocket';
   // Third-person held weapon: the old rig had a socket, but no visible gun.
   // These meshes are purely cosmetic and follow the same animated torso.
@@ -441,7 +441,8 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
-    reloadStyle=null,reloadRounds=null,boardingPose=null,turnRate=null}){
+    reloadStyle=null,reloadRounds=null,boardingPose=null,turnRate=null,
+    weaponPitch=0}){
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
     const deltaYaw=previousYaw===null?0:
       Math.atan2(Math.sin(yaw-previousYaw),Math.cos(yaw-previousYaw));
@@ -479,6 +480,11 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+
       pose.hit*.10+pose.breath*.42;
     head.rotation.z=-pose.hit*.10+pose.turn*.06;
+    // Right-shoulder carry. Sprint lowers the entire weapon around the
+    // shared torso socket, so BOTH real handholds follow the dropped muzzle.
+    // Blended sprint keeps the muzzle from snapping as the player starts/stops.
+    weaponSocket.rotation.x=(Number.isFinite(weaponPitch)?weaponPitch:0)
+      -.76*pose.sprint;
     const boardingLegIKDebug=[];
     for(let i=0;i<2;i++){
       const leg=legs[i],arm=arms[i],sign=i===0?1:-1;

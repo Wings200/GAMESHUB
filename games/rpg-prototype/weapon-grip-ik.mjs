@@ -1,16 +1,16 @@
-// W20.35: Stable third-person handholds and a measurable two-bone arm reach.
+// W20.35: Right-shoulder third-person handholds and a measurable two-bone arm reach.
 // The points are inside actual stock/grip/fore-end parts of the rebuilt guns.
 // They are visual attachment targets, never hitboxes or firing origins.
 export const WORLD_WEAPON_GRIPS=Object.freeze({
   '10mm-pistol':Object.freeze({right:[.055,-.235,.187],left:[-.075,-.160,.108],scale:.66,holdOffsetZ:-.20}),
   'pipe-pistol':Object.freeze({right:[.065,-.247,.246],left:[-.082,-.197,.193],scale:.70,holdOffsetZ:-.20}),
-  'pipe-rifle':Object.freeze({right:[.065,-.285,.222],left:[-.095,-.048,-.572],scale:.68}),
-  'laser-musket':Object.freeze({right:[.070,-.292,.215],left:[-.092,-.060,-.576],scale:.68}),
-  'double-barrel-shotgun':Object.freeze({right:[.075,-.286,.215],left:[-.094,-.100,-.550],scale:.68}),
-  'pump-action-shotgun':Object.freeze({right:[.080,-.275,.207],left:[-.105,-.110,-.560],scale:.68}),
-  'bolt-hunting-rifle':Object.freeze({right:[.078,-.253,.197],left:[-.105,-.070,-.570],scale:.68}),
+  'pipe-rifle':Object.freeze({right:[.065,-.285,.222],left:[-.095,-.048,-.470],scale:.68}),
+  'laser-musket':Object.freeze({right:[.070,-.292,.215],left:[-.092,-.060,-.480],scale:.68}),
+  'double-barrel-shotgun':Object.freeze({right:[.075,-.286,.215],left:[-.094,-.100,-.500],scale:.68}),
+  'pump-action-shotgun':Object.freeze({right:[.080,-.275,.207],left:[-.105,-.110,-.540],scale:.68}),
+  'bolt-hunting-rifle':Object.freeze({right:[.078,-.253,.197],left:[-.105,-.070,-.500],scale:.68}),
   'iron-revolver':Object.freeze({right:[.105,-.246,.226],left:[-.092,-.245,.221],scale:.76,holdOffsetZ:-.18}),
-  'pipe-smg':Object.freeze({right:[.088,-.185,.239],left:[-.098,-.046,-.550],scale:.70})
+  'pipe-smg':Object.freeze({right:[.088,-.185,.239],left:[-.098,-.046,-.470],scale:.70})
 });
 export const GRIP_ARM_LENGTHS=Object.freeze({upper:.40,lower:.36});
 // Returns joint locations relative to an avatar shoulder in the torso frame.

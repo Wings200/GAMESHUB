@@ -9,14 +9,16 @@ const worldRootOffsets=Object.freeze({
   'bolt-hunting-rifle':[0,-.075,.033],
   'iron-revolver':[0,-.035,.03],'pipe-smg':[0,-.05,.02]
 });
-const socket=[.025,.50,-.20];
-const toShoulder=(id,hand)=>{
+const socket=[.17,.50,-.20];
+const toShoulder=(id,hand,pitch=0)=>{
   const p=WORLD_WEAPON_GRIPS[id],point=p[hand],offset=worldRootOffsets[id];
   const side=hand==='left'?-1:1;
+  const localY=offset[1]+point[1]*p.scale;
+  const localZ=offset[2]+(p.holdOffsetZ||0)+point[2]*p.scale;
   return [
     socket[0]+offset[0]+point[0]*p.scale-side*.392,
-    socket[1]+offset[1]+point[1]*p.scale-.53,
-    socket[2]+offset[2]+(p.holdOffsetZ||0)+point[2]*p.scale
+    socket[1]+Math.cos(pitch)*localY-Math.sin(pitch)*localZ-.53,
+    socket[2]+Math.sin(pitch)*localY+Math.cos(pitch)*localZ
   ];
 };
 test('Every rebuilt weapon has two physical grip markers and true world scale',()=>{
@@ -61,7 +63,7 @@ test('Reach solver clamps impossible targets instead of stretching upper or lowe
   assert.ok(near.elbow.every(Number.isFinite));
 });
 test('NPC foregrip and trigger grip also stay reachable using the same player arm rig',()=>{
-  const npcGunOffset=[0,-.06,-.04],npcGrips={right:[.075,-.19,-.025],left:[-.085,-.055,-.355]};
+  const npcGunOffset=[0,-.06,-.04],npcGrips={right:[.075,-.19,-.025],left:[-.085,-.055,-.285]};
   for(const [hand,side] of [['right',1],['left',-1]]){
     const p=npcGrips[hand],v=[
       socket[0]+npcGunOffset[0]+p[0]-side*.392,
@@ -71,5 +73,35 @@ test('NPC foregrip and trigger grip also stay reachable using the same player ar
     const pose=solveWeaponArmReach(v,side);
     assert.ok(pose.distance<.755);
     assert.ok(pose.upperError<1e-8&&pose.lowerError<1e-8);
+  }
+});
+
+test('Right-shoulder offset is visibly distinct from center and each wrist still meets the gun',()=>{
+  assert.ok(socket[0]>.15,'gun is still at the centerline');
+  for(const id of Object.keys(WORLD_WEAPON_GRIPS))
+    for(const [hand,side] of [['left',-1],['right',1]]){
+      const reach=solveWeaponArmReach(toShoulder(id,hand),side);
+      assert.ok(reach.distance<.751,id+' '+hand+' outside idle reach');
+    }
+});
+test('Sprinting drops the muzzle by rotating the entire weapon, not by detaching a hand',()=>{
+  for(const id of Object.keys(WORLD_WEAPON_GRIPS)){
+    const g=WORLD_WEAPON_GRIPS[id];
+    // Forward muzzle is roughly 1 m in front of the stock; negative X pitch
+    // must LOWER its Y position instead of raising it.
+    const muzzleLocalY=.14,muzzleLocalZ=-1.03;
+    const muzzleAtRest=muzzleLocalY;
+    const muzzleSprinting=Math.cos(-.76)*muzzleLocalY-
+      Math.sin(-.76)*muzzleLocalZ;
+    assert.ok(muzzleSprinting<muzzleAtRest-.5,id+' muzzle did not lower');
+    for(const phase of [0,-.18,-.38,-.58,-.76]){
+      for(const [hand,side] of [['left',-1],['right',1]]){
+        const pos=toShoulder(id,hand,phase);
+        const solution=solveWeaponArmReach(pos,side);
+        assert.ok(solution.distance<.755,
+          id+' '+hand+' cannot hold weapon at pitch '+phase);
+        assert.ok(solution.upperError<1e-8&&solution.lowerError<1e-8);
+      }
+    }
   }
 });
