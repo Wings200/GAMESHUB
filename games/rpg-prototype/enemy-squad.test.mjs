@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEnemyBrain} from './enemy-ai.mjs';
 import {createSquadIntel,reportSquadContact,stepSquadIntel,
-  shareSquadContact,squadSeparation,occupiedSquadCover,clearSquadIntel
+  shareSquadContact,squadSeparation,occupiedSquadCover,clearSquadIntel,
+  reactToAllyDown
 } from './enemy-squad.mjs';
 const mk=(id,x,z)=>({id,brain:createEnemyBrain({x,z,
   yaw:-Math.PI/2,patrol:[{x,z}]}),state:{alive:true},tactics:{coverPoint:null}});
@@ -56,4 +57,29 @@ test('Two enemies can reserve different cover points',()=>{
     {x:45,z:38},{x:52,z:42}
   ]);
   assert.deepEqual(occupiedSquadCover(team,'scout'),[{x:52,z:42}]);
+});
+
+test('W20.50 a fallen teammate prompts nearby allies to investigate without a wallhack',()=>{
+  const team=[mk('scout',40,40),mk('raider',45,40),
+    mk('enforcer',80,40)];
+  team[0].state.alive=false;
+  const wall={minX:42,maxX:43,minZ:37,maxZ:43,height:3};
+  assert.equal(reactToAllyDown(team,team[0],[wall],()=>.5),1);
+  const witness=team[1].brain;
+  assert.equal(witness.mode,'investigate-noise');
+  assert.equal(witness.spotted,false);
+  assert.equal(witness.lastSeen,null,
+    'an ally death cannot report the shooter as directly seen');
+  assert.ok(witness.noiseTime>0&&witness.memory>0);
+  assert.notDeepEqual(witness.noiseTarget,{x:40,z:40});
+  assert.equal(team[2].brain.mode,'patrol','distant bot does not learn remotely');
+});
+
+test('W20.50 confirmed target engagement takes priority over a casualty search',()=>{
+  const team=[mk('scout',40,40),mk('raider',45,40)];
+  team[0].state.alive=false;
+  team[1].brain.spotted=true;
+  team[1].brain.mode='chase';
+  assert.equal(reactToAllyDown(team,team[0],[],()=>.5),0);
+  assert.equal(team[1].brain.mode,'chase');
 });

@@ -189,6 +189,7 @@ export function createNpcAvatar(parent,kind){
     avatar.setArmor(npcCosmeticArmor(loadout));
   }
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,aimPitch=0,
+    searchYaw=0,
     reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
@@ -249,6 +250,13 @@ export function createNpcAvatar(parent,kind){
        // target should look level; an elevated opponent must look upward.
        weaponPitch:aiming?verticalAim:.11,
       turnRate:step>0?yawDelta/step:0});
+    // Investigation is not just a straight walk toward remembered coordinates.
+    // Look around corners while advancing, without swinging the whole rifle
+    // or steering toward a hidden player. Hit joints follow the visible head.
+    const glance=Math.max(-.72,Math.min(.72,
+      Number.isFinite(searchYaw)?searchYaw:0));
+    avatar.hitJoints.head.rotation.y=glance;
+    avatar.hitJoints.torso.rotation.y+=glance*.15;
 
   }
   function disarm(){

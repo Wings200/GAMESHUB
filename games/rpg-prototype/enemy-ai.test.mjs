@@ -334,3 +334,36 @@ test('W20.49 rendered solid box stops sight even without a movement collider',()
   assert.equal(hasSight(guard,target,[wall]),false);
   assert.equal(visibleTargetHeight(guard,target,[wall]),null);
 });
+
+test('W20.50 an investigating guard scans side angles while moving on known intel',()=>{
+  const guard=createEnemyBrain({x:0,z:0,yaw:0,patrol:[{x:0,z:0}]});
+  alertEnemy(guard,{x:0,z:9});
+  let left=false,right=false,moved=false;
+  for(let i=0;i<90;i++){
+    stepEnemyBrain(guard,{x:25,z:-24},.05,[],{
+      targetVisible:false,area:{minX:-35,maxX:35,minZ:-35,maxZ:35}});
+    left ||= guard.scanYaw<-.3;
+    right ||= guard.scanYaw>.3;
+    moved ||= guard.z>2;
+    assert.deepEqual(guard.lastSeen,{x:0,z:9});
+    assert.equal(guard.spotted,false);
+  }
+  assert.ok(left&&right&&moved,'NPC moves and looks both left and right');
+  const observer={...guard,x:0,z:0,yaw:0,scanYaw:.65};
+  const peripheral={x:9,z:-2};
+  assert.equal(hasSight({...observer,scanYaw:0},peripheral),false);
+  assert.equal(hasSight(observer,peripheral),true,
+    'head sweep must actually expand visual acquisition');
+});
+
+test('W20.50 swept wall collision never lets pursuit cross a thin barrier',()=>{
+  const wall={minX:4,maxX:4.12,minZ:-4,maxZ:4,bottom:0,top:3};
+  const guard=createEnemyBrain({x:8,z:0,yaw:-Math.PI/2,
+    patrol:[{x:8,z:0}]});
+  for(let i=0;i<150;i++){
+    stepEnemyBrain(guard,{x:0,z:0},.05,[wall],{
+      targetVisible:true,area:{minX:-10,maxX:10,minZ:-10,maxZ:10}});
+    assert.ok(guard.x>=wall.maxX+AI_TUNING.collisionRadius-.02,
+      'even the movement swept between frames must remain outside wall');
+  }
+});

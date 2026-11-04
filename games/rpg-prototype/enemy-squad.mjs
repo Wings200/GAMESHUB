@@ -1,6 +1,6 @@
 // W05.4 tactical communications: shared LAST KNOWN position, not wallhacks.
 // Autonomous bots require their own clear line of sight before firing.
-import {AI_TUNING,alertEnemy,hasSight} from './enemy-ai.mjs';
+import {AI_TUNING,alertEnemy,hasSight,lineIntersectsBox} from './enemy-ai.mjs';
 const hypot=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export const SQUAD_TUNING=Object.freeze({alertSeconds:4.4,hearingRange:24,spacing:1.35});
 export function createSquadIntel(){
@@ -44,6 +44,40 @@ export function shareSquadContact(intel,team,obstacles=[],player){
     }
   }
   return notified;
+}
+// A nearby ally going down is an observable event even when this guard has
+// never been shot. It creates a casualty-area search, NOT knowledge of the
+// unseen killer. Already sighted guards keep their confirmed engagement.
+export function reactToAllyDown(team,fallen,obstacles=[],rng=Math.random){
+  const point=fallen?.brain||fallen;
+  if(!Number.isFinite(point?.x)||!Number.isFinite(point?.z))return 0;
+  let responders=0;
+  for(const member of team){
+    if(!member?.state?.alive||!member.brain?.active||
+       member===fallen||member.id===fallen?.id)continue;
+    const brain=member.brain;
+    const d=hypot(brain,point);
+    if(d>24||brain.spotted)continue;
+    const blocked=obstacles.some(box=>
+      lineIntersectsBox(brain,point,box,.03));
+    // Close teammates hear the impact even across a wall; distant ones
+    // must have an unobstructed path to the incident.
+    if(blocked&&d>12)continue;
+    const value=Number(rng());
+    const angle=(Number.isFinite(value)?Math.max(0,Math.min(1,value)):.5)*
+      Math.PI*2;
+    const uncertainty=blocked?2.4:1.0;
+    brain.noiseTarget={x:point.x+Math.cos(angle)*uncertainty,
+      z:point.z+Math.sin(angle)*uncertainty};
+    brain.noiseTime=Math.max(brain.noiseTime,9);
+    brain.memory=Math.max(brain.memory,9);
+    brain.mode='investigate-noise';
+    brain.aimLockSeconds=0;
+    brain.routeGoal=null;brain.route=[];brain.routeFail=0;
+    brain.searchPause=0;
+    responders++;
+  }
+  return responders;
 }
 export function squadSeparation(enemy,team,radius=SQUAD_TUNING.spacing){
   let separationX=0,separationZ=0;

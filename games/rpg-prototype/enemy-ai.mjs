@@ -7,7 +7,8 @@ export const AI_TUNING=Object.freeze({
   stopDistance:2.7, waypointRadius:.48,
   lastSeenSeconds:24, hitRetaliationSeconds:9, searchSeconds:21,
   hearingRange:50,noiseMemorySeconds:10,
-  collisionRadius:.34, maxDelta:.05,
+  // Allow room for the visible shoulders and gun, not just the skeleton root.
+  collisionRadius:.46, maxDelta:.05,
   area:Object.freeze({minX:33.6,maxX:58.4,minZ:34.9,maxZ:49.3}),
   // Combat search may follow a last sighting beyond Station 9; normal patrol
   // waypoints still stay inside its original arena.
@@ -105,7 +106,9 @@ export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   // circling behind its body. The wall ray stays mandatory.
   const engaged=enemy.mode==='chase'&&enemy.memory>0&&d<=6;
   const cone=engaged?360:tuning.fieldOfViewDegrees;
-  if(Math.abs(angleDelta(targetAngle,enemy.yaw))>
+  // During a search the guard can actually NOTICE something its head
+  // turns toward; the rifle/body still needs alignment before firing.
+  if(Math.abs(angleDelta(targetAngle,enemy.yaw+(enemy.scanYaw||0)))>
     cone*Math.PI/360)return false;
   if(Number.isFinite(player.aimY)||Number.isFinite(player.headY))
     return visibleTargetHeight(enemy,player,obstacles)!==null;
@@ -127,7 +130,8 @@ export function createEnemyBrain(config){
     distanceToPlayer:Infinity,aimLockSeconds:0,
     searchIndex:0,searchPause:0,detour:null,
     noiseTarget:null,noiseTime:0,
-    routeGoal:null,route:[],routeFail:0
+    routeGoal:null,route:[],routeFail:0,
+    scanTime:0,scanYaw:0
   };
 }
 // Sound provides an approximate INVESTIGATION lead, never a confirmed
@@ -181,6 +185,7 @@ export function alertEnemy(enemy,player){
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
   enemy.noiseTarget=null;enemy.noiseTime=0;
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
+  enemy.scanTime=0;enemy.scanYaw=0;
   return enemy;
 }
 export function resetEnemyBrain(enemy){
@@ -193,6 +198,7 @@ export function resetEnemyBrain(enemy){
   enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
   enemy.noiseTarget=null;enemy.noiseTime=0;
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
+  enemy.scanTime=0;enemy.scanYaw=0;
   return enemy;
 }
 function blockedAt(x,z,obstacles,radius){
@@ -210,10 +216,15 @@ function moveToward(enemy,goal,speed,dt,obstacles,area,tuning,faceMovement=true)
   const x=clamp(enemy.x+sx,area.minX,area.maxX);
   const z=clamp(enemy.z+sz,area.minZ,area.maxZ);
   let moved=false;
-  if(!blockedAt(x,enemy.z,obstacles,tuning.collisionRadius)){
+  // Check the entire swept step, not just the destination. An NPC must
+  // never jump across a thin wall between fixed simulation frames.
+  const start={x:enemy.x,z:enemy.z};
+  if(!obstacles.some(box=>lineIntersectsBox(start,
+    {x,z:enemy.z},box,tuning.collisionRadius))){
     moved||=Math.abs(enemy.x-x)>.0001;enemy.x=x;
   }
-  if(!blockedAt(enemy.x,z,obstacles,tuning.collisionRadius)){
+  if(!obstacles.some(box=>lineIntersectsBox(
+    {x:enemy.x,z:enemy.z},{x:enemy.x,z},box,tuning.collisionRadius))){
     moved||=Math.abs(enemy.z-z)>.0001;enemy.z=z;
   }
   enemy.moving=moved;
@@ -412,5 +423,15 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   enemy.z=clamp(enemy.z,area.minZ,area.maxZ);
   enemy.actualSpeed=Math.hypot(enemy.x-previousX,enemy.z-previousZ)/step;
   enemy.moving=enemy.actualSpeed>.018;
+  // Look left/right WHILE investigating, including on the way to a clue.
+  // Head turns affect the next visual detection check but never invent
+  // player coordinates or change the NPC's route destination.
+  if(!seen&&['investigate','search','investigate-noise'].includes(enemy.mode)){
+    enemy.scanTime+=step*(enemy.moving?4.1:3.0);
+    enemy.scanYaw=Math.sin(enemy.scanTime)*.67;
+  }else{
+    enemy.scanYaw*=Math.exp(-8*step);
+    if(seen)enemy.scanTime=0;
+  }
   return enemy;
 }
