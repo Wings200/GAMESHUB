@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W20.27 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.28 + Forest Foundation 0.1
+
+## W20.28 · Double-Barrel Shotgun
+
+- Fifth rebuilt player weapon: original side-by-side hunting shotgun with full-length wooden stock, connected receiver/hinge, rotating twin-barrel assembly, true front/rear iron sight heights, twin visible chambers, moving shell extractor, two-shell capacity and individual red shells.
+- Left-click fires one shell (eight independently raycasted pellets), R physically breaks the barrels open, ejects spent red hulls, reloads missing shells by hand and locks the hinge shut. One-shell top-up takes 1.95 seconds; two-shell reload takes 2.65 seconds.
+- Each pellet delivers 10 base damage inside 5m, smoothly tapering to a 20% floor by 24m. Clear close-range identity and no full damage across the whole map.
+- First-person, third-person, power-armor compatibility and independent ammunition inventory. All previous four rebuilt firearms are preserved; NPCs stay disarmed. Weapon workbench attachments remain deferred.
+- Added sight, geometry, pellet-falloff and reload/sound integration regression checks.
 
 ## W20.27 · Laser Musket damage balancing
 

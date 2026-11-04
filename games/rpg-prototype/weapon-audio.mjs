@@ -106,6 +106,7 @@ export class WeaponAudio {
       '10mm':{crack:.17,body:.26,level:.31,freq:116},
       pipe:{crack:.13,body:.21,level:.26,freq:148},
       'pipe-rifle':{crack:.16,body:.25,level:.28,freq:124},
+      'double-barrel':{crack:.20,body:.33,level:.32,freq:81},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
       smg:{crack:.065,body:.12,level:.20,freq:235},
@@ -114,7 +115,7 @@ export class WeaponAudio {
       rifle:{crack:.15,body:.27,level:.29,freq:105}
     };
     const v=sounds[kind]||sounds.pistol;
-    this._noiseBurst(t,v.crack,v.level,kind==='shotgun'?120:330,
+    this._noiseBurst(t,v.crack,v.level,(kind==='shotgun'||kind==='double-barrel')?120:330,
       kind==='smg'?7500:6800);
     this._noiseBurst(t+.011,v.body,Math.min(.22,v.level*.55),85,1350);
     // Low report and a quieter atmospheric tail stop shots from sounding
@@ -122,6 +123,25 @@ export class WeaponAudio {
     this._noiseBurst(t+.065,Math.max(.26,v.body*1.3),v.level*.20,65,950);
     this._tone(t,v.freq,Math.max(38,v.freq*.36),Math.min(.25,v.body),.22,'triangle');
     this._tone(t+.008,kind==='smg'?1300:840,400,.085,.036,'sawtooth');
+  }
+  breakActionReload(rounds=2,duration=2.65){
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const d=Math.max(1.2,Math.min(3.4,Number.isFinite(duration)?duration:2.65));
+    const count=Math.max(1,Math.min(2,Number.isInteger(rounds)?rounds:2));
+    // Open latch; hinged heavy metal swing; empty hulls pop, then soft
+    // cartridge seating contacts and a firm final closure.
+    this._tone(t,620,180,.12,.055,'triangle');
+    this._noiseBurst(t+d*.15,.17,.075,110,1600);
+    this._tone(t+d*.24,155,76,.21,.061,'triangle');
+    this._noiseBurst(t+d*.32,.11,.06,560,3900);
+    for(let i=0;i<count;i++){
+      const at=t+d*(.53+i*.18/Math.max(1,count-1));
+      this._noiseBurst(at,.095,.055,720,2800);
+      this._tone(at,420,180,.10,.049,'triangle');
+    }
+    this._noiseBurst(t+d*.91,.17,.10,80,1650);
+    this._tone(t+d*.91,175,78,.19,.074,'triangle');
   }
   laserCrank(chargeLevel=1) {
     if(!this.unlock())return;

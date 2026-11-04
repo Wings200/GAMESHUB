@@ -46,14 +46,30 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
   const base=reloadVisualState(remaining,duration);
   const pose={...base,style:id,roundVisible:false,roundIndex:-1,
     shellProgress:0,cylinderOpen:0,cylinderSpin:0,boltOffset:0,
-    boltHandleLift:0,pumpOffset:0,ejector:0};
+    boltHandleLift:0,pumpOffset:0,ejector:0,breakAngle:0};
   if(!base.active)return pose;
   const p=base.progress;
   const magSwap=(a,b,c,d,size)=>{
     const down=rise(p,a,b),up=rise(p,c,d);
     return size*Math.max(0,down-up);
   };
-  if(id==='laser-musket'){
+  if(id==='double-barrel-shotgun'){
+    // The hinge is visible and physically pulls both bores downward.
+    // Spent hulls lift out before hand-loading the missing chambers.
+    const open=rise(p,.09,.27),close=rise(p,.81,.97);
+    pose.breakAngle=1.02*open*(1-close);
+    pose.ejector=pulse(p,.28,.38)*.135;
+    pose.magazineVisible=false;pose.magazineOffset=0;pose.slideOffset=0;
+    pose.roundVisible=p>=.43&&p<.82;
+    const count=Math.max(1,Math.min(2,Number.isInteger(roundCount)?roundCount:2));
+    const u=clamp01((p-.43)/.39)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(u));
+    pose.shellProgress=u-Math.floor(u);
+    pose.handX=(pose.roundIndex===0?-.13:.13);
+    pose.handY=-.16+.11*Math.sin(Math.PI*pose.shellProgress);
+    pose.handZ=-.28-.16*pose.shellProgress;
+    pose.tilt=.12*pulse(p,.12,.86);
+  }else if(id==='laser-musket'){
     // Swap the six-cell capacitor pack with a deliberate vertical motion.
     pose.magazineOffset=magSwap(.15,.39,.55,.78,.40);
     pose.magazineAngle=pose.magazineOffset*.13;

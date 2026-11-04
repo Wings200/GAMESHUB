@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.27';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.26';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.28';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.28';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.26';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.26';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.28';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.28';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -29,6 +29,8 @@ import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
 import {createLaserMusket} from '../laser-musket.mjs?v=W20.26';
+import {createDoubleBarrelShotgun} from '../double-barrel-shotgun.mjs?v=W20.28';
+import {doubleBarrelPelletDamage} from '../double-barrel-ballistics.mjs?v=W20.28';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
@@ -65,7 +67,7 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id]);
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id]);
 const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
@@ -2919,6 +2921,9 @@ weaponVisuals.set(PIPE_RIFLE.id,pipeRifleVisual);
 const laserMusketVisual=createLaserMusket(THREE,camera,{flareTexture:flareTex});
 laserMusketVisual.root.visible=false;
 weaponVisuals.set(LASER_MUSKET.id,laserMusketVisual);
+const doubleBarrelVisual=createDoubleBarrelShotgun(THREE,camera,{flareTexture:flareTex});
+doubleBarrelVisual.root.visible=false;
+weaponVisuals.set(DOUBLE_BARREL_SHOTGUN.id,doubleBarrelVisual);
 // Retire all legacy viewmodels, keeping only newly authored weapons.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
   if(REBUILT_WEAPON_IDS.includes(id))continue;
@@ -2943,6 +2948,7 @@ function changeAim(enabled){
 let lastShotDebug=null;
 let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
+let shotgunPendingEjections=0;
 let groundedStepProgress=0;
 function selectWeapon(id){
   if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(id))return; // only rebuilt guns allowed
@@ -2950,6 +2956,7 @@ function selectWeapon(id){
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
   cancelWeaponReload(weaponState);
+  shotgunPendingEjections=0;
   if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   activeWeaponId=id;activeSpec=spec;
@@ -3024,6 +3031,32 @@ function ejectCasing(){
   scene.add(body);
   casings.push({mesh:body,state});
   if(casings.length>CASING_TUNING.maxVisible)scene.remove(casings.shift().mesh);
+}
+const shotgunHullGeometry=new THREE.CylinderGeometry(.046,.046,.145,12);
+const shotgunPrimerGeometry=new THREE.CylinderGeometry(.048,.048,.019,12);
+const shotgunHullMat=mat(0x992d31,.88),shotgunPrimerMat=mat(0xc0a064,.55);
+function ejectDoubleBarrelHulls(count){
+  const gun=weaponVisuals.get(DOUBLE_BARREL_SHOTGUN.id);
+  if(!gun?.hingeGroup)return;
+  gun.hingeGroup.updateWorldMatrix(true,false);
+  casingRight.set(1,0,0).applyQuaternion(camera.quaternion);
+  casingForward.set(0,0,-1).applyQuaternion(camera.quaternion);
+  for(let i=0;i<Math.min(2,count);i++){
+    const side=i===0?-1:1;
+    const origin=new THREE.Vector3(side*.079,.138,.090)
+      .applyMatrix4(gun.hingeGroup.matrixWorld);
+    const state=createCasingState(origin,casingRight,casingForward);
+    state.vy+=.65;
+    const mesh=new THREE.Group();
+    const hull=new THREE.Mesh(shotgunHullGeometry,shotgunHullMat);
+    mesh.add(hull);
+    const primer=new THREE.Mesh(shotgunPrimerGeometry,shotgunPrimerMat);
+    primer.position.y=.077;mesh.add(primer);
+    mesh.position.copy(origin);mesh.rotation.z=Math.PI/2;
+    scene.add(mesh);casings.push({mesh,state});
+    if(casings.length>CASING_TUNING.maxVisible)
+      scene.remove(casings.shift().mesh);
+  }
 }
 function updateCasings(dt){
   for(let i=casings.length-1;i>=0;i--){
@@ -3176,7 +3209,8 @@ function shoot(){
     weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
   if(laserActive)sound.laserBlast(result.chargeLevel);
-  else sound.gunshot(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
+  else sound.gunshot(activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?'double-barrel':
+    activeWeaponId===TEN_MM_PISTOL.id?'10mm':
     activeWeaponId===PIPE_PISTOL.id?'pipe':
     activeWeaponId===PIPE_RIFLE.id?'pipe-rifle':activeSpec.kind||'pistol');
   // Hearing is not sight: unalerted guards investigate the last shot with
@@ -3186,10 +3220,11 @@ function shoot(){
       hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
   recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
-  slideCycle=laserActive?0:activeWeaponId===PIPE_RIFLE.id?.23:
+  slideCycle=laserActive||activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?0:
+    activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
-  if(!laserActive)ejectCasing();
+  if(!laserActive&&activeWeaponId!==DOUBLE_BARREL_SHOTGUN.id)ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
   let enemyDamageHits=0;
@@ -3252,6 +3287,8 @@ function shoot(){
     const destination=first?.point||camera.position.clone().addScaledVector(shotVector,85);
     laserTrails.spawn(origin,destination,result.chargeLevel);
   }
+  const damageThisPellet=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?
+    doubleBarrelPelletDamage(result.damage,first?.distance??105):result.damage;
   let impactMaterial=null;
   if(first){
     impactMaterial=getImpactMaterial(first);
@@ -3268,7 +3305,7 @@ function shoot(){
     const enemy=enemies.get(first.object.userData.enemyId);
     const critical=Math.random()<specialModifiers.critChance;
     const zone=first.object.userData.hitZone;
-    const boostedDamage=result.damage*specialModifiers.gunDamageMultiplier*
+    const boostedDamage=damageThisPellet*specialModifiers.gunDamageMultiplier*
       (zone==='head'?specialModifiers.headshotMultiplier:1)*
       (critical?specialModifiers.critDamageMultiplier:1);
     const hit=applyDamage(enemy.state,boostedDamage,zone);
@@ -3297,7 +3334,7 @@ function shoot(){
     }
   }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
-    const dummyDamage=applyDamage(dummy.state,result.damage,first.object.userData.hitZone);
+    const dummyDamage=applyDamage(dummy.state,damageThisPellet,first.object.userData.hitZone);
     if(dummyDamage.applied){
       dummy.flash=.2;dummy.impulse=1;
       for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0x553d20);
@@ -3359,6 +3396,19 @@ function reload(){
     return;
   }
   if(infiniteAmmo){showShotNotice('INFINITE AMMO · RELOAD NOT REQUIRED');return;}
+  if(activeWeaponId===DOUBLE_BARREL_SHOTGUN.id){
+    const missing=activeSpec.magazineSize-weaponState.magazine;
+    if(startWeaponReload(weaponState,activeSpec)){
+      shotgunPendingEjections=missing;
+      sound.breakActionReload(missing,weaponState.reloadDuration/
+        Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
+      emptyClickLatched=false;slideCycle=0;
+      showShotNotice('BREAK ACTION · '+missing+' SHELL'+(missing===1?'':'S'));
+      refreshWeaponHUD();
+    }else if(weaponState.magazine<2&&weaponState.reserve===0)
+      showShotNotice('NO SHOTGUN SHELLS · F TO RESTOCK');
+    return;
+  }
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
     slideCycle=0;
@@ -3373,6 +3423,7 @@ function reload(){
 function resupply(){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){showShotNotice('NO AMMUNITION NEEDED · UNARMED');return;}
   if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
+  shotgunPendingEjections=0;
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
   if(activeWeaponId===LASER_MUSKET.id)ensureLaserState(weaponState);
@@ -3384,6 +3435,7 @@ function resupply(){
   refreshWeaponHUD();
 }
 function toggleInfiniteAmmo(){
+  shotgunPendingEjections=0;
   infiniteAmmo=!infiniteAmmo;
   if(infiniteAmmo){
     preInfiniteAmmo.clear();
@@ -3423,6 +3475,7 @@ const heldTenMM=createTenMillimeterPistol(THREE,playerAvatar.weaponSocket,{third
 const heldPipePistol=createPipePistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPipeRifle=createPipeRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldLaserMusket=createLaserMusket(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldDoubleBarrel=createDoubleBarrelShotgun(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4424,7 +4477,7 @@ function frame(){
   const handling=reloadPoseForWeapon(activeWeaponId,
     weaponState.reloadRemaining,weaponState.reloadDuration||activeSpec.reloadSeconds,
     weaponState.reloadRounds||null);
-  const cycleDuration=activeWeaponId===LASER_MUSKET.id?0:
+  const cycleDuration=activeWeaponId===LASER_MUSKET.id||activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?0:
     activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -4455,7 +4508,7 @@ function frame(){
     visual.magazineBase.rotation.z=handling.magazineAngle;
   }
   const detachable=[...REBUILT_WEAPON_IDS,'scrap-pistol','pipe-smg','service-carbine']
-    .includes(activeWeaponId);
+    .includes(activeWeaponId)&&activeWeaponId!==DOUBLE_BARREL_SHOTGUN.id;
   visual.magazine.visible=detachable&&handling.magazineVisible;
   visual.magazineBase.visible=detachable&&handling.magazineVisible;
   visual.reloadHand.visible=handling.handVisible;
@@ -4464,6 +4517,18 @@ function frame(){
     visual.supportHand.rotation.z=Math.sin(handlingTime*2.1)*.009;
   }
   visual.reloadHand.position.set(handling.handX,handling.handY,handling.handZ);
+  if(visual.hingeGroup){
+    visual.hingeGroup.rotation.x=-handling.breakAngle;
+    visual.ejector.position.z=handling.ejector;
+    for(let i=0;i<visual.shellDisplays.length;i++)
+      visual.shellDisplays[i].visible=handling.active&&handling.breakAngle>.18&&
+        i>=2-weaponState.magazine;
+    if(activeWeaponId===DOUBLE_BARREL_SHOTGUN.id&&
+       shotgunPendingEjections>0&&handling.progress>.31){
+      ejectDoubleBarrelHulls(shotgunPendingEjections);
+      shotgunPendingEjections=0;
+    }
+  }
   if(visual.pumpGrip)
     visual.pumpGrip.position.z=-.34+cycling*1.5+handling.pumpOffset;
   if(visual.cylinderYoke){
@@ -4480,7 +4545,17 @@ function frame(){
   if(visual.reloadAction){
     const action=visual.reloadAction;
     action.visible=handling.roundVisible;
-    if(activeWeaponId==='iron-revolver'){
+    if(activeWeaponId===DOUBLE_BARREL_SHOTGUN.id){
+      // Approach the open breech from behind and meet the actual chamber.
+      // The insertion axis rotates with the hinge, not a free-floating tube.
+      const a=handling.breakAngle;
+      const chamberY=-.065+.138*Math.cos(a)+.034*Math.sin(a);
+      const chamberZ=-.427-.138*Math.sin(a)+.034*Math.cos(a);
+      const travel=1-handling.shellProgress;
+      action.position.set(handling.roundIndex===0?-.079:.079,
+        chamberY-.12*travel,chamberZ+.18*travel);
+      action.rotation.x=-a;
+    }else if(activeWeaponId==='iron-revolver'){
       action.position.set(-.26,
         .08+.08*Math.sin(Math.PI*handling.shellProgress),
         -.05-.12*handling.shellProgress);
@@ -4713,6 +4788,12 @@ function frame(){
   heldPipePistol.root.visible=activeWeaponId===PIPE_PISTOL.id;
   heldPipeRifle.root.visible=activeWeaponId===PIPE_RIFLE.id;
   heldLaserMusket.root.visible=activeWeaponId===LASER_MUSKET.id;
+  heldDoubleBarrel.root.visible=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
+  heldDoubleBarrel.hingeGroup.rotation.x=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?
+    -handling.breakAngle:0;
+  for(let i=0;i<heldDoubleBarrel.shellDisplays.length;i++)
+    heldDoubleBarrel.shellDisplays[i].visible=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id&&
+      handling.active&&handling.breakAngle>.18&&i>=2-weaponState.magazine;
   heldLaserMusket.crankPivot.rotation.x=activeWeaponId===LASER_MUSKET.id&&
     weaponState.crankRemaining>0?-Math.PI*2*laserCrankProgress(weaponState):0;
   heldLaserMusket.capacitor.material.emissiveIntensity=.18+

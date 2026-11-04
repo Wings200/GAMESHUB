@@ -41,11 +41,18 @@ export const LASER_MUSKET=Object.freeze({
   damage:32,hipSpreadDegrees:3.25,adsSpreadDegrees:.12,
   recoilDegrees:2.9,pellets:1,automatic:false
 });
+export const DOUBLE_BARREL_SHOTGUN=Object.freeze({
+  id:'double-barrel-shotgun',name:'Double-Barrel Shotgun',kind:'shotgun',
+  magazineSize:2,startingReserve:48,fireInterval:.62,reloadSeconds:2.65,
+  damage:10,hipSpreadDegrees:8.0,adsSpreadDegrees:4.8,
+  recoilDegrees:4.7,pellets:8,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
   PIPE_RIFLE,
   LASER_MUSKET,
+  DOUBLE_BARREL_SHOTGUN,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,
@@ -127,8 +134,10 @@ export function startWeaponReload(state, spec = SCRAP_PISTOL) {
   state.reloadLoaded=0;
   // A one-shell top-up is faster than filling an empty tube or cylinder.
   const timing={revolver:[.74,.31],shotgun:[.64,.34],rifle:[.80,.41]}[spec.kind];
-  state.reloadDuration=perRound&&timing?
-    Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):spec.reloadSeconds;
+  state.reloadDuration=spec.id==='double-barrel-shotgun'?
+    (missing===1?1.95:2.65):
+    perRound&&timing?Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):
+    spec.reloadSeconds;
   state.reloadRemaining=state.reloadDuration;
   return true;
 }
@@ -144,7 +153,8 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
       const progress=Math.max(0,Math.min(1,1-state.reloadRemaining/duration));
       // Match the physical insertion window of each animated action: first
       // open the cylinder/bolt or reach the tube; only then seat live rounds.
-      const interval={revolver:[.40,.79],shotgun:[.16,.86],rifle:[.30,.80]}[spec.kind]||[0,1];
+      const interval=spec.id==='double-barrel-shotgun'?[.42,.79]:
+        ({revolver:[.40,.79],shotgun:[.16,.86],rifle:[.30,.80]}[spec.kind]||[0,1]);
       const inserted=Math.max(0,Math.min(1,
         (progress-interval[0])/(interval[1]-interval[0])));
       const due=Math.min(state.reloadRounds,

@@ -213,3 +213,19 @@ test('Hand-cranked laser has ratchet contacts and an electrical beam release',()
   const notes=audio.context.calls.filter(x=>x.kind==='frequency'&&x.mode==='set').map(x=>x.value);
   assert.ok(notes.some(x=>x>1500),'electronic discharge has a high initial pitch');
 });
+
+test('Double-barrel blast is low pitched and hinged reload sounds follow two shells',()=>{
+  const gun=new WeaponAudio(FakeAudioContext);
+  gun.unlock();
+  gun.gunshot('double-barrel');
+  assert.ok(gun.context.events.length>=8);
+  const pitches=gun.context.calls.filter(c=>c.kind==='frequency'&&c.mode==='set').map(c=>c.value);
+  assert.ok(pitches.includes(81*.82),'double-barrel signature must have low boom');
+  const two=new WeaponAudio(FakeAudioContext);
+  two.unlock();two.breakActionReload(2,2.65);
+  const one=new WeaponAudio(FakeAudioContext);
+  one.unlock();one.breakActionReload(1,1.95);
+  assert.ok(two.context.events.length>one.context.events.length);
+  const latest=audio=>Math.max(...audio.context.events.map(e=>e[1]));
+  assert.ok(latest(two)>latest(one)+.45);
+});

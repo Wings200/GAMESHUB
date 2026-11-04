@@ -124,3 +124,12 @@ test('Laser musket keeps factory irons and zeroed front blade',()=>{
   assert.equal(sightForOptic('laser-musket','scope-6x').optic,'iron');
   assert.ok(isAlignedToBore('laser-musket'));
 });
+
+test('Double-barrel iron sight is aligned with the two muzzle bores',()=>{
+  const mount=sightMount('double-barrel-shotgun');
+  assert.equal(mount.optic,'iron');
+  assert.equal(mount.y,.270);
+  assert.deepEqual(compatibleOptics('double-barrel-shotgun'),['factory']);
+  assert.equal(sightForOptic('double-barrel-shotgun','scope-6x').optic,'iron');
+  assert.ok(isAlignedToBore('double-barrel-shotgun'));
+});

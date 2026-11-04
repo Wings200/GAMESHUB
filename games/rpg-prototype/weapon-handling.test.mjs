@@ -140,3 +140,19 @@ test('Laser six-cell bank reload clears the underside then reseats',()=>{
   assert.equal(at(.99).magazineOffset,0);
   assert.equal(at(.87).slideOffset,0,'cranking uses separate actual rotary wheel');
 });
+
+test('Double barrel opens two bores, ejects, hand-seats rounds, and locks closed',()=>{
+  const at=(p,count=2)=>reloadPoseForWeapon('double-barrel-shotgun',2.65*(1-p),2.65,count);
+  const start=at(.01),opened=at(.30),ejected=at(.33),first=at(.50),second=at(.68),closed=at(.99);
+  assert.equal(start.breakAngle,0);
+  assert.ok(opened.breakAngle>1);
+  assert.ok(ejected.ejector>.09);
+  assert.equal(first.roundVisible,true);
+  assert.equal(first.roundIndex,0);
+  assert.equal(second.roundIndex,1);
+  assert.equal(first.magazineVisible,false);
+  assert.equal(closed.breakAngle,0);
+  assert.equal(closed.roundVisible,false);
+  const one=at(.68,1);
+  assert.equal(one.roundIndex,0,'single shell top-up never loads a phantom second');
+});
