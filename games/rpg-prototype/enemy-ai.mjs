@@ -48,6 +48,51 @@ export function lineIntersectsBox(a,b,box,padding=0){
   }
   return exit>=0&&entry<=1;
 }
+// Sight rays have height: a waist-high crate is not an invisible wall above
+// its top. Movement still uses the original X/Z rectangle test.
+export function lineIntersectsBox3D(a,b,box,padding=0){
+  if(!Number.isFinite(a.y)||!Number.isFinite(b.y))return false;
+  const bottom=Number.isFinite(box.bottom)?box.bottom:0;
+  const top=Number.isFinite(box.top)?box.top:
+    Number.isFinite(box.height)?bottom+box.height:Infinity;
+  if(!(top>bottom))return false;
+  let entry=0,exit=1;
+  for(const [start,end,min,max] of [
+    [a.x,b.x,box.minX-padding,box.maxX+padding],
+    [a.y,b.y,bottom,top],
+    [a.z,b.z,box.minZ-padding,box.maxZ+padding]
+  ]){
+    const delta=end-start;
+    if(Math.abs(delta)<1e-9){
+      if(start<min||start>max)return false;
+      continue;
+    }
+    let lo=(min-start)/delta,hi=(max-start)/delta;
+    if(lo>hi)[lo,hi]=[hi,lo];
+    entry=Math.max(entry,lo);exit=Math.min(exit,hi);
+    if(entry>exit)return false;
+  }
+  return exit>=0&&entry<=1;
+}
+// A standing guard tries the visible torso first, then the head if only the
+// top of a tall player (or power armor) clears an obstruction. Null means
+// both paths are physically blocked; no target position is inferred.
+export function visibleTargetHeight(enemy,player,obstacles=[]){
+  const heights=[player.aimY,player.headY].filter(Number.isFinite);
+  if(!heights.length)return null;
+  const origin={x:enemy.x,y:Number.isFinite(enemy.eyeY)?enemy.eyeY:1.55,z:enemy.z};
+  for(const height of heights){
+    const target={x:player.x,y:height,z:player.z};
+    if(!obstacles.some(box=>lineIntersectsBox3D(origin,target,box,.035)))
+      return height;
+  }
+  return null;
+}
+export function enemyAimPitch(from,target,muzzleY=1.43){
+  if(!Number.isFinite(target?.y)||!Number.isFinite(muzzleY))return 0;
+  const flat=Math.max(.2,distance(from.x,from.z,target.x,target.z));
+  return Math.atan2(target.y-muzzleY,flat);
+}
 export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   const d=distance(enemy.x,enemy.z,player.x,player.z);
   if(d>tuning.sight||d<.0001)return d<.0001;
@@ -60,6 +105,9 @@ export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   const cone=engaged?360:tuning.fieldOfViewDegrees;
   if(Math.abs(angleDelta(targetAngle,enemy.yaw))>
     cone*Math.PI/360)return false;
+  if(Number.isFinite(player.aimY)||Number.isFinite(player.headY))
+    return visibleTargetHeight(enemy,player,obstacles)!==null;
+  // Historical two-dimensional callers still work (patrol test scaffolding).
   const origin={x:enemy.x,z:enemy.z};
   return !obstacles.some(rect=>lineIntersectsBox(origin,player,rect,.035));
 }

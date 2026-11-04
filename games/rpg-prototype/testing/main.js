@@ -25,7 +25,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.44';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.45';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
@@ -46,10 +46,10 @@ import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
-  resetEnemyBrain, hasSight } from '../enemy-ai.mjs?v=W20.44';
+  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.45';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.44';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.45';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
@@ -2207,6 +2207,20 @@ function updateEnemyRadar(){
   }
   radar.setAttribute('aria-label',shown+' alerted enemies shown as red dots on a 360 degree compass');
 }
+// Pass a real 3D target silhouette to enemy perception. The base player
+// object stores horizontal coordinates, so the old NPCs never learned that
+// power armor (or a raised platform) puts the shootable body above a crate.
+function playerCombatSilhouette(){
+  const height=powerArmorState.occupied?
+    (player.crouched?POWER_ARMOR_CROUCH_HEIGHT:POWER_ARMOR_STAND_HEIGHT):
+    (player.crouched?1.22:1.76);
+  const feet=groundHeight(player.x,player.z)+player.jump;
+  return {x:player.x,z:player.z,aimY:feet+height*.76,
+    headY:feet+height*.94};
+}
+function enemySightBody(enemy){
+  return {...enemy.brain,eyeY:1.53-.82*enemy.crouchBlend};
+}
 function updateEnemies(dt,elapsed=dt){
   // A confirmed hit outside the arena wakes combat while the enemy still
   // remembers the shooter. Otherwise other mechanics stations stay safe.
@@ -2220,8 +2234,9 @@ function updateEnemies(dt,elapsed=dt){
   let aliveCount=0;
   stepSquadIntel(squadIntel,dt,ticking&&playerHealth.alive);
   const roster=[...enemies.values()];
+  const playerSilhouette=playerCombatSilhouette();
   const perceptions=new Map(roster.map(e=>[e.id,
-    e.state.alive&&hasSight(e.brain,player,bounds)]));
+    e.state.alive&&hasSight(enemySightBody(e),playerSilhouette,bounds)]));
   // Assign independent orders BEFORE updating individual brains. The director
   // receives confirmed observations only, never the hidden player's position.
   const lostContactOrders=planSquadOrders(squadDirector,ticking?roster.map(e=>({
@@ -2244,7 +2259,7 @@ function updateEnemies(dt,elapsed=dt){
       // Feeding the live player to an investigating NPC is wallhack tracking.
       const directlyVisible=perceptions.get(enemy.id);
       const lostContactOrder=lostContactOrders.get(enemy.id);
-      const tacticalTarget=directlyVisible?player:
+       const tacticalTarget=directlyVisible?playerSilhouette:
         (enemy.brain.lastSeen||{x:enemy.brain.x,z:enemy.brain.z});
       tickEnemyTactics(enemy.tactics,enemy.brain,tacticalTarget,dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,
@@ -2311,11 +2326,19 @@ function updateEnemies(dt,elapsed=dt){
       // Apply the actual facing before computing torso turns, then animate
       // from measured velocity so blocked NPCs never run in place.
       enemy.root.rotation.y=enemy.brain.yaw;
+       // Recheck after locomotion: the guard may have just reached the edge
+       // of a wall. This exact visible height drives both the gun and tracer.
+       const aimedHeight=directlyVisible?
+         visibleTargetHeight(enemySightBody(enemy),playerSilhouette,bounds):null;
+       const aimPitch=aimedHeight===null?0:enemyAimPitch(enemy.brain,
+         {x:player.x,z:player.z,y:aimedHeight},
+         1.43-.82*enemy.crouchBlend);
       enemy.rigged?.update(dt,{
         moving:enemy.brain.moving,
         speed:enemy.brain.actualSpeed,
         crouched:enemy.tactics.crouching,
-        aiming:shouldAim,reloading:liveNpcGun&&enemy.tactics.reloadRemaining>0,
+         aiming:shouldAim,aimPitch,
+         reloading:liveNpcGun&&enemy.tactics.reloadRemaining>0,
         reloadProgress:enemy.tactics.reloadRemaining>0?1-
           enemy.tactics.reloadRemaining/
           (getEnemyWeapon(enemy.tactics.weaponId)?.reloadSeconds||2):0,
@@ -2332,7 +2355,9 @@ function updateEnemies(dt,elapsed=dt){
         // a clear trajectory; mags, reloads and accuracy are authoritative.
         if(enemy.brain.aimLockSeconds>=
             ENEMY_PROFILES[enemy.tactics.kind].reactionSeconds&&
-          directlyVisible&&canEnemyFire(enemy.brain,player,bounds,attack.range)&&
+           directlyVisible&&aimedHeight!==null&&
+           canEnemyFire(enemySightBody(enemy),playerSilhouette,bounds,attack.range)&&
+           Math.abs((enemy.rigged?.getAimPitch?.()??0)-aimPitch)<.13&&
           !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0){
           const shot=attemptEnemyShot(enemy.tactics,
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
@@ -2344,7 +2369,7 @@ function updateEnemies(dt,elapsed=dt){
             // fixed point in the centre of the NPC's chest.
             const origin=enemy.rigged?.getMuzzleWorldPosition()||
               new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
-            const target=new THREE.Vector3(player.x,1.52+player.jump,player.z);
+             const target=new THREE.Vector3(player.x,aimedHeight,player.z);
             if(!shot.hit){
               // Miss tracers visibly pass beside the player rather than
               // striking the exact position yet dealing zero damage.

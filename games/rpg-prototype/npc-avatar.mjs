@@ -181,13 +181,14 @@ export function createNpcAvatar(parent,kind){
       avatar.root.matrixWorld).clone();
   }
   let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
+  let verticalAim=0;
   let lastArmor={};
   let previousBodyYaw=null;
   function setArmor(loadout={}){
     lastArmor={...loadout};
     avatar.setArmor(npcCosmeticArmor(loadout));
   }
-  function update(dt,{moving=false,speed=0,crouched=false,aiming=false,
+  function update(dt,{moving=false,speed=0,crouched=false,aiming=false,aimPitch=0,
     reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
@@ -206,6 +207,9 @@ export function createNpcAvatar(parent,kind){
     const action=reloadPoseForWeapon(motionWeapon,reloading?1-reloadStage:0,1);
     hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
     recoilBlend=Math.max(recoilBlend*Math.exp(-17*step),Math.min(1,Math.max(0,recoil)));
+    const requestedPitch=aiming&&Number.isFinite(aimPitch)?
+      Math.max(-.55,Math.min(.85,aimPitch)):0;
+    verticalAim+=(requestedPitch-verticalAim)*(1-Math.exp(-9*step));
     // Set the gun pose BEFORE avatar.update so the IK reads current grips.
     // The NPC uses the same firearm-specific action stages as the player.
     // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
@@ -238,10 +242,12 @@ export function createNpcAvatar(parent,kind){
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,
       sprinting:!!moving&&!aiming&&speed>3,
-      crouched,aiming:aiming&&!disarmed,alive,pitch:0,
+       crouched,aiming:aiming&&!disarmed,alive,pitch:verticalAim,
       reloading:reloading&&!disarmed,reloadProgress:reloadStage,
       recoil:disarmed?0:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon,
-      weaponPitch:aiming?-.15:.11,
+       // Positive local X pitch lifts this -Z-facing barrel. A neutral
+       // target should look level; an elevated opponent must look upward.
+       weaponPitch:aiming?verticalAim:.11,
       turnRate:step>0?yawDelta/step:0});
 
   }
@@ -257,7 +263,7 @@ export function createNpcAvatar(parent,kind){
   setArmor({});
   return {
     root:avatar.root,hitJoints:avatar.hitJoints,update,setArmor,setWeapon,disarm,
-    getMuzzleWorldPosition,getWorldForward,
+     getMuzzleWorldPosition,getWorldForward,getAimPitch:()=>verticalAim,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,
       source:'original-procedural'

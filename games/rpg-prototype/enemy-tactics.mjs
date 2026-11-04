@@ -1,6 +1,6 @@
 // W04.2 - enemy cover selection, evasive repositioning, magazine/reload and
 // fallible shooting. No renderer dependency; deterministic with injected RNG.
-import {AI_TUNING,lineIntersectsBox} from './enemy-ai.mjs';
+import {AI_TUNING,lineIntersectsBox,lineIntersectsBox3D,visibleTargetHeight} from './enemy-ai.mjs';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
@@ -124,7 +124,19 @@ export function isBehindCover(player,point,obstacle){
   if(dx*dx+dz*dz<.3*.3)return false;
   // Position must be beyond the obstacle's centre, away from the player.
   if(px*dx+pz*dz<=0)return false;
+  if(Number.isFinite(player.aimY)){
+    // Cover is useful only when it actually shields a crouched defender from
+    // the player's vertical firing angle, including a higher power-armored foe.
+    return [player.aimY,player.headY].filter(Number.isFinite).every(y=>
+      lineIntersectsBox3D({x:player.x,y,z:player.z},
+        {x:point.x,y:.90,z:point.z},obstacle,-.10));
+  }
   return lineIntersectsBox(player,point,obstacle,-.10);
+}
+function hasClearShot(from,player,obstacles){
+  if(Number.isFinite(player.aimY)||Number.isFinite(player.headY))
+    return visibleTargetHeight(from,player,obstacles)!==null;
+  return !obstacles.some(box=>lineIntersectsBox(from,player,box,.035));
 }
 export function pickCoverPoint(enemy,player,obstacles,area=AI_TUNING.area,
   occupied=[],avoidIndex=-1){
@@ -206,7 +218,7 @@ export function pickPeekPoint(shelter,player,obstacles,coverIndex,
     p.x>area.minX+.35&&p.x<area.maxX-.35&&
     p.z>area.minZ+.35&&p.z<area.maxZ-.35&&
     !obstacles.some(o=>inside(p,o,AI_TUNING.collisionRadius+.06))&&
-    !obstacles.some(o=>lineIntersectsBox(player,p,o,.035))&&
+    hasClearShot({x:p.x,z:p.z,eyeY:1.55},player,obstacles)&&
     distance(p,shelter)>1.0&&distance(p,shelter)<4.5);
   valid.sort((a,b)=>distance(shelter,a)-distance(shelter,b));
   return valid[0]||null;
@@ -377,8 +389,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       }
       if(tactics.peekPoint){
         const peekDistance=distance(brain,tactics.peekPoint);
-        const clearShot=!obstacles.some(box=>
-          lineIntersectsBox(brain,player,box,.035));
+         const clearShot=hasClearShot(brain,player,obstacles);
         if(peekDistance<.24&&clearShot){
           tactics.peekSeconds=Math.max(0,tactics.peekSeconds-step);
           tactics.goal=null;tactics.pace=0;

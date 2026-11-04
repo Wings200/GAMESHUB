@@ -22,6 +22,17 @@ test('Damage handles invalid amounts without accidentally healing',()=>{
   assert.equal(hitPlayer(p,-25).damage,0);
   assert.equal(p.health,100);
 });
+test('W20.45 elevated player can be fired at above low rocks, but not tall walls',()=>{
+  const guard=createEnemyBrain({x:0,z:0,yaw:0});
+  alertEnemy(guard,{x:0,z:10});
+  const armored={x:0,z:10,aimY:1.72,headY:2.10};
+  const rock={minX:-1,maxX:1,minZ:4.5,maxZ:5.5,height:1.60};
+  assert.equal(canEnemyFire(guard,armored,[rock],45),true);
+  assert.equal(firstSolidHit({x:0,y:1.53,z:0},
+    {x:0,y:1.72,z:10},[rock]),null,
+    'a clear upward tracer must not hit the rock');
+  assert.equal(canEnemyFire(guard,armored,[{...rock,height:3}],45),false);
+});
 test('Enemies cannot shoot beyond range, while patrolling or behind cover',()=>{
   const e=createEnemyBrain({x:40,z:42,yaw:-Math.PI/2,patrol:[{x:40,z:42}]});
   const p={x:31,z:42};

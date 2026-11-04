@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AI_TUNING,createEnemyBrain,alertEnemy,resetEnemyBrain,hasSight,
+  visibleTargetHeight,lineIntersectsBox3D,enemyAimPitch,
   lineIntersectsBox,stepEnemyBrain,hearEnemyGunshot} from './enemy-ai.mjs';
 const bot=(x=45,z=40)=>createEnemyBrain({
   x,z,yaw:-Math.PI/2,patrol:[{x:44,z:40},{x:53,z:40}]
@@ -259,4 +260,38 @@ test('W20.39 brief cover commitment never uses the actual hidden player position
     'different unseen player positions cannot steer cover movement');
   assert.ok(Math.hypot(first.x-45,first.z-40)>1);
   assert.deepEqual(first.lastSeen,target);
+});
+
+test('W20.45 a tall power-armored target is visible above low cover',()=>{
+  const guard=createEnemyBrain({x:0,z:0,yaw:0});
+  const crate={minX:-1,maxX:1,minZ:4.5,maxZ:5.5,height:1.60};
+  const armored={x:0,z:10,aimY:1.72,headY:2.10};
+  assert.equal(hasSight(guard,armored,[crate]),true);
+  assert.equal(visibleTargetHeight(guard,armored,[crate]),armored.aimY);
+  const normal={x:0,z:10,aimY:1.28,headY:1.55};
+  assert.equal(hasSight(guard,normal,[crate]),false);
+  const wall={...crate,height:3.0};
+  assert.equal(hasSight(guard,armored,[wall]),false,
+    'tall opaque walls must still block actual vision');
+});
+
+test('W20.45 a guard sees an exposed helmet, but not a hidden torso',()=>{
+  const guard=createEnemyBrain({x:0,z:0,yaw:0});
+  const tallCover={minX:-1,maxX:1,minZ:4.8,maxZ:5.2,height:1.86};
+  const target={x:0,z:10,aimY:1.5,headY:2.3};
+  assert.equal(visibleTargetHeight(guard,target,[tallCover]),2.3);
+  assert.equal(lineIntersectsBox3D({x:0,y:1.53,z:0},
+    {x:0,y:1.5,z:10},tallCover),true);
+  assert.equal(lineIntersectsBox3D({x:0,y:1.53,z:0},
+    {x:0,y:2.3,z:10},tallCover),false);
+});
+
+test('W20.45 enemy aiming changes elevation for higher targets',()=>{
+  const from={x:0,z:0};
+  const level=enemyAimPitch(from,{x:0,z:5,y:1.43});
+  const up=enemyAimPitch(from,{x:0,z:5,y:2.10});
+  const down=enemyAimPitch(from,{x:0,z:5,y:.75});
+  assert.equal(level,0);
+  assert.ok(up>0.12&&up<.2,'barrel should visibly lift toward high armor');
+  assert.ok(down<-.12,'lower targets require downward aim');
 });

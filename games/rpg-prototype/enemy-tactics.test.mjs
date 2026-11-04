@@ -11,6 +11,17 @@ const player={x:30,z:40};
 const brain=()=>{const b=createEnemyBrain({
   x:46,z:43,yaw:-Math.PI/2,patrol:[{x:46,z:43}]});
   b.mode='chase';b.memory=3;b.spotted=true;return b;};
+test('W20.45 guards reject low cover that cannot shield an elevated shooter',()=>{
+  const armored={x:0,z:0,aimY:3.5,headY:3.8};
+  const spot={x:8,z:0};
+  const crate={minX:4,maxX:6,minZ:-1,maxZ:1,height:1.4};
+  assert.equal(isBehindCover({x:0,z:0},spot,crate),true,
+    'on flat ground this rectangle looks like cover');
+  assert.equal(isBehindCover(armored,spot,crate),false,
+    'an elevated player can see over this cover');
+  assert.equal(isBehindCover(armored,spot,{...crate,height:3}),true,
+    'high, solid cover should still provide real shelter');
+});
 test('Scout, Raider and Enforcer have different accuracy, magazines, reload times and mobility',()=>{
   assert.equal(Object.keys(ENEMY_PROFILES).length,3);
   assert.ok(ENEMY_PROFILES.scout.magazine<ENEMY_PROFILES.raider.magazine);
