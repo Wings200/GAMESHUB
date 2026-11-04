@@ -1,3 +1,12 @@
+## W20.42 — Controlled Raider Pipe Rifle live-combat trial
+
+- Equipped **only the Raider** in Station 9 with the same authored rusted Pipe Rifle 3D model used by the player. Its duplicate legacy mesh is hidden, so the visible barrel/stock/magazine and aim points are real model geometry.
+- Added two weapon-local handhold markers and retargeted the NPC avatar's existing two-arm IK to the actual grip and forward support location. The rifle follows the NPC's facing and animation; it lowers while moving, rises while aiming, and kicks when firing.
+- NPC shots and tracers originate from the real Pipe Rifle muzzle transform. The gun's magazine, charging bolt, reload motion, and muzzle flash animate with enemy state rather than using the old generic rifle placeholder. NPCs keep the existing line-of-sight, cover, reaction, ammo, cooldown, friendly collision and body-armor rules.
+- Raider ammunition/reload cadence now matches the rebuilt player's Pipe Rifle: 15-round magazine, 2.65-second reload, approximately 136 rounds per minute. Enemy bullet damage remains 30 for existing combat balance. The Raider keeps the Pipe Rifle on arena reset instead of silently switching to a not-yet-modeled alternate weapon.
+- **Scout and Enforcer remain disarmed** in weapon-rebuild testing; their combat code and old placeholder weapons are not re-enabled. All ten player firearms and the flat mechanics testing arena remain intact. H heals, J resets NPCs, K pauses AI.
+- Expanded Station 9 source-level integration assertions for the one-armed-raider gate, real player model reuse, handhold and muzzle wiring; ran all 90 Station 9 checks, all 54 enemy AI/tactics/weapon checks, and a mocked NPC avatar-construction/animation check. A full rendered WebGL visual smoke test is still pending user verification.
+
 ## W20.41 — Sniper recoil refinement
 
 Reduced the Wasteland Heavy Sniper's default recoil by about 11% (6.6° to 5.9° before its weapon-specific profile). Aiming now kicks roughly 12.8° rather than 14.3°. It remains notably heavier than the hunting rifle, and nothing else about its accuracy, damage, scope, bolt timing, magazine or arm positioning changed. NPC weapons remain disabled until their dedicated integration stage.

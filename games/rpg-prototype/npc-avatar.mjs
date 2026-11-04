@@ -2,7 +2,9 @@
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
 import {createPlayerAvatar} from './player-avatar.mjs?v=W20.36';
-import {reloadPoseForWeapon} from './weapon-handling.mjs';
+import {reloadPoseForWeapon} from './weapon-handling.mjs?v=W20.42';
+import {createPipeRifle} from './pipe-rifle.mjs?v=W20.42';
+import {WORLD_WEAPON_GRIPS} from './weapon-grip-ik.mjs?v=W20.42';
 // AI yaw 0 looks toward +Z; the survivor mesh is modeled facing -Z.
 // Rotate only the visual 180°, so its front and gun point where the brain aims.
 export const NPC_VISUAL_YAW_OFFSET=Math.PI;
@@ -46,6 +48,21 @@ export function createNpcAvatar(parent,kind){
   gun.name=kind+'_animated_weapon';
   gun.position.set(.0,-.06,-.04);
   mount.add(gun);
+  // The raider is the only armed NPC in the W20.42 controlled trial.
+  // This is the identical authored gun geometry used by the player.
+  const realPipe=kind==='raider'?
+    createPipeRifle(THREE,mount,{thirdPerson:true}):null;
+  let pipeRightGrip=null,pipeLeftGrip=null;
+  if(realPipe){
+    realPipe.root.visible=false;
+    const points=WORLD_WEAPON_GRIPS['pipe-rifle'];
+    pipeRightGrip=new THREE.Group();pipeLeftGrip=new THREE.Group();
+    pipeRightGrip.name='NPCRealPipeTriggerGrip';
+    pipeLeftGrip.name='NPCRealPipeSupportGrip';
+    pipeRightGrip.position.set(...points.right);
+    pipeLeftGrip.position.set(...points.left);
+    realPipe.root.add(pipeRightGrip,pipeLeftGrip);
+  }
   const finish=new THREE.MeshStandardMaterial({color:role.metal,roughness:.66,metalness:.25});
   const wood=new THREE.MeshStandardMaterial({color:role.color,roughness:.92});
   const black=new THREE.MeshStandardMaterial({color:0x161f23,roughness:.8});
@@ -115,6 +132,14 @@ export function createNpcAvatar(parent,kind){
   function setWeapon(id=role.weapon){
     if(disarmed)return; // resetting NPC loadouts must not respawn legacy guns
     currentWeapon=id;
+    if(realPipe){
+      const authentic=id==='pipe-rifle';
+      realPipe.root.visible=authentic;
+      gun.visible=!authentic;
+      avatar.setWeaponGripTargets(
+        authentic?pipeRightGrip:rightGrip,
+        authentic?pipeLeftGrip:leftGrip);
+    }
     const variant=id==='scout-carbine'||id==='raider-auto'||id==='heavy-lmg';
     alternate.visible=variant;
     // Short SMGs, long rifles and heavy automatic weapons have distinct
@@ -146,8 +171,9 @@ export function createNpcAvatar(parent,kind){
   const muzzlePoint=new THREE.Vector3();
   const facingVector=new THREE.Vector3();
   function getMuzzleWorldPosition(){
-    flash.updateWorldMatrix(true,false);
-    return flash.getWorldPosition(muzzlePoint.clone());
+    const barrel=realPipe?.root.visible?realPipe.muzzleGlow:flash;
+    barrel.updateWorldMatrix(true,false);
+    return barrel.getWorldPosition(muzzlePoint.clone());
   }
   function getWorldForward(){
     avatar.root.updateWorldMatrix(true,false);
@@ -175,7 +201,7 @@ export function createNpcAvatar(parent,kind){
     reloadClock=reloading?Math.min(4.5,reloadClock+step):0;
     const reloadStage=reloading?Math.max(0,Math.min(1,reloadProgress)):0;
     const motionWeapon=currentWeapon==='compact-smg'?'pipe-smg':
-      currentWeapon==='pipe-rifle'?'hunting-rifle':
+      currentWeapon==='pipe-rifle'?'pipe-rifle':
       currentWeapon==='heavy-lmg'?'heavy-lmg':'service-carbine';
     const action=reloadPoseForWeapon(motionWeapon,reloading?1-reloadStage:0,1);
     hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
@@ -197,6 +223,18 @@ export function createNpcAvatar(parent,kind){
     npcBolt.position.z=-.11+action.boltOffset;
     npcBolt.rotation.z=action.boltHandleLift*.55;
     flash.intensity=!disarmed&&recoilBlend>.65?2.2:0;
+    if(realPipe?.root.visible){
+      // Drive the same gun's box magazine, charging bolt and muzzle flash.
+      realPipe.root.rotation.x=action.tilt+recoilBlend*.13-hitBlend*.08;
+      realPipe.root.rotation.y=Math.sin(time*3.1)*.007;
+      realPipe.root.rotation.z=reloading?.05*Math.sin(Math.PI*reloadStage):0;
+      realPipe.root.position.z=.045+recoilBlend*.055;
+      realPipe.magazine.position.y=realPipe.magBaseY-action.magazineOffset;
+      realPipe.magazineBase.position.y=realPipe.magFootY-action.magazineOffset;
+      realPipe.magazine.rotation.z=action.magazineAngle;
+      realPipe.slideGroup.position.z=action.slideOffset;
+      realPipe.muzzleGlow.intensity=!disarmed&&recoilBlend>.65?2.8:0;
+    }
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
       speed:moving?Math.max(1.7,speed):0,
       sprinting:!!moving&&!aiming&&speed>3,
@@ -212,6 +250,7 @@ export function createNpcAvatar(parent,kind){
     currentWeapon='none';
     gun.visible=false;
     gun.removeFromParent();
+    if(realPipe){realPipe.root.visible=false;realPipe.root.removeFromParent();}
     avatar.setWeaponGripTargets(null,null);
     flash.intensity=0;
   }
@@ -232,6 +271,10 @@ export function createNpcAvatar(parent,kind){
     };},
     dispose(){
       gun.traverse(child=>{if(child.geometry)child.geometry.dispose();});
+      if(realPipe)realPipe.root.traverse(child=>{
+        if(child.geometry)child.geometry.dispose();
+        if(child.material&&child.material.dispose)child.material.dispose();
+      });
       ownedMaterials.forEach(m=>m.dispose());
       avatar.dispose();
     }
