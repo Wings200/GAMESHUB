@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W20.19 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.20 + Forest Foundation 0.1
+
+## W20.20 · Second rebuilt weapon: improvised pipe pistol
+
+- Kept the previously approved 10mm pistol untouched; players can swap between only the two rebuilt weapons with Z/X or the menu selection. All six legacy weapons remain unavailable.
+- Added an original welded pipe pistol with a cylindrical receiver, rough handguard collars, exposed right charging bolt, wooden grip, factory irons and a detachable LEFT-side magazine. Its first-person and third-person meshes use shared proportions.
+- Side magazine actually slides out laterally during reload; bolt racks only after replacement. The eight-round semi-automatic pistol has lower damage, slightly stronger recoil, and a distinct report compared with the 10mm.
+- Saved selection of either new gun now survives reload. NPCs remain unarmed, and the original legacy guns do not spawn in loot. Weapon attachments remain deferred to settlement-only workbenches.
+- New regression coverage checks side-feed geometry/animation, sight alignment and 8-round ammo economy.
+
 
 ## W20.19 · First new gun: 10mm pistol
 

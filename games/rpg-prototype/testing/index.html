@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.19 · 10mm Pistol Test | GAMESHUB RPG</title>
+<title>W20.20 · Pipe Pistol Test | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -37,7 +37,7 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
-body.weapon-rebuild .arsenal-picker,body.weapon-rebuild #workbenchOpen{display:none!important}
+body.weapon-rebuild #workbenchOpen{display:none!important}
 .weapon-reset-notice{border:1px solid #cba569;background:#211e19;color:#ffdfab;padding:13px 16px;margin:16px 0;font-size:12px;line-height:1.65;letter-spacing:.035em}
 .weapon-reset-notice b{display:block;font-size:15px;letter-spacing:.10em;color:#f7cf91}
 .arsenal-picker{display:flex;flex-wrap:wrap;align-items:center;gap:12px;
@@ -646,7 +646,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="healthStatus">H TO HEAL / RESET</div>
 </div>
 <div id="hud">
-  <div class="block logo"><b>W13.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT & ARMOR TEST · NEW 10MM PISTOL</small></div></div>
+  <div class="block logo"><b>W13.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT & ARMOR TEST · NEW 10MM + PIPE PISTOL</small></div></div>
   <div class="lab-status">
   <div class="block stats">
     <div class="stat"><label>SPEED</label><strong id="speed">0.0 m/s</strong></div>
@@ -696,13 +696,13 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">LEFT CLICK FIRE 10MM · RIGHT CLICK IRON SIGHTS · R RELOAD · F RESTOCK<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH LOOT · I BACKPACK · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
+  <div id="keys">Z / X SWITCH NEW GUNS · LEFT CLICK FIRE · RIGHT CLICK ADS · R RELOAD · F RESTOCK<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH LOOT · I BACKPACK · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.19</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.20</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <div class="weapon-reset-notice"><b>W20.19 · NEW 10MM PISTOL / WEAPON TEST 01</b>Our first completely rebuilt weapon is equipped: 12-round 10mm pistol with iron sights, moving slide, magazine reload, muzzle flash, recoil and live damage. Old weapons remain removed, and NPCs are still unarmed for controlled testing. Next: pipe pistol, pipe rifle, laser musket, shotgun.</div>
+    <div class="weapon-reset-notice"><b>W20.20 · PIPE PISTOL / WEAPON TEST 02</b>Compare the approved 10mm with a new 8-round side-fed pipe pistol. It has a welded tubular receiver, exposed charging bolt, handmade wooden grip, sideways magazine reload, iron sights, and a distinct gunshot report. Only these two new firearms are available; old guns and NPC weapons remain retired. Next: pipe rifle, laser musket, shotgun.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
     <p><strong>W20.16 · COMBAT & POWER FRAME:</strong> Compact armor silhouette and clearance, deeper rear boarding, softer boot impacts, fusion cores lasting 25% longer, close-quarters enemy tracking, single-render-layer NPCs, concealed enemy tactics, and a bottom red-dot hostile compass.</p>
@@ -713,9 +713,9 @@ body.hud-modern #powerArmorHud{display:none!important}
     <p>No new map. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
-    <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
+    <div class="arsenal-picker"><label for="weaponSelect">EQUIP REBUILT WEAPON · 2 AVAILABLE</label>
     <select id="weaponSelect" aria-label="Choose current weapon"></select>
-    <span>In game: Z / X to cycle · hold fire for automatic weapons</span></div>
+    <span>In game: Z / X switches the new pistols · both are semi-automatic</span></div>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
@@ -723,7 +723,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.19</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.20</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -954,6 +954,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.19"></script>
+<script type="module" src="./main.js?v=W20.20"></script>
 </body>
 </html>

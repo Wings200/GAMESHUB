@@ -23,8 +23,15 @@ export const TEN_MM_PISTOL=Object.freeze({
 });
 // New weapons come first. Six old definitions are retained for legacy tests,
 // but cannot be equipped in the active weapon-rebuild runtime.
+export const PIPE_PISTOL=Object.freeze({
+  id:'pipe-pistol',name:'Pipe Pistol',kind:'pistol',
+  magazineSize:8,startingReserve:64,fireInterval:.33,reloadSeconds:2.35,
+  damage:17,hipSpreadDegrees:3.35,adsSpreadDegrees:.24,
+  recoilDegrees:2.35,pellets:1,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
+  PIPE_PISTOL,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,

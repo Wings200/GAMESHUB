@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -120,10 +120,10 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   assert.equal(w.magazine,11);
 });
 
-test('Seven weapon specifications have unique identities and different fire characteristics',()=>{
-  assert.equal(ARSENAL.length,7);
-  assert.equal(ARSENAL_IDS.length,7);
-  assert.equal(new Set(ARSENAL_IDS).size,7);
+test('Eight weapon specifications have unique identities and different fire characteristics',()=>{
+  assert.equal(ARSENAL.length,8);
+  assert.equal(ARSENAL_IDS.length,8);
+  assert.equal(new Set(ARSENAL_IDS).size,8);
   assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
   assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
   for(const w of ARSENAL){
@@ -132,7 +132,7 @@ test('Seven weapon specifications have unique identities and different fire char
     assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
   }
   const damage=new Set(ARSENAL.map(w=>w.damage));
-  assert.equal(damage.size,7);
+  assert.equal(damage.size,8);
   assert.ok(getWeaponSpec('pipe-smg').automatic);
   assert.ok(getWeaponSpec('service-carbine').automatic);
   assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);
@@ -266,4 +266,22 @@ test('New 10mm pistol is semi-auto and performs a finite, atomic magazine reload
   assert.equal(state.magazine,12);
   assert.equal(state.reserve,71);
   assert.equal(state.reloadRemaining,0);
+});
+
+test('New pipe pistol has distinct 8-round magazines and no phantom rounds',()=>{
+  const spec=PIPE_PISTOL,state=createWeaponState(spec);
+  assert.equal(spec.magazineSize,8);
+  assert.equal(spec.kind,'pistol');
+  assert.equal(state.reserve,64);
+  assert.ok(spec.damage<TEN_MM_PISTOL.damage);
+  assert.ok(spec.recoilDegrees>TEN_MM_PISTOL.recoilDegrees);
+  assert.equal(fireWeapon(state,spec,()=>.5).status,'fired');
+  assert.equal(state.magazine,7);
+  assert.equal(fireWeapon(state,spec).status,'cooldown');
+  assert.equal(startWeaponReload(state,spec),true);
+  updateWeapon(state,spec.reloadSeconds*.5,spec);
+  assert.equal(state.magazine,7);
+  updateWeapon(state,spec.reloadSeconds*.5,spec);
+  assert.equal(state.magazine,8);
+  assert.equal(state.reserve,63);
 });

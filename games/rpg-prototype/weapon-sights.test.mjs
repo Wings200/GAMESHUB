@@ -76,3 +76,12 @@ test('New 10mm fixed iron sights zero the center of the camera ray',()=>{
   assert.ok(isAlignedToBore('10mm-pistol'));
   assert.equal(sightForOptic('10mm-pistol','scope-6x').optic,'iron');
 });
+
+test('Pipe pistol iron sight and factory-only optics stay centered on bore',()=>{
+  const mount=sightMount('pipe-pistol');
+  assert.equal(mount.optic,'iron');
+  assert.ok(mount.fov>60);
+  assert.deepEqual(compatibleOptics('pipe-pistol'),['factory']);
+  assert.ok(isAlignedToBore('pipe-pistol'));
+  assert.equal(sightForOptic('pipe-pistol','scope-4x').optic,'iron');
+});

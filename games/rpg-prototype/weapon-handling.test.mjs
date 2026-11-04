@@ -101,3 +101,13 @@ test('Ammo presentation respects an actual two-shell top-up instead of six phant
   assert.ok(revolver.cylinderSpin<Math.PI,
     'A one-cartridge top-up does not spin the whole cylinder twice');
 });
+
+test('Pipe pistol reload removes its side magazine before pulling charging bolt',()=>{
+  const at=p=>reloadPoseForWeapon('pipe-pistol',1-p,1);
+  assert.equal(at(.04).magazineOffset,0);
+  assert.ok(at(.40).magazineOffset>.2);
+  assert.ok(at(.70).magazineOffset<at(.40).magazineOffset);
+  assert.ok(at(.87).slideOffset>.05);
+  assert.equal(at(.99).magazineOffset,0);
+  assert.equal(at(.99).slideOffset,0);
+});

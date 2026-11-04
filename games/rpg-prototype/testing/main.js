@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.19';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.19';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.20';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.20';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.19';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.19';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.20';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.20';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -24,9 +24,10 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.19';
-import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.19';
-import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.19';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.20';
+import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.20';
+import {createPipePistol} from '../pipe-pistol.mjs?v=W20.20';
+import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.20';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
   resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
@@ -60,7 +61,8 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const playerGunEnabled=()=>activeWeaponId===NEW_WEAPON_ID;
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id]);
+const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
 try{
@@ -1675,7 +1677,7 @@ function spawnWorldLoot(contents,x,z,source='world'){
   const available=WEAPON_REBUILD_MODE?(contents||[]).filter(entry=>{
     const category=getItem(entry.itemId).category;
     return (category!=='weapon'&&category!=='ammo')||
-      (category==='ammo'&&entry.itemId==='ammo:'+NEW_WEAPON_ID);
+      (category==='ammo'&&REBUILT_WEAPON_IDS.includes(entry.itemId.slice(5)));
   }):contents;
   const bag=createLootBag('bag-'+(++lootSerial),x,z,available,source);
   if(!bag.items.length)return null;
@@ -1720,7 +1722,7 @@ function spawnEnemyLoot(enemy){
   const drops=WEAPON_REBUILD_MODE?generated.filter(entry=>{
     const item=getItem(entry.itemId);
     return (item?.category!=='weapon'&&item?.category!=='ammo')||
-      entry.itemId==='ammo:'+NEW_WEAPON_ID;
+      REBUILT_WEAPON_IDS.includes(entry.itemId.slice(5));
   }):generated;
   return spawnWorldLoot(drops,enemy.brain.x,
     enemy.brain.z,'enemy-'+enemy.id);
@@ -1789,7 +1791,7 @@ function refreshInventoryUI(){
   $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryWeapon').textContent=playerGunEnabled()?
-    '10mm PISTOL · FIRST NEW WEAPON':
+    activeSpec.name.toUpperCase()+' · REBUILT WEAPON':
     WEAPON_REBUILD_MODE?'UNARMED · OLD GUNS ARCHIVED':getWeaponSpec(backpack.equipment.weapon).name;
   const wear=backpack.equipment.clothing||{head:'none',back:'none'};
   $('inventoryClothing').textContent='HAT: '+(wear.head==='none'?'NONE':'FIELD CAP')+
@@ -2870,13 +2872,16 @@ function buildArsenalView(spec){
 // No legacy viewmodels are built in the live reset. Their mesh factory stays
 // available in source until the staged new-gun rollout is complete.
 if(!WEAPON_REBUILD_MODE)for(const spec of ARSENAL)
-  if(spec.id!==SCRAP_PISTOL.id&&spec.id!==NEW_WEAPON_ID)
+  if(spec.id!==SCRAP_PISTOL.id&&!REBUILT_WEAPON_IDS.includes(spec.id))
     weaponVisuals.set(spec.id,buildArsenalView(spec));
 // The new 10mm is a different authored mesh; it does not reuse the scrap pistol.
 weaponVisuals.set(NEW_WEAPON_ID,createTenMillimeterPistol(THREE,camera,{flareTexture:flareTex}));
+const pipePistolVisual=createPipePistol(THREE,camera,{flareTexture:flareTex});
+pipePistolVisual.root.visible=false;
+weaponVisuals.set(PIPE_PISTOL.id,pipePistolVisual);
 // Retire all legacy viewmodels, keeping only the new pistol on the camera.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
-  if(id===NEW_WEAPON_ID)continue;
+  if(REBUILT_WEAPON_IDS.includes(id))continue;
   visual.root.visible=false;
   visual.root.removeFromParent();
 }
@@ -2900,7 +2905,7 @@ let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
 let groundedStepProgress=0;
 function selectWeapon(id){
-  if(WEAPON_REBUILD_MODE&&id!==NEW_WEAPON_ID)return; // only rebuilt guns allowed
+  if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(id))return; // only rebuilt guns allowed
   const spec=getWeaponSpec(id);
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
@@ -2921,11 +2926,12 @@ function selectWeapon(id){
   refreshWeaponHUD();
 }
 function cycleWeapon(direction){
-  if(WEAPON_REBUILD_MODE)return;
-  const i=ARSENAL_IDS.indexOf(activeWeaponId);
-  selectWeapon(ARSENAL_IDS[(i+direction+ARSENAL_IDS.length)%ARSENAL_IDS.length]);
+  const ids=WEAPON_REBUILD_MODE?REBUILT_WEAPON_IDS:ARSENAL_IDS;
+  const i=ids.indexOf(activeWeaponId);
+  selectWeapon(ids[(i+direction+ids.length)%ids.length]);
 }
 for(const spec of ARSENAL){
+  if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(spec.id))continue;
   const option=document.createElement('option');option.value=spec.id;
   option.textContent=spec.name+' · '+spec.damage+' DMG'+
     ((spec.pellets||1)>1?' × '+spec.pellets:'');
@@ -2938,9 +2944,12 @@ $('weaponSelect').addEventListener('change',()=>{
   saveBackpack();
 });
 if(WEAPON_REBUILD_MODE){
-  // Old saved weapon preferences must never revive retired models.
-  backpack.equipment.weapon=NEW_WEAPON_ID;
-  saveBackpack();
+  if(REBUILT_WEAPON_IDS.includes(backpack.equipment.weapon))
+    selectWeapon(backpack.equipment.weapon);
+  else{
+    backpack.equipment.weapon=NEW_WEAPON_ID;
+    saveBackpack();
+  }
 }else if(backpack.equipment.weapon!=='scrap-pistol'){
   selectWeapon(backpack.equipment.weapon);
 }
@@ -3058,7 +3067,7 @@ function refreshWeaponHUD(){
     ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
     ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
     ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC';
-  $('weaponOptic').textContent=activeWeaponId===NEW_WEAPON_ID?'FACTORY IRON SIGHTS · MODS LATER':
+  $('weaponOptic').textContent=REBUILT_WEAPON_IDS.includes(activeWeaponId)?'FACTORY IRON SIGHTS · MODS LATER':
     'SIGHT · '+OPTIC_MODS[installedWeaponOptic(backpack,activeWeaponId)].name.toUpperCase();
   $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(activeSpec,
     weaponState.aiming,weaponMotion).toFixed(2)+'°'+
@@ -3086,7 +3095,8 @@ function shoot(){
   if(activeSpec.kind==='revolver')
     weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
   emptyClickLatched=false;
-  sound.gunshot(activeWeaponId===NEW_WEAPON_ID?'10mm':activeSpec.kind||'pistol');
+  sound.gunshot(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
+    activeWeaponId===PIPE_PISTOL.id?'pipe':activeSpec.kind||'pistol');
   // Hearing is not sight: unalerted guards investigate the last shot with
   // positional uncertainty, and never aim at a hidden moving player.
   for(const enemy of enemies.values())
@@ -3235,7 +3245,8 @@ function reload(){
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
     slideCycle=0;
-    sound.reload(activeWeaponId===NEW_WEAPON_ID?'10mm':activeSpec.kind||'pistol',weaponState.reloadDuration/
+    sound.reload(activeWeaponId===TEN_MM_PISTOL.id?'10mm':
+      activeWeaponId===PIPE_PISTOL.id?'pipe':activeSpec.kind||'pistol',weaponState.reloadDuration/
       Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
@@ -3259,6 +3270,7 @@ const playerAvatar=createPlayerAvatar(scene);
 // 10mm geometry attached to the animated hand socket.
 playerAvatar.setHeldWeapon(null);
 const heldTenMM=createTenMillimeterPistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldPipePistol=createPipePistol(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4247,11 +4259,21 @@ function frame(){
     (activeWeaponId===NEW_WEAPON_ID&&weaponState.magazine===0&&
       weaponState.reloadRemaining<=0?.095:0);
   if(visual.trigger)visual.trigger.rotation.x=-.24-recoilKick*.7;
-  visual.magazine.position.y=visual.magBaseY-handling.magazineOffset;
-  visual.magazineBase.position.y=visual.magFootY-handling.magazineOffset;
-  visual.magazine.rotation.z=handling.magazineAngle;
-  visual.magazineBase.rotation.z=handling.magazineAngle;
-  const detachable=[NEW_WEAPON_ID,'scrap-pistol','pipe-smg','service-carbine']
+  if(activeWeaponId===PIPE_PISTOL.id){
+    // Side-fed pipe magazine pulls OUTWARD from receiver, never through grip.
+    visual.magazine.position.x=visual.magBaseX-handling.magazineOffset;
+    visual.magazineBase.position.x=visual.magFootX-handling.magazineOffset;
+    visual.magazine.position.y=visual.magBaseY;
+    visual.magazineBase.position.y=visual.magFootY;
+    visual.magazine.rotation.z=-.11+handling.magazineAngle;
+    visual.magazineBase.rotation.z=handling.magazineAngle;
+  }else{
+    visual.magazine.position.y=visual.magBaseY-handling.magazineOffset;
+    visual.magazineBase.position.y=visual.magFootY-handling.magazineOffset;
+    visual.magazine.rotation.z=handling.magazineAngle;
+    visual.magazineBase.rotation.z=handling.magazineAngle;
+  }
+  const detachable=[...REBUILT_WEAPON_IDS,'scrap-pistol','pipe-smg','service-carbine']
     .includes(activeWeaponId);
   visual.magazine.visible=detachable&&handling.magazineVisible;
   visual.magazineBase.visible=detachable&&handling.magazineVisible;
@@ -4505,6 +4527,8 @@ function frame(){
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
   playerAvatar.setHeldWeapon(WEAPON_REBUILD_MODE?null:activeWeaponId);
+  heldTenMM.root.visible=activeWeaponId===TEN_MM_PISTOL.id;
+  heldPipePistol.root.visible=activeWeaponId===PIPE_PISTOL.id;
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
@@ -4523,7 +4547,7 @@ function frame(){
     !powerArmorState.occupied&&!weaponState.aiming;
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
-    weapon.root.visible=(!WEAPON_REBUILD_MODE||id===NEW_WEAPON_ID)&&
+    weapon.root.visible=(!WEAPON_REBUILD_MODE||REBUILT_WEAPON_IDS.includes(id))&&
       id===activeWeaponId&&!thirdPersonActive&&powerArmorState.phase==='idle';
   if(thirdPersonActive){
     controls.getDirection(viewHeading);

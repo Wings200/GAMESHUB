@@ -3,6 +3,7 @@
 // never separately guessed "weapon ADS" offsets.
 export const SIGHT_MOUNTS=Object.freeze({
   '10mm-pistol':Object.freeze({x:0,y:.238,z:-.14,adsZ:-.68,fov:63,optic:'iron'}),
+  'pipe-pistol':Object.freeze({x:0,y:.214,z:-.12,adsZ:-.72,fov:65,optic:'iron'}),
   'scrap-pistol':Object.freeze({x:0,y:.207,z:-.16,adsZ:-.64,fov:64,optic:'iron'}),
   'iron-revolver':Object.freeze({x:0,y:.165,z:-.19,adsZ:-.65,fov:62,optic:'iron'}),
   'pipe-smg':Object.freeze({x:0,y:.225,z:-.15,adsZ:-.62,fov:61,optic:'reflex'}),
@@ -38,7 +39,7 @@ export function isAlignedToBore(weaponId,root=adsWeaponPosition(weaponId),tolera
    'scope-6x':Object.freeze({id:'scope-6x',name:'Sniper scope · 6×',kind:'scope',fov:12,cost:{salvage:9,glass:4}})
  });
  const allowedOptics=Object.freeze({
-   '10mm-pistol':['factory'],
+   '10mm-pistol':['factory'], 'pipe-pistol':['factory'],
    'scrap-pistol':['factory'], 'iron-revolver':['factory'],
    'pipe-smg':['factory','holo-a','holo-b','scope-2x'],
    'service-carbine':['factory','holo-a','holo-b','scope-2x','scope-4x'],
