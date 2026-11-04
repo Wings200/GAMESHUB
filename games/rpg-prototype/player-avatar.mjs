@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
 import {solveBoardingLeg} from './boarding-ik.mjs';
+import {solveWeaponArmReach} from './weapon-grip-ik.mjs?v=W20.35';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -230,7 +231,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     }
   }
   // Guns attach to an animated torso joint instead of hovering in world space.
-  const weaponSocket=group(torso,.21,.35,-.34);
+  const weaponSocket=group(torso,.025,.50,-.20);
   weaponSocket.name='TorsoWeaponSocket';
   // Third-person held weapon: the old rig had a socket, but no visible gun.
   // These meshes are purely cosmetic and follow the same animated torso.
@@ -433,7 +434,10 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   // never a collider or a raycast target; hit detection stays authoritative.
   root.traverse(child=>{if(child.isMesh)child.userData.playerCosmetic=true;});
   const animation=createCharacterAnimation();
-  let previousYaw=null;
+  let previousYaw=null,weaponGripTargets=null;
+  function setWeaponGripTargets(right=null,left=null){
+    weaponGripTargets=right?.parent&&left?.parent?{right,left}:null;
+  }
   function update({dt,x,z,ground=0,jump=0,yaw=0,speed=0,sprinting=false,
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
@@ -506,6 +510,35 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
       arm.hand.rotation.y=0;
       arm.elbow.position.x=arm.side*.035;
       arm.hand.position.z=-.016;
+      // A world-held gun is only believable when both real hands follow its
+      // moving grip surfaces, even at hip fire, idle and while walking.
+      // Aim down sights is NOT a prerequisite for raising these arms.
+      if(!boardingPose&&alive&&weaponGripTargets){
+        const marker=i===0?weaponGripTargets.left:weaponGripTargets.right;
+        if(marker?.parent){
+          const worldGoal=marker.getWorldPosition(new THREE.Vector3());
+          const relative=arm.shoulder.parent.worldToLocal(worldGoal)
+            .sub(arm.shoulder.position);
+          const grip=solveWeaponArmReach(
+            [relative.x,relative.y,relative.z],arm.side);
+          const elbowPoint=new THREE.Vector3(...grip.elbow);
+          const wristPoint=new THREE.Vector3(...grip.target);
+          const shoulderAim=new THREE.Quaternion().setFromUnitVectors(
+            new THREE.Vector3(0,-1,0),elbowPoint.normalize());
+          const forearmAim=wristPoint.sub(
+            new THREE.Vector3(...grip.elbow))
+            .applyQuaternion(shoulderAim.clone().invert()).normalize();
+          const elbowAim=new THREE.Quaternion().setFromUnitVectors(
+            new THREE.Vector3(0,-1,0),forearmAim);
+          // Remove decorative offsets while gripping: the wrist reaches
+          // the marked part instead of floating next to the receiver.
+          arm.elbow.position.x=0;
+          arm.hand.position.z=0;
+          arm.shoulder.quaternion.copy(shoulderAim);
+          arm.elbow.quaternion.copy(elbowAim);
+          arm.hand.rotation.set(0,0,0);
+        }
+      }
       if(boardingPose){
         // Frame-local rear-hatch walk. Drive real hip/knee/ankle and
         // shoulder/elbow joints from distance traveled, with grounded toes.
@@ -597,6 +630,13 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     }
     // Physical validation in local and real 3D browser tests: each palm
     // must be within a small tolerance of its frame-mounted handhold.
+    root.userData.weaponGripDistances=
+      !boardingPose&&alive&&weaponGripTargets?arms.map((arm,i)=>{
+        const marker=i===0?weaponGripTargets.left:weaponGripTargets.right;
+        return {hand:i===0?'support':'trigger',
+          distance:arm.hand.getWorldPosition(new THREE.Vector3())
+            .distanceTo(marker.getWorldPosition(new THREE.Vector3()))};
+      }):null;
     root.userData.boardingGripDistances=
       boardingPose?.handTargets&&root.parent?arms.map((arm,i)=>{
         const worldGoal=root.parent.localToWorld(
@@ -630,6 +670,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   }
   return {
     root,materials,setArmor,setClothing,weaponSocket,setHeldWeapon,heldWeapon,
+    setWeaponGripTargets,
     // Expose animated joints to NPC hit detection; view rendering is unchanged.
     hitJoints:{torso,neck,head,arms,legs},
     get clothing(){return {...clothingSlots};},

@@ -1,7 +1,7 @@
 // W09.6: original, locally constructed NPCs. No imported character assets.
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
-import {createPlayerAvatar} from './player-avatar.mjs?v=W20.23';
+import {createPlayerAvatar} from './player-avatar.mjs?v=W20.35';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
 // AI yaw 0 looks toward +Z; the survivor mesh is modeled facing -Z.
 // Rotate only the visual 180°, so its front and gun point where the brain aims.
@@ -101,6 +101,15 @@ export function createNpcAvatar(parent,kind){
   drum.rotation.x=Math.PI/2;drum.position.set(0,-.23,-.21);
   alternate.add(drum);
   const extraBarrel=alternateBox(.08,.08,.28,finish,0,.035,-.69);
+  // The NPC weapon sits on the same torso socket as the player's rebuilt
+  // guns; independent hands target actual receiver grip and wooden fore-end.
+  const rightGrip=new THREE.Group(),leftGrip=new THREE.Group();
+  rightGrip.name='NPCTriggerHandhold';
+  leftGrip.name='NPCSupportHandhold';
+  rightGrip.position.set(.075,-.19,-.025);
+  leftGrip.position.set(-.085,-.055,-.355);
+  gun.add(rightGrip,leftGrip);
+  avatar.setWeaponGripTargets(rightGrip,leftGrip);
   let currentWeapon=role.weapon;
   let disarmed=false;
   function setWeapon(id=role.weapon){
@@ -171,11 +180,7 @@ export function createNpcAvatar(parent,kind){
     const action=reloadPoseForWeapon(motionWeapon,reloading?1-reloadStage:0,1);
     hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
     recoilBlend=Math.max(recoilBlend*Math.exp(-17*step),Math.min(1,Math.max(0,recoil)));
-    avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
-      speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
-      crouched,aiming,alive,pitch:0,reloading,reloadProgress:reloadStage,
-      recoil:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon,
-      turnRate:step>0?yawDelta/step:0});
+    // Set the gun pose BEFORE avatar.update so the IK reads current grips.
     // The NPC uses the same firearm-specific action stages as the player.
     // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
     mount.rotation.x=aiming?-.15:.11;
@@ -193,12 +198,20 @@ export function createNpcAvatar(parent,kind){
     npcBolt.position.z=-.11+action.boltOffset;
     npcBolt.rotation.z=action.boltHandleLift*.55;
     flash.intensity=!disarmed&&recoilBlend>.65?2.2:0;
+    avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
+      speed:moving?Math.max(1.7,speed):0,sprinting:!!moving,
+      crouched,aiming:aiming&&!disarmed,alive,pitch:0,
+      reloading:reloading&&!disarmed,reloadProgress:reloadStage,
+      recoil:disarmed?0:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon,
+      turnRate:step>0?yawDelta/step:0});
+
   }
   function disarm(){
     disarmed=true;
     currentWeapon='none';
     gun.visible=false;
     gun.removeFromParent();
+    avatar.setWeaponGripTargets(null,null);
     flash.intensity=0;
   }
   setArmor({});

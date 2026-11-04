@@ -24,7 +24,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.23';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.35';
+import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.35';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
@@ -39,7 +40,7 @@ import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
-import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
+import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.35';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
   resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
@@ -3634,6 +3635,30 @@ const heldPumpShotgun=createPumpActionShotgun(THREE,playerAvatar.weaponSocket,{t
 const heldHuntingRifle=createHuntingRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldWornRevolver=createWornRevolver(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPipeSMG=createPipeSMG(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+// Each rebuilt gun has two named sockets mounted *inside* its grip surfaces.
+// One arm takes the trigger, the other supports the front wood/receiver.
+// Nothing is spawned as a loose hand-shaped prop behind the character.
+const heldWorldModels=new Map([
+  [TEN_MM_PISTOL.id,heldTenMM],[PIPE_PISTOL.id,heldPipePistol],
+  [PIPE_RIFLE.id,heldPipeRifle],[LASER_MUSKET.id,heldLaserMusket],
+  [DOUBLE_BARREL_SHOTGUN.id,heldDoubleBarrel],
+  [PUMP_ACTION_SHOTGUN.id,heldPumpShotgun],
+  [BOLT_HUNTING_RIFLE.id,heldHuntingRifle],
+  [IRON_REVOLVER.id,heldWornRevolver],[PIPE_SMG.id,heldPipeSMG]
+]);
+const heldWorldGrips=new Map();
+for(const [id,model] of heldWorldModels){
+  const positions=WORLD_WEAPON_GRIPS[id];
+  if(!positions)throw new Error('World handholds missing for '+id);
+  const right=new THREE.Group(),left=new THREE.Group();
+  right.name=id+'_TriggerGrip';
+  left.name=id+'_SupportGrip';
+  right.position.set(...positions.right);
+  left.position.set(...positions.left);
+  model.root.add(right,left);
+  if(positions.holdOffsetZ)model.root.position.z+=positions.holdOffsetZ;
+  heldWorldGrips.set(id,{right,left});
+}
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -5084,6 +5109,8 @@ function frame(){
     weaponState.crankRemaining>0?-Math.PI*2*laserCrankProgress(weaponState):0;
   heldLaserMusket.capacitor.material.emissiveIntensity=.18+
     (arsenalStates[LASER_MUSKET.id].laserCharge||0)*.27;
+  const grips=heldWorldGrips.get(activeWeaponId);
+  playerAvatar.setWeaponGripTargets(grips?.right,grips?.left);
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
