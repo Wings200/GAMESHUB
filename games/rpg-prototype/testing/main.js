@@ -10,8 +10,9 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
-  createViewRecoilState, kickViewRecoil, recoverViewRecoil,
   shotSpreadDegrees } from '../weapons.mjs?v=W20.34';
+import {createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
+  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.37';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.34';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs?v=W20.34';
@@ -2439,7 +2440,7 @@ const preInfiniteAmmo=new Map();
 // The dry-fire click is a trigger-edge event, NOT a frame-loop sound.
 let emptyClickLatched=false;
 let dryFireClicks=0;
-const viewRecoil=createViewRecoilState();
+const viewRecoil=createWeaponRecoilState();
 const pistol=new THREE.Group();
 camera.add(pistol);
 pistol.position.set(.32,-.31,-.77);
@@ -2990,6 +2991,7 @@ function selectWeapon(id){
   // Weapon switch prevents a held mouse from continuing its old burst.
   triggerHeld=false;emptyClickLatched=false;
   slideCycle=0;muzzleFlash=0;recoilKick=0;
+  resetWeaponRecoil(viewRecoil);
   showShotNotice('EQUIPPED · '+spec.name.toUpperCase());
   refreshWeaponHUD();
 }
@@ -3304,7 +3306,8 @@ function shoot(){
   for(const enemy of enemies.values())
     if(enemy.state.alive)
       hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
-  recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
+  // First-person recoil displacement is driven by the same per-gun impulse
+  // as the camera; do not add a second generic kick here.
   muzzleFlash=.085;
   slideCycle=laserActive||activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?0:
     activeWeaponId===IRON_REVOLVER.id?.26:
@@ -3467,8 +3470,12 @@ function shoot(){
       ' HIT'+(enemyDamageHits!==1?'S':'')+' · -'+
       Math.ceil(totalEnemyDamage)+' HP');
   }
-  // Vertical recoil only. Yaw and roll are never touched.
-  camera.rotation.x=kickViewRecoil(viewRecoil,camera.rotation.x,result.recoilDegrees*specialModifiers.recoilMultiplier);
+  // All pellets have already fired along the pre-kick sight ray.
+  // The camera rises and receives a small authored horizontal pattern AFTER the shot.
+  const kick=applyWeaponRecoil(viewRecoil,camera.rotation.x,camera.rotation.y,
+    activeSpec,{aiming:weaponState.aiming,crouched:!!player.crouched,
+      multiplier:specialModifiers.recoilMultiplier});
+  camera.rotation.x=kick.pitch;camera.rotation.y=kick.yaw;
   refreshWeaponHUD();
 }
 function reload(){
@@ -3711,7 +3718,7 @@ function resetPlayer(i){
   player.x=s.x;player.z=s.z;player.jump=0;player.vertical=0;player.supported=false;
   resetMotion(player);
   // Reset both the view direction and the unrecovered weapon kick.
-  viewRecoil.unrecovered=0;
+  resetWeaponRecoil(viewRecoil);
   // Face the enemy rather than relying on a hard-coded lab bearing.
   // Three.js camera forward after yaw is (-sin(yaw), 0, -cos(yaw)).
   // Snap toward the scout on station 9, even if future spawns move.
@@ -3968,7 +3975,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     // Sight a real solid chest hitbox, avoiding the narrow gap between
     // the chest and head at the player's default 1.7 m eye height.
     camera.rotation.x=-Math.atan2(camera.position.y-1.34,Math.hypot(dx,dz));
-    viewRecoil.unrecovered=0;
+    resetWeaponRecoil(viewRecoil);
   };
   window.__rpgSmokeFinishReload=()=>{
     // Run the real reload-completion path on the next update, without
@@ -4573,7 +4580,12 @@ window.addEventListener('mouseup',e=>{
   if(e.button===2)changeAim(false);
 });
 window.addEventListener('mousemove',e=>{
-  if(controls.isLocked)mouseSway=Math.max(-.08,Math.min(.08,mouseSway+e.movementX*.00025));
+  if(controls.isLocked){
+    mouseSway=Math.max(-.08,Math.min(.08,mouseSway+e.movementX*.00025));
+    // Player mouse compensation must cancel recoil debt rather than allowing
+    // recovery to pull the sights below their deliberately corrected aim.
+    countersteerWeaponRecoil(viewRecoil,e.movementX,e.movementY);
+  }
 });
 window.addEventListener('blur',()=>{
   keys.clear();triggerHeld=false;emptyClickLatched=false;changeAim(false);
@@ -4640,12 +4652,12 @@ function frame(){
     showShotNotice('CHARGE STORED · '+chargeUpdate.charge+'/6 · R AGAIN OR FIRE');
   if(window.__rpgSmokeReloadHold?.id===activeWeaponId)
     weaponState.reloadRemaining=window.__rpgSmokeReloadHold.remaining;
-  // Ease camera pitch back to the player's original view. This applies in
-  // YXZ space, so mouse-look cannot leave the camera permanently tilted.
-  if(viewRecoil.unrecovered>0){
-    camera.rotation.x=recoverViewRecoil(viewRecoil,camera.rotation.x,elapsed);
-  }
-  recoilKick*=Math.exp(-15*elapsed);
+  // Weapon-specific impulse hold, camera recovery and viewmodel spring.
+  // The gun's muzzle rises; fired bullets already left before this response.
+  const recoilStep=stepWeaponRecoil(viewRecoil,camera.rotation.x,camera.rotation.y,
+    elapsed,activeSpec);
+  camera.rotation.x=recoilStep.pitch;camera.rotation.y=recoilStep.yaw;
+  recoilKick=viewRecoil.modelPitch;
   mouseSway*=Math.exp(-9*dt);
   muzzleFlash=Math.max(0,muzzleFlash-dt);
   slideCycle=Math.max(0,slideCycle-dt);
@@ -4827,12 +4839,15 @@ function frame(){
   const swayY=Math.cos(handlingTime*(2.7+moving*5))*(.0025+moving*.008)*steadiness;
   if(weaponState.aiming&&!handling.active){
     // The actual optic is centered on the camera's -Z hitscan line.
-    // No procedural sway or rotation may shift it during ADS.
+    // Keep the reticle on the shot line; recoil raises the CAMERA and
+    // draws the sight slightly toward the eye, without misaligning it.
     alignActiveSight();
+    visual.root.position.z+=viewRecoil.modelBack*.46;
   }else{
     const desired=new THREE.Vector3(visual.defaultX,
       visual.defaultY??-.31,visual.defaultZ??-.77);
     desired.x+=swayX;desired.y+=swayY;
+    desired.z+=viewRecoil.modelBack; // brisk backward recoil from the stock
     if(weaponMotion.sprinting)desired.y-=.10;
     if(handling.active){desired.x+=.045;desired.y-=.04;}
     visual.root.position.lerp(desired,1-Math.exp(-16*dt));
@@ -5121,7 +5136,7 @@ function frame(){
     reloadProgress:weaponState.reloadRemaining>0?
       1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds):0,
     reloadRounds:weaponState.reloadRounds,
-    recoil:Math.min(1,muzzleFlash/.085),
+    recoil:Math.min(1,Math.max(muzzleFlash/.085,viewRecoil.modelPitch/.16)),
     hit:Math.min(1,playerHitFlash/.48)});
   // Remote bodies update independently of local V / ADS / camera mode.
   remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},dt);
