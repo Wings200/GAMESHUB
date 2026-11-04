@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.11 · Audio Timing Pass | GAMESHUB RPG</title>
+<title>W20.12 · Power Armor Sprint HUD | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -286,6 +286,18 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerVisorHud .visor-integrity{height:7px;background:#57402c;margin-top:8px}
 #powerVisorHud .visor-integrity span{display:block;width:0;height:100%;
   background:#9cddad;transition:width .16s}
+#powerVisorHud .visor-stamina-line{display:flex;align-items:center;
+  justify-content:space-between;gap:10px;margin-top:13px}
+#powerVisorHud .visor-stamina-line span:last-child{color:#ffe1a6}
+#powerVisorHud .visor-stamina-track{height:8px;overflow:hidden;
+  margin-top:6px;background:#443329;border:1px solid #b58c5d}
+#powerVisorHud .visor-stamina-track span{display:block;height:100%;width:100%;
+  background:linear-gradient(90deg,#b88a43,#ffe2a0);transition:width .14s linear}
+#powerVisorHud .visor-stamina-track.empty span{background:#d76d58}
+#powerVisorHud .visor-stamina-track.unavailable span{background:#777169}
+#powerVisorHud .visor-stamina-track.unavailable{opacity:.6}
+#powerVisorHud .visor-stamina-state{margin-top:5px;font-size:9px;
+  font-weight:900;letter-spacing:.13em;color:#dabf91}
 #powerVisorHud .visor-aim{position:absolute;left:50%;top:50%;
   width:184px;height:184px;transform:translate(-50%,-50%);
   border:1px solid #d6a56061;border-radius:50%;opacity:.75;
@@ -509,6 +521,12 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
     <div class="visor-value" id="visorHealth">100 HP</div>
     <div class="visor-sub">PLATE CONDITION <span id="visorIntegrity">100%</span></div>
     <div class="visor-integrity"><span id="visorIntegrityFill"></span></div>
+    <div class="visor-sub visor-stamina-line"><span>SPRINT STAMINA</span><span id="visorStamina">100%</span></div>
+    <div class="visor-stamina-track" id="visorStaminaTrack" role="progressbar"
+      aria-label="Power armor sprint stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+      <span id="visorStaminaFill"></span>
+    </div>
+    <div class="visor-stamina-state" id="visorStaminaState">READY</div>
   </div>
   <div class="visor-panel visor-right">
     <div class="visor-label">WEAPON SYSTEM</div>
@@ -581,10 +599,11 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.11</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.12</div>
     <h1>WEAPON<span>TESTING.</span></h1>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
-    <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps now follow a natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics sound throughout the 4.5-second entry. Animations and combat timing are unchanged.</p>
+    <p><strong>W20.12 · POWER ARMOR STAMINA:</strong> The visor now displays a separate sprint-stamina bar, percentage, and status (draining, recovering, exhausted or core offline). Fusion-core charge remains visible above it.</p>
+    <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps use natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics span the full entry animation.</p>
     <p>No new map. Compare walking and sprinting sounds, fire each weapon, then test the power frame at Station 8.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
@@ -598,7 +617,7 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.11</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.12</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -829,6 +848,6 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.11"></script>
+<script type="module" src="./main.js?v=W20.12"></script>
 </body>
 </html>
