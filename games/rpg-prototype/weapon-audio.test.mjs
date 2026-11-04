@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WeaponAudio, IMPACT_MATERIALS, getImpactMaterial } from './weapon-audio.mjs';
+import { WeaponAudio, IMPACT_MATERIALS, getImpactMaterial, footstepStrideMeters } from './weapon-audio.mjs';
 
 class Parameter {
   constructor(calls,kind){this.calls=calls;this.kind=kind;}
@@ -144,9 +144,38 @@ test('Steps have distinct normal and power-armor weight without autoplay',()=>{
   silent.footstep(true);
   assert.ok(silent.context.events.length>count);
   const pitch=silent.context.calls.filter(c=>c.kind==='frequency'&&c.mode==='set').map(c=>c.value);
-  assert.ok(pitch.includes(75)&&pitch.includes(175));
+  assert.ok(pitch.includes(67*.82)&&pitch.includes(145*.82));
   silent.setEnabled(false);
   const mutedCount=silent.context.events.length;
   silent.footstep(true);
   assert.equal(silent.context.events.length,mutedCount);
+});
+
+test('Footsteps follow human gait cadence at real movement speeds',()=>{
+  const walking=4.5/footstepStrideMeters({});
+  const running=7.2/footstepStrideMeters({sprinting:true});
+  const crouching=2.35/footstepStrideMeters({crouched:true});
+  const armoredWalking=4.5/footstepStrideMeters({powerArmor:true});
+  const armoredRunning=7.2/footstepStrideMeters({sprinting:true,powerArmor:true});
+  assert.ok(walking>2&&walking<2.8,'normal walk is not 6+ steps per second');
+  assert.ok(running>2.7&&running<3.5,'sprint is not 8 steps per second');
+  assert.ok(crouching>1.2&&crouching<2);
+  assert.ok(armoredWalking<walking&&armoredRunning<running);
+});
+
+test('Long gun reports decay without the old 0.32 second noise cutoff',()=>{
+  const audio=new WeaponAudio(FakeAudioContext);
+  audio.gunshot('shotgun');
+  assert.ok(audio.context.events.some(([event,at])=>event==='stop'&&at>10.45));
+  assert.ok(audio.context.events.every(([,at])=>Number.isFinite(at)));
+});
+
+test('Power armor hydraulic cues span its real boarding animation',()=>{
+  const audio=new WeaponAudio(FakeAudioContext);
+  audio.powerArmorTransition(true,4.5);
+  const starts=audio.context.events.filter(([event])=>event==='start').map(([,at])=>at);
+  assert.ok(starts.length>=7);
+  assert.ok(starts.some(at=>at>14),'late lock click matches end of boarding');
+  const maxStop=Math.max(...audio.context.events.map(([,at])=>at));
+  assert.ok(maxStop>14.3&&maxStop<15);
 });
