@@ -97,7 +97,7 @@ test('Both iron sight references match the real brass bead tip',()=>{
   assert.equal(front.position.y+front.geometry.height/2,.290);
   assert.equal(rifle.sightLocal.y,.290);
   const dots=rifle.root.children.filter(c=>c.geometry instanceof BoxGeometry&&
-    c.geometry.width===.014&&c.geometry.height===.012&&c.position.z===-.239);
+    c.geometry.width===.010&&c.geometry.height===.012&&c.position.z===-.239);
   assert.equal(dots.length,2);
   dots.forEach(c=>assert.equal(c.position.y+c.geometry.height/2,.290));
 });
@@ -107,4 +107,19 @@ test('World-held rifle reuses real bolt model at same reduced scale',()=>{
   assert.ok(find(rifle.root,'HuntingFullWoodStock'));
   assert.ok(find(rifle.boltAssembly,'HuntingBoltHandleKnob'));
   assert.equal(rifle.reloadAction.visible,false);
+});
+
+test('W20.31 thinner front sight is green-emissive with controlled halo',()=>{
+  const rifle=createHuntingRifle(THREE,new Group());
+  const tip=find(rifle.root,'HuntingFrontSightTip');
+  const post=find(rifle.root,'HuntingFrontSightPedestal');
+  const glow=find(rifle.root,'HuntingFrontSightGlow');
+  assert.equal(post.geometry.width,.026,'post is narrow in the sight picture');
+  assert.equal(tip.geometry.width,.010,'front bead is a precision dot');
+  assert.equal(tip.material.args[0].color,0x5aff74);
+  assert.equal(tip.material.args[0].emissive,0x25ff5c);
+  assert.ok(tip.material.args[0].emissiveIntensity>=1);
+  assert.ok(glow);
+  assert.equal(glow.position.y,rifle.sightLocal.y);
+  assert.equal(tip.position.y+tip.geometry.height/2,rifle.sightLocal.y);
 });

@@ -15,6 +15,7 @@ export function createHuntingRifle(THREE,parent,{thirdPerson=false,flareTexture=
   const darkWood=new THREE.MeshStandardMaterial({color:0x352a22,roughness:.99});
   const brass=new THREE.MeshStandardMaterial({color:0xb7a06a,metalness:.70,roughness:.53});
   const copper=new THREE.MeshStandardMaterial({color:0xb76741,metalness:.62,roughness:.56});
+  const greenFiber=new THREE.MeshStandardMaterial({color:0x5aff74,emissive:0x25ff5c,emissiveIntensity:1.65,metalness:0,roughness:.32});
   const glove=new THREE.MeshStandardMaterial({color:0x3b443c,roughness:.97});
   const part=(geometry,material,x,y,z,group=root)=>{
     const mesh=new THREE.Mesh(geometry,material);
@@ -136,14 +137,17 @@ export function createHuntingRifle(THREE,parent,{thirdPerson=false,flareTexture=
   reloadHand.visible=false;boltCycleHand.visible=false;
 
   // Brass tips physically touch their iron supports and share the ADS ray.
-  box(.056,.115,.086,iron,0,.229,-1.592)
+  box(.026,.115,.052,iron,0,.229,-1.592)
     .name='HuntingFrontSightPedestal';
-  const bead=box(.017,.012,.019,brass,0,.284,-1.592);
+  const bead=box(.010,.012,.016,greenFiber,0,.284,-1.592);
   bead.name='HuntingFrontSightTip';bead.userData.sightReference=true;
-  box(.187,.059,.120,iron,0,.220,-.233).name='HuntingRearSightBridge';
+  const fiberGlow=new THREE.PointLight(0x2cff65,.18,.21,2);
+  fiberGlow.name='HuntingFrontSightGlow';
+  fiberGlow.position.set(0,.290,-1.592);root.add(fiberGlow);
+  box(.162,.059,.120,iron,0,.220,-.233).name='HuntingRearSightBridge';
   for(const side of [-1,1]){
-    box(.024,.070,.027,blueSteel,side*.063,.250,-.239);
-    const dot=box(.014,.012,.015,brass,side*.063,.284,-.239);
+    box(.017,.070,.027,blueSteel,side*.056,.250,-.239);
+    const dot=box(.010,.012,.015,brass,side*.056,.284,-.239);
     dot.userData.sightReference=true;
   }
   const magazine=new THREE.Group(),magazineBase=new THREE.Group();

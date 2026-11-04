@@ -1,3 +1,7 @@
+## W20.31 — Slim green-fiber hunting rifle sight
+
+The hunting rifle’s front iron sight post is slimmer, the fiber bead is narrower and glows green through an emissive material and a short-range accent light. Rear sight posts are narrowed to leave a clearer target picture. Sight elevation and aiming calibration remain unchanged. Existing gun mechanics, audio, bolt cycle, and damage are preserved. Additional geometry and source-level tests cover the sight update.
+
 # Untitled RPG · Mechanics Lab W20.30 + Forest Foundation 0.1
 
 ## W20.30 · Bolt-Action Hunting Rifle
