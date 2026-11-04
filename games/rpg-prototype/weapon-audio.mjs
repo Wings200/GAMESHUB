@@ -174,7 +174,8 @@ export class WeaponAudio {
     if(heavy){
       this._noiseBurst(t,.25,.072,45,580);
       this._tone(t,67,33,.29,.12,'triangle');
-      this._tone(t+.065,265,90,.12,.03,'sine');
+      // High sine overtone sounded like a bell instead of a heavy boot.
+      this._noiseBurst(t+.065,.10,.022,55,420);
     }else{
       this._noiseBurst(t,.15,.038,140,1350);
       this._tone(t,145,65,.16,.03,'triangle');
@@ -184,15 +185,20 @@ export class WeaponAudio {
     if(!this.unlock())return;
     const t=this.context.currentTime+.01;
     const d=Number.isFinite(duration)?Math.max(2.5,Math.min(6,duration)):4.5;
-    // Distributed hydraulic movement and locking clanks over the actual
-    // boarding sequence, not the 1.65-second rifle reload sample.
-    this._tone(t,entering?108:85,48,.65,.065,'sawtooth');
-    this._noiseBurst(t+.12,.36,.06,65,960);
-    this._tone(t+d*.28,135,72,.72,.072,'triangle');
-    this._noiseBurst(t+d*.40,.27,.058,170,1700);
-    this._tone(t+d*.59,205,84,.55,.075,'sawtooth');
-    this._noiseBurst(t+d*.73,.36,.09,75,1200);
-    this._tone(t+d*.89,94,42,.34,.085,'triangle');
+    // Doors/hydraulics plus three BOOT LANDINGS at the actual climb contacts.
+    // No high sustained pitched sine/sawtooth accents: those read as dings.
+    this._noiseBurst(t,.45,.065,45,620);
+    this._tone(t,76,34,.43,.057,'triangle');
+    const contacts=entering?[.49,.64,.81]:[.45,.60,.77];
+    for(const fraction of contacts){
+      const landing=t+d*fraction;
+      this._noiseBurst(landing,.20,.085,45,730);
+      this._tone(landing,69,28,.22,.09,'triangle');
+      this._noiseBurst(landing+.045,.12,.026,60,480);
+    }
+    const latch=t+d*.93;
+    this._noiseBurst(latch,.15,.060,90,980);
+    this._tone(latch,64,37,.17,.045,'triangle');
   }
   dryFire() {
     if (!this.unlock()) return;

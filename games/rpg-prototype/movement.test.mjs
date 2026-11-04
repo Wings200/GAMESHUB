@@ -263,3 +263,19 @@ test('An unpowered chassis crawls and cannot sprint despite Shift being held',()
   assert.ok(l.speed<n.speed*.3);
   near(limping.x,normal.x*(MOVE_TUNING.walk*.23/MOVE_TUNING.sprint));
 });
+
+
+test('W20.16 taller armor clearance respects human-sized doorways and crouch',()=>{
+  const roof={minX:2,maxX:8,minZ:-1,maxZ:1,bottom:2.12};
+  const roomy={...env,ceilings:[roof]};
+  const armor={...roomy,bodyHeight:2.25,crouchHeight:1.88};
+  const normal=p(0,0);resetMotion(normal);
+  for(let i=0;i<32;i++)stepMovement(normal,new Set(['KeyW']),{x:1,z:0},1/60,roomy);
+  assert.ok(normal.x>2,'human can enter under 2.12 m roof');
+  const powered=p(0,0);resetMotion(powered);
+  for(let i=0;i<32;i++)stepMovement(powered,new Set(['KeyW']),{x:1,z:0},1/60,armor);
+  assert.ok(powered.x<1.6,'full-height armor cannot clip through a low ceiling');
+  toggleCrouch(powered);
+  for(let i=0;i<70;i++)stepMovement(powered,new Set(['KeyW']),{x:1,z:0},1/60,armor);
+  assert.ok(powered.x>2.5,'crouching armor can pass beneath a slightly low roof');
+});

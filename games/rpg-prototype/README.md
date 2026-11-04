@@ -1,4 +1,16 @@
-# Untitled RPG · Mechanics Lab W20.15 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.16 + Forest Foundation 0.1
+
+## W20.16 · Armor boarding, sound, enemy combat and bottom compass
+
+- Rebuilt power-armor transition sound timing around the three real foot contacts; replaced ringing oscillators with mechanical thuds. Ordinary heavy footsteps no longer add the high-pitched overtone.
+- The pilot now advances through the rear hatch to the cabin interior instead of stopping on the rear platform. A compact scaled frame retains a human-sized pilot and inverse-kinematics contact mapping.
+- Frame standing clearance is 2.25 m with crouched clearance 1.88 m; power-armor camera eye lift is reduced to 0.39 m. Ceiling collisions honor equipped frame height.
+- Fusion-core idle, walking and sprint drain rates are multiplied by 0.8, making each core last exactly 25% longer.
+- Alerted NPCs track close circling players more effectively, with finite fast turning and a wider near-field firing cone. Cover and solid walls still block all rounds.
+- Legacy mannequin limbs live exclusively on an unrendered collision layer, with one visible animated NPC rig. Floating overhead labels show only enemy name and HP, not planned tactics or reloads.
+- A bottom 360-degree contact strip shows every living enemy as a red dot in both field and power-armor modes, including targets behind the player.
+- Regression tests cover fuel ratios, boarding end position, combat tracking, wall occlusion, ceiling clearance, audio cues and enemy HUD/source integrity.
+
 
 ## W20.15 — Remove obsolete camera-mounted cockpit LED strips
 

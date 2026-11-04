@@ -1,13 +1,15 @@
 // W20.8: distinct cast cuirass, pauldron, vambrace, greave and helmet silhouettes.
 // Slot visuals, pilot, hinged entry and cockpit remain independent of gameplay.
 import * as THREE from 'three';
-import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower} from './power-armor.mjs';
+import {POWER_ARMOR_SLOTS,getPowerPlate,plateCondition,hasFusionPower,POWER_ARMOR_VISUAL_SCALE} from './power-armor.mjs';
 import {powerEntryPose} from './power-entry-animation.mjs';
 
 export function buildPowerArmorVisual(scene,position,state){
   const root=new THREE.Group();
   root.position.set(position.x,0,position.z);
   root.rotation.y=-Math.PI/2;
+  // A near-human doorway profile, rather than a three-metre-tall mech.
+  root.scale.setScalar(POWER_ARMOR_VISUAL_SCALE);
   scene.add(root);
   const steel=new THREE.MeshStandardMaterial({color:0x677675,metalness:.76,roughness:.48});
   const armor=new THREE.MeshStandardMaterial({color:0x384b4e,metalness:.65,roughness:.56});
@@ -452,7 +454,8 @@ export function buildPowerArmorVisual(scene,position,state){
   };
   const lowerTread=tread(-1.47,.22,.43);
   const upperTread=tread(-1.07,.43,.39);
-  const cabinTread=tread(-.60,.49,.54);
+  // The inner foot platform must extend under the pilot's FINAL position.
+  const cabinTread=tread(-.36,.49,.78);
   frameFeatures.boardingSteps=2;
   // The old fixed dorsal column is now a hinged service bulkhead. It swings
   // WITH the left hatch instead of allowing the pilot to ghost through it.
@@ -760,6 +763,8 @@ export function buildPowerArmorVisual(scene,position,state){
   // Articulated human pilot is much smaller than the armor: visible during
   // the existing approach/climb/exit choreography, not a second armored bot.
   const pilot=makeGroup(root,0,0,-1.93);
+  // Keep the wearer human-sized even though the frame geometry is compact.
+  pilot.scale.setScalar(1/POWER_ARMOR_VISUAL_SCALE);
   const fallbackPilot=makeGroup(pilot);
   const uniform=new THREE.MeshStandardMaterial({color:0x657166,roughness:.93});
   const fabric=new THREE.MeshStandardMaterial({color:0x30383a,roughness:1});

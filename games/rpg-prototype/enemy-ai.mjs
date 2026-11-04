@@ -18,8 +18,10 @@ const distance=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
 const angleDelta=(target,heading)=>Math.atan2(Math.sin(target-heading),Math.cos(target-heading));
 function facePoint(enemy,point,dt){
   const desired=Math.atan2(point.x-enemy.x,point.z-enemy.z);
-  // Tracking takes time. A bot cannot instantly spin to a newly exposed player.
-  const maxTurn=3.1*dt;
+  // Tight circling is not a free invulnerability exploit: an alerted guard
+  // turns its torso faster in arm's reach, but still has finite reaction time.
+  const d=distance(enemy.x,enemy.z,point.x,point.z);
+  const maxTurn=(d<5?7.0:d<12?4.7:3.1)*dt;
   enemy.yaw+=clamp(angleDelta(desired,enemy.yaw),-maxTurn,maxTurn);
 }
 const copy=point=>({x:point.x,z:point.z});
@@ -50,8 +52,12 @@ export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   const d=distance(enemy.x,enemy.z,player.x,player.z);
   if(d>tuning.sight||d<.0001)return d<.0001;
   const targetAngle=Math.atan2(player.x-enemy.x,player.z-enemy.z);
+  // Nearby footsteps remain trackable once combat is underway; this does
+  // not grant wall vision, and the initial patrol cone remains unchanged.
+  const engaged=enemy.mode==='chase'&&enemy.memory>0&&d<=6;
+  const cone=engaged?360:tuning.fieldOfViewDegrees;
   if(Math.abs(angleDelta(targetAngle,enemy.yaw))>
-    tuning.fieldOfViewDegrees*Math.PI/360)return false;
+    cone*Math.PI/360)return false;
   const origin={x:enemy.x,z:enemy.z};
   return !obstacles.some(rect=>lineIntersectsBox(origin,player,rect,.035));
 }

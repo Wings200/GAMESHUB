@@ -6,7 +6,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
   plateCondition,repairPowerPlate,damagePowerPlate,installFusionCore,ejectFusionCore,
   stepFusionCore,powerArmorMobility,hasFusionPower,POWER_ARMOR_RECIPES,
   stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
-  FUSION_CORE_DRAIN,POWER_ARMOR_INDICATOR_CRITICAL_PERCENT,
+  FUSION_CORE_DRAIN,POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,
+  POWER_ARMOR_INDICATOR_CRITICAL_PERCENT,
   powerArmorIndicatorStatus} from './power-armor.mjs';
 
 test('Power armor has its own chassis and six independently removable visible slots',()=>{
@@ -91,8 +92,8 @@ test('Power armor standing and crouch heights follow player movement',()=>{
   assert.equal(powerArmorEyeHeight(state,1.70),1.70);
   beginPowerArmorTransition(state);
   stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
-  assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-2.50)<.00001);
-  assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.83)<.00001);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.70)-2.09)<.00001);
+  assert.ok(Math.abs(powerArmorEyeHeight(state,1.03)-1.42)<.00001);
   assert.ok(powerArmorEyeHeight(state,1.70)-powerArmorEyeHeight(state,1.03)>.60);
 });
 
@@ -125,6 +126,17 @@ test('Three unique armor families can mix by slot and retain broken pieces',()=>
   assert.equal(removed.current,POWER_ARMOR_PLATES.t60.maxDurability);
   assert.equal(rig.plates.head,'none');
   assert.ok(POWER_ARMOR_RECIPES.t01.salvage>POWER_ARMOR_RECIPES.t45.salvage);
+});
+test('Compact frame stays within a realistic doorway-scale profile',()=>{
+  assert.ok(POWER_ARMOR_VISUAL_SCALE<=.75);
+  assert.ok(POWER_ARMOR_STAND_HEIGHT<=2.25);
+  assert.ok(powerArmorEyeHeight({occupied:true},1.70)<POWER_ARMOR_STAND_HEIGHT);
+});
+test('Fusion cores last exactly 25 percent longer at each gait',()=>{
+  for(const [mode,oldRate] of [['idle',.04],['walking',.16],['sprinting',.38]]){
+    assert.ok(Math.abs(FUSION_CORE_DRAIN[mode]-(oldRate/1.25))<1e-10);
+    assert.ok(Math.abs((100/FUSION_CORE_DRAIN[mode])/(100/oldRate)-1.25)<1e-10);
+  }
 });
 test('Fusion cores power a chassis, drain with movement, and can be ejected',()=>{
   const rig=createPowerArmorState();

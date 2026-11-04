@@ -10,7 +10,8 @@ const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
 export const POWER_BOARDING=Object.freeze({
   low:Object.freeze({z:-1.47,y:.22}),
   high:Object.freeze({z:-1.07,y:.43}),
-  cabin:Object.freeze({z:-.60,y:.49}),
+  // Pilot finishes forward of the rear cage, inside the torso opening.
+  cabin:Object.freeze({z:-.25,y:.49}),
   rearExit:-2.35
 });
 const segment=(a,b,start,end,time)=>lerp(start,end,smooth(a,b,time));

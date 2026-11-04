@@ -186,3 +186,28 @@ test('A fresh hidden gunshot redirects stale visual memory without exposing the 
   assert.equal(e.mode,'investigate',
     'After a sound fades, the earlier visual memory is still usable');
 });
+
+
+test('W20.16 a close circling player stays trackable after the guard is alerted',()=>{
+  const e=bot(45,40);
+  alertEnemy(e,{x:45,z:37});
+  const wall={minX:44.3,maxX:44.7,minZ:38,maxZ:39,height:2.8};
+  // An alerted enemy can hear an opponent stepping immediately behind them.
+  e.yaw=0;
+  assert.equal(hasSight(e,{x:45,z:37}),true);
+  assert.equal(hasSight(e,{x:45,z:37},[wall]),true);
+  assert.equal(hasSight(e,{x:44.5,z:37},[{minX:44.65,maxX:44.95,minZ:38,maxZ:39}]),false,
+    'walls still fully block tracking at close range');
+  // Closing distance allows a finite but faster pursuit turn.
+  const target={x:45,z:37};
+  stepEnemyBrain(e,target,.05,[],{combatHold:true});
+  assert.ok(e.yaw>0.25&&e.yaw<.36,'guard turns rapidly without snapping 180 degrees');
+  let maxLock=0;
+  for(let i=0;i<22;i++){
+    const angle=i*.29;
+    const player={x:45+3*Math.sin(angle),z:40+3*Math.cos(angle)};
+    stepEnemyBrain(e,player,.05,[],{combatHold:true});
+    maxLock=Math.max(maxLock,e.aimLockSeconds);
+  }
+  assert.ok(maxLock>.45,'a nearby orbit does not reset every reaction windup');
+});

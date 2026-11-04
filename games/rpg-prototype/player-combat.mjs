@@ -43,8 +43,12 @@ export function isEnemyAimAligned(brain,player,toleranceDegrees=12){
 export function canEnemyFire(enemyBrain,player,obstacles=[],range=AI_TUNING.sight){
   if(!enemyBrain.active||!(enemyBrain.mode==='chase'||
     (enemyBrain.mode==='investigate'&&enemyBrain.retaliationTime>0)))return false;
-  if(Math.hypot(enemyBrain.x-player.x,enemyBrain.z-player.z)>range)return false;
-  if(!isEnemyAimAligned(enemyBrain,player))return false;
+  const distanceToTarget=Math.hypot(enemyBrain.x-player.x,enemyBrain.z-player.z);
+  if(distanceToTarget>range)return false;
+  // Close-quarters fire has a wider torso-aligned cone; long-range precision
+  // still requires the original 12-degree aim. Physical LOS is checked below.
+  const tolerance=distanceToTarget<5?22:distanceToTarget<9?16:12;
+  if(!isEnemyAimAligned(enemyBrain,player,tolerance))return false;
   // A hit alerts the NPC to the shooter beyond its normal 45 m patrol
   // detection radius. A return shot still requires facing and clear LOS.
   return hasSight(enemyBrain,player,obstacles,{...AI_TUNING,sight:range});

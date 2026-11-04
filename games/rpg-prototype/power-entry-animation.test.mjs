@@ -77,3 +77,13 @@ test('a planted boot stays on its previous tread while the other foot lifts',()=
     assert.ok(p.grip>.6,'pilot should already be using the frame handholds');
   }
 });
+
+
+test('final planted pilot position lies beyond the rear cage inside the cabin',()=>{
+  assert.ok(POWER_BOARDING.cabin.z>-.35,'pilot stops in the torso, not on the rear step');
+  assert.ok(POWER_BOARDING.cabin.z<0,'pilot must remain inside the frame centerline');
+  const entry=powerEntryPose('entering',.9);
+  assert.equal(entry.seated,true);
+  assert.equal(entry.z,POWER_BOARDING.cabin.z);
+  assert.ok(entry.footTargets.every(target=>target.z===POWER_BOARDING.cabin.z));
+});

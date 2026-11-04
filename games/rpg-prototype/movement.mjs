@@ -108,8 +108,12 @@ export function stepMovement(player, keys, look, dt, environment) {
   const wantsCrouch=!!player.crouchToggle||keys.has('ControlLeft')||keys.has('ControlRight');
   // If the player releases crouch beneath a low roof, stay crouched
   // until there is enough physical space to stand.
+  const standingClearance=Number.isFinite(environment.bodyHeight)?
+    Math.max(MOVE_TUNING.standHeight,environment.bodyHeight):MOVE_TUNING.standHeight;
+  const crouchedClearance=Number.isFinite(environment.crouchHeight)?
+    Math.max(MOVE_TUNING.crouchHeight,environment.crouchHeight):MOVE_TUNING.crouchHeight;
   player.crouched=wantsCrouch ||
-    (player.crouched && overheadBlocked(player.x,player.z,environment,MOVE_TUNING.standHeight));
+    (player.crouched && overheadBlocked(player.x,player.z,environment,standingClearance));
 
   const forward = { x:look.x, z:look.z };
   const fl=Math.hypot(forward.x,forward.z);
@@ -140,7 +144,7 @@ export function stepMovement(player, keys, look, dt, environment) {
   const before=environment.groundHeight(player.x,player.z);
   const candidate=movePoint(player,player.velocityX*dt,player.velocityZ*dt,
     environment.boxes||[],environment.trees||[],before+player.jump);
-  const bodyHeight=player.crouched?MOVE_TUNING.crouchHeight:MOVE_TUNING.standHeight;
+  const bodyHeight=player.crouched?crouchedClearance:standingClearance;
   // Low roof collision is separate from wall/ledge collision. Move one axis at
   // a time to keep normal corner sliding, even when hitting a tunnel entrance.
   let next={x:candidate.x,z:candidate.z};

@@ -179,3 +179,24 @@ test('Power armor hydraulic cues span its real boarding animation',()=>{
   const maxStop=Math.max(...audio.context.events.map(([,at])=>at));
   assert.ok(maxStop>14.3&&maxStop<15);
 });
+
+
+test('W20.16 armor entry and exit boot contacts use low thuds, never bell tones',()=>{
+  for(const entering of [true,false]){
+    const audio=new WeaponAudio(FakeAudioContext);
+    audio.powerArmorTransition(entering,4.5);
+    const pitches=audio.context.calls
+      .filter(call=>call.kind==='frequency'&&call.mode==='set')
+      .map(call=>call.value);
+    assert.ok(pitches.length>=5,'hydraulics plus three measured footfalls');
+    assert.ok(pitches.includes(69*.82),'each contact has a low boot-thud oscillator');
+    assert.ok(!pitches.some(freq=>Math.abs(freq-205*.82)<.001||
+      Math.abs(freq-265*.82)<.001),'no old ringing footstep tones');
+    const starts=audio.context.events
+      .filter(([kind])=>kind==='start').map(([,at])=>at);
+    for(const fraction of (entering?[.49,.64,.81]:[.45,.60,.77])){
+      assert.ok(starts.some(time=>Math.abs(time-(10.01+4.5*fraction))<.015),
+        'contact is audible at '+fraction);
+    }
+  }
+});

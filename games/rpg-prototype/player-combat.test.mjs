@@ -109,3 +109,17 @@ test('W20: a visible guard cannot fire until the entire body faces the target',(
   e.yaw=5*Math.PI/2;
   assert.equal(canEnemyFire(e,east),true,'angle wrapping must be stable');
 });
+
+
+test('W20.16 a nearby circling opponent can be shot while keeping solid cover safe',()=>{
+  const e=createEnemyBrain({x:0,z:0,yaw:Math.PI/2-18*Math.PI/180});
+  e.mode='chase';e.memory=5;
+  const player={x:3,z:0};
+  assert.equal(canEnemyFire(e,player),true,'close-range 18-degree angle is hittable');
+  assert.equal(canEnemyFire(e,player,[{minX:1,maxX:2,minZ:-.3,maxZ:.3}]),false,
+    'close tracking cannot penetrate a wall');
+  assert.equal(canEnemyFire({...e,yaw:Math.PI},player),false,
+    'no shot with the gun aimed fully away');
+  assert.equal(canEnemyFire(e,{x:10,z:0}),false,
+    'farther opponents still require the original narrow firing cone');
+});

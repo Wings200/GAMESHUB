@@ -4,7 +4,12 @@ import {ARMOR_SLOTS,damageReductionForPoints} from './combat.mjs';
 export const POWER_ARMOR_SLOTS=ARMOR_SLOTS;
 export const POWER_ARMOR_TRANSITION_SECONDS=4.5;
 export const FUSION_CORE_CAPACITY=100;
-export const FUSION_CORE_DRAIN=Object.freeze({idle:.04,walking:.16,sprinting:.38});
+// Exactly 20% lower drain = 25% longer runtime at every gait.
+export const FUSION_CORE_DRAIN=Object.freeze({idle:.032,walking:.128,sprinting:.304});
+// A compact 2.25 m frame can clear ordinary 2.3-2.4 m interior doors.
+export const POWER_ARMOR_VISUAL_SCALE=.75;
+export const POWER_ARMOR_STAND_HEIGHT=2.25;
+export const POWER_ARMOR_CROUCH_HEIGHT=1.88;
 export const POWER_ARMOR_PLATES=Object.freeze({
   none:Object.freeze({id:'none',name:'Bare chassis',points:0,color:0x29383d,scale:0,maxDurability:0,model:'none'}),
   // Older saved rigs keep their original salvage tiers.
@@ -24,7 +29,7 @@ export const POWER_ARMOR_FRAME_AP=30;
 const clamp=(n,low,high)=>Math.max(low,Math.min(high,Number.isFinite(n)?n:low));
 export function powerArmorEyeHeight(state,normalEyeHeight){
   const safe=Number.isFinite(normalEyeHeight)?normalEyeHeight:1.70;
-  return safe+(state.occupied?.80:0);
+  return safe+(state.occupied?.39:0);
 }
 export function getPowerPlate(slot,tier){
   if(!POWER_ARMOR_SLOTS.includes(slot))throw Error('Unknown powered armor slot: '+slot);

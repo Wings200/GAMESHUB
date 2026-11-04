@@ -15,14 +15,15 @@ import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.11';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.16';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
   installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
   beginPowerArmorTransition,stepPowerArmor,
-  POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot} from '../power-armor.mjs';
-import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.15';
+  POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
+  POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
+import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs';
 import {createPlayerAvatar} from '../player-avatar.mjs';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
@@ -1072,8 +1073,10 @@ function togglePoweredSuit(){
     {occupied:!exiting},exiting?player.eyeHeight:MOVE_TUNING.eyeHeight);
   const endPosition=new THREE.Vector3(target.x,destY,target.z);
   // The installed pilot looks through the FRONT visor (+Z in suit space).
-  const lookPoint=poweredSuit.root.localToWorld(new THREE.Vector3(
-    0,destY,exiting?-.4:2.4));
+  // World-space look-at must not multiply the eye height by suit scale.
+  const lookPoint=endPosition.clone().add(
+    poweredSuit.root.localToWorld(new THREE.Vector3(0,0,exiting?-2:2))
+      .sub(poweredSuit.root.position));
   const endingRotation=new THREE.Quaternion().setFromRotationMatrix(
     new THREE.Matrix4().lookAt(endPosition,lookPoint,powerCameraUp));
   powerCinematic={from:camera.position.clone(),fromRotation:camera.quaternion.clone(),
@@ -1385,6 +1388,8 @@ aiCrate(49.0,44.2,2.8,1.8,1.85,dark);
 aiCrate(53.0,37.0,2.3,2.2,1.6,rustySteel);
 for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
 const enemies=new Map(),enemyHitMeshes=[];
+// Invisible mannequin collision surfaces are never on the camera render layer.
+const ENEMY_COLLISION_LAYER=29;
 const lootBags=new Map();
 let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
 let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
@@ -1459,6 +1464,9 @@ function createEnemy(spec){
     // This is a physics-only hitbox, never a second renderable body.
     // The player raycaster intersects these directly even when hidden.
     mesh.visible=false;mesh.castShadow=false;mesh.receiveShadow=false;
+    // Crucial: legacy LEGS are parented to root, not upperBody. Assign the
+    // non-rendering layer to every collision mesh individually.
+    mesh.layers.set(ENEMY_COLLISION_LAYER);
     mesh.material.visible=false;mesh.material.colorWrite=false;
     mesh.userData={enemyId:spec.id,hitZone:slot,equipped:true,
       impactMaterial:armored?'metal':'wood'};
@@ -1526,6 +1534,10 @@ function createEnemy(spec){
   // ONE visible character. Primitive body and armor meshes remain physics-only
   // and cannot render, including after reset or a changed armor loadout.
   enemy.rigged=createNpcAvatar(root,spec.id);
+  // Old primitive body serves *only* precise zone hit-testing, never visuals.
+  // Its separate render layer makes duplicate limbs impossible even if a
+  // saved loadout mistakenly re-enables a mesh or its material.
+  upperBody.traverse(object=>object.layers.set(ENEMY_COLLISION_LAYER));
   equipEnemyWeapon(enemy.tactics,chooseEnemyWeapon(spec.id,0).id);
   enemy.rigged.setWeapon(enemy.tactics.weaponId);
   for(const hitbox of enemy.meshes)hitbox.visible=false;
@@ -1548,12 +1560,9 @@ function refreshEnemyArmorVisuals(enemy){
   }
 }
 function refreshEnemyLabel(enemy,mode){
-  const t=enemy.tactics;
-  const magazine=t.magazine+'/'+(getEnemyWeapon(t.weaponId)?.magazine||ENEMY_PROFILES[t.kind].magazine);
-  const gunName=getEnemyWeapon(t.weaponId)?.name||t.kind;
-  const loading=t.reloadRemaining>0?'RELOADING '+t.reloadRemaining.toFixed(1)+'s':
-    magazine+' · '+gunName.toUpperCase();
-  const current=enemy.label+'-'+mode+'-'+Math.ceil(enemy.state.health)+'-'+loading;
+  // Overhead tags may identify a hostile, but must NEVER expose its
+  // decision, upcoming move, reload state, or weapon magazine to the player.
+  const current=enemy.label+'-'+Math.ceil(enemy.state.health);
   if(current===enemy.statusText)return;
   enemy.statusText=current;
   const {ctx,canvas,texture}=enemy.billboard;
@@ -1562,11 +1571,9 @@ function refreshEnemyLabel(enemy,mode){
   ctx.strokeStyle=enemy.state.alive?'#d7a77d':'#df685d';
   ctx.lineWidth=4;ctx.strokeRect(3,3,506,126);
   ctx.fillStyle='#f3dec0';ctx.textAlign='left';
-  ctx.font='bold 26px system-ui';ctx.fillText(enemy.label,18,37);
-  ctx.fillStyle=mode==='CHASE'?'#f89176':mode==='INVESTIGATE'?'#f3c47c':'#abcbd2';
-  ctx.fillText(mode,265,37);
-  ctx.fillStyle='#f4e2cf';ctx.font='bold 21px system-ui';
-  ctx.fillText(Math.ceil(enemy.state.health)+' HP · '+loading,18,76);
+  ctx.font='bold 28px system-ui';ctx.fillText(enemy.label,18,42);
+  ctx.fillStyle='#f4e2cf';ctx.font='bold 22px system-ui';
+  ctx.fillText(Math.ceil(enemy.state.health)+' HP',18,79);
   ctx.fillStyle='#263c47';ctx.fillRect(18,93,480,14);
   ctx.fillStyle='#a6c58e';ctx.fillRect(18,93,480*enemy.state.health/100,14);
   texture.needsUpdate=true;
@@ -2082,6 +2089,39 @@ function healPlayer(){
   showShotNotice('HEALTH RESTORED · 100 HP');
 }
 refreshPlayerHealth();
+// A complete 360° hostile indicator. All living enemies have a red dot,
+// including enemies behind the player; no tactical intentions are revealed.
+const enemyRadarDots=new Map();
+function updateEnemyRadar(){
+  const radar=$('enemyRadar');
+  const visible=controls.isLocked&&powerArmorState.phase==='idle'&&playerHealth.alive;
+  radar.classList.toggle('hidden',!visible);
+  if(!visible)return;
+  const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
+  const track=$('enemyRadarTrack');
+  let shown=0;
+  for(const enemy of enemies.values()){
+    let dot=enemyRadarDots.get(enemy.id);
+    if(!dot){
+      dot=document.createElement('span');dot.className='enemy-radar-dot';
+      dot.setAttribute('role','img');track.append(dot);
+      enemyRadarDots.set(enemy.id,dot);
+    }
+    dot.style.display=enemy.state.alive?'block':'none';
+    if(!enemy.state.alive)continue;
+    shown++;
+    const towards=((Math.atan2(enemy.brain.x-player.x,
+      -(enemy.brain.z-player.z))*180/Math.PI)+360)%360;
+    const delta=((towards-heading+540)%360)-180;
+    dot.style.left=(50+delta/180*47).toFixed(2)+'%';
+    dot.classList.toggle('rear',Math.abs(delta)>90);
+    const meters=Math.round(Math.hypot(enemy.brain.x-player.x,
+      enemy.brain.z-player.z));
+    dot.setAttribute('aria-label',enemy.label+' · '+meters+' metres');
+    dot.title=enemy.label+' · '+meters+' m';
+  }
+  radar.setAttribute('aria-label',shown+' surviving enemies shown as red dots on a 360 degree compass');
+}
 function updateEnemies(dt,elapsed=dt){
   // A confirmed hit outside the arena wakes combat while the enemy still
   // remembers the shooter. Otherwise other mechanics stations stay safe.
@@ -2287,6 +2327,7 @@ function updateEnemies(dt,elapsed=dt){
   }
   playerHitFlash=Math.max(0,playerHitFlash-dt);
   $('playerDamageFlash').style.opacity=(playerHitFlash*.52).toFixed(2);
+  updateEnemyRadar();
   $('enemyHud').classList.toggle('hidden',!active);
   if(active){
     const surviving=[...enemies.values()].filter(e=>e.state.alive);
@@ -2888,6 +2929,8 @@ function updateCasings(dt){
   }
 }
 const firingRaycaster=new THREE.Raycaster();
+// Cast into both visible world surfaces and non-rendering enemy hitboxes.
+firingRaycaster.layers.enable(ENEMY_COLLISION_LAYER);
 firingRaycaster.far=105;
 // Runtime ADS sanity check: only raycast against the visible viewmodel,
 // ignoring intentionally centered front blades and reticle dots.
@@ -4226,11 +4269,22 @@ function frame(){
     grips.sort((a,b)=>a.x-b.x);
     pilotChoreography.handTargets=grips.map(point=>point.toArray());
   }
+  // The frame is scaled down while the human pilot remains life-sized.
+  // Convert tread contacts into the pilot's world-sized IK coordinate frame.
+  const boardingIK=pilotChoreography?{
+    ...pilotChoreography,
+    y:pilotChoreography.y*POWER_ARMOR_VISUAL_SCALE,
+    z:pilotChoreography.z*POWER_ARMOR_VISUAL_SCALE,
+    plantedHeight:pilotChoreography.plantedHeight*POWER_ARMOR_VISUAL_SCALE,
+    footTargets:pilotChoreography.footTargets?.map(target=>target?{
+      y:target.y*POWER_ARMOR_VISUAL_SCALE,
+      z:target.z*POWER_ARMOR_VISUAL_SCALE}:null)
+  }:null;
   pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
     speed:pilotChoreography?.walkSpeed||0,
     sprinting:false,crouched:false,aiming:false,alive:true,
     bracing:pilotChoreography?.brace>.25,
-    boardingPose:powerStep.phase!=='idle'?pilotChoreography:null});
+    boardingPose:powerStep.phase!=='idle'?boardingIK:null});
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
@@ -4269,7 +4323,9 @@ function frame(){
       {boxes:bounds,trees:[],ceilings,groundHeight,
         speedMultiplier:mobility.factor*specialModifiers.speedMultiplier,
         staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier,
-        allowSprint:mobility.canSprint});
+        allowSprint:mobility.canSprint,
+        bodyHeight:powerArmorState.occupied?POWER_ARMOR_STAND_HEIGHT:undefined,
+        crouchHeight:powerArmorState.occupied?POWER_ARMOR_CROUCH_HEIGHT:undefined});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
     if(info.speed>.55&&!info.airborne){
       groundedStepProgress+=info.speed*dt;
