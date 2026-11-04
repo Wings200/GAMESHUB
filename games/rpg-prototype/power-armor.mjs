@@ -154,8 +154,11 @@ export function powerArmorProtection(state,slot='chest',regularReduction=0){
   const plateAP=plateCondition(state,slot).current>0?equipped.points:0;
   const points=POWER_ARMOR_FRAME_AP+plateAP;
   const frameReduction=damageReductionForPoints(points);
+  // W20.51: an occupied suit takes 20% less of the damage left after armor,
+  // preserving the relative benefits of its frame, plates, and normal armor.
+  const baseCombinedReduction=Math.min(.90,1-(1-regular)*(1-frameReduction));
   return {slot,points,frameReduction,
-    combinedReduction:Math.min(.90,1-(1-regular)*(1-frameReduction))};
+    combinedReduction:1-(1-baseCombinedReduction)*.80};
 }
 export function safePowerArmorSnapshot(raw){
   const state=createPowerArmorState();

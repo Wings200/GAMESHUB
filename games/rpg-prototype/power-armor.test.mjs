@@ -68,7 +68,7 @@ test('Powered frame and six plate tiers reduce damage only when occupied',()=>{
   setPowerPlate(state,'head','citadel');
   const upgraded=powerArmorProtection(state,'head',.2);
   assert.ok(upgraded.combinedReduction>chest.combinedReduction);
-  assert.ok(upgraded.combinedReduction<=.9);
+  assert.ok(upgraded.combinedReduction<=.92);
 });
 
 test('Saved plates and occupied state restore, malformed or interrupted input rejected',()=>{

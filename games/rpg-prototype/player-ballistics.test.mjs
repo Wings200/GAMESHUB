@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARMOR_SLOTS,getArmorPiece,damageReductionForPoints,ARMOR_RESISTANCE} from './combat.mjs';
-import {createPowerArmorState,beginPowerArmorTransition,stepPowerArmor,
+import {createPowerArmorState,beginPowerArmorTransition,stepPowerArmor,powerArmorProtection,
   POWER_ARMOR_TRANSITION_SECONDS} from './power-armor.mjs';
 import {ENEMY_WEAPONS} from './enemy-tactics.mjs';
 import {regularBallisticReduction,calculateIncomingShot}
@@ -42,7 +42,7 @@ test('all six NPC guns have stronger base damage while armor still blocks a perc
       gun.damage*(1-damageReductionForPoints(bestChest)))<1e-10,
       id+' must preserve armor percent');
     assert.ok(suit.damage>0&&suit.damage<top.damage,id+' chassis protection');
-    assert.equal(suit.combinedReduction,.90);
+    assert.equal(suit.combinedReduction,.92);
   }
 });
 test('exiting power armor restores ordinary armor incoming damage',()=>{
@@ -53,12 +53,31 @@ test('exiting power armor restores ordinary armor incoming damage',()=>{
   state.occupied=true;
   const during=calculateIncomingShot(17,points,state);
   assert.ok(during.damage<before.damage);
-  assert.equal(during.combinedReduction,.90);
+  assert.equal(during.combinedReduction,.92);
   beginPowerArmorTransition(state);
   stepPowerArmor(state,POWER_ARMOR_TRANSITION_SECONDS);
   assert.equal(state.occupied,false);
   const after=calculateIncomingShot(17,points,state);
   assert.ok(Math.abs(after.damage-before.damage)<1e-10);
+});
+test('W20.51 decreases occupied-suit bullet damage by exactly 20 percent at each armor tier',()=>{
+  for(const tier of ['none','t45','t60','citadel']){
+    for(const regularPoints of [0,25,100]){
+      const suit=createPowerArmorState();
+      suit.occupied=true;
+      for(const slot of ARMOR_SLOTS)suit.plates[slot]=tier;
+      const regular=regularBallisticReduction(regularPoints);
+      const plate=calculateIncomingShot(30,regularPoints,suit,'chest');
+      const frameReduction=powerArmorProtection(suit,'chest',regular).frameReduction;
+      const fromFrame=30*(1-Math.min(.90,
+        1-(1-regular)*(1-frameReduction)));
+      assert.ok(Math.abs(plate.damage-fromFrame*.8)<1e-10,
+        tier+' with '+regularPoints+' regular armor points');
+      suit.occupied=false;
+      assert.ok(Math.abs(calculateIncomingShot(30,regularPoints,suit,'chest').damage-
+        30*(1-regular))<1e-10,'Outside suit damage must remain unchanged');
+    }
+  }
 });
 test('hit zone protection depends on equipped pieces',()=>{
   const bare=createPowerArmorState();
