@@ -69,6 +69,18 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     pose.handY=-.16+.11*Math.sin(Math.PI*pose.shellProgress);
     pose.handZ=-.28-.16*pose.shellProgress;
     pose.tilt=.12*pulse(p,.12,.86);
+  }else if(id==='pump-action-shotgun'){
+    // Six-round fixed tubular magazine: visible rounds travel through the
+    // bottom loading gate one by one; no detachable box magazine exists.
+    pose.magazineVisible=false;pose.magazineOffset=0;pose.slideOffset=0;
+    pose.roundVisible=p>=.23&&p<.85;
+    const count=Math.max(1,Math.min(6,Number.isInteger(roundCount)?roundCount:6));
+    const u=clamp01((p-.23)/.62)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(u));
+    pose.shellProgress=u-Math.floor(u);
+    pose.handX=.055;pose.handY=-.31+.108*pose.shellProgress;
+    pose.handZ=.042-.185*pose.shellProgress;
+    pose.tilt=.09*pulse(p,.09,.92);
   }else if(id==='laser-musket'){
     // Swap the six-cell capacitor pack with a deliberate vertical motion.
     pose.magazineOffset=magSwap(.15,.39,.55,.78,.40);

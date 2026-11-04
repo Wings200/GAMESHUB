@@ -7,6 +7,7 @@ export const SIGHT_MOUNTS=Object.freeze({
   'pipe-rifle':Object.freeze({x:0,y:.258,z:-.12,adsZ:-1.12,fov:57,optic:'iron'}),
   'laser-musket':Object.freeze({x:0,y:.263,z:-.14,adsZ:-1.20,fov:56,optic:'iron'}),
   'double-barrel-shotgun':Object.freeze({x:0,y:.270,z:-.12,adsZ:-1.14,fov:64,optic:'iron'}),
+  'pump-action-shotgun':Object.freeze({x:0,y:.270,z:-.19,adsZ:-1.18,fov:62,optic:'iron'}),
   'scrap-pistol':Object.freeze({x:0,y:.207,z:-.16,adsZ:-.64,fov:64,optic:'iron'}),
   'iron-revolver':Object.freeze({x:0,y:.165,z:-.19,adsZ:-.65,fov:62,optic:'iron'}),
   'pipe-smg':Object.freeze({x:0,y:.225,z:-.15,adsZ:-.62,fov:61,optic:'reflex'}),
@@ -44,7 +45,7 @@ export function isAlignedToBore(weaponId,root=adsWeaponPosition(weaponId),tolera
  const allowedOptics=Object.freeze({
    '10mm-pistol':['factory'], 'pipe-pistol':['factory'],
    'pipe-rifle':['factory'], 'laser-musket':['factory'],
-   'double-barrel-shotgun':['factory'],
+   'double-barrel-shotgun':['factory'], 'pump-action-shotgun':['factory'],
    'scrap-pistol':['factory'], 'iron-revolver':['factory'],
    'pipe-smg':['factory','holo-a','holo-b','scope-2x'],
    'service-carbine':['factory','holo-a','holo-b','scope-2x','scope-4x'],

@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W20.28 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.29 + Forest Foundation 0.1
+
+## W20.29 · Pump-Action Shotgun
+
+- Sixth rebuilt player weapon: original rugged six-shell pump action with a joined forged receiver and walnut stock, stationary full-length barrel and magazine tube, two functioning action bars, a sliding wooden fore-end and bolt, physical bottom loading gate, real iron sights and correct first-/third-person models.
+- Left-click consumes a single shell and fires eight individually raycasted pellets. The fore-end cycles backward and forward after every shot, and a spent red hull ejects only when the bolt retracts.
+- R loads the actual number of missing shells individually into the fixed magazine tube; one-shell top-up is quicker than a full six-shell reload, and firing can interrupt after some shells are seated.
+- Recorded pump cycling, ejection and loading sound cues match animation timing. Shotgun damage falls with distance and each pellet is independent. The existing five approved guns remain preserved; NPCs stay unarmed during staged testing.
+- New dedicated geometry, cycle/falloff, reload, audio and integration regression tests.
 
 ## W20.28 · Double-Barrel Shotgun
 

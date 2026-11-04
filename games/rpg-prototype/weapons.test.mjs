@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -120,10 +120,10 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   assert.equal(w.magazine,11);
 });
 
-test('Eleven weapon specifications have unique identities and different fire characteristics',()=>{
-  assert.equal(ARSENAL.length,11);
-  assert.equal(ARSENAL_IDS.length,11);
-  assert.equal(new Set(ARSENAL_IDS).size,11);
+test('Twelve weapon specifications have unique identities and different fire characteristics',()=>{
+  assert.equal(ARSENAL.length,12);
+  assert.equal(ARSENAL_IDS.length,12);
+  assert.equal(new Set(ARSENAL_IDS).size,12);
   assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
   assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
   for(const w of ARSENAL){
@@ -132,7 +132,7 @@ test('Eleven weapon specifications have unique identities and different fire cha
     assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
   }
   const damage=new Set(ARSENAL.map(w=>w.damage));
-  assert.equal(damage.size,11);
+  assert.equal(damage.size,12);
   assert.ok(getWeaponSpec('pipe-smg').automatic);
   assert.ok(getWeaponSpec('service-carbine').automatic);
   assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);

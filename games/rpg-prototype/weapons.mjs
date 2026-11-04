@@ -47,12 +47,19 @@ export const DOUBLE_BARREL_SHOTGUN=Object.freeze({
   damage:10,hipSpreadDegrees:8.0,adsSpreadDegrees:4.8,
   recoilDegrees:4.7,pellets:8,automatic:false
 });
+export const PUMP_ACTION_SHOTGUN=Object.freeze({
+  id:'pump-action-shotgun',name:'Pump-Action Shotgun',kind:'shotgun',
+  magazineSize:6,startingReserve:72,fireInterval:.94,reloadSeconds:4.24,
+  damage:9,hipSpreadDegrees:7.2,adsSpreadDegrees:4.1,
+  recoilDegrees:4.9,pellets:8,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
   PIPE_RIFLE,
   LASER_MUSKET,
   DOUBLE_BARREL_SHOTGUN,
+  PUMP_ACTION_SHOTGUN,
   SCRAP_PISTOL,
   Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
     magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,
@@ -136,6 +143,7 @@ export function startWeaponReload(state, spec = SCRAP_PISTOL) {
   const timing={revolver:[.74,.31],shotgun:[.64,.34],rifle:[.80,.41]}[spec.kind];
   state.reloadDuration=spec.id==='double-barrel-shotgun'?
     (missing===1?1.95:2.65):
+    spec.id==='pump-action-shotgun'?(.94+.55*missing):
     perRound&&timing?Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):
     spec.reloadSeconds;
   state.reloadRemaining=state.reloadDuration;
@@ -154,6 +162,7 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
       // Match the physical insertion window of each animated action: first
       // open the cylinder/bolt or reach the tube; only then seat live rounds.
       const interval=spec.id==='double-barrel-shotgun'?[.42,.79]:
+        spec.id==='pump-action-shotgun'?[.23,.85]:
         ({revolver:[.40,.79],shotgun:[.16,.86],rifle:[.30,.80]}[spec.kind]||[0,1]);
       const inserted=Math.max(0,Math.min(1,
         (progress-interval[0])/(interval[1]-interval[0])));

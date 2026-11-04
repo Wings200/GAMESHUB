@@ -156,3 +156,17 @@ test('Double barrel opens two bores, ejects, hand-seats rounds, and locks closed
   const one=at(.68,1);
   assert.equal(one.roundIndex,0,'single shell top-up never loads a phantom second');
 });
+
+test('Six real pump shells load one-by-one through bottom gate',()=>{
+  const at=(p,count=6)=>reloadPoseForWeapon('pump-action-shotgun',4.24*(1-p),4.24,count);
+  assert.equal(at(.18).roundVisible,false);
+  assert.equal(at(.25).roundIndex,0);
+  assert.equal(at(.35).roundIndex,1);
+  assert.ok(at(.55).roundIndex>=2);
+  assert.ok(at(.73).roundIndex>=4);
+  assert.equal(at(.79).roundVisible,true);
+  assert.equal(at(.92).roundVisible,false);
+  assert.equal(at(.50).magazineVisible,false);
+  assert.equal(at(.50,1).roundIndex,0);
+  assert.equal(at(.98).tilt,0);
+});

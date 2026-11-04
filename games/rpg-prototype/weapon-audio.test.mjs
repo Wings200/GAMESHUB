@@ -229,3 +229,22 @@ test('Double-barrel blast is low pitched and hinged reload sounds follow two she
   const latest=audio=>Math.max(...audio.context.events.map(e=>e[1]));
   assert.ok(latest(two)>latest(one)+.45);
 });
+
+test('Pump action has distinct blast, delayed cycle clacks and timed shell loading',()=>{
+  const shot=new WeaponAudio(FakeAudioContext);
+  shot.unlock();shot.gunshot('pump-action');
+  const pitches=shot.context.calls.filter(x=>x.kind==='frequency'&&x.mode==='set').map(x=>x.value);
+  assert.ok(pitches.includes(96*.82));
+  const pump=new WeaponAudio(FakeAudioContext);
+  pump.unlock();pump.pumpActionCycle(.60);
+  assert.ok(pump.context.events.length>=8);
+  const times=pump.context.events.filter(x=>x[0]==='start').map(x=>x[1]);
+  assert.ok(Math.max(...times)-Math.min(...times)>.28);
+  const one=new WeaponAudio(FakeAudioContext);
+  one.unlock();one.pumpActionReload(1,1.49);
+  const six=new WeaponAudio(FakeAudioContext);
+  six.unlock();six.pumpActionReload(6,4.24);
+  assert.ok(six.context.events.length>one.context.events.length);
+  assert.ok(Math.max(...six.context.events.map(e=>e[1]))-
+    Math.max(...one.context.events.map(e=>e[1]))>2.2);
+});

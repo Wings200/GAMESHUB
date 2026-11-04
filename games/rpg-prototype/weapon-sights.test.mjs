@@ -133,3 +133,12 @@ test('Double-barrel iron sight is aligned with the two muzzle bores',()=>{
   assert.equal(sightForOptic('double-barrel-shotgun','scope-6x').optic,'iron');
   assert.ok(isAlignedToBore('double-barrel-shotgun'));
 });
+
+test('Pump action shotgun iron bead aligns with center ray and cannot equip optics yet',()=>{
+  const s=sightMount('pump-action-shotgun');
+  assert.equal(s.y,.270);
+  assert.equal(s.z,-.19);
+  assert.equal(s.optic,'iron');
+  assert.deepEqual(compatibleOptics('pump-action-shotgun'),['factory']);
+  assert.ok(isAlignedToBore('pump-action-shotgun'));
+});
