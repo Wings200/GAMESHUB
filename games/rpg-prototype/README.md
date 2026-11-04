@@ -1,3 +1,7 @@
+## W20.41 — Sniper recoil refinement
+
+Reduced the Wasteland Heavy Sniper's default recoil by about 11% (6.6° to 5.9° before its weapon-specific profile). Aiming now kicks roughly 12.8° rather than 14.3°. It remains notably heavier than the hunting rifle, and nothing else about its accuracy, damage, scope, bolt timing, magazine or arm positioning changed. NPC weapons remain disabled until their dedicated integration stage.
+
 ## W20.40 — Heavy Sniper Rifle + genuine 6× scoped aiming
 
 - Added **Wasteland Heavy Sniper** as rebuilt firearm #10, alongside the existing hunting rifle rather than replacing it. Its original procedural model has a full-length steel barrel, muzzle brake, vented sleeve, folded bipod, adjustable stock, detachable five-round box magazine, bolt handle, weathering, and a physically modeled optical tube with front/rear glass and adjustment turrets.

@@ -75,7 +75,7 @@ export const HEAVY_SNIPER=Object.freeze({
   id:'heavy-sniper',name:'Wasteland Heavy Sniper',kind:'sniper',
   magazineSize:5,startingReserve:35,fireInterval:1.85,reloadSeconds:4.15,
   damage:88,hipSpreadDegrees:6.5,adsSpreadDegrees:.025,
-  recoilDegrees:6.6,pellets:1,automatic:false
+  recoilDegrees:5.9,pellets:1,automatic:false
 });
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,

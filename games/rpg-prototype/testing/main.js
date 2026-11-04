@@ -10,13 +10,13 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, HEAVY_SNIPER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.40';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.41';
 import {createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
-  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.40';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.40';
+  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.41';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.41';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.40';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.40';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.41';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.41';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -26,7 +26,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.36';
-import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.40';
+import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.41';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
@@ -38,8 +38,8 @@ import {pumpCyclePose,pumpPelletDamage,PUMP_ACTION_TUNING} from '../pump-action-
 import {createHuntingRifle} from '../hunting-rifle.mjs?v=W20.31';
 import {createWornRevolver} from '../worn-revolver.mjs?v=W20.33';
 import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
-import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.40';
-import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.40';
+import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.41';
+import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.41';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
@@ -62,7 +62,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.40';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.41';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,

@@ -135,3 +135,14 @@ test('W20.40 heavy sniper has distinct forceful recoil and a long return',()=>{
  assert.ok(heavy.recover>2);
  assert.notDeepEqual(heavy,hunt);
 });
+
+
+test('W20.41 sniper ADS kick remains heavy after a small recoil reduction',()=>{
+ const sniper=createWeaponRecoilState();
+ const hunter=createWeaponRecoilState();
+ const scoped=applyWeaponRecoil(sniper,0,0,HEAVY_SNIPER,{aiming:true});
+ const hunting=applyWeaponRecoil(hunter,0,0,BOLT_HUNTING_RIFLE,{aiming:true});
+ const degrees=scoped.pitch*180/Math.PI;
+ assert.ok(degrees>12.5&&degrees<13.2,'sniper should kick about 13 degrees');
+ assert.ok(scoped.pitch>hunting.pitch,'sniper retains heavier kick');
+});
