@@ -20,7 +20,7 @@ test('One press of R winds one cell and only a fully turned crank stores charge'
   assert.equal(state.laserCharge,1);
   const shot=fireChargedLaser(state,LASER_MUSKET,()=>.5);
   assert.equal(shot.status,'fired');
-  assert.equal(shot.damage,40);
+  assert.equal(shot.damage,32);
   assert.equal(shot.chargeLevel,1);
   assert.equal(state.magazine,5,'trigger does not double-spend stored energy');
   assert.equal(state.laserCharge,0,'laser discharges all stored energy');
@@ -36,7 +36,7 @@ test('Six full manual cranks multiply beam damage and use six cells',()=>{
   assert.equal(state.magazine,0);
   assert.equal(state.laserCharge,6);
   const shot=fireChargedLaser(state,LASER_MUSKET,()=>.5);
-  assert.equal(shot.damage,204);
+  assert.equal(shot.damage,96);
   assert.equal(shot.directions.length,1);
   assert.equal(state.laserCharge,0);
   assert.equal(startLaserCrank(state).status,'no-cells');
@@ -78,4 +78,18 @@ test('Laser Musket front/rear iron sights lie on the world fire ray',()=>{
   assert.equal(mount.y,.263);
   assert.ok(Math.abs(anchor.y+mount.y)<1e-9);
   assert.equal(mount.optic,'iron');
+});
+
+test('All crank levels increase smoothly without exceeding the 96 damage cap',()=>{
+  const expected=[32,45,58,70,83,96];
+  for(let index=0;index<expected.length;index++){
+    const state=ensureLaserState(createWeaponState(LASER_MUSKET));
+    for(let k=0;k<=index;k++){
+      assert.equal(startLaserCrank(state).status,'started');
+      finishCrank(state);
+    }
+    const result=fireChargedLaser(state,LASER_MUSKET,()=>.5);
+    assert.equal(result.damage,expected[index]);
+    assert.ok(result.damage<=96);
+  }
 });

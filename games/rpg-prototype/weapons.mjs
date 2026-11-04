@@ -38,7 +38,7 @@ export const PIPE_RIFLE=Object.freeze({
 export const LASER_MUSKET=Object.freeze({
   id:'laser-musket',name:'Laser Musket',kind:'carbine',
   magazineSize:6,startingReserve:84,fireInterval:.85,reloadSeconds:2.70,
-  damage:40,hipSpreadDegrees:3.25,adsSpreadDegrees:.12,
+  damage:32,hipSpreadDegrees:3.25,adsSpreadDegrees:.12,
   recoilDegrees:2.9,pellets:1,automatic:false
 });
 export const ARSENAL=Object.freeze([

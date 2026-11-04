@@ -11,7 +11,7 @@ import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setE
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.26';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.27';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.26';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs?v=W20.26';
@@ -29,7 +29,7 @@ import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
 import {createLaserMusket} from '../laser-musket.mjs?v=W20.26';
-import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.26';
+import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
@@ -3126,7 +3126,7 @@ function refreshWeaponHUD(){
     weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY');
   $('targetHits').textContent=totalHits;
   $('weaponName').textContent=activeSpec.name.toUpperCase();
-  $('weaponStats').textContent=(laserEquipped?(activeSpec.damage+'–'+Math.round(activeSpec.damage*(1+.82*5))+' CHARGE DAMAGE'):activeSpec.damage+' DAMAGE')+
+  $('weaponStats').textContent=(laserEquipped?(activeSpec.damage+'–'+Math.round(activeSpec.damage*(1+.40*5))+' CHARGE DAMAGE'):activeSpec.damage+' DAMAGE')+
     ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
     (laserEquipped?' · R CRANK · CLICK FIRE':
       ' · '+(activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+

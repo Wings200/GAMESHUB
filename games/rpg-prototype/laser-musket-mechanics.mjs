@@ -68,7 +68,7 @@ export function fireChargedLaser(state,spec,random=Math.random,motion={}){
   const scatter={spreadX:Math.cos(theta)*radius*spread,
     spreadY:Math.sin(theta)*radius*spread};
   return {status:'fired',chargeLevel,
-    damage:Math.round(spec.damage*(1+.82*(chargeLevel-1))),
+    damage:Math.round(spec.damage*(1+.40*(chargeLevel-1))),
     recoilDegrees:spec.recoilDegrees+chargeLevel*.25,
     spreadDegrees,spreadX:scatter.spreadX,spreadY:scatter.spreadY,
     directions:[scatter],magazine:state.magazine};
