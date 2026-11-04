@@ -102,7 +102,9 @@ export function createNpcAvatar(parent,kind){
   alternate.add(drum);
   const extraBarrel=alternateBox(.08,.08,.28,finish,0,.035,-.69);
   let currentWeapon=role.weapon;
+  let disarmed=false;
   function setWeapon(id=role.weapon){
+    if(disarmed)return; // resetting NPC loadouts must not respawn legacy guns
     currentWeapon=id;
     const variant=id==='scout-carbine'||id==='raider-auto'||id==='heavy-lmg';
     alternate.visible=variant;
@@ -190,11 +192,18 @@ export function createNpcAvatar(parent,kind){
     npcBolt.visible=currentWeapon==='pipe-rifle';
     npcBolt.position.z=-.11+action.boltOffset;
     npcBolt.rotation.z=action.boltHandleLift*.55;
-    flash.intensity=recoilBlend>.65?2.2:0;
+    flash.intensity=!disarmed&&recoilBlend>.65?2.2:0;
+  }
+  function disarm(){
+    disarmed=true;
+    currentWeapon='none';
+    gun.visible=false;
+    gun.removeFromParent();
+    flash.intensity=0;
   }
   setArmor({});
   return {
-    root:avatar.root,update,setArmor,setWeapon,
+    root:avatar.root,update,setArmor,setWeapon,disarm,
     getMuzzleWorldPosition,getWorldForward,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,

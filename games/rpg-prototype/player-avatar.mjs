@@ -262,6 +262,8 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     if(heldWeaponId===id)return;
     heldWeaponId=id;
     if(!heldWeapon)return;
+    if(id===null){heldWeapon.visible=false;return;}
+    heldWeapon.visible=true;
     const configs={
       'scrap-pistol':{length:.58,mag:1.0,stock:false,optic:false},
       'iron-revolver':{length:.69,mag:.65,stock:false,optic:false},

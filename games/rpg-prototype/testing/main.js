@@ -55,6 +55,10 @@ import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   xpForNextLevel,discountedMaterials} from '../special.mjs';
 
 const $ = id => document.getElementById(id);
+// W20.18: clean-slate weapon rebuild. Legacy rules remain recoverable in Git,
+// but the live game contains NO old player or NPC firearms.
+const WEAPON_REBUILD_MODE=true;
+if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-campaign-v1')||'null');
@@ -1539,6 +1543,7 @@ function createEnemy(spec){
   // ONE visible character. Primitive body and armor meshes remain physics-only
   // and cannot render, including after reset or a changed armor loadout.
   enemy.rigged=createNpcAvatar(root,spec.id);
+  if(WEAPON_REBUILD_MODE)enemy.rigged.disarm();
   // Old primitive body serves *only* precise zone hit-testing, never visuals.
   // Its separate render layer makes duplicate limbs impossible even if a
   // saved loadout mistakenly re-enables a mesh or its material.
@@ -1662,7 +1667,13 @@ function makeLootMarker(bag){
   return group;
 }
 function spawnWorldLoot(contents,x,z,source='world'){
-  const bag=createLootBag('bag-'+(++lootSerial),x,z,contents,source);
+  // Retire ALL legacy gun/ammo drops, not just enemy inventories.
+  // Preserve armor, medicine, quest items, fusion cores and supplies.
+  const available=WEAPON_REBUILD_MODE?(contents||[]).filter(entry=>{
+    const category=getItem(entry.itemId).category;
+    return category!=='weapon'&&category!=='ammo';
+  }):contents;
+  const bag=createLootBag('bag-'+(++lootSerial),x,z,available,source);
   if(!bag.items.length)return null;
   const marker=makeLootMarker(bag);
   lootBags.set(bag.id,{...bag,mesh:marker});
@@ -1701,7 +1712,12 @@ try{
 if(powerCacheContents.length)
   spawnWorldLoot(powerCacheContents,-53,-9,'power-cache');
 function spawnEnemyLoot(enemy){
-  return spawnWorldLoot(generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout),enemy.brain.x,
+  const generated=generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout);
+  const drops=WEAPON_REBUILD_MODE?generated.filter(entry=>{
+    const item=getItem(entry.itemId);
+    return item?.category!=='weapon'&&item?.category!=='ammo';
+  }):generated;
+  return spawnWorldLoot(drops,enemy.brain.x,
     enemy.brain.z,'enemy-'+enemy.id);
 }
 function markEnemyDefeated(enemy){
@@ -1767,7 +1783,7 @@ function lootButton(row,label,callback){
 function refreshInventoryUI(){
   $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
-  $('inventoryWeapon').textContent=getWeaponSpec(backpack.equipment.weapon).name;
+  $('inventoryWeapon').textContent=WEAPON_REBUILD_MODE?'UNARMED · OLD GUNS ARCHIVED':getWeaponSpec(backpack.equipment.weapon).name;
   const wear=backpack.equipment.clothing||{head:'none',back:'none'};
   $('inventoryClothing').textContent='HAT: '+(wear.head==='none'?'NONE':'FIELD CAP')+
     ' · BACKPACK: '+(wear.back==='none'?'NONE':'CANVAS FIELD PACK');
@@ -1777,9 +1793,11 @@ function refreshInventoryUI(){
     Math.round(powered.combinedReduction*100)+'% BALLISTIC BLOCK'+
     (powerArmorState.occupied?' · POWER ARMOR ACTIVE':'');
   const nav=$('inventoryCategories');nav.replaceChildren();
-  const areas=INVENTORY_CATEGORIES.map(category=>({
+  if(WEAPON_REBUILD_MODE&&inventoryCategory==='weapon')inventoryCategory='all';
+  const areas=(WEAPON_REBUILD_MODE?INVENTORY_CATEGORIES.filter(category=>category.id!=='weapon'):INVENTORY_CATEGORIES).map(category=>({
     ...category,count:backpack.items.filter(e=>
-      category.id==='all'||inventorySection(getItem(e.itemId))===category.id).length
+      (!WEAPON_REBUILD_MODE||getItem(e.itemId)?.category!=='weapon')&&
+      (category.id==='all'||inventorySection(getItem(e.itemId))===category.id)).length
   }));
   for(const category of areas){
     const button=document.createElement('button');
@@ -1799,7 +1817,8 @@ function refreshInventoryUI(){
   $('inventorySectionTitle').textContent=chosen.label.toUpperCase();
   $('inventorySectionCount').textContent=chosen.count+' ITEM SLOTS';
   const visibleEntries=backpack.items.filter(entry=>
-    inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory);
+    (!WEAPON_REBUILD_MODE||getItem(entry.itemId)?.category!=='weapon')&&
+    (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory));
   const area=$('inventoryItems');area.replaceChildren();
   if(!visibleEntries.length){
     const empty=document.createElement('p');empty.className='inventory-empty';
@@ -2036,6 +2055,7 @@ function refreshWorkbenchUI(){
   }
 }
 function beginWorkbench(){
+  if(WEAPON_REBUILD_MODE){showShotNotice('WORKBENCH OFFLINE · NEW WEAPONS COMING');return;}
   if(inventoryOpen||lootOpen)closeLootOverlay();
   workbenchFromField=controls.isLocked;
   if(workbenchFromField)controls.unlock();
@@ -2196,7 +2216,7 @@ function updateEnemies(dt,elapsed=dt){
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       // Animated ready pose, short lean while peeking, rifle dip while
       // reloading, and a quick shoulder kick after actual shots.
-      const shouldAim=directlyVisible&&
+      const shouldAim=!WEAPON_REBUILD_MODE&&directlyVisible&&
         (enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
         !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
       enemy.combatPose+=(Number(shouldAim)-enemy.combatPose)*
@@ -2225,7 +2245,7 @@ function updateEnemies(dt,elapsed=dt){
         moving:enemy.brain.moving,
         speed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
         crouched:enemy.tactics.crouching,
-        aiming:shouldAim,reloading:enemy.tactics.reloadRemaining>0,
+        aiming:shouldAim,reloading:!WEAPON_REBUILD_MODE&&enemy.tactics.reloadRemaining>0,
         reloadProgress:enemy.tactics.reloadRemaining>0?1-
           enemy.tactics.reloadRemaining/
           (getEnemyWeapon(enemy.tactics.weaponId)?.reloadSeconds||2):0,
@@ -2238,7 +2258,7 @@ function updateEnemies(dt,elapsed=dt){
       enemy.flash=Math.max(0,enemy.flash-dt);
       if(enemy.flash===0)for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
       const attack=getEnemyWeapon(enemy.tactics.weaponId)||ENEMY_ATTACK[enemy.id];
-      if(ticking&&playerHealth.alive){
+      if(ticking&&playerHealth.alive&&!WEAPON_REBUILD_MODE){
         // A shot is only attempted when the NPC can see the player and has
         // a clear trajectory; mags, reloads and accuracy are authoritative.
         if(enemy.brain.aimLockSeconds>=
@@ -2327,7 +2347,8 @@ function updateEnemies(dt,elapsed=dt){
     refreshEnemyLabel(enemy,mode);
     enemy.billboard.mesh.position.set(enemy.brain.x,
       2.72-.78*enemy.crouchBlend,enemy.brain.z);
-    statuses.push(enemy.label+': '+mode+' ['+
+    statuses.push(WEAPON_REBUILD_MODE?enemy.label+': UNARMED':
+      enemy.label+': '+mode+' ['+
       enemy.tactics.magazine+'/'+(getEnemyWeapon(enemy.tactics.weaponId)?.magazine||
         ENEMY_PROFILES[enemy.id].magazine)+']');
   }
@@ -2348,7 +2369,7 @@ function updateEnemies(dt,elapsed=dt){
     $('enemyCount').textContent=aliveCount+' / '+enemies.size+' RAIDERS ALIVE'+
       (nearest===null?' · ALL ELIMINATED':' · NEAREST '+nearest.toFixed(1)+' m');
     $('enemyList').textContent=statuses.join('  ·  ');
-    $('enemyMode').textContent=combatRuntimeStatus({
+    $('enemyMode').textContent=WEAPON_REBUILD_MODE?'AI MOVEMENT TEST · ALL NPC GUNS REMOVED':combatRuntimeStatus({
       active,locked:controls.isLocked,aiEnabled:enemyAIEnabled,
       playerAlive:playerHealth.alive,aliveCount
     });
@@ -2841,6 +2862,12 @@ function buildArsenalView(spec){
 
 for(const spec of ARSENAL)if(spec.id!==SCRAP_PISTOL.id)
   weaponVisuals.set(spec.id,buildArsenalView(spec));
+// Detach old viewmodels from the camera. Their transform references survive
+// so the movement/armor code stays stable during the arsenal rewrite.
+if(WEAPON_REBUILD_MODE)for(const visual of weaponVisuals.values()){
+  visual.root.visible=false;
+  visual.root.removeFromParent();
+}
 // ADS is calibrated to the actual sight, never an approximate common offset.
 function alignActiveSight(){
   const anchor=adsWeaponPosition(activeWeaponId);
@@ -2849,6 +2876,7 @@ function alignActiveSight(){
   visual.root.rotation.set(0,0,0);
 }
 function changeAim(enabled){
+  if(WEAPON_REBUILD_MODE)enabled=false;
   aimHeld=!!enabled;
   setWeaponAim(weaponState,aimHeld);
   if(aimHeld&&weaponState.reloadRemaining<=0)alignActiveSight();
@@ -2860,6 +2888,7 @@ let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
 let groundedStepProgress=0;
 function selectWeapon(id){
+  if(WEAPON_REBUILD_MODE)return; // old saved loadouts cannot resurrect guns
   const spec=getWeaponSpec(id);
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
@@ -2880,6 +2909,7 @@ function selectWeapon(id){
   refreshWeaponHUD();
 }
 function cycleWeapon(direction){
+  if(WEAPON_REBUILD_MODE)return;
   const i=ARSENAL_IDS.indexOf(activeWeaponId);
   selectWeapon(ARSENAL_IDS[(i+direction+ARSENAL_IDS.length)%ARSENAL_IDS.length]);
 }
@@ -2972,6 +3002,25 @@ function showShotNotice(message){
   shotNoticeTime=.8;
 }
 function refreshWeaponHUD(){
+  if(WEAPON_REBUILD_MODE){
+    $('fieldAmmo').textContent='--';
+    $('visorAmmo').textContent='UNARMED';
+    $('visorAmmoLoaded').textContent='---';
+    $('visorAmmoReserve').textContent='---';
+    $('fieldWeaponName').textContent='UNARMED';
+    $('visorWeaponName').textContent='UNARMED';
+    $('fieldWeaponState').textContent='WEAPON REBUILD';
+    $('weaponAmmo').textContent='--';
+    $('weaponState').textContent='UNARMED';
+    $('targetHits').textContent=totalHits;
+    $('weaponName').textContent='UNARMED';
+    $('weaponStats').textContent='LEGACY FIREARMS REMOVED · NEXT: NEW GUNS';
+    $('weaponOptic').textContent='NO OPTIC';
+    $('weaponAccuracy').textContent='NO WEAPON EQUIPPED';
+    $('reloadProgress').style.width='0%';
+    document.body.classList.remove('ads-active');
+    return;
+  }
   const loaded=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
   $('fieldAmmo').textContent=loaded;
   $('visorAmmo').textContent=loaded;
@@ -3002,6 +3051,7 @@ function refreshWeaponHUD(){
     100*(1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds)):0).toFixed(1)+'%';
 }
 function shoot(){
+  if(WEAPON_REBUILD_MODE)return;
   const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
   if(result.status==='empty'){
     // Automatic guns call shoot() every animation frame while the trigger
@@ -3164,6 +3214,7 @@ function shoot(){
   refreshWeaponHUD();
 }
 function reload(){
+  if(WEAPON_REBUILD_MODE)return;
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
     slideCycle=0;
@@ -3173,6 +3224,7 @@ function reload(){
   }
 }
 function resupply(){
+  if(WEAPON_REBUILD_MODE){showShotNotice('NO AMMUNITION NEEDED · UNARMED');return;}
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
   saveBackpack();
@@ -4073,8 +4125,11 @@ window.addEventListener('blur',cancelPowerHold);
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
-  if(e.button===0&&powerArmorState.phase==='idle'){triggerHeld=true;shoot();}
-  if(e.button===2)changeAim(true);
+  if(e.button===0&&powerArmorState.phase==='idle'){
+    if(WEAPON_REBUILD_MODE)showShotNotice('UNARMED · NEW WEAPONS NEXT');
+    else {triggerHeld=true;shoot();}
+  }
+  if(e.button===2&&!WEAPON_REBUILD_MODE)changeAim(true);
 });
 window.addEventListener('mouseup',e=>{
   if(e.button===0){triggerHeld=false;emptyClickLatched=false;}
@@ -4319,7 +4374,7 @@ function frame(){
       powerCinematicFadeLeft=.34;
       $('powerTransitionFade').style.opacity='1';
     }
-    weaponVisuals.get(activeWeaponId).root.visible=true;
+    if(!WEAPON_REBUILD_MODE)weaponVisuals.get(activeWeaponId).root.visible=true;
     savePowerArmor();refreshPowerArmorHUD();refreshInventoryUI();
     showShotNotice(powerArmorState.occupied?'POWER ARMOR LOCKED · READY':
       'POWER ARMOR PARKED · STEP CLEAR');
@@ -4425,7 +4480,7 @@ function frame(){
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
-  playerAvatar.setHeldWeapon(activeWeaponId);
+  playerAvatar.setHeldWeapon(WEAPON_REBUILD_MODE?null:activeWeaponId);
   playerAvatar.update({dt,x:player.x,z:player.z,ground:playerGround,jump:player.jump,
     yaw:camera.rotation.y,pitch:camera.rotation.x,speed:weaponMotion.speed,
     sprinting:weaponMotion.sprinting,crouched:!!player.crouched,
@@ -4444,7 +4499,7 @@ function frame(){
     !powerArmorState.occupied&&!weaponState.aiming;
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
-    weapon.root.visible=id===activeWeaponId&&!thirdPersonActive&&
+    weapon.root.visible=!WEAPON_REBUILD_MODE&&id===activeWeaponId&&!thirdPersonActive&&
       powerArmorState.phase==='idle';
   if(thirdPersonActive){
     controls.getDirection(viewHeading);

@@ -1,4 +1,12 @@
-# Untitled RPG · Mechanics Lab W20.17 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.18 + Forest Foundation 0.1
+
+## W20.18 · Weapon-free reset before new firearm pass
+
+- Removed all six legacy player gun viewmodels, the third-person survivor gun, and every NPC rig gun from the live test; retained dormant engine definitions for the upcoming weapon overhaul.
+- Disabled player and NPC gunfire, ADS, switching, reloading and the legacy optics workbench. NPCs remain mobile for animation, navigation and armor testing but are unarmed.
+- HUD and inventory display UNARMED, old weapon selection is hidden, and new world loot excludes the old weapons and ammunition. Prior saved legacy inventory objects are archived in place rather than deleted.
+- Power armor, movement, enemy awareness radar, armor configuration, and nonweapon looting remain testable. Updated the source-level station smoke test to verify the weapon-reset gates.
+
 
 ## W20.17 · Fair hostile compass
 

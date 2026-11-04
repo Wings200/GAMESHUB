@@ -89,7 +89,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -344,7 +344,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
@@ -413,7 +413,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -465,7 +465,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -478,7 +478,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -550,7 +550,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -689,7 +689,7 @@ test('W20.14 armor status figure has six independently driven sections',()=>{
   assert.match(source,/powerArmorIndicatorStatus\(powerArmorState,slot\)/);
   assert.match(source,/visualClass='armor-segment '\+part\.status/);
   assert.match(source,/id="visorArmorIndicator"|indicatorDescriptions\.join\(', '\)/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
@@ -718,7 +718,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -737,7 +737,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
   assert.match(page,/W20\.10.*REAR ENTRY & SUIT SILHOUETTE/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
@@ -874,7 +874,7 @@ test('W20.15 removes the two legacy teal camera-locked cockpit bars',()=>{
   const cockpit=armorVisual.slice(position);
   assert.doesNotMatch(cockpit,/BoxGeometry|MeshBasicMaterial|group\.add\(/);
   assert.match(source,/power-armor-visual\.mjs\?v=W20\.16/);
-  assert.match(page,/main\.js\?v=W20\.17/);
+  assert.match(page,/main\.js\?v=W20\.18/);
   class FakeGroup{
     constructor(){this.children=[];this.visible=true;}
     add(child){this.children.push(child);}
@@ -918,4 +918,26 @@ test('W20.17 tap E searches nearby enemy drops and crates while suited; hold E e
     source.indexOf("if(e.code==='BracketLeft'"));
   assert.match(controls,/beginPowerHold\(\);return/);
   assert.match(source,/TAP E · SEARCH/);
+});
+
+
+test('W20.18 retires all existing player/NPC weapons without disabling armor and loot',()=>{
+  assert.match(page,/W20\.18 · UNARMED WEAPON REBUILD/);
+  assert.match(page,/body\.weapon-rebuild \.arsenal-picker/);
+  assert.match(source,/const WEAPON_REBUILD_MODE=true/);
+  assert.match(source,/visual\.root\.removeFromParent\(\)/);
+  assert.match(source,/enemy\.rigged\.disarm\(\)/);
+  assert.match(npcAvatar,/function disarm\(\)/);
+  assert.match(npcAvatar,/gun\.removeFromParent\(\)/);
+  assert.match(npcAvatar,/if\(disarmed\)return/);
+  assert.match(playerAvatar,/if\(id===null\)\{heldWeapon\.visible=false;return;\}/);
+  assert.match(source,/playerAvatar\.setHeldWeapon\(WEAPON_REBUILD_MODE\?null:activeWeaponId\)/);
+  assert.match(source,/if\(ticking&&playerHealth\.alive&&!WEAPON_REBUILD_MODE\)/);
+  assert.match(source,/if\(WEAPON_REBUILD_MODE\)return;\s*const result=fireWeapon/);
+  assert.match(source,/category!=='weapon'&&category!=='ammo'/);
+  assert.match(source,/\$\('fieldWeaponName'\)\.textContent='UNARMED'/);
+  assert.match(source,/\$\('visorWeaponName'\)\.textContent='UNARMED'/);
+  assert.match(source,/function refreshInventoryUI\(\)/);
+  assert.match(source,/function updateEnemyRadar\(\)/);
+  assert.match(source,/function refreshPowerArmorHUD\(\)/);
 });
