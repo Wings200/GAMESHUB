@@ -17,7 +17,7 @@ import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
 import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.11';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
-  createPowerArmorState,getPowerPlate,plateCondition,setPowerPlate,
+  createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
   installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
   beginPowerArmorTransition,stepPowerArmor,
@@ -929,6 +929,19 @@ function refreshPowerArmorHUD(){
   $('visorCoreFill').style.width=charge+'%';
   setVisorDial('core',charge);
   $('powerVisorHud').classList.toggle('low-core',charge<=15);
+  const indicatorDescriptions=[];
+  for(const slot of POWER_ARMOR_SLOTS){
+    const part=powerArmorIndicatorStatus(powerArmorState,slot);
+    const shape=$('visorArmor-'+slot);
+    const visualClass='armor-segment '+part.status;
+    if(shape.getAttribute('class')!==visualClass)
+      shape.setAttribute('class',visualClass);
+    indicatorDescriptions.push(ARMOR_SLOT_LABELS[slot]+' '+
+      (part.status==='empty'?'dark':part.percentage+'%'));
+  }
+  const indicatorLabel='Power armor condition: '+indicatorDescriptions.join(', ');
+  if($('visorArmorIndicator').getAttribute('aria-label')!==indicatorLabel)
+    $('visorArmorIndicator').setAttribute('aria-label',indicatorLabel);
   const conditions=POWER_ARMOR_SLOTS.map(slot=>plateCondition(powerArmorState,slot))
     .filter(piece=>piece.tier!=='none');
   const integrity=conditions.length?Math.round(100*conditions.reduce((sum,piece)=>

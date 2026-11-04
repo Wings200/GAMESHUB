@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.13 · Analog Power Armor HUD | GAMESHUB RPG</title>
+<title>W20.14 · Power Armor Condition Indicator | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -264,6 +264,24 @@ body.hud-modern #powerArmorHud{display:none!important}
   text-shadow:0 0 8px #ffb65366;background:none}
 #powerVisorHud .sr-only{position:absolute!important;width:1px;height:1px;padding:0;
   margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+/* W20.14: six real plate-condition segments in the left-middle silhouette. */
+#powerVisorHud .armor-indicator{position:absolute;left:3vw;top:59%;
+  width:116px;height:165px;transform:translateY(-50%);
+  overflow:visible;filter:drop-shadow(0 0 6px #ffbc5940)}
+#powerVisorHud .armor-segment .armor-shell{stroke-width:2.5;
+  stroke-linejoin:round;transition:fill .17s,stroke .17s,opacity .17s}
+#powerVisorHud .armor-segment.healthy .armor-shell{fill:#ffcb63;
+  stroke:#ffe39a;filter:drop-shadow(0 0 5px #ffbc56b5)}
+#powerVisorHud .armor-segment.critical .armor-shell{fill:#f04435;
+  stroke:#ff8575;filter:drop-shadow(0 0 5px #fa4c3eb0)}
+#powerVisorHud .armor-segment.empty .armor-shell{fill:#100d0c;
+  stroke:#44372e;filter:none;opacity:.93}
+#powerVisorHud .armor-segment .armor-line{fill:none;stroke:#644929;
+  stroke-width:2;stroke-linejoin:round;pointer-events:none}
+#powerVisorHud .armor-segment.empty .armor-line{stroke:#27211e}
+@media(max-width:790px){
+  #powerVisorHud .armor-indicator{width:78px;height:111px;left:2vw;top:56%}
+}
 #powerVisorHud .armor-dial{position:absolute;bottom:15px;aspect-ratio:1;
   filter:drop-shadow(0 0 5px #ffad484b);user-select:none}
 #powerVisorHud .dial-svg{display:block;width:100%;height:100%;overflow:visible}
@@ -529,6 +547,33 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="field-controls">L SPECIAL · I INVENTORY · E INTERACT · R RELOAD · F3 DIAGNOSTICS</div>
 </div>
 <div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
+  <svg id="visorArmorIndicator" class="armor-indicator" viewBox="0 0 116 165"
+    role="img" aria-label="Power armor condition: six unequipped sections">
+    <g id="visorArmor-head" class="armor-segment empty">
+      <path class="armor-shell" d="M45 9 L53 4 L63 4 L71 9 L74 22 L70 34 L63 39 L52 39 L45 34 L42 22 Z"/>
+      <path class="armor-line" d="M46 23 L52 20 L64 20 L70 23 M52 29 L64 29 M55 34 L61 34"/>
+    </g>
+    <g id="visorArmor-chest" class="armor-segment empty">
+      <path class="armor-shell" d="M39 39 L48 36 L68 36 L77 39 L84 54 L77 70 L76 88 L40 88 L39 70 L32 54 Z"/>
+      <path class="armor-line" d="M44 46 L58 54 L72 46 M58 54 L58 77 M43 78 L73 78"/>
+    </g>
+    <g id="visorArmor-leftArm" class="armor-segment empty">
+      <path class="armor-shell" d="M16 42 L32 39 L39 48 L33 67 L33 82 L29 103 L10 99 L11 77 L10 60 Z"/>
+      <path class="armor-line" d="M15 61 L31 65 M13 83 L30 87"/>
+    </g>
+    <g id="visorArmor-rightArm" class="armor-segment empty">
+      <path class="armor-shell" d="M84 39 L100 42 L106 60 L105 77 L106 99 L87 103 L83 82 L83 67 L77 48 Z"/>
+      <path class="armor-line" d="M85 65 L101 61 M86 87 L103 83"/>
+    </g>
+    <g id="visorArmor-leftLeg" class="armor-segment empty">
+      <path class="armor-shell" d="M39 90 L57 90 L57 119 L52 138 L51 156 L30 156 L30 137 L34 116 Z"/>
+      <path class="armor-line" d="M36 117 L54 119 M33 143 L50 143"/>
+    </g>
+    <g id="visorArmor-rightLeg" class="armor-segment empty">
+      <path class="armor-shell" d="M59 90 L77 90 L82 116 L86 137 L86 156 L65 156 L64 138 L59 119 Z"/>
+      <path class="armor-line" d="M62 119 L80 117 M66 143 L83 143"/>
+    </g>
+  </svg>
   <div class="armor-dial armor-hp" aria-label="Player health gauge">
     <svg id="visorHpGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
     <span class="dial-title">HP%</span>
@@ -637,9 +682,10 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.13</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.14</div>
     <h1>WEAPON<span>TESTING.</span></h1>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
+    <p><strong>W20.14 · ARMOR CONDITION FIGURE:</strong> Six independent body segments glow amber when equipped and healthy, red at 30% condition or lower, and dark when destroyed or unequipped. The figure appears at left-middle while wearing the frame.</p>
     <p><strong>W20.13 · POWER ARMOR INSTRUMENTS:</strong> Helmet HUD rebuilt as amber analog gauges: HP and RADS left, a live direction compass centered, and fusion CORE, AP sprint stamina, and stacked AMMO on the right. No large boxes or upper visor overlays. Power-armor visuals, movement and sounds are unchanged.</p>
     <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps use natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics span the full entry animation.</p>
     <p>No new map. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
@@ -655,7 +701,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.13</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.14</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -886,6 +932,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.13"></script>
+<script type="module" src="./main.js?v=W20.14"></script>
 </body>
 </html>

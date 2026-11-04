@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.13 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.14 + Forest Foundation 0.1
+
+## W20.14 — Six-part power armor condition silhouette
+
+- Add the small left-middle power-armor figure, with independently controlled head, chest, left/right arms and left/right legs.
+- Each section glows amber above 30% durability, turns red at or below 30%, and is dark when destroyed or not equipped. Durability is read from the existing real plate state, so repairs, removals, equipment and combat damage update the figure without changing gameplay.
+- Add pure-state boundary tests and HUD wiring checks. Visual approval remains a live-browser/player step.
 
 ## W20.13 — Minimal amber power-armor instrumentation
 

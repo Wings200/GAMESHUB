@@ -6,7 +6,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_TRANSITION_SECONDS,
   plateCondition,repairPowerPlate,damagePowerPlate,installFusionCore,ejectFusionCore,
   stepFusionCore,powerArmorMobility,hasFusionPower,POWER_ARMOR_RECIPES,
   stepPowerArmor,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
-  FUSION_CORE_DRAIN} from './power-armor.mjs';
+  FUSION_CORE_DRAIN,POWER_ARMOR_INDICATOR_CRITICAL_PERCENT,
+  powerArmorIndicatorStatus} from './power-armor.mjs';
 
 test('Power armor has its own chassis and six independently removable visible slots',()=>{
   const state=createPowerArmorState();
@@ -162,4 +163,26 @@ test('Old saves acquire full condition without inventing fusion cores',()=>{
     plateDurability:{head:0},coreCharge:23.5});
   assert.equal(plateCondition(damaged,'head').broken,true);
   assert.equal(damaged.coreCharge,23.5);
+});
+
+test('W20.14 six-part armor indicator changes per-slot at 30%, destruction and removal',()=>{
+  const state=createPowerArmorState();
+  assert.equal(POWER_ARMOR_INDICATOR_CRITICAL_PERCENT,30);
+  for(const slot of POWER_ARMOR_SLOTS)
+    assert.deepEqual(powerArmorIndicatorStatus(state,slot),
+      {slot,status:'empty',percentage:0,tier:'none'});
+  setPowerPlate(state,'head','t45',100);
+  setPowerPlate(state,'chest','t60',45);
+  setPowerPlate(state,'leftArm','t45',30);
+  setPowerPlate(state,'rightArm','t45',29);
+  setPowerPlate(state,'leftLeg','t45',0);
+  assert.equal(powerArmorIndicatorStatus(state,'head').status,'healthy');
+  assert.equal(powerArmorIndicatorStatus(state,'chest').status,'healthy');
+  assert.equal(powerArmorIndicatorStatus(state,'leftArm').status,'critical');
+  assert.equal(powerArmorIndicatorStatus(state,'rightArm').status,'critical');
+  assert.equal(powerArmorIndicatorStatus(state,'leftLeg').status,'empty');
+  assert.equal(powerArmorIndicatorStatus(state,'rightLeg').status,'empty');
+  assert.equal(powerArmorIndicatorStatus(state,'leftArm').percentage,30);
+  setPowerPlate(state,'leftArm','none');
+  assert.equal(powerArmorIndicatorStatus(state,'leftArm').status,'empty');
 });

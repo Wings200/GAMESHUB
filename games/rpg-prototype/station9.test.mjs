@@ -679,6 +679,18 @@ test('W20.13 analog helmet HUD matches reference layout and live gauge data',()=
   // No radiation system exists yet; the instrument must not fabricate exposure.
   assert.match(source,/setVisorDial\('rads',0\)/);
 });
+test('W20.14 armor status figure has six independently driven sections',()=>{
+  for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
+    assert.ok(page.includes('id="visorArmor-'+slot+'"'),slot);
+  assert.match(page,/id="visorArmorIndicator" class="armor-indicator"/);
+  assert.match(page,/#powerVisorHud \.armor-indicator\{/);
+  assert.match(page,/#powerVisorHud \.armor-segment\.critical \.armor-shell\{/);
+  assert.match(page,/#powerVisorHud \.armor-segment\.empty \.armor-shell\{/);
+  assert.match(source,/powerArmorIndicatorStatus\(powerArmorState,slot\)/);
+  assert.match(source,/visualClass='armor-segment '\+part\.status/);
+  assert.match(source,/id="visorArmorIndicator"|indicatorDescriptions\.join\(', '\)/);
+  assert.match(page,/main\.js\?v=W20\.14/);
+});
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
   assert.match(armorVisual,/const profilePlate=\(parent,w,h,d,material,outline,bulge=\.06\)=>/);

@@ -44,6 +44,16 @@ export function plateCondition(state,slot){
     current:clamp(state.plateDurability?.[slot],0,spec.maxDurability),
     broken:spec.points>0&&!(state.plateDurability?.[slot]>0)};
 }
+// W20.14: UI condition bands use each installed plate's remaining percentage.
+// A bare or broken section is dark; <=30% is red; healthy armor is amber.
+export const POWER_ARMOR_INDICATOR_CRITICAL_PERCENT=30;
+export function powerArmorIndicatorStatus(state,slot){
+  const part=plateCondition(state,slot);
+  const percentage=part.max>0?100*part.current/part.max:0;
+  const status=part.tier==='none'||part.current<=0?'empty':
+    percentage<=POWER_ARMOR_INDICATOR_CRITICAL_PERCENT?'critical':'healthy';
+  return {slot,status,percentage:Math.round(percentage),tier:part.tier};
+}
 export function setPowerPlate(state,slot,tier,condition=null){
   if(!POWER_ARMOR_SLOTS.includes(slot)||!Object.hasOwn(POWER_ARMOR_PLATES,tier))
     return {ok:false,reason:'unknown-plate'};
