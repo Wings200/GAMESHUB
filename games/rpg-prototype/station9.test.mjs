@@ -641,7 +641,7 @@ test('W13.0 normal field HUD and power visor are separate live displays',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/body class="hud-modern"/);
   assert.match(page,/#fieldHud\.hidden,#powerVisorHud\.hidden\{display:none!important\}/);
-  assert.match(page,/body\.ads-active #powerVisorHud \.visor-aim\{display:none\}/);
+  assert.match(page,/#powerVisorHud \.armor-dial\{/);
   assert.match(source,/document\.body\.classList\.toggle\('in-power-armor',visorActive\)/);
   assert.match(source,/\$\('fieldHud'\)\.classList\.toggle\('hidden',visorActive\|\|cinematic\)/);
   assert.match(source,/\$\('powerVisorHud'\)\.classList\.toggle\('hidden',!visorActive\)/);
@@ -651,17 +651,33 @@ test('W13.0 normal field HUD and power visor are separate live displays',()=>{
   assert.match(source,/\$\('visorAmmo'\)\.textContent=loaded/);
   assert.match(source,/if\(e\.code==='F3'&&!e\.repeat\)/);
 });
-test('W20.12 power visor shows a live sprint-stamina bar apart from fusion fuel',()=>{
-  for(const id of ['visorStamina','visorStaminaFill','visorStaminaTrack','visorStaminaState'])
+test('W20.13 analog helmet HUD matches reference layout and live gauge data',()=>{
+  for(const id of ['visorHpGauge','visorRadsGauge','visorCoreGauge',
+    'visorApGauge','visorCompassTicks','visorCompassWaypoint','visorAmmoLoaded','visorAmmoReserve',
+    'visorStamina','visorStaminaFill','visorStaminaTrack','visorStaminaState'])
     assert.ok(page.includes('id="'+id+'"'),id);
-  assert.match(page,/id="visorStaminaTrack" role="progressbar"/);
-  assert.match(page,/#powerVisorHud \.visor-stamina-track/);
-  assert.match(source,/\$\('fieldHud'\)\.classList\.toggle\('hidden',visorActive\|\|cinematic\)/);
-  assert.match(source,/const visorSprintAvailable=powerArmorMobility\(powerArmorState\)\.canSprint/);
-  assert.match(source,/\$\('visorStamina'\)\.textContent=staminaPct\+'%'/);
-  assert.match(source,/\$\('visorStaminaFill'\)\.style\.width=staminaPct\+'%'/);
+  assert.match(page,/class="armor-dial armor-hp"/);
+  assert.match(page,/class="armor-dial armor-rads"/);
+  assert.match(page,/class="armor-dial armor-core"/);
+  assert.match(page,/class="armor-dial armor-ap"/);
+  assert.match(page,/class="armor-compass"/);
+  assert.doesNotMatch(page,/class="visor-panel visor-left"/);
+  assert.doesNotMatch(page,/class="visor-top"/);
+  assert.match(page,/id="visorStaminaTrack" class="sr-only" role="progressbar"/);
+  assert.match(source,/buildVisorDial\('hp','visorHpGauge'/);
+  assert.match(source,/buildVisorDial\('rads','visorRadsGauge'/);
+  assert.match(source,/buildVisorDial\('core','visorCoreGauge'/);
+  assert.match(source,/buildVisorDial\('ap','visorApGauge'/);
+  assert.match(source,/setVisorDial\('hp',fraction\*100\)/);
+  assert.match(source,/setVisorDial\('core',charge\)/);
+  assert.match(source,/setVisorDial\('ap',staminaPct\)/);
+  assert.match(source,/updateVisorCompass\(bearing\)/);
+  assert.match(source,/updateVisorObjectiveMarker\(bearing\)/);
+  assert.match(source,/\$\('visorAmmoLoaded'\)\.textContent=/);
+  assert.match(source,/\$\('visorAmmoReserve'\)\.textContent=/);
   assert.match(source,/\$\('visorStaminaTrack'\)\.setAttribute\('aria-valuenow',String\(staminaPct\)\)/);
-  assert.match(source,/\$\('visorStaminaState'\)\.textContent=!visorSprintAvailable\?'CORE OFFLINE'/);
+  // No radiation system exists yet; the instrument must not fabricate exposure.
+  assert.match(source,/setVisorDial\('rads',0\)/);
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);

@@ -816,6 +816,101 @@ function nearRearHatch(){
     new THREE.Vector3(player.x,0,player.z));
   return Math.abs(local.x)<1.55&&local.z<=-1.30&&local.z>=-3.55;
 }
+// W20.13 · The power-armor overlay uses functional analog gauges instead
+// of boxed screen widgets. Geometry is generated once, values update in place.
+const VISOR_SVG_NS='http://www.w3.org/2000/svg';
+const visorNeedles=new Map();
+const visorCompassMarks=[];
+const visorDialPoint=(angle,radius)=>{
+  const rad=angle*Math.PI/180;
+  return {x:100+Math.cos(rad)*radius,y:100+Math.sin(rad)*radius};
+};
+function buildVisorDial(key,id,{tickCount=20,majorEvery=2,maxValue=100,labelSize=12}={}){
+  const svg=$(id);
+  const start=150,end=390;
+  const node=(tag,attributes)=>{
+    const element=document.createElementNS(VISOR_SVG_NS,tag);
+    for(const [name,value] of Object.entries(attributes))
+      element.setAttribute(name,String(value));
+    return element;
+  };
+  const first=visorDialPoint(start,94),last=visorDialPoint(end,94);
+  svg.appendChild(node('path',{class:'gauge-arc',
+    d:'M '+first.x+' '+first.y+' A 94 94 0 1 1 '+last.x+' '+last.y}));
+  for(let i=0;i<=tickCount;i++){
+    const angle=start+(end-start)*i/tickCount;
+    const major=i%majorEvery===0;
+    const inside=visorDialPoint(angle,major?76:84);
+    const outside=visorDialPoint(angle,94);
+    svg.appendChild(node('line',{class:'gauge-tick',x1:inside.x,
+      y1:inside.y,x2:outside.x,y2:outside.y,
+      'stroke-width':major?2.5:1.3}));
+    if(major){
+      const where=visorDialPoint(angle,61);
+      const number=node('text',{class:'gauge-number',x:where.x,
+        y:where.y+labelSize*.35,'text-anchor':'middle','font-size':labelSize});
+      number.textContent=Math.round(i*maxValue/tickCount);
+      svg.appendChild(number);
+    }
+  }
+  const needle=node('line',{class:'gauge-needle',x1:100,y1:100,x2:100,y2:100});
+  svg.appendChild(needle);
+  svg.appendChild(node('circle',{class:'gauge-hub',cx:100,cy:100,r:3.8}));
+  visorNeedles.set(key,{needle,start,end});
+}
+function setVisorDial(key,percent){
+  const gauge=visorNeedles.get(key);
+  if(!gauge)return;
+  const value=Math.max(0,Math.min(100,Number.isFinite(percent)?percent:0));
+  const end=visorDialPoint(gauge.start+(gauge.end-gauge.start)*value/100,78);
+  gauge.needle.setAttribute('x2',end.x.toFixed(2));
+  gauge.needle.setAttribute('y2',end.y.toFixed(2));
+}
+function buildVisorCompass(){
+  const names=['N','NE','E','SE','S','SW','W','NW'];
+  const target=$('visorCompassTicks');
+  for(let i=0;i<24;i++){
+    const major=i%3===0;
+    const element=document.createElement('span');
+    element.className='compass-tick'+(major?' major':'');
+    element.textContent=major?names[i/3]:'';
+    target.appendChild(element);
+    visorCompassMarks.push({bearing:i*15,element});
+  }
+}
+function updateVisorCompass(heading){
+  for(const mark of visorCompassMarks){
+    const delta=((mark.bearing-heading+540)%360)-180;
+    const visible=Math.abs(delta)<=75;
+    mark.element.style.display=visible?'block':'none';
+    if(visible)mark.element.style.left=(50+delta*.6).toFixed(2)+'%';
+  }
+}
+function updateVisorObjectiveMarker(heading){
+  const marker=$('visorCompassWaypoint');
+  const quest=CAMPAIGN_QUESTS[campaignState.tracked];
+  const stage=quest?.stages[campaignState.quests[campaignState.tracked]?.stage];
+  const target=stage?.node==='arena'?{x:45,z:40}:
+    CAMPAIGN_NODES.find(node=>node.id===stage?.node);
+  if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.z)){
+    marker.style.display='none';return;
+  }
+  const towards=((Math.atan2(target.x-player.x,-(target.z-player.z))*
+    180/Math.PI)+360)%360;
+  const delta=((towards-heading+540)%360)-180;
+  marker.style.display=Math.abs(delta)<=75?'block':'none';
+  if(Math.abs(delta)<=75)marker.style.left=(50+delta*.6).toFixed(2)+'%';
+}
+buildVisorDial('hp','visorHpGauge',{tickCount:20,majorEvery:2,labelSize:12});
+buildVisorDial('rads','visorRadsGauge',{tickCount:10,majorEvery:2,maxValue:10,labelSize:15});
+buildVisorDial('core','visorCoreGauge',{tickCount:10,majorEvery:5,labelSize:16});
+buildVisorDial('ap','visorApGauge',{tickCount:20,majorEvery:4,labelSize:12});
+buildVisorCompass();
+setVisorDial('rads',0); // Radiation gameplay is not implemented yet.
+setVisorDial('hp',100);
+setVisorDial('ap',100);
+updateVisorCompass(0);
+
 function refreshPowerArmorHUD(){
   // The obsolete plate-count widget is gone. Only core status appears while
   // WEARING the frame; six-slot condition lives in the E service interface.
@@ -830,8 +925,9 @@ function refreshPowerArmorHUD(){
   const powered=hasFusionPower(powerArmorState);
   const charge=Math.max(0,Number(powerArmorState.coreCharge)||0);
   $('visorCoreNumber').textContent=powerArmorState.coreCharge===null?
-    'CORE MISSING':Math.ceil(charge)+'%';
+    '--':String(Math.ceil(charge)).padStart(2,'0');
   $('visorCoreFill').style.width=charge+'%';
+  setVisorDial('core',charge);
   $('powerVisorHud').classList.toggle('low-core',charge<=15);
   const conditions=POWER_ARMOR_SLOTS.map(slot=>plateCondition(powerArmorState,slot))
     .filter(piece=>piece.tier!=='none');
@@ -1959,6 +2055,7 @@ function refreshPlayerHealth(){
   $('fieldHud').classList.toggle('critical',fraction<=.35);
   $('visorHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
+  setVisorDial('hp',fraction*100);
   $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
   $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
   $('healthFill').classList.toggle('low',fraction<=.35);
@@ -2810,6 +2907,9 @@ function refreshWeaponHUD(){
   const loaded=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
   $('fieldAmmo').textContent=loaded;
   $('visorAmmo').textContent=loaded;
+  $('visorAmmoLoaded').textContent=String(weaponState.magazine).padStart(3,'0');
+  const reserveDisplay=displayAmmoCount(weaponState.reserve);
+  $('visorAmmoReserve').textContent=String(reserveDisplay).padStart(3,'0');
   $('fieldWeaponName').textContent=activeSpec.name.toUpperCase();
   $('visorWeaponName').textContent=activeSpec.name.toUpperCase();
   $('fieldWeaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
@@ -3935,6 +4035,9 @@ function updateHUD(info){
   $('visorStaminaTrack').setAttribute('aria-valuenow',String(staminaPct));
   $('visorStaminaTrack').classList.toggle('empty',info.exhausted);
   $('visorStaminaTrack').classList.toggle('unavailable',!visorSprintAvailable);
+  setVisorDial('ap',staminaPct);
+  $('visorApDial').classList.toggle('exhausted',info.exhausted);
+  $('visorApDial').classList.toggle('core-offline',!visorSprintAvailable);
   $('visorStaminaState').textContent=!visorSprintAvailable?'CORE OFFLINE':
     info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':
     info.recovering?'RECOVERING':'READY';
@@ -3943,6 +4046,8 @@ function updateHUD(info){
   const cardinal=['N','NE','E','SE','S','SW','W','NW'][
     Math.round(bearing/45)%8];
   $('fieldHeading').textContent=cardinal+' · '+Math.round(bearing).toString().padStart(3,'0')+'°';
+  updateVisorCompass(bearing);
+  updateVisorObjectiveMarker(bearing);
   const threat=inAIArena();
   $('fieldThreat').textContent=threat?'LIVE FIRE':'EXPLORATION';
   $('fieldThreat').classList.toggle('danger',threat);

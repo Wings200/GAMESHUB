@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.12 · Power Armor Sprint HUD | GAMESHUB RPG</title>
+<title>W20.13 · Analog Power Armor HUD | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -258,63 +258,90 @@ body.hud-modern #powerArmorHud{display:none!important}
   color:#c2d3c9a8;font-size:9px;letter-spacing:.12em;font-weight:900;white-space:nowrap}
 #fieldHud.critical .field-vitals{border-left-color:#fd665b}
 #fieldHud.critical .field-bar:not(.secondary) span{background:#e46a56}
-#powerVisorHud{color:#f5c589;text-shadow:0 2px 9px #0009;
-  background:linear-gradient(90deg,rgba(45,26,12,.14),transparent 18% 82%,rgba(45,26,12,.14))}
-#powerVisorHud:before{content:"";position:absolute;inset:12px 17px;
-  border:2px solid #b9844c8c;border-radius:11px 11px 70px 70px;
-  box-shadow:inset 0 0 32px #bc733227,0 0 7px #ca9a5129}
-#powerVisorHud:after{content:"";position:absolute;left:14%;right:14%;top:4px;height:32px;
-  border-top:5px solid #ce9852;border-radius:50% 50% 0 0;opacity:.82}
-#powerVisorHud .visor-top{position:absolute;top:28px;left:50%;transform:translateX(-50%);
-  min-width:345px;text-align:center;padding:11px 22px;
-  background:linear-gradient(90deg,#241b17ee,#3d2c1dee,#241b17ee);
-  border:1px solid #d8a25a;clip-path:polygon(5% 0,95% 0,100% 100%,0 100%)}
-#powerVisorHud .visor-label{font-weight:950;font-size:10px;letter-spacing:.22em;
-  color:#ffdc9d}
-#powerVisorHud .visor-value{font-size:24px;font-weight:950;letter-spacing:.08em;color:#ffe2a6}
-#powerVisorHud .visor-track{height:8px;margin:8px auto 0;max-width:320px;
-  background:#3e3229;overflow:hidden;border:1px solid #cfa167}
-#powerVisorHud .visor-track span{display:block;height:100%;width:0;
-  background:linear-gradient(90deg,#b77935,#ffe09a);transition:width .15s}
-#powerVisorHud .visor-panel{position:absolute;bottom:27px;min-width:245px;
-  padding:15px 20px;background:#271d18d9;border:1px solid #d3a15d;
-  box-shadow:0 8px 22px #0008}
-#powerVisorHud .visor-left{left:36px;border-left:6px solid #daa362}
-#powerVisorHud .visor-right{right:36px;text-align:right;border-right:6px solid #daa362}
-#powerVisorHud .visor-sub{font-size:10px;font-weight:850;color:#cfb58d;
-  letter-spacing:.10em;margin-top:7px}
-#powerVisorHud .visor-integrity{height:7px;background:#57402c;margin-top:8px}
-#powerVisorHud .visor-integrity span{display:block;width:0;height:100%;
-  background:#9cddad;transition:width .16s}
-#powerVisorHud .visor-stamina-line{display:flex;align-items:center;
-  justify-content:space-between;gap:10px;margin-top:13px}
-#powerVisorHud .visor-stamina-line span:last-child{color:#ffe1a6}
-#powerVisorHud .visor-stamina-track{height:8px;overflow:hidden;
-  margin-top:6px;background:#443329;border:1px solid #b58c5d}
-#powerVisorHud .visor-stamina-track span{display:block;height:100%;width:100%;
-  background:linear-gradient(90deg,#b88a43,#ffe2a0);transition:width .14s linear}
-#powerVisorHud .visor-stamina-track.empty span{background:#d76d58}
-#powerVisorHud .visor-stamina-track.unavailable span{background:#777169}
-#powerVisorHud .visor-stamina-track.unavailable{opacity:.6}
-#powerVisorHud .visor-stamina-state{margin-top:5px;font-size:9px;
-  font-weight:900;letter-spacing:.13em;color:#dabf91}
-#powerVisorHud .visor-aim{position:absolute;left:50%;top:50%;
-  width:184px;height:184px;transform:translate(-50%,-50%);
-  border:1px solid #d6a56061;border-radius:50%;opacity:.75;
-  background:radial-gradient(circle,transparent 52%,#e6b36a11 54%,transparent 60%)}
-#powerVisorHud .visor-aim:before,#powerVisorHud .visor-aim:after{
-  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  border:2px solid #e5ab5f76;border-radius:50%}
-#powerVisorHud .visor-aim:before{width:122px;height:122px;border-left-color:transparent;border-right-color:transparent}
-#powerVisorHud .visor-aim:after{width:65px;height:65px;border-top-color:transparent;border-bottom-color:transparent}
-body.ads-active #powerVisorHud .visor-aim{display:none}
-#powerVisorHud .visor-footer{position:absolute;bottom:17px;left:50%;
-  transform:translateX(-50%);font-size:10px;color:#cfb58d;
-  font-weight:950;letter-spacing:.17em;white-space:nowrap}
-#powerVisorHud .visor-warning{position:absolute;top:115px;left:50%;transform:translateX(-50%);
-  color:#ffb28a;font-size:11px;font-weight:950;letter-spacing:.13em;white-space:nowrap}
-#powerVisorHud.low-core .visor-track span{background:#f26e55}
-#powerVisorHud.low-core .visor-top{border-color:#f26e55}
+/* W20.13: minimalist powered-helmet instrumentation from the supplied reference. */
+#powerVisorHud{--visor-gold:#ffd17a;--visor-hot:#ff754c;
+  color:var(--visor-gold);font-family:Consolas,'Courier New',monospace;
+  text-shadow:0 0 8px #ffb65366;background:none}
+#powerVisorHud .sr-only{position:absolute!important;width:1px;height:1px;padding:0;
+  margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+#powerVisorHud .armor-dial{position:absolute;bottom:15px;aspect-ratio:1;
+  filter:drop-shadow(0 0 5px #ffad484b);user-select:none}
+#powerVisorHud .dial-svg{display:block;width:100%;height:100%;overflow:visible}
+#powerVisorHud .gauge-tick{stroke:#ffd17a;stroke-opacity:.9;stroke-linecap:round}
+#powerVisorHud .gauge-number{fill:#ffe29d;paint-order:stroke;
+  stroke:#26190c;stroke-width:.75px;font-family:Consolas,'Courier New',monospace;
+  font-weight:900}
+#powerVisorHud .gauge-arc{stroke:#f1b85e;stroke-width:1;
+  stroke-opacity:.45;fill:none}
+#powerVisorHud .gauge-needle{stroke:var(--visor-hot);stroke-width:4.7;
+  stroke-linecap:round;filter:drop-shadow(0 0 4px #ff7347b0)}
+#powerVisorHud .gauge-hub{fill:#ff8254}
+#powerVisorHud .dial-title{position:absolute;left:50%;transform:translateX(-50%);
+  font-size:clamp(10px,.95vw,17px);font-weight:950;white-space:nowrap;
+  letter-spacing:-.035em;color:#ffe49a}
+#powerVisorHud .armor-hp{left:2.7vw;width:clamp(155px,10.6vw,205px)}
+#powerVisorHud .armor-hp .dial-title{top:75%}
+#powerVisorHud .armor-rads{left:17.8vw;width:clamp(108px,7.4vw,145px);bottom:22px}
+#powerVisorHud .armor-rads .dial-title{top:49%;left:24%;font-size:13px}
+#powerVisorHud .armor-core{right:21.5vw;width:clamp(112px,8.2vw,155px);bottom:19px}
+#powerVisorHud .armor-core .dial-title{top:51%;font-size:13px}
+#powerVisorHud .core-readout{position:absolute;left:50%;top:75%;
+  transform:translateX(-50%);min-width:44px;text-align:center;
+  border:2px solid #f4b866;padding:1px 4px;color:#ffc87a;font-size:25px;
+  font-weight:900;line-height:1.05;box-shadow:0 0 7px #ffb65336}
+#powerVisorHud .armor-ap{right:2.5vw;width:clamp(210px,14.4vw,278px);bottom:10px}
+#powerVisorHud .armor-ap .dial-title{top:40%;font-size:16px}
+#powerVisorHud .armor-ammo{position:absolute;top:69%;left:50%;
+  transform:translateX(-50%);min-width:92px;border:2px solid #eeb56b;
+  padding:3px 12px 6px;text-align:center;box-shadow:0 0 9px #ffb65326}
+#powerVisorHud .armor-ammo .ammo-caption{display:block;margin-top:-13px;
+  font-size:10px;font-weight:950;color:#ffdb92;background:#231a13;
+  padding:0 4px;width:max-content;margin-left:auto;margin-right:auto}
+#powerVisorHud .armor-ammo .ammo-digits{display:block;color:#ff7952;
+  font-size:30px;font-weight:950;line-height:.98;letter-spacing:.12em;
+  text-shadow:0 0 7px #ff653f99}
+#powerVisorHud .armor-compass{position:absolute;bottom:15px;left:50%;
+  width:min(420px,30vw);height:40px;transform:translateX(-50%);
+  color:#ffcf76;overflow:hidden}
+#powerVisorHud .compass-marks{position:absolute;inset:0}
+#powerVisorHud .compass-tick{position:absolute;bottom:4px;transform:translateX(-50%);
+  font-size:10px;font-weight:900;text-align:center;color:#eec582;
+  white-space:nowrap}
+#powerVisorHud .compass-tick:after{content:'';display:block;width:1px;height:6px;
+  margin:2px auto 0;background:#ffd078}
+#powerVisorHud .compass-tick.major{font-size:16px;color:#ffe49a}
+#powerVisorHud .compass-tick.major:after{height:10px;width:2px}
+#powerVisorHud .compass-marker{position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+  border-bottom:15px solid #ffe392;filter:drop-shadow(0 0 4px #ffab56)}
+#powerVisorHud .compass-waypoint{position:absolute;bottom:19px;transform:translateX(-50%);
+  font-size:21px;font-weight:950;color:#ffe59c;line-height:1;
+  filter:drop-shadow(0 0 4px #ffbd68)}
+#powerVisorHud.low-core .armor-core .gauge-needle,
+#powerVisorHud .armor-ap.exhausted .gauge-needle{stroke:#ff553f}
+#powerVisorHud .armor-ap.core-offline .gauge-needle{stroke:#967f66}
+@media(max-width:1100px){
+  #powerVisorHud .armor-hp{left:1vw;width:170px}
+  #powerVisorHud .armor-rads{left:18vw;width:108px}
+  #powerVisorHud .armor-core{right:20vw;width:112px}
+  #powerVisorHud .armor-ap{right:1vw;width:205px}
+  #powerVisorHud .armor-compass{width:29vw}
+  #powerVisorHud .armor-ammo .ammo-digits{font-size:23px}
+}
+@media(max-width:690px){
+  #powerVisorHud .armor-hp{left:0;width:122px}
+  #powerVisorHud .armor-rads{left:21vw;width:72px;bottom:18px}
+  #powerVisorHud .armor-core{right:21vw;width:78px;bottom:12px}
+  #powerVisorHud .armor-ap{right:0;width:146px}
+  #powerVisorHud .armor-compass{width:27vw;bottom:8px}
+  #powerVisorHud .armor-rads .dial-title,
+  #powerVisorHud .armor-core .dial-title{font-size:9px}
+  #powerVisorHud .armor-ap .dial-title{font-size:11px}
+  #powerVisorHud .core-readout{font-size:15px;min-width:30px}
+  #powerVisorHud .armor-ammo{top:71%;min-width:56px;padding:2px 4px}
+  #powerVisorHud .armor-ammo .ammo-digits{font-size:17px}
+}
+/* Preserve responsive layout for the normal (unarmored) field HUD. */
 @media(max-width:790px){
   #fieldHud .field-top{top:10px;padding:7px 10px;gap:9px;font-size:9px}
   #fieldHud .field-top .field-area{max-width:145px}
@@ -324,14 +351,7 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   #fieldHud .field-number{font-size:19px}
   #fieldHud .field-ammo{font-size:25px}
   #fieldHud .field-controls{display:none}
-  #powerVisorHud .visor-panel{bottom:16px;min-width:0;width:34vw;padding:10px}
-  #powerVisorHud .visor-left{left:12px}
-  #powerVisorHud .visor-right{right:12px}
-  #powerVisorHud .visor-value{font-size:19px}
-  #powerVisorHud .visor-top{top:15px;min-width:290px}
-  #powerVisorHud .visor-aim{width:125px;height:125px}
 }
-
 
 /* W14.0 · Pip-Boy-inspired SPECIAL progression; native accessible buttons. */
 #fieldHud .field-level{color:#e7d09d;padding:4px 8px;border:1px solid #a9bc87;
@@ -508,32 +528,50 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   </div>
   <div class="field-controls">L SPECIAL · I INVENTORY · E INTERACT · R RELOAD · F3 DIAGNOSTICS</div>
 </div>
-<div id="powerVisorHud" class="hidden" aria-label="Power armor visor HUD">
-  <div class="visor-top">
-    <div class="visor-label">FRAME REACTOR / FUSION CORE</div>
-    <div class="visor-value" id="visorCoreNumber">NO CORE</div>
-    <div class="visor-track"><span id="visorCoreFill"></span></div>
+<div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
+  <div class="armor-dial armor-hp" aria-label="Player health gauge">
+    <svg id="visorHpGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
+    <span class="dial-title">HP%</span>
+    <span id="visorHealth" class="sr-only">100 / 100 HP</span>
   </div>
-  <div class="visor-warning" id="visorWarning">HYDRAULICS STANDBY</div>
-  <div class="visor-aim" aria-hidden="true"></div>
-  <div class="visor-panel visor-left">
-    <div class="visor-label">PILOT VITALS / HP</div>
-    <div class="visor-value" id="visorHealth">100 HP</div>
-    <div class="visor-sub">PLATE CONDITION <span id="visorIntegrity">100%</span></div>
-    <div class="visor-integrity"><span id="visorIntegrityFill"></span></div>
-    <div class="visor-sub visor-stamina-line"><span>SPRINT STAMINA</span><span id="visorStamina">100%</span></div>
-    <div class="visor-stamina-track" id="visorStaminaTrack" role="progressbar"
+  <div class="armor-dial armor-rads" aria-label="Radiation level gauge">
+    <svg id="visorRadsGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
+    <span class="dial-title">RADS</span>
+    <span id="visorRadiation" class="sr-only">0 RADS</span>
+  </div>
+  <div class="armor-compass" id="visorCompass" aria-label="Compass heading">
+    <div id="visorCompassTicks" class="compass-marks"></div>
+    <span id="visorCompassWaypoint" class="compass-waypoint" style="display:none" aria-label="Tracked objective direction">⌂</span>
+    <div class="compass-marker" aria-hidden="true"></div>
+  </div>
+  <div class="armor-dial armor-core" aria-label="Fusion core charge gauge">
+    <svg id="visorCoreGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
+    <span class="dial-title">CORE</span>
+    <span id="visorCoreNumber" class="core-readout">100</span>
+    <span id="visorCoreFill" class="sr-only"></span>
+  </div>
+  <div class="armor-dial armor-ap" id="visorApDial" aria-label="Sprint stamina and ammunition">
+    <svg id="visorApGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
+    <span class="dial-title">AP%</span>
+    <div class="armor-ammo" aria-label="Current and reserve ammunition">
+      <span class="ammo-caption">AMMO</span>
+      <span id="visorAmmoLoaded" class="ammo-digits">012</span>
+      <span id="visorAmmoReserve" class="ammo-digits">048</span>
+    </div>
+    <span id="visorStamina" class="sr-only">100%</span>
+    <div id="visorStaminaTrack" class="sr-only" role="progressbar"
       aria-label="Power armor sprint stamina" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
       <span id="visorStaminaFill"></span>
     </div>
-    <div class="visor-stamina-state" id="visorStaminaState">READY</div>
+    <span id="visorStaminaState" class="sr-only">READY</span>
+    <span id="visorAmmo" class="sr-only">12 / 48</span>
+    <span id="visorWeaponName" class="sr-only">SCRAP PISTOL</span>
   </div>
-  <div class="visor-panel visor-right">
-    <div class="visor-label">WEAPON SYSTEM</div>
-    <div class="visor-value" id="visorAmmo">12 / 48</div>
-    <div class="visor-sub" id="visorWeaponName">SCRAP PISTOL</div>
+  <div class="sr-only" aria-live="polite">
+    <span id="visorIntegrity">0%</span>
+    <span id="visorIntegrityFill"></span>
+    <span id="visorWarning">HYDRAULICS ONLINE</span>
   </div>
-  <div class="visor-footer">REAR-HATCH FRAME · HOLD E TO EXIT · CORE POWER REQUIRED FOR SPRINT</div>
 </div>
 <div id="powerArmorHud" class="hidden" aria-live="polite">
   <strong id="powerArmorStatus">FUSION CORE STATUS</strong>
@@ -599,12 +637,12 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.12</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.13</div>
     <h1>WEAPON<span>TESTING.</span></h1>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
-    <p><strong>W20.12 · POWER ARMOR STAMINA:</strong> The visor now displays a separate sprint-stamina bar, percentage, and status (draining, recovering, exhausted or core offline). Fusion-core charge remains visible above it.</p>
+    <p><strong>W20.13 · POWER ARMOR INSTRUMENTS:</strong> Helmet HUD rebuilt as amber analog gauges: HP and RADS left, a live direction compass centered, and fusion CORE, AP sprint stamina, and stacked AMMO on the right. No large boxes or upper visor overlays. Power-armor visuals, movement and sounds are unchanged.</p>
     <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps use natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics span the full entry animation.</p>
-    <p>No new map. Compare walking and sprinting sounds, fire each weapon, then test the power frame at Station 8.</p>
+    <p>No new map. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP WEAPON · SIX AVAILABLE</label>
@@ -617,7 +655,7 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.12</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.13</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -848,6 +886,6 @@ body.ads-active #powerVisorHud .visor-aim{display:none}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.12"></script>
+<script type="module" src="./main.js?v=W20.13"></script>
 </body>
 </html>

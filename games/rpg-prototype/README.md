@@ -1,4 +1,21 @@
-# Untitled RPG · Mechanics Lab W20.10 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.13 + Forest Foundation 0.1
+
+## W20.13 — Minimal amber power-armor instrumentation
+
+- Replaced the large boxed cockpit widgets with analog helmet-style dials anchored across the lower edge of the field of view: HP / RADS on the left, a working compass and tracked-objective marker in the center, CORE and AP (sprint stamina) with stacked AMMO on the right.
+- HP needle follows player health, CORE needle follows fusion charge, AP follows stamina drain/recovery, ammo numerals follow loaded/reserve weapon state, and the compass rotates with camera heading.
+- Retains all previous player mechanics, power-entry choreography, core depletion, inventory, recoil, and audio. RADS reads zero because the current mechanics sandbox has no radiation exposure system.
+- Added source-level layout bindings and checked dynamic dial geometry / compass headings. Actual in-game visual feedback is still required.
+
+## W20.12 — Power-armor sprint stamina HUD
+
+- Mirrored the existing stamina percentage, exhaustion, recovery and core-offline state into the occupied visor, while keeping fusion-core charge a separate resource.
+
+## W20.11 — Audio cadence and hydraulic timing
+
+- Slowed walking and sprinting sound-trigger cadence to plausible footfall rates, extended abrupt synth decays, and gave power-armor entry and exit their own hydraulic sequence over the existing 4.5-second animation.
+
+
 
 ## W20.10 — Shoulder silhouette and entry-visibility corrections
 
