@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W20.20 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.21 + Forest Foundation 0.1
+
+## W20.21 · Pipe pistol joined-geometry visual polish
+
+- Replaced the free-floating pipe-cylinder look with a joined, bevel-edged stamped receiver, angular long barrel shroud, continuous underside frame and an overlapping grip tang.
+- Charging bolt now rides in an enclosed right-side channel, and both rear/front sight supports physically contact the receiver or handguard.
+- Repositioned the side magazine inward to overlap a deep receiver socket, with upper and lower guide rails, so the installed magazine reads as one gun and still slides sideways during reload.
+- Retuned barrel collars to overlap their housing instead of floating at near-tangent clearances. Removed decorative loose bolt rings and consolidated external details into surfaces.
+- Did not alter either pistol's damage, ammunition economy, shot cadence, recoil, input controls or AI behavior. The approved 10mm remains unchanged.
+
 
 ## W20.20 · Second rebuilt weapon: improvised pipe pistol
 

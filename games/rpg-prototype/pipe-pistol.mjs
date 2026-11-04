@@ -28,46 +28,87 @@ export function createPipePistol(THREE,parent,{thirdPerson=false,flareTexture=nu
   };
   const ring=(r,t,material,x,y,z,g=root)=>
     part(new THREE.TorusGeometry(r,t,7,15),material,x,y,z,g);
-  // Thick welded breech and narrow salvaged barrel are two distinct pipes.
+  // Folded and beveled sheet-metal profiles join the round internal pipe into
+  // ONE continuous receiver. X thickness is centered over the bore.
+  const formedPanel=(profile,width,material,g=root)=>{
+    const shape=new THREE.Shape();
+    shape.moveTo(profile[0][0],profile[0][1]);
+    for(let i=1;i<profile.length;i++)shape.lineTo(profile[i][0],profile[i][1]);
+    shape.closePath();
+    const geo=new THREE.ExtrudeGeometry(shape,{
+      depth:width,bevelEnabled:true,bevelSize:.008,
+      bevelThickness:.007,bevelSegments:2,steps:1
+    });
+    const mesh=part(geo,material,width/2,0,0,g);
+    mesh.rotation.y=-Math.PI/2;
+    return mesh;
+  };
+  // Thick welded breech and narrow salvaged barrel share their centerline.
   pipeTube(.092,.36,rust,0,.080,-.105);
   pipeTube(.106,.22,dark,0,.080,.047);
   pipeTube(.064,.64,pipe,0,.080,-.442);
+  // Angled receiver shoulders and bridge carry the slide, barrel and grip.
+  const joinedReceiver=formedPanel([[-.32,.019],[-.28,.155],[-.10,.179],
+    [.145,.175],[.236,.096],[.225,-.092],
+    [-.12,-.105],[-.29,-.061]],.197,dark);
+  joinedReceiver.name='JoinedReceiverShell';
+  formedPanel([[-.245,.136],[-.184,.190],[.148,.191],
+    [.193,.151],[.193,.117],[-.245,.115]],.194,pipe);
+  // The long upper handguard actually surrounds and supports the barrel.
+  const barrelShroud=formedPanel([[-.732,.042],[-.705,.139],[-.31,.148],
+    [-.26,.108],[-.26,.025],[-.710,.019]],.151,pipe);
+  barrelShroud.name='JoinedBarrelShroud';
+  for(const side of [-1,1]){
+    // Inset vent slots are surface details ON the housing, not free blocks.
+    for(const z of [-.56,-.45,-.34]){
+      box(.008,.026,.061,dark,side*.084,.089,z);
+    }
+    box(.013,.024,.38,rust,side*.086,.038,-.49);
+  }
   pipeTube(.048,.07,band,0,.080,-.767);
-  ring(.048,.013,dark,0,.080,-.806);
-  ring(.095,.020,band,0,.080,-.290);
-  ring(.079,.014,rust,0,.080,-.567);
-  // Asymmetric collars and offset hand-welds prevent the generic gun silhouette.
-  for(const z of [-.24,-.48,-.65]){
-    const collar=ring(.074,.009,band,0,.080,z);
-    collar.rotation.y=.05;
-    box(.032,.026,.075,rust,.082,.018,z);
+  ring(.047,.011,dark,0,.080,-.798);
+  ring(.069,.016,band,0,.080,-.290);
+  ring(.068,.014,rust,0,.080,-.567);
+  // Riveted seam ties the long barrel housing to the angled main receiver.
+  for(const side of [-1,1]){
+    for(const z of [-.27,-.15,.008,.115]){
+      const rivet=part(new THREE.SphereGeometry(.013,8,6),
+        band,side*.111,.057,z);
+      rivet.scale.set(1,.84,1);
+    }
   }
-  for(let j=0;j<3;j++){
-    box(.009,.022,.041,copper,.081,.123,-.15+j*.091);
-    box(.028,.029,.026,band,-.079,.027,-.23+j*.087);
-  }
-  // Improvised stamped sheet-metal lower receiver, behind the barrel.
-  const plate=box(.187,.121,.392,dark,0,-.048,.075);
-  plate.rotation.x=-.048;
-  box(.22,.027,.312,pipe,0,.013,.062);
-  box(.138,.042,.275,rust,0,-.116,.08);
+  // The lower spine overlaps the receiver shell and reaches the wood grip.
+  formedPanel([[-.215,.013],[-.12,-.106],[.142,-.117],
+    [.242,-.083],[.247,.016],[.07,.044]],.175,rust);
+  box(.167,.082,.223,dark,0,-.138,.159);
+  // Cast-on right charging channel encloses the movable steel bolt.
+  box(.062,.101,.335,dark,.110,.117,.046);
+  box(.018,.025,.264,band,.147,.161,.036);
   // Exposed charging bolt rides inside the receiver and retracts rearward.
   const slideGroup=new THREE.Group();
   slideGroup.name='PipePistolChargingBolt';
   root.add(slideGroup);
-  pipeTube(.054,.26,band,.094,.109,.034,slideGroup);
-  box(.068,.049,.072,dark,.137,.130,.125,slideGroup);
-  box(.056,.036,.067,copper,.148,.138,.186,slideGroup);
-  for(let j=0;j<4;j++)
-    ring(.033,.006,copper,.097,.109,-.055+j*.045,slideGroup);
-  // Simple welded two-post rear notch, front bead at the barrel clamp.
+  pipeTube(.044,.26,band,.102,.114,.034,slideGroup);
+  // Small charging grip is welded TO the sliding bolt, not hovering beside it.
+  box(.071,.055,.115,band,.137,.136,.116,slideGroup);
+  box(.043,.033,.070,copper,.162,.155,.158,slideGroup);
+  box(.043,.022,.066,dark,.164,.176,.159,slideGroup);
+  // Continuous sight rail anchors both blades to real metal underneath.
+  const rearSightRail=box(.144,.041,.232,pipe,0,.183,.118);
+  rearSightRail.name='RearSightRail';
   for(const side of [-1,1]){
     box(.023,.061,.033,dark,side*.056,.228,.163);
     box(.010,.015,.013,band,side*.056,.257,.163);
   }
+  // Front pedestal connects to the *shroud*, instead of floating in air.
+  const frontPedestal=box(.057,.094,.084,dark,0,.174,-.683);
+  frontPedestal.name='FrontSightPedestal';
   box(.022,.053,.037,dark,0,.216,-.683);
   box(.015,.016,.019,band,0,.239,-.683);
   // Wooden pistol grip angles back; twisted cloth wrap reinforces the handle.
+  // Angled steel tang fills the upper grip-to-receiver seam.
+  formedPanel([[.111,-.071],[.250,-.075],
+    [.340,-.187],[.303,-.262],[.132,-.166]],.129,dark);
   const grip=box(.144,.36,.158,wood,0,-.252,.246);
   grip.rotation.x=-.29;
   for(const side of [-1,1]){
@@ -90,17 +131,21 @@ export function createPipePistol(THREE,parent,{thirdPerson=false,flareTexture=nu
   guard.rotation.z=-.42;
   // Distinctive LEFT side-feed magazine, not a grip magazine:
   // physically slides outward in X during reload. Bottom plate goes with it.
-  const magazine=box(.099,.251,.156,rust,-.249,-.057,-.069);
+  const magazine=box(.099,.251,.156,rust,-.211,-.057,-.069);
   magazine.rotation.z=-.11;
   for(let j=0;j<4;j++)
     box(.010,.019,.13,pipe,-.056,-.089+j*.046,0,magazine);
-  const magazineBase=box(.116,.028,.177,dark,-.249,-.197,-.069);
+  const magazineBase=box(.116,.028,.177,dark,-.211,-.197,-.069);
   box(.058,.014,.09,band,0,-.018,0,magazineBase);
-  // Receiver-side magazine bracket and retaining latch stay on the firearm.
-  box(.05,.166,.21,pipe,-.14,-.025,-.054);
-  box(.046,.028,.08,band,-.158,.075,-.045);
-  for(const z of [-.145,.028])
-    box(.017,.037,.041,copper,-.155,-.087,z);
+  // Deep socket overlaps the magazine on all three axes while installed.
+  // Guide rails remain attached to the gun when the magazine slides outward.
+  const magazineSocket=box(.082,.180,.210,pipe,-.144,-.023,-.054);
+  magazineSocket.name='MagazineSocket';
+  box(.100,.047,.211,dark,-.175,.061,-.054);
+  box(.084,.047,.174,dark,-.177,-.120,-.054);
+  box(.041,.032,.074,band,-.165,.081,-.047);
+  for(const z of [-.135,.023])
+    box(.022,.032,.038,copper,-.151,-.079,z);
   // Primary shooting hand and separate reload hand; low-poly but not a
   // static magazine that phases through the receiver during animations.
   if(!thirdPerson){
@@ -127,7 +172,7 @@ export function createPipePistol(THREE,parent,{thirdPerson=false,flareTexture=nu
     flareMaterial,0,.080,-.821);
   muzzleFlare.visible=false;
   return {root,slideGroup,magazine,magazineBase,reloadHand,trigger,
-    muzzleGlow,muzzleFlare,magBaseX:-.249,magFootX:-.249,
+    muzzleGlow,muzzleFlare,magBaseX:-.211,magFootX:-.211,
     magBaseY:-.057,magFootY:-.197,flashScale:.83,defaultX:.29,
     sightLocal:new THREE.Vector3(0,.214,-.12),
     ejectionLocal:new THREE.Vector3(.145,.137,.09)};
