@@ -108,6 +108,7 @@ export class WeaponAudio {
       'pipe-rifle':{crack:.16,body:.25,level:.28,freq:124},
       'double-barrel':{crack:.20,body:.33,level:.32,freq:81},
       'pump-action':{crack:.17,body:.29,level:.29,freq:96},
+      'hunting-bolt':{crack:.19,body:.32,level:.30,freq:104},
       pistol:{crack:.115,body:.19,level:.27,freq:158},
       revolver:{crack:.14,body:.24,level:.30,freq:120},
       smg:{crack:.065,body:.12,level:.20,freq:235},
@@ -116,7 +117,7 @@ export class WeaponAudio {
       rifle:{crack:.15,body:.27,level:.29,freq:105}
     };
     const v=sounds[kind]||sounds.pistol;
-    this._noiseBurst(t,v.crack,v.level,(['shotgun','double-barrel','pump-action'].includes(kind))?120:330,
+    this._noiseBurst(t,v.crack,v.level,(['shotgun','double-barrel','pump-action','hunting-bolt'].includes(kind))?120:330,
       kind==='smg'?7500:6800);
     this._noiseBurst(t+.011,v.body,Math.min(.22,v.level*.55),85,1350);
     // Low report and a quieter atmospheric tail stop shots from sounding
@@ -168,6 +169,31 @@ export class WeaponAudio {
       this._tone(at,270,114,.11,.054,'triangle');
     }
     this._tone(t+d*.92,530,195,.075,.044,'triangle');
+  }
+  boltActionCycle(duration=.88){
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const d=Math.max(.56,Math.min(1.25,duration));
+    this._tone(t+d*.13,570,210,.075,.043,'triangle');  // lift
+    this._noiseBurst(t+d*.36,.14,.071,220,3500);        // retract
+    this._tone(t+d*.49,880,430,.12,.038,'triangle');    // fired brass
+    this._noiseBurst(t+d*.71,.105,.061,280,2900);      // seat
+    this._tone(t+d*.90,450,140,.13,.071,'triangle');    // lock
+  }
+  boltActionReload(rounds=1,duration=1.51){
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const d=Math.max(1,Math.min(4.5,Number.isFinite(duration)?duration:1.51));
+    const count=Math.max(1,Math.min(5,Number.isInteger(rounds)?rounds:1));
+    this._tone(t+d*.1,570,200,.10,.049,'triangle');
+    this._noiseBurst(t+d*.28,.14,.056,230,3100);
+    for(let i=0;i<count;i++){
+      const at=t+d*(.36+(i+.5)*.43/count);
+      this._noiseBurst(at,.059,.050,500,2800);
+      this._tone(at,340,142,.09,.048,'triangle');
+    }
+    this._noiseBurst(t+d*.87,.09,.056,220,2800);
+    this._tone(t+d*.96,480,147,.13,.067,'triangle');
   }
   laserCrank(chargeLevel=1) {
     if(!this.unlock())return;

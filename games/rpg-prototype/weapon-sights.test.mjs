@@ -142,3 +142,12 @@ test('Pump action shotgun iron bead aligns with center ray and cannot equip opti
   assert.deepEqual(compatibleOptics('pump-action-shotgun'),['factory']);
   assert.ok(isAlignedToBore('pump-action-shotgun'));
 });
+
+test('Hunting rifle iron sights align exactly to the real receiver bead at .290m',()=>{
+  const sight=sightMount('bolt-hunting-rifle');
+  assert.equal(sight.y,.290);
+  assert.equal(sight.z,-.239);
+  assert.equal(sight.optic,'iron');
+  assert.deepEqual(compatibleOptics('bolt-hunting-rifle'),['factory']);
+  assert.ok(isAlignedToBore('bolt-hunting-rifle'));
+});

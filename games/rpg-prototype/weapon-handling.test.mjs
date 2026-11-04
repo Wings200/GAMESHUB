@@ -170,3 +170,19 @@ test('Six real pump shells load one-by-one through bottom gate',()=>{
   assert.equal(at(.50,1).roundIndex,0);
   assert.equal(at(.98).tilt,0);
 });
+
+test('Hunting rifle reload opens top bolt, loads five cartridges and locks shut',()=>{
+  const at=(p,count=5)=>reloadPoseForWeapon('bolt-hunting-rifle',3.43*(1-p),3.43,count);
+  assert.equal(at(.15).roundVisible,false);
+  assert.ok(at(.27).boltHandleLift>.1);
+  assert.ok(at(.40).boltOffset>.20);
+  assert.equal(at(.39).roundVisible,true);
+  assert.equal(at(.38).roundIndex,0);
+  assert.equal(at(.55).roundIndex,2);
+  assert.equal(at(.75).roundIndex,4);
+  assert.equal(at(.85).roundVisible,false);
+  assert.ok(at(.96).boltOffset<.01);
+  assert.equal(at(.99).boltHandleLift,0);
+  assert.equal(at(.50).magazineVisible,false);
+  assert.equal(at(.50).magazineOffset,0);
+});

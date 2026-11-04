@@ -1,4 +1,13 @@
-# Untitled RPG · Mechanics Lab W20.29 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.30 + Forest Foundation 0.1
+
+## W20.30 · Bolt-Action Hunting Rifle
+
+- Seventh newly rebuilt player weapon: original five-round hunting rifle with a one-piece wood buttstock, connected steel receiver, full-length bedded barrel, fixed internal magazine, iron sights with physically touching tips and accurate first-/third-person models.
+- Each trigger pull consumes one round, triggers a distinct slow, heavy gunshot and begins a physical lift/pull/return/lock bolt cycle. Brass casing ejection happens when the bolt reaches the rear of its stroke, never at the muzzle or instant of firing.
+- R reloads by opening the action and inserting only missing cartridges through the visible top feed port. A one-round top-up takes less time than loading all five; seated rounds are usable if interrupted.
+- Firing is limited by the real bolt cycle and fire interval, with high single-shot damage and excellent stationary ADS accuracy. The right-hand glove follows the bolt handle during cycling, returning to the grip afterward.
+- All six approved weapons are preserved, and all NPCs stay unarmed in the mechanics-testing reset.
+- Added new geometry/continuity, bolt physics, individual reload, audio timing and source-integration regression checks.
 
 ## W20.29 · Pump-Action Shotgun
 

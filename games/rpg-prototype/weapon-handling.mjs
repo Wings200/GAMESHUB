@@ -81,6 +81,20 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     pose.handX=.055;pose.handY=-.31+.108*pose.shellProgress;
     pose.handZ=.042-.185*pose.shellProgress;
     pose.tilt=.09*pulse(p,.09,.92);
+  }else if(id==='bolt-hunting-rifle'){
+    // An actual bolt locks up, lifts, retracts, stays open while individual
+    // cartridges enter the top of the fixed magazine, then seats and locks.
+    pose.magazineVisible=false;pose.magazineOffset=0;pose.slideOffset=0;
+    pose.boltHandleLift=1.08*rise(p,.07,.21)*(1-rise(p,.87,.98));
+    pose.boltOffset=.258*rise(p,.20,.34)*(1-rise(p,.78,.91));
+    pose.roundVisible=p>=.35&&p<.79;
+    const count=Math.max(1,Math.min(5,Number.isInteger(roundCount)?roundCount:5));
+    const rounds=clamp01((p-.35)/.44)*count;
+    pose.roundIndex=Math.min(count-1,Math.floor(rounds));
+    pose.shellProgress=rounds-Math.floor(rounds);
+    pose.handX=.067;pose.handY=.430-.182*pose.shellProgress;
+    pose.handZ=.064-.211*pose.shellProgress;
+    pose.tilt=-.085*pulse(p,.13,.91);
   }else if(id==='laser-musket'){
     // Swap the six-cell capacitor pack with a deliberate vertical motion.
     pose.magazineOffset=magSwap(.15,.39,.55,.78,.40);

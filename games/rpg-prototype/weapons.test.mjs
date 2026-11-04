@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -120,10 +120,10 @@ test('Stationary approved hipfire remains identical and valid regardless of moti
   assert.equal(w.magazine,11);
 });
 
-test('Twelve weapon specifications have unique identities and different fire characteristics',()=>{
-  assert.equal(ARSENAL.length,12);
-  assert.equal(ARSENAL_IDS.length,12);
-  assert.equal(new Set(ARSENAL_IDS).size,12);
+test('Thirteen weapon specifications have unique identities and different fire characteristics',()=>{
+  assert.equal(ARSENAL.length,13);
+  assert.equal(ARSENAL_IDS.length,13);
+  assert.equal(new Set(ARSENAL_IDS).size,13);
   assert.strictEqual(getWeaponSpec(SCRAP_PISTOL.id),SCRAP_PISTOL);
   assert.throws(()=>getWeaponSpec('made-up'),/Unknown weapon/);
   for(const w of ARSENAL){
@@ -132,7 +132,7 @@ test('Twelve weapon specifications have unique identities and different fire cha
     assert.ok(w.adsSpreadDegrees<w.hipSpreadDegrees);
   }
   const damage=new Set(ARSENAL.map(w=>w.damage));
-  assert.equal(damage.size,12);
+  assert.equal(damage.size,13);
   assert.ok(getWeaponSpec('pipe-smg').automatic);
   assert.ok(getWeaponSpec('service-carbine').automatic);
   assert.equal(getWeaponSpec('scrap-shotgun').pellets,8);
@@ -306,4 +306,37 @@ test('New semi-auto pipe rifle uses 15-round detachable mags and real reserve',(
   setWeaponAim(state,true);
   updateWeapon(state,spec.fireInterval,spec);
   assert.equal(shotSpreadDegrees(spec,true,{speed:0,airborne:false}),0);
+});
+
+test('Hunting rifle fires five independent bolt-cycled rounds and respects cooldown',()=>{
+  const s=createWeaponState(BOLT_HUNTING_RIFLE);
+  assert.equal(s.magazine,5);assert.equal(s.reserve,50);
+  assert.equal(BOLT_HUNTING_RIFLE.damage,55);
+  assert.equal(BOLT_HUNTING_RIFLE.automatic,false);
+  const result=fireWeapon(s,BOLT_HUNTING_RIFLE,()=>.5);
+  assert.equal(result.status,'fired');
+  assert.equal(s.magazine,4);
+  assert.equal(fireWeapon(s,BOLT_HUNTING_RIFLE,()=>.5).status,'cooldown');
+  updateWeapon(s,BOLT_HUNTING_RIFLE.fireInterval,BOLT_HUNTING_RIFLE);
+  assert.equal(fireWeapon(s,BOLT_HUNTING_RIFLE,()=>.5).status,'fired');
+  assert.equal(s.magazine,3);
+});
+test('Hunting rifle feeds single cartridges through bolt-open top-loading interval',()=>{
+  const s=createWeaponState(BOLT_HUNTING_RIFLE);
+  s.magazine=0;
+  assert.equal(startWeaponReload(s,BOLT_HUNTING_RIFLE),true);
+  assert.ok(Math.abs(s.reloadDuration-3.43)<1e-9);
+  updateWeapon(s,3.43*.34,BOLT_HUNTING_RIFLE);
+  assert.equal(s.magazine,0);
+  updateWeapon(s,3.43*.115,BOLT_HUNTING_RIFLE);
+  assert.ok(s.magazine>=1&&s.magazine<=2);
+  const count=s.magazine;
+  assert.equal(cancelWeaponReload(s,BOLT_HUNTING_RIFLE),true);
+  assert.equal(s.magazine,count,'interrupted reload preserves loaded cartridges');
+  assert.equal(startWeaponReload(s,BOLT_HUNTING_RIFLE),true);
+  assert.ok(Math.abs(s.reloadDuration-(1.03+.48*(5-count)))<1e-9);
+  updateWeapon(s,s.reloadDuration+0.01,BOLT_HUNTING_RIFLE);
+  assert.equal(s.magazine,5);
+  assert.equal(s.reserve,45);
+  assert.equal(s.reloadRemaining,0);
 });

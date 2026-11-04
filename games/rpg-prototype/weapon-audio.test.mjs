@@ -248,3 +248,19 @@ test('Pump action has distinct blast, delayed cycle clacks and timed shell loadi
   assert.ok(Math.max(...six.context.events.map(e=>e[1]))-
     Math.max(...one.context.events.map(e=>e[1]))>2.2);
 });
+
+test('Hunting rifle has deep report and timed mechanical five-round top feed',()=>{
+  const shot=new WeaponAudio(FakeAudioContext);
+  shot.unlock();
+  shot.gunshot('hunting-bolt');
+  assert.ok(shot.context.events.filter(v=>v[0]==='start').length>0);
+  const mech=new WeaponAudio(FakeAudioContext);mech.unlock();
+  mech.boltActionCycle(.88);
+  const cycleStart=mech.context.events.filter(v=>v[0]==='start').map(v=>v[1]);
+  assert.ok(cycleStart.some(t=>t>10+.88*.45));
+  const single=new WeaponAudio(FakeAudioContext);single.unlock();
+  single.boltActionReload(1,1.51);
+  const five=new WeaponAudio(FakeAudioContext);five.unlock();
+  five.boltActionReload(5,3.43);
+  assert.ok(five.context.events.length>single.context.events.length);
+});
