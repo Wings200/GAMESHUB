@@ -59,6 +59,12 @@ export const BOLT_HUNTING_RIFLE=Object.freeze({
   damage:55,hipSpreadDegrees:4.0,adsSpreadDegrees:.042,
   recoilDegrees:4.5,pellets:1,automatic:false
 });
+export const IRON_REVOLVER=Object.freeze({
+  id:'iron-revolver',name:'Worn Six-Shooter',kind:'revolver',
+  magazineSize:6,startingReserve:48,fireInterval:.46,reloadSeconds:3.48,
+  damage:38,hipSpreadDegrees:2.85,adsSpreadDegrees:.085,recoilDegrees:3.65,
+  pellets:1,automatic:false
+});
 export const ARSENAL=Object.freeze([
   TEN_MM_PISTOL,
   PIPE_PISTOL,
@@ -68,10 +74,7 @@ export const ARSENAL=Object.freeze([
   PUMP_ACTION_SHOTGUN,
   BOLT_HUNTING_RIFLE,
   SCRAP_PISTOL,
-  Object.freeze({id:'iron-revolver',name:'Iron Six-Shooter',kind:'revolver',
-    magazineSize:6,startingReserve:42,fireInterval:.44,reloadSeconds:2.6,
-    damage:38,hipSpreadDegrees:2.2,adsSpreadDegrees:.16,recoilDegrees:3.5,
-    pellets:1,automatic:false}),
+  IRON_REVOLVER,
   Object.freeze({id:'pipe-smg',name:'Pipe SMG',kind:'smg',
     magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.1,
     damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.34,recoilDegrees:.64,
@@ -152,6 +155,7 @@ export function startWeaponReload(state, spec = SCRAP_PISTOL) {
     (missing===1?1.95:2.65):
     spec.id==='pump-action-shotgun'?(.94+.55*missing):
     spec.id==='bolt-hunting-rifle'?(1.03+.48*missing):
+    spec.id==='iron-revolver'?(0.96+.42*missing):
     perRound&&timing?Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):
     spec.reloadSeconds;
   state.reloadRemaining=state.reloadDuration;
@@ -172,6 +176,7 @@ export function updateWeapon(state, dt, spec = SCRAP_PISTOL, options = {}) {
       const interval=spec.id==='double-barrel-shotgun'?[.42,.79]:
         spec.id==='pump-action-shotgun'?[.23,.85]:
         spec.id==='bolt-hunting-rifle'?[.35,.79]:
+        spec.id==='iron-revolver'?[.42,.81]:
         ({revolver:[.40,.79],shotgun:[.16,.86],rifle:[.30,.80]}[spec.kind]||[0,1]);
       const inserted=Math.max(0,Math.min(1,
         (progress-interval[0])/(interval[1]-interval[0])));

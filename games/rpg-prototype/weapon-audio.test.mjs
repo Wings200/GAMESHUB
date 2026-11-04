@@ -264,3 +264,16 @@ test('Hunting rifle has deep report and timed mechanical five-round top feed',()
   five.boltActionReload(5,3.43);
   assert.ok(five.context.events.length>single.context.events.length);
 });
+
+test('Six-Shooter report and timed shell loading sound different from pistols',()=>{
+  const shot=new WeaponAudio(FakeAudioContext);shot.unlock();
+  shot.gunshot('revolver');
+  assert.ok(shot.context.events.length>0);
+  const single=new WeaponAudio(FakeAudioContext);single.unlock();
+  single.revolverReload(1,1.38);
+  const full=new WeaponAudio(FakeAudioContext);full.unlock();
+  full.revolverReload(6,3.48);
+  assert.ok(full.context.events.length>single.context.events.length);
+  const starts=full.context.events.filter(x=>x[0]==='start').map(x=>x[1]);
+  assert.ok(starts.some(t=>t>10+3.48*.8));
+});

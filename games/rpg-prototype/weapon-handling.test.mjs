@@ -186,3 +186,19 @@ test('Hunting rifle reload opens top bolt, loads five cartridges and locks shut'
   assert.equal(at(.50).magazineVisible,false);
   assert.equal(at(.50).magazineOffset,0);
 });
+
+test('Six-Shooter swings the actual cylinder, ejects and loads six shells one by one',()=>{
+  const at=(p,count=6)=>reloadPoseForWeapon('iron-revolver',3.48*(1-p),3.48,count);
+  assert.equal(at(.10).roundVisible,false);
+  assert.ok(at(.32).cylinderOpen>.9);
+  assert.ok(at(.32).ejector>.01);
+  assert.equal(at(.40).roundVisible,false);
+  assert.equal(at(.43).roundVisible,true);
+  assert.equal(at(.44).roundIndex,0);
+  assert.equal(at(.62).roundIndex,3);
+  assert.equal(at(.79).roundIndex,5);
+  assert.equal(at(.85).roundVisible,false);
+  assert.ok(at(.95).cylinderOpen<.01);
+  assert.ok(Math.abs(at(.90).cylinderSpin-Math.PI*2)<1e-8);
+  assert.equal(at(.53).magazineVisible,false);
+});

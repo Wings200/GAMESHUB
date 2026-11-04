@@ -151,3 +151,11 @@ test('Hunting rifle iron sights align exactly to the real receiver bead at .290m
   assert.deepEqual(compatibleOptics('bolt-hunting-rifle'),['factory']);
   assert.ok(isAlignedToBore('bolt-hunting-rifle'));
 });
+
+test('Six-Shooter raised notch and slim front bead exactly center ADS',()=>{
+  const sight=sightMount('iron-revolver');
+  assert.equal(sight.y,.275);assert.equal(sight.z,-.18);
+  assert.equal(sight.optic,'iron');
+  assert.deepEqual(compatibleOptics('iron-revolver'),['factory']);
+  assert.ok(isAlignedToBore('iron-revolver'));
+});

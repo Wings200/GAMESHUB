@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
+import {SCRAP_PISTOL,TEN_MM_PISTOL,PIPE_PISTOL,PIPE_RIFLE,LASER_MUSKET,DOUBLE_BARREL_SHOTGUN,PUMP_ACTION_SHOTGUN,BOLT_HUNTING_RIFLE,IRON_REVOLVER,ARSENAL,ARSENAL_IDS,getWeaponSpec,createArsenalStates,createWeaponState,setWeaponAim,startWeaponReload,cancelWeaponReload,updateWeapon,fireWeapon,createViewRecoilState,kickViewRecoil,recoverViewRecoil,shotSpreadDegrees} from './weapons.mjs';
 
 test('Scrap pistol begins with a full magazine and fixed ammo reserve',()=>{
   const w=createWeaponState();
@@ -339,4 +339,36 @@ test('Hunting rifle feeds single cartridges through bolt-open top-loading interv
   assert.equal(s.magazine,5);
   assert.equal(s.reserve,45);
   assert.equal(s.reloadRemaining,0);
+});
+
+test('Worn Six-Shooter holds exactly six individually indexed live cartridges',()=>{
+  assert.strictEqual(getWeaponSpec('iron-revolver'),IRON_REVOLVER);
+  assert.equal(IRON_REVOLVER.kind,'revolver');
+  assert.equal(IRON_REVOLVER.magazineSize,6);
+  assert.equal(IRON_REVOLVER.damage,38);
+  const gun=createWeaponState(IRON_REVOLVER);
+  assert.equal(gun.magazine,6);assert.equal(gun.reserve,48);
+  for(let i=0;i<6;i++){
+    const shot=fireWeapon(gun,IRON_REVOLVER,()=>.5);
+    assert.equal(shot.status,'fired');
+    assert.equal(gun.magazine,5-i);
+    updateWeapon(gun,IRON_REVOLVER.fireInterval,IRON_REVOLVER);
+  }
+  assert.equal(fireWeapon(gun,IRON_REVOLVER).status,'empty');
+});
+test('Six-Shooter chamber reload progressively transfers real reserve rounds',()=>{
+  const gun=createWeaponState(IRON_REVOLVER);gun.magazine=0;
+  assert.equal(startWeaponReload(gun,IRON_REVOLVER),true);
+  assert.ok(Math.abs(gun.reloadDuration-3.48)<1e-9);
+  updateWeapon(gun,3.48*.40,IRON_REVOLVER);
+  assert.equal(gun.magazine,0,'rounds only load after cylinder is open');
+  updateWeapon(gun,3.48*.17,IRON_REVOLVER);
+  assert.ok(gun.magazine>0&&gun.magazine<6);
+  const loaded=gun.magazine;
+  assert.equal(cancelWeaponReload(gun),true);
+  assert.equal(gun.magazine,loaded);
+  assert.equal(startWeaponReload(gun,IRON_REVOLVER),true);
+  assert.ok(Math.abs(gun.reloadDuration-(.96+.42*(6-loaded)))<1e-9);
+  updateWeapon(gun,gun.reloadDuration+.01,IRON_REVOLVER);
+  assert.equal(gun.magazine,6);assert.equal(gun.reserve,42);
 });

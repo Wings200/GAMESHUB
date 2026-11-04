@@ -8,14 +8,14 @@ import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
-import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
+import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
   createViewRecoilState, kickViewRecoil, recoverViewRecoil,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.30';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.30';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.32';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.32';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.30';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.30';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.32';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.32';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -34,6 +34,7 @@ import {doubleBarrelPelletDamage} from '../double-barrel-ballistics.mjs?v=W20.28
 import {createPumpActionShotgun} from '../pump-action-shotgun.mjs?v=W20.29';
 import {pumpCyclePose,pumpPelletDamage,PUMP_ACTION_TUNING} from '../pump-action-mechanics.mjs?v=W20.29';
 import {createHuntingRifle} from '../hunting-rifle.mjs?v=W20.31';
+import {createWornRevolver} from '../worn-revolver.mjs?v=W20.32';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
@@ -71,7 +72,7 @@ const $ = id => document.getElementById(id);
 // Legacy firearms remain disabled and ALL NPCs are still unarmed.
 const WEAPON_REBUILD_MODE=true;
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
-const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id]);
+const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id]);
 const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
@@ -2934,6 +2935,9 @@ weaponVisuals.set(PUMP_ACTION_SHOTGUN.id,pumpActionVisual);
 const huntingRifleVisual=createHuntingRifle(THREE,camera,{flareTexture:flareTex});
 huntingRifleVisual.root.visible=false;
 weaponVisuals.set(BOLT_HUNTING_RIFLE.id,huntingRifleVisual);
+const wornRevolverVisual=createWornRevolver(THREE,camera,{flareTexture:flareTex});
+wornRevolverVisual.root.visible=false;
+weaponVisuals.set(IRON_REVOLVER.id,wornRevolverVisual);
 // Retire all legacy viewmodels, keeping only newly authored weapons.
 if(WEAPON_REBUILD_MODE)for(const [id,visual] of weaponVisuals){
   if(REBUILT_WEAPON_IDS.includes(id))continue;
@@ -2958,7 +2962,7 @@ function changeAim(enabled){
 let lastShotDebug=null;
 let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
-let shotgunPendingEjections=0,pumpPendingEjection=false,huntingPendingEjection=false;
+let shotgunPendingEjections=0,pumpPendingEjection=false,huntingPendingEjection=false,revolverPendingEjections=0;
 let groundedStepProgress=0;
 function selectWeapon(id){
   if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(id))return; // only rebuilt guns allowed
@@ -2966,7 +2970,7 @@ function selectWeapon(id){
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
   cancelWeaponReload(weaponState);
-  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;
+  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;revolverPendingEjections=0;
   if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
   weaponVisuals.get(activeWeaponId).root.visible=false;
   activeWeaponId=id;activeSpec=spec;
@@ -3106,6 +3110,28 @@ function ejectHuntingRifleCasing(){
   scene.add(mesh);casings.push({mesh,state});
   if(casings.length>CASING_TUNING.maxVisible)
     scene.remove(casings.shift().mesh);
+}
+const revolverCaseGeometry=new THREE.CylinderGeometry(.025,.025,.090,10);
+const revolverCaseMat=mat(0xb9a56c,.68);
+function ejectRevolverCasings(count){
+  const gun=weaponVisuals.get(IRON_REVOLVER.id);
+  if(!gun?.cylinderSpinGroup)return;
+  gun.cylinderSpinGroup.updateWorldMatrix(true,false);
+  casingRight.set(-1,0,0).applyQuaternion(camera.quaternion);
+  casingForward.set(0,0,-1).applyQuaternion(camera.quaternion);
+  for(let i=0;i<Math.min(6,count);i++){
+    const theta=i*Math.PI/3;
+    const origin=new THREE.Vector3(Math.cos(theta)*.071,
+      Math.sin(theta)*.071,.164)
+      .applyMatrix4(gun.cylinderSpinGroup.matrixWorld);
+    const state=createCasingState(origin,casingRight,casingForward);
+    state.vy+=.30+i*.13;state.vx*=.62;state.vz*=.62;
+    const mesh=new THREE.Mesh(revolverCaseGeometry,revolverCaseMat);
+    mesh.position.copy(origin);mesh.rotation.x=Math.PI/2;
+    scene.add(mesh);casings.push({mesh,state});
+    if(casings.length>CASING_TUNING.maxVisible)
+      scene.remove(casings.shift().mesh);
+  }
 }
 function updateCasings(dt){
   for(let i=casings.length-1;i>=0;i--){
@@ -3254,8 +3280,11 @@ function shoot(){
     return;
   }
   if(result.status!=='fired')return;
-  if(activeSpec.kind==='revolver')
-    weaponVisuals.get(activeWeaponId).chamberIndex=weaponState.shotsFired%6;
+  if(activeSpec.kind==='revolver'){
+    const gun=weaponVisuals.get(activeWeaponId);
+    gun.previousChamberIndex=weaponState.shotsFired-1;
+    gun.chamberIndex=weaponState.shotsFired;
+  }
   emptyClickLatched=false;
   if(laserActive)sound.laserBlast(result.chargeLevel);
   else sound.gunshot(activeWeaponId===BOLT_HUNTING_RIFLE.id?'hunting-bolt':
@@ -3272,8 +3301,10 @@ function shoot(){
   recoilKick=Math.min(.34,recoilKick+.085*activeSpec.recoilDegrees*specialModifiers.recoilMultiplier/1.25);
   muzzleFlash=.085;
   slideCycle=laserActive||activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?0:
+    activeWeaponId===IRON_REVOLVER.id?.26:
     activeWeaponId===PUMP_ACTION_SHOTGUN.id?PUMP_ACTION_TUNING.cycleSeconds:
     activeWeaponId===BOLT_HUNTING_RIFLE.id?HUNTING_RIFLE_TUNING.cycleSeconds:
+    activeWeaponId===IRON_REVOLVER.id?.26:
     activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -3283,7 +3314,7 @@ function shoot(){
   }else if(activeWeaponId===BOLT_HUNTING_RIFLE.id){
     huntingPendingEjection=true;
     sound.boltActionCycle(HUNTING_RIFLE_TUNING.cycleSeconds);
-  }else if(!laserActive&&activeWeaponId!==DOUBLE_BARREL_SHOTGUN.id)ejectCasing();
+  }else if(!laserActive&&activeWeaponId!==DOUBLE_BARREL_SHOTGUN.id&&activeWeaponId!==IRON_REVOLVER.id)ejectCasing();
   // Determine the projectile direction from the pre-recoil sight orientation.
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
   let enemyDamageHits=0;
@@ -3486,6 +3517,19 @@ function reload(){
       showShotNotice('NO SHOTGUN SHELLS · F TO RESTOCK');
     return;
   }
+  if(activeWeaponId===IRON_REVOLVER.id){
+    const missing=Math.min(activeSpec.magazineSize-weaponState.magazine,weaponState.reserve);
+    if(startWeaponReload(weaponState,activeSpec)){
+      revolverPendingEjections=activeSpec.magazineSize-weaponState.magazine;
+      sound.revolverReload(missing,weaponState.reloadDuration/
+        Math.max(.85,Math.min(1.6,specialModifiers.reloadSpeedMultiplier||1)));
+      slideCycle=0;emptyClickLatched=false;
+      showShotNotice('CYLINDER OPEN · LOADING '+missing+' CARTRIDGE'+(missing===1?'':'S'));
+      refreshWeaponHUD();
+    }else if(weaponState.magazine<activeSpec.magazineSize&&weaponState.reserve===0)
+      showShotNotice('NO REVOLVER CARTRIDGES · F TO RESTOCK');
+    return;
+  }
   if(activeWeaponId===BOLT_HUNTING_RIFLE.id){
     if(slideCycle>.001){
       showShotNotice('CYCLE BOLT BEFORE LOADING');return;
@@ -3516,7 +3560,7 @@ function reload(){
 function resupply(){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){showShotNotice('NO AMMUNITION NEEDED · UNARMED');return;}
   if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
-  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;
+  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;revolverPendingEjections=0;
   const fresh=createWeaponState(activeSpec);
   Object.assign(weaponState,fresh);
   if(activeWeaponId===LASER_MUSKET.id)ensureLaserState(weaponState);
@@ -3528,7 +3572,7 @@ function resupply(){
   refreshWeaponHUD();
 }
 function toggleInfiniteAmmo(){
-  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;
+  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;revolverPendingEjections=0;
   infiniteAmmo=!infiniteAmmo;
   if(infiniteAmmo){
     preInfiniteAmmo.clear();
@@ -3571,6 +3615,7 @@ const heldLaserMusket=createLaserMusket(THREE,playerAvatar.weaponSocket,{thirdPe
 const heldDoubleBarrel=createDoubleBarrelShotgun(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldPumpShotgun=createPumpActionShotgun(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 const heldHuntingRifle=createHuntingRifle(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
+const heldWornRevolver=createWornRevolver(THREE,playerAvatar.weaponSocket,{thirdPerson:true});
 playerAvatar.root.visible=false;
 // Independent world-space survivor: a two-character visibility and armor
 // preview at Station 8. This is NOT a networked player or a combat hitbox.
@@ -4575,6 +4620,7 @@ function frame(){
   const cycleDuration=activeWeaponId===LASER_MUSKET.id||activeWeaponId===DOUBLE_BARREL_SHOTGUN.id?0:
     activeWeaponId===PUMP_ACTION_SHOTGUN.id?PUMP_ACTION_TUNING.cycleSeconds:
     activeWeaponId===BOLT_HUNTING_RIFLE.id?HUNTING_RIFLE_TUNING.cycleSeconds:
+    activeWeaponId===IRON_REVOLVER.id?.26:
     activeWeaponId===PIPE_RIFLE.id?.23:
     activeSpec.kind==='shotgun'?.48:
     activeSpec.kind==='rifle'?.52:.13;
@@ -4606,7 +4652,7 @@ function frame(){
   }
   const detachable=[...REBUILT_WEAPON_IDS,'scrap-pistol','pipe-smg','service-carbine']
     .includes(activeWeaponId)&&
-    ![DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id].includes(activeWeaponId);
+    ![DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id].includes(activeWeaponId);
   visual.magazine.visible=detachable&&handling.magazineVisible;
   visual.magazineBase.visible=detachable&&handling.magazineVisible;
   visual.reloadHand.visible=handling.handVisible;
@@ -4653,11 +4699,29 @@ function frame(){
   if(visual.pumpGrip)
     visual.pumpGrip.position.z=-.34+cycling*1.5+handling.pumpOffset;
   if(visual.cylinderYoke){
-    // The six-shot DRUM itself swings out, not a fake overlapping copy.
-    visual.cylinderYoke.rotation.y=handling.cylinderOpen*1.12;
-    visual.cylinderYoke.position.x=-.13-.06*handling.cylinderOpen;
+    // Cylinder is attached to the yoke. During the swing-out the actual
+    // chambers, loaded cartridge heads and ejector star travel together.
+    const opening=handling.active?handling.cylinderOpen:0;
+    visual.cylinderYoke.rotation.y=opening*1.12;
+    visual.cylinderYoke.position.x=-.12-.15*opening;
+    const shotPhase=Math.min(1,Math.max(0,1-slideCycle/.26));
+    const spinEase=shotPhase*shotPhase*(3-2*shotPhase);
+    const chamber=(visual.chamberIndex||0);
+    const previous=visual.previousChamberIndex??chamber;
     visual.cylinderSpinGroup.rotation.z=
-      (visual.chamberIndex||0)*Math.PI/3+handling.cylinderSpin;
+      (slideCycle>0?previous+spinEase*(chamber-previous):chamber)*Math.PI/3+
+      (handling.active?handling.cylinderSpin:0);
+    if(visual.hammerPivot)
+      visual.hammerPivot.rotation.x=handling.active?-.18:
+        slideCycle>0?-.85*Math.sin(Math.PI*shotPhase):0;
+    if(visual.ejectorGroup)
+      visual.ejectorGroup.position.z=handling.ejector||0;
+    if(visual.gripHand)visual.gripHand.visible=!handling.active;
+    if(activeWeaponId===IRON_REVOLVER.id&&handling.active&&
+       revolverPendingEjections>0&&handling.progress>.32){
+      ejectRevolverCasings(revolverPendingEjections);
+      revolverPendingEjections=0;
+    }
   }
   if(visual.boltHandle){
     visual.boltHandle.position.z=-.035+handling.boltOffset+cycling*.85;
@@ -4684,10 +4748,18 @@ function frame(){
       const travel=handling.shellProgress;
       action.position.set(.037,.449-.208*travel,.065-.220*travel);
       action.rotation.x=-.14;
-    }else if(activeWeaponId==='iron-revolver'){
-      action.position.set(-.26,
-        .08+.08*Math.sin(Math.PI*handling.shellProgress),
-        -.05-.12*handling.shellProgress);
+    }else if(activeWeaponId===IRON_REVOLVER.id){
+      // Transform the chosen rear cylinder chamber into the gun's coordinates,
+      // then bring a single live cartridge in from the loading hand.
+      const angle=(handling.roundIndex>=0?handling.roundIndex:0)*Math.PI/3;
+      const port=new THREE.Vector3(.071*Math.cos(angle),
+        .071*Math.sin(angle),.156);
+      visual.cylinderSpinGroup.localToWorld(port);
+      visual.root.worldToLocal(port);
+      const travel=1-handling.shellProgress;
+      action.position.set(port.x-.105*travel,
+        port.y+.075*travel,port.z+.160*travel);
+      action.rotation.x=0;
     }else if(activeWeaponId==='scrap-shotgun'){
       action.position.set(.065,-.09-.11*handling.shellProgress,
         .04-.16*handling.shellProgress);
@@ -4920,6 +4992,33 @@ function frame(){
   heldDoubleBarrel.root.visible=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
   heldPumpShotgun.root.visible=activeWeaponId===PUMP_ACTION_SHOTGUN.id;
   heldHuntingRifle.root.visible=activeWeaponId===BOLT_HUNTING_RIFLE.id;
+  heldWornRevolver.root.visible=activeWeaponId===IRON_REVOLVER.id;
+  if(heldWornRevolver.root.visible){
+    const open=handling.active?handling.cylinderOpen:0;
+    heldWornRevolver.cylinderYoke.rotation.y=open*1.12;
+    heldWornRevolver.cylinderYoke.position.x=-.12-.15*open;
+    const shotPhase=Math.min(1,Math.max(0,1-slideCycle/.26));
+    const ease=shotPhase*shotPhase*(3-2*shotPhase);
+    const chamber=weaponVisuals.get(IRON_REVOLVER.id).chamberIndex||0;
+    const previous=weaponVisuals.get(IRON_REVOLVER.id).previousChamberIndex??chamber;
+    heldWornRevolver.cylinderSpinGroup.rotation.z=
+      (slideCycle>0?previous+ease*(chamber-previous):chamber)*Math.PI/3+
+      (handling.active?handling.cylinderSpin:0);
+    heldWornRevolver.hammerPivot.rotation.x=handling.active?-.18:
+      slideCycle>0?-.85*Math.sin(Math.PI*shotPhase):0;
+    heldWornRevolver.ejectorGroup.position.z=handling.ejector||0;
+    heldWornRevolver.reloadAction.visible=handling.roundVisible;
+    if(heldWornRevolver.reloadAction.visible){
+      const index=Math.max(0,handling.roundIndex),theta=index*Math.PI/3;
+      const port=new THREE.Vector3(.071*Math.cos(theta),
+        .071*Math.sin(theta),.156);
+      heldWornRevolver.cylinderSpinGroup.localToWorld(port);
+      heldWornRevolver.root.worldToLocal(port);
+      const travel=1-handling.shellProgress;
+      heldWornRevolver.reloadAction.position.set(port.x-.105*travel,
+        port.y+.075*travel,port.z+.160*travel);
+    }
+  }else heldWornRevolver.reloadAction.visible=false;
   const worldBolt=huntingBoltCyclePose(activeWeaponId===BOLT_HUNTING_RIFLE.id?slideCycle:0);
   heldHuntingRifle.boltAssembly.rotation.z=activeWeaponId===BOLT_HUNTING_RIFLE.id&&handling.active?
     handling.boltHandleLift:worldBolt.handleLift;

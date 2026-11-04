@@ -1,3 +1,7 @@
+## W20.32 — Worn Six-Shooter
+
+The eighth approved-weapon candidate is a new procedural revolver with an actual cylinder/yoke, connected barrel, frame, walnut grip and front/rear iron sights. Six separate chamber bores rotate during firing. The hammer cocks and falls, while reloading swings the drum out, ejects spent cases, and loads missing cartridges individually. No automatic casing ejection occurs on trigger pulls. Existing seven weapons and NPC weapon-free testing mode remain unchanged. New geometry, balance, reload, audio and source-level tests guard the behavior.
+
 ## W20.31 — Slim green-fiber hunting rifle sight
 
 The hunting rifle’s front iron sight post is slimmer, the fiber bead is narrower and glows green through an emissive material and a short-range accent light. Rear sight posts are narrowed to leave a clearer target picture. Sight elevation and aiming calibration remain unchanged. Existing gun mechanics, audio, bolt cycle, and damage are preserved. Additional geometry and source-level tests cover the sight update.

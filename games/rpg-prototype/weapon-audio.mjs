@@ -170,6 +170,22 @@ export class WeaponAudio {
     }
     this._tone(t+d*.92,530,195,.075,.044,'triangle');
   }
+  revolverReload(rounds=6,duration=3.48){
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.005;
+    const d=Math.max(1.0,Math.min(5.0,Number.isFinite(duration)?duration:3.48));
+    const count=Math.max(1,Math.min(6,Number.isInteger(rounds)?rounds:6));
+    this._tone(t+d*.10,380,210,.11,.047,'triangle'); // cylinder latch
+    this._noiseBurst(t+d*.24,.095,.063,260,2400);    // swing out
+    this._noiseBurst(t+d*.32,.072,.056,390,2700);    // extractor star
+    for(let i=0;i<count;i++){
+      const at=t+d*(.43+(i+.5)*.36/count);
+      this._tone(at,600,220,.055,.038,'triangle');
+      this._noiseBurst(at,.038,.034,580,2800);
+    }
+    this._noiseBurst(t+d*.91,.095,.077,250,2700);    // cylinder snap shut
+    this._tone(t+d*.94,370,160,.105,.046,'triangle');
+  }
   boltActionCycle(duration=.88){
     if(!this.unlock())return;
     const t=this.context.currentTime+.005;

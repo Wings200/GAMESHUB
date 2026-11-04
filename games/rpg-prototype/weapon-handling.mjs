@@ -145,15 +145,17 @@ export function reloadPoseForWeapon(id,remaining,duration=1.65,roundCount=null){
     pose.magazineOffset=0;pose.slideOffset=0;
     pose.cylinderOpen=rise(p,.11,.26)*(1-rise(p,.81,.94));
     const count=Math.max(1,Math.min(6,Number.isInteger(roundCount)?roundCount:6));
-    pose.cylinderSpin=rise(p,.38,.79)*Math.PI*2*count/6;
-    pose.ejector=pulse(p,.27,.38)*.20;
-    pose.roundVisible=p>=.40&&p<.79;
-    const u=clamp01((p-.40)/.39)*count;
+    // Drum completes a full revolution while each inserted cartridge finds
+    // its chamber, returning to index zero before the frame closes.
+    pose.cylinderSpin=rise(p,.42,.81)*Math.PI*2;
+    pose.ejector=pulse(p,.29,.36)*.152;
+    pose.roundVisible=p>=.42&&p<.81;
+    const u=clamp01((p-.42)/.39)*count;
     pose.roundIndex=Math.min(count-1,Math.floor(u));
     pose.shellProgress=u-Math.floor(u);
-    pose.handX=-.27;
-    pose.handY=-.16+.10*pulse(p,.39,.79);
-    pose.handZ=-.08-.07*pose.cylinderOpen;
+    pose.handX=-.240;
+    pose.handY=.115-.088*pose.shellProgress;
+    pose.handZ=-.217-.082*pose.shellProgress;
     pose.tilt=-.13*pulse(p,.11,.95);
   }else if(id==='pipe-smg'){
     pose.magazineOffset=magSwap(.12,.34,.51,.70,.46);

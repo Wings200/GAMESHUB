@@ -10,7 +10,7 @@ export const SIGHT_MOUNTS=Object.freeze({
   'pump-action-shotgun':Object.freeze({x:0,y:.270,z:-.19,adsZ:-1.18,fov:62,optic:'iron'}),
   'bolt-hunting-rifle':Object.freeze({x:0,y:.290,z:-.239,adsZ:-1.22,fov:52,optic:'iron'}),
   'scrap-pistol':Object.freeze({x:0,y:.207,z:-.16,adsZ:-.64,fov:64,optic:'iron'}),
-  'iron-revolver':Object.freeze({x:0,y:.165,z:-.19,adsZ:-.65,fov:62,optic:'iron'}),
+  'iron-revolver':Object.freeze({x:0,y:.275,z:-.18,adsZ:-.65,fov:62,optic:'iron'}),
   'pipe-smg':Object.freeze({x:0,y:.225,z:-.15,adsZ:-.62,fov:61,optic:'reflex'}),
   'service-carbine':Object.freeze({x:0,y:.222,z:-.15,adsZ:-.66,fov:59,optic:'holo'}),
   'scrap-shotgun':Object.freeze({x:0,y:.17,z:-.22,adsZ:-.7,fov:64,optic:'iron'}),
