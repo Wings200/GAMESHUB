@@ -46,8 +46,8 @@ import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laser
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
-import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
-  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.45';
+import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
+  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.49';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
   chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.45';
@@ -271,13 +271,23 @@ scene.add(sun);
 function mat(color,roughness=.9){return new THREE.MeshStandardMaterial({color,roughness});}
 const concrete=mat(0x26353d), floorPaint=mat(0x516a74), pale=mat(0xe7c588), dark=mat(0x13242e), orange=mat(0xc1784f), blue=mat(0x468fa8), green=mat(0x6b9b77);
 const worldGeometry=[];
+// Solid rendered surfaces must participate in enemy sight AND bullet
+// collision. The movement collider list alone misses benches, roofs,
+// walls and other world meshes that visibly stop the player's shots.
+const worldShotObstacles=[];
 const targetMeshes=[];
 const impactEffects=createImpactEffects(scene,THREE);
 const laserTrails=createLaserTrails(scene,THREE);
 function box(x,y,z,w,h,d,material,receive=true){
   const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
   o.position.set(x,y,z);
-  o.castShadow=true;o.receiveShadow=receive;scene.add(o);worldGeometry.push(o);return o;
+  o.castShadow=true;o.receiveShadow=receive;scene.add(o);worldGeometry.push(o);
+  // Floor paint and ground decals are not bulletproof; physical structures
+  // are. Preserve each actual world box's base and top, including roof slabs.
+  if(y+h/2>.35&&h>.25&&w>.04&&d>.04)
+    worldShotObstacles.push({minX:x-w/2,maxX:x+w/2,
+      minZ:z-d/2,maxZ:z+d/2,bottom:y-h/2,top:y+h/2});
+  return o;
 }
 // Hand-authored procedural cracked soil rather than a featureless lab slab.
 // The low-resolution repeating canvas is GPU-light and works without assets.
@@ -1447,6 +1457,9 @@ aiCrate(39.5,38.0,2.6,2.3,1.45,rustySteel);
 aiCrate(49.0,44.2,2.8,1.8,1.85,dark);
 aiCrate(53.0,37.0,2.3,2.2,1.6,rustySteel);
 for(let x=34;x<=57;x+=4.6)box(x,.08,33.6,.14,.16,.8,orange);
+// One authoritative static obstruction set for recognition and gunfire.
+// Keep movement bounds separate: not every solid surface blocks walking.
+const enemySightObstacles=[...bounds,...worldShotObstacles];
 const enemies=new Map(),enemyHitMeshes=[];
 // Invisible mannequin collision surfaces are never on the camera render layer.
 const ENEMY_COLLISION_LAYER=29;
@@ -2264,7 +2277,7 @@ function updateEnemies(dt,elapsed=dt){
   const roster=[...enemies.values()];
   const playerSilhouette=playerCombatSilhouette();
   const perceptions=new Map(roster.map(e=>[e.id,
-    e.state.alive&&hasSight(enemySightBody(e),playerSilhouette,bounds)]));
+    e.state.alive&&hasSight(enemySightBody(e),playerSilhouette,enemySightObstacles)]));
   // Assign independent orders BEFORE updating individual brains. The director
   // receives confirmed observations only, never the hidden player's position.
   const lostContactOrders=planSquadOrders(squadDirector,ticking?roster.map(e=>({
@@ -2357,7 +2370,7 @@ function updateEnemies(dt,elapsed=dt){
        // Recheck after locomotion: the guard may have just reached the edge
        // of a wall. This exact visible height drives both the gun and tracer.
        const aimedHeight=directlyVisible?
-         visibleTargetHeight(enemySightBody(enemy),playerSilhouette,bounds):null;
+          visibleTargetHeight(enemySightBody(enemy),playerSilhouette,enemySightObstacles):null;
        const aimPitch=aimedHeight===null?0:enemyAimPitch(enemy.brain,
          {x:player.x,z:player.z,y:aimedHeight},
          1.43-.82*enemy.crouchBlend);
@@ -2384,7 +2397,7 @@ function updateEnemies(dt,elapsed=dt){
         if(enemy.brain.aimLockSeconds>=
             ENEMY_PROFILES[enemy.tactics.kind].reactionSeconds&&
            directlyVisible&&aimedHeight!==null&&
-           canEnemyFire(enemySightBody(enemy),playerSilhouette,bounds,attack.range)&&
+            canEnemyFire(enemySightBody(enemy),playerSilhouette,enemySightObstacles,attack.range)&&
            Math.abs((enemy.rigged?.getAimPitch?.()??0)-aimPitch)<.13&&
           !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0){
           const shot=attemptEnemyShot(enemy.tactics,
@@ -2408,7 +2421,7 @@ function updateEnemies(dt,elapsed=dt){
             }
             // Even a missed tracer must stop where it meets a solid wall.
             // Damage is applied only if the actual 3D segment is unobstructed.
-            const obstruction=firstSolidHit(origin,target,bounds);
+             const obstruction=firstSolidHit(origin,target,enemySightObstacles);
             const endpoint=obstruction?
               new THREE.Vector3(obstruction.point.x,obstruction.point.y,
                 obstruction.point.z):target;
@@ -2476,7 +2489,8 @@ function updateEnemies(dt,elapsed=dt){
         ENEMY_PROFILES[enemy.id].magazine)+']');
   }
   if(ticking&&playerHealth.alive)
-    shareSquadContact(squadIntel,[...enemies.values()],bounds,player);
+    shareSquadContact(squadIntel,[...enemies.values()],enemySightObstacles,
+      playerSilhouette);
   for(let i=enemyTracers.length-1;i>=0;i--){
     const t=enemyTracers[i];t.time-=dt;
     if(t.time<=0){scene.remove(t.line);t.line.geometry.dispose();enemyTracers.splice(i,1);}
@@ -3456,7 +3470,7 @@ function shoot(){
   // positional uncertainty, and never aim at a hidden moving player.
   for(const enemy of enemies.values())
     if(enemy.state.alive)
-      hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},bounds);
+      hearEnemyGunshot(enemy.brain,{x:player.x,z:player.z},enemySightObstacles);
   // First-person recoil displacement is driven by the same per-gun impulse
   // as the camera; do not add a second generic kick here.
   muzzleFlash=.085;
@@ -3572,10 +3586,15 @@ function shoot(){
       if(hit.killed){
         markEnemyDefeated(enemy);
       }else{
-        alertEnemy(enemy.brain,{x:player.x,z:player.z});
-        enemy.radarAlertSeconds=3; // player hit this target: already engaged
+        const sighted=hasSight(enemySightBody(enemy),
+          playerCombatSilhouette(),enemySightObstacles);
+        if(sighted){
+          alertEnemy(enemy.brain,{x:player.x,z:player.z});
+          enemy.radarAlertSeconds=3;
+          reportSquadContact(squadIntel,enemy.id,player);
+        }else reactToUnseenHit(enemy.brain,
+          {x:player.x,z:player.z},enemySightObstacles);
         markEnemyThreat(enemy.tactics);
-        reportSquadContact(squadIntel,enemy.id,player);
       }
       enemy.statusText='';
       refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
@@ -4056,7 +4075,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     if(powerArmorState.phase!=='idle')
       powerArmorState.elapsed=POWER_ARMOR_TRANSITION_SECONDS-.001;
   };
-  window.__rpgSmokeShotBlock=(from,to)=>firstSolidHit(from,to,bounds);
+  window.__rpgSmokeShotBlock=(from,to)=>
+    firstSolidHit(from,to,enemySightObstacles);
   window.__rpgSmokeIncomingDamage=(weaponId='heavy-rifle',armorTier='aegis',
     powered=false)=>{
     const gun=getEnemyWeapon(weaponId);
@@ -4079,7 +4099,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     let nearest=Infinity,hiddenFrames=0,stuckHolds=0;
     for(let i=0;i<70;i++){
       const hidden={x:36,z:i%2===0?39:41};
-      const visible=hasSight(e,hidden,[wall]);
+        const visible=hasSight(e,hidden,[wall]);
       if(!visible)hiddenFrames++;
       const known=visible?hidden:e.lastSeen;
       tickEnemyTactics(t,e,known,.05,[wall],{targetVisible:visible});
@@ -4281,7 +4301,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       squadOrder:squadDirector.orders.get(e.id)?.type||null,
       aimLockSeconds:e.brain.aimLockSeconds,
       yaw:e.brain.yaw,lastSeen:e.brain.lastSeen,
-      seesPlayer:hasSight(e.brain,player,bounds),
+       seesPlayer:hasSight(enemySightBody(e),playerCombatSilhouette(),enemySightObstacles),
       coverPoint:e.tactics.coverPoint,stuckEvents:e.tactics.stuckEvents
     }))
   });

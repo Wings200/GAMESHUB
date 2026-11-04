@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AI_TUNING,createEnemyBrain,alertEnemy,resetEnemyBrain,hasSight,
   visibleTargetHeight,lineIntersectsBox3D,enemyAimPitch,
-  lineIntersectsBox,stepEnemyBrain,hearEnemyGunshot} from './enemy-ai.mjs';
+  lineIntersectsBox,stepEnemyBrain,hearEnemyGunshot,reactToUnseenHit} from './enemy-ai.mjs';
 const bot=(x=45,z=40)=>createEnemyBrain({
   x,z,yaw:-Math.PI/2,patrol:[{x:44,z:40},{x:53,z:40}]
 });
@@ -143,7 +143,9 @@ test('W19 enemies hear nearby gunfire without cheating on hidden player position
   const e=bot(45,40);
   e.yaw=Math.PI/2; // looking away
   assert.equal(hearEnemyGunshot(e,{x:36,z:40},[],()=>.5),true);
-  assert.deepEqual(e.noiseTarget,{x:36,z:40});
+  assert.notDeepEqual(e.noiseTarget,{x:36,z:40},
+    'a sound cue is approximate, even with deterministic RNG');
+  assert.ok(Math.hypot(e.noiseTarget.x-36,e.noiseTarget.z-40)<4);
   assert.equal(e.lastSeen,null);
   assert.equal(e.mode,'investigate-noise');
   const start=e.x;
@@ -294,4 +296,41 @@ test('W20.45 enemy aiming changes elevation for higher targets',()=>{
   assert.equal(level,0);
   assert.ok(up>0.12&&up<.2,'barrel should visibly lift toward high armor');
   assert.ok(down<-.12,'lower targets require downward aim');
+});
+
+test('W20.49 unseen bullet hit causes sound search, not perfect target tracking',()=>{
+  const wall={minX:39,maxX:41,minZ:38,maxZ:42,height:3.1};
+  const shooter={x:35,z:40,aimY:1.35,headY:1.72};
+  const enemy=createEnemyBrain({x:45,z:40,yaw:-Math.PI/2});
+  alertEnemy(enemy,{x:48,z:40});
+  enemy.aimLockSeconds=.9;
+  assert.equal(hasSight(enemy,shooter,[wall]),false);
+  reactToUnseenHit(enemy,shooter,[wall],()=>.5);
+  assert.equal(enemy.spotted,false);
+  assert.equal(enemy.aimLockSeconds,0);
+  assert.deepEqual(enemy.lastSeen,{x:48,z:40},
+    'being hit cannot overwrite the last visually confirmed location');
+  assert.equal(enemy.mode,'investigate-noise');
+  assert.ok(enemy.memory>0&&enemy.noiseTime>0);
+  assert.ok(Math.hypot(enemy.noiseTarget.x-shooter.x,
+    enemy.noiseTarget.z-shooter.z)>=2.8,
+    'a wall must introduce meaningful position uncertainty');
+  const left=structuredClone(enemy),right=structuredClone(enemy);
+  for(let i=0;i<30;i++){
+    stepEnemyBrain(left,{x:30,z:30},.05,[wall],{targetVisible:false});
+    stepEnemyBrain(right,{x:56,z:48},.05,[wall],{targetVisible:false});
+  }
+  assert.deepEqual({x:left.x,z:left.z,yaw:left.yaw,lastSeen:left.lastSeen},
+    {x:right.x,z:right.z,yaw:right.yaw,lastSeen:right.lastSeen},
+    'hidden movement must not influence the investigation');
+});
+
+test('W20.49 rendered solid box stops sight even without a movement collider',()=>{
+  const guard=createEnemyBrain({x:0,z:0,yaw:0});
+  const target={x:0,z:9,aimY:1.5,headY:2.2};
+  // A raised wall mesh, not necessarily a player movement collider.
+  const wall={minX:-1,maxX:1,minZ:4.4,maxZ:5.0,bottom:.6,top:3.2};
+  assert.equal(hasSight(guard,target,[]),true);
+  assert.equal(hasSight(guard,target,[wall]),false);
+  assert.equal(visibleTargetHeight(guard,target,[wall]),null);
 });

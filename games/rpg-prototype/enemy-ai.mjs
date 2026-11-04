@@ -21,7 +21,9 @@ function facePoint(enemy,point,dt){
   // Tight circling is not a free invulnerability exploit: an alerted guard
   // turns its torso faster in arm's reach, but still has finite reaction time.
   const d=distance(enemy.x,enemy.z,point.x,point.z);
-  const maxTurn=(d<5?7.0:d<12?4.7:3.1)*dt;
+  // True arm's-reach threats get the fast defensive pivot. A target a few
+  // metres farther away still takes a beat to acquire.
+  const maxTurn=(d<3.6?7.0:d<5?3.1:d<12?4.7:3.1)*dt;
   enemy.yaw+=clamp(angleDelta(desired,enemy.yaw),-maxTurn,maxTurn);
 }
 const copy=point=>({x:point.x,z:point.z});
@@ -129,7 +131,8 @@ export function createEnemyBrain(config){
   };
 }
 // Sound provides an approximate INVESTIGATION lead, never a confirmed
-// player sighting or aim lock. Dense walls attenuate it.
+// player sighting or aim lock. Dense walls attenuate it and make the
+// position substantially less certain.
 export function hearEnemyGunshot(enemy,origin,obstacles=[],rng=Math.random){
   if(!enemy.active||!origin||
     !Number.isFinite(origin.x)||!Number.isFinite(origin.z))return false;
@@ -140,12 +143,34 @@ export function hearEnemyGunshot(enemy,origin,obstacles=[],rng=Math.random){
   // cannot make an NPC deaf to an entirely new gunshot elsewhere.
   if(distanceToSound>hearing||enemy.spotted)return false;
   const sample=()=>{const value=rng();return clamp(Number.isFinite(value)?value:.5,0,1);};
-  enemy.noiseTarget={x:origin.x+(sample()-.5)*3.2,
-    z:origin.z+(sample()-.5)*3.2};
+  const angle=sample()*Math.PI*2;
+  const radius=(blocked?2.8:1.0)+sample()*(blocked?4.6:2.2);
+  enemy.noiseTarget={x:origin.x+Math.cos(angle)*radius,
+    z:origin.z+Math.sin(angle)*radius};
   enemy.noiseTime=AI_TUNING.noiseMemorySeconds;
   enemy.mode='investigate-noise';enemy.searchPause=0;
   enemy.routeGoal=null;enemy.route=[];enemy.routeFail=0;
   return true;
+}
+// Being struck reveals danger, not the exact position of an unseen shooter.
+// A wall-hidden attacker can provoke an investigation but never a free aim
+// lock, fresh sighting, or perfectly accurate squad location report.
+export function reactToUnseenHit(enemy,origin,obstacles=[],rng=Math.random){
+  if(!enemy.active)return enemy;
+  enemy.spotted=false;
+  enemy.aimLockSeconds=0;
+  enemy.retaliationTime=AI_TUNING.hitRetaliationSeconds;
+  // Keep an out-of-arena hit encounter active while the shooter is only
+  // approximately known. This is not permission to fire without seeing them.
+  enemy.memory=Math.max(enemy.memory,AI_TUNING.noiseMemorySeconds);
+  if(!hearEnemyGunshot(enemy,origin,obstacles,rng)){
+    if(enemy.lastSeen)enemy.mode='investigate';
+    else{
+      enemy.mode='search';
+      enemy.searchLeft=AI_TUNING.searchSeconds;
+    }
+  }
+  return enemy;
 }
 export function alertEnemy(enemy,player){
   if(!enemy.active)return enemy;
