@@ -1,4 +1,11 @@
-# Untitled RPG · Mechanics Lab W20.22 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.23 + Forest Foundation 0.1
+
+## W20.23 · NPC hitbox alignment + infinite testing ammo
+
+- Fixed headshots registering as chest shots by parenting NPC head, helmet, chest, neck, arm and leg collision meshes to their exact animated visual skeleton joints. All three role scales, crouch, lean, pose and hit reactions now transform visual meshes and hitboxes together.
+- Corrected the overly tall static 2.03m head and chest overlap; face shots now hit the head zone of the visible character. Raycast world matrices refresh immediately before a shot.
+- Added a **test-only infinite ammo** toggle on the main menu and **M** key while in the test field. It refills magazine capacity per shot, shows ∞/∞ in the HUD, doesn't consume reserves, and restores the original magazines/reserves when disabled. Starts OFF on every launch.
+- Added direct source/regression checks for both features. No changes to the 10mm/pipe pistol visual design or regular damage and fire cadence.
 
 ## W20.22 · Iron sight and bullet alignment
 

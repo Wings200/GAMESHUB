@@ -44,12 +44,18 @@ test('W06.4 distant NPCs continue moving and deaths finish outside the arena',()
   assert.match(source,/function markEnemyDefeated\(enemy\)/);
   assert.match(source,/enemy\.flash=0;enemy\.shake=0/);
 });
-test('W06.4 neck hitbox overlaps the chest and head geometry',()=>{
-  const match=source.match(/new THREE\.CylinderGeometry\(\.13,\.15,([\d.]+),10\),\s*flesh,0,([\d.]+),0,'chest'/);
-  assert.ok(match,'A solid neck hitbox must be present');
-  const height=Number(match[1]),center=Number(match[2]);
-  assert.ok(center-height/2<1.34+.72/2,'Neck must overlap chest');
-  assert.ok(center+height/2>2.03-.225,'Neck must overlap head');
+test('W20.23 neck collider remains continuous between animated chest and head',()=>{
+  const neck=source.match(/new THREE\.CylinderGeometry\(\.13,\.15,([\d.]+),10\)/);
+  assert.ok(neck,'neck collider must exist');
+  const height=Number(neck[1]);
+  const torsoChestTop=.33+.74/2;
+  const neckBase=.66+.02-height/2;
+  const neckTop=.66+.02+height/2;
+  const headBottom=.66+.18+.035-.225;
+  assert.ok(neckBase<torsoChestTop,'neck joins the torso');
+  assert.ok(neckTop>headBottom,'neck joins the face');
+  assert.ok(headBottom>torsoChestTop-.1,'chest must not envelop the head');
+  assert.match(source,/remountHitbox\(hitParts\.neck,joints\.neck,0,\.02,0\)/);
 });
 test('W06.5 visible armor and loot share the same six-slot NPC outfit',()=>{
   assert.match(source,/enemyArmorForRound\(enemy\.id,arenaRound\)/);
@@ -63,7 +69,7 @@ test('W06.5 visible armor and loot share the same six-slot NPC outfit',()=>{
 test('W06.6 neck remains hittable without an orange chest strip',()=>{
   assert.doesNotMatch(source,/shoulderMark/);
   assert.doesNotMatch(source,/new THREE\.BoxGeometry\(\.7,\.11,\.075\)/);
-  assert.match(source,/new THREE\.CylinderGeometry\(\.13,\.15,\.28,10\)/);
+  assert.match(source,/new THREE\.CylinderGeometry\(\.13,\.15,\.16,10\)/);
 });
 test('W06.7 distant hits activate combat and long-range suppression',()=>{
   assert.match(source,/e\.state\.alive&&e\.brain\.memory>0/);
@@ -89,7 +95,7 @@ test('Direct enter button, engine status and cache version are wired',()=>{
   assert.match(source,/\$\('enterAI'\)\.addEventListener\('click'/);
   assert.match(source,/RAIDERS LOADED/);
   assert.match(source,/new URLSearchParams\(location\.search\)\.get\('station'\)==='9'/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
   assert.match(source,/RAIDERS ALIVE · /);
 });
 test('WebGL startup accepts software contexts and reports actual errors',()=>{
@@ -149,7 +155,7 @@ test('Advanced AI cover, reload, accuracy and visual behavior are wired',()=>{
 });
 test('NPC cover crouch lowers real mesh hitboxes and resets on respawn',()=>{
   assert.match(source,/const upperBody=new THREE.Group\(\);root\.add\(upperBody\)/);
-  assert.match(source,/part\(upperBody,new THREE.BoxGeometry\(\.57,\.72,\.35\)/);
+  assert.match(source,/hitParts\.chest=part\(upperBody,new THREE.BoxGeometry\(\.70,\.74,\.46\)/);
   assert.match(source,/part\(upperBody,new THREE.SphereGeometry\(\.225,14,10\)/);
   assert.match(source,/armPivot\.position\.set\(side\*\.43,1\.65,0\);upperBody\.add\(armPivot\)/);
   assert.match(source,/enemy\.upperBody\.position\.y=-\.82\*enemy\.crouchBlend/);
@@ -345,7 +351,7 @@ test('W06.0 inventory is real player equipment, not dummy-only armor editor',()=
 });
 test('W06.0 loot modal, game pause and persistence have a browser gameplay check',()=>{
   assert.match(page,/E SEARCH LOOT · I BACKPACK/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
   assert.match(source,/function beginLootOverlay\(id=null\)/);
   assert.match(source,/if\(fromField\)controls\.unlock\(\)/);
   assert.ok(source.includes("!questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden')"),
@@ -414,7 +420,7 @@ test('W09.6 uses three original pixel-textured enemy designs, not imported GLBs'
   assert.match(source,/mesh\.material\.visible=false/);
   assert.match(source,/enemy\.rifleVisual\.visible=false/);
   assert.match(source,/modelStatus:'original'/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
 });
 test('W09.6 original enemies match gameplay armor and animate held guns',()=>{
   for(const slot of ['head','chest','leftArm','rightArm','leftLeg','rightLeg'])
@@ -466,7 +472,7 @@ test('W09.4 armor slots visibly mount to the survivor and its power-suit pilot',
   assert.match(source,/pilotAvatar\.setArmor\(backpack\.equipment\.armor\)/);
   assert.match(source,/pilotAvatar\.update\(\{dt/);
   assert.match(source,/pilotModel:pilotAvatar\.root\.name/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
 });
 
 test('W09.5 second survivor stays rendered independently of local V camera',()=>{
@@ -479,7 +485,7 @@ test('W09.5 second survivor stays rendered independently of local V camera',()=>
   assert.doesNotMatch(remoteAvatar,/thirdPersonEnabled|thirdPersonActive|KeyV/);
   assert.match(playerAvatar,/edge:pixelFabric/);
   assert.match(playerAvatar,/Matching front AND back plates|silhouette from BEHIND/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
 });
 
 test('W09.7 survivor starts in plain clothes; only real equipment adds hat, pack and armor',()=>{
@@ -551,7 +557,7 @@ test('W09.12 integrates squad orders, fair reacquisition, and visible tactical r
   assert.match(source,/reactionSeconds/);
   assert.match(source,/squadOrder:squadDirector\.orders\.get\(e\.id\)/);
   assert.match(source,/enemy\.tactics\.phase==='guard-angle'\?'HOLDING LAST ANGLE'/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
 });
 
 test('W09.14 NPCs render exactly one avatar and reserve all old body geometry for hits',()=>{
@@ -690,7 +696,7 @@ test('W20.14 armor status figure has six independently driven sections',()=>{
   assert.match(source,/powerArmorIndicatorStatus\(powerArmorState,slot\)/);
   assert.match(source,/visualClass='armor-segment '\+part\.status/);
   assert.match(source,/id="visorArmorIndicator"|indicatorDescriptions\.join\(', '\)/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
 });
 test('W13.0 T-45, T-60, T-01 use different pigments and silhouettes',()=>{
   assert.match(armorVisual,/const profiles=\{/);
@@ -719,7 +725,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
     assert.ok(page.includes('id="'+id+'"'),id);
   assert.match(page,/\.special-grid\{display:grid/);
   assert.match(page,/S\.P\.E\.C\.I\.A\.L\./);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
   assert.match(source,/from '\.\.\/special\.mjs'/);
   assert.match(source,/safeSpecialSnapshot\(saved\)/);
   assert.match(source,/gainSpecialXP\(specialState,amount,source\)/);
@@ -738,7 +744,7 @@ test('W14.0 SPECIAL skill tree is wired to movement, survival and combat',()=>{
 });
 
 test('W15.0 original characters use blended locomotion and visible weapon animation',()=>{
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
   assert.match(page,/W20\.10.*REAR ENTRY & SUIT SILHOUETTE/);
   assert.match(characterAnimation,/export function createCharacterAnimation\(/);
   assert.match(characterAnimation,/export function stepCharacterAnimation\(/);
@@ -808,7 +814,7 @@ test('W17.0 frame is a hierarchical skeleton with driven cylinders',()=>{
 test('W18.0 includes persistent quests, reputation, and in-world contacts',()=>{
   const page=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   const source=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
-  assert.ok(page.includes('main.js?v=W20.22'));
+  assert.ok(page.includes('main.js?v=W20.23'));
   for(const marker of ['id="campaignPanel"','id="campaignDialogue"','id="campaignReputation"','id="questTracker"'])assert.ok(page.includes(marker),marker);
   for(const marker of ['initialCampaignState()','campaignJournal(campaignState)','recordCampaignObjective(\'raider-defeated\')','nearCampaignNode()',"e.code==='KeyQ'"])assert.ok(source.includes(marker),marker);
   const contactFirst=source.indexOf("const contact=nearCampaignNode();",source.indexOf("if(e.code==='KeyE'"));
@@ -875,7 +881,7 @@ test('W20.15 removes the two legacy teal camera-locked cockpit bars',()=>{
   const cockpit=armorVisual.slice(position);
   assert.doesNotMatch(cockpit,/BoxGeometry|MeshBasicMaterial|group\.add\(/);
   assert.match(source,/power-armor-visual\.mjs\?v=W20\.16/);
-  assert.match(page,/main\.js\?v=W20\.21/);
+  assert.match(page,/main\.js\?v=W20\.23/);
   class FakeGroup{
     constructor(){this.children=[];this.visible=true;}
     add(child){this.children.push(child);}
@@ -922,12 +928,12 @@ test('W20.17 tap E searches nearby enemy drops and crates while suited; hold E e
 });
 
 
-test('W20.22 keeps only rebuilt pistols active after the pipe model fit pass',()=>{
+test('W20.23 keeps only rebuilt pistols active after the pipe model fit pass',()=>{
   const tenModel=readFileSync(new URL('./tenmm-pistol.mjs',import.meta.url),'utf8');
   const pipeModel=readFileSync(new URL('./pipe-pistol.mjs',import.meta.url),'utf8');
   const weaponRules=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
   const handling=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
-  assert.match(page,/W20\.21 · PIPE PISTOL MODEL REBUILD/);
+  assert.match(page,/W20\.23 · NPC Hitboxes & Infinite Ammo/);
   assert.match(page,/EQUIP REBUILT WEAPON · 2 AVAILABLE/);
   assert.match(source,/const WEAPON_REBUILD_MODE=true/);
   assert.match(source,/const REBUILT_WEAPON_IDS=Object\.freeze\(\[TEN_MM_PISTOL\.id,PIPE_PISTOL\.id\]\)/);
@@ -953,7 +959,7 @@ test('W20.22 keeps only rebuilt pistols active after the pipe model fit pass',()
   assert.match(source,/activeWeaponId===PIPE_PISTOL\.id/);
   assert.match(source,/visual\.magazine\.position\.x=visual\.magBaseX-handling\.magazineOffset/);
   assert.match(source,/if\(ticking&&playerHealth\.alive&&!WEAPON_REBUILD_MODE\)/);
-  assert.match(source,/if\(WEAPON_REBUILD_MODE&&!playerGunEnabled\(\)\)return;\s*const result=fireWeapon/);
+  assert.match(source,/if\(WEAPON_REBUILD_MODE&&!playerGunEnabled\(\)\)return;[\s\S]*?const result=fireWeapon/);
   assert.match(source,/function refreshInventoryUI\(\)/);
   assert.match(source,/function updateEnemyRadar\(\)/);
 });
@@ -963,7 +969,67 @@ test('The live weapon view aims each rebuilt front tip through the camera ray',(
   assert.match(source,/function alignActiveSight\(\)\{[\s\S]*?adsWeaponPosition\(activeWeaponId\)/);
   assert.match(source,/camera\.updateWorldMatrix\(true,false\)/);
   assert.match(source,/firingRaycaster\.set\(camera\.position,shotVector\)/);
-  assert.match(source,/weapon-sights\.mjs\?v=W20\.22/);
-  assert.match(source,/tenmm-pistol\.mjs\?v=W20\.22/);
-  assert.match(source,/pipe-pistol\.mjs\?v=W20\.22/);
+  assert.match(source,/weapon-sights\.mjs\?v=W20\.23/);
+  assert.match(source,/tenmm-pistol\.mjs\?v=W20\.23/);
+  assert.match(source,/pipe-pistol\.mjs\?v=W20\.23/);
+});
+
+test('W20.23 NPC head and armor hitboxes follow animated joints',()=>{
+  assert.match(playerAvatar,/hitJoints:\{torso,neck,head,arms,legs\}/);
+  assert.match(npcAvatar,/hitJoints:avatar\.hitJoints/);
+  const mount=source.slice(source.indexOf('const joints=enemy.rigged.hitJoints'),
+    source.indexOf('if(WEAPON_REBUILD_MODE)enemy.rigged.disarm()'));
+  assert.match(mount,/remountHitbox\(hitParts\.head,joints\.head,0,\.035,0\)/);
+  assert.match(mount,/remountHitbox\(hitParts\.chest,joints\.torso,0,\.33,0\)/);
+  assert.match(mount,/remountHitbox\(enemy\.armorMeshes\.get\('head'\),joints\.head/);
+  assert.match(mount,/arm\.shoulder/);
+  assert.match(mount,/leg\.hip/);
+  assert.match(source,/enemy\.rigged\?\.root\.updateWorldMatrix\(true,true\)/);
+  for(const roleScale of [.97,1.02,1.07]){
+    const scale=.80*roleScale;
+    const visibleHeadCenter=(.99+.14+.66+.18+.035)*scale;
+    const chestTop=(.99+.14+.33+.74/2)*scale;
+    assert.ok(visibleHeadCenter-chestTop>.10);
+    assert.ok(visibleHeadCenter<1.75);
+  }
+});
+
+test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
+  assert.match(page,/id="infiniteAmmoToggle"/);
+  assert.match(page,/id="infiniteAmmoStatus"/);
+  assert.match(source,/if\(e\.code==='KeyM'/);
+  assert.match(source,/if\(infiniteAmmo&&result\.status==='fired'\)/);
+  const start=source.indexOf('function toggleInfiniteAmmo()');
+  const end=source.indexOf("$('infiniteAmmoToggle').addEventListener",start);
+  assert.ok(start>0&&end>start);
+  const toggleSource=source.slice(start,end);
+  const script=[
+    "const REBUILT_WEAPON_IDS=['10mm-pistol','pipe-pistol'];",
+    "const arsenalStates={'10mm-pistol':{magazine:2,reserve:14,reloadRemaining:1},'pipe-pistol':{magazine:0,reserve:8,reloadRemaining:0}};",
+    "const preInfiniteAmmo=new Map();",
+    "let infiniteAmmo=false,emptyClickLatched=true;",
+    "let notice='',refreshes=0;",
+    "const getWeaponSpec=id=>({magazineSize:id==='10mm-pistol'?12:8});",
+    "const cancelWeaponReload=state=>{state.reloadRemaining=0;};",
+    "const refreshWeaponHUD=()=>refreshes++;",
+    "const showShotNotice=s=>notice=s;",
+    toggleSource,
+    "toggleInfiniteAmmo();",
+    "assert.equal(infiniteAmmo,true);",
+    "assert.equal(arsenalStates['10mm-pistol'].magazine,12);",
+    "assert.equal(arsenalStates['pipe-pistol'].magazine,8);",
+    "assert.equal(arsenalStates['10mm-pistol'].reserve,14);",
+    "assert.equal(emptyClickLatched,false);",
+    "toggleInfiniteAmmo();",
+    "assert.equal(infiniteAmmo,false);",
+    "assert.equal(arsenalStates['10mm-pistol'].magazine,2);",
+    "assert.equal(arsenalStates['10mm-pistol'].reserve,14);",
+    "assert.equal(arsenalStates['pipe-pistol'].magazine,0);",
+    "assert.equal(arsenalStates['pipe-pistol'].reserve,8);",
+    "assert.equal(preInfiniteAmmo.size,0);",
+    "assert.equal(refreshes,2);",
+    "return notice;"
+  ].join('\n');
+  const testRun=new Function('assert',script);
+  assert.match(testRun(assert),/NORMAL AMMO RESTORED/);
 });

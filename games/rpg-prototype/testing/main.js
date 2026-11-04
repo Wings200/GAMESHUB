@@ -14,7 +14,7 @@ import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, ARSENAL, ARSENAL_IDS, getWeap
   shotSpreadDegrees } from '../weapons.mjs?v=W20.20';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.20';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.22';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.23';
 import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.20';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
@@ -24,10 +24,10 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.20';
-import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.22';
-import {createPipePistol} from '../pipe-pistol.mjs?v=W20.22';
-import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.20';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.23';
+import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
+import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
+import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
   resetEnemyBrain, hasSight } from '../enemy-ai.mjs';
@@ -1472,6 +1472,7 @@ function createEnemy(spec){
     recoilPose:0,rigged:null,modelStatus:'original'};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
+  const hitParts={};
   function part(parent,geometry,material,x,y,z,slot,armored=false){
     const mesh=new THREE.Mesh(geometry,material.clone());
     mesh.position.set(x,y,z);
@@ -1487,15 +1488,15 @@ function createEnemy(spec){
     parent.add(mesh);enemy.meshes.push(mesh);enemyHitMeshes.push(mesh);
     return mesh;
   }
-  part(upperBody,new THREE.BoxGeometry(.57,.72,.35),flesh,0,1.34,0,'chest');
-  part(upperBody,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
+  hitParts.chest=part(upperBody,new THREE.BoxGeometry(.70,.74,.46),flesh,0,1.34,0,'chest');
+  hitParts.head=part(upperBody,new THREE.SphereGeometry(.225,14,10),flesh,0,2.03,0,'head');
   // Fill the former gap between chest and skull with a physical neck.
   // Treat this as chest damage so helmets keep their existing balance.
-  part(upperBody,new THREE.CylinderGeometry(.13,.15,.28,10),
+  hitParts.neck=part(upperBody,new THREE.CylinderGeometry(.13,.15,.16,10),
     flesh,0,1.76,0,'chest');
   // Build all six armor meshes once, then show/hide and recolor them
   // from the same actual loadout used by damage and loot rules.
-  enemy.armorMeshes.set('chest',part(upperBody,new THREE.BoxGeometry(.65,.63,.43),
+  enemy.armorMeshes.set('chest',part(upperBody,new THREE.BoxGeometry(.72,.76,.5),
     enemyMaterial(0x647363,true),0,1.37,.055,'chest',true));
   enemy.armorMeshes.set('head',part(upperBody,
     new THREE.SphereGeometry(.241,14,10,0,Math.PI*2,0,Math.PI*.68),
@@ -1505,14 +1506,14 @@ function createEnemy(spec){
     const armPivot=new THREE.Group();
     armPivot.position.set(side*.43,1.65,0);upperBody.add(armPivot);
     enemy.limbs.push({pivot:armPivot,side,kind:'arm'});
-    part(armPivot,new THREE.BoxGeometry(.20,.68,.23),
+    hitParts[name+'Arm']=part(armPivot,new THREE.BoxGeometry(.25,.72,.29),
       flesh,0,-.35,0,name+'Arm');
     enemy.armorMeshes.set(name+'Arm',part(armPivot,new THREE.BoxGeometry(.25,.54,.30),
       enemyMaterial(0x647363,true),0,-.32,.02,name+'Arm',true));
     const legPivot=new THREE.Group();
     legPivot.position.set(side*.19,.97,0);root.add(legPivot);
     enemy.limbs.push({pivot:legPivot,side,kind:'leg'});
-    part(legPivot,new THREE.CylinderGeometry(.135,.15,.9,10),
+    hitParts[name+'Leg']=part(legPivot,new THREE.CylinderGeometry(.155,.15,.80,10),
       darkCloth,0,-.46,0,name+'Leg');
     enemy.armorMeshes.set(name+'Leg',part(legPivot,new THREE.CylinderGeometry(.16,.17,.75,10),
       enemyMaterial(0x647363,true),0,-.45,.025,name+'Leg',true));
@@ -1548,6 +1549,31 @@ function createEnemy(spec){
   // ONE visible character. Primitive body and armor meshes remain physics-only
   // and cannot render, including after reset or a changed armor loadout.
   enemy.rigged=createNpcAvatar(root,spec.id);
+  // W20.23: COLLIDERS FOLLOW THE VISIBLE SKELETON.
+  // The old standalone mannequin's 2.03 m skull overlapped the new scaled
+  // NPC's visible face (~1.56-1.72 m), so legitimate face shots hit chest.
+  // Reparent existing authoritative meshes beneath the *same animated joints*
+  // that render the head, torso and limbs; their armor IDs stay untouched.
+  const joints=enemy.rigged.hitJoints;
+  function remountHitbox(mesh,joint,x,y,z){
+    mesh.removeFromParent();
+    joint.add(mesh);
+    mesh.position.set(x,y,z);
+  }
+  remountHitbox(hitParts.head,joints.head,0,.035,0);
+  remountHitbox(enemy.armorMeshes.get('head'),joints.head,0,.075,.02);
+  remountHitbox(hitParts.chest,joints.torso,0,.33,0);
+  remountHitbox(enemy.armorMeshes.get('chest'),joints.torso,0,.33,.025);
+  remountHitbox(hitParts.neck,joints.neck,0,.02,0);
+  for(const side of [-1,1]){
+    const name=side<0?'left':'right';
+    const arm=joints.arms.find(limb=>limb.side===side);
+    const leg=joints.legs.find(limb=>limb.side===side);
+    remountHitbox(hitParts[name+'Arm'],arm.shoulder,0,-.35,0);
+    remountHitbox(enemy.armorMeshes.get(name+'Arm'),arm.shoulder,0,-.32,.02);
+    remountHitbox(hitParts[name+'Leg'],leg.hip,0,-.39,0);
+    remountHitbox(enemy.armorMeshes.get(name+'Leg'),leg.hip,0,-.38,.025);
+  }
   if(WEAPON_REBUILD_MODE)enemy.rigged.disarm();
   // Old primitive body serves *only* precise zone hit-testing, never visuals.
   // Its separate render layer makes duplicate limbs impossible even if a
@@ -2393,6 +2419,8 @@ let activeWeaponId=TEN_MM_PISTOL.id;
 let activeSpec=TEN_MM_PISTOL;
 let weaponState=arsenalStates[activeWeaponId];
 let triggerHeld=false,aimHeld=false;
+let infiniteAmmo=false; // test-only cheat, always starts OFF
+const preInfiniteAmmo=new Map();
 // The dry-fire click is a trigger-edge event, NOT a frame-loop sound.
 let emptyClickLatched=false;
 let dryFireClicks=0;
@@ -2913,6 +2941,7 @@ function selectWeapon(id){
   weaponVisuals.get(activeWeaponId).root.visible=false;
   activeWeaponId=id;activeSpec=spec;
   weaponState=arsenalStates[id];
+  if(infiniteAmmo)weaponState.magazine=activeSpec.magazineSize;
   setWeaponAim(weaponState,aimHeld);
   weaponVisuals.get(id).root.visible=true;
   backpack.equipment.weapon=id;
@@ -3027,6 +3056,16 @@ function showShotNotice(message){
   shotNoticeTime=.8;
 }
 function refreshWeaponHUD(){
+  const ammoToggle=$('infiniteAmmoToggle');
+  const toggleLabel=infiniteAmmo?'INFINITE AMMO: ON · M':'INFINITE AMMO: OFF · M';
+  if(ammoToggle.textContent!==toggleLabel)ammoToggle.textContent=toggleLabel;
+  const pressed=String(infiniteAmmo);
+  if(ammoToggle.getAttribute('aria-pressed')!==pressed)
+    ammoToggle.setAttribute('aria-pressed',pressed);
+  const ammoMode=$('infiniteAmmoStatus');
+  const ammoLabel=infiniteAmmo?
+    '∞ AMMO ACTIVE · M TO DISABLE':'NORMAL AMMO · M TO ENABLE';
+  if(ammoMode.textContent!==ammoLabel)ammoMode.textContent=ammoLabel;
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){
     $('fieldAmmo').textContent='--';
     $('visorAmmo').textContent='UNARMED';
@@ -3046,12 +3085,12 @@ function refreshWeaponHUD(){
     document.body.classList.remove('ads-active');
     return;
   }
-  const loaded=weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
+  const loaded=infiniteAmmo?'∞ / ∞':weaponState.magazine+' / '+displayAmmoCount(weaponState.reserve);
   $('fieldAmmo').textContent=loaded;
   $('visorAmmo').textContent=loaded;
-  $('visorAmmoLoaded').textContent=String(weaponState.magazine).padStart(3,'0');
+  $('visorAmmoLoaded').textContent=infiniteAmmo?'INF':String(weaponState.magazine).padStart(3,'0');
   const reserveDisplay=displayAmmoCount(weaponState.reserve);
-  $('visorAmmoReserve').textContent=String(reserveDisplay).padStart(3,'0');
+  $('visorAmmoReserve').textContent=infiniteAmmo?'INF':String(reserveDisplay).padStart(3,'0');
   $('fieldWeaponName').textContent=activeSpec.name.toUpperCase();
   $('visorWeaponName').textContent=activeSpec.name.toUpperCase();
   $('fieldWeaponState').textContent=weaponState.reloadRemaining>0?'RELOADING':
@@ -3078,7 +3117,15 @@ function refreshWeaponHUD(){
 }
 function shoot(){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled())return;
+  // Infinite mode supplies a full test magazine without spending saved ammo.
+  // Cooldown, recoil, damage, shot sounds and projectile calculations remain.
+  if(infiniteAmmo){
+    cancelWeaponReload(weaponState);
+    weaponState.magazine=activeSpec.magazineSize;
+  }
   const result=fireWeapon(weaponState,activeSpec,Math.random,weaponMotion);
+  if(infiniteAmmo&&result.status==='fired')
+    weaponState.magazine=activeSpec.magazineSize;
   if(result.status==='empty'){
     // Automatic guns call shoot() every animation frame while the trigger
     // is held. Without this latch, sound.dryFire() was called 60+ times
@@ -3111,6 +3158,10 @@ function shoot(){
   // Applying recoil before raycasting incorrectly shifts the bullet off target.
   let enemyDamageHits=0;
   let totalEnemyDamage=0;
+  // Refresh the animated skeleton's world transforms before raycasting.
+  // Otherwise a click between render frames can hit a head's LAST pose.
+  for(const enemy of enemies.values())
+    if(enemy.state.alive)enemy.rigged?.root.updateWorldMatrix(true,true);
   for(const pellet of result.directions){
     // Sight and shot are both derived from the camera's current world-space
     // orientation, including the same yaw and pitch used to render the reticle.
@@ -3241,6 +3292,7 @@ function shoot(){
   refreshWeaponHUD();
 }
 function reload(){
+  if(infiniteAmmo){showShotNotice('INFINITE AMMO · RELOAD NOT REQUIRED');return;}
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled())return;
   if(startWeaponReload(weaponState,activeSpec)){
     emptyClickLatched=false;
@@ -3262,6 +3314,30 @@ function resupply(){
   slideCycle=0;
   refreshWeaponHUD();
 }
+function toggleInfiniteAmmo(){
+  infiniteAmmo=!infiniteAmmo;
+  if(infiniteAmmo){
+    preInfiniteAmmo.clear();
+    for(const id of REBUILT_WEAPON_IDS){
+      const state=arsenalStates[id];
+      preInfiniteAmmo.set(id,{magazine:state.magazine,reserve:state.reserve});
+      cancelWeaponReload(state);
+      state.magazine=getWeaponSpec(id).magazineSize;
+    }
+    emptyClickLatched=false;
+  }else{
+    for(const [id,ammo] of preInfiniteAmmo){
+      arsenalStates[id].magazine=ammo.magazine;
+      arsenalStates[id].reserve=ammo.reserve;
+      cancelWeaponReload(arsenalStates[id]);
+    }
+    preInfiniteAmmo.clear();
+  }
+  refreshWeaponHUD();
+  showShotNotice(infiniteAmmo?'INFINITE AMMO ENABLED · M TO DISABLE':
+    'NORMAL AMMO RESTORED · M TO ENABLE');
+}
+$('infiniteAmmoToggle').addEventListener('click',toggleInfiniteAmmo);
 refreshWeaponHUD();
 function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
@@ -3603,13 +3679,26 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     // actual enemy death, without another 30 seconds of headless shooting.
     return spawnEnemyLoot(enemies.get(enemyId));
   };
-  window.__rpgSmokeNeckHit=()=>{
-    const enemy=enemies.get('scout');
-    const origin=new THREE.Vector3(enemy.brain.x,1.76,enemy.brain.z+3);
-    const ray=new THREE.Raycaster(origin,new THREE.Vector3(0,0,-1),0,6);
-    scene.updateMatrixWorld(true);
-    return ray.intersectObjects(enemy.meshes,false)[0]?.object.userData.hitZone||null;
+  // Aim a diagnostic ray at the REAL animated joint, never an old,
+  // hard-coded 2.03m mannequin head that overlaps the new chest.
+  window.__rpgSmokeHitZone=(id='scout',slot='head')=>{
+    const enemy=enemies.get(id);
+    if(!enemy||!['head','neck','chest'].includes(slot))return null;
+    enemy.root.updateWorldMatrix(true,true);
+    const joints=enemy.rigged.hitJoints;
+    const anchor=slot==='head'?joints.head:
+      slot==='neck'?joints.neck:joints.torso;
+    const offset=slot==='head'?.035:slot==='neck'?.02:.33;
+    const target=anchor.localToWorld(new THREE.Vector3(0,offset,0));
+    const ray=new THREE.Raycaster(target.clone().add(new THREE.Vector3(0,0,3)),
+      new THREE.Vector3(0,0,-1),0,6);
+    ray.layers.enable(ENEMY_COLLISION_LAYER);
+    const equipped=enemy.meshes.filter(mesh=>mesh.userData.equipped!==false);
+    return {expected:slot==='head'?'head':'chest',
+      actual:ray.intersectObjects(equipped,false)[0]?.object.userData.hitZone||null,
+      targetY:target.y};
   };
+  window.__rpgSmokeNeckHit=()=>window.__rpgSmokeHitZone('scout','neck')?.actual;
   window.__rpgSmokeMoveOutsideArena=()=>{
     stationIndex=0;player.x=8;player.z=8;
     camera.position.set(8,player.eyeHeight,8);
@@ -4123,6 +4212,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyX'&&!e.repeat&&controls.isLocked){cycleWeapon(1);return;}
   if(e.code==='KeyN'&&!e.repeat){
     toggleSound();return;
+  }
+  if(e.code==='KeyM'&&!e.repeat&&controls.isLocked){
+    toggleInfiniteAmmo();return;
   }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}

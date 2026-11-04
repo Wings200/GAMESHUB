@@ -1,7 +1,7 @@
 // W09.6: original, locally constructed NPCs. No imported character assets.
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
-import {createPlayerAvatar} from './player-avatar.mjs';
+import {createPlayerAvatar} from './player-avatar.mjs?v=W20.23';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
 // AI yaw 0 looks toward +Z; the survivor mesh is modeled facing -Z.
 // Rotate only the visual 180°, so its front and gun point where the brain aims.
@@ -203,7 +203,7 @@ export function createNpcAvatar(parent,kind){
   }
   setArmor({});
   return {
-    root:avatar.root,update,setArmor,setWeapon,disarm,
+    root:avatar.root,hitJoints:avatar.hitJoints,update,setArmor,setWeapon,disarm,
     getMuzzleWorldPosition,getWorldForward,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,

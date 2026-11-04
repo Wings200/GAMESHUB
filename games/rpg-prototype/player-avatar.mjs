@@ -630,6 +630,8 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
   }
   return {
     root,materials,setArmor,setClothing,weaponSocket,setHeldWeapon,heldWeapon,
+    // Expose animated joints to NPC hit detection; view rendering is unchanged.
+    hitJoints:{torso,neck,head,arms,legs},
     get clothing(){return {...clothingSlots};},
     get visibleClothing(){return {
       head:clothCap.visible,back:clothBackpack.visible
