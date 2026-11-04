@@ -124,3 +124,40 @@ test('Both gripping hands contact the rifle and held-world version is complete',
   assert.equal(world.magazine.geometry.height,.320);
   assert.ok(world.muzzleGlow&&world.muzzleFlare);
 });
+
+test('W20.25 rust finish is visibly patchy and repairs are actually mounted',()=>{
+  class FakeDataTexture{
+    constructor(data,width,height,format){
+      this.image={data,width,height};this.format=format;
+    }
+  }
+  const textured={...THREE,DataTexture:FakeDataTexture,RGBAFormat:1023,
+    RepeatWrapping:1000,LinearFilter:1001,SRGBColorSpace:'srgb'};
+  const gun=createPipeRifle(textured,new Group());
+  const metalObjects=['PipeRifleReceiverShell','PipeRifleHandguardShell',
+    'PipeRifleRustyBarrelCoupler'];
+  for(const partName of metalObjects){
+    const part=find(gun.root,partName);
+    assert.ok(part,partName+' must be physically present');
+    const material=part.material.args[0],map=material.map;
+    assert.ok(map instanceof FakeDataTexture,'rust map on '+partName);
+    assert.equal(map.image.width,128);
+    const pixels=map.image.data;
+    const shades=new Set();
+    let oxidized=0;
+    for(let i=0;i<pixels.length;i+=4){
+      const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+      if(r>g*1.6&&g>b)oxidized++;
+      shades.add(r+','+g+','+b);
+    }
+    assert.ok(shades.size>150,'scrap finish must not be a flat color');
+    assert.ok(oxidized>1500,'large rust patches must be plainly visible');
+  }
+  assert.equal(gun.root.children.filter(x=>x.name==='PipeRifleRustedTopClamp').length,2);
+  assert.equal(gun.root.children.filter(x=>x.name==='PipeRifleCouplerThread').length,4);
+  assert.ok(find(gun.root,'PipeRifleStockRepairStrap'));
+  assert.equal(gun.sightLocal.y,.258,'weathering must not change optic zero');
+  assert.equal(gun.magazine.geometry.height,.320,'magazine must remain unchanged');
+  const world=createPipeRifle(textured,new Group(),{thirdPerson:true});
+  assert.ok(find(world.root,'PipeRifleRustyBarrelCoupler'));
+});

@@ -1,4 +1,4 @@
-// W20.24: authored, modular pipe rifle for the browser mechanics range.
+// W20.25: rusted, weathered modular pipe rifle for the browser mechanics range.
 // Hand-built fitted metal/wood chassis; no borrowed or floating gun assets.
 export function createPipeRifle(THREE,parent,{thirdPerson=false,flareTexture=null}={}){
   const root=new THREE.Group();
@@ -7,10 +7,59 @@ export function createPipeRifle(THREE,parent,{thirdPerson=false,flareTexture=nul
   if(thirdPerson)root.scale.setScalar(.68);
   parent.add(root);
 
-  const iron=new THREE.MeshStandardMaterial({color:0x424b4b,metalness:.52,roughness:.73});
-  const steel=new THREE.MeshStandardMaterial({color:0x777e7a,metalness:.63,roughness:.61});
-  const blued=new THREE.MeshStandardMaterial({color:0x252f32,metalness:.49,roughness:.72});
-  const rust=new THREE.MeshStandardMaterial({color:0x8b5844,metalness:.34,roughness:.86});
+  // A deterministic, hand-weathered oxide map: large flaking rust patches,
+  // orange oxidized edges and tiny soot/pitting marks. One tiny texture per
+  // salvaged metal type; no assets to load or noisy per-frame generation.
+  const oxideMap=(clean,corroded,seed,corrosion)=>{
+    if(!THREE.DataTexture||!THREE.RGBAFormat)return null;
+    const size=128,data=new Uint8Array(size*size*4);
+    const hash=(x,y,s)=>{
+      let n=Math.imul(x+Math.imul(s,17),374761393)+Math.imul(y+Math.imul(s,29),668265263);
+      n=Math.imul(n^(n>>>13),1274126177);n=(n^(n>>>16))>>>0;
+      return n/4294967295;
+    };
+    const noise=(x,y,scale,s)=>{
+      const xx=x/scale,yy=y/scale,ix=Math.floor(xx),iy=Math.floor(yy);
+      const fx=xx-ix,fy=yy-iy;
+      const tx=fx*fx*(3-2*fx),ty=fy*fy*(3-2*fy);
+      const a=hash(ix,iy,s),b=hash(ix+1,iy,s);
+      const c=hash(ix,iy+1,s),d=hash(ix+1,iy+1,s);
+      return (a+(b-a)*tx)*(1-ty)+(c+(d-c)*tx)*ty;
+    };
+    const clamp=v=>Math.max(0,Math.min(1,v));
+    for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+      const broad=noise(x,y,29,seed);
+      const blotches=noise(x,y,11,seed+17);
+      const flakes=noise(x,y,3.4,seed+43);
+      const grit=hash(x,y,seed+89);
+      const coverage=clamp((broad*.62+blotches*.28+flakes*.10-.45)*3.8
+        +(corrosion-.5)*1.35+(grit-.5)*.24);
+      const pit=grit>.964?.36:grit<.026?.30:0;
+      const shine=(flakes-.5)*.17;
+      const index=(y*size+x)*4;
+      for(let c=0;c<3;c++){
+        const mixed=clean[c]*(1-coverage)+corroded[c]*coverage;
+        data[index+c]=Math.max(0,Math.min(255,Math.round(
+          mixed*(.88+shine+blotches*.23-pit))));
+      }
+      data[index+3]=255;
+    }
+    const map=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
+    map.wrapS=map.wrapT=THREE.RepeatWrapping;
+    map.magFilter=map.minFilter=THREE.LinearFilter;
+    if(THREE.SRGBColorSpace)map.colorSpace=THREE.SRGBColorSpace;
+    map.needsUpdate=true;
+    return map;
+  };
+  const corrodedMetal=(fallback,clean,oxide,seed,coverage,metalness,roughness)=>{
+    const map=oxideMap(clean,oxide,seed,coverage);
+    return new THREE.MeshStandardMaterial({color:map?0xffffff:fallback,
+      map,metalness,roughness});
+  };
+  const iron=corrodedMetal(0x69493a,[76,91,88],[165,73,36],33,.68,.31,.89);
+  const steel=corrodedMetal(0x8a593e,[111,121,116],[185,91,43],71,.56,.36,.85);
+  const blued=corrodedMetal(0x543a32,[42,57,57],[132,65,37],117,.58,.32,.91);
+  const rust=corrodedMetal(0xa05b36,[91,83,67],[201,102,48],173,.87,.20,.95);
   const wood=new THREE.MeshStandardMaterial({color:0x674a33,metalness:.03,roughness:.97});
   const woodEdge=new THREE.MeshStandardMaterial({color:0x3f3027,metalness:.04,roughness:.95});
   const brass=new THREE.MeshStandardMaterial({color:0xb2a17b,metalness:.58,roughness:.59});
@@ -68,7 +117,11 @@ export function createPipeRifle(THREE,parent,{thirdPerson=false,flareTexture=nul
     [.027,-.155],[-.008,-.204],[-.53,-.124],[-1.045,-.10]],.114,rust);
   tube(.061,.55,blued,0,.071,-.888);
   tube(.055,.32,steel,0,.071,-1.074);
-  // Muzzle collar actually encloses the last section of barrel.
+  // Threaded salvaged plumbing sleeve: two oxidized couplers are fully
+  // seated over the continuous bore, not floating rings or fake barrels.
+  tube(.073,.230,iron,0,.071,-1.106).name='PipeRifleRustyBarrelCoupler';
+  for(const z of [-1.167,-1.125,-1.083,-1.041])
+    tube(.080,.020,rust,0,.071,z).name='PipeRifleCouplerThread';
   tube(.075,.075,blued,0,.071,-1.213);
   box(.137,.032,.135,iron,0,-.053,-.416).name='ShroudReceiverBridge';
   for(const side of [-1,1]){
@@ -78,6 +131,24 @@ export function createPipeRifle(THREE,parent,{thirdPerson=false,flareTexture=nul
     box(.015,.023,.61,rust,side*.109,-.018,-.725);
     for(const z of [-.405,-.261,-.11,.08,.219])
       rivet(side*.133,.114,z);
+  }
+
+  // Rusted repair clamps, stitched metal patches and visible weld scars:
+  // all overlap the actual shroud, so they stay mechanically attached.
+  for(const z of [-.91,-.59]){
+    box(.232,.030,.057,rust,0,.148,z).name='PipeRifleRustedTopClamp';
+    for(const side of [-1,1]){
+      box(.027,.205,.057,iron,side*.109,.037,z);
+      rivet(side*.128,.128,z);
+    }
+  }
+  for(const side of [-1,1]){
+    const patch=box(.018,.174,.194,rust,side*.133,.041,-.250);
+    patch.rotation.z=side*.075;
+    for(const z of [-.322,-.177])
+      rivet(side*.147,.058,z);
+    for(let j=0;j<4;j++)
+      box(.017,.011,.025,steel,side*.140,-.028+j*.039,-.371+j*.006);
   }
 
   // Real wood-stock silhouette cut from one continuous shaped panel.
@@ -91,6 +162,12 @@ export function createPipeRifle(THREE,parent,{thirdPerson=false,flareTexture=nul
   // Stock end and cheek rest overlap the wood without small detached gaps.
   box(.210,.405,.071,blued,0,-.059,.767).name='PipeRifleButtplate';
   box(.193,.058,.302,woodEdge,0,.119,.478).name='StockCheekRest';
+  // Salvaged stock held together by an uneven iron strap and old screws.
+  box(.199,.031,.120,rust,0,.090,.612).name='PipeRifleStockRepairStrap';
+  for(const side of [-1,1]){
+    box(.017,.205,.119,iron,side*.098,-.027,.612);
+    for(const y of [-.095,.072])rivet(side*.108,y,.612);
+  }
   for(const side of [-1,1]){
     box(.015,.032,.270,rust,side*.100,-.175,.555);
     rivet(side*.102,-.106,.394);

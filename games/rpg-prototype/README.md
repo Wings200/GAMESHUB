@@ -1,4 +1,10 @@
-# Untitled RPG · Mechanics Lab W20.24 + Forest Foundation 0.1
+# Untitled RPG · Mechanics Lab W20.25 + Forest Foundation 0.1
+
+## W20.25 · Pipe Rifle corrosion and salvage finish
+
+- Reworked the Pipe Rifle as a visibly weathered scavenged weapon: deterministic multi-scale oxide patterns and tiny pit marks on receiver, barrel, shroud and fasteners; reused across first/third-person models with no external textures.
+- Added attached, deeply rusted plumbing coupler threads, two bolted shroud repair clamps, offset side plates, and an iron stock repair strap. Functional iron-sight zero, reload animation, magazine, combat tuning and previous two weapons are unchanged.
+- Added model checks for rust-map color variation, oxide coverage, new connected parts and unchanged sights.
 
 ## W20.24 · Third rebuilt weapon: Pipe Rifle
 

@@ -27,7 +27,7 @@ import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visua
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.23';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
-import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.24';
+import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.23';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
