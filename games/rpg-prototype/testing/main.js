@@ -15,7 +15,7 @@ import { SCRAP_PISTOL, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs';
-import { WeaponAudio, getImpactMaterial } from '../weapon-audio.mjs';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -973,7 +973,7 @@ function togglePoweredSuit(){
   $('powerTransitionFade').style.opacity='0';
   keys.clear();triggerHeld=false;changeAim(false);
   weaponVisuals.get(activeWeaponId).root.visible=false;
-  sound.reload('rifle',1.65);
+  sound.powerArmorTransition(result.phase==='entering',POWER_ARMOR_TRANSITION_SECONDS);
   showShotNotice(result.phase==='entering'?'HYDRAULICS OPEN · ENTERING CHASSIS':
     'RELEASING LOCKS · EXITING CHASSIS');
   refreshPowerArmorHUD();
@@ -4144,7 +4144,8 @@ function frame(){
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
     if(info.speed>.55&&!info.airborne){
       groundedStepProgress+=info.speed*dt;
-      const strideLength=powerArmorState.occupied?1.05:info.sprinting?.91:.70;
+      const strideLength=footstepStrideMeters({sprinting:info.sprinting,
+        crouched:info.crouched,powerArmor:powerArmorState.occupied});
       if(groundedStepProgress>=strideLength){
         groundedStepProgress%=strideLength;
         sound.footstep(powerArmorState.occupied);
