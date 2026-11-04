@@ -3927,6 +3927,17 @@ function updateHUD(info){
   const staminaPct=Math.max(0,Math.round(info.staminaFraction*100));
   $('fieldStamina').textContent=staminaPct+'%';
   $('fieldStaminaFill').style.width=staminaPct+'%';
+  // The normal field HUD is hidden inside power armor, so mirror the same
+  // live stamina value in the visor. Fusion-core charge is a separate resource.
+  const visorSprintAvailable=powerArmorMobility(powerArmorState).canSprint;
+  $('visorStamina').textContent=staminaPct+'%';
+  $('visorStaminaFill').style.width=staminaPct+'%';
+  $('visorStaminaTrack').setAttribute('aria-valuenow',String(staminaPct));
+  $('visorStaminaTrack').classList.toggle('empty',info.exhausted);
+  $('visorStaminaTrack').classList.toggle('unavailable',!visorSprintAvailable);
+  $('visorStaminaState').textContent=!visorSprintAvailable?'CORE OFFLINE':
+    info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':
+    info.recovering?'RECOVERING':'READY';
   $('fieldLocation').textContent=stations[stationIndex].title.toUpperCase();
   const bearing=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
   const cardinal=['N','NE','E','SE','S','SW','W','NW'][
