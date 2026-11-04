@@ -1,8 +1,19 @@
-// W01.2: short procedural weapon sounds, synthesised after a user gesture.
+// W20.11: properly paced procedural weapon, movement and powered-frame audio.
+// Preserve real-time weapon mechanics; timing changes affect sound only.
 // No external sound files, downloads, autoplay, or additional dependencies.
 // Materials are explicitly tagged on the raycasted mesh. Missing tags fall
 // back to concrete instead of treating all hits as the same material.
 export const IMPACT_MATERIALS=Object.freeze(['paper','wood','metal','concrete']);
+// Metres travelled per audible footfall. Previous 0.70m walk / 0.91m sprint
+// spacing produced 6-8 impacts per second at the actual movement speeds.
+export const FOOTSTEP_STRIDE_METERS=Object.freeze({
+  walk:1.95,sprint:2.35,crouch:1.55,armorWalk:2.35,armorSprint:2.8
+});
+export function footstepStrideMeters({sprinting=false,crouched=false,powerArmor=false}={}) {
+  if(powerArmor)return sprinting?FOOTSTEP_STRIDE_METERS.armorSprint:FOOTSTEP_STRIDE_METERS.armorWalk;
+  return crouched?FOOTSTEP_STRIDE_METERS.crouch:
+    sprinting?FOOTSTEP_STRIDE_METERS.sprint:FOOTSTEP_STRIDE_METERS.walk;
+}
 export function getImpactMaterial(hit) {
   if(!hit || !hit.object)return null;
   const tag=hit.object.userData?.impactMaterial;
@@ -47,7 +58,7 @@ export class WeaponAudio {
   _noise() {
     if (!this.noiseBuffer) {
       const ctx = this.context;
-      this.noiseBuffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .32), ctx.sampleRate);
+      this.noiseBuffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * .85), ctx.sampleRate);
       const channel = this.noiseBuffer.getChannelData(0);
       for (let i = 0; i < channel.length; i++) channel[i] = Math.random() * 2 - 1;
     }
@@ -56,6 +67,8 @@ export class WeaponAudio {
   _noiseBurst(time, length, peak, highpass = 250, lowpass = 5500) {
     if (!this.ready) return;
     const ctx = this.context;
+    // Let the noise decay finish naturally instead of truncating at 0.32s.
+    const audibleLength=Math.min(.70,Math.max(.025,length*1.32));
     const source = ctx.createBufferSource();
     source.buffer = this._noise();
     const high = ctx.createBiquadFilter();
@@ -65,22 +78,25 @@ export class WeaponAudio {
     const volume = ctx.createGain();
     volume.gain.setValueAtTime(.0001, time);
     volume.gain.exponentialRampToValueAtTime(peak, time + .004);
-    volume.gain.exponentialRampToValueAtTime(.0001, time + length);
+    volume.gain.exponentialRampToValueAtTime(.0001, time + audibleLength);
     source.connect(high); high.connect(low); low.connect(volume); volume.connect(ctx.destination);
-    source.start(time); source.stop(time + Math.min(length + .02, .32));
+    source.start(time); source.stop(time + audibleLength + .02);
   }
   _tone(time, freq, endFreq, duration, peak, wave = 'triangle') {
     if (!this.ready) return;
     const ctx = this.context;
     const oscillator = ctx.createOscillator();
     oscillator.type = wave;
-    oscillator.frequency.setValueAtTime(freq, time);
-    oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), time + duration);
+    // Lower synthesized pitch and lengthen the decay; no audio node is
+    // played back at an artificially increased playbackRate.
+    const decay=Math.max(.025,duration*1.30);
+    oscillator.frequency.setValueAtTime(Math.max(1,freq*.82), time);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq*.82), time + decay);
     const volume = ctx.createGain();
     volume.gain.setValueAtTime(Math.max(.0001, peak), time);
-    volume.gain.exponentialRampToValueAtTime(.0001, time + duration);
+    volume.gain.exponentialRampToValueAtTime(.0001, time + decay);
     oscillator.connect(volume); volume.connect(ctx.destination);
-    oscillator.start(time); oscillator.stop(time + duration + .01);
+    oscillator.start(time); oscillator.stop(time + decay + .01);
   }
   gunshot(kind='pistol') {
     if (!this.unlock()) return;
@@ -98,6 +114,9 @@ export class WeaponAudio {
     this._noiseBurst(t,v.crack,v.level,kind==='shotgun'?120:330,
       kind==='smg'?7500:6800);
     this._noiseBurst(t+.011,v.body,Math.min(.22,v.level*.55),85,1350);
+    // Low report and a quieter atmospheric tail stop shots from sounding
+    // like tiny speeded-up pops while preserving the initial muzzle crack.
+    this._noiseBurst(t+.065,Math.max(.26,v.body*1.3),v.level*.20,65,950);
     this._tone(t,v.freq,Math.max(38,v.freq*.36),Math.min(.25,v.body),.22,'triangle');
     this._tone(t+.008,kind==='smg'?1300:840,400,.085,.036,'sawtooth');
   }
@@ -153,13 +172,27 @@ export class WeaponAudio {
     if(!this.ready)return;
     const t=this.context.currentTime+.006;
     if(heavy){
-      this._noiseBurst(t,.19,.078,48,540);
-      this._tone(t,75,38,.20,.14,'triangle');
-      this._tone(t+.037,340,98,.075,.036,'sine');
+      this._noiseBurst(t,.25,.072,45,580);
+      this._tone(t,67,33,.29,.12,'triangle');
+      this._tone(t+.065,265,90,.12,.03,'sine');
     }else{
-      this._noiseBurst(t,.085,.035,180,1700);
-      this._tone(t,175,82,.095,.028,'triangle');
+      this._noiseBurst(t,.15,.038,140,1350);
+      this._tone(t,145,65,.16,.03,'triangle');
     }
+  }
+  powerArmorTransition(entering=true,duration=4.5) {
+    if(!this.unlock())return;
+    const t=this.context.currentTime+.01;
+    const d=Number.isFinite(duration)?Math.max(2.5,Math.min(6,duration)):4.5;
+    // Distributed hydraulic movement and locking clanks over the actual
+    // boarding sequence, not the 1.65-second rifle reload sample.
+    this._tone(t,entering?108:85,48,.65,.065,'sawtooth');
+    this._noiseBurst(t+.12,.36,.06,65,960);
+    this._tone(t+d*.28,135,72,.72,.072,'triangle');
+    this._noiseBurst(t+d*.40,.27,.058,170,1700);
+    this._tone(t+d*.59,205,84,.55,.075,'sawtooth');
+    this._noiseBurst(t+d*.73,.36,.09,75,1200);
+    this._tone(t+d*.89,94,42,.34,.085,'triangle');
   }
   dryFire() {
     if (!this.unlock()) return;
