@@ -54,6 +54,8 @@ export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   const targetAngle=Math.atan2(player.x-enemy.x,player.z-enemy.z);
   // Nearby footsteps remain trackable once combat is underway; this does
   // not grant wall vision, and the initial patrol cone remains unchanged.
+  // Once a target is confirmed, an arm's-reach pursuer cannot defeat the NPC by
+  // circling behind its body. The wall ray stays mandatory.
   const engaged=enemy.mode==='chase'&&enemy.memory>0&&d<=6;
   const cone=engaged?360:tuning.fieldOfViewDegrees;
   if(Math.abs(angleDelta(targetAngle,enemy.yaw))>
@@ -123,10 +125,10 @@ export function resetEnemyBrain(enemy){
 function blockedAt(x,z,obstacles,radius){
   return obstacles.some(b=>insideBox(x,z,b,radius));
 }
-function moveToward(enemy,goal,speed,dt,obstacles,area,tuning){
+function moveToward(enemy,goal,speed,dt,obstacles,area,tuning,faceMovement=true){
   const dx=goal.x-enemy.x,dz=goal.z-enemy.z,dist=Math.hypot(dx,dz);
   if(dist<.0001){enemy.moving=false;enemy.currentSpeed=0;return;}
-  facePoint(enemy,goal,dt);
+  if(faceMovement)facePoint(enemy,goal,dt);
   // Smooth acceleration prevents sprint-speed starts from a dead stop.
   enemy.currentSpeed=Math.min(Math.max(.15,speed),
     (enemy.currentSpeed||0)+6.8*dt);
@@ -159,7 +161,7 @@ function routeBlockers(start,goal,obstacles,padding=6){
   return obstacles.filter(b=>b.maxX>=minX&&b.minX<=maxX&&
     b.maxZ>=minZ&&b.minZ<=maxZ);
 }
-function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
+function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning,faceMovement=true){
   // One stable route for the active tactical goal; choosing a new corner every
   // frame made cover seekers walk into crates or repeatedly reverse direction.
   const changed=!enemy.routeGoal||
@@ -173,7 +175,7 @@ function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning){
     distance(enemy.x,enemy.z,enemy.route[0].x,enemy.route[0].z)<.37)
     enemy.route.shift();
   const point=enemy.route[0]||goal;
-  moveToward(enemy,point,speed,dt,obstacles,area,tuning);
+  moveToward(enemy,point,speed,dt,obstacles,area,tuning,faceMovement);
   if(!enemy.moving&&distance(enemy.x,enemy.z,point.x,point.z)>.48){
     enemy.routeFail+=dt;
     if(enemy.routeFail>.5){
@@ -257,7 +259,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
     navigateAroundCover(enemy,options.combatGoal,
       Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
-      step,obstacles,area,AI_TUNING);
+      step,obstacles,area,AI_TUNING,!options.combatFacePlayer);
     if(options.combatFacePlayer){
       facePoint(enemy,knownTarget,step);
     }

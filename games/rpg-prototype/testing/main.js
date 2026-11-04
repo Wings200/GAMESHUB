@@ -10,13 +10,13 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, HEAVY_SNIPER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.43';
+  shotSpreadDegrees } from '../weapons.mjs?v=W20.44';
 import {createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
-  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.43';
-import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.43';
+  countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.44';
+import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.44';
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
-  compatibleOptics } from '../weapon-sights.mjs?v=W20.43';
-import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.43';
+  compatibleOptics } from '../weapon-sights.mjs?v=W20.44';
+import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.44';
 import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
   removePowerPlate,repairPowerPlate,damagePowerPlate,
@@ -25,8 +25,8 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.43';
-import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.43';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.44';
+import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
 import {createPipeRifle} from '../pipe-rifle.mjs?v=W20.25';
@@ -38,18 +38,18 @@ import {pumpCyclePose,pumpPelletDamage,PUMP_ACTION_TUNING} from '../pump-action-
 import {createHuntingRifle} from '../hunting-rifle.mjs?v=W20.31';
 import {createWornRevolver} from '../worn-revolver.mjs?v=W20.33';
 import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
-import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.43';
-import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.43';
+import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.44';
+import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.44';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot,
-  resetEnemyBrain, hasSight } from '../enemy-ai.mjs?v=W20.39';
+  resetEnemyBrain, hasSight } from '../enemy-ai.mjs?v=W20.44';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.43';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.44';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover} from '../enemy-squad.mjs';
@@ -62,7 +62,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.43';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.44';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -2249,6 +2249,7 @@ function updateEnemies(dt,elapsed=dt){
       tickEnemyTactics(enemy.tactics,enemy.brain,tacticalTarget,dt,aiObstacles,
         {enabled:simulating&&playerHealth.alive,
           targetVisible:directlyVisible,lostContactOrder,
+          area:AI_TUNING.navigationArea,
           lowHealth:enemy.state.health<35,
           occupiedCover:occupiedSquadCover(roster,enemy.id),
           separation:squadSeparation(enemy.brain,roster)});
@@ -2259,7 +2260,7 @@ function updateEnemies(dt,elapsed=dt){
           targetVisible:directlyVisible,area:AI_TUNING.navigationArea,
           lostContactOrder,combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
-            tactic.phase==='suppress-long',
+            tactic.phase==='stand-fight'||tactic.phase==='suppress-long',
           combatCoverCommitted:tactic.coverCommit>0&&
             ['cover','reload','hold','peek','peek-move'].includes(tactic.phase),
           neighbors:roster.filter(other=>other.id!==enemy.id&&
@@ -2331,8 +2332,8 @@ function updateEnemies(dt,elapsed=dt){
         // a clear trajectory; mags, reloads and accuracy are authoritative.
         if(enemy.brain.aimLockSeconds>=
             ENEMY_PROFILES[enemy.tactics.kind].reactionSeconds&&
-          canEnemyFire(enemy.brain,player,bounds,attack.range)&&
-          !['cover','hold','peek-move','reload'].includes(enemy.tactics.phase)){
+          directlyVisible&&canEnemyFire(enemy.brain,player,bounds,attack.range)&&
+          !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0){
           const shot=attemptEnemyShot(enemy.tactics,
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
             enemy.brain.moving,Math.random);
@@ -2411,6 +2412,7 @@ function updateEnemies(dt,elapsed=dt){
         enemy.tactics.phase==='suppress-long'?'LONG-RANGE SUPPRESSION':
         enemy.tactics.phase==='suppress'?'SUPPRESSING':
         enemy.tactics.phase==='strafe'?'STRAFE':
+        enemy.tactics.phase==='stand-fight'?'STANDING AND FIRING':
         enemy.brain.mode.toUpperCase();
     refreshEnemyLabel(enemy,mode);
     enemy.billboard.mesh.position.set(enemy.brain.x,

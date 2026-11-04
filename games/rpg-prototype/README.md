@@ -1,3 +1,13 @@
+## W20.44 — Combat-decision AI, cover fire, and facing correction
+
+- Replaced the Raider's automatic hide-after-1.5-seconds behavior with a local utility-based combat decision: fight or strafe when a player closes, choose cover primarily under sustained ranged exposure/suppression or while reloading, then abandon stale cover with a cooldown. Pathfinding now serves a combat goal instead of selecting the goal itself.
+- NPCs are allowed to fire while repositioning or peeking whenever they actually have a clear sightline, are facing the target, have completed reaction time, and are not crouched or reloading. The old blanket firing ban for `cover`/`hold`/`peek-move` is removed.
+- Fixed fighting yaw: route steering no longer turns the body opposite to target-facing every frame. Close engagements choose a stationary `stand-fight` state, rotate, and return fire.
+- Cover peeks must reach an actual clear firing angle (not merely within half a meter of it), last long enough to reacquire and shoot, and cannot run endlessly once the player flanks or rushes.
+- Tactical movement uses the larger navigation area in the browser so chased NPCs stop steering toward an old Station 9-only clamp when combat moves beyond the sandbox.
+- Added deterministic regression tests for close chase, facing during strafe, long-range cover, cooldown/exit, and actual clear-line shots from cover. The game's browser entry points use W20.44 cache busting.
+- **Testing constraint:** The Raider remains the only **armed** NPC (with the existing Pipe Rifle). Scout and Enforcer are intentionally disarmed until their actual gun models are built; they cannot shoot yet. This is browser-local combat decision AI, not a remote language-model service (no frame-by-frame network delay or model API keys).
+
 ## W20.43 — NPC combat frame ReferenceError fix
 
 Fixed `liveNpcGun is not defined` from W20.42: the per-NPC weapon gate is now declared in the surrounding enemy loop, so it is available to aiming, shooting, reloading, death cleanup and the status HUD. The HUD explicitly reports that only the Raider is armed. Added regression coverage checking that the declaration precedes both the alive/dead branches and status read, and bumps the test page/module URLs to W20.43 to clear stale browser module caches. Raider Pipe Rifle trial remains otherwise unchanged.

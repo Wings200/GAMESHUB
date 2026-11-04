@@ -74,7 +74,7 @@ export function makeEnemyTactics(kind){
     phase:'patrol',threat:0,suppression:0,coverPoint:null,coverIndex:-1,
     moveTime:0,strafeSign:kind==='raider'?-1:1,
     goal:null,crouching:false,coverHold:0,coverCommit:0,
-    engagementSeconds:0,
+    engagementSeconds:0,coverAge:0,coverCooldown:0,failedPeeks:0,
     peekPoint:null,peekSeconds:0,peekCooldown:0,holdSeconds:0,
     stuckSeconds:0,stuckEvents:0,lastPosition:null,
     avoidCoverIndex:-1,avoidCoverSeconds:0,
@@ -109,6 +109,7 @@ export function markEnemyThreat(tactics){
   tactics.coverIndex=-1;
   tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
   tactics.moveTime=0;tactics.plannedGoal=null;
+  tactics.coverAge=0;tactics.coverCooldown=0;tactics.failedPeeks=0;
 }
 // A cover position is valid only if a SOLID obstacle lies BETWEEN the
 // player and the planned position, not simply near either combatant.
@@ -228,11 +229,47 @@ function trackStuck(tactics,brain,step){
     tactics.moveTime=0;tactics.plannedGoal=null;tactics.stuckSeconds=0;
   }
 }
+// Browser-side combat decision AI. Navigation proposes a safe path only AFTER
+// this utility evaluation decides whether fighting or cover is worthwhile.
+// No pathfinder can force an alert combatant to hide instead of returning fire.
+export function decideEnemyCombat(tactics,brain,player,options={}){
+  const visible=options.visible!==false;
+  const d=distance(brain,player);
+  const reloading=tactics.reloadRemaining>0;
+  const close=visible&&d<(tactics.kind==='scout'?5.5:8.5);
+  if(!visible)return {
+    intent:options.committedCover&&tactics.coverAge<6.2?'cover':'search',
+    reason:options.committedCover?'finish short cover retreat':'search last confirmed contact'
+  };
+  // Explicit competing utility scores make the rationale inspectable and
+  // keep role-specific distances, threat and cover time from becoming a loop.
+  const exposureAfter=tactics.kind==='enforcer'?1.3:
+    tactics.kind==='raider'?2.1:5.0;
+  const prolonged=tactics.kind!=='scout'&&
+    tactics.engagementSeconds>=exposureAfter&&d>=10;
+  const pressured=tactics.threat>0||tactics.suppression>.25;
+  const coverScore=(reloading?20:0)+(options.lowHealth&&d>=8.5?8:0)+
+    (pressured&&d>=8.5?9:0)+(prolonged?10:0)+
+    (tactics.coverPoint?12:0)-(tactics.coverCooldown>0&&!reloading?16:0)-
+    (tactics.coverAge>=6.2&&!reloading?40:0)-(close&&!reloading?24:0);
+  const attackScore=5+(close?9:0)+(d<14?2:0);
+  return coverScore>attackScore?{
+    intent:'cover',reason:reloading?'reload behind cover':
+      pressured?'under fire: take cover then return fire':
+      'exposed at range: take cover then peek'
+  }:{
+    intent:'attack',reason:close?'player pushed close: stand and shoot':
+      tactics.coverAge>=6.2?'leave stale cover to regain firing angle':
+      'fire and reposition from open sightline'
+  };
+}
+
 export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}){
   const enabled=options.enabled!==false&&brain.active;
   const step=clamp(Number.isFinite(dt)?dt:0,0,AI_TUNING.maxDelta);
   if(!enabled||step<=0)return tactics;
   const spec=ENEMY_PROFILES[tactics.kind];
+  const combatArea=options.area||AI_TUNING.area;
   // Reload capacity follows the ACTUAL equipped firearm, not the obsolete
   // generic role magazine (9/12/18). Otherwise a 48-round LMG reloads to 18.
   const gun=weaponForTactics(tactics);
@@ -240,6 +277,8 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   // Preserve sub-frame time debt so fast guns really fire at their own RPM.
   tactics.cooldown=Math.max(-.05,tactics.cooldown-step);
   tactics.peekCooldown=Math.max(0,tactics.peekCooldown-step);
+  tactics.coverCooldown=Math.max(0,tactics.coverCooldown-step);
+  if(tactics.coverPoint)tactics.coverAge+=step;
   tactics.avoidCoverSeconds=Math.max(0,tactics.avoidCoverSeconds-step);
   if(tactics.avoidCoverSeconds===0)tactics.avoidCoverIndex=-1;
   const memory=brain.mode==='chase'||brain.mode==='investigate'||brain.memory>0;
@@ -262,6 +301,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     tactics.phase='patrol';tactics.coverPoint=null;tactics.coverIndex=-1;
     tactics.crouching=false;tactics.holdSeconds=0;tactics.peekPoint=null;
     tactics.coverCommit=0;tactics.engagementSeconds=0;
+    tactics.coverAge=0;tactics.failedPeeks=0;
     tactics.plannedGoal=null;tactics.decisionReason='patrol';
     return tactics;
   }
@@ -269,9 +309,12 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   // retreat using the LAST KNOWN position, even if the crate blocks sight.
   // The commitment expires; a guard won't crouch forever at a vanished foe.
   const committedCover=!visible&&tactics.coverCommit>0&&
-    tactics.coverPoint&&brain.lastSeen&&
+    tactics.coverAge<6.2&&tactics.coverPoint&&brain.lastSeen&&
     ['cover','reload','hold','peek','peek-move'].includes(tactics.phase);
   if(!visible&&!committedCover){
+    // Once a defensive hold expires, search instead of instantly booking
+    // the same crate again when the player briefly reappears.
+    if(tactics.coverPoint)tactics.coverCooldown=Math.max(tactics.coverCooldown,5);
     const order=options.lostContactOrder;
     tactics.phase=order?.type==='watch'?'guard-angle':
       order?.type==='flank'?'flank-search':
@@ -280,6 +323,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     tactics.crouching=false;tactics.coverPoint=null;tactics.coverIndex=-1;
     tactics.coverCommit=0;
     tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
+    tactics.coverAge=0;tactics.failedPeeks=0;
     tactics.plannedGoal=null;tactics.moveTime=0;
     tactics.pace=order?.type==='flank'?1.1:
       order?.type==='watch'?0:order?.type==='support'?.7:
@@ -290,14 +334,11 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       'checking last known location; target unconfirmed';
     return tactics;
   }
-  // Raiders and enforcers also choose cover after staying exposed under
-  // observation; scouts prefer mobility unless actually threatened.
-  const exposedForLong=tactics.kind!=='scout'&&visible&&
-    brain.mode==='chase'&&tactics.engagementSeconds>
-      (tactics.kind==='enforcer'?1.1:1.55)&&distance(brain,player)<19;
-  const defensive=committedCover||exposedForLong||tactics.threat>0||
-    tactics.reloadRemaining>0||(brain.mode==='chase'&&options.lowHealth===true);
+  const decision=decideEnemyCombat(tactics,brain,player,{
+    visible,committedCover,lowHealth:options.lowHealth});
+  const defensive=decision.intent==='cover';
   tactics.crouching=false;
+  tactics.decisionReason=decision.reason;
   if(defensive){
     const selected=tactics.coverIndex>=0?obstacles[tactics.coverIndex]:null;
     if(tactics.coverPoint&&!isBehindCover(player,tactics.coverPoint,selected)){
@@ -306,11 +347,11 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       tactics.holdSeconds=0;
     }
     if(!tactics.coverPoint){
-      const cover=pickCoverPoint(brain,player,obstacles,AI_TUNING.area,
+      const cover=pickCoverPoint(brain,player,obstacles,combatArea,
         options.occupiedCover||[],tactics.avoidCoverIndex);
       tactics.coverPoint=cover?.point||null;
       tactics.coverIndex=cover?.index??-1;
-      if(cover)tactics.coverCommit=3.8;
+      if(cover){tactics.coverCommit=3.8;tactics.coverAge=0;tactics.failedPeeks=0;}
     }
     if(tactics.coverPoint){
       const d=distance(brain,tactics.coverPoint);
@@ -319,21 +360,26 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       if(sheltered&&!tactics.peekPoint)tactics.holdSeconds+=step;
       // Briefly step around the crate, take a shot if sight is clear, then
       // return and crouch. Never shoot while hidden behind solid cover.
-      if(sheltered&&tactics.holdSeconds>=.95&&
+      if(sheltered&&tactics.holdSeconds>=.85&&
         tactics.peekCooldown===0&&tactics.reloadRemaining===0){
         tactics.peekPoint=pickPeekPoint(tactics.coverPoint,player,
-          obstacles,tactics.coverIndex);
+          obstacles,tactics.coverIndex,combatArea);
         if(tactics.peekPoint){
-          tactics.peekSeconds=.95;
-          tactics.peekCooldown=2.65;
-        }else tactics.peekCooldown=1.2;
+          tactics.peekSeconds=1.45;
+          tactics.peekCooldown=1.65;
+          tactics.failedPeeks=0;
+        }else{
+          tactics.failedPeeks++;
+          tactics.peekCooldown=.85;
+          if(tactics.failedPeeks>=2)tactics.coverAge=6.2;
+        }
         tactics.holdSeconds=0;
       }
       if(tactics.peekPoint){
         const peekDistance=distance(brain,tactics.peekPoint);
         const clearShot=!obstacles.some(box=>
           lineIntersectsBox(brain,player,box,.035));
-        if(peekDistance<.55){
+        if(peekDistance<.24&&clearShot){
           tactics.peekSeconds=Math.max(0,tactics.peekSeconds-step);
           tactics.goal=null;tactics.pace=0;
           tactics.decisionReason='peek from cover';
@@ -355,12 +401,16 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
       tactics.crouching=shielded;
       tactics.goal=shielded?null:tactics.coverPoint;
       tactics.pace=shielded?0:1.25;
-      tactics.decisionReason=shielded?'protected and holding':
-        tactics.reloadRemaining>0?'retreat while reloading':'sprinting to real cover';
+      tactics.decisionReason=shielded?'protected: preparing to peek and fire':
+        tactics.reloadRemaining>0?'retreat while reloading':'move to ranged firing cover';
       tactics.phase=shielded?'hold':tactics.reloadRemaining>0?'reload':'cover';
       return tactics;
     }
   }else{
+    if(tactics.coverPoint){
+      tactics.coverCooldown=Math.max(tactics.coverCooldown,6.5);
+      tactics.coverAge=0;tactics.failedPeeks=0;
+    }
     tactics.coverPoint=null;tactics.coverIndex=-1;tactics.coverCommit=0;
     tactics.peekPoint=null;tactics.holdSeconds=0;
   }
@@ -378,6 +428,13 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     }
     const dx=(brain.x-player.x)/Math.max(d,.001);
     const dz=(brain.z-player.z)/Math.max(d,.001);
+    // In close quarters stop endless circling: hold your ground and shoot.
+    // A real path is useful only when there is room for a flank.
+    if(d<=(tactics.kind==='scout'?5.5:8.5)){
+      tactics.phase='stand-fight';tactics.goal=null;tactics.pace=0;
+      tactics.decisionReason='close enemy contact: face and engage';
+      return tactics;
+    }
     if(d<16&&d>2.4){
       const role=spec.role;
       // Re-evaluate actual free angles only when the planned move finishes
@@ -390,9 +447,9 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
         const choices=[tactics.strafeSign,-tactics.strafeSign].map(side=>{
           const goal={
             x:clamp(brain.x+dz*lateral*side+dx*approach+separation.x*1.8,
-              AI_TUNING.area.minX+.4,AI_TUNING.area.maxX-.4),
+              combatArea.minX+.4,combatArea.maxX-.4),
             z:clamp(brain.z-dx*lateral*side+dz*approach+separation.z*1.8,
-              AI_TUNING.area.minZ+.4,AI_TUNING.area.maxZ-.4)
+              combatArea.minZ+.4,combatArea.maxZ-.4)
           };
           const blocked=obstacles.some(box=>inside(goal,box,AI_TUNING.collisionRadius+.1));
           const occludedRoute=obstacles.some(box=>
@@ -422,7 +479,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     }
   }
   tactics.phase='pursue';tactics.pace=spec.role==='flanker'?1.18:.92;
-  tactics.decisionReason='investigate last known contact';
+  tactics.decisionReason='closing toward confirmed target to attack';
   return tactics;
 }
 

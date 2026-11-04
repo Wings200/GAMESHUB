@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AI_TUNING,createEnemyBrain,stepEnemyBrain,lineIntersectsBox} from './enemy-ai.mjs';
+import {AI_TUNING,createEnemyBrain,stepEnemyBrain,lineIntersectsBox,hasSight} from './enemy-ai.mjs';
+import {canEnemyFire,isEnemyAimAligned} from './player-combat.mjs';
 import {squadSeparation,occupiedSquadCover} from './enemy-squad.mjs';
 import {ENEMY_PROFILES,makeEnemyTactics,resetEnemyTactics,markEnemyThreat,
   pickCoverPoint,isBehindCover,pickPeekPoint,routeAroundCrates,tickEnemyTactics,beginReload,
@@ -480,4 +481,89 @@ test('W20.39 three-actor arena keeps independent flanks, cover and collision',()
   }
   assert.ok(flank>50&&crouch>30&&peek>5&&movement>100);
   assert.ok(coverSlots.size>=2,'raider and enforcer take separate shelter');
+});
+
+test('W20.44 close combat is a standing firefight, not perpetual retreat to a crate',()=>{
+  const b=brain(),t=makeEnemyTactics('raider');
+  const close={x:47,z:43},crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  markEnemyThreat(t);
+  b.yaw=-Math.PI/2; // enemy initially faces AWAY from a flanking player
+  for(let i=0;i<40;i++){
+    const visible=hasSight(b,close,[crate]);
+    tickEnemyTactics(t,b,close,.05,[crate],{targetVisible:visible});
+    stepEnemyBrain(b,close,.05,[crate],{
+      targetVisible:visible,combatHold:t.phase==='stand-fight',
+      combatGoal:t.goal,combatFacePlayer:true
+    });
+    assert.equal(t.phase,'stand-fight','being rushed must override cover-seeking');
+    assert.equal(t.coverPoint,null);
+  }
+  assert.equal(b.moving,false,'guard plants feet instead of running in circles');
+  assert.ok(isEnemyAimAligned(b,close));
+  assert.ok(canEnemyFire(b,close,[crate],76),
+    'guard must face and be able to shoot at nearby pursuer');
+  assert.ok(b.aimLockSeconds>=.4);
+});
+test('W20.44 combat path can move sideways while continuously turning to player',()=>{
+  const b=brain(),target={x:36,z:43};
+  b.yaw=Math.PI/2;
+  const start={x:b.x,z:b.z};
+  for(let i=0;i<40;i++)
+    stepEnemyBrain(b,target,.05,[],{
+      targetVisible:true,combatGoal:{x:46,z:47},combatFacePlayer:true,
+      combatSpeed:2.5,area:AI_TUNING.navigationArea
+    });
+  assert.ok(Math.hypot(b.x-start.x,b.z-start.z)>1,
+    'enemy should really strafe, not stand in place');
+  assert.ok(isEnemyAimAligned(b,target),
+    'movement steering must not cancel the turn toward the player');
+});
+test('W20.44 ranged exposure requests cover but the NPC later abandons stale shelter',()=>{
+  const b=brain(),t=makeEnemyTactics('raider');
+  const far={x:25,z:40};
+  for(let i=0;i<30;i++)tickEnemyTactics(t,b,far,.05,[box]);
+  assert.equal(t.coverPoint,null,'do not open a fight by immediately fleeing');
+  for(let i=0;i<20;i++)tickEnemyTactics(t,b,far,.05,[box]);
+  assert.ok(t.coverPoint,'raider seeks cover after sustained distant exposure');
+  t.coverAge=6.3;
+  tickEnemyTactics(t,b,far,.05,[box]);
+  assert.equal(t.coverPoint,null,'stale cover must be released');
+  assert.ok(t.coverCooldown>6,'cooldown prevents immediate cover loops');
+  for(let i=0;i<15;i++)tickEnemyTactics(t,b,far,.05,[box]);
+  assert.equal(t.coverPoint,null);
+});
+test('W20.44 NPC actually fires from a real peek angle and not through a crate',()=>{
+  const crate={minX:40,maxX:42,minZ:39,maxZ:41,height:1.45};
+  const target={x:30,z:40},b=brain(),t=makeEnemyTactics('raider');
+  b.memory=24;b.lastSeen={...target};equipEnemyWeapon(t,'pipe-rifle');
+  markEnemyThreat(t);
+  let peekShots=0,coverShots=0,throughWall=0;
+  for(let frame=0;frame<240;frame++){
+    const visible=hasSight(b,target,[crate]);
+    tickEnemyTactics(t,b,visible?target:b.lastSeen,.05,[crate],
+      {targetVisible:visible});
+    stepEnemyBrain(b,target,.05,[crate],{
+      targetVisible:visible,area:AI_TUNING.navigationArea,
+      combatGoal:t.goal,
+      combatHold:['hold','peek','stand-fight'].includes(t.phase),
+      combatCoverCommitted:t.coverCommit>0&&
+        ['cover','reload','hold','peek','peek-move'].includes(t.phase),
+      combatFacePlayer:true,combatSpeed:2.5*t.pace
+    });
+    const fireAllowed=visible&&b.aimLockSeconds>=.4&&
+      !t.crouching&&t.reloadRemaining===0&&
+      canEnemyFire(b,target,[crate],76);
+    if(fireAllowed){
+      const shot=attemptEnemyShot(t,Math.hypot(b.x-target.x,b.z-target.z),
+        b.moving,()=>.5);
+      if(shot.fired){
+        if(['peek','peek-move'].includes(t.phase))peekShots++;
+        if(['cover','hold','peek','peek-move'].includes(t.phase))coverShots++;
+        if(crate&&lineIntersectsBox(b,target,crate,.035))throughWall++;
+      }
+    }
+  }
+  assert.ok(peekShots>=1,'a covered guard must emerge and fire, not just hide');
+  assert.ok(coverShots>=peekShots);
+  assert.equal(throughWall,0,'NPC cannot shoot through opaque cover');
 });
