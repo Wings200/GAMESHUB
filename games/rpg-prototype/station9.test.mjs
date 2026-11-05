@@ -180,11 +180,14 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(source,/REBUILT_WEAPON_IDS\.includes\(spec\.id\)/);
   assert.match(source,/function buildArsenalView\(spec\)/);
   assert.match(source,/function selectWeapon\(id\)/);
-  assert.match(source,/function cycleWeapon\(direction\)/);
+  assert.match(source,/function openWeaponsCrate\(\)/);
+  assert.match(page,/id="weaponsCratePanel"/);
+  assert.match(page,/id="weaponsCrateItems"/);
   assert.match(source,/weaponVisuals\.get\(activeWeaponId\)\.root\.visible=false/);
   assert.match(source,/weaponVisuals\.get\(id\)\.root\.visible=true/);
-  assert.match(source,/if\(e\.code==='KeyZ'/);
-  assert.match(source,/if\(e\.code==='KeyX'/);
+  assert.doesNotMatch(source,/function cycleWeapon\(direction\)/);
+  assert.doesNotMatch(source,/if\(e\.code==='KeyZ'/);
+  assert.doesNotMatch(source,/if\(e\.code==='KeyX'/);
   assert.match(source,/getWeaponSpec\(id\)/);
 });
 test('Automatic shooting, shotgun pellet traces and independent reloading use selected weapon',()=>{

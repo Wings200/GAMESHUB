@@ -3481,6 +3481,7 @@ function refreshWeaponsCrateUI(){
     const id=REBUILT_WEAPON_IDS[i];
     const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack),state=arsenalStates[id];
     const row=document.createElement('article');row.className='weapon-crate-entry';
+    row.dataset.weaponId=id;
     if(id===activeWeaponId)row.classList.add('selected');
     const number=document.createElement('span');number.className='weapon-crate-index';
     number.textContent=String(i+1).padStart(2,'0');
@@ -5117,6 +5118,16 @@ $('enterVendors').addEventListener('click',()=>{
   resetPlayer(0);
   player.x=-25;player.z=12.2;player.jump=0;player.vertical=0;
   resetMotion(player);
+  camera.rotation.set(0,0,0);
+  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
+  sound.unlock();
+  controls.lock();
+});
+$('enterWeaponsCrate').addEventListener('click',()=>{
+  // Drop the player IN FRONT of the physical crate, not inside its collision.
+  resetPlayer(6);
+  player.x=weaponCrate.x;player.z=weaponCrate.z+1.62;
+  player.jump=0;player.vertical=0;resetMotion(player);
   camera.rotation.set(0,0,0);
   camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
   sound.unlock();

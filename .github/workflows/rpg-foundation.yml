@@ -30,6 +30,7 @@ jobs:
           node --check games/rpg-prototype/materials.mjs
           node --check games/rpg-prototype/weapon-mods.mjs
           node --check games/rpg-prototype/weapon-mod-visual.mjs
+          node --check games/rpg-prototype/weapons-crate-ui-smoke.mjs
           node --check games/rpg-prototype/inventory.mjs
           node --check games/rpg-prototype/balance-schema.mjs
           node --check games/rpg-prototype/game-balance.mjs
@@ -143,6 +144,8 @@ jobs:
         run: node games/rpg-prototype/inventory-ui-smoke.mjs
       - name: Test real weapon mod workbench in the 3D browser
         run: node games/rpg-prototype/weapon-mod-ui-smoke.mjs
+      - name: Verify physical weapon crate and no X/Z switching
+        run: node games/rpg-prototype/weapons-crate-ui-smoke.mjs
       - name: Keep inventory screenshots for developer review
         if: always()
         uses: actions/upload-artifact@v4
@@ -152,6 +155,7 @@ jobs:
             /tmp/rpg-inventory-desktop.png
             /tmp/rpg-inventory-tablet.png
             /tmp/rpg-weapon-bench.png
+            /tmp/rpg-weapon-crate.png
           retention-days: 7
           if-no-files-found: warn
 
