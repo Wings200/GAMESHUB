@@ -46,7 +46,7 @@ try{
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto('http://127.0.0.1:'+port+
-    '/games/rpg-prototype/testing/?station=9&inventory-qa=1',
+    '/games/rpg-prototype/testing/?station=9&smoke=1&inventory-qa=1',
     {waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
     null,{timeout:45000});
