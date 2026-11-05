@@ -52,8 +52,22 @@ try{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const url=origin+'/games/rpg-prototype/testing/?smoke=1&weapon-mods-qa=1';
   await page.goto(url,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>window.__rpgSmokeWeaponMods?.('pipe-smg').magazineSize===30,
-    null,{timeout:60000});
+  try{
+    await page.waitForFunction(()=>typeof window.__rpgSmokeWeaponMods==='function'||
+      document.getElementById('fatal')?.style.display==='block',null,{timeout:45000});
+  }catch(error){
+    const state=await page.evaluate(()=>({smoke:typeof window.__rpgSmokeState,
+      hook:typeof window.__rpgSmokeWeaponMods,
+      fatal:document.getElementById('fatal')?.textContent,
+      menu:document.getElementById('engineStatus')?.textContent}));
+    console.error('WORKBENCH BOOT DIAGNOSTIC',JSON.stringify({state,errors}));
+    throw error;
+  }
+  const initial=await page.evaluate(()=>({
+    spec:window.__rpgSmokeWeaponMods?.('pipe-smg'),
+    fatal:document.getElementById('fatal')?.textContent}));
+  console.log('WORKBENCH INITIAL',JSON.stringify(initial));
+  assert.equal(initial.spec?.magazineSize,30,'Clean SMG starts with 30-round magazine');
   await page.locator('#workbenchOpen').click();
   await page.locator('#workbenchPanel:not(.hidden)').waitFor();
   assert.equal(await page.locator('#benchWeapon option').count(),10);
