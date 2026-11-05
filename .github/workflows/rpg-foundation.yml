@@ -15,6 +15,20 @@ permissions:
   contents: read
 
 jobs:
+  vendor-logic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate map and vendor state rules
+        run: |
+          node --check games/rpg-prototype/vendors.mjs
+          node --check games/rpg-prototype/field-map.mjs
+          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs
+
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 5

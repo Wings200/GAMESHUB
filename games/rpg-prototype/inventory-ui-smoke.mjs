@@ -69,9 +69,26 @@ try{
   await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:5000});
   await page.setViewportSize({width:760,height:700});
   await page.screenshot({path:'/tmp/rpg-inventory-tablet.png'});
-  assert.equal(errors.length,0,'The inventory should not cause browser exceptions: '+
+  // W20.56: Physical shop interaction, one-time test credit, and real trading.
+  await page.keyboard.press('Escape');
+  await page.locator('#inventoryPanel').waitFor({state:'hidden'});
+  await page.locator('#enterVendors').click();
+  await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:7000});
+  await page.keyboard.press('e');
+  await page.locator('#vendorPanel:not(.hidden)').waitFor({timeout:7000});
+  assert.match(await page.locator('#vendorName').textContent(),/BRIGGS · ARMORER/);
+  await page.locator('#vendorCredit').click();
+  assert.match(await page.locator('#vendorCaps').textContent(),/300 CAPS/);
+  await page.locator('#vendorItems .vendor-item button').first().click();
+  assert.match(await page.locator('#vendorFeedback').textContent(),/PURCHASED/);
+  await page.locator('#vendorSellTab').click();
+  await page.locator('#vendorItems .vendor-item button').first().click();
+  assert.match(await page.locator('#vendorFeedback').textContent(),/SOLD/);
+  await page.keyboard.press('Escape');
+  await page.locator('#vendorPanel').waitFor({state:'hidden'});
+  assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
     errors.join(' | '));
-  console.log('INVENTORY_UI_QA_PASS: six armor zones, categories, close/reopen, screenshots');
+  console.log('INVENTORY_VENDOR_UI_QA_PASS: inventory, vendor credit, buying, selling');
 }finally{
   await browser?.close();
   await new Promise(done=>server.close(done));

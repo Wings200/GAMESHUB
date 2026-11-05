@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
+import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
+  buyFromVendor,sellToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.56';
 import {createFieldMap} from '../field-map.mjs?v=W20.55';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
@@ -46,7 +48,6 @@ import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechan
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
-import {createRemotePlayerVisual} from '../remote-avatar.mjs';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
   resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.50';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
@@ -371,6 +372,50 @@ for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
 // Beyond the solid perimeter: original shacks, wrecks, aerials, water towers,
 // skyline, patinated ground, flags and atmospheric dust.
 const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:!reducedRenderer});
+
+// W20.56: Small, deliberately ordered merchant row in the central clearing.
+// These are living traders, not the abandoned mannequin display props.
+const vendorActors=[];
+function createVendorSign(vendor){
+  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=128;
+  const c=canvas.getContext('2d');
+  c.fillStyle='#10231f';c.fillRect(0,0,640,128);
+  c.strokeStyle='#'+vendor.color.toString(16).padStart(6,'0');
+  c.lineWidth=8;c.strokeRect(5,5,630,118);
+  c.textAlign='center';c.textBaseline='middle';
+  c.fillStyle='#f2ead7';c.font='bold 46px system-ui';
+  c.fillText(vendor.title,320,65,580);
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.35,.86),
+    new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));
+  sign.position.set(vendor.x,2.35,vendor.z+.15);scene.add(sign);
+}
+for(const vendor of VENDORS){
+  const accent=mat(vendor.color,.78);
+  const metal=mat(0x364743,.55);
+  const wood=mat(0x5a4c3e,.90);
+  // A waist-high counter and connected roof make each merchant readable as
+  // a real place while leaving the walkway in front completely clear.
+  box(vendor.x,.57,vendor.z-.42,3.70,1.14,.78,wood);
+  box(vendor.x,1.16,vendor.z-.43,4.08,.12,1.00,metal);
+  box(vendor.x,2.72,vendor.z-1.4,4.84,.17,2.52,accent);
+  for(const side of [-1,1]){
+    box(vendor.x+side*2.22,1.40,vendor.z-2.46,.14,2.65,.14,metal);
+    box(vendor.x+side*2.22,1.40,vendor.z-.37,.14,2.65,.14,metal);
+  }
+  box(vendor.x,1.00,vendor.z-2.61,4.55,1.96,.13,metal);
+  const avatar=createPlayerAvatar(scene,{
+    variant:vendor.id==='armor'?'enforcer':'survivor',
+    heldWeaponEnabled:false});
+  const actor={vendor,avatar,x:vendor.x,z:vendor.z-1.49,yaw:Math.PI};
+  avatar.update({dt:.016,x:actor.x,z:actor.z,ground:0,
+    yaw:actor.yaw,speed:0,alive:true});
+  vendorActors.push(actor);
+  createVendorSign(vendor);
+  bounds.push({minX:vendor.x-1.9,maxX:vendor.x+1.9,
+    minZ:vendor.z-.83,maxZ:vendor.z-.03,height:1.2});
+}
+
 
 // W18.0 story contacts: physical, discoverable terminals and faction beacons.
 // They're prototypes for future settlement NPCs, not invisible quest buttons.
@@ -1501,29 +1546,8 @@ const enemySpecs=[
   {id:'enforcer',label:'ENFORCER',x:46,z:36.8,
     color:0x4d6075,patrol:[{x:46,z:36.8},{x:51,z:37}]}
 ];
-// Unmissable station-9 locator: visible from the teleport spawn even if
-// individual low-poly characters are hidden by a browser graphics issue.
-const locatorCanvas=document.createElement('canvas');
-locatorCanvas.width=768;locatorCanvas.height=160;
-const locatorCtx=locatorCanvas.getContext('2d');
-const locatorTex=new THREE.CanvasTexture(locatorCanvas);
-locatorTex.colorSpace=THREE.SRGBColorSpace;
-const locator=new THREE.Sprite(new THREE.SpriteMaterial({
-  map:locatorTex,transparent:true,depthTest:true,depthWrite:false}));
-locator.position.set(39,4.2,42);
-locator.scale.set(6.1,1.28,1);
-scene.add(locator);
-function updateArenaSign(){
-  const alive=[...enemies.values()].filter(e=>e.state.alive).length;
-  locatorCtx.clearRect(0,0,locatorCanvas.width,locatorCanvas.height);
-  locatorCtx.fillStyle='rgba(22,31,37,.92)';
-  locatorCtx.fillRect(0,0,768,160);
-  locatorCtx.strokeStyle='#ffa65f';locatorCtx.lineWidth=9;
-  locatorCtx.strokeRect(4,4,760,152);
-  locatorCtx.font='bold 58px system-ui';locatorCtx.fillStyle='#ffdb93';
-  locatorCtx.fillText('RAIDERS ALIVE · '+alive+' / '+enemies.size,27,99);
-  locatorTex.needsUpdate=true;
-}
+// W20.56: Removed the obsolete floating Raider-status billboard.
+// The HUD and map show test location and enemy count without world-space clutter.
 // The old permanent orange spawn pads stayed behind after a kill.
 // Each living enemy now owns its own ground marker, which disappears on death.
 function enemyMaterial(color,metallic=false){
@@ -1670,7 +1694,6 @@ function refreshEnemyArmorVisuals(enemy){
 }
 let arenaRound=-1;
 enemySpecs.forEach(createEnemy);
-updateArenaSign();
 $('engineStatus').textContent='ENGINE READY · '+enemies.size+' RAIDERS LOADED';
 $('engineStatus').style.color='#abddb2';
 function resetEnemies(){
@@ -1708,7 +1731,6 @@ function resetEnemies(){
     enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
     }
-  updateArenaSign();
   $('damageReport').textContent='AI BOTS RESET · NEW MIXED ARMOR LOADOUTS';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
@@ -1820,7 +1842,6 @@ function markEnemyDefeated(enemy){
     recordCampaignObjective('haven-defense');
   }
   awardSpecialExperience(({scout:45,raider:70,enforcer:105})[enemy.id]||45,'combat');
-  updateArenaSign();
 }
 function discardEmptyLootBags(){
   for(const [id,bag] of lootBags){
@@ -2124,6 +2145,128 @@ $('lootTakeAll').addEventListener('click',()=>{
 });
 
 
+// W20.56: Real test-field vendor transactions using the saved campaign wallet.
+let vendorOpen=false,vendorFromField=false,activeVendorId=null,vendorTab='buy';
+let vendorTestCreditClaimed=false;
+try{vendorTestCreditClaimed=localStorage.getItem('rpg-lab-vendor-credit-v1')==='claimed';}catch{}
+function nearestVendor(){
+  let nearest=null,distance=3.65;
+  for(const vendor of VENDORS){
+    const d=Math.hypot(player.x-vendor.x,player.z-vendor.z);
+    if(d<distance){distance=d;nearest=vendor;}
+  }
+  return nearest;
+}
+function showVendorFeedback(message){
+  $('vendorFeedback').textContent=message;
+}
+function refreshVendorUI(){
+  const vendor=vendorById(activeVendorId);
+  if(!vendor)return;
+  $('vendorName').textContent=vendor.name+' · '+vendor.title;
+  $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
+  $('vendorCaps').textContent=campaignState.caps+' CAPS';
+  $('vendorBuyTab').classList.toggle('active',vendorTab==='buy');
+  $('vendorSellTab').classList.toggle('active',vendorTab==='sell');
+  $('vendorBuyTab').setAttribute('aria-pressed',String(vendorTab==='buy'));
+  $('vendorSellTab').setAttribute('aria-pressed',String(vendorTab==='sell'));
+  $('vendorCredit').disabled=vendorTestCreditClaimed;
+  $('vendorCredit').textContent=vendorTestCreditClaimed?
+    'TEST CREDIT CLAIMED':'CLAIM 300 TEST CAPS · ONCE';
+  const list=$('vendorItems');list.replaceChildren();
+  function row(itemId,quantity,action,price,disabled=false,subtext=''){
+    const item=getItem(itemId),entry=document.createElement('div');
+    entry.className='vendor-item';
+    const details=document.createElement('div');
+    const label=document.createElement('strong');label.textContent=item.name;
+    const meta=document.createElement('small');
+    meta.textContent=RARITIES[item.rarity].label+' · '+subtext;
+    details.append(label,meta);
+    const button=document.createElement('button');button.type='button';
+    button.textContent=action+' · '+price+' CAPS';
+    button.disabled=disabled;
+    entry.append(details,button);list.append(entry);
+    return button;
+  }
+  if(vendorTab==='buy'){
+    for(const offer of vendor.offers){
+      const price=vendorBuyPrice(offer.itemId,offer.quantity);
+      const button=row(offer.itemId,offer.quantity,'BUY',price,
+        campaignState.caps<price,offer.quantity>1?'×'+offer.quantity:'×1');
+      button.addEventListener('click',()=>{
+        saveBackpack(); // synchronize live reserve ammo before copying state
+        const outcome=buyFromVendor(backpack,campaignState.caps,vendor.id,offer.itemId);
+        completeVendorTrade(outcome,'PURCHASED');
+      });
+    }
+  }else{
+    const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId));
+    if(!sellable.length){
+      const empty=document.createElement('p');
+      empty.className='vendor-empty';
+      empty.textContent='NO ITEMS THIS MERCHANT WILL BUY. LOOT OR PURCHASE GEAR FIRST.';
+      list.append(empty);
+    }
+    for(const entry of sellable){
+      const price=vendorSellPrice(entry.itemId,1);
+      const button=row(entry.itemId,1,'SELL 1',price,false,'OWNED ×'+entry.quantity);
+      button.addEventListener('click',()=>{
+        saveBackpack();
+        const outcome=sellToVendor(backpack,campaignState.caps,vendor.id,entry.uid,1);
+        completeVendorTrade(outcome,'SOLD');
+      });
+    }
+  }
+}
+function completeVendorTrade(result,verb){
+  if(!result.ok){
+    const reasons={
+      'insufficient-caps':'NOT ENOUGH CAPS',
+      'full-backpack':'BACKPACK FULL · DROP SOMETHING FIRST',
+      'equipped':'EQUIPPED ITEM · UNEQUIP IN INVENTORY BEFORE SELLING',
+      'wrong-merchant':'THIS MERCHANT DOES NOT BUY THAT ITEM',
+      'wallet-full':'WALLET CANNOT HOLD MORE CAPS',
+      'not-owned':'ITEM NO LONGER IN INVENTORY'};
+    showVendorFeedback(reasons[result.reason]||'TRADE UNAVAILABLE');
+    return;
+  }
+  backpack=result.pack;campaignState.caps=result.caps;
+  syncAmmoToWeapons();saveBackpack();saveCampaign();
+  refreshInventoryUI();refreshWeaponHUD();refreshCampaignUI();
+  refreshVendorUI();
+  showVendorFeedback(verb+' · '+getItem(result.itemId).name.toUpperCase()+
+    ' ×'+result.quantity+' · '+result.price+' CAPS');
+}
+function openVendor(vendor){
+  if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||
+    powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
+  saveBackpack();
+  activeVendorId=vendor.id;vendorTab='buy';
+  vendorFromField=controls.isLocked;
+  vendorOpen=true;
+  $('vendorPanel').classList.remove('hidden');$('menu').classList.add('hidden');
+  showVendorFeedback('SELECT BUY OR SELL · PRICES USE REAL ITEM VALUES');
+  refreshVendorUI();
+  if(controls.isLocked)controls.unlock();
+}
+function closeVendor(){
+  if(!vendorOpen)return;
+  vendorOpen=false;activeVendorId=null;
+  $('vendorPanel').classList.add('hidden');
+  if(vendorFromField){vendorFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+$('vendorClose').addEventListener('click',closeVendor);
+$('vendorBuyTab').addEventListener('click',()=>{vendorTab='buy';refreshVendorUI();});
+$('vendorSellTab').addEventListener('click',()=>{vendorTab='sell';refreshVendorUI();});
+$('vendorCredit').addEventListener('click',()=>{
+  const outcome=claimVendorTestCredit(campaignState.caps,vendorTestCreditClaimed);
+  if(!outcome.ok){showVendorFeedback('TEST CREDIT ALREADY CLAIMED OR WALLET FULL');return;}
+  campaignState.caps=outcome.caps;vendorTestCreditClaimed=true;
+  try{localStorage.setItem('rpg-lab-vendor-credit-v1','claimed');}catch{}
+  saveCampaign();refreshCampaignUI();refreshVendorUI();
+  showVendorFeedback('ONE-TIME TEST CREDIT · +300 CAPS');
+});
 function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
 function refreshWorkbenchUI(){
   const weaponId=$('benchWeapon').value;
@@ -3837,16 +3980,7 @@ for(const [id,model] of heldWorldModels){
   heldWorldGrips.set(id,{right,left});
 }
 playerAvatar.root.visible=false;
-// Independent world-space survivor: a two-character visibility and armor
-// preview at Station 8. This is NOT a networked player or a combat hitbox.
-const remotePreview=createRemotePlayerVisual(scene,'station8-preview');
-const remotePreviewArmor={
-  head:'ranger-head',chest:'citadel-chest',
-  leftArm:'scrap-leftArm',rightArm:'militia-rightArm',
-  leftLeg:'ranger-leftLeg',rightLeg:'citadel-rightLeg'
-};
-const remotePreviewPose={x:-57,z:-9,ground:0,yaw:.62,speed:0,alive:true};
-remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},.016);
+// W20.56: Removed obsolete Station 8 second-survivor preview model.
 let thirdPersonEnabled=false,thirdPersonActive=false;
 let labEndurance=specialState.attributes.endurance;
 setEndurance(player,labEndurance);
@@ -3909,7 +4043,8 @@ const fieldMap=createFieldMap({
   canvas:$('fieldMapCanvas'),
   points:[
     ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
-    ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'}))
+    ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'})),
+    ...VENDORS.map(v=>({id:v.id,label:v.title,x:v.x,z:v.z,type:'contact'}))
   ]
 });
 fieldMap.onUpdate=summary=>{
@@ -3928,7 +4063,7 @@ function showFieldMap(){
 }
 function openFieldMap(){
   if(mapOpen||powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||
-    specialOpen||questPanelOpen||dialogueOpen)return;
+    specialOpen||questPanelOpen||dialogueOpen||vendorOpen)return;
   mapFromField=controls.isLocked;
   showFieldMap();
   if(controls.isLocked)controls.unlock();
@@ -4206,12 +4341,6 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     // waiting for 60 slow software-WebGL animation frames in CI.
     if(weaponState.reloadRemaining>0)weaponState.reloadRemaining=.001;
   };
-  window.__rpgSmokeSetRemotePreviewArmor=(slot,id)=>{
-    if(!Object.prototype.hasOwnProperty.call(remotePreviewArmor,slot))return false;
-    remotePreviewArmor[slot]=id;
-    remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},.016);
-    return true;
-  };
   window.__rpgSmokeSetMagazine=(count)=>{
     weaponState.magazine=Math.max(0,Math.min(activeSpec.magazineSize,
       Math.floor(Number.isFinite(count)?count:0)));
@@ -4312,7 +4441,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     loot:[...lootBags.values()].map(b=>({id:b.id,x:b.x,z:b.z,
       source:b.source,items:b.items.map(i=>({...i}))})),
     lootOpen,inventoryOpen,
-    remotePreview:remotePreview.state,
+    remotePreview:null,
     camera:{x:camera.position.x,y:camera.position.y,z:camera.position.z,
       yaw:camera.rotation.y,pitch:camera.rotation.x},
     playerVisual:{thirdPersonEnabled,thirdPersonActive,
@@ -4675,6 +4804,15 @@ $('enterAI').addEventListener('click',()=>{
   sound.unlock();
   controls.lock();
 });
+$('enterVendors').addEventListener('click',()=>{
+  resetPlayer(0);
+  player.x=-25;player.z=12.2;player.jump=0;player.vertical=0;
+  resetMotion(player);
+  camera.rotation.set(0,0,0);
+  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
+  sound.unlock();
+  controls.lock();
+});
 $('start').addEventListener('click',()=>{
   // The audio engine is unlocked only after the player initiates playback.
   sound.unlock();
@@ -4685,7 +4823,7 @@ controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
   if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen&&
-    !questPanelOpen&&!dialogueOpen&&!mapOpen)$('menu').classList.remove('hidden');
+    !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -4700,6 +4838,8 @@ $('quality').addEventListener('click',()=>{
   refreshCampaignUI();
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
+  if(vendorOpen)return;
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
   if(e.code==='Tab'&&!e.repeat){e.preventDefault();if(mapOpen)closeFieldMap();else if(inventoryOpen)switchInventoryToMap();else openFieldMap();return;}
   if(mapOpen)return;
@@ -4743,6 +4883,8 @@ window.addEventListener('keydown',e=>{
     // This lets suited players loot nearby bodies/crates without exiting.
     const contact=nearCampaignNode();
     if(contact){openCampaignDialogue(contact);return;}
+    const trader=nearestVendor();
+    if(trader){openVendor(trader);return;}
     if(powerArmorState.phase==='idle'&&
        (powerArmorState.occupied||nearPoweredSuit())){
       beginPowerHold();return;
@@ -5245,6 +5387,10 @@ function frame(){
     resident.avatar.update({dt,x:resident.x,z:resident.z,
       ground:groundHeight(resident.x,resident.z),yaw:resident.yaw,speed:0});
   }
+  for(const actor of vendorActors){
+    actor.avatar.update({dt,x:actor.x,z:actor.z,ground:0,
+      yaw:actor.yaw,speed:0,alive:true});
+  }
   updateTargetHealthHud(dt);
   questNavigationClock+=dt;
   if(questNavigationClock>.42){
@@ -5265,16 +5411,19 @@ function frame(){
   // the target enemy body to stay rendered after defeat.
   const nearby=nearestLootBag();
   const questContact=nearCampaignNode();
+  const merchant=nearestVendor();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
-  const promptAvailable=frameInReach||!!questContact||!!nearby;
+  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby;
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
-    questPanelOpen||dialogueOpen||!promptAvailable);
+    questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
   if(questContact){
     $('lootPrompt').textContent='E · '+
       (['dispatch','dominion','foreman'].includes(questContact.id)?'SPEAK WITH ':'USE ')+
       questContact.name+' · Q JOURNAL';
+  }else if(merchant){
+    $('lootPrompt').textContent='E · TRADE WITH '+merchant.name.toUpperCase()+' · '+merchant.title;
   }else if(frameInReach){
     $('lootPrompt').textContent=nearby?
       'TAP E · SEARCH '+nearby.source.toUpperCase()+'     HOLD E · '+
@@ -5393,8 +5542,6 @@ function frame(){
     reloadRounds:weaponState.reloadRounds,
     recoil:Math.min(1,Math.max(muzzleFlash/.085,viewRecoil.modelPitch/.16)),
     hit:Math.min(1,playerHitFlash/.48)});
-  // Remote bodies update independently of local V / ADS / camera mode.
-  remotePreview.sync({...remotePreviewPose,armor:remotePreviewArmor},dt);
   thirdPersonActive=thirdPersonEnabled&&powerArmorState.phase==='idle'&&
     !powerArmorState.occupied&&!weaponState.aiming;
   playerAvatar.root.visible=thirdPersonActive;
