@@ -15,7 +15,7 @@ const server=createServer(async(req,res)=>{
     let pathname=new URL(req.url,'http://localhost').pathname;
     if(pathname.endsWith('/'))pathname+='index.html';
     const file=resolve(root,'.'+pathname);
-    if(!file.startsWith(root+sep)||(await stat(file)).isFile())throw Error('Invalid file');
+    if(!file.startsWith(root+sep)||(await stat(file)).isFile()!==true)throw Error('Invalid file');
     let body=await readFile(file);
     if(pathname.endsWith('/games/rpg-prototype/testing/index.html'))
       body=Buffer.from(body.toString()
