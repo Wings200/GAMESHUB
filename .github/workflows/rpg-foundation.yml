@@ -103,3 +103,26 @@ jobs:
         run: npm install --no-save --no-package-lock playwright-core three@0.180.0
       - name: Capture live rear entry and both powered stair steps
         run: node games/rpg-prototype/browser-visual-probe.mjs
+
+  inventory-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local RPG browser dependencies
+        run: npm install --no-save --no-package-lock playwright-core three@0.180.0
+      - name: Test inventory categories and six-zone armor display
+        run: node games/rpg-prototype/inventory-ui-smoke.mjs
+      - name: Keep inventory screenshots for developer review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpg-inventory-ui
+          path: |
+            /tmp/rpg-inventory-desktop.png
+            /tmp/rpg-inventory-tablet.png
+          retention-days: 7
+          if-no-files-found: warn
