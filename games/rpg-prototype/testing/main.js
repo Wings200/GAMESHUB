@@ -4170,6 +4170,20 @@ for(const [id,model] of heldWorldModels){
   if(positions.holdOffsetZ)model.root.position.z+=positions.holdOffsetZ;
   heldWorldGrips.set(id,{right,left});
 }
+// Non-production query-flagged QA hook; reports true effective rules and meshes,
+// rather than trusting static UI labels for the crafting smoke check.
+if(new URLSearchParams(location.search).get('smoke')==='1'){
+  window.__rpgSmokeWeaponMods=(weaponId)=>{
+    const details=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
+    const first=weaponVisuals.get(weaponId)?.root.getObjectByName('CraftedWeaponParts');
+    const world=heldWorldModels.get(weaponId)?.root.getObjectByName('CraftedWeaponParts');
+    return {damage:details.damage,magazineSize:details.magazineSize,
+      reloadSeconds:details.reloadSeconds,recoilDegrees:details.recoilDegrees,
+      firstParts:first?.children.length??-1,worldParts:world?.children.length??-1,
+      installed:Object.fromEntries(MOD_SLOTS.map(slot=>[slot,
+        selectedWeaponMod(backpack,weaponId,slot)]))};
+  };
+}
 playerAvatar.root.visible=false;
 // W20.56: Removed obsolete Station 8 second-survivor preview model.
 let thirdPersonEnabled=false,thirdPersonActive=false;

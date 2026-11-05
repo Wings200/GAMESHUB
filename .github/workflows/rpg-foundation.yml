@@ -141,6 +141,8 @@ jobs:
         run: npm install --no-save --no-package-lock playwright-core three@0.180.0
       - name: Test inventory categories and six-zone armor display
         run: node games/rpg-prototype/inventory-ui-smoke.mjs
+      - name: Test real weapon mod workbench in the 3D browser
+        run: node games/rpg-prototype/weapon-mod-ui-smoke.mjs
       - name: Keep inventory screenshots for developer review
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,6 +151,7 @@ jobs:
           path: |
             /tmp/rpg-inventory-desktop.png
             /tmp/rpg-inventory-tablet.png
+            /tmp/rpg-weapon-bench.png
           retention-days: 7
           if-no-files-found: warn
 

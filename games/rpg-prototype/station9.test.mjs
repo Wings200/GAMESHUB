@@ -1009,6 +1009,8 @@ test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
     "let infiniteAmmo=false,emptyClickLatched=true,shotgunPendingEjections=0,pumpPendingEjection=false;",
     "let notice='',refreshes=0;",
     "const getWeaponSpec=id=>({magazineSize:id==='10mm-pistol'?12:id==='pipe-rifle'?15:id==='laser-musket'?6:id==='double-barrel-shotgun'?2:id==='pump-action-shotgun'?6:8});",
+    "const backpack={equipment:{weaponMods:{}}};",
+    "const effectiveWeaponSpec=(spec,pack)=>spec;",
     "const cancelWeaponReload=state=>{state.reloadRemaining=0;};",
     "const refreshWeaponHUD=()=>refreshes++;",
     "const showShotNotice=s=>notice=s;",
