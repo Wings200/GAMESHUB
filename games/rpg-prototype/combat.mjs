@@ -32,8 +32,8 @@ const slotMultiplier=Object.freeze({
 });
 const generated=Object.fromEntries(ARMOR_SLOTS.map(slot=>[
   slot,Object.freeze([
-    Object.freeze({id:'none',slot,name:'No Armor',points:0,color:0,style:'none'}),
-    ...ARMOR_STYLES.map(style=>Object.freeze({
+    ({id:'none',slot,name:'No Armor',points:0,color:0,style:'none'}),
+    ...ARMOR_STYLES.map(style=>({
       id:style.id+'-'+slot,slot,name:style.name+' · '+ARMOR_SLOT_LABELS[slot],
       points:Math.round(style.points*slotMultiplier[slot]),
       color:style.color,style:style.style

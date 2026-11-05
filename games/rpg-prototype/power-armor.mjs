@@ -11,19 +11,19 @@ export const POWER_ARMOR_VISUAL_SCALE=.75;
 export const POWER_ARMOR_STAND_HEIGHT=2.25;
 export const POWER_ARMOR_CROUCH_HEIGHT=1.88;
 export const POWER_ARMOR_PLATES=Object.freeze({
-  none:Object.freeze({id:'none',name:'Bare chassis',points:0,color:0x29383d,scale:0,maxDurability:0,model:'none'}),
+  none:({id:'none',name:'Bare chassis',points:0,color:0x29383d,scale:0,maxDurability:0,model:'none'}),
   // Older saved rigs keep their original salvage tiers.
-  scrap:Object.freeze({id:'scrap',name:'Salvaged Steel',points:26,color:0x867967,scale:.86,maxDurability:80,model:'scrap'}),
-  ranger:Object.freeze({id:'ranger',name:'Ranger Composite',points:47,color:0x667b73,scale:1,maxDurability:110,model:'ranger'}),
-  citadel:Object.freeze({id:'citadel',name:'Citadel Reinforced',points:72,color:0x475f7b,scale:1.13,maxDurability:145,model:'citadel'}),
-  t45:Object.freeze({id:'t45',name:'T-45 Field Armor',points:34,color:0xb1a48b,scale:.94,maxDurability:100,model:'t45'}),
-  t60:Object.freeze({id:'t60',name:'T-60 Heavy Armor',points:57,color:0x4f7585,scale:1.07,maxDurability:145,model:'t60'}),
-  t01:Object.freeze({id:'t01',name:'T-01 Prototype',points:78,color:0x694781,scale:1.15,maxDurability:180,model:'t01'})
+  scrap:({id:'scrap',name:'Salvaged Steel',points:26,color:0x867967,scale:.86,maxDurability:80,model:'scrap'}),
+  ranger:({id:'ranger',name:'Ranger Composite',points:47,color:0x667b73,scale:1,maxDurability:110,model:'ranger'}),
+  citadel:({id:'citadel',name:'Citadel Reinforced',points:72,color:0x475f7b,scale:1.13,maxDurability:145,model:'citadel'}),
+  t45:({id:'t45',name:'T-45 Field Armor',points:34,color:0xb1a48b,scale:.94,maxDurability:100,model:'t45'}),
+  t60:({id:'t60',name:'T-60 Heavy Armor',points:57,color:0x4f7585,scale:1.07,maxDurability:145,model:'t60'}),
+  t01:({id:'t01',name:'T-01 Prototype',points:78,color:0x694781,scale:1.15,maxDurability:180,model:'t01'})
 });
 export const POWER_ARMOR_RECIPES=Object.freeze({
-  t45:Object.freeze({salvage:10,glass:0}),
-  t60:Object.freeze({salvage:18,glass:4}),
-  t01:Object.freeze({salvage:32,glass:8})
+  t45:({salvage:10,glass:0}),
+  t60:({salvage:18,glass:4}),
+  t01:({salvage:32,glass:8})
 });
 export const POWER_ARMOR_FRAME_AP=30;
 const clamp=(n,low,high)=>Math.max(low,Math.min(high,Number.isFinite(n)?n:low));

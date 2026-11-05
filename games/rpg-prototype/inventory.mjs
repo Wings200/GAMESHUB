@@ -1,5 +1,5 @@
 // W06.0 original RPG loot and inventory rules. Pure game-state logic.
-import {ARSENAL,getWeaponSpec} from './weapons.mjs?v=W20.41';
+import {ARSENAL,getWeaponSpec} from './weapons.mjs';
 import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs?v=W20.41';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
@@ -93,10 +93,23 @@ templates.set('supply:optic-glass',Object.freeze({
   rarity:'uncommon',value:25,maxStack:30}));
 for(const component of CRAFTING_COMPONENTS)templates.set(component.id,component);
 export const ITEM_CATALOG=Object.freeze(Object.fromEntries(templates));
+const itemBalance = new Map();
+export function applyItemBalance(changes = {}) {
+  itemBalance.clear();
+  for (const [id, patch] of Object.entries(changes)) {
+    if (!templates.has(id)) continue;
+    const safe = {};
+    for (const field of ['value', 'heal'])
+      if (typeof patch[field] === 'number' && Number.isFinite(patch[field]))
+        safe[field] = patch[field];
+    if (Object.keys(safe).length) itemBalance.set(id, safe);
+  }
+}
 export function getItem(id){
   const item=templates.get(id);
   if(!item)throw Error('Unknown loot item: '+id);
-  return item;
+  const patch=itemBalance.get(id);
+  return patch ? {...item, ...patch} : item;
 }
 export function createBackpack(){
   return {items:[],materials:{},ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
@@ -107,7 +120,7 @@ export function createBackpack(){
 export function inventorySlotsUsed(pack){return pack.items.length;}
 export function totalInventoryValue(pack){
   return pack.items.reduce((sum,entry)=>sum+getItem(entry.itemId).value*entry.quantity,0)+
-    CRAFTING_COMPONENTS.reduce((sum,item)=>sum+item.value*countItem(pack,item.id),0);
+    CRAFTING_COMPONENTS.reduce((sum,item)=>sum+getItem(item.id).value*countItem(pack,item.id),0);
 }
 export function countItem(pack,itemId){
   const item=getItem(itemId);

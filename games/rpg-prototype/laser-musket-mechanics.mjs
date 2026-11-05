@@ -2,8 +2,8 @@
 // A real crank burns exactly one fusion cell, then locks that charge in the
 // capacitor. Pulling the trigger releases every stored charge in one beam.
 import {shotSpreadDegrees} from './weapons.mjs';
-export const LASER_MUSKET_TUNING=Object.freeze({
-  maxCharges:6,crankSeconds:.68,beamSeconds:.66,beamHoldSeconds:.13
+export const LASER_MUSKET_TUNING=({
+  maxCharges:6,crankSeconds:.68,beamSeconds:.66,beamHoldSeconds:.13,damagePerExtraCharge:.40
 });
 export function ensureLaserState(state){
   if(!Number.isInteger(state.laserCharge))state.laserCharge=0;
@@ -68,7 +68,7 @@ export function fireChargedLaser(state,spec,random=Math.random,motion={}){
   const scatter={spreadX:Math.cos(theta)*radius*spread,
     spreadY:Math.sin(theta)*radius*spread};
   return {status:'fired',chargeLevel,
-    damage:Math.round(spec.damage*(1+.40*(chargeLevel-1))),
+    damage:Math.round(spec.damage*(1+LASER_MUSKET_TUNING.damagePerExtraCharge*(chargeLevel-1))),
     recoilDegrees:spec.recoilDegrees+chargeLevel*.25,
     spreadDegrees,spreadX:scatter.spreadX,spreadY:scatter.spreadY,
     directions:[scatter],magazine:state.magazine};

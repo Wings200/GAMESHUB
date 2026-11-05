@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   buyFromVendor,sellToVendor,sellMaterialToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.57';
-import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs?v=W20.57';
+import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.55';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
@@ -14,7 +14,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
 import { SCRAP_PISTOL, TEN_MM_PISTOL, PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, HEAVY_SNIPER, ARSENAL, ARSENAL_IDS, getWeaponSpec, createArsenalStates,
   createWeaponState, setWeaponAim, startWeaponReload, cancelWeaponReload, updateWeapon, fireWeapon,
-  shotSpreadDegrees } from '../weapons.mjs?v=W20.44';
+  shotSpreadDegrees } from '../weapons.mjs';
 import {createWeaponRecoilState,resetWeaponRecoil,applyWeaponRecoil,
   countersteerWeaponRecoil,stepWeaponRecoil} from '../weapon-recoil.mjs?v=W20.44';
 import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState, stepCasing, CASING_TUNING } from '../weapon-handling.mjs?v=W20.44';
@@ -28,7 +28,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
   beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
-  FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.51';
+  FUSION_CORE_CAPACITY} from '../power-armor.mjs';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.50';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
@@ -46,7 +46,7 @@ import {createPipeSMG} from '../pipe-smg.mjs?v=W20.34';
 import {createHeavySniper} from '../heavy-sniper.mjs?v=W20.44';
 import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mechanics.mjs?v=W20.44';
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
-import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs?v=W20.27';
+import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
@@ -67,7 +67,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.57';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -3645,7 +3645,7 @@ function refreshWeaponHUD(){
     weaponState.magazine===0?'EMPTY · R TO RELOAD':weaponState.aiming?'AIMING':'READY');
   $('targetHits').textContent=totalHits;
   $('weaponName').textContent=activeSpec.name.toUpperCase();
-  $('weaponStats').textContent=(laserEquipped?(activeSpec.damage+'–'+Math.round(activeSpec.damage*(1+.40*5))+' CHARGE DAMAGE'):activeSpec.damage+' DAMAGE')+
+  $('weaponStats').textContent=(laserEquipped?(activeSpec.damage+'–'+Math.round(activeSpec.damage*(1+LASER_MUSKET_TUNING.damagePerExtraCharge*(LASER_MUSKET_TUNING.maxCharges-1)))+' CHARGE DAMAGE'):activeSpec.damage+' DAMAGE')+
     ((activeSpec.pellets||1)>1?' × '+activeSpec.pellets+' PELLETS':'')+
     (laserEquipped?' · R CRANK · CLICK FIRE':
       ' · '+(activeWeaponId===HEAVY_SNIPER.id?'BOLT ACTION':activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
@@ -5660,5 +5660,9 @@ function frame(){
     renderer.render(scene,thirdPersonCamera);
   }else renderer.render(scene,camera);
 }
+window.addEventListener('gameshub-before-balance-reload', () => {
+  saveBackpack(); saveCampaign(); saveSpecialState(); savePowerArmor();
+  saveArmorLoadouts();
+});
 refreshCampaignUI();
 frame();

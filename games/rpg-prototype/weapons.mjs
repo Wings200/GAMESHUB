@@ -1,6 +1,6 @@
 // Shared RPG weapon mechanics. Rendering and target geometry live in scenes,
 // but aiming spread, ammo, reload, and fire cadence do not.
-export const SCRAP_PISTOL = Object.freeze({
+export const SCRAP_PISTOL = ({
   id: 'scrap-pistol',
   name: 'Worn Scrap Pistol',
   magazineSize: 12,
@@ -15,7 +15,7 @@ export const SCRAP_PISTOL = Object.freeze({
 
 // W05.0 arsenal: authored, genuinely different test weapons. The original
 // Worn Scrap Pistol is preserved unchanged as the default for regression tests.
-export const TEN_MM_PISTOL=Object.freeze({
+export const TEN_MM_PISTOL=({
   id:'10mm-pistol',name:'10mm Pistol',kind:'pistol',
   magazineSize:12,startingReserve:72,fireInterval:.26,reloadSeconds:2.05,
   damage:29,hipSpreadDegrees:2.45,adsSpreadDegrees:.14,
@@ -23,55 +23,55 @@ export const TEN_MM_PISTOL=Object.freeze({
 });
 // New weapons come first. Six old definitions are retained for legacy tests,
 // but cannot be equipped in the active weapon-rebuild runtime.
-export const PIPE_PISTOL=Object.freeze({
+export const PIPE_PISTOL=({
   id:'pipe-pistol',name:'Pipe Pistol',kind:'pistol',
   magazineSize:8,startingReserve:64,fireInterval:.33,reloadSeconds:2.35,
   damage:17,hipSpreadDegrees:3.35,adsSpreadDegrees:.24,
   recoilDegrees:2.35,pellets:1,automatic:false
 });
-export const PIPE_RIFLE=Object.freeze({
+export const PIPE_RIFLE=({
   id:'pipe-rifle',name:'Pipe Rifle',kind:'carbine',
   magazineSize:15,startingReserve:90,fireInterval:.44,reloadSeconds:2.65,
   damage:34,hipSpreadDegrees:3.15,adsSpreadDegrees:.13,
   recoilDegrees:2.85,pellets:1,automatic:false
 });
-export const LASER_MUSKET=Object.freeze({
+export const LASER_MUSKET=({
   id:'laser-musket',name:'Laser Musket',kind:'carbine',
   magazineSize:6,startingReserve:84,fireInterval:.85,reloadSeconds:2.70,
   damage:32,hipSpreadDegrees:3.25,adsSpreadDegrees:.12,
   recoilDegrees:2.9,pellets:1,automatic:false
 });
-export const DOUBLE_BARREL_SHOTGUN=Object.freeze({
+export const DOUBLE_BARREL_SHOTGUN=({
   id:'double-barrel-shotgun',name:'Double-Barrel Shotgun',kind:'shotgun',
   magazineSize:2,startingReserve:48,fireInterval:.62,reloadSeconds:2.65,
   damage:10,hipSpreadDegrees:8.0,adsSpreadDegrees:4.8,
   recoilDegrees:4.7,pellets:8,automatic:false
 });
-export const PUMP_ACTION_SHOTGUN=Object.freeze({
+export const PUMP_ACTION_SHOTGUN=({
   id:'pump-action-shotgun',name:'Pump-Action Shotgun',kind:'shotgun',
   magazineSize:6,startingReserve:72,fireInterval:.94,reloadSeconds:4.24,
   damage:9,hipSpreadDegrees:7.2,adsSpreadDegrees:4.1,
   recoilDegrees:4.9,pellets:8,automatic:false
 });
-export const BOLT_HUNTING_RIFLE=Object.freeze({
+export const BOLT_HUNTING_RIFLE=({
   id:'bolt-hunting-rifle',name:'Hunting Rifle',kind:'rifle',
   magazineSize:5,startingReserve:50,fireInterval:1.25,reloadSeconds:3.43,
   damage:55,hipSpreadDegrees:4.0,adsSpreadDegrees:.042,
   recoilDegrees:4.5,pellets:1,automatic:false
 });
-export const IRON_REVOLVER=Object.freeze({
+export const IRON_REVOLVER=({
   id:'iron-revolver',name:'Worn Six-Shooter',kind:'revolver',
   magazineSize:6,startingReserve:48,fireInterval:.46,reloadSeconds:3.48,
   damage:38,hipSpreadDegrees:2.85,adsSpreadDegrees:.085,recoilDegrees:3.65,
   pellets:1,automatic:false
 });
-export const PIPE_SMG=Object.freeze({
+export const PIPE_SMG=({
   id:'pipe-smg',name:'Pipe SMG',kind:'smg',
   magazineSize:30,startingReserve:150,fireInterval:.095,reloadSeconds:2.75,
   damage:11,hipSpreadDegrees:4.5,adsSpreadDegrees:.25,recoilDegrees:.78,
   pellets:1,automatic:true
 });
-export const HEAVY_SNIPER=Object.freeze({
+export const HEAVY_SNIPER=({
   id:'heavy-sniper',name:'Wasteland Heavy Sniper',kind:'sniper',
   magazineSize:5,startingReserve:35,fireInterval:1.85,reloadSeconds:4.15,
   damage:88,hipSpreadDegrees:6.5,adsSpreadDegrees:.025,
@@ -89,20 +89,21 @@ export const ARSENAL=Object.freeze([
   IRON_REVOLVER,
   PIPE_SMG,
   HEAVY_SNIPER,
-  Object.freeze({id:'service-carbine',name:'Service Carbine',kind:'carbine',
+  ({id:'service-carbine',name:'Service Carbine',kind:'carbine',
     magazineSize:24,startingReserve:120,fireInterval:.17,reloadSeconds:2.45,
     damage:19,hipSpreadDegrees:3.0,adsSpreadDegrees:.10,recoilDegrees:1.45,
     pellets:1,automatic:true}),
-  Object.freeze({id:'scrap-shotgun',name:'Scrap Pump Shotgun',kind:'shotgun',
+  ({id:'scrap-shotgun',name:'Scrap Pump Shotgun',kind:'shotgun',
     magazineSize:6,startingReserve:36,fireInterval:.92,reloadSeconds:2.7,
     damage:8,hipSpreadDegrees:7.4,adsSpreadDegrees:4.0,recoilDegrees:5.2,
     pellets:8,automatic:false}),
-  Object.freeze({id:'hunting-rifle',name:'Wasteland Hunting Rifle',kind:'rifle',
+  ({id:'hunting-rifle',name:'Wasteland Hunting Rifle',kind:'rifle',
     magazineSize:5,startingReserve:35,fireInterval:1.1,reloadSeconds:2.85,
     damage:54,hipSpreadDegrees:3.7,adsSpreadDegrees:.035,recoilDegrees:4.1,
     pellets:1,automatic:false})
 ]);
 export const ARSENAL_IDS=Object.freeze(ARSENAL.map(w=>w.id));
+const BASE_RELOAD_SECONDS=Object.fromEntries(ARSENAL.map(w=>[w.id,w.reloadSeconds]));
 export function getWeaponSpec(id){
   const weapon=ARSENAL.find(w=>w.id===id);
   if(!weapon)throw Error('Unknown weapon: '+id);
@@ -161,13 +162,16 @@ export function startWeaponReload(state, spec = SCRAP_PISTOL) {
   state.reloadLoaded=0;
   // A one-shell top-up is faster than filling an empty tube or cylinder.
   const timing={revolver:[.74,.31],shotgun:[.64,.34],rifle:[.80,.41]}[spec.kind];
+  const baseReload=BASE_RELOAD_SECONDS[spec.id]||spec.reloadSeconds;
   state.reloadDuration=spec.id==='double-barrel-shotgun'?
     (missing===1?1.95:2.65):
     spec.id==='pump-action-shotgun'?(.94+.55*missing):
     spec.id==='bolt-hunting-rifle'?(1.03+.48*missing):
     spec.id==='iron-revolver'?(0.96+.42*missing):
-    perRound&&timing?Math.min(spec.reloadSeconds,timing[0]+timing[1]*missing):
-    spec.reloadSeconds;
+    perRound&&timing?Math.min(baseReload,timing[0]+timing[1]*missing):
+    baseReload;
+  // Scale every weapon's actual insertion action and its animation together.
+  state.reloadDuration *= spec.reloadSeconds / baseReload;
   state.reloadRemaining=state.reloadDuration;
   return true;
 }

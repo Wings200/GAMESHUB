@@ -29,7 +29,12 @@ jobs:
           node --check games/rpg-prototype/field-map.mjs
           node --check games/rpg-prototype/materials.mjs
           node --check games/rpg-prototype/inventory.mjs
-          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs
+          node --check games/rpg-prototype/balance-schema.mjs
+          node --check games/rpg-prototype/game-balance.mjs
+          node --check games/rpg-prototype/testing/bootstrap.mjs
+          node --check games/rpg-prototype/testing/developer-panel.mjs
+          node --check functions/api/dev/settings.js
+          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs games/rpg-prototype/balance.test.mjs games/rpg-prototype/dev-settings.test.mjs
 
   smoke:
     runs-on: ubuntu-latest
