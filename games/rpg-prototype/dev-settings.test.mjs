@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {onRequestGet,onRequestPut} from '../../functions/api/dev/settings.js';
 
-function fakeStore(username='DynamiteDEV7392') {
+const DEV_ID = '51cb59ec-7c65-43ad-9431-236d9c7fcc17';
+const KID_ID = '71a8cd8f-ef72-4770-83bf-e4da5085f316';
+function fakeStore(username='DynamiteDEV7392',userId=DEV_ID) {
   const state={version:0,changes:{},username};
   const db={
     prepare(sql) {
@@ -11,7 +13,7 @@ function fakeStore(username='DynamiteDEV7392') {
         bind(...values){args=values;return this;},
         async first(){
           if (sql.includes('FROM sessions s'))
-            return {id:'account-123',username:state.username};
+            return {id:userId,username:state.username};
           if (sql.includes('FROM developer_game_settings'))
             return {version:state.version,overrides:JSON.stringify(state.changes)};
           return null;
@@ -29,23 +31,26 @@ function fakeStore(username='DynamiteDEV7392') {
   };
   return {db,state};
 }
-function context(method='GET', body=null, ids='account-123',username='DynamiteDEV7392') {
-  const {db,state}=fakeStore(username);
+function context(method='GET', body=null, username='DynamiteDEV7392', userId=DEV_ID) {
+  const {db,state}=fakeStore(username,userId);
   const options={method,headers:{'Cookie':'gh_session=real-session',
     'Origin':'https://example.test','Content-Type':'application/json'}};
   if (body) options.body=JSON.stringify(body);
-  return {ctx:{env:{DB:db,DEV_ACCOUNT_IDS:ids},
+  return {ctx:{env:{DB:db},
     request:new Request('https://example.test/api/dev/settings',options)},state};
 }
-test('both named accounts require a real signed-in, pinned account ID',async()=>{
-  for(const name of ['DynamiteDEV7392','DynamiteKid2000']){
-    const permitted=context('GET',null,'account-123',name);
+test('both developer usernames are bound to their own stable account IDs',async()=>{
+  for(const [username,id] of [['DynamiteDEV7392',DEV_ID],['DynamiteKid2000',KID_ID]]){
+    const permitted=context('GET',null,username,id);
     assert.equal((await (await onRequestGet(permitted.ctx)).json()).admin,true);
-    const denied=context('GET',null,'wrong-account-id',name);
-    assert.equal((await (await onRequestGet(denied.ctx)).json()).admin,false);
+    const wrongId=context('GET',null,username,'wrong-account-id');
+    assert.equal((await (await onRequestGet(wrongId.ctx)).json()).admin,false);
   }
-  const impersonator=context('GET',null,'account-123','SomeoneElse');
-  assert.equal((await (await onRequestGet(impersonator.ctx)).json()).admin,false);
+  for(const [username,id] of [['DynamiteDEV7392',KID_ID],['DynamiteKid2000',DEV_ID],
+    ['SomeoneElse',DEV_ID],['SomeoneElse',KID_ID]]){
+    const swapped=context('GET',null,username,id);
+    assert.equal((await (await onRequestGet(swapped.ctx)).json()).admin,false);
+  }
 });
 test('developer save publishes a version and prevents stale writes',async()=>{
   const {ctx,state}=context('PUT',{version:0,changes:{
@@ -64,6 +69,6 @@ test('developer save publishes a version and prevents stale writes',async()=>{
 test('invalid variables and unbound accounts cannot publish',async()=>{
   const invalid=context('PUT',{version:0,changes:{weapons:{'10mm-pistol':{damage:-15}}}});
   assert.equal((await onRequestPut(invalid.ctx)).status,400);
-  const unbound=context('PUT',{version:0,changes:{}},'');
+  const unbound=context('PUT',{version:0,changes:{}},'DynamiteDEV7392','unknown-account');
   assert.equal((await onRequestPut(unbound.ctx)).status,403);
 });

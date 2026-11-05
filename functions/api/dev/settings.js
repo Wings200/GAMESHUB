@@ -1,6 +1,10 @@
 import {validateBalanceChanges} from '../../../games/rpg-prototype/balance-schema.mjs';
 
-const ADMIN_NAMES = new Set(['dynamitedev7392', 'dynamitekid2000']);
+// Server-side stable ID + username pair verification. Never trust a display name alone.
+const ADMIN_ACCOUNTS = Object.freeze({
+  '51cb59ec-7c65-43ad-9431-236d9c7fcc17': 'dynamitedev7392',
+  '71a8cd8f-ef72-4770-83bf-e4da5085f316': 'dynamitekid2000'
+});
 const MAX_BODY_BYTES = 65000;
 const headers = {'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8'};
 const reply = (body, status = 200) => new Response(JSON.stringify(body), {status, headers});
@@ -25,11 +29,10 @@ async function developerIdentity(context) {
     'SELECT u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id ' +
     'WHERE s.id = ? AND s.expires_at > ? LIMIT 1'
   ).bind(await sha256Hex(session), Date.now()).first();
-  if (!user || !ADMIN_NAMES.has(String(user.username || '').toLowerCase())) return null;
-  // Never promote an account from its editable display name alone. Bind BOTH
-  // real user IDs in Cloudflare's DEV_ACCOUNT_IDS environment variable first.
-  const ids = String(context.env.DEV_ACCOUNT_IDS || '').split(/[\s,]+/).filter(Boolean);
-  return ids.includes(String(user.id)) ? user : null;
+  if (!user) return null;
+  const expectedUsername = ADMIN_ACCOUNTS[String(user.id)];
+  return expectedUsername && String(user.username || '').toLowerCase() === expectedUsername
+    ? user : null;
 }
 async function ensureStore(db) {
   await db.prepare('CREATE TABLE IF NOT EXISTS developer_game_settings (' +

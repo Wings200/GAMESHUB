@@ -5,19 +5,19 @@ The RPG testing field reads a centrally versioned set of balance overrides from
 developer UI is mounted only when the backend confirms an authorized GAMESHUB
 session. Ordinary players see no developer button.
 
-## One-time Cloudflare Pages setup
+## Account binding — W20.58.2
 
-1. Sign into GAMESHUB separately as **DynamiteDEV7392** and
-   **DynamiteKid2000** (not guest mode).
-2. For each account, inspect its own `/api/account/me` response and copy
-   `user.id`. These are the stable database IDs, not Google ID tokens.
-3. Configure the existing Cloudflare Pages project with an environment variable
-   named `DEV_ACCOUNT_IDS`: two exact IDs, comma-separated.
-4. Redeploy the Pages project so Functions receive the variable. Do **not**
-   put IDs, cookies, login codes or secrets into browser JavaScript.
-5. The server checks both the session's actual account ID and its current
-   allowlisted username before granting write access. Without the binding,
-   the panel stays hidden and changes are denied.
+Both developers are pinned server-side in `functions/api/dev/settings.js` using
+the exact stable GAMESHUB database ID **paired with** its username. No
+Cloudflare `DEV_ACCOUNT_IDS` environment variable is required. Display names
+alone cannot grant access, and no cookies or session tokens are stored in code.
+
+1. Sign into GAMESHUB as **DynamiteDEV7392** or **DynamiteKid2000**
+   (not guest mode).
+2. After deployment, open the RPG testing field and use **DEV PANEL** or **F10**.
+3. If hidden, check `/api/account/me` to verify both the name and ID match
+   the pinned server pair. The IDs were supplied in the names' listed order.
+4. Confirm that regular and guest accounts do not see the panel and cannot save.
 
 ## Developer interface
 
