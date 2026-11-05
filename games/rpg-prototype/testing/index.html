@@ -706,6 +706,14 @@ body.hud-modern #powerArmorHud{display:none!important}
 }
 @media(prefers-reduced-motion:reduce){#inventoryPanel .inventory-category,#inventoryPanel #inventoryItems .loot-entry{transition:none}}
 
+
+/* Inventory armor uses the same per-zone resistance calculations as incoming shots. */
+#inventoryPanel .inventory-protection-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;margin-top:3px}
+#inventoryPanel .inventory-protection-line{display:flex;justify-content:space-between;align-items:baseline;
+  flex-wrap:wrap;gap:3px 8px;padding:6px 0;border-top:1px solid #345047}
+#inventoryPanel .inventory-protection-line span{color:#9ab7a6;font-size:9px;font-weight:800;letter-spacing:.06em}
+#inventoryPanel .inventory-protection-line strong{color:#ebd7ab;font-size:10px;font-weight:850;overflow-wrap:normal}
+#inventoryPanel .inventory-armor-note{color:#96b1a5;font-size:9px;line-height:1.55;margin:8px 0 0}
 </style>
 </head>
 <body class="hud-modern">
@@ -1111,7 +1119,7 @@ body.hud-modern #powerArmorHud{display:none!important}
         </div>
         <div class="inventory-equipped-list">
           <div class="inventory-equipped-slot"><small>ACTIVE WEAPON</small><strong id="inventoryWeapon">Worn Scrap Pistol</strong></div>
-          <div class="inventory-equipped-slot"><small>ARMOR & BALLISTIC PROTECTION</small><strong id="inventoryArmor">CHEST 0 AP</strong></div>
+          <div class="inventory-equipped-slot inventory-armor-card"><small>PLAYER ARMOR / BALLISTIC COVERAGE</small><strong id="inventoryArmor">0 / 6 ZONES PROTECTED</strong><div id="inventoryArmorDetails" class="inventory-protection-grid" aria-label="Armor protection by body part"></div><p id="inventoryArmorNote" class="inventory-armor-note"></p></div>
           <div class="inventory-equipped-slot"><small>CLOTHING / UTILITY</small><strong id="inventoryClothing">HAT: NONE · BACKPACK: NONE</strong></div>
         </div>
         <div class="inventory-loadout-tip">Select an item to equip, use, or drop it. Your saved gear and item counts stay unchanged.</div>

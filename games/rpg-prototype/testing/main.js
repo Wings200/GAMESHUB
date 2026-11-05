@@ -1874,11 +1874,37 @@ function refreshInventoryUI(){
   const wear=backpack.equipment.clothing||{head:'none',back:'none'};
   $('inventoryClothing').textContent='HAT: '+(wear.head==='none'?'NONE':'FIELD CAP')+
     ' · BACKPACK: '+(wear.back==='none'?'NONE':'CANVAS FIELD PACK');
-  const ordinary=playerArmorReduction(backpack,'chest');
-  const powered=calculateIncomingShot(100,ordinary.points,powerArmorState,'chest');
-  $('inventoryArmor').textContent='CHEST '+ordinary.points+' AP · '+
-    Math.round(powered.combinedReduction*100)+'% BALLISTIC BLOCK'+
-    (powerArmorState.occupied?' · POWER ARMOR ACTIVE':'');
+  // Armor is localized: one chest stat cannot represent six equipped zones.
+  // Use the identical ballistic calculation as an incoming hit in each zone.
+  const armorRows=ARMOR_SLOTS.map(slot=>{
+    const regular=playerArmorReduction(backpack,slot);
+    const protection=calculateIncomingShot(100,regular.points,powerArmorState,slot);
+    const plateActive=powerArmorState.occupied&&
+      plateCondition(powerArmorState,slot).current>0;
+    return {slot,regular,protection,plateActive,
+      protected:regular.points>0||powerArmorState.occupied};
+  });
+  const covered=armorRows.filter(row=>row.protected).length;
+  $('inventoryArmor').textContent=covered+' / '+ARMOR_SLOTS.length+
+    ' ZONES PROTECTED'+(powerArmorState.occupied?' · POWER ARMOR WORN':'');
+  const armorDetail=$('inventoryArmorDetails');armorDetail.replaceChildren();
+  for(const entry of armorRows){
+    const line=document.createElement('div');
+    line.className='inventory-protection-line';
+    const name=document.createElement('span');
+    name.textContent=ARMOR_SLOT_LABELS[entry.slot].toUpperCase();
+    const value=document.createElement('strong');
+    value.textContent=entry.regular.points+' REG AP · '+
+      Math.round(entry.protection.combinedReduction*100)+'% BLOCK'+
+      (powerArmorState.occupied?(entry.plateActive?' · PLATE':' · FRAME'):'');
+    line.append(name,value);armorDetail.append(line);
+  }
+  const parkedPlates=POWER_ARMOR_SLOTS.some(slot=>
+    plateCondition(powerArmorState,slot).current>0);
+  $('inventoryArmorNote').textContent=powerArmorState.occupied?
+    'Total block includes your occupied frame and any working armor plates.':
+    parkedPlates?'Power armor plates are parked; enter the frame for their protection. Player armor is listed above.':
+    'Only player-worn armor counts. Equipment on test dummies is separate.';
   const nav=$('inventoryCategories');nav.replaceChildren();
   if(WEAPON_REBUILD_MODE&&inventoryCategory==='weapon')inventoryCategory='all';
   const areas=(WEAPON_REBUILD_MODE?INVENTORY_CATEGORIES.filter(category=>category.id!=='weapon'):INVENTORY_CATEGORIES).map(category=>({
