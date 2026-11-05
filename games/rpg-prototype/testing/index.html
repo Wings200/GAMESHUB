@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.53 · Field Inventory | GAMESHUB RPG</title>
+<title>W20.55 · Field Map | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -714,6 +714,34 @@ body.hud-modern #powerArmorHud{display:none!important}
 #inventoryPanel .inventory-protection-line span{color:#9ab7a6;font-size:9px;font-weight:800;letter-spacing:.06em}
 #inventoryPanel .inventory-protection-line strong{color:#ebd7ab;font-size:10px;font-weight:850;overflow-wrap:normal}
 #inventoryPanel .inventory-armor-note{color:#96b1a5;font-size:9px;line-height:1.55;margin:8px 0 0}
+
+/* W20.55 · field map: readable at desktop and Chromebook sizes. */
+#fieldMapPanel{background:radial-gradient(ellipse at 50% 0%,#254034 0%,#07120f 70%);padding:clamp(10px,2vw,32px);font-family:system-ui,sans-serif}
+#fieldMapPanel .map-shell{max-width:1320px;margin:auto;border:1px solid #719177;background:#0c1d19;box-shadow:0 30px 100px #000b}
+#fieldMapPanel .map-top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;border-bottom:1px solid #395f51;padding:20px 24px}
+#fieldMapPanel .map-eyebrow{color:#c4d8b3;font-size:10px;font-weight:900;letter-spacing:.19em}
+#fieldMapPanel h2{font-size:clamp(25px,3vw,42px);margin:5px 0 0;color:#f1e7cd}
+#fieldMapPanel h2 span{color:#9ac8ac}
+#fieldMapPanel .map-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+#fieldMapPanel .map-zoom{color:#e8d3a6;font:800 11px ui-monospace,monospace;min-width:48px;text-align:center}
+#fieldMapPanel .map-body{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:0}
+#fieldMapPanel .map-viewport{padding:18px;min-width:0;background:#071410}
+#fieldMapCanvas{display:block;width:100%;height:auto;aspect-ratio:900/620;background:#081714;touch-action:none;cursor:crosshair;border:1px solid #617d64}
+#fieldMapPanel .map-legend{border-left:1px solid #38594b;padding:22px;display:flex;flex-direction:column;gap:15px}
+#fieldMapPanel .map-block{border-bottom:1px solid #38594b;padding-bottom:13px}
+#fieldMapPanel .map-block small{display:block;color:#8db49e;font-size:10px;font-weight:900;letter-spacing:.12em;margin-bottom:7px}
+#fieldMapPanel .map-block strong{color:#f0dfbb;font:800 15px ui-monospace,monospace}
+#fieldMapPanel .map-key{display:flex;align-items:center;gap:9px;font-size:11px;color:#b9cbbd;margin:9px 0}
+#fieldMapPanel .map-dot{width:9px;height:9px;border-radius:50%;background:#e9c78c}
+#fieldMapPanel .map-dot.contact{background:#9bdfbc}
+#fieldMapPanel .map-dot.marker{background:#f5b66d;transform:rotate(45deg);border-radius:0}
+#fieldMapPanel .map-help{line-height:1.7;color:#9db4a7;font-size:11px}
+#fieldMapPanel .map-footer{border-top:1px solid #38594b;padding:13px 24px;color:#9fbba9;font-size:10px;font-weight:800;letter-spacing:.08em}
+@media(max-width:820px){#fieldMapPanel .map-body{grid-template-columns:1fr}
+  #fieldMapPanel .map-legend{border-left:0;border-top:1px solid #38594b;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  #fieldMapPanel .map-viewport{padding:8px}#fieldMapPanel .map-top{padding:14px}}
+@media(max-width:480px){#fieldMapPanel .map-legend{grid-template-columns:1fr}
+  #fieldMapPanel .map-tools button{padding:7px 9px;font-size:10px}}
 </style>
 </head>
 <body class="hud-modern">
@@ -745,7 +773,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="field-ammo" id="fieldAmmo">--</div>
     <div class="field-sub" id="fieldWeaponState">SEMI · READY</div>
   </div>
-  <div class="field-controls">L SPECIAL · I INVENTORY · E INTERACT · F3 DIAGNOSTICS</div>
+  <div class="field-controls">L SPECIAL · I INVENTORY · TAB MAP · E INTERACT · F3 DIAGNOSTICS</div>
 </div>
 <div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
   <svg id="visorArmorIndicator" class="armor-indicator" viewBox="0 0 116 165"
@@ -907,9 +935,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.53</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.55</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <div class="weapon-reset-notice"><b>W20.53 · INVENTORY REDESIGN</b>The inventory now uses a field-terminal layout with categories, item actions, and a live equipment summary. Existing ammo handling, equipment, and saves are preserved. <b>W20.52 · ENEMY HUD CLEANUP</b>Floating Raider name and health labels have been removed so enemies cannot be identified above walls. The top target health HUD still appears when you aim at a visible character. W20.51 reduced incoming damage by 20% while wearing power armor; you now take 20% less damage from enemy bullets than before. Chassis-only protection still falls below protection with installed plates; conventional armor and plate tiers remain meaningful. W20.50 NPC NAVIGATION & SQUAD AWARENESS (wall-safe movement, teammate reactions, and search scanning) and W20.48 CONTEXTUAL NPC HEALTH remain in place. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
+    <div class="weapon-reset-notice"><b>W20.55 · FIELD MAP</b> Tab opens the nine-station map with saved exploration, discovered contacts, zoom and a waypoint. This is not a fabricated full world map. <b>W20.53 · INVENTORY REDESIGN</b>The inventory now uses a field-terminal layout with categories, item actions, and a live equipment summary. Existing ammo handling, equipment, and saves are preserved. <b>W20.52 · ENEMY HUD CLEANUP</b>Floating Raider name and health labels have been removed so enemies cannot be identified above walls. The top target health HUD still appears when you aim at a visible character. W20.51 reduced incoming damage by 20% while wearing power armor; you now take 20% less damage from enemy bullets than before. Chassis-only protection still falls below protection with installed plates; conventional armor and plate tiers remain meaningful. W20.50 NPC NAVIGATION & SQUAD AWARENESS (wall-safe movement, teammate reactions, and search scanning) and W20.48 CONTEXTUAL NPC HEALTH remain in place. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
     <p><strong>W20.16 · COMBAT & POWER FRAME:</strong> Compact armor silhouette and clearance, deeper rear boarding, softer boot impacts, fusion cores lasting 25% longer, close-quarters enemy tracking, single-render-layer NPCs, concealed enemy tactics, and a bottom red-dot hostile compass.</p>
@@ -917,7 +945,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <p><strong>W20.14 · ARMOR CONDITION FIGURE:</strong> Six independent body segments glow amber when equipped and healthy, red at 30% condition or lower, and dark when destroyed or unequipped. The figure appears at left-middle while wearing the frame.</p>
     <p><strong>W20.13 · POWER ARMOR INSTRUMENTS:</strong> Helmet HUD rebuilt as amber analog gauges: HP and RADS left, a live direction compass centered, and fusion CORE, AP sprint stamina, and stacked AMMO on the right. No large boxes or upper visor overlays. Power-armor visuals, movement and sounds are unchanged.</p>
     <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps use natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics span the full entry animation.</p>
-    <p>No new map. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
+    <p>Open the W20.55 field map with Tab or from your inventory. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
     <div class="arsenal-picker"><label for="weaponSelect">EQUIP REBUILT WEAPON · 10 AVAILABLE</label>
@@ -928,10 +956,11 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="infiniteAmmoToggle" class="secondary" type="button" aria-pressed="false" title="Toggle infinite test ammunition (M in game)">INFINITE AMMO: OFF · M</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
+    <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · TAB</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.53</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.55</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP weapons/armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
@@ -1070,6 +1099,38 @@ body.hud-modern #powerArmorHud{display:none!important}
   </div>
 </div>
 
+<div id="fieldMapPanel" class="loot-overlay hidden" role="dialog" aria-label="Exploration field map" aria-modal="true">
+  <div class="map-shell">
+    <header class="map-top">
+      <div><div class="map-eyebrow">FRONTIER / NAVIGATION / W20.55</div><h2>FIELD <span>MAP.</span></h2></div>
+      <div class="map-tools">
+        <button id="fieldMapZoomOut" type="button" aria-label="Zoom out">−</button>
+        <span id="fieldMapZoom" class="map-zoom">100%</span>
+        <button id="fieldMapZoomIn" type="button" aria-label="Zoom in">+</button>
+        <button id="fieldMapCenter" type="button">CENTER PLAYER</button>
+        <button id="fieldMapClear" type="button">CLEAR WAYPOINT</button>
+        <button id="fieldMapClose" type="button">CLOSE · TAB / ESC</button>
+      </div>
+    </header>
+    <div class="map-body">
+      <div class="map-viewport">
+        <canvas id="fieldMapCanvas" width="900" height="620" aria-label="Map of the nine test stations. Drag to pan, scroll to zoom, click explored ground to mark a waypoint."></canvas>
+      </div>
+      <aside class="map-legend">
+        <div class="map-block"><small>PLAYER POSITION</small><strong id="fieldMapCoordinates">X -- · Z --</strong></div>
+        <div class="map-block"><small>EXPLORATION</small><strong id="fieldMapDiscovery">0% SURVEYED</strong></div>
+        <div class="map-block"><small>NAVIGATION</small><strong id="fieldMapWaypoint">NO WAYPOINT SET</strong></div>
+        <div class="map-block"><small>MAP KEY</small>
+          <div class="map-key"><i class="map-dot"></i> Test station</div>
+          <div class="map-key"><i class="map-dot contact"></i> Discovered story contact</div>
+          <div class="map-key"><i class="map-dot marker"></i> Custom waypoint</div>
+        </div>
+        <div class="map-help">Unexplored ground stays dark. Travel to reveal the map. Click explored terrain to set a waypoint. Drag to pan; scroll or use + / − to zoom. Discovery and waypoints save in this browser.</div>
+      </aside>
+    </div>
+    <footer class="map-footer">SYSTEMS TEST GROUND · REAL PLAYER COORDINATES · FULL WORLD MAP COMES WHEN THE WORLD IS BUILT</footer>
+  </div>
+</div>
 <div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Player inventory">
   <div class="loot-container inventory-frame">
     <header class="inventory-topbar">
@@ -1083,6 +1144,7 @@ body.hud-modern #powerArmorHud{display:none!important}
           <div><small>BACKPACK</small><strong id="inventoryCapacity">0 / 30 SLOTS</strong></div>
           <div><small>CONTENTS VALUE</small><strong id="inventoryValue">0 CAPS VALUE</strong></div>
         </div>
+        <button id="inventoryMapOpen" type="button" title="Open the field map">MAP · TAB</button>
         <button id="inventoryClose" class="inventory-exit" type="button" aria-label="Close inventory and resume gameplay">CLOSE <span>ESC / I</span></button>
       </div>
     </header>
@@ -1195,6 +1257,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.53"></script>
+<script type="module" src="./main.js?v=W20.55"></script>
 </body>
 </html>

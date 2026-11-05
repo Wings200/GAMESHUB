@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
+import {createFieldMap} from '../field-map.mjs?v=W20.55';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
@@ -3901,6 +3902,59 @@ function resetPlayer(i){
 }
 resetPlayer(0);
 if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
+
+// W20.55 — actual-position field map; exploration is saved separately from gear.
+let mapOpen=false,mapFromField=false;
+const fieldMap=createFieldMap({
+  canvas:$('fieldMapCanvas'),
+  points:[
+    ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
+    ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'}))
+  ]
+});
+fieldMap.onUpdate=summary=>{
+  $('fieldMapCoordinates').textContent='X '+summary.x.toFixed(1)+' · Z '+summary.z.toFixed(1);
+  $('fieldMapDiscovery').textContent=Math.round(summary.discovered/summary.total*100)+'% SURVEYED';
+  $('fieldMapWaypoint').textContent=summary.waypoint?
+    summary.distance+' m TO WAYPOINT':'NO WAYPOINT SET';
+  $('fieldMapZoom').textContent=Math.round(summary.zoom*100)+'%';
+};
+fieldMap.observe(player.x,player.z,camera.rotation.y);
+function showFieldMap(){
+  mapOpen=true;
+  $('fieldMapPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  fieldMap.centerOnPlayer();
+}
+function openFieldMap(){
+  if(mapOpen||powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||
+    specialOpen||questPanelOpen||dialogueOpen)return;
+  mapFromField=controls.isLocked;
+  showFieldMap();
+  if(controls.isLocked)controls.unlock();
+}
+function closeFieldMap(){
+  if(!mapOpen)return;
+  mapOpen=false;
+  $('fieldMapPanel').classList.add('hidden');
+  if(mapFromField){mapFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+function switchInventoryToMap(){
+  if(!inventoryOpen)return;
+  mapFromField=lootOverlayFromField;
+  lootOverlayFromField=false;
+  inventoryOpen=false;
+  $('inventoryPanel').classList.add('hidden');
+  showFieldMap();
+}
+$('fieldMapOpen').addEventListener('click',openFieldMap);
+$('inventoryMapOpen').addEventListener('click',switchInventoryToMap);
+$('fieldMapClose').addEventListener('click',closeFieldMap);
+$('fieldMapZoomIn').addEventListener('click',()=>fieldMap.setZoom(fieldMap.zoom*1.25));
+$('fieldMapZoomOut').addEventListener('click',()=>fieldMap.setZoom(fieldMap.zoom/1.25));
+$('fieldMapCenter').addEventListener('click',()=>fieldMap.centerOnPlayer());
+$('fieldMapClear').addEventListener('click',()=>fieldMap.clearWaypoint());
 // Read-only smoke instrumentation. Active ONLY with ?smoke=1 so CI can
 // check actual Three.js gameplay rather than matching code strings.
 if(new URLSearchParams(location.search).get('smoke')==='1'){
@@ -4631,7 +4685,7 @@ controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
   if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen&&
-    !questPanelOpen&&!dialogueOpen)$('menu').classList.remove('hidden');
+    !questPanelOpen&&!dialogueOpen&&!mapOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -4646,6 +4700,9 @@ $('quality').addEventListener('click',()=>{
   refreshCampaignUI();
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
+  if(e.code==='Tab'&&!e.repeat){e.preventDefault();if(mapOpen)closeFieldMap();else if(inventoryOpen)switchInventoryToMap();else openFieldMap();return;}
+  if(mapOpen)return;
   if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
   if(e.code==='Escape'&&questPanelOpen){closeCampaignJournal();return;}
   if(e.code==='Escape'&&specialOpen){closeSpecialPanel();return;}
@@ -4769,6 +4826,7 @@ window.addEventListener('resize',()=>{
   renderer.setSize(innerWidth,innerHeight);
 });
 function updateHUD(info){
+  fieldMap.observe(player.x,player.z,camera.rotation.y);
   const staminaPct=Math.max(0,Math.round(info.staminaFraction*100));
   $('fieldStamina').textContent=staminaPct+'%';
   $('fieldStaminaFill').style.width=staminaPct+'%';
