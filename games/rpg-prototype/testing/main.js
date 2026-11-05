@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
-  buyFromVendor,sellToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.56';
+  buyFromVendor,sellToVendor,sellMaterialToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.57';
+import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs?v=W20.57';
 import {createFieldMap} from '../field-map.mjs?v=W20.55';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
@@ -62,11 +63,11 @@ import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
-import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,
+import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.44';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.57';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -1141,6 +1142,7 @@ function refreshPowerArmorUI(){
   $('powerMaterialStatus').textContent=
     'SALVAGE '+countItem(backpack,'supply:salvage')+
     ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
+    ' · SCRAP POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
     ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerArmorHUD();
@@ -1262,16 +1264,26 @@ for(const slot of POWER_ARMOR_SLOTS){
   });
   $('power-repair-'+slot).addEventListener('click',()=>{
     if(!powerServiceAvailable())return;
-    const available=countItem(backpack,'supply:salvage');
+    const preview=repairPowerPlate(powerArmorState,slot,0,specialModifiers.repairDiscount);
+    const repairCost=preview.cost||0;
+    const useComponents=repairCost>0&&
+      countItem(backpack,'material:steel')>=repairCost*2&&
+      countItem(backpack,'material:adhesive')>=repairCost;
+    const available=useComponents?repairCost:countItem(backpack,'supply:salvage');
     const result=repairPowerPlate(powerArmorState,slot,available,specialModifiers.repairDiscount);
     if(!result.ok){
       $('powerServiceFeedback').textContent=result.reason==='materials'?
-        'REPAIR NEEDS '+result.cost+' SALVAGED PARTS':'NO REPAIR NEEDED';
+        'REPAIR NEEDS '+result.cost+' SALVAGED PARTS OR '+(result.cost*2)+
+        ' STEEL + '+result.cost+' ADHESIVE':'NO REPAIR NEEDED';
       return;
     }
-    spendPowerMaterials({salvage:result.cost});
+    if(useComponents){
+      spendMaterial(backpack,'material:steel',result.cost*2);
+      spendMaterial(backpack,'material:adhesive',result.cost);
+    }else spendPowerMaterials({salvage:result.cost});
     $('powerServiceFeedback').textContent=slot.toUpperCase()+
-      ' REPAIRED · '+result.durability+' DURABILITY · -'+result.cost+' PARTS';
+      ' REPAIRED · '+result.durability+' DURABILITY · -'+result.cost+
+      (useComponents?' ADHESIVE / -'+(result.cost*2)+' STEEL':' SALVAGED PARTS');
     savePowerService();
   });
 }
@@ -1342,16 +1354,24 @@ $('powerCraftButton').addEventListener('click',()=>{
   const recipe=POWER_ARMOR_RECIPES[tier];
   if(!recipe||!POWER_ARMOR_SLOTS.includes(slot))return;
   const cost=discountedMaterials(recipe,specialModifiers.craftDiscount);
-  if(countItem(backpack,'supply:salvage')<cost.salvage||
-     countItem(backpack,'supply:optic-glass')<cost.glass){
+  const componentRecipe=POWER_COMPONENT_RECIPES[tier]||{};
+  const componentCost=Object.fromEntries(Object.entries(componentRecipe).map(
+    ([id,quantity])=>[id,Math.max(1,Math.ceil(quantity*(1-specialModifiers.craftDiscount)))]));
+  const useComponents=Object.entries(componentCost).length>0&&
+    Object.entries(componentCost).every(([id,quantity])=>countItem(backpack,id)>=quantity);
+  if(!useComponents&&(countItem(backpack,'supply:salvage')<cost.salvage||
+     countItem(backpack,'supply:optic-glass')<cost.glass)){
     $('powerServiceFeedback').textContent='MISSING MATERIALS · NEED '+
-      cost.salvage+' SALVAGE AND '+cost.glass+' OPTIC GLASS';
+      cost.salvage+' SALVAGE AND '+cost.glass+' OPTIC GLASS OR '+
+      Object.entries(componentCost).map(([id,n])=>n+' '+getItem(id).name.toUpperCase()).join(', ');
     return;
   }
   if(backpack.items.length>=BACKPACK_LIMIT){
     $('powerServiceFeedback').textContent='BACKPACK FULL · MAKE ROOM TO CRAFT';return;
   }
-  spendPowerMaterials(cost);
+  if(useComponents){
+    for(const [id,quantity] of Object.entries(componentCost))spendMaterial(backpack,id,quantity);
+  }else spendPowerMaterials(cost);
   addItem(backpack,'power-plate:'+tier+'-'+slot,1);
   $('powerServiceFeedback').textContent='CRAFTED '+getPowerPlate(slot,tier).name+
     ' · '+slot.toUpperCase()+' · FULL DURABILITY';
@@ -1761,7 +1781,8 @@ function makeLootMarker(bag){
   ctx.fillStyle='rgba(7,18,27,.93)';ctx.fillRect(0,0,256,64);
   ctx.font='bold 24px system-ui';ctx.fillStyle='#f4e7cb';
   ctx.textAlign='center';ctx.fillText(bag.source==='power-cache'?
-    'POWER CACHE · E':'LOOT · E TO SEARCH',128,40);
+    'POWER CACHE · E':bag.source==='component-cache'?
+    'SCRAP CACHE · E':'LOOT · E TO SEARCH',128,40);
   const texture=new THREE.CanvasTexture(sign);
   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
     map:texture,depthTest:true,transparent:true}));
@@ -1815,6 +1836,21 @@ try{
 }catch{}
 if(powerCacheContents.length)
   spawnWorldLoot(powerCacheContents,-53,-9,'power-cache');
+// All 31 resources are accessible in the test field without purchasing them.
+// This cache persists separately so existing power-armor caches aren't reset.
+const COMPONENT_CACHE_KEY='rpg-lab-component-cache-v1';
+function saveComponentCache(contents){
+  try{localStorage.setItem(COMPONENT_CACHE_KEY,JSON.stringify(contents));}catch{}
+}
+let componentCacheContents=CRAFTING_COMPONENTS.map(item=>({itemId:item.id,quantity:12}));
+try{
+  const saved=JSON.parse(localStorage.getItem(COMPONENT_CACHE_KEY)||'null');
+  if(Array.isArray(saved))componentCacheContents=saved.filter(entry=>
+    CRAFTING_COMPONENTS.some(item=>item.id===entry?.itemId)&&
+    Number.isSafeInteger(entry.quantity)&&entry.quantity>0);
+}catch{}
+if(componentCacheContents.length)
+  spawnWorldLoot(componentCacheContents,-43,9,'component-cache');
 function spawnEnemyLoot(enemy){
   const generated=generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout);
   const drops=WEAPON_REBUILD_MODE?generated.filter(entry=>{
@@ -1929,10 +1965,12 @@ function refreshInventoryUI(){
     'Only player-worn armor counts. Equipment on test dummies is separate.';
   const nav=$('inventoryCategories');nav.replaceChildren();
   if(WEAPON_REBUILD_MODE&&inventoryCategory==='weapon')inventoryCategory='all';
+  const ownedComponents=CRAFTING_COMPONENTS.filter(item=>countItem(backpack,item.id)>0);
   const areas=(WEAPON_REBUILD_MODE?INVENTORY_CATEGORIES.filter(category=>category.id!=='weapon'):INVENTORY_CATEGORIES).map(category=>({
     ...category,count:backpack.items.filter(e=>
       (!WEAPON_REBUILD_MODE||getItem(e.itemId)?.category!=='weapon')&&
-      (category.id==='all'||inventorySection(getItem(e.itemId))===category.id)).length
+      (category.id==='all'||inventorySection(getItem(e.itemId))===category.id)).length+
+      (category.id==='all'||category.id==='materials'?ownedComponents.length:0)
   }));
   for(const category of areas){
     const button=document.createElement('button');
@@ -1950,12 +1988,15 @@ function refreshInventoryUI(){
   }
   const chosen=areas.find(c=>c.id===inventoryCategory)||areas[0];
   $('inventorySectionTitle').textContent=chosen.label.toUpperCase();
-  $('inventorySectionCount').textContent=chosen.count+' ITEM SLOTS';
+  $('inventorySectionCount').textContent=chosen.count+
+    (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES');
   const visibleEntries=backpack.items.filter(entry=>
     (!WEAPON_REBUILD_MODE||getItem(entry.itemId)?.category!=='weapon')&&
     (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory));
   const area=$('inventoryItems');area.replaceChildren();
-  if(!visibleEntries.length){
+  const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
+    ownedComponents:[];
+  if(!visibleEntries.length&&!visibleComponents.length){
     const empty=document.createElement('p');empty.className='inventory-empty';
     empty.textContent=inventoryCategory==='quest'?
       'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
@@ -2061,6 +2102,20 @@ function refreshInventoryUI(){
     });
     area.append(row);
   }
+  for(const component of visibleComponents){
+    const quantity=countItem(backpack,component.id);
+    const row=inventoryLine(component);
+    const amount=document.createElement('span');
+    amount.className='loot-quantity';amount.textContent='×'+quantity+' · POUCH';
+    row.append(amount);
+    lootButton(row,'DROP 1',()=>{
+      const result=spendMaterial(backpack,component.id,1);
+      if(!result.removed)return;
+      spawnWorldLoot([{itemId:component.id,quantity:1}],player.x+.7,player.z-.8,'player-drop');
+      saveBackpack();refreshInventoryUI();
+    });
+    area.append(row);
+  }
 }
 function refreshLootUI(){
   const bag=lootBags.get(selectedLootId),area=$('lootItems');
@@ -2077,6 +2132,7 @@ function refreshLootUI(){
     lootButton(row,'TAKE',()=>{
       const result=takeFromBag(backpack,bag,i);
       if(result.added&&bag.source==='power-cache')savePowerCache(bag.items);
+      if(result.added&&bag.source==='component-cache')saveComponentCache(bag.items);
       if(result.added&&bag.source.startsWith('enemy-')&&!bag.xpGranted){
         bag.xpGranted=true;awardSpecialExperience(15,'loot');
         if(Math.random()<specialModifiers.salvageChance)
@@ -2089,7 +2145,9 @@ function refreshLootUI(){
       }
       if(item.category==='ammo')syncAmmoToWeapons();
       const total=countItem(backpack,entry.itemId);
-      $('lootFeedback').textContent=item.category==='ammo'?
+      $('lootFeedback').textContent=item.category==='material'?
+        'POUCH · +'+result.added+' '+item.name.toUpperCase()+' · NOW OWN '+total:
+        item.category==='ammo'?
         'AUTO-STORED · +'+result.added+' '+item.name.toUpperCase()+
         ' · RESERVE '+displayAmmoCount(total):
         'TAKEN · '+item.name.toUpperCase()+' ×'+result.added+' · NOW OWN '+total+
@@ -2106,7 +2164,7 @@ function beginLootOverlay(id=null){
   lootOverlayFromField=fromField;
   if(id){
     selectedLootId=id;lootOpen=true;inventoryOpen=false;
-    $('lootFeedback').textContent='DUPLICATE WEAPONS AND ARMOR ARE ALLOWED · 30 SLOTS MAX';
+    $('lootFeedback').textContent='MATERIALS STORE IN YOUR POUCH · EQUIPMENT USES 30 SLOTS';
     $('inventoryPanel').classList.add('hidden');
     $('lootPanel').classList.remove('hidden');
     refreshLootUI();
@@ -2137,6 +2195,7 @@ $('lootTakeAll').addEventListener('click',()=>{
     if(Math.random()<specialModifiers.salvageChance)addItem(backpack,'supply:salvage',1);
   }
   if(bag.source==='power-cache')savePowerCache(bag.items);
+  if(bag.source==='component-cache')saveComponentCache(bag.items);
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
     'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
@@ -2163,6 +2222,7 @@ function showVendorFeedback(message){
 function refreshVendorUI(){
   const vendor=vendorById(activeVendorId);
   if(!vendor)return;
+  const search=$('vendorSearch').value.trim().toLowerCase();
   $('vendorName').textContent=vendor.name+' · '+vendor.title;
   $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
   $('vendorCaps').textContent=campaignState.caps+' CAPS';
@@ -2190,6 +2250,7 @@ function refreshVendorUI(){
   }
   if(vendorTab==='buy'){
     for(const offer of vendor.offers){
+      if(search&&!getItem(offer.itemId).name.toLowerCase().includes(search))continue;
       const price=vendorBuyPrice(offer.itemId,offer.quantity);
       const button=row(offer.itemId,offer.quantity,'BUY',price,
         campaignState.caps<price,offer.quantity>1?'×'+offer.quantity:'×1');
@@ -2200,8 +2261,12 @@ function refreshVendorUI(){
       });
     }
   }else{
-    const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId));
-    if(!sellable.length){
+    const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId)&&
+      (!search||getItem(e.itemId).name.toLowerCase().includes(search)));
+    const materials=CRAFTING_COMPONENTS.filter(item=>
+      vendorAccepts(vendor.id,item.id)&&countItem(backpack,item.id)>0&&
+      (!search||item.name.toLowerCase().includes(search)));
+    if(!sellable.length&&!materials.length){
       const empty=document.createElement('p');
       empty.className='vendor-empty';
       empty.textContent='NO ITEMS THIS MERCHANT WILL BUY. LOOT OR PURCHASE GEAR FIRST.';
@@ -2216,6 +2281,22 @@ function refreshVendorUI(){
         completeVendorTrade(outcome,'SOLD');
       });
     }
+    for(const material of materials){
+      const quantity=countItem(backpack,material.id);
+      const button=row(material.id,1,'SELL 1',vendorSellPrice(material.id),false,
+        'POUCH ×'+quantity);
+      button.addEventListener('click',()=>{
+        saveBackpack();
+        const outcome=sellMaterialToVendor(backpack,campaignState.caps,
+          vendor.id,material.id,1);
+        completeVendorTrade(outcome,'SOLD');
+      });
+    }
+  }
+  if(!list.childElementCount){
+    const empty=document.createElement('p');empty.className='vendor-empty';
+    empty.textContent='NO MATCHES · TRY A DIFFERENT MATERIAL OR ITEM NAME.';
+    list.append(empty);
   }
 }
 function completeVendorTrade(result,verb){
@@ -2242,6 +2323,7 @@ function openVendor(vendor){
     powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
   saveBackpack();
   activeVendorId=vendor.id;vendorTab='buy';
+  $('vendorSearch').value='';
   vendorFromField=controls.isLocked;
   vendorOpen=true;
   $('vendorPanel').classList.remove('hidden');$('menu').classList.add('hidden');
@@ -2259,6 +2341,7 @@ function closeVendor(){
 $('vendorClose').addEventListener('click',closeVendor);
 $('vendorBuyTab').addEventListener('click',()=>{vendorTab='buy';refreshVendorUI();});
 $('vendorSellTab').addEventListener('click',()=>{vendorTab='sell';refreshVendorUI();});
+$('vendorSearch').addEventListener('input',refreshVendorUI);
 $('vendorCredit').addEventListener('click',()=>{
   const outcome=claimVendorTestCredit(campaignState.caps,vendorTestCreditClaimed);
   if(!outcome.ok){showVendorFeedback('TEST CREDIT ALREADY CLAIMED OR WALLET FULL');return;}
@@ -2272,7 +2355,8 @@ function refreshWorkbenchUI(){
   const weaponId=$('benchWeapon').value;
   const attached=installedWeaponOptic(backpack,weaponId);
   $('benchMaterials').textContent='SALVAGED PARTS '+countItem(backpack,'supply:salvage')+
-    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass');
+    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
+    ' · COMPONENT POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
   const area=$('benchOptics');area.replaceChildren();
   for(const id of compatibleOptics(weaponId)){
     const mod=OPTIC_MODS[id],row=document.createElement('div');
@@ -2281,8 +2365,12 @@ function refreshWorkbenchUI(){
     const title=document.createElement('strong');title.textContent=mod.name;
     const owned=id==='factory'||backpack.unlockedOptics?.[weaponId]?.includes(id);
     const requirements=document.createElement('small');
+    const componentRecipe=OPTIC_COMPONENT_RECIPES[id];
+    const recipeText=componentRecipe?Object.entries(componentRecipe).map(
+      ([itemId,quantity])=>quantity+' '+getItem(itemId).name.toUpperCase()).join(' + '):'';
     requirements.textContent=owned?'OWNED · NO MATERIAL COST':
-      'CRAFT · '+mod.cost.salvage+' SALVAGED PARTS + '+mod.cost.glass+' OPTIC GLASS';
+      'CRAFT · '+recipeText+' OR '+mod.cost.salvage+
+      ' SALVAGED PARTS + '+mod.cost.glass+' OPTIC GLASS';
     detail.append(title,requirements);row.append(detail);
     if(id===attached){
       const equipped=document.createElement('strong');equipped.textContent='INSTALLED';

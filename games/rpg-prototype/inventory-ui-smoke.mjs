@@ -56,8 +56,11 @@ try{
     'All six armor hit zones must be visible');
   assert.match(await page.locator('#inventoryArmor').textContent(),/6 ZONES PROTECTED/,
     'Armor summary must clearly state that it counts body zones');
-  assert.equal(await page.locator('#inventoryCategories .inventory-category').count(),7,
-    'Inventory must expose its seven active categories');
+  assert.equal(await page.locator('#inventoryCategories .inventory-category').count(),8,
+    'Inventory must expose the new material pouch category');
+  await page.locator('#inventoryCategories [data-category="materials"]').click();
+  assert.equal(await page.locator('#inventorySectionTitle').textContent(),'MATERIALS');
+  assert.match(await page.locator('#inventorySectionCount').textContent(),/COMPONENT TYPES/);
   await page.locator('#inventoryCategories [data-category="armor"]').click();
   assert.equal(await page.locator('#inventorySectionTitle').textContent(),'ARMOR');
   await page.locator('#inventoryCategories [data-category="all"]').click();
@@ -77,6 +80,9 @@ try{
   await page.keyboard.press('e');
   await page.locator('#vendorPanel:not(.hidden)').waitFor({timeout:7000});
   assert.match(await page.locator('#vendorName').textContent(),/BRIGGS · ARMORER/);
+  await page.locator('#vendorSearch').fill('nonexistent-item');
+  assert.match(await page.locator('#vendorItems').textContent(),/NO MATCHES/);
+  await page.locator('#vendorSearch').fill('');
   await page.locator('#vendorCredit').click();
   assert.match(await page.locator('#vendorCaps').textContent(),/300 CAPS/);
   await page.locator('#vendorItems .vendor-item button').first().click();

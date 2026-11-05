@@ -233,7 +233,8 @@ test('W09.7 never restores headwear that was dropped from inventory',()=>{
 
 test('W09.8 category navigation maps supplies, equipment and future quests',()=>{
   assert.deepEqual(INVENTORY_CATEGORIES.map(c=>c.id),
-    ['all','weapon','armor','power','clothing','aid','junk','quest']);
+    ['all','weapon','armor','power','clothing','aid','materials','junk','quest']);
+  assert.equal(inventorySection(getItem('material:steel')),'materials');
   assert.equal(inventorySection(getItem('supply:salvage')),'junk');
   assert.equal(inventorySection(getItem('supply:optic-glass')),'junk');
   assert.equal(inventorySection(getItem('supply:medkit')),'aid');
@@ -310,3 +311,4 @@ test('Pipe rifle enters inventory catalog and preserves finite reserve on reload
   const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(backpack)));
   assert.equal(ammoReserve(restored,'pipe-rifle'),127);
 });
+

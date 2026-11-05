@@ -23,11 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate map and vendor state rules
+      - name: Validate map, vendor and component pouch rules
         run: |
           node --check games/rpg-prototype/vendors.mjs
           node --check games/rpg-prototype/field-map.mjs
-          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs
+          node --check games/rpg-prototype/materials.mjs
+          node --check games/rpg-prototype/inventory.mjs
+          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs
 
   smoke:
     runs-on: ubuntu-latest

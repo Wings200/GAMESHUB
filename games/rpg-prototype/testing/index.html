@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.56 · Vendor Trading | GAMESHUB RPG</title>
+<title>W20.57 · Scrap Components | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -756,6 +756,10 @@ body.hud-modern #powerArmorHud{display:none!important}
 #vendorPanel .vendor-list-wrap{padding:20px clamp(12px,2vw,26px);min-width:0}
 #vendorPanel .vendor-tabs{display:flex;gap:8px;padding-bottom:14px;border-bottom:1px solid #36564b}
 #vendorPanel .vendor-tabs button.active{background:#416454;border-color:#c5db9b;color:#fff}
+#vendorPanel .vendor-search{width:100%;margin-top:12px;background:#0c1c1c;
+  border:1px solid #557367;color:#eff2dc;border-radius:4px;padding:11px 13px;
+  font-size:12px;letter-spacing:.04em}
+#vendorPanel .vendor-search:focus-visible{outline:2px solid #e6cb94;outline-offset:2px}
 #vendorPanel .vendor-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:15px}
 #vendorPanel .vendor-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#192e2d;border:1px solid #416056;border-left:3px solid #c1bc83;padding:13px}
 #vendorPanel .vendor-item strong{font-size:12px;color:#f0ead8;display:block}
@@ -965,8 +969,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.56</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.57</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
+    <p><strong>W20.57 · 31 SCRAP COMPONENTS:</strong> Acid, adhesive, steel, screws, circuitry and all other Fallout 4 base crafting resources are now collectible. Visit the SCRAP CACHE west of the traders (E) to test all 31, check the new MATERIALS inventory tab, and buy or sell components at Wren's stall. Resource quantities save and never consume equipment slots.</p>
     <div class="weapon-reset-notice"><b>W20.56 · TRAINING FIELD CLEANUP + VENDORS</b> Removed the old Station 9 Raider billboard and spare Station 8 survivor preview. Four distinct merchant stalls now sell or buy real items for saved campaign caps: arms, armor, medical, and salvage. Walk to a stall and press E. <b>W20.55 · FIELD MAP</b> Tab opens the nine-station map with saved exploration, discovered contacts, zoom and a waypoint. This is not a fabricated full world map. <b>W20.53 · INVENTORY REDESIGN</b>The inventory now uses a field-terminal layout with categories, item actions, and a live equipment summary. Existing ammo handling, equipment, and saves are preserved. <b>W20.52 · ENEMY HUD CLEANUP</b>Floating Raider name and health labels have been removed so enemies cannot be identified above walls. The top target health HUD still appears when you aim at a visible character. W20.51 reduced incoming damage by 20% while wearing power armor; you now take 20% less damage from enemy bullets than before. Chassis-only protection still falls below protection with installed plates; conventional armor and plate tiers remain meaningful. W20.50 NPC NAVIGATION & SQUAD AWARENESS (wall-safe movement, teammate reactions, and search scanning) and W20.48 CONTEXTUAL NPC HEALTH remain in place. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
@@ -1020,12 +1025,12 @@ body.hud-modern #powerArmorHud{display:none!important}
       <small>Testing sandbox only. Recharges the parked frame without using inventory cores; remove before the real survival economy.</small>
     </div>
     <div class="armor-slots" style="display:grid">
-      <label>HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SALVAGE</button></label>
-      <label>CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SALVAGE</button></label>
-      <label>LEFT ARM <select id="power-leftArm"></select><small id="power-rating-leftArm">EMPTY</small><button id="power-repair-leftArm" type="button">REPAIR WITH SALVAGE</button></label>
-      <label>RIGHT ARM <select id="power-rightArm"></select><small id="power-rating-rightArm">EMPTY</small><button id="power-repair-rightArm" type="button">REPAIR WITH SALVAGE</button></label>
-      <label>LEFT LEG <select id="power-leftLeg"></select><small id="power-rating-leftLeg">EMPTY</small><button id="power-repair-leftLeg" type="button">REPAIR WITH SALVAGE</button></label>
-      <label>RIGHT LEG <select id="power-rightLeg"></select><small id="power-rating-rightLeg">EMPTY</small><button id="power-repair-rightLeg" type="button">REPAIR WITH SALVAGE</button></label>
+      <label>HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
+      <label>CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
+      <label>LEFT ARM <select id="power-leftArm"></select><small id="power-rating-leftArm">EMPTY</small><button id="power-repair-leftArm" type="button">REPAIR WITH SCRAP</button></label>
+      <label>RIGHT ARM <select id="power-rightArm"></select><small id="power-rating-rightArm">EMPTY</small><button id="power-repair-rightArm" type="button">REPAIR WITH SCRAP</button></label>
+      <label>LEFT LEG <select id="power-leftLeg"></select><small id="power-rating-leftLeg">EMPTY</small><button id="power-repair-leftLeg" type="button">REPAIR WITH SCRAP</button></label>
+      <label>RIGHT LEG <select id="power-rightLeg"></select><small id="power-rating-rightLeg">EMPTY</small><button id="power-repair-rightLeg" type="button">REPAIR WITH SCRAP</button></label>
     </div>
     <div class="loot-meta" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <strong>CRAFT ONE PIECE:</strong>
@@ -1134,7 +1139,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="vendor-shell">
     <header class="vendor-header">
       <div>
-        <div class="vendor-eyebrow">FRONTIER / TRADING ROW / W20.56</div>
+        <div class="vendor-eyebrow">FRONTIER / TRADING ROW / W20.57</div>
         <h2 id="vendorName">FIELD MERCHANT</h2>
         <div class="vendor-desc" id="vendorSpecialty">SPECIALTY SUPPLIES</div>
       </div>
@@ -1147,11 +1152,14 @@ body.hud-modern #powerArmorHud{display:none!important}
           <button id="vendorBuyTab" class="active" type="button" aria-pressed="true">BUY</button>
           <button id="vendorSellTab" type="button" aria-pressed="false">SELL</button>
         </div>
+        <input id="vendorSearch" class="vendor-search" type="search"
+          autocomplete="off" placeholder="Search trade goods (steel, screws, adhesive...)"
+          aria-label="Search merchant items"/>
         <div id="vendorItems" class="vendor-items" aria-label="Available trade goods"></div>
       </section>
       <aside class="vendor-side">
         <strong>HOW TRADING WORKS</strong>
-        <p>Buy items with your saved campaign caps. Sell only the items this merchant specializes in. Equipped gear must be unequipped before its final copy can be sold.</p>
+        <p>Buy items with your saved campaign caps. Sell only the items this merchant specializes in. Scrap components live in your material pouch, outside the 30 gear slots. Equipped gear must be unequipped before its final copy can be sold.</p>
         <strong>TESTING ONLY</strong>
         <p>Each merchant currently has repeatable test stock. A one-time training credit lets you verify the economy before full-world shops and restocking are built.</p>
         <button id="vendorCredit" type="button">CLAIM 300 TEST CAPS · ONCE</button>
@@ -1198,7 +1206,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <div class="inventory-brand">
         <div class="inventory-eyebrow"><span class="inventory-status-dot"></span> FIELD TERMINAL <span class="inventory-separator">//</span> PERSONAL EQUIPMENT</div>
         <h2>INVENTORY<span> / LOADOUT</span></h2>
-        <p>Manage what you carry. Equipping, using, and dropping items work as before.</p>
+        <p>Manage equipment and salvage. 31 crafting components live in a separate material pouch and never fill backpack slots.</p>
       </div>
       <div class="inventory-toolbar">
         <div class="inventory-summary">
@@ -1213,7 +1221,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <nav class="inventory-sidebar" aria-label="Inventory filters">
         <div class="inventory-pane-label"><span>01</span> CATEGORIES</div>
         <div id="inventoryCategories" class="inventory-nav" aria-label="Inventory categories"></div>
-        <div class="inventory-rail-hint">AMMO IS STORED IN WEAPON RESERVES AND DOES NOT USE BACKPACK SLOTS.</div>
+        <div class="inventory-rail-hint">AMMO USES WEAPON RESERVES. SCRAP USES YOUR COMPONENT POUCH. NEITHER USES BACKPACK SLOTS.</div>
       </nav>
       <section class="inventory-content" aria-label="Selected inventory category">
         <div class="inventory-content-head">
@@ -1318,6 +1326,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./main.js?v=W20.56"></script>
+<script type="module" src="./main.js?v=W20.57"></script>
 </body>
 </html>

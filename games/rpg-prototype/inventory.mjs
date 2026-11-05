@@ -4,6 +4,7 @@ import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs?v=W20.41';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
 import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs';
+import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from './materials.mjs';
 export const BACKPACK_LIMIT=30;
 export const RARITIES=Object.freeze({
   common:Object.freeze({label:'COMMON',color:'#a8b7af',multiplier:1}),
@@ -20,10 +21,12 @@ export const INVENTORY_CATEGORIES=Object.freeze([
   {id:'power',label:'Power Armor'},
   {id:'clothing',label:'Clothing'},
   {id:'aid',label:'Aid'},
+  {id:'materials',label:'Materials'},
   {id:'junk',label:'Junk'},
   {id:'quest',label:'Quest Items'}
 ]);
 export function inventorySection(item){
+  if(item.category==='material')return 'materials';
   if(item.category==='power-plate'||item.category==='fusion-core')return 'power';
   if(item.category==='supply')return item.key==='medkit'?'aid':'junk';
   return item.category;
@@ -88,6 +91,7 @@ templates.set('supply:salvage',Object.freeze({
 templates.set('supply:optic-glass',Object.freeze({
   id:'supply:optic-glass',category:'supply',key:'optic-glass',name:'Optic Glass',
   rarity:'uncommon',value:25,maxStack:30}));
+for(const component of CRAFTING_COMPONENTS)templates.set(component.id,component);
 export const ITEM_CATALOG=Object.freeze(Object.fromEntries(templates));
 export function getItem(id){
   const item=templates.get(id);
@@ -95,17 +99,19 @@ export function getItem(id){
   return item;
 }
 export function createBackpack(){
-  return {items:[],ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
+  return {items:[],materials:{},ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
     [spec.id,spec.startingReserve])),equipment:{weapon:'scrap-pistol',
     armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{}},
     unlockedOptics:{},nextId:1};
 }
 export function inventorySlotsUsed(pack){return pack.items.length;}
 export function totalInventoryValue(pack){
-  return pack.items.reduce((sum,entry)=>sum+getItem(entry.itemId).value*entry.quantity,0);
+  return pack.items.reduce((sum,entry)=>sum+getItem(entry.itemId).value*entry.quantity,0)+
+    CRAFTING_COMPONENTS.reduce((sum,item)=>sum+item.value*countItem(pack,item.id),0);
 }
 export function countItem(pack,itemId){
   const item=getItem(itemId);
+  if(item.category==='material')return cap(pack?.materials?.[itemId]??0);
   if(item.category==='ammo')return ammoReserve(pack,item.key);
   return pack.items.filter(e=>e.itemId===itemId).reduce((n,e)=>n+e.quantity,0);
 }
@@ -119,6 +125,13 @@ export function addItem(pack,itemId,quantity=1,condition={}){
     const added=Math.min(remaining,Number.MAX_SAFE_INTEGER-current);
     pack.ammoReserves[template.key]=current+added;
     return {added,leftover:remaining-added,full:remaining>added};
+  }
+  if(template.category==='material'){
+    pack.materials??={};
+    const current=cap(pack.materials[itemId]??0);
+    const added=Math.min(remaining,999999-current);
+    pack.materials[itemId]=current+Math.max(0,added);
+    return {added:Math.max(0,added),leftover:remaining-Math.max(0,added),full:remaining>added};
   }
   if(template.maxStack>1){
     for(const e of pack.items){
@@ -154,6 +167,17 @@ export function removeItem(pack,uid,quantity=1){
     ...(Number.isFinite(entry.charge)?{charge:entry.charge}:{})};
 }
 
+export function spendMaterial(pack,itemId,quantity=1){
+  const component=getItem(itemId);
+  if(component.category!=='material')return {removed:0,itemId};
+  const removed=Math.min(countItem(pack,itemId),cap(quantity));
+  if(removed&&pack.materials){
+    pack.materials[itemId]-=removed;
+    if(!pack.materials[itemId])delete pack.materials[itemId];
+  }
+  return {removed,itemId};
+}
+
 // An attachment is paid for once, then can be swapped freely on its weapon.
 // All costs come from genuine backpack material stacks.
 export function installWeaponOptic(pack,weaponId,opticId){
@@ -163,13 +187,18 @@ export function installWeaponOptic(pack,weaponId,opticId){
   const mod=OPTIC_MODS[opticId],owned=pack.unlockedOptics?.[weaponId]||[];
   const crafting=opticId!=='factory'&&!owned.includes(opticId);
   if(crafting){
+    const recipe=OPTIC_COMPONENT_RECIPES[opticId];
+    const canUseComponents=recipe&&Object.entries(recipe).every(
+      ([id,needed])=>countItem(pack,id)>=needed);
     const missing=[];
-    for(const [material,needed] of Object.entries(mod.cost)){
+    if(!canUseComponents)for(const [material,needed] of Object.entries(mod.cost)){
       const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
       if(countItem(pack,itemId)<needed)missing.push(itemId);
     }
     if(missing.length)return {ok:false,reason:'materials',missing};
-    for(const [material,needed] of Object.entries(mod.cost)){
+    if(canUseComponents){
+      for(const [id,needed] of Object.entries(recipe))spendMaterial(pack,id,needed);
+    }else for(const [material,needed] of Object.entries(mod.cost)){
       let remaining=needed;
       const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
       for(const entry of [...pack.items]){
@@ -316,7 +345,8 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
     [{itemId:'clothing:field-cap',quantity:1}]:
     enemyId==='raider'?
     [{itemId:'clothing:field-backpack',quantity:1}]:[];
-  return [...base[enemyId].map(e=>({...e})),...armor,...wearables];
+  const scrap=generateComponentDrop(enemyId,random);
+  return [...base[enemyId].map(e=>({...e})),...armor,...wearables,...(scrap?[scrap]:[])];
 }
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();
@@ -326,6 +356,10 @@ export function safeBackpackSnapshot(pack){
   for(const spec of ARSENAL){
     const saved=pack.ammoReserves?.[spec.id];
     if(Number.isSafeInteger(saved)&&saved>=0)result.ammoReserves[spec.id]=saved;
+  }
+  for(const component of CRAFTING_COMPONENTS){
+    const saved=pack.materials?.[component.id];
+    if(Number.isSafeInteger(saved)&&saved>0)addItem(result,component.id,Math.min(saved,999999));
   }
   for(const e of pack.items){
     if(!templates.has(e?.itemId))continue;

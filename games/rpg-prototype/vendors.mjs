@@ -1,6 +1,7 @@
 // W20.56: test-field merchants. All transactions use existing inventory items
 // and campaign caps; there is no second wallet or phantom equipment system.
-import {getItem,addItem,removeItem} from './inventory.mjs';
+import {getItem,addItem,removeItem,countItem,spendMaterial} from './inventory.mjs';
+import {CRAFTING_COMPONENTS} from './materials.mjs';
 
 export const VENDORS=Object.freeze([
   Object.freeze({id:'arms',name:'MARA',title:'ARMS DEALER',specialty:'Firearms & ammunition',
@@ -24,8 +25,9 @@ export const VENDORS=Object.freeze([
     x:-15,z:9,color:0x9ad0a9,offers:Object.freeze([
       {itemId:'supply:medkit',quantity:1}
     ])}),
-  Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'Parts, optics, clothing & cores',
+  Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'31 components, optics, clothing & cores',
     x:-5,z:9,color:0xdfc18c,offers:Object.freeze([
+      ...CRAFTING_COMPONENTS.map(item=>({itemId:item.id,quantity:item.rarity==='epic'?1:item.rarity==='rare'?2:5})),
       {itemId:'supply:salvage',quantity:5},
       {itemId:'supply:optic-glass',quantity:2},
       {itemId:'clothing:field-cap',quantity:1},
@@ -48,7 +50,8 @@ export function vendorAccepts(vendorId,itemId){
   if(vendorId==='armor')return item.category==='armor'||item.category==='power-plate';
   if(vendorId==='medic')return item.id==='supply:medkit';
   if(vendorId==='scavenger')return item.category==='clothing'||
-    item.category==='fusion-core'||(item.category==='supply'&&item.key!=='medkit');
+    item.category==='fusion-core'||item.category==='material'||
+    (item.category==='supply'&&item.key!=='medkit');
   return false;
 }
 
@@ -101,6 +104,20 @@ export function sellToVendor(pack,caps,vendorId,uid,quantity=1){
   if(sold.removed!==quantity)return{ok:false,reason:'not-owned'};
   return{ok:true,pack:next,caps:cap(caps)+price,price,
     itemId:entry.itemId,quantity};
+}
+
+export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1){
+  let material;try{material=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
+  if(material.category!=='material'||!vendorAccepts(vendorId,itemId))
+    return{ok:false,reason:'wrong-merchant'};
+  if(!Number.isSafeInteger(quantity)||quantity<1||countItem(pack,itemId)<quantity)
+    return{ok:false,reason:'invalid-quantity'};
+  const price=vendorSellPrice(itemId,quantity);
+  if(cap(caps)>MAX_CAPS-price)return{ok:false,reason:'wallet-full'};
+  const next=copy(pack);
+  if(spendMaterial(next,itemId,quantity).removed!==quantity)
+    return{ok:false,reason:'not-owned'};
+  return{ok:true,pack:next,caps:cap(caps)+price,price,itemId,quantity};
 }
 
 export function claimVendorTestCredit(caps,claimed){
