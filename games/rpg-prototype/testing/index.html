@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.52 · Stealth HUD Cleanup | GAMESHUB RPG</title>
+<title>W20.53 · Field Inventory | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -583,6 +583,129 @@ body.hud-modern #powerArmorHud{display:none!important}
   #sniperScope{background:radial-gradient(circle at 50% 50%,
     transparent 0 39vmin,#090e0ff0 41vmin,#020404 45vmin 100%)}
 }
+
+/* W20.53: readable field-terminal inventory. Isolated from world loot UI. */
+#inventoryPanel{padding:clamp(12px,2.6vh,28px) clamp(12px,2.5vw,34px);
+  color:#e7ece4;background:radial-gradient(ellipse at 50% 0%,#20362f 0%,#0a1419 56%,#050b0f 100%)}
+#inventoryPanel .inventory-frame{max-width:1460px;min-height:min(760px,94vh);
+  display:flex;flex-direction:column;border:1px solid #5c7765;background:#0b181ccc;
+  box-shadow:0 24px 90px #0008, inset 0 0 0 5px #0e242829;position:relative}
+#inventoryPanel .inventory-frame::before{content:"";height:3px;display:block;
+  background:linear-gradient(90deg,#b7d4a5 0%,#d7bb7a 42%,transparent 80%)}
+#inventoryPanel .inventory-topbar{display:flex;gap:20px;align-items:center;justify-content:space-between;
+  padding:24px clamp(18px,2.2vw,35px) 20px;border-bottom:1px solid #38544d;
+  background:linear-gradient(100deg,#162d2bde,#0b181a)}
+#inventoryPanel .inventory-eyebrow{font-size:10px;font-weight:850;letter-spacing:.19em;color:#a4c8ac;display:flex;align-items:center;gap:9px}
+#inventoryPanel .inventory-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#b6d9a4;box-shadow:0 0 13px #80b68b}
+#inventoryPanel .inventory-separator{color:#637d73}
+#inventoryPanel h2{font-size:clamp(29px,3.5vw,46px);line-height:1.1;margin:10px 0 6px;letter-spacing:-.045em}
+#inventoryPanel h2 span{font-weight:550;color:#b7cbbd}
+#inventoryPanel .inventory-topbar p{margin:0;max-width:600px;font-size:12px;color:#9cb1aa}
+#inventoryPanel .inventory-toolbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:flex-end}
+#inventoryPanel .inventory-summary{display:flex;gap:8px}
+#inventoryPanel .inventory-summary>div{border-left:1px solid #456453;padding:4px 15px;display:flex;flex-direction:column;gap:5px;min-width:125px}
+#inventoryPanel .inventory-summary small,#inventoryPanel .inventory-equipped-slot small{font-size:9px;letter-spacing:.13em;color:#8ba69a;font-weight:850}
+#inventoryPanel .inventory-summary strong{color:#f0d59d;font-size:13px;white-space:nowrap}
+#inventoryPanel .inventory-exit{display:flex;flex-direction:column;gap:2px;align-items:center;
+  padding:9px 16px;color:#e0e8df;border:1px solid #658278;background:#213b3a;font-size:11px}
+#inventoryPanel .inventory-exit span{font-size:9px;color:#a5bdb1;letter-spacing:.05em}
+#inventoryPanel .inventory-shell{display:grid;grid-template-columns:195px minmax(0,1fr) 288px;
+  gap:0;padding:0;align-items:stretch;flex:1;min-height:430px}
+#inventoryPanel .inventory-sidebar{border-right:1px solid #324e46;padding:25px 12px 20px 22px;
+  background:linear-gradient(180deg,#112622,#0a1b1d);display:flex;flex-direction:column;min-width:0}
+#inventoryPanel .inventory-pane-label{font-size:10px;font-weight:900;color:#b6c5ab;letter-spacing:.17em;margin-bottom:17px}
+#inventoryPanel .inventory-pane-label span{color:#d6bd84;margin-right:7px}
+#inventoryPanel .inventory-nav{position:static;display:flex;flex-direction:column;gap:4px}
+#inventoryPanel .inventory-category{background:transparent!important;border:1px solid transparent!important;
+  border-left:2px solid transparent!important;border-radius:0;padding:11px 10px!important;
+  color:#afc4b9!important;font-size:11px!important;letter-spacing:.035em;font-weight:780;
+  min-height:42px;transition:background .14s,border-color .14s}
+#inventoryPanel .inventory-category:hover{background:#274037!important}
+#inventoryPanel .inventory-category.selected{background:#28443b!important;border-color:#4f7764!important;
+  border-left-color:#e9c58b!important;color:#f8e8bf!important}
+#inventoryPanel .inventory-category b{font-size:10px;color:#9cb4a5;background:#162f2b;
+  border:1px solid #3c574b;border-radius:2px;min-width:26px;text-align:center;padding:3px 5px}
+#inventoryPanel .inventory-category.selected b{color:#f5d89a;border-color:#a78f60}
+#inventoryPanel .inventory-rail-hint{margin-top:auto;font-size:9px;line-height:1.8;
+  border-top:1px solid #315046;padding-top:17px;color:#809d94;letter-spacing:.045em}
+#inventoryPanel .inventory-content{border:0;border-radius:0;padding:24px clamp(14px,2vw,29px);
+  background:linear-gradient(165deg,#0f2225,#0b1a20);min-width:0;display:flex;flex-direction:column}
+#inventoryPanel .inventory-content-head{align-items:end;padding-bottom:15px;border-bottom:1px solid #466057}
+#inventoryPanel .inventory-content-head .inventory-pane-label{margin:0 0 8px}
+#inventoryPanel .inventory-content-head h3{font-size:23px;line-height:1.1;font-weight:850;letter-spacing:-.01em}
+#inventoryPanel .inventory-content-head>span{font-size:10px;font-weight:800;color:#b4c8bd}
+#inventoryPanel .inventory-item-hint{display:flex;justify-content:space-between;gap:10px;
+  font-size:9px;letter-spacing:.12em;color:#728e84;font-weight:850;padding:15px 2px 3px}
+#inventoryPanel #inventoryItems{display:grid;grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
+  align-content:start;gap:7px;min-height:140px;max-height:clamp(270px,48vh,560px);
+  overflow-y:auto;overflow-x:hidden;padding:5px 3px 12px 0;scrollbar-color:#6c887a #12292c}
+#inventoryPanel #inventoryItems .loot-entry{border:1px solid #34544c;border-left-width:3px;
+  border-radius:2px;min-height:66px;background:#152c2dbd;padding:10px 12px;gap:9px;
+  flex-wrap:wrap;transition:background .12s,border-color .12s}
+#inventoryPanel #inventoryItems .loot-entry:hover{background:#203b39;border-top-color:#69887a}
+#inventoryPanel #inventoryItems .loot-description{flex:1 1 165px;min-width:145px;gap:6px}
+#inventoryPanel #inventoryItems .loot-description strong{font-size:13px;line-height:1.2}
+#inventoryPanel #inventoryItems .loot-description small{font-size:9px;color:#a0b6ae;letter-spacing:.06em}
+#inventoryPanel #inventoryItems .loot-quantity{font-size:11px;background:#20392f;color:#e2d3aa;
+  border:1px solid #415f4c;padding:5px 7px}
+#inventoryPanel #inventoryItems .loot-action{min-height:31px;padding:8px 10px;
+  font-size:10px;font-weight:850;background:#29463f;border-color:#597968;color:#f4dfb4}
+#inventoryPanel #inventoryItems .loot-action:hover{background:#3e6353}
+#inventoryPanel #inventoryItems .loot-action:last-child{background:#2f302c;border-color:#6d6252;color:#d5bb96}
+#inventoryPanel #inventoryItems .loot-action:last-child:hover{background:#504737}
+#inventoryPanel .inventory-empty{grid-column:1/-1;border:1px dashed #456457;
+  background:#142726;padding:24px;color:#aabeb2}
+#inventoryPanel #inventoryAmmo{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding-top:5px}
+#inventoryPanel .inventory-ammo-line{background:#152d2d;border-color:#37584e;padding:10px;font-size:11px}
+#inventoryPanel .inventory-loadout{padding:25px 20px 20px;border-left:1px solid #324e46;
+  background:linear-gradient(160deg,#152b29,#0c1e20);display:flex;flex-direction:column;min-width:0}
+#inventoryPanel .inventory-silhouette{height:183px;position:relative;display:flex;
+  align-items:center;justify-content:center;border:1px solid #365a4b;
+  background:radial-gradient(circle at 50% 50%,#2e50443b,transparent 75%),
+    repeating-linear-gradient(0deg,transparent,transparent 20px,#6e927216 21px);
+  margin:0 0 15px}
+#inventoryPanel .inventory-silhouette svg{height:164px;width:164px;filter:drop-shadow(0 0 12px #8cbf8930)}
+#inventoryPanel .inventory-figure-corner{position:absolute;width:17px;height:17px;border-color:#b4c494}
+#inventoryPanel .corner-a{left:8px;top:8px;border-left:2px solid;border-top:2px solid}
+#inventoryPanel .corner-b{right:8px;bottom:8px;border-right:2px solid;border-bottom:2px solid}
+#inventoryPanel .inventory-figure-caption{position:absolute;bottom:7px;left:10px;font-size:8px;
+  letter-spacing:.12em;font-weight:900;color:#a8c9ac}
+#inventoryPanel .inventory-equipped-list{display:flex;flex-direction:column;gap:8px}
+#inventoryPanel .inventory-equipped-slot{border:1px solid #3a584e;border-left:2px solid #9fbd93;
+  background:#122625;padding:11px 12px;display:flex;flex-direction:column;gap:8px}
+#inventoryPanel .inventory-equipped-slot strong{font-size:11px;line-height:1.4;color:#e5d4ad;overflow-wrap:anywhere}
+#inventoryPanel .inventory-loadout-tip{font-size:10px;color:#91a89c;line-height:1.55;
+  margin-top:16px;padding:13px 2px;border-top:1px solid #345248}
+#inventoryPanel .inventory-footer{display:flex;flex-wrap:wrap;justify-content:space-between;
+  gap:10px 22px;padding:14px 26px;border-top:1px solid #38544d;color:#8ba59a;
+  font-size:9px;letter-spacing:.09em;font-weight:780;background:#0c1b1d}
+#inventoryPanel .inventory-footer b{color:#e5c88e}
+#inventoryPanel button:focus-visible,#inventoryPanel input:focus-visible{outline:2px solid #e6c68b;outline-offset:3px}
+@media(max-width:1080px){
+  #inventoryPanel .inventory-shell{grid-template-columns:175px minmax(0,1fr)}
+  #inventoryPanel .inventory-loadout{grid-column:1/-1;border-left:0;border-top:1px solid #36574b}
+  #inventoryPanel .inventory-silhouette{display:none}
+  #inventoryPanel .inventory-equipped-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+  #inventoryPanel .inventory-loadout-tip{margin-top:9px}
+  #inventoryPanel .inventory-topbar{align-items:flex-start}
+  #inventoryPanel .inventory-toolbar{gap:7px}
+}
+@media(max-width:700px){
+  #inventoryPanel .inventory-topbar{flex-direction:column;padding:18px;align-items:stretch}
+  #inventoryPanel .inventory-toolbar{justify-content:space-between}
+  #inventoryPanel .inventory-summary>div{padding-left:9px;min-width:0}
+  #inventoryPanel .inventory-shell{grid-template-columns:minmax(0,1fr)}
+  #inventoryPanel .inventory-sidebar{border-right:0;border-bottom:1px solid #36574b;padding:14px}
+  #inventoryPanel .inventory-sidebar .inventory-pane-label,#inventoryPanel .inventory-rail-hint{display:none}
+  #inventoryPanel .inventory-nav{display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:5px}
+  #inventoryPanel .inventory-category{min-width:max-content;gap:9px;padding:8px 10px!important}
+  #inventoryPanel .inventory-content{padding:17px 13px}
+  #inventoryPanel .inventory-item-hint{display:none}
+  #inventoryPanel .inventory-equipped-list{grid-template-columns:minmax(0,1fr)}
+  #inventoryPanel .inventory-footer{padding:12px 14px}
+}
+@media(prefers-reduced-motion:reduce){#inventoryPanel .inventory-category,#inventoryPanel #inventoryItems .loot-entry{transition:none}}
+
 </style>
 </head>
 <body class="hud-modern">
@@ -939,34 +1062,65 @@ body.hud-modern #powerArmorHud{display:none!important}
   </div>
 </div>
 
-<div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-label="Player inventory">
-  <div class="loot-container">
-    <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.14 · PLAYER SYSTEMS</div>
-        <h2>BACKPACK<span> & GEAR.</span></h2>
-        <p>Inventory categories on the left, equipment on the right. Ammo automatically enters its weapon's reserve when collected, without using backpack slots.</p>
+<div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Player inventory">
+  <div class="loot-container inventory-frame">
+    <header class="inventory-topbar">
+      <div class="inventory-brand">
+        <div class="inventory-eyebrow"><span class="inventory-status-dot"></span> FIELD TERMINAL <span class="inventory-separator">//</span> PERSONAL EQUIPMENT</div>
+        <h2>INVENTORY<span> / LOADOUT</span></h2>
+        <p>Manage what you carry. Equipping, using, and dropping items work as before.</p>
       </div>
-      <button id="inventoryClose" type="button">CLOSE / RESUME</button>
-    </div>
-    <div class="loot-meta">
-      <strong id="inventoryCapacity">0 / 30 SLOTS</strong>
-      <strong id="inventoryValue">0 CAPS VALUE</strong>
-      <span>EQUIPPED WEAPON · <b id="inventoryWeapon">Worn Scrap Pistol</b></span>
-      <span>PLAYER ARMOR · <b id="inventoryArmor">CHEST 0 AP</b></span>
-      <span>PLAYER CLOTHING · <b id="inventoryClothing">HAT: NONE · BACKPACK: NONE</b></span>
-    </div>
+      <div class="inventory-toolbar">
+        <div class="inventory-summary">
+          <div><small>BACKPACK</small><strong id="inventoryCapacity">0 / 30 SLOTS</strong></div>
+          <div><small>CONTENTS VALUE</small><strong id="inventoryValue">0 CAPS VALUE</strong></div>
+        </div>
+        <button id="inventoryClose" class="inventory-exit" type="button" aria-label="Close inventory and resume gameplay">CLOSE <span>ESC / I</span></button>
+      </div>
+    </header>
     <div class="inventory-shell">
-      <nav id="inventoryCategories" class="inventory-nav" aria-label="Inventory categories"></nav>
+      <nav class="inventory-sidebar" aria-label="Inventory filters">
+        <div class="inventory-pane-label"><span>01</span> CATEGORIES</div>
+        <div id="inventoryCategories" class="inventory-nav" aria-label="Inventory categories"></div>
+        <div class="inventory-rail-hint">AMMO IS STORED IN WEAPON RESERVES AND DOES NOT USE BACKPACK SLOTS.</div>
+      </nav>
       <section class="inventory-content" aria-label="Selected inventory category">
         <div class="inventory-content-head">
-          <h3 id="inventorySectionTitle">ALL ITEMS</h3>
+          <div><div class="inventory-pane-label"><span>02</span> CONTENTS</div>
+            <h3 id="inventorySectionTitle">ALL ITEMS</h3></div>
           <span id="inventorySectionCount">0 ITEM SLOTS</span>
         </div>
+        <div class="inventory-item-hint"><span>ITEM / CONDITION</span><span>QUANTITY / ACTIONS</span></div>
         <div id="inventoryItems" class="loot-grid"></div>
         <div id="inventoryAmmo" aria-label="Weapon ammunition reserves"></div>
       </section>
+      <aside class="inventory-loadout" aria-label="Currently equipped gear">
+        <div class="inventory-pane-label"><span>03</span> EQUIPPED GEAR</div>
+        <div class="inventory-silhouette" role="img" aria-label="Stylized character equipment overview">
+          <svg viewBox="0 0 170 170" aria-hidden="true" focusable="false">
+            <circle cx="85" cy="24" r="14" fill="#1e3434" stroke="#7da894" stroke-width="2"/>
+            <path d="M72 43 L98 43 L110 61 L107 103 L96 111 L74 111 L63 103 L60 61 Z" fill="#172a2b" stroke="#7da894" stroke-width="2"/>
+            <path d="M58 57 L48 61 L36 107 L43 113 L54 87 L63 72 M112 57 L122 61 L134 107 L127 113 L116 87 L107 72" fill="none" stroke="#648b80" stroke-width="10" stroke-linecap="round"/>
+            <path d="M76 111 L70 150 M94 111 L100 150" fill="none" stroke="#648b80" stroke-width="13" stroke-linecap="round"/>
+            <path d="M69 49 L101 49 L105 63 L65 63 Z M76 70 L94 70 L94 93 L76 93 Z" fill="#40645b" opacity=".75"/>
+            <path d="M77 20 H93 M85 14 V30 M67 84 H103" stroke="#c8dda7" stroke-width="1.3" opacity=".8"/>
+            <circle cx="85" cy="83" r="2" fill="#e1bf7d"/>
+          </svg>
+          <div class="inventory-figure-corner corner-a"></div><div class="inventory-figure-corner corner-b"></div>
+          <span class="inventory-figure-caption">GEAR STATUS / LIVE</span>
+        </div>
+        <div class="inventory-equipped-list">
+          <div class="inventory-equipped-slot"><small>ACTIVE WEAPON</small><strong id="inventoryWeapon">Worn Scrap Pistol</strong></div>
+          <div class="inventory-equipped-slot"><small>ARMOR & BALLISTIC PROTECTION</small><strong id="inventoryArmor">CHEST 0 AP</strong></div>
+          <div class="inventory-equipped-slot"><small>CLOTHING / UTILITY</small><strong id="inventoryClothing">HAT: NONE · BACKPACK: NONE</strong></div>
+        </div>
+        <div class="inventory-loadout-tip">Select an item to equip, use, or drop it. Your saved gear and item counts stay unchanged.</div>
+      </aside>
     </div>
-    <div class="loot-footer">E SEARCH · I INVENTORY · EQUIP OR UNEQUIP GEAR · QTY OR MAX TO DROP · AMMO PICKUPS AUTO-SORT INTO WEAPON RESERVES · THE HUD SHOWS 999+ FOR LARGER COUNTS</div>
+    <footer class="inventory-footer">
+      <span><b>I</b> CLOSE / RESUME</span><span><b>E</b> SEARCH LOOT</span>
+      <span><b>QTY / MAX</b> CHOOSE DROP AMOUNT</span><span>CAPACITY <b>30 SLOTS</b></span>
+    </footer>
   </div>
 </div>
 <div id="lootPanel" class="loot-overlay hidden" role="dialog" aria-label="Search loot">
