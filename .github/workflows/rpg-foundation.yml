@@ -147,3 +147,24 @@ jobs:
             /tmp/rpg-inventory-tablet.png
           retention-days: 7
           if-no-files-found: warn
+
+  developer-panel-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install developer panel browser harness
+        run: npm install --no-save --no-package-lock playwright-core
+      - name: Verify nested editor, value changes, publishing and access
+        run: node games/rpg-prototype/dev-panel-ui-smoke.mjs
+      - name: Preserve developer panel preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpg-developer-panel
+          path: /tmp/rpg-dev-panel-desktop.png
+          retention-days: 7
+          if-no-files-found: warn

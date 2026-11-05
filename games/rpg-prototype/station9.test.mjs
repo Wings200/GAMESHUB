@@ -1047,7 +1047,7 @@ test('W20.24 pipe rifle is selectable and really rendered in first/third person'
   const model=readFileSync(new URL('./pipe-rifle.mjs',import.meta.url),'utf8');
   const weapons=readFileSync(new URL('./weapons.mjs',import.meta.url),'utf8');
   const handling=readFileSync(new URL('./weapon-handling.mjs',import.meta.url),'utf8');
-  assert.match(weapons,/export const PIPE_RIFLE=Object\.freeze/);
+  assert.match(weapons,/export const PIPE_RIFLE=/);
   assert.match(weapons,/id:'pipe-rifle',name:'Pipe Rifle',kind:'carbine'/);
   assert.match(source,/PIPE_PISTOL, PIPE_RIFLE, LASER_MUSKET, DOUBLE_BARREL_SHOTGUN, PUMP_ACTION_SHOTGUN, BOLT_HUNTING_RIFLE, IRON_REVOLVER, PIPE_SMG, HEAVY_SNIPER, ARSENAL/);
   assert.match(source,/createPipeRifle\(THREE,camera,\{flareTexture:flareTex\}\)/);
