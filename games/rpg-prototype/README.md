@@ -1,3 +1,12 @@
+## W20.56 — Clean field and four specialty vendors
+
+- Removed the obsolete Station 9 floating Raider-status billboard and the extra second-survivor preview model at the power-armor bay. The real Raider combat HUD, playable character, armor test targets, working NPCs, and power-armor systems remain.
+- Built a compact central trading row at x=-35/-25/-15/-5, z=9, avoiding the active firing range, sprint lane, stair course, maze walls, and NPC arena. Each stall has a physical counter, canopy, sign, and resident shopkeeper.
+- Mara sells guns/ammo; Briggs sells armor and power plates; Doc Vale sells medkits; Wren sells salvage, optics, clothing, and fusion cores. Press E near a stall for Buy/Sell; vendor specialty restrictions and values use the existing inventory item catalog.
+- Transactions are atomic, spend/earn saved campaign caps, respect the 30-slot backpack, put ammo in real weapon reserves, and prevent the last equipped gear copy from being sold until unequipped. A one-time 300-cap training credit is explicitly confined to this lab.
+- Added vendor map markers, a vendor-field teleport button, five pure economy tests, and browser integration checks that actually open a merchant and buy/sell an item. Training stock is repeatable for now; restocking and full-world markets are future tasks.
+- This release intentionally removes older debug display models rather than the functional armor dummies or active NPCs. No new open world map or unrelated combat rebalance was included.
+
 ## W20.44 — Combat-decision AI, cover fire, and facing correction
 
 - Replaced the Raider's automatic hide-after-1.5-seconds behavior with a local utility-based combat decision: fight or strafe when a player closes, choose cover primarily under sustained ranged exposure/suppression or while reloading, then abandon stale cover with a cooldown. Pathfinding now serves a combat goal instead of selecting the goal itself.
