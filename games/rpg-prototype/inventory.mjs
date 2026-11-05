@@ -5,6 +5,7 @@ import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
 import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from './materials.mjs';
+import {safeWeaponMods} from './weapon-mods.mjs';
 export const BACKPACK_LIMIT=30;
 export const RARITIES=Object.freeze({
   common:Object.freeze({label:'COMMON',color:'#a8b7af',multiplier:1}),
@@ -114,8 +115,8 @@ export function getItem(id){
 export function createBackpack(){
   return {items:[],materials:{},ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
     [spec.id,spec.startingReserve])),equipment:{weapon:'scrap-pistol',
-    armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{}},
-    unlockedOptics:{},nextId:1};
+    armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{},weaponMods:{}},
+    unlockedOptics:{},unlockedWeaponMods:{},nextId:1};
 }
 export function inventorySlotsUsed(pack){return pack.items.length;}
 export function totalInventoryValue(pack){
@@ -200,25 +201,13 @@ export function installWeaponOptic(pack,weaponId,opticId){
   const mod=OPTIC_MODS[opticId],owned=pack.unlockedOptics?.[weaponId]||[];
   const crafting=opticId!=='factory'&&!owned.includes(opticId);
   if(crafting){
+    // Real materials only; virtual salvage cannot replace glass or circuitry.
     const recipe=OPTIC_COMPONENT_RECIPES[opticId];
-    const canUseComponents=recipe&&Object.entries(recipe).every(
-      ([id,needed])=>countItem(pack,id)>=needed);
-    const missing=[];
-    if(!canUseComponents)for(const [material,needed] of Object.entries(mod.cost)){
-      const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
-      if(countItem(pack,itemId)<needed)missing.push(itemId);
-    }
+    if(!recipe)return {ok:false,reason:'recipe'};
+    const missing=Object.entries(recipe).filter(([id,needed])=>countItem(pack,id)<needed)
+      .map(([id,required])=>({itemId:id,required,owned:countItem(pack,id)}));
     if(missing.length)return {ok:false,reason:'materials',missing};
-    if(canUseComponents){
-      for(const [id,needed] of Object.entries(recipe))spendMaterial(pack,id,needed);
-    }else for(const [material,needed] of Object.entries(mod.cost)){
-      let remaining=needed;
-      const itemId=material==='glass'?'supply:optic-glass':'supply:salvage';
-      for(const entry of [...pack.items]){
-        if(entry.itemId!==itemId||!remaining)continue;
-        remaining-=removeItem(pack,entry.uid,remaining).removed;
-      }
-    }
+    for(const [id,needed] of Object.entries(recipe))spendMaterial(pack,id,needed);
     if(!pack.unlockedOptics)pack.unlockedOptics={};
     pack.unlockedOptics[weaponId]=[...owned,opticId];
   }
@@ -380,6 +369,7 @@ export function safeBackpackSnapshot(pack){
   }
   if(templates.has('weapon:'+pack.equipment?.weapon))
     result.equipment.weapon=pack.equipment.weapon;
+  safeWeaponMods(result,pack);
   for(const spec of ARSENAL){
     const valid=compatibleOptics(spec.id);
     const unlocked=pack.unlockedOptics?.[spec.id];

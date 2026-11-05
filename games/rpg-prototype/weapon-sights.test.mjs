@@ -72,16 +72,16 @@ test('New 10mm fixed iron sights zero the center of the camera ray',()=>{
   const irons=sightMount('10mm-pistol');
   assert.equal(irons.optic,'iron');
   assert.ok(irons.y>.23);
-  assert.deepEqual(compatibleOptics('10mm-pistol'),['factory']);
+  assert.deepEqual(compatibleOptics('10mm-pistol'),['factory','holo-a','holo-b']);
   assert.ok(isAlignedToBore('10mm-pistol'));
   assert.equal(sightForOptic('10mm-pistol','scope-6x').optic,'iron');
 });
 
-test('Pipe pistol iron sight and factory-only optics stay centered on bore',()=>{
+test('Pipe pistol iron sight and fitted holo still center on the bore',()=>{
   const mount=sightMount('pipe-pistol');
   assert.equal(mount.optic,'iron');
   assert.ok(mount.fov>60);
-  assert.deepEqual(compatibleOptics('pipe-pistol'),['factory']);
+  assert.deepEqual(compatibleOptics('pipe-pistol'),['factory','holo-a','holo-b']);
   assert.ok(isAlignedToBore('pipe-pistol'));
   assert.equal(sightForOptic('pipe-pistol','scope-4x').optic,'iron');
 });
@@ -109,8 +109,8 @@ test('Pipe rifle front tip is truly zeroed for first-person ADS',()=>{
   assert.equal(s.optic,'iron');
   assert.equal(s.y,.258);
   assert.ok(s.adsZ<=-1,'long stock must not sit behind camera');
-  assert.deepEqual(compatibleOptics('pipe-rifle'),['factory']);
-  assert.equal(sightForOptic('pipe-rifle','scope-4x').optic,'iron');
+  assert.deepEqual(compatibleOptics('pipe-rifle'),['factory','holo-a','holo-b','scope-2x','scope-4x']);
+  assert.equal(sightForOptic('pipe-rifle','scope-4x').optic,'scope');
   const anchor=adsWeaponPosition('pipe-rifle');
   assert.equal(anchor.y,-.258);
   assert.ok(isAlignedToBore('pipe-rifle',anchor));
@@ -120,7 +120,7 @@ test('Laser musket keeps factory irons and zeroed front blade',()=>{
   const sight=sightMount('laser-musket');
   assert.equal(sight.y,.263);
   assert.equal(sight.adsZ,-1.20);
-  assert.deepEqual(compatibleOptics('laser-musket'),['factory']);
+  assert.deepEqual(compatibleOptics('laser-musket'),['factory','holo-a','holo-b','scope-2x']);
   assert.equal(sightForOptic('laser-musket','scope-6x').optic,'iron');
   assert.ok(isAlignedToBore('laser-musket'));
 });
@@ -129,17 +129,17 @@ test('Double-barrel iron sight is aligned with the two muzzle bores',()=>{
   const mount=sightMount('double-barrel-shotgun');
   assert.equal(mount.optic,'iron');
   assert.equal(mount.y,.270);
-  assert.deepEqual(compatibleOptics('double-barrel-shotgun'),['factory']);
+  assert.deepEqual(compatibleOptics('double-barrel-shotgun'),['factory','holo-a']);
   assert.equal(sightForOptic('double-barrel-shotgun','scope-6x').optic,'iron');
   assert.ok(isAlignedToBore('double-barrel-shotgun'));
 });
 
-test('Pump action shotgun iron bead aligns with center ray and cannot equip optics yet',()=>{
+test('Pump action shotgun iron bead aligns while optional optics remain zeroed',()=>{
   const s=sightMount('pump-action-shotgun');
   assert.equal(s.y,.270);
   assert.equal(s.z,-.19);
   assert.equal(s.optic,'iron');
-  assert.deepEqual(compatibleOptics('pump-action-shotgun'),['factory']);
+  assert.deepEqual(compatibleOptics('pump-action-shotgun'),['factory','holo-a','holo-b','scope-2x']);
   assert.ok(isAlignedToBore('pump-action-shotgun'));
 });
 
@@ -148,7 +148,7 @@ test('Hunting rifle iron sights align exactly to the real receiver bead at .290m
   assert.equal(sight.y,.290);
   assert.equal(sight.z,-.239);
   assert.equal(sight.optic,'iron');
-  assert.deepEqual(compatibleOptics('bolt-hunting-rifle'),['factory']);
+  assert.deepEqual(compatibleOptics('bolt-hunting-rifle'),['factory','holo-a','holo-b','scope-2x','scope-4x','scope-6x']);
   assert.ok(isAlignedToBore('bolt-hunting-rifle'));
 });
 
@@ -156,15 +156,15 @@ test('Six-Shooter raised notch and slim front bead exactly center ADS',()=>{
   const sight=sightMount('iron-revolver');
   assert.equal(sight.y,.275);assert.equal(sight.z,-.18);
   assert.equal(sight.optic,'iron');
-  assert.deepEqual(compatibleOptics('iron-revolver'),['factory']);
+  assert.deepEqual(compatibleOptics('iron-revolver'),['factory','holo-a']);
   assert.ok(isAlignedToBore('iron-revolver'));
 });
 
-test('Pipe SMG is factory iron only and the tip is in the camera center ray',()=>{
+test('Pipe SMG supports fitted holographic optics but keeps its factory sight centered',()=>{
   const mount=sightMount('pipe-smg');
   assert.equal(mount.y,.285);assert.equal(mount.z,.029);
   assert.equal(mount.optic,'iron');
-  assert.deepEqual(compatibleOptics('pipe-smg'),['factory']);
+  assert.deepEqual(compatibleOptics('pipe-smg'),['factory','holo-a','holo-b']);
   assert.ok(isAlignedToBore('pipe-smg'));
 });
 
@@ -173,7 +173,7 @@ test('W20.40 sniper has a genuine 6x factory scope at the bore zero',()=>{
  const sight=sightMount('heavy-sniper');
  assert.equal(sight.optic,'scope');
  assert.equal(sight.fov,12);
- assert.deepEqual(compatibleOptics('heavy-sniper'),['factory']);
+ assert.deepEqual(compatibleOptics('heavy-sniper'),['factory','scope-4x','scope-6x']);
  assert.equal(sightForOptic('heavy-sniper','factory').fov,12);
  assert.ok(isAlignedToBore('heavy-sniper'));
  const aiming=adsWeaponPosition('heavy-sniper');

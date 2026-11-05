@@ -1,5 +1,6 @@
 // W20.58 — Bridges the developer variables to the ACTUAL combat and trade catalogs.
 import {ARSENAL} from './weapons.mjs';
+import {WEAPON_MODS,updateWeaponModBlueprint,MOD_SLOT_LABELS} from './weapon-mods.mjs';
 import {ARMOR_SLOTS, ARMOR_ITEMS} from './combat.mjs';
 import {POWER_ARMOR_PLATES} from './power-armor.mjs';
 import {CRAFTING_COMPONENTS} from './materials.mjs';
@@ -23,6 +24,19 @@ export function describeGameVariables() {
         fields[key] = LASER_MUSKET_TUNING[key];
     }
     catalog.weapons.push({id:spec.id, name:spec.name, group:spec.kind || 'Pistols', fields});
+  }
+  for(const part of Object.values(WEAPON_MODS)){
+    const fields={
+      damageBonus:part.damageBonus,magazineBonus:part.magazineBonus,
+      recoilMultiplier:part.recoilMultiplier,spreadMultiplier:part.spreadMultiplier,
+      reloadMultiplier:part.reloadMultiplier,fireIntervalMultiplier:part.fireIntervalMultiplier,
+      valueBonus:part.valueBonus
+    };
+    for(const [material,amount] of Object.entries(part.cost))
+      fields['cost_'+material.slice('material:'.length).replaceAll('-','_')]=amount;
+    catalog.weapons.push({id:part.id,
+      name:part.name+' · '+ARSENAL.find(w=>w.id===part.weaponId)?.name,
+      group:'Weapon Mods / '+MOD_SLOT_LABELS[part.slot],fields});
   }
   for (const slot of ARMOR_SLOTS) {
     for (const piece of ARMOR_ITEMS[slot]) {
@@ -67,6 +81,8 @@ export const DEFAULT_GAME_VARIABLES = describeGameVariables();
 export function applyGameBalance(rawChanges = {}) {
   const changes = validateBalanceChanges(rawChanges);
   const itemChanges = {};
+  for(const [id,patch] of Object.entries(changes.weapons||{}))
+    if(id.startsWith('mod:'))updateWeaponModBlueprint(id,patch);
   const setItem = (id,field,value) => {
     if (!Object.hasOwn(ITEM_CATALOG,id)) return;
     (itemChanges[id] ||= {})[field] = value;

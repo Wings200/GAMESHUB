@@ -37,7 +37,7 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
 #keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
-body.weapon-rebuild #workbenchOpen{display:none!important}
+/* W20.59: rebuilt firearms have fully functioning workbench crafting. */
 .weapon-reset-notice{border:1px solid #cba569;background:#211e19;color:#ffdfab;padding:13px 16px;margin:16px 0;font-size:12px;line-height:1.65;letter-spacing:.035em}
 .weapon-reset-notice b{display:block;font-size:15px;letter-spacing:.10em;color:#f7cf91}
 .arsenal-picker{display:flex;flex-wrap:wrap;align-items:center;gap:12px;
@@ -743,6 +743,41 @@ body.hud-modern #powerArmorHud{display:none!important}
 @media(max-width:480px){#fieldMapPanel .map-legend{grid-template-columns:1fr}
   #fieldMapPanel .map-tools button{padding:7px 9px;font-size:10px}}
 
+/* W20.59 — precise weapon-part workbench, integrated with the scrap pouch. */
+#workbenchPanel{background:radial-gradient(ellipse at 48% 0,#263e39,#081417 72%);padding:clamp(10px,2.3vw,32px)}
+#workbenchPanel .bench-shell{max-width:1290px;margin:0 auto;border:1px solid #647d6b;background:#111f24;box-shadow:0 28px 95px #000b}
+#workbenchPanel .bench-header{display:flex;align-items:start;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:24px clamp(14px,2vw,30px);border-bottom:1px solid #3d5b50}
+#workbenchPanel .bench-kicker{color:#e4c48b;font-size:10px;font-weight:950;letter-spacing:.18em}
+#workbenchPanel h2{font-size:clamp(29px,4vw,50px);letter-spacing:-.04em;margin:8px 0 4px}
+#workbenchPanel h2 span{color:#a0c8a8}
+#workbenchPanel .bench-header p{font-size:12px;max-width:680px;margin:0}
+#workbenchPanel .bench-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:18px;padding:17px 25px;border-bottom:1px solid #3d5b50;background:#1b302d}
+#workbenchPanel .bench-toolbar label{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:.12em;color:#e9d0a0;font-weight:900}
+#workbenchPanel select{min-width:235px;max-width:100%;background:#10212b;border:1px solid #809d8e;border-radius:4px;color:#f7e6c4;padding:11px 13px;font:800 12px system-ui}
+#workbenchPanel #benchMaterials{font-size:11px;color:#c3d8c0;font-weight:850;letter-spacing:.055em}
+#workbenchPanel .bench-stats{padding:15px 25px;background:#172c30;border-bottom:1px solid #3d5b50;font:800 12px/1.8 ui-monospace,Consolas,monospace;color:#e7d2a8;overflow-wrap:anywhere}
+#workbenchPanel .bench-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:18px 25px;border-bottom:1px solid #3d5b50}
+#workbenchPanel .bench-tab{background:#1b332f;border:1px solid #456b58;color:#bccebf;border-radius:4px;padding:11px 13px;font-size:10px;letter-spacing:.065em;font-weight:950}
+#workbenchPanel .bench-tab:hover{background:#315044}
+#workbenchPanel .bench-tab.selected{color:#ffe7b9;background:#355242;border-color:#e3bf85;box-shadow:inset 0 -3px #e3bf85}
+#workbenchPanel .bench-parts{padding:20px 25px 26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));align-items:stretch;gap:12px}
+#workbenchPanel .bench-list-caption{grid-column:1/-1;font-size:10px;letter-spacing:.14em;font-weight:900;color:#9cc2aa}
+#workbenchPanel .bench-part{display:flex;flex-direction:column;gap:14px;justify-content:space-between;border:1px solid #38574b;border-left:3px solid #8b9f87;background:#172c2a;padding:17px;border-radius:3px}
+#workbenchPanel .bench-part.installed{border-color:#9dca9c;border-left-color:#e9d394;background:#203b31}
+#workbenchPanel .bench-part-description strong{font-size:16px;color:#ebecd9;line-height:1.25}
+#workbenchPanel .bench-part-description p{font-size:11px;color:#a7beb2;margin:8px 0}
+#workbenchPanel .bench-effect{display:block;font-size:10px;font-weight:900;color:#addbba;line-height:1.6;letter-spacing:.055em}
+#workbenchPanel .bench-recipe{margin-top:14px;padding:11px;border:1px solid #536651;background:#12241f;color:#c5dfb5;font-size:10px;letter-spacing:.05em;line-height:1.65}
+#workbenchPanel .bench-recipe.missing{color:#ffbd9b;border-color:#965b4b;background:#2e2624}
+#workbenchPanel .bench-part button{font-size:11px;min-height:40px;font-weight:900;letter-spacing:.065em;color:#13281e;background:#dbc18f;border-color:#e9d49b}
+#workbenchPanel .bench-part button:hover:not(:disabled){background:#f4d9a4}
+#workbenchPanel button:disabled{opacity:.55;cursor:not-allowed}
+#workbenchPanel .bench-feedback{border-top:1px solid #496a55;padding:16px 24px;background:#21372f;color:#f1dda8;font-weight:850;font-size:11px;letter-spacing:.065em}
+#workbenchPanel .bench-footer{border-top:1px solid #39594b;padding:14px 25px;color:#94b0a0;font-size:10px;line-height:1.65}
+@media(max-width:600px){#workbenchPanel .bench-parts{padding:12px;grid-template-columns:1fr}
+#workbenchPanel .bench-toolbar{padding:13px;gap:8px}
+#workbenchPanel .bench-tabs{padding:12px}
+#workbenchPanel .bench-stats{padding:12px}}
 /* W20.56 — compact physical merchant terminals, not a second inventory. */
 #vendorPanel{background:radial-gradient(ellipse at 50% 0%,#2e3f33 0%,#081218 66%);padding:clamp(12px,3vw,35px)}
 #vendorPanel .vendor-shell{max-width:1160px;margin:auto;border:1px solid #779481;background:#101e20;box-shadow:0 32px 110px #0009}
@@ -969,9 +1004,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.57</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.59</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <p><strong>W20.57 · 31 SCRAP COMPONENTS:</strong> Acid, adhesive, steel, screws, circuitry and all other Fallout 4 base crafting resources are now collectible. Visit the SCRAP CACHE west of the traders (E) to test all 31, check the new MATERIALS inventory tab, and buy or sell components at Wren's stall. Resource quantities save and never consume equipment slots.</p>
+    <p><strong>W20.59 · WEAPON WORKBENCH + 31 SCRAP COMPONENTS:</strong> Acid, adhesive, steel, screws, circuitry and all other Fallout 4 base crafting resources are now collectible. Visit the SCRAP CACHE west of the traders (E) to collect materials, then go to the Station 7 workbench (E) or press U to craft authentic receivers, barrels, magazines, grips/stocks, muzzle parts, and optics. Recipes use exact material counts and save with your inventory. Resource quantities save and never consume equipment slots.</p>
     <div class="weapon-reset-notice"><b>W20.56 · TRAINING FIELD CLEANUP + VENDORS</b> Removed the old Station 9 Raider billboard and spare Station 8 survivor preview. Four distinct merchant stalls now sell or buy real items for saved campaign caps: arms, armor, medical, and salvage. Walk to a stall and press E. <b>W20.55 · FIELD MAP</b> Tab opens the nine-station map with saved exploration, discovered contacts, zoom and a waypoint. This is not a fabricated full world map. <b>W20.53 · INVENTORY REDESIGN</b>The inventory now uses a field-terminal layout with categories, item actions, and a live equipment summary. Existing ammo handling, equipment, and saves are preserved. <b>W20.52 · ENEMY HUD CLEANUP</b>Floating Raider name and health labels have been removed so enemies cannot be identified above walls. The top target health HUD still appears when you aim at a visible character. W20.51 reduced incoming damage by 20% while wearing power armor; you now take 20% less damage from enemy bullets than before. Chassis-only protection still falls below protection with installed plates; conventional armor and plate tiers remain meaningful. W20.50 NPC NAVIGATION & SQUAD AWARENESS (wall-safe movement, teammate reactions, and search scanning) and W20.48 CONTEXTUAL NPC HEALTH remain in place. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
@@ -994,7 +1029,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · TAB</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
-     <button id="workbenchOpen" class="secondary" type="button">WEAPONS WORKBENCH · U</button>
+     <button id="workbenchOpen" class="secondary" type="button">CRAFT WEAPON MODS · WORKBENCH / U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
     <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.56</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
@@ -1051,21 +1086,24 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="loot-footer">Hold E for 0.65 seconds at the REAR HATCH to enter through the back; hold E to exit behind the frame with the 4.5-second hydraulic animation. Tap E near a parked frame to configure the six physical slots; the exposed frame remains visible if the slot is empty. Without a working fusion core the armor still protects you, but movement becomes extremely slow and powered sprinting/jumping are disabled. Core charge drains during use. Hits wear down only the plate that was struck; at 0 durability that plate becomes ineffective, never disappears, and can be repaired with salvaged parts. Ordinary armor remains permanent.</div>
   </div>
 </div>
-<div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-label="Weapons optic workbench">
-  <div class="loot-container">
-    <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.14 · WEAPONS WORKBENCH</div>
-        <h2>CRAFT<span> YOUR SIGHT.</span></h2>
-        <p>Scavenge Salvaged Parts and Optic Glass from NPC loot. Craft an optic once, then reinstall it for free. What you install changes the 3D gun and its actual ADS zoom.</p>
+<div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Weapon modification workbench">
+  <div class="bench-shell">
+    <header class="bench-header">
+      <div><div class="bench-kicker">FRONTIER / WEAPON WORKBENCH / W20.59</div>
+        <h2>CRAFT<span> YOUR WEAPON.</span></h2>
+        <p>Modify ten actual firearms with mechanical parts and precise scrap recipes. Every assembly changes live weapon statistics and bolt-on 3D geometry in first and third person.</p>
       </div>
-      <button id="benchClose" type="button">DONE / RESUME</button>
+      <button id="benchClose" type="button">CLOSE / RESUME · ESC</button>
+    </header>
+    <div class="bench-toolbar">
+      <label for="benchWeapon">WEAPON <select id="benchWeapon" aria-label="Choose weapon to modify"></select></label>
+      <strong id="benchMaterials">0 COMPONENTS IN POUCH</strong>
     </div>
-    <div class="loot-meta">
-      <label for="benchWeapon">WEAPON <select id="benchWeapon" style="min-height:36px;padding:7px;background:#172e35;color:#fff"></select></label>
-      <strong id="benchMaterials">SALVAGED PARTS 0 · OPTIC GLASS 0</strong>
-    </div>
-    <div id="benchOptics" class="loot-grid"></div>
-    <div class="loot-footer">At Station 7, press E beside the physical optics bench—or press U while playing. Hunting Rifle supports magnified 2×, 4× and 6× scopes.</div>
+    <div id="benchStats" class="bench-stats" aria-label="Modified weapon statistics"></div>
+    <nav id="benchSlots" class="bench-tabs" aria-label="Weapon assembly categories"></nav>
+    <div id="benchOptics" class="bench-parts" aria-label="Available weapon modification recipes"></div>
+    <div id="benchFeedback" class="bench-feedback" role="status" aria-live="polite">SELECT A PART TO SEE ITS MATERIALS</div>
+    <footer class="bench-footer">STATION 7 / PHYSICAL WORKBENCH · E TO OPEN NEAR THE TABLE OR U FROM THE FIELD · ALL MODS SAVE TO YOUR EXISTING BACKPACK · ONCE CRAFTED, PARTS CAN BE REINSTALLED WITHOUT SPENDING THE MATERIALS AGAIN · EVERY RECIPE LISTS ITS EXACT COMPONENTS</footer>
   </div>
 </div>
 <div id="specialPanel" class="loot-overlay special-overlay hidden" role="dialog" aria-label="S.P.E.C.I.A.L. perk tree">
@@ -1326,6 +1364,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.58"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.59"></script>
 </body>
 </html>

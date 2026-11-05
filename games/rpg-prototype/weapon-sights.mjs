@@ -45,11 +45,16 @@ export function isAlignedToBore(weaponId,root=adsWeaponPosition(weaponId),tolera
    'scope-6x':Object.freeze({id:'scope-6x',name:'Sniper scope · 6×',kind:'scope',fov:12,cost:{salvage:9,glass:4}})
  });
  const allowedOptics=Object.freeze({
-   '10mm-pistol':['factory'], 'pipe-pistol':['factory'],
-   'pipe-rifle':['factory'], 'laser-musket':['factory'],
-   'double-barrel-shotgun':['factory'], 'pump-action-shotgun':['factory'], 'bolt-hunting-rifle':['factory'],
-   'scrap-pistol':['factory'], 'iron-revolver':['factory'],
-   'pipe-smg':['factory'], 'heavy-sniper':['factory'],
+   '10mm-pistol':['factory','holo-a','holo-b'],
+   'pipe-pistol':['factory','holo-a','holo-b'],
+   'pipe-rifle':['factory','holo-a','holo-b','scope-2x','scope-4x'],
+   'laser-musket':['factory','holo-a','holo-b','scope-2x'],
+   'double-barrel-shotgun':['factory','holo-a'],
+   'pump-action-shotgun':['factory','holo-a','holo-b','scope-2x'],
+   'bolt-hunting-rifle':['factory','holo-a','holo-b','scope-2x','scope-4x','scope-6x'],
+   'scrap-pistol':['factory'], 'iron-revolver':['factory','holo-a'],
+   'pipe-smg':['factory','holo-a','holo-b'],
+   'heavy-sniper':['factory','scope-4x','scope-6x'],
    'service-carbine':['factory','holo-a','holo-b','scope-2x','scope-4x'],
    'scrap-shotgun':['factory','holo-a','holo-b'],
    'hunting-rifle':['factory','holo-a','holo-b','scope-2x','scope-4x','scope-6x']

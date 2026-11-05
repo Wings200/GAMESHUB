@@ -3,6 +3,10 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   buyFromVendor,sellToVendor,sellMaterialToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.57';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
+import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
+  weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
+  effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
+import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.55';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
@@ -508,7 +512,19 @@ box(0,.085,-25,112,.04,.06,pale);
 const opticBench={x:-55,z:-43};
 box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
 box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
-textSign('OPTICS BENCH · E',-61,-39,0xe4c38b);
+textSign('WEAPON WORKBENCH · E',-61,-39,0xe4c38b);
+// A tangible field repair station: steel vise, clamped barrel, parts tray,
+// drill column, torque tools and a shelf. No floating menu-only interaction.
+const benchSteel=mat(0x72807a,.48),benchDark=mat(0x29383c,.56),
+  benchRust=mat(0x8d6e4f,.69);
+box(opticBench.x-.52,1.12,opticBench.z,.40,.15,.35,benchSteel);
+box(opticBench.x-.59,1.23,opticBench.z,.09,.30,.32,benchDark);
+box(opticBench.x-.34,1.20,opticBench.z,.075,.26,.32,benchRust);
+box(opticBench.x+.30,1.12,opticBench.z,.55,.07,.28,benchSteel);
+box(opticBench.x+.60,1.26,opticBench.z-.23,.08,.38,.12,benchRust);
+box(opticBench.x+.43,1.37,opticBench.z-.23,.23,.07,.16,benchSteel);
+box(opticBench.x+.16,1.11,opticBench.z+.29,.31,.065,.18,benchRust);
+box(opticBench.x+.65,1.10,opticBench.z+.23,.10,.07,.26,benchSteel);
 markLane(0,orange);
 for(let i=0;i<5;i++){
   const x=-31+i*13,h=.65+(i%3)*.11;
@@ -2351,62 +2367,122 @@ $('vendorCredit').addEventListener('click',()=>{
   showVendorFeedback('ONE-TIME TEST CREDIT · +300 CAPS');
 });
 function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
+let benchActiveSlot='receiver';
+function workbenchFeedback(message){
+  $('benchFeedback').textContent=message;
+}
+function workbenchCostText(cost){
+  if(!Object.keys(cost).length)return 'NO MATERIALS REQUIRED';
+  return Object.entries(cost).map(([id,n])=>{
+    const name=getItem(id).name.toUpperCase();
+    const available=countItem(backpack,id);
+    return n+' '+name+' ['+available+' OWNED'+(available<n?' · NEED '+(n-available):'')+']';
+  }).join('   ·   ');
+}
 function refreshWorkbenchUI(){
   const weaponId=$('benchWeapon').value;
-  const attached=installedWeaponOptic(backpack,weaponId);
-  $('benchMaterials').textContent='SALVAGED PARTS '+countItem(backpack,'supply:salvage')+
-    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
-    ' · COMPONENT POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
+  if(!MOD_WEAPON_IDS.includes(weaponId))return;
+  const spec=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
+  const totalScrap=CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
+  $('benchMaterials').textContent=totalScrap+' COMPONENTS IN POUCH · 31 RESOURCE TYPES';
+  $('benchStats').textContent=
+    'DAMAGE '+spec.damage+' / RECOIL '+spec.recoilDegrees.toFixed(2)+'° / '+
+    'CAPACITY '+spec.magazineSize+' / RELOAD '+spec.reloadSeconds.toFixed(2)+'s / '+
+    'FIRE INTERVAL '+spec.fireInterval.toFixed(2)+'s / HIP SPREAD '+spec.hipSpreadDegrees.toFixed(2)+'°';
+  const tabs=$('benchSlots');tabs.replaceChildren();
+  for(const slot of [...MOD_SLOTS,'optic']){
+    const button=document.createElement('button');button.type='button';
+    button.className='bench-tab'+(slot===benchActiveSlot?' selected':'');
+    button.textContent=slot==='optic'?'SIGHTS / SCOPES':MOD_SLOT_LABELS[slot];
+    button.addEventListener('click',()=>{benchActiveSlot=slot;refreshWorkbenchUI();});
+    tabs.append(button);
+  }
   const area=$('benchOptics');area.replaceChildren();
-  for(const id of compatibleOptics(weaponId)){
-    const mod=OPTIC_MODS[id],row=document.createElement('div');
-    row.className='loot-entry';
-    const detail=document.createElement('div');detail.className='loot-description';
-    const title=document.createElement('strong');title.textContent=mod.name;
-    const owned=id==='factory'||backpack.unlockedOptics?.[weaponId]?.includes(id);
-    const requirements=document.createElement('small');
-    const componentRecipe=OPTIC_COMPONENT_RECIPES[id];
-    const recipeText=componentRecipe?Object.entries(componentRecipe).map(
-      ([itemId,quantity])=>quantity+' '+getItem(itemId).name.toUpperCase()).join(' + '):'';
-    requirements.textContent=owned?'OWNED · NO MATERIAL COST':
-      'CRAFT · '+recipeText+' OR '+mod.cost.salvage+
-      ' SALVAGED PARTS + '+mod.cost.glass+' OPTIC GLASS';
-    detail.append(title,requirements);row.append(detail);
-    if(id===attached){
-      const equipped=document.createElement('strong');equipped.textContent='INSTALLED';
-      equipped.style.color='#a8e9bd';row.append(equipped);
-    }else{
-      lootButton(row,owned?'INSTALL':'CRAFT + INSTALL',()=>{
-        const outcome=installWeaponOptic(backpack,weaponId,id);
-        if(!outcome.ok){
-          showShotNotice(outcome.reason==='materials'?'NOT ENOUGH WORKBENCH MATERIALS':
-            'SIGHT INCOMPATIBLE');return;
-        }
-        // Rebuild only this weapon's 3D optic; everything else stays mounted.
-        if(weaponId!=='scrap-pistol'){
-          const old=weaponVisuals.get(weaponId);
-          camera.remove(old.root);
-          const replacement=buildArsenalView(getWeaponSpec(weaponId));
-          replacement.root.visible=weaponId===activeWeaponId;
-          weaponVisuals.set(weaponId,replacement);
-          if(weaponId===activeWeaponId&&aimHeld)alignActiveSight();
-        }
-        saveBackpack();refreshWorkbenchUI();refreshInventoryUI();refreshWeaponHUD();
-        showShotNotice((outcome.crafted?'CRAFTED + INSTALLED · ':'INSTALLED · ')+
-          mod.name.toUpperCase());
-      });
+  const caption=document.createElement('div');caption.className='bench-list-caption';
+  caption.textContent=benchActiveSlot==='optic'?
+    'OPTICS / MATCHED TO THE REAL SIGHT LINE':
+    MOD_SLOT_LABELS[benchActiveSlot]+' / AUTHORED COMPATIBLE ASSEMBLIES';
+  area.append(caption);
+  function card({id,name,description,detail,cost,owned,installed,onChoose}){
+    const row=document.createElement('div');row.className='bench-part';
+    if(installed)row.classList.add('installed');
+    const body=document.createElement('div');body.className='bench-part-description';
+    const title=document.createElement('strong');title.textContent=name;
+    const descriptionLine=document.createElement('p');descriptionLine.textContent=description;
+    const stats=document.createElement('small');stats.className='bench-effect';stats.textContent=detail;
+    const recipe=document.createElement('div');recipe.className='bench-recipe';
+    recipe.textContent=owned?'CRAFTED / OWNED · NO MATERIAL COST':workbenchCostText(cost||{});
+    const missing=Object.entries(cost||{}).some(([material,n])=>countItem(backpack,material)<n);
+    recipe.classList.toggle('missing',!owned&&missing);
+    body.append(title,descriptionLine,stats,recipe);row.append(body);
+    const button=document.createElement('button');button.type='button';
+    button.textContent=installed?'INSTALLED':owned?'INSTALL':'CRAFT + INSTALL';
+    button.disabled=installed;
+    button.addEventListener('click',onChoose);
+    row.append(button);area.append(row);
+  }
+  if(benchActiveSlot==='optic'){
+    const installed=installedWeaponOptic(backpack,weaponId);
+    for(const id of compatibleOptics(weaponId)){
+      const optic=OPTIC_MODS[id],owned=id==='factory'||
+        backpack.unlockedOptics?.[weaponId]?.includes(id);
+      card({id,name:optic.name,description:id==='factory'?
+        'Retain the original sight fitted to this weapon.':
+        id.startsWith('scope-')?'Magnified optical tube, real glass and precision rings.':
+          'Lightweight 1× aiming optic with a true centered reticle.',
+        detail:id==='factory'?'FACTORY ZERO':
+          'FIELD OF VIEW '+optic.fov+'° · REAL ADS ZOOM',
+        cost:OPTIC_COMPONENT_RECIPES[id]||{},owned,installed:id===installed,
+        onChoose:()=>{
+          const outcome=installWeaponOptic(backpack,weaponId,id);
+          if(!outcome.ok){
+            workbenchFeedback('MISSING OPTIC MATERIALS · '+
+              (outcome.missing||[]).map(x=>getItem(x.itemId).name+' '+x.owned+'/'+x.required).join(' / '));
+            return;
+          }
+          refreshCraftedWeaponSpec(weaponId);
+          refreshWorkbenchUI();refreshInventoryUI();
+          workbenchFeedback((outcome.crafted?'CRAFTED & INSTALLED: ':'INSTALLED: ')+optic.name);
+        }});
     }
-    area.append(row);
+    return;
+  }
+  const selected=selectedWeaponMod(backpack,weaponId,benchActiveSlot);
+  card({id:'factory',name:'Factory '+MOD_SLOT_LABELS[benchActiveSlot].toLowerCase(),
+    description:'Restore the factory assembly without spending or refunding scrap.',
+    detail:'STOCK PERFORMANCE · NO CRAFTING COST',cost:{},owned:true,
+    installed:selected==='factory',onChoose:()=>{
+      craftWeaponMod(backpack,weaponId,'factory',benchActiveSlot);
+      refreshCraftedWeaponSpec(weaponId);refreshWorkbenchUI();refreshInventoryUI();
+      workbenchFeedback('FACTORY ASSEMBLY REINSTALLED · OWNED MODS RETAINED');
+    }});
+  for(const part of weaponModOptions(weaponId,benchActiveSlot)){
+    const owned=backpack.unlockedWeaponMods?.[weaponId]?.includes(part.id);
+    card({id:part.id,name:part.name,description:part.description,
+      detail:describeWeaponMod(part),cost:part.cost,owned,installed:part.id===selected,
+      onChoose:()=>{
+        const result=craftWeaponMod(backpack,weaponId,part.id);
+        if(!result.ok){
+          workbenchFeedback('MISSING MATERIALS · '+
+            (result.missing||[]).map(m=>getItem(m.itemId).name.toUpperCase()+
+              ' '+m.owned+'/'+m.required).join(' · '));
+          return;
+        }
+        refreshCraftedWeaponSpec(weaponId);refreshWorkbenchUI();refreshInventoryUI();
+        workbenchFeedback((result.crafted?'CRAFTED & INSTALLED · ':'INSTALLED · ')+
+          part.name.toUpperCase()+' · WEAPON SAVED');
+      }});
   }
 }
 function beginWorkbench(){
-  if(WEAPON_REBUILD_MODE){showShotNotice('WORKBENCH OFFLINE · NEW WEAPONS COMING');return;}
   if(inventoryOpen||lootOpen)closeLootOverlay();
   workbenchFromField=controls.isLocked;
   if(workbenchFromField)controls.unlock();
   workbenchOpen=true;
-  $('benchWeapon').value=activeWeaponId;
+  $('benchWeapon').value=MOD_WEAPON_IDS.includes(activeWeaponId)?
+    activeWeaponId:MOD_WEAPON_IDS[0];
   refreshWorkbenchUI();
+  workbenchFeedback('SELECT AN ASSEMBLY · MATERIALS ARE SPENT ONLY WHEN CRAFTED');
   $('workbenchPanel').classList.remove('hidden');
   $('menu').classList.add('hidden');
 }
@@ -2415,12 +2491,13 @@ function closeWorkbench(){
   if(workbenchFromField){workbenchFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
 }
-for(const spec of ARSENAL){
+for(const id of MOD_WEAPON_IDS){
+  const spec=getWeaponSpec(id);
   const option=document.createElement('option');
-  option.value=spec.id;option.textContent=spec.name;
+  option.value=id;option.textContent=spec.name;
   $('benchWeapon').append(option);
 }
-$('benchWeapon').addEventListener('change',refreshWorkbenchUI);
+$('benchWeapon').addEventListener('change',()=>{benchActiveSlot='receiver';refreshWorkbenchUI();});
 $('workbenchOpen').addEventListener('click',beginWorkbench);
 $('benchClose').addEventListener('click',closeWorkbench);
 
@@ -2761,7 +2838,7 @@ function updateEnemies(dt,elapsed=dt){
 const arsenalStates=createArsenalStates();
 for(const spec of ARSENAL)arsenalStates[spec.id].reserve=ammoReserve(backpack,spec.id);
 let activeWeaponId=TEN_MM_PISTOL.id;
-let activeSpec=TEN_MM_PISTOL;
+let activeSpec=effectiveWeaponSpec(TEN_MM_PISTOL,backpack);
 let weaponState=arsenalStates[activeWeaponId];
 let triggerHeld=false,aimHeld=false;
 let infiniteAmmo=false; // test-only cheat, always starts OFF
@@ -3304,7 +3381,7 @@ let shotgunPendingEjections=0,pumpPendingEjection=false,huntingPendingEjection=f
 let groundedStepProgress=0;
 function selectWeapon(id){
   if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(id))return; // only rebuilt guns allowed
-  const spec=getWeaponSpec(id);
+  const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack);
   if(id===activeWeaponId)return;
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
   cancelWeaponReload(weaponState);
@@ -3650,9 +3727,10 @@ function refreshWeaponHUD(){
     (laserEquipped?' · R CRANK · CLICK FIRE':
       ' · '+(activeWeaponId===HEAVY_SNIPER.id?'BOLT ACTION':activeSpec.automatic?'AUTOMATIC':'SEMI-AUTO')+
       ' · '+(1/activeSpec.fireInterval).toFixed(1)+' ROUNDS/SEC');
-  $('weaponOptic').textContent=activeWeaponId===HEAVY_SNIPER.id?'FACTORY 6× SNIPER SCOPE · FIXED ZERO':
-    REBUILT_WEAPON_IDS.includes(activeWeaponId)?'FACTORY IRON SIGHTS · MODS LATER':
-    'SIGHT · '+OPTIC_MODS[installedWeaponOptic(backpack,activeWeaponId)].name.toUpperCase();
+  $('weaponOptic').textContent='SIGHT · '+
+    OPTIC_MODS[installedWeaponOptic(backpack,activeWeaponId)].name.toUpperCase()+
+    ' · '+MOD_SLOTS.filter(slot=>selectedWeaponMod(backpack,activeWeaponId,slot)!=='factory').length+
+    ' CRAFTED ASSEMBLIES';
   $('weaponAccuracy').textContent='SPREAD '+shotSpreadDegrees(activeSpec,
     weaponState.aiming,weaponMotion).toFixed(2)+'°'+
     (weaponMotion.airborne?' · AIRBORNE':weaponMotion.crouched?' · CROUCHED':
@@ -4006,7 +4084,7 @@ function toggleInfiniteAmmo(){
       preInfiniteAmmo.set(id,{magazine:state.magazine,reserve:state.reserve,
         laserCharge:id===LASER_MUSKET.id?ensureLaserState(state).laserCharge:undefined});
       cancelWeaponReload(state);
-      state.magazine=getWeaponSpec(id).magazineSize;
+      state.magazine=effectiveWeaponSpec(getWeaponSpec(id),backpack).magazineSize;
     }
     emptyClickLatched=false;
   }else{
@@ -4054,6 +4132,31 @@ const heldWorldModels=new Map([
   [IRON_REVOLVER.id,heldWornRevolver],[PIPE_SMG.id,heldPipeSMG],
   [HEAVY_SNIPER.id,heldHeavySniper]
 ]);
+// Save restoration precedes model creation. Attach real modification geometry
+// after both authored viewmodel sets exist so neither view diverges.
+function refreshPhysicalWeaponMods(id){
+  const first=weaponVisuals.get(id);
+  const third=heldWorldModels.get(id);
+  if(first)installPhysicalWeaponMods(THREE,first,id,backpack);
+  if(third)installPhysicalWeaponMods(THREE,third,id,backpack);
+}
+function refreshCraftedWeaponSpec(id){
+  const state=arsenalStates[id];
+  const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack);
+  if(state&&!infiniteAmmo&&state.magazine>spec.magazineSize){
+    // Shorter magazine returns excess live rounds to the reserve.
+    state.reserve+=state.magazine-spec.magazineSize;
+    state.magazine=spec.magazineSize;
+  }
+  if(id===activeWeaponId){
+    activeSpec=spec;
+    if(infiniteAmmo)state.magazine=spec.magazineSize;
+  }
+  refreshPhysicalWeaponMods(id);
+  saveBackpack();
+  refreshWeaponHUD();
+}
+for(const id of MOD_WEAPON_IDS)refreshPhysicalWeaponMods(id);
 const heldWorldGrips=new Map();
 for(const [id,model] of heldWorldModels){
   const positions=WORLD_WEAPON_GRIPS[id];

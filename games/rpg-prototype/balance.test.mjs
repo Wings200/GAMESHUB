@@ -74,3 +74,18 @@ test('armor, power plates, salvage, medicine and special laser variables apply',
   addItem(pack,'material:steel',3);
   assert.equal(totalInventoryValue(pack),66);
 });
+
+test('crafting recipe and bonus tuning lives under weapon variables',async()=>{
+  const blueprint=DEFAULT_GAME_VARIABLES.weapons.find(x=>x.id.startsWith('mod:pipe-smg:magazine:drum'));
+  assert.ok(blueprint);
+  assert.ok(blueprint.fields.cost_steel>0&&blueprint.fields.magazineBonus>0);
+  const patch={weapons:{[blueprint.id]:{magazineBonus:80,cost_steel:9}}};
+  assert.deepEqual(validateBalanceChanges(patch),patch);
+  applyGameBalance(patch);
+  const updated=DEFAULT_GAME_VARIABLES.weapons.find(x=>x.id===blueprint.id);
+  assert.equal(updated.fields.magazineBonus,45,'published default is a stable baseline');
+  const {WEAPON_MODS}=await import('./weapon-mods.mjs');
+  assert.equal(WEAPON_MODS[blueprint.id].magazineBonus,80);
+  assert.equal(WEAPON_MODS[blueprint.id].cost['material:steel'],9);
+  assert.throws(()=>validateBalanceChanges({weapons:{'mod:fictional':{damageBonus:99}}}));
+});

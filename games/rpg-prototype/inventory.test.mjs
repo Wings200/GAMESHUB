@@ -133,21 +133,23 @@ test('Three enemy profiles award different items and rarities',()=>{
   assert.throws(()=>generateEnemyLoot('ghost'));
 });
 
-test('Optics consume real materials once, persist and stay weapon-specific',()=>{
+test('Optics require exact physical ingredients, persist, and reinstall free',()=>{
   const pack=createBackpack();
-  assert.deepEqual(installWeaponOptic(pack,'hunting-rifle','scope-4x'),
-    {ok:false,reason:'materials',missing:['supply:salvage','supply:optic-glass']});
-  addItem(pack,'supply:salvage',20);
-  addItem(pack,'supply:optic-glass',10);
+  const needed={'material:aluminum':3,'material:screw':2,
+    'material:crystal':2,'material:glass':2};
+  const first=installWeaponOptic(pack,'hunting-rifle','scope-4x');
+  assert.equal(first.ok,false);
+  assert.equal(first.reason,'materials');
+  assert.ok(first.missing.some(m=>m.itemId==='material:crystal'));
+  for(const [id,n] of Object.entries(needed))addItem(pack,id,n+1);
   const installed=installWeaponOptic(pack,'hunting-rifle','scope-4x');
   assert.deepEqual(installed,{ok:true,crafted:true,opticId:'scope-4x'});
-  assert.equal(countItem(pack,'supply:salvage'),14);
-  assert.equal(countItem(pack,'supply:optic-glass'),7);
+  for(const id of Object.keys(needed))assert.equal(countItem(pack,id),1);
   assert.equal(installedWeaponOptic(pack,'hunting-rifle'),'scope-4x');
   assert.equal(installedWeaponOptic(pack,'service-carbine'),'factory');
   assert.equal(installWeaponOptic(pack,'hunting-rifle','factory').ok,true);
   assert.equal(installWeaponOptic(pack,'hunting-rifle','scope-4x').crafted,false);
-  assert.equal(countItem(pack,'supply:salvage'),14,'Reinstall costs nothing');
+  assert.equal(countItem(pack,'material:aluminum'),1,'Reinstall costs nothing');
   assert.equal(installWeaponOptic(pack,'scrap-pistol','scope-4x').reason,'incompatible');
   const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
   assert.equal(installedWeaponOptic(restored,'hunting-rifle'),'scope-4x');

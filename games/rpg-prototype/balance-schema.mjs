@@ -1,7 +1,25 @@
-// W20.58 — One validated shape for every developer-editable game variable.
+// W20.59 — One validated shape for every developer-editable game variable.
+import {WEAPON_MODS} from './weapon-mods.mjs';
+const MOD_BASE_FIELDS=Object.freeze({
+  damageBonus:[0,500,1,'Additional damage'],
+  magazineBonus:[0,500,1,'Additional magazine capacity'],
+  recoilMultiplier:[.05,3,.01,'Recoil multiplier'],
+  spreadMultiplier:[.05,3,.01,'Accuracy spread multiplier'],
+  reloadMultiplier:[.2,4,.01,'Reload time multiplier'],
+  fireIntervalMultiplier:[.3,3,.01,'Fire interval multiplier'],
+  valueBonus:[0,100000,1,'Added item value']
+});
+const MATERIAL_COST_FIELDS=Object.freeze(Object.fromEntries([
+  'acid','adhesive','aluminum','antiseptic','asbestos','ballistic-fiber','bone','ceramic',
+  'circuitry','cloth','concrete','copper','cork','crystal','fertilizer','fiber-optics',
+  'fiberglass','gears','glass','gold','lead','leather','nuclear-material','oil','plastic',
+  'rubber','screw','silver','spring','steel','wood'
+].map(id=>['cost_'+id.replaceAll('-','_'),[0,999,1,'Cost · '+id.replaceAll('-',' ')]])));
+export const MOD_VARIABLE_FIELDS=Object.freeze({...MOD_BASE_FIELDS,...MATERIAL_COST_FIELDS});
 // IDs are exact catalog IDs, never code or arbitrary object paths.
 export const VARIABLE_FIELDS = Object.freeze({
   weapons: Object.freeze({
+    ...MOD_VARIABLE_FIELDS,
     damage: [0, 2000, 1, 'Damage'],
     magazineSize: [1, 500, 1, 'Magazine capacity'],
     reloadSeconds: [0.1, 30, 0.05, 'Reload time (seconds)'],
@@ -57,9 +75,11 @@ export function validateBalanceChanges(input) {
       const fields = {};
       for (const [field, value] of Object.entries(changes)) {
         const range = fieldDefinitions[field];
-        if (!range || (category === 'weapons' &&
-          SPECIAL_FIELDS[id]?.includes(field) !== true &&
-          !WEAPON_BASE_FIELDS.includes(field)) ||
+        const isMod=category==='weapons'&&id.startsWith('mod:');
+        if (!range || (category==='weapons' && (
+          isMod ? (!WEAPON_MODS[id] || !Object.hasOwn(MOD_VARIABLE_FIELDS,field)) :
+          (!WEAPON_BASE_FIELDS.includes(field) &&
+            SPECIAL_FIELDS[id]?.includes(field)!==true))) ||
           typeof value !== 'number' || !Number.isFinite(value) ||
           value < range[0] || value > range[1] ||
           (range[2] === 1 && !Number.isInteger(value)))
