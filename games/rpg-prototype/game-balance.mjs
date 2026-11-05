@@ -146,9 +146,13 @@ export function applyGameBalance(rawChanges={}){
     const base=changes.armor?.['power:'+tier]||{};
     for(const field of ['points','maxDurability'])
       if(Object.hasOwn(base,field))plate[field]=base[field];
-    if(Object.hasOwn(base,'value'))
-      for(const slot of ARMOR_SLOTS)
-        setItem('power-plate:'+tier+'-'+slot,'value',base.value);
+    if(Object.hasOwn(base,'value')||Object.hasOwn(base,'maxDurability'))
+      for(const slot of ARMOR_SLOTS){
+        const itemId='power-plate:'+tier+'-'+slot;
+        if(Object.hasOwn(base,'value'))setItem(itemId,'value',base.value);
+        if(Object.hasOwn(base,'maxDurability'))
+          setItem(itemId,'maxDurability',base.maxDurability);
+      }
   }
   for(const slot of ARMOR_SLOTS){
     for(const piece of ARMOR_ITEMS[slot]){

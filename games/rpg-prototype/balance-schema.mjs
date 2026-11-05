@@ -115,6 +115,16 @@ export function migrateLegacyBalanceChanges(input){
     }
     const out=migrated[category]||={};
     for(const [id,values] of Object.entries(entries)){
+      // W20.58 displayed collectible power plates under Miscellaneous.
+      // Preserve any previously published plate-price edits when moving
+      // those pieces into Armor / Power Armor.
+      if(original==='miscellaneous'&&id.startsWith('power-plate:')){
+        const match=/^power-plate:([a-z0-9]+)-(head|chest|leftArm|rightArm|leftLeg|rightLeg)$/.exec(id);
+        if(match){
+          (migrated.armor||={})['power:'+match[1]+':'+match[2]]={...values};
+          continue;
+        }
+      }
       if(original==='scrap'&&values&&typeof values==='object'&&
         Number.isFinite(values.value)){
         out[id]={

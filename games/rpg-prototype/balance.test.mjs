@@ -43,6 +43,9 @@ test('server validation rejects nonimplemented junk and mismatched item fields',
     {weapons:{'10mm-pistol':{damage:30,value:70}}});
   assert.deepEqual(migrateLegacyBalanceChanges({scrap:{'material:steel':{value:20}}}),
     {resources:{'material:steel':{buyPrice:25,sellPrice:9}}});
+  assert.deepEqual(migrateLegacyBalanceChanges({
+    miscellaneous:{'power-plate:t45-head':{value:80}}
+  }),{misc:{},armor:{'power:t45:head':{value:80}}});
   assert.deepEqual(allowedVariableFields('resources','material:steel'),
     ['buyPrice','sellPrice']);
 });
@@ -87,6 +90,7 @@ test('all regular armor and per-slot powered plate overrides affect protection',
   assert.equal(getItem('power-plate:t45-head').value,710);
   assert.equal(getItem('power-plate:t45-head').maxDurability,220);
   assert.equal(getItem('power-plate:t45-chest').value,320);
+  assert.equal(getItem('power-plate:t45-chest').maxDurability,150);
   assert.equal(vendorBuyPrice('material:steel'),48);
   assert.equal(vendorSellPrice('material:steel'),24);
   assert.equal(getItem('supply:medkit').heal,90);
