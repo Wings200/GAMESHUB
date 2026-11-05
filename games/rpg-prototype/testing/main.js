@@ -205,7 +205,7 @@ function refreshSpecialUI(){
   }
 }
 function openSpecialPanel(){
-  if(specialOpen||powerUIOpen||workbenchOpen||lootOpen||inventoryOpen)return;
+  if(specialOpen||powerUIOpen||workbenchOpen||lootOpen||inventoryOpen||weaponsCrateOpen)return;
   specialFromField=controls.isLocked;
   specialOpen=true;
   $('specialPanel').classList.remove('hidden');
@@ -508,7 +508,7 @@ for(let x=-47;x<55;x+=5){
   if((x+47)%20===0)box(x,.07,-25,.35,.14,9,pale);
 }
 box(0,.085,-25,112,.04,.06,pale);
-// Solid optics bench next to Station 7, reachable with E.
+// Solid weapon-modification bench next to Station 7, reachable with E.
 const opticBench={x:-55,z:-43};
 box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
 box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
@@ -525,6 +525,43 @@ box(opticBench.x+.60,1.26,opticBench.z-.23,.08,.38,.12,benchRust);
 box(opticBench.x+.43,1.37,opticBench.z-.23,.23,.07,.16,benchSteel);
 box(opticBench.x+.16,1.11,opticBench.z+.29,.31,.065,.18,benchRust);
 box(opticBench.x+.65,1.10,opticBench.z+.23,.10,.07,.26,benchSteel);
+
+// W20.60 — physical weapons crate near the Station 7 firing lane.
+// It is several meters from the mod bench, so their E prompts never collide.
+const weaponCrate={x:-48.8,z:-38.5,reach:2.9};
+const crateBody=mat(0x3b5147,.68),crateSteel=mat(0x7c8a79,.49),
+  crateDark=mat(0x1c2929,.8),crateBrass=mat(0xc49a60,.46);
+const cX=weaponCrate.x,cZ=weaponCrate.z;
+box(cX,.47,cZ,2.12,.94,1.23,crateBody);
+box(cX,.95,cZ,2.23,.17,1.31,crateDark);
+box(cX,1.075,cZ-.12,2.26,.18,1.37,crateSteel);
+for(const side of [-.90,.90]){
+  box(cX+side,.63,cZ,.12,.85,1.37,crateSteel);
+  box(cX+side,1.17,cZ-.61,.14,.17,.17,crateBrass);
+  box(cX+side,.58,cZ+.665,.17,.32,.09,crateBrass);
+}
+for(const side of [-.52,.52])
+  box(cX+side,1.19,cZ,.11,.075,1.38,crateDark);
+box(cX,.18,cZ,2.26,.23,1.38,crateDark);
+for(const side of [-.72,.72])box(cX+side,.075,cZ,.22,.15,1.62,crateSteel);
+const crateSignCanvas=document.createElement('canvas');
+crateSignCanvas.width=640;crateSignCanvas.height=180;
+const crateLabel=crateSignCanvas.getContext('2d');
+crateLabel.fillStyle='#192720';crateLabel.fillRect(0,0,640,180);
+crateLabel.strokeStyle='#ceab78';crateLabel.lineWidth=9;
+crateLabel.strokeRect(9,9,622,162);
+crateLabel.textAlign='center';crateLabel.fillStyle='#e8d7b4';
+crateLabel.font='900 62px system-ui';
+crateLabel.fillText('WEAPONS CRATE',320,84,585);
+crateLabel.font='800 34px system-ui';
+crateLabel.fillText('E · OPEN / EQUIP',320,137,585);
+const crateTexture=new THREE.CanvasTexture(crateSignCanvas);
+crateTexture.colorSpace=THREE.SRGBColorSpace;
+const crateSign=new THREE.Mesh(new THREE.PlaneGeometry(1.94,.53),
+  new THREE.MeshBasicMaterial({map:crateTexture,side:THREE.DoubleSide}));
+crateSign.position.set(cX,.64,cZ+.623);scene.add(crateSign);
+bounds.push({minX:cX-1.06,maxX:cX+1.06,minZ:cZ-.615,
+  maxZ:cZ+.615,height:1.17});
 markLane(0,orange);
 for(let i=0;i<5;i++){
   const x=-31+i*13,h=.65+(i%3)*.11;
@@ -1565,6 +1602,7 @@ const ENEMY_COLLISION_LAYER=29;
 const lootBags=new Map();
 let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
 let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
+let weaponsCrateOpen=false,weaponsCrateFromField=false;
 let inventoryCategory='all';
 let backpack=createBackpack();
 try{
@@ -2335,7 +2373,7 @@ function completeVendorTrade(result,verb){
     ' ×'+result.quantity+' · '+result.price+' CAPS');
 }
 function openVendor(vendor){
-  if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||
+  if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||weaponsCrateOpen||
     powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
   saveBackpack();
   activeVendorId=vendor.id;vendorTab='buy';
@@ -3397,6 +3435,7 @@ function selectWeapon(id){
   saveBackpack();
   if(aimHeld&&weaponState.reloadRemaining<=0)alignActiveSight();
   $('weaponSelect').value=id;
+  $('currentWeaponSummary').textContent=spec.name.toUpperCase();
   // Weapon switch prevents a held mouse from continuing its old burst.
   triggerHeld=false;emptyClickLatched=false;
   slideCycle=0;muzzleFlash=0;recoilKick=0;
@@ -3404,11 +3443,7 @@ function selectWeapon(id){
   showShotNotice('EQUIPPED · '+spec.name.toUpperCase());
   refreshWeaponHUD();
 }
-function cycleWeapon(direction){
-  const ids=WEAPON_REBUILD_MODE?REBUILT_WEAPON_IDS:ARSENAL_IDS;
-  const i=ids.indexOf(activeWeaponId);
-  selectWeapon(ids[(i+direction+ids.length)%ids.length]);
-}
+// No Z/X cycling. The crate is the player-facing weapon equip action.
 for(const spec of ARSENAL){
   if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(spec.id))continue;
   const option=document.createElement('option');option.value=spec.id;
@@ -3417,11 +3452,10 @@ for(const spec of ARSENAL){
   $('weaponSelect').append(option);
 }
 $('weaponSelect').value=activeWeaponId;
-$('weaponSelect').addEventListener('change',()=>{
-  selectWeapon($('weaponSelect').value);
-  backpack.equipment.weapon=activeWeaponId;
-  saveBackpack();
-});
+// Legacy QA uses a hidden select, but players can equip guns only at the crate.
+$('weaponSelect').disabled=true;
+if(new URLSearchParams(location.search).get('smoke')==='1')
+  $('weaponSelect').addEventListener('change',()=>selectWeapon($('weaponSelect').value));
 if(WEAPON_REBUILD_MODE){
   if(REBUILT_WEAPON_IDS.includes(backpack.equipment.weapon))
     selectWeapon(backpack.equipment.weapon);
@@ -3432,6 +3466,69 @@ if(WEAPON_REBUILD_MODE){
 }else if(backpack.equipment.weapon!=='scrap-pistol'){
   selectWeapon(backpack.equipment.weapon);
 }
+
+// W20.60 — physical crate proximity and a dedicated equip-only menu.
+function weaponsCrateWithinReach(){
+  return Math.hypot(player.x-weaponCrate.x,player.z-weaponCrate.z)<=weaponCrate.reach;
+}
+function refreshWeaponsCrateUI(){
+  const list=$('weaponsCrateItems');list.replaceChildren();
+  const current=effectiveWeaponSpec(getWeaponSpec(activeWeaponId),backpack);
+  $('weaponsCrateEquipped').textContent=
+    'CURRENTLY EQUIPPED  ·  '+current.name.toUpperCase()+
+    '  ·  '+current.damage+' DAMAGE  ·  '+current.magazineSize+' CAPACITY';
+  for(let i=0;i<REBUILT_WEAPON_IDS.length;i++){
+    const id=REBUILT_WEAPON_IDS[i];
+    const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack),state=arsenalStates[id];
+    const row=document.createElement('article');row.className='weapon-crate-entry';
+    if(id===activeWeaponId)row.classList.add('selected');
+    const number=document.createElement('span');number.className='weapon-crate-index';
+    number.textContent=String(i+1).padStart(2,'0');
+    const details=document.createElement('div');details.className='weapon-crate-details';
+    const name=document.createElement('strong');name.textContent=spec.name;
+    const meta=document.createElement('small');
+    meta.textContent=spec.damage+' DMG'+
+      ((spec.pellets||1)>1?' × '+spec.pellets+' PELLETS':'')+
+      ' · '+spec.magazineSize+' CAPACITY · '+
+      (spec.automatic?'AUTOMATIC':'SEMI / MANUAL')+
+      ' · '+state.magazine+' LOADED / '+displayAmmoCount(state.reserve)+' RESERVE';
+    const modCount=MOD_SLOTS.filter(slot=>selectedWeaponMod(backpack,id,slot)!=='factory').length;
+    const mods=document.createElement('small');mods.className='weapon-crate-mods';
+    mods.textContent=modCount+' INSTALLED UPGRADES · '+
+      OPTIC_MODS[installedWeaponOptic(backpack,id)].name.toUpperCase();
+    details.append(name,meta,mods);
+    const button=document.createElement('button');button.type='button';
+    button.className='weapon-crate-equip';
+    button.textContent=id===activeWeaponId?'EQUIPPED':'EQUIP';
+    button.disabled=id===activeWeaponId;
+    button.addEventListener('click',()=>{
+      // Existing selection logic saves the equipped ID and swaps real 3D guns.
+      selectWeapon(id);
+      $('currentWeaponSummary').textContent=spec.name.toUpperCase();
+      refreshInventoryUI();
+      closeWeaponsCrate();
+    });
+    row.append(number,details,button);list.append(row);
+  }
+}
+function openWeaponsCrate(){
+  if(weaponsCrateOpen||vendorOpen||inventoryOpen||lootOpen||workbenchOpen||
+    specialOpen||powerUIOpen||questPanelOpen||dialogueOpen||mapOpen)return;
+  weaponsCrateFromField=controls.isLocked;
+  weaponsCrateOpen=true;
+  refreshWeaponsCrateUI();
+  $('weaponsCratePanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  if(controls.isLocked)controls.unlock();
+}
+function closeWeaponsCrate(){
+  if(!weaponsCrateOpen)return;
+  weaponsCrateOpen=false;
+  $('weaponsCratePanel').classList.add('hidden');
+  if(weaponsCrateFromField){weaponsCrateFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+$('weaponsCrateClose').addEventListener('click',closeWeaponsCrate);
 
 // Reusable low-poly brass casing geometry and limited world-space physics.
 const casingGeometry=new THREE.CylinderGeometry(.029,.029,.105,8);
@@ -4600,6 +4697,12 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     return {distance:Math.hypot(raider.brain.x-player.x,raider.brain.z-player.z),
       insideArena:inAIArena(),memory:raider.brain.memory};
   };
+  window.__rpgSmokeApproachWeaponsCrate=()=>{
+    player.x=weaponCrate.x;player.z=weaponCrate.z+1.48;
+    resetMotion(player);
+    camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
+    return weaponsCrateWithinReach();
+  };
   window.__rpgSmokeApproachLoot=(bagId)=>{
     const bag=bagId?lootBags.get(bagId):[...lootBags.values()].find(b=>b.source!=='power-cache');
     if(!bag)return false;
@@ -4619,7 +4722,8 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     triggerHeld,emptyClickLatched,dryFireClicks,
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
       alerts:squadIntel.alerts},
-    workbenchOpen,optic:installedWeaponOptic(backpack,activeWeaponId),
+    workbenchOpen,weaponsCrateOpen,crateNearby:weaponsCrateWithinReach(),
+    optic:installedWeaponOptic(backpack,activeWeaponId),
     special:{...specialState,attributes:{...specialState.attributes},
       perks:{...specialState.perks},bonuses:{...specialModifiers},open:specialOpen},
     campaign:{...safeCampaignSnapshot(campaignState),journal:campaignJournal(campaignState),
@@ -5027,7 +5131,7 @@ canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
-  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!powerUIOpen&&!specialOpen&&
+  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
     !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
@@ -5043,6 +5147,8 @@ $('quality').addEventListener('click',()=>{
   refreshCampaignUI();
 });
 window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'&&weaponsCrateOpen){e.preventDefault();closeWeaponsCrate();return;}
+  if(weaponsCrateOpen)return;
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
@@ -5096,6 +5202,7 @@ window.addEventListener('keydown',e=>{
     }
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
+    else if(weaponsCrateWithinReach())openWeaponsCrate();
     else if(benchWithinReach())beginWorkbench();
     else showShotNotice('NO INTERACTION WITHIN REACH');
     return;
@@ -5103,8 +5210,6 @@ window.addEventListener('keydown',e=>{
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
     e.preventDefault();if(!e.repeat)adjustEndurance(e.code==='BracketRight'?1:-1);return;
   }
-  if(e.code==='KeyZ'&&!e.repeat&&controls.isLocked){cycleWeapon(-1);return;}
-  if(e.code==='KeyX'&&!e.repeat&&controls.isLocked){cycleWeapon(1);return;}
   if(e.code==='KeyN'&&!e.repeat){
     toggleSound();return;
   }
@@ -5619,9 +5724,11 @@ function frame(){
   const merchant=nearestVendor();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
-  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby;
+  const crateInReach=weaponsCrateWithinReach();
+  const benchInReach=benchWithinReach();
+  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||crateInReach||benchInReach;
   $('lootPrompt').classList.toggle('hidden',
-    !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||
+    !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||weaponsCrateOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
   if(questContact){
     $('lootPrompt').textContent='E · '+
@@ -5645,6 +5752,8 @@ function frame(){
     }
   }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
     nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
+  else if(crateInReach)$('lootPrompt').textContent='E · OPEN WEAPONS CRATE · CHOOSE GUN';
+  else if(benchInReach)$('lootPrompt').textContent='E · MODIFY GUN · WEAPON WORKBENCH';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
