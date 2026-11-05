@@ -1542,7 +1542,7 @@ function createEnemy(spec){
   upperBody.visible=false;
   const state=createDummy(enemyArmorForRound(spec.id,0));
   const enemy={id:spec.id,label:spec.label,brain,root,state,
-    meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,statusText:'',
+    meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,
     tactics:makeEnemyTactics(spec.id),gunGlow:0,radarAlertSeconds:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
     recoilPose:0,rigged:null,modelStatus:'original'};
@@ -1610,17 +1610,7 @@ function createEnemy(spec){
     new THREE.MeshBasicMaterial({color:0xf19668,depthTest:true,depthWrite:true}));
   beacon.rotation.x=-Math.PI/2;
   beacon.position.y=.085;root.add(beacon);enemy.beacon=beacon;
-  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=132;
-  const ctx=canvas.getContext('2d'),texture=new THREE.CanvasTexture(canvas);
-  texture.colorSpace=THREE.SRGBColorSpace;
-  const labelMesh=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:texture,transparent:true,depthTest:true,depthWrite:false}));
-  // Smaller contextual tags: the old billboards filled a quarter of the
-  // screen when the player was near an NPC.
-  labelMesh.scale.set(1.85,.51,1);
-  labelMesh.position.set(spec.x,2.84,spec.z);
-  scene.add(labelMesh);
-  enemy.billboard={canvas,ctx,texture,mesh:labelMesh};
+  // Enemy identification belongs to the sight-only HUD, never an overhead sprite.
   enemies.set(spec.id,enemy);
   // ONE visible character. Primitive body and armor meshes remain physics-only
   // and cannot render, including after reset or a changed armor loadout.
@@ -1662,7 +1652,6 @@ function createEnemy(spec){
   for(const hitbox of enemy.meshes)hitbox.visible=false;
   enemy.rifleVisual.visible=false;
   refreshEnemyArmorVisuals(enemy);
-  refreshEnemyLabel(enemy,'PATROL');
   return enemy;
 }
 function refreshEnemyArmorVisuals(enemy){
@@ -1677,25 +1666,6 @@ function refreshEnemyArmorVisuals(enemy){
     mesh.visible=false;
     if(piece.points)mesh.material.color.setHex(piece.color);
   }
-}
-function refreshEnemyLabel(enemy,mode){
-  // Overhead tags may identify a hostile, but must NEVER expose its
-  // decision, upcoming move, reload state, or weapon magazine to the player.
-  const current=enemy.label+'-'+Math.ceil(enemy.state.health);
-  if(current===enemy.statusText)return;
-  enemy.statusText=current;
-  const {ctx,canvas,texture}=enemy.billboard;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='rgba(10,20,28,.92)';ctx.fillRect(3,3,506,126);
-  ctx.strokeStyle=enemy.state.alive?'#d7a77d':'#df685d';
-  ctx.lineWidth=4;ctx.strokeRect(3,3,506,126);
-  ctx.fillStyle='#f3dec0';ctx.textAlign='left';
-  ctx.font='bold 28px system-ui';ctx.fillText(enemy.label,18,42);
-  ctx.fillStyle='#f4e2cf';ctx.font='bold 22px system-ui';
-  ctx.fillText(Math.ceil(enemy.state.health)+' HP',18,79);
-  ctx.fillStyle='#263c47';ctx.fillRect(18,93,480,14);
-  ctx.fillStyle='#a6c58e';ctx.fillRect(18,93,480*enemy.state.health/100,14);
-  texture.needsUpdate=true;
 }
 let arenaRound=-1;
 enemySpecs.forEach(createEnemy);
@@ -1718,7 +1688,7 @@ function resetEnemies(){
     refreshEnemyArmorVisuals(enemy);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
-    enemy.root.visible=true;enemy.billboard.mesh.visible=true;
+    enemy.root.visible=true;
     enemy.beacon.visible=true;
     enemy.deathTimer=0;enemy.crouchBlend=0;enemy.upperBody.position.y=0;
     enemy.radarAlertSeconds=0;
@@ -1728,7 +1698,7 @@ function resetEnemies(){
       if(kind==='leg'){pivot.position.y=.97;pivot.scale.y=1;}
       pivot.rotation.x=0;
     }
-    enemy.flash=0;enemy.shake=0;enemy.statusText='';
+    enemy.flash=0;enemy.shake=0;
     resetEnemyTactics(enemy.tactics);
     equipEnemyWeapon(enemy.tactics,
       WEAPON_REBUILD_MODE&&enemy.id===NPC_GUN_TRIAL_ROLE?'pipe-rifle':
@@ -1736,8 +1706,7 @@ function resetEnemies(){
     enemy.rigged?.setWeapon(enemy.tactics.weaponId);
     enemy.gunGlow=0;enemy.muzzleLight.intensity=0;
     for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
-    refreshEnemyLabel(enemy,'PATROL');
-  }
+    }
   updateArenaSign();
   $('damageReport').textContent='AI BOTS RESET · NEW MIXED ARMOR LOADOUTS';
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
@@ -1842,7 +1811,6 @@ function markEnemyDefeated(enemy){
   enemy.flash=0;enemy.shake=0;
   for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0);
   enemy.beacon.visible=false;
-  enemy.billboard.mesh.visible=false;
   enemy.muzzleLight.intensity=0;
   enemy.gunGlow=0;
   spawnEnemyLoot(enemy);
@@ -2311,7 +2279,6 @@ function updateEnemies(dt,elapsed=dt){
     // Keep living NPCs rendered across the lab. On death show only a brief
     // collapse, then remove every body part; J restores the original actor.
     enemy.root.visible=enemy.state.alive||enemy.deathTimer<.7;
-    enemy.billboard.mesh.visible=enemy.state.alive;
     enemy.beacon.visible=enemy.state.alive;
     if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
@@ -2501,9 +2468,6 @@ function updateEnemies(dt,elapsed=dt){
         enemy.tactics.phase==='strafe'?'STRAFE':
         enemy.tactics.phase==='stand-fight'?'STANDING AND FIRING':
         enemy.brain.mode.toUpperCase();
-    refreshEnemyLabel(enemy,mode);
-    enemy.billboard.mesh.position.set(enemy.brain.x,
-      2.72-.78*enemy.crouchBlend,enemy.brain.z);
     statuses.push(!liveNpcGun?enemy.label+': UNARMED':
       enemy.label+': '+mode+' ['+
       enemy.tactics.magazine+'/'+(getEnemyWeapon(enemy.tactics.weaponId)?.magazine||
@@ -3293,14 +3257,12 @@ targetSightRaycaster.layers.enable(ENEMY_COLLISION_LAYER);
 targetSightRaycaster.far=48;
 const targetSightDirection=new THREE.Vector3();
 let targetSightClock=0,aimedCharacter=null;
-let lastDamagedEnemyId=null,lastDamagedEnemySeconds=0;
 function updateTargetHealthHud(dt){
   const hud=$('targetHealthHud');
   const blocked=!controls.isLocked||powerArmorState.phase!=='idle'||
     inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||questPanelOpen||
     dialogueOpen||!playerHealth.alive;
   if(blocked){hud.classList.add('hidden');aimedCharacter=null;return;}
-  lastDamagedEnemySeconds=Math.max(0,lastDamagedEnemySeconds-dt);
   targetSightClock-=dt;
   if(targetSightClock<=0){
     targetSightClock=.09;
@@ -3320,8 +3282,8 @@ function updateTargetHealthHud(dt){
       ...worldGeometry,...targetMeshes,...liveDummies,...liveEnemies,...residentHitMeshes],false);
     aimedCharacter=characterUnderCrosshair(hits);
   }
-  const target=aimedCharacter||(lastDamagedEnemySeconds>0&&lastDamagedEnemyId?
-    {kind:'hostile',id:lastDamagedEnemyId}:null);
+  // Never retain or identify a target once cover breaks the camera's sight ray.
+  const target=aimedCharacter;
   const enemy=target?.kind==='hostile'?enemies.get(target.id):null;
   const resident=target?.kind==='friendly'?campaignResidents.find(r=>r.id===target.id):null;
   const character=enemy||resident;
@@ -3600,8 +3562,6 @@ function shoot(){
       (critical?specialModifiers.critDamageMultiplier:1);
     const hit=applyDamage(enemy.state,boostedDamage,zone);
     if(hit.applied){
-      lastDamagedEnemyId=enemy.id;
-      lastDamagedEnemySeconds=1.15;
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
@@ -3618,7 +3578,6 @@ function shoot(){
         markEnemyThreat(enemy.tactics);
       }
       enemy.statusText='';
-      refreshEnemyLabel(enemy,hit.killed?'DOWN':enemy.brain.mode.toUpperCase());
       spawnDamagePopup(first.point,hit);
       $('damageReport').textContent=enemy.label+' · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
         ' · '+Math.ceil(hit.damage)+' HP · '+hit.points+' AP · '+
