@@ -100,7 +100,7 @@ export function applyItemBalance(changes = {}) {
   for (const [id, patch] of Object.entries(changes)) {
     if (!templates.has(id)) continue;
     const safe = {};
-    for (const field of ['value', 'heal'])
+    for (const field of ['value', 'heal', 'buyPrice', 'sellPrice', 'maxDurability'])
       if (typeof patch[field] === 'number' && Number.isFinite(patch[field]))
         safe[field] = patch[field];
     if (Object.keys(safe).length) itemBalance.set(id, safe);

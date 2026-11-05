@@ -36,6 +36,8 @@ jobs:
           node --check games/rpg-prototype/game-balance.mjs
           node --check games/rpg-prototype/testing/bootstrap.mjs
           node --check games/rpg-prototype/testing/developer-panel.mjs
+          node --check games/rpg-prototype/dev-panel-ui-smoke.mjs
+          node --check games/rpg-prototype/dev-settings.test.mjs
           node --check functions/api/dev/settings.js
           node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs games/rpg-prototype/balance.test.mjs games/rpg-prototype/dev-settings.test.mjs games/rpg-prototype/weapon-mods.test.mjs
 

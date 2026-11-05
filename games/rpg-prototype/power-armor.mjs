@@ -31,9 +31,23 @@ export function powerArmorEyeHeight(state,normalEyeHeight){
   const safe=Number.isFinite(normalEyeHeight)?normalEyeHeight:1.70;
   return safe+(state.occupied?.39:0);
 }
+// Tier-level stats and slot-specific variant overrides compose deterministically.
+const perSlotPlateBalance=new Map();
+export function updatePowerPlateBalance(changes={}){
+  perSlotPlateBalance.clear();
+  for(const [id,patch] of Object.entries(changes)){
+    const match=/^power:([^:]+):([^:]+)$/.exec(id);
+    if(!match||!POWER_ARMOR_SLOTS.includes(match[2])||
+      !Object.hasOwn(POWER_ARMOR_PLATES,match[1]))continue;
+    perSlotPlateBalance.set(match[1]+':'+match[2],Object.fromEntries(
+      Object.entries(patch).filter(([field])=>['points','maxDurability'].includes(field))));
+  }
+}
 export function getPowerPlate(slot,tier){
   if(!POWER_ARMOR_SLOTS.includes(slot))throw Error('Unknown powered armor slot: '+slot);
-  return POWER_ARMOR_PLATES[tier]||POWER_ARMOR_PLATES.none;
+  const base=POWER_ARMOR_PLATES[tier]||POWER_ARMOR_PLATES.none;
+  const variant=perSlotPlateBalance.get(base.id+':'+slot);
+  return variant?{...base,...variant}:base;
 }
 export function createPowerArmorState(){
   // The chassis is a BARE mechanical frame. Armor belongs in inventory,
@@ -62,7 +76,7 @@ export function powerArmorIndicatorStatus(state,slot){
 export function setPowerPlate(state,slot,tier,condition=null){
   if(!POWER_ARMOR_SLOTS.includes(slot)||!Object.hasOwn(POWER_ARMOR_PLATES,tier))
     return {ok:false,reason:'unknown-plate'};
-  const spec=POWER_ARMOR_PLATES[tier];
+  const spec=getPowerPlate(slot,tier);
   state.plates[slot]=tier;
   state.plateDurability??={};
   state.plateDurability[slot]=tier==='none'?0:
@@ -167,7 +181,7 @@ export function safePowerArmorSnapshot(raw){
     const tier=raw.plates?.[slot];
     if(Object.hasOwn(POWER_ARMOR_PLATES,tier)){
       state.plates[slot]=tier;
-      const max=POWER_ARMOR_PLATES[tier].maxDurability;
+      const max=getPowerPlate(slot,tier).maxDurability;
       // Older W09 saves had no durability, so their pieces start fully repaired.
       state.plateDurability[slot]=Number.isFinite(raw.plateDurability?.[slot])?
         clamp(raw.plateDurability[slot],0,max):max;

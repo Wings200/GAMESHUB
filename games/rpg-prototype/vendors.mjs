@@ -57,11 +57,13 @@ export function vendorAccepts(vendorId,itemId){
 
 export function vendorBuyPrice(itemId,quantity=1){
   if(!Number.isSafeInteger(quantity)||quantity<=0)return 0;
-  return Math.max(1,Math.ceil(getItem(itemId).value*quantity*1.25));
+  const item=getItem(itemId);
+  return Math.max(1,Math.ceil((item.buyPrice??item.value*1.25)*quantity));
 }
 export function vendorSellPrice(itemId,quantity=1){
   if(!Number.isSafeInteger(quantity)||quantity<=0)return 0;
-  return Math.max(1,Math.floor(getItem(itemId).value*quantity*.45));
+  const item=getItem(itemId);
+  return Math.max(1,Math.floor((item.sellPrice??item.value*.45)*quantity));
 }
 
 export function buyFromVendor(pack,caps,vendorId,itemId){
