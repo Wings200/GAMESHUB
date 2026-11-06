@@ -31,7 +31,7 @@ export function buildWastelandSet(scene,THREE,{highQuality=true}={}){
   const cylinderGeometry=new THREE.CylinderGeometry(.5,.5,1,12);
   const sphereGeometry=new THREE.SphereGeometry(1,12,9);
   let meshCount=0,shackCount=0,wreckCount=0;
-  const lamps=[],flags=[];
+  const lamps=[],flags=[],microDetails=[];
   function part(parent,geometry,material,x,y,z,sx=1,sy=1,sz=1){
     const m=new THREE.Mesh(geometry,material);
     m.position.set(x,y,z);m.scale.set(sx,sy,sz);
@@ -59,7 +59,7 @@ export function buildWastelandSet(scene,THREE,{highQuality=true}={}){
     for(let i=0;i<qty;i++){
       const offset=(i-(qty-1)/2)*range/(qty-1);
       const pos=axis==='x'?[offset,value,other]:[value,offset,other];
-      orb(g,brass,...pos,.027,.027,.022);
+      microDetails.push(orb(g,brass,...pos,.027,.027,.022));
     }
   }
   function scrapShack(x,z,angle=0,s=1,skin=0){
@@ -328,12 +328,16 @@ export function buildWastelandSet(scene,THREE,{highQuality=true}={}){
   function setQuality(high){
     dust.visible=!!high;
     for(const light of hazardLights)light.visible=!!high;
+    // These tiny brass studs cost one draw call apiece yet are barely visible
+    // at Chromebook resolution. Keep the silhouettes and interactive props.
+    for(const detail of microDetails)detail.visible=!!high;
   }
   setQuality(highQuality);
   return {root:world,update,setQuality,metrics:{
     shacks:shackCount,wrecks:wreckCount,radioMasts:2,
     waterTowers:2,signs:4,individualMeshes:meshCount,
     groundInstances:(highQuality?260+175+120:125+85+60),
-    animatedFlags:flags.length,dustCount
+    animatedFlags:flags.length,dustCount,microDetails:microDetails.length
   }};
 }
+

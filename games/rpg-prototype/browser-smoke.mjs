@@ -7,7 +7,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,join,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
-import {getItem} from './inventory.mjs';
+import {getItem,createBackpack,addItem} from './inventory.mjs';
 const root=process.cwd();
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript',
   '.css':'text/css','.png':'image/png','.json':'application/json'};
@@ -44,6 +44,22 @@ try{
     '--enable-unsafe-swiftshader','--disable-gpu-sandbox'
   ]});
   const page=await browser.newPage({viewport:{width:1280,height:800}});
+  // W20.62+ correctly starts a fresh player with NO free weapons. This
+  // combat test deliberately loads a saved character who already owns guns,
+  // instead of changing the real new-player spawn rules to satisfy old QA.
+  const ownedWeapons=['10mm-pistol','pipe-pistol','pipe-rifle','laser-musket',
+    'double-barrel-shotgun','pump-action-shotgun','bolt-hunting-rifle','hunting-rifle',
+    'iron-revolver','pipe-smg','heavy-sniper'];
+  const combatFixture=createBackpack();
+  for(const id of ownedWeapons){
+    addItem(combatFixture,'weapon:'+id,1);
+    combatFixture.ammoReserves[id]=600;
+  }
+  combatFixture.equipment.weapon='10mm-pistol';
+  await page.addInitScript(fixture=>{
+    if(!localStorage.getItem('rpg-lab-player-inventory'))
+      localStorage.setItem('rpg-lab-player-inventory',JSON.stringify(fixture));
+  },combatFixture);
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{
@@ -973,3 +989,4 @@ try{
   await browser?.close();
   await new Promise(ok=>server.close(ok));
 }
+

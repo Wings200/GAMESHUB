@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
+import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   buyFromVendor,sellToVendor,sellMaterialToVendor} from '../vendors.mjs?v=W20.57';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
@@ -260,8 +261,13 @@ try{
   }
 }
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,reducedRenderer?1:1.6));
-renderer.shadowMap.enabled = !reducedRenderer;
+let qualityHigh=!preferLowGraphics({reducedRenderer,
+  deviceMemory:navigator.deviceMemory,
+  hardwareConcurrency:navigator.hardwareConcurrency});
+let graphicsManuallyChosen=false;
+const frameBudget=createFrameBudgetGovernor();
+renderer.setPixelRatio(Math.min(devicePixelRatio,qualityHigh?1.6:1));
+renderer.shadowMap.enabled = qualityHigh;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -269,7 +275,7 @@ renderer.toneMappingExposure = 1.13;
 scene.add(new THREE.HemisphereLight(0xc1d0da,0x746454,1.92));
 const sun = new THREE.DirectionalLight(0xffd3a4,2.8);
 sun.position.set(-48,46,19);
-sun.castShadow = true;
+sun.castShadow = qualityHigh;
 sun.shadow.mapSize.set(1024,1024);
 sun.shadow.camera.left = -80;sun.shadow.camera.right = 80;
 sun.shadow.camera.top = 80;sun.shadow.camera.bottom = -80;
@@ -376,7 +382,7 @@ function textSign(label,x,z,color){
 for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
 // Beyond the solid perimeter: original shacks, wrecks, aerials, water towers,
 // skyline, patinated ground, flags and atmospheric dust.
-const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:!reducedRenderer});
+const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:qualityHigh});
 
 // W20.56: Small, deliberately ordered merchant row in the central clearing.
 // These are living traders, not the abandoned mannequin display props.
@@ -2537,7 +2543,7 @@ function playerCombatSilhouette(){
 function enemySightBody(enemy){
   return {...enemy.brain,eyeY:1.53-.82*enemy.crouchBlend};
 }
-function updateEnemies(dt,elapsed=dt){
+function updateEnemies(dt,elapsed=dt,refreshRadar=true){
   // A confirmed hit outside the arena wakes combat while the enemy still
   // remembers the shooter. Otherwise other mechanics stations stay safe.
   const active=inAIArena()||[...enemies.values()].some(e=>
@@ -2769,7 +2775,7 @@ function updateEnemies(dt,elapsed=dt){
   }
   playerHitFlash=Math.max(0,playerHitFlash-dt);
   $('playerDamageFlash').style.opacity=(playerHitFlash*.52).toFixed(2);
-  updateEnemyRadar();
+  if(refreshRadar)updateEnemyRadar();
   $('enemyHud').classList.toggle('hidden',!active);
   if(active){
     const surviving=[...enemies.values()].filter(e=>e.state.alive);
@@ -4117,8 +4123,8 @@ adjustEndurance(0);
 const keys=new Set();
 const forward=new THREE.Vector3();
 const clock=new THREE.Clock();
-let stationIndex=0,qualityHigh=!reducedRenderer;
-$('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
+let stationIndex=0;
+$('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW (AUTO)');
 function resetPlayer(i){
   const previousStation=stationIndex;
   stationIndex=i;const s=stations[i];
@@ -4935,14 +4941,19 @@ controls.addEventListener('unlock',()=>{
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
 });
-$('quality').addEventListener('click',()=>{
-  qualityHigh=!qualityHigh;
+function setGraphicsQuality(high,{automatic=false}={}){
+  qualityHigh=!!high;
   renderer.setPixelRatio(Math.min(devicePixelRatio,qualityHigh?1.6:1));
   sun.castShadow=qualityHigh;
   renderer.shadowMap.enabled=qualityHigh;
-  $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW');
+  $('quality').textContent='QUALITY: '+(qualityHigh?'HIGH':'LOW')+
+    (automatic?' (AUTO)':'');
   wastelandArt.setQuality(qualityHigh);
   refreshCampaignUI();
+}
+$('quality').addEventListener('click',()=>{
+  graphicsManuallyChosen=true;
+  setGraphicsQuality(!qualityHigh);
 });
 window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
@@ -5106,10 +5117,28 @@ function updateHUD(info){
   $('staminaFill').classList.toggle('empty',info.exhausted);
 }
 let questNavigationClock=0;
+let hudRefreshClock=0,performanceSampleTime=0,performanceSampleFrames=0;
+let lastAppearanceKey='';
 function frame(){
   requestAnimationFrame(frame);
   const elapsed=clock.getDelta();
   const dt=Math.min(.036,elapsed);
+  if(frameBudget.observe(elapsed,{highQuality:qualityHigh,
+    manual:graphicsManuallyChosen,visible:!document.hidden&&controls.isLocked})){
+    setGraphicsQuality(false,{automatic:true});
+    showShotNotice('PERFORMANCE MODE · GRAPHICS LOWERED TO IMPROVE FPS');
+  }
+  hudRefreshClock+=Math.min(elapsed,.15);
+  const refreshDisplay=hudRefreshClock>=.10;
+  if(refreshDisplay)hudRefreshClock%=.10;
+  performanceSampleTime+=elapsed;performanceSampleFrames++;
+  if(performanceSampleTime>=1){
+    const fps=Math.round(performanceSampleFrames/performanceSampleTime);
+    $('performanceStatus').textContent='FPS '+fps+' · DRAW CALLS '+
+      renderer.info.render.calls+' · TRIANGLES '+renderer.info.render.triangles+
+      ' · PIXEL RATIO '+renderer.getPixelRatio().toFixed(2);
+    performanceSampleFrames=0;performanceSampleTime=0;
+  }
   wastelandArt.update(dt);
   impactEffects.update(dt);
   laserTrails.update(dt); // the red beam holds briefly, then dissolves over .66s
@@ -5337,7 +5366,10 @@ function frame(){
   const targetFOV=weaponState.aiming?
     sightForOptic(activeWeaponId,installedWeaponOptic(backpack,activeWeaponId)).fov:76;
   camera.fov+=(targetFOV-camera.fov)*(1-Math.exp(-16*dt));
-  camera.updateProjectionMatrix();
+  if(Math.abs(camera.fov-(camera.userData.projectedFov??76))>.015){
+    camera.updateProjectionMatrix();
+    camera.userData.projectedFov=camera.fov;
+  }
   // Genuine magnified camera aim, with a fine mil reticle. A circular
   // opaque scope housing masks peripheral vision; hip fire stays unobscured.
   const throughSniperScope=controls.isLocked&&
@@ -5365,7 +5397,7 @@ function frame(){
   updateCombatVisuals(dt);
   if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
-  refreshWeaponHUD();
+  if(refreshDisplay)refreshWeaponHUD();
   const readyModels=[...enemies.values()].filter(e=>e.modelStatus==='original').length;
   const modelLabel='ORIGINAL PIXEL NPCs · '+readyModels+'/3 READY · '+
     'SCOUT / RAIDER / ENFORCER · 6 ARMOR SLOTS';
@@ -5373,14 +5405,26 @@ function frame(){
   // Entrance / exit is a physical, timed chest-door and hydraulic animation.
   poweredArmorTime+=dt;
   const powerStep=stepPowerArmor(powerArmorState,dt);
-  poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime,
-    powerCinematic?.origin);
+  // The power suit has a large articulated rig with expensive world-matrix
+  // updates. Do not solve every piston at 60 FPS when its parked body is far
+  // away, or when the player occupies a hidden suit. Transitions always run
+  // at full rate, including their final settle into the idle pose.
+  if(powerStep.phase!=='idle'||powerStep.completed||
+    (!powerArmorState.occupied&&refreshDisplay&&nearPoweredSuit()))
+    poweredSuit.animate(powerStep.phase,powerStep.progress,poweredArmorTime,
+      powerCinematic?.origin);
   // Cosmetic inventory visuals are driven by the same six real armor slots
   // in third-person play and while entering/exiting powered armor.
-  playerAvatar.setArmor(backpack.equipment.armor);
-  pilotAvatar.setArmor(backpack.equipment.armor);
-  playerAvatar.setClothing(backpack.equipment.clothing);
-  pilotAvatar.setClothing(backpack.equipment.clothing);
+  const appearanceKey=ARMOR_SLOTS.map(slot=>backpack.equipment.armor[slot]||'none').join('|')+
+    '|'+(backpack.equipment.clothing.head||'none')+
+    '|'+(backpack.equipment.clothing.back||'none');
+  if(appearanceKey!==lastAppearanceKey){
+    playerAvatar.setArmor(backpack.equipment.armor);
+    pilotAvatar.setArmor(backpack.equipment.armor);
+    playerAvatar.setClothing(backpack.equipment.clothing);
+    pilotAvatar.setClothing(backpack.equipment.clothing);
+    lastAppearanceKey=appearanceKey;
+  }
   const pilotChoreography=poweredSuit.pilot.userData.entryPose;
   if(pilotChoreography&&powerStep.phase!=='idle'){
     // Resolve ACTUAL moving handhold positions in the pilot's local space,
@@ -5395,20 +5439,22 @@ function frame(){
   }
   // The frame is scaled down while the human pilot remains life-sized.
   // Convert tread contacts into the pilot's world-sized IK coordinate frame.
-  const boardingIK=pilotChoreography?{
-    ...pilotChoreography,
-    y:pilotChoreography.y*POWER_ARMOR_VISUAL_SCALE,
-    z:pilotChoreography.z*POWER_ARMOR_VISUAL_SCALE,
-    plantedHeight:pilotChoreography.plantedHeight*POWER_ARMOR_VISUAL_SCALE,
-    footTargets:pilotChoreography.footTargets?.map(target=>target?{
-      y:target.y*POWER_ARMOR_VISUAL_SCALE,
-      z:target.z*POWER_ARMOR_VISUAL_SCALE}:null)
-  }:null;
-  pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
-    speed:pilotChoreography?.walkSpeed||0,
-    sprinting:false,crouched:false,aiming:false,alive:true,
-    bracing:pilotChoreography?.brace>.25,
-    boardingPose:powerStep.phase!=='idle'?boardingIK:null});
+  if(powerStep.phase!=='idle'){
+    const boardingIK=pilotChoreography?{
+      ...pilotChoreography,
+      y:pilotChoreography.y*POWER_ARMOR_VISUAL_SCALE,
+      z:pilotChoreography.z*POWER_ARMOR_VISUAL_SCALE,
+      plantedHeight:pilotChoreography.plantedHeight*POWER_ARMOR_VISUAL_SCALE,
+      footTargets:pilotChoreography.footTargets?.map(target=>target?{
+        y:target.y*POWER_ARMOR_VISUAL_SCALE,
+        z:target.z*POWER_ARMOR_VISUAL_SCALE}:null)
+    }:null;
+    pilotAvatar.update({dt,x:0,z:0,ground:0,yaw:0,
+      speed:pilotChoreography?.walkSpeed||0,
+      sprinting:false,crouched:false,aiming:false,alive:true,
+      bracing:pilotChoreography?.brace>.25,
+      boardingPose:boardingIK});
+  }
   poweredSuit.root.visible=powerArmorState.phase!=='idle'||!powerArmorState.occupied;
   poweredCockpit.visible=powerArmorState.occupied&&powerArmorState.phase==='idle';
   if(powerStep.phase!=='idle')updatePowerCinematic(powerStep.progress);
@@ -5472,9 +5518,9 @@ function frame(){
     }
     const eye=powerArmorEyeHeight(powerArmorState,info.eyeHeight);
     camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
-    updateHUD(info);
+    if(refreshDisplay)updateHUD(info);
   }
-  updateEnemies(dt,elapsed);
+  updateEnemies(dt,elapsed,refreshDisplay);
   // Quest residents use the same articulated rig as the player, but never
   // enter the hostile hit list. They watch approaching visitors naturally.
   for(const resident of campaignResidents){
@@ -5507,7 +5553,7 @@ function frame(){
         (meters!==null?' · '+meters+' m':'');
     }
   }
-  refreshPowerArmorHUD();
+  if(refreshDisplay)refreshPowerArmorHUD();
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.
   const nearby=nearestLootBag();
@@ -5547,16 +5593,17 @@ function frame(){
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
   playerAvatar.setHeldWeapon(WEAPON_REBUILD_MODE?null:activeWeaponId);
-  heldTenMM.root.visible=playerGunEnabled()&&activeWeaponId===TEN_MM_PISTOL.id;
-  heldPipePistol.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_PISTOL.id;
-  heldPipeRifle.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_RIFLE.id;
-  heldLaserMusket.root.visible=playerGunEnabled()&&activeWeaponId===LASER_MUSKET.id;
-  heldDoubleBarrel.root.visible=playerGunEnabled()&&activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
-  heldPumpShotgun.root.visible=playerGunEnabled()&&activeWeaponId===PUMP_ACTION_SHOTGUN.id;
-  heldHuntingRifle.root.visible=playerGunEnabled()&&activeWeaponId===BOLT_HUNTING_RIFLE.id;
-  heldWornRevolver.root.visible=playerGunEnabled()&&activeWeaponId===IRON_REVOLVER.id;
-  heldPipeSMG.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_SMG.id;
-  heldHeavySniper.root.visible=playerGunEnabled()&&activeWeaponId===HEAVY_SNIPER.id;
+  const ownedActiveGun=playerGunEnabled();
+  heldTenMM.root.visible=ownedActiveGun&&activeWeaponId===TEN_MM_PISTOL.id;
+  heldPipePistol.root.visible=ownedActiveGun&&activeWeaponId===PIPE_PISTOL.id;
+  heldPipeRifle.root.visible=ownedActiveGun&&activeWeaponId===PIPE_RIFLE.id;
+  heldLaserMusket.root.visible=ownedActiveGun&&activeWeaponId===LASER_MUSKET.id;
+  heldDoubleBarrel.root.visible=ownedActiveGun&&activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
+  heldPumpShotgun.root.visible=ownedActiveGun&&activeWeaponId===PUMP_ACTION_SHOTGUN.id;
+  heldHuntingRifle.root.visible=ownedActiveGun&&activeWeaponId===BOLT_HUNTING_RIFLE.id;
+  heldWornRevolver.root.visible=ownedActiveGun&&activeWeaponId===IRON_REVOLVER.id;
+  heldPipeSMG.root.visible=ownedActiveGun&&activeWeaponId===PIPE_SMG.id;
+  heldHeavySniper.root.visible=ownedActiveGun&&activeWeaponId===HEAVY_SNIPER.id;
   heldPipeSMG.slideGroup.position.z=heldPipeSMG.root.visible?
     slideTravel(slideCycle,.095)+handling.slideOffset:0;
   if(heldPipeSMG.root.visible){
@@ -5650,7 +5697,7 @@ function frame(){
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=(!WEAPON_REBUILD_MODE||REBUILT_WEAPON_IDS.includes(id))&&
-      id===activeWeaponId&&(!WEAPON_REBUILD_MODE||playerGunEnabled())&&
+      id===activeWeaponId&&(!WEAPON_REBUILD_MODE||ownedActiveGun)&&
       !thirdPersonActive&&powerArmorState.phase==='idle'&&
       !(id===HEAVY_SNIPER.id&&weaponState.aiming);
   if(thirdPersonActive){
@@ -5671,7 +5718,9 @@ function frame(){
     if(obstructed)viewDesired.copy(viewFocus).addScaledVector(offset,
       Math.max(.55,obstructed.distance-.20));
     thirdPersonCamera.position.copy(viewDesired);
-    thirdPersonCamera.fov=camera.fov;thirdPersonCamera.updateProjectionMatrix();
+    if(Math.abs(thirdPersonCamera.fov-camera.fov)>.015){
+      thirdPersonCamera.fov=camera.fov;thirdPersonCamera.updateProjectionMatrix();
+    }
     thirdPersonCamera.lookAt(viewFocus.clone().addScaledVector(viewHeading,.55));
     renderer.render(scene,thirdPersonCamera);
   }else renderer.render(scene,camera);
