@@ -31,7 +31,17 @@ test('Only an active tracked quest has a HUD or map navigation objective',()=>{
 test('Navigation HUD rejects NPCs and merchants; combat radar is not always on',()=>{
   assert.match(source,/type:\['relay','pump','courier','generator'\]\.includes\(n\.id\)\?'location':'person'/);
   assert.match(source,/\.\.\.VENDORS\.map\(v=>\(\{id:v\.id,label:v\.title,x:v\.x,z:v\.z,type:'person'\}\)\)/);
-  assert.match(source,/\.filter\(point=>point\.type==='station'\|\|point\.type==='location'\)/);
+  assert.match(source,/\.filter\(point=>point\.type==='world-location'\)/);
   assert.match(source,/playerHealth\.alive&&combatContacts\.size>0/);
   assert.match(source,/const alerted=combatContacts\.has\(enemy\.id\)/);
+});
+
+test('With no combat, active quest, waypoint or real location, navigation HUD is absent',()=>{
+  assert.match(page,/#questTracker\.hidden\{display:none!important\}/);
+  assert.match(page,/#fieldCompass\.hidden,#visorCompass\.hidden\{display:none!important\}/);
+  assert.match(page,/class="field-compass nav-compass hidden"/);
+  assert.match(page,/class="armor-compass nav-compass hidden"/);
+  assert.match(source,/const showCompass=Boolean\(waypoint\|\|hasQuestMarker\|\|visible\.length\)/);
+  assert.match(source,/\$\('fieldCompass'\)\.classList\.toggle\('hidden',!showCompass\)/);
+  assert.match(source,/\$\('visorCompass'\)\.classList\.toggle\('hidden',!showCompass\)/);
 });

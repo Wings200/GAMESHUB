@@ -4372,10 +4372,12 @@ const fieldMap=createFieldMap({
   canvas:$('fieldMapCanvas'),
   points:mapPoints
 });
-// Strict navigation HUD allowlist: locations, ACTIVE quests and user-set
-// waypoints; combat enemies are handled separately by updateEnemyRadar().
+// Testing stations, workbenches, terminals and prop coordinates are not real
+// discovered world locations. Until actual discoverable world places exist,
+// no static location icon may appear on the in-game compass.
+// Combat enemies, active quests and custom waypoints are separate sources.
 const navigationLandmarks=mapPoints
-  .filter(point=>point.type==='station'||point.type==='location')
+  .filter(point=>point.type==='world-location')
   .map(point=>{
   const markers=['fieldCompassLandmarks','visorCompassLandmarks'].map(containerId=>{
     const marker=document.createElement('span');
@@ -4413,6 +4415,15 @@ function updateNavigationHUD(heading){
   }).filter(entry=>fieldMap.isDiscovered(entry.point.x,entry.point.z)&&
     entry.distance>3&&entry.distance<65&&Math.abs(entry.delta)<=70)
     .sort((a,b)=>a.distance-b.distance).slice(0,4);
+  const objective=trackedCampaignObjective(campaignState);
+  const target=objective?.node==='arena'?{x:45,z:40}:
+    CAMPAIGN_NODES.find(node=>node.id===objective?.node);
+  const hasQuestMarker=!!target&&Number.isFinite(target.x)&&Number.isFinite(target.z);
+  // No markers means NO navigation HUD. Do not leave an empty compass or
+  // testing-field name visible during ordinary exploration.
+  const showCompass=Boolean(waypoint||hasQuestMarker||visible.length);
+  $('fieldCompass').classList.toggle('hidden',!showCompass);
+  $('visorCompass').classList.toggle('hidden',!showCompass);
   const shown=new Set(visible.map(entry=>entry.point.id));
   for(const {point,markers} of navigationLandmarks){
     if(!shown.has(point.id)){

@@ -251,7 +251,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 #fieldHud.hidden,#powerVisorHud.hidden{display:none!important}
 #fieldHud{color:#dcefd4;text-shadow:0 2px 9px #0009}
 #fieldHud .field-top{position:absolute;top:17px;left:50%;transform:translateX(-50%);
-  display:flex;align-items:center;gap:16px;max-width:90vw;white-space:nowrap;
+  display:none;align-items:center;gap:16px;max-width:90vw;white-space:nowrap;
   padding:9px 17px;border-top:2px solid #a4d3a0;
   background:linear-gradient(90deg,transparent,#0c241fe0 16%,#0c241fe0 84%,transparent);
   font-size:10px;font-weight:900;letter-spacing:.15em}
@@ -288,6 +288,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 #fieldHud .field-compass{position:absolute;top:67px;left:50%;transform:translateX(-50%);
   width:min(460px,83vw);height:45px;overflow:hidden;color:#c5e8bb;
   border-bottom:1px solid #76967a66;background:linear-gradient(90deg,transparent,#0c251fc7 16%,#0c251fc7 84%,transparent)}
+#fieldCompass.hidden,#visorCompass.hidden{display:none!important}
 .nav-compass .compass-marks,.nav-compass .nav-landmarks{position:absolute;inset:0;pointer-events:none}
 #fieldHud .compass-tick{position:absolute;top:5px;transform:translateX(-50%);
   color:#a5c8b4;font-size:10px;font-weight:900}
@@ -544,6 +545,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   width:min(320px,40vw);border-left:3px solid #91d6ac;
   padding:9px 13px;background:#081b20d9;pointer-events:none;
   box-shadow:0 8px 26px #0006}
+#questTracker.hidden{display:none!important}
 #questTracker .campaign-kicker{color:#9ddbb9;font-size:9px;
   letter-spacing:.17em;font-weight:900}
 #questTrackerTitle{display:block;font-size:12px;color:#f2e9c7;
@@ -1018,7 +1020,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="field-area" id="fieldLocation">SPRINT LANE</span>
     <span class="field-threat" id="fieldThreat">EXPLORATION</span>
   </div>
-  <div class="field-compass nav-compass" id="fieldCompass" aria-label="Navigation compass with tracked quests, discovered locations and custom waypoints">
+  <div class="field-compass nav-compass hidden" id="fieldCompass" aria-label="Navigation compass with tracked quests, discovered locations and custom waypoints">
     <div id="fieldCompassTicks" class="compass-marks"></div>
     <div id="fieldCompassLandmarks" class="nav-landmarks"></div>
     <span id="fieldCompassQuest" class="compass-waypoint" style="display:none" aria-label="Tracked quest direction">⌂</span>
@@ -1079,7 +1081,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="dial-title">RADS</span>
     <span id="visorRadiation" class="sr-only">0 RADS</span>
   </div>
-  <div class="armor-compass nav-compass" id="visorCompass" aria-label="Compass heading and positioned navigation markers">
+  <div class="armor-compass nav-compass hidden" id="visorCompass" aria-label="Compass heading and positioned navigation markers">
     <div id="visorCompassTicks" class="compass-marks"></div>
     <div id="visorCompassLandmarks" class="nav-landmarks"></div>
     <span id="visorCompassWaypoint" class="compass-waypoint" style="display:none" aria-label="Tracked objective direction">⌂</span>
@@ -1624,7 +1626,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.69.1"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.69.2"></script>
 </body>
 </html>
 
