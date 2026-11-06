@@ -13,6 +13,7 @@ import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
 import {previewWeaponSpec} from '../workbench-preview.mjs';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.76';
+import {deathCameraPose,DEATH_SCREEN_TIME} from '../death-camera.mjs?v=W20.76.1';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
@@ -3207,12 +3208,15 @@ const playerHealth=createPlayerHealth();
 let playerHitFlash=0;
 const HAVEN_RESPAWN={x:-41,z:-13};
 const deathState={active:false,elapsed:0,cause:'',inPowerArmor:false,
-  frameId:null,x:0,z:0,yaw:0};
+  frameId:null,x:0,z:0,ground:0,startEye:1.68,pitch:0,yaw:0};
 function beginPlayerDeath(source='UNKNOWN THREAT',zone='chest'){
   if(deathState.active)return;
   deathState.active=true;deathState.elapsed=0;
   deathState.cause=source.toUpperCase()+' · '+zone.toUpperCase();
-  deathState.x=player.x;deathState.z=player.z;deathState.yaw=camera.rotation.y;
+  deathState.x=player.x;deathState.z=player.z;
+  deathState.ground=groundHeight(player.x,player.z);
+  deathState.startEye=Math.max(.18,camera.position.y-deathState.ground);
+  deathState.pitch=camera.rotation.x;deathState.yaw=camera.rotation.y;
   deathState.inPowerArmor=powerArmorState.occupied;
   deathState.frameId=deathState.inPowerArmor?activePowerFrame.id:null;
   keys.clear();triggerHeld=false;cancelPowerHold();changeAim(false);
@@ -3230,6 +3234,7 @@ function beginPlayerDeath(source='UNKNOWN THREAT',zone='chest'){
     refreshPowerArmorHUD();
   }
   $('deathScreen').classList.add('hidden');
+  $('deathCinematicVeil').style.opacity='0';
   $('deathCause').textContent='FELL TO '+deathState.cause+
     '. YOUR INVENTORY AND PROGRESS ARE SAFE.'+
     (deathState.inPowerArmor?' YOUR POWER ARMOR REMAINS AT THE DEATH SITE.':'');
@@ -3254,6 +3259,7 @@ function respawnAtHaven({mainMenu=false}={}){
   camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
   resetWeaponRecoil(viewRecoil);
   $('deathScreen').classList.add('hidden');
+  $('deathCinematicVeil').style.opacity='0';
   document.body.classList.remove('player-dead');
   savePowerArmor();refreshPowerArmorHUD();
   if(mainMenu)$('menu').classList.remove('hidden');
@@ -6113,7 +6119,7 @@ function frame(){
         fallen.visual.root.position.y=-.24*ease;
       }
     }
-    if(deathState.elapsed>=1.8)
+    if(deathState.elapsed>=DEATH_SCREEN_TIME)
       $('deathScreen').classList.remove('hidden');
   }
   if(frameBudget.observe(elapsed,{highQuality:qualityHigh,
@@ -6690,21 +6696,26 @@ function frame(){
     hit:Math.min(1,playerHitFlash/.48)});
   thirdPersonActive=!deathState.active&&thirdPersonEnabled&&powerArmorState.phase==='idle'&&
     !powerArmorState.occupied&&!weaponState.aiming;
-  playerAvatar.root.visible=thirdPersonActive||deathState.active&&!deathState.inPowerArmor;
+  playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=(!WEAPON_REBUILD_MODE||REBUILT_WEAPON_IDS.includes(id))&&
       id===activeWeaponId&&(!WEAPON_REBUILD_MODE||ownedActiveGun)&&
       !deathState.active&&!thirdPersonActive&&powerArmorState.phase==='idle'&&
       !(id===HEAVY_SNIPER.id&&weaponState.aiming);
   if(deathState.active){
-    const facing=deathState.yaw;
-    const focusY=groundHeight(deathState.x,deathState.z)+
-      (deathState.inPowerArmor?1.22:.62);
-    thirdPersonCamera.position.set(
-      deathState.x+Math.cos(facing)*3.15,
-      focusY+1.55,deathState.z+Math.sin(facing)*3.15);
-    thirdPersonCamera.lookAt(deathState.x,focusY,deathState.z);
-    renderer.render(scene,thirdPersonCamera);
+    const pose=deathCameraPose(deathState.elapsed,{
+      startEye:deathState.startEye,
+      startPitch:deathState.pitch,startYaw:deathState.yaw});
+    camera.position.set(deathState.x,deathState.ground+pose.eyeHeight,deathState.z);
+    camera.rotation.set(pose.pitch,pose.yaw,pose.roll);
+    $('deathCinematicVeil').style.opacity=String(pose.veilOpacity);
+    if(deathState.inPowerArmor){
+      const fallen=powerFrames.get(deathState.frameId);
+      // Keep the chassis in the world, but out of the first-person view
+      // while the camera drops from the helmet to the ground.
+      if(fallen)fallen.visual.root.visible=pose.showDeathScreen;
+    }
+    renderer.render(scene,camera);
   }else if(thirdPersonActive){
     controls.getDirection(viewHeading);
     viewHeading.y=0;

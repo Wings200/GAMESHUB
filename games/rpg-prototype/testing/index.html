@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.76 · Death, Respawn & Power Armor Tracking | GAMESHUB RPG</title>
+<title>W20.76.1 · First-Person Death Cinematic | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -50,6 +50,17 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
   background:#070e12;opacity:0;transition:none}
 #playerDamageFlash{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse at center,transparent 37%,rgba(202,32,27,.8) 100%);opacity:0}
+#deathCinematicVeil{position:fixed;inset:0;z-index:11;pointer-events:none;
+  background:radial-gradient(ellipse at 48% 46%,rgba(21,6,7,.12) 10%,
+  rgba(81,16,20,.62) 70%,#040708 110%);opacity:0}
+body.player-dead #fieldHud,body.player-dead #powerVisorHud,
+body.player-dead #powerArmorHud,body.player-dead #playerHealthHud,
+body.player-dead #hud,body.player-dead #enemyHud,
+body.player-dead #targetHealthHud,body.player-dead #crosshair,
+body.player-dead #sniperScope,body.player-dead #weaponHud,
+body.player-dead #enemyRadar,body.player-dead #questTracker,
+body.player-dead #lootPrompt,body.player-dead #shotNotice,
+body.player-dead #bottom{visibility:hidden!important;opacity:0!important}
 #deathScreen{position:fixed;inset:0;z-index:12;display:flex;align-items:center;
   justify-content:center;padding:24px;background:linear-gradient(180deg,#050b0dcc,#080e12f5);
   color:#e9e3d8;text-align:center;animation:deathFadeIn .65s ease both}
@@ -1279,6 +1290,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="vignette"></div>
 <div id="playerDamageFlash"></div>
 <div id="powerTransitionFade" aria-hidden="true"></div>
+<div id="deathCinematicVeil" aria-hidden="true"></div>
 <section id="deathScreen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="deathTitle">
   <div class="death-card">
     <div class="death-kicker">FRONTIER / SURVIVOR STATUS / DECEASED</div>
@@ -1487,7 +1499,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.76</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.76.1</div>
+    <p><strong>W20.76.1 · FIRST-PERSON DEATH CINEMATIC:</strong> On fatal damage your view staggers down to your knees, pauses, then pitches into the ground with a brief impact jolt. Only after the fall fades out does YOU DIED appear. The Haven respawn and recoverable power-armor frame are unchanged.</p>
     <p><strong>W20.76 · DEATH & POWER ARMOR RECOVERY:</strong> Fatal damage now plays a third-person collapse before showing a death screen. Respawn at Haven with your backpack, progression and world changes intact. A power-armor frame stays where you fell. The map shows only your most recently worn parked frame, and you may track or untrack it without replacing your own waypoint.</p>
     <p><strong>W20.75.2 · SETTLEMENT WEAPON WORKBENCH:</strong> Weapon modifications require physically walking to Haven's workshop bench and pressing E nearby. The U shortcut and remote-workbench menu button are gone; the firing lane no longer contains a weapon workbench.</p>
     <p><strong>W20.75.1 · READ-ONLY DIAGNOSTICS:</strong> F3 reveals performance and gameplay status without a keybind cheat sheet. Free healing, enemy resetting/freezing, station teleporting and dummy-armor editing are no longer accessible to players. Quick-jump buttons to the combat arena, trading row and power-armor frame have been removed. Find frames in the world and use ordinary gameplay controls instead. Both compasses remain visible.</p>
@@ -1957,7 +1970,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.76"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.76.1"></script>
 </body>
 </html>
 

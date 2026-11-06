@@ -5,9 +5,10 @@ import {readFileSync} from 'node:fs';
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),'utf8');
 
-test('systems testing splash shows death and power armor recovery first',()=>{
+test('systems testing splash leads with the first-person death cinematic',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.76/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.76\.1/);
+  assert.match(log,/<strong>W20\.76\.1 · FIRST-PERSON DEATH CINEMATIC:<\/strong>/);
   assert.match(log,/<strong>W20\.76 · DEATH & POWER ARMOR RECOVERY:<\/strong>/);
   assert.match(log,/<strong>W20\.75\.2 · SETTLEMENT WEAPON WORKBENCH:<\/strong>/);
   assert.match(log,/<strong>W20\.75\.1 · READ-ONLY DIAGNOSTICS:<\/strong>/);
@@ -20,6 +21,8 @@ test('systems testing splash shows death and power armor recovery first',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.76.1 · FIRST-PERSON DEATH CINEMATIC')<
+    log.indexOf('W20.76 · DEATH & POWER ARMOR RECOVERY'));
   assert.ok(log.indexOf('W20.76 · DEATH & POWER ARMOR RECOVERY')<
     log.indexOf('W20.75.2 · SETTLEMENT WEAPON WORKBENCH'));
   assert.ok(log.indexOf('W20.75.2 · SETTLEMENT WEAPON WORKBENCH')<
@@ -31,6 +34,6 @@ test('systems testing splash shows death and power armor recovery first',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.76/);
-  assert.match(bootstrap,/main\.js\?v=W20\.76/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.76\.1/);
+  assert.match(bootstrap,/main\.js\?v=W20\.76\.1/);
 });

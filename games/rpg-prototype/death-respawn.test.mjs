@@ -5,14 +5,18 @@ import {readFileSync} from 'node:fs';
 const main=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 
-test('death has a real collapse camera, delayed death screen and Haven respawn',()=>{
-  for(const id of ['deathScreen','deathCause','deathRespawn','deathMainMenu'])
+test('death stays first person through knees, ground impact and the delayed death screen',()=>{
+  for(const id of ['deathCinematicVeil','deathScreen','deathCause',
+    'deathRespawn','deathMainMenu'])
     assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(main,/function beginPlayerDeath\(source=/);
   assert.match(main,/if\(!playerHealth\.alive\)beginPlayerDeath\(enemy\.label,zone\)/);
-  assert.match(main,/deathState\.elapsed>=1\.8/);
-  assert.match(main,/playerAvatar\.root\.visible=thirdPersonActive\|\|deathState\.active/);
-  assert.match(main,/thirdPersonCamera\.lookAt\(deathState\.x,focusY,deathState\.z\)/);
+  assert.match(main,/deathState\.elapsed>=DEATH_SCREEN_TIME/);
+  assert.match(main,/deathCameraPose\(deathState\.elapsed/);
+  assert.match(main,/camera\.rotation\.set\(pose\.pitch,pose\.yaw,pose\.roll\)/);
+  assert.match(main,/camera\.position\.set\(deathState\.x,deathState\.ground\+pose\.eyeHeight/);
+  assert.match(main,/renderer\.render\(scene,camera\)/);
+  assert.doesNotMatch(main,/thirdPersonCamera\.lookAt\(deathState\.x,focusY,deathState\.z\)/);
   assert.match(main,/function respawnAtHaven\(/);
   assert.match(main,/resetPlayerHealth\(playerHealth\)/);
   assert.match(main,/player\.x=HAVEN_RESPAWN\.x;player\.z=HAVEN_RESPAWN\.z/);
