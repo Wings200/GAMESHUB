@@ -3,7 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  buyFromVendor,sellToVendor,sellMaterialToVendor} from '../vendors.mjs?v=W20.65';
+  buyFromVendor,sellToVendor,sellMaterialToVendor,isEquippedItem} from '../vendors.mjs?v=W20.65';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
@@ -1110,9 +1110,35 @@ function powerServiceAvailable(){
   }
   return true;
 }
+let selectedPowerSlot='chest';
+function selectPowerSlot(slot){
+  if(!POWER_ARMOR_SLOTS.includes(slot))return;
+  selectedPowerSlot=slot;
+  refreshPowerArmorUI();
+}
 function refreshPowerArmorUI(){
   for(const slot of POWER_ARMOR_SLOTS){
     const current=plateCondition(powerArmorState,slot);
+    const status=powerArmorIndicatorStatus(powerArmorState,slot);
+    const figure=$('powerFigure-'+slot);
+    figure.setAttribute('class','armor-segment '+status.status+
+      (selectedPowerSlot===slot?' selected':''));
+    figure.setAttribute('aria-label',ARMOR_SLOT_LABELS[slot]+': '+
+      (current.tier==='none'?'empty':
+        getPowerPlate(slot,current.tier).name+', '+status.percentage+
+        '% durability')+'. Select to configure.');
+    figure.setAttribute('aria-pressed',String(selectedPowerSlot===slot));
+    document.querySelector('#powerArmorPanel .power-slot-details label[data-slot="'+slot+'"]')
+      .classList.toggle('selected',selectedPowerSlot===slot);
+    if(selectedPowerSlot===slot){
+      $('powerSelectedName').textContent=ARMOR_SLOT_LABELS[slot].toUpperCase();
+      $('powerSelectedCondition').textContent=current.tier==='none'?
+        'EMPTY MOUNT · CHOOSE A COLLECTED PART TO INSTALL':
+        getPowerPlate(slot,current.tier).name.toUpperCase()+' · '+
+        status.percentage+'% CONDITION'+
+        (current.broken?' · BROKEN / REPAIR REQUIRED':
+          status.status==='critical'?' · CRITICAL / REPAIR RECOMMENDED':' · OPERATIONAL');
+    }
     const picker=$('power-'+slot);picker.replaceChildren();
     const fitted=document.createElement('option');
     fitted.value='installed';fitted.textContent=current.tier==='none'?
@@ -1167,6 +1193,15 @@ function refreshPowerArmorUI(){
     ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerArmorHUD();
+}
+for(const slot of POWER_ARMOR_SLOTS){
+  const target=$('powerFigure-'+slot);
+  target.addEventListener('click',()=>selectPowerSlot(slot));
+  target.addEventListener('keydown',event=>{
+    if(event.key==='Enter'||event.key===' '){
+      event.preventDefault();selectPowerSlot(slot);
+    }
+  });
 }
 function openPowerArmorBay(){
   powerUIFromField=controls.isLocked;
@@ -1561,6 +1596,7 @@ let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
 let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
 let weaponsCrateOpen=false; // Legacy overlay guard, kept false for menu transitions.
 let inventoryCategory='all';
+let inventorySelectedSlot=null;
 let backpack=createBackpack();
 let hadSavedBackpack=false;
 try{
@@ -1939,6 +1975,24 @@ function refreshInventoryUI(){
   const covered=armorRows.filter(row=>row.protected).length;
   $('inventoryArmor').textContent=covered+' / '+ARMOR_SLOTS.length+
     ' ZONES PROTECTED'+(powerArmorState.occupied?' · POWER ARMOR WORN':'');
+  for(const zone of armorRows){
+    const figure=document.querySelector('[data-inventory-slot="'+zone.slot+'"]');
+    figure.setAttribute('class',[
+      zone.protected?(powerArmorState.occupied?'powered':'protected'):'unprotected',
+      inventorySelectedSlot===zone.slot?'selected':''
+    ].join(' ').trim());
+    figure.setAttribute('aria-pressed',String(inventorySelectedSlot===zone.slot));
+    figure.setAttribute('aria-label',ARMOR_SLOT_LABELS[zone.slot]+': '+
+      Math.round(zone.protection.combinedReduction*100)+'% incoming damage blocked. Select to inspect.');
+  }
+  const selectedProtection=armorRows.find(row=>row.slot===inventorySelectedSlot);
+  $('inventoryZoneDetail').textContent=selectedProtection?
+    ARMOR_SLOT_LABELS[selectedProtection.slot].toUpperCase()+' · '+
+    selectedProtection.regular.points+' REGULAR AP · '+
+    Math.round(selectedProtection.protection.combinedReduction*100)+'% DAMAGE BLOCKED'+
+    (powerArmorState.occupied?' WITH FRAME':''):
+    'SELECT A BODY PART TO INSPECT ITS ARMOR.';
+  $('inventoryZoneReset').disabled=!inventorySelectedSlot;
   const armorDetail=$('inventoryArmorDetails');armorDetail.replaceChildren();
   for(const entry of armorRows){
     const line=document.createElement('div');
@@ -1974,16 +2028,20 @@ function refreshInventoryUI(){
     button.append(name,count);
     if(inventoryCategory===category.id)button.classList.add('selected');
     button.addEventListener('click',()=>{
-      inventoryCategory=category.id;refreshInventoryUI();
+      inventoryCategory=category.id;inventorySelectedSlot=null;refreshInventoryUI();
     });
     nav.append(button);
   }
   const chosen=areas.find(c=>c.id===inventoryCategory)||areas[0];
-  $('inventorySectionTitle').textContent=chosen.label.toUpperCase();
-  $('inventorySectionCount').textContent=chosen.count+
-    (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES');
+  $('inventorySectionTitle').textContent=chosen.label.toUpperCase()+
+    (inventoryCategory==='armor'&&inventorySelectedSlot?
+      ' / '+ARMOR_SLOT_LABELS[inventorySelectedSlot].toUpperCase():'');
   const visibleEntries=backpack.items.filter(entry=>
-    (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory));
+    (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory)&&
+    !(inventoryCategory==='armor'&&inventorySelectedSlot&&
+      getItem(entry.itemId).slot!==inventorySelectedSlot));
+  $('inventorySectionCount').textContent=visibleEntries.length+
+    (inventoryCategory==='materials'?ownedComponents.length+' COMPONENT TYPES':' ENTRIES');
   const area=$('inventoryItems');area.replaceChildren();
   const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
     ownedComponents:[];
@@ -1992,6 +2050,7 @@ function refreshInventoryUI(){
     empty.textContent=inventoryCategory==='quest'?
       'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
       inventoryCategory==='weapon'?'NO WEAPONS OWNED · FIND ONE OR USE THE DEVELOPER PANEL.':
+      inventoryCategory==='armor'&&inventorySelectedSlot?'NO ARMOR FOR THIS BODY PART · SHOW ALL OR FIND A PIECE.':
       'NOTHING IN THIS SECTION YET · SEARCH LOOT WITH E.';
     area.append(empty);
   }
@@ -2109,6 +2168,21 @@ function refreshInventoryUI(){
     area.append(row);
   }
 }
+for(const slot of ARMOR_SLOTS){
+  const figure=document.querySelector('[data-inventory-slot="'+slot+'"]');
+  figure.addEventListener('click',()=>{
+    inventoryCategory='armor';inventorySelectedSlot=slot;refreshInventoryUI();
+  });
+  figure.addEventListener('keydown',event=>{
+    if(event.key==='Enter'||event.key===' '){
+      event.preventDefault();
+      inventoryCategory='armor';inventorySelectedSlot=slot;refreshInventoryUI();
+    }
+  });
+}
+$('inventoryZoneReset').addEventListener('click',()=>{
+  inventorySelectedSlot=null;inventoryCategory='armor';refreshInventoryUI();
+});
 function refreshLootUI(){
   const bag=lootBags.get(selectedLootId),area=$('lootItems');
   area.replaceChildren();
@@ -2193,7 +2267,7 @@ $('lootTakeAll').addEventListener('click',()=>{
 
 
 // W20.56: Real test-field vendor transactions using the saved campaign wallet.
-let vendorOpen=false,vendorFromField=false,activeVendorId=null,vendorTab='buy';
+let vendorOpen=false,vendorFromField=false,activeVendorId=null;
 let vendorStock=createVendorStock();
 try{
   vendorStock=safeVendorStockSnapshot(JSON.parse(
@@ -2217,16 +2291,14 @@ function showVendorFeedback(message){
 function refreshVendorUI(){
   const vendor=vendorById(activeVendorId);
   if(!vendor)return;
-  const search=$('vendorSearch').value.trim().toLowerCase();
+  const merchantSearch=$('vendorSearch').value.trim().toLowerCase();
+  const playerSearch=$('vendorPlayerSearch').value.trim().toLowerCase();
   $('vendorName').textContent=vendor.name+' · '+vendor.title;
   $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
   $('vendorCaps').textContent=campaignState.caps+' CAPS';
-  $('vendorBuyTab').classList.toggle('active',vendorTab==='buy');
-  $('vendorSellTab').classList.toggle('active',vendorTab==='sell');
-  $('vendorBuyTab').setAttribute('aria-pressed',String(vendorTab==='buy'));
-  $('vendorSellTab').setAttribute('aria-pressed',String(vendorTab==='sell'));
-  const list=$('vendorItems');list.replaceChildren();
-  function row(itemId,quantity,action,price,disabled=false,subtext=''){
+  const merchantList=$('vendorItems'),playerList=$('vendorPlayerItems');
+  merchantList.replaceChildren();playerList.replaceChildren();
+  function row(list,itemId,action,price,disabled=false,subtext=''){
     const item=getItem(itemId),entry=document.createElement('div');
     entry.className='vendor-item';
     const details=document.createElement('div');
@@ -2240,62 +2312,66 @@ function refreshVendorUI(){
     entry.append(details,button);list.append(entry);
     return button;
   }
-  if(vendorTab==='buy'){
-    for(const offer of vendor.offers){
-      if(search&&!getItem(offer.itemId).name.toLowerCase().includes(search))continue;
-      const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
-      const quantity=Math.min(offer.quantity,remaining);
-      const price=quantity?vendorBuyPrice(offer.itemId,quantity):0;
-      const soldOut=remaining===0;
-      const button=row(offer.itemId,quantity,'BUY',price,
-        soldOut||campaignState.caps<price,
-        'STOCK ×'+remaining+' · BUY ×'+quantity);
-      if(soldOut)button.textContent='SOLD OUT';
-      button.addEventListener('click',()=>{
-        saveBackpack(); // synchronize live reserve ammo before copying state
-        const outcome=buyFromVendor(backpack,campaignState.caps,
-          vendor.id,offer.itemId,vendorStock);
-        completeVendorTrade(outcome,'PURCHASED');
-      });
-    }
-  }else{
-    const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId)&&
-      (!search||getItem(e.itemId).name.toLowerCase().includes(search)));
-    const materials=CRAFTING_COMPONENTS.filter(item=>
-      vendorAccepts(vendor.id,item.id)&&countItem(backpack,item.id)>0&&
-      (!search||item.name.toLowerCase().includes(search)));
-    if(!sellable.length&&!materials.length){
-      const empty=document.createElement('p');
-      empty.className='vendor-empty';
-      empty.textContent='NO ITEMS THIS MERCHANT WILL BUY. LOOT OR PURCHASE GEAR FIRST.';
-      list.append(empty);
-    }
-    for(const entry of sellable){
-      const price=vendorSellPrice(entry.itemId,1);
-      const button=row(entry.itemId,1,'SELL 1',price,false,'OWNED ×'+entry.quantity);
-      button.addEventListener('click',()=>{
-        saveBackpack();
-        const outcome=sellToVendor(backpack,campaignState.caps,
-          vendor.id,entry.uid,1,vendorStock);
-        completeVendorTrade(outcome,'SOLD');
-      });
-    }
-    for(const material of materials){
-      const quantity=countItem(backpack,material.id);
-      const button=row(material.id,1,'SELL 1',vendorSellPrice(material.id),false,
-        'POUCH ×'+quantity);
-      button.addEventListener('click',()=>{
-        saveBackpack();
-        const outcome=sellMaterialToVendor(backpack,campaignState.caps,
-          vendor.id,material.id,1,vendorStock);
-        completeVendorTrade(outcome,'SOLD');
-      });
-    }
+  let merchantCount=0,playerCount=0;
+  for(const offer of vendor.offers){
+    if(merchantSearch&&!getItem(offer.itemId).name.toLowerCase().includes(merchantSearch))
+      continue;
+    merchantCount++;
+    const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
+    const quantity=Math.min(offer.quantity,remaining);
+    const price=quantity?vendorBuyPrice(offer.itemId,quantity):0;
+    const soldOut=remaining===0;
+    const button=row(merchantList,offer.itemId,'BUY ×'+quantity,price,
+      soldOut||campaignState.caps<price,'STOCK ×'+remaining+' · PER TRADE ×'+quantity);
+    if(soldOut)button.textContent='SOLD OUT';
+    button.addEventListener('click',()=>{
+      saveBackpack();
+      const outcome=buyFromVendor(backpack,campaignState.caps,
+        vendor.id,offer.itemId,vendorStock);
+      completeVendorTrade(outcome,'PURCHASED');
+    });
   }
-  if(!list.childElementCount){
+  const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId)&&
+    (!playerSearch||getItem(e.itemId).name.toLowerCase().includes(playerSearch)));
+  for(const entry of sellable){
+    playerCount++;
+    const price=vendorSellPrice(entry.itemId,1);
+    const equipped=isEquippedItem(backpack,entry);
+    const button=row(playerList,entry.itemId,'SELL 1',price,equipped,
+      'OWNED ×'+entry.quantity+(equipped?' · EQUIPPED':''));
+    if(equipped)button.textContent='EQUIPPED';
+    button.addEventListener('click',()=>{
+      saveBackpack();
+      const outcome=sellToVendor(backpack,campaignState.caps,
+        vendor.id,entry.uid,1,vendorStock);
+      completeVendorTrade(outcome,'SOLD');
+    });
+  }
+  for(const material of CRAFTING_COMPONENTS){
+    if(!vendorAccepts(vendor.id,material.id)||countItem(backpack,material.id)<1||
+       (playerSearch&&!material.name.toLowerCase().includes(playerSearch)))continue;
+    playerCount++;
+    const quantity=countItem(backpack,material.id);
+    const button=row(playerList,material.id,'SELL 1',
+      vendorSellPrice(material.id),false,'POUCH ×'+quantity);
+    button.addEventListener('click',()=>{
+      saveBackpack();
+      const outcome=sellMaterialToVendor(backpack,campaignState.caps,
+        vendor.id,material.id,1,vendorStock);
+      completeVendorTrade(outcome,'SOLD');
+    });
+  }
+  $('vendorPlayerCount').textContent=playerCount+' SELLABLE ENTRIES';
+  $('vendorStockCount').textContent=merchantCount+' OFFERS';
+  if(!merchantList.childElementCount){
     const empty=document.createElement('p');empty.className='vendor-empty';
     empty.textContent='NO MATCHES · TRY A DIFFERENT MATERIAL OR ITEM NAME.';
-    list.append(empty);
+    merchantList.append(empty);
+  }
+  if(!playerList.childElementCount){
+    const empty=document.createElement('p');empty.className='vendor-empty';
+    empty.textContent='NO MATCHING ITEMS THIS MERCHANT BUYS · CHECK ANOTHER MERCHANT.';
+    playerList.append(empty);
   }
 }
 function completeVendorTrade(result,verb){
@@ -2323,12 +2399,13 @@ function openVendor(vendor){
   if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||weaponsCrateOpen||
     powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
   saveBackpack();
-  activeVendorId=vendor.id;vendorTab='buy';
+  activeVendorId=vendor.id;
   $('vendorSearch').value='';
+  $('vendorPlayerSearch').value='';
   vendorFromField=controls.isLocked;
   vendorOpen=true;
   $('vendorPanel').classList.remove('hidden');$('menu').classList.add('hidden');
-  showVendorFeedback('SELECT BUY OR SELL · PRICES USE REAL ITEM VALUES');
+  showVendorFeedback('YOUR ITEMS ON THE LEFT · MERCHANT STOCK ON THE RIGHT · CAPS AND STOCK SAVE AFTER EVERY TRADE');
   refreshVendorUI();
   if(controls.isLocked)controls.unlock();
 }
@@ -2340,9 +2417,8 @@ function closeVendor(){
   else $('menu').classList.remove('hidden');
 }
 $('vendorClose').addEventListener('click',closeVendor);
-$('vendorBuyTab').addEventListener('click',()=>{vendorTab='buy';refreshVendorUI();});
-$('vendorSellTab').addEventListener('click',()=>{vendorTab='sell';refreshVendorUI();});
 $('vendorSearch').addEventListener('input',refreshVendorUI);
+$('vendorPlayerSearch').addEventListener('input',refreshVendorUI);
 function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
 let benchActiveSlot='receiver';
 function workbenchFeedback(message){
@@ -2356,10 +2432,52 @@ function workbenchCostText(cost){
     return n+' '+name+' ['+available+' OWNED'+(available<n?' · NEED '+(n-available):'')+']';
   }).join('   ·   ');
 }
+function ownedWorkbenchWeapons(){
+  return MOD_WEAPON_IDS.filter(id=>
+    backpack.items.some(entry=>entry.itemId==='weapon:'+id));
+}
 function refreshWorkbenchUI(){
-  const weaponId=$('benchWeapon').value;
-  if(!MOD_WEAPON_IDS.includes(weaponId))return;
+  const ownedIds=ownedWorkbenchWeapons();
+  const picker=$('benchWeapon'),list=$('benchWeaponList');
+  const preferred=picker.value;
+  picker.replaceChildren();list.replaceChildren();
+  for(const id of ownedIds){
+    const spec=getWeaponSpec(id),quantity=countItem(backpack,'weapon:'+id);
+    const option=document.createElement('option');
+    option.value=id;option.textContent=spec.name;
+    picker.append(option);
+    const button=document.createElement('button');button.type='button';
+    button.className='bench-owned-weapon'+(id===preferred?' selected':'');
+    button.setAttribute('aria-pressed',String(id===preferred));
+    const name=document.createElement('strong');name.textContent=spec.name.toUpperCase();
+    const meta=document.createElement('small');meta.textContent='OWNED ×'+quantity+
+      (backpack.equipment.weapon===id?' · EQUIPPED':'')+' · MODIFY';
+    button.append(name,meta);
+    button.addEventListener('click',()=>{
+      picker.value=id;benchActiveSlot='receiver';refreshWorkbenchUI();
+    });
+    list.append(button);
+  }
+  let weaponId=preferred;
+  if(!ownedIds.includes(weaponId))weaponId=ownedIds[0]||'';
+  picker.value=weaponId;
+  for(const button of list.children){
+    const id=ownedIds[[...list.children].indexOf(button)];
+    button.classList.toggle('selected',id===weaponId);
+    button.setAttribute('aria-pressed',String(id===weaponId));
+  }
+  if(!weaponId){
+    $('benchSelectedName').textContent='NO WEAPONS IN BACKPACK';
+    $('benchMaterials').textContent='0 OWNED FIREARMS · COLLECT A GUN FIRST';
+    $('benchStats').textContent='Only weapons you actually own can be modified.';
+    $('benchSlots').replaceChildren();$('benchOptics').replaceChildren();
+    const empty=document.createElement('p');empty.className='bench-empty';
+    empty.textContent='Find, purchase, or grant a weapon first. Return here to install its parts.';
+    $('benchOptics').append(empty);
+    return;
+  }
   const spec=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
+  $('benchSelectedName').textContent=spec.name.toUpperCase()+' · MODIFICATIONS';
   const totalScrap=CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
   $('benchMaterials').textContent=totalScrap+' COMPONENTS IN POUCH · 31 RESOURCE TYPES';
   $('benchStats').textContent=
@@ -2456,10 +2574,16 @@ function beginWorkbench(){
   workbenchFromField=controls.isLocked;
   if(workbenchFromField)controls.unlock();
   workbenchOpen=true;
-  $('benchWeapon').value=MOD_WEAPON_IDS.includes(activeWeaponId)?
-    activeWeaponId:MOD_WEAPON_IDS[0];
+  const ownedIds=ownedWorkbenchWeapons();
+  // Preserve the equipped gun when possible, otherwise show the first owned gun.
+  $('benchWeapon').replaceChildren();
+  const opening=document.createElement('option');
+  opening.value=ownedIds.includes(activeWeaponId)?activeWeaponId:ownedIds[0]||'';
+  $('benchWeapon').append(opening);
   refreshWorkbenchUI();
-  workbenchFeedback('SELECT AN ASSEMBLY · MATERIALS ARE SPENT ONLY WHEN CRAFTED');
+  workbenchFeedback(ownedIds.length?
+    'SELECT AN OWNED WEAPON · MATERIALS ARE SPENT ONLY WHEN CRAFTED':
+    'NO OWNED WEAPONS · GET A GUN BEFORE USING THE WORKBENCH');
   $('workbenchPanel').classList.remove('hidden');
   $('menu').classList.add('hidden');
 }
@@ -2467,12 +2591,6 @@ function closeWorkbench(){
   workbenchOpen=false;$('workbenchPanel').classList.add('hidden');
   if(workbenchFromField){workbenchFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
-}
-for(const id of MOD_WEAPON_IDS){
-  const spec=getWeaponSpec(id);
-  const option=document.createElement('option');
-  option.value=id;option.textContent=spec.name;
-  $('benchWeapon').append(option);
 }
 $('benchWeapon').addEventListener('change',()=>{benchActiveSlot='receiver';refreshWorkbenchUI();});
 $('workbenchOpen').addEventListener('click',beginWorkbench);

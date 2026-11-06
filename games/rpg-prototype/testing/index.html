@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.65 · Finite Merchant Stock | GAMESHUB RPG</title>
+<title>W20.66 · Equipment UI Rebuild | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -813,6 +813,72 @@ body.hud-modern #powerArmorHud{display:none!important}
   #vendorPanel .vendor-items{grid-template-columns:1fr}}
 @media(max-width:500px){#vendorPanel .vendor-item{flex-wrap:wrap}
   #vendorPanel .vendor-wallet{width:100%}}
+/* W20.66 · Equipment-first interaction screens. */
+#powerArmorPanel .power-service-layout{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(300px,1.1fr);gap:20px;align-items:stretch;margin:14px 0 22px}
+#powerArmorPanel .power-figure-pane,#powerArmorPanel .power-config-pane{background:#12232a;border:1px solid #526b61;padding:20px;min-width:0}
+#powerArmorPanel .power-figure-pane h3{display:flex;justify-content:space-between;gap:12px;font-size:14px;letter-spacing:.12em;color:#e6d49c;margin:0 0 10px}
+#powerArmorPanel .power-figure-pane h3 small{font-size:9px;color:#a4c5ad}
+#powerServiceFigure{display:block;width:min(100%,285px);height:390px;margin:0 auto;overflow:visible;filter:drop-shadow(0 0 22px #a1bb7840)}
+#powerServiceFigure .armor-segment{cursor:pointer;outline:none}
+#powerServiceFigure .armor-shell{stroke-width:2;stroke-linejoin:round;transition:fill .15s,stroke .15s}
+#powerServiceFigure .armor-line{fill:none;stroke:#4f4537;stroke-width:1.8;pointer-events:none}
+#powerServiceFigure .armor-segment.healthy .armor-shell{fill:#dcae58;stroke:#ffe49a}
+#powerServiceFigure .armor-segment.critical .armor-shell{fill:#e34739;stroke:#ff9279}
+#powerServiceFigure .armor-segment.empty .armor-shell{fill:#192328;stroke:#53635e}
+#powerServiceFigure .armor-segment.selected .armor-shell,#powerServiceFigure .armor-segment:focus-visible .armor-shell{stroke:#f2efd0;stroke-width:4;filter:drop-shadow(0 0 5px #fee7a0)}
+#powerServiceFigure .armor-segment:hover .armor-shell{stroke:#fff1c5}
+#powerArmorPanel .power-figure-legend{display:flex;flex-wrap:wrap;gap:15px;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.04em}
+#powerArmorPanel .power-figure-legend .healthy{color:#e2bd71}
+#powerArmorPanel .power-figure-legend .critical{color:#ff7769}
+#powerArmorPanel .power-figure-legend .empty{color:#97a5a3}
+#powerArmorPanel .power-config-heading{padding:3px 0 17px;border-bottom:1px solid #587267}
+#powerArmorPanel .power-config-heading small{color:#a7c4ad;font-size:10px;font-weight:900;letter-spacing:.14em}
+#powerArmorPanel .power-config-heading h3{font-size:29px;margin:6px 0;color:#f0d8a2}
+#powerArmorPanel .power-config-heading p{font-size:12px;margin:0}
+#powerArmorPanel .power-slot-details{display:block;margin-top:17px}
+#powerArmorPanel .power-slot-details label{display:none;gap:12px;flex-direction:column}
+#powerArmorPanel .power-slot-details label.selected{display:flex}
+#powerArmorPanel .power-slot-details select{width:100%}
+#powerArmorPanel .power-slot-details button{max-width:240px}
+#workbenchPanel .bench-work-area{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:410px}
+#workbenchPanel .bench-owned-pane{background:#142729;border-right:1px solid #486859;padding:18px;min-width:0}
+#workbenchPanel .bench-owned-list{display:flex;flex-direction:column;gap:8px;margin-top:15px;max-height:65vh;overflow-y:auto}
+#workbenchPanel .bench-owned-weapon{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:left;padding:12px;border:1px solid #476353;background:#1c3030;color:#e5ddc2;min-width:0}
+#workbenchPanel .bench-owned-weapon:hover,#workbenchPanel .bench-owned-weapon.selected{background:#355344;border-color:#e3c88e}
+#workbenchPanel .bench-owned-weapon.selected{box-shadow:inset 3px 0 #e3c88e}
+#workbenchPanel .bench-owned-weapon strong{font-size:12px}
+#workbenchPanel .bench-owned-weapon small{font-size:10px;color:#a6c4b0}
+#workbenchPanel .bench-mod-pane{min-width:0}
+#workbenchPanel .bench-mod-pane>h3{margin:0;padding:14px 25px;font-size:17px;color:#f4d29b;background:#1a3030}
+#workbenchPanel .bench-empty{padding:25px;color:#c4d4be;font-size:12px;line-height:1.7}
+#vendorPanel .vendor-shell{max-width:1370px}
+#vendorPanel .vendor-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#vendorPanel .vendor-player-pane{border-right:1px solid #52695f}
+#vendorPanel .vendor-pane-title{display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-bottom:1px solid #416151;padding-bottom:10px}
+#vendorPanel .vendor-pane-title h3{margin:0;font-size:18px;color:#ead8ab;letter-spacing:.08em}
+#vendorPanel .vendor-pane-title small{font-size:10px;color:#adc0b0}
+#vendorPanel .vendor-items{grid-template-columns:minmax(0,1fr);max-height:min(60vh,620px);overflow-y:auto;padding-right:4px}
+#vendorPanel .vendor-item{min-width:0}
+#vendorPanel .vendor-side{display:flex;flex-direction:row;align-items:baseline;padding:11px 22px;border-left:0;border-top:1px solid #4d6558}
+#vendorPanel .vendor-side strong{white-space:nowrap}
+#vendorPanel .vendor-side p{margin:0}
+#inventoryPanel .inventory-silhouette{height:210px}
+#inventoryPanel .inventory-silhouette svg{height:187px;width:147px;overflow:visible}
+#inventoryPanel .inventory-silhouette [data-inventory-slot]{cursor:pointer;outline:none}
+#inventoryPanel .inventory-silhouette [data-inventory-slot] path{fill:#172e2e;stroke:#536f63;stroke-width:2;transition:fill .15s,stroke .15s}
+#inventoryPanel .inventory-silhouette [data-inventory-slot].protected path{fill:#679d78;stroke:#b8dfb3}
+#inventoryPanel .inventory-silhouette [data-inventory-slot].powered path{fill:#d1ac64;stroke:#ffdfa0}
+#inventoryPanel .inventory-silhouette [data-inventory-slot].selected path,#inventoryPanel .inventory-silhouette [data-inventory-slot]:focus-visible path{stroke:#ffe8af;stroke-width:4}
+#inventoryPanel .inventory-silhouette [data-inventory-slot]:hover path{stroke:#f3e0aa}
+#inventoryPanel .inventory-zone-detail{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:8px 0 12px;padding:10px;border:1px solid #3d6252;background:#142e2e}
+#inventoryPanel .inventory-zone-detail strong{font-size:10px;color:#e9d5a3;line-height:1.5}
+#inventoryPanel .inventory-zone-detail button{padding:6px 9px;min-height:28px;font-size:9px}
+@media(max-width:970px){#powerArmorPanel .power-service-layout{grid-template-columns:1fr}#powerServiceFigure{height:290px}
+  #vendorPanel .vendor-body{grid-template-columns:1fr}#vendorPanel .vendor-player-pane{border-right:0;border-bottom:1px solid #52695f}
+  #vendorPanel .vendor-side{flex-wrap:wrap}}
+@media(max-width:750px){#workbenchPanel .bench-work-area{grid-template-columns:1fr}#workbenchPanel .bench-owned-pane{border-right:0;border-bottom:1px solid #486859}
+  #workbenchPanel .bench-owned-list{max-height:210px}}
+@media(max-width:1150px){#inventoryPanel .inventory-silhouette{display:flex}}
 </style>
 </head>
 <body class="hud-modern">
@@ -1007,9 +1073,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.65</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.66</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <p><strong>W20.65 · MERCHANT STOCK:</strong> Merchants now have finite stock. Buying reduces their real remaining quantity, sold-out products cannot be purchased, and selling a product they normally carry adds stock back. Stock persists after closing the shop or reloading. No automatic restock is scheduled yet.</p>
+    <p><strong>W20.66 · EQUIPMENT INTERFACES:</strong> Vendors show your inventory beside finite merchant stock. Workbenches list only guns you own. The power-armor chassis and inventory figure both use interactive six-zone equipment diagrams. Merchant stock still persists across visits; automatic restocking is not scheduled yet.</p>
     <p><strong>W20.62 · DEVELOPER ITEM GRANTS:</strong> Admins can open the Developer Panel to search implemented items, grant weapons, armor, ammo and materials, or add caps. Equip granted firearms through I / Backpack. Free crates, resource caches, and cap handouts have been retired from the test field. Normal loot, vendors and quests remain. Visit Station 7 to craft weapon mods with materials you own.</p>
     <div class="weapon-reset-notice"><b>W20.62 · PLAYER INVENTORY</b> Equipment and caps you already owned stay saved. New test saves start with no free guns, ammo reserves or field caches. Developer item grants are limited to signed-in admins; buyers still use actual vendor prices. The map, NPCs, power armor, weapon workbench and quest systems remain available.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
@@ -1062,13 +1128,48 @@ body.hud-modern #powerArmorHud{display:none!important}
       <button id="powerInsertCore" type="button">INSERT CORE</button>
       <button id="powerEjectCore" type="button">EJECT CORE</button>
     </div>
-    <div class="armor-slots" style="display:grid">
-      <label>HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
-      <label>CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
-      <label>LEFT ARM <select id="power-leftArm"></select><small id="power-rating-leftArm">EMPTY</small><button id="power-repair-leftArm" type="button">REPAIR WITH SCRAP</button></label>
-      <label>RIGHT ARM <select id="power-rightArm"></select><small id="power-rating-rightArm">EMPTY</small><button id="power-repair-rightArm" type="button">REPAIR WITH SCRAP</button></label>
-      <label>LEFT LEG <select id="power-leftLeg"></select><small id="power-rating-leftLeg">EMPTY</small><button id="power-repair-leftLeg" type="button">REPAIR WITH SCRAP</button></label>
-      <label>RIGHT LEG <select id="power-rightLeg"></select><small id="power-rating-rightLeg">EMPTY</small><button id="power-repair-rightLeg" type="button">REPAIR WITH SCRAP</button></label>
+    <div class="power-service-layout">
+      <section class="power-figure-pane" aria-label="Click a chassis section to configure it">
+        <h3>CHASSIS MODULES <small>SELECT A BODY SECTION</small></h3>
+        <svg id="powerServiceFigure" viewBox="0 0 116 165" role="group" aria-label="Interactive six-part power armor diagram">
+          <g id="powerFigure-head" data-slot="head" class="armor-segment empty" role="button" tabindex="0" aria-label="Select helmet">
+            <path class="armor-shell" d="M45 9 L53 4 L63 4 L71 9 L74 22 L70 34 L63 39 L52 39 L45 34 L42 22 Z"/>
+            <path class="armor-line" d="M46 23 L52 20 L64 20 L70 23 M52 29 L64 29 M55 34 L61 34"/>
+          </g>
+          <g id="powerFigure-chest" data-slot="chest" class="armor-segment empty" role="button" tabindex="0" aria-label="Select chest">
+            <path class="armor-shell" d="M39 39 L48 36 L68 36 L77 39 L84 54 L77 70 L76 88 L40 88 L39 70 L32 54 Z"/>
+            <path class="armor-line" d="M44 46 L58 54 L72 46 M58 54 L58 77 M43 78 L73 78"/>
+          </g>
+          <g id="powerFigure-leftArm" data-slot="leftArm" class="armor-segment empty" role="button" tabindex="0" aria-label="Select left arm">
+            <path class="armor-shell" d="M16 42 L32 39 L39 48 L33 67 L33 82 L29 103 L10 99 L11 77 L10 60 Z"/>
+            <path class="armor-line" d="M15 61 L31 65 M13 83 L30 87"/>
+          </g>
+          <g id="powerFigure-rightArm" data-slot="rightArm" class="armor-segment empty" role="button" tabindex="0" aria-label="Select right arm">
+            <path class="armor-shell" d="M84 39 L100 42 L106 60 L105 77 L106 99 L87 103 L83 82 L83 67 L77 48 Z"/>
+            <path class="armor-line" d="M85 65 L101 61 M86 87 L103 83"/>
+          </g>
+          <g id="powerFigure-leftLeg" data-slot="leftLeg" class="armor-segment empty" role="button" tabindex="0" aria-label="Select left leg">
+            <path class="armor-shell" d="M39 90 L57 90 L57 119 L52 138 L51 156 L30 156 L30 137 L34 116 Z"/>
+            <path class="armor-line" d="M36 117 L54 119 M33 143 L50 143"/>
+          </g>
+          <g id="powerFigure-rightLeg" data-slot="rightLeg" class="armor-segment empty" role="button" tabindex="0" aria-label="Select right leg">
+            <path class="armor-shell" d="M59 90 L77 90 L82 116 L86 137 L86 156 L65 156 L64 138 L59 119 Z"/>
+            <path class="armor-line" d="M62 119 L80 117 M66 143 L83 143"/>
+          </g>
+        </svg>
+        <div class="power-figure-legend"><span class="healthy">■ HEALTHY</span><span class="critical">■ 30% OR LESS</span><span class="empty">■ EMPTY / BROKEN</span></div>
+      </section>
+      <section class="power-config-pane">
+        <div class="power-config-heading"><small>SELECTED MODULE</small><h3 id="powerSelectedName">CHEST</h3><p id="powerSelectedCondition">Select a body section to install, remove or repair a piece.</p></div>
+        <div class="armor-slots power-slot-details">
+          <label data-slot="head">HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
+          <label data-slot="chest">CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
+          <label data-slot="leftArm">LEFT ARM <select id="power-leftArm"></select><small id="power-rating-leftArm">EMPTY</small><button id="power-repair-leftArm" type="button">REPAIR WITH SCRAP</button></label>
+          <label data-slot="rightArm">RIGHT ARM <select id="power-rightArm"></select><small id="power-rating-rightArm">EMPTY</small><button id="power-repair-rightArm" type="button">REPAIR WITH SCRAP</button></label>
+          <label data-slot="leftLeg">LEFT LEG <select id="power-leftLeg"></select><small id="power-rating-leftLeg">EMPTY</small><button id="power-repair-leftLeg" type="button">REPAIR WITH SCRAP</button></label>
+          <label data-slot="rightLeg">RIGHT LEG <select id="power-rightLeg"></select><small id="power-rating-rightLeg">EMPTY</small><button id="power-repair-rightLeg" type="button">REPAIR WITH SCRAP</button></label>
+        </div>
+      </section>
     </div>
     <div class="loot-meta" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <strong>CRAFT ONE PIECE:</strong>
@@ -1092,19 +1193,25 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Weapon modification workbench">
   <div class="bench-shell">
     <header class="bench-header">
-      <div><div class="bench-kicker">FRONTIER / WEAPON WORKBENCH / W20.59</div>
+      <div><div class="bench-kicker">FRONTIER / WEAPON WORKBENCH / W20.66</div>
         <h2>CRAFT<span> YOUR WEAPON.</span></h2>
-        <p>Modify ten actual firearms with mechanical parts and precise scrap recipes. Every assembly changes live weapon statistics and bolt-on 3D geometry in first and third person.</p>
+        <p>Choose a firearm from your own backpack, then configure its receiver, barrel, magazine, stock, muzzle or sight. Crafted parts change live statistics and visible weapon geometry.</p>
       </div>
       <button id="benchClose" type="button">CLOSE / RESUME · ESC</button>
     </header>
     <div class="bench-toolbar">
-      <label for="benchWeapon">WEAPON <select id="benchWeapon" aria-label="Choose weapon to modify"></select></label>
+      <strong>YOUR OWNED FIREARMS</strong>
       <strong id="benchMaterials">0 COMPONENTS IN POUCH</strong>
+      <select id="benchWeapon" class="sr-only" aria-label="Selected owned weapon"></select>
     </div>
-    <div id="benchStats" class="bench-stats" aria-label="Modified weapon statistics"></div>
-    <nav id="benchSlots" class="bench-tabs" aria-label="Weapon assembly categories"></nav>
-    <div id="benchOptics" class="bench-parts" aria-label="Available weapon modification recipes"></div>
+    <div class="bench-work-area">
+      <aside class="bench-owned-pane"><div class="bench-list-caption">SELECT A GUN FROM YOUR BACKPACK</div><div id="benchWeaponList" class="bench-owned-list"></div></aside>
+      <section class="bench-mod-pane"><h3 id="benchSelectedName">SELECT A WEAPON</h3>
+        <div id="benchStats" class="bench-stats" aria-label="Modified weapon statistics"></div>
+        <nav id="benchSlots" class="bench-tabs" aria-label="Weapon assembly categories"></nav>
+        <div id="benchOptics" class="bench-parts" aria-label="Available weapon modification recipes"></div>
+      </section>
+    </div>
     <div id="benchFeedback" class="bench-feedback" role="status" aria-live="polite">SELECT A PART TO SEE ITS MATERIALS</div>
     <footer class="bench-footer">STATION 7 / PHYSICAL WORKBENCH · E TO OPEN NEAR THE TABLE OR U FROM THE FIELD · ALL MODS SAVE TO YOUR EXISTING BACKPACK · ONCE CRAFTED, PARTS CAN BE REINSTALLED WITHOUT SPENDING THE MATERIALS AGAIN · EVERY RECIPE LISTS ITS EXACT COMPONENTS</footer>
   </div>
@@ -1180,7 +1287,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="vendor-shell">
     <header class="vendor-header">
       <div>
-        <div class="vendor-eyebrow">FRONTIER / TRADING ROW / W20.57</div>
+        <div class="vendor-eyebrow">FRONTIER / TRADING ROW / W20.66</div>
         <h2 id="vendorName">FIELD MERCHANT</h2>
         <div class="vendor-desc" id="vendorSpecialty">SPECIALTY SUPPLIES</div>
       </div>
@@ -1188,24 +1295,21 @@ body.hud-modern #powerArmorHud{display:none!important}
         <button id="vendorClose" type="button">CLOSE / RESUME · ESC</button></div>
     </header>
     <div class="vendor-body">
-      <section class="vendor-list-wrap">
-        <div class="vendor-tabs" role="group" aria-label="Trading mode">
-          <button id="vendorBuyTab" class="active" type="button" aria-pressed="true">BUY</button>
-          <button id="vendorSellTab" type="button" aria-pressed="false">SELL</button>
-        </div>
-        <input id="vendorSearch" class="vendor-search" type="search"
-          autocomplete="off" placeholder="Search trade goods (steel, screws, adhesive...)"
-          aria-label="Search merchant items"/>
-        <div id="vendorItems" class="vendor-items" aria-label="Available trade goods"></div>
+      <section class="vendor-list-wrap vendor-player-pane">
+        <div class="vendor-pane-title"><h3>YOUR INVENTORY</h3><small id="vendorPlayerCount">0 SELLABLE ITEMS</small></div>
+        <input id="vendorPlayerSearch" class="vendor-search" type="search" autocomplete="off"
+          placeholder="Search items you own..." aria-label="Search player items to sell"/>
+        <div id="vendorPlayerItems" class="vendor-items" aria-label="Player inventory for selling"></div>
       </section>
-      <aside class="vendor-side">
-        <strong>HOW TRADING WORKS</strong>
-        <p>Buy items with your saved campaign caps. Sell only the items this merchant specializes in. Scrap components live in your material pouch, outside the 30 gear slots. Equipped gear must be unequipped before its final copy can be sold.</p>
-        <strong>TESTING ONLY</strong>
-        <p>Merchants keep their trade stock, but testing caps are only granted through the admin Developer Panel.</p>
-      </aside>
+      <section class="vendor-list-wrap vendor-merchant-pane">
+        <div class="vendor-pane-title"><h3>MERCHANT STOCK</h3><small id="vendorStockCount">0 OFFERS</small></div>
+        <input id="vendorSearch" class="vendor-search" type="search" autocomplete="off"
+          placeholder="Search merchant stock..." aria-label="Search merchant items to buy"/>
+        <div id="vendorItems" class="vendor-items" aria-label="Available merchant goods"></div>
+      </section>
     </div>
-    <div id="vendorFeedback" class="vendor-feedback" role="status">SELECT BUY OR SELL</div>
+    <div class="vendor-side"><strong>TRADE DIRECTLY</strong><p>Choose SELL on the left or BUY on the right. Caps and stock update after each trade. Equipped items must be unequipped before selling their last copy. The vendor keeps limited stock.</p></div>
+    <div id="vendorFeedback" class="vendor-feedback" role="status">BUY FROM THE RIGHT · SELL FROM THE LEFT</div>
   </div>
 </div>
 <div id="fieldMapPanel" class="loot-overlay hidden" role="dialog" aria-label="Exploration field map" aria-modal="true">
@@ -1275,19 +1379,19 @@ body.hud-modern #powerArmorHud{display:none!important}
       </section>
       <aside class="inventory-loadout" aria-label="Currently equipped gear">
         <div class="inventory-pane-label"><span>03</span> EQUIPPED GEAR</div>
-        <div class="inventory-silhouette" role="img" aria-label="Stylized character equipment overview">
-          <svg viewBox="0 0 170 170" aria-hidden="true" focusable="false">
-            <circle cx="85" cy="24" r="14" fill="#1e3434" stroke="#7da894" stroke-width="2"/>
-            <path d="M72 43 L98 43 L110 61 L107 103 L96 111 L74 111 L63 103 L60 61 Z" fill="#172a2b" stroke="#7da894" stroke-width="2"/>
-            <path d="M58 57 L48 61 L36 107 L43 113 L54 87 L63 72 M112 57 L122 61 L134 107 L127 113 L116 87 L107 72" fill="none" stroke="#648b80" stroke-width="10" stroke-linecap="round"/>
-            <path d="M76 111 L70 150 M94 111 L100 150" fill="none" stroke="#648b80" stroke-width="13" stroke-linecap="round"/>
-            <path d="M69 49 L101 49 L105 63 L65 63 Z M76 70 L94 70 L94 93 L76 93 Z" fill="#40645b" opacity=".75"/>
-            <path d="M77 20 H93 M85 14 V30 M67 84 H103" stroke="#c8dda7" stroke-width="1.3" opacity=".8"/>
-            <circle cx="85" cy="83" r="2" fill="#e1bf7d"/>
+        <div class="inventory-silhouette" aria-label="Live armor coverage selector">
+          <svg viewBox="0 0 116 165" role="group" aria-label="Click a body part to inspect armor protection">
+            <g data-inventory-slot="head" role="button" tabindex="0" aria-label="Inspect helmet"><path d="M45 9 L53 4 L63 4 L71 9 L74 22 L70 34 L63 39 L52 39 L45 34 L42 22 Z"/></g>
+            <g data-inventory-slot="chest" role="button" tabindex="0" aria-label="Inspect chest armor"><path d="M39 39 L48 36 L68 36 L77 39 L84 54 L77 70 L76 88 L40 88 L39 70 L32 54 Z"/></g>
+            <g data-inventory-slot="leftArm" role="button" tabindex="0" aria-label="Inspect left arm armor"><path d="M16 42 L32 39 L39 48 L33 67 L33 82 L29 103 L10 99 L11 77 L10 60 Z"/></g>
+            <g data-inventory-slot="rightArm" role="button" tabindex="0" aria-label="Inspect right arm armor"><path d="M84 39 L100 42 L106 60 L105 77 L106 99 L87 103 L83 82 L83 67 L77 48 Z"/></g>
+            <g data-inventory-slot="leftLeg" role="button" tabindex="0" aria-label="Inspect left leg armor"><path d="M39 90 L57 90 L57 119 L52 138 L51 156 L30 156 L30 137 L34 116 Z"/></g>
+            <g data-inventory-slot="rightLeg" role="button" tabindex="0" aria-label="Inspect right leg armor"><path d="M59 90 L77 90 L82 116 L86 137 L86 156 L65 156 L64 138 L59 119 Z"/></g>
           </svg>
           <div class="inventory-figure-corner corner-a"></div><div class="inventory-figure-corner corner-b"></div>
-          <span class="inventory-figure-caption">GEAR STATUS / LIVE</span>
+          <span class="inventory-figure-caption">CLICK A ZONE · LIVE PROTECTION</span>
         </div>
+        <div class="inventory-zone-detail"><strong id="inventoryZoneDetail">SELECT A BODY PART TO INSPECT ITS ARMOR.</strong><button id="inventoryZoneReset" type="button">SHOW ALL</button></div>
         <div class="inventory-equipped-list">
           <div class="inventory-equipped-slot"><small>ACTIVE WEAPON</small><strong id="inventoryWeapon">Worn Scrap Pistol</strong></div>
           <div class="inventory-equipped-slot inventory-armor-card"><small>PLAYER ARMOR / BALLISTIC COVERAGE</small><strong id="inventoryArmor">0 / 6 ZONES PROTECTED</strong><div id="inventoryArmorDetails" class="inventory-protection-grid" aria-label="Armor protection by body part"></div><p id="inventoryArmorNote" class="inventory-armor-note"></p></div>
@@ -1366,7 +1470,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.63"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.66"></script>
 </body>
 </html>
 

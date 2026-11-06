@@ -44,7 +44,8 @@ try{
     viewport:{width:1280,height:850},
     storageState:{cookies:[],origins:[{origin,localStorage:[{
       name:'rpg-lab-player-inventory',
-      value:JSON.stringify({items:[],nextId:1,materials:materialCounts,
+       value:JSON.stringify({items:[{itemId:'weapon:pipe-smg',quantity:1}],
+         nextId:2,materials:materialCounts,
         equipment:{weapon:'pipe-smg'}})
     }]}]}
   });
@@ -70,9 +71,10 @@ try{
   assert.equal(initial.spec?.magazineSize,30,'Clean SMG starts with 30-round magazine');
   await page.locator('#workbenchOpen').click();
   await page.locator('#workbenchPanel:not(.hidden)').waitFor();
-  assert.equal(await page.locator('#benchWeapon option').count(),10);
+  assert.equal(await page.locator('#benchWeaponList .bench-owned-weapon').count(),1,
+    'Only inventory-owned weapons should appear at the workbench');
   assert.equal(await page.locator('#benchSlots .bench-tab').count(),6);
-  await page.locator('#benchWeapon').selectOption('pipe-smg');
+  await page.locator('#benchWeaponList .bench-owned-weapon').first().click();
   await page.locator('#benchSlots .bench-tab').filter({hasText:'MAGAZINE / CHAMBER'}).click();
   const drum=page.locator('#benchOptics .bench-part').filter({hasText:'High-capacity drum'});
   assert.match(await drum.textContent(),/GEARS/);
@@ -107,7 +109,7 @@ try{
   assert.ok(restored.firstParts>2&&restored.worldParts>2,
     'installed physical parts persist after a page reload');
   await page.locator('#workbenchOpen').click();
-  await page.locator('#benchWeapon').selectOption('pipe-smg');
+  await page.locator('#benchWeaponList .bench-owned-weapon').first().click();
   await page.locator('#benchSlots .bench-tab').filter({hasText:'MAGAZINE / CHAMBER'}).click();
   assert.match(await page.locator('#benchOptics .bench-part')
     .filter({hasText:'High-capacity drum'}).textContent(),/INSTALLED/);
@@ -122,7 +124,7 @@ try{
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.__rpgSmokeWeaponMods!==undefined,null,{timeout:60000});
   await page.locator('#workbenchOpen').click();
-  await page.locator('#benchWeapon').selectOption('pipe-smg');
+  await page.locator('#benchWeaponList .bench-owned-weapon').first().click();
   const receiver=page.locator('#benchOptics .bench-part').filter({hasText:'Calibrated action'});
   await receiver.locator('button').click();
   assert.match(await page.locator('#benchFeedback').textContent(),/MISSING MATERIALS/);
@@ -130,7 +132,7 @@ try{
     JSON.parse(localStorage.getItem('rpg-lab-player-inventory')).equipment.weaponMods));
   assert.equal(after,before,'failed crafting must not change installed parts');
   assert.deepEqual(errors,[],'No browser errors: '+errors.join(' | '));
-  console.log('WEAPON_MOD_UI_QA_PASS: 10 guns, 6 tabs, materials, crafting, 3D, optics, persistence, rejection');
+  console.log('WEAPON_MOD_UI_QA_PASS: owned-gun list, 6 tabs, materials, crafting, 3D, optics, persistence, rejection');
   await context.close();
 }finally{
   await browser?.close();

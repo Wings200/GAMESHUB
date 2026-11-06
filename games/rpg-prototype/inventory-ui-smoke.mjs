@@ -56,6 +56,13 @@ try{
   await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:10000});
   assert.equal(await page.locator('#inventoryArmorDetails .inventory-protection-line').count(),6,
     'All six armor hit zones must be visible');
+  assert.equal(await page.locator('[data-inventory-slot]').count(),6,
+    'All six segments of the equipped-gear figure must be interactive');
+  await page.locator('[data-inventory-slot="chest"]').click();
+  assert.match(await page.locator('#inventorySectionTitle').textContent(),/ARMOR \/ CHEST/);
+  assert.match(await page.locator('#inventoryZoneDetail').textContent(),/DAMAGE BLOCKED/);
+  await page.locator('#inventoryZoneReset').click();
+  assert.equal(await page.locator('#inventorySectionTitle').textContent(),'ARMOR');
   assert.match(await page.locator('#inventoryArmor').textContent(),/6 ZONES PROTECTED/,
     'Armor summary must clearly state that it counts body zones');
   assert.equal(await page.locator('#inventoryCategories .inventory-category').count(),9,
@@ -90,8 +97,8 @@ try{
   assert.equal(await page.locator('#vendorCredit').count(),0,
     'No more free merchant cap handout');
   assert.match(await page.locator('#vendorCaps').textContent(),/0 CAPS/);
-  await page.locator('#vendorSellTab').click();
-  assert.equal(await page.locator('#vendorSellTab').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('#vendorPlayerItems').count(),1,
+    'The vendor must show the player inventory alongside merchant stock');
   await page.keyboard.press('Escape');
   await page.locator('#vendorPanel').waitFor({state:'hidden'});
   // W20.65: A merchant must actually run out of physical stock. The same
@@ -126,10 +133,8 @@ try{
   await stockRow().getByRole('button',{name:/BUY/}).click();
   assert.match(await stockRow().textContent(),/STOCK ×0/);
   assert.equal(await stockRow().getByRole('button',{name:'SOLD OUT'}).isDisabled(),true);
-  await page.locator('#vendorSellTab').click();
-  await page.locator('#vendorItems .vendor-item').filter({hasText:offeredName})
+  await page.locator('#vendorPlayerItems .vendor-item').filter({hasText:offeredName})
     .first().getByRole('button',{name:/SELL 1/}).click();
-  await page.locator('#vendorBuyTab').click();
   assert.match(await stockRow().textContent(),/STOCK ×1/,
     'Selling an offered item must replenish the merchant');
   assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
