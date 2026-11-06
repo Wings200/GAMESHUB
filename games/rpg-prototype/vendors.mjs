@@ -1,5 +1,5 @@
-// W20.56: test-field merchants. All transactions use existing inventory items
-// and campaign caps; there is no second wallet or phantom equipment system.
+// W20.65: finite merchant stock with browser-local persistence. Trades use
+// existing inventory items and campaign caps, never a second wallet.
 import {getItem,addItem,removeItem,countItem,spendMaterial} from './inventory.mjs';
 import {CRAFTING_COMPONENTS} from './materials.mjs';
 
@@ -37,8 +37,43 @@ export const VENDORS=Object.freeze([
 ]);
 
 const MAX_CAPS=100000000;
+const MAX_STOCK=100000;
 const copy=state=>JSON.parse(JSON.stringify(state));
 const cap=n=>Number.isSafeInteger(n)&&n>=0?Math.min(MAX_CAPS,n):0;
+const stockBundles=Object.freeze({weapon:2,ammo:8,armor:2,
+  'power-plate':1,supply:6,'fusion-core':3,material:10,clothing:2});
+
+export function createVendorStock(){
+  return Object.fromEntries(VENDORS.map(vendor=>[vendor.id,
+    Object.fromEntries(vendor.offers.map(offer=>[
+      offer.itemId,Math.min(MAX_STOCK,offer.quantity*
+        (stockBundles[getItem(offer.itemId).category]??4))]))]));
+}
+export function safeVendorStockSnapshot(saved){
+  const stock=createVendorStock();
+  if(!saved||typeof saved!=='object'||Array.isArray(saved))return stock;
+  for(const vendor of VENDORS){
+    for(const offer of vendor.offers){
+      const value=saved[vendor.id]?.[offer.itemId];
+      if(Number.isSafeInteger(value)&&value>=0)
+        stock[vendor.id][offer.itemId]=Math.min(MAX_STOCK,value);
+    }
+  }
+  return stock;
+}
+export function vendorStockRemaining(stock,vendorId,itemId){
+  const vendor=vendorById(vendorId);
+  if(!vendor?.offers.some(offer=>offer.itemId===itemId))return 0;
+  const value=stock?.[vendorId]?.[itemId];
+  return Number.isSafeInteger(value)&&value>=0?Math.min(MAX_STOCK,value):0;
+}
+function adjustStock(stock,vendorId,itemId,amount){
+  const next=safeVendorStockSnapshot(stock);
+  if(Object.hasOwn(next[vendorId]||{},itemId))
+    next[vendorId][itemId]=Math.max(0,Math.min(MAX_STOCK,
+      next[vendorId][itemId]+amount));
+  return next;
+}
 
 export function vendorById(id){return VENDORS.find(v=>v.id===id)||null;}
 export function vendorAccepts(vendorId,itemId){
@@ -65,17 +100,22 @@ export function vendorSellPrice(itemId,quantity=1){
   return Math.max(1,Math.floor((item.sellPrice??item.value*.45)*quantity));
 }
 
-export function buyFromVendor(pack,caps,vendorId,itemId){
+export function buyFromVendor(pack,caps,vendorId,itemId,
+  stock=createVendorStock()){
   const vendor=vendorById(vendorId);
   const offer=vendor?.offers.find(o=>o.itemId===itemId);
   if(!offer)return{ok:false,reason:'not-stocked'};
-  const price=vendorBuyPrice(itemId,offer.quantity);
+  const available=vendorStockRemaining(stock,vendorId,itemId);
+  if(available===0)return{ok:false,reason:'out-of-stock'};
+  const quantity=Math.min(offer.quantity,available);
+  const price=vendorBuyPrice(itemId,quantity);
   if(cap(caps)<price)return{ok:false,reason:'insufficient-caps',price};
   const next=copy(pack);
-  const added=addItem(next,itemId,offer.quantity);
-  if(added.added!==offer.quantity)return{ok:false,reason:'full-backpack'};
+  const added=addItem(next,itemId,quantity);
+  if(added.added!==quantity)return{ok:false,reason:'full-backpack'};
   return{ok:true,pack:next,caps:cap(caps)-price,price,
-    itemId,quantity:offer.quantity};
+    stock:adjustStock(stock,vendorId,itemId,-quantity),
+    itemId,quantity};
 }
 
 export function isEquippedItem(pack,entry){
@@ -90,7 +130,8 @@ export function isEquippedItem(pack,entry){
   return false;
 }
 
-export function sellToVendor(pack,caps,vendorId,uid,quantity=1){
+export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
+  stock=createVendorStock()){
   const entry=pack.items.find(e=>e.uid===uid);
   if(!entry)return{ok:false,reason:'not-owned'};
   if(!vendorAccepts(vendorId,entry.itemId))return{ok:false,reason:'wrong-merchant'};
@@ -104,10 +145,12 @@ export function sellToVendor(pack,caps,vendorId,uid,quantity=1){
   const sold=removeItem(next,uid,quantity);
   if(sold.removed!==quantity)return{ok:false,reason:'not-owned'};
   return{ok:true,pack:next,caps:cap(caps)+price,price,
+    stock:adjustStock(stock,vendorId,entry.itemId,quantity),
     itemId:entry.itemId,quantity};
 }
 
-export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1){
+export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
+  stock=createVendorStock()){
   let material;try{material=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
   if(material.category!=='material'||!vendorAccepts(vendorId,itemId))
     return{ok:false,reason:'wrong-merchant'};
@@ -118,7 +161,8 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1){
   const next=copy(pack);
   if(spendMaterial(next,itemId,quantity).removed!==quantity)
     return{ok:false,reason:'not-owned'};
-  return{ok:true,pack:next,caps:cap(caps)+price,price,itemId,quantity};
+  return{ok:true,pack:next,caps:cap(caps)+price,price,
+    stock:adjustStock(stock,vendorId,itemId,quantity),itemId,quantity};
 }
 
 

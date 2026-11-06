@@ -7,6 +7,8 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
+import {initialCampaignState} from './campaign.mjs';
+import {getItem} from './inventory.mjs';
 
 const root=process.cwd();
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript',
@@ -92,9 +94,47 @@ try{
   assert.equal(await page.locator('#vendorSellTab').getAttribute('aria-pressed'),'true');
   await page.keyboard.press('Escape');
   await page.locator('#vendorPanel').waitFor({state:'hidden'});
+  // W20.65: A merchant must actually run out of physical stock. The same
+  // player-owned stock must survive closing the shop and reloading the lab.
+  const funded=initialCampaignState();funded.caps=5000;
+  await page.evaluate(saved=>localStorage.setItem('rpg-lab-campaign-v1',
+    JSON.stringify(saved)),funded);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
+    null,{timeout:45000});
+  const openArmorer=async()=>{
+    await page.locator('#enterVendors').click();
+    await page.waitForFunction(()=>window.__rpgSmokeState().locked,
+      null,{timeout:7000});
+    await page.keyboard.press('e');
+    await page.locator('#vendorPanel:not(.hidden)').waitFor({timeout:7000});
+  };
+  const offeredName=getItem('armor:scrap-chest').name;
+  const stockRow=()=>page.locator('#vendorItems .vendor-item').filter({hasText:offeredName}).first();
+  await openArmorer();
+  assert.match(await stockRow().textContent(),/STOCK ×2/);
+  await stockRow().getByRole('button',{name:/BUY/}).click();
+  assert.match(await stockRow().textContent(),/STOCK ×1/);
+  await page.keyboard.press('Escape');
+  await page.locator('#vendorPanel').waitFor({state:'hidden'});
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
+    null,{timeout:45000});
+  await openArmorer();
+  assert.match(await stockRow().textContent(),/STOCK ×1/,
+    'Merchant stock must persist across reloads');
+  await stockRow().getByRole('button',{name:/BUY/}).click();
+  assert.match(await stockRow().textContent(),/STOCK ×0/);
+  assert.equal(await stockRow().getByRole('button',{name:'SOLD OUT'}).isDisabled(),true);
+  await page.locator('#vendorSellTab').click();
+  await page.locator('#vendorItems .vendor-item').filter({hasText:offeredName})
+    .first().getByRole('button',{name:/SELL 1/}).click();
+  await page.locator('#vendorBuyTab').click();
+  assert.match(await stockRow().textContent(),/STOCK ×1/,
+    'Selling an offered item must replenish the merchant');
   assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
     errors.join(' | '));
-  console.log('INVENTORY_VENDOR_UI_QA_PASS: weapon section, armor, resources, vendors, no free caps');
+  console.log('INVENTORY_VENDOR_UI_QA_PASS: categories, armor, finite vendor stock, persistence, sale restock');
 }finally{
   await browser?.close();
   await new Promise(done=>server.close(done));

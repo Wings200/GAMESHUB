@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
-  buyFromVendor,sellToVendor,sellMaterialToVendor} from '../vendors.mjs?v=W20.57';
+  createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
+  buyFromVendor,sellToVendor,sellMaterialToVendor} from '../vendors.mjs?v=W20.65';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
@@ -2193,6 +2194,15 @@ $('lootTakeAll').addEventListener('click',()=>{
 
 // W20.56: Real test-field vendor transactions using the saved campaign wallet.
 let vendorOpen=false,vendorFromField=false,activeVendorId=null,vendorTab='buy';
+let vendorStock=createVendorStock();
+try{
+  vendorStock=safeVendorStockSnapshot(JSON.parse(
+    localStorage.getItem('rpg-lab-vendor-stock-v1')||'null'));
+}catch{ /* Invalid saved stock falls back to an initial finite inventory. */ }
+function saveVendorStock(){
+  try{localStorage.setItem('rpg-lab-vendor-stock-v1',JSON.stringify(vendorStock));}
+  catch{ /* Trading stays available when storage is blocked. */ }
+}
 function nearestVendor(){
   let nearest=null,distance=3.65;
   for(const vendor of VENDORS){
@@ -2233,12 +2243,18 @@ function refreshVendorUI(){
   if(vendorTab==='buy'){
     for(const offer of vendor.offers){
       if(search&&!getItem(offer.itemId).name.toLowerCase().includes(search))continue;
-      const price=vendorBuyPrice(offer.itemId,offer.quantity);
-      const button=row(offer.itemId,offer.quantity,'BUY',price,
-        campaignState.caps<price,offer.quantity>1?'×'+offer.quantity:'×1');
+      const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
+      const quantity=Math.min(offer.quantity,remaining);
+      const price=quantity?vendorBuyPrice(offer.itemId,quantity):0;
+      const soldOut=remaining===0;
+      const button=row(offer.itemId,quantity,'BUY',price,
+        soldOut||campaignState.caps<price,
+        'STOCK ×'+remaining+' · BUY ×'+quantity);
+      if(soldOut)button.textContent='SOLD OUT';
       button.addEventListener('click',()=>{
         saveBackpack(); // synchronize live reserve ammo before copying state
-        const outcome=buyFromVendor(backpack,campaignState.caps,vendor.id,offer.itemId);
+        const outcome=buyFromVendor(backpack,campaignState.caps,
+          vendor.id,offer.itemId,vendorStock);
         completeVendorTrade(outcome,'PURCHASED');
       });
     }
@@ -2259,7 +2275,8 @@ function refreshVendorUI(){
       const button=row(entry.itemId,1,'SELL 1',price,false,'OWNED ×'+entry.quantity);
       button.addEventListener('click',()=>{
         saveBackpack();
-        const outcome=sellToVendor(backpack,campaignState.caps,vendor.id,entry.uid,1);
+        const outcome=sellToVendor(backpack,campaignState.caps,
+          vendor.id,entry.uid,1,vendorStock);
         completeVendorTrade(outcome,'SOLD');
       });
     }
@@ -2270,7 +2287,7 @@ function refreshVendorUI(){
       button.addEventListener('click',()=>{
         saveBackpack();
         const outcome=sellMaterialToVendor(backpack,campaignState.caps,
-          vendor.id,material.id,1);
+          vendor.id,material.id,1,vendorStock);
         completeVendorTrade(outcome,'SOLD');
       });
     }
@@ -2285,6 +2302,7 @@ function completeVendorTrade(result,verb){
   if(!result.ok){
     const reasons={
       'insufficient-caps':'NOT ENOUGH CAPS',
+      'out-of-stock':'SOLD OUT · THIS MERCHANT HAS NO STOCK LEFT',
       'full-backpack':'BACKPACK FULL · DROP SOMETHING FIRST',
       'equipped':'EQUIPPED ITEM · UNEQUIP IN INVENTORY BEFORE SELLING',
       'wrong-merchant':'THIS MERCHANT DOES NOT BUY THAT ITEM',
@@ -2294,6 +2312,7 @@ function completeVendorTrade(result,verb){
     return;
   }
   backpack=result.pack;campaignState.caps=result.caps;
+  if(result.stock){vendorStock=result.stock;saveVendorStock();}
   syncAmmoToWeapons();saveBackpack();saveCampaign();
   refreshInventoryUI();refreshWeaponHUD();refreshCampaignUI();
   refreshVendorUI();
