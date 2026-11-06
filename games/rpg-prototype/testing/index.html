@@ -170,6 +170,36 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .loot-entry .drop-amount{width:58px;min-width:0;height:32px;padding:4px 5px;
   border:1px solid #8eaba4;border-radius:3px;color:#e8f0e8;background:#10242d;
   font:700 13px system-ui,sans-serif}
+#lootPanel .loot-container{max-width:1220px}
+#lootPanel h2{font-size:clamp(27px,3.8vw,43px)}
+#lootPanel .loot-transfer-grid{display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(280px,.85fr);
+  gap:18px;margin:13px 0 25px;align-items:start}
+#lootPanel .loot-side{min-width:0;background:#0b1d25;border:1px solid #3b5752;
+  padding:15px 16px;border-radius:4px}
+#lootPanel .loot-side-head{display:flex;justify-content:space-between;gap:12px;
+  align-items:center;padding-bottom:13px;border-bottom:1px solid #39544d;
+  font-size:11px;letter-spacing:.095em;color:#e4d6b3}
+#lootPanel .loot-side-head strong{font-size:12px;color:#b8deb8}
+#lootPanel #lootItems{grid-template-columns:minmax(0,1fr);padding:15px 0 0;gap:9px}
+#lootPanel #lootItems .loot-entry{flex-wrap:wrap;min-height:68px}
+#lootPanel .loot-take-quantity{display:inline-flex;align-items:center;gap:6px;
+  color:#b5cbc3;font-size:10px;font-weight:850;letter-spacing:.08em}
+#lootPanel .loot-take-quantity input{width:62px;height:34px;padding:5px 7px;
+  border:1px solid #77968e;background:#102a30;color:#f5e9c6;
+  border-radius:3px;font:800 13px system-ui,sans-serif}
+#lootPanel .loot-carry-list{max-height:52vh;overflow-y:auto;padding-top:12px}
+#lootPanel .loot-carry-entry{display:flex;justify-content:space-between;
+  align-items:center;gap:12px;padding:10px 9px;font-size:12px;
+  border-bottom:1px solid #29443e}
+#lootPanel .loot-carry-entry span{color:#e8d09b;font-weight:850}
+#lootPanel .loot-stores{padding:12px 4px 5px;color:#b4ccc0;
+  font-size:10px;letter-spacing:.07em;line-height:1.7}
+#lootPanel .loot-empty-message{grid-column:1/-1;padding:17px 11px;
+  border:1px dashed #526f64;color:#c6d6c7;font-size:12px}
+#lootPanel button:disabled{cursor:default;opacity:.45}
+@media(max-width:820px){#lootPanel .loot-transfer-grid{grid-template-columns:1fr}
+  #lootPanel .loot-carry-list{max-height:220px}}
 #inventoryPanel .loot-container{max-width:1280px}
 .inventory-shell{display:grid;grid-template-columns:225px minmax(0,1fr);
   gap:24px;padding:16px 0 20px;align-items:start}
@@ -1206,8 +1236,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.70.1 · DEPLOY CHECK</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.71</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
+    <p><strong>W20.71 · LOOT TRANSFERS:</strong> Looting now shows container contents beside your backpack, lets you choose stack quantities, reports carry capacity, and clears a case's glow when it is empty. Enemy drops and Take All use the same inventory transfer rules.</p>
     <p><strong>W20.70 · LOOT CASE GLOW:</strong> Loot cases no longer have giant floating LOOT labels. Their physical lids, seams, and latches glow and pulse with a rarity-colored halo. Walk close and press E to search as before.</p>
     <p><strong>W20.69.3 · ALWAYS-ON COMPASS:</strong> The field compass and power-armor compass remain visible even when no destinations or targets are present. Only combat enemies, active quests, discovered locations, and custom waypoints can create navigation markers; irrelevant NPCs and test landmarks stay off the HUD.</p>
     <p><strong>W20.69 · QUEST NAVIGATION:</strong> Tracked objectives are synchronized with the map and both navigation HUDs. Completed quests are kept in inactive history; empty or inactive objectives no longer leave stray markers.</p>
@@ -1568,18 +1599,28 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="lootPanel" class="loot-overlay hidden" role="dialog" aria-label="Search loot">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W09.14 · WORLD LOOT</div>
+      <div><div class="loot-eyebrow">W20.71 · FIELD SCAVENGING</div>
         <h2 id="lootTitle">SEARCH LOOT BAG</h2>
-        <p>Items left behind by enemies are yours to discover. Backpack space is limited.</p>
+        <p>Take what you need. Choose a quantity for stacked items; gear takes backpack slots, while ammo and materials go into separate storage.</p>
       </div>
       <button id="lootClose" type="button">CLOSE / RESUME</button>
     </div>
     <div class="loot-meta">
-      <strong>COMMON · UNCOMMON · RARE · EPIC</strong>
-      <button id="lootTakeAll" type="button">TAKE ALL</button>
+      <strong>SCAVENGE · COMMON / UNCOMMON / RARE / EPIC</strong>
+      <button id="lootTakeAll" type="button">TAKE ALL POSSIBLE</button>
     </div>
-    <div id="lootFeedback" role="status" aria-live="polite" style="padding:11px 13px;color:#e7d29e;font-size:12px;font-weight:800;letter-spacing:.04em;border:1px solid #52605d;background:#14252d">DUPLICATE EQUIPMENT ALLOWED</div>
-    <div id="lootItems" class="loot-grid"></div>
+    <div id="lootFeedback" role="status" aria-live="polite" style="padding:11px 13px;color:#e7d29e;font-size:12px;font-weight:800;letter-spacing:.04em;border:1px solid #52605d;background:#14252d">SELECT ITEMS TO TAKE · DUPLICATE EQUIPMENT USES SEPARATE SLOTS</div>
+    <div class="loot-transfer-grid">
+      <section class="loot-side" aria-label="Items inside the container">
+        <div class="loot-side-head"><span>CONTAINER CONTENTS</span><strong id="lootCount">0 ITEMS</strong></div>
+        <div id="lootItems" class="loot-grid"></div>
+      </section>
+      <aside class="loot-side" aria-label="Your backpack contents">
+        <div class="loot-side-head"><span>YOUR BACKPACK</span><strong id="lootCarryCapacity">0 / 30 SLOTS</strong></div>
+        <div class="loot-stores" id="lootCarryStores">MATERIAL POUCH · 0 / AMMO RESERVES · 0</div>
+        <div class="loot-carry-list" id="lootCarryItems"></div>
+      </aside>
+    </div>
   </div>
 </div>
 <div id="armory" class="hidden" role="dialog" aria-label="Modular armor loadout editor">
@@ -1629,7 +1670,8 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.70.1"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.71"></script>
 </body>
 </html>
+
 

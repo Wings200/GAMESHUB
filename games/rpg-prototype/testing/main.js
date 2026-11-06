@@ -72,9 +72,9 @@ import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-a
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
 import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
-  takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
+  takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.71';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -2270,8 +2270,23 @@ $('inventoryPageNext').addEventListener('click',()=>shiftInventoryPage(1));
 function refreshLootUI(){
   const bag=lootBags.get(selectedLootId),area=$('lootItems');
   area.replaceChildren();
-  $('lootTitle').textContent=bag?'SEARCH · '+bag.source.toUpperCase():'LOOT BAG EMPTY';
-  if(!bag){const p=document.createElement('p');p.textContent='NO ITEMS REMAINING';area.append(p);return;}
+  const source=bag?.source||'';
+  const label=source.startsWith('enemy-')?
+    source.slice(6).replace(/-/g,' ').toUpperCase()+' REMAINS':
+    source==='player-drop'?'DROPPED EQUIPMENT':
+    source==='world'?'SALVAGE CASE':source.replace(/-/g,' ').toUpperCase();
+  $('lootTitle').textContent=bag?'SEARCH · '+label:'CONTAINER EMPTIED';
+  const total=bag?.items.reduce((sum,entry)=>sum+entry.quantity,0)||0;
+  $('lootCount').textContent=bag?
+    bag.items.length+' TYPES · '+total+' ITEMS':'EMPTY';
+  $('lootTakeAll').disabled=!bag||!bag.items.length;
+  refreshLootCarryUI();
+  if(!bag){
+    const p=document.createElement('p');
+    p.className='loot-empty-message';
+    p.textContent='NOTHING LEFT TO TAKE · THE CASE GLOW HAS TURNED OFF';
+    area.append(p);return;
+  }
   for(let i=0;i<bag.items.length;i++){
     const entry=bag.items[i],item=getItem(entry.itemId),row=inventoryLine(item);
     const count=document.createElement('span');
@@ -2279,34 +2294,80 @@ function refreshLootUI(){
       Math.ceil(entry.condition)+' / '+item.maxDurability+' DUR':
       item.category==='fusion-core'?Math.ceil(entry.charge)+'% CORE':'×'+entry.quantity;
     count.className='loot-quantity';row.append(count);
+    let quantityInput=null;
+    if(entry.quantity>1){
+      const picker=document.createElement('label');
+      picker.className='loot-take-quantity';
+      picker.textContent='QTY';
+      quantityInput=document.createElement('input');
+      quantityInput.type='number';quantityInput.min='1';
+      quantityInput.max=String(entry.quantity);
+      quantityInput.step='1';quantityInput.value=String(entry.quantity);
+      quantityInput.setAttribute('aria-label','Quantity of '+item.name+' to take');
+      picker.append(quantityInput);row.append(picker);
+    }
     lootButton(row,'TAKE',()=>{
-      const result=takeFromBag(backpack,bag,i);
+      // Re-resolve the original item; stale clicks must not transfer a
+      // different entry after the container list has been re-rendered.
+      const index=bag.items.indexOf(entry);
+      if(index<0)return;
+      const amount=quantityInput?
+        Math.max(1,Math.min(entry.quantity,Math.floor(Number(quantityInput.value)||1))):1;
+      const result=takeQuantityFromBag(backpack,bag,index,amount);
       if(result.added&&bag.source.startsWith('enemy-')&&!bag.xpGranted){
         bag.xpGranted=true;awardSpecialExperience(15,'loot');
         if(Math.random()<specialModifiers.salvageChance)
           addItem(backpack,'supply:salvage',1);
       }
       if(!result.added){
-        $('lootFeedback').textContent='BACKPACK FULL · '+backpack.items.length+
-          ' / '+BACKPACK_LIMIT+' SLOTS. DROP SOMETHING TO MAKE ROOM.';
+        $('lootFeedback').textContent='NO SPACE FOR '+item.name.toUpperCase()+
+          ' · '+backpack.items.length+' / '+BACKPACK_LIMIT+
+          ' SLOTS USED. MATERIALS AND AMMO HAVE SEPARATE STORAGE.';
         return;
       }
       if(item.category==='ammo')syncAmmoToWeapons();
       const total=countItem(backpack,entry.itemId);
-      $('lootFeedback').textContent=item.category==='material'?
+      const feedback=item.category==='material'?
         'POUCH · +'+result.added+' '+item.name.toUpperCase()+' · NOW OWN '+total:
         item.category==='ammo'?
         'AUTO-STORED · +'+result.added+' '+item.name.toUpperCase()+
         ' · RESERVE '+displayAmmoCount(total):
         'TAKEN · '+item.name.toUpperCase()+' ×'+result.added+' · NOW OWN '+total+
         (total===1?' COPY':' COPIES');
+      $('lootFeedback').textContent=result.added<amount?
+        feedback+' · PARTIAL TRANSFER (STORAGE FULL)':feedback;
       saveBackpack();refreshWeaponHUD();discardEmptyLootBags();
       refreshLootUI();refreshInventoryUI();
     });
     area.append(row);
   }
 }
+function refreshLootCarryUI(){
+  const list=$('lootCarryItems');list.replaceChildren();
+  $('lootCarryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
+  const pouch=Object.values(backpack.materials||{}).reduce((n,v)=>n+v,0);
+  const rounds=ARSENAL.reduce((n,spec)=>n+ammoReserve(backpack,spec.id),0);
+  $('lootCarryStores').textContent='MATERIAL POUCH · '+pouch+
+    '   /   AMMO RESERVES · '+displayAmmoCount(rounds);
+  const totals=new Map();
+  for(const entry of backpack.items)
+    totals.set(entry.itemId,(totals.get(entry.itemId)||0)+entry.quantity);
+  if(!totals.size){
+    const p=document.createElement('p');
+    p.className='loot-empty-message';p.textContent='YOUR BACKPACK IS EMPTY';
+    list.append(p);return;
+  }
+  for(const [id,quantity] of totals){
+    const item=getItem(id),row=document.createElement('div');
+    row.className='loot-carry-entry';
+    const name=document.createElement('strong');name.textContent=item.name;
+    name.style.color=RARITIES[item.rarity].color;
+    const count=document.createElement('span');count.textContent='×'+quantity;
+    row.append(name,count);list.append(row);
+  }
+}
 function beginLootOverlay(id=null){
+  if(id&&!lootBags.has(id))return;
   const fromField=controls.isLocked;
   if(fromField)controls.unlock();
   lootOverlayFromField=fromField;
@@ -2345,8 +2406,9 @@ $('lootTakeAll').addEventListener('click',()=>{
   }
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
-    'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
-    'TAKEN ALL · DUPLICATE GEAR KEPT AS SEPARATE INVENTORY COPIES';
+    (result.added?'PARTIAL TAKE · ':'NOTHING TAKEN · ')+
+      result.remaining+' ITEMS LEFT · INVENTORY OR POUCH FULL':
+    'CONTAINER EMPTIED · ALL ITEMS STORED';
   saveBackpack();discardEmptyLootBags();refreshLootUI();refreshInventoryUI();
 });
 
@@ -6113,4 +6175,5 @@ window.addEventListener('gameshub-before-balance-reload', () => {
 });
 refreshCampaignUI();
 frame();
+
 

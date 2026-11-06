@@ -1,5 +1,6 @@
 // W06.0 original RPG loot and inventory rules. Pure game-state logic.
 import {ARSENAL,getWeaponSpec} from './weapons.mjs';
+import {moveLootQuantity,moveAllLoot} from './loot-transfer.mjs';
 import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs?v=W20.41';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
@@ -287,22 +288,16 @@ export function createLootBag(id,x,z,contents,source='world'){
   }
   return {id,x,z,source,items,opened:false};
 }
+export function takeQuantityFromBag(pack,bag,index,quantity){
+  return moveLootQuantity(bag,index,quantity,(entry,amount)=>
+    addItem(pack,entry.itemId,amount,entry));
+}
 export function takeFromBag(pack,bag,index){
-  const entry=bag?.items?.[index];if(!entry)return {added:0,leftover:0};
-  const result=addItem(pack,entry.itemId,entry.quantity,entry);
-  entry.quantity=result.leftover;
-  if(entry.quantity===0)bag.items.splice(index,1);
-  bag.opened=true;
-  return {...result,itemId:entry.itemId};
+  return takeQuantityFromBag(pack,bag,index,bag?.items?.[index]?.quantity??0);
 }
 export function takeAllFromBag(pack,bag){
-  let added=0;
-  for(let i=0;i<bag.items.length;){
-    const r=takeFromBag(pack,bag,i);
-    added+=r.added;
-    if(r.leftover)i++; // inventory full, but later item might stack
-  }
-  return {added,remaining:bag.items.reduce((n,e)=>n+e.quantity,0)};
+  return moveAllLoot(bag,(entry,amount)=>
+    addItem(pack,entry.itemId,amount,entry));
 }
 export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.random){
   // Armor is rolled from the NPC's real visible loadout, but only a small
