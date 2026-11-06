@@ -366,7 +366,7 @@ const stations=[
   {title:'04 · Ramp ascent',info:'Walk and sprint uphill, then back down. Watch the ground-height readout.',x:15,z:-27,tag:'04 / SLOPES',color:0x6b9b77},
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
-  {title:'07 · Weapon firing lane',info:'Aim, move and crouch to compare accuracy; fire to watch brass eject. Use your owned weapons and ammo, or grant items through the developer panel.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
+  {title:'07 · Weapon firing lane',info:'Aim, move and crouch to compare accuracy; fire to watch brass eject. Weapon modification is available only at the Haven settlement workbench.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
   {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. Grant parts and fusion cores through the developer panel.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'Three raiders patrol, flank, retreat to solid cover and peek. Shoot or approach to provoke reactions, and use your own weapons and supplies to survive.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
@@ -519,11 +519,12 @@ for(let x=-47;x<55;x+=5){
   if((x+47)%20===0)box(x,.07,-25,.35,.14,9,pale);
 }
 box(0,.085,-25,112,.04,.06,pale);
-// Solid weapon-modification bench next to Station 7, reachable with E.
-const opticBench={x:-55,z:-43};
+// The weapon-modification bench lives in Haven settlement by the foreman and
+// powered generator, not at the firing lane or in a remote-access menu.
+const opticBench={x:-33,z:-21};
 box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
 box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
-textSign('WEAPON WORKBENCH · E',-61,-39,0xe4c38b);
+textSign('HAVEN WEAPON BENCH · E',-36,-23,0xe4c38b);
 // A tangible field repair station: steel vise, clamped barrel, parts tray,
 // drill column, torque tools and a shelf. No floating menu-only interaction.
 const benchSteel=mat(0x72807a,.48),benchDark=mat(0x29383c,.56),
@@ -3149,6 +3150,12 @@ function refreshWorkbenchUI(){
   renderWorkbenchPreview();
 }
 function beginWorkbench(){
+  // All callers, including future UI changes, must satisfy the physical
+  // settlement workbench interaction. The bench is never remotely usable.
+  if(!controls.isLocked||!benchWithinReach()){
+    showShotNotice('VISIT HAVEN · USE E AT THE WEAPON WORKBENCH');
+    return;
+  }
   if(inventoryOpen||lootOpen)closeLootOverlay();
   workbenchFromField=controls.isLocked;
   if(workbenchFromField)controls.unlock();
@@ -3170,7 +3177,6 @@ function closeWorkbench(){
   if(workbenchFromField){workbenchFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
 }
-$('workbenchOpen').addEventListener('click',beginWorkbench);
 $('benchClose').addEventListener('click',closeWorkbench);
 
 // Combat is available in Station 9 AND when physically entering the
@@ -5868,7 +5874,6 @@ window.addEventListener('keydown',e=>{
       'FIRST-PERSON VIEW · V TO TOGGLE');
     return;
   }
-  if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     e.preventDefault();
     selectNearbyPowerFrame();

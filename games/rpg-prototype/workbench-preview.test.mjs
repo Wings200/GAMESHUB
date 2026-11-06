@@ -41,3 +41,16 @@ test('workbench has a single selected-part install button after cost and stats r
   assert.match(main,/action\.onclick=chosen\.onChoose/);
   assert.match(main,/PREVIEWING .*NO MATERIALS SPENT/);
 });
+
+test('weapons can only be configured at the physical Haven settlement workbench',()=>{
+  assert.match(main,/const opticBench=\{x:-33,z:-21\}/);
+  assert.match(main,/textSign\('HAVEN WEAPON BENCH · E'/);
+  assert.match(main,/function benchWithinReach\(\)/);
+  assert.match(main,/function beginWorkbench\(\)\{\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*if\(!controls\.isLocked\|\|!benchWithinReach\(\)\)/);
+  assert.match(main,/else if\(benchWithinReach\(\)\)beginWorkbench\(\)/);
+  assert.doesNotMatch(main,/e\.code==='KeyU'/);
+  assert.doesNotMatch(main,/\$\('workbenchOpen'\)\.addEventListener/);
+  assert.doesNotMatch(html,/id="workbenchOpen"/);
+  assert.doesNotMatch(html,/WORKBENCH \/ U|OR U FROM THE FIELD/);
+  assert.match(html,/HAVEN SETTLEMENT \/ PHYSICAL WEAPON WORKBENCH/);
+});
