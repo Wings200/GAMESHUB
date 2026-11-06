@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.75.2 · Settlement Workbench Access | GAMESHUB RPG</title>
+<title>W20.76 · Death, Respawn & Power Armor Tracking | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -50,6 +50,23 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
   background:#070e12;opacity:0;transition:none}
 #playerDamageFlash{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse at center,transparent 37%,rgba(202,32,27,.8) 100%);opacity:0}
+#deathScreen{position:fixed;inset:0;z-index:12;display:flex;align-items:center;
+  justify-content:center;padding:24px;background:linear-gradient(180deg,#050b0dcc,#080e12f5);
+  color:#e9e3d8;text-align:center;animation:deathFadeIn .65s ease both}
+#deathScreen.hidden{display:none}
+#deathScreen .death-card{width:min(520px,100%);padding:37px 32px 31px;
+  border-top:2px solid #b85e53;border-bottom:1px solid #6a4741;
+  background:linear-gradient(140deg,#102024f0,#15191aef);box-shadow:0 25px 90px #000c}
+#deathScreen .death-kicker{color:#ba8982;font-size:11px;font-weight:900;letter-spacing:.23em}
+#deathScreen h2{font-size:clamp(42px,7vw,78px);letter-spacing:-.045em;margin:18px 0 4px;
+  color:#f2b4a6;text-shadow:0 4px 20px #560f18b3}
+#deathScreen p{font-size:13px;color:#c5bdb7;line-height:1.7;margin:16px auto 24px}
+#deathScreen .death-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+#deathScreen button{border:1px solid #a98970;background:#3d5142;color:#f6e8c9;
+  padding:13px 22px;font:900 12px system-ui,sans-serif;letter-spacing:.1em;cursor:pointer}
+#deathScreen button.secondary{background:#1a2528;border-color:#65746c}
+#deathScreen button:hover{filter:brightness(1.2)}
+@keyframes deathFadeIn{from{opacity:0}to{opacity:1}}
 #playerHealthHud{position:fixed;bottom:136px;left:18px;width:min(320px,38vw);
   z-index:2;pointer-events:none;display:grid;gap:7px}
 #playerHealthHud .health-head{display:flex;justify-content:space-between;
@@ -331,6 +348,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 .nav-compass .custom-waypoint{position:absolute;top:0;transform:translateX(-50%);z-index:3;
   font-size:18px;font-weight:950;color:#77e7f6;filter:drop-shadow(0 0 5px #57d8e6)}
 .nav-compass .custom-waypoint.offscreen{color:#a8b5f1}
+.nav-compass .power-armor-waypoint{color:#ffd38c;filter:drop-shadow(0 0 5px #bb8346)}
 .nav-compass .compass-waypoint{position:absolute;transform:translateX(-50%);
   z-index:4;color:#ffe59c;font-size:19px;font-weight:950;
   filter:drop-shadow(0 0 4px #ffbd68)}
@@ -803,6 +821,10 @@ body.hud-modern #powerArmorHud{display:none!important}
 #fieldMapPanel .map-dot{width:9px;height:9px;border-radius:50%;background:#e9c78c}
 #fieldMapPanel .map-dot.contact{background:#9bdfbc}
 #fieldMapPanel .map-dot.marker{background:#f5b66d;transform:rotate(45deg);border-radius:0}
+#fieldMapPanel .map-dot.power{background:#eac18a;border:2px solid #523d27;border-radius:2px}
+#fieldMapPanel #fieldMapPowerTrack{width:100%;margin-top:10px;background:#263d31;
+  border:1px solid #729273;color:#f4e2b8;font-size:10px;letter-spacing:.08em;padding:11px;cursor:pointer}
+#fieldMapPanel #fieldMapPowerTrack:disabled{opacity:.4;cursor:default}
 #fieldMapPanel .map-help{line-height:1.7;color:#9db4a7;font-size:11px}
 #fieldMapPanel .map-footer{border-top:1px solid #38594b;padding:13px 24px;color:#9fbba9;font-size:10px;font-weight:800;letter-spacing:.08em}
 @media(max-width:820px){#fieldMapPanel .map-body{grid-template-columns:1fr}
@@ -1257,6 +1279,17 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="vignette"></div>
 <div id="playerDamageFlash"></div>
 <div id="powerTransitionFade" aria-hidden="true"></div>
+<section id="deathScreen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="deathTitle">
+  <div class="death-card">
+    <div class="death-kicker">FRONTIER / SURVIVOR STATUS / DECEASED</div>
+    <h2 id="deathTitle">YOU DIED</h2>
+    <p id="deathCause">Your journey is not over. Your equipment and progress are safe.</p>
+    <div class="death-actions">
+      <button id="deathRespawn" type="button">RESPAWN AT HAVEN</button>
+      <button id="deathMainMenu" class="secondary" type="button">MAIN MENU</button>
+    </div>
+  </div>
+</section>
 <div id="enemyRadar" class="hidden" role="group" aria-label="Enemy compass contacts">
   <div id="enemyRadarTrack" aria-hidden="true"></div>
 </div>
@@ -1273,6 +1306,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div id="fieldCompassLandmarks" class="nav-landmarks"></div>
     <span id="fieldCompassQuest" class="compass-waypoint" style="display:none" aria-label="Tracked quest direction">⌂</span>
     <span id="fieldCustomWaypoint" class="custom-waypoint" style="display:none" aria-label="Custom waypoint direction">◆</span>
+    <span id="fieldPowerArmorWaypoint" class="custom-waypoint power-armor-waypoint" style="display:none" aria-label="Tracked power armor direction">▣</span>
     <div class="compass-marker" aria-hidden="true"></div>
   </div>
   <div id="fieldWaypointReadout" class="field-waypoint-readout" role="status"></div>
@@ -1333,6 +1367,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div id="visorCompassLandmarks" class="nav-landmarks"></div>
     <span id="visorCompassWaypoint" class="compass-waypoint" style="display:none" aria-label="Tracked objective direction">⌂</span>
     <span id="visorCustomWaypoint" class="custom-waypoint" style="display:none" aria-label="Custom waypoint direction">◆</span>
+    <span id="visorPowerArmorWaypoint" class="custom-waypoint power-armor-waypoint" style="display:none" aria-label="Tracked power armor direction">▣</span>
     <div class="compass-marker" aria-hidden="true"></div>
   </div>
   <div id="visorWaypointReadout" class="armor-waypoint-readout" role="status"></div>
@@ -1452,7 +1487,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.75.2</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.76</div>
+    <p><strong>W20.76 · DEATH & POWER ARMOR RECOVERY:</strong> Fatal damage now plays a third-person collapse before showing a death screen. Respawn at Haven with your backpack, progression and world changes intact. A power-armor frame stays where you fell. The map shows only your most recently worn parked frame, and you may track or untrack it without replacing your own waypoint.</p>
     <p><strong>W20.75.2 · SETTLEMENT WEAPON WORKBENCH:</strong> Weapon modifications require physically walking to Haven's workshop bench and pressing E nearby. The U shortcut and remote-workbench menu button are gone; the firing lane no longer contains a weapon workbench.</p>
     <p><strong>W20.75.1 · READ-ONLY DIAGNOSTICS:</strong> F3 reveals performance and gameplay status without a keybind cheat sheet. Free healing, enemy resetting/freezing, station teleporting and dummy-armor editing are no longer accessible to players. Quick-jump buttons to the combat arena, trading row and power-armor frame have been removed. Find frames in the world and use ordinary gameplay controls instead. Both compasses remain visible.</p>
     <p><strong>W20.75 · FACTION POWER ARMOR & FOUND FRAMES:</strong> Power armor only comes from visibly armored combatants, trusted Iron Dominion/Rust Vultures quartermasters, or abandoned powered chassis. Earn 35 faction reputation to trade their T-45 parts and fusion cores, or 65 for advanced T-60 parts; formal membership is not required. Enforcers and raiders may wear armor in combat. Three incomplete, damaged T-45 frames with cores can be discovered and configured in the testing field. Each frame's parts, core and location save independently; no power armor plate crafting.</p>
@@ -1749,10 +1785,12 @@ body.hud-modern #powerArmorHud{display:none!important}
         <div class="map-block"><small>PLAYER POSITION</small><strong id="fieldMapCoordinates">X -- · Z --</strong></div>
         <div class="map-block"><small>EXPLORATION</small><strong id="fieldMapDiscovery">0% SURVEYED</strong></div>
         <div class="map-block"><small>NAVIGATION</small><strong id="fieldMapWaypoint">NO WAYPOINT SET</strong></div>
+        <div class="map-block"><small>LAST USED POWER ARMOR</small><strong id="fieldMapPowerStatus">NO RECENT FRAME</strong><button id="fieldMapPowerTrack" type="button" disabled>TRACK POWER ARMOR</button></div>
         <div class="map-block"><small>MAP KEY</small>
           <div class="map-key"><i class="map-dot"></i> Test station</div>
           <div class="map-key"><i class="map-dot contact"></i> Discovered contact or vendor</div>
           <div class="map-key"><i class="map-dot marker"></i> Custom waypoint</div>
+          <div class="map-key"><i class="map-dot power"></i> Most recently worn power armor</div>
         </div>
         <div class="map-help">Unexplored ground stays dark. Travel to reveal the map. Click explored terrain to set a waypoint. Drag to pan; scroll or use + / − to zoom. Discovery and waypoints save in this browser.</div>
       </aside>
@@ -1919,7 +1957,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.75.2"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.76"></script>
 </body>
 </html>
 

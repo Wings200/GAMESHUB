@@ -44,11 +44,22 @@ test('waypoints are restricted to discovered ground and persist safely',()=>{
     {x:30,z:42,label:'BORDER WATCH'});
   assert.equal(map.isDiscovered(30,42),false);
   assert.deepEqual(map.summary().waypoint,{x:-50,z:-25});
+  // The most recently worn power armor has a separate map marker. Tracking
+  // it must never steal the player's waypoint or reveal fogged terrain.
+  map.setPowerArmorTarget({x:30,z:42});
+  assert.deepEqual(map.summary().powerArmorTarget,
+    {x:30,z:42,label:'LAST POWER ARMOR'});
+  assert.deepEqual(map.summary().waypoint,{x:-50,z:-25});
+  assert.equal(map.isDiscovered(30,42),false);
   map.render();
   const restored=createFieldMap({canvas,storage});
   assert.equal(restored.summary().waypoint.x,-50);
   assert.equal(restored.summary().questTarget,null,
     'Quest markers must follow current active missions, never persisted history');
+  assert.equal(restored.summary().powerArmorTarget,null,
+    'Recent suit markers come from owned frames, not stale map storage');
+  map.setPowerArmorTarget(null);
+  assert.equal(map.summary().powerArmorTarget,null);
   map.setQuestTarget(null);
   assert.equal(map.summary().questTarget,null);
   map.setQuestTarget({x:999,z:0});
@@ -56,3 +67,4 @@ test('waypoints are restricted to discovered ground and persist safely',()=>{
   restored.clearWaypoint();
   assert.equal(restored.summary().waypoint,null);
 });
+

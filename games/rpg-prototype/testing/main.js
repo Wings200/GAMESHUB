@@ -12,7 +12,7 @@ import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
 import {previewWeaponSpec} from '../workbench-preview.mjs';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
-import {createFieldMap} from '../field-map.mjs?v=W20.67';
+import {createFieldMap} from '../field-map.mjs?v=W20.76';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
@@ -876,6 +876,14 @@ try{
 // Each found chassis has its own six plates, core, world position and saved
 // state. Selecting a nearby frame reuses the same proven service/entry UI.
 const powerFrames=new Map();
+// Only the last frame the player actually WORE is eligible for the map.
+// Inspecting a different frame does not replace the recovery marker.
+let lastWornPowerFrameId=null,trackLastPowerArmor=false;
+try{
+  lastWornPowerFrameId=localStorage.getItem('rpg-last-worn-power-frame-v1')||null;
+  trackLastPowerArmor=localStorage.getItem('rpg-track-last-power-frame-v1')==='true';
+}catch{}
+let syncLastPowerArmorMarker=()=>{};
 let savedFramePositions={};
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-power-frame-positions-v1')||'null');
@@ -917,6 +925,18 @@ let activePowerFrame=initialFrame;
 let powerArmorState=activePowerFrame.state;
 let poweredSuit=activePowerFrame.visual;
 let pilotAvatar=activePowerFrame.avatar;
+function recentPowerArmorTarget(){
+  const frame=lastWornPowerFrameId&&powerFrames.get(lastWornPowerFrameId);
+  if(!frame||frame.state.occupied)return null;
+  return {x:frame.visual.root.position.x,z:frame.visual.root.position.z,
+    label:'LAST POWER ARMOR'};
+}
+function markPowerFrameWorn(id){
+  if(!powerFrames.has(id))return;
+  lastWornPowerFrameId=id;
+  try{localStorage.setItem('rpg-last-worn-power-frame-v1',id);}catch{}
+  syncLastPowerArmorMarker();
+}
 function selectNearbyPowerFrame(){
   if(powerArmorState.occupied||powerArmorState.phase!=='idle'||powerUIOpen)return;
   let selected=null,distance=3.8;
@@ -1012,6 +1032,7 @@ function savePowerArmor(){
         x:frame.visual.root.position.x,z:frame.visual.root.position.z,
         yaw:frame.visual.root.rotation.y}]))));
   }catch{}
+  syncLastPowerArmorMarker();
 }
 function nearPoweredSuit(){
   return Math.hypot(player.x-poweredSuit.root.position.x,
@@ -3184,6 +3205,62 @@ $('benchClose').addEventListener('click',closeWorkbench);
 function inAIArena(){return isArenaActive(stationIndex,player);}
 const playerHealth=createPlayerHealth();
 let playerHitFlash=0;
+const HAVEN_RESPAWN={x:-41,z:-13};
+const deathState={active:false,elapsed:0,cause:'',inPowerArmor:false,
+  frameId:null,x:0,z:0,yaw:0};
+function beginPlayerDeath(source='UNKNOWN THREAT',zone='chest'){
+  if(deathState.active)return;
+  deathState.active=true;deathState.elapsed=0;
+  deathState.cause=source.toUpperCase()+' · '+zone.toUpperCase();
+  deathState.x=player.x;deathState.z=player.z;deathState.yaw=camera.rotation.y;
+  deathState.inPowerArmor=powerArmorState.occupied;
+  deathState.frameId=deathState.inPowerArmor?activePowerFrame.id:null;
+  keys.clear();triggerHeld=false;cancelPowerHold();changeAim(false);
+  if(deathState.inPowerArmor){
+    // Death ejects no free gear: the original occupied frame stays at the
+    // exact fatal position, with its plates, charge and damage intact.
+    poweredSuit.root.position.set(player.x,0,player.z);
+    poweredSuit.root.rotation.set(0,camera.rotation.y+Math.PI,0);
+    powerArmorState.occupied=false;powerArmorState.phase='idle';powerArmorState.elapsed=0;
+    poweredSuit.root.visible=true;poweredCockpit.visible=false;
+    powerCinematic=null;powerCinematicFadeLeft=0;
+    $('powerTransitionFade').style.opacity='0';
+    markPowerFrameWorn(activePowerFrame.id);
+    savePowerArmor();
+    refreshPowerArmorHUD();
+  }
+  $('deathScreen').classList.add('hidden');
+  $('deathCause').textContent='FELL TO '+deathState.cause+
+    '. YOUR INVENTORY AND PROGRESS ARE SAFE.'+
+    (deathState.inPowerArmor?' YOUR POWER ARMOR REMAINS AT THE DEATH SITE.':'');
+  document.body.classList.add('player-dead');
+  if(controls.isLocked)controls.unlock();
+  $('menu').classList.add('hidden');
+}
+function respawnAtHaven({mainMenu=false}={}){
+  if(!deathState.active)return;
+  if(deathState.frameId){
+    const frame=powerFrames.get(deathState.frameId);
+    if(frame){
+      frame.visual.root.rotation.z=0;frame.visual.root.position.y=0;
+      frame.visual.root.visible=true;
+    }
+  }
+  deathState.active=false;deathState.elapsed=0;
+  resetPlayerHealth(playerHealth);playerHitFlash=0;refreshPlayerHealth();
+  player.x=HAVEN_RESPAWN.x;player.z=HAVEN_RESPAWN.z;
+  player.jump=0;player.vertical=0;player.supported=false;resetMotion(player);
+  camera.rotation.set(0,-Math.PI/2,0);
+  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
+  resetWeaponRecoil(viewRecoil);
+  $('deathScreen').classList.add('hidden');
+  document.body.classList.remove('player-dead');
+  savePowerArmor();refreshPowerArmorHUD();
+  if(mainMenu)$('menu').classList.remove('hidden');
+  else{sound.unlock();controls.lock();showShotNotice('RESPAWNED AT HAVEN · GEAR RETAINED');}
+}
+$('deathRespawn').addEventListener('click',()=>respawnAtHaven());
+$('deathMainMenu').addEventListener('click',()=>respawnAtHaven({mainMenu:true}));
 const enemyTracers=[];
 const tracerMat=new THREE.LineBasicMaterial({color:0xffa760,transparent:true,opacity:.92});
 function enemyTracer(from,to){
@@ -3443,13 +3520,13 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
                 }
               }
               if(result.applied){
-                if(!playerHealth.alive)keys.clear();
+                if(!playerHealth.alive)beginPlayerDeath(enemy.label,zone);
                 refreshPlayerHealth();playerHitFlash=.48;
                 const blocked=(attack.damage-result.damage).toFixed(1);
                 showShotNotice(playerHealth.alive?
                   enemy.label+' HIT · -'+result.damage.toFixed(1)+
                   ' HP · '+blocked+' BLOCKED':
-                  'YOU ARE DOWN · PRESS H TO RESPAWN');
+                  'YOU ARE DOWN · RESPAWN AFTER THE FALL');
               }
             }
           }
@@ -4912,19 +4989,34 @@ const navigationLandmarks=mapPoints
 });
 function updateNavigationHUD(heading){
   const {waypoint,distance}=fieldMap.summary();
-  for(const [id,readout] of [
-    ['fieldCustomWaypoint','fieldWaypointReadout'],
-    ['visorCustomWaypoint','visorWaypointReadout']
+  const armor=trackLastPowerArmor?recentPowerArmorTarget():null;
+  const armorDistance=armor?Math.round(Math.hypot(armor.x-player.x,armor.z-player.z)):null;
+  for(const [id,readout,armorId] of [
+    ['fieldCustomWaypoint','fieldWaypointReadout','fieldPowerArmorWaypoint'],
+    ['visorCustomWaypoint','visorWaypointReadout','visorPowerArmorWaypoint']
   ]){
     const marker=$(id),label=$(readout);
+    const messages=[];
     if(!waypoint){
-      marker.style.display='none';label.textContent='';continue;
+      marker.style.display='none';
+    }else{
+      const delta=positionNavigationMarker(marker,waypoint.x,waypoint.z,heading,true);
+      const direction=distance<=2?'ARRIVED':Math.abs(delta)<=9?'AHEAD':
+        delta<0?'TURN LEFT':'TURN RIGHT';
+      marker.setAttribute('aria-label','Custom waypoint '+distance+' meters away, '+direction.toLowerCase());
+      messages.push('◆ WAYPOINT · '+distance+' m · '+direction);
     }
-    const delta=positionNavigationMarker(marker,waypoint.x,waypoint.z,heading,true);
-    const direction=distance<=2?'ARRIVED':Math.abs(delta)<=9?'AHEAD':
-      delta<0?'TURN LEFT':'TURN RIGHT';
-    marker.setAttribute('aria-label','Custom waypoint '+distance+' meters away, '+direction.toLowerCase());
-    label.textContent='◆ WAYPOINT · '+distance+' m · '+direction;
+    const armorMarker=$(armorId);
+    if(!armor)armorMarker.style.display='none';
+    else{
+      const delta=positionNavigationMarker(armorMarker,armor.x,armor.z,heading,true);
+      const direction=armorDistance<=2?'ARRIVED':Math.abs(delta)<=9?'AHEAD':
+        delta<0?'TURN LEFT':'TURN RIGHT';
+      armorMarker.setAttribute('aria-label','Tracked power armor '+armorDistance+
+        ' meters away, '+direction.toLowerCase());
+      messages.push('▣ POWER ARMOR · '+armorDistance+' m · '+direction);
+    }
+    label.textContent=messages.join('   |   ');
   }
   const visible=navigationLandmarks.map(entry=>{
     const {point}=entry;
@@ -4962,11 +5054,30 @@ fieldMap.onUpdate=summary=>{
   const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
   updateNavigationHUD(heading);
 };
+syncLastPowerArmorMarker=()=>{
+  const target=recentPowerArmorTarget();
+  fieldMap.setPowerArmorTarget(target);
+  $('fieldMapPowerStatus').textContent=target?
+    Math.round(Math.hypot(target.x-player.x,target.z-player.z))+' m FROM YOUR FRAME':
+    lastWornPowerFrameId?'FRAME CURRENTLY WORN':'NO RECENT FRAME';
+  $('fieldMapPowerTrack').disabled=!target;
+  $('fieldMapPowerTrack').textContent=trackLastPowerArmor?'UNTRACK POWER ARMOR':'TRACK POWER ARMOR';
+  const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
+  updateNavigationHUD(heading);
+};
+$('fieldMapPowerTrack').addEventListener('click',()=>{
+  if(!recentPowerArmorTarget())return;
+  trackLastPowerArmor=!trackLastPowerArmor;
+  try{localStorage.setItem('rpg-track-last-power-frame-v1',String(trackLastPowerArmor));}catch{}
+  syncLastPowerArmorMarker();
+});
+syncLastPowerArmorMarker();
 fieldMap.observe(player.x,player.z,camera.rotation.y);
 function showFieldMap(){
   mapOpen=true;
   $('fieldMapPanel').classList.remove('hidden');
   $('menu').classList.add('hidden');
+  syncLastPowerArmorMarker();
   $('fieldMapClose').textContent=mapFromInventory?'BACK TO INVENTORY · M / ESC':
     'CLOSE · M / ESC';
   fieldMap.centerOnPlayer();
@@ -5804,11 +5915,14 @@ $('start').addEventListener('click',()=>{
   sound.unlock();
   controls.lock();
 });
-canvas.addEventListener('click',()=>{if(!$('menu').classList.contains('hidden'))return;controls.lock();});
+canvas.addEventListener('click',()=>{
+  if(deathState.active||!$('menu').classList.contains('hidden'))return;
+  controls.lock();
+});
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
   cancelPowerHold();
-  if(!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
+  if(!deathState.active&&!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
     !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen)$('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
@@ -5829,6 +5943,7 @@ $('quality').addEventListener('click',()=>{
   setGraphicsQuality(!qualityHigh);
 });
 window.addEventListener('keydown',e=>{
+  if(deathState.active){e.preventDefault();return;}
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
@@ -5987,6 +6102,20 @@ function frame(){
   requestAnimationFrame(frame);
   const elapsed=clock.getDelta();
   const dt=Math.min(.036,elapsed);
+  if(deathState.active){
+    deathState.elapsed+=Math.min(elapsed,.10);
+    if(deathState.inPowerArmor){
+      const fallen=powerFrames.get(deathState.frameId);
+      if(fallen){
+        const t=Math.min(1,deathState.elapsed/1.5);
+        const ease=t*t*(3-2*t);
+        fallen.visual.root.rotation.z=-.85*ease;
+        fallen.visual.root.position.y=-.24*ease;
+      }
+    }
+    if(deathState.elapsed>=1.8)
+      $('deathScreen').classList.remove('hidden');
+  }
   if(frameBudget.observe(elapsed,{highQuality:qualityHigh,
     manual:graphicsManuallyChosen,visible:!document.hidden&&controls.isLocked})){
     setGraphicsQuality(false,{automatic:true});
@@ -6342,6 +6471,7 @@ function frame(){
       $('powerTransitionFade').style.opacity='1';
     }
     if(!WEAPON_REBUILD_MODE||playerGunEnabled())weaponVisuals.get(activeWeaponId).root.visible=true;
+    if(powerArmorState.occupied)markPowerFrameWorn(activePowerFrame.id);
     savePowerArmor();refreshPowerArmorHUD();refreshInventoryUI();
     showShotNotice(powerArmorState.occupied?'POWER ARMOR LOCKED · READY':
       'POWER ARMOR PARKED · STEP CLEAR');
@@ -6351,7 +6481,7 @@ function frame(){
     $('powerTransitionFade').style.opacity=String(Math.min(
       1,powerCinematicFadeLeft/.27));
   }
-  if(controls.isLocked&&powerArmorState.phase==='idle'){
+  if(controls.isLocked&&playerHealth.alive&&powerArmorState.phase==='idle'){
     controls.getDirection(forward);
     const mobility=powerArmorMobility(powerArmorState);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
@@ -6558,15 +6688,24 @@ function frame(){
     reloadRounds:weaponState.reloadRounds,
     recoil:Math.min(1,Math.max(muzzleFlash/.085,viewRecoil.modelPitch/.16)),
     hit:Math.min(1,playerHitFlash/.48)});
-  thirdPersonActive=thirdPersonEnabled&&powerArmorState.phase==='idle'&&
+  thirdPersonActive=!deathState.active&&thirdPersonEnabled&&powerArmorState.phase==='idle'&&
     !powerArmorState.occupied&&!weaponState.aiming;
-  playerAvatar.root.visible=thirdPersonActive;
+  playerAvatar.root.visible=thirdPersonActive||deathState.active&&!deathState.inPowerArmor;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=(!WEAPON_REBUILD_MODE||REBUILT_WEAPON_IDS.includes(id))&&
       id===activeWeaponId&&(!WEAPON_REBUILD_MODE||ownedActiveGun)&&
-      !thirdPersonActive&&powerArmorState.phase==='idle'&&
+      !deathState.active&&!thirdPersonActive&&powerArmorState.phase==='idle'&&
       !(id===HEAVY_SNIPER.id&&weaponState.aiming);
-  if(thirdPersonActive){
+  if(deathState.active){
+    const facing=deathState.yaw;
+    const focusY=groundHeight(deathState.x,deathState.z)+
+      (deathState.inPowerArmor?1.22:.62);
+    thirdPersonCamera.position.set(
+      deathState.x+Math.cos(facing)*3.15,
+      focusY+1.55,deathState.z+Math.sin(facing)*3.15);
+    thirdPersonCamera.lookAt(deathState.x,focusY,deathState.z);
+    renderer.render(scene,thirdPersonCamera);
+  }else if(thirdPersonActive){
     controls.getDirection(viewHeading);
     viewHeading.y=0;
     if(viewHeading.lengthSq()<.0001)viewHeading.set(0,0,-1);

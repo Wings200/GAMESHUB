@@ -44,7 +44,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
   const key='rpg-field-map-discovery-v1';
   const waypointKey='rpg-field-map-waypoint-v1';
   const allowedKeys=/^\d{1,2}:\d{1,2}$/;
-  let discovered=new Set(),waypoint=null,questTarget=null;
+  let discovered=new Set(),waypoint=null,questTarget=null,powerArmorTarget=null;
   try{
     const saved=JSON.parse(storage?.getItem(key)||'[]');
     if(Array.isArray(saved))discovered=new Set(saved.filter(v=>typeof v==='string'&&allowedKeys.test(v)).slice(0,700));
@@ -69,7 +69,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
     const total=Math.ceil((FIELD_BOUNDS.maxX-FIELD_BOUNDS.minX)/MAP_CELL_SIZE)*
       Math.ceil((FIELD_BOUNDS.maxZ-FIELD_BOUNDS.minZ)/MAP_CELL_SIZE);
     return{discovered:discovered.size,total,x:state.x,z:state.z,zoom,waypoint,
-      questTarget,
+      questTarget,powerArmorTarget,
       distance:waypoint?Math.round(Math.hypot(waypoint.x-state.x,waypoint.z-state.z)):null};
   }
   function notify(){onUpdate(summary());}
@@ -92,6 +92,15 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
         label:String(target.label||'QUEST OBJECTIVE').slice(0,50)}:null;
     if(JSON.stringify(next)===JSON.stringify(questTarget))return;
     questTarget=next;render();
+  }
+  function setPowerArmorTarget(target){
+    // Only the most recently worn, currently parked frame is passed here.
+    // This marker never alters map discovery or the user's custom waypoint.
+    const next=target&&Number.isFinite(target.x)&&Number.isFinite(target.z)&&
+      mapCell(target.x,target.z)?{x:target.x,z:target.z,
+        label:'LAST POWER ARMOR'}:null;
+    if(JSON.stringify(next)===JSON.stringify(powerArmorTarget))return;
+    powerArmorTarget=next;render();
   }
   function setZoom(next){zoom=Math.max(.8,Math.min(3.5,next));notify();render();}
   function pointLabel(point){return String(point.label||point.id||'LOCATION').toUpperCase();}
@@ -150,6 +159,16 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
       ctx.font='800 11px system-ui, sans-serif';
       ctx.fillText(questTarget.label,p.x+16,p.y-8);
     }
+    if(powerArmorTarget){
+      const p=screen(powerArmorTarget.x,powerArmorTarget.z);
+      ctx.strokeStyle='#eac18a';ctx.fillStyle='#3d3325';ctx.lineWidth=2.5;
+      ctx.fillRect(p.x-10,p.y-10,20,20);
+      ctx.strokeRect(p.x-10,p.y-10,20,20);
+      ctx.fillStyle='#ffdc9d';ctx.font='900 14px system-ui, sans-serif';
+      ctx.fillText('P',p.x-5,p.y+1);
+      ctx.font='800 11px system-ui, sans-serif';
+      ctx.fillText(powerArmorTarget.label,p.x+15,p.y-7);
+    }
     const player=screen(state.x,state.z);
     ctx.save();ctx.translate(player.x,player.y);ctx.rotate(-state.yaw);
     ctx.fillStyle='#e6f4d0';ctx.strokeStyle='#0c201b';ctx.lineWidth=2;
@@ -180,8 +199,10 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
   canvas.addEventListener('pointercancel',()=>{dragging=false;startPointer=null;});
   canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.15:1/1.15));},{passive:false});
   function centerOnPlayer(){center={x:state.x,z:state.z};render();}
-  return{observe,render,setZoom,centerOnPlayer,clearWaypoint,setQuestTarget,summary,
+  return{observe,render,setZoom,centerOnPlayer,clearWaypoint,setQuestTarget,
+    setPowerArmorTarget,summary,
     setWaypoint,isDiscovered:(x,z)=>isMapDiscovered(discovered,x,z),
     set onUpdate(fn){onUpdate=typeof fn==='function'?fn:()=>{};},
     get zoom(){return zoom;}};
 }
+
