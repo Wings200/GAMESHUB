@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.67.1 · Power Armor Compass Fix | GAMESHUB RPG</title>
+<title>W20.75 · Power Armor Discovery & Faction Supply | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1459,9 +1459,10 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.74.1</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.75</div>
+    <p><strong>W20.75 · FACTION POWER ARMOR & FOUND FRAMES:</strong> Power armor only comes from visibly armored combatants, trusted Iron Dominion/Rust Vultures quartermasters, or abandoned powered chassis. Earn 35 faction reputation to trade their T-45 parts and fusion cores, or 65 for advanced T-60 parts; formal membership is not required. Enforcers and raiders occasionally enter later combat waves in visible suits (J advances waves). Three incomplete, damaged T-45 frames with cores can be discovered and configured in the testing field. Each frame's parts, core and location save independently; no power armor plate crafting.</p>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <p><strong>W20.74.1 · LOOT-ONLY POWER ARMOR:</strong> Armor plates cannot be crafted. Find or salvage them in the world, then install them on the chassis. Repairs use specific tier-dependent crafting components; higher-tier modules require rarer and more numerous materials, with costs scaling to their damage.</p>
+    <p><strong>W20.74.1 · POWER ARMOR REPAIRS:</strong> Armor plates cannot be crafted. Recover parts from armored enemies, faction dealers or found frames. Repairs use tier-dependent crafting components; higher-tier modules require rarer and more numerous materials, with costs scaling to their damage.</p>
     <p><strong>W20.74 · POWER ARMOR CONFIGURATION:</strong> The six-part condition figure now sits at the center of the service screen. Select any body section, inspect matching armor plates from your backpack, preview durability and protection, then deliberately install, remove, or repair that slot.</p>
     <p><strong>W20.73 · WEAPON WORKBENCH:</strong> Choose an owned weapon, inspect its installed assemblies, select a replacement part, and preview performance and exact material requirements before crafting or installing. Nothing is spent just by inspecting an option.</p>
     <p><strong>W20.72.1 · BARTER CONFIRMATION:</strong> Adding an item to either side now stages it for a single combined trade. Review everything you are buying and selling, check the net cap balance, and press Confirm Trade once. Closing or clearing the offer exchanges nothing.</p>
@@ -1507,14 +1508,14 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W20.74.1 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
+      <div><div class="loot-eyebrow">W20.75 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
         <h2>CONFIGURE<span> YOUR POWER ARMOR.</span></h2>
-        <p>Armor pieces must be discovered or looted, never crafted. Select a body section, install an owned plate, or repair the current plate using tier-specific components. Mix T-45, T-60 and T-01 pieces while preserving each part's durability. Tap E to configure and hold E at the rear hatch to enter.</p>
+        <p>Power armor plates are salvaged from genuinely armored foes, reputation suppliers and abandoned frames; never crafted. Approach any found frame, tap E to configure its individual pieces or repair them using tier-specific components, and hold E behind its rear hatch to enter. Every frame saves its own condition and fusion core.</p>
       </div>
       <button id="powerBayClose" type="button">DONE / RESUME</button>
     </div>
     <div class="loot-meta">
-      <strong>CHASSIS · SIX INDEPENDENT PIECES · CORE-POWERED HYDRAULICS</strong>
+      <strong id="powerFrameIdentity">CHASSIS · SIX INDEPENDENT PIECES · CORE-POWERED HYDRAULICS</strong>
       <button id="powerArmorControl" type="button">DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER</button>
       <button id="powerStripAll" type="button">REMOVE ALL SIX MODULES · KEEP PIECES</button>
     </div>
@@ -1927,7 +1928,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.74.1"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.75"></script>
 </body>
 </html>
 

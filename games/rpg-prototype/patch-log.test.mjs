@@ -5,10 +5,11 @@ import {readFileSync} from 'node:fs';
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),'utf8');
 
-test('systems testing splash shows loot-only power armor release first',()=>{
+test('systems testing splash shows faction power armor release first',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.74\.1/);
-  assert.match(log,/<strong>W20\.74\.1 · LOOT-ONLY POWER ARMOR:<\/strong>/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.75/);
+  assert.match(log,/<strong>W20\.75 · FACTION POWER ARMOR & FOUND FRAMES:<\/strong>/);
+  assert.match(log,/<strong>W20\.74\.1 · POWER ARMOR REPAIRS:<\/strong>/);
   assert.match(log,/<strong>W20\.74 · POWER ARMOR CONFIGURATION:<\/strong>/);
   assert.match(log,/<strong>W20\.73 · WEAPON WORKBENCH:<\/strong>/);
   assert.match(log,/<strong>W20\.72\.1 · BARTER CONFIRMATION:<\/strong>/);
@@ -16,10 +17,11 @@ test('systems testing splash shows loot-only power armor release first',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
-  assert.ok(log.indexOf('W20.74.1 · LOOT-ONLY POWER ARMOR')<log.indexOf('W20.74 · POWER ARMOR CONFIGURATION'));
+  assert.ok(log.indexOf('W20.75 · FACTION POWER ARMOR')<
+    log.indexOf('W20.74.1 · POWER ARMOR REPAIRS'));
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.74\.1/);
-  assert.match(bootstrap,/main\.js\?v=W20\.74\.1/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.75/);
+  assert.match(bootstrap,/main\.js\?v=W20\.75/);
 });

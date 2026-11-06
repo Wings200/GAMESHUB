@@ -3,7 +3,9 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,executeVendorBarter} from '../vendors.mjs?v=W20.74.1';
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.75';
+import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
+  createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
@@ -75,7 +77,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.74.1';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.75';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -419,7 +421,7 @@ for(const vendor of VENDORS){
   }
   box(vendor.x,1.00,vendor.z-2.61,4.55,1.96,.13,metal);
   const avatar=createPlayerAvatar(scene,{
-    variant:vendor.id==='armor'?'enforcer':'survivor',
+    variant:vendor.id==='armor'||vendor.faction==='dominion'?'enforcer':'survivor',
     heldWeaponEnabled:false});
   const actor={vendor,avatar,x:vendor.x,z:vendor.z-1.49,yaw:Math.PI};
   avatar.update({dt:.016,x:actor.x,z:actor.z,ground:0,
@@ -480,7 +482,7 @@ for(const node of CAMPAIGN_NODES){
   campaignMarkers.push({id:node.id,indicator:light});
   bounds.push({minX:node.x-.46,maxX:node.x+.46,
     minZ:node.z-.38,maxZ:node.z+.38,top:1.22});
-  if(['dispatch','dominion','foreman'].includes(node.id)){
+  if(['dispatch','dominion','vultures','foreman'].includes(node.id)){
     // These contacts are real jointed survivor models with idle breathing;
     // their bodies stay cosmetic and do not alter damage or combat targeting.
     const avatar=createPlayerAvatar(scene,{
@@ -865,21 +867,75 @@ dummyKinds.forEach(makeDummy);
 // W12.0: connected skeletal, rear-entry chassis at Station 8, independent of
 // normal player armor and of the static test-dummy equipment.
 const powerArmorBay={x:-49,z:-12};
-let powerArmorState=createPowerArmorState();
+let startingPowerArmor=createPowerArmorState();
 try{
   const raw=JSON.parse(localStorage.getItem('rpg-lab-powered-chassis')||'null');
-  if(raw)powerArmorState=safePowerArmorSnapshot(raw);
+  if(raw)startingPowerArmor=safePowerArmorSnapshot(raw);
 }catch{}
-const poweredSuit=buildPowerArmorVisual(scene,powerArmorBay,powerArmorState);
-// Power-armor transitions now show the SAME original survivor as third person.
-// No photorealistic Raider GLB is mounted for the player anymore.
-const pilotAvatar=createPlayerAvatar(poweredSuit.pilot,{heldWeaponEnabled:false});
-poweredSuit.useOriginalPilot();
+// Each found chassis has its own six plates, core, world position and saved
+// state. Selecting a nearby frame reuses the same proven service/entry UI.
+const powerFrames=new Map();
+let savedFramePositions={};
+try{
+  const saved=JSON.parse(localStorage.getItem('rpg-lab-power-frame-positions-v1')||'null');
+  if(saved&&typeof saved==='object'&&!Array.isArray(saved))savedFramePositions=saved;
+}catch{}
+function registerPowerFrame(id,position,state){
+  const visual=buildPowerArmorVisual(scene,position,state);
+  const last=savedFramePositions[id];
+  if(last&&Number.isFinite(last.x)&&Number.isFinite(last.z)&&
+      Math.abs(last.x)<75&&Math.abs(last.z)<75){
+    visual.root.position.set(last.x,0,last.z);
+    if(Number.isFinite(last.yaw))visual.root.rotation.y=last.yaw;
+  }
+  const avatar=createPlayerAvatar(visual.pilot,{heldWeaponEnabled:false});
+  visual.useOriginalPilot();
+  visual.root.visible=!state.occupied;
+  const frame={id,position,state,visual,avatar};
+  powerFrames.set(id,frame);
+  return frame;
+}
+const firstPowerFrame=registerPowerFrame('lab',powerArmorBay,startingPowerArmor);
+let savedAbandonedFrames={};
+try{
+  const raw=JSON.parse(localStorage.getItem('rpg-lab-abandoned-power-frames-v1')||'null');
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw))savedAbandonedFrames=raw;
+}catch{}
+for(const definition of ABANDONED_POWER_FRAMES){
+  const state=savedAbandonedFrames[definition.id]?
+    safePowerArmorSnapshot(savedAbandonedFrames[definition.id]):
+    createAbandonedPowerFrame(definition);
+  registerPowerFrame(definition.id,{x:definition.x,z:definition.z},state);
+}
+const previouslySelected=(()=>{
+  try{return localStorage.getItem('rpg-lab-selected-power-frame-v1');}catch{return null;}
+})();
+const initialFrame=[...powerFrames.values()].find(frame=>frame.state.occupied)||
+  powerFrames.get(previouslySelected)||firstPowerFrame;
+let activePowerFrame=initialFrame;
+let powerArmorState=activePowerFrame.state;
+let poweredSuit=activePowerFrame.visual;
+let pilotAvatar=activePowerFrame.avatar;
+function selectNearbyPowerFrame(){
+  if(powerArmorState.occupied||powerArmorState.phase!=='idle'||powerUIOpen)return;
+  let selected=null,distance=3.8;
+  for(const frame of powerFrames.values()){
+    const candidate=Math.hypot(player.x-frame.visual.root.position.x,
+      player.z-frame.visual.root.position.z);
+    if(candidate<distance){distance=candidate;selected=frame;}
+  }
+  if(!selected||selected===activePowerFrame)return;
+  activePowerFrame=selected;
+  poweredSuit=selected.visual;
+  powerArmorState=selected.state;
+  pilotAvatar=selected.avatar;
+  lastAppearanceKey=''; // recolor the selected frame's real pilot on the next update
+  try{localStorage.setItem('rpg-lab-selected-power-frame-v1',selected.id);}catch{}
+}
 textSign('POWER FRAME · TAP E TO CONFIGURE',-55,-6,0x8fbba4);
 textSign('REAR HATCH · HOLD E TO ENTER',-43,-6,0x8fbba4);
 textSign('SALVAGE CACHE · E TO SEARCH',-54,-8,0xd7b4ee);
 const poweredCockpit=buildPowerArmorCockpit(camera);
-poweredSuit.root.visible=!powerArmorState.occupied;
 poweredCockpit.visible=powerArmorState.occupied;
 let poweredArmorTime=0,powerUIOpen=false,powerUIFromField=false,lastFusionSave=0;
 const POWER_HOLD_MS=650;
@@ -943,7 +999,18 @@ function updatePowerCinematic(progress){
     String(powerEase(.91,1,p));
 }
 function savePowerArmor(){
-  try{localStorage.setItem('rpg-lab-powered-chassis',JSON.stringify(powerArmorState));}catch{}
+  try{
+    localStorage.setItem('rpg-lab-powered-chassis',
+      JSON.stringify(firstPowerFrame.state)); // preserve legacy lab saves
+    localStorage.setItem('rpg-lab-abandoned-power-frames-v1',JSON.stringify(
+      Object.fromEntries([...powerFrames.values()].filter(frame=>frame.id!=='lab')
+        .map(frame=>[frame.id,frame.state]))));
+    localStorage.setItem('rpg-lab-selected-power-frame-v1',activePowerFrame.id);
+    localStorage.setItem('rpg-lab-power-frame-positions-v1',JSON.stringify(
+      Object.fromEntries([...powerFrames.values()].map(frame=>[frame.id,{
+        x:frame.visual.root.position.x,z:frame.visual.root.position.z,
+        yaw:frame.visual.root.rotation.y}]))));
+  }catch{}
 }
 function nearPoweredSuit(){
   return Math.hypot(player.x-poweredSuit.root.position.x,
@@ -1211,6 +1278,10 @@ function refreshPowerPartChoices(){
     'NO REPAIR NEEDED':missing?'MISSING REPAIR COMPONENTS':'REPAIR INSTALLED PART';
 }
 function refreshPowerArmorUI(){
+  $('powerFrameIdentity').textContent=activePowerFrame.id==='lab'?
+    'STATION 8 · SERVICE CHASSIS':
+    'RECOVERED FRAME · '+activePowerFrame.id.replace('wreck-','').toUpperCase()+
+    ' · INDIVIDUAL CONDITION AND CORE SAVED';
   const summary=$('powerChassisSummary');summary.replaceChildren();
   for(const slot of POWER_ARMOR_SLOTS){
     const current=plateCondition(powerArmorState,slot);
@@ -1327,7 +1398,7 @@ function closePowerArmorBay(){
 function togglePoweredSuit(){
   if(powerArmorState.phase!=='idle')return;
   if(!powerArmorState.occupied&&!nearPoweredSuit()){
-    showShotNotice('GET CLOSER TO THE POWER ARMOR FRAME AT STATION 8');return;
+    showShotNotice('GET CLOSER TO A POWER ARMOR FRAME');return;
   }
   if(!powerArmorState.occupied&&!nearRearHatch()){
     showShotNotice('MOVE BEHIND THE FRAME · ENTER THROUGH THE REAR HATCH');return;
@@ -1726,7 +1797,7 @@ function createEnemy(spec){
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,
     tactics:makeEnemyTactics(spec.id),gunGlow:0,radarAlertSeconds:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
-    recoilPose:0,rigged:null,modelStatus:'original'};
+    recoilPose:0,rigged:null,modelStatus:'original',powerSuit:null,suitShell:null};
   const flesh=enemyMaterial(spec.color);
   const darkCloth=enemyMaterial(0x29353b);
   const hitParts={};
@@ -1796,6 +1867,68 @@ function createEnemy(spec){
   // ONE visible character. Primitive body and armor meshes remain physics-only
   // and cannot render, including after reset or a changed armor loadout.
   enemy.rigged=createNpcAvatar(root,spec.id);
+  // The suit is a VISIBLE, joint-mounted exoshell: the NPC must genuinely
+  // wear plates before any matching components can appear in its loot.
+  function createSuitShell(){
+    const shell=new THREE.Group();
+    const joints=enemy.rigged.hitJoints;
+    const metal=new THREE.MeshStandardMaterial({color:0x857d67,
+      roughness:.49,metalness:.73});
+    const dark=new THREE.MeshStandardMaterial({color:0x28353a,
+      roughness:.57,metalness:.62});
+    const visor=new THREE.MeshStandardMaterial({color:0x8ee1d7,
+      roughness:.2,metalness:.46,emissive:0x337267,emissiveIntensity:.7});
+    const add=(parent,geometry,material,x,y,z)=>{
+      const mesh=new THREE.Mesh(geometry,material);
+      mesh.position.set(x,y,z);parent.add(mesh);mesh.castShadow=true;
+      return mesh;
+    };
+    const parts=new Map();
+    const part=(slot,parent)=>{const group=new THREE.Group();
+      parent.add(group);parts.set(slot,group);return group;};
+    const chest=part('chest',joints.torso);
+    add(chest,new THREE.BoxGeometry(1.09,.69,.68),metal,0,.32,.02);
+    add(chest,new THREE.BoxGeometry(.65,.21,.76),dark,0,.64,.03);
+    for(const side of [-1,1]){
+      add(chest,new THREE.BoxGeometry(.20,.70,.72),metal,side*.52,.30,.02);
+      add(chest,new THREE.BoxGeometry(.16,.27,.47),dark,side*.20,.30,.42);
+    }
+    add(chest,new THREE.BoxGeometry(.5,.47,.26),dark,0,.35,-.46);
+    const reactor=add(chest,new THREE.CylinderGeometry(.17,.17,.12,16),visor,
+      0,.34,-.62);reactor.rotation.x=Math.PI/2;
+    const helmet=part('head',joints.head);
+    add(helmet,new THREE.SphereGeometry(.33,14,10),metal,0,.045,0);
+    add(helmet,new THREE.BoxGeometry(.44,.145,.105),visor,0,.055,.30);
+    add(helmet,new THREE.BoxGeometry(.37,.10,.24),dark,0,-.19,.17);
+    for(const side of [-1,1]){
+      const name=side<0?'left':'right';
+      const arm=joints.arms.find(j=>j.side===side);
+      const shoulder=part(name+'Arm',arm.shoulder);
+      add(shoulder,new THREE.SphereGeometry(.30,10,8),metal,0,-.13,.02);
+      add(shoulder,new THREE.BoxGeometry(.39,.54,.43),metal,0,-.39,.04);
+      add(shoulder,new THREE.BoxGeometry(.30,.21,.48),dark,0,-.61,.08);
+      const leg=joints.legs.find(j=>j.side===side);
+      const shin=part(name+'Leg',leg.hip);
+      add(shin,new THREE.BoxGeometry(.42,.66,.43),metal,0,-.34,.02);
+      add(shin,new THREE.BoxGeometry(.46,.24,.65),dark,0,-.68,.10);
+    }
+    for(const [slot,group] of parts){
+      group.visible=false;
+      group.traverse(mesh=>{
+        if(!mesh.isMesh)return;
+        mesh.userData.enemyId=spec.id;
+        mesh.userData.hitZone=slot;
+        mesh.userData.equipped=false;
+        mesh.userData.impactMaterial='metal';
+        enemyHitMeshes.push(mesh);
+      });
+    }
+    shell.userData.parts=parts;
+    shell.userData.material=metal;
+    shell.visible=false;
+    return shell;
+  }
+  enemy.suitShell=createSuitShell();
   // W20.23: COLLIDERS FOLLOW THE VISIBLE SKELETON.
   // The old standalone mannequin's 2.03 m skull overlapped the new scaled
   // NPC's visible face (~1.56-1.72 m), so legitimate face shots hit chest.
@@ -1838,6 +1971,23 @@ function createEnemy(spec){
 function refreshEnemyArmorVisuals(enemy){
   // Appearance follows the SAME six-slot loadout used for damage and loot.
   enemy.rigged?.setArmor(enemy.state.loadout);
+  if(enemy.suitShell){
+    enemy.suitShell.visible=!!enemy.powerSuit;
+    if(enemy.powerSuit){
+      const colors={t45:0x968b71,t60:0x5f8391,t01:0x77618e};
+      enemy.suitShell.userData.material.color.setHex(colors[enemy.powerSuit.tier]);
+      for(const [slot,part] of enemy.suitShell.userData.parts){
+        const worn=enemy.powerSuit.plates.includes(slot);
+        part.visible=worn;
+        part.traverse(mesh=>{if(mesh.isMesh)mesh.userData.equipped=worn;});
+      }
+    }else{
+      for(const part of enemy.suitShell.userData.parts.values()){
+        part.visible=false;
+        part.traverse(mesh=>{if(mesh.isMesh)mesh.userData.equipped=false;});
+      }
+    }
+  }
   for(const slot of ARMOR_SLOTS){
     const mesh=enemy.armorMeshes.get(slot);
     const piece=getArmorPiece(slot,enemy.state.loadout[slot]);
@@ -1863,6 +2013,7 @@ function resetEnemies(){
   if(lootOpen)closeLootOverlay();
   for(const enemy of enemies.values()){
     enemy.state.loadout=enemyArmorForRound(enemy.id,arenaRound);
+    enemy.powerSuit=enemyPowerArmorForRound(enemy.id,arenaRound);
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
     refreshEnemyArmorVisuals(enemy);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
@@ -1960,7 +2111,8 @@ function spawnWorldLoot(contents,x,z,source='world'){
 // No free power armor or crafting caches. Items come from world loot,
 // vendors, quests, or an authorized grant in the developer panel.
 function spawnEnemyLoot(enemy){
-  const generated=generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout);
+  const generated=generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout,
+    Math.random,enemy.powerSuit);
   const drops=WEAPON_REBUILD_MODE?generated.filter(entry=>{
     const item=getItem(entry.itemId);
     return (item?.category!=='weapon'&&item?.category!=='ammo')||
@@ -1985,6 +2137,7 @@ function markEnemyDefeated(enemy){
     recordCampaignObjective('raider-defeated');
     recordCampaignObjective('haven-defense');
   }
+  if(enemy.id==='enforcer')recordCampaignObjective('enforcer-defeated');
   awardSpecialExperience(({scout:45,raider:70,enforcer:105})[enemy.id]||45,'combat');
 }
 function discardEmptyLootBags(){
@@ -2531,6 +2684,7 @@ function vendorBarterError(reason){
     'not-owned':'AN ITEM IN YOUR SELL LIST IS NO LONGER OWNED',
     'wallet-full':'WALLET LIMIT REACHED',
     'wrong-merchant':'THIS MERCHANT CANNOT ACCEPT AN OFFER',
+    'reputation':'FACTION REPUTATION TOO LOW FOR THIS TRADE',
     'not-stocked':'THIS ITEM IS NOT IN THE MERCHANT STOCK'
   })[reason]||'TRADE CANNOT BE COMPLETED';
 }
@@ -2570,7 +2724,7 @@ function refreshVendorCart(){
   $('vendorCartNet').textContent=net>0?'YOU PAY '+net+' CAPS':
     net<0?'YOU RECEIVE '+(-net)+' CAPS':'EVEN TRADE · 0 CAPS';
   const preview=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,offer);
+    activeVendorId,vendorStock,offer,campaignState.reputation);
   $('vendorCartBalance').textContent=preview.ok?
     'WALLET AFTER TRADE · '+preview.caps+' CAPS':
     'CURRENT WALLET · '+campaignState.caps+' CAPS';
@@ -2639,12 +2793,15 @@ function refreshVendorUI(){
       continue;
     merchantCount++;
     const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
+    const access=vendorReputationAccess(vendor.id,campaignState.reputation,offer.itemId);
     const queued=vendorCartBuys.get(offer.itemId)?.quantity||0;
     const available=Math.max(0,remaining-queued);
     vendorTradeRow(merchantList,{itemId:offer.itemId,kind:'BUY',
       maxQuantity:available,initialQuantity:Math.min(offer.quantity,available),
-      blocked:queued&&available===0?'ALL QUEUED':'',
+      blocked:!access.ok?'REQUIRES '+access.required+' '+vendor.faction.toUpperCase()+' REP':
+        queued&&available===0?'ALL QUEUED':'',
       subtext:'STOCK ×'+remaining+(queued?' · QUEUED ×'+queued:'')+
+        (!access.ok?' · REPUTATION '+access.actual+'/'+access.required:'')+
         ' · '+vendorBuyPrice(offer.itemId,1)+' CAPS / UNIT',
       priceFor:n=>vendorBuyPrice(offer.itemId,n),onTrade:quantity=>{
       stageVendorBuy(offer.itemId,quantity);
@@ -2719,7 +2876,7 @@ function confirmVendorBarter(){
   if(!vendorOpen)return;
   saveBackpack();
   const result=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,vendorBarterOffer());
+    activeVendorId,vendorStock,vendorBarterOffer(),campaignState.reputation);
   if(!result.ok){
     showVendorFeedback(vendorBarterError(result.reason));
     refreshVendorCart();
@@ -2738,6 +2895,12 @@ function confirmVendorBarter(){
 function openVendor(vendor){
   if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||weaponsCrateOpen||
     powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
+  const access=vendorReputationAccess(vendor.id,campaignState.reputation);
+  if(!access.ok){
+    showShotNotice(vendor.title+' · '+access.faction.toUpperCase()+' REPUTATION '+
+      access.actual+'/'+access.required+' REQUIRED · NO ENLISTMENT NEEDED');
+    return;
+  }
   saveBackpack();
   activeVendorId=vendor.id;
   vendorCartBuys.clear();vendorCartSells.clear();
@@ -4431,7 +4594,10 @@ function shoot(){
     const boostedDamage=damageThisPellet*specialModifiers.gunDamageMultiplier*
       (zone==='head'?specialModifiers.headshotMultiplier:1)*
       (critical?specialModifiers.critDamageMultiplier:1);
-    const hit=applyDamage(enemy.state,boostedDamage,zone);
+    const shielded=enemy.powerSuit?.plates.includes(zone);
+    const tierReduction={t45:.25,t60:.35,t01:.45};
+    const hit=applyDamage(enemy.state,shielded?
+      boostedDamage*(1-tierReduction[enemy.powerSuit.tier]):boostedDamage,zone);
     if(hit.applied){
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
@@ -5277,6 +5443,7 @@ const CAMPAIGN_DIALOGUE={
   water:'Haven Junction has families waiting on clean water. Our pump is missing critical components.',
   pump:'The purifier motor is seized. Two units of salvage can rebuild the drive coupling.',
   dominion:'Supply convoys are being attacked. An armed Raider is operating in the eastern combat sector.',
+  vultures:'Our salvage route is blocked by a Dominion enforcer. Help us recover that territory and our people will trust you with better gear. No gang oath required.',
   courier:'The courier was carrying infrastructure plans and proof that the old military command lied about what happened to the frontier. Both could save lives—or start another war.',
   foreman:'I am the last electrician left in Haven Junction. The old generator is burned out, the crew is terrified, and everybody has a different idea of who should own the lights.',
   generator:'The junction bus is blackened. A cracked regulator leaks power, and the intake coils need fresh copper. Four units of salvage should restore it.'
@@ -5575,12 +5742,23 @@ function renderCampaignDialogue(){
         choice('COMPARE · Archived Dominion orders',()=>recordCampaignObjective('orders-verified'));
       break;
     }
+    case 'vultures':{
+      const q=progress('salvage-rights');
+      if(!q)choice('ACCEPT · Salvage Rights',()=>accept('salvage-rights'));
+      else if(q.status==='active'&&q.stage===1)
+        choice('REPORT · Dominion enforcer driven off',()=>finish('salvage-rights','report'));
+      else if(q.status==='active')
+        choice('Drive the Dominion enforcer out of Station 9',()=>{},true);
+      else choice('Salvage Rights · CONTRACT COMPLETE',()=>{},true);
+      break;
+    }
     case 'courier':{
       const q=progress('lost-courier');
       if(!q)choice('INVESTIGATE · The Missing Courier',()=>accept('lost-courier'));
       else if(q.status==='active'&&q.stage===1){
         choice('Share the plans with FREE SETTLEMENTS',()=>finish('lost-courier','settlers'));
         choice('Sell the plans to THE DIRECTORATE',()=>finish('lost-courier','directorate'));
+        choice('Trade the plans to RUST VULTURES',()=>finish('lost-courier','vultures'));
       }else if(q.status==='active')
         choice('Find the courier recording at the relay',()=>{},true);
       else choice('The Missing Courier · CONTRACT COMPLETE',()=>{},true);
@@ -5589,6 +5767,8 @@ function renderCampaignDialogue(){
       else if(broadcast.status==='active'&&broadcast.stage===2){
         choice('BROADCAST · Warn every settlement',()=>finish('last-broadcast','publish'));
         choice('BURY · Sell the evidence to the Directorate',()=>finish('last-broadcast','bury'));
+        choice('HAND OVER · Return the evidence to Dominion command',
+          ()=>finish('last-broadcast','dominion'));
       }else if(broadcast.status==='active')
         choice('Decrypt the relay, then verify military orders',()=>{},true);
       else choice('The Last Broadcast · COMPLETE',()=>{},true);
@@ -5734,6 +5914,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyU'&&!e.repeat&&controls.isLocked){beginWorkbench();return;}
   if(e.code==='KeyE'&&!e.repeat&&controls.isLocked){
     e.preventDefault();
+    selectNearbyPowerFrame();
     // The power-frame hold also recognizes a short contextual tap on keyup.
     // This lets suited players loot nearby bodies/crates without exiting.
     const contact=nearCampaignNode();
@@ -6292,6 +6473,7 @@ function frame(){
         (meters!==null?' · '+meters+' m':'');
     }
   }
+  selectNearbyPowerFrame();
   if(refreshDisplay)refreshPowerArmorHUD();
   // Loot prompt follows world-space proximity; it does not require
   // the target enemy body to stay rendered after defeat.

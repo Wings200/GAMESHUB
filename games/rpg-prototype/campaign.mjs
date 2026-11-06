@@ -46,6 +46,17 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     ],
     outcomes:{report:{label:'File a successful patrol report',reputation:{dominion:14,vultures:-9}}}
   },
+  'salvage-rights':{
+    id:'salvage-rights',type:'faction',title:'Salvage Rights',
+    description:'The Rust Vultures want the armored Dominion enforcer driven away from their salvage route. Prove yourself without having to join their ranks.',
+    giver:'vultures',xp:150,caps:80,
+    stages:[
+      {event:'enforcer-defeated',node:'arena',text:'Defeat the Dominion Enforcer in the Station 9 combat arena.'},
+      {event:'vulture-report',node:'vultures',text:'Return to the Vulture broker and claim the salvage-rights contract.'}
+    ],
+    outcomes:{report:{label:'Claim Vulture salvage rights',
+      reputation:{vultures:40,dominion:-14,settlers:-8}}}
+  },
   'lost-courier':{
     id:'lost-courier',type:'side',title:'The Missing Courier',
     description:'A courier vanished carrying encrypted infrastructure plans. Their distress beacon is still active.',
@@ -56,7 +67,9 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     ],
     outcomes:{
       settlers:{label:'Share the plans with the Free Settlements',reputation:{settlers:10,directorate:-5}},
-      directorate:{label:'Sell the plans to the Directorate',reputation:{directorate:16,settlers:-8},caps:80}
+      directorate:{label:'Sell the plans to the Directorate',reputation:{directorate:16,settlers:-8},caps:80},
+      vultures:{label:'Trade the plans for Vulture protection',
+        reputation:{vultures:28,settlers:-8,dominion:-10},caps:25}
     }
   },
   'haven-first-light':{
@@ -85,7 +98,9 @@ export const CAMPAIGN_QUESTS=Object.freeze({
     ],
     outcomes:{
       publish:{label:'Transmit the evidence to every settlement',reputation:{settlers:16,dominion:-15,directorate:5}},
-      bury:{label:'Sell the evidence to the Directorate and silence the signal',reputation:{directorate:20,settlers:-10},caps:85}
+      bury:{label:'Sell the evidence to the Directorate and silence the signal',reputation:{directorate:20,settlers:-10},caps:85},
+      dominion:{label:'Return the evidence to Dominion command',
+        reputation:{dominion:22,settlers:-12,directorate:-8},caps:40}
     }
   }
 });
@@ -95,6 +110,7 @@ export const CAMPAIGN_NODES=Object.freeze([
   {id:'water',name:'WATER COORDINATOR',x:-49,z:-18,faction:'settlers',color:0x71b5cb},
   {id:'pump',name:'BROKEN PURIFIER',x:-51,z:2,faction:'settlers',color:0xd8b77e},
   {id:'dominion',name:'DOMINION OFFICER',x:13,z:-18,faction:'dominion',color:0xb0c7dc},
+  {id:'vultures',name:'VULTURE BROKER',x:27,z:-15,faction:'vultures',color:0xcf886d},
   {id:'courier',name:'COURIER BEACON',x:-56,z:34,faction:'directorate',color:0xb99bd2},
   {id:'foreman',name:'HAVEN FOREMAN',x:-38,z:-18,faction:'settlers',color:0xd9bd75},
   {id:'generator',name:'HAVEN GENERATOR',x:-25,z:-16,faction:'settlers',color:0xe8b65b}
@@ -212,3 +228,4 @@ export function campaignJournal(current){
       reward:quest.xp+' XP · '+quest.caps+'+ CAPS'};
   });
 }
+

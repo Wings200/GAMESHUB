@@ -36,3 +36,14 @@ test('previewing an owned plate does not install it before explicit confirmation
   assert.match(main,/\$\('powerRepairSelected'\)\.addEventListener\('click',/);
   assert.match(main,/selectedPowerChoice='installed';\s*refreshPowerArmorUI\(\);refreshInventoryUI\(\)/);
 });
+
+test('each discovered chassis can be entered, configured and saved independently',()=>{
+  assert.match(main,/for\(const definition of ABANDONED_POWER_FRAMES\)/);
+  assert.match(main,/registerPowerFrame\(definition.id/);
+  assert.match(main,/function selectNearbyPowerFrame\(\)/);
+  assert.match(main,/activePowerFrame=selected;[\s\S]*?poweredSuit=selected.visual;[\s\S]*?powerArmorState=selected.state/);
+  assert.match(main,/rpg-lab-abandoned-power-frames-v1/);
+  assert.match(main,/rpg-lab-power-frame-positions-v1/);
+  assert.match(main,/lastAppearanceKey=''; \/\/ recolor/);
+  assert.match(html,/id="powerFrameIdentity"/);
+});

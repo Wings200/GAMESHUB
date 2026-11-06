@@ -54,14 +54,18 @@ test('missing components reject entire repair without altering condition',()=>{
   assert.equal(plateCondition(state,'chest').current,plateCondition(state,'chest').max);
 });
 
-test('plates can be discovered as rare worn elite loot, not purchased or crafted',()=>{
-  const lucky=generateEnemyLoot('enforcer',0,null,()=>0);
+test('plates come from visibly powered opponents or reputation suppliers, not crafting',()=>{
+  const lucky=generateEnemyLoot('enforcer',3,null,()=>0,
+    {tier:'t45',plates:['head','chest'],coreCharge:80});
   assert.ok(lucky.some(item=>item.itemId.startsWith('power-plate:t45-')&&
     item.condition>0));
   const noFind=generateEnemyLoot('enforcer',0,null,()=>.99);
   assert.ok(!noFind.some(item=>item.itemId.startsWith('power-plate:')));
   for(const vendor of VENDORS)
-    assert.ok(vendor.offers.every(offer=>!offer.itemId.startsWith('power-plate:')));
+    if(!vendor.faction)
+      assert.ok(vendor.offers.every(offer=>!offer.itemId.startsWith('power-plate:')));
+  assert.ok(VENDORS.filter(vendor=>vendor.faction).every(vendor=>
+    vendor.offers.some(offer=>offer.itemId.startsWith('power-plate:t45-'))));
   assert.doesNotMatch(page,/id="powerCraftButton"/);
   assert.doesNotMatch(page,/id="powerCraftTier"/);
   assert.doesNotMatch(main,/powerCraftButton|POWER_ARMOR_RECIPES|POWER_COMPONENT_RECIPES/);

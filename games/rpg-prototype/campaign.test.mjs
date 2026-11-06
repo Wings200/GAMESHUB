@@ -2,9 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   initialCampaignState,startCampaignQuest,resolveCampaignQuest,
-  trackedCampaignObjective,toggleCampaignQuestTracking,safeCampaignSnapshot,
+  advanceCampaignEvent,trackedCampaignObjective,toggleCampaignQuestTracking,safeCampaignSnapshot,
   campaignJournal
 } from './campaign.mjs';
+
+test('Vultures can earn supplier reputation through quests without joining',()=>{
+  let state=startCampaignQuest(initialCampaignState(),'salvage-rights').state;
+  assert.equal(trackedCampaignObjective(state).node,'arena');
+  state=advanceCampaignEvent(state,'enforcer-defeated').state;
+  assert.equal(trackedCampaignObjective(state).node,'vultures');
+  state=resolveCampaignQuest(state,'salvage-rights','report').state;
+  assert.equal(state.reputation.vultures,40);
+  assert.equal(state.quests['salvage-rights'].status,'completed');
+  assert.equal(trackedCampaignObjective(state),null);
+});
 
 test('HUD has no quest objective when no quest is active',()=>{
   assert.equal(trackedCampaignObjective(initialCampaignState()),null);
@@ -52,3 +63,4 @@ test('Completed and unaccepted quests cannot be added to the HUD',()=>{
   assert.equal(toggled.changed,false);
   assert.equal(toggled.state.tracked,null);
 });
+

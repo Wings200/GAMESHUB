@@ -4,10 +4,10 @@ import {createBackpack,addItem,countItem,BACKPACK_LIMIT,getItem} from './invento
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
   buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor,
-  executeVendorBarter} from './vendors.mjs';
+  executeVendorBarter,vendorReputationAccess} from './vendors.mjs';
 
-test('four physical vendors offer real catalog items by specialty',()=>{
-  assert.equal(VENDORS.length,4);
+test('six physical vendors offer real catalog items by specialty',()=>{
+  assert.equal(VENDORS.length,6);
   for(const vendor of VENDORS){
     assert.equal(vendorById(vendor.id),vendor);
     for(const offer of vendor.offers){
@@ -17,6 +17,28 @@ test('four physical vendors offer real catalog items by specialty',()=>{
     }
   }
   assert.equal(vendorAccepts('medic','weapon:pipe-rifle'),false);
+});
+
+test('power armor suppliers require reputation, never formal membership',()=>{
+  const military='dominion-quartermaster',raider='vultures-armorer';
+  assert.equal(vendorReputationAccess(military,{dominion:34}).ok,false);
+  assert.equal(vendorReputationAccess(military,{dominion:35}).ok,true);
+  assert.equal(vendorReputationAccess(raider,{vultures:35}).ok,true);
+  assert.equal(vendorReputationAccess(raider,{vultures:34}).ok,false);
+  assert.equal(vendorReputationAccess(military,{dominion:60},'power-plate:t60-chest').ok,false);
+  assert.equal(vendorReputationAccess(military,{dominion:65},'power-plate:t60-chest').ok,true);
+  assert.equal(vendorAccepts('armor','power-plate:t45-chest'),false);
+  assert.equal(vendorStockRemaining(createVendorStock(),'scavenger','supply:fusion-core'),0);
+  const stock=createVendorStock(),pack=createBackpack();
+  assert.equal(buyFromVendor(pack,10000,military,'power-plate:t45-head',stock,1,
+    {dominion:34}).reason,'reputation');
+  const trade={sells:[],buys:[{itemId:'power-plate:t45-head',quantity:1}]};
+  assert.equal(executeVendorBarter(pack,10000,military,stock,trade,{dominion:34}).ok,false);
+  const bought=executeVendorBarter(pack,10000,military,stock,trade,{dominion:35});
+  assert.equal(bought.ok,true);
+  assert.equal(countItem(bought.pack,'power-plate:t45-head'),1);
+  assert.equal(vendorStockRemaining(stock,military,'power-plate:t45-head'),1);
+  assert.equal(vendorStockRemaining(bought.stock,military,'power-plate:t45-head'),0);
 });
 
 test('buying an item spends caps only after full inventory addition',()=>{

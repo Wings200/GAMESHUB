@@ -2,6 +2,8 @@
 // existing inventory items and campaign caps, never a second wallet.
 import {getItem,addItem,removeItem,countItem,spendMaterial} from './inventory.mjs';
 import {CRAFTING_COMPONENTS} from './materials.mjs';
+import {FACTION_POWER_ARMOR_REPUTATION,ADVANCED_POWER_ARMOR_REPUTATION}
+  from './power-acquisition.mjs?v=W20.75';
 
 export const VENDORS=Object.freeze([
   Object.freeze({id:'arms',name:'MARA',title:'ARMS DEALER',specialty:'Firearms & ammunition',
@@ -30,8 +32,30 @@ export const VENDORS=Object.freeze([
       {itemId:'supply:salvage',quantity:5},
       {itemId:'supply:optic-glass',quantity:2},
       {itemId:'clothing:field-cap',quantity:1},
-      {itemId:'clothing:field-backpack',quantity:1},
-      {itemId:'supply:fusion-core',quantity:1}
+      {itemId:'clothing:field-backpack',quantity:1}
+    ])}),
+  Object.freeze({id:'dominion-quartermaster',name:'LT. HALE',title:'DOMINION QUARTERMASTER',
+    specialty:'Military power armor · Iron Dominion trust required',faction:'dominion',
+    minReputation:FACTION_POWER_ARMOR_REPUTATION,
+    x:17,z:9,color:0x849fba,offers:Object.freeze([
+      {itemId:'power-plate:t45-head',quantity:1},
+      {itemId:'power-plate:t45-chest',quantity:1},
+      {itemId:'power-plate:t45-leftArm',quantity:1},
+      {itemId:'power-plate:t45-rightLeg',quantity:1},
+      {itemId:'supply:fusion-core',quantity:1},
+      {itemId:'power-plate:t60-chest',quantity:1,minReputation:ADVANCED_POWER_ARMOR_REPUTATION},
+      {itemId:'power-plate:t60-head',quantity:1,minReputation:ADVANCED_POWER_ARMOR_REPUTATION}
+    ])}),
+  Object.freeze({id:'vultures-armorer',name:'VEX',title:'VULTURE ARMOR DEALER',
+    specialty:'Recovered raid suits · Rust Vultures trust required',faction:'vultures',
+    minReputation:FACTION_POWER_ARMOR_REPUTATION,
+    x:28,z:9,color:0xba7859,offers:Object.freeze([
+      {itemId:'power-plate:t45-chest',quantity:1},
+      {itemId:'power-plate:t45-rightArm',quantity:1},
+      {itemId:'power-plate:t45-leftLeg',quantity:1},
+      {itemId:'power-plate:t45-rightLeg',quantity:1},
+      {itemId:'supply:fusion-core',quantity:1},
+      {itemId:'power-plate:t60-rightArm',quantity:1,minReputation:ADVANCED_POWER_ARMOR_REPUTATION}
     ])})
 ]);
 
@@ -75,16 +99,29 @@ function adjustStock(stock,vendorId,itemId,amount){
 }
 
 export function vendorById(id){return VENDORS.find(v=>v.id===id)||null;}
+export function vendorReputationAccess(vendorId,reputation={},itemId=null){
+  const vendor=vendorById(vendorId);
+  if(!vendor)return {ok:false,reason:'wrong-merchant'};
+  if(!vendor.faction)return {ok:true,required:0,actual:0};
+  const offer=itemId===null?null:vendor.offers.find(o=>o.itemId===itemId);
+  const required=Math.max(vendor.minReputation||0,offer?.minReputation||0);
+  const actual=Number.isFinite(reputation?.[vendor.faction])?
+    Math.max(-100,Math.min(100,reputation[vendor.faction])):0;
+  return {ok:actual>=required,reason:'reputation',required,actual,
+    faction:vendor.faction};
+}
 export function vendorAccepts(vendorId,itemId){
   const vendor=vendorById(vendorId);
   if(!vendor)return false;
   let item;try{item=getItem(itemId);}catch{return false;}
   if(vendorId==='arms')return item.category==='weapon'||item.category==='ammo';
-  if(vendorId==='armor')return item.category==='armor'||item.category==='power-plate';
+  if(vendorId==='armor')return item.category==='armor';
   if(vendorId==='medic')return item.id==='supply:medkit';
   if(vendorId==='scavenger')return item.category==='clothing'||
     item.category==='fusion-core'||item.category==='material'||
     (item.category==='supply'&&item.key!=='medkit');
+  if(vendor.faction)return item.category==='power-plate'||
+    item.category==='fusion-core';
   return false;
 }
 
@@ -100,10 +137,12 @@ export function vendorSellPrice(itemId,quantity=1){
 }
 
 export function buyFromVendor(pack,caps,vendorId,itemId,
-  stock=createVendorStock(),requestedQuantity=null){
+  stock=createVendorStock(),requestedQuantity=null,reputation={}){
   const vendor=vendorById(vendorId);
   const offer=vendor?.offers.find(o=>o.itemId===itemId);
   if(!offer)return{ok:false,reason:'not-stocked'};
+  const access=vendorReputationAccess(vendorId,reputation,itemId);
+  if(!access.ok)return {ok:false,...access};
   const available=vendorStockRemaining(stock,vendorId,itemId);
   if(available===0)return{ok:false,reason:'out-of-stock'};
   // Existing callers still purchase one offer bundle by default. The trade
@@ -136,7 +175,9 @@ export function isEquippedItem(pack,entry){
 }
 
 export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
-  stock=createVendorStock()){
+  stock=createVendorStock(),reputation={}){
+  const access=vendorReputationAccess(vendorId,reputation);
+  if(!access.ok)return {ok:false,...access};
   const entry=pack.items.find(e=>e.uid===uid);
   if(!entry)return{ok:false,reason:'not-owned'};
   if(!vendorAccepts(vendorId,entry.itemId))return{ok:false,reason:'wrong-merchant'};
@@ -155,7 +196,9 @@ export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
 }
 
 export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
-  stock=createVendorStock()){
+  stock=createVendorStock(),reputation={}){
+  const access=vendorReputationAccess(vendorId,reputation);
+  if(!access.ok)return {ok:false,...access};
   let material;try{material=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
   if(material.category!=='material'||!vendorAccepts(vendorId,itemId))
     return{ok:false,reason:'wrong-merchant'};
@@ -173,7 +216,9 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
 // Ammunition uses reserves rather than inventory slots. Selling reserve
 // rounds never affects the weapon's loaded magazine or an equipped item.
 export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
-  stock=createVendorStock()){
+  stock=createVendorStock(),reputation={}){
+  const access=vendorReputationAccess(vendorId,reputation);
+  if(!access.ok)return {ok:false,...access};
   let item;try{item=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
   if(item.category!=='ammo'||!vendorAccepts(vendorId,itemId))
     return{ok:false,reason:'wrong-merchant'};
@@ -191,8 +236,10 @@ export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
 // A barter offer is only committed if every buy and sale succeeds. Run the
 // offer against copied game state, then return one final snapshot. The same
 // function can be used to preview the deal without changing live state.
-export function executeVendorBarter(pack,caps,vendorId,stock,offer){
+export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}){
   if(!vendorById(vendorId))return{ok:false,reason:'wrong-merchant'};
+  const access=vendorReputationAccess(vendorId,reputation);
+  if(!access.ok)return {ok:false,...access};
   const sells=offer?.sells,buys=offer?.buys;
   if(!Array.isArray(sells)||!Array.isArray(buys)||
      (!sells.length&&!buys.length))
@@ -204,13 +251,13 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer){
     let result;
     if(line?.type==='inventory')
       result=sellToVendor(statePack,stateCaps,vendorId,line.uid,
-        line.quantity,stateStock);
+        line.quantity,stateStock,reputation);
     else if(line?.type==='material')
       result=sellMaterialToVendor(statePack,stateCaps,vendorId,line.itemId,
-        line.quantity,stateStock);
+        line.quantity,stateStock,reputation);
     else if(line?.type==='ammo')
       result=sellAmmoToVendor(statePack,stateCaps,vendorId,line.itemId,
-        line.quantity,stateStock);
+        line.quantity,stateStock,reputation);
     else return{ok:false,reason:'invalid-trade'};
     if(!result.ok)return{ok:false,reason:result.reason};
     statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
@@ -220,7 +267,7 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer){
   }
   for(const line of buys){
     const result=buyFromVendor(statePack,stateCaps,vendorId,line?.itemId,
-      stateStock,line?.quantity);
+      stateStock,line?.quantity,reputation);
     if(!result.ok)return{ok:false,reason:result.reason};
     statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
     paid+=result.price;
