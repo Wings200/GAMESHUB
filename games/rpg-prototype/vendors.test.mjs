@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {createBackpack,addItem,countItem,BACKPACK_LIMIT,getItem} from './inventory.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor} from './vendors.mjs';
+  buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor,
+  executeVendorBarter} from './vendors.mjs';
 
 test('four physical vendors offer real catalog items by specialty',()=>{
   assert.equal(VENDORS.length,4);
@@ -145,6 +146,37 @@ test('ammo sales debit reserves and never mutate the source inventory',()=>{
     'wrong-merchant');
   assert.equal(sellAmmoToVendor(pack,0,'arms','ammo:10mm-pistol',before+1,stock).reason,
     'invalid-quantity');
+});
+
+test('barter can fund a purchase from a sale and commits only the final snapshot',()=>{
+  const pack=createBackpack(),stock=createVendorStock();
+  addItem(pack,'armor:ranger-chest',1);
+  const uid=pack.items[0].uid;
+  const offer={sells:[{type:'inventory',uid,quantity:1}],
+    buys:[{itemId:'armor:scrap-chest',quantity:1}]};
+  const startingCaps=Math.max(0,vendorBuyPrice('armor:scrap-chest',1)-
+    vendorSellPrice('armor:ranger-chest',1));
+  const result=executeVendorBarter(pack,startingCaps,'armor',stock,offer);
+  assert.equal(result.ok,true);
+  assert.equal(countItem(pack,'armor:ranger-chest'),1,'original is untouched');
+  assert.equal(countItem(result.pack,'armor:ranger-chest'),0);
+  assert.equal(countItem(result.pack,'armor:scrap-chest'),1);
+  assert.equal(result.caps,startingCaps+result.earned-result.paid);
+  assert.equal(stock.armor['armor:scrap-chest'],
+    vendorStockRemaining(stock,'armor','armor:scrap-chest'));
+});
+
+test('barter rejects an entire offer when any line cannot complete',()=>{
+  const pack=createBackpack(),stock=createVendorStock();
+  const before=JSON.stringify({pack,stock});
+  const result=executeVendorBarter(pack,0,'armor',stock,{
+    sells:[{type:'inventory',uid:'missing',quantity:1}],
+    buys:[{itemId:'armor:scrap-chest',quantity:1}]});
+  assert.equal(result.ok,false);
+  assert.equal(JSON.stringify({pack,stock}),before);
+  assert.equal(executeVendorBarter(pack,0,'armor',stock,{
+    sells:[],buys:[{itemId:'armor:scrap-chest',quantity:1}]}).reason,
+    'insufficient-caps');
 });
 
 

@@ -189,4 +189,47 @@ export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
     stock:adjustStock(stock,vendorId,itemId,quantity),itemId,quantity};
 }
 
+// A barter offer is only committed if every buy and sale succeeds. Run the
+// offer against copied game state, then return one final snapshot. The same
+// function can be used to preview the deal without changing live state.
+export function executeVendorBarter(pack,caps,vendorId,stock,offer){
+  if(!vendorById(vendorId))return{ok:false,reason:'wrong-merchant'};
+  const sells=offer?.sells,buys=offer?.buys;
+  if(!Array.isArray(sells)||!Array.isArray(buys)||
+     (!sells.length&&!buys.length))
+    return{ok:false,reason:'empty-trade'};
+  let statePack=pack,stateCaps=caps,stateStock=stock;
+  let paid=0,earned=0;
+  const trades=[];
+  for(const line of sells){
+    let result;
+    if(line?.type==='inventory')
+      result=sellToVendor(statePack,stateCaps,vendorId,line.uid,
+        line.quantity,stateStock);
+    else if(line?.type==='material')
+      result=sellMaterialToVendor(statePack,stateCaps,vendorId,line.itemId,
+        line.quantity,stateStock);
+    else if(line?.type==='ammo')
+      result=sellAmmoToVendor(statePack,stateCaps,vendorId,line.itemId,
+        line.quantity,stateStock);
+    else return{ok:false,reason:'invalid-trade'};
+    if(!result.ok)return{ok:false,reason:result.reason};
+    statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
+    earned+=result.price;
+    trades.push({kind:'sell',itemId:result.itemId,quantity:result.quantity,
+      price:result.price});
+  }
+  for(const line of buys){
+    const result=buyFromVendor(statePack,stateCaps,vendorId,line?.itemId,
+      stateStock,line?.quantity);
+    if(!result.ok)return{ok:false,reason:result.reason};
+    statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
+    paid+=result.price;
+    trades.push({kind:'buy',itemId:result.itemId,quantity:result.quantity,
+      price:result.price});
+  }
+  return{ok:true,pack:statePack,caps:stateCaps,stock:stateStock,
+    paid,earned,net:paid-earned,trades};
+}
+
 

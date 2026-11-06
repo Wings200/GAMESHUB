@@ -3,8 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor,
-  isEquippedItem} from '../vendors.mjs?v=W20.72';
+  isEquippedItem,executeVendorBarter} from '../vendors.mjs?v=W20.72.1';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
@@ -2416,6 +2415,7 @@ $('lootTakeAll').addEventListener('click',()=>{
 
 // W20.56: Real test-field vendor transactions using the saved campaign wallet.
 let vendorOpen=false,vendorFromField=false,activeVendorId=null;
+const vendorCartBuys=new Map(),vendorCartSells=new Map();
 let vendorStock=createVendorStock();
 try{
   vendorStock=safeVendorStockSnapshot(JSON.parse(
@@ -2435,6 +2435,93 @@ function nearestVendor(){
 }
 function showVendorFeedback(message){
   $('vendorFeedback').textContent=message;
+}
+function vendorBarterOffer(){
+  return {buys:[...vendorCartBuys.values()].map(line=>({...line})),
+    sells:[...vendorCartSells.values()].map(line=>({...line}))};
+}
+function stageVendorBuy(itemId,quantity){
+  const previous=vendorCartBuys.get(itemId)?.quantity||0;
+  const available=vendorStockRemaining(vendorStock,activeVendorId,itemId);
+  if(previous+quantity>available){
+    showVendorFeedback('NOT ENOUGH STOCK TO ADD THAT QUANTITY');return;
+  }
+  vendorCartBuys.set(itemId,{itemId,quantity:previous+quantity});
+  refreshVendorUI();
+  showVendorFeedback('ADDED TO BUY LIST · REVIEW THE TRADE BELOW BEFORE CONFIRMING');
+}
+function stageVendorSell(type,itemId,uid,quantity){
+  const key=type==='inventory'?'inventory:'+uid:type+':'+itemId;
+  const previous=vendorCartSells.get(key)?.quantity||0;
+  const owned=type==='inventory'?
+    backpack.items.find(entry=>entry.uid===uid)?.quantity||0:
+    countItem(backpack,itemId);
+  if(previous+quantity>owned){
+    showVendorFeedback('NOT ENOUGH ITEMS TO ADD THAT QUANTITY');return;
+  }
+  vendorCartSells.set(key,{type,itemId,...(uid?{uid}:{}),
+    quantity:previous+quantity});
+  refreshVendorUI();
+  showVendorFeedback('ADDED TO SELL LIST · REVIEW THE TRADE BELOW BEFORE CONFIRMING');
+}
+function vendorBarterError(reason){
+  return ({
+    'empty-trade':'SELECT ITEMS TO BUY OR SELL',
+    'insufficient-caps':'NOT ENOUGH CAPS · ADD ITEMS TO SELL OR REMOVE A PURCHASE',
+    'out-of-stock':'MERCHANT STOCK CHANGED · ADJUST YOUR PURCHASES',
+    'full-backpack':'NOT ENOUGH BACKPACK SPACE AFTER THIS TRADE',
+    'equipped':'EQUIPPED GEAR CANNOT BE SOLD · UNEQUIP FIRST',
+    'invalid-quantity':'INVALID QUANTITY IN THE TRADE LIST',
+    'not-owned':'AN ITEM IN YOUR SELL LIST IS NO LONGER OWNED',
+    'wallet-full':'WALLET LIMIT REACHED',
+    'wrong-merchant':'THIS MERCHANT CANNOT ACCEPT AN OFFER',
+    'not-stocked':'THIS ITEM IS NOT IN THE MERCHANT STOCK'
+  })[reason]||'TRADE CANNOT BE COMPLETED';
+}
+function refreshVendorCart(){
+  const offer=vendorBarterOffer();
+  const count=offer.buys.length+offer.sells.length;
+  $('vendorCartCount').textContent=count+' LINES';
+  const sellList=$('vendorCartSellItems'),buyList=$('vendorCartBuyItems');
+  sellList.replaceChildren();buyList.replaceChildren();
+  const render=(list,lines,kind,map)=>{
+    if(!lines.length){
+      const empty=document.createElement('p');
+      empty.className='vendor-cart-empty';
+      empty.textContent=kind==='SELL'?'NOTHING OFFERED YET':'NOTHING REQUESTED YET';
+      list.append(empty);return;
+    }
+    for(const line of lines){
+      const row=document.createElement('div');row.className='vendor-cart-line';
+      const item=getItem(line.itemId),price=kind==='SELL'?
+        vendorSellPrice(line.itemId,line.quantity):
+        vendorBuyPrice(line.itemId,line.quantity);
+      const description=document.createElement('span');
+      description.textContent=item.name+' ×'+line.quantity+' · '+price+' CAPS';
+      const remove=document.createElement('button');remove.type='button';
+      remove.textContent='REMOVE';
+      const key=kind==='SELL'?(line.type==='inventory'?
+        'inventory:'+line.uid:line.type+':'+line.itemId):line.itemId;
+      remove.addEventListener('click',()=>{map.delete(key);refreshVendorUI();});
+      row.append(description,remove);list.append(row);
+    }
+  };
+  render(sellList,offer.sells,'SELL',vendorCartSells);
+  render(buyList,offer.buys,'BUY',vendorCartBuys);
+  const buying=offer.buys.reduce((n,line)=>n+vendorBuyPrice(line.itemId,line.quantity),0);
+  const selling=offer.sells.reduce((n,line)=>n+vendorSellPrice(line.itemId,line.quantity),0);
+  const net=buying-selling;
+  $('vendorCartNet').textContent=net>0?'YOU PAY '+net+' CAPS':
+    net<0?'YOU RECEIVE '+(-net)+' CAPS':'EVEN TRADE · 0 CAPS';
+  const preview=executeVendorBarter(backpack,campaignState.caps,
+    activeVendorId,vendorStock,offer);
+  $('vendorCartBalance').textContent=preview.ok?
+    'WALLET AFTER TRADE · '+preview.caps+' CAPS':
+    'CURRENT WALLET · '+campaignState.caps+' CAPS';
+  $('vendorCartStatus').textContent=preview.ok?
+    'READY · '+count+' TRADE LINES · CONFIRM TO EXCHANGE ITEMS AND CAPS':
+    vendorBarterError(preview.reason);
+  $('vendorCartConfirm').disabled=!preview.ok;
 }
 function vendorTradeRow(list,{itemId,kind,maxQuantity,initialQuantity=1,
   subtext='',blocked='',priceFor,onTrade}){
@@ -2462,18 +2549,18 @@ function vendorTradeRow(list,{itemId,kind,maxQuantity,initialQuantity=1,
     const quantity=Number(input.value);
     const valid=Number.isSafeInteger(quantity)&&quantity>=1&&quantity<=maxQuantity;
     const price=valid?priceFor(quantity):0;
-    const shortOnCaps=kind==='BUY'&&valid&&price>campaignState.caps;
     cost.textContent=valid?'TOTAL · '+price+' CAPS':'SELECT A VALID QUANTITY';
-    button.disabled=!valid||!!blocked||shortOnCaps;
+    // A purchase can be funded by items offered in the same barter deal.
+    // Caps are checked at the final confirmation, not while staging.
+    button.disabled=!valid||!!blocked;
     button.textContent=blocked||(!maxQuantity?'SOLD OUT':
-      shortOnCaps?'NEED '+(price-campaignState.caps)+' CAPS':kind+' · '+price+' CAPS');
+      'ADD '+kind+' ×'+quantity);
     return valid?quantity:0;
   }
   input.addEventListener('input',updateQuote);
   button.addEventListener('click',()=>{
     const quantity=updateQuote();
     if(!quantity||button.disabled)return;
-    saveBackpack();
     onTrade(quantity);
   });
   trade.append(amountLabel,cost,button);
@@ -2496,13 +2583,15 @@ function refreshVendorUI(){
       continue;
     merchantCount++;
     const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
+    const queued=vendorCartBuys.get(offer.itemId)?.quantity||0;
+    const available=Math.max(0,remaining-queued);
     vendorTradeRow(merchantList,{itemId:offer.itemId,kind:'BUY',
-      maxQuantity:remaining,initialQuantity:Math.min(offer.quantity,remaining),
-      subtext:'STOCK ×'+remaining+' · '+vendorBuyPrice(offer.itemId,1)+' CAPS / UNIT',
+      maxQuantity:available,initialQuantity:Math.min(offer.quantity,available),
+      blocked:queued&&available===0?'ALL QUEUED':'',
+      subtext:'STOCK ×'+remaining+(queued?' · QUEUED ×'+queued:'')+
+        ' · '+vendorBuyPrice(offer.itemId,1)+' CAPS / UNIT',
       priceFor:n=>vendorBuyPrice(offer.itemId,n),onTrade:quantity=>{
-      const outcome=buyFromVendor(backpack,campaignState.caps,
-        vendor.id,offer.itemId,vendorStock,quantity);
-      completeVendorTrade(outcome,'PURCHASED');
+      stageVendorBuy(offer.itemId,quantity);
     }});
   }
   const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId)&&
@@ -2510,14 +2599,16 @@ function refreshVendorUI(){
   for(const entry of sellable){
     playerCount++;
     const equipped=isEquippedItem(backpack,entry);
+    const queued=vendorCartSells.get('inventory:'+entry.uid)?.quantity||0;
+    const available=Math.max(0,entry.quantity-queued);
     vendorTradeRow(playerList,{itemId:entry.itemId,kind:'SELL',
-      maxQuantity:entry.quantity,blocked:equipped?'EQUIPPED · UNEQUIP FIRST':'',
+      maxQuantity:available,blocked:equipped?'EQUIPPED':
+        queued&&available===0?'ALL QUEUED':'',
       subtext:'OWNED ×'+entry.quantity+(equipped?' · EQUIPPED':'')+
+        (queued?' · QUEUED ×'+queued:'')+
         ' · '+vendorSellPrice(entry.itemId,1)+' CAPS / UNIT',
       priceFor:n=>vendorSellPrice(entry.itemId,n),onTrade:quantity=>{
-      const outcome=sellToVendor(backpack,campaignState.caps,
-        vendor.id,entry.uid,quantity,vendorStock);
-      completeVendorTrade(outcome,'SOLD');
+      stageVendorSell('inventory',entry.itemId,entry.uid,quantity);
     }});
   }
   for(const material of CRAFTING_COMPONENTS){
@@ -2525,13 +2616,14 @@ function refreshVendorUI(){
        (playerSearch&&!material.name.toLowerCase().includes(playerSearch)))continue;
     playerCount++;
     const quantity=countItem(backpack,material.id);
+    const queued=vendorCartSells.get('material:'+material.id)?.quantity||0;
     vendorTradeRow(playerList,{itemId:material.id,kind:'SELL',
-      maxQuantity:quantity,subtext:'POUCH ×'+quantity+' · '+
+      maxQuantity:Math.max(0,quantity-queued),
+      blocked:queued===quantity?'ALL QUEUED':'',
+      subtext:'POUCH ×'+quantity+(queued?' · QUEUED ×'+queued:'')+' · '+
         vendorSellPrice(material.id,1)+' CAPS / UNIT',
       priceFor:n=>vendorSellPrice(material.id,n),onTrade:amount=>{
-      const outcome=sellMaterialToVendor(backpack,campaignState.caps,
-        vendor.id,material.id,amount,vendorStock);
-      completeVendorTrade(outcome,'SOLD');
+      stageVendorSell('material',material.id,null,amount);
     }});
   }
   // Unlike equipment, spare rounds live in reserves and can be sold without
@@ -2543,12 +2635,14 @@ function refreshVendorUI(){
     if(!quantity||(playerSearch&&!getItem(itemId).name.toLowerCase().includes(playerSearch)))
       continue;
     playerCount++;
-    vendorTradeRow(playerList,{itemId,kind:'SELL',maxQuantity:quantity,
-      subtext:'RESERVE ×'+quantity+' · '+vendorSellPrice(itemId,1)+' CAPS / UNIT',
+    const queued=vendorCartSells.get('ammo:'+itemId)?.quantity||0;
+    vendorTradeRow(playerList,{itemId,kind:'SELL',
+      maxQuantity:Math.max(0,quantity-queued),
+      blocked:queued===quantity?'ALL QUEUED':'',
+      subtext:'RESERVE ×'+quantity+(queued?' · QUEUED ×'+queued:'')+
+        ' · '+vendorSellPrice(itemId,1)+' CAPS / UNIT',
       priceFor:n=>vendorSellPrice(itemId,n),onTrade:amount=>{
-      const outcome=sellAmmoToVendor(backpack,campaignState.caps,
-        vendor.id,itemId,amount,vendorStock);
-      completeVendorTrade(outcome,'SOLD');
+      stageVendorSell('ammo',itemId,null,amount);
     }});
   }
   $('vendorPlayerCount').textContent=playerCount+' SELLABLE ENTRIES';
@@ -2563,52 +2657,57 @@ function refreshVendorUI(){
     empty.textContent='NO MATCHING ITEMS THIS MERCHANT BUYS · CHECK ANOTHER MERCHANT.';
     playerList.append(empty);
   }
+  refreshVendorCart();
 }
-function completeVendorTrade(result,verb){
+function confirmVendorBarter(){
+  if(!vendorOpen)return;
+  saveBackpack();
+  const result=executeVendorBarter(backpack,campaignState.caps,
+    activeVendorId,vendorStock,vendorBarterOffer());
   if(!result.ok){
-    const reasons={
-      'insufficient-caps':'NOT ENOUGH CAPS',
-      'out-of-stock':'SOLD OUT · THIS MERCHANT HAS NO STOCK LEFT',
-      'full-backpack':'BACKPACK FULL · DROP SOMETHING FIRST',
-      'equipped':'EQUIPPED ITEM · UNEQUIP IN INVENTORY BEFORE SELLING',
-      'wrong-merchant':'THIS MERCHANT DOES NOT BUY THAT ITEM',
-      'not-stocked':'THIS MERCHANT DOES NOT STOCK THAT ITEM',
-      'invalid-quantity':'INVALID QUANTITY · CHECK AVAILABLE STOCK',
-      'wallet-full':'WALLET CANNOT HOLD MORE CAPS',
-      'not-owned':'ITEM NO LONGER IN INVENTORY'};
-    showVendorFeedback(reasons[result.reason]||'TRADE UNAVAILABLE');
+    showVendorFeedback(vendorBarterError(result.reason));
+    refreshVendorCart();
     return;
   }
   backpack=result.pack;campaignState.caps=result.caps;
-  if(result.stock){vendorStock=result.stock;saveVendorStock();}
+  vendorStock=result.stock;saveVendorStock();
   syncAmmoToWeapons();saveBackpack();saveCampaign();
+  vendorCartBuys.clear();vendorCartSells.clear();
   refreshInventoryUI();refreshWeaponHUD();refreshCampaignUI();
   refreshVendorUI();
-  showVendorFeedback(verb+' · '+getItem(result.itemId).name.toUpperCase()+
-    ' ×'+result.quantity+' · '+result.price+' CAPS · BALANCE '+result.caps+' CAPS');
+  showVendorFeedback('TRADE CONFIRMED · '+result.trades.length+' LINES · '+
+    (result.net>0?'PAID '+result.net:result.net<0?
+      'RECEIVED '+(-result.net):'EVEN TRADE')+' CAPS · BALANCE '+result.caps+' CAPS');
 }
 function openVendor(vendor){
   if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||weaponsCrateOpen||
     powerUIOpen||specialOpen||questPanelOpen||dialogueOpen||mapOpen)return;
   saveBackpack();
   activeVendorId=vendor.id;
+  vendorCartBuys.clear();vendorCartSells.clear();
   $('vendorSearch').value='';
   $('vendorPlayerSearch').value='';
   vendorFromField=controls.isLocked;
   vendorOpen=true;
   $('vendorPanel').classList.remove('hidden');$('menu').classList.add('hidden');
-  showVendorFeedback('CHOOSE QUANTITY AND CHECK TOTAL · SELL LEFT / BUY RIGHT · ALL TRADES SAVE');
+  showVendorFeedback('ADD ITEMS TO BOTH SIDES · REVIEW BELOW · CONFIRM ONCE TO TRADE');
   refreshVendorUI();
   if(controls.isLocked)controls.unlock();
 }
 function closeVendor(){
   if(!vendorOpen)return;
   vendorOpen=false;activeVendorId=null;
+  vendorCartBuys.clear();vendorCartSells.clear();
   $('vendorPanel').classList.add('hidden');
   if(vendorFromField){vendorFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
 }
 $('vendorClose').addEventListener('click',closeVendor);
+$('vendorCartConfirm').addEventListener('click',confirmVendorBarter);
+$('vendorCartClear').addEventListener('click',()=>{
+  vendorCartBuys.clear();vendorCartSells.clear();
+  refreshVendorUI();showVendorFeedback('TRADE SELECTION CLEARED · NOTHING WAS SOLD OR PURCHASED');
+});
 $('vendorSearch').addEventListener('input',refreshVendorUI);
 $('vendorPlayerSearch').addEventListener('input',refreshVendorUI);
 function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
