@@ -6,12 +6,25 @@ import {resolve,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
 import {validateBalanceChanges} from './balance-schema.mjs';
+import {validateDeveloperGrant} from './dev-grants.mjs';
 const root=process.cwd();
 let version=5,changes={},defaults={},writes=0;
 const actions=[];
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript'};
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
+  if(url.pathname==='/api/dev/grant'&&req.method==='POST'){
+    try{
+      let raw='';for await(const chunk of req)raw+=chunk;
+      const grant=validateDeveloperGrant(JSON.parse(raw));
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:true,grant}));
+    }catch(error){
+      res.writeHead(400,{'Content-Type':'application/json'});
+      res.end(JSON.stringify({ok:false,error:error.message}));
+    }
+    return;
+  }
   if(url.pathname==='/api/dev/settings'){
     if(req.method==='PUT'){
       let raw='';for await(const chunk of req)raw+=chunk;
@@ -63,6 +76,14 @@ let browser;
 try{
   browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox']});
   const page=await browser.newPage({viewport:{width:1440,height:900}});
+  await page.addInitScript(()=>{
+    window.__mockGrants=[];
+    window.addEventListener('gameshub-admin-grant',event=>{
+      const grant=event.detail.grant;
+      window.__mockGrants.push(grant);
+      event.detail.complete({ok:true,added:grant.quantity??grant.amount,leftover:0});
+    });
+  });
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const url='http://127.0.0.1:'+server.address().port+'/dev-panel-preview';
   const launch=async()=>{
@@ -148,6 +169,29 @@ try{
   await page.locator('#gh-dev-categories .gh-dev-cat').filter({
     hasText:'Junk'}).click();
   assert.match(await page.locator('#gh-dev-editor').textContent(),/not implemented yet/i);
+  // W20.62: the item-grant section uses a searchable REAL catalog, not a
+  // hand-written array of guns or field loot crates.
+  await page.locator('#gh-dev-mode').click();
+  await page.locator('#gh-grant-search').fill('pipe smg');
+  await page.locator('#gh-grant-results .gh-grant-item').first().click();
+  assert.match(await page.locator('#gh-grant-selected').textContent(),/Pipe SMG/);
+  await page.locator('#gh-grant-quantity').fill('2');
+  await page.locator('#gh-grant-item-submit').click();
+  await page.waitForFunction(()=>window.__mockGrants.length===1);
+  assert.deepEqual(await page.evaluate(()=>window.__mockGrants[0]),
+    {action:'item',itemId:'weapon:pipe-smg',quantity:2});
+  assert.match(await page.locator('#gh-grant-feedback').textContent(),/ADDED 2/);
+  await page.locator('#gh-grant-caps').fill('250');
+  await page.locator('#gh-grant-caps-submit').click();
+  await page.waitForFunction(()=>window.__mockGrants.length===2);
+  assert.deepEqual(await page.evaluate(()=>window.__mockGrants[1]),
+    {action:'caps',amount:250});
+  await page.locator('#gh-grant-quantity').fill('1000');
+  await page.locator('#gh-grant-item-submit').click();
+  assert.match(await page.locator('#gh-grant-feedback').textContent(),/NOT GRANTED/);
+  assert.equal(await page.evaluate(()=>window.__mockGrants.length),2);
+  await page.locator('#gh-dev-mode').click();
+  assert.equal(await page.locator('#gh-dev-categories').isVisible(),true);
   const ordinary=await browser.newPage();
   await ordinary.goto(url+'?admin=0');
   await ordinary.waitForTimeout(350);
@@ -155,8 +199,9 @@ try{
     'Non-admin must not even see the launch button');
   await ordinary.close();
   assert.deepEqual(errors,[],'Browser errors: '+errors.join(' | '));
-  console.log('DEVELOPER_PANEL_W20_61_PASS: families, all slots, exact parts, costs, defaults, revert, resources, authorization');
+  console.log('DEVELOPER_PANEL_W20_62_PASS: variables, defaults, item search, grants, caps, validation, authorization');
 }finally{
   await browser?.close();
   await new Promise(done=>server.close(done));
 }
+

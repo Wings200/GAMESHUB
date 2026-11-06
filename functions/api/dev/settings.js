@@ -22,7 +22,7 @@ async function sha256Hex(value) {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-async function developerIdentity(context) {
+export async function developerIdentity(context) {
   const session = cookieValue(context.request, 'gh_session');
   if (!session || !context.env.DB) return null;
   const user = await context.env.DB.prepare(
@@ -136,3 +136,4 @@ export async function onRequestPut(context) {
     return reply({ok: false, error: 'Could not save settings.'}, 503);
   }
 }
+

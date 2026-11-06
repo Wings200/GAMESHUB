@@ -4,6 +4,7 @@ import {DEFAULT_GAME_VARIABLES} from '../game-balance.mjs';
 import {VARIABLE_CATEGORIES,VARIABLE_FIELDS} from '../balance-schema.mjs';
 import {MOD_SLOTS,MOD_SLOT_LABELS} from '../weapon-mods.mjs';
 import {ARMOR_SLOTS,ARMOR_SLOT_LABELS} from '../combat.mjs';
+import {DEV_ITEM_CATALOG} from '../dev-grants.mjs';
 const api='/api/dev/settings';
 const clone=value=>JSON.parse(JSON.stringify(value));
 const categoryNames=Object.fromEntries(VARIABLE_CATEGORIES);
@@ -42,6 +43,8 @@ export function startGameSettingsUI(initial){
   let category='weapons',selectedFamily=catalogFamilies.weapons[0]?.id||null;
   let selectedSlot='base',selectedId=null,search='';
   let open=false,publishing=false,reloading=false,root=null;
+  let grantMode=false,grantSearch='',grantItemId=DEV_ITEM_CATALOG[0]?.id||null,
+    granting=false;
   const dirty=()=>JSON.stringify(draft)!==JSON.stringify(changes);
   const count=cat=>Object.keys(draft[cat]||{}).length;
   const entry=()=>byCategory[category]?.[selectedId]||null;
@@ -147,6 +150,18 @@ export function startGameSettingsUI(initial){
     '.gh-dev-button{border:1px solid #638575;background:#294738;color:#e4f2df;border-radius:7px;padding:10px 12px;font:850 10px system-ui;letter-spacing:.04em;cursor:pointer}',
     '.gh-dev-button.primary{background:#d3b176;color:#172820;border-color:#f4d59d}',
     '.gh-dev-button:disabled{opacity:.45;cursor:default}',
+    '#gh-dev-grants{flex:1;min-height:0;overflow:auto;padding:clamp(15px,3vw,36px);background:#102620}',
+    '#gh-dev-grants[hidden],#gh-dev-root .gh-dev-grid[hidden],#gh-dev-root .gh-dev-footer[hidden]{display:none!important}',
+    '.gh-grant-layout{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1fr);gap:20px;max-width:1040px;margin:auto}',
+    '.gh-grant-card{background:#19322b;border:1px solid #416955;border-radius:10px;padding:20px}',
+    '.gh-grant-results{max-height:340px;overflow:auto;margin:10px 0;display:grid;gap:6px}',
+    '.gh-grant-item{padding:11px;text-align:left;background:#122822;color:#d9ece0;border:1px solid #365c4c;border-radius:6px;cursor:pointer}',
+    '.gh-grant-item.active{background:#345542;border-color:#e4c78b}',
+    '.gh-grant-item small{display:block;color:#9db8a9;font-size:10px;margin-top:3px}',
+    '.gh-grant-input{width:100%;margin:7px 0 14px;padding:12px;background:#0b1e1e;color:#f8e6b9;border:1px solid #597761;border-radius:6px;font:700 14px system-ui}',
+    '.gh-grant-label{display:block;font-size:11px;font-weight:900;color:#e7c992;letter-spacing:.08em}',
+    '#gh-grant-feedback{margin-top:17px;color:#e8d19d;min-height:32px;font-size:12px}',
+    '@media(max-width:680px){.gh-grant-layout{grid-template-columns:1fr}.gh-grant-results{max-height:160px}}',
     '#gh-game-updating{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;gap:22px;background:#071511f2;color:#f5e6c5;font:14px/1.6 system-ui;padding:30px}',
     '#gh-game-updating strong{font-size:27px;letter-spacing:.10em}#gh-game-updating p{color:#b5d0bd}',
     '.gh-update-spinner{width:48px;height:48px;border:5px solid #4d6f5c;border-top-color:#dfb778;border-radius:50%;animation:gh-spin .9s linear infinite}',
@@ -161,15 +176,30 @@ export function startGameSettingsUI(initial){
   root=document.createElement('section');root.id='gh-dev-root';
   root.setAttribute('aria-label','Developer settings');
   root.innerHTML='<div id="gh-dev-shell" role="dialog" aria-modal="true" aria-labelledby="gh-dev-title">'+
-    '<header class="gh-dev-head"><div><div class="gh-dev-eyebrow">GAMESHUB / DEVELOPMENT CONTROL / W20.61</div>'+
+    '<header class="gh-dev-head"><div><div class="gh-dev-eyebrow">GAMESHUB / DEVELOPMENT CONTROL / W20.62</div>'+
     '<h2 id="gh-dev-title">Developer Panel <span style="color:#d9b67f">/ Variables</span></h2></div>'+
-    '<button type="button" class="gh-dev-button" id="gh-dev-close">CLOSE / ESC</button></header>'+
+    '<div class="gh-dev-actions"><button type="button" class="gh-dev-button primary" id="gh-dev-mode">ITEMS & CAPS</button>'+
+    '<button type="button" class="gh-dev-button" id="gh-dev-close">CLOSE / ESC</button></div></header>'+
     '<div class="gh-dev-grid"><nav class="gh-dev-side"><span class="gh-dev-navtitle">VARIABLES</span>'+
     '<div id="gh-dev-categories"></div></nav>'+
     '<aside class="gh-dev-items"><div class="gh-dev-breadcrumb" id="gh-dev-breadcrumb"></div>'+
     '<input id="gh-dev-search" class="gh-dev-search" placeholder="Search families..." aria-label="Search item families">'+
     '<div id="gh-dev-item-list"></div></aside>'+
     '<main class="gh-dev-editor" id="gh-dev-editor"></main></div>'+
+    '<section id="gh-dev-grants" hidden><div class="gh-grant-layout">'+
+    '<div class="gh-grant-card"><h3>Find an existing item</h3><p class="gh-dev-caption">Search the live item catalog. Only implemented, usable weapons are listed.</p>'+
+    '<label class="gh-grant-label" for="gh-grant-search">ITEM NAME OR ID</label>'+
+    '<input class="gh-grant-input" id="gh-grant-search" placeholder="Search weapons, ammo, armor, resources..." autocomplete="off">'+
+    '<div class="gh-grant-results" id="gh-grant-results"></div></div>'+
+    '<div class="gh-grant-card"><h3>Give yourself items</h3><p id="gh-grant-selected" class="gh-dev-caption">Choose an item to add to your backpack.</p>'+
+    '<label class="gh-grant-label" for="gh-grant-quantity">QUANTITY (1–999)</label>'+
+    '<input id="gh-grant-quantity" class="gh-grant-input" type="number" min="1" max="999" step="1" value="1">'+
+    '<button id="gh-grant-item-submit" class="gh-dev-button primary" type="button">GIVE ITEM</button>'+
+    '<h3 style="margin-top:34px">Add caps</h3><p class="gh-dev-caption">Adds to your saved wallet, up to 100,000,000 caps.</p>'+
+    '<label class="gh-grant-label" for="gh-grant-caps">AMOUNT</label>'+
+    '<input id="gh-grant-caps" class="gh-grant-input" type="number" min="1" max="100000000" step="1" value="1000">'+
+    '<button id="gh-grant-caps-submit" class="gh-dev-button primary" type="button">GIVE CAPS</button>'+
+    '<p id="gh-grant-feedback" role="status" aria-live="polite"></p></div></div></section>'+
     '<footer class="gh-dev-footer"><p id="gh-dev-status" role="status">Draft changes are not live until published.</p>'+
     '<div class="gh-dev-actions">'+
     '<button id="gh-dev-reset-all" type="button" class="gh-dev-button">REVERT ALL TO DEFAULTS</button>'+
@@ -178,6 +208,87 @@ export function startGameSettingsUI(initial){
     '<button id="gh-dev-save" type="button" class="gh-dev-button primary">SAVE & PUBLISH</button>'+
     '</div></footer></div>';
   document.body.append(root);
+  function renderGrantList(){
+    const results=get(root,'gh-grant-results');results.replaceChildren();
+    const matches=DEV_ITEM_CATALOG.filter(item=>
+      (item.name+' '+item.id+' '+item.category).toLowerCase().includes(grantSearch));
+    const chosen=DEV_ITEM_CATALOG.find(item=>item.id===grantItemId);
+    get(root,'gh-grant-selected').textContent=chosen?
+      chosen.name+' · '+chosen.category.toUpperCase()+' · '+chosen.id:
+      'Select an existing item.';
+    if(!matches.length){
+      const empty=document.createElement('p');empty.className='gh-dev-empty';
+      empty.textContent='NO IMPLEMENTED ITEMS MATCH THAT SEARCH';
+      results.append(empty);return;
+    }
+    for(const item of matches.slice(0,45)){
+      const button=document.createElement('button');button.type='button';
+      button.className='gh-grant-item'+(item.id===grantItemId?' active':'');
+      const title=document.createElement('strong');title.textContent=item.name;
+      const details=document.createElement('small');
+      details.textContent=item.category.toUpperCase()+' · '+item.id;
+      button.append(title,details);
+      button.addEventListener('click',()=>{grantItemId=item.id;renderGrantList();});
+      results.append(button);
+    }
+    if(matches.length>45){
+      const note=document.createElement('p');note.className='gh-dev-caption';
+      note.textContent='Showing 45 of '+matches.length+' matches. Narrow your search.';
+      results.append(note);
+    }
+  }
+  function setGrantMode(next){
+    grantMode=!!next;
+    root.querySelector('.gh-dev-grid').hidden=grantMode;
+    root.querySelector('.gh-dev-footer').hidden=grantMode;
+    get(root,'gh-dev-grants').hidden=!grantMode;
+    get(root,'gh-dev-mode').textContent=grantMode?'BACK TO VARIABLES':'ITEMS & CAPS';
+    get(root,'gh-dev-title').textContent=grantMode?
+      'Developer Panel / Items & Caps':'Developer Panel / Variables';
+    if(grantMode){renderGrantList();get(root,'gh-grant-search').focus();}
+    else{render();get(root,'gh-dev-search').focus();}
+  }
+  async function sendGrant(grant){
+    if(granting)return;
+    granting=true;
+    get(root,'gh-grant-item-submit').disabled=true;
+    get(root,'gh-grant-caps-submit').disabled=true;
+    const feedback=get(root,'gh-grant-feedback');
+    feedback.textContent='VALIDATING DEVELOPER GRANT...';
+    try{
+      const response=await fetch('/api/dev/grant',{method:'POST',
+        credentials:'same-origin',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(grant)});
+      const result=await response.json();
+      if(!response.ok||!result.ok)throw Error(result.error||'Request rejected.');
+      let applied=null;
+      window.dispatchEvent(new CustomEvent('gameshub-admin-grant',{
+        detail:{grant:result.grant,complete:outcome=>{applied=outcome;}}
+      }));
+      if(!applied)throw Error('Game inventory is not ready.');
+      if(!applied.ok)throw Error(applied.reason||'Inventory or wallet is full.');
+      feedback.textContent=grant.action==='caps'?
+        'ADDED '+applied.added.toLocaleString()+' CAPS · WALLET SAVED':
+        'ADDED '+applied.added+' × '+
+          (DEV_ITEM_CATALOG.find(item=>item.id===grant.itemId)?.name||'ITEM')+
+          (applied.leftover?' · '+applied.leftover+' DID NOT FIT':'')+
+          ' · BACKPACK SAVED';
+    }catch(error){feedback.textContent='NOT GRANTED · '+String(error.message||error);}
+    finally{
+      granting=false;
+      get(root,'gh-grant-item-submit').disabled=false;
+      get(root,'gh-grant-caps-submit').disabled=false;
+    }
+  }
+  get(root,'gh-dev-mode').addEventListener('click',()=>setGrantMode(!grantMode));
+  get(root,'gh-grant-search').addEventListener('input',event=>{
+    grantSearch=event.target.value.trim().toLowerCase();renderGrantList();
+  });
+  get(root,'gh-grant-item-submit').addEventListener('click',()=>
+    sendGrant({action:'item',itemId:grantItemId,
+      quantity:Number(get(root,'gh-grant-quantity').value)}));
+  get(root,'gh-grant-caps-submit').addEventListener('click',()=>
+    sendGrant({action:'caps',amount:Number(get(root,'gh-grant-caps').value)}));
   function renderCategories(){
     const container=get(root,'gh-dev-categories');container.replaceChildren();
     for(const [id,label] of VARIABLE_CATEGORIES){
@@ -361,7 +472,8 @@ export function startGameSettingsUI(initial){
   function render(){renderCategories();renderFamilies();renderEditor();}
   function setOpen(next){
     open=next;root.classList.toggle('gh-open',open);launcher.hidden=open;
-    if(open){document.exitPointerLock?.();render();get(root,'gh-dev-search').focus();}
+    if(open){document.exitPointerLock?.();render();
+      get(root,grantMode?'gh-grant-search':'gh-dev-search').focus();}
   }
   launcher.addEventListener('click',()=>setOpen(true));
   get(root,'gh-dev-close').addEventListener('click',()=>setOpen(false));
@@ -414,3 +526,4 @@ export function startGameSettingsUI(initial){
   get(root,'gh-dev-save').addEventListener('click',()=>publish('publish'));
   render();
 }
+

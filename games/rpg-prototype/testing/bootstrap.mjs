@@ -1,6 +1,6 @@
 // Load developer-approved balance before the gameplay modules initialize.
 import {applyGameBalance} from '../game-balance.mjs';
-import {startGameSettingsUI} from './developer-panel.mjs';
+import {startGameSettingsUI} from './developer-panel.mjs?v=W20.62';
 
 let initial = null;
 try {
@@ -17,5 +17,6 @@ try {
   console.warn('Game settings service is temporarily unavailable.', error);
 }
 // Existing gameplay remains available even if the settings service is offline.
-await import('./main.js?v=W20.61');
+await import('./main.js?v=W20.62');
 startGameSettingsUI(initial);
+

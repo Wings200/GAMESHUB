@@ -36,7 +36,6 @@ export const VENDORS=Object.freeze([
     ])})
 ]);
 
-export const VENDOR_TEST_CREDIT=300;
 const MAX_CAPS=100000000;
 const copy=state=>JSON.parse(JSON.stringify(state));
 const cap=n=>Number.isSafeInteger(n)&&n>=0?Math.min(MAX_CAPS,n):0;
@@ -122,8 +121,4 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1){
   return{ok:true,pack:next,caps:cap(caps)+price,price,itemId,quantity};
 }
 
-export function claimVendorTestCredit(caps,claimed){
-  if(claimed)return{ok:false,reason:'already-claimed'};
-  if(cap(caps)>MAX_CAPS-VENDOR_TEST_CREDIT)return{ok:false,reason:'wallet-full'};
-  return{ok:true,caps:cap(caps)+VENDOR_TEST_CREDIT};
-}
+

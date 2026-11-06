@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBackpack,addItem,countItem,BACKPACK_LIMIT,getItem} from './inventory.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
-  buyFromVendor,sellToVendor,claimVendorTestCredit} from './vendors.mjs';
+  buyFromVendor,sellToVendor} from './vendors.mjs';
 
 test('four physical vendors offer real catalog items by specialty',()=>{
   assert.equal(VENDORS.length,4);
@@ -54,8 +54,4 @@ test('selling is merchant-specific, pays caps, and protects equipped gear',()=>{
   assert.equal(sellToVendor(pack,20,'armor',uid).reason,'equipped');
 });
 
-test('training caps credit is once-only and never negative',()=>{
-  assert.deepEqual(claimVendorTestCredit(50,false),{ok:true,caps:350});
-  assert.equal(claimVendorTestCredit(50,true).reason,'already-claimed');
-  assert.equal(claimVendorTestCredit(100000000,false).reason,'wallet-full');
-});
+

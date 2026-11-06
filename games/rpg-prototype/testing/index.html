@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.61 · Modular Developer Variables | GAMESHUB RPG</title>
+<title>W20.62 · Developer Item Grants | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -744,26 +744,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   #fieldMapPanel .map-tools button{padding:7px 9px;font-size:10px}}
 
 /* W20.60 — physical weapon supply crate, separate from the crafting bench. */
-#weaponsCratePanel{background:radial-gradient(ellipse at 52% 0,#3d4736 0%,#0b171a 67%);padding:clamp(12px,2.6vw,38px)}
-#weaponsCratePanel .weapon-crate-shell{max-width:1250px;margin:0 auto;background:#101f22;border:1px solid #9f9872;box-shadow:0 28px 90px #000b}
-#weaponsCratePanel .weapon-crate-top{display:flex;justify-content:space-between;align-items:flex-start;gap:22px;flex-wrap:wrap;padding:24px clamp(15px,2.5vw,35px);background:linear-gradient(115deg,#23362d,#152529);border-bottom:1px solid #63725b}
-#weaponsCratePanel .weapon-crate-kicker{font-size:10px;font-weight:950;letter-spacing:.18em;color:#e4c58e}
-#weaponsCratePanel h2{font-size:clamp(30px,4.2vw,55px);margin:8px 0;letter-spacing:-.045em}
-#weaponsCratePanel h2 span{color:#b0d1a6}
-#weaponsCratePanel .weapon-crate-top p{font-size:12px;line-height:1.7;max-width:700px;margin:0;color:#b1c9ba}
-#weaponsCratePanel .weapon-crate-current{background:#1b332d;border-bottom:1px solid #48624b;padding:17px clamp(15px,2.5vw,35px);font:850 12px/1.8 ui-monospace,Consolas,monospace;color:#eed7a5}
-#weaponsCratePanel .weapon-crate-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:11px;padding:21px clamp(12px,2vw,25px) 30px}
-#weaponsCratePanel .weapon-crate-entry{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:14px;border:1px solid #466451;border-left:3px solid #ba996b;background:#1a302c;padding:15px 17px;min-height:105px}
-#weaponsCratePanel .weapon-crate-entry.selected{border-color:#b4d9a9;border-left-color:#e3d08c;background:#274334}
-#weaponsCratePanel .weapon-crate-index{font:900 19px ui-monospace,Consolas,monospace;color:#849e8c}
-#weaponsCratePanel .weapon-crate-details strong{display:block;color:#f1f0e4;font-size:16px}
-#weaponsCratePanel .weapon-crate-details small{display:block;line-height:1.55;color:#b7cabb;font-size:10px;margin-top:7px}
-#weaponsCratePanel .weapon-crate-details .weapon-crate-mods{color:#e3c38d;font-weight:850}
-#weaponsCratePanel .weapon-crate-equip{background:#d7b784;color:#172620;border:1px solid #eccd93;min-width:95px;font-weight:950;padding:11px 14px}
-#weaponsCratePanel .weapon-crate-equip:hover:not(:disabled){background:#ffe3a6}
-#weaponsCratePanel .weapon-crate-equip:disabled{color:#b5cdb5;background:#315442;border-color:#7ba382;opacity:1;cursor:default}
-#weaponsCratePanel .weapon-crate-foot{padding:16px 25px;background:#1c302b;border-top:1px solid #45624d;color:#9fb5a5;font-size:11px;line-height:1.7}
-@media(max-width:640px){#weaponsCratePanel .weapon-crate-grid{grid-template-columns:minmax(0,1fr);padding:12px}#weaponsCratePanel .weapon-crate-entry{grid-template-columns:22px minmax(0,1fr);gap:10px}#weaponsCratePanel .weapon-crate-equip{grid-column:2;justify-self:start}#weaponsCratePanel .weapon-crate-top{padding:17px}}
 
 /* W20.59 — precise weapon-part workbench, integrated with the scrap pouch. */
 #workbenchPanel{background:radial-gradient(ellipse at 48% 0,#263e39,#081417 72%);padding:clamp(10px,2.3vw,32px)}
@@ -967,7 +947,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
-  <div>K FREEZE / UNFREEZE · J RESET ENEMIES · M INFINITE AMMO</div>
+  <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
 </div>
 <div id="targetHealthHud" class="hidden" role="status" aria-label="Character health">
   <div class="target-line"><span id="targetName"></span><span id="targetAttitude"></span></div>
@@ -1007,7 +987,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
   <div id="weaponStats" style="font-size:10px;color:#c1c9c3;margin:4px 0">20 DAMAGE · SEMI-AUTO</div>
   <div id="weaponAmmo">12 / 48</div>
-  <div id="infiniteAmmoStatus" style="font-size:10px;font-weight:900;color:#9bcbb9;letter-spacing:.06em;margin-top:4px">NORMAL AMMO · M TO ENABLE</div>
+  <div id="infiniteAmmoStatus" style="font-size:10px;font-weight:900;color:#9bcbb9;letter-spacing:.06em;margin-top:4px">FINITE AMMO · DEVELOPER PANEL FOR RESERVES</div>
   <div id="weaponState">READY</div>
   <div id="weaponOptic" style="font-size:10px;color:#b1dfc5;margin:5px 0">SIGHT · FACTORY</div>
   <div id="riggedStatus" style="font-size:10px;color:#b9d6be;margin:5px 0" aria-live="polite">ORIGINAL PIXEL NPCs · LOADING</div>
@@ -1022,14 +1002,14 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">E WEAPONS CRATE TO EQUIP · U WORKBENCH TO MODIFY · R CRANK LASER / RELOAD · LEFT CLICK FIRE · RIGHT CLICK ADS · F RESTOCK<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH / TRADE · I BACKPACK · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
+  <div id="keys">I BACKPACK TO EQUIP · U WORKBENCH TO MODIFY · R CRANK LASER / RELOAD · LEFT CLICK FIRE · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH / TRADE · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.61</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.62</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <p><strong>W20.60 · PHYSICAL WEAPONS CRATE:</strong> Gun switching no longer uses Z or X. Find the labeled green weapons crate beside Station 7's firing lane and press E to pick one of the ten rebuilt guns. The workbench only modifies the weapon you select there; each gun retains its crafted parts, ammo and saved equipment state. <strong>W20.59 · WEAPON WORKBENCH + 31 SCRAP COMPONENTS:</strong> Acid, adhesive, steel, screws, circuitry and all other Fallout 4 base crafting resources are now collectible. Visit the SCRAP CACHE west of the traders (E) to collect materials, then go to the Station 7 workbench (E) or press U to craft authentic receivers, barrels, magazines, grips/stocks, muzzle parts, and optics. Recipes use exact material counts and save with your inventory. Resource quantities save and never consume equipment slots.</p>
-    <div class="weapon-reset-notice"><b>W20.56 · TRAINING FIELD CLEANUP + VENDORS</b> Removed the old Station 9 Raider billboard and spare Station 8 survivor preview. Four distinct merchant stalls now sell or buy real items for saved campaign caps: arms, armor, medical, and salvage. Walk to a stall and press E. <b>W20.55 · FIELD MAP</b> Tab opens the nine-station map with saved exploration, discovered contacts, zoom and a waypoint. This is not a fabricated full world map. <b>W20.53 · INVENTORY REDESIGN</b>The inventory now uses a field-terminal layout with categories, item actions, and a live equipment summary. Existing ammo handling, equipment, and saves are preserved. <b>W20.52 · ENEMY HUD CLEANUP</b>Floating Raider name and health labels have been removed so enemies cannot be identified above walls. The top target health HUD still appears when you aim at a visible character. W20.51 reduced incoming damage by 20% while wearing power armor; you now take 20% less damage from enemy bullets than before. Chassis-only protection still falls below protection with installed plates; conventional armor and plate tiers remain meaningful. W20.50 NPC NAVIGATION & SQUAD AWARENESS (wall-safe movement, teammate reactions, and search scanning) and W20.48 CONTEXTUAL NPC HEALTH remain in place. No shot-result announcements returned. Station 8's fusion-core refill is still TEMP TEST ONLY. Scout and Enforcer remain unarmed.</div>
+    <p><strong>W20.62 · DEVELOPER ITEM GRANTS:</strong> Admins can open the Developer Panel to search implemented items, grant weapons, armor, ammo and materials, or add caps. Equip granted firearms through I / Backpack. Free crates, resource caches, and cap handouts have been retired from the test field. Normal loot, vendors and quests remain. Visit Station 7 to craft weapon mods with materials you own.</p>
+    <div class="weapon-reset-notice"><b>W20.62 · PLAYER INVENTORY</b> Equipment and caps you already owned stay saved. New test saves start with no free guns, ammo reserves or field caches. Developer item grants are limited to signed-in admins; buyers still use actual vendor prices. The map, NPCs, power armor, weapon workbench and quest systems remain available.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
     <p><strong>W20.18 · FAIR ENEMY RADAR:</strong> Red dots only reveal enemies after they have spotted you or you have engaged them. Contacts fade shortly after enemies lose sight; undiscovered patrols remain hidden. In power armor, tap E to search nearby enemy drops or crates, or hold E to exit.</p>
     <p><strong>W20.16 · COMBAT & POWER FRAME:</strong> Compact armor silhouette and clearance, deeper rear boarding, softer boot impacts, fusion cores lasting 25% longer, close-quarters enemy tracking, single-render-layer NPCs, concealed enemy tactics, and a bottom red-dot hostile compass.</p>
@@ -1043,13 +1023,11 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="arsenal-picker"><label>CURRENTLY EQUIPPED</label>
       <strong id="currentWeaponSummary">10MM PISTOL</strong>
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
-      <span>To equip a different weapon, walk to the <b>WEAPONS CRATE</b> at Station 7 and press E. Z/X no longer changes guns.</span>
+      <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
     <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
     <button id="enterVendors" class="primary" type="button">GO TO TRADING ROW · E TO TRADE</button>
-    <button id="enterWeaponsCrate" class="primary" type="button">GO TO WEAPONS CRATE · E TO EQUIP</button>
-    <button id="infiniteAmmoToggle" class="secondary" type="button" aria-pressed="false" title="Toggle infinite test ammunition (M in game)">INFINITE AMMO: OFF · M</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · TAB</button>
@@ -1059,7 +1037,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.60</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to the glowing loot crate and press E to search. Use TAKE ALL or choose individual items. Press I anytime to open your backpack and EQUIP armor, automatically store ammunition in the correct weapon reserve, USE medkits, or DROP items. J resets enemy fights while your collected power-armor cache stays finite. This is the player inventory; B still edits test-dummy armor.</p>
+    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, EQUIP a weapon you own, store ammunition in the correct reserve, USE medkits, or DROP items. J resets enemy fights. Developer grants are available only through the admin panel; B still edits test-dummy armor.</p>
   </div>
 </div>
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
@@ -1067,7 +1045,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="loot-panel-top">
       <div><div class="loot-eyebrow">W12.0 · MODULAR FRAME · REAR HATCH ENTRY</div>
         <h2>BUILD<span> YOUR POWER ARMOR.</span></h2>
-        <p>The chassis starts as a bare exoskeleton, without pre-equipped plates. Find modules in the Station 8 cache, equip or strip them individually, or remove every plate to inspect the base frame. Each armor piece is a real salvageable item. Mix rounded sand-colored T-45, wide teal T-60 and sharp violet T-01 pieces on the same chassis; a broken piece stays attached or in your backpack until you repair it. Search the purple salvage crate at Station 8 (E), then tap E at the parked frame to attach your parts. Walk BEHIND the frame and hold E to enter.</p>
+        <p>The chassis starts as a bare exoskeleton, without pre-equipped plates. Obtain modules through normal gameplay or Developer Panel → Items & Caps, equip or strip them individually, or remove every plate to inspect the base frame. Each armor piece is a real salvageable item. Mix T-45, T-60 and T-01 pieces on the same chassis; a broken piece stays attached or in your backpack until repaired. Tap E at the parked frame to configure your owned parts. Walk BEHIND the frame and hold E to enter.</p>
       </div>
       <button id="powerBayClose" type="button">DONE / RESUME</button>
     </div>
@@ -1081,8 +1059,6 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="powerCoreChoice" aria-label="Owned fusion core" style="background:#142934;color:#fff;padding:8px"></select>
       <button id="powerInsertCore" type="button">INSERT CORE</button>
       <button id="powerEjectCore" type="button">EJECT CORE</button>
-      <button id="powerTestCoreRefill" type="button" style="border-color:#cfa96d;color:#ffe2a7">TEMP TEST ONLY · REFILL TO 100%</button>
-      <small>Testing sandbox only. Recharges the parked frame without using inventory cores; remove before the real survival economy.</small>
     </div>
     <div class="armor-slots" style="display:grid">
       <label>HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
@@ -1109,21 +1085,6 @@ body.hud-modern #powerArmorHud{display:none!important}
     </div>
     <p id="powerServiceFeedback" style="color:#f3d599;font-weight:800">Service only while parked and standing beside the frame.</p>
     <div class="loot-footer">Hold E for 0.65 seconds at the REAR HATCH to enter through the back; hold E to exit behind the frame with the 4.5-second hydraulic animation. Tap E near a parked frame to configure the six physical slots; the exposed frame remains visible if the slot is empty. Without a working fusion core the armor still protects you, but movement becomes extremely slow and powered sprinting/jumping are disabled. Core charge drains during use. Hits wear down only the plate that was struck; at 0 durability that plate becomes ineffective, never disappears, and can be repaired with salvaged parts. Ordinary armor remains permanent.</div>
-  </div>
-</div>
-<div id="weaponsCratePanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Field weapons crate">
-  <div class="weapon-crate-shell">
-    <header class="weapon-crate-top">
-      <div>
-        <div class="weapon-crate-kicker">FIELD ARMORY / STATION 07 / W20.60</div>
-        <h2>WEAPONS <span>CRATE.</span></h2>
-        <p>Choose a firearm to equip. Test weapons are available without caps or scrap. Your magazines, ammunition reserves, crafted upgrades and optics stay attached to their original guns. Visit the separate workbench to modify parts.</p>
-      </div>
-      <button id="weaponsCrateClose" type="button">CLOSE / RESUME · ESC</button>
-    </header>
-    <div id="weaponsCrateEquipped" class="weapon-crate-current" role="status" aria-live="polite">CURRENTLY EQUIPPED · 10MM PISTOL</div>
-    <div id="weaponsCrateItems" class="weapon-crate-grid" aria-label="Available test firearms"></div>
-    <footer class="weapon-crate-foot">E · OPEN WHEN STANDING BESIDE THE ACTUAL CRATE · EQUIP RETURNS YOU TO THE FIELD · Z / X NO LONGER SWITCH WEAPONS · U / WORKBENCH BUILDS MODIFICATIONS · CURRENT SELECTION SAVES AUTOMATICALLY</footer>
   </div>
 </div>
 <div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Weapon modification workbench">
@@ -1239,8 +1200,7 @@ body.hud-modern #powerArmorHud{display:none!important}
         <strong>HOW TRADING WORKS</strong>
         <p>Buy items with your saved campaign caps. Sell only the items this merchant specializes in. Scrap components live in your material pouch, outside the 30 gear slots. Equipped gear must be unequipped before its final copy can be sold.</p>
         <strong>TESTING ONLY</strong>
-        <p>Each merchant currently has repeatable test stock. A one-time training credit lets you verify the economy before full-world shops and restocking are built.</p>
-        <button id="vendorCredit" type="button">CLAIM 300 TEST CAPS · ONCE</button>
+        <p>Merchants keep their trade stock, but testing caps are only granted through the admin Developer Panel.</p>
       </aside>
     </div>
     <div id="vendorFeedback" class="vendor-feedback" role="status">SELECT BUY OR SELL</div>
@@ -1404,6 +1364,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.61"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.62"></script>
 </body>
 </html>
+

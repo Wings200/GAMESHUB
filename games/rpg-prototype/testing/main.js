@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
-  buyFromVendor,sellToVendor,sellMaterialToVendor,claimVendorTestCredit} from '../vendors.mjs?v=W20.57';
+  buyFromVendor,sellToVendor,sellMaterialToVendor} from '../vendors.mjs?v=W20.57';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
@@ -72,6 +72,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
   INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs';
+import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
   enemyArmorForRound,
@@ -85,13 +86,12 @@ const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
 // Legacy player guns stay disabled. Only the raider holds a test Pipe Rifle.
 const WEAPON_REBUILD_MODE=true;
-// TEMPORARY Station 8 test-lab convenience only. Remove this switch and its
-// panel control before the finite-core survival economy ships beyond testing.
-const TEMP_TEST_CORE_REFILL_ENABLED=true;
 const NPC_GUN_TRIAL_ROLE='raider';
 const NEW_WEAPON_ID=TEN_MM_PISTOL.id;
 const REBUILT_WEAPON_IDS=Object.freeze([TEN_MM_PISTOL.id,PIPE_PISTOL.id,PIPE_RIFLE.id,LASER_MUSKET.id,DOUBLE_BARREL_SHOTGUN.id,PUMP_ACTION_SHOTGUN.id,BOLT_HUNTING_RIFLE.id,IRON_REVOLVER.id,PIPE_SMG.id,HEAVY_SNIPER.id]);
-const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId);
+const playerGunEnabled=()=>REBUILT_WEAPON_IDS.includes(activeWeaponId)&&
+  backpack.equipment.weapon===activeWeaponId&&
+  backpack.items.some(entry=>entry.itemId==='weapon:'+activeWeaponId);
 if(WEAPON_REBUILD_MODE)document.body.classList.add('weapon-rebuild');
 let campaignState=initialCampaignState();
 try{
@@ -355,8 +355,8 @@ const stations=[
   {title:'04 · Ramp ascent',info:'Walk and sprint uphill, then back down. Watch the ground-height readout.',x:15,z:-27,tag:'04 / SLOPES',color:0x6b9b77},
   {title:'05 · Stairs and steps',info:'Walk up each short step and turn around. Check for snagging, jumping, or floating.',x:15,z:16,tag:'05 / STEPS',color:0xe7c588},
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
-  {title:'07 · Weapon firing lane',info:'W02: aim, move and crouch to compare accuracy; fire to watch brass eject; R reloads the animated magazine and slide. F restocks. Targets and material sounds remain.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
-  {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. The purple cache nearby has starter parts and fusion cores.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
+  {title:'07 · Weapon firing lane',info:'Aim, move and crouch to compare accuracy; fire to watch brass eject. Use your owned weapons and ammo, or grant items through the developer panel.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
+  {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. Grant parts and fusion cores through the developer panel.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
   {title:'09 · Live enemy arena',info:'W20.39: Three raiders patrol, flank, retreat to solid cover and peek. Shoot or approach to provoke reactions. Weapons stay disabled during model testing. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
@@ -526,42 +526,6 @@ box(opticBench.x+.43,1.37,opticBench.z-.23,.23,.07,.16,benchSteel);
 box(opticBench.x+.16,1.11,opticBench.z+.29,.31,.065,.18,benchRust);
 box(opticBench.x+.65,1.10,opticBench.z+.23,.10,.07,.26,benchSteel);
 
-// W20.60 — physical weapons crate near the Station 7 firing lane.
-// It is several meters from the mod bench, so their E prompts never collide.
-const weaponCrate={x:-48.8,z:-38.5,reach:2.9};
-const crateBody=mat(0x3b5147,.68),crateSteel=mat(0x7c8a79,.49),
-  crateDark=mat(0x1c2929,.8),crateBrass=mat(0xc49a60,.46);
-const cX=weaponCrate.x,cZ=weaponCrate.z;
-box(cX,.47,cZ,2.12,.94,1.23,crateBody);
-box(cX,.95,cZ,2.23,.17,1.31,crateDark);
-box(cX,1.075,cZ-.12,2.26,.18,1.37,crateSteel);
-for(const side of [-.90,.90]){
-  box(cX+side,.63,cZ,.12,.85,1.37,crateSteel);
-  box(cX+side,1.17,cZ-.61,.14,.17,.17,crateBrass);
-  box(cX+side,.58,cZ+.665,.17,.32,.09,crateBrass);
-}
-for(const side of [-.52,.52])
-  box(cX+side,1.19,cZ,.11,.075,1.38,crateDark);
-box(cX,.18,cZ,2.26,.23,1.38,crateDark);
-for(const side of [-.72,.72])box(cX+side,.075,cZ,.22,.15,1.62,crateSteel);
-const crateSignCanvas=document.createElement('canvas');
-crateSignCanvas.width=640;crateSignCanvas.height=180;
-const crateLabel=crateSignCanvas.getContext('2d');
-crateLabel.fillStyle='#192720';crateLabel.fillRect(0,0,640,180);
-crateLabel.strokeStyle='#ceab78';crateLabel.lineWidth=9;
-crateLabel.strokeRect(9,9,622,162);
-crateLabel.textAlign='center';crateLabel.fillStyle='#e8d7b4';
-crateLabel.font='900 62px system-ui';
-crateLabel.fillText('WEAPONS CRATE',320,84,585);
-crateLabel.font='800 34px system-ui';
-crateLabel.fillText('E · OPEN / EQUIP',320,137,585);
-const crateTexture=new THREE.CanvasTexture(crateSignCanvas);
-crateTexture.colorSpace=THREE.SRGBColorSpace;
-const crateSign=new THREE.Mesh(new THREE.PlaneGeometry(1.94,.53),
-  new THREE.MeshBasicMaterial({map:crateTexture,side:THREE.DoubleSide}));
-crateSign.position.set(cX,.64,cZ+.623);scene.add(crateSign);
-bounds.push({minX:cX-1.06,maxX:cX+1.06,minZ:cZ-.615,
-  maxZ:cZ+.615,height:1.17});
 markLane(0,orange);
 for(let i=0;i<5;i++){
   const x=-31+i*13,h=.65+(i%3)*.11;
@@ -1189,9 +1153,6 @@ function refreshPowerArmorUI(){
     powerArmorState.coreCharge!==null;
   $('powerEjectCore').disabled=powerArmorState.coreCharge===null||
     powerArmorState.occupied;
-  $('powerTestCoreRefill').hidden=!TEMP_TEST_CORE_REFILL_ENABLED;
-  $('powerTestCoreRefill').disabled=!TEMP_TEST_CORE_REFILL_ENABLED||
-    powerArmorState.phase!=='idle'||powerArmorState.occupied;
   $('powerMaterialStatus').textContent=
     'SALVAGE '+countItem(backpack,'supply:salvage')+
     ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
@@ -1388,17 +1349,6 @@ $('powerEjectCore').addEventListener('click',()=>{
   if(result.ok)addItem(backpack,'supply:fusion-core',1,{charge:result.charge});
   $('powerServiceFeedback').textContent='CORE EJECTED · '+
     Math.ceil(result.charge)+'% REMAINING';
-  savePowerService();
-});
-// Temporary testing control: charge the parked frame directly without
-// generating collectible cores, altering salvage, or changing RPG loot.
-$('powerTestCoreRefill').addEventListener('click',()=>{
-  if(!TEMP_TEST_CORE_REFILL_ENABLED||!powerServiceAvailable())return;
-  if(powerArmorState.coreCharge===null)
-    installFusionCore(powerArmorState,FUSION_CORE_CAPACITY);
-  else powerArmorState.coreCharge=FUSION_CORE_CAPACITY;
-  $('powerServiceFeedback').textContent=
-    'TEMP TEST REFILL · REACTOR 100% · NO FUSION CORE CONSUMED';
   savePowerService();
 });
 $('powerCraftButton').addEventListener('click',()=>{
@@ -1602,13 +1552,20 @@ const ENEMY_COLLISION_LAYER=29;
 const lootBags=new Map();
 let lootSerial=0,selectedLootId=null,lootOverlayFromField=false;
 let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=false;
-let weaponsCrateOpen=false,weaponsCrateFromField=false;
+let weaponsCrateOpen=false; // Legacy overlay guard, kept false for menu transitions.
 let inventoryCategory='all';
 let backpack=createBackpack();
+let hadSavedBackpack=false;
 try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
-  if(saved)backpack=safeBackpackSnapshot(saved);
+  if(saved){backpack=safeBackpackSnapshot(saved);hadSavedBackpack=true;}
 }catch{ /* Storage may be unavailable or corrupted. */ }
+// New testing players spawn without free weapon reserves or equipment.
+// Existing saves remain intact; normal looting and merchant trading still work.
+if(!hadSavedBackpack){
+  for(const spec of ARSENAL)backpack.ammoReserves[spec.id]=0;
+  backpack.equipment.weapon='none';
+}
 let enemyAIEnabled=true;
 const squadIntel=createSquadIntel();
 const squadDirector=createSquadDirector();
@@ -1775,7 +1732,6 @@ function resetEnemies(){
   clearBulletHoles();clearSquadIntel(squadIntel);resetSquadDirector(squadDirector);
   // Each J round produces fresh, singular loot drops. Inventory persists.
   for(const [id,drop] of lootBags){
-    if(drop.source==='power-cache')continue; // the salvage cache is finite
     scene.remove(drop.mesh);disposeLootMarker(drop.mesh);lootBags.delete(id);
   }
   selectedLootId=null;
@@ -1858,53 +1814,8 @@ function spawnWorldLoot(contents,x,z,source='world'){
   lootBags.set(bag.id,{...bag,mesh:marker});
   return bag.id;
 }
-// W10.0: finite test-world salvage cache, persistent even across J resets.
-// The future open world will distribute these pieces through exploration and quests.
-const POWER_CACHE_KEY='rpg-lab-power-salvage-cache-v1';
-const STARTER_POWER_CACHE=[
-  // Every T-45 section is a separate object in the finite test cache.
-  // A brand-new chassis is empty until the player installs these parts.
-  {itemId:'power-plate:t45-head',quantity:1,condition:80},
-  {itemId:'power-plate:t45-chest',quantity:1,condition:80},
-  {itemId:'power-plate:t45-leftArm',quantity:1,condition:75},
-  {itemId:'power-plate:t45-rightArm',quantity:1,condition:55},
-  {itemId:'power-plate:t45-leftLeg',quantity:1,condition:75},
-  {itemId:'power-plate:t45-rightLeg',quantity:1,condition:75},
-  {itemId:'power-plate:t60-head',quantity:1,condition:105},
-  {itemId:'power-plate:t01-rightLeg',quantity:1,condition:75},
-  {itemId:'supply:fusion-core',quantity:1,charge:100},
-  {itemId:'supply:fusion-core',quantity:1,charge:80},
-  {itemId:'supply:salvage',quantity:16},
-  {itemId:'supply:optic-glass',quantity:6}
-];
-function savePowerCache(contents){
-  try{localStorage.setItem(POWER_CACHE_KEY,JSON.stringify(contents));}catch{}
-}
-let powerCacheContents=STARTER_POWER_CACHE;
-try{
-  const stored=JSON.parse(localStorage.getItem(POWER_CACHE_KEY)||'null');
-  if(Array.isArray(stored))powerCacheContents=stored.filter(e=>{
-    try{return getItem(e.itemId)&&Number.isFinite(e.quantity)&&e.quantity>0;}
-    catch{return false;}
-  });
-}catch{}
-if(powerCacheContents.length)
-  spawnWorldLoot(powerCacheContents,-53,-9,'power-cache');
-// All 31 resources are accessible in the test field without purchasing them.
-// This cache persists separately so existing power-armor caches aren't reset.
-const COMPONENT_CACHE_KEY='rpg-lab-component-cache-v1';
-function saveComponentCache(contents){
-  try{localStorage.setItem(COMPONENT_CACHE_KEY,JSON.stringify(contents));}catch{}
-}
-let componentCacheContents=CRAFTING_COMPONENTS.map(item=>({itemId:item.id,quantity:12}));
-try{
-  const saved=JSON.parse(localStorage.getItem(COMPONENT_CACHE_KEY)||'null');
-  if(Array.isArray(saved))componentCacheContents=saved.filter(entry=>
-    CRAFTING_COMPONENTS.some(item=>item.id===entry?.itemId)&&
-    Number.isSafeInteger(entry.quantity)&&entry.quantity>0);
-}catch{}
-if(componentCacheContents.length)
-  spawnWorldLoot(componentCacheContents,-43,9,'component-cache');
+// No free power armor or crafting caches. Items come from world loot,
+// vendors, quests, or an authorized grant in the developer panel.
 function spawnEnemyLoot(enemy){
   const generated=generateEnemyLoot(enemy.id,arenaRound,enemy.state.loadout);
   const drops=WEAPON_REBUILD_MODE?generated.filter(entry=>{
@@ -1959,6 +1870,28 @@ function saveBackpack(){
   for(const spec of ARSENAL)backpack.ammoReserves[spec.id]=arsenalStates[spec.id].reserve;
   try{localStorage.setItem('rpg-lab-player-inventory',JSON.stringify(backpack));}catch{}
 }
+// The developer panel only emits grants AFTER the server has verified the
+// signed-in admin and canonical item/amount. Never grant on a search click.
+window.addEventListener('gameshub-admin-grant',event=>{
+  const {grant,complete}=event.detail||{};
+  if(typeof complete!=='function')return;
+  try{
+    saveBackpack(); // preserve ammo spent since the last backpack save
+    const applied=applyDeveloperGrant(backpack,campaignState.caps,grant);
+    if(applied.ok){
+      backpack=applied.pack;
+      campaignState.caps=applied.caps;
+      syncAmmoToWeapons();
+      saveBackpack();saveCampaign();
+      refreshInventoryUI();refreshWeaponHUD();refreshCampaignUI();
+      if(vendorOpen)refreshVendorUI();
+      showShotNotice(grant.action==='caps'?'+ '+applied.added+' CAPS · ADMIN GRANT':
+        '+ '+applied.added+' '+getItem(grant.itemId).name.toUpperCase()+
+        ' · OPEN BACKPACK TO EQUIP');
+    }
+    complete(applied);
+  }catch(error){complete({ok:false,reason:String(error.message||error)});}
+});
 function inventoryLine(item){
   const row=document.createElement('div');
   row.className='loot-entry';
@@ -2018,11 +1951,9 @@ function refreshInventoryUI(){
     parkedPlates?'Power armor plates are parked; enter the frame for their protection. Player armor is listed above.':
     'Only player-worn armor counts. Equipment on test dummies is separate.';
   const nav=$('inventoryCategories');nav.replaceChildren();
-  if(WEAPON_REBUILD_MODE&&inventoryCategory==='weapon')inventoryCategory='all';
   const ownedComponents=CRAFTING_COMPONENTS.filter(item=>countItem(backpack,item.id)>0);
-  const areas=(WEAPON_REBUILD_MODE?INVENTORY_CATEGORIES.filter(category=>category.id!=='weapon'):INVENTORY_CATEGORIES).map(category=>({
+  const areas=INVENTORY_CATEGORIES.map(category=>({
     ...category,count:backpack.items.filter(e=>
-      (!WEAPON_REBUILD_MODE||getItem(e.itemId)?.category!=='weapon')&&
       (category.id==='all'||inventorySection(getItem(e.itemId))===category.id)).length+
       (category.id==='all'||category.id==='materials'?ownedComponents.length:0)
   }));
@@ -2045,7 +1976,6 @@ function refreshInventoryUI(){
   $('inventorySectionCount').textContent=chosen.count+
     (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES');
   const visibleEntries=backpack.items.filter(entry=>
-    (!WEAPON_REBUILD_MODE||getItem(entry.itemId)?.category!=='weapon')&&
     (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory));
   const area=$('inventoryItems');area.replaceChildren();
   const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
@@ -2054,7 +1984,7 @@ function refreshInventoryUI(){
     const empty=document.createElement('p');empty.className='inventory-empty';
     empty.textContent=inventoryCategory==='quest'?
       'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
-      inventoryCategory==='weapon'?'NO LOOSE WEAPONS · YOUR STARTING PISTOL IS EQUIPPED.':
+      inventoryCategory==='weapon'?'NO WEAPONS OWNED · FIND ONE OR USE THE DEVELOPER PANEL.':
       'NOTHING IN THIS SECTION YET · SEARCH LOOT WITH E.';
     area.append(empty);
   }
@@ -2140,7 +2070,8 @@ function refreshInventoryUI(){
       if(item.category==='weapon'&&
         backpack.equipment.weapon===item.key&&
         !backpack.items.some(e=>e.itemId===item.id)){
-        backpack.equipment.weapon='scrap-pistol';selectWeapon('scrap-pistol');
+        backpack.equipment.weapon='none';
+        weaponVisuals.get(activeWeaponId).root.visible=false;
       }
       if(item.category==='armor'&&backpack.equipment.armor[item.slot]===item.key&&
          !backpack.items.some(e=>e.itemId===item.id))
@@ -2185,8 +2116,6 @@ function refreshLootUI(){
     count.className='loot-quantity';row.append(count);
     lootButton(row,'TAKE',()=>{
       const result=takeFromBag(backpack,bag,i);
-      if(result.added&&bag.source==='power-cache')savePowerCache(bag.items);
-      if(result.added&&bag.source==='component-cache')saveComponentCache(bag.items);
       if(result.added&&bag.source.startsWith('enemy-')&&!bag.xpGranted){
         bag.xpGranted=true;awardSpecialExperience(15,'loot');
         if(Math.random()<specialModifiers.salvageChance)
@@ -2248,8 +2177,6 @@ $('lootTakeAll').addEventListener('click',()=>{
     bag.xpGranted=true;awardSpecialExperience(15,'loot');
     if(Math.random()<specialModifiers.salvageChance)addItem(backpack,'supply:salvage',1);
   }
-  if(bag.source==='power-cache')savePowerCache(bag.items);
-  if(bag.source==='component-cache')saveComponentCache(bag.items);
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
     'BACKPACK FULL · '+result.remaining+' ITEMS LEFT IN BAG · DROP ITEMS FOR SPACE':
@@ -2260,8 +2187,6 @@ $('lootTakeAll').addEventListener('click',()=>{
 
 // W20.56: Real test-field vendor transactions using the saved campaign wallet.
 let vendorOpen=false,vendorFromField=false,activeVendorId=null,vendorTab='buy';
-let vendorTestCreditClaimed=false;
-try{vendorTestCreditClaimed=localStorage.getItem('rpg-lab-vendor-credit-v1')==='claimed';}catch{}
 function nearestVendor(){
   let nearest=null,distance=3.65;
   for(const vendor of VENDORS){
@@ -2284,9 +2209,6 @@ function refreshVendorUI(){
   $('vendorSellTab').classList.toggle('active',vendorTab==='sell');
   $('vendorBuyTab').setAttribute('aria-pressed',String(vendorTab==='buy'));
   $('vendorSellTab').setAttribute('aria-pressed',String(vendorTab==='sell'));
-  $('vendorCredit').disabled=vendorTestCreditClaimed;
-  $('vendorCredit').textContent=vendorTestCreditClaimed?
-    'TEST CREDIT CLAIMED':'CLAIM 300 TEST CAPS · ONCE';
   const list=$('vendorItems');list.replaceChildren();
   function row(itemId,quantity,action,price,disabled=false,subtext=''){
     const item=getItem(itemId),entry=document.createElement('div');
@@ -2396,14 +2318,6 @@ $('vendorClose').addEventListener('click',closeVendor);
 $('vendorBuyTab').addEventListener('click',()=>{vendorTab='buy';refreshVendorUI();});
 $('vendorSellTab').addEventListener('click',()=>{vendorTab='sell';refreshVendorUI();});
 $('vendorSearch').addEventListener('input',refreshVendorUI);
-$('vendorCredit').addEventListener('click',()=>{
-  const outcome=claimVendorTestCredit(campaignState.caps,vendorTestCreditClaimed);
-  if(!outcome.ok){showVendorFeedback('TEST CREDIT ALREADY CLAIMED OR WALLET FULL');return;}
-  campaignState.caps=outcome.caps;vendorTestCreditClaimed=true;
-  try{localStorage.setItem('rpg-lab-vendor-credit-v1','claimed');}catch{}
-  saveCampaign();refreshCampaignUI();refreshVendorUI();
-  showVendorFeedback('ONE-TIME TEST CREDIT · +300 CAPS');
-});
 function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
 let benchActiveSlot='receiver';
 function workbenchFeedback(message){
@@ -2875,12 +2789,12 @@ function updateEnemies(dt,elapsed=dt){
 // All meshes are viewmodel geometry; the shared weapons.mjs owns the rules.
 const arsenalStates=createArsenalStates();
 for(const spec of ARSENAL)arsenalStates[spec.id].reserve=ammoReserve(backpack,spec.id);
+if(!hadSavedBackpack)for(const spec of ARSENAL)arsenalStates[spec.id].magazine=0;
 let activeWeaponId=TEN_MM_PISTOL.id;
 let activeSpec=effectiveWeaponSpec(TEN_MM_PISTOL,backpack);
 let weaponState=arsenalStates[activeWeaponId];
 let triggerHeld=false,aimHeld=false;
 let infiniteAmmo=false; // test-only cheat, always starts OFF
-const preInfiniteAmmo=new Map();
 // The dry-fire click is a trigger-edge event, NOT a frame-loop sound.
 let emptyClickLatched=false;
 let dryFireClicks=0;
@@ -3418,9 +3332,14 @@ let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false
 let shotgunPendingEjections=0,pumpPendingEjection=false,huntingPendingEjection=false,heavySniperPendingEjection=false,revolverPendingEjections=0;
 let groundedStepProgress=0;
 function selectWeapon(id){
-  if(WEAPON_REBUILD_MODE&&!REBUILT_WEAPON_IDS.includes(id))return; // only rebuilt guns allowed
+  if(WEAPON_REBUILD_MODE&&(!REBUILT_WEAPON_IDS.includes(id)||
+    !backpack.items.some(entry=>entry.itemId==='weapon:'+id)))return;
   const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack);
-  if(id===activeWeaponId)return;
+  if(id===activeWeaponId){
+    backpack.equipment.weapon=id;
+    weaponVisuals.get(id).root.visible=true;
+    saveBackpack();refreshWeaponHUD();return;
+  }
   // Switching guns cancels unfinished motion; seated loose rounds stay loaded.
   cancelWeaponReload(weaponState);
   shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;heavySniperPendingEjection=false;revolverPendingEjections=0;
@@ -3457,79 +3376,18 @@ $('weaponSelect').disabled=true;
 if(new URLSearchParams(location.search).get('smoke')==='1')
   $('weaponSelect').addEventListener('change',()=>selectWeapon($('weaponSelect').value));
 if(WEAPON_REBUILD_MODE){
-  if(REBUILT_WEAPON_IDS.includes(backpack.equipment.weapon))
+  if(REBUILT_WEAPON_IDS.includes(backpack.equipment.weapon)&&
+    backpack.items.some(entry=>entry.itemId==='weapon:'+backpack.equipment.weapon))
     selectWeapon(backpack.equipment.weapon);
   else{
-    backpack.equipment.weapon=NEW_WEAPON_ID;
+    backpack.equipment.weapon='none';
     saveBackpack();
   }
 }else if(backpack.equipment.weapon!=='scrap-pistol'){
   selectWeapon(backpack.equipment.weapon);
 }
 
-// W20.60 — physical crate proximity and a dedicated equip-only menu.
-function weaponsCrateWithinReach(){
-  return Math.hypot(player.x-weaponCrate.x,player.z-weaponCrate.z)<=weaponCrate.reach;
-}
-function refreshWeaponsCrateUI(){
-  const list=$('weaponsCrateItems');list.replaceChildren();
-  const current=effectiveWeaponSpec(getWeaponSpec(activeWeaponId),backpack);
-  $('weaponsCrateEquipped').textContent=
-    'CURRENTLY EQUIPPED  ·  '+current.name.toUpperCase()+
-    '  ·  '+current.damage+' DAMAGE  ·  '+current.magazineSize+' CAPACITY';
-  for(let i=0;i<REBUILT_WEAPON_IDS.length;i++){
-    const id=REBUILT_WEAPON_IDS[i];
-    const spec=effectiveWeaponSpec(getWeaponSpec(id),backpack),state=arsenalStates[id];
-    const row=document.createElement('article');row.className='weapon-crate-entry';
-    row.dataset.weaponId=id;
-    if(id===activeWeaponId)row.classList.add('selected');
-    const number=document.createElement('span');number.className='weapon-crate-index';
-    number.textContent=String(i+1).padStart(2,'0');
-    const details=document.createElement('div');details.className='weapon-crate-details';
-    const name=document.createElement('strong');name.textContent=spec.name;
-    const meta=document.createElement('small');
-    meta.textContent=spec.damage+' DMG'+
-      ((spec.pellets||1)>1?' × '+spec.pellets+' PELLETS':'')+
-      ' · '+spec.magazineSize+' CAPACITY · '+
-      (spec.automatic?'AUTOMATIC':'SEMI / MANUAL')+
-      ' · '+state.magazine+' LOADED / '+displayAmmoCount(state.reserve)+' RESERVE';
-    const modCount=MOD_SLOTS.filter(slot=>selectedWeaponMod(backpack,id,slot)!=='factory').length;
-    const mods=document.createElement('small');mods.className='weapon-crate-mods';
-    mods.textContent=modCount+' INSTALLED UPGRADES · '+
-      OPTIC_MODS[installedWeaponOptic(backpack,id)].name.toUpperCase();
-    details.append(name,meta,mods);
-    const button=document.createElement('button');button.type='button';
-    button.className='weapon-crate-equip';
-    button.textContent=id===activeWeaponId?'EQUIPPED':'EQUIP';
-    button.disabled=id===activeWeaponId;
-    button.addEventListener('click',()=>{
-      // Existing selection logic saves the equipped ID and swaps real 3D guns.
-      selectWeapon(id);
-      $('currentWeaponSummary').textContent=spec.name.toUpperCase();
-      refreshInventoryUI();
-      closeWeaponsCrate();
-    });
-    row.append(number,details,button);list.append(row);
-  }
-}
-function openWeaponsCrate(){
-  if(weaponsCrateOpen||vendorOpen||inventoryOpen||lootOpen||workbenchOpen||
-    specialOpen||powerUIOpen||questPanelOpen||dialogueOpen||mapOpen)return;
-  weaponsCrateFromField=controls.isLocked;
-  weaponsCrateOpen=true;
-  refreshWeaponsCrateUI();
-  $('weaponsCratePanel').classList.remove('hidden');
-  $('menu').classList.add('hidden');
-  if(controls.isLocked)controls.unlock();
-}
-function closeWeaponsCrate(){
-  if(!weaponsCrateOpen)return;
-  weaponsCrateOpen=false;
-  $('weaponsCratePanel').classList.add('hidden');
-  if(weaponsCrateFromField){weaponsCrateFromField=false;controls.lock();}
-  else $('menu').classList.remove('hidden');
-}
-$('weaponsCrateClose').addEventListener('click',closeWeaponsCrate);
+// Weapon equip now happens only from an owned backpack item.
 
 // Reusable low-poly brass casing geometry and limited world-space physics.
 const casingGeometry=new THREE.CylinderGeometry(.029,.029,.105,8);
@@ -3762,15 +3620,8 @@ function showShotNotice(message){
   shotNoticeTime=.8;
 }
 function refreshWeaponHUD(){
-  const ammoToggle=$('infiniteAmmoToggle');
-  const toggleLabel=infiniteAmmo?'INFINITE AMMO: ON · M':'INFINITE AMMO: OFF · M';
-  if(ammoToggle.textContent!==toggleLabel)ammoToggle.textContent=toggleLabel;
-  const pressed=String(infiniteAmmo);
-  if(ammoToggle.getAttribute('aria-pressed')!==pressed)
-    ammoToggle.setAttribute('aria-pressed',pressed);
   const ammoMode=$('infiniteAmmoStatus');
-  const ammoLabel=infiniteAmmo?
-    '∞ AMMO ACTIVE · M TO DISABLE':'NORMAL AMMO · M TO ENABLE';
+  const ammoLabel='FINITE AMMO · DEVELOPER PANEL TO ADD RESERVES';
   if(ammoMode.textContent!==ammoLabel)ammoMode.textContent=ammoLabel;
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){
     $('fieldAmmo').textContent='--';
@@ -4157,50 +4008,6 @@ function reload(){
     showShotNotice('RELOADING');refreshWeaponHUD();
   }
 }
-function resupply(){
-  if(WEAPON_REBUILD_MODE&&!playerGunEnabled()){showShotNotice('NO AMMUNITION NEEDED · UNARMED');return;}
-  if(activeWeaponId===LASER_MUSKET.id)cancelLaserCrank(weaponState);
-  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;revolverPendingEjections=0;
-  const fresh=createWeaponState(activeSpec);
-  Object.assign(weaponState,fresh);
-  if(activeWeaponId===LASER_MUSKET.id)ensureLaserState(weaponState);
-  saveBackpack();
-  emptyClickLatched=false;
-  showShotNotice('TEST AMMO RESTOCKED');
-  // Do not leave the old reload hand suspended if F is used mid-reload.
-  slideCycle=0;
-  refreshWeaponHUD();
-}
-function toggleInfiniteAmmo(){
-  shotgunPendingEjections=0;pumpPendingEjection=false;huntingPendingEjection=false;revolverPendingEjections=0;
-  infiniteAmmo=!infiniteAmmo;
-  if(infiniteAmmo){
-    preInfiniteAmmo.clear();
-    for(const id of REBUILT_WEAPON_IDS){
-      const state=arsenalStates[id];
-      if(id===LASER_MUSKET.id)cancelLaserCrank(state);
-      preInfiniteAmmo.set(id,{magazine:state.magazine,reserve:state.reserve,
-        laserCharge:id===LASER_MUSKET.id?ensureLaserState(state).laserCharge:undefined});
-      cancelWeaponReload(state);
-      state.magazine=effectiveWeaponSpec(getWeaponSpec(id),backpack).magazineSize;
-    }
-    emptyClickLatched=false;
-  }else{
-    for(const [id,ammo] of preInfiniteAmmo){
-      const state=arsenalStates[id];
-      if(id===LASER_MUSKET.id)cancelLaserCrank(state,{refund:false});
-      state.magazine=ammo.magazine;
-      state.reserve=ammo.reserve;
-      if(id===LASER_MUSKET.id)state.laserCharge=ammo.laserCharge??0;
-      cancelWeaponReload(state);
-    }
-    preInfiniteAmmo.clear();
-  }
-  refreshWeaponHUD();
-  showShotNotice(infiniteAmmo?'INFINITE AMMO ENABLED · M TO DISABLE':
-    'NORMAL AMMO RESTORED · M TO ENABLE');
-}
-$('infiniteAmmoToggle').addEventListener('click',toggleInfiniteAmmo);
 refreshWeaponHUD();
 function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
@@ -4467,10 +4274,6 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
       frontDot:aim?.dot(expected)??null,
       muzzle:target.rigged?.getMuzzleWorldPosition()?.toArray()||null};
   };
-  window.__rpgSmokeApproachPowerCache=()=>{
-    player.x=-53;player.z=-9;player.jump=0;player.vertical=0;resetMotion(player);
-    return nearestLootBag()?.source==='power-cache';
-  };
   // Hold the exact phase during visual smoke checks, independent of GPU frame rate.
   window.__rpgSmokeReloadHold=null;
   window.__rpgSmokeSetReloadAnimation=(id,progress=.5)=>{
@@ -4698,12 +4501,6 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     return {distance:Math.hypot(raider.brain.x-player.x,raider.brain.z-player.z),
       insideArena:inAIArena(),memory:raider.brain.memory};
   };
-  window.__rpgSmokeApproachWeaponsCrate=()=>{
-    player.x=weaponCrate.x;player.z=weaponCrate.z+1.48;
-    resetMotion(player);
-    camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
-    return weaponsCrateWithinReach();
-  };
   window.__rpgSmokeApproachLoot=(bagId)=>{
     const bag=bagId?lootBags.get(bagId):[...lootBags.values()].find(b=>b.source!=='power-cache');
     if(!bag)return false;
@@ -4723,7 +4520,7 @@ if(new URLSearchParams(location.search).get('smoke')==='1'){
     triggerHeld,emptyClickLatched,dryFireClicks,
     squad:{remaining:squadIntel.remaining,source:squadIntel.source,
       alerts:squadIntel.alerts},
-    workbenchOpen,weaponsCrateOpen,crateNearby:weaponsCrateWithinReach(),
+    workbenchOpen,
     optic:installedWeaponOptic(backpack,activeWeaponId),
     special:{...specialState,attributes:{...specialState.attributes},
       perks:{...specialState.perks},bonuses:{...specialModifiers},open:specialOpen},
@@ -5123,16 +4920,6 @@ $('enterVendors').addEventListener('click',()=>{
   sound.unlock();
   controls.lock();
 });
-$('enterWeaponsCrate').addEventListener('click',()=>{
-  // Drop the player IN FRONT of the physical crate, not inside its collision.
-  resetPlayer(6);
-  player.x=weaponCrate.x;player.z=weaponCrate.z+1.62;
-  player.jump=0;player.vertical=0;resetMotion(player);
-  camera.rotation.set(0,0,0);
-  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
-  sound.unlock();
-  controls.lock();
-});
 $('start').addEventListener('click',()=>{
   // The audio engine is unlocked only after the player initiates playback.
   sound.unlock();
@@ -5158,8 +4945,6 @@ $('quality').addEventListener('click',()=>{
   refreshCampaignUI();
 });
 window.addEventListener('keydown',e=>{
-  if(e.code==='Escape'&&weaponsCrateOpen){e.preventDefault();closeWeaponsCrate();return;}
-  if(weaponsCrateOpen)return;
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
@@ -5213,7 +4998,6 @@ window.addEventListener('keydown',e=>{
     }
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
-    else if(weaponsCrateWithinReach())openWeaponsCrate();
     else if(benchWithinReach())beginWorkbench();
     else showShotNotice('NO INTERACTION WITHIN REACH');
     return;
@@ -5224,16 +5008,12 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyN'&&!e.repeat){
     toggleSound();return;
   }
-  if(e.code==='KeyM'&&!e.repeat&&controls.isLocked){
-    toggleInfiniteAmmo();return;
-  }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
   if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=9){
     resetPlayer(Number(e.code.slice(5))-1);return;
   }
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
-  if(e.code==='KeyF'&&!e.repeat&&controls.isLocked){resupply();return;}
   if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
   if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){openArmory();return;}
   if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked){resetEnemies();return;}
@@ -5735,9 +5515,8 @@ function frame(){
   const merchant=nearestVendor();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
-  const crateInReach=weaponsCrateWithinReach();
   const benchInReach=benchWithinReach();
-  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||crateInReach||benchInReach;
+  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||benchInReach;
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||weaponsCrateOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
@@ -5763,22 +5542,21 @@ function frame(){
     }
   }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
     nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
-  else if(crateInReach)$('lootPrompt').textContent='E · OPEN WEAPONS CRATE · CHOOSE GUN';
   else if(benchInReach)$('lootPrompt').textContent='E · MODIFY GUN · WEAPON WORKBENCH';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
   playerAvatar.setHeldWeapon(WEAPON_REBUILD_MODE?null:activeWeaponId);
-  heldTenMM.root.visible=activeWeaponId===TEN_MM_PISTOL.id;
-  heldPipePistol.root.visible=activeWeaponId===PIPE_PISTOL.id;
-  heldPipeRifle.root.visible=activeWeaponId===PIPE_RIFLE.id;
-  heldLaserMusket.root.visible=activeWeaponId===LASER_MUSKET.id;
-  heldDoubleBarrel.root.visible=activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
-  heldPumpShotgun.root.visible=activeWeaponId===PUMP_ACTION_SHOTGUN.id;
-  heldHuntingRifle.root.visible=activeWeaponId===BOLT_HUNTING_RIFLE.id;
-  heldWornRevolver.root.visible=activeWeaponId===IRON_REVOLVER.id;
-  heldPipeSMG.root.visible=activeWeaponId===PIPE_SMG.id;
-  heldHeavySniper.root.visible=activeWeaponId===HEAVY_SNIPER.id;
+  heldTenMM.root.visible=playerGunEnabled()&&activeWeaponId===TEN_MM_PISTOL.id;
+  heldPipePistol.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_PISTOL.id;
+  heldPipeRifle.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_RIFLE.id;
+  heldLaserMusket.root.visible=playerGunEnabled()&&activeWeaponId===LASER_MUSKET.id;
+  heldDoubleBarrel.root.visible=playerGunEnabled()&&activeWeaponId===DOUBLE_BARREL_SHOTGUN.id;
+  heldPumpShotgun.root.visible=playerGunEnabled()&&activeWeaponId===PUMP_ACTION_SHOTGUN.id;
+  heldHuntingRifle.root.visible=playerGunEnabled()&&activeWeaponId===BOLT_HUNTING_RIFLE.id;
+  heldWornRevolver.root.visible=playerGunEnabled()&&activeWeaponId===IRON_REVOLVER.id;
+  heldPipeSMG.root.visible=playerGunEnabled()&&activeWeaponId===PIPE_SMG.id;
+  heldHeavySniper.root.visible=playerGunEnabled()&&activeWeaponId===HEAVY_SNIPER.id;
   heldPipeSMG.slideGroup.position.z=heldPipeSMG.root.visible?
     slideTravel(slideCycle,.095)+handling.slideOffset:0;
   if(heldPipeSMG.root.visible){
@@ -5872,7 +5650,8 @@ function frame(){
   playerAvatar.root.visible=thirdPersonActive;
   for(const [id,weapon] of weaponVisuals)
     weapon.root.visible=(!WEAPON_REBUILD_MODE||REBUILT_WEAPON_IDS.includes(id))&&
-      id===activeWeaponId&&!thirdPersonActive&&powerArmorState.phase==='idle'&&
+      id===activeWeaponId&&(!WEAPON_REBUILD_MODE||playerGunEnabled())&&
+      !thirdPersonActive&&powerArmorState.phase==='idle'&&
       !(id===HEAVY_SNIPER.id&&weaponState.aiming);
   if(thirdPersonActive){
     controls.getDirection(viewHeading);
@@ -5903,3 +5682,4 @@ window.addEventListener('gameshub-before-balance-reload', () => {
 });
 refreshCampaignUI();
 frame();
+

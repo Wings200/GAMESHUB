@@ -56,8 +56,10 @@ try{
     'All six armor hit zones must be visible');
   assert.match(await page.locator('#inventoryArmor').textContent(),/6 ZONES PROTECTED/,
     'Armor summary must clearly state that it counts body zones');
-  assert.equal(await page.locator('#inventoryCategories .inventory-category').count(),8,
-    'Inventory must expose the new material pouch category');
+  assert.equal(await page.locator('#inventoryCategories .inventory-category').count(),9,
+    'Inventory must expose weapons, armor and the material pouch');
+  await page.locator('#inventoryCategories [data-category="weapon"]').click();
+  assert.equal(await page.locator('#inventorySectionTitle').textContent(),'WEAPONS');
   await page.locator('#inventoryCategories [data-category="materials"]').click();
   assert.equal(await page.locator('#inventorySectionTitle').textContent(),'MATERIALS');
   assert.match(await page.locator('#inventorySectionCount').textContent(),/COMPONENT TYPES/);
@@ -72,7 +74,7 @@ try{
   await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:5000});
   await page.setViewportSize({width:760,height:700});
   await page.screenshot({path:'/tmp/rpg-inventory-tablet.png'});
-  // W20.56: Physical shop interaction, one-time test credit, and real trading.
+  // W20.62: Physical shop interaction remains, but free test caps are gone.
   await page.keyboard.press('Escape');
   await page.locator('#inventoryPanel').waitFor({state:'hidden'});
   await page.locator('#enterVendors').click();
@@ -83,19 +85,18 @@ try{
   await page.locator('#vendorSearch').fill('nonexistent-item');
   assert.match(await page.locator('#vendorItems').textContent(),/NO MATCHES/);
   await page.locator('#vendorSearch').fill('');
-  await page.locator('#vendorCredit').click();
-  assert.match(await page.locator('#vendorCaps').textContent(),/300 CAPS/);
-  await page.locator('#vendorItems .vendor-item button').first().click();
-  assert.match(await page.locator('#vendorFeedback').textContent(),/PURCHASED/);
+  assert.equal(await page.locator('#vendorCredit').count(),0,
+    'No more free merchant cap handout');
+  assert.match(await page.locator('#vendorCaps').textContent(),/0 CAPS/);
   await page.locator('#vendorSellTab').click();
-  await page.locator('#vendorItems .vendor-item button').first().click();
-  assert.match(await page.locator('#vendorFeedback').textContent(),/SOLD/);
+  assert.equal(await page.locator('#vendorSellTab').getAttribute('aria-pressed'),'true');
   await page.keyboard.press('Escape');
   await page.locator('#vendorPanel').waitFor({state:'hidden'});
   assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
     errors.join(' | '));
-  console.log('INVENTORY_VENDOR_UI_QA_PASS: inventory, vendor credit, buying, selling');
+  console.log('INVENTORY_VENDOR_UI_QA_PASS: weapon section, armor, resources, vendors, no free caps');
 }finally{
   await browser?.close();
   await new Promise(done=>server.close(done));
 }
+

@@ -180,9 +180,9 @@ test('Six selectable unique models and independent weapon states are wired',()=>
   assert.match(source,/REBUILT_WEAPON_IDS\.includes\(spec\.id\)/);
   assert.match(source,/function buildArsenalView\(spec\)/);
   assert.match(source,/function selectWeapon\(id\)/);
-  assert.match(source,/function openWeaponsCrate\(\)/);
-  assert.match(page,/id="weaponsCratePanel"/);
-  assert.match(page,/id="weaponsCrateItems"/);
+  assert.doesNotMatch(source,/function openWeaponsCrate\(\)/);
+  assert.doesNotMatch(page,/id="weaponsCratePanel"/);
+  assert.match(source,/applyDeveloperGrant\(backpack,campaignState\.caps,grant\)/);
   assert.match(source,/weaponVisuals\.get\(activeWeaponId\)\.root\.visible=false/);
   assert.match(source,/weaponVisuals\.get\(id\)\.root\.visible=true/);
   assert.doesNotMatch(source,/function cycleWeapon\(direction\)/);
@@ -592,7 +592,7 @@ test('W10.0 power armor uses owned modular pieces, local repair and real core fu
     'powerEjectCore','powerCraftTier','powerCraftSlot','powerCraftButton',
     'powerServiceFeedback','power-repair-head','power-repair-rightArm'])
     assert.ok(page.includes('id="'+id+'"'),id+' control is required');
-  assert.match(source,/spawnWorldLoot\(powerCacheContents,-53,-9,'power-cache'\)/);
+  assert.doesNotMatch(source,/spawnWorldLoot\(powerCacheContents/);
   assert.match(source,/takeFromBag\(backpack,bag,i\)/);
   assert.match(source,/removeItem\(backpack,owned\.uid,1\)/);
   assert.match(source,/setPowerPlate\(powerArmorState,slot,item\.tier,taken\.condition\)/);
@@ -993,59 +993,17 @@ test('W20.23 NPC head and armor hitboxes follow animated joints',()=>{
   }
 });
 
-test('W20.23 infinite ammo toggles without spending normal ammo',()=>{
-  assert.match(page,/id="infiniteAmmoToggle"/);
-  assert.match(page,/id="infiniteAmmoStatus"/);
-  assert.match(source,/if\(e\.code==='KeyM'/);
-  assert.match(source,/if\(infiniteAmmo&&result\.status==='fired'\)/);
-  const start=source.indexOf('function toggleInfiniteAmmo()');
-  const end=source.indexOf("$('infiniteAmmoToggle').addEventListener",start);
-  assert.ok(start>0&&end>start);
-  const toggleSource=source.slice(start,end);
-  const script=[
-    "const REBUILT_WEAPON_IDS=['10mm-pistol','pipe-pistol','pipe-rifle','laser-musket','double-barrel-shotgun','pump-action-shotgun'];",
-    "const arsenalStates={'10mm-pistol':{magazine:2,reserve:14,reloadRemaining:1},'pipe-pistol':{magazine:0,reserve:8,reloadRemaining:0},'pipe-rifle':{magazine:4,reserve:90,reloadRemaining:0},'laser-musket':{magazine:3,reserve:84,reloadRemaining:0,laserCharge:2},'double-barrel-shotgun':{magazine:1,reserve:48,reloadRemaining:0},'pump-action-shotgun':{magazine:4,reserve:72,reloadRemaining:0}};",
-    "const preInfiniteAmmo=new Map();",
-    "const LASER_MUSKET={id:'laser-musket'};",
-    "const cancelLaserCrank=()=>false;",
-    "const ensureLaserState=state=>state;",
-    "let infiniteAmmo=false,emptyClickLatched=true,shotgunPendingEjections=0,pumpPendingEjection=false;",
-    "let notice='',refreshes=0;",
-    "const getWeaponSpec=id=>({magazineSize:id==='10mm-pistol'?12:id==='pipe-rifle'?15:id==='laser-musket'?6:id==='double-barrel-shotgun'?2:id==='pump-action-shotgun'?6:8});",
-    "const backpack={equipment:{weaponMods:{}}};",
-    "const effectiveWeaponSpec=(spec,pack)=>spec;",
-    "const cancelWeaponReload=state=>{state.reloadRemaining=0;};",
-    "const refreshWeaponHUD=()=>refreshes++;",
-    "const showShotNotice=s=>notice=s;",
-    toggleSource,
-    "toggleInfiniteAmmo();",
-    "assert.equal(infiniteAmmo,true);",
-    "assert.equal(arsenalStates['10mm-pistol'].magazine,12);",
-    "assert.equal(arsenalStates['pipe-pistol'].magazine,8);",
-    "assert.equal(arsenalStates['pipe-rifle'].magazine,15);",
-    "assert.equal(arsenalStates['laser-musket'].magazine,6);",
-    "assert.equal(arsenalStates['double-barrel-shotgun'].magazine,2);",
-    "assert.equal(arsenalStates['pump-action-shotgun'].magazine,6);",
-    "assert.equal(arsenalStates['10mm-pistol'].reserve,14);",
-    "assert.equal(emptyClickLatched,false);",
-    "toggleInfiniteAmmo();",
-    "assert.equal(infiniteAmmo,false);",
-    "assert.equal(arsenalStates['10mm-pistol'].magazine,2);",
-    "assert.equal(arsenalStates['10mm-pistol'].reserve,14);",
-    "assert.equal(arsenalStates['pipe-pistol'].magazine,0);",
-    "assert.equal(arsenalStates['pipe-pistol'].reserve,8);",
-    "assert.equal(arsenalStates['pipe-rifle'].magazine,4);",
-    "assert.equal(arsenalStates['pipe-rifle'].reserve,90);",
-    "assert.equal(arsenalStates['laser-musket'].magazine,3);",
-    "assert.equal(arsenalStates['laser-musket'].laserCharge,2);",
-    "assert.equal(arsenalStates['double-barrel-shotgun'].magazine,1);",
-    "assert.equal(arsenalStates['pump-action-shotgun'].magazine,4);",
-    "assert.equal(preInfiniteAmmo.size,0);",
-    "assert.equal(refreshes,2);",
-    "return notice;"
-  ].join('\n');
-  const testRun=new Function('assert',script);
-  assert.match(testRun(assert),/NORMAL AMMO RESTORED/);
+test('W20.62 removes free item shortcuts and uses authorized grants',()=>{
+  assert.doesNotMatch(page,/id="weaponsCratePanel"/);
+  assert.doesNotMatch(page,/id="enterWeaponsCrate"/);
+  assert.doesNotMatch(source,/spawnWorldLoot\(powerCacheContents/);
+  assert.doesNotMatch(source,/spawnWorldLoot\(componentCacheContents/);
+  assert.doesNotMatch(source,/if\(e\.code==='KeyF'/);
+  assert.doesNotMatch(source,/if\(e\.code==='KeyM'/);
+  assert.match(source,/if\(!hadSavedBackpack\)/);
+  assert.match(source,/backpack\.equipment\.weapon='none'/);
+  assert.match(source,/applyDeveloperGrant\(backpack,campaignState\.caps,grant\)/);
+  assert.match(source,/selectWeapon\(result\.key\)/);
 });
 
 test('W20.24 pipe rifle is selectable and really rendered in first/third person',()=>{
@@ -1586,3 +1544,4 @@ test('W20.52 enemy overhead health sprites are gone and cover hides target info'
   assert.match(page,/id="targetHealthHud" class="hidden"/);
   assert.match(page,/main\.js\?v=W20\.52/);
 });
+

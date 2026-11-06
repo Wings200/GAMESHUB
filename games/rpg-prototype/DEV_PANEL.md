@@ -1,10 +1,38 @@
-# W20.61 — Developer Variables (real components, editable defaults)
+# W20.62 — Developer Variables + Item and Caps Grants
 
 ## Access
 Sign in using one of the **two existing, stable-UUID-bound developer accounts**,
 then click DEV PANEL or press F10 in the RPG testing field. The server checks both
 the actual authenticated session's account UUID and username. Ordinary/guest
 sessions cannot see the editor or publish changes.
+
+## Items & Caps (W20.62)
+
+Inside the same Developer Panel click **ITEMS & CAPS**. Search the actual
+`ITEM_CATALOG` by name or ID, select a result, enter a quantity from 1 to
+999, then click **GIVE ITEM**. The catalog updates automatically when newly
+implemented items are added. Archived, unfinished guns are excluded; all ten
+rebuilt guns, their ammunition, armor and power-armor pieces, clothing,
+supplies and real crafting components are supported.
+
+**GIVE CAPS** adds the requested amount to your campaign wallet, capped at
+100,000,000. Each command first goes to `POST /api/dev/grant`, which verifies
+the signed-in developer by stable UUID + username and validates the item ID,
+quantity or caps amount. The authorized response is applied to **that
+browser's existing locally saved backpack/wallet**. Inventory capacity and
+stacking remain enforced: the panel reports partial grants or full backpacks.
+The granted firearm must be equipped through **I → Weapons → EQUIP**.
+
+The test field no longer spawns a free weapon crate, power-armor starter
+cache or crafting-component cache. The one-time +300 vendor credit, the F
+ammo restock and the public M infinite-ammo shortcut are disabled. New saves
+start without free weapon reserves, a granted gun or starting ammo loaded.
+Existing saved loot, vendor trading, enemy drops and quest rewards stay intact.
+
+**Note:** RPG test save data is currently browser-local; this is a validated
+admin command, not a server-stored multiplayer inventory transaction. A
+production shared inventory would need authoritative account inventory
+storage and audit records before letting one admin grant another player items.
 
 ## New six-category navigation
 
@@ -79,8 +107,9 @@ category-specific fields, nonfinite numbers, and edits by unbound accounts.
 
 ### Verify
 Run `node --test games/rpg-prototype/dev-settings.test.mjs
-games/rpg-prototype/balance.test.mjs` and
+games/rpg-prototype/dev-grants.test.mjs games/rpg-prototype/balance.test.mjs` and
 `node games/rpg-prototype/dev-panel-ui-smoke.mjs` with Chromium and
 the workflow's node dependencies installed.
 
 Other game types (REDLINE/BLACKOUT) are not affected.
+

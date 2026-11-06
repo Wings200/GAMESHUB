@@ -30,7 +30,8 @@ jobs:
           node --check games/rpg-prototype/materials.mjs
           node --check games/rpg-prototype/weapon-mods.mjs
           node --check games/rpg-prototype/weapon-mod-visual.mjs
-          node --check games/rpg-prototype/weapons-crate-ui-smoke.mjs
+          node --check games/rpg-prototype/dev-grants.mjs
+          node --check functions/api/dev/grant.js
           node --check games/rpg-prototype/inventory.mjs
           node --check games/rpg-prototype/balance-schema.mjs
           node --check games/rpg-prototype/game-balance.mjs
@@ -38,8 +39,9 @@ jobs:
           node --check games/rpg-prototype/testing/developer-panel.mjs
           node --check games/rpg-prototype/dev-panel-ui-smoke.mjs
           node --check games/rpg-prototype/dev-settings.test.mjs
+          node --check games/rpg-prototype/dev-grants.test.mjs
           node --check functions/api/dev/settings.js
-          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs games/rpg-prototype/balance.test.mjs games/rpg-prototype/dev-settings.test.mjs games/rpg-prototype/weapon-mods.test.mjs
+          node --test games/rpg-prototype/vendors.test.mjs games/rpg-prototype/field-map.test.mjs games/rpg-prototype/materials.test.mjs games/rpg-prototype/balance.test.mjs games/rpg-prototype/dev-settings.test.mjs games/rpg-prototype/dev-grants.test.mjs games/rpg-prototype/weapon-mods.test.mjs
 
   smoke:
     runs-on: ubuntu-latest
@@ -146,8 +148,6 @@ jobs:
         run: node games/rpg-prototype/inventory-ui-smoke.mjs
       - name: Test real weapon mod workbench in the 3D browser
         run: node games/rpg-prototype/weapon-mod-ui-smoke.mjs
-      - name: Verify physical weapon crate and no X/Z switching
-        run: node games/rpg-prototype/weapons-crate-ui-smoke.mjs
       - name: Keep inventory screenshots for developer review
         if: always()
         uses: actions/upload-artifact@v4
@@ -157,7 +157,6 @@ jobs:
             /tmp/rpg-inventory-desktop.png
             /tmp/rpg-inventory-tablet.png
             /tmp/rpg-weapon-bench.png
-            /tmp/rpg-weapon-crate.png
           retention-days: 7
           if-no-files-found: warn
 
@@ -181,3 +180,4 @@ jobs:
           path: /tmp/rpg-dev-panel-desktop.png
           retention-days: 7
           if-no-files-found: warn
+
