@@ -36,12 +36,11 @@ test('Navigation HUD rejects NPCs and merchants; combat radar is not always on',
   assert.match(source,/const alerted=combatContacts\.has\(enemy\.id\)/);
 });
 
-test('With no combat, active quest, waypoint or real location, navigation HUD is absent',()=>{
+test('The compass always stays visible while its optional markers can be absent',()=>{
   assert.match(page,/#questTracker\.hidden\{display:none!important\}/);
-  assert.match(page,/#fieldCompass\.hidden,#visorCompass\.hidden\{display:none!important\}/);
-  assert.match(page,/class="field-compass nav-compass hidden"/);
-  assert.match(page,/class="armor-compass nav-compass hidden"/);
-  assert.match(source,/const showCompass=Boolean\(waypoint\|\|hasQuestMarker\|\|visible\.length\)/);
-  assert.match(source,/\$\('fieldCompass'\)\.classList\.toggle\('hidden',!showCompass\)/);
-  assert.match(source,/\$\('visorCompass'\)\.classList\.toggle\('hidden',!showCompass\)/);
+  assert.match(page,/class="field-compass nav-compass" id="fieldCompass"/);
+  assert.match(page,/class="armor-compass nav-compass" id="visorCompass"/);
+  assert.doesNotMatch(page,/#fieldCompass\.hidden,#visorCompass\.hidden/);
+  assert.doesNotMatch(source,/\$\('fieldCompass'\)\.classList\.toggle\('hidden'/);
+  assert.doesNotMatch(source,/\$\('visorCompass'\)\.classList\.toggle\('hidden'/);
 });
