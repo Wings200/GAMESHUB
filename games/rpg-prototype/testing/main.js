@@ -4372,6 +4372,10 @@ fieldMap.onUpdate=summary=>{
   $('fieldMapWaypoint').textContent=summary.waypoint?
     summary.distance+' m TO WAYPOINT':'NO WAYPOINT SET';
   $('fieldMapZoom').textContent=Math.round(summary.zoom*100)+'%';
+  // Map interactions can happen while pointer lock is released. Refresh both
+  // navigation HUDs immediately instead of waiting for movement to resume.
+  const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
+  updateNavigationHUD(heading);
 };
 fieldMap.observe(player.x,player.z,camera.rotation.y);
 function showFieldMap(){
