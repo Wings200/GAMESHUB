@@ -101,13 +101,19 @@ export function vendorSellPrice(itemId,quantity=1){
 }
 
 export function buyFromVendor(pack,caps,vendorId,itemId,
-  stock=createVendorStock()){
+  stock=createVendorStock(),requestedQuantity=null){
   const vendor=vendorById(vendorId);
   const offer=vendor?.offers.find(o=>o.itemId===itemId);
   if(!offer)return{ok:false,reason:'not-stocked'};
   const available=vendorStockRemaining(stock,vendorId,itemId);
   if(available===0)return{ok:false,reason:'out-of-stock'};
-  const quantity=Math.min(offer.quantity,available);
+  // Existing callers still purchase one offer bundle by default. The trade
+  // terminal can request an exact quantity from the same finite stock.
+  const quantity=requestedQuantity===null?
+    Math.min(offer.quantity,available):requestedQuantity;
+  if(!Number.isSafeInteger(quantity)||quantity<1)
+    return{ok:false,reason:'invalid-quantity'};
+  if(quantity>available)return{ok:false,reason:'out-of-stock'};
   const price=vendorBuyPrice(itemId,quantity);
   if(cap(caps)<price)return{ok:false,reason:'insufficient-caps',price};
   const next=copy(pack);
@@ -161,6 +167,24 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
   const next=copy(pack);
   if(spendMaterial(next,itemId,quantity).removed!==quantity)
     return{ok:false,reason:'not-owned'};
+  return{ok:true,pack:next,caps:cap(caps)+price,price,
+    stock:adjustStock(stock,vendorId,itemId,quantity),itemId,quantity};
+}
+
+// Ammunition uses reserves rather than inventory slots. Selling reserve
+// rounds never affects the weapon's loaded magazine or an equipped item.
+export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
+  stock=createVendorStock()){
+  let item;try{item=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
+  if(item.category!=='ammo'||!vendorAccepts(vendorId,itemId))
+    return{ok:false,reason:'wrong-merchant'};
+  if(!Number.isSafeInteger(quantity)||quantity<1||
+     countItem(pack,itemId)<quantity)
+    return{ok:false,reason:'invalid-quantity'};
+  const price=vendorSellPrice(itemId,quantity);
+  if(cap(caps)>MAX_CAPS-price)return{ok:false,reason:'wallet-full'};
+  const next=copy(pack);
+  next.ammoReserves[item.key]-=quantity;
   return{ok:true,pack:next,caps:cap(caps)+price,price,
     stock:adjustStock(stock,vendorId,itemId,quantity),itemId,quantity};
 }

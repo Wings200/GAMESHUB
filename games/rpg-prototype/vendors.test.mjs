@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createBackpack,addItem,countItem,BACKPACK_LIMIT,getItem} from './inventory.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  buyFromVendor,sellToVendor,sellMaterialToVendor} from './vendors.mjs';
+  buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor} from './vendors.mjs';
 
 test('four physical vendors offer real catalog items by specialty',()=>{
   assert.equal(VENDORS.length,4);
@@ -112,6 +112,39 @@ test('selling salvage components replenishes the associated trader stock',()=>{
   assert.equal(sold.ok,true);
   assert.equal(sold.stock.scavenger['material:steel'],2);
   assert.equal(countItem(sold.pack,'material:steel'),2);
+});
+
+test('exact-quantity buying is atomic and respects remaining stock',()=>{
+  const stock=createVendorStock(),pack=createBackpack();
+  const before=vendorStockRemaining(stock,'arms','ammo:10mm-pistol');
+  const bought=buyFromVendor(pack,10000,'arms','ammo:10mm-pistol',stock,7);
+  assert.equal(bought.ok,true);
+  assert.equal(bought.quantity,7);
+  assert.equal(bought.price,vendorBuyPrice('ammo:10mm-pistol',7));
+  assert.equal(bought.stock.arms['ammo:10mm-pistol'],before-7);
+  assert.equal(vendorStockRemaining(stock,'arms','ammo:10mm-pistol'),before);
+  assert.equal(countItem(bought.pack,'ammo:10mm-pistol'),
+    countItem(pack,'ammo:10mm-pistol')+7);
+  assert.equal(buyFromVendor(pack,10000,'arms','ammo:10mm-pistol',stock,0).reason,
+    'invalid-quantity');
+  assert.equal(buyFromVendor(pack,10000,'arms','ammo:10mm-pistol',stock,before+1).reason,
+    'out-of-stock');
+});
+
+test('ammo sales debit reserves and never mutate the source inventory',()=>{
+  const pack=createBackpack(),stock=createVendorStock();
+  const before=countItem(pack,'ammo:10mm-pistol');
+  const amount=Math.min(before,8);
+  assert.ok(amount>0);
+  const result=sellAmmoToVendor(pack,0,'arms','ammo:10mm-pistol',amount,stock);
+  assert.equal(result.ok,true);
+  assert.equal(countItem(result.pack,'ammo:10mm-pistol'),before-amount);
+  assert.equal(countItem(pack,'ammo:10mm-pistol'),before);
+  assert.equal(result.caps,vendorSellPrice('ammo:10mm-pistol',amount));
+  assert.equal(sellAmmoToVendor(pack,0,'armor','ammo:10mm-pistol',1,stock).reason,
+    'wrong-merchant');
+  assert.equal(sellAmmoToVendor(pack,0,'arms','ammo:10mm-pistol',before+1,stock).reason,
+    'invalid-quantity');
 });
 
 
