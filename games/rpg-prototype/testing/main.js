@@ -1848,26 +1848,44 @@ function makeLootMarker(bag){
     (['common','uncommon','rare','epic'].indexOf(getItem(b.itemId).rarity)>
      ['common','uncommon','rare','epic'].indexOf(a)?getItem(b.itemId).rarity:a),'common');
   const tint={common:0xaba991,uncommon:0x71c68d,rare:0x80b4ee,epic:0xc498f3}[rarest];
-  const base=new THREE.Mesh(new THREE.BoxGeometry(.65,.38,.47),
-    new THREE.MeshStandardMaterial({color:0x3f4c44,roughness:.88,
-      emissive:tint,emissiveIntensity:.12}));
-  base.position.y=.3;group.add(base);
-  const strip=new THREE.Mesh(new THREE.BoxGeometry(.67,.075,.48),
+  // The container itself signals loot. No world-space billboard, floating
+  // LOOT text, or giant label hovering above a defeated enemy's drop.
+  const bodyMaterial=new THREE.MeshStandardMaterial({color:0x39463f,
+    roughness:.65,metalness:.24,emissive:tint,emissiveIntensity:.24});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.67,.33,.49),bodyMaterial);
+  body.position.y=.27;group.add(body);
+  const lidMaterial=new THREE.MeshStandardMaterial({color:0x53615a,
+    roughness:.5,metalness:.38,emissive:tint,emissiveIntensity:.45});
+  const lid=new THREE.Mesh(new THREE.BoxGeometry(.72,.105,.54),lidMaterial);
+  lid.position.y=.485;group.add(lid);
+  const trimMaterial=new THREE.MeshBasicMaterial({color:tint,
+    transparent:true,opacity:.62,depthWrite:false});
+  const seam=new THREE.Mesh(new THREE.BoxGeometry(.73,.04,.55),trimMaterial);
+  seam.position.y=.415;group.add(seam);
+  const latch=new THREE.Mesh(new THREE.BoxGeometry(.13,.12,.045),
     new THREE.MeshBasicMaterial({color:tint}));
-  strip.position.y=.44;group.add(strip);
-  const sign=document.createElement('canvas');sign.width=256;sign.height=64;
-  const ctx=sign.getContext('2d');
-  ctx.fillStyle='rgba(7,18,27,.93)';ctx.fillRect(0,0,256,64);
-  ctx.font='bold 24px system-ui';ctx.fillStyle='#f4e7cb';
-  ctx.textAlign='center';ctx.fillText(bag.source==='power-cache'?
-    'POWER CACHE · E':bag.source==='component-cache'?
-    'SCRAP CACHE · E':'LOOT · E TO SEARCH',128,40);
-  const texture=new THREE.CanvasTexture(sign);
-  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:texture,depthTest:true,transparent:true}));
-  sprite.position.y=1.18;sprite.scale.set(2.45,.61,1);group.add(sprite);
+  latch.position.set(0,.365,.275);group.add(latch);
+  const haloMaterial=new THREE.MeshBasicMaterial({color:tint,
+    transparent:true,opacity:.20,depthWrite:false,side:THREE.DoubleSide});
+  const halo=new THREE.Mesh(new THREE.RingGeometry(.4,.61,24),haloMaterial);
+  halo.rotation.x=-Math.PI/2;halo.position.y=.025;group.add(halo);
+  group.userData.lootGlow={bodyMaterial,lidMaterial,trimMaterial,haloMaterial,
+    phase:bag.x*.7+bag.z*.5};
   scene.add(group);
   return group;
+}
+let lootGlowClock=0;
+function updateLootGlow(dt){
+  lootGlowClock+=dt;
+  for(const bag of lootBags.values()){
+    const glow=bag.mesh.userData.lootGlow;
+    if(!glow)continue;
+    const pulse=.5+.5*Math.sin(lootGlowClock*2.6+glow.phase);
+    glow.bodyMaterial.emissiveIntensity=.24+.16*pulse;
+    glow.lidMaterial.emissiveIntensity=.45+.29*pulse;
+    glow.trimMaterial.opacity=.50+.28*pulse;
+    glow.haloMaterial.opacity=.12+.16*pulse;
+  }
 }
 function spawnWorldLoot(contents,x,z,source='world'){
   // Retire ALL legacy gun/ammo drops, not just enemy inventories.
@@ -5757,6 +5775,7 @@ function frame(){
   }
   if(shotNoticeTime>0){shotNoticeTime-=dt;if(shotNoticeTime<=0)$('shotNotice').classList.remove('visible');}
   updateCasings(dt);
+  updateLootGlow(dt);
   updateCombatVisuals(dt);
   if(controls.isLocked&&triggerHeld&&activeSpec.automatic&&powerArmorState.phase==='idle')
     shoot();
