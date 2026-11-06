@@ -1,4 +1,4 @@
-# W20.62 — Developer Variables + Item and Caps Grants
+# W20.63 — Developer Variables + Dedicated Player Tools
 
 ## Access
 Sign in using one of the **two existing, stable-UUID-bound developer accounts**,
@@ -6,9 +6,13 @@ then click DEV PANEL or press F10 in the RPG testing field. The server checks bo
 the actual authenticated session's account UUID and username. Ordinary/guest
 sessions cannot see the editor or publish changes.
 
-## Items & Caps (W20.62)
+## Player Tools → Give Items & Caps (W20.63)
 
-Inside the same Developer Panel click **ITEMS & CAPS**. Search the actual
+Inside the Developer Panel's left sidebar, beneath the six **VARIABLES**
+categories, find the separate **PLAYER TOOLS** heading and click
+**GIVE ITEMS & CAPS**. The sidebar remains accessible while the grant page is
+open; selecting any Variables category takes you back to the editor.
+Search the actual
 `ITEM_CATALOG` by name or ID, select a result, enter a quantity from 1 to
 999, then click **GIVE ITEM**. The catalog updates automatically when newly
 implemented items are added. Archived, unfinished guns are excluded; all ten

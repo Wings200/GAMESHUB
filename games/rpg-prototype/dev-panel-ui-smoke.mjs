@@ -169,9 +169,17 @@ try{
   await page.locator('#gh-dev-categories .gh-dev-cat').filter({
     hasText:'Junk'}).click();
   assert.match(await page.locator('#gh-dev-editor').textContent(),/not implemented yet/i);
-  // W20.62: the item-grant section uses a searchable REAL catalog, not a
-  // hand-written array of guns or field loot crates.
+  // W20.63: grants have their own persistent PLAYER TOOLS navigation section,
+  // below the variable categories rather than in the top-right header.
+  assert.equal(await page.locator('.gh-dev-head #gh-dev-mode').count(),0);
+  assert.equal(await page.locator('.gh-dev-side #gh-dev-mode').count(),1);
+  assert.match(await page.locator('.gh-dev-side').textContent(),/PLAYER TOOLS/);
+  // The searchable grant catalog uses real implemented items.
   await page.locator('#gh-dev-mode').click();
+  assert.equal(await page.locator('#gh-dev-categories').isVisible(),true,
+    'Sidebar must remain available when item grants are open');
+  assert.equal(await page.locator('#gh-dev-grants').isVisible(),true);
+  assert.equal(await page.locator('#gh-dev-mode').getAttribute('aria-pressed'),'true');
   await page.locator('#gh-grant-search').fill('pipe smg');
   await page.locator('#gh-grant-results .gh-grant-item').first().click();
   assert.match(await page.locator('#gh-grant-selected').textContent(),/Pipe SMG/);
@@ -188,10 +196,12 @@ try{
     {action:'caps',amount:250});
   await page.locator('#gh-grant-quantity').fill('1000');
   await page.locator('#gh-grant-item-submit').click();
+  await page.waitForFunction(()=>document.querySelector('#gh-grant-feedback')?.textContent.includes('NOT GRANTED'));
   assert.match(await page.locator('#gh-grant-feedback').textContent(),/NOT GRANTED/);
   assert.equal(await page.evaluate(()=>window.__mockGrants.length),2);
   await page.locator('#gh-dev-mode').click();
   assert.equal(await page.locator('#gh-dev-categories').isVisible(),true);
+  assert.equal(await page.locator('#gh-dev-mode').getAttribute('aria-pressed'),'false');
   const ordinary=await browser.newPage();
   await ordinary.goto(url+'?admin=0');
   await ordinary.waitForTimeout(350);

@@ -1,6 +1,6 @@
 // Load developer-approved balance before the gameplay modules initialize.
 import {applyGameBalance} from '../game-balance.mjs';
-import {startGameSettingsUI} from './developer-panel.mjs?v=W20.62';
+import {startGameSettingsUI} from './developer-panel.mjs?v=W20.63';
 
 let initial = null;
 try {

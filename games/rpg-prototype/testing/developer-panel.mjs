@@ -1,4 +1,4 @@
-// W20.61 — Developer-only family/component balance editor.
+// W20.63 — Developer-only balance editor with a dedicated Player Tools section.
 // Single authoritative item+part catalog; server validates every published ID.
 import {DEFAULT_GAME_VARIABLES} from '../game-balance.mjs';
 import {VARIABLE_CATEGORIES,VARIABLE_FIELDS} from '../balance-schema.mjs';
@@ -111,13 +111,18 @@ export function startGameSettingsUI(initial){
     '.gh-dev-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 25px;border-bottom:1px solid #305246;background:#172e29}',
     '.gh-dev-eyebrow{font-size:10px;font-weight:900;letter-spacing:.17em;color:#d9b67f}',
     '.gh-dev-head h2{font-size:23px;margin:4px 0 0;letter-spacing:.03em;color:#f1f4e9}',
-    '.gh-dev-grid{display:grid;grid-template-columns:192px 286px minmax(0,1fr);min-height:0;flex:1}',
+    '.gh-dev-grid{display:grid;grid-template-columns:192px minmax(0,1fr);min-height:0;flex:1}',
+    '.gh-dev-variable-workarea{display:grid;grid-template-columns:286px minmax(0,1fr);min-width:0;min-height:0}',
+    '#gh-dev-root .gh-dev-variable-workarea[hidden]{display:none!important}',
     '.gh-dev-side,.gh-dev-items{overflow:auto;border-right:1px solid #305246;padding:16px 12px;background:#142a25}',
     '.gh-dev-side{background:#0e211f}',
     '.gh-dev-navtitle{display:block;padding:10px;color:#b9d3bd;font-size:11px;font-weight:900;letter-spacing:.14em}',
     '.gh-dev-cat{width:100%;text-align:left;display:flex;justify-content:space-between;gap:8px;background:none;border:1px solid transparent;color:#b2c9bd;padding:12px 11px;margin:3px 0;border-radius:7px;cursor:pointer;font-weight:800;font-size:12px}',
     '.gh-dev-cat:hover{background:#243c35}.gh-dev-cat.active{background:#2b5141;border-color:#4e8168;color:#f1d4a2}',
     '.gh-dev-cat b{font-size:10px;background:#18362d;padding:2px 6px;border-radius:8px}',
+    '.gh-dev-nav-divider{height:1px;background:#3a5d4e;margin:20px 8px 8px}',
+    '.gh-dev-tool{border-color:#476f57;color:#f3deaf;background:#21382d}',
+    '.gh-dev-tool.active{border-color:#e4c78b;background:#42664d;color:#fff2d2}',
     '.gh-dev-breadcrumb{font-size:11px;font-weight:900;letter-spacing:.1em;color:#d8b57d;padding:4px 8px 12px}',
     '.gh-dev-search{width:100%;padding:12px;background:#071b1b;color:#fff;border:1px solid #517666;border-radius:7px;outline:none}',
     '.gh-dev-itemgroup{margin:17px 4px 8px;font-size:10px;font-weight:900;letter-spacing:.12em;color:#8eaca0}',
@@ -150,8 +155,10 @@ export function startGameSettingsUI(initial){
     '.gh-dev-button{border:1px solid #638575;background:#294738;color:#e4f2df;border-radius:7px;padding:10px 12px;font:850 10px system-ui;letter-spacing:.04em;cursor:pointer}',
     '.gh-dev-button.primary{background:#d3b176;color:#172820;border-color:#f4d59d}',
     '.gh-dev-button:disabled{opacity:.45;cursor:default}',
-    '#gh-dev-grants{flex:1;min-height:0;overflow:auto;padding:clamp(15px,3vw,36px);background:#102620}',
+    '#gh-dev-grants{min-width:0;min-height:0;overflow:auto;padding:clamp(15px,3vw,36px);background:#102620}',
     '#gh-dev-grants[hidden],#gh-dev-root .gh-dev-grid[hidden],#gh-dev-root .gh-dev-footer[hidden]{display:none!important}',
+    '.gh-grant-intro{max-width:1040px;margin:0 auto 20px}',
+    '.gh-grant-intro h3{font-size:27px;color:#f2e6cf;margin:5px 0 8px}',
     '.gh-grant-layout{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1fr);gap:20px;max-width:1040px;margin:auto}',
     '.gh-grant-card{background:#19322b;border:1px solid #416955;border-radius:10px;padding:20px}',
     '.gh-grant-results{max-height:340px;overflow:auto;margin:10px 0;display:grid;gap:6px}',
@@ -166,8 +173,8 @@ export function startGameSettingsUI(initial){
     '#gh-game-updating strong{font-size:27px;letter-spacing:.10em}#gh-game-updating p{color:#b5d0bd}',
     '.gh-update-spinner{width:48px;height:48px;border:5px solid #4d6f5c;border-top-color:#dfb778;border-radius:50%;animation:gh-spin .9s linear infinite}',
     '@keyframes gh-spin{to{transform:rotate(360deg)}}',
-    '@media(max-width:900px){.gh-dev-grid{grid-template-columns:155px 210px minmax(0,1fr)}.gh-dev-stat{grid-template-columns:1fr}.gh-dev-recipe-grid{grid-template-columns:1fr}}',
-    '@media(max-width:650px){.gh-dev-grid{grid-template-columns:1fr;grid-template-rows:auto 155px minmax(0,1fr)}.gh-dev-side{overflow-x:auto;overflow-y:hidden;white-space:nowrap;border-right:0;border-bottom:1px solid #305246;padding:6px}.gh-dev-cat{display:inline-flex;width:auto;padding:7px}.gh-dev-items{border-right:0;border-bottom:1px solid #305246;padding:9px}.gh-dev-editor h3{font-size:22px}.gh-dev-head{padding:10px}.gh-dev-footer{padding:10px;align-items:stretch;flex-direction:column}.gh-dev-actions{justify-content:flex-start}}'
+    '@media(max-width:900px){.gh-dev-grid{grid-template-columns:155px minmax(0,1fr)}.gh-dev-variable-workarea{grid-template-columns:210px minmax(0,1fr)}.gh-dev-stat{grid-template-columns:1fr}.gh-dev-recipe-grid{grid-template-columns:1fr}}',
+    '@media(max-width:650px){.gh-dev-grid{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.gh-dev-variable-workarea{grid-template-columns:1fr;grid-template-rows:155px minmax(0,1fr)}.gh-dev-side{overflow-x:auto;overflow-y:hidden;white-space:nowrap;border-right:0;border-bottom:1px solid #305246;padding:6px}.gh-dev-side #gh-dev-categories{display:inline-flex}.gh-dev-navtitle{display:inline-block}.gh-dev-nav-divider{display:inline-block;width:1px;height:26px;vertical-align:middle;margin:0 8px}.gh-dev-cat{display:inline-flex;width:auto;padding:7px}.gh-dev-items{border-right:0;border-bottom:1px solid #305246;padding:9px}.gh-dev-editor h3{font-size:22px}.gh-dev-head{padding:10px}.gh-dev-footer{padding:10px;align-items:stretch;flex-direction:column}.gh-dev-actions{justify-content:flex-start}}'
   ].join('');
   document.head.appendChild(style);
   const launcher=document.createElement('button');
@@ -176,17 +183,21 @@ export function startGameSettingsUI(initial){
   root=document.createElement('section');root.id='gh-dev-root';
   root.setAttribute('aria-label','Developer settings');
   root.innerHTML='<div id="gh-dev-shell" role="dialog" aria-modal="true" aria-labelledby="gh-dev-title">'+
-    '<header class="gh-dev-head"><div><div class="gh-dev-eyebrow">GAMESHUB / DEVELOPMENT CONTROL / W20.62</div>'+
+    '<header class="gh-dev-head"><div><div class="gh-dev-eyebrow">GAMESHUB / DEVELOPMENT CONTROL / W20.63</div>'+
     '<h2 id="gh-dev-title">Developer Panel <span style="color:#d9b67f">/ Variables</span></h2></div>'+
-    '<div class="gh-dev-actions"><button type="button" class="gh-dev-button primary" id="gh-dev-mode">ITEMS & CAPS</button>'+
-    '<button type="button" class="gh-dev-button" id="gh-dev-close">CLOSE / ESC</button></div></header>'+
+    '<div class="gh-dev-actions"><button type="button" class="gh-dev-button" id="gh-dev-close">CLOSE / ESC</button></div></header>'+
     '<div class="gh-dev-grid"><nav class="gh-dev-side"><span class="gh-dev-navtitle">VARIABLES</span>'+
-    '<div id="gh-dev-categories"></div></nav>'+
+    '<div id="gh-dev-categories"></div><div class="gh-dev-nav-divider"></div>'+
+    '<span class="gh-dev-navtitle">PLAYER TOOLS</span>'+
+    '<button type="button" class="gh-dev-cat gh-dev-tool" id="gh-dev-mode" aria-pressed="false">GIVE ITEMS & CAPS</button></nav>'+
+    '<div class="gh-dev-variable-workarea">'+
     '<aside class="gh-dev-items"><div class="gh-dev-breadcrumb" id="gh-dev-breadcrumb"></div>'+
     '<input id="gh-dev-search" class="gh-dev-search" placeholder="Search families..." aria-label="Search item families">'+
     '<div id="gh-dev-item-list"></div></aside>'+
     '<main class="gh-dev-editor" id="gh-dev-editor"></main></div>'+
-    '<section id="gh-dev-grants" hidden><div class="gh-grant-layout">'+
+    '<section id="gh-dev-grants" hidden><div class="gh-grant-intro">'+
+    '<span class="gh-dev-eyebrow">PLAYER TOOLS / ADMIN ONLY</span><h3>Give Items & Caps</h3>'+
+    '<p class="gh-dev-caption">Choose an existing item to add to your backpack, or give yourself caps. Changes are saved to your game.</p></div><div class="gh-grant-layout">'+
     '<div class="gh-grant-card"><h3>Find an existing item</h3><p class="gh-dev-caption">Search the live item catalog. Only implemented, usable weapons are listed.</p>'+
     '<label class="gh-grant-label" for="gh-grant-search">ITEM NAME OR ID</label>'+
     '<input class="gh-grant-input" id="gh-grant-search" placeholder="Search weapons, ammo, armor, resources..." autocomplete="off">'+
@@ -199,7 +210,7 @@ export function startGameSettingsUI(initial){
     '<label class="gh-grant-label" for="gh-grant-caps">AMOUNT</label>'+
     '<input id="gh-grant-caps" class="gh-grant-input" type="number" min="1" max="100000000" step="1" value="1000">'+
     '<button id="gh-grant-caps-submit" class="gh-dev-button primary" type="button">GIVE CAPS</button>'+
-    '<p id="gh-grant-feedback" role="status" aria-live="polite"></p></div></div></section>'+
+    '<p id="gh-grant-feedback" role="status" aria-live="polite"></p></div></div></section></div>'+
     '<footer class="gh-dev-footer"><p id="gh-dev-status" role="status">Draft changes are not live until published.</p>'+
     '<div class="gh-dev-actions">'+
     '<button id="gh-dev-reset-all" type="button" class="gh-dev-button">REVERT ALL TO DEFAULTS</button>'+
@@ -239,12 +250,14 @@ export function startGameSettingsUI(initial){
   }
   function setGrantMode(next){
     grantMode=!!next;
-    root.querySelector('.gh-dev-grid').hidden=grantMode;
+    root.querySelector('.gh-dev-variable-workarea').hidden=grantMode;
     root.querySelector('.gh-dev-footer').hidden=grantMode;
     get(root,'gh-dev-grants').hidden=!grantMode;
-    get(root,'gh-dev-mode').textContent=grantMode?'BACK TO VARIABLES':'ITEMS & CAPS';
+    get(root,'gh-dev-mode').classList.toggle('active',grantMode);
+    get(root,'gh-dev-mode').setAttribute('aria-pressed',String(grantMode));
     get(root,'gh-dev-title').textContent=grantMode?
       'Developer Panel / Items & Caps':'Developer Panel / Variables';
+    renderCategories();
     if(grantMode){renderGrantList();get(root,'gh-grant-search').focus();}
     else{render();get(root,'gh-dev-search').focus();}
   }
@@ -293,11 +306,12 @@ export function startGameSettingsUI(initial){
     const container=get(root,'gh-dev-categories');container.replaceChildren();
     for(const [id,label] of VARIABLE_CATEGORIES){
       const button=document.createElement('button');button.type='button';
-      button.className='gh-dev-cat'+(id===category?' active':'');
+      button.className='gh-dev-cat'+(!grantMode&&id===category?' active':'');
       const text=document.createElement('span');text.textContent=label;
       const number=document.createElement('b');number.textContent=String(count(id));
       button.append(text,number);
       button.addEventListener('click',()=>{
+        if(grantMode)setGrantMode(false);
         category=id;selectedFamily=catalogFamilies[id][0]?.id||null;
         selectedSlot='base';selectedId=null;
         search='';get(root,'gh-dev-search').value='';render();
