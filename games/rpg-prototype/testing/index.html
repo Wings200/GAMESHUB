@@ -965,6 +965,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerArmorPanel .power-part-preview strong{color:#e9d5a0;font-size:13px}
 #powerArmorPanel .power-part-preview small{color:#c2d3c3;font-size:10px;line-height:1.6}
 #powerArmorPanel .power-part-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+#powerArmorPanel .power-repair-cost{color:#b9ddbc;font-size:10px;line-height:1.7;
+  font-weight:850;margin-top:10px}
+#powerArmorPanel .power-repair-cost.missing{color:#ffad93}
 #powerArmorPanel #powerPartAction{background:#e1c992;color:#1c2921;
   border-color:#f2dfa9;font-weight:950;flex:1}
 #powerArmorPanel #powerRepairSelected{background:#31584d;color:#e8ecd7;
@@ -1456,8 +1459,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.74</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.74.1</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
+    <p><strong>W20.74.1 · LOOT-ONLY POWER ARMOR:</strong> Armor plates cannot be crafted. Find or salvage them in the world, then install them on the chassis. Repairs use specific tier-dependent crafting components; higher-tier modules require rarer and more numerous materials, with costs scaling to their damage.</p>
     <p><strong>W20.74 · POWER ARMOR CONFIGURATION:</strong> The six-part condition figure now sits at the center of the service screen. Select any body section, inspect matching armor plates from your backpack, preview durability and protection, then deliberately install, remove, or repair that slot.</p>
     <p><strong>W20.73 · WEAPON WORKBENCH:</strong> Choose an owned weapon, inspect its installed assemblies, select a replacement part, and preview performance and exact material requirements before crafting or installing. Nothing is spent just by inspecting an option.</p>
     <p><strong>W20.72.1 · BARTER CONFIRMATION:</strong> Adding an item to either side now stages it for a single combined trade. Review everything you are buying and selling, check the net cap balance, and press Confirm Trade once. Closing or clearing the offer exchanges nothing.</p>
@@ -1503,9 +1507,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W20.74 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
+      <div><div class="loot-eyebrow">W20.74.1 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
         <h2>CONFIGURE<span> YOUR POWER ARMOR.</span></h2>
-        <p>Choose a body section on the central figure, then inspect and install the matching armor pieces you actually own. Mix T-45, T-60 and T-01 plates, keep their individual durability, and repair damaged modules. Tap E beside the parked frame to configure; hold E at the rear hatch to enter.</p>
+        <p>Armor pieces must be discovered or looted, never crafted. Select a body section, install an owned plate, or repair the current plate using tier-specific components. Mix T-45, T-60 and T-01 pieces while preserving each part's durability. Tap E to configure and hold E at the rear hatch to enter.</p>
       </div>
       <button id="powerBayClose" type="button">DONE / RESUME</button>
     </div>
@@ -1562,6 +1566,8 @@ body.hud-modern #powerArmorHud{display:none!important}
         <div id="powerPartChoices" class="power-part-choices" aria-label="Collected armor pieces for selected slot"></div>
         <div class="power-part-preview"><strong id="powerPartPreviewName">SELECT A PART</strong><small id="powerPartPreviewDetails">Armor must be collected before it can be installed.</small></div>
         <div class="power-part-actions"><button id="powerPartAction" type="button" disabled>CHOOSE A PART</button><button id="powerRepairSelected" type="button">REPAIR INSTALLED PART</button></div>
+        <div class="power-part-heading">REPAIR RESOURCES · CURRENT INSTALLED PLATE</div>
+        <div id="powerRepairCost" class="power-repair-cost">NO REPAIR REQUIRED</div>
         <div class="armor-slots power-slot-details">
           <label data-slot="head">HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
           <label data-slot="chest">CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
@@ -1573,22 +1579,11 @@ body.hud-modern #powerArmorHud{display:none!important}
       </section>
     </div>
     <div class="loot-meta" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-      <strong>CRAFT ONE PIECE:</strong>
-      <select id="powerCraftTier" aria-label="Power armor model" style="background:#142934;color:#fff;padding:8px">
-        <option value="t45">T-45 · 10 Salvage</option>
-        <option value="t60">T-60 · 18 Salvage + 4 Glass</option>
-        <option value="t01">T-01 · 32 Salvage + 8 Glass</option>
-      </select>
-      <select id="powerCraftSlot" aria-label="Power armor piece slot" style="background:#142934;color:#fff;padding:8px">
-        <option value="head">Helmet</option><option value="chest">Chest</option>
-        <option value="leftArm">Left Arm</option><option value="rightArm">Right Arm</option>
-        <option value="leftLeg">Left Leg</option><option value="rightLeg">Right Leg</option>
-      </select>
-      <button id="powerCraftButton" type="button">CRAFT PIECE</button>
-      <strong id="powerMaterialStatus">SALVAGE 0 · OPTIC GLASS 0</strong>
+      <strong>PLATES ARE LOOT-ONLY · FIND T-45, T-60 AND T-01 PARTS IN THE WORLD · REPAIR WITH MATCHING COMPONENTS</strong>
+      <strong id="powerMaterialStatus">COMPONENTS IN POUCH 0 · BACKPACK 0/30</strong>
     </div>
     <p id="powerServiceFeedback" style="color:#f3d599;font-weight:800">Service only while parked and standing beside the frame.</p>
-    <div class="loot-footer">Hold E for 0.65 seconds at the REAR HATCH to enter through the back; hold E to exit behind the frame with the 4.5-second hydraulic animation. Tap E near a parked frame to configure the six physical slots; the exposed frame remains visible if the slot is empty. Without a working fusion core the armor still protects you, but movement becomes extremely slow and powered sprinting/jumping are disabled. Core charge drains during use. Hits wear down only the plate that was struck; at 0 durability that plate becomes ineffective, never disappears, and can be repaired with salvaged parts. Ordinary armor remains permanent.</div>
+    <div class="loot-footer">Hold E for 0.65 seconds at the REAR HATCH to enter through the back; hold E to exit behind the frame with the 4.5-second hydraulic animation. Tap E near a parked frame to configure the six physical slots; the exposed frame remains visible if a slot is empty. Without a working fusion core the armor still protects you, but movement becomes extremely slow and powered sprinting/jumping are disabled. Core charge drains during use. Hits wear down only the plate that was struck; at 0 durability it becomes ineffective but remains attached. Repair an installed plate with the exact tier-specific components shown above. Plates must be found in loot; they cannot be crafted. Ordinary armor remains permanent.</div>
   </div>
 </div>
 <div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Weapon modification workbench">
@@ -1932,7 +1927,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.74"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.74.1"></script>
 </body>
 </html>
 

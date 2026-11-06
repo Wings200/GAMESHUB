@@ -13,13 +13,12 @@ export const VENDORS=Object.freeze([
       {itemId:'ammo:pipe-pistol',quantity:24},
       {itemId:'ammo:pipe-rifle',quantity:30}
     ])}),
-  Object.freeze({id:'armor',name:'BRIGGS',title:'ARMORER',specialty:'Protective gear & chassis plates',
+  Object.freeze({id:'armor',name:'BRIGGS',title:'ARMORER',specialty:'Protective gear & repairs',
     x:-25,z:9,color:0x96b4cf,offers:Object.freeze([
       {itemId:'armor:scrap-chest',quantity:1},
       {itemId:'armor:ranger-head',quantity:1},
       {itemId:'armor:ranger-chest',quantity:1},
-      {itemId:'armor:militia-chest',quantity:1},
-      {itemId:'power-plate:t45-chest',quantity:1}
+      {itemId:'armor:militia-chest',quantity:1}
     ])}),
   Object.freeze({id:'medic',name:'DOC VALE',title:'FIELD MEDIC',specialty:'First aid & medical supplies',
     x:-15,z:9,color:0x9ad0a9,offers:Object.freeze([

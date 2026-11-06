@@ -4,7 +4,7 @@ import {moveLootQuantity,moveAllLoot} from './loot-transfer.mjs';
 import {OPTIC_MODS,compatibleOptics} from './weapon-sights.mjs?v=W20.41';
 import {ARMOR_SLOTS,getArmorPiece,createLoadout,damageReductionForPoints,
   enemyArmorForRound} from './combat.mjs';
-import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs';
+import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power-armor.mjs?v=W20.74.1';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from './materials.mjs';
 import {safeWeaponMods} from './weapon-mods.mjs';
 export const BACKPACK_LIMIT=30;
@@ -343,7 +343,19 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
     enemyId==='raider'?
     [{itemId:'clothing:field-backpack',quantity:1}]:[];
   const scrap=generateComponentDrop(enemyId,random);
-  return [...base[enemyId].map(e=>({...e})),...armor,...wearables,...(scrap?[scrap]:[])];
+  // W20.74.1: discoverable power armor is salvage loot, never a craftable
+  // product or merchant offer. Only a rare elite drop contains one worn plate.
+  // Better tiers are considerably harder to recover intact.
+  let powerPlate=null;
+  if(enemyId==='enforcer'&&roll()<.10){
+    const tierRoll=roll(),tier=tierRoll<.72?'t45':tierRoll<.96?'t60':'t01';
+    const slot=POWER_ARMOR_SLOTS[Math.floor(roll()*POWER_ARMOR_SLOTS.length)];
+    const spec=POWER_ARMOR_PLATES[tier];
+    const condition=Math.max(1,Math.floor(spec.maxDurability*(.18+.46*roll())));
+    powerPlate={itemId:'power-plate:'+tier+'-'+slot,quantity:1,condition};
+  }
+  return [...base[enemyId].map(e=>({...e})),...armor,...wearables,
+    ...(scrap?[scrap]:[]),...(powerPlate?[powerPlate]:[])];
 }
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();

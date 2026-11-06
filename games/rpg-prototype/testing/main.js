@@ -3,8 +3,8 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,executeVendorBarter} from '../vendors.mjs?v=W20.72.1';
-import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} from '../materials.mjs';
+  isEquippedItem,executeVendorBarter} from '../vendors.mjs?v=W20.74.1';
+import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -29,14 +29,14 @@ import { reloadVisualState, reloadPoseForWeapon, slideTravel, createCasingState,
 import { sightMount, adsWeaponPosition, sightForOptic, OPTIC_MODS,
   compatibleOptics } from '../weapon-sights.mjs?v=W20.44';
 import { WeaponAudio, getImpactMaterial, footstepStrideMeters } from '../weapon-audio.mjs?v=W20.44';
-import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,POWER_ARMOR_RECIPES,
+import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   createPowerArmorState,getPowerPlate,plateCondition,powerArmorIndicatorStatus,setPowerPlate,
-  removePowerPlate,repairPowerPlate,damagePowerPlate,
+  removePowerPlate,repairPowerPlate,powerRepairRequirements,damagePowerPlate,
   installFusionCore,ejectFusionCore,stepFusionCore,hasFusionPower,powerArmorMobility,
   beginPowerArmorTransition,stepPowerArmor,
   POWER_ARMOR_TRANSITION_SECONDS,powerArmorProtection,powerArmorEyeHeight,safePowerArmorSnapshot,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
-  FUSION_CORE_CAPACITY} from '../power-armor.mjs';
+  FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.50';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
@@ -75,7 +75,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.71';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.74.1';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -84,7 +84,7 @@ import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoado
 
 import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   allocateSpecialPoint,purchaseSpecialPerk,gainSpecialXP,specialBonuses,
-  xpForNextLevel,discountedMaterials} from '../special.mjs';
+  xpForNextLevel} from '../special.mjs';
 
 const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
@@ -1141,8 +1141,15 @@ function selectPowerSlot(slot){
   if(!POWER_ARMOR_SLOTS.includes(slot))return;
   selectedPowerSlot=slot;
   selectedPowerChoice='installed';
-  $('powerCraftSlot').value=slot;
   refreshPowerArmorUI();
+}
+function powerRepairCostText(cost){
+  const parts=Object.entries(cost);
+  return parts.length?parts.map(([id,quantity])=>{
+    const owned=countItem(backpack,id);
+    return getItem(id).name.toUpperCase()+' '+owned+'/'+quantity+
+      (owned<quantity?' · NEED '+(quantity-owned):'');
+  }).join(' · '):'NO REPAIR REQUIRED';
 }
 function refreshPowerPartChoices(){
   const slot=selectedPowerSlot,current=plateCondition(powerArmorState,slot);
@@ -1194,10 +1201,14 @@ function refreshPowerPartChoices(){
   const repair=$('powerRepairSelected');
   repair.disabled=current.tier==='none'||current.current>=current.max||
     powerArmorState.occupied;
-  const repairPreview=repairPowerPlate(powerArmorState,slot,0,
+  const repairCost=powerRepairRequirements(powerArmorState,slot,
     specialModifiers.repairDiscount);
-  repair.textContent=repair.disabled?'NO REPAIR NEEDED':
-    'REPAIR INSTALLED · '+(repairPreview.cost||0)+' SALVAGE';
+  const missing=Object.entries(repairCost).some(([id,n])=>countItem(backpack,id)<n);
+  $('powerRepairCost').textContent=powerRepairCostText(repairCost);
+  $('powerRepairCost').classList.toggle('missing',missing);
+  repair.disabled=repair.disabled||missing;
+  repair.textContent=current.tier==='none'||current.current>=current.max?
+    'NO REPAIR NEEDED':missing?'MISSING REPAIR COMPONENTS':'REPAIR INSTALLED PART';
 }
 function refreshPowerArmorUI(){
   const summary=$('powerChassisSummary');summary.replaceChildren();
@@ -1285,9 +1296,7 @@ function refreshPowerArmorUI(){
   $('powerEjectCore').disabled=powerArmorState.coreCharge===null||
     powerArmorState.occupied;
   $('powerMaterialStatus').textContent=
-    'SALVAGE '+countItem(backpack,'supply:salvage')+
-    ' · OPTIC GLASS '+countItem(backpack,'supply:optic-glass')+
-    ' · SCRAP POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
+    'COMPONENTS IN POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
     ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerPartChoices();
@@ -1369,16 +1378,6 @@ function savePowerService(){
   selectedPowerChoice='installed';
   refreshPowerArmorUI();refreshInventoryUI();
 }
-function spendPowerMaterials(cost){
-  for(const [itemId,needed] of [['supply:salvage',cost.salvage||0],
-    ['supply:optic-glass',cost.glass||0]]){
-    let remaining=needed;
-    for(const entry of [...backpack.items]){
-      if(entry.itemId!==itemId||!remaining)continue;
-      remaining-=removeItem(backpack,entry.uid,remaining).removed;
-    }
-  }
-}
 for(const slot of POWER_ARMOR_SLOTS){
   const picker=$('power-'+slot);
   picker.addEventListener('change',()=>{
@@ -1420,26 +1419,22 @@ for(const slot of POWER_ARMOR_SLOTS){
   });
   $('power-repair-'+slot).addEventListener('click',()=>{
     if(!powerServiceAvailable())return;
-    const preview=repairPowerPlate(powerArmorState,slot,0,specialModifiers.repairDiscount);
-    const repairCost=preview.cost||0;
-    const useComponents=repairCost>0&&
-      countItem(backpack,'material:steel')>=repairCost*2&&
-      countItem(backpack,'material:adhesive')>=repairCost;
-    const available=useComponents?repairCost:countItem(backpack,'supply:salvage');
-    const result=repairPowerPlate(powerArmorState,slot,available,specialModifiers.repairDiscount);
+    const needed=powerRepairRequirements(powerArmorState,slot,
+      specialModifiers.repairDiscount);
+    const available=Object.fromEntries(Object.keys(needed).map(id=>
+      [id,countItem(backpack,id)]));
+    const result=repairPowerPlate(powerArmorState,slot,available,
+      specialModifiers.repairDiscount);
     if(!result.ok){
       $('powerServiceFeedback').textContent=result.reason==='materials'?
-        'REPAIR NEEDS '+result.cost+' SALVAGED PARTS OR '+(result.cost*2)+
-        ' STEEL + '+result.cost+' ADHESIVE':'NO REPAIR NEEDED';
+        'REPAIR NEEDS · '+powerRepairCostText(needed):'NO REPAIR NEEDED';
       return;
     }
-    if(useComponents){
-      spendMaterial(backpack,'material:steel',result.cost*2);
-      spendMaterial(backpack,'material:adhesive',result.cost);
-    }else spendPowerMaterials({salvage:result.cost});
+    for(const [id,quantity] of Object.entries(result.cost))
+      spendMaterial(backpack,id,quantity);
     $('powerServiceFeedback').textContent=slot.toUpperCase()+
-      ' REPAIRED · '+result.durability+' DURABILITY · -'+result.cost+
-      (useComponents?' ADHESIVE / -'+(result.cost*2)+' STEEL':' SALVAGED PARTS');
+      ' REPAIRED · '+result.durability+' DURABILITY · SPENT '+
+      Object.entries(result.cost).map(([id,n])=>n+' '+getItem(id).name.toUpperCase()).join(' + ');
     savePowerService();
   });
 }
@@ -1505,35 +1500,6 @@ $('powerEjectCore').addEventListener('click',()=>{
   if(result.ok)addItem(backpack,'supply:fusion-core',1,{charge:result.charge});
   $('powerServiceFeedback').textContent='CORE EJECTED · '+
     Math.ceil(result.charge)+'% REMAINING';
-  savePowerService();
-});
-$('powerCraftButton').addEventListener('click',()=>{
-  if(!powerServiceAvailable())return;
-  const tier=$('powerCraftTier').value,slot=$('powerCraftSlot').value;
-  const recipe=POWER_ARMOR_RECIPES[tier];
-  if(!recipe||!POWER_ARMOR_SLOTS.includes(slot))return;
-  const cost=discountedMaterials(recipe,specialModifiers.craftDiscount);
-  const componentRecipe=POWER_COMPONENT_RECIPES[tier]||{};
-  const componentCost=Object.fromEntries(Object.entries(componentRecipe).map(
-    ([id,quantity])=>[id,Math.max(1,Math.ceil(quantity*(1-specialModifiers.craftDiscount)))]));
-  const useComponents=Object.entries(componentCost).length>0&&
-    Object.entries(componentCost).every(([id,quantity])=>countItem(backpack,id)>=quantity);
-  if(!useComponents&&(countItem(backpack,'supply:salvage')<cost.salvage||
-     countItem(backpack,'supply:optic-glass')<cost.glass)){
-    $('powerServiceFeedback').textContent='MISSING MATERIALS · NEED '+
-      cost.salvage+' SALVAGE AND '+cost.glass+' OPTIC GLASS OR '+
-      Object.entries(componentCost).map(([id,n])=>n+' '+getItem(id).name.toUpperCase()).join(', ');
-    return;
-  }
-  if(backpack.items.length>=BACKPACK_LIMIT){
-    $('powerServiceFeedback').textContent='BACKPACK FULL · MAKE ROOM TO CRAFT';return;
-  }
-  if(useComponents){
-    for(const [id,quantity] of Object.entries(componentCost))spendMaterial(backpack,id,quantity);
-  }else spendPowerMaterials(cost);
-  addItem(backpack,'power-plate:'+tier+'-'+slot,1);
-  $('powerServiceFeedback').textContent='CRAFTED '+getPowerPlate(slot,tier).name+
-    ' · '+slot.toUpperCase()+' · FULL DURABILITY';
   savePowerService();
 });
 $('powerBayOpen').addEventListener('click',()=>{

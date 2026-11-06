@@ -25,6 +25,20 @@ export const POWER_ARMOR_RECIPES=Object.freeze({
   t60:({salvage:18,glass:4}),
   t01:({salvage:32,glass:8})
 });
+// W20.74.1: Power armor plates are loot-only. These are REPAIR recipes,
+// never blueprints to craft a new piece. Each set restores up to 25 durability.
+// Higher-tier plates need both more materials and harder-to-find components.
+export const POWER_ARMOR_REPAIR_RECIPES=Object.freeze({
+  scrap:Object.freeze({'material:steel':1,'material:adhesive':1}),
+  t45:Object.freeze({'material:steel':2,'material:screw':1,'material:adhesive':1}),
+  ranger:Object.freeze({'material:steel':2,'material:aluminum':2,'material:adhesive':1}),
+  t60:Object.freeze({'material:steel':3,'material:aluminum':2,
+    'material:circuitry':1,'material:adhesive':1}),
+  citadel:Object.freeze({'material:aluminum':3,'material:circuitry':2,
+    'material:ballistic-fiber':1,'material:adhesive':2}),
+  t01:Object.freeze({'material:aluminum':4,'material:ballistic-fiber':2,
+    'material:fiber-optics':1,'material:nuclear-material':1,'material:adhesive':2})
+});
 export const POWER_ARMOR_FRAME_AP=30;
 const clamp=(n,low,high)=>Math.max(low,Math.min(high,Number.isFinite(n)?n:low));
 export function powerArmorEyeHeight(state,normalEyeHeight){
@@ -92,15 +106,31 @@ export function removePowerPlate(state,slot){
   state.plates[slot]='none';state.plateDurability[slot]=0;
   return {ok:true,...current};
 }
-export function repairPowerPlate(state,slot,availableSalvage,discount=0){
+export function powerRepairRequirements(state,slot,discount=0){
+  if(!POWER_ARMOR_SLOTS.includes(slot))return {};
+  const condition=plateCondition(state,slot);
+  if(condition.tier==='none'||condition.current>=condition.max)return {};
+  const factor=1-Math.max(0,Math.min(.5,Number.isFinite(discount)?discount:0));
+  const units=Math.max(1,Math.ceil(Math.ceil((condition.max-condition.current)/25)*factor));
+  const recipe=POWER_ARMOR_REPAIR_RECIPES[condition.tier]||
+    POWER_ARMOR_REPAIR_RECIPES.t45;
+  return Object.fromEntries(Object.entries(recipe).map(([id,quantity])=>
+    [id,quantity*units]));
+}
+export function repairPowerPlate(state,slot,availableComponents={},discount=0){
   if(!POWER_ARMOR_SLOTS.includes(slot))return {ok:false,reason:'invalid-slot'};
   if(state.occupied||state.phase!=='idle')return {ok:false,reason:'in-use'};
   const condition=plateCondition(state,slot);
   if(condition.tier==='none')return {ok:false,reason:'empty'};
   if(condition.current===condition.max)return {ok:false,reason:'full'};
-  const discountFactor=1-Math.max(0,Math.min(.5,Number.isFinite(discount)?discount:0));
-  const cost=Math.max(1,Math.ceil(Math.ceil((condition.max-condition.current)/25)*discountFactor));
-  if(availableSalvage<cost)return {ok:false,reason:'materials',cost};
+  const cost=powerRepairRequirements(state,slot,discount);
+  const available=availableComponents&&typeof availableComponents==='object'?
+    availableComponents:{};
+  const missing=Object.entries(cost).filter(([id,needed])=>
+    !Number.isFinite(available[id])||Math.floor(available[id])<needed)
+    .map(([id,needed])=>({itemId:id,needed,owned:Math.max(0,
+      Math.floor(Number(available[id])||0))}));
+  if(missing.length)return {ok:false,reason:'materials',cost,missing};
   state.plateDurability[slot]=condition.max;
   return {ok:true,cost,slot,durability:condition.max};
 }
