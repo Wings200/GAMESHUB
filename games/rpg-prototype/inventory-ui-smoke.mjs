@@ -7,7 +7,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
-import {initialCampaignState} from './campaign.mjs';
+import {initialCampaignState,startCampaignQuest} from './campaign.mjs';
 import {getItem} from './inventory.mjs';
 
 const root=process.cwd();
@@ -54,11 +54,22 @@ try{
     null,{timeout:45000});
   await page.locator('#inventoryOpen').click();
   await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:10000});
+  assert.equal(await page.locator('#inventoryPanel').getAttribute('data-page'),'status',
+    'I must open the character status page first');
+  assert.match(await page.locator('#inventoryProfileHealth').textContent(),/HP/);
+  assert.match(await page.locator('#inventoryPositiveEffects').textContent(),/NONE ACTIVE/);
+  assert.match(await page.locator('#inventoryNegativeEffects').textContent(),/NONE ACTIVE/);
+  await page.locator('[data-inventory-page="quests"]').click();
+  assert.equal(await page.locator('#inventoryPanel').getAttribute('data-page'),'quests');
+  assert.match(await page.locator('#inventoryQuestList').textContent(),/NO ACCEPTED QUESTS/);
+  await page.locator('[data-inventory-page="status"]').click();
   assert.equal(await page.locator('#inventoryArmorDetails .inventory-protection-line').count(),6,
     'All six armor hit zones must be visible');
   assert.equal(await page.locator('[data-inventory-slot]').count(),6,
     'All six segments of the equipped-gear figure must be interactive');
   await page.locator('[data-inventory-slot="chest"]').click();
+  assert.equal(await page.locator('#inventoryPanel').getAttribute('data-page'),'items',
+    'Selecting a status figure zone must open the filtered armor items');
   assert.match(await page.locator('#inventorySectionTitle').textContent(),/ARMOR \/ CHEST/);
   assert.match(await page.locator('#inventoryZoneDetail').textContent(),/DAMAGE BLOCKED/);
   await page.locator('#inventoryZoneReset').click();
@@ -87,7 +98,7 @@ try{
   await page.keyboard.press('Escape');
   await page.locator('#inventoryPanel').waitFor({state:'hidden'});
   // W20.66.1: A waypoint selected on the map must guide both HUD modes.
-  await page.keyboard.press('Tab');
+  await page.keyboard.press('m');
   await page.locator('#fieldMapPanel:not(.hidden)').waitFor({timeout:7000});
   await page.locator('#fieldMapCanvas').click();
   await page.waitForFunction(()=>Boolean(
@@ -158,6 +169,30 @@ try{
     .first().getByRole('button',{name:/SELL 1/}).click();
   assert.match(await stockRow().textContent(),/STOCK ×1/,
     'Selling an offered item must replenish the merchant');
+  await page.keyboard.press('Escape');
+  await page.locator('#vendorPanel').waitFor({state:'hidden'});
+  const accepted=startCampaignQuest(initialCampaignState(),'water-debt').state;
+  await page.evaluate(saved=>localStorage.setItem('rpg-lab-campaign-v1',
+    JSON.stringify(saved)),accepted);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
+    null,{timeout:45000});
+  await page.keyboard.press('i');
+  await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:7000});
+  await page.locator('[data-inventory-page="quests"]').click();
+  assert.equal(await page.locator('#inventoryQuestList .inventory-quest-card').count(),1);
+  const questToggle=page.getByRole('button',{name:'Untrack Water Debt'});
+  await questToggle.click();
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('rpg-lab-campaign-v1')).tracked),null,
+    'Untracking an accepted quest must persist and hide its HUD objective');
+  await page.getByRole('button',{name:'Track Water Debt'}).click();
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('rpg-lab-campaign-v1')).tracked),'water-debt');
+  await page.locator('[data-inventory-page="map"]').click();
+  await page.locator('#fieldMapPanel:not(.hidden)').waitFor({timeout:7000});
+  await page.keyboard.press('Escape');
+  await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:7000});
+  assert.equal(await page.locator('#inventoryPanel').getAttribute('data-page'),'quests',
+    'Closing an inventory-launched map must return to the prior inventory page');
   assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
     errors.join(' | '));
   console.log('INVENTORY_VENDOR_UI_QA_PASS: categories, armor, finite vendor stock, persistence, sale restock');

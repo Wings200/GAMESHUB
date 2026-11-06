@@ -911,6 +911,77 @@ body.hud-modern #powerArmorHud{display:none!important}
 @media(max-width:750px){#workbenchPanel .bench-work-area{grid-template-columns:1fr}#workbenchPanel .bench-owned-pane{border-right:0;border-bottom:1px solid #486859}
   #workbenchPanel .bench-owned-list{max-height:210px}}
 @media(max-width:1150px){#inventoryPanel .inventory-silhouette{display:flex}}
+
+/* W20.68 · One character terminal with status, items, quests and map navigation. */
+#inventoryPanel .inventory-page-nav{display:flex;align-items:center;gap:12px;
+  justify-content:space-between;padding:10px clamp(13px,2.2vw,34px);
+  background:#102421;border-bottom:1px solid #355648}
+#inventoryPanel .inventory-page-tabs{display:flex;gap:7px;flex:1;justify-content:center;flex-wrap:wrap}
+#inventoryPanel .inventory-page-tabs button,#inventoryPanel .inventory-page-arrow{
+  border:1px solid #48675a;background:#18302d;color:#acc3b0;min-height:38px;
+  font-size:11px;font-weight:850;letter-spacing:.1em;padding:9px 16px}
+#inventoryPanel .inventory-page-arrow{font-size:17px;min-width:45px;color:#eddaa9}
+#inventoryPanel .inventory-page-tabs button[aria-current="page"]{
+  background:#355344;border-color:#d7b77c;color:#ffe6b1;box-shadow:inset 0 -2px #d7b77c}
+#inventoryPanel .inventory-page-tabs button:hover,#inventoryPanel .inventory-page-arrow:hover{
+  background:#2d4a3d;color:#f0e0bd}
+#inventoryPanel .inventory-profile-vitals{display:none}
+#inventoryPanel[data-page="status"] .inventory-shell{grid-template-columns:minmax(0,1fr)}
+#inventoryPanel[data-page="status"] .inventory-sidebar,
+#inventoryPanel[data-page="status"] .inventory-content{display:none}
+#inventoryPanel[data-page="status"] .inventory-loadout{
+  display:grid;grid-column:1;grid-template-columns:minmax(235px,360px) minmax(260px,1fr);
+  grid-template-rows:auto auto auto 1fr auto;gap:12px 26px;
+  border:0;padding:24px clamp(18px,3vw,46px);align-items:start}
+#inventoryPanel[data-page="status"] .inventory-loadout>.inventory-pane-label{grid-column:1/-1;margin:0}
+#inventoryPanel[data-page="status"] .inventory-silhouette{display:flex;grid-column:1;grid-row:2 / span 2;
+  height:min(44vh,390px);min-height:280px;margin:0}
+#inventoryPanel[data-page="status"] .inventory-silhouette svg{height:min(37vh,315px);width:auto;max-width:95%}
+#inventoryPanel[data-page="status"] .inventory-zone-detail{grid-column:1;grid-row:4;margin:0}
+#inventoryPanel[data-page="status"] .inventory-equipped-list{
+  display:flex;grid-column:2;grid-row:2 / span 2;flex-direction:column;gap:10px}
+#inventoryPanel[data-page="status"] .inventory-profile-vitals{display:grid;grid-column:2;
+  grid-row:4;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#inventoryPanel .inventory-profile-vitals>div{display:flex;flex-direction:column;gap:8px;
+  background:#112b28;border:1px solid #3e6655;padding:13px}
+#inventoryPanel .inventory-profile-vitals small{color:#a8bea9;font-size:9px;font-weight:850;letter-spacing:.12em}
+#inventoryPanel .inventory-profile-vitals strong{color:#ecd7a8;font-size:12px;line-height:1.5}
+#inventoryPanel .inventory-profile-vitals span{color:#8ea89a;font-size:10px;line-height:1.5}
+#inventoryPanel .inventory-profile-vitals .negative{border-color:#6e564f}
+#inventoryPanel[data-page="status"] .inventory-loadout-tip{grid-column:1/-1;margin:0}
+#inventoryPanel[data-page="quests"] .inventory-shell{display:none}
+#inventoryPanel .inventory-quest-page{display:none;flex:1;min-height:430px;
+  padding:25px clamp(18px,3vw,42px);background:linear-gradient(165deg,#0e2321,#101c24)}
+#inventoryPanel[data-page="quests"] .inventory-quest-page{display:block}
+#inventoryPanel .inventory-quest-page h3{color:#f2dfb2;font-size:26px;margin:0 0 10px}
+#inventoryPanel .inventory-quest-page>p{font-size:12px;color:#a8beb0;line-height:1.65;max-width:900px}
+#inventoryPanel .inventory-quest-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+  gap:12px;max-height:min(52vh,480px);overflow-y:auto;margin-top:24px;padding:2px}
+#inventoryPanel .inventory-quest-card{display:flex;flex-direction:column;gap:10px;
+  padding:17px;background:#18312e;border:1px solid #426556;border-left:3px solid #8cb696}
+#inventoryPanel .inventory-quest-card.tracked{border-left-color:#efcb85;background:#243d34}
+#inventoryPanel .inventory-quest-card h4{font-size:17px;color:#f0d8a6;margin:0}
+#inventoryPanel .inventory-quest-card small{font-size:10px;font-weight:850;color:#a4bcad;letter-spacing:.1em}
+#inventoryPanel .inventory-quest-card p{font-size:11px;color:#c0cec0;line-height:1.55;margin:0}
+#inventoryPanel .inventory-quest-card .quest-objective{border-top:1px solid #365a4e;padding-top:10px;color:#e1d3af}
+#inventoryPanel .inventory-quest-card button{align-self:flex-start;padding:9px 15px;
+  font-size:10px;font-weight:850;letter-spacing:.08em;border:1px solid #af9567;
+  background:#39523e;color:#f4dfb8}
+#inventoryPanel .inventory-quest-card button[aria-pressed="true"]{background:#685535;color:#ffdf98}
+#inventoryPanel .inventory-quest-card button:disabled{opacity:.65;cursor:default}
+#inventoryPanel .inventory-quest-help{margin-top:14px;color:#8ba89a!important}
+@media(max-width:760px){
+  #inventoryPanel .inventory-page-nav{gap:5px;padding:9px}
+  #inventoryPanel .inventory-page-tabs{gap:3px}
+  #inventoryPanel .inventory-page-tabs button{font-size:9px;padding:8px 6px;min-height:34px}
+  #inventoryPanel .inventory-page-arrow{min-width:33px;padding:5px 8px}
+  #inventoryPanel[data-page="status"] .inventory-loadout{display:flex;flex-direction:column;padding:16px}
+  #inventoryPanel[data-page="status"] .inventory-silhouette{width:100%;height:260px;min-height:260px}
+  #inventoryPanel[data-page="status"] .inventory-equipped-list,
+  #inventoryPanel[data-page="status"] .inventory-zone-detail,
+  #inventoryPanel[data-page="status"] .inventory-profile-vitals{width:100%}
+  #inventoryPanel .inventory-quest-list{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body class="hud-modern">
@@ -949,7 +1020,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="field-ammo" id="fieldAmmo">--</div>
     <div class="field-sub" id="fieldWeaponState">SEMI · READY</div>
   </div>
-  <div class="field-controls">L SPECIAL · I INVENTORY · TAB MAP · E INTERACT · F3 DIAGNOSTICS</div>
+  <div class="field-controls">L SPECIAL · I CHARACTER / INVENTORY · M MAP · E INTERACT · F3 DIAGNOSTICS</div>
 </div>
 <div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
   <svg id="visorArmorIndicator" class="armor-indicator" viewBox="0 0 116 165"
@@ -1140,7 +1211,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="enterVendors" class="primary" type="button">GO TO TRADING ROW · E TO TRADE</button>
     <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
-    <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · TAB</button>
+    <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      <button id="workbenchOpen" class="secondary" type="button">CRAFT WEAPON MODS · WORKBENCH / U</button>
      <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
@@ -1363,7 +1434,7 @@ body.hud-modern #powerArmorHud{display:none!important}
         <button id="fieldMapZoomIn" type="button" aria-label="Zoom in">+</button>
         <button id="fieldMapCenter" type="button">CENTER PLAYER</button>
         <button id="fieldMapClear" type="button">CLEAR WAYPOINT</button>
-        <button id="fieldMapClose" type="button">CLOSE · TAB / ESC</button>
+        <button id="fieldMapClose" type="button">CLOSE · M / ESC</button>
       </div>
     </header>
     <div class="map-body">
@@ -1385,23 +1456,33 @@ body.hud-modern #powerArmorHud{display:none!important}
     <footer class="map-footer">SYSTEMS TEST GROUND · REAL PLAYER COORDINATES · FULL WORLD MAP COMES WHEN THE WORLD IS BUILT</footer>
   </div>
 </div>
-<div id="inventoryPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Player inventory">
+<div id="inventoryPanel" class="loot-overlay hidden" data-page="status" role="dialog" aria-modal="true" aria-label="Character terminal">
   <div class="loot-container inventory-frame">
     <header class="inventory-topbar">
       <div class="inventory-brand">
         <div class="inventory-eyebrow"><span class="inventory-status-dot"></span> FIELD TERMINAL <span class="inventory-separator">//</span> PERSONAL EQUIPMENT</div>
-        <h2>INVENTORY<span> / LOADOUT</span></h2>
-        <p>Manage equipment and salvage. 31 crafting components live in a separate material pouch and never fill backpack slots.</p>
+        <h2 id="inventoryPageTitle">CHARACTER<span> / STATUS</span></h2>
+        <p id="inventoryPageDescription">Equipped gear, body protection and current effects. Open Items to manage your backpack.</p>
       </div>
       <div class="inventory-toolbar">
         <div class="inventory-summary">
           <div><small>BACKPACK</small><strong id="inventoryCapacity">0 / 30 SLOTS</strong></div>
           <div><small>CONTENTS VALUE</small><strong id="inventoryValue">0 CAPS VALUE</strong></div>
         </div>
-        <button id="inventoryMapOpen" type="button" title="Open the field map">MAP · TAB</button>
+        <button id="inventoryMapOpen" type="button" title="Open the field map">MAP · M</button>
         <button id="inventoryClose" class="inventory-exit" type="button" aria-label="Close inventory and resume gameplay">CLOSE <span>ESC / I</span></button>
       </div>
     </header>
+    <nav class="inventory-page-nav" aria-label="Character terminal pages">
+      <button id="inventoryPagePrev" class="inventory-page-arrow" type="button" aria-label="Previous terminal page">◀</button>
+      <div class="inventory-page-tabs">
+        <button type="button" data-inventory-page="status">01 / STATUS</button>
+        <button type="button" data-inventory-page="items">02 / ITEMS</button>
+        <button type="button" data-inventory-page="quests">03 / QUESTS</button>
+        <button type="button" data-inventory-page="map">04 / MAP</button>
+      </div>
+      <button id="inventoryPageNext" class="inventory-page-arrow" type="button" aria-label="Next terminal page">▶</button>
+    </nav>
     <div class="inventory-shell">
       <nav class="inventory-sidebar" aria-label="Inventory filters">
         <div class="inventory-pane-label"><span>01</span> CATEGORIES</div>
@@ -1438,11 +1519,24 @@ body.hud-modern #powerArmorHud{display:none!important}
           <div class="inventory-equipped-slot inventory-armor-card"><small>PLAYER ARMOR / BALLISTIC COVERAGE</small><strong id="inventoryArmor">0 / 6 ZONES PROTECTED</strong><div id="inventoryArmorDetails" class="inventory-protection-grid" aria-label="Armor protection by body part"></div><p id="inventoryArmorNote" class="inventory-armor-note"></p></div>
           <div class="inventory-equipped-slot"><small>CLOTHING / UTILITY</small><strong id="inventoryClothing">HAT: NONE · BACKPACK: NONE</strong></div>
         </div>
+        <section class="inventory-profile-vitals" aria-label="Player condition and status effects">
+          <div><small>HEALTH</small><strong id="inventoryProfileHealth">100 / 100 HP</strong></div>
+          <div><small>POWER ARMOR</small><strong id="inventoryProfilePower">NOT EQUIPPED</strong></div>
+          <div class="inventory-effect-card"><small>POSITIVE EFFECTS</small><strong id="inventoryPositiveEffects">NONE ACTIVE</strong><span>Temporary bonuses will appear here.</span></div>
+          <div class="inventory-effect-card negative"><small>NEGATIVE EFFECTS</small><strong id="inventoryNegativeEffects">NONE ACTIVE</strong><span>Injuries, illnesses and penalties will appear here.</span></div>
+        </section>
         <div class="inventory-loadout-tip">Select an item to equip, use, or drop it. Your saved gear and item counts stay unchanged.</div>
       </aside>
     </div>
+    <section id="inventoryQuestPage" class="inventory-quest-page" aria-label="Accepted quests">
+      <div class="inventory-pane-label"><span>03</span> ACTIVE CASE FILES</div>
+      <h3>QUEST JOURNAL</h3>
+      <p>Accepted quests appear here. TRACK an objective to show it on your HUD, or UNTRACK it to hide it. Completed quests stay in your journal.</p>
+      <div id="inventoryQuestList" class="inventory-quest-list" aria-live="polite"></div>
+      <p class="inventory-quest-help">New quests are accepted by speaking with contacts in the world. One objective can be tracked at a time.</p>
+    </section>
     <footer class="inventory-footer">
-      <span><b>I</b> CLOSE / RESUME</span><span><b>E</b> SEARCH LOOT</span>
+      <span><b>I</b> CLOSE / RESUME</span><span><b>◀ ▶</b> SWITCH PAGES</span><span><b>M</b> MAP</span>
       <span><b>QTY / MAX</b> CHOOSE DROP AMOUNT</span><span>CAPACITY <b>30 SLOTS</b></span>
     </footer>
   </div>
@@ -1511,7 +1605,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.67"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.68"></script>
 </body>
 </html>
 

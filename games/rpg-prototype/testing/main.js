@@ -14,7 +14,7 @@ import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
   initialCampaignState,safeCampaignSnapshot,startCampaignQuest,
-  advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal,
+  advanceCampaignEvent,resolveCampaignQuest,toggleCampaignQuestTracking,campaignJournal,
   trackedCampaignObjective
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -1612,6 +1612,8 @@ let inventoryOpen=false,lootOpen=false,workbenchOpen=false,workbenchFromField=fa
 let weaponsCrateOpen=false; // Legacy overlay guard, kept false for menu transitions.
 let inventoryCategory='all';
 let inventorySelectedSlot=null;
+let inventoryPage='status';
+const INVENTORY_PAGES=['status','items','quests','map'];
 let backpack=createBackpack();
 let hadSavedBackpack=false;
 try{
@@ -1971,6 +1973,11 @@ function lootButton(row,label,callback){
 function refreshInventoryUI(){
   $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
+  $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
+    playerHealth.maxHealth+' HP';
+  $('inventoryProfilePower').textContent=powerArmorState.occupied?
+    'FRAME EQUIPPED · '+(powerArmorState.coreCharge===null?'NO CORE':
+      Math.ceil(powerArmorState.coreCharge)+'% CORE'):'NOT EQUIPPED';
   $('inventoryWeapon').textContent=playerGunEnabled()?
     activeSpec.name.toUpperCase()+' · REBUILT WEAPON':
     WEAPON_REBUILD_MODE?'UNARMED · OLD GUNS ARCHIVED':getWeaponSpec(backpack.equipment.weapon).name;
@@ -2189,17 +2196,50 @@ for(const slot of ARMOR_SLOTS){
   const figure=document.querySelector('[data-inventory-slot="'+slot+'"]');
   figure.addEventListener('click',()=>{
     inventoryCategory='armor';inventorySelectedSlot=slot;refreshInventoryUI();
+    setInventoryPage('items');
   });
   figure.addEventListener('keydown',event=>{
     if(event.key==='Enter'||event.key===' '){
       event.preventDefault();
       inventoryCategory='armor';inventorySelectedSlot=slot;refreshInventoryUI();
+      setInventoryPage('items');
     }
   });
 }
 $('inventoryZoneReset').addEventListener('click',()=>{
   inventorySelectedSlot=null;inventoryCategory='armor';refreshInventoryUI();
 });
+function setInventoryPage(page){
+  if(page==='map'){
+    if(inventoryOpen)switchInventoryToMap();
+    return;
+  }
+  if(!INVENTORY_PAGES.includes(page))return;
+  inventoryPage=page;
+  $('inventoryPanel').dataset.page=page;
+  const headings={status:['CHARACTER','STATUS','Review equipped protection, health and status effects.'],
+    items:['INVENTORY','ITEMS','Weapons, armor, ammunition, supplies and crafting materials.'],
+    quests:['QUESTS','JOURNAL','Manage accepted objectives and HUD tracking.']};
+  const [heading,subheading,description]=headings[page];
+  const title=$('inventoryPageTitle');
+  const detail=document.createElement('span');detail.textContent=' / '+subheading;
+  title.replaceChildren(document.createTextNode(heading),detail);
+  $('inventoryPageDescription').textContent=description;
+  for(const button of document.querySelectorAll('[data-inventory-page]')){
+    if(button.dataset.inventoryPage===page)button.setAttribute('aria-current','page');
+    else button.removeAttribute('aria-current');
+  }
+  if(page==='quests')refreshInventoryQuests();
+}
+function shiftInventoryPage(step){
+  const index=INVENTORY_PAGES.indexOf(inventoryPage);
+  setInventoryPage(INVENTORY_PAGES[(index+step+INVENTORY_PAGES.length)%INVENTORY_PAGES.length]);
+}
+for(const button of document.querySelectorAll('[data-inventory-page]')){
+  button.addEventListener('click',()=>setInventoryPage(button.dataset.inventoryPage));
+}
+$('inventoryPagePrev').addEventListener('click',()=>shiftInventoryPage(-1));
+$('inventoryPageNext').addEventListener('click',()=>shiftInventoryPage(1));
 function refreshLootUI(){
   const bag=lootBags.get(selectedLootId),area=$('lootItems');
   area.replaceChildren();
@@ -2254,6 +2294,7 @@ function beginLootOverlay(id=null){
     $('lootPanel').classList.add('hidden');
     $('inventoryPanel').classList.remove('hidden');
     refreshInventoryUI();
+    setInventoryPage('status');
   }
   $('menu').classList.add('hidden');
 }
@@ -4303,7 +4344,7 @@ resetPlayer(0);
 if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 
 // W20.55 — actual-position field map; exploration is saved separately from gear.
-let mapOpen=false,mapFromField=false;
+let mapOpen=false,mapFromField=false,mapFromInventory=false,inventoryReturnPage='status';
 const mapPoints=[
   ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
   ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'})),
@@ -4382,6 +4423,8 @@ function showFieldMap(){
   mapOpen=true;
   $('fieldMapPanel').classList.remove('hidden');
   $('menu').classList.add('hidden');
+  $('fieldMapClose').textContent=mapFromInventory?'BACK TO INVENTORY · M / ESC':
+    'CLOSE · M / ESC';
   fieldMap.centerOnPlayer();
 }
 function openFieldMap(){
@@ -4395,13 +4438,24 @@ function closeFieldMap(){
   if(!mapOpen)return;
   mapOpen=false;
   $('fieldMapPanel').classList.add('hidden');
+  if(mapFromInventory){
+    mapFromInventory=false;
+    inventoryOpen=true;
+    lootOverlayFromField=mapFromField;
+    mapFromField=false;
+    $('inventoryPanel').classList.remove('hidden');
+    setInventoryPage(inventoryReturnPage);
+    refreshInventoryUI();
+    return;
+  }
   if(mapFromField){mapFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
 }
 function switchInventoryToMap(){
   if(!inventoryOpen)return;
+  inventoryReturnPage=inventoryPage;
+  mapFromInventory=true;
   mapFromField=lootOverlayFromField;
-  lootOverlayFromField=false;
   inventoryOpen=false;
   $('inventoryPanel').classList.add('hidden');
   showFieldMap();
@@ -4878,8 +4932,9 @@ function refreshCampaignUI(){
     'Investigate the terminals at the testing stations to begin the story.';
   $('campaignQuestObjective').textContent=selected?.objective||'EXPLORE THE FRONTIER';
   $('campaignQuestReward').textContent=selected?.reward||'';
-  $('campaignTrack').disabled=!selected||selected.status!=='active'||selected.tracked;
-  $('campaignTrack').textContent=selected?.tracked?'TRACKING':'TRACK QUEST';
+  $('campaignTrack').disabled=!selected||selected.status!=='active';
+  $('campaignTrack').textContent=selected?.tracked?'UNTRACK QUEST':'TRACK QUEST';
+  refreshInventoryQuests(journal);
   // Consequences are physical and persistent, not just numbers in a menu.
   const powered=campaignState.quests['haven-first-light']?.status==='completed';
   const cleanWater=campaignState.quests['water-debt']?.status==='completed';
@@ -4894,6 +4949,36 @@ function refreshCampaignUI(){
     }
     marker.indicator.emissiveIntensity=marker.id==='generator'&&powered?1.65:
       marker.id==='pump'&&cleanWater?1.3:.48;
+  }
+}
+function refreshInventoryQuests(journal=campaignJournal(campaignState)){
+  const area=$('inventoryQuestList');area.replaceChildren();
+  const accepted=journal.filter(quest=>quest.status!=='available');
+  if(!accepted.length){
+    const empty=document.createElement('p');
+    empty.className='inventory-empty';
+    empty.textContent='NO ACCEPTED QUESTS · SPEAK TO WORLD CONTACTS TO BEGIN YOUR STORY.';
+    area.append(empty);return;
+  }
+  for(const quest of accepted){
+    const card=document.createElement('article');
+    card.className='inventory-quest-card'+(quest.tracked?' tracked':'');
+    const title=document.createElement('h4');title.textContent=quest.title.toUpperCase();
+    const meta=document.createElement('small');
+    meta.textContent=quest.type.toUpperCase()+' · '+quest.status.toUpperCase();
+    const desc=document.createElement('p');desc.textContent=quest.description;
+    const objective=document.createElement('p');
+    objective.className='quest-objective';objective.textContent=quest.objective;
+    const toggle=document.createElement('button');toggle.type='button';
+    toggle.disabled=quest.status!=='active';
+    toggle.setAttribute('aria-pressed',String(quest.tracked));
+    toggle.setAttribute('aria-label',(quest.tracked?'Untrack ':'Track ')+quest.title);
+    toggle.textContent=quest.status==='completed'?'COMPLETED':quest.tracked?
+      '● TRACKED · CLICK TO HIDE':'○ TRACK ON HUD';
+    toggle.addEventListener('click',()=>{
+      applyCampaignResult(toggleCampaignQuestTracking(campaignState,quest.id));
+    });
+    card.append(title,meta,desc,objective,toggle);area.append(card);
   }
 }
 function applyCampaignResult(result){
@@ -5114,7 +5199,7 @@ function openCampaignDialogue(node){
 $('campaignClose').addEventListener('click',closeCampaignJournal);
 $('campaignTrack').addEventListener('click',()=>{
   if(!selectedCampaignQuest)return;
-  applyCampaignResult(trackCampaignQuest(campaignState,selectedCampaignQuest));
+  applyCampaignResult(toggleCampaignQuestTracking(campaignState,selectedCampaignQuest));
   refreshCampaignUI();
 });
 $('campaignDialogueClose').addEventListener('click',closeCampaignDialogue);
@@ -5166,7 +5251,14 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
-  if(e.code==='Tab'&&!e.repeat){e.preventDefault();if(mapOpen)closeFieldMap();else if(inventoryOpen)switchInventoryToMap();else openFieldMap();return;}
+  if(e.code==='KeyM'&&!e.repeat&&
+    !e.target.closest?.('input,textarea,select,[contenteditable="true"]')){
+    e.preventDefault();
+    if(mapOpen)closeFieldMap();
+    else if(inventoryOpen)switchInventoryToMap();
+    else openFieldMap();
+    return;
+  }
   if(mapOpen)return;
   if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
   if(e.code==='Escape'&&questPanelOpen){closeCampaignJournal();return;}

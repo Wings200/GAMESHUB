@@ -129,7 +129,10 @@ export function safeCampaignSnapshot(saved){
         clamp(Math.floor(validNumber(entry.stage)),0,definition.stages.length-1),
       outcome};
   }
-  if(typeof saved.tracked==='string'&&state.quests[saved.tracked]?.status==='active')
+  // An explicitly untracked quest journal is intentional. Old snapshots that
+  // lack the field may still fall back to the first active quest.
+  if(saved.tracked===null)state.tracked=null;
+  else if(typeof saved.tracked==='string'&&state.quests[saved.tracked]?.status==='active')
     state.tracked=saved.tracked;
   else state.tracked=Object.keys(state.quests)
     .find(id=>state.quests[id].status==='active')||null;
@@ -178,6 +181,12 @@ export function trackCampaignQuest(current,id){
   const state=safeCampaignSnapshot(current);
   if(state.quests[id]?.status!=='active')return {state,changed:false};
   state.tracked=id;return {state,changed:true};
+}
+export function toggleCampaignQuestTracking(current,id){
+  const state=safeCampaignSnapshot(current);
+  if(state.quests[id]?.status!=='active')return {state,changed:false};
+  state.tracked=state.tracked===id?null:id;
+  return {state,changed:true};
 }
 // HUD objective markers are quest-only. A discovered place is still a location,
 // but an available or completed quest must never create a quest objective.
