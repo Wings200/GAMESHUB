@@ -4905,7 +4905,9 @@ function refreshCampaignUI(){
     score.style.color=value<0?'#f2a38e':faction.color;
     row.append(name,score);rep.append(row);
   }
-  const visible=journal.filter(q=>q.status!=='available');
+  const active=journal.filter(q=>q.status==='active');
+  const completed=journal.filter(q=>q.status==='completed');
+  const visible=[...active,...completed];
   const list=$('campaignQuestList');list.replaceChildren();
   if(!visible.length){
     const hint=document.createElement('p');hint.className='campaign-hint';
@@ -4914,17 +4916,24 @@ function refreshCampaignUI(){
   }
   if(!visible.some(q=>q.id===selectedCampaignQuest))
     selectedCampaignQuest=tracked?.id||visible[0]?.id||null;
-  for(const quest of visible){
-    const button=document.createElement('button');button.type='button';
-    button.className='campaign-quest'+(selectedCampaignQuest===quest.id?' selected':'');
-    const heading=document.createElement('strong');heading.textContent=quest.title;
-    const meta=document.createElement('small');
-    meta.textContent=quest.type.toUpperCase()+' · '+quest.status.toUpperCase();
-    button.append(heading,meta);
-    button.addEventListener('click',()=>{
-      selectedCampaignQuest=quest.id;refreshCampaignUI();
-    });
-    list.append(button);
+  for(const [group,quests] of [['ACTIVE',active],['COMPLETED / INACTIVE',completed]]){
+    if(!quests.length)continue;
+    const section=document.createElement('div');section.className='campaign-group-title';
+    section.textContent=group+' · '+quests.length;list.append(section);
+    for(const quest of quests){
+      const button=document.createElement('button');button.type='button';
+      button.className='campaign-quest'+(selectedCampaignQuest===quest.id?' selected':'')+
+        (quest.status==='completed'?' completed':'');
+      const heading=document.createElement('strong');heading.textContent=quest.title;
+      const meta=document.createElement('small');
+      meta.textContent=quest.type.toUpperCase()+' · '+
+        (quest.status==='completed'?'COMPLETED / INACTIVE':'ACTIVE');
+      button.append(heading,meta);
+      button.addEventListener('click',()=>{
+        selectedCampaignQuest=quest.id;refreshCampaignUI();
+      });
+      list.append(button);
+    }
   }
   const selected=visible.find(q=>q.id===selectedCampaignQuest);
   $('campaignQuestTitle').textContent=selected?.title||'NO ACTIVE QUEST';
@@ -4953,32 +4962,52 @@ function refreshCampaignUI(){
 }
 function refreshInventoryQuests(journal=campaignJournal(campaignState)){
   const area=$('inventoryQuestList');area.replaceChildren();
-  const accepted=journal.filter(quest=>quest.status!=='available');
-  if(!accepted.length){
+  const active=journal.filter(quest=>quest.status==='active');
+  const completed=journal.filter(quest=>quest.status==='completed');
+  if(!active.length&&!completed.length){
     const empty=document.createElement('p');
     empty.className='inventory-empty';
     empty.textContent='NO ACCEPTED QUESTS · SPEAK TO WORLD CONTACTS TO BEGIN YOUR STORY.';
     area.append(empty);return;
   }
-  for(const quest of accepted){
-    const card=document.createElement('article');
-    card.className='inventory-quest-card'+(quest.tracked?' tracked':'');
-    const title=document.createElement('h4');title.textContent=quest.title.toUpperCase();
-    const meta=document.createElement('small');
-    meta.textContent=quest.type.toUpperCase()+' · '+quest.status.toUpperCase();
-    const desc=document.createElement('p');desc.textContent=quest.description;
-    const objective=document.createElement('p');
-    objective.className='quest-objective';objective.textContent=quest.objective;
-    const toggle=document.createElement('button');toggle.type='button';
-    toggle.disabled=quest.status!=='active';
-    toggle.setAttribute('aria-pressed',String(quest.tracked));
-    toggle.setAttribute('aria-label',(quest.tracked?'Untrack ':'Track ')+quest.title);
-    toggle.textContent=quest.status==='completed'?'COMPLETED':quest.tracked?
-      '● TRACKED · CLICK TO HIDE':'○ TRACK ON HUD';
-    toggle.addEventListener('click',()=>{
-      applyCampaignResult(toggleCampaignQuestTracking(campaignState,quest.id));
-    });
-    card.append(title,meta,desc,objective,toggle);area.append(card);
+  for(const [status,quests,label] of [
+    ['active',active,'ACTIVE QUESTS'],
+    ['completed',completed,'COMPLETED · INACTIVE HISTORY']
+  ]){
+    const group=document.createElement('section');
+    group.className='inventory-quest-group '+status;
+    const heading=document.createElement('h4');
+    heading.textContent=label+' · '+quests.length;
+    const rows=document.createElement('div');rows.className='inventory-quest-rows';
+    if(!quests.length){
+      const none=document.createElement('p');none.className='inventory-quest-none';
+      none.textContent='NO ACTIVE QUESTS · ACCEPT A NEW MISSION TO TRACK AN OBJECTIVE.';
+      rows.append(none);
+    }
+    for(const quest of quests){
+      const card=document.createElement('article');
+      card.className='inventory-quest-card'+(quest.tracked?' tracked':'')+
+        (quest.status==='completed'?' completed':'');
+      const title=document.createElement('h4');title.textContent=quest.title.toUpperCase();
+      const meta=document.createElement('small');
+      meta.textContent=quest.type.toUpperCase()+' · '+
+        (quest.status==='completed'?'COMPLETED / INACTIVE':'ACTIVE');
+      const desc=document.createElement('p');desc.textContent=quest.description;
+      const objective=document.createElement('p');
+      objective.className='quest-objective';objective.textContent=quest.objective;
+      const toggle=document.createElement('button');toggle.type='button';
+      toggle.disabled=quest.status!=='active';
+      toggle.setAttribute('aria-pressed',String(quest.tracked));
+      toggle.setAttribute('aria-label',quest.status==='completed'?
+        'Completed and inactive: '+quest.title:(quest.tracked?'Untrack ':'Track ')+quest.title);
+      toggle.textContent=quest.status==='completed'?'✓ COMPLETED · INACTIVE':quest.tracked?
+        '● TRACKED · CLICK TO HIDE':'○ TRACK ON HUD';
+      toggle.addEventListener('click',()=>{
+        applyCampaignResult(toggleCampaignQuestTracking(campaignState,quest.id));
+      });
+      card.append(title,meta,desc,objective,toggle);rows.append(card);
+    }
+    group.append(heading,rows);area.append(group);
   }
 }
 function applyCampaignResult(result){

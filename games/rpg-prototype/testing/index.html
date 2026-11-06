@@ -558,6 +558,10 @@ body.hud-modern #powerArmorHud{display:none!important}
 .campaign-list .campaign-quest small{color:#a9c2bc;font-size:10px}
 .campaign-list .campaign-quest.selected{border-color:#a8dfb6;
   background:#1c443e}
+.campaign-list .campaign-group-title{margin:11px 0 0;padding:6px 2px;
+  color:#d6c096;font-size:10px;font-weight:900;letter-spacing:.1em;border-bottom:1px solid #54665a}
+.campaign-list .campaign-quest.completed{border-color:#455e5b;background:#17292b;color:#97ada7}
+.campaign-list .campaign-quest.completed.selected{border-color:#a6b3a6;background:#243536}
 .campaign-hint{border:1px dashed #45665d;padding:15px}
 .campaign-details{background:#10252a;border:1px solid #476059;
   min-height:265px;padding:22px}
@@ -955,11 +959,20 @@ body.hud-modern #powerArmorHud{display:none!important}
 #inventoryPanel[data-page="quests"] .inventory-quest-page{display:block}
 #inventoryPanel .inventory-quest-page h3{color:#f2dfb2;font-size:26px;margin:0 0 10px}
 #inventoryPanel .inventory-quest-page>p{font-size:12px;color:#a8beb0;line-height:1.65;max-width:900px}
-#inventoryPanel .inventory-quest-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
-  gap:12px;max-height:min(52vh,480px);overflow-y:auto;margin-top:24px;padding:2px}
+#inventoryPanel .inventory-quest-list{display:flex;flex-direction:column;
+  gap:19px;max-height:min(52vh,480px);overflow-y:auto;margin-top:24px;padding:2px}
+#inventoryPanel .inventory-quest-group>h4{color:#dec899;font-size:12px;
+  letter-spacing:.15em;margin:0 0 10px;border-bottom:1px solid #4b655a;padding-bottom:10px}
+#inventoryPanel .inventory-quest-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+#inventoryPanel .inventory-quest-none{border:1px dashed #486557;background:#142b28;
+  padding:16px;font-size:11px;color:#a7bbae}
 #inventoryPanel .inventory-quest-card{display:flex;flex-direction:column;gap:10px;
   padding:17px;background:#18312e;border:1px solid #426556;border-left:3px solid #8cb696}
 #inventoryPanel .inventory-quest-card.tracked{border-left-color:#efcb85;background:#243d34}
+#inventoryPanel .inventory-quest-group.completed{opacity:.79}
+#inventoryPanel .inventory-quest-card.completed{border-left-color:#778885;background:#142624}
+#inventoryPanel .inventory-quest-card.completed h4{color:#b9c5b7}
+#inventoryPanel .inventory-quest-card.completed button{border-color:#586660;background:#283530;color:#b5c1b7}
 #inventoryPanel .inventory-quest-card h4{font-size:17px;color:#f0d8a6;margin:0}
 #inventoryPanel .inventory-quest-card small{font-size:10px;font-weight:850;color:#a4bcad;letter-spacing:.1em}
 #inventoryPanel .inventory-quest-card p{font-size:11px;color:#c0cec0;line-height:1.55;margin:0}
@@ -980,7 +993,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   #inventoryPanel[data-page="status"] .inventory-equipped-list,
   #inventoryPanel[data-page="status"] .inventory-zone-detail,
   #inventoryPanel[data-page="status"] .inventory-profile-vitals{width:100%}
-  #inventoryPanel .inventory-quest-list{grid-template-columns:1fr}
+  #inventoryPanel .inventory-quest-rows{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -1529,9 +1542,9 @@ body.hud-modern #powerArmorHud{display:none!important}
       </aside>
     </div>
     <section id="inventoryQuestPage" class="inventory-quest-page" aria-label="Accepted quests">
-      <div class="inventory-pane-label"><span>03</span> ACTIVE CASE FILES</div>
+      <div class="inventory-pane-label"><span>03</span> QUEST LOG / HISTORY</div>
       <h3>QUEST JOURNAL</h3>
-      <p>Accepted quests appear here. TRACK an objective to show it on your HUD, or UNTRACK it to hide it. Completed quests stay in your journal.</p>
+      <p>Only active missions can appear on your HUD. Finished quests move to the completed, inactive history below and can no longer be tracked.</p>
       <div id="inventoryQuestList" class="inventory-quest-list" aria-live="polite"></div>
       <p class="inventory-quest-help">New quests are accepted by speaking with contacts in the world. One objective can be tracked at a time.</p>
     </section>
@@ -1605,7 +1618,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.68"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.68.1"></script>
 </body>
 </html>
 

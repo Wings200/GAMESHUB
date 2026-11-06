@@ -7,7 +7,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {existsSync} from 'node:fs';
 import {chromium} from 'playwright-core';
-import {initialCampaignState,startCampaignQuest} from './campaign.mjs';
+import {initialCampaignState,startCampaignQuest,resolveCampaignQuest} from './campaign.mjs';
 import {getItem} from './inventory.mjs';
 
 const root=process.cwd();
@@ -193,6 +193,26 @@ try{
   await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:7000});
   assert.equal(await page.locator('#inventoryPanel').getAttribute('data-page'),'quests',
     'Closing an inventory-launched map must return to the prior inventory page');
+  const completedSeed=startCampaignQuest(initialCampaignState(),'border-watch').state;
+  completedSeed.quests['border-watch'].stage=1;
+  const finished=resolveCampaignQuest(completedSeed,'border-watch','report').state;
+  await page.evaluate(saved=>localStorage.setItem('rpg-lab-campaign-v1',
+    JSON.stringify(saved)),finished);
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies.length===3,
+    null,{timeout:45000});
+  await page.keyboard.press('i');
+  await page.locator('#inventoryPanel:not(.hidden)').waitFor({timeout:7000});
+  await page.locator('[data-inventory-page="quests"]').click();
+  assert.equal(await page.locator('.inventory-quest-group.active .inventory-quest-card').count(),0,
+    'No completed quest may appear in the active group');
+  assert.equal(await page.locator('.inventory-quest-group.completed .inventory-quest-card').count(),1);
+  assert.match(await page.locator('.inventory-quest-card.completed small').textContent(),
+    /COMPLETED \/ INACTIVE/);
+  assert.equal(await page.getByRole('button',
+    {name:'Completed and inactive: Border Watch'}).isDisabled(),true);
+  assert.equal(await page.locator('#questTracker').evaluate(el=>el.classList.contains('hidden')),true,
+    'A completed quest must not leave an active HUD tracker');
   assert.equal(errors.length,0,'Inventory/vendor UI should not cause browser exceptions: '+
     errors.join(' | '));
   console.log('INVENTORY_VENDOR_UI_QA_PASS: categories, armor, finite vendor stock, persistence, sale restock');
