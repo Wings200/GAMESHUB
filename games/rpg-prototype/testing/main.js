@@ -2040,8 +2040,10 @@ function refreshInventoryUI(){
     (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory)&&
     !(inventoryCategory==='armor'&&inventorySelectedSlot&&
       getItem(entry.itemId).slot!==inventorySelectedSlot));
-  $('inventorySectionCount').textContent=visibleEntries.length+
-    (inventoryCategory==='materials'?ownedComponents.length+' COMPONENT TYPES':' ENTRIES');
+  const listedCount=visibleEntries.length+
+    ((inventoryCategory==='materials'||inventoryCategory==='all')?ownedComponents.length:0);
+  $('inventorySectionCount').textContent=listedCount+
+    (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES');
   const area=$('inventoryItems');area.replaceChildren();
   const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
     ownedComponents:[];
