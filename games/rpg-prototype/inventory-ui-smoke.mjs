@@ -100,6 +100,11 @@ try{
   assert.equal(await page.locator('#fieldCustomWaypoint').evaluate(el=>el.style.display),'block');
   assert.equal(await page.locator('#visorCustomWaypoint').evaluate(el=>el.style.display),'block',
     'Power armor compass should also include the saved custom waypoint');
+  assert.equal(await page.locator('#visorCompass.nav-compass').count(),1,
+    'Power armor markers must use compass positioning, not flow into a text list');
+  assert.equal(await page.locator('#visorCompassLandmarks .nav-location').first()
+    .evaluate(el=>getComputedStyle(el).position),'absolute',
+    'Power armor location icons must be absolutely positioned by bearing');
   assert.equal(await page.locator('#fieldCompassTicks .compass-tick').count(),24,
     'The normal player needs a full compass, not only a heading number');
   await page.locator('#enterVendors').click();

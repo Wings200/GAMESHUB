@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.67 · Navigation HUD and Workbench Cleanup | GAMESHUB RPG</title>
+<title>W20.67.1 · Power Armor Compass Fix | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -989,7 +989,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="dial-title">RADS</span>
     <span id="visorRadiation" class="sr-only">0 RADS</span>
   </div>
-  <div class="armor-compass" id="visorCompass" aria-label="Compass heading">
+  <div class="armor-compass nav-compass" id="visorCompass" aria-label="Compass heading and positioned navigation markers">
     <div id="visorCompassTicks" class="compass-marks"></div>
     <div id="visorCompassLandmarks" class="nav-landmarks"></div>
     <span id="visorCompassWaypoint" class="compass-waypoint" style="display:none" aria-label="Tracked objective direction">⌂</span>
@@ -1115,7 +1115,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.67</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.67.1</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p><strong>W20.67 · NAVIGATION:</strong> Both HUDs now show explored locations and map-set custom waypoints with direction and distance. The weapon workbench uses only the left-hand owned-gun list; its redundant dropdown is gone. Existing merchant stock and equipment systems remain unchanged.</p>
     <p><strong>W20.62 · DEVELOPER ITEM GRANTS:</strong> Admins can open the Developer Panel to search implemented items, grant weapons, armor, ammo and materials, or add caps. Equip granted firearms through I / Backpack. Free crates, resource caches, and cap handouts have been retired from the test field. Normal loot, vendors and quests remain. Visit Station 7 to craft weapon mods with materials you own.</p>
