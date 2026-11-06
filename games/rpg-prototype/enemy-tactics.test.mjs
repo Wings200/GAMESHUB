@@ -454,7 +454,7 @@ test('W20.39 three-actor arena keeps independent flanks, cover and collision',()
     e.brain.mode='chase';e.brain.memory=12;e.brain.lastSeen={...player};
     if(e.id!=='scout')markEnemyThreat(e.tactics);
   }
-  let flank=0,crouch=0,peek=0,movement=0;
+  let flank=0,holdAngle=0,crouch=0,peek=0,movement=0;
   const coverSlots=new Set();
   for(let frame=0;frame<220;frame++){
     for(const enemy of team){
@@ -468,13 +468,15 @@ test('W20.39 three-actor arena keeps independent flanks, cover and collision',()
       const t=enemy.tactics;
       stepEnemyBrain(enemy.brain,player,.05,crates,{
         targetVisible:visible,area:AI_TUNING.navigationArea,
-        combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek',
+        combatGoal:t.goal,combatHold:t.phase==='hold'||t.phase==='peek'||
+          t.phase==='hold-angle',
         combatCoverCommitted:t.coverCommit>0&&
           ['cover','reload','hold','peek','peek-move'].includes(t.phase),
         neighbors:team.filter(e=>e!==enemy).map(e=>e.brain),
         combatFacePlayer:true,
         combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*t.pace});
       if(t.phase==='flank')flank++;
+      if(t.phase==='hold-angle')holdAngle++;
       if(t.crouching)crouch++;
       if(t.phase==='peek'||t.phase==='peek-move')peek++;
       if(enemy.brain.actualSpeed>.1)movement++;
@@ -490,7 +492,8 @@ test('W20.39 three-actor arena keeps independent flanks, cover and collision',()
         team[a].brain.z-team[b].brain.z)>.72,
         'the team must retain personal space');
   }
-  assert.ok(flank>50&&crouch>30&&peek>5&&movement>100);
+  assert.ok(flank>25&&holdAngle>3&&crouch>30&&peek>5&&movement>100,
+    `flank=${flank} firing holds=${holdAngle} cover=${crouch} peeks=${peek} move=${movement}`);
   assert.ok(coverSlots.size>=2,'raider and enforcer take separate shelter');
 });
 
@@ -578,3 +581,4 @@ test('W20.44 NPC actually fires from a real peek angle and not through a crate',
   assert.ok(coverShots>=peekShots);
   assert.equal(throughWall,0,'NPC cannot shoot through opaque cover');
 });
+

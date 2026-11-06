@@ -181,7 +181,7 @@ export function createNpcAvatar(parent,kind){
       avatar.root.matrixWorld).clone();
   }
   let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
-  let verticalAim=0;
+  let verticalAim=0,locomotionSpeed=0,alertBlend=0,suppressedBlend=0;
   let lastArmor={};
   let previousBodyYaw=null;
   function setArmor(loadout={}){
@@ -190,7 +190,8 @@ export function createNpcAvatar(parent,kind){
   }
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,aimPitch=0,
     searchYaw=0,
-    reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true}={}){
+    reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true,
+    alerted=false,suppressed=0,lateralSpeed=0,phase='patrol'}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
     const parentYaw=parent.rotation.y;
@@ -208,6 +209,15 @@ export function createNpcAvatar(parent,kind){
     const action=reloadPoseForWeapon(motionWeapon,reloading?1-reloadStage:0,1);
     hitBlend=Math.max(hitBlend*Math.exp(-12*step),Math.min(1,Math.max(0,hit)));
     recoilBlend=Math.max(recoilBlend*Math.exp(-17*step),Math.min(1,Math.max(0,recoil)));
+    // Measured ground speed drives actual footsteps and stride length.
+    // The old minimum 1.7 m/s made guards moonwalk at full pace even when
+    // collision left them creeping only a few centimetres per second.
+    const targetSpeed=moving?Math.max(0,Number.isFinite(speed)?speed:0):0;
+    locomotionSpeed+=(targetSpeed-locomotionSpeed)*(1-Math.exp(-10*step));
+    alertBlend+=(Number(alerted)-alertBlend)*(1-Math.exp(-5*step));
+    const wantedSuppression=Math.max(0,Math.min(1,suppressed||0));
+    suppressedBlend+=(wantedSuppression-suppressedBlend)*
+      (1-Math.exp(-8*step));
     const requestedPitch=aiming&&Number.isFinite(aimPitch)?
       Math.max(-.55,Math.min(.85,aimPitch)):0;
     verticalAim+=(requestedPitch-verticalAim)*(1-Math.exp(-9*step));
@@ -216,7 +226,7 @@ export function createNpcAvatar(parent,kind){
     // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
     mount.rotation.z=hitBlend*.12;
     gun.rotation.x=action.tilt+recoilBlend*.15-hitBlend*.08;
-    gun.rotation.y=Math.sin(time*3.1)*.009+hitBlend*.09;
+    gun.rotation.y=Math.sin(time*3.1)*(.009+.005*alertBlend)+hitBlend*.09;
     gun.rotation.z=reloading?.08*Math.sin(Math.PI*reloadStage):
       Math.sin(time*2.8)*.012;
     gun.position.z=-.04+recoilBlend*.07;
@@ -241,8 +251,8 @@ export function createNpcAvatar(parent,kind){
       realPipe.muzzleGlow.intensity=!disarmed&&recoilBlend>.65?2.8:0;
     }
     avatar.update({dt,x:0,z:0,ground:0,yaw:NPC_VISUAL_YAW_OFFSET,
-      speed:moving?Math.max(1.7,speed):0,
-      sprinting:!!moving&&!aiming&&speed>3,
+      speed:locomotionSpeed,
+      sprinting:locomotionSpeed>3&&!aiming,
        crouched,aiming:aiming&&!disarmed,alive,pitch:verticalAim,
       reloading:reloading&&!disarmed,reloadProgress:reloadStage,
       recoil:disarmed?0:recoilBlend,hit:hitBlend,reloadStyle:motionWeapon,
@@ -255,8 +265,17 @@ export function createNpcAvatar(parent,kind){
     // or steering toward a hidden player. Hit joints follow the visible head.
     const glance=Math.max(-.72,Math.min(.72,
       Number.isFinite(searchYaw)?searchYaw:0));
-    avatar.hitJoints.head.rotation.y=glance;
-    avatar.hitJoints.torso.rotation.y+=glance*.15;
+    avatar.hitJoints.head.rotation.y=glance*(aiming?.16:1)+
+      (alertBlend>.35&&!aiming?Math.sin(time*1.1)*.035:0);
+    avatar.hitJoints.torso.rotation.y+=glance*.15*(aiming?.18:1);
+    // Hips and shoulders shift against lateral movement, instead of
+    // swinging the legs as though every strafing step went forwards.
+    const side=Math.max(-1,Math.min(1,lateralSpeed/3));
+    avatar.hitJoints.torso.rotation.z+=side*.078+
+      suppressedBlend*Math.sin(time*13)*.011;
+    if(phase==='hold'||phase==='guard-angle')
+      avatar.hitJoints.head.rotation.x-=.045*alertBlend;
+    if(reloading)avatar.hitJoints.head.rotation.x+=.09;
 
   }
   function disarm(){

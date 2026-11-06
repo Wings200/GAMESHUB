@@ -306,7 +306,10 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
     (typeof options.targetVisible==='boolean'?options.targetVisible:
       hasSight(enemy,player,obstacles));
   enemy.spotted=seen;
-  enemy.aimLockSeconds=seen?Math.min(3,(enemy.aimLockSeconds||0)+step):0;
+  // A one-frame occlusion does not erase the entire aiming reaction, but
+  // the weapon is still prohibited from firing until sight is reacquired.
+  enemy.aimLockSeconds=seen?Math.min(3,(enemy.aimLockSeconds||0)+step):
+    Math.max(0,(enemy.aimLockSeconds||0)-step*3.5);
   // Do not even retain the exact distance of a hidden, moving player.
   enemy.distanceToPlayer=seen?distance(enemy.x,enemy.z,player.x,player.z):
     (enemy.lastSeen?distance(enemy.x,enemy.z,enemy.lastSeen.x,enemy.lastSeen.z):Infinity);
@@ -348,8 +351,14 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
       facePoint(enemy,knownTarget,step);
     }
   }else if(enemy.mode==='chase'&&seen){
-    if(enemy.distanceToPlayer>AI_TUNING.stopDistance)
-      moveToward(enemy,player,AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
+    if(enemy.distanceToPlayer>AI_TUNING.stopDistance){
+      const blocked=obstacles.some(box=>lineIntersectsBox(enemy,player,box,
+        AI_TUNING.collisionRadius));
+      if(blocked)navigateAroundCover(enemy,player,
+        options.combatSpeed||AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
+      else moveToward(enemy,player,
+        options.combatSpeed||AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
+    }
     else{enemy.moving=false;facePoint(enemy,player,step);}
   }else if(enemy.mode==='investigate-noise'&&enemy.noiseTarget){
     const approximate=enemy.noiseTarget;
@@ -435,3 +444,4 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   }
   return enemy;
 }
+

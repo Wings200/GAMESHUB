@@ -14,6 +14,7 @@ import {previewWeaponSpec} from '../workbench-preview.mjs';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.76';
 import {deathCameraPose,DEATH_SCREEN_TIME} from '../death-camera.mjs?v=W20.76.1';
+import {enemyFacingTarget,enemyShotTarget} from '../enemy-fire-control.mjs?v=W20.77';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
@@ -41,7 +42,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
   FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.50';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
@@ -61,10 +62,10 @@ import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laser
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
-  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.50';
+  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.77';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.45';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.77';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover,reactToAllyDown} from '../enemy-squad.mjs?v=W20.50';
@@ -3379,6 +3380,7 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
     if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
       const wasSpotted=enemy.brain.spotted;
+      const previousEnemyX=enemy.brain.x,previousEnemyZ=enemy.brain.z;
       // Keep tactical decisions on last-seen intel when a wall hides us.
       // Feeding the live player to an investigating NPC is wallhack tracking.
       const directlyVisible=perceptions.get(enemy.id);
@@ -3399,7 +3401,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
           targetVisible:directlyVisible,area:AI_TUNING.navigationArea,
           lostContactOrder,combatGoal:tactic.goal,
           combatHold:tactic.phase==='hold'||tactic.phase==='peek'||
-            tactic.phase==='stand-fight'||tactic.phase==='suppress-long',
+            tactic.phase==='stand-fight'||tactic.phase==='suppress-long'||
+            tactic.phase==='hold-angle',
           combatCoverCommitted:tactic.coverCommit>0&&
             ['cover','reload','hold','peek','peek-move'].includes(tactic.phase),
           neighbors:roster.filter(other=>other.id!==enemy.id&&
@@ -3414,6 +3417,10 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
       if(ticking&&playerHealth.alive&&enemy.brain.spotted&&!wasSpotted)
         reportSquadContact(squadIntel,enemy.id,player);
       enemy.root.position.x=enemy.brain.x;enemy.root.position.z=enemy.brain.z;
+      const movementX=dt>0?(enemy.brain.x-previousEnemyX)/dt:0;
+      const movementZ=dt>0?(enemy.brain.z-previousEnemyZ)/dt:0;
+      const lateralSpeed=movementX*Math.cos(enemy.brain.yaw)-
+        movementZ*Math.sin(enemy.brain.yaw);
       // Visibly duck behind low cover, with consistent LOWERED hitboxes.
       // ~0.82 m of crouch travel keeps the head under the 1.45 m crate.
       const wantedCrouch=enemy.tactics.crouching?1:0;
@@ -3468,6 +3475,9 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
           (getEnemyWeapon(enemy.tactics.weaponId)?.reloadSeconds||2):0,
          recoil:enemy.recoilPose,hit:enemy.flash/.22,
          searchYaw:enemy.brain.scanYaw,
+        alerted:enemy.brain.spotted||enemy.brain.memory>0,
+        suppressed:enemy.tactics.suppression,
+        lateralSpeed,phase:enemy.tactics.phase,
         alive:enemy.state.alive
       });
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
@@ -3481,12 +3491,16 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
         if(enemy.brain.aimLockSeconds>=
             ENEMY_PROFILES[enemy.tactics.kind].reactionSeconds&&
            directlyVisible&&aimedHeight!==null&&
+           enemyFacingTarget(enemy.brain,player,
+             enemy.id==='scout'?15:enemy.id==='enforcer'?10:12)&&
             canEnemyFire(enemySightBody(enemy),playerSilhouette,enemySightObstacles,attack.range)&&
            Math.abs((enemy.rigged?.getAimPitch?.()??0)-aimPitch)<.13&&
           !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0){
           const shot=attemptEnemyShot(enemy.tactics,
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
-            enemy.brain.moving,Math.random);
+            enemy.brain.moving,Math.random,{
+              aimSeconds:enemy.brain.aimLockSeconds,
+              targetSpeed:weaponMotion.speed});
           if(shot.fired){
             enemy.gunGlow=.11;enemy.recoilPose=1;
             sound.gunshot(attack.soundKind||'rifle');
@@ -3494,15 +3508,10 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
             // fixed point in the centre of the NPC's chest.
             const origin=enemy.rigged?.getMuzzleWorldPosition()||
               new THREE.Vector3(enemy.brain.x,1.43,enemy.brain.z);
-             const target=new THREE.Vector3(player.x,aimedHeight,player.z);
-            if(!shot.hit){
-              // Miss tracers visibly pass beside the player rather than
-              // striking the exact position yet dealing zero damage.
-              const side=enemy.tactics.strafeSign;
-              target.x+=side*(1.8+(1-shot.accuracy)*2.0);
-              target.y+=.4;
-              target.z+=side*.9;
-            }
+            const shotPoint=enemyShotTarget(origin,
+              {x:player.x,y:aimedHeight,z:player.z},
+              {hit:shot.hit,accuracy:shot.accuracy});
+            const target=new THREE.Vector3(shotPoint.x,shotPoint.y,shotPoint.z);
             // Even a missed tracer must stop where it meets a solid wall.
             // Damage is applied only if the actual 3D segment is unobstructed.
              const obstruction=firstSolidHit(origin,target,enemySightObstacles);

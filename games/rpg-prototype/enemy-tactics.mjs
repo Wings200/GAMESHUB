@@ -1,6 +1,6 @@
 // W04.2 - enemy cover selection, evasive repositioning, magazine/reload and
 // fallible shooting. No renderer dependency; deterministic with injected RNG.
-import {AI_TUNING,lineIntersectsBox,lineIntersectsBox3D,visibleTargetHeight} from './enemy-ai.mjs';
+import {AI_TUNING,lineIntersectsBox,lineIntersectsBox3D,visibleTargetHeight} from './enemy-ai.mjs?v=W20.77';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
@@ -78,7 +78,7 @@ export function makeEnemyTactics(kind){
     peekPoint:null,peekSeconds:0,peekCooldown:0,holdSeconds:0,
     stuckSeconds:0,stuckEvents:0,lastPosition:null,
     avoidCoverIndex:-1,avoidCoverSeconds:0,
-    pace:1,plannedGoal:null,decisionReason:'patrol'
+    pace:1,plannedGoal:null,fireLaneHold:0,decisionReason:'patrol'
   };
 }
 export function resetEnemyTactics(tactics){
@@ -290,6 +290,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   tactics.cooldown=Math.max(-.05,tactics.cooldown-step);
   tactics.peekCooldown=Math.max(0,tactics.peekCooldown-step);
   tactics.coverCooldown=Math.max(0,tactics.coverCooldown-step);
+  tactics.fireLaneHold=Math.max(0,(tactics.fireLaneHold||0)-step);
   if(tactics.coverPoint)tactics.coverAge+=step;
   tactics.avoidCoverSeconds=Math.max(0,tactics.avoidCoverSeconds-step);
   if(tactics.avoidCoverSeconds===0)tactics.avoidCoverIndex=-1;
@@ -314,7 +315,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     tactics.crouching=false;tactics.holdSeconds=0;tactics.peekPoint=null;
     tactics.coverCommit=0;tactics.engagementSeconds=0;
     tactics.coverAge=0;tactics.failedPeeks=0;
-    tactics.plannedGoal=null;tactics.decisionReason='patrol';
+    tactics.plannedGoal=null;tactics.fireLaneHold=0;tactics.decisionReason='patrol';
     return tactics;
   }
   // A defender already retreating behind confirmed cover finishes that
@@ -336,7 +337,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     tactics.coverCommit=0;
     tactics.peekPoint=null;tactics.peekSeconds=0;tactics.holdSeconds=0;
     tactics.coverAge=0;tactics.failedPeeks=0;
-    tactics.plannedGoal=null;tactics.moveTime=0;
+    tactics.plannedGoal=null;tactics.moveTime=0;tactics.fireLaneHold=0;
     tactics.pace=order?.type==='flank'?1.1:
       order?.type==='watch'?0:order?.type==='support'?.7:
       brain.mode==='search'?.75:1.1;
@@ -443,7 +444,22 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
     // A real path is useful only when there is room for a flank.
     if(d<=(tactics.kind==='scout'?5.5:8.5)){
       tactics.phase='stand-fight';tactics.goal=null;tactics.pace=0;
+      tactics.fireLaneHold=0;
       tactics.decisionReason='close enemy contact: face and engage';
+      return tactics;
+    }
+    // Completing a flank creates a recognizable firing beat. Previously
+    // the actor immediately plotted another sideways sprint, making it
+    // skate in circles around someone standing completely still.
+    if(tactics.plannedGoal&&distance(brain,tactics.plannedGoal)<.9){
+      tactics.fireLaneHold=spec.role==='anchor'?1.10:
+        spec.role==='flanker'?.55:.85;
+      tactics.moveTime=0;tactics.plannedGoal=null;
+    }
+    if(tactics.fireLaneHold>0&&tactics.reloadRemaining===0&&
+      tactics.suppression<.65){
+      tactics.phase='hold-angle';tactics.goal=null;tactics.pace=0;
+      tactics.decisionReason='stable firing lane after reposition';
       return tactics;
     }
     if(d<16&&d>2.4){
@@ -494,7 +510,7 @@ export function tickEnemyTactics(tactics,brain,player,dt,obstacles=[],options={}
   return tactics;
 }
 
-export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
+export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random,options={}){
   // W09.13: read the equipped firearm, NOT the NPC's outdated generic role.
   const spec=weaponForTactics(tactics);
   if(tactics.reloadRemaining>0)return {fired:false,reason:'reloading'};
@@ -503,6 +519,7 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
     return {fired:false,reason:'empty'};
   }
   if(tactics.cooldown>0)return {fired:false,reason:'cooldown'};
+  const burstBefore=tactics.burstCount||0;
   tactics.magazine--;
   if(spec.automatic){
     tactics.burstCount=(tactics.burstCount||0)+1;
@@ -512,8 +529,18 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
     }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
   }else tactics.cooldown=Math.max(-.05,tactics.cooldown)+spec.shotInterval;
   const d=clamp(Number.isFinite(distanceMeters)?distanceMeters:30,0,90);
-  const accuracy=clamp((spec.accuracy-spec.falloff*d/16-(moving?.13:0))*
-    (1-.42*(tactics.suppression||0)),.08,.90);
+  const aimSeconds=clamp(Number(options.aimSeconds)||0,0,4);
+  const targetSpeed=clamp(Number(options.targetSpeed)||0,0,9);
+  // Sustained, *visible* aim rewards a guard for tracking a stationary
+  // target. Running opponents, firing while strafing, long range, recoil
+  // and suppression remain genuine sources of error.
+  const steadyAim=clamp((aimSeconds-.18)/1.10,0,1)*
+    (targetSpeed<.24?.15:.055);
+  const targetEvasion=Math.min(.18,targetSpeed*.027);
+  const burstShake=spec.automatic?Math.min(.12,burstBefore*.018):0;
+  const accuracy=clamp((spec.accuracy-spec.falloff*d/16-
+    (moving?.11:0)+steadyAim-targetEvasion-burstShake)*
+    (1-.42*(tactics.suppression||0)),.08,.91);
   const sampled=rng();
   const roll=clamp(Number.isFinite(sampled)?sampled:1,0,1);
   const hit=roll<accuracy;
@@ -522,3 +549,4 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random){
   if(tactics.magazine===0)beginReload(tactics);
   return {fired:true,hit,accuracy,ammo:tactics.magazine};
 }
+

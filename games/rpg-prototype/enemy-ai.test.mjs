@@ -356,14 +356,18 @@ test('W20.50 an investigating guard scans side angles while moving on known inte
     'head sweep must actually expand visual acquisition');
 });
 
-test('W20.50 swept wall collision never lets pursuit cross a thin barrier',()=>{
+test('W20.77 pursuing actors can route around a thin wall but never cut through it',()=>{
   const wall={minX:4,maxX:4.12,minZ:-4,maxZ:4,bottom:0,top:3};
   const guard=createEnemyBrain({x:8,z:0,yaw:-Math.PI/2,
     patrol:[{x:8,z:0}]});
   for(let i=0;i<150;i++){
     stepEnemyBrain(guard,{x:0,z:0},.05,[wall],{
       targetVisible:true,area:{minX:-10,maxX:10,minZ:-10,maxZ:10}});
-    assert.ok(guard.x>=wall.maxX+AI_TUNING.collisionRadius-.02,
-      'even the movement swept between frames must remain outside wall');
+    assert.ok(!(guard.x>wall.minX-AI_TUNING.collisionRadius+.02&&
+      guard.x<wall.maxX+AI_TUNING.collisionRadius-.02&&
+      guard.z>wall.minZ-AI_TUNING.collisionRadius+.02&&
+      guard.z<wall.maxZ+AI_TUNING.collisionRadius-.02),
+    'the actor must never intersect the wall when navigating around either end');
   }
 });
+
