@@ -368,7 +368,7 @@ const stations=[
   {title:'06 · Low-clearance tunnel',info:'Press C to crouch, then walk under the roof. Try standing inside, and check whether you stand back up after leaving.',x:-52,z:42,tag:'06 / CROUCH',color:0x9ba5bf},
   {title:'07 · Weapon firing lane',info:'Aim, move and crouch to compare accuracy; fire to watch brass eject. Use your owned weapons and ammo, or grant items through the developer panel.',x:-52,z:-42,tag:'07 / WEAPONS',color:0xd39e63},
   {title:'08 · Rear-entry power-armor frame',info:'The power frame has mechanical limbs and six equipment mounts. Tap E to configure it; walk behind the frame and hold E to enter. Hold E to exit. Grant parts and fusion cores through the developer panel.',x:-46,z:-12,tag:'08 / ARMOR',color:0xe2b078},
-  {title:'09 · Live enemy arena',info:'W20.39: Three raiders patrol, flank, retreat to solid cover and peek. Shoot or approach to provoke reactions. Weapons stay disabled during model testing. H heals, J resets bots, K freezes AI.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
+  {title:'09 · Live enemy arena',info:'Three raiders patrol, flank, retreat to solid cover and peek. Shoot or approach to provoke reactions, and use your own weapons and supplies to survive.',x:30,z:42,tag:'09 / AI TEST',color:0xe77d68}
 ];
 function markLane(z,accent){
   box(0,.03,z-6,110,.06,.12,accent);box(0,.03,z+6,110,.06,.12,accent);
@@ -598,7 +598,7 @@ box(22+stairWidth*stairCount+3,1,16,6,2,13,floorPaint);
 const targetData=new Map();
 const sound=new WeaponAudio();
 function soundCaption(){
-  $('soundToggle').textContent=sound.enabled?'SOUND: ON · N TO MUTE':'SOUND: MUTED · N TO UNMUTE';
+  $('soundToggle').textContent=sound.enabled?'SOUND: ON':'SOUND: MUTED';
   $('soundToggle').setAttribute('aria-pressed',String(sound.enabled));
 }
 function toggleSound(){
@@ -1573,25 +1573,9 @@ $('powerEjectCore').addEventListener('click',()=>{
     Math.ceil(result.charge)+'% REMAINING';
   savePowerService();
 });
-$('powerBayOpen').addEventListener('click',()=>{
-  resetPlayer(7);
-  sound.unlock();
-  controls.lock();
-  showShotNotice('FRAME AT STATION 8 · TAP E TO CONFIGURE · HOLD E TO ENTER');
-});
 $('powerBayClose').addEventListener('click',closePowerArmorBay);
 $('powerArmorControl').addEventListener('click',closePowerArmorBay);
 refreshPowerArmorHUD();
-function resetAllDummies(){
-  for(const dummy of dummies.values()){
-    resetDummy(dummy.state);dummy.impulse=0;dummy.flash=0;dummy.group.rotation.z=0;
-    for(const mesh of dummy.pieces)mesh.material.emissive.setHex(0);
-    updateDummyLabel(dummy);
-  }
-  clearBulletHoles();
-  $('damageReport').textContent='ALL DUMMIES RESET · ARMOR LOADOUTS PRESERVED';
-  showShotNotice('DUMMIES RESET · EQUIPMENT UNCHANGED');
-}
 function spawnDamagePopup(point,result){
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
   const ctx=canvas.getContext('2d');
@@ -1651,12 +1635,6 @@ function refreshArmory(){
   $('armoryTotal').textContent=total+' AP equipped · no armor durability / no breakage';
   $('armoryHP').textContent=Math.ceil(dummy.state.health)+' / '+dummy.state.maxHealth+' HP';
 }
-function openArmory(){
-  armoryFromField=controls.isLocked;
-  if(controls.isLocked)controls.unlock();
-  $('armory').classList.remove('hidden');
-  refreshArmory();
-}
 function closeArmory(){
   $('armory').classList.add('hidden');
   if(armoryFromField){
@@ -1701,7 +1679,6 @@ for(const slot of ARMOR_SLOTS){
       ' · '+getArmorPiece(slot,control.value).points+' AP · PERMANENT';
   });
 }
-$('armoryOpen').addEventListener('click',openArmory);
 $('armoryClose').addEventListener('click',closeArmory);
 $('armoryReset').addEventListener('click',()=>{
   const dummy=selectedDummy();
@@ -2041,7 +2018,7 @@ function resetEnemies(){
   showShotNotice('ENEMIES RESET · PATROL RESTARTED');
 }
 // World loot is independent of the enemy corpse. A downed bot fades after
-// 0.7s, but its searchable bag remains until looted or J resets the arena.
+// 0.7s, but its searchable bag remains until looted or the next encounter.
 function disposeLootMarker(root){
   root.traverse(obj=>{
     if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();}
@@ -3222,14 +3199,8 @@ function refreshPlayerHealth(){
   $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
   $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
   $('healthFill').classList.toggle('low',fraction<=.35);
-  $('healthStatus').textContent=!playerHealth.alive?'DOWN · H TO RESPAWN':
-    fraction<=.35?'CRITICAL · H TO HEAL':'H TO HEAL / RESET';
-}
-function healPlayer(){
-  resetPlayerHealth(playerHealth);playerHitFlash=0;
-  refreshPlayerHealth();
-  if(inAIArena())resetPlayer(8);
-  showShotNotice('HEALTH RESTORED · 100 HP');
+  $('healthStatus').textContent=!playerHealth.alive?'DOWN · RESPAWN AVAILABLE':
+    fraction<=.35?'CRITICAL · MEDICAL AID NEEDED':'STABLE';
 }
 refreshPlayerHealth();
 // Combat radar only reveals enemies who have detected or engaged the
@@ -4829,7 +4800,8 @@ for(const [id,model] of heldWorldModels){
 }
 // Non-production query-flagged QA hook; reports true effective rules and meshes,
 // rather than trusting static UI labels for the crafting smoke check.
-if(new URLSearchParams(location.search).get('smoke')==='1'){
+if((location.hostname==='localhost'||location.hostname==='127.0.0.1')&&
+    new URLSearchParams(location.search).get('smoke')==='1'){
   window.__rpgSmokeWeaponMods=(weaponId)=>{
     const details=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
     const first=weaponVisuals.get(weaponId)?.root.getObjectByName('CraftedWeaponParts');
@@ -4897,7 +4869,6 @@ function resetPlayer(i){
   camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
 }
 resetPlayer(0);
-if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 
 // W20.55 — actual-position field map; exploration is saved separately from gear.
 let mapOpen=false,mapFromField=false,mapFromInventory=false,inventoryReturnPage='status';
@@ -5795,7 +5766,7 @@ function renderCampaignDialogue(){
           if(consumeCampaignSalvage(4))recordCampaignObjective('power-repaired');
         },salvage<4);
       }else if(q?.status==='active'&&q.stage===2)
-        choice('Repair complete · Defend the crew from a Raider (J resets the encounter)',()=>{},true);
+        choice('Repair complete · Defend the crew from a Raider',()=>{},true);
       else if(q?.status==='completed')
         choice('Junction generator stable · Powered',()=>{},true);
       else choice('The generator is dead · Find the Haven foreman',()=>{},true);
@@ -5822,20 +5793,6 @@ $('campaignTrack').addEventListener('click',()=>{
 });
 $('campaignDialogueClose').addEventListener('click',closeCampaignDialogue);
 
-$('enterAI').addEventListener('click',()=>{
-  resetPlayer(8);
-  sound.unlock();
-  controls.lock();
-});
-$('enterVendors').addEventListener('click',()=>{
-  resetPlayer(0);
-  player.x=-25;player.z=12.2;player.jump=0;player.vertical=0;
-  resetMotion(player);
-  camera.rotation.set(0,0,0);
-  camera.position.set(player.x,groundHeight(player.x,player.z)+player.eyeHeight,player.z);
-  sound.unlock();
-  controls.lock();
-});
 $('start').addEventListener('click',()=>{
   // The audio engine is unlocked only after the player initiates playback.
   sound.unlock();
@@ -5889,7 +5846,7 @@ window.addEventListener('keydown',e=>{
     document.body.classList.toggle('debug-hud');
     grid.visible=document.body.classList.contains('debug-hud');
     showShotNotice(document.body.classList.contains('debug-hud')?
-      'LAB DIAGNOSTICS SHOWN · F3 TO HIDE':'FIELD HUD · DIAGNOSTICS HIDDEN');
+      'LAB DIAGNOSTICS SHOWN':'FIELD HUD · DIAGNOSTICS HIDDEN');
     return;
   }
   if(e.code==='KeyQ'&&!e.repeat){
@@ -5939,24 +5896,7 @@ window.addEventListener('keydown',e=>{
   }
   if(e.code==='KeyC'&&!e.repeat&&controls.isLocked){toggleCrouch(player);return;}
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
-  if(e.code.startsWith('Digit')&&Number(e.code.slice(5))>=1&&Number(e.code.slice(5))<=9){
-    resetPlayer(Number(e.code.slice(5))-1);return;
-  }
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
-  if(e.code==='KeyY'&&!e.repeat&&controls.isLocked){resetAllDummies();return;}
-  if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){openArmory();return;}
-  if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked){resetEnemies();return;}
-  if(e.code==='KeyH'&&!e.repeat&&controls.isLocked){healPlayer();return;}
-  if(e.code==='KeyK'&&!e.repeat&&controls.isLocked){
-    enemyAIEnabled=!enemyAIEnabled;
-    showShotNotice(enemyAIEnabled?'ENEMY AI RESUMED':'ENEMY AI FROZEN');
-    return;
-  }
-  if(e.code==='KeyT'&&!e.repeat){
-    clearBulletHoles();
-    clearCasings();
-    resetPlayer(stationIndex);return;
-  }
   if(e.code==='Space'){e.preventDefault();
     if(controls.isLocked&&powerArmorMobility(powerArmorState).canJump)requestJump(player);
     else if(controls.isLocked&&powerArmorState.occupied)showShotNotice('NO CORE · HYDRAULICS CANNOT JUMP');}

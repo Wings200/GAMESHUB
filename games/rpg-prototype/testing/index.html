@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.75 · Power Armor Discovery & Faction Supply | GAMESHUB RPG</title>
+<title>W20.75.1 · Read-only Diagnostics | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -36,7 +36,6 @@ button{font:inherit;cursor:pointer}a{color:inherit}#scene{position:fixed;inset:0
 #station{max-width:395px}.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:950;color:#e6c38c}
 #stationName{font-size:21px;font-weight:920;margin:6px 0 4px}
 #stationInfo{font-size:12px;color:#b7c7c6;line-height:1.6}
-#keys{font-size:10px;font-weight:800;letter-spacing:.11em;color:#c9d4d2;line-height:1.8;text-align:right;background:#0b1925ce;padding:10px 12px;border:1px solid #92aaa366;border-radius:4px}
 /* W20.59: rebuilt firearms have fully functioning workbench crafting. */
 .weapon-reset-notice{border:1px solid #cba569;background:#211e19;color:#ffdfab;padding:13px 16px;margin:16px 0;font-size:12px;line-height:1.65;letter-spacing:.035em}
 .weapon-reset-notice b{display:block;font-size:15px;letter-spacing:.10em;color:#f7cf91}
@@ -265,7 +264,7 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 @media(max-width:850px){.armor-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.armory-header{flex-direction:column}.armor-slots{grid-template-columns:1fr}}
 #fatal{display:none;position:fixed;inset:0;z-index:8;background:#0a181d;padding:10vw;color:#fff;font-size:17px;line-height:1.6}
-@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#enemyHud{right:8px;top:121px;max-width:220px}#playerHealthHud{left:8px;bottom:154px;width:min(280px,65vw);padding:8px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#keys{font-size:9px}#quality{right:8px;top:78px}}
+@media(max-width:690px){#soundToggle{top:219px;left:8px;font-size:9px}#enemyHud{right:8px;top:121px;max-width:220px}#playerHealthHud{left:8px;bottom:154px;width:min(280px,65vw);padding:8px}#weaponHud{left:8px;top:78px;min-width:164px;padding:8px}#weaponAmmo{font-size:21px}.lab-status{width:min(300px,61vw)}.stamina-line{font-size:8px}#hud{left:8px;right:8px;top:8px}.block{padding:9px}.stats{min-width:0;gap:7px}.stat strong{font-size:13px}.logo{font-size:10px}#bottom{left:8px;right:8px;bottom:8px}#stationName{font-size:17px}#quality{right:8px;top:78px}}
 
 /* W13.0: two complete player HUDs. F3 reveals the old QA instruments. */
 body.hud-modern:not(.debug-hud) #hud,
@@ -313,8 +312,6 @@ body.hud-modern #powerArmorHud{display:none!important}
 #fieldHud .field-ammo{font-size:32px;font-weight:950;color:#f5e5bf;line-height:1.1}
 #fieldHud .field-weapon-name{font-size:12px;font-weight:900;color:#a5d3b9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.09em}
-#fieldHud .field-controls{position:absolute;bottom:23px;left:50%;transform:translateX(-50%);
-  color:#c2d3c9a8;font-size:9px;letter-spacing:.12em;font-weight:900;white-space:nowrap}
 #fieldHud .field-compass{position:absolute;top:67px;left:50%;transform:translateX(-50%);
   width:min(460px,83vw);height:45px;overflow:hidden;color:#c5e8bb;
   border-bottom:1px solid #76967a66;background:linear-gradient(90deg,transparent,#0c251fc7 16%,#0c251fc7 84%,transparent)}
@@ -476,7 +473,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   #fieldHud .field-weapon{right:8px;width:37vw}
   #fieldHud .field-number{font-size:19px}
   #fieldHud .field-ammo{font-size:25px}
-  #fieldHud .field-controls{display:none}
 }
 
 /* W14.0 · Pip-Boy-inspired SPECIAL progression; native accessible buttons. */
@@ -1293,7 +1289,6 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="field-ammo" id="fieldAmmo">--</div>
     <div class="field-sub" id="fieldWeaponState">SEMI · READY</div>
   </div>
-  <div class="field-controls">L SPECIAL · I CHARACTER / INVENTORY · M MAP · E INTERACT · F3 DIAGNOSTICS</div>
 </div>
 <div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
   <svg id="visorArmorIndicator" class="armor-indicator" viewBox="0 0 116 165"
@@ -1377,7 +1372,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="playerHealthHud" class="block" aria-live="polite">
   <div class="health-head"><span>PLAYER HEALTH</span><strong id="healthReadout">100 / 100 HP</strong></div>
   <div id="healthTrack"><span id="healthFill"></span></div>
-  <div id="healthStatus">H TO HEAL / RESET</div>
+  <div id="healthStatus">STABLE</div>
 </div>
 <div id="hud">
   <div class="block logo"><b>W13.0</b><div>RPG SYSTEMS LAB<small>MOVEMENT & ARMOR TEST · 10MM + PIPE PISTOL + PIPE RIFLE</small></div></div>
@@ -1399,7 +1394,6 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="enemyCount" style="color:#f4c497;font-size:13px">3 / 3 RAIDERS ALIVE</div>
   <div id="enemyMode">TACTICAL AI · SHOTS CAN MISS</div>
   <div id="enemyList">SCOUT · RAIDER · ENFORCER · MAGAZINE HUD</div>
-  <div>K FREEZE / UNFREEZE · J RESET ENEMIES</div>
 </div>
 <div id="targetHealthHud" class="hidden" role="status" aria-label="Character health">
   <div class="target-line"><span id="targetName"></span><span id="targetAttitude"></span></div>
@@ -1433,7 +1427,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <span id="questTrackerObjective"></span>
 </div>
 
-<button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON · N TO MUTE</button>
+<button type="button" id="soundToggle" aria-label="Toggle weapon sound effects" aria-pressed="true">SOUND: ON</button>
 <div id="weaponHud" class="block">
   <div class="weapon-head">W20.53 · WEAPON TESTING</div>
   <div id="weaponName" style="font-size:14px;letter-spacing:.08em;color:#f3d09d;margin:5px 0">WORN SCRAP PISTOL</div>
@@ -1455,12 +1449,12 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
   </div>
-  <div id="keys">I BACKPACK TO EQUIP · U WORKBENCH TO MODIFY · R CRANK LASER / RELOAD · LEFT CLICK FIRE · RIGHT CLICK ADS<br>WASD MOVE · SHIFT SPRINT · C / CTRL CROUCH · SPACE JUMP · V THIRD PERSON · N SOUND<br>1–9 STATIONS · E SEARCH / TRADE · Q QUESTS · L SPECIAL · H HEAL · J RESET BOTS · K FREEZE AI · B ARMORY · TAP E AT FRAME TO CONFIGURE · HOLD E TO ENTER/EXIT</div>
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.75</div>
-    <p><strong>W20.75 · FACTION POWER ARMOR & FOUND FRAMES:</strong> Power armor only comes from visibly armored combatants, trusted Iron Dominion/Rust Vultures quartermasters, or abandoned powered chassis. Earn 35 faction reputation to trade their T-45 parts and fusion cores, or 65 for advanced T-60 parts; formal membership is not required. Enforcers and raiders occasionally enter later combat waves in visible suits (J advances waves). Three incomplete, damaged T-45 frames with cores can be discovered and configured in the testing field. Each frame's parts, core and location save independently; no power armor plate crafting.</p>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.75.1</div>
+    <p><strong>W20.75.1 · READ-ONLY DIAGNOSTICS:</strong> F3 reveals performance and gameplay status without a keybind cheat sheet. Free healing, enemy resetting/freezing, station teleporting and dummy-armor editing are no longer accessible to players. Quick-jump buttons to the combat arena, trading row and power-armor frame have been removed. Find frames in the world and use ordinary gameplay controls instead. Both compasses remain visible.</p>
+    <p><strong>W20.75 · FACTION POWER ARMOR & FOUND FRAMES:</strong> Power armor only comes from visibly armored combatants, trusted Iron Dominion/Rust Vultures quartermasters, or abandoned powered chassis. Earn 35 faction reputation to trade their T-45 parts and fusion cores, or 65 for advanced T-60 parts; formal membership is not required. Enforcers and raiders may wear armor in combat. Three incomplete, damaged T-45 frames with cores can be discovered and configured in the testing field. Each frame's parts, core and location save independently; no power armor plate crafting.</p>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p><strong>W20.74.1 · POWER ARMOR REPAIRS:</strong> Armor plates cannot be crafted. Recover parts from armored enemies, faction dealers or found frames. Repairs use tier-dependent crafting components; higher-tier modules require rarer and more numerous materials, with costs scaling to their damage.</p>
     <p><strong>W20.74 · POWER ARMOR CONFIGURATION:</strong> The six-part condition figure now sits at the center of the service screen. Select any body section, inspect matching armor plates from your backpack, preview durability and protection, then deliberately install, remove, or repair that slot.</p>
@@ -1482,7 +1476,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <p><strong>W20.14 · ARMOR CONDITION FIGURE:</strong> Six independent body segments glow amber when equipped and healthy, red at 30% condition or lower, and dark when destroyed or unequipped. The figure appears at left-middle while wearing the frame.</p>
     <p><strong>W20.13 · POWER ARMOR INSTRUMENTS:</strong> Helmet HUD rebuilt as amber analog gauges: HP and RADS left, a live direction compass centered, and fusion CORE, AP sprint stamina, and stacked AMMO on the right. No large boxes or upper visor overlays. Power-armor visuals, movement and sounds are unchanged.</p>
     <p><strong>W20.11 · SOUND TIMING:</strong> Footsteps use natural walk/sprint cadence, gunshots and impacts have longer decays, and power-armor hydraulics span the full entry animation.</p>
-    <p>Open the W20.55 field map with Tab or from your inventory. Enter power armor at Station 8 to test the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
+    <p>Open the field map from your inventory. Discover and enter power armor in the field to inspect the analog HP, CORE, AP and AMMO dials. Turn to move the compass, sprint to drain AP, and take damage to move the HP needle.</p>
     <div class="endurance-picker"><span>SPECIAL ENDURANCE</span><button id="endDown" type="button" aria-label="Decrease Endurance" disabled>−</button><strong id="enduranceValue">3</strong><button id="endUp" type="button" aria-label="Increase Endurance">+</button><span id="sprintTime">6 sec sprint · 6.7 sec full recovery</span></div>
     <p style="font-size:11px;margin-top:9px">Endurance is now an earned S.P.E.C.I.A.L. attribute (1–10). The + button and ] key spend an available attribute point; spent points cannot be refunded. Press L for all seven branches and their perks.</p>
     <div class="arsenal-picker"><label>CURRENTLY EQUIPPED</label>
@@ -1491,18 +1485,14 @@ body.hud-modern #powerArmorHud{display:none!important}
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
-    <button id="enterAI" class="primary" type="button">ENTER ENEMY ARENA DIRECTLY</button>
-    <button id="enterVendors" class="primary" type="button">GO TO TRADING ROW · E TO TRADE</button>
-    <button id="armoryOpen" class="secondary" type="button">CUSTOMIZE ARMOR · 96 PIECES</button>
     <button id="inventoryOpen" class="secondary" type="button">OPEN PLAYER BACKPACK · I</button>
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
-     <button id="workbenchOpen" class="secondary" type="button">CRAFT WEAPON MODS · WORKBENCH / U</button>
-     <button id="powerBayOpen" class="secondary" type="button">GO TO REAR-ENTRY FRAME · STATION 8</button></div>
+     <button id="workbenchOpen" class="secondary" type="button">CRAFT WEAPON MODS · WORKBENCH / U</button></div>
     <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.60</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
-    <p style="font-size:11px;margin-top:22px">Go to Station 9, defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, EQUIP a weapon you own, store ammunition in the correct reserve, USE medkits, or DROP items. J resets enemy fights. Developer grants are available only through the admin panel; B still edits test-dummy armor.</p>
+    <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
   </div>
 </div>
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
@@ -1928,7 +1918,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.75"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.75.1"></script>
 </body>
 </html>
 
