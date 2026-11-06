@@ -8,6 +8,7 @@ import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,POWER_COMPONENT_RECIPES} fro
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
+import {previewWeaponSpec} from '../workbench-preview.mjs';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.67';
 import {projectileNearMiss} from '../combat-suppression.mjs';
@@ -2728,6 +2729,7 @@ function ownedWorkbenchWeapons(){
     backpack.items.some(entry=>entry.itemId==='weapon:'+id));
 }
 let selectedBenchWeaponId='';
+let benchSelectedOptionId='';
 function refreshWorkbenchUI(){
   const ownedIds=ownedWorkbenchWeapons();
   const list=$('benchWeaponList');
@@ -2743,7 +2745,8 @@ function refreshWorkbenchUI(){
       (backpack.equipment.weapon===id?' · EQUIPPED':'')+' · MODIFY';
     button.append(name,meta);
     button.addEventListener('click',()=>{
-      selectedBenchWeaponId=id;benchActiveSlot='receiver';refreshWorkbenchUI();
+      selectedBenchWeaponId=id;benchActiveSlot='receiver';
+      benchSelectedOptionId='';refreshWorkbenchUI();
     });
     list.append(button);
   }
@@ -2760,6 +2763,13 @@ function refreshWorkbenchUI(){
     $('benchMaterials').textContent='0 OWNED FIREARMS · COLLECT A GUN FIRST';
     $('benchStats').textContent='Only weapons you actually own can be modified.';
     $('benchSlots').replaceChildren();$('benchOptics').replaceChildren();
+    $('benchPreviewName').textContent='SELECT A WEAPON FIRST';
+    $('benchPreviewDescription').textContent='Your backpack has no compatible firearm.';
+    $('benchPreviewStats').replaceChildren();
+    $('benchPreviewMaterials').textContent='NO MATERIALS REQUIRED';
+    const previewAction=$('benchPreviewAction');
+    previewAction.disabled=true;previewAction.onclick=null;
+    previewAction.textContent='NO WEAPON SELECTED';
     const empty=document.createElement('p');empty.className='bench-empty';
     empty.textContent='Find, purchase, or grant a weapon first. Return here to install its parts.';
     $('benchOptics').append(empty);
@@ -2768,17 +2778,42 @@ function refreshWorkbenchUI(){
   const spec=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
   $('benchSelectedName').textContent=spec.name.toUpperCase()+' · MODIFICATIONS';
   const totalScrap=CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
-  $('benchMaterials').textContent=totalScrap+' COMPONENTS IN POUCH · 31 RESOURCE TYPES';
-  $('benchStats').textContent=
-    'DAMAGE '+spec.damage+' / RECOIL '+spec.recoilDegrees.toFixed(2)+'° / '+
-    'CAPACITY '+spec.magazineSize+' / RELOAD '+spec.reloadSeconds.toFixed(2)+'s / '+
-    'FIRE INTERVAL '+spec.fireInterval.toFixed(2)+'s / HIP SPREAD '+spec.hipSpreadDegrees.toFixed(2)+'°';
+  $('benchMaterials').textContent=totalScrap+' COMPONENTS IN POUCH · '+
+    CRAFTING_COMPONENTS.length+' RESOURCE TYPES';
+  const statsArea=$('benchStats');statsArea.replaceChildren();
+  for(const [label,value] of [
+    ['DAMAGE',String(spec.damage)],['RECOIL',spec.recoilDegrees.toFixed(2)+'°'],
+    ['CAPACITY',String(spec.magazineSize)],['RELOAD',spec.reloadSeconds.toFixed(2)+'s'],
+    ['FIRE INTERVAL',spec.fireInterval.toFixed(2)+'s'],
+    ['HIP SPREAD',spec.hipSpreadDegrees.toFixed(2)+'°']
+  ]){
+    const stat=document.createElement('div');stat.className='bench-stat';
+    const name=document.createElement('small');name.textContent=label;
+    const number=document.createElement('strong');number.textContent=value;
+    stat.append(name,number);statsArea.append(stat);
+  }
+  const installedId=benchActiveSlot==='optic'?installedWeaponOptic(backpack,weaponId):
+    selectedWeaponMod(backpack,weaponId,benchActiveSlot);
+  const validIds=benchActiveSlot==='optic'?compatibleOptics(weaponId):
+    ['factory',...weaponModOptions(weaponId,benchActiveSlot).map(part=>part.id)];
+  if(!validIds.includes(benchSelectedOptionId))benchSelectedOptionId=installedId;
   const tabs=$('benchSlots');tabs.replaceChildren();
   for(const slot of [...MOD_SLOTS,'optic']){
     const button=document.createElement('button');button.type='button';
     button.className='bench-tab'+(slot===benchActiveSlot?' selected':'');
-    button.textContent=slot==='optic'?'SIGHTS / SCOPES':MOD_SLOT_LABELS[slot];
-    button.addEventListener('click',()=>{benchActiveSlot=slot;refreshWorkbenchUI();});
+    const label=document.createElement('strong');
+    label.textContent=slot==='optic'?'SIGHTS / SCOPES':MOD_SLOT_LABELS[slot];
+    const installed=slot==='optic'?installedWeaponOptic(backpack,weaponId):
+      selectedWeaponMod(backpack,weaponId,slot);
+    const detail=document.createElement('small');
+    detail.textContent=installed==='factory'?'FACTORY ASSEMBLY':
+      slot==='optic'?(OPTIC_MODS[installed]?.name||'FACTORY SIGHT'):
+      (WEAPON_MODS[installed]?.name||'FACTORY ASSEMBLY');
+    button.append(label,detail);
+    button.setAttribute('aria-pressed',String(slot===benchActiveSlot));
+    button.addEventListener('click',()=>{
+      benchActiveSlot=slot;benchSelectedOptionId='';refreshWorkbenchUI();
+    });
     tabs.append(button);
   }
   const area=$('benchOptics');area.replaceChildren();
@@ -2787,9 +2822,15 @@ function refreshWorkbenchUI(){
     'OPTICS / MATCHED TO THE REAL SIGHT LINE':
     MOD_SLOT_LABELS[benchActiveSlot]+' / AUTHORED COMPATIBLE ASSEMBLIES';
   area.append(caption);
-  function card({id,name,description,detail,cost,owned,installed,onChoose}){
-    const row=document.createElement('div');row.className='bench-part';
+  const candidates=[];
+  function card(option){
+    const {id,name,description,detail,cost,owned,installed}=option;
+    candidates.push(option);
+    const row=document.createElement('button');row.type='button';
+    row.className='bench-part';
     if(installed)row.classList.add('installed');
+    if(id===benchSelectedOptionId)row.classList.add('selected');
+    row.setAttribute('aria-pressed',String(id===benchSelectedOptionId));
     const body=document.createElement('div');body.className='bench-part-description';
     const title=document.createElement('strong');title.textContent=name;
     const descriptionLine=document.createElement('p');descriptionLine.textContent=description;
@@ -2799,11 +2840,64 @@ function refreshWorkbenchUI(){
     const missing=Object.entries(cost||{}).some(([material,n])=>countItem(backpack,material)<n);
     recipe.classList.toggle('missing',!owned&&missing);
     body.append(title,descriptionLine,stats,recipe);row.append(body);
-    const button=document.createElement('button');button.type='button';
-    button.textContent=installed?'INSTALLED':owned?'INSTALL':'CRAFT + INSTALL';
-    button.disabled=installed;
-    button.addEventListener('click',onChoose);
-    row.append(button);area.append(row);
+    const indicator=document.createElement('span');indicator.className='bench-choice-indicator';
+    indicator.textContent=installed?'CURRENTLY INSTALLED':
+      id===benchSelectedOptionId?'SELECTED FOR PREVIEW':'CLICK TO PREVIEW';
+    row.append(indicator);
+    row.addEventListener('click',()=>{
+      benchSelectedOptionId=id;
+      refreshWorkbenchUI();
+      workbenchFeedback('PREVIEWING '+name.toUpperCase()+' · NO MATERIALS SPENT');
+    });
+    area.append(row);
+  }
+  function renderWorkbenchPreview(){
+    const chosen=candidates.find(option=>option.id===benchSelectedOptionId)||
+      candidates.find(option=>option.installed)||candidates[0];
+    if(!chosen)return;
+    $('benchPreviewName').textContent=chosen.name.toUpperCase();
+    $('benchPreviewDescription').textContent=chosen.description+' · '+chosen.detail;
+    const compare=$('benchPreviewStats');compare.replaceChildren();
+    const addComparison=(label,before,after)=>{
+      const line=document.createElement('div');line.className='bench-preview-stat';
+      const title=document.createElement('span');title.textContent=label;
+      const value=document.createElement('strong');value.textContent=before+' → '+after;
+      line.append(title,value);compare.append(line);
+    };
+    if(benchActiveSlot==='optic'){
+      const oldFov=OPTIC_MODS[installedId]?.fov;
+      const newFov=OPTIC_MODS[chosen.id]?.fov;
+      addComparison('AIM FIELD OF VIEW',oldFov+'°',newFov+'°');
+      if(chosen.id===installedId)addComparison('OPTIC','INSTALLED','UNCHANGED');
+    }else{
+      const preview=previewWeaponSpec(backpack,getWeaponSpec(weaponId),
+        benchActiveSlot,chosen.id);
+      for(const [name,key,format] of [
+        ['DAMAGE','damage',n=>String(n)],
+        ['CAPACITY','magazineSize',n=>String(n)],
+        ['RECOIL','recoilDegrees',n=>n.toFixed(2)+'°'],
+        ['HIP SPREAD','hipSpreadDegrees',n=>n.toFixed(2)+'°'],
+        ['RELOAD','reloadSeconds',n=>n.toFixed(2)+'s'],
+        ['FIRE INTERVAL','fireInterval',n=>n.toFixed(2)+'s']
+      ]){
+        if(Math.abs(spec[key]-preview[key])>.0005)
+          addComparison(name,format(spec[key]),format(preview[key]));
+      }
+      if(!compare.childElementCount)addComparison('PERFORMANCE','CURRENT','UNCHANGED');
+    }
+    const cost=chosen.cost||{};
+    const missing=!chosen.owned&&Object.entries(cost)
+      .some(([material,n])=>countItem(backpack,material)<n);
+    const materials=$('benchPreviewMaterials');
+    materials.textContent=chosen.owned?'PART ALREADY OWNED · NO SCRAP REQUIRED':
+      workbenchCostText(cost);
+    materials.classList.toggle('missing',missing);
+    const action=$('benchPreviewAction');action.onclick=null;
+    action.disabled=chosen.installed||missing;
+    action.textContent=chosen.installed?'CURRENTLY INSTALLED':
+      missing?'MISSING COMPONENTS · CANNOT CRAFT':
+      chosen.owned?'INSTALL SELECTED PART':'CRAFT & INSTALL SELECTED PART';
+    if(!action.disabled)action.onclick=chosen.onChoose;
   }
   if(benchActiveSlot==='optic'){
     const installed=installedWeaponOptic(backpack,weaponId);
@@ -2829,7 +2923,7 @@ function refreshWorkbenchUI(){
           workbenchFeedback((outcome.crafted?'CRAFTED & INSTALLED: ':'INSTALLED: ')+optic.name);
         }});
     }
-    return;
+    renderWorkbenchPreview();return;
   }
   const selected=selectedWeaponMod(backpack,weaponId,benchActiveSlot);
   card({id:'factory',name:'Factory '+MOD_SLOT_LABELS[benchActiveSlot].toLowerCase(),
@@ -2857,6 +2951,7 @@ function refreshWorkbenchUI(){
           part.name.toUpperCase()+' · WEAPON SAVED');
       }});
   }
+  renderWorkbenchPreview();
 }
 function beginWorkbench(){
   if(inventoryOpen||lootOpen)closeLootOverlay();
@@ -2867,6 +2962,7 @@ function beginWorkbench(){
   // Preserve the equipped gun when possible, otherwise show the first owned gun.
   selectedBenchWeaponId=ownedIds.includes(activeWeaponId)?
     activeWeaponId:ownedIds[0]||'';
+  benchActiveSlot='receiver';benchSelectedOptionId='';
   refreshWorkbenchUI();
   workbenchFeedback(ownedIds.length?
     'SELECT AN OWNED WEAPON · MATERIALS ARE SPENT ONLY WHEN CRAFTED':
