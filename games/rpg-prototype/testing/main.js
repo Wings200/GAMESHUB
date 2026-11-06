@@ -1136,12 +1136,71 @@ function powerServiceAvailable(){
   return true;
 }
 let selectedPowerSlot='chest';
+let selectedPowerChoice='installed';
 function selectPowerSlot(slot){
   if(!POWER_ARMOR_SLOTS.includes(slot))return;
   selectedPowerSlot=slot;
+  selectedPowerChoice='installed';
+  $('powerCraftSlot').value=slot;
   refreshPowerArmorUI();
 }
+function refreshPowerPartChoices(){
+  const slot=selectedPowerSlot,current=plateCondition(powerArmorState,slot);
+  const list=$('powerPartChoices');list.replaceChildren();
+  const options=[{id:'installed',name:current.tier==='none'?
+    'EMPTY MOUNT · NO ARMOR PLATE':getPowerPlate(slot,current.tier).name+' · INSTALLED',
+    description:current.tier==='none'?'FRAME EXPOSED · NO ARMOR PROTECTION':
+      Math.ceil(current.current)+' / '+current.max+' DURABILITY · '+
+      getPowerPlate(slot,current.tier).points+' ARMOR POINTS'}];
+  if(current.tier!=='none')options.push({id:'remove',name:'REMOVE INSTALLED PIECE',
+    description:'RETURN CURRENT PLATE TO BACKPACK · PRESERVE ITS CONDITION'});
+  for(const entry of backpack.items){
+    const item=getItem(entry.itemId);
+    if(item.category!=='power-plate'||item.slot!==slot)continue;
+    const spec=getPowerPlate(slot,item.tier);
+    options.push({id:entry.uid,name:item.name,
+      description:Math.ceil(entry.condition)+' / '+item.maxDurability+
+        ' DURABILITY · '+spec.points+' ARMOR POINTS'+
+        (entry.condition<=0?' · BROKEN':'')});
+  }
+  if(!options.some(option=>option.id===selectedPowerChoice))
+    selectedPowerChoice='installed';
+  for(const option of options){
+    const button=document.createElement('button');button.type='button';
+    button.className='power-part-choice'+
+      (option.id===selectedPowerChoice?' selected':'');
+    button.setAttribute('aria-pressed',String(option.id===selectedPowerChoice));
+    const name=document.createElement('strong');name.textContent=option.name;
+    const detail=document.createElement('small');detail.textContent=option.description;
+    button.append(name,detail);
+    button.addEventListener('click',()=>{
+      selectedPowerChoice=option.id;
+      refreshPowerPartChoices();
+      $('powerServiceFeedback').textContent='PREVIEWING '+option.name+
+        ' · NO PARTS HAVE BEEN MOVED';
+    });
+    list.append(button);
+  }
+  const chosen=options.find(option=>option.id===selectedPowerChoice);
+  $('powerPartPreviewName').textContent=chosen.name;
+  $('powerPartPreviewDetails').textContent=chosen.description+
+    (chosen.id==='remove'?' · CONFIRM TO REMOVE':
+      chosen.id==='installed'?' · CURRENT CHASSIS CONFIGURATION':
+        ' · CONFIRM TO INSTALL');
+  const action=$('powerPartAction');
+  action.disabled=chosen.id==='installed';
+  action.textContent=chosen.id==='installed'?'CURRENT CONFIGURATION':
+    chosen.id==='remove'?'CONFIRM REMOVAL':'INSTALL SELECTED PLATE';
+  const repair=$('powerRepairSelected');
+  repair.disabled=current.tier==='none'||current.current>=current.max||
+    powerArmorState.occupied;
+  const repairPreview=repairPowerPlate(powerArmorState,slot,0,
+    specialModifiers.repairDiscount);
+  repair.textContent=repair.disabled?'NO REPAIR NEEDED':
+    'REPAIR INSTALLED · '+(repairPreview.cost||0)+' SALVAGE';
+}
 function refreshPowerArmorUI(){
+  const summary=$('powerChassisSummary');summary.replaceChildren();
   for(const slot of POWER_ARMOR_SLOTS){
     const current=plateCondition(powerArmorState,slot);
     const status=powerArmorIndicatorStatus(powerArmorState,slot);
@@ -1153,6 +1212,17 @@ function refreshPowerArmorUI(){
         getPowerPlate(slot,current.tier).name+', '+status.percentage+
         '% durability')+'. Select to configure.');
     figure.setAttribute('aria-pressed',String(selectedPowerSlot===slot));
+    const row=document.createElement('button');row.type='button';
+    row.className='power-status-row'+(selectedPowerSlot===slot?' selected':'');
+    row.setAttribute('aria-pressed',String(selectedPowerSlot===slot));
+    const rowName=document.createElement('span');
+    rowName.textContent=ARMOR_SLOT_LABELS[slot].toUpperCase();
+    const rowState=document.createElement('strong');
+    rowState.textContent=current.tier==='none'?'EMPTY':
+      current.tier.toUpperCase()+' · '+status.percentage+'%';
+    row.append(rowName,rowState);
+    row.addEventListener('click',()=>selectPowerSlot(slot));
+    summary.append(row);
     document.querySelector('#powerArmorPanel .power-slot-details label[data-slot="'+slot+'"]')
       .classList.toggle('selected',selectedPowerSlot===slot);
     if(selectedPowerSlot===slot){
@@ -1163,6 +1233,9 @@ function refreshPowerArmorUI(){
         status.percentage+'% CONDITION'+
         (current.broken?' · BROKEN / REPAIR REQUIRED':
           status.status==='critical'?' · CRITICAL / REPAIR RECOMMENDED':' · OPERATIONAL');
+      const fill=$('powerSelectedFill');
+      fill.style.width=(current.tier==='none'?0:status.percentage)+'%';
+      fill.classList.toggle('critical',status.status==='critical');
     }
     const picker=$('power-'+slot);picker.replaceChildren();
     const fitted=document.createElement('option');
@@ -1217,6 +1290,7 @@ function refreshPowerArmorUI(){
     ' · SCRAP POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
     ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
+  refreshPowerPartChoices();
   refreshPowerArmorHUD();
 }
 for(const slot of POWER_ARMOR_SLOTS){
@@ -1292,6 +1366,7 @@ function savePowerService(){
   poweredSuit.updatePlates(powerArmorState);
   poweredSuit.updateCore(powerArmorState);
   savePowerArmor();saveBackpack();
+  selectedPowerChoice='installed';
   refreshPowerArmorUI();refreshInventoryUI();
 }
 function spendPowerMaterials(cost){
@@ -1368,6 +1443,20 @@ for(const slot of POWER_ARMOR_SLOTS){
     savePowerService();
   });
 }
+$('powerPartAction').addEventListener('click',()=>{
+  if(selectedPowerChoice==='installed'||!POWER_ARMOR_SLOTS.includes(selectedPowerSlot))return;
+  const picker=$('power-'+selectedPowerSlot);
+  picker.value=selectedPowerChoice;
+  if(picker.value!==selectedPowerChoice){
+    $('powerServiceFeedback').textContent='THIS ARMOR PIECE IS NO LONGER AVAILABLE';
+    selectedPowerChoice='installed';refreshPowerArmorUI();return;
+  }
+  // The existing guarded equip/remove handler performs and saves the action.
+  picker.dispatchEvent(new Event('change',{bubbles:true}));
+});
+$('powerRepairSelected').addEventListener('click',()=>{
+  $('power-repair-'+selectedPowerSlot).click();
+});
 // Non-destructive teardown: return the actual six durable pieces to
 // the backpack. Necessary for older saves whose rig starts pre-armoured.
 $('powerStripAll').addEventListener('click',()=>{

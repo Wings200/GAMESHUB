@@ -912,6 +912,70 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerArmorPanel .power-slot-details label.selected{display:flex}
 #powerArmorPanel .power-slot-details select{width:100%}
 #powerArmorPanel .power-slot-details button{max-width:240px}
+/* W20.74 — power armor figure centered, owned parts staged then installed. */
+#powerArmorPanel .loot-container{max-width:1490px}
+#powerArmorPanel .power-service-layout{grid-template-columns:minmax(220px,.85fr) minmax(290px,1fr) minmax(300px,1.25fr);
+  gap:14px;align-items:start}
+#powerArmorPanel .power-status-pane,#powerArmorPanel .power-figure-pane,
+#powerArmorPanel .power-config-pane{background:#12262a;border:1px solid #5c776c;
+  padding:19px;min-width:0;box-shadow:inset 0 1px #a3bba123}
+#powerArmorPanel .power-panel-kicker{margin:0 0 13px;color:#efd8a1;font-size:11px;
+  font-weight:950;letter-spacing:.14em}
+#powerArmorPanel .power-status-list{display:flex;flex-direction:column;gap:6px}
+#powerArmorPanel .power-status-row{display:flex;justify-content:space-between;
+  align-items:center;gap:9px;text-align:left;padding:11px;background:#1a3534;
+  border:1px solid #49685c;color:#d9e9d8;min-width:0;font-size:10px}
+#powerArmorPanel .power-status-row span{font-weight:850}
+#powerArmorPanel .power-status-row strong{color:#e9d49f;font-size:10px;text-align:right}
+#powerArmorPanel .power-status-row.selected{border-color:#e8d59f;background:#335246}
+#powerArmorPanel .power-core-block{border-top:1px solid #567264;margin-top:18px;
+  padding-top:16px;display:flex;flex-direction:column;align-items:stretch;gap:9px}
+#powerArmorPanel .power-core-block strong{font-size:12px;color:#e9d6a3;line-height:1.5}
+#powerArmorPanel .power-core-block select{background:#112a31;color:#f1e1bd;
+  border:1px solid #86a38f;padding:10px;width:100%;min-width:0}
+#powerArmorPanel .power-core-actions{display:flex;gap:7px;flex-wrap:wrap}
+#powerArmorPanel .power-core-actions button{flex:1;min-width:92px}
+#powerArmorPanel .power-figure-pane{text-align:center;background:radial-gradient(ellipse at center,#24403b,#0c1c25 78%)}
+#powerArmorPanel .power-figure-pane h3{display:block;font-size:14px;margin-bottom:4px}
+#powerArmorPanel .power-figure-pane h3 small{display:block;margin-top:7px}
+#powerArmorPanel #powerServiceFigure{width:min(100%,310px);height:410px;filter:drop-shadow(0 0 27px #bdcc9350)}
+#powerArmorPanel #powerServiceFigure .armor-segment:hover .armor-shell{stroke:#fff9d1;stroke-width:4}
+#powerArmorPanel .power-figure-legend{margin-top:9px;gap:9px;font-size:9px}
+#powerArmorPanel .power-config-heading{padding-bottom:13px}
+#powerArmorPanel .power-config-heading h3{font-size:27px}
+#powerArmorPanel .power-condition-bar{height:11px;background:#0a181f;
+  border:1px solid #627f70;overflow:hidden;margin:13px 0}
+#powerArmorPanel #powerSelectedFill{display:block;height:100%;width:0%;
+  background:linear-gradient(90deg,#a4793d,#f2d08e);transition:width .15s}
+#powerArmorPanel #powerSelectedFill.critical{background:linear-gradient(90deg,#a93732,#ef7364)}
+#powerArmorPanel .power-part-heading{color:#d1ddb6;font-weight:900;font-size:10px;
+  letter-spacing:.14em;margin:18px 0 11px}
+#powerArmorPanel .power-part-choices{display:flex;flex-direction:column;gap:7px;
+  max-height:285px;overflow-y:auto}
+#powerArmorPanel .power-part-choice{display:flex;flex-direction:column;align-items:stretch;
+  text-align:left;gap:5px;background:#1b3430;border:1px solid #597769;
+  color:#e0eaca;padding:11px;min-width:0}
+#powerArmorPanel .power-part-choice strong{font-size:11px}
+#powerArmorPanel .power-part-choice small{font-size:10px;color:#a9c6b0;line-height:1.5}
+#powerArmorPanel .power-part-choice.selected{border-color:#f2dfa7;
+  box-shadow:inset 3px 0 #e9c78e;background:#304b3b}
+#powerArmorPanel .power-part-choice:focus-visible{outline:2px solid #f5d8a0;outline-offset:1px}
+#powerArmorPanel .power-part-preview{margin-top:13px;padding:13px;
+  background:#101e24;border:1px solid #516e62;display:flex;flex-direction:column;gap:6px}
+#powerArmorPanel .power-part-preview strong{color:#e9d5a0;font-size:13px}
+#powerArmorPanel .power-part-preview small{color:#c2d3c3;font-size:10px;line-height:1.6}
+#powerArmorPanel .power-part-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+#powerArmorPanel #powerPartAction{background:#e1c992;color:#1c2921;
+  border-color:#f2dfa9;font-weight:950;flex:1}
+#powerArmorPanel #powerRepairSelected{background:#31584d;color:#e8ecd7;
+  border-color:#93b6a5;flex:1}
+#powerArmorPanel .power-slot-details{display:none!important}
+@media(max-width:1160px){#powerArmorPanel .power-service-layout{grid-template-columns:1fr 1fr}
+  #powerArmorPanel .power-config-pane{grid-column:1/-1}}
+@media(max-width:680px){#powerArmorPanel .power-service-layout{grid-template-columns:1fr}
+  #powerArmorPanel .power-config-pane{grid-column:auto}
+  #powerArmorPanel #powerServiceFigure{height:290px}
+  #powerArmorPanel .power-part-choices{max-height:240px}}
 #workbenchPanel .bench-work-area{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:410px}
 #workbenchPanel .bench-owned-pane{background:#142729;border-right:1px solid #486859;padding:18px;min-width:0}
 #workbenchPanel .bench-owned-list{display:flex;flex-direction:column;gap:8px;margin-top:15px;max-height:65vh;overflow-y:auto}
@@ -1392,8 +1456,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.73</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.74</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
+    <p><strong>W20.74 · POWER ARMOR CONFIGURATION:</strong> The six-part condition figure now sits at the center of the service screen. Select any body section, inspect matching armor plates from your backpack, preview durability and protection, then deliberately install, remove, or repair that slot.</p>
     <p><strong>W20.73 · WEAPON WORKBENCH:</strong> Choose an owned weapon, inspect its installed assemblies, select a replacement part, and preview performance and exact material requirements before crafting or installing. Nothing is spent just by inspecting an option.</p>
     <p><strong>W20.72.1 · BARTER CONFIRMATION:</strong> Adding an item to either side now stages it for a single combined trade. Review everything you are buying and selling, check the net cap balance, and press Confirm Trade once. Closing or clearing the offer exchanges nothing.</p>
     <p><strong>W20.72 · VENDOR TRADING:</strong> Choose exact buy and sell quantities, review live cap totals, sell reserve ammunition, and see your wallet and backpack space beside merchant stock. Sold-out goods, unaffordable offers and equipped gear are clearly marked. Existing merchant prices and saved stock remain intact.</p>
@@ -1438,9 +1503,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W12.0 · MODULAR FRAME · REAR HATCH ENTRY</div>
-        <h2>BUILD<span> YOUR POWER ARMOR.</span></h2>
-        <p>The chassis starts as a bare exoskeleton, without pre-equipped plates. Obtain modules through normal gameplay or Developer Panel → Items & Caps, equip or strip them individually, or remove every plate to inspect the base frame. Each armor piece is a real salvageable item. Mix T-45, T-60 and T-01 pieces on the same chassis; a broken piece stays attached or in your backpack until repaired. Tap E at the parked frame to configure your owned parts. Walk BEHIND the frame and hold E to enter.</p>
+      <div><div class="loot-eyebrow">W20.74 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
+        <h2>CONFIGURE<span> YOUR POWER ARMOR.</span></h2>
+        <p>Choose a body section on the central figure, then inspect and install the matching armor pieces you actually own. Mix T-45, T-60 and T-01 plates, keep their individual durability, and repair damaged modules. Tap E beside the parked frame to configure; hold E at the rear hatch to enter.</p>
       </div>
       <button id="powerBayClose" type="button">DONE / RESUME</button>
     </div>
@@ -1449,15 +1514,19 @@ body.hud-modern #powerArmorHud{display:none!important}
       <button id="powerArmorControl" type="button">DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER</button>
       <button id="powerStripAll" type="button">REMOVE ALL SIX MODULES · KEEP PIECES</button>
     </div>
-    <div class="loot-meta" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-      <strong id="powerCoreStatus">REACTOR EMPTY · NO CORE INSTALLED</strong>
-      <select id="powerCoreChoice" aria-label="Owned fusion core" style="background:#142934;color:#fff;padding:8px"></select>
-      <button id="powerInsertCore" type="button">INSERT CORE</button>
-      <button id="powerEjectCore" type="button">EJECT CORE</button>
-    </div>
     <div class="power-service-layout">
+      <aside class="power-status-pane" aria-label="Chassis condition and fusion core">
+        <h3 class="power-panel-kicker">CHASSIS STATUS / SIX MODULES</h3>
+        <div id="powerChassisSummary" class="power-status-list" aria-label="Select a chassis slot"></div>
+        <div class="power-core-block">
+          <h3 class="power-panel-kicker">FUSION CORE</h3>
+          <strong id="powerCoreStatus">REACTOR EMPTY · NO CORE INSTALLED</strong>
+          <select id="powerCoreChoice" aria-label="Owned fusion core"></select>
+          <div class="power-core-actions"><button id="powerInsertCore" type="button">INSERT CORE</button><button id="powerEjectCore" type="button">EJECT CORE</button></div>
+        </div>
+      </aside>
       <section class="power-figure-pane" aria-label="Click a chassis section to configure it">
-        <h3>CHASSIS MODULES <small>SELECT A BODY SECTION</small></h3>
+        <h3>SELECT ARMOR SECTION <small>CLICK ANY ONE OF THE SIX PARTS</small></h3>
         <svg id="powerServiceFigure" viewBox="0 0 116 165" role="group" aria-label="Interactive six-part power armor diagram">
           <g id="powerFigure-head" data-slot="head" class="armor-segment empty" role="button" tabindex="0" aria-label="Select helmet">
             <path class="armor-shell" d="M45 9 L53 4 L63 4 L71 9 L74 22 L70 34 L63 39 L52 39 L45 34 L42 22 Z"/>
@@ -1488,6 +1557,11 @@ body.hud-modern #powerArmorHud{display:none!important}
       </section>
       <section class="power-config-pane">
         <div class="power-config-heading"><small>SELECTED MODULE</small><h3 id="powerSelectedName">CHEST</h3><p id="powerSelectedCondition">Select a body section to install, remove or repair a piece.</p></div>
+        <div class="power-condition-bar" aria-label="Selected armor durability"><span id="powerSelectedFill"></span></div>
+        <div class="power-part-heading">AVAILABLE PIECES · SELECT TO PREVIEW</div>
+        <div id="powerPartChoices" class="power-part-choices" aria-label="Collected armor pieces for selected slot"></div>
+        <div class="power-part-preview"><strong id="powerPartPreviewName">SELECT A PART</strong><small id="powerPartPreviewDetails">Armor must be collected before it can be installed.</small></div>
+        <div class="power-part-actions"><button id="powerPartAction" type="button" disabled>CHOOSE A PART</button><button id="powerRepairSelected" type="button">REPAIR INSTALLED PART</button></div>
         <div class="armor-slots power-slot-details">
           <label data-slot="head">HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
           <label data-slot="chest">CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
@@ -1858,7 +1932,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.73"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.74"></script>
 </body>
 </html>
 
