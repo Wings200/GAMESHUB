@@ -179,6 +179,16 @@ export function trackCampaignQuest(current,id){
   if(state.quests[id]?.status!=='active')return {state,changed:false};
   state.tracked=id;return {state,changed:true};
 }
+// HUD objective markers are quest-only. A discovered place is still a location,
+// but an available or completed quest must never create a quest objective.
+export function trackedCampaignObjective(current){
+  const state=safeCampaignSnapshot(current);
+  const id=state.tracked;
+  const progress=state.quests[id];
+  if(!id||progress?.status!=='active')return null;
+  const stage=CAMPAIGN_QUESTS[id]?.stages[progress.stage];
+  return stage?{questId:id,node:stage.node,text:stage.text}:null;
+}
 export function campaignJournal(current){
   const state=safeCampaignSnapshot(current);
   return Object.values(CAMPAIGN_QUESTS).map(quest=>{

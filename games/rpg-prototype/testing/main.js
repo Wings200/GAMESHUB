@@ -14,7 +14,8 @@ import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
   initialCampaignState,safeCampaignSnapshot,startCampaignQuest,
-  advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal
+  advanceCampaignEvent,resolveCampaignQuest,trackCampaignQuest,campaignJournal,
+  trackedCampaignObjective
 } from '../campaign.mjs';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { stepMovement, requestJump, toggleCrouch, resetMotion, MOVE_TUNING, setEndurance, maximumStamina, ENDURANCE_TUNING, staminaRecoveryRate } from '../movement.mjs';
@@ -1043,10 +1044,9 @@ function positionNavigationMarker(element,x,z,heading,edgeClamp=false){
 }
 function updateVisorObjectiveMarker(heading){
   const marker=$('visorCompassWaypoint');
-  const quest=CAMPAIGN_QUESTS[campaignState.tracked];
-  const stage=quest?.stages[campaignState.quests[campaignState.tracked]?.stage];
-  const target=stage?.node==='arena'?{x:45,z:40}:
-    CAMPAIGN_NODES.find(node=>node.id===stage?.node);
+  const objective=trackedCampaignObjective(campaignState);
+  const target=objective?.node==='arena'?{x:45,z:40}:
+    CAMPAIGN_NODES.find(node=>node.id===objective?.node);
   if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.z)){
     marker.style.display='none';return;
   }
@@ -4837,7 +4837,7 @@ function nearCampaignNode(){
 }
 function refreshCampaignUI(){
   const journal=campaignJournal(campaignState);
-  const tracked=journal.find(q=>q.tracked);
+  const tracked=journal.find(q=>q.tracked&&q.status==='active');
   $('questTracker').classList.toggle('hidden',!tracked);
   $('questTrackerTitle').textContent=tracked?.title.toUpperCase()||'';
   $('questTrackerObjective').textContent=tracked?.objective||'';
