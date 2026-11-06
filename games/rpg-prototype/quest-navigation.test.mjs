@@ -27,3 +27,11 @@ test('Only an active tracked quest has a HUD or map navigation objective',()=>{
   assert.match(source,/marker\.style\.display='none';marker\.removeAttribute\('title'\)/);
   assert.match(source,/\$\('questTracker'\)\.classList\.toggle\('hidden',!tracked\)/);
 });
+
+test('Navigation HUD rejects NPCs and merchants; combat radar is not always on',()=>{
+  assert.match(source,/type:\['relay','pump','courier','generator'\]\.includes\(n\.id\)\?'location':'person'/);
+  assert.match(source,/\.\.\.VENDORS\.map\(v=>\(\{id:v\.id,label:v\.title,x:v\.x,z:v\.z,type:'person'\}\)\)/);
+  assert.match(source,/\.filter\(point=>point\.type==='station'\|\|point\.type==='location'\)/);
+  assert.match(source,/playerHealth\.alive&&combatContacts\.size>0/);
+  assert.match(source,/const alerted=combatContacts\.has\(enemy\.id\)/);
+});

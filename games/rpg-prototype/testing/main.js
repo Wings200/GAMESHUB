@@ -2699,7 +2699,13 @@ refreshPlayerHealth();
 const enemyRadarDots=new Map();
 function updateEnemyRadar(){
   const radar=$('enemyRadar');
-  const visible=controls.isLocked&&powerArmorState.phase==='idle'&&playerHealth.alive;
+  // Enemy dots are COMBAT intel, not a passive NPC detector. Hide the whole
+  // track when nobody is actively fighting or recently sighted the player.
+  const combatContacts=new Set([...enemies.values()]
+    .filter(enemy=>enemyAIEnabled&&enemy.state.alive&&enemy.radarAlertSeconds>0)
+    .map(enemy=>enemy.id));
+  const visible=controls.isLocked&&powerArmorState.phase==='idle'&&
+    playerHealth.alive&&combatContacts.size>0;
   radar.classList.toggle('hidden',!visible);
   if(!visible)return;
   const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
@@ -2712,7 +2718,7 @@ function updateEnemyRadar(){
       dot.setAttribute('role','img');track.append(dot);
       enemyRadarDots.set(enemy.id,dot);
     }
-    const alerted=enemy.state.alive&&enemy.radarAlertSeconds>0;
+    const alerted=combatContacts.has(enemy.id);
     dot.style.display=alerted?'block':'none';
     if(!alerted)continue;
     shown++;
@@ -4356,14 +4362,21 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 let mapOpen=false,mapFromField=false,mapFromInventory=false,inventoryReturnPage='status';
 const mapPoints=[
   ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
-  ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'})),
-  ...VENDORS.map(v=>({id:v.id,label:v.title,x:v.x,z:v.z,type:'contact'}))
+  // Physical, named places qualify as locations. Quest contacts, officers,
+  // foremen and merchants are PEOPLE and must never become HUD markers.
+  ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,
+    type:['relay','pump','courier','generator'].includes(n.id)?'location':'person'})),
+  ...VENDORS.map(v=>({id:v.id,label:v.title,x:v.x,z:v.z,type:'person'}))
 ];
 const fieldMap=createFieldMap({
   canvas:$('fieldMapCanvas'),
   points:mapPoints
 });
-const navigationLandmarks=mapPoints.map(point=>{
+// Strict navigation HUD allowlist: locations, ACTIVE quests and user-set
+// waypoints; combat enemies are handled separately by updateEnemyRadar().
+const navigationLandmarks=mapPoints
+  .filter(point=>point.type==='station'||point.type==='location')
+  .map(point=>{
   const markers=['fieldCompassLandmarks','visorCompassLandmarks'].map(containerId=>{
     const marker=document.createElement('span');
     marker.className='nav-location '+point.type;
