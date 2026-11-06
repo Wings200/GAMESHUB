@@ -37,9 +37,22 @@ test('waypoints are restricted to discovered ground and persist safely',()=>{
   assert.equal(map.setWaypoint(30,42),false);
   assert.equal(map.setWaypoint(-50,-25),true);
   assert.equal(map.summary().distance,1);
+  // Tracked quests can point to an undiscovered destination without revealing
+  // fog or overwriting the player's own saved waypoint.
+  map.setQuestTarget({x:30,z:42,label:'BORDER WATCH'});
+  assert.deepEqual(map.summary().questTarget,
+    {x:30,z:42,label:'BORDER WATCH'});
+  assert.equal(map.isDiscovered(30,42),false);
+  assert.deepEqual(map.summary().waypoint,{x:-50,z:-25});
   map.render();
   const restored=createFieldMap({canvas,storage});
   assert.equal(restored.summary().waypoint.x,-50);
+  assert.equal(restored.summary().questTarget,null,
+    'Quest markers must follow current active missions, never persisted history');
+  map.setQuestTarget(null);
+  assert.equal(map.summary().questTarget,null);
+  map.setQuestTarget({x:999,z:0});
+  assert.equal(map.summary().questTarget,null);
   restored.clearWaypoint();
   assert.equal(restored.summary().waypoint,null);
 });

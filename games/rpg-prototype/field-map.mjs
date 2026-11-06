@@ -44,7 +44,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
   const key='rpg-field-map-discovery-v1';
   const waypointKey='rpg-field-map-waypoint-v1';
   const allowedKeys=/^\d{1,2}:\d{1,2}$/;
-  let discovered=new Set(),waypoint=null;
+  let discovered=new Set(),waypoint=null,questTarget=null;
   try{
     const saved=JSON.parse(storage?.getItem(key)||'[]');
     if(Array.isArray(saved))discovered=new Set(saved.filter(v=>typeof v==='string'&&allowedKeys.test(v)).slice(0,700));
@@ -69,6 +69,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
     const total=Math.ceil((FIELD_BOUNDS.maxX-FIELD_BOUNDS.minX)/MAP_CELL_SIZE)*
       Math.ceil((FIELD_BOUNDS.maxZ-FIELD_BOUNDS.minZ)/MAP_CELL_SIZE);
     return{discovered:discovered.size,total,x:state.x,z:state.z,zoom,waypoint,
+      questTarget,
       distance:waypoint?Math.round(Math.hypot(waypoint.x-state.x,waypoint.z-state.z)):null};
   }
   function notify(){onUpdate(summary());}
@@ -84,6 +85,14 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
     persist(waypointKey,waypoint);notify();render();return true;
   }
   function clearWaypoint(){waypoint=null;persist(waypointKey,null);notify();render();}
+  function setQuestTarget(target){
+    // Quest markers are temporary, never mistaken for saved custom waypoints.
+    const next=target&&Number.isFinite(target.x)&&Number.isFinite(target.z)&&
+      mapCell(target.x,target.z)?{x:target.x,z:target.z,
+        label:String(target.label||'QUEST OBJECTIVE').slice(0,50)}:null;
+    if(JSON.stringify(next)===JSON.stringify(questTarget))return;
+    questTarget=next;render();
+  }
   function setZoom(next){zoom=Math.max(.8,Math.min(3.5,next));notify();render();}
   function pointLabel(point){return String(point.label||point.id||'LOCATION').toUpperCase();}
   function render(){
@@ -132,6 +141,15 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
       ctx.beginPath();ctx.moveTo(p.x,p.y-12);ctx.lineTo(p.x+10,p.y);
       ctx.lineTo(p.x,p.y+12);ctx.lineTo(p.x-10,p.y);ctx.closePath();ctx.stroke();
     }
+    if(questTarget){
+      const p=screen(questTarget.x,questTarget.z);
+      ctx.strokeStyle='#ffe49c';ctx.fillStyle='#493921';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffe49c';ctx.font='900 17px system-ui, sans-serif';
+      ctx.fillText('⌂',p.x-7,p.y+1);
+      ctx.font='800 11px system-ui, sans-serif';
+      ctx.fillText(questTarget.label,p.x+16,p.y-8);
+    }
     const player=screen(state.x,state.z);
     ctx.save();ctx.translate(player.x,player.y);ctx.rotate(-state.yaw);
     ctx.fillStyle='#e6f4d0';ctx.strokeStyle='#0c201b';ctx.lineWidth=2;
@@ -162,7 +180,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
   canvas.addEventListener('pointercancel',()=>{dragging=false;startPointer=null;});
   canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.15:1/1.15));},{passive:false});
   function centerOnPlayer(){center={x:state.x,z:state.z};render();}
-  return{observe,render,setZoom,centerOnPlayer,clearWaypoint,summary,
+  return{observe,render,setZoom,centerOnPlayer,clearWaypoint,setQuestTarget,summary,
     setWaypoint,isDiscovered:(x,z)=>isMapDiscovered(discovered,x,z),
     set onUpdate(fn){onUpdate=typeof fn==='function'?fn:()=>{};},
     get zoom(){return zoom;}};

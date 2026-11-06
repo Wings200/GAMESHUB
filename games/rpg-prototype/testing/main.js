@@ -1043,16 +1043,25 @@ function positionNavigationMarker(element,x,z,heading,edgeClamp=false){
   return delta;
 }
 function updateVisorObjectiveMarker(heading){
-  const marker=$('visorCompassWaypoint');
   const objective=trackedCampaignObjective(campaignState);
   const target=objective?.node==='arena'?{x:45,z:40}:
     CAMPAIGN_NODES.find(node=>node.id===objective?.node);
-  if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.z)){
-    marker.style.display='none';return;
+  for(const id of ['fieldCompassQuest','visorCompassWaypoint']){
+    const marker=$(id);
+    if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.z)){
+      marker.style.display='none';marker.removeAttribute('title');continue;
+    }
+    // Both HUDs must guide the same ACTIVE quest, including when its target
+    // is behind the player. A pinned edge marker tells the player to turn.
+    const delta=positionNavigationMarker(marker,target.x,target.z,heading,true);
+    const meters=Math.round(Math.hypot(target.x-player.x,target.z-player.z));
+    const direction=meters<=2?'ARRIVED':Math.abs(delta)<=9?'AHEAD':
+      delta<0?'LEFT':'RIGHT';
+    const title=CAMPAIGN_QUESTS[objective.questId]?.title||'Tracked quest';
+    marker.title=title+' · '+meters+' m · '+direction;
+    marker.setAttribute('aria-label',title+' objective '+meters+
+      ' meters away, '+direction.toLowerCase());
   }
-  const delta=navigationDelta(target.x,target.z,heading);
-  marker.style.display=Math.abs(delta)<=75?'block':'none';
-  if(Math.abs(delta)<=75)marker.style.left=(50+delta*.6).toFixed(2)+'%';
 }
 buildVisorDial('hp','visorHpGauge',{tickCount:20,majorEvery:2,labelSize:12});
 buildVisorDial('rads','visorRadsGauge',{tickCount:10,majorEvery:2,maxValue:10,labelSize:15});
@@ -4895,6 +4904,14 @@ function refreshCampaignUI(){
   $('questTracker').classList.toggle('hidden',!tracked);
   $('questTrackerTitle').textContent=tracked?.title.toUpperCase()||'';
   $('questTrackerObjective').textContent=tracked?.objective||'';
+  const objective=trackedCampaignObjective(campaignState);
+  const questNode=objective?.node==='arena'?{x:45,z:40}:
+    CAMPAIGN_NODES.find(node=>node.id===objective?.node);
+  fieldMap.setQuestTarget(questNode&&Number.isFinite(questNode.x)&&
+    Number.isFinite(questNode.z)?{x:questNode.x,z:questNode.z,
+      label:tracked?.title||'QUEST OBJECTIVE'}:null);
+  const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
+  updateVisorObjectiveMarker(heading);
   $('campaignCaps').textContent=campaignState.caps+' CAPS';
   const rep=$('campaignReputation');rep.replaceChildren();
   for(const [id,faction] of Object.entries(CAMPAIGN_FACTIONS)){
