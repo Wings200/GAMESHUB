@@ -163,6 +163,7 @@ export function createFieldMap({canvas,points=[],storage=globalThis.localStorage
   canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.15:1/1.15));},{passive:false});
   function centerOnPlayer(){center={x:state.x,z:state.z};render();}
   return{observe,render,setZoom,centerOnPlayer,clearWaypoint,summary,
-    setWaypoint,set onUpdate(fn){onUpdate=typeof fn==='function'?fn:()=>{};},
+    setWaypoint,isDiscovered:(x,z)=>isMapDiscovered(discovered,x,z),
+    set onUpdate(fn){onUpdate=typeof fn==='function'?fn:()=>{};},
     get zoom(){return zoom;}};
 }

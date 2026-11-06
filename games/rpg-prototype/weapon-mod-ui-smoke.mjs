@@ -71,6 +71,8 @@ try{
   assert.equal(initial.spec?.magazineSize,30,'Clean SMG starts with 30-round magazine');
   await page.locator('#workbenchOpen').click();
   await page.locator('#workbenchPanel:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#benchWeapon').count(),0,
+    'The old redundant weapon dropdown must be removed');
   assert.equal(await page.locator('#benchWeaponList .bench-owned-weapon').count(),1,
     'Only inventory-owned weapons should appear at the workbench');
   assert.equal(await page.locator('#benchSlots .bench-tab').count(),6);

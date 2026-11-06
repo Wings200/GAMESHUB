@@ -32,6 +32,8 @@ test('waypoints are restricted to discovered ground and persist safely',()=>{
     getBoundingClientRect:()=>({left:0,top:0,width:900,height:620})};
   const map=createFieldMap({canvas,storage,points:[{x:-51,z:-25,label:'Station 1'}]});
   map.observe(-51,-25,0);
+  assert.equal(map.isDiscovered(-51,-25),true,'The HUD may identify locations the player has explored');
+  assert.equal(map.isDiscovered(30,42),false,'The HUD must not reveal unexplored locations');
   assert.equal(map.setWaypoint(30,42),false);
   assert.equal(map.setWaypoint(-50,-25),true);
   assert.equal(map.summary().distance,1);

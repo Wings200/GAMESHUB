@@ -86,6 +86,22 @@ try{
   // W20.62: Physical shop interaction remains, but free test caps are gone.
   await page.keyboard.press('Escape');
   await page.locator('#inventoryPanel').waitFor({state:'hidden'});
+  // W20.66.1: A waypoint selected on the map must guide both HUD modes.
+  await page.keyboard.press('Tab');
+  await page.locator('#fieldMapPanel:not(.hidden)').waitFor({timeout:7000});
+  await page.locator('#fieldMapCanvas').click();
+  await page.waitForFunction(()=>Boolean(
+    JSON.parse(localStorage.getItem('rpg-field-map-waypoint-v1')||'null')),
+    null,{timeout:5000});
+  await page.keyboard.press('Escape');
+  await page.locator('#fieldMapPanel').waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.getElementById('fieldWaypointReadout')
+    ?.textContent.includes('WAYPOINT'),null,{timeout:5000});
+  assert.equal(await page.locator('#fieldCustomWaypoint').evaluate(el=>el.style.display),'block');
+  assert.equal(await page.locator('#visorCustomWaypoint').evaluate(el=>el.style.display),'block',
+    'Power armor compass should also include the saved custom waypoint');
+  assert.equal(await page.locator('#fieldCompassTicks .compass-tick').count(),24,
+    'The normal player needs a full compass, not only a heading number');
   await page.locator('#enterVendors').click();
   await page.waitForFunction(()=>window.__rpgSmokeState().locked,null,{timeout:7000});
   await page.keyboard.press('e');

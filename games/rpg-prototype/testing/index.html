@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.66 · Equipment UI Rebuild | GAMESHUB RPG</title>
+<title>W20.67 · Navigation HUD and Workbench Cleanup | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -285,6 +285,30 @@ body.hud-modern #powerArmorHud{display:none!important}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.09em}
 #fieldHud .field-controls{position:absolute;bottom:23px;left:50%;transform:translateX(-50%);
   color:#c2d3c9a8;font-size:9px;letter-spacing:.12em;font-weight:900;white-space:nowrap}
+#fieldHud .field-compass{position:absolute;top:67px;left:50%;transform:translateX(-50%);
+  width:min(460px,83vw);height:45px;overflow:hidden;color:#c5e8bb;
+  border-bottom:1px solid #76967a66;background:linear-gradient(90deg,transparent,#0c251fc7 16%,#0c251fc7 84%,transparent)}
+.nav-compass .compass-marks,.nav-compass .nav-landmarks{position:absolute;inset:0;pointer-events:none}
+#fieldHud .compass-tick{position:absolute;top:5px;transform:translateX(-50%);
+  color:#a5c8b4;font-size:10px;font-weight:900}
+#fieldHud .compass-tick.major{color:#e4d4a2;font-size:14px}
+#fieldHud .compass-tick:after{content:'';display:block;width:1px;height:7px;margin:2px auto;background:#89b29c}
+#fieldHud .compass-tick.major:after{width:2px;height:10px;background:#dfd5a1}
+#fieldHud .compass-marker{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid #f1d18d}
+.nav-compass .nav-location{position:absolute;top:0;transform:translateX(-50%);
+  text-align:center;font-size:10px;font-weight:900;color:#9edbc0;white-space:nowrap;
+  text-shadow:0 1px 4px #000}
+.nav-compass .nav-location.station{color:#e9c789}
+.nav-compass .nav-location small{display:block;font-size:8px;max-width:75px;overflow:hidden;text-overflow:ellipsis}
+.nav-compass .custom-waypoint{position:absolute;top:0;transform:translateX(-50%);z-index:3;
+  font-size:18px;font-weight:950;color:#77e7f6;filter:drop-shadow(0 0 5px #57d8e6)}
+.nav-compass .custom-waypoint.offscreen{color:#a8b5f1}
+#fieldHud .field-waypoint-readout{position:absolute;top:114px;left:50%;
+  transform:translateX(-50%);padding:5px 13px;background:#0c2825e0;
+  border:1px solid #74bbba;color:#98edf2;font-size:10px;letter-spacing:.08em;
+  font-weight:900;white-space:nowrap}
+#fieldHud .field-waypoint-readout:empty{display:none}
 #fieldHud.critical .field-vitals{border-left-color:#fd665b}
 #fieldHud.critical .field-bar:not(.secondary) span{background:#e46a56}
 /* Red 360-degree contacts below the sightline, shared by both HUD modes. */
@@ -376,6 +400,14 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerVisorHud .compass-waypoint{position:absolute;bottom:19px;transform:translateX(-50%);
   font-size:21px;font-weight:950;color:#ffe59c;line-height:1;
   filter:drop-shadow(0 0 4px #ffbd68)}
+#powerVisorHud .nav-location{top:0;font-size:9px}
+#powerVisorHud .nav-location small{font-size:7px}
+#powerVisorHud .custom-waypoint{top:-2px}
+#powerVisorHud .armor-waypoint-readout{position:absolute;left:50%;bottom:62px;
+  transform:translateX(-50%);padding:5px 13px;background:#271c13dd;
+  border:1px solid #b6c4a0;color:#87e2eb;font-size:10px;font-weight:900;
+  letter-spacing:.08em;white-space:nowrap}
+#powerVisorHud .armor-waypoint-readout:empty{display:none}
 #powerVisorHud.low-core .armor-core .gauge-needle,
 #powerVisorHud .armor-ap.exhausted .gauge-needle{stroke:#ff553f}
 #powerVisorHud .armor-ap.core-offline .gauge-needle{stroke:#967f66}
@@ -897,6 +929,13 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="field-area" id="fieldLocation">SPRINT LANE</span>
     <span class="field-threat" id="fieldThreat">EXPLORATION</span>
   </div>
+  <div class="field-compass nav-compass" id="fieldCompass" aria-label="Navigation compass with discovered locations and custom waypoints">
+    <div id="fieldCompassTicks" class="compass-marks"></div>
+    <div id="fieldCompassLandmarks" class="nav-landmarks"></div>
+    <span id="fieldCustomWaypoint" class="custom-waypoint" style="display:none" aria-label="Custom waypoint direction">◆</span>
+    <div class="compass-marker" aria-hidden="true"></div>
+  </div>
+  <div id="fieldWaypointReadout" class="field-waypoint-readout" role="status"></div>
   <div class="field-panel field-vitals">
     <div class="field-kicker">VITAL SIGNS / HP</div>
     <div class="field-number"><span id="fieldHealth">100</span> <span class="field-unit">/ 100 HP</span></div>
@@ -952,9 +991,12 @@ body.hud-modern #powerArmorHud{display:none!important}
   </div>
   <div class="armor-compass" id="visorCompass" aria-label="Compass heading">
     <div id="visorCompassTicks" class="compass-marks"></div>
+    <div id="visorCompassLandmarks" class="nav-landmarks"></div>
     <span id="visorCompassWaypoint" class="compass-waypoint" style="display:none" aria-label="Tracked objective direction">⌂</span>
+    <span id="visorCustomWaypoint" class="custom-waypoint" style="display:none" aria-label="Custom waypoint direction">◆</span>
     <div class="compass-marker" aria-hidden="true"></div>
   </div>
+  <div id="visorWaypointReadout" class="armor-waypoint-readout" role="status"></div>
   <div class="armor-dial armor-core" aria-label="Fusion core charge gauge">
     <svg id="visorCoreGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
     <span class="dial-title">CORE</span>
@@ -1073,9 +1115,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.66</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.67</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
-    <p><strong>W20.66 · EQUIPMENT INTERFACES:</strong> Vendors show your inventory beside finite merchant stock. Workbenches list only guns you own. The power-armor chassis and inventory figure both use interactive six-zone equipment diagrams. Merchant stock still persists across visits; automatic restocking is not scheduled yet.</p>
+    <p><strong>W20.67 · NAVIGATION:</strong> Both HUDs now show explored locations and map-set custom waypoints with direction and distance. The weapon workbench uses only the left-hand owned-gun list; its redundant dropdown is gone. Existing merchant stock and equipment systems remain unchanged.</p>
     <p><strong>W20.62 · DEVELOPER ITEM GRANTS:</strong> Admins can open the Developer Panel to search implemented items, grant weapons, armor, ammo and materials, or add caps. Equip granted firearms through I / Backpack. Free crates, resource caches, and cap handouts have been retired from the test field. Normal loot, vendors and quests remain. Visit Station 7 to craft weapon mods with materials you own.</p>
     <div class="weapon-reset-notice"><b>W20.62 · PLAYER INVENTORY</b> Equipment and caps you already owned stay saved. New test saves start with no free guns, ammo reserves or field caches. Developer item grants are limited to signed-in admins; buyers still use actual vendor prices. The map, NPCs, power armor, weapon workbench and quest systems remain available.</div>
     <p><strong>W20.10 · REAR ENTRY & SUIT SILHOUETTE:</strong> Power armor has deploying rear stairs, an opening central spine, two-joint hip/knee IK, real handle-gripping arms and separate boot contacts. The camera stays outside until the hatch shuts. NPCs must face you before firing; tracers originate at their visible muzzle.</p>
@@ -1202,7 +1244,6 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="bench-toolbar">
       <strong>YOUR OWNED FIREARMS</strong>
       <strong id="benchMaterials">0 COMPONENTS IN POUCH</strong>
-      <select id="benchWeapon" class="sr-only" aria-label="Selected owned weapon"></select>
     </div>
     <div class="bench-work-area">
       <aside class="bench-owned-pane"><div class="bench-list-caption">SELECT A GUN FROM YOUR BACKPACK</div><div id="benchWeaponList" class="bench-owned-list"></div></aside>
@@ -1470,7 +1511,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.66"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.67"></script>
 </body>
 </html>
 

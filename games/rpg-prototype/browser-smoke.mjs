@@ -532,32 +532,32 @@ try{
   await page.evaluate(()=>window.__rpgSmokeGiveBenchMaterials());
   await page.locator('#workbenchOpen').click();
   await page.waitForSelector('#workbenchPanel:not(.hidden)',{timeout:7000});
-  await page.locator('#benchWeapon').selectOption('service-carbine');
-  await page.locator('#benchOptics .loot-entry').filter({hasText:'Holo A'})
+  await page.locator('#benchWeaponList .bench-owned-weapon').filter({hasText:/SERVICE CARBINE/i}).click();
+  await page.locator('#benchOptics .bench-part').filter({hasText:'Holo A'})
     .getByRole('button',{name:'CRAFT + INSTALL'}).click();
   assert.deepEqual(await page.evaluate(()=>
     window.__rpgSmokeSightVisual('service-carbine')),
     {variant:'holo-a',count:1},
     'NATO Holo A must have its own actual 3D sight housing');
-  await page.locator('#benchOptics .loot-entry').filter({hasText:'Holo B'})
+  await page.locator('#benchOptics .bench-part').filter({hasText:'Holo B'})
     .getByRole('button',{name:'CRAFT + INSTALL'}).click();
   assert.deepEqual(await page.evaluate(()=>
     window.__rpgSmokeSightVisual('service-carbine')),
     {variant:'holo-b',count:1},
     'Russian Holo B must replace Holo A with distinct actual geometry');
-  await page.locator('#benchWeapon').selectOption('hunting-rifle');
+  await page.locator('#benchWeaponList .bench-owned-weapon').filter({hasText:/HUNTING RIFLE/i}).click();
   assert.ok((await page.locator('#benchMaterials').textContent()).includes('OPTIC GLASS'));
-  await page.locator('#benchOptics .loot-entry').filter({hasText:'Marksman scope'})
+  await page.locator('#benchOptics .bench-part').filter({hasText:'Marksman scope'})
     .getByRole('button',{name:'CRAFT + INSTALL'}).click();
-  assert.equal((await page.locator('#benchOptics .loot-entry')
+  assert.equal((await page.locator('#benchOptics .bench-part')
     .filter({hasText:'Marksman scope'}).textContent()).includes('INSTALLED'),true);
   await page.locator('#benchClose').click();
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.__rpgSmokeState?.().enemies?.length===3,
     null,{timeout:30000});
   await page.locator('#workbenchOpen').click();
-  await page.locator('#benchWeapon').selectOption('hunting-rifle');
-  assert.ok((await page.locator('#benchOptics .loot-entry')
+  await page.locator('#benchWeaponList .bench-owned-weapon').filter({hasText:/HUNTING RIFLE/i}).click();
+  assert.ok((await page.locator('#benchOptics .bench-part')
     .filter({hasText:'Marksman scope'}).textContent()).includes('INSTALLED'),
     'Crafted scope must survive page reload');
   await page.locator('#benchClose').click();

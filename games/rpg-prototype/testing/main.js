@@ -9,7 +9,7 @@ import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
-import {createFieldMap} from '../field-map.mjs?v=W20.55';
+import {createFieldMap} from '../field-map.mjs?v=W20.67';
 import {projectileNearMiss} from '../combat-suppression.mjs';
 import {createImpactEffects} from '../combat-effects.mjs';
 import {CAMPAIGN_FACTIONS,CAMPAIGN_QUESTS,CAMPAIGN_NODES,
@@ -958,7 +958,7 @@ function nearRearHatch(){
 // of boxed screen widgets. Geometry is generated once, values update in place.
 const VISOR_SVG_NS='http://www.w3.org/2000/svg';
 const visorNeedles=new Map();
-const visorCompassMarks=[];
+const navigationCompassMarks=[];
 const visorDialPoint=(angle,radius)=>{
   const rad=angle*Math.PI/180;
   return {x:100+Math.cos(rad)*radius,y:100+Math.sin(rad)*radius};
@@ -1006,23 +1006,40 @@ function setVisorDial(key,percent){
 }
 function buildVisorCompass(){
   const names=['N','NE','E','SE','S','SW','W','NW'];
-  const target=$('visorCompassTicks');
-  for(let i=0;i<24;i++){
-    const major=i%3===0;
-    const element=document.createElement('span');
-    element.className='compass-tick'+(major?' major':'');
-    element.textContent=major?names[i/3]:'';
-    target.appendChild(element);
-    visorCompassMarks.push({bearing:i*15,element});
+  for(const targetId of ['visorCompassTicks','fieldCompassTicks']){
+    const target=$(targetId);
+    for(let i=0;i<24;i++){
+      const major=i%3===0;
+      const element=document.createElement('span');
+      element.className='compass-tick'+(major?' major':'');
+      element.textContent=major?names[i/3]:'';
+      target.appendChild(element);
+      navigationCompassMarks.push({bearing:i*15,element});
+    }
   }
 }
 function updateVisorCompass(heading){
-  for(const mark of visorCompassMarks){
+  for(const mark of navigationCompassMarks){
     const delta=((mark.bearing-heading+540)%360)-180;
     const visible=Math.abs(delta)<=75;
     mark.element.style.display=visible?'block':'none';
     if(visible)mark.element.style.left=(50+delta*.6).toFixed(2)+'%';
   }
+}
+function navigationDelta(x,z,heading){
+  const towards=((Math.atan2(x-player.x,-(z-player.z))*180/Math.PI)+360)%360;
+  return ((towards-heading+540)%360)-180;
+}
+function positionNavigationMarker(element,x,z,heading,edgeClamp=false){
+  const delta=navigationDelta(x,z,heading);
+  const offscreen=Math.abs(delta)>75;
+  element.style.display=offscreen&&!edgeClamp?'none':'block';
+  if(!offscreen||edgeClamp){
+    const shown=Math.max(-73,Math.min(73,delta));
+    element.style.left=(50+shown*.6).toFixed(2)+'%';
+  }
+  element.classList.toggle('offscreen',offscreen);
+  return delta;
 }
 function updateVisorObjectiveMarker(heading){
   const marker=$('visorCompassWaypoint');
@@ -1033,9 +1050,7 @@ function updateVisorObjectiveMarker(heading){
   if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.z)){
     marker.style.display='none';return;
   }
-  const towards=((Math.atan2(target.x-player.x,-(target.z-player.z))*
-    180/Math.PI)+360)%360;
-  const delta=((towards-heading+540)%360)-180;
+  const delta=navigationDelta(target.x,target.z,heading);
   marker.style.display=Math.abs(delta)<=75?'block':'none';
   if(Math.abs(delta)<=75)marker.style.left=(50+delta*.6).toFixed(2)+'%';
 }
@@ -2438,16 +2453,14 @@ function ownedWorkbenchWeapons(){
   return MOD_WEAPON_IDS.filter(id=>
     backpack.items.some(entry=>entry.itemId==='weapon:'+id));
 }
+let selectedBenchWeaponId='';
 function refreshWorkbenchUI(){
   const ownedIds=ownedWorkbenchWeapons();
-  const picker=$('benchWeapon'),list=$('benchWeaponList');
-  const preferred=picker.value;
-  picker.replaceChildren();list.replaceChildren();
+  const list=$('benchWeaponList');
+  const preferred=selectedBenchWeaponId;
+  list.replaceChildren();
   for(const id of ownedIds){
     const spec=getWeaponSpec(id),quantity=countItem(backpack,'weapon:'+id);
-    const option=document.createElement('option');
-    option.value=id;option.textContent=spec.name;
-    picker.append(option);
     const button=document.createElement('button');button.type='button';
     button.className='bench-owned-weapon'+(id===preferred?' selected':'');
     button.setAttribute('aria-pressed',String(id===preferred));
@@ -2456,15 +2469,15 @@ function refreshWorkbenchUI(){
       (backpack.equipment.weapon===id?' · EQUIPPED':'')+' · MODIFY';
     button.append(name,meta);
     button.addEventListener('click',()=>{
-      picker.value=id;benchActiveSlot='receiver';refreshWorkbenchUI();
+      selectedBenchWeaponId=id;benchActiveSlot='receiver';refreshWorkbenchUI();
     });
     list.append(button);
   }
   let weaponId=preferred;
   if(!ownedIds.includes(weaponId))weaponId=ownedIds[0]||'';
-  picker.value=weaponId;
-  for(const button of list.children){
-    const id=ownedIds[[...list.children].indexOf(button)];
+  selectedBenchWeaponId=weaponId;
+  for(const [index,button] of [...list.children].entries()){
+    const id=ownedIds[index];
     button.classList.toggle('selected',id===weaponId);
     button.setAttribute('aria-pressed',String(id===weaponId));
   }
@@ -2578,10 +2591,8 @@ function beginWorkbench(){
   workbenchOpen=true;
   const ownedIds=ownedWorkbenchWeapons();
   // Preserve the equipped gun when possible, otherwise show the first owned gun.
-  $('benchWeapon').replaceChildren();
-  const opening=document.createElement('option');
-  opening.value=ownedIds.includes(activeWeaponId)?activeWeaponId:ownedIds[0]||'';
-  $('benchWeapon').append(opening);
+  selectedBenchWeaponId=ownedIds.includes(activeWeaponId)?
+    activeWeaponId:ownedIds[0]||'';
   refreshWorkbenchUI();
   workbenchFeedback(ownedIds.length?
     'SELECT AN OWNED WEAPON · MATERIALS ARE SPENT ONLY WHEN CRAFTED':
@@ -2594,7 +2605,6 @@ function closeWorkbench(){
   if(workbenchFromField){workbenchFromField=false;controls.lock();}
   else $('menu').classList.remove('hidden');
 }
-$('benchWeapon').addEventListener('change',()=>{benchActiveSlot='receiver';refreshWorkbenchUI();});
 $('workbenchOpen').addEventListener('click',beginWorkbench);
 $('benchClose').addEventListener('click',closeWorkbench);
 
@@ -4294,14 +4304,68 @@ if(new URLSearchParams(location.search).get('station')==='9')resetPlayer(8);
 
 // W20.55 — actual-position field map; exploration is saved separately from gear.
 let mapOpen=false,mapFromField=false;
+const mapPoints=[
+  ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
+  ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'})),
+  ...VENDORS.map(v=>({id:v.id,label:v.title,x:v.x,z:v.z,type:'contact'}))
+];
 const fieldMap=createFieldMap({
   canvas:$('fieldMapCanvas'),
-  points:[
-    ...stations.map((s,i)=>({id:'station-'+(i+1),label:s.tag,x:s.x,z:s.z,type:'station'})),
-    ...CAMPAIGN_NODES.map(n=>({id:n.id,label:n.name,x:n.x,z:n.z,type:'contact'})),
-    ...VENDORS.map(v=>({id:v.id,label:v.title,x:v.x,z:v.z,type:'contact'}))
-  ]
+  points:mapPoints
 });
+const navigationLandmarks=mapPoints.map(point=>{
+  const markers=['fieldCompassLandmarks','visorCompassLandmarks'].map(containerId=>{
+    const marker=document.createElement('span');
+    marker.className='nav-location '+point.type;
+    marker.style.display='none';
+    const symbol=document.createElement('b');symbol.textContent=point.type==='station'?'●':'◆';
+    const label=document.createElement('small');
+    label.textContent=point.label.toUpperCase().slice(0,14);
+    marker.append(symbol,label);
+    $(containerId).append(marker);
+    return marker;
+  });
+  return {point,markers};
+});
+function updateNavigationHUD(heading){
+  const {waypoint,distance}=fieldMap.summary();
+  for(const [id,readout] of [
+    ['fieldCustomWaypoint','fieldWaypointReadout'],
+    ['visorCustomWaypoint','visorWaypointReadout']
+  ]){
+    const marker=$(id),label=$(readout);
+    if(!waypoint){
+      marker.style.display='none';label.textContent='';continue;
+    }
+    const delta=positionNavigationMarker(marker,waypoint.x,waypoint.z,heading,true);
+    const direction=distance<=2?'ARRIVED':Math.abs(delta)<=9?'AHEAD':
+      delta<0?'TURN LEFT':'TURN RIGHT';
+    marker.setAttribute('aria-label','Custom waypoint '+distance+' meters away, '+direction.toLowerCase());
+    label.textContent='◆ WAYPOINT · '+distance+' m · '+direction;
+  }
+  const visible=navigationLandmarks.map(entry=>{
+    const {point}=entry;
+    return {...entry,distance:Math.hypot(point.x-player.x,point.z-player.z),
+      delta:navigationDelta(point.x,point.z,heading)};
+  }).filter(entry=>fieldMap.isDiscovered(entry.point.x,entry.point.z)&&
+    entry.distance>3&&entry.distance<65&&Math.abs(entry.delta)<=70)
+    .sort((a,b)=>a.distance-b.distance).slice(0,4);
+  const shown=new Set(visible.map(entry=>entry.point.id));
+  for(const {point,markers} of navigationLandmarks){
+    if(!shown.has(point.id)){
+      for(const marker of markers)marker.style.display='none';
+      continue;
+    }
+    const delta=navigationDelta(point.x,point.z,heading);
+    const distance=Math.round(Math.hypot(point.x-player.x,point.z-player.z));
+    for(const marker of markers){
+      marker.style.display='block';
+      marker.style.left=(50+delta*.6).toFixed(2)+'%';
+      marker.title=point.label+' · '+distance+' m';
+      marker.setAttribute('aria-label',point.label+' · '+distance+' meters');
+    }
+  }
+}
 fieldMap.onUpdate=summary=>{
   $('fieldMapCoordinates').textContent='X '+summary.x.toFixed(1)+' · Z '+summary.z.toFixed(1);
   $('fieldMapDiscovery').textContent=Math.round(summary.discovered/summary.total*100)+'% SURVEYED';
@@ -5244,6 +5308,7 @@ function updateHUD(info){
   $('fieldHeading').textContent=cardinal+' · '+Math.round(bearing).toString().padStart(3,'0')+'°';
   updateVisorCompass(bearing);
   updateVisorObjectiveMarker(bearing);
+  updateNavigationHUD(bearing);
   const threat=inAIArena();
   $('fieldThreat').textContent=threat?(WEAPON_REBUILD_MODE?'NPC MOVEMENT TEST':'LIVE FIRE'):'EXPLORATION';
   $('fieldThreat').classList.toggle('danger',threat);
