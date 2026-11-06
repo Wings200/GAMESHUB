@@ -1,5 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 
+// Keep the retired BLACKOUT Durable Object namespace registered without
+// restoring its endpoints or binding. This preserves existing stored data.
+// Removal requires an explicit, potentially destructive namespace retirement.
+export class BlackoutRoom extends DurableObject {}
+
 import { UPGRADE_CATALOG, upgradePrice, sanitizeGarage, sanitizeUpgrades, stockUpgrades } from "./games/redline/upgrade-parts.js";
 import { REDLINE_CAR_IDS, STARTER_CAR_IDS, carPrice, garageCarOwnership, ownsRedlineCar }
   from "./games/redline/car-catalog.js";

@@ -30,6 +30,10 @@
     "RedlineStats": {
       "type": "durable-object",
       "storage": "sqlite"
+    },
+    "BlackoutRoom": {
+      "type": "durable-object",
+      "storage": "sqlite"
     }
   }
 }
