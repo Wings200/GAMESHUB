@@ -1,4 +1,4 @@
-// W20.79: Haven Junction workshop construction and settlement life. Pure rules;
+// W20.80: Haven Junction workshop construction, physical benches and scrap.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
@@ -16,7 +16,8 @@ export const SETTLEMENT_CATEGORIES=Object.freeze([
   Object.freeze({id:'FOOD',name:'FOOD',hint:'Planters · growing crops'}),
   Object.freeze({id:'BEDS',name:'BEDS',hint:'Rest places for settlers'}),
   Object.freeze({id:'POWER',name:'POWER',hint:'Generators · solar panels'}),
-  Object.freeze({id:'UTILITY',name:'UTILITY',hint:'Recruitment · light · storage'})
+  Object.freeze({id:'UTILITY',name:'UTILITY',hint:'Recruitment · light · storage'}),
+  Object.freeze({id:'WORKSHOP',name:'WORKSHOPS',hint:'Weapon mods · chassis service · salvage'})
 ]);
 
 export const SETTLEMENT_BLUEPRINTS=Object.freeze([
@@ -234,8 +235,95 @@ export const SETTLEMENT_BLUEPRINTS=Object.freeze([
       part(0,2.87,-.12,.88,.57,.36,'charcoal'),
       part(0,2.88,-.33,.73,.42,.045,'glass'),
       part(0,3.19,-.12,1.05,.10,.50,'rust')
+    ])}),
+  Object.freeze({id:'weaponbench',name:'Weapon Mod Workbench',category:'WORKSHOP',
+    width:2.5,depth:1.45,cost:Object.freeze({[component('wood')]:6,
+      [component('steel')]:7,[component('gears')]:2,[component('screw')]:3}),
+    parts:Object.freeze([
+      ...[-1.03,1.03].flatMap(x=>[-.49,.49].map(z=>part(x,.53,z,.14,1.04,.14,'steel',true))),
+      part(0,1.04,0,2.45,.18,1.40,'wood',true),
+      part(0,.76,.6,2.4,.38,.15,'rust',true),
+      part(-.75,1.22,-.22,.57,.17,.42,'steel'),
+      part(-.98,1.38,-.19,.12,.29,.42,'rust'),
+      part(-.53,1.36,-.19,.13,.28,.41,'steel'),
+      part(.55,1.22,-.15,.88,.19,.34,'charcoal'),
+      ...[-.55,-.30,-.05,.20].map(z=>part(.52,1.35,z,.06,.12,.035,'copper')),
+      part(.83,1.29,-.33,.13,.30,.13,'steel',false,'cylinder')
+    ])}),
+  Object.freeze({id:'powerstation',name:'Power Armor Service Rack',category:'WORKSHOP',
+    width:3.4,depth:3.0,cost:Object.freeze({[component('steel')]:14,
+      [component('gears')]:5,[component('copper')]:4,[component('concrete')]:4}),
+    parts:Object.freeze([
+      ...[-1.48,1.48].map(x=>part(x,1.76,.93,.24,3.49,.26,'rust',true)),
+      ...[-1.48,1.48].map(x=>part(x,.17,-1.10,.24,.34,.28,'concrete',true)),
+      part(0,3.53,.92,3.31,.26,.33,'steel',true),
+      part(0,3.34,.93,1.05,.10,.16,'copper'),
+      part(0,2.98,.92,.13,.65,.13,'steel'),
+      part(0,2.62,.92,.85,.35,.48,'charcoal'),
+      part(0,2.51,.64,.66,.19,.12,'glass'),
+      ...[-1.39,1.39].map(x=>part(x,.75,-.80,.22,1.48,.15,'steel',true)),
+      ...[-.91,-.45,0,.45,.91].map(z=>part(-1.61,1.18,z,.09,.04,.21,'trim'))
+    ])}),
+  Object.freeze({id:'scrapbench',name:'Salvage Sorting Table',category:'WORKSHOP',
+    width:2.25,depth:1.58,cost:Object.freeze({[component('wood')]:5,
+      [component('steel')]:5,[component('screw')]:2}),
+    parts:Object.freeze([
+      ...[-.95,.95].flatMap(x=>[-.58,.58].map(z=>part(x,.49,z,.14,.96,.14,'rust',true))),
+      part(0,.97,0,2.22,.17,1.55,'steel',true),
+      part(-.62,1.16,-.25,.70,.25,.63,'wood'),
+      part(.53,1.19,.19,.64,.34,.49,'charcoal'),
+      ...[-.38,.01,.40].map(x=>part(x,1.15,-.68,.19,.30,.23,'rust')),
+      part(.87,1.16,-.19,.13,.33,.48,'copper'),
+      part(0,.36,.63,1.87,.52,.11,'wood')
     ])})
 ]);
+const junk=(id,name,x,z,materials,parts)=>Object.freeze({id,name,x,z,
+  materials:Object.freeze(materials),parts:Object.freeze(parts)});
+// These are actual existing objects in Haven, not free resource crates.
+// IDs are stable across game versions so each object can be scrapped once.
+export const HAVEN_JUNK_SITES=Object.freeze([
+  junk('depot-barrel','CRUSHED FUEL DRUM',-46,-29,
+    {[component('steel')]:3,[component('oil')]:1},[
+      part(0,.44,0,.76,.87,.76,'rust',true,'cylinder'),
+      part(0,.77,0,.82,.1,.82,'steel',false,'cylinder'),
+      part(0,.17,0,.82,.10,.82,'steel',false,'cylinder')]),
+  junk('depot-pallet','ROTTEN WOOD PALLET',-35,-32,
+    {[component('wood')]:5,[component('screw')]:1},[
+      ...[-.77,0,.77].map(x=>part(x,.16,0,.43,.15,1.63,'wood',true)),
+      ...[-.60,.60].map(z=>part(0,.06,z,2.15,.12,.16,'trim'))]),
+  junk('broken-pipe','SEVERED PIPE SECTION',-51,-13,
+    {[component('steel')]:3,[component('copper')]:2},[
+      part(0,.34,0,1.89,.48,.48,'pipe',true,'cylinderX'),
+      part(-.77,.35,0,.17,.61,.62,'rust'),
+      part(.70,.35,0,.17,.61,.62,'rust')]),
+  junk('old-tires','PILE OF WORN TIRES',-53,-22,
+    {[component('rubber')]:5,[component('steel')]:1},[
+      ...[.20,.55,.90].map(y=>part(0,y,0,1.1,.27,1.1,'charcoal',true,'torus')),
+      part(0,.93,0,.72,.08,.72,'rust',false,'cylinder')]),
+  junk('failed-fan','BROKEN VENTILATION FAN',-26,-30,
+    {[component('steel')]:4,[component('gears')]:2,[component('copper')]:1},[
+      part(0,.25,0,1.48,.49,1.24,'rust',true),
+      part(0,.53,0,.95,.17,.95,'steel',false,'cylinder'),
+      ...[-.34,.34].map(x=>part(x,.59,0,.25,.05,1.02,'charcoal')),
+      ...[-.35,.35].map(z=>part(0,.60,z,.85,.06,.16,'trim'))]),
+  junk('radio-husk','SHATTERED RADIO CONSOLE',-29,-11,
+    {[component('circuitry')]:1,[component('copper')]:2,[component('steel')]:2},[
+      part(0,.34,0,1.06,.64,.79,'charcoal',true),
+      part(-.19,.65,-.39,.54,.26,.07,'glass'),
+      ...[.17,.40].map(x=>part(x,.41,-.42,.1,.11,.09,'copper'))]),
+  junk('scrap-crate','SPLINTERED CARGO CRATE',-31,-28,
+    {[component('wood')]:4,[component('steel')]:2},[
+      part(0,.38,0,1.26,.71,1.26,'wood',true),
+      ...[-.56,.56].map(x=>part(x,.40,-.65,.10,.69,.11,'rust')),
+      part(0,.61,.57,1.2,.12,.17,'trim')]),
+  junk('burnt-motor','BURNT ELECTRIC MOTOR',-44,-33,
+    {[component('steel')]:4,[component('copper')]:3,[component('gears')]:2},[
+      part(0,.24,0,1.35,.45,1.06,'rust',true),
+      part(0,.61,0,.82,.56,.82,'steel',true,'cylinder'),
+      ...[-.32,-.16,0,.16,.32].map(x=>part(x,.69,-.46,.09,.38,.1,'copper'))])
+]);
+export const HAVEN_JUNK_BY_ID=Object.freeze(Object.fromEntries(
+  HAVEN_JUNK_SITES.map(site=>[site.id,site])));
 export const SETTLEMENT_BY_ID=Object.freeze(Object.fromEntries(
   SETTLEMENT_BLUEPRINTS.map(plan=>[plan.id,plan])));
 const finite=Number.isFinite;
@@ -271,8 +359,8 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:2,nextId:1,snap:true,structures:[],population:0,
-    happiness:50,recruitProgress:0};
+  return {version:3,nextId:1,snap:true,structures:[],population:0,
+    happiness:50,recruitProgress:0,scrappedJunk:[]};
 }
 export function safeSettlementBuildSnapshot(raw){
   const state=initialSettlementBuildState();
@@ -284,6 +372,9 @@ export function safeSettlementBuildSnapshot(raw){
     state.happiness=Math.min(100,Math.max(0,raw.happiness));
   if(finite(raw.recruitProgress))
     state.recruitProgress=Math.min(RECRUITMENT_INTERVAL,Math.max(0,raw.recruitProgress));
+  if(Array.isArray(raw.scrappedJunk))
+    state.scrappedJunk=[...new Set(raw.scrappedJunk.filter(id=>
+      typeof id==='string'&&HAVEN_JUNK_BY_ID[id]))].slice(0,HAVEN_JUNK_SITES.length);
   if(!Array.isArray(raw.structures))return state;
   const seen=new Set();
   for(const item of raw.structures.slice(0,BUILD_LIMIT)){
@@ -301,6 +392,22 @@ export function safeSettlementBuildSnapshot(raw){
 }
 export function settlementCategoryBlueprints(category){
   return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category);
+}
+export function scrapHavenJunk(state,backpack,id){
+  const site=HAVEN_JUNK_BY_ID[id];
+  if(!site)return {ok:false,reason:'THIS OBJECT CANNOT BE SCRAPPED'};
+  state.scrappedJunk??=[];
+  if(state.scrappedJunk.includes(id))
+    return {ok:false,reason:'THIS JUNK WAS ALREADY SALVAGED'};
+  // Materials are inventory components, not spawned resources or caps.
+  // Reject a full material stack rather than silently destroy its yield.
+  for(const [itemId,count] of Object.entries(site.materials))
+    if(countItem(backpack,itemId)>999999-count)
+      return {ok:false,reason:'MATERIAL STORAGE FULL'};
+  for(const [itemId,count] of Object.entries(site.materials))
+    addItem(backpack,itemId,count);
+  state.scrappedJunk.push(id);
+  return {ok:true,site,materials:site.materials};
 }
 export function calculateSettlementStats(state){
   let beds=0,food=0,water=0,defense=0,power=0,powerDraw=0,beacons=0;

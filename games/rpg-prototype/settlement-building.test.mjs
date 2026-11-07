@@ -7,7 +7,8 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   undoLastSettlementStructure,settlementCategoryBlueprints,
-  calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
+  calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL,
+  HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk}
   from './settlement-building.mjs';
 
 const placement=(type,x=-40,z=-26,rotation=0)=>({type,x,z,rotation});
@@ -19,8 +20,8 @@ const fundedPack=()=>{
 };
 
 test('Haven has a browsable settlement catalog with nonzero genuine component costs',()=>{
-  assert.ok(SETTLEMENT_BLUEPRINTS.length>=20);
-  assert.equal(SETTLEMENT_CATEGORIES.length,7);
+  assert.ok(SETTLEMENT_BLUEPRINTS.length>=25);
+  assert.equal(SETTLEMENT_CATEGORIES.length,8);
   assert.ok(HAVEN_BUILD_AREA.minX< -30&&HAVEN_BUILD_AREA.maxZ> -20);
   const ids=new Set();
   for(const plan of SETTLEMENT_BLUEPRINTS){
@@ -35,6 +36,61 @@ test('Haven has a browsable settlement catalog with nonzero genuine component co
     assert.ok(plans.length>=2&&plans.length<=7,
       `${category.id} must fit the 1–7 selection controls`);
   }
+  assert.deepEqual(settlementCategoryBlueprints('WORKSHOP').map(plan=>plan.id),
+    ['weaponbench','powerstation','scrapbench']);
+});
+
+test('all real Haven debris sites are unique, inside the workshop and yield materials',()=>{
+  assert.equal(HAVEN_JUNK_SITES.length,8);
+  assert.equal(new Set(HAVEN_JUNK_SITES.map(site=>site.id)).size,HAVEN_JUNK_SITES.length);
+  for(const site of HAVEN_JUNK_SITES){
+    assert.equal(HAVEN_JUNK_BY_ID[site.id],site);
+    assert.ok(site.x>=HAVEN_BUILD_AREA.minX&&site.x<=HAVEN_BUILD_AREA.maxX);
+    assert.ok(site.z>=HAVEN_BUILD_AREA.minZ&&site.z<=HAVEN_BUILD_AREA.maxZ);
+    assert.ok(site.parts.some(piece=>piece.solid));
+    assert.ok(Object.entries(site.materials).length>0);
+    for(const [id,quantity] of Object.entries(site.materials)){
+      assert.ok(id.startsWith('material:'));
+      assert.ok(Number.isInteger(quantity)&&quantity>0);
+    }
+  }
+});
+
+test('scavenging world junk awards its precise yield once and survives reload',()=>{
+  const backpack=createBackpack(),state=initialSettlementBuildState();
+  const site=HAVEN_JUNK_SITES[0];
+  const before=Object.fromEntries(Object.keys(site.materials).map(id=>
+    [id,countItem(backpack,id)]));
+  const result=scrapHavenJunk(state,backpack,site.id);
+  assert.equal(result.ok,true);
+  assert.deepEqual(result.materials,site.materials);
+  assert.deepEqual(state.scrappedJunk,[site.id]);
+  for(const [id,n] of Object.entries(site.materials))
+    assert.equal(countItem(backpack,id),before[id]+n);
+  const duplicate=scrapHavenJunk(state,backpack,site.id);
+  assert.equal(duplicate.ok,false);
+  assert.match(duplicate.reason,/ALREADY/);
+  const invalid=scrapHavenJunk(state,backpack,'outside-the-workshop');
+  assert.equal(invalid.ok,false);
+  for(const [id,n] of Object.entries(site.materials))
+    assert.equal(countItem(backpack,id),before[id]+n,
+      'duplicate interactions must not grant a second copy');
+  const restored=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
+  assert.deepEqual(restored.scrappedJunk,[site.id]);
+  assert.equal(scrapHavenJunk(restored,backpack,site.id).ok,false);
+  assert.deepEqual(safeSettlementBuildSnapshot({version:2}).scrappedJunk,[],
+    'older saves without junk records remain loadable');
+  assert.deepEqual(safeSettlementBuildSnapshot({scrappedJunk:[site.id,site.id,
+    'injected-scrap-id']}).scrappedJunk,[site.id]);
+});
+
+test('a full component stack cannot consume a world object without payment',()=>{
+  const state=initialSettlementBuildState(),backpack=createBackpack();
+  const site=HAVEN_JUNK_SITES[0];
+  const materialId=Object.keys(site.materials)[0];
+  backpack.materials[materialId]=999999;
+  assert.match(scrapHavenJunk(state,backpack,site.id).reason,/STORAGE FULL/);
+  assert.deepEqual(state.scrappedJunk,[]);
 });
 
 test('free placement is precise; grid snap is opt-in and rotation turns colliders',()=>{
@@ -149,6 +205,14 @@ test('field build mode integrates persistent world collisions and uses no free g
     'settlementDefense','settlementBeds','settlementPower','settlementRecruitment'])
     assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(main,/advanceSettlement\(settlementBuildState,dt\)/);
+  assert.match(main,/for\(const site of HAVEN_JUNK_SITES\)registerHavenJunk\(site\)/);
+  assert.match(main,/unregisterHavenJunk\(aimed\.id\)/);
+  assert.match(main,/scrapHavenJunk\(settlementBuildState,backpack,aimed\.id\)/);
+  assert.match(main,/function nearestSettlementWorkshop\(\)/);
+  assert.match(main,/interactSettlementWorkshop\(nearestSettlementWorkshop\(\)\)/);
+  assert.match(main,/frameDistance>4/);
+  assert.match(html,/id="settlementScrapCount"/);
+  assert.match(html,/W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE/);
 });
 
 test('population, food, water, beds, power draw and defense come from built objects',()=>{

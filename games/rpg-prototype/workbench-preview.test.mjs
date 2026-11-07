@@ -42,12 +42,15 @@ test('workbench has a single selected-part install button after cost and stats r
   assert.match(main,/PREVIEWING .*NO MATERIALS SPENT/);
 });
 
-test('weapons can only be configured at the physical Haven settlement workbench',()=>{
+test('weapons can only be configured at a physical Haven settlement workbench',()=>{
   assert.match(main,/const opticBench=\{x:-33,z:-21\}/);
   assert.match(main,/textSign\('HAVEN WEAPON BENCH · E'/);
   assert.match(main,/function benchWithinReach\(\)/);
   assert.match(main,/function beginWorkbench\(\)\{\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*if\(!controls\.isLocked\|\|!benchWithinReach\(\)\)/);
-  assert.match(main,/else if\(benchWithinReach\(\)\)beginWorkbench\(\)/);
+  assert.match(main,/settlementBuildState\.structures\.some\(s=>s\.type==='weaponbench'/);
+  assert.match(main,/function interactSettlementWorkshop\(workshop\)/);
+  assert.match(main,/if\(workshop\.type==='weaponbench'\)\{\s*beginWorkbench\(\)/);
+  assert.match(main,/interactSettlementWorkshop\(nearestSettlementWorkshop\(\)\)/);
   assert.doesNotMatch(main,/e\.code==='KeyU'/);
   assert.doesNotMatch(main,/\$\('workbenchOpen'\)\.addEventListener/);
   assert.doesNotMatch(html,/id="workbenchOpen"/);

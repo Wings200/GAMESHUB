@@ -8,12 +8,13 @@ import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
 import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
+  HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.79';
+  from '../settlement-building.mjs?v=W20.80';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -1005,7 +1006,7 @@ function finishPowerHold(){
     // Long press = enter/exit. Never lose the long-press exit gesture.
     const bag=nearestLootBag();
     if(bag){beginLootOverlay(bag.id);return true;}
-    if(benchWithinReach()){beginWorkbench();return true;}
+    if(interactSettlementWorkshop(nearestSettlementWorkshop()))return true;
     if(powerArmorState.occupied)showShotNotice('HOLD E TO EXIT THE FRAME');
     else if(nearPoweredSuit())openPowerArmorBay();
   }
@@ -1768,6 +1769,7 @@ try{
 let settlementBuildMode=false,settlementBuildCategory='STRUCTURE';
 let settlementBuildType=SETTLEMENT_BLUEPRINTS[0].id;
 let settlementRotation=0,settlementGhost=null,settlementPreview=null;
+let lastScrapPreview=null,lastScrapCheckAt=0;
 const builtSettlementMeshes=new Map();
 const settlementMaterials={
   wood:mat(0x7b6650,.88),steel:mat(0x525f62,.64),
@@ -1827,6 +1829,32 @@ for(const [name,surface] of [
 const settlementGhostMaterial=new THREE.MeshStandardMaterial({
   color:0x83e1b3,transparent:true,opacity:.35,depthWrite:false,
   emissive:0x285944,emissiveIntensity:.36,side:THREE.DoubleSide});
+function createSalvagePieceMesh(piece,preview=false){
+  const geometry=piece.shape==='sphere'?new THREE.SphereGeometry(.5,10,8):
+    piece.shape==='cone'?new THREE.ConeGeometry(.5,1,8):
+    piece.shape==='torus'?new THREE.TorusGeometry(.39,.115,7,14):
+    piece.shape==='cylinder'||piece.shape==='cylinderX'?
+      new THREE.CylinderGeometry(.5,.5,1,12):new THREE.BoxGeometry(1,1,1);
+  const signal=piece.material==='signal'&&!preview;
+  const mesh=new THREE.Mesh(geometry,preview?settlementGhostMaterial:signal?
+    settlementMaterials.signal.clone():settlementMaterials[piece.material]);
+  mesh.position.set(piece.x,piece.y,piece.z);
+  if(signal)mesh.userData.powerIndicator=true;
+  mesh.scale.set(piece.w,piece.h,piece.d);
+  if(piece.shape==='cylinder'&&piece.d>piece.h*1.65){
+    mesh.rotation.x=Math.PI/2;
+    mesh.scale.set(piece.w,piece.d,piece.h);
+  }else if(piece.shape==='cylinderX'){
+    mesh.rotation.z=Math.PI/2;
+    mesh.scale.set(piece.h,piece.w,piece.d);
+  }else if(piece.shape==='torus'){
+    mesh.rotation.x=Math.PI/2;
+    mesh.scale.set(piece.w,piece.d,piece.h);
+  }
+  mesh.castShadow=!preview;mesh.receiveShadow=!preview;
+  mesh.userData.impactMaterial=piece.material==='wood'?'wood':'metal';
+  return mesh;
+}
 function createSettlementVisual(placement,preview=false){
   const plan=SETTLEMENT_BY_ID[placement.type],group=new THREE.Group();
   group.name=(preview?'SettlementPreview_':'HavenBuilt_')+placement.type;
@@ -1836,23 +1864,7 @@ function createSettlementVisual(placement,preview=false){
   if(turretHead){turretHead.position.y=1.35;group.add(turretHead);
     group.userData.turretHead=turretHead;}
   for(const piece of plan.parts){
-    const geometry=piece.shape==='sphere'?new THREE.SphereGeometry(.5,10,8):
-      piece.shape==='cone'?new THREE.ConeGeometry(.5,1,8):
-      piece.shape==='cylinder'?new THREE.CylinderGeometry(.5,.5,1,12):
-      new THREE.BoxGeometry(1,1,1);
-    const signal=piece.material==='signal'&&!preview;
-    const mesh=new THREE.Mesh(geometry,
-      preview?settlementGhostMaterial:signal?
-        settlementMaterials.signal.clone():settlementMaterials[piece.material]);
-    mesh.position.set(piece.x,piece.y,piece.z);
-    if(signal)mesh.userData.powerIndicator=true;
-    mesh.scale.set(piece.w,piece.h,piece.d);
-    if(piece.shape==='cylinder'&&piece.d>piece.h*1.65){
-      mesh.rotation.x=Math.PI/2;
-      mesh.scale.set(piece.w,piece.d,piece.h);
-    }
-    mesh.castShadow=!preview;mesh.receiveShadow=!preview;
-    mesh.userData.impactMaterial=piece.material==='wood'?'wood':'metal';
+    const mesh=createSalvagePieceMesh(piece,preview);
     if(turretHead&&piece.y>=1.2){
       mesh.position.y-=1.35;turretHead.add(mesh);
     }else group.add(mesh);
@@ -1919,6 +1931,50 @@ function saveSettlementBuild(){
 }
 for(const structure of settlementBuildState.structures)
   registerSettlementStructure(structure);
+// W20.80: salvageable world debris is part of the settlement, not an
+// inexhaustible loot box. Every object has stable identity and saved removal.
+const visibleHavenJunk=new Map();
+function junkCollisionBoxes(site){
+  return site.parts.filter(p=>p.solid).map(p=>({
+    minX:site.x+p.x-p.w/2,maxX:site.x+p.x+p.w/2,
+    minZ:site.z+p.z-p.d/2,maxZ:site.z+p.z+p.d/2,
+    bottom:p.y-p.h/2,top:p.y+p.h/2
+  }));
+}
+function overlapsBuiltSettlement(box){
+  return [...builtSettlementMeshes.values()].some(record=>record.shotBoxes.some(b=>
+    box.minX<b.maxX-.03&&box.maxX>b.minX+.03&&
+    box.minZ<b.maxZ-.03&&box.maxZ>b.minZ+.03&&
+    box.bottom<b.top-.03&&box.top>b.bottom+.03));
+}
+function registerHavenJunk(site){
+  if(settlementBuildState.scrappedJunk.includes(site.id))return;
+  const shotBoxes=junkCollisionBoxes(site);
+  // Saves from W20.79 may contain player buildings in these positions.
+  // Never bury or overwrite an older construction just to add new debris.
+  if(shotBoxes.some(overlapsBuiltSettlement))return;
+  const visual=new THREE.Group();visual.position.set(site.x,0,site.z);
+  visual.name='ScrappableJunk_'+site.id;
+  visual.userData.scrapJunkId=site.id;
+  for(const piece of site.parts)visual.add(createSalvagePieceMesh(piece));
+  scene.add(visual);
+  const movementBoxes=shotBoxes.filter(b=>b.bottom<=.4&&b.top>.48);
+  for(const b of shotBoxes)enemySightObstacles.push(b);
+  for(const b of movementBoxes){bounds.push(b);enemyMovementObstacles.push(b);}
+  visibleHavenJunk.set(site.id,{visual,shotBoxes,movementBoxes});
+}
+function unregisterHavenJunk(id){
+  const record=visibleHavenJunk.get(id);
+  if(!record)return;
+  const remove=(collection,box)=>{
+    const index=collection.indexOf(box);if(index>=0)collection.splice(index,1);
+  };
+  for(const b of record.shotBoxes)remove(enemySightObstacles,b);
+  for(const b of record.movementBoxes){remove(bounds,b);remove(enemyMovementObstacles,b);}
+  record.visual.traverse(object=>{if(object.geometry)object.geometry.dispose();});
+  scene.remove(record.visual);visibleHavenJunk.delete(id);
+}
+for(const site of HAVEN_JUNK_SITES)registerHavenJunk(site);
 const enemies=new Map(),enemyHitMeshes=[];
 // Invisible mannequin collision surfaces are never on the camera render layer.
 const ENEMY_COLLISION_LAYER=29;
@@ -3109,7 +3165,46 @@ $('vendorCartClear').addEventListener('click',()=>{
 });
 $('vendorSearch').addEventListener('input',refreshVendorUI);
 $('vendorPlayerSearch').addEventListener('input',refreshVendorUI);
-function benchWithinReach(){return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8;}
+function nearestSettlementWorkshop(){
+  let nearest={type:'weaponbench',x:opticBench.x,z:opticBench.z,
+    distance:Math.hypot(player.x-opticBench.x,player.z-opticBench.z)};
+  for(const structure of settlementBuildState.structures){
+    if(!['weaponbench','powerstation','scrapbench'].includes(structure.type))continue;
+    const distance=Math.hypot(player.x-structure.x,player.z-structure.z);
+    if(distance<nearest.distance)nearest={type:structure.type,x:structure.x,
+      z:structure.z,distance};
+  }
+  return nearest.distance<3.8?nearest:null;
+}
+function benchWithinReach(){
+  return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8||
+    settlementBuildState.structures.some(s=>s.type==='weaponbench'&&
+      Math.hypot(player.x-s.x,player.z-s.z)<3.8);
+}
+function interactSettlementWorkshop(workshop){
+  if(!workshop)return false;
+  if(workshop.type==='weaponbench'){
+    beginWorkbench();return true;
+  }
+  if(workshop.type==='scrapbench'){
+    toggleSettlementBuildMode(true);
+    showShotNotice('SALVAGE WORKBENCH · AIM AT WORLD JUNK · PRESS X TO SCRAP');
+    return true;
+  }
+  if(workshop.type==='powerstation'){
+    // The rack is physical, but repairing armor still requires a REAL nearby
+    // chassis. A rack cannot remotely service frames elsewhere on the map.
+    selectNearbyPowerFrame();
+    const frameDistance=Math.hypot(poweredSuit.root.position.x-workshop.x,
+      poweredSuit.root.position.z-workshop.z);
+    if(!nearPoweredSuit()||frameDistance>4||powerArmorState.occupied){
+      showShotNotice('PARK A POWER ARMOR FRAME BESIDE THIS SERVICE RACK');
+      return true;
+    }
+    openPowerArmorBay();return true;
+  }
+  return false;
+}
 let benchActiveSlot='receiver';
 function workbenchFeedback(message){
   $('benchFeedback').textContent=message;
@@ -5153,6 +5248,7 @@ function refreshSettlementBuildHud(){
     row.append(name,trait,cost);list.append(row);
   }
   $('settlementBuiltCount').textContent=settlementBuildState.structures.length+' BUILT';
+  $('settlementScrapCount').textContent=visibleHavenJunk.size+' SCRAPPABLE';
   $('settlementSnapStatus').textContent=settlementBuildState.snap?'GRID SNAP ON':'FREE PLACEMENT';
   refreshSettlementStats();
 }
@@ -5160,6 +5256,7 @@ function clearSettlementGhost(){
   if(!settlementGhost)return;
   settlementGhost.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();});
   scene.remove(settlementGhost);settlementGhost=null;
+  lastScrapPreview=null;
 }
 function changeSettlementBlueprint(index){
   const plans=settlementCategoryBlueprints(settlementBuildCategory);
@@ -5225,7 +5322,18 @@ function updateSettlementBuildPreview(){
   $('settlementBuildFeedback').textContent=!valid.ok?valid.reason:
     missing.length?'NEED '+missing.map(m=>getItem(m.id).name+' '+
       (m.needed-m.owned)).join(' + '):'CLEAR · LEFT CLICK TO BUILD';
-  $('settlementBuildFeedback').classList.toggle('invalid',!placeable);
+  if(performance.now()-lastScrapCheckAt>130){
+    lastScrapCheckAt=performance.now();
+    lastScrapPreview=aimedSettlementTarget();
+  }
+  const aimed=lastScrapPreview;
+  if(aimed?.kind==='junk'){
+    const site=HAVEN_JUNK_BY_ID[aimed.id];
+    $('settlementBuildFeedback').textContent='X TO SCRAP · '+site.name+' · '+
+      Object.entries(site.materials).map(([id,n])=>
+        '+'+n+' '+getItem(id).name.toUpperCase()).join(' / ');
+  }
+  $('settlementBuildFeedback').classList.toggle('invalid',!placeable&&aimed?.kind!=='junk');
 }
 function placeSettlementPreview(){
   updateSettlementBuildPreview();
@@ -5250,15 +5358,36 @@ function undoSettlementBuild(){
 }
 const settlementPickRay=new THREE.Raycaster();
 const settlementPickCenter=new THREE.Vector2(0,0);
-function storeAimedSettlementStructure(){
+function aimedSettlementTarget(){
   settlementPickRay.setFromCamera(settlementPickCenter,camera);
   settlementPickRay.far=7;
   const targeted=settlementPickRay.intersectObjects(
-    [...builtSettlementMeshes.values()].map(b=>b.visual),true)[0];
-  if(!targeted){showShotNotice('AIM AT A BUILT PIECE TO STORE IT');return;}
+    [...builtSettlementMeshes.values(),...visibleHavenJunk.values()].map(b=>b.visual),true)[0];
+  if(!targeted)return null;
   let root=targeted.object;
-  while(root&&!root.userData.settlementStructureId)root=root.parent;
-  const id=root?.userData.settlementStructureId;
+  while(root&&!root.userData.settlementStructureId&&!root.userData.scrapJunkId)
+    root=root.parent;
+  if(root?.userData.scrapJunkId)
+    return {kind:'junk',id:root.userData.scrapJunkId};
+  if(root?.userData.settlementStructureId)
+    return {kind:'built',id:root.userData.settlementStructureId};
+  return null;
+}
+function storeAimedSettlementStructure(){
+  const aimed=aimedSettlementTarget();
+  if(!aimed){showShotNotice('AIM AT A BUILT PIECE OR SCRAPPABLE JUNK');return;}
+  if(aimed.kind==='junk'){
+    const result=scrapHavenJunk(settlementBuildState,backpack,aimed.id);
+    if(!result.ok){showShotNotice(result.reason);return;}
+    unregisterHavenJunk(aimed.id);
+    saveSettlementBuild();saveBackpack();refreshInventoryUI();
+    refreshSettlementBuildHud();
+    showShotNotice('SALVAGED · '+result.site.name+' · '+
+      Object.entries(result.materials).map(([id,n])=>
+        '+'+n+' '+getItem(id).name.toUpperCase()).join(' · '));
+    return;
+  }
+  const id=aimed.id;
   const result=storeSettlementStructure(settlementBuildState,backpack,id);
   if(!result.ok){showShotNotice(result.reason);return;}
   unregisterSettlementStructure(result.structure.id);
@@ -6534,8 +6663,8 @@ window.addEventListener('keydown',e=>{
     }
     const bag=nearestLootBag();
     if(bag)beginLootOverlay(bag.id);
-    else if(benchWithinReach())beginWorkbench();
-    else showShotNotice('NO INTERACTION WITHIN REACH');
+    else if(!interactSettlementWorkshop(nearestSettlementWorkshop()))
+      showShotNotice('NO INTERACTION WITHIN REACH');
     return;
   }
   if(e.code==='BracketLeft'||e.code==='BracketRight'){
@@ -7126,8 +7255,8 @@ function frame(){
   const merchant=nearestVendor();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
-  const benchInReach=benchWithinReach();
-  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||benchInReach;
+  const settlementWorkshop=nearestSettlementWorkshop();
+  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||!!settlementWorkshop;
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||weaponsCrateOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
@@ -7153,7 +7282,10 @@ function frame(){
     }
   }else if(nearby)$('lootPrompt').textContent='E · SEARCH '+
     nearby.source.toUpperCase()+' · '+nearby.items.length+' ITEM TYPES';
-  else if(benchInReach)$('lootPrompt').textContent='E · MODIFY GUN · WEAPON WORKBENCH';
+  else if(settlementWorkshop)$('lootPrompt').textContent=
+    settlementWorkshop.type==='weaponbench'?'E · MODIFY GUN · WEAPON WORKBENCH':
+    settlementWorkshop.type==='powerstation'?'E · SERVICE PARKED POWER ARMOR':
+      'E · OPEN SCRAP MODE · SALVAGE SORTING TABLE';
   // Cosmetic player body and the inspection camera are separate from the FPS
   // movement, hitboxes, weapon ADS and authoritative hitscan camera.
   const playerGround=groundHeight(player.x,player.z);
