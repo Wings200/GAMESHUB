@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createBackpack,addItem,countItem} from './inventory.mjs';
-import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,
+import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
-  undoLastSettlementStructure}
+  undoLastSettlementStructure,settlementCategoryBlueprints,
+  calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
   from './settlement-building.mjs';
 
 const placement=(type,x=-40,z=-26,rotation=0)=>({type,x,z,rotation});
@@ -17,13 +18,22 @@ const fundedPack=()=>{
   return pack;
 };
 
-test('Haven has seven authored blueprints with nonzero genuine component costs',()=>{
-  assert.equal(SETTLEMENT_BLUEPRINTS.length,7);
+test('Haven has a browsable settlement catalog with nonzero genuine component costs',()=>{
+  assert.ok(SETTLEMENT_BLUEPRINTS.length>=20);
+  assert.equal(SETTLEMENT_CATEGORIES.length,7);
   assert.ok(HAVEN_BUILD_AREA.minX< -30&&HAVEN_BUILD_AREA.maxZ> -20);
+  const ids=new Set();
   for(const plan of SETTLEMENT_BLUEPRINTS){
+    assert.ok(!ids.has(plan.id));ids.add(plan.id);
+    assert.ok(SETTLEMENT_CATEGORIES.some(category=>category.id===plan.category));
     assert.ok(plan.parts.length>0&&plan.width>0&&plan.depth>0);
     assert.ok(Object.values(plan.cost).every(n=>Number.isInteger(n)&&n>0));
     assert.ok(Object.keys(plan.cost).every(key=>key.startsWith('material:')));
+  }
+  for(const category of SETTLEMENT_CATEGORIES){
+    const plans=settlementCategoryBlueprints(category.id);
+    assert.ok(plans.length>=2&&plans.length<=7,
+      `${category.id} must fit the 1–7 selection controls`);
   }
 });
 
@@ -127,4 +137,64 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/saveSettlementBuild\(\);saveBackpack\(\)/);
   assert.match(html,/id="settlementBuildHud"/);
   assert.match(html,/W20\.78 · HAVEN JUNCTION WORKSHOP BUILDING/);
+  assert.match(html,/id="settlementStart"/);
+  assert.match(html,/id="settlementHappiness"/);
+  assert.match(html,/id="settlementBuildCategories"/);
+  assert.match(main,/!settlementBuildMode&&!thirdPersonActive/);
+  assert.match(main,/ownedActiveGun=playerGunEnabled\(\)&&!settlementBuildMode/);
+  assert.match(main,/document\.body\.classList\.toggle\('settlement-building',next\)/);
+  assert.match(main,/settlementTestRequested=true/);
+  assert.match(main,/cycleSettlementCategory\(e\.shiftKey\?-1:1\)/);
+  for(const id of ['settlementPopulation','settlementFood','settlementWater',
+    'settlementDefense','settlementBeds','settlementPower','settlementRecruitment'])
+    assert.match(html,new RegExp('id="'+id+'"'));
+  assert.match(main,/advanceSettlement\(settlementBuildState,dt\)/);
+});
+
+test('population, food, water, beds, power draw and defense come from built objects',()=>{
+  const state=initialSettlementBuildState();
+  state.structures=['bed','bunk','corn','waterpump','generator','beacon',
+    'turret','barricade'].map((type,id)=>({type,id:id+1,x:-40,z:-20,rotation:0}));
+  const stats=calculateSettlementStats(state);
+  assert.equal(stats.population,0);
+  assert.equal(stats.beds,3);
+  assert.equal(stats.food,4);
+  assert.equal(stats.water,3);
+  assert.equal(stats.power,8);
+  assert.equal(stats.powerDraw,4);
+  assert.equal(stats.defense,9);
+  assert.equal(stats.beacons,1);
+  assert.equal(stats.recruiting,true);
+});
+
+test('beacon recruitment is timed and requires power, spare beds, food, water',()=>{
+  const state=initialSettlementBuildState();
+  state.structures=['beacon','bed','garden','waterpump'].map((type,id)=>
+    ({type,id:id+1,x:-40,z:-20,rotation:0}));
+  assert.equal(calculateSettlementStats(state).recruiting,false);
+  for(let i=0;i<20;i++)advanceSettlement(state,4);
+  assert.equal(state.population,0,'an unpowered beacon cannot recruit');
+  state.structures.push({id:5,type:'generator',x:-38,z:-20,rotation:0});
+  let arrivals=0;
+  for(let i=0;i<Math.ceil(RECRUITMENT_INTERVAL/4)+1;i++)
+    arrivals+=advanceSettlement(state,4).recruited;
+  assert.equal(arrivals,1);assert.equal(state.population,1);
+  assert.equal(calculateSettlementStats(state).recruiting,false,
+    'a second settler needs an additional bed');
+  const snapshot=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
+  assert.equal(snapshot.population,1);
+  assert.ok(snapshot.happiness>=0&&snapshot.happiness<=100);
+});
+
+test('unpowered purifiers and turrets stop contributing their stats',()=>{
+  const state=initialSettlementBuildState();
+  state.structures=['purifier','turret','beacon'].map((type,id)=>
+    ({type,id:id+1,x:-40,z:-20,rotation:0}));
+  const initial=calculateSettlementStats(state);
+  assert.equal(initial.water,0);assert.equal(initial.defense,0);
+  assert.equal(initial.powered,false);
+  state.structures.push({id:4,type:'generator',x:-38,z:-20,rotation:0});
+  const restored=calculateSettlementStats(state);
+  assert.equal(restored.water,8);assert.equal(restored.defense,8);
+  assert.equal(restored.powered,true);
 });

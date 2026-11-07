@@ -1,12 +1,23 @@
-// W20.78: Haven Junction workshop construction. Pure rules and saved data;
+// W20.79: Haven Junction workshop construction and settlement life. Pure rules;
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
 export const HAVEN_BUILD_AREA=Object.freeze({minX:-55,maxX:-20,minZ:-35,maxZ:-7});
 export const BUILD_LIMIT=120;
 const component=key=>'material:'+key;
-const part=(x,y,z,w,h,d,material,solid=false)=>
-  Object.freeze({x,y,z,w,h,d,material,solid});
+const part=(x,y,z,w,h,d,material,solid=false,shape='box')=>
+  Object.freeze({x,y,z,w,h,d,material,solid,shape});
+const yieldStats=values=>Object.freeze(values);
+
+export const SETTLEMENT_CATEGORIES=Object.freeze([
+  Object.freeze({id:'STRUCTURE',name:'STRUCTURES',hint:'Floors · walls · roofs'}),
+  Object.freeze({id:'DEFENSE',name:'DEFENSE',hint:'Barricades · turrets · guard posts'}),
+  Object.freeze({id:'WATER',name:'WATER',hint:'Pumps · purifiers'}),
+  Object.freeze({id:'FOOD',name:'FOOD',hint:'Planters · growing crops'}),
+  Object.freeze({id:'BEDS',name:'BEDS',hint:'Rest places for settlers'}),
+  Object.freeze({id:'POWER',name:'POWER',hint:'Generators · solar panels'}),
+  Object.freeze({id:'UTILITY',name:'UTILITY',hint:'Recruitment · light · storage'})
+]);
 
 export const SETTLEMENT_BLUEPRINTS=Object.freeze([
   Object.freeze({id:'foundation',name:'Timber Foundation',category:'STRUCTURE',
@@ -37,8 +48,9 @@ export const SETTLEMENT_BLUEPRINTS=Object.freeze([
       part(0,2.81,0,3.15,.22,3.15,'steel',true),
       ...[-1.1,-.55,0,.55,1.1].map(x=>part(x,2.95,0,.08,.08,3.18,'trim'))
     ])}),
-  Object.freeze({id:'bed',name:'Settler Bed',category:'FURNITURE',
+  Object.freeze({id:'bed',name:'Settler Bed',category:'BEDS',
     width:1.3,depth:2.1,cost:Object.freeze({[component('steel')]:2,[component('cloth')]:4}),
+    stats:yieldStats({beds:1}),
     parts:Object.freeze([
       part(0,.28,0,1.28,.42,2.05,'steel',true),
       part(0,.52,.05,1.16,.15,1.65,'cloth'),
@@ -47,18 +59,181 @@ export const SETTLEMENT_BLUEPRINTS=Object.freeze([
     ])}),
   Object.freeze({id:'barricade',name:'Defense Barricade',category:'DEFENSE',
     width:2.6,depth:.48,cost:Object.freeze({[component('steel')]:4,[component('wood')]:2}),
+    stats:yieldStats({defense:1}),
     parts:Object.freeze([
       part(0,.6,0,2.6,1.2,.42,'steel',true),
       part(0,.95,-.23,2.65,.16,.1,'trim'),
       part(0,.34,-.23,2.65,.15,.1,'trim')
     ])}),
-  Object.freeze({id:'lantern',name:'Standing Lantern',category:'LIGHTING',
+  Object.freeze({id:'lantern',name:'Standing Lantern',category:'UTILITY',
     width:.7,depth:.7,cost:Object.freeze({[component('steel')]:2,[component('copper')]:1,[component('glass')]:1}),
     parts:Object.freeze([
       part(0,.16,0,.60,.3,.60,'steel',true),
       part(0,1.15,0,.10,1.9,.10,'steel',true),
       part(0,2.13,0,.36,.46,.36,'glass'),
       part(0,2.42,0,.48,.16,.48,'trim')
+    ])}),
+  Object.freeze({id:'guardpost',name:'Lookout Guard Post',category:'DEFENSE',
+    width:2,depth:2,cost:Object.freeze({[component('wood')]:7,[component('steel')]:5}),
+    stats:yieldStats({defense:3}),parts:Object.freeze([
+      part(0,.16,0,1.94,.32,1.94,'wood',true),
+      ...[-.78,.78].flatMap(x=>[-.78,.78].map(z=>part(x,1.18,z,.14,2.05,.14,'rust',true))),
+      part(0,2.25,0,2.12,.15,2.12,'roof',true),
+      part(0,1.28,-.95,1.8,.47,.13,'steel',true),
+      part(0,1.28,.95,1.8,.47,.13,'steel',true),
+      part(0,1.28,-1.02,1.85,.05,.08,'trim')
+    ])}),
+  Object.freeze({id:'turret',name:'Automated Sentry Turret',category:'DEFENSE',
+    width:1.45,depth:1.45,cost:Object.freeze({[component('steel')]:10,[component('gears')]:3,
+      [component('circuitry')]:2,[component('copper')]:2}),
+    stats:yieldStats({defense:8,powerDraw:2}),parts:Object.freeze([
+      part(0,.18,0,1.25,.35,1.25,'steel',true),
+      part(0,.83,0,.37,1.12,.37,'rust',true,'cylinder'),
+      part(0,1.47,0,1.11,.48,.88,'steel',true),
+      part(0,1.58,-.39,.78,.24,.31,'trim'),
+      ...[-.23,.23].map(x=>part(x,1.46,-.87,.13,.13,1.26,'charcoal',false,'cylinder')),
+      part(0,1.49,.49,.48,.29,.12,'glass')
+    ])}),
+  Object.freeze({id:'razorwire',name:'Scrap Wire Fence',category:'DEFENSE',
+    width:2.9,depth:.40,cost:Object.freeze({[component('steel')]:5,[component('rubber')]:1}),
+    stats:yieldStats({defense:1}),parts:Object.freeze([
+      ...[-1.36,1.36].map(x=>part(x,.80,0,.1,1.6,.1,'rust',true)),
+      ...[.31,.72,1.11,1.44].map(y=>part(0,y,0,2.9,.045,.08,'wire',false)),
+      ...[-1,-.5,0,.5,1].map(x=>part(x,.84,0,.07,1.35,.07,'steel'))
+    ])}),
+  Object.freeze({id:'waterpump',name:'Hand Water Pump',category:'WATER',
+    width:1.45,depth:1.45,cost:Object.freeze({[component('steel')]:6,
+      [component('gears')]:2,[component('rubber')]:2}),
+    stats:yieldStats({water:3}),parts:Object.freeze([
+      part(0,.14,0,1.35,.27,1.35,'concrete',true),
+      part(0,.88,0,.38,1.32,.38,'pipe',true,'cylinder'),
+      part(0,1.53,0,.65,.35,.65,'steel',false,'cylinder'),
+      part(.36,1.45,0,.75,.11,.11,'copper'),
+      part(.66,1.23,0,.14,.55,.14,'rust'),
+      part(-.24,.85,-.40,.13,.12,.8,'pipe',false,'cylinder')
+    ])}),
+  Object.freeze({id:'purifier',name:'Powered Water Purifier',category:'WATER',
+    width:2.35,depth:1.75,cost:Object.freeze({[component('steel')]:12,
+      [component('copper')]:4,[component('rubber')]:4,[component('circuitry')]:2}),
+    stats:yieldStats({water:8,powerDraw:3}),parts:Object.freeze([
+      part(0,.17,0,2.3,.34,1.72,'concrete',true),
+      ...[-.68,.68].map(x=>part(x,.94,0,.62,1.34,.62,'pipe',true,'cylinder')),
+      part(0,.91,-.45,1.86,.19,.38,'rust'),
+      part(0,1.60,0,2.15,.12,1.55,'steel'),
+      part(0,1.32,.70,.72,.52,.20,'charcoal'),
+      ...[-.20,.20].map(x=>part(x,1.41,.82,.17,.16,.07,'signal'))
+    ])}),
+  Object.freeze({id:'watertank',name:'Rain Collection Tank',category:'WATER',
+    width:1.9,depth:1.9,cost:Object.freeze({[component('steel')]:6,
+      [component('plastic')]:3,[component('rubber')]:2}),
+    stats:yieldStats({water:1}),parts:Object.freeze([
+      part(0,.12,0,1.85,.24,1.85,'concrete',true),
+      part(0,1.05,0,1.34,1.74,1.34,'tank',true,'cylinder'),
+      part(0,1.96,0,1.52,.15,1.52,'steel',false,'cylinder'),
+      ...[.43,1.36].map(y=>part(0,y,0,1.43,.10,1.43,'rust',false,'cylinder')),
+      part(.91,1.17,.17,.65,.12,.12,'copper')
+    ])}),
+  Object.freeze({id:'garden',name:'Vegetable Garden',category:'FOOD',
+    width:2.7,depth:2.7,cost:Object.freeze({[component('wood')]:5,
+      [component('fertilizer')]:3}),
+    stats:yieldStats({food:3}),parts:Object.freeze([
+      part(0,.11,0,2.58,.20,2.58,'soil',true),
+      ...[-1.24,1.24].flatMap(x=>[
+        part(x,.22,0,.11,.32,2.65,'wood')]),
+      ...[-1.24,1.24].map(z=>part(0,.22,z,2.6,.32,.10,'wood')),
+      ...[-.79,0,.79].flatMap(x=>[-.72,0,.72].flatMap(z=>[
+        part(x,.39,z,.19,.41,.19,'leaf',false,'cone'),
+        part(x,.57,z,.28,.22,.28,'produce',false,'sphere')]))
+    ])}),
+  Object.freeze({id:'corn',name:'Corn Rows',category:'FOOD',
+    width:2.8,depth:2.4,cost:Object.freeze({[component('wood')]:3,
+      [component('fertilizer')]:4}),
+    stats:yieldStats({food:4}),parts:Object.freeze([
+      part(0,.09,0,2.76,.18,2.36,'soil',true),
+      ...[-.9,0,.9].flatMap(x=>[-.67,.67].flatMap(z=>[
+        part(x,.85,z,.12,1.5,.12,'stem',false,'cylinder'),
+        part(x,1.19,z,.57,.91,.57,'leaf',false,'cone'),
+        part(x,.92,z+.12,.21,.37,.21,'produce',false,'cylinder')]))
+    ])}),
+  Object.freeze({id:'planter',name:'Raised Food Planter',category:'FOOD',
+    width:2.35,depth:1.32,cost:Object.freeze({[component('wood')]:6,
+      [component('fertilizer')]:2,[component('steel')]:2}),
+    stats:yieldStats({food:2}),parts:Object.freeze([
+      part(0,.41,0,2.28,.72,1.27,'wood',true),
+      part(0,.79,0,2.15,.08,1.12,'soil'),
+      ...[-.66,0,.66].flatMap(x=>[-.33,.33].flatMap(z=>[
+        part(x,1.04,z,.43,.52,.43,'leaf',false,'cone'),
+        part(x,1.19,z,.18,.18,.18,'produce',false,'sphere')]))
+    ])}),
+  Object.freeze({id:'cot',name:'Canvas Field Cot',category:'BEDS',
+    width:1.2,depth:2.15,cost:Object.freeze({[component('steel')]:2,
+      [component('cloth')]:3}),
+    stats:yieldStats({beds:1}),parts:Object.freeze([
+      part(0,.29,0,1.12,.13,2.12,'cloth',true),
+      ...[-.46,.46].flatMap(x=>[-.91,.91].map(z=>part(x,.18,z,.09,.36,.12,'steel',true))),
+      part(0,.40,-.76,.91,.19,.39,'pillow')
+    ])}),
+  Object.freeze({id:'bunk',name:'Double Bunk Frame',category:'BEDS',
+    width:1.4,depth:2.2,cost:Object.freeze({[component('steel')]:7,
+      [component('cloth')]:6,[component('wood')]:2}),
+    stats:yieldStats({beds:2}),parts:Object.freeze([
+      ...[-.59,.59].flatMap(x=>[-.98,.98].map(z=>part(x,.94,z,.10,1.87,.1,'steel',true))),
+      ...[.49,1.51].flatMap(y=>[
+        part(0,y,0,1.37,.16,2.16,'wood',true),
+        part(0,y+.12,.05,1.22,.10,1.87,'cloth'),
+        part(0,y+.21,-.78,.98,.15,.37,'pillow')]),
+      part(-.7,.97,0,.10,1.8,.10,'steel')
+    ])}),
+  Object.freeze({id:'generator',name:'Salvaged Generator',category:'POWER',
+    width:2.2,depth:1.5,cost:Object.freeze({[component('steel')]:10,
+      [component('copper')]:5,[component('gears')]:4,[component('oil')]:2}),
+    stats:yieldStats({power:8}),parts:Object.freeze([
+      part(0,.17,0,2.18,.33,1.47,'rust',true),
+      part(0,.86,0,1.78,1.10,1.15,'charcoal',true),
+      ...[-.65,-.35,-.05,.25,.55].map(x=>part(x,1.20,-.59,.09,.34,.10,'steel')),
+      part(-.42,1.49,.28,.56,.19,.59,'copper'),
+      part(.53,1.54,0,.32,.23,.30,'steel',false,'cylinder'),
+      part(.58,.79,-.65,.35,.36,.10,'signal')
+    ])}),
+  Object.freeze({id:'solar',name:'Scrap Solar Array',category:'POWER',
+    width:2.65,depth:2.15,cost:Object.freeze({[component('aluminum')]:7,
+      [component('copper')]:4,[component('glass')]:4,[component('circuitry')]:1}),
+    stats:yieldStats({power:4}),parts:Object.freeze([
+      ...[-.98,.98].map(x=>part(x,.78,0,.13,1.48,.13,'steel',true)),
+      part(0,1.57,0,2.58,.13,2.08,'solar',false),
+      ...[-.77,-.25,.27,.79].map(z=>part(0,1.66,z,2.51,.035,.035,'trim')),
+      ...[-.96,-.32,.32,.96].map(x=>part(x,1.67,0,.035,.035,2.06,'trim'))
+    ])}),
+  Object.freeze({id:'beacon',name:'Recruitment Radio Beacon',category:'UTILITY',
+    width:1.32,depth:1.32,cost:Object.freeze({[component('steel')]:7,
+      [component('copper')]:4,[component('circuitry')]:2,[component('glass')]:1}),
+    stats:yieldStats({beacon:1,powerDraw:2}),parts:Object.freeze([
+      part(0,.29,0,1.28,.58,1.28,'rust',true),
+      part(0,1.47,0,.12,2.18,.12,'steel',true),
+      part(0,2.44,0,.95,.14,.95,'steel',false,'cylinder'),
+      part(0,2.65,0,.57,.26,.57,'signal',false,'sphere'),
+      part(0,.84,-.64,.72,.65,.13,'charcoal'),
+      part(0,1.04,-.72,.22,.16,.1,'glass'),
+      ...[-.2,0,.2].map(x=>part(x,.63,-.73,.09,.10,.06,'copper'))
+    ])}),
+  Object.freeze({id:'storage',name:'Weathered Supply Locker',category:'UTILITY',
+    width:1.12,depth:.87,cost:Object.freeze({[component('steel')]:6,
+      [component('wood')]:1}),
+    parts:Object.freeze([
+      part(0,1.06,0,1.1,2.1,.85,'rust',true),
+      part(0,1.07,-.44,.96,1.91,.07,'steel'),
+      part(.31,1.10,-.5,.06,.29,.07,'trim'),
+      ...[.45,.78,1.42,1.74].map(y=>part(0,y,-.49,.7,.035,.08,'charcoal'))
+    ])}),
+  Object.freeze({id:'floodlight',name:'Workshop Floodlight',category:'UTILITY',
+    width:.85,depth:.85,cost:Object.freeze({[component('steel')]:4,
+      [component('copper')]:2,[component('glass')]:2}),
+    stats:yieldStats({powerDraw:1}),parts:Object.freeze([
+      part(0,.11,0,.82,.20,.82,'concrete',true),
+      part(0,1.58,0,.11,2.85,.11,'steel',true),
+      part(0,2.87,-.12,.88,.57,.36,'charcoal'),
+      part(0,2.88,-.33,.73,.42,.045,'glass'),
+      part(0,3.19,-.12,1.05,.10,.50,'rust')
     ])})
 ]);
 export const SETTLEMENT_BY_ID=Object.freeze(Object.fromEntries(
@@ -94,11 +269,21 @@ function overlaps(a,b){
     a.minZ<b.maxZ-.025&&a.maxZ>b.minZ+.025&&
     a.bottom<top-.025&&a.top>bottom+.025;
 }
-export function initialSettlementBuildState(){return {version:1,nextId:1,snap:true,structures:[]};}
+export const RECRUITMENT_INTERVAL=55;
+export function initialSettlementBuildState(){
+  return {version:2,nextId:1,snap:true,structures:[],population:0,
+    happiness:50,recruitProgress:0};
+}
 export function safeSettlementBuildSnapshot(raw){
   const state=initialSettlementBuildState();
   if(!raw||typeof raw!=='object')return state;
   state.snap=raw.snap!==false;
+  if(Number.isInteger(raw.population))
+    state.population=Math.min(12,Math.max(0,raw.population));
+  if(finite(raw.happiness))
+    state.happiness=Math.min(100,Math.max(0,raw.happiness));
+  if(finite(raw.recruitProgress))
+    state.recruitProgress=Math.min(RECRUITMENT_INTERVAL,Math.max(0,raw.recruitProgress));
   if(!Array.isArray(raw.structures))return state;
   const seen=new Set();
   for(const item of raw.structures.slice(0,BUILD_LIMIT)){
@@ -113,6 +298,57 @@ export function safeSettlementBuildSnapshot(raw){
   }
   state.nextId=Math.max(1,...state.structures.map(s=>s.id+1));
   return state;
+}
+export function settlementCategoryBlueprints(category){
+  return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category);
+}
+export function calculateSettlementStats(state){
+  let beds=0,food=0,water=0,defense=0,power=0,powerDraw=0,beacons=0;
+  const structures=Array.isArray(state?.structures)?state.structures:[];
+  for(const structure of structures){
+    const stats=SETTLEMENT_BY_ID[structure.type]?.stats||{};
+    beds+=stats.beds||0;power+=stats.power||0;
+    powerDraw+=stats.powerDraw||0;
+  }
+  const powered=power>=powerDraw;
+  for(const structure of structures){
+    const stats=SETTLEMENT_BY_ID[structure.type]?.stats||{};
+    beacons+=stats.beacon||0;
+    if(!stats.powerDraw||powered){
+      food+=stats.food||0;water+=stats.water||0;
+      defense+=stats.defense||0;
+    }
+  }
+  const population=Math.max(0,Math.floor(state?.population||0));
+  const hasRoom=beds>population&&food>population&&water>population;
+  const recruiting=beacons>0&&powered&&hasRoom;
+  const sufficient=population===0||beds>=population&&
+    food>=population&&water>=population;
+  const targetHappiness=population===0?50:Math.max(5,Math.min(95,
+    45+(beds>=population?9:-16)+(food>=population?12:-22)+
+    (water>=population?12:-22)+(defense>=population*2?10:-7)+
+    (powered?7:-10)));
+  return {population,beds,food,water,defense,power,powerDraw,
+    powerBalance:power-powerDraw,powered,beacons,recruiting,
+    hasRoom,sufficient,targetHappiness,happiness:Math.round(state?.happiness??50),
+    recruitProgress:Math.max(0,state?.recruitProgress||0)};
+}
+export function advanceSettlement(state,deltaSeconds){
+  if(!Number.isFinite(deltaSeconds)||deltaSeconds<=0)
+    return {recruited:0,stats:calculateSettlementStats(state)};
+  const dt=Math.min(4,deltaSeconds);
+  let stats=calculateSettlementStats(state),recruited=0;
+  state.happiness+=Math.max(-dt*.42,Math.min(dt*.42,
+    stats.targetHappiness-state.happiness));
+  if(stats.recruiting){
+    state.recruitProgress+=dt;
+    if(state.recruitProgress>=RECRUITMENT_INTERVAL){
+      state.recruitProgress-=RECRUITMENT_INTERVAL;
+      state.population++;recruited=1;
+      stats=calculateSettlementStats(state);
+    }
+  }else state.recruitProgress=0;
+  return {recruited,stats:calculateSettlementStats(state)};
 }
 export function isWithinHavenBuildArea(placement){
   const plan=SETTLEMENT_BY_ID[placement?.type];

@@ -35,8 +35,10 @@ test('no public keyboard shortcuts trigger diagnostic cheats',()=>{
   const end=main.indexOf("window.addEventListener('keyup',e=>{",start);
   const handler=main.slice(start,end);
   assert.ok(start>0&&end>start);
-  for(const key of ['KeyH','KeyJ','KeyK','KeyY','KeyB','KeyT'])
+  for(const key of ['KeyH','KeyJ','KeyK','KeyY','KeyT'])
     assert.doesNotMatch(handler,new RegExp("e\\.code==='"+key+"'"),key+' still has a cheat shortcut');
+  assert.match(handler,/e\.code==='KeyB'[\s\S]*?toggleSettlementBuildMode\(/,
+    'B now opens the legitimate settlement workshop, not a cheat action');
   assert.doesNotMatch(handler,/e\.code\.startsWith\('Digit'\)/);
   assert.match(handler,/e\.code==='KeyI'/,'inventory remains accessible');
   assert.match(handler,/e\.code==='F3'/,'read-only diagnostics remain accessible');
