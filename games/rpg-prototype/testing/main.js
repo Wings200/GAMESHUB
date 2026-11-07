@@ -9,6 +9,9 @@ import {matchesVendorFilter,vendorComparisonFacts}
   from '../vendor-presentation.mjs?v=W20.99';
 import {VENDOR_CONVERSATIONS,dialoguePage,charismaCheck,negotiatedTradeModifiers}
   from '../dialogue-presentation.mjs?v=W21.02';
+import {createNpcRoutine,safeNpcRoutineSnapshot,npcRoutineSnapshot,
+  stepNpcRoutine,npcBodyBounds}
+  from '../npc-routines.mjs?v=W21.03';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -662,7 +665,8 @@ for(const node of CAMPAIGN_NODES){
       object.userData.targetResidentId=node.id;
       residentHitMeshes.push(object);
     });
-    bounds.push({minX:x-.28,maxX:x+.28,minZ:z-.28,maxZ:z+.28,top:1.85});
+    // Living characters have moving body collision; the old frozen box made
+    // NPC patrols collide with an invisible copy of their original position.
   }
 }
 const havenPowerLamp=new THREE.PointLight(0xffdb91,0,9,2);
@@ -4569,6 +4573,7 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
           if(shot.fired){
             enemy.gunGlow=.11;enemy.recoilPose=1;
             sound.gunshot(attack.soundKind||'rifle');
+            signalNpcGunfire(enemy.brain.x,enemy.brain.z);
             // Match the visible rifle muzzle rather than firing from a
             // fixed point in the centre of the NPC's chest.
             const origin=enemy.rigged?.getMuzzleWorldPosition()||
@@ -5606,6 +5611,7 @@ function shoot({vatsTarget=null}={}){
     return result;
   }
   if(result.status!=='fired')return result;
+  signalNpcGunfire(player.x,player.z);
   if(activeSpec.kind==='revolver'){
     const gun=weaponVisuals.get(activeWeaponId);
     gun.previousChamberIndex=weaponState.shotsFired-1;
@@ -6220,6 +6226,7 @@ const playerAvatar=createPlayerAvatar(scene);
 // New arrivals are actual visible survivors in the compound, not just a
 // counter. The same saved population drives both HUD figures and these bodies.
 const settlementResidents=[];
+let npcRoutineStates=null;
 const settlementResidentSites=[
   [-49,-19],[-47,-16],[-45,-19],[-43,-16],[-48,-23],[-44,-23],
   [-40,-19],[-39,-16],[-51,-24],[-38,-28],[-34,-29],[-32,-25]
@@ -6238,12 +6245,44 @@ function syncSettlementResidents(){
     const actor={avatar,x:site[0],z:site[1],yaw:.4+index*.71};
     avatar.root.name='HavenRecruitedSettler_'+(index+1);
     settlementResidents.push(actor);
+    if(npcRoutineStates)
+      npcRoutineStates.set('settler-'+(index+1),createNpcRoutine('settler-'+(index+1),
+        {x:actor.x,z:actor.z,yaw:actor.yaw}));
   }
   settlementResidents.forEach((actor,i)=>{
     actor.avatar.root.visible=i<settlementBuildState.population;
   });
 }
 syncSettlementResidents();
+// W21.03: Persist the locations, phases and alert states of the same physical
+// characters already created above. Existing saves get neutral schedules.
+const npcRoutineAnchors=new Map([
+  ...campaignResidents.map(actor=>['contact-'+actor.id,
+    {x:actor.x,z:actor.z,yaw:actor.yaw}]),
+  ...vendorActors.map(actor=>['merchant-'+actor.vendor.id,
+    {x:actor.x,z:actor.z,yaw:actor.yaw}]),
+  ...settlementResidents.map((actor,i)=>['settler-'+(i+1),
+    {x:actor.x,z:actor.z,yaw:actor.yaw}])
+]);
+let savedNpcRoutines=null;
+try{savedNpcRoutines=JSON.parse(localStorage.getItem('rpg-lab-npc-routines-v1')||'null');}
+catch{ /* Older or corrupted saves start safely from their original actor positions. */ }
+npcRoutineStates=safeNpcRoutineSnapshot(savedNpcRoutines,npcRoutineAnchors);
+const npcDynamicBodies=[];
+let npcRoutineSaveClock=0,npcGunshotId=0,npcRecentGunshot=null;
+function saveNpcRoutines(){
+  try{localStorage.setItem('rpg-lab-npc-routines-v1',
+    JSON.stringify(npcRoutineSnapshot(npcRoutineStates)));}
+  catch{ /* No persistence authority: keep the local routine playing. */ }
+}
+function signalNpcGunfire(x,z){
+  npcRecentGunshot={id:++npcGunshotId,x,z,at:clock.elapsedTime};
+}
+function activeNpcGunfire(){
+  if(!npcRecentGunshot)return null;
+  const age=clock.elapsedTime-npcRecentGunshot.at;
+  return age<.7?{...npcRecentGunshot,age}:null;
+}
 // Old survivor-held model stays hidden. Third-person renders the same new
 // 10mm geometry attached to the animated hand socket.
 playerAvatar.setHeldWeapon(null);
@@ -7018,7 +7057,9 @@ let selectedCampaignQuest=null;
 function nearCampaignNode(){
   let best=null,range=2.8;
   for(const node of CAMPAIGN_NODES){
-    const d=Math.hypot(player.x-node.x,player.z-node.z);
+    const resident=campaignResidents.find(actor=>actor.id===node.id);
+    const d=Math.min(Math.hypot(player.x-node.x,player.z-node.z),
+      resident?Math.hypot(player.x-resident.x,player.z-resident.z):Infinity);
     if(d<range){best=node;range=d;}
   }
   return best;
@@ -8564,7 +8605,7 @@ function frame(){
     const trauma=injuryEffects(injuryState);
     const load=currentCarry();
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
-      {boxes:bounds,trees:[],ceilings,groundHeight,
+      {boxes:[...bounds,...npcDynamicBodies],trees:[],ceilings,groundHeight,
         speedMultiplier:mobility.factor*specialModifiers.speedMultiplier*
           trauma.speedMultiplier*load.speedMultiplier,
         staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier*
@@ -8623,9 +8664,18 @@ function frame(){
   for(let i=0;i<settlementResidents.length;i++){
     const actor=settlementResidents[i];
     if(!actor.avatar.root.visible)continue;
-    actor.avatar.update({dt,x:actor.x,z:actor.z,ground:0,
-      yaw:actor.yaw+Math.sin(clock.elapsedTime*.4+i)*.13,
-      speed:0,alive:true});
+    const id='settler-'+(i+1),home=npcRoutineAnchors.get(id);
+    const previous=npcRoutineStates.get(id);
+    if(!previous||!home)continue;
+    const neighbors=[...campaignResidents,...vendorActors,...settlementResidents]
+      .filter(other=>other!==actor).map(other=>({x:other.x,z:other.z}));
+    const step=stepNpcRoutine(previous,dt,{home,player,
+      obstacles:enemyMovementObstacles,neighbors,threat:activeNpcGunfire()});
+    npcRoutineStates.set(id,step.state);
+    actor.x=step.state.x;actor.z=step.state.z;actor.yaw=step.state.yaw;
+    actor.routineMode=step.mode;
+    actor.avatar.update({dt,x:actor.x,z:actor.z,ground:groundHeight(actor.x,actor.z),
+      yaw:actor.yaw,speed:step.speed,crouched:step.crouched,alive:true});
   }
   const settlementPowered=calculateSettlementStats(settlementBuildState).powered;
   for(const [id,record] of builtSettlementMeshes){
@@ -8643,23 +8693,45 @@ function frame(){
       stepVatsQueue(dt);
     }
   }
-  // Quest residents use the same articulated rig as the player, but never
-  // enter the hostile hit list. They watch approaching visitors naturally.
+  // Named story contacts walk realistic work/rest routes, face conversations
+  // and retreat when gunfire is actually heard. They remain protected story
+  // noncombatants and never enter the enemy weapon damage hit list.
   for(const resident of campaignResidents){
-    const dx=player.x-resident.x,dz=player.z-resident.z;
-    const distance=Math.hypot(dx,dz);
-    if(distance<7){
-      const target=Math.atan2(-dx,-dz);
-      const difference=Math.atan2(Math.sin(target-resident.yaw),Math.cos(target-resident.yaw));
-      resident.yaw+=Math.max(-dt*1.4,Math.min(dt*1.4,difference));
-    }
+    const id='contact-'+resident.id,home=npcRoutineAnchors.get(id);
+    const previous=npcRoutineStates.get(id);
+    if(!previous||!home)continue;
+    const neighbors=[...campaignResidents,...vendorActors,...settlementResidents]
+      .filter(other=>other!==resident&&other.avatar.root.visible)
+      .map(other=>({x:other.x,z:other.z}));
+    const step=stepNpcRoutine(previous,dt,{home,player,
+      dialogue:dialogueOpen&&activeDialogueNode?.id===resident.id,
+      obstacles:enemyMovementObstacles,neighbors,threat:activeNpcGunfire()});
+    npcRoutineStates.set(id,step.state);
+    resident.x=step.state.x;resident.z=step.state.z;resident.yaw=step.state.yaw;
+    resident.routineMode=step.mode;
     resident.avatar.update({dt,x:resident.x,z:resident.z,
-      ground:groundHeight(resident.x,resident.z),yaw:resident.yaw,speed:0});
+      ground:groundHeight(resident.x,resident.z),yaw:resident.yaw,
+      speed:step.speed,crouched:step.crouched});
   }
   for(const actor of vendorActors){
+    const id='merchant-'+actor.vendor.id,home=npcRoutineAnchors.get(id);
+    const previous=npcRoutineStates.get(id);
+    if(!previous||!home)continue;
+    const step=stepNpcRoutine(previous,dt,{home,player,stationary:true,
+      dialogue:(dialogueOpen&&activeDialogueNode?.id===actor.vendor.id)||
+        (vendorOpen&&activeVendorId===actor.vendor.id),
+      obstacles:enemyMovementObstacles,threat:activeNpcGunfire()});
+    npcRoutineStates.set(id,step.state);
+    actor.yaw=step.state.yaw;actor.routineMode=step.mode;
     actor.avatar.update({dt,x:actor.x,z:actor.z,ground:0,
-      yaw:actor.yaw,speed:0,alive:true});
+      yaw:actor.yaw,speed:0,crouched:step.crouched,alive:true});
   }
+  npcDynamicBodies.length=0;
+  for(const actor of [...campaignResidents,...vendorActors,...settlementResidents]){
+    if(actor.avatar.root.visible)npcDynamicBodies.push(npcBodyBounds(actor));
+  }
+  npcRoutineSaveClock+=dt;
+  if(npcRoutineSaveClock>=8){npcRoutineSaveClock=0;saveNpcRoutines();}
   updateTargetHealthHud(dt);
   questNavigationClock+=dt;
   if(questNavigationClock>.42){
@@ -8690,9 +8762,11 @@ function frame(){
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||weaponsCrateOpen||powerUIOpen||
     questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
   if(questContact){
+    const contactActor=campaignResidents.find(actor=>actor.id===questContact.id);
     $('lootPrompt').textContent='E · '+
       (['dispatch','dominion','foreman'].includes(questContact.id)?'SPEAK WITH ':'USE ')+
-      questContact.name+' · Q JOURNAL';
+      questContact.name+(contactActor?.routineMode?
+        ' · '+contactActor.routineMode.toUpperCase():'')+' · Q JOURNAL';
   }else if(merchant){
     $('lootPrompt').textContent='E · TRADE WITH '+merchant.name.toUpperCase()+' · '+merchant.title;
   }else if(frameInReach){
@@ -8868,7 +8942,7 @@ function frame(){
 }
 window.addEventListener('gameshub-before-balance-reload', () => {
   saveBackpack(); saveCampaign(); saveSpecialState(); savePowerArmor();
-  saveArmorLoadouts();
+  saveArmorLoadouts();saveNpcRoutines();
 });
 refreshCampaignUI();
 frame();

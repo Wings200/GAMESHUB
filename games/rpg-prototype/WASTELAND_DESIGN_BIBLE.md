@@ -13,6 +13,15 @@ Do not restore patch-note paragraphs to the homepage. Preserve working menu
 actions, build labels and save compatibility as releases continue.
 
 **Implementation checkpoints after the original W20.84 audit:**
+- W21.03: Existing faction noncombatants and recruited Haven settlers now use
+  accelerated physical work/patrol/rest loops. They walk with the shared rig,
+  stop and turn toward conversations, hear actual gunshots and flee or duck,
+  and avoid player/world/other-NPC bodies. Stationary merchants stay behind
+  their stalls but face visitors and duck at nearby shots. Position, heading,
+  shift and alert state are independently saved with bounded migration, while
+  quest contacts remain accessible from their terminals or physical bodies.
+  This is not yet a full day/night schedule, production-job assignment or
+  complete settlement combat AI; those remain separate future milestones.
 - W21.02: Nine physical quest contacts and six merchants now open the same
   conversation UI, with numbered answers and page navigation for long quest
   branches, preserving existing story outcomes and reputation saves. Merchants
