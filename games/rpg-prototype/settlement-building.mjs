@@ -1,4 +1,4 @@
-// W20.83: Wall-to-wall junctions and foundation edge snapping.
+// W20.84: Three-metre modular roof geometry and bay-aware roof snapping.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
@@ -43,11 +43,36 @@ export const SETTLEMENT_BLUEPRINTS=Object.freeze([
       part(0,2.48,0,3,.38,.26,'steel',true),
       part(0,2.72,-.18,3.12,.12,.12,'trim')
     ])}),
-  Object.freeze({id:'roof',name:'Corrugated Roof',category:'STRUCTURE',
-    width:3.1,depth:3.1,cost:Object.freeze({[component('wood')]:4,[component('steel')]:2}),
+  Object.freeze({id:'roof',name:'Corrugated Flat Roof',category:'STRUCTURE',
+    width:3,depth:3,cost:Object.freeze({[component('wood')]:4,[component('steel')]:2}),
     needsSupport:true,parts:Object.freeze([
-      part(0,2.81,0,3.15,.22,3.15,'steel',true),
-      ...[-1.1,-.55,0,.55,1.1].map(x=>part(x,2.95,0,.08,.08,3.18,'trim'))
+      // Underside, inset frame and separate overlapping, ribbed sheet panels.
+      part(0,2.82,0,2.94,.16,2.94,'wood',true),
+      ...[-1.11,-.37,.37,1.11].map((x,i)=>
+        part(x,2.924+(i%2)*.009,0,.735,.045,2.91,
+          i===1?'rust':'roof')),
+      ...[-1.42,-.72,0,.72,1.42].map(x=>
+        part(x,2.963,0,.035,.036,2.92,'steel')),
+      ...[-1.37,1.37].map(z=>part(0,2.75,z,2.96,.09,.13,'trim')),
+      ...[-1.37,1.37].map(x=>part(x,2.74,0,.11,.11,2.87,'steel')),
+      ...[-1.30,1.30].map(z=>part(0,2.69,z,2.74,.12,.09,'wood'))
+    ])}),
+  Object.freeze({id:'pitchedroof',name:'Gabled Scrap Roof',category:'STRUCTURE',
+    width:3,depth:3,cost:Object.freeze({[component('wood')]:6,[component('steel')]:4}),
+    needsSupport:true,parts:Object.freeze([
+      // The slopes meet above the bay center. Tilt the actual sheet meshes;
+      // do not disguise a horizontal floating slab as a pitched roof.
+      ...[-1,1].map(side=>part(side*.73,3.17,0,1.66,.10,2.92,
+        side<0?'roof':'steel',true,'box',-side*.47)),
+      ...[-1,1].flatMap(side=>[-1.21,-.72,-.23].map(x=>{
+        const local=side*Math.abs(x);
+        const y=3.17-(Math.abs(local)-.73)*Math.tan(.47);
+        return part(local,y+.064,0,.04,.035,2.94,'trim');
+      })),
+      part(0,3.575,0,.20,.12,3,'roof'),
+      ...[-1.36,1.36].map(x=>part(x,2.75,0,.12,.15,2.90,'wood')),
+      ...[-1.36,1.36].map(z=>part(0,2.76,z,2.90,.11,.10,'rust')),
+      ...[-1.20,1.20].map(z=>part(0,3.05,z,2.72,.09,.08,'wood'))
     ])}),
   Object.freeze({id:'bed',name:'Settler Bed',category:'BEDS',
     width:1.3,depth:2.1,cost:Object.freeze({[component('steel')]:2,[component('cloth')]:4}),
@@ -442,16 +467,66 @@ export function snapWallToJunction(state,placement,{radius=.85}={}){
   }
   return best||placement;
 }
+const roofLike=type=>!!SETTLEMENT_BY_ID[type]?.needsSupport;
+const ROOF_HALF_BAY=SETTLEMENT_BY_ID.foundation.width/2;
+// A wall supports a roof only if it forms a real side of that roof's 3x3
+// footprint. A wall in the middle of the floor is not a roof connection.
+function roofWallSupports(roof,wall){
+  if(!wallLike(wall.type))return false;
+  const tolerance=.16;
+  if(wall.rotation%2===0)return Math.abs(wall.x-roof.x)<=tolerance&&
+    Math.abs(Math.abs(wall.z-roof.z)-ROOF_HALF_BAY)<=tolerance;
+  return Math.abs(wall.z-roof.z)<=tolerance&&
+    Math.abs(Math.abs(wall.x-roof.x)-ROOF_HALF_BAY)<=tolerance;
+}
+function hasRoofSupport(structures,roof){
+  return structures.some(s=>roofWallSupports(roof,s));
+}
+// Align roof modules to the center of an existing foundation, or to one of
+// the bays actually bounded by an existing wall/doorway. Unlike corner snap,
+// this moves the whole roof footprint rather than lining its center on a wall.
+export function snapRoofToSupport(state,placement,{radius=1.05}={}){
+  if(!state?.snap||!roofLike(placement?.type)||
+      !finite(placement.x)||!finite(placement.z))return placement;
+  let nearest=radius,best=null;
+  const consider=(x,z)=>{
+    const candidate={...placement,x,z};
+    if(!hasRoofSupport(state.structures||[],candidate)||
+        !isWithinHavenBuildArea(candidate))return;
+    const distance=Math.hypot(x-placement.x,z-placement.z);
+    if(distance>=nearest)return;
+    nearest=distance;best=candidate;
+  };
+  for(const s of state.structures||[]){
+    if(s.type==='foundation')consider(s.x,s.z);
+    if(wallLike(s.type)){
+      if(s.rotation%2===0){
+        consider(s.x,s.z-ROOF_HALF_BAY);
+        consider(s.x,s.z+ROOF_HALF_BAY);
+      }else{
+        consider(s.x-ROOF_HALF_BAY,s.z);
+        consider(s.x+ROOF_HALF_BAY,s.z);
+      }
+    }
+  }
+  return best||placement;
+}
 export function buildWorldBoxes(placement,{onlySolid=false}={}){
   const plan=SETTLEMENT_BY_ID[placement?.type];
   if(!plan)return [];
   const rotated=placement.rotation%2!==0;
   return plan.parts.filter(piece=>!onlySolid||piece.solid).map(piece=>{
     const p=rotateQuarter(piece.x,piece.z,placement.rotation);
-    const w=rotated?piece.d:piece.w,d=rotated?piece.w:piece.d;
+    // A pitched roof's collider must cover its *rotated* panels, not the
+    // unrotated box (which misses the high ridge and overhang).
+    const cosZ=Math.abs(Math.cos(piece.tiltZ||0));
+    const sinZ=Math.abs(Math.sin(piece.tiltZ||0));
+    const tiltedWidth=piece.w*cosZ+piece.h*sinZ;
+    const tiltedHeight=piece.w*sinZ+piece.h*cosZ;
+    const w=rotated?piece.d:tiltedWidth,d=rotated?tiltedWidth:piece.d;
     return {minX:placement.x+p.x-w/2,maxX:placement.x+p.x+w/2,
       minZ:placement.z+p.z-d/2,maxZ:placement.z+p.z+d/2,
-      bottom:piece.y-piece.h/2,top:piece.y+piece.h/2};
+      bottom:piece.y-tiltedHeight/2,top:piece.y+tiltedHeight/2};
   });
 }
 function overlaps(a,b){
@@ -463,7 +538,7 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:4,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
+  return {version:5,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
     happiness:50,recruitProgress:0,scrappedJunk:[]};
 }
 export function safeSettlementBuildSnapshot(raw){
@@ -497,8 +572,13 @@ export function safeSettlementBuildSnapshot(raw){
     if(!item||!SETTLEMENT_BY_ID[item.type]||!finite(item.x)||!finite(item.z)||
       !Number.isInteger(item.rotation)||!Number.isInteger(item.id)||item.id<1||
       seen.has(item.id))continue;
-    const placement={id:item.id,type:item.type,x:item.x,z:item.z,
+    let placement={id:item.id,type:item.type,x:item.x,z:item.z,
       rotation:((item.rotation%4)+4)%4};
+    // Older builds put the roof at the *center of its supporting wall*.
+    // Recenter those roofs on an actual bay when an old save is restored.
+    if((raw.version||0)<5&&roofLike(placement.type)&&
+      !hasRoofSupport(state.structures,placement))
+      placement=snapRoofToSupport({...state,snap:true},placement,{radius:1.7});
     if(!isWithinHavenBuildArea(placement)||
       validateBuildPlacement(state,placement).ok===false)continue;
     state.structures.push(placement);seen.add(placement.id);
@@ -601,10 +681,8 @@ export function validateBuildPlacement(state,placement,staticObstacles=[],player
       overlaps(floor,buildWorldBoxes(s)[0])))
       return {ok:false,reason:'FOUNDATION ALREADY OCCUPIES THIS SPACE'};
   }
-  if(plan.needsSupport&&!state.structures.some(s=>
-    (s.type==='wall'||s.type==='doorway')&&
-    Math.hypot(s.x-placement.x,s.z-placement.z)<2.6))
-    return {ok:false,reason:'ROOF NEEDS A NEARBY WALL OR DOORFRAME'};
+  if(plan.needsSupport&&!hasRoofSupport(state.structures,placement))
+    return {ok:false,reason:'ROOF MUST ALIGN ABOVE A WALL-BOUND 3×3 BAY'};
   const solids=buildWorldBoxes(placement,{onlySolid:true});
   const staticCollision=solids.some(a=>staticObstacles.some(b=>overlaps(a,b)));
   const builtCollision=state.structures.some(s=>
@@ -649,10 +727,8 @@ function removableSettlementStructure(state,id,action){
   if(index<0)return {ok:false,reason:'NO SETTLEMENT STRUCTURE SELECTED'};
   const structure=state.structures[index];
   const remaining=state.structures.filter(s=>s.id!==id);
-  if((structure.type==='wall'||structure.type==='doorway')&&remaining.some(roof=>
-    roof.type==='roof'&&!remaining.some(s=>
-      (s.type==='wall'||s.type==='doorway')&&
-      Math.hypot(s.x-roof.x,s.z-roof.z)<2.6)))
+  if(wallLike(structure.type)&&remaining.some(roof=>
+    roofLike(roof.type)&&!hasRoofSupport(remaining,roof)))
     return {ok:false,reason:action+' THE UNSUPPORTED ROOF FIRST'};
   return {ok:true,index,structure};
 }

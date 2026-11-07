@@ -10,12 +10,13 @@ import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
 import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
   HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
-  snappedBuildPosition,snapWallToJunction,buildWorldBoxes,validateBuildPlacement,
+  snappedBuildPosition,snapWallToJunction,snapRoofToSupport,
+  buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.83';
+  from '../settlement-building.mjs?v=W20.84';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -5310,10 +5311,11 @@ function updateSettlementBuildPreview(){
     camera.position.x+settlementLookDirection.x*groundDistance,
     camera.position.z+settlementLookDirection.z*groundDistance,
     settlementBuildState.snap);
-  const placement=snapWallToJunction(settlementBuildState,
-    {type:settlementBuildType,rotation:settlementRotation,
-      x:projected.x,z:projected.z});
-  const cornerSnapped=placement.x!==projected.x||placement.z!==projected.z;
+  const placement=snapRoofToSupport(settlementBuildState,
+    snapWallToJunction(settlementBuildState,
+      {type:settlementBuildType,rotation:settlementRotation,
+        x:projected.x,z:projected.z}));
+  const structureSnapped=placement.x!==projected.x||placement.z!==projected.z;
   settlementPreview=placement;
   settlementGhost.position.set(placement.x,0,placement.z);
   settlementGhost.rotation.y=settlementRotation*Math.PI/2;
@@ -5329,7 +5331,9 @@ function updateSettlementBuildPreview(){
     missing.length?'NEED '+missing.map(m=>getItem(m.id).name+' '+
       (m.needed-m.owned)).join(' + '):stock?
       'STORED ('+stock+') · LEFT CLICK TO PLACE FREE':
-      cornerSnapped?'CORNER SNAPPED · LEFT CLICK TO BUILD':
+      structureSnapped?(SETTLEMENT_BY_ID[placement.type].needsSupport?
+        'ROOF BAY SNAPPED · LEFT CLICK TO BUILD':
+        'CORNER SNAPPED · LEFT CLICK TO BUILD'):
       'CLEAR · LEFT CLICK TO BUILD';
   $('settlementBuildFeedback').textContent=placementMessage;
   if(performance.now()-lastScrapCheckAt>130){

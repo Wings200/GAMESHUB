@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createBackpack,addItem,countItem} from './inventory.mjs';
 import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
-  snappedBuildPosition,snapWallToJunction,wallJunctionAllowed,
+  snappedBuildPosition,snapWallToJunction,snapRoofToSupport,wallJunctionAllowed,
   buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   scrapSettlementStructure,storedStructureCount,
@@ -181,6 +181,65 @@ test('foundation edges snap walls to the correct rotation and perimeter',()=>{
     placement('doorway',-38.5,-26,1));
 });
 
+test('every placeable roof matches the 3m foundation and wall-module scale',()=>{
+  const roofs=SETTLEMENT_BLUEPRINTS.filter(plan=>plan.needsSupport);
+  assert.deepEqual(roofs.map(plan=>plan.id),['roof','pitchedroof']);
+  for(const roof of roofs){
+    assert.equal(roof.width,3);
+    assert.equal(roof.depth,3);
+    const roofBoxes=buildWorldBoxes(placement(roof.id),{onlySolid:true});
+    assert.ok(roofBoxes.length>0);
+    assert.ok(roofBoxes.every(box=>box.bottom>=2.70&&box.top<=3.7),
+      'roof collision height must fit walls and not become an invisible slab');
+    assert.ok(roofBoxes.every(box=>box.minX>=-41.51&&box.maxX<=-38.49&&
+      box.minZ>=-27.51&&box.maxZ<=-24.49),
+    'roof geometry cannot overhang more than its 3m module');
+  }
+  assert.ok(SETTLEMENT_BY_ID.pitchedroof.parts.some(piece=>
+    Math.abs(piece.tiltZ)>.35&&piece.solid),'gabled roof must have real pitched panels');
+  assert.ok(SETTLEMENT_BY_ID.roof.parts.filter(piece=>piece.material==='roof').length>=2,
+    'corrugated roof must render as individual sheets');
+});
+
+test('roof placement snaps onto the bay, not directly on top of the supporting wall',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  const floor=placeSettlementStructure(state,pack,placement('foundation'));
+  const wall=placeSettlementStructure(state,pack,placement('wall',-40,-24.5));
+  assert.ok(floor.ok&&wall.ok);
+  const projected=placement('pitchedroof',-39.4,-25.5);
+  assert.deepEqual(snapRoofToSupport(state,projected),placement('pitchedroof'));
+  assert.equal(validateBuildPlacement(state,snapRoofToSupport(state,projected)).ok,true);
+  assert.match(validateBuildPlacement(state,placement('pitchedroof',-40,-24.5)).reason,/ROOF/);
+  assert.match(validateBuildPlacement(state,placement('roof',-39.6,-25.5)).reason,/ROOF/);
+  state.snap=false;
+  assert.deepEqual(snapRoofToSupport(state,projected),projected);
+  assert.equal(placeSettlementStructure(state,pack,placement('pitchedroof')).ok,true);
+  assert.match(validateBuildPlacement(state,placement('roof')).reason,/OVERLAP/);
+});
+
+test('roof can snap to a wall-defined bay without a foundation',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  assert.equal(placeSettlementStructure(state,pack,
+    placement('doorway',-38.5,-26,1)).ok,true);
+  assert.deepEqual(snapRoofToSupport(state,placement('roof',-40.7,-25.5)),
+    placement('roof',-40,-26));
+  assert.equal(validateBuildPlacement(state,placement('roof',-40,-26)).ok,true);
+});
+
+test('old roofs centered incorrectly on walls are migrated into supported bays',()=>{
+  const oldSave={version:4,snap:true,structures:[
+    {id:1,...placement('wall')},{id:2,...placement('roof')}],
+    storedStructures:{},population:0,happiness:50,scrappedJunk:[]};
+  const migrated=safeSettlementBuildSnapshot(oldSave);
+  assert.equal(migrated.version,5);
+  assert.equal(migrated.structures.length,2);
+  assert.equal(migrated.structures[1].type,'roof');
+  assert.equal(migrated.structures[1].x,-40);
+  assert.equal(Math.abs(migrated.structures[1].z+26),1.5);
+  assert.equal(validateBuildPlacement({structures:migrated.structures.slice(0,1)},
+    migrated.structures[1]).ok,true);
+});
+
 test('corner joints are legal, but crossed walls, duplicate walls and rocks are blocked',()=>{
   const pack=fundedPack(),state=initialSettlementBuildState();
   const first=placeSettlementStructure(state,pack,placement('wall',-40,-26));
@@ -226,7 +285,7 @@ test('foundations can carry walls, but duplicate floors and unsupported roofs fa
   assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,false);
   assert.equal(placeSettlementStructure(state,pack,placement('foundation')).ok,true);
   assert.match(validateBuildPlacement(state,placement('foundation')).reason,/FOUNDATION/);
-  assert.equal(placeSettlementStructure(state,pack,placement('wall')).ok,true);
+  assert.equal(placeSettlementStructure(state,pack,placement('wall',-40,-24.5)).ok,true);
   assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,true);
   assert.equal(state.structures.length,3);
 });
@@ -272,7 +331,7 @@ test('store a selected earlier piece without removing later structures',()=>{
 
 test('storing a supporting wall cannot strand a floating roof',()=>{
   const pack=fundedPack(),state=initialSettlementBuildState();
-  const wall=placeSettlementStructure(state,pack,placement('wall'));
+  const wall=placeSettlementStructure(state,pack,placement('wall',-40,-24.5));
   assert.equal(wall.ok,true);
   assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,true);
   assert.match(storeSettlementStructure(state,pack,wall.structure.id).reason,/ROOF/);
@@ -309,8 +368,9 @@ test('F stores the intact object without material refunds; X respects roof suppo
   assert.equal(countItem(pack,'material:steel'),before-
     SETTLEMENT_BY_ID.weaponbench.cost['material:steel']);
   assert.equal(storedStructureCount(state,'weaponbench'),1);
-  const wall=placeSettlementStructure(state,pack,placement('wall'));
+  const wall=placeSettlementStructure(state,pack,placement('wall',-40,-24.5));
   assert.equal(wall.ok,true);
+  assert.equal(placeSettlementStructure(state,pack,placement('roof',-40,-24.5)).ok,false);
   assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,true);
   assert.match(scrapSettlementStructure(state,pack,wall.structure.id).reason,/ROOF FIRST/);
   assert.equal(state.structures.length,2);
@@ -367,6 +427,7 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/builtSettlementShotBoxRefs\.add\(b\)/);
   assert.match(main,/enemySightObstacles\.filter\(box=>!builtSettlementShotBoxRefs\.has\(box\)\)/);
   assert.match(main,/snapWallToJunction\(settlementBuildState/);
+  assert.match(main,/snapRoofToSupport\(settlementBuildState/);
   assert.match(main,/enemySightObstacles\.push\(b\)/);
   assert.match(main,/enemyMovementObstacles\.push\(b\)/);
   assert.match(main,/undoLastSettlementStructure\(settlementBuildState,backpack\)/);
