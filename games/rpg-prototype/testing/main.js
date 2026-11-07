@@ -94,6 +94,8 @@ import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
 import {VATS_ZONES,VATS_ZONE_LABELS,vatsApCost,vatsChance,vatsApAvailable,
   vatsSpendAp,vatsCriticalGain,vatsCriticalReady,vatsQueueSlots}
   from '../vats-targeting.mjs?v=W20.93';
+import {vatsScreenPoint,vatsTargetFrame,vatsHealthPercent}
+  from '../vats-presentation.mjs?v=W20.94';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -110,7 +112,7 @@ import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoado
 
 import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   allocateSpecialPoint,purchaseSpecialPerk,gainSpecialXP,specialBonuses,
-  xpForNextLevel,discountedComponentRecipe} from '../special.mjs?v=W20.93';
+  xpForNextLevel,discountedComponentRecipe} from '../special.mjs?v=W20.94';
 
 const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
@@ -6848,6 +6850,19 @@ const vatsState={active:false,enemyId:null,zone:'chest',criticalArmed:false,
   queue:[],executing:false,message:'Select an enemy and a hit zone.'};
 let vatsRenderTimer=0;
 let vatsQueueClock=0;
+// Screen-space markers are created once, then moved to projected 3D hitboxes.
+// They never intercept pointer lock or simulate a second damage model.
+const vatsZonePins=new Map();
+for(const [index,zone] of VATS_ZONES.entries()){
+  const pin=document.createElement('div');
+  pin.className='vats-zone-pin hidden';
+  pin.dataset.zone=zone;
+  const label=document.createElement('span');
+  label.textContent=(index+1)+' '+VATS_ZONE_LABELS[zone];
+  const odds=document.createElement('strong');odds.textContent='—';
+  pin.append(label,odds);$('vatsZonePins').append(pin);
+  vatsZonePins.set(zone,{pin,odds});
+}
 const vatsCriticalSaveKey='rpg-vats-critical-v1';
 let vatsCriticalCharge=0;
 try{
@@ -6968,12 +6983,44 @@ function renderVats(){
     queueSlots<=0?'QUEUE FULL · INSUFFICIENT AP OR AMMO':
     vatsState.message;
   $('vatsMessage').textContent=message;
+  const projectedZones=new Map(),framePoints=[];
+  for(const zone of VATS_ZONES){
+    const {pin,odds}=vatsZonePins.get(zone);
+    const point=enemy?vatsZonePoint(enemy.id,zone):null;
+    const hitChance=point?vatsTargetChance(enemy,zone):0;
+    const screen=point&&hitChance>0?
+      vatsScreenPoint(point.clone().project(camera)):null;
+    if(!screen){pin.classList.add('hidden');continue;}
+    pin.style.left=screen.left+'%';pin.style.top=screen.top+'%';
+    pin.dataset.selected=String(zone===vatsState.zone);
+    pin.dataset.queued=String(vatsState.queue.some(shot=>
+      shot.enemyId===enemy.id&&shot.zone===zone));
+    odds.textContent=hitChance+'%';
+    pin.classList.remove('hidden');
+    projectedZones.set(zone,screen);framePoints.push(screen);
+  }
+  const frame=vatsTargetFrame(framePoints);
+  const lock=$('vatsTargetBox');
+  if(enemy&&frame){
+    lock.style.left=frame.left+'%';lock.style.top=frame.top+'%';
+    lock.style.width=frame.width+'%';lock.style.height=frame.height+'%';
+    const healthPercent=vatsHealthPercent(enemy.state.health,enemy.state.maxHealth);
+    $('vatsTargetName').textContent=enemy.label.toUpperCase();
+    $('vatsTargetRange').textContent=Math.round(
+      contacts.find(c=>c.enemy.id===enemy.id)?.distance||0)+' M';
+    $('vatsTargetHpFill').style.width=healthPercent+'%';
+    const crippled=VATS_ZONES.filter(zone=>enemy.injuries?.condition?.[zone]<=25).length;
+    $('vatsTargetInfo').textContent=healthPercent+'% HP · '+
+      (crippled?crippled+' CRIPPLED LIMB'+(crippled===1?'':'S'):
+        'NO CRIPPLED LIMBS')+
+      (enemy.powerSuit?' · '+enemy.powerSuit.tier.toUpperCase()+' POWER ARMOR':'');
+    lock.classList.remove('hidden');
+  }else lock.classList.add('hidden');
   const marker=$('vatsTargetMarker');
-  const target=enemy?vatsZonePoint(enemy.id,vatsState.zone):null;
-  if(target&&chance>0){
-    const screen=target.project(camera);
-    marker.style.left=((screen.x+1)*50)+'%';
-    marker.style.top=((1-screen.y)*50)+'%';
+  const selectedPoint=projectedZones.get(vatsState.zone);
+  if(selectedPoint){
+    marker.style.left=selectedPoint.left+'%';
+    marker.style.top=selectedPoint.top+'%';
     marker.classList.remove('hidden');
   }else marker.classList.add('hidden');
 }
@@ -6999,6 +7046,8 @@ function closeVats(){
   vatsState.queue=[];vatsState.executing=false;vatsQueueClock=0;
   $('vatsPanel').classList.add('hidden');
   $('vatsTargetMarker').classList.add('hidden');
+  $('vatsTargetBox').classList.add('hidden');
+  for(const {pin} of vatsZonePins.values())pin.classList.add('hidden');
 }
 function queueVatsShot(){
   if(!vatsState.active||vatsState.executing)return;

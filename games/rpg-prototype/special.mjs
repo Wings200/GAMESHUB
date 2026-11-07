@@ -48,7 +48,10 @@ export const SPECIAL_PERKS=Object.freeze([
 export const SPECIAL_MAX_LEVEL=50;
 const num=(n,def=0)=>Number.isFinite(Number(n))?Number(n):def;
 const limit=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
-export const xpForNextLevel=level=>Math.round(100+limit(Math.floor(num(level,1)),1,50)*70);
+// W20.93.1: Level requirements are 50% higher across the whole progression.
+// Persisted level and earned XP remain untouched; only the next threshold rises.
+export const xpForNextLevel=level=>Math.round(
+  (100+limit(Math.floor(num(level,1)),1,50)*70)*1.5);
 export function createSpecialState(){
   return {level:1,xp:0,statPoints:5,perkPoints:2,
     attributes:Object.fromEntries(SPECIAL_ATTRIBUTES.map(a=>[a.id,3])),

@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with living settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.93/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.94/);
+  assert.match(log,/<strong>W20\.94 · LIVE V\.A\.T\.S\. TARGET SCANNER:<\/strong>/);
   assert.match(log,/<strong>W20\.93 · S\.P\.E\.C\.I\.A\.L\. PERK INTEGRATION:<\/strong>/);
   assert.match(log,/<strong>W20\.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT:<\/strong>/);
   assert.match(log,/<strong>W20\.91 · LIVE V\.A\.T\.S\. SHOT QUEUE:<\/strong>/);
@@ -40,6 +41,8 @@ test('systems testing splash leads with living settlement construction',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.94 · LIVE V.A.T.S. TARGET SCANNER')<
+    log.indexOf('W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION'));
   assert.ok(log.indexOf('W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION')<
     log.indexOf('W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT'));
   assert.ok(log.indexOf('W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT')<
@@ -91,6 +94,6 @@ test('systems testing splash leads with living settlement construction',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.93/);
-  assert.match(bootstrap,/main\.js\?v=W20\.93/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.94/);
+  assert.match(bootstrap,/main\.js\?v=W20\.94/);
 });

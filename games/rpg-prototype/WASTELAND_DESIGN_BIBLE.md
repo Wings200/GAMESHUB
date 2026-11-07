@@ -33,8 +33,16 @@
   critical-charge generation from real hits. Existing saves and earned perks
   retain their IDs and unlocked status. This is an incremental integration,
   not a finished carry-weight, dialogue-skill-check or perk-tree overhaul.
-- Remaining Phase 1 work: cinematic target presentation, multiplayer-authoritative
-  validation when networking is implemented, scenario-based visual verification,
+- W20.94: XP requirements increased 50% at every level without rewriting saved
+  level, XP or unlocked perks. Real-time target scanner projects six actual
+  visible animated enemy body-part hitboxes onto the viewport, displaying
+  chance, selected and queued shots, target health, range, crippled limbs and
+  power-armor tier. Lost line of sight hides pins; the camera, AI and weapon
+  simulation are never slowed. These are presentation improvements only;
+  multiplayer server validation is still a separate future milestone.
+- Remaining Phase 1 work: visual QA and polish for targeting presentation,
+  multiplayer-authoritative validation when networking is implemented,
+  scenario-based visual verification,
   fuller injury reactions and world art polish.
 
 ## Non-negotiable design rules

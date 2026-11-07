@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.93 · S.P.E.C.I.A.L. & Perks | GAMESHUB RPG</title>
+<title>W20.94 · Live V.A.T.S. Scanner | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1356,14 +1356,19 @@ body.hud-modern #powerArmorHud{display:none!important}
 #inventoryPanel .inventory-quest-card button[aria-pressed="true"]{background:#685535;color:#ffdf98}
 #inventoryPanel .inventory-quest-card button:disabled{opacity:.65;cursor:default}
 #inventoryPanel .inventory-quest-help{margin-top:14px;color:#8ba89a!important}
-/* W20.91: tactical targeting, queued fire and actual shared AP. */
+/* W20.94: cinematic scanner layered over live multiplayer-style targeting. */
 #vatsPanel{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;
   justify-content:flex-end;padding:116px 20px 24px;color:#d6ffcb;pointer-events:none}
 #vatsPanel.hidden{display:none!important}
+#vatsPanel::before{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 42% 45%,#72e7a308 0%,#02160c47 76%),
+    repeating-linear-gradient(0deg,transparent 0,transparent 5px,#a7ffc904 6px,#a7ffc904 7px);
+  box-shadow:inset 0 0 110px #020f0b6b}
 #vatsPanel .vats-shell{width:min(550px,46vw);max-height:calc(100vh - 130px);
   overflow:hidden;border:1px solid #7cc78b;background:#071a16db;
   box-shadow:0 14px 42px #000a;padding:15px;
-  font-family:Consolas,'Courier New',monospace}
+  font-family:Consolas,'Courier New',monospace;position:relative;z-index:5;
+  backdrop-filter:blur(7px)}
 .vats-head{display:flex;justify-content:space-between;align-items:center;gap:15px;
   border-bottom:1px solid #4f8767;padding-bottom:13px}
 .vats-head h2{margin:0;font-size:25px;letter-spacing:.15em;color:#d8ffb7}
@@ -1402,12 +1407,50 @@ body.hud-modern #powerArmorHud{display:none!important}
   margin:15px 0 0;line-height:1.5}
 #vatsTargetMarker{position:absolute;z-index:1;pointer-events:none;transform:translate(-50%,-50%);
   border:2px solid #b5eb99;width:42px;height:42px;border-radius:50%;
-  box-shadow:0 0 16px #80f0839c,0 0 0 100vmax #0000}
-#vatsTargetMarker.hidden{display:none}
+  box-shadow:0 0 16px #80f0839c,0 0 28px #91ee6e42}
+#vatsTargetMarker.hidden,#vatsTargetBox.hidden,.vats-zone-pin.hidden{display:none!important}
+#vatsZonePins{position:absolute;inset:0;pointer-events:none;z-index:3}
+.vats-zone-pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;
+  gap:7px;min-width:76px;padding:4px 7px;background:#092219df;border:1px solid #82c48a;
+  color:#ccf6c5;box-shadow:0 2px 12px #000b;font:800 10px Consolas,monospace;
+  text-shadow:0 1px 2px #000;white-space:nowrap;transition:left .07s linear,top .07s linear}
+.vats-zone-pin::before{content:'';position:absolute;left:-5px;top:50%;width:7px;height:7px;
+  border:1px solid #a3e9a0;transform:translateY(-50%) rotate(45deg);background:#164c36}
+.vats-zone-pin strong{color:#ffdf90;font-size:12px}
+.vats-zone-pin[data-selected="true"]{border-color:#ffe2a1;background:#554428ec;
+  color:#fff5d2;box-shadow:0 0 22px #fbd67e55}
+.vats-zone-pin[data-queued="true"]{outline:2px solid #e0bd71;outline-offset:2px}
+#vatsTargetBox{position:absolute;z-index:2;pointer-events:none;border:1px solid #a9eea563;
+  background:linear-gradient(135deg,#80ec9d09,transparent 40%,#82ffa309);
+  box-shadow:inset 0 0 20px #1f7b4126;transition:left .07s linear,top .07s linear,
+  width .07s linear,height .07s linear}
+#vatsTargetBox::before{content:'';position:absolute;inset:-5px;pointer-events:none;
+  background:linear-gradient(#c0ffb1,#c0ffb1) left top/27px 3px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) left top/3px 27px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) right top/27px 3px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) right top/3px 27px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) left bottom/27px 3px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) left bottom/3px 27px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) right bottom/27px 3px no-repeat,
+    linear-gradient(#c0ffb1,#c0ffb1) right bottom/3px 27px no-repeat}
+.vats-lock-name{position:absolute;bottom:calc(100% + 8px);left:0;display:flex;
+  gap:15px;align-items:baseline;white-space:nowrap;background:#071d17e8;padding:5px 8px;
+  border-left:3px solid #a3f596;font:900 13px Consolas,monospace;letter-spacing:.09em}
+.vats-lock-name small{color:#e5d79c;font-size:11px}
+.vats-lock-health{position:absolute;top:calc(100% + 5px);left:0;right:0;height:6px;
+  border:1px solid #77b583;background:#17372b}
+.vats-lock-health i{display:block;height:100%;background:linear-gradient(90deg,#7ac66d,#e0f4a7);
+  transition:width .15s linear}
+#vatsTargetInfo{position:absolute;top:calc(100% + 15px);left:0;color:#aee6a5;
+  background:#071d17e8;padding:3px 6px;white-space:nowrap;
+  font:700 10px Consolas,monospace;letter-spacing:.05em}
+@media(prefers-reduced-motion:reduce){.vats-zone-pin,#vatsTargetBox{transition:none}}
 @media(max-width:650px){#vatsPanel{padding:66px 8px 8px}#vatsPanel .vats-shell{padding:9px;
   width:min(350px,80vw);max-height:calc(100vh - 72px)}.vats-head h2{font-size:18px}
   .vats-grid{grid-template-columns:1fr}#vatsPanel button{font-size:11px;padding:9px}
-  .vats-meters{gap:5px}.vats-meter{padding:7px}.vats-meter strong{font-size:15px}}
+  .vats-meters{gap:5px}.vats-meter{padding:7px}.vats-meter strong{font-size:15px}
+  .vats-zone-pin{font-size:8px;min-width:50px;gap:4px;padding:2px 4px}
+  .vats-zone-pin strong{font-size:9px}.vats-lock-name{font-size:10px}}
 @media(max-width:760px){
   #inventoryPanel .inventory-page-nav{gap:5px;padding:9px}
   #inventoryPanel .inventory-page-tabs{gap:3px}
@@ -1430,6 +1473,13 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="deathCinematicVeil" aria-hidden="true"></div>
 <section id="vatsPanel" class="hidden" role="region" aria-label="Real-time tactical targeting">
   <div id="vatsTargetMarker" class="hidden" aria-hidden="true"></div>
+  <div id="vatsZonePins" aria-hidden="true"></div>
+  <div id="vatsTargetBox" class="hidden" aria-hidden="true">
+    <div class="vats-lock-name"><b id="vatsTargetName">TARGET</b>
+      <small id="vatsTargetRange">0 M</small></div>
+    <div class="vats-lock-health"><i id="vatsTargetHpFill" style="width:100%"></i></div>
+    <div id="vatsTargetInfo">TARGET SCANNING</div>
+  </div>
   <div class="vats-shell">
     <div class="vats-head"><div><h2 id="vatsTitle">TACTICAL TARGETING</h2>
       <span>REAL-TIME COMBAT · ENEMIES KEEP MOVING</span></div>
@@ -1694,7 +1744,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.93</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.94</div>
+    <p><strong>W20.94 · LIVE V.A.T.S. TARGET SCANNER:</strong> Real animated enemies now have a world-tracked targeting frame, six body-part probability markers, live health bar, range and crippled-limb status. The selected part glows amber and queued targets are marked on the battlefield. Markers use projected, visible physical hitboxes and disappear when obscured. Combat, NPC AI, movement and weapon timing continue in real time for multiplayer. The XP required for every new level is also 50% higher (level 1 now takes 255 XP, up from 170), without changing saved levels, earned progress or perks.</p>
     <p><strong>W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION:</strong> All seven attributes now affect the live sandbox: Strength adds backpack slots alongside recoil control; Perception improves targeting; Endurance supports survival; Charisma changes real buy/sell prices; Intelligence controls XP and workbench material discounts; Agility reduces V.A.T.S. shot AP alongside movement bonuses; and Luck speeds V.A.T.S. critical-meter charging. Silver Tongue adds a barter advantage, Ghost Runner reduces V.A.T.S. AP costs, and Resourceful discounts both weapon assemblies and optics. Vendor cart totals and workbench recipes match the actual transaction, while existing saves and already crafted parts remain intact. Open S.P.E.C.I.A.L. with L.</p>
     <p><strong>W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT:</strong> Shooting a Raider's legs now causes real movement penalties and an asymmetric limp. Arm, head and chest injuries lower their actual hit probability; all six body-part conditions are tracked until the enemy dies or the arena is reset. Your own injured legs now visibly affect third-person gait and subtly change first-person walking motion. V.A.T.S. identifies crippled limbs. Heal your injuries with real medical supplies; resetting enemies clears only their injuries.</p>
     <p><strong>W20.91 · LIVE V.A.T.S. SHOT QUEUE:</strong> Press T to enter tactical targeting without slowing the world. Use Tab to cycle visible hostiles and 1–6 to select body parts, then left-click to queue shots within your available AP and ammunition. Enter executes the queue as real weapon shots over time; Backspace removes the last shot. Space reserves one charged critical for a queued shot. AI, movement and incoming fire continue normally, and moving behind cover can invalidate a queued shot.</p>
@@ -1757,7 +1808,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.93</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.94</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2188,7 +2239,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.93"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.94"></script>
 </body>
 </html>
 

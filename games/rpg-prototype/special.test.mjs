@@ -44,14 +44,25 @@ test('Perk ranks have attribute prerequisites and consume perk points',()=>{
 
 test('Combat XP levels up, awards perks, and every fourth level grants a stat point',()=>{
   const s=createSpecialState();
-  assert.equal(xpForNextLevel(1),170);
-  const x=gainSpecialXP(s,1000,'combat');
-  assert.equal(x.gained,1000);
+  assert.equal(xpForNextLevel(1),255);
+  const x=gainSpecialXP(s,1600,'combat');
+  assert.equal(x.gained,1600);
   assert.equal(x.level,4);
   assert.equal(x.levels,3);
   assert.equal(s.perkPoints,5);
   assert.equal(s.statPoints,6);
   assert.ok(s.xp>=0&&s.xp<xpForNextLevel(s.level));
+});
+
+test('W20.93.1 each level requires exactly 50% more XP without resetting progress',()=>{
+  for(const level of [1,4,10,25,49,50])
+    assert.equal(xpForNextLevel(level),Math.round((100+70*level)*1.5));
+  const saved=safeSpecialSnapshot({level:15,xp:850,statPoints:2,
+    perkPoints:3,attributes:{luck:6},perks:{'lucky-shot':1}});
+  assert.equal(saved.level,15);
+  assert.equal(saved.xp,850);
+  assert.equal(saved.perks['lucky-shot'],1);
+  assert.ok(saved.xp<xpForNextLevel(saved.level));
 });
 
 test('Seven stat passives and purchased perks change real gameplay multipliers',()=>{
