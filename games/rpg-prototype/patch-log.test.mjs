@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with the enemy AI combat overhaul',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.77\.1/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.77\.2/);
+  assert.match(log,/<strong>W20\.77\.2 · CORRECT CORNER PEEK DIRECTION:<\/strong>/);
   assert.match(log,/<strong>W20\.77\.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING:<\/strong>/);
   assert.match(log,/<strong>W20\.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL:<\/strong>/);
   assert.match(log,/<strong>W20\.76\.1 · FIRST-PERSON DEATH CINEMATIC:<\/strong>/);
@@ -23,6 +24,8 @@ test('systems testing splash leads with the enemy AI combat overhaul',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.77.2 · CORRECT CORNER PEEK DIRECTION')<
+    log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING'));
   assert.ok(log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING')<
     log.indexOf('W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL'));
   assert.ok(log.indexOf('W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL')<
@@ -40,6 +43,6 @@ test('systems testing splash leads with the enemy AI combat overhaul',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.77\.1/);
-  assert.match(bootstrap,/main\.js\?v=W20\.77\.1/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.77\.2/);
+  assert.match(bootstrap,/main\.js\?v=W20\.77\.2/);
 });

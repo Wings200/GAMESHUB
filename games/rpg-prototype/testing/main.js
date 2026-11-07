@@ -42,7 +42,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
   FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77.1';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77.2';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
@@ -63,7 +63,7 @@ import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
   resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch,
-  chooseClearPeekSide } from '../enemy-ai.mjs?v=W20.77.1';
+  chooseClearPeekSide, projectedPeekSide } from '../enemy-ai.mjs?v=W20.77.2';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
   chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.77';
@@ -3479,12 +3479,9 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
         lookTarget.z-enemy.brain.z);
       const aimYaw=Math.atan2(Math.sin(targetYaw-enemy.brain.yaw),
         Math.cos(targetYaw-enemy.brain.yaw));
-      const peekOffset=enemy.tactics.peekPoint&&enemy.tactics.coverPoint?{
-        x:enemy.tactics.peekPoint.x-enemy.tactics.coverPoint.x,
-        z:enemy.tactics.peekPoint.z-enemy.tactics.coverPoint.z}:null;
-      const lateralPeek=peekOffset?
-        peekOffset.x*Math.cos(enemy.brain.yaw)-
-        peekOffset.z*Math.sin(enemy.brain.yaw):0;
+      const plannedPeekSide=enemy.tactics.peekPoint&&enemy.tactics.coverPoint?
+        projectedPeekSide(enemy.tactics.coverPoint,enemy.tactics.peekPoint,
+          enemy.brain.yaw):0;
       const muzzle=enemy.rigged?.getMuzzleWorldPosition();
       const targetPoint=aimedHeight===null?null:
         new THREE.Vector3(player.x,aimedHeight,player.z);
@@ -3494,16 +3491,36 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
       // points into it. Test which shoulder has a real clear lane and LEAN
       // the visible torso and weapon into that lane. Hold briefly so the
       // pose does not oscillate as soon as the muzzle clears the corner.
-      enemy.coverLeanSeconds=Math.max(0,(enemy.coverLeanSeconds||0)-dt);
-      if(!peeking&&shouldAim&&muzzleBlocked&&
-        enemy.coverLeanSeconds===0){
-        enemy.coverLeanSide=chooseClearPeekSide(muzzle,targetPoint,
-          enemy.brain.yaw,enemySightObstacles);
-        if(enemy.coverLeanSide)enemy.coverLeanSeconds=.9;
+      let peekLean=0;
+      if(peeking){
+        // Commit to ONE shoulder for this peek. Previously a stale automatic
+        // lean could take over midway, or an aim-yaw change could flip the
+        // chosen side while the enemy was rounding a corner.
+        enemy.coverLeanSeconds=0;
+        enemy.coverLeanSide=0;
+        if(enemy.tacticalLeanPoint!==enemy.tactics.peekPoint){
+          enemy.tacticalLeanPoint=enemy.tactics.peekPoint;
+          const clearSide=muzzleBlocked&&targetPoint?
+            chooseClearPeekSide(muzzle,targetPoint,enemy.brain.yaw,
+              enemySightObstacles,.32,plannedPeekSide):0;
+          enemy.tacticalLeanSide=clearSide||plannedPeekSide;
+        }
+        peekLean=shouldAim&&Math.abs(aimYaw)<1.15?
+          (enemy.tacticalLeanSide||0):0;
+      }else{
+        enemy.tacticalLeanPoint=null;
+        enemy.tacticalLeanSide=0;
+        enemy.coverLeanSeconds=Math.max(0,(enemy.coverLeanSeconds||0)-dt);
+        if(shouldAim&&muzzleBlocked&&enemy.coverLeanSeconds===0){
+          const preferred=projectedPeekSide(enemy.brain,lookTarget,
+            enemy.brain.yaw,.08);
+          enemy.coverLeanSide=chooseClearPeekSide(muzzle,targetPoint,
+            enemy.brain.yaw,enemySightObstacles,.32,preferred);
+          if(enemy.coverLeanSide)enemy.coverLeanSeconds=.9;
+        }
+        peekLean=shouldAim&&Math.abs(aimYaw)<1.15&&
+          enemy.coverLeanSeconds>0?(enemy.coverLeanSide||0):0;
       }
-      const peekLean=peeking&&Math.abs(lateralPeek)>.15?
-        Math.sign(lateralPeek):
-        shouldAim&&enemy.coverLeanSeconds>0?(enemy.coverLeanSide||0):0;
       // Lift the authentic weapon above cover while both hands remain on the
       // animated grip sockets. A partly visible head calls for a high hold.
       const headOnly=aimedHeight!==null&&
