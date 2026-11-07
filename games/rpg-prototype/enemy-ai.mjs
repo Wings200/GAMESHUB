@@ -96,6 +96,21 @@ export function enemyAimPitch(from,target,muzzleY=1.43){
   const flat=Math.max(.2,distance(from.x,from.z,target.x,target.z));
   return Math.atan2(target.y-muzzleY,flat);
 }
+// When an NPC's head has sight but its rifle is obstructed at a corner,
+// sample both real shoulder lanes. A returned side is useful only if a
+// shoulder-width lean could actually clear the obstruction. The caller
+// animates into the lane and verifies the REAL muzzle before every shot.
+export function chooseClearPeekSide(muzzle,target,yaw,obstacles=[],reach=.32){
+  if(!muzzle||!target||!Number.isFinite(yaw))return 0;
+  const rightX=Math.cos(yaw),rightZ=-Math.sin(yaw);
+  for(const side of [1,-1]){
+    const origin={x:muzzle.x+side*reach*rightX,y:muzzle.y,
+      z:muzzle.z+side*reach*rightZ};
+    if(!obstacles.some(box=>lineIntersectsBox3D(origin,target,box,.035)))
+      return side;
+  }
+  return 0;
+}
 export function hasSight(enemy,player,obstacles=[],tuning=AI_TUNING){
   const d=distance(enemy.x,enemy.z,player.x,player.z);
   if(d>tuning.sight||d<.0001)return d<.0001;

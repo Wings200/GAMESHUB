@@ -42,7 +42,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
   FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77.1';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
@@ -62,7 +62,8 @@ import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laser
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
 import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
-  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch } from '../enemy-ai.mjs?v=W20.77';
+  resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch,
+  chooseClearPeekSide } from '../enemy-ai.mjs?v=W20.77.1';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
   chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.77';
@@ -3345,7 +3346,15 @@ function playerCombatSilhouette(){
     headY:feet+height*.94};
 }
 function enemySightBody(enemy){
-  return {...enemy.brain,eyeY:1.53-.82*enemy.crouchBlend};
+  // Vision originates from the rendered head, including crouching and a
+  // physical corner lean. The old synthetic 1.53-.82*crouchBlend eye height
+  // didn't match the rig, making a guard blind above cover it could see over.
+  const head=enemy.rigged?.hitJoints?.head;
+  if(head){
+    const eye=head.getWorldPosition(new THREE.Vector3());
+    return {...enemy.brain,x:eye.x,z:eye.z,eyeY:eye.y+.04};
+  }
+  return {...enemy.brain,eyeY:1.53-.32*enemy.crouchBlend};
 }
 function updateEnemies(dt,elapsed=dt,refreshRadar=true){
   // A confirmed hit outside the arena wakes combat while the enemy still
@@ -3429,7 +3438,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
       enemy.upperBody.position.y=-.82*enemy.crouchBlend;
       // Animated ready pose, short lean while peeking, rifle dip while
       // reloading, and a quick shoulder kick after actual shots.
-      const shouldAim=liveNpcGun&&directlyVisible&&
+      const peeking=enemy.tactics.phase==='peek'||enemy.tactics.phase==='peek-move';
+      const shouldAim=liveNpcGun&&(directlyVisible||peeking)&&
         (enemy.brain.mode==='chase'||enemy.brain.retaliationTime>0)&&
         !enemy.tactics.crouching&&enemy.tactics.reloadRemaining===0;
       enemy.combatPose+=(Number(shouldAim)-enemy.combatPose)*
@@ -3437,7 +3447,6 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
       enemy.reloadPose+=(Number(enemy.tactics.reloadRemaining>0)-enemy.reloadPose)*
         (1-Math.exp(-10*dt));
       enemy.recoilPose=Math.max(0,enemy.recoilPose-dt*6);
-      const peeking=enemy.tactics.phase==='peek'||enemy.tactics.phase==='peek-move';
       enemy.upperBody.rotation.z+=( (peeking?.11*enemy.tactics.strafeSign:0)-
         enemy.upperBody.rotation.z)*(1-Math.exp(-8*dt));
       enemy.upperBody.rotation.x=-.16*enemy.reloadPose+
@@ -3457,18 +3466,56 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
       // Apply the actual facing before computing torso turns, then animate
       // from measured velocity so blocked NPCs never run in place.
       enemy.root.rotation.y=enemy.brain.yaw;
-       // Recheck after locomotion: the guard may have just reached the edge
-       // of a wall. This exact visible height drives both the gun and tracer.
-       const aimedHeight=directlyVisible?
-          visibleTargetHeight(enemySightBody(enemy),playerSilhouette,enemySightObstacles):null;
-       const aimPitch=aimedHeight===null?0:enemyAimPitch(enemy.brain,
-         {x:player.x,z:player.z,y:aimedHeight},
-         1.43-.82*enemy.crouchBlend);
+      // Recheck the genuinely visible target height after moving. NPC sight
+      // starts at the rendered head, but each shot starts at the actual gun:
+      // seeing someone's head over a rock cannot make a chest-mounted barrel
+      // magically shoot through it.
+      const aimedHeight=directlyVisible?
+        visibleTargetHeight(enemySightBody(enemy),playerSilhouette,
+          enemySightObstacles):null;
+      const lookTarget=directlyVisible?playerSilhouette:
+        (enemy.brain.lastSeen||enemy.brain);
+      const targetYaw=Math.atan2(lookTarget.x-enemy.brain.x,
+        lookTarget.z-enemy.brain.z);
+      const aimYaw=Math.atan2(Math.sin(targetYaw-enemy.brain.yaw),
+        Math.cos(targetYaw-enemy.brain.yaw));
+      const peekOffset=enemy.tactics.peekPoint&&enemy.tactics.coverPoint?{
+        x:enemy.tactics.peekPoint.x-enemy.tactics.coverPoint.x,
+        z:enemy.tactics.peekPoint.z-enemy.tactics.coverPoint.z}:null;
+      const lateralPeek=peekOffset?
+        peekOffset.x*Math.cos(enemy.brain.yaw)-
+        peekOffset.z*Math.sin(enemy.brain.yaw):0;
+      const muzzle=enemy.rigged?.getMuzzleWorldPosition();
+      const targetPoint=aimedHeight===null?null:
+        new THREE.Vector3(player.x,aimedHeight,player.z);
+      const muzzleBlocked=!!(muzzle&&targetPoint&&
+        firstSolidHit(muzzle,targetPoint,enemySightObstacles));
+      // A head can sometimes see around a rock while the held rifle still
+      // points into it. Test which shoulder has a real clear lane and LEAN
+      // the visible torso and weapon into that lane. Hold briefly so the
+      // pose does not oscillate as soon as the muzzle clears the corner.
+      enemy.coverLeanSeconds=Math.max(0,(enemy.coverLeanSeconds||0)-dt);
+      if(!peeking&&shouldAim&&muzzleBlocked&&
+        enemy.coverLeanSeconds===0){
+        enemy.coverLeanSide=chooseClearPeekSide(muzzle,targetPoint,
+          enemy.brain.yaw,enemySightObstacles);
+        if(enemy.coverLeanSide)enemy.coverLeanSeconds=.9;
+      }
+      const peekLean=peeking&&Math.abs(lateralPeek)>.15?
+        Math.sign(lateralPeek):
+        shouldAim&&enemy.coverLeanSeconds>0?(enemy.coverLeanSide||0):0;
+      // Lift the authentic weapon above cover while both hands remain on the
+      // animated grip sockets. A partly visible head calls for a high hold.
+      const headOnly=aimedHeight!==null&&
+        Math.abs(aimedHeight-playerSilhouette.headY)<.025;
+      const raiseGun=muzzleBlocked?1:headOnly?.88:.62;
+      const aimPitch=targetPoint?enemyAimPitch(muzzle||enemy.brain,
+        targetPoint,muzzle?.y??1.43):0;
       enemy.rigged?.update(dt,{
         moving:enemy.brain.moving,
         speed:enemy.brain.actualSpeed,
         crouched:enemy.tactics.crouching,
-         aiming:shouldAim,aimPitch,
+         aiming:shouldAim,aimPitch,aimYaw,raiseGun,peekLean,
          reloading:liveNpcGun&&enemy.tactics.reloadRemaining>0,
         reloadProgress:enemy.tactics.reloadRemaining>0?1-
           enemy.tactics.reloadRemaining/

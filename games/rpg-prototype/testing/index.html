@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.77 · Enemy AI Combat Overhaul | GAMESHUB RPG</title>
+<title>W20.77.1 · Cover Peeking & Raised NPC Weapons | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1499,7 +1499,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.77</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.77.1</div>
+    <p><strong>W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING:</strong> NPC eyes now follow the animated head rather than an invisible chest-height point. When a rock exposes only the player's head, raiders lift their actual rifle and aim from its real muzzle. Around corners they turn and lean their rendered torso, head and held gun, with both hands gripping the rifle; a shoulder peek only counts when the projectile path is truly clear. Existing cover routes, ammunition and reloading still govern attacks.</p>
     <p><strong>W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL:</strong> Guards no longer fire sideways before facing their target or draw every missed shot far ahead of someone standing still. Steady observation improves accuracy without granting perfect aim; moving targets, recoil, distance and suppression still matter. Scouts, raiders and enforcers now navigate around blocking cover, commit to firing lanes between flanks, retain a short aim memory on brief occlusions, and use smoother speed-based steps, strafing lean, search glances, reloads and hit reactions.</p>
     <p><strong>W20.76.1 · FIRST-PERSON DEATH CINEMATIC:</strong> On fatal damage your view staggers down to your knees, pauses, then pitches into the ground with a brief impact jolt. Only after the fall fades out does YOU DIED appear. The Haven respawn and recoverable power-armor frame are unchanged.</p>
     <p><strong>W20.76 · DEATH & POWER ARMOR RECOVERY:</strong> Fatal damage now plays a third-person collapse before showing a death screen. Respawn at Haven with your backpack, progression and world changes intact. A power-armor frame stays where you fell. The map shows only your most recently worn parked frame, and you may track or untrack it without replacing your own waypoint.</p>
@@ -1971,7 +1972,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.77"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.77.1"></script>
 </body>
 </html>
 

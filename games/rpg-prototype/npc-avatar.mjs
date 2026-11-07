@@ -181,7 +181,8 @@ export function createNpcAvatar(parent,kind){
       avatar.root.matrixWorld).clone();
   }
   let time=0,reloadClock=0,wasReloading=false,hitBlend=0,recoilBlend=0;
-  let verticalAim=0,locomotionSpeed=0,alertBlend=0,suppressedBlend=0;
+  let verticalAim=0,horizontalAim=0,gunRaiseBlend=0,leanBlend=0;
+  let locomotionSpeed=0,alertBlend=0,suppressedBlend=0;
   let lastArmor={};
   let previousBodyYaw=null;
   function setArmor(loadout={}){
@@ -191,7 +192,8 @@ export function createNpcAvatar(parent,kind){
   function update(dt,{moving=false,speed=0,crouched=false,aiming=false,aimPitch=0,
     searchYaw=0,
     reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true,
-    alerted=false,suppressed=0,lateralSpeed=0,phase='patrol'}={}){
+    alerted=false,suppressed=0,lateralSpeed=0,phase='patrol',
+    aimYaw=0,raiseGun=0,peekLean=0}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
     const parentYaw=parent.rotation.y;
@@ -221,10 +223,26 @@ export function createNpcAvatar(parent,kind){
     const requestedPitch=aiming&&Number.isFinite(aimPitch)?
       Math.max(-.55,Math.min(.85,aimPitch)):0;
     verticalAim+=(requestedPitch-verticalAim)*(1-Math.exp(-9*step));
+    const requestedYaw=aiming&&Number.isFinite(aimYaw)?
+      Math.max(-.28,Math.min(.28,aimYaw)):0;
+    horizontalAim+=(requestedYaw-horizontalAim)*(1-Math.exp(-12*step));
+    const wantedRaise=!disarmed&&aiming?
+      Math.max(.55,Math.min(1,raiseGun||0)):0;
+    gunRaiseBlend+=(wantedRaise-gunRaiseBlend)*(1-Math.exp(-11*step));
+    const wantedLean=!disarmed&&Number.isFinite(peekLean)?
+      Math.max(-1,Math.min(1,peekLean)):0;
+    leanBlend+=(wantedLean-leanBlend)*(1-Math.exp(-9*step));
     // Set the gun pose BEFORE avatar.update so the IK reads current grips.
-    // The NPC uses the same firearm-specific action stages as the player.
+    // This is a shoulder-held, aimable weapon; the previous fixed chest
+    // socket stayed below waist-high cover even when the head could see.
+    // Both physical hands follow the raised receiver through the existing IK.
+    // Visual root faces opposite the AI's +Z convention: local -X is
+    // world-right at yaw zero. Shift the gun toward the leaned-over shoulder.
+    mount.position.set(.17-leanBlend*.18,
+      .50+gunRaiseBlend*.39,-.20-gunRaiseBlend*.055);
+    mount.rotation.y=horizontalAim;
     // A belt-fed LMG swaps the side drum; a pipe rifle cycles a bolt.
-    mount.rotation.z=hitBlend*.12;
+    mount.rotation.z=hitBlend*.12+leanBlend*.08;
     gun.rotation.x=action.tilt+recoilBlend*.15-hitBlend*.08;
     gun.rotation.y=Math.sin(time*3.1)*(.009+.005*alertBlend)+hitBlend*.09;
     gun.rotation.z=reloading?.08*Math.sin(Math.PI*reloadStage):
@@ -267,12 +285,14 @@ export function createNpcAvatar(parent,kind){
       Number.isFinite(searchYaw)?searchYaw:0));
     avatar.hitJoints.head.rotation.y=glance*(aiming?.16:1)+
       (alertBlend>.35&&!aiming?Math.sin(time*1.1)*.035:0);
+    avatar.hitJoints.head.rotation.y+=horizontalAim*.48;
     avatar.hitJoints.torso.rotation.y+=glance*.15*(aiming?.18:1);
     // Hips and shoulders shift against lateral movement, instead of
     // swinging the legs as though every strafing step went forwards.
     const side=Math.max(-1,Math.min(1,lateralSpeed/3));
     avatar.hitJoints.torso.rotation.z+=side*.078+
-      suppressedBlend*Math.sin(time*13)*.011;
+      suppressedBlend*Math.sin(time*13)*.011+leanBlend*.26;
+    avatar.hitJoints.head.rotation.z+=leanBlend*.12;
     if(phase==='hold'||phase==='guard-angle')
       avatar.hitJoints.head.rotation.x-=.045*alertBlend;
     if(reloading)avatar.hitJoints.head.rotation.x+=.09;
@@ -291,6 +311,7 @@ export function createNpcAvatar(parent,kind){
   return {
     root:avatar.root,hitJoints:avatar.hitJoints,update,setArmor,setWeapon,disarm,
      getMuzzleWorldPosition,getWorldForward,getAimPitch:()=>verticalAim,
+     getAimYaw:()=>horizontalAim,getLean:()=>leanBlend,
     get metrics(){return {
       height:role.height,expectedHeight:role.height,repairs:0,
       source:'original-procedural'
