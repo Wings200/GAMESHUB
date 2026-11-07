@@ -46,3 +46,15 @@ export function vatsCriticalGain(charge,amount=15){
   return clamp((Number.isFinite(charge)?charge:0)+Math.max(0,amount),0,100);
 }
 export function vatsCriticalReady(charge){return charge>=100;}
+
+/** Remaining whole shots that can be reserved by a live AP/ammo queue. */
+export function vatsQueueSlots({ap,cost,queuedCost=0,queuedShots=0,
+  ammo=0,infiniteAmmo=false}={}){
+  if(!Number.isFinite(ap)||!Number.isFinite(cost)||cost<=0||
+    !Number.isFinite(queuedCost)||queuedCost<0||
+    !Number.isFinite(queuedShots)||queuedShots<0)return 0;
+  const apSlots=Math.max(0,Math.floor((ap-queuedCost+1e-8)/cost));
+  if(infiniteAmmo)return apSlots;
+  if(!Number.isFinite(ammo)||ammo<0)return 0;
+  return Math.max(0,Math.min(apSlots,Math.floor(ammo-queuedShots)));
+}

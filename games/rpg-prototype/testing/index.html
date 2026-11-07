@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.90 · Tactical Targeting | GAMESHUB RPG</title>
+<title>W20.91 · Real-Time V.A.T.S. Queue | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1356,7 +1356,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 #inventoryPanel .inventory-quest-card button[aria-pressed="true"]{background:#685535;color:#ffdf98}
 #inventoryPanel .inventory-quest-card button:disabled{opacity:.65;cursor:default}
 #inventoryPanel .inventory-quest-help{margin-top:14px;color:#8ba89a!important}
-/* W20.90: tactical targeting overlay, with an actual AP pool and zone choices. */
+/* W20.91: tactical targeting, queued fire and actual shared AP. */
 #vatsPanel{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;
   justify-content:flex-end;padding:116px 20px 24px;color:#d6ffcb;pointer-events:none}
 #vatsPanel.hidden{display:none!important}
@@ -1369,7 +1369,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 .vats-head h2{margin:0;font-size:25px;letter-spacing:.15em;color:#d8ffb7}
 .vats-head span{font-size:11px;letter-spacing:.08em;color:#a9d7a7}
 #vatsPanel .vats-choice{border:1px solid #5c9a75;background:#0e3029;color:#d5fbd0;
-  font:700 13px Consolas,monospace;padding:10px 12px;cursor:pointer;border-radius:2px}
+  font:700 13px Consolas,monospace;padding:10px 12px;cursor:default;border-radius:2px}
 #vatsPanel .vats-choice[aria-current="true"]{border-color:#f3d07f;background:#4b5032;color:#fff3ae}
 #vatsPanel .vats-choice[aria-disabled="true"]{opacity:.42}
 .vats-meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
@@ -1387,6 +1387,13 @@ body.hud-modern #powerArmorHud{display:none!important}
 #vatsEnemies .vats-choice,#vatsZones .vats-choice{text-align:left;display:flex;justify-content:space-between;gap:7px}
 #vatsZones .vats-choice b{color:#ebd38f}
 .vats-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}
+.vats-queue-wrap{margin-top:13px;border-top:1px solid #315b45;padding-top:12px}
+.vats-queue-wrap h3{margin:0 0 7px;font:800 11px Consolas,monospace;letter-spacing:.12em;color:#aed7a5}
+#vatsQueue{display:flex;gap:6px;flex-wrap:wrap}
+.vats-queued-shot{border:1px solid #778d63;background:#25382a;color:#f2e4a1;
+  padding:5px 8px;font:700 11px Consolas,monospace}
+#vatsQueueHint{display:block;font:700 10px Consolas,monospace;
+  color:#b6d6b0;margin-top:7px;letter-spacing:.045em}
 #vatsFire{background:#31543a;font-size:15px;min-width:200px}
 #vatsPanel .vats-action{border:1px solid #5c9a75;padding:9px 10px;
   background:#15382a;color:#d5fbd0;font:700 12px Consolas,monospace}
@@ -1437,9 +1444,13 @@ body.hud-modern #powerArmorHud{display:none!important}
       <div class="vats-section"><h3>HOSTILES · TAB TO CYCLE</h3><div id="vatsEnemies"></div></div>
       <div class="vats-section"><h3>BODY PART · KEYS 1–6</h3><div id="vatsZones"></div></div>
     </div>
+    <div class="vats-queue-wrap"><h3>QUEUED ATTACKS · REAL-TIME</h3>
+      <div id="vatsQueue"></div>
+      <span id="vatsQueueHint">LEFT CLICK TO QUEUE · ENTER TO EXECUTE · BACKSPACE TO UNDO</span>
+    </div>
     <p id="vatsMessage" role="status">Select an enemy and a hit zone.</p>
     <div class="vats-actions"><span id="vatsCritical" class="vats-action">SPACE · CRITICAL</span>
-      <span id="vatsFire" class="vats-action">LEFT CLICK · FIRE TARGETED SHOT</span></div>
+      <span id="vatsFire" class="vats-action">LEFT CLICK · QUEUE TARGETED SHOT</span></div>
   </div>
 </section>
 <section id="deathScreen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="deathTitle">
@@ -1682,8 +1693,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.90</div>
-    <p><strong>W20.90 · TACTICAL BODY-PART TARGETING:</strong> Press T while armed to pause combat and select a hostile and one of six body parts. Each part has its own hit percentage, affected by distance, physical cover, Perception and injuries. Each shot consumes a real bullet and Action Points from the same stamina pool as sprinting, obeys weapon cooldown and is stopped by actual solid cover. Genuine hits charge a critical meter, which can be armed at 100% for a stronger attack. Exit with T or Escape. Tactical targeting is now testable; cinematic presentation and full-game balancing still need work.</p>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.91</div>
+    <p><strong>W20.91 · LIVE V.A.T.S. SHOT QUEUE:</strong> Press T to enter tactical targeting without slowing the world. Use Tab to cycle visible hostiles and 1–6 to select body parts, then left-click to queue shots within your available AP and ammunition. Enter executes the queue as real weapon shots over time; Backspace removes the last shot. Space reserves one charged critical for a queued shot. AI, movement and incoming fire continue normally, and moving behind cover can invalidate a queued shot.</p>
+    <p><strong>W20.90 · TACTICAL BODY-PART TARGETING:</strong> Original real-time target selection added six limb hit percentages based on distance, cover, Perception and injuries; real ammo, weapon cooldown, shared stamina/AP and a hit-earned critical meter. T or Escape exits tactical targeting.</p>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
@@ -1742,7 +1754,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.90</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.91</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2173,7 +2185,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.90"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.91"></script>
 </body>
 </html>
 

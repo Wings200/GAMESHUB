@@ -91,8 +91,8 @@ import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
   healWorstLimb,resetInjuries,injuryEffects,injuryStatus}
   from '../injuries.mjs?v=W20.89';
 import {VATS_ZONES,VATS_ZONE_LABELS,vatsApCost,vatsChance,vatsApAvailable,
-  vatsSpendAp,vatsCriticalGain,vatsCriticalReady}
-  from '../vats-targeting.mjs?v=W20.90';
+  vatsSpendAp,vatsCriticalGain,vatsCriticalReady,vatsQueueSlots}
+  from '../vats-targeting.mjs?v=W20.91';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -6826,8 +6826,9 @@ canvas.addEventListener('click',()=>{
 // VATS uses the *existing* stamina/AP pool; ordinary weapon fire remains the
 // sole authority for ammunition, cooldown, collision, damage and deaths.
 const vatsState={active:false,enemyId:null,zone:'chest',criticalArmed:false,
-  message:'Select an enemy and a hit zone.'};
+  queue:[],executing:false,message:'Select an enemy and a hit zone.'};
 let vatsRenderTimer=0;
+let vatsQueueClock=0;
 const vatsCriticalSaveKey='rpg-vats-critical-v1';
 let vatsCriticalCharge=0;
 try{
@@ -6856,7 +6857,8 @@ function vatsContactList(){
     const distance=vector.length();
     if(distance>48||distance<.1)continue;
     const facingDot=facing.dot(vector.normalize());
-    if(facingDot<.55)continue;
+    if(facingDot<.45||!VATS_ZONES.some(zone=>vatsTargetChance(enemy,zone)>0))
+      continue;
     contacts.push({enemy,distance,facingDot});
   }
   return contacts.sort((a,b)=>b.facingDot-a.facingDot||a.distance-b.distance)
@@ -6883,17 +6885,21 @@ function renderVats(){
   const enemy=enemies.get(vatsState.enemyId);
   const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
   const cost=vatsApCost(activeSpec);
-  $('vatsAp').textContent=ap+' / 100';
+  const queuedCost=vatsState.queue.reduce((sum,shot)=>sum+shot.cost,0);
+  const queueSlots=vatsQueueSlots({ap,cost,queuedCost,
+    queuedShots:vatsState.queue.length,ammo:weaponState.magazine,infiniteAmmo});
+  $('vatsAp').textContent=ap+' / 100'+(queuedCost?' · '+queuedCost+' RESERVED':'');
   $('vatsApFill').style.width=ap+'%';
   $('vatsAmmo').textContent=infiniteAmmo?'∞':String(weaponState.magazine);
   $('vatsCritValue').textContent=vatsCriticalCharge+'%';
   $('vatsCritFill').style.width=vatsCriticalCharge+'%';
-  const criticalReady=vatsCriticalReady(vatsCriticalCharge);
+  const criticalQueued=vatsState.queue.some(shot=>shot.critical);
+  const criticalReady=vatsCriticalReady(vatsCriticalCharge)&&!criticalQueued;
   if(!criticalReady)vatsState.criticalArmed=false;
   $('vatsCritical').setAttribute('aria-disabled',String(!criticalReady));
-  $('vatsCritical').textContent=criticalReady?
-    vatsState.criticalArmed?'SPACE · CRITICAL ARMED':'SPACE · ARM CRITICAL':
-    'SPACE · CRITICAL NOT READY';
+  $('vatsCritical').textContent=criticalQueued?'CRITICAL RESERVED IN QUEUE':
+    criticalReady?(vatsState.criticalArmed?'SPACE · CRITICAL ARMED':
+      'SPACE · ARM CRITICAL'):'SPACE · CRITICAL NOT READY';
   const contactBox=$('vatsEnemies');contactBox.replaceChildren();
   for(const contact of contacts){
     const button=document.createElement('div');button.className='vats-choice';
@@ -6919,14 +6925,26 @@ function renderVats(){
     zoneBox.append(button);
   }
   const chance=vatsTargetChance(enemy,vatsState.zone);
-  const ready=!!enemy&&chance>0&&ap>=cost&&
-    (infiniteAmmo||weaponState.magazine>0);
+  const ready=!!enemy&&chance>0&&queueSlots>0&&!vatsState.executing;
   $('vatsFire').setAttribute('aria-disabled',String(!ready));
-  $('vatsFire').textContent='LEFT CLICK · '+cost+' AP · '+chance+'%';
-  const message=!enemy?'NO TARGETS · FACE AN ENEMY TO LOCK ON':
+  $('vatsFire').textContent='LEFT CLICK · QUEUE '+cost+' AP · '+chance+'%';
+  const queueBox=$('vatsQueue');
+  queueBox.replaceChildren();
+  for(const [index,shot] of vatsState.queue.entries()){
+    const entry=document.createElement('span');
+    entry.className='vats-queued-shot';
+    entry.textContent=(index+1)+'. '+(enemies.get(shot.enemyId)?.label||'TARGET')+
+      ' / '+VATS_ZONE_LABELS[shot.zone]+(shot.critical?' / CRIT':'');
+    queueBox.append(entry);
+  }
+  $('vatsQueueHint').textContent=vatsState.executing?'EXECUTING · LIVE COMBAT':
+    vatsState.queue.length?'ENTER · EXECUTE '+vatsState.queue.length+
+      ' SHOT'+(vatsState.queue.length===1?'':'S')+' · BACKSPACE · UNDO':
+      'QUEUE SHOTS · ENTER TO EXECUTE · BACKSPACE TO UNDO';
+  const message=vatsState.executing?vatsState.message:
+    !enemy?'NO VISIBLE HOSTILES · FACE AN ENEMY':
     chance===0?'NO CLEAR LINE OF FIRE TO THAT BODY PART':
-    ap<cost?'NOT ENOUGH ACTION POINTS · ALLOW AP TO RECOVER':
-    weaponState.magazine<=0&&!infiniteAmmo?'NO LOADED AMMUNITION · R TO RELOAD':
+    queueSlots<=0?'QUEUE FULL · INSUFFICIENT AP OR AMMO':
     vatsState.message;
   $('vatsMessage').textContent=message;
   const marker=$('vatsTargetMarker');
@@ -6945,7 +6963,9 @@ function openVats(){
     questPanelOpen||dialogueOpen||mapOpen||vendorOpen||
     (WEAPON_REBUILD_MODE&&!playerGunEnabled()))return;
   vatsState.active=true;vatsState.enemyId=null;vatsState.zone='chest';
-  vatsState.criticalArmed=false;vatsState.message='CHOOSE A BODY PART · FIRE TO SPEND AP';
+  vatsState.queue=[];vatsState.executing=false;vatsQueueClock=0;
+  vatsState.criticalArmed=false;
+  vatsState.message='CHOOSE A BODY PART · CLICK TO QUEUE · ENTER TO FIRE';
   triggerHeld=false;changeAim(false);vatsRenderTimer=0;
   $('vatsPanel').classList.remove('hidden');
   // Never unlock pointer lock or stop simulation. Other players and NPCs
@@ -6955,22 +6975,51 @@ function openVats(){
 function closeVats(){
   if(!vatsState.active)return;
   vatsState.active=false;vatsState.criticalArmed=false;
+  vatsState.queue=[];vatsState.executing=false;vatsQueueClock=0;
   $('vatsPanel').classList.add('hidden');
   $('vatsTargetMarker').classList.add('hidden');
 }
-function fireVatsShot(){
-  if(!vatsState.active)return;
-  // Re-query live collision and AP at click time; no stale chance can bypass
-  // a destroyed target, a moved hitbox or a depleted stamina pool.
+function queueVatsShot(){
+  if(!vatsState.active||vatsState.executing)return;
   const enemy=enemies.get(vatsState.enemyId);
   const chance=vatsTargetChance(enemy,vatsState.zone);
   const cost=vatsApCost(activeSpec);
+  const queuedCost=vatsState.queue.reduce((sum,shot)=>sum+shot.cost,0);
   const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
-  if(!controls.isLocked||!playerHealth.alive||!enemy?.state.alive||chance<=0||ap<cost){
-    vatsState.message='TARGET LOST OR INSUFFICIENT AP';renderVats();return;
+  if(!enemy?.state.alive||chance<=0){
+    vatsState.message='NO VISIBLE TARGET OR CLEAR SHOT';renderVats();return;
   }
-  const useCritical=vatsState.criticalArmed&&vatsCriticalReady(vatsCriticalCharge);
-  const result=shoot({vatsTarget:{enemyId:enemy.id,zone:vatsState.zone,
+  if(vatsQueueSlots({ap,cost,queuedCost,queuedShots:vatsState.queue.length,
+    ammo:weaponState.magazine,infiniteAmmo})<1){
+    vatsState.message='QUEUE FULL · NOT ENOUGH AP OR AMMO';renderVats();return;
+  }
+  const critical=vatsState.criticalArmed&&vatsCriticalReady(vatsCriticalCharge)&&
+    !vatsState.queue.some(shot=>shot.critical);
+  vatsState.queue.push({enemyId:enemy.id,zone:vatsState.zone,cost,critical});
+  vatsState.criticalArmed=false;
+  vatsState.message='SHOT QUEUED · ENTER TO EXECUTE';
+  renderVats();
+}
+function undoVatsShot(){
+  if(!vatsState.active||vatsState.executing)return;
+  const removed=vatsState.queue.pop();
+  vatsState.message=removed?'LAST SHOT REMOVED':'QUEUE IS EMPTY';
+  renderVats();
+}
+function fireVatsShot({enemyId=vatsState.enemyId,zone=vatsState.zone,
+  criticalOverride=null}={}){
+  if(!vatsState.active)return {status:'inactive'};
+  // Re-query live collision and AP at the exact instant of firing.
+  const enemy=enemies.get(enemyId);
+  const chance=vatsTargetChance(enemy,zone);
+  const cost=vatsApCost(activeSpec);
+  const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
+  if(!controls.isLocked||!playerHealth.alive||!enemy?.state.alive||chance<=0)
+    return {status:'lost'};
+  if(ap<cost)return {status:'ap'};
+  const useCritical=(criticalOverride===null?vatsState.criticalArmed:criticalOverride)&&
+    vatsCriticalReady(vatsCriticalCharge);
+  const result=shoot({vatsTarget:{enemyId:enemy.id,zone,
     hit:useCritical||Math.random()*100<chance,critical:useCritical}});
   if(result?.status==='fired'){
     vatsSpendAp(player,cost,maximumStamina(player.endurance));
@@ -6981,6 +7030,42 @@ function fireVatsShot(){
     result?.status==='uncharged'?'LASER MUSKET UNCHARGED · R TO CRANK':
     result?.status==='empty'?'EMPTY · R TO RELOAD':
     result?.status==='reloading'?'RELOADING · WAIT':'WEAPON NOT READY';
+  return result||{status:'blocked'};
+}
+function startVatsQueue(){
+  if(!vatsState.active||vatsState.executing)return;
+  if(!vatsState.queue.length){
+    vatsState.message='QUEUE A SHOT FIRST';renderVats();return;
+  }
+  vatsState.executing=true;vatsQueueClock=0;
+  vatsState.message='EXECUTING QUEUE · WORLD RUNNING AT FULL SPEED';
+  renderVats();
+}
+function stepVatsQueue(dt){
+  if(!vatsState.active||!vatsState.executing)return;
+  vatsQueueClock-=dt;
+  if(vatsQueueClock>0)return;
+  const queued=vatsState.queue[0];
+  if(!queued){closeVats();return;}
+  const result=fireVatsShot({enemyId:queued.enemyId,zone:queued.zone,
+    criticalOverride:queued.critical});
+  if(result.status==='cooldown'||result.status==='reloading'||
+    result.status==='ap'){
+    vatsQueueClock=.12;
+    vatsState.message=result.status==='ap'?'WAITING FOR ACTION POINTS':
+      'WEAPON CYCLING · ENEMIES STILL ACTIVE';
+    return;
+  }
+  if(result.status==='fired'||result.status==='lost'){
+    vatsState.queue.shift();
+    vatsQueueClock=result.status==='fired'?Math.max(.08,activeSpec.fireInterval*.75):.06;
+    if(result.status==='lost')vatsState.message='TARGET MOVED OR COVERED · SHOT SKIPPED';
+    if(!vatsState.queue.length){closeVats();return;}
+  }else{
+    vatsState.executing=false;
+    vatsState.queue=[];
+    vatsState.message='QUEUE STOPPED · '+(result.status||'WEAPON NOT READY').toUpperCase();
+  }
   renderVats();
 }
 controls.addEventListener('lock',()=>{
@@ -7035,10 +7120,15 @@ window.addEventListener('keydown',e=>{
       vatsState.message='BODY PART SELECTED';renderVats();
     }else if(e.code==='Space'&&!e.repeat){
       e.preventDefault();
-      if(vatsCriticalReady(vatsCriticalCharge))
+      if(vatsCriticalReady(vatsCriticalCharge)&&
+        !vatsState.queue.some(shot=>shot.critical)&&!vatsState.executing)
         vatsState.criticalArmed=!vatsState.criticalArmed;
       vatsState.message=vatsState.criticalArmed?'CRITICAL READY · FIRE TO USE':
         'CRITICAL NOT ARMED';renderVats();
+    }else if(e.code==='Enter'&&!e.repeat){
+      e.preventDefault();startVatsQueue();
+    }else if(e.code==='Backspace'&&!e.repeat){
+      e.preventDefault();undoVatsShot();
     }else if(e.code==='KeyR'&&!e.repeat){
       e.preventDefault();reload();renderVats();
     }else if(e.code==='KeyC'&&!e.repeat){
@@ -7173,7 +7263,7 @@ window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
   if(vatsState.active){
-    if(e.button===0)fireVatsShot();
+    if(e.button===0)queueVatsShot();
     return;
   }
   if(settlementBuildMode){
@@ -7740,6 +7830,7 @@ function frame(){
       vatsRenderTimer+=dt;
       // Recheck moving enemy limbs, real cover, ammo and AP in real time.
       if(vatsRenderTimer>=.12){vatsRenderTimer=0;renderVats();}
+      stepVatsQueue(dt);
     }
   }
   // Quest residents use the same articulated rig as the player, but never

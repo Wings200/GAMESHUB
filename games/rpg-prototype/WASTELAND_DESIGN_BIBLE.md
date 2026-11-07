@@ -15,9 +15,13 @@
   and weapon cooldown, and a hit-earned critical meter. Keyboard selection
   retains pointer lock; NPC simulation and player movement continue at normal
   speed so future multiplayer never requires global or per-client time scaling.
-- Remaining Phase 1 work: cinematic body-part selection/queued attacks (if later
-  desired), multiplayer-authoritative validation when networking is implemented,
-  scenario-based visual verification, limb animation and fuller world art polish.
+- W20.91: Real-time queued V.A.T.S. attacks reserve AP and ammo at selection,
+  then fire through normal weapon timing and physical collision. A target behind
+  cover or out of view is skipped rather than receiving scripted damage. Enemies
+  still move and shoot while the queue executes, with no slow-motion or pause.
+- Remaining Phase 1 work: cinematic target presentation, multiplayer-authoritative
+  validation when networking is implemented, scenario-based visual verification,
+  limb animation and fuller world art polish.
 
 ## Non-negotiable design rules
 
