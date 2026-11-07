@@ -15,6 +15,24 @@ test('environmental radiation exists only within physical marked sources',()=>{
   assert.equal(radiationExposureAt(site.x+site.radius,site.z),0);
   assert.equal(radiationExposureAt(0,0),0);
 });
+test('the waste site has visible floor clearance, usable cover and no giant hazard billboard',()=>{
+  const site=RADIATION_SOURCES[0];
+  // The real testing ramp covers x 22..56 and z -34..-18. The previous
+  // radiation drums were swallowed by that ramp and barely appeared.
+  assert.ok(site.z+site.radius<-34,
+    'entire irradiated site must clear the ramp, not be buried beneath it');
+  assert.ok(site.x+site.radius<60 && site.z-site.radius>-51,
+    'hazard and debris stay within walkable testing ground');
+  const main=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
+  assert.doesNotMatch(main,/textSign\(['"]RAD HAZARD['"]/);
+  assert.doesNotMatch(main,/const surface=green\.clone\(\)/,
+    'test slope must not be a giant solid-green plane');
+  for(const fragment of ['IrradiatedWasteDepot_',
+    'wastePuddle(dump','warningLabel','wasteCollider(spill.x+x',
+    'worldShotObstacles.push(b)','worldMovementObstacles.push(b)',
+    "g.setAttribute('uv'",'rampMaterial'])
+    assert.ok(main.includes(fragment),`missing visible hazard detail: ${fragment}`);
+});
 test('exposure lowers actual max HP and clamps current HP',()=>{
   const state=createRadiationState(),health=createPlayerHealth();
   const exposure=applyRadiationExposure(state,health,250,2);

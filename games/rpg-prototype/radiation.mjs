@@ -2,7 +2,9 @@
 // All math is independent of the renderer, so it can be tested deterministically.
 export const MAX_RADIATION=1000;
 export const RADIATION_SOURCES=Object.freeze([
-  Object.freeze({id:'east-spill',name:'Irradiated Spill',x:39,z:-29,
+  // South of the ramp on genuinely level ground. The previous z=-29 site
+  // was beneath the raised test ramp and hid most of the hazard meshes.
+  Object.freeze({id:'east-spill',name:'Irradiated Spill',x:39,z:-42,
     radius:6.5,peakRadsPerSecond:17})
 ]);
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));

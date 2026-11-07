@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.85 · Radiation & RPG Rebuild | GAMESHUB RPG</title>
+<title>W20.86 · Hazard Scene Repair | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1600,11 +1600,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.85</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.86</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:</strong> Moved the radiation source entirely clear of the raised training ramp. Replaced the billboard and buried miniature drums with a ground-level waste depot: rusted full-size ribbed drums, warning decals, an overturned tank, bent metal fence, irregular leaking pools and debris. Solid debris now blocks bullets and movement. The massive solid-green slope is now a textured weathered-concrete ramp with visible slab joints. Radiation intensity and medical treatment remain unchanged. This is still a testing field, not a finished campaign location.</p>
     <p><strong>W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION:</strong> Radiation is no longer a fake zeroed-out power-armor gauge. A visible, physically located contaminated drum spill on the east side of the field now applies persistent radiation over time, reduces your real maximum HP, and appears on both the regular HUD and power armor's live dial. An occupied power frame reduces exposure. DOC VALE sells Radiation Flush medical treatment, which removes rads without magically restoring lost HP; use a medkit separately to heal. Radiation survives reloads and respawn, with bounded save migration. The full-game redesign standards, current gaps and phased acceptance tests are now documented in WASTELAND_DESIGN_BIBLE.md.</p>
     <p><strong>W20.84 · MODULAR ROOF MODELS & SCALE FIX:</strong> Roofs now share the exact 3×3-metre footprint of timber foundations and fit above 2.7-metre walls. The corrugated flat roof has individual scavenged sheet-metal panels, seams and visible framing; a new gabled scrap roof uses two physically slanted panels, a ridge cap and rafters. With grid snap enabled, roofs center on foundation bays or the bay adjoining an actual wall edge, never on top of the wall itself. The preview calls out ROOF BAY SNAPPED. Roofs require a properly aligned supporting wall, and storing or scrapping that wall is blocked until its roof is safely removed.</p>
     <p><strong>W20.83 · WALL CORNER JOINING & EDGE SNAP:</strong> Walls and doorframes can now meet at proper ninety-degree corners and T-junctions without being rejected as overlapping structures. With grid snap enabled, a wall near an existing wall endpoint or foundation edge automatically aligns into place, and the preview reports CORNER SNAPPED. True collisions with rocks, other props and crossed walls still block construction. The previous duplicate collision check for placed structures is removed, so valid joins survive saving and reloading.</p>
@@ -1655,7 +1656,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.85</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.86</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2086,7 +2087,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.85"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.86"></script>
 </body>
 </html>
 

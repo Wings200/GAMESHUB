@@ -85,7 +85,7 @@ import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
 import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationExposureAt,
   applyRadiationExposure,syncRadiationHealth,treatRadiation}
-  from '../radiation.mjs?v=W20.85';
+  from '../radiation.mjs?v=W20.86';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -303,7 +303,7 @@ sun.shadow.camera.top = 80;sun.shadow.camera.bottom = -80;
 sun.shadow.normalBias = .025;
 scene.add(sun);
 function mat(color,roughness=.9){return new THREE.MeshStandardMaterial({color,roughness});}
-const concrete=mat(0x26353d), floorPaint=mat(0x516a74), pale=mat(0xe7c588), dark=mat(0x13242e), orange=mat(0xc1784f), blue=mat(0x468fa8), green=mat(0x6b9b77);
+const concrete=mat(0x26353d), floorPaint=mat(0x516a74), pale=mat(0xe7c588), dark=mat(0x13242e), orange=mat(0xc1784f), blue=mat(0x468fa8);
 const worldGeometry=[];
 // Solid rendered surfaces must participate in enemy sight AND bullet
 // collision. The movement collider list alone misses benches, roofs,
@@ -404,33 +404,115 @@ for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
 // Beyond the solid perimeter: original shacks, wrecks, aerials, water towers,
 // skyline, patinated ground, flags and atmospheric dust.
 const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:qualityHigh});
-// Actual source for the radiation mechanic: leaking drums and contaminated
-// ground. The visual and the exposure simulator share the same world location.
-for(const spill of RADIATION_SOURCES){
-  const contaminated=new THREE.Mesh(new THREE.CircleGeometry(spill.radius-.45,38),
-    new THREE.MeshStandardMaterial({color:0x536e4a,roughness:.96,
-      emissive:0x294f26,emissiveIntensity:.13,transparent:true,opacity:.50,
-      depthWrite:false,side:THREE.DoubleSide}));
-  contaminated.rotation.x=-Math.PI/2;
-  contaminated.receiveShadow=true;
-  contaminated.position.set(spill.x,.024,spill.z);scene.add(contaminated);
-  for(const [dx,dz] of [[-.6,-.3],[.48,-.64],[.15,.54]]){
-    const body=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.94,12),
-      new THREE.MeshStandardMaterial({color:0x526350,roughness:.72,metalness:.45}));
-    body.castShadow=true;body.receiveShadow=true;
-    body.position.set(spill.x+dx,.49,spill.z+dz);scene.add(body);
-    for(const h of [-.37,.34]){
-      const band=new THREE.Mesh(new THREE.CylinderGeometry(.406,.406,.075,12),
-        new THREE.MeshStandardMaterial({color:0x2b3027,roughness:.77}));
-      band.castShadow=true;
-      band.position.set(spill.x+dx,.49+h,spill.z+dz);scene.add(band);
-    }
-    bounds.push({minX:spill.x+dx-.39,maxX:spill.x+dx+.39,
-      minZ:spill.z+dz-.39,maxZ:spill.z+dz+.39,height:1});
+// A small abandoned hazardous-waste depot, built from actual scaled props.
+// It lives on FLAT ground south of the test ramp. The old giant test sign,
+// perfect green circle and undersized drums were visibly unacceptable.
+const wasteMetal=new THREE.MeshStandardMaterial({color:0x535d51,metalness:.58,roughness:.83});
+const wasteRust=new THREE.MeshStandardMaterial({color:0x70503c,metalness:.43,roughness:.90});
+const wasteDark=new THREE.MeshStandardMaterial({color:0x262c2b,metalness:.58,roughness:.72});
+const wasteConcrete=new THREE.MeshStandardMaterial({color:0x68675f,roughness:.97});
+const wasteStain=new THREE.MeshStandardMaterial({color:0x414e36,roughness:1,
+  transparent:true,opacity:.68,depthWrite:false,side:THREE.DoubleSide});
+const wasteLeak=new THREE.MeshStandardMaterial({color:0x5b8245,emissive:0x243e1a,
+  emissiveIntensity:.27,roughness:.32,transparent:true,opacity:.84,side:THREE.DoubleSide});
+const warningCanvas=document.createElement('canvas');warningCanvas.width=warningCanvas.height=256;
+const warningCtx=warningCanvas.getContext('2d');
+warningCtx.fillStyle='#b4a46a';warningCtx.fillRect(0,0,256,256);
+warningCtx.fillStyle='#28271f';warningCtx.beginPath();warningCtx.moveTo(128,21);
+warningCtx.lineTo(235,217);warningCtx.lineTo(21,217);warningCtx.closePath();warningCtx.fill();
+warningCtx.fillStyle='#bdab69';warningCtx.beginPath();warningCtx.moveTo(128,42);
+warningCtx.lineTo(214,205);warningCtx.lineTo(42,205);warningCtx.closePath();warningCtx.fill();
+warningCtx.fillStyle='#23251f';
+for(const angle of [-Math.PI/2,Math.PI/6,Math.PI*5/6]){
+  warningCtx.beginPath();warningCtx.arc(128,143,62,angle-.48,angle+.48);
+  warningCtx.arc(128,143,22,angle+.48,angle-.48,true);
+  warningCtx.closePath();warningCtx.fill();
+}
+warningCtx.beginPath();warningCtx.arc(128,143,13,0,Math.PI*2);warningCtx.fill();
+for(let i=0;i<18;i++){
+  const y=19+i*12;
+  warningCtx.fillStyle=i%3===0?'#6d6249':'#817755';
+  warningCtx.fillRect((i*47)%221,y,12+(i%4)*7,1+(i%3));
+}
+const warningTexture=new THREE.CanvasTexture(warningCanvas);
+warningTexture.colorSpace=THREE.SRGBColorSpace;
+const warningLabel=new THREE.MeshStandardMaterial({map:warningTexture,roughness:.95,
+  side:THREE.DoubleSide});
+function addWasteMesh(parent,geometry,material,x,y,z){
+  const mesh=new THREE.Mesh(geometry,material);
+  mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
+  parent.add(mesh);return mesh;
+}
+function wasteCollider(x,z,w,d,height){
+  const b={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,
+    bottom:0,top:height,height};
+  bounds.push(b);worldShotObstacles.push(b);worldMovementObstacles.push(b);
+}
+function wastePuddle(group,x,z,radius,seed,material){
+  const polygon=new THREE.Shape();
+  for(let i=0;i<24;i++){
+    const angle=i*Math.PI/12;
+    const irregular=radius*(.83+.17*Math.sin(seed+i*2.17)+.09*Math.cos(i*3.7+seed));
+    const px=x+Math.cos(angle)*irregular,pz=z+Math.sin(angle)*irregular;
+    if(i===0)polygon.moveTo(px,pz);else polygon.lineTo(px,pz);
   }
-  textSign('RAD HAZARD',spill.x+5,spill.z-2,0x9dca78);
-  bounds.push({minX:spill.x+4.91,maxX:spill.x+5.09,
-    minZ:spill.z-2.09,maxZ:spill.z-1.91,height:2.8});
+  polygon.closePath();
+  const mesh=addWasteMesh(group,new THREE.ShapeGeometry(polygon),material,0,.026,0);
+  mesh.rotation.x=-Math.PI/2;mesh.castShadow=false;
+}
+for(const spill of RADIATION_SOURCES){
+  const dump=new THREE.Group();dump.name='IrradiatedWasteDepot_'+spill.id;
+  dump.position.set(spill.x,0,spill.z);scene.add(dump);
+  wastePuddle(dump,-.15,-.1,4.7,.8,wasteStain);
+  wastePuddle(dump,.20,.37,2.9,1.9,wasteLeak);
+  wastePuddle(dump,-1.2,-1.35,1.4,2.6,wasteStain);
+  // Rusting metal floor trays, bent frames and leaking drums are taller and
+  // richer than the original two tiny anonymous cylinders.
+  for(const [x,z,rot] of [[-1.9,.3,.12],[-.55,-1.2,-.16],[.82,-1.6,.07],
+    [1.65,.65,-.14],[-2.42,-1.3,.03]]){
+    const barrel=new THREE.Group();barrel.position.set(x,.59,z);
+    barrel.rotation.z=rot;dump.add(barrel);
+    addWasteMesh(barrel,new THREE.CylinderGeometry(.47,.46,1.13,18),
+      x>1?wasteRust:wasteMetal,0,0,0);
+    for(const y of [-.47,.46]){
+      addWasteMesh(barrel,new THREE.CylinderGeometry(.491,.491,.095,18),
+        wasteDark,0,y,0);
+    }
+    addWasteMesh(barrel,new THREE.CylinderGeometry(.425,.425,.022,18),
+      wasteRust,0,.573,0);
+    for(const side of [-1,1]){
+      const badge=addWasteMesh(barrel,new THREE.PlaneGeometry(.56,.49),
+        warningLabel,0,-.05,side*.475);
+      if(side<0)badge.rotation.y=Math.PI;
+    }
+    wasteCollider(spill.x+x,spill.z+z,1.03,1.03,1.21);
+  }
+  // A ruptured horizontal chemical tank with welded ribs and heavy ends.
+  const tank=new THREE.Group();tank.position.set(1.7,.78,2.18);
+  tank.rotation.z=Math.PI/2;dump.add(tank);
+  addWasteMesh(tank,new THREE.CylinderGeometry(.66,.66,2.63,20),wasteRust,0,0,0);
+  for(const y of [-1.15,-.43,.42,1.14])
+    addWasteMesh(tank,new THREE.CylinderGeometry(.696,.696,.09,20),wasteDark,0,y,0);
+  for(const y of [-1.33,1.33])
+    addWasteMesh(tank,new THREE.CylinderGeometry(.61,.61,.12,20),wasteMetal,0,y,0);
+  wasteCollider(spill.x+1.7,spill.z+2.18,2.8,1.45,1.55);
+  // Broken perimeter fencing and discarded piping anchor the depot visually
+  // without introducing floating text or an invisible giant collision wall.
+  for(const x of [-4.7,-2.4,0,2.4,4.7]){
+    const h=x===0?1.08:1.67;
+    addWasteMesh(dump,new THREE.CylinderGeometry(.06,.085,h,8),
+      wasteRust,x,h/2,3.28);
+  }
+  for(const y of [.65,1.27])
+    addWasteMesh(dump,new THREE.BoxGeometry(8.8,.055,.055),
+      wasteMetal,0,y,3.28);
+  for(let i=0;i<16;i++){
+    const x=Math.sin(i*2.12)*4.1,z=Math.cos(i*1.89)*3.1;
+    const rubble=addWasteMesh(dump,new THREE.BoxGeometry(.22+(i%4)*.14,
+      .09+(i%3)*.08,.23+(i%5)*.13),i%3?wasteRust:wasteConcrete,
+      x,.08+(i%3)*.04,z);
+    rubble.rotation.y=i*.69;
+  }
 }
 
 // W20.56: Small, deliberately ordered merchant row in the central clearing.
@@ -599,6 +681,36 @@ for(const x of [-42.7,-12.3]){
 
 // West-to-east ramp: level ground to a raised platform, then a descending run.
 const rampStart=22,rampEnd=43,rampTop=2.3;
+// The ramp is a weathered concrete test roadway, not a giant flat green
+// polygon. UVs follow world metres, so each section has consistent scale.
+const rampCanvas=document.createElement('canvas');
+rampCanvas.width=rampCanvas.height=256;
+const rampCtx=rampCanvas.getContext('2d');
+rampCtx.fillStyle='#64645d';rampCtx.fillRect(0,0,256,256);
+let rampSeed=0x591c2;
+function rampRandom(){rampSeed=(Math.imul(rampSeed,1664525)+1013904223)>>>0;
+  return rampSeed/4294967296;}
+for(let i=0;i<350;i++){
+  const px=rampRandom()*256,py=rampRandom()*256;
+  rampCtx.fillStyle=['#585953','#77746a','#4c504c','#686861'][i%4];
+  rampCtx.fillRect(px,py,1+rampRandom()*14,1+rampRandom()*5);
+}
+rampCtx.strokeStyle='rgba(35,40,38,.31)';rampCtx.lineWidth=2;
+for(let i=0;i<8;i++){
+  let px=rampRandom()*256,py=rampRandom()*256;
+  rampCtx.beginPath();rampCtx.moveTo(px,py);
+  for(let j=0;j<4;j++){
+    px+=rampRandom()*22-11;py+=rampRandom()*24-12;
+    rampCtx.lineTo(px,py);
+  }
+  rampCtx.stroke();
+}
+const rampTexture=new THREE.CanvasTexture(rampCanvas);
+rampTexture.colorSpace=THREE.SRGBColorSpace;
+rampTexture.wrapS=rampTexture.wrapT=THREE.RepeatWrapping;
+const rampMaterial=new THREE.MeshStandardMaterial({map:rampTexture,
+  color:0xbcbab2,roughness:.99,side:THREE.DoubleSide});
+const rampJoint=mat(0x424b49,.97);
 function rampHeight(x,z){
   if(z<-34||z>-18||x<rampStart||x>56)return 0;
   if(x<=rampEnd)return (x-rampStart)/(rampEnd-rampStart)*rampTop;
@@ -608,11 +720,20 @@ function rampHeight(x,z){
 function rampSurface(x0,x1,z0,z1){
   const h0=rampHeight(x0,(z0+z1)/2),h1=rampHeight(x1,(z0+z1)/2);
   const verts=new Float32Array([x0,h0,z0,x1,h1,z0,x1,h1,z1,x0,h0,z0,x1,h1,z1,x0,h0,z1]);
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(verts,3));g.computeVertexNormals();
-  const surface=green.clone();surface.side=THREE.DoubleSide;const m=new THREE.Mesh(g,surface);m.receiveShadow=true;scene.add(m);
+  const uvs=new Float32Array([x0/4,z0/4,x1/4,z0/4,x1/4,z1/4,
+    x0/4,z0/4,x1/4,z1/4,x0/4,z1/4]);
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(verts,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uvs,2));g.computeVertexNormals();
+  const mesh=new THREE.Mesh(g,rampMaterial);mesh.receiveShadow=true;scene.add(mesh);
 }
 rampSurface(22,43,-34,-18);rampSurface(43,49,-34,-18);rampSurface(49,56,-34,-18);
-box(39,.045,-18,34,.09,.2,pale);box(39,.045,-34,34,.09,.2,pale);
+// Realistic slab seams run across the actual sloped surface.
+for(const x of [27,32,37,42,48,53]){
+  const seam=new THREE.Mesh(new THREE.BoxGeometry(.042,.012,15.8),rampJoint);
+  seam.position.set(x,rampHeight(x,-26)+.015,-26);
+  seam.receiveShadow=true;scene.add(seam);
+}
 // Stair height uses the same piecewise rise as the visible mesh.
 const stairStart=22,stairWidth=2.8,stairCount=8,stairRise=.25;
 function stairsHeight(x,z){
