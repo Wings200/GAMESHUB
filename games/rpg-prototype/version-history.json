@@ -5,6 +5,11 @@
   "description": "Development release history preserved off the game menu. Append every future release here until the 1.0 Version History page is built.",
   "entries": [
     {
+      "version": "W21.02",
+      "title": "NPC DIALOGUE AND MERCHANT CHARISMA NEGOTIATION",
+      "notes": "Physical story contacts and all six merchants now open a focused conversation overlay that keeps the live 3D world visible. Dialogues offer numbered replies, accessible keyboard shortcuts and optional pages for seven or more possible quest responses; no existing mission branch, faction reputation change, XP reward or saved quest outcome was removed. Merchants have individual greetings, supply explanations and a one-attempt Charisma 6 negotiation. A successful check grants 8% better buying and selling rates for one confirmed barter only, applied consistently to unit quotes, staged offers, wallet/carry previews and the actual atomic transaction. Trade access is still controlled by saved faction reputation, and negotiated rates do not survive leaving the merchant. The homepage remains concise and this entry is archived for the future 1.0 history screen."
+    },
+    {
       "version": "W21.01",
       "title": "POWER ARMOR SIX-PLATE CONFIGURATION OVERHAUL",
       "notes": "Improved the existing six-slot interactive power-armor service terminal with a detailed chassis schematic that can be clicked or operated with keyboard controls. Each slot displays its live durability and visually distinguishes salvaged T-45, T-60, and prototype T-01 armor when healthy, along with critical and missing/broken plates. Selecting an owned replacement previews its exact effective armor-point change, current-to-new durability and condition before the player confirms installation or removal; broken plates correctly show zero protection until repaired. Repair components now have individual sourced ledgers for pouch stock, settlement storage and automatic junk breakdown, with shortages identified before any transaction. All existing frame-specific saved pieces, core behavior, guarded equip/removal actions and transactional repairs remain intact. The homepage stays concise; history is retained for the planned 1.0 version page."

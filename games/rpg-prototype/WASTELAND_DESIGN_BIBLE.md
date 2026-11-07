@@ -13,6 +13,13 @@ Do not restore patch-note paragraphs to the homepage. Preserve working menu
 actions, build labels and save compatibility as releases continue.
 
 **Implementation checkpoints after the original W20.84 audit:**
+- W21.02: Nine physical quest contacts and six merchants now open the same
+  conversation UI, with numbered answers and page navigation for long quest
+  branches, preserving existing story outcomes and reputation saves. Merchants
+  respond to supply questions and a single deterministic Charisma 6 skill
+  check per interaction. Success applies a temporary 8% buy and sell advantage
+  to both preview and actual atomic barter; the bonus expires after one
+  confirmed exchange or when the merchant panel closes. Reputation gates remain.
 - W20.85–W20.88: Persistent radiation exposure, real HP damage, medicine,
   fixed-width HP bars and a separate responsive 0–6 live exposure gauge.
 - W20.89: Six persistent limb conditions tied to the actual struck damage zone;

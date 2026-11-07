@@ -7,7 +7,7 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('home menu is concise, with the full version history retained for 1.0',()=>{
   const menu=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div id="powerArmorPanel">'));
-  assert.match(menu,/GAMESHUB \/ RPG SYSTEMS LAB \/ W21\.01/);
+  assert.match(menu,/GAMESHUB \/ RPG SYSTEMS LAB \/ W21\.02/);
   assert.match(menu,/<h1>SYSTEMS<span>TESTING\.<\/span><\/h1>/);
   assert.doesNotMatch(menu,/<p><strong>W\d+(?:\.\d+)+/);
   assert.doesNotMatch(menu,/weapon-reset-notice/);
@@ -17,20 +17,20 @@ test('home menu is concise, with the full version history retained for 1.0',()=>
   }
   const archive=JSON.parse(readFileSync(new URL('./version-history.json',import.meta.url),'utf8'));
   assert.equal(archive.releaseNotesPagePlannedFor,'1.0');
-  assert.ok(archive.entries.length>=51);
-  assert.equal(archive.entries[0].version,'W21.01');
+  assert.ok(archive.entries.length>=52);
+  assert.equal(archive.entries[0].version,'W21.02');
   assert.equal(new Set(archive.entries.map(e=>e.version)).size,archive.entries.length);
   for(const entry of archive.entries){
     assert.match(entry.version,/^W\d+\.\d+(?:\.\d+)*$/);
     assert.ok(entry.title.length>3&&entry.notes.length>20);
   }
-  for(const v of ['W21.01','W21.00','W20.99','W20.98','W20.97','W20.94','W20.88','W20.62','W20.10'])
+  for(const v of ['W21.02','W21.01','W21.00','W20.99','W20.98','W20.97','W20.94','W20.88','W20.62','W20.10'])
     assert.ok(archive.entries.some(entry=>entry.version===v),v);
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W21\.01/);
-  assert.match(bootstrap,/main\.js\?v=W21\.01/);
+  assert.match(html,/bootstrap\.mjs\?v=W21\.02/);
+  assert.match(bootstrap,/main\.js\?v=W21\.02/);
 });
 
 test('both field and powered HUDs expose live consumable status indicators',()=>{

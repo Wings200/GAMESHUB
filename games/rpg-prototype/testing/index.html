@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W21.01 · Power Armor Service Overhaul | GAMESHUB RPG</title>
+<title>W21.02 · NPC Dialogue Overhaul | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -758,6 +758,67 @@ body.hud-modern #powerArmorHud{display:none!important}
   .campaign-grid{grid-template-columns:1fr}
   .campaign-reputation{grid-template-columns:repeat(2,1fr)}
   .campaign-dialogue-shell{padding:16px}
+}
+/* W21.02: immersive, keyboard-friendly dialogue while the physical contact
+   remains visible in the live field. Quest actions remain the original ones. */
+#campaignDialogue{display:flex;justify-content:flex-end;align-items:center;
+  background:linear-gradient(90deg,#050d0e28 0%,#06151560 38%,#051114e6 100%);
+  padding:3vh 5vw;backdrop-filter:blur(1.5px)}
+#campaignDialogue.hidden{display:none}
+#campaignDialogue .campaign-dialogue-shell{width:min(560px,100%);max-width:none;
+  margin:0;background:linear-gradient(140deg,#142b2aec,#0b1c1ff5);
+  border:1px solid #73997e;border-radius:6px;padding:28px 31px 23px;
+  box-shadow:0 35px 90px #000d,inset 0 1px 0 #c6e1c429}
+#campaignDialogue .dialogue-topline{display:flex;align-items:center;
+  gap:10px;justify-content:space-between;color:#c6d9c3}
+#campaignDialogue .dialogue-identity{padding:13px 0 17px;
+  border-bottom:1px solid #557565}
+#campaignDialogue .dialogue-role{font-size:10px;font-weight:900;
+  letter-spacing:.15em;color:#aac5b1}
+#campaignDialogue h2{font-family:Georgia,serif;font-weight:500;
+  font-size:clamp(34px,4.2vw,53px);line-height:1.1;letter-spacing:-.02em;
+  margin:8px 0 0;color:#f5e9cb}
+#campaignDialogue .dialogue-status{font-size:10px;font-weight:800;
+  letter-spacing:.05em;color:#b5dab0;margin-top:12px}
+#campaignDialogue .dialogue-status.locked{color:#eda991}
+#campaignDialogue .dialogue-speech{margin:24px 0 16px;padding:4px 0 6px 18px;
+  border-left:3px solid #d7b779;color:#e6e6d4;font-size:17px;
+  font-family:Georgia,serif;line-height:1.55;min-height:86px}
+#campaignDialogue .dialogue-guidance{font-size:10px;color:#90b2a9;
+  letter-spacing:.1em;font-weight:800}
+#campaignDialogue .campaign-dialogue-choices{gap:8px;margin-top:12px}
+#campaignDialogue .campaign-dialogue-choices button{font-size:12px;
+  line-height:1.45;min-height:49px;color:#e3eedc;background:#1d3937;
+  border:1px solid #4c7061;border-left:3px solid #95c59b;
+  border-radius:3px;transition:background .12s,border-color .12s;
+  padding:12px 17px;letter-spacing:.035em}
+#campaignDialogue .campaign-dialogue-choices button:hover:not(:disabled),
+#campaignDialogue .campaign-dialogue-choices button:focus-visible{background:#31544b;
+  border-color:#c5dba6;outline:1px solid #b9d7a2}
+#campaignDialogue .campaign-dialogue-choices button:disabled{color:#84998d;
+  border-left-color:#557066;opacity:.6}
+#campaignDialogue .campaign-dialogue-choices .dialogue-leave{background:transparent;
+  border:1px solid #506b5c;color:#bcbfa7;min-height:38px}
+#campaignDialogue .dialogue-pager{display:flex;align-items:center;
+  justify-content:space-between;gap:10px;margin-top:15px;
+  border-top:1px solid #4b675a;padding-top:14px}
+#campaignDialogue .dialogue-pager button{min-height:35px;padding:7px 11px;
+  background:#1b3330;border-color:#5c7a68}
+#campaignDialogue .dialogue-pager button:disabled{opacity:.35;cursor:default}
+#campaignDialogue .dialogue-pager small{font-size:10px;font-weight:900;
+  color:#accaba;letter-spacing:.09em}
+#campaignDialogue .dialogue-dismiss{min-height:30px;background:transparent;
+  border:0;color:#bfd6c8;padding:4px 8px}
+#vendorPanel #vendorNegotiationStatus{display:block;border-bottom:1px solid #4e785e;
+  padding:10px 19px;background:#13271d;color:#9dc0a1;font-size:10px;
+  letter-spacing:.075em;font-weight:850}
+#vendorPanel #vendorNegotiationStatus.active{background:#27351a;color:#e4d99c}
+@media(max-width:700px){
+  #campaignDialogue{align-items:flex-end;padding:12px 8px;background:#061313a8}
+  #campaignDialogue .campaign-dialogue-shell{padding:19px 15px;
+    width:100%;max-height:95vh;overflow:auto}
+  #campaignDialogue .dialogue-speech{min-height:0;font-size:15px;margin:15px 0}
+  #campaignDialogue .campaign-dialogue-choices button{min-height:42px;padding:9px 11px}
 }
 
 
@@ -2014,7 +2075,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.01</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.02</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -2032,7 +2093,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.01</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.02</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -2264,11 +2325,24 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="campaignDialogue" class="loot-overlay hidden" role="dialog" aria-label="NPC dialogue">
   <div class="campaign-dialogue-shell">
-    <div class="loot-eyebrow">FRONTIER / CONVERSATION</div>
-    <h2 id="campaignDialogueTitle">CONTACT</h2>
-    <p id="campaignDialogueBody"></p>
+    <div class="dialogue-topline">
+      <span class="loot-eyebrow">FRONTIER / CONVERSATION</span>
+      <button id="campaignDialogueClose" class="dialogue-dismiss" type="button"
+        aria-label="Close dialogue">✕ ESC</button>
+    </div>
+    <div class="dialogue-identity">
+      <div class="dialogue-role" id="campaignDialogueRole">CONTACT</div>
+      <h2 id="campaignDialogueTitle">CONTACT</h2>
+      <div class="dialogue-status" id="campaignDialogueStatus"></div>
+    </div>
+    <p id="campaignDialogueBody" class="dialogue-speech"></p>
+    <div class="dialogue-guidance">CHOOSE YOUR REPLY · NUMBER KEYS 1–4</div>
     <div id="campaignDialogueChoices" class="campaign-dialogue-choices"></div>
-    <button id="campaignDialogueClose" type="button">LEAVE / ESC</button>
+    <div class="dialogue-pager">
+      <button id="campaignDialoguePrevious" type="button">← PREVIOUS</button>
+      <small id="campaignDialoguePage">RESPONSES 1 / 1</small>
+      <button id="campaignDialogueNext" type="button">NEXT →</button>
+    </div>
   </div>
 </div>
 
@@ -2288,6 +2362,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       </div>
     </header>
     <div class="vendor-intro">ADD ITEMS TO THE SELL AND BUY LISTS · REVIEW YOUR ENTIRE OFFER BELOW · NOTHING IS EXCHANGED UNTIL YOU CONFIRM</div>
+    <div id="vendorNegotiationStatus" aria-live="polite">STANDARD TRADE RATES</div>
     <div class="vendor-body">
       <section class="vendor-list-wrap vendor-player-pane">
         <div class="vendor-pane-title"><h3>SELL / YOUR INVENTORY</h3><small id="vendorPlayerCount">0 SELLABLE ITEMS</small></div>
@@ -2560,7 +2635,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W21.01"></script>
+<script type="module" src="./bootstrap.mjs?v=W21.02"></script>
 </body>
 </html>
 
