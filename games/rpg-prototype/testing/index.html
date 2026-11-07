@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.84 · Modular Settlement Roofs | GAMESHUB RPG</title>
+<title>W20.85 · Radiation & RPG Rebuild | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -404,6 +404,8 @@ body.hud-modern #powerArmorHud{display:none!important}
   background:#29372e;border:0}
 #fieldHud .field-bar.secondary span{background:#ddc589}
 #fieldHud .field-sub{font-size:10px;font-weight:850;color:#b1c5b7;letter-spacing:.07em}
+#fieldHud #fieldRadStatus{color:#e9b576;display:block;margin:5px 0;font-size:10px}
+#fieldHud #fieldRadStatus.hidden{display:none}
 #fieldHud .field-ammo{font-size:32px;font-weight:950;color:#f5e5bf;line-height:1.1}
 #fieldHud .field-weapon-name{font-size:12px;font-weight:900;color:#a5d3b9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.09em}
@@ -494,6 +496,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerVisorHud .armor-hp .dial-title{top:75%}
 #powerVisorHud .armor-rads{left:17.8vw;width:clamp(108px,7.4vw,145px);bottom:22px}
 #powerVisorHud .armor-rads .dial-title{top:49%;left:24%;font-size:13px}
+#powerVisorHud .armor-rads .rad-number{position:absolute;left:68%;top:49%;
+  transform:translate(-50%,-7%);color:#ffd99b;font:900 13px Consolas,monospace}
 #powerVisorHud .armor-core{right:21.5vw;width:clamp(112px,8.2vw,155px);bottom:19px}
 #powerVisorHud .armor-core .dial-title{top:51%;font-size:13px}
 #powerVisorHud .core-readout{position:absolute;left:50%;top:75%;
@@ -1391,8 +1395,9 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="fieldWaypointReadout" class="field-waypoint-readout" role="status"></div>
   <div class="field-panel field-vitals">
     <div class="field-kicker">VITAL SIGNS / HP</div>
-    <div class="field-number"><span id="fieldHealth">100</span> <span class="field-unit">/ 100 HP</span></div>
+    <div class="field-number"><span id="fieldHealth">100</span> <span class="field-unit">/ <span id="fieldMaxHealth">100</span> HP</span></div>
     <div class="field-bar"><span id="fieldHealthFill"></span></div>
+    <span id="fieldRadStatus" class="hidden" aria-live="polite">0 RADS</span>
     <div class="field-sub">STAMINA <span id="fieldStamina">100%</span></div>
     <div class="field-bar secondary"><span id="fieldStaminaFill"></span></div>
   </div>
@@ -1439,6 +1444,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="armor-dial armor-rads" aria-label="Radiation level gauge">
     <svg id="visorRadsGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
     <span class="dial-title">RADS</span>
+    <span class="rad-number" id="visorRadsNumber">0</span>
     <span id="visorRadiation" class="sr-only">0 RADS</span>
   </div>
   <div class="armor-compass nav-compass" id="visorCompass" aria-label="Compass heading and positioned navigation markers">
@@ -1594,11 +1600,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.84</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.85</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION:</strong> Radiation is no longer a fake zeroed-out power-armor gauge. A visible, physically located contaminated drum spill on the east side of the field now applies persistent radiation over time, reduces your real maximum HP, and appears on both the regular HUD and power armor's live dial. An occupied power frame reduces exposure. DOC VALE sells Radiation Flush medical treatment, which removes rads without magically restoring lost HP; use a medkit separately to heal. Radiation survives reloads and respawn, with bounded save migration. The full-game redesign standards, current gaps and phased acceptance tests are now documented in WASTELAND_DESIGN_BIBLE.md.</p>
     <p><strong>W20.84 · MODULAR ROOF MODELS & SCALE FIX:</strong> Roofs now share the exact 3×3-metre footprint of timber foundations and fit above 2.7-metre walls. The corrugated flat roof has individual scavenged sheet-metal panels, seams and visible framing; a new gabled scrap roof uses two physically slanted panels, a ridge cap and rafters. With grid snap enabled, roofs center on foundation bays or the bay adjoining an actual wall edge, never on top of the wall itself. The preview calls out ROOF BAY SNAPPED. Roofs require a properly aligned supporting wall, and storing or scrapping that wall is blocked until its roof is safely removed.</p>
     <p><strong>W20.83 · WALL CORNER JOINING & EDGE SNAP:</strong> Walls and doorframes can now meet at proper ninety-degree corners and T-junctions without being rejected as overlapping structures. With grid snap enabled, a wall near an existing wall endpoint or foundation edge automatically aligns into place, and the preview reports CORNER SNAPPED. True collisions with rocks, other props and crossed walls still block construction. The previous duplicate collision check for placed structures is removed, so valid joins survive saving and reloading.</p>
     <p><strong>W20.82 · REAL SETTLEMENT OBJECT STORAGE:</strong> F no longer gives components back. It puts a complete player-built object into workshop storage and adds a (1), (2) and so on beside that object in the construction menu. Choose its blueprint and place the stored copy without spending materials; the count decreases when placed, even after reloading. X remains the scrap key for both pre-existing settlement objects and your own structures, permanently removing them for salvaged materials. Storing and scrapping never create duplicate supplies, and existing saves migrate with empty storage.</p>
@@ -1648,7 +1655,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.84</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.85</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2079,7 +2086,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.84"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.85"></script>
 </body>
 </html>
 

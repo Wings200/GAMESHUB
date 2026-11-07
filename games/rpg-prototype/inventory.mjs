@@ -31,7 +31,7 @@ export const INVENTORY_CATEGORIES=Object.freeze([
 export function inventorySection(item){
   if(item.category==='material')return 'materials';
   if(item.category==='power-plate'||item.category==='fusion-core')return 'power';
-  if(item.category==='supply')return item.key==='medkit'?'aid':'junk';
+  if(item.category==='supply')return ['medkit','rad-flush'].includes(item.key)?'aid':'junk';
   return item.category;
 }
 export function displayAmmoCount(value){const n=cap(value);return n>999?'999+':String(n);}
@@ -88,6 +88,9 @@ templates.set('supply:fusion-core',Object.freeze({
 templates.set('supply:medkit',Object.freeze({
   id:'supply:medkit',category:'supply',key:'medkit',name:'Field Medkit',
   rarity:'uncommon',value:35,maxStack:6,heal:40}));
+templates.set('supply:rad-flush',Object.freeze({
+  id:'supply:rad-flush',category:'supply',key:'rad-flush',name:'Radiation Flush',
+  rarity:'uncommon',value:90,maxStack:6,radCure:300}));
 templates.set('supply:salvage',Object.freeze({
   id:'supply:salvage',category:'supply',key:'salvage',name:'Salvaged Parts',
   rarity:'common',value:12,maxStack:40}));

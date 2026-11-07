@@ -24,7 +24,8 @@ export const VENDORS=Object.freeze([
     ])}),
   Object.freeze({id:'medic',name:'DOC VALE',title:'FIELD MEDIC',specialty:'First aid & medical supplies',
     x:-15,z:9,color:0x9ad0a9,offers:Object.freeze([
-      {itemId:'supply:medkit',quantity:1}
+      {itemId:'supply:medkit',quantity:1},
+      {itemId:'supply:rad-flush',quantity:1}
     ])}),
   Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'31 components, optics, clothing & cores',
     x:-5,z:9,color:0xdfc18c,offers:Object.freeze([
@@ -116,10 +117,11 @@ export function vendorAccepts(vendorId,itemId){
   let item;try{item=getItem(itemId);}catch{return false;}
   if(vendorId==='arms')return item.category==='weapon'||item.category==='ammo';
   if(vendorId==='armor')return item.category==='armor';
-  if(vendorId==='medic')return item.id==='supply:medkit';
+  if(vendorId==='medic')return item.id==='supply:medkit'||
+    item.id==='supply:rad-flush';
   if(vendorId==='scavenger')return item.category==='clothing'||
     item.category==='fusion-core'||item.category==='material'||
-    (item.category==='supply'&&item.key!=='medkit');
+    (item.category==='supply'&&!['medkit','rad-flush'].includes(item.key));
   if(vendor.faction)return item.category==='power-plate'||
     item.category==='fusion-core';
   return false;

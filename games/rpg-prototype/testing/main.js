@@ -3,7 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.75';
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.85';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -83,6 +83,9 @@ import {createSquadIntel,clearSquadIntel,reportSquadContact,
 import {createSquadDirector,resetSquadDirector,planSquadOrders} from '../enemy-squad-director.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
+import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationExposureAt,
+  applyRadiationExposure,syncRadiationHealth,treatRadiation}
+  from '../radiation.mjs?v=W20.85';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -90,7 +93,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.75';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.85';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -401,6 +404,34 @@ for(const s of stations)textSign(s.tag,s.x+5,s.z-8,s.color);
 // Beyond the solid perimeter: original shacks, wrecks, aerials, water towers,
 // skyline, patinated ground, flags and atmospheric dust.
 const wastelandArt=buildWastelandSet(scene,THREE,{highQuality:qualityHigh});
+// Actual source for the radiation mechanic: leaking drums and contaminated
+// ground. The visual and the exposure simulator share the same world location.
+for(const spill of RADIATION_SOURCES){
+  const contaminated=new THREE.Mesh(new THREE.CircleGeometry(spill.radius-.45,38),
+    new THREE.MeshStandardMaterial({color:0x536e4a,roughness:.96,
+      emissive:0x294f26,emissiveIntensity:.13,transparent:true,opacity:.50,
+      depthWrite:false,side:THREE.DoubleSide}));
+  contaminated.rotation.x=-Math.PI/2;
+  contaminated.receiveShadow=true;
+  contaminated.position.set(spill.x,.024,spill.z);scene.add(contaminated);
+  for(const [dx,dz] of [[-.6,-.3],[.48,-.64],[.15,.54]]){
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.94,12),
+      new THREE.MeshStandardMaterial({color:0x526350,roughness:.72,metalness:.45}));
+    body.castShadow=true;body.receiveShadow=true;
+    body.position.set(spill.x+dx,.49,spill.z+dz);scene.add(body);
+    for(const h of [-.37,.34]){
+      const band=new THREE.Mesh(new THREE.CylinderGeometry(.406,.406,.075,12),
+        new THREE.MeshStandardMaterial({color:0x2b3027,roughness:.77}));
+      band.castShadow=true;
+      band.position.set(spill.x+dx,.49+h,spill.z+dz);scene.add(band);
+    }
+    bounds.push({minX:spill.x+dx-.39,maxX:spill.x+dx+.39,
+      minZ:spill.z+dz-.39,maxZ:spill.z+dz+.39,height:1});
+  }
+  textSign('RAD HAZARD',spill.x+5,spill.z-2,0x9dca78);
+  bounds.push({minX:spill.x+4.91,maxX:spill.x+5.09,
+    minZ:spill.z-2.09,maxZ:spill.z-1.91,height:2.8});
+}
 
 // W20.56: Small, deliberately ordered merchant row in the central clearing.
 // These are living traders, not the abandoned mannequin display props.
@@ -1159,11 +1190,11 @@ function updateVisorObjectiveMarker(heading){
   }
 }
 buildVisorDial('hp','visorHpGauge',{tickCount:20,majorEvery:2,labelSize:12});
-buildVisorDial('rads','visorRadsGauge',{tickCount:10,majorEvery:2,maxValue:10,labelSize:15});
+buildVisorDial('rads','visorRadsGauge',{tickCount:10,majorEvery:2,maxValue:1000,labelSize:13});
 buildVisorDial('core','visorCoreGauge',{tickCount:10,majorEvery:5,labelSize:16});
 buildVisorDial('ap','visorApGauge',{tickCount:20,majorEvery:4,labelSize:12});
 buildVisorCompass();
-setVisorDial('rads',0); // Radiation gameplay is not implemented yet.
+setVisorDial('rads',0); // The saved radiation value is installed with player health.
 setVisorDial('hp',100);
 setVisorDial('ap',100);
 updateVisorCompass(0);
@@ -2594,9 +2625,18 @@ function refreshInventoryUI(){
     if(item.id==='supply:medkit'){
       lootButton(row,'USE',()=>{
         const used=useSupply(backpack,entry.uid,playerHealth);
-        if(!used.ok){showShotNotice('MEDKIT · HEALTH MUST BE BELOW 100');return;}
+        if(!used.ok){showShotNotice('MEDKIT · HP ALREADY AT CURRENT MAXIMUM');return;}
         refreshPlayerHealth();showShotNotice('HEALED · +'+Math.ceil(used.restored)+' HP');
         saveBackpack();refreshInventoryUI();refreshWeaponHUD();
+      });
+    }
+    if(item.id==='supply:rad-flush'){
+      lootButton(row,'USE',()=>{
+        const treated=treatRadiation(radiationState,playerHealth,item.radCure);
+        if(!treated.ok){showShotNotice('NO RADIATION TO TREAT');return;}
+        removeItem(backpack,entry.uid,1);
+        saveRadiation();saveBackpack();refreshPlayerHealth();refreshInventoryUI();
+        showShotNotice('RADIATION FLUSH · -'+Math.round(treated.removed)+' RADS');
       });
     }
     // Each entry is a physical stack. Let the player choose an exact count
@@ -3473,6 +3513,15 @@ $('benchClose').addEventListener('click',closeWorkbench);
 // arena on foot from another station. Keep Station 9 alive on roaming.
 function inAIArena(){return isArenaActive(stationIndex,player);}
 const playerHealth=createPlayerHealth();
+const radiationSaveKey='rpg-radiation-state-v1';
+let radiationState=createRadiationState();
+try{radiationState=safeRadiationSnapshot(JSON.parse(
+  localStorage.getItem(radiationSaveKey)||'null'));}catch{}
+syncRadiationHealth(radiationState,playerHealth);
+function saveRadiation(){
+  try{localStorage.setItem(radiationSaveKey,JSON.stringify(radiationState));}catch{}
+}
+window.addEventListener('pagehide',saveRadiation);
 let playerHitFlash=0;
 const HAVEN_RESPAWN={x:-41,z:-13};
 const deathState={active:false,elapsed:0,cause:'',inPowerArmor:false,
@@ -3520,7 +3569,9 @@ function respawnAtHaven({mainMenu=false}={}){
     }
   }
   deathState.active=false;deathState.elapsed=0;
-  resetPlayerHealth(playerHealth);playerHitFlash=0;refreshPlayerHealth();
+  resetPlayerHealth(playerHealth);
+  syncRadiationHealth(radiationState,playerHealth);
+  playerHitFlash=0;refreshPlayerHealth();
   player.x=HAVEN_RESPAWN.x;player.z=HAVEN_RESPAWN.z;
   player.jump=0;player.vertical=0;player.supported=false;resetMotion(player);
   camera.rotation.set(0,-Math.PI/2,0);
@@ -3547,16 +3598,24 @@ function enemyTracer(from,to){
 }
 function refreshPlayerHealth(){
   const fraction=playerHealth.health/playerHealth.maxHealth;
+  const rads=Math.round(radiationState.rads);
   $('fieldHealth').textContent=Math.ceil(playerHealth.health);
+  $('fieldMaxHealth').textContent=playerHealth.maxHealth;
+  $('fieldRadStatus').classList.toggle('hidden',rads===0);
+  $('fieldRadStatus').textContent=rads+' RADS · MAX HP '+playerHealth.maxHealth;
   $('fieldHealthFill').style.width=(fraction*100).toFixed(1)+'%';
   $('fieldHud').classList.toggle('critical',fraction<=.35);
   $('visorHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
+  $('visorRadiation').textContent=rads+' RADS';
+  $('visorRadsNumber').textContent=rads;
+  setVisorDial('rads',radiationState.rads/10);
   setVisorDial('hp',fraction*100);
   $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
   $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
   $('healthFill').classList.toggle('low',fraction<=.35);
   $('healthStatus').textContent=!playerHealth.alive?'DOWN · RESPAWN AVAILABLE':
+    radiationState.rads>=5?'RADIATION '+rads+' RADS · MAX HP REDUCED':
     fraction<=.35?'CRITICAL · MEDICAL AID NEEDED':'STABLE';
 }
 refreshPlayerHealth();
@@ -5573,6 +5632,7 @@ function resetPlayer(i){
   if(i===8&&previousStation!==8){
     enemyAIEnabled=true;
     resetPlayerHealth(playerHealth);
+    syncRadiationHealth(radiationState,playerHealth);
     refreshPlayerHealth();
     // Ensure a clear, repeatable view of every enemy on first entry.
     resetEnemies();
@@ -6801,6 +6861,7 @@ let questNavigationClock=0;
 let settlementStatusRefreshClock=0,settlementSaveClock=0;
 let hudRefreshClock=0,performanceSampleTime=0,performanceSampleFrames=0;
 let lastAppearanceKey='';
+let radiationSaveClock=0,wasInRadiation=false;
 function frame(){
   requestAnimationFrame(frame);
   const elapsed=clock.getDelta();
@@ -6839,6 +6900,26 @@ function frame(){
   hudRefreshClock+=Math.min(elapsed,.15);
   const refreshDisplay=hudRefreshClock>=.10;
   if(refreshDisplay)hudRefreshClock%=.10;
+  const exposureRate=controls.isLocked&&playerHealth.alive&&!deathState.active?
+    radiationExposureAt(player.x,player.z):0;
+  const inRadiation=exposureRate>.01;
+  if(inRadiation){
+    // A bare frame is modest shielding; six intact plates provide strong
+    // radiation protection. Broken plates cannot grant full resistance.
+    const plateIntegrity=powerArmorState.occupied?
+      POWER_ARMOR_SLOTS.reduce((total,slot)=>{
+        const plate=plateCondition(powerArmorState,slot);
+        return total+(plate.max>0?plate.current/plate.max:0);
+      },0)/POWER_ARMOR_SLOTS.length:0;
+    applyRadiationExposure(radiationState,playerHealth,exposureRate,dt,
+      {protection:powerArmorState.occupied?.20+.65*plateIntegrity:0});
+    radiationSaveClock+=dt;
+    if(refreshDisplay)refreshPlayerHealth();
+    if(radiationSaveClock>=2){radiationSaveClock=0;saveRadiation();}
+  }
+  if(inRadiation&&!wasInRadiation)showShotNotice(
+    'RADIATION DETECTED · LEAVE THE CONTAMINATED AREA');
+  wasInRadiation=inRadiation;
   performanceSampleTime+=elapsed;performanceSampleFrames++;
   if(performanceSampleTime>=1){
     const fps=Math.round(performanceSampleFrames/performanceSampleTime);
