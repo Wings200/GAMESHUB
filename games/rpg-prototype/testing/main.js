@@ -11,10 +11,16 @@ import {VENDOR_CONVERSATIONS,dialoguePage,charismaCheck,negotiatedTradeModifiers
   from '../dialogue-presentation.mjs?v=W21.02';
 import {createNpcRoutine,safeNpcRoutineSnapshot,npcRoutineSnapshot,
   stepNpcRoutine,npcBodyBounds,npcCanStand}
-  from '../npc-routines.mjs?v=W21.04';
+  from '../npc-routines.mjs?v=W21.05';
 import {assignSettlerJob,reconcileSettlerJobs,SETTLER_JOB_TYPES,
   settlerWorkLocation,advanceSettlerJobs,
-  withdrawSettlerProvisions} from '../settler-jobs.mjs?v=W21.04';
+  withdrawSettlerProvisions} from '../settler-jobs.mjs?v=W21.05';
+import {RAID_SPAWNS,RAID_ATTACK_RANGE,RAID_MAX_SECONDS,
+  GUARD_RANGE,TURRET_RANGE,settlementStructureCondition,
+  settlementStructureOperational,damageSettlementStructure,
+  settlementRepairCost,repairSettlementStructure,beginSettlementRaid,
+  raidLivingEnemies,damageSettlementRaider,raidTargetStructure,
+  stepRaidClock,moveRaidRaider} from '../settlement-defense.mjs?v=W21.05';
 import {planNavigationRoute} from '../enemy-navigation.mjs?v=W21.04';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
@@ -28,7 +34,7 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W21.04';
+  from '../settlement-building.mjs?v=W21.05';
 import {JUNK_BY_ID,junkYieldText} from '../junk.mjs?v=W20.97';
 import {storeWorkshopJunk,takeWorkshopJunk,scrapWorkshopJunk,
   takeWorkshopMaterial,workshopJunkTotal,previewWorkshopRecipe,craftWithWorkshop}
@@ -2134,12 +2140,13 @@ function updateSettlementLights(){
   const stats=calculateSettlementStats(settlementBuildState);
   let activeLights=0;
   const maxLights=qualityHigh?5:2;
-  for(const record of builtSettlementMeshes.values()){
+  for(const [id,record] of builtSettlementMeshes){
     const light=record.visual.userData.settlementLight;
     const powered=stats.powered||!
       ['beacon','turret','purifier','floodlight'].includes(record.visual.userData.settlementType);
     if(light){
-      const active=powered&&activeLights<maxLights;
+      const active=powered&&settlementStructureOperational(settlementBuildState,id)&&
+        activeLights<maxLights;
       light.intensity=active?(qualityHigh?.8:.3):0;
       if(active)activeLights++;
     }
@@ -2153,14 +2160,31 @@ function registerSettlementStructure(structure){
   const visual=createSettlementVisual(structure);
   visual.userData.settlementStructureId=structure.id;
   visual.userData.settlementType=structure.type;
+  const blueprint=SETTLEMENT_BY_ID[structure.type];
+  const radius=Math.max(blueprint.width,blueprint.depth)*.57;
+  const damageRing=new THREE.Mesh(new THREE.TorusGeometry(radius,.055,5,30),
+    new THREE.MeshBasicMaterial({color:0xee985c,transparent:true,
+      opacity:.6,depthWrite:false}));
+  damageRing.rotation.x=-Math.PI/2;damageRing.position.y=.085;
+  damageRing.visible=false;damageRing.userData.settlementDamageMarker=true;
+  visual.add(damageRing);
   const shotBoxes=buildWorldBoxes(structure,{onlySolid:true});
   const movementBoxes=shotBoxes.filter(b=>b.bottom<=.4&&b.top>.48);
   for(const b of shotBoxes){
     enemySightObstacles.push(b);builtSettlementShotBoxRefs.add(b);
   }
   for(const b of movementBoxes){bounds.push(b);enemyMovementObstacles.push(b);}
-  builtSettlementMeshes.set(structure.id,{visual,shotBoxes,movementBoxes});
+  builtSettlementMeshes.set(structure.id,{visual,shotBoxes,movementBoxes,damageRing});
+  refreshSettlementDamageVisuals();
   updateSettlementLights();
+}
+function refreshSettlementDamageVisuals(){
+  for(const [id,record] of builtSettlementMeshes){
+    const condition=settlementStructureCondition(settlementBuildState,id);
+    record.damageRing.visible=condition<100;
+    record.damageRing.material.color.setHex(condition<=0?0xff5144:0xee985c);
+    record.damageRing.material.opacity=.35+(100-condition)/100*.48;
+  }
 }
 function unregisterSettlementStructure(id){
   const built=builtSettlementMeshes.get(id);
@@ -2174,13 +2198,17 @@ function unregisterSettlementStructure(id){
   for(const b of built.movementBoxes){remove(bounds,b);remove(enemyMovementObstacles,b);}
   built.visual.traverse(object=>{
     if(object.geometry)object.geometry.dispose();
-    if(object.userData.powerIndicator)object.material.dispose();
+    if(object.userData.powerIndicator||object.userData.settlementDamageMarker)
+      object.material.dispose();
   });
   scene.remove(built.visual);builtSettlementMeshes.delete(id);
   updateSettlementLights();
 }
 function saveSettlementBuild(){
   reconcileSettlerJobs(settlementBuildState);
+  const existing=new Set(settlementBuildState.structures.map(s=>String(s.id)));
+  for(const id of Object.keys(settlementBuildState.structureCondition||{}))
+    if(!existing.has(id))delete settlementBuildState.structureCondition[id];
   try{localStorage.setItem(settlementBuildStorageKey,
     JSON.stringify(settlementBuildState));}catch{}
 }
@@ -5667,6 +5695,8 @@ function shoot({vatsTarget=null}={}){
   // Otherwise a click between render frames can hit a head's LAST pose.
   for(const enemy of enemies.values())
     if(enemy.state.alive)enemy.rigged?.root.updateWorldMatrix(true,true);
+  for(const raider of raidLivingEnemies(settlementBuildState))
+    havenRaidActors.get(raider.id)?.root.updateWorldMatrix(true,true);
   // A shotgun with several pellets earns only one critical increment per
   // trigger pull, even if multiple pellets connect with living targets.
   let chargedCriticalThisRound=false;
@@ -5705,8 +5735,11 @@ function shoot({vatsTarget=null}={}){
   // is not a gameplay or armor state and cannot turn old mannequin limbs on.
   const enemyParts=enemyHitMeshes.filter(mesh=>mesh.userData.equipped!==false&&
     shouldRaycastEnemy(enemies.get(mesh.userData.enemyId)));
+  const raidIds=new Set(raidLivingEnemies(settlementBuildState).map(r=>r.id));
+  const raidParts=havenRaidHitMeshes.filter(mesh=>
+    raidIds.has(mesh.userData.havenRaiderId));
   const hits=firingRaycaster.intersectObjects(
-    [...worldGeometry,...targetMeshes,...livingParts,...enemyParts],false);
+    [...worldGeometry,...targetMeshes,...livingParts,...enemyParts,...raidParts],false);
   const first=hits[0];
   // Suppression is earned by an actual close bullet pass. The nearest solid
   // impact truncates the ray, so shots stopped by walls cannot scare guards
@@ -5724,7 +5757,8 @@ function shoot({vatsTarget=null}={}){
       when:performance.now(),selectedWeapon:activeSpec.id,
       ray:{x:shotVector.x,y:shotVector.y,z:shotVector.z},
       origin:{x:camera.position.x,y:camera.position.y,z:camera.position.z},
-      first:first?{distance:first.distance,id:first.object.userData.enemyId||null,
+      first:first?{distance:first.distance,id:first.object.userData.enemyId||
+        first.object.userData.havenRaiderId||null,
         target:first.object.userData.targetId||null,
         material:first.object.userData.impactMaterial||null,
         point:{x:first.point.x,y:first.point.y,z:first.point.z}}:null,
@@ -5751,15 +5785,29 @@ function shoot({vatsTarget=null}={}){
   if(first){
     impactMaterial=getImpactMaterial(first);
     impactEffects.spawn(first.point,
-      first.object.userData.enemyId?'flesh':impactMaterial);
+      first.object.userData.enemyId||first.object.userData.havenRaiderId?
+        'flesh':impactMaterial);
     const isPaper=impactMaterial==='paper';
     markBulletHole(first,isPaper,
-      !!(first.object.userData.dummyId||first.object.userData.enemyId));
+      !!(first.object.userData.dummyId||first.object.userData.enemyId||
+        first.object.userData.havenRaiderId));
     // AudioContext scheduling creates an audible gap after the gunshot.
     // A little extra distance adds a subtle travel-time effect.
     sound.impact(impactMaterial,.15+Math.min(.11,first.distance*.0017));
   }
-  if(first&&first.object.userData.enemyId){
+  if(first&&first.object.userData.havenRaiderId){
+    const zone=first.object.userData.hitZone;
+    const damage=damageThisPellet*specialModifiers.gunDamageMultiplier*
+      consumableBonuses(consumableStatus).gunDamageMultiplier*
+      (zone==='head'?specialModifiers.headshotMultiplier:1);
+    const hit=damageHavenRaider(first.object.userData.havenRaiderId,damage,true);
+    if(hit.ok){
+      spawnDamagePopup(first.point,{damage:hit.damage,zone,blocked:0,
+        points:0,killed:hit.killed});
+      $('damageReport').textContent='HAVEN RAIDER · '+zone.toUpperCase()+
+        ' · '+Math.ceil(hit.damage)+' HP'+(hit.killed?' · DOWN':'');
+    }
+  }else if(first&&first.object.userData.enemyId){
     const enemy=enemies.get(first.object.userData.enemyId);
     const critical=vatsTarget?.critical?
       first.object.userData.enemyId===vatsTarget.enemyId:
@@ -6010,6 +6058,13 @@ function refreshSettlementStats(){
   $('settlementHappinessFill').style.width=stats.happiness+'%';
   $('settlementStock').textContent='STOCK · '+stats.storedFood+' FOOD / '+
     stats.storedWater+' WATER · '+stats.assigned+'/'+stats.population+' WORKING';
+  const raid=settlementBuildState.raid;
+  $('settlementRaidStatus').textContent=raid.active?
+    'RAID WAVE '+raid.wave+' · '+raidLivingEnemies(settlementBuildState).length+
+      ' HOSTILES · '+Math.max(0,Math.ceil(RAID_MAX_SECONDS-raid.elapsed))+'s LEFT':
+    raid.cooldown>0?'DEFENSE REST · '+Math.ceil(raid.cooldown)+'s':
+      'H · START CONTROLLED RAIDER DEFENSE TEST';
+  refreshSettlementDamageVisuals();
   $('settlementBuildHint').textContent=SETTLEMENT_CATEGORIES.find(c=>
     c.id===settlementBuildCategory)?.hint||'Workshop construction';
 }
@@ -6355,7 +6410,48 @@ function refreshSettlerJobsPanel(selectedResident=null){
     '/'+stats.population+' ASSIGNED';
   $('settlerFoodTake').disabled=stats.storedFood<1;
   $('settlerWaterTake').disabled=stats.storedWater<1;
+  refreshHavenRepairPanel();
 }
+function refreshHavenRepairPanel(){
+  const raid=settlementBuildState.raid;
+  $('settlerRaidSummary').textContent=raid.active?
+    'WAVE '+raid.wave+' · '+raidLivingEnemies(settlementBuildState).length+
+      ' RAIDERS REMAINING':raid.cooldown>0?'REST '+Math.ceil(raid.cooldown)+'s':
+      'READY FOR A CONTROLLED THREE-RAIDER ATTACK';
+  $('settlerStartRaid').disabled=raid.active||raid.cooldown>0||
+    !settlementBuildState.structures.length;
+  const selected=$('settlerRepairSelect').value;
+  const chooser=$('settlerRepairSelect'),list=$('settlerDamagedStructures');
+  chooser.replaceChildren();list.replaceChildren();
+  for(const structure of settlementBuildState.structures){
+    const condition=settlementStructureCondition(settlementBuildState,structure.id);
+    if(condition>=100)continue;
+    const name=SETTLEMENT_BY_ID[structure.type].name;
+    chooser.add(new Option('#'+structure.id+' '+name+' · '+condition+'% INTACT',
+      String(structure.id)));
+    const entry=document.createElement('div');entry.className='settlement-damage-entry';
+    const title=document.createElement('span');title.textContent='#'+structure.id+' · '+name;
+    const health=document.createElement('small');
+    health.textContent=condition+'% CONDITION · '+(condition===0?'DISABLED':'DAMAGED');
+    entry.append(title,health);list.append(entry);
+  }
+  if([...chooser.options].some(option=>option.value===selected))chooser.value=selected;
+  if(!chooser.options.length){
+    chooser.add(new Option('ALL STRUCTURES ARE INTACT',''));
+    const healthy=document.createElement('div');healthy.className='settlement-damage-entry';
+    healthy.textContent='NO DAMAGED BUILDINGS · DEFENSE IS READY';list.append(healthy);
+    $('settlerRepairCost').textContent='No repairs are needed.';
+    $('settlerRepairConfirm').disabled=true;
+    return;
+  }
+  const cost=settlementRepairCost(settlementBuildState,Number(chooser.value));
+  const available=previewWorkshopRecipe(backpack,settlementBuildState,cost);
+  $('settlerRepairCost').textContent='ACTUAL REPAIR COST · '+Object.entries(cost)
+    .map(([id,n])=>getItem(id).name+' ×'+n).join(' · ')+
+    (available.ok?' · MATERIALS READY':' · MISSING MATERIALS');
+  $('settlerRepairConfirm').disabled=!available.ok;
+}
+$('settlerRepairSelect').addEventListener('change',refreshHavenRepairPanel);
 function openSettlerJobs(resident=null){
   if(settlerJobsOpen||!playerAtHaven()||deathState.active||
     vendorOpen||dialogueOpen||inventoryOpen||lootOpen||mapOpen||
@@ -6419,6 +6515,36 @@ function takeSettlementSupply(resource){
 }
 $('settlerFoodTake').addEventListener('click',()=>takeSettlementSupply('food'));
 $('settlerWaterTake').addEventListener('click',()=>takeSettlementSupply('water'));
+function launchHavenRaid(){
+  if(!playerAtHaven()||deathState.active)return;
+  const result=beginSettlementRaid(settlementBuildState);
+  if(!result.ok){
+    if(settlerJobsOpen)$('settlerJobFeedback').textContent=result.reason;
+    else showShotNotice(result.reason);
+    return;
+  }
+  syncHavenRaidActors();saveSettlementBuild();refreshSettlementStats();
+  if(settlerJobsOpen)closeSettlerJobs();
+  showShotNotice('HAVEN UNDER ATTACK · WAVE '+result.wave+
+    ' · THREE PHYSICAL RAIDERS · GUARDS AND TURRETS ENGAGING');
+}
+$('settlerStartRaid').addEventListener('click',launchHavenRaid);
+$('settlerRepairConfirm').addEventListener('click',()=>{
+  if(!playerAtHaven())return;
+  const id=Number($('settlerRepairSelect').value);
+  const cost=settlementRepairCost(settlementBuildState,id);
+  if(!Object.keys(cost).length)return;
+  const result=craftWithWorkshop(backpack,settlementBuildState,cost,
+    (pack,state)=>repairSettlementStructure(state,pack,id));
+  if(result.ok){
+    saveSettlementBuild();saveBackpack();refreshInventoryUI();
+    refreshSettlementStats();updateSettlementLights();
+    $('settlerJobFeedback').textContent='STRUCTURE #'+id+
+      ' REPAIRED · REAL MATERIALS CONSUMED';
+  }else $('settlerJobFeedback').textContent='REPAIR FAILED · '+
+    String(result.reason||'NOT ENOUGH COMPONENTS').toUpperCase();
+  refreshHavenRepairPanel();
+});
 const npcDynamicBodies=[];
 let npcRoutineSaveClock=0,npcGunshotId=0,npcRecentGunshot=null;
 function saveNpcRoutines(){
@@ -6471,6 +6597,205 @@ function assignedSettlerWaypoint(id,actor,location){
     Math.hypot(actor.x-route.waypoints[0].x,actor.z-route.waypoints[0].z)<.48)
     route.waypoints.shift();
   return {target,waypoint:route.waypoints[0]||target};
+}
+// Haven raiders are a separate, save-backed three-person encounter. They use
+// actual animated characters and ray-hit body meshes, without changing arena
+// enemies, faction quests, their loot tables or their combat test flags.
+const havenRaidActors=new Map(),havenRaidHitMeshes=[];
+function syncHavenRaidActors(){
+  const live=settlementBuildState.raid.active?
+    settlementBuildState.raid.raiders:[];
+  const allowed=new Set(live.map(raider=>raider.id));
+  for(const [id,actor] of havenRaidActors){
+    if(allowed.has(id))continue;
+    scene.remove(actor.root);
+    actor.root.traverse(obj=>{
+      if(obj.geometry)obj.geometry.dispose();
+      if(obj.material){
+        const materials=Array.isArray(obj.material)?obj.material:[obj.material];
+        for(const material of materials)material.dispose();
+      }
+    });
+    for(const hitbox of actor.hitboxes){
+      const index=havenRaidHitMeshes.indexOf(hitbox);
+      if(index>=0)havenRaidHitMeshes.splice(index,1);
+    }
+    havenRaidActors.delete(id);
+  }
+  for(const raider of live){
+    if(havenRaidActors.has(raider.id))continue;
+    const root=new THREE.Group();root.name='HavenRaid_'+raider.id;
+    root.position.set(raider.x,0,raider.z);root.rotation.y=raider.yaw;
+    scene.add(root);
+    const avatar=createNpcAvatar(root,'raider');
+    const hitboxes=[];
+    for(const [slot,joint,offset,size] of [
+      ['chest',avatar.hitJoints.torso,[0,.32,0],[.75,.80,.48]],
+      ['head',avatar.hitJoints.head,[0,.055,0],[.40,.42,.39]]]){
+      const hitbox=new THREE.Mesh(new THREE.BoxGeometry(...size),
+        new THREE.MeshBasicMaterial({visible:false,colorWrite:false}));
+      hitbox.position.set(...offset);hitbox.visible=false;
+      hitbox.layers.set(ENEMY_COLLISION_LAYER);
+      hitbox.userData={havenRaiderId:raider.id,hitZone:slot,impactMaterial:'flesh'};
+      joint.add(hitbox);hitboxes.push(hitbox);havenRaidHitMeshes.push(hitbox);
+    }
+    havenRaidActors.set(raider.id,{root,avatar,hitboxes,shotFlash:0});
+  }
+}
+syncHavenRaidActors();
+function nearestHavenRaider(point,range){
+  let best=null,closest=range;
+  for(const raider of raidLivingEnemies(settlementBuildState)){
+    const d=Math.hypot(raider.x-point.x,raider.z-point.z);
+    if(d<closest){best=raider;closest=d;}
+  }
+  return best;
+}
+function damageHavenRaider(id,damage,fromPlayer=false){
+  const hit=damageSettlementRaider(settlementBuildState,id,damage);
+  if(hit.ok&&hit.killed){
+    const actor=havenRaidActors.get(id);
+    if(actor)actor.root.visible=false;
+    if(fromPlayer)awardSpecialExperience(40,'combat');
+    showShotNotice('HAVEN RAIDER DOWN · '+raidLivingEnemies(settlementBuildState).length+
+      ' HOSTILES REMAIN');
+    saveSettlementBuild();
+  }
+  return hit;
+}
+function raidShotClear(origin,target,excluded=[]){
+  const blockers=excluded.length?enemySightObstacles.filter(b=>!excluded.includes(b)):
+    enemySightObstacles;
+  return !firstSolidHit(origin,target,blockers);
+}
+function stepHavenRaid(dt){
+  const raid=settlementBuildState.raid;
+  if(!controls.isLocked||!playerAtHaven()||deathState.active)return;
+  if(!raid.active){
+    if(raid.cooldown>0)stepRaidClock(settlementBuildState,dt);
+    return;
+  }
+  syncHavenRaidActors();
+  for(const raider of raidLivingEnemies(settlementBuildState)){
+    const actor=havenRaidActors.get(raider.id);
+    if(!actor)continue;
+    const target=raidTargetStructure(settlementBuildState,raider);
+    const oldX=raider.x,oldZ=raider.z;
+    if(target){
+      moveRaidRaider(raider,dt,target,(x,z)=>npcCanStand(x,z,{
+        obstacles:enemyMovementObstacles,
+        neighbors:raidLivingEnemies(settlementBuildState)
+          .filter(other=>other!==raider).map(other=>({x:other.x,z:other.z}))}));
+    }
+    actor.root.position.set(raider.x,groundHeight(raider.x,raider.z),raider.z);
+    actor.root.rotation.y=raider.yaw;
+    const speed=dt>0?Math.hypot(raider.x-oldX,raider.z-oldZ)/dt:0;
+    actor.avatar.update(dt,{moving:speed>.08,speed,aiming:true,alerted:true,
+      recoil:actor.shotFlash>0?1:0,phase:'chase'});
+    actor.shotFlash=Math.max(0,actor.shotFlash-dt);
+    if(!target)continue;
+    raider.shotClock-=dt;
+    if(raider.shotClock>0)continue;
+    const origin=actor.avatar.getMuzzleWorldPosition()||
+      new THREE.Vector3(raider.x,1.48,raider.z);
+    const targetBoxes=builtSettlementMeshes.get(target.id)?.shotBoxes||[];
+    let destination=new THREE.Vector3(target.x,1.25,target.z);
+    const playerDistance=Math.hypot(raider.x-player.x,raider.z-player.z);
+    const attackPlayer=playerHealth.alive&&playerDistance<11&&Math.random()<.33;
+    if(attackPlayer){
+      const silhouette=playerCombatSilhouette();
+      destination=new THREE.Vector3(player.x,silhouette.aimY,player.z);
+    }
+    const distance=Math.hypot(destination.x-raider.x,destination.z-raider.z);
+    if(distance>RAID_ATTACK_RANGE||
+      !raidShotClear(origin,destination,attackPlayer?[]:targetBoxes)){
+      raider.shotClock=.65;continue;
+    }
+    raider.shotClock=2.4+Math.random()*1.1;
+    actor.shotFlash=.16;
+    signalNpcGunfire(raider.x,raider.z);
+    sound.gunshot('pipe-rifle');
+    const accuracy=Math.max(.28,.80-distance*.027);
+    const connects=Math.random()<accuracy;
+    const endpoint=connects?destination:destination.clone().add(
+      new THREE.Vector3((Math.random()-.5)*3.6,(Math.random()-.5)*1.2,
+        (Math.random()-.5)*3.6));
+    const cover=firstSolidHit(origin,endpoint,
+      attackPlayer?enemySightObstacles:enemySightObstacles.filter(b=>
+        !targetBoxes.includes(b)));
+    enemyTracer(origin,cover?new THREE.Vector3(cover.point.x,
+      cover.point.y,cover.point.z):endpoint);
+    if(!connects||cover)continue;
+    if(attackPlayer){
+      const zone='chest',armor=playerArmorReduction(backpack,zone);
+      const incoming=calculateIncomingShot(9,armor.points,powerArmorState,zone);
+      const hit=hitPlayer(playerHealth,incoming.damage*
+        specialModifiers.damageTakenMultiplier);
+      if(hit.applied){
+        damagePlayerLimb(injuryState,zone,hit.damage);saveInjuries();
+        if(powerArmorState.occupied){
+          damagePowerPlate(powerArmorState,zone,9);savePowerArmor();
+        }
+        refreshPlayerHealth();playerHitFlash=.43;
+        if(!playerHealth.alive)beginPlayerDeath('HAVEN RAIDER',zone);
+      }
+    }else{
+      const hit=damageSettlementStructure(settlementBuildState,target.id,6);
+      if(hit.ok){
+        refreshSettlementDamageVisuals();updateSettlementLights();
+        saveSettlementBuild();
+        if(hit.disabled)showShotNotice('HAVEN · '+SETTLEMENT_BY_ID[target.type].name+
+          ' DISABLED · OPEN J TO REPAIR');
+      }
+    }
+  }
+  // Only real, on-duty guards and powered, intact turrets fire back.
+  for(let index=0;index<settlementResidents.length;index++){
+    const actor=settlementResidents[index];
+    const assignment=settlementBuildState.workerJobs[String(index+1)];
+    if(assignment?.job!=='guard'||!actor.atJobStation||
+      !settlementStructureOperational(settlementBuildState,assignment.structureId))continue;
+    actor.guardShotClock=(actor.guardShotClock??0)-dt;
+    if(actor.guardShotClock>0)continue;
+    const target=nearestHavenRaider(actor,GUARD_RANGE);
+    if(!target)continue;
+    const origin=new THREE.Vector3(actor.x,1.52,actor.z),
+      endpoint=new THREE.Vector3(target.x,1.34,target.z);
+    if(!raidShotClear(origin,endpoint))continue;
+    actor.guardShotClock=1.45+index*.08;
+    signalNpcGunfire(actor.x,actor.z);sound.gunshot('pipe-rifle');
+    const hit=Math.random()<.79;
+    enemyTracer(origin,hit?endpoint:endpoint.clone().add(
+      new THREE.Vector3(1.5,.6,-1.4)));
+    if(hit)damageHavenRaider(target.id,17);
+  }
+  const settlementStats=calculateSettlementStats(settlementBuildState);
+  for(const [id,record] of builtSettlementMeshes){
+    if(record.visual.userData.settlementType!=='turret'||
+      !settlementStats.powered||!settlementStructureOperational(settlementBuildState,id))
+      continue;
+    record.turretShotClock=(record.turretShotClock??0)-dt;
+    if(record.turretShotClock>0)continue;
+    const position=record.visual.position;
+    const target=nearestHavenRaider(position,TURRET_RANGE);
+    if(!target)continue;
+    const origin=new THREE.Vector3(position.x,1.52,position.z);
+    const endpoint=new THREE.Vector3(target.x,1.3,target.z);
+    if(!raidShotClear(origin,endpoint,record.shotBoxes))continue;
+    record.turretShotClock=.83;
+    record.visual.userData.turretHead.rotation.y=Math.atan2(
+      target.x-position.x,target.z-position.z)-record.visual.rotation.y;
+    enemyTracer(origin,endpoint);
+    signalNpcGunfire(position.x,position.z);sound.gunshot('pipe-smg');
+    if(Math.random()<.83)damageHavenRaider(target.id,13);
+  }
+  const finished=stepRaidClock(settlementBuildState,dt);
+  if(finished.ended){
+    saveSettlementBuild();syncHavenRaidActors();refreshSettlementStats();
+    showShotNotice(finished.victory?'HAVEN DEFENDED · RAIDERS DEFEATED':
+      finished.overrun?'HAVEN OVERRUN · REPAIR DISABLED STRUCTURES':
+        'RAIDERS WITHDRAWN · REPAIR ANY DAMAGED STRUCTURES');
+  }
 }
 // Old survivor-held model stays hidden. Third-person renders the same new
 // 10mm geometry attached to the animated hand socket.
@@ -8211,6 +8536,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked&&playerAtHaven()){
     e.preventDefault();openSettlerJobs();return;
   }
+  if(e.code==='KeyH'&&!e.repeat&&controls.isLocked&&playerAtHaven()){
+    e.preventDefault();launchHavenRaid();return;
+  }
   if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
     thirdPersonEnabled=!thirdPersonEnabled;
     showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
@@ -8868,6 +9196,10 @@ function frame(){
     const previous=npcRoutineStates.get(id);
     if(!previous||!home)continue;
     const assignment=settlementBuildState.workerJobs[String(i+1)];
+    if(assignment?.job==='guard'&&!actor.guardWeapon)
+      actor.guardWeapon=createPipeRifle(THREE,actor.avatar.weaponSocket,
+        {thirdPerson:true});
+    if(actor.guardWeapon)actor.guardWeapon.root.visible=assignment?.job==='guard';
     const location=settlerWorkLocation(settlementBuildState,assignment,
       [...visibleHavenJunk.keys()]);
     const destination=location?assignedSettlerWaypoint(id,actor,location):null;
@@ -8875,6 +9207,10 @@ function frame(){
       .filter(other=>other!==actor).map(other=>({x:other.x,z:other.z}));
     const step=stepNpcRoutine(previous,dt,{home,player,
       jobTarget:destination?.target,jobWaypoint:destination?.waypoint,
+      guardDuty:assignment?.job==='guard',
+      defenseTarget:assignment?.job==='guard'&&actor.atJobStation&&
+        settlementBuildState.raid.active?
+        nearestHavenRaider(actor,GUARD_RANGE):null,
       dialogue:settlerJobsOpen&&$('settlerJobResident').value===String(i+1),
       obstacles:enemyMovementObstacles,neighbors,threat:activeNpcGunfire()});
     npcRoutineStates.set(id,step.state);
@@ -8903,10 +9239,12 @@ function frame(){
       }
     }
   }
+  stepHavenRaid(dt);
   const settlementPowered=calculateSettlementStats(settlementBuildState).powered;
   for(const [id,record] of builtSettlementMeshes){
     const turretHead=record.visual.userData.turretHead;
-    if(turretHead&&settlementPowered)
+    if(turretHead&&settlementPowered&&!settlementBuildState.raid.active&&
+      settlementStructureOperational(settlementBuildState,id))
       turretHead.rotation.y=Math.sin(clock.elapsedTime*.68+id*.37)*.45;
   }
   updateEnemies(dt,elapsed,refreshDisplay);
@@ -8956,6 +9294,8 @@ function frame(){
   for(const actor of [...campaignResidents,...vendorActors,...settlementResidents]){
     if(actor.avatar.root.visible)npcDynamicBodies.push(npcBodyBounds(actor));
   }
+  for(const raider of raidLivingEnemies(settlementBuildState))
+    npcDynamicBodies.push(npcBodyBounds(raider));
   npcRoutineSaveClock+=dt;
   if(npcRoutineSaveClock>=8){npcRoutineSaveClock=0;saveNpcRoutines();}
   updateTargetHealthHud(dt);

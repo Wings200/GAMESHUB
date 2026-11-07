@@ -105,7 +105,7 @@ test('old saves migrate unchanged and new worker jobs, materials and stocks sani
   assignSettlerJob(state,3,'scavenger');
   state.workerProgress['1']=8;state.provisions={food:13,water:4};
   const restored=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
-  assert.equal(restored.version,7);
+  assert.equal(restored.version,8);
   assert.deepEqual(restored.workerJobs,state.workerJobs);
   assert.deepEqual(restored.provisions,{food:13,water:4});
   assert.equal(restored.workerProgress['1'],8);

@@ -71,15 +71,16 @@ export function stepNpcRoutine(previous,dt,context){
   const seconds=clamp(finite(dt),0,.06);
   const next={...previous};
   const {home,player=null,dialogue=false,stationary=false,
-    jobTarget=null,jobWaypoint=null,
+    jobTarget=null,jobWaypoint=null,guardDuty=false,defenseTarget=null,
     obstacles=[],neighbors=[],threat=null}=context;
   next.phase=wrapped(previous.phase+seconds,NPC_ROUTINE_CYCLE);
   next.alarm=Math.max(0,previous.alarm-seconds);
   if(threat&&threat.id!==previous.lastThreatId&&
      finite(threat.age,999)<.65&&distance(threat,previous)<10.5){
     next.lastThreatId=threat.id;
-    next.alarm=5.5;
+    next.alarm=guardDuty?0:5.5;
   }
+  if(guardDuty)next.alarm=0;
   let mode=dialogue?'talking':next.alarm>0?'alarmed':jobTarget?'working':npcShift(next.phase);
   let destination;
   if(mode==='working')destination=jobTarget?(jobWaypoint||jobTarget):
@@ -120,7 +121,8 @@ export function stepNpcRoutine(previous,dt,context){
       else if(can(previous.x,z)){next.z=z;moved=Math.abs(z-previous.z);}
     }
   }
-  const lookAt=mode==='talking'||(player&&distance(previous,player)<3.2)?
+  const lookAt=defenseTarget&&guardDuty?defenseTarget:
+    mode==='talking'||(player&&distance(previous,player)<3.2)?
     player:mode==='alarmed'&&threat?threat:destination;
   if(lookAt&&Math.hypot(lookAt.x-next.x,lookAt.z-next.z)>.09){
     // The character rig faces -Z at yaw zero; track the actual 3D target.

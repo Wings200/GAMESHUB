@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W21.04 · Settler Work & Production | GAMESHUB RPG</title>
+<title>W21.05 · Settlement Defense | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -203,6 +203,13 @@ body.power-transition #shotNotice,body.power-transition #crosshair{opacity:0!imp
   display:flex;justify-content:space-between;gap:8px;color:#c0d0c4;font-size:12px}
 #settlerJobList b{color:#efd09a}
 #settlerJobFeedback{min-height:25px;color:#add7c1;font-size:12px;font-weight:850}
+.settlement-defenses{grid-column:1/-1}
+.settlement-defense-summary{display:flex;gap:12px;flex-wrap:wrap;
+  justify-content:space-between;color:#e4c18d;font-size:12px;font-weight:900}
+.settlement-damage-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:7px}
+.settlement-damage-entry{border:1px solid #6b5b4a;border-radius:3px;padding:10px;
+  background:#301f1a;color:#f0d3ba;font-size:11px;font-weight:850}
+.settlement-damage-entry small{display:block;color:#e6a783;margin-top:4px}
 @media(max-width:690px){.settlement-jobs-grid{grid-template-columns:1fr}}
 body.settlement-building #fieldHud .field-weapon,body.settlement-building #weaponHud,
 body.settlement-building #lootPrompt{display:none!important}
@@ -2073,6 +2080,8 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span id="settlementStock">STOCK · 0 FOOD / 0 WATER · 0 WORKING</span></div>
   <div class="settlement-status-foot"><span>FOOD / WATER · STAFFED CAPACITY / BUILT CAPACITY</span>
     <span>J · SETTLER JOBS · E · TALK TO SETTLER</span></div>
+  <div class="settlement-status-foot"><span id="settlementRaidStatus">H · BEGIN CONTROLLED DEFENSE RAID</span>
+    <span>ATTACKS DAMAGE REAL STRUCTURES · REPAIR IN J</span></div>
 </section>
 <section id="settlementBuildHud" class="settlement-build-hud hidden" aria-label="Haven Junction settlement construction">
   <div class="settlement-build-head"><strong>HAVEN JUNCTION / WORKSHOP BUILD MODE</strong>
@@ -2124,6 +2133,23 @@ body.hud-modern #powerArmorHud{display:none!important}
           <button id="settlerWaterTake" type="button">TAKE 1 WATER</button>
         </div>
       </section>
+      <section class="settlement-jobs-section settlement-defenses"
+        aria-label="Raider defense test and settlement repairs">
+        <div class="settlement-defense-summary">
+          <strong>DEFENSE TEST / STRUCTURAL CONDITION</strong>
+          <span id="settlerRaidSummary">NO RAID · H IN THE FIELD TO START</span>
+        </div>
+        <div class="settlement-jobs-actions">
+          <button id="settlerStartRaid" type="button">START CONTROLLED RAIDER ATTACK</button>
+        </div>
+        <div id="settlerDamagedStructures" class="settlement-damage-list"></div>
+        <label>REPAIR DAMAGED STRUCTURE<select id="settlerRepairSelect"></select></label>
+        <p id="settlerRepairCost">Repairs spend real construction components from your
+          backpack or saved workshop materials. No free repairs.</p>
+        <div class="settlement-jobs-actions">
+          <button id="settlerRepairConfirm" type="button">REPAIR SELECTED STRUCTURE</button>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -2134,7 +2160,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.04</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.05</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -2152,7 +2178,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.04</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.05</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -2694,7 +2720,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W21.04"></script>
+<script type="module" src="./bootstrap.mjs?v=W21.05"></script>
 </body>
 </html>
 

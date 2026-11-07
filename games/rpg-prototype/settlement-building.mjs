@@ -539,10 +539,11 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:7,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
+  return {version:8,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
     happiness:50,recruitProgress:0,scrappedJunk:[],workshopJunk:{},workshopMaterials:{},
     workerJobs:{},workerProgress:{},provisions:{food:0,water:0},
-    provisionConsumerClock:0,provisionShortfall:0};
+    provisionConsumerClock:0,provisionShortfall:0,structureCondition:{},
+    raid:{wave:0,active:false,elapsed:0,cooldown:0,raiders:[]}};
 }
 export function safeSettlementBuildSnapshot(raw){
   const state=initialSettlementBuildState();
@@ -597,6 +598,35 @@ export function safeSettlementBuildSnapshot(raw){
     state.structures.push(placement);seen.add(placement.id);
   }
   state.nextId=Math.max(1,...state.structures.map(s=>s.id+1));
+  if(raw.structureCondition&&typeof raw.structureCondition==='object'&&
+      !Array.isArray(raw.structureCondition))
+    for(const structure of state.structures){
+      const condition=raw.structureCondition[String(structure.id)];
+      if(finite(condition)&&condition>=0&&condition<100)
+        state.structureCondition[String(structure.id)]=Math.round(condition);
+    }
+  if(raw.raid&&typeof raw.raid==='object'&&!Array.isArray(raw.raid)){
+    const record=raw.raid;
+    if(Number.isSafeInteger(record.wave))state.raid.wave=Math.max(0,Math.min(999,record.wave));
+    if(finite(record.cooldown))state.raid.cooldown=Math.max(0,Math.min(85,record.cooldown));
+    if(finite(record.elapsed))state.raid.elapsed=Math.max(0,Math.min(180,record.elapsed));
+    if(record.active===true&&Array.isArray(record.raiders)&&record.raiders.length===3){
+      const healthCaps=[70,85,105];
+      const safe=record.raiders.map((raider,index)=>{
+        if(raider?.id!=='haven-'+(index+1)||!finite(raider?.x)||
+          !finite(raider?.z)||raider.x< -59||raider.x> -14||
+          raider.z< -44||raider.z> -5)return null;
+        return {id:raider.id,x:raider.x,z:raider.z,
+          yaw:finite(raider.yaw)?raider.yaw:0,
+          maxHealth:healthCaps[index],
+          health:Math.max(0,Math.min(healthCaps[index],
+            finite(raider.health)?raider.health:healthCaps[index])),
+          shotClock:Math.max(0,Math.min(5,
+            finite(raider.shotClock)?raider.shotClock:0))};
+      });
+      if(safe.every(Boolean)){state.raid.active=true;state.raid.raiders=safe;}
+    }
+  }
   if(raw.workerJobs&&typeof raw.workerJobs==='object'&&!Array.isArray(raw.workerJobs)){
     const reserved=new Set();
     for(let index=1;index<=state.population;index++){
@@ -650,12 +680,14 @@ export function calculateSettlementStats(state){
   let beds=0,food=0,water=0,defense=0,power=0,powerDraw=0,beacons=0;
   const structures=Array.isArray(state?.structures)?state.structures:[];
   for(const structure of structures){
+    if((state?.structureCondition?.[String(structure.id)]??100)<=0)continue;
     const stats=SETTLEMENT_BY_ID[structure.type]?.stats||{};
     beds+=stats.beds||0;power+=stats.power||0;
     powerDraw+=stats.powerDraw||0;
   }
   const powered=power>=powerDraw;
   for(const structure of structures){
+    if((state?.structureCondition?.[String(structure.id)]??100)<=0)continue;
     const stats=SETTLEMENT_BY_ID[structure.type]?.stats||{};
     beacons+=stats.beacon||0;
     if(!stats.powerDraw||powered){
@@ -670,7 +702,8 @@ export function calculateSettlementStats(state){
     if(assignment?.job==='scavenger'){assigned++;continue;}
     const station=structures.find(s=>s.id===assignment?.structureId);
     const plan=station&&SETTLEMENT_BY_ID[station.type];
-    if(!plan||staffedStations.has(station.id))continue;
+    if(!plan||staffedStations.has(station.id)||
+      (state?.structureCondition?.[String(station.id)]??100)<=0)continue;
     if(assignment.job==='farmer'&&plan.category==='FOOD')
       staffedFood+=plan.stats?.food||0;
     else if(assignment.job==='water'&&plan.category==='WATER')
@@ -689,7 +722,8 @@ export function calculateSettlementStats(state){
   const targetHappiness=population===0?50:Math.max(5,Math.min(95,
     45+(beds>=population?9:-16)+(staffedFood>=population?12:-22)+
     (staffedWater>=population?12:-22)+(defense>=population*2?10:-7)+
-    (powered?7:-10)-(state?.provisionShortfall>0?12:0)));
+    (powered?7:-10)-(state?.provisionShortfall>0?12:0)-
+    (state?.raid?.active?7:0)));
   return {population,beds,food,water,defense,power,powerDraw,
     powerBalance:power-powerDraw,powered,beacons,recruiting,
     hasRoom,sufficient,staffedFood,staffedWater,guards,assigned,

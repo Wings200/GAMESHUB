@@ -65,7 +65,8 @@ export function staffedSettlementJobs(state){
     if(!SETTLER_JOB_TYPES[assignment?.job])continue;
     const structure=state.structures.find(s=>s.id===assignment.structureId);
     const plan=structure&&SETTLEMENT_BY_ID[structure.type];
-    if(assignment.job!=='scavenger'&&!plan)continue;
+    if(assignment.job!=='scavenger'&&(!plan||
+      (state.structureCondition?.[String(structure.id)]??100)<=0))continue;
     result.assigned++;
     if(assignment.job==='farmer'){
       result.farmers++;result.foodCapacity+=plan.stats?.food||0;
@@ -111,6 +112,8 @@ export function advanceSettlerJobs(state,dt,{workingIds=[],availableSiteIds=null
     if(!ready.has(id))continue;
     const location=settlerWorkLocation(state,assignment,availableSiteIds);
     if(!location)continue;
+    if(assignment.structureId&&
+      (state.structureCondition?.[String(assignment.structureId)]??100)<=0)continue;
     if(assignment.job==='water'){
       const plan=SETTLEMENT_BY_ID[state.structures.find(s=>s.id===assignment.structureId)?.type];
       if(plan?.stats?.powerDraw>0){
