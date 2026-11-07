@@ -12,9 +12,10 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
+  scrapSettlementStructure,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.80';
+  from '../settlement-building.mjs?v=W20.81';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -530,12 +531,9 @@ for(let x=-47;x<55;x+=5){
   if((x+47)%20===0)box(x,.07,-25,.35,.14,9,pale);
 }
 box(0,.085,-25,112,.04,.06,pale);
-// The weapon-modification bench lives in Haven settlement by the foreman and
-// powered generator, not at the firing lane or in a remote-access menu.
+// The original weapon bench is rendered as a saved, scrappable settlement
+// fixture below, rather than baked into the immutable testing map.
 const opticBench={x:-33,z:-21};
-box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
-box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
-textSign('HAVEN WEAPON BENCH · E',-36,-23,0xe4c38b);
 textSign('HAVEN WORKSHOP · B',-44,-31,0x87c6a2);
 // Subtle ground markings show the actual editable boundary without making
 // an invisible wall. Players can still walk through the whole compound.
@@ -544,19 +542,6 @@ box(-37.5,.018,-35,35,.036,.09,buildAreaPaint);
 box(-37.5,.018,-7,35,.036,.09,buildAreaPaint);
 box(-55,.018,-21,.09,.036,28,buildAreaPaint);
 box(-20,.018,-21,.09,.036,28,buildAreaPaint);
-// A tangible field repair station: steel vise, clamped barrel, parts tray,
-// drill column, torque tools and a shelf. No floating menu-only interaction.
-const benchSteel=mat(0x72807a,.48),benchDark=mat(0x29383c,.56),
-  benchRust=mat(0x8d6e4f,.69);
-box(opticBench.x-.52,1.12,opticBench.z,.40,.15,.35,benchSteel);
-box(opticBench.x-.59,1.23,opticBench.z,.09,.30,.32,benchDark);
-box(opticBench.x-.34,1.20,opticBench.z,.075,.26,.32,benchRust);
-box(opticBench.x+.30,1.12,opticBench.z,.55,.07,.28,benchSteel);
-box(opticBench.x+.60,1.26,opticBench.z-.23,.08,.38,.12,benchRust);
-box(opticBench.x+.43,1.37,opticBench.z-.23,.23,.07,.16,benchSteel);
-box(opticBench.x+.16,1.11,opticBench.z+.29,.31,.065,.18,benchRust);
-box(opticBench.x+.65,1.10,opticBench.z+.23,.10,.07,.26,benchSteel);
-
 markLane(0,orange);
 for(let i=0;i<5;i++){
   const x=-31+i*13,h=.65+(i%3)*.11;
@@ -1783,7 +1768,9 @@ const settlementMaterials={
   concrete:mat(0x8b8d82,.95),tank:mat(0x567980,.50),
   soil:mat(0x494234,1),leaf:mat(0x557b49,.94),
   stem:mat(0x7a9755,.91),produce:mat(0xa98046,.85),
-  solar:mat(0x233f58,.25),signal:new THREE.MeshStandardMaterial({
+  solar:mat(0x233f58,.25),gantry:mat(0xc8a140,.52),
+  hazard:mat(0x303438,.72),chain:mat(0x53595a,.50),
+  chrome:mat(0xb0b8af,.28),signal:new THREE.MeshStandardMaterial({
     color:0x73f5c0,emissive:0x20c88a,emissiveIntensity:1.2,
     roughness:.23,metalness:.14})
 };
@@ -1821,7 +1808,7 @@ function salvageSurfaceTexture(kind){
 }
 for(const [name,surface] of [
   ['wood','wood'],['steel','steel'],['rust','steel'],['roof','roof'],
-  ['tank','steel'],['cloth','cloth'],['soil','soil'],['solar','steel']
+  ['tank','steel'],['cloth','cloth'],['soil','soil'],['solar','steel'],['gantry','steel']
 ]){
   settlementMaterials[name].map=salvageSurfaceTexture(surface);
   settlementMaterials[name].needsUpdate=true;
@@ -1851,6 +1838,8 @@ function createSalvagePieceMesh(piece,preview=false){
     mesh.rotation.x=Math.PI/2;
     mesh.scale.set(piece.w,piece.d,piece.h);
   }
+  if(piece.tiltZ)mesh.rotation.z+=piece.tiltZ;
+  if(piece.tiltX)mesh.rotation.x+=piece.tiltX;
   mesh.castShadow=!preview;mesh.receiveShadow=!preview;
   mesh.userData.impactMaterial=piece.material==='wood'?'wood':'metal';
   return mesh;
@@ -3166,18 +3155,21 @@ $('vendorCartClear').addEventListener('click',()=>{
 $('vendorSearch').addEventListener('input',refreshVendorUI);
 $('vendorPlayerSearch').addEventListener('input',refreshVendorUI);
 function nearestSettlementWorkshop(){
-  let nearest={type:'weaponbench',x:opticBench.x,z:opticBench.z,
-    distance:Math.hypot(player.x-opticBench.x,player.z-opticBench.z)};
+  let nearest=visibleHavenJunk.has('original-weapon-bench')?
+    {type:'weaponbench',x:opticBench.x,z:opticBench.z,
+      distance:Math.hypot(player.x-opticBench.x,player.z-opticBench.z)}
+    :null;
   for(const structure of settlementBuildState.structures){
-    if(!['weaponbench','powerstation','scrapbench'].includes(structure.type))continue;
+    if(!['weaponbench','powerstation'].includes(structure.type))continue;
     const distance=Math.hypot(player.x-structure.x,player.z-structure.z);
-    if(distance<nearest.distance)nearest={type:structure.type,x:structure.x,
+    if(!nearest||distance<nearest.distance)nearest={type:structure.type,x:structure.x,
       z:structure.z,distance};
   }
-  return nearest.distance<3.8?nearest:null;
+  return nearest&&nearest.distance<3.8?nearest:null;
 }
 function benchWithinReach(){
-  return Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8||
+  return (visibleHavenJunk.has('original-weapon-bench')&&
+      Math.hypot(player.x-opticBench.x,player.z-opticBench.z)<3.8)||
     settlementBuildState.structures.some(s=>s.type==='weaponbench'&&
       Math.hypot(player.x-s.x,player.z-s.z)<3.8);
 }
@@ -3185,11 +3177,6 @@ function interactSettlementWorkshop(workshop){
   if(!workshop)return false;
   if(workshop.type==='weaponbench'){
     beginWorkbench();return true;
-  }
-  if(workshop.type==='scrapbench'){
-    toggleSettlementBuildMode(true);
-    showShotNotice('SALVAGE WORKBENCH · AIM AT WORLD JUNK · PRESS X TO SCRAP');
-    return true;
   }
   if(workshop.type==='powerstation'){
     // The rack is physical, but repairing armor still requires a REAL nearby
@@ -5332,8 +5319,13 @@ function updateSettlementBuildPreview(){
     $('settlementBuildFeedback').textContent='X TO SCRAP · '+site.name+' · '+
       Object.entries(site.materials).map(([id,n])=>
         '+'+n+' '+getItem(id).name.toUpperCase()).join(' / ');
+  }else if(aimed?.kind==='built'){
+    const structure=settlementBuildState.structures.find(s=>s.id===aimed.id);
+    if(structure)$('settlementBuildFeedback').textContent=
+      SETTLEMENT_BY_ID[structure.type].name.toUpperCase()+
+      ' · X SCRAP FOR PARTS · F STORE FOR FULL REFUND';
   }
-  $('settlementBuildFeedback').classList.toggle('invalid',!placeable&&aimed?.kind!=='junk');
+  $('settlementBuildFeedback').classList.toggle('invalid',!placeable&&!aimed);
 }
 function placeSettlementPreview(){
   updateSettlementBuildPreview();
@@ -5375,16 +5367,8 @@ function aimedSettlementTarget(){
 }
 function storeAimedSettlementStructure(){
   const aimed=aimedSettlementTarget();
-  if(!aimed){showShotNotice('AIM AT A BUILT PIECE OR SCRAPPABLE JUNK');return;}
-  if(aimed.kind==='junk'){
-    const result=scrapHavenJunk(settlementBuildState,backpack,aimed.id);
-    if(!result.ok){showShotNotice(result.reason);return;}
-    unregisterHavenJunk(aimed.id);
-    saveSettlementBuild();saveBackpack();refreshInventoryUI();
-    refreshSettlementBuildHud();
-    showShotNotice('SALVAGED · '+result.site.name+' · '+
-      Object.entries(result.materials).map(([id,n])=>
-        '+'+n+' '+getItem(id).name.toUpperCase()).join(' · '));
+  if(!aimed||aimed.kind!=='built'){
+    showShotNotice('F STORES YOUR BUILT STRUCTURES · X SCRAPS ANY SETTLEMENT OBJECT');
     return;
   }
   const id=aimed.id;
@@ -5395,6 +5379,24 @@ function storeAimedSettlementStructure(){
   refreshSettlementBuildHud();
   showShotNotice('STORED · ALL MATERIALS RETURNED · '+
     SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
+}
+function scrapAimedSettlementTarget(){
+  const aimed=aimedSettlementTarget();
+  if(!aimed){showShotNotice('AIM AT JUNK, A WORKBENCH OR A BUILT STRUCTURE');return;}
+  const result=aimed.kind==='junk'?
+    scrapHavenJunk(settlementBuildState,backpack,aimed.id):
+    scrapSettlementStructure(settlementBuildState,backpack,aimed.id);
+  if(!result.ok){showShotNotice(result.reason);return;}
+  if(aimed.kind==='junk')unregisterHavenJunk(aimed.id);
+  else unregisterSettlementStructure(aimed.id);
+  lastScrapPreview=null;lastScrapCheckAt=0;
+  saveSettlementBuild();saveBackpack();refreshInventoryUI();
+  refreshSettlementBuildHud();
+  const label=aimed.kind==='junk'?result.site.name:
+    SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase();
+  showShotNotice('SCRAPPED · '+label+' · '+
+    Object.entries(result.materials).map(([itemId,n])=>
+      '+'+n+' '+getItem(itemId).name.toUpperCase()).join(' · '));
 }
 const playerAvatar=createPlayerAvatar(scene);
 // New arrivals are actual visible survivors in the compound, not just a
@@ -6595,6 +6597,9 @@ window.addEventListener('keydown',e=>{
       e.preventDefault();undoSettlementBuild();return;
     }
     if(e.code==='KeyX'&&!e.repeat){
+      e.preventDefault();scrapAimedSettlementTarget();return;
+    }
+    if(e.code==='KeyF'&&!e.repeat){
       e.preventDefault();storeAimedSettlementStructure();return;
     }
     if(!['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight',

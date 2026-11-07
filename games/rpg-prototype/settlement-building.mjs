@@ -1,12 +1,12 @@
-// W20.80: Haven Junction workshop construction, physical benches and scrap.
+// W20.81: Distinct scrap/store actions, editable fixtures, service gantry.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
 export const HAVEN_BUILD_AREA=Object.freeze({minX:-55,maxX:-20,minZ:-35,maxZ:-7});
 export const BUILD_LIMIT=120;
 const component=key=>'material:'+key;
-const part=(x,y,z,w,h,d,material,solid=false,shape='box')=>
-  Object.freeze({x,y,z,w,h,d,material,solid,shape});
+const part=(x,y,z,w,h,d,material,solid=false,shape='box',tiltZ=0,tiltX=0)=>
+  Object.freeze({x,y,z,w,h,d,material,solid,shape,tiltZ,tiltX});
 const yieldStats=values=>Object.freeze(values);
 
 export const SETTLEMENT_CATEGORIES=Object.freeze([
@@ -17,7 +17,7 @@ export const SETTLEMENT_CATEGORIES=Object.freeze([
   Object.freeze({id:'BEDS',name:'BEDS',hint:'Rest places for settlers'}),
   Object.freeze({id:'POWER',name:'POWER',hint:'Generators · solar panels'}),
   Object.freeze({id:'UTILITY',name:'UTILITY',hint:'Recruitment · light · storage'}),
-  Object.freeze({id:'WORKSHOP',name:'WORKSHOPS',hint:'Weapon mods · chassis service · salvage'})
+  Object.freeze({id:'WORKSHOP',name:'WORKSHOPS',hint:'Weapon mods · power armor service'})
 ]);
 
 export const SETTLEMENT_BLUEPRINTS=Object.freeze([
@@ -254,17 +254,38 @@ export const SETTLEMENT_BLUEPRINTS=Object.freeze([
     width:3.4,depth:3.0,cost:Object.freeze({[component('steel')]:14,
       [component('gears')]:5,[component('copper')]:4,[component('concrete')]:4}),
     parts:Object.freeze([
-      ...[-1.48,1.48].map(x=>part(x,1.76,.93,.24,3.49,.26,'rust',true)),
-      ...[-1.48,1.48].map(x=>part(x,.17,-1.10,.24,.34,.28,'concrete',true)),
-      part(0,3.53,.92,3.31,.26,.33,'steel',true),
-      part(0,3.34,.93,1.05,.10,.16,'copper'),
-      part(0,2.98,.92,.13,.65,.13,'steel'),
-      part(0,2.62,.92,.85,.35,.48,'charcoal'),
-      part(0,2.51,.64,.66,.19,.12,'glass'),
-      ...[-1.39,1.39].map(x=>part(x,.75,-.80,.22,1.48,.15,'steel',true)),
-      ...[-.91,-.45,0,.45,.91].map(z=>part(-1.61,1.18,z,.09,.04,.21,'trim'))
+      // Yellow industrial A-frame, suspended hoist and articulated side arms.
+      // The open middle is intentionally large enough to frame a parked suit.
+      ...[-1.44,1.44].map(x=>part(x,.16,.92,.54,.30,.62,'concrete',true)),
+      ...[-1.44,1.44].map(x=>part(x,.18,-1.13,.57,.34,.68,'rust',true)),
+      ...[-1.43,1.43].map(x=>part(x,1.80,.94,.25,3.52,.31,'gantry',true,'box',x>0?-.08:.08)),
+      ...[-1.43,1.43].map(x=>part(x,1.87,-.75,.19,3.35,.21,'gantry',false,'box',0,.43)),
+      part(0,3.57,.92,3.30,.34,.46,'gantry',true),
+      part(0,3.36,.64,2.97,.13,.17,'hazard'),
+      ...[-1.23,-.74,-.25,.24,.73,1.22].map(x=>
+        part(x,3.37,.53,.12,.14,.035,'charcoal',false,'box',-.50)),
+      ...[-1.44,1.44].map(x=>part(x,2.80,.94,.64,.20,.41,'rust')),
+      ...[-1.33,1.33].map(x=>part(x,1.38,.85,.27,1.20,.22,'steel')),
+      part(0,3.21,.95,.94,.45,.66,'charcoal'),
+      part(0,2.87,.95,.46,.37,.45,'steel',false,'cylinder'),
+      part(0,2.42,.95,.075,.69,.075,'chain',false,'cylinder'),
+      part(0,2.05,.95,.19,.24,.19,'chrome',false,'cylinder'),
+      part(0,1.83,.95,.31,.35,.12,'chrome',false,'torus'),
+      ...[-1,1].flatMap(side=>[
+        part(side*1.13,2.21,.21,.16,1.26,.18,'gantry',false,'box',side*.47),
+        part(side*.91,1.92,.10,.58,.20,.23,'steel',false),
+        part(side*.69,1.88,.07,.39,.13,.16,'chrome',false,'cylinderX'),
+        part(side*1.21,1.20,.62,.17,1.24,.16,'rust',false,'box',-side*.40),
+        part(side*1.25,.66,-.85,.30,.18,.34,'hazard',true),
+        part(side*1.40,.44,-.85,.20,.11,.26,'gantry')
+      ]),
+      part(0,.16,.88,2.89,.12,.46,'rust',true),
+      ...[-.95,.95].map(x=>part(x,.26,1.00,.22,.14,.51,'hazard')),
+      part(0,3.62,.58,.94,.08,.16,'chrome'),
+      part(0,3.57,.47,.17,.10,.17,'signal')
     ])}),
   Object.freeze({id:'scrapbench',name:'Salvage Sorting Table',category:'WORKSHOP',
+    legacy:true,
     width:2.25,depth:1.58,cost:Object.freeze({[component('wood')]:5,
       [component('steel')]:5,[component('screw')]:2}),
     parts:Object.freeze([
@@ -320,7 +341,36 @@ export const HAVEN_JUNK_SITES=Object.freeze([
     {[component('steel')]:4,[component('copper')]:3,[component('gears')]:2},[
       part(0,.24,0,1.35,.45,1.06,'rust',true),
       part(0,.61,0,.82,.56,.82,'steel',true,'cylinder'),
-      ...[-.32,-.16,0,.16,.32].map(x=>part(x,.69,-.46,.09,.38,.1,'copper'))])
+      ...[-.32,-.16,0,.16,.32].map(x=>part(x,.69,-.46,.09,.38,.1,'copper'))]),
+  // Unlike quest contacts or vendors, these old settlement fixtures are
+  // intentionally scrappable. Future prefab fixtures must register here.
+  junk('original-weapon-bench','OLD HAVEN WEAPON WORKBENCH',-33,-21,
+    {[component('wood')]:4,[component('steel')]:5,[component('screw')]:2},[
+      part(0,.47,0,2,.94,.82,'charcoal',true),
+      part(0,.99,0,2.2,.12,1.04,'wood',true),
+      part(-.52,1.12,0,.4,.15,.35,'steel'),
+      part(-.59,1.23,0,.09,.30,.32,'hazard'),
+      part(-.34,1.20,0,.075,.26,.32,'rust'),
+      part(.30,1.12,0,.55,.07,.28,'steel'),
+      part(.60,1.26,-.23,.08,.38,.12,'rust'),
+      part(.43,1.37,-.23,.23,.07,.16,'steel'),
+      part(.16,1.11,.29,.31,.065,.18,'rust')]),
+  junk('shack-floor','ROTTEN SHACK FLOOR',-51,-32,
+    {[component('wood')]:5,[component('screw')]:1},[
+      part(0,.18,0,3.22,.33,2.35,'wood',true),
+      ...[-1,0,1].map(x=>part(x,.37,0,.13,.045,2.3,'trim'))]),
+  junk('shack-walls','RUINED SHACK WALLS',-51,-32,
+    {[component('wood')]:7,[component('steel')]:2},[
+      ...[-1.49,1.49].map(x=>part(x,1.29,0,.16,2.22,2.34,'wood',true)),
+      part(0,1.26,1.05,3.06,2.18,.15,'wood',true),
+      ...[-1.50,1.50].map(x=>part(x,1.24,-1.09,.18,2.18,.15,'rust',true)),
+      part(0,2.24,-1.09,3.16,.16,.15,'rust',true),
+      part(.88,1.36,1.16,.66,.55,.09,'charcoal')]),
+  junk('shack-roof','CORRODED SHACK ROOF',-51,-32,
+    {[component('steel')]:5,[component('wood')]:2},[
+      part(0,2.48,0,3.43,.19,2.56,'roof',true),
+      ...[-1.28,-.64,0,.64,1.28].map(x=>
+        part(x,2.61,0,.065,.08,2.57,'trim'))])
 ]);
 export const HAVEN_JUNK_BY_ID=Object.freeze(Object.fromEntries(
   HAVEN_JUNK_SITES.map(site=>[site.id,site])));
@@ -391,7 +441,7 @@ export function safeSettlementBuildSnapshot(raw){
   return state;
 }
 export function settlementCategoryBlueprints(category){
-  return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category);
+  return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category&&!plan.legacy);
 }
 export function scrapHavenJunk(state,backpack,id){
   const site=HAVEN_JUNK_BY_ID[id];
@@ -501,6 +551,8 @@ export function missingBuildingMaterials(backpack,type){
     id,needed:amount,owned:countItem(backpack,id)})):[];
 }
 export function placeSettlementStructure(state,backpack,placement,staticObstacles=[],player=null){
+  if(SETTLEMENT_BY_ID[placement?.type]?.legacy)
+    return {ok:false,reason:'THIS WORKSTATION IS NO LONGER PLACEABLE'};
   const result=validateBuildPlacement(state,placement,staticObstacles,player);
   if(!result.ok)return result;
   const missing=missingBuildingMaterials(backpack,placement.type);
@@ -512,20 +564,42 @@ export function placeSettlementStructure(state,backpack,placement,staticObstacle
   state.structures.push(saved);
   return {ok:true,structure:saved};
 }
-export function storeSettlementStructure(state,backpack,id){
+function removableSettlementStructure(state,id,action){
   const index=state.structures.findIndex(s=>s.id===id);
   if(index<0)return {ok:false,reason:'NO SETTLEMENT STRUCTURE SELECTED'};
-  const last=state.structures[index];
+  const structure=state.structures[index];
   const remaining=state.structures.filter(s=>s.id!==id);
-  if((last.type==='wall'||last.type==='doorway')&&remaining.some(roof=>
+  if((structure.type==='wall'||structure.type==='doorway')&&remaining.some(roof=>
     roof.type==='roof'&&!remaining.some(s=>
       (s.type==='wall'||s.type==='doorway')&&
       Math.hypot(s.x-roof.x,s.z-roof.z)<2.6)))
-    return {ok:false,reason:'STORE THE UNSUPPORTED ROOF FIRST'};
+    return {ok:false,reason:action+' THE UNSUPPORTED ROOF FIRST'};
+  return {ok:true,index,structure};
+}
+export function storeSettlementStructure(state,backpack,id){
+  const target=removableSettlementStructure(state,id,'STORE');
+  if(!target.ok)return target;
+  const {index,structure}=target;
   state.structures.splice(index,1);
-  for(const [id,amount] of Object.entries(SETTLEMENT_BY_ID[last.type].cost))
+  for(const [id,amount] of Object.entries(SETTLEMENT_BY_ID[structure.type].cost))
     addItem(backpack,id,amount);
-  return {ok:true,structure:last};
+  return {ok:true,structure};
+}
+export function scrapSettlementStructure(state,backpack,id){
+  const target=removableSettlementStructure(state,id,'SCRAP');
+  if(!target.ok)return target;
+  const {index,structure}=target;
+  // Breaking a built object into usable parts recovers roughly half of its
+  // original materials. F/STORE instead returns the full construction cost.
+  const materials=Object.fromEntries(Object.entries(SETTLEMENT_BY_ID[structure.type].cost)
+    .map(([itemId,amount])=>[itemId,Math.max(1,Math.floor(amount*.5))]));
+  if(Object.entries(materials).some(([itemId,amount])=>
+      countItem(backpack,itemId)>999999-amount))
+    return {ok:false,reason:'MATERIAL STORAGE FULL'};
+  state.structures.splice(index,1);
+  for(const [itemId,amount] of Object.entries(materials))
+    addItem(backpack,itemId,amount);
+  return {ok:true,structure,materials};
 }
 export function undoLastSettlementStructure(state,backpack){
   if(!state.structures.length)return {ok:false,

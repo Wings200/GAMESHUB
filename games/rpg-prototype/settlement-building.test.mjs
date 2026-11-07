@@ -6,6 +6,7 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
+  scrapSettlementStructure,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL,
   HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk}
@@ -37,11 +38,17 @@ test('Haven has a browsable settlement catalog with nonzero genuine component co
       `${category.id} must fit the 1–7 selection controls`);
   }
   assert.deepEqual(settlementCategoryBlueprints('WORKSHOP').map(plan=>plan.id),
-    ['weaponbench','powerstation','scrapbench']);
+    ['weaponbench','powerstation']);
+  assert.equal(SETTLEMENT_BY_ID.scrapbench.legacy,true,
+    'the old sorting table must remain valid for existing save data');
+  assert.ok(SETTLEMENT_BY_ID.powerstation.parts.filter(part=>
+    part.material==='gantry').length>=8);
+  assert.ok(SETTLEMENT_BY_ID.powerstation.parts.some(part=>part.material==='chain'));
+  assert.ok(SETTLEMENT_BY_ID.powerstation.parts.some(part=>Math.abs(part.tiltZ)>.3));
 });
 
 test('all real Haven debris sites are unique, inside the workshop and yield materials',()=>{
-  assert.equal(HAVEN_JUNK_SITES.length,8);
+  assert.equal(HAVEN_JUNK_SITES.length,12);
   assert.equal(new Set(HAVEN_JUNK_SITES.map(site=>site.id)).size,HAVEN_JUNK_SITES.length);
   for(const site of HAVEN_JUNK_SITES){
     assert.equal(HAVEN_JUNK_BY_ID[site.id],site);
@@ -54,6 +61,18 @@ test('all real Haven debris sites are unique, inside the workshop and yield mate
       assert.ok(Number.isInteger(quantity)&&quantity>0);
     }
   }
+  for(const id of ['original-weapon-bench','shack-floor','shack-walls','shack-roof'])
+    assert.ok(HAVEN_JUNK_BY_ID[id],`${id} is a persistent, scrappable fixture`);
+});
+
+test('legacy salvage table stays in existing saves but cannot be constructed again',()=>{
+  const state=initialSettlementBuildState(),pack=fundedPack();
+  assert.match(placeSettlementStructure(state,pack,placement('scrapbench')).reason,
+    /NO LONGER PLACEABLE/);
+  const restored=safeSettlementBuildSnapshot({structures:[{
+    id:14,type:'scrapbench',x:-39,z:-23,rotation:0}]});
+  assert.equal(restored.structures.length,1);
+  assert.equal(restored.structures[0].type,'scrapbench');
 });
 
 test('scavenging world junk awards its precise yield once and survives reload',()=>{
@@ -181,6 +200,46 @@ test('storing a supporting wall cannot strand a floating roof',()=>{
   assert.equal(state.structures.length,2);
 });
 
+test('X scrapping a constructed workbench removes it permanently and gives partial materials',()=>{
+  const backpack=fundedPack(),state=initialSettlementBuildState();
+  const plan=SETTLEMENT_BY_ID.weaponbench;
+  const before=Object.fromEntries(Object.keys(plan.cost).map(id=>
+    [id,countItem(backpack,id)]));
+  const placed=placeSettlementStructure(state,backpack,placement('weaponbench'));
+  assert.equal(placed.ok,true);
+  const scrapped=scrapSettlementStructure(state,backpack,placed.structure.id);
+  assert.equal(scrapped.ok,true);
+  assert.equal(state.structures.length,0);
+  for(const [id,cost] of Object.entries(plan.cost)){
+    const returned=Math.max(1,Math.floor(cost*.5));
+    assert.equal(scrapped.materials[id],returned);
+    assert.equal(countItem(backpack,id),before[id]-cost+returned);
+  }
+  assert.equal(scrapSettlementStructure(state,backpack,placed.structure.id).ok,false,
+    'a second scrap must not give extra materials');
+  assert.equal(safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)))
+    .structures.length,0,'the scrapped item must not return after loading');
+});
+
+test('F storage keeps the full cost; X respects roof supports and inventory limits',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  const before=countItem(pack,'material:steel');
+  const bench=placeSettlementStructure(state,pack,placement('weaponbench',-43,-22));
+  assert.equal(bench.ok,true);
+  assert.equal(storeSettlementStructure(state,pack,bench.structure.id).ok,true);
+  assert.equal(countItem(pack,'material:steel'),before);
+  const wall=placeSettlementStructure(state,pack,placement('wall'));
+  assert.equal(wall.ok,true);
+  assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,true);
+  assert.match(scrapSettlementStructure(state,pack,wall.structure.id).reason,/ROOF FIRST/);
+  assert.equal(state.structures.length,2);
+  assert.equal(scrapSettlementStructure(state,pack,state.structures.at(-1).id).ok,true);
+  pack.materials['material:wood']=999999;
+  assert.match(scrapSettlementStructure(state,pack,wall.structure.id).reason,
+    /STORAGE FULL/);
+  assert.equal(state.structures.length,1,'an unpayable scrap must not delete the piece');
+});
+
 test('field build mode integrates persistent world collisions and uses no free grants',()=>{
   const main=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
   const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
@@ -208,11 +267,16 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/for\(const site of HAVEN_JUNK_SITES\)registerHavenJunk\(site\)/);
   assert.match(main,/unregisterHavenJunk\(aimed\.id\)/);
   assert.match(main,/scrapHavenJunk\(settlementBuildState,backpack,aimed\.id\)/);
+  assert.match(main,/scrapSettlementStructure\(settlementBuildState,backpack,aimed\.id\)/);
+  assert.match(main,/KeyX'&&!e\.repeat\)\{\s*e\.preventDefault\(\);scrapAimedSettlementTarget\(\)/);
+  assert.match(main,/KeyF'&&!e\.repeat\)\{\s*e\.preventDefault\(\);storeAimedSettlementStructure\(\)/);
   assert.match(main,/function nearestSettlementWorkshop\(\)/);
+  assert.match(main,/visibleHavenJunk\.has\('original-weapon-bench'\)/);
   assert.match(main,/interactSettlementWorkshop\(nearestSettlementWorkshop\(\)\)/);
   assert.match(main,/frameDistance>4/);
   assert.match(html,/id="settlementScrapCount"/);
   assert.match(html,/W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE/);
+  assert.match(html,/W20\.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY/);
 });
 
 test('population, food, water, beds, power draw and defense come from built objects',()=>{

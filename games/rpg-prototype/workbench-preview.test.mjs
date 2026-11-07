@@ -44,7 +44,8 @@ test('workbench has a single selected-part install button after cost and stats r
 
 test('weapons can only be configured at a physical Haven settlement workbench',()=>{
   assert.match(main,/const opticBench=\{x:-33,z:-21\}/);
-  assert.match(main,/textSign\('HAVEN WEAPON BENCH · E'/);
+  assert.match(main,/for\(const site of HAVEN_JUNK_SITES\)registerHavenJunk\(site\)/);
+  assert.match(main,/visibleHavenJunk\.has\('original-weapon-bench'\)/);
   assert.match(main,/function benchWithinReach\(\)/);
   assert.match(main,/function beginWorkbench\(\)\{\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*if\(!controls\.isLocked\|\|!benchWithinReach\(\)\)/);
   assert.match(main,/settlementBuildState\.structures\.some\(s=>s\.type==='weaponbench'/);

@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with living settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.80/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.81/);
+  assert.match(log,/<strong>W20\.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY:<\/strong>/);
   assert.match(log,/<strong>W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE:<\/strong>/);
   assert.match(log,/<strong>W20\.79 · LIVING SETTLEMENT WORKSHOP:<\/strong>/);
   assert.match(log,/<strong>W20\.78 · HAVEN JUNCTION WORKSHOP BUILDING:<\/strong>/);
@@ -27,6 +28,8 @@ test('systems testing splash leads with living settlement construction',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY')<
+    log.indexOf('W20.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE'));
   assert.ok(log.indexOf('W20.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE')<
     log.indexOf('W20.79 · LIVING SETTLEMENT WORKSHOP'));
   assert.ok(log.indexOf('W20.79 · LIVING SETTLEMENT WORKSHOP')<
@@ -52,6 +55,6 @@ test('systems testing splash leads with living settlement construction',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.80/);
-  assert.match(bootstrap,/main\.js\?v=W20\.80/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.81/);
+  assert.match(bootstrap,/main\.js\?v=W20\.81/);
 });
