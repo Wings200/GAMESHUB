@@ -90,6 +90,9 @@ import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationEx
 import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
   healWorstLimb,resetInjuries,injuryEffects,injuryStatus}
   from '../injuries.mjs?v=W20.89';
+import {VATS_ZONES,VATS_ZONE_LABELS,vatsApCost,vatsChance,vatsApAvailable,
+  vatsSpendAp,vatsCriticalGain,vatsCriticalReady}
+  from '../vats-targeting.mjs?v=W20.90';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -5049,7 +5052,7 @@ function refreshWeaponHUD(){
     100*laserCrankProgress(weaponState):weaponState.reloadRemaining>0?
     100*(1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds)):0).toFixed(1)+'%';
 }
-function shoot(){
+function shoot({vatsTarget=null}={}){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled())return;
   // Infinite mode supplies a full test magazine without spending saved ammo.
   // Cooldown, recoil, damage, shot sounds and projectile calculations remain.
@@ -5073,13 +5076,13 @@ function shoot(){
       sound.dryFire();
       showShotNotice('EMPTY · PRESS R');
     }
-    return;
+    return result;
   }
   if(result.status==='uncharged'){
     if(!emptyClickLatched){showShotNotice('LASER MUSKET · PRESS R TO CRANK');sound.dryFire();emptyClickLatched=true;}
-    return;
+    return result;
   }
-  if(result.status!=='fired')return;
+  if(result.status!=='fired')return result;
   if(activeSpec.kind==='revolver'){
     const gun=weaponVisuals.get(activeWeaponId);
     gun.previousChamberIndex=weaponState.shotsFired-1;
@@ -5129,11 +5132,31 @@ function shoot(){
   // Otherwise a click between render frames can hit a head's LAST pose.
   for(const enemy of enemies.values())
     if(enemy.state.alive)enemy.rigged?.root.updateWorldMatrix(true,true);
+  // A shotgun with several pellets earns only one critical increment per
+  // trigger pull, even if multiple pellets connect with living targets.
+  let chargedCriticalThisRound=false;
   for(const pellet of result.directions){
     // Sight and shot are both derived from the camera's current world-space
     // orientation, including the same yaw and pitch used to render the reticle.
     camera.updateWorldMatrix(true,false);
-    shotVector.set(pellet.spreadX*specialModifiers.aimSpreadMultiplier*
+    if(vatsTarget){
+      const part=enemyHitMeshes.find(mesh=>mesh.userData.enemyId===vatsTarget.enemyId&&
+        mesh.userData.hitZone===vatsTarget.zone&&mesh.userData.equipped!==false);
+      if(part){
+        part.updateWorldMatrix(true,false);
+        const aimed=part.getWorldPosition(new THREE.Vector3());
+        shotVector.copy(aimed).sub(camera.position);
+        // Misses still obey physical collision: they fly *past* the selected
+        // limb, not through cover or by scripted health subtraction.
+        if(!vatsTarget.hit){
+          const delta=shotVector.length();
+          shotVector.add(new THREE.Vector3(
+            (Math.random()<.5?-1:1)*(1.25+delta*.055),
+            (Math.random()-.5)*(1.1+delta*.03),0));
+        }
+        shotVector.normalize();
+      }else shotVector.set(0,0,-1).applyQuaternion(camera.quaternion);
+    }else shotVector.set(pellet.spreadX*specialModifiers.aimSpreadMultiplier*
         injuryEffects(injuryState).aimSpreadMultiplier,
       pellet.spreadY*specialModifiers.aimSpreadMultiplier*
         injuryEffects(injuryState).aimSpreadMultiplier,-1)
@@ -5203,7 +5226,9 @@ function shoot(){
   }
   if(first&&first.object.userData.enemyId){
     const enemy=enemies.get(first.object.userData.enemyId);
-    const critical=Math.random()<specialModifiers.critChance;
+    const critical=vatsTarget?.critical?
+      first.object.userData.enemyId===vatsTarget.enemyId:
+      Math.random()<specialModifiers.critChance;
     const zone=first.object.userData.hitZone;
     const boostedDamage=damageThisPellet*specialModifiers.gunDamageMultiplier*
       (zone==='head'?specialModifiers.headshotMultiplier:1)*
@@ -5213,6 +5238,11 @@ function shoot(){
     const hit=applyDamage(enemy.state,shielded?
       boostedDamage*(1-tierReduction[enemy.powerSuit.tier]):boostedDamage,zone);
     if(hit.applied){
+      if(!vatsTarget?.critical&&!chargedCriticalThisRound){
+        chargedCriticalThisRound=true;
+        vatsCriticalCharge=vatsCriticalGain(vatsCriticalCharge,13);
+        saveVatsCritical();
+      }
       enemy.flash=.22;enemy.shake=1;
       for(const mesh of enemy.meshes)mesh.material.emissive.setHex(0x633724);
       if(hit.killed){
@@ -5266,6 +5296,7 @@ function shoot(){
       multiplier:specialModifiers.recoilMultiplier*injuryEffects(injuryState).recoilMultiplier});
   camera.rotation.x=kick.pitch;camera.rotation.y=kick.yaw;
   refreshWeaponHUD();
+  return result;
 }
 function reload(){
   if(WEAPON_REBUILD_MODE&&!playerGunEnabled())return;
@@ -6791,6 +6822,167 @@ canvas.addEventListener('click',()=>{
   if(deathState.active||!$('menu').classList.contains('hidden'))return;
   controls.lock();
 });
+// W20.90: Real-time, multiplayer-compatible limb targeting.
+// VATS uses the *existing* stamina/AP pool; ordinary weapon fire remains the
+// sole authority for ammunition, cooldown, collision, damage and deaths.
+const vatsState={active:false,enemyId:null,zone:'chest',criticalArmed:false,
+  message:'Select an enemy and a hit zone.'};
+let vatsRenderTimer=0;
+const vatsCriticalSaveKey='rpg-vats-critical-v1';
+let vatsCriticalCharge=0;
+try{
+  const saved=Number(localStorage.getItem(vatsCriticalSaveKey));
+  if(Number.isFinite(saved))vatsCriticalCharge=Math.max(0,Math.min(100,saved));
+}catch{}
+function saveVatsCritical(){
+  try{localStorage.setItem(vatsCriticalSaveKey,String(vatsCriticalCharge));}catch{}
+}
+function vatsZonePoint(enemyId,zone){
+  const mesh=enemyHitMeshes.find(part=>part.userData.enemyId===enemyId&&
+    part.userData.hitZone===zone&&part.userData.equipped!==false);
+  if(!mesh)return null;
+  mesh.updateWorldMatrix(true,false);
+  return mesh.getWorldPosition(new THREE.Vector3());
+}
+function vatsContactList(){
+  camera.updateWorldMatrix(true,false);
+  const facing=new THREE.Vector3();camera.getWorldDirection(facing);
+  const contacts=[];
+  for(const enemy of enemies.values()){
+    if(!enemy.state.alive||!shouldRaycastEnemy(enemy))continue;
+    const point=vatsZonePoint(enemy.id,'chest');
+    if(!point)continue;
+    const vector=point.clone().sub(camera.position);
+    const distance=vector.length();
+    if(distance>48||distance<.1)continue;
+    const facingDot=facing.dot(vector.normalize());
+    if(facingDot<.55)continue;
+    contacts.push({enemy,distance,facingDot});
+  }
+  return contacts.sort((a,b)=>b.facingDot-a.facingDot||a.distance-b.distance)
+    .slice(0,8);
+}
+function vatsTargetChance(enemy,zone){
+  const point=vatsZonePoint(enemy?.id,zone);
+  if(!point||!enemy?.state.alive)return 0;
+  const distance=camera.position.distanceTo(point);
+  const aim=point.clone().sub(camera.position).normalize();
+  const facing=new THREE.Vector3();camera.getWorldDirection(facing);
+  // Cover and the current field of view are both checked for *each* limb.
+  const visible=facing.dot(aim)>.45&&
+    !firstSolidHit(camera.position,point,enemySightObstacles);
+  return vatsChance({distance,zone,visible,
+    perception:specialState.attributes.perception,
+    accuracyPenalty:injuryEffects(injuryState).aimSpreadMultiplier});
+}
+function renderVats(){
+  if(!vatsState.active)return;
+  const contacts=vatsContactList();
+  if(!contacts.some(({enemy})=>enemy.id===vatsState.enemyId))
+    vatsState.enemyId=contacts[0]?.enemy.id||null;
+  const enemy=enemies.get(vatsState.enemyId);
+  const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
+  const cost=vatsApCost(activeSpec);
+  $('vatsAp').textContent=ap+' / 100';
+  $('vatsApFill').style.width=ap+'%';
+  $('vatsAmmo').textContent=infiniteAmmo?'∞':String(weaponState.magazine);
+  $('vatsCritValue').textContent=vatsCriticalCharge+'%';
+  $('vatsCritFill').style.width=vatsCriticalCharge+'%';
+  const criticalReady=vatsCriticalReady(vatsCriticalCharge);
+  if(!criticalReady)vatsState.criticalArmed=false;
+  $('vatsCritical').setAttribute('aria-disabled',String(!criticalReady));
+  $('vatsCritical').textContent=criticalReady?
+    vatsState.criticalArmed?'SPACE · CRITICAL ARMED':'SPACE · ARM CRITICAL':
+    'SPACE · CRITICAL NOT READY';
+  const contactBox=$('vatsEnemies');contactBox.replaceChildren();
+  for(const contact of contacts){
+    const button=document.createElement('div');button.className='vats-choice';
+    button.setAttribute('aria-current',String(contact.enemy.id===vatsState.enemyId));
+    const name=document.createElement('span');name.textContent=contact.enemy.label;
+    const range=document.createElement('span');range.textContent=Math.round(contact.distance)+'m';
+    button.append(name,range);
+    contactBox.append(button);
+  }
+  if(!contacts.length){
+    const empty=document.createElement('span');empty.textContent='NO HOSTILES IN VIEW · FACE A TARGET';
+    contactBox.append(empty);
+  }
+  const zoneBox=$('vatsZones');zoneBox.replaceChildren();
+  for(const [index,zone] of VATS_ZONES.entries()){
+    const chance=vatsTargetChance(enemy,zone);
+    const button=document.createElement('div');button.className='vats-choice';
+    button.setAttribute('aria-disabled',String(!enemy||chance===0));
+    button.setAttribute('aria-current',String(zone===vatsState.zone));
+    const name=document.createElement('span');name.textContent=(index+1)+' '+VATS_ZONE_LABELS[zone];
+    const value=document.createElement('b');value.textContent=chance+'%';
+    button.append(name,value);
+    zoneBox.append(button);
+  }
+  const chance=vatsTargetChance(enemy,vatsState.zone);
+  const ready=!!enemy&&chance>0&&ap>=cost&&
+    (infiniteAmmo||weaponState.magazine>0);
+  $('vatsFire').setAttribute('aria-disabled',String(!ready));
+  $('vatsFire').textContent='LEFT CLICK · '+cost+' AP · '+chance+'%';
+  const message=!enemy?'NO TARGETS · FACE AN ENEMY TO LOCK ON':
+    chance===0?'NO CLEAR LINE OF FIRE TO THAT BODY PART':
+    ap<cost?'NOT ENOUGH ACTION POINTS · ALLOW AP TO RECOVER':
+    weaponState.magazine<=0&&!infiniteAmmo?'NO LOADED AMMUNITION · R TO RELOAD':
+    vatsState.message;
+  $('vatsMessage').textContent=message;
+  const marker=$('vatsTargetMarker');
+  const target=enemy?vatsZonePoint(enemy.id,vatsState.zone):null;
+  if(target&&chance>0){
+    const screen=target.project(camera);
+    marker.style.left=((screen.x+1)*50)+'%';
+    marker.style.top=((1-screen.y)*50)+'%';
+    marker.classList.remove('hidden');
+  }else marker.classList.add('hidden');
+}
+function openVats(){
+  if(vatsState.active||!controls.isLocked||!playerHealth.alive||
+    deathState.active||settlementBuildMode||powerArmorState.phase!=='idle'||
+    inventoryOpen||lootOpen||workbenchOpen||powerUIOpen||specialOpen||
+    questPanelOpen||dialogueOpen||mapOpen||vendorOpen||
+    (WEAPON_REBUILD_MODE&&!playerGunEnabled()))return;
+  vatsState.active=true;vatsState.enemyId=null;vatsState.zone='chest';
+  vatsState.criticalArmed=false;vatsState.message='CHOOSE A BODY PART · FIRE TO SPEND AP';
+  triggerHeld=false;changeAim(false);vatsRenderTimer=0;
+  $('vatsPanel').classList.remove('hidden');
+  // Never unlock pointer lock or stop simulation. Other players and NPCs
+  // continue moving, shooting and taking damage during target selection.
+  renderVats();
+}
+function closeVats(){
+  if(!vatsState.active)return;
+  vatsState.active=false;vatsState.criticalArmed=false;
+  $('vatsPanel').classList.add('hidden');
+  $('vatsTargetMarker').classList.add('hidden');
+}
+function fireVatsShot(){
+  if(!vatsState.active)return;
+  // Re-query live collision and AP at click time; no stale chance can bypass
+  // a destroyed target, a moved hitbox or a depleted stamina pool.
+  const enemy=enemies.get(vatsState.enemyId);
+  const chance=vatsTargetChance(enemy,vatsState.zone);
+  const cost=vatsApCost(activeSpec);
+  const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
+  if(!controls.isLocked||!playerHealth.alive||!enemy?.state.alive||chance<=0||ap<cost){
+    vatsState.message='TARGET LOST OR INSUFFICIENT AP';renderVats();return;
+  }
+  const useCritical=vatsState.criticalArmed&&vatsCriticalReady(vatsCriticalCharge);
+  const result=shoot({vatsTarget:{enemyId:enemy.id,zone:vatsState.zone,
+    hit:useCritical||Math.random()*100<chance,critical:useCritical}});
+  if(result?.status==='fired'){
+    vatsSpendAp(player,cost,maximumStamina(player.endurance));
+    if(useCritical){vatsCriticalCharge=0;saveVatsCritical();}
+    vatsState.criticalArmed=false;
+    vatsState.message='SHOT FIRED · '+cost+' AP SPENT';
+  }else vatsState.message=result?.status==='cooldown'?'WEAPON CYCLING · WAIT':
+    result?.status==='uncharged'?'LASER MUSKET UNCHARGED · R TO CRANK':
+    result?.status==='empty'?'EMPTY · R TO RELOAD':
+    result?.status==='reloading'?'RELOADING · WAIT':'WEAPON NOT READY';
+  renderVats();
+}
 controls.addEventListener('lock',()=>{
   $('menu').classList.add('hidden');
   if(settlementTestRequested){
@@ -6799,10 +6991,13 @@ controls.addEventListener('lock',()=>{
   }
 });
 controls.addEventListener('unlock',()=>{
+  // Browser Escape/focus loss is a real pause; never leave a stale VATS HUD.
+  if(vatsState.active)closeVats();
   if(settlementBuildMode)toggleSettlementBuildMode(false);
   cancelPowerHold();
   if(!deathState.active&&!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
-    !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen)$('menu').classList.remove('hidden');
+    !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen&&!vatsState.active)
+    $('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
   changeAim(false);
@@ -6824,6 +7019,36 @@ $('quality').addEventListener('click',()=>{
 });
 window.addEventListener('keydown',e=>{
   if(deathState.active){e.preventDefault();return;}
+  if(vatsState.active){
+    if((e.code==='KeyT'||e.code==='Escape')&&!e.repeat){
+      e.preventDefault();closeVats();
+    }else if(e.code==='Tab'&&!e.repeat){
+      e.preventDefault();
+      const contacts=vatsContactList();
+      const current=contacts.findIndex(c=>c.enemy.id===vatsState.enemyId);
+      if(contacts.length){
+        vatsState.enemyId=contacts[(current+(e.shiftKey?-1:1)+contacts.length)%contacts.length].enemy.id;
+        vatsState.zone='chest';vatsState.message='TARGET SWITCHED';renderVats();
+      }
+    }else if(/^Digit[1-6]$/.test(e.code)&&!e.repeat){
+      e.preventDefault();vatsState.zone=VATS_ZONES[Number(e.code.slice(-1))-1];
+      vatsState.message='BODY PART SELECTED';renderVats();
+    }else if(e.code==='Space'&&!e.repeat){
+      e.preventDefault();
+      if(vatsCriticalReady(vatsCriticalCharge))
+        vatsState.criticalArmed=!vatsState.criticalArmed;
+      vatsState.message=vatsState.criticalArmed?'CRITICAL READY · FIRE TO USE':
+        'CRITICAL NOT ARMED';renderVats();
+    }else if(e.code==='KeyR'&&!e.repeat){
+      e.preventDefault();reload();renderVats();
+    }else if(e.code==='KeyC'&&!e.repeat){
+      e.preventDefault();toggleCrouch(player);
+    }else if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight'].includes(e.code)){
+      // Movement and enemy simulation continue at full speed while aiming.
+      keys.add(e.code);
+    }else e.preventDefault();
+    return;
+  }
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
   if(settlementBuildMode){
@@ -6894,6 +7119,9 @@ window.addEventListener('keydown',e=>{
   }
   if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||specialOpen||
     questPanelOpen||dialogueOpen)return;
+  if(e.code==='KeyT'&&!e.repeat&&controls.isLocked){
+    e.preventDefault();openVats();return;
+  }
   if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){
     e.preventDefault();toggleSettlementBuildMode();return;
   }
@@ -6944,6 +7172,10 @@ window.addEventListener('blur',cancelPowerHold);
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
+  if(vatsState.active){
+    if(e.button===0)fireVatsShot();
+    return;
+  }
   if(settlementBuildMode){
     if(e.button===0)placeSettlementPreview();
     return;
@@ -7502,6 +7734,14 @@ function frame(){
       turretHead.rotation.y=Math.sin(clock.elapsedTime*.68+id*.37)*.45;
   }
   updateEnemies(dt,elapsed,refreshDisplay);
+  if(vatsState.active){
+    if(!playerHealth.alive||deathState.active||!controls.isLocked)closeVats();
+    else{
+      vatsRenderTimer+=dt;
+      // Recheck moving enemy limbs, real cover, ammo and AP in real time.
+      if(vatsRenderTimer>=.12){vatsRenderTimer=0;renderVats();}
+    }
+  }
   // Quest residents use the same articulated rig as the player, but never
   // enter the hostile hit list. They watch approaching visitors naturally.
   for(const resident of campaignResidents){

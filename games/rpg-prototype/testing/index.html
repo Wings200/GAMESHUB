@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.89 · Limb Injuries | GAMESHUB RPG</title>
+<title>W20.90 · Tactical Targeting | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1356,6 +1356,50 @@ body.hud-modern #powerArmorHud{display:none!important}
 #inventoryPanel .inventory-quest-card button[aria-pressed="true"]{background:#685535;color:#ffdf98}
 #inventoryPanel .inventory-quest-card button:disabled{opacity:.65;cursor:default}
 #inventoryPanel .inventory-quest-help{margin-top:14px;color:#8ba89a!important}
+/* W20.90: tactical targeting overlay, with an actual AP pool and zone choices. */
+#vatsPanel{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-start;
+  justify-content:flex-end;padding:116px 20px 24px;color:#d6ffcb;pointer-events:none}
+#vatsPanel.hidden{display:none!important}
+#vatsPanel .vats-shell{width:min(550px,46vw);max-height:calc(100vh - 130px);
+  overflow:hidden;border:1px solid #7cc78b;background:#071a16db;
+  box-shadow:0 14px 42px #000a;padding:15px;
+  font-family:Consolas,'Courier New',monospace}
+.vats-head{display:flex;justify-content:space-between;align-items:center;gap:15px;
+  border-bottom:1px solid #4f8767;padding-bottom:13px}
+.vats-head h2{margin:0;font-size:25px;letter-spacing:.15em;color:#d8ffb7}
+.vats-head span{font-size:11px;letter-spacing:.08em;color:#a9d7a7}
+#vatsPanel .vats-choice{border:1px solid #5c9a75;background:#0e3029;color:#d5fbd0;
+  font:700 13px Consolas,monospace;padding:10px 12px;cursor:pointer;border-radius:2px}
+#vatsPanel .vats-choice[aria-current="true"]{border-color:#f3d07f;background:#4b5032;color:#fff3ae}
+#vatsPanel .vats-choice[aria-disabled="true"]{opacity:.42}
+.vats-meters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.vats-meter{border:1px solid #315a46;background:#102b24;padding:10px;min-width:0}
+.vats-meter label{font-size:10px;letter-spacing:.1em;color:#9ecdaa;display:block;margin-bottom:6px}
+.vats-meter strong{font-size:18px;color:#d8ffc6;font-variant-numeric:tabular-nums}
+.vats-bar{height:6px;background:#264738;margin-top:8px;overflow:hidden}
+.vats-bar>i{display:block;height:100%;background:#b2e28d;transition:width .15s}
+.vats-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:15px}
+.vats-section{min-width:0;border:1px solid #315b45;padding:13px;background:#0b211c}
+.vats-section h3{font:800 11px Consolas,monospace;letter-spacing:.14em;
+  margin:0 0 12px;color:#aed7a5}
+#vatsEnemies,#vatsZones{display:grid;gap:7px}
+#vatsZones{grid-template-columns:repeat(2,minmax(0,1fr))}
+#vatsEnemies .vats-choice,#vatsZones .vats-choice{text-align:left;display:flex;justify-content:space-between;gap:7px}
+#vatsZones .vats-choice b{color:#ebd38f}
+.vats-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}
+#vatsFire{background:#31543a;font-size:15px;min-width:200px}
+#vatsPanel .vats-action{border:1px solid #5c9a75;padding:9px 10px;
+  background:#15382a;color:#d5fbd0;font:700 12px Consolas,monospace}
+#vatsMessage{font-size:12px;letter-spacing:.07em;color:#c4d3b9;min-height:18px;
+  margin:15px 0 0;line-height:1.5}
+#vatsTargetMarker{position:absolute;z-index:1;pointer-events:none;transform:translate(-50%,-50%);
+  border:2px solid #b5eb99;width:42px;height:42px;border-radius:50%;
+  box-shadow:0 0 16px #80f0839c,0 0 0 100vmax #0000}
+#vatsTargetMarker.hidden{display:none}
+@media(max-width:650px){#vatsPanel{padding:66px 8px 8px}#vatsPanel .vats-shell{padding:9px;
+  width:min(350px,80vw);max-height:calc(100vh - 72px)}.vats-head h2{font-size:18px}
+  .vats-grid{grid-template-columns:1fr}#vatsPanel button{font-size:11px;padding:9px}
+  .vats-meters{gap:5px}.vats-meter{padding:7px}.vats-meter strong{font-size:15px}}
 @media(max-width:760px){
   #inventoryPanel .inventory-page-nav{gap:5px;padding:9px}
   #inventoryPanel .inventory-page-tabs{gap:3px}
@@ -1376,6 +1420,28 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="playerDamageFlash"></div>
 <div id="powerTransitionFade" aria-hidden="true"></div>
 <div id="deathCinematicVeil" aria-hidden="true"></div>
+<section id="vatsPanel" class="hidden" role="region" aria-label="Real-time tactical targeting">
+  <div id="vatsTargetMarker" class="hidden" aria-hidden="true"></div>
+  <div class="vats-shell">
+    <div class="vats-head"><div><h2 id="vatsTitle">TACTICAL TARGETING</h2>
+      <span>REAL-TIME COMBAT · ENEMIES KEEP MOVING</span></div>
+      <span id="vatsClose">T · EXIT</span></div>
+    <div class="vats-meters">
+      <div class="vats-meter"><label>ACTION POINTS</label><strong id="vatsAp">100 / 100</strong>
+        <div class="vats-bar"><i id="vatsApFill" style="width:100%"></i></div></div>
+      <div class="vats-meter"><label>WEAPON / AMMO</label><strong id="vatsAmmo">—</strong></div>
+      <div class="vats-meter"><label>CRITICAL CHARGE</label><strong id="vatsCritValue">0%</strong>
+        <div class="vats-bar"><i id="vatsCritFill" style="width:0%"></i></div></div>
+    </div>
+    <div class="vats-grid">
+      <div class="vats-section"><h3>HOSTILES · TAB TO CYCLE</h3><div id="vatsEnemies"></div></div>
+      <div class="vats-section"><h3>BODY PART · KEYS 1–6</h3><div id="vatsZones"></div></div>
+    </div>
+    <p id="vatsMessage" role="status">Select an enemy and a hit zone.</p>
+    <div class="vats-actions"><span id="vatsCritical" class="vats-action">SPACE · CRITICAL</span>
+      <span id="vatsFire" class="vats-action">LEFT CLICK · FIRE TARGETED SHOT</span></div>
+  </div>
+</section>
 <section id="deathScreen" class="hidden" role="dialog" aria-modal="true" aria-labelledby="deathTitle">
   <div class="death-card">
     <div class="death-kicker">FRONTIER / SURVIVOR STATUS / DECEASED</div>
@@ -1616,7 +1682,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.89</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.90</div>
+    <p><strong>W20.90 · TACTICAL BODY-PART TARGETING:</strong> Press T while armed to pause combat and select a hostile and one of six body parts. Each part has its own hit percentage, affected by distance, physical cover, Perception and injuries. Each shot consumes a real bullet and Action Points from the same stamina pool as sprinting, obeys weapon cooldown and is stopped by actual solid cover. Genuine hits charge a critical meter, which can be armed at 100% for a stronger attack. Exit with T or Escape. Tactical targeting is now testable; cinematic presentation and full-game balancing still need work.</p>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
@@ -1675,7 +1742,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.89</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.90</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2106,7 +2173,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.89"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.90"></script>
 </body>
 </html>
 

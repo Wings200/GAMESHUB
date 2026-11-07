@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with living settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.89/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.90/);
+  assert.match(log,/<strong>W20\.90 · TACTICAL BODY-PART TARGETING:<\/strong>/);
   assert.match(log,/<strong>W20\.89 · LIMB INJURIES &amp; FUNCTIONAL MEDICAL CARE:<\/strong>/);
   assert.match(log,/<strong>W20\.88 · LIVE SIX-LEVEL RADIATION GAUGE:<\/strong>/);
   assert.match(log,/<strong>W20\.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:<\/strong>/);
@@ -36,6 +37,8 @@ test('systems testing splash leads with living settlement construction',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.90 · TACTICAL BODY-PART TARGETING')<
+    log.indexOf('W20.89 · LIMB INJURIES'));
   assert.ok(log.indexOf('W20.89 · LIMB INJURIES')<
     log.indexOf('W20.88 · LIVE SIX-LEVEL RADIATION GAUGE'));
   assert.ok(log.indexOf('W20.88 · LIVE SIX-LEVEL RADIATION GAUGE')<
@@ -79,6 +82,6 @@ test('systems testing splash leads with living settlement construction',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.89/);
-  assert.match(bootstrap,/main\.js\?v=W20\.89/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.90/);
+  assert.match(bootstrap,/main\.js\?v=W20\.90/);
 });

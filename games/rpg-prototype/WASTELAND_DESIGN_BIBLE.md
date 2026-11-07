@@ -10,9 +10,14 @@
   injuries affect movement, sprinting, aim, recoil and stamina. One real
   medkit treats the most damaged limb and can be used at full HP if injured.
   New UI indicators are linked to these same values, not placeholders.
-- Remaining Phase 1 work: targeted combat/AP/critical mechanics and scenario-
-  based visual verification. Do not call limb animation or the wider campaign
-  art pass complete on the basis of the condition math alone.
+- W20.90: Initial real-time assisted targeting uses six physical enemy hit zones,
+  the actual shared stamina/AP reserve, cover-aware hit percentages, real ammo
+  and weapon cooldown, and a hit-earned critical meter. Keyboard selection
+  retains pointer lock; NPC simulation and player movement continue at normal
+  speed so future multiplayer never requires global or per-client time scaling.
+- Remaining Phase 1 work: cinematic body-part selection/queued attacks (if later
+  desired), multiplayer-authoritative validation when networking is implemented,
+  scenario-based visual verification, limb animation and fuller world art polish.
 
 ## Non-negotiable design rules
 

@@ -35,8 +35,10 @@ test('no public keyboard shortcuts trigger diagnostic cheats',()=>{
   const end=main.indexOf("window.addEventListener('keyup',e=>{",start);
   const handler=main.slice(start,end);
   assert.ok(start>0&&end>start);
-  for(const key of ['KeyH','KeyJ','KeyK','KeyY','KeyT'])
+  for(const key of ['KeyH','KeyJ','KeyK','KeyY'])
     assert.doesNotMatch(handler,new RegExp("e\\.code==='"+key+"'"),key+' still has a cheat shortcut');
+  assert.match(handler,/e\.code==='KeyT'[\s\S]*?openVats\(\)/,
+    'T now opens real-time combat targeting, not a cheat action');
   assert.match(handler,/e\.code==='KeyB'[\s\S]*?toggleSettlementBuildMode\(/,
     'B now opens the legitimate settlement workshop, not a cheat action');
   assert.doesNotMatch(handler,/e\.code\.startsWith\('Digit'\)/);
