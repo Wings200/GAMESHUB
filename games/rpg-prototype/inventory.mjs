@@ -8,7 +8,12 @@ import {POWER_ARMOR_PLATES,POWER_ARMOR_SLOTS,FUSION_CORE_CAPACITY} from './power
 import {salvageWornPowerArmor} from './power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from './materials.mjs';
 import {safeWeaponMods} from './weapon-mods.mjs';
+import {discountedComponentRecipe} from './special.mjs';
 export const BACKPACK_LIMIT=30;
+export function backpackSlotLimit(pack){
+  const bonus=Number.isSafeInteger(pack?.slotBonus)?pack.slotBonus:0;
+  return BACKPACK_LIMIT+Math.max(0,Math.min(4,bonus));
+}
 export const RARITIES=Object.freeze({
   common:Object.freeze({label:'COMMON',color:'#a8b7af',multiplier:1}),
   uncommon:Object.freeze({label:'UNCOMMON',color:'#8bd4a1',multiplier:1.6}),
@@ -118,7 +123,7 @@ export function getItem(id){
   return patch ? {...item, ...patch} : item;
 }
 export function createBackpack(){
-  return {items:[],materials:{},ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
+  return {items:[],slotBonus:0,materials:{},ammoReserves:Object.fromEntries(ARSENAL.map(spec=>
     [spec.id,spec.startingReserve])),equipment:{weapon:'scrap-pistol',
     armor:createLoadout('none'),clothing:{head:'none',back:'none'},optics:{},weaponMods:{}},
     unlockedOptics:{},unlockedWeaponMods:{},nextId:1};
@@ -160,7 +165,7 @@ export function addItem(pack,itemId,quantity=1,condition={}){
       if(!remaining)break;
     }
   }
-  while(remaining&&pack.items.length<BACKPACK_LIMIT){
+  while(remaining&&pack.items.length<backpackSlotLimit(pack)){
     const n=Math.min(remaining,template.maxStack);
     const entry={uid:'i'+pack.nextId++,itemId,quantity:n};
     if(template.category==='power-plate')
@@ -199,7 +204,7 @@ export function spendMaterial(pack,itemId,quantity=1){
 
 // An attachment is paid for once, then can be swapped freely on its weapon.
 // All costs come from genuine backpack material stacks.
-export function installWeaponOptic(pack,weaponId,opticId){
+export function installWeaponOptic(pack,weaponId,opticId,craftDiscount=0){
   getWeaponSpec(weaponId);
   if(!compatibleOptics(weaponId).includes(opticId))
     return {ok:false,reason:'incompatible'};
@@ -207,8 +212,9 @@ export function installWeaponOptic(pack,weaponId,opticId){
   const crafting=opticId!=='factory'&&!owned.includes(opticId);
   if(crafting){
     // Real materials only; virtual salvage cannot replace glass or circuitry.
-    const recipe=OPTIC_COMPONENT_RECIPES[opticId];
-    if(!recipe)return {ok:false,reason:'recipe'};
+    const base=OPTIC_COMPONENT_RECIPES[opticId];
+    if(!base)return {ok:false,reason:'recipe'};
+    const recipe=discountedComponentRecipe(base,craftDiscount);
     const missing=Object.entries(recipe).filter(([id,needed])=>countItem(pack,id)<needed)
       .map(([id,required])=>({itemId:id,required,owned:countItem(pack,id)}));
     if(missing.length)return {ok:false,reason:'materials',missing};
@@ -357,6 +363,8 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();
   if(!pack||!Array.isArray(pack.items))return result;
+  result.slotBonus=Number.isSafeInteger(pack.slotBonus)?
+    Math.max(0,Math.min(4,pack.slotBonus)):0;
   // W09.8: preserve saved reserves; old saves held loose ammo as inventory
   // stacks, so the addItem loop below migrates those stacks automatically.
   for(const spec of ARSENAL){
@@ -401,3 +409,4 @@ export function safeBackpackSnapshot(pack){
   }
   return result;
 }
+

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   allocateSpecialPoint,purchaseSpecialPerk,xpForNextLevel,gainSpecialXP,
-  specialBonuses,discountedMaterials} from './special.mjs';
+  specialBonuses,discountedMaterials,discountedComponentRecipe} from './special.mjs';
 
 test('S.P.E.C.I.A.L. has all seven attributes with Charisma as the seventh',()=>{
   assert.deepEqual(SPECIAL_ATTRIBUTES.map(x=>x.name),
@@ -100,3 +100,36 @@ test('Reloading saved progress clamps damaged snapshots and preserves perk ranks
   assert.equal(corrupted.statPoints,0);
   assert.equal(corrupted.perkPoints,99);
 });
+
+test('W20.93 every character stat has a live mechanical bonus and legacy saves survive',()=>{
+  const original=createSpecialState(),baseline=specialBonuses(original);
+  const character=safeSpecialSnapshot({...original,attributes:{...original.attributes,
+    strength:10,perception:10,endurance:10,charisma:10,
+    intelligence:10,agility:10,luck:10}});
+  const b=specialBonuses(character);
+  assert.equal(b.backpackBonusSlots,3);
+  assert.ok(b.recoilMultiplier<baseline.recoilMultiplier);
+  assert.ok(b.aimSpreadMultiplier<baseline.aimSpreadMultiplier);
+  assert.ok(b.damageTakenMultiplier<baseline.damageTakenMultiplier);
+  assert.ok(b.barterBuyMultiplier<baseline.barterBuyMultiplier);
+  assert.ok(b.barterSellMultiplier>baseline.barterSellMultiplier);
+  assert.ok(b.xpMultiplier>baseline.xpMultiplier);
+  assert.ok(b.vatsApMultiplier<baseline.vatsApMultiplier);
+  assert.ok(b.vatsCritGainMultiplier>baseline.vatsCritGainMultiplier);
+  character.perks['silver-tongue']=1;
+  character.perks['ghost-runner']=1;
+  assert.ok(specialBonuses(character).barterBuyMultiplier<b.barterBuyMultiplier);
+  assert.ok(specialBonuses(character).vatsApMultiplier<b.vatsApMultiplier);
+});
+
+test('W20.93 rounded integer recipes are deterministic and never free',()=>{
+  const recipe={'material:steel':5,'material:spring':3,'material:oil':1};
+  assert.deepEqual(discountedComponentRecipe(recipe,0),recipe);
+  assert.deepEqual(discountedComponentRecipe(recipe,.24),
+    {'material:steel':4,'material:spring':2,'material:oil':1});
+  assert.deepEqual(discountedComponentRecipe(recipe,.24),
+    discountedComponentRecipe(recipe,.24));
+  assert.deepEqual(discountedComponentRecipe(recipe,100),
+    {'material:steel':3,'material:spring':2,'material:oil':1});
+});
+

@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARSENAL} from './weapons.mjs';
 import {ARMOR_SLOTS,enemyArmorForRound} from './combat.mjs';
-import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
+import {BACKPACK_LIMIT,backpackSlotLimit,RARITIES,ITEM_CATALOG,getItem,createBackpack,
   inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   installWeaponOptic,installedWeaponOptic,INVENTORY_CATEGORIES,inventorySection,
   ammoReserve,displayAmmoCount} from './inventory.mjs';
+import {discountedComponentRecipe} from './special.mjs';
 test('Catalog includes all real guns, ammunition, six armor slots and rarity/value',()=>{
   for(const gun of ARSENAL){
     assert.equal(getItem('weapon:'+gun.id).category,'weapon');
@@ -154,6 +155,30 @@ test('Optics require exact physical ingredients, persist, and reinstall free',()
   const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
   assert.equal(installedWeaponOptic(restored,'hunting-rifle'),'scope-4x');
   assert.deepEqual(restored.unlockedOptics['hunting-rifle'],['scope-4x']);
+});
+
+test('W20.93 upgraded Strength slots admit real loot and survive inventory restore',()=>{
+  const pack=createBackpack();
+  assert.equal(addItem(pack,'weapon:pipe-rifle',31).added,BACKPACK_LIMIT);
+  pack.slotBonus=3;
+  assert.equal(backpackSlotLimit(pack),BACKPACK_LIMIT+3);
+  assert.equal(addItem(pack,'weapon:pipe-rifle',4).added,3);
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(restored.items.length,BACKPACK_LIMIT+3);
+  assert.equal(backpackSlotLimit(restored),BACKPACK_LIMIT+3);
+  assert.equal(backpackSlotLimit({slotBonus:999}),BACKPACK_LIMIT+4);
+});
+
+test('W20.93 discounted optics spend only the listed Resourceful ingredients',()=>{
+  const original={'material:aluminum':3,'material:screw':2,
+    'material:crystal':2,'material:glass':2};
+  const discount=.24,recipe=discountedComponentRecipe(original,discount);
+  const pack=createBackpack();
+  for(const [id,n] of Object.entries(recipe))addItem(pack,id,n);
+  assert.equal(installWeaponOptic(pack,'hunting-rifle','scope-4x').reason,'materials');
+  const result=installWeaponOptic(pack,'hunting-rifle','scope-4x',discount);
+  assert.equal(result.ok,true);
+  for(const id of Object.keys(recipe))assert.equal(countItem(pack,id),0);
 });
 
 test('Repeated identical weapon and armor pickups keep separate sellable copies',()=>{
@@ -313,4 +338,5 @@ test('Pipe rifle enters inventory catalog and preserves finite reserve on reload
   const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(backpack)));
   assert.equal(ammoReserve(restored,'pipe-rifle'),127);
 });
+
 

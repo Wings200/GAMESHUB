@@ -3,7 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.85';
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.93';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -93,15 +93,15 @@ import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
   from '../injuries.mjs?v=W20.92';
 import {VATS_ZONES,VATS_ZONE_LABELS,vatsApCost,vatsChance,vatsApAvailable,
   vatsSpendAp,vatsCriticalGain,vatsCriticalReady,vatsQueueSlots}
-  from '../vats-targeting.mjs?v=W20.91';
+  from '../vats-targeting.mjs?v=W20.93';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
-import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
+import {backpackSlotLimit,RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.89';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.93';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -110,7 +110,7 @@ import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoado
 
 import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   allocateSpecialPoint,purchaseSpecialPerk,gainSpecialXP,specialBonuses,
-  xpForNextLevel} from '../special.mjs';
+  xpForNextLevel,discountedComponentRecipe} from '../special.mjs?v=W20.93';
 
 const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
@@ -152,6 +152,7 @@ function saveSpecialState(){
 }
 function updateSpecialBonuses(){
   specialModifiers=specialBonuses(specialState);
+  if(typeof backpack!=='undefined')backpack.slotBonus=specialModifiers.backpackBonusSlots;
   saveSpecialState();
   refreshSpecialUI();
   if(typeof player!=='undefined')adjustEndurance(0);
@@ -1555,7 +1556,7 @@ function refreshPowerArmorUI(){
     powerArmorState.occupied;
   $('powerMaterialStatus').textContent=
     'COMPONENTS IN POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
-    ' · BACKPACK '+backpack.items.length+'/'+BACKPACK_LIMIT;
+    ' · BACKPACK '+backpack.items.length+'/'+backpackSlotLimit(backpack);
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerPartChoices();
   refreshPowerArmorHUD();
@@ -1644,7 +1645,7 @@ for(const slot of POWER_ARMOR_SLOTS){
     if(choice==='installed')return;
     const current=plateCondition(powerArmorState,slot);
     if(choice==='remove'){
-      if(backpack.items.length>=BACKPACK_LIMIT){
+      if(backpack.items.length>=backpackSlotLimit(backpack)){
         $('powerServiceFeedback').textContent='BACKPACK FULL · FREE A SLOT FIRST';
         refreshPowerArmorUI();return;
       }
@@ -1720,7 +1721,7 @@ $('powerStripAll').addEventListener('click',()=>{
     $('powerServiceFeedback').textContent='FRAME ALREADY BARE · ALL SIX SLOTS EMPTY';
     return;
   }
-  if(backpack.items.length+fitted.length>BACKPACK_LIMIT){
+  if(backpack.items.length+fitted.length>backpackSlotLimit(backpack)){
     $('powerServiceFeedback').textContent='BACKPACK NEEDS '+
       fitted.length+' FREE SLOTS TO REMOVE ALL PARTS';return;
   }
@@ -1751,7 +1752,7 @@ $('powerInsertCore').addEventListener('click',()=>{
 });
 $('powerEjectCore').addEventListener('click',()=>{
   if(!powerServiceAvailable())return;
-  if(backpack.items.length>=BACKPACK_LIMIT){
+  if(backpack.items.length>=backpackSlotLimit(backpack)){
     $('powerServiceFeedback').textContent='BACKPACK FULL · CANNOT EJECT';return;
   }
   const result=ejectFusionCore(powerArmorState);
@@ -2147,6 +2148,8 @@ try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
   if(saved){backpack=safeBackpackSnapshot(saved);hadSavedBackpack=true;}
 }catch{ /* Storage may be unavailable or corrupted. */ }
+// Bonuses are derived from the character, never trusted from inventory saves.
+backpack.slotBonus=specialModifiers.backpackBonusSlots;
 // New testing players spawn without free weapon reserves or equipment.
 // Existing saves remain intact; normal looting and merchant trading still work.
 if(!hadSavedBackpack){
@@ -2600,7 +2603,7 @@ function lootButton(row,label,callback){
   return b;
 }
 function refreshInventoryUI(){
-  $('inventoryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
+  $('inventoryCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
@@ -2938,7 +2941,7 @@ function refreshLootUI(){
       }
       if(!result.added){
         $('lootFeedback').textContent='NO SPACE FOR '+item.name.toUpperCase()+
-          ' · '+backpack.items.length+' / '+BACKPACK_LIMIT+
+          ' · '+backpack.items.length+' / '+backpackSlotLimit(backpack)+
           ' SLOTS USED. MATERIALS AND AMMO HAVE SEPARATE STORAGE.';
         return;
       }
@@ -2961,7 +2964,7 @@ function refreshLootUI(){
 }
 function refreshLootCarryUI(){
   const list=$('lootCarryItems');list.replaceChildren();
-  $('lootCarryCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
+  $('lootCarryCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
   const pouch=Object.values(backpack.materials||{}).reduce((n,v)=>n+v,0);
   const rounds=ARSENAL.reduce((n,spec)=>n+ammoReserve(backpack,spec.id),0);
   $('lootCarryStores').textContent='MATERIAL POUCH · '+pouch+
@@ -3112,8 +3115,8 @@ function refreshVendorCart(){
     for(const line of lines){
       const row=document.createElement('div');row.className='vendor-cart-line';
       const item=getItem(line.itemId),price=kind==='SELL'?
-        vendorSellPrice(line.itemId,line.quantity):
-        vendorBuyPrice(line.itemId,line.quantity);
+        vendorSellPrice(line.itemId,line.quantity,specialModifiers):
+        vendorBuyPrice(line.itemId,line.quantity,specialModifiers);
       const description=document.createElement('span');
       description.textContent=item.name+' ×'+line.quantity+' · '+price+' CAPS';
       const remove=document.createElement('button');remove.type='button';
@@ -3126,13 +3129,13 @@ function refreshVendorCart(){
   };
   render(sellList,offer.sells,'SELL',vendorCartSells);
   render(buyList,offer.buys,'BUY',vendorCartBuys);
-  const buying=offer.buys.reduce((n,line)=>n+vendorBuyPrice(line.itemId,line.quantity),0);
-  const selling=offer.sells.reduce((n,line)=>n+vendorSellPrice(line.itemId,line.quantity),0);
+  const buying=offer.buys.reduce((n,line)=>n+vendorBuyPrice(line.itemId,line.quantity,specialModifiers),0);
+  const selling=offer.sells.reduce((n,line)=>n+vendorSellPrice(line.itemId,line.quantity,specialModifiers),0);
   const net=buying-selling;
   $('vendorCartNet').textContent=net>0?'YOU PAY '+net+' CAPS':
     net<0?'YOU RECEIVE '+(-net)+' CAPS':'EVEN TRADE · 0 CAPS';
   const preview=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,offer,campaignState.reputation);
+    activeVendorId,vendorStock,offer,campaignState.reputation,specialModifiers);
   $('vendorCartBalance').textContent=preview.ok?
     'WALLET AFTER TRADE · '+preview.caps+' CAPS':
     'CURRENT WALLET · '+campaignState.caps+' CAPS';
@@ -3192,7 +3195,7 @@ function refreshVendorUI(){
   $('vendorName').textContent=vendor.name+' · '+vendor.title;
   $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
   $('vendorCaps').textContent=campaignState.caps+' CAPS';
-  $('vendorCapacity').textContent=backpack.items.length+' / '+BACKPACK_LIMIT+' SLOTS';
+  $('vendorCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
   const merchantList=$('vendorItems'),playerList=$('vendorPlayerItems');
   merchantList.replaceChildren();playerList.replaceChildren();
   let merchantCount=0,playerCount=0;
@@ -3210,8 +3213,8 @@ function refreshVendorUI(){
         queued&&available===0?'ALL QUEUED':'',
       subtext:'STOCK ×'+remaining+(queued?' · QUEUED ×'+queued:'')+
         (!access.ok?' · REPUTATION '+access.actual+'/'+access.required:'')+
-        ' · '+vendorBuyPrice(offer.itemId,1)+' CAPS / UNIT',
-      priceFor:n=>vendorBuyPrice(offer.itemId,n),onTrade:quantity=>{
+        ' · '+vendorBuyPrice(offer.itemId,1,specialModifiers)+' CAPS / UNIT',
+      priceFor:n=>vendorBuyPrice(offer.itemId,n,specialModifiers),onTrade:quantity=>{
       stageVendorBuy(offer.itemId,quantity);
     }});
   }
@@ -3227,8 +3230,8 @@ function refreshVendorUI(){
         queued&&available===0?'ALL QUEUED':'',
       subtext:'OWNED ×'+entry.quantity+(equipped?' · EQUIPPED':'')+
         (queued?' · QUEUED ×'+queued:'')+
-        ' · '+vendorSellPrice(entry.itemId,1)+' CAPS / UNIT',
-      priceFor:n=>vendorSellPrice(entry.itemId,n),onTrade:quantity=>{
+        ' · '+vendorSellPrice(entry.itemId,1,specialModifiers)+' CAPS / UNIT',
+      priceFor:n=>vendorSellPrice(entry.itemId,n,specialModifiers),onTrade:quantity=>{
       stageVendorSell('inventory',entry.itemId,entry.uid,quantity);
     }});
   }
@@ -3242,8 +3245,8 @@ function refreshVendorUI(){
       maxQuantity:Math.max(0,quantity-queued),
       blocked:queued===quantity?'ALL QUEUED':'',
       subtext:'POUCH ×'+quantity+(queued?' · QUEUED ×'+queued:'')+' · '+
-        vendorSellPrice(material.id,1)+' CAPS / UNIT',
-      priceFor:n=>vendorSellPrice(material.id,n),onTrade:amount=>{
+        vendorSellPrice(material.id,1,specialModifiers)+' CAPS / UNIT',
+      priceFor:n=>vendorSellPrice(material.id,n,specialModifiers),onTrade:amount=>{
       stageVendorSell('material',material.id,null,amount);
     }});
   }
@@ -3261,8 +3264,8 @@ function refreshVendorUI(){
       maxQuantity:Math.max(0,quantity-queued),
       blocked:queued===quantity?'ALL QUEUED':'',
       subtext:'RESERVE ×'+quantity+(queued?' · QUEUED ×'+queued:'')+
-        ' · '+vendorSellPrice(itemId,1)+' CAPS / UNIT',
-      priceFor:n=>vendorSellPrice(itemId,n),onTrade:amount=>{
+        ' · '+vendorSellPrice(itemId,1,specialModifiers)+' CAPS / UNIT',
+      priceFor:n=>vendorSellPrice(itemId,n,specialModifiers),onTrade:amount=>{
       stageVendorSell('ammo',itemId,null,amount);
     }});
   }
@@ -3284,7 +3287,7 @@ function confirmVendorBarter(){
   if(!vendorOpen)return;
   saveBackpack();
   const result=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,vendorBarterOffer(),campaignState.reputation);
+    activeVendorId,vendorStock,vendorBarterOffer(),campaignState.reputation,specialModifiers);
   if(!result.ok){
     showVendorFeedback(vendorBarterError(result.reason));
     refreshVendorCart();
@@ -3573,9 +3576,11 @@ function refreshWorkbenchUI(){
           'Lightweight 1× aiming optic with a true centered reticle.',
         detail:id==='factory'?'FACTORY ZERO':
           'FIELD OF VIEW '+optic.fov+'° · REAL ADS ZOOM',
-        cost:OPTIC_COMPONENT_RECIPES[id]||{},owned,installed:id===installed,
+        cost:discountedComponentRecipe(OPTIC_COMPONENT_RECIPES[id]||{},
+          specialModifiers.craftDiscount),owned,installed:id===installed,
         onChoose:()=>{
-          const outcome=installWeaponOptic(backpack,weaponId,id);
+          const outcome=installWeaponOptic(backpack,weaponId,id,
+            specialModifiers.craftDiscount);
           if(!outcome.ok){
             workbenchFeedback('MISSING OPTIC MATERIALS · '+
               (outcome.missing||[]).map(x=>getItem(x.itemId).name+' '+x.owned+'/'+x.required).join(' / '));
@@ -3600,9 +3605,12 @@ function refreshWorkbenchUI(){
   for(const part of weaponModOptions(weaponId,benchActiveSlot)){
     const owned=backpack.unlockedWeaponMods?.[weaponId]?.includes(part.id);
     card({id:part.id,name:part.name,description:part.description,
-      detail:describeWeaponMod(part),cost:part.cost,owned,installed:part.id===selected,
+      detail:describeWeaponMod(part),
+      cost:discountedComponentRecipe(part.cost,specialModifiers.craftDiscount),
+      owned,installed:part.id===selected,
       onChoose:()=>{
-        const result=craftWeaponMod(backpack,weaponId,part.id);
+        const result=craftWeaponMod(backpack,weaponId,part.id,
+          specialModifiers.craftDiscount);
         if(!result.ok){
           workbenchFeedback('MISSING MATERIALS · '+
             (result.missing||[]).map(m=>getItem(m.itemId).name.toUpperCase()+
@@ -5248,7 +5256,8 @@ function shoot({vatsTarget=null}={}){
       const wound=damagePlayerLimb(enemy.injuries,zone,hit.damage);
       if(!vatsTarget?.critical&&!chargedCriticalThisRound){
         chargedCriticalThisRound=true;
-        vatsCriticalCharge=vatsCriticalGain(vatsCriticalCharge,13);
+        vatsCriticalCharge=vatsCriticalGain(vatsCriticalCharge,
+          Math.round(13*specialModifiers.vatsCritGainMultiplier));
         saveVatsCritical();
       }
       enemy.flash=.22;enemy.shake=1;
@@ -6894,7 +6903,7 @@ function renderVats(){
     vatsState.enemyId=contacts[0]?.enemy.id||null;
   const enemy=enemies.get(vatsState.enemyId);
   const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
-  const cost=vatsApCost(activeSpec);
+  const cost=vatsApCost(activeSpec,specialModifiers.vatsApMultiplier);
   const queuedCost=vatsState.queue.reduce((sum,shot)=>sum+shot.cost,0);
   const queueSlots=vatsQueueSlots({ap,cost,queuedCost,
     queuedShots:vatsState.queue.length,ammo:weaponState.magazine,infiniteAmmo});
@@ -6995,7 +7004,7 @@ function queueVatsShot(){
   if(!vatsState.active||vatsState.executing)return;
   const enemy=enemies.get(vatsState.enemyId);
   const chance=vatsTargetChance(enemy,vatsState.zone);
-  const cost=vatsApCost(activeSpec);
+  const cost=vatsApCost(activeSpec,specialModifiers.vatsApMultiplier);
   const queuedCost=vatsState.queue.reduce((sum,shot)=>sum+shot.cost,0);
   const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
   if(!enemy?.state.alive||chance<=0){
@@ -7024,7 +7033,7 @@ function fireVatsShot({enemyId=vatsState.enemyId,zone=vatsState.zone,
   // Re-query live collision and AP at the exact instant of firing.
   const enemy=enemies.get(enemyId);
   const chance=vatsTargetChance(enemy,zone);
-  const cost=vatsApCost(activeSpec);
+  const cost=vatsApCost(activeSpec,specialModifiers.vatsApMultiplier);
   const ap=vatsApAvailable(player.stamina,maximumStamina(player.endurance));
   if(!controls.isLocked||!playerHealth.alive||!enemy?.state.alive||chance<=0)
     return {status:'lost'};

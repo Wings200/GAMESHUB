@@ -36,6 +36,17 @@ test('critical charge is earned by genuine hits and spent only when ready',()=>{
   assert.equal(vatsCriticalReady(vatsCriticalGain(90,20)),true);
   assert.equal(vatsCriticalGain(25,0),25);
 });
+test('W20.93 high Agility uses less VATS AP and Luck charges crits faster',()=>{
+  const weapon={kind:'rifle',fireInterval:.28};
+  const baseline=vatsApCost(weapon),faster=vatsApCost(weapon,.8);
+  assert.ok(faster<baseline);
+  assert.equal(vatsApCost(weapon,1),baseline);
+  assert.ok(vatsQueueSlots({ap:100,cost:faster,ammo:10})>=
+    vatsQueueSlots({ap:100,cost:baseline,ammo:10}));
+  assert.ok(vatsCriticalGain(50,Math.round(13*1.35))>
+    vatsCriticalGain(50,13));
+  assert.equal(vatsApCost(null,.5),100);
+});
 test('targeting UI is connected to actual enemy hitboxes, shots, cover and ammo',()=>{
   const main=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
   const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');

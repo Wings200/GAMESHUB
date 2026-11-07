@@ -1,13 +1,13 @@
 // W14.0: persistent seven-attribute SPECIAL progression and earned perk ranks.
 // Pure rules: no DOM, rendering or localStorage, so games and tests share them.
 export const SPECIAL_ATTRIBUTES=Object.freeze([
-  {id:'strength',letter:'S',name:'STRENGTH',color:'#d78c68',description:'Weapon control and physical force.'},
+  {id:'strength',letter:'S',name:'STRENGTH',color:'#d78c68',description:'Weapon control and additional backpack slots.'},
   {id:'perception',letter:'P',name:'PERCEPTION',color:'#86c2db',description:'Weapon precision and vital weak spots.'},
   {id:'endurance',letter:'E',name:'ENDURANCE',color:'#add18c',description:'Sprinting, survival and resilience.'},
-  {id:'charisma',letter:'C',name:'CHARISMA',color:'#e4b9a2',description:'Resourceful encounters and scavenging.'},
+  {id:'charisma',letter:'C',name:'CHARISMA',color:'#e4b9a2',description:'Barter prices, encounters and scavenging.'},
   {id:'intelligence',letter:'I',name:'INTELLIGENCE',color:'#d4c4f5',description:'Learning, crafting and machinery.'},
-  {id:'agility',letter:'A',name:'AGILITY',color:'#f0d18e',description:'Movement, speed and reloads.'},
-  {id:'luck',letter:'L',name:'LUCK',color:'#d1addb',description:'Lucky shots and unexpected salvage.'}
+  {id:'agility',letter:'A',name:'AGILITY',color:'#f0d18e',description:'Movement, reloads and V.A.T.S. AP efficiency.'},
+  {id:'luck',letter:'L',name:'LUCK',color:'#d1addb',description:'Critical shots, V.A.T.S. charge and lucky salvage.'}
 ].map(Object.freeze));
 const perk=(id,stat,required,name,description,effects,maxRank=2)=>
   Object.freeze({id,stat,required,name,description,maxRank,effects:Object.freeze(effects)});
@@ -27,8 +27,8 @@ export const SPECIAL_PERKS=Object.freeze([
   perk('people-person','charisma',3,'People Person','Find 12% more scavenging XP per rank.',{lootXpMultiplier:.12}),
   perk('scrounger-network','charisma',5,'Scrounger Network','Improves bonus-salvage chance 10% per rank.',
     {salvageChance:.10}),
-  perk('silver-tongue','charisma',8,'Silver Tongue','Gain 18% more XP from all sources.',
-    {xpMultiplier:.18},1),
+  perk('silver-tongue','charisma',8,'Silver Tongue','Gain 18% more XP, buy 8% cheaper and sell 8% higher.',
+    {xpMultiplier:.18,barterBuyMultiplier:-.08,barterSellMultiplier:.08},1),
   perk('quick-study','intelligence',3,'Quick Study','Gain 10% more XP per rank.',{xpMultiplier:.10}),
   perk('resourceful','intelligence',5,'Resourceful','Crafting materials cost 12% less per rank.',
     {craftDiscount:.12}),
@@ -36,8 +36,8 @@ export const SPECIAL_PERKS=Object.freeze([
     {repairDiscount:.30},1),
   perk('quick-step','agility',3,'Quick Step','Move 5% faster per rank.',{speedMultiplier:.05}),
   perk('fast-hands','agility',5,'Fast Hands','Reload 12% faster per rank.',{reloadSpeedMultiplier:.12}),
-  perk('ghost-runner','agility',8,'Ghost Runner','Move 10% faster and spend 10% less sprint energy.',
-    {speedMultiplier:.10,staminaDrainMultiplier:-.10},1),
+  perk('ghost-runner','agility',8,'Ghost Runner','Move 10% faster, use 10% less sprint energy and V.A.T.S. AP.',
+    {speedMultiplier:.10,staminaDrainMultiplier:-.10,vatsApMultiplier:-.10},1),
   perk('lucky-shot','luck',3,'Lucky Shot','Critical-hit chance increases 4% per rank.',
     {critChance:.04}),
   perk('treasure-sense','luck',5,'Treasure Sense','Improves bonus-salvage chance 12% per rank.',
@@ -91,20 +91,25 @@ export function specialBonuses(state){
   const a=state.attributes;
   const b={
     recoilMultiplier:1-.025*(a.strength-3),
+    backpackBonusSlots:Math.max(0,Math.floor((a.strength-3)/2)),
     gunDamageMultiplier:1,
     aimSpreadMultiplier:1-.024*(a.perception-3),
     headshotMultiplier:1,
     staminaDrainMultiplier:1-.018*(a.endurance-3),
     damageTakenMultiplier:1-.012*(a.endurance-3),
     lootXpMultiplier:1+.04*(a.charisma-3),
+    barterBuyMultiplier:1-.025*(a.charisma-3),
+    barterSellMultiplier:1+.035*(a.charisma-3),
     salvageChance:0,
     xpMultiplier:1+.03*(a.intelligence-3),
     craftDiscount:0,
     repairDiscount:0,
     speedMultiplier:1+.018*(a.agility-3),
     reloadSpeedMultiplier:1+.03*(a.agility-3),
+    vatsApMultiplier:1-.025*(a.agility-3),
     critChance:.015+.014*(a.luck-3),
-    critDamageMultiplier:1.5+.06*(a.luck-3)
+    critDamageMultiplier:1.5+.06*(a.luck-3),
+    vatsCritGainMultiplier:1+.05*(a.luck-3)
   };
   for(const p of SPECIAL_PERKS){
     const rank=state.perks[p.id]||0;
@@ -112,26 +117,40 @@ export function specialBonuses(state){
     for(const [key,amount] of Object.entries(p.effects))b[key]+=amount*rank;
   }
   b.recoilMultiplier=limit(b.recoilMultiplier,.48,1.2);
+  b.backpackBonusSlots=limit(Math.floor(b.backpackBonusSlots),0,4);
   b.gunDamageMultiplier=limit(b.gunDamageMultiplier,.8,2);
   b.aimSpreadMultiplier=limit(b.aimSpreadMultiplier,.48,1.2);
   b.headshotMultiplier=limit(b.headshotMultiplier,1,2.3);
   b.staminaDrainMultiplier=limit(b.staminaDrainMultiplier,.45,1.2);
   b.damageTakenMultiplier=limit(b.damageTakenMultiplier,.46,1.2);
   b.lootXpMultiplier=limit(b.lootXpMultiplier,.8,2);
+  b.barterBuyMultiplier=limit(b.barterBuyMultiplier,.65,1.2);
+  b.barterSellMultiplier=limit(b.barterSellMultiplier,.8,1.5);
   b.salvageChance=limit(b.salvageChance,0,.6);
   b.xpMultiplier=limit(b.xpMultiplier,.8,2);
   b.craftDiscount=limit(b.craftDiscount,0,.5);
   b.repairDiscount=limit(b.repairDiscount,0,.5);
   b.speedMultiplier=limit(b.speedMultiplier,.85,1.40);
   b.reloadSpeedMultiplier=limit(b.reloadSpeedMultiplier,.85,1.6);
+  b.vatsApMultiplier=limit(b.vatsApMultiplier,.65,1.15);
   b.critChance=limit(b.critChance,0,.35);
   b.critDamageMultiplier=limit(b.critDamageMultiplier,1,2.5);
+  b.vatsCritGainMultiplier=limit(b.vatsCritGainMultiplier,.85,1.4);
   return b;
 }
 export function discountedMaterials(cost,discount=0){
   const scale=1-limit(num(discount),0,.5);
   return {salvage:Math.max(0,Math.ceil(num(cost.salvage)*scale)),
     glass:Math.max(0,Math.ceil(num(cost.glass)*scale))};
+}
+// Components are integer units: round the per-material discount once and use
+// this same recipe for display, affordability checks and atomic crafting.
+export function discountedComponentRecipe(recipe,discount=0){
+  const scale=1-limit(num(discount),0,.5);
+  return Object.fromEntries(Object.entries(recipe||{}).map(([id,amount])=>{
+    const quantity=Math.max(0,Math.floor(num(amount)));
+    return [id,quantity?Math.max(1,Math.round(quantity*scale)):0];
+  }));
 }
 export function gainSpecialXP(state,base,source='combat'){
   const amount=Math.max(0,Math.floor(num(base)));
@@ -149,3 +168,4 @@ export function gainSpecialXP(state,base,source='combat'){
   return {gained,levels,level:state.level,xp:state.xp,
     statPoints:state.statPoints,perkPoints:state.perkPoints};
 }
+

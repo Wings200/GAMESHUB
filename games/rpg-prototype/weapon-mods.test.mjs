@@ -4,6 +4,7 @@ import {ARSENAL,getWeaponSpec,createWeaponState,fireWeapon,startWeaponReload} fr
 import {createBackpack,addItem,safeBackpackSnapshot} from './inventory.mjs';
 import {MOD_WEAPON_IDS,MOD_SLOTS,WEAPON_MODS,weaponModOptions,craftWeaponMod,
   missingModMaterials,effectiveWeaponSpec,selectedWeaponMod} from './weapon-mods.mjs';
+import {discountedComponentRecipe} from './special.mjs';
 
 test('all ten rebuilt weapons expose meaningful slot-specific recipes',()=>{
   assert.equal(MOD_WEAPON_IDS.length,10);
@@ -74,3 +75,21 @@ test('unlocked mods and equipped slots persist and unsafe saved IDs are rejected
   assert.equal(selectedWeaponMod(sanitized,id,'receiver'),'factory');
   assert.equal(craftWeaponMod(pack,'10mm-pistol',part.id).reason,'incompatible');
 });
+
+test('W20.93 Resourceful discounts mod recipes before material checks and spending',()=>{
+  const weaponId='pipe-smg',part=weaponModOptions(weaponId,'magazine')
+    .find(x=>x.slug==='drum'),discount=.24;
+  const needed=discountedComponentRecipe(part.cost,discount);
+  assert.ok(Object.keys(needed).some(id=>needed[id]<part.cost[id]));
+  const pack=createBackpack();
+  for(const [id,quantity] of Object.entries(needed))addItem(pack,id,quantity);
+  assert.deepEqual(missingModMaterials(pack,part.id,discount),[]);
+  assert.ok(missingModMaterials(pack,part.id,0).length>0);
+  const crafted=craftWeaponMod(pack,weaponId,part.id,discount);
+  assert.equal(crafted.ok,true);
+  for(const id of Object.keys(needed))assert.equal(pack.materials[id]||0,0);
+  assert.equal(craftWeaponMod(pack,weaponId,'factory','magazine').ok,true);
+  assert.equal(craftWeaponMod(pack,weaponId,part.id,0).crafted,false,
+    'reinstalling previously unlocked assembly is always free');
+});
+

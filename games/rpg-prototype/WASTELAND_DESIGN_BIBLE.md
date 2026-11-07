@@ -24,6 +24,15 @@
   arm/head/chest trauma reduces live weapon accuracy. Enemy round reset clears
   these conditions. Player injuries now influence walking animation and a
   restrained first-person camera bob. V.A.T.S. shows crippled targets.
+- W20.93: Character mechanics integration. Strength upgrades add up to three
+  extra real backpack slots above the existing thirty; Charisma and Silver
+  Tongue change exact vendor quotes, cart previews and paid/earned caps;
+  Resourceful discounts both gunsmith recipes and optic recipes using one
+  rounded ingredient list for UI, validation and spending. Agility and Ghost
+  Runner reduce AP cost for real queued V.A.T.S. shots, while Luck speeds
+  critical-charge generation from real hits. Existing saves and earned perks
+  retain their IDs and unlocked status. This is an incremental integration,
+  not a finished carry-weight, dialogue-skill-check or perk-tree overhaul.
 - Remaining Phase 1 work: cinematic target presentation, multiplayer-authoritative
   validation when networking is implemented, scenario-based visual verification,
   fuller injury reactions and world art polish.
@@ -45,7 +54,7 @@
 | System | Final expected behavior | Current audit as of W20.84 | Required follow-up |
 | --- | --- | --- | --- |
 | World and exploration | Connected, authored wasteland with realistic traversal, unique neighborhoods, interiors, ruins, wilderness, lootable and unlootable buildings, weather/daylight, discovery and fast travel | Testing range and Haven workshop plus procedural set dressing; field map and discovery exist | Author one dense, navigable vertical-slice region before adding a huge map. All doors, containers and discoverable places need persistent states |
-| Character progression | Seven SPECIAL attributes, meaningful multi-rank perks, XP/leveling, derived stats, action points, character decisions | SPECIAL/XP/perk UI exists but system coverage is not audited for full gameplay effects | Test each perk's actual mechanic; prioritize real mechanics rather than extra perk cards |
+| Character progression | Seven SPECIAL attributes, meaningful multi-rank perks, XP/leveling, derived stats, action points, character decisions | W20.93 ties the seven stats and twenty-one existing perks to implemented sandbox systems; deeper skill checks, rank variety and broader game interactions remain incomplete | Extend checks to dialogue, settlements and world activities as those systems mature |
 | Health, radiation and injuries | Incoming damage, armor resistance, healing, radiation pressure and treatment, limb condition, consistent death/respawn | Health/armor/death exist; **power-armor radiation gauge is forced to zero** in `testing/main.js` | Implement physical radiation exposure and treatment and connect it to max-health, items, save data and both HUDs; then injuries |
 | Combat and VATS-like targeting | Responsive movement, stamina/AP, weapon handling, distinct firing modes, damage zones, criticals, target selection with AP cost | Gunplay, recoil, aiming and enemy damage exist; no integrated VATS-like targeting subsystem identified | Create a standalone, testable targeting/AP mechanic only after health/ammo/weapon foundations agree |
 | Enemy AI and animation | Perception based on sight/sound and memory; believable search, cover, corner peeks, muzzle alignment, navigation, reactions and animation transitions | Squad/cover/aim modules exist; visual and physical quality varies with scenario | Add scenario regression maps and tests, especially chest-high cover, doorways, rocks and coordinated movement |
@@ -110,3 +119,4 @@ Every system passes these five gates before it is marked **implemented**:
 - **Do not enlarge the map yet.** Improve one believable region where all core systems connect.
 - **Keep the existing game and W20.84 save data.** Refactor modules and visuals incrementally with migration tests.
 - **Use Fallout 4 as a mechanical/interaction reference, not a source of copied meshes, dialogue, map layouts, characters or quests.** The game retains an original identity.
+

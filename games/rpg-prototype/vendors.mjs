@@ -127,19 +127,25 @@ export function vendorAccepts(vendorId,itemId){
   return false;
 }
 
-export function vendorBuyPrice(itemId,quantity=1){
+const barterModifier=(modifiers,key)=>{
+  const value=modifiers?.[key];
+  return Number.isFinite(value)?Math.max(.5,Math.min(1.5,value)):1;
+};
+export function vendorBuyPrice(itemId,quantity=1,modifiers={}){
   if(!Number.isSafeInteger(quantity)||quantity<=0)return 0;
   const item=getItem(itemId);
-  return Math.max(1,Math.ceil((item.buyPrice??item.value*1.25)*quantity));
+  return Math.max(1,Math.ceil((item.buyPrice??item.value*1.25)*quantity*
+    barterModifier(modifiers,'barterBuyMultiplier')));
 }
-export function vendorSellPrice(itemId,quantity=1){
+export function vendorSellPrice(itemId,quantity=1,modifiers={}){
   if(!Number.isSafeInteger(quantity)||quantity<=0)return 0;
   const item=getItem(itemId);
-  return Math.max(1,Math.floor((item.sellPrice??item.value*.45)*quantity));
+  return Math.max(1,Math.floor((item.sellPrice??item.value*.45)*quantity*
+    barterModifier(modifiers,'barterSellMultiplier')));
 }
 
 export function buyFromVendor(pack,caps,vendorId,itemId,
-  stock=createVendorStock(),requestedQuantity=null,reputation={}){
+  stock=createVendorStock(),requestedQuantity=null,reputation={},modifiers={}){
   const vendor=vendorById(vendorId);
   const offer=vendor?.offers.find(o=>o.itemId===itemId);
   if(!offer)return{ok:false,reason:'not-stocked'};
@@ -154,7 +160,7 @@ export function buyFromVendor(pack,caps,vendorId,itemId,
   if(!Number.isSafeInteger(quantity)||quantity<1)
     return{ok:false,reason:'invalid-quantity'};
   if(quantity>available)return{ok:false,reason:'out-of-stock'};
-  const price=vendorBuyPrice(itemId,quantity);
+  const price=vendorBuyPrice(itemId,quantity,modifiers);
   if(cap(caps)<price)return{ok:false,reason:'insufficient-caps',price};
   const next=copy(pack);
   const added=addItem(next,itemId,quantity);
@@ -177,7 +183,7 @@ export function isEquippedItem(pack,entry){
 }
 
 export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
-  stock=createVendorStock(),reputation={}){
+  stock=createVendorStock(),reputation={},modifiers={}){
   const access=vendorReputationAccess(vendorId,reputation);
   if(!access.ok)return {ok:false,...access};
   const entry=pack.items.find(e=>e.uid===uid);
@@ -187,7 +193,7 @@ export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
     return{ok:false,reason:'invalid-quantity'};
   if(isEquippedItem(pack,entry)&&quantity===entry.quantity)
     return{ok:false,reason:'equipped'};
-  const price=vendorSellPrice(entry.itemId,quantity);
+  const price=vendorSellPrice(entry.itemId,quantity,modifiers);
   if(cap(caps)>MAX_CAPS-price)return{ok:false,reason:'wallet-full'};
   const next=copy(pack);
   const sold=removeItem(next,uid,quantity);
@@ -198,7 +204,7 @@ export function sellToVendor(pack,caps,vendorId,uid,quantity=1,
 }
 
 export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
-  stock=createVendorStock(),reputation={}){
+  stock=createVendorStock(),reputation={},modifiers={}){
   const access=vendorReputationAccess(vendorId,reputation);
   if(!access.ok)return {ok:false,...access};
   let material;try{material=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
@@ -206,7 +212,7 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
     return{ok:false,reason:'wrong-merchant'};
   if(!Number.isSafeInteger(quantity)||quantity<1||countItem(pack,itemId)<quantity)
     return{ok:false,reason:'invalid-quantity'};
-  const price=vendorSellPrice(itemId,quantity);
+  const price=vendorSellPrice(itemId,quantity,modifiers);
   if(cap(caps)>MAX_CAPS-price)return{ok:false,reason:'wallet-full'};
   const next=copy(pack);
   if(spendMaterial(next,itemId,quantity).removed!==quantity)
@@ -218,7 +224,7 @@ export function sellMaterialToVendor(pack,caps,vendorId,itemId,quantity=1,
 // Ammunition uses reserves rather than inventory slots. Selling reserve
 // rounds never affects the weapon's loaded magazine or an equipped item.
 export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
-  stock=createVendorStock(),reputation={}){
+  stock=createVendorStock(),reputation={},modifiers={}){
   const access=vendorReputationAccess(vendorId,reputation);
   if(!access.ok)return {ok:false,...access};
   let item;try{item=getItem(itemId);}catch{return{ok:false,reason:'not-owned'};}
@@ -227,7 +233,7 @@ export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
   if(!Number.isSafeInteger(quantity)||quantity<1||
      countItem(pack,itemId)<quantity)
     return{ok:false,reason:'invalid-quantity'};
-  const price=vendorSellPrice(itemId,quantity);
+  const price=vendorSellPrice(itemId,quantity,modifiers);
   if(cap(caps)>MAX_CAPS-price)return{ok:false,reason:'wallet-full'};
   const next=copy(pack);
   next.ammoReserves[item.key]-=quantity;
@@ -238,7 +244,7 @@ export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
 // A barter offer is only committed if every buy and sale succeeds. Run the
 // offer against copied game state, then return one final snapshot. The same
 // function can be used to preview the deal without changing live state.
-export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}){
+export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={},modifiers={}){
   if(!vendorById(vendorId))return{ok:false,reason:'wrong-merchant'};
   const access=vendorReputationAccess(vendorId,reputation);
   if(!access.ok)return {ok:false,...access};
@@ -253,13 +259,13 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}
     let result;
     if(line?.type==='inventory')
       result=sellToVendor(statePack,stateCaps,vendorId,line.uid,
-        line.quantity,stateStock,reputation);
+        line.quantity,stateStock,reputation,modifiers);
     else if(line?.type==='material')
       result=sellMaterialToVendor(statePack,stateCaps,vendorId,line.itemId,
-        line.quantity,stateStock,reputation);
+        line.quantity,stateStock,reputation,modifiers);
     else if(line?.type==='ammo')
       result=sellAmmoToVendor(statePack,stateCaps,vendorId,line.itemId,
-        line.quantity,stateStock,reputation);
+        line.quantity,stateStock,reputation,modifiers);
     else return{ok:false,reason:'invalid-trade'};
     if(!result.ok)return{ok:false,reason:result.reason};
     statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
@@ -269,7 +275,7 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}
   }
   for(const line of buys){
     const result=buyFromVendor(statePack,stateCaps,vendorId,line?.itemId,
-      stateStock,line?.quantity,reputation);
+      stateStock,line?.quantity,reputation,modifiers);
     if(!result.ok)return{ok:false,reason:result.reason};
     statePack=result.pack;stateCaps=result.caps;stateStock=result.stock;
     paid+=result.price;
@@ -279,5 +285,6 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}
   return{ok:true,pack:statePack,caps:stateCaps,stock:stateStock,
     paid,earned,net:paid-earned,trades};
 }
+
 
 

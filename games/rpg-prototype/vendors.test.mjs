@@ -201,4 +201,27 @@ test('barter rejects an entire offer when any line cannot complete',()=>{
     'insufficient-caps');
 });
 
+test('W20.93 Charisma prices match the real buy/sell and atomic barter totals',()=>{
+  const modifiers={barterBuyMultiplier:.8,barterSellMultiplier:1.2};
+  const stock=createVendorStock(),pack=createBackpack();
+  addItem(pack,'armor:ranger-chest',1);
+  const uid=pack.items.find(x=>x.itemId==='armor:ranger-chest').uid;
+  const offer={sells:[{type:'inventory',uid,quantity:1}],
+    buys:[{itemId:'armor:scrap-chest',quantity:1}]};
+  const expectedBuy=vendorBuyPrice('armor:scrap-chest',1,modifiers);
+  const expectedSell=vendorSellPrice('armor:ranger-chest',1,modifiers);
+  assert.ok(expectedBuy<vendorBuyPrice('armor:scrap-chest'));
+  assert.ok(expectedSell>vendorSellPrice('armor:ranger-chest'));
+  const preview=executeVendorBarter(pack,1000,'armor',stock,offer,{},modifiers);
+  assert.equal(preview.ok,true);
+  assert.equal(preview.paid,expectedBuy);
+  assert.equal(preview.earned,expectedSell);
+  assert.equal(preview.caps,1000+expectedSell-expectedBuy);
+  assert.equal(countItem(pack,'armor:ranger-chest'),1,'preview never spends real gear');
+  const tooPoor=executeVendorBarter(createBackpack(),expectedBuy-1,'armor',stock,
+    {sells:[],buys:offer.buys},{},modifiers);
+  assert.equal(tooPoor.reason,'insufficient-caps');
+});
+
+
 

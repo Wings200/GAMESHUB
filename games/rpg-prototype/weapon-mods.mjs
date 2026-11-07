@@ -3,6 +3,7 @@
 // Values are mutable only through the server-validated developer balance layer.
 import {ARSENAL} from './weapons.mjs';
 import {CRAFTING_COMPONENTS} from './materials.mjs';
+import {discountedComponentRecipe} from './special.mjs';
 
 export const MOD_WEAPON_IDS=Object.freeze([
   '10mm-pistol','pipe-pistol','pipe-rifle','laser-musket',
@@ -136,19 +137,19 @@ export function modOwned(pack,weaponId,modId){
   return !!WEAPON_MODS[modId]&&WEAPON_MODS[modId].weaponId===weaponId&&
     pack?.unlockedWeaponMods?.[weaponId]?.includes(modId);
 }
-export function missingModMaterials(pack,modId){
+export function missingModMaterials(pack,modId,discount=0){
   const part=WEAPON_MODS[modId];
   if(!part)throw Error('Unknown modification');
-  return Object.entries(part.cost).filter(([id,quantity])=>
+  return Object.entries(discountedComponentRecipe(part.cost,discount)).filter(([id,quantity])=>
     Math.max(0,Math.floor(Number(pack?.materials?.[id]||0)))<quantity)
     .map(([id,required])=>({itemId:id,required,owned:Math.max(0,Math.floor(Number(pack?.materials?.[id]||0)))}));
 }
-export function craftWeaponMod(pack,weaponId,modId){
+export function craftWeaponMod(pack,weaponId,modId,discountOrSlot=0){
   const part=WEAPON_MODS[modId];
   if(!weaponVariants.has(weaponId)||modId!=='factory'&&part?.weaponId!==weaponId)
     return {ok:false,reason:'incompatible'};
   if(modId==='factory'){
-    const slot=arguments[3];
+    const slot=discountOrSlot;
     if(!MOD_SLOTS.includes(slot))return {ok:false,reason:'slot'};
     pack.equipment??={};
     pack.equipment.weaponMods??={};
@@ -157,10 +158,11 @@ export function craftWeaponMod(pack,weaponId,modId){
   }
   const slot=part.slot,owned=modOwned(pack,weaponId,modId);
   if(!owned){
-    const missing=missingModMaterials(pack,modId);
+    const missing=missingModMaterials(pack,modId,discountOrSlot);
     if(missing.length)return {ok:false,reason:'materials',missing};
     // Atomic: no component stack is touched before every ingredient passes.
-    for(const [id,quantity] of Object.entries(part.cost)){
+    for(const [id,quantity] of Object.entries(
+      discountedComponentRecipe(part.cost,discountOrSlot))){
       pack.materials[id]-=quantity;
       if(!pack.materials[id])delete pack.materials[id];
     }
@@ -238,3 +240,4 @@ export function updateWeaponModBlueprint(id,patch){
     }else throw Error('Unknown mod setting');
   }
 }
+

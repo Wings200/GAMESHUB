@@ -9,11 +9,12 @@ export const VATS_ZONE_LABELS=Object.freeze({
 });
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 
-export function vatsApCost(weapon){
+export function vatsApCost(weapon,apMultiplier=1){
   if(!weapon||!Number.isFinite(weapon.fireInterval))return 100;
   const kind=String(weapon.kind||'').toLowerCase();
   const base=kind==='shotgun'?30:kind==='rifle'?28:kind==='sniper'?38:20;
-  return clamp(Math.round(base+weapon.fireInterval*8),18,55);
+  const multiplier=Number.isFinite(apMultiplier)?clamp(apMultiplier,.65,1.15):1;
+  return clamp(Math.round((base+weapon.fireInterval*8)*multiplier),18,55);
 }
 
 export function vatsChance({distance,zone,visible=true,perception=5,
