@@ -40,6 +40,15 @@ export function radiationExposureAt(x,z,sources=RADIATION_SOURCES){
     return total+source.peakRadsPerSecond*Math.pow(fraction,.7);
   },0);
 }
+// The live instrument is a six-step exposure meter, NOT a reading of the
+// lifetime 0..1000 RAD dose that accumulates in the player's saved state.
+// Zero means the player is clear of the hazard; 1..6 rises with intensity.
+export function radiationThreatLevel(receivedRadsPerSecond,peakRadsPerSecond=17){
+  if(!Number.isFinite(receivedRadsPerSecond)||receivedRadsPerSecond<=.01)return 0;
+  const peak=Number.isFinite(peakRadsPerSecond)&&peakRadsPerSecond>0?
+    peakRadsPerSecond:17;
+  return clamp(Math.ceil(receivedRadsPerSecond/peak*6),1,6);
+}
 export function syncRadiationHealth(state,health,baseMax=100){
   const next=radiationHealthLimit(state,baseMax);
   health.maxHealth=next;

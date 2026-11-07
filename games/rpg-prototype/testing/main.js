@@ -84,8 +84,9 @@ import {createSquadDirector,resetSquadDirector,planSquadOrders} from '../enemy-s
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
   firstSolidHit, ENEMY_ATTACK, PLAYER_MAX_HEALTH } from '../player-combat.mjs';
 import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationExposureAt,
-  applyRadiationExposure,syncRadiationHealth,treatRadiation,radiationHealthBar}
-  from '../radiation.mjs?v=W20.87';
+  applyRadiationExposure,syncRadiationHealth,treatRadiation,radiationHealthBar,
+  radiationThreatLevel}
+  from '../radiation.mjs?v=W20.88';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -1311,11 +1312,11 @@ function updateVisorObjectiveMarker(heading){
   }
 }
 buildVisorDial('hp','visorHpGauge',{tickCount:20,majorEvery:2,labelSize:12});
-buildVisorDial('rads','visorRadsGauge',{tickCount:10,majorEvery:2,maxValue:1000,labelSize:13});
+buildVisorDial('rads','visorRadsGauge',{tickCount:6,majorEvery:1,maxValue:6,labelSize:13});
 buildVisorDial('core','visorCoreGauge',{tickCount:10,majorEvery:5,labelSize:16});
 buildVisorDial('ap','visorApGauge',{tickCount:20,majorEvery:4,labelSize:12});
 buildVisorCompass();
-setVisorDial('rads',0); // The saved radiation value is installed with player health.
+setVisorDial('rads',0); // Live exposure: 0 (safe) through 6 (maximum hazard).
 setVisorDial('hp',100);
 setVisorDial('ap',100);
 updateVisorCompass(0);
@@ -3636,6 +3637,7 @@ function inAIArena(){return isArenaActive(stationIndex,player);}
 const playerHealth=createPlayerHealth();
 const radiationSaveKey='rpg-radiation-state-v1';
 let radiationState=createRadiationState();
+let currentRadiationLevel=0;
 try{radiationState=safeRadiationSnapshot(JSON.parse(
   localStorage.getItem(radiationSaveKey)||'null'));}catch{}
 syncRadiationHealth(radiationState,playerHealth);
@@ -3723,16 +3725,18 @@ function refreshPlayerHealth(){
   const rads=Math.round(radiationState.rads);
   $('fieldHealth').textContent=Math.ceil(playerHealth.health);
   $('fieldMaxHealth').textContent=bar.base;
-  $('fieldRadStatus').classList.toggle('hidden',rads===0);
-  $('fieldRadStatus').textContent=rads+' RADS · HP CAP '+bar.limit;
+  $('fieldRadStatus').classList.remove('hidden');
+  $('fieldRadStatus').textContent='RAD LEVEL '+currentRadiationLevel+
+    '/6 · TOTAL '+rads+' RADS · HP CAP '+bar.limit;
   $('fieldHealthFill').style.width=bar.currentPercent.toFixed(1)+'%';
   $('fieldRadiationBlock').style.width=bar.radiationPercent.toFixed(1)+'%';
   $('fieldHud').classList.toggle('critical',fraction<=.35);
   $('visorHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     bar.base+' HP · CAP '+bar.limit;
-  $('visorRadiation').textContent=rads+' RADS';
-  $('visorRadsNumber').textContent=rads;
-  setVisorDial('rads',radiationState.rads/10);
+  $('visorRadiation').textContent='RAD LEVEL '+currentRadiationLevel+
+    ' OF 6 · TOTAL '+rads+' RADS';
+  $('visorRadsNumber').textContent=currentRadiationLevel;
+  setVisorDial('rads',currentRadiationLevel/6*100);
   setVisorDial('hp',fraction*100);
   $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+bar.base+' HP';
   $('healthFill').style.width=bar.currentPercent.toFixed(1)+'%';
@@ -7027,6 +7031,7 @@ function frame(){
   const exposureRate=controls.isLocked&&playerHealth.alive&&!deathState.active?
     radiationExposureAt(player.x,player.z):0;
   const inRadiation=exposureRate>.01;
+  let receivedRadiationRate=exposureRate;
   if(inRadiation){
     // A bare frame is modest shielding; six intact plates provide strong
     // radiation protection. Broken plates cannot grant full resistance.
@@ -7035,13 +7040,20 @@ function frame(){
         const plate=plateCondition(powerArmorState,slot);
         return total+(plate.max>0?plate.current/plate.max:0);
       },0)/POWER_ARMOR_SLOTS.length:0;
+    const protection=powerArmorState.occupied?.20+.65*plateIntegrity:0;
+    receivedRadiationRate=exposureRate*(1-protection);
     applyRadiationExposure(radiationState,playerHealth,exposureRate,dt,
-      {protection:powerArmorState.occupied?.20+.65*plateIntegrity:0});
+      {protection});
     if(!playerHealth.alive)beginPlayerDeath('RADIATION','EXPOSURE');
     radiationSaveClock+=dt;
-    if(refreshDisplay)refreshPlayerHealth();
     if(radiationSaveClock>=2){radiationSaveClock=0;saveRadiation();}
   }
+  const nextRadiationLevel=radiationThreatLevel(receivedRadiationRate);
+  const levelChanged=nextRadiationLevel!==currentRadiationLevel;
+  currentRadiationLevel=nextRadiationLevel;
+  // Refresh on BOTH entry and exit, including a frame in which the dose has
+  // not yet rounded to an integer. Otherwise the needle freezes on exit.
+  if(levelChanged||(inRadiation&&refreshDisplay))refreshPlayerHealth();
   if(inRadiation&&!wasInRadiation)showShotNotice(
     'RADIATION DETECTED · LEAVE THE CONTAMINATED AREA');
   wasInRadiation=inRadiation;

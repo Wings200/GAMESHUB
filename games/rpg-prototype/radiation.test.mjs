@@ -5,7 +5,7 @@ import {createPlayerHealth} from './player-combat.mjs';
 import {VENDORS,vendorAccepts} from './vendors.mjs';
 import {getItem,inventorySection} from './inventory.mjs';
 import {createRadiationState,safeRadiationSnapshot,
-  radiationHealthLimit,radiationExposureAt,applyRadiationExposure,
+  radiationHealthLimit,radiationExposureAt,radiationThreatLevel,applyRadiationExposure,
   treatRadiation,syncRadiationHealth,radiationHealthBar,RADIATION_SOURCES}
   from './radiation.mjs';
 
@@ -14,6 +14,22 @@ test('environmental radiation exists only within physical marked sources',()=>{
   assert.ok(radiationExposureAt(site.x,site.z)>15);
   assert.equal(radiationExposureAt(site.x+site.radius,site.z),0);
   assert.equal(radiationExposureAt(0,0),0);
+});
+test('live RAD dial reads zero in safety and intensity levels one through six',()=>{
+  const site=RADIATION_SOURCES[0];
+  assert.equal(radiationThreatLevel(0),0);
+  assert.equal(radiationThreatLevel(.01),0);
+  assert.equal(radiationThreatLevel(0.1),1);
+  assert.equal(radiationThreatLevel(17/6),1);
+  assert.equal(radiationThreatLevel(3.0),2);
+  assert.equal(radiationThreatLevel(17),6);
+  assert.equal(radiationThreatLevel(100),6);
+  assert.equal(radiationThreatLevel(radiationExposureAt(site.x,site.z)),6);
+  assert.equal(radiationThreatLevel(radiationExposureAt(0,0)),0);
+  const halfWay=radiationThreatLevel(radiationExposureAt(site.x+site.radius/2,site.z));
+  assert.ok(halfWay>=2&&halfWay<=5);
+  assert.ok(radiationThreatLevel(17*.15)<radiationThreatLevel(17),
+    'armor protection reduces the measured radiation intensity');
 });
 test('the waste site has visible floor clearance, usable cover and no giant hazard billboard',()=>{
   const site=RADIATION_SOURCES[0];
@@ -113,6 +129,9 @@ test('the field and power armor both display live radiation, and world exposure 
     'applyRadiationExposure(radiationState,playerHealth',
     "beginPlayerDeath('RADIATION','EXPOSURE')",
     'radiationHealthBar(radiationState,playerHealth,PLAYER_MAX_HEALTH)',
+    'radiationThreatLevel(receivedRadiationRate)',
+    "setVisorDial('rads',currentRadiationLevel/6*100)",
+    'levelChanged||(inRadiation&&refreshDisplay)',
     "$('fieldRadiationBlock').style.width=bar.radiationPercent",
     "$('healthRadiationBlock').style.width=bar.radiationPercent",
     'saveRadiation();','syncRadiationHealth(radiationState,playerHealth)',
@@ -125,6 +144,7 @@ test('the field and power armor both display live radiation, and world exposure 
     assert.ok(html.includes(element),element);
   assert.doesNotMatch(main,/playerHealth\.health\/playerHealth\.maxHealth/,
     'shrinking maximum HP must not keep the visible HP bar full');
+  assert.match(main,/buildVisorDial\('rads','visorRadsGauge',\{tickCount:6,majorEvery:1,maxValue:6/);
   assert.match(main,/\.\.\/inventory\.mjs\?v=W20\.85/,
     'updated inventory items must not use the previous cached module');
   assert.match(main,/\.\.\/vendors\.mjs\?v=W20\.85/,

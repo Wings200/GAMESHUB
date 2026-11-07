@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.87 · Radiation HP Damage | GAMESHUB RPG</title>
+<title>W20.88 · Live RAD Meter | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1447,9 +1447,9 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="dial-title">HP%</span>
     <span id="visorHealth" class="sr-only">100 / 100 HP</span>
   </div>
-  <div class="armor-dial armor-rads" aria-label="Radiation level gauge">
+  <div class="armor-dial armor-rads" aria-label="Live radiation intensity gauge, zero to six">
     <svg id="visorRadsGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
-    <span class="dial-title">RADS</span>
+    <span class="dial-title">RAD LVL</span>
     <span class="rad-number" id="visorRadsNumber">0</span>
     <span id="visorRadiation" class="sr-only">0 RADS</span>
   </div>
@@ -1606,11 +1606,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.87</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.88</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.88 · LIVE SIX-LEVEL RADIATION GAUGE:</strong> The RAD needle and number now read live exposure intensity on a zero-to-six scale instead of slowly accumulated lifetime radiation dose. Zero means safe; approaching the actual waste site increases the level through one to six. An occupied, intact power-armor suit reduces the measured intensity. Both power-armor and ordinary field displays immediately react when you enter, move within, and leave a radioactive area, including when no further dose accrues. The separate accumulated RADS total remains visible for health-cap and medicine tracking.</p>
     <p><strong>W20.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:</strong> Radiation now hurts real current HP even when the player was already wounded, in addition to limiting maximum survivable health. Both ordinary HP bars and the power-armor HP dial use the full 100-HP scale, so dropping to 75 HP visibly shows 75% rather than a deceptively full 75/75 bar. The unusable health portion is marked red on both ordinary bars; the separate RAD gauge and counter continue showing accumulated rads. Radiation can cause a real death and trigger the first-person death sequence. Radiation Flush removes radiation and restores the health cap but does not heal missing HP.</p>
     <p><strong>W20.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:</strong> Moved the radiation source entirely clear of the raised training ramp. Replaced the billboard and buried miniature drums with a ground-level waste depot: rusted full-size ribbed drums, warning decals, an overturned tank, bent metal fence, irregular leaking pools and debris. Solid debris now blocks bullets and movement. The massive solid-green slope is now a textured weathered-concrete ramp with visible slab joints. Radiation intensity and medical treatment remain unchanged. This is still a testing field, not a finished campaign location.</p>
     <p><strong>W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION:</strong> Radiation is no longer a fake zeroed-out power-armor gauge. A visible, physically located contaminated drum spill on the east side of the field now applies persistent radiation over time, reduces your real maximum HP, and appears on both the regular HUD and power armor's live dial. An occupied power frame reduces exposure. DOC VALE sells Radiation Flush medical treatment, which removes rads without magically restoring lost HP; use a medkit separately to heal. Radiation survives reloads and respawn, with bounded save migration. The full-game redesign standards, current gaps and phased acceptance tests are now documented in WASTELAND_DESIGN_BIBLE.md.</p>
@@ -1663,7 +1664,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.87</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.88</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2094,7 +2095,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.87"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.88"></script>
 </body>
 </html>
 

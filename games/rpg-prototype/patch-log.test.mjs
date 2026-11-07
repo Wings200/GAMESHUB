@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with living settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.87/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.88/);
+  assert.match(log,/<strong>W20\.88 · LIVE SIX-LEVEL RADIATION GAUGE:<\/strong>/);
   assert.match(log,/<strong>W20\.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:<\/strong>/);
   assert.match(log,/<strong>W20\.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:<\/strong>/);
   assert.match(log,/<strong>W20\.85 · RADIATION & FULL RPG REBUILD FOUNDATION:<\/strong>/);
@@ -34,6 +35,8 @@ test('systems testing splash leads with living settlement construction',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.88 · LIVE SIX-LEVEL RADIATION GAUGE')<
+    log.indexOf('W20.87 · ACTUAL RADIATION HP LOSS'));
   assert.ok(log.indexOf('W20.87 · ACTUAL RADIATION HP LOSS')<
     log.indexOf('W20.86 · HAZARD SCENE REPAIR'));
   assert.ok(log.indexOf('W20.86 · HAZARD SCENE REPAIR')<
@@ -73,6 +76,6 @@ test('systems testing splash leads with living settlement construction',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.87/);
-  assert.match(bootstrap,/main\.js\?v=W20\.87/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.88/);
+  assert.match(bootstrap,/main\.js\?v=W20\.88/);
 });
