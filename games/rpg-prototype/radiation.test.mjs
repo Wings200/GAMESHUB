@@ -6,7 +6,7 @@ import {VENDORS,vendorAccepts} from './vendors.mjs';
 import {getItem,inventorySection} from './inventory.mjs';
 import {createRadiationState,safeRadiationSnapshot,
   radiationHealthLimit,radiationExposureAt,applyRadiationExposure,
-  treatRadiation,syncRadiationHealth,RADIATION_SOURCES}
+  treatRadiation,syncRadiationHealth,radiationHealthBar,RADIATION_SOURCES}
   from './radiation.mjs';
 
 test('environmental radiation exists only within physical marked sources',()=>{
@@ -39,7 +39,33 @@ test('exposure lowers actual max HP and clamps current HP',()=>{
   assert.equal(exposure.rads,250,'1-second safety cap prevents giant tab-resume doses');
   assert.equal(exposure.maxHealth,75);
   assert.equal(health.health,75);
+  assert.equal(exposure.healthDamage,25);
   assert.equal(radiationHealthLimit(state),75);
+});
+test('radiation hurts current HP even when the player was already wounded',()=>{
+  const state=createRadiationState();
+  const health={health:60,maxHealth:100,alive:true,hits:0};
+  const result=applyRadiationExposure(state,health,250,1);
+  assert.equal(result.healthDamage,25);
+  assert.equal(health.maxHealth,75);
+  assert.equal(health.health,35,'real HP must drop, not only the health cap');
+  assert.equal(state.rads,250,'the RAD counter independently tracks exposure');
+  assert.deepEqual(radiationHealthBar(state,health),{
+    currentPercent:35,radiationPercent:25,emptyPercent:40,limit:75,base:100
+  });
+  treatRadiation(state,health,300);
+  assert.equal(health.health,35,'radiation medicine cannot act as a medkit');
+  assert.equal(health.maxHealth,100);
+  assert.equal(radiationHealthBar(state,health).radiationPercent,0);
+});
+test('radiation can actually kill and never overfills or underflows the HP bar',()=>{
+  const state=createRadiationState();
+  const health={health:6,maxHealth:100,alive:true};
+  applyRadiationExposure(state,health,80,1);
+  assert.equal(health.health,0);
+  assert.equal(health.alive,false);
+  assert.equal(radiationHealthBar(state,health).currentPercent,0);
+  assert.equal(radiationHealthBar({rads:1000},{health:100}).radiationPercent,99);
 });
 test('power armor resistance mitigates exposure, never negates it entirely',()=>{
   const unprotected=createRadiationState(),protectedState=createRadiationState();
@@ -85,13 +111,20 @@ test('the field and power armor both display live radiation, and world exposure 
   const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   for(const fragment of ['radiationExposureAt(player.x,player.z)',
     'applyRadiationExposure(radiationState,playerHealth',
+    "beginPlayerDeath('RADIATION','EXPOSURE')",
+    'radiationHealthBar(radiationState,playerHealth,PLAYER_MAX_HEALTH)',
+    "$('fieldRadiationBlock').style.width=bar.radiationPercent",
+    "$('healthRadiationBlock').style.width=bar.radiationPercent",
     'saveRadiation();','syncRadiationHealth(radiationState,playerHealth)',
     "treatRadiation(radiationState,playerHealth,item.radCure)",
     "plateCondition(powerArmorState,slot)"])
     assert.ok(main.includes(fragment),fragment);
   for(const element of ['id="fieldRadStatus"','id="fieldMaxHealth"',
-    'id="visorRadsNumber"','id="visorRadsGauge"'])
+    'id="visorRadsNumber"','id="visorRadsGauge"',
+    'id="fieldRadiationBlock"','id="healthRadiationBlock"'])
     assert.ok(html.includes(element),element);
+  assert.doesNotMatch(main,/playerHealth\.health\/playerHealth\.maxHealth/,
+    'shrinking maximum HP must not keep the visible HP bar full');
   assert.match(main,/\.\.\/inventory\.mjs\?v=W20\.85/,
     'updated inventory items must not use the previous cached module');
   assert.match(main,/\.\.\/vendors\.mjs\?v=W20\.85/,

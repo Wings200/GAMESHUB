@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.86 · Hazard Scene Repair | GAMESHUB RPG</title>
+<title>W20.87 · Radiation HP Damage | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -84,10 +84,13 @@ body.player-dead #bottom{visibility:hidden!important;opacity:0!important}
   gap:8px;align-items:center;letter-spacing:.07em;font-size:11px;font-weight:900}
 #playerHealthHud .health-head span{color:#f0cda0}
 #playerHealthHud .health-head strong{color:#edeeee;font-size:16px;font-variant-numeric:tabular-nums}
-#healthTrack{height:16px;background:#2c3033;border:1px solid #819a91;overflow:hidden;border-radius:2px}
-#healthFill{display:block;width:100%;height:100%;
+#healthTrack{position:relative;height:16px;background:#2c3033;border:1px solid #819a91;overflow:hidden;border-radius:2px}
+#healthFill{display:block;position:relative;z-index:1;width:100%;height:100%;
   background:linear-gradient(90deg,#578c6f,#a8d1a1);transition:width .15s ease}
 #healthFill.low{background:linear-gradient(90deg,#a34037,#ee8476)}
+#healthRadiationBlock{position:absolute;top:0;right:0;height:100%;width:0;
+  background:repeating-linear-gradient(100deg,#a74d37 0px,#cb6240 5px,#853a32 9px);
+  box-shadow:inset 3px 0 0 #ebaa68;transition:width .15s ease}
 #healthStatus{font-size:10px;color:#b8cfcc;letter-spacing:.08em;font-weight:850}
 #enemyHud{position:fixed;right:18px;top:140px;z-index:2;max-width:340px;
   pointer-events:none;display:grid;gap:5px}
@@ -396,10 +399,13 @@ body.hud-modern #powerArmorHud{display:none!important}
   letter-spacing:.16em;margin-bottom:7px}
 #fieldHud .field-number{font-size:25px;font-weight:950;color:#f1f7e6;line-height:1.12}
 #fieldHud .field-number .field-unit{font-size:11px;font-weight:850;color:#a9d4be}
-#fieldHud .field-bar{height:7px;background:#183a32;margin:8px 0;
+#fieldHud .field-bar{position:relative;height:7px;background:#183a32;margin:8px 0;
   overflow:hidden;border:1px solid #9fbda45c}
 #fieldHud .field-bar span{display:block;height:100%;width:100%;
   background:linear-gradient(90deg,#4fa17f,#b7dda9);transition:width .14s}
+#fieldHud .field-bar #fieldRadiationBlock{position:absolute;top:0;right:0;width:0;
+  background:repeating-linear-gradient(100deg,#a44a34 0px,#dc6940 4px,#7e3734 8px);
+  border-left:2px solid #f0ac62}
 #fieldHud .field-bar.secondary{height:5px;margin:6px 0 0;padding:0;
   background:#29372e;border:0}
 #fieldHud .field-bar.secondary span{background:#ddc589}
@@ -440,7 +446,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   font-weight:900;white-space:nowrap}
 #fieldHud .field-waypoint-readout:empty{display:none}
 #fieldHud.critical .field-vitals{border-left-color:#fd665b}
-#fieldHud.critical .field-bar:not(.secondary) span{background:#e46a56}
+#fieldHud.critical .field-bar:not(.secondary) #fieldHealthFill{background:#e46a56}
 /* Red 360-degree contacts below the sightline, shared by both HUD modes. */
 #enemyRadar{position:fixed;left:50%;bottom:61px;transform:translateX(-50%);
   width:min(420px,34vw);height:24px;z-index:3;pointer-events:none;
@@ -1396,7 +1402,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="field-panel field-vitals">
     <div class="field-kicker">VITAL SIGNS / HP</div>
     <div class="field-number"><span id="fieldHealth">100</span> <span class="field-unit">/ <span id="fieldMaxHealth">100</span> HP</span></div>
-    <div class="field-bar"><span id="fieldHealthFill"></span></div>
+    <div class="field-bar"><span id="fieldHealthFill"></span><span id="fieldRadiationBlock" aria-hidden="true"></span></div>
     <span id="fieldRadStatus" class="hidden" aria-live="polite">0 RADS</span>
     <div class="field-sub">STAMINA <span id="fieldStamina">100%</span></div>
     <div class="field-bar secondary"><span id="fieldStaminaFill"></span></div>
@@ -1491,7 +1497,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="playerHealthHud" class="block" aria-live="polite">
   <div class="health-head"><span>PLAYER HEALTH</span><strong id="healthReadout">100 / 100 HP</strong></div>
-  <div id="healthTrack"><span id="healthFill"></span></div>
+  <div id="healthTrack"><span id="healthFill"></span><span id="healthRadiationBlock" aria-hidden="true"></span></div>
   <div id="healthStatus">STABLE</div>
 </div>
 <div id="hud">
@@ -1600,11 +1606,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.86</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.87</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:</strong> Radiation now hurts real current HP even when the player was already wounded, in addition to limiting maximum survivable health. Both ordinary HP bars and the power-armor HP dial use the full 100-HP scale, so dropping to 75 HP visibly shows 75% rather than a deceptively full 75/75 bar. The unusable health portion is marked red on both ordinary bars; the separate RAD gauge and counter continue showing accumulated rads. Radiation can cause a real death and trigger the first-person death sequence. Radiation Flush removes radiation and restores the health cap but does not heal missing HP.</p>
     <p><strong>W20.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:</strong> Moved the radiation source entirely clear of the raised training ramp. Replaced the billboard and buried miniature drums with a ground-level waste depot: rusted full-size ribbed drums, warning decals, an overturned tank, bent metal fence, irregular leaking pools and debris. Solid debris now blocks bullets and movement. The massive solid-green slope is now a textured weathered-concrete ramp with visible slab joints. Radiation intensity and medical treatment remain unchanged. This is still a testing field, not a finished campaign location.</p>
     <p><strong>W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION:</strong> Radiation is no longer a fake zeroed-out power-armor gauge. A visible, physically located contaminated drum spill on the east side of the field now applies persistent radiation over time, reduces your real maximum HP, and appears on both the regular HUD and power armor's live dial. An occupied power frame reduces exposure. DOC VALE sells Radiation Flush medical treatment, which removes rads without magically restoring lost HP; use a medkit separately to heal. Radiation survives reloads and respawn, with bounded save migration. The full-game redesign standards, current gaps and phased acceptance tests are now documented in WASTELAND_DESIGN_BIBLE.md.</p>
     <p><strong>W20.84 · MODULAR ROOF MODELS & SCALE FIX:</strong> Roofs now share the exact 3×3-metre footprint of timber foundations and fit above 2.7-metre walls. The corrugated flat roof has individual scavenged sheet-metal panels, seams and visible framing; a new gabled scrap roof uses two physically slanted panels, a ridge cap and rafters. With grid snap enabled, roofs center on foundation bays or the bay adjoining an actual wall edge, never on top of the wall itself. The preview calls out ROOF BAY SNAPPED. Roofs require a properly aligned supporting wall, and storing or scrapping that wall is blocked until its roof is safely removed.</p>
@@ -1656,7 +1663,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.86</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.87</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2087,7 +2094,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.86"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.87"></script>
 </body>
 </html>
 

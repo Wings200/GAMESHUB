@@ -82,10 +82,10 @@ import {createSquadIntel,clearSquadIntel,reportSquadContact,
   occupiedSquadCover,reactToAllyDown} from '../enemy-squad.mjs?v=W20.50';
 import {createSquadDirector,resetSquadDirector,planSquadOrders} from '../enemy-squad-director.mjs';
 import { createPlayerHealth, hitPlayer, resetPlayerHealth, canEnemyFire,
-  firstSolidHit, ENEMY_ATTACK } from '../player-combat.mjs';
+  firstSolidHit, ENEMY_ATTACK, PLAYER_MAX_HEALTH } from '../player-combat.mjs';
 import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationExposureAt,
-  applyRadiationExposure,syncRadiationHealth,treatRadiation}
-  from '../radiation.mjs?v=W20.86';
+  applyRadiationExposure,syncRadiationHealth,treatRadiation,radiationHealthBar}
+  from '../radiation.mjs?v=W20.87';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -3718,22 +3718,25 @@ function enemyTracer(from,to){
   }
 }
 function refreshPlayerHealth(){
-  const fraction=playerHealth.health/playerHealth.maxHealth;
+  const bar=radiationHealthBar(radiationState,playerHealth,PLAYER_MAX_HEALTH);
+  const fraction=bar.currentPercent/100;
   const rads=Math.round(radiationState.rads);
   $('fieldHealth').textContent=Math.ceil(playerHealth.health);
-  $('fieldMaxHealth').textContent=playerHealth.maxHealth;
+  $('fieldMaxHealth').textContent=bar.base;
   $('fieldRadStatus').classList.toggle('hidden',rads===0);
-  $('fieldRadStatus').textContent=rads+' RADS · MAX HP '+playerHealth.maxHealth;
-  $('fieldHealthFill').style.width=(fraction*100).toFixed(1)+'%';
+  $('fieldRadStatus').textContent=rads+' RADS · HP CAP '+bar.limit;
+  $('fieldHealthFill').style.width=bar.currentPercent.toFixed(1)+'%';
+  $('fieldRadiationBlock').style.width=bar.radiationPercent.toFixed(1)+'%';
   $('fieldHud').classList.toggle('critical',fraction<=.35);
   $('visorHealth').textContent=Math.ceil(playerHealth.health)+' / '+
-    playerHealth.maxHealth+' HP';
+    bar.base+' HP · CAP '+bar.limit;
   $('visorRadiation').textContent=rads+' RADS';
   $('visorRadsNumber').textContent=rads;
   setVisorDial('rads',radiationState.rads/10);
   setVisorDial('hp',fraction*100);
-  $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+playerHealth.maxHealth+' HP';
-  $('healthFill').style.width=(fraction*100).toFixed(1)+'%';
+  $('healthReadout').textContent=Math.ceil(playerHealth.health)+' / '+bar.base+' HP';
+  $('healthFill').style.width=bar.currentPercent.toFixed(1)+'%';
+  $('healthRadiationBlock').style.width=bar.radiationPercent.toFixed(1)+'%';
   $('healthFill').classList.toggle('low',fraction<=.35);
   $('healthStatus').textContent=!playerHealth.alive?'DOWN · RESPAWN AVAILABLE':
     radiationState.rads>=5?'RADIATION '+rads+' RADS · MAX HP REDUCED':
@@ -7034,6 +7037,7 @@ function frame(){
       },0)/POWER_ARMOR_SLOTS.length:0;
     applyRadiationExposure(radiationState,playerHealth,exposureRate,dt,
       {protection:powerArmorState.occupied?.20+.65*plateIntegrity:0});
+    if(!playerHealth.alive)beginPlayerDeath('RADIATION','EXPOSURE');
     radiationSaveClock+=dt;
     if(refreshDisplay)refreshPlayerHealth();
     if(radiationSaveClock>=2){radiationSaveClock=0;saveRadiation();}
