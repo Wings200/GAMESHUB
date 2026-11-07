@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import {createBackpack,addItem,countItem} from './inventory.mjs';
 import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
-  snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
+  snappedBuildPosition,snapWallToJunction,wallJunctionAllowed,
+  buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
@@ -142,6 +143,55 @@ test('free placement is precise; grid snap is opt-in and rotation turns collider
   const turned=buildWorldBoxes(placement('wall',-40,-26,1),{onlySolid:true})[0];
   assert.ok(across.maxX-across.minX>across.maxZ-across.minZ);
   assert.ok(turned.maxZ-turned.minZ>turned.maxX-turned.minX);
+});
+
+test('two perpendicular walls can form a flush L corner and persist after reload',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  const first=placeSettlementStructure(state,pack,placement('wall',-40,-26,0));
+  assert.equal(first.ok,true);
+  const corner=placement('wall',-38.5,-24.5,1);
+  assert.equal(wallJunctionAllowed(corner,first.structure),true);
+  assert.equal(validateBuildPlacement(state,corner).ok,true);
+  assert.equal(placeSettlementStructure(state,pack,corner).ok,true);
+  const restored=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
+  assert.equal(restored.structures.length,2,'legal corners must not vanish on reload');
+  assert.deepEqual(restored.structures[1].rotation,1);
+});
+
+test('wall ends snap together even from a slightly misaligned reticle',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  assert.equal(placeSettlementStructure(state,pack,
+    placement('wall',-40,-26,0)).ok,true);
+  const raw=placement('wall',-38.0,-24.0,1);
+  const snapped=snapWallToJunction(state,raw);
+  assert.deepEqual(snapped,placement('wall',-38.5,-24.5,1));
+  assert.equal(validateBuildPlacement(state,snapped).ok,true);
+  state.snap=false;
+  assert.deepEqual(snapWallToJunction(state,raw),raw,
+    'G / free placement must bypass the magnetic corner snap');
+});
+
+test('foundation edges snap walls to the correct rotation and perimeter',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  assert.equal(placeSettlementStructure(state,pack,
+    placement('foundation',-40,-26)).ok,true);
+  assert.deepEqual(snapWallToJunction(state,placement('wall',-39.7,-24.8,0)),
+    placement('wall',-40,-24.5,0));
+  assert.deepEqual(snapWallToJunction(state,placement('doorway',-38.2,-26.2,1)),
+    placement('doorway',-38.5,-26,1));
+});
+
+test('corner joints are legal, but crossed walls, duplicate walls and rocks are blocked',()=>{
+  const pack=fundedPack(),state=initialSettlementBuildState();
+  const first=placeSettlementStructure(state,pack,placement('wall',-40,-26));
+  assert.ok(first.ok);
+  assert.equal(wallJunctionAllowed(placement('wall',-40,-26,1),first.structure),false);
+  assert.match(validateBuildPlacement(state,placement('wall',-40,-26,1)).reason,/OVERLAP/);
+  assert.match(validateBuildPlacement(state,placement('wall',-40,-26,0)).reason,/OVERLAP/);
+  const corner=placement('wall',-38.5,-24.5,1);
+  const rock={minX:-38.65,maxX:-38.35,minZ:-26.1,maxZ:-25.8,bottom:0,top:1.8};
+  assert.match(validateBuildPlacement(state,corner,[rock]).reason,/OVERLAP/,
+    'valid wall joints must never ignore actual static obstacles');
 });
 
 test('construction spends salvage only after a valid placement',()=>{
@@ -314,6 +364,9 @@ test('field build mode integrates persistent world collisions and uses no free g
   const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
   assert.match(main,/rpg-haven-construction-v1/);
   assert.match(main,/registerSettlementStructure\(result\.structure\)/);
+  assert.match(main,/builtSettlementShotBoxRefs\.add\(b\)/);
+  assert.match(main,/enemySightObstacles\.filter\(box=>!builtSettlementShotBoxRefs\.has\(box\)\)/);
+  assert.match(main,/snapWallToJunction\(settlementBuildState/);
   assert.match(main,/enemySightObstacles\.push\(b\)/);
   assert.match(main,/enemyMovementObstacles\.push\(b\)/);
   assert.match(main,/undoLastSettlementStructure\(settlementBuildState,backpack\)/);

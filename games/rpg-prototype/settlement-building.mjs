@@ -1,4 +1,4 @@
-// W20.82: Store whole objects for re-placement; scrap pre-existing and built props.
+// W20.83: Wall-to-wall junctions and foundation edge snapping.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
@@ -388,6 +388,60 @@ const rotateQuarter=(x,z,rotation)=>{
 export function snappedBuildPosition(x,z,snap=true){
   return {x:snap?Math.round(x*2)/2:x,z:snap?Math.round(z*2)/2:z};
 }
+const wallLike=type=>type==='wall'||type==='doorway';
+function wallEndpoints(placement){
+  const alongX=placement.rotation%2===0;
+  const half=SETTLEMENT_BY_ID[placement.type].width/2;
+  return alongX?
+    [{x:placement.x-half,z:placement.z},{x:placement.x+half,z:placement.z}]:
+    [{x:placement.x,z:placement.z-half},{x:placement.x,z:placement.z+half}];
+}
+// An inside/outside corner is a real wall joint, not overlapping construction.
+// A perpendicular X crossing in the middle of both walls is still invalid.
+export function wallJunctionAllowed(a,b){
+  if(!wallLike(a?.type)||!wallLike(b?.type)||
+      a.rotation%2===b.rotation%2)return false;
+  const horizontal=a.rotation%2===0?a:b;
+  const vertical=a.rotation%2===0?b:a;
+  const across=Math.abs(vertical.x-horizontal.x);
+  const down=Math.abs(horizontal.z-vertical.z);
+  const h=SETTLEMENT_BY_ID[horizontal.type].width/2;
+  const v=SETTLEMENT_BY_ID[vertical.type].width/2;
+  const tolerance=.18;
+  return across<=h+tolerance&&down<=v+tolerance&&
+    (Math.abs(across-h)<=tolerance||Math.abs(down-v)<=tolerance);
+}
+// Corner snapping uses the actual wall endpoints, not a different invisible
+// coordinate grid. This also aligns new walls along a foundation edge.
+export function snapWallToJunction(state,placement,{radius=.85}={}){
+  if(!state?.snap||!wallLike(placement?.type)||
+      !finite(placement.x)||!finite(placement.z))return placement;
+  const localEnds=wallEndpoints({...placement,x:0,z:0});
+  let best=null,nearest=radius;
+  const consider=(x,z)=>{
+    const distance=Math.hypot(x-placement.x,z-placement.z);
+    if(distance>=nearest)return;
+    const candidate={...placement,x,z};
+    if(!isWithinHavenBuildArea(candidate))return;
+    nearest=distance;best=candidate;
+  };
+  for(const structure of state.structures||[]){
+    if(wallLike(structure.type)){
+      for(const end of wallEndpoints(structure))for(const local of localEnds)
+        consider(end.x-local.x,end.z-local.z);
+    }else if(structure.type==='foundation'){
+      const side=SETTLEMENT_BY_ID.foundation.width/2;
+      if(placement.rotation%2===0){
+        consider(structure.x,structure.z-side);
+        consider(structure.x,structure.z+side);
+      }else{
+        consider(structure.x-side,structure.z);
+        consider(structure.x+side,structure.z);
+      }
+    }
+  }
+  return best||placement;
+}
 export function buildWorldBoxes(placement,{onlySolid=false}={}){
   const plan=SETTLEMENT_BY_ID[placement?.type];
   if(!plan)return [];
@@ -552,9 +606,11 @@ export function validateBuildPlacement(state,placement,staticObstacles=[],player
     Math.hypot(s.x-placement.x,s.z-placement.z)<2.6))
     return {ok:false,reason:'ROOF NEEDS A NEARBY WALL OR DOORFRAME'};
   const solids=buildWorldBoxes(placement,{onlySolid:true});
-  const occupied=[...staticObstacles,...state.structures.flatMap(s=>
-    buildWorldBoxes(s,{onlySolid:true}))];
-  if(solids.some(a=>occupied.some(b=>overlaps(a,b))))
+  const staticCollision=solids.some(a=>staticObstacles.some(b=>overlaps(a,b)));
+  const builtCollision=state.structures.some(s=>
+    !wallJunctionAllowed(placement,s)&&
+    solids.some(a=>buildWorldBoxes(s,{onlySolid:true}).some(b=>overlaps(a,b))));
+  if(staticCollision||builtCollision)
     return {ok:false,reason:'STRUCTURE WOULD OVERLAP AN OBSTACLE'};
   if(player&&solids.some(b=>b.bottom<1.9&&b.top>.3&&
     player.x>b.minX-.4&&player.x<b.maxX+.4&&

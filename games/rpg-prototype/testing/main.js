@@ -10,12 +10,12 @@ import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
 import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEGORIES,
   HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk,
   initialSettlementBuildState,safeSettlementBuildSnapshot,
-  snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
+  snappedBuildPosition,snapWallToJunction,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.82';
+  from '../settlement-building.mjs?v=W20.83';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -1756,6 +1756,7 @@ let settlementBuildType=SETTLEMENT_BLUEPRINTS[0].id;
 let settlementRotation=0,settlementGhost=null,settlementPreview=null;
 let lastScrapPreview=null,lastScrapCheckAt=0;
 const builtSettlementMeshes=new Map();
+const builtSettlementShotBoxRefs=new Set();
 const settlementMaterials={
   wood:mat(0x7b6650,.88),steel:mat(0x525f62,.64),
   trim:mat(0x997b58,.61),cloth:mat(0x718375,.92),
@@ -1894,7 +1895,9 @@ function registerSettlementStructure(structure){
   visual.userData.settlementType=structure.type;
   const shotBoxes=buildWorldBoxes(structure,{onlySolid:true});
   const movementBoxes=shotBoxes.filter(b=>b.bottom<=.4&&b.top>.48);
-  for(const b of shotBoxes)enemySightObstacles.push(b);
+  for(const b of shotBoxes){
+    enemySightObstacles.push(b);builtSettlementShotBoxRefs.add(b);
+  }
   for(const b of movementBoxes){bounds.push(b);enemyMovementObstacles.push(b);}
   builtSettlementMeshes.set(structure.id,{visual,shotBoxes,movementBoxes});
   updateSettlementLights();
@@ -1905,7 +1908,9 @@ function unregisterSettlementStructure(id){
   const remove=(array,object)=>{
     const index=array.indexOf(object);if(index>=0)array.splice(index,1);
   };
-  for(const b of built.shotBoxes)remove(enemySightObstacles,b);
+  for(const b of built.shotBoxes){
+    remove(enemySightObstacles,b);builtSettlementShotBoxRefs.delete(b);
+  }
   for(const b of built.movementBoxes){remove(bounds,b);remove(enemyMovementObstacles,b);}
   built.visual.traverse(object=>{
     if(object.geometry)object.geometry.dispose();
@@ -5170,7 +5175,10 @@ function settlementPlacementBlockers(){
   });
   const residents=settlementResidents.map(({x,z})=>({minX:x-.4,maxX:x+.4,
     minZ:z-.4,maxZ:z+.4,bottom:0,top:1.85}));
-  return [...enemySightObstacles,...parkedFrames,...residents];
+  // Placed structures are validated separately, with legal corner junctions.
+  // Do not double-count their world boxes as unconditionally solid scenery.
+  return [...enemySightObstacles.filter(box=>!builtSettlementShotBoxRefs.has(box)),
+    ...parkedFrames,...residents];
 }
 function settlementCostText(type){
   const stock=storedStructureCount(settlementBuildState,type);
@@ -5302,10 +5310,12 @@ function updateSettlementBuildPreview(){
     camera.position.x+settlementLookDirection.x*groundDistance,
     camera.position.z+settlementLookDirection.z*groundDistance,
     settlementBuildState.snap);
-  const placement={type:settlementBuildType,rotation:settlementRotation,
-    x:projected.x,z:projected.z};
+  const placement=snapWallToJunction(settlementBuildState,
+    {type:settlementBuildType,rotation:settlementRotation,
+      x:projected.x,z:projected.z});
+  const cornerSnapped=placement.x!==projected.x||placement.z!==projected.z;
   settlementPreview=placement;
-  settlementGhost.position.set(projected.x,0,projected.z);
+  settlementGhost.position.set(placement.x,0,placement.z);
   settlementGhost.rotation.y=settlementRotation*Math.PI/2;
   const valid=validateBuildPlacement(settlementBuildState,placement,
     settlementPlacementBlockers(),player);
@@ -5315,28 +5325,32 @@ function updateSettlementBuildPreview(){
   settlementGhostMaterial.color.setHex(placeable?0x83e1b3:0xe78579);
   settlementGhostMaterial.emissive.setHex(placeable?0x285944:0x743229);
   settlementGhostMaterial.opacity=placeable?.35:.22;
-  $('settlementBuildFeedback').textContent=!valid.ok?valid.reason:
+  const placementMessage=!valid.ok?valid.reason:
     missing.length?'NEED '+missing.map(m=>getItem(m.id).name+' '+
       (m.needed-m.owned)).join(' + '):stock?
       'STORED ('+stock+') · LEFT CLICK TO PLACE FREE':
+      cornerSnapped?'CORNER SNAPPED · LEFT CLICK TO BUILD':
       'CLEAR · LEFT CLICK TO BUILD';
+  $('settlementBuildFeedback').textContent=placementMessage;
   if(performance.now()-lastScrapCheckAt>130){
     lastScrapCheckAt=performance.now();
     lastScrapPreview=aimedSettlementTarget();
   }
   const aimed=lastScrapPreview;
+  let targetMessage='';
   if(aimed?.kind==='junk'){
     const site=HAVEN_JUNK_BY_ID[aimed.id];
-    $('settlementBuildFeedback').textContent='X TO SCRAP · '+site.name+' · '+
+    targetMessage='X SCRAP · '+site.name+' · '+
       Object.entries(site.materials).map(([id,n])=>
         '+'+n+' '+getItem(id).name.toUpperCase()).join(' / ');
   }else if(aimed?.kind==='built'){
     const structure=settlementBuildState.structures.find(s=>s.id===aimed.id);
-    if(structure)$('settlementBuildFeedback').textContent=
-      SETTLEMENT_BY_ID[structure.type].name.toUpperCase()+
-      ' · X SCRAP FOR PARTS · F STORE WHOLE OBJECT';
+    if(structure)targetMessage=SETTLEMENT_BY_ID[structure.type].name.toUpperCase()+
+      ' · X SCRAP · F STORE';
   }
-  $('settlementBuildFeedback').classList.toggle('invalid',!placeable&&!aimed);
+  if(targetMessage)$('settlementBuildFeedback').textContent=!placeable?
+    placementMessage+' / '+targetMessage:targetMessage;
+  $('settlementBuildFeedback').classList.toggle('invalid',!placeable);
 }
 function placeSettlementPreview(){
   updateSettlementBuildPreview();
