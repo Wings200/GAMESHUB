@@ -72,6 +72,14 @@
   migrate from existing settlement version 5 without resetting other state.
   Distinct custom in-world item meshes and a dedicated physical workshop
   container are still needed in the later presentation/world pass.
+- W20.98: The character terminal now inspects actual inventory stacks and
+  crafting yields, sorts and searches without mutating the backpack, and
+  displays live SPECIAL, level XP, radiation-reduced health cap, AP, and armor.
+  Journal filters use the actual active/completed campaign states and preserve
+  quest tracking. The existing explored map gains a discovered-places roster
+  with real saved waypoint controls and return navigation to the terminal;
+  unexplored points remain hidden. The world map is still a testing-field
+  map, not a completed original open world.
 - Remaining Phase 1 work: visual QA and polish for targeting presentation,
   multiplayer-authoritative validation when networking is implemented,
   scenario-based visual verification,

@@ -108,6 +108,8 @@ import {RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,inventoryWeight,installWeaponOptic,installedWeaponOptic,countItem,
   INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.97';
+import {filterAndSortInventory,discoveredMapPoints,itemInspectionFacts}
+  from '../inventory-presentation.mjs?v=W20.98';
 import {carryCapacity,encumbranceEffects,formatCarryWeight}
   from '../carry-weight.mjs?v=W20.95';
 import {createConsumableStatus,safeConsumableSnapshot,consumableBonuses,
@@ -157,7 +159,7 @@ try{
   }
 }catch{}
 let specialModifiers=specialBonuses(specialState);
-let specialOpen=false,specialFromField=false;
+let specialOpen=false,specialFromField=false,specialFromInventory=false;
 function saveSpecialState(){
   try{localStorage.setItem('rpg-lab-special-v1',JSON.stringify(specialState));}catch{}
 }
@@ -257,6 +259,12 @@ function openSpecialPanel(){
 function closeSpecialPanel(){
   specialOpen=false;
   $('specialPanel').classList.add('hidden');
+  if(specialFromInventory){
+    specialFromInventory=false;
+    inventoryOpen=true;
+    $('inventoryPanel').classList.remove('hidden');
+    setInventoryPage('status');refreshInventoryUI();return;
+  }
   if(specialFromField){
     specialFromField=false;controls.lock();
   }else $('menu').classList.remove('hidden');
@@ -2153,6 +2161,8 @@ let weaponsCrateOpen=false; // Legacy overlay guard, kept false for menu transit
 let inventoryCategory='all';
 let inventorySelectedSlot=null;
 let inventoryPage='status';
+let inventoryQuery='',inventorySort='recent',inventorySelectedUid=null;
+let inventoryQuestFilter='all';
 const INVENTORY_PAGES=['status','items','quests','map'];
 let backpack=createBackpack();
 let hadSavedBackpack=false;
@@ -2638,14 +2648,86 @@ function lootButton(row,label,callback){
   b.className='loot-action';b.addEventListener('click',callback);row.append(b);
   return b;
 }
+function renderInventoryInspection(){
+  const root=$('inventoryInspection');root.replaceChildren();
+  const label=document.createElement('div');label.className='inventory-pane-label';
+  label.textContent='LIVE ITEM INSPECTION';root.append(label);
+  const materialId=typeof inventorySelectedUid==='string'&&
+    inventorySelectedUid.startsWith('material:')?
+    inventorySelectedUid.slice('material:'.length):null;
+  const actual=backpack.items.find(entry=>entry.uid===inventorySelectedUid);
+  const entry=actual||(materialId?{
+    itemId:materialId,quantity:countItem(backpack,materialId)}:null);
+  if(!entry){
+    const hint=document.createElement('p');
+    hint.textContent='SELECT AN ITEM ABOVE TO INSPECT ITS REAL STATS.';
+    root.append(hint);return;
+  }
+  const item=getItem(entry.itemId);
+  const heading=document.createElement('h4');heading.textContent=item.name.toUpperCase();
+  const rarity=document.createElement('span');rarity.className='inspect-rarity';
+  rarity.textContent=RARITIES[item.rarity].label+' · '+inventorySection(item).toUpperCase();
+  rarity.style.color=RARITIES[item.rarity].color;
+  root.append(heading,rarity);
+  const facts=itemInspectionFacts(item,entry);
+  if(item.category==='weapon'){
+    const spec=effectiveWeaponSpec(getWeaponSpec(item.key),backpack);
+    if(Number.isFinite(spec.damage))facts.push(['DAMAGE',spec.damage.toFixed(1)]);
+    if(Number.isFinite(spec.magazineSize))facts.push(['MAG SIZE',String(spec.magazineSize)]);
+    if(Number.isFinite(spec.reloadSeconds))facts.push(['RELOAD',spec.reloadSeconds.toFixed(2)+' SEC']);
+  }
+  if(item.category==='armor'){
+    const piece=getArmorPiece(item.slot,item.key);
+    facts.push(['BALLISTIC POINTS',String(piece.points)]);
+  }
+  if(item.category==='junk')facts.push(['SCRAP YIELD',junkYieldText(item.id)]);
+  if(item.category==='power-plate'&&Number.isFinite(item.maxDurability))
+    facts.push(['MAX DURABILITY',item.maxDurability+' DUR']);
+  const equipped=item.category==='weapon'?backpack.equipment.weapon===item.key:
+    item.category==='armor'?backpack.equipment.armor[item.slot]===item.key:
+    item.category==='clothing'?backpack.equipment.clothing?.[item.slot]===item.key:false;
+  if(['weapon','armor','clothing'].includes(item.category))
+    facts.push(['EQUIPPED',equipped?'YES':'NO']);
+  const grid=document.createElement('div');grid.className='inventory-inspection-grid';
+  for(const [key,value] of facts){
+    const metric=document.createElement('div');
+    const title=document.createElement('small');title.textContent=key;
+    const amount=document.createElement('strong');amount.textContent=value;
+    metric.append(title,amount);grid.append(metric);
+  }
+  root.append(grid);
+}
 function refreshInventoryUI(){
   const load=currentCarry();
   $('inventoryCapacity').textContent=carryReadout(load)+
     (load.overloaded?' · OVERENCUMBERED':'');
   $('inventoryCapacity').classList.toggle('overencumbered',load.overloaded);
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
+  $('inventoryLevel').textContent='LVL '+specialState.level+' · '+specialState.xp+' XP';
+  const expNeeded=xpForNextLevel(specialState.level);
+  $('inventoryXPLabel').textContent=specialState.level>=50?'MAX LEVEL':
+    specialState.xp+' / '+expNeeded+' XP TO NEXT LEVEL';
+  $('inventoryXPFill').style.width=(specialState.level>=50?100:
+    100*specialState.xp/expNeeded).toFixed(1)+'%';
+  $('inventoryStatPoints').textContent=specialState.statPoints+' ATTRIBUTE POINTS · '+
+    specialState.perkPoints+' PERK POINTS';
+  const statGrid=$('inventorySpecialGrid');statGrid.replaceChildren();
+  for(const attribute of SPECIAL_ATTRIBUTES){
+    const card=document.createElement('div');card.className='inventory-stat';
+    card.title=attribute.description;
+    const initial=document.createElement('b');initial.textContent=attribute.letter;
+    const value=document.createElement('strong');
+    value.textContent=specialState.attributes[attribute.id];
+    const name=document.createElement('span');name.textContent=attribute.name;
+    card.append(initial,value,name);statGrid.append(card);
+  }
   $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
+  const hpBar=radiationHealthBar(radiationState,playerHealth,PLAYER_MAX_HEALTH);
+  $('inventoryProfileRads').textContent=Math.round(radiationState.rads)+
+    ' RADS · '+hpBar.limit+' / '+hpBar.base+' HP CAP';
+  $('inventoryProfileAP').textContent=Math.round(100*Math.max(0,player.stamina)/
+    maximumStamina(specialState.attributes.endurance))+'% AP';
   $('inventoryPositiveEffects').textContent=
     activeConsumableLabels(consumableStatus).join(' · ')||'NONE ACTIVE';
   const negatives=[];
@@ -2735,17 +2817,22 @@ function refreshInventoryUI(){
   $('inventorySectionTitle').textContent=chosen.label.toUpperCase()+
     (inventoryCategory==='armor'&&inventorySelectedSlot?
       ' / '+ARMOR_SLOT_LABELS[inventorySelectedSlot].toUpperCase():'');
-  const visibleEntries=backpack.items.filter(entry=>
-    (inventoryCategory==='all'||inventorySection(getItem(entry.itemId))===inventoryCategory)&&
-    !(inventoryCategory==='armor'&&inventorySelectedSlot&&
-      getItem(entry.itemId).slot!==inventorySelectedSlot));
-  const listedCount=visibleEntries.length+
-    ((inventoryCategory==='materials'||inventoryCategory==='all')?ownedComponents.length:0);
-  $('inventorySectionCount').textContent=listedCount+
-    (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES');
-  const area=$('inventoryItems');area.replaceChildren();
+  const visibleEntries=filterAndSortInventory(backpack.items,getItem,{
+    category:inventoryCategory,slot:inventorySelectedSlot,
+    query:inventoryQuery,sort:inventorySort,section:inventorySection});
   const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
-    ownedComponents:[];
+    ownedComponents.filter(item=>!inventoryQuery||
+      item.name.toLowerCase().includes(inventoryQuery.toLowerCase())):[];
+  const listedCount=visibleEntries.length+visibleComponents.length;
+  $('inventorySectionCount').textContent=listedCount+
+    (inventoryCategory==='materials'?' COMPONENT TYPES':' ENTRIES')+
+    (inventoryQuery?' · FILTERED':'');
+  const area=$('inventoryItems');area.replaceChildren();
+  if(inventorySelectedUid!==null&&
+    !visibleEntries.some(entry=>entry.uid===inventorySelectedUid)&&
+    !visibleComponents.some(item=>inventorySelectedUid==='material:'+item.id))
+    inventorySelectedUid=null;
+  renderInventoryInspection();
   if(!visibleEntries.length&&!visibleComponents.length&&
      !(inventoryCategory==='junk'&&playerAtHaven()&&workshopJunkTotal(settlementBuildState))){
     const empty=document.createElement('p');empty.className='inventory-empty';
@@ -2753,6 +2840,7 @@ function refreshInventoryUI(){
       'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
       inventoryCategory==='weapon'?'NO WEAPONS OWNED · FIND ONE OR USE THE DEVELOPER PANEL.':
       inventoryCategory==='armor'&&inventorySelectedSlot?'NO ARMOR FOR THIS BODY PART · SHOW ALL OR FIND A PIECE.':
+      inventoryQuery?'NO MATCHES · CHANGE YOUR SEARCH OR CATEGORY.':
       'NOTHING IN THIS SECTION YET · SEARCH LOOT WITH E.';
     area.append(empty);
   }
@@ -2771,6 +2859,21 @@ function refreshInventoryUI(){
   const copyNumbers=new Map();
   for(const entry of visibleEntries){
     const item=getItem(entry.itemId),row=inventoryLine(item);
+    row.tabIndex=0;
+    row.setAttribute('role','button');
+    row.setAttribute('aria-label','Inspect '+item.name);
+    row.classList.toggle('inspected',inventorySelectedUid===entry.uid);
+    row.addEventListener('click',event=>{
+      if(event.target.closest('button,input,label,select'))return;
+      inventorySelectedUid=entry.uid;
+      area.querySelectorAll('.loot-entry.inspected').forEach(el=>el.classList.remove('inspected'));
+      row.classList.add('inspected');renderInventoryInspection();
+    });
+    row.addEventListener('keydown',event=>{
+      if((event.key==='Enter'||event.key===' ')&&event.target===row){
+        event.preventDefault();row.click();
+      }
+    });
     const count=document.createElement('span');
     const duplicateCount=(item.category==='weapon'||item.category==='armor'||item.category==='clothing')?
       countItem(backpack,item.id):0;
@@ -2902,6 +3005,20 @@ function refreshInventoryUI(){
   for(const component of visibleComponents){
     const quantity=countItem(backpack,component.id);
     const row=inventoryLine(getItem(component.id));
+    row.tabIndex=0;row.setAttribute('role','button');
+    row.setAttribute('aria-label','Inspect '+component.name);
+    row.classList.toggle('inspected',inventorySelectedUid==='material:'+component.id);
+    row.addEventListener('click',event=>{
+      if(event.target.closest('button,input,label,select'))return;
+      inventorySelectedUid='material:'+component.id;
+      area.querySelectorAll('.loot-entry.inspected').forEach(el=>el.classList.remove('inspected'));
+      row.classList.add('inspected');renderInventoryInspection();
+    });
+    row.addEventListener('keydown',event=>{
+      if((event.key==='Enter'||event.key===' ')&&event.target===row){
+        event.preventDefault();row.click();
+      }
+    });
     const amount=document.createElement('span');
     amount.className='loot-quantity';amount.textContent='×'+quantity+' · POUCH';
     row.append(amount);
@@ -3011,6 +3128,26 @@ for(const button of document.querySelectorAll('[data-inventory-page]')){
 }
 $('inventoryPagePrev').addEventListener('click',()=>shiftInventoryPage(-1));
 $('inventoryPageNext').addEventListener('click',()=>shiftInventoryPage(1));
+$('inventorySearch').addEventListener('input',event=>{
+  inventoryQuery=event.target.value.trim();refreshInventoryUI();
+});
+$('inventorySort').addEventListener('change',event=>{
+  inventorySort=event.target.value;refreshInventoryUI();
+});
+$('inventorySpecialOpen').addEventListener('click',()=>{
+  if(!inventoryOpen)return;
+  inventoryOpen=false;specialFromInventory=true;
+  $('inventoryPanel').classList.add('hidden');
+  specialOpen=true;specialFromField=false;
+  $('specialPanel').classList.remove('hidden');
+  refreshSpecialUI();
+});
+for(const button of document.querySelectorAll('[data-quest-filter]')){
+  button.addEventListener('click',()=>{
+    inventoryQuestFilter=button.dataset.questFilter;
+    refreshInventoryQuests();
+  });
+}
 function refreshLootUI(){
   const bag=lootBags.get(selectedLootId),area=$('lootItems');
   area.replaceChildren();
@@ -6041,6 +6178,46 @@ const fieldMap=createFieldMap({
   canvas:$('fieldMapCanvas'),
   points:mapPoints
 });
+let displayedMapPlaces='';
+function refreshDiscoveredPlaces(summary=fieldMap.summary()){
+  if(!mapOpen)return;
+  const places=discoveredMapPoints(mapPoints,(x,z)=>fieldMap.isDiscovered(x,z),
+    player.x,player.z);
+  $('fieldMapPlaceCount').textContent=places.length+' KNOWN PLACE'+
+    (places.length===1?'':'S');
+  const active=summary.waypoint;
+  const signature=places.map(place=>place.id+':'+place.distance).join('|')+';'+
+    (active?active.x+','+active.z:'none');
+  if(displayedMapPlaces===signature)return;
+  displayedMapPlaces=signature;
+  const list=$('fieldMapDiscoveredList');list.replaceChildren();
+  if(!places.length){
+    const message=document.createElement('p');message.className='map-no-places';
+    message.textContent='NO KNOWN DESTINATIONS IN RANGE. EXPLORE THE WORLD TO REVEAL CONTACTS AND LOCATIONS.';
+    list.append(message);return;
+  }
+  for(const place of places){
+    const row=document.createElement('div');row.className='map-place';
+    const info=document.createElement('div');
+    const title=document.createElement('b');title.textContent=place.label.toUpperCase();
+    const meta=document.createElement('small');meta.textContent=place.distance+' M · '+
+      (place.type==='person'?'CONTACT':place.type==='station'?'TEST STATION':'LOCATION');
+    info.append(title,meta);
+    const track=document.createElement('button');track.type='button';
+    const chosen=Boolean(active&&Math.abs(active.x-place.x)<.1&&
+      Math.abs(active.z-place.z)<.1);
+    track.textContent=chosen?'TRACKING':'TRACK';
+    track.setAttribute('aria-pressed',String(chosen));
+    track.setAttribute('aria-label','Set waypoint to '+place.label);
+    track.addEventListener('click',()=>{
+      if(chosen)fieldMap.clearWaypoint();
+      else fieldMap.setWaypoint(place.x,place.z);
+      displayedMapPlaces='';
+      refreshDiscoveredPlaces();
+    });
+    row.append(info,track);list.append(row);
+  }
+}
 // Testing stations, workbenches, terminals and prop coordinates are not real
 // discovered world locations. Until actual discoverable world places exist,
 // no static location icon may appear on the in-game compass.
@@ -6123,6 +6300,7 @@ fieldMap.onUpdate=summary=>{
   $('fieldMapWaypoint').textContent=summary.waypoint?
     summary.distance+' m TO WAYPOINT':'NO WAYPOINT SET';
   $('fieldMapZoom').textContent=Math.round(summary.zoom*100)+'%';
+  refreshDiscoveredPlaces(summary);
   // Map interactions can happen while pointer lock is released. Refresh both
   // navigation HUDs immediately instead of waiting for movement to resume.
   const heading=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
@@ -6150,11 +6328,13 @@ fieldMap.observe(player.x,player.z,camera.rotation.y);
 function showFieldMap(){
   mapOpen=true;
   $('fieldMapPanel').classList.remove('hidden');
+  $('fieldMapReturnNav').classList.toggle('hidden',!mapFromInventory);
   $('menu').classList.add('hidden');
   syncLastPowerArmorMarker();
   $('fieldMapClose').textContent=mapFromInventory?'BACK TO INVENTORY · M / ESC':
     'CLOSE · M / ESC';
   fieldMap.centerOnPlayer();
+  displayedMapPlaces='';refreshDiscoveredPlaces();
 }
 function openFieldMap(){
   if(mapOpen||powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||
@@ -6196,6 +6376,13 @@ $('fieldMapZoomIn').addEventListener('click',()=>fieldMap.setZoom(fieldMap.zoom*
 $('fieldMapZoomOut').addEventListener('click',()=>fieldMap.setZoom(fieldMap.zoom/1.25));
 $('fieldMapCenter').addEventListener('click',()=>fieldMap.centerOnPlayer());
 $('fieldMapClear').addEventListener('click',()=>fieldMap.clearWaypoint());
+for(const button of document.querySelectorAll('[data-map-return]')){
+  button.addEventListener('click',()=>{
+    if(!mapFromInventory)return;
+    const page=button.dataset.mapReturn;
+    closeFieldMap();setInventoryPage(page);
+  });
+}
 // Read-only smoke instrumentation. Active ONLY with ?smoke=1 so CI can
 // check actual Three.js gameplay rather than matching code strings.
 if(new URLSearchParams(location.search).get('smoke')==='1'){
@@ -6702,6 +6889,11 @@ function refreshInventoryQuests(journal=campaignJournal(campaignState)){
   const area=$('inventoryQuestList');area.replaceChildren();
   const active=journal.filter(quest=>quest.status==='active');
   const completed=journal.filter(quest=>quest.status==='completed');
+  $('inventoryQuestAllCount').textContent=active.length+completed.length;
+  $('inventoryQuestActiveCount').textContent=active.length;
+  $('inventoryQuestCompletedCount').textContent=completed.length;
+  for(const button of document.querySelectorAll('[data-quest-filter]'))
+    button.setAttribute('aria-pressed',String(button.dataset.questFilter===inventoryQuestFilter));
   if(!active.length&&!completed.length){
     const empty=document.createElement('p');
     empty.className='inventory-empty';
@@ -6712,6 +6904,7 @@ function refreshInventoryQuests(journal=campaignJournal(campaignState)){
     ['active',active,'ACTIVE QUESTS'],
     ['completed',completed,'COMPLETED · INACTIVE HISTORY']
   ]){
+    if(inventoryQuestFilter!=='all'&&inventoryQuestFilter!==status)continue;
     const group=document.createElement('section');
     group.className='inventory-quest-group '+status;
     const heading=document.createElement('h4');
@@ -6719,7 +6912,9 @@ function refreshInventoryQuests(journal=campaignJournal(campaignState)){
     const rows=document.createElement('div');rows.className='inventory-quest-rows';
     if(!quests.length){
       const none=document.createElement('p');none.className='inventory-quest-none';
-      none.textContent='NO ACTIVE QUESTS · ACCEPT A NEW MISSION TO TRACK AN OBJECTIVE.';
+      none.textContent=status==='active'?
+        'NO ACTIVE QUESTS · ACCEPT A NEW MISSION TO TRACK AN OBJECTIVE.':
+        'NO COMPLETED QUESTS YET · FINISHED MISSIONS APPEAR HERE.';
       rows.append(none);
     }
     for(const quest of quests){
@@ -7418,6 +7613,21 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(mapOpen)return;
+  if(inventoryOpen){
+    // Inventory search, sorting and drop-quantity inputs take priority over
+    // global I/Q/L/M and movement hotkeys. Escape still closes the terminal.
+    if(e.code==='Escape'){e.preventDefault();closeLootOverlay();return;}
+    if(e.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+    if((e.code==='BracketLeft'||e.code==='BracketRight')&&!e.repeat){
+      e.preventDefault();shiftInventoryPage(e.code==='BracketRight'?1:-1);return;
+    }
+    if(e.code==='KeyQ'&&!e.repeat){
+      e.preventDefault();setInventoryPage('quests');return;
+    }
+    if(e.code==='KeyL'&&!e.repeat){
+      e.preventDefault();$('inventorySpecialOpen').click();return;
+    }
+  }
   if(e.code==='Escape'&&dialogueOpen){closeCampaignDialogue();return;}
   if(e.code==='Escape'&&questPanelOpen){closeCampaignJournal();return;}
   if(e.code==='Escape'&&specialOpen){closeSpecialPanel();return;}
