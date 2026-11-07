@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.98 · Character Terminal Overhaul | GAMESHUB RPG</title>
+<title>W20.99 · Vendor Trading Overhaul | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1562,6 +1562,54 @@ body.hud-modern #powerArmorHud{display:none!important}
 @media(max-width:850px){#inventoryPanel .inventory-special-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:540px){#inventoryPanel .inventory-special-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   #inventoryPanel .inventory-inspection-grid{grid-template-columns:1fr}}
+/* W20.99: coherent vendor terminal, item comparisons and real merchant funds. */
+#vendorPanel{color:#e4efda;background:radial-gradient(ellipse at 50% 0%,#233b30,#061412 75%)}
+#vendorPanel .vendor-shell{border:1px solid #75947a;background:#0b1e1b;
+  box-shadow:0 24px 95px #000b,inset 0 0 0 4px #193329}
+#vendorPanel .vendor-header{background:linear-gradient(115deg,#183a2d,#0d2322)}
+#vendorPanel .vendor-eyebrow{color:#bdedac}
+#vendorPanel .vendor-wallet-chip{border-color:#527e5a;background:#112a22}
+#vendorPanel #vendorMerchantCaps{color:#bcf2aa}
+#vendorPanel #vendorMerchantCaps.depleted{color:#f2ad84}
+#vendorPanel .vendor-intro{border-bottom:1px solid #568164;color:#badaab;background:#123024}
+#vendorPanel .vendor-player-pane{background:#0e2424}
+#vendorPanel .vendor-merchant-pane{background:#102a21}
+#vendorPanel .vendor-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(138px,175px);
+  gap:8px;align-items:stretch;padding-top:13px}
+#vendorPanel .vendor-search{margin:0;height:39px;width:100%}
+#vendorPanel .vendor-category{min-width:0;width:100%;height:39px;background:#0a1d17;
+  border:1px solid #587c60;color:#cbecb8;font:800 10px ui-monospace,monospace;
+  letter-spacing:.04em;padding:8px;cursor:pointer}
+#vendorPanel .vendor-category:focus-visible,#vendorPanel .vendor-item:focus-visible{
+  outline:2px solid #b5f59e;outline-offset:2px}
+#vendorPanel .vendor-item{background:#142e26;border-color:#446f57;
+  cursor:pointer;transition:background .12s,border-color .12s}
+#vendorPanel .vendor-item:hover{background:#224735}
+#vendorPanel .vendor-item.selected{border-color:#b5ed9c;background:#28523a}
+#vendorPanel .vendor-inspector{padding:17px clamp(15px,2.4vw,33px);
+  background:linear-gradient(100deg,#1b392b,#122a24);border-top:1px solid #5b8a63;
+  border-bottom:1px solid #5b8a63}
+#vendorPanel .vendor-inspector-head{display:flex;align-items:end;justify-content:space-between;
+  gap:10px;flex-wrap:wrap}
+#vendorPanel .vendor-inspector-head small{font:800 9px ui-monospace,monospace;
+  letter-spacing:.16em;color:#a6cb9b}
+#vendorPanel .vendor-inspector-head h3{font-size:18px;color:#e5f3d2;margin:6px 0}
+#vendorPanel .vendor-inspector-head>strong{font:800 10px ui-monospace,monospace;
+  letter-spacing:.12em;color:#ecd59f}
+#vendorPanel .vendor-inspector-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;margin-top:10px}
+#vendorPanel .vendor-inspector-facts p{grid-column:1/-1;color:#a8c8ae;font-size:11px}
+#vendorPanel .vendor-inspector-fact{border:1px solid #436a4f;background:#11291f;
+  padding:9px 11px;display:flex;flex-direction:column;gap:5px;min-width:0}
+#vendorPanel .vendor-inspector-fact small{font:800 9px ui-monospace,monospace;color:#a0b9a0}
+#vendorPanel .vendor-inspector-fact strong{font:800 11px ui-monospace,monospace;
+  color:#e4d29c;overflow-wrap:anywhere}
+#vendorPanel .vendor-cart{background:#0d211b;border-top:2px solid #b5ed9c}
+#vendorPanel #vendorCartConfirm{background:#39653b;border-color:#b5ed9c;color:#ecffda}
+#vendorPanel #vendorCartConfirm:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:930px){#vendorPanel .vendor-filters{grid-template-columns:1fr}
+  #vendorPanel .vendor-inspector-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){#vendorPanel .vendor-inspector-facts{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="hud-modern">
@@ -1847,7 +1895,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.98</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.99</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -1865,7 +1913,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.98</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.99</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -2061,12 +2109,13 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="vendor-shell">
     <header class="vendor-header">
       <div>
-        <div class="vendor-eyebrow">FRONTIER / TRADING ROW / W20.72.1</div>
+        <div class="vendor-eyebrow">FRONTIER / TRADING TERMINAL / W20.99</div>
         <h2 id="vendorName">FIELD MERCHANT</h2>
         <div class="vendor-desc" id="vendorSpecialty">SPECIALTY SUPPLIES</div>
       </div>
       <div class="vendor-wallet">
         <div class="vendor-wallet-chip"><small>YOUR CAPS</small><strong id="vendorCaps">0 CAPS</strong></div>
+        <div class="vendor-wallet-chip"><small>MERCHANT CAPS</small><strong id="vendorMerchantCaps">0 CAPS</strong></div>
         <div class="vendor-wallet-chip"><small>CARRY WEIGHT</small><b id="vendorCapacity">0.0 / 230 LB</b></div>
         <button id="vendorClose" type="button">CLOSE / RESUME · ESC</button>
       </div>
@@ -2075,17 +2124,35 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="vendor-body">
       <section class="vendor-list-wrap vendor-player-pane">
         <div class="vendor-pane-title"><h3>SELL / YOUR INVENTORY</h3><small id="vendorPlayerCount">0 SELLABLE ITEMS</small></div>
-        <input id="vendorPlayerSearch" class="vendor-search" type="search" autocomplete="off"
-          placeholder="Search items you own..." aria-label="Search player items to sell"/>
+        <div class="vendor-filters">
+          <input id="vendorPlayerSearch" class="vendor-search" type="search" autocomplete="off"
+            placeholder="Search items you own..." aria-label="Search player items to sell"/>
+          <select id="vendorPlayerCategory" class="vendor-category" aria-label="Filter items to sell by category">
+            <option value="all">ALL CATEGORIES</option><option value="weapon">WEAPONS</option><option value="ammo">AMMO</option>
+            <option value="armor">ARMOR</option><option value="power">POWER ARMOR</option><option value="clothing">CLOTHING</option>
+            <option value="aid">AID</option><option value="materials">MATERIALS</option><option value="junk">JUNK</option>
+          </select>
+        </div>
         <div id="vendorPlayerItems" class="vendor-items" aria-label="Player inventory for selling"></div>
       </section>
       <section class="vendor-list-wrap vendor-merchant-pane">
         <div class="vendor-pane-title"><h3>BUY / MERCHANT STOCK</h3><small id="vendorStockCount">0 OFFERS</small></div>
-        <input id="vendorSearch" class="vendor-search" type="search" autocomplete="off"
-          placeholder="Search merchant stock..." aria-label="Search merchant items to buy"/>
+        <div class="vendor-filters">
+          <input id="vendorSearch" class="vendor-search" type="search" autocomplete="off"
+            placeholder="Search merchant stock..." aria-label="Search merchant items to buy"/>
+          <select id="vendorStockCategory" class="vendor-category" aria-label="Filter merchant stock by category">
+            <option value="all">ALL CATEGORIES</option><option value="weapon">WEAPONS</option><option value="ammo">AMMO</option>
+            <option value="armor">ARMOR</option><option value="power">POWER ARMOR</option><option value="clothing">CLOTHING</option>
+            <option value="aid">AID</option><option value="materials">MATERIALS</option><option value="junk">JUNK</option>
+          </select>
+        </div>
         <div id="vendorItems" class="vendor-items" aria-label="Available merchant goods"></div>
       </section>
     </div>
+    <section class="vendor-inspector" aria-label="Inspect selected trade item" aria-live="polite">
+      <div class="vendor-inspector-head"><div><small>ITEM DATA / LIVE COMPARISON</small><h3 id="vendorInspectName">SELECT AN ITEM TO INSPECT</h3></div><strong id="vendorInspectRarity">—</strong></div>
+      <div id="vendorInspectFacts" class="vendor-inspector-facts"><p>Click a BUY or SELL item to view its stats compared with your equipped gear.</p></div>
+    </section>
     <section class="vendor-cart" aria-label="Review your barter offer">
       <div class="vendor-cart-heading"><h3>REVIEW YOUR TRADE</h3><small id="vendorCartCount">0 LINES</small></div>
       <div class="vendor-cart-grid">
@@ -2326,7 +2393,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.98"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.99"></script>
 </body>
 </html>
 

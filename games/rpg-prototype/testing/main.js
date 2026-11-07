@@ -3,7 +3,10 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.97';
+  createVendorWallets,safeVendorWalletSnapshot,vendorWalletBalance,
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.99';
+import {matchesVendorFilter,vendorComparisonFacts}
+  from '../vendor-presentation.mjs?v=W20.99';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -3302,14 +3305,24 @@ $('lootTakeAll').addEventListener('click',()=>{
 // W20.56: Real test-field vendor transactions using the saved campaign wallet.
 let vendorOpen=false,vendorFromField=false,activeVendorId=null;
 const vendorCartBuys=new Map(),vendorCartSells=new Map();
+let vendorSelectedItem=null;
 let vendorStock=createVendorStock();
 try{
   vendorStock=safeVendorStockSnapshot(JSON.parse(
     localStorage.getItem('rpg-lab-vendor-stock-v1')||'null'));
 }catch{ /* Invalid saved stock falls back to an initial finite inventory. */ }
+let vendorWallets=createVendorWallets();
+try{
+  vendorWallets=safeVendorWalletSnapshot(JSON.parse(
+    localStorage.getItem('rpg-lab-vendor-wallets-v1')||'null'));
+}catch{ /* Old saves safely receive initial merchant caps. */ }
 function saveVendorStock(){
   try{localStorage.setItem('rpg-lab-vendor-stock-v1',JSON.stringify(vendorStock));}
   catch{ /* Trading stays available when storage is blocked. */ }
+}
+function saveVendorWallets(){
+  try{localStorage.setItem('rpg-lab-vendor-wallets-v1',JSON.stringify(vendorWallets));}
+  catch{ /* Trading still functions without durable storage. */ }
 }
 function nearestVendor(){
   let nearest=null,distance=3.65;
@@ -3360,6 +3373,8 @@ function vendorBarterError(reason){
     'invalid-quantity':'INVALID QUANTITY IN THE TRADE LIST',
     'not-owned':'AN ITEM IN YOUR SELL LIST IS NO LONGER OWNED',
     'wallet-full':'WALLET LIMIT REACHED',
+    'vendor-caps':'MERCHANT DOES NOT HAVE ENOUGH CAPS · BUY SOMETHING OR SELL LESS',
+    'vendor-wallet-full':'MERCHANT CANNOT HOLD MORE CAPS',
     'wrong-merchant':'THIS MERCHANT CANNOT ACCEPT AN OFFER',
     'reputation':'FACTION REPUTATION TOO LOW FOR THIS TRADE',
     'not-stocked':'THIS ITEM IS NOT IN THE MERCHANT STOCK'
@@ -3401,23 +3416,68 @@ function refreshVendorCart(){
   $('vendorCartNet').textContent=net>0?'YOU PAY '+net+' CAPS':
     net<0?'YOU RECEIVE '+(-net)+' CAPS':'EVEN TRADE · 0 CAPS';
   const preview=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,offer,campaignState.reputation,specialModifiers);
+    activeVendorId,vendorStock,offer,campaignState.reputation,specialModifiers,vendorWallets);
   const projectedWeight=preview.ok?inventoryWeight(preview.pack):0;
   const capacity=currentCarry().capacity;
   $('vendorCartBalance').textContent=preview.ok?
     'WALLET AFTER TRADE · '+preview.caps+' CAPS · LOAD '+
       projectedWeight.toFixed(1)+' / '+capacity+' LB'+
-      (projectedWeight>capacity?' · OVERENCUMBERED':''):
+      (projectedWeight>capacity?' · OVERENCUMBERED':'')+
+      ' · MERCHANT '+preview.wallets[activeVendorId]+' CAPS':
     'CURRENT WALLET · '+campaignState.caps+' CAPS';
   $('vendorCartStatus').textContent=preview.ok?
     'READY · '+count+' TRADE LINES · CONFIRM TO EXCHANGE ITEMS AND CAPS':
     vendorBarterError(preview.reason);
   $('vendorCartConfirm').disabled=!preview.ok;
 }
+function renderVendorInspection(){
+  const facts=$('vendorInspectFacts');facts.replaceChildren();
+  if(!vendorSelectedItem){
+    $('vendorInspectName').textContent='SELECT AN ITEM TO INSPECT';
+    $('vendorInspectRarity').textContent='—';
+    const hint=document.createElement('p');
+    hint.textContent='SELECT AN ITEM IN EITHER LIST TO COMPARE REAL EQUIPMENT STATS.';
+    facts.append(hint);return;
+  }
+  const {itemId,kind}=vendorSelectedItem;
+  const item=getItem(itemId);
+  $('vendorInspectName').textContent=item.name.toUpperCase();
+  $('vendorInspectRarity').textContent=kind+' · '+RARITIES[item.rarity].label;
+  $('vendorInspectRarity').style.color=RARITIES[item.rarity].color;
+  const stats=[['PRICE / UNIT',
+    (kind==='BUY'?vendorBuyPrice(itemId,1,specialModifiers):
+      vendorSellPrice(itemId,1,specialModifiers))+' CAPS'],
+    [kind==='BUY'?'MERCHANT STOCK':'YOU OWN',
+      String(kind==='BUY'?vendorStockRemaining(vendorStock,activeVendorId,itemId):
+        countItem(backpack,itemId))],
+    ...vendorComparisonFacts(item,backpack)];
+  for(const [label,value] of stats){
+    const card=document.createElement('div');card.className='vendor-inspector-fact';
+    const small=document.createElement('small');small.textContent=label;
+    const strong=document.createElement('strong');strong.textContent=value;
+    card.append(small,strong);facts.append(card);
+  }
+}
 function vendorTradeRow(list,{itemId,kind,maxQuantity,initialQuantity=1,
   subtext='',blocked='',priceFor,onTrade}){
   const item=getItem(itemId),entry=document.createElement('div');
   entry.className='vendor-item';
+  const selected=vendorSelectedItem?.itemId===itemId&&vendorSelectedItem.kind===kind;
+  entry.classList.toggle('selected',selected);
+  entry.tabIndex=0;entry.setAttribute('role','button');
+  entry.setAttribute('aria-label','Inspect '+item.name+' to '+kind.toLowerCase());
+  entry.addEventListener('click',event=>{
+    if(event.target.closest('button,input,select,label'))return;
+    vendorSelectedItem={itemId,kind};
+    $('vendorPanel').querySelectorAll('.vendor-item.selected').forEach(row=>
+      row.classList.remove('selected'));
+    entry.classList.add('selected');renderVendorInspection();
+  });
+  entry.addEventListener('keydown',event=>{
+    if((event.key==='Enter'||event.key===' ')&&event.target===entry){
+      event.preventDefault();entry.click();
+    }
+  });
   entry.style.borderLeftColor=RARITIES[item.rarity].color;
   const details=document.createElement('div');details.className='vendor-item-details';
   const name=document.createElement('strong');name.textContent=item.name;
@@ -3463,9 +3523,14 @@ function refreshVendorUI(){
   if(!vendor)return;
   const merchantSearch=$('vendorSearch').value.trim().toLowerCase();
   const playerSearch=$('vendorPlayerSearch').value.trim().toLowerCase();
+  const merchantCategory=$('vendorStockCategory').value;
+  const playerCategory=$('vendorPlayerCategory').value;
   $('vendorName').textContent=vendor.name+' · '+vendor.title;
   $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
   $('vendorCaps').textContent=campaignState.caps+' CAPS';
+  const merchantCaps=vendorWalletBalance(vendorWallets,vendor.id);
+  $('vendorMerchantCaps').textContent=merchantCaps+' CAPS';
+  $('vendorMerchantCaps').classList.toggle('depleted',merchantCaps===0);
   const load=currentCarry();
   $('vendorCapacity').textContent=carryReadout(load)+
     (load.overloaded?' · OVERENCUMBERED':'');
@@ -3474,8 +3539,7 @@ function refreshVendorUI(){
   merchantList.replaceChildren();playerList.replaceChildren();
   let merchantCount=0,playerCount=0;
   for(const offer of vendor.offers){
-    if(merchantSearch&&!getItem(offer.itemId).name.toLowerCase().includes(merchantSearch))
-      continue;
+    if(!matchesVendorFilter(getItem(offer.itemId),merchantCategory,merchantSearch))continue;
     merchantCount++;
     const remaining=vendorStockRemaining(vendorStock,vendor.id,offer.itemId);
     const access=vendorReputationAccess(vendor.id,campaignState.reputation,offer.itemId);
@@ -3493,7 +3557,7 @@ function refreshVendorUI(){
     }});
   }
   const sellable=backpack.items.filter(e=>vendorAccepts(vendor.id,e.itemId)&&
-    (!playerSearch||getItem(e.itemId).name.toLowerCase().includes(playerSearch)));
+    matchesVendorFilter(getItem(e.itemId),playerCategory,playerSearch));
   for(const entry of sellable){
     playerCount++;
     const equipped=isEquippedItem(backpack,entry);
@@ -3511,7 +3575,7 @@ function refreshVendorUI(){
   }
   for(const material of CRAFTING_COMPONENTS){
     if(!vendorAccepts(vendor.id,material.id)||countItem(backpack,material.id)<1||
-       (playerSearch&&!material.name.toLowerCase().includes(playerSearch)))continue;
+       !matchesVendorFilter(getItem(material.id),playerCategory,playerSearch))continue;
     playerCount++;
     const quantity=countItem(backpack,material.id);
     const queued=vendorCartSells.get('material:'+material.id)?.quantity||0;
@@ -3530,7 +3594,7 @@ function refreshVendorUI(){
     const itemId='ammo:'+spec.id;
     if(!vendorAccepts(vendor.id,itemId))continue;
     const quantity=countItem(backpack,itemId);
-    if(!quantity||(playerSearch&&!getItem(itemId).name.toLowerCase().includes(playerSearch)))
+    if(!quantity||!matchesVendorFilter(getItem(itemId),playerCategory,playerSearch))
       continue;
     playerCount++;
     const queued=vendorCartSells.get('ammo:'+itemId)?.quantity||0;
@@ -3555,20 +3619,22 @@ function refreshVendorUI(){
     empty.textContent='NO MATCHING ITEMS THIS MERCHANT BUYS · CHECK ANOTHER MERCHANT.';
     playerList.append(empty);
   }
+  renderVendorInspection();
   refreshVendorCart();
 }
 function confirmVendorBarter(){
   if(!vendorOpen)return;
   saveBackpack();
   const result=executeVendorBarter(backpack,campaignState.caps,
-    activeVendorId,vendorStock,vendorBarterOffer(),campaignState.reputation,specialModifiers);
+    activeVendorId,vendorStock,vendorBarterOffer(),campaignState.reputation,specialModifiers,vendorWallets);
   if(!result.ok){
     showVendorFeedback(vendorBarterError(result.reason));
     refreshVendorCart();
     return;
   }
   backpack=result.pack;campaignState.caps=result.caps;
-  vendorStock=result.stock;saveVendorStock();
+  vendorStock=result.stock;vendorWallets=result.wallets;
+  saveVendorStock();saveVendorWallets();
   syncAmmoToWeapons();saveBackpack();saveCampaign();
   vendorCartBuys.clear();vendorCartSells.clear();
   refreshInventoryUI();refreshWeaponHUD();refreshCampaignUI();
@@ -3592,6 +3658,9 @@ function openVendor(vendor){
   vendorCartBuys.clear();vendorCartSells.clear();
   $('vendorSearch').value='';
   $('vendorPlayerSearch').value='';
+  $('vendorStockCategory').value='all';
+  $('vendorPlayerCategory').value='all';
+  vendorSelectedItem={itemId:vendor.offers[0].itemId,kind:'BUY'};
   vendorFromField=controls.isLocked;
   vendorOpen=true;
   $('vendorPanel').classList.remove('hidden');$('menu').classList.add('hidden');
@@ -3601,7 +3670,7 @@ function openVendor(vendor){
 }
 function closeVendor(){
   if(!vendorOpen)return;
-  vendorOpen=false;activeVendorId=null;
+  vendorOpen=false;activeVendorId=null;vendorSelectedItem=null;
   vendorCartBuys.clear();vendorCartSells.clear();
   $('vendorPanel').classList.add('hidden');
   if(vendorFromField){vendorFromField=false;controls.lock();}
@@ -3615,6 +3684,8 @@ $('vendorCartClear').addEventListener('click',()=>{
 });
 $('vendorSearch').addEventListener('input',refreshVendorUI);
 $('vendorPlayerSearch').addEventListener('input',refreshVendorUI);
+$('vendorStockCategory').addEventListener('change',refreshVendorUI);
+$('vendorPlayerCategory').addEventListener('change',refreshVendorUI);
 function nearestSettlementWorkshop(){
   let nearest=visibleHavenJunk.has('original-weapon-bench')?
     {type:'weaponbench',x:opticBench.x,z:opticBench.z,

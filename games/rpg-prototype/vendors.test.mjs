@@ -3,8 +3,43 @@ import assert from 'node:assert/strict';
 import {createBackpack,addItem,countItem,BACKPACK_LIMIT,getItem} from './inventory.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
+  createVendorWallets,safeVendorWalletSnapshot,vendorWalletBalance,
   buyFromVendor,sellToVendor,sellMaterialToVendor,sellAmmoToVendor,
   executeVendorBarter,vendorReputationAccess} from './vendors.mjs';
+
+test('merchant cap balances survive saves, sanitize bad records and remain finite',()=>{
+  const defaults=createVendorWallets();
+  assert.ok(defaults.arms>0&&defaults.medic>0);
+  const saved=safeVendorWalletSnapshot({...defaults,medic:38,hacker:999});
+  assert.equal(vendorWalletBalance(saved,'medic'),38);
+  assert.equal(saved.hacker,undefined);
+  const corrupted=safeVendorWalletSnapshot({medic:-3,arms:'100',armor:100000001});
+  assert.equal(corrupted.medic,defaults.medic);
+  assert.equal(corrupted.arms,defaults.arms);
+  assert.equal(corrupted.armor,defaults.armor);
+  assert.equal(vendorWalletBalance(saved,'unknown'),0);
+});
+
+test('finite merchant caps reject excessive sales atomically but combined buying can fund them',()=>{
+  const pack=createBackpack(),stock=createVendorStock();
+  addItem(pack,'armor:ranger-chest',1);
+  const uid=pack.items[0].uid;
+  const wallets=createVendorWallets();wallets.armor=0;
+  const offer={sells:[{type:'inventory',uid,quantity:1}],buys:[]};
+  const before=JSON.stringify({pack,stock,wallets});
+  const refused=executeVendorBarter(pack,1000,'armor',stock,offer,{}, {},wallets);
+  assert.equal(refused.ok,false);
+  assert.equal(refused.reason,'vendor-caps');
+  assert.equal(JSON.stringify({pack,stock,wallets}),before);
+  const combined={...offer,buys:[{itemId:'armor:militia-chest',quantity:1}]};
+  const result=executeVendorBarter(pack,1000,'armor',stock,combined,{}, {},wallets);
+  assert.equal(result.ok,true);
+  assert.equal(result.wallets.armor,result.paid-result.earned);
+  assert.equal(wallets.armor,0);
+  assert.equal(countItem(pack,'armor:ranger-chest'),1);
+  assert.equal(countItem(result.pack,'armor:ranger-chest'),0);
+  assert.equal(countItem(result.pack,'armor:militia-chest'),1);
+});
 
 test('six physical vendors offer real catalog items by specialty',()=>{
   assert.equal(VENDORS.length,6);

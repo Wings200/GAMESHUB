@@ -78,6 +78,25 @@ const MAX_CAPS=100000000;
 const MAX_STOCK=100000;
 const copy=state=>JSON.parse(JSON.stringify(state));
 const cap=n=>Number.isSafeInteger(n)&&n>=0?Math.min(MAX_CAPS,n):0;
+// W20.99: Finite, persistent merchant wallets. The saved stock format remains
+// unchanged; older players receive these starting merchant balances once.
+export const VENDOR_START_CAPS=Object.freeze({arms:900,armor:750,medic:550,
+  scavenger:1250,'dominion-quartermaster':1800,'vultures-armorer':1200});
+export function createVendorWallets(){return {...VENDOR_START_CAPS};}
+export function safeVendorWalletSnapshot(saved){
+  const wallets=createVendorWallets();
+  if(!saved||typeof saved!=='object'||Array.isArray(saved))return wallets;
+  for(const vendor of VENDORS){
+    const value=saved[vendor.id];
+    if(Number.isSafeInteger(value)&&value>=0&&value<=MAX_CAPS)
+      wallets[vendor.id]=value;
+  }
+  return wallets;
+}
+export function vendorWalletBalance(wallets,vendorId){
+  if(!vendorById(vendorId))return 0;
+  return safeVendorWalletSnapshot(wallets)[vendorId];
+}
 const stockBundles=Object.freeze({weapon:2,ammo:8,armor:2,
   'power-plate':1,supply:6,'fusion-core':3,material:10,clothing:2,junk:3});
 
@@ -258,7 +277,7 @@ export function sellAmmoToVendor(pack,caps,vendorId,itemId,quantity=1,
 // A barter offer is only committed if every buy and sale succeeds. Run the
 // offer against copied game state, then return one final snapshot. The same
 // function can be used to preview the deal without changing live state.
-export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={},modifiers={}){
+export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={},modifiers={},wallets=null){
   if(!vendorById(vendorId))return{ok:false,reason:'wrong-merchant'};
   const access=vendorReputationAccess(vendorId,reputation);
   if(!access.ok)return {ok:false,...access};
@@ -296,7 +315,18 @@ export function executeVendorBarter(pack,caps,vendorId,stock,offer,reputation={}
     trades.push({kind:'buy',itemId:result.itemId,quantity:result.quantity,
       price:result.price});
   }
+  // Only the net exchange changes the merchant's wallet. Purchases made in
+  // the same transaction can fund sales. Previewing never modifies either
+  // wallet, backpack, or stock. Legacy API callers may omit wallets.
+  let updatedWallets;
+  if(wallets!==null){
+    const balance=vendorWalletBalance(wallets,vendorId)+paid-earned;
+    if(balance<0)return {ok:false,reason:'vendor-caps'};
+    if(balance>MAX_CAPS)return {ok:false,reason:'vendor-wallet-full'};
+    updatedWallets=safeVendorWalletSnapshot({...wallets,[vendorId]:balance});
+  }
   return{ok:true,pack:statePack,caps:stateCaps,stock:stateStock,
+    ...(updatedWallets?{wallets:updatedWallets}:{}),
     paid,earned,net:paid-earned,trades};
 }
 

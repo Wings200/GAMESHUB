@@ -89,6 +89,14 @@ actions, build labels and save compatibility as releases continue.
   with real saved waypoint controls and return navigation to the terminal;
   unexplored points remain hidden. The world map is still a testing-field
   map, not a completed original open world.
+- W20.99: The merchant terminal retains atomic two-sided barter and adds
+  category filters and real item/gear comparisons. Each merchant has a
+  finite, independently saved caps balance initialized for existing saves;
+  the same pure trade calculation previews and enforces both player and
+  merchant wallets, permitting a purchase to fund a sale in one confirmed
+  transaction. UI inspection and filtering never modify inventory, stock,
+  prices or faction reputation. All release notes continue exclusively in
+  `version-history.json` for the future version-1.0 history screen.
 - Remaining Phase 1 work: visual QA and polish for targeting presentation,
   multiplayer-authoritative validation when networking is implemented,
   scenario-based visual verification,

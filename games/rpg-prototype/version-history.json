@@ -5,6 +5,11 @@
   "description": "Development release history preserved off the game menu. Append every future release here until the 1.0 Version History page is built.",
   "entries": [
     {
+      "version": "W20.99",
+      "title": "VENDOR TRADING TERMINAL OVERHAUL",
+      "notes": "Rebuilt merchant presentation around searchable BUY and SELL lists with independent category filters and real item inspections. Equipment comparisons show actual firearm damage and reload/magazine values, equipped armor protection deltas, aid effects, power-armor durability, junk breakdowns and accurate unit prices. Every merchant now has a finite, saved caps balance, displayed beside your wallet and enforced by the existing transactional barter preview; buying can fund selling in the same confirmed offer, but a vendor cannot pay more caps than they own. Old vendor stock and character saves migrate without losing equipment or stock. The homepage stays concise, with all development notes archived for a single Version History page at 1.0."
+    },
+    {
       "version": "W20.98",
       "title": "CHARACTER TERMINAL OVERHAUL",
       "notes": "Inventory now supports live item search, sorting by name/value/weight, keyboard-accessible item inspection, actual weapon and armor figures, equip state, scrap yields and carry totals. STATUS displays current SPECIAL attributes, level progress, unspent points, radiation HP limit, and AP alongside the real six-zone armor display; the perks screen opens directly from it. Quest journal filters separate active and completed history without changing tracking. The existing fog-of-war map has a discovered-destinations list with working waypoint controls and quick return to STATUS, ITEMS or QUESTS. Existing equipment, exploration, quest progress, and save data are preserved."
