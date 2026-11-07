@@ -40,6 +40,15 @@
   power-armor tier. Lost line of sight hides pins; the camera, AI and weapon
   simulation are never slowed. These are presentation improvements only;
   multiplayer server validation is still a separate future milestone.
+- W20.95: Replaced equipment-slot carry limits with per-unit mass on all
+  physical inventory categories and every crafting component. Normal-mode ammo
+  remains weightless, as in the reference game's standard difficulty. Base
+  allowance is 200 + 10 per Strength, with a field-backpack bonus and the
+  effective Strength-11 power-frame boost. Loot and vendors can carry players
+  over their allowance without deleting items; actual movement loses sprint
+  and jump, slows down and drains real stamina/AP. Regular and powered HUDs,
+  inventory, loot and vendors share the calculated mass and capacity. Old
+  saves load without truncating above the previous 30/34-entry slots.
 - Remaining Phase 1 work: visual QA and polish for targeting presentation,
   multiplayer-authoritative validation when networking is implemented,
   scenario-based visual verification,
@@ -66,7 +75,7 @@
 | Health, radiation and injuries | Incoming damage, armor resistance, healing, radiation pressure and treatment, limb condition, consistent death/respawn | Health/armor/death exist; **power-armor radiation gauge is forced to zero** in `testing/main.js` | Implement physical radiation exposure and treatment and connect it to max-health, items, save data and both HUDs; then injuries |
 | Combat and VATS-like targeting | Responsive movement, stamina/AP, weapon handling, distinct firing modes, damage zones, criticals, target selection with AP cost | Gunplay, recoil, aiming and enemy damage exist; no integrated VATS-like targeting subsystem identified | Create a standalone, testable targeting/AP mechanic only after health/ammo/weapon foundations agree |
 | Enemy AI and animation | Perception based on sight/sound and memory; believable search, cover, corner peeks, muzzle alignment, navigation, reactions and animation transitions | Squad/cover/aim modules exist; visual and physical quality varies with scenario | Add scenario regression maps and tests, especially chest-high cover, doorways, rocks and coordinated movement |
-| Equipment and loot | Categorized inventory, weight/capacity, clothing/armor slots, ammo, junk components, inspection, equipment effects, container transfers | Working inventory, loot, armor, ammo and component catalog; presentation and coverage unfinished | Rework one cohesive wrist-computer-like interface without breaking existing inventory/save logic; audit carry-weight and junk breakdown |
+| Equipment and loot | Categorized inventory, weight/capacity, clothing/armor slots, ammo, junk components, inspection, equipment effects, container transfers | W20.95 adds active weight/capacity and overload to the existing inventory, loot, shops, controller and HUDs. Full junk-object disassembly and more detailed item inspections are still incomplete | Audit physical junk-object scrapping, deeper item inspection and related settlement storage without breaking older saves |
 | Crafting and workbenches | Salvage junk into individual components; weapon/armor mod benches, upgrades with real stats, repair and recipe dependencies | Weapon workbench and material recipes exist; power armor service exists | Tie workbench objects to usable crafting categories; prove models, upgrade effects and scarcity end to end |
 | Power armor | Persistent physical frame, six replaceable plates, fusion-core charge, entry/exit, heavy movement, armor condition, damage resistance, servicing, last-worn frame map tracking | Many mechanics exist; animation/model quality still needs visual QA | Test entry/exit and station docking with and without plates, different frame positions, broken limbs and depleted cores |
 | Settlements | Workshop radius; categorized construction; floor-wall-roof fitting; scrap and store; grid/edge snapping; resources, jobs, wires, residents, attacks, happiness, storage and recruitment | Build catalog, object storage/scrap, snapping, basic production and happiness already exist | Add electricity wiring and assignment of actual settlers; tie production/happiness to jobs and time; add settlement attack and repair loops |

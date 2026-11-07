@@ -118,7 +118,6 @@ test('W20.93 every character stat has a live mechanical bonus and legacy saves s
     strength:10,perception:10,endurance:10,charisma:10,
     intelligence:10,agility:10,luck:10}});
   const b=specialBonuses(character);
-  assert.equal(b.backpackBonusSlots,3);
   assert.ok(b.recoilMultiplier<baseline.recoilMultiplier);
   assert.ok(b.aimSpreadMultiplier<baseline.aimSpreadMultiplier);
   assert.ok(b.damageTakenMultiplier<baseline.damageTakenMultiplier);

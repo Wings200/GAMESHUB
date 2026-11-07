@@ -9,7 +9,10 @@ import {salvageWornPowerArmor} from './power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from './materials.mjs';
 import {safeWeaponMods} from './weapon-mods.mjs';
 import {discountedComponentRecipe} from './special.mjs';
+import {FIELD_BACKPACK_BONUS} from './carry-weight.mjs';
+// Retained only for older integrations; slot count is no longer a carry limit.
 export const BACKPACK_LIMIT=30;
+const MAX_SAFETY_ENTRIES=10000; // abnormal/corrupt requests must not loop forever
 export function backpackSlotLimit(pack){
   const bonus=Number.isSafeInteger(pack?.slotBonus)?pack.slotBonus:0;
   return BACKPACK_LIMIT+Math.max(0,Math.min(4,bonus));
@@ -45,14 +48,22 @@ export function ammoReserve(pack,weaponId){getWeaponSpec(weaponId);
 }
 const idOf=(category,key)=>category+':'+key;
 const templates=new Map();
+const weaponWeights=Object.freeze({
+  'scrap-pistol':4,'10mm-pistol':4.5,'pipe-pistol':4.1,'pipe-rifle':7.8,
+  'laser-musket':8.6,'double-barrel-shotgun':11.2,
+  'pump-action-shotgun':12.5,'bolt-hunting-rifle':12.8,
+  'iron-revolver':5.3,'pipe-smg':8.4,'heavy-sniper':17.5
+});
+const zoneWeight={head:.55,chest:1.8,leftArm:.75,rightArm:.75,leftLeg:.95,rightLeg:.95};
+const roundedWeight=n=>Math.round(n*10)/10;
 for(const spec of ARSENAL)templates.set(idOf('weapon',spec.id),Object.freeze({
   id:idOf('weapon',spec.id),category:'weapon',key:spec.id,name:spec.name,
   rarity:spec.id==='hunting-rifle'?'rare':spec.id==='service-carbine'?'uncommon':'common',
   value:spec.kind==='rifle'?180:spec.kind==='carbine'?105:spec.kind==='shotgun'?88:55,
-  maxStack:1}));
+  weight:weaponWeights[spec.id]??8,maxStack:1}));
 for(const spec of ARSENAL)templates.set(idOf('ammo',spec.id),Object.freeze({
   id:idOf('ammo',spec.id),category:'ammo',key:spec.id,
-  name:spec.name+' Ammo',rarity:'common',value:2,maxStack:180}));
+  name:spec.name+' Ammo',rarity:'common',value:2,weight:0,maxStack:180}));
 for(const slot of ARMOR_SLOTS){
   for(const piece of ['scrap','ranger','militia','citadel']){
     const p=getArmorPiece(slot,piece+'-'+slot);
@@ -62,17 +73,19 @@ for(const slot of ARMOR_SLOTS){
       id:idOf('armor',p.id),category:'armor',key:p.id,slot,name:p.name,
       rarity,value:Math.round(p.points*(piece==='citadel'?3.1:piece==='militia'?2:
         piece==='ranger'?1.5:1)),
-      maxStack:1}));
+      weight:roundedWeight(({scrap:3,ranger:4.2,militia:5.5,citadel:7.5}[piece])*
+        zoneWeight[slot]),maxStack:1}));
   }
 }
 // Wearables are cosmetic and separate from protective head/chest armor.
 export const CLOTHING_GEAR=Object.freeze({
   'field-cap':Object.freeze({id:'clothing:field-cap',category:'clothing',
     key:'field-cap',slot:'head',name:'Wasteland Field Cap',
-    rarity:'common',value:18,maxStack:1}),
+    rarity:'common',value:18,weight:.5,maxStack:1}),
   'field-backpack':Object.freeze({id:'clothing:field-backpack',
     category:'clothing',key:'field-backpack',slot:'back',
-    name:'Canvas Field Backpack',rarity:'uncommon',value:48,maxStack:1})
+    name:'Canvas Field Backpack',rarity:'uncommon',value:48,weight:2.5,
+    carryBonus:FIELD_BACKPACK_BONUS,maxStack:1})
 });
 for(const clothing of Object.values(CLOTHING_GEAR))
   templates.set(clothing.id,clothing);
@@ -84,25 +97,34 @@ for(const slot of POWER_ARMOR_SLOTS){
       tier,slot,name:plate.name+' · '+slot,
       rarity:tier==='t01'||tier==='citadel'?'epic':
         tier==='t60'||tier==='ranger'?'rare':'uncommon',
-      value:Math.round(plate.points*2.1),maxDurability:plate.maxDurability,maxStack:1}));
+      value:Math.round(plate.points*2.1),
+      weight:roundedWeight(({scrap:9,ranger:11,citadel:13,t45:14,t60:17,t01:20}[tier])*
+        zoneWeight[slot]),maxDurability:plate.maxDurability,maxStack:1}));
   }
 }
 templates.set('supply:fusion-core',Object.freeze({
   id:'supply:fusion-core',category:'fusion-core',key:'fusion-core',
-  name:'Fusion Core',rarity:'rare',value:220,maxStack:1}));
+  name:'Fusion Core',rarity:'rare',value:220,weight:4,maxStack:1}));
 templates.set('supply:medkit',Object.freeze({
   id:'supply:medkit',category:'supply',key:'medkit',name:'Field Medkit',
-  rarity:'uncommon',value:35,maxStack:6,heal:40}));
+  rarity:'uncommon',value:35,weight:.5,maxStack:6,heal:40}));
 templates.set('supply:rad-flush',Object.freeze({
   id:'supply:rad-flush',category:'supply',key:'rad-flush',name:'Radiation Flush',
-  rarity:'uncommon',value:90,maxStack:6,radCure:300}));
+  rarity:'uncommon',value:90,weight:.5,maxStack:6,radCure:300}));
 templates.set('supply:salvage',Object.freeze({
   id:'supply:salvage',category:'supply',key:'salvage',name:'Salvaged Parts',
-  rarity:'common',value:12,maxStack:40}));
+  rarity:'common',value:12,weight:1,maxStack:40}));
 templates.set('supply:optic-glass',Object.freeze({
   id:'supply:optic-glass',category:'supply',key:'optic-glass',name:'Optic Glass',
-  rarity:'uncommon',value:25,maxStack:30}));
-for(const component of CRAFTING_COMPONENTS)templates.set(component.id,component);
+  rarity:'uncommon',value:25,weight:.5,maxStack:30}));
+const componentWeights=Object.freeze({
+  concrete:1,steel:.3,wood:.4,lead:.4,glass:.3,ceramic:.3,gears:.3,
+  aluminum:.2,copper:.2,oil:.3,rubber:.2,plastic:.1,cloth:.1,
+  bone:.2,leather:.2,crystal:.1,gold:.2,silver:.2
+});
+for(const component of CRAFTING_COMPONENTS)
+  templates.set(component.id,Object.freeze({...component,
+    weight:componentWeights[component.key]??.1}));
 export const ITEM_CATALOG=Object.freeze(Object.fromEntries(templates));
 const itemBalance = new Map();
 export function applyItemBalance(changes = {}) {
@@ -129,6 +151,19 @@ export function createBackpack(){
     unlockedOptics:{},unlockedWeaponMods:{},nextId:1};
 }
 export function inventorySlotsUsed(pack){return pack.items.length;}
+export function inventoryWeight(pack){
+  if(!pack)return 0;
+  let weight=0;
+  for(const entry of pack.items||[]){
+    const item=templates.get(entry.itemId);
+    if(item)weight+=item.weight*cap(entry.quantity);
+  }
+  for(const component of CRAFTING_COMPONENTS)
+    weight+=getItem(component.id).weight*cap(pack.materials?.[component.id]??0);
+  for(const spec of ARSENAL)
+    weight+=getItem('ammo:'+spec.id).weight*cap(pack.ammoReserves?.[spec.id]??0);
+  return Math.round(weight*10)/10;
+}
 export function totalInventoryValue(pack){
   return pack.items.reduce((sum,entry)=>sum+getItem(entry.itemId).value*entry.quantity,0)+
     CRAFTING_COMPONENTS.reduce((sum,item)=>sum+getItem(item.id).value*countItem(pack,item.id),0);
@@ -165,7 +200,8 @@ export function addItem(pack,itemId,quantity=1,condition={}){
       if(!remaining)break;
     }
   }
-  while(remaining&&pack.items.length<backpackSlotLimit(pack)){
+  // Encumbrance restricts movement, not picking up or storing possessions.
+  while(remaining&&pack.items.length<MAX_SAFETY_ENTRIES){
     const n=Math.min(remaining,template.maxStack);
     const entry={uid:'i'+pack.nextId++,itemId,quantity:n};
     if(template.category==='power-plate')

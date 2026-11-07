@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARSENAL} from './weapons.mjs';
 import {ARMOR_SLOTS,enemyArmorForRound} from './combat.mjs';
-import {BACKPACK_LIMIT,backpackSlotLimit,RARITIES,ITEM_CATALOG,getItem,createBackpack,
-  inventorySlotsUsed,totalInventoryValue,countItem,addItem,removeItem,
+import {BACKPACK_LIMIT,RARITIES,ITEM_CATALOG,getItem,createBackpack,
+  inventorySlotsUsed,inventoryWeight,totalInventoryValue,countItem,addItem,removeItem,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   installWeaponOptic,installedWeaponOptic,INVENTORY_CATEGORIES,inventorySection,
@@ -28,10 +28,10 @@ test('W09.8 ammunition auto-routes into per-weapon reserves without occupying sl
   for(let i=0;i<BACKPACK_LIMIT;i++)addItem(pack,'weapon:iron-revolver',1);
   assert.equal(pack.items.length,BACKPACK_LIMIT);
   const r=addItem(pack,'weapon:pipe-smg',1);
-  assert.equal(r.added,0);assert.equal(r.leftover,1);
+  assert.equal(r.added,1);assert.equal(r.leftover,0);
   assert.equal(addItem(pack,'ammo:pipe-smg',900).added,900);
   assert.equal(displayAmmoCount(ammoReserve(pack,'pipe-smg')),'999+');
-  assert.equal(pack.items.length,BACKPACK_LIMIT,'Ammo never consumes a slot');
+  assert.equal(pack.items.length,BACKPACK_LIMIT+1,'Ammo never creates an equipment entry');
   assert.ok(totalInventoryValue(pack)>0);
 });
 test('Enemy drops are deterministic, searchable and no duplication on TAKE ALL',()=>{
@@ -73,15 +73,14 @@ test('W06.6 armor drops are random subsets of gear actually worn',()=>{
     .filter(e=>e.itemId.startsWith('armor:')).length,2);
   assert.equal(getItem('armor:scrap-head').category,'armor');
 });
-test('Full backpack leaves uncollected contents in world loot bag',()=>{
+test('W20.95 overloaded players can still collect items without duplication',()=>{
   const pack=createBackpack();
   addItem(pack,'weapon:iron-revolver',30);
   const bag=createLootBag('a',0,0,[{itemId:'weapon:hunting-rifle',quantity:1}]);
-  assert.equal(takeFromBag(pack,bag,0).leftover,1);
-  assert.equal(bag.items[0].quantity,1);
-  removeItem(pack,pack.items[0].uid,1);
+  assert.ok(inventoryWeight(pack)>0);
   assert.equal(takeFromBag(pack,bag,0).added,1);
   assert.equal(bag.items.length,0);
+  assert.equal(countItem(pack,'weapon:hunting-rifle'),1);
 });
 test('Equip real weapon and looted armor; player gets actual damage reduction',()=>{
   const pack=createBackpack();
@@ -157,16 +156,42 @@ test('Optics require exact physical ingredients, persist, and reinstall free',()
   assert.deepEqual(restored.unlockedOptics['hunting-rifle'],['scope-4x']);
 });
 
-test('W20.93 upgraded Strength slots admit real loot and survive inventory restore',()=>{
+test('W20.95 save restores inventory beyond old slot limits without loss',()=>{
   const pack=createBackpack();
-  assert.equal(addItem(pack,'weapon:pipe-rifle',31).added,BACKPACK_LIMIT);
-  pack.slotBonus=3;
-  assert.equal(backpackSlotLimit(pack),BACKPACK_LIMIT+3);
-  assert.equal(addItem(pack,'weapon:pipe-rifle',4).added,3);
+  assert.equal(addItem(pack,'weapon:pipe-rifle',35).added,35);
   const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
-  assert.equal(restored.items.length,BACKPACK_LIMIT+3);
-  assert.equal(backpackSlotLimit(restored),BACKPACK_LIMIT+3);
-  assert.equal(backpackSlotLimit({slotBonus:999}),BACKPACK_LIMIT+4);
+  assert.equal(restored.items.length,35);
+  assert.equal(countItem(restored,'weapon:pipe-rifle'),35);
+  assert.equal(inventoryWeight(restored),inventoryWeight(pack));
+});
+
+test('W20.95 all 31 components, armor pieces, guns and supplies have real unit weight',()=>{
+  for(const item of Object.values(ITEM_CATALOG)){
+    assert.ok(Number.isFinite(item.weight)&&item.weight>=0,item.id);
+    if(item.category!=='ammo')assert.ok(item.weight>0,item.id);
+  }
+  const pack=createBackpack();
+  assert.equal(inventoryWeight(pack),0,'default ammo is weightless');
+  addItem(pack,'weapon:10mm-pistol',1);
+  addItem(pack,'material:steel',10);
+  addItem(pack,'supply:medkit',3);
+  const expected=getItem('weapon:10mm-pistol').weight+
+    getItem('material:steel').weight*10+getItem('supply:medkit').weight*3;
+  assert.equal(inventoryWeight(pack),Math.round(expected*10)/10);
+  addItem(pack,'ammo:10mm-pistol',200);
+  assert.equal(inventoryWeight(pack),Math.round(expected*10)/10);
+});
+
+test('W20.95 physical field backpack gives carry bonus only when equipped',()=>{
+  const pack=createBackpack();
+  assert.equal(getItem('clothing:field-backpack').carryBonus,25);
+  addItem(pack,'clothing:field-backpack',1);
+  assert.equal(pack.equipment.clothing.back,'none');
+  const uid=pack.items.find(e=>e.itemId==='clothing:field-backpack').uid;
+  assert.equal(equipFromInventory(pack,uid).ok,true);
+  assert.equal(pack.equipment.clothing.back,'field-backpack');
+  const restored=safeBackpackSnapshot(JSON.parse(JSON.stringify(pack)));
+  assert.equal(restored.equipment.clothing.back,'field-backpack');
 });
 
 test('W20.93 discounted optics spend only the listed Resourceful ingredients',()=>{

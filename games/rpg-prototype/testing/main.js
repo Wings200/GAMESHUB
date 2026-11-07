@@ -99,11 +99,13 @@ import {vatsScreenPoint,vatsTargetFrame,vatsHealthPercent}
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
-import {backpackSlotLimit,RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
+import {RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
-  totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.93';
+  totalInventoryValue,inventoryWeight,installWeaponOptic,installedWeaponOptic,countItem,
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.95';
+import {carryCapacity,encumbranceEffects,formatCarryWeight}
+  from '../carry-weight.mjs?v=W20.95';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -112,7 +114,7 @@ import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoado
 
 import {SPECIAL_ATTRIBUTES,SPECIAL_PERKS,createSpecialState,safeSpecialSnapshot,
   allocateSpecialPoint,purchaseSpecialPerk,gainSpecialXP,specialBonuses,
-  xpForNextLevel,discountedComponentRecipe} from '../special.mjs?v=W20.94';
+  xpForNextLevel,discountedComponentRecipe} from '../special.mjs?v=W20.95';
 
 const $ = id => document.getElementById(id);
 // W20.19: Only the newly built 10mm sidearm is player-equipable.
@@ -154,7 +156,6 @@ function saveSpecialState(){
 }
 function updateSpecialBonuses(){
   specialModifiers=specialBonuses(specialState);
-  if(typeof backpack!=='undefined')backpack.slotBonus=specialModifiers.backpackBonusSlots;
   saveSpecialState();
   refreshSpecialUI();
   if(typeof player!=='undefined')adjustEndurance(0);
@@ -1558,7 +1559,7 @@ function refreshPowerArmorUI(){
     powerArmorState.occupied;
   $('powerMaterialStatus').textContent=
     'COMPONENTS IN POUCH '+CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0)+
-    ' · BACKPACK '+backpack.items.length+'/'+backpackSlotLimit(backpack);
+    ' · CARRY '+carryReadout();
   $('powerArmorControl').textContent='DONE CONFIGURING · HOLD E BY THE FRAME TO ENTER';
   refreshPowerPartChoices();
   refreshPowerArmorHUD();
@@ -1647,10 +1648,6 @@ for(const slot of POWER_ARMOR_SLOTS){
     if(choice==='installed')return;
     const current=plateCondition(powerArmorState,slot);
     if(choice==='remove'){
-      if(backpack.items.length>=backpackSlotLimit(backpack)){
-        $('powerServiceFeedback').textContent='BACKPACK FULL · FREE A SLOT FIRST';
-        refreshPowerArmorUI();return;
-      }
       const removed=removePowerPlate(powerArmorState,slot);
       if(removed.ok)addItem(backpack,'power-plate:'+removed.tier+'-'+slot,1,
         {condition:removed.current});
@@ -1669,7 +1666,7 @@ for(const slot of POWER_ARMOR_SLOTS){
         {condition:current.current});
       if(!returned.added){
         addItem(backpack,taken.itemId,1,{condition:taken.condition});
-        $('powerServiceFeedback').textContent='BACKPACK FULL · INSTALL ABORTED';
+        $('powerServiceFeedback').textContent='INVENTORY TRANSFER FAILED · INSTALL ABORTED';
         refreshPowerArmorUI();return;
       }
     }
@@ -1723,10 +1720,6 @@ $('powerStripAll').addEventListener('click',()=>{
     $('powerServiceFeedback').textContent='FRAME ALREADY BARE · ALL SIX SLOTS EMPTY';
     return;
   }
-  if(backpack.items.length+fitted.length>backpackSlotLimit(backpack)){
-    $('powerServiceFeedback').textContent='BACKPACK NEEDS '+
-      fitted.length+' FREE SLOTS TO REMOVE ALL PARTS';return;
-  }
   for(const slot of fitted){
     const removed=removePowerPlate(powerArmorState,slot);
     if(removed.ok)addItem(backpack,'power-plate:'+removed.tier+'-'+slot,1,
@@ -1754,9 +1747,6 @@ $('powerInsertCore').addEventListener('click',()=>{
 });
 $('powerEjectCore').addEventListener('click',()=>{
   if(!powerServiceAvailable())return;
-  if(backpack.items.length>=backpackSlotLimit(backpack)){
-    $('powerServiceFeedback').textContent='BACKPACK FULL · CANNOT EJECT';return;
-  }
   const result=ejectFusionCore(powerArmorState);
   if(result.ok)addItem(backpack,'supply:fusion-core',1,{charge:result.charge});
   $('powerServiceFeedback').textContent='CORE EJECTED · '+
@@ -2150,8 +2140,19 @@ try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
   if(saved){backpack=safeBackpackSnapshot(saved);hadSavedBackpack=true;}
 }catch{ /* Storage may be unavailable or corrupted. */ }
-// Bonuses are derived from the character, never trusted from inventory saves.
-backpack.slotBonus=specialModifiers.backpackBonusSlots;
+// Old slotBonus saves still load, but no longer change carrying capacity.
+// The only authorities are Strength, equipped clothing, and the active frame.
+function currentCarry(){
+  const capacity=carryCapacity({strength:specialState.attributes.strength,
+    powerArmor:powerArmorState.occupied,
+    fieldBackpack:!powerArmorState.occupied&&
+      backpack.equipment.clothing?.back==='field-backpack'});
+  const weight=inventoryWeight(backpack);
+  return {weight,capacity,...encumbranceEffects(weight,capacity)};
+}
+function carryReadout(load=currentCarry()){
+  return load.weight.toFixed(1)+' / '+load.capacity+' LB';
+}
 // New testing players spawn without free weapon reserves or equipment.
 // Existing saves remain intact; normal looting and merchant trading still work.
 if(!hadSavedBackpack){
@@ -2595,7 +2596,8 @@ function inventoryLine(item){
   name.style.color=RARITIES[item.rarity].color;
   const detail=document.createElement('small');
   detail.textContent=RARITIES[item.rarity].label+' · '+inventorySection(item).toUpperCase()+
-    ' · '+item.value+' CAPS';
+    ' · '+item.value+' CAPS · '+formatCarryWeight(item.weight)+' EACH'+
+    (item.carryBonus?' · +'+item.carryBonus+' LB EQUIPPED':'');
   summary.append(name,detail);row.append(summary);
   return row;
 }
@@ -2605,12 +2607,17 @@ function lootButton(row,label,callback){
   return b;
 }
 function refreshInventoryUI(){
-  $('inventoryCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
+  const load=currentCarry();
+  $('inventoryCapacity').textContent=carryReadout(load)+
+    (load.overloaded?' · OVERENCUMBERED':'');
+  $('inventoryCapacity').classList.toggle('overencumbered',load.overloaded);
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
-  $('inventoryNegativeEffects').textContent=hasPlayerInjury(injuryState)?
-    injuryStatus(injuryState):'NONE ACTIVE';
+  const negatives=[];
+  if(hasPlayerInjury(injuryState))negatives.push(injuryStatus(injuryState));
+  if(load.overloaded)negatives.push('OVERENCUMBERED · SPRINT DISABLED · AP DRAINS WHILE MOVING');
+  $('inventoryNegativeEffects').textContent=negatives.join(' · ')||'NONE ACTIVE';
   $('inventoryProfilePower').textContent=powerArmorState.occupied?
     'FRAME EQUIPPED · '+(powerArmorState.coreCharge===null?'NO CORE':
       Math.ceil(powerArmorState.coreCharge)+'% CORE'):'NOT EQUIPPED';
@@ -2828,7 +2835,7 @@ function refreshInventoryUI(){
   }
   for(const component of visibleComponents){
     const quantity=countItem(backpack,component.id);
-    const row=inventoryLine(component);
+    const row=inventoryLine(getItem(component.id));
     const amount=document.createElement('span');
     amount.className='loot-quantity';amount.textContent='×'+quantity+' · POUCH';
     row.append(amount);
@@ -2942,9 +2949,8 @@ function refreshLootUI(){
           addItem(backpack,'supply:salvage',1);
       }
       if(!result.added){
-        $('lootFeedback').textContent='NO SPACE FOR '+item.name.toUpperCase()+
-          ' · '+backpack.items.length+' / '+backpackSlotLimit(backpack)+
-          ' SLOTS USED. MATERIALS AND AMMO HAVE SEPARATE STORAGE.';
+        $('lootFeedback').textContent='TRANSFER FAILED · '+item.name.toUpperCase()+
+          ' COULD NOT BE MOVED. ITEM REMAINS IN THE CONTAINER.';
         return;
       }
       if(item.category==='ammo')syncAmmoToWeapons();
@@ -2956,8 +2962,9 @@ function refreshLootUI(){
         ' · RESERVE '+displayAmmoCount(total):
         'TAKEN · '+item.name.toUpperCase()+' ×'+result.added+' · NOW OWN '+total+
         (total===1?' COPY':' COPIES');
-      $('lootFeedback').textContent=result.added<amount?
-        feedback+' · PARTIAL TRANSFER (STORAGE FULL)':feedback;
+      $('lootFeedback').textContent=(result.added<amount?
+        feedback+' · PARTIAL TRANSFER':feedback)+
+        (currentCarry().overloaded?' · OVERENCUMBERED':'');
       saveBackpack();refreshWeaponHUD();discardEmptyLootBags();
       refreshLootUI();refreshInventoryUI();
     });
@@ -2966,11 +2973,14 @@ function refreshLootUI(){
 }
 function refreshLootCarryUI(){
   const list=$('lootCarryItems');list.replaceChildren();
-  $('lootCarryCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
+  const load=currentCarry();
+  $('lootCarryCapacity').textContent=carryReadout(load)+
+    (load.overloaded?' · OVERENCUMBERED':'');
+  $('lootCarryCapacity').classList.toggle('overencumbered',load.overloaded);
   const pouch=Object.values(backpack.materials||{}).reduce((n,v)=>n+v,0);
   const rounds=ARSENAL.reduce((n,spec)=>n+ammoReserve(backpack,spec.id),0);
-  $('lootCarryStores').textContent='MATERIAL POUCH · '+pouch+
-    '   /   AMMO RESERVES · '+displayAmmoCount(rounds);
+  $('lootCarryStores').textContent='WEIGHT INCLUDES '+pouch+' CRAFTING COMPONENTS'+
+    ' · '+displayAmmoCount(rounds)+' WEIGHTLESS ROUNDS';
   const totals=new Map();
   for(const entry of backpack.items)
     totals.set(entry.itemId,(totals.get(entry.itemId)||0)+entry.quantity);
@@ -2984,7 +2994,8 @@ function refreshLootCarryUI(){
     row.className='loot-carry-entry';
     const name=document.createElement('strong');name.textContent=item.name;
     name.style.color=RARITIES[item.rarity].color;
-    const count=document.createElement('span');count.textContent='×'+quantity;
+    const count=document.createElement('span');
+    count.textContent='×'+quantity+' · '+formatCarryWeight(item.weight*quantity);
     row.append(name,count);list.append(row);
   }
 }
@@ -2995,7 +3006,7 @@ function beginLootOverlay(id=null){
   lootOverlayFromField=fromField;
   if(id){
     selectedLootId=id;lootOpen=true;inventoryOpen=false;
-    $('lootFeedback').textContent='MATERIALS STORE IN YOUR POUCH · EQUIPMENT USES 30 SLOTS';
+    $('lootFeedback').textContent='ITEMS AND COMPONENTS ADD WEIGHT · OVERLOAD LIMITS MOVEMENT';
     $('inventoryPanel').classList.add('hidden');
     $('lootPanel').classList.remove('hidden');
     refreshLootUI();
@@ -3029,8 +3040,9 @@ $('lootTakeAll').addEventListener('click',()=>{
   syncAmmoToWeapons();refreshWeaponHUD();
   $('lootFeedback').textContent=result.remaining?
     (result.added?'PARTIAL TAKE · ':'NOTHING TAKEN · ')+
-      result.remaining+' ITEMS LEFT · INVENTORY OR POUCH FULL':
-    'CONTAINER EMPTIED · ALL ITEMS STORED';
+      result.remaining+' ITEMS LEFT · MATERIAL STORAGE LIMIT REACHED':
+    'CONTAINER EMPTIED · ALL ITEMS STORED'+
+      (currentCarry().overloaded?' · OVERENCUMBERED':'');
   saveBackpack();discardEmptyLootBags();refreshLootUI();refreshInventoryUI();
 });
 
@@ -3091,7 +3103,7 @@ function vendorBarterError(reason){
     'empty-trade':'SELECT ITEMS TO BUY OR SELL',
     'insufficient-caps':'NOT ENOUGH CAPS · ADD ITEMS TO SELL OR REMOVE A PURCHASE',
     'out-of-stock':'MERCHANT STOCK CHANGED · ADJUST YOUR PURCHASES',
-    'full-backpack':'NOT ENOUGH BACKPACK SPACE AFTER THIS TRADE',
+    'full-backpack':'INVENTORY COULD NOT ACCEPT THIS TRADE',
     'equipped':'EQUIPPED GEAR CANNOT BE SOLD · UNEQUIP FIRST',
     'invalid-quantity':'INVALID QUANTITY IN THE TRADE LIST',
     'not-owned':'AN ITEM IN YOUR SELL LIST IS NO LONGER OWNED',
@@ -3138,8 +3150,12 @@ function refreshVendorCart(){
     net<0?'YOU RECEIVE '+(-net)+' CAPS':'EVEN TRADE · 0 CAPS';
   const preview=executeVendorBarter(backpack,campaignState.caps,
     activeVendorId,vendorStock,offer,campaignState.reputation,specialModifiers);
+  const projectedWeight=preview.ok?inventoryWeight(preview.pack):0;
+  const capacity=currentCarry().capacity;
   $('vendorCartBalance').textContent=preview.ok?
-    'WALLET AFTER TRADE · '+preview.caps+' CAPS':
+    'WALLET AFTER TRADE · '+preview.caps+' CAPS · LOAD '+
+      projectedWeight.toFixed(1)+' / '+capacity+' LB'+
+      (projectedWeight>capacity?' · OVERENCUMBERED':''):
     'CURRENT WALLET · '+campaignState.caps+' CAPS';
   $('vendorCartStatus').textContent=preview.ok?
     'READY · '+count+' TRADE LINES · CONFIRM TO EXCHANGE ITEMS AND CAPS':
@@ -3155,7 +3171,8 @@ function vendorTradeRow(list,{itemId,kind,maxQuantity,initialQuantity=1,
   const name=document.createElement('strong');name.textContent=item.name;
   name.style.color=RARITIES[item.rarity].color;
   const meta=document.createElement('small');
-  meta.textContent=RARITIES[item.rarity].label+' · '+subtext;
+  meta.textContent=RARITIES[item.rarity].label+' · '+
+    formatCarryWeight(item.weight)+' EACH · '+subtext;
   details.append(name,meta);
   const trade=document.createElement('div');trade.className='vendor-trade-actions';
   const amountLabel=document.createElement('label');amountLabel.className='vendor-quantity-label';
@@ -3197,7 +3214,10 @@ function refreshVendorUI(){
   $('vendorName').textContent=vendor.name+' · '+vendor.title;
   $('vendorSpecialty').textContent=vendor.specialty.toUpperCase();
   $('vendorCaps').textContent=campaignState.caps+' CAPS';
-  $('vendorCapacity').textContent=backpack.items.length+' / '+backpackSlotLimit(backpack)+' SLOTS';
+  const load=currentCarry();
+  $('vendorCapacity').textContent=carryReadout(load)+
+    (load.overloaded?' · OVERENCUMBERED':'');
+  $('vendorCapacity').classList.toggle('overencumbered',load.overloaded);
   const merchantList=$('vendorItems'),playerList=$('vendorPlayerItems');
   merchantList.replaceChildren();playerList.replaceChildren();
   let merchantCount=0,playerCount=0;
@@ -3303,7 +3323,8 @@ function confirmVendorBarter(){
   refreshVendorUI();
   showVendorFeedback('TRADE CONFIRMED · '+result.trades.length+' LINES · '+
     (result.net>0?'PAID '+result.net:result.net<0?
-      'RECEIVED '+(-result.net):'EVEN TRADE')+' CAPS · BALANCE '+result.caps+' CAPS');
+      'RECEIVED '+(-result.net):'EVEN TRADE')+' CAPS · BALANCE '+result.caps+' CAPS'+
+    (currentCarry().overloaded?' · OVERENCUMBERED':''));
 }
 function openVendor(vendor){
   if(!vendor||vendorOpen||lootOpen||inventoryOpen||workbenchOpen||weaponsCrateOpen||
@@ -7320,7 +7341,8 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Space'&&e.repeat){e.preventDefault();return;}
   if(e.code==='KeyR'&&!e.repeat&&controls.isLocked){reload();return;}
   if(e.code==='Space'){e.preventDefault();
-    if(controls.isLocked&&powerArmorMobility(powerArmorState).canJump)requestJump(player);
+    if(controls.isLocked&&powerArmorMobility(powerArmorState).canJump&&
+      !currentCarry().overloaded)requestJump(player);
     else if(controls.isLocked&&powerArmorState.occupied)showShotNotice('NO CORE · HYDRAULICS CANNOT JUMP');}
   keys.add(e.code);
 });
@@ -7369,6 +7391,12 @@ window.addEventListener('resize',()=>{
 });
 function updateHUD(info){
   fieldMap.observe(player.x,player.z,camera.rotation.y);
+  const load=currentCarry();
+  const readout=carryReadout(load);
+  $('fieldCarry').textContent=(load.overloaded?'OVERENCUMBERED · ':'CARRY · ')+readout;
+  $('fieldCarry').classList.toggle('overencumbered',load.overloaded);
+  $('visorCarry').textContent=(load.overloaded?'OVERENCUMBERED · ':'CARRY · ')+readout;
+  $('visorCarry').classList.toggle('overencumbered',load.overloaded);
   const staminaPct=Math.max(0,Math.round(info.staminaFraction*100));
   $('fieldStamina').textContent=staminaPct+'%';
   $('fieldStaminaFill').style.width=staminaPct+'%';
@@ -7379,11 +7407,13 @@ function updateHUD(info){
   $('visorStaminaFill').style.width=staminaPct+'%';
   $('visorStaminaTrack').setAttribute('aria-valuenow',String(staminaPct));
   $('visorStaminaTrack').classList.toggle('empty',info.exhausted);
-  $('visorStaminaTrack').classList.toggle('unavailable',!visorSprintAvailable);
+  $('visorStaminaTrack').classList.toggle('unavailable',
+    !visorSprintAvailable||load.overloaded);
   setVisorDial('ap',staminaPct);
   $('visorApDial').classList.toggle('exhausted',info.exhausted);
   $('visorApDial').classList.toggle('core-offline',!visorSprintAvailable);
   $('visorStaminaState').textContent=!visorSprintAvailable?'CORE OFFLINE':
+    load.overloaded?'OVERENCUMBERED':
     info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':
     info.recovering?'RECOVERING':'READY';
   $('fieldLocation').textContent=playerAtHaven()?'HAVEN JUNCTION':
@@ -7839,15 +7869,26 @@ function frame(){
     controls.getDirection(forward);
     const mobility=powerArmorMobility(powerArmorState);
     const trauma=injuryEffects(injuryState);
+    const load=currentCarry();
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
       {boxes:bounds,trees:[],ceilings,groundHeight,
         speedMultiplier:mobility.factor*specialModifiers.speedMultiplier*
-          trauma.speedMultiplier,
+          trauma.speedMultiplier*load.speedMultiplier,
         staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier*
           trauma.staminaDrainMultiplier,
-        allowSprint:mobility.canSprint&&trauma.canSprint,
+        allowSprint:mobility.canSprint&&trauma.canSprint&&load.canSprint,
         bodyHeight:powerArmorState.occupied?POWER_ARMOR_STAND_HEIGHT:undefined,
         crouchHeight:powerArmorState.occupied?POWER_ARMOR_CROUCH_HEIGHT:undefined});
+    if(load.overloaded&&info.moving){
+      // Use the same real stamina/AP pool as sprinting and V.A.T.S.; physical
+      // movement, not holding a blocked key, pays the encumbrance cost.
+      player.stamina=Math.max(0,player.stamina-load.movingApDrain*dt);
+      player.staminaCooldown=Math.max(player.staminaCooldown,.55);
+      info.stamina=player.stamina;
+      info.staminaFraction=player.stamina/maximumStamina(player.endurance);
+      info.exhausted=player.stamina<=0;
+      info.recovering=false;
+    }
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};
     if(info.speed>.55&&!info.airborne){
       groundedStepProgress+=info.speed*dt;

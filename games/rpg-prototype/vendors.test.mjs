@@ -41,7 +41,7 @@ test('power armor suppliers require reputation, never formal membership',()=>{
   assert.equal(vendorStockRemaining(bought.stock,military,'power-plate:t45-head'),0);
 });
 
-test('buying an item spends caps only after full inventory addition',()=>{
+test('buying items spends caps atomically even when overloaded',()=>{
   const pack=createBackpack();
   const unavailable=buyFromVendor(pack,0,'medic','supply:medkit');
   assert.equal(unavailable.reason,'insufficient-caps');
@@ -53,7 +53,10 @@ test('buying an item spends caps only after full inventory addition',()=>{
   assert.equal(buyFromVendor(pack,300,'medic','weapon:pipe-rifle').ok,false);
   const full=createBackpack();
   for(let i=0;i<BACKPACK_LIMIT;i++)addItem(full,'weapon:pipe-pistol',1);
-  assert.equal(buyFromVendor(full,300,'medic','supply:medkit').reason,'full-backpack');
+  const overloaded=buyFromVendor(full,300,'medic','supply:medkit');
+  assert.equal(overloaded.ok,true);
+  assert.equal(countItem(overloaded.pack,'supply:medkit'),1);
+  assert.equal(countItem(full,'supply:medkit'),0);
 });
 
 test('ammunition vendor purchases land in reserves, not inventory slots',()=>{

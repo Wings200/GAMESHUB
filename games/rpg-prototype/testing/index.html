@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.94 · Live V.A.T.S. Scanner | GAMESHUB RPG</title>
+<title>W20.95 · Carry Weight & Encumbrance | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -410,6 +410,14 @@ body.hud-modern #powerArmorHud{display:none!important}
   background:#29372e;border:0}
 #fieldHud .field-bar.secondary span{background:#ddc589}
 #fieldHud .field-sub{font-size:10px;font-weight:850;color:#b1c5b7;letter-spacing:.07em}
+#fieldHud #fieldCarry{display:block;margin-top:7px;color:#afdcb7}
+#fieldHud #fieldCarry.overencumbered,
+#inventoryCapacity.overencumbered,#lootCarryCapacity.overencumbered,
+#vendorCapacity.overencumbered{color:#ff987c!important}
+#powerVisorHud #visorCarry{position:absolute;top:84px;right:2vw;
+  padding:5px 9px;border:1px solid #ca9b5b;background:#231a128c;
+  font:800 11px Consolas,monospace;letter-spacing:.05em;color:#ffd58b}
+#powerVisorHud #visorCarry.overencumbered{color:#ff7a58;border-color:#ff7652}
 #fieldHud #fieldRadStatus{color:#e9b576;display:block;margin:5px 0;font-size:10px}
 #fieldHud #fieldRadStatus.hidden{display:none}
 #fieldHud #fieldInjuryStatus{display:block;margin:4px 0;color:#ffb9a0;
@@ -1543,6 +1551,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span id="fieldInjuryStatus" class="hidden" aria-live="polite"></span>
     <div class="field-sub">STAMINA <span id="fieldStamina">100%</span></div>
     <div class="field-bar secondary"><span id="fieldStaminaFill"></span></div>
+    <div class="field-sub" id="fieldCarry">CARRY · 0.0 / 230 LB</div>
   </div>
   <div class="field-panel field-weapon">
     <div class="field-kicker">EQUIPPED / AMMUNITION</div>
@@ -1552,6 +1561,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   </div>
 </div>
 <div id="powerVisorHud" class="hidden" aria-label="Power armor helmet HUD">
+  <div id="visorCarry">CARRY · 0.0 / 310 LB</div>
   <svg id="visorArmorIndicator" class="armor-indicator" viewBox="0 0 116 165"
     role="img" aria-label="Power armor condition: six unequipped sections">
     <g id="visorArmor-head" class="armor-segment empty">
@@ -1744,7 +1754,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.94</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.95</div>
+    <p><strong>W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE:</strong> Replaced the artificial 30-slot backpack cap with real per-item weight, including weapons, armor, supplies, spare power-armor plates and all 31 crafting components. Normal-mode ammunition weighs nothing. Carry allowance is 200 + 10 per Strength point, with a functional field backpack bonus and effective Strength 11 while wearing a power-armor frame. Taking loot and buying goods can put you over the allowance without destroying or blocking items. Overencumbered players walk slowly, cannot sprint or jump, and consume the actual shared AP meter while moving. Inventory, loot, vendors, field HUD and power visor all show the same live weight and overload status. Old inventory saves still load without losing entries.</p>
     <p><strong>W20.94 · LIVE V.A.T.S. TARGET SCANNER:</strong> Real animated enemies now have a world-tracked targeting frame, six body-part probability markers, live health bar, range and crippled-limb status. The selected part glows amber and queued targets are marked on the battlefield. Markers use projected, visible physical hitboxes and disappear when obscured. Combat, NPC AI, movement and weapon timing continue in real time for multiplayer. The XP required for every new level is also 50% higher (level 1 now takes 255 XP, up from 170), without changing saved levels, earned progress or perks.</p>
     <p><strong>W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION:</strong> All seven attributes now affect the live sandbox: Strength adds backpack slots alongside recoil control; Perception improves targeting; Endurance supports survival; Charisma changes real buy/sell prices; Intelligence controls XP and workbench material discounts; Agility reduces V.A.T.S. shot AP alongside movement bonuses; and Luck speeds V.A.T.S. critical-meter charging. Silver Tongue adds a barter advantage, Ghost Runner reduces V.A.T.S. AP costs, and Resourceful discounts both weapon assemblies and optics. Vendor cart totals and workbench recipes match the actual transaction, while existing saves and already crafted parts remain intact. Open S.P.E.C.I.A.L. with L.</p>
     <p><strong>W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT:</strong> Shooting a Raider's legs now causes real movement penalties and an asymmetric limp. Arm, head and chest injuries lower their actual hit probability; all six body-part conditions are tracked until the enemy dies or the arena is reset. Your own injured legs now visibly affect third-person gait and subtly change first-person walking motion. V.A.T.S. identifies crippled limbs. Heal your injuries with real medical supplies; resetting enemies clears only their injuries.</p>
@@ -1808,7 +1819,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.94</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.95</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2011,7 +2022,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       </div>
       <div class="vendor-wallet">
         <div class="vendor-wallet-chip"><small>YOUR CAPS</small><strong id="vendorCaps">0 CAPS</strong></div>
-        <div class="vendor-wallet-chip"><small>BACKPACK SPACE</small><b id="vendorCapacity">0 / 30 SLOTS</b></div>
+        <div class="vendor-wallet-chip"><small>CARRY WEIGHT</small><b id="vendorCapacity">0.0 / 230 LB</b></div>
         <button id="vendorClose" type="button">CLOSE / RESUME · ESC</button>
       </div>
     </header>
@@ -2090,7 +2101,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       </div>
       <div class="inventory-toolbar">
         <div class="inventory-summary">
-          <div><small>BACKPACK</small><strong id="inventoryCapacity">0 / 30 SLOTS</strong></div>
+          <div><small>CARRY WEIGHT</small><strong id="inventoryCapacity">0.0 / 230 LB</strong></div>
           <div><small>CONTENTS VALUE</small><strong id="inventoryValue">0 CAPS VALUE</strong></div>
         </div>
         <button id="inventoryMapOpen" type="button" title="Open the field map">MAP · M</button>
@@ -2111,13 +2122,13 @@ body.hud-modern #powerArmorHud{display:none!important}
       <nav class="inventory-sidebar" aria-label="Inventory filters">
         <div class="inventory-pane-label"><span>01</span> CATEGORIES</div>
         <div id="inventoryCategories" class="inventory-nav" aria-label="Inventory categories"></div>
-        <div class="inventory-rail-hint">AMMO USES WEAPON RESERVES. SCRAP USES YOUR COMPONENT POUCH. NEITHER USES BACKPACK SLOTS.</div>
+        <div class="inventory-rail-hint">GEAR, SUPPLIES AND SCRAP COMPONENTS HAVE WEIGHT. STANDARD-MODE AMMO IS WEIGHTLESS. OVERLOADING SLOWS YOU AND DRAINS AP.</div>
       </nav>
       <section class="inventory-content" aria-label="Selected inventory category">
         <div class="inventory-content-head">
           <div><div class="inventory-pane-label"><span>02</span> CONTENTS</div>
             <h3 id="inventorySectionTitle">ALL ITEMS</h3></div>
-          <span id="inventorySectionCount">0 ITEM SLOTS</span>
+          <span id="inventorySectionCount">0 ENTRIES</span>
         </div>
         <div class="inventory-item-hint"><span>ITEM / CONDITION</span><span>QUANTITY / ACTIONS</span></div>
         <div id="inventoryItems" class="loot-grid"></div>
@@ -2161,7 +2172,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     </section>
     <footer class="inventory-footer">
       <span><b>I</b> CLOSE / RESUME</span><span><b>◀ ▶</b> SWITCH PAGES</span><span><b>M</b> MAP</span>
-      <span><b>QTY / MAX</b> CHOOSE DROP AMOUNT</span><span>CAPACITY <b>30 SLOTS</b></span>
+      <span><b>QTY / MAX</b> CHOOSE DROP AMOUNT</span><span>OVER CAPACITY <b>WALK ONLY</b></span>
     </footer>
   </div>
 </div>
@@ -2170,7 +2181,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="loot-panel-top">
       <div><div class="loot-eyebrow">W20.71 · FIELD SCAVENGING</div>
         <h2 id="lootTitle">SEARCH LOOT BAG</h2>
-        <p>Take what you need. Choose a quantity for stacked items; gear takes backpack slots, while ammo and materials go into separate storage.</p>
+        <p>Take what you need. Gear, aid and crafting components all add weight; you can still take items while overloaded, but movement and AP suffer.</p>
       </div>
       <button id="lootClose" type="button">CLOSE / RESUME</button>
     </div>
@@ -2178,14 +2189,14 @@ body.hud-modern #powerArmorHud{display:none!important}
       <strong>SCAVENGE · COMMON / UNCOMMON / RARE / EPIC</strong>
       <button id="lootTakeAll" type="button">TAKE ALL POSSIBLE</button>
     </div>
-    <div id="lootFeedback" role="status" aria-live="polite" style="padding:11px 13px;color:#e7d29e;font-size:12px;font-weight:800;letter-spacing:.04em;border:1px solid #52605d;background:#14252d">SELECT ITEMS TO TAKE · DUPLICATE EQUIPMENT USES SEPARATE SLOTS</div>
+    <div id="lootFeedback" role="status" aria-live="polite" style="padding:11px 13px;color:#e7d29e;font-size:12px;font-weight:800;letter-spacing:.04em;border:1px solid #52605d;background:#14252d">SELECT ITEMS TO TAKE · ALL ITEMS ADD WEIGHT EXCEPT STANDARD AMMO</div>
     <div class="loot-transfer-grid">
       <section class="loot-side" aria-label="Items inside the container">
         <div class="loot-side-head"><span>CONTAINER CONTENTS</span><strong id="lootCount">0 ITEMS</strong></div>
         <div id="lootItems" class="loot-grid"></div>
       </section>
       <aside class="loot-side" aria-label="Your backpack contents">
-        <div class="loot-side-head"><span>YOUR BACKPACK</span><strong id="lootCarryCapacity">0 / 30 SLOTS</strong></div>
+        <div class="loot-side-head"><span>YOUR BACKPACK</span><strong id="lootCarryCapacity">0.0 / 230 LB</strong></div>
         <div class="loot-stores" id="lootCarryStores">MATERIAL POUCH · 0 / AMMO RESERVES · 0</div>
         <div class="loot-carry-list" id="lootCarryItems"></div>
       </aside>
@@ -2239,7 +2250,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.94"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.95"></script>
 </body>
 </html>
 

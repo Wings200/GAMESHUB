@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEV_ITEM_CATALOG,validateDeveloperGrant,applyDeveloperGrant,
   MAX_DEV_CAPS} from './dev-grants.mjs';
-import {createBackpack,countItem} from './inventory.mjs';
+import {createBackpack,countItem,inventoryWeight} from './inventory.mjs';
 import {onRequestPost} from '../../functions/api/dev/grant.js';
 
 test('the grant search uses real item data and excludes archived weapons',()=>{
@@ -35,14 +35,16 @@ test('grants stacks, ammo, armor and a wallet without modifying input',()=>{
   assert.equal(money.added,5);
   assert.equal(money.caps,MAX_DEV_CAPS);
 });
-test('reports partial and full backpack failures',()=>{
+test('W20.95 developer grants keep real gear even when above carry capacity',()=>{
   const pack=createBackpack();
-  let result=applyDeveloperGrant(pack,0,{action:'item',itemId:'weapon:10mm-pistol',quantity:40});
-  assert.equal(result.added,30);
-  assert.equal(result.leftover,10);
+  let result=applyDeveloperGrant(pack,0,{action:'item',itemId:'weapon:10mm-pistol',quantity:70});
+  assert.equal(result.added,70);
+  assert.equal(result.leftover,0);
+  assert.ok(inventoryWeight(result.pack)>230);
   result=applyDeveloperGrant(result.pack,0,{action:'item',itemId:'weapon:pipe-rifle',quantity:1});
-  assert.equal(result.ok,false);
-  assert.equal(result.reason,'inventory-full');
+  assert.equal(result.ok,true);
+  assert.equal(countItem(result.pack,'weapon:pipe-rifle'),1);
+  assert.equal(countItem(pack,'weapon:10mm-pistol'),0);
 });
 const db={prepare(){return {bind(){return {first:async()=>({id:'51cb59ec-7c65-43ad-9431-236d9c7fcc17',username:'DynamiteDEV7392'})}}}}};
 function request(body,options={}){
@@ -60,3 +62,4 @@ test('API validates grants only for a signed-in developer with a same-origin req
   assert.equal((await onRequestPost(request({action:'item',itemId:'weapon:missing',quantity:2}))).status,400);
   assert.equal((await onRequestPost(request({action:'item',itemId:'weapon:10mm-pistol',quantity:1000}))).status,400);
 });
+

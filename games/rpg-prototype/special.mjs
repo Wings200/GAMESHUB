@@ -1,7 +1,7 @@
 // W14.0: persistent seven-attribute SPECIAL progression and earned perk ranks.
 // Pure rules: no DOM, rendering or localStorage, so games and tests share them.
 export const SPECIAL_ATTRIBUTES=Object.freeze([
-  {id:'strength',letter:'S',name:'STRENGTH',color:'#d78c68',description:'Weapon control and additional backpack slots.'},
+  {id:'strength',letter:'S',name:'STRENGTH',color:'#d78c68',description:'Weapon control and maximum carry weight.'},
   {id:'perception',letter:'P',name:'PERCEPTION',color:'#86c2db',description:'Weapon precision and vital weak spots.'},
   {id:'endurance',letter:'E',name:'ENDURANCE',color:'#add18c',description:'Sprinting, survival and resilience.'},
   {id:'charisma',letter:'C',name:'CHARISMA',color:'#e4b9a2',description:'Barter prices, encounters and scavenging.'},
@@ -94,7 +94,6 @@ export function specialBonuses(state){
   const a=state.attributes;
   const b={
     recoilMultiplier:1-.025*(a.strength-3),
-    backpackBonusSlots:Math.max(0,Math.floor((a.strength-3)/2)),
     gunDamageMultiplier:1,
     aimSpreadMultiplier:1-.024*(a.perception-3),
     headshotMultiplier:1,
@@ -120,7 +119,6 @@ export function specialBonuses(state){
     for(const [key,amount] of Object.entries(p.effects))b[key]+=amount*rank;
   }
   b.recoilMultiplier=limit(b.recoilMultiplier,.48,1.2);
-  b.backpackBonusSlots=limit(Math.floor(b.backpackBonusSlots),0,4);
   b.gunDamageMultiplier=limit(b.gunDamageMultiplier,.8,2);
   b.aimSpreadMultiplier=limit(b.aimSpreadMultiplier,.48,1.2);
   b.headshotMultiplier=limit(b.headshotMultiplier,1,2.3);
