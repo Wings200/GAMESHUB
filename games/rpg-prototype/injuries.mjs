@@ -67,3 +67,40 @@ export function injuryStatus(state){
     LIMB_LABELS[slot]+' '+Math.round(state.condition[slot])+'%'+
     (state.condition[slot]<=25?' · CRIPPLED':'' )).join(' / ');
 }
+
+/** Enemy injuries use the same six conditions as the player's real damage. */
+export function enemyInjuryModifiers(state){
+  const effects=injuryEffects(state);
+  const chest=clamp(state?.condition?.chest??100,0,100);
+  const chestTrauma=chest<=25?1:chest<=50? .45:0;
+  return {
+    speedMultiplier:effects.speedMultiplier*(1-.08*chestTrauma),
+    accuracyMultiplier:clamp((1/effects.aimSpreadMultiplier)*
+      (1-.16*chestTrauma),.35,1)
+  };
+}
+
+/** Deterministic, zero-at-health visual gait correction for both actor rigs. */
+export function injuryGaitVisuals(state,{phase=0,speed=0,
+  airborne=false,crouched=false,powerArmor=false}={}){
+  const severity=slot=>clamp((50-clamp(state?.condition?.[slot]??100,0,100))/25,0,1);
+  const left=severity('leftLeg'),right=severity('rightLeg');
+  const head=severity('head');
+  const travel=clamp(Number.isFinite(speed)?speed/3.5:0,0,1)*
+    (airborne?0:1)*(crouched? .55:1);
+  const angle=Number.isFinite(phase)?phase:0;
+  const swing=Math.sin(angle);
+  const stepLift=Math.max(0,swing);
+  const armorDamping=powerArmor? .35:1;
+  return {
+    leftStrideScale:1-.48*left,
+    rightStrideScale:1-.48*right,
+    leftKneeGuard:.17*left*travel,
+    rightKneeGuard:.17*right*travel,
+    pelvisRoll:(left-right)*swing*.060*travel,
+    torsoLean:(left-right)*.035*travel,
+    headTilt:head*.035*(.7+.3*Math.sin(angle*.5)),
+    cameraBob:armorDamping*travel*
+      ((left-right)*swing*.010-(left+right)*stepLift*.006)
+  };
+}

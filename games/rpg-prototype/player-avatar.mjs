@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {createCharacterAnimation,stepCharacterAnimation} from './character-animation.mjs';
 import {reloadPoseForWeapon} from './weapon-handling.mjs';
 import {solveBoardingLeg} from './boarding-ik.mjs';
+import {injuryGaitVisuals} from './injuries.mjs?v=W20.92';
 import {solveWeaponArmReach} from './weapon-grip-ik.mjs?v=W20.36';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -442,7 +443,7 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     crouched=false,aiming=false,alive=true,pitch=0,airborne=false,
     reloading=false,reloadProgress=0,recoil=0,hit=0,bracing=false,
     reloadStyle=null,reloadRounds=null,boardingPose=null,turnRate=null,
-    weaponPitch=0}){
+    weaponPitch=0,injuries=null}){
     const step=clamp(Number.isFinite(dt)?dt:0,0,.05);
     const deltaYaw=previousYaw===null?0:
       Math.atan2(Math.sin(yaw-previousYaw),Math.cos(yaw-previousYaw));
@@ -455,6 +456,8 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     });
     const crouchBlend=pose.crouch,aimBlend=pose.aim,deathBlend=pose.death;
     const stride=pose.stride,move=pose.move;
+    const woundGait=injuryGaitVisuals(injuries,{phase:pose.phase,speed,
+      airborne,crouched});
     const roundsReload=['iron-revolver','scrap-shotgun','hunting-rifle'].includes(
       reloadStyle||heldWeaponId);
     root.position.set(x,ground+jump+(boardingPose?0:pose.bob)-.32*crouchBlend-
@@ -470,16 +473,16 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     pelvis.rotation.x=.10*crouchBlend+.15*pose.land-.10*pose.sprint+
       pose.startLean*.055;
     if(boardingPose?.walking)pelvis.rotation.x+=.14;
-    pelvis.rotation.z=-pose.turn*.045;
+    pelvis.rotation.z=-pose.turn*.045+woundGait.pelvisRoll;
     torso.rotation.x=.30*crouchBlend+.055*pose.sprint+
       pose.breath*.7+pose.startLean*.09-
       pose.hit*.13+pose.recoil*.055+pose.brace*.07;
     torso.rotation.z=Math.sin(pose.phase)*.025*move+pose.hit*.12-
-      pose.turn*.09;
+      pose.turn*.09+woundGait.torsoLean;
     torso.rotation.y=Math.sin(pose.phase*.5)*.018*move;
     head.rotation.x=clamp(pitch*.45,-.3,.3)-.13*crouchBlend+
       pose.hit*.10+pose.breath*.42;
-    head.rotation.z=-pose.hit*.10+pose.turn*.06;
+    head.rotation.z=-pose.hit*.10+pose.turn*.06+woundGait.headTilt;
     // Right-shoulder carry. Sprint lowers the entire weapon around the
     // shared torso socket, so BOTH real handholds follow the dropped muzzle.
     // Blended sprint keeps the muzzle from snapping as the player starts/stops.
@@ -488,16 +491,22 @@ export function createPlayerAvatar(scene,{variant='survivor',heldWeaponEnabled=t
     const boardingLegIKDebug=[];
     for(let i=0;i<2;i++){
       const leg=legs[i],arm=arms[i],sign=i===0?1:-1;
-      leg.hip.rotation.x=sign*stride+.69*crouchBlend+
+      const strideScale=i===0?woundGait.leftStrideScale:
+        woundGait.rightStrideScale;
+      const kneeGuard=i===0?woundGait.leftKneeGuard:
+        woundGait.rightKneeGuard;
+      leg.hip.rotation.x=sign*stride*strideScale+.69*crouchBlend+
         (i===0?-.32:.20)*pose.jump+.20*pose.land;
-      leg.knee.rotation.x=Math.max(0,-sign*Math.sin(pose.phase))*.46*move-
-        1.03*crouchBlend+.53*pose.jump+.18*pose.land;
+      leg.knee.rotation.x=Math.max(0,-sign*Math.sin(pose.phase))*
+        .46*move*strideScale-1.03*crouchBlend+.53*pose.jump+
+        .18*pose.land+kneeGuard;
       leg.foot.rotation.x=-.24*leg.knee.rotation.x-.18*crouchBlend-
         .20*pose.land+Math.max(0,-sign*Math.sin(pose.phase))*.12*move;
       // Toe lift happens on the forward swing, while the opposite foot
       // remains planted. Feet never move the authoritative collision body.
       leg.foot.position.y=-.25+
-        Math.max(0,sign*Math.sin(pose.phase))*.045*move*(1-crouchBlend);
+        Math.max(0,sign*Math.sin(pose.phase))*.045*move*
+        (1-crouchBlend)*strideScale;
       arm.shoulder.rotation.x=-sign*stride*.72-(.87+.08*sign)*aimBlend-
         .42*pose.sprint+pose.reload*(i===0?(roundsReload ? -.95 : -.65):
           (roundsReload ? .06 : .24))+

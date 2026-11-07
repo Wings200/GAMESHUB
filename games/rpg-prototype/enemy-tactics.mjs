@@ -1,6 +1,6 @@
 // W04.2 - enemy cover selection, evasive repositioning, magazine/reload and
 // fallible shooting. No renderer dependency; deterministic with injected RNG.
-import {AI_TUNING,lineIntersectsBox,lineIntersectsBox3D,visibleTargetHeight} from './enemy-ai.mjs?v=W20.77';
+import {AI_TUNING,lineIntersectsBox,lineIntersectsBox3D,visibleTargetHeight} from './enemy-ai.mjs?v=W20.92';
 
 export const ENEMY_PROFILES=Object.freeze({
   scout:Object.freeze({magazine:9,reserve:45,reloadSeconds:1.45,shotInterval:.85,
@@ -538,9 +538,11 @@ export function attemptEnemyShot(tactics,distanceMeters,moving,rng=Math.random,o
     (targetSpeed<.24?.15:.055);
   const targetEvasion=Math.min(.18,targetSpeed*.027);
   const burstShake=spec.automatic?Math.min(.12,burstBefore*.018):0;
+  const injuryAccuracy=clamp(Number.isFinite(options.accuracyMultiplier)?
+    options.accuracyMultiplier:1,.2,1);
   const accuracy=clamp((spec.accuracy-spec.falloff*d/16-
     (moving?.11:0)+steadyAim-targetEvasion-burstShake)*
-    (1-.42*(tactics.suppression||0)),.08,.91);
+    (1-.42*(tactics.suppression||0))*injuryAccuracy,.08,.91);
   const sampled=rng();
   const roll=clamp(Number.isFinite(sampled)?sampled:1,0,1);
   const hit=roll<accuracy;

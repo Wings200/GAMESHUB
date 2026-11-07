@@ -1,7 +1,7 @@
 // W09.6: original, locally constructed NPCs. No imported character assets.
 // Only the pre-existing enemy body-part hitboxes are authoritative for shots.
 import * as THREE from 'three';
-import {createPlayerAvatar} from './player-avatar.mjs?v=W20.36';
+import {createPlayerAvatar} from './player-avatar.mjs?v=W20.92';
 import {reloadPoseForWeapon} from './weapon-handling.mjs?v=W20.42';
 import {createPipeRifle} from './pipe-rifle.mjs?v=W20.42';
 import {WORLD_WEAPON_GRIPS} from './weapon-grip-ik.mjs?v=W20.42';
@@ -193,7 +193,7 @@ export function createNpcAvatar(parent,kind){
     searchYaw=0,
     reloading=false,reloadProgress=0,recoil=0,hit=0,alive=true,
     alerted=false,suppressed=0,lateralSpeed=0,phase='patrol',
-    aimYaw=0,raiseGun=0,peekLean=0}={}){
+    aimYaw=0,raiseGun=0,peekLean=0,injuries=null}={}){
     const step=Math.min(.05,Math.max(0,Number.isFinite(dt)?dt:0));
     time+=step;
     const parentYaw=parent.rotation.y;
@@ -277,7 +277,7 @@ export function createNpcAvatar(parent,kind){
        // Positive local X pitch lifts this -Z-facing barrel. A neutral
        // target should look level; an elevated opponent must look upward.
        weaponPitch:aiming?verticalAim:.11,
-      turnRate:step>0?yawDelta/step:0});
+      turnRate:step>0?yawDelta/step:0,injuries});
     // Investigation is not just a straight walk toward remembered coordinates.
     // Look around corners while advancing, without swinging the whole rifle
     // or steering toward a hidden player. Hit joints follow the visible head.

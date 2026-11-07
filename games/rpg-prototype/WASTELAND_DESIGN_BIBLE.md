@@ -19,9 +19,14 @@
   then fire through normal weapon timing and physical collision. A target behind
   cover or out of view is skipped rather than receiving scripted damage. Enemies
   still move and shoot while the queue executes, with no slow-motion or pause.
+- W20.92: Real hit-zone damage now wounds NPC limbs. Leg damage slows tactical,
+  patrol and search movement and gives the shared actor rig a visible limp;
+  arm/head/chest trauma reduces live weapon accuracy. Enemy round reset clears
+  these conditions. Player injuries now influence walking animation and a
+  restrained first-person camera bob. V.A.T.S. shows crippled targets.
 - Remaining Phase 1 work: cinematic target presentation, multiplayer-authoritative
   validation when networking is implemented, scenario-based visual verification,
-  limb animation and fuller world art polish.
+  fuller injury reactions and world art polish.
 
 ## Non-negotiable design rules
 

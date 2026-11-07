@@ -295,7 +295,7 @@ function navigateAroundCover(enemy,goal,speed,dt,obstacles,area,tuning,faceMovem
     }
   }else enemy.routeFail=0;
 }
-function searchLastSeen(enemy,step,obstacles,area,tuning){
+function searchLastSeen(enemy,step,obstacles,area,tuning,mobility=1){
   if(!enemy.lastSeen){enemy.moving=false;return;}
   if(enemy.searchPause>0){
     enemy.searchPause=Math.max(0,enemy.searchPause-step);
@@ -315,7 +315,7 @@ function searchLastSeen(enemy,step,obstacles,area,tuning){
       enemy.searchIndex++;enemy.searchPause=.65;enemy.detour=null;
       enemy.moving=false;return;
     }
-    navigateAroundCover(enemy,goal,tuning.chaseSpeed*.72,step,obstacles,area,tuning);
+    navigateAroundCover(enemy,goal,tuning.chaseSpeed*.72*mobility,step,obstacles,area,tuning);
     return;
   }
   enemy.moving=false;enemy.yaw+=step*.85;
@@ -326,6 +326,10 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   if(!enabled){enemy.moving=false;enemy.actualSpeed=0;return enemy;}
   const previousX=enemy.x,previousZ=enemy.z;
   const area=options.area||AI_TUNING.area;
+  const mobility=clamp(Number.isFinite(options.mobilityMultiplier)?
+    options.mobilityMultiplier:1,.45,1);
+  const combatSpeed=Math.max(.1,
+    (options.combatSpeed||AI_TUNING.chaseSpeed)*mobility);
   enemy.retaliationTime=Math.max(0,(enemy.retaliationTime||0)-step);
   enemy.noiseTime=Math.max(0,(enemy.noiseTime||0)-step);
   if(enemy.noiseTime===0)enemy.noiseTarget=null;
@@ -372,7 +376,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
   }else if(options.combatGoal&&(seen||committed)){
     // Tactical movement is opt-in so W04.0 patrol/search behavior stays stable.
     navigateAroundCover(enemy,options.combatGoal,
-      Math.max(.1,options.combatSpeed||AI_TUNING.chaseSpeed),
+      combatSpeed,
       step,obstacles,area,AI_TUNING,!options.combatFacePlayer);
     if(options.combatFacePlayer){
       facePoint(enemy,knownTarget,step);
@@ -382,15 +386,15 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
       const blocked=obstacles.some(box=>lineIntersectsBox(enemy,player,box,
         AI_TUNING.collisionRadius));
       if(blocked)navigateAroundCover(enemy,player,
-        options.combatSpeed||AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
+        combatSpeed,step,obstacles,area,AI_TUNING);
       else moveToward(enemy,player,
-        options.combatSpeed||AI_TUNING.chaseSpeed,step,obstacles,area,AI_TUNING);
+        combatSpeed,step,obstacles,area,AI_TUNING);
     }
     else{enemy.moving=false;facePoint(enemy,player,step);}
   }else if(enemy.mode==='investigate-noise'&&enemy.noiseTarget){
     const approximate=enemy.noiseTarget;
     if(distance(enemy.x,enemy.z,approximate.x,approximate.z)>.85)
-      navigateAroundCover(enemy,approximate,AI_TUNING.chaseSpeed*.74,
+      navigateAroundCover(enemy,approximate,AI_TUNING.chaseSpeed*.74*mobility,
         step,obstacles,area,AI_TUNING);
     else{
       enemy.moving=false;
@@ -405,22 +409,22 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
              options.lostContactOrder.goal.z)>.65){
     // Flank or support using confirmed intel, never the hidden player's position.
     navigateAroundCover(enemy,options.lostContactOrder.goal,
-      AI_TUNING.chaseSpeed*(options.lostContactOrder.type==='flank'?1.1:.72),
+      AI_TUNING.chaseSpeed*mobility*(options.lostContactOrder.type==='flank'?1.1:.72),
       step,obstacles,area,AI_TUNING);
   }else if(enemy.mode==='investigate'){
     // Reach the last known location, then systematically check nearby
     // corners. The search begins before the alert timer expires.
     if(enemy.lastSeen&&enemy.searchIndex===0&&
        distance(enemy.x,enemy.z,enemy.lastSeen.x,enemy.lastSeen.z)>.7)
-      navigateAroundCover(enemy,enemy.lastSeen,AI_TUNING.chaseSpeed*.83,
+      navigateAroundCover(enemy,enemy.lastSeen,AI_TUNING.chaseSpeed*.83*mobility,
         step,obstacles,area,AI_TUNING);
     else{
       if(enemy.searchIndex===0)enemy.searchIndex=1;
-      searchLastSeen(enemy,step,obstacles,area,AI_TUNING);
+      searchLastSeen(enemy,step,obstacles,area,AI_TUNING,mobility);
     }
   }else if(enemy.mode==='search'){
     enemy.searchLeft=Math.max(0,enemy.searchLeft-step);
-    searchLastSeen(enemy,step,obstacles,area,AI_TUNING);
+    searchLastSeen(enemy,step,obstacles,area,AI_TUNING,mobility);
     if(enemy.searchLeft<=0){
       enemy.mode='patrol';enemy.lastSeen=null;
       enemy.searchIndex=0;enemy.searchPause=0;enemy.detour=null;
@@ -439,7 +443,7 @@ export function stepEnemyBrain(enemy,player,dt,obstacles=[],options={}){
       enemy.moving=false;enemy.currentSpeed=0;
       facePoint(enemy,enemy.patrol[enemy.patrolIndex],step);
     }else moveToward(enemy,enemy.patrol[enemy.patrolIndex],
-      AI_TUNING.patrolSpeed,step,obstacles,area,AI_TUNING);
+      AI_TUNING.patrolSpeed*mobility,step,obstacles,area,AI_TUNING);
   }
   // Real bodies keep a personal-space radius even while pursuing one goal.
   for(const neighbor of options.neighbors||[]){

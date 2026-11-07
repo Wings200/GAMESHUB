@@ -52,7 +52,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
   FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
-import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.77.2';
+import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.92';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
 import {createPipePistol} from '../pipe-pistol.mjs?v=W20.23';
@@ -70,13 +70,13 @@ import {HEAVY_SNIPER_TUNING,heavySniperBoltCyclePose} from '../heavy-sniper-mech
 import {huntingBoltCyclePose,HUNTING_RIFLE_TUNING} from '../hunting-rifle-mechanics.mjs?v=W20.30';
 import {ensureLaserState,startLaserCrank,cancelLaserCrank,updateLaserCrank,laserCrankProgress,fireChargedLaser,LASER_MUSKET_TUNING} from '../laser-musket-mechanics.mjs';
 import {createLaserTrails} from '../laser-musket-trails.mjs?v=W20.26';
-import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.36';
+import {createPlayerAvatar} from '../player-avatar.mjs?v=W20.92';
 import { AI_TUNING, createEnemyBrain, stepEnemyBrain, alertEnemy, hearEnemyGunshot, reactToUnseenHit,
   resetEnemyBrain, hasSight, visibleTargetHeight, enemyAimPitch,
-  chooseClearPeekSide, projectedPeekSide } from '../enemy-ai.mjs?v=W20.77.2';
+  chooseClearPeekSide, projectedPeekSide } from '../enemy-ai.mjs?v=W20.92';
 import { ENEMY_PROFILES, makeEnemyTactics, resetEnemyTactics,
   markEnemyThreat,markEnemySuppressed,tickEnemyTactics, attemptEnemyShot,
-  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.77';
+  chooseEnemyWeapon,getEnemyWeapon,equipEnemyWeapon } from '../enemy-tactics.mjs?v=W20.92';
 import {createSquadIntel,clearSquadIntel,reportSquadContact,
   stepSquadIntel,shareSquadContact,squadSeparation,
   occupiedSquadCover,reactToAllyDown} from '../enemy-squad.mjs?v=W20.50';
@@ -88,8 +88,9 @@ import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationEx
   radiationThreatLevel}
   from '../radiation.mjs?v=W20.88';
 import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
-  healWorstLimb,resetInjuries,injuryEffects,injuryStatus}
-  from '../injuries.mjs?v=W20.89';
+  healWorstLimb,resetInjuries,injuryEffects,injuryStatus,
+  enemyInjuryModifiers,injuryGaitVisuals}
+  from '../injuries.mjs?v=W20.92';
 import {VATS_ZONES,VATS_ZONE_LABELS,vatsApCost,vatsChance,vatsApAvailable,
   vatsSpendAp,vatsCriticalGain,vatsCriticalReady,vatsQueueSlots}
   from '../vats-targeting.mjs?v=W20.91';
@@ -2184,6 +2185,7 @@ function createEnemy(spec){
   upperBody.visible=false;
   const state=createDummy(enemyArmorForRound(spec.id,0));
   const enemy={id:spec.id,label:spec.label,brain,root,state,
+    injuries:createInjuryState(),
     meshes:[],limbs:[],armorMeshes:new Map(),flash:0,shake:0,walkPhase:0,
     tactics:makeEnemyTactics(spec.id),gunGlow:0,radarAlertSeconds:0,
     deathTimer:0,upperBody,crouchBlend:0,combatPose:0,reloadPose:0,
@@ -2405,6 +2407,7 @@ function resetEnemies(){
     enemy.state.loadout=enemyArmorForRound(enemy.id,arenaRound);
     enemy.powerSuit=enemyPowerArmorForRound(enemy.id,arenaRound);
     resetDummy(enemy.state);resetEnemyBrain(enemy.brain);
+    resetInjuries(enemy.injuries);
     refreshEnemyArmorVisuals(enemy);
     enemy.root.position.set(enemy.brain.x,0,enemy.brain.z);
     enemy.root.rotation.set(0,enemy.brain.yaw,0);
@@ -3867,6 +3870,7 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
     enemy.beacon.visible=enemy.state.alive;
     if(active&&enemy.state.alive)aliveCount++;
     if(enemy.state.alive){
+      const enemyTrauma=enemyInjuryModifiers(enemy.injuries);
       const wasSpotted=enemy.brain.spotted;
       const previousEnemyX=enemy.brain.x,previousEnemyZ=enemy.brain.z;
       // Keep tactical decisions on last-seen intel when a wall hides us.
@@ -3896,7 +3900,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
           neighbors:roster.filter(other=>other.id!==enemy.id&&
             other.state.alive).map(other=>other.brain),
           combatFacePlayer:true,
-          combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace});
+          combatSpeed:ENEMY_PROFILES[enemy.id].moveSpeed*enemy.tactics.pace,
+          mobilityMultiplier:enemyTrauma.speedMultiplier});
       // First confirmed enemy contact unlocks the red marker. During a
       // brief LOS break it persists for only 3 seconds; passive patrols,
       // unheard enemies and mere gunshot investigations stay unmarked.
@@ -4021,7 +4026,7 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
         alerted:enemy.brain.spotted||enemy.brain.memory>0,
         suppressed:enemy.tactics.suppression,
         lateralSpeed,phase:enemy.tactics.phase,
-        alive:enemy.state.alive
+        alive:enemy.state.alive,injuries:enemy.injuries
       });
       enemy.root.rotation.z=Math.sin(enemy.flash*30)*enemy.shake*.045;
       enemy.shake=Math.max(0,enemy.shake-dt*3);
@@ -4043,7 +4048,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
             Math.hypot(enemy.brain.x-player.x,enemy.brain.z-player.z),
             enemy.brain.moving,Math.random,{
               aimSeconds:enemy.brain.aimLockSeconds,
-              targetSpeed:weaponMotion.speed});
+              targetSpeed:weaponMotion.speed,
+              accuracyMultiplier:enemyTrauma.accuracyMultiplier});
           if(shot.fired){
             enemy.gunGlow=.11;enemy.recoilPose=1;
             sound.gunshot(attack.soundKind||'rifle');
@@ -4695,6 +4701,7 @@ let totalHits=0,shotNoticeTime=0,recoilKick=0,mouseSway=0,muzzleFlash=0;
 let slideCycle=0,handlingTime=0,weaponMotion={speed:0},reloadAnimWasActive=false;
 let shotgunPendingEjections=0,pumpPendingEjection=false,huntingPendingEjection=false,heavySniperPendingEjection=false,revolverPendingEjections=0;
 let groundedStepProgress=0;
+let playerInjuryPhase=0;
 function selectWeapon(id){
   if(WEAPON_REBUILD_MODE&&(!REBUILT_WEAPON_IDS.includes(id)||
     !backpack.items.some(entry=>entry.itemId==='weapon:'+id)))return;
@@ -5238,6 +5245,7 @@ function shoot({vatsTarget=null}={}){
     const hit=applyDamage(enemy.state,shielded?
       boostedDamage*(1-tierReduction[enemy.powerSuit.tier]):boostedDamage,zone);
     if(hit.applied){
+      const wound=damagePlayerLimb(enemy.injuries,zone,hit.damage);
       if(!vatsTarget?.critical&&!chargedCriticalThisRound){
         chargedCriticalThisRound=true;
         vatsCriticalCharge=vatsCriticalGain(vatsCriticalCharge,13);
@@ -5262,7 +5270,9 @@ function shoot({vatsTarget=null}={}){
       spawnDamagePopup(first.point,hit);
       $('damageReport').textContent=enemy.label+' · '+ARMOR_SLOT_LABELS[hit.zone].toUpperCase()+
         ' · '+Math.ceil(hit.damage)+' HP · '+hit.points+' AP · '+
-        Math.ceil(hit.blocked)+' BLOCKED'+(hit.killed?' · DOWN':'');
+        Math.ceil(hit.blocked)+' BLOCKED'+
+        (wound.newlyCrippled?' · '+ARMOR_SLOT_LABELS[zone].toUpperCase()+' CRIPPLED':'')+
+        (hit.killed?' · DOWN':'');
     }
   }else if(first&&first.object.userData.dummyId){
     const dummy=dummies.get(first.object.userData.dummyId);
@@ -6919,8 +6929,10 @@ function renderVats(){
     const button=document.createElement('div');button.className='vats-choice';
     button.setAttribute('aria-disabled',String(!enemy||chance===0));
     button.setAttribute('aria-current',String(zone===vatsState.zone));
+    const crippled=!!enemy&&enemy.injuries?.condition?.[zone]<=25;
+    button.setAttribute('data-crippled',String(crippled));
     const name=document.createElement('span');name.textContent=(index+1)+' '+VATS_ZONE_LABELS[zone];
-    const value=document.createElement('b');value.textContent=chance+'%';
+    const value=document.createElement('b');value.textContent=chance+'%'+(crippled?' !':'');
     button.append(name,value);
     zoneBox.append(button);
   }
@@ -7799,7 +7811,13 @@ function frame(){
       showShotNotice('FUSION CORE DEPLETED · LIMP MODE · SWAP AT FRAME');
     }
     const eye=powerArmorEyeHeight(powerArmorState,info.eyeHeight);
-    camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
+    playerInjuryPhase+=info.speed*dt*(1.78+(info.sprinting?.16:0))*
+      (info.crouched?.78:1);
+    const gait=injuryGaitVisuals(injuryState,{phase:playerInjuryPhase,
+      speed:info.speed,airborne:info.airborne,crouched:info.crouched,
+      powerArmor:powerArmorState.occupied});
+    camera.position.set(player.x,
+      info.ground+eye+info.cameraBob+gait.cameraBob+player.jump,player.z);
     if(refreshDisplay)updateHUD(info);
   }
   if(settlementBuildMode)updateSettlementBuildPreview();
@@ -8007,7 +8025,7 @@ function frame(){
       1-weaponState.reloadRemaining/(weaponState.reloadDuration||activeSpec.reloadSeconds):0,
     reloadRounds:weaponState.reloadRounds,
     recoil:Math.min(1,Math.max(muzzleFlash/.085,viewRecoil.modelPitch/.16)),
-    hit:Math.min(1,playerHitFlash/.48)});
+    hit:Math.min(1,playerHitFlash/.48),injuries:injuryState});
   thirdPersonActive=!deathState.active&&thirdPersonEnabled&&powerArmorState.phase==='idle'&&
     !powerArmorState.occupied&&!weaponState.aiming;
   playerAvatar.root.visible=thirdPersonActive;

@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with living settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.91/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.92/);
+  assert.match(log,/<strong>W20\.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT:<\/strong>/);
   assert.match(log,/<strong>W20\.91 · LIVE V\.A\.T\.S\. SHOT QUEUE:<\/strong>/);
   assert.match(log,/<strong>W20\.90 · TACTICAL BODY-PART TARGETING:<\/strong>/);
   assert.match(log,/<strong>W20\.89 · LIMB INJURIES &amp; FUNCTIONAL MEDICAL CARE:<\/strong>/);
@@ -38,6 +39,8 @@ test('systems testing splash leads with living settlement construction',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT')<
+    log.indexOf('W20.91 · LIVE V.A.T.S. SHOT QUEUE'));
   assert.ok(log.indexOf('W20.91 · LIVE V.A.T.S. SHOT QUEUE')<
     log.indexOf('W20.90 · TACTICAL BODY-PART TARGETING'));
   assert.ok(log.indexOf('W20.90 · TACTICAL BODY-PART TARGETING')<
@@ -85,6 +88,6 @@ test('systems testing splash leads with living settlement construction',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.91/);
-  assert.match(bootstrap,/main\.js\?v=W20\.91/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.92/);
+  assert.match(bootstrap,/main\.js\?v=W20\.92/);
 });
