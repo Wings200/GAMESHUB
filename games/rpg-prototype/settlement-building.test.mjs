@@ -231,7 +231,7 @@ test('old roofs centered incorrectly on walls are migrated into supported bays',
     {id:1,...placement('wall')},{id:2,...placement('roof')}],
     storedStructures:{},population:0,happiness:50,scrappedJunk:[]};
   const migrated=safeSettlementBuildSnapshot(oldSave);
-  assert.equal(migrated.version,6);
+  assert.equal(migrated.version,7);
   assert.equal(migrated.structures.length,2);
   assert.equal(migrated.structures[1].type,'roof');
   assert.equal(migrated.structures[1].x,-40);

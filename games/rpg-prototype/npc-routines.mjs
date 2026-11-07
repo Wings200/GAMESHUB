@@ -15,13 +15,14 @@ export function npcShift(phase){
   return t<17?'working':t<31?'patrolling':'resting';
 }
 
-export function createNpcRoutine(id,anchor,raw=null){
+export function createNpcRoutine(id,anchor,raw=null,mobile=false){
   const safe={id:String(id),x:anchor.x,z:anchor.z,yaw:signedAngle(finite(anchor.yaw)),
     phase:stableOffset(String(id)),alarm:0,lastThreatId:0};
   if(!raw||typeof raw!=='object')return safe;
   const x=finite(raw.x,anchor.x),z=finite(raw.z,anchor.z);
   // Saved routines cannot spawn a contact in another part of the field.
-  if(Math.hypot(x-anchor.x,z-anchor.z)<=2.8){safe.x=x;safe.z=z;}
+  if(Math.hypot(x-anchor.x,z-anchor.z)<=2.8||mobile&&
+    x>=-56&&x<=-19&&z>=-36&&z<=-6){safe.x=x;safe.z=z;}
   safe.yaw=signedAngle(finite(raw.yaw));
   safe.phase=wrapped(finite(raw.phase,safe.phase),NPC_ROUTINE_CYCLE);
   safe.alarm=clamp(finite(raw.alarm),0,6);
@@ -35,13 +36,13 @@ export function npcRoutineSnapshot(routines){
       phase:r.phase,alarm:r.alarm}]))};
 }
 
-export function safeNpcRoutineSnapshot(raw,anchors){
+export function safeNpcRoutineSnapshot(raw,anchors,mobileIds=new Set()){
   const result=new Map();
   const records=raw?.version===NPC_ROUTINE_VERSION&&
     raw.actors&&typeof raw.actors==='object'&&!Array.isArray(raw.actors)?raw.actors:{};
   for(const [id,anchor] of anchors)
     result.set(id,createNpcRoutine(id,anchor,
-      Object.hasOwn(records,id)?records[id]:null));
+      Object.hasOwn(records,id)?records[id]:null,mobileIds.has(id)));
   return result;
 }
 
@@ -70,6 +71,7 @@ export function stepNpcRoutine(previous,dt,context){
   const seconds=clamp(finite(dt),0,.06);
   const next={...previous};
   const {home,player=null,dialogue=false,stationary=false,
+    jobTarget=null,jobWaypoint=null,
     obstacles=[],neighbors=[],threat=null}=context;
   next.phase=wrapped(previous.phase+seconds,NPC_ROUTINE_CYCLE);
   next.alarm=Math.max(0,previous.alarm-seconds);
@@ -78,21 +80,23 @@ export function stepNpcRoutine(previous,dt,context){
     next.lastThreatId=threat.id;
     next.alarm=5.5;
   }
-  let mode=dialogue?'talking':next.alarm>0?'alarmed':npcShift(next.phase);
+  let mode=dialogue?'talking':next.alarm>0?'alarmed':jobTarget?'working':npcShift(next.phase);
   let destination;
-  if(mode==='working')destination={x:home.x+.25,z:home.z-.55};
+  if(mode==='working')destination=jobTarget?(jobWaypoint||jobTarget):
+    {x:home.x+.25,z:home.z-.55};
   else if(mode==='patrolling')destination={x:home.x+1.25,z:home.z+.65};
   else if(mode==='resting')destination={x:home.x-.65,z:home.z+.65};
   else if(mode==='alarmed'){
     const source=threat&&finite(threat.age,999)<1.1?threat:player||home;
     const dx=previous.x-source.x,dz=previous.z-source.z;
     const length=Math.max(.001,Math.hypot(dx,dz));
-    destination={x:clamp(previous.x+dx/length*1.2,home.x-2.3,home.x+2.3),
-      z:clamp(previous.z+dz/length*1.2,home.z-2.3,home.z+2.3)};
+    const center=jobTarget?previous:home;
+    destination={x:clamp(previous.x+dx/length*1.2,center.x-2.3,center.x+2.3),
+      z:clamp(previous.z+dz/length*1.2,center.z-2.3,center.z+2.3)};
   }else destination={x:previous.x,z:previous.z};
   if(stationary)destination={x:previous.x,z:previous.z};
   // Skip blocked waypoints instead of phasing through houses and terminals.
-  if(!stationary&&mode!=='talking'&&
+  if(!jobTarget&&!stationary&&mode!=='talking'&&
     !npcCanStand(destination.x,destination.z,{obstacles,neighbors,player})&&
     mode!=='alarmed'){
     const alternatives=[{x:home.x-.95,z:home.z-.7},
@@ -105,10 +109,11 @@ export function stepNpcRoutine(previous,dt,context){
     const dx=destination.x-previous.x,dz=destination.z-previous.z;
     const length=Math.hypot(dx,dz);
     if(length>.11){
-      const speed=mode==='alarmed'?2.05:mode==='patrolling'?1.05:.78;
+      const speed=mode==='alarmed'?2.05:mode==='patrolling'?1.05:jobTarget?1.12:.78;
       const step=Math.min(speed*seconds,length);
       const x=previous.x+dx/length*step,z=previous.z+dz/length*step;
-      const can=(nx,nz)=>Math.hypot(nx-home.x,nz-home.z)<2.8&&
+      const can=(nx,nz)=>(jobTarget?nx>=-56&&nx<=-19&&nz>=-36&&nz<=-6:
+        Math.hypot(nx-home.x,nz-home.z)<2.8)&&
         npcCanStand(nx,nz,{obstacles,neighbors,player});
       if(can(x,z)){next.x=x;next.z=z;moved=step;}
       else if(can(x,previous.z)){next.x=x;moved=Math.abs(x-previous.x);}

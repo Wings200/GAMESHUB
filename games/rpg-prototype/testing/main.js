@@ -10,8 +10,12 @@ import {matchesVendorFilter,vendorComparisonFacts}
 import {VENDOR_CONVERSATIONS,dialoguePage,charismaCheck,negotiatedTradeModifiers}
   from '../dialogue-presentation.mjs?v=W21.02';
 import {createNpcRoutine,safeNpcRoutineSnapshot,npcRoutineSnapshot,
-  stepNpcRoutine,npcBodyBounds}
-  from '../npc-routines.mjs?v=W21.03';
+  stepNpcRoutine,npcBodyBounds,npcCanStand}
+  from '../npc-routines.mjs?v=W21.04';
+import {assignSettlerJob,reconcileSettlerJobs,SETTLER_JOB_TYPES,
+  settlerWorkLocation,advanceSettlerJobs,
+  withdrawSettlerProvisions} from '../settler-jobs.mjs?v=W21.04';
+import {planNavigationRoute} from '../enemy-navigation.mjs?v=W21.04';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -24,7 +28,7 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.97';
+  from '../settlement-building.mjs?v=W21.04';
 import {JUNK_BY_ID,junkYieldText} from '../junk.mjs?v=W20.97';
 import {storeWorkshopJunk,takeWorkshopJunk,scrapWorkshopJunk,
   takeWorkshopMaterial,workshopJunkTotal,previewWorkshopRecipe,craftWithWorkshop}
@@ -2006,6 +2010,7 @@ try{
   const saved=JSON.parse(localStorage.getItem(settlementBuildStorageKey)||'null');
   if(saved)settlementBuildState=safeSettlementBuildSnapshot(saved);
 }catch{}
+reconcileSettlerJobs(settlementBuildState);
 let settlementBuildMode=false,settlementBuildCategory='STRUCTURE';
 let settlementBuildType=SETTLEMENT_BLUEPRINTS[0].id;
 let settlementRotation=0,settlementGhost=null,settlementPreview=null;
@@ -2175,6 +2180,7 @@ function unregisterSettlementStructure(id){
   updateSettlementLights();
 }
 function saveSettlementBuild(){
+  reconcileSettlerJobs(settlementBuildState);
   try{localStorage.setItem(settlementBuildStorageKey,
     JSON.stringify(settlementBuildState));}catch{}
 }
@@ -5980,8 +5986,8 @@ function refreshSettlementStats(){
   const metrics={
     settlementPopulation:stats.population,
     settlementBeds:stats.beds,
-    settlementFood:stats.food,
-    settlementWater:stats.water,
+    settlementFood:stats.staffedFood+'/'+stats.food,
+    settlementWater:stats.staffedWater+'/'+stats.water,
     settlementDefense:stats.defense,
     settlementPower:stats.power+'/'+stats.powerDraw,
     settlementHappiness:stats.happiness+'%'
@@ -5989,8 +5995,8 @@ function refreshSettlementStats(){
   for(const [id,value] of Object.entries(metrics))$(id).textContent=value;
   for(const [id,danger] of [
     ['settlementBeds',stats.population>stats.beds],
-    ['settlementFood',stats.population>stats.food],
-    ['settlementWater',stats.population>stats.water],
+    ['settlementFood',stats.population>stats.staffedFood],
+    ['settlementWater',stats.population>stats.staffedWater],
     ['settlementDefense',stats.population>0&&stats.defense<stats.population*2],
     ['settlementPower',!stats.powered],
     ['settlementHappiness',stats.happiness<45]
@@ -6002,6 +6008,8 @@ function refreshSettlementStats(){
       !stats.powered?'NOT ENOUGH POWER FOR BEACON':
       !stats.hasRoom?'MORE BEDS, FOOD & WATER NEEDED':'BEACON STANDBY';
   $('settlementHappinessFill').style.width=stats.happiness+'%';
+  $('settlementStock').textContent='STOCK · '+stats.storedFood+' FOOD / '+
+    stats.storedWater+' WATER · '+stats.assigned+'/'+stats.population+' WORKING';
   $('settlementBuildHint').textContent=SETTLEMENT_CATEGORIES.find(c=>
     c.id===settlementBuildCategory)?.hint||'Workshop construction';
 }
@@ -6245,9 +6253,12 @@ function syncSettlementResidents(){
     const actor={avatar,x:site[0],z:site[1],yaw:.4+index*.71};
     avatar.root.name='HavenRecruitedSettler_'+(index+1);
     settlementResidents.push(actor);
-    if(npcRoutineStates)
-      npcRoutineStates.set('settler-'+(index+1),createNpcRoutine('settler-'+(index+1),
-        {x:actor.x,z:actor.z,yaw:actor.yaw}));
+    if(npcRoutineStates){
+      const id='settler-'+(index+1);
+      const anchor={x:actor.x,z:actor.z,yaw:actor.yaw};
+      npcRoutineAnchors.set(id,anchor);
+      npcRoutineStates.set(id,createNpcRoutine(id,anchor));
+    }
   }
   settlementResidents.forEach((actor,i)=>{
     actor.avatar.root.visible=i<settlementBuildState.population;
@@ -6267,7 +6278,147 @@ const npcRoutineAnchors=new Map([
 let savedNpcRoutines=null;
 try{savedNpcRoutines=JSON.parse(localStorage.getItem('rpg-lab-npc-routines-v1')||'null');}
 catch{ /* Older or corrupted saves start safely from their original actor positions. */ }
-npcRoutineStates=safeNpcRoutineSnapshot(savedNpcRoutines,npcRoutineAnchors);
+npcRoutineStates=safeNpcRoutineSnapshot(savedNpcRoutines,npcRoutineAnchors,
+  new Set(Object.keys(settlementBuildState.workerJobs).map(id=>'settler-'+id)));
+let settlerJobsOpen=false,settlerJobsFromField=false;
+const settlerJobRoutes=new Map();
+function nearestRecruitedSettler(){
+  let target=null,closest=2.45;
+  settlementResidents.forEach((actor,index)=>{
+    if(!actor.avatar.root.visible)return;
+    const distance=Math.hypot(actor.x-player.x,actor.z-player.z);
+    if(distance<closest){closest=distance;target=index+1;}
+  });
+  return target;
+}
+function refreshSettlerJobStations(){
+  const role=$('settlerJobRole').value;
+  const resident=$('settlerJobResident').value;
+  const selected=$('settlerJobStation').value;
+  const list=$('settlerJobStation');list.replaceChildren();
+  const category=SETTLER_JOB_TYPES[role]?.category;
+  for(const station of settlementBuildState.structures){
+    const plan=SETTLEMENT_BY_ID[station.type];
+    if(role==='scavenger'||!plan||plan.category!==category||
+      role==='guard'&&station.type!=='guardpost'||
+      role==='water'&&!(plan.stats?.water>0)||
+      role==='farmer'&&!(plan.stats?.food>0))continue;
+    const occupied=Object.entries(settlementBuildState.workerJobs).some(([id,a])=>
+      id!==resident&&a.structureId===station.id);
+    if(occupied)continue;
+    list.add(new Option('#'+station.id+' · '+plan.name,station.id));
+  }
+  list.disabled=role==='scavenger';
+  if(role==='scavenger')list.add(new Option('NO WORKSTATION · PHYSICAL DEBRIS',''));
+  else if(!list.options.length)list.add(new Option('BUILD AN UNSTAFFED WORKSTATION',''));
+  if([...list.options].some(option=>option.value===selected))list.value=selected;
+  $('settlerJobAssign').disabled=!resident||role!=='scavenger'&&!list.value;
+}
+function refreshSettlerJobsPanel(selectedResident=null){
+  if(!settlerJobsOpen)return;
+  const select=$('settlerJobResident'),previous=selectedResident||select.value;
+  select.replaceChildren();
+  for(let id=1;id<=settlementBuildState.population;id++)
+    select.add(new Option('SETTLER '+String(id).padStart(2,'0'),String(id)));
+  if([...select.options].some(option=>option.value===previous))select.value=previous;
+  const assigned=settlementBuildState.workerJobs[select.value];
+  if(assigned?.job)$('settlerJobRole').value=assigned.job;
+  refreshSettlerJobStations();
+  if(assigned?.structureId&&[...$('settlerJobStation').options].some(option=>
+    option.value===String(assigned.structureId)))
+    $('settlerJobStation').value=String(assigned.structureId);
+  $('settlerJobAssign').disabled=!select.value||
+    $('settlerJobRole').value!=='scavenger'&&!$('settlerJobStation').value;
+  $('settlerJobUnassign').disabled=!assigned;
+  const roster=$('settlerJobList');roster.replaceChildren();
+  if(!settlementBuildState.population){
+    const note=document.createElement('div');
+    note.textContent='NO SETTLERS YET · BUILD BEDS, FOOD, WATER, POWER AND A RECRUITMENT BEACON.';
+    roster.append(note);
+  }
+  for(let id=1;id<=settlementBuildState.population;id++){
+    const assignment=settlementBuildState.workerJobs[id];
+    const row=document.createElement('div');
+    const name=document.createElement('span');name.textContent='SETTLER '+String(id).padStart(2,'0');
+    const status=document.createElement('b');
+    const actor=settlementResidents[id-1];
+    status.textContent=assignment?(SETTLER_JOB_TYPES[assignment.job]?.label||'JOB')+
+      (!settlerWorkLocation(settlementBuildState,assignment,
+        [...visibleHavenJunk.keys()])?' · NO SALVAGE LEFT':
+        actor?.atJobStation?' · WORKING':actor?.routineMode==='alarmed'?
+          ' · TAKING COVER':' · TRAVELING'):'UNASSIGNED';
+    row.append(name,status);roster.append(row);
+  }
+  const stats=calculateSettlementStats(settlementBuildState);
+  $('settlerProvisionStatus').textContent='WORKSHOP PROVISIONS · '+
+    stats.storedFood+' FOOD · '+stats.storedWater+' WATER · '+stats.assigned+
+    '/'+stats.population+' ASSIGNED';
+  $('settlerFoodTake').disabled=stats.storedFood<1;
+  $('settlerWaterTake').disabled=stats.storedWater<1;
+}
+function openSettlerJobs(resident=null){
+  if(settlerJobsOpen||!playerAtHaven()||deathState.active||
+    vendorOpen||dialogueOpen||inventoryOpen||lootOpen||mapOpen||
+    workbenchOpen||powerUIOpen||specialOpen||questPanelOpen)return;
+  if(settlementBuildMode)toggleSettlementBuildMode(false);
+  settlerJobsFromField=controls.isLocked;
+  settlerJobsOpen=true;
+  $('settlerJobsPanel').classList.remove('hidden');
+  $('menu').classList.add('hidden');
+  refreshSettlerJobsPanel(String(resident||1));
+  $('settlerJobFeedback').textContent='ASSIGNMENTS ARE SAVED · WORKERS MUST REACH THEIR STATIONS';
+  if(controls.isLocked)controls.unlock();
+}
+function closeSettlerJobs(){
+  if(!settlerJobsOpen)return;
+  settlerJobsOpen=false;$('settlerJobsPanel').classList.add('hidden');
+  if(settlerJobsFromField){settlerJobsFromField=false;controls.lock();}
+  else $('menu').classList.remove('hidden');
+}
+$('settlerJobsClose').addEventListener('click',closeSettlerJobs);
+$('settlerJobResident').addEventListener('change',()=>{
+  const assignment=settlementBuildState.workerJobs[$('settlerJobResident').value];
+  if(assignment)$('settlerJobRole').value=assignment.job;
+  refreshSettlerJobsPanel();
+});
+$('settlerJobRole').addEventListener('change',refreshSettlerJobStations);
+$('settlerJobAssign').addEventListener('click',()=>{
+  const resident=Number($('settlerJobResident').value);
+  const role=$('settlerJobRole').value;
+  const station=role==='scavenger'?null:Number($('settlerJobStation').value);
+  const result=assignSettlerJob(settlementBuildState,resident,role,station);
+  if(result.ok){settlerJobRoutes.delete('settler-'+resident);saveSettlementBuild();
+    refreshSettlementStats();}
+  $('settlerJobFeedback').textContent=result.ok?
+    'SETTLER '+resident+' ASSIGNED · '+SETTLER_JOB_TYPES[role].label.toUpperCase():
+    result.reason;
+  refreshSettlerJobsPanel();
+});
+$('settlerJobUnassign').addEventListener('click',()=>{
+  const resident=Number($('settlerJobResident').value);
+  const result=assignSettlerJob(settlementBuildState,resident,'unassigned');
+  if(result.ok){settlerJobRoutes.delete('settler-'+resident);saveSettlementBuild();
+    refreshSettlementStats();}
+  $('settlerJobFeedback').textContent=result.ok?'SETTLER '+resident+' IS NOW UNASSIGNED':result.reason;
+  refreshSettlerJobsPanel();
+});
+function takeSettlementSupply(resource){
+  if(!playerAtHaven())return;
+  const itemId=resource==='food'?'supply:trail-stew':'supply:clean-water';
+  if((settlementBuildState.provisions?.[resource]||0)<1){
+    $('settlerJobFeedback').textContent='NO '+resource.toUpperCase()+' LEFT IN STORAGE';return;
+  }
+  const result=addItem(backpack,itemId,1);
+  if(result.added>0){
+    withdrawSettlerProvisions(settlementBuildState,resource,result.added);
+    saveBackpack();saveSettlementBuild();refreshInventoryUI();
+    $('settlerJobFeedback').textContent='TAKEN · 1 '+getItem(itemId).name.toUpperCase()+
+      ' ADDED TO YOUR REAL BACKPACK';
+  }else $('settlerJobFeedback').textContent='BACKPACK STACK FULL · NOTHING TAKEN';
+  refreshSettlerJobsPanel();refreshSettlementStats();
+}
+$('settlerFoodTake').addEventListener('click',()=>takeSettlementSupply('food'));
+$('settlerWaterTake').addEventListener('click',()=>takeSettlementSupply('water'));
 const npcDynamicBodies=[];
 let npcRoutineSaveClock=0,npcGunshotId=0,npcRecentGunshot=null;
 function saveNpcRoutines(){
@@ -6282,6 +6433,44 @@ function activeNpcGunfire(){
   if(!npcRecentGunshot)return null;
   const age=clock.elapsedTime-npcRecentGunshot.at;
   return age<.7?{...npcRecentGunshot,age}:null;
+}
+function availableSettlerWorkPoint(actor,location){
+  if(!location)return null;
+  const x=location.x,z=location.z;
+  const dx=location.width/2+.76,dz=location.depth/2+.76;
+  const candidates=[{x:x+dx,z},{x:x-dx,z},{x,z:z+dz},{x,z:z-dz},
+    {x:x+dx,z:z+dz},{x:x-dx,z:z-dz},
+    {x:x+dx,z:z-dz},{x:x-dx,z:z+dz}];
+  return candidates.filter(point=>point.x>=-55.5&&point.x<=-19.5&&
+    point.z>=-35.5&&point.z<=-6.5&&npcCanStand(point.x,point.z,
+      {obstacles:enemyMovementObstacles}))
+    .sort((a,b)=>Math.hypot(a.x-actor.x,a.z-actor.z)-
+      Math.hypot(b.x-actor.x,b.z-actor.z))[0]||null;
+}
+function assignedSettlerWaypoint(id,actor,location){
+  const existing=settlerJobRoutes.get(id);
+  const key=location.siteId||location.structureId;
+  const target=existing?.key===key?existing.target:
+    availableSettlerWorkPoint(actor,location);
+  if(!target){settlerJobRoutes.delete(id);return null;}
+  let route=existing?.key===key?existing:null;
+  if(!route){
+    const range={minX:Math.min(actor.x,target.x)-5,
+      maxX:Math.max(actor.x,target.x)+5,
+      minZ:Math.min(actor.z,target.z)-5,maxZ:Math.max(actor.z,target.z)+5};
+    const localObstacles=enemyMovementObstacles.filter(b=>
+      (b.bottom??0)<1.4&&(b.top??b.height??2)>.42&&
+      b.maxX>range.minX&&b.minX<range.maxX&&
+      b.maxZ>range.minZ&&b.minZ<range.maxZ).slice(0,65);
+    const planned=planNavigationRoute(actor,target,localObstacles,
+      {minX:-56,maxX:-19,minZ:-36,maxZ:-6},.40);
+    route={key,target,waypoints:planned.length?planned:[target]};
+    settlerJobRoutes.set(id,route);
+  }
+  while(route.waypoints.length>1&&
+    Math.hypot(actor.x-route.waypoints[0].x,actor.z-route.waypoints[0].z)<.48)
+    route.waypoints.shift();
+  return {target,waypoint:route.waypoints[0]||target};
 }
 // Old survivor-held model stays hidden. Third-person renders the same new
 // 10mm geometry attached to the animated hand socket.
@@ -7846,7 +8035,8 @@ controls.addEventListener('unlock',()=>{
   if(settlementBuildMode)toggleSettlementBuildMode(false);
   cancelPowerHold();
   if(!deathState.active&&!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
-    !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen&&!vatsState.active)
+    !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen&&!settlerJobsOpen&&
+    !vatsState.active)
     $('menu').classList.remove('hidden');
   keys.clear();
   triggerHeld=false;emptyClickLatched=false;
@@ -7869,6 +8059,10 @@ $('quality').addEventListener('click',()=>{
 });
 window.addEventListener('keydown',e=>{
   if(deathState.active){e.preventDefault();return;}
+  if(settlerJobsOpen){
+    if(e.code==='Escape'&&!e.repeat){e.preventDefault();closeSettlerJobs();}
+    return;
+  }
   if(vatsState.active){
     if((e.code==='KeyT'||e.code==='Escape')&&!e.repeat){
       e.preventDefault();closeVats();
@@ -8014,6 +8208,9 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){
     e.preventDefault();toggleSettlementBuildMode();return;
   }
+  if(e.code==='KeyJ'&&!e.repeat&&controls.isLocked&&playerAtHaven()){
+    e.preventDefault();openSettlerJobs();return;
+  }
   if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
     thirdPersonEnabled=!thirdPersonEnabled;
     showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
@@ -8029,6 +8226,8 @@ window.addEventListener('keydown',e=>{
     if(contact){openCampaignDialogue(contact);return;}
     const trader=nearestVendor();
     if(trader){openVendorConversation(trader);return;}
+    const settler=nearestRecruitedSettler();
+    if(settler){openSettlerJobs(settler);return;}
     if(powerArmorState.phase==='idle'&&
        (powerArmorState.occupied||nearPoweredSuit())){
       beginPowerHold();return;
@@ -8661,21 +8860,48 @@ function frame(){
       showShotNotice('HAVEN JUNCTION · A NEW SETTLER HAS ARRIVED');
     }
   }
+  const workingSettlers=[];
   for(let i=0;i<settlementResidents.length;i++){
     const actor=settlementResidents[i];
     if(!actor.avatar.root.visible)continue;
     const id='settler-'+(i+1),home=npcRoutineAnchors.get(id);
     const previous=npcRoutineStates.get(id);
     if(!previous||!home)continue;
+    const assignment=settlementBuildState.workerJobs[String(i+1)];
+    const location=settlerWorkLocation(settlementBuildState,assignment,
+      [...visibleHavenJunk.keys()]);
+    const destination=location?assignedSettlerWaypoint(id,actor,location):null;
     const neighbors=[...campaignResidents,...vendorActors,...settlementResidents]
       .filter(other=>other!==actor).map(other=>({x:other.x,z:other.z}));
     const step=stepNpcRoutine(previous,dt,{home,player,
+      jobTarget:destination?.target,jobWaypoint:destination?.waypoint,
+      dialogue:settlerJobsOpen&&$('settlerJobResident').value===String(i+1),
       obstacles:enemyMovementObstacles,neighbors,threat:activeNpcGunfire()});
     npcRoutineStates.set(id,step.state);
     actor.x=step.state.x;actor.z=step.state.z;actor.yaw=step.state.yaw;
     actor.routineMode=step.mode;
+    actor.atJobStation=!!destination&&step.mode==='working'&&
+      Math.hypot(actor.x-destination.target.x,actor.z-destination.target.z)<.82;
+    if(actor.atJobStation)workingSettlers.push(String(i+1));
     actor.avatar.update({dt,x:actor.x,z:actor.z,ground:groundHeight(actor.x,actor.z),
       yaw:actor.yaw,speed:step.speed,crouched:step.crouched,alive:true});
+  }
+  if(controls.isLocked&&!deathState.active){
+    const produced=advanceSettlerJobs(settlementBuildState,dt,
+      {workingIds:workingSettlers,availableSiteIds:[...visibleHavenJunk.keys()]});
+    for(const siteId of produced.scavenged){
+      unregisterHavenJunk(siteId);
+      for(const [id] of settlerJobRoutes)
+        if(id.startsWith('settler-'))settlerJobRoutes.delete(id);
+    }
+    if(produced.scavenged.length||produced.food||produced.water){
+      saveSettlementBuild();
+      if(produced.scavenged.length){
+        refreshSettlementBuildHud();
+        showShotNotice('HAVEN SCAVENGERS · '+produced.scavenged.length+
+          ' FINITE JUNK OBJECT'+(produced.scavenged.length===1?'':'S')+' RECOVERED');
+      }
+    }
   }
   const settlementPowered=calculateSettlementStats(settlementBuildState).powered;
   for(const [id,record] of builtSettlementMeshes){
@@ -8754,13 +8980,15 @@ function frame(){
   const nearby=nearestLootBag();
   const questContact=nearCampaignNode();
   const merchant=nearestVendor();
+  const settler=nearestRecruitedSettler();
   const frameInReach=powerArmorState.phase==='idle'&&
     (powerArmorState.occupied||nearPoweredSuit());
   const settlementWorkshop=nearestSettlementWorkshop();
-  const promptAvailable=frameInReach||!!questContact||!!merchant||!!nearby||!!settlementWorkshop;
+  const promptAvailable=frameInReach||!!questContact||!!merchant||!!settler||
+    !!nearby||!!settlementWorkshop;
   $('lootPrompt').classList.toggle('hidden',
     !controls.isLocked||inventoryOpen||lootOpen||workbenchOpen||weaponsCrateOpen||powerUIOpen||
-    questPanelOpen||dialogueOpen||vendorOpen||mapOpen||!promptAvailable);
+    questPanelOpen||dialogueOpen||vendorOpen||settlerJobsOpen||mapOpen||!promptAvailable);
   if(questContact){
     const contactActor=campaignResidents.find(actor=>actor.id===questContact.id);
     $('lootPrompt').textContent='E · '+
@@ -8769,6 +8997,11 @@ function frame(){
         ' · '+contactActor.routineMode.toUpperCase():'')+' · Q JOURNAL';
   }else if(merchant){
     $('lootPrompt').textContent='E · TRADE WITH '+merchant.name.toUpperCase()+' · '+merchant.title;
+  }else if(settler){
+    const assignment=settlementBuildState.workerJobs[settler];
+    $('lootPrompt').textContent='E · ASSIGN SETTLER '+settler+' · '+
+      (SETTLER_JOB_TYPES[assignment?.job]?.label.toUpperCase()||'UNASSIGNED')+
+      ' · J ALL SETTLER JOBS';
   }else if(frameInReach){
     $('lootPrompt').textContent=nearby?
       'TAP E · SEARCH '+nearby.source.toUpperCase()+'     HOLD E · '+

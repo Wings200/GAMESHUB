@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W21.03 · NPC Behavior Overhaul | GAMESHUB RPG</title>
+<title>W21.04 · Settler Work & Production | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -188,6 +188,22 @@ body.power-transition #shotNotice,body.power-transition #crosshair{opacity:0!imp
 .settlement-happiness-track span{display:block;height:100%;width:50%;background:#bddb80;transition:width .4s}
 .settlement-status-foot{display:flex;justify-content:space-between;gap:10px;
   margin-top:7px;font-size:10px;font-weight:800;color:#a9c4b8}
+.settlement-jobs-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.settlement-jobs-section{background:#112b2b;border:1px solid #466f60;border-radius:5px;
+  padding:17px;display:flex;flex-direction:column;gap:12px}
+.settlement-jobs-section label{display:grid;gap:5px;color:#a5d8be;
+  font-size:11px;font-weight:850;letter-spacing:.08em}
+.settlement-jobs-section select{width:100%;background:#092020;color:#f3e6c7;
+  border:1px solid #61847a;padding:12px;border-radius:3px;font-size:13px}
+.settlement-jobs-section strong{color:#f3d99d;font-size:13px}
+.settlement-jobs-section .settlement-jobs-actions{display:flex;flex-wrap:wrap;gap:9px}
+.settlement-jobs-section .settlement-jobs-actions button{flex:1}
+#settlerJobList{display:grid;gap:6px;max-height:215px;overflow:auto}
+#settlerJobList div{border-bottom:1px solid #365447;padding:8px 0;
+  display:flex;justify-content:space-between;gap:8px;color:#c0d0c4;font-size:12px}
+#settlerJobList b{color:#efd09a}
+#settlerJobFeedback{min-height:25px;color:#add7c1;font-size:12px;font-weight:850}
+@media(max-width:690px){.settlement-jobs-grid{grid-template-columns:1fr}}
 body.settlement-building #fieldHud .field-weapon,body.settlement-building #weaponHud,
 body.settlement-building #lootPrompt{display:none!important}
 .settlement-menu-entry{margin:14px 0 18px;padding:15px 17px;background:#1b3832;
@@ -2054,7 +2070,9 @@ body.hud-modern #powerArmorHud{display:none!important}
   </div>
   <div class="settlement-happiness-track"><span id="settlementHappinessFill"></span></div>
   <div class="settlement-status-foot"><span id="settlementRecruitment">BUILD A RECRUITMENT BEACON</span>
-    <span>BUILDINGS SAVED · NO FREE RESOURCES</span></div>
+    <span id="settlementStock">STOCK · 0 FOOD / 0 WATER · 0 WORKING</span></div>
+  <div class="settlement-status-foot"><span>FOOD / WATER · STAFFED CAPACITY / BUILT CAPACITY</span>
+    <span>J · SETTLER JOBS · E · TALK TO SETTLER</span></div>
 </section>
 <section id="settlementBuildHud" class="settlement-build-hud hidden" aria-label="Haven Junction settlement construction">
   <div class="settlement-build-head"><strong>HAVEN JUNCTION / WORKSHOP BUILD MODE</strong>
@@ -2068,6 +2086,47 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="settlement-build-foot"><b id="settlementBuildFeedback" aria-live="polite">AIM AT GROUND TO PLACE</b>
     <span>REAL SALVAGE COSTS · CONSTRUCTION SAVES AUTOMATICALLY</span></div>
 </section>
+<div id="settlerJobsPanel" class="loot-overlay hidden" role="dialog" aria-modal="true"
+  aria-label="Settlement resident jobs and stored supplies">
+  <div class="loot-container">
+    <div class="loot-panel-top"><div>
+      <div class="loot-eyebrow">HAVEN JUNCTION · SETTLER WORK ASSIGNMENTS</div>
+      <h2>BUILD A <span>WORKING COMMUNITY.</span></h2>
+      <p>Jobs require real settlers and built workstations. Workers must walk to their posts.
+      Farms and pumps fill finite workshop provisions; guards add defense; scavengers recover
+      only physical junk still present in Haven.</p>
+    </div><button id="settlerJobsClose" type="button">DONE / RESUME</button></div>
+    <div class="settlement-jobs-grid">
+      <section class="settlement-jobs-section" aria-label="Assign a settler">
+        <strong>ASSIGN A RESIDENT</strong>
+        <label>SETTLER<select id="settlerJobResident"></select></label>
+        <label>ROLE<select id="settlerJobRole">
+          <option value="farmer">FARMER · PRODUCE FOOD</option>
+          <option value="water">WATER WORKER · PRODUCE CLEAN WATER</option>
+          <option value="guard">GUARD · STAFF GUARD POST</option>
+          <option value="scavenger">SCAVENGER · FINITE DEBRIS</option>
+        </select></label>
+        <label>WORKSTATION<select id="settlerJobStation"></select></label>
+        <div class="settlement-jobs-actions">
+          <button id="settlerJobAssign" type="button">ASSIGN JOB</button>
+          <button id="settlerJobUnassign" type="button">UNASSIGN</button>
+        </div>
+        <div id="settlerJobFeedback" role="status" aria-live="polite">CHOOSE A RESIDENT AND A JOB.</div>
+      </section>
+      <section class="settlement-jobs-section" aria-label="Jobs and real provisions">
+        <strong>SETTLEMENT ROSTER</strong>
+        <div id="settlerJobList"></div>
+        <strong id="settlerProvisionStatus">WORKSHOP PROVISIONS · 0 FOOD · 0 WATER</strong>
+        <p>Each worker produces one supply every 16 seconds on duty; residents consume
+          provisions each 80 seconds. Take stored supplies into your actual inventory.</p>
+        <div class="settlement-jobs-actions">
+          <button id="settlerFoodTake" type="button">TAKE 1 FOOD</button>
+          <button id="settlerWaterTake" type="button">TAKE 1 WATER</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
 <div id="bottom">
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
@@ -2075,7 +2134,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.03</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.04</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -2093,7 +2152,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.03</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.04</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -2635,7 +2694,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W21.03"></script>
+<script type="module" src="./bootstrap.mjs?v=W21.04"></script>
 </body>
 </html>
 

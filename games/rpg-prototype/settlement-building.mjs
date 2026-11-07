@@ -539,8 +539,10 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:6,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
-    happiness:50,recruitProgress:0,scrappedJunk:[],workshopJunk:{},workshopMaterials:{}};
+  return {version:7,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
+    happiness:50,recruitProgress:0,scrappedJunk:[],workshopJunk:{},workshopMaterials:{},
+    workerJobs:{},workerProgress:{},provisions:{food:0,water:0},
+    provisionConsumerClock:0,provisionShortfall:0};
 }
 export function safeSettlementBuildSnapshot(raw){
   const state=initialSettlementBuildState();
@@ -554,6 +556,14 @@ export function safeSettlementBuildSnapshot(raw){
     state.happiness=Math.min(100,Math.max(0,raw.happiness));
   if(finite(raw.recruitProgress))
     state.recruitProgress=Math.min(RECRUITMENT_INTERVAL,Math.max(0,raw.recruitProgress));
+  if(raw.provisions&&typeof raw.provisions==='object')
+    for(const resource of ['food','water'])
+      if(Number.isSafeInteger(raw.provisions[resource]))
+        state.provisions[resource]=Math.max(0,Math.min(240,raw.provisions[resource]));
+  if(finite(raw.provisionConsumerClock))
+    state.provisionConsumerClock=Math.max(0,Math.min(80,raw.provisionConsumerClock));
+  if(Number.isSafeInteger(raw.provisionShortfall))
+    state.provisionShortfall=Math.max(0,Math.min(12,raw.provisionShortfall));
   if(Array.isArray(raw.scrappedJunk))
     state.scrappedJunk=[...new Set(raw.scrappedJunk.filter(id=>
       typeof id==='string'&&HAVEN_JUNK_BY_ID[id]))].slice(0,HAVEN_JUNK_SITES.length);
@@ -587,6 +597,28 @@ export function safeSettlementBuildSnapshot(raw){
     state.structures.push(placement);seen.add(placement.id);
   }
   state.nextId=Math.max(1,...state.structures.map(s=>s.id+1));
+  if(raw.workerJobs&&typeof raw.workerJobs==='object'&&!Array.isArray(raw.workerJobs)){
+    const reserved=new Set();
+    for(let index=1;index<=state.population;index++){
+      const assignment=raw.workerJobs[String(index)];
+      if(!assignment||typeof assignment!=='object')continue;
+      const job=assignment.job;
+      if(job==='scavenger')state.workerJobs[String(index)]={job};
+      else if(['farmer','water','guard'].includes(job)){
+        const structure=state.structures.find(s=>s.id===assignment.structureId);
+        const plan=structure&&SETTLEMENT_BY_ID[structure.type];
+        const valid=plan&&!reserved.has(structure.id)&&(
+          job==='farmer'&&plan.category==='FOOD'&&plan.stats?.food>0||
+          job==='water'&&plan.category==='WATER'&&plan.stats?.water>0||
+          job==='guard'&&structure.type==='guardpost');
+        if(!valid)continue;
+        reserved.add(structure.id);
+        state.workerJobs[String(index)]={job,structureId:structure.id};
+      }else continue;
+      const progress=raw.workerProgress?.[String(index)];
+      state.workerProgress[String(index)]=finite(progress)?Math.max(0,Math.min(16,progress)):0;
+    }
+  }
   return state;
 }
 export function settlementCategoryBlueprints(category,state=null){
@@ -631,18 +663,38 @@ export function calculateSettlementStats(state){
       defense+=stats.defense||0;
     }
   }
+  let staffedFood=0,staffedWater=0,guards=0,assigned=0;
+  const staffedStations=new Set();
+  for(const [id,assignment] of Object.entries(state?.workerJobs||{})){
+    if(!Number.isInteger(Number(id))||Number(id)<1||Number(id)>state.population)continue;
+    if(assignment?.job==='scavenger'){assigned++;continue;}
+    const station=structures.find(s=>s.id===assignment?.structureId);
+    const plan=station&&SETTLEMENT_BY_ID[station.type];
+    if(!plan||staffedStations.has(station.id))continue;
+    if(assignment.job==='farmer'&&plan.category==='FOOD')
+      staffedFood+=plan.stats?.food||0;
+    else if(assignment.job==='water'&&plan.category==='WATER')
+      staffedWater+=!plan.stats?.powerDraw||powered?plan.stats?.water||0:0;
+    else if(assignment.job==='guard'&&station.type==='guardpost')
+      guards++;
+    else continue;
+    staffedStations.add(station.id);assigned++;
+  }
+  defense+=guards*2;
   const population=Math.max(0,Math.floor(state?.population||0));
   const hasRoom=beds>population&&food>population&&water>population;
   const recruiting=beacons>0&&powered&&hasRoom;
   const sufficient=population===0||beds>=population&&
     food>=population&&water>=population;
   const targetHappiness=population===0?50:Math.max(5,Math.min(95,
-    45+(beds>=population?9:-16)+(food>=population?12:-22)+
-    (water>=population?12:-22)+(defense>=population*2?10:-7)+
-    (powered?7:-10)));
+    45+(beds>=population?9:-16)+(staffedFood>=population?12:-22)+
+    (staffedWater>=population?12:-22)+(defense>=population*2?10:-7)+
+    (powered?7:-10)-(state?.provisionShortfall>0?12:0)));
   return {population,beds,food,water,defense,power,powerDraw,
     powerBalance:power-powerDraw,powered,beacons,recruiting,
-    hasRoom,sufficient,targetHappiness,happiness:Math.round(state?.happiness??50),
+    hasRoom,sufficient,staffedFood,staffedWater,guards,assigned,
+    storedFood:state?.provisions?.food||0,storedWater:state?.provisions?.water||0,
+    targetHappiness,happiness:Math.round(state?.happiness??50),
     recruitProgress:Math.max(0,state?.recruitProgress||0)};
 }
 export function advanceSettlement(state,deltaSeconds){
