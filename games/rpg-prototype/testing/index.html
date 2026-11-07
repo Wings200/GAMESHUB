@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.99 · Vendor Trading Overhaul | GAMESHUB RPG</title>
+<title>W21.00 · Weapon Workbench Overhaul | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1283,6 +1283,54 @@ body.hud-modern #powerArmorHud{display:none!important}
 @media(max-width:630px){#workbenchPanel .bench-tabs,#workbenchPanel .bench-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   #workbenchPanel .bench-catalog{padding:10px 13px}
   #workbenchPanel .bench-section-kicker{padding-left:13px}}
+/* W21.00: workbench classification, sourced component ledger, and stat deltas. */
+#workbenchPanel .bench-header{background:linear-gradient(125deg,#253f39 0%,#10252c 70%);
+  border-bottom:2px solid #8ca77c}
+#workbenchPanel .bench-header h2{color:#f4ebd0}
+#workbenchPanel .bench-toolbar{background:#192b2c;gap:8px 18px;justify-content:space-between}
+#workbenchPanel .bench-catalog-heading{display:flex;justify-content:space-between;
+  align-items:end;flex-wrap:wrap;gap:12px;padding:3px 22px 15px}
+#workbenchPanel .bench-catalog-heading .bench-section-kicker{padding:5px 0}
+#workbenchPanel .bench-part-count{font:850 10px ui-monospace,monospace;
+  letter-spacing:.06em;color:#d6c695}
+#workbenchPanel .bench-filter-label{display:flex;align-items:center;flex-wrap:wrap;
+  gap:9px;color:#bdd4bc;font-size:10px;font-weight:950;letter-spacing:.1em}
+#workbenchPanel #benchPartFilter{min-width:190px;padding:9px 10px;font-size:10px;
+  border-color:#779780;color:#f0dcac}
+#workbenchPanel .bench-part{border-left:3px solid #718a75}
+#workbenchPanel .bench-part.selected{border-left-color:#f2d59b}
+#workbenchPanel .bench-part.installed .bench-choice-indicator{color:#b7e7b5}
+#workbenchPanel .bench-preview{background:linear-gradient(#1e3631,#152624);
+  border-color:#b4bf8d;box-shadow:0 12px 35px #0005}
+#workbenchPanel .bench-preview-stat{align-items:center;padding:5px 0;
+  border-bottom:1px solid #3b5849}
+#workbenchPanel .bench-preview-stat:last-child{border:0}
+#workbenchPanel .bench-preview-stat strong{text-align:right}
+#workbenchPanel .bench-preview-stat .bench-change-better{color:#b7ef9c}
+#workbenchPanel .bench-preview-stat .bench-change-worse{color:#f4b796}
+#workbenchPanel .bench-recipe-ledger{margin-top:10px;display:flex;flex-direction:column;
+  gap:8px;max-height:250px;overflow-y:auto}
+#workbenchPanel .bench-material-row{padding:9px 10px;background:#112b2a;
+  border:1px solid #446958}
+#workbenchPanel .bench-material-row.missing{background:#2a2725;border-color:#986750}
+#workbenchPanel .bench-material-head{display:flex;justify-content:space-between;
+  flex-wrap:wrap;gap:6px;margin-bottom:7px;color:#f0e4c7;font-size:10px}
+#workbenchPanel .bench-material-head span{color:#bae0b4;font-weight:900}
+#workbenchPanel .bench-material-row.missing .bench-material-head span{color:#ffbc96}
+#workbenchPanel .bench-material-meter{height:5px;background:#283d3a;overflow:hidden}
+#workbenchPanel .bench-material-meter span{display:block;height:100%;background:#9fce89}
+#workbenchPanel .bench-material-row.missing .bench-material-meter span{background:#d3aa79}
+#workbenchPanel .bench-material-row small{display:block;margin-top:7px;
+  font-size:9px;line-height:1.45;color:#9bbca9;font-weight:800}
+#workbenchPanel .bench-recipe-note{padding:12px;border:1px solid #65886b;
+  background:#193c30;color:#d1efc1;font-size:11px;line-height:1.5}
+#workbenchPanel .bench-recipe-scrap{margin:10px 0 0;font-size:9px;
+  font-weight:850;line-height:1.6;color:#d3bd92}
+#workbenchPanel .bench-preview-cost{margin-top:12px;padding:10px;
+  background:#183d30;border:1px solid #58765b}
+#workbenchPanel .bench-preview-cost.missing{background:#3d2c25;border-color:#98644d}
+@media(max-width:630px){#workbenchPanel .bench-catalog-heading{padding:8px 13px 13px}
+  #workbenchPanel #benchPartFilter{width:100%}}
 @media(max-width:1180px){#vendorPanel .vendor-item{grid-template-columns:1fr}
   #vendorPanel .vendor-trade-actions{justify-content:start}}
 @media(max-width:820px){#vendorPanel .vendor-body{grid-template-columns:1fr}
@@ -1895,7 +1943,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.99</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.00</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -1913,7 +1961,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.99</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.00</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -2003,9 +2051,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="workbenchPanel" class="loot-overlay hidden" role="dialog" aria-modal="true" aria-label="Weapon modification workbench">
   <div class="bench-shell">
     <header class="bench-header">
-      <div><div class="bench-kicker">FRONTIER / WEAPON WORKBENCH / W20.73</div>
-        <h2>CONFIGURE<span> YOUR WEAPON.</span></h2>
-        <p>Choose a gun you own. Inspect its installed parts, preview compatible replacements and materials, then craft or install one selected assembly.</p>
+      <div><div class="bench-kicker">FRONTIER / WEAPON WORKBENCH / W21.00</div>
+        <h2>WEAPON<span> MODIFICATION.</span></h2>
+        <p>Select a firearm, compare each compatible assembly, and check actual pouch, settlement, and junk materials before you craft.</p>
       </div>
       <button id="benchClose" type="button">CLOSE / RESUME · ESC</button>
     </header>
@@ -2020,14 +2068,28 @@ body.hud-modern #powerArmorHud{display:none!important}
         <div id="benchStats" class="bench-stats" aria-label="Modified weapon statistics"></div>
         <div class="bench-section-kicker">2 · SELECT AN ASSEMBLY SLOT · CURRENT PART SHOWN BELOW</div>
         <nav id="benchSlots" class="bench-tabs" aria-label="Weapon assembly categories"></nav>
-        <div class="bench-section-kicker">3 · SELECT A REPLACEMENT · PREVIEW BEFORE INSTALLING</div>
+        <div class="bench-catalog-heading">
+          <div><div class="bench-section-kicker">3 · INSPECT REPLACEMENTS · PREVIEW BEFORE INSTALLING</div>
+            <span id="benchPartCount" class="bench-part-count" aria-live="polite">0 PARTS</span></div>
+          <label class="bench-filter-label" for="benchPartFilter">SHOW PARTS
+            <select id="benchPartFilter" aria-label="Filter workbench parts">
+              <option value="all">ALL COMPATIBLE</option>
+              <option value="ready">READY TO CRAFT</option>
+              <option value="owned">OWNED / INSTALLED</option>
+              <option value="missing">MISSING MATERIALS</option>
+            </select>
+          </label>
+        </div>
         <div class="bench-catalog">
           <div id="benchOptics" class="bench-parts" aria-label="Available weapon modification recipes"></div>
           <aside class="bench-preview" aria-label="Selected modification preview">
-            <div class="bench-preview-eyebrow">SELECTED PART / BEFORE &amp; AFTER</div>
+            <div class="bench-preview-eyebrow">SELECTED ASSEMBLY / LIVE COMPARISON</div>
             <h4 id="benchPreviewName">SELECT A PART</h4>
             <p id="benchPreviewDescription" class="bench-preview-description">Inspect a compatible modification.</p>
             <div id="benchPreviewStats" class="bench-preview-stats"></div>
+            <div class="bench-preview-eyebrow">CRAFTING REQUIREMENTS</div>
+            <div id="benchRecipeLedger" class="bench-recipe-ledger" aria-label="Materials required and available"></div>
+            <p id="benchRecipeScrap" class="bench-recipe-scrap"></p>
             <div id="benchPreviewMaterials" class="bench-preview-cost">NO MATERIALS REQUIRED</div>
             <button id="benchPreviewAction" type="button" disabled>SELECT A PART</button>
           </aside>
@@ -2035,7 +2097,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       </section>
     </div>
     <div id="benchFeedback" class="bench-feedback" role="status" aria-live="polite">SELECT A WEAPON · CHOOSE A PART · PREVIEW · CRAFT OR INSTALL</div>
-    <footer class="bench-footer">HAVEN SETTLEMENT / PHYSICAL WEAPON WORKBENCH · PRESS E NEAR THE TABLE TO CONFIGURE A WEAPON · ALL MODS SAVE TO YOUR EXISTING BACKPACK · ONCE CRAFTED, PARTS CAN BE REINSTALLED WITHOUT SPENDING THE MATERIALS AGAIN · EVERY RECIPE LISTS ITS EXACT COMPONENTS</footer>
+    <footer class="bench-footer">HAVEN SETTLEMENT / PHYSICAL WEAPON WORKBENCH · PRESS E NEAR THE TABLE · EACH TRANSACTION USES YOUR REAL POUCH AND SETTLEMENT STOCK · JUNK IS BROKEN DOWN ONLY WHEN YOU COMMIT TO CRAFTING · UNLOCKED PARTS CAN BE REINSTALLED FOR FREE</footer>
   </div>
 </div>
 <div id="specialPanel" class="loot-overlay special-overlay hidden" role="dialog" aria-label="S.P.E.C.I.A.L. perk tree">
@@ -2393,7 +2455,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.99"></script>
+<script type="module" src="./bootstrap.mjs?v=W21.00"></script>
 </body>
 </html>
 

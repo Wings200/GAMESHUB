@@ -5,6 +5,11 @@
   "description": "Development release history preserved off the game menu. Append every future release here until the 1.0 Version History page is built.",
   "entries": [
     {
+      "version": "W21.00",
+      "title": "WEAPON WORKBENCH INSPECTION OVERHAUL",
+      "notes": "Reworked the physical Haven firearm workbench presentation without changing the tested crafting rules. Compatible assemblies can now be filtered between all parts, ready-to-craft replacements, already-owned parts and recipes with missing materials. The selected-part panel shows actual current-to-preview firearm changes with separate improvement and drawback colors, and a per-component resource ledger distinguishing carried stock, settlement storage and materials that automatic junk scrapping would recover. Recipes clearly identify shortages and show exactly which stored junk objects would be consumed, but no resources are touched until the user confirms crafting. Installed and previously crafted parts can still be selected free, owned weapons and their saves are preserved, and the homepage remains uncluttered with release history reserved for the 1.0 archive page."
+    },
+    {
       "version": "W20.99",
       "title": "VENDOR TRADING TERMINAL OVERHAUL",
       "notes": "Rebuilt merchant presentation around searchable BUY and SELL lists with independent category filters and real item inspections. Equipment comparisons show actual firearm damage and reload/magazine values, equipped armor protection deltas, aid effects, power-armor durability, junk breakdowns and accurate unit prices. Every merchant now has a finite, saved caps balance, displayed beside your wallet and enforced by the existing transactional barter preview; buying can fund selling in the same confirmed offer, but a vendor cannot pay more caps than they own. Old vendor stock and character saves migrate without losing equipment or stock. The homepage stays concise, with all development notes archived for a single Version History page at 1.0."

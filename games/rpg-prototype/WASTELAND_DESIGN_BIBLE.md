@@ -89,6 +89,10 @@ actions, build labels and save compatibility as releases continue.
   with real saved waypoint controls and return navigation to the terminal;
   unexplored points remain hidden. The world map is still a testing-field
   map, not a completed original open world.
+- W21.00: The physical Haven firearm workbench now filters real owned,
+  ready-to-craft and missing-material assemblies; shows stat changes and exact
+  carried/stored/auto-scrapped component availability before committing; and
+  preserves all existing craft and save mechanics. History notes remain archived.
 - W20.99: The merchant terminal retains atomic two-sided barter and adds
   category filters and real item/gear comparisons. Each merchant has a
   finite, independently saved caps balance initialized for existing saves;

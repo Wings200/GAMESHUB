@@ -28,6 +28,8 @@ import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
 import {previewWeaponSpec} from '../workbench-preview.mjs';
+import {benchPartStatus,benchPartMatches,benchMaterialRows,benchStatChange}
+  from '../workbench-presentation.mjs?v=W21.00';
 import {installPhysicalWeaponMods} from '../weapon-mod-visual.mjs';
 import {createFieldMap} from '../field-map.mjs?v=W20.76';
 import {deathCameraPose,DEATH_SCREEN_TIME} from '../death-camera.mjs?v=W20.76.1';
@@ -3785,6 +3787,9 @@ function refreshWorkbenchUI(){
     $('benchPreviewDescription').textContent='Your backpack has no compatible firearm.';
     $('benchPreviewStats').replaceChildren();
     $('benchPreviewMaterials').textContent='NO MATERIALS REQUIRED';
+    $('benchRecipeLedger').replaceChildren();
+    $('benchRecipeScrap').textContent='';
+    $('benchPartCount').textContent='0 PARTS';
     const previewAction=$('benchPreviewAction');
     previewAction.disabled=true;previewAction.onclick=null;
     previewAction.textContent='NO WEAPON SELECTED';
@@ -3846,8 +3851,13 @@ function refreshWorkbenchUI(){
   const candidates=[];
   function card(option){
     const {id,name,description,detail,cost,owned,installed}=option;
+    const plan=previewWorkshopRecipe(backpack,settlementBuildState,cost||{});
+    option.status=benchPartStatus({owned,installed,recipeOk:plan.ok});
+    option.plan=plan;
     candidates.push(option);
+    if(!benchPartMatches(option.status,$('benchPartFilter').value))return;
     const row=document.createElement('button');row.type='button';
+    row.dataset.optionId=id;
     row.className='bench-part';
     if(installed)row.classList.add('installed');
     if(id===benchSelectedOptionId)row.classList.add('selected');
@@ -3858,12 +3868,12 @@ function refreshWorkbenchUI(){
     const stats=document.createElement('small');stats.className='bench-effect';stats.textContent=detail;
     const recipe=document.createElement('div');recipe.className='bench-recipe';
     recipe.textContent=owned?'CRAFTED / OWNED · NO MATERIAL COST':workbenchCostText(cost||{});
-    const missing=!owned&&!previewWorkshopRecipe(backpack,settlementBuildState,cost||{}).ok;
+    const missing=!owned&&!plan.ok;
     recipe.classList.toggle('missing',!owned&&missing);
     body.append(title,descriptionLine,stats,recipe);row.append(body);
     const indicator=document.createElement('span');indicator.className='bench-choice-indicator';
-    indicator.textContent=installed?'CURRENTLY INSTALLED':
-      id===benchSelectedOptionId?'SELECTED FOR PREVIEW':'CLICK TO PREVIEW';
+    indicator.textContent=installed?'CURRENTLY INSTALLED':owned?'PART OWNED · REINSTALL FREE':
+      missing?'NEEDS MORE COMPONENTS':'READY TO CRAFT';
     row.append(indicator);
     row.addEventListener('click',()=>{
       benchSelectedOptionId=id;
@@ -3873,16 +3883,39 @@ function refreshWorkbenchUI(){
     area.append(row);
   }
   function renderWorkbenchPreview(){
-    const chosen=candidates.find(option=>option.id===benchSelectedOptionId)||
-      candidates.find(option=>option.installed)||candidates[0];
-    if(!chosen)return;
+    const shown=candidates.filter(option=>
+      benchPartMatches(option.status,$('benchPartFilter').value));
+    $('benchPartCount').textContent=shown.length+' / '+candidates.length+' PARTS SHOWN';
+    const chosen=shown.find(option=>option.id===benchSelectedOptionId)||
+      shown.find(option=>option.installed)||shown[0];
+    if(!chosen){
+      $('benchPreviewName').textContent='NO MATCHING PARTS';
+      $('benchPreviewDescription').textContent='Choose a different filter to inspect available modifications.';
+      $('benchPreviewStats').replaceChildren();
+      $('benchRecipeLedger').replaceChildren();
+      $('benchRecipeScrap').textContent='';
+      $('benchPreviewMaterials').textContent='NO PART SELECTED';
+      $('benchPreviewMaterials').classList.remove('missing');
+      const action=$('benchPreviewAction');action.disabled=true;
+      action.onclick=null;action.textContent='CHOOSE ANOTHER FILTER';
+      const empty=document.createElement('p');empty.className='bench-empty';
+      empty.textContent='No parts match this filter for the selected assembly slot.';
+      area.append(empty);return;
+    }
+    benchSelectedOptionId=chosen.id;
+    for(const row of area.querySelectorAll('.bench-part')){
+      const selected=row.dataset.optionId===chosen.id;
+      row.classList.toggle('selected',selected);
+      row.setAttribute('aria-pressed',String(selected));
+    }
     $('benchPreviewName').textContent=chosen.name.toUpperCase();
     $('benchPreviewDescription').textContent=chosen.description+' · '+chosen.detail;
     const compare=$('benchPreviewStats');compare.replaceChildren();
-    const addComparison=(label,before,after)=>{
+    const addComparison=(label,before,after,change='same')=>{
       const line=document.createElement('div');line.className='bench-preview-stat';
       const title=document.createElement('span');title.textContent=label;
       const value=document.createElement('strong');value.textContent=before+' → '+after;
+      value.className='bench-change-'+change;
       line.append(title,value);compare.append(line);
     };
     if(benchActiveSlot==='optic'){
@@ -3902,16 +3935,49 @@ function refreshWorkbenchUI(){
         ['FIRE INTERVAL','fireInterval',n=>n.toFixed(2)+'s']
       ]){
         if(Math.abs(spec[key]-preview[key])>.0005)
-          addComparison(name,format(spec[key]),format(preview[key]));
+          addComparison(name,format(spec[key]),format(preview[key]),
+            benchStatChange(spec[key],preview[key],
+              key==='damage'||key==='magazineSize'));
       }
       if(!compare.childElementCount)addComparison('PERFORMANCE','CURRENT','UNCHANGED');
     }
     const cost=chosen.cost||{};
-    const missing=!chosen.owned&&!previewWorkshopRecipe(backpack,settlementBuildState,cost).ok;
+    const plan=chosen.plan;
+    const missing=!chosen.owned&&!plan.ok;
     const materials=$('benchPreviewMaterials');
     materials.textContent=chosen.owned?'PART ALREADY OWNED · NO SCRAP REQUIRED':
-      workbenchCostText(cost);
+      plan.ok?'RECIPE COMPLETE · READY TO CRAFT':'INCOMPLETE RECIPE · SEE MISSING COMPONENTS';
     materials.classList.toggle('missing',missing);
+    const ledger=$('benchRecipeLedger');ledger.replaceChildren();
+    const scrap=$('benchRecipeScrap');
+    if(chosen.owned){
+      const note=document.createElement('div');note.className='bench-recipe-note';
+      note.textContent='This part is already unlocked. Switch to it without spending components.';
+      ledger.append(note);scrap.textContent='';
+    }else{
+      const rows=benchMaterialRows(cost,backpack.materials||{},
+        settlementBuildState.workshopMaterials||{},plan.recovered||{});
+      for(const row of rows){
+        const line=document.createElement('div');
+        line.className='bench-material-row'+(row.missing?' missing':'');
+        const header=document.createElement('div');header.className='bench-material-head';
+        const label=document.createElement('strong');label.textContent=getItem(row.id).name.toUpperCase();
+        const tally=document.createElement('span');
+        tally.textContent=Math.min(row.required,row.available)+' / '+row.required+
+          (row.missing?' · SHORT '+row.missing:' · READY');
+        header.append(label,tally);
+        const rail=document.createElement('div');rail.className='bench-material-meter';
+        const fill=document.createElement('span');fill.style.width=row.filled+'%';rail.append(fill);
+        const sources=document.createElement('small');
+        sources.textContent='POUCH '+row.carried+' · STORED '+row.stored+
+          ' · JUNK RECOVERY '+row.recovered;
+        line.append(header,rail,sources);ledger.append(line);
+      }
+      scrap.textContent=Object.keys(plan.selected||{}).length?
+        'AUTO-SCRAP ON CRAFT: '+Object.entries(plan.selected).map(([id,n])=>
+          getItem(id).name.toUpperCase()+' ×'+n).join(' · '):
+        'NO STORED JUNK NEEDS SCRAPPING FOR THIS RECIPE';
+    }
     const action=$('benchPreviewAction');action.onclick=null;
     action.disabled=chosen.installed||missing;
     action.textContent=chosen.installed?'CURRENTLY INSTALLED':
@@ -4000,6 +4066,7 @@ function beginWorkbench(){
   selectedBenchWeaponId=ownedIds.includes(activeWeaponId)?
     activeWeaponId:ownedIds[0]||'';
   benchActiveSlot='receiver';benchSelectedOptionId='';
+  $('benchPartFilter').value='all';
   refreshWorkbenchUI();
   workbenchFeedback(ownedIds.length?
     'SELECT AN OWNED WEAPON · MATERIALS ARE SPENT ONLY WHEN CRAFTED':
@@ -4013,6 +4080,9 @@ function closeWorkbench(){
   else $('menu').classList.remove('hidden');
 }
 $('benchClose').addEventListener('click',closeWorkbench);
+$('benchPartFilter').addEventListener('change',()=>{
+  benchSelectedOptionId='';refreshWorkbenchUI();
+});
 
 // Combat is available in Station 9 AND when physically entering the
 // arena on foot from another station. Keep Station 9 alive on roaming.
