@@ -33,11 +33,19 @@ export const VENDORS=Object.freeze([
       {itemId:'supply:focus-tonic',quantity:1},
       {itemId:'supply:rad-shield',quantity:1}
     ])}),
-  Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'31 components, optics, clothing & cores',
+  Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'Junk objects, components, optics, clothing & cores',
     x:-5,z:9,color:0xdfc18c,offers:Object.freeze([
       ...CRAFTING_COMPONENTS.map(item=>({itemId:item.id,quantity:item.rarity==='epic'?1:item.rarity==='rare'?2:5})),
       {itemId:'supply:salvage',quantity:5},
       {itemId:'supply:optic-glass',quantity:2},
+      {itemId:'junk:desk-fan',quantity:1},
+      {itemId:'junk:alarm-clock',quantity:1},
+      {itemId:'junk:tin-can',quantity:4},
+      {itemId:'junk:typewriter',quantity:1},
+      {itemId:'junk:table-lamp',quantity:1},
+      {itemId:'junk:duct-tape',quantity:2},
+      {itemId:'junk:coffee-mug',quantity:2},
+      {itemId:'junk:toy-car',quantity:1},
       {itemId:'clothing:field-cap',quantity:1},
       {itemId:'clothing:field-backpack',quantity:1}
     ])}),
@@ -71,7 +79,7 @@ const MAX_STOCK=100000;
 const copy=state=>JSON.parse(JSON.stringify(state));
 const cap=n=>Number.isSafeInteger(n)&&n>=0?Math.min(MAX_CAPS,n):0;
 const stockBundles=Object.freeze({weapon:2,ammo:8,armor:2,
-  'power-plate':1,supply:6,'fusion-core':3,material:10,clothing:2});
+  'power-plate':1,supply:6,'fusion-core':3,material:10,clothing:2,junk:3});
 
 export function createVendorStock(){
   return Object.fromEntries(VENDORS.map(vendor=>[vendor.id,
@@ -126,6 +134,7 @@ export function vendorAccepts(vendorId,itemId){
   if(vendorId==='medic')return inventorySection(item)==='aid';
   if(vendorId==='scavenger')return item.category==='clothing'||
     item.category==='fusion-core'||item.category==='material'||
+    item.category==='junk'||
     (item.category==='supply'&&inventorySection(item)!=='aid');
   if(vendor.faction)return item.category==='power-plate'||
     item.category==='fusion-core';

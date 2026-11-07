@@ -10,6 +10,7 @@ import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES,generateComponentDrop} from 
 import {safeWeaponMods} from './weapon-mods.mjs';
 import {discountedComponentRecipe} from './special.mjs';
 import {FIELD_BACKPACK_BONUS} from './carry-weight.mjs';
+import {JUNK_ITEMS} from './junk.mjs';
 // Retained only for older integrations; slot count is no longer a carry limit.
 export const BACKPACK_LIMIT=30;
 const MAX_SAFETY_ENTRIES=10000; // abnormal/corrupt requests must not loop forever
@@ -139,6 +140,7 @@ templates.set('supply:salvage',Object.freeze({
 templates.set('supply:optic-glass',Object.freeze({
   id:'supply:optic-glass',category:'supply',key:'optic-glass',name:'Optic Glass',
   rarity:'uncommon',value:25,weight:.5,maxStack:30}));
+for(const object of JUNK_ITEMS)templates.set(object.id,object);
 const componentWeights=Object.freeze({
   concrete:1,steel:.3,wood:.4,lead:.4,glass:.3,ceramic:.3,gears:.3,
   aluminum:.2,copper:.2,oil:.3,rubber:.2,plastic:.1,cloth:.1,
@@ -413,10 +415,14 @@ export function generateEnemyLoot(enemyId,round=0,loadout=null,random=Math.rando
     enemyId==='raider'?
     [{itemId:'clothing:field-backpack',quantity:1}]:[];
   const scrap=generateComponentDrop(enemyId,random);
+  // Ordinary scavenged objects now enter the same visible enemy loot cases as
+  // weapons and supplies. Their workshop breakdown is deterministic.
+  const junk=roll()<.65?{
+    itemId:JUNK_ITEMS[Math.floor(roll()*JUNK_ITEMS.length)].id,quantity:1}:null;
   // Never award an armor part to an enemy who was not actually wearing it.
   const powerSalvage=salvageWornPowerArmor(visiblyEquippedPowerArmor,random);
   return [...base[enemyId].map(e=>({...e})),...armor,...wearables,
-    ...(scrap?[scrap]:[]),...powerSalvage];
+    ...(scrap?[scrap]:[]),...(junk?[junk]:[]),...powerSalvage];
 }
 export function safeBackpackSnapshot(pack){
   const result=createBackpack();

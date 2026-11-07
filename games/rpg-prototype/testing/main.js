@@ -3,7 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.96';
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.97';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -16,7 +16,11 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.84';
+  from '../settlement-building.mjs?v=W20.97';
+import {JUNK_BY_ID,junkYieldText} from '../junk.mjs?v=W20.97';
+import {storeWorkshopJunk,takeWorkshopJunk,scrapWorkshopJunk,
+  takeWorkshopMaterial,workshopJunkTotal,previewWorkshopRecipe,craftWithWorkshop}
+  from '../workshop-junk.mjs?v=W20.97';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -103,7 +107,7 @@ import {RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,inventoryWeight,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.96';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.97';
 import {carryCapacity,encumbranceEffects,formatCarryWeight}
   from '../carry-weight.mjs?v=W20.95';
 import {createConsumableStatus,safeConsumableSnapshot,consumableBonuses,
@@ -1406,8 +1410,10 @@ function selectPowerSlot(slot){
 }
 function powerRepairCostText(cost){
   const parts=Object.entries(cost);
+  const plan=playerAtHaven()?previewWorkshopRecipe(backpack,settlementBuildState,cost):null;
   return parts.length?parts.map(([id,quantity])=>{
-    const owned=countItem(backpack,id);
+    const owned=countItem(backpack,id)+(playerAtHaven()?
+      (settlementBuildState.workshopMaterials?.[id]||0)+(plan?.recovered?.[id]||0):0);
     return getItem(id).name.toUpperCase()+' '+owned+'/'+quantity+
       (owned<quantity?' · NEED '+(quantity-owned):'');
   }).join(' · '):'NO REPAIR REQUIRED';
@@ -1464,7 +1470,9 @@ function refreshPowerPartChoices(){
     powerArmorState.occupied;
   const repairCost=powerRepairRequirements(powerArmorState,slot,
     specialModifiers.repairDiscount);
-  const missing=Object.entries(repairCost).some(([id,n])=>countItem(backpack,id)<n);
+  const missing=playerAtHaven()?
+    !previewWorkshopRecipe(backpack,settlementBuildState,repairCost).ok:
+    Object.entries(repairCost).some(([id,n])=>countItem(backpack,id)<n);
   $('powerRepairCost').textContent=powerRepairCostText(repairCost);
   $('powerRepairCost').classList.toggle('missing',missing);
   repair.disabled=repair.disabled||missing;
@@ -1682,17 +1690,26 @@ for(const slot of POWER_ARMOR_SLOTS){
     if(!powerServiceAvailable())return;
     const needed=powerRepairRequirements(powerArmorState,slot,
       specialModifiers.repairDiscount);
-    const available=Object.fromEntries(Object.keys(needed).map(id=>
-      [id,countItem(backpack,id)]));
-    const result=repairPowerPlate(powerArmorState,slot,available,
-      specialModifiers.repairDiscount);
+    const draftArmor=JSON.parse(JSON.stringify(powerArmorState));
+    const repairWithMaterials=draftPack=>{
+      const available=Object.fromEntries(Object.keys(needed).map(id=>
+        [id,countItem(draftPack,id)]));
+      const outcome=repairPowerPlate(draftArmor,slot,available,
+        specialModifiers.repairDiscount);
+      if(outcome.ok)for(const [id,quantity] of Object.entries(outcome.cost))
+        spendMaterial(draftPack,id,quantity);
+      return outcome;
+    };
+    const result=playerAtHaven()?
+      craftWithWorkshop(backpack,settlementBuildState,needed,repairWithMaterials):
+      repairWithMaterials(backpack);
     if(!result.ok){
       $('powerServiceFeedback').textContent=result.reason==='materials'?
         'REPAIR NEEDS · '+powerRepairCostText(needed):'NO REPAIR NEEDED';
       return;
     }
-    for(const [id,quantity] of Object.entries(result.cost))
-      spendMaterial(backpack,id,quantity);
+    Object.assign(powerArmorState,draftArmor);
+    if(playerAtHaven())saveSettlementBuild();
     $('powerServiceFeedback').textContent=slot.toUpperCase()+
       ' REPAIRED · '+result.durability+' DURABILITY · SPENT '+
       Object.entries(result.cost).map(([id,n])=>n+' '+getItem(id).name.toUpperCase()).join(' + ');
@@ -2608,6 +2625,7 @@ function inventoryLine(item){
   const detail=document.createElement('small');
   detail.textContent=RARITIES[item.rarity].label+' · '+inventorySection(item).toUpperCase()+
     ' · '+item.value+' CAPS · '+formatCarryWeight(item.weight)+' EACH'+
+    (item.category==='junk'?' · SCRAPS TO '+junkYieldText(item.id):'')+
     (item.carryBonus?' · +'+item.carryBonus+' LB EQUIPPED':'')+
     (item.heal?' · +'+item.heal+' HP':'')+
     (item.radDose?' · +'+item.radDose+' RADS':'')+
@@ -2728,7 +2746,8 @@ function refreshInventoryUI(){
   const area=$('inventoryItems');area.replaceChildren();
   const visibleComponents=(inventoryCategory==='materials'||inventoryCategory==='all')?
     ownedComponents:[];
-  if(!visibleEntries.length&&!visibleComponents.length){
+  if(!visibleEntries.length&&!visibleComponents.length&&
+     !(inventoryCategory==='junk'&&playerAtHaven()&&workshopJunkTotal(settlementBuildState))){
     const empty=document.createElement('p');empty.className='inventory-empty';
     empty.textContent=inventoryCategory==='quest'?
       'NO QUEST ITEMS YET · MISSION ITEMS WILL APPEAR HERE.':
@@ -2802,6 +2821,16 @@ function refreshInventoryUI(){
         removeItem(backpack,entry.uid,1);
         saveRadiation();saveBackpack();refreshPlayerHealth();refreshInventoryUI();
         showShotNotice('RADIATION FLUSH · -'+Math.round(treated.removed)+' RADS');
+      });
+    }
+    if(item.category==='junk'&&playerAtHaven()){
+      lootButton(row,'STORE IN WORKSHOP',()=>{
+        const result=storeWorkshopJunk(backpack,settlementBuildState,
+          entry.uid,entry.quantity);
+        if(!result.ok){showShotNotice('JUNK STORAGE FAILED · '+result.reason);return;}
+        saveBackpack();saveSettlementBuild();refreshInventoryUI();
+        showShotNotice('STORED · '+item.name.toUpperCase()+' ×'+result.quantity+
+          ' · NO LONGER CARRIED');
       });
     }
     if(item.category==='supply'&&(
@@ -2883,6 +2912,55 @@ function refreshInventoryUI(){
       saveBackpack();refreshInventoryUI();
     });
     area.append(row);
+  }
+  if(inventoryCategory==='junk'){
+    const header=document.createElement('div');header.className='workshop-junk-banner';
+    const stored=workshopJunkTotal(settlementBuildState);
+    const materialTotal=Object.values(settlementBuildState.workshopMaterials||{})
+      .reduce((sum,n)=>sum+n,0);
+    header.textContent=playerAtHaven()?
+      'HAVEN WORKSHOP · '+stored+' STORED JUNK ITEMS · '+materialTotal+
+      ' STORED COMPONENTS · CRAFTING AUTO-SCRAPS JUNK WHEN NEEDED':
+      'WORKSHOP STORAGE AVAILABLE ONLY WHILE AT HAVEN JUNCTION';
+    area.append(header);
+    if(playerAtHaven()){
+      for(const [id,quantity] of Object.entries(settlementBuildState.workshopJunk||{})){
+        if(!quantity||!JUNK_BY_ID[id])continue;
+        const item=getItem(id),row=inventoryLine(item);
+        const amount=document.createElement('span');amount.className='loot-quantity';
+        amount.textContent='×'+quantity+' STORED';row.append(amount);
+        lootButton(row,'TAKE ALL',()=>{
+          const result=takeWorkshopJunk(backpack,settlementBuildState,id,quantity);
+          if(!result.ok){showShotNotice('CANNOT RETRIEVE · '+result.reason);return;}
+          saveBackpack();saveSettlementBuild();refreshInventoryUI();
+        });
+        lootButton(row,'SCRAP 1',()=>{
+          const result=scrapWorkshopJunk(settlementBuildState,id,1);
+          if(!result.ok){showShotNotice('CANNOT SCRAP · '+result.reason);return;}
+          saveSettlementBuild();refreshInventoryUI();
+          showShotNotice('WORKSHOP SCRAPPED · '+item.name.toUpperCase());
+        });
+        lootButton(row,'SCRAP ALL',()=>{
+          const result=scrapWorkshopJunk(settlementBuildState,id,quantity);
+          if(!result.ok){showShotNotice('CANNOT SCRAP · '+result.reason);return;}
+          saveSettlementBuild();refreshInventoryUI();
+          showShotNotice('WORKSHOP SCRAPPED · '+item.name.toUpperCase()+' ×'+quantity);
+        });
+        area.append(row);
+      }
+      for(const [id,quantity] of Object.entries(settlementBuildState.workshopMaterials||{})){
+        if(!quantity)continue;
+        const row=inventoryLine(getItem(id));
+        const amount=document.createElement('span');amount.className='loot-quantity';
+        amount.textContent='×'+quantity+' WORKSHOP';row.append(amount);
+        lootButton(row,'WITHDRAW',()=>{
+          const result=takeWorkshopMaterial(backpack,settlementBuildState,id,quantity);
+          if(!result.ok){showShotNotice('CANNOT WITHDRAW · '+result.reason);return;}
+          saveBackpack();saveSettlementBuild();refreshInventoryUI();
+        });
+        area.append(row);
+      }
+    }
   }
 }
 for(const slot of ARMOR_SLOTS){
@@ -3444,11 +3522,17 @@ function workbenchFeedback(message){
 }
 function workbenchCostText(cost){
   if(!Object.keys(cost).length)return 'NO MATERIALS REQUIRED';
+  const prepared=previewWorkshopRecipe(backpack,settlementBuildState,cost);
   return Object.entries(cost).map(([id,n])=>{
     const name=getItem(id).name.toUpperCase();
-    const available=countItem(backpack,id);
-    return n+' '+name+' ['+available+' OWNED'+(available<n?' · NEED '+(n-available):'')+']';
-  }).join('   ·   ');
+    const available=countItem(backpack,id)+
+      (settlementBuildState.workshopMaterials?.[id]||0)+
+      (prepared.recovered?.[id]||0);
+    return n+' '+name+' ['+available+' AVAILABLE'+
+      (available<n?' · NEED '+(n-available):'')+']';
+  }).join('   ·   ')+(Object.keys(prepared.selected||{}).length?
+    ' · AUTO-SCRAP '+Object.entries(prepared.selected).map(([id,n])=>
+      getItem(id).name.toUpperCase()+' ×'+n).join(' + '):'');
 }
 function ownedWorkbenchWeapons(){
   return MOD_WEAPON_IDS.filter(id=>
@@ -3504,7 +3588,10 @@ function refreshWorkbenchUI(){
   const spec=effectiveWeaponSpec(getWeaponSpec(weaponId),backpack);
   $('benchSelectedName').textContent=spec.name.toUpperCase()+' · MODIFICATIONS';
   const totalScrap=CRAFTING_COMPONENTS.reduce((n,item)=>n+countItem(backpack,item.id),0);
-  $('benchMaterials').textContent=totalScrap+' COMPONENTS IN POUCH · '+
+  const storedScrap=Object.values(settlementBuildState.workshopMaterials||{})
+    .reduce((n,value)=>n+value,0);
+  $('benchMaterials').textContent=totalScrap+' IN POUCH · '+storedScrap+
+    ' IN WORKSHOP · '+workshopJunkTotal(settlementBuildState)+' JUNK OBJECTS · '+
     CRAFTING_COMPONENTS.length+' RESOURCE TYPES';
   const statsArea=$('benchStats');statsArea.replaceChildren();
   for(const [label,value] of [
@@ -3563,7 +3650,7 @@ function refreshWorkbenchUI(){
     const stats=document.createElement('small');stats.className='bench-effect';stats.textContent=detail;
     const recipe=document.createElement('div');recipe.className='bench-recipe';
     recipe.textContent=owned?'CRAFTED / OWNED · NO MATERIAL COST':workbenchCostText(cost||{});
-    const missing=Object.entries(cost||{}).some(([material,n])=>countItem(backpack,material)<n);
+    const missing=!owned&&!previewWorkshopRecipe(backpack,settlementBuildState,cost||{}).ok;
     recipe.classList.toggle('missing',!owned&&missing);
     body.append(title,descriptionLine,stats,recipe);row.append(body);
     const indicator=document.createElement('span');indicator.className='bench-choice-indicator';
@@ -3612,8 +3699,7 @@ function refreshWorkbenchUI(){
       if(!compare.childElementCount)addComparison('PERFORMANCE','CURRENT','UNCHANGED');
     }
     const cost=chosen.cost||{};
-    const missing=!chosen.owned&&Object.entries(cost)
-      .some(([material,n])=>countItem(backpack,material)<n);
+    const missing=!chosen.owned&&!previewWorkshopRecipe(backpack,settlementBuildState,cost).ok;
     const materials=$('benchPreviewMaterials');
     materials.textContent=chosen.owned?'PART ALREADY OWNED · NO SCRAP REQUIRED':
       workbenchCostText(cost);
@@ -3639,14 +3725,17 @@ function refreshWorkbenchUI(){
         cost:discountedComponentRecipe(OPTIC_COMPONENT_RECIPES[id]||{},
           specialModifiers.craftDiscount),owned,installed:id===installed,
         onChoose:()=>{
-          const outcome=installWeaponOptic(backpack,weaponId,id,
+          const recipe=discountedComponentRecipe(OPTIC_COMPONENT_RECIPES[id]||{},
             specialModifiers.craftDiscount);
+          const outcome=craftWithWorkshop(backpack,settlementBuildState,recipe,
+            draft=>installWeaponOptic(draft,weaponId,id,specialModifiers.craftDiscount));
           if(!outcome.ok){
             workbenchFeedback('MISSING OPTIC MATERIALS · '+
               (outcome.missing||[]).map(x=>getItem(x.itemId).name+' '+x.owned+'/'+x.required).join(' / '));
             return;
           }
           refreshCraftedWeaponSpec(weaponId);
+          saveSettlementBuild();
           refreshWorkbenchUI();refreshInventoryUI();
           workbenchFeedback((outcome.crafted?'CRAFTED & INSTALLED: ':'INSTALLED: ')+optic.name);
         }});
@@ -3669,14 +3758,17 @@ function refreshWorkbenchUI(){
       cost:discountedComponentRecipe(part.cost,specialModifiers.craftDiscount),
       owned,installed:part.id===selected,
       onChoose:()=>{
-        const result=craftWeaponMod(backpack,weaponId,part.id,
-          specialModifiers.craftDiscount);
+        const result=craftWithWorkshop(backpack,settlementBuildState,
+          discountedComponentRecipe(part.cost,specialModifiers.craftDiscount),
+          draft=>craftWeaponMod(draft,weaponId,part.id,
+            specialModifiers.craftDiscount));
         if(!result.ok){
           workbenchFeedback('MISSING MATERIALS · '+
             (result.missing||[]).map(m=>getItem(m.itemId).name.toUpperCase()+
               ' '+m.owned+'/'+m.required).join(' · '));
           return;
         }
+        saveSettlementBuild();
         refreshCraftedWeaponSpec(weaponId);refreshWorkbenchUI();refreshInventoryUI();
         workbenchFeedback((result.crafted?'CRAFTED & INSTALLED · ':'INSTALLED · ')+
           part.name.toUpperCase()+' · WEAPON SAVED');
@@ -5513,11 +5605,15 @@ function settlementCostText(type){
   const stock=storedStructureCount(settlementBuildState,type);
   if(stock)return 'STORED ('+stock+') · PLACE WITHOUT MATERIALS';
   const plan=SETTLEMENT_BY_ID[type];
+  const preview=previewWorkshopRecipe(backpack,settlementBuildState,plan.cost);
   return Object.entries(plan.cost).map(([id,amount])=>{
-    const owned=countItem(backpack,id);
+    const owned=countItem(backpack,id)+
+      (settlementBuildState.workshopMaterials?.[id]||0)+
+      (preview.recovered?.[id]||0);
     const label=getItem(id).name;
     return label+' '+owned+'/'+amount;
-  }).join(' · ');
+  }).join(' · ')+(Object.keys(preview.selected||{}).length?
+    ' · JUNK AUTO-SCRAP READY':'');
 }
 function refreshSettlementStats(){
   const stats=calculateSettlementStats(settlementBuildState);
@@ -5565,7 +5661,7 @@ function refreshSettlementBuildHud(){
     const row=document.createElement('div');
     row.className='settlement-piece'+(plan.id===settlementBuildType?' selected':'');
     const stored=storedStructureCount(settlementBuildState,plan.id);
-    if(!stored&&missingBuildingMaterials(backpack,plan.id).length)
+    if(!stored&&!previewWorkshopRecipe(backpack,settlementBuildState,plan.cost).ok)
       row.classList.add('missing');
     const name=document.createElement('strong');name.textContent=(i+1)+' · '+plan.name+
       (stored?' ('+stored+')':'');
@@ -5580,7 +5676,8 @@ function refreshSettlementBuildHud(){
     (sum,n)=>sum+n,0);
   $('settlementBuiltCount').textContent=settlementBuildState.structures.length+
     ' BUILT · '+totalStored+' STORED';
-  $('settlementScrapCount').textContent=visibleHavenJunk.size+' SCRAPPABLE';
+  $('settlementScrapCount').textContent=visibleHavenJunk.size+' SCRAPPABLE · '+
+    workshopJunkTotal(settlementBuildState)+' STORED JUNK';
   $('settlementSnapStatus').textContent=settlementBuildState.snap?'GRID SNAP ON':'FREE PLACEMENT';
   refreshSettlementStats();
 }
@@ -5650,7 +5747,9 @@ function updateSettlementBuildPreview(){
   const valid=validateBuildPlacement(settlementBuildState,placement,
     settlementPlacementBlockers(),player);
   const stock=storedStructureCount(settlementBuildState,placement.type);
-  const missing=stock?[]:missingBuildingMaterials(backpack,placement.type);
+  const plan=SETTLEMENT_BY_ID[placement.type];
+  const missing=stock?[]:previewWorkshopRecipe(backpack,settlementBuildState,
+    plan.cost).missing.map(entry=>({id:entry.id,needed:entry.needed,owned:entry.owned}));
   const placeable=valid.ok&&missing.length===0;
   settlementGhostMaterial.color.setHex(placeable?0x83e1b3:0xe78579);
   settlementGhostMaterial.emissive.setHex(placeable?0x285944:0x743229);
@@ -5687,8 +5786,12 @@ function updateSettlementBuildPreview(){
 function placeSettlementPreview(){
   updateSettlementBuildPreview();
   if(!settlementBuildMode||!settlementPreview)return;
-  const result=placeSettlementStructure(settlementBuildState,backpack,
-    settlementPreview,settlementPlacementBlockers(),player);
+  const plan=SETTLEMENT_BY_ID[settlementPreview.type];
+  const fromStorage=storedStructureCount(settlementBuildState,plan.id)>0;
+  const result=craftWithWorkshop(backpack,settlementBuildState,
+    fromStorage?{}:plan.cost,
+    (draftPack,draftState)=>placeSettlementStructure(draftState,draftPack,
+      settlementPreview,settlementPlacementBlockers(),player));
   if(!result.ok){showShotNotice(result.reason);return;}
   registerSettlementStructure(result.structure);
   saveSettlementBuild();saveBackpack();refreshInventoryUI();

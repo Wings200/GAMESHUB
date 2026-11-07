@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.96 · Consumables & Status Effects | GAMESHUB RPG</title>
+<title>W20.97 · Junk & Workshop Scrapping | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -262,6 +262,9 @@ h1 span{display:block;color:#e7c387}p{font-size:15px;color:#b9cad0;line-height:1
 .loot-description small{color:#afbfbc;font-size:10px;letter-spacing:.055em}
 .loot-quantity{font-size:13px;color:#e6d4ad;font-weight:900}
 .loot-entry .loot-action{padding:9px;font-size:10px;min-height:32px}
+.workshop-junk-banner{grid-column:1/-1;padding:14px 16px;border:1px solid #8fae81;
+  background:linear-gradient(120deg,#193a30,#172a2e);color:#d8e9c9;
+  font-size:10px;font-weight:900;letter-spacing:.065em;line-height:1.7}
 .loot-entry .drop-quantity{display:inline-flex;align-items:center;gap:5px;
   font-size:10px;font-weight:900;color:#d3c39e;letter-spacing:.06em}
 .loot-entry .drop-amount{width:58px;min-width:0;height:32px;padding:4px 5px;
@@ -1763,7 +1766,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.96</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.97</div>
+    <p><strong>W20.97 · PHYSICAL JUNK &amp; WORKSHOP SCRAPPING:</strong> Eight real junk inventory objects now have individual weight, sale prices and exact crafting-component yields, including desk fans, typewriters, alarm clocks and adhesive tape. Raiders can drop salvage objects, and WREN sells finite stock. At Haven Junction, open Inventory → Junk to deposit your junk in the saved workshop stash, retrieve it, scrap one or all copies, and withdraw stored components. Stored items no longer contribute to your carried weight. Weapon and optics benches, local settlement construction and power-armor repairs automatically break down only the stored junk needed for their exact material recipes. Every crafting attempt is transactional: an impossible or failed craft leaves junk, components, caps and equipment unchanged, while successful work saves unused byproducts for later projects. Older inventories and settlement saves continue to load.</p>
     <p><strong>W20.96 · FOOD, WATER &amp; CHEM EFFECTS:</strong> DOC VALE now sells six functional supplies: purified water, trail stew, contaminated water, a combat stimulant, focus tonic and Rad Shield. Food and drinks heal actual HP while contaminated supplies add real, persistent radiation that reduces your HP cap. The three chems temporarily improve actual weapon damage, the live V.A.T.S. chance calculation, or radiation protection; they do not stack with themselves. Active timers and their durations persist across save/reload, pause while in menus and clear on death. The status screen and both field/power-armor HUDs show active bonuses. Existing medkits still treat real limb injuries and Radiation Flush still removes accumulated rads without healing damage.</p>
     <p><strong>W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE:</strong> Replaced the artificial 30-slot backpack cap with real per-item weight, including weapons, armor, supplies, spare power-armor plates and all 31 crafting components. Normal-mode ammunition weighs nothing. Carry allowance is 200 + 10 per Strength point, with a functional field backpack bonus and effective Strength 11 while wearing a power-armor frame. Taking loot and buying goods can put you over the allowance without destroying or blocking items. Overencumbered players walk slowly, cannot sprint or jump, and consume the actual shared AP meter while moving. Inventory, loot, vendors, field HUD and power visor all show the same live weight and overload status. Old inventory saves still load without losing entries.</p>
     <p><strong>W20.94 · LIVE V.A.T.S. TARGET SCANNER:</strong> Real animated enemies now have a world-tracked targeting frame, six body-part probability markers, live health bar, range and crippled-limb status. The selected part glows amber and queued targets are marked on the battlefield. Markers use projected, visible physical hitboxes and disappear when obscured. Combat, NPC AI, movement and weapon timing continue in real time for multiplayer. The XP required for every new level is also 50% higher (level 1 now takes 255 XP, up from 170), without changing saved levels, earned progress or perks.</p>
@@ -1829,7 +1833,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.96</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.97</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2260,7 +2264,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.96"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.97"></script>
 </body>
 </html>
 

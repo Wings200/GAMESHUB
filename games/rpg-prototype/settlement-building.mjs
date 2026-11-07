@@ -1,6 +1,7 @@
 // W20.84: Three-metre modular roof geometry and bay-aware roof snapping.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
+import {safeWorkshopJunk,safeWorkshopMaterials} from './workshop-junk.mjs';
 
 export const HAVEN_BUILD_AREA=Object.freeze({minX:-55,maxX:-20,minZ:-35,maxZ:-7});
 export const BUILD_LIMIT=120;
@@ -538,12 +539,14 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:5,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
-    happiness:50,recruitProgress:0,scrappedJunk:[]};
+  return {version:6,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
+    happiness:50,recruitProgress:0,scrappedJunk:[],workshopJunk:{},workshopMaterials:{}};
 }
 export function safeSettlementBuildSnapshot(raw){
   const state=initialSettlementBuildState();
   if(!raw||typeof raw!=='object')return state;
+  state.workshopJunk=safeWorkshopJunk(raw.workshopJunk);
+  state.workshopMaterials=safeWorkshopMaterials(raw.workshopMaterials);
   state.snap=raw.snap!==false;
   if(Number.isInteger(raw.population))
     state.population=Math.min(12,Math.max(0,raw.population));

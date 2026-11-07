@@ -60,6 +60,18 @@
   buys/sells these supplies from finite stock; HUD and status screens present
   the single active-effects state. This is normal-mode aid behavior; separate
   hunger/thirst survival difficulty is not implemented yet.
+- W20.97: Eight original, weight-bearing junk objects now have predictable
+  component breakdowns and arrive via enemy loot and WREN's finite trade
+  inventory. At Haven Junction the inventory Junk tab transfers objects to
+  a settlement stash, permits withdrawal and manual scrapping, and holds
+  separated components without increasing player carry weight. Local weapon,
+  optic, settlement-building and power-armor repair recipes may automatically
+  break down stored junk through a common transactional crafting operation.
+  Failed recipes have no effect on inventory, stored resources or buildings;
+  successful crafts retain unused yielded parts in the workshop. Stash saves
+  migrate from existing settlement version 5 without resetting other state.
+  Distinct custom in-world item meshes and a dedicated physical workshop
+  container are still needed in the later presentation/world pass.
 - Remaining Phase 1 work: visual QA and polish for targeting presentation,
   multiplayer-authoritative validation when networking is implemented,
   scenario-based visual verification,
@@ -86,7 +98,7 @@
 | Health, radiation and injuries | Incoming damage, armor resistance, healing, radiation pressure and treatment, limb condition, consistent death/respawn | Health/armor/death exist; **power-armor radiation gauge is forced to zero** in `testing/main.js` | Implement physical radiation exposure and treatment and connect it to max-health, items, save data and both HUDs; then injuries |
 | Combat and VATS-like targeting | Responsive movement, stamina/AP, weapon handling, distinct firing modes, damage zones, criticals, target selection with AP cost | Gunplay, recoil, aiming and enemy damage exist; no integrated VATS-like targeting subsystem identified | Create a standalone, testable targeting/AP mechanic only after health/ammo/weapon foundations agree |
 | Enemy AI and animation | Perception based on sight/sound and memory; believable search, cover, corner peeks, muzzle alignment, navigation, reactions and animation transitions | Squad/cover/aim modules exist; visual and physical quality varies with scenario | Add scenario regression maps and tests, especially chest-high cover, doorways, rocks and coordinated movement |
-| Equipment and loot | Categorized inventory, weight/capacity, clothing/armor slots, ammo, junk components, inspection, equipment effects, container transfers | W20.95 adds active weight/capacity and overload to the existing inventory, loot, shops, controller and HUDs. Full junk-object disassembly and more detailed item inspections are still incomplete | Audit physical junk-object scrapping, deeper item inspection and related settlement storage without breaking older saves |
+| Equipment and loot | Categorized inventory, weight/capacity, clothing/armor slots, ammo, junk components, inspection, equipment effects, container transfers | W20.97 adds weight-bearing junk objects, exact recipes and saved workshop deposit/scrap/withdraw transactions on top of W20.95. Full junk-object 3D meshes and deeper inspection are still incomplete | Add unique item meshes and a physical workshop storage interface; audit crafting and carry weight in actual play |
 | Crafting and workbenches | Salvage junk into individual components; weapon/armor mod benches, upgrades with real stats, repair and recipe dependencies | Weapon workbench and material recipes exist; power armor service exists | Tie workbench objects to usable crafting categories; prove models, upgrade effects and scarcity end to end |
 | Power armor | Persistent physical frame, six replaceable plates, fusion-core charge, entry/exit, heavy movement, armor condition, damage resistance, servicing, last-worn frame map tracking | Many mechanics exist; animation/model quality still needs visual QA | Test entry/exit and station docking with and without plates, different frame positions, broken limbs and depleted cores |
 | Settlements | Workshop radius; categorized construction; floor-wall-roof fitting; scrap and store; grid/edge snapping; resources, jobs, wires, residents, attacks, happiness, storage and recruitment | Build catalog, object storage/scrap, snapping, basic production and happiness already exist | Add electricity wiring and assignment of actual settlers; tie production/happiness to jobs and time; add settlement attack and repair loops |
