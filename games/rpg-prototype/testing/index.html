@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W21.00 · Weapon Workbench Overhaul | GAMESHUB RPG</title>
+<title>W21.01 · Power Armor Service Overhaul | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1114,6 +1114,77 @@ body.hud-modern #powerArmorHud{display:none!important}
   #powerArmorPanel .power-config-pane{grid-column:auto}
   #powerArmorPanel #powerServiceFigure{height:290px}
   #powerArmorPanel .power-part-choices{max-height:240px}}
+/* W21.01: interactive detailed chassis drawing and accurate comparison readout. */
+#powerArmorPanel .power-figure-pane{background:radial-gradient(ellipse at 50% 38%,#324843 0%,#172d31 52%,#09191f 100%);
+  border-color:#a2b48f;min-width:0}
+#powerArmorPanel #powerServiceFigure{width:min(100%,350px);height:450px;
+  filter:drop-shadow(0 12px 17px #000b)}
+#powerArmorPanel #powerServiceFigure .armor-underframe path{fill:#1d2f32;
+  stroke:#7f8a7a;stroke-width:1.7;stroke-linejoin:round}
+#powerArmorPanel #powerServiceFigure .armor-underframe circle{fill:#5b6b65;
+  stroke:#b5b7a4;stroke-width:1.5}
+#powerArmorPanel #powerServiceFigure .armor-underframe .armor-frame-spine{fill:none;
+  stroke:#b7bca2;stroke-width:1.8}
+#powerArmorPanel #powerServiceFigure .armor-segment .armor-shell{stroke-width:2.4}
+#powerArmorPanel #powerServiceFigure .armor-panel-detail{fill:#3d5953;
+  stroke:#8d9b8b;stroke-width:1;stroke-linejoin:round;pointer-events:none}
+#powerArmorPanel #powerServiceFigure .armor-seam-detail{fill:none;
+  stroke:#a2a995;stroke-width:1;pointer-events:none}
+#powerArmorPanel #powerServiceFigure .armor-rivet{fill:#e4e1be;
+  stroke:#2b3c3d;stroke-width:.45;pointer-events:none}
+#powerArmorPanel #powerServiceFigure .armor-glass{fill:#a6d3c0;
+  stroke:#273c3c;stroke-width:1.5;pointer-events:none}
+#powerArmorPanel #powerServiceFigure .armor-segment-value{font:bold 6px ui-monospace,monospace;
+  text-anchor:middle;fill:#f7efcd;stroke:#0a1416;stroke-width:1.7;
+  paint-order:stroke;pointer-events:none}
+#powerArmorPanel #powerServiceFigure .armor-segment.empty .armor-panel-detail{fill:#203036;
+  stroke:#516565}
+#powerArmorPanel #powerServiceFigure .armor-segment.empty .armor-glass{fill:#283940}
+#powerArmorPanel #powerServiceFigure .armor-segment.empty .armor-segment-value{fill:#aebbb4}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t45 .armor-shell{fill:#91866e;stroke:#e5d1a0}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t45 .armor-panel-detail{fill:#bcb093;stroke:#eee0bc}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t60 .armor-shell{fill:#426b7f;stroke:#c0e5eb}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t60 .armor-panel-detail{fill:#6599a5;stroke:#d0edee}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t01 .armor-shell{fill:#5f4e7c;stroke:#ddc6f4}
+#powerArmorPanel #powerServiceFigure .armor-segment.healthy.tier-t01 .armor-panel-detail{fill:#8977a8;stroke:#e8d8ff}
+#powerArmorPanel #powerServiceFigure .armor-segment.critical .armor-panel-detail{fill:#a7483b;stroke:#ffc3a5}
+#powerArmorPanel #powerServiceFigure .armor-segment.selected .armor-shell,
+#powerArmorPanel #powerServiceFigure .armor-segment:focus-visible .armor-shell{
+  stroke:#fff3c3;stroke-width:4.2;filter:drop-shadow(0 0 5px #ead789)}
+#powerArmorPanel .power-figure-legend{margin-top:0;color:#bdcbb9}
+#powerArmorPanel .power-part-count{display:inline-block;color:#e0c893;margin-left:8px;
+  letter-spacing:.03em}
+#powerArmorPanel .power-part-compare{margin-top:11px;padding:12px 13px;
+  background:#10292c;border:1px solid #6f8e7c}
+#powerArmorPanel .power-compare-row{display:flex;justify-content:space-between;gap:8px;
+  padding:7px 0;border-bottom:1px solid #39574f;font-size:10px;font-weight:850;
+  color:#b9d2c0}
+#powerArmorPanel .power-compare-row strong{text-align:right;color:#e9dcad;
+  font:900 11px ui-monospace,monospace}
+#powerArmorPanel .power-compare-effect{margin-top:10px;padding:9px;
+  font-size:10px;font-weight:950;letter-spacing:.04em}
+#powerArmorPanel .power-compare-effect.positive{background:#1c4836;color:#b7eab4}
+#powerArmorPanel .power-compare-effect.negative{background:#493029;color:#ffc5ad}
+#powerArmorPanel .power-compare-effect.neutral{background:#263e39;color:#e0ddbd}
+#powerArmorPanel .power-repair-ledger{display:flex;flex-direction:column;gap:7px;
+  max-height:200px;overflow-y:auto;margin-top:11px}
+#powerArmorPanel .power-repair-row{padding:9px 10px;background:#18342e;
+  border:1px solid #567d66}
+#powerArmorPanel .power-repair-row.missing{background:#3b2926;border-color:#99634f}
+#powerArmorPanel .power-repair-row-top{display:flex;flex-wrap:wrap;
+  justify-content:space-between;gap:6px;font-size:10px;color:#eee6ce}
+#powerArmorPanel .power-repair-row-top span{color:#b8e5b0;font-weight:900}
+#powerArmorPanel .power-repair-row.missing .power-repair-row-top span{color:#ffc3a4}
+#powerArmorPanel .power-repair-meter{height:4px;background:#263d36;margin-top:7px}
+#powerArmorPanel .power-repair-meter span{display:block;height:100%;background:#aad08b}
+#powerArmorPanel .power-repair-row.missing .power-repair-meter span{background:#d6a078}
+#powerArmorPanel .power-repair-row small{display:block;margin-top:6px;
+  font-size:9px;color:#b9d3b8;font-weight:800}
+#powerArmorPanel .power-repair-note{padding:10px;border:1px solid #56735e;
+  color:#c4d6be;font-size:10px}
+#powerArmorPanel .power-repair-junk{font-size:9px;color:#dbbf94;
+  line-height:1.6;font-weight:850;margin-top:7px}
+@media(max-width:680px){#powerArmorPanel #powerServiceFigure{height:335px}}
 #workbenchPanel .bench-work-area{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:410px}
 #workbenchPanel .bench-owned-pane{background:#142729;border-right:1px solid #486859;padding:18px;min-width:0}
 #workbenchPanel .bench-owned-list{display:flex;flex-direction:column;gap:8px;margin-top:15px;max-height:65vh;overflow-y:auto}
@@ -1943,7 +2014,7 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.00</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W21.01</div>
     <h1>SYSTEMS<span>TESTING.</span></h1>
     <p class="menu-lead">Explore combat, power armor, scavenging, quests and settlement building. Your progress saves automatically.</p>
     <div class="menu-buttons"><button id="start" class="primary" type="button">ENTER TEST FIELD</button>
@@ -1961,7 +2032,7 @@ body.hud-modern #powerArmorHud{display:none!important}
       <select id="weaponSelect" style="display:none" aria-hidden="true" tabindex="-1" disabled aria-label="Hidden legacy test weapon value"></select>
       <span>Own the weapon first, then open the backpack with I and choose EQUIP. Admins can grant implemented weapons from Developer Panel → Items & Caps.</span>
     </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.00</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W21.01</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
   </div>
@@ -1969,9 +2040,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 <div id="powerArmorPanel" class="loot-overlay hidden" role="dialog" aria-label="Power armor chassis">
   <div class="loot-container">
     <div class="loot-panel-top">
-      <div><div class="loot-eyebrow">W20.75 · SIX-SLOT MODULAR CHASSIS · REAR HATCH ENTRY</div>
+      <div><div class="loot-eyebrow">W21.01 · SIX-SLOT POWER ARMOR SERVICE TERMINAL</div>
         <h2>CONFIGURE<span> YOUR POWER ARMOR.</span></h2>
-        <p>Power armor plates are salvaged from genuinely armored foes, reputation suppliers and abandoned frames; never crafted. Approach any found frame, tap E to configure its individual pieces or repair them using tier-specific components, and hold E behind its rear hatch to enter. Every frame saves its own condition and fusion core.</p>
+        <p>Select a plate directly on the chassis diagram, inspect the protection difference against collected parts, then install or repair it with real resources. Every frame keeps its own six plates and fusion core.</p>
       </div>
       <button id="powerBayClose" type="button">DONE / RESUME</button>
     </div>
@@ -1992,31 +2063,62 @@ body.hud-modern #powerArmorHud{display:none!important}
         </div>
       </aside>
       <section class="power-figure-pane" aria-label="Click a chassis section to configure it">
-        <h3>SELECT ARMOR SECTION <small>CLICK ANY ONE OF THE SIX PARTS</small></h3>
+        <h3>CHASSIS ARMOR SCHEMATIC <small>CLICK A SECTION · CONDITION SHOWN ON EACH PLATE</small></h3>
         <svg id="powerServiceFigure" viewBox="0 0 116 165" role="group" aria-label="Interactive six-part power armor diagram">
+          <g class="armor-underframe" aria-hidden="true">
+            <path d="M50 35 L66 35 L69 89 L65 120 L59 128 L54 120 L47 89 Z"/>
+            <path d="M30 47 L43 44 L46 68 L39 92 L33 107 L26 103 L31 80 Z M73 44 L86 47 L85 80 L90 103 L83 107 L77 92 L70 68 Z"/>
+            <path d="M40 87 L57 88 L57 140 L46 158 L35 155 Z M59 88 L76 87 L81 155 L70 158 L59 140 Z"/>
+            <circle cx="34" cy="68" r="6"/><circle cx="82" cy="68" r="6"/>
+            <circle cx="47" cy="113" r="6"/><circle cx="69" cy="113" r="6"/>
+            <path class="armor-frame-spine" d="M58 39 L58 127 M48 90 L68 90 M48 115 L68 115"/>
+          </g>
           <g id="powerFigure-head" data-slot="head" class="armor-segment empty" role="button" tabindex="0" aria-label="Select helmet">
             <path class="armor-shell" d="M45 9 L53 4 L63 4 L71 9 L74 22 L70 34 L63 39 L52 39 L45 34 L42 22 Z"/>
             <path class="armor-line" d="M46 23 L52 20 L64 20 L70 23 M52 29 L64 29 M55 34 L61 34"/>
+            <path class="armor-panel-detail" d="M48 11 L55 7 L61 7 L68 11 L65 16 L51 16 Z M45 19 L50 23 L50 27 L46 26 Z M66 23 L71 19 L70 26 L66 27 Z"/>
+            <path class="armor-glass" d="M48 22 L54 20 L62 20 L68 22 L66 27 L50 27 Z"/>
+            <text x="58" y="35" class="armor-segment-value">—</text>
           </g>
           <g id="powerFigure-chest" data-slot="chest" class="armor-segment empty" role="button" tabindex="0" aria-label="Select chest">
             <path class="armor-shell" d="M39 39 L48 36 L68 36 L77 39 L84 54 L77 70 L76 88 L40 88 L39 70 L32 54 Z"/>
             <path class="armor-line" d="M44 46 L58 54 L72 46 M58 54 L58 77 M43 78 L73 78"/>
+            <path class="armor-panel-detail" d="M43 42 L52 40 L58 48 L52 57 L40 53 Z M73 42 L64 40 L58 48 L64 57 L76 53 Z M42 60 L53 63 L53 80 L42 80 Z M74 60 L63 63 L63 80 L74 80 Z"/>
+            <path class="armor-seam-detail" d="M37 54 L45 57 L58 61 L71 57 L79 54 M49 85 L67 85"/>
+            <circle class="armor-rivet" cx="45" cy="44" r="1.3"/><circle class="armor-rivet" cx="71" cy="44" r="1.3"/>
+            <text x="58" y="72" class="armor-segment-value">—</text>
           </g>
           <g id="powerFigure-leftArm" data-slot="leftArm" class="armor-segment empty" role="button" tabindex="0" aria-label="Select left arm">
             <path class="armor-shell" d="M16 42 L32 39 L39 48 L33 67 L33 82 L29 103 L10 99 L11 77 L10 60 Z"/>
             <path class="armor-line" d="M15 61 L31 65 M13 83 L30 87"/>
+            <path class="armor-panel-detail" d="M16 47 L30 43 L35 48 L31 60 L14 57 Z M14 69 L30 72 L29 81 L13 79 Z M14 88 L28 91 L26 98 L12 95 Z"/>
+            <path class="armor-seam-detail" d="M18 54 L28 51 M17 75 L27 76 M16 93 L24 94"/>
+            <circle class="armor-rivet" cx="22" cy="48" r="1.3"/>
+            <text x="21" y="85" class="armor-segment-value">—</text>
           </g>
           <g id="powerFigure-rightArm" data-slot="rightArm" class="armor-segment empty" role="button" tabindex="0" aria-label="Select right arm">
             <path class="armor-shell" d="M84 39 L100 42 L106 60 L105 77 L106 99 L87 103 L83 82 L83 67 L77 48 Z"/>
             <path class="armor-line" d="M85 65 L101 61 M86 87 L103 83"/>
+            <path class="armor-panel-detail" d="M86 43 L100 47 L102 57 L85 60 L81 48 Z M86 72 L102 69 L103 79 L87 81 Z M88 91 L102 88 L104 95 L90 98 Z"/>
+            <path class="armor-seam-detail" d="M88 51 L98 54 M89 76 L99 75 M92 94 L100 93"/>
+            <circle class="armor-rivet" cx="94" cy="48" r="1.3"/>
+            <text x="95" y="85" class="armor-segment-value">—</text>
           </g>
           <g id="powerFigure-leftLeg" data-slot="leftLeg" class="armor-segment empty" role="button" tabindex="0" aria-label="Select left leg">
             <path class="armor-shell" d="M39 90 L57 90 L57 119 L52 138 L51 156 L30 156 L30 137 L34 116 Z"/>
             <path class="armor-line" d="M36 117 L54 119 M33 143 L50 143"/>
+            <path class="armor-panel-detail" d="M40 95 L53 95 L53 112 L37 112 Z M37 122 L53 122 L50 137 L34 137 Z M33 147 L50 147 L49 154 L31 154 Z"/>
+            <path class="armor-seam-detail" d="M42 99 L50 99 M38 129 L48 129 M35 151 L46 151"/>
+            <circle class="armor-rivet" cx="46" cy="107" r="1.2"/>
+            <text x="43" y="139" class="armor-segment-value">—</text>
           </g>
           <g id="powerFigure-rightLeg" data-slot="rightLeg" class="armor-segment empty" role="button" tabindex="0" aria-label="Select right leg">
             <path class="armor-shell" d="M59 90 L77 90 L82 116 L86 137 L86 156 L65 156 L64 138 L59 119 Z"/>
             <path class="armor-line" d="M62 119 L80 117 M66 143 L83 143"/>
+            <path class="armor-panel-detail" d="M63 95 L76 95 L79 112 L63 112 Z M63 122 L79 122 L82 137 L66 137 Z M66 147 L83 147 L85 154 L67 154 Z"/>
+            <path class="armor-seam-detail" d="M66 99 L74 99 M68 129 L78 129 M70 151 L81 151"/>
+            <circle class="armor-rivet" cx="70" cy="107" r="1.2"/>
+            <text x="73" y="139" class="armor-segment-value">—</text>
           </g>
         </svg>
         <div class="power-figure-legend"><span class="healthy">■ HEALTHY</span><span class="critical">■ 30% OR LESS</span><span class="empty">■ EMPTY / BROKEN</span></div>
@@ -2024,12 +2126,15 @@ body.hud-modern #powerArmorHud{display:none!important}
       <section class="power-config-pane">
         <div class="power-config-heading"><small>SELECTED MODULE</small><h3 id="powerSelectedName">CHEST</h3><p id="powerSelectedCondition">Select a body section to install, remove or repair a piece.</p></div>
         <div class="power-condition-bar" aria-label="Selected armor durability"><span id="powerSelectedFill"></span></div>
-        <div class="power-part-heading">AVAILABLE PIECES · SELECT TO PREVIEW</div>
+        <div class="power-part-heading">AVAILABLE PIECES · SELECT TO PREVIEW <span id="powerPartCount" class="power-part-count">0 SPARE PIECES</span></div>
         <div id="powerPartChoices" class="power-part-choices" aria-label="Collected armor pieces for selected slot"></div>
         <div class="power-part-preview"><strong id="powerPartPreviewName">SELECT A PART</strong><small id="powerPartPreviewDetails">Armor must be collected before it can be installed.</small></div>
+        <div id="powerPartCompare" class="power-part-compare" aria-label="Actual armor protection and condition comparison"></div>
         <div class="power-part-actions"><button id="powerPartAction" type="button" disabled>CHOOSE A PART</button><button id="powerRepairSelected" type="button">REPAIR INSTALLED PART</button></div>
         <div class="power-part-heading">REPAIR RESOURCES · CURRENT INSTALLED PLATE</div>
         <div id="powerRepairCost" class="power-repair-cost">NO REPAIR REQUIRED</div>
+        <div id="powerRepairLedger" class="power-repair-ledger" aria-label="Repair resources from backpack and settlement"></div>
+        <div id="powerRepairJunk" class="power-repair-junk"></div>
         <div class="armor-slots power-slot-details">
           <label data-slot="head">HELMET <select id="power-head"></select><small id="power-rating-head">EMPTY</small><button id="power-repair-head" type="button">REPAIR WITH SCRAP</button></label>
           <label data-slot="chest">CHEST <select id="power-chest"></select><small id="power-rating-chest">EMPTY</small><button id="power-repair-chest" type="button">REPAIR WITH SCRAP</button></label>
@@ -2455,7 +2560,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W21.00"></script>
+<script type="module" src="./bootstrap.mjs?v=W21.01"></script>
 </body>
 </html>
 

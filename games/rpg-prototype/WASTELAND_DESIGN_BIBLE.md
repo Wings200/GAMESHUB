@@ -89,6 +89,10 @@ actions, build labels and save compatibility as releases continue.
   with real saved waypoint controls and return navigation to the terminal;
   unexplored points remain hidden. The world map is still a testing-field
   map, not a completed original open world.
+- W21.01: The six-slot frame service terminal now presents each actual equipped
+  plate on a detailed selectable chassis diagram, previews real AP and durability
+  changes from inventory choices, and accounts for available repair materials
+  by source while retaining guarded atomic equip, repair, and frame saves.
 - W21.00: The physical Haven firearm workbench now filters real owned,
   ready-to-craft and missing-material assemblies; shows stat changes and exact
   carried/stored/auto-scrapped component availability before committing; and

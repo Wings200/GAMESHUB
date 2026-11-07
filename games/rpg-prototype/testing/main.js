@@ -61,6 +61,7 @@ import {POWER_ARMOR_SLOTS,POWER_ARMOR_PLATES,
   POWER_ARMOR_VISUAL_SCALE,POWER_ARMOR_STAND_HEIGHT,POWER_ARMOR_CROUCH_HEIGHT,
   FUSION_CORE_CAPACITY} from '../power-armor.mjs?v=W20.74.1';
 import {buildPowerArmorVisual,buildPowerArmorCockpit} from '../power-armor-visual.mjs?v=W20.16';
+import {powerServiceComparison} from '../power-service-presentation.mjs?v=W21.01';
 import {createNpcAvatar} from '../npc-avatar.mjs?v=W20.92';
 import {WORLD_WEAPON_GRIPS} from '../weapon-grip-ik.mjs?v=W20.44';
 import {createTenMillimeterPistol} from '../tenmm-pistol.mjs?v=W20.23';
@@ -1445,11 +1446,14 @@ function refreshPowerPartChoices(){
     const item=getItem(entry.itemId);
     if(item.category!=='power-plate'||item.slot!==slot)continue;
     const spec=getPowerPlate(slot,item.tier);
-    options.push({id:entry.uid,name:item.name,
+    options.push({id:entry.uid,name:item.name,tier:item.tier,
+      condition:entry.condition,
       description:Math.ceil(entry.condition)+' / '+item.maxDurability+
         ' DURABILITY · '+spec.points+' ARMOR POINTS'+
         (entry.condition<=0?' · BROKEN':'')});
   }
+  $('powerPartCount').textContent=(options.length-(current.tier!=='none'?2:1))+
+    ' SPARE PIECES FOR THIS SLOT';
   if(!options.some(option=>option.id===selectedPowerChoice))
     selectedPowerChoice='installed';
   for(const option of options){
@@ -1474,6 +1478,30 @@ function refreshPowerPartChoices(){
     (chosen.id==='remove'?' · CONFIRM TO REMOVE':
       chosen.id==='installed'?' · CURRENT CHASSIS CONFIGURATION':
         ' · CONFIRM TO INSTALL');
+  const comparison=powerServiceComparison(slot,current,
+    chosen.id==='installed'?'installed':chosen.id==='remove'?'remove':chosen);
+  const comparisonPanel=$('powerPartCompare');comparisonPanel.replaceChildren();
+  for(const [label,from,to] of [
+    ['EFFECTIVE PLATE ARMOR',comparison.before+' AP',comparison.after+' AP'],
+    ['DURABILITY',comparison.oldCondition.toFixed(0)+' / '+comparison.oldMax,
+      comparison.newCondition.toFixed(0)+' / '+comparison.newMax],
+    ['CONDITION',comparison.oldPercent+'%',comparison.newPercent+'%']
+  ]){
+    const row=document.createElement('div');row.className='power-compare-row';
+    const title=document.createElement('span');title.textContent=label;
+    const numbers=document.createElement('strong');numbers.textContent=from+' → '+to;
+    row.append(title,numbers);comparisonPanel.append(row);
+  }
+  const effect=document.createElement('div');
+  effect.className='power-compare-effect '+(comparison.delta>0?'positive':
+    comparison.delta<0?'negative':'neutral');
+  effect.textContent=comparison.broken?
+    'BROKEN PLATE · ZERO PROTECTION UNTIL REPAIRED':
+    comparison.delta>0?'+'+comparison.delta+' EFFECTIVE ARMOR POINTS':
+    comparison.delta<0?comparison.delta+' EFFECTIVE ARMOR POINTS':
+    chosen.id==='installed'?'NO CHANGE TO CURRENT PROTECTION':
+    'NO CHANGE TO EFFECTIVE PROTECTION';
+  comparisonPanel.append(effect);
   const action=$('powerPartAction');
   action.disabled=chosen.id==='installed';
   action.textContent=chosen.id==='installed'?'CURRENT CONFIGURATION':
@@ -1483,11 +1511,41 @@ function refreshPowerPartChoices(){
     powerArmorState.occupied;
   const repairCost=powerRepairRequirements(powerArmorState,slot,
     specialModifiers.repairDiscount);
-  const missing=playerAtHaven()?
-    !previewWorkshopRecipe(backpack,settlementBuildState,repairCost).ok:
+  const repairPlan=playerAtHaven()?
+    previewWorkshopRecipe(backpack,settlementBuildState,repairCost):null;
+  const missing=repairPlan?
+    !repairPlan.ok:
     Object.entries(repairCost).some(([id,n])=>countItem(backpack,id)<n);
   $('powerRepairCost').textContent=powerRepairCostText(repairCost);
   $('powerRepairCost').classList.toggle('missing',missing);
+  const repairLedger=$('powerRepairLedger');repairLedger.replaceChildren();
+  const rows=benchMaterialRows(repairCost,backpack.materials||{},
+    playerAtHaven()?settlementBuildState.workshopMaterials||{}:{},
+    repairPlan?.recovered||{});
+  if(!rows.length){
+    const note=document.createElement('div');note.className='power-repair-note';
+    note.textContent=current.tier==='none'?'BARE FRAME · NO PLATE TO REPAIR':
+      'SELECTED PLATE AT FULL DURABILITY · NO RESOURCES NEEDED';
+    repairLedger.append(note);
+  }
+  for(const row of rows){
+    const line=document.createElement('div');line.className='power-repair-row'+
+      (row.missing?' missing':'');
+    const headline=document.createElement('div');headline.className='power-repair-row-top';
+    const name=document.createElement('strong');name.textContent=getItem(row.id).name.toUpperCase();
+    const quantity=document.createElement('span');quantity.textContent=
+      Math.min(row.available,row.required)+' / '+row.required+
+      (row.missing?' · SHORT '+row.missing:' · READY');
+    headline.append(name,quantity);
+    const gauge=document.createElement('div');gauge.className='power-repair-meter';
+    const fill=document.createElement('span');fill.style.width=row.filled+'%';gauge.append(fill);
+    const sources=document.createElement('small');sources.textContent=
+      'POUCH '+row.carried+' · WORKSHOP '+row.stored+' · JUNK '+row.recovered;
+    line.append(headline,gauge,sources);repairLedger.append(line);
+  }
+  $('powerRepairJunk').textContent=Object.keys(repairPlan?.selected||{}).length?
+    'AUTO-SCRAP IF REPAIRED: '+Object.entries(repairPlan.selected).map(([id,n])=>
+      getItem(id).name.toUpperCase()+' ×'+n).join(' · '):'';
   repair.disabled=repair.disabled||missing;
   repair.textContent=current.tier==='none'||current.current>=current.max?
     'NO REPAIR NEEDED':missing?'MISSING REPAIR COMPONENTS':'REPAIR INSTALLED PART';
@@ -1502,8 +1560,10 @@ function refreshPowerArmorUI(){
     const current=plateCondition(powerArmorState,slot);
     const status=powerArmorIndicatorStatus(powerArmorState,slot);
     const figure=$('powerFigure-'+slot);
-    figure.setAttribute('class','armor-segment '+status.status+
+    figure.setAttribute('class','armor-segment '+status.status+' tier-'+current.tier+
       (selectedPowerSlot===slot?' selected':''));
+    figure.querySelector('.armor-segment-value').textContent=current.tier==='none'?
+      '—':status.percentage+'%';
     figure.setAttribute('aria-label',ARMOR_SLOT_LABELS[slot]+': '+
       (current.tier==='none'?'empty':
         getPowerPlate(slot,current.tier).name+', '+status.percentage+

@@ -5,6 +5,11 @@
   "description": "Development release history preserved off the game menu. Append every future release here until the 1.0 Version History page is built.",
   "entries": [
     {
+      "version": "W21.01",
+      "title": "POWER ARMOR SIX-PLATE CONFIGURATION OVERHAUL",
+      "notes": "Improved the existing six-slot interactive power-armor service terminal with a detailed chassis schematic that can be clicked or operated with keyboard controls. Each slot displays its live durability and visually distinguishes salvaged T-45, T-60, and prototype T-01 armor when healthy, along with critical and missing/broken plates. Selecting an owned replacement previews its exact effective armor-point change, current-to-new durability and condition before the player confirms installation or removal; broken plates correctly show zero protection until repaired. Repair components now have individual sourced ledgers for pouch stock, settlement storage and automatic junk breakdown, with shortages identified before any transaction. All existing frame-specific saved pieces, core behavior, guarded equip/removal actions and transactional repairs remain intact. The homepage stays concise; history is retained for the planned 1.0 version page."
+    },
+    {
       "version": "W21.00",
       "title": "WEAPON WORKBENCH INSPECTION OVERHAUL",
       "notes": "Reworked the physical Haven firearm workbench presentation without changing the tested crafting rules. Compatible assemblies can now be filtered between all parts, ready-to-craft replacements, already-owned parts and recipes with missing materials. The selected-part panel shows actual current-to-preview firearm changes with separate improvement and drawback colors, and a per-component resource ledger distinguishing carried stock, settlement storage and materials that automatic junk scrapping would recover. Recipes clearly identify shortages and show exactly which stored junk objects would be consumed, but no resources are touched until the user confirms crafting. Installed and previously crafted parts can still be selected free, owned weapons and their saves are preserved, and the homepage remains uncluttered with release history reserved for the 1.0 archive page."
