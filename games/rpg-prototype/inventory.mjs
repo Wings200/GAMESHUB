@@ -264,12 +264,13 @@ export function unequipWearable(pack,category,slot){
   }
   return {ok:false,reason:'invalid-slot'};
 }
-export function useSupply(pack,uid,health){
+export function useSupply(pack,uid,health,{injuryNeedsCare=false}={}){
   const entry=pack.items.find(e=>e.uid===uid);
   if(!entry)return {ok:false,reason:'missing'};
   const item=getItem(entry.itemId);
   if(item.id!=='supply:medkit')return {ok:false,reason:'not-medkit'};
-  if(!health.alive||health.health>=health.maxHealth)return {ok:false,reason:'no-healing-needed'};
+  if(!health.alive||(health.health>=health.maxHealth&&!injuryNeedsCare))
+    return {ok:false,reason:'no-healing-needed'};
   const restored=Math.min(item.heal,health.maxHealth-health.health);
   health.health+=restored;
   removeItem(pack,uid,1);

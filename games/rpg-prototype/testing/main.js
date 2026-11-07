@@ -87,6 +87,9 @@ import {createRadiationState,safeRadiationSnapshot,RADIATION_SOURCES,radiationEx
   applyRadiationExposure,syncRadiationHealth,treatRadiation,radiationHealthBar,
   radiationThreatLevel}
   from '../radiation.mjs?v=W20.88';
+import {createInjuryState,safeInjurySnapshot,damagePlayerLimb,hasPlayerInjury,
+  healWorstLimb,resetInjuries,injuryEffects,injuryStatus}
+  from '../injuries.mjs?v=W20.89';
 import {calculateIncomingShot} from '../player-ballistics.mjs?v=W20.51';
 import { isArenaActive,shouldRaycastEnemy,combatRuntimeStatus } from '../arena-activation.mjs';
 import {characterUnderCrosshair,targetHealthFraction} from '../target-indicator.mjs?v=W20.48';
@@ -94,7 +97,7 @@ import {BACKPACK_LIMIT,RARITIES,getItem,createBackpack,addItem,removeItem,spendM
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.85';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.89';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -2595,6 +2598,8 @@ function refreshInventoryUI(){
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
+  $('inventoryNegativeEffects').textContent=hasPlayerInjury(injuryState)?
+    injuryStatus(injuryState):'NONE ACTIVE';
   $('inventoryProfilePower').textContent=powerArmorState.occupied?
     'FRAME EQUIPPED · '+(powerArmorState.coreCharge===null?'NO CORE':
       Math.ceil(powerArmorState.coreCharge)+'% CORE'):'NOT EQUIPPED';
@@ -2746,9 +2751,13 @@ function refreshInventoryUI(){
     }
     if(item.id==='supply:medkit'){
       lootButton(row,'USE',()=>{
-        const used=useSupply(backpack,entry.uid,playerHealth);
-        if(!used.ok){showShotNotice('MEDKIT · HP ALREADY AT CURRENT MAXIMUM');return;}
-        refreshPlayerHealth();showShotNotice('HEALED · +'+Math.ceil(used.restored)+' HP');
+        const used=useSupply(backpack,entry.uid,playerHealth,
+          {injuryNeedsCare:hasPlayerInjury(injuryState)});
+        if(!used.ok){showShotNotice('MEDKIT · HEALTH AND LIMBS ARE ALREADY FULL');return;}
+        const limb=healWorstLimb(injuryState);
+        saveInjuries();refreshPlayerHealth();
+        showShotNotice('MEDKIT · +'+Math.ceil(used.restored)+' HP'+
+          (limb.ok?' · '+limb.slot.toUpperCase()+' TREATED':''));
         saveBackpack();refreshInventoryUI();refreshWeaponHUD();
       });
     }
@@ -3635,6 +3644,14 @@ $('benchClose').addEventListener('click',closeWorkbench);
 // arena on foot from another station. Keep Station 9 alive on roaming.
 function inAIArena(){return isArenaActive(stationIndex,player);}
 const playerHealth=createPlayerHealth();
+const injurySaveKey='rpg-player-limbs-v1';
+let injuryState=createInjuryState();
+try{injuryState=safeInjurySnapshot(JSON.parse(
+  localStorage.getItem(injurySaveKey)||'null'));}catch{}
+function saveInjuries(){
+  try{localStorage.setItem(injurySaveKey,JSON.stringify(injuryState));}catch{}
+}
+window.addEventListener('pagehide',saveInjuries);
 const radiationSaveKey='rpg-radiation-state-v1';
 let radiationState=createRadiationState();
 let currentRadiationLevel=0;
@@ -3694,6 +3711,7 @@ function respawnAtHaven({mainMenu=false}={}){
   deathState.active=false;deathState.elapsed=0;
   resetPlayerHealth(playerHealth);
   syncRadiationHealth(radiationState,playerHealth);
+  resetInjuries(injuryState);saveInjuries();
   playerHitFlash=0;refreshPlayerHealth();
   player.x=HAVEN_RESPAWN.x;player.z=HAVEN_RESPAWN.z;
   player.jump=0;player.vertical=0;player.supported=false;resetMotion(player);
@@ -3728,6 +3746,11 @@ function refreshPlayerHealth(){
   $('fieldRadStatus').classList.remove('hidden');
   $('fieldRadStatus').textContent='RAD LEVEL '+currentRadiationLevel+
     '/6 · TOTAL '+rads+' RADS · HP CAP '+bar.limit;
+  const wounds=injuryStatus(injuryState);
+  for(const id of ['fieldInjuryStatus','visorInjuryStatus']){
+    $(id).textContent=wounds;
+    $(id).classList.toggle('hidden',!hasPlayerInjury(injuryState));
+  }
   $('fieldHealthFill').style.width=bar.currentPercent.toFixed(1)+'%';
   $('fieldRadiationBlock').style.width=bar.radiationPercent.toFixed(1)+'%';
   $('fieldHud').classList.toggle('critical',fraction<=.35);
@@ -4044,6 +4067,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
               const incoming=calculateIncomingShot(attack.damage,armor.points,
                 powerArmorState,zone);
               const result=hitPlayer(playerHealth,incoming.damage*specialModifiers.damageTakenMultiplier);
+              const wound=damagePlayerLimb(injuryState,zone,result.damage);
+              if(wound.applied)saveInjuries();
               if(powerArmorState.occupied){
                 const wear=damagePowerPlate(powerArmorState,zone,attack.damage);
                 if(wear.worn>0){
@@ -4057,7 +4082,8 @@ function updateEnemies(dt,elapsed=dt,refreshRadar=true){
                 const blocked=(attack.damage-result.damage).toFixed(1);
                 showShotNotice(playerHealth.alive?
                   enemy.label+' HIT · -'+result.damage.toFixed(1)+
-                  ' HP · '+blocked+' BLOCKED':
+                  ' HP · '+blocked+' BLOCKED'+
+                  (wound.newlyCrippled?' · '+zone.toUpperCase()+' CRIPPLED':''):
                   'YOU ARE DOWN · RESPAWN AFTER THE FALL');
               }
             }
@@ -5107,8 +5133,10 @@ function shoot(){
     // Sight and shot are both derived from the camera's current world-space
     // orientation, including the same yaw and pitch used to render the reticle.
     camera.updateWorldMatrix(true,false);
-    shotVector.set(pellet.spreadX*specialModifiers.aimSpreadMultiplier,
-      pellet.spreadY*specialModifiers.aimSpreadMultiplier,-1)
+    shotVector.set(pellet.spreadX*specialModifiers.aimSpreadMultiplier*
+        injuryEffects(injuryState).aimSpreadMultiplier,
+      pellet.spreadY*specialModifiers.aimSpreadMultiplier*
+        injuryEffects(injuryState).aimSpreadMultiplier,-1)
       .normalize().applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
   firingRaycaster.set(camera.position,shotVector);
   // Downed dummies remain visible but no longer block shots behind them.
@@ -5235,7 +5263,7 @@ function shoot(){
   // The camera rises and receives a small authored horizontal pattern AFTER the shot.
   const kick=applyWeaponRecoil(viewRecoil,camera.rotation.x,camera.rotation.y,
     activeSpec,{aiming:weaponState.aiming,crouched:!!player.crouched,
-      multiplier:specialModifiers.recoilMultiplier});
+      multiplier:specialModifiers.recoilMultiplier*injuryEffects(injuryState).recoilMultiplier});
   camera.rotation.x=kick.pitch;camera.rotation.y=kick.yaw;
   refreshWeaponHUD();
 }
@@ -5761,6 +5789,7 @@ function resetPlayer(i){
     enemyAIEnabled=true;
     resetPlayerHealth(playerHealth);
     syncRadiationHealth(radiationState,playerHealth);
+    resetInjuries(injuryState);saveInjuries();
     refreshPlayerHealth();
     // Ensure a clear, repeatable view of every enemy on first entry.
     resetEnemies();
@@ -7417,11 +7446,14 @@ function frame(){
   if(controls.isLocked&&playerHealth.alive&&powerArmorState.phase==='idle'){
     controls.getDirection(forward);
     const mobility=powerArmorMobility(powerArmorState);
+    const trauma=injuryEffects(injuryState);
     const info=stepMovement(player,keys,{x:forward.x,z:forward.z},dt,
       {boxes:bounds,trees:[],ceilings,groundHeight,
-        speedMultiplier:mobility.factor*specialModifiers.speedMultiplier,
-        staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier,
-        allowSprint:mobility.canSprint,
+        speedMultiplier:mobility.factor*specialModifiers.speedMultiplier*
+          trauma.speedMultiplier,
+        staminaDrainMultiplier:specialModifiers.staminaDrainMultiplier*
+          trauma.staminaDrainMultiplier,
+        allowSprint:mobility.canSprint&&trauma.canSprint,
         bodyHeight:powerArmorState.occupied?POWER_ARMOR_STAND_HEIGHT:undefined,
         crouchHeight:powerArmorState.occupied?POWER_ARMOR_CROUCH_HEIGHT:undefined});
     weaponMotion={speed:info.speed,sprinting:info.sprinting,airborne:info.airborne,crouched:info.crouched};

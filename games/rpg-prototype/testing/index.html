@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.88 · Live RAD Meter | GAMESHUB RPG</title>
+<title>W20.89 · Limb Injuries | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -412,6 +412,9 @@ body.hud-modern #powerArmorHud{display:none!important}
 #fieldHud .field-sub{font-size:10px;font-weight:850;color:#b1c5b7;letter-spacing:.07em}
 #fieldHud #fieldRadStatus{color:#e9b576;display:block;margin:5px 0;font-size:10px}
 #fieldHud #fieldRadStatus.hidden{display:none}
+#fieldHud #fieldInjuryStatus{display:block;margin:4px 0;color:#ffb9a0;
+  font-size:9px;font-weight:900;line-height:1.5;letter-spacing:.04em}
+#fieldHud #fieldInjuryStatus.hidden{display:none}
 #fieldHud .field-ammo{font-size:32px;font-weight:950;color:#f5e5bf;line-height:1.1}
 #fieldHud .field-weapon-name{font-size:12px;font-weight:900;color:#a5d3b9;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.09em}
@@ -504,6 +507,11 @@ body.hud-modern #powerArmorHud{display:none!important}
 #powerVisorHud .armor-rads .dial-title{top:49%;left:24%;font-size:13px}
 #powerVisorHud .armor-rads .rad-number{position:absolute;left:68%;top:49%;
   transform:translate(-50%,-7%);color:#ffd99b;font:900 13px Consolas,monospace}
+#powerVisorHud #visorInjuryStatus{position:absolute;bottom:169px;left:2.7vw;
+  max-width:min(360px,36vw);padding:4px 8px;border-left:2px solid #ff6e52;
+  background:#21191599;color:#ffb08c;font-size:10px;font-weight:900;
+  line-height:1.45;letter-spacing:.03em}
+#powerVisorHud #visorInjuryStatus.hidden{display:none}
 #powerVisorHud .armor-core{right:21.5vw;width:clamp(112px,8.2vw,155px);bottom:19px}
 #powerVisorHud .armor-core .dial-title{top:51%;font-size:13px}
 #powerVisorHud .core-readout{position:absolute;left:50%;top:75%;
@@ -1404,6 +1412,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <div class="field-number"><span id="fieldHealth">100</span> <span class="field-unit">/ <span id="fieldMaxHealth">100</span> HP</span></div>
     <div class="field-bar"><span id="fieldHealthFill"></span><span id="fieldRadiationBlock" aria-hidden="true"></span></div>
     <span id="fieldRadStatus" class="hidden" aria-live="polite">0 RADS</span>
+    <span id="fieldInjuryStatus" class="hidden" aria-live="polite"></span>
     <div class="field-sub">STAMINA <span id="fieldStamina">100%</span></div>
     <div class="field-bar secondary"><span id="fieldStaminaFill"></span></div>
   </div>
@@ -1447,6 +1456,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <span class="dial-title">HP%</span>
     <span id="visorHealth" class="sr-only">100 / 100 HP</span>
   </div>
+  <span id="visorInjuryStatus" class="hidden" aria-live="polite"></span>
   <div class="armor-dial armor-rads" aria-label="Live radiation intensity gauge, zero to six">
     <svg id="visorRadsGauge" class="dial-svg" viewBox="0 0 200 200" aria-hidden="true"></svg>
     <span class="dial-title">RAD LVL</span>
@@ -1606,11 +1616,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.88</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.89</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.89 · LIMB INJURIES &amp; FUNCTIONAL MEDICAL CARE:</strong> Incoming hits now damage the specific struck head, torso, arm or leg. A crippled leg actually reduces movement speed; two crippled legs prevent sprinting; arm and head injuries worsen aim, arm injuries add recoil and chest wounds raise stamina drain. Field and power-armor injury warnings and the inventory's negative-effects page display the physical condition. Real Field Medkits treat the most damaged limb and restore up to 40 HP; they remain usable for an injury when HP is full, consume exactly one item and never repair every limb for free. All six limb conditions save between sessions and are reset on respawn and deliberate combat-test restart. Existing save games migrate with healthy limbs.</p>
     <p><strong>W20.88 · LIVE SIX-LEVEL RADIATION GAUGE:</strong> The RAD needle and number now read live exposure intensity on a zero-to-six scale instead of slowly accumulated lifetime radiation dose. Zero means safe; approaching the actual waste site increases the level through one to six. An occupied, intact power-armor suit reduces the measured intensity. Both power-armor and ordinary field displays immediately react when you enter, move within, and leave a radioactive area, including when no further dose accrues. The separate accumulated RADS total remains visible for health-cap and medicine tracking.</p>
     <p><strong>W20.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:</strong> Radiation now hurts real current HP even when the player was already wounded, in addition to limiting maximum survivable health. Both ordinary HP bars and the power-armor HP dial use the full 100-HP scale, so dropping to 75 HP visibly shows 75% rather than a deceptively full 75/75 bar. The unusable health portion is marked red on both ordinary bars; the separate RAD gauge and counter continue showing accumulated rads. Radiation can cause a real death and trigger the first-person death sequence. Radiation Flush removes radiation and restores the health cap but does not heal missing HP.</p>
     <p><strong>W20.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:</strong> Moved the radiation source entirely clear of the raised training ramp. Replaced the billboard and buried miniature drums with a ground-level waste depot: rusted full-size ribbed drums, warning decals, an overturned tank, bent metal fence, irregular leaking pools and debris. Solid debris now blocks bullets and movement. The massive solid-green slope is now a textured weathered-concrete ramp with visible slab joints. Radiation intensity and medical treatment remain unchanged. This is still a testing field, not a finished campaign location.</p>
@@ -1664,7 +1675,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.88</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.89</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2003,7 +2014,7 @@ body.hud-modern #powerArmorHud{display:none!important}
           <div><small>HEALTH</small><strong id="inventoryProfileHealth">100 / 100 HP</strong></div>
           <div><small>POWER ARMOR</small><strong id="inventoryProfilePower">NOT EQUIPPED</strong></div>
           <div class="inventory-effect-card"><small>POSITIVE EFFECTS</small><strong id="inventoryPositiveEffects">NONE ACTIVE</strong><span>Temporary bonuses will appear here.</span></div>
-          <div class="inventory-effect-card negative"><small>NEGATIVE EFFECTS</small><strong id="inventoryNegativeEffects">NONE ACTIVE</strong><span>Injuries, illnesses and penalties will appear here.</span></div>
+          <div class="inventory-effect-card negative"><small>NEGATIVE EFFECTS</small><strong id="inventoryNegativeEffects">NONE ACTIVE</strong><span>Arm wounds impair aim, leg wounds slow movement, torso wounds drain stamina. Medkits treat the worst limb.</span></div>
         </section>
         <div class="inventory-loadout-tip">Select an item to equip, use, or drop it. Your saved gear and item counts stay unchanged.</div>
       </aside>
@@ -2095,7 +2106,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.88"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.89"></script>
 </body>
 </html>
 

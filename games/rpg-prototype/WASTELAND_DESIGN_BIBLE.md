@@ -3,6 +3,17 @@
 **Status:** Full-system redesign specification, begun after release W20.84.
 **Direction:** Match the *structure, interlocking systems, physical logic, pace and player freedom* of Fallout 4 as closely as feasible in a browser while keeping an original setting, characters, art, dialogue, quests and audio. This is not a request to reproduce Bethesda's copyrighted world or game assets.
 
+**Implementation checkpoints after the original W20.84 audit:**
+- W20.85–W20.88: Persistent radiation exposure, real HP damage, medicine,
+  fixed-width HP bars and a separate responsive 0–6 live exposure gauge.
+- W20.89: Six persistent limb conditions tied to the actual struck damage zone;
+  injuries affect movement, sprinting, aim, recoil and stamina. One real
+  medkit treats the most damaged limb and can be used at full HP if injured.
+  New UI indicators are linked to these same values, not placeholders.
+- Remaining Phase 1 work: targeted combat/AP/critical mechanics and scenario-
+  based visual verification. Do not call limb animation or the wider campaign
+  art pass complete on the basis of the condition math alone.
+
 ## Non-negotiable design rules
 
 1. **Systems must be real.** Never show a gauge, perk, object, settlement stat, companion, NPC animation or quest choice as a working feature if it is only decorative. Prototypes must be labeled as such in developer-facing testing, not disguised in gameplay.

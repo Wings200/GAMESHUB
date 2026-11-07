@@ -145,8 +145,8 @@ test('the field and power armor both display live radiation, and world exposure 
   assert.doesNotMatch(main,/playerHealth\.health\/playerHealth\.maxHealth/,
     'shrinking maximum HP must not keep the visible HP bar full');
   assert.match(main,/buildVisorDial\('rads','visorRadsGauge',\{tickCount:6,majorEvery:1,maxValue:6/);
-  assert.match(main,/\.\.\/inventory\.mjs\?v=W20\.85/,
-    'updated inventory items must not use the previous cached module');
+  assert.match(main,/\.\.\/inventory\.mjs\?v=W20\.89/,
+    'updated medical supplies must not use the previous cached module');
   assert.match(main,/\.\.\/vendors\.mjs\?v=W20\.85/,
     'updated merchant stock must not use the previous cached module');
   assert.doesNotMatch(main,/Radiation gameplay is not implemented yet/);
