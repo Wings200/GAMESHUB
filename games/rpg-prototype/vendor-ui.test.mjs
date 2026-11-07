@@ -4,12 +4,14 @@ import {readFileSync} from 'node:fs';
 
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const main=readFileSync(new URL('./testing/main.js',import.meta.url),'utf8');
+const history=JSON.parse(readFileSync(new URL('./version-history.json',import.meta.url),'utf8'));
 
 test('trade terminal exposes live quotes, wallet, capacity, and both stock lists',()=>{
   for(const id of ['vendorCaps','vendorCapacity','vendorPlayerItems',
     'vendorItems','vendorPlayerSearch','vendorSearch','vendorFeedback'])
     assert.match(html,new RegExp('id="'+id+'"'));
-  assert.match(html,/W20\.72 · VENDOR TRADING/);
+  assert.ok(history.entries.some(entry=>entry.version==='W20.72'&&
+    entry.title==='VENDOR TRADING'));
   assert.match(html,/class="vendor-intro"/);
   assert.match(main,/function vendorTradeRow\(/);
   assert.match(main,/input\.addEventListener\('input',updateQuote\)/);
@@ -32,9 +34,11 @@ test('barter review shows each side, net price, cancel and explicit confirmation
   for(const id of ['vendorCartSellItems','vendorCartBuyItems','vendorCartNet',
     'vendorCartBalance','vendorCartStatus','vendorCartConfirm','vendorCartClear'])
     assert.match(html,new RegExp('id="'+id+'"'));
-  assert.match(html,/W20\.72\.1 · BARTER CONFIRMATION/);
+  assert.ok(history.entries.some(entry=>entry.version==='W20.72.1'&&
+    entry.title==='BARTER CONFIRMATION'));
   assert.match(html,/NOTHING IS EXCHANGED UNTIL YOU CONFIRM/);
   assert.match(html,/CONFIRM TRADE/);
   assert.match(main,/vendorCartBuys\.clear\(\);vendorCartSells\.clear\(\)/);
   assert.match(main,/\$\('vendorCartConfirm'\)\.disabled=!preview\.ok/);
 });
+

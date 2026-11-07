@@ -3,6 +3,15 @@
 **Status:** Full-system redesign specification, begun after release W20.84.
 **Direction:** Match the *structure, interlocking systems, physical logic, pace and player freedom* of Fallout 4 as closely as feasible in a browser while keeping an original setting, characters, art, dialogue, quests and audio. This is not a request to reproduce Bethesda's copyrighted world or game assets.
 
+**Release history policy (November 7, 2026):** The systems-testing menu no
+longer contains its accumulated wall of patch-note paragraphs. All 48 notes
+that were previously visible there are preserved in `version-history.json`,
+with unique version identifiers, titles and full details. Add every future
+release to that file, newest first. When the project reaches version 1.0,
+build a single dedicated **Version History** page/button using that archive.
+Do not restore patch-note paragraphs to the homepage. Preserve working menu
+actions, build labels and save compatibility as releases continue.
+
 **Implementation checkpoints after the original W20.84 audit:**
 - W20.85–W20.88: Persistent radiation exposure, real HP damage, medicine,
   fixed-width HP bars and a separate responsive 0–6 live exposure gauge.

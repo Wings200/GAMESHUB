@@ -434,7 +434,9 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/storeSettlementStructure\(settlementBuildState,backpack,id\)/);
   assert.match(main,/saveSettlementBuild\(\);saveBackpack\(\)/);
   assert.match(html,/id="settlementBuildHud"/);
-  assert.match(html,/W20\.78 · HAVEN JUNCTION WORKSHOP BUILDING/);
+  const history=JSON.parse(readFileSync(new URL('./version-history.json',import.meta.url),'utf8'));
+  assert.ok(history.entries.some(entry=>entry.version==='W20.78'&&
+    entry.title==='HAVEN JUNCTION WORKSHOP BUILDING'));
   assert.match(html,/id="settlementStart"/);
   assert.match(html,/id="settlementHappiness"/);
   assert.match(html,/id="settlementBuildCategories"/);
@@ -461,8 +463,10 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/STORED \('/);
   assert.match(main,/PLACED FROM STORAGE/);
   assert.match(html,/id="settlementScrapCount"/);
-  assert.match(html,/W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE/);
-  assert.match(html,/W20\.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY/);
+  assert.ok(history.entries.some(entry=>entry.version==='W20.80'&&
+    entry.title==='PLACEABLE WORKBENCHES & WORLD SALVAGE'));
+  assert.ok(history.entries.some(entry=>entry.version==='W20.81'&&
+    entry.title==='TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY'));
 });
 
 test('population, food, water, beds, power draw and defense come from built objects',()=>{

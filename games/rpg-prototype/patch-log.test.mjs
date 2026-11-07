@@ -5,104 +5,27 @@ import {readFileSync} from 'node:fs';
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),'utf8');
 
-test('systems testing splash leads with the latest milestone in version order',()=>{
-  const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.98/);
-  assert.match(log,/<strong>W20\.98 · CHARACTER TERMINAL OVERHAUL:<\/strong>/);
-  assert.match(log,/<strong>W20\.97 · PHYSICAL JUNK &amp; WORKSHOP SCRAPPING:<\/strong>/);
-  assert.match(log,/<strong>W20\.96 · FOOD, WATER &amp; CHEM EFFECTS:<\/strong>/);
-  assert.match(log,/<strong>W20\.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE:<\/strong>/);
-  assert.match(log,/<strong>W20\.94 · LIVE V\.A\.T\.S\. TARGET SCANNER:<\/strong>/);
-  assert.match(log,/<strong>W20\.93 · S\.P\.E\.C\.I\.A\.L\. PERK INTEGRATION:<\/strong>/);
-  assert.match(log,/<strong>W20\.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT:<\/strong>/);
-  assert.match(log,/<strong>W20\.91 · LIVE V\.A\.T\.S\. SHOT QUEUE:<\/strong>/);
-  assert.match(log,/<strong>W20\.90 · TACTICAL BODY-PART TARGETING:<\/strong>/);
-  assert.match(log,/<strong>W20\.89 · LIMB INJURIES &amp; FUNCTIONAL MEDICAL CARE:<\/strong>/);
-  assert.match(log,/<strong>W20\.88 · LIVE SIX-LEVEL RADIATION GAUGE:<\/strong>/);
-  assert.match(log,/<strong>W20\.87 · ACTUAL RADIATION HP LOSS &amp; HUD FIX:<\/strong>/);
-  assert.match(log,/<strong>W20\.86 · HAZARD SCENE REPAIR &amp; COLLISION PASS:<\/strong>/);
-  assert.match(log,/<strong>W20\.85 · RADIATION & FULL RPG REBUILD FOUNDATION:<\/strong>/);
-  assert.match(log,/<strong>W20\.84 · MODULAR ROOF MODELS & SCALE FIX:<\/strong>/);
-  assert.match(log,/<strong>W20\.83 · WALL CORNER JOINING & EDGE SNAP:<\/strong>/);
-  assert.match(log,/<strong>W20\.82 · REAL SETTLEMENT OBJECT STORAGE:<\/strong>/);
-  assert.match(log,/<strong>W20\.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY:<\/strong>/);
-  assert.match(log,/<strong>W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE:<\/strong>/);
-  assert.match(log,/<strong>W20\.79 · LIVING SETTLEMENT WORKSHOP:<\/strong>/);
-  assert.match(log,/<strong>W20\.78 · HAVEN JUNCTION WORKSHOP BUILDING:<\/strong>/);
-  assert.match(log,/<strong>W20\.77\.2 · CORRECT CORNER PEEK DIRECTION:<\/strong>/);
-  assert.match(log,/<strong>W20\.77\.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING:<\/strong>/);
-  assert.match(log,/<strong>W20\.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL:<\/strong>/);
-  assert.match(log,/<strong>W20\.76\.1 · FIRST-PERSON DEATH CINEMATIC:<\/strong>/);
-  assert.match(log,/<strong>W20\.76 · DEATH & POWER ARMOR RECOVERY:<\/strong>/);
-  assert.match(log,/<strong>W20\.75\.2 · SETTLEMENT WEAPON WORKBENCH:<\/strong>/);
-  assert.match(log,/<strong>W20\.75\.1 · READ-ONLY DIAGNOSTICS:<\/strong>/);
-  assert.match(log,/<strong>W20\.75 · FACTION POWER ARMOR & FOUND FRAMES:<\/strong>/);
-  assert.match(log,/<strong>W20\.74\.1 · POWER ARMOR REPAIRS:<\/strong>/);
-  assert.match(log,/<strong>W20\.74 · POWER ARMOR CONFIGURATION:<\/strong>/);
-  assert.match(log,/<strong>W20\.73 · WEAPON WORKBENCH:<\/strong>/);
-  assert.match(log,/<strong>W20\.72\.1 · BARTER CONFIRMATION:<\/strong>/);
-  assert.match(log,/<strong>W20\.72 · VENDOR TRADING:<\/strong>/);
-  assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
-  assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
-  assert.match(log,/floating LOOT labels/);
-  assert.ok(log.indexOf('W20.98 · CHARACTER TERMINAL OVERHAUL')<
-    log.indexOf('W20.97 · PHYSICAL JUNK &amp; WORKSHOP SCRAPPING'));
-  assert.ok(log.indexOf('W20.97 · PHYSICAL JUNK &amp; WORKSHOP SCRAPPING')<
-    log.indexOf('W20.96 · FOOD, WATER &amp; CHEM EFFECTS'));
-  assert.ok(log.indexOf('W20.96 · FOOD, WATER &amp; CHEM EFFECTS')<
-    log.indexOf('W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE'));
-  assert.ok(log.indexOf('W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE')<
-    log.indexOf('W20.94 · LIVE V.A.T.S. TARGET SCANNER'));
-  assert.ok(log.indexOf('W20.94 · LIVE V.A.T.S. TARGET SCANNER')<
-    log.indexOf('W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION'));
-  assert.ok(log.indexOf('W20.93 · S.P.E.C.I.A.L. PERK INTEGRATION')<
-    log.indexOf('W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT'));
-  assert.ok(log.indexOf('W20.92 · CRIPPLED LIMBS AFFECT ENEMY COMBAT')<
-    log.indexOf('W20.91 · LIVE V.A.T.S. SHOT QUEUE'));
-  assert.ok(log.indexOf('W20.91 · LIVE V.A.T.S. SHOT QUEUE')<
-    log.indexOf('W20.90 · TACTICAL BODY-PART TARGETING'));
-  assert.ok(log.indexOf('W20.90 · TACTICAL BODY-PART TARGETING')<
-    log.indexOf('W20.89 · LIMB INJURIES'));
-  assert.ok(log.indexOf('W20.89 · LIMB INJURIES')<
-    log.indexOf('W20.88 · LIVE SIX-LEVEL RADIATION GAUGE'));
-  assert.ok(log.indexOf('W20.88 · LIVE SIX-LEVEL RADIATION GAUGE')<
-    log.indexOf('W20.87 · ACTUAL RADIATION HP LOSS'));
-  assert.ok(log.indexOf('W20.87 · ACTUAL RADIATION HP LOSS')<
-    log.indexOf('W20.86 · HAZARD SCENE REPAIR'));
-  assert.ok(log.indexOf('W20.86 · HAZARD SCENE REPAIR')<
-    log.indexOf('W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION'));
-  assert.ok(log.indexOf('W20.85 · RADIATION & FULL RPG REBUILD FOUNDATION')<
-    log.indexOf('W20.84 · MODULAR ROOF MODELS & SCALE FIX'));
-  assert.ok(log.indexOf('W20.84 · MODULAR ROOF MODELS & SCALE FIX')<
-    log.indexOf('W20.83 · WALL CORNER JOINING & EDGE SNAP'));
-  assert.ok(log.indexOf('W20.83 · WALL CORNER JOINING & EDGE SNAP')<
-    log.indexOf('W20.82 · REAL SETTLEMENT OBJECT STORAGE'));
-  assert.ok(log.indexOf('W20.82 · REAL SETTLEMENT OBJECT STORAGE')<
-    log.indexOf('W20.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY'));
-  assert.ok(log.indexOf('W20.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY')<
-    log.indexOf('W20.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE'));
-  assert.ok(log.indexOf('W20.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE')<
-    log.indexOf('W20.79 · LIVING SETTLEMENT WORKSHOP'));
-  assert.ok(log.indexOf('W20.79 · LIVING SETTLEMENT WORKSHOP')<
-    log.indexOf('W20.78 · HAVEN JUNCTION WORKSHOP BUILDING'));
-  assert.ok(log.indexOf('W20.78 · HAVEN JUNCTION WORKSHOP BUILDING')<
-    log.indexOf('W20.77.2 · CORRECT CORNER PEEK DIRECTION'));
-  assert.ok(log.indexOf('W20.77.2 · CORRECT CORNER PEEK DIRECTION')<
-    log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING'));
-  assert.ok(log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING')<
-    log.indexOf('W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL'));
-  assert.ok(log.indexOf('W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL')<
-    log.indexOf('W20.76.1 · FIRST-PERSON DEATH CINEMATIC'));
-  assert.ok(log.indexOf('W20.76.1 · FIRST-PERSON DEATH CINEMATIC')<
-    log.indexOf('W20.76 · DEATH & POWER ARMOR RECOVERY'));
-  assert.ok(log.indexOf('W20.76 · DEATH & POWER ARMOR RECOVERY')<
-    log.indexOf('W20.75.2 · SETTLEMENT WEAPON WORKBENCH'));
-  assert.ok(log.indexOf('W20.75.2 · SETTLEMENT WEAPON WORKBENCH')<
-    log.indexOf('W20.75.1 · READ-ONLY DIAGNOSTICS'));
-  assert.ok(log.indexOf('W20.75.1 · READ-ONLY DIAGNOSTICS')<
-    log.indexOf('W20.75 · FACTION POWER ARMOR'));
-  assert.ok(log.indexOf('W20.75 · FACTION POWER ARMOR')<
-    log.indexOf('W20.74.1 · POWER ARMOR REPAIRS'));
+test('home menu is concise, with the full version history retained for 1.0',()=>{
+  const menu=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div id="powerArmorPanel">'));
+  assert.match(menu,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.98/);
+  assert.match(menu,/<h1>SYSTEMS<span>TESTING\.<\/span><\/h1>/);
+  assert.doesNotMatch(menu,/<p><strong>W\d+(?:\.\d+)+/);
+  assert.doesNotMatch(menu,/weapon-reset-notice/);
+  for(const id of ['start','inventoryOpen','fieldMapOpen','specialOpen',
+    'settlementStart','endDown','endUp','weaponSelect']){
+    assert.equal((menu.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id);
+  }
+  const archive=JSON.parse(readFileSync(new URL('./version-history.json',import.meta.url),'utf8'));
+  assert.equal(archive.releaseNotesPagePlannedFor,'1.0');
+  assert.ok(archive.entries.length>=48);
+  assert.equal(archive.entries[0].version,'W20.98');
+  assert.equal(new Set(archive.entries.map(e=>e.version)).size,archive.entries.length);
+  for(const entry of archive.entries){
+    assert.match(entry.version,/^W\d+\.\d+(?:\.\d+)*$/);
+    assert.ok(entry.title.length>3&&entry.notes.length>20);
+  }
+  for(const v of ['W20.98','W20.97','W20.94','W20.88','W20.62','W20.10'])
+    assert.ok(archive.entries.some(entry=>entry.version===v),v);
 });
 
 test('testing entry uses one cache-busted release version',()=>{
