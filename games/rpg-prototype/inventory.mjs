@@ -39,7 +39,9 @@ export const INVENTORY_CATEGORIES=Object.freeze([
 export function inventorySection(item){
   if(item.category==='material')return 'materials';
   if(item.category==='power-plate'||item.category==='fusion-core')return 'power';
-  if(item.category==='supply')return ['medkit','rad-flush'].includes(item.key)?'aid':'junk';
+  if(item.category==='supply')return ['medkit','rad-flush','clean-water',
+    'trail-stew','dirty-water','combat-stim','focus-tonic','rad-shield']
+    .includes(item.key)?'aid':'junk';
   return item.category;
 }
 export function displayAmmoCount(value){const n=cap(value);return n>999?'999+':String(n);}
@@ -111,6 +113,26 @@ templates.set('supply:medkit',Object.freeze({
 templates.set('supply:rad-flush',Object.freeze({
   id:'supply:rad-flush',category:'supply',key:'rad-flush',name:'Radiation Flush',
   rarity:'uncommon',value:90,weight:.5,maxStack:6,radCure:300}));
+// These are fully physical aid stacks with the same weight, vendor, loot,
+// crafting-wallet and save rules as existing medical supplies.
+for(const item of [
+  {key:'clean-water',name:'Purified Field Water',value:20,weight:.5,
+    rarity:'common',heal:20,maxStack:10},
+  {key:'trail-stew',name:'Canned Trail Stew',value:24,weight:1,
+    rarity:'common',heal:30,radDose:5,maxStack:8},
+  {key:'dirty-water',name:'Contaminated Water',value:7,weight:.5,
+    rarity:'common',heal:10,radDose:15,maxStack:10},
+  {key:'combat-stim',name:'Combat Stimulant',value:110,weight:.2,
+    rarity:'rare',effectKey:'combat-stim',effectSeconds:60,
+    effectSummary:'+20% firearm damage for 60s',maxStack:6},
+  {key:'focus-tonic',name:'Focus Tonic',value:95,weight:.2,
+    rarity:'uncommon',effectKey:'focus-tonic',effectSeconds:75,
+    effectSummary:'+12 V.A.T.S. hit chance for 75s',maxStack:6},
+  {key:'rad-shield',name:'Rad Shield',value:85,weight:.2,
+    rarity:'uncommon',effectKey:'rad-shield',effectSeconds:120,
+    effectSummary:'35% radiation resistance for 120s',maxStack:6}
+])templates.set('supply:'+item.key,Object.freeze({
+  id:'supply:'+item.key,category:'supply',...item}));
 templates.set('supply:salvage',Object.freeze({
   id:'supply:salvage',category:'supply',key:'salvage',name:'Salvaged Parts',
   rarity:'common',value:12,weight:1,maxStack:40}));

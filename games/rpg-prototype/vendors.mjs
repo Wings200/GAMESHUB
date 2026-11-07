@@ -1,6 +1,6 @@
 // W20.65: finite merchant stock with browser-local persistence. Trades use
 // existing inventory items and campaign caps, never a second wallet.
-import {getItem,addItem,removeItem,countItem,spendMaterial} from './inventory.mjs';
+import {getItem,addItem,removeItem,countItem,spendMaterial,inventorySection} from './inventory.mjs';
 import {CRAFTING_COMPONENTS} from './materials.mjs';
 import {FACTION_POWER_ARMOR_REPUTATION,ADVANCED_POWER_ARMOR_REPUTATION}
   from './power-acquisition.mjs?v=W20.75';
@@ -22,10 +22,16 @@ export const VENDORS=Object.freeze([
       {itemId:'armor:ranger-chest',quantity:1},
       {itemId:'armor:militia-chest',quantity:1}
     ])}),
-  Object.freeze({id:'medic',name:'DOC VALE',title:'FIELD MEDIC',specialty:'First aid & medical supplies',
+  Object.freeze({id:'medic',name:'DOC VALE',title:'FIELD MEDIC',specialty:'First aid, food, water & chems',
     x:-15,z:9,color:0x9ad0a9,offers:Object.freeze([
       {itemId:'supply:medkit',quantity:1},
-      {itemId:'supply:rad-flush',quantity:1}
+      {itemId:'supply:rad-flush',quantity:1},
+      {itemId:'supply:clean-water',quantity:3},
+      {itemId:'supply:trail-stew',quantity:2},
+      {itemId:'supply:dirty-water',quantity:2},
+      {itemId:'supply:combat-stim',quantity:1},
+      {itemId:'supply:focus-tonic',quantity:1},
+      {itemId:'supply:rad-shield',quantity:1}
     ])}),
   Object.freeze({id:'scavenger',name:'WREN',title:'SALVAGE TRADER',specialty:'31 components, optics, clothing & cores',
     x:-5,z:9,color:0xdfc18c,offers:Object.freeze([
@@ -117,11 +123,10 @@ export function vendorAccepts(vendorId,itemId){
   let item;try{item=getItem(itemId);}catch{return false;}
   if(vendorId==='arms')return item.category==='weapon'||item.category==='ammo';
   if(vendorId==='armor')return item.category==='armor';
-  if(vendorId==='medic')return item.id==='supply:medkit'||
-    item.id==='supply:rad-flush';
+  if(vendorId==='medic')return inventorySection(item)==='aid';
   if(vendorId==='scavenger')return item.category==='clothing'||
     item.category==='fusion-core'||item.category==='material'||
-    (item.category==='supply'&&!['medkit','rad-flush'].includes(item.key));
+    (item.category==='supply'&&inventorySection(item)!=='aid');
   if(vendor.faction)return item.category==='power-plate'||
     item.category==='fusion-core';
   return false;

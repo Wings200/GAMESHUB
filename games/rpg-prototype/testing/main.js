@@ -3,7 +3,7 @@ import {buildWastelandSet} from '../wasteland-setdress.mjs';
 import {preferLowGraphics,createFrameBudgetGovernor} from '../render-performance.mjs';
 import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
   createVendorStock,safeVendorStockSnapshot,vendorStockRemaining,
-  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.93';
+  isEquippedItem,vendorReputationAccess,executeVendorBarter} from '../vendors.mjs?v=W20.96';
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
@@ -103,9 +103,12 @@ import {RARITIES,getItem,createBackpack,addItem,removeItem,spendMaterial,
   equipFromInventory,unequipWearable,useSupply,playerArmorReduction,createLootBag,
   takeFromBag,takeQuantityFromBag,takeAllFromBag,generateEnemyLoot,safeBackpackSnapshot,
   totalInventoryValue,inventoryWeight,installWeaponOptic,installedWeaponOptic,countItem,
-  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.95';
+  INVENTORY_CATEGORIES,inventorySection,displayAmmoCount,ammoReserve} from '../inventory.mjs?v=W20.96';
 import {carryCapacity,encumbranceEffects,formatCarryWeight}
   from '../carry-weight.mjs?v=W20.95';
+import {createConsumableStatus,safeConsumableSnapshot,consumableBonuses,
+  activeConsumableLabels,tickConsumableEffects,consumeSurvivalItem}
+  from '../consumables.mjs?v=W20.96';
 import {applyDeveloperGrant} from '../dev-grants.mjs';
 import { ARMOR_SLOTS, ARMOR_SLOT_LABELS, ARMOR_ITEMS, getArmorPiece, createLoadout,
   createDummy, equipArmor, armorPointsForSlot, damageReductionForPoints,
@@ -2140,6 +2143,14 @@ try{
   const saved=JSON.parse(localStorage.getItem('rpg-lab-player-inventory')||'null');
   if(saved){backpack=safeBackpackSnapshot(saved);hadSavedBackpack=true;}
 }catch{ /* Storage may be unavailable or corrupted. */ }
+const consumableSaveKey='rpg-consumable-effects-v1';
+let consumableStatus=createConsumableStatus();
+try{consumableStatus=safeConsumableSnapshot(JSON.parse(
+  localStorage.getItem(consumableSaveKey)||'null'));}catch{}
+function saveConsumables(){
+  try{localStorage.setItem(consumableSaveKey,JSON.stringify(consumableStatus));}catch{}
+}
+window.addEventListener('pagehide',saveConsumables);
 // Old slotBonus saves still load, but no longer change carrying capacity.
 // The only authorities are Strength, equipped clothing, and the active frame.
 function currentCarry(){
@@ -2597,7 +2608,10 @@ function inventoryLine(item){
   const detail=document.createElement('small');
   detail.textContent=RARITIES[item.rarity].label+' · '+inventorySection(item).toUpperCase()+
     ' · '+item.value+' CAPS · '+formatCarryWeight(item.weight)+' EACH'+
-    (item.carryBonus?' · +'+item.carryBonus+' LB EQUIPPED':'');
+    (item.carryBonus?' · +'+item.carryBonus+' LB EQUIPPED':'')+
+    (item.heal?' · +'+item.heal+' HP':'')+
+    (item.radDose?' · +'+item.radDose+' RADS':'')+
+    (item.effectSummary?' · '+item.effectSummary:'');
   summary.append(name,detail);row.append(summary);
   return row;
 }
@@ -2614,6 +2628,8 @@ function refreshInventoryUI(){
   $('inventoryValue').textContent=totalInventoryValue(backpack)+' CAPS VALUE';
   $('inventoryProfileHealth').textContent=Math.ceil(playerHealth.health)+' / '+
     playerHealth.maxHealth+' HP';
+  $('inventoryPositiveEffects').textContent=
+    activeConsumableLabels(consumableStatus).join(' · ')||'NONE ACTIVE';
   const negatives=[];
   if(hasPlayerInjury(injuryState))negatives.push(injuryStatus(injuryState));
   if(load.overloaded)negatives.push('OVERENCUMBERED · SPRINT DISABLED · AP DRAINS WHILE MOVING');
@@ -2786,6 +2802,27 @@ function refreshInventoryUI(){
         removeItem(backpack,entry.uid,1);
         saveRadiation();saveBackpack();refreshPlayerHealth();refreshInventoryUI();
         showShotNotice('RADIATION FLUSH · -'+Math.round(treated.removed)+' RADS');
+      });
+    }
+    if(item.category==='supply'&&(
+      item.heal&&item.id!=='supply:medkit'||item.effectKey)){
+      lootButton(row,'USE',()=>{
+        const used=consumeSurvivalItem(backpack,entry.uid,playerHealth,
+          radiationState,consumableStatus);
+        if(!used.ok){
+          showShotNotice(used.reason==='already-active'?
+            'CHEM ALREADY ACTIVE · WAIT FOR IT TO EXPIRE':
+            used.reason==='health-full'?'HEALTH FULL · NO HEALING NEEDED':
+            'UNABLE TO USE THIS ITEM');
+          return;
+        }
+        saveBackpack();saveRadiation();saveConsumables();
+        refreshPlayerHealth();refreshInventoryUI();refreshWeaponHUD();
+        const effects=[used.restored?'+'+Math.ceil(used.restored)+' HP':'',
+          used.radsAdded?'+'+Math.ceil(used.radsAdded)+' RADS':'',
+          used.effectKey?used.effectSeconds+'s EFFECT ACTIVE':''].filter(Boolean);
+        showShotNotice(item.name.toUpperCase()+' · '+effects.join(' · '));
+        if(!playerHealth.alive)beginPlayerDeath('RADIATION','CONSUMABLE');
       });
     }
     // Each entry is a physical stack. Let the player choose an exact count
@@ -3706,6 +3743,8 @@ const deathState={active:false,elapsed:0,cause:'',inPowerArmor:false,
 function beginPlayerDeath(source='UNKNOWN THREAT',zone='chest'){
   if(deathState.active)return;
   deathState.active=true;deathState.elapsed=0;
+  // A new life cannot inherit temporary boosts from the previous one.
+  consumableStatus=createConsumableStatus();saveConsumables();
   deathState.cause=source.toUpperCase()+' · '+zone.toUpperCase();
   deathState.x=player.x;deathState.z=player.z;
   deathState.ground=groundHeight(player.x,player.z);
@@ -5269,6 +5308,7 @@ function shoot({vatsTarget=null}={}){
       Math.random()<specialModifiers.critChance;
     const zone=first.object.userData.hitZone;
     const boostedDamage=damageThisPellet*specialModifiers.gunDamageMultiplier*
+      consumableBonuses(consumableStatus).gunDamageMultiplier*
       (zone==='head'?specialModifiers.headshotMultiplier:1)*
       (critical?specialModifiers.critDamageMultiplier:1);
     const shielded=enemy.powerSuit?.plates.includes(zone);
@@ -6928,9 +6968,11 @@ function vatsTargetChance(enemy,zone){
   // Cover and the current field of view are both checked for *each* limb.
   const visible=facing.dot(aim)>.45&&
     !firstSolidHit(camera.position,point,enemySightObstacles);
-  return vatsChance({distance,zone,visible,
+  const baseChance=vatsChance({distance,zone,visible,
     perception:specialState.attributes.perception,
     accuracyPenalty:injuryEffects(injuryState).aimSpreadMultiplier});
+  return baseChance>0?Math.min(95,baseChance+
+    consumableBonuses(consumableStatus).vatsChanceBonus):0;
 }
 function renderVats(){
   if(!vatsState.active)return;
@@ -7395,6 +7437,11 @@ function updateHUD(info){
   const readout=carryReadout(load);
   $('fieldCarry').textContent=(load.overloaded?'OVERENCUMBERED · ':'CARRY · ')+readout;
   $('fieldCarry').classList.toggle('overencumbered',load.overloaded);
+  const statuses=activeConsumableLabels(consumableStatus).join(' · ');
+  $('fieldConsumableStatus').textContent=statuses;
+  $('fieldConsumableStatus').classList.toggle('hidden',!statuses);
+  $('visorConsumableStatus').textContent=statuses;
+  $('visorConsumableStatus').classList.toggle('hidden',!statuses);
   $('visorCarry').textContent=(load.overloaded?'OVERENCUMBERED · ':'CARRY · ')+readout;
   $('visorCarry').classList.toggle('overencumbered',load.overloaded);
   const staminaPct=Math.max(0,Math.round(info.staminaFraction*100));
@@ -7440,11 +7487,20 @@ let questNavigationClock=0;
 let settlementStatusRefreshClock=0,settlementSaveClock=0;
 let hudRefreshClock=0,performanceSampleTime=0,performanceSampleFrames=0;
 let lastAppearanceKey='';
-let radiationSaveClock=0,wasInRadiation=false;
+let radiationSaveClock=0,wasInRadiation=false,consumableSaveClock=0;
 function frame(){
   requestAnimationFrame(frame);
   const elapsed=clock.getDelta();
   const dt=Math.min(.036,elapsed);
+  // Only simulation time advances chem durations; an open menu pauses them.
+  if(controls.isLocked&&playerHealth.alive&&!deathState.active&&
+    powerArmorState.phase==='idle'&&
+    tickConsumableEffects(consumableStatus,dt)){
+    consumableSaveClock+=dt;
+    if(consumableSaveClock>=5||!activeConsumableLabels(consumableStatus).length){
+      consumableSaveClock=0;saveConsumables();
+    }
+  }
   settlementStatusRefreshClock+=dt;
   settlementSaveClock+=dt;
   if(settlementStatusRefreshClock>.38){
@@ -7491,7 +7547,9 @@ function frame(){
         const plate=plateCondition(powerArmorState,slot);
         return total+(plate.max>0?plate.current/plate.max:0);
       },0)/POWER_ARMOR_SLOTS.length:0;
-    const protection=powerArmorState.occupied?.20+.65*plateIntegrity:0;
+    const armorProtection=powerArmorState.occupied?.20+.65*plateIntegrity:0;
+    const chemProtection=consumableBonuses(consumableStatus).radiationProtection;
+    const protection=1-(1-armorProtection)*(1-chemProtection);
     receivedRadiationRate=exposureRate*(1-protection);
     applyRadiationExposure(radiationState,playerHealth,exposureRate,dt,
       {protection});

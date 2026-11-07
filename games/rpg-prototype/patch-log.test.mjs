@@ -7,7 +7,8 @@ const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),
 
 test('systems testing splash leads with the latest milestone in version order',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.95/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.96/);
+  assert.match(log,/<strong>W20\.96 · FOOD, WATER &amp; CHEM EFFECTS:<\/strong>/);
   assert.match(log,/<strong>W20\.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE:<\/strong>/);
   assert.match(log,/<strong>W20\.94 · LIVE V\.A\.T\.S\. TARGET SCANNER:<\/strong>/);
   assert.match(log,/<strong>W20\.93 · S\.P\.E\.C\.I\.A\.L\. PERK INTEGRATION:<\/strong>/);
@@ -42,6 +43,8 @@ test('systems testing splash leads with the latest milestone in version order',(
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.96 · FOOD, WATER &amp; CHEM EFFECTS')<
+    log.indexOf('W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE'));
   assert.ok(log.indexOf('W20.95 · REAL CARRY WEIGHT &amp; ENCUMBRANCE')<
     log.indexOf('W20.94 · LIVE V.A.T.S. TARGET SCANNER'));
   assert.ok(log.indexOf('W20.94 · LIVE V.A.T.S. TARGET SCANNER')<
@@ -97,6 +100,12 @@ test('systems testing splash leads with the latest milestone in version order',(
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.95/);
-  assert.match(bootstrap,/main\.js\?v=W20\.95/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.96/);
+  assert.match(bootstrap,/main\.js\?v=W20\.96/);
+});
+
+test('both field and powered HUDs expose live consumable status indicators',()=>{
+  assert.match(html,/id="fieldConsumableStatus"/);
+  assert.match(html,/id="visorConsumableStatus"/);
+  assert.match(html,/id="inventoryPositiveEffects"/);
 });

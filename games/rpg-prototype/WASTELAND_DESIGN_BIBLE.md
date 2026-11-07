@@ -49,6 +49,17 @@
   and jump, slows down and drains real stamina/AP. Regular and powered HUDs,
   inventory, loot and vendors share the calculated mass and capacity. Old
   saves load without truncating above the previous 30/34-entry slots.
+- W20.96: Six additional physical supplies expand the original medical-aid
+  catalog with food, clean and contaminated water, and three timed chems.
+  Food and water use real health and radiation rules; irradiated provisions
+  reduce effective maximum HP through the same saved radiation state. Combat
+  stimulant modifies the actual damage calculation, focus tonic modifies
+  cover-validated V.A.T.S. hit chances, and Rad Shield reduces world radiation
+  entering the same dose/HP pipeline. Active effects cannot be stacked, count
+  down only while playing, survive reloads and clear on death. DOC VALE
+  buys/sells these supplies from finite stock; HUD and status screens present
+  the single active-effects state. This is normal-mode aid behavior; separate
+  hunger/thirst survival difficulty is not implemented yet.
 - Remaining Phase 1 work: visual QA and polish for targeting presentation,
   multiplayer-authoritative validation when networking is implemented,
   scenario-based visual verification,
