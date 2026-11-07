@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.77.2 · Correct Left/Right Corner Peeking | GAMESHUB RPG</title>
+<title>W20.78 · Haven Junction Workshop Building | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -138,6 +138,31 @@ body.power-transition #targetHealthHud{display:none!important}
 body.power-transition #shotNotice,body.power-transition #crosshair{opacity:0!important}
 #crosshair.hidden{opacity:0}
 #crosshair{position:fixed;left:50%;top:50%;width:8px;height:8px;transform:translate(-50%,-50%);border:1px solid #d8ede8b0;border-radius:50%;pointer-events:none}
+.settlement-build-hud{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);
+  width:min(840px,calc(100vw - 26px));z-index:2;pointer-events:none;
+  color:#ecf4df;background:linear-gradient(130deg,#0b211eea,#162a29e8);
+  border:1px solid #80a9908c;box-shadow:0 16px 50px #0009;
+  border-radius:5px;padding:13px 17px;font-size:11px}
+.settlement-build-hud.hidden{display:none!important}
+.settlement-build-head{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;border-bottom:1px solid #85a69155;padding-bottom:8px;margin-bottom:8px}
+.settlement-build-head strong{font-size:15px;letter-spacing:.10em;color:#f1d29e}
+.settlement-build-head span{font-weight:900;font-size:10px;color:#96d5ba}
+.settlement-build-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.settlement-piece{border:1px solid #6c89705e;border-radius:3px;padding:7px 8px;
+  min-height:50px;background:#142c2b90}
+.settlement-piece strong{display:block;color:#e6eddb;font-size:10px;letter-spacing:.035em}
+.settlement-piece span{display:block;color:#bdcfbb;font-size:9px;line-height:1.45;margin-top:4px}
+.settlement-piece.selected{border-color:#f1d29e;background:#6d5b3666}
+.settlement-piece.missing span{color:#e4a49a}
+.settlement-build-foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  font-size:10px;letter-spacing:.04em;color:#a6c7b4;margin-top:10px}
+.settlement-build-foot b{font-weight:900;color:#b8e2c6}
+#settlementBuildFeedback.invalid{color:#ff9f90}
+@media(max-width:720px){.settlement-build-hud{bottom:90px;padding:9px}
+  .settlement-build-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .settlement-piece{padding:5px;min-height:40px}
+  .settlement-build-head strong{font-size:12px}}
 #menu{position:fixed;inset:0;background:linear-gradient(90deg,rgba(5,18,24,.97),rgba(5,17,24,.85) 65%,rgba(7,19,22,.55));display:flex;align-items:flex-start;overflow-y:auto;padding:5vh 7vw;z-index:3}
 #menu.hidden{display:none}.menu-inner{width:min(610px,100%)}.kicker{display:flex;align-items:center;gap:9px;color:#e7c387;font-weight:950;letter-spacing:.18em;font-size:11px}.kicker:before{content:"";width:35px;height:2px;background:#e7c387}
 h1{margin:19px 0 16px;font-size:clamp(52px,8vw,100px);line-height:.91;letter-spacing:-.068em;font-weight:950}
@@ -1492,6 +1517,15 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div id="damageReport" aria-live="off">STATION 8: ARMOR DAMAGE TESTING</div>
   <div id="weaponBar"><span id="reloadProgress"></span></div>
 </div>
+<section id="settlementBuildHud" class="settlement-build-hud hidden" aria-label="Haven Junction settlement construction">
+  <div class="settlement-build-head"><strong>HAVEN JUNCTION / WORKSHOP BUILD MODE</strong>
+    <span id="settlementBuiltCount">0 BUILT</span></div>
+  <div id="settlementBuildList" class="settlement-build-list"></div>
+  <div class="settlement-build-foot"><span>1–7 SELECT · R ROTATE · G SNAP · CLICK BUILD · X STORE AIMED · Z UNDO · B EXIT</span>
+    <b id="settlementSnapStatus">GRID SNAP ON</b></div>
+  <div class="settlement-build-foot"><b id="settlementBuildFeedback" aria-live="polite">AIM AT GROUND TO PLACE</b>
+    <span>REAL SALVAGE COSTS · CONSTRUCTION SAVES AUTOMATICALLY</span></div>
+</section>
 <div id="bottom">
   <div class="block" id="station"><div class="eyebrow">ACTIVE TEST STATION</div>
     <div id="stationName">01 · Sprint lane</div><div id="stationInfo">Walk and sprint between the floor markings; compare the live speed readout.</div>
@@ -1499,7 +1533,8 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.77.2</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.78</div>
+    <p><strong>W20.78 · HAVEN JUNCTION WORKSHOP BUILDING:</strong> Enter Haven by the foreman and weapon bench, then press B to build. Choose one of seven original scavenged structures, see a green or red world-space preview, rotate or turn off grid snapping, and place pieces only when you own the wood, steel, cloth and other required components. Buildings block movement and gunfire where solid, persist across reloads, and can be stored by aiming and pressing X (or undoing the last with Z) for a full material refund. Roofs need walls or doorframes nearby. This is the construction foundation; settler jobs, electrical wiring, crops and water production are future systems.</p>
     <p><strong>W20.77.2 · CORRECT CORNER PEEK DIRECTION:</strong> Guards now choose left or right based on their facing and the actual firing lane. A corner peek holds one shoulder until the peek finishes, preventing the character from leaning the other way halfway through. Automatic cover leaning clears its old direction whenever an explicit corner peek begins.</p>
     <p><strong>W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING:</strong> NPC eyes now follow the animated head rather than an invisible chest-height point. When a rock exposes only the player's head, raiders lift their actual rifle and aim from its real muzzle. Around corners they turn and lean their rendered torso, head and held gun, with both hands gripping the rifle; a shoulder peek only counts when the projectile path is truly clear. Existing cover routes, ammunition and reloading still govern attacks.</p>
     <p><strong>W20.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL:</strong> Guards no longer fire sideways before facing their target or draw every missed shot far ahead of someone standing still. Steady observation improves accuracy without granting perfect aim; moving targets, recoil, distance and suppression still matter. Scouts, raiders and enforcers now navigate around blocking cover, commit to firing lanes between flanks, retain a short aim memory on brief occlusions, and use smoother speed-based steps, strafing lean, search glances, reloads and hit reactions.</p>
@@ -1542,7 +1577,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.60</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.78</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -1973,7 +2008,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.77.2"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.78"></script>
 </body>
 </html>
 

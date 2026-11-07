@@ -5,9 +5,10 @@ import {readFileSync} from 'node:fs';
 const html=readFileSync(new URL('./testing/index.html',import.meta.url),'utf8');
 const bootstrap=readFileSync(new URL('./testing/bootstrap.mjs',import.meta.url),'utf8');
 
-test('systems testing splash leads with the enemy AI combat overhaul',()=>{
+test('systems testing splash leads with Haven settlement construction',()=>{
   const log=html.slice(html.indexOf('<div id="menu">'),html.indexOf('<div class="endurance-picker">'));
-  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.77\.2/);
+  assert.match(log,/GAMESHUB \/ RPG SYSTEMS LAB \/ W20\.78/);
+  assert.match(log,/<strong>W20\.78 · HAVEN JUNCTION WORKSHOP BUILDING:<\/strong>/);
   assert.match(log,/<strong>W20\.77\.2 · CORRECT CORNER PEEK DIRECTION:<\/strong>/);
   assert.match(log,/<strong>W20\.77\.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING:<\/strong>/);
   assert.match(log,/<strong>W20\.77 · ENEMY INTELLIGENCE & COMBAT OVERHAUL:<\/strong>/);
@@ -24,6 +25,8 @@ test('systems testing splash leads with the enemy AI combat overhaul',()=>{
   assert.match(log,/<strong>W20\.71 · LOOT TRANSFERS:<\/strong>/);
   assert.match(log,/<strong>W20\.70 · LOOT CASE GLOW:<\/strong>/);
   assert.match(log,/floating LOOT labels/);
+  assert.ok(log.indexOf('W20.78 · HAVEN JUNCTION WORKSHOP BUILDING')<
+    log.indexOf('W20.77.2 · CORRECT CORNER PEEK DIRECTION'));
   assert.ok(log.indexOf('W20.77.2 · CORRECT CORNER PEEK DIRECTION')<
     log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING'));
   assert.ok(log.indexOf('W20.77.1 · RAISED RIFLES & PHYSICAL CORNER PEEKING')<
@@ -43,6 +46,6 @@ test('systems testing splash leads with the enemy AI combat overhaul',()=>{
 });
 
 test('testing entry uses one cache-busted release version',()=>{
-  assert.match(html,/bootstrap\.mjs\?v=W20\.77\.2/);
-  assert.match(bootstrap,/main\.js\?v=W20\.77\.2/);
+  assert.match(html,/bootstrap\.mjs\?v=W20\.78/);
+  assert.match(bootstrap,/main\.js\?v=W20\.78/);
 });

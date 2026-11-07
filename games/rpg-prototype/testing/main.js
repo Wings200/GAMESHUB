@@ -7,6 +7,12 @@ import {VENDORS,vendorById,vendorAccepts,vendorBuyPrice,vendorSellPrice,
 import {enemyPowerArmorForRound,ABANDONED_POWER_FRAMES,
   createAbandonedPowerFrame} from '../power-acquisition.mjs?v=W20.75';
 import {CRAFTING_COMPONENTS,OPTIC_COMPONENT_RECIPES} from '../materials.mjs';
+import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,
+  initialSettlementBuildState,safeSettlementBuildSnapshot,
+  snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
+  missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
+  undoLastSettlementStructure}
+  from '../settlement-building.mjs?v=W20.78';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -528,6 +534,14 @@ const opticBench={x:-33,z:-21};
 box(opticBench.x,.47,opticBench.z,2,.94,.82,dark);
 box(opticBench.x,.99,opticBench.z,2.2,.12,1.04,mat(0x886e54,.65));
 textSign('HAVEN WEAPON BENCH · E',-36,-23,0xe4c38b);
+textSign('HAVEN WORKSHOP · B',-44,-31,0x87c6a2);
+// Subtle ground markings show the actual editable boundary without making
+// an invisible wall. Players can still walk through the whole compound.
+const buildAreaPaint=mat(0x608b75,.95);
+box(-37.5,.018,-35,35,.036,.09,buildAreaPaint);
+box(-37.5,.018,-7,35,.036,.09,buildAreaPaint);
+box(-55,.018,-21,.09,.036,28,buildAreaPaint);
+box(-20,.018,-21,.09,.036,28,buildAreaPaint);
 // A tangible field repair station: steel vise, clamped barrel, parts tray,
 // drill column, torque tools and a shelf. No floating menu-only interaction.
 const benchSteel=mat(0x72807a,.48),benchDark=mat(0x29383c,.56),
@@ -1741,6 +1755,69 @@ const enemyMovementObstacles=[...bounds,...worldMovementObstacles.filter(box=>
   !bounds.some(b=>Math.abs(b.minX-box.minX)<.02&&
     Math.abs(b.maxX-box.maxX)<.02&&Math.abs(b.minZ-box.minZ)<.02&&
     Math.abs(b.maxZ-box.maxZ)<.02))];
+// The Haven workshop has its own saved, editable structures. Unlike fixed
+// set-dressing, these objects can be removed cleanly from BOTH collision
+// registries and never respawn at an old location when a save is reloaded.
+const settlementBuildStorageKey='rpg-haven-construction-v1';
+let settlementBuildState=initialSettlementBuildState();
+try{
+  const saved=JSON.parse(localStorage.getItem(settlementBuildStorageKey)||'null');
+  if(saved)settlementBuildState=safeSettlementBuildSnapshot(saved);
+}catch{}
+let settlementBuildMode=false,settlementBuildType=SETTLEMENT_BLUEPRINTS[0].id;
+let settlementRotation=0,settlementGhost=null,settlementPreview=null;
+const builtSettlementMeshes=new Map();
+const settlementMaterials={
+  wood:mat(0x7b6650,.88),steel:mat(0x525f62,.64),
+  trim:mat(0x997b58,.61),cloth:mat(0x718375,.92),
+  pillow:mat(0xb6a58a,.96),glass:new THREE.MeshStandardMaterial({
+    color:0xe9cb81,emissive:0xc8a057,emissiveIntensity:.45,
+    roughness:.48,metalness:.12})
+};
+const settlementGhostMaterial=new THREE.MeshStandardMaterial({
+  color:0x83e1b3,transparent:true,opacity:.35,depthWrite:false,
+  emissive:0x285944,emissiveIntensity:.36,side:THREE.DoubleSide});
+function createSettlementVisual(placement,preview=false){
+  const plan=SETTLEMENT_BY_ID[placement.type],group=new THREE.Group();
+  group.name=(preview?'SettlementPreview_':'HavenBuilt_')+placement.type;
+  group.position.set(placement.x,0,placement.z);
+  group.rotation.y=placement.rotation*Math.PI/2;
+  for(const piece of plan.parts){
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(piece.w,piece.h,piece.d),
+      preview?settlementGhostMaterial:settlementMaterials[piece.material]);
+    mesh.position.set(piece.x,piece.y,piece.z);
+    mesh.castShadow=!preview;mesh.receiveShadow=!preview;
+    mesh.userData.impactMaterial=piece.material==='wood'?'wood':'metal';
+    group.add(mesh);
+  }
+  scene.add(group);return group;
+}
+function registerSettlementStructure(structure){
+  const visual=createSettlementVisual(structure);
+  visual.userData.settlementStructureId=structure.id;
+  const shotBoxes=buildWorldBoxes(structure,{onlySolid:true});
+  const movementBoxes=shotBoxes.filter(b=>b.bottom<=.4&&b.top>.48);
+  for(const b of shotBoxes)enemySightObstacles.push(b);
+  for(const b of movementBoxes){bounds.push(b);enemyMovementObstacles.push(b);}
+  builtSettlementMeshes.set(structure.id,{visual,shotBoxes,movementBoxes});
+}
+function unregisterSettlementStructure(id){
+  const built=builtSettlementMeshes.get(id);
+  if(!built)return;
+  const remove=(array,object)=>{
+    const index=array.indexOf(object);if(index>=0)array.splice(index,1);
+  };
+  for(const b of built.shotBoxes)remove(enemySightObstacles,b);
+  for(const b of built.movementBoxes){remove(bounds,b);remove(enemyMovementObstacles,b);}
+  built.visual.traverse(object=>{if(object.geometry)object.geometry.dispose();});
+  scene.remove(built.visual);builtSettlementMeshes.delete(id);
+}
+function saveSettlementBuild(){
+  try{localStorage.setItem(settlementBuildStorageKey,
+    JSON.stringify(settlementBuildState));}catch{}
+}
+for(const structure of settlementBuildState.structures)
+  registerSettlementStructure(structure);
 const enemies=new Map(),enemyHitMeshes=[];
 // Invisible mannequin collision surfaces are never on the camera render layer.
 const ENEMY_COLLISION_LAYER=29;
@@ -4896,6 +4973,142 @@ function reload(){
 refreshWeaponHUD();
 function groundHeight(x,z){return Math.max(rampHeight(x,z),stairsHeight(x,z));}
 const player={x:stations[0].x,z:stations[0].z,jump:0,vertical:0};
+function playerAtHaven(){
+  return player.x>=HAVEN_BUILD_AREA.minX&&player.x<=HAVEN_BUILD_AREA.maxX&&
+    player.z>=HAVEN_BUILD_AREA.minZ&&player.z<=HAVEN_BUILD_AREA.maxZ;
+}
+function settlementPlacementBlockers(){
+  // Parked suits are valuable physical objects, not empty build-floor space.
+  const parkedFrames=[...powerFrames.values()].filter(frame=>
+    !frame.state.occupied&&frame.visual.root.visible).map(frame=>{
+    const p=frame.visual.root.position;
+    return {minX:p.x-.85,maxX:p.x+.85,minZ:p.z-.85,maxZ:p.z+.85,
+      bottom:0,top:2.9};
+  });
+  return [...enemySightObstacles,...parkedFrames];
+}
+function settlementCostText(type){
+  const plan=SETTLEMENT_BY_ID[type];
+  return Object.entries(plan.cost).map(([id,amount])=>{
+    const owned=countItem(backpack,id);
+    const label=getItem(id).name;
+    return label+' '+owned+'/'+amount;
+  }).join(' · ');
+}
+function refreshSettlementBuildHud(){
+  const list=$('settlementBuildList');
+  list.replaceChildren();
+  for(let i=0;i<SETTLEMENT_BLUEPRINTS.length;i++){
+    const plan=SETTLEMENT_BLUEPRINTS[i];
+    const row=document.createElement('div');
+    row.className='settlement-piece'+(plan.id===settlementBuildType?' selected':'');
+    if(missingBuildingMaterials(backpack,plan.id).length)row.classList.add('missing');
+    const name=document.createElement('strong');name.textContent=(i+1)+' · '+plan.name;
+    const cost=document.createElement('span');cost.textContent=settlementCostText(plan.id);
+    row.append(name,cost);list.append(row);
+  }
+  $('settlementBuiltCount').textContent=settlementBuildState.structures.length+' BUILT';
+  $('settlementSnapStatus').textContent=settlementBuildState.snap?'GRID SNAP ON':'FREE PLACEMENT';
+}
+function clearSettlementGhost(){
+  if(!settlementGhost)return;
+  settlementGhost.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();});
+  scene.remove(settlementGhost);settlementGhost=null;
+}
+function changeSettlementBlueprint(index){
+  if(index<0||index>=SETTLEMENT_BLUEPRINTS.length)return;
+  settlementBuildType=SETTLEMENT_BLUEPRINTS[index].id;
+  clearSettlementGhost();
+  settlementGhost=createSettlementVisual({type:settlementBuildType,x:0,z:0,
+    rotation:settlementRotation},true);
+  refreshSettlementBuildHud();
+}
+function toggleSettlementBuildMode(force=null){
+  const next=force===null?!settlementBuildMode:!!force;
+  if(next&&(!controls.isLocked||!playerAtHaven())){
+    showShotNotice('BUILD MODE ONLY INSIDE HAVEN JUNCTION');return;
+  }
+  settlementBuildMode=next;
+  $('settlementBuildHud').classList.toggle('hidden',!next);
+  if(next){
+    triggerHeld=false;changeAim(false);
+    changeSettlementBlueprint(SETTLEMENT_BLUEPRINTS.findIndex(p=>p.id===settlementBuildType));
+    showShotNotice('HAVEN WORKSHOP · BUILD MODE ACTIVE');
+  }else{
+    clearSettlementGhost();settlementPreview=null;
+    showShotNotice('HAVEN WORKSHOP · BUILD MODE CLOSED');
+  }
+}
+const settlementLookDirection=new THREE.Vector3();
+function updateSettlementBuildPreview(){
+  if(!settlementBuildMode||!settlementGhost)return;
+  if(deathState.active){toggleSettlementBuildMode(false);return;}
+  if(!playerAtHaven()){
+    toggleSettlementBuildMode(false);return;
+  }
+  camera.getWorldDirection(settlementLookDirection);
+  const groundDistance=settlementLookDirection.y<-.18?
+    Math.min(7,Math.max(2,(camera.position.y-.08)/-settlementLookDirection.y)):4;
+  const projected=snappedBuildPosition(
+    camera.position.x+settlementLookDirection.x*groundDistance,
+    camera.position.z+settlementLookDirection.z*groundDistance,
+    settlementBuildState.snap);
+  const placement={type:settlementBuildType,rotation:settlementRotation,
+    x:projected.x,z:projected.z};
+  settlementPreview=placement;
+  settlementGhost.position.set(projected.x,0,projected.z);
+  settlementGhost.rotation.y=settlementRotation*Math.PI/2;
+  const valid=validateBuildPlacement(settlementBuildState,placement,
+    settlementPlacementBlockers(),player);
+  const missing=missingBuildingMaterials(backpack,placement.type);
+  const placeable=valid.ok&&missing.length===0;
+  settlementGhostMaterial.color.setHex(placeable?0x83e1b3:0xe78579);
+  settlementGhostMaterial.emissive.setHex(placeable?0x285944:0x743229);
+  settlementGhostMaterial.opacity=placeable?.35:.22;
+  $('settlementBuildFeedback').textContent=!valid.ok?valid.reason:
+    missing.length?'NEED '+missing.map(m=>getItem(m.id).name+' '+
+      (m.needed-m.owned)).join(' + '):'CLEAR · LEFT CLICK TO BUILD';
+  $('settlementBuildFeedback').classList.toggle('invalid',!placeable);
+}
+function placeSettlementPreview(){
+  updateSettlementBuildPreview();
+  if(!settlementBuildMode||!settlementPreview)return;
+  const result=placeSettlementStructure(settlementBuildState,backpack,
+    settlementPreview,settlementPlacementBlockers(),player);
+  if(!result.ok){showShotNotice(result.reason);return;}
+  registerSettlementStructure(result.structure);
+  saveSettlementBuild();saveBackpack();refreshInventoryUI();
+  refreshSettlementBuildHud();
+  showShotNotice('BUILT · '+SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
+}
+function undoSettlementBuild(){
+  const result=undoLastSettlementStructure(settlementBuildState,backpack);
+  if(!result.ok){showShotNotice(result.reason);return;}
+  unregisterSettlementStructure(result.structure.id);
+  saveSettlementBuild();saveBackpack();refreshInventoryUI();
+  refreshSettlementBuildHud();
+  showShotNotice('STORED · MATERIALS RETURNED · '+
+    SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
+}
+const settlementPickRay=new THREE.Raycaster();
+const settlementPickCenter=new THREE.Vector2(0,0);
+function storeAimedSettlementStructure(){
+  settlementPickRay.setFromCamera(settlementPickCenter,camera);
+  settlementPickRay.far=7;
+  const targeted=settlementPickRay.intersectObjects(
+    [...builtSettlementMeshes.values()].map(b=>b.visual),true)[0];
+  if(!targeted){showShotNotice('AIM AT A BUILT PIECE TO STORE IT');return;}
+  let root=targeted.object;
+  while(root&&!root.userData.settlementStructureId)root=root.parent;
+  const id=root?.userData.settlementStructureId;
+  const result=storeSettlementStructure(settlementBuildState,backpack,id);
+  if(!result.ok){showShotNotice(result.reason);return;}
+  unregisterSettlementStructure(result.structure.id);
+  saveSettlementBuild();saveBackpack();refreshInventoryUI();
+  refreshSettlementBuildHud();
+  showShotNotice('STORED · ALL MATERIALS RETURNED · '+
+    SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
+}
 const playerAvatar=createPlayerAvatar(scene);
 // Old survivor-held model stays hidden. Third-person renders the same new
 // 10mm geometry attached to the animated hand socket.
@@ -6000,6 +6213,7 @@ canvas.addEventListener('click',()=>{
 });
 controls.addEventListener('lock',()=>{$('menu').classList.add('hidden');});
 controls.addEventListener('unlock',()=>{
+  if(settlementBuildMode)toggleSettlementBuildMode(false);
   cancelPowerHold();
   if(!deathState.active&&!inventoryOpen&&!lootOpen&&!workbenchOpen&&!weaponsCrateOpen&&!powerUIOpen&&!specialOpen&&
     !questPanelOpen&&!dialogueOpen&&!mapOpen&&!vendorOpen)$('menu').classList.remove('hidden');
@@ -6025,6 +6239,31 @@ window.addEventListener('keydown',e=>{
   if(deathState.active){e.preventDefault();return;}
   if(e.code==='Escape'&&vendorOpen){e.preventDefault();closeVendor();return;}
   if(vendorOpen)return;
+  if(settlementBuildMode){
+    if((e.code==='Escape'||e.code==='KeyB')&&!e.repeat){
+      e.preventDefault();toggleSettlementBuildMode(false);return;
+    }
+    if(/^Digit[1-7]$/.test(e.code)&&!e.repeat){
+      e.preventDefault();changeSettlementBlueprint(Number(e.code.slice(-1))-1);return;
+    }
+    if(e.code==='KeyR'&&!e.repeat){
+      e.preventDefault();settlementRotation=(settlementRotation+1)%4;return;
+    }
+    if(e.code==='KeyG'&&!e.repeat){
+      e.preventDefault();settlementBuildState.snap=!settlementBuildState.snap;
+      saveSettlementBuild();refreshSettlementBuildHud();return;
+    }
+    if(e.code==='KeyZ'&&!e.repeat){
+      e.preventDefault();undoSettlementBuild();return;
+    }
+    if(e.code==='KeyX'&&!e.repeat){
+      e.preventDefault();storeAimedSettlementStructure();return;
+    }
+    if(['KeyE','KeyM','KeyI','KeyQ','KeyL','KeyV','BracketLeft',
+      'BracketRight'].includes(e.code)){
+      e.preventDefault();return;
+    }
+  }
   if(e.code==='Escape'&&mapOpen){e.preventDefault();closeFieldMap();return;}
   if(e.code==='KeyM'&&!e.repeat&&
     !e.target.closest?.('input,textarea,select,[contenteditable="true"]')){
@@ -6062,6 +6301,9 @@ window.addEventListener('keydown',e=>{
   }
   if(powerUIOpen||workbenchOpen||inventoryOpen||lootOpen||specialOpen||
     questPanelOpen||dialogueOpen)return;
+  if(e.code==='KeyB'&&!e.repeat&&controls.isLocked){
+    e.preventDefault();toggleSettlementBuildMode();return;
+  }
   if(e.code==='KeyV'&&!e.repeat&&controls.isLocked){
     thirdPersonEnabled=!thirdPersonEnabled;
     showShotNotice(thirdPersonEnabled?'THIRD-PERSON CHARACTER VIEW · V TO RETURN':
@@ -6109,6 +6351,10 @@ window.addEventListener('blur',cancelPowerHold);
 window.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('mousedown',e=>{
   if(!controls.isLocked)return;
+  if(settlementBuildMode){
+    if(e.button===0)placeSettlementPreview();
+    return;
+  }
   if(e.button===0&&powerArmorState.phase==='idle'){
     if(WEAPON_REBUILD_MODE&&!playerGunEnabled())showShotNotice('UNARMED · NO GUN EQUIPPED');
     else {triggerHeld=true;shoot();}
@@ -6155,7 +6401,8 @@ function updateHUD(info){
   $('visorStaminaState').textContent=!visorSprintAvailable?'CORE OFFLINE':
     info.exhausted?'EXHAUSTED':info.sprinting?'DRAINING':
     info.recovering?'RECOVERING':'READY';
-  $('fieldLocation').textContent=stations[stationIndex].title.toUpperCase();
+  $('fieldLocation').textContent=playerAtHaven()?'HAVEN JUNCTION':
+    stations[stationIndex].title.toUpperCase();
   const bearing=(((-camera.rotation.y*180/Math.PI)%360)+360)%360;
   const cardinal=['N','NE','E','SE','S','SW','W','NW'][
     Math.round(bearing/45)%8];
@@ -6594,6 +6841,7 @@ function frame(){
     camera.position.set(player.x,info.ground+eye+info.cameraBob+player.jump,player.z);
     if(refreshDisplay)updateHUD(info);
   }
+  if(settlementBuildMode)updateSettlementBuildPreview();
   updateEnemies(dt,elapsed,refreshDisplay);
   // Quest residents use the same articulated rig as the player, but never
   // enter the hostile hit list. They watch approaching visitors naturally.

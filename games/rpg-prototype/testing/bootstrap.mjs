@@ -17,7 +17,7 @@ try {
   console.warn('Game settings service is temporarily unavailable.', error);
 }
 // Existing gameplay remains available even if the settings service is offline.
-await import('./main.js?v=W20.77.2');
+await import('./main.js?v=W20.78');
 startGameSettingsUI(initial);
 
 
