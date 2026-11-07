@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0b131a"/>
-<title>W20.81 · Settlement Scrapping and Power Armor Gantry | GAMESHUB RPG</title>
+<title>W20.82 · Actual Settlement Object Storage | GAMESHUB RPG</title>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
@@ -1582,7 +1582,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   <div class="settlement-build-foot"><span id="settlementBuildHint">Floors · walls · roofs</span>
     <b>TAB / SHIFT+TAB · CHANGE CATEGORY</b></div>
   <div id="settlementBuildList" class="settlement-build-list"></div>
-  <div class="settlement-build-foot"><span>1–7 PIECE · R ROTATE · G SNAP · CLICK BUILD · X SCRAP · F STORE BUILT PIECE · Z UNDO · B EXIT</span>
+  <div class="settlement-build-foot"><span>1–7 PIECE · R ROTATE · G SNAP · CLICK PLACE · X SCRAP OBJECT · F STORE BUILT OBJECT · Z UNDO · B EXIT</span>
     <b id="settlementSnapStatus">GRID SNAP ON</b></div>
   <div class="settlement-build-foot"><b id="settlementBuildFeedback" aria-live="polite">AIM AT GROUND TO PLACE</b>
     <span>REAL SALVAGE COSTS · CONSTRUCTION SAVES AUTOMATICALLY</span></div>
@@ -1594,11 +1594,12 @@ body.hud-modern #powerArmorHud{display:none!important}
 </div>
 <div id="menu">
   <div class="menu-inner">
-    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.81</div>
+    <div class="kicker">GAMESHUB / RPG SYSTEMS LAB / W20.82</div>
     <div class="settlement-menu-entry"><div>
       <strong>SETTLEMENT TESTING / HAVEN JUNCTION</strong>
       <p>Enter the Haven workshop directly with your saved materials. Build homes, produce food and water, generate power, recruit residents and inspect happiness.</p>
     </div><button id="settlementStart" type="button">TEST SETTLEMENT</button></div>
+    <p><strong>W20.82 · REAL SETTLEMENT OBJECT STORAGE:</strong> F no longer gives components back. It puts a complete player-built object into workshop storage and adds a (1), (2) and so on beside that object in the construction menu. Choose its blueprint and place the stored copy without spending materials; the count decreases when placed, even after reloading. X remains the scrap key for both pre-existing settlement objects and your own structures, permanently removing them for salvaged materials. Storing and scrapping never create duplicate supplies, and existing saves migrate with empty storage.</p>
     <p><strong>W20.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY:</strong> X now permanently scraps junk, old settlement fixtures, or any player-built structure for actual recovered materials; F stores your placed structures for a full construction-material refund. The original Haven weapon bench and the individual floor, walls and roof of a derelict shack are editable scrap targets, with every removal saved. The unnecessary salvage sorting table is no longer offered as a new blueprint, but already-placed ones remain recoverable. Power armor service racks now have an open yellow A-frame, overhead hoist, hydraulic arms, bracing and safety markings in the style of a wasteland maintenance gantry.</p>
     <p><strong>W20.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE:</strong> A new WORKSHOPS category provides a physical weapon-modification bench, a power-armor service rack (bring a real frame nearby) and a salvage sorting table. Built weapon benches can now modify guns with E, the same as Haven's original fixed bench—there is still no U remote shortcut. Haven also has distinctive abandoned junk that can be scrapped permanently in building mode: aim at a piece and press X to turn it into actual wood, steel, copper, circuitry and other parts. Salvaged clutter disappears from the world and stays gone across reloads; each object pays out only once. Player-built structures still store for a full material refund.</p>
     <p><strong>W20.79 · LIVING SETTLEMENT WORKSHOP:</strong> A dedicated settlement-testing entry and eight build categories replace the single flat list. Press Tab to switch categories, 1–7 to choose pieces, and B to exit. Your gun and gun UI disappear while building and return when you leave. Crops, pumps, purifiers, beds, guard posts, sentry turrets, generators, lamps, storage and a powered recruitment beacon now have distinctive 3D models and real materials costs. The top dashboard tracks residents, food, water, electricity demand, defense, beds and changing happiness; recruiting a settler requires enough powered beacon capacity, food, water and sleeping space.</p>
@@ -1645,7 +1646,7 @@ body.hud-modern #powerArmorHud{display:none!important}
     <button id="fieldMapOpen" class="secondary" type="button">OPEN FIELD MAP · M</button>
     <button id="specialOpen" class="secondary" type="button">S.P.E.C.I.A.L. PERK TREE · L</button>
      </div>
-    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.81</div>
+    <div id="engineStatus" style="font-size:12px;font-weight:900;letter-spacing:.08em;color:#d2ad80;margin-top:14px">WAITING FOR 3D ENGINE · BUILD W20.82</div>
     <div class="menu-meta"><span class="pill">SEARCHABLE LOOT + INVENTORY</span><span class="pill">9 TEST STATIONS</span><span class="pill">CHROMEBOOK QUALITY</span><span class="pill">V · CHARACTER VIEW</span></div>
     <div class="menu-links"><a href="../">OPEN FOREST PREVIEW</a><a href="/">BACK TO GAMESHUB</a></div>
     <p style="font-size:11px;margin-top:22px">Defeat a raider, walk to its dropped loot and press E to search. Use TAKE ALL or choose individual items. Press I to open your backpack, equip a weapon you own, store ammunition in the correct reserve, use medkits, or drop items. Only authorized administrators can grant testing resources through the separate developer panel.</p>
@@ -2076,7 +2077,7 @@ body.hud-modern #powerArmorHud{display:none!important}
   });
 })();
 </script>
-<script type="module" src="./bootstrap.mjs?v=W20.81"></script>
+<script type="module" src="./bootstrap.mjs?v=W20.82"></script>
 </body>
 </html>
 

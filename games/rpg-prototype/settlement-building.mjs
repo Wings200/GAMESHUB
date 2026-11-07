@@ -1,4 +1,4 @@
-// W20.81: Distinct scrap/store actions, editable fixtures, service gantry.
+// W20.82: Store whole objects for re-placement; scrap pre-existing and built props.
 // the browser is responsible for rendering, input and world collision lists.
 import {addItem,countItem,spendMaterial} from './inventory.mjs';
 
@@ -409,7 +409,7 @@ function overlaps(a,b){
 }
 export const RECRUITMENT_INTERVAL=55;
 export function initialSettlementBuildState(){
-  return {version:3,nextId:1,snap:true,structures:[],population:0,
+  return {version:4,nextId:1,snap:true,structures:[],storedStructures:{},population:0,
     happiness:50,recruitProgress:0,scrappedJunk:[]};
 }
 export function safeSettlementBuildSnapshot(raw){
@@ -425,6 +425,18 @@ export function safeSettlementBuildSnapshot(raw){
   if(Array.isArray(raw.scrappedJunk))
     state.scrappedJunk=[...new Set(raw.scrappedJunk.filter(id=>
       typeof id==='string'&&HAVEN_JUNK_BY_ID[id]))].slice(0,HAVEN_JUNK_SITES.length);
+  if(raw.storedStructures&&typeof raw.storedStructures==='object'&&
+      !Array.isArray(raw.storedStructures)){
+    let remaining=BUILD_LIMIT;
+    for(const plan of SETTLEMENT_BLUEPRINTS){
+      const quantity=raw.storedStructures[plan.id];
+      if(!Number.isSafeInteger(quantity)||quantity<1)continue;
+      const valid=Math.min(quantity,remaining);
+      if(valid>0)state.storedStructures[plan.id]=valid;
+      remaining-=valid;
+      if(!remaining)break;
+    }
+  }
   if(!Array.isArray(raw.structures))return state;
   const seen=new Set();
   for(const item of raw.structures.slice(0,BUILD_LIMIT)){
@@ -440,8 +452,14 @@ export function safeSettlementBuildSnapshot(raw){
   state.nextId=Math.max(1,...state.structures.map(s=>s.id+1));
   return state;
 }
-export function settlementCategoryBlueprints(category){
-  return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category&&!plan.legacy);
+export function settlementCategoryBlueprints(category,state=null){
+  return SETTLEMENT_BLUEPRINTS.filter(plan=>plan.category===category&&
+    (!plan.legacy||storedStructureCount(state,plan.id)>0));
+}
+export function storedStructureCount(state,type){
+  if(!SETTLEMENT_BY_ID[type])return 0;
+  const count=state?.storedStructures?.[type];
+  return Number.isSafeInteger(count)&&count>0?Math.min(BUILD_LIMIT,count):0;
 }
 export function scrapHavenJunk(state,backpack,id){
   const site=HAVEN_JUNK_BY_ID[id];
@@ -551,18 +569,24 @@ export function missingBuildingMaterials(backpack,type){
     id,needed:amount,owned:countItem(backpack,id)})):[];
 }
 export function placeSettlementStructure(state,backpack,placement,staticObstacles=[],player=null){
-  if(SETTLEMENT_BY_ID[placement?.type]?.legacy)
+  if(SETTLEMENT_BY_ID[placement?.type]?.legacy&&
+      !storedStructureCount(state,placement.type))
     return {ok:false,reason:'THIS WORKSTATION IS NO LONGER PLACEABLE'};
   const result=validateBuildPlacement(state,placement,staticObstacles,player);
   if(!result.ok)return result;
-  const missing=missingBuildingMaterials(backpack,placement.type);
+  const stored=storedStructureCount(state,placement.type)>0;
+  const missing=stored?[]:missingBuildingMaterials(backpack,placement.type);
   if(missing.length)return {ok:false,reason:'NOT ENOUGH SALVAGED MATERIALS',missing};
   const plan=SETTLEMENT_BY_ID[placement.type];
-  for(const [id,amount] of Object.entries(plan.cost))spendMaterial(backpack,id,amount);
+  if(stored){
+    state.storedStructures[placement.type]--;
+    if(!state.storedStructures[placement.type])delete state.storedStructures[placement.type];
+  }else for(const [id,amount] of Object.entries(plan.cost))
+    spendMaterial(backpack,id,amount);
   const saved={id:state.nextId++,type:placement.type,x:placement.x,
     z:placement.z,rotation:placement.rotation};
   state.structures.push(saved);
-  return {ok:true,structure:saved};
+  return {ok:true,structure:saved,fromStorage:stored};
 }
 function removableSettlementStructure(state,id,action){
   const index=state.structures.findIndex(s=>s.id===id);
@@ -580,10 +604,14 @@ export function storeSettlementStructure(state,backpack,id){
   const target=removableSettlementStructure(state,id,'STORE');
   if(!target.ok)return target;
   const {index,structure}=target;
+  state.storedStructures??={};
+  const inStorage=Object.values(state.storedStructures).reduce((sum,n)=>
+    sum+(Number.isInteger(n)&&n>0?n:0),0);
+  if(inStorage>=BUILD_LIMIT)return {ok:false,reason:'SETTLEMENT STORAGE IS FULL'};
   state.structures.splice(index,1);
-  for(const [id,amount] of Object.entries(SETTLEMENT_BY_ID[structure.type].cost))
-    addItem(backpack,id,amount);
-  return {ok:true,structure};
+  state.storedStructures[structure.type]=storedStructureCount(state,structure.type)+1;
+  // No component refund: the actual object is intact in workshop storage.
+  return {ok:true,structure,storedCount:state.storedStructures[structure.type]};
 }
 export function scrapSettlementStructure(state,backpack,id){
   const target=removableSettlementStructure(state,id,'SCRAP');

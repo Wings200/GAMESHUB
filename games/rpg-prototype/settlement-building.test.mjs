@@ -6,7 +6,7 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
-  scrapSettlementStructure,
+  scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL,
   HAVEN_JUNK_SITES,HAVEN_JUNK_BY_ID,scrapHavenJunk}
@@ -73,6 +73,15 @@ test('legacy salvage table stays in existing saves but cannot be constructed aga
     id:14,type:'scrapbench',x:-39,z:-23,rotation:0}]});
   assert.equal(restored.structures.length,1);
   assert.equal(restored.structures[0].type,'scrapbench');
+  assert.equal(storeSettlementStructure(restored,pack,14).ok,true);
+  assert.deepEqual(settlementCategoryBlueprints('WORKSHOP',restored).map(p=>p.id),
+    ['weaponbench','powerstation','scrapbench']);
+  const reused=placeSettlementStructure(restored,pack,placement('scrapbench',-39,-23));
+  assert.equal(reused.ok,true);
+  assert.equal(reused.fromStorage,true);
+  assert.equal(storedStructureCount(restored,'scrapbench'),0);
+  assert.deepEqual(settlementCategoryBlueprints('WORKSHOP',restored).map(p=>p.id),
+    ['weaponbench','powerstation']);
 });
 
 test('scavenging world junk awards its precise yield once and survives reload',()=>{
@@ -101,6 +110,20 @@ test('scavenging world junk awards its precise yield once and survives reload',(
     'older saves without junk records remain loadable');
   assert.deepEqual(safeSettlementBuildSnapshot({scrappedJunk:[site.id,site.id,
     'injected-scrap-id']}).scrappedJunk,[site.id]);
+});
+
+test('every registered pre-existing settlement fixture is scrappable exactly once',()=>{
+  const state=initialSettlementBuildState(),pack=createBackpack();
+  for(const site of HAVEN_JUNK_SITES){
+    const first=scrapHavenJunk(state,pack,site.id);
+    assert.equal(first.ok,true,site.id+' must support X to scrap');
+    assert.equal(scrapHavenJunk(state,pack,site.id).ok,false,
+      site.id+' must not respawn or pay materials twice');
+  }
+  const restored=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
+  assert.equal(restored.scrappedJunk.length,HAVEN_JUNK_SITES.length);
+  for(const site of HAVEN_JUNK_SITES)
+    assert.equal(scrapHavenJunk(restored,pack,site.id).ok,false);
 });
 
 test('a full component stack cannot consume a world object without payment',()=>{
@@ -165,7 +188,7 @@ test('doorway remains physically passable between its two posts',()=>{
   assert.equal(center.length,0,'lower door center must not have an invisible solid wall');
 });
 
-test('store last returns the full cost and saves restore only validated structures',()=>{
+test('storing the last structure retains the object and saves restore valid structures',()=>{
   const pack=fundedPack(),state=initialSettlementBuildState();
   const first=placement('bed',-43,-26),plan=SETTLEMENT_BY_ID.bed;
   const counts=Object.fromEntries(Object.keys(plan.cost).map(id=>[id,countItem(pack,id)]));
@@ -175,7 +198,13 @@ test('store last returns the full cost and saves restore only validated structur
   assert.deepEqual(restored.structures,state.structures);
   const undo=undoLastSettlementStructure(state,pack);
   assert.equal(undo.ok,true);assert.equal(state.structures.length,0);
-  for(const id of Object.keys(plan.cost))assert.equal(countItem(pack,id),counts[id]);
+  for(const [id,cost] of Object.entries(plan.cost))
+    assert.equal(countItem(pack,id),counts[id]-cost,
+      'storing must not return materials because the object is intact');
+  assert.equal(storedStructureCount(state,'bed'),1);
+  assert.equal(undo.storedCount,1);
+  assert.equal(safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)))
+    .storedStructures.bed,1);
   snapshot.structures.push({id:999,type:'unknown',x:0,z:0,rotation:0});
   snapshot.structures.push({id:1000,type:'wall',x:Infinity,z:0,rotation:0});
   assert.equal(safeSettlementBuildSnapshot(snapshot).structures.length,1);
@@ -221,13 +250,15 @@ test('X scrapping a constructed workbench removes it permanently and gives parti
     .structures.length,0,'the scrapped item must not return after loading');
 });
 
-test('F storage keeps the full cost; X respects roof supports and inventory limits',()=>{
+test('F stores the intact object without material refunds; X respects roof supports',()=>{
   const pack=fundedPack(),state=initialSettlementBuildState();
   const before=countItem(pack,'material:steel');
   const bench=placeSettlementStructure(state,pack,placement('weaponbench',-43,-22));
   assert.equal(bench.ok,true);
   assert.equal(storeSettlementStructure(state,pack,bench.structure.id).ok,true);
-  assert.equal(countItem(pack,'material:steel'),before);
+  assert.equal(countItem(pack,'material:steel'),before-
+    SETTLEMENT_BY_ID.weaponbench.cost['material:steel']);
+  assert.equal(storedStructureCount(state,'weaponbench'),1);
   const wall=placeSettlementStructure(state,pack,placement('wall'));
   assert.equal(wall.ok,true);
   assert.equal(placeSettlementStructure(state,pack,placement('roof')).ok,true);
@@ -238,6 +269,44 @@ test('F storage keeps the full cost; X respects roof supports and inventory limi
   assert.match(scrapSettlementStructure(state,pack,wall.structure.id).reason,
     /STORAGE FULL/);
   assert.equal(state.structures.length,1,'an unpayable scrap must not delete the piece');
+});
+
+test('storing adds a visible unit count and replacing consumes the object, not components',()=>{
+  const state=initialSettlementBuildState(),pack=fundedPack();
+  const first=placeSettlementStructure(state,pack,placement('wall',-45,-27));
+  const second=placeSettlementStructure(state,pack,placement('wall',-39,-27));
+  assert.ok(first.ok&&second.ok);
+  assert.equal(storeSettlementStructure(state,pack,first.structure.id).storedCount,1);
+  assert.equal(storeSettlementStructure(state,pack,second.structure.id).storedCount,2);
+  const saved=safeSettlementBuildSnapshot(JSON.parse(JSON.stringify(state)));
+  assert.equal(storedStructureCount(saved,'wall'),2);
+  for(const id of Object.keys(SETTLEMENT_BY_ID.wall.cost))pack.materials[id]=0;
+  assert.ok(missingBuildingMaterials(pack,'wall').length>0);
+  assert.equal(placeSettlementStructure(saved,pack,placement('wall',-42,-25)).fromStorage,true);
+  assert.equal(storedStructureCount(saved,'wall'),1);
+  assert.equal(placeSettlementStructure(saved,pack,placement('wall',-36,-25)).fromStorage,true);
+  assert.equal(storedStructureCount(saved,'wall'),0);
+  assert.equal(placeSettlementStructure(saved,pack,placement('wall',-33,-25)).ok,false,
+    'third placement needs actual materials again');
+  assert.equal(countItem(pack,'material:steel'),0);
+});
+
+test('failed placement does not consume a stored item, and corrupted counts are sanitized',()=>{
+  const state=initialSettlementBuildState(),pack=createBackpack();
+  state.storedStructures.bed=1;
+  assert.equal(placeSettlementStructure(state,pack,placement('bed',88,88)).ok,false);
+  assert.equal(storedStructureCount(state,'bed'),1);
+  assert.equal(placeSettlementStructure(state,pack,placement('bed',-41,-23)).ok,true);
+  assert.equal(storedStructureCount(state,'bed'),0);
+  assert.deepEqual(safeSettlementBuildSnapshot({version:3}).storedStructures,{},
+    'previous saves begin with empty object storage');
+  const sanitized=safeSettlementBuildSnapshot({storedStructures:{
+    wall:3,bed:-2,turret:2.3,unknown:99,roof:100000000}});
+  assert.equal(storedStructureCount(sanitized,'wall'),3);
+  assert.equal(storedStructureCount(sanitized,'bed'),0);
+  assert.equal(storedStructureCount(sanitized,'turret'),0);
+  assert.equal(storedStructureCount(sanitized,'unknown'),0);
+  assert.equal(storedStructureCount(sanitized,'roof'),120-3);
 });
 
 test('field build mode integrates persistent world collisions and uses no free grants',()=>{
@@ -274,6 +343,9 @@ test('field build mode integrates persistent world collisions and uses no free g
   assert.match(main,/visibleHavenJunk\.has\('original-weapon-bench'\)/);
   assert.match(main,/interactSettlementWorkshop\(nearestSettlementWorkshop\(\)\)/);
   assert.match(main,/frameDistance>4/);
+  assert.match(main,/storedStructureCount\(settlementBuildState,plan\.id\)/);
+  assert.match(main,/STORED \('/);
+  assert.match(main,/PLACED FROM STORAGE/);
   assert.match(html,/id="settlementScrapCount"/);
   assert.match(html,/W20\.80 · PLACEABLE WORKBENCHES & WORLD SALVAGE/);
   assert.match(html,/W20\.81 · TRUE SETTLEMENT SCRAP & POWER ARMOR GANTRY/);

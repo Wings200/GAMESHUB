@@ -12,10 +12,10 @@ import {HAVEN_BUILD_AREA,SETTLEMENT_BLUEPRINTS,SETTLEMENT_BY_ID,SETTLEMENT_CATEG
   initialSettlementBuildState,safeSettlementBuildSnapshot,
   snappedBuildPosition,buildWorldBoxes,validateBuildPlacement,
   missingBuildingMaterials,placeSettlementStructure,storeSettlementStructure,
-  scrapSettlementStructure,
+  scrapSettlementStructure,storedStructureCount,
   undoLastSettlementStructure,settlementCategoryBlueprints,
   calculateSettlementStats,advanceSettlement,RECRUITMENT_INTERVAL}
-  from '../settlement-building.mjs?v=W20.81';
+  from '../settlement-building.mjs?v=W20.82';
 import {MOD_WEAPON_IDS,MOD_SLOTS,MOD_SLOT_LABELS,WEAPON_MODS,
   weaponModOptions,craftWeaponMod,missingModMaterials,selectedWeaponMod,
   effectiveWeaponSpec,describeWeaponMod} from '../weapon-mods.mjs';
@@ -5173,6 +5173,8 @@ function settlementPlacementBlockers(){
   return [...enemySightObstacles,...parkedFrames,...residents];
 }
 function settlementCostText(type){
+  const stock=storedStructureCount(settlementBuildState,type);
+  if(stock)return 'STORED ('+stock+') · PLACE WITHOUT MATERIALS';
   const plan=SETTLEMENT_BY_ID[type];
   return Object.entries(plan.cost).map(([id,amount])=>{
     const owned=countItem(backpack,id);
@@ -5220,13 +5222,16 @@ function refreshSettlementBuildHud(){
   }
   const list=$('settlementBuildList');
   list.replaceChildren();
-  const plans=settlementCategoryBlueprints(settlementBuildCategory);
+  const plans=settlementCategoryBlueprints(settlementBuildCategory,settlementBuildState);
   for(let i=0;i<plans.length;i++){
     const plan=plans[i];
     const row=document.createElement('div');
     row.className='settlement-piece'+(plan.id===settlementBuildType?' selected':'');
-    if(missingBuildingMaterials(backpack,plan.id).length)row.classList.add('missing');
-    const name=document.createElement('strong');name.textContent=(i+1)+' · '+plan.name;
+    const stored=storedStructureCount(settlementBuildState,plan.id);
+    if(!stored&&missingBuildingMaterials(backpack,plan.id).length)
+      row.classList.add('missing');
+    const name=document.createElement('strong');name.textContent=(i+1)+' · '+plan.name+
+      (stored?' ('+stored+')':'');
     const benefits=plan.stats?Object.entries(plan.stats).map(([key,value])=>
       key==='powerDraw'?'−'+value+' POWER':
         key==='beacon'?'ATTRACTS SETTLERS':'+'+value+' '+key.toUpperCase()).join(' · '):'';
@@ -5234,7 +5239,10 @@ function refreshSettlementBuildHud(){
     const cost=document.createElement('span');cost.textContent=settlementCostText(plan.id);
     row.append(name,trait,cost);list.append(row);
   }
-  $('settlementBuiltCount').textContent=settlementBuildState.structures.length+' BUILT';
+  const totalStored=Object.values(settlementBuildState.storedStructures||{}).reduce(
+    (sum,n)=>sum+n,0);
+  $('settlementBuiltCount').textContent=settlementBuildState.structures.length+
+    ' BUILT · '+totalStored+' STORED';
   $('settlementScrapCount').textContent=visibleHavenJunk.size+' SCRAPPABLE';
   $('settlementSnapStatus').textContent=settlementBuildState.snap?'GRID SNAP ON':'FREE PLACEMENT';
   refreshSettlementStats();
@@ -5246,7 +5254,7 @@ function clearSettlementGhost(){
   lastScrapPreview=null;
 }
 function changeSettlementBlueprint(index){
-  const plans=settlementCategoryBlueprints(settlementBuildCategory);
+  const plans=settlementCategoryBlueprints(settlementBuildCategory,settlementBuildState);
   if(index<0||index>=plans.length)return;
   settlementBuildType=plans[index].id;
   clearSettlementGhost();
@@ -5272,7 +5280,7 @@ function toggleSettlementBuildMode(force=null){
   $('settlementBuildHud').classList.toggle('hidden',!next);
   if(next){
     triggerHeld=false;cancelPowerHold();changeAim(false);
-    const plans=settlementCategoryBlueprints(settlementBuildCategory);
+    const plans=settlementCategoryBlueprints(settlementBuildCategory,settlementBuildState);
     changeSettlementBlueprint(Math.max(0,plans.findIndex(p=>p.id===settlementBuildType)));
     showShotNotice('HAVEN WORKSHOP · BUILD MODE ACTIVE');
   }else{
@@ -5301,14 +5309,17 @@ function updateSettlementBuildPreview(){
   settlementGhost.rotation.y=settlementRotation*Math.PI/2;
   const valid=validateBuildPlacement(settlementBuildState,placement,
     settlementPlacementBlockers(),player);
-  const missing=missingBuildingMaterials(backpack,placement.type);
+  const stock=storedStructureCount(settlementBuildState,placement.type);
+  const missing=stock?[]:missingBuildingMaterials(backpack,placement.type);
   const placeable=valid.ok&&missing.length===0;
   settlementGhostMaterial.color.setHex(placeable?0x83e1b3:0xe78579);
   settlementGhostMaterial.emissive.setHex(placeable?0x285944:0x743229);
   settlementGhostMaterial.opacity=placeable?.35:.22;
   $('settlementBuildFeedback').textContent=!valid.ok?valid.reason:
     missing.length?'NEED '+missing.map(m=>getItem(m.id).name+' '+
-      (m.needed-m.owned)).join(' + '):'CLEAR · LEFT CLICK TO BUILD';
+      (m.needed-m.owned)).join(' + '):stock?
+      'STORED ('+stock+') · LEFT CLICK TO PLACE FREE':
+      'CLEAR · LEFT CLICK TO BUILD';
   if(performance.now()-lastScrapCheckAt>130){
     lastScrapCheckAt=performance.now();
     lastScrapPreview=aimedSettlementTarget();
@@ -5323,7 +5334,7 @@ function updateSettlementBuildPreview(){
     const structure=settlementBuildState.structures.find(s=>s.id===aimed.id);
     if(structure)$('settlementBuildFeedback').textContent=
       SETTLEMENT_BY_ID[structure.type].name.toUpperCase()+
-      ' · X SCRAP FOR PARTS · F STORE FOR FULL REFUND';
+      ' · X SCRAP FOR PARTS · F STORE WHOLE OBJECT';
   }
   $('settlementBuildFeedback').classList.toggle('invalid',!placeable&&!aimed);
 }
@@ -5336,7 +5347,11 @@ function placeSettlementPreview(){
   registerSettlementStructure(result.structure);
   saveSettlementBuild();saveBackpack();refreshInventoryUI();
   refreshSettlementBuildHud();
-  showShotNotice('BUILT · '+SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
+  if(SETTLEMENT_BY_ID[result.structure.type].legacy&&
+      !storedStructureCount(settlementBuildState,result.structure.type))
+    changeSettlementBlueprint(0);
+  showShotNotice((result.fromStorage?'PLACED FROM STORAGE · ':'BUILT · ')+
+    SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
 }
 window.addEventListener('pagehide',saveSettlementBuild);
 function undoSettlementBuild(){
@@ -5345,7 +5360,7 @@ function undoSettlementBuild(){
   unregisterSettlementStructure(result.structure.id);
   saveSettlementBuild();saveBackpack();refreshInventoryUI();
   refreshSettlementBuildHud();
-  showShotNotice('STORED · MATERIALS RETURNED · '+
+  showShotNotice('STORED FOR REUSE ('+result.storedCount+') · '+
     SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
 }
 const settlementPickRay=new THREE.Raycaster();
@@ -5377,7 +5392,7 @@ function storeAimedSettlementStructure(){
   unregisterSettlementStructure(result.structure.id);
   saveSettlementBuild();saveBackpack();refreshInventoryUI();
   refreshSettlementBuildHud();
-  showShotNotice('STORED · ALL MATERIALS RETURNED · '+
+  showShotNotice('STORED FOR REUSE ('+result.storedCount+') · '+
     SETTLEMENT_BY_ID[result.structure.type].name.toUpperCase());
 }
 function scrapAimedSettlementTarget(){
