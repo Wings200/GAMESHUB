@@ -4,7 +4,7 @@ import {EngineIntro} from '../../engine/intro.js?v=build009';
 import {EngineAudio} from '../../engine/audio.js?v=build009';
 import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build009';
 import {installPolishedFoley} from '../../engine/foley.js?v=build009';
-import {createTestRoom} from './room.js';
+import {createTestRoom} from './room.js?v=build009';
 import {FootstepSequencer} from '../../engine/footsteps.js?v=build009';
 
 const $ = id => document.getElementById(id);
