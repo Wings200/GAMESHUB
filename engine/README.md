@@ -273,3 +273,62 @@ light-blocked ambient environment maps, emissive mesh area lighting,
 contact-hardening penumbrae or HDR postprocessing/bloom. Dark rooms need
 their ambient/environment light budget configured separately; they do not
 automatically become pitch-black simply because their door closes.
+
+## Build 021 — integrated game sessions
+
+New games should prefer one `GameSession` over wiring the controller,
+scene, lighting and audio frame callbacks separately. This API is for the
+assistant/programmer to create games in code; it is **not** a visual game editor.
+
+```js
+import {GameEngine,EngineAudio,createGameSession} from '/engine/index.js';
+const engine=new GameEngine(document.querySelector('#game'));
+const audio=new EngineAudio();
+const session=createGameSession(engine,{audio});
+
+session.world.addMesh({id:'ground-floor',geometry:'box',
+  size:{x:12,y:.2,z:12},position:{x:0,y:-.1,z:0},
+  material:'concrete-poured-gray',collidable:true});
+session.world.addMesh({id:'upper-level',geometry:'box',
+  size:{x:5,y:.25,z:5},position:{x:0,y:3,z:-6},
+  material:'wood-light-oak',collidable:true});
+session.world.addLight({id:'factory-lamp',kind:'spot',
+  position:{x:0,y:5,z:0},target:{x:0,y:0,z:0},
+  color:'#ffe6c7',intensity:28,distance:14,
+  visibleSource:true,castShadow:true});
+session.world.addSound({id:'machinery',clip:'factory-hum',
+  position:{x:4,y:1.4,z:0},spatial:true,loop:true,bus:'ambience'});
+
+// Browsers require audio to be unlocked from a click before sound can play.
+// The caller supplies genuine licensed sound files; the engine only plays them.
+await audio.unlock();
+await audio.loadClip('factory-hum','/assets/audio/factory-hum.ogg');
+session.world.playSound('machinery');
+
+session.setQuality('quality'); // renderer + world shadow budget together
+engine.start(); // exactly one ordered frame callback via GameSession
+
+// When the game exits:
+engine.stop();
+session.dispose();
+audio.dispose();
+engine.dispose();
+```
+
+Each frame executes in order: **FirstPersonControls with Y-aware collision →
+camera world matrix → animated lights → Web Audio listener / occlusion**.
+This fixes the stale-audio-listener problem from registering movement and
+audio as independent, unordered callbacks. GameSession keeps the original
+`world.colliders` array connected to controls, even after save/load, and
+`session.setQuality` updates both renderer shadows and light shadow budgets.
+
+The session owns its GameWorld and FirstPersonControls and unregisters its
+frame callback on disposal. Engine and EngineAudio remain owned by the caller.
+`GameWorld` by itself continues its previous auto-update behavior, so
+already-existing code and the showroom aren't silently changed.
+
+This build contains a real browser integration regression test with raised
+floors, wall-blocked walking, live listener tracking, 3D audio occlusion at
+different heights, spot shadow rendering, quality switching, save/load and
+cleanup. It doesn't add full rigid-body physics, indoor global illumination,
+a game map, or recorded audio assets.

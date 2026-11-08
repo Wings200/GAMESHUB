@@ -7,7 +7,7 @@ import {lightEffectFactor,shadowBudget} from './light-effects.mjs';
 // Code-first, reusable scene assembly layer. It does not replace GameEngine's
 // renderer, collision solver, or EngineAudio; it composes those existing tools.
 export class GameWorld {
-  constructor(engine,{audio=null,materials=null}={}){
+  constructor(engine,{audio=null,materials=null,autoUpdate=true}={}){
     if(!engine?.scene?.add||!engine?.scene?.remove)
       throw new TypeError('GameWorld requires an engine with a THREE scene');
     this.engine=engine;
@@ -25,30 +25,16 @@ export class GameWorld {
     this.lightingProfile=engine.quality in {performance:1,quality:1,balanced:1}?engine.quality:'balanced';
     this.animatedLights=new Set();
     this.disposed=false;
-    if(typeof engine.onFrame==='function'){
-      const unregister=engine.onFrame((_dt,elapsed)=>this.updateLighting(elapsed));
-      this.unsubscribers.add(unregister);
-    }
-    if(audio?.setListenerPose&&engine.camera&&typeof engine.onFrame==='function'){
-      const forward=new THREE.Vector3(),position=new THREE.Vector3();
-      const unregister=engine.onFrame((_dt,elapsed)=>{
-        engine.camera.getWorldPosition(position);
-        engine.camera.getWorldDirection(forward);
-        const pose={position:{x:position.x,y:position.y,z:position.z},
-          forward:{x:forward.x,y:forward.y,z:forward.z},
-          up:{x:0,y:1,z:0}};
-        audio.setListenerPose(pose);
-        if(elapsed>=this.nextOcclusionSample){
-          this.nextOcclusionSample=elapsed+.18;
-          for(const [id,handles] of this.activeSounds){
-            const item=this.items.get(id);
-            if(!item?.spec.spatial || !item.spec.occlusion)continue;
-            const occlusion=estimateOcclusion(pose.position,item.spec.position,this.colliders);
-            for(const handle of handles)handle.setOcclusion?.(occlusion);
-          }
-        }
-      });
-      this.unsubscribers.add(unregister);
+    // Standalone GameWorld instances continue to tick themselves. A
+    // GameSession disables these callbacks and updates in a strict order:
+    // controls -> camera matrices -> lights -> 3D listener/occlusion.
+    if(autoUpdate && typeof engine.onFrame==='function'){
+      const stop=engine.onFrame((_dt,elapsed)=>this.updateLighting(elapsed));
+      this.unsubscribers.add(stop);
+      if(audio?.setListenerPose && engine.camera){
+        const stopAudio=engine.onFrame((_dt,elapsed)=>this.updateAudio(elapsed));
+        this.unsubscribers.add(stopAudio);
+      }
     }
   }
   ensureActive(){if(this.disposed)throw new Error('World has been disposed');}
@@ -109,6 +95,25 @@ export class GameWorld {
       if(node?.isMesh)node.geometry.dispose();
       lease?.release();
       throw error;
+    }
+  }
+  updateAudio(elapsed){
+    if(this.disposed || !this.audio?.setListenerPose || !this.engine.camera)return;
+    const camera=this.engine.camera;
+    const position=new THREE.Vector3(),forward=new THREE.Vector3();
+    camera.getWorldPosition(position);
+    camera.getWorldDirection(forward);
+    const pose={position:{x:position.x,y:position.y,z:position.z},
+      forward:{x:forward.x,y:forward.y,z:forward.z},up:{x:0,y:1,z:0}};
+    this.audio.setListenerPose(pose);
+    if(elapsed>=this.nextOcclusionSample){
+      this.nextOcclusionSample=elapsed+.18;
+      for(const [id,handles] of this.activeSounds){
+        const item=this.items.get(id);
+        if(!item?.spec.spatial || !item.spec.occlusion)continue;
+        const occlusion=estimateOcclusion(pose.position,item.spec.position,this.colliders);
+        for(const handle of handles)handle.setOcclusion?.(occlusion);
+      }
     }
   }
   updateLightSource(item){
