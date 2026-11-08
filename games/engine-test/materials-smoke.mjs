@@ -119,9 +119,37 @@ try{
   await page.locator('#materialCategory').selectOption('fabric');
   assert.equal(await page.locator('.material-card').count(),12);
   assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('[data-material-id="fabric-natural-linen"]').click();
+  assert.equal(await page.locator('#textileComparison').isVisible(),true);
+  assert.equal(await page.locator('.textile-sample').count(),6);
+  assert.match(await page.locator('#comparisonTitle').innerText(),/fabric constructions/);
+  // Equal RGB channels ensure the comparison is about weave, not tint.
+  const comparison=await page.locator('.textile-sample canvas').evaluateAll(canvases=>{
+    const data=canvases.map(canvas=>canvas.getContext('2d')
+      .getImageData(0,0,canvas.width,canvas.height).data);
+    const base=data[0],second=data[1];
+    let colorError=0,difference=0;
+    for(let i=0;i<base.length;i+=4){
+      colorError=Math.max(colorError,Math.abs(base[i]-base[i+1]),
+        Math.abs(base[i+1]-base[i+2]));
+      difference+=Math.abs(base[i]-second[i]);
+    }
+    return {colorError,difference,drawn:canvases.length};
+  });
+  assert.equal(comparison.drawn,6);
+  assert.equal(comparison.colorError,0);
+  assert.ok(comparison.difference>500,'same-color textile swatches should look different');
+  await page.locator('[data-preset-id="fabric-burgundy-velvet"]').click();
+  assert.equal(await page.locator('#selectedName').innerText(),'Burgundy Velvet');
   await page.locator('#materialCategory').selectOption('carpet');
   assert.equal(await page.locator('.material-card').count(),12);
   assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('[data-material-id="carpet-warm-beige-plush"]').click();
+  assert.equal(await page.locator('#textileComparison').isVisible(),true);
+  assert.equal(await page.locator('.textile-sample').count(),6);
+  assert.match(await page.locator('#comparisonTitle').innerText(),/carpet constructions/);
+  await page.locator('[data-preset-id="carpet-charcoal-berber"]').click();
+  assert.equal(await page.locator('#selectedName').innerText(),'Charcoal Berber');
   await page.locator('#materialSearch').fill('plush');
   assert.equal(await page.locator('.material-card').count(),1);
   await page.locator('#materialSearch').fill('');
