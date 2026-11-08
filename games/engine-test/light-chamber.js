@@ -5,9 +5,8 @@
 // NOTE: cube reflections are local scene captures, NOT ray-traced GI.
 // The bounce light is a tunable approximation of diffuse interreflection.
 import {THREE} from '../../engine/core.js';
-import {approach} from '../../engine/motion.js';
 
-import {HINGE_X,PORTAL_Z,LEAF_W,MAX_ANGLE,doorCollisionAt,doorDistance,lightAperture} from '../../engine/portal.js';
+import {HINGE_X,PORTAL_Z,LEAF_W,MAX_ANGLE,doorCollisionAt,doorDistance,lightAperture,doorEase} from '../../engine/portal.js';
 
 export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,onDoorChange=()=>{}}) {
   const scene=engine.scene, renderer=engine.renderer;
@@ -115,6 +114,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
   obstacles.push(doorBarrier);
 
   let openness=0,targetOpen=false,bounceEnabled=true,probeEnabled=true,shadowProfile='balanced';
+  let transitionStart=performance.now(), transitionFrom=0;
   let playerLocation=null,dirty=true,lastCapture=-100,captureCount=0;
   const probeTarget=new THREE.WebGLCubeRenderTarget(64,{
     format:THREE.RGBAFormat,
@@ -176,6 +176,8 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
       // Avoid deliberately sweeping the leaf through a player in its path.
       if(player.z>16.95 && player.z<20.5 && player.x>-1.8 && player.x<1.55) return false;
     }
+    transitionFrom=openness;
+    transitionStart=performance.now();
     targetOpen=!targetOpen;
     dirty=true;
     return true;
@@ -183,8 +185,11 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
   function update(dt,seconds,player) {
     playerLocation=player;
     const previous=openness;
-    openness=approach(openness,targetOpen?1:0,4.6,dt);
-    if(Math.abs(openness-(targetOpen?1:0))<.002)openness=targetOpen?1:0;
+    // Real elapsed time keeps the door animation ~0.85s even when frame
+    // delta is clamped for physics or the renderer is temporarily slow.
+    const t=Math.max(0,Math.min(1,(performance.now()-transitionStart)/850));
+    openness=transitionFrom+((targetOpen?1:0)-transitionFrom)*doorEase(t);
+    if(t>=1) openness=targetOpen?1:0;
     if(openness!==previous) syncDoor();
     // Cubemap rendering is expensive: only capture after an actual change,
     // when the player is near enough to inspect reflective specimens, and
