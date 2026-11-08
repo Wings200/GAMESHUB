@@ -5,6 +5,8 @@ export {FirstPersonControls, moveVector} from './controls.js';
 export {PLAYER_RADIUS, intersectsFootprint, resolveXZ} from './collision.js';
 export {QUALITY_PRESETS, qualitySettings, clampScale} from './quality.js';
 export {approach, hingedOpen, stepPhase} from './motion.js';
+export {luminairePositions, ceilingLightingProfile} from './lighting.js';
+export {FootstepSequencer} from './footsteps.js';
 export {createSurfaceLibrary} from './surfaces.js';
 export {EngineAudio} from './audio.js';
 export {EngineIntro, INTRO_ANIMATION_MS, INTRO_HOLD_MS} from './intro.js';
