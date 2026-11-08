@@ -16,10 +16,11 @@ try{
   await page.waitForFunction(()=>document.querySelector('#materialViewport')?.dataset.previewReady==='true',
     null,{timeout:40000});
   const result=await page.evaluate(async()=>{
-    const [{THREE},{createGameWorld},{resolveXZ}]=await Promise.all([
+    const [{THREE},{createGameWorld},{resolveXZ},{resolveCapsule3D}]=await Promise.all([
       import('../../engine/core.js'),
       import('../../engine/world.js'),
-      import('../../engine/collision.js')
+      import('../../engine/collision.js'),
+      import('../../engine/collision-3d.js')
     ]);
     const scene=new THREE.Scene();
     const callbacks=new Set(),calls=[];
@@ -40,7 +41,19 @@ try{
     const before=world.materials.stats();
     const blocked=resolveXZ({x:-5,z:0},{x:8,z:0},world.colliders);
     world.setTransform('wall-one',{position:{x:8,y:1.5,z:0}});
-    const colliderUpdated=world.colliders[0].minX===6 && world.colliders===colliders;
+    const colliderUpdated=world.colliders[0].minX===6 && world.colliders===colliders &&
+      world.colliders[0].minY===0 && world.colliders[0].maxY===3;
+    // New 3D collision supports raised slabs and Y transform updates,
+    // without disturbing the original horizontal resolver.
+    world.addMesh({id:'upper-platform',geometry:'box',
+      size:{x:3,y:.4,z:3},position:{x:0,y:2,z:0},
+      material,collidable:true});
+    const upstairs=resolveCapsule3D(
+      {x:0,y:5,z:0},{x:0,y:-4,z:0},world.colliders);
+    const raisedFloor=upstairs.y;
+    world.setTransform('upper-platform',{position:{x:0,y:3,z:0}});
+    const colliderRaised=world.colliders.find(c=>c.maxY>3)?.maxY===3.2;
+    world.remove('upper-platform');
     world.setMaterial('wall-two',{
       id:'wood-light-oak',settings:{repeat:.5,detailStrength:0.8}
     });
@@ -77,7 +90,7 @@ try{
     const afterDispose={materials:world.materials.stats(),rootDetached:world.root.parent===null,
       colliders:colliders.length,callbacks:callbacks.size};
     return {
-      shared,before,blocked:blocked.x,colliderUpdated,
+      shared,before,blocked:blocked.x,colliderUpdated,raisedFloor,colliderRaised,
       changedMaterial,spot:spot.type,soundResult:soundResult.played,
       played:calls,ticks,invalidPreserved,afterLoad,
       colliderRefSurvived,exportedFormat:exported.format,afterDispose
@@ -87,6 +100,8 @@ try{
   assert.deepEqual(result.before,{uniqueMaterials:1,references:2});
   assert.ok(result.blocked<-2.2,'real engine collision solver must block the wall');
   assert.equal(result.colliderUpdated,true);
+  assert.equal(result.raisedFloor,3.92);
+  assert.equal(result.colliderRaised,true);
   assert.equal(result.changedMaterial,true);
   assert.equal(result.spot,'SpotLight');
   assert.equal(result.soundResult,'door-open');

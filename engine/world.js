@@ -83,7 +83,10 @@ export class GameWorld {
   footprint(spec){
     const halfX=spec.geometry==='box'?spec.size.x/2:spec.size.radius;
     const halfZ=spec.geometry==='box'?spec.size.z/2:spec.size.radius;
+    const halfY=spec.geometry==='box'?spec.size.y/2:
+      spec.geometry==='sphere'?spec.size.radius:spec.size.height/2;
     return {minX:spec.position.x-halfX,maxX:spec.position.x+halfX,
+      minY:spec.position.y-halfY,maxY:spec.position.y+halfY,
       minZ:spec.position.z-halfZ,maxZ:spec.position.z+halfZ};
   }
   setTransform(id,{position,rotation}={}){
