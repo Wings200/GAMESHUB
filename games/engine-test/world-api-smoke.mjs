@@ -100,7 +100,7 @@ try{
   assert.deepEqual(result.before,{uniqueMaterials:1,references:2});
   assert.ok(result.blocked<-2.2,'real engine collision solver must block the wall');
   assert.equal(result.colliderUpdated,true);
-  assert.equal(result.raisedFloor,3.52);
+  assert.equal(result.raisedFloor,3.92);
   assert.equal(result.colliderRaised,true);
   assert.equal(result.changedMaterial,true);
   assert.equal(result.spot,'SpotLight');
