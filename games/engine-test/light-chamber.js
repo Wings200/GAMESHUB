@@ -129,7 +129,11 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
     if (!probeEnabled || shadowProfile==='performance')return false;
     // Avoid capturing a glossy sample's reflection of itself.
     const wasVisible=glossyMeshes.map(mesh=>mesh.visible);
+    const previousShadows=renderer.shadowMap.enabled;
     glossyMeshes.forEach(mesh=>mesh.visible=false);
+    // Probe images show local geometry and luminous fixtures. Re-rendering
+    // four full-resolution shadow maps six times is not viable on software GPU.
+    renderer.shadowMap.enabled=false;
     try {
       probe.update(renderer,scene);
       steel.envMap=probeTarget.texture;steel.envMapIntensity=1.4;
@@ -143,6 +147,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
       dirty=false;
       return false;
     } finally {
+      renderer.shadowMap.enabled=previousShadows;
       glossyMeshes.forEach((mesh,index)=>mesh.visible=wasVisible[index]);
     }
   }
