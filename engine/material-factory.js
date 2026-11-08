@@ -1,6 +1,6 @@
 import {THREE} from './core.js';
-import {normalizeMaterialSettings} from './material-catalog.mjs';
-import {sampleMaterialPattern,sampleMaterialRelief} from './material-patterns.mjs';
+import {normalizeMaterialSettings} from './material-catalog.mjs?v=build014';
+import {sampleMaterialPattern,sampleMaterialRelief} from './material-patterns.mjs?v=build014';
 
 const hexRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const clamp=n=>Math.min(255,Math.max(0,n));
