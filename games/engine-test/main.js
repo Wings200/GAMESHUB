@@ -71,6 +71,8 @@ async function start() {
     engine = new GameEngine($('world'));
     engine.setQuality($('quality').value);
     facility = createTestRoom(engine);
+    // Full-scene cubemap captures are opt-in until hardware performance is verified.
+    facility.setReflectionEnabled($('reflectionToggle').checked);
     controls = new FirstPersonControls($('world'), engine.camera, {
       bounds: facility.bounds, obstacles: facility.obstacles
     });
@@ -95,6 +97,7 @@ async function start() {
       if (now-lastStatsTick < 250) return;
       lastStatsTick=now;
       const stats = engine.renderer.info.render;
+      $('hud').dataset.completedFrames=String(engine.totalFrames);
       $('fps').textContent = engine.fps || '--';
       $('drawCalls').textContent = stats.calls;
       $('triangles').textContent = stats.triangles.toLocaleString();
