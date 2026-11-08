@@ -1,6 +1,7 @@
 import {THREE} from '../../engine/core.js';
 import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build015';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build015';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build016';
+import {getTextileConstruction} from '../../engine/textile-structures.mjs';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
@@ -68,7 +69,7 @@ function drawSaved(){
       const base=getMaterialPreset(item.baseId);
       if(!base)return;
       selected=base;overrides={...item.settings};activeCustom=item.id;
-      drawControls();drawLibrary();refreshMaterial();status('Loaded '+item.name+'.');
+      drawControls();drawLibrary();refreshMaterial();renderTextileComparison();status('Loaded '+item.name+'.');
     });
     const remove=document.createElement('button');remove.type='button';remove.textContent='×';
     remove.title='Remove '+item.name;remove.className='remove';
@@ -83,7 +84,42 @@ function drawSaved(){
 }
 function selectPreset(preset){
   selected=preset;overrides={};activeCustom=null;
-  drawControls();drawLibrary();refreshMaterial();
+  drawControls();drawLibrary();refreshMaterial();renderTextileComparison();
+}
+const comparisonPresets={
+  fabric:['fabric-natural-linen','fabric-navy-canvas','fabric-denim',
+    'fabric-burgundy-velvet','fabric-graphite-felt','fabric-cream-wool'],
+  carpet:['carpet-warm-beige-plush','carpet-charcoal-berber','carpet-ivory-shag',
+    'carpet-navy-office-loop','carpet-rust-woven-rug','carpet-graphite-entry-mat']
+};
+function renderTextileComparison(){
+  const board=$('textileComparison'),ids=comparisonPresets[selected.category];
+  board.hidden=!ids;
+  if(!ids){
+    $('textileCompareCards').replaceChildren();
+    return;
+  }
+  $('comparisonTitle').textContent=selected.category==='fabric'
+    ?'Six different fabric constructions':'Six different carpet constructions';
+  const container=document.createDocumentFragment();
+  for(const id of ids){
+    const preset=getMaterialPreset(id);
+    if(!preset)continue;
+    const button=document.createElement('button');
+    button.type='button';button.className='textile-sample';
+    button.dataset.presetId=id;
+    button.setAttribute('aria-label','Inspect '+preset.name);
+    button.setAttribute('aria-pressed',String(selected.id===id));
+    const canvas=createMaterialCanvas(preset,{color:'#9a9a9a',repeat:2},96);
+    canvas.setAttribute('aria-hidden','true');
+    const name=document.createElement('strong');name.textContent=preset.name;
+    const style=document.createElement('small');
+    style.textContent=getTextileConstruction(preset).replaceAll('-',' ');
+    button.append(canvas,name,style);
+    button.addEventListener('click',()=>selectPreset(preset));
+    container.append(button);
+  }
+  $('textileCompareCards').replaceChildren(container);
 }
 function drawControls(){
   const s=settings();
@@ -279,4 +315,4 @@ $('clearVariants').addEventListener('click',()=>{
   saved=[];activeCustom=null;persist();drawSaved();
   status('All locally saved custom variants removed. Built-in presets are unchanged.');
 });
-drawControls();drawLibrary();drawSaved();initPreview();
+drawControls();drawLibrary();drawSaved();renderTextileComparison();initPreview();
