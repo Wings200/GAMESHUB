@@ -1,9 +1,11 @@
-import {THREE,GameEngine,createGameSession,loadCharacterAsset} from '../../engine/index.js';
+import {THREE,GameEngine,createGameSession,loadCharacterAsset,
+  maskClipToUpperBody,FootGrounding} from '../../engine/index.js';
 import {createDiagnosticCharacter,createFirstPersonHands} from './character-rig.js';
 
 const $=id=>document.getElementById(id);
 let engine=null,session=null,character=null,viewAnimator=null,animator=null;
-let characterAsset=null,characterSource='diagnostic',loadWarning='';
+const characterAssets=new Map();
+let characterSource='diagnostic',loadWarning='',footGrounding=null;
 let viewRig=null,thirdCamera=null,mode='third',started=false,actionCount=0;
 let lastHudAt=0,consoleNear=false,disposed=false,wasGrounded=true;
 const eventCleanups=[];
@@ -141,52 +143,66 @@ function switchView(next){
 }
 
 function setCharacterSource(source){
-  if(!['authored','diagnostic'].includes(source))return false;
-  if(source==='authored'&&!characterAsset)return false;
+  if(!['human','robot','diagnostic'].includes(source))return false;
+  if(source!=='diagnostic'&&!characterAssets.has(source))return false;
   // A swap is a new actor state, not a continuation of a one-shot action
   // from the previous rig. Clear the first-person overlay action too.
   viewAnimator?.stop();
   if(animator){session.removeAnimator('lab-character');animator=null;}
   character?.dispose();
-  character=source==='authored'?
-    characterAsset.createInstance({height:1.85,heading:Math.PI}):
+  character=source!=='diagnostic'?
+    characterAssets.get(source).createInstance({height:1.85,heading:Math.PI}):
     createDiagnosticCharacter();
   characterSource=source;
+  footGrounding=character.placement?
+    new FootGrounding(character.root,character.placement):null;
   engine.scene.add(character.root);
   character.root.visible=mode==='third';
   animator=session.addAnimator('lab-character',character.root,character.clips,{
-    followControls:true,fadeSeconds:source==='authored'?0.2:0.19,runThreshold:3.8,
+    followControls:true,fadeSeconds:source==='diagnostic'?.19:.26,runThreshold:3.8,
     // Match in-place authored stride cycles to the lab's physical speeds.
-    locomotionRates:source==='authored'?{walk:1.55,run:1.8}:{}
+    locomotionRates:source==='human'?{walk:1.15,run:1.2}:
+      source==='robot'?{walk:1.55,run:1.8}:{}
   });
+  if(source!=='diagnostic'){
+    for(const name of ['interact','attack','reload']){
+      if(!animator.has(name))continue;
+      try{
+        animator.registerUpperBody(name,
+          maskClipToUpperBody(character.clips[name],{name:'upper-'+name}),
+          {weight:.85,fadeSeconds:.18});
+      }catch(error){console.warn('Full-body action retained:',name,error.message);}
+    }
+  }
   $('characterSource').value=source;
   $('reloadButton').disabled=!animator.has('reload');
-  $('feedback').textContent=source==='authored'?
-    'Authored skeletal clips loaded. This sample has no reload animation.':
-    'Original diagnostic rig loaded for comparison.';
+  $('attackButton').disabled=!animator.has('attack');
+  $('feedback').textContent=source==='human'?
+    'CC0 human loaded. Actions can play over locomotion; reload is not in this asset.':
+    source==='robot'?'Authored robot loaded for comparison. No reload clip.':
+      'Original diagnostic rig loaded for comparison.';
   return true;
 }
 
 function triggerAction(kind){
-  if(!started||!['reload','interact'].includes(kind))return false;
+  if(!started||!['reload','interact','attack'].includes(kind))return false;
   if(!animator.has(kind)){
     $('feedback').textContent='This character has no authored '+kind+
       ' clip. Switch to the diagnostic rig or import a matching animation.';
     return false;
   }
-  if(animator.oneShot || viewAnimator.oneShot){
+  if(animator.oneShot || animator.upperBodyActive || viewAnimator.oneShot){
     $('feedback').textContent='Wait for the current animation to finish.';
     return false;
   }
   actionCount++;
-  animator.playOnce(kind,{
-    onFinish:()=>{$('feedback').textContent=kind==='reload'?
-      'Reload completed — returned to movement.':
-      'Interaction completed — returned to movement.';}
-  });
-  viewAnimator.playOnce(kind);
+  const onFinish=()=>{$('feedback').textContent=kind.toUpperCase()+
+    ' completed — returned to movement.';};
+  if(animator.hasUpperBody(kind))animator.playUpperBodyOnce(kind,{onFinish});
+  else animator.playOnce(kind,{onFinish});
+  if(viewAnimator.has(kind))viewAnimator.playOnce(kind);
   $('feedback').textContent=kind==='reload'?'Reload animation playing…':
-    'Interaction animation playing…';
+    kind==='attack'?'Upper-body attack playing…':'Interaction animation playing…';
   return true;
 }
 function onKeyDown(event){
@@ -195,6 +211,7 @@ function onKeyDown(event){
   if(['INPUT','TEXTAREA','SELECT'].includes(tag)||event.target?.isContentEditable)return;
   if(event.code==='KeyV'){event.preventDefault();switchView(mode==='third'?'first':'third');}
   if(event.code==='KeyR'){event.preventDefault();triggerAction('reload');}
+  if(event.code==='KeyF'){event.preventDefault();triggerAction('attack');}
   if(event.code==='KeyE'){
     event.preventDefault();
     if(consoleNear)triggerAction('interact');
@@ -216,6 +233,7 @@ function syncView(dt){
   const feetY=camera.position.y-controls.eyeHeight;
   character.root.position.set(camera.position.x,feetY,camera.position.z);
   character.root.rotation.y=controls.yaw;
+  footGrounding?.update(dt,{grounded:controls.grounded,groundHeight:feetY});
   cameraTarget.set(camera.position.x,camera.position.y-.24,camera.position.z);
   const behind=3.35;
   cameraGoal.set(
@@ -248,12 +266,12 @@ function syncView(dt){
   const now=performance.now();
   if(now-lastHudAt<85)return;
   lastHudAt=now;
-  $('animationState').textContent=(animator.active??'idle').toUpperCase();
+  $('animationState').textContent=(animator.displayActive??'idle').toUpperCase();
   const velocity=controls.velocity;
   $('speedValue').innerHTML=Math.hypot(velocity.x,velocity.z).toFixed(1)+' <small>m/s</small>';
   $('groundedState').textContent=controls.grounded?'GROUNDED':'AIRBORNE';
   $('fpsValue').textContent=(engine.fps||'--')+' FPS';
-  document.body.dataset.animation=(animator.active??'idle');
+  document.body.dataset.animation=(animator.displayActive??'idle');
   document.body.dataset.view=mode;
 }
 
@@ -264,7 +282,8 @@ function cleanup(){
   engine?.stop();
   session?.dispose();
   character?.dispose();
-  characterAsset?.dispose();
+  for(const asset of characterAssets.values())asset.dispose();
+  characterAssets.clear();
   viewRig?.removeFromParent();
   for(const object of stageObjects){
     object.removeFromParent?.();
@@ -290,16 +309,25 @@ async function launch(){
     session.controls.camera.position.set(0,session.controls.eyeHeight,6);
     engine.scene.add(engine.camera);
     buildRoom();
-    try{
-      characterAsset=await loadCharacterAsset(engine.assets,
-        './assets/robot-expressive.glb',{splitJump:true});
-    }catch(error){
-      loadWarning='Authored model unavailable; showing the original rig. '+
-        (error?.message||'');
-      console.warn(loadWarning);
-      $('characterSource').querySelector('[value="authored"]').disabled=true;
+    const modelSpecs=[
+      ['human','./assets/quaternius-animated-human.glb',
+        {splitJump:true,maxActionSeconds:{interact:1.6}}],
+      ['robot','./assets/robot-expressive.glb',{splitJump:true}]
+    ];
+    const loaded=await Promise.allSettled(modelSpecs.map(([,url,options])=>
+      loadCharacterAsset(engine.assets,url,options)));
+    for(let i=0;i<modelSpecs.length;i++){
+      const key=modelSpecs[i][0],result=loaded[i];
+      if(result.status==='fulfilled')characterAssets.set(key,result.value);
+      else{
+        const warning=key+' model unavailable: '+(result.reason?.message||'load error');
+        loadWarning+=(loadWarning?' ':'')+warning;
+        console.warn(warning);
+        $('characterSource').querySelector('[value="'+key+'"]').disabled=true;
+      }
     }
-    setCharacterSource(characterAsset?'authored':'diagnostic');
+    setCharacterSource(characterAssets.has('human')?'human':
+      characterAssets.has('robot')?'robot':'diagnostic');
     const hands=createFirstPersonHands();
     viewRig=hands.root;
     engine.camera.add(viewRig);
@@ -325,6 +353,7 @@ async function launch(){
     bind('thirdPerson',()=>switchView('third'));
     bind('firstPerson',()=>switchView('first'));
     bind('interactButton',()=>triggerAction('interact'));
+    bind('attackButton',()=>triggerAction('attack'));
     bind('reloadButton',()=>triggerAction('reload'));
     const characterChange=()=>setCharacterSource($('characterSource').value);
     $('characterSource').addEventListener('change',characterChange);
@@ -343,12 +372,13 @@ async function launch(){
     window.__characterLab={
       get ready(){return started&&!disposed;},
       get mode(){return mode;},
-      get active(){return animator.active;},
+      get active(){return animator.displayActive;},
       get actions(){return actionCount;},
       get source(){return characterSource;},
-      get missing(){return characterAsset?.missing||[];},
+      get missing(){return characterAssets.get(characterSource)?.missing||[];},
       get animator(){return animator;},
       get character(){return character;},
+      get footGrounding(){return footGrounding;},
       engine,session,viewAnimator,viewRig,
       switchView,setCharacterSource,triggerAction,
       get status(){return $('feedback').textContent;}

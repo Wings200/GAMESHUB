@@ -6,30 +6,30 @@
 <meta name="theme-color" content="#0a1117">
 <title>GAMESHUB ENGINE — Character Animation Test</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./character.css?v=build025">
+<link rel="stylesheet" href="./character.css?v=build026">
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
 "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
-<script type="module" src="./character.js?v=build025"></script>
+<script type="module" src="./character.js?v=build026"></script>
 </head>
 <body>
 <canvas id="game" aria-label="Playable 3D character animation test room"></canvas>
 
 <div id="launch" class="launch">
   <div class="launch-inner">
-    <div class="eyebrow">GAMESHUB ENGINE / BUILD 025 / DEVELOPER PREVIEW</div>
+    <div class="eyebrow">GAMESHUB ENGINE / BUILD 026 / DEVELOPER PREVIEW</div>
     <div class="hero-mark">GH<span> / MOTION</span></div>
     <h1>Character<br><em>Animation Lab</em></h1>
-    <p>Test imported skeletal animation with a real rigged character. Compare its authored walking, running, jumping and interaction clips against the original diagnostic rig.</p>
+    <p>Test smooth blending and upper-body layers on a real rigged human. Compare human animation, the original robot, and our diagnostic rig in the same reusable engine room.</p>
     <button id="launchButton" class="primary" type="button">ENTER ANIMATION TEST <span>↗</span></button>
-    <p class="disclaimer">The authored sample is a CC0 robot by Tomás Laulhé, not a finished realistic human. The sample has no reload clip; the old diagnostic rig remains available for comparison.</p>
+    <p class="disclaimer">The animated human is CC0 by Quaternius. It has authored movement, jumping, working and punching; no authored reload. The robot and diagnostic rig remain available for comparison.</p>
     <a class="back" href="/developer.html">← Return to Developer Center</a>
   </div>
 </div>
 
 <header id="topbar" class="topbar" hidden>
-  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 025 · LIVE TEST</small></div></div>
+  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 026 · LIVE TEST</small></div></div>
   <div class="top-actions">
     <span id="qualityIndicator" class="signal">BALANCED</span>
     <a href="/developer.html">EXIT LAB</a>
@@ -46,6 +46,7 @@
   <div><kbd>SPACE</kbd><span>Jump</span></div>
   <div><kbd>V</kbd><span>Switch camera</span></div>
   <div><kbd>E</kbd><span>Interact near console</span></div>
+  <div><kbd>F</kbd><span>Upper-body punch test</span></div>
   <div><kbd>R</kbd><span>Reload test</span></div>
   <div><kbd>ESC</kbd><span>Release mouse</span></div>
   <p>Click the world to lock your mouse. If pointer lock is blocked, drag to look around. Third-person is best for reviewing the full-body animation.</p>
@@ -61,20 +62,22 @@
   </div>
   <label class="panel-label" for="characterSource">CHARACTER SOURCE</label>
   <select id="characterSource">
-    <option value="authored" selected>Authored robot · skeletal GLB</option>
+    <option value="human" selected>Human · Quaternius CC0</option>
+    <option value="robot">Robot · previous authored model</option>
     <option value="diagnostic">Original joint test rig</option>
   </select>
   <div class="panel-label">CAMERA</div>
   <div class="button-pair"><button id="thirdPerson" class="selected" type="button">3RD PERSON</button><button id="firstPerson" type="button">1ST PERSON</button></div>
   <div class="panel-label">ANIMATION TESTS</div>
   <div class="button-pair"><button id="interactButton" type="button">INTERACT <kbd>E</kbd></button><button id="reloadButton" type="button">RELOAD <kbd>R</kbd></button></div>
+  <div class="button-pair"><button id="attackButton" type="button">UPPER-BODY PUNCH <kbd>F</kbd></button></div>
   <label class="panel-label" for="quality">RENDER QUALITY</label>
   <select id="quality">
     <option value="performance">Performance</option>
     <option value="balanced" selected>Balanced</option>
     <option value="quality">Quality</option>
   </select>
-  <p class="panel-foot">The robot provides authored Idle, Walking, Running, Jump and Wave clips. Reload is unavailable for this sample. The first-person hands are still diagnostic. Focus on transition quality and foot sliding.</p>
+  <p class="panel-foot">Walk or run while pressing F or using Interact to inspect independent upper-body action layers. Foot contact uses a conservative visual adjustment, not full leg IK. Reload is unavailable without an authored clip; first-person hands are diagnostic.</p>
   <div id="feedback" role="status" aria-live="polite">Ready to test.</div>
 </aside>
 

@@ -10,9 +10,25 @@ export const DEFAULT_CHARACTER_CLIPS=Object.freeze({
   jump:['Jump'],
   fall:['Fall','Falling'],
   land:['Land','Landing'],
-  interact:['Interact','Interaction','Wave'],
+  interact:['Interact','Interaction','Wave','Working','Work'],
+  attack:['Attack','Punch'],
   reload:['Reload','Reloading']
 });
+
+// Selects only upper-body bone tracks from an authored full-body clip.
+// A masked overlay can play alongside walking without controlling legs/hips.
+// No retargeting is performed: bones still need to belong to the same rig.
+export function maskClipToUpperBody(clip,{name='upper-body'}={}){
+  if(!(clip instanceof THREE.AnimationClip))
+    throw new TypeError('Upper-body mask requires an AnimationClip');
+  const tracks=clip.tracks.filter(track=>{
+    const bone=track.name.match(/bones\[([^\]]+)\]/)?.[1]||
+      track.name.split('.')[0].split('/').pop();
+    return /(?:spine|chest|neck|head|shoulder|clavicle|arm|hand|finger|thumb|index)/i.test(bone);
+  }).map(track=>track.clone());
+  if(!tracks.length)throw new Error('Animation has no recognizable upper-body bone tracks');
+  return new THREE.AnimationClip(name,clip.duration,tracks);
+}
 
 function aliases(value){
   if(value===null)return [];
@@ -51,6 +67,18 @@ export function resolveCharacterClips(animations,{clipMap={},required=['idle','w
 export function createCharacterAsset(gltf,options={}){
   if(!gltf?.scene?.isObject3D)throw new TypeError('A character needs a glTF scene');
   const {clips,missing,sourceNames}=resolveCharacterClips(gltf.animations||[],options);
+  if(options.maxActionSeconds){
+    if(typeof options.maxActionSeconds!=='object'||Array.isArray(options.maxActionSeconds))
+      throw new TypeError('maxActionSeconds must be a state-to-duration map');
+    for(const [state,seconds] of Object.entries(options.maxActionSeconds)){
+      if(!Number.isFinite(seconds)||seconds<=0)
+        throw new TypeError('Action duration must be positive and finite');
+      if(clips[state]&&clips[state].duration>seconds){
+        clips[state]=THREE.AnimationUtils.subclip(clips[state],state,
+          0,Math.max(1,Math.round(seconds*30)),30);
+      }
+    }
+  }
   // Some authored characters provide a complete jump with no separately
   // named fall/landing clips. Split it only when explicitly requested.
   if(options.splitJump && clips.jump && !clips.fall && !clips.land){
@@ -78,7 +106,12 @@ export function createCharacterAsset(gltf,options={}){
       const model=cloneSkeleton(scene);
       const root=new THREE.Group();
       root.name='ImportedCharacter';
-      root.add(model);
+      // Foot-contact correction is applied to this visual-only child. The
+      // owning player root and physics collider stay fixed and independent.
+      const placement=new THREE.Group();
+      placement.name='VisualFootPlacement';
+      root.add(placement);
+      placement.add(model);
       model.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(model);
       const size=bounds.getSize(new THREE.Vector3());
@@ -97,7 +130,7 @@ export function createCharacterAsset(gltf,options={}){
       });
       let removed=false;
       const instance={
-        root,model,clips,
+        root,placement,model,clips,
         dispose(){
           if(removed)return;
           removed=true;
