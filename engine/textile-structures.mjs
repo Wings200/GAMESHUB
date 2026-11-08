@@ -6,7 +6,6 @@ const TAU = Math.PI * 2;
 const fract = n => n - Math.floor(n);
 const wrap = (n,period) => (n % period + period) % period;
 const smooth = t => t*t*(3-2*t);
-const saturate = n => Math.min(1,Math.max(0,n));
 const limit = n => Math.max(.02,Math.min(.98,n));
 function hash(x,y,seed){
   let n=(Math.imul(x+seed,374761393)^Math.imul(y+seed,668265263))|0;
@@ -28,14 +27,8 @@ function grid(u,v,countX,countY,seed) {
   const col=wrap(Math.floor(x),countX),row=wrap(Math.floor(y),countY);
   return {x:fract(x),y:fract(y),col,row,seeded:hash(col,row,seed)*2-1};
 }
-function basis(u,v,countX,countY,seed) {
-  const sx=Math.cos(TAU*u*countX),sy=Math.cos(TAU*v*countY);
-  const wave=Math.sin(TAU*u*countX)*Math.sin(TAU*v*countY);
-  const fuzz=signed(noise(u,v,seed+91,cycles(54,1)));
-  return {sx,sy,wave,fuzz};
-}
-
-export function getTextileConstruction(preset) {
+const constructionCache=new WeakMap();
+function resolveConstruction(preset) {
   const name=(preset?.name||'').toLowerCase();
   if(preset?.category==='fabric'){
     if(/velvet/.test(name))return 'velvet-nap';
@@ -58,6 +51,13 @@ export function getTextileConstruction(preset) {
     return 'fine-cut';
   }
   return null;
+}
+export function getTextileConstruction(preset){
+  if(!preset || typeof preset!=='object')return null;
+  if(constructionCache.has(preset))return constructionCache.get(preset);
+  const type=resolveConstruction(preset);
+  constructionCache.set(preset,type);
+  return type;
 }
 export function sampleTextileStructure(preset,u,v,density=1){
   const type=getTextileConstruction(preset);
@@ -140,7 +140,7 @@ export function sampleTextileStructure(preset,u,v,density=1){
     }
     case 'berber-loop':{
       // Raised loop rings: rounded yarn circles in offset rows.
-      const n=cycles(22,d),g=grid(u,v,n,n,seed);
+      const n=Math.max(2,Math.round(22*d/2)*2),g=grid(u,v,n,n,seed);
       const shift=(g.row%2)*.5;
       const px=fract(g.x+shift)-.5,py=g.y-.5;
       const ring=Math.exp(-Math.pow((Math.hypot(px,py)-.29)*11,2));
