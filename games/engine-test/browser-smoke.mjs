@@ -35,7 +35,8 @@ try {
     return document.getElementById('launch').hidden &&
       document.getElementById('fps').textContent !== '--';
   },null,{timeout:45000});
-  if (await page.locator('#intro').isVisible()) await page.locator('[data-skip-intro]').click();
+  // Programmatic click avoids the auto-finish/actionability race at 4.9 seconds.
+  await page.evaluate(() => document.querySelector('[data-skip-intro]')?.click());
   await page.waitForTimeout(1000);
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
