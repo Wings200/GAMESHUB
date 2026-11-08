@@ -93,11 +93,14 @@ export class GameEngine {
 
   frame(time) {
     if (!this.running) return;
-    const dt = clampDelta((time - this.lastTime) / 1000);
+    const realDt = Math.max(0,(time - this.lastTime) / 1000);
+    const dt = clampDelta(realDt);
     this.lastTime = time;
-    this.elapsed += dt;
+    this.elapsed += realDt;
     this.frames++;
-    this.sampleTime += dt;
+    // Frame-rate diagnostics must report wall-clock FPS, never an inflated
+    // number caused by physics delta clamping on a struggling GPU.
+    this.sampleTime += realDt;
     if (this.sampleTime >= 0.5) {
       this.fps = Math.round(this.frames / this.sampleTime);
       this.frames = 0;
