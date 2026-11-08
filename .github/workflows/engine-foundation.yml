@@ -55,5 +55,7 @@ jobs:
         run: node games/engine-test/session-integration-smoke.mjs
       - name: Smoke-test animated characters, crossfades and one-shot actions
         run: node games/engine-test/animation-smoke.mjs
+      - name: Smoke-test playable animation lab, input, camera switch and interactions
+        run: node games/engine-test/character-lab-smoke.mjs
       - name: Smoke-test WebGL room, quality presets and controls
         run: node games/engine-test/browser-smoke.mjs
