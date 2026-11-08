@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {layerTiming, mixDuration, encodeWav, MAX_MIX_SECONDS} from '../engine/audio-workbench.js';
+import {EngineAudio} from '../engine/audio.js';
 
 const buffer = {duration: 3};
 test('audio layer timing respects trim, pitch and offset', () => {
@@ -29,4 +30,22 @@ test('exports a valid stereo 16-bit WAV header with correctly encoded PCM sample
   assert.equal(view.getUint32(24, true), 48000);
   assert.equal(view.getInt16(44, true), 16384);
   assert.equal(view.getInt16(48, true), -32768);
+});
+
+test('engine plays decoded recordings through volume and stereo controls', () => {
+  let played = false;
+  const connectable = () => ({connect(target) { return target; }});
+  const audio = new EngineAudio();
+  audio.context = {
+    state: 'running', destination: {},
+    createBufferSource: () => ({...connectable(), start() { played = true; }}),
+    createGain: () => ({...connectable(), gain: {value: 0}}),
+    createStereoPanner: () => ({...connectable(), pan: {value: 0}})
+  };
+  audio.clips.set('metal-impact', {duration: 1});
+  const source = audio.playClip('metal-impact', {volume: .9, pan: -.25});
+  assert.equal(played, true);
+  assert.equal(source.buffer.duration, 1);
+  audio.muted = true;
+  assert.equal(audio.playClip('metal-impact'), null);
 });
