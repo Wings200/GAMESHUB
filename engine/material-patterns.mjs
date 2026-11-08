@@ -107,3 +107,49 @@ export function sampleMaterialPattern(preset,u,v,scale=1){
   }
   return shade;
 }
+
+// Physical detail for the first three construction families. Height is a
+// dimensionless relief field (not geometry displacement); roughness is a
+// multiplier used by Three.js's PBR roughness map. Both tile seamlessly.
+export function sampleMaterialRelief(preset,u,v,scale=1){
+  const {pattern,seed}=preset;
+  if(!['concrete','brick','wood'].includes(pattern))return null;
+  u=fract(u);v=fract(v);
+  const density=Math.max(.25,Math.min(12,Number(scale)||1));
+  const cycles=n=>Math.max(1,Math.round(n*density));
+  const fine=signed(periodicNoise(u,v,seed+151,cycles(48)));
+  const medium=signed(periodicNoise(u,v,seed+152,cycles(16)));
+  if(pattern==='concrete'){
+    const grain=signed(periodicNoise(u,v,seed+153,cycles(80)));
+    return {
+      height:.5+medium*.095+fine*.054+grain*.018,
+      roughness:Math.max(.73,Math.min(1,.9+medium*.045+grain*.035))
+    };
+  }
+  if(pattern==='brick'){
+    const rows=Math.max(2,Math.round(8*density/2)*2),cols=cycles(4);
+    const ry=v*rows,row=Math.floor(ry),cx=u*cols-(row%2)*.5;
+    const mortar=Math.max(closeToGrid(ry,.035),closeToGrid(cx,.032));
+    const faceShade=signed(hash(wrap(Math.floor(cx),cols),wrap(row,rows),seed+154))*.045;
+    return {
+      height:.62+faceShade+fine*.035-mortar*.43,
+      roughness:Math.min(1,.83+medium*.045+mortar*.17)
+    };
+  }
+  const weave=v*cycles(27)+Math.sin(TAU*u*cycles(2)+seed)*.26+
+    Math.sin(TAU*u*cycles(5))*.09;
+  const ridges=Math.sin(TAU*weave);
+  const cells=cycles(2),cx=Math.floor(u*cells),cy=Math.floor(v*cells);
+  let knot=0;
+  if(hash(cx,cy,seed+77)>.48){
+    const localX=fract(u*cells),localY=fract(v*cells);
+    const kx=.32+hash(cx,cy,seed+78)*.36;
+    const ky=.32+hash(cx,cy,seed+79)*.36;
+    const ring=Math.hypot((localX-kx)/.13,(localY-ky)/.05);
+    knot=Math.exp(-Math.pow((ring-1)*2,2));
+  }
+  return {
+    height:.51+ridges*.074+fine*.025-knot*.095,
+    roughness:Math.max(.62,Math.min(1,.82-ridges*.07+fine*.035+knot*.06))
+  };
+}
