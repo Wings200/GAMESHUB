@@ -1,0 +1,36 @@
+{
+  "name": "gameshub-engine-intro",
+  "output": "../../../assets/audio/generated/gameshub-engine-intro.wav",
+  "sampleRate": 48000,
+  "masterGainDb": -6,
+  "layers": [
+    {
+      "source": "../../../assets/audio/sources/engine-logo/metal-pieces.wav",
+      "start": 0.35,
+      "trimStart": 0,
+      "gainDb": -5,
+      "pan": -0.12,
+      "fadeIn": 0.01,
+      "fadeOut": 0.25
+    },
+    {
+      "source": "../../../assets/audio/sources/engine-logo/deep-impact.wav",
+      "start": 1.15,
+      "trimStart": 0,
+      "gainDb": -4,
+      "pan": 0,
+      "fadeIn": 0,
+      "fadeOut": 0.6
+    },
+    {
+      "source": "../../../assets/audio/sources/engine-logo/room-rumble.wav",
+      "start": 0.0,
+      "trimStart": 0,
+      "gainDb": -13,
+      "pan": 0,
+      "fadeIn": 0.4,
+      "fadeOut": 1.2,
+      "lowpassHz": 2600
+    }
+  ]
+}
