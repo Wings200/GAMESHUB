@@ -27,3 +27,5 @@ export {GameSession,createGameSession} from './session.js';
 
 export {AnimationController} from './animation.js';
 export {chooseLocomotionClip} from './animation-state.mjs';
+export {DEFAULT_CHARACTER_CLIPS,resolveCharacterClips,
+  createCharacterAsset,loadCharacterAsset} from './character-assets.js';

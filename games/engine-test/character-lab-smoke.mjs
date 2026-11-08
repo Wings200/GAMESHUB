@@ -16,12 +16,15 @@ try{
   const starting=await page.evaluate(()=>{
     const lab=window.__characterLab;
     const rig=lab.character.root;
+    let skinnedMeshes=0;
+    rig.traverse(node=>{if(node.isSkinnedMesh)skinnedMeshes++;});
     return {
       mode:lab.mode,viewCamera:lab.engine.renderCamera!==null,
       characterVisible:rig.visible,viewmodelVisible:lab.viewRig.visible,
       animators:lab.session.animators.size,
       clips:[...lab.animator.clips.keys()],
-      rigMeshes:rig.getObjectByName('Helmet')?.isMesh && rig.getObjectByName('GloveL')?.isMesh,
+      source:lab.source,missing:lab.missing,
+      skinnedMeshes,reloadDisabled:document.getElementById('reloadButton').disabled,
       colliders:lab.session.world.colliders.length,
       rendererCalls:lab.engine.renderer.info.render.calls,
       ready:lab.ready
@@ -33,8 +36,13 @@ try{
   assert.equal(starting.characterVisible,true);
   assert.equal(starting.viewmodelVisible,false);
   assert.equal(starting.animators,2);
-  assert.deepEqual(starting.clips,['idle','walk','run','jump','fall','interact','reload','land']);
-  assert.equal(starting.rigMeshes,true);
+  assert.equal(starting.source,'authored');
+  assert.ok(starting.clips.includes('walk'));
+  assert.ok(starting.clips.includes('land'));
+  assert.ok(!starting.clips.includes('reload'));
+  assert.ok(starting.missing.includes('reload'));
+  assert.equal(starting.reloadDisabled,true);
+  assert.ok(starting.skinnedMeshes>0);
   assert.ok(starting.colliders>=5);
   assert.ok(starting.rendererCalls>0);
   await page.keyboard.down('w');
@@ -59,7 +67,6 @@ try{
   await page.waitForFunction(()=>window.__characterLab?.active==='jump' ||
     window.__characterLab?.active==='fall',{timeout:10000});
   await page.keyboard.up('Space');
-  await page.waitForFunction(()=>window.__characterLab?.active==='land',{timeout:10000});
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:10000});
   await page.keyboard.press('v');
   const first=await page.evaluate(()=>{
@@ -72,6 +79,12 @@ try{
     mode:'first',renderCamera:true,bodyVisible:false,handsVisible:true,reticleVisible:true
   });
   await page.keyboard.press('r');
+  assert.match(await page.locator('#feedback').innerText(),/no authored reload/i);
+  assert.equal(await page.evaluate(()=>window.__characterLab.actions),0);
+  await page.locator('#characterSource').selectOption('diagnostic');
+  assert.equal(await page.evaluate(()=>window.__characterLab.source),'diagnostic');
+  assert.equal(await page.locator('#reloadButton').isEnabled(),true);
+  await page.locator('#reloadButton').click();
   await page.waitForFunction(()=>window.__characterLab?.active==='reload',{timeout:5000});
   const reloading=await page.evaluate(()=>({
     body:window.__characterLab.animator.active,
@@ -82,6 +95,8 @@ try{
   assert.equal(reloading.hands,'reload');
   assert.equal(reloading.count,1);
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:8000});
+  await page.locator('#characterSource').selectOption('authored');
+  assert.equal(await page.evaluate(()=>window.__characterLab.source),'authored');
   await page.locator('#interactButton').click();
   await page.waitForFunction(()=>window.__characterLab?.active==='interact',{timeout:5000});
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:8000});

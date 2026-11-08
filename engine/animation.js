@@ -5,10 +5,14 @@ import {chooseLocomotionClip} from './animation-state.mjs';
 // in the object's rig (typically glTF animations). This module does not make
 // procedural skeletal animation or substitute for authored character assets.
 export class AnimationController {
-  constructor(root,{clips={},fadeSeconds=.2,walkThreshold=.12,runThreshold=5}={}){
+  constructor(root,{clips={},fadeSeconds=.2,walkThreshold=.12,runThreshold=5,
+    locomotionRates={}}={}){
     if(!root?.isObject3D)throw new TypeError('AnimationController requires a THREE.Object3D');
     if(!Number.isFinite(fadeSeconds)||fadeSeconds<0||fadeSeconds>5)
       throw new TypeError('fadeSeconds must be between 0 and 5');
+    if(!locomotionRates||typeof locomotionRates!=='object'||Array.isArray(locomotionRates)||
+      Object.values(locomotionRates).some(rate=>!Number.isFinite(rate)||rate<=0||rate>5))
+      throw new TypeError('locomotionRates must contain playback speeds from 0 to 5');
     this.root=root;
     this.mixer=new THREE.AnimationMixer(root);
     this.clips=new Map();
@@ -16,6 +20,7 @@ export class AnimationController {
     this.fadeSeconds=fadeSeconds;
     this.walkThreshold=walkThreshold;
     this.runThreshold=runThreshold;
+    this.locomotionRates={...locomotionRates};
     this.desiredLoop=null;
     this.current=null;
     this.activeName=null;
@@ -112,7 +117,7 @@ export class AnimationController {
     this.ensureActive();
     const name=chooseLocomotionClip({speed,grounded,verticalSpeed},
       this.actions.keys(),{walkThreshold:this.walkThreshold,runThreshold:this.runThreshold});
-    if(name)this.playLoop(name);
+    if(name)this.playLoop(name,{speed:this.locomotionRates[name]??1});
     return name;
   }
   syncFromControls(controls){

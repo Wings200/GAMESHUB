@@ -1,8 +1,9 @@
-import {THREE,GameEngine,createGameSession} from '../../engine/index.js';
+import {THREE,GameEngine,createGameSession,loadCharacterAsset} from '../../engine/index.js';
 import {createDiagnosticCharacter,createFirstPersonHands} from './character-rig.js';
 
 const $=id=>document.getElementById(id);
 let engine=null,session=null,character=null,viewAnimator=null,animator=null;
+let characterAsset=null,characterSource='diagnostic',loadWarning='';
 let viewRig=null,thirdCamera=null,mode='third',started=false,actionCount=0;
 let lastHudAt=0,consoleNear=false,disposed=false,wasGrounded=true;
 const eventCleanups=[];
@@ -139,8 +140,37 @@ function switchView(next){
     'First-person: inspect arm motion and action timing.';
 }
 
+function setCharacterSource(source){
+  if(!['authored','diagnostic'].includes(source))return false;
+  if(source==='authored'&&!characterAsset)return false;
+  if(animator){session.removeAnimator('lab-character');animator=null;}
+  character?.dispose();
+  character=source==='authored'?
+    characterAsset.createInstance({height:1.85,heading:Math.PI}):
+    createDiagnosticCharacter();
+  characterSource=source;
+  engine.scene.add(character.root);
+  character.root.visible=mode==='third';
+  animator=session.addAnimator('lab-character',character.root,character.clips,{
+    followControls:true,fadeSeconds:source==='authored'?0.2:0.19,runThreshold:3.8,
+    // Match in-place authored stride cycles to the lab's physical speeds.
+    locomotionRates:source==='authored'?{walk:1.55,run:1.8}:{}
+  });
+  $('characterSource').value=source;
+  $('reloadButton').disabled=!animator.has('reload');
+  $('feedback').textContent=source==='authored'?
+    'Authored skeletal clips loaded. This sample has no reload animation.':
+    'Original diagnostic rig loaded for comparison.';
+  return true;
+}
+
 function triggerAction(kind){
   if(!started||!['reload','interact'].includes(kind))return false;
+  if(!animator.has(kind)){
+    $('feedback').textContent='This character has no authored '+kind+
+      ' clip. Switch to the diagnostic rig or import a matching animation.';
+    return false;
+  }
   if(animator.oneShot || viewAnimator.oneShot){
     $('feedback').textContent='Wait for the current animation to finish.';
     return false;
@@ -174,7 +204,8 @@ function syncView(dt){
   const controls=session.controls,camera=engine.camera;
   // Ground contact drives a short recoverable landing clip. The old room
   // jumped immediately from a frozen fall pose into idle, which snapped.
-  if(!wasGrounded && controls.grounded && !animator.oneShot && !viewAnimator.oneShot){
+  if(!wasGrounded && controls.grounded && animator.has('land') &&
+    !animator.oneShot && !viewAnimator.oneShot){
     animator.playOnce('land',{fade:.085});
     viewAnimator.playOnce('land',{fade:.085});
   }
@@ -230,6 +261,7 @@ function cleanup(){
   engine?.stop();
   session?.dispose();
   character?.dispose();
+  characterAsset?.dispose();
   viewRig?.removeFromParent();
   for(const object of stageObjects){
     object.removeFromParent?.();
@@ -243,6 +275,7 @@ function cleanup(){
 async function launch(){
   if(started||disposed)return;
   $('launchButton').disabled=true;
+  $('launchButton').textContent='LOADING ANIMATION ASSETS…';
   try{
     engine=new GameEngine($('game'));
     engine.setQuality('balanced');
@@ -254,10 +287,16 @@ async function launch(){
     session.controls.camera.position.set(0,session.controls.eyeHeight,6);
     engine.scene.add(engine.camera);
     buildRoom();
-    character=createDiagnosticCharacter();
-    engine.scene.add(character.root);
-    animator=session.addAnimator('diagnostic-character',character.root,character.clips,
-      {followControls:true,fadeSeconds:.19,runThreshold:3.8});
+    try{
+      characterAsset=await loadCharacterAsset(engine.assets,
+        './assets/robot-expressive.glb',{splitJump:true});
+    }catch(error){
+      loadWarning='Authored model unavailable; showing the original rig. '+
+        (error?.message||'');
+      console.warn(loadWarning);
+      $('characterSource').querySelector('[value="authored"]').disabled=true;
+    }
+    setCharacterSource(characterAsset?'authored':'diagnostic');
     const hands=createFirstPersonHands();
     viewRig=hands.root;
     engine.camera.add(viewRig);
@@ -284,6 +323,9 @@ async function launch(){
     bind('firstPerson',()=>switchView('first'));
     bind('interactButton',()=>triggerAction('interact'));
     bind('reloadButton',()=>triggerAction('reload'));
+    const characterChange=()=>setCharacterSource($('characterSource').value);
+    $('characterSource').addEventListener('change',characterChange);
+    eventCleanups.push(()=>$('characterSource').removeEventListener('change',characterChange));
     const qualityChange=()=>{
       const selection=$('quality').value;
       session.setQuality(selection);
@@ -292,6 +334,7 @@ async function launch(){
     $('quality').addEventListener('change',qualityChange);
     eventCleanups.push(()=>$('quality').removeEventListener('change',qualityChange));
     engine.start();
+    if(loadWarning)$('feedback').textContent=loadWarning;
     // Diagnostic read-only-ish developer handle used by automated tests.
     // This page is already under GAMESHUB's existing developer access gate.
     window.__characterLab={
@@ -299,8 +342,12 @@ async function launch(){
       get mode(){return mode;},
       get active(){return animator.active;},
       get actions(){return actionCount;},
-      engine,session,animator,viewAnimator,character,viewRig,
-      switchView,triggerAction,
+      get source(){return characterSource;},
+      get missing(){return characterAsset?.missing||[];},
+      get animator(){return animator;},
+      get character(){return character;},
+      engine,session,viewAnimator,viewRig,
+      switchView,setCharacterSource,triggerAction,
       get status(){return $('feedback').textContent;}
     };
   }catch(error){failure(error);}
