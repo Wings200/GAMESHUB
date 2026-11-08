@@ -1,7 +1,8 @@
-import {GameEngine, ENGINE_VERSION} from '../../engine/core.js';
+import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build005';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js?v=build002';
-import {EngineAudio} from '../../engine/audio.js';
+import {EngineIntro} from '../../engine/intro.js?v=build005';
+import {EngineAudio} from '../../engine/audio.js?v=build005';
+import {ENGINE_LOGO_MP3, ENGINE_TEST_MP3} from '../../engine/generated-sounds.js?v=build005';
 import {createTestRoom} from './room.js';
 
 const $ = id => document.getElementById(id);
@@ -40,7 +41,14 @@ async function start() {
   $('launchButton').disabled = true;
   try {
     // The click is the audio-unlock gesture required by browsers.
-    await audio.unlock().catch(() => false);
+    const audioReady = await audio.unlock().catch(() => false);
+    if (audioReady) {
+      const assets = await Promise.allSettled([
+        audio.loadEncodedClip('gameshub-logo-intro', ENGINE_LOGO_MP3),
+        audio.loadEncodedClip('gameshub-test-cue', ENGINE_TEST_MP3)
+      ]);
+      for (const result of assets) if (result.status === 'rejected') console.warn('Audio asset failed to load:', result.reason);
+    }
     engine = new GameEngine($('world'));
     facility = createTestRoom(engine);
     controls = new FirstPersonControls($('world'), engine.camera, {
@@ -98,4 +106,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 003 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 005 | Developer Lab`);
