@@ -173,6 +173,28 @@ test('masked upper-body one-shot plays independently from moving legs',()=>{
   animator.dispose();
 });
 
+test('replaying a completed one-shot restarts it during its outgoing fade',()=>{
+  const root=new THREE.Group(),body=new THREE.Group();
+  body.name='Body';root.add(body);
+  const oneShot=new THREE.AnimationClip('Reload',.25,[
+    new THREE.NumberKeyframeTrack('Body.position[y]',[0,.25],[0,.2])
+  ]);
+  const animator=new AnimationController(root,{clips:{idle:clip('Idle'),reload:oneShot},
+    fadeSeconds:.25});
+  animator.playLoop('idle');
+  let count=0;
+  animator.playOnce('reload',{onFinish:()=>count++});
+  animator.update(.3);
+  assert.equal(count,1);
+  assert.equal(animator.active,'idle');
+  animator.playOnce('reload',{onFinish:()=>count++});
+  assert.ok(animator.oneShot);
+  assert.equal(animator.oneShot.time,0);
+  animator.update(.3);
+  assert.equal(count,2);
+  animator.dispose();
+});
+
 test('ground contact adjusts visuals within limit without moving player root',()=>{
   const root=new THREE.Group(),placement=new THREE.Group();
   root.position.y=2;

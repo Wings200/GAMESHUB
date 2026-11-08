@@ -138,7 +138,9 @@ export class AnimationController {
       action.setEffectiveTimeScale(speed);
       return action;
     }
-    const wasScheduled=action.isScheduled()&&previous!==action;
+    // One-shot replays always restart, including when their previous fade-out
+    // has not yet finished after the completion event.
+    const wasScheduled=!once&&action.isScheduled()&&previous!==action;
     const savedWeight=wasScheduled?action.getEffectiveWeight():0;
     if(!wasScheduled)action.reset();
     action.enabled=true;

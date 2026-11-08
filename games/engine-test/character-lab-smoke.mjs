@@ -97,9 +97,10 @@ try{
   assert.deepEqual(first,{
     mode:'first',renderCamera:true,bodyVisible:false,handsVisible:true,reticleVisible:true
   });
+  const actionsBeforeReload=await page.evaluate(()=>window.__characterLab.actions);
   await page.keyboard.press('r');
   assert.match(await page.locator('#feedback').innerText(),/no authored reload/i);
-  assert.equal(await page.evaluate(()=>window.__characterLab.actions),0);
+  assert.equal(await page.evaluate(()=>window.__characterLab.actions),actionsBeforeReload);
   await page.locator('#characterSource').selectOption('diagnostic');
   assert.equal(await page.evaluate(()=>window.__characterLab.source),'diagnostic');
   assert.equal(await page.locator('#reloadButton').isEnabled(),true);
@@ -115,7 +116,7 @@ try{
   }));
   assert.equal(reloading.body,'reload');
   assert.equal(reloading.hands,'reload');
-  assert.equal(reloading.count,1);
+  assert.equal(reloading.count,actionsBeforeReload+1);
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:8000});
   await page.locator('#characterSource').selectOption('robot');
   assert.equal(await page.evaluate(()=>window.__characterLab.source),'robot');
