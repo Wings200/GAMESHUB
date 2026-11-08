@@ -180,9 +180,9 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles})
     portalLight.shadow.needsUpdate=true;
     dirty=true;
   }
-  function toggle(player) {
+  function toggle(player,force=false) {
     if (!player)return false;
-    if(!targetOpen && doorDistance(player.x,player.z)>3.2)return false;
+    if(!force && doorDistance(player.x,player.z)>3.2)return false;
     if(targetOpen) {
       // Avoid deliberately sweeping the leaf through a player in its path.
       if(player.z>16.95 && player.z<20.5 && player.x>-1.8 && player.x<1.55) return false;
