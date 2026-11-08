@@ -89,11 +89,11 @@ async function start() {
       });
     });
     $('lampStatus').textContent=facility.fixtureLights.length+' REAL DOWNLIGHTS · LINKED TO VISIBLE CEILING PANELS';
-    let statsInterval = 0;
-    engine.onFrame((dt) => {
-      statsInterval += dt;
-      if (statsInterval < 0.25) return;
-      statsInterval = 0;
+    let lastStatsTick = 0;
+    engine.onFrame(() => {
+      const now=performance.now();
+      if (now-lastStatsTick < 250) return;
+      lastStatsTick=now;
       const stats = engine.renderer.info.render;
       $('fps').textContent = engine.fps || '--';
       $('drawCalls').textContent = stats.calls;
