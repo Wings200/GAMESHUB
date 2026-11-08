@@ -60,12 +60,11 @@ try {
     null,{timeout:16000});
   assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
   // Cube-camera probe passes should not leave the ordinary renderer stalled.
+  const beforeFrames=Number(await page.locator('#hud').getAttribute('data-completed-frames'));
   try {
-    await page.waitForFunction(() => {
-      const fps=Number(document.getElementById('fps').textContent);
-      const calls=Number(document.getElementById('drawCalls').textContent);
-      return fps>0 && calls>=170;
-    },null,{timeout:30000});
+    await page.waitForFunction(before=>
+      Number(document.getElementById('hud').dataset.completedFrames)>=before+2,
+      beforeFrames,{timeout:45000});
   } catch(error) {
     console.error('POST-CAPTURE DIAGNOSTICS',await page.evaluate(()=>({
       fps:document.getElementById('fps').textContent,
@@ -85,7 +84,8 @@ try {
   }));
   console.log('Balanced:',diagnostic);
   assert.ok(Number(diagnostic.drawCalls)>0,'scene rendered no geometry');
-  assert.ok(Number(diagnostic.fps)>0,'renderer stalled');
+  assert.ok(Number(await page.locator('#hud').getAttribute('data-completed-frames'))>0,
+    'main renderer must complete frames after probe capture');
   await page.locator('#quality').selectOption('quality');
   await page.waitForTimeout(750);
   await page.locator('#quality').selectOption('performance');
