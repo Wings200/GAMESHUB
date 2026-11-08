@@ -13,7 +13,7 @@
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }}
   </script>
-  <script type="module" src="./materials.js?v=build012"></script>
+  <script type="module" src="./materials.js?v=build013"></script>
 </head>
 <body>
   <header class="topbar">
@@ -60,6 +60,7 @@
       <label class="field-label" for="materialRepeat">TEXTURE TILING <output id="repeatValue">2.0×</output></label>
       <input id="materialRepeat" type="range" min=".25" max="12" step=".25">
       <div class="scale-hint"><span>LARGE PATTERN</span><span>SMALL PATTERN</span></div>
+      <label class="detail-toggle" for="detailToggle"><span><strong>Surface depth + varied roughness</strong><small id="detailSupport">Concrete, brick and wood preview</small></span><input id="detailToggle" type="checkbox" checked></label>
       <div class="actions">
         <button id="resetMaterial" class="subtle">RESET TO PRESET</button>
         <button id="saveMaterial">SAVE CUSTOM VARIANT</button>
