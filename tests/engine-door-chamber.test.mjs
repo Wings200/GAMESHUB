@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {doorCollisionAt,doorDistance,lightAperture} from '../engine/portal.js';
+import {doorCollisionAt,doorDistance,lightAperture,doorEase} from '../engine/portal.js';
 import {intersectsFootprint} from '../engine/collision.js';
 import {EngineAudio} from '../engine/audio.js';
 
@@ -15,6 +15,11 @@ test('closed chamber leaf blocks the clear opening, while a fully swung leaf per
   assert.ok(shut.maxZ<17.7);
 });
 test('hinge sweep and light aperture are smooth and bounded',()=>{
+  assert.equal(doorEase(0),0);
+  assert.equal(doorEase(.5),.5);
+  assert.equal(doorEase(1),1);
+  assert.equal(doorEase(7),1);
+  assert.ok(doorEase(.15)<doorEase(.45));
   assert.equal(lightAperture(0),0);
   assert.equal(lightAperture(1),1);
   assert.equal(lightAperture(.5),.5);
