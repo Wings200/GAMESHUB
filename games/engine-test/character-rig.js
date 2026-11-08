@@ -41,30 +41,31 @@ function leg(parent,name,side){
   part(hip,'ThighPlate'+name,.25,.31,.33,M.armor,0,-.23,-.04,.05);
   const knee=joint(hip,'RigKnee'+name,0,-.49,0);
   part(knee,'Shin'+name,.23,.48,.27,M.suit,0,-.25,0,.07);
-  part(knee,'Boot'+name,.27,.22,.43,M.boot,0,-.50,-.075,.07);
-  return {hip,knee};
+  const foot=joint(knee,'RigFoot'+name,0,-.47,0);
+  part(foot,'Boot'+name,.27,.22,.43,M.boot,0,-.04,-.075,.07);
+  return {hip,knee,foot};
 }
 export function createDiagnosticCharacter(){
   const root=new THREE.Group();root.name='DiagnosticCharacter';
+  const pelvis=joint(root,'RigPelvis',0,0,0);
   const torso=joint(root,'RigTorso',0,1.05,0);
   part(torso,'ChestSuit',.67,.74,.32,M.suit,0,.24,0,.14);
   part(torso,'ChestPlate',.59,.5,.355,M.armor,0,.27,-.015,.09);
   part(torso,'ChestBand',.39,.055,.383,M.trim,0,.08,-.018,.018);
-  part(root,'Waist',.52,.25,.34,M.joints,0,1.03,0,.075);
-  part(root,'Belt',.57,.11,.38,M.armor,0,1.0,0,.02);
+  part(pelvis,'Waist',.52,.25,.34,M.joints,0,1.03,0,.075);
+  part(pelvis,'Belt',.57,.11,.38,M.armor,0,1.0,0,.02);
   const head=joint(torso,'RigHead',0,.70,0);
   part(head,'Neck',.18,.15,.19,M.suit,0,-.035,0,.04);
   part(head,'Helmet',.40,.36,.42,M.armor,0,.19,0,.1);
   part(head,'FaceShield',.34,.13,.04,M.visor,0,.19,-.224,.035);
   part(head,'HelmetRidge',.22,.05,.44,M.trim,0,.39,0,.018);
   const arms=[limb(torso,'L',.42,.4,-1),limb(torso,'R',.42,.4,1)];
-  const legs=[leg(root,'L',-1),leg(root,'R',1)];
+  const legs=[leg(pelvis,'L',-1),leg(pelvis,'R',1)];
   // Neutral hand-held calibration tool: geometry only, not a weapon asset.
   const tool=joint(arms[1].elbow,'TrainingDevice',0,-.38,-.11);
   part(tool,'DeviceBody',.14,.13,.42,M.weapon,0,-.01,-.18,.025);
   part(tool,'DeviceGrip',.12,.23,.12,M.glove,0,-.17,-.07,.02);
   part(tool,'DeviceTip',.09,.1,.09,M.trim,0,-.01,-.43,.012);
-  const owned=[root];
   return {
     root,
     clips:makeCharacterClips(),
@@ -77,17 +78,24 @@ export function createDiagnosticCharacter(){
   };
 }
 const ROOT_ANIMATION_CHANNELS=[
-  'RigTorso.position[y]','RigTorso.rotation[x]',
-  'RigHead.rotation[x]','RigArmL.rotation[x]','RigArmR.rotation[x]',
+  'RigPelvis.position[y]','RigPelvis.rotation[z]','RigPelvis.rotation[y]',
+  'RigTorso.position[y]','RigTorso.rotation[x]','RigTorso.rotation[y]','RigTorso.rotation[z]',
+  'RigHead.rotation[x]','RigHead.rotation[z]',
+  'RigArmL.rotation[x]','RigArmR.rotation[x]',
+  'RigArmL.rotation[z]','RigArmR.rotation[z]',
   'RigElbowL.rotation[x]','RigElbowR.rotation[x]',
   'RigLegL.rotation[x]','RigLegR.rotation[x]',
-  'RigKneeL.rotation[x]','RigKneeR.rotation[x]'
+  'RigKneeL.rotation[x]','RigKneeR.rotation[x]',
+  'RigFootL.rotation[x]','RigFootR.rotation[x]'
 ];
-function pose({bob=0,lean=0,head=0,armL=0,armR=0,elbowL=0,elbowR=0,
-  legL=0,legR=0,kneeL=0,kneeR=0}={}){
-  return [1.05+bob,lean,head,armL,armR,elbowL,elbowR,legL,legR,kneeL,kneeR];
+function pose({bob=0,pelvisY=0,hipRoll=0,hipTwist=0,lean=0,twist=0,roll=0,
+  head=0,headRoll=0,armL=0,armR=0,armRollL=0,armRollR=0,
+  elbowL=-.12,elbowR=-.12,legL=0,legR=0,kneeL=0,kneeR=0,
+  footL=0,footR=0}={}){
+  return [pelvisY,hipRoll,hipTwist,1.05+bob,lean,twist,roll,head,headRoll,
+    armL,armR,armRollL,armRollR,elbowL,elbowR,legL,legR,kneeL,kneeR,footL,footR];
 }
-function makeClip(name,duration,sampler,samples=12){
+function makeClip(name,duration,sampler,samples=36){
   const times=Array.from({length:samples+1},(_,i)=>duration*i/samples);
   const frames=times.map(t=>pose(sampler(t/duration)));
   const tracks=ROOT_ANIMATION_CHANNELS.map((path,i)=>
@@ -103,43 +111,82 @@ function actionPose(keyframes,t){
   return mix;
 }
 function makeCharacterClips(){
-  const idle=makeClip('idle',2,t=>({bob:Math.sin(t*2*Math.PI)*.013,
-    armL:-.04,armR:-.04,elbowL:-.1,elbowR:-.1,head:Math.sin(t*2*Math.PI)*.025}));
+  const idle=makeClip('idle',2.6,t=>({
+    bob:Math.sin(t*2*Math.PI)*.007,
+    lean:Math.sin(t*2*Math.PI)*.009,
+    head:Math.sin(t*2*Math.PI+.5)*.014,
+    armL:-.055,armR:-.11,armRollL:-.09,armRollR:.09,
+    elbowL:-.16,elbowR:-.2
+  }));
   const gait=(t,run)=>{
-    const wave=Math.sin(t*2*Math.PI),wave2=Math.sin(t*2*Math.PI+Math.PI);
-    const gain=run?.73:.43;
+    const phase=t*2*Math.PI;
+    const wave=Math.sin(phase),double=Math.cos(phase*2);
+    const stride=run?.66:.43;
+    const lift=run?.64:.4;
+    const cadence=run?1:.66;
     return {
-      bob:Math.abs(wave)* (run?.07:.035),
-      lean:run?.15:.045,
-      armL:-wave*gain*.84-.08,
-      armR:wave*gain*.84-.08,
-      elbowL:-.28-(run?.16:.04)*Math.abs(wave),
-      elbowR:-.28-(run?.16:.04)*Math.abs(wave2),
-      legL:wave*gain,
-      legR:wave2*gain,
-      kneeL:Math.max(0,-wave)*(run?.62:.34),
-      kneeR:Math.max(0,-wave2)*(run?.62:.34)
+      // The double-frequency vertical pulse gives a real weight transfer
+      // on each footfall; pelvis and shoulders counter-rotate.
+      bob:(double-1)*(run?.016:.009),
+      pelvisY:-Math.abs(wave)*(run?.022:.01),
+      hipRoll:wave*(run?.075:.05),
+      hipTwist:wave*(run?.085:.05),
+      lean:run?.135:.025,
+      twist:-wave*(run?.09:.055),
+      roll:-wave*(run?.045:.028),
+      head:-.03-(run?.04:.012)*double,
+      headRoll:wave*.025,
+      armL:-wave*(run?.6:.39)-.12,
+      armR:wave*(run?.6:.39)-.12,
+      armRollL:-.14-(run?.05:0),
+      armRollR:.14+(run?.05:0),
+      elbowL:-.32-.12*cadence*Math.max(0,wave),
+      elbowR:-.32-.12*cadence*Math.max(0,-wave),
+      legL:wave*stride,
+      legR:-wave*stride,
+      kneeL:Math.max(0,-wave)*lift+.09*(1-double),
+      kneeR:Math.max(0,wave)*lift+.09*(1-double),
+      footL:-wave*(run?.18:.12)-Math.max(0,-wave)*.14,
+      footR:wave*(run?.18:.12)-Math.max(0,wave)*.14
     };
   };
   return {
-    idle,walk:makeClip('walk',.92,t=>gait(t,false)),
-    run:makeClip('run',.63,t=>gait(t,true)),
-    jump:makeClip('jump',.75,t=>({bob:0,lean:-.07,
-      armL:.4,armR:.38,elbowL:-.25,elbowR:-.25,
-      legL:.25,legR:-.18,kneeL:.62,kneeR:.55})),
-    fall:makeClip('fall',.75,t=>({lean:.1,armL:.55,armR:.55,
-      elbowL:-.23,elbowR:-.23,legL:.15,legR:-.15,kneeL:.26,kneeR:.2})),
-    interact:makeClip('interact',1.05,t=>actionPose([
-      {armR:-.06,elbowR:-.1},
-      {armR:1.35,elbowR:-.32,head:.15,lean:.08},
-      {armR:1.32,elbowR:-.3,head:.15,lean:.08},
-      {armR:-.04,elbowR:-.1}
+    idle,walk:makeClip('walk',.66,t=>gait(t,false)),
+    run:makeClip('run',.48,t=>gait(t,true)),
+    jump:makeClip('jump',.38,t=>actionPose([
+      {bob:-.055,lean:.15,kneeL:.28,kneeR:.28,armL:-.23,armR:-.23},
+      {bob:.025,lean:-.10,kneeL:.42,kneeR:.37,footL:-.2,footR:-.2,
+        armL:.4,armR:.32,elbowL:-.42,elbowR:-.42},
+      {bob:.04,lean:-.085,kneeL:.38,kneeR:.31,footL:-.1,footR:-.1,
+        armL:.48,armR:.37,elbowL:-.35,elbowR:-.35}
     ],t)),
-    reload:makeClip('reload',1.25,t=>actionPose([
-      {armR:-.04,armL:-.04,elbowL:-.1,elbowR:-.1},
-      {armR:.85,armL:.93,elbowL:-1.28,elbowR:-.64,head:.21,lean:.1},
-      {armR:.9,armL:1.05,elbowL:-1.45,elbowR:-.72,head:.2,lean:.1},
-      {armR:-.04,armL:-.04,elbowL:-.1,elbowR:-.1}
+    fall:makeClip('fall',.42,t=>actionPose([
+      {lean:-.06,kneeL:.32,kneeR:.25,armL:.4,armR:.33},
+      {lean:.08,kneeL:.19,kneeR:.25,footL:-.18,footR:-.18,
+        armL:.62,armR:.57,armRollL:-.17,armRollR:.17},
+      {lean:.14,kneeL:.26,kneeR:.27,footL:-.1,footR:-.1,
+        armL:.53,armR:.51}
+    ],t)),
+    interact:makeClip('interact',1.05,t=>actionPose([
+      {armR:-.12,armL:-.055,elbowR:-.2},
+      {armR:.65,armL:.18,elbowR:-.7,elbowL:-.35,head:.08,lean:.045},
+      {armR:1.16,armL:.28,elbowR:-.45,elbowL:-.45,head:.12,lean:.075},
+      {armR:1.08,armL:.24,elbowR:-.43,elbowL:-.45,head:.12,lean:.075},
+      {armR:-.12,armL:-.055,elbowR:-.2}
+    ],t)),
+    reload:makeClip('reload',1.35,t=>actionPose([
+      {armR:-.12,armL:-.055,elbowR:-.2,elbowL:-.16},
+      {armR:.5,armL:.61,elbowR:-.6,elbowL:-.96,head:.15,lean:.035},
+      {armR:.65,armL:.88,elbowR:-.7,elbowL:-1.25,head:.19,lean:.07},
+      {armR:.6,armL:.96,elbowR:-.76,elbowL:-1.34,head:.19,lean:.07},
+      {armR:.4,armL:.62,elbowR:-.54,elbowL:-1.0,head:.12,lean:.04},
+      {armR:-.12,armL:-.055,elbowR:-.2,elbowL:-.16}
+    ],t)),
+    land:makeClip('land',.3,t=>actionPose([
+      {bob:-.09,lean:.16,kneeL:.52,kneeR:.52,armL:.32,armR:.32,footL:-.12,footR:-.12},
+      {bob:-.065,lean:.10,kneeL:.42,kneeR:.42,armL:.17,armR:.17},
+      {bob:0,lean:0,kneeL:0,kneeR:0,armL:-.055,armR:-.11,
+        elbowL:-.16,elbowR:-.2}
     ],t))
   };
 }
@@ -148,12 +195,12 @@ export function createFirstPersonHands(){
   const root=new THREE.Group();root.name='DiagnosticFirstPersonHands';
   root.position.set(.0,-.41,-.72);
   const sleeve=material('#293e4e'),gloves=material('#172630');
-  const left=joint(root,'ViewArmL',-.31,-.08,.08);
-  const right=joint(root,'ViewArmR',.25,-.09,.04);
-  part(left,'LeftSleeve',.18,.48,.22,sleeve,0,-.11,-.17,.045);
-  part(right,'RightSleeve',.18,.46,.22,sleeve,0,-.12,-.16,.045);
-  part(left,'LeftHand',.18,.19,.19,gloves,0,.08,-.32,.035);
-  part(right,'RightHand',.18,.19,.19,gloves,0,.07,-.32,.035);
+  const left=joint(root,'ViewArmL',-.28,-.09,.10);
+  const right=joint(root,'ViewArmR',.23,-.09,.04);
+  part(left,'LeftSleeve',.20,.48,.24,sleeve,0,-.13,-.16,.055);
+  part(right,'RightSleeve',.20,.46,.24,sleeve,0,-.13,-.16,.055);
+  part(left,'LeftHand',.18,.19,.20,gloves,0,.09,-.33,.045);
+  part(right,'RightHand',.18,.19,.20,gloves,0,.09,-.33,.045);
   const device=joint(right,'ViewDevice',0,.09,-.39);
   part(device,'HeldTrainingDevice',.24,.18,.57,M.weapon,-.045,0,-.1,.04);
   part(device,'HeldIndicator',.12,.055,.08,M.trim,-.05,.12,-.27,.018);
@@ -163,13 +210,14 @@ export function createFirstPersonHands(){
     tracks.map((path,i)=>new THREE.NumberKeyframeTrack(path,
       keyframes.map((_,j)=>duration*j/(keyframes.length-1)),keyframes.map(p=>p[i]))));
   const clips={
-    idle:sample('idle',1,[[.55,.4,0,0,0,0,0],[.54,.41,0,0,0,.006,.008],[.55,.4,0,0,0,0,0]]),
-    walk:sample('walk',.7,[[.55,.4,0,0,0,0,0],[.38,.64,0,0,.02,-.024,.024],[.55,.4,0,0,0,0,0],[.66,.29,0,0,-.01,.024,-.024],[.55,.4,0,0,0,0,0]]),
-    run:sample('run',.5,[[.24,.17,0,0,.11,-.09,-.09],[.25,.18,.01,-.01,.12,-.06,-.06],[.24,.17,0,0,.11,-.09,-.09]]),
-    jump:sample('jump',.7,[[.7,.62,0,0,0,0,0],[.7,.62,0,0,0,.02,.02]]),
-    fall:sample('fall',.7,[[.48,.4,0,0,.06,0,0],[.48,.4,0,0,.06,0,0]]),
-    interact:sample('interact',1.05,[[.55,.4,0,0,0,0,0],[.5,1.1,0,-.08,-.1,0,.1],[.5,1.1,0,-.08,-.1,0,.1],[.55,.4,0,0,0,0,0]]),
-    reload:sample('reload',1.25,[[.55,.4,0,0,0,0,0],[1.12,.65,-.42,.05,-.24,-.04,.06],[1.2,.68,-.52,.05,-.25,-.01,.08],[.55,.4,0,0,0,0,0]])
+    idle:sample('idle',1.8,[[.47,.48,-.07,.07,0,0,0],[.46,.49,-.065,.065,0,.008,.008],[.47,.48,-.07,.07,0,0,0]]),
+    walk:sample('walk',.66,[[.47,.48,-.07,.07,0,0,0],[.33,.61,-.08,.08,.015,-.02,.018],[.47,.48,-.07,.07,0,0,0],[.6,.35,-.055,.055,-.015,.016,-.02],[.47,.48,-.07,.07,0,0,0]]),
+    run:sample('run',.48,[[.24,.24,-.065,.065,.10,-.075,-.075],[.32,.18,-.08,.08,.14,-.06,-.065],[.24,.24,-.065,.065,.10,-.075,-.075],[.18,.32,-.06,.06,.09,-.06,-.065],[.24,.24,-.065,.065,.10,-.075,-.075]]),
+    jump:sample('jump',.38,[[.36,.34,-.08,.08,.06,-.025,-.025],[.66,.6,-.08,.08,-.03,.04,.04],[.62,.56,-.08,.08,-.02,.025,.025]]),
+    fall:sample('fall',.42,[[.62,.56,-.08,.08,-.02,.025,.025],[.49,.48,-.06,.06,.04,0,0],[.52,.5,-.06,.06,.02,.01,.01]]),
+    interact:sample('interact',1.05,[[.47,.48,-.07,.07,0,0,0],[.52,1.02,-.05,-.1,-.12,-.01,.11],[.51,1.08,-.05,-.1,-.12,-.01,.12],[.49,.92,-.05,-.1,-.09,0,.08],[.47,.48,-.07,.07,0,0,0]]),
+    reload:sample('reload',1.35,[[.47,.48,-.07,.07,0,0,0],[.9,.58,-.4,.06,-.18,-.03,.07],[1.13,.64,-.54,.06,-.3,-.04,.08],[1.07,.64,-.48,.06,-.24,-.02,.08],[.8,.55,-.26,.06,-.1,0,.04],[.47,.48,-.07,.07,0,0,0]]),
+    land:sample('land',.3,[[.58,.57,-.08,.08,.08,-.05,-.05],[.55,.54,-.075,.075,.06,-.03,-.03],[.47,.48,-.07,.07,0,0,0]])
   };
   return {root,clips};
 }

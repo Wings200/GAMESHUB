@@ -33,7 +33,7 @@ try{
   assert.equal(starting.characterVisible,true);
   assert.equal(starting.viewmodelVisible,false);
   assert.equal(starting.animators,2);
-  assert.deepEqual(starting.clips,['idle','walk','run','jump','fall','interact','reload']);
+  assert.deepEqual(starting.clips,['idle','walk','run','jump','fall','interact','reload','land']);
   assert.equal(starting.rigMeshes,true);
   assert.ok(starting.colliders>=5);
   assert.ok(starting.rendererCalls>0);
@@ -59,6 +59,7 @@ try{
   await page.waitForFunction(()=>window.__characterLab?.active==='jump' ||
     window.__characterLab?.active==='fall',{timeout:10000});
   await page.keyboard.up('Space');
+  await page.waitForFunction(()=>window.__characterLab?.active==='land',{timeout:10000});
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:10000});
   await page.keyboard.press('v');
   const first=await page.evaluate(()=>{
@@ -116,6 +117,17 @@ try{
   assert.equal(quality.view,'third');
   assert.equal(quality.state,'idle');
   assert.equal(quality.callbacks,2);
+  // Moving near the front wall must not leave the chase camera outside it.
+  await page.evaluate(()=>{
+    const lab=window.__characterLab;
+    lab.session.controls.camera.position.set(0,lab.session.controls.eyeHeight,16.5);
+    lab.session.controls.yaw=0;
+  });
+  await page.waitForFunction(()=>{
+    const lab=window.__characterLab;
+    return lab.engine.renderCamera.position.z>16 &&
+      lab.engine.renderCamera.position.z<17.74;
+  },{timeout:8000});
   assert.deepEqual(pageErrors,[]);
-  console.log('Character Animation Test Room browser smoke passed: launch, rig, WASD, sprint, jump, view, reload/interact, console, quality.');
+  console.log('Character Animation Test Room browser smoke passed: launch, articulated rig, WASD, sprint, jump/land, view, reload/interact, console, camera collision, quality.');
 }finally{await browser.close();}

@@ -4,10 +4,13 @@ import {createDiagnosticCharacter,createFirstPersonHands} from './character-rig.
 const $=id=>document.getElementById(id);
 let engine=null,session=null,character=null,viewAnimator=null,animator=null;
 let viewRig=null,thirdCamera=null,mode='third',started=false,actionCount=0;
-let lastHudAt=0,consoleNear=false,disposed=false;
+let lastHudAt=0,consoleNear=false,disposed=false,wasGrounded=true;
 const eventCleanups=[];
 const stageObjects=[];
 const scratch=new THREE.Vector3();
+const cameraRay=new THREE.Ray(),cameraBox=new THREE.Box3();
+const cameraHit=new THREE.Vector3(),cameraTarget=new THREE.Vector3();
+const cameraGoal=new THREE.Vector3(),cameraDirection=new THREE.Vector3();
 
 function failure(error){
   console.error('Character animation test failed:',error);
@@ -169,21 +172,44 @@ function onKeyDown(event){
 function syncView(dt){
   if(!started)return;
   const controls=session.controls,camera=engine.camera;
+  // Ground contact drives a short recoverable landing clip. The old room
+  // jumped immediately from a frozen fall pose into idle, which snapped.
+  if(!wasGrounded && controls.grounded && !animator.oneShot && !viewAnimator.oneShot){
+    animator.playOnce('land',{fade:.085});
+    viewAnimator.playOnce('land',{fade:.085});
+  }
+  wasGrounded=controls.grounded;
   const feetY=camera.position.y-controls.eyeHeight;
   character.root.position.set(camera.position.x,feetY,camera.position.z);
   character.root.rotation.y=controls.yaw;
-  const viewTarget=new THREE.Vector3(camera.position.x,
-    camera.position.y-.48,camera.position.z);
-  const behind=3.7;
-  const desired=new THREE.Vector3(
+  cameraTarget.set(camera.position.x,camera.position.y-.24,camera.position.z);
+  const behind=3.35;
+  cameraGoal.set(
     camera.position.x+Math.sin(controls.yaw)*behind,
-    camera.position.y+1.16-Math.sin(controls.pitch)*.6,
+    camera.position.y+.35-Math.sin(controls.pitch)*.32,
     camera.position.z+Math.cos(controls.yaw)*behind
   );
-  thirdCamera.position.lerp(desired,Math.min(1,dt*12));
-  thirdCamera.lookAt(viewTarget);
-  const distance=Math.hypot(camera.position.x, camera.position.z+4.9);
-  consoleNear=distance<3.1;
+  // Keep the chase camera in front of solid geometry; previously it passed
+  // through the room perimeter and jump platforms while the player moved.
+  cameraDirection.subVectors(cameraGoal,cameraTarget);
+  let distance=cameraDirection.length();
+  cameraRay.set(cameraTarget,cameraDirection.normalize());
+  for(const box of session.world.colliders){
+    cameraBox.set(new THREE.Vector3(box.minX,box.minY,box.minZ),
+      new THREE.Vector3(box.maxX,box.maxY,box.maxZ));
+    if(cameraRay.intersectBox(cameraBox,cameraHit)){
+      const hitDistance=cameraHit.distanceTo(cameraTarget);
+      if(hitDistance<distance)distance=Math.max(.65,hitDistance-.22);
+    }
+  }
+  cameraGoal.copy(cameraTarget).addScaledVector(cameraRay.direction,distance);
+  // Move in immediately when geometry blocks the view; only ease out.
+  const currentDistance=thirdCamera.position.distanceTo(cameraTarget);
+  thirdCamera.position.lerp(cameraGoal,
+    distance<currentDistance?1:Math.min(1,dt*10));
+  thirdCamera.lookAt(cameraTarget);
+  const consoleDistance=Math.hypot(camera.position.x,camera.position.z+4.9);
+  consoleNear=consoleDistance<3.1 && Math.abs(feetY)<1.6;
   $('interactionHint').hidden=!consoleNear;
   const now=performance.now();
   if(now-lastHudAt<85)return;
@@ -221,7 +247,7 @@ async function launch(){
     engine=new GameEngine($('game'));
     engine.setQuality('balanced');
     session=createGameSession(engine,{controls:{
-      walkSpeed:3.4,runSpeed:6.6,groundY:0,bounds:{
+      walkSpeed:2.8,runSpeed:5.0,groundY:0,bounds:{
         minX:-17.4,maxX:17.4,minZ:-17.4,maxZ:17.4
       }
     }});
@@ -231,12 +257,12 @@ async function launch(){
     character=createDiagnosticCharacter();
     engine.scene.add(character.root);
     animator=session.addAnimator('diagnostic-character',character.root,character.clips,
-      {followControls:true,fadeSeconds:.16,runThreshold:4.6});
+      {followControls:true,fadeSeconds:.19,runThreshold:3.8});
     const hands=createFirstPersonHands();
     viewRig=hands.root;
     engine.camera.add(viewRig);
     viewAnimator=session.addAnimator('first-person-hands',viewRig,hands.clips,
-      {followControls:true,fadeSeconds:.13,runThreshold:4.6});
+      {followControls:true,fadeSeconds:.16,runThreshold:3.8});
     thirdCamera=new THREE.PerspectiveCamera(engine.camera.fov,
       engine.camera.aspect,.08,250);
     thirdCamera.position.set(0,3.2,10);
