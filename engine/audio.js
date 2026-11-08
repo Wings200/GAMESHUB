@@ -1,5 +1,5 @@
 export class EngineAudio {
-  constructor() { this.context = null; this.muted = false; this.clips = new Map(); this.introSource = null; }
+  constructor() { this.context = null; this.muted = false; this.clips = new Map(); this.introSource = null; this.metalOverlaySource = null; }
 
   async unlock() {
     if (!this.context) {
@@ -68,21 +68,26 @@ export class EngineAudio {
 
   intro() {
     this.stopIntro();
-    if (!this.clips.has('gameshub-logo-intro')) return null;
-    this.introSource = this.playClip('gameshub-logo-intro', {volume: 0.8});
-    return this.introSource;
+    if (this.clips.has('gameshub-logo-intro'))
+      this.introSource = this.playClip('gameshub-logo-intro', {volume: 0.70});
+    if (this.clips.has('gameshub-intro-metal-overlay'))
+      this.metalOverlaySource = this.playClip('gameshub-intro-metal-overlay', {volume: 0.72});
+    return this.introSource || this.metalOverlaySource;
   }
 
   stopIntro() {
-    if (this.introSource) {
-      try { this.introSource.stop(); } catch { /* Source may have finished naturally. */ }
-      this.introSource = null;
+    for (const source of [this.introSource, this.metalOverlaySource]) {
+      try { source?.stop(); } catch { /* Source already finished. */ }
     }
+    this.introSource = null;
+    this.metalOverlaySource = null;
   }
 
   ping() {
-    if (!this.clips.has('gameshub-test-cue')) return null;
-    return this.playClip('gameshub-test-cue', {volume: 0.64});
+    // The new short mechanical thunk replaces the former doorbell-like double strike.
+    const cue = this.clips.has('gameshub-mechanical-test') ? 'gameshub-mechanical-test' : 'gameshub-test-cue';
+    if (!this.clips.has(cue)) return null;
+    return this.playClip(cue, {volume: 0.68});
   }
 
   dispose() { this.stopIntro(); this.context?.close(); this.context = null; this.clips.clear(); }
