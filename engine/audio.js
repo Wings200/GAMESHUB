@@ -1,5 +1,5 @@
 export class EngineAudio {
-  constructor() { this.context = null; this.muted = false; this.clips = new Map(); this.introSource = null; this.metalOverlaySource = null; }
+  constructor() { this.context = null; this.muted = false; this.clips = new Map(); this.introSource = null; this.metalOverlaySource = null; this.footstepMix = 0.6; }
 
   async unlock() {
     if (!this.context) {
@@ -33,7 +33,7 @@ export class EngineAudio {
     return decoded;
   }
 
-  playClip(name, {volume = 1, pan = 0, loop = false, rate = 1} = {}) {
+  playClip(name, {volume = 1, pan = 0, loop = false, rate = 1, footstepEq = false} = {}) {
     if (this.muted || !this.context || this.context.state !== 'running') return null;
     const buffer = this.clips.get(name);
     if (!buffer) throw new Error(`Audio clip "${name}" has not been loaded.`);
@@ -45,7 +45,18 @@ export class EngineAudio {
     gain.gain.value = Math.max(0, Math.min(1.5, Number(volume) || 0));
     const stereo = this.context.createStereoPanner();
     stereo.pan.value = Math.max(-1, Math.min(1, Number(pan) || 0));
-    source.connect(gain).connect(stereo).connect(this.context.destination);
+    if (footstepEq && typeof this.context.createBiquadFilter === 'function') {
+      // Kenney's concrete pack has a noticeable hollow/wood-like mid knock
+      // at original gain. Remove its resonant midrange; preserve contact grit.
+      const high=this.context.createBiquadFilter();
+      high.type='highpass'; high.frequency.value=115; high.Q.value=.75;
+      const notch=this.context.createBiquadFilter();
+      notch.type='peaking'; notch.frequency.value=430; notch.Q.value=1.2; notch.gain.value=-7;
+      const edge=this.context.createBiquadFilter();
+      edge.type='lowpass'; edge.frequency.value=3700; edge.Q.value=.62;
+      source.connect(high).connect(notch).connect(edge).connect(gain);
+    } else source.connect(gain);
+    gain.connect(stereo).connect(this.context.destination);
     source.start();
     return source;
   }
@@ -91,6 +102,11 @@ export class EngineAudio {
     return this.playClip(cue, {volume: 0.68});
   }
 
+  setFootstepMix(value) {
+    const number=Number(value);
+    this.footstepMix=Number.isFinite(number)?Math.max(0,Math.min(1,number)):0.6;
+  }
+
   // Recorded CC0 concrete steps. If the assets have not loaded, remain silent;
   // never fall back to buzzy synthesised footsteps.
   footstep({index=0,foot='left',running=false}={}) {
@@ -98,9 +114,10 @@ export class EngineAudio {
     const key='footstep-concrete-'+number;
     if (!this.clips.has(key)) return null;
     return this.playClip(key,{
-      volume: running?.43:.36,
+      volume: (running?.20:.16) * this.footstepMix,
       pan: foot==='right'?.065:-.065,
-      rate: 0.965 + (number%4)*0.02
+      rate: 0.94 + (number%4)*0.028,
+      footstepEq: true
     });
   }
 

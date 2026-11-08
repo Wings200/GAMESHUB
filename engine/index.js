@@ -6,6 +6,7 @@ export {PLAYER_RADIUS, intersectsFootprint, resolveXZ} from './collision.js';
 export {QUALITY_PRESETS, qualitySettings, clampScale} from './quality.js';
 export {approach, hingedOpen, stepPhase} from './motion.js';
 export {luminairePositions, ceilingLightingProfile} from './lighting.js';
+export {doorCollisionAt,doorDistance,lightAperture} from './portal.js';
 export {FootstepSequencer} from './footsteps.js';
 export {createSurfaceLibrary} from './surfaces.js';
 export {EngineAudio} from './audio.js';

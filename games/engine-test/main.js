@@ -1,11 +1,11 @@
-import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build008';
+import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build009';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js?v=build008';
-import {EngineAudio} from '../../engine/audio.js?v=build008';
-import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build008';
-import {installPolishedFoley} from '../../engine/foley.js?v=build008';
-import {createTestRoom} from './room.js';
-import {FootstepSequencer} from '../../engine/footsteps.js?v=build008';
+import {EngineIntro} from '../../engine/intro.js?v=build009';
+import {EngineAudio} from '../../engine/audio.js?v=build009';
+import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build009';
+import {installPolishedFoley} from '../../engine/foley.js?v=build009';
+import {createTestRoom} from './room.js?v=build009';
+import {FootstepSequencer} from '../../engine/footsteps.js?v=build009';
 
 const $ = id => document.getElementById(id);
 const audio = new EngineAudio();
@@ -71,9 +71,14 @@ async function start() {
     engine = new GameEngine($('world'));
     engine.setQuality($('quality').value);
     facility = createTestRoom(engine);
+    // Full-scene cubemap captures are opt-in until hardware performance is verified.
+    facility.setReflectionEnabled($('reflectionToggle').checked);
     controls = new FirstPersonControls($('world'), engine.camera, {
       bounds: facility.bounds, obstacles: facility.obstacles
     });
+    // Spawn facing the new SOUTH chamber entrance; E operates the door.
+    controls.yaw=Math.PI;
+    controls.camera.rotation.y=Math.PI;
     engine.onFrame(dt => {
       const startX=controls.camera.position.x, startZ=controls.camera.position.z;
       controls.update(dt);
@@ -86,16 +91,32 @@ async function start() {
       });
     });
     $('lampStatus').textContent=facility.fixtureLights.length+' REAL DOWNLIGHTS · LINKED TO VISIBLE CEILING PANELS';
-    let statsInterval = 0;
-    engine.onFrame((dt) => {
-      statsInterval += dt;
-      if (statsInterval < 0.25) return;
-      statsInterval = 0;
+    let lastStatsTick = 0;
+    engine.onFrame(() => {
+      const now=performance.now();
+      if (now-lastStatsTick < 250) return;
+      lastStatsTick=now;
       const stats = engine.renderer.info.render;
+      $('hud').dataset.completedFrames=String(engine.totalFrames);
       $('fps').textContent = engine.fps || '--';
       $('drawCalls').textContent = stats.calls;
       $('triangles').textContent = stats.triangles.toLocaleString();
       $('frameTime').textContent = engine.fps ? (1000 / engine.fps).toFixed(1) : '--';
+      const chamber=facility.chamber.getStatus();
+      $('doorStatus').dataset.requestedOpen=String(chamber.requestedOpen);
+      $('doorStatus').dataset.directIntensity=chamber.directIntensity.toFixed(2);
+      $('doorStatus').dataset.bounceIntensity=chamber.bounceIntensity.toFixed(2);
+      $('doorStatus').textContent=chamber.openness>=.998
+        ? 'DOOR OPEN · LIGHT ENTERING CHAMBER'
+        : chamber.openness<=.002 ? 'DOOR CLOSED · CHAMBER UNLIT' : 'DOOR MOVING · '+Math.round(chamber.openness*100)+'%';
+      $('doorToggle').textContent=chamber.requestedOpen?'CLOSE CHAMBER DOOR':'OPEN CHAMBER DOOR';
+      const captures=facility.getReflectionCaptures();
+      $('reflectionStatus').textContent='REFLECTION PROBES · SHOWROOM '+captures.showroom
+        +' / CHAMBER '+captures.chamber
+        + (chamber.localProbeEnabled?' · ENABLED':' · DISABLED');
+      const near=facility.chamber.near(controls.camera.position.x,controls.camera.position.z);
+      $('doorHint').hidden=!near || introRunning;
+      $('doorHint').textContent=chamber.requestedOpen?'PRESS E TO CLOSE DOOR':'PRESS E TO OPEN DOOR';
     });
     $('launch').hidden = true;
     $('hud').hidden = false;
@@ -142,7 +163,37 @@ $('motion').addEventListener('change', event => facility?.setMotion(event.target
 $('shadows').addEventListener('change', event => { if (engine) { engine.renderer.shadowMap.enabled = event.target.checked; engine.renderer.shadowMap.needsUpdate=true; } });
 $('audio').addEventListener('change', event => { audio.muted = !event.target.checked; });
 $('soundTest').addEventListener('click', async () => { await audio.unlock().catch(() => false); audio.ping(); });
+
+function interactWithDoor(force=false) {
+  if (!facility || !controls || introRunning) return;
+  if(!facility.chamber.toggle(controls.camera.position,force))
+    $('doorStatus').textContent='DOOR BLOCKED · MOVE AWAY FROM SWING PATH';
+}
+$('doorToggle').addEventListener('click',()=>interactWithDoor(true));
+function onDoorKey(event) {
+  if(event.code!=='KeyE'||event.repeat||event.ctrlKey||event.altKey||event.metaKey) return;
+  if (['INPUT','TEXTAREA','SELECT','BUTTON'].includes(event.target?.tagName) || event.target?.isContentEditable) return;
+  if(!controls?.enabled) return;
+  event.preventDefault();
+  interactWithDoor(false);
+}
+document.addEventListener('keydown',onDoorKey);
+$('reflectionToggle').addEventListener('change',event=>facility?.setReflectionEnabled(event.target.checked));
+$('probeNow').addEventListener('click',()=>{
+  if(!facility)return;
+  const result=facility.captureReflections();
+  if(!result.showroom && !result.chamber)
+    $('reflectionStatus').textContent='REFLECTION CAPTURE UNAVAILABLE IN THIS QUALITY MODE';
+});
+$('bounceToggle').addEventListener('change',event=>facility?.chamber.setBounce(event.target.checked));
+$('footstepLevel').addEventListener('input',event=>{
+  const level=Number(event.target.value);
+  audio.setFootstepMix(level/100);
+  $('footstepLevelValue').textContent=level+'%';
+});
+
 window.addEventListener('pagehide', () => {
+  document.removeEventListener('keydown',onDoorKey);
   controls?.dispose();
   facility?.dispose();
   engine?.dispose();
@@ -150,4 +201,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 008 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 009 | Developer Lab`);

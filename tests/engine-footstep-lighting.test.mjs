@@ -18,7 +18,11 @@ test('all 24 ceiling panels own a correctly centered, lower real emitter',()=>{
   assert.match(scene,/for\(const \{x,z,emitterY\} of luminaireGrid\)/);
   assert.match(scene,/light\.position\.set\(x,emitterY,z\)/);
   assert.match(scene,/light\.target\.position\.set\(x,\.05,z\)/);
-  assert.doesNotMatch(scene,/new THREE\.PointLight/);
+  // Small visible EXIT and monitor emitters legitimately use point lights;
+  // ensure the detached, old ceiling point-light grid never comes back.
+  assert.doesNotMatch(scene,/for\(const z of \[-9,4,12\]\)/);
+  assert.match(scene,/exitGlow\.position\.set\(-8\.55,4\.72,-16\.84\)/);
+  assert.match(scene,/monitorGlow\.position\.set\(deskX,2\.17,8\.25\)/);
 });
 test('actual horizontal travel plays steps; standing still and blocked movement never trigger',()=>{
   const hits=[], steps=new FootstepSequencer(x=>hits.push(x));

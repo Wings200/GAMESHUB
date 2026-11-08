@@ -4,7 +4,7 @@ import {clampDelta} from './math.js';
 import {qualitySettings, clampScale} from './quality.js';
 
 export {THREE};
-export const ENGINE_VERSION = '0.1.0-dev.008';
+export const ENGINE_VERSION = '0.1.0-dev.009';
 
 export {clampDelta};
 
@@ -46,6 +46,7 @@ export class GameEngine {
     this.frameId = 0;
     this.fps = 0;
     this.frames = 0;
+    this.totalFrames = 0;
     this.sampleTime = 0;
     this.resize = this.resize.bind(this);
     this.frame = this.frame.bind(this);
@@ -93,11 +94,14 @@ export class GameEngine {
 
   frame(time) {
     if (!this.running) return;
-    const dt = clampDelta((time - this.lastTime) / 1000);
+    const realDt = Math.max(0,(time - this.lastTime) / 1000);
+    const dt = clampDelta(realDt);
     this.lastTime = time;
-    this.elapsed += dt;
+    this.elapsed += realDt;
     this.frames++;
-    this.sampleTime += dt;
+    // Frame-rate diagnostics must report wall-clock FPS, never an inflated
+    // number caused by physics delta clamping on a struggling GPU.
+    this.sampleTime += realDt;
     if (this.sampleTime >= 0.5) {
       this.fps = Math.round(this.frames / this.sampleTime);
       this.frames = 0;
@@ -105,6 +109,7 @@ export class GameEngine {
     }
     for (const callback of this.callbacks) callback(dt, this.elapsed);
     this.renderer.render(this.scene, this.camera);
+    this.totalFrames++;
     this.frameId = requestAnimationFrame(this.frame);
   }
 

@@ -2,6 +2,7 @@ import {THREE} from '../../engine/core.js';
 import {createSurfaceLibrary} from '../../engine/surfaces.js';
 import {stepPhase} from '../../engine/motion.js';
 import {luminairePositions,ceilingLightingProfile} from '../../engine/lighting.js';
+import {makeLightChamber} from './light-chamber.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -34,6 +35,7 @@ function buildScene(engine) {
   scene.fog=new THREE.Fog('#343a3b',38,87);
   const geometries=new Map(), uniqueGeometries=new Set(), ownedMaterials=new Set(), ownedTextures=new Set();
   const fixtures=[], animated=[];
+  let mainProbeDirty=true, mainProbeEnabled=true, mainCaptureCount=0, lastMainCapture=-100;
   function cube(name,dimensions,material,xyz,options={}) {
     const [w,h,d]=dimensions, r=Math.min(options.radius||0,w*.22,h*.22,d*.22);
     const key=[w,h,d,r].join(',');
@@ -83,8 +85,12 @@ function buildScene(engine) {
   // steel frames and believable room scale. Geometry is shared where possible.
   cube('Structural slab',[25,.36,36.2],mat.floor,[0,-.2,0],{cast:false});
   cube('Ceiling deck',[25,.27,36.2],mat.matte,[0,7.08,0],{cast:false});
-  for(const z of [-17.6,17.6])
-    cube('End concrete wall',[25,7,.35],mat.wall,[0,3.46,z],{cast:false});
+  // Keep the original closed north wall. Split the south wall to form a
+  // real 3.4m doorway into the adjoining (normally unlit) reflection chamber.
+  cube('North end wall',[25,7,.35],mat.wall,[0,3.46,-17.6],{cast:false});
+  cube('South wall left of test door',[10.75,7,.35],mat.wall,[-7.125,3.46,17.6],{cast:false});
+  cube('South wall right of test door',[10.75,7,.35],mat.wall,[7.125,3.46,17.6],{cast:false});
+  cube('South wall above test door',[3.5,3.42,.35],mat.wall,[0,5.29,17.6],{cast:false});
   for(const x of [-12.35,12.35])
     cube('Side concrete wall',[.35,7,36],mat.wall,[x,3.46,0],{cast:false});
 
@@ -148,6 +154,12 @@ function buildScene(engine) {
     {x:0,title:'GLASS',detail:'OPTICAL / TRANSMISSION',type:'glass'},
     {x:6.4,title:'BRONZE',detail:'CAST / BRUSHED',type:'bronze'}
   ];
+  const exhibitMaterialClones=new Map();
+  for(const original of [mat.iron,mat.paintedMetal,mat.brass,mat.copper,mat.glass,mat.darkMetal]){
+    const copy=original.clone();
+    exhibitMaterialClones.set(original,copy);
+    ownedMaterials.add(copy);
+  }
   const obstacles=[];
   for (const sp of specimens){
     const z=-8.4;
@@ -161,7 +173,7 @@ function buildScene(engine) {
     root.add(build);
     const part=(name,geometry,material,x,y,z,rotX=0)=>{
       uniqueGeometries.add(geometry);
-      const mesh=new THREE.Mesh(geometry,material);
+      const mesh=new THREE.Mesh(geometry,exhibitMaterialClones.get(material)||material);
       mesh.name=name;mesh.position.set(x,y,z);mesh.rotation.x=rotX;
       mesh.castShadow=true;mesh.receiveShadow=true;build.add(mesh);
       return mesh;
@@ -226,6 +238,7 @@ function buildScene(engine) {
     [-10.7,2.11,4.5,1.03,.78,.87],[-10.7,3.54,6.2,.93,.78,.95]
   ]) cube('Supply crate',[w,h,d],mat.wood,[x,y,z],{radius:.02});
   obstacles.push({minX:-11.85,maxX:-9.6,minZ:3.1,maxZ:7.8});
+  const chamber=makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,onDoorChange:()=>{mainProbeDirty=true;}});
   // Safety paint and anchored guard rails.
   for(const x of [-11.62,11.62]) {
     for(const z of [-1.5,1.5]){
@@ -252,9 +265,9 @@ function buildScene(engine) {
   // unrelated to the panels, plus a powerful invisible directional light.
   // No extra room spot/point lights now: every emitting bulb is at the exact
   // position of its visible luminaire, with a downward-only falloff cone.
-  const ambient=new THREE.HemisphereLight(0xf1f2ee,0x5d6263,.63);
+  const ambient=new THREE.HemisphereLight(0xf1f2ee,0x51565a,.26);
   scene.add(ambient);fixtures.push(ambient);
-  const fill=new THREE.DirectionalLight(0xe7ecf0,.13);
+  const fill=new THREE.DirectionalLight(0xe7ecf0,.045);
   fill.position.set(3,10,4);
   fill.castShadow=false;
   scene.add(fill);fixtures.push(fill);
@@ -271,11 +284,21 @@ function buildScene(engine) {
     fixtures.push(light,light.target);
     fixtureLights.push(light);
   }
+  // Even small luminous indicators have matching, localized real emitters.
+  const exitGlow=new THREE.PointLight(0x72f0a1,1.35,3.3,2);
+  exitGlow.name='EXIT sign — physical green light';
+  exitGlow.position.set(-8.55,4.72,-16.84);
+  const monitorGlow=new THREE.PointLight(0x73cae1,.93,2.6,2);
+  monitorGlow.name='Workshop instrument screen — localized cyan light';
+  monitorGlow.position.set(deskX,2.17,8.25);
+  scene.add(exitGlow,monitorGlow);fixtures.push(exitGlow,monitorGlow);
+
   let ceilingIntensity=2.7;
   const setCeilingIntensity=(value)=>{
     ceilingIntensity=Math.max(.1,Math.min(5,Number(value)||2.7));
     const base=ceilingLightingProfile(engine.quality).intensity;
     for(const light of fixtureLights) light.intensity=base*ceilingIntensity/2.7;
+    mainProbeDirty=true;
   };
   const setShadowQuality=(profile)=>{
     const config=ceilingLightingProfile(profile);
@@ -288,24 +311,95 @@ function buildScene(engine) {
       light.shadow.needsUpdate=true;
     }
     setCeilingIntensity(ceilingIntensity);
+    chamber.setQuality(profile);
     engine.renderer.shadowMap.needsUpdate=true;
   };
+  // Main showroom reference cube: samples reflect the real lab geometry
+  // and its 24 luminous panels, not only the static studio PMREM texture.
+  // Sampling is demand-driven to avoid six extra scene passes every frame.
+  const mainProbeTarget=new THREE.WebGLCubeRenderTarget(64,{
+    format:THREE.RGBAFormat,generateMipmaps:true,minFilter:THREE.LinearMipmapLinearFilter
+  });
+  const mainCubeCamera=new THREE.CubeCamera(.1,65,mainProbeTarget);
+  mainCubeCamera.position.set(2.5,2.5,-5.8);
+  function captureShowroomProbe() {
+    if(!mainProbeEnabled || engine.quality==='performance') return false;
+    const originalMaterials=Array.from(exhibitMaterialClones.values());
+    const previous=originalMaterials.map(material=>material.envMap);
+    const previousShadows=engine.renderer.shadowMap.enabled;
+    const previousTarget=engine.renderer.getRenderTarget();
+    // Avoid feedback loops when a metal sample is visible in its own cube.
+    for(const material of originalMaterials) {
+      material.envMap=null;
+      material.needsUpdate=true;
+    }
+    try{
+      // The main renderer keeps its shadows. Only the six tiny probe renders
+      // skip shadow-map generation to avoid blocking the game loop.
+      engine.renderer.shadowMap.enabled=false;
+      mainCubeCamera.update(engine.renderer,scene);
+      for(const material of originalMaterials){
+        material.envMap=mainProbeTarget.texture;
+        material.needsUpdate=true;
+      }
+      mainProbeDirty=false;
+      mainCaptureCount++;
+      return true;
+    }catch(error){
+      console.warn('Showroom reflection capture unavailable:',error);
+      originalMaterials.forEach((material,index)=>{
+        material.envMap=previous[index];material.needsUpdate=true;
+      });
+      mainProbeDirty=false;
+      return false;
+    }finally{
+      engine.renderer.setRenderTarget(previousTarget);
+      engine.renderer.shadowMap.enabled=previousShadows;
+      engine.renderer.resetState();
+    }
+  }
+  function setReflectionEnabled(enabled){
+    mainProbeEnabled=Boolean(enabled);
+    chamber.setProbes(enabled);
+    if(!mainProbeEnabled){
+      for(const material of exhibitMaterialClones.values()){
+        material.envMap=null;material.needsUpdate=true;
+      }
+    }else mainProbeDirty=true;
+  }
   let animate=true, phase=0;
   const removeFrame=engine.onFrame((dt,time)=>{
     if(animate) phase=stepPhase(phase,.24,dt);
     for(const [index,model] of animated.entries())
       model.group.rotation.y=model.base + phase*(index%2===0?1:-1);
+    chamber.update(dt,time,engine.camera.position);
+    if(mainProbeDirty && mainProbeEnabled && engine.quality!=='performance'
+        && engine.camera.position.z< -3 && engine.camera.position.z> -13
+        && time-lastMainCapture>2.0){
+      lastMainCapture=time;
+      captureShowroomProbe();
+    }
   });
   engine.camera.position.set(0,1.72,12.2);
   const quality=engine.quality;
   setShadowQuality(quality);
   return {
-    root,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:17.0},
+    root,chamber,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:31.0},
     setMotion(value){animate=Boolean(value);},
     getMotion(){return animate;},
-    setShadowQuality,setCeilingIntensity,
+    setShadowQuality,setCeilingIntensity,setReflectionEnabled,
+    captureReflections(){
+      // Updating both six-faced cubemaps in one click stalls low-end WebGL.
+      // Refresh only the room the player is currently examining.
+      return engine.camera.position.z>=17.1
+        ? {showroom:false,chamber:chamber.captureReflections()}
+        : {showroom:captureShowroomProbe(),chamber:false};
+    },
+    getReflectionCaptures(){return {showroom:mainCaptureCount,chamber:chamber.getStatus().reflectionCaptures};},
     dispose(){
       removeFrame();
+      chamber.dispose();
+      mainProbeTarget.dispose();
       root.removeFromParent();
       for(const object of fixtures) object.removeFromParent();
       scene.environment=null;

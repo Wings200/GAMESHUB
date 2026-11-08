@@ -24,6 +24,58 @@ try {
   await page.waitForTimeout(1000);
   assert.match(await page.locator('#lampStatus').innerText(),/24 REAL DOWNLIGHTS/);
   assert.match(await page.locator('#footstepStatus').innerText(),/5 VARIANTS READY/);
+  // Door starts shut: no direct light leaks through the closed aperture.
+  assert.match(await page.locator('#doorStatus').innerText(),/DOOR CLOSED/);
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
+  await page.locator('#doorToggle').click();
+  try {
+    await page.waitForFunction(() =>
+      document.getElementById('doorStatus').textContent.includes('LIGHT ENTERING CHAMBER'),
+      null,{timeout:20000});
+  } catch(error) {
+    console.error('OPEN DOOR STATE:',await page.locator('#doorStatus').evaluate(el=>({
+      text:el.textContent,data:{...el.dataset}
+    })).catch(()=>({unavailable:true})));
+    console.error('FPS:',await page.locator('#fps').innerText().catch(()=>'<unavailable>'));
+    throw error;
+  }
+  assert.ok(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity'))>25);
+  await page.locator('#bounceToggle').uncheck();
+  await page.waitForFunction(()=>
+    Number(document.getElementById('doorStatus').dataset.bounceIntensity)===0,
+    null,{timeout:20000});
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-bounce-intensity')),0);
+  await page.locator('#bounceToggle').check();
+  await page.locator('#reflectionToggle').uncheck();
+  await page.locator('#reflectionToggle').check();
+  // This explicitly exercises the real WebGL cube-map capture path (6 faces
+  // per scene), rather than declaring dynamic reflections correct from source.
+  await page.locator('#probeNow').click({timeout:120000});
+  await page.waitForFunction(()=>
+    document.getElementById('reflectionStatus').textContent.includes('SHOWROOM 1 / CHAMBER 0'),
+    null,{timeout:45000});
+  await page.locator('#doorToggle').click();
+  await page.waitForFunction(() =>
+    document.getElementById('doorStatus').textContent.includes('DOOR CLOSED'),
+    null,{timeout:16000});
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
+  // Cube-camera probe passes should not leave the ordinary renderer stalled.
+  const beforeFrames=Number(await page.locator('#hud').getAttribute('data-completed-frames'));
+  try {
+    await page.waitForFunction(before=>
+      Number(document.getElementById('hud').dataset.completedFrames)>=before+2,
+      beforeFrames,{timeout:45000});
+  } catch(error) {
+    console.error('POST-CAPTURE DIAGNOSTICS',await page.evaluate(()=>({
+      fps:document.getElementById('fps').textContent,
+      calls:document.getElementById('drawCalls').textContent,
+      triangles:document.getElementById('triangles').textContent,
+      status:document.getElementById('reflectionStatus').textContent,
+      error:document.getElementById('errorMessage')?.textContent
+    })).catch(e=>({evaluationError:String(e)})));
+    console.error('BROWSER ERRORS',failures);
+    throw error;
+  }
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
     drawCalls:document.getElementById('drawCalls').textContent,
@@ -32,7 +84,8 @@ try {
   }));
   console.log('Balanced:',diagnostic);
   assert.ok(Number(diagnostic.drawCalls)>0,'scene rendered no geometry');
-  assert.ok(Number(diagnostic.fps)>0,'renderer stalled');
+  assert.ok(Number(await page.locator('#hud').getAttribute('data-completed-frames'))>0,
+    'main renderer must complete frames after probe capture');
   await page.locator('#quality').selectOption('quality');
   await page.waitForTimeout(750);
   await page.locator('#quality').selectOption('performance');
