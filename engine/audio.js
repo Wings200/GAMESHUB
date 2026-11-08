@@ -1,5 +1,5 @@
 export class EngineAudio {
-  constructor() { this.context = null; this.muted = false; this.clips = new Map(); }
+  constructor() { this.context = null; this.muted = false; this.clips = new Map(); this.introSource = null; }
 
   async unlock() {
     if (!this.context) {
@@ -21,6 +21,16 @@ export class EngineAudio {
     const buffer = await this.context.decodeAudioData(await response.arrayBuffer());
     this.clips.set(name, buffer);
     return buffer;
+  }
+
+  // Browser-decode an original sound packaged as an encoded asset module.
+  async loadEncodedClip(name, encodedMp3) {
+    if (this.clips.has(name)) return this.clips.get(name);
+    if (!(await this.unlock())) throw new Error('Web Audio is unavailable.');
+    const bytes = Uint8Array.from(atob(encodedMp3), character => character.charCodeAt(0));
+    const decoded = await this.context.decodeAudioData(bytes.buffer);
+    this.clips.set(name, decoded);
+    return decoded;
   }
 
   playClip(name, {volume = 1, pan = 0, loop = false} = {}) {
@@ -57,16 +67,23 @@ export class EngineAudio {
   }
 
   intro() {
-    this.tone({frequency: 60, endFrequency: 42, duration: 2.1, volume: 0.12, type: 'sawtooth'});
-    this.tone({frequency: 170, endFrequency: 68, duration: 0.75, delay: 1.25, volume: 0.1, type: 'triangle'});
-    this.tone({frequency: 270, endFrequency: 84, duration: 0.85, delay: 1.27, volume: 0.11});
-    this.tone({frequency: 490, endFrequency: 460, duration: 0.95, delay: 1.8, volume: 0.045});
+    this.stopIntro();
+    if (!this.clips.has('gameshub-logo-intro')) return null;
+    this.introSource = this.playClip('gameshub-logo-intro', {volume: 0.8});
+    return this.introSource;
+  }
+
+  stopIntro() {
+    if (this.introSource) {
+      try { this.introSource.stop(); } catch { /* Source may have finished naturally. */ }
+      this.introSource = null;
+    }
   }
 
   ping() {
-    this.tone({frequency: 440, endFrequency: 660, duration: 0.25, volume: 0.08});
-    this.tone({frequency: 880, endFrequency: 550, duration: 0.32, delay: 0.07, volume: 0.035});
+    if (!this.clips.has('gameshub-test-cue')) return null;
+    return this.playClip('gameshub-test-cue', {volume: 0.64});
   }
 
-  dispose() { this.context?.close(); this.context = null; this.clips.clear(); }
+  dispose() { this.stopIntro(); this.context?.close(); this.context = null; this.clips.clear(); }
 }

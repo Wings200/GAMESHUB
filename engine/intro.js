@@ -32,6 +32,7 @@ export class EngineIntro {
     if (!this.done) return;
     const resolve = this.done;
     this.done = null;
+    this.audio?.stopIntro?.();
     this.root.classList.remove('playing');
     this.root.hidden = true;
     resolve();

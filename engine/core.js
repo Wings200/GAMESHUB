@@ -3,7 +3,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clampDelta} from './math.js';
 
 export {THREE};
-export const ENGINE_VERSION = '0.1.0-dev.003';
+export const ENGINE_VERSION = '0.1.0-dev.005';
 
 export {clampDelta};
 
