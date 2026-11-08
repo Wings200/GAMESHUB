@@ -26,3 +26,29 @@ jobs:
           for f in engine/*.js games/engine-test/*.js; do node --check "$f"; done
       - name: Unit tests
         run: node --test tests/engine*.test.mjs
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless Chromium and browser driver
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Start test server
+        run: |
+          python3 -m http.server 8080 > /tmp/gameshub-lab-http.log 2>&1 &
+          sleep 2
+      - name: Smoke-test WebGL room and save screenshots
+        run: node games/engine-test/browser-smoke.mjs
+      - name: Upload screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-visual-smoke
+          path: artifacts/*.png
+          if-no-files-found: ignore
