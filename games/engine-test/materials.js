@@ -45,7 +45,11 @@ function drawLibrary(){
     card.type='button';card.className='material-card';card.setAttribute('role','option');
     card.setAttribute('aria-selected',String(preset.id===selected.id));
     card.dataset.materialId=preset.id;
-    const canvas=createMaterialCanvas(preset,{},96);
+    // Tiny swatches with 3–4× textile tiling alias fine fibers into
+    // uniform-looking noise. Sample textiles slightly closer for clarity.
+    const textile=preset.category==='fabric'||preset.category==='carpet';
+    const canvas=createMaterialCanvas(preset,
+      textile?{repeat:1}:{},textile?160:96);
     canvas.setAttribute('aria-hidden','true');
     card.append(canvas);
     const name=document.createElement('strong');name.textContent=preset.name;
@@ -110,7 +114,7 @@ function renderTextileComparison(){
     button.dataset.presetId=id;
     button.setAttribute('aria-label','Inspect '+preset.name);
     button.setAttribute('aria-pressed',String(selected.id===id));
-    const canvas=createMaterialCanvas(preset,{color:'#9a9a9a',repeat:2},96);
+    const canvas=createMaterialCanvas(preset,{color:'#9a9a9a',repeat:1},160);
     canvas.setAttribute('aria-hidden','true');
     const name=document.createElement('strong');name.textContent=preset.name;
     const style=document.createElement('small');
