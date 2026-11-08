@@ -104,7 +104,9 @@ async function start() {
         ? 'DOOR OPEN · LIGHT ENTERING CHAMBER'
         : chamber.openness<=.002 ? 'DOOR CLOSED · CHAMBER UNLIT' : 'DOOR MOVING · '+Math.round(chamber.openness*100)+'%';
       $('doorToggle').textContent=chamber.requestedOpen?'CLOSE CHAMBER DOOR':'OPEN CHAMBER DOOR';
-      $('reflectionStatus').textContent='LOCAL REFLECTION CAPTURES · '+chamber.reflectionCaptures
+      const captures=facility.getReflectionCaptures();
+      $('reflectionStatus').textContent='REFLECTION PROBES · SHOWROOM '+captures.showroom
+        +' / CHAMBER '+captures.chamber
         + (chamber.localProbeEnabled?' · ENABLED':' · DISABLED');
       const near=facility.chamber.near(controls.camera.position.x,controls.camera.position.z);
       $('doorHint').hidden=!near || introRunning;
@@ -170,7 +172,13 @@ function onDoorKey(event) {
   interactWithDoor(false);
 }
 document.addEventListener('keydown',onDoorKey);
-$('reflectionToggle').addEventListener('change',event=>facility?.chamber.setProbes(event.target.checked));
+$('reflectionToggle').addEventListener('change',event=>facility?.setReflectionEnabled(event.target.checked));
+$('probeNow').addEventListener('click',()=>{
+  if(!facility)return;
+  const result=facility.captureReflections();
+  if(!result.showroom && !result.chamber)
+    $('reflectionStatus').textContent='REFLECTION CAPTURE UNAVAILABLE IN THIS QUALITY MODE';
+});
 $('bounceToggle').addEventListener('change',event=>facility?.chamber.setBounce(event.target.checked));
 $('footstepLevel').addEventListener('input',event=>{
   const level=Number(event.target.value);
