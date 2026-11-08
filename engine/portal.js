@@ -21,3 +21,8 @@ export function lightAperture(value) {
   const x=Math.max(0,Math.min(1,Number(value)||0));
   return x*x*(3-2*x);
 }
+
+export function doorEase(progress) {
+  const t=Math.max(0,Math.min(1,Number(progress)||0));
+  return t*t*(3-2*t);
+}
