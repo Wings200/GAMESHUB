@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
 import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build011';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
