@@ -45,7 +45,7 @@ toward the warm floodlight and press E, or use the developer panel's door
 button. A moving steel leaf has a matching horizontal collision obstacle.
 The dark chamber has a polished sphere and a steel reflector with their own
 local cubemap. The original showroom has a separate cubemap for its three
-calibration exhibits; these are updated when needed, **not on every frame**.
+calibration exhibits; these are updated when needed, **not on every frame**. The manual refresh button captures only the player's current room; reflection passes temporarily skip shadow-map drawing for performance.
 The new developer controls allow the user to compare local reflections and
 approximate indirect bounce both on and off.
 
