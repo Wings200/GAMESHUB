@@ -130,6 +130,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
     // Avoid capturing a glossy sample's reflection of itself.
     const wasVisible=glossyMeshes.map(mesh=>mesh.visible);
     const previousShadows=renderer.shadowMap.enabled;
+    const previousTarget=renderer.getRenderTarget();
     glossyMeshes.forEach(mesh=>mesh.visible=false);
     // Probe images show local geometry and luminous fixtures. Re-rendering
     // four full-resolution shadow maps six times is not viable on software GPU.
@@ -147,7 +148,9 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
       dirty=false;
       return false;
     } finally {
+      renderer.setRenderTarget(previousTarget);
       renderer.shadowMap.enabled=previousShadows;
+      renderer.resetState();
       glossyMeshes.forEach((mesh,index)=>mesh.visible=wasVisible[index]);
     }
   }
