@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MATERIAL_PRESETS} from '../engine/material-catalog.mjs';
-import {sampleMaterialPattern} from '../engine/material-patterns.mjs';
+import {sampleMaterialPattern,sampleMaterialRelief} from '../engine/material-patterns.mjs';
 
 const close=(actual,expected,label)=>
   assert.ok(Math.abs(actual-expected)<1e-6,label+': '+actual+' vs '+expected);
@@ -64,5 +64,42 @@ test('2x detail is unique across quadrants, not four identical panels',()=>{
         sampleMaterialPattern(preset,u+.5,v,2));
     }
     assert.ok(difference>50,category+' still repeats its top-left pattern in top-right');
+  }
+});
+
+test('construction relief and roughness remain seamless at every tested density',()=>{
+  for(const category of ['concrete','brick','wood']){
+    const preset=MATERIAL_PRESETS.find(p=>p.category===category);
+    for(const repeat of [1,2,4,7.5])for(let i=0;i<64;i++){
+      const t=i/64;
+      const l=sampleMaterialRelief(preset,0,t,repeat);
+      const r=sampleMaterialRelief(preset,1,t,repeat);
+      const top=sampleMaterialRelief(preset,t,0,repeat);
+      const bottom=sampleMaterialRelief(preset,t,1,repeat);
+      close(l.height,r.height,category+' height X');
+      close(l.roughness,r.roughness,category+' roughness X');
+      close(top.height,bottom.height,category+' height Y');
+      close(top.roughness,bottom.roughness,category+' roughness Y');
+      assert.ok(l.height>=0&&l.height<=1);
+      assert.ok(l.roughness>=0&&l.roughness<=1);
+    }
+  }
+  assert.equal(sampleMaterialRelief(MATERIAL_PRESETS.find(p=>p.category==='glass'),.4,.7),null);
+});
+
+test('brick mortar is recessed and all three families have varied relief',()=>{
+  const brick=MATERIAL_PRESETS.find(p=>p.category==='brick');
+  const mortar=sampleMaterialRelief(brick,0,.0625,1);
+  const face=sampleMaterialRelief(brick,.125,.0625,1);
+  assert.ok(face.height-mortar.height>.25,'brick joints should be recessed');
+  assert.ok(mortar.roughness>face.roughness,'mortar should be rougher than brick faces');
+  for(const category of ['concrete','brick','wood']){
+    const preset=MATERIAL_PRESETS.find(p=>p.category===category);
+    const samples=[];
+    for(let i=0;i<100;i++){
+      const u=(i%10+.23)/10,v=(Math.floor(i/10)+.41)/10;
+      samples.push(sampleMaterialRelief(preset,u,v,2).height);
+    }
+    assert.ok(Math.max(...samples)-Math.min(...samples)>.05,category+' relief too flat');
   }
 });
