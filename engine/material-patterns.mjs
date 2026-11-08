@@ -52,63 +52,6 @@ export function sampleMaterialPattern(preset,u,v,scale=1){
     return shade*.42+brushing*3;
   }
   if(pattern==='wood'){
-    if(pattern==='stone'){
-    // Hand-cut stone blocks: recessed seams, gently uneven stone faces,
-    // sparse hairline fissures and mineral variation. Matches albedo layout.
-    const rows=Math.max(2,Math.round(6*density/2)*2),cols=cycles(3);
-    const ry=v*rows+Math.sin(TAU*u*cycles(3)+seed)*.055;
-    const row=Math.floor(ry);
-    const cx=u*cols-(wrap(row,rows)%2)*.5+Math.sin(TAU*v*cycles(2)+seed)*.06;
-    const joint=Math.max(closeToGrid(ry,.028),closeToGrid(cx,.028));
-    const block=signed(hash(wrap(Math.floor(cx),cols),wrap(row,rows),seed+190))*.06;
-    const mineral=signed(periodicNoise(u,v,seed+191,cycles(11)));
-    const vein=Math.pow(Math.max(0,1-Math.abs(
-      periodicNoise(u,v,seed+192,cycles(9))-.52)*28),3);
-    return {
-      height:Math.max(.08,Math.min(.91,.57+block+medium*.072+fine*.028-joint*.36-vein*.042)),
-      roughness:Math.max(.72,Math.min(1,.88+mineral*.066+fine*.034+joint*.12))
-    };
-  }
-  if(pattern==='tile'){
-    // Thin, smooth glazed faces with genuinely lower grout channels.
-    const rows=cycles(4),cols=cycles(4);
-    const ux=u*cols,vy=v*rows;
-    const grout=Math.max(closeToGrid(ux,.025),closeToGrid(vy,.025));
-    const bevel=Math.max(closeToGrid(ux,.09),closeToGrid(vy,.09));
-    const glaze=signed(periodicNoise(u,v,seed+193,cycles(19)));
-    return {
-      height:Math.max(.10,Math.min(.84,.67+glaze*.014+fine*.008-bevel*.045-grout*.39)),
-      roughness:Math.max(.64,Math.min(1,.79+glaze*.049+fine*.027+grout*.18))
-    };
-  }
-  if(pattern==='metal'){
-    // Fine directional brushing/scratches rather than cratered metal.
-    // Polish variants are naturally subtler than aged or brushed alloys.
-    const polished=/polished|chrome|gold finish/i.test(preset.name||'');
-    const aged=/aged|oxidized|corten|patina/i.test(preset.name||'');
-    const brush=Math.sin(TAU*(v*cycles(72)+Math.sin(TAU*u*cycles(2))*.018));
-    const scratch=signed(periodicNoise(u,v,seed+194,cycles(96)));
-    const wear=signed(periodicNoise(u,v,seed+195,cycles(11)));
-    const amplitude=polished?.35:aged?1.25:1;
-    return {
-      height:Math.max(.31,Math.min(.69,.5+amplitude*(brush*.037+scratch*.018+fine*.01))),
-      roughness:Math.max(.52,Math.min(1,
-        (polished?.88:aged?.95:.9)+(brush*.048+wear*.075+fine*.035)*amplitude))
-    };
-  }
-  if(pattern==='roof'){
-    // Staggered rows and a raised front lip suggest overlapping shingles.
-    // These are shading normals, not actual overlapping mesh geometry.
-    const rows=Math.max(2,Math.round(8*density/2)*2),cols=cycles(4);
-    const ry=v*rows,row=Math.floor(ry),cx=u*cols-(row%2)*.5;
-    const seam=Math.max(closeToGrid(ry,.035),closeToGrid(cx,.021));
-    const upperEdge=1-fract(ry);
-    const face=signed(hash(wrap(Math.floor(cx),cols),wrap(row,rows),seed+196))*.035;
-    return {
-      height:Math.max(.07,Math.min(.95,.42+upperEdge*.28+face+medium*.032+fine*.018-seam*.24)),
-      roughness:Math.max(.72,Math.min(1,.87+medium*.066+fine*.038+seam*.11))
-    };
-  }
   const weave=v*cycles(27)+Math.sin(TAU*u*cycles(2)+seed)*.26+
       Math.sin(TAU*u*cycles(5))*.09;
     // Both harmonics use integer frequencies; fractional cycles create an
@@ -191,6 +134,63 @@ export function sampleMaterialRelief(preset,u,v,scale=1){
     return {
       height:.62+faceShade+fine*.035-mortar*.43,
       roughness:Math.min(1,.83+medium*.045+mortar*.17)
+    };
+  }
+  if(pattern==='stone'){
+    // Hand-cut stone blocks: recessed seams, gently uneven stone faces,
+    // sparse hairline fissures and mineral variation. Matches albedo layout.
+    const rows=Math.max(2,Math.round(6*density/2)*2),cols=cycles(3);
+    const ry=v*rows+Math.sin(TAU*u*cycles(3)+seed)*.055;
+    const row=Math.floor(ry);
+    const cx=u*cols-(wrap(row,rows)%2)*.5+Math.sin(TAU*v*cycles(2)+seed)*.06;
+    const joint=Math.max(closeToGrid(ry,.028),closeToGrid(cx,.028));
+    const block=signed(hash(wrap(Math.floor(cx),cols),wrap(row,rows),seed+190))*.06;
+    const mineral=signed(periodicNoise(u,v,seed+191,cycles(11)));
+    const vein=Math.pow(Math.max(0,1-Math.abs(
+      periodicNoise(u,v,seed+192,cycles(9))-.52)*28),3);
+    return {
+      height:Math.max(.08,Math.min(.91,.57+block+medium*.072+fine*.028-joint*.36-vein*.042)),
+      roughness:Math.max(.72,Math.min(1,.88+mineral*.066+fine*.034+joint*.12))
+    };
+  }
+  if(pattern==='tile'){
+    // Thin, smooth glazed faces with genuinely lower grout channels.
+    const rows=cycles(4),cols=cycles(4);
+    const ux=u*cols,vy=v*rows;
+    const grout=Math.max(closeToGrid(ux,.025),closeToGrid(vy,.025));
+    const bevel=Math.max(closeToGrid(ux,.09),closeToGrid(vy,.09));
+    const glaze=signed(periodicNoise(u,v,seed+193,cycles(19)));
+    return {
+      height:Math.max(.10,Math.min(.84,.67+glaze*.014+fine*.008-bevel*.045-grout*.39)),
+      roughness:Math.max(.64,Math.min(1,.79+glaze*.049+fine*.027+grout*.18))
+    };
+  }
+  if(pattern==='metal'){
+    // Fine directional brushing/scratches rather than cratered metal.
+    // Polish variants are naturally subtler than aged or brushed alloys.
+    const polished=/polished|chrome|gold finish/i.test(preset.name||'');
+    const aged=/aged|oxidized|corten|patina/i.test(preset.name||'');
+    const brush=Math.sin(TAU*(v*cycles(72)+Math.sin(TAU*u*cycles(2))*.018));
+    const scratch=signed(periodicNoise(u,v,seed+194,cycles(96)));
+    const wear=signed(periodicNoise(u,v,seed+195,cycles(11)));
+    const amplitude=polished?.35:aged?1.25:1;
+    return {
+      height:Math.max(.31,Math.min(.69,.5+amplitude*(brush*.037+scratch*.018+fine*.01))),
+      roughness:Math.max(.52,Math.min(1,
+        (polished?.88:aged?.95:.9)+(brush*.048+wear*.075+fine*.035)*amplitude))
+    };
+  }
+  if(pattern==='roof'){
+    // Staggered rows and a raised front lip suggest overlapping shingles.
+    // These are shading normals, not actual overlapping mesh geometry.
+    const rows=Math.max(2,Math.round(8*density/2)*2),cols=cycles(4);
+    const ry=v*rows,row=Math.floor(ry),cx=u*cols-(row%2)*.5;
+    const seam=Math.max(closeToGrid(ry,.035),closeToGrid(cx,.021));
+    const upperEdge=1-fract(ry);
+    const face=signed(hash(wrap(Math.floor(cx),cols),wrap(row,rows),seed+196))*.035;
+    return {
+      height:Math.max(.07,Math.min(.95,.42+upperEdge*.28+face+medium*.032+fine*.018-seam*.24)),
+      roughness:Math.max(.72,Math.min(1,.87+medium*.066+fine*.038+seam*.11))
     };
   }
   const weave=v*cycles(27)+Math.sin(TAU*u*cycles(2)+seed)*.26+
