@@ -7,12 +7,12 @@ const close=(actual,expected,label)=>
   assert.ok(Math.abs(actual-expected)<1e-6,label+': '+actual+' vs '+expected);
 
 test('all 168 procedural materials have matching opposite edges',()=>{
-  for(const preset of MATERIAL_PRESETS) for(let i=0;i<=32;i++){
+  for(const preset of MATERIAL_PRESETS) for(const repeat of [1,2,4,7.5]) for(let i=0;i<=32;i++){
     const t=i/32;
-    close(sampleMaterialPattern(preset,0,t),sampleMaterialPattern(preset,1,t),
-      preset.id+' left/right at '+t);
-    close(sampleMaterialPattern(preset,t,0),sampleMaterialPattern(preset,t,1),
-      preset.id+' top/bottom at '+t);
+    close(sampleMaterialPattern(preset,0,t,repeat),sampleMaterialPattern(preset,1,t,repeat),
+      preset.id+' left/right at '+t+', repeat '+repeat);
+    close(sampleMaterialPattern(preset,t,0,repeat),sampleMaterialPattern(preset,t,1,repeat),
+      preset.id+' top/bottom at '+t+', repeat '+repeat);
   }
 });
 
@@ -20,8 +20,8 @@ test('patterns remain continuous under 2x and 4x UV tiling',()=>{
   for(const preset of MATERIAL_PRESETS){
     for(const repeat of [1,2,4,7.5]) for(let i=0;i<20;i++){
       const u=(i+.25)/20,v=((i*7)%20+.6)/20;
-      close(sampleMaterialPattern(preset,u*repeat,v*repeat),
-        sampleMaterialPattern(preset,u*repeat+1,v*repeat-2),
+      close(sampleMaterialPattern(preset,u,v,repeat),
+        sampleMaterialPattern(preset,u+1,v-2,repeat),
         preset.id+' repeat '+repeat);
     }
   }
@@ -51,5 +51,18 @@ test('the patterns retain visible texture detail away from joins',()=>{
       samples.push(sampleMaterialPattern(preset,(x+.33)/14,(y+.47)/14));
     assert.ok(Math.max(...samples)-Math.min(...samples)>10,
       category+' lost its pattern contrast');
+  }
+});
+
+test('2x detail is unique across quadrants, not four identical panels',()=>{
+  for(const category of ['concrete','brick','stone','wood','metal','roof','tile','ground']){
+    const preset=MATERIAL_PRESETS.find(p=>p.category===category);
+    let difference=0;
+    for(let i=0;i<100;i++){
+      const u=(i%10+.37)/20,v=(Math.floor(i/10)+.29)/20;
+      difference+=Math.abs(sampleMaterialPattern(preset,u,v,2)-
+        sampleMaterialPattern(preset,u+.5,v,2));
+    }
+    assert.ok(difference>50,category+' still repeats its top-left pattern in top-right');
   }
 });
