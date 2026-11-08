@@ -1,6 +1,7 @@
 import {THREE} from './core.js';
 import {normalizeWorldEntity,normalizeWorldDocument,WORLD_FORMAT} from './world-schema.mjs';
 import {MaterialPool} from './material-pool.js';
+import {estimateOcclusion} from './audio-spatial.js';
 
 // Code-first, reusable scene assembly layer. It does not replace GameEngine's
 // renderer, collision solver, or EngineAudio; it composes those existing tools.
@@ -18,7 +19,30 @@ export class GameWorld {
     this.items=new Map();
     this.colliders=[]; // Stable array reference for FirstPersonControls.
     this.unsubscribers=new Set();
+    this.activeSounds=new Map();
+    this.nextOcclusionSample=0;
     this.disposed=false;
+    if(audio?.setListenerPose&&engine.camera&&typeof engine.onFrame==='function'){
+      const forward=new THREE.Vector3(),position=new THREE.Vector3();
+      const unregister=engine.onFrame((_dt,elapsed)=>{
+        engine.camera.getWorldPosition(position);
+        engine.camera.getWorldDirection(forward);
+        const pose={position:{x:position.x,y:position.y,z:position.z},
+          forward:{x:forward.x,y:forward.y,z:forward.z},
+          up:{x:0,y:1,z:0}};
+        audio.setListenerPose(pose);
+        if(elapsed>=this.nextOcclusionSample){
+          this.nextOcclusionSample=elapsed+.18;
+          for(const [id,handles] of this.activeSounds){
+            const item=this.items.get(id);
+            if(!item?.spec.spatial || !item.spec.occlusion)continue;
+            const occlusion=estimateOcclusion(pose.position,item.spec.position,this.colliders);
+            for(const handle of handles)handle.setOcclusion?.(occlusion);
+          }
+        }
+      });
+      this.unsubscribers.add(unregister);
+    }
   }
   ensureActive(){if(this.disposed)throw new Error('World has been disposed');}
 
@@ -104,6 +128,10 @@ export class GameWorld {
     }
     if(spec.type==='light'&&item.extra&&spec.target)
       item.extra.position.set(spec.target.x,spec.target.y,spec.target.z);
+    if(spec.type==='sound'){
+      for(const handle of this.activeSounds.get(id)||[])
+        handle.setPosition?.(spec.position);
+    }
     return item.node;
   }
   setMaterial(id,material){
@@ -139,14 +167,44 @@ export class GameWorld {
     item.spec=spec;
     return item.node;
   }
+  setSound(id,options={}){
+    this.ensureActive();
+    const item=this.items.get(id);
+    if(!item||item.spec.type!=='sound')throw new Error('Not a sound marker: '+id);
+    const spec=normalizeWorldEntity({...item.spec,...options,type:'sound'});
+    item.spec=spec;
+    item.node.position.set(spec.position.x,spec.position.y,spec.position.z);
+    for(const handle of this.activeSounds.get(id)||[])
+      handle.setPosition?.(spec.position);
+    return item.node;
+  }
   playSound(id,options={}){
     this.ensureActive();
     const item=this.items.get(id);
     if(!item||item.spec.type!=='sound')throw new Error('Not a sound marker: '+id);
-    if(!this.audio?.playClip)throw new Error('World has no EngineAudio playback service');
-    // Currently stereo clip playback; marker position is saved for future
-    // spatial-audio integration. Do not claim true 3D positioning yet.
-    return this.audio.playClip(item.spec.clip,{volume:item.spec.volume,...options});
+    const spec=item.spec;
+    if(!spec.spatial){
+      if(!this.audio?.playClip)throw new Error('World has no EngineAudio playback service');
+      return this.audio.playClip(spec.clip,{volume:spec.volume,...options});
+    }
+    if(!this.audio?.playSpatialClip)throw new Error('Spatial sound requires EngineAudio.playSpatialClip');
+    const listener=this.engine.camera?.position;
+    const occlusion=spec.occlusion&&listener?
+      estimateOcclusion({x:listener.x,y:listener.y,z:listener.z},spec.position,this.colliders):0;
+    const handle=this.audio.playSpatialClip(spec.clip,{
+      position:spec.position,volume:spec.volume,loop:spec.loop,
+      refDistance:spec.refDistance,maxDistance:spec.maxDistance,
+      rolloffFactor:spec.rolloffFactor,bus:spec.bus,occlusion,...options
+    });
+    if(handle?.stop){
+      if(!this.activeSounds.has(id))this.activeSounds.set(id,new Set());
+      this.activeSounds.get(id).add(handle);
+      handle.source?.addEventListener?.('ended',()=>{
+        this.activeSounds.get(id)?.delete(handle);
+        if(this.activeSounds.get(id)?.size===0)this.activeSounds.delete(id);
+      },{once:true});
+    }
+    return handle;
   }
   onUpdate(callback){
     this.ensureActive();
@@ -167,6 +225,8 @@ export class GameWorld {
     this.ensureActive();
     const item=this.items.get(id);
     if(!item)return false;
+    for(const handle of this.activeSounds.get(id)||[])handle.stop?.();
+    this.activeSounds.delete(id);
     item.node.removeFromParent();
     item.extra?.removeFromParent();
     if(item.collider){
