@@ -1,6 +1,6 @@
 import {THREE} from './core.js';
 import {normalizeMaterialSettings} from './material-catalog.mjs';
-import {sampleMaterialPattern} from './material-patterns.mjs';
+import {sampleMaterialPattern,sampleMaterialRelief} from './material-patterns.mjs';
 
 const hexRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const clamp=n=>Math.min(255,Math.max(0,n));
@@ -29,6 +29,50 @@ export function createMaterialCanvas(preset,overrides={},size=256){
   return canvas;
 }
 
+export function createMaterialDetailCanvases(preset,overrides={},size=256){
+  if(!['concrete','brick','wood'].includes(preset.category))return null;
+  const settings=normalizeMaterialSettings(preset,overrides);
+  const roughCanvas=document.createElement('canvas');
+  const normalCanvas=document.createElement('canvas');
+  roughCanvas.width=roughCanvas.height=normalCanvas.width=normalCanvas.height=size;
+  const roughCtx=roughCanvas.getContext('2d');
+  const normalCtx=normalCanvas.getContext('2d');
+  if(!roughCtx||!normalCtx)throw new Error('Canvas 2D is required for material relief maps');
+  const roughImage=roughCtx.createImageData(size,size);
+  const normalImage=normalCtx.createImageData(size,size);
+  const heights=new Float32Array(size*size);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const data=sampleMaterialRelief(preset,x/(size-1),y/(size-1),settings.repeat);
+    const index=y*size+x,off=index*4;
+    heights[index]=data.height;
+    // Three.js reads roughness from the green channel. Its scalar roughness
+    // slider remains the global multiplier for this spatially varying map.
+    const value=Math.round(clamp(data.roughness*255));
+    roughImage.data[off]=roughImage.data[off+1]=roughImage.data[off+2]=value;
+    roughImage.data[off+3]=255;
+  }
+  // The last row/column duplicate the first ones for seamless wrapping.
+  // Calculate derivatives modulo the unique period so the normal map also
+  // agrees pixel-for-pixel at each opposite edge.
+  const period=size-1;
+  const heightAt=(x,y)=>heights[((y%period+period)%period)*size+
+    ((x%period+period)%period)];
+  const intensity={concrete:2.5,brick:1.45,wood:1.9}[preset.category];
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const dx=(heightAt(x-1,y)-heightAt(x+1,y))*intensity;
+    const dy=(heightAt(x,y-1)-heightAt(x,y+1))*intensity;
+    const length=Math.hypot(dx,dy,1);
+    const off=(y*size+x)*4;
+    normalImage.data[off]=Math.round(clamp((dx/length*.5+.5)*255));
+    normalImage.data[off+1]=Math.round(clamp((dy/length*.5+.5)*255));
+    normalImage.data[off+2]=Math.round(clamp((1/length*.5+.5)*255));
+    normalImage.data[off+3]=255;
+  }
+  roughCtx.putImageData(roughImage,0,0);
+  normalCtx.putImageData(normalImage,0,0);
+  return {normalCanvas,roughCanvas};
+}
+
 export function createBuildingMaterial(preset,overrides={}){
   const settings=normalizeMaterialSettings(preset,overrides);
   // A larger tiling setting generates more distinct pattern across one map.
@@ -42,12 +86,23 @@ export function createBuildingMaterial(preset,overrides={}){
   // generator already handles density without repeating entire quadrants.
   texture.repeat.set(1,1);
   texture.anisotropy=4;
-  const options={map:texture,roughness:settings.roughness,metalness:settings.metalness,side:THREE.DoubleSide};
+  const detail=createMaterialDetailCanvases(preset,settings,resolution);
+  const normalTexture=detail?new THREE.CanvasTexture(detail.normalCanvas):null;
+  const roughnessTexture=detail?new THREE.CanvasTexture(detail.roughCanvas):null;
+  for(const map of [normalTexture,roughnessTexture]){
+    if(!map)continue;
+    map.colorSpace=THREE.NoColorSpace;
+    map.wrapS=map.wrapT=THREE.RepeatWrapping;
+    map.anisotropy=4;
+  }
+  const options={map:texture,roughness:settings.roughness,metalness:settings.metalness,
+    normalMap:normalTexture,roughnessMap:roughnessTexture,side:THREE.DoubleSide};
   const material=preset.category==='glass'
     ?new THREE.MeshPhysicalMaterial({...options,transmission:preset.transmission,ior:1.47,thickness:.16,
       transparent:false,envMapIntensity:1})
     :new THREE.MeshStandardMaterial(options);
   material.name=preset.id;
   material.userData.materialPreset={id:preset.id,...settings};
-  return {material,texture,dispose(){material.dispose();texture.dispose();}};
+  return {material,texture,normalTexture,roughnessTexture,
+    dispose(){material.dispose();texture.dispose();normalTexture?.dispose();roughnessTexture?.dispose();}};
 }

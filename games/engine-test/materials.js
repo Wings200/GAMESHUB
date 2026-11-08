@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
 import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build012';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build013';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
@@ -97,6 +97,11 @@ function drawControls(){
   $('metalnessValue').textContent=s.metalness.toFixed(2);
   $('materialRepeat').value=s.repeat;
   $('repeatValue').textContent=s.repeat.toFixed(2)+'×';
+  const supported=['concrete','brick','wood'].includes(selected.category);
+  $('detailToggle').disabled=!supported;
+  $('detailSupport').textContent=supported
+    ?'Normal + roughness maps · compare on/off'
+    :'Depth maps coming later for this family';
   $('modifiedBadge').hidden=!isModified();
 }
 function queueDraw(){
@@ -116,6 +121,12 @@ function refreshMaterial(){
   const previous=currentGpu;
   currentGpu=next;
   displayMesh.material=next.material;
+  if(!$('detailToggle').checked){
+    next.material.normalMap=null;
+    next.material.roughnessMap=null;
+    next.material.needsUpdate=true;
+  }
+  $('materialViewport').dataset.detailEnabled=String(Boolean(next.material.normalMap));
   previous?.dispose();
   queueDraw();
   $('previewStatus').textContent='LIVE PREVIEW READY';
@@ -233,6 +244,15 @@ $('libraryCount').textContent=MATERIAL_PRESETS.length+' MATERIAL PRESETS';
 $('materialSearch').addEventListener('input',drawLibrary);
 $('materialCategory').addEventListener('change',drawLibrary);
 $('previewShape').addEventListener('change',event=>selectShape(event.target.value));
+$('detailToggle').addEventListener('change',event=>{
+  if(!currentGpu)return;
+  currentGpu.material.normalMap=event.target.checked?currentGpu.normalTexture:null;
+  currentGpu.material.roughnessMap=event.target.checked?currentGpu.roughnessTexture:null;
+  currentGpu.material.needsUpdate=true;
+  $('materialViewport').dataset.detailEnabled=String(Boolean(currentGpu.material.normalMap));
+  queueDraw();
+  status(event.target.checked?'Surface depth and varied roughness enabled.':'Surface depth and varied roughness disabled for comparison.');
+});
 for(const [id,key] of [['materialColor','color'],['materialRoughness','roughness'],
   ['materialMetalness','metalness'],['materialRepeat','repeat']])
   $(id).addEventListener('input',event=>updateControl(key,event.target.value));

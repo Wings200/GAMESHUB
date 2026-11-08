@@ -55,11 +55,51 @@ try{
   assert.equal(tiling.textureRepeat,1,'texture should not duplicate identical UV quadrants');
   assert.ok(tiling.width>=512,'2x source needs sufficient detail');
   assert.ok(tiling.difference>500,'2x texture still contains identical quadrants');
+  const detailResults=await page.evaluate(async()=>{
+    const {MATERIAL_PRESETS}=await import('../../engine/material-catalog.mjs');
+    const {createMaterialDetailCanvases}=await import('../../engine/material-factory.js');
+    const output=[];
+    for(const category of ['concrete','brick','wood']){
+      const preset=MATERIAL_PRESETS.find(p=>p.category===category),size=64;
+      const maps=createMaterialDetailCanvases(preset,{repeat:2},size);
+      const normal=maps.normalCanvas.getContext('2d').getImageData(0,0,size,size).data;
+      const rough=maps.roughCanvas.getContext('2d').getImageData(0,0,size,size).data;
+      let edgeDifference=0,normalDetail=0,minRough=255,maxRough=0;
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+        const index=(y*size+x)*4;
+        normalDetail=Math.max(normalDetail,Math.abs(normal[index]-128),
+          Math.abs(normal[index+1]-128));
+        minRough=Math.min(minRough,rough[index+1]);
+        maxRough=Math.max(maxRough,rough[index+1]);
+        for(let channel=0;channel<3;channel++){
+          const pixel=(yy,xx)=>(yy*size+xx)*4+channel;
+          edgeDifference=Math.max(edgeDifference,
+            Math.abs(normal[pixel(y,0)]-normal[pixel(y,size-1)]),
+            Math.abs(normal[pixel(0,x)]-normal[pixel(size-1,x)]),
+            Math.abs(rough[pixel(y,0)]-rough[pixel(y,size-1)]),
+            Math.abs(rough[pixel(0,x)]-rough[pixel(size-1,x)]));
+        }
+      }
+      output.push({category,edgeDifference,normalDetail,roughVariation:maxRough-minRough});
+    }
+    return output;
+  });
+  for(const detail of detailResults){
+    assert.equal(detail.edgeDifference,0,detail.category+' relief texture seam');
+    assert.ok(detail.normalDetail>4,detail.category+' normal map appears flat');
+    assert.ok(detail.roughVariation>4,detail.category+' roughness map appears flat');
+  }
   await page.locator('#materialCategory').selectOption('wood');
   assert.equal(await page.locator('.material-card').count(),12);
   await page.locator('#materialSearch').fill('oak');
   assert.equal(await page.locator('.material-card').count(),2);
   await page.locator('.material-card').first().click();
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  assert.equal(await page.locator('#materialViewport').getAttribute('data-detail-enabled'),'true');
+  await page.locator('#detailToggle').uncheck();
+  assert.equal(await page.locator('#materialViewport').getAttribute('data-detail-enabled'),'false');
+  await page.locator('#detailToggle').check();
+  assert.equal(await page.locator('#materialViewport').getAttribute('data-detail-enabled'),'true');
   await page.locator('#materialColor').evaluate(el=>{
     el.value='#aa7799';el.dispatchEvent(new Event('input',{bubbles:true}));
   });
