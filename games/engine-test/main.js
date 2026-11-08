@@ -1,8 +1,9 @@
-import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build005';
+import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build006';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js?v=build005';
-import {EngineAudio} from '../../engine/audio.js?v=build005';
-import {ENGINE_LOGO_MP3, ENGINE_TEST_MP3} from '../../engine/generated-sounds.js?v=build005';
+import {EngineIntro} from '../../engine/intro.js?v=build006';
+import {EngineAudio} from '../../engine/audio.js?v=build006';
+import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build006';
+import {installPolishedFoley} from '../../engine/foley.js?v=build006';
 import {createTestRoom} from './room.js';
 
 const $ = id => document.getElementById(id);
@@ -45,9 +46,10 @@ async function start() {
     if (audioReady) {
       const assets = await Promise.allSettled([
         audio.loadEncodedClip('gameshub-logo-intro', ENGINE_LOGO_MP3),
-        audio.loadEncodedClip('gameshub-test-cue', ENGINE_TEST_MP3)
       ]);
       for (const result of assets) if (result.status === 'rejected') console.warn('Audio asset failed to load:', result.reason);
+      try { installPolishedFoley(audio); }
+      catch (error) { console.warn('Mechanical Foley could not be prepared:', error); }
     }
     engine = new GameEngine($('world'));
     facility = createTestRoom(engine);
@@ -106,4 +108,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 005 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 006 | Developer Lab`);
