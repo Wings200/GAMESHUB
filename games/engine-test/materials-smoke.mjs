@@ -59,7 +59,7 @@ try{
     const {MATERIAL_PRESETS}=await import('../../engine/material-catalog.mjs');
     const {createMaterialDetailCanvases}=await import('../../engine/material-factory.js');
     const output=[];
-    for(const category of ['concrete','brick','wood']){
+    for(const category of ['concrete','brick','wood','stone','tile','metal','roof']){
       const preset=MATERIAL_PRESETS.find(p=>p.category===category),size=64;
       const maps=createMaterialDetailCanvases(preset,{repeat:2},size);
       const normal=maps.normalCanvas.getContext('2d').getImageData(0,0,size,size).data;
@@ -89,11 +89,42 @@ try{
     assert.ok(detail.normalDetail>4,detail.category+' normal map appears flat');
     assert.ok(detail.roughVariation>4,detail.category+' roughness map appears flat');
   }
+  // Strength 0 must generate neutral normals and uniform roughness.
+  const zero=await page.evaluate(async()=>{
+    const {getMaterialPreset}=await import('../../engine/material-catalog.mjs');
+    const {createMaterialDetailCanvases}=await import('../../engine/material-factory.js');
+    const maps=createMaterialDetailCanvases(getMaterialPreset('metal-brushed-steel'),
+      {repeat:2,detailStrength:0},48);
+    const n=maps.normalCanvas.getContext('2d').getImageData(0,0,48,48).data;
+    const r=maps.roughCanvas.getContext('2d').getImageData(0,0,48,48).data;
+    let normalError=0,roughError=0;
+    for(let k=0;k<n.length;k+=4){
+      normalError=Math.max(normalError,Math.abs(n[k]-128),Math.abs(n[k+1]-128),
+        Math.abs(n[k+2]-255));
+      roughError=Math.max(roughError,Math.abs(r[k+1]-255));
+    }
+    return {normalError,roughError};
+  });
+  assert.deepEqual(zero,{normalError:0,roughError:0});
+  await page.locator('#materialCategory').selectOption('metal');
+  assert.equal(await page.locator('.material-card').count(),12);
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  assert.equal(await page.locator('#detailStrength').isEnabled(),true);
+  await page.locator('#materialCategory').selectOption('roof');
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('#materialCategory').selectOption('tile');
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('#materialCategory').selectOption('stone');
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
   await page.locator('#materialCategory').selectOption('wood');
   assert.equal(await page.locator('.material-card').count(),12);
   await page.locator('#materialSearch').fill('oak');
   assert.equal(await page.locator('.material-card').count(),2);
   await page.locator('.material-card').first().click();
+  await page.locator('#detailStrength').evaluate(el=>{
+    el.value='1.4';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  assert.equal(await page.locator('#detailStrengthValue').innerText(),'1.40×');
   assert.equal(await page.locator('#detailToggle').isEnabled(),true);
   assert.equal(await page.locator('#materialViewport').getAttribute('data-detail-enabled'),'true');
   await page.locator('#detailToggle').uncheck();
@@ -112,6 +143,7 @@ try{
   await page.waitForFunction(()=>document.querySelectorAll('.saved-variant').length===1);
   await page.locator('.saved-variant button').first().click();
   assert.equal(await page.locator('#materialColor').inputValue(),'#aa7799');
+  assert.equal(await page.locator('#detailStrength').inputValue(),'1.4');
   await page.locator('#resetMaterial').click();
   assert.equal(await page.locator('#modifiedBadge').isVisible(),false);
   assert.deepEqual(errors,[]);

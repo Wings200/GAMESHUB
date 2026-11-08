@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
-import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build013';
+import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build014';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build014';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
@@ -28,7 +28,8 @@ function isModified(){
   return s.color.toLowerCase()!==selected.color.toLowerCase()||
     Math.abs(s.roughness-selected.roughness)>.001||
     Math.abs(s.metalness-selected.metalness)>.001||
-    Math.abs(s.repeat-selected.repeat)>.001;
+    Math.abs(s.repeat-selected.repeat)>.001 ||
+    Math.abs(s.detailStrength-1)>.001;
 }
 
 function drawLibrary(){
@@ -97,7 +98,10 @@ function drawControls(){
   $('metalnessValue').textContent=s.metalness.toFixed(2);
   $('materialRepeat').value=s.repeat;
   $('repeatValue').textContent=s.repeat.toFixed(2)+'×';
-  const supported=['concrete','brick','wood'].includes(selected.category);
+  $('detailStrength').value=s.detailStrength;
+  $('detailStrengthValue').textContent=s.detailStrength.toFixed(2)+'×';
+  const supported=['concrete','brick','wood','stone','tile','metal','roof'].includes(selected.category);
+  $('detailStrength').disabled=!supported;
   $('detailToggle').disabled=!supported;
   $('detailSupport').textContent=supported
     ?'Normal + roughness maps · compare on/off'
@@ -254,7 +258,7 @@ $('detailToggle').addEventListener('change',event=>{
   status(event.target.checked?'Surface depth and varied roughness enabled.':'Surface depth and varied roughness disabled for comparison.');
 });
 for(const [id,key] of [['materialColor','color'],['materialRoughness','roughness'],
-  ['materialMetalness','metalness'],['materialRepeat','repeat']])
+  ['materialMetalness','metalness'],['materialRepeat','repeat'],['detailStrength','detailStrength']])
   $(id).addEventListener('input',event=>updateControl(key,event.target.value));
 $('resetMaterial').addEventListener('click',()=>{
   overrides={};activeCustom=null;drawControls();refreshMaterial();status('Reset to the original '+selected.name+' preset.');
