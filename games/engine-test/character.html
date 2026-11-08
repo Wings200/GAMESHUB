@@ -6,30 +6,30 @@
 <meta name="theme-color" content="#0a1117">
 <title>GAMESHUB ENGINE — Character Animation Test</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./character.css?v=build024">
+<link rel="stylesheet" href="./character.css?v=build025">
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
 "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
-<script type="module" src="./character.js?v=build024"></script>
+<script type="module" src="./character.js?v=build025"></script>
 </head>
 <body>
 <canvas id="game" aria-label="Playable 3D character animation test room"></canvas>
 
 <div id="launch" class="launch">
   <div class="launch-inner">
-    <div class="eyebrow">GAMESHUB ENGINE / BUILD 024 / DEVELOPER PREVIEW</div>
+    <div class="eyebrow">GAMESHUB ENGINE / BUILD 025 / DEVELOPER PREVIEW</div>
     <div class="hero-mark">GH<span> / MOTION</span></div>
     <h1>Character<br><em>Animation Lab</em></h1>
-    <p>Test weighted walking and sprinting, takeoff, falling, landing, interaction and reload transitions. Swap between third-person and first-person to inspect both views.</p>
+    <p>Test imported skeletal animation with a real rigged character. Compare its authored walking, running, jumping and interaction clips against the original diagnostic rig.</p>
     <button id="launchButton" class="primary" type="button">ENTER ANIMATION TEST <span>↗</span></button>
-    <p class="disclaimer">A stylized diagnostic rig, not a finished character model or motion-captured animation. You are reviewing the animation system itself.</p>
+    <p class="disclaimer">The authored sample is a CC0 robot by Tomás Laulhé, not a finished realistic human. The sample has no reload clip; the old diagnostic rig remains available for comparison.</p>
     <a class="back" href="/developer.html">← Return to Developer Center</a>
   </div>
 </div>
 
 <header id="topbar" class="topbar" hidden>
-  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 024 · LIVE TEST</small></div></div>
+  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 025 · LIVE TEST</small></div></div>
   <div class="top-actions">
     <span id="qualityIndicator" class="signal">BALANCED</span>
     <a href="/developer.html">EXIT LAB</a>
@@ -59,6 +59,11 @@
     <div><span>GROUND CONTACT</span><strong id="groundedState">GROUNDED</strong></div>
     <div><span>RENDER SPEED</span><strong id="fpsValue">-- FPS</strong></div>
   </div>
+  <label class="panel-label" for="characterSource">CHARACTER SOURCE</label>
+  <select id="characterSource">
+    <option value="authored" selected>Authored robot · skeletal GLB</option>
+    <option value="diagnostic">Original joint test rig</option>
+  </select>
   <div class="panel-label">CAMERA</div>
   <div class="button-pair"><button id="thirdPerson" class="selected" type="button">3RD PERSON</button><button id="firstPerson" type="button">1ST PERSON</button></div>
   <div class="panel-label">ANIMATION TESTS</div>
@@ -69,7 +74,7 @@
     <option value="balanced" selected>Balanced</option>
     <option value="quality">Quality</option>
   </select>
-  <p class="panel-foot">This model is a rig/animation diagnostic. Focus on timing, joint motion, blend quality and whether actions return correctly to movement.</p>
+  <p class="panel-foot">The robot provides authored Idle, Walking, Running, Jump and Wave clips. Reload is unavailable for this sample. The first-person hands are still diagnostic. Focus on transition quality and foot sliding.</p>
   <div id="feedback" role="status" aria-live="polite">Ready to test.</div>
 </aside>
 
