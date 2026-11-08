@@ -39,6 +39,8 @@ try{
     world.addSound({id:'emitter',clip:'room-noise',position:{x:3,y:1.72,z:0},
       spatial:true,loop:true,bus:'ambience',refDistance:1,maxDistance:30,volume:.5});
     const sound=world.playSound('emitter');
+    // AudioParams reflect scheduled values only after audio render quanta.
+    await new Promise(resolve=>setTimeout(resolve,120));
     const spatial={
       type:sound?.panner?.panningModel,model:sound?.panner?.distanceModel,
       maxDistance:sound?.panner?.maxDistance,
@@ -51,6 +53,7 @@ try{
       y:audio.context.listener.positionY.value,
       z:audio.context.listener.positionZ.value};
     world.setTransform('emitter',{position:{x:6,y:2.2,z:0}});
+    await new Promise(resolve=>setTimeout(resolve,120));
     const moved={x:sound.panner.positionX.value,y:sound.panner.positionY.value};
     world.setSound('emitter',{refDistance:2,maxDistance:50});
     await new Promise(resolve=>setTimeout(resolve,80));
