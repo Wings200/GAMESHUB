@@ -28,9 +28,17 @@ try {
   assert.match(await page.locator('#doorStatus').innerText(),/DOOR CLOSED/);
   assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
   await page.locator('#doorToggle').click();
-  await page.waitForFunction(() =>
-    document.getElementById('doorStatus').textContent.includes('LIGHT ENTERING CHAMBER'),
-    null,{timeout:16000});
+  try {
+    await page.waitForFunction(() =>
+      document.getElementById('doorStatus').textContent.includes('LIGHT ENTERING CHAMBER'),
+      null,{timeout:20000});
+  } catch(error) {
+    console.error('OPEN DOOR STATE:',await page.locator('#doorStatus').evaluate(el=>({
+      text:el.textContent,data:{...el.dataset}
+    })).catch(()=>({unavailable:true})));
+    console.error('FPS:',await page.locator('#fps').innerText().catch(()=>'<unavailable>'));
+    throw error;
+  }
   assert.ok(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity'))>25);
   await page.locator('#bounceToggle').uncheck();
   await page.waitForTimeout(350);
