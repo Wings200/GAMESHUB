@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a1117">
+<title>GAMESHUB ENGINE — Character Animation Test</title>
+<link rel="icon" href="/logo.png">
+<link rel="stylesheet" href="./character.css?v=build023">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+<script type="module" src="./character.js?v=build023"></script>
+</head>
+<body>
+<canvas id="game" aria-label="Playable 3D character animation test room"></canvas>
+
+<div id="launch" class="launch">
+  <div class="launch-inner">
+    <div class="eyebrow">GAMESHUB ENGINE / BUILD 023 / DEVELOPER PREVIEW</div>
+    <div class="hero-mark">GH<span> / MOTION</span></div>
+    <h1>Character<br><em>Animation Lab</em></h1>
+    <p>Test the actual engine transitions: idle, walking, sprinting, jumping, interacting and reloading. Swap between third-person and first-person to inspect both views.</p>
+    <button id="launchButton" class="primary" type="button">ENTER ANIMATION TEST <span>↗</span></button>
+    <p class="disclaimer">A stylized diagnostic rig, not a finished character model or motion-captured animation. You are reviewing the animation system itself.</p>
+    <a class="back" href="/developer.html">← Return to Developer Center</a>
+  </div>
+</div>
+
+<header id="topbar" class="topbar" hidden>
+  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 023 · LIVE TEST</small></div></div>
+  <div class="top-actions">
+    <span id="qualityIndicator" class="signal">BALANCED</span>
+    <a href="/developer.html">EXIT LAB</a>
+  </div>
+</header>
+
+<div id="reticle" class="reticle" hidden aria-hidden="true"></div>
+<div id="interactionHint" class="interaction-hint" hidden>PRESS <kbd>E</kbd> TO INTERACT</div>
+
+<aside id="help" class="help" hidden aria-label="Controls">
+  <small>CONTROLS / LIVE TEST</small>
+  <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Move / turn with mouse</span></div>
+  <div><kbd>SHIFT</kbd><span>Sprint</span></div>
+  <div><kbd>SPACE</kbd><span>Jump</span></div>
+  <div><kbd>V</kbd><span>Switch camera</span></div>
+  <div><kbd>E</kbd><span>Interact near console</span></div>
+  <div><kbd>R</kbd><span>Reload test</span></div>
+  <div><kbd>ESC</kbd><span>Release mouse</span></div>
+  <p>Click the world to lock your mouse. If pointer lock is blocked, drag to look around. Third-person is best for reviewing the full-body animation.</p>
+</aside>
+
+<aside id="panel" class="panel" hidden aria-label="Animation diagnostics">
+  <div class="panel-head"><div><small>ANIMATION DIAGNOSTICS</small><h2>Movement &amp; Poses</h2></div><span class="live">LIVE</span></div>
+  <div class="readouts">
+    <div><span>BODY ANIMATION</span><strong id="animationState">IDLE</strong></div>
+    <div><span>PLAYER SPEED</span><strong id="speedValue">0.0 <small>m/s</small></strong></div>
+    <div><span>GROUND CONTACT</span><strong id="groundedState">GROUNDED</strong></div>
+    <div><span>RENDER SPEED</span><strong id="fpsValue">-- FPS</strong></div>
+  </div>
+  <div class="panel-label">CAMERA</div>
+  <div class="button-pair"><button id="thirdPerson" class="selected" type="button">3RD PERSON</button><button id="firstPerson" type="button">1ST PERSON</button></div>
+  <div class="panel-label">ANIMATION TESTS</div>
+  <div class="button-pair"><button id="interactButton" type="button">INTERACT <kbd>E</kbd></button><button id="reloadButton" type="button">RELOAD <kbd>R</kbd></button></div>
+  <label class="panel-label" for="quality">RENDER QUALITY</label>
+  <select id="quality">
+    <option value="performance">Performance</option>
+    <option value="balanced" selected>Balanced</option>
+    <option value="quality">Quality</option>
+  </select>
+  <p class="panel-foot">This model is a rig/animation diagnostic. Focus on timing, joint motion, blend quality and whether actions return correctly to movement.</p>
+  <div id="feedback" role="status" aria-live="polite">Ready to test.</div>
+</aside>
+
+<div id="status" role="alert" class="status-error" hidden>
+  <strong>Could not start animation test</strong>
+  <p id="errorText">The WebGL test couldn't initialize. Check your browser's hardware acceleration.</p>
+  <a href="/developer.html">Back to Developer Center</a>
+</div>
+</body>
+</html>
