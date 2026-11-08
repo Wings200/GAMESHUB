@@ -4,7 +4,7 @@ import {chromium} from 'playwright';
 import {strict as assert} from 'node:assert';
 import {mkdir} from 'node:fs/promises';
 const browser=await chromium.launch({headless:true,args:[
-  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--disable-web-security',
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
 ]});
 const failures=[];
 const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
