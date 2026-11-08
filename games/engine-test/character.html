@@ -6,22 +6,22 @@
 <meta name="theme-color" content="#0a1117">
 <title>GAMESHUB ENGINE — Character Animation Test</title>
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./character.css?v=build023">
+<link rel="stylesheet" href="./character.css?v=build024">
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
 "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
 </script>
-<script type="module" src="./character.js?v=build023"></script>
+<script type="module" src="./character.js?v=build024"></script>
 </head>
 <body>
 <canvas id="game" aria-label="Playable 3D character animation test room"></canvas>
 
 <div id="launch" class="launch">
   <div class="launch-inner">
-    <div class="eyebrow">GAMESHUB ENGINE / BUILD 023 / DEVELOPER PREVIEW</div>
+    <div class="eyebrow">GAMESHUB ENGINE / BUILD 024 / DEVELOPER PREVIEW</div>
     <div class="hero-mark">GH<span> / MOTION</span></div>
     <h1>Character<br><em>Animation Lab</em></h1>
-    <p>Test the actual engine transitions: idle, walking, sprinting, jumping, interacting and reloading. Swap between third-person and first-person to inspect both views.</p>
+    <p>Test weighted walking and sprinting, takeoff, falling, landing, interaction and reload transitions. Swap between third-person and first-person to inspect both views.</p>
     <button id="launchButton" class="primary" type="button">ENTER ANIMATION TEST <span>↗</span></button>
     <p class="disclaimer">A stylized diagnostic rig, not a finished character model or motion-captured animation. You are reviewing the animation system itself.</p>
     <a class="back" href="/developer.html">← Return to Developer Center</a>
@@ -29,7 +29,7 @@
 </div>
 
 <header id="topbar" class="topbar" hidden>
-  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 023 · LIVE TEST</small></div></div>
+  <div class="identity"><div class="brand">GH</div><div><strong>CHARACTER ANIMATION LAB</strong><small>ENGINE BUILD 024 · LIVE TEST</small></div></div>
   <div class="top-actions">
     <span id="qualityIndicator" class="signal">BALANCED</span>
     <a href="/developer.html">EXIT LAB</a>
