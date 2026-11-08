@@ -326,12 +326,16 @@ function buildScene(engine) {
     if(!mainProbeEnabled || engine.quality==='performance') return false;
     const originalMaterials=Array.from(exhibitMaterialClones.values());
     const previous=originalMaterials.map(material=>material.envMap);
+    const previousShadows=engine.renderer.shadowMap.enabled;
     // Avoid feedback loops when a metal sample is visible in its own cube.
     for(const material of originalMaterials) {
       material.envMap=null;
       material.needsUpdate=true;
     }
     try{
+      // The main renderer keeps its shadows. Only the six tiny probe renders
+      // skip shadow-map generation to avoid blocking the game loop.
+      engine.renderer.shadowMap.enabled=false;
       mainCubeCamera.update(engine.renderer,scene);
       for(const material of originalMaterials){
         material.envMap=mainProbeTarget.texture;
@@ -347,6 +351,8 @@ function buildScene(engine) {
       });
       mainProbeDirty=false;
       return false;
+    }finally{
+      engine.renderer.shadowMap.enabled=previousShadows;
     }
   }
   function setReflectionEnabled(enabled){
@@ -379,7 +385,13 @@ function buildScene(engine) {
     setMotion(value){animate=Boolean(value);},
     getMotion(){return animate;},
     setShadowQuality,setCeilingIntensity,setReflectionEnabled,
-    captureReflections(){return {showroom:captureShowroomProbe(),chamber:chamber.captureReflections()};},
+    captureReflections(){
+      // Updating both six-faced cubemaps in one click stalls low-end WebGL.
+      // Refresh only the room the player is currently examining.
+      return engine.camera.position.z>=17.1
+        ? {showroom:false,chamber:chamber.captureReflections()}
+        : {showroom:captureShowroomProbe(),chamber:false};
+    },
     getReflectionCaptures(){return {showroom:mainCaptureCount,chamber:chamber.getStatus().reflectionCaptures};},
     dispose(){
       removeFrame();
