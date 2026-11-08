@@ -18,7 +18,7 @@ export function createMaterialCanvas(preset,overrides={},size=256){
   for(let y=0;y<size;y++) for(let x=0;x<size;x++){
     // Include matching endpoints rather than sampling unrelated edge pixels.
     const u=x/Math.max(1,size-1),v=y/Math.max(1,size-1);
-    const variation=sampleMaterialPattern(preset,u,v);
+    const variation=sampleMaterialPattern(preset,u,v,settings.repeat);
     const off=(y*size+x)*4;
     image.data[off]=clamp(r+variation);
     image.data[off+1]=clamp(g+variation);
@@ -31,11 +31,16 @@ export function createMaterialCanvas(preset,overrides={},size=256){
 
 export function createBuildingMaterial(preset,overrides={}){
   const settings=normalizeMaterialSettings(preset,overrides);
-  const canvas=createMaterialCanvas(preset,settings,256);
+  // A larger tiling setting generates more distinct pattern across one map.
+  // Resolution grows with density (within a GPU-safe budget) to keep detail.
+  const resolution=settings.repeat<=1.5?256:settings.repeat<=3?512:1024;
+  const canvas=createMaterialCanvas(preset,settings,resolution);
   const texture=new THREE.CanvasTexture(canvas);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
-  texture.repeat.set(settings.repeat,settings.repeat);
+  // Repeating one map made four identical panels at 2x. The procedural
+  // generator already handles density without repeating entire quadrants.
+  texture.repeat.set(1,1);
   texture.anisotropy=4;
   const options={map:texture,roughness:settings.roughness,metalness:settings.metalness,side:THREE.DoubleSide};
   const material=preset.category==='glass'
