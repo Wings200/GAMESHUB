@@ -52,8 +52,7 @@ try {
   // per scene), rather than declaring dynamic reflections correct from source.
   await page.locator('#probeNow').click({timeout:120000});
   await page.waitForFunction(()=>
-    /SHOWROOM [1-9]\\d* \\/ CHAMBER [1-9]\\d*/.test(
-      document.getElementById('reflectionStatus').textContent),
+    document.getElementById('reflectionStatus').textContent.includes('SHOWROOM 1 / CHAMBER 1'),
     null,{timeout:45000});
   await page.locator('#doorToggle').click();
   await page.waitForFunction(() =>
