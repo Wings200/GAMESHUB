@@ -28,7 +28,7 @@ export function lightAperture(value) {
   const x=Math.max(0,Math.min(1,Number(value)||0));
   return x*x*(3-2*x);
 }
-export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles}) {
+export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,onDoorChange=()=>{}}) {
   const scene=engine.scene, renderer=engine.renderer;
   const ownMaterials=[], ownGeometries=[];
   const concrete=new THREE.MeshStandardMaterial({color:0x363a3c,roughness:.94,metalness:.03});
@@ -169,6 +169,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles})
     portalLight.intensity=46*aperture;
     bouncedLight.intensity=bounceEnabled?2.5*aperture:0;
     dirty=true;
+    onDoorChange();
   }
   function setQuality(profile) {
     shadowProfile=profile;
@@ -227,6 +228,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles})
   setQuality(engine.quality);
   return {
     toggle,update,setQuality,setProbes,setBounce,doorBarrier,
+    captureReflections: captureProbe,
     getStatus,near(x,z){return doorDistance(x,z)<3.2;},
     dispose(){
       probeTarget.dispose();
