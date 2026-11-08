@@ -79,6 +79,7 @@ export async function onRequest(context) {
 
   const developerPage = pathname === '/developer' || pathname === '/developer.html';
   const maintenancePage = pathname === '/maintenance' || pathname === '/maintenance.html';
+  const engineTest = pathname === '/games/engine-test' || pathname.startsWith('/games/engine-test/');
   let state;
   try {
     state = await readMaintenanceState(context.env.DB);
@@ -88,7 +89,7 @@ export async function onRequest(context) {
   }
 
   let developer = null;
-  if (state.enabled || developerPage || maintenancePage) {
+  if (state.enabled || developerPage || maintenancePage || engineTest) {
     try {
       developer = await developerIdentity(context);
     } catch (error) {
@@ -101,6 +102,14 @@ export async function onRequest(context) {
     if (!developer) return state.enabled ? redirect(url, '/maintenance.html')
       : new Response('Not found.', {status: 404, headers: {'Cache-Control': 'no-store'}});
     return context.next();
+  }
+
+  // Even with maintenance OFF, the unfinished engine lab stays developer-only.
+  if (engineTest && !developer) {
+    if (state.enabled && context.request.headers.get('Accept')?.includes('text/html')) {
+      return redirect(url, '/maintenance.html');
+    }
+    return new Response('Not found.', {status: 404, headers: {'Cache-Control': 'no-store'}});
   }
 
   if (maintenancePage) {

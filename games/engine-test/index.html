@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d15">
+  <title>GAMESHUB ENGINE — Development Lab</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {"imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }}
+  </script>
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <canvas id="world" aria-label="Walkable 3D GAMESHUB Engine laboratory"></canvas>
+
+  <div class="launch" id="launch">
+    <div class="launch-content">
+      <div class="eyebrow">Developer-only testing environment</div>
+      <div class="brandmark" aria-hidden="true">G<span>H</span></div>
+      <h1>GAMESHUB <em>ENGINE</em></h1>
+      <div class="build">0.1.0-dev.001 <span>•</span> FOUNDATION BUILD</div>
+      <p>Our first real engine build. Test the renderer, camera, material samples, lighting, and diagnostics in one controlled space.</p>
+      <button type="button" id="launchButton">LAUNCH ENGINE TEST <span>↗</span></button>
+      <a href="/developer.html">← Developer Center</a>
+    </div>
+  </div>
+
+  <div class="intro" id="intro" hidden aria-label="GAMESHUB Engine intro animation">
+    <div class="intro-beam left"></div><div class="intro-beam right"></div>
+    <div class="intro-symbol"><svg viewBox="0 0 160 160" aria-hidden="true" fill="none">
+      <path d="M80 8 141 43v74l-61 35-61-35V43z" stroke="currentColor" stroke-width="4"/>
+      <path d="M69 59H52L41 80l11 21h22V82H61M91 57v46M91 80h31V57M122 80v23" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/>
+    </svg></div>
+    <div class="intro-lock"></div>
+    <div class="intro-title">GAMESHUB <strong>ENGINE</strong></div>
+    <div class="intro-subtitle">POWERING THE NEXT EXPERIENCE</div>
+    <button type="button" class="skip" data-skip-intro>SKIP INTRO ↗</button>
+  </div>
+
+  <header class="lab-hud" id="hud" hidden>
+    <div class="identity"><span class="identity-mark">GH</span><div><strong>ENGINE TEST LAB</strong><small>BUILD 001 · 0.1.0 DEVELOPMENT</small></div></div>
+    <div class="hud-actions"><span class="signal" id="rendererState">WEBGL · ACTIVE</span><button id="replay" type="button">↻ REPLAY INTRO</button><a href="/developer.html">EXIT</a></div>
+  </header>
+
+  <div class="reticle" id="reticle" hidden aria-hidden="true"></div>
+  <aside class="controls-hint" id="hint" hidden>
+    <strong>CONTROLS</strong>
+    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> WALK</span>
+    <span><kbd>SHIFT</kbd> SPRINT · <kbd>SPACE</kbd> JUMP</span>
+    <span>CLICK TO LOOK · DRAG IF MOUSE LOCK FAILS</span>
+    <span><kbd>ESC</kbd> RELEASE MOUSE</span>
+  </aside>
+
+  <aside class="dev-panel" id="panel" hidden>
+    <div class="panel-heading"><div><small>ENGINE DIAGNOSTICS</small><h2>Live Tuning</h2></div><span class="dev-badge">DEV</span></div>
+    <div class="stats">
+      <div><small>FRAME RATE</small><strong id="fps">--</strong><span>FPS</span></div>
+      <div><small>DRAW CALLS</small><strong id="drawCalls">--</strong></div>
+      <div><small>TRIANGLES</small><strong id="triangles">--</strong></div>
+      <div><small>FRAME TIME</small><strong id="frameTime">--</strong><span>MS</span></div>
+    </div>
+    <label for="exposure">Tone-mapping exposure <output id="exposureValue">1.00</output></label>
+    <input type="range" id="exposure" min="0.55" max="1.8" step="0.05" value="1">
+    <label for="intensity">Key-light intensity <output id="intensityValue">2.9</output></label>
+    <input type="range" id="intensity" min="0.3" max="5" step="0.1" value="2.9">
+    <label for="resolution">Render scale <output id="resolutionValue">100%</output></label>
+    <input type="range" id="resolution" min="0.5" max="1" step="0.05" value="1">
+    <label class="toggle"><span>Dynamic shadows</span><input id="shadows" type="checkbox" checked></label>
+    <label class="toggle"><span>Audio cues</span><input id="audio" type="checkbox" checked></label>
+    <button id="soundTest" type="button">TEST AUDIO CUE ↗</button>
+    <div class="panel-note">Changes apply live. This is a controlled engine test, not a finished game.</div>
+  </aside>
+
+  <div class="error-screen" id="error" hidden role="alert"><h2>ENGINE INITIALIZATION FAILED</h2><p id="errorMessage"></p><a href="/developer.html">Return to Developer Center</a></div>
+</body>
+</html>
