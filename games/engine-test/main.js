@@ -98,4 +98,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 002 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 003 | Developer Lab`);

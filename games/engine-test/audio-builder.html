@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a101a">
+  <title>GAMESHUB ENGINE — Audio Workbench</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./audio-builder.css">
+  <script type="module" src="./audio-builder.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="identity"><span class="mark">GH</span><div><strong>GAMESHUB ENGINE</strong><small>DEVELOPER AUDIO WORKBENCH</small></div></div>
+    <nav><a href="./">← ENGINE TEST</a><a href="/developer.html">DEVELOPER CENTER</a></nav>
+  </header>
+  <main>
+    <div class="title-row"><div><div class="eyebrow">0.1.0-dev.003 · Recording-based audio pipeline</div><h1>Audio Workbench</h1><p>Build game audio by editing and layering actual recorded sounds. No placeholder oscillator buzzes.</p></div><div class="status-pill">DEVELOPER TOOL</div></div>
+    <section class="toolbar" aria-label="Sound project tools">
+      <label class="button primary" for="files">+ IMPORT SOUND FILES</label>
+      <input id="files" type="file" multiple accept="audio/*,.wav,.mp3,.ogg,.m4a,.flac" hidden>
+      <button id="play" type="button" disabled>▶ PREVIEW MIX</button>
+      <button id="stop" type="button" disabled>■ STOP</button>
+      <button id="export" type="button" disabled>↓ EXPORT WAV</button>
+      <button id="recipe" type="button" disabled>↓ SAVE RECIPE</button>
+    </section>
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop audio files here">
+      <div class="drop-icon">♫</div><strong>Drop real audio recordings here</strong><p>WAV, MP3, OGG and other formats supported by your browser. Up to 12 layers, 30-second mix duration.</p>
+    </div>
+    <section class="workspace">
+      <div class="section-heading"><div><div class="eyebrow">SOUND CONSTRUCTION</div><h2>Mix Layers <span id="layerCount">0 / 12</span></h2></div><label>Output name <input id="soundName" type="text" value="gameshub-sound" maxlength="60" autocomplete="off"></label></div>
+      <div id="layers" class="layers" aria-live="polite"><div class="empty">Import recorded sound files to start building a layered sound effect.</div></div>
+    </section>
+    <aside class="master">
+      <div class="section-heading"><div><div class="eyebrow">MIXING DESK</div><h2>Master Output</h2></div><span id="duration">0.00 SEC</span></div>
+      <label for="masterGain">Master volume <output id="masterGainValue">82%</output></label>
+      <input type="range" id="masterGain" min="0" max="1" step="0.01" value="0.82">
+      <p>Export renders a stereo 16-bit WAV using offline processing. You can also save a JSON recipe to reproduce the mix with the original source recordings.</p>
+    </aside>
+    <div id="message" class="message" role="status" aria-live="polite">Awaiting source recordings.</div>
+    <div class="footnote">A mixing tool can improve real recordings, but cannot invent realistic gunshots, impacts or footsteps from a handful of tones. Use recordings you created or have permission to use.</div>
+  </main>
+</body>
+</html>
