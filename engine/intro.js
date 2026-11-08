@@ -1,3 +1,8 @@
+// Logo/title animations settle by ~3.2s. Keep the finished card visible
+// before revealing the game, even when the intro is replayed.
+export const INTRO_ANIMATION_MS = 3300;
+export const INTRO_HOLD_MS = 1600;
+
 export class EngineIntro {
   constructor(root, audio) {
     this.root = root;
@@ -17,7 +22,7 @@ export class EngineIntro {
       void this.root.offsetWidth; // Rewind CSS keyframes for Replay.
       this.root.classList.add('playing');
       this.audio?.intro();
-      this.timer = setTimeout(() => this.finish(), 3850);
+      this.timer = setTimeout(() => this.finish(), INTRO_ANIMATION_MS + INTRO_HOLD_MS);
     });
   }
 

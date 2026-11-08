@@ -1,6 +1,6 @@
 import {GameEngine, ENGINE_VERSION} from '../../engine/core.js';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js';
+import {EngineIntro} from '../../engine/intro.js?v=build002';
 import {EngineAudio} from '../../engine/audio.js';
 import {createTestRoom} from './room.js';
 
@@ -98,4 +98,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 001 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 002 | Developer Lab`);
