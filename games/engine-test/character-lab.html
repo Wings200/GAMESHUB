@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1119">
+  <title>GAMESHUB ENGINE — Character Animation Lab</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./character-lab.css?v=build023">
+  <script type="importmap">{"imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }}</script>
+  <script type="module" src="./character-lab.js?v=build023"></script>
+</head>
+<body>
+  <canvas id="game" aria-label="Interactive 3D character animation testing room"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <main class="launch" id="launch">
+    <div class="launch-panel">
+      <div class="eyebrow">GAMESHUB ENGINE / LAB 023 <span>● DEVELOPER PREVIEW</span></div>
+      <div class="horizontal-mark" aria-hidden="true"><span>GH</span><div></div><b>023</b></div>
+      <h1>CHARACTER<br><em>ANIMATION LAB</em></h1>
+      <p>A playable test of the real GAMESHUB Engine. Watch an animated character move, jump, interact and reload—with first-person and follow-camera views.</p>
+      <button id="launchButton" type="button">ENTER MOTION LAB <span>↗</span></button>
+      <div class="launch-meta">ENGINE BUILD 023 <i></i> 3D MOTION + COLLISION + LIGHTING <i></i> DESKTOP CONTROLS</div>
+      <a href="./">RETURN TO ENGINE LAB</a>
+    </div>
+  </main>
+
+  <header class="topbar" id="hud" hidden>
+    <div class="brand"><div class="mark">GH</div><div><strong>MOTION LAB <span>/ 023</span></strong><small>GAMESHUB ENGINE · CHARACTER TEST ENVIRONMENT</small></div></div>
+    <div class="right-controls">
+      <span class="online"><span class="status-dot"></span> SESSION RUNNING</span>
+      <button type="button" id="modeButton">THIRD PERSON <kbd>V</kbd></button>
+      <a href="./" aria-label="Back to Engine Lab">EXIT ↗</a>
+    </div>
+  </header>
+
+  <div class="center-dot" id="crosshair" hidden aria-hidden="true"><span></span></div>
+  <div class="status-stack" id="readout" hidden>
+    <div class="reading-title">LIVE ANIMATION STATE <span>ANIMATION MIXER</span></div>
+    <div class="current-state" id="state">IDLE <span class="pulse"></span></div>
+    <div class="metric"><span>MOVEMENT SPEED</span><strong id="speed">0.0 m/s</strong></div>
+    <div class="bar"><div id="speedBar"></div></div>
+    <div class="metric"><span>GROUND CONTACT</span><strong id="grounded">GROUNDED</strong></div>
+    <div class="metric"><span>CAMERA</span><strong id="viewLabel">THIRD PERSON</strong></div>
+    <div class="metric"><span>SHADOW QUALITY</span><strong id="qualityLabel">BALANCED</strong></div>
+  </div>
+
+  <aside class="actions" id="actions" hidden>
+    <div class="reading-title">ANIMATION TESTS <span>LIVE RIG</span></div>
+    <button type="button" id="interactButton"><b>INTERACT</b><small>REACH / OPERATE</small><kbd>E</kbd></button>
+    <button type="button" id="reloadButton"><b>RELOAD</b><small>TOOL HANDLING</small><kbd>R</kbd></button>
+    <button type="button" id="resetButton"><b>RESET POSITION</b><small>RETURN TO SPAWN</small><kbd>HOME</kbd></button>
+    <div class="quality-row"><label for="quality">RENDER QUALITY</label><select id="quality"><option value="performance">PERFORMANCE</option><option value="balanced" selected>BALANCED</option><option value="quality">QUALITY</option></select></div>
+    <p class="panel-note">The character and animation clips are an original procedural test rig, not a finished human asset.</p>
+  </aside>
+
+  <section class="control-strip" id="controls" hidden aria-label="Game controls">
+    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>MOVE</span></div>
+    <div><kbd>SHIFT</kbd><span>SPRINT</span></div>
+    <div><kbd>SPACE</kbd><span>JUMP</span></div>
+    <div><kbd>V</kbd><span>CAMERA</span></div>
+    <div><kbd>E</kbd><span>INTERACT</span></div>
+    <div><kbd>R</kbd><span>RELOAD</span></div>
+    <div class="mouse"><span>DRAG / CLICK WORLD TO LOOK</span></div>
+  </section>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+  <div class="center-prompt" id="nearPrompt" hidden>PRESS <kbd>E</kbd> TO ACTIVATE THE TRAINING CONSOLE</div>
+
+  <div class="error" id="error" hidden role="alert">
+    <h2>ENGINE INITIALIZATION FAILED</h2>
+    <p id="errorMessage">The browser could not start the rendering session.</p>
+    <button type="button" id="retryButton">TRY AGAIN</button>
+    <a href="./">RETURN TO ENGINE LAB</a>
+  </div>
+</body>
+</html>
