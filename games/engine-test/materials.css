@@ -20,3 +20,22 @@ input[type=range]{display:block;width:100%;accent-color:#bdcda5}.scale-hint{disp
 @media(max-width:1200px){.workspace{grid-template-columns:300px minmax(400px,1fr)}.inspector{grid-column:1 / -1;overflow:visible;border-left:0;border-top:1px solid #34483e;display:grid;grid-template-columns:1fr 1fr;column-gap:24px}.inspector>.section-head,.inspector>.intro,.inspector>.actions,.inspector>.saved,.inspector>.small-note{grid-column:1 / -1}.workspace{height:auto;min-height:calc(100vh - 76px)}.library{max-height:850px}.stage{min-height:700px}}
 @media(max-width:740px){.topbar{height:auto;min-height:73px;padding:12px 15px}.top-actions .count{display:none}.brand strong{font-size:11px}.brand small{font-size:8px}.top-actions a{font-size:10px;padding:8px}.workspace{display:block}.library{max-height:none;overflow:visible}.material-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.stage{height:590px;min-height:0}.inspector{display:block}.stage-head{padding:12px}.stage-actions label{display:none}.stage-actions select{width:140px}.selected-caption h2{font-size:22px}}
 @media(max-width:480px){.material-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.preview-tip{font-size:8px}.brand small{display:none}.top-actions a{max-width:90px;line-height:1.2;text-align:center}}
+
+
+/* Material identity inspection: standardized grayscale swatches isolate
+   weave and pile structure from misleading color differences. */
+.textile-comparison{border-top:1px solid #405348;background:#18241f;padding:12px 18px 14px}
+.textile-comparison[hidden]{display:none!important}
+.textile-comparison-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:9px}
+.textile-comparison-head strong{display:block;color:#e2e8da;font-size:13px;margin-top:3px}
+.textile-comparison-head small{font-size:9px;letter-spacing:.055em;color:#9eb19f;text-align:right}
+.textile-comparison-cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+.textile-sample{padding:5px;background:#23332b;border:1px solid #567062;border-radius:5px;text-align:left;color:#eef4e8;min-width:0}
+.textile-sample:hover{border-color:#b3c6a3}
+.textile-sample[aria-pressed="true"]{border-color:#e3d191;box-shadow:0 0 0 1px #e3d191}
+.textile-sample canvas{display:block;width:100%;aspect-ratio:1.55;border-radius:3px;background:#999}
+.textile-sample strong{display:block;font-size:9px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.textile-sample small{display:block;font-size:8px;letter-spacing:.01em;color:#9fb19f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+@media(max-width:1200px){.textile-comparison-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:740px){.textile-comparison-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .textile-comparison-head{align-items:start;flex-direction:column}}
