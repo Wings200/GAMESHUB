@@ -84,8 +84,11 @@ try{
   await page.locator('#characterSource').selectOption('diagnostic');
   assert.equal(await page.evaluate(()=>window.__characterLab.source),'diagnostic');
   assert.equal(await page.locator('#reloadButton').isEnabled(),true);
+  await page.waitForFunction(()=>!window.__characterLab.viewAnimator.oneShot,
+    null,{timeout:10000});
   await page.locator('#reloadButton').click();
-  await page.waitForFunction(()=>window.__characterLab?.active==='reload',{timeout:5000});
+  await page.waitForFunction(()=>window.__characterLab?.active==='reload',
+    null,{timeout:5000});
   const reloading=await page.evaluate(()=>({
     body:window.__characterLab.animator.active,
     hands:window.__characterLab.viewAnimator.active,

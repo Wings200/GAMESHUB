@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Three.js for character import tests
+        run: npm install --no-save --package-lock=false three@0.180.0
       - name: JavaScript syntax checks
         run: |
           for f in engine/*.js games/engine-test/*.js; do node --check "$f"; done

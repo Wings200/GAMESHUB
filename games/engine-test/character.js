@@ -143,6 +143,9 @@ function switchView(next){
 function setCharacterSource(source){
   if(!['authored','diagnostic'].includes(source))return false;
   if(source==='authored'&&!characterAsset)return false;
+  // A swap is a new actor state, not a continuation of a one-shot action
+  // from the previous rig. Clear the first-person overlay action too.
+  viewAnimator?.stop();
   if(animator){session.removeAnimator('lab-character');animator=null;}
   character?.dispose();
   character=source==='authored'?
