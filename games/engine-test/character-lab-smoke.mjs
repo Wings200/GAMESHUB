@@ -4,7 +4,7 @@ import {strict as assert} from 'node:assert';
 const browser=await chromium.launch({headless:true,args:[
   '--enable-webgl','--use-gl=angle','--use-angle=swiftshader'
 ]});
-const page=await browser.newPage({viewport:{width:1380,height:840}});
+const page=await browser.newPage({viewport:{width:1024,height:640}});
 const pageErrors=[];
 page.on('pageerror',error=>pageErrors.push(error.message));
 try{
@@ -12,7 +12,7 @@ try{
     {waitUntil:'domcontentloaded',timeout:40000});
   assert.equal(response.status(),200);
   await page.locator('#launchButton').click();
-  await page.waitForFunction(()=>window.__characterLab?.ready,{timeout:60000});
+  await page.waitForFunction(()=>window.__characterLab?.ready,null,{timeout:60000});
   const starting=await page.evaluate(()=>{
     const lab=window.__characterLab;
     const rig=lab.character.root;
@@ -24,6 +24,8 @@ try{
       animators:lab.session.animators.size,
       clips:[...lab.animator.clips.keys()],
       source:lab.source,missing:lab.missing,
+      feetDetected:lab.footGrounding?.available,
+      upperBody:lab.animator.hasUpperBody('interact'),
       skinnedMeshes,reloadDisabled:document.getElementById('reloadButton').disabled,
       colliders:lab.session.world.colliders.length,
       rendererCalls:lab.engine.renderer.info.render.calls,
@@ -36,12 +38,14 @@ try{
   assert.equal(starting.characterVisible,true);
   assert.equal(starting.viewmodelVisible,false);
   assert.equal(starting.animators,2);
-  assert.equal(starting.source,'authored');
+  assert.equal(starting.source,'human');
   assert.ok(starting.clips.includes('walk'));
   assert.ok(starting.clips.includes('land'));
   assert.ok(!starting.clips.includes('reload'));
   assert.ok(starting.missing.includes('reload'));
   assert.equal(starting.reloadDisabled,true);
+  assert.equal(starting.feetDetected,true);
+  assert.equal(starting.upperBody,true);
   assert.ok(starting.skinnedMeshes>0);
   assert.ok(starting.colliders>=5);
   assert.ok(starting.rendererCalls>0);
@@ -63,6 +67,18 @@ try{
   await page.waitForFunction(()=>window.__characterLab?.active==='run',{timeout:10000});
   const run=await page.evaluate(()=>window.__characterLab.active);
   assert.equal(run,'run');
+  // The upper-body punch should not interrupt the lower-body running clip.
+  await page.locator('#attackButton').click();
+  await page.waitForFunction(()=>window.__characterLab?.active==='attack',null,{timeout:10000});
+  const layering=await page.evaluate(()=>({
+    base:window.__characterLab.animator.active,
+    overlay:window.__characterLab.animator.upperBodyActive?.name,
+    oneShot:window.__characterLab.animator.oneShot
+  }));
+  assert.equal(layering.base,'run');
+  assert.equal(layering.overlay,'attack');
+  assert.equal(layering.oneShot,null);
+  await page.waitForFunction(()=>window.__characterLab?.active==='run',null,{timeout:60000});
   await page.keyboard.up('Shift');
   await page.keyboard.up('w');
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:10000});
@@ -101,8 +117,8 @@ try{
   assert.equal(reloading.hands,'reload');
   assert.equal(reloading.count,1);
   await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:8000});
-  await page.locator('#characterSource').selectOption('authored');
-  assert.equal(await page.evaluate(()=>window.__characterLab.source),'authored');
+  await page.locator('#characterSource').selectOption('robot');
+  assert.equal(await page.evaluate(()=>window.__characterLab.source),'robot');
   await page.locator('#interactButton').click();
   await page.waitForFunction(()=>window.__characterLab?.active==='interact',
     null,{timeout:10000});
@@ -113,12 +129,15 @@ try{
     console.error('IMPORTED GESTURE DIAGNOSTICS',await page.evaluate(()=>{
       const lab=window.__characterLab;
       return {active:lab.active,oneShot:lab.animator.oneShot?.time,
+        overlay:lab.animator.upperBodyActive?.action?.time,
         speed:lab.animator.current?.getEffectiveTimeScale(),
         fps:lab.engine.fps,grounded:lab.session.controls.grounded,
         velocity:lab.session.controls.velocity.toArray(),status:lab.status};
     }));
     throw error;
   }
+  await page.locator('#characterSource').selectOption('human');
+  assert.equal(await page.evaluate(()=>window.__characterLab.source),'human');
   await page.keyboard.press('v');
   assert.equal(await page.evaluate(()=>window.__characterLab.mode),'third');
   const eInteraction=await page.evaluate(()=>{
@@ -129,9 +148,10 @@ try{
   await page.waitForFunction(()=>!document.getElementById('interactionHint').hidden,
     {timeout:8000});
   await page.keyboard.press('e');
-  await page.waitForFunction(()=>window.__characterLab?.active==='interact',{timeout:5000});
+  await page.waitForFunction(()=>window.__characterLab?.active==='interact',null,{timeout:10000});
   assert.equal(await page.evaluate(()=>window.__characterLab.actions),eInteraction+1);
-  await page.waitForFunction(()=>window.__characterLab?.active==='idle',{timeout:8000});
+  await page.waitForFunction(()=>window.__characterLab?.active==='idle',null,{timeout:60000});
+  assert.ok(Math.abs(await page.evaluate(()=>window.__characterLab.footGrounding.offset))<=.14);
   await page.locator('#quality').selectOption('performance');
   const performance=await page.evaluate(()=>({
     renderer:window.__characterLab.engine.renderer.shadowMap.enabled,
@@ -163,5 +183,5 @@ try{
       lab.engine.renderCamera.position.z<17.74;
   },{timeout:8000});
   assert.deepEqual(pageErrors,[]);
-  console.log('Character Animation Test Room browser smoke passed: launch, articulated rig, WASD, sprint, jump/land, view, reload/interact, console, camera collision, quality.');
+  console.log('Build 026 character lab smoke passed: CC0 human, preserved-weight transitions, upper-body layers while running, foot grounding, robot comparison, diagnostic reload, jump/land, camera, quality.');
 }finally{await browser.close();}
