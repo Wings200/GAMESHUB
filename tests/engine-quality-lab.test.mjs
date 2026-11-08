@@ -51,7 +51,7 @@ test('the engine test references matching build modules and required controls',(
   const room=readFileSync(new URL('../games/engine-test/room.js',import.meta.url),'utf8');
   const engine=readFileSync(new URL('../engine/core.js',import.meta.url),'utf8');
   assert.match(engine,/0\.1\.0-dev\.007/);
-  assert.match(html,/build007/);
+  assert.match(html,/build008/);
   assert.match(app,/build007/);
   assert.match(html,/id="quality"/);
   assert.match(html,/id="motion"/);
