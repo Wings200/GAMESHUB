@@ -11,3 +11,8 @@ export {FootstepSequencer} from './footsteps.js';
 export {createSurfaceLibrary} from './surfaces.js';
 export {EngineAudio} from './audio.js';
 export {EngineIntro, INTRO_ANIMATION_MS, INTRO_HOLD_MS} from './intro.js';
+
+export {MATERIAL_CATEGORIES,MATERIAL_PRESETS,getMaterialPreset,normalizeMaterialSettings} from './material-catalog.mjs';
+export {MaterialPool} from './material-pool.js';
+export {GameWorld,createGameWorld} from './world.js';
+export {WORLD_FORMAT,normalizeWorldEntity,normalizeWorldDocument} from './world-schema.mjs';
