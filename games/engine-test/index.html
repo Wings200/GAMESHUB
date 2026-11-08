@@ -13,7 +13,7 @@
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }}
   </script>
-  <script type="module" src="./main.js?v=build006"></script>
+  <script type="module" src="./main.js?v=build007"></script>
 </head>
 <body>
   <canvas id="world" aria-label="Walkable 3D GAMESHUB Engine laboratory"></canvas>
@@ -23,8 +23,8 @@
       <div class="eyebrow">Developer-only testing environment</div>
       <div class="brandmark" aria-hidden="true">G<span>H</span></div>
       <h1>GAMESHUB <em>ENGINE</em></h1>
-      <div class="build">0.1.0-dev.006 <span>•</span> FOUNDATION BUILD</div>
-      <p>Our first real engine build. Test the renderer, camera, material samples, lighting, and diagnostics in one controlled space.</p>
+      <div class="build">0.1.0-dev.007 <span>•</span> MATERIALS & MOVEMENT LAB</div>
+      <p>Explore the new architectural quality lab: realistic material response, environmental reflections, physical objects, collision, and animation diagnostics.</p>
       <button type="button" id="launchButton">LAUNCH ENGINE TEST <span>↗</span></button>
       <a href="/developer.html">← Developer Center</a>
     </div>
@@ -43,7 +43,7 @@
   </div>
 
   <header class="lab-hud" id="hud" hidden>
-    <div class="identity"><span class="identity-mark">GH</span><div><strong>ENGINE TEST LAB</strong><small>BUILD 006 · 0.1.0 DEVELOPMENT</small></div></div>
+    <div class="identity"><span class="identity-mark">GH</span><div><strong>ENGINE TEST LAB</strong><small>BUILD 007 · 0.1.0 DEVELOPMENT</small></div></div>
     <div class="hud-actions"><span class="signal" id="rendererState">WEBGL · ACTIVE</span><button id="replay" type="button">↻ REPLAY INTRO</button><a href="./audio-builder.html">AUDIO BUILDER</a><a href="/developer.html">EXIT</a></div>
   </header>
 
@@ -64,6 +64,8 @@
       <div><small>TRIANGLES</small><strong id="triangles">--</strong></div>
       <div><small>FRAME TIME</small><strong id="frameTime">--</strong><span>MS</span></div>
     </div>
+    <label for="quality">Rendering quality</label>
+    <select id="quality" aria-label="Rendering quality preset"><option value="balanced" selected>Balanced · recommended</option><option value="quality">Quality · sharper materials</option><option value="performance">Performance · faster</option></select>
     <label for="exposure">Tone-mapping exposure <output id="exposureValue">1.00</output></label>
     <input type="range" id="exposure" min="0.55" max="1.8" step="0.05" value="1">
     <label for="intensity">Key-light intensity <output id="intensityValue">2.9</output></label>
@@ -71,9 +73,10 @@
     <label for="resolution">Render scale <output id="resolutionValue">100%</output></label>
     <input type="range" id="resolution" min="0.5" max="1" step="0.05" value="1">
     <label class="toggle"><span>Dynamic shadows</span><input id="shadows" type="checkbox" checked></label>
+    <label class="toggle"><span>Motor animation</span><input id="motion" type="checkbox" checked></label>
     <label class="toggle"><span>Audio cues</span><input id="audio" type="checkbox" checked></label>
-    <button id="soundTest" type="button">TEST AUDIO CUE ↗</button>
-    <div class="panel-note">Changes apply live. This is a controlled engine test, not a finished game.</div>
+    <button id="soundTest" type="button">PROTOTYPE AUDIO (NOT REAL FOLEY) ↗</button>
+    <div class="panel-note">All changes apply live. Audio is still experimental until we source and process recorded mechanical Foley. This is a development lab, not a released game.</div>
   </aside>
 
   <div class="error-screen" id="error" hidden role="alert"><h2>ENGINE INITIALIZATION FAILED</h2><p id="errorMessage"></p><a href="/developer.html">Return to Developer Center</a></div>
