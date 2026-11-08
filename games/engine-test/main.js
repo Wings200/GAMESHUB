@@ -1,9 +1,9 @@
-import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build006';
+import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build007';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js?v=build006';
-import {EngineAudio} from '../../engine/audio.js?v=build006';
-import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build006';
-import {installPolishedFoley} from '../../engine/foley.js?v=build006';
+import {EngineIntro} from '../../engine/intro.js?v=build007';
+import {EngineAudio} from '../../engine/audio.js?v=build007';
+import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build007';
+import {installPolishedFoley} from '../../engine/foley.js?v=build007';
 import {createTestRoom} from './room.js';
 
 const $ = id => document.getElementById(id);
@@ -52,6 +52,7 @@ async function start() {
       catch (error) { console.warn('Mechanical Foley could not be prepared:', error); }
     }
     engine = new GameEngine($('world'));
+    engine.setQuality($('quality').value);
     facility = createTestRoom(engine);
     controls = new FirstPersonControls($('world'), engine.camera, {
       bounds: facility.bounds, obstacles: facility.obstacles
@@ -98,7 +99,18 @@ function range(id, output, setter, format) {
 range('exposure', 'exposureValue', value => { engine.renderer.toneMappingExposure = value; }, value => value.toFixed(2));
 range('intensity', 'intensityValue', value => { facility.key.intensity = value; }, value => value.toFixed(1));
 range('resolution', 'resolutionValue', value => engine.setRenderScale(value), value => `${Math.round(value * 100)}%`);
-$('shadows').addEventListener('change', event => { if (engine) engine.renderer.shadowMap.enabled = event.target.checked; });
+$('quality').addEventListener('change', event => {
+  if (!engine || !facility) return;
+  const config=engine.setQuality(event.target.value);
+  facility.setShadowQuality(config.profile);
+  $('resolution').value=String(config.renderScale);
+  $('resolutionValue').textContent=`${Math.round(config.renderScale*100)}%`;
+  $('exposure').value=String(config.exposure);
+  $('exposureValue').textContent=config.exposure.toFixed(2);
+  $('shadows').checked=config.shadows;
+});
+$('motion').addEventListener('change', event => facility?.setMotion(event.target.checked));
+$('shadows').addEventListener('change', event => { if (engine) { engine.renderer.shadowMap.enabled = event.target.checked; engine.renderer.shadowMap.needsUpdate=true; } });
 $('audio').addEventListener('change', event => { audio.muted = !event.target.checked; });
 $('soundTest').addEventListener('click', async () => { await audio.unlock().catch(() => false); audio.ping(); });
 window.addEventListener('pagehide', () => {
@@ -108,4 +120,4 @@ window.addEventListener('pagehide', () => {
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 006 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 007 | Developer Lab`);

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clampDelta} from './math.js';
+import {qualitySettings, clampScale} from './quality.js';
 
 export {THREE};
-export const ENGINE_VERSION = '0.1.0-dev.006';
+export const ENGINE_VERSION = '0.1.0-dev.007';
 
 export {clampDelta};
 
@@ -28,13 +29,16 @@ export class GameEngine {
     this.renderer = new THREE.WebGLRenderer({canvas, antialias, powerPreference: 'high-performance'});
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMappingExposure = 1.12;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.08, 250);
     this.assets = new AssetManager();
     this.renderScale = 1;
+    this.quality = 'balanced';
+    this.maxPixelRatio = 1.5;
+    this.qualityConfig = qualitySettings('balanced');
     this.callbacks = new Set();
     this.running = false;
     this.elapsed = 0;
@@ -57,15 +61,27 @@ export class GameEngine {
   resize() {
     const width = Math.max(1, this.canvas.clientWidth || window.innerWidth);
     const height = Math.max(1, this.canvas.clientHeight || window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2) * this.renderScale);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.maxPixelRatio) * this.renderScale);
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
   }
 
   setRenderScale(value) {
-    this.renderScale = THREE.MathUtils.clamp(Number(value) || 1, 0.5, 1);
+    this.renderScale = clampScale(value);
     this.resize();
+  }
+
+  setQuality(profile) {
+    const options = qualitySettings(profile);
+    this.quality = options.profile;
+    this.qualityConfig = options;
+    this.maxPixelRatio = options.pixelRatio;
+    this.setRenderScale(options.renderScale);
+    this.renderer.shadowMap.enabled = options.shadows;
+    this.renderer.shadowMap.needsUpdate = true;
+    this.renderer.toneMappingExposure = options.exposure;
+    return options;
   }
 
   start() {

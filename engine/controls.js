@@ -1,5 +1,6 @@
 import {THREE} from './core.js';
 import {moveVector} from './math.js';
+import {resolveXZ} from './collision.js';
 export {moveVector};
 
 export class FirstPersonControls {
@@ -24,6 +25,9 @@ export class FirstPersonControls {
     this.camera.position.y = eyeHeight;
     this.camera.rotation.order = 'YXZ';
     this.onKeyDown = event => {
+      if (!this.enabled) return;
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || event.target?.isContentEditable) return;
       if (/^(Key[WASD]|ShiftLeft|ShiftRight|Space|ArrowLeft|ArrowRight|ArrowUp|ArrowDown)$/.test(event.code)) {
         if (this.enabled) event.preventDefault();
         this.keys.add(event.code);
@@ -31,7 +35,7 @@ export class FirstPersonControls {
     };
     this.onKeyUp = event => this.keys.delete(event.code);
     this.onBlur = () => { this.keys.clear(); this.dragging = false; };
-    this.onPointerLock = () => { this.pointerLocked = document.pointerLockElement === canvas; };
+    this.onPointerLock = () => { this.pointerLocked = document.pointerLockElement === canvas; if (this.pointerLocked) this.dragging = false; };
     this.onMouseDown = event => {
       if (!this.enabled || event.button !== 0) return;
       this.dragging = true;
@@ -76,26 +80,13 @@ export class FirstPersonControls {
     const blend = 1 - Math.exp(-11 * dt);
     this.velocity.x += (direction.x * speed - this.velocity.x) * blend;
     this.velocity.z += (direction.z * speed - this.velocity.z) * blend;
-    const previous = this.camera.position.clone();
     const position = this.camera.position;
-    position.x += this.velocity.x * dt;
-    position.z += this.velocity.z * dt;
-    if (this.bounds) {
-      position.x = THREE.MathUtils.clamp(position.x, this.bounds.minX, this.bounds.maxX);
-      position.z = THREE.MathUtils.clamp(position.z, this.bounds.minZ, this.bounds.maxZ);
-    }
-    const radius = 0.34;
-    for (const block of this.obstacles) {
-      const inside = position.x > block.minX - radius && position.x < block.maxX + radius &&
-        position.z > block.minZ - radius && position.z < block.maxZ + radius;
-      if (!inside) continue;
-      if (previous.x <= block.minX - radius || previous.x >= block.maxX + radius) position.x = previous.x;
-      if (previous.z <= block.minZ - radius || previous.z >= block.maxZ + radius) position.z = previous.z;
-      if (position.x !== previous.x && position.z !== previous.z) {
-        position.x = previous.x;
-        position.z = previous.z;
-      }
-    }
+    const target = resolveXZ({x:position.x,z:position.z},
+      {x:this.velocity.x*dt,z:this.velocity.z*dt}, this.obstacles, this.bounds);
+    position.x = target.x;
+    position.z = target.z;
+    if (target.blockedX) this.velocity.x = 0;
+    if (target.blockedZ) this.velocity.z = 0;
     const grounded = position.y <= this.eyeHeight + 0.001;
     if (grounded && this.keys.has('Space')) this.verticalSpeed = 4.6;
     this.verticalSpeed -= 14 * dt;
