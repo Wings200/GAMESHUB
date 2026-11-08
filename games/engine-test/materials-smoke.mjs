@@ -11,9 +11,9 @@ try{
   const response=await page.goto('http://127.0.0.1:8080/games/engine-test/materials.html',
     {waitUntil:'domcontentloaded',timeout:35000});
   assert.equal(response.status(),200);
-  await page.waitForFunction(()=>document.querySelectorAll('.material-card').length===168,
+  await page.waitForFunction(()=>document.querySelectorAll('.material-card').length===180,
     null,{timeout:30000});
-  assert.match(await page.locator('#libraryCount').innerText(),/168 MATERIAL PRESETS/);
+  assert.match(await page.locator('#libraryCount').innerText(),/180 MATERIAL PRESETS/);
   await page.waitForFunction(()=>document.querySelector('#previewStatus').textContent.includes('READY'),
     null,{timeout:40000});
   assert.equal(await page.locator('#materialViewport').getAttribute('data-preview-ready'),'true');
@@ -59,7 +59,7 @@ try{
     const {MATERIAL_PRESETS}=await import('../../engine/material-catalog.mjs');
     const {createMaterialDetailCanvases}=await import('../../engine/material-factory.js');
     const output=[];
-    for(const category of ['concrete','brick','wood','stone','tile','metal','roof']){
+    for(const category of ['concrete','brick','wood','stone','tile','metal','roof','fabric','carpet']){
       const preset=MATERIAL_PRESETS.find(p=>p.category===category),size=64;
       const maps=createMaterialDetailCanvases(preset,{repeat:2},size);
       const normal=maps.normalCanvas.getContext('2d').getImageData(0,0,size,size).data;
@@ -116,6 +116,15 @@ try{
   assert.equal(await page.locator('#detailToggle').isEnabled(),true);
   await page.locator('#materialCategory').selectOption('stone');
   assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('#materialCategory').selectOption('fabric');
+  assert.equal(await page.locator('.material-card').count(),12);
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('#materialCategory').selectOption('carpet');
+  assert.equal(await page.locator('.material-card').count(),12);
+  assert.equal(await page.locator('#detailToggle').isEnabled(),true);
+  await page.locator('#materialSearch').fill('plush');
+  assert.equal(await page.locator('.material-card').count(),1);
+  await page.locator('#materialSearch').fill('');
   await page.locator('#materialCategory').selectOption('wood');
   assert.equal(await page.locator('.material-card').count(),12);
   await page.locator('#materialSearch').fill('oak');

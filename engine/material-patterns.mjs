@@ -71,8 +71,26 @@ export function sampleMaterialPattern(preset,u,v,scale=1){
     return shade*.7+grain;
   }
   if(pattern==='fabric'){
-    const weave=Math.sin(TAU*u*cycles(64))*Math.sin(TAU*v*cycles(64));
-    return shade*.4+weave*6;
+    const plush=/velvet|felt|wool/i.test(preset.name);
+    const denim=/denim|twill/i.test(preset.name);
+    const threadCount=cycles(plush?42:denim?36:48);
+    const warp=Math.sin(TAU*u*threadCount);
+    const weft=Math.sin(TAU*v*threadCount);
+    const cross=warp*weft;
+    const twill=denim?Math.sin(TAU*(u*threadCount+v*Math.max(1,Math.round(threadCount/2))))*3:0;
+    const nap=signed(periodicNoise(u,v,seed+211,cycles(plush?100:76)));
+    return plush
+      ? shade*.28+nap*8+cross*1.3
+      : shade*.34+warp*3.3+weft*3.2+cross*2.3+twill+nap*1.6;
+  }
+  if(pattern==='carpet'){
+    // Dense, varied pile. Broad heathering breaks up any apparent quadrant
+    // repetition, while many subtle seeded tufts keep carpet non-flat.
+    const heather=signed(periodicNoise(u,v,seed+223,cycles(11)));
+    const tufts=signed(periodicNoise(u,v,seed+224,cycles(96)));
+    const fiber=signed(periodicNoise(u,v,seed+225,cycles(144)));
+    const plush=/plush|shag|wool|cut pile/i.test(preset.name);
+    return shade*.22+heather*10.5+tufts*(plush?7:9)+fiber*3.5;
   }
   if(pattern==='tile'){
     const rows=cycles(4),cols=cycles(4);
@@ -108,12 +126,12 @@ export function sampleMaterialPattern(preset,u,v,scale=1){
   return shade;
 }
 
-// Physical detail for seven construction families. Height is a
+// Physical detail for nine construction families. Height is a
 // dimensionless relief field (not geometry displacement); roughness is a
 // multiplier used by Three.js's PBR roughness map. Both tile seamlessly.
 export function sampleMaterialRelief(preset,u,v,scale=1){
   const {pattern,seed}=preset;
-  if(!['concrete','brick','wood','stone','tile','metal','roof'].includes(pattern))return null;
+  if(!['concrete','brick','wood','stone','tile','metal','roof','fabric','carpet'].includes(pattern))return null;
   u=fract(u);v=fract(v);
   const density=Math.max(.25,Math.min(12,Number(scale)||1));
   const cycles=n=>Math.max(1,Math.round(n*density));
@@ -191,6 +209,46 @@ export function sampleMaterialRelief(preset,u,v,scale=1){
     return {
       height:Math.max(.07,Math.min(.95,.42+upperEdge*.28+face+medium*.032+fine*.018-seam*.24)),
       roughness:Math.max(.72,Math.min(1,.87+medium*.066+fine*.038+seam*.11))
+    };
+  }
+  if(pattern==='fabric'){
+    // Interlocking warp and weft fibers: a subtle, physically plausible
+    // weave that reacts to grazing light. Velvet, felt and wool suppress
+    // the checker-weave in favor of a soft nap.
+    const plush=/velvet|felt|wool/i.test(preset.name);
+    const twill=/denim|twill/i.test(preset.name);
+    const count=cycles(plush?42:twill?36:48);
+    const warp=Math.sin(TAU*u*count);
+    const weft=Math.sin(TAU*v*count);
+    const crossing=warp*weft;
+    const nap=signed(periodicNoise(u,v,seed+241,cycles(plush?88:64)));
+    const heather=signed(periodicNoise(u,v,seed+242,cycles(12)));
+    const diagonal=twill?Math.sin(TAU*(u*count+v*Math.max(1,Math.round(count/2))))*.025:0;
+    return {
+      height:Math.max(.17,Math.min(.84,
+        .50+(plush?crossing*.017:warp*.053+weft*.051+crossing*.037)+
+        nap*(plush?.076:.021)+heather*.016+diagonal)),
+      roughness:Math.max(.73,Math.min(1,
+        .92+heather*.045+nap*.037+(plush?0:crossing*.032)))
+    };
+  }
+  if(pattern==='carpet'){
+    // Carpet pile is dense and stochastic, not a repeated fabric checkerboard.
+    // 'Loop' / Berber styles have tighter pile; plush/shag are taller with
+    // broad tuft height variation. All sampled fields wrap at the borders.
+    const plush=/plush|shag|wool|cut pile/i.test(preset.name);
+    const loop=/berber|loop|commercial|entry mat/i.test(preset.name);
+    const clusters=signed(periodicNoise(u,v,seed+251,cycles(24)));
+    const tufts=signed(periodicNoise(u,v,seed+252,cycles(loop?86:74)));
+    const fiber=signed(periodicNoise(u,v,seed+253,cycles(126)));
+    const direction=Math.sin(TAU*(u*cycles(60)+
+      Math.sin(TAU*v*cycles(3))*.025));
+    const pile=plush?1.25:loop?.84:1;
+    return {
+      height:Math.max(.16,Math.min(.89,.52+pile*(clusters*.080+
+        tufts*.087+fiber*.041+direction*.023))),
+      roughness:Math.max(.78,Math.min(1,
+        .95+clusters*.037+tufts*.037+fiber*.022))
     };
   }
   const weave=v*cycles(27)+Math.sin(TAU*u*cycles(2)+seed)*.26+

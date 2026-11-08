@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
-import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build014';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build014';
+import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build015';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build015';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
@@ -100,7 +100,7 @@ function drawControls(){
   $('repeatValue').textContent=s.repeat.toFixed(2)+'×';
   $('detailStrength').value=s.detailStrength;
   $('detailStrengthValue').textContent=s.detailStrength.toFixed(2)+'×';
-  const supported=['concrete','brick','wood','stone','tile','metal','roof'].includes(selected.category);
+  const supported=['concrete','brick','wood','stone','tile','metal','roof','fabric','carpet'].includes(selected.category);
   $('detailStrength').disabled=!supported;
   $('detailToggle').disabled=!supported;
   $('detailSupport').textContent=supported
