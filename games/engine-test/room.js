@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
 import {createSurfaceLibrary} from '../../engine/surfaces.js';
-import {approach, stepPhase} from '../../engine/motion.js';
+import {stepPhase} from '../../engine/motion.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -87,7 +87,7 @@ function buildScene(engine) {
   for(const x of [-12.35,12.35])
     cube('Side concrete wall',[.35,7,36],mat.wall,[x,3.46,0],{cast:false});
 
-  // 196 instanced floor panels, not hundreds of materials and draw calls.
+  // 280 instanced floor panels, not hundreds of materials and draw calls.
   const tileGeo=new THREE.BoxGeometry(1.68,.035,1.68);
   uniqueGeometries.add(tileGeo);
   const tiles=new THREE.InstancedMesh(tileGeo,mat.floor,14*20);
@@ -280,13 +280,11 @@ function buildScene(engine) {
     key.castShadow=profile!=='performance';
     engine.renderer.shadowMap.needsUpdate=true;
   };
-  let animate=true, phase=0, demo=0;
+  let animate=true, phase=0;
   const removeFrame=engine.onFrame((dt,time)=>{
     if(animate) phase=stepPhase(phase,.24,dt);
     for(const [index,model] of animated.entries())
-      model.group.rotation.y=model.base + phase*(index%2===0?1:-1)*.55;
-    // Technician indicator, not artificial hovering or screen-space flicker.
-    demo=approach(demo,animate?1:0,4,dt);
+      model.group.rotation.y=model.base + phase*(index%2===0?1:-1);
   });
   engine.camera.position.set(0,1.72,12.2);
   const quality=engine.quality;
