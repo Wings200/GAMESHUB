@@ -24,3 +24,6 @@ export {normalizeAudioPosition,segmentIntersectsAABB,estimateOcclusion} from './
 export {LIGHTING_PROFILES,shadowBudget,normalizeLightEffect,lightEffectFactor} from './light-effects.mjs';
 
 export {GameSession,createGameSession} from './session.js';
+
+export {AnimationController} from './animation.js';
+export {chooseLocomotionClip} from './animation-state.mjs';

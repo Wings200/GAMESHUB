@@ -1,5 +1,6 @@
 import {FirstPersonControls} from './controls.js';
 import {GameWorld} from './world.js';
+import {AnimationController} from './animation.js';
 
 // The assistant-facing composition API for a new game. Instead of each game
 // registering independent callbacks in an arbitrary order, the entire frame
@@ -16,6 +17,7 @@ export class GameSession {
     this.audio=audio;
     this.world=null;
     this.controls=null;
+    this.animators=new Map();
     this.stopFrame=null;
     this.disposed=false;
     try{
@@ -42,9 +44,33 @@ export class GameSession {
       throw new TypeError('GameSession requires finite elapsed time and nonnegative delta');
     // These systems use the *same* camera position within each frame.
     this.controls.update(dt);
+    for(const {controller,followControls} of this.animators.values()){
+      if(followControls)controller.syncFromControls(this.controls);
+      controller.update(dt);
+    }
     this.engine.camera.updateMatrixWorld(true);
     this.world.updateLighting(elapsed);
     this.world.updateAudio(elapsed);
+  }
+
+  addAnimator(id,root,clips,options={}){
+    if(this.disposed)throw new Error('Cannot add animator to disposed game session');
+    if(typeof id!=='string'||!id.trim())throw new TypeError('Animator ID must be nonempty');
+    if(this.animators.has(id))throw new Error('Duplicate animator ID: '+id);
+    const {followControls=false,...settings}=options;
+    if(typeof followControls!=='boolean')throw new TypeError('followControls must be boolean');
+    const controller=new AnimationController(root,{clips,...settings});
+    this.animators.set(id,{controller,followControls});
+    return controller;
+  }
+
+  removeAnimator(id){
+    if(this.disposed)throw new Error('Cannot remove animator from disposed game session');
+    const item=this.animators.get(id);
+    if(!item)return false;
+    item.controller.dispose();
+    this.animators.delete(id);
+    return true;
   }
 
   setQuality(profile){
@@ -60,6 +86,8 @@ export class GameSession {
     this.stopFrame?.();
     this.stopFrame=null;
     this.controls?.dispose();
+    for(const item of this.animators.values())item.controller.dispose();
+    this.animators.clear();
     this.world?.dispose();
     // The caller created engine and audio, so they remain caller-owned.
   }

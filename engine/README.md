@@ -332,3 +332,54 @@ floors, wall-blocked walking, live listener tracking, 3D audio occlusion at
 different heights, spot shadow rendering, quality switching, save/load and
 cleanup. It doesn't add full rigid-body physics, indoor global illumination,
 a game map, or recorded audio assets.
+
+## Build 022 — reusable animation controllers and character movement states
+
+New GAMESHUB games can import authored animation clips from glTF models and
+play them through `AnimationController`. The controller uses Three.js's real
+`AnimationMixer`, looping animations, configurable crossfade blending and
+one-shot actions that automatically return to the current movement animation.
+It owns the mixer/actions **but not** the model or its mesh/texture assets.
+
+```js
+const engine=new GameEngine(document.querySelector('#game'));
+const session=createGameSession(engine);
+const gltf=await engine.assets.model('/assets/characters/worker.glb');
+engine.scene.add(gltf.scene);
+
+// The aliases must point to real animation clips authored for this rig.
+// This example assumes the model has clips named idle/walk/run/jump/fall/use.
+const clips=Object.fromEntries(gltf.animations.map(clip=>[clip.name,clip]));
+const animator=session.addAnimator('player-visuals',gltf.scene,{
+  idle:clips.idle,walk:clips.walk,run:clips.run,
+  jump:clips.jump,fall:clips.fall,interact:clips.use
+},{followControls:true,fadeSeconds:.18});
+
+// Movement drives idle/walk/run/jump/fall automatically using the same
+// controls that GameSession updates on each frame.
+animator.playOnce('interact',{onFinish:()=>console.log('interaction done')});
+
+// NPCs can use the same API without following player controls:
+const npc=session.addAnimator('guard',guardModel,guardClips);
+npc.setLocomotion({speed:2.1,grounded:true});
+npc.playOnce('reload');
+npc.playLoop('idle');
+
+session.removeAnimator('guard'); // stops actions; does not destroy guardModel
+session.dispose(); // removes all other animation controller callbacks/actions
+```
+
+**Supported:** `register(name,clip)`, `playLoop(name,{fade,speed})`,
+`playOnce(name,{fade,speed,onFinish})`, `setLocomotion({speed,grounded,
+verticalSpeed})`, `syncFromControls(controls)`, `onComplete(callback)`,
+`update(dt)`, `stop()`, and `dispose()`. The `GameSession` update order
+is now **movement → animation → camera transforms → lighting → audio**.
+One-shot actions block locomotion from replacing their pose until complete,
+then crossfade back to the most recently requested movement animation.
+
+**Not implemented:** generating skeletal animations from scratch, foot IK,
+retargeting incompatible skeleton rigs, ragdolls, inverse kinematics,
+networked animation replication, or character models. Three.js animation
+tracks must match the object's node names / rig. Locomotion clip choice uses
+horizontal control velocity; it does not automatically translate an NPC
+through the world. Game code controls world placement and physical collision.
