@@ -23,9 +23,9 @@ try{
     const {MATERIAL_PRESETS}=await import('../../engine/material-catalog.mjs');
     const {createMaterialCanvas}=await import('../../engine/material-factory.js');
     let worst=0;
-    for(const preset of MATERIAL_PRESETS){
+    for(const preset of MATERIAL_PRESETS)for(const repeat of [1,2,4]){
       const size=64;
-      const ctx=createMaterialCanvas(preset,{},size).getContext('2d');
+      const ctx=createMaterialCanvas(preset,{repeat},size).getContext('2d');
       const data=ctx.getImageData(0,0,size,size).data;
       for(let i=0;i<size;i++)for(let channel=0;channel<3;channel++){
         const index=(y,x)=>(y*size+x)*4+channel;
@@ -37,6 +37,24 @@ try{
     return worst;
   });
   assert.equal(edgeDiff,0,'texture borders must be pixel-identical at any repeat level');
+  const tiling=await page.evaluate(async()=>{
+    const {getMaterialPreset}=await import('../../engine/material-catalog.mjs');
+    const {createBuildingMaterial,createMaterialCanvas}=await import('../../engine/material-factory.js');
+    const preset=getMaterialPreset('concrete-poured-gray');
+    const built=createBuildingMaterial(preset,{repeat:2});
+    const textureRepeat=built.texture.repeat.x;
+    const width=built.texture.image.width;
+    built.dispose();
+    const size=128,data=createMaterialCanvas(preset,{repeat:2},size)
+      .getContext('2d').getImageData(0,0,size,size).data;
+    let difference=0;
+    for(let y=0;y<64;y++)for(let x=0;x<64;x++)
+      difference+=Math.abs(data[(y*size+x)*4]-data[(y*size+x+64)*4]);
+    return {textureRepeat,width,difference};
+  });
+  assert.equal(tiling.textureRepeat,1,'texture should not duplicate identical UV quadrants');
+  assert.ok(tiling.width>=512,'2x source needs sufficient detail');
+  assert.ok(tiling.difference>500,'2x texture still contains identical quadrants');
   await page.locator('#materialCategory').selectOption('wood');
   assert.equal(await page.locator('.material-card').count(),12);
   await page.locator('#materialSearch').fill('oak');
