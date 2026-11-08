@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d15">
+  <title>GAMESHUB — Developer Control</title>
+  <link rel="icon" href="/logo.png">
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #090d15; color: #f4f7ff;
+      background-image: radial-gradient(circle at 72% 10%, #24334b55, transparent 50%); }
+    header { height: 84px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid #ffffff19; background: #090d15cc; }
+    .brand { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+    .brand img { width: 41px; height: 41px; object-fit: contain; }
+    .brand span { font-size: 19px; font-weight: 900; letter-spacing: .18em; }
+    a { color: #9fc6ff; } header > a { text-decoration: none; font-size: 14px; }
+    main { max-width: 920px; margin: 78px auto; padding: 0 24px 70px; }
+    .eyebrow { color: #f6c841; text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 800; }
+    h1 { font-size: clamp(34px, 6vw, 58px); letter-spacing: -.045em; margin: 12px 0; }
+    .lead { color: #a2acbc; line-height: 1.7; font-size: 17px; margin-bottom: 38px; }
+    .card { border: 1px solid #333c4c; border-radius: 23px; padding: clamp(24px, 5vw, 38px);
+      background: linear-gradient(140deg, #161d2b, #0d121e); box-shadow: 0 26px 85px #0004; }
+    .topline { display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    h2 { font-size: 23px; margin: 0; }
+    .badge { display: inline-flex; align-items: center; gap: 9px; border: 1px solid #414b5c;
+      padding: 9px 14px; font-size: 13px; font-weight: 900; border-radius: 100px; color: #bac7da; }
+    .badge::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #8ca1b9; }
+    .badge.off { border-color: #337c5e; color: #a1f0cd; }
+    .badge.off::before { background: #48df9a; }
+    .badge.on { border-color: #9c7a33; color: #ffe199; }
+    .badge.on::before { background: #ffc941; }
+    .detail { max-width: 690px; color: #abb6c5; font-size: 15px; line-height: 1.8; margin: 24px 0; }
+    .actions { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 25px; }
+    button { padding: 14px 23px; border-radius: 12px; border: 0; font: inherit; font-weight: 800;
+      cursor: pointer; color: #18140a; background: #f4c941; min-height: 47px; }
+    button.stop { background: #8be5bd; }
+    button:disabled { cursor: wait; opacity: .45; }
+    .secondary { display: inline-flex; align-items: center; min-height: 46px; padding: 12px 16px;
+      border: 1px solid #4b576a; border-radius: 12px; text-decoration: none; color: #e1e7f0; font-size: 14px; }
+    #message { min-height: 24px; margin-top: 22px; font-size: 14px; color: #ffda7b; }
+    .meta { font-size: 12px; color: #8794a7; margin-top: 8px; overflow-wrap: anywhere; }
+    .note { margin-top: 25px; padding: 21px 23px; background: #111a27; border-left: 3px solid #e8b42e;
+      color: #aeb9c9; line-height: 1.6; border-radius: 0 12px 12px 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="/"><img src="/logo.png" alt=""><span>GAMESHUB</span></a><a href="/">← Back to GAMESHUB</a></header>
+  <main>
+    <div class="eyebrow">Authorized developer controls</div>
+    <h1>Developer Center</h1>
+    <p class="lead">Manage public access while the GAMESHUB Engine and games are being improved.</p>
+    <section class="card" aria-labelledby="maintenanceTitle">
+      <div class="topline"><h2 id="maintenanceTitle">Site Maintenance Mode</h2><span class="badge" id="statusBadge" role="status">CHECKING…</span></div>
+      <p class="detail">When enabled, visitors who aren't verified developers see the animated GAMESHUB maintenance screen instead of the site. Games and regular API requests are blocked for them. Verified developers can continue working and turn maintenance off at any time.</p>
+      <div class="actions"><button id="toggleButton" type="button" disabled>Checking status…</button><a class="secondary" href="/maintenance.html?preview=1" target="_blank" rel="noopener">Preview warning screen</a></div>
+      <div id="message" role="status" aria-live="polite"></div>
+      <div class="meta" id="lastUpdated"></div>
+    </section>
+    <div class="note">This switch affects the live website, not just your browser. Turn it on only when public access should pause. Maintenance starts off by default until a developer enables it.</div>
+  </main>
+  <script>
+    'use strict';
+    let current = null;
+    let pending = false;
+    const toggle = document.getElementById('toggleButton');
+    const badge = document.getElementById('statusBadge');
+    const message = document.getElementById('message');
+    const updated = document.getElementById('lastUpdated');
+
+    function render() {
+      if (!current) return;
+      badge.className = 'badge ' + (current.enabled ? 'on' : 'off');
+      badge.textContent = current.enabled ? 'MAINTENANCE ON' : 'SITE OPEN';
+      toggle.className = current.enabled ? 'stop' : '';
+      toggle.textContent = current.enabled ? 'Disable Maintenance' : 'Enable Maintenance';
+      toggle.disabled = pending;
+      const time = current.updatedAt ? new Date(current.updatedAt).toLocaleString() : 'Never changed';
+      updated.textContent = 'Last updated: ' + time + ' · State version: ' + current.version;
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch('/api/dev/maintenance', {credentials: 'same-origin', cache: 'no-store'});
+        if (response.status === 403) { location.replace('/'); return; }
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Cannot read maintenance status.');
+        current = data;
+        message.textContent = '';
+        render();
+      } catch (error) { toggle.disabled = true; message.textContent = error.message || 'Could not check maintenance status.'; }
+    }
+
+    toggle.addEventListener('click', async () => {
+      if (!current || pending) return;
+      const next = !current.enabled;
+      const prompt = next
+        ? 'Enable maintenance mode for GAMESHUB? All non-developers will be blocked until you turn it off.'
+        : 'Disable maintenance mode and reopen GAMESHUB to everyone?';
+      if (!window.confirm(prompt)) return;
+      pending = true;
+      toggle.disabled = true;
+      message.textContent = 'Updating live site access…';
+      try {
+        const response = await fetch('/api/dev/maintenance', {
+          method: 'PUT', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({enabled: next, version: current.version})
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Could not change maintenance status.');
+        current = data;
+        message.textContent = next
+          ? 'Maintenance is ON. Non-developers are now blocked from new site requests.'
+          : 'Maintenance is OFF. GAMESHUB is open again.';
+      } catch (error) {
+        message.textContent = error.message || 'Update failed. Check status and retry.';
+        await refresh();
+      } finally { pending = false; render(); }
+    });
+
+    refresh();
+    setInterval(() => { if (!pending) refresh(); }, 30000);
+  </script>
+</body>
+</html>
