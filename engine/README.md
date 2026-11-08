@@ -383,3 +383,37 @@ networked animation replication, or character models. Three.js animation
 tracks must match the object's node names / rig. Locomotion clip choice uses
 horizontal control velocity; it does not automatically translate an NPC
 through the world. Game code controls world placement and physical collision.
+
+## Build 023 — playable animation testing room
+
+[Character Animation Lab](../games/engine-test/character-lab.html)
+(`/games/engine-test/character-lab.html`) uses **real GAMESHUB
+GameEngine, GameSession, GameWorld, MaterialPool, AnimationController, full
+XYZ collision, spotlight/shadows, and FootstepSequencer**.
+
+Desktop controls: WASD moves, Shift sprints, Space jumps, V switches
+first-person viewmodel ↔ third-person chase camera, E plays the interaction
+animation (and activates the console when nearby), R plays reload, and Home
+resets position. Buttons let testers trigger animations without relying on
+keyboard focus. A small raised test platform and collidable room obstacles
+exercise Y-axis movement.
+
+For third-person rendering, the `GameEngine.setRenderCamera(camera)` API
+uses a separate chase camera while keeping the original engine camera as
+the movement controller and 3D audio listener. The render camera receives
+the same aspect ratio as the player camera after resizing, and the normal
+first-person engine behavior is unchanged.
+
+The training character's body and animation tracks are authored in
+`games/engine-test/character-rig.js` and intentionally approximate:
+**they are not production-quality motion capture, rigged glTF character
+assets, full IK, or an online multiplayer implementation**. A procedural
+first-person tool viewmodel is shown only in first-person mode; the same
+engine animation mixer runs both. Static room geometry is created through
+GameWorld, not another custom renderer.
+
+Automated Playwright tests validate loading the **actual playable page**,
+movement states, a jump/landing, first/third view switching, interaction
+and reload completion, physical console activation, renderer/shadow quality
+switches, and position reset. Visual polish and subjective animation
+quality still need human review.
