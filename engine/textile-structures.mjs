@@ -145,7 +145,10 @@ export function sampleTextileStructure(preset,u,v,density=1){
       const px=fract(g.x+shift)-.5,py=g.y-.5;
       const ring=Math.exp(-Math.pow((Math.hypot(px,py)-.29)*11,2));
       const inner=Math.exp(-Math.pow(Math.hypot(px,py)*8,2));
-      const variation=g.seeded*5;
+      // Fade the tuft tint variation to zero at each cell boundary,
+      // including the outer texture wrap, to avoid hard color panel edges.
+      const envelope=Math.pow(Math.sin(Math.PI*g.x)*Math.sin(Math.PI*g.y),2);
+      const variation=g.seeded*8*envelope;
       color=ring*25-inner*9+low*4+variation+micro*3;
       height=.36+ring*.34-inner*.075+medium*.035;
       roughness=.95+ring*.025+medium*.022;
