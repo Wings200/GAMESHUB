@@ -88,8 +88,8 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
   // light fixtures/door geometry change its surroundings in captured probes.
   cube('Calibration pedestal',[2.25,.84,2.25],mat.blackSteel,[1.25,.42,24.65],{radius:.07});
   cube('Calibration pedestal top',[2.45,.12,2.45],mat.iron,[1.25,.91,24.65],{radius:.025});
-  const steel=new THREE.MeshStandardMaterial({color:0xe2e5e7,metalness:1,roughness:.18,envMapIntensity:1.4});
-  const polished=new THREE.MeshStandardMaterial({color:0xd8e1e6,metalness:.93,roughness:.25,envMapIntensity:1.15});
+  const steel=new THREE.MeshStandardMaterial({color:0xe2e5e7,metalness:1,roughness:.18,envMapIntensity:0});
+  const polished=new THREE.MeshStandardMaterial({color:0xd8e1e6,metalness:.93,roughness:.25,envMapIntensity:0});
   ownMaterials.push(steel,polished);
   const glossyMeshes=[];
   const ballGeo=new THREE.SphereGeometry(.78,40,26);
@@ -132,10 +132,9 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
     glossyMeshes.forEach(mesh=>mesh.visible=false);
     try {
       probe.update(renderer,scene);
-      for(const material of [steel,polished]){
-        material.envMap=probeTarget.texture;
-        material.needsUpdate=true;
-      }
+      steel.envMap=probeTarget.texture;steel.envMapIntensity=1.4;
+      polished.envMap=probeTarget.texture;polished.envMapIntensity=1.15;
+      steel.needsUpdate=true;polished.needsUpdate=true;
       captureCount++;
       dirty=false;
       return true;
@@ -201,6 +200,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
     if(!probeEnabled){
       for(const material of [steel,polished]){
         material.envMap=null;
+        material.envMapIntensity=0;
         material.needsUpdate=true;
       }
     } else dirty=true;
