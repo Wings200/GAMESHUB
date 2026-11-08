@@ -90,5 +90,6 @@ export function normalizeMaterialSettings(preset,overrides={}){
   const color=/^#[0-9a-f]{6}$/i.test(overrides.color||'')?overrides.color:preset.color;
   return {color,roughness:bounded(overrides.roughness,preset.roughness,.02,1),
     metalness:bounded(overrides.metalness,preset.metalness,0,1),
-    repeat:bounded(overrides.repeat,preset.repeat,.25,12)};
+    repeat:bounded(overrides.repeat,preset.repeat,.25,12),
+    detailStrength:bounded(overrides.detailStrength,1,0,2)};
 }
