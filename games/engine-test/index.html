@@ -71,7 +71,8 @@
     <div class="panel-heading secondary"><div><small>LIGHT CHAMBER</small><h2>Door + Reflections</h2></div></div>
     <div class="panel-note" id="doorStatus" role="status">DOOR CLOSED · CHAMBER UNLIT</div>
     <button id="doorToggle" type="button">OPEN CHAMBER DOOR</button>
-    <div class="panel-note" id="reflectionStatus" role="status">LOCAL REFLECTION CAPTURES · 0</div>
+    <div class="panel-note" id="reflectionStatus" role="status">REFLECTION PROBES · SHOWROOM 0 / CHAMBER 0</div>
+    <button id="probeNow" type="button">REFRESH SCENE REFLECTIONS</button>
     <label class="toggle"><span>Dynamic local reflections</span><input id="reflectionToggle" type="checkbox" checked></label>
     <label class="toggle"><span>Approximate bounced light</span><input id="bounceToggle" type="checkbox" checked></label>
     <label for="quality">Rendering quality</label>
@@ -89,7 +90,7 @@
     <label class="toggle"><span>Walking footsteps</span><input id="footsteps" type="checkbox" checked></label>
     <label class="toggle"><span>Audio cues</span><input id="audio" type="checkbox" checked></label>
     <button id="soundTest" type="button">PROTOTYPE AUDIO (NOT REAL FOLEY) ↗</button>
-    <div class="panel-note">The dark chamber is reached through the southern doorway (behind the original exhibits). Press E nearby, or use the door button. Reflections are updated from the scene on demand; indirect bounce is approximated, not ray traced. The separate sound-test button remains experimental.</div>
+    <div class="panel-note">The dark chamber is reached through the southern doorway (behind the original exhibits). Press E nearby, or use the door button. Two local reflection probes update from the real scene; click Refresh to compare highlights. Indirect bounce is approximated, not ray traced. The separate sound-test button remains experimental.</div>
   </aside>
 
   <div class="error-screen" id="error" hidden role="alert"><h2>ENGINE INITIALIZATION FAILED</h2><p id="errorMessage"></p><a href="/developer.html">Return to Developer Center</a></div>
