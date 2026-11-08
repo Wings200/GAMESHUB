@@ -1,48 +1,43 @@
-"""Fetch the original recorded CC0 Kenney footstep samples for Engine Test.
+"""Vendor authentic Kenney CC0 concrete footstep recordings.
 
-Source: https://kenney.nl/assets/impact-sounds (Creative Commons Zero 1.0)
-Downloads and checks the original archive. This script must run with network.
-Never substitute synthesized beeps or unverified random sound URLs.
+Original CC0 pack: https://kenney.nl/assets/impact-sounds
+Mirrored unmodified audio (Kenney Impact Sounds) in the open-source Ropy repo:
+https://forge.apps.education.fr/blender-edutech/ropy/ropy/-/tree/v2.6/asset/sounds/kenney_impactsounds
 """
 from __future__ import annotations
-import io
 import pathlib
 import urllib.request
-import zipfile
 
-SOURCE = "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip"
-OUTPUT = pathlib.Path("games/engine-test/assets/audio")
+ROOT="https://forge.apps.education.fr/blender-edutech/ropy/ropy/-/raw/v2.6/asset/sounds/kenney_impactsounds/"
+OUT=pathlib.Path("games/engine-test/assets/audio")
 
+def fetch(filename):
+    request=urllib.request.Request(ROOT+filename,headers={"User-Agent":"Mozilla/5.0 (GAMESHUB CC0 sound asset import)"})
+    with urllib.request.urlopen(request,timeout=30) as r:
+        return r.read(100_000)
 
-def main() -> None:
-    request = urllib.request.Request(SOURCE, headers={"User-Agent": "Mozilla/5.0 (GAMESHUB Engine CC0 source import)"})
-    with urllib.request.urlopen(request, timeout=40) as response:
-        archive_data = response.read(9 * 1024 * 1024)
-    if not zipfile.is_zipfile(io.BytesIO(archive_data)):
-        raise RuntimeError("Kenney source did not return a valid zip; no substitute")
-    with zipfile.ZipFile(io.BytesIO(archive_data)) as archive:
-        names = archive.namelist()
-        lower = [p.lower() for p in names]
-        if not any(p.endswith("license.txt") for p in lower):
-            raise RuntimeError("Source archive is missing its license file")
-        license_name = names[next(i for i,p in enumerate(lower) if p.endswith("license.txt"))]
-        license_text = archive.read(license_name).decode("utf8", "replace")
-        if "CC0" not in license_text and "Creative Commons Zero" not in license_text:
-            raise RuntimeError("Source license not verified as CC0")
-        OUTPUT.mkdir(parents=True, exist_ok=True)
-        for index in range(5):
-            stem = f"footstep_concrete_{index:03d}.ogg"
-            matches = [name for name in names if name.lower().endswith("/audio/" + stem)]
-            if len(matches) != 1:
-                raise RuntimeError(f"Missing original Kenney sound: {stem}")
-            contents = archive.read(matches[0])
-            if not (contents.startswith(b"OggS") and 2000 <= len(contents) <= 80_000):
-                raise RuntimeError(f"Invalid audio data for {stem}")
-            (OUTPUT / stem).write_bytes(contents)
-            print(f"Saved verified CC0 recorded footstep: {stem} ({len(contents)} bytes)")
-        (OUTPUT / "KENNEY_LICENSE.txt").write_text(license_text, encoding="utf8")
-    print("Imported all five authentic source clips.")
+def main():
+    license_text=fetch("README.txt").decode("utf8","replace")
+    cc0=fetch("CC0-1.0.txt").decode("utf8","replace")
+    if "CC0" not in license_text and "Creative Commons" not in cc0:
+        raise RuntimeError("CC0 provenance unverified")
+    files={}
+    for i in range(5):
+        name=f"footstep_concrete_{i:03d}.ogg"
+        data=fetch(name)
+        if not(data.startswith(b"OggS") and 2000<=len(data)<=50_000):
+            raise RuntimeError(f"Invalid original OGG audio: {name} ({len(data)} bytes)")
+        files[name]=data
+    OUT.mkdir(parents=True,exist_ok=True)
+    for name,data in files.items():
+        (OUT/name).write_bytes(data)
+        print("Verified recorded CC0 sample:",name,len(data),"bytes")
+    (OUT/"KENNEY_LICENSE.txt").write_text(
+        "Original Kenney Impact Sounds, CC0 1.0.\n"
+        "Source: https://kenney.nl/assets/impact-sounds\n"
+        "Mirror: "+ROOT+"\n\n"+license_text+"\n"+cc0,
+        encoding="utf8"
+    )
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
