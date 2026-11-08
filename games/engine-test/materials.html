@@ -13,7 +13,7 @@
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }}
   </script>
-  <script type="module" src="./materials.js?v=build015"></script>
+  <script type="module" src="./materials.js?v=build016"></script>
 </head>
 <body>
   <header class="topbar">
@@ -43,6 +43,10 @@
         <span class="preview-tip">DRAG TO ROTATE · SEE COLOR, SURFACE AND ROUGHNESS</span>
       </div>
       <div class="selected-caption"><div><span class="eyebrow" id="selectedCategory">CONCRETE</span><h2 id="selectedName">Poured Gray</h2><code id="selectedId">concrete-poured-gray</code></div><span id="modifiedBadge" class="modified" hidden>MODIFIED</span></div>
+      <section class="textile-comparison" id="textileComparison" hidden aria-label="Compare textile structures at identical colors">
+        <div class="textile-comparison-head"><div><span class="eyebrow">ACTUAL PATTERN COMPARISON</span><strong id="comparisonTitle">Fabric structures</strong></div><small>ALL SAMPLES SAME COLOR · 2× DENSITY · CLICK TO INSPECT</small></div>
+        <div class="textile-comparison-cards" id="textileCompareCards"></div>
+      </section>
       <div class="stage-footer"><span>True PBR roughness and metalness values · procedural texture sample</span><span id="previewStatus" role="status">WAITING FOR PREVIEW</span></div>
     </section>
 
