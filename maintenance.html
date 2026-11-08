@@ -10,18 +10,18 @@
     :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; overflow-x: hidden; color: #f6f7fb; background: #0b0e13; }
-    body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background: radial-gradient(circle at 50% 26%, rgba(241,190,45,.12), transparent 43%),
                   linear-gradient(130deg, rgba(255,255,255,.025), transparent 58%); }
     .caution { position: fixed; left: 0; right: 0; height: 20px; z-index: 3; overflow: hidden;
       background: repeating-linear-gradient(110deg, #facc30 0px, #facc30 22px, #141414 22px, #141414 44px);
-      background-size: 210px 100%; animation: sweep 3s linear infinite;
+      background-size: 220px 100%; animation: sweep 3s linear infinite;
       box-shadow: 0 0 28px rgba(245,189,33,.17); }
     .caution.top { top: 0; } .caution.bottom { bottom: 0; animation-direction: reverse; }
-    @keyframes sweep { to { background-position: 210px 0; } }
+    @keyframes sweep { to { background-position: 220px 0; } }
     main { min-height: 100vh; display: flex; justify-content: center; align-items: center;
       text-align: center; padding: 90px 24px; }
-    .content { max-width: 750px; width: 100%; }
+    .content { position: relative; z-index: 1; max-width: 750px; width: 100%; }
     .brand { display: flex; justify-content: center; align-items: center; gap: 13px; margin-bottom: 48px; }
     .brand img { width: 50px; height: 50px; object-fit: contain; }
     .brand span { font-size: 23px; font-weight: 900; letter-spacing: .22em; }
