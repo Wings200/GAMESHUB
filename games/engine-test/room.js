@@ -1,6 +1,7 @@
 import {THREE} from '../../engine/core.js';
 import {createSurfaceLibrary} from '../../engine/surfaces.js';
 import {stepPhase} from '../../engine/motion.js';
+import {luminairePositions,ceilingLightingProfile} from '../../engine/lighting.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -114,11 +115,10 @@ function buildScene(engine) {
     cube('Overhead steel beam',[24.3,.38,.52],mat.darkMetal,[0,6.85,z],{cast:false});
     cube('Beam flange',[24.1,.09,.82],mat.iron,[0,6.57,z],{cast:false});
   }
-  for(const z of [-15,-11,-7,-3,1,5,9,13]) {
-    for(const x of [-8.6,0,8.6]) {
-      const housing=cube('Recessed luminaire housing',[3.7,.15,.9],mat.blackSteel,[x,6.76,z],{cast:false});
-      cube('Warm diffused ceiling light',[3.35,.025,.68],mat.light,[x,6.66,z],{cast:false});
-    }
+  const luminaireGrid=luminairePositions();
+  for(const {x,z,panelY} of luminaireGrid) {
+    cube('Recessed luminaire housing',[3.7,.15,.9],mat.blackSteel,[x,6.76,z],{cast:false});
+    cube('Warm diffused ceiling light',[3.35,.025,.68],mat.light,[x,panelY,z],{cast:false});
   }
   // In-wall functional-looking conduit and ventilation.
   for(const x of [-11.93,11.93]){
@@ -248,36 +248,46 @@ function buildScene(engine) {
     pmrem?.dispose();
     environmentScene?.dispose();
   }
-  const ambient=new THREE.HemisphereLight(0xe8eef1,0x484a49,1.75);
+  // The V007 bright ceiling pools came from 9 point lights at coordinates
+  // unrelated to the panels, plus a powerful invisible directional light.
+  // No extra room spot/point lights now: every emitting bulb is at the exact
+  // position of its visible luminaire, with a downward-only falloff cone.
+  const ambient=new THREE.HemisphereLight(0xf1f2ee,0x5d6263,.63);
   scene.add(ambient);fixtures.push(ambient);
-  const key=new THREE.DirectionalLight(0xfff3e0,2.7);
-  key.position.set(-8.5,13.5,7.5);
-  key.castShadow=true;
-  key.shadow.camera.left=-18;key.shadow.camera.right=18;
-  key.shadow.camera.top=24;key.shadow.camera.bottom=-24;
-  key.shadow.camera.near=.5;key.shadow.camera.far=50;
-  key.shadow.mapSize.set(1024,1024);
-  key.shadow.normalBias=.023;
-  scene.add(key,key.target);fixtures.push(key,key.target);
-  const fill=new THREE.DirectionalLight(0xc2dce9,.72);
-  fill.position.set(10,7,-6);
+  const fill=new THREE.DirectionalLight(0xe7ecf0,.13);
+  fill.position.set(3,10,4);
+  fill.castShadow=false;
   scene.add(fill);fixtures.push(fill);
-  for(const x of [-8.6,0,8.6]) for(const z of [-9,4,12]) {
-    const light=new THREE.PointLight(0xffe5bf,x===0?20:15,11,2);
-    light.position.set(x,6.25,z);
-    scene.add(light);fixtures.push(light);
+  const fixtureLights=[];
+  for(const {x,z,emitterY} of luminaireGrid) {
+    const light=new THREE.SpotLight(0xffefd5,32,12,Math.PI*.33,.78,2);
+    light.name='Downlight anchored to luminaire '+x+' '+z;
+    light.position.set(x,emitterY,z);
+    light.target.position.set(x,.05,z);
+    light.castShadow=false;
+    light.shadow.bias=-.00003;
+    light.shadow.normalBias=.022;
+    scene.add(light,light.target);
+    fixtures.push(light,light.target);
+    fixtureLights.push(light);
   }
-  const focus=new THREE.SpotLight(0xe8f4ff,105,22,.53,.76,1.6);
-  focus.position.set(-4,6.5,-2.2);
-  focus.target.position.set(0,1.6,-8.4);
-  scene.add(focus,focus.target);fixtures.push(focus,focus.target);
-
+  let ceilingIntensity=2.7;
+  const setCeilingIntensity=(value)=>{
+    ceilingIntensity=Math.max(.1,Math.min(5,Number(value)||2.7));
+    const base=ceilingLightingProfile(engine.quality).intensity;
+    for(const light of fixtureLights) light.intensity=base*ceilingIntensity/2.7;
+  };
   const setShadowQuality=(profile)=>{
-    const size=profile==='quality'?2048:profile==='performance'?512:1024;
-    key.shadow.mapSize.set(size,size);
-    key.shadow.map?.dispose();
-    key.shadow.map=null;
-    key.castShadow=profile!=='performance';
+    const config=ceilingLightingProfile(profile);
+    const shadowCasters=new Set([7,13,19].slice(0,config.shadowSamples));
+    for(const [index,light] of fixtureLights.entries()) {
+      const active=shadowCasters.has(index);
+      light.castShadow=active;
+      light.shadow.mapSize.set(config.shadowMap,config.shadowMap);
+      if(light.shadow.map){light.shadow.map.dispose();light.shadow.map=null;}
+      light.shadow.needsUpdate=true;
+    }
+    setCeilingIntensity(ceilingIntensity);
     engine.renderer.shadowMap.needsUpdate=true;
   };
   let animate=true, phase=0;
@@ -290,10 +300,10 @@ function buildScene(engine) {
   const quality=engine.quality;
   setShadowQuality(quality);
   return {
-    root,key,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:17.0},
+    root,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:17.0},
     setMotion(value){animate=Boolean(value);},
     getMotion(){return animate;},
-    setShadowQuality,
+    setShadowQuality,setCeilingIntensity,
     dispose(){
       removeFrame();
       root.removeFromParent();
