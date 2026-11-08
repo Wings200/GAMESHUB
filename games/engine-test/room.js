@@ -2,6 +2,7 @@ import {THREE} from '../../engine/core.js';
 import {createSurfaceLibrary} from '../../engine/surfaces.js';
 import {stepPhase} from '../../engine/motion.js';
 import {luminairePositions,ceilingLightingProfile} from '../../engine/lighting.js';
+import {makeLightChamber} from './light-chamber.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -83,8 +84,12 @@ function buildScene(engine) {
   // steel frames and believable room scale. Geometry is shared where possible.
   cube('Structural slab',[25,.36,36.2],mat.floor,[0,-.2,0],{cast:false});
   cube('Ceiling deck',[25,.27,36.2],mat.matte,[0,7.08,0],{cast:false});
-  for(const z of [-17.6,17.6])
-    cube('End concrete wall',[25,7,.35],mat.wall,[0,3.46,z],{cast:false});
+  // Keep the original closed north wall. Split the south wall to form a
+  // real 3.4m doorway into the adjoining (normally unlit) reflection chamber.
+  cube('North end wall',[25,7,.35],mat.wall,[0,3.46,-17.6],{cast:false});
+  cube('South wall left of test door',[10.75,7,.35],mat.wall,[-7.125,3.46,17.6],{cast:false});
+  cube('South wall right of test door',[10.75,7,.35],mat.wall,[7.125,3.46,17.6],{cast:false});
+  cube('South wall above test door',[3.5,3.42,.35],mat.wall,[0,5.29,17.6],{cast:false});
   for(const x of [-12.35,12.35])
     cube('Side concrete wall',[.35,7,36],mat.wall,[x,3.46,0],{cast:false});
 
@@ -226,6 +231,7 @@ function buildScene(engine) {
     [-10.7,2.11,4.5,1.03,.78,.87],[-10.7,3.54,6.2,.93,.78,.95]
   ]) cube('Supply crate',[w,h,d],mat.wood,[x,y,z],{radius:.02});
   obstacles.push({minX:-11.85,maxX:-9.6,minZ:3.1,maxZ:7.8});
+  const chamber=makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles});
   // Safety paint and anchored guard rails.
   for(const x of [-11.62,11.62]) {
     for(const z of [-1.5,1.5]){
@@ -252,9 +258,9 @@ function buildScene(engine) {
   // unrelated to the panels, plus a powerful invisible directional light.
   // No extra room spot/point lights now: every emitting bulb is at the exact
   // position of its visible luminaire, with a downward-only falloff cone.
-  const ambient=new THREE.HemisphereLight(0xf1f2ee,0x5d6263,.63);
+  const ambient=new THREE.HemisphereLight(0xf1f2ee,0x51565a,.26);
   scene.add(ambient);fixtures.push(ambient);
-  const fill=new THREE.DirectionalLight(0xe7ecf0,.13);
+  const fill=new THREE.DirectionalLight(0xe7ecf0,.045);
   fill.position.set(3,10,4);
   fill.castShadow=false;
   scene.add(fill);fixtures.push(fill);
@@ -271,6 +277,15 @@ function buildScene(engine) {
     fixtures.push(light,light.target);
     fixtureLights.push(light);
   }
+  // Even small luminous indicators have matching, localized real emitters.
+  const exitGlow=new THREE.PointLight(0x72f0a1,1.35,3.3,2);
+  exitGlow.name='EXIT sign — physical green light';
+  exitGlow.position.set(-8.55,4.72,-16.84);
+  const monitorGlow=new THREE.PointLight(0x73cae1,.93,2.6,2);
+  monitorGlow.name='Workshop instrument screen — localized cyan light';
+  monitorGlow.position.set(deskX,2.17,8.25);
+  scene.add(exitGlow,monitorGlow);fixtures.push(exitGlow,monitorGlow);
+
   let ceilingIntensity=2.7;
   const setCeilingIntensity=(value)=>{
     ceilingIntensity=Math.max(.1,Math.min(5,Number(value)||2.7));
@@ -288,6 +303,7 @@ function buildScene(engine) {
       light.shadow.needsUpdate=true;
     }
     setCeilingIntensity(ceilingIntensity);
+    chamber.setQuality(profile);
     engine.renderer.shadowMap.needsUpdate=true;
   };
   let animate=true, phase=0;
@@ -295,17 +311,19 @@ function buildScene(engine) {
     if(animate) phase=stepPhase(phase,.24,dt);
     for(const [index,model] of animated.entries())
       model.group.rotation.y=model.base + phase*(index%2===0?1:-1);
+    chamber.update(dt,time,engine.camera.position);
   });
   engine.camera.position.set(0,1.72,12.2);
   const quality=engine.quality;
   setShadowQuality(quality);
   return {
-    root,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:17.0},
+    root,chamber,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:31.0},
     setMotion(value){animate=Boolean(value);},
     getMotion(){return animate;},
     setShadowQuality,setCeilingIntensity,
     dispose(){
       removeFrame();
+      chamber.dispose();
       root.removeFromParent();
       for(const object of fixtures) object.removeFromParent();
       scene.environment=null;
