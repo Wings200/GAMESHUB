@@ -70,7 +70,16 @@ const groups = [
     ['Saddle Brown','#85593e'],['Black Leather','#353333'],['Tan','#b17e59'],
     ['Chestnut','#704637'],['Oxblood','#643d3b'],['Distressed Gray','#77736e'],
     ['Honey','#bc8854'],['Dark Chocolate','#4c382e'],['Cognac','#a46641'],
-    ['Stone Beige','#b3a18e'],['Olive','#716d53'],['Vintage Rust','#8b5645']]]
+    ['Stone Beige','#b3a18e'],['Olive','#716d53'],['Vintage Rust','#8b5645']]],
+  // Append rather than insert: all 168 existing material IDs and procedural
+  // seeds remain unchanged, so old saved variants stay visually consistent.
+  ['carpet','Carpet & Rugs','carpet',.97,0,3,[
+    ['Warm Beige Plush','#bca88e'],['Charcoal Berber','#53575b'],
+    ['Navy Office Loop','#465a6c'],['Ivory Shag','#ddd3be'],
+    ['Forest Wool Pile','#607568'],['Sandstone Low Pile','#b5a58c'],
+    ['Heather Grey','#888c8b'],['Rust Woven Rug','#9a6657'],
+    ['Soft Sage Carpet','#9ba992'],['Chocolate Cut Pile','#685146'],
+    ['Midnight Commercial','#3a434e'],['Graphite Entry Mat','#555b60']]]
 ];
 
 export const MATERIAL_CATEGORIES=Object.freeze(groups.map(([id,label])=>({id,label})));
