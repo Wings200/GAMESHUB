@@ -33,13 +33,14 @@ export class EngineAudio {
     return decoded;
   }
 
-  playClip(name, {volume = 1, pan = 0, loop = false} = {}) {
+  playClip(name, {volume = 1, pan = 0, loop = false, rate = 1} = {}) {
     if (this.muted || !this.context || this.context.state !== 'running') return null;
     const buffer = this.clips.get(name);
     if (!buffer) throw new Error(`Audio clip "${name}" has not been loaded.`);
     const source = this.context.createBufferSource();
     source.buffer = buffer;
     source.loop = Boolean(loop);
+    source.playbackRate.value = Number.isFinite(rate) ? Math.max(0.8,Math.min(1.2,rate)) : 1;
     const gain = this.context.createGain();
     gain.gain.value = Math.max(0, Math.min(1.5, Number(volume) || 0));
     const stereo = this.context.createStereoPanner();
@@ -88,6 +89,19 @@ export class EngineAudio {
     const cue = this.clips.has('gameshub-mechanical-test') ? 'gameshub-mechanical-test' : 'gameshub-test-cue';
     if (!this.clips.has(cue)) return null;
     return this.playClip(cue, {volume: 0.68});
+  }
+
+  // Recorded CC0 concrete steps. If the assets have not loaded, remain silent;
+  // never fall back to buzzy synthesised footsteps.
+  footstep({index=0,foot='left',running=false}={}) {
+    const number=((Math.floor(index)%5)+5)%5;
+    const key='footstep-concrete-'+number;
+    if (!this.clips.has(key)) return null;
+    return this.playClip(key,{
+      volume: running?.43:.36,
+      pan: foot==='right'?.065:-.065,
+      rate: 0.965 + (number%4)*0.02
+    });
   }
 
   dispose() { this.stopIntro(); this.context?.close(); this.context = null; this.clips.clear(); }
