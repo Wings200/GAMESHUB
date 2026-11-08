@@ -1,6 +1,6 @@
 import {THREE} from '../../engine/core.js';
 import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs';
-import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build011';
+import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build012';
 
 const $=id=>document.getElementById(id);
 const storageKey='gameshub-engine-custom-building-materials-v1';
@@ -13,6 +13,7 @@ let selected=getMaterialPreset('concrete-poured-gray')||MATERIAL_PRESETS[0];
 let overrides={};
 let activeCustom=null;
 let currentGpu=null,preview=null,displayMesh=null,renderer=null,camera=null,scene=null;
+let pendingTextureUpdate=null;
 let activeShape='wall';
 let drawingRequested=false;
 
@@ -107,6 +108,9 @@ function queueDraw(){
   });
 }
 function refreshMaterial(){
+  if(pendingTextureUpdate!==null){
+    clearTimeout(pendingTextureUpdate);pendingTextureUpdate=null;
+  }
   if(!displayMesh)return;
   const next=createBuildingMaterial(selected,overrides);
   const previous=currentGpu;
@@ -115,6 +119,13 @@ function refreshMaterial(){
   previous?.dispose();
   queueDraw();
   $('previewStatus').textContent='LIVE PREVIEW READY';
+}
+function scheduleTextureRefresh(){
+  if(pendingTextureUpdate!==null)clearTimeout(pendingTextureUpdate);
+  $('previewStatus').textContent='UPDATING MATERIAL…';
+  // Continuous slider dragging should not synchronously allocate a new
+  // high-resolution GPU texture on every single pointer movement.
+  pendingTextureUpdate=setTimeout(refreshMaterial,90);
 }
 function updateControl(which,rawValue){
   if(which==='color')overrides.color=rawValue;
@@ -126,7 +137,7 @@ function updateControl(which,rawValue){
   if(which==='roughness'||which==='metalness'){
     currentGpu.material[which]=s[which];
     queueDraw();
-  }else refreshMaterial();
+  }else scheduleTextureRefresh();
 }
 function selectShape(shape){
   activeShape=shape;
