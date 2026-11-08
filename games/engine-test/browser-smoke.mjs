@@ -41,7 +41,9 @@ try {
   }
   assert.ok(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity'))>25);
   await page.locator('#bounceToggle').uncheck();
-  await page.waitForTimeout(350);
+  await page.waitForFunction(()=>
+    Number(document.getElementById('doorStatus').dataset.bounceIntensity)===0,
+    null,{timeout:20000});
   assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-bounce-intensity')),0);
   await page.locator('#bounceToggle').check();
   await page.locator('#reflectionToggle').uncheck();
