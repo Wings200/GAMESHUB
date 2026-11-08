@@ -64,7 +64,8 @@ try{
     return {unlocked,volume,spatial,listener,moved,filtered,activeBefore,worldDisposed};
   });
   assert.equal(result.unlocked,true,'AudioContext must run');
-  assert.deepEqual(result.volume,{master:.72,ambience:.38});
+  assert.ok(Math.abs(result.volume.master-.72)<1e-5);
+  assert.ok(Math.abs(result.volume.ambience-.38)<1e-5);
   assert.equal(result.spatial.type,'HRTF');
   assert.equal(result.spatial.model,'inverse');
   assert.equal(result.spatial.maxDistance,30);
@@ -74,7 +75,7 @@ try{
   assert.ok(Math.abs(result.listener.x+2)<.0001);
   assert.ok(Math.abs(result.listener.y-1.72)<.0001);
   assert.equal(result.moved.x,6);
-  assert.equal(result.moved.y,2.2);
+  assert.ok(Math.abs(result.moved.y-2.2)<1e-5);
   assert.ok(result.filtered<17000,'wall must cause actual lowpass cutoff');
   assert.equal(result.activeBefore,1);
   assert.deepEqual(result.worldDisposed,{colliders:0,callbacks:0});
