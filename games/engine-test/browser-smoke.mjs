@@ -59,6 +59,12 @@ try {
     document.getElementById('doorStatus').textContent.includes('DOOR CLOSED'),
     null,{timeout:16000});
   assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
+  // Cube-camera probe passes should not leave the ordinary renderer stalled.
+  await page.waitForFunction(() => {
+    const fps=Number(document.getElementById('fps').textContent);
+    const calls=Number(document.getElementById('drawCalls').textContent);
+    return fps>0 && calls>=170;
+  },null,{timeout:60000});
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
     drawCalls:document.getElementById('drawCalls').textContent,
