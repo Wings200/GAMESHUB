@@ -43,5 +43,7 @@ jobs:
         run: |
           python3 -m http.server 8080 > /tmp/gameshub-lab-http.log 2>&1 &
           sleep 2
+      - name: Smoke-test material catalog, editing and saved variants
+        run: node games/engine-test/materials-smoke.mjs
       - name: Smoke-test WebGL room, quality presets and controls
         run: node games/engine-test/browser-smoke.mjs

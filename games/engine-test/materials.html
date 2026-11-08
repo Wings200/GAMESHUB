@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111718">
+  <title>GAMESHUB ENGINE — Material Workbench</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="./materials.css">
+  <script type="importmap">
+    {"imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }}
+  </script>
+  <script type="module" src="./materials.js?v=build010"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">GH</span><div><strong>MATERIAL WORKBENCH</strong><small>GAMESHUB ENGINE / BUILDING SURFACES</small></div></div>
+    <div class="top-actions"><span class="count" id="libraryCount">LOADING LIBRARY</span><a href="./">← ENGINE LAB</a></div>
+  </header>
+  <main class="workspace">
+    <section class="library" aria-label="Material library">
+      <div class="section-head"><div><span class="eyebrow">01 / BROWSE</span><h1>Materials</h1></div><span class="count" id="resultCount">—</span></div>
+      <p class="intro">Choose a building surface. Every preset is editable, reusable, and named.</p>
+      <label class="field-label" for="materialSearch">SEARCH LIBRARY</label>
+      <input id="materialSearch" type="search" placeholder="Search stone, oak, brushed…" autocomplete="off">
+      <label class="field-label" for="materialCategory">CATEGORY</label>
+      <select id="materialCategory"><option value="all">All material types</option></select>
+      <div id="materialGrid" class="material-grid" role="listbox" aria-label="Choose a material"></div>
+      <p class="small-note">Previews are procedurally generated; individual texture maps are created only when needed.</p>
+    </section>
+
+    <section class="stage" aria-label="3D material preview">
+      <div class="stage-head"><span class="eyebrow">02 / INSPECT</span><div class="stage-actions">
+        <label for="previewShape">TEST SURFACE</label>
+        <select id="previewShape"><option value="wall">Building wall</option><option value="floor">Floor slab</option><option value="cube">Solid block</option><option value="sphere">Metal / glass sphere</option><option value="column">Round column</option></select>
+      </div></div>
+      <div class="preview-wrap">
+        <canvas id="materialViewport" aria-label="3D preview of the selected building material"></canvas>
+        <div class="preview-message" id="previewMessage" hidden>WebGL unavailable. Material swatches and settings remain usable.</div>
+        <span class="preview-tip">DRAG TO ROTATE · SEE COLOR, SURFACE AND ROUGHNESS</span>
+      </div>
+      <div class="selected-caption"><div><span class="eyebrow" id="selectedCategory">CONCRETE</span><h2 id="selectedName">Poured Gray</h2><code id="selectedId">concrete-poured-gray</code></div><span id="modifiedBadge" class="modified" hidden>MODIFIED</span></div>
+      <div class="stage-footer"><span>True PBR roughness and metalness values · procedural texture sample</span><span id="previewStatus" role="status">WAITING FOR PREVIEW</span></div>
+    </section>
+
+    <aside class="inspector" aria-label="Customize selected material">
+      <div class="section-head"><div><span class="eyebrow">03 / CUSTOMIZE</span><h2>Surface controls</h2></div></div>
+      <p class="intro">Edit the selected preset. Your changes are reflected in the 3D preview immediately.</p>
+      <label class="field-label" for="materialColor">BASE COLOR</label>
+      <div class="color-row"><input id="materialColor" type="color" value="#989a97"><output id="colorValue">#989A97</output></div>
+      <label class="field-label" for="materialRoughness">ROUGHNESS <output id="roughnessValue">0.88</output></label>
+      <input id="materialRoughness" type="range" min=".02" max="1" step=".01">
+      <div class="scale-hint"><span>POLISHED</span><span>MATTE</span></div>
+      <label class="field-label" for="materialMetalness">METALNESS <output id="metalnessValue">0.02</output></label>
+      <input id="materialMetalness" type="range" min="0" max="1" step=".01">
+      <div class="scale-hint"><span>NON-METALLIC</span><span>METALLIC</span></div>
+      <label class="field-label" for="materialRepeat">TEXTURE TILING <output id="repeatValue">2.0×</output></label>
+      <input id="materialRepeat" type="range" min=".25" max="12" step=".25">
+      <div class="scale-hint"><span>LARGE PATTERN</span><span>SMALL PATTERN</span></div>
+      <div class="actions">
+        <button id="resetMaterial" class="subtle">RESET TO PRESET</button>
+        <button id="saveMaterial">SAVE CUSTOM VARIANT</button>
+        <button id="exportMaterial" class="subtle">DOWNLOAD MATERIAL JSON</button>
+      </div>
+      <div class="saved"><div class="saved-head"><span class="eyebrow">SAVED VARIANTS</span><button id="clearVariants" title="Remove all locally saved variants">CLEAR</button></div><div id="savedVariants" class="saved-list"><span>Nothing saved yet.</span></div></div>
+      <p class="small-note" id="feedback" role="status">Custom variants remain in this browser. Download JSON to use or archive exact settings elsewhere.</p>
+    </aside>
+  </main>
+</body>
+</html>
