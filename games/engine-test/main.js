@@ -100,6 +100,7 @@ async function start() {
       $('triangles').textContent = stats.triangles.toLocaleString();
       $('frameTime').textContent = engine.fps ? (1000 / engine.fps).toFixed(1) : '--';
       const chamber=facility.chamber.getStatus();
+      $('doorStatus').dataset.requestedOpen=String(chamber.requestedOpen);
       $('doorStatus').dataset.directIntensity=chamber.directIntensity.toFixed(2);
       $('doorStatus').dataset.bounceIntensity=chamber.bounceIntensity.toFixed(2);
       $('doorStatus').textContent=chamber.openness>=.998
