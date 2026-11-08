@@ -23,3 +23,13 @@
 @media(max-width:850px){.dev-panel{top:auto;bottom:15px;right:12px;width:min(310px,calc(100vw - 24px));max-height:48vh}.controls-hint{bottom:15px;max-width:calc(100vw - 350px)}.signal{display:none}.lab-hud{padding:11px}.identity small{display:none}}
 @media(max-width:620px){.controls-hint{display:none}.dev-panel{max-height:42vh}.hud-actions button{font-size:10px}.identity strong{font-size:10px}.hud-actions{gap:5px}.identity-mark{display:none}}
 @media(prefers-reduced-motion:reduce){.intro.playing .intro-symbol,.intro.playing .intro-title,.intro.playing .intro-subtitle{animation:none;opacity:1;transform:none;filter:none}.intro.playing .intro-symbol svg{animation:none;stroke-dashoffset:0}.intro.playing .intro-beam,.intro.playing .intro-lock{animation:none;opacity:0}}
+
+/* V007: neutral workshop styling complements rather than colors the materials. */
+.dev-panel select{display:block;width:100%;border:1px solid #59656a;background:#172328;color:#e6e5df;border-radius:6px;padding:10px 12px;font-size:12px;outline-offset:3px}
+.dev-panel select:focus-visible{outline:2px solid #cdb784}
+#soundTest{border-color:#786c53;background:#293131;color:#d8c9a9}
+.dev-panel{background:#11191bdc;border-color:#667576a6}
+.panel-heading small,.dev-badge,.dev-panel output{color:#d3bd95}
+.stats>div{background:#202a2caa;border-color:#5a6c6f77}
+.controls-hint{background:#11191bdc;border-color:#69757674}
+@media(prefers-reduced-motion:reduce){.intro.playing .intro-title,.intro.playing .intro-subtitle{opacity:1}}
