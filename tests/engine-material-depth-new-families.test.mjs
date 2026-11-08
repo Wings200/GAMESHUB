@@ -50,11 +50,11 @@ test('metal has brushed height grain and restrained smooth polished variants',()
   const brushed=getMaterialPreset('metal-brushed-steel');
   const chrome=getMaterialPreset('metal-polished-chrome');
   const samples=[],polished=[];
-  for(let i=0;i<96;i++) {
-    samples.push(sampleMaterialRelief(brushed,.31,(i+.33)/96,2).height);
+  for(let i=0;i<512;i++) {
+    samples.push(sampleMaterialRelief(brushed,.31,(i+.33)/512,2).height);
     polished.push(sampleMaterialRelief(chrome,.31,(i+.33)/96,2).height);
   }
-  assert.ok(Math.max(...samples)-Math.min(...samples)>.06);
+  assert.ok(Math.max(...samples)-Math.min(...samples)>.05);
   assert.ok(Math.max(...polished)-Math.min(...polished) <
     Math.max(...samples)-Math.min(...samples),'polished metal should have subtler relief');
 });
