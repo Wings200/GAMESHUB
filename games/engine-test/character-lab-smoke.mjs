@@ -32,7 +32,7 @@ try{
       clips:['idle','walk','run','jump','fall','interact','reload']
         .every(name=>lab.avatar.animator.has(name)),
       castShadow:light.castShadow,
-      wallY:world.colliders.find(c=>c.minX< -11)?.maxY,
+      wallY:world.colliders.find(c=>c.minX< -11 && c.maxY>3)?.maxY,
       frameCallbacks:lab.engine.callbacks.size,
       viewport:lab.engine.renderer.domElement.width
     };
