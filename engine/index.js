@@ -20,3 +20,5 @@ export {WORLD_FORMAT,normalizeWorldEntity,normalizeWorldDocument} from './world-
 export {BODY_HEIGHT,EYE_HEIGHT,resolveCapsule3D} from './collision-3d.js';
 
 export {normalizeAudioPosition,segmentIntersectsAABB,estimateOcclusion} from './audio-spatial.js';
+
+export {LIGHTING_PROFILES,shadowBudget,normalizeLightEffect,lightEffectFactor} from './light-effects.mjs';
