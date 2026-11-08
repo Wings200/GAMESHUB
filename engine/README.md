@@ -37,3 +37,36 @@ The public import surface is `engine/index.js`. New games can create a `GameEngi
 - Animation playback, transitions, constraints and controller-safe input focus
 - Real vertical collision and physics, multi-scene streaming, resource life cycle, asset loading/error UI
 - Automated headless WebGL smoke tests and screenshots plus user-based visual and listening approval
+
+## Build 0.1.0-dev.009 — light-transmission chamber
+
+An adjoining chamber is accessible at the SOUTH end of the showroom. Walk
+toward the warm floodlight and press E, or use the developer panel's door
+button. A moving steel leaf has a matching horizontal collision obstacle.
+The dark chamber has a polished sphere and a steel reflector with their own
+local cubemap. The original showroom has a separate cubemap for its three
+calibration exhibits; these are updated when needed, **not on every frame**.
+The new developer controls allow the user to compare local reflections and
+approximate indirect bounce both on and off.
+
+The chamber's real direct spotlight is anchored to the visible door floodlight,
+and the actual door mesh casts shadows in balanced/quality modes. Transmitted
+light is explicitly gated by aperture opening, partly because performance
+mode does not have all shadows available. A small light inside the chamber
+simulates *diffuse interreflection*, and is labelled an approximation; this
+is **not** path tracing, virtual lightmap baking, screen-space GI, or recursive
+reflection. Static RoomEnvironment is still the fallback when no local
+probe has been captured.
+
+Two additional visible light sources—the EXIT sign and workshop instrument
+screen—now produce matching low-intensity localized light. Ambient fill has
+been reduced so the dark chamber is meaningfully darker while closed.
+
+The CC0 concrete footsteps have a user-adjustable volume (default 60% of
+a substantially quieter gain than Build 008) and a subtractive midrange
+equalizer to reduce the prior wooden knock. These are still the same
+Kenney recorded samples, not newly produced or field-recorded audio.
+
+Do not equate WebGL functional smoke tests with hardware visual approval.
+Try both the balanced and quality profiles; local cube captures are disabled
+in performance mode to avoid unexpected software-rendering stalls.
