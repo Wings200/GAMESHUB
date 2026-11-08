@@ -77,7 +77,7 @@ export function sampleMaterialPattern(preset,u,v,scale=1){
     const warp=Math.sin(TAU*u*threadCount);
     const weft=Math.sin(TAU*v*threadCount);
     const cross=warp*weft;
-    const twill=denim?Math.sin(TAU*(u*threadCount+v*threadCount*.5))*3:0;
+    const twill=denim?Math.sin(TAU*(u*threadCount+v*Math.max(1,Math.round(threadCount/2))))*3:0;
     const nap=signed(periodicNoise(u,v,seed+211,cycles(plush?100:76)));
     return plush
       ? shade*.28+nap*8+cross*1.3
@@ -223,7 +223,7 @@ export function sampleMaterialRelief(preset,u,v,scale=1){
     const crossing=warp*weft;
     const nap=signed(periodicNoise(u,v,seed+241,cycles(plush?88:64)));
     const heather=signed(periodicNoise(u,v,seed+242,cycles(12)));
-    const diagonal=twill?Math.sin(TAU*(u*count+v*count*.5))*.025:0;
+    const diagonal=twill?Math.sin(TAU*(u*count+v*Math.max(1,Math.round(count/2))))*.025:0;
     return {
       height:Math.max(.17,Math.min(.84,
         .50+(plush?crossing*.017:warp*.053+weft*.051+crossing*.037)+
