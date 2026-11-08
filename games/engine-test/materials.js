@@ -1,5 +1,5 @@
 import {THREE} from '../../engine/core.js';
-import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build015';
+import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../../engine/material-catalog.mjs?v=build016';
 import {createMaterialCanvas,createBuildingMaterial} from '../../engine/material-factory.js?v=build016';
 import {getTextileConstruction} from '../../engine/textile-structures.mjs';
 
