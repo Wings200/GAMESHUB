@@ -1,10 +1,12 @@
 import {THREE} from './core.js';
 import {moveVector} from './math.js';
 import {resolveXZ} from './collision.js';
+import {resolveCapsule3D,BODY_HEIGHT} from './collision-3d.js';
 export {moveVector};
 
 export class FirstPersonControls {
-  constructor(canvas, camera, {walkSpeed = 4, runSpeed = 7.5, eyeHeight = 1.72, bounds = null, obstacles = []} = {}) {
+  constructor(canvas, camera, {walkSpeed = 4, runSpeed = 7.5, eyeHeight = 1.72, bounds = null, obstacles = [],
+    verticalCollision = false, bodyHeight = BODY_HEIGHT, stepHeight = .35, groundY = 0} = {}) {
     this.canvas = canvas;
     this.camera = camera;
     this.walkSpeed = walkSpeed;
@@ -12,6 +14,11 @@ export class FirstPersonControls {
     this.eyeHeight = eyeHeight;
     this.bounds = bounds;
     this.obstacles = obstacles;
+    this.verticalCollision = verticalCollision;
+    this.bodyHeight = bodyHeight;
+    this.stepHeight = stepHeight;
+    this.groundY = groundY;
+    this.grounded = true;
     this.keys = new Set();
     this.velocity = new THREE.Vector3();
     this.yaw = 0;
@@ -22,7 +29,7 @@ export class FirstPersonControls {
     this.pointerLocked = false;
     this.lastX = 0;
     this.lastY = 0;
-    this.camera.position.y = eyeHeight;
+    this.camera.position.y = groundY + eyeHeight;
     this.camera.rotation.order = 'YXZ';
     this.onKeyDown = event => {
       if (!this.enabled) return;
@@ -81,17 +88,42 @@ export class FirstPersonControls {
     this.velocity.x += (direction.x * speed - this.velocity.x) * blend;
     this.velocity.z += (direction.z * speed - this.velocity.z) * blend;
     const position = this.camera.position;
-    const target = resolveXZ({x:position.x,z:position.z},
-      {x:this.velocity.x*dt,z:this.velocity.z*dt}, this.obstacles, this.bounds);
-    position.x = target.x;
-    position.z = target.z;
-    if (target.blockedX) this.velocity.x = 0;
-    if (target.blockedZ) this.velocity.z = 0;
-    const grounded = position.y <= this.eyeHeight + 0.001;
-    if (grounded && this.keys.has('Space')) this.verticalSpeed = 4.6;
-    this.verticalSpeed -= 14 * dt;
-    position.y = Math.max(this.eyeHeight, position.y + this.verticalSpeed * dt);
-    if (position.y === this.eyeHeight && this.verticalSpeed < 0) this.verticalSpeed = 0;
+    if(this.verticalCollision){
+      // Multi-floor collision is opt-in so existing game scenes retain their
+      // original movement until their obstacle data has real Y bounds.
+      const supported=resolveCapsule3D({x:position.x,y:position.y,z:position.z},
+        {x:0,y:0,z:0},this.obstacles,{
+          bounds:this.bounds,eyeHeight:this.eyeHeight,height:this.bodyHeight,
+          stepHeight:this.stepHeight,groundY:this.groundY
+        }).grounded;
+      if(supported && this.keys.has('Space'))this.verticalSpeed=4.6;
+      this.verticalSpeed-=14*dt;
+      const movement=resolveCapsule3D(
+        {x:position.x,y:position.y,z:position.z},
+        {x:this.velocity.x*dt,y:this.verticalSpeed*dt,z:this.velocity.z*dt},
+        this.obstacles,{
+          bounds:this.bounds,eyeHeight:this.eyeHeight,height:this.bodyHeight,
+          stepHeight:this.stepHeight,groundY:this.groundY
+        });
+      position.set(movement.x,movement.y,movement.z);
+      this.grounded=movement.grounded;
+      if(movement.blockedX)this.velocity.x=0;
+      if(movement.blockedZ)this.velocity.z=0;
+      if((movement.grounded && this.verticalSpeed<=0) ||
+        (movement.hitCeiling && this.verticalSpeed>0))this.verticalSpeed=0;
+    }else{
+      const target = resolveXZ({x:position.x,z:position.z},
+        {x:this.velocity.x*dt,z:this.velocity.z*dt}, this.obstacles, this.bounds);
+      position.x = target.x;
+      position.z = target.z;
+      if(target.blockedX)this.velocity.x=0;
+      if(target.blockedZ)this.velocity.z=0;
+      const grounded=position.y<=this.eyeHeight+.001;
+      if(grounded && this.keys.has('Space'))this.verticalSpeed=4.6;
+      this.verticalSpeed-=14*dt;
+      position.y=Math.max(this.eyeHeight,position.y+this.verticalSpeed*dt);
+      if(position.y===this.eyeHeight&&this.verticalSpeed<0)this.verticalSpeed=0;
+    }
   }
 
   dispose() {
