@@ -223,3 +223,53 @@ reverb-convolution or acoustic path tracing. Real audio files must still be
 loaded and listened to. Existing `playClip` calls keep their previous direct
 output unless new game code explicitly uses spatial playback or mixer buses.
 Non-spatial `world.playSound` remains backward compatible.
+
+## Build 020 — source-linked light fixtures, shadows and effects
+
+The `GameWorld` lighting API creates **real** Three.js point and spotlights
+from scene data, with optional visible luminous lens meshes at exactly the
+same XYZ coordinates. Linked lenses are visual representations; direct light
+is emitted by their associated actual light objects. No fictional GI is
+claimed.
+
+```js
+world.addLight({
+  id:'workshop-lamp',kind:'spot',
+  position:{x:2,y:4,z:-3},target:{x:2,y:0,z:-3},
+  color:'#ffe4bb',intensity:24,distance:14,decay:2,
+  visibleSource:true,sourceRadius:.12,
+  castShadow:true,shadowSize:1024,
+  shadowBias:-.0001,shadowNormalBias:.015,
+  effect:{type:'flicker',frequency:2.1,amount:.07,seed:10}
+});
+world.addLight({
+  id:'alarm',kind:'point',position:{x:0,y:2,z:4},
+  color:'#ff4433',intensity:8,distance:9,visibleSource:true,
+  effect:{type:'pulse',frequency:.6,amount:.65}
+});
+world.setLightingProfile('performance'); // 0 shadow maps
+world.setLightingProfile('balanced');    // up to 2 shadow lights, 512px
+world.setLightingProfile('quality');     // up to 4 shadow lights, 1024px
+world.setLight('workshop-lamp',{intensity:12,color:'#ffdfaa'});
+```
+
+New lights default to physically based inverse-square attenuation (`decay:2`)
+and continue to honor finite light range. Only objects with
+`castShadow:true` receive eligible shadow maps; to receive those shadows,
+surfaces need `receiveShadow:true`, and GameEngine's renderer must have
+shadows enabled. Shadow-map budgets are deliberately limited to avoid
+costly point-light six-face captures. Animations are deterministic and
+frame-driven, with `pulse` and smoothly interpolated `flicker` curves.
+
+The options serialize to the existing `gameshub.world.v1` format. Emitter
+meshes follow `setTransform` and `setLight`, and are disposed when a light
+is removed. Existing lights without the new options preserve their prior
+look (invisible fixture lens and steady intensity).
+
+**Limits:** This pass improves real direct lighting, basic projected
+shadows, attenuation and source visuals. It does **not** implement true
+multi-bounce global illumination, ray-traced reflections, automatically
+light-blocked ambient environment maps, emissive mesh area lighting,
+contact-hardening penumbrae or HDR postprocessing/bloom. Dark rooms need
+their ambient/environment light budget configured separately; they do not
+automatically become pitch-black simply because their door closes.
