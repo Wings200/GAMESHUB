@@ -24,6 +24,25 @@ try {
   await page.waitForTimeout(1000);
   assert.match(await page.locator('#lampStatus').innerText(),/24 REAL DOWNLIGHTS/);
   assert.match(await page.locator('#footstepStatus').innerText(),/5 VARIANTS READY/);
+  // Door starts shut: no direct light leaks through the closed aperture.
+  assert.match(await page.locator('#doorStatus').innerText(),/DOOR CLOSED/);
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
+  await page.locator('#doorToggle').click();
+  await page.waitForFunction(() =>
+    document.getElementById('doorStatus').textContent.includes('LIGHT ENTERING CHAMBER'),
+    null,{timeout:16000});
+  assert.ok(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity'))>25);
+  await page.locator('#bounceToggle').uncheck();
+  await page.waitForTimeout(350);
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-bounce-intensity')),0);
+  await page.locator('#bounceToggle').check();
+  await page.locator('#reflectionToggle').uncheck();
+  await page.locator('#reflectionToggle').check();
+  await page.locator('#doorToggle').click();
+  await page.waitForFunction(() =>
+    document.getElementById('doorStatus').textContent.includes('DOOR CLOSED'),
+    null,{timeout:16000});
+  assert.equal(Number(await page.locator('#doorStatus').getAttribute('data-direct-intensity')),0);
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
     drawCalls:document.getElementById('drawCalls').textContent,
