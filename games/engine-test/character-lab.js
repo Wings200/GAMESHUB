@@ -165,6 +165,15 @@ async function initAudio(){
   // Audio unlock is attempted from the real start button gesture.
   const unlocked=await audio.unlock().catch(()=>false);
   if(!unlocked)return;
+  // Original electronic beep, synthesized and labelled as such.
+  // Played through a true 3D emitter at the console.
+  const ctx=audio.context,sampleRate=ctx.sampleRate,frames=Math.floor(.18*sampleRate);
+  const buffer=ctx.createBuffer(1,frames,sampleRate),samples=buffer.getChannelData(0);
+  for(let i=0;i<frames;i++){
+    const t=i/sampleRate,fade=Math.sin(Math.PI*i/(frames-1))**2;
+    samples[i]=Math.sin(Math.PI*2*(570*t+180*t*t))*.16*fade;
+  }
+  audio.clips.set('console-electronic',buffer);
   const recordings=await Promise.allSettled(Array.from({length:5},(_,i)=>
     audio.loadClip('footstep-concrete-'+i,
       new URL('./assets/audio/footstep_concrete_'+String(i).padStart(3,'0')+'.ogg',import.meta.url)
@@ -199,6 +208,7 @@ function interact(){
       effect:{type:consoleActive?'flicker':'pulse',frequency:1.4,amount:.18,seed:3}
     });
     notify(consoleActive?'TRAINING CONSOLE ACTIVATED':'TRAINING CONSOLE STANDBY');
+    if(audio?.clips.has('console-electronic'))session.world.playSound('console-cue');
   }else notify('INTERACTION ANIMATION · PLAYING');
   audio?.tone({frequency:360,endFrequency:510,duration:.12,volume:.035});
 }
@@ -307,7 +317,7 @@ async function start(){
     // browser blocks playback or a recording is temporarily unavailable.
     const audioSetup=initAudio().catch(error=>console.warn('Audio unavailable:',error));
     session=createGameSession(engine,{
-      audio:null,controls:{
+      audio,controls:{
         walkSpeed:4.1,runSpeed:7.2,eyeHeight:1.72,
         bounds:{minX:-11.45,maxX:11.45,minZ:-15.95,maxZ:11.85}
       }
@@ -316,8 +326,9 @@ async function start(){
     addCharacters();
     setMode('third');
     stepSequencer=new FootstepSequencer(event=>audio?.footstep(event));
-    session.world.addSound({id:'lab-speaker',clip:'footstep-concrete-0',
-      position:{x:3.7,y:1.6,z:-5.2},spatial:true,bus:'sfx',volume:.13});
+    session.world.addSound({id:'console-cue',clip:'console-electronic',
+      position:{x:3.7,y:1.6,z:-5.2},spatial:true,bus:'sfx',volume:.38,
+      refDistance:1.5,maxDistance:15,occlusion:true});
     engine.onFrame(updateScene);
     installEvents();
     $('launch').hidden=true;
