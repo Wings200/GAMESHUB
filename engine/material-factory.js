@@ -30,7 +30,7 @@ export function createMaterialCanvas(preset,overrides={},size=256){
 }
 
 export function createMaterialDetailCanvases(preset,overrides={},size=256){
-  if(!['concrete','brick','wood'].includes(preset.category))return null;
+  if(!['concrete','brick','wood','stone','tile','metal','roof'].includes(preset.category))return null;
   const settings=normalizeMaterialSettings(preset,overrides);
   const roughCanvas=document.createElement('canvas');
   const normalCanvas=document.createElement('canvas');
@@ -47,7 +47,7 @@ export function createMaterialDetailCanvases(preset,overrides={},size=256){
     heights[index]=data.height;
     // Three.js reads roughness from the green channel. Its scalar roughness
     // slider remains the global multiplier for this spatially varying map.
-    const value=Math.round(clamp(data.roughness*255));
+    const value=Math.round(clamp((1+(data.roughness-1)*settings.detailStrength)*255));
     roughImage.data[off]=roughImage.data[off+1]=roughImage.data[off+2]=value;
     roughImage.data[off+3]=255;
   }
@@ -57,7 +57,7 @@ export function createMaterialDetailCanvases(preset,overrides={},size=256){
   const period=size-1;
   const heightAt=(x,y)=>heights[((y%period+period)%period)*size+
     ((x%period+period)%period)];
-  const intensity={concrete:2.5,brick:1.45,wood:1.9}[preset.category];
+  const intensity=({concrete:2.5,brick:1.45,wood:1.9,stone:2.05,tile:1.5,metal:2.5,roof:1.6}[preset.category])*settings.detailStrength;
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const dx=(heightAt(x-1,y)-heightAt(x+1,y))*intensity;
     const dy=(heightAt(x,y-1)-heightAt(x,y+1))*intensity;
