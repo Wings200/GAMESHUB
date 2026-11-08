@@ -40,7 +40,7 @@ try {
   const fatal=await page.locator('#error').isVisible();
   assert.equal(fatal,false,'engine fatal overlay visible');
   if(failures.length) throw new Error(failures.join('\n'));
-  console.log('WebGL browser smoke passed; screenshots created.');
+  console.log('WebGL browser smoke passed; screenshots require separate hardware-backed visual review.');
 } finally {
   await browser.close();
 }
