@@ -21,7 +21,7 @@ try {
     return document.getElementById('launch').hidden &&
       document.getElementById('fps').textContent !== '--';
   },null,{timeout:45000});
-  await page.locator('[data-skip-intro]').click();
+  if (await page.locator('#intro').isVisible()) await page.locator('[data-skip-intro]').click();
   await page.waitForTimeout(1000);
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
@@ -33,6 +33,8 @@ try {
   assert.ok(Number(diagnostic.drawCalls)>0,'scene rendered no geometry');
   assert.ok(Number(diagnostic.fps)>0,'renderer stalled');
   await page.screenshot({path:'artifacts/engine-balanced.png',fullPage:true});
+  const preview=await page.screenshot({type:'jpeg',quality:38,clip:{x:0,y:0,width:960,height:600}});
+  console.log('ENGINE_QA_PREVIEW_B64='+preview.toString('base64'));
   await page.locator('#quality').selectOption('quality');
   await page.waitForTimeout(750);
   await page.screenshot({path:'artifacts/engine-quality.png',fullPage:true});
