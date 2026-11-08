@@ -51,7 +51,7 @@ const groups = [
     ['Cedar Shakes','#8e7253'],['Charcoal Panels','#393f42'],['Red Clay Tiles','#985145'],
     ['Standing Seam','#7a858a'],['Copper Patina','#6b8d80'],['Sand Shingles','#a99d88'],
     ['Weathered Slate','#72797b'],['Clay Brown','#705342'],['Zinc Grey','#a5a8a5']]],
-  ['fabric','Fabric & Upholstery','fabric',.96,0,4,[
+  ['fabric','Fabric & Upholstery','fabric',.96,0,1.25,[
     ['Natural Linen','#bdb4a4'],['Charcoal Weave','#4a4b50'],['Navy Canvas','#4a5e76'],
     ['Cream Wool','#ddd2bb'],['Forest Cloth','#526c5c'],['Denim','#5c7997'],
     ['Rust Linen','#ae7258'],['Burgundy Velvet','#73464e'],['Oat Cotton','#cfbd9c'],
@@ -73,7 +73,7 @@ const groups = [
     ['Stone Beige','#b3a18e'],['Olive','#716d53'],['Vintage Rust','#8b5645']]],
   // Append rather than insert: all 168 existing material IDs and procedural
   // seeds remain unchanged, so old saved variants stay visually consistent.
-  ['carpet','Carpet & Rugs','carpet',.97,0,3,[
+  ['carpet','Carpet & Rugs','carpet',.97,0,1.25,[
     ['Warm Beige Plush','#bca88e'],['Charcoal Berber','#53575b'],
     ['Navy Office Loop','#465a6c'],['Ivory Shag','#ddd3be'],
     ['Forest Wool Pile','#607568'],['Sandstone Low Pile','#b5a58c'],
