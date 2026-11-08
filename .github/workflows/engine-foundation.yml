@@ -47,5 +47,7 @@ jobs:
         run: node games/engine-test/materials-smoke.mjs
       - name: Smoke-test code-first GameWorld object and resource API
         run: node games/engine-test/world-api-smoke.mjs
+      - name: Smoke-test spatial audio and mixer with real browser Web Audio nodes
+        run: node games/engine-test/spatial-sound-smoke.mjs
       - name: Smoke-test WebGL room, quality presets and controls
         run: node games/engine-test/browser-smoke.mjs
