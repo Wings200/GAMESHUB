@@ -46,6 +46,7 @@ export class GameEngine {
     this.frameId = 0;
     this.fps = 0;
     this.frames = 0;
+    this.totalFrames = 0;
     this.sampleTime = 0;
     this.resize = this.resize.bind(this);
     this.frame = this.frame.bind(this);
@@ -108,6 +109,7 @@ export class GameEngine {
     }
     for (const callback of this.callbacks) callback(dt, this.elapsed);
     this.renderer.render(this.scene, this.camera);
+    this.totalFrames++;
     this.frameId = requestAnimationFrame(this.frame);
   }
 
