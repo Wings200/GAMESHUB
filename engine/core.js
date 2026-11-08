@@ -34,6 +34,9 @@ export class GameEngine {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.08, 250);
+    // The gameplay camera remains the movement/audio source; rendering can
+    // optionally use a chase camera for third-person games.
+    this.renderCamera = this.camera;
     this.assets = new AssetManager();
     this.renderScale = 1;
     this.quality = 'balanced';
@@ -66,6 +69,17 @@ export class GameEngine {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    if (this.renderCamera !== this.camera && this.renderCamera?.isPerspectiveCamera) {
+      this.renderCamera.aspect = width / height;
+      this.renderCamera.updateProjectionMatrix();
+    }
+  }
+
+  setRenderCamera(camera = this.camera) {
+    if (!camera?.isCamera) throw new TypeError('Render camera must be a THREE.Camera');
+    this.renderCamera = camera;
+    this.resize();
+    return camera;
   }
 
   setRenderScale(value) {
@@ -108,7 +122,7 @@ export class GameEngine {
       this.sampleTime = 0;
     }
     for (const callback of this.callbacks) callback(dt, this.elapsed);
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.renderCamera);
     this.totalFrames++;
     this.frameId = requestAnimationFrame(this.frame);
   }
