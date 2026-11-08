@@ -1,6 +1,6 @@
 import {THREE} from './core.js';
-import {normalizeMaterialSettings} from './material-catalog.mjs?v=build014';
-import {sampleMaterialPattern,sampleMaterialRelief} from './material-patterns.mjs?v=build014';
+import {normalizeMaterialSettings} from './material-catalog.mjs?v=build015';
+import {sampleMaterialPattern,sampleMaterialRelief} from './material-patterns.mjs?v=build015';
 
 const hexRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const clamp=n=>Math.min(255,Math.max(0,n));
@@ -30,7 +30,7 @@ export function createMaterialCanvas(preset,overrides={},size=256){
 }
 
 export function createMaterialDetailCanvases(preset,overrides={},size=256){
-  if(!['concrete','brick','wood','stone','tile','metal','roof'].includes(preset.category))return null;
+  if(!['concrete','brick','wood','stone','tile','metal','roof','fabric','carpet'].includes(preset.category))return null;
   const settings=normalizeMaterialSettings(preset,overrides);
   const roughCanvas=document.createElement('canvas');
   const normalCanvas=document.createElement('canvas');
@@ -57,7 +57,7 @@ export function createMaterialDetailCanvases(preset,overrides={},size=256){
   const period=size-1;
   const heightAt=(x,y)=>heights[((y%period+period)%period)*size+
     ((x%period+period)%period)];
-  const intensity=({concrete:2.5,brick:1.45,wood:1.9,stone:2.05,tile:1.5,metal:2.5,roof:1.6}[preset.category])*settings.detailStrength;
+  const intensity=({concrete:2.5,brick:1.45,wood:1.9,stone:2.05,tile:1.5,metal:2.5,roof:1.6,fabric:1.75,carpet:2.0}[preset.category])*settings.detailStrength;
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const dx=(heightAt(x-1,y)-heightAt(x+1,y))*intensity;
     const dy=(heightAt(x,y-1)-heightAt(x,y+1))*intensity;
