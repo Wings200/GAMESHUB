@@ -70,3 +70,10 @@ Kenney recorded samples, not newly produced or field-recorded audio.
 Do not equate WebGL functional smoke tests with hardware visual approval.
 Try both the balanced and quality profiles; local cube captures are disabled
 in performance mode to avoid unexpected software-rendering stalls.
+
+**Performance note (dev.009):** Cubemap reflections are OFF by default after
+software-GPU QA measured extreme slowdown during scene captures. The engine's
+direct PBR lighting and specular highlights remain active. Enable
+"Experimental local reflections" explicitly in the developer lab and refresh
+only the nearby room. The GUI tracks completed main renderer frames so capture
+recovery is verifiable independently of an unreliable low-FPS display.
