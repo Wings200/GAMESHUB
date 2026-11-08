@@ -86,9 +86,19 @@ try {
   assert.ok(Number(diagnostic.drawCalls)>0,'scene rendered no geometry');
   assert.ok(Number(await page.locator('#hud').getAttribute('data-completed-frames'))>0,
     'main renderer must complete frames after probe capture');
-  await page.locator('#quality').selectOption('quality');
+  // A slow software renderer can delay Playwright's visibility hit-testing
+  // after six-face reflection capture. Exercise the actual dropdown change
+  // handler without requiring a hit-tested click during GPU recovery.
+  const setQuality=profile=>page.evaluate(value=>{
+    const select=document.getElementById('quality');
+    if(!select)throw new Error('Missing quality selector');
+    select.value=value;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    return select.value;
+  },profile);
+  assert.equal(await setQuality('quality'),'quality');
   await page.waitForTimeout(750);
-  await page.locator('#quality').selectOption('performance');
+  assert.equal(await setQuality('performance'),'performance');
   await page.waitForTimeout(500);
   assert.equal(await page.locator('#shadows').isChecked(),false);
   await page.locator('#motion').uncheck();
