@@ -17,6 +17,26 @@ try{
   await page.waitForFunction(()=>document.querySelector('#previewStatus').textContent.includes('READY'),
     null,{timeout:40000});
   assert.equal(await page.locator('#materialViewport').getAttribute('data-preview-ready'),'true');
+  // Read actual generated pixels, not only numeric pattern functions. Every
+  // sample's opposite edges must match before WebGL repeats its UVs.
+  const edgeDiff=await page.evaluate(async()=>{
+    const {MATERIAL_PRESETS}=await import('../../engine/material-catalog.mjs');
+    const {createMaterialCanvas}=await import('../../engine/material-factory.js');
+    let worst=0;
+    for(const preset of MATERIAL_PRESETS){
+      const size=64;
+      const ctx=createMaterialCanvas(preset,{},size).getContext('2d');
+      const data=ctx.getImageData(0,0,size,size).data;
+      for(let i=0;i<size;i++)for(let channel=0;channel<3;channel++){
+        const index=(y,x)=>(y*size+x)*4+channel;
+        worst=Math.max(worst,
+          Math.abs(data[index(i,0)]-data[index(i,size-1)]),
+          Math.abs(data[index(0,i)]-data[index(size-1,i)]));
+      }
+    }
+    return worst;
+  });
+  assert.equal(edgeDiff,0,'texture borders must be pixel-identical at any repeat level');
   await page.locator('#materialCategory').selectOption('wood');
   assert.equal(await page.locator('.material-card').count(),12);
   await page.locator('#materialSearch').fill('oak');
