@@ -73,7 +73,7 @@
     <button id="doorToggle" type="button">OPEN CHAMBER DOOR</button>
     <div class="panel-note" id="reflectionStatus" role="status">REFLECTION PROBES · SHOWROOM 0 / CHAMBER 0</div>
     <button id="probeNow" type="button">REFRESH NEARBY REFLECTIONS</button>
-    <label class="toggle"><span>Dynamic local reflections</span><input id="reflectionToggle" type="checkbox" checked></label>
+    <label class="toggle"><span>Experimental local reflections</span><input id="reflectionToggle" type="checkbox"></label>
     <label class="toggle"><span>Approximate bounced light</span><input id="bounceToggle" type="checkbox" checked></label>
     <label for="quality">Rendering quality</label>
     <select id="quality" aria-label="Rendering quality preset"><option value="balanced" selected>Balanced · recommended</option><option value="quality">Quality · sharper materials</option><option value="performance">Performance · faster</option></select>
@@ -90,7 +90,7 @@
     <label class="toggle"><span>Walking footsteps</span><input id="footsteps" type="checkbox" checked></label>
     <label class="toggle"><span>Audio cues</span><input id="audio" type="checkbox" checked></label>
     <button id="soundTest" type="button">PROTOTYPE AUDIO (NOT REAL FOLEY) ↗</button>
-    <div class="panel-note">The dark chamber is reached through the southern doorway (behind the original exhibits). Press E nearby, or use the door button. Two local reflection probes update from the real scene; click Refresh to compare highlights. Indirect bounce is approximated, not ray traced. The separate sound-test button remains experimental.</div>
+    <div class="panel-note">The dark chamber is reached through the southern doorway (behind the original exhibits). Press E nearby, or use the door button. Local cubemap reflections are experimental and OFF by default. Enable them and click Refresh Nearby Reflections to compare highlights. Indirect bounce is approximated, not ray traced. The separate sound-test button remains experimental.</div>
   </aside>
 
   <div class="error-screen" id="error" hidden role="alert"><h2>ENGINE INITIALIZATION FAILED</h2><p id="errorMessage"></p><a href="/developer.html">Return to Developer Center</a></div>
