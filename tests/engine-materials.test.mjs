@@ -28,9 +28,17 @@ test('custom overrides are normalized without mutating presets',()=>{
   const override=normalizeMaterialSettings(initial,{
     color:'#AB12CF',roughness:4,metalness:-1,repeat:99
   });
-  assert.deepEqual(override,{color:'#AB12CF',roughness:1,metalness:0,repeat:12});
+  assert.deepEqual(override,{color:'#AB12CF',roughness:1,metalness:0,repeat:12,detailStrength:1});
   assert.notEqual(initial.color,override.color);
   const invalid=normalizeMaterialSettings(initial,{color:'url(javascript:x)',roughness:'nope'});
   assert.equal(invalid.color,initial.color);
   assert.equal(invalid.roughness,initial.roughness);
+});
+
+test('material strength is bounded and defaults to neutral across presets',()=>{
+  for(const preset of MATERIAL_PRESETS) {
+    assert.equal(normalizeMaterialSettings(preset).detailStrength,1);
+    assert.equal(normalizeMaterialSettings(preset,{detailStrength:0}).detailStrength,0);
+    assert.equal(normalizeMaterialSettings(preset,{detailStrength:99}).detailStrength,2);
+  }
 });
