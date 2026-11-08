@@ -98,6 +98,8 @@ test('public access allowed when maintenance is OFF; dev panel is server protect
   assert.equal((await middleware(context('/', db))).status, 200);
   assert.equal((await middleware(context('/developer.html', db))).status, 404);
   assert.equal((await middleware(context('/developer.html', db, {googleSession: true}))).status, 200);
+  assert.equal((await middleware(context('/games/engine-test/index.html', db))).status, 404);
+  assert.equal((await middleware(context('/games/engine-test/index.html', db, {googleSession: true}))).status, 200);
   assert.equal((await middleware(context('/maintenance.html', db))).headers.get('Location'), '/');
 });
 
@@ -115,6 +117,9 @@ test('maintenance blocks nondevelopers across HTML, API, and JS; lets developers
   assert.equal((await middleware(context('/api/dev/maintenance', db))).status, 200);
   assert.equal((await middleware(context('/', db, {googleSession: true}))).status, 200);
   assert.equal((await middleware(context('/developer.html', db, {googleSession: true}))).status, 200);
+  assert.equal((await middleware(context('/games/engine-test/', db))).headers.get('Location'), '/maintenance.html');
+  assert.equal((await middleware(context('/games/engine-test/main.js', db, {accept: '*/*'}))).status, 404);
+  assert.equal((await middleware(context('/games/engine-test/', db, {googleSession: true}))).status, 200);
   assert.equal((await middleware(context('/maintenance.html?preview=1', db, {googleSession: true}))).status, 200);
 });
 
