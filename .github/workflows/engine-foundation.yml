@@ -1,0 +1,28 @@
+name: Engine foundation checks
+on:
+  pull_request:
+    paths:
+      - 'engine/**'
+      - 'games/engine-test/**'
+      - 'tests/engine*.test.mjs'
+      - '.github/workflows/engine-foundation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'engine/**'
+      - 'games/engine-test/**'
+      - 'tests/engine*.test.mjs'
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax checks
+        run: |
+          for f in engine/*.js games/engine-test/*.js; do node --check "$f"; done
+      - name: Unit tests
+        run: node --test tests/engine*.test.mjs
