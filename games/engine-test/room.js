@@ -327,6 +327,7 @@ function buildScene(engine) {
     const originalMaterials=Array.from(exhibitMaterialClones.values());
     const previous=originalMaterials.map(material=>material.envMap);
     const previousShadows=engine.renderer.shadowMap.enabled;
+    const previousTarget=engine.renderer.getRenderTarget();
     // Avoid feedback loops when a metal sample is visible in its own cube.
     for(const material of originalMaterials) {
       material.envMap=null;
@@ -352,7 +353,9 @@ function buildScene(engine) {
       mainProbeDirty=false;
       return false;
     }finally{
+      engine.renderer.setRenderTarget(previousTarget);
       engine.renderer.shadowMap.enabled=previousShadows;
+      engine.renderer.resetState();
     }
   }
   function setReflectionEnabled(enabled){
