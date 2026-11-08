@@ -186,3 +186,40 @@ ladders, crouching, swimming, dynamics, rigid-body impulses, moving-platform
 carrying and network prediction aren't solved by this pass. The legacy
 horizontal-only controller is still the default until a new game explicitly
 opts into vertical collision.
+
+## Build 019 — spatial audio, mixing and simple occlusion
+
+The existing `EngineAudio` playback remains available and unchanged for
+legacy UI, intros and recorded footsteps. New games can call `unlock()` from a
+user-initiated click, load licensed audio with `loadClip` and play positional
+sounds via `playSpatialClip`.
+
+```js
+const audio=new EngineAudio();
+await audio.unlock(); // call from a genuine user activation
+await audio.loadClip('pump','/assets/audio/pump.ogg');
+audio.setMasterVolume(.9);
+audio.setBusVolume('ambience',.4);
+const world=createGameWorld(engine,{audio});
+world.addSound({id:'pump',clip:'pump',spatial:true,loop:true,
+  position:{x:12,y:2,z:6},bus:'ambience',
+  refDistance:2,maxDistance:45,rolloffFactor:1});
+const playing=world.playSound('pump');
+world.setTransform('pump',{position:{x:18,y:2,z:6}});
+playing?.stop();
+```
+
+In spatial mode, Web Audio's real `PannerNode` uses HRTF panning and inverse
+distance rolloff. `GameWorld` automatically updates the audio listener to
+the engine camera, keeps playing sources in sync with emitter transforms, and
+uses a throttled AABB ray test to reduce volume and low-pass cutoff when a
+collidable wall lies between listener and emitter. Sound emitter settings
+persist in `gameshub.world.v1` documents. Four separately adjustable buses
+(`sfx`, `ambience`, `music`, `ui`) feed an adjustable master.
+
+**Limitations:** Line-of-sight occlusion is an approximation using axis-aligned
+collision boxes, not diffraction, sound transmission through materials,
+reverb-convolution or acoustic path tracing. Real audio files must still be
+loaded and listened to. Existing `playClip` calls keep their previous direct
+output unless new game code explicitly uses spatial playback or mixer buses.
+Non-spatial `world.playSound` remains backward compatible.

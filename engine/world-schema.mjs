@@ -80,7 +80,15 @@ export function normalizeWorldEntity(input){
   }
   if(type==='sound'){
     const clip=identifier(input.clip,'clip');
-    return {id,type,position,clip,volume:number(input.volume,1,'volume',0,1.5)};
+    const bus=input.bus??'sfx';
+    if(!['sfx','ambience','music','ui'].includes(bus))throw new TypeError('Unknown sound bus');
+    const refDistance=number(input.refDistance,1,'refDistance',.05,1000);
+    const maxDistance=number(input.maxDistance,35,'maxDistance',.1,10000);
+    if(maxDistance<refDistance)throw new TypeError('Sound maxDistance must be >= refDistance');
+    return {id,type,position,clip,volume:number(input.volume,1,'volume',0,1.5),
+      spatial:input.spatial===true,loop:input.loop===true,bus,
+      refDistance,maxDistance,rolloffFactor:number(input.rolloffFactor,1,'rolloffFactor',0,10),
+      occlusion:input.occlusion!==false};
   }
   throw new TypeError('Unknown entity type: '+String(type));
 }

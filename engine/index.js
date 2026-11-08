@@ -18,3 +18,5 @@ export {GameWorld,createGameWorld} from './world.js';
 export {WORLD_FORMAT,normalizeWorldEntity,normalizeWorldDocument} from './world-schema.mjs';
 
 export {BODY_HEIGHT,EYE_HEIGHT,resolveCapsule3D} from './collision-3d.js';
+
+export {normalizeAudioPosition,segmentIntersectsAABB,estimateOcclusion} from './audio-spatial.js';
