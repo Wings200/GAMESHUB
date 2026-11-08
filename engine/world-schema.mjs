@@ -1,3 +1,4 @@
+import {normalizeLightEffect} from './light-effects.mjs';
 import {getMaterialPreset,normalizeMaterialSettings} from './material-catalog.mjs';
 
 // Versioned, engine-independent scene descriptions. Validation happens before
@@ -68,10 +69,19 @@ export function normalizeWorldEntity(input){
     if(!['point','spot'].includes(kind))throw new TypeError('Light must be point or spot');
     const color=input.color??'#ffffff';
     if(typeof color!=='string'||!HEX.test(color))throw new TypeError('light color must be a six-digit hex color');
+    const shadowSize=number(input.shadowSize,512,'shadowSize',256,2048);
+    if(![256,512,1024,2048].includes(shadowSize))
+      throw new TypeError('shadowSize must be 256, 512, 1024 or 2048');
     return {id,type,kind,position,color:color.toLowerCase(),
       intensity:number(input.intensity,1,'intensity',0,1000),
       distance:number(input.distance,0,'distance',0,10000),
+      decay:number(input.decay,2,'decay',0,3),
       castShadow:input.castShadow===true,
+      shadowSize,shadowBias:number(input.shadowBias,-.0001,'shadowBias',-.01,.01),
+      shadowNormalBias:number(input.shadowNormalBias,.015,'shadowNormalBias',0,.1),
+      visibleSource:input.visibleSource===true,
+      sourceRadius:number(input.sourceRadius,.14,'sourceRadius',.025,2),
+      effect:normalizeLightEffect(input.effect),
       ...(kind==='spot'?{
         target:point(input.target??{x:0,y:0,z:0},'target'),
         angle:number(input.angle,Math.PI/6,'angle',.01,Math.PI/2-.001),
