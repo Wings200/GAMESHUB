@@ -383,3 +383,36 @@ networked animation replication, or character models. Three.js animation
 tracks must match the object's node names / rig. Locomotion clip choice uses
 horizontal control velocity; it does not automatically translate an NPC
 through the world. Game code controls world placement and physical collision.
+
+## Build 023 — playable Character Animation Test Room
+
+The dedicated developer preview is
+`/games/engine-test/character.html`. Access it from the existing verified
+Developer Center (`/developer.html`). It does **not** replace the original
+engine showroom, publish a new game, or bypass the site's access restrictions.
+
+Features available for user review:
+
+- WASD movement, Shift sprint and Space jump using the real GameSession
+  first-person controls with vertical collision against a small raised route
+- V camera swap: third-person character with animated torso, head,
+  articulated arms, elbows, hips and knees; first-person animated hands
+- E to interact when near the console, R to reload a training device; the
+  diagnostics panel also has direct buttons for both animations
+- Actual AnimationController transitions with real authored Three.js
+  AnimationClips, smooth loop crossfades, one-shot actions returning to
+  locomotion, per-frame state readouts and render quality switching
+- Render-camera separation: `GameEngine.renderCamera` optionally renders
+  a chase/spectator camera while keeping `GameEngine.camera` as the
+  movement/collision and audio listener camera
+- QA via `games/engine-test/character-lab-smoke.mjs`, which launches the
+  page in Chromium and verifies keyboard movement, animations, switching
+  cameras, real-time interactions, and renderer shadow quality.
+
+**Limitations:** This room uses a procedural *diagnostic* articulated
+mannequin and first-person hands. The animation timing and transitions are
+testable, but this is **not a finished humanoid model**, motion-capture
+animation, skeletal retargeting, inverse-kinematics solving, or an actual
+character animation asset pipeline. Production games still need authored
+models and clips. The test is intentionally small, standalone and
+developer-only, and uses the existing reusable Engine systems.
