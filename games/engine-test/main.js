@@ -1,10 +1,11 @@
-import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build007';
+import {GameEngine, ENGINE_VERSION} from '../../engine/core.js?v=build008';
 import {FirstPersonControls} from '../../engine/controls.js';
-import {EngineIntro} from '../../engine/intro.js?v=build007';
-import {EngineAudio} from '../../engine/audio.js?v=build007';
-import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build007';
-import {installPolishedFoley} from '../../engine/foley.js?v=build007';
+import {EngineIntro} from '../../engine/intro.js?v=build008';
+import {EngineAudio} from '../../engine/audio.js?v=build008';
+import {ENGINE_LOGO_MP3} from '../../engine/generated-sounds.js?v=build008';
+import {installPolishedFoley} from '../../engine/foley.js?v=build008';
 import {createTestRoom} from './room.js';
+import {FootstepSequencer} from '../../engine/footsteps.js?v=build008';
 
 const $ = id => document.getElementById(id);
 const audio = new EngineAudio();
@@ -13,6 +14,8 @@ let engine = null;
 let controls = null;
 let facility = null;
 let introRunning = false;
+const steps = new FootstepSequencer(event => audio.footstep(event));
+let recordedStepsReady = 0;
 
 function fatal(error) {
   console.error('GAMESHUB Engine failed:', error);
@@ -33,6 +36,7 @@ async function runIntro() {
   introRunning = true;
   if (document.pointerLockElement) document.exitPointerLock();
   if (controls) controls.enabled = false;
+  steps.reset();
   await intro.play();
   if (controls) controls.enabled = true;
   introRunning = false;
@@ -50,6 +54,19 @@ async function start() {
       for (const result of assets) if (result.status === 'rejected') console.warn('Audio asset failed to load:', result.reason);
       try { installPolishedFoley(audio); }
       catch (error) { console.warn('Mechanical Foley could not be prepared:', error); }
+      const recordings=await Promise.allSettled(
+        Array.from({length:5},(_,i)=>audio.loadClip(
+          'footstep-concrete-'+i,
+          new URL('./assets/audio/footstep_concrete_'+String(i).padStart(3,'0')+'.ogg',import.meta.url)
+        ))
+      );
+      recordedStepsReady=recordings.filter(r=>r.status==='fulfilled').length;
+      for(const failure of recordings) if(failure.status==='rejected')
+        console.warn('A licensed recorded footstep could not load:',failure.reason);
+      $('footstepStatus').textContent=recordedStepsReady===5
+        ? 'RECORDED FOOTSTEPS · CONCRETE · 5 VARIANTS READY'
+        : 'RECORDED FOOTSTEPS · '+recordedStepsReady+'/5 LOADED';
+
     }
     engine = new GameEngine($('world'));
     engine.setQuality($('quality').value);
@@ -57,7 +74,18 @@ async function start() {
     controls = new FirstPersonControls($('world'), engine.camera, {
       bounds: facility.bounds, obstacles: facility.obstacles
     });
-    engine.onFrame(dt => controls.update(dt));
+    engine.onFrame(dt => {
+      const startX=controls.camera.position.x, startZ=controls.camera.position.z;
+      controls.update(dt);
+      const moved=Math.hypot(controls.camera.position.x-startX,controls.camera.position.z-startZ);
+      steps.advance({
+        distance:moved,
+        grounded:controls.camera.position.y<=controls.eyeHeight+.001,
+        running:controls.keys.has('ShiftLeft')||controls.keys.has('ShiftRight'),
+        enabled:controls.enabled&&!introRunning&&!audio.muted&&$('footsteps').checked
+      });
+    });
+    $('lampStatus').textContent=facility.fixtureLights.length+' REAL DOWNLIGHTS · LINKED TO VISIBLE CEILING PANELS';
     let statsInterval = 0;
     engine.onFrame((dt) => {
       statsInterval += dt;
@@ -97,12 +125,13 @@ function range(id, output, setter, format) {
   update();
 }
 range('exposure', 'exposureValue', value => { engine.renderer.toneMappingExposure = value; }, value => value.toFixed(2));
-range('intensity', 'intensityValue', value => { facility.key.intensity = value; }, value => value.toFixed(1));
+range('intensity', 'intensityValue', value => { facility.setCeilingIntensity(value); }, value => value.toFixed(1));
 range('resolution', 'resolutionValue', value => engine.setRenderScale(value), value => `${Math.round(value * 100)}%`);
 $('quality').addEventListener('change', event => {
   if (!engine || !facility) return;
   const config=engine.setQuality(event.target.value);
   facility.setShadowQuality(config.profile);
+  facility.setCeilingIntensity(Number($('intensity').value));
   $('resolution').value=String(config.renderScale);
   $('resolutionValue').textContent=`${Math.round(config.renderScale*100)}%`;
   $('exposure').value=String(config.exposure);
@@ -117,7 +146,8 @@ window.addEventListener('pagehide', () => {
   controls?.dispose();
   facility?.dispose();
   engine?.dispose();
+  steps.reset();
   audio.dispose();
 });
 
-console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 007 | Developer Lab`);
+console.info(`GAMESHUB Engine ${ENGINE_VERSION} | Build 008 | Developer Lab`);

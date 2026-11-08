@@ -4,7 +4,7 @@ import {clampDelta} from './math.js';
 import {qualitySettings, clampScale} from './quality.js';
 
 export {THREE};
-export const ENGINE_VERSION = '0.1.0-dev.007';
+export const ENGINE_VERSION = '0.1.0-dev.008';
 
 export {clampDelta};
 

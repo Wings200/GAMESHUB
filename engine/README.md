@@ -9,14 +9,14 @@
 - Test room with 3 material exhibits, a reference industrial architectural environment, shared procedural surface textures, reflection probe, fixtures, workstations and simple rotational machine animation
 - Asynchronous GLTF/texture loading, a decoded-clip audio playback API, an experimental original intro, and the recorded-sound Audio Workbench
 - Basic engine diagnostics (FPS, draw calls, triangles, approximate frame time)
-- The GAMESHUB intro is ONLY an opt-in game startup overlay via `EngineIntro`. Do not mount it onto every app or each internal scene transition.
+- Recorded CC0 concrete footsteps from Kenney (five variants), distance-based stride events, grounding checks, and visible ceiling fixtures aligned with real downward-facing spotlights are available in dev.008.\n- The GAMESHUB intro is ONLY an opt-in game startup overlay via `EngineIntro`. Do not mount it onto every app or each internal scene transition.
 
 ## What is NOT implemented or proven
 - A photorealistic asset pipeline or authored AAA character/environment models
 - A complete character skeletal animation graph, inverse kinematics or networking
 - HDRI capture/probe blending between multiple real game spaces
 - Complete collision/physics (the current resolver is horizontal 2D footprints only)
-- Realistic recorded Foley for the lab's audio test (the generated metallic cue was rejected by user listening review)
+- Realistic recorded metallic Foley for the separate sound-test button (its original generated cue was rejected by user listening review; footsteps have real CC0 recordings)
 - Browser screenshots, performance profiling on multiple GPUs and hardware validation
 
 ## Engine-first quality gates
