@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {MATERIAL_PRESETS,MATERIAL_CATEGORIES,getMaterialPreset,normalizeMaterialSettings} from '../engine/material-catalog.mjs';
 
 test('large catalog has deterministic and distinct identifiers',()=>{
-  assert.equal(MATERIAL_CATEGORIES.length,14);
-  assert.equal(MATERIAL_PRESETS.length,168);
+  assert.equal(MATERIAL_CATEGORIES.length,15);
+  assert.equal(MATERIAL_PRESETS.length,180);
   const ids=MATERIAL_PRESETS.map(p=>p.id);
   assert.equal(new Set(ids).size,ids.length);
   for(const preset of MATERIAL_PRESETS){
@@ -41,4 +41,16 @@ test('material strength is bounded and defaults to neutral across presets',()=>{
     assert.equal(normalizeMaterialSettings(preset,{detailStrength:0}).detailStrength,0);
     assert.equal(normalizeMaterialSettings(preset,{detailStrength:99}).detailStrength,2);
   }
+});
+
+test('carpet adds 12 new presets without changing existing material ids or seeds',()=>{
+  const carpet=MATERIAL_PRESETS.filter(p=>p.category==='carpet');
+  const fabric=MATERIAL_PRESETS.filter(p=>p.category==='fabric');
+  assert.equal(carpet.length,12);
+  assert.equal(fabric.length,12);
+  // A representative original seed must not change when adding a category.
+  assert.equal(getMaterialPreset('fabric-natural-linen').seed,10*101+0*37+17);
+  assert.equal(getMaterialPreset('ground-fine-gravel').seed,11*101+0*37+17);
+  assert.equal(getMaterialPreset('carpet-warm-beige-plush').metalness,0);
+  assert.ok(getMaterialPreset('carpet-ivory-shag').roughness>.8);
 });
