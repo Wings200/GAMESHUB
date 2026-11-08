@@ -92,8 +92,9 @@ try{
   await page.waitForTimeout(1450);
   assert.equal(await page.evaluate(()=>window.__characterLab.avatar.animator.active),'idle');
 
-  await page.keyboard.press('Space');
+  await page.keyboard.down('Space');
   await page.waitForTimeout(120);
+  await page.keyboard.up('Space');
   const airborne=await page.evaluate(()=>{
     const lab=window.__characterLab;
     return {state:lab.avatar.animator.active,
