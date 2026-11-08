@@ -48,10 +48,14 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
   fixtures.push(portalLight,portalLight.target);
   // Tiny face glow comes from the same visible lamp. Its warm bounce onto
   // the front of the steel door remains even when the door is shut.
-  const faceGlow=new THREE.PointLight(0xffdfaa,3.0,3.7,2);
-  faceGlow.name='Flood lamp near-field source';
+  const faceGlow=new THREE.SpotLight(0xffdfaa,4.2,3.7,Math.PI*.35,.72,2);
+  faceGlow.name='Flood lamp near-field — shadowed by closed door';
   faceGlow.position.copy(portalLight.position);
-  scene.add(faceGlow); fixtures.push(faceGlow);
+  faceGlow.target.position.set(0,1.5,19);
+  faceGlow.castShadow=true;
+  faceGlow.shadow.mapSize.set(512,512);
+  faceGlow.shadow.bias=-.00005;
+  scene.add(faceGlow,faceGlow.target); fixtures.push(faceGlow,faceGlow.target);
 
   // This soft glow is a separate APPROXIMATION for multi-bounce diffuse light.
   // Zero while shut and smoothly increases as the aperture opens.
@@ -148,6 +152,7 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
     Object.assign(doorBarrier,doorCollisionAt(openness));
     const aperture=lightAperture(openness);
     portalLight.intensity=46*aperture;
+    faceGlow.intensity=shadowProfile==='performance' ? 4.2*aperture : 4.2;
     bouncedLight.intensity=bounceEnabled?2.5*aperture:0;
     dirty=true;
     onDoorChange();
@@ -155,11 +160,14 @@ export function makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,o
   function setQuality(profile) {
     shadowProfile=profile;
     portalLight.castShadow=profile!=='performance';
+    faceGlow.castShadow=profile!=='performance';
     const size=profile==='quality'?1536:profile==='balanced'?1024:512;
     portalLight.shadow.mapSize.set(size,size);
     portalLight.shadow.map?.dispose();
     portalLight.shadow.map=null;
     portalLight.shadow.needsUpdate=true;
+    faceGlow.shadow.needsUpdate=true;
+    faceGlow.intensity=profile==='performance'?4.2*lightAperture(openness):4.2;
     dirty=true;
   }
   function toggle(player,force=false) {
