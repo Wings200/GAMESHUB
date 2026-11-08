@@ -35,6 +35,7 @@ function buildScene(engine) {
   scene.fog=new THREE.Fog('#343a3b',38,87);
   const geometries=new Map(), uniqueGeometries=new Set(), ownedMaterials=new Set(), ownedTextures=new Set();
   const fixtures=[], animated=[];
+  let mainProbeDirty=true, mainProbeEnabled=true, mainCaptureCount=0, lastMainCapture=-100;
   function cube(name,dimensions,material,xyz,options={}) {
     const [w,h,d]=dimensions, r=Math.min(options.radius||0,w*.22,h*.22,d*.22);
     const key=[w,h,d,r].join(',');
@@ -153,6 +154,12 @@ function buildScene(engine) {
     {x:0,title:'GLASS',detail:'OPTICAL / TRANSMISSION',type:'glass'},
     {x:6.4,title:'BRONZE',detail:'CAST / BRUSHED',type:'bronze'}
   ];
+  const exhibitMaterialClones=new Map();
+  for(const original of [mat.iron,mat.paintedMetal,mat.brass,mat.copper,mat.glass,mat.darkMetal]){
+    const copy=original.clone();
+    exhibitMaterialClones.set(original,copy);
+    ownedMaterials.add(copy);
+  }
   const obstacles=[];
   for (const sp of specimens){
     const z=-8.4;
@@ -166,7 +173,7 @@ function buildScene(engine) {
     root.add(build);
     const part=(name,geometry,material,x,y,z,rotX=0)=>{
       uniqueGeometries.add(geometry);
-      const mesh=new THREE.Mesh(geometry,material);
+      const mesh=new THREE.Mesh(geometry,exhibitMaterialClones.get(material)||material);
       mesh.name=name;mesh.position.set(x,y,z);mesh.rotation.x=rotX;
       mesh.castShadow=true;mesh.receiveShadow=true;build.add(mesh);
       return mesh;
@@ -231,7 +238,7 @@ function buildScene(engine) {
     [-10.7,2.11,4.5,1.03,.78,.87],[-10.7,3.54,6.2,.93,.78,.95]
   ]) cube('Supply crate',[w,h,d],mat.wood,[x,y,z],{radius:.02});
   obstacles.push({minX:-11.85,maxX:-9.6,minZ:3.1,maxZ:7.8});
-  const chamber=makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles});
+  const chamber=makeLightChamber({engine,root,cube,sign,mat,fixtures,obstacles,onDoorChange:()=>{mainProbeDirty=true;}});
   // Safety paint and anchored guard rails.
   for(const x of [-11.62,11.62]) {
     for(const z of [-1.5,1.5]){
@@ -291,6 +298,7 @@ function buildScene(engine) {
     ceilingIntensity=Math.max(.1,Math.min(5,Number(value)||2.7));
     const base=ceilingLightingProfile(engine.quality).intensity;
     for(const light of fixtureLights) light.intensity=base*ceilingIntensity/2.7;
+    mainProbeDirty=true;
   };
   const setShadowQuality=(profile)=>{
     const config=ceilingLightingProfile(profile);
@@ -306,12 +314,62 @@ function buildScene(engine) {
     chamber.setQuality(profile);
     engine.renderer.shadowMap.needsUpdate=true;
   };
+  // Main showroom reference cube: samples reflect the real lab geometry
+  // and its 24 luminous panels, not only the static studio PMREM texture.
+  // Sampling is demand-driven to avoid six extra scene passes every frame.
+  const mainProbeTarget=new THREE.WebGLCubeRenderTarget(64,{
+    format:THREE.RGBAFormat,generateMipmaps:true,minFilter:THREE.LinearMipmapLinearFilter
+  });
+  const mainCubeCamera=new THREE.CubeCamera(.1,65,mainProbeTarget);
+  mainCubeCamera.position.set(2.5,2.5,-5.8);
+  function captureShowroomProbe() {
+    if(!mainProbeEnabled || engine.quality==='performance') return false;
+    const originalMaterials=Array.from(exhibitMaterialClones.values());
+    const previous=originalMaterials.map(material=>material.envMap);
+    // Avoid feedback loops when a metal sample is visible in its own cube.
+    for(const material of originalMaterials) {
+      material.envMap=null;
+      material.needsUpdate=true;
+    }
+    try{
+      mainCubeCamera.update(engine.renderer,scene);
+      for(const material of originalMaterials){
+        material.envMap=mainProbeTarget.texture;
+        material.needsUpdate=true;
+      }
+      mainProbeDirty=false;
+      mainCaptureCount++;
+      return true;
+    }catch(error){
+      console.warn('Showroom reflection capture unavailable:',error);
+      originalMaterials.forEach((material,index)=>{
+        material.envMap=previous[index];material.needsUpdate=true;
+      });
+      mainProbeDirty=false;
+      return false;
+    }
+  }
+  function setReflectionEnabled(enabled){
+    mainProbeEnabled=Boolean(enabled);
+    chamber.setProbes(enabled);
+    if(!mainProbeEnabled){
+      for(const material of exhibitMaterialClones.values()){
+        material.envMap=null;material.needsUpdate=true;
+      }
+    }else mainProbeDirty=true;
+  }
   let animate=true, phase=0;
   const removeFrame=engine.onFrame((dt,time)=>{
     if(animate) phase=stepPhase(phase,.24,dt);
     for(const [index,model] of animated.entries())
       model.group.rotation.y=model.base + phase*(index%2===0?1:-1);
     chamber.update(dt,time,engine.camera.position);
+    if(mainProbeDirty && mainProbeEnabled && engine.quality!=='performance'
+        && engine.camera.position.z< -3 && engine.camera.position.z> -13
+        && time-lastMainCapture>2.0){
+      lastMainCapture=time;
+      captureShowroomProbe();
+    }
   });
   engine.camera.position.set(0,1.72,12.2);
   const quality=engine.quality;
@@ -320,10 +378,13 @@ function buildScene(engine) {
     root,chamber,fixtureLights,luminaireGrid,ambient,obstacles,bounds:{minX:-11.83,maxX:11.83,minZ:-17.0,maxZ:31.0},
     setMotion(value){animate=Boolean(value);},
     getMotion(){return animate;},
-    setShadowQuality,setCeilingIntensity,
+    setShadowQuality,setCeilingIntensity,setReflectionEnabled,
+    captureReflections(){return {showroom:captureShowroomProbe(),chamber:chamber.captureReflections()};},
+    getReflectionCaptures(){return {showroom:mainCaptureCount,chamber:chamber.getStatus().reflectionCaptures};},
     dispose(){
       removeFrame();
       chamber.dispose();
+      mainProbeTarget.dispose();
       root.removeFromParent();
       for(const object of fixtures) object.removeFromParent();
       scene.environment=null;
