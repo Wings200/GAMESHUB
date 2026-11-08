@@ -22,6 +22,8 @@ try {
   // Programmatic click avoids the auto-finish/actionability race at 4.9 seconds.
   await page.evaluate(() => document.querySelector('[data-skip-intro]')?.click());
   await page.waitForTimeout(1000);
+  assert.match(await page.locator('#lampStatus').innerText(),/24 REAL DOWNLIGHTS/);
+  assert.match(await page.locator('#footstepStatus').innerText(),/5 VARIANTS READY/);
   const diagnostic=await page.evaluate(()=>({
     fps:document.getElementById('fps').textContent,
     drawCalls:document.getElementById('drawCalls').textContent,
@@ -37,6 +39,8 @@ try {
   await page.waitForTimeout(500);
   assert.equal(await page.locator('#shadows').isChecked(),false);
   await page.locator('#motion').uncheck();
+  await page.locator('#footsteps').uncheck();
+  assert.equal(await page.locator('#footsteps').isChecked(),false);
   const fatal=await page.locator('#error').isVisible();
   assert.equal(fatal,false,'engine fatal overlay visible');
   if(failures.length) throw new Error(failures.join('\n'));
