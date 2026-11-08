@@ -47,3 +47,8 @@
 #doorStatus,#reflectionStatus{background:#182226;line-height:1.5;border-radius:4px;padding:7px 10px}
 #reflectionStatus{margin-top:8px}
 @media(max-width:700px){.door-hint{bottom:23px;font-size:10px;white-space:nowrap}}
+
+#probeNow{display:block;width:100%;margin-top:7px;background:#222e33;color:#ece1c9;
+  border:1px solid #a38c65;border-radius:6px;padding:9px 6px;cursor:pointer;
+  font-size:11px;font-weight:700;letter-spacing:.08em}
+#probeNow:hover{background:#344449}
