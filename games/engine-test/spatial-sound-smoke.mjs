@@ -49,6 +49,7 @@ try{
       isSpatial:sound?.panner instanceof PannerNode
     };
     for(const cb of callbacks)cb(.016,1);
+    await new Promise(resolve=>setTimeout(resolve,120));
     const listener={x:audio.context.listener.positionX.value,
       y:audio.context.listener.positionY.value,
       z:audio.context.listener.positionZ.value};
