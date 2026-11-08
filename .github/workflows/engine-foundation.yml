@@ -51,5 +51,7 @@ jobs:
         run: node games/engine-test/spatial-sound-smoke.mjs
       - name: Smoke-test code-first source-linked lighting and shadow rendering
         run: node games/engine-test/lighting-smoke.mjs
+      - name: Smoke-test one unified multilevel movement, audio and lighting game session
+        run: node games/engine-test/session-integration-smoke.mjs
       - name: Smoke-test WebGL room, quality presets and controls
         run: node games/engine-test/browser-smoke.mjs
