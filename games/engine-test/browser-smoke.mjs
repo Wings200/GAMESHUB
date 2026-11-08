@@ -48,6 +48,13 @@ try {
   await page.locator('#bounceToggle').check();
   await page.locator('#reflectionToggle').uncheck();
   await page.locator('#reflectionToggle').check();
+  // This explicitly exercises the real WebGL cube-map capture path (6 faces
+  // per scene), rather than declaring dynamic reflections correct from source.
+  await page.locator('#probeNow').click({timeout:120000});
+  await page.waitForFunction(()=>
+    /SHOWROOM [1-9]\\d* \\/ CHAMBER [1-9]\\d*/.test(
+      document.getElementById('reflectionStatus').textContent),
+    null,{timeout:45000});
   await page.locator('#doorToggle').click();
   await page.waitForFunction(() =>
     document.getElementById('doorStatus').textContent.includes('DOOR CLOSED'),
