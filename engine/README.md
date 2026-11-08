@@ -158,3 +158,31 @@ hardware quality still require a browser validation.
 
 This stage does **not** add a new game level, edit UI, networking, vertical
 collision, reflection probes, or a player-facing scene editor.
+
+## Build 018 — opt-in true Y position and multilevel player collision
+
+The code-first GameWorld now puts `minY` and `maxY` on all collidable
+primitive objects, updated by `world.setTransform`. Use the existing
+`FirstPersonControls` with `verticalCollision:true` and a stable reference
+to `world.colliders`:
+
+```js
+const controls=new FirstPersonControls(engine.canvas,engine.camera,{
+  obstacles:world.colliders,verticalCollision:true,eyeHeight:1.72,
+  bodyHeight:1.85,stepHeight:.35,groundY:0
+});
+world.onUpdate(dt=>controls.update(dt));
+```
+
+The opt-in upright capsule approximation detects body-height wall collisions,
+landings on elevated floor slabs, jumping into ceilings, and walking off ledges.
+Small steps up to `stepHeight` are passable when supported. The world-ground
+fallback is at `groundY`; games should author floor volumes (which can be
+multi-level) as ordinary `collidable:true` boxes.
+
+**Limitations:** The collision volumes are axis-aligned (mesh rotation still
+prohibited for colliders); spheres/cylinders use bounding volumes; slopes,
+ladders, crouching, swimming, dynamics, rigid-body impulses, moving-platform
+carrying and network prediction aren't solved by this pass. The legacy
+horizontal-only controller is still the default until a new game explicitly
+opts into vertical collision.
