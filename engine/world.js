@@ -2,6 +2,7 @@ import {THREE} from './core.js';
 import {normalizeWorldEntity,normalizeWorldDocument,WORLD_FORMAT} from './world-schema.mjs';
 import {MaterialPool} from './material-pool.js';
 import {estimateOcclusion} from './audio-spatial.js';
+import {lightEffectFactor,shadowBudget} from './light-effects.mjs';
 
 // Code-first, reusable scene assembly layer. It does not replace GameEngine's
 // renderer, collision solver, or EngineAudio; it composes those existing tools.
@@ -21,7 +22,13 @@ export class GameWorld {
     this.unsubscribers=new Set();
     this.activeSounds=new Map();
     this.nextOcclusionSample=0;
+    this.lightingProfile=engine.quality in {performance:1,quality:1,balanced:1}?engine.quality:'balanced';
+    this.animatedLights=new Set();
     this.disposed=false;
+    if(typeof engine.onFrame==='function'){
+      const unregister=engine.onFrame((_dt,elapsed)=>this.updateLighting(elapsed));
+      this.unsubscribers.add(unregister);
+    }
     if(audio?.setListenerPose&&engine.camera&&typeof engine.onFrame==='function'){
       const forward=new THREE.Vector3(),position=new THREE.Vector3();
       const unregister=engine.onFrame((_dt,elapsed)=>{
@@ -65,14 +72,16 @@ export class GameWorld {
         if(spec.collidable)collider=this.footprint(spec);
       }else if(spec.type==='light'){
         if(spec.kind==='point'){
-          node=new THREE.PointLight(spec.color,spec.intensity,spec.distance);
+          node=new THREE.PointLight(spec.color,spec.intensity,spec.distance,spec.decay);
         }else{
           node=new THREE.SpotLight(spec.color,spec.intensity,spec.distance,
-            spec.angle,spec.penumbra);
+            spec.angle,spec.penumbra,spec.decay);
           extra=node.target;
           extra.position.set(spec.target.x,spec.target.y,spec.target.z);
         }
         node.castShadow=spec.castShadow;
+        node.shadow.bias=spec.shadowBias;
+        node.shadow.normalBias=spec.shadowNormalBias;
       }else{
         // Sound markers are reusable triggers, not audio sources. A game
         // explicitly loads its clips via EngineAudio and calls playSound().
@@ -86,7 +95,13 @@ export class GameWorld {
       this.root.add(node);
       if(extra)this.root.add(extra);
       if(collider)this.colliders.push(collider);
-      this.items.set(spec.id,{spec,node,lease,collider,extra});
+      const entry={spec,node,lease,collider,extra,emitter:null};
+      this.items.set(spec.id,entry);
+      if(spec.type==='light'){
+        this.updateLightSource(entry);
+        if(spec.effect.type!=='steady')this.animatedLights.add(spec.id);
+        this.syncLightShadows();
+      }
       return node;
     }catch(error){
       node?.removeFromParent();
@@ -94,6 +109,72 @@ export class GameWorld {
       if(node?.isMesh)node.geometry.dispose();
       lease?.release();
       throw error;
+    }
+  }
+  updateLightSource(item){
+    const {spec,node}=item;
+    if(!spec.visibleSource){
+      if(item.emitter){
+        item.emitter.removeFromParent();
+        item.emitter.geometry.dispose();
+        item.emitter.material.dispose();
+        item.emitter=null;
+      }
+      return;
+    }
+    if(!item.emitter){
+      const mesh=new THREE.Mesh(
+        new THREE.SphereGeometry(spec.sourceRadius,16,12),
+        new THREE.MeshBasicMaterial({color:spec.color,toneMapped:false,depthWrite:false})
+      );
+      mesh.name=spec.id+' / luminous emitter lens';
+      mesh.castShadow=false;
+      mesh.receiveShadow=false;
+      node.add(mesh);
+      item.emitter=mesh;
+    }else{
+      if(item.emitter.userData.radius!==spec.sourceRadius){
+        item.emitter.geometry.dispose();
+        item.emitter.geometry=new THREE.SphereGeometry(spec.sourceRadius,16,12);
+      }
+      item.emitter.material.color.set(spec.color);
+    }
+    item.emitter.userData.radius=spec.sourceRadius;
+  }
+  syncLightShadows(){
+    const budget=shadowBudget(this.lightingProfile);
+    let active=0;
+    for(const item of this.items.values()){
+      if(item.spec.type!=='light')continue;
+      const {spec,node}=item;
+      const enabled=spec.castShadow && active<budget.maxShadowLights;
+      node.castShadow=enabled;
+      if(enabled){
+        active++;
+        const mapSize=Math.min(spec.shadowSize,budget.shadowSize);
+        if(node.shadow.mapSize.width!==mapSize||node.shadow.mapSize.height!==mapSize){
+          node.shadow.mapSize.set(mapSize,mapSize);
+          node.shadow.map?.dispose();
+          node.shadow.map=null;
+        }
+        node.shadow.bias=spec.shadowBias;
+        node.shadow.normalBias=spec.shadowNormalBias;
+      }
+    }
+  }
+  setLightingProfile(profile){
+    this.ensureActive();
+    shadowBudget(profile);
+    this.lightingProfile=profile;
+    this.syncLightShadows();
+    return shadowBudget(profile);
+  }
+  updateLighting(elapsed){
+    if(this.disposed)return;
+    for(const id of this.animatedLights){
+      const item=this.items.get(id);
+      if(item?.spec.type!=='light')continue;
+      item.node.intensity=item.spec.intensity*lightEffectFactor(item.spec.effect,elapsed);
     }
   }
   addMesh(options){return this.create({...options,type:'mesh'});}
@@ -157,7 +238,7 @@ export class GameWorld {
     item.node.color.set(spec.color);
     item.node.intensity=spec.intensity;
     item.node.distance=spec.distance;
-    item.node.castShadow=spec.castShadow;
+    item.node.decay=spec.decay;
     item.node.position.set(spec.position.x,spec.position.y,spec.position.z);
     if(item.extra){
       item.node.angle=spec.angle;
@@ -165,6 +246,10 @@ export class GameWorld {
       item.extra.position.set(spec.target.x,spec.target.y,spec.target.z);
     }
     item.spec=spec;
+    this.updateLightSource(item);
+    if(spec.effect.type==='steady')this.animatedLights.delete(id);
+    else this.animatedLights.add(id);
+    this.syncLightShadows();
     return item.node;
   }
   setSound(id,options={}){
@@ -233,10 +318,17 @@ export class GameWorld {
       const index=this.colliders.indexOf(item.collider);
       if(index!==-1)this.colliders.splice(index,1);
     }
+    if(item.emitter){
+      item.emitter.geometry.dispose();
+      item.emitter.material.dispose();
+      item.emitter=null;
+    }
+    this.animatedLights.delete(id);
     if(item.node.isMesh)item.node.geometry.dispose();
     item.node.dispose?.();
     item.lease?.release();
     this.items.delete(id);
+    if(item.spec.type==='light')this.syncLightShadows();
     return true;
   }
   clear(){
