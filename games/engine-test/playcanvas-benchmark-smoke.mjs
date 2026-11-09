@@ -22,13 +22,21 @@ try{
     const b=window.__pcBenchmark;
     return {ready:b.ready,physics:b.physicsReady,clips:b.clips,
       avatar:!!b.avatar.anim,rigidbody:!!b.crate.rigidbody,
-      camera:!!b.camera.camera,position:b.player.getPosition().z};
+      camera:!!b.camera.camera,position:b.player.getPosition().z,
+      sharedFoundation:b.foundation?.constructor.name==='PlayCanvasFoundation',
+      reusableMethods:['material','box','light','camera','loadContainer',
+        'animatedModel','onUpdate','destroy'].every(key=>
+        typeof b.foundation?.[key]==='function'),
+      importedAssetCount:b.foundation?._assetPromises.size};
   });
   assert.equal(starting.ready,true);
   assert.equal(starting.physics,true);
   assert.equal(starting.avatar,true);
   assert.equal(starting.rigidbody,true);
   assert.equal(starting.camera,true);
+  assert.equal(starting.sharedFoundation,true);
+  assert.equal(starting.reusableMethods,true);
+  assert.equal(starting.importedAssetCount,1);
   for(const clip of ['Idle','Walk','Run','Jump'])assert.ok(starting.clips.includes(clip));
 
   await page.waitForTimeout(1000);

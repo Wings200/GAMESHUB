@@ -1,11 +1,12 @@
 import * as pc from 'playcanvas';
+import {PlayCanvasFoundation} from '../../engine/playcanvas-foundation.js';
 
 // A deliberately separate test of an established engine's built-in systems.
 // This does not import or replace the GAMESHUB/Three.js game engine.
 const $=id=>document.getElementById(id);
 const canvas=$('application');
 const keys=new Set();
-let app,player,avatar,crate,camera,ready=false,started=false,physicsReady=false;
+let foundation,app,player,avatar,crate,camera,ready=false,started=false,physicsReady=false;
 let horizontalSpeed=0,jumpVelocity=0,jumpHeight=0,grounded=true,animation='Idle';
 let facing=0,cameraYaw=0,cameraPitch=.15,cameraDistance=5.4;
 let fps=0,frames=0,fpsTime=0,noticeTime=0,noticeText='';
@@ -18,7 +19,8 @@ function fail(error){
   $('errorMessage').textContent=String(error?.message||error);
   $('error').hidden=false;
   $('start').disabled=false;
-  app?.destroy?.();
+  started=false;
+  foundation?.destroy();
 }
 function message(value){
   noticeText=value;noticeTime=3;
@@ -26,40 +28,13 @@ function message(value){
   $('notice').classList.add('show');
 }
 function material(hex,{metalness=0,gloss=.45,emissive=0}={}){
-  const m=new pc.StandardMaterial();
-  m.diffuse=new pc.Color().fromString(hex);
-  m.metalness=metalness;
-  m.useMetalness=metalness>0;
-  m.gloss=gloss;
-  if(emissive){
-    m.emissive=new pc.Color().fromString(hex);
-    m.emissiveIntensity=emissive;
-  }
-  m.update();
-  return m;
+  return foundation.material(hex,{metalness,gloss,emissive});
 }
 function box(name,pos,size,mat,{collidable=false,mass=0}={}){
-  const entity=new pc.Entity(name);
-  entity.addComponent('render',{type:'box',material:mat,castShadows:true,receiveShadows:true});
-  entity.setLocalScale(size[0],size[1],size[2]);
-  entity.setPosition(pos[0],pos[1],pos[2]);
-  if(collidable){
-    entity.addComponent('collision',{type:'box',halfExtents:new pc.Vec3(
-      size[0]/2,size[1]/2,size[2]/2)});
-    entity.addComponent('rigidbody',{type:mass>0?'dynamic':'static',mass,
-      friction:.65,restitution:.08});
-  }
-  app.root.addChild(entity);
-  return entity;
+  return foundation.box(name,pos,size,mat,{collidable,mass});
 }
 function light(name,type,pos,color,intensity,{shadow=false,range=28}={}){
-  const entity=new pc.Entity(name);
-  entity.addComponent('light',{type,color:new pc.Color().fromString(color),intensity,
-    range,castShadows:shadow,shadowResolution:1024,shadowBias:.14,
-    normalOffsetBias:.03});
-  entity.setPosition(...pos);
-  app.root.addChild(entity);
-  return entity;
+  return foundation.light(name,type,pos,color,intensity,{shadow,range});
 }
 function buildEnvironment(){
   app.scene.ambientLight=new pc.Color(.26,.34,.44);
@@ -220,76 +195,29 @@ async function initialize(){
   $('start').disabled=true;
   $('loadStatus').textContent='Loading PlayCanvas and rigid-body physics…';
   try{
-    pc.WasmModule.setConfig('Ammo',{
-      glueUrl:'https://developer.playcanvas.com/assets/modules/ammo/ammo.wasm.js',
-      wasmUrl:'https://developer.playcanvas.com/assets/modules/ammo/ammo.wasm.wasm',
-      fallbackUrl:'https://developer.playcanvas.com/assets/modules/ammo/ammo.js'
-    });
-    await Promise.race([
-      new Promise(resolve=>pc.WasmModule.getInstance('Ammo',resolve)),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Ammo physics timed out')),22000))
-    ]);
-    physicsReady=true;
-    const device=await pc.createGraphicsDevice(canvas,{deviceTypes:[pc.DEVICETYPE_WEBGL2]});
-    const options=new pc.AppOptions();
-    options.graphicsDevice=device;
-    options.componentSystems=[pc.RenderComponentSystem,pc.CameraComponentSystem,
-      pc.LightComponentSystem,pc.AnimComponentSystem,pc.CollisionComponentSystem,
-      pc.RigidBodyComponentSystem];
-    options.resourceHandlers=[pc.TextureHandler,pc.ContainerHandler];
-    app=new pc.AppBase(canvas);
-    app.init(options);
-    app.setCanvasResolution(pc.RESOLUTION_AUTO);
-    app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-    app.start();
-    window.addEventListener('resize',()=>app.resizeCanvas());
+    foundation=await PlayCanvasFoundation.create(canvas,{physics:true});
+    app=foundation.app;
+    physicsReady=foundation.physicsReady;
     buildEnvironment();
     player=new pc.Entity('PlayerController');
     player.setPosition(0,0,4.3);
     app.root.addChild(player);
-    camera=new pc.Entity('ThirdPersonCamera');
-    camera.addComponent('camera',{clearColor:new pc.Color(.043,.083,.12),farClip:120,
-      nearClip:.08,fov:68});
-    app.root.addChild(camera);
+    camera=foundation.camera('ThirdPersonCamera');
     cameraPosition.set(0,3.3,9.5);
     camera.setPosition(cameraPosition);
 
     $('loadStatus').textContent='Importing Quaternius human and authored clips…';
-    const asset=new pc.Asset('Quaternius CC0 Human','container',{
-      url:'./assets/quaternius-animated-human.glb'
-    });
-    app.assets.add(asset);
-    await new Promise((resolve,reject)=>{
-      asset.ready(()=>resolve());
-      asset.on('error',error=>reject(error));
-      app.assets.load(asset);
-    });
-    avatar=asset.resource.instantiateRenderEntity({castShadows:true});
-    avatar.name='Animated Human';
-    // The imported animation can move its own scene root. Keep authored
-    // facing and human-sized scale on a separate parent so clips cannot undo
-    // them. This asset is already Y-up; tilting X would put it on its side.
-    const visualRoot=new pc.Entity('Animated Human Facing and Scale');
-    visualRoot.setLocalEulerAngles(0,-90,0);
-    visualRoot.setLocalScale(.34,.34,.34);
-    player.addChild(visualRoot);
-    visualRoot.addChild(avatar);
-    avatar.addComponent('anim',{activate:true});
-    const imported=[];
-    for(const clip of asset.resource.animations){
-      const name=clip.resource.name;
-      avatar.anim.assignAnimation(name,clip.resource,undefined,1,name!=='Jump');
-      imported.push(name);
-    }
-    if(!imported.includes('Idle')||!imported.includes('Walk')||
-      !imported.includes('Run')||!imported.includes('Jump'))
-      throw new Error('The human model is missing required movement clips');
-    avatar.anim.baseLayer.transition('Idle',0);
+    const {model,anchor:visualRoot,clipNames:imported}=await foundation.animatedModel(
+      './assets/quaternius-animated-human.glb',{
+        name:'Animated Human',parent:player,scale:.34,yaw:-90,
+        requiredClips:['Idle','Walk','Run','Jump'],initialClip:'Idle'
+      });
+    avatar=model;
     animation='Idle';
     $('motion').textContent='IDLE';
     $('physics').textContent='PHYSICS: AMMO RIGID BODIES';
     bindInput();
-    app.on('update',update);
+    foundation.onUpdate(update);
     ready=true;
     $('launch').hidden=true;
     $('hud').hidden=false;
@@ -298,7 +226,7 @@ async function initialize(){
       get ready(){return ready;},get physicsReady(){return physicsReady;},
       get animation(){return animation;},get speed(){return horizontalSpeed;},
       get grounded(){return grounded;},get fps(){return fps;},
-      get clips(){return imported;},app,player,avatar,crate,camera,
+      get clips(){return imported;},foundation,app,player,avatar,crate,camera,
       pushCrate,playState:setAnimation,visualRoot,
       get crateVelocity(){return crate.rigidbody.linearVelocity.clone();}
     };
