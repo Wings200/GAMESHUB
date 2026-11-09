@@ -33,21 +33,6 @@ try{
 
   await page.waitForTimeout(1000);
   await page.screenshot({path:'/tmp/playcanvas-benchmark-idle.png'});
-  // Compare stable world-axis corrections using the identical animated model.
-  // Only the standard idle image is a product screenshot; these are diagnostic.
-  for(const [name,angles] of [
-    ['axis-zero',[0,0,0]],
-    ['axis-plus90',[90,0,0]],
-    ['axis-minus90',[-90,0,0]],
-    ['axis-minus90-yaw180',[-90,180,0]]
-  ]){
-    await page.evaluate(angles=>{
-      window.__pcBenchmark.visualRoot.setLocalEulerAngles(...angles);
-    },angles);
-    await page.waitForTimeout(350);
-    await page.screenshot({path:`/tmp/playcanvas-benchmark-${name}.png`});
-  }
-  await page.evaluate(()=>window.__pcBenchmark.visualRoot.setLocalEulerAngles(-90,0,0));
 
   await page.keyboard.down('w');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Walk',null,
