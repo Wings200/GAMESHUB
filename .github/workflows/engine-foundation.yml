@@ -59,14 +59,31 @@ jobs:
         run: node games/engine-test/animation-smoke.mjs
       - name: Smoke-test playable character animation testing room
         run: node games/engine-test/character-lab-smoke.mjs
-      - name: Smoke-test separate PlayCanvas benchmark and rigid-body physics
+      - name: Smoke-test WebGL room, quality presets and controls
+        run: node games/engine-test/browser-smoke.mjs
+
+  playcanvas-benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless Chromium and browser driver
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Start test server
+        run: |
+          python3 -m http.server 8080 > /tmp/gameshub-playcanvas-http.log 2>&1 &
+          sleep 2
+      - name: Verify PlayCanvas camera, visible 3D draw calls, animation and physics
         run: node games/engine-test/playcanvas-benchmark-smoke.mjs
-      - name: Save independent engine benchmark screenshot
+      - name: Save engine benchmark screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playcanvas-benchmark-screenshot
           path: /tmp/playcanvas-benchmark.png
           if-no-files-found: ignore
-      - name: Smoke-test WebGL room, quality presets and controls
-        run: node games/engine-test/browser-smoke.mjs

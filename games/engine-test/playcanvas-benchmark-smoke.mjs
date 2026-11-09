@@ -68,6 +68,7 @@ try{
     return {
       canvas:[b.app.graphicsDevice.width,b.app.graphicsDevice.height],
       cameraPosition:b.camera.getPosition().toString(),
+      cameraCoordinates:b.camera.getPosition().toArray(),
       playerPosition:b.player.getPosition().toString(),
       cameraLayers:b.camera.camera.layers,
       renderCount:b.app.root.findComponents('render').length,
@@ -77,8 +78,10 @@ try{
     };
   });
   console.log('PlayCanvas rendering diagnostics:',JSON.stringify(renderDiagnostic));
-  assert.ok(renderDiagnostic.drawCalls.total>0,
-    '3D renderer produced zero draw calls even though engine update and physics passed');
+  assert.ok(renderDiagnostic.cameraCoordinates.every(Number.isFinite),
+    '3D camera position became non-finite; the scene cannot be visible');
+  assert.ok(renderDiagnostic.drawCalls.forward>0,
+    '3D scene produced zero forward draw calls even though shadow rendering and physics passed');
   assert.deepEqual(pageErrors,[]);
   console.log('PlayCanvas benchmark passed: real CC0 GLB clips, responsive character movement, camera, jump and Ammo rigid-body impulse.');
 }finally{await browser.close();}

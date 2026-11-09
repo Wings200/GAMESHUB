@@ -202,7 +202,9 @@ function update(dt){
   scratch.set(playerPos.x+Math.sin(cameraYaw)*a,
     playerPos.y+2.45+Math.sin(cameraPitch)*cameraDistance,
     playerPos.z+Math.cos(cameraYaw)*a);
-  cameraPosition.lerp(scratch,1-Math.exp(-dt*8));
+  // PlayCanvas Vec3.lerp takes (lhs, rhs, alpha), not (target, alpha).
+  // Using the two-argument form yielded NaN camera coordinates and a blank scene.
+  cameraPosition.lerp(cameraPosition,scratch,1-Math.exp(-dt*8));
   camera.setPosition(cameraPosition);
   camera.lookAt(lookTarget);
 
