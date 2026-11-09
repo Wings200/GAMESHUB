@@ -271,7 +271,7 @@ async function initialize(){
     // correction and world scale on a separate parent so clips cannot undo it.
     const visualRoot=new pc.Entity('Animated Human Axis and Scale');
     visualRoot.setLocalEulerAngles(-90,0,0);
-    visualRoot.setLocalScale(.34,.34,.34);
+    visualRoot.setLocalScale(.75,.75,.75);
     player.addChild(visualRoot);
     visualRoot.addChild(avatar);
     avatar.addComponent('anim',{activate:true});
@@ -299,7 +299,7 @@ async function initialize(){
       get animation(){return animation;},get speed(){return horizontalSpeed;},
       get grounded(){return grounded;},get fps(){return fps;},
       get clips(){return imported;},app,player,avatar,crate,camera,
-      pushCrate,playState:setAnimation,
+      pushCrate,playState:setAnimation,visualRoot,
       get crateVelocity(){return crate.rigidbody.linearVelocity.clone();}
     };
   }catch(error){fail(error);}
