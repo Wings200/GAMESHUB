@@ -266,10 +266,14 @@ async function initialize(){
     });
     avatar=asset.resource.instantiateRenderEntity({castShadows:true});
     avatar.name='Animated Human';
-    // The model's animation paths remain beneath this entity. The player
-    // controller rotates and moves the parent independently of skeleton pose.
-    player.addChild(avatar);
-    avatar.setLocalEulerAngles(0,180,0);
+    // This GLB's authored character length runs along +Z, and its clips can
+    // animate their own scene root (including scale and rotation). Keep axis
+    // correction and world scale on a separate parent so clips cannot undo it.
+    const visualRoot=new pc.Entity('Animated Human Axis and Scale');
+    visualRoot.setLocalEulerAngles(-90,0,0);
+    visualRoot.setLocalScale(.34,.34,.34);
+    player.addChild(visualRoot);
+    visualRoot.addChild(avatar);
     avatar.addComponent('anim',{activate:true});
     const imported=[];
     for(const clip of asset.resource.animations){
