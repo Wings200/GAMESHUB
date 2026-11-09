@@ -37,7 +37,10 @@ try{
   await page.keyboard.down('w');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Walk',null,
     {timeout:14000});
-  await page.waitForTimeout(500);
+  // Software WebGL can spend several hundred milliseconds in a single shader
+  // compilation frame; wait for actual movement instead of an elapsed timer.
+  await page.waitForFunction(startZ=>window.__pcBenchmark?.player.getPosition().z<startZ-.1,
+    starting.position,{timeout:18000});
   const walk=await page.evaluate(()=>({speed:window.__pcBenchmark.speed,
     z:window.__pcBenchmark.player.getPosition().z}));
   assert.ok(walk.speed>.1);
