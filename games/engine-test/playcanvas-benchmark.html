@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#09141c">
+<title>GAMESHUB — PlayCanvas Foundation Benchmark</title>
+<link rel="icon" href="/logo.png">
+<script type="importmap">
+{"imports":{"playcanvas":"https://cdn.jsdelivr.net/npm/playcanvas@2.23.3/+esm"}}
+</script>
+<style>
+  :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,sans-serif;color:#f3f3e9}
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#09141c}
+  canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
+  .veil{position:absolute;inset:0;z-index:5;display:grid;place-items:center;padding:24px;background:linear-gradient(110deg,rgba(6,15,23,.95),rgba(11,24,33,.88))}
+  .launch-card{width:min(590px,100%);border:1px solid rgba(244,205,132,.26);border-radius:18px;padding:40px;background:rgba(12,28,38,.8);box-shadow:0 22px 100px #0008}
+  .eyebrow{font-size:11px;letter-spacing:.22em;color:#e3bb80;font-weight:800}
+  h1{font-size:clamp(35px,5vw,64px);letter-spacing:-.055em;line-height:1.02;margin:17px 0 20px}
+  h1 span{color:#f0c287}p{color:#bbcad1;line-height:1.65;font-size:14px}
+  button{font:inherit;cursor:pointer}
+  .cta{border:0;border-radius:11px;padding:15px 26px;margin-top:14px;background:#efc28a;color:#10202b;font-weight:900;letter-spacing:.03em}
+  .cta:disabled{opacity:.55;cursor:wait}
+  .tiny{font-size:12px;color:#8aa1ac}
+  .back{display:inline-block;margin-top:22px;color:#b8ccd4;text-decoration:none;font-size:12px}
+  .hud{position:absolute;z-index:2;pointer-events:none;left:22px;top:20px;right:22px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+  .chip{padding:11px 14px;background:#0b1d28ce;border:1px solid #8db9ce38;border-radius:11px;backdrop-filter:blur(9px)}
+  .chip strong{display:block;font-size:12px;letter-spacing:.12em}.chip small{color:#a6bfcb;font-size:11px}
+  .chip em{color:#f3c58e;font-style:normal}
+  .right{text-align:right;min-width:155px}
+  .bottom{position:absolute;z-index:2;bottom:23px;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:none}
+  .key{padding:9px 12px;background:#0b1d28d9;border:1px solid #8db9ce35;border-radius:9px;font-size:11px;white-space:nowrap;color:#d0dee3}
+  kbd{border-radius:4px;padding:3px 5px;background:#d8e8ef24;color:#ffdc9e;font-size:10px;font-weight:800}
+  .notice{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:8px;background:#0b1d28cf;color:#f0c287;font-size:12px;z-index:2;pointer-events:none;opacity:0;transition:opacity .2s}
+  .notice.show{opacity:1}
+  .error{position:absolute;z-index:6;inset:0;display:grid;place-items:center;background:#09141ce8;padding:26px}
+  .error section{max-width:540px;padding:28px;border:1px solid #ff9f8466;border-radius:14px;background:#18242d}
+  .error h2{margin:0 0 12px;color:#ffb29e}
+  [hidden]{display:none!important}
+  @media(max-width:620px){.hud{left:10px;top:10px;right:10px}.chip{padding:8px}.bottom{width:95%;bottom:11px}.key{padding:6px}.launch-card{padding:25px}}
+</style>
+</head>
+<body>
+<canvas id="application" aria-label="PlayCanvas foundation engine playable benchmark"></canvas>
+<div id="launch" class="veil">
+  <section class="launch-card">
+    <div class="eyebrow">GAMESHUB / FOUNDATION COMPARISON / PROTOTYPE A</div>
+    <h1>A Different<br><span>Foundation.</span></h1>
+    <p>A small, isolated PlayCanvas benchmark. Same CC0 human asset as our old lab; new animation controller, different rendering and built-in rigid-body physics. This is a comparison, not a replacement for GAMESHUB.</p>
+    <button id="start" class="cta" type="button">ENTER BENCHMARK →</button>
+    <p class="tiny" id="loadStatus">Ready to initialize. Keyboard and mouse recommended.</p>
+    <a class="back" href="/developer.html">← Developer Center</a>
+  </section>
+</div>
+<div id="hud" class="hud" hidden>
+  <div class="chip"><strong>GH / PLAYCANVAS</strong><small>ENGINE COMPARISON · NOT FINAL</small></div>
+  <div class="chip right"><strong id="motion">IDLE</strong><small><em id="speed">0.0</em> M/S · <em id="fps">--</em> FPS</small><small id="physics">PHYSICS: INITIALIZING</small></div>
+</div>
+<div id="controls" class="bottom" hidden>
+  <div class="key"><kbd>W A S D</kbd> Move</div>
+  <div class="key"><kbd>SHIFT</kbd> Run</div>
+  <div class="key"><kbd>SPACE</kbd> Jump</div>
+  <div class="key"><kbd>E</kbd> Push crate</div>
+  <div class="key"><kbd>DRAG</kbd> Orbit camera</div>
+</div>
+<div id="notice" class="notice" role="status" aria-live="polite"></div>
+<div id="error" class="error" hidden><section><h2>Benchmark couldn't start</h2><p id="errorMessage"></p><a class="back" href="/developer.html">← Developer Center</a></section></div>
+<script type="module" src="./playcanvas-benchmark.js?v=foundation-a1"></script>
+</body>
+</html>
