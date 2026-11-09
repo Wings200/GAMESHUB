@@ -62,6 +62,23 @@ try{
   assert.ok(kicked.velocity>.1);
   await page.waitForTimeout(1000);
   await page.screenshot({path:'/tmp/playcanvas-benchmark.png'});
+  const renderDiagnostic=await page.evaluate(()=>{
+    const b=window.__pcBenchmark;
+    const layers=b.app.scene.layers;
+    return {
+      canvas:[b.app.graphicsDevice.width,b.app.graphicsDevice.height],
+      cameraPosition:b.camera.getPosition().toString(),
+      playerPosition:b.player.getPosition().toString(),
+      cameraLayers:b.camera.camera.layers,
+      renderCount:b.app.root.findComponents('render').length,
+      drawCalls:b.app.stats.drawCalls,
+      layers:layers.layerList.map(l=>({name:l.name,id:l.id,
+        opaque:l.opaqueMeshInstances?.length,transparent:l.transparentMeshInstances?.length}))
+    };
+  });
+  console.log('PlayCanvas rendering diagnostics:',JSON.stringify(renderDiagnostic));
+  assert.ok(renderDiagnostic.drawCalls.total>0,
+    '3D renderer produced zero draw calls even though engine update and physics passed');
   assert.deepEqual(pageErrors,[]);
   console.log('PlayCanvas benchmark passed: real CC0 GLB clips, responsive character movement, camera, jump and Ammo rigid-body impulse.');
 }finally{await browser.close();}
