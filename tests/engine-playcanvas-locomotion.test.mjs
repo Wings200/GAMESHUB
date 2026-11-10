@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import {strict as assert} from 'node:assert';
-import {damp,shortestAngleDegrees,cyclePhase,locomotionState}
+import {damp,shortestAngleDegrees,headingForVelocity,cyclePhase,locomotionState}
   from '../engine/locomotion-math.mjs';
 
 test('damping is stable across equivalent frame subdivisions',()=>{
@@ -15,6 +15,23 @@ test('shortest turn crosses 180 degrees in the correct direction',()=>{
   assert.equal(shortestAngleDegrees(179,-179),2);
   assert.equal(shortestAngleDegrees(-179,179),-2);
   assert.equal(shortestAngleDegrees(0,90),90);
+});
+
+test('the character faces its velocity on all four movement axes',()=>{
+  const cases=[
+    {velocity:[0,-1],yaw:0},
+    {velocity:[1,0],yaw:-90},
+    {velocity:[0,1],yaw:180},
+    {velocity:[-1,0],yaw:90}
+  ];
+  for(const {velocity:[x,z],yaw} of cases){
+    const actual=headingForVelocity(x,z);
+    assert.ok(Math.abs(shortestAngleDegrees(actual,yaw))<1e-8,
+      `Velocity (${x}, ${z}) faced ${actual} instead of ${yaw}`);
+    const radians=actual*Math.PI/180;
+    assert.ok(-Math.sin(radians)*x-Math.cos(radians)*z>.999);
+  }
+  assert.throws(()=>headingForVelocity(NaN,0),TypeError);
 });
 
 test('running has hysteresis so intermediate speeds do not flicker',()=>{
