@@ -127,6 +127,23 @@ try{
   }));
   assert.ok(Math.abs(orbit.yaw)>.2,'Orbit camera did not respond to dragging');
   assert.ok(orbit.pitch>=-.12&&orbit.pitch<=.65);
+  // Camera orbit must rotate BOTH the view and the WASD basis in the same
+  // direction. The old sign mismatch made W/S veer sideways after dragging.
+  for(const {code,sign} of [{code:'w',sign:1},{code:'s',sign:-1}]){
+    await page.keyboard.down(code);
+    await page.waitForFunction(()=>window.__pcBenchmark?.motor.speed>1.4,null,
+      {timeout:18000});
+    const alignment=await page.evaluate(()=>{
+      const b=window.__pcBenchmark,yaw=b.orbitCamera.yaw;
+      const {x,z}=b.motor.velocity;
+      return (-Math.sin(yaw)*x-Math.cos(yaw)*z)/b.motor.speed;
+    });
+    assert.ok(alignment*sign>.93,
+      `${code.toUpperCase()} diverged from orbit camera direction: ${alignment}`);
+    await page.keyboard.up(code);
+    await page.waitForFunction(()=>window.__pcBenchmark?.motor.speed<.12,null,
+      {timeout:18000});
+  }
   const kicked=await page.evaluate(()=>{
     const b=window.__pcBenchmark;
     b.player.setPosition(0,0,-.8);
