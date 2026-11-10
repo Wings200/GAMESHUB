@@ -92,6 +92,18 @@ try{
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(()=>window.__pcBenchmark.motor.transitionCount),
     restingTransitions,'Idle state is flickering between animation clips');
+  const rightStart=await page.evaluate(()=>window.__pcBenchmark.player.getPosition().x);
+  await page.keyboard.down('d');
+  await page.waitForFunction(x=>window.__pcBenchmark?.player.getPosition().x>x+.55,
+    rightStart,{timeout:18000});
+  const rightFacing=await page.evaluate(()=>{
+    const yaw=window.__pcBenchmark.motor.heading*Math.PI/180;
+    return -Math.sin(yaw);
+  });
+  assert.ok(rightFacing>.55,`Character turned opposite rightward travel: ${rightFacing}`);
+  await page.keyboard.up('d');
+  await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Idle',null,
+    {timeout:16000});
   await page.keyboard.down('Space');
   await page.waitForFunction(()=>!window.__pcBenchmark?.grounded,null,
     {timeout:15000});
