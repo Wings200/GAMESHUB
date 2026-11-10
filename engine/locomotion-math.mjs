@@ -29,6 +29,17 @@ export function headingForVelocity(x,z){
   return Math.atan2(-x,-z)*180/Math.PI;
 }
 
+// Camera is positioned at (+sin(yaw), +cos(yaw)) relative to the player.
+// W must travel TOWARD the camera's look direction, not its orbit position.
+export function cameraRelativeDirection(x,z,cameraYaw){
+  if(![x,z,cameraYaw].every(Number.isFinite))
+    throw new TypeError('Camera-relative movement needs finite input');
+  const magnitude=Math.hypot(x,z);
+  if(magnitude===0)return {x:0,z:0};
+  const sin=Math.sin(cameraYaw),cos=Math.cos(cameraYaw);
+  return {x:(x*cos+z*sin)/magnitude,z:(z*cos-x*sin)/magnitude};
+}
+
 export function cyclePhase(progress){
   if(!Number.isFinite(progress))return 0;
   return ((progress%1)+1)%1;
