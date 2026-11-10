@@ -57,6 +57,21 @@ try{
     z:window.__pcBenchmark.player.getPosition().z}));
   assert.ok(walk.speed>.1);
   assert.ok(walk.z<starting.position-.08);
+  // An animation can advance correctly while its model faces backwards or
+  // sideways. Inspect the rig's actual toes instead of trusting a yaw value.
+  const toesFacingForward=await page.evaluate(()=>{
+    const avatar=window.__pcBenchmark.avatar;
+    return ['Left','Right'].map(side=>{
+      const foot=avatar.findByName(`${side}Foot`);
+      const toe=avatar.findByName(`${side}ToeBase`);
+      if(!foot||!toe)return null;
+      const p=foot.getPosition(),t=toe.getPosition();
+      const dx=t.x-p.x,dz=t.z-p.z;
+      return -dz/(Math.hypot(dx,dz)||1);
+    });
+  });
+  assert.ok(toesFacingForward.every(value=>value!==null&&value>.35),
+    `Walk animation faces away from travel direction: ${toesFacingForward}`);
   await page.keyboard.down('Shift');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Run',null,
     {timeout:15000});
