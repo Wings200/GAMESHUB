@@ -57,21 +57,18 @@ try{
     z:window.__pcBenchmark.player.getPosition().z}));
   assert.ok(walk.speed>.1);
   assert.ok(walk.z<starting.position-.08);
-  // An animation can advance correctly while its model faces backwards or
-  // sideways. Inspect the rig's actual toes instead of trusting a yaw value.
-  const toesFacingForward=await page.evaluate(()=>{
+  // Animated feet turn throughout the gait, so derive the model's actual
+  // forward direction from the shoulder axis (left-to-right and world up).
+  const walkFacing=await page.evaluate(()=>{
     const avatar=window.__pcBenchmark.avatar;
-    return ['Left','Right'].map(side=>{
-      const foot=avatar.findByName(`${side}Foot`);
-      const toe=avatar.findByName(`${side}ToeBase`);
-      if(!foot||!toe)return null;
-      const p=foot.getPosition(),t=toe.getPosition();
-      const dx=t.x-p.x,dz=t.z-p.z;
-      return -dz/(Math.hypot(dx,dz)||1);
-    });
+    const left=avatar.findByName('LeftShoulder')?.getPosition();
+    const right=avatar.findByName('RightShoulder')?.getPosition();
+    if(!left||!right)return null;
+    const acrossX=left.x-right.x,acrossZ=left.z-right.z;
+    return -acrossX/(Math.hypot(acrossX,acrossZ)||1);
   });
-  assert.ok(toesFacingForward.every(value=>value!==null&&value>.35),
-    `Walk animation faces away from travel direction: ${toesFacingForward}`);
+  assert.ok(walkFacing!==null&&walkFacing>.7,
+    `Body faced backwards/sideways while walking toward -Z: ${walkFacing}`);
   await page.keyboard.down('Shift');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Run',null,
     {timeout:15000});
@@ -97,10 +94,15 @@ try{
   await page.waitForFunction(x=>window.__pcBenchmark?.player.getPosition().x>x+.55,
     rightStart,{timeout:18000});
   const rightFacing=await page.evaluate(()=>{
-    const yaw=window.__pcBenchmark.motor.heading*Math.PI/180;
-    return -Math.sin(yaw);
+    const avatar=window.__pcBenchmark.avatar;
+    const left=avatar.findByName('LeftShoulder')?.getPosition();
+    const right=avatar.findByName('RightShoulder')?.getPosition();
+    if(!left||!right)return null;
+    const acrossX=left.x-right.x,acrossZ=left.z-right.z;
+    return -acrossZ/(Math.hypot(acrossX,acrossZ)||1);
   });
-  assert.ok(rightFacing>.55,`Character turned opposite rightward travel: ${rightFacing}`);
+  assert.ok(rightFacing!==null&&rightFacing>.55,
+    `Body turned opposite rightward travel: ${rightFacing}`);
   await page.keyboard.up('d');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Idle',null,
     {timeout:16000});
