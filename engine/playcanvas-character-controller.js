@@ -1,5 +1,6 @@
 import * as pc from 'playcanvas';
-import {cyclePhase,damp,headingForVelocity,locomotionState,shortestAngleDegrees}
+import {cameraRelativeDirection,cyclePhase,damp,headingForVelocity,
+  locomotionState,shortestAngleDegrees}
   from './locomotion-math.mjs';
 
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
@@ -80,9 +81,9 @@ export class PlayCanvasCharacterMotor{
     const {x,z,run,cameraYaw}=this.input;
     const magnitude=Math.hypot(x,z);
     const targetSpeed=magnitude?run?this.runSpeed:this.walkSpeed:0;
-    const sin=Math.sin(cameraYaw),cos=Math.cos(cameraYaw);
-    const targetX=magnitude?(x*cos-z*sin)/magnitude*targetSpeed:0;
-    const targetZ=magnitude?(z*cos+x*sin)/magnitude*targetSpeed:0;
+    const direction=cameraRelativeDirection(x,z,cameraYaw);
+    const targetX=direction.x*targetSpeed;
+    const targetZ=direction.z*targetSpeed;
     const response=magnitude?this.acceleration:this.deceleration;
     this.velocity.x=damp(this.velocity.x,targetX,response,dt);
     this.velocity.z=damp(this.velocity.z,targetZ,response,dt);
