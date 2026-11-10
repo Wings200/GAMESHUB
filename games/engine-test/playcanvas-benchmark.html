@@ -25,7 +25,7 @@
   .back{display:inline-block;margin-top:22px;color:#b8ccd4;text-decoration:none;font-size:12px}
   .hud{position:absolute;z-index:2;pointer-events:none;left:22px;top:20px;right:22px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
   .chip{padding:11px 14px;background:#0b1d28ce;border:1px solid #8db9ce38;border-radius:11px;backdrop-filter:blur(9px)}
-  .chip strong{display:block;font-size:12px;letter-spacing:.12em}.chip small{color:#a6bfcb;font-size:11px}
+  .chip strong{display:block;font-size:12px;letter-spacing:.12em}.chip small{display:block;color:#a6bfcb;font-size:11px}
   .chip em{color:#f3c58e;font-style:normal}
   .right{text-align:right;min-width:155px}
   .bottom{position:absolute;z-index:2;bottom:23px;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:none}
@@ -46,14 +46,14 @@
   <section class="launch-card">
     <div class="eyebrow">GAMESHUB / FOUNDATION COMPARISON / PROTOTYPE A</div>
     <h1>A Different<br><span>Foundation.</span></h1>
-    <p>A small, isolated PlayCanvas benchmark built on our reusable game-foundation API. Same CC0 human asset as our old lab, with imported animations and rigid-body physics. This is a comparison, not a replacement for GAMESHUB.</p>
+    <p>A small, isolated PlayCanvas benchmark built on our reusable game-foundation API. Build 3 adds a shared character motor, gait-phase animation blending and follow camera. This is a comparison, not a replacement for GAMESHUB.</p>
     <button id="start" class="cta" type="button">ENTER BENCHMARK →</button>
     <p class="tiny" id="loadStatus">Ready to initialize. Keyboard and mouse recommended.</p>
     <a class="back" href="/developer.html">← Developer Center</a>
   </section>
 </div>
 <div id="hud" class="hud" hidden>
-  <div class="chip"><strong>GH / PLAYCANVAS</strong><small>ENGINE COMPARISON · NOT FINAL</small></div>
+  <div class="chip"><strong>GH / PLAYCANVAS</strong><small>BUILD 3 · MOVEMENT CONTROLLER</small></div>
   <div class="chip right"><strong id="motion">IDLE</strong><small><em id="speed">0.0</em> M/S · <em id="fps">--</em> FPS</small><small id="physics">PHYSICS: INITIALIZING</small></div>
 </div>
 <div id="controls" class="bottom" hidden>
@@ -65,6 +65,6 @@
 </div>
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 <div id="error" class="error" hidden><section><h2>Benchmark couldn't start</h2><p id="errorMessage"></p><a class="back" href="/developer.html">← Developer Center</a></section></div>
-<script type="module" src="./playcanvas-benchmark.js?v=foundation-b1"></script>
+<script type="module" src="./playcanvas-benchmark.js?v=foundation-b3"></script>
 </body>
 </html>

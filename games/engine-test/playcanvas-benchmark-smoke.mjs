@@ -24,6 +24,8 @@ try{
       avatar:!!b.avatar.anim,rigidbody:!!b.crate.rigidbody,
       camera:!!b.camera.camera,position:b.player.getPosition().z,
       sharedFoundation:b.foundation?.constructor.name==='PlayCanvasFoundation',
+      reusableMotor:b.motor?.constructor.name==='PlayCanvasCharacterMotor',
+      reusableCamera:b.orbitCamera?.constructor.name==='PlayCanvasOrbitFollowCamera',
       reusableMethods:['material','box','light','camera','loadContainer',
         'animatedModel','onUpdate','destroy'].every(key=>
         typeof b.foundation?.[key]==='function'),
@@ -35,6 +37,8 @@ try{
   assert.equal(starting.rigidbody,true);
   assert.equal(starting.camera,true);
   assert.equal(starting.sharedFoundation,true);
+  assert.equal(starting.reusableMotor,true);
+  assert.equal(starting.reusableCamera,true);
   assert.equal(starting.reusableMethods,true);
   assert.equal(starting.importedAssetCount,1);
   for(const clip of ['Idle','Walk','Run','Jump'])assert.ok(starting.clips.includes(clip));
@@ -56,16 +60,44 @@ try{
   await page.keyboard.down('Shift');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Run',null,
     {timeout:15000});
+  const run=await page.evaluate(()=>({
+    transition:window.__pcBenchmark.motor.lastTransition,
+    cadence:window.__pcBenchmark.avatar.anim.speed
+  }));
+  assert.equal(run.transition?.from,'Walk');
+  assert.equal(run.transition?.to,'Run');
+  assert.ok(run.transition.offset>=0&&run.transition.offset<=1,
+    'Walk/Run transition lost gait phase');
+  assert.ok(run.cadence>=.7&&run.cadence<=1.25);
   await page.keyboard.up('Shift');
   await page.keyboard.up('w');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Idle',null,
     {timeout:16000});
+  const restingTransitions=await page.evaluate(()=>window.__pcBenchmark.motor.transitionCount);
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(()=>window.__pcBenchmark.motor.transitionCount),
+    restingTransitions,'Idle state is flickering between animation clips');
   await page.keyboard.down('Space');
   await page.waitForFunction(()=>!window.__pcBenchmark?.grounded,null,
     {timeout:15000});
+  assert.ok(await page.evaluate(()=>window.__pcBenchmark.player.getPosition().y)>0,
+    'Jump did not move the player vertically');
   await page.keyboard.up('Space');
   await page.waitForFunction(()=>window.__pcBenchmark?.grounded,null,
     {timeout:16000});
+  assert.ok(Math.abs(await page.evaluate(()=>window.__pcBenchmark.player.getPosition().y))<.01,
+    'Character did not settle on the floor after landing');
+
+  await page.mouse.move(680,320);
+  await page.mouse.down();
+  await page.mouse.move(740,340,{steps:3});
+  await page.mouse.up();
+  const orbit=await page.evaluate(()=>({
+    yaw:window.__pcBenchmark.orbitCamera.yaw,
+    pitch:window.__pcBenchmark.orbitCamera.pitch
+  }));
+  assert.ok(Math.abs(orbit.yaw)>.2,'Orbit camera did not respond to dragging');
+  assert.ok(orbit.pitch>=-.12&&orbit.pitch<=.65);
   const kicked=await page.evaluate(()=>{
     const b=window.__pcBenchmark;
     b.player.setPosition(0,0,-.8);
@@ -110,5 +142,5 @@ try{
   assert.ok(screenshot.byteLength>60000,
     '3D screenshot is nearly empty despite an initialized camera and models');
   assert.deepEqual(pageErrors,[]);
-  console.log('PlayCanvas benchmark passed: real CC0 GLB clips, responsive character movement, camera, jump and Ammo rigid-body impulse.');
+  console.log('PlayCanvas benchmark passed: shared motor/camera, matched gait-phase transitions, stable idle, grounded jump, orbit and Ammo physics.');
 }finally{await browser.close();}
