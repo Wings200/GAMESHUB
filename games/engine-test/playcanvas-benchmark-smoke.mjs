@@ -57,6 +57,18 @@ try{
     z:window.__pcBenchmark.player.getPosition().z}));
   assert.ok(walk.speed>.1);
   assert.ok(walk.z<starting.position-.08);
+  // Animated feet turn throughout the gait, so derive the model's actual
+  // forward direction from the shoulder axis (left-to-right and world up).
+  const walkFacing=await page.evaluate(()=>{
+    const avatar=window.__pcBenchmark.avatar;
+    const left=avatar.findByName('LeftShoulder')?.getPosition();
+    const right=avatar.findByName('RightShoulder')?.getPosition();
+    if(!left||!right)return null;
+    const acrossX=left.x-right.x,acrossZ=left.z-right.z;
+    return -acrossX/(Math.hypot(acrossX,acrossZ)||1);
+  });
+  assert.ok(walkFacing!==null&&walkFacing>.7,
+    `Body faced backwards/sideways while walking toward -Z: ${walkFacing}`);
   await page.keyboard.down('Shift');
   await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Run',null,
     {timeout:15000});
@@ -77,6 +89,23 @@ try{
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(()=>window.__pcBenchmark.motor.transitionCount),
     restingTransitions,'Idle state is flickering between animation clips');
+  const rightStart=await page.evaluate(()=>window.__pcBenchmark.player.getPosition().x);
+  await page.keyboard.down('d');
+  await page.waitForFunction(x=>window.__pcBenchmark?.player.getPosition().x>x+.55,
+    rightStart,{timeout:18000});
+  const rightFacing=await page.evaluate(()=>{
+    const avatar=window.__pcBenchmark.avatar;
+    const left=avatar.findByName('LeftShoulder')?.getPosition();
+    const right=avatar.findByName('RightShoulder')?.getPosition();
+    if(!left||!right)return null;
+    const acrossX=left.x-right.x,acrossZ=left.z-right.z;
+    return -acrossZ/(Math.hypot(acrossX,acrossZ)||1);
+  });
+  assert.ok(rightFacing!==null&&rightFacing>.55,
+    `Body turned opposite rightward travel: ${rightFacing}`);
+  await page.keyboard.up('d');
+  await page.waitForFunction(()=>window.__pcBenchmark?.animation==='Idle',null,
+    {timeout:16000});
   await page.keyboard.down('Space');
   await page.waitForFunction(()=>!window.__pcBenchmark?.grounded,null,
     {timeout:15000});

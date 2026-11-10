@@ -158,6 +158,9 @@ async function initialize(){
     $('loadStatus').textContent='Importing Quaternius human and authored clips…';
     const {model,anchor:visualRoot,clipNames:imported}=await foundation.animatedModel(
       './assets/quaternius-animated-human.glb',{
+        // The animated rig faces -X in its authored clips. Rotate its visual
+        // root to align with the motor's -Z forward; motor.heading handles
+        // world-space turns. Keep the asset offset separate from motor yaw.
         name:'Animated Human',parent:player,scale:.34,yaw:-90,
         requiredClips:['Idle','Walk','Run','Jump'],initialClip:'Idle'
       });

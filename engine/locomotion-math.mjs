@@ -20,6 +20,15 @@ export function shortestAngleDegrees(from,to){
   return ((to-from+540)%360+360)%360-180;
 }
 
+// Character rigs in our PlayCanvas pipeline face -Z at heading 0.
+// Positive Y rotation turns that forward vector toward -X, so X is negated.
+export function headingForVelocity(x,z){
+  if(!Number.isFinite(x)||!Number.isFinite(z))
+    throw new TypeError('Heading needs finite velocity');
+  if(x===0&&z===0)return 0;
+  return Math.atan2(-x,-z)*180/Math.PI;
+}
+
 export function cyclePhase(progress){
   if(!Number.isFinite(progress))return 0;
   return ((progress%1)+1)%1;
