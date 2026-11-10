@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import {cyclePhase,damp,locomotionState,shortestAngleDegrees}
+import {cyclePhase,damp,headingForVelocity,locomotionState,shortestAngleDegrees}
   from './locomotion-math.mjs';
 
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
@@ -115,7 +115,7 @@ export class PlayCanvasCharacterMotor{
     this.entity.setPosition(nx,ny,nz);
 
     if(this.speed>.16){
-      const goal=Math.atan2(this.velocity.x,-this.velocity.z)*180/Math.PI;
+      const goal=headingForVelocity(this.velocity.x,this.velocity.z);
       this.heading+=shortestAngleDegrees(this.heading,goal)*
         (1-Math.exp(-this.turnResponse*dt));
       this.entity.setEulerAngles(0,this.heading,0);
