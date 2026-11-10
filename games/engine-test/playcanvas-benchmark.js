@@ -1,17 +1,16 @@
 import * as pc from 'playcanvas';
 import {PlayCanvasFoundation} from '../../engine/playcanvas-foundation.js';
+import {PlayCanvasCharacterMotor,PlayCanvasOrbitFollowCamera}
+  from '../../engine/playcanvas-character-controller.js';
 
 // A deliberately separate test of an established engine's built-in systems.
 // This does not import or replace the GAMESHUB/Three.js game engine.
 const $=id=>document.getElementById(id);
 const canvas=$('application');
 const keys=new Set();
-let foundation,app,player,avatar,crate,camera,ready=false,started=false,physicsReady=false;
-let horizontalSpeed=0,jumpVelocity=0,jumpHeight=0,grounded=true,animation='Idle';
-let facing=0,cameraYaw=0,cameraPitch=.15,cameraDistance=5.4;
+let foundation,app,player,avatar,crate,camera,motor,orbitCamera;
+let ready=false,started=false,physicsReady=false;
 let fps=0,frames=0,fpsTime=0,noticeTime=0,noticeText='';
-const velocity=new pc.Vec3(),cameraPosition=new pc.Vec3(),lookTarget=new pc.Vec3();
-const scratch=new pc.Vec3();
 
 function fail(error){
   console.error('PlayCanvas foundation benchmark:',error);
@@ -79,11 +78,7 @@ function buildEnvironment(){
   light('Warm entry','omni',[-6,3,6],'#e9ad6f',9,{range:13});
 }
 function setAnimation(name){
-  if(!avatar||animation===name)return;
-  if(!avatar.anim.baseLayer.states.includes(name))return;
-  animation=name;
-  avatar.anim.baseLayer.transition(name,name==='Jump'?.11:.23);
-  $('motion').textContent=name.toUpperCase();
+  motor?.forceState(name);
 }
 function playerNearCrate(){
   if(!crate||!player)return false;
@@ -108,9 +103,7 @@ function onKeyDown(event){
     event.preventDefault();
   keys.add(event.code);
   if(event.repeat)return;
-  if(event.code==='Space'&&grounded){
-    jumpVelocity=5.7;grounded=false;setAnimation('Jump');
-  }
+  if(event.code==='Space')motor?.requestJump();
   if(event.code==='KeyE')pushCrate();
 }
 function bindInput(){
@@ -126,8 +119,7 @@ function bindInput(){
   canvas.addEventListener('pointerup',()=>dragging=false);
   canvas.addEventListener('pointermove',event=>{
     if(!dragging)return;
-    cameraYaw-=(event.clientX-lastX)*.006;
-    cameraPitch=pc.math.clamp(cameraPitch+(event.clientY-lastY)*.004,-.12,.65);
+    orbitCamera?.orbit(event.clientX-lastX,event.clientY-lastY);
     lastX=event.clientX;lastY=event.clientY;
   });
 }
@@ -136,56 +128,14 @@ function update(dt){
   dt=Math.min(dt,.05);
   const inputX=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));
   const inputZ=Number(keys.has('KeyS'))-Number(keys.has('KeyW'));
-  const magnitude=Math.hypot(inputX,inputZ)||1;
   const wantsRun=keys.has('ShiftLeft')||keys.has('ShiftRight');
-  const targetSpeed=(inputX||inputZ)?(wantsRun?5.1:2.6):0;
-  const smoothing=1-Math.exp(-dt*10);
-  const sin=Math.sin(cameraYaw),cos=Math.cos(cameraYaw);
-  const targetX=(inputX*cos-inputZ*sin)/magnitude*targetSpeed;
-  const targetZ=(inputZ*cos+inputX*sin)/magnitude*targetSpeed;
-  velocity.x+=(targetX-velocity.x)*smoothing;
-  velocity.z+=(targetZ-velocity.z)*smoothing;
-  horizontalSpeed=Math.hypot(velocity.x,velocity.z);
-
-  const p=player.getPosition();
-  const nx=pc.math.clamp(p.x+velocity.x*dt,-14.7,14.7);
-  const nz=pc.math.clamp(p.z+velocity.z*dt,-14.7,14.7);
-  if(!grounded){
-    jumpVelocity-=15*dt;
-    jumpHeight=Math.max(0,jumpHeight+jumpVelocity*dt);
-    if(jumpHeight===0){grounded=true;jumpVelocity=0;}
-  }
-  player.setPosition(nx,jumpHeight,nz);
-  if(horizontalSpeed>.18){
-    const goalAngle=Math.atan2(velocity.x,-velocity.z)*180/Math.PI;
-    const difference=((goalAngle-facing+540)%360)-180;
-    facing+=difference*Math.min(1,dt*13);
-    player.setEulerAngles(0,facing,0);
-  }
-  if(!grounded)setAnimation('Jump');
-  else setAnimation(horizontalSpeed>3.7?'Run':horizontalSpeed>.15?'Walk':'Idle');
-  if(avatar?.anim){
-    // The old lab played a full walking cycle even at 0.5 m/s. Scale cadence
-    // with actual travel speed to reduce visible foot skating on deceleration.
-    avatar.anim.speed=grounded&&animation==='Walk'?
-      pc.math.clamp(horizontalSpeed/2.6,.13,1.2):
-      grounded&&animation==='Run'?pc.math.clamp(horizontalSpeed/5.1,.75,1.25):1;
-  }
-  const playerPos=player.getPosition();
-  lookTarget.set(playerPos.x,playerPos.y+1.37,playerPos.z);
-  const a=Math.cos(cameraPitch)*cameraDistance;
-  scratch.set(playerPos.x+Math.sin(cameraYaw)*a,
-    playerPos.y+2.45+Math.sin(cameraPitch)*cameraDistance,
-    playerPos.z+Math.cos(cameraYaw)*a);
-  // PlayCanvas Vec3.lerp takes (lhs, rhs, alpha), not (target, alpha).
-  // Using the two-argument form yielded NaN camera coordinates and a blank scene.
-  cameraPosition.lerp(cameraPosition,scratch,1-Math.exp(-dt*8));
-  camera.setPosition(cameraPosition);
-  camera.lookAt(lookTarget);
+  motor.setInput({x:inputX,z:inputZ,run:wantsRun,cameraYaw:orbitCamera.yaw});
+  motor.update(dt);
+  orbitCamera.update(dt);
 
   frames++;fpsTime+=dt;
   if(fpsTime>=.6){fps=Math.round(frames/fpsTime);fpsTime=0;frames=0;}
-  $('speed').textContent=horizontalSpeed.toFixed(1);
+  $('speed').textContent=motor.speed.toFixed(1);
   $('fps').textContent=String(fps||'--');
   if(noticeTime>0){noticeTime-=dt;if(noticeTime<=0)$('notice').classList.remove('show');}
 }
@@ -203,8 +153,7 @@ async function initialize(){
     player.setPosition(0,0,4.3);
     app.root.addChild(player);
     camera=foundation.camera('ThirdPersonCamera');
-    cameraPosition.set(0,3.3,9.5);
-    camera.setPosition(cameraPosition);
+    camera.setPosition(0,3.3,9.5);
 
     $('loadStatus').textContent='Importing Quaternius human and authored clips…';
     const {model,anchor:visualRoot,clipNames:imported}=await foundation.animatedModel(
@@ -213,7 +162,9 @@ async function initialize(){
         requiredClips:['Idle','Walk','Run','Jump'],initialClip:'Idle'
       });
     avatar=model;
-    animation='Idle';
+    motor=new PlayCanvasCharacterMotor({entity:player,avatar});
+    motor.onStateChange=state=>{$('motion').textContent=state.toUpperCase();};
+    orbitCamera=new PlayCanvasOrbitFollowCamera({camera,target:player});
     $('motion').textContent='IDLE';
     $('physics').textContent='PHYSICS: AMMO RIGID BODIES';
     bindInput();
@@ -224,10 +175,10 @@ async function initialize(){
     $('controls').hidden=false;
     window.__pcBenchmark={
       get ready(){return ready;},get physicsReady(){return physicsReady;},
-      get animation(){return animation;},get speed(){return horizontalSpeed;},
-      get grounded(){return grounded;},get fps(){return fps;},
+      get animation(){return motor.state;},get speed(){return motor.speed;},
+      get grounded(){return motor.grounded;},get fps(){return fps;},
       get clips(){return imported;},foundation,app,player,avatar,crate,camera,
-      pushCrate,playState:setAnimation,visualRoot,
+      motor,orbitCamera,pushCrate,playState:setAnimation,visualRoot,
       get crateVelocity(){return crate.rigidbody.linearVelocity.clone();}
     };
   }catch(error){fail(error);}
