@@ -158,7 +158,10 @@ async function initialize(){
     $('loadStatus').textContent='Importing Quaternius human and authored clips…';
     const {model,anchor:visualRoot,clipNames:imported}=await foundation.animatedModel(
       './assets/quaternius-animated-human.glb',{
-        name:'Animated Human',parent:player,scale:.34,yaw:-90,
+        // Quaternius's feet point toward +Z in its authored rig. Our motor
+        // treats -Z as forward at heading 0, so the visual needs a half-turn.
+        // -90 made the avatar face sideways while moving forward.
+        name:'Animated Human',parent:player,scale:.34,yaw:180,
         requiredClips:['Idle','Walk','Run','Jump'],initialClip:'Idle'
       });
     avatar=model;
