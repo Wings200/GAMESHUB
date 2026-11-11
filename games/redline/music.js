@@ -18,6 +18,12 @@
         "./assets/audio/iluvslapbass.mp3"
     },
 
+    lobbyAlt: {
+      id: "whatdoyousee",
+      name: "WHAT DO YOU SEE",
+      file: "./assets/audio/whatdoyousee.mp3"
+    },
+
 
     neon: {
       id:
@@ -58,6 +64,10 @@
 
   };
 
+
+  // Lobby tracks play in sequence; race soundtracks continue to loop.
+  const LOBBY_TRACKS = ["lobby", "lobbyAlt"];
+  let lobbyTrackIndex = 0;
 
   const DEFAULT_SETTINGS = {
     enabled:
@@ -249,7 +259,7 @@
 
 
     audio.loop =
-      true;
+      !LOBBY_TRACKS.includes(key);
 
 
     audio.preload =
@@ -293,6 +303,17 @@
 
   let fadeGeneration =
     0;
+
+  // Rotate only the audible lobby song, not a silent/preloaded track.
+  for (const key of LOBBY_TRACKS) {
+    players[key].addEventListener("ended", () => {
+      if (!unlocked || !settings.enabled || currentMode !== "lobby" || currentTrack !== key) {
+        return;
+      }
+      lobbyTrackIndex = (lobbyTrackIndex + 1) % LOBBY_TRACKS.length;
+      switchTo(LOBBY_TRACKS[lobbyTrackIndex], "lobby");
+    });
+  }
 
 
   /* =========================================================
@@ -763,11 +784,10 @@
     if (
       changingTrack
       &&
-      mode ===
-      "race"
-      &&
-      key !==
-      "lobby"
+      (
+        mode === "race" ||
+        (mode === "lobby" && LOBBY_TRACKS.includes(key))
+      )
     ) {
 
       try {
@@ -830,7 +850,7 @@
     ) {
 
       switchTo(
-        "lobby",
+        LOBBY_TRACKS[lobbyTrackIndex],
         "lobby"
       );
 
@@ -890,7 +910,7 @@
 
 
     switchTo(
-      "lobby",
+      LOBBY_TRACKS[lobbyTrackIndex],
       "lobby"
     );
 
@@ -1340,7 +1360,7 @@
     setNormal() {
 
       switchTo(
-        "lobby",
+        LOBBY_TRACKS[lobbyTrackIndex],
         "lobby"
       );
 
