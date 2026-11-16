@@ -4,6 +4,7 @@ import {parseFen,START_FEN,clone,on,side,sq,idx,isSquare,legal,apply,inCheck,upd
 
 export const CARDS=[
  {id:"pawn-sidestep",name:"Pawn Sidestep",rarity:"Common",mode:"two",description:"Slide a pawn sideways one empty square. Uses your turn."},
+ {id:"voluntary-eviction",name:"Voluntary Eviction",rarity:"Common",mode:"one",description:"Remove one of your non-king pieces to clear space. Uses your turn."},
  {id:"colorblind-bishop",name:"Colorblind Bishop",rarity:"Uncommon",mode:"two",description:"Step your bishop one empty orthogonal square, changing square color."},
  {id:"knight-exchange",name:"Knight Exchange",rarity:"Uncommon",mode:"two",description:"Swap your knight and pawn a knight-jump apart."},
  {id:"parking-ticket",name:"Parking Ticket",rarity:"Rare",mode:"instant",description:"Freeze the enemy's last-moved piece for their next turn."},
@@ -111,6 +112,9 @@ export function act(g,color,req){
   if(p.toLowerCase()!=="q"||!own(p))throw Error("Select your queen");
   const transformed=s.t===1?req.into.toUpperCase():req.into;
   nx=patch(s,{remove:[req.from],place:[[req.from,transformed]]});label="Queen's Abdication: "+req.from+" → "+req.into.toUpperCase();last={color,from:a,to:a};
+ }else if(card.id==="voluntary-eviction"){
+  if(!isSquare(req.from)||!own(s.b[idx(req.from)])||s.b[idx(req.from)].toLowerCase()==="k")throw Error("Choose your own non-king piece");
+  nx=patch(s,{remove:[req.from],resetHalf:true});label="Voluntary Eviction: "+req.from;
  }else if(card.id==="parking-ticket"){
   if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!g.last||g.last.color===color||!on(g.last.to)||side(s.b[g.last.to])!==-s.t)throw Error("No eligible enemy last-moved piece");
