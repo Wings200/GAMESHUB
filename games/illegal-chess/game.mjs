@@ -41,8 +41,8 @@ export function available(g){
 export function sniperShots(g,color){
  const sniper=g.snipers?.[color],front=sniperFront(g.s,sniper);
  if(!front||side(front.piece)!==(color==="w"?-1:1)||front.piece.toLowerCase()==="k"||g.effects.ceasefire>0)return [];
- const next=patch(g.s,{remove:[sq(front.square)],resetHalf:true},g.snipers);
- return next?[sq(front.square)]:[];
+ try{patch(g.s,{remove:[sq(front.square)],resetHalf:true},g.snipers);return [sq(front.square)];}
+ catch{return [];} 
 }
 export function status(g){
  if(!g.players.b)return {done:false,text:"Waiting for opponent"};
@@ -136,17 +136,25 @@ export function act(g,color,req){
  }else if(card.id==="voluntary-eviction"){
   if(!isSquare(req.from)||!own(s.b[idx(req.from)])||s.b[idx(req.from)].toLowerCase()==="k")throw Error("Choose your own non-king piece");
   nx=patch(s,{remove:[req.from],resetHalf:true},g.snipers);label="Voluntary Eviction: "+req.from;
+ }else if(card.id==="bishop-sniper"){
+  if(!isSquare(req.from)||s.b[idx(req.from)].toLowerCase()!=="b"||!own(s.b[idx(req.from)]))throw Error("Choose one of your bishops");
+  if(g.snipers[color])throw Error("You already have an off-board Bishop Sniper");
+  const sniper=sniperPosition(req.from,req.direction);
+  nx=patch(s,{remove:[req.from]},g.snipers);
+  g.snipers[color]=sniper;
+  label="Bishop Sniper deployed";last=null;
  }else if(card.id==="parking-ticket"){
-  if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!g.last||g.last.color===color||!on(g.last.to)||side(s.b[g.last.to])!==-s.t)throw Error("No eligible enemy last-moved piece");
-  nx=pass(s);effect={kind:"freeze",square:g.last.to};label="Parking Ticket: "+sq(g.last.to);
+  g.effects.freeze={color:color==="w"?"b":"w",square:g.last.to};
+  token.used=true;g.log.push({side:color,text:"Parking Ticket: "+sq(g.last.to)+" · bonus action"});return;
  }else if(card.id==="reserved-parking"){
-  if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!isSquare(req.to)||s.b[idx(req.to)]!==".")throw Error("Choose an empty square");
-  nx=pass(s);effect={kind:"reserved",square:idx(req.to)};label="Reserved Parking: "+req.to;
+  g.effects.reserved={color:color==="w"?"b":"w",square:idx(req.to)};
+  token.used=true;g.log.push({side:color,text:"Reserved Parking: "+req.to+" · bonus action"});return;
  }else if(card.id==="ceasefire"){
-  if(inCheck(s))throw Error("Cannot skip a turn in check");
-  nx=pass(s);effect={kind:"ceasefire"};label="Ceasefire";
+  if(inCheck(s,s.t,g.snipers))throw Error("Cannot use Ceasefire while in check");
+  g.effects.ceasefire=2;
+  token.used=true;g.log.push({side:color,text:"Ceasefire · bonus action"});return;
  }else if(card.id==="black-market"){
   if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!Number.isInteger(req.slot)||req.slot<0||req.slot>=3)throw Error("Choose another card slot");
