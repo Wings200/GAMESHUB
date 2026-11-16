@@ -26,18 +26,21 @@ jobs:
       - run: node --check games/illegal-chess/engine.mjs
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
-      - name: Check browser module syntax
+      - run: node --check games/illegal-chess/client.mjs
+      - run: node --check games/illegal-chess/art.mjs
+      - name: Verify game page keeps interactions in-site
         run: |
           node --input-type=module <<'EOF'
           import fs from "node:fs";
-          import vm from "node:vm";
           import assert from "node:assert/strict";
-          const html = fs.readFileSync("games/illegal-chess/index.html", "utf8");
-          const start = html.indexOf('<script type="module">');
-          const end = html.indexOf("</script>", start);
-          assert.ok(start >= 0 && end > start, "Inline browser script missing");
-          const source = html.slice(start + '<script type="module">'.length, end);
-          new vm.Script(source);
-          assert.match(html, /id="board"/);
+          const html=fs.readFileSync("games/illegal-chess/index.html","utf8");
+          const client=fs.readFileSync("games/illegal-chess/client.mjs","utf8");
+          assert.match(html,/id="board"/);
+          assert.match(html,/id="modalShade"/);
+          assert.match(html,/client\.mjs/);
+          assert.match(html,/style\.css/);
+          assert.doesNotMatch(client,/\b(?:window\.)?(?:alert|prompt|confirm)\s*\(/);
+          assert.match(client,/cardImage\(/);
+          assert.match(client,/sniperShots/);
           EOF
       - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs
