@@ -359,7 +359,11 @@ export function act(g,color,req){
   const m=available(g).find(m=>sq(m[0])===req.from&&sq(m[1])===req.to&&m[2]===promotion);
   if(!m)throw Error("Illegal chess move");
   const nx=apply(s,m);
-  commit(g,color,nx,req.from+" → "+req.to+(promotion?" = "+promotion.toUpperCase():""),{color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]},promotion?{promoted:color}:null);
+  const isClassified=!!promotion&&g.effects.classifiedArmed?.color===color;
+  if(g.effects.classifiedArmed?.color===color&&!promotion)throw Error("Classified Promotion must promote this turn");
+  const effect=promotion?{promoted:color,...(isClassified?{classified:{square:req.to,piece:nx.b[m[1]]}}:{})}:null;
+  commit(g,color,nx,req.from+" → "+req.to+(isClassified?" · Classified Promotion":promotion?" = "+promotion.toUpperCase():""),
+   {color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]},effect);
   if(s.b[m[0]].toLowerCase()==="p"&&Math.abs(m[1]-m[0])===32){
    g.epWindows||={w:null,b:null};
    g.epWindows[color==="w"?"b":"w"]={target:sq((m[0]+m[1])/2),victim:req.to,readyAt:g.moveCount+2};
@@ -381,6 +385,13 @@ export function act(g,color,req){
   if(!own(p)||p.toLowerCase()!=="p"||b!==a-16*s.t||enemy.toLowerCase()!=="p"||side(enemy)!==-s.t||!on(rear)||s.b[rear]!==".")throw Error("Pawn Ram needs two opposing pawns face-to-face with one empty square behind the enemy pawn");
   nx=patch(s,{remove:[req.to],place:[[sq(rear),enemy]],resetHalf:true},g.snipers);
   label="Pawn Ram: "+req.to+" → "+sq(rear);last=null;
+ }else if(card.id==="identity-theft"){
+  pair(req);
+  const p=s.b[idx(req.from)],q=s.b[idx(req.to)];
+  if(req.from===req.to||!own(p)||!own(q)||p.toLowerCase()==="k"||q.toLowerCase()==="k")throw Error("Choose two different friendly non-king pieces");
+  nx=patch(s,{},g.snipers);
+  g.identityTheft={color,a:req.from,b:req.to,pieceA:p,pieceB:q};
+  label="Identity Theft: two allied pieces now look swapped to the opponent";
  }else if(card.id==="friendly-fire"){
   if(g.effects.ceasefire>0)throw Error("Ceasefire prevents captures, including Friendly Fire");
   const a=idx(req.from),b=idx(req.to),piece=s.b[a],target=s.b[b];
@@ -469,6 +480,11 @@ export function act(g,color,req){
   label="Promotion Recall: "+req.from+" → "+req.to+" · "+req.into.toUpperCase()+" revived at "+req.home;
   last={color,from:m[0],to:m[1],square:m[1],piece:"."};
   effect={kind:"promotion-recall",promoted:color,into:req.into};
+ }else if(card.id==="classified-promotion"){
+  if(g.effects.classifiedArmed)throw Error("Classified Promotion is already armed");
+  if(!available(g).some(m=>m[2]&&s.b[m[0]].toLowerCase()==="p"))throw Error("No legal pawn promotion is available");
+  g.effects.classifiedArmed={color};
+  token.used=true;g.log.push({side:color,text:"Classified Promotion armed — promoted identity will remain secret"});return;
  }else if(card.id==="pawn-strike"){
   if(g.effects.pawnStrike>0)throw Error("Pawn Strike is already active");
   g.effects.pawnStrike=2;
