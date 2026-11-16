@@ -197,7 +197,7 @@ function renderHand(){
  for(const card of game.hand){
   const button=document.createElement("button");button.type="button";
   button.className="card"+(selectedCard?.id===card.id?" active":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
-  button.disabled=card.used||!myTurn()||busy||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed");
+  button.disabled=card.used||!myTurn()||busy||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")||(game.effects?.classifiedArmed?.color===game.player);
   const image=putImage(button,card,card.name+" card illustration");image.className="art";
   const stripe=document.createElement("span");stripe.className="rarityLine";button.append(stripe);
   const content=document.createElement("span");content.className="cardContent";
@@ -314,7 +314,8 @@ function render(){
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
- else if(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")hint="Time Capsule armed at "+game.effects.timeCapsule.origin.toUpperCase()+". Move that marked piece now.";
+ else if(game.effects?.classifiedArmed?.color===game.player)hint="CLASSIFIED PROMOTION ARMED · select the pawn, its final square and your hidden promoted piece.";
+  else if(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")hint="Time Capsule armed at "+game.effects.timeCapsule.origin.toUpperCase()+". Move that marked piece now.";
   else if(game.capsuleReturn)hint="You can return your Time Capsule piece using the RETURN button in Active Effects, or make an ordinary move.";
   else if(sniperSelected)hint=game.sniperShots?.length?"Click the highlighted enemy piece to fire your off-board bishop.":"Your bishop is aimed, but its diagonal is blocked or has no legal target.";
  else if(selected)hint="Select a highlighted destination, or another friendly piece.";
