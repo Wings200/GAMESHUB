@@ -1,27 +1,62 @@
 import {cardImage} from "./art.mjs";
+import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs";
 
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
-const analystSymbols={Book:"📖",Best:"★",Excellent:"!",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!"};
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
-// Show the newest move's grade once, for exactly one second. Do not replay
-// archived grades on reconnect, or repeat them during board re-renders.
+const stockfishReviews=new Map(),stockfishInProgress=new Set();
+let stockfishReviewer=null,stockfishRoom=null;
+function resetStockfish(room){
+ if(stockfishReviewer)stockfishReviewer.dispose();
+ stockfishReviewer=null;stockfishRoom=room;stockfishReviews.clear();stockfishInProgress.clear();
+ if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
+ analystPopup=null;analystSeenTurn=null;
+}
+function resolvedReview(entry){return stockfishReviews.get(entry.turn)||entry;}
+function scheduleStockfishReviews(){
+ if(!game?.analyst?.active||!session)return;
+ if(stockfishRoom!==session.room)resetStockfish(session.room);
+ // Previous turns are reviewed locally, asynchronously, never in the move
+ // request. Only the latest six are queued after joining a running match.
+ for(const entry of (game.analyst.entries||[]).slice(-6)){
+  if(entry.status!=="pending"||stockfishReviews.has(entry.turn)||stockfishInProgress.has(entry.turn))continue;
+  stockfishInProgress.add(entry.turn);
+  stockfishReviewer ||= createStockfishReviewer();
+  const room=session.room;
+  stockfishReviewer.analyze(entry).then(result=>{
+   if(room!==session?.room)return;
+   stockfishReviews.set(entry.turn,result);
+   prepareAnalystSymbol();
+   renderAnalyst();renderBoard();
+  }).catch(error=>{
+   if(room!==session?.room)return;
+   stockfishReviews.set(entry.turn,{...entry,status:"unavailable",grade:"Unavailable",
+    symbol:null,reason:"Stockfish could not load or evaluate this move. No estimated grade was substituted."});
+   renderAnalyst();
+  }).finally(()=>stockfishInProgress.delete(entry.turn));
+ }
+}
+// The review arrives asynchronously, so only show a completed current-turn
+// result; symbols from reconnect/history are never replayed.
 function prepareAnalystSymbol(){
- const entries=game?.analyst?.entries||[],latest=entries[entries.length-1];
+ const latest=(game?.analyst?.entries||[]).at(-1);
  const turn=latest?.turn??0;
  if(analystSeenTurn===null){analystSeenTurn=turn;return;}
- if(turn===analystSeenTurn)return;
+ if(turn<=analystSeenTurn||turn!==game.moveCount)return;
+ const review=latest?resolvedReview(latest):null;
+ if(!review||!["done","custom"].includes(review.status))return;
  analystSeenTurn=turn;
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  analystPopup=null;
- if(!latest?.square||turn!==game.moveCount)return;
- const square=latest.square,file="abcdefgh".indexOf(square[0]),rank=Number(square[1]);
+ if(!review.square||!review.symbol)return;
+ const square=review.square,file="abcdefgh".indexOf(square[0]),rank=Number(square[1]);
  if(file<0||rank<1||rank>8)return;
  const piece=boardFromFen(game.fen)[(8-rank)*8+file];
- if(!piece||piece==="."||(piece===piece.toUpperCase()?"w":"b")!==latest.side)return;
- analystPopup={square,symbol:latest.symbol||analystSymbols[latest.grade]||"?",grade:latest.grade};
+ if(!piece||piece==="."||(piece===piece.toUpperCase()?"w":"b")!==review.side)return;
+ const coin=MOVE_COINS[review.grade]||MOVE_COINS.Custom;
+ analystPopup={square,symbol:coin.symbol,grade:review.grade,tone:coin.tone};
  analystPopupTimer=setTimeout(()=>{
   analystPopup=null;analystPopupTimer=null;
   if(game)renderBoard();
@@ -105,7 +140,7 @@ async function refresh(){
 }
 async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
- analystPopup=null;analystSeenTurn=null;
+ resetStockfish(s.room);
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -207,7 +242,7 @@ function renderBoard(){
    symbol.textContent=glyph[piece]||"?";cell.append(symbol);
    if(analystPopup?.square===name){
     cell.classList.add("analystSymbolSquare");
-    const badge=document.createElement("span");badge.className="analystMoveSymbol "+analystPopup.grade.toLowerCase();
+    const badge=document.createElement("span");badge.className="analystMoveSymbol analystCoin "+analystPopup.tone;
     badge.textContent=analystPopup.symbol;
     badge.setAttribute("aria-label",analystPopup.grade+" move");
     cell.append(badge);
@@ -300,21 +335,38 @@ function renderAnalyst(){
  const entries=game.analyst?.entries||[],active=!!game.analyst?.active;
  const panel=$("analystPanel");panel.hidden=!active&&!entries.length;
  if(panel.hidden)return;
- $("analystLive").textContent=active?"ACTIVE · PASSIVE":"ANALYSIS ARCHIVED";
- const recent=entries[entries.length-1];
- $("analystLatestGrade").textContent=recent?recent.grade.toUpperCase()+" · "+(recent.side==="w"?"WHITE":"BLACK"):"AWAITING MOVES";
- $("analystLatestDetail").textContent=recent?recent.reason:"Both players' completed turns will appear here.";
+ const recent=entries.length?resolvedReview(entries.at(-1)):null;
+ const pending=recent?.status==="pending";
+ $("analystLive").textContent=active?(pending?"STOCKFISH 19 · ANALYZING":"STOCKFISH 19 · ACTIVE"):"REVIEW ARCHIVED";
+ const coin=recent?(MOVE_COINS[recent.grade]||MOVE_COINS.Custom):null;
+ const spotlight=$("analystSpotlight");
+ const previous=spotlight.querySelector(".analystSpotlightCoin");if(previous)previous.remove();
+ if(coin&&!pending&&recent.status!=="unavailable"){
+  const symbol=document.createElement("span");symbol.className="analystCoin analystSpotlightCoin "+coin.tone;
+  symbol.textContent=coin.symbol;symbol.setAttribute("aria-label",coin.name);
+  spotlight.prepend(symbol);
+ }
+ $("analystLatestGrade").textContent=recent?(coin?.name||recent.grade).toUpperCase()+" · "+(recent.side==="w"?"WHITE":"BLACK"):"AWAITING MOVES";
+ $("analystLatestDetail").textContent=recent?recent.reason:"Both players' completed turns appear here after Stockfish evaluates each normal chess move.";
  const list=$("analystHistory");list.replaceChildren();
  for(const item of entries.slice(-8).reverse()){
+  const review=resolvedReview(item);
   const entry=document.createElement("div");entry.className="analystEntry";entry.setAttribute("role","listitem");
   const top=document.createElement("div");top.className="analystEntryTop";
   const side=document.createElement("b");side.textContent="TURN "+item.turn+" · "+(item.side==="w"?"WHITE":"BLACK");
-  const badge=document.createElement("span");badge.className="analystGrade "+item.grade.toLowerCase().replaceAll(" ","-");badge.textContent=item.grade.toUpperCase();
+  const badge=document.createElement("span");badge.className="analystHistoryBadge";
+  const mapping=MOVE_COINS[review.grade];
+  if(mapping&&review.status!=="unavailable"){
+   const symbol=document.createElement("span");symbol.className="analystCoin analystCoinSmall "+mapping.tone;
+   symbol.textContent=mapping.symbol;badge.append(symbol);
+  }
+  const label=document.createElement("strong");label.textContent=mapping?.name||review.grade;badge.append(label);
   top.append(side,badge);
-  const move=document.createElement("div");move.className="analystMove";move.textContent=item.move;
-  const note=document.createElement("span");note.className="analystReason";note.textContent=item.reason;
+  const move=document.createElement("div");move.className="analystMove";move.textContent=review.move;
+  const note=document.createElement("span");note.className="analystReason";note.textContent=review.reason;
   entry.append(top,move,note);list.append(entry);
  }
+ scheduleStockfishReviews();
 }
 function render(){
  if(!game)return;
