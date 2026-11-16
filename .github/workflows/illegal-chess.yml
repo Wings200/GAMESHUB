@@ -42,5 +42,13 @@ jobs:
           assert.doesNotMatch(client,/\b(?:window\.)?(?:alert|prompt|confirm)\s*\(/);
           assert.match(client,/cardImage\(/);
           assert.match(client,/sniperShots/);
+          const style=fs.readFileSync("games/illegal-chess/style.css","utf8");
+          assert.match(client,/for\(let n=0;n<100;n\+\+\)/,"The board must include the extra off-board ring");
+          assert.match(client,/offboardSniper/,"Own bishop must be rendered in the extra ring");
+          assert.match(client,/sniperVision/,"Sniper diagonal must be visible to owner");
+          assert.match(client,/game\.sniperShots\?\.includes\(name\)/,"Board must accept direct sniper targets");
+          assert.match(style,/repeat\(10,minmax\(0,1fr\)\)/,"10x10 board including one-square perimeter");
+          assert.match(style,/\.square\.sniperRay/);
+
           EOF
       - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs
