@@ -113,3 +113,46 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 .board .square .analystMoveSymbol.mistake,
 .board .square .analystMoveSymbol.blunder{background:#8c2d40;border-color:#ffb7c1}
 @keyframes analystGradePop{from{transform:translateY(7px) scale(.78);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+
+/* Alpha 0.8 — thick outlined, bright round review coins based on the supplied reference. */
+.analystCoin{
+ --coin:#72897e;
+ display:inline-grid;place-items:center;flex-shrink:0;
+ width:54px;height:54px;border-radius:50%;
+ border:4px solid #0a0f16;background:var(--coin);
+ color:#fff;font-weight:1000;font-size:28px;line-height:1;
+ text-shadow:0 2px 2px #0008;
+ box-shadow:inset 0 0 0 2px #ffffff35,0 3px 10px #0007;
+ user-select:none;pointer-events:none;
+}
+.analystCoin.brilliant{--coin:#19a8a8}
+.analystCoin.great{--coin:#6e9cc6}
+.analystCoin.best{--coin:#8fbd48}
+.analystCoin.excellent{--coin:#85b945}
+.analystCoin.good{--coin:#78996e}
+.analystCoin.book{--coin:#c99b7a}
+.analystCoin.inaccuracy{--coin:#f2bc31}
+.analystCoin.mistake{--coin:#fb9f56}
+.analystCoin.blunder{--coin:#ba303b}
+.analystCoin.missed-win{--coin:#f46f76}
+.analystCoin.custom{--coin:#777d90}
+.analystHistoryBadge{display:flex;align-items:center;gap:8px;min-width:0}
+.analystHistoryBadge strong{font-size:11px;line-height:1.3;color:#dce5f3}
+.analystCoinSmall{width:31px;height:31px;border-width:3px;font-size:16px}
+.analystSpotlightCoin{width:60px;height:60px;font-size:31px;margin-bottom:6px}
+.analystSpotlight>.analystSpotlightCoin{font-size:31px;color:#fff}
+.analystLegendTitle{margin-top:17px}
+.analystLegend{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:14px 10px;margin-top:11px}
+.analystLegendItem{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;text-align:center}
+.analystLegendItem small{font-size:10px;line-height:1.2;color:#bdcbe2;font-weight:800}
+.board .square .analystMoveSymbol.analystCoin{
+ position:absolute;z-index:15;top:-13px;right:-11px;
+ display:inline-grid;place-items:center;width:39px;height:39px;min-width:39px;
+ padding:0;border-radius:50%;border:4px solid #0a0f16;
+ background:var(--coin);color:#fff;font-size:20px;line-height:1;
+ box-shadow:inset 0 0 0 2px #ffffff35,0 5px 12px #06101acc;
+ pointer-events:none;user-select:none;white-space:nowrap;
+ animation:analystGradePop .16s ease-out both;
+}
+.analystPanel .analystDisclaimer a{color:#ffd692;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:540px){.analystLegend{grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 4px}.analystLegendItem .analystCoin{width:43px;height:43px;font-size:21px}.analystSpotlightCoin{width:60px;height:60px}.board .square .analystMoveSymbol.analystCoin{width:30px;height:30px;min-width:30px;font-size:16px;right:-6px;top:-9px}}

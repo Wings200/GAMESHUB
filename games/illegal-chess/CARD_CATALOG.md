@@ -52,6 +52,16 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 - **Classified Promotion (Rare):** Bonus action only when a legal pawn promotion is immediately possible. The next move must promote the pawn, and its real type stays server-only while the opposing viewer sees a disguised pawn. The disguise ends as soon as the piece moves, captures, gives check or is captured.
 - **Counterfeit (Legendary):** On your next turn after the opponent uses a nonreaction card, select Counterfeit to perform *that same card's ability* using your own choices and card. The copy costs an entire turn even when the original is a bonus action. It expires after your turn; unusable abilities cannot be copied. Copying Counterfeit or Objection! is disallowed.
 
+## The Analyst — 26th card · upgraded Alpha 0.8 (Stockfish 19 lite)
+
+The server's early heuristic move grades have been retired. **Normal chess moves are evaluated locally using Stockfish 19 lite**, with two UCI root searches (best move vs. played move) and a circular on-board icon displayed for one second after evaluation. Both browsers use the same engine implementation; results can differ slightly due to search time/hardware. Analysis history is derived from server-recorded board snapshots only when all active rules are representable in standard chess.
+
+**Custom card moves, hidden information, off-board snipers and other active variant effects are labeled Custom Rule**, rather than made-up Stockfish grades. The user's private card selections/hidden pieces are never included in the Stockfish analysis payload.
+
+All feedback icons echo the reference's black-rimmed colored circles. The icon legend includes Brilliant, Great Move, Best Move, Excellent, Good, Book Move, Inaccuracy, Mistake, Blunder and Missed Win. The first release does not award Brilliant or Great without sufficient tactical evidence: these labels are presented in the visual legend only.
+
+The actual Stockfish.js 19.0.1 lite single-threaded JavaScript+WebAssembly files are proxied unmodified, via allowed same-origin GET requests, from the pinned jsDelivr npm package and loaded into a browser Web Worker. No engine computations run on the D1 game server. The assets are **GPL-3.0 licensed**; source: https://github.com/nmrugg/stockfish.js (and https://github.com/official-stockfish/Stockfish). The engine requires a network connection for first download. When unavailable, the UI says Stockfish Unavailable and **does not substitute heuristic grades**.
+
 ## The Analyst — 26th card · shipped Alpha 0.7
 
 **The Analyst (Legendary, passive)** stays visible in its owner's hand and activates automatically without being spent. If either player holds an unspent Analyst, **both players' completed turns** receive a public, persisted, server-authored approximate grade: **Book, Best, Excellent, Good, Inaccuracy, Mistake, Blunder, Brilliant**. The in-match panel shows the latest grade and recent history. There is an optional private test-room mode that guarantees the Analyst in both players' hands; ordinary weighted draws still apply in normal matches.

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {onRequest} from "../functions/api/illegal-chess/[[path]].js";
+import {onRequest,serveStockfishAsset} from "../functions/api/illegal-chess/[[path]].js";
 import {parseFen} from "../games/illegal-chess/engine.mjs";
 
 class FakeD1 {
@@ -155,4 +155,26 @@ test("Two live browser sessions see passive Analyst grades after each real move"
  assert.equal(Object.hasOwn(hostView,"players"),false,"No authentication secrets leak through analysis");
  const stored=JSON.parse(db.rooms.get(host.data.room).state);
  assert.equal(stored.analystLog.length,2,"Move analysis persists in the multiplayer database");
+});
+
+test("GAMESHUB only proxies pinned Stockfish JS and WASM assets, with proper MIME",async()=>{
+ const visits=[];
+ const fetcher=async(url,options)=>{
+  visits.push({url,options});
+  return new Response(new Uint8Array([0,97,115,109]),{status:200});
+ };
+ const js=await serveStockfishAsset("stockfish-19-lite-single.js",fetcher);
+ assert.equal(js.status,200);
+ assert.match(js.headers.get("Content-Type"),/text\/javascript/);
+ const wasm=await serveStockfishAsset("stockfish-19-lite-single.wasm",fetcher);
+ assert.equal(wasm.status,200);
+ assert.equal(wasm.headers.get("Content-Type"),"application/wasm");
+ assert.equal((await wasm.arrayBuffer()).byteLength,4);
+ assert.equal(visits.length,2);
+ assert.ok(visits.every(x=>x.url.startsWith("https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/")));
+ const bad=await serveStockfishAsset("../secret",fetcher);
+ assert.equal(bad.status,404);
+ assert.equal(visits.length,2,"Never fetch arbitrary user-supplied paths");
+ const offline=await serveStockfishAsset("stockfish-19-lite-single.js",async()=>new Response("",{status:404}));
+ assert.equal(offline.status,503,"Never substitute fake engine results if the download fails");
 });

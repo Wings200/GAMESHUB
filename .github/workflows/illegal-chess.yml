@@ -26,6 +26,7 @@ jobs:
       - run: node --check games/illegal-chess/engine.mjs
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check games/illegal-chess/analyst.mjs
+      - run: node --check games/illegal-chess/stockfish-review.mjs
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
       - run: node --check games/illegal-chess/client.mjs
       - run: node --check games/illegal-chess/art.mjs
@@ -46,6 +47,11 @@ jobs:
           assert.match(html,/id="analystPanel"/);
           assert.match(html,/id="analystTest"/);
           assert.match(client,/renderAnalyst\(/);
+          assert.match(client,/createStockfishReviewer/);
+          assert.match(html,/id="analystLegend"/,"Round feedback legend must be present");
+          assert.match(client,/analystPopupTimer=setTimeout\([\s\S]*?\},1000\)/,"One-second board feedback remains enabled");
+          assert.match(client,/className="analystCoin analystCoinSmall "/,"Circular symbols in the review history");
+          assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/searchmoves/,"Real Stockfish root move search");
           assert.match(client,/analystPopupTimer=setTimeout\([\s\S]*?\},1000\)/,"Move grade overlay must disappear after 1 second");
           assert.match(client,/analystSeenTurn===null/,"Do not replay archived grades on reconnect");
           assert.match(client,/analystPopup\?\.square===name/,"Move-grade symbol follows the piece's destination square");

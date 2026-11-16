@@ -3,6 +3,32 @@
 import {newGame,joinGame,act,playerView} from "../../../games/illegal-chess/game.mjs";
 
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+// Whitelisted, unmodified Stockfish.js GPL-3.0 engine assets. Proxied through
+// our own origin so browser Web Workers resolve their matching WASM file next
+// to the JS glue, with no changes to existing D1 gameplay/authentication.
+// Upstream source and license: https://github.com/nmrugg/stockfish.js
+const STOCKFISH_ORIGIN="https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/";
+const ENGINE_FILES={
+ "stockfish-19-lite-single.js":"text/javascript; charset=utf-8",
+ "stockfish-19-lite-single.wasm":"application/wasm"
+};
+export async function serveStockfishAsset(path,fetcher=fetch){
+ const mime=ENGINE_FILES[path];
+ if(!mime)return reply({error:"Unknown engine asset"},404);
+ try{
+  const source=await fetcher(STOCKFISH_ORIGIN+path,{method:"GET",headers:{"Accept":mime.split(";")[0]}});
+  if(!source.ok)return reply({error:"Stockfish download unavailable"},503);
+  return new Response(source.body,{status:200,headers:{
+   "Content-Type":mime,
+   "Cache-Control":"public, max-age=86400, stale-while-revalidate=86400",
+   "X-Content-Type-Options":"nosniff"
+  }});
+ }catch(error){
+  console.warn("Stockfish asset fetch failed",error);
+  return reply({error:"Stockfish download unavailable"},503);
+ }
+}
+
 const codePattern=/^[A-HJ-NP-Z2-9]{6}$/;
 const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode=()=>{const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(n=>alphabet[n%alphabet.length]).join("");};
@@ -18,6 +44,10 @@ function roomCode(input){const code=String(input||"").trim().toUpperCase();if(!c
 function tokenValue(input){const token=String(input||"");if(!/^[a-f0-9]{64}$/.test(token))throw Error("Invalid player session");return token;}
 const safely=err=>["Room not found","Room is already full","Not your turn","Game is over","Wait for a second player","Your king would be in check"].includes(err.message)||/^(Illegal|Choose|Select|Cannot|No |This card|Unknown|Invalid|Request|Malformed|Not implemented|The king|Hit and Run|That piece|You already|Objection!|Counterfeit|Waiting for the opponent|Classified Promotion)/.test(err.message)?err.message:"Action unavailable";
 export async function onRequest(context){
+ if(context.request.method==="GET"){
+  const pathname=new URL(context.request.url).pathname;
+  return serveStockfishAsset(pathname.split("/").pop());
+ }
  if(context.request.method!=="POST")return reply({error:"Use POST"},405);
  if(!context.env.DB)return reply({error:"GAMESHUB D1 DB binding is unavailable"},503);
  try{

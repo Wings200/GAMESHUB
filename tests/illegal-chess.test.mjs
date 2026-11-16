@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
+import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer} from "../games/illegal-chess/stockfish-review.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -492,8 +493,12 @@ test("The Analyst grades BOTH players' turns with one passive card, without cons
  assert.deepEqual(view.analyst.entries.map(x=>x.side),["w","b"]);
  assert.equal(view.analyst.entries[0].turn,1);
  for(const entry of view.analyst.entries){
-  assert.ok(ANALYST_GRADES.includes(entry.grade));
-  assert.equal(entry.estimated,true,"Judgments are explicitly heuristic");
+  assert.equal(entry.status,"pending","Server must never invent Stockfish grades");
+  assert.equal(entry.grade,"Analyzing");
+  assert.equal(entry.symbol,null);
+  assert.equal(entry.estimated,false);
+  assert.ok(entry.beforeFen?.includes(" w ")||entry.beforeFen?.includes(" b "));
+  assert.match(entry.uci,/^[a-h][1-8][a-h][1-8][qrbn]?$/);
   assert.ok(typeof entry.reason==="string"&&entry.reason.length);
   assert.equal(Object.hasOwn(entry,"bestMove"),false,"Never leak inferred hidden possibilities or specific secrets");
  }
@@ -556,24 +561,28 @@ test("Analyst never calls an unforced early King walk Best on White's third move
  move(g,"w","e1","e2");
  const king=g.analystLog.at(-1);
  assert.equal(king.move,"e1 → e2");
- assert.ok(["Inaccuracy","Mistake","Blunder"].includes(king.grade),"Ke2 on move three should not receive an inflated Best/Excellent/Good grade; got "+king.grade);
- assert.match(king.reason,/king|castling|material|alternative/i);
+ assert.equal(king.status,"pending");
+ assert.equal(king.grade,"Analyzing","Stockfish, not the server heuristic, must grade Ke2");
+ assert.equal(king.uci,"e1e2");
  assert.equal(king.square,"e2");
- assert.equal(king.symbol,ANALYST_SYMBOLS[king.grade]);
+ assert.equal(king.symbol,null);
+ assert.equal(king.beforeFen.split(" ")[1],"w");
 });
 test("Analyst emits one public destination-square symbol for normal moves and none for piece removal",()=>{
  const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
  move(g,"w","e2","e4");
  const first=g.analystLog.at(-1);
  assert.equal(first.square,"e4");
- assert.equal(first.symbol,ANALYST_SYMBOLS[first.grade]);
- assert.ok(Object.values(ANALYST_SYMBOLS).includes(first.symbol));
+ assert.equal(first.status,"pending");
+ assert.equal(first.symbol,null,"Only the real engine can assign symbols");
  move(g,"b","e7","e5");
  assert.equal(g.analystLog.at(-1).square,"e5");
  const removed=room();give(removed,"w","the-analyst");
  removed.hands.w[1]={id:"voluntary-eviction",used:false};
  act(removed,"w",{type:"card",card:"voluntary-eviction",from:"g1"});
  assert.equal(removed.analystLog.at(-1).square,null,"Removing a piece cannot put a badge over a nonexistent mover");
+ assert.equal(removed.analystLog.at(-1).status,"custom");
+ assert.equal(removed.analystLog.at(-1).beforeFen,undefined,"Card turns must not leak an analysis FEN");
 });
 test("Analyst only marks an unforced early king walk; escaping actual check is not mislabeled for that reason",()=>{
  const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
@@ -582,9 +591,81 @@ test("Analyst only marks an unforced early king walk; escaping actual check is n
  assert.ok(!g.analystLog.at(-1).reason.includes("unthreatened king"),"Escape from check must not be called an unforced king walk");
 });
 test("Analyst maps every grade to a distinct short annotation",()=>{
- assert.deepEqual(Object.keys(ANALYST_SYMBOLS).sort(),[...ANALYST_GRADES].sort());
+ for(const grade of ANALYST_GRADES)assert.ok(Object.hasOwn(ANALYST_SYMBOLS,grade));
  assert.equal(ANALYST_SYMBOLS.Brilliant,"!!");
  assert.equal(ANALYST_SYMBOLS.Blunder,"??");
  assert.equal(ANALYST_SYMBOLS.Inaccuracy,"?!");
  assert.equal(ANALYST_SYMBOLS.Best,"★");
+});
+
+test("Stockfish score parser handles UCI centipawns, mates and depth",()=>{
+ assert.deepEqual(parseUciInfo("info depth 13 seldepth 19 multipv 1 score cp -83 nodes 1024 pv e1e2 e8e7"),
+  {kind:"cp",value:-83,depth:13,pv:"e1e2"});
+ assert.deepEqual(parseUciInfo("info depth 16 score mate 3 nodes 8091 pv f7f8q"),
+  {kind:"mate",value:3,depth:16,pv:"f7f8q"});
+ assert.equal(parseUciInfo("bestmove e2e4"),null);
+});
+test("Stockfish grades 3.Ke2 poorly when its engine line loses two pawns' worth",()=>{
+ const entry={turn:5,move:"e1 → e2",uci:"e1e2",status:"pending",side:"w",square:"e2"};
+ const out=classifyStockfish(entry,
+  {score:{kind:"cp",value:32,depth:13},bestmove:"f1c4"},
+  {score:{kind:"cp",value:-195,depth:13},bestmove:"e1e2"});
+ assert.equal(out.grade,"Mistake");
+ assert.equal(out.name,"Mistake");
+ assert.equal(out.symbol,"?");
+ assert.equal(out.loss,227);
+ assert.equal(out.estimated,false);
+ assert.equal(out.engine,"Stockfish 19 lite");
+});
+test("Stockfish-only feedback labels a missed forced mate and a sound book opening",()=>{
+ const mate=classifyStockfish({turn:12,uci:"f3e5",side:"w"},{
+  score:{kind:"mate",value:2,depth:12},bestmove:"h5f7"},{
+  score:{kind:"cp",value:110,depth:12},bestmove:"f3e5"});
+ assert.equal(mate.grade,"MissedWin");
+ assert.equal(mate.symbol,"✕");
+ const best=classifyStockfish({turn:1,uci:"e2e4",side:"w"},{
+  score:{kind:"cp",value:30,depth:12},bestmove:"e2e4"},{
+  score:{kind:"cp",value:25,depth:12},bestmove:"e2e4"});
+ assert.equal(best.grade,"Book");
+ for(const name of ["Brilliant","Great","Best","Excellent","Good","Book","Inaccuracy","Mistake","Blunder","MissedWin"]){
+  assert.ok(MOVE_COINS[name].symbol);
+  assert.ok(MOVE_COINS[name].tone);
+ }
+});
+test("Stockfish reviewer sends real UCI position plus two bounded searches",async()=>{
+ const commands=[];
+ class FakeWorker{
+  onmessage=null;onerror=null;searches=0;
+  postMessage(command){
+   commands.push(command);
+   if(command==="uci")queueMicrotask(()=>this.onmessage({data:"uciok"}));
+   if(command==="isready")queueMicrotask(()=>this.onmessage({data:"readyok"}));
+   if(command.startsWith("go ")){
+    this.searches++;
+    const forced=this.searches===2;
+    queueMicrotask(()=>{
+     this.onmessage({data:"info depth 13 score cp "+(forced?-173:30)+" nodes 9021 pv "+(forced?"e1e2":"g1f3")});
+     this.onmessage({data:"bestmove "+(forced?"e1e2":"g1f3")});
+    });
+   }
+  }
+  terminate(){}
+ }
+ const reviewer=createStockfishReviewer({workerFactory:()=>new FakeWorker(),url:"/stockfish/test.js"});
+ const result=await reviewer.analyze({status:"pending",turn:5,side:"w",uci:"e1e2",
+  beforeFen:"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"});
+ assert.equal(result.grade,"Mistake");
+ assert.ok(commands.some(s=>s.startsWith("position fen ")));
+ assert.ok(commands.some(s=>s==="go depth 13 movetime 380"));
+ assert.ok(commands.some(s=>s==="go depth 13 movetime 380 searchmoves e1e2"));
+ reviewer.dispose();
+});
+test("Classified identities and off-board snipers never enter Stockfish inputs",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ g.snipers.w={edge:112,step:-15,shots:0,origin:"a1",direction:"NE"};
+ move(g,"w","e2","e4");
+ const review=g.analystLog.at(-1);
+ assert.equal(review.status,"custom");
+ assert.equal(review.beforeFen,undefined);
+ assert.equal(review.uci,undefined);
 });

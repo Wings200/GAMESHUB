@@ -29,7 +29,7 @@ export const CARDS=[
  {id:"objection",name:"Objection!",rarity:"Rare",mode:"reaction",description:"When your opponent activates a card, object to cancel it. Their card is retained and they must make a normal move."},
  {id:"classified-promotion",name:"Classified Promotion",rarity:"Rare",mode:"instant",description:"Arm your immediate pawn promotion. The new piece stays disguised to your opponent until it moves, captures, checks, or is captured."},
  {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."},
- {id:"the-analyst",name:"The Analyst",rarity:"Legendary",mode:"passive",description:"PASSIVE: Grades both players' completed moves as Book, Best, Excellent, Good, Inaccuracy, Mistake, Blunder, or Brilliant. Card-aware heuristic; not a perfect engine."}
+ {id:"the-analyst",name:"The Analyst",rarity:"Legendary",mode:"passive",description:"PASSIVE: Uses real Stockfish 19 chess evaluation for ordinary moves, with circular feedback icons. Custom card positions are marked separately."}
 ];
 const weights={Common:45,Uncommon:30,Rare:15,Epic:8,Legendary:2};
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
