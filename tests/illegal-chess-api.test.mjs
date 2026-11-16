@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {onRequest} from "../functions/api/illegal-chess/[[path]].js";
+import {parseFen} from "../games/illegal-chess/engine.mjs";
 
 class FakeD1 {
  constructor(){this.rooms=new Map();}
@@ -98,4 +99,33 @@ test("Multiplayer session tokens follow their players when colors swap",async()=
  const next=await post(db,"action",{...host.data,action:{type:"move",from:"e7",to:"e5"}});
  assert.equal(next.status,200,"Original white browser can now move black pieces");
  assert.equal(next.data.view.player,"b");
+});
+
+test("Live API keeps Objection target payload private and real promoted identity secret",async()=>{
+ const db=new FakeD1(),white=await post(db,"create",{}),black=await post(db,"join",{room:white.data.room});
+ const row=db.rooms.get(white.data.room),g=JSON.parse(row.state);
+ g.s=parseFen("7k/P7/8/8/8/8/8/7K w - - 0 1");g.history=[g.s];
+ g.hands.w=[{id:"classified-promotion",used:false},{id:"voluntary-eviction",used:false}];
+ g.hands.b=[{id:"objection",used:false}];
+ row.state=JSON.stringify(g);
+ const attempt=await post(db,"action",{...white.data,action:{type:"card",card:"voluntary-eviction",from:"h1"}});
+ assert.equal(attempt.status,400,"Invalid king eviction must be rejected before objection");
+ const queued=await post(db,"action",{...white.data,action:{type:"card",card:"classified-promotion"}});
+ assert.equal(queued.status,200);
+ assert.equal(queued.data.view.pendingReaction.canReact,false);
+ const b=await post(db,"state",black.data);
+ assert.equal(b.data.pendingReaction.canReact,true);
+ assert.equal(Object.hasOwn(b.data.pendingReaction,"action"),false);
+ assert.equal(Object.hasOwn(b.data.pendingReaction,"options"),false);
+ const reply=await post(db,"action",{...black.data,action:{type:"reaction",decision:"allow"}});
+ assert.equal(reply.status,200);
+ assert.equal(reply.data.view.player,"b");
+ const promotion=await post(db,"action",{...white.data,action:{type:"move",from:"a7",to:"a8",promotion:"n"}});
+ assert.equal(promotion.status,200);
+ const v=(await post(db,"state",black.data)).data;
+ assert.ok(v.fen.startsWith("P6k"),"Enemy API must see pawn disguise not real knight");
+ assert.equal(v.last.piece,"P");
+ assert.equal(Object.hasOwn(v,"classified"),false,"No hidden piece registry in player view");
+ const stored=JSON.parse(db.rooms.get(white.data.room).state);
+ assert.equal(stored.s.b[0],"N","D1 stores the real knight at a8");
 });
