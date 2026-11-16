@@ -22,8 +22,13 @@ const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
 function pickWeighted(pool){const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}const options=pool.filter(c=>c.rarity===r);return options[rand(options.length)];}
 export function randomHand(){const pool=CARDS.slice(),hand=[];for(let i=0;i<3;i++){const card=pickWeighted(pool);hand.push({id:card.id,used:false});pool.splice(pool.indexOf(card),1);}return hand;}
-export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0},last:null,log:[]};}
-export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand();}
+function sniperTestHand(){
+ const hand=randomHand().filter(c=>c.id!=="bishop-sniper").slice(0,2);
+ while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
+ return [{id:"bishop-sniper",used:false},...hand];
+}
+export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0},last:null,log:[]};}
+export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s),ordinary=legal(s,g.snipers);
@@ -51,7 +56,7 @@ export function status(g){
 }
 export function playerView(g,color){
  const s=g.s,st=status(g);
- return {room:g.room,player:color,ready:!!g.players.b,turn:current(s),fen:stateFen(g),status:st,
+ return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:stateFen(g),status:st,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:structuredClone(g.effects),last:g.last,log:g.log.slice(-40),
