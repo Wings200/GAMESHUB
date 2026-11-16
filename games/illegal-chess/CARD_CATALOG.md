@@ -2,7 +2,7 @@
 
 This records the original 26 approved concepts. Keep gameplay rules stable while adding server-side checks and UI. A card must **not** enter random draws unless the server implements it and it has tests.
 
-## Live gameplay cards (25)
+## Live gameplay cards (25) + final passive Legendary (1)
 
 | Card | Rarity | Status |
 |---|---|---|
@@ -31,6 +31,7 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Objection! | Rare | Live (wave 4) |
 | Classified Promotion | Rare | Live (wave 4) |
 | Counterfeit | Legendary | Live (wave 4) |
+| The Analyst | Legendary | Live · passive (Alpha 0.7) |
 
 ## Wave 2 semantics
 
@@ -51,9 +52,11 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 - **Classified Promotion (Rare):** Bonus action only when a legal pawn promotion is immediately possible. The next move must promote the pawn, and its real type stays server-only while the opposing viewer sees a disguised pawn. The disguise ends as soon as the piece moves, captures, gives check or is captured.
 - **Counterfeit (Legendary):** On your next turn after the opponent uses a nonreaction card, select Counterfeit to perform *that same card's ability* using your own choices and card. The copy costs an entire turn even when the original is a bonus action. It expires after your turn; unusable abilities cannot be copied. Copying Counterfeit or Objection! is disallowed.
 
-## Separate next milestone: The Analyst (26th card)
+## The Analyst — 26th card · shipped Alpha 0.7
 
-**The Analyst — Legendary, passive.** Grade both players' moves as **Book, Best, Excellent, Good, Inaccuracy, Mistake, Blunder, Brilliant**. The evaluator must include card hands, active effects, concealed information, off-board sniper rays, the two-shot teleport and the 20-turn control swaps. Ordinary Stockfish scores alone are not valid ground truth for card positions. Implement *after* the other gameplay cards so the full ruleset can be simulated consistently.
+**The Analyst (Legendary, passive)** stays visible in its owner's hand and activates automatically without being spent. If either player holds an unspent Analyst, **both players' completed turns** receive a public, persisted, server-authored approximate grade: **Book, Best, Excellent, Good, Inaccuracy, Mistake, Blunder, Brilliant**. The in-match panel shows the latest grade and recent history. There is an optional private test-room mode that guarantees the Analyst in both players' hands; ordinary weighted draws still apply in normal matches.
+
+**Important scope:** This first release uses a bounded, transparent *heuristic*; it is not Stockfish and not a mathematical proof of the optimal move. It compares true server-valid ordinary moves and sniper shots, weighs current card resources and active modifiers, king safety and the 20-turn swap, then looks ahead one immediate normal chess reply. Exotic card actions are reflected through board outcomes and card/effect values but are **not exhaustively enumerated as hypothetical alternatives**, so grades are estimates rather than definitive judgments. Grades never contain a private target or hidden sniper diagonal in their explanatory text. Objection reactions and standalone bonus actions are not scored until a completed turn exists.
 
 ## Release discipline
 

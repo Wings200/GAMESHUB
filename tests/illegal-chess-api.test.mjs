@@ -133,3 +133,26 @@ test("Live API keeps Objection target payload private and real promoted identity
  const stored=JSON.parse(db.rooms.get(white.data.room).state);
  assert.equal(stored.s.b[0],"N","D1 stores the real knight at a8");
 });
+
+test("Two live browser sessions see passive Analyst grades after each real move",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{mode:"analyst-test"}),guest=await post(db,"join",{room:host.data.room});
+ assert.equal(host.status,200);
+ assert.equal(guest.status,200);
+ const w=await post(db,"state",host.data),b=await post(db,"state",guest.data);
+ assert.equal(w.data.analystTest,true);
+ assert.equal(b.data.analystTest,true);
+ assert.equal(w.data.hand[0].id,"the-analyst");
+ assert.equal(b.data.hand[0].id,"the-analyst");
+ const start=await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
+ assert.equal(start.status,200);
+ assert.equal(start.data.view.analyst.entries.length,1);
+ const next=await post(db,"action",{...guest.data,action:{type:"move",from:"e7",to:"e5"}});
+ assert.equal(next.status,200);
+ assert.equal(next.data.view.analyst.entries.length,2);
+ const hostView=(await post(db,"state",host.data)).data;
+ assert.deepEqual(hostView.analyst.entries,next.data.view.analyst.entries,"Both browsers see identical graded history");
+ assert.equal(hostView.hand[0].used,false,"Passive card is never spent");
+ assert.equal(Object.hasOwn(hostView,"players"),false,"No authentication secrets leak through analysis");
+ const stored=JSON.parse(db.rooms.get(host.data.room).state);
+ assert.equal(stored.analystLog.length,2,"Move analysis persists in the multiplayer database");
+});

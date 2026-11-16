@@ -93,8 +93,8 @@ function putImage(parent,card,alt){
 }
 function renderLobby(){
  const art=$("lobbyArtwork");art.replaceChildren();
- for(const id of ["bishop-sniper","black-market"]){
-  const card=id==="bishop-sniper"?{id,name:"BISHOP SNIPER",rarity:"Epic"}:{id,name:"BLACK MARKET",rarity:"Legendary"};
+ for(const id of ["bishop-sniper","the-analyst"]){
+  const card=id==="bishop-sniper"?{id,name:"BISHOP SNIPER",rarity:"Epic"}:{id,name:"THE ANALYST",rarity:"Legendary"};
   const shell=document.createElement("div");shell.className="previewCard";
   putImage(shell,card,card.name+" illustrated card artwork");
   const title=document.createElement("strong");title.textContent=card.name;
@@ -196,8 +196,8 @@ function renderHand(){
  $("remaining").textContent=game.hand.filter(card=>!card.used).length+" REMAINING";
  for(const card of game.hand){
   const button=document.createElement("button");button.type="button";
-  button.className="card"+(selectedCard?.id===card.id?" active":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
-  button.disabled=card.used||!myTurn()||busy||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")||(game.effects?.classifiedArmed?.color===game.player);
+  button.className="card"+(selectedCard?.id===card.id?" active":"")+(card.mode==="passive"?" cardPassive":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
+  button.disabled=card.used||!myTurn()||busy||card.mode==="passive"||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")||(game.effects?.classifiedArmed?.color===game.player);
   const image=putImage(button,card,card.name+" card illustration");image.className="art";
   const stripe=document.createElement("span");stripe.className="rarityLine";button.append(stripe);
   const content=document.createElement("span");content.className="cardContent";
@@ -264,6 +264,26 @@ function renderExtras(){
  }
  if(!game.log.length){const empty=document.createElement("span");empty.className="muted";empty.textContent="The first move starts your story.";log.append(empty);}
 }
+function renderAnalyst(){
+ const entries=game.analyst?.entries||[],active=!!game.analyst?.active;
+ const panel=$("analystPanel");panel.hidden=!active&&!entries.length;
+ if(panel.hidden)return;
+ $("analystLive").textContent=active?"ACTIVE · PASSIVE":"ANALYSIS ARCHIVED";
+ const recent=entries[entries.length-1];
+ $("analystLatestGrade").textContent=recent?recent.grade.toUpperCase()+" · "+(recent.side==="w"?"WHITE":"BLACK"):"AWAITING MOVES";
+ $("analystLatestDetail").textContent=recent?recent.reason:"Both players' completed turns will appear here.";
+ const list=$("analystHistory");list.replaceChildren();
+ for(const item of entries.slice(-8).reverse()){
+  const entry=document.createElement("div");entry.className="analystEntry";entry.setAttribute("role","listitem");
+  const top=document.createElement("div");top.className="analystEntryTop";
+  const side=document.createElement("b");side.textContent="TURN "+item.turn+" · "+(item.side==="w"?"WHITE":"BLACK");
+  const badge=document.createElement("span");badge.className="analystGrade "+item.grade.toLowerCase().replaceAll(" ","-");badge.textContent=item.grade.toUpperCase();
+  top.append(side,badge);
+  const move=document.createElement("div");move.className="analystMove";move.textContent=item.move;
+  const note=document.createElement("span");note.className="analystReason";note.textContent=item.reason;
+  entry.append(top,move,note);list.append(entry);
+ }
+}
 function render(){
  if(!game)return;
  const black=game.player==="b";
@@ -272,7 +292,7 @@ function render(){
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
  $("selfState").textContent=game.status.text;
- $("matchTitle").textContent=game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
+ $("matchTitle").textContent=game.analystTest?"The Analyst · test match":game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
  const left=20-(game.moveCount||0)%20;
  $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
  const reaction=game.pendingReaction,box=$("reactionBox");
@@ -297,7 +317,7 @@ function render(){
  $("enemyState").textContent=!game.ready?"Invite someone to join":game.status.done?"Match complete":myTurn()?"Waiting for your move":"Choosing a move…";
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
- renderBoard();renderHand();renderSniper();renderExtras();
+ renderBoard();renderHand();renderSniper();renderExtras();renderAnalyst();
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
  else if(game.status.done)hint=game.status.text;
@@ -451,6 +471,12 @@ $("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact
 $("create").addEventListener("click",async()=>{
  const button=$("create");button.disabled=true;$("lobbyError").textContent="";
  try{await begin(await api("create",{}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
+});
+$("analystTest").addEventListener("click",async()=>{
+ const button=$("analystTest");button.disabled=true;$("lobbyError").textContent="";
+ try{await begin(await api("create",{mode:"analyst-test"}));}
+ catch(error){$("lobbyError").textContent=error.message;}
+ finally{button.disabled=false;}
 });
 $("sniperTest").addEventListener("click",async()=>{
  const button=$("sniperTest");button.disabled=true;$("lobbyError").textContent="";

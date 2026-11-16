@@ -25,6 +25,7 @@ jobs:
           node-version: "22"
       - run: node --check games/illegal-chess/engine.mjs
       - run: node --check games/illegal-chess/game.mjs
+      - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
       - run: node --check games/illegal-chess/client.mjs
       - run: node --check games/illegal-chess/art.mjs
@@ -42,6 +43,10 @@ jobs:
           assert.doesNotMatch(client,/\b(?:window\.)?(?:alert|prompt|confirm)\s*\(/);
           assert.match(client,/cardImage\(/);
           assert.match(client,/sniperShots/);
+          assert.match(html,/id="analystPanel"/);
+          assert.match(html,/id="analystTest"/);
+          assert.match(client,/renderAnalyst\(/);
+          assert.match(fs.readFileSync("games/illegal-chess/analyst.mjs","utf8"),/gradeAnalystTurn/);
           const style=fs.readFileSync("games/illegal-chess/style.css","utf8");
           assert.match(client,/for\(let n=0;n<100;n\+\+\)/,"The board must include the extra off-board ring");
           assert.match(client,/offboardSniper/,"Own bishop must be rendered in the extra ring");

@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=7">
+<link rel="stylesheet" href="./style.css?v=8">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.6</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.7</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -22,6 +22,7 @@
    <p>Invite a friend to a private match. Draw three randomized cards with different rarities, bend the rules, and make every move count.</p>
    <div class="lobbyActions">
     <button class="btn primary" id="create" type="button">CREATE A PRIVATE MATCH <span aria-hidden="true">↗</span></button><button class="btn ghost" id="sniperTest" type="button">⌖ TEST BISHOP SNIPER · BOTH PLAYERS GET ONE</button>
+    <button class="btn ghost" id="analystTest" type="button">🧠 TEST THE ANALYST · BOTH PLAYERS GET ONE</button>
     <div>
      <div class="eyebrow" style="margin-bottom:9px">HAVE A ROOM CODE?</div>
      <div class="joinline"><input class="forminput" id="code" placeholder="ENTER 6-CHAR CODE" maxlength="6" autocomplete="off" aria-label="Six-character room code"><button class="btn ghost" id="join" type="button">JOIN ROOM →</button></div>
@@ -29,7 +30,7 @@
     </div>
    </div>
    <div class="lobbyFeatures"><span>♟ REAL CHESS RULES</span><span>✦ RANDOM CARD DRAWS</span><span>⚔ 1V1 MULTIPLAYER</span></div>
-   <p class="mini" style="margin-top:20px">Prototype build: 25 implemented cards from the approved 26-card collection. More effects and animations are in development.</p>
+   <p class="mini" style="margin-top:20px">Prototype build: all 26 approved cards, including The Analyst. More effects and animations are in development.</p>
   </div>
   <div class="lobbyArtwork" id="lobbyArtwork" aria-label="Featured collectible card illustrations"></div>
  </section>
@@ -50,6 +51,12 @@
     <button id="allowCard" class="btn ghost" type="button">ALLOW CARD</button>
     <button id="objectCard" class="btn danger" type="button">⚖ OBJECTION!</button>
    </div>
+  </section>
+  <section id="analystPanel" class="analystPanel" hidden aria-label="The Analyst move grades" aria-live="polite">
+   <div class="analystIntro"><div><span class="eyebrow">LEGENDARY · PASSIVE CARD #26</span><h3>🧠 THE ANALYST <span class="analysisLive" id="analystLive">ACTIVE</span></h3><p>Estimates using legal chess moves, card resources, active effects, sniper threats and color swaps. Not a perfect engine.</p></div>
+   <div class="analystSpotlight" id="analystSpotlight"><strong id="analystLatestGrade">AWAITING MOVES</strong><span id="analystLatestDetail">Both players' completed turns will be graded here.</span></div></div>
+   <div class="analystHistory" id="analystHistory" role="list"></div>
+   <p class="analystDisclaimer">Move labels are approximate. The game cannot prove a move was objectively best or brilliant, especially with concealed cards.</p>
   </section>
   <div class="gameGrid">
    <section class="boardWrap" aria-label="Chess game board">
@@ -80,6 +87,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=7"></script>
+<script type="module" src="./client.mjs?v=8"></script>
 </body>
 </html>
