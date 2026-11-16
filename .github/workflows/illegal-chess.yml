@@ -5,6 +5,7 @@ on:
       - "games/illegal-chess/**"
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
+      - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
   push:
     branches: [main, "feature/illegal-chess-multiplayer"]
@@ -12,6 +13,7 @@ on:
       - "games/illegal-chess/**"
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
+      - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
 jobs:
   rules:
@@ -24,4 +26,16 @@ jobs:
       - run: node --check games/illegal-chess/engine.mjs
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
-      - run: node --test tests/illegal-chess.test.mjs
+      - name: Check browser module syntax
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from "node:fs";
+          import vm from "node:vm";
+          import assert from "node:assert/strict";
+          const html = fs.readFileSync("games/illegal-chess/index.html", "utf8");
+          const match = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/);
+          assert.ok(match, "Inline browser script missing");
+          new vm.Script(match[1]);
+          assert.match(html, /id="board"/);
+          EOF
+      - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs
