@@ -28,7 +28,7 @@ export async function onRequest(context){
   if(path==="create"){
    const playerToken=newToken(),hashed=await hash(playerToken),now=Date.now();
    for(let tries=0;tries<8;tries++){
-    const code=newCode(),game=newGame(code,hashed);
+    const code=newCode(),game=newGame(code,hashed,{sniperTest:data.mode==="sniper-test"});
     try{
      await db.prepare("INSERT INTO illegal_chess_rooms(code,version,state,created_at,updated_at) VALUES(?,0,?,?,?)").bind(code,JSON.stringify(game),now,now).run();
      return reply({room:code,player:"w",token:playerToken});
