@@ -563,7 +563,7 @@ export function act(g,color,req,options={}){
    bonus("Classified Promotion armed — promoted identity will remain secret");return;
   }
  }else if(card.id==="pawn-strike"){
-  if(g.effects.pawnStrike>0)throw Error("Pawn Strike is already active");
+  if(g.effects.pawnStrike>0&&!copying)throw Error("Pawn Strike is already active");
   g.effects.pawnStrike=2;
   bonus("Pawn Strike — both sides' pawns cannot advance for one round · bonus action");return;
  }else if(card.id==="parking-ticket"){
