@@ -304,12 +304,13 @@ function render(){
  else if(game.pendingReaction)hint=game.pendingReaction.canReact?"Choose ALLOW or OBJECTION! to resolve the pending card.":"Waiting for the opponent to respond to your card.";
  else if(!myTurn())hint="Opponent's turn. Study their hand while you plan your next move.";
  else if(selectedCard)hint=selectedCard.mode==="sniper"?"Select your bishop, then choose a secret diagonal."
-  :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
-   :selectedCard.mode==="one"?(selectedCard.id==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
+  :selectedCard.mode==="two"?(cardFrom?(selectedCard.copyOf||selectedCard.id)==="friendly-fire"?"Select the friendly non-king piece to capture.":(selectedCard.copyOf||selectedCard.id)==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
+   :selectedCard.mode==="one"?((selectedCard.copyOf||selectedCard.id)==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
    :selectedCard.mode==="relocate"?(cardFrom?"Select an enemy piece your selected piece could legally capture.":"Select one of your attacking pieces.")
     :selectedCard.mode==="instant-turn"?"Confirm the card to consume your turn."
    :selectedCard.mode==="one-prep"?"Select the non-king piece you want to move and mark its starting square."
    :selectedCard.mode==="recall"?(cardFrom?"Select a legal promotion destination to recall a captured piece.":"Select a pawn that can promote now.")
+   :selectedCard.mode==="classified-copy"?(cardFrom?"Select the final-rank square and choose your secret piece.":"Select your pawn ready to promote.")
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
@@ -356,10 +357,10 @@ async function selectCard(card){
 async function selectSquare(name,piece){
  if(!myTurn()||busy||modalOpen)return;
  if(selectedCard){
-  const card=selectedCard;
+  const card=selectedCard,mechanic=card.copyOf||card.id;
   if(card.mode==="square"){
    if(piece!=="."){flash("Select an empty square.");return;}
-   const approved=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Reserve "+name.toUpperCase()+"?",description:"Your opponent cannot end their next move on "+name.toUpperCase()+". You can still make a normal chess move now.",choices:[{label:"RESERVE SQUARE",value:true,kind:"primary"}]});
+   const approved=await modal({tag:card.copyOf?"COUNTERFEIT · FULL TURN":"TACTICAL CARD · BONUS ACTION",title:"Reserve "+name.toUpperCase()+"?",description:"Your opponent cannot end their next move on "+name.toUpperCase()+"."+(card.copyOf?" This consumes your turn.":" You can still make a normal chess move now."),choices:[{label:"RESERVE SQUARE",value:true,kind:"primary"}]});
    if(approved)await send({type:"card",card:card.id,to:name});return;
   }
   if(card.mode==="one-prep"){
@@ -367,6 +368,18 @@ async function selectSquare(name,piece){
     if(!game.legal.some(m=>m.from===name&&!m.promotion)){flash("That piece has no legal move to use with Time Capsule.");return;}
     const approved=await modal({tag:"TIME CAPSULE · BONUS ACTION",title:"Mark "+name.toUpperCase()+"?",description:"You must move this piece now. On your next turn you may spend that turn returning the same surviving piece to "+name.toUpperCase()+" if the square is empty and the return is king-safe.",choices:[{label:"MARK THIS SQUARE",value:true,kind:"primary"}]});
     if(approved)await send({type:"card",card:card.id,from:name});return;
+   }
+   if(card.mode==="classified-copy"){
+    if(!cardFrom){
+     if(!own(piece)||piece.toLowerCase()!=="p"||!game.legal.some(m=>m.from===name&&m.promotion)){flash("Select a pawn ready to promote.");return;}
+     cardFrom=name;render();return;
+    }
+    if(name===cardFrom){cardFrom=null;render();return;}
+    const eligible=game.legal.some(m=>m.from===cardFrom&&m.to===name&&m.promotion);
+    if(!eligible){flash("Select a legal promotion destination.");return;}
+    const promotion=await modal({tag:"COUNTERFEIT · CLASSIFIED PROMOTION",title:"Choose your secret piece",description:"Your promoted piece stays disguised to the opponent until it checks, moves, or is captured. This uses your full turn.",choices:[{label:"♕ QUEEN",value:"q"},{label:"♜ ROOK",value:"r"},{label:"♗ BISHOP",value:"b"},{label:"♞ KNIGHT",value:"n"}]});
+    if(promotion)await send({type:"card",card:card.id,from:cardFrom,to:name,promotion});
+    return;
    }
    if(card.mode==="recall"){
     if(!cardFrom){
@@ -383,7 +396,7 @@ async function selectSquare(name,piece){
    }
    if(card.mode==="one"){
    if(!own(piece)||piece.toLowerCase()==="k"){flash("Choose one of your non-king pieces.");return;}
-   const insuring=card.id==="insurance-fraud";
+   const insuring=mechanic==="insurance-fraud";
     const approved=await modal({tag:insuring?"INSURANCE FRAUD":"VOLUNTARY EVICTION",title:insuring?"Insure "+name.toUpperCase()+"?":"Evict the piece on "+name.toUpperCase()+"?",description:insuring?"The selected piece is visibly insured for two enemy turns. If an enemy captures it, that attacker cannot move on its owner's next turn. This consumes your current turn.":"This permanently removes your own "+piece.toUpperCase()+" from the game and consumes your chess turn. You cannot undo this.",choices:[{label:insuring?"INSURE PIECE":"YES, REMOVE IT",value:true,kind:insuring?"primary":"danger"}]});
    if(approved)await send({type:"card",card:card.id,from:name});return;
   }
