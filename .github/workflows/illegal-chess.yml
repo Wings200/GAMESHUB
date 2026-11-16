@@ -46,6 +46,9 @@ jobs:
           assert.match(html,/id="analystPanel"/);
           assert.match(html,/id="analystTest"/);
           assert.match(client,/renderAnalyst\(/);
+          assert.match(client,/analystPopupTimer=setTimeout\([\s\S]*?\},1000\)/,"Move grade overlay must disappear after 1 second");
+          assert.match(client,/analystSeenTurn===null/,"Do not replay archived grades on reconnect");
+          assert.match(client,/analystPopup\?\.square===name/,"Move-grade symbol follows the piece's destination square");
           assert.match(fs.readFileSync("games/illegal-chess/analyst.mjs","utf8"),/gradeAnalystTurn/);
           const style=fs.readFileSync("games/illegal-chess/style.css","utf8");
           assert.match(client,/for\(let n=0;n<100;n\+\+\)/,"The board must include the extra off-board ring");
@@ -54,6 +57,7 @@ jobs:
           assert.match(client,/game\.sniperShots\?\.includes\(name\)/,"Board must accept direct sniper targets");
           assert.match(style,/repeat\(10,minmax\(0,1fr\)\)/,"10x10 board including one-square perimeter");
           assert.match(style,/\.square\.sniperRay/);
+          assert.match(style,/\.analystMoveSymbol/,"Transient grade badge must have board styling");
 
           EOF
       - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs
