@@ -107,3 +107,23 @@ test("An offboard sniper still attacks king squares and blocks normal king moves
  assert.equal(g.s.b[(8-7)*16+6],".");
  assert.equal(g.snipers.w.direction,"NE");
 });
+
+test("Hidden sniper attacks the king after a pawn blocking the firing line is removed",()=>{
+ const g=room();give(g,"w","bishop-sniper");
+ g.s=parseFen("8/6p1/4k3/8/8/2B5/8/4K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"bishop-sniper",from:"c3",direction:"NE"});
+ move(g,"b","e6","f6");
+ assert.deepEqual(playerView(g,"w").sniperShots,["g7"],"Pawn is first occupant");
+ act(g,"w",{type:"sniper-shot",to:"g7"});
+ assert.match(status(g).text,/CHECK/,"The black king on f6 is now in sniper check");
+ assert.equal(playerView(g,"b").legal.some(m=>m.from==="f6"&&m.to==="e5"),false,"King cannot move to another square on an attacked ray");
+});
+test("Optional Bishop Sniper test rooms guarantee the card for both players without changing ordinary draws",()=>{
+ const g=newGame("SNIPER","a",{sniperTest:true});
+ joinGame(g,"b");
+ assert.equal(g.hands.w.length,3);assert.equal(g.hands.b.length,3);
+ assert.equal(g.hands.w[0].id,"bishop-sniper");assert.equal(g.hands.b[0].id,"bishop-sniper");
+ assert.equal(new Set(g.hands.w.map(c=>c.id)).size,3);
+ assert.equal(new Set(g.hands.b.map(c=>c.id)).size,3);
+ assert.equal(playerView(g,"b").testMode,true);
+});
