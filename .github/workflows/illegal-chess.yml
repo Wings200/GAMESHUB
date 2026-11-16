@@ -1,0 +1,27 @@
+name: Illegal Chess prototype
+on:
+  pull_request:
+    paths:
+      - "games/illegal-chess/**"
+      - "functions/api/illegal-chess/**"
+      - "tests/illegal-chess.test.mjs"
+      - ".github/workflows/illegal-chess.yml"
+  push:
+    branches: [main, "feature/illegal-chess-multiplayer"]
+    paths:
+      - "games/illegal-chess/**"
+      - "functions/api/illegal-chess/**"
+      - "tests/illegal-chess.test.mjs"
+      - ".github/workflows/illegal-chess.yml"
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check games/illegal-chess/engine.mjs
+      - run: node --check games/illegal-chess/game.mjs
+      - run: node --check 'functions/api/illegal-chess/[[path]].js'
+      - run: node --test tests/illegal-chess.test.mjs
