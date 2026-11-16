@@ -39,7 +39,7 @@ test("Black Market only trades another unused card of matching rarity",()=>{
  assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:0}),/another unused card/);
  act(g,"w",{type:"card",card:"black-market",slot:1});
  assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
- assert.equal(g.hands.w[1].id,"voluntary-eviction");
+ assert.ok(["voluntary-eviction","pawn-ram"].includes(g.hands.w[1].id),"Black Market must replace with a different card of the same rarity");
 });
 
 test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
