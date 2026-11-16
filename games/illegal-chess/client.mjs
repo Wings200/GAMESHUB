@@ -14,7 +14,15 @@ function resetStockfish(room){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  analystPopup=null;analystSeenTurn=null;
 }
-function resolvedReview(entry){return stockfishReviews.get(entry.turn)||entry;}
+function resolvedReview(entry){
+ const result=stockfishReviews.get(entry.turn);
+ if(result)return result;
+ // Old match records used the removed heuristic. Never relabel their grades
+ // as a verified Stockfish review after upgrading the client.
+ if(!entry.status)return {...entry,status:"legacy",grade:"Previous Estimate",symbol:null,
+  reason:"Older match record: this grade came from the retired heuristic, not Stockfish."};
+ return entry;
+}
 function scheduleStockfishReviews(){
  if(!game?.analyst?.active||!session)return;
  if(stockfishRoom!==session.room)resetStockfish(session.room);
@@ -338,7 +346,7 @@ function renderAnalyst(){
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
  const pending=recent?.status==="pending";
  $("analystLive").textContent=active?(pending?"STOCKFISH 19 · ANALYZING":"STOCKFISH 19 · ACTIVE"):"REVIEW ARCHIVED";
- const coin=recent?(MOVE_COINS[recent.grade]||MOVE_COINS.Custom):null;
+ const coin=recent?(MOVE_COINS[recent.grade]||null):null;
  const spotlight=$("analystSpotlight");
  const previous=spotlight.querySelector(".analystSpotlightCoin");if(previous)previous.remove();
  if(coin&&!pending&&recent.status!=="unavailable"){
@@ -365,6 +373,15 @@ function renderAnalyst(){
   const move=document.createElement("div");move.className="analystMove";move.textContent=review.move;
   const note=document.createElement("span");note.className="analystReason";note.textContent=review.reason;
   entry.append(top,move,note);list.append(entry);
+ }
+ const legend=$("analystLegend");legend.replaceChildren();
+ for(const item of ["Brilliant","Great","Best","Excellent","Good","Book","Inaccuracy","Mistake","Blunder","MissedWin"]){
+  const details=MOVE_COINS[item];
+  const tile=document.createElement("div");tile.className="analystLegendItem";
+  const graphic=document.createElement("span");graphic.className="analystCoin "+details.tone;
+  graphic.textContent=details.symbol;graphic.setAttribute("aria-hidden","true");
+  const name=document.createElement("small");name.textContent=details.name;
+  tile.append(graphic,name);legend.append(tile);
  }
  scheduleStockfishReviews();
 }
