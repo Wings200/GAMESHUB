@@ -2,7 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
-const room=()=>{const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");return g;};
+const room=()=>{
+ const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
+ // General engine tests must never hang on a random Objection reaction.
+ // Reaction-specific tests grant Objection explicitly with give().
+ for(const color of ["w","b"])for(const item of g.hands[color])if(item.id==="objection"){
+  item.id=CARDS.find(c=>c.id!=="objection"&&!g.hands[color].some(h=>h.id===c.id)).id;
+ }
+ return g;
+};
 const move=(g,color,from,to,promotion="")=>act(g,color,{type:"move",from,to,promotion});
 const give=(g,color,id)=>{g.hands[color]=[{id,used:false},{id:"knight-exchange",used:false},{id:"ceasefire",used:false}];};
 test("starting chess position and three-card random hands are valid",()=>{
@@ -371,7 +379,7 @@ test("Identity Theft swaps ONLY opponent appearances for exactly their next comp
 });
 test("Classified Promotion hides the true piece from FEN and last-move metadata until it moves",()=>{
  const g=room();give(g,"w","classified-promotion");
- g.s=parseFen("7k/P7/8/8/8/8/8/7K w - - 0 1");g.history=[g.s];
+ g.s=parseFen("7k/P7/8/8/8/8/5P2/7K w - - 0 1");g.history=[g.s];
  act(g,"w",{type:"card",card:"classified-promotion"});
  assert.equal(g.s.t,1,"Arming is a bonus action");
  assert.equal(playerView(g,"w").legal.some(m=>m.from==="h1"),false,"Must promote now");
