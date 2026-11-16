@@ -346,7 +346,7 @@ function renderAnalyst(){
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
  const pending=recent?.status==="pending";
  $("analystLive").textContent=active?(pending?"STOCKFISH 19 · ANALYZING":"STOCKFISH 19 · ACTIVE"):"REVIEW ARCHIVED";
- const coin=recent?(MOVE_COINS[recent.grade]||null):null;
+ const coin=recent?(MOVE_COINS[recent.grade]||(recent.status==="custom"?MOVE_COINS.Custom:null)):null;
  const spotlight=$("analystSpotlight");
  const previous=spotlight.querySelector(".analystSpotlightCoin");if(previous)previous.remove();
  if(coin&&!pending&&recent.status!=="unavailable"){
@@ -363,7 +363,7 @@ function renderAnalyst(){
   const top=document.createElement("div");top.className="analystEntryTop";
   const side=document.createElement("b");side.textContent="TURN "+item.turn+" · "+(item.side==="w"?"WHITE":"BLACK");
   const badge=document.createElement("span");badge.className="analystHistoryBadge";
-  const mapping=MOVE_COINS[review.grade];
+  const mapping=MOVE_COINS[review.grade]||(review.status==="custom"?MOVE_COINS.Custom:null);
   if(mapping&&review.status!=="unavailable"){
    const symbol=document.createElement("span");symbol.className="analystCoin analystCoinSmall "+mapping.tone;
    symbol.textContent=mapping.symbol;badge.append(symbol);
