@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
-import {ANALYST_GRADES,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
+import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -545,4 +545,46 @@ test("The Analyst keeps grading through 20-turn color swaps and does not expose 
  assert.equal(playerView(g,"b").analyst.active,true,"Original holder retains the passive after swapping control");
  const summary=JSON.stringify(playerView(g,"w").analyst);
  assert.ok(!summary.includes('"direction"')&&!summary.includes('"players"'));
+});
+
+test("Analyst never calls an unforced early King walk Best on White's third move",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ move(g,"w","e2","e4");
+ move(g,"b","e7","e5");
+ move(g,"w","g1","f3");
+ move(g,"b","b8","c6");
+ move(g,"w","e1","e2");
+ const king=g.analystLog.at(-1);
+ assert.equal(king.move,"e1 → e2");
+ assert.ok(["Inaccuracy","Mistake","Blunder"].includes(king.grade),"Ke2 on move three should not receive an inflated Best/Excellent/Good grade; got "+king.grade);
+ assert.match(king.reason,/king|castling|material|alternative/i);
+ assert.equal(king.square,"e2");
+ assert.equal(king.symbol,ANALYST_SYMBOLS[king.grade]);
+});
+test("Analyst emits one public destination-square symbol for normal moves and none for piece removal",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ move(g,"w","e2","e4");
+ const first=g.analystLog.at(-1);
+ assert.equal(first.square,"e4");
+ assert.equal(first.symbol,ANALYST_SYMBOLS[first.grade]);
+ assert.ok(Object.values(ANALYST_SYMBOLS).includes(first.symbol));
+ move(g,"b","e7","e5");
+ assert.equal(g.analystLog.at(-1).square,"e5");
+ const removed=room();give(removed,"w","the-analyst");
+ removed.hands.w[1]={id:"voluntary-eviction",used:false};
+ act(removed,"w",{type:"card",card:"voluntary-eviction",from:"g1"});
+ assert.equal(removed.analystLog.at(-1).square,null,"Removing a piece cannot put a badge over a nonexistent mover");
+});
+test("Analyst only marks an unforced early king walk; escaping actual check is not mislabeled for that reason",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ g.s=parseFen("4r2k/8/8/8/8/8/8/4K3 w - - 0 1");g.history=[g.s];
+ move(g,"w","e1","f1");
+ assert.ok(!g.analystLog.at(-1).reason.includes("unthreatened king"),"Escape from check must not be called an unforced king walk");
+});
+test("Analyst maps every grade to a distinct short annotation",()=>{
+ assert.deepEqual(Object.keys(ANALYST_SYMBOLS).sort(),[...ANALYST_GRADES].sort());
+ assert.equal(ANALYST_SYMBOLS.Brilliant,"!!");
+ assert.equal(ANALYST_SYMBOLS.Blunder,"??");
+ assert.equal(ANALYST_SYMBOLS.Inaccuracy,"?!");
+ assert.equal(ANALYST_SYMBOLS.Best,"★");
 });
