@@ -23,7 +23,11 @@ export const CARDS=[
  {id:"double-ko",name:"Double KO",rarity:"Epic",mode:"two",description:"Capture, but both the attacking and captured pieces disappear."},
  {id:"hit-and-run",name:"Hit and Run",rarity:"Epic",mode:"two",description:"Make a legal knight capture without leaving the starting square."},
  {id:"queens-abdication",name:"Queen's Abdication",rarity:"Epic",mode:"transform",description:"Transform your queen into a knight or bishop in place."},
- {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for another of the same rarity."}
+ {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for another of the same rarity."},
+ {id:"identity-theft",name:"Identity Theft",rarity:"Epic",mode:"two",description:"Exchange the appearances of two friendly non-king pieces for the opponent's next turn. Their real moves and attack rules remain unchanged."},
+ {id:"objection",name:"Objection!",rarity:"Rare",mode:"reaction",description:"When your opponent activates a card, object to cancel it. Their card is retained and they must make a normal move."},
+ {id:"classified-promotion",name:"Classified Promotion",rarity:"Rare",mode:"instant",description:"Arm your immediate pawn promotion. The new piece stays disguised to your opponent until it moves, captures, checks, or is captured."},
+ {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."}
 ];
 const weights={Common:45,Uncommon:30,Rare:15,Epic:8,Legendary:2};
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
@@ -36,7 +40,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},moveCount:0,swaps:0,last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -47,12 +51,15 @@ export function available(g){
  const allowed=ordinary.filter(m=>{
   const capture=s.b[m[1]]!=="."||m[3]==="ep";
   if(capsule?.color===col&&capsule.stage==="armed"&&(m[0]!==idx(capsule.origin)||m[2]))return false;
+  if(g.effects.classifiedArmed?.color===col&&!m[2])return false;
   if(g.effects.freeze?.color===col&&m[0]===g.effects.freeze.square)return false;
   if(g.effects.reserved?.color===col&&m[1]===g.effects.reserved.square)return false;
   if(g.effects.ceasefire>0&&capture)return false;
   if(g.effects.pawnStrike>0&&s.b[m[0]].toLowerCase()==="p"&&(m[0]&7)===(m[1]&7))return false;
   return true;
  });
+ // An armed Classified Promotion and Pawn Strike must be enforced strictly.
+ if(g.effects.classifiedArmed?.color===col)return allowed;
  // Pawn Strike forbids forward pawn moves without exception, even if the player has no other moves.
  // Preserve the old fallback for other legacy temporary modifiers.
  return g.effects.pawnStrike>0?allowed:(allowed.length||!ordinary.length?allowed:ordinary);
@@ -76,12 +83,56 @@ export function status(g){
  const moves=available(g),color=current(g.s),shots=sniperShots(g,color);
  return stateStatus(g.s,g.history,moves.length?moves:shots,g.snipers);
 }
+
+// The player seeing a disguise receives only an apparent FEN. Actual piece
+// identity, attack geometry and winner calculations always use the true board.
+function visibleFen(g,viewer){
+ const b=g.s.b.slice(),theft=g.identityTheft;
+ if(theft&&theft.color!==viewer&&b[idx(theft.a)]===theft.pieceA&&b[idx(theft.b)]===theft.pieceB){
+  b[idx(theft.a)]=theft.pieceB;
+  b[idx(theft.b)]=theft.pieceA;
+ }
+ for(const mark of Object.values(g.classified||{})){
+  if(mark&&mark.color!==viewer&&b[idx(mark.square)]===mark.piece)b[idx(mark.square)]=mark.color==="w"?"P":"p";
+ }
+ return fen({...g.s,b});
+}
+function redactedLast(g,viewer){
+ const last=g.last;if(!last)return null;
+ for(const mark of Object.values(g.classified||{})){
+  if(mark&&mark.color!==viewer&&last.to===idx(mark.square))return {...last,piece:mark.color==="w"?"P":"p"};
+ }
+ return last;
+}
+// Test direct attacks by the secretly promoted piece, not by unrelated
+// allies; reveal the piece if it gives check.
+function pieceGivesCheck(s,mark){
+ if(s.b[idx(mark.square)]!==mark.piece)return false;
+ const from=idx(mark.square),king=s.b.indexOf(mark.color==="w"?"k":"K");
+ if(king<0)return false;
+ const dx=(king&7)-(from&7),dy=(king>>4)-(from>>4);
+ const x=Math.abs(dx),y=Math.abs(dy),piece=mark.piece.toLowerCase();
+ if(piece==="n")return x===1&&y===2||x===2&&y===1;
+ if(piece==="p")return x===1&&dy===(mark.color==="w"?-1:1);
+ if(piece==="k")return Math.max(x,y)===1;
+ if(piece==="b"&&x!==y||piece==="r"&&dx&&dy||piece==="q"&&!(x===y||!dx||!dy))return false;
+ if(!["b","r","q"].includes(piece)||!x&&!y)return false;
+ let cx=(from&7)+Math.sign(dx),cy=(from>>4)+Math.sign(dy);
+ while(cx!==(king&7)||cy!==(king>>4)){
+  if(s.b[cy*16+cx]!==".")return false;
+  cx+=Math.sign(dx);cy+=Math.sign(dy);
+ }
+ return true;
+}
+
 export function playerView(g,color){
  const s=g.s,st=status(g);
- return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:stateFen(g),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
+ return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
-  effects:structuredClone(g.effects),last:g.last,log:g.log.slice(-40),
+  effects:structuredClone(g.effects),last:redactedLast(g,color),log:g.log.slice(-40),
+  pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
+  counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
   relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="relocation-order"&&!c.used)?relocationChoices(g):[],
   recallChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="promotion-recall"&&!c.used)?promotionRecallChoices(g):[],
   delayedEpTargets:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="delayed-en-passant"&&!c.used)?delayedEpMoves(g,color).map(m=>({from:sq(m[0]),to:sq(m[1])})):[],
@@ -89,8 +140,8 @@ export function playerView(g,color){
   sniper:{own:g.snipers?.[color]?{origin:g.snipers[color].origin,direction:g.snipers[color].direction,shots:g.snipers[color].shots||0}:null,
    opponentActive:!!g.snipers?.[color==="w"?"b":"w"],
    opponentRevealed:g.snipers?.[color==="w"?"b":"w"]?.revealed?{origin:g.snipers[color==="w"?"b":"w"].origin,direction:g.snipers[color==="w"?"b":"w"].direction}:null},
-  sniperShots:st.done||current(s)!==color?[]:sniperShots(g,color),
-  legal:st.done||current(s)!==color?[]:available(g).map(m=>({from:sq(m[0]),to:sq(m[1]),promotion:m[2]||"",capture:s.b[m[1]]!=="."||m[3]==="ep"}))};
+  sniperShots:st.done||g.pendingReaction||g.cardBlocked?.color===color||current(s)!==color?[]:sniperShots(g,color),
+  legal:st.done||g.pendingReaction||current(s)!==color?[]:available(g).map(m=>({from:sq(m[0]),to:sq(m[1]),promotion:m[2]||"",capture:s.b[m[1]]!=="."||m[3]==="ep"}))};
 }
 function requireTurn(g,color){if(!g.players.b)throw Error("Wait for a second player");if(status(g).done)throw Error("Game is over");if(current(g.s)!==color)throw Error("Not your turn");}
 function owned(g,color,id){const item=g.hands[color].find(x=>x.id===id&&!x.used);if(!item)throw Error("This card isn't available");return item;}
@@ -100,9 +151,26 @@ function tick(g,color){
  if(g.effects.ceasefire>0)g.effects.ceasefire--;
  if(g.effects.pawnStrike>0)g.effects.pawnStrike--;
  if(g.effects.delayedEp?.color===color)g.effects.delayedEp=null;
+ if(g.effects.classifiedArmed?.color===color)g.effects.classifiedArmed=null;
 }
 function commit(g,color,next,label,last=null,effect=null){
  const previous=g.s;
+ // Disguises never modify the authoritative chessboard. The opponent's
+ // next completed action ends Identity Theft, regardless of piece movement.
+ if(g.identityTheft?.color!==color&&g.identityTheft)g.identityTheft=null;
+ g.classified||={w:null,b:null};
+ for(const c of ["w","b"]){
+  const mark=g.classified[c];if(!mark)continue;
+  if(next.b[idx(mark.square)]!==mark.piece||last?.from===idx(mark.square))g.classified[c]=null;
+ }
+ if(effect?.classified)g.classified[color]={color,square:effect.classified.square,piece:effect.classified.piece};
+ for(const c of ["w","b"]){
+  const mark=g.classified[c];
+  if(mark&&pieceGivesCheck(next,mark))g.classified[c]=null;
+ }
+ if(g.cardBlocked?.color===color)g.cardBlocked=null;
+ g.copyOffers||={w:null,b:null};
+ g.copyOffers[color]=null;
  const insurance=g.effects.insurance||{w:null,b:null};
  // Track captured/lost pawns by the actual board delta, excluding promotions.
  g.capturedPawns||={w:0,b:0};
