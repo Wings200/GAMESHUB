@@ -191,6 +191,7 @@ function render(){
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
  $("selfState").textContent=game.status.text;
+ $("matchTitle").textContent=game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
  $("enemyState").textContent=!game.ready?"Invite someone to join":game.status.done?"Match complete":myTurn()?"Waiting for your move":"Choosing a move…";
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
@@ -280,6 +281,10 @@ async function selectSquare(name,piece){
 $("create").addEventListener("click",async()=>{
  const button=$("create");button.disabled=true;$("lobbyError").textContent="";
  try{await begin(await api("create",{}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
+});
+$("sniperTest").addEventListener("click",async()=>{
+ const button=$("sniperTest");button.disabled=true;$("lobbyError").textContent="";
+ try{await begin(await api("create",{mode:"sniper-test"}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
 });
 $("join").addEventListener("click",async()=>{
  const button=$("join");button.disabled=true;$("lobbyError").textContent="";
