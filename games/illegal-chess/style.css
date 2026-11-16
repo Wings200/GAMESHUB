@@ -56,3 +56,8 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 /* Alpha 0.4: openly visible insurance marker on either player's board. */
 .board .square.insuredTarget{box-shadow:inset 0 0 0 4px #81e1ca,0 0 14px #66d5bb77;z-index:1}
 .board .square.insuredTarget:after{content:"🛡";position:absolute;right:1px;top:0;font-size:clamp(9px,2vw,16px);filter:drop-shadow(0 1px 2px #081521);pointer-events:none;z-index:3}
+
+/* Alpha 0.5: Time Capsule origin and its tracked surviving piece. */
+.board .square.capsuleOrigin{box-shadow:inset 0 0 0 3px #ffc88e,0 0 13px #f9c87e66;z-index:1}
+.board .square.capsuleOrigin:after{content:"⏳";position:absolute;right:1px;top:0;font-size:clamp(10px,2vw,16px);filter:drop-shadow(0 1px 2px #081521);pointer-events:none;z-index:3}
+.board .square.capsuleTracked{outline:3px dashed #dda9ff;outline-offset:-5px}
