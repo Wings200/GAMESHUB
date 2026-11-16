@@ -436,7 +436,7 @@ async function selectSquare(name,piece){
   if(!candidates.length){flash("That isn't a legal move.");return;}
   let promotion="";
   if(candidates.some(m=>m.promotion)){
-   promotion=await modal({tag:"PAWN PROMOTION",title:"Choose your promotion",description:"Your pawn has reached the final rank. Choose its new identity.",choices:[
+   promotion=await modal({tag:game.effects?.classifiedArmed?.color===game.player?"CLASSIFIED PROMOTION":"PAWN PROMOTION",title:game.effects?.classifiedArmed?.color===game.player?"Choose your HIDDEN promotion":"Choose your promotion",description:game.effects?.classifiedArmed?.color===game.player?"Your opponent will see a disguised pawn until the promoted piece moves, captures, gives check or is captured.":"Your pawn has reached the final rank. Choose its new identity.",choices:[
     {label:"♕ QUEEN",value:"q"},{label:"♜ ROOK",value:"r"},{label:"♗ BISHOP",value:"b"},{label:"♞ KNIGHT",value:"n"}]});
    if(!promotion)return;
   }
@@ -445,6 +445,8 @@ async function selectSquare(name,piece){
  if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
+$("allowCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"allow"});});
+$("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"object"});});
 $("create").addEventListener("click",async()=>{
  const button=$("create");button.disabled=true;$("lobbyError").textContent="";
  try{await begin(await api("create",{}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
