@@ -99,7 +99,8 @@ export function createStockfishReviewer({workerFactory=url=>new Worker(url),url=
   worker=workerFactory(url);
   const booted=new Promise((resolve,reject)=>{
    const timer=setTimeout(()=>{fail(Error("Stockfish engine initialization timed out"));reject(Error("Stockfish startup timeout"));},18000);
-   boot={resolve:()=>{clearTimeout(timer);resolve();},reject};
+   boot={resolve:()=>{clearTimeout(timer);resolve();},
+    reject:error=>{clearTimeout(timer);reject(error);}};
   });
   worker.onmessage=event=>{
    for(const line of String(event.data||"").split(/\r?\n/))if(line.trim())handleLine(line.trim());
@@ -133,6 +134,7 @@ export function createStockfishReviewer({workerFactory=url=>new Worker(url),url=
  }
  function dispose(){
   broken=true;
+  if(boot){boot.reject(Error("Stockfish reviewer closed"));boot=null;}
   if(active){clearTimeout(active.timer);active.reject(Error("Stockfish reviewer closed"));active=null;}
   if(worker)worker.terminate();
   worker=null;
