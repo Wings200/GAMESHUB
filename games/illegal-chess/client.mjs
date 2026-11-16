@@ -26,6 +26,7 @@ async function api(method,payload){
 // Every decision belongs to the GAMESHUB interface. Never use alert/prompt/confirm.
 function modal({tag="CONFIRM ACTION",title,description,choices=[],link=""}){
  const shade=$("modalShade"),actions=$("modalActions"),linkField=$("modalLink");
+ const focusBefore=document.activeElement;
  modalOpen=true;shade.hidden=false;$("modalTag").textContent=tag;$("modalTitle").textContent=title;
  $("modalBody").textContent=description||"";actions.replaceChildren();
  linkField.hidden=!link;
@@ -34,7 +35,7 @@ function modal({tag="CONFIRM ACTION",title,description,choices=[],link=""}){
   function close(value){
    if(!modalOpen)return;
    modalOpen=false;shade.hidden=true;shade.removeEventListener("click",outside);document.removeEventListener("keydown",escape);
-   $("modalClose").onclick=null;resolve(value);
+   $("modalClose").onclick=null;focusBefore?.focus?.();resolve(value);
   }
   function outside(event){if(event.target===shade)close(null);}
   function escape(event){if(event.key==="Escape"){event.preventDefault();close(null);}}
@@ -53,6 +54,7 @@ function modal({tag="CONFIRM ACTION",title,description,choices=[],link=""}){
    });
    actions.append(button);
   }
+  if(!link)queueMicrotask(()=>actions.querySelector("button")?.focus());
  });
 }
 function done(message){flash(message||"Card activated. You can still make your chess move.");}
@@ -294,6 +296,15 @@ $("join").addEventListener("click",async()=>{
  try{await begin(await api("join",{room:$("code").value}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
 });
 $("code").addEventListener("keydown",event=>{if(event.key==="Enter")$("join").click();});
+$("leave").addEventListener("click",async()=>{
+ const accept=await modal({tag:"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
+ if(!accept)return;
+ sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
+ if(poll){clearInterval(poll);poll=null;}clearSelection();
+ history.replaceState({}, "", "/games/illegal-chess/");
+ $("match").hidden=true;$("lobby").hidden=false;$("connection").textContent="CONNECTING";$("connection").classList.add("offline");
+});
+
 $("copy").addEventListener("click",async()=>{
  const url=invite(session.room);
  await modal({tag:"PRIVATE ROOM INVITATION",title:"Invite your opponent",description:"Copy the private room link below and send it to a friend. No browser pop-ups required.",link:url,choices:[{label:"SELECT & COPY LINK",value:"__copy",kind:"primary"}]});
