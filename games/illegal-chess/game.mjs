@@ -503,15 +503,35 @@ export function act(g,color,req,options={}){
   nx=patch(s,{remove:[req.to],place:[[req.dest,target]]},g.snipers);
   label="Relocation Order: "+req.to+" → "+req.dest;
  }else if(card.id==="delayed-en-passant"){
-  if(!delayedEpMoves(g,color).length)throw Error("No delayed en passant capture is available");
-  g.effects.delayedEp={color};
-  token.used=true;g.log.push({side:color,text:"Delayed En Passant — one extra capture opportunity this turn"});return;
+  const candidates=delayedEpMoves(g,color);
+  if(!candidates.length)throw Error("No delayed en passant capture is available");
+  if(copying){
+   pair(req);
+   const m=candidates.find(m=>sq(m[0])===req.from&&sq(m[1])===req.to);
+   if(!m)throw Error("Choose an eligible delayed en passant capture");
+   nx=apply({...s,ep:m[1]},m);
+   label="Counterfeit: delayed en passant "+req.from+" x "+req.to;
+   last={color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]};
+  }else{
+   g.effects.delayedEp={color};
+   bonus("Delayed En Passant — one extra capture opportunity this turn");return;
+  }
  }else if(card.id==="time-capsule"){
   if(!isSquare(req.from)||!own(s.b[idx(req.from)])||s.b[idx(req.from)].toLowerCase()==="k")throw Error("Choose your own non-king piece for Time Capsule");
   if(g.effects.timeCapsule)throw Error("A Time Capsule is already active");
   if(!available(g).some(m=>sq(m[0])===req.from&&!m[2]))throw Error("Marked piece has no legal non-promotion move");
-  g.effects.timeCapsule={color,origin:req.from,piece:s.b[idx(req.from)],stage:"armed",square:null};
-  token.used=true;g.log.push({side:color,text:"Time Capsule armed at "+req.from+" — move this piece now"});return;
+  if(copying){
+   pair(req);
+   const m=available(g).find(m=>sq(m[0])===req.from&&sq(m[1])===req.to&&!m[2]);
+   if(!m)throw Error("Choose a legal move for the copied Time Capsule piece");
+   nx=apply(s,m);
+   effect={kind:"time-capsule-copy",from:req.from,to:m[1],piece:nx.b[m[1]]};
+   label="Counterfeit copied Time Capsule: "+req.from+" → "+req.to;
+   last={color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]};
+  }else{
+   g.effects.timeCapsule={color,origin:req.from,piece:s.b[idx(req.from)],stage:"armed",square:null};
+   bonus("Time Capsule armed at "+req.from+" — move this piece now");return;
+  }
  }else if(card.id==="promotion-recall"){
   pair(req);
   if(!["n","b","r"].includes(req.into)||!isSquare(req.home))throw Error("Choose a captured piece and an empty home square");
@@ -530,24 +550,34 @@ export function act(g,color,req,options={}){
  }else if(card.id==="classified-promotion"){
   if(g.effects.classifiedArmed)throw Error("Classified Promotion is already armed");
   if(!available(g).some(m=>m[2]&&s.b[m[0]].toLowerCase()==="p"))throw Error("No legal pawn promotion is available");
-  g.effects.classifiedArmed={color};
-  token.used=true;g.log.push({side:color,text:"Classified Promotion armed — promoted identity will remain secret"});return;
+  if(copying){
+   pair(req);
+   const m=available(g).find(m=>sq(m[0])===req.from&&sq(m[1])===req.to&&m[2]===req.promotion);
+   if(!m||!m[2])throw Error("Choose a legal classified pawn promotion");
+   nx=apply(s,m);
+   effect={promoted:color,classified:{square:req.to,piece:nx.b[m[1]]}};
+   last={color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]};
+   label="Counterfeit copied Classified Promotion: "+req.from+" → "+req.to+" · hidden";
+  }else{
+   g.effects.classifiedArmed={color};
+   bonus("Classified Promotion armed — promoted identity will remain secret");return;
+  }
  }else if(card.id==="pawn-strike"){
   if(g.effects.pawnStrike>0)throw Error("Pawn Strike is already active");
   g.effects.pawnStrike=2;
-  token.used=true;g.log.push({side:color,text:"Pawn Strike — both sides' pawns cannot advance for one round · bonus action"});return;
+  bonus("Pawn Strike — both sides' pawns cannot advance for one round · bonus action");return;
  }else if(card.id==="parking-ticket"){
   if(!g.last||g.last.color===color||!on(g.last.to)||side(s.b[g.last.to])!==-s.t)throw Error("No eligible enemy last-moved piece");
   g.effects.freeze={color:color==="w"?"b":"w",square:g.last.to};
-  token.used=true;g.log.push({side:color,text:"Parking Ticket: "+sq(g.last.to)+" · bonus action"});return;
+  bonus("Parking Ticket: "+sq(g.last.to)+" · bonus action");return;
  }else if(card.id==="reserved-parking"){
   if(!isSquare(req.to)||s.b[idx(req.to)]!==".")throw Error("Choose an empty square");
   g.effects.reserved={color:color==="w"?"b":"w",square:idx(req.to)};
-  token.used=true;g.log.push({side:color,text:"Reserved Parking: "+req.to+" · bonus action"});return;
+  bonus("Reserved Parking: "+req.to+" · bonus action");return;
  }else if(card.id==="ceasefire"){
   if(inCheck(s,s.t,g.snipers))throw Error("Cannot use Ceasefire while in check");
   g.effects.ceasefire=2;
-  token.used=true;g.log.push({side:color,text:"Ceasefire · bonus action"});return;
+  bonus("Ceasefire · bonus action");return;
  }else if(card.id==="black-market"){
   if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!Number.isInteger(req.slot)||req.slot<0||req.slot>=3)throw Error("Choose another card slot");
@@ -556,7 +586,7 @@ export function act(g,color,req,options={}){
   if(!pool.length)throw Error("No card of the same rarity available to swap");
   const replacement=pool[rand(pool.length)].id;
   nx=pass(s);token.used=true;selected.id=replacement;
-  commit(g,color,nx,"Black Market → "+getCard(replacement).name);return;
+  commit(g,color,nx,"Black Market → "+getCard(replacement).name);if(!copying)rememberCard(g,color,card.id);return;
  }else throw Error("Not implemented");
- token.used=true;commit(g,color,nx,label,last,effect);
+ token.used=true;commit(g,color,nx,label,last,effect);if(!copying)rememberCard(g,color,card.id);
 }
