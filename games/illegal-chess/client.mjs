@@ -233,6 +233,7 @@ function renderExtras(){
  if(e.freeze)list.push("🎫 Parking Ticket · "+toSquare(e.freeze.square));
  if(e.reserved)list.push("🅿 Reserved square · "+toSquare(e.reserved.square));
  if(e.ceasefire)list.push("⚑ Ceasefire · "+e.ceasefire+" move(s)");
+ if(e.pawnStrike)list.push("✊ Pawn Strike · pawns cannot advance · "+e.pawnStrike+" turn(s)");
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
  if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
@@ -274,7 +275,7 @@ function render(){
  else if(game.status.done)hint=game.status.text;
  else if(!myTurn())hint="Opponent's turn. Study their hand while you plan your next move.";
  else if(selectedCard)hint=selectedCard.mode==="sniper"?"Select your bishop, then choose a secret diagonal."
-  :selectedCard.mode==="two"?(cardFrom?"Select the destination square.":"Select the starting piece.")
+  :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
   :selectedCard.mode==="one"?"Select your own non-king piece to remove."
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
