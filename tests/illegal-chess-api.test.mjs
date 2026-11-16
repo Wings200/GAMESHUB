@@ -69,6 +69,10 @@ test("API supports opt-in Sniper test rooms without leaking the hidden diagonal"
  const db=new FakeD1();
  const white=await post(db,"create",{mode:"sniper-test"});
  const black=await post(db,"join",{room:white.data.room});
+ // Prevent this sniper-only test from being paused by a randomly drawn Objection!.
+ const saved=db.rooms.get(white.data.room),setup=JSON.parse(saved.state);
+ for(const card of setup.hands.b)if(card.id==="objection")card.id=["pawn-sidestep","pawn-ram","voluntary-eviction"].find(id=>!setup.hands.b.some(c=>c.id===id));
+ saved.state=JSON.stringify(setup);
  const w=await post(db,"state",white.data);
  const b=await post(db,"state",black.data);
  assert.equal(w.data.testMode,true);assert.equal(b.data.testMode,true);
