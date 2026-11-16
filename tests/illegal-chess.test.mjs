@@ -26,18 +26,18 @@ test("Pawn Sidestep consumes a turn, moves one square sideways only",()=>{
  act(g,"w",{type:"card",card:"pawn-sidestep",from:"a3",to:"b3"});
  assert.equal(g.s.b[(8-3)*16+1],"P");assert.equal(g.s.b[(8-3)*16+0],".");
  assert.equal(g.hands.w[0].used,true);
- assert.throws(()=>act(g,"b",{type:"card",card:"pawn-sidestep",from:"a6",to:"b6"}),/isn't available/);
+ assert.throws(()=>act(g,"w",{type:"card",card:"pawn-sidestep",from:"a3",to:"c3"}),/Not your turn/);
 });
 test("Colorblind Bishop changes square color and respects check safety",()=>{
  const g=room();give(g,"w","colorblind-bishop");
- move(g,"w","e2","e4");move(g,"b","e7","e5");
- act(g,"w",{type:"card",card:"colorblind-bishop",from:"f1",to:"e2"});
- assert.equal(g.s.b[(8-2)*16+4],"B");
+ move(g,"w","f2","f4");move(g,"b","e7","e5");
+ act(g,"w",{type:"card",card:"colorblind-bishop",from:"f1",to:"f2"});
+ assert.equal(g.s.b[(8-2)*16+5],"B");
 });
 test("Black Market only trades another unused card of matching rarity",()=>{
  const g=room();g.hands.w=[{id:"black-market",used:false},{id:"pawn-sidestep",used:false},{id:"colorblind-bishop",used:false}];
  assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:0}),/another unused card/);
- // No other common card is available yet, so a common swap cannot be fabricated.
- assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:1}),/No card of the same rarity/);
- assert.equal(g.s.t,1);assert.equal(g.hands.w[0].used,false);
+ act(g,"w",{type:"card",card:"black-market",slot:1});
+ assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
+ assert.equal(g.hands.w[1].id,"voluntary-eviction");
 });
