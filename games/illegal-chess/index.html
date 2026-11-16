@@ -21,7 +21,7 @@
    <h1>It's chess.<br><em>Until it isn't.</em></h1>
    <p>Invite a friend to a private match. Draw three randomized cards with different rarities, bend the rules, and make every move count.</p>
    <div class="lobbyActions">
-    <button class="btn primary" id="create" type="button">CREATE A PRIVATE MATCH <span aria-hidden="true">↗</span></button>
+    <button class="btn primary" id="create" type="button">CREATE A PRIVATE MATCH <span aria-hidden="true">↗</span></button><button class="btn ghost" id="sniperTest" type="button">⌖ TEST BISHOP SNIPER · BOTH PLAYERS GET ONE</button>
     <div>
      <div class="eyebrow" style="margin-bottom:9px">HAVE A ROOM CODE?</div>
      <div class="joinline"><input class="forminput" id="code" placeholder="ENTER 6-CHAR CODE" maxlength="6" autocomplete="off" aria-label="Six-character room code"><button class="btn ghost" id="join" type="button">JOIN ROOM →</button></div>
@@ -35,7 +35,7 @@
  </section>
  <section id="match" hidden aria-label="Illegal Chess multiplayer game">
   <div class="matchHead">
-   <div><span class="eyebrow">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle">The board has no mercy.</h2></div>
+   <div><span class="eyebrow">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle" id="matchTitle">The board has no mercy.</h2></div>
    <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button></div>
   </div>
   <div class="gameGrid">
