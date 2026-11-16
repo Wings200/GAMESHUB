@@ -63,3 +63,20 @@ test("two GAMESHUB browsers can create, join, and alternate turns",async()=>{
  assert.equal(Object.hasOwn(black.data.view,"players"),false);
  assert.equal(Object.hasOwn(black.data.view,"history"),false);
 });
+
+test("API supports opt-in Sniper test rooms without leaking the hidden diagonal",async()=>{
+ const db=new FakeD1();
+ const white=await post(db,"create",{mode:"sniper-test"});
+ const black=await post(db,"join",{room:white.data.room});
+ const w=await post(db,"state",white.data);
+ const b=await post(db,"state",black.data);
+ assert.equal(w.data.testMode,true);assert.equal(b.data.testMode,true);
+ assert.equal(w.data.hand[0].id,"bishop-sniper");
+ assert.equal(b.data.hand[0].id,"bishop-sniper");
+ const move=await post(db,"action",{...white.data,action:{type:"card",card:"bishop-sniper",from:"c1",direction:"NE"}});
+ assert.equal(move.status,200);
+ const opponent=await post(db,"state",black.data);
+ assert.equal(opponent.data.sniper.opponentActive,true);
+ assert.equal(opponent.data.sniper.own,null);
+ assert.equal(JSON.stringify(opponent.data).includes('"direction":"NE"'),false);
+});
