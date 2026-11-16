@@ -7,6 +7,9 @@ export const CARDS=[
  {id:"pawn-ram",name:"Pawn Ram",rarity:"Common",mode:"two",description:"Push an opposing pawn facing your pawn one square backward into empty space. Your pawn stays put. Uses your turn."},
  {id:"friendly-fire",name:"Friendly Fire",rarity:"Uncommon",mode:"two",description:"Capture one of your own non-king pieces with another of your pieces using its normal capture movement. Uses your turn."},
  {id:"pawn-strike",name:"Pawn Strike",rarity:"Rare",mode:"instant",description:"Both sides' pawns stop advancing for one full round, but diagonal captures remain legal. Play your normal move afterward."},
+ {id:"insurance-fraud",name:"Insurance Fraud",rarity:"Uncommon",mode:"one",description:"Insure a friendly non-king piece for two enemy turns. Capturing it freezes the capturer for their next turn."},
+ {id:"prisoner-exchange",name:"Prisoner Exchange",rarity:"Uncommon",mode:"instant-turn",description:"If both sides lost a pawn, revive one pawn for each on the first empty pawn starting square. Uses your turn."},
+ {id:"relocation-order",name:"Relocation Order",rarity:"Epic",mode:"relocate",description:"Select a legal capture of an enemy non-king piece; relocate it to an empty original starting square instead. Attacker stays."},
  {id:"voluntary-eviction",name:"Voluntary Eviction",rarity:"Common",mode:"one",description:"Remove one of your non-king pieces to clear space. Uses your turn."},
  {id:"colorblind-bishop",name:"Colorblind Bishop",rarity:"Uncommon",mode:"two",description:"Step your bishop one empty orthogonal square, changing square color."},
  {id:"knight-exchange",name:"Knight Exchange",rarity:"Uncommon",mode:"two",description:"Swap your knight and pawn a knight-jump apart."},
@@ -30,7 +33,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0},moveCount:0,swaps:0,last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null}},capturedPawns:{w:0,b:0},moveCount:0,swaps:0,last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -72,6 +75,7 @@ export function playerView(g,color){
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:structuredClone(g.effects),last:g.last,log:g.log.slice(-40),
+  relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="relocation-order"&&!c.used)?relocationChoices(g):[],
   sniper:{own:g.snipers?.[color]?{origin:g.snipers[color].origin,direction:g.snipers[color].direction,shots:g.snipers[color].shots||0}:null,
    opponentActive:!!g.snipers?.[color==="w"?"b":"w"],
    opponentRevealed:g.snipers?.[color==="w"?"b":"w"]?.revealed?{origin:g.snipers[color==="w"?"b":"w"].origin,direction:g.snipers[color==="w"?"b":"w"].direction}:null},
@@ -87,10 +91,42 @@ function tick(g,color){
  if(g.effects.pawnStrike>0)g.effects.pawnStrike--;
 }
 function commit(g,color,next,label,last=null,effect=null){
- tick(g,color);next.sniperSignature=JSON.stringify(g.snipers||{w:null,b:null});g.s=next;g.history.push(next);g.last=last;g.log.push({side:color,text:label});
+ const previous=g.s;
+ const insurance=g.effects.insurance||{w:null,b:null};
+ // Track captured/lost pawns by the actual board delta, excluding promotions.
+ g.capturedPawns||={w:0,b:0};
+ for(const sideColor of ["w","b"]){
+  const letter=sideColor==="w"?"P":"p";
+  const count=board=>board.b.reduce((sum,p)=>sum+(p===letter?1:0),0);
+  let loss=Math.max(0,count(previous)-count(next));
+  if(effect?.promoted===sideColor)loss=Math.max(0,loss-1);
+  g.capturedPawns[sideColor]+=loss;
+ }
+ tick(g,color);
+ // Insurance follows ordinary piece movement; a real enemy capture freezes
+ // the capturer on the landing square for their following turn.
+ for(const protectedColor of ["w","b"]){
+  const mark=insurance[protectedColor];
+  if(!mark)continue;
+  if(last?.color===protectedColor&&last.from===mark.square&&next.b[last.to]===mark.piece){
+   mark.square=last.to;
+  }else if(next.b[mark.square]!==mark.piece){
+   const capture=last?.color!==protectedColor&&last?.to===mark.square&&side(next.b[mark.square])===(protectedColor==="w"?-1:1);
+   if(capture)g.effects.freeze={color:last.color,square:mark.square};
+   insurance[protectedColor]=null;
+   continue;
+  }
+  if(color!==protectedColor&&--mark.remaining<=0)insurance[protectedColor]=null;
+ }
+ g.effects.insurance=insurance;next.sniperSignature=JSON.stringify(g.snipers||{w:null,b:null});g.s=next;g.history.push(next);g.last=last;g.log.push({side:color,text:label});
  if(effect?.kind==="freeze")g.effects.freeze={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="reserved")g.effects.reserved={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="ceasefire")g.effects.ceasefire=2;
+ if(effect?.kind==="insurance")g.effects.insurance[color]={color,square:effect.square,piece:effect.piece,remaining:2};
+ if(effect?.kind==="prisoner-exchange"){
+  g.capturedPawns.w--;
+  g.capturedPawns.b--;
+ }
  g.moveCount=(g.moveCount||0)+1;
  // Change who controls each side after 20 turn-consuming actions. Pieces and
  // their active effects keep their colors; unused cards stay with each player.
@@ -112,6 +148,24 @@ function patch(s,{remove=[],place=[],resetHalf=false},snipers=null){
  for(const k of remove){const i=idx(k);nx.c=updateRights({...nx,c:nx.c},i,i,s.b[i],".");}
  if(inCheck(nx,s.t,snipers))throw Error("Your king would be in check");
  return nx;
+}
+// Original chess starting squares for the target's piece type, by target color.
+function originalSquares(piece){
+ const rank=side(piece)===1?"1":"8",pawnRank=side(piece)===1?"2":"7";
+ return ({p:[..."abcdefgh"].map(f=>f+pawnRank),r:["a"+rank,"h"+rank],n:["b"+rank,"g"+rank],b:["c"+rank,"f"+rank],q:["d"+rank],k:[]})[piece.toLowerCase()]||[];
+}
+function relocationChoices(g){
+ const s=g.s,out=[];
+ if(g.effects.ceasefire>0)return out;
+ for(const m of available(g)){
+  const from=sq(m[0]),to=sq(m[1]),piece=s.b[m[1]];
+  if(piece==="."||piece.toLowerCase()==="k"||m[3]==="ep"||m[2])continue;
+  const homes=originalSquares(piece).filter(h=>s.b[idx(h)]===".").filter(h=>{
+   try{patch(s,{remove:[to],place:[[h,piece]]},g.snipers);return true;}catch{return false;}
+  });
+  if(homes.length)out.push({from,to,homes});
+ }
+ return out;
 }
 function pair(req){if(!isSquare(req.from)||!isSquare(req.to))throw Error("Choose valid squares");}
 const directions={NE:-15,NW:-17,SE:17,SW:15};
@@ -151,7 +205,7 @@ export function act(g,color,req){
   const m=available(g).find(m=>sq(m[0])===req.from&&sq(m[1])===req.to&&m[2]===promotion);
   if(!m)throw Error("Illegal chess move");
   const nx=apply(s,m);
-  commit(g,color,nx,req.from+" → "+req.to+(promotion?" = "+promotion.toUpperCase():""),{color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]});
+  commit(g,color,nx,req.from+" → "+req.to+(promotion?" = "+promotion.toUpperCase():""),{color,from:m[0],to:m[1],square:m[1],piece:nx.b[m[1]]},promotion?{promoted:color}:null);
   return;
  }
  if(req.type!=="card")throw Error("Unknown action");
@@ -208,6 +262,30 @@ export function act(g,color,req){
   nx=patch(s,{remove:[req.from]},g.snipers);
   g.snipers[color]={...sniper,shots:0,revealed:false};
   label="Bishop Sniper deployed";last=null;
+ }else if(card.id==="insurance-fraud"){
+  if(!isSquare(req.from))throw Error("Choose a valid square");
+  const a=idx(req.from),p=s.b[a];
+  if(!own(p)||p.toLowerCase()==="k")throw Error("Choose a friendly non-king piece to insure");
+  if(g.effects.insurance?.[color])throw Error("You already have an insured piece");
+  nx=patch(s,{},g.snipers);
+  effect={kind:"insurance",square:a,piece:p};
+  label="Insurance Fraud: "+req.from+" is insured for two enemy turns";
+ }else if(card.id==="prisoner-exchange"){
+  if((g.capturedPawns?.w||0)<1||(g.capturedPawns?.b||0)<1)throw Error("Both colors must have lost a pawn");
+  const white=[..."abcdefgh"].map(f=>f+"2").find(h=>s.b[idx(h)]==="."),
+        black=[..."abcdefgh"].map(f=>f+"7").find(h=>s.b[idx(h)]===".");
+  if(!white||!black)throw Error("Both colors need an empty original pawn square");
+  nx=patch(s,{place:[[white,"P"],[black,"p"]],resetHalf:true},g.snipers);
+  effect={kind:"prisoner-exchange"};
+  label="Prisoner Exchange: revived White "+white+" and Black "+black;
+ }else if(card.id==="relocation-order"){
+  pair(req);
+  if(!isSquare(req.dest))throw Error("Choose an original starting square");
+  const choice=relocationChoices(g).find(m=>m.from===req.from&&m.to===req.to);
+  if(!choice||!choice.homes.includes(req.dest))throw Error("Choose a legal capture target and an empty original starting square");
+  const target=s.b[idx(req.to)];
+  nx=patch(s,{remove:[req.to],place:[[req.dest,target]]},g.snipers);
+  label="Relocation Order: "+req.to+" → "+req.dest;
  }else if(card.id==="pawn-strike"){
   if(g.effects.pawnStrike>0)throw Error("Pawn Strike is already active");
   g.effects.pawnStrike=2;
