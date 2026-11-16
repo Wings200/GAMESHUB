@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e16"><link rel="icon" href="/logo.png">
+<title>ILLEGAL CHESS | GAMESHUB</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090d15;color:#eaf0fa;font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif;background-image:radial-gradient(ellipse at 15% 0%,#182842 0%,transparent 52%)}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.5}a{color:inherit}header{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #263149;padding:16px clamp(15px,4vw,48px);background:#080e19d9}header a{text-decoration:none;font-size:12px;color:#9cafc6;font-weight:700}header strong{font-size:20px;letter-spacing:-.04em;color:white}header strong span{color:#74aaff}header small{display:block;color:#8290a8;font-size:10px;font-weight:800;letter-spacing:.2em}main{max-width:1320px;margin:auto;padding:28px 18px 44px}.hidden{display:none!important}h1{font-size:clamp(43px,7vw,82px);line-height:1;letter-spacing:-.065em;margin:5px 0 18px}h1 em{color:#87acff;font-style:normal}h2{font-size:19px;margin:4px 0 9px}p{color:#a2aec1}.eyebrow{color:#82aafa;letter-spacing:.14em;font-size:10px;font-weight:850;text-transform:uppercase}.lobby{max-width:690px;margin:44px auto;border:1px solid #293951;background:#0e1625;padding:clamp(24px,5vw,50px);border-radius:18px;box-shadow:0 25px 75px #0004}.lobby p{max-width:510px;line-height:1.8}.control{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}.primary,.action{border:1px solid #668cda;background:#345eb0;color:white;font-weight:850;border-radius:9px;padding:13px 18px}.secondary{background:#151f31;border:1px solid #3c506e;color:#eaf0fa;border-radius:9px;padding:12px 15px}.control input{background:#0a111e;border:1px solid #354764;color:#fff;border-radius:8px;padding:12px 14px;min-width:190px;text-transform:uppercase;letter-spacing:.15em}.footnote{font-size:12px;color:#8796b0}.error{color:#ff9f96;min-height:20px}.topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:22px;flex-wrap:wrap}.topbar strong{font-size:18px;letter-spacing:.14em}.tag{font-size:11px;border:1px solid #344b70;color:#b6d0ff;border-radius:7px;padding:7px 9px}.layout{display:grid;grid-template-columns:minmax(300px,650px) minmax(290px,1fr);gap:22px;align-items:start}.boardCol{max-width:650px}.player{display:flex;align-items:center;gap:11px;background:#101a29;border:1px solid #263850;border-radius:9px;margin:9px 0;padding:11px 14px}.player .face{font-size:30px;line-height:1}.player strong{display:block;font-size:13px}.player small{color:#96a5bc}.board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));width:100%;border:7px solid #1d2a3b;box-shadow:0 20px 70px #0007;border-radius:7px;overflow:hidden;aspect-ratio:1}.square{padding:0;border:0;position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;min-width:0}.light{background:#d6e0df}.dark{background:#637e96}.square.selected{box-shadow:inset 0 0 0 5px #ffcc57}.square.hint:after{content:"";width:28%;height:28%;background:#16834b99;border-radius:100%;position:absolute}.square.capture:after{content:"";position:absolute;inset:6%;border:5px solid #be5050a6;border-radius:100%}.piece{font-family:"Segoe UI Symbol","DejaVu Sans",serif;font-size:clamp(24px,5vw,56px);line-height:1;position:relative;z-index:1}.piece.white{color:#fff8ec;text-shadow:-1px -1px 1px #222,1px 1px 2px #171717,0 3px 2px #222}.piece.black{color:#161c25;text-shadow:0 1px 1px #ece4dc}.coordinate{font-size:10px;position:absolute;left:4px;top:2px;font-weight:900;color:#1422309c}.file{top:auto;bottom:2px;left:auto;right:4px}.helper{border:1px solid #2b425d;background:#0f1c2c;padding:12px 15px;border-radius:9px;color:#c4d3e7;min-height:48px}.panels{display:grid;gap:13px}.panel{background:#101826;border:1px solid #293b55;border-radius:13px;padding:18px}.panelHead{display:flex;justify-content:space-between;align-items:center;gap:7px}.cards{display:grid;gap:9px;margin-top:12px}.card{display:flex;gap:12px;text-align:left;width:100%;border:1px solid #34445a;background:#172235;border-radius:10px;padding:13px;color:#eaf0fa}.card.active{border-color:#ffe18a;background:#27314b}.card.used{opacity:.52}.card .symbol{font-size:27px;min-width:30px;text-align:center}.card .name{font-weight:900;display:block}.card .desc{font-size:12px;color:#acbbd0;display:block;margin-top:3px}.rarity{font-size:10px;display:inline-block;margin-left:8px;font-weight:800;letter-spacing:.07em}.rarity.common{color:#aeb8c5}.rarity.uncommon{color:#65d49e}.rarity.rare{color:#80aaff}.rarity.epic{color:#cc92ff}.rarity.legendary{color:#ffc76d}.tinycards{display:flex;gap:7px;flex-wrap:wrap}.tinycards span{font-size:11px;background:#202c40;border:1px solid #35435a;border-radius:6px;padding:6px 9px}.tinycards .used{text-decoration:line-through;opacity:.55}.log{max-height:210px;overflow:auto}.log div{font-size:12px;padding:6px 0;border-bottom:1px solid #28374c}.log b{display:inline-block;min-width:51px}.detail{font-size:12px;color:#a7b6cb}#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:#352227;border:1px solid #bc6366;padding:13px 20px;border-radius:8px;max-width:90vw;box-shadow:0 16px 35px #0008}footer{text-align:center;padding:14px;color:#7486a0;font-size:11px}#busy{color:#f3c578}
+@media(max-width:940px){.layout{grid-template-columns:1fr}.boardCol{width:min(100%,650px);margin:auto}.panels{width:min(100%,650px);margin:auto}.piece{font-size:clamp(26px,7vw,61px)}}@media(max-width:460px){main{padding:14px 9px 34px}.board{border-width:4px}.piece{font-size:clamp(24px,9vw,42px)}.panel{padding:13px}.lobby{margin:14px auto;padding:22px}}
+</style>
+</head>
+<body>
+<header><div><strong>ILLEGAL <span>CHESS</span></strong><small>GAMESHUB · MULTIPLAYER ALPHA</small></div><a href="/">← BACK TO GAMESHUB</a></header>
+<main>
+<section id="lobby" class="lobby">
+ <div class="eyebrow">CHESS. QUESTIONABLE RULES.</div><h1>Play chess.<br><em>Break the rules.</em></h1>
+ <p>Challenge a friend in a private room. Both players receive three random rule-bending cards. Make legal moves, plan your cards, and try not to get checkmated.</p>
+ <div class="control"><button id="create" class="primary">CREATE PRIVATE ROOM ↗</button></div>
+ <div class="eyebrow" style="margin-top:25px">OR JOIN A ROOM</div>
+ <div class="control" style="margin-top:10px"><input id="code" placeholder="6-CHAR CODE" maxlength="6" aria-label="Room code" autocomplete="off"><button id="join" class="secondary">JOIN MATCH</button></div>
+ <div class="error" id="lobbyError" role="alert"></div>
+ <p class="footnote">Each browser tab has its own player session. Prototype currently includes 10 playable cards from our larger approved design collection. No ranked matchmaking yet.</p>
+</section>
+<section id="game" class="hidden">
+ <div class="topbar"><div><span class="eyebrow">PRIVATE ROOM</span><strong id="room" style="display:block">------</strong></div><div><button id="copy" class="secondary">COPY INVITE LINK</button> <span id="connection" class="tag">CONNECTING</span></div></div>
+ <div class="layout">
+  <div class="boardCol"><div class="player"><div class="face" id="enemyIcon">♚</div><div><strong id="enemyLabel">Opponent</strong><small id="enemyState">Waiting...</small></div></div>
+   <div id="board" class="board" aria-label="Interactive chessboard"></div>
+   <div class="player"><div class="face" id="selfIcon">♔</div><div><strong id="selfLabel">You</strong><small id="selfState">Loading...</small></div></div><div id="help" class="helper" role="status">Choose a piece to move.</div>
+  </div>
+  <aside class="panels">
+   <div class="panel"><div class="panelHead"><div><div class="eyebrow">YOUR HAND</div><h2>3 random cards</h2></div><span id="remaining" class="tag">3 LEFT</span></div><div id="hand" class="cards"></div><p class="detail">Each card is single-use. Cards that replace a move consume your turn.</p></div>
+   <div class="panel"><div class="eyebrow">OPPONENT'S HAND</div><div id="otherhand" class="tinycards" style="margin-top:10px"></div></div>
+   <div class="panel"><div class="eyebrow">MATCH HISTORY</div><div id="log" class="log" style="margin-top:9px">No moves yet.</div></div>
+   <div class="panel"><div class="eyebrow">ACTIVE CARD EFFECTS</div><p id="effects" class="detail">None</p></div>
+  </aside>
+ </div>
+</section>
+</main>
+<footer>GAMESHUB · ILLEGAL CHESS 0.1 ALPHA · Real-time-ish updates (1.5s refresh) · Stockfish and advanced cards planned</footer>
+<div id="toast" class="hidden" role="alert"></div>
+<script type="module">
+const $=id=>document.getElementById(id);
+const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
+const icons={"pawn-sidestep":"♙","colorblind-bishop":"♗","knight-exchange":"♞","parking-ticket":"🎫","reserved-parking":"🅿","ceasefire":"⚑","double-ko":"✕","hit-and-run":"♞","queens-abdication":"♛","black-market":"⇄"};
+let session=null,g=null,selected=null,selectedCard=null,cardFrom=null,busy=false,refreshTimer=null;
+const invite=code=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(code);
+const own=p=>p&&p!=="."&&(session?.player==="w"?p===p.toUpperCase():p===p.toLowerCase());
+const turn=()=>g?.ready&&!g?.status?.done&&g?.turn===session?.player;
+function toast(message){$("toast").textContent=message;$("toast").classList.remove("hidden");clearTimeout(toast.timer);toast.timer=setTimeout(()=>$("toast").classList.add("hidden"),4000);}
+async function api(action,data){const response=await fetch("/api/illegal-chess/"+action,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(data||{})});const result=await response.json();if(!response.ok)throw Error(result.error||"Request failed");return result;}
+function boardFromFen(fen){const out=[];for(const row of fen.split(" ")[0].split("/"))for(const c of row){if(/[1-8]/.test(c))out.push(...Array(Number(c)).fill("."));else out.push(c);}return out;}
+const toSquare=i=>"abcdefgh"[i&7]+(8-(i>>4));
+async function refresh(){if(!session||busy)return;try{const data=await api("state",session);g=data;$("connection").textContent="CONNECTED";render();}catch(e){$("connection").textContent="RECONNECTING";}}
+async function begin(s){session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));history.replaceState({}, "",invite(s.room));$("lobby").classList.add("hidden");$("game").classList.remove("hidden");$("room").textContent=s.room;
+ if(refreshTimer)clearInterval(refreshTimer);await refresh();refreshTimer=setInterval(refresh,1500);}
+function clearSelection(){selected=selectedCard=cardFrom=null;}
+async function send(action){if(busy||!session)return;busy=true;try{const result=await api("action",{...session,action});g=result.view;clearSelection();}catch(e){toast(e.message);}finally{busy=false;render();refresh();}}
+function render(){
+ if(!g)return;
+ const black=session.player==="b";$("selfIcon").textContent=black?"♚":"♔";$("enemyIcon").textContent=black?"♔":"♚";
+ $("selfLabel").textContent=(black?"Black":"White")+" · You";$("enemyLabel").textContent=(black?"White":"Black")+" · Opponent";
+ $("selfState").textContent=g.status.text;$("enemyState").textContent=!g.ready?"Not joined yet":g.status.done?"Match finished":turn()?"Waiting for you":"Thinking…";
+ const pieces=boardFromFen(g.fen),board=$("board");board.replaceChildren();
+ for(let i=0;i<64;i++){
+  const vr=Math.floor(i/8),vc=i%8,rank=black?vr+1:8-vr,file=black?7-vc:vc,index=(8-rank)*8+file,p=pieces[index],name="abcdefgh"[file]+rank;
+  const square=document.createElement("button");square.type="button";square.className="square "+((vr+vc)%2?"dark":"light");square.setAttribute("aria-label",name+" "+(p==="."?"empty":p));
+  if(name===selected||name===cardFrom)square.classList.add("selected");
+  if(!selectedCard&&selected&&g.legal.some(m=>m.from===selected&&m.to===name))square.classList.add(p==="."?"hint":"capture");
+  if(p!=="."){const piece=document.createElement("span");piece.className="piece "+(p===p.toUpperCase()?"white":"black");piece.textContent=glyph[p]||"?";square.append(piece);}
+  if(vc===0){const label=document.createElement("span");label.className="coordinate";label.textContent=rank;square.append(label);}
+  if(vr===7){const label=document.createElement("span");label.className="coordinate file";label.textContent="abcdefgh"[file];square.append(label);}
+  square.addEventListener("click",()=>choose(name,p));board.append(square);
+ }
+ const hand=$("hand");hand.replaceChildren();$("remaining").textContent=g.hand.filter(x=>!x.used).length+" LEFT";
+ for(const c of g.hand){
+  const button=document.createElement("button");button.type="button";button.disabled=c.used||!turn()||busy;button.className="card"+(c.used?" used":"")+(selectedCard?.id===c.id?" active":"");
+  const icon=document.createElement("span");icon.className="symbol";icon.textContent=icons[c.id]||"♟";
+  const body=document.createElement("span");const title=document.createElement("span");title.className="name";title.textContent=c.name;
+  const rarity=document.createElement("span");rarity.className="rarity "+c.rarity.toLowerCase();rarity.textContent=c.rarity;title.append(rarity);
+  const detail=document.createElement("span");detail.className="desc";detail.textContent=c.description;body.append(title,detail);button.append(icon,body);
+  button.addEventListener("click",()=>chooseCard(c));hand.append(button);
+ }
+ const opponent=$("otherhand");opponent.replaceChildren();
+ for(const c of g.opponent){const chip=document.createElement("span");chip.textContent=c.name;chip.className=c.used?"used":"";opponent.append(chip);}
+ if(!g.opponent.length)opponent.textContent="Waiting for second player";
+ const log=$("log");log.replaceChildren();
+ for(const item of [...g.log].reverse()){const line=document.createElement("div"),b=document.createElement("b");b.textContent=item.side==="w"?"White":"Black";line.append(b,document.createTextNode(" "+item.text));log.append(line);}
+ if(!g.log.length)log.textContent="Moves and card plays appear here.";
+ const e=g.effects,active=[];if(e.freeze)active.push("🎫 Piece frozen: "+toSquare(e.freeze.square));if(e.reserved)active.push("🅿 Reserved: "+toSquare(e.reserved.square));if(e.ceasefire)active.push("⚑ Ceasefire for "+e.ceasefire+" turn(s)");
+ $("effects").textContent=active.join(" · ")||"No active effects";
+ let tip;if(!g.ready)tip="Share the invite link. Waiting for your opponent.";else if(g.status.done)tip=g.status.text;else if(!turn())tip="Opponent's turn. Review your cards.";else if(selectedCard)tip=selectedCard.name+": "+({two:cardFrom?"Select its destination.":"Select the piece first.",square:"Select an empty square.",instant:"Confirm activation.",transform:"Select your queen.",market:"Select a card to exchange."}[selectedCard.mode]||"Choose a target.");else tip=selected?"Choose a highlighted destination.":"Your turn: select a piece, or activate a card.";
+ $("help").textContent=tip;
+}
+function chooseCard(c){if(!turn())return;if(selectedCard?.id===c.id){clearSelection();render();return;}selected=null;selectedCard=c;cardFrom=null;render();
+ if(c.mode==="instant"){if(confirm("Activate "+c.name+"? This uses your turn."))send({type:"card",card:c.id});else{clearSelection();render();}}
+ if(c.mode==="market"){const choice=prompt("Exchange which slot?\n"+g.hand.map((x,i)=>(i+1)+": "+x.name+(x.used?" (used)":"")).join("\n"));
+  if(choice!==null&&/^[1-3]$/.test(choice))send({type:"card",card:c.id,slot:Number(choice)-1});else{clearSelection();render();}}
+}
+function choose(name,p){if(!turn()||busy)return;
+ if(selectedCard){
+  const c=selectedCard;
+  if(c.mode==="square"){send({type:"card",card:c.id,to:name});return;}
+  if(c.mode==="transform"){if(!own(p)||p.toLowerCase()!=="q"){toast("Select your queen");return;}const into=prompt("Promote queen into knight (n) or bishop (b)?","n")?.trim().toLowerCase();if(["n","b"].includes(into))send({type:"card",card:c.id,from:name,into});return;}
+  if(c.mode==="two"){if(!cardFrom){if(!own(p)){toast("Choose one of your pieces");return;}cardFrom=name;render();return;}if(cardFrom===name){cardFrom=null;render();return;}send({type:"card",card:c.id,from:cardFrom,to:name});return;}return;
+ }
+ if(selected){if(selected===name){selected=null;render();return;}if(own(p)){selected=name;render();return;}
+  const possible=g.legal.filter(m=>m.from===selected&&m.to===name);if(!possible.length){toast("Illegal move");return;}
+  let promotion="";if(possible.some(m=>m.promotion)){const pick=prompt("Promote to q / r / b / n?","q")?.trim().toLowerCase();if(!["q","r","b","n"].includes(pick))return;promotion=pick;}
+  send({type:"move",from:selected,to:name,promotion});return;
+ }
+ if(own(p)){selected=name;render();}else toast("Select one of your pieces");
+}
+$("create").onclick=async()=>{try{$("lobbyError").textContent="";await begin(await api("create",{}));}catch(e){$("lobbyError").textContent=e.message;}};
+$("join").onclick=async()=>{try{$("lobbyError").textContent="";await begin(await api("join",{room:$("code").value}));}catch(e){$("lobbyError").textContent=e.message;}};
+$("code").onkeydown=e=>{if(e.key==="Enter")$("join").click();};
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText(invite(session.room));toast("Invite copied");}catch{prompt("Copy this room invite:",invite(session.room));}};
+const requested=new URL(location.href).searchParams.get("room");if(requested)$("code").value=requested.toUpperCase();
+try{const saved=JSON.parse(sessionStorage.getItem("gameshub-illegal-chess")||"null");if(saved?.room&&saved?.token&&(!requested||requested.toUpperCase()===saved.room))begin(saved);}catch{}
+</script></body></html>
