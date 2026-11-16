@@ -112,11 +112,13 @@ export function gradeAnalystTurn(g,color,next,label,last,{availableMoves=[],snip
  if(!analystActive(g))return null;
  // Do not send any hidden card/effect details in explanations or recommendations.
  const snapshot={...g,analystRarities:cardRarities};
- const options=[];
- for(const m of availableMoves){
+ // Evaluate every legal ordinary option shallowly, then look one opponent
+ // move ahead for only the six most promising. Keeps multiplayer turns fast.
+ const candidates=availableMoves.map(m=>{
   const s=apply(g.s,m);
-  options.push(responseScore(snapshot,s,color,g.snipers));
- }
+  return {s,rough:scoreOutcome(snapshot,s,color,g.snipers)};
+ }).sort((a,b)=>b.rough-a.rough).slice(0,6);
+ const options=candidates.map(({s})=>responseScore(snapshot,s,color,g.snipers));
  const sniper=g.snipers?.[color];
  for(const target of sniperTargets){
   if(!sniper||typeof target!=="string")continue;
