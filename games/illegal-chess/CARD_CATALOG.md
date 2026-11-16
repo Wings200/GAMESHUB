@@ -2,7 +2,7 @@
 
 This records the original 26 approved concepts. Keep gameplay rules stable while adding server-side checks and UI. A card must **not** enter random draws unless the server implements it and it has tests.
 
-## Live gameplay cards (21)
+## Live gameplay cards (25)
 
 | Card | Rarity | Status |
 |---|---|---|
@@ -27,6 +27,10 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Delayed En Passant | Uncommon | Live (wave 3) |
 | Promotion Recall | Rare | Live (wave 3) |
 | Time Capsule | Epic | Live (wave 3) |
+| Identity Theft | Epic | Live (wave 4) |
+| Objection! | Rare | Live (wave 4) |
+| Classified Promotion | Rare | Live (wave 4) |
+| Counterfeit | Legendary | Live (wave 4) |
 
 ## Wave 2 semantics
 
@@ -40,12 +44,12 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 - **Promotion Recall (Rare):** As a pawn reaches its final rank, consume the card to remove that pawn and revive a genuinely captured friendly knight, bishop or rook on an empty original home square; this replaces the ordinary promotion.
 - **Time Capsule (Epic):** Bonus action before an ordinary non-promotion move of your chosen non-king piece. The origin is visible to both players. On your next turn you can spend the turn returning that same surviving piece to its empty origin if your king remains safe, or decline and let the marker expire.
 
-## Approved gameplay cards still awaiting implementation (4)
+## Wave 4 semantics — the last four gameplay cards
 
-- **Identity Theft (Epic):** select two friendly non-king pieces; swap their *appearances only* for the opponent's next turn. Real movement/attack rules never change.
-- **Objection!:** reaction to an opponent card activation, canceling that card's activation. The opponent retains their card and continues with a normal move. Requires on-page multiplayer reaction handling.
-- **Classified Promotion:** the promoted piece is disguised as pawn/? for the opponent until it moves, captures, checks, or is captured. Its real identity stays hidden on the server and never leaks through allowed-move lists/UI.
-- **Counterfeit (Legendary):** after opponent plays a non-reaction card, copy that ability for your following turn. The copied ability consumes Counterfeit's card slot/use and must be played instead of a normal move; if unusable, expires. No choosing which opposing ability to copy.
+- **Identity Theft (Epic):** Select two friendly non-king pieces to exchange their *appearances only* for the opponent's next completed turn. Their authentic chess movement and attacks never change, and the server exposes only an apparent board to the defender.
+- **Objection! (Rare):** Automatically offers an in-game reaction window when the opponent attempts a valid card. **Object** cancels the card without using it and forces the acting player to make a normal move. **Allow** commits the pending card once. The private card parameters are not sent to the defender.
+- **Classified Promotion (Rare):** Bonus action only when a legal pawn promotion is immediately possible. The next move must promote the pawn, and its real type stays server-only while the opposing viewer sees a disguised pawn. The disguise ends as soon as the piece moves, captures, gives check or is captured.
+- **Counterfeit (Legendary):** On your next turn after the opponent uses a nonreaction card, select Counterfeit to perform *that same card's ability* using your own choices and card. The copy costs an entire turn even when the original is a bonus action. It expires after your turn; unusable abilities cannot be copied. Copying Counterfeit or Objection! is disallowed.
 
 ## Separate next milestone: The Analyst (26th card)
 
