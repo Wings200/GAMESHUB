@@ -43,8 +43,9 @@ export function available(g){
   if(g.effects.pawnStrike>0&&s.b[m[0]].toLowerCase()==="p"&&(m[0]&7)===(m[1]&7))return false;
   return true;
  });
- // Temporary restrictions cannot artificially force stalemate/checkmate.
- return allowed.length||!ordinary.length?allowed:ordinary;
+ // Pawn Strike forbids forward pawn moves without exception, even if the player has no other moves.
+ // Preserve the old fallback for other legacy temporary modifiers.
+ return g.effects.pawnStrike>0?allowed:(allowed.length||!ordinary.length?allowed:ordinary);
 }
 // Shot one removes a target but keeps the off-board bishop. Shot two lands the bishop
 // on the captured square and deactivates the sniper. Both are alternative chess turns.
@@ -169,6 +170,7 @@ export function act(g,color,req){
   nx=patch(s,{remove:[req.to],place:[[sq(rear),enemy]],resetHalf:true},g.snipers);
   label="Pawn Ram: "+req.to+" → "+sq(rear);last=null;
  }else if(card.id==="friendly-fire"){
+  if(g.effects.ceasefire>0)throw Error("Ceasefire prevents captures, including Friendly Fire");
   const a=idx(req.from),b=idx(req.to),piece=s.b[a],target=s.b[b];
   if(!own(piece)||!own(target)||target.toLowerCase()==="k"||!friendlyCaptureShape(s,a,b))throw Error("Choose your attacking piece and a friendly non-king target in its normal capture path");
   nx=patch(s,{remove:[req.from,req.to],place:[[req.to,piece]],resetHalf:true},g.snipers);
