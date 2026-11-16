@@ -22,14 +22,30 @@ export function fen(s){
  return rows.join("/")+" "+(s.t===1?"w":"b")+" "+(cast||"-")+" "+(s.ep<0?"-":sq(s.ep))+" "+s.half+" "+s.full;
 }
 export const clone=s=>({...s,b:s.b.slice()});
-export function attacked(s,target,by){
+// Off-board bishops attack inward along one diagonal; other pieces block normally.
+export function sniperFront(s,sniper){
+ if(!sniper)return null;
+ for(let i=sniper.edge;on(i);i+=sniper.step)if(s.b[i]!==".")return {square:i,piece:s.b[i]};
+ return null;
+}
+export function sniperAttacks(s,target,sniper){
+ if(!sniper)return false;
+ for(let i=sniper.edge;on(i);i+=sniper.step){
+  if(i===target)return true;
+  if(s.b[i]!==".")break;
+ }
+ return false;
+}
+export function attacked(s,target,by,snipers=null){
+ const virtual=snipers?.[by===1?"w":"b"];
+ if(sniperAttacks(s,target,virtual))return true;
  for(let f=0;f<128;f++){if(!on(f)||side(s.b[f])!==by)continue;
   const p=s.b[f].toLowerCase();
   if(p==="p"){if(target===f-16*by-1||target===f-16*by+1)return true;continue;}
   for(const d of dirs[p]||dirs.k)for(let t=f+d;on(t);t+=d){if(t===target)return true;if(s.b[t]!=="."||p==="n"||p==="k")break;}
  }return false;
 }
-export const inCheck=(s,c=s.t)=>attacked(s,s.b.indexOf(c===1?"K":"k"),-c);
+export const inCheck=(s,c=s.t,snipers=null)=>attacked(s,s.b.indexOf(c===1?"K":"k"),-c,snipers);
 export function updateRights(s,f,t,piece,captured){
  let c=s.c;if(piece==="K")c&=~3;if(piece==="k")c&=~12;
  if(piece?.toLowerCase()==="r")c&=~(rookBits[f]||0);
@@ -43,7 +59,7 @@ export function apply(s,m){
  if(flag==="castle"){const rf=t>f?f+3:f-4,rt=t>f?f+1:f-1;b[rt]=b[rf];b[rf]=".";}
  return {b,t:-s.t,c,ep:piece.toLowerCase()==="p"&&Math.abs(t-f)===32?(t+f)/2:-1,half:piece.toLowerCase()==="p"||captured!=="."||flag==="ep"?0:s.half+1,full:s.full+(s.t===-1?1:0)};
 }
-export function pseudo(s){
+export function pseudo(s,snipers=null){
  const out=[];
  for(let f=0;f<128;f++){
   if(!on(f)||side(s.b[f])!==s.t)continue;
@@ -56,24 +72,27 @@ export function pseudo(s){
   }else{
    for(const d of dirs[p]||dirs.k)for(let t=f+d;on(t);t+=d){if(side(s.b[t])===s.t)break;add(t);if(s.b[t]!=="."||p==="n"||p==="k")break;}
    const home=s.t===1?116:4,rook=s.t===1?"R":"r",bits=s.t===1?[1,2]:[4,8];
-   if(p==="k"&&f===home&&!inCheck(s)){
-    if((s.c&bits[0])&&s.b[f+3]===rook&&s.b[f+1]==="."&&s.b[f+2]==="."&&!attacked(s,f+1,-s.t)&&!attacked(s,f+2,-s.t))add(f+2,"castle");
-    if((s.c&bits[1])&&s.b[f-4]===rook&&s.b[f-1]==="."&&s.b[f-2]==="."&&s.b[f-3]==="."&&!attacked(s,f-1,-s.t)&&!attacked(s,f-2,-s.t))add(f-2,"castle");
+   if(p==="k"&&f===home&&!inCheck(s,s.t,snipers)){
+    if((s.c&bits[0])&&s.b[f+3]===rook&&s.b[f+1]==="."&&s.b[f+2]==="."&&!attacked(s,f+1,-s.t,snipers)&&!attacked(s,f+2,-s.t,snipers))add(f+2,"castle");
+    if((s.c&bits[1])&&s.b[f-4]===rook&&s.b[f-1]==="."&&s.b[f-2]==="."&&s.b[f-3]==="."&&!attacked(s,f-1,-s.t,snipers)&&!attacked(s,f-2,-s.t,snipers))add(f-2,"castle");
    }
   }
  }return out;
 }
-export const legal=s=>pseudo(s).filter(m=>!inCheck(apply(s,m),s.t));
-export function positionKey(s){return s.b.join("")+":"+s.t+":"+s.c+":"+(s.ep>=0&&legal(s).some(m=>m[3]==="ep")?s.ep:-1);}
+export const legal=(s,snipers=null)=>pseudo(s,snipers).filter(m=>!inCheck(apply(s,m),s.t,snipers));
+export function positionKey(s,snipers=null){
+ const sig=snipers?JSON.stringify(snipers):s.sniperSignature||"";
+ return s.b.join("")+":"+s.t+":"+s.c+":"+(s.ep>=0&&legal(s,snipers).some(m=>m[3]==="ep")?s.ep:-1)+":"+sig;
+}
 export function insufficient(s){
  const p=[];for(let i=0;i<128;i++)if(on(i)&&s.b[i]!=="."&&s.b[i].toLowerCase()!=="k")p.push([s.b[i].toLowerCase(),((i>>4)+(i&7))%2]);
  return !p.length||(p.length===1&&["b","n"].includes(p[0][0]))||(p.every(x=>x[0]==="b")&&new Set(p.map(x=>x[1])).size===1);
 }
-export function stateStatus(s,history=[s],moveList=legal(s)){
- if(!moveList.length)return {done:true,text:inCheck(s)?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};
- if(insufficient(s))return {done:true,text:"Draw by insufficient material"};
- const repeats=history.filter(p=>positionKey(p)===positionKey(s)).length;
+export function stateStatus(s,history=[s],moveList=legal(s),snipers=null){
+ if(!moveList.length)return {done:true,text:inCheck(s,s.t,snipers)?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};
+ if(!snipers?.w&&!snipers?.b&&insufficient(s))return {done:true,text:"Draw by insufficient material"};
+ const repeats=history.filter(p=>positionKey(p)===positionKey(s,snipers)).length;
  if(s.half>=150)return {done:true,text:"Draw by 75-move rule"};
  if(repeats>=5)return {done:true,text:"Draw by fivefold repetition"};
- return {done:false,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s)?" · CHECK":"")};
+ return {done:false,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s,s.t,snipers)?" · CHECK":"")};
 }
