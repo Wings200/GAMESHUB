@@ -7,6 +7,10 @@ function mark(id,accent){
  const ray=(x1,y1,x2,y2)=>`<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${accent}" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>`;
  switch(id){
   case "pawn-sidestep":return glyph("♙",170,177)+`<path d="M104 192h-58m0 0 20-20m-20 20 20 20M236 192h58m0 0-20-20m20 20-20 20" stroke="${accent}" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  case "pawn-ram":return glyph("♙",125,199,113)+glyph("♟",222,118,91)+`<path d="M174 144L220 85m0 0-30 11m30-11-4 30" fill="none" stroke="${accent}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M69 203l204-146" stroke="${accent}" stroke-opacity=".34" stroke-width="5" stroke-dasharray="10 7"/>`;
+  case "friendly-fire":return glyph("♖",111,192,124)+glyph("♙",236,170,105)+`<path d="M174 56l22 43-44-11 33 38-46 11 49 11-13 49 34-35 29 35-11-48 48-14-50-12 21-42-40 22Z" fill="${accent}" opacity=".8"/>`;
+  case "pawn-strike":return glyph("♙",110,190,109)+glyph("♟",233,190,109)+`<rect x="57" y="93" width="226" height="61" rx="12" fill="#0d1427" stroke="${accent}" stroke-width="6"/><text x="170" y="138" text-anchor="middle" font-size="40" font-weight="900" font-family="system-ui" fill="${accent}">ON STRIKE</text>`;
+
   case "voluntary-eviction":return glyph("♟",170,169)+`<path d="M82 185l176 0-22 15-22-6-28 16-29-16-27 16-29-15Z" fill="#08111e"/>`+ray(110,194,235,224);
   case "colorblind-bishop":return`<rect x="106" y="55" width="128" height="128" fill="#eef1e9" opacity=".9"/><rect x="106" y="55" width="64" height="64" fill="#172336"/><rect x="170" y="119" width="64" height="64" fill="#172336"/>`+glyph("♗",170,177,126);
   case "knight-exchange":return glyph("♞",106,169,91)+glyph("♙",237,169,85)+`<path d="M146 84h52l-12-13m12 13-12 14M194 196h-51l12-13m-12 13 12 13" stroke="${accent}" stroke-width="6" fill="none" stroke-linecap="round"/>`;

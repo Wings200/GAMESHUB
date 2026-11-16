@@ -4,6 +4,9 @@ import {parseFen,START_FEN,clone,on,side,sq,idx,isSquare,legal,apply,inCheck,upd
 
 export const CARDS=[
  {id:"pawn-sidestep",name:"Pawn Sidestep",rarity:"Common",mode:"two",description:"Slide a pawn sideways one empty square. Uses your turn."},
+ {id:"pawn-ram",name:"Pawn Ram",rarity:"Common",mode:"two",description:"Push an opposing pawn facing your pawn one square backward into empty space. Your pawn stays put. Uses your turn."},
+ {id:"friendly-fire",name:"Friendly Fire",rarity:"Uncommon",mode:"two",description:"Capture one of your own non-king pieces with another of your pieces using its normal capture movement. Uses your turn."},
+ {id:"pawn-strike",name:"Pawn Strike",rarity:"Rare",mode:"instant",description:"Both sides' pawns stop advancing for one full round, but diagonal captures remain legal. Play your normal move afterward."},
  {id:"voluntary-eviction",name:"Voluntary Eviction",rarity:"Common",mode:"one",description:"Remove one of your non-king pieces to clear space. Uses your turn."},
  {id:"colorblind-bishop",name:"Colorblind Bishop",rarity:"Uncommon",mode:"two",description:"Step your bishop one empty orthogonal square, changing square color."},
  {id:"knight-exchange",name:"Knight Exchange",rarity:"Uncommon",mode:"two",description:"Swap your knight and pawn a knight-jump apart."},
@@ -27,7 +30,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0},moveCount:0,swaps:0,last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0},moveCount:0,swaps:0,last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -37,10 +40,12 @@ export function available(g){
   if(g.effects.freeze?.color===col&&m[0]===g.effects.freeze.square)return false;
   if(g.effects.reserved?.color===col&&m[1]===g.effects.reserved.square)return false;
   if(g.effects.ceasefire>0&&capture)return false;
+  if(g.effects.pawnStrike>0&&s.b[m[0]].toLowerCase()==="p"&&(m[0]&7)===(m[1]&7))return false;
   return true;
  });
- // Temporary restrictions cannot artificially force stalemate/checkmate.
- return allowed.length||!ordinary.length?allowed:ordinary;
+ // Pawn Strike forbids forward pawn moves without exception, even if the player has no other moves.
+ // Preserve the old fallback for other legacy temporary modifiers.
+ return g.effects.pawnStrike>0?allowed:(allowed.length||!ordinary.length?allowed:ordinary);
 }
 // Shot one removes a target but keeps the off-board bishop. Shot two lands the bishop
 // on the captured square and deactivates the sniper. Both are alternative chess turns.
@@ -75,7 +80,12 @@ export function playerView(g,color){
 }
 function requireTurn(g,color){if(!g.players.b)throw Error("Wait for a second player");if(status(g).done)throw Error("Game is over");if(current(g.s)!==color)throw Error("Not your turn");}
 function owned(g,color,id){const item=g.hands[color].find(x=>x.id===id&&!x.used);if(!item)throw Error("This card isn't available");return item;}
-function tick(g,color){if(g.effects.freeze?.color===color)g.effects.freeze=null;if(g.effects.reserved?.color===color)g.effects.reserved=null;if(g.effects.ceasefire>0)g.effects.ceasefire--;}
+function tick(g,color){
+ if(g.effects.freeze?.color===color)g.effects.freeze=null;
+ if(g.effects.reserved?.color===color)g.effects.reserved=null;
+ if(g.effects.ceasefire>0)g.effects.ceasefire--;
+ if(g.effects.pawnStrike>0)g.effects.pawnStrike--;
+}
 function commit(g,color,next,label,last=null,effect=null){
  tick(g,color);next.sniperSignature=JSON.stringify(g.snipers||{w:null,b:null});g.s=next;g.history.push(next);g.last=last;g.log.push({side:color,text:label});
  if(effect?.kind==="freeze")g.effects.freeze={color:color==="w"?"b":"w",square:effect.square};
@@ -107,6 +117,23 @@ function pair(req){if(!isSquare(req.from)||!isSquare(req.to))throw Error("Choose
 const directions={NE:-15,NW:-17,SE:17,SW:15};
 function sniperPosition(from,direction){const start=idx(from),delta=directions[direction];if(!delta)throw Error("Choose a valid diagonal");let edge=start;while(on(edge+delta))edge+=delta;return {origin:from,direction,edge,step:-delta};}
 function jump(a,b){const dx=Math.abs((idx(a)&7)-(idx(b)&7)),dy=Math.abs((idx(a)>>4)-(idx(b)>>4));return dx===2&&dy===1||dx===1&&dy===2;}
+// Geometry for a capture against a friendly piece. The ordinary move generator
+// correctly rejects friendly targets, so verify movement here and validate the
+// resulting board with patch() for all king/check/castling constraints.
+function friendlyCaptureShape(s,a,b){
+ const p=s.b[a].toLowerCase(),dx=(b&7)-(a&7),dy=(b>>4)-(a>>4);
+ const ax=Math.abs(dx),ay=Math.abs(dy);
+ if(p==="p")return ax===1&&dy===-s.t;
+ if(p==="n")return ax===1&&ay===2||ax===2&&ay===1;
+ if(p==="k")return Math.max(ax,ay)===1;
+ if(p==="b"&&ax!==ay||p==="r"&&(dx!==0&&dy!==0)||p==="q"&&!(ax===ay||dx===0||dy===0))return false;
+ if(!["b","r","q"].includes(p)||ax+ay===0)return false;
+ const dirX=Math.sign(dx),dirY=Math.sign(dy);
+ for(let x=(a&7)+dirX,y=(a>>4)+dirY;x!==(b&7)||y!==(b>>4);x+=dirX,y+=dirY){
+  if(s.b[y*16+x]!==".")return false;
+ }
+ return true;
+}
 export function act(g,color,req){
  requireTurn(g,color);if(!req||typeof req!=="object")throw Error("Invalid action");
  const s=g.s;g.snipers ||= {w:null,b:null};
@@ -132,11 +159,22 @@ export function act(g,color,req){
  const token=owned(g,color,card.id);
  const own=p=>side(p)===s.t;
  let nx,label,last=null,effect=null;
- if(["pawn-sidestep","colorblind-bishop","knight-exchange","double-ko","hit-and-run"].includes(card.id))pair(req);
+ if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run"].includes(card.id))pair(req);
  if(card.id==="pawn-sidestep"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="p"||!own(p)||s.b[b]!=="."||(a>>4)!==(b>>4)||Math.abs((a&7)-(b&7))!==1)throw Error("Choose a pawn and an empty neighboring file");
   nx=patch(s,{remove:[req.from],place:[[req.to,p]],resetHalf:true},g.snipers);label="Pawn Sidestep: "+req.from+" → "+req.to;last={color,from:a,to:b};
+ }else if(card.id==="pawn-ram"){
+  const a=idx(req.from),b=idx(req.to),p=s.b[a],enemy=s.b[b],rear=b-16*s.t;
+  if(!own(p)||p.toLowerCase()!=="p"||b!==a-16*s.t||enemy.toLowerCase()!=="p"||side(enemy)!==-s.t||!on(rear)||s.b[rear]!==".")throw Error("Pawn Ram needs two opposing pawns face-to-face with one empty square behind the enemy pawn");
+  nx=patch(s,{remove:[req.to],place:[[sq(rear),enemy]],resetHalf:true},g.snipers);
+  label="Pawn Ram: "+req.to+" → "+sq(rear);last=null;
+ }else if(card.id==="friendly-fire"){
+  if(g.effects.ceasefire>0)throw Error("Ceasefire prevents captures, including Friendly Fire");
+  const a=idx(req.from),b=idx(req.to),piece=s.b[a],target=s.b[b];
+  if(!own(piece)||!own(target)||target.toLowerCase()==="k"||!friendlyCaptureShape(s,a,b))throw Error("Choose your attacking piece and a friendly non-king target in its normal capture path");
+  nx=patch(s,{remove:[req.from,req.to],place:[[req.to,piece]],resetHalf:true},g.snipers);
+  label="Friendly Fire: "+req.from+" x "+req.to;last={color,from:a,to:b,square:b,piece};
  }else if(card.id==="colorblind-bishop"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="b"||!own(p)||s.b[b]!=="."||Math.abs((a&7)-(b&7))+Math.abs((a>>4)-(b>>4))!==1)throw Error("Choose your bishop and one orthogonally adjacent empty square");
@@ -170,6 +208,10 @@ export function act(g,color,req){
   nx=patch(s,{remove:[req.from]},g.snipers);
   g.snipers[color]={...sniper,shots:0,revealed:false};
   label="Bishop Sniper deployed";last=null;
+ }else if(card.id==="pawn-strike"){
+  if(g.effects.pawnStrike>0)throw Error("Pawn Strike is already active");
+  g.effects.pawnStrike=2;
+  token.used=true;g.log.push({side:color,text:"Pawn Strike — both sides' pawns cannot advance for one round · bonus action"});return;
  }else if(card.id==="parking-ticket"){
   if(!g.last||g.last.color===color||!on(g.last.to)||side(s.b[g.last.to])!==-s.t)throw Error("No eligible enemy last-moved piece");
   g.effects.freeze={color:color==="w"?"b":"w",square:g.last.to};

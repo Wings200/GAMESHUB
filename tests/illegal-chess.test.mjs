@@ -166,3 +166,50 @@ test("Every 20 turn-consuming actions swaps player control and their unused hand
  assert.equal(playerView(g,"w").swaps,1);
  assert.equal(status(g).done,false);
 });
+
+test("Pawn Ram pushes an enemy pawn backward but leaves the attacking pawn in place",()=>{
+ const g=room();give(g,"w","pawn-ram");
+ g.s=parseFen("4k3/8/8/4p3/4P3/8/8/4K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"pawn-ram",from:"e4",to:"e5"});
+ assert.equal(g.s.b[idx("e4")],"P","Attacker stays on its square");
+ assert.equal(g.s.b[idx("e5")],".","Enemy is pushed away");
+ assert.equal(g.s.b[idx("e6")],"p","Enemy is pushed toward its home rank");
+ assert.equal(g.hands.w[0].used,true);
+ const fail=room();give(fail,"w","pawn-ram");
+ fail.s=parseFen("4k3/8/4n3/4p3/4P3/8/8/4K3 w - - 0 1");fail.history=[fail.s];
+ assert.throws(()=>act(fail,"w",{type:"card",card:"pawn-ram",from:"e4",to:"e5"}),/Pawn Ram needs/,"Pushing into an occupied square is forbidden");
+});
+test("Friendly Fire captures a friendly non-king with normal movement, not through blockers",()=>{
+ const g=room();give(g,"w","friendly-fire");
+ g.s=parseFen("4k3/8/8/8/8/B7/8/R3K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"friendly-fire",from:"a1",to:"a3"});
+ assert.equal(g.s.b[idx("a1")],".");
+ assert.equal(g.s.b[idx("a3")],"R");
+ assert.equal(g.hands.w[0].used,true);
+ const fail=room();give(fail,"w","friendly-fire");
+ fail.s=parseFen("4k3/8/8/8/8/B7/P7/R3K3 w - - 0 1");fail.history=[fail.s];
+ assert.throws(()=>act(fail,"w",{type:"card",card:"friendly-fire",from:"a1",to:"a3"}),/normal capture path/);
+ const king=room();give(king,"w","friendly-fire");
+ king.s=parseFen("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1");king.history=[king.s];
+ assert.throws(()=>act(king,"w",{type:"card",card:"friendly-fire",from:"e2",to:"e1"}),/friendly non-king/);
+});
+test("Pawn Strike blocks both players' pawn advances for a full round, but not their captures",()=>{
+ const g=room();give(g,"w","pawn-strike");
+ const count=g.moveCount;
+ act(g,"w",{type:"card",card:"pawn-strike"});
+ assert.equal(g.moveCount,count,"Instant card is a bonus action");
+ assert.equal(g.s.t,1,"Player still has an ordinary turn");
+ assert.equal(playerView(g,"w").effects.pawnStrike,2);
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="e2"&&m.to==="e4"),false);
+ move(g,"w","g1","f3");
+ assert.equal(g.effects.pawnStrike,1);
+ assert.equal(playerView(g,"b").legal.some(m=>m.from==="e7"&&m.to==="e5"),false);
+ move(g,"b","g8","f6");
+ assert.equal(g.effects.pawnStrike,0);
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="e2"&&m.to==="e4"),true);
+ const capture=room();give(capture,"w","pawn-strike");
+ capture.s=parseFen("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1");capture.history=[capture.s];
+ act(capture,"w",{type:"card",card:"pawn-strike"});
+ assert.equal(playerView(capture,"w").legal.some(m=>m.from==="e4"&&m.to==="d5"),true,"Captures remain legal");
+ assert.equal(playerView(capture,"w").legal.some(m=>m.from==="e4"&&m.to==="e5"),false);
+});

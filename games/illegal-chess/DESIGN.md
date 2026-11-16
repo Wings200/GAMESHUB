@@ -1,11 +1,13 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.2
+## Live in Alpha 0.3
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
 - **Bonus actions:** Parking Ticket, Reserved Parking and Ceasefire apply before the player's ordinary move. They do not consume the turn, but each card can be used only once.
 - **Bishop Sniper:** place one bishop completely off-board in one of four directions (NE/NW/SE/SW). The diagonal stays secret before the first shot. **First shot:** capture the first unobstructed enemy piece without moving the bishop; reveal the diagonal to the defender. **Second shot:** capture the next first unobstructed enemy piece, then teleport the bishop onto its captured square, ending sniper mode. A friendly or enemy piece blocks everything behind it; the off-board firing ray counts for checks and king safety before the second shot. Each shot uses one chess turn.
+- **Card expansion wave 1:** Pawn Ram (Common), Friendly Fire (Uncommon), and Pawn Strike (Rare) are now playable with their original accepted rules, custom illustrations, and regression coverage. Pawn Strike is a bonus action that blocks both players' pawn *forward* moves for the acting turn and next reply while keeping diagonal captures legal. Friendly Fire honors king safety and cannot target a friendly king.
+- **Approved catalog:** See [CARD_CATALOG.md](./CARD_CATALOG.md) for all 26 original approved concepts, remaining rules and the separate Analyzer milestone.
 - **Optional sniper test match** gives *both* players Bishop Sniper plus two random other cards. Standard games keep three random rarity-weighted draws. Test matches are unranked like the rest of Alpha.
 
 ## Future: cinematic Bishop Sniper shot
