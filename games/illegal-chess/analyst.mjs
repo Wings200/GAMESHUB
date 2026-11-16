@@ -1,101 +1,46 @@
-// Illegal Chess: fast, deterministic, server-only, card-aware heuristic move estimator.
-// This is NOT Stockfish, a solved search, or a promise of objectively best play.
-// It compares the completed move to available ordinary moves and off-board sniper
-// shots, while weighing cards, current modifiers, king safety and the color swap.
-import {apply,legal,inCheck,side,on,idx,sq} from "./engine.mjs";
+// Authoritative, privacy-safe Stockfish review input for Illegal Chess.
+// The browser runs real Stockfish 19 lite via a same-origin engine worker.
+// The multiplayer server never invents a "Best" grade and never sends
+// hidden piece identities or active sniper directions as analysis FENs.
+import {legal,apply,fen,sq,on,side} from "./engine.mjs";
 
-const values={p:100,n:320,b:340,r:510,q:940,k:0};
-const cardValues={Common:10,Uncommon:18,Rare:25,Epic:38,Legendary:48};
-const nextColor=c=>c==="w"?"b":"w";
 export const ANALYST_GRADES=["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"];
-export const ANALYST_SYMBOLS={Book:"📖",Best:"★",Excellent:"!",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!"};
+export const ANALYST_SYMBOLS={Book:"▤",Best:"★",Excellent:"👍",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!",Great:"!",MissedWin:"✕",Custom:"✦"};
 export const analystActive=g=>["w","b"].some(c=>g.hands?.[c]?.some(card=>card.id==="the-analyst"&&!card.used));
 
-// Use a conservative positional heuristic: material, center, king safety,
-// pieces participating, and pawn advancement. Not a chess-engine eval.
-function evaluate(g,s,pov,snipers=g.snipers){
- let score=0;
- for(let i=0;i<128;i++){
-  if(!on(i))continue;
-  const p=s.b[i];if(!p||p===".")continue;
-  const sign=side(p)===(pov==="w"?1:-1)?1:-1,type=p.toLowerCase();
-  const rank=8-(i>>4),file=i&7;
-  const center=Math.max(0,5-(Math.abs(file-3.5)+Math.abs(rank-4.5))*.85);
-  const opening=s.full<=12;
-  let bonus=type==="n"||type==="b"?center*7:type==="p"?center*2.3+((p==="P"?rank-2:7-rank)*3.5):type==="q"?center*1.1:0;
-  if(opening&&(type==="n"||type==="b")){
-   // Developing a knight/bishop is normally more useful than moving the king.
-   const home=type==="n"?(sign===1&&pov==="w"||sign===-1&&pov==="b"?["b1","g1"]:["b8","g8"]):
-     (sign===1&&pov==="w"||sign===-1&&pov==="b"?["c1","f1"]:["c8","f8"]);
-   if(!home.includes(sq(i)))bonus+=22;
-  }
-  if(type==="k"&&opening){
-   const white=p==="K",square=sq(i),home=white?"e1":"e8";
-   const castles=white?["g1","c1"]:["g8","c8"];
-   // The previous heuristic penalized Ke2 by ~2 centipawns, which could
-   // falsely declare a third-move king wander "Best". Penalize the real
-   // opening cost: exposure, lost castling plans and lost development time.
-   if(square!==home&&!castles.includes(square)){
-    const taper=Math.max(0,(15-s.full)/14);
-    bonus-=200*taper+center*8;
-   }else if(castles.includes(square))bonus+=48;
-   else bonus+=12;
-  }
-  score+=sign*(values[type]+bonus);
- }
- // Virtual off-board bishop is not represented in the board's FEN.
- for(const c of ["w","b"])if(snipers?.[c]){
-  const sign=c===pov?1:-1;
-  score+=sign*(335+(snipers[c].shots?25:0));
-  const shooter=snipers[c],ray=[];for(let p=shooter.edge;on(p);p+=shooter.step){
-   if(s.b[p]!=="."){ray.push(s.b[p]);break;}
-  }
-  if(ray.length&&side(ray[0])===(c==="w"?-1:1))score+=sign*Math.min(100,values[ray[0].toLowerCase()]*.15);
- }
- if(inCheck(s,pov==="w"?1:-1,snipers))score-=75;
- if(inCheck(s,pov==="w"?-1:1,snipers))score+=75;
- for(const c of ["w","b"]){
-  const sign=c===pov?1:-1,hand=g.hands?.[c]||[];
-  for(const h of hand)if(!h.used&&h.id!=="the-analyst"){
-   const rarity=g.analystRarities?.[h.id]||"Uncommon";
-   score+=sign*(cardValues[rarity]||18);
-  }
-  if(g.effects?.insurance?.[c])score+=sign*35;
-  if(g.effects?.timeCapsule?.color===c)score+=sign*24;
-  if(g.effects?.freeze?.color===c)score-=sign*40;
-  if(g.effects?.reserved?.color===c)score-=sign*20;
-  if(g.copyOffers?.[c]&&hand.some(h=>h.id==="counterfeit"&&!h.used))score+=sign*35;
- }
- const strike=g.effects?.pawnStrike||0;
- if(strike&&s.t===(pov==="w"?1:-1))score-=12*strike;
- return score;
+function stockfishSafe(g){
+ if(Object.values(g.snipers||{}).some(Boolean))return false;
+ if(g.identityTheft)return false;
+ if(Object.values(g.classified||{}).some(Boolean))return false;
+ const e=g.effects||{};
+ if(e.freeze||e.reserved||e.ceasefire||e.pawnStrike||e.timeCapsule||e.delayedEp||e.classifiedArmed)return false;
+ if(Object.values(e.insurance||{}).some(Boolean))return false;
+ return true;
 }
-function isMate(s,snipers){
- // Only check mate after a move gives check; avoid expensive generation otherwise.
- return inCheck(s,s.t,snipers)&&legal(s,snipers).length===0;
+export function gradeAnalystTurn(g,color,next,label,last){
+ if(!analystActive(g))return null;
+ const piece=Number.isInteger(last?.to)&&on(last.to)?next.b[last.to]:".";
+ const square=piece!=="."&&side(piece)===(color==="w"?1:-1)?sq(last.to):null;
+ const common={side:color,turn:(g.moveCount||0)+1,move:label,square,estimated:false};
+ const custom={...common,status:"custom",grade:"Custom Rule",symbol:ANALYST_SYMBOLS.Custom,
+  reason:"Custom card rules or hidden pieces are active. Stockfish only evaluates standard chess moves.",square:null};
+ if(!stockfishSafe(g)||!last||!Number.isInteger(last.from)||!Number.isInteger(last.to))return custom;
+ // A card can alter the board using a legal-looking move. Only the literal
+ // normal chess move route is eligible, and its resulting FEN must match
+ // the standard move generator exactly (including castling, ep, promotion).
+ if(!label.startsWith(sq(last.from)+" → "+sq(last.to)))return custom;
+ const possible=legal(g.s).find(m=>{
+  if(m[0]!==last.from||m[1]!==last.to)return false;
+  try{return fen(apply(g.s,m))===fen(next);}catch{return false;}
+ });
+ if(!possible||!square)return custom;
+ return {...common,status:"pending",grade:"Analyzing",symbol:null,
+  reason:"Stockfish 19 is comparing this move with the engine's preferred move.",
+  beforeFen:fen(g.s),uci:sq(possible[0])+sq(possible[1])+(possible[2]||"")};
 }
-function scoreOutcome(g,s,color,snipers=g.snipers){
- const willSwap=(g.moveCount||0)%20===19;
- const mate=isMate(s,snipers);
- const humanColor=willSwap&&!mate?nextColor(color):color;
- return mate?(s.t===(color==="w"?-1:1)?40000:-40000):evaluate(g,s,humanColor,snipers);
-}
-// Minimax-lite: penalize the worst *immediate legal board reply*. Bounded,
-// not a full variation search and intentionally avoids hidden card disclosure.
-function responseScore(g,s,color,snipers){
- const base=scoreOutcome(g,s,color,snipers);
- if(isMate(s,snipers))return base;
- const replies=legal(s,snipers);
- if(!replies.length)return base;
- let worst=base;
- for(const m of replies){
-  // Chess only here: card threats are reflected by resource/effect estimates.
-  const n=apply(s,m);
-  const reply=scoreOutcome(g,n,color,snipers);
-  if(reply<worst)worst=reply;
- }
- return base*.68+worst*.32;
-}
+
+// Retained for compatibility with historical tests/readers; actual ratings
+// are now computed using Stockfish, not this threshold function.
 export function classifyAnalyst({gap,book=false,brilliant=false,mate=false}){
  if(mate)return "Best";
  if(book&&gap<=90)return "Book";
@@ -106,65 +51,4 @@ export function classifyAnalyst({gap,book=false,brilliant=false,mate=false}){
  if(gap<=145)return "Inaccuracy";
  if(gap<=290)return "Mistake";
  return "Blunder";
-}
-const commonOpening=(g,last,label)=>{
- if((g.moveCount||0)>7||!last||!Number.isInteger(last.from)||!Number.isInteger(last.to))return false;
- if(label.includes(":")||Object.values(g.snipers||{}).some(Boolean)||g.effects?.ceasefire||g.effects?.pawnStrike)return false;
- const move=sq(last.from)+sq(last.to);
- return ["e2e4","d2d4","g1f3","c2c4","e7e5","e7e6","c7c5","g8f6","d7d5","g7g6","b8c6","f1c4","f8c5","b1c3"].includes(move);
-};
-function materialOf(s,color){
- let total=0;for(let i=0;i<128;i++){if(on(i)&&side(s.b[i])===(color==="w"?1:-1))total+=values[s.b[i].toLowerCase()];}
- return total;
-}
-const reasons={
- Book:"Familiar opening development; a reasonable first plan.",
- Best:"Among the strongest moves found by the local position estimate.",
- Excellent:"Very close to the top local alternative.",
- Good:"A useful move that keeps the position competitive.",
- Inaccuracy:"A stronger local alternative appears available.",
- Mistake:"This appears to give up meaningful positional or material value.",
- Blunder:"The estimate found a substantially better alternative.",
- Brilliant:"A promising material sacrifice with strong local compensation."
-};
-export function gradeAnalystTurn(g,color,next,label,last,{availableMoves=[],sniperTargets=[],cardRarities={}}={}){
- if(!analystActive(g))return null;
- // Do not send any hidden card/effect details in explanations or recommendations.
- const snapshot={...g,analystRarities:cardRarities};
- // Evaluate every legal ordinary option shallowly, then look one opponent
- // move ahead for only the six most promising. Keeps multiplayer turns fast.
- const candidates=availableMoves.map(m=>{
-  const s=apply(g.s,m);
-  return {s,rough:scoreOutcome(snapshot,s,color,g.snipers)};
- }).sort((a,b)=>b.rough-a.rough).slice(0,6);
- const options=candidates.map(({s})=>responseScore(snapshot,s,color,g.snipers));
- const sniper=g.snipers?.[color];
- for(const target of sniperTargets){
-  if(!sniper||typeof target!=="string")continue;
-  const b=g.s.b.slice(),at=idx(target),landing=(sniper.shots||0)>=1;
-  b[at]=landing?(color==="w"?"B":"b"):".";
-  const sn=landing?{...g.snipers,[color]:null}:g.snipers;
-  options.push(responseScore(snapshot,{...g.s,b,t:-g.s.t,ep:-1,half:0},color,sn));
- }
- const played=responseScore(snapshot,next,color,g.snipers);
- const best=options.length?Math.max(played,...options):played;
- const gap=Math.max(0,Math.round(best-played));
- const mate=isMate(next,g.snipers);
- const sac=materialOf(next,color)<materialOf(g.s,color)-270;
- const brilliant=sac&&!mate&&played>=best-50&&played>evaluate(snapshot,g.s,color,g.snipers)+20;
- const book=commonOpening(g,last,label);
- let grade=classifyAnalyst({gap,book,brilliant,mate});
- const moved=Number.isInteger(last?.from)?g.s.b[last.from]:".";
- const ordinaryKingWalk=moved.toLowerCase()==="k"&&g.s.full<=9&&
-  !inCheck(g.s,g.s.t,g.snipers)&&!mate&&
-  !(Math.abs((last?.to??0)-last.from)===2)&&
-  availableMoves.some(m=>g.s.b[m[0]].toLowerCase()!=="k");
- // A shallow top-six search can miss long-term king danger. Never award
- // a top grade to an unforced, non-castling king walk in the opening.
- if(ordinaryKingWalk&&["Book","Best","Excellent","Good","Brilliant"].includes(grade))grade="Inaccuracy";
- const reason=ordinaryKingWalk&&grade==="Inaccuracy"?
-  "Moving an unthreatened king early usually loses castling and exposes it; developing pieces is safer.":
-  mate?"Checkmate ends the match.":reasons[grade];
- const square=Number.isInteger(last?.to)&&on(last.to)&&next.b[last.to]!=="."?sq(last.to):null;
- return {side:color,turn:(g.moveCount||0)+1,move:label,grade,symbol:ANALYST_SYMBOLS[grade],square,reason,estimated:true};
 }
