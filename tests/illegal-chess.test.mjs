@@ -356,3 +356,93 @@ test("Time Capsule does not overwrite a square occupied by the opponent",()=>{
  assert.equal(g.effects.timeCapsule,null);
  assert.equal(g.s.b[idx("a1")],"n");
 });
+
+test("Identity Theft swaps ONLY opponent appearances for exactly their next completed turn",()=>{
+ const g=room();give(g,"w","identity-theft");
+ g.s=parseFen("4k3/8/8/8/8/8/2N1B3/4K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"identity-theft",from:"c2",to:"e2"});
+ assert.equal(g.s.b[idx("c2")],"N");assert.equal(g.s.b[idx("e2")],"B");
+ assert.ok(playerView(g,"w").fen.startsWith("4k3/8/8/8/8/8/2N1B3/4K3"));
+ assert.ok(playerView(g,"b").fen.startsWith("4k3/8/8/8/8/8/2B1N3/4K3"),"Opponent sees swapped images");
+ assert.equal(Object.hasOwn(playerView(g,"b"),"identityTheft"),false,"Real identity mapping stays secret");
+ move(g,"b","e8","d8");
+ assert.equal(g.identityTheft,null,"Appearance expires at the end of the opponent's turn");
+ assert.ok(playerView(g,"b").fen.includes("2N1B3"));
+});
+test("Classified Promotion hides the true piece from FEN and last-move metadata until it moves",()=>{
+ const g=room();give(g,"w","classified-promotion");
+ g.s=parseFen("7k/P7/8/8/8/8/8/7K w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"classified-promotion"});
+ assert.equal(g.s.t,1,"Arming is a bonus action");
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="h1"),false,"Must promote now");
+ move(g,"w","a7","a8","n");
+ assert.equal(g.s.b[idx("a8")],"N");
+ assert.equal(g.classified.w?.piece,"N");
+ assert.ok(playerView(g,"b").fen.startsWith("P6k"),"Enemy sees a pawn-shaped disguise");
+ assert.equal(playerView(g,"b").last.piece,"P","Last move does not leak promoted type");
+ assert.ok(!JSON.stringify(playerView(g,"b").log).includes("= N"));
+ move(g,"b","h8","g8");
+ move(g,"w","a8","b6");
+ assert.equal(g.classified.w,null,"Piece moving reveals its type");
+ assert.ok(playerView(g,"b").fen.includes("/1N6/"));
+});
+test("A secretly promoted piece reveals itself when it directly gives check",()=>{
+ const g=room();give(g,"w","classified-promotion");
+ g.s=parseFen("7k/P7/8/8/8/8/8/7K w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"classified-promotion"});
+ move(g,"w","a7","a8","q");
+ assert.equal(g.classified.w,null,"Queen immediately checks king across the eighth rank");
+ assert.ok(playerView(g,"b").fen.startsWith("Q6k"));
+ assert.match(playerView(g,"b").status.text,/CHECK/);
+});
+test("Objection! intercepts a card without consuming it and forces a normal move",()=>{
+ const g=room();give(g,"w","voluntary-eviction");give(g,"b","objection");
+ act(g,"w",{type:"card",card:"voluntary-eviction",from:"g1"});
+ assert.ok(g.pendingReaction);
+ assert.equal(g.s.b[idx("g1")],"N","Board not mutated while reaction is pending");
+ assert.equal(g.hands.w[0].used,false);
+ assert.equal(playerView(g,"b").pendingReaction.canReact,true);
+ assert.equal(playerView(g,"w").legal.length,0);
+ assert.equal(JSON.stringify(playerView(g,"b")).includes('"from":"g1"'),false,"Pending card parameters must not be exposed");
+ assert.throws(()=>move(g,"w","e2","e4"),/Waiting for the opponent/);
+ act(g,"b",{type:"reaction",decision:"object"});
+ assert.equal(g.pendingReaction,null);
+ assert.equal(g.hands.b[0].used,true);
+ assert.equal(g.hands.w[0].used,false,"Opponent retains rejected card");
+ assert.equal(g.moveCount,0);
+ assert.throws(()=>act(g,"w",{type:"card",card:"voluntary-eviction",from:"g1"}),/requires a normal chess move/);
+ move(g,"w","e2","e4");
+ assert.equal(g.cardBlocked,null);
+ assert.equal(g.s.b[idx("g1")],"N");
+});
+test("Declining Objection! authorizes the original card once without consuming the reaction card",()=>{
+ const g=room();give(g,"w","voluntary-eviction");give(g,"b","objection");
+ act(g,"w",{type:"card",card:"voluntary-eviction",from:"b1"});
+ act(g,"b",{type:"reaction",decision:"allow"});
+ assert.equal(g.s.b[idx("b1")],".");
+ assert.equal(g.hands.w[0].used,true);
+ assert.equal(g.hands.b[0].used,false);
+ assert.equal(g.moveCount,1);
+ assert.equal(g.pendingReaction,null);
+});
+test("Counterfeit copies the last opposing card on the following turn, using its own card and turn",()=>{
+ const g=room();give(g,"w","voluntary-eviction");give(g,"b","counterfeit");
+ act(g,"w",{type:"card",card:"voluntary-eviction",from:"g1"});
+ assert.equal(playerView(g,"b").counterfeitOffer?.id,"voluntary-eviction");
+ act(g,"b",{type:"card",card:"counterfeit",from:"g8"});
+ assert.equal(g.s.b[idx("g8")],".");
+ assert.equal(g.hands.b[0].used,true);
+ assert.equal(g.moveCount,2);
+ assert.equal(g.s.t,1,"Copy uses Black's entire chess turn");
+ assert.equal(playerView(g,"b").counterfeitOffer,null,"Copy offer expires after acting");
+});
+test("Copying a bonus card via Counterfeit consumes the full turn and retains its duration",()=>{
+ const g=room();give(g,"w","pawn-strike");give(g,"b","counterfeit");
+ act(g,"w",{type:"card",card:"pawn-strike"});
+ move(g,"w","g1","f3");
+ assert.equal(playerView(g,"b").counterfeitOffer?.id,"pawn-strike");
+ act(g,"b",{type:"card",card:"counterfeit"});
+ assert.equal(g.s.t,1,"Black has spent its turn copying the bonus");
+ assert.equal(g.effects.pawnStrike,2,"Copied card affects both forthcoming turns");
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="e2"&&m.to==="e4"),false);
+});
