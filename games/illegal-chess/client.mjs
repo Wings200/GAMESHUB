@@ -327,23 +327,28 @@ async function fire(target){
  if(option)await send({type:"sniper-shot",to:target});
 }
 async function selectCard(card){
- if(!myTurn()||busy||card.used)return;
+ if(!myTurn()||busy||card.used||card.id==="objection")return;
+ if(card.id==="counterfeit"){
+  const source=game.counterfeitOffer;
+  if(!source){flash("No opponent card to copy on this turn.");return;}
+  card={...card,mode:source.id==="classified-promotion"?"classified-copy":source.id==="time-capsule"||source.id==="delayed-en-passant"?"two":source.mode,copyOf:source.id,description:"Copy "+source.name+" instead of your normal chess move."};
+ }
  if(selectedCard?.id===card.id){clearSelection();render();return;}
  selected=null;selectedCard=card;cardFrom=null;render();
- if(card.mode==="instant"&&card.id==="delayed-en-passant"&&!game.delayedEpTargets?.length){
+ if(card.mode==="instant"&&(card.copyOf||card.id)==="delayed-en-passant"&&!game.delayedEpTargets?.length){
   clearSelection();render();flash("No delayed en passant is available: the extra window may have expired.");return;
  }
  if(card.mode==="recall"&&!game.recallChoices?.length){
   clearSelection();render();flash("No valid Promotion Recall: you need a pawn about to promote and a captured piece with an empty home square.");return;
  }
  if(card.mode==="instant"){
-  const choice=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Play "+card.name+"?",description:card.description+" Your chess move will remain available this turn.",choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
+  const choice=await modal({tag:card.copyOf?"COUNTERFEIT · FULL TURN":"TACTICAL CARD · BONUS ACTION",title:card.copyOf?"Copy "+game.counterfeitOffer.name+"?":"Play "+card.name+"?",description:card.description+(card.copyOf?" This replaces your normal chess move.":" Your chess move will remain available this turn."),choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
   if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="instant-turn"){
    const choice=await modal({tag:"PRISONER EXCHANGE · TURN ACTION",title:"Revive one pawn for each side?",description:card.description+" This consumes your chess turn and restores a pawn to both sides if each has lost one.",choices:[{label:"EXCHANGE PRISONERS",kind:"primary",value:true}]});
    if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="market"){
-  const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
+  const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market"&&c.id!=="counterfeit").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
   const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a random card of the SAME rarity.",choices:options});
   if(slot!==null)await send({type:"card",card:card.id,slot});else{clearSelection();render();}
  }
