@@ -38,3 +38,17 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 .board .square.shot:before{content:"";position:absolute;z-index:2;inset:8%;background:none;border:3px dashed #ed476f;border-radius:50%;animation:targetPulse 1.4s ease-in-out infinite}
 .board .square.sniperRay .piece{z-index:1}
 @keyframes sniperGlow{50%{box-shadow:inset 0 0 23px #ca7dfc99,0 0 22px #d39dffc9}}
+
+/* Alpha 0.3: opponent sees the sniper's entire chosen diagonal after shot one. */
+.board .square.enemySniperRay:before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(45deg,transparent 42%,#fa718b91 46%,#ffb2c0c7 50%,#fa718b91 54%,transparent 58%)}
+.board .square.enemySniperRay.slopeDown:before{background:linear-gradient(135deg,transparent 42%,#fa718b91 46%,#ffb2c0c7 50%,#fa718b91 54%,transparent 58%)}
+.board .square.enemySniperRay .piece{z-index:1}
+.swapCounter{color:#c7abfa;font-size:10px;font-weight:900;letter-spacing:.13em;margin-top:8px}
+.gameResult{padding:23px clamp(18px,3vw,38px);margin:18px 0 22px;border:1px solid #586e95;border-radius:18px;background:radial-gradient(circle at 85% 15%,#40558777,transparent 45%),linear-gradient(120deg,#15213b,#101a2c);box-shadow:0 18px 50px #0006;display:grid;gap:5px}
+.gameResult strong{font-family:'Space Grotesk',sans-serif;font-size:clamp(32px,4vw,60px);font-weight:900;letter-spacing:.055em;line-height:1.1}
+.gameResult p{margin:4px 0;font-size:15px;color:#dce6fc}
+.gameResult .gameResultFooter{font-size:11px;color:#9caecd}
+.gameResult.victory{border-color:#70d5ac;background:radial-gradient(circle at 85% 15%,#186b5277,transparent 45%),linear-gradient(120deg,#132d2b,#0c1a25)}
+.gameResult.victory strong{color:#8ce8bd}
+.gameResult.defeat{border-color:#a75f73;background:radial-gradient(circle at 85% 15%,#69324677,transparent 45%),linear-gradient(120deg,#30202f,#141725)}
+.gameResult.defeat strong{color:#ffc0cb}
