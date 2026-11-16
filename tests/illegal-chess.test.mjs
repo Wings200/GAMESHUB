@@ -41,3 +41,69 @@ test("Black Market only trades another unused card of matching rarity",()=>{
  assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
  assert.equal(g.hands.w[1].id,"voluntary-eviction");
 });
+
+test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
+ const g=room();give(g,"w","parking-ticket");
+ move(g,"w","e2","e4");move(g,"b","g8","f6");
+ const before=g.history.length;
+ act(g,"w",{type:"card",card:"parking-ticket"});
+ assert.equal(g.s.t,1,"White should still be able to play chess");
+ assert.equal(g.history.length,before,"Bonus card must not consume a chess turn");
+ assert.equal(g.hands.w[0].used,true);
+ assert.equal(g.effects.freeze.color,"b");
+ move(g,"w","d2","d4");
+ assert.equal(g.s.t,-1);
+ assert.equal(playerView(g,"b").legal.some(m=>m.from==="f6"),false);
+ move(g,"b","d7","d6");
+ assert.equal(g.effects.freeze,null,"Freeze expires after opponent's move");
+});
+test("Reserved Parking can be played before the normal chess move",()=>{
+ const g=room();give(g,"w","reserved-parking");
+ act(g,"w",{type:"card",card:"reserved-parking",to:"e5"});
+ assert.equal(g.s.t,1);
+ move(g,"w","e2","e4");
+ assert.equal(g.s.t,-1);
+ assert.equal(playerView(g,"b").legal.some(m=>m.to==="e5"),false);
+ move(g,"b","a7","a6");
+ assert.equal(g.effects.reserved,null);
+});
+test("Ceasefire is a bonus action but restricts captures for both upcoming moves",()=>{
+ const g=room();give(g,"w","ceasefire");
+ move(g,"w","e2","e4");move(g,"b","d7","d5");
+ act(g,"w",{type:"card",card:"ceasefire"});
+ assert.equal(g.s.t,1);
+ assert.equal(g.effects.ceasefire,2);
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="e4"&&m.to==="d5"),false);
+ move(g,"w","g1","f3");assert.equal(g.effects.ceasefire,1);
+ move(g,"b","g8","f6");assert.equal(g.effects.ceasefire,0);
+});
+test("Bishop Sniper teleports outside the board, conceals direction, and only hits first occupied square",()=>{
+ const g=room();give(g,"w","bishop-sniper");
+ g.s=parseFen("4k3/6p1/5q2/8/8/2B5/8/4K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"bishop-sniper",from:"c3",direction:"NE"});
+ assert.equal(g.s.b[(8-3)*16+2],".");
+ assert.equal(g.snipers.w.edge,7,"Bishop must have traveled offboard beyond h8");
+ assert.equal(g.snipers.w.direction,"NE");
+ assert.equal(playerView(g,"b").sniper.own,null);
+ assert.equal(playerView(g,"b").sniper.opponentActive,true);
+ assert.equal(JSON.stringify(playerView(g,"b")).includes('"direction":"NE"'),false);
+ move(g,"b","e8","d8");
+ assert.deepEqual(playerView(g,"w").sniperShots,["g7"],"Pawn blocks the queen on f6");
+ assert.throws(()=>act(g,"w",{type:"sniper-shot",to:"f6"}),/first available sniper target/);
+ act(g,"w",{type:"sniper-shot",to:"g7"});
+ assert.equal(g.s.b[(8-7)*16+6],".");
+ assert.equal(g.s.b[(8-6)*16+5],"q");
+ assert.equal(g.snipers.w.direction,"NE","Bishop remains off-board");
+ move(g,"b","d8","e8");
+ assert.deepEqual(playerView(g,"w").sniperShots,["f6"],"Queen becomes reachable when pawn removed");
+});
+test("An offboard sniper still attacks king squares and blocks normal king moves",()=>{
+ const g=room();give(g,"w","bishop-sniper");
+ g.s=parseFen("8/6p1/5k2/8/8/2B5/8/4K3 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"bishop-sniper",from:"c3",direction:"NE"});
+ move(g,"b","f6","e6");
+ assert.deepEqual(playerView(g,"w").sniperShots,["g7"]);
+ act(g,"w",{type:"sniper-shot",to:"g7"});
+ assert.equal(g.s.b[(8-7)*16+6],".");
+ assert.equal(g.snipers.w.direction,"NE");
+});
