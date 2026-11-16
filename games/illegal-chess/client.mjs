@@ -60,8 +60,10 @@ function modal({tag="CONFIRM ACTION",title,description,choices=[],link=""}){
 function done(message){flash(message||"Card activated. You can still make your chess move.");}
 async function send(action){
  if(busy||!session)return;
+ const activeSession=session;
  busy=true;try{
-  const result=await api("action",{...session,action});
+  const result=await api("action",{...activeSession,action});
+  if(session!==activeSession)return;
   game=result.view;lastState=JSON.stringify(game);clearSelection();render();
   if(myTurn()&&action.type==="card")done();
  }catch(error){flash(error.message);}
@@ -69,8 +71,10 @@ async function send(action){
 }
 async function refresh(){
  if(!session||busy||modalOpen)return;
+ const activeSession=session;
  try{
-  const data=await api("state",session);
+  const data=await api("state",activeSession);
+  if(session!==activeSession)return;
   $("connection").textContent="CONNECTED";$("connection").classList.remove("offline");
   const serial=JSON.stringify(data);
   if(serial!==lastState){game=data;lastState=serial;render();}
