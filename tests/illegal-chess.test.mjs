@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
+import {ANALYST_GRADES,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -469,4 +470,79 @@ test("Enemy cannot identify disguised promotions using Relocation Order or publi
  const hidden=playerView(g,"b");
  assert.equal(Object.hasOwn(hidden.effects.insurance.w,"piece"),false,"Enemy only sees public insurance square and duration");
  assert.equal(playerView(g,"w").effects.insurance.w.piece,"N","The owner still sees their actual piece");
+});
+
+test("The Analyst completes the approved 26-card collection and remains a passive Legendary",()=>{
+ assert.equal(CARDS.length,26);
+ const card=CARDS.find(c=>c.id==="the-analyst");
+ assert.deepEqual({rarity:card.rarity,mode:card.mode},{rarity:"Legendary",mode:"passive"});
+ assert.deepEqual(ANALYST_GRADES,["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"]);
+});
+test("The Analyst grades BOTH players' turns with one passive card, without consuming it",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ assert.equal(playerView(g,"w").analyst.active,true);
+ assert.equal(playerView(g,"b").analyst.active,true);
+ assert.throws(()=>act(g,"w",{type:"card",card:"the-analyst"}),/passive/);
+ move(g,"w","e2","e4");
+ move(g,"b","e7","e5");
+ const view=playerView(g,"b");
+ assert.equal(g.hands.w[0].used,false,"The card never consumes a turn or a use");
+ assert.equal(g.moveCount,2);
+ assert.equal(view.analyst.entries.length,2);
+ assert.deepEqual(view.analyst.entries.map(x=>x.side),["w","b"]);
+ assert.equal(view.analyst.entries[0].turn,1);
+ for(const entry of view.analyst.entries){
+  assert.ok(ANALYST_GRADES.includes(entry.grade));
+  assert.equal(entry.estimated,true,"Judgments are explicitly heuristic");
+  assert.ok(typeof entry.reason==="string"&&entry.reason.length);
+  assert.equal(Object.hasOwn(entry,"bestMove"),false,"Never leak inferred hidden possibilities or specific secrets");
+ }
+});
+test("Analyst test rooms guarantee the passive card to BOTH players",()=>{
+ const g=newGame("ANALYST","first",{analystTest:true});joinGame(g,"second");
+ assert.equal(g.analystTest,true);
+ for(const color of ["w","b"]){
+  assert.equal(g.hands[color].length,3);
+  assert.equal(g.hands[color][0].id,"the-analyst");
+  assert.equal(new Set(g.hands[color].map(c=>c.id)).size,3);
+ }
+ const view=playerView(g,"w");
+ assert.equal(view.analystTest,true);
+ assert.equal(view.analyst.active,true);
+});
+test("Analyst grade categories map deterministic score gaps and tactical exceptions",()=>{
+ const grade=(gap,more={})=>classifyAnalyst({gap,...more});
+ assert.equal(grade(20,{book:true}),"Book");
+ assert.equal(grade(5,{brilliant:true}),"Brilliant");
+ assert.equal(grade(0),"Best");
+ assert.equal(grade(25),"Excellent");
+ assert.equal(grade(55),"Good");
+ assert.equal(grade(120),"Inaccuracy");
+ assert.equal(grade(200),"Mistake");
+ assert.equal(grade(450),"Blunder");
+ assert.equal(grade(0,{mate:true}),"Best");
+});
+test("Analyst skips pending/denied Objection and only grades a completed card action",()=>{
+ const g=room();give(g,"w","the-analyst");
+ g.hands.w[1]={id:"voluntary-eviction",used:false};
+ give(g,"b","objection");
+ act(g,"w",{type:"card",card:"voluntary-eviction",from:"g1"});
+ assert.equal(g.analystLog.length,0,"A pending card is not a turn");
+ act(g,"b",{type:"reaction",decision:"object"});
+ assert.equal(g.analystLog.length,0,"Canceled cards are not graded");
+ move(g,"w","e2","e4");
+ assert.equal(g.analystLog.length,1,"Only the completed move is graded");
+});
+test("The Analyst keeps grading through 20-turn color swaps and does not expose hidden card IDs",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ g.moveCount=19;
+ const originalWhite=g.players.w;
+ move(g,"w","e2","e4");
+ assert.equal(g.swaps,1);
+ assert.equal(g.players.b,originalWhite);
+ assert.equal(g.analystLog.length,1);
+ assert.equal(g.analystLog[0].turn,20);
+ assert.equal(playerView(g,"b").analyst.active,true,"Original holder retains the passive after swapping control");
+ const summary=JSON.stringify(playerView(g,"w").analyst);
+ assert.ok(!summary.includes('"direction"')&&!summary.includes('"players"'));
 });
