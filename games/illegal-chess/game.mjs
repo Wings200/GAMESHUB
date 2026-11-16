@@ -1,6 +1,7 @@
 // Server-authoritative Illegal Chess rules for Cloudflare Pages / D1.
 // Only implemented cards may be dealt: the larger approved design catalog is a roadmap.
 import {parseFen,START_FEN,clone,on,side,sq,idx,isSquare,legal,apply,inCheck,updateRights,stateStatus,fen,sniperFront} from "./engine.mjs";
+import {gradeAnalystTurn,analystActive} from "./analyst.mjs";
 
 export const CARDS=[
  {id:"pawn-sidestep",name:"Pawn Sidestep",rarity:"Common",mode:"two",description:"Slide a pawn sideways one empty square. Uses your turn."},
@@ -27,7 +28,8 @@ export const CARDS=[
  {id:"identity-theft",name:"Identity Theft",rarity:"Epic",mode:"two",description:"Exchange the appearances of two friendly non-king pieces for the opponent's next turn. Their real moves and attack rules remain unchanged."},
  {id:"objection",name:"Objection!",rarity:"Rare",mode:"reaction",description:"When your opponent activates a card, object to cancel it. Their card is retained and they must make a normal move."},
  {id:"classified-promotion",name:"Classified Promotion",rarity:"Rare",mode:"instant",description:"Arm your immediate pawn promotion. The new piece stays disguised to your opponent until it moves, captures, checks, or is captured."},
- {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."}
+ {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."},
+ {id:"the-analyst",name:"The Analyst",rarity:"Legendary",mode:"passive",description:"PASSIVE: Grades both players' completed moves as Book, Best, Excellent, Good, Inaccuracy, Mistake, Blunder, or Brilliant. Card-aware heuristic; not a perfect engine."}
 ];
 const weights={Common:45,Uncommon:30,Rare:15,Epic:8,Legendary:2};
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
@@ -35,13 +37,21 @@ const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
 function pickWeighted(pool){const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}const options=pool.filter(c=>c.rarity===r);return options[rand(options.length)];}
 export function randomHand(){const pool=CARDS.slice(),hand=[];for(let i=0;i<3;i++){const card=pickWeighted(pool);hand.push({id:card.id,used:false});pool.splice(pool.indexOf(card),1);}return hand;}
+function analystTestHand(){
+ const pool=randomHand().filter(c=>c.id!=="the-analyst").slice(0,2);
+ while(pool.length<2){
+  const choices=CARDS.filter(c=>c.id!=="the-analyst"&&!pool.some(x=>x.id===c.id));
+  pool.push({id:pickWeighted(choices).id,used:false});
+ }
+ return [{id:"the-analyst",used:false},...pool];
+}
 function sniperTestHand(){
  const hand=randomHand().filter(c=>c.id!=="bishop-sniper").slice(0,2);
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,last:null,log:[]};}
-export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
+export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],last:null,log:[]};}
+export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s);
@@ -135,10 +145,11 @@ function pieceGivesCheck(s,mark){
 
 export function playerView(g,color){
  const s=g.s,st=status(g);
- return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
+ return {room:g.room,player:color,testMode:!!g.sniperTest,analystTest:!!g.analystTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
+  analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32)},
   pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
   counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
   relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="relocation-order"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="relocation-order"))?relocationChoices(g):[],
@@ -162,6 +173,19 @@ function tick(g,color){
  if(g.effects.classifiedArmed?.color===color)g.effects.classifiedArmed=null;
 }
 function commit(g,color,next,label,last=null,effect=null){
+ // The card is an automatic passive. Only grade completed, turn-consuming
+ // actions; never rate canceled Objections or standalone bonus cards.
+ let judgment=null;
+ if(analystActive(g)){
+  try{
+   const rarities=Object.fromEntries(CARDS.map(c=>[c.id,c.rarity]));
+   judgment=gradeAnalystTurn(g,color,next,label,last,{
+    availableMoves:available(g),sniperTargets:sniperShots(g,color),cardRarities:rarities
+   });
+  }catch(error){
+   console.error("Analyst estimate failed",error);
+  }
+ }
  const previous=g.s;
  // Disguises never modify the authoritative chessboard. The opponent's
  // next completed action ends Identity Theft, regardless of piece movement.
@@ -226,6 +250,11 @@ function commit(g,color,next,label,last=null,effect=null){
   if(color!==protectedColor&&--mark.remaining<=0)insurance[protectedColor]=null;
  }
  g.effects.insurance=insurance;next.sniperSignature=JSON.stringify(g.snipers||{w:null,b:null});g.s=next;g.history.push(next);g.last=last;g.log.push({side:color,text:label});
+ if(judgment){
+  g.analystLog||=[];
+  g.analystLog.push(judgment);
+  if(g.analystLog.length>80)g.analystLog=g.analystLog.slice(-60);
+ }
  if(effect?.kind==="freeze")g.effects.freeze={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="reserved")g.effects.reserved={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="ceasefire")g.effects.ceasefire=2;
@@ -421,6 +450,7 @@ export function act(g,color,req,options={}){
  const copying=req.card==="counterfeit",offer=copying?g.copyOffers?.[color]:null;
  if(copying&&(!offer||["counterfeit","objection"].includes(offer.id)))throw Error("Counterfeit has no eligible card to copy this turn");
  const card=getCard(copying?offer.id:req.card);if(!card)throw Error("Unknown card");
+ if(card.id==="the-analyst")throw Error("The Analyst is passive and analyzes turns automatically");
  const token=owned(g,color,req.card);
  const bonus=(description)=>{
   token.used=true;
