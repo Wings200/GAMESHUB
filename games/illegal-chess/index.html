@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=6">
+<link rel="stylesheet" href="./style.css?v=7">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.5</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.6</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -29,7 +29,7 @@
     </div>
    </div>
    <div class="lobbyFeatures"><span>♟ REAL CHESS RULES</span><span>✦ RANDOM CARD DRAWS</span><span>⚔ 1V1 MULTIPLAYER</span></div>
-   <p class="mini" style="margin-top:20px">Prototype build: 21 implemented cards from the approved 26-card collection. More effects and animations are in development.</p>
+   <p class="mini" style="margin-top:20px">Prototype build: 25 implemented cards from the approved 26-card collection. More effects and animations are in development.</p>
   </div>
   <div class="lobbyArtwork" id="lobbyArtwork" aria-label="Featured collectible card illustrations"></div>
  </section>
@@ -43,6 +43,13 @@
    <strong id="gameResultTitle">VICTORY</strong>
    <p id="gameResultDetail">Checkmate. The match is over.</p>
    <span class="gameResultFooter">The final board and move history remain available below.</span>
+  </section>
+  <section id="reactionBox" class="reactionBox" hidden aria-live="polite">
+   <div><span class="eyebrow">COUNTER-CARD WINDOW</span><h3 id="reactionTitle">OBJECTION! — YOUR RESPONSE</h3><p id="reactionText">An opponent's card is awaiting your answer.</p></div>
+   <div id="reactionActions" class="reactionActions">
+    <button id="allowCard" class="btn ghost" type="button">ALLOW CARD</button>
+    <button id="objectCard" class="btn danger" type="button">⚖ OBJECTION!</button>
+   </div>
   </section>
   <div class="gameGrid">
    <section class="boardWrap" aria-label="Chess game board">
@@ -73,6 +80,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=6"></script>
+<script type="module" src="./client.mjs?v=7"></script>
 </body>
 </html>
