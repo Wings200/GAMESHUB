@@ -391,6 +391,7 @@ export function act(g,color,req,options={}){
   return;
  }
  if(g.effects.timeCapsule?.color===color&&g.effects.timeCapsule.stage==="armed"&&req.type!=="move")throw Error("Time Capsule requires moving its marked piece first");
+ if(g.effects.classifiedArmed?.color===color&&req.type!=="move")throw Error("Classified Promotion requires your pawn promotion now");
  if(req.type==="sniper-shot"){
   if(!isSquare(req.to)||!sniperShots(g,color).includes(req.to))throw Error("That piece is not the first available sniper target");
   const {next,nextSnipers,landing}=sniperResult(g,color,req.to);
