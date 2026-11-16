@@ -19,7 +19,7 @@
  <div class="eyebrow" style="margin-top:25px">OR JOIN A ROOM</div>
  <div class="control" style="margin-top:10px"><input id="code" placeholder="6-CHAR CODE" maxlength="6" aria-label="Room code" autocomplete="off"><button id="join" class="secondary">JOIN MATCH</button></div>
  <div class="error" id="lobbyError" role="alert"></div>
- <p class="footnote">Each browser tab has its own player session. Prototype currently includes 10 playable cards from our larger approved design collection. No ranked matchmaking yet.</p>
+ <p class="footnote">Each browser tab has its own player session. Prototype currently includes 11 playable cards from our larger approved design collection. No ranked matchmaking yet.</p>
 </section>
 <section id="game" class="hidden">
  <div class="topbar"><div><span class="eyebrow">PRIVATE ROOM</span><strong id="room" style="display:block">------</strong></div><div><button id="copy" class="secondary">COPY INVITE LINK</button> <span id="connection" class="tag">CONNECTING</span></div></div>
@@ -42,7 +42,7 @@
 <script type="module">
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
-const icons={"pawn-sidestep":"♙","colorblind-bishop":"♗","knight-exchange":"♞","parking-ticket":"🎫","reserved-parking":"🅿","ceasefire":"⚑","double-ko":"✕","hit-and-run":"♞","queens-abdication":"♛","black-market":"⇄"};
+const icons={"pawn-sidestep":"♙","voluntary-eviction":"♟","colorblind-bishop":"♗","knight-exchange":"♞","parking-ticket":"🎫","reserved-parking":"🅿","ceasefire":"⚑","double-ko":"✕","hit-and-run":"♞","queens-abdication":"♛","black-market":"⇄"};
 let session=null,g=null,selected=null,selectedCard=null,cardFrom=null,busy=false,refreshTimer=null;
 const invite=code=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(code);
 const own=p=>p&&p!=="."&&(session?.player==="w"?p===p.toUpperCase():p===p.toLowerCase());
@@ -89,7 +89,7 @@ function render(){
  if(!g.log.length)log.textContent="Moves and card plays appear here.";
  const e=g.effects,active=[];if(e.freeze)active.push("🎫 Piece frozen: "+toSquare(e.freeze.square));if(e.reserved)active.push("🅿 Reserved: "+toSquare(e.reserved.square));if(e.ceasefire)active.push("⚑ Ceasefire for "+e.ceasefire+" turn(s)");
  $("effects").textContent=active.join(" · ")||"No active effects";
- let tip;if(!g.ready)tip="Share the invite link. Waiting for your opponent.";else if(g.status.done)tip=g.status.text;else if(!turn())tip="Opponent's turn. Review your cards.";else if(selectedCard)tip=selectedCard.name+": "+({two:cardFrom?"Select its destination.":"Select the piece first.",square:"Select an empty square.",instant:"Confirm activation.",transform:"Select your queen.",market:"Select a card to exchange."}[selectedCard.mode]||"Choose a target.");else tip=selected?"Choose a highlighted destination.":"Your turn: select a piece, or activate a card.";
+ let tip;if(!g.ready)tip="Share the invite link. Waiting for your opponent.";else if(g.status.done)tip=g.status.text;else if(!turn())tip="Opponent's turn. Review your cards.";else if(selectedCard)tip=selectedCard.name+": "+({two:cardFrom?"Select its destination.":"Select the piece first.",one:"Select one of your pieces to remove.",square:"Select an empty square.",instant:"Confirm activation.",transform:"Select your queen.",market:"Select a card to exchange."}[selectedCard.mode]||"Choose a target.");else tip=selected?"Choose a highlighted destination.":"Your turn: select a piece, or activate a card.";
  $("help").textContent=tip;
 }
 function chooseCard(c){if(!turn())return;if(selectedCard?.id===c.id){clearSelection();render();return;}selected=null;selectedCard=c;cardFrom=null;render();
@@ -101,6 +101,7 @@ function choose(name,p){if(!turn()||busy)return;
  if(selectedCard){
   const c=selectedCard;
   if(c.mode==="square"){send({type:"card",card:c.id,to:name});return;}
+  if(c.mode==="one"){if(!own(p)){toast("Select your own piece");return;}if(confirm("Remove your piece on "+name+"?"))send({type:"card",card:c.id,from:name});return;}
   if(c.mode==="transform"){if(!own(p)||p.toLowerCase()!=="q"){toast("Select your queen");return;}const into=prompt("Promote queen into knight (n) or bishop (b)?","n")?.trim().toLowerCase();if(["n","b"].includes(into))send({type:"card",card:c.id,from:name,into});return;}
   if(c.mode==="two"){if(!cardFrom){if(!own(p)){toast("Choose one of your pieces");return;}cardFrom=name;render();return;}if(cardFrom===name){cardFrom=null;render();return;}send({type:"card",card:c.id,from:cardFrom,to:name});return;}return;
  }
