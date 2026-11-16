@@ -16,7 +16,7 @@ async function init(db){
 async function row(db,code){return db.prepare("SELECT code,version,state FROM illegal_chess_rooms WHERE code=? LIMIT 1").bind(code).first();}
 function roomCode(input){const code=String(input||"").trim().toUpperCase();if(!codePattern.test(code))throw Error("Room code must be six characters");return code;}
 function tokenValue(input){const token=String(input||"");if(!/^[a-f0-9]{64}$/.test(token))throw Error("Invalid player session");return token;}
-const safely=err=>["Room not found","Room is already full","Not your turn","Game is over","Wait for a second player","Your king would be in check"].includes(err.message)||/^(Illegal|Choose|Select|Cannot|No |This card|Unknown|Invalid|Request|Malformed|Not implemented|The king|Hit and Run|That piece|You already)/.test(err.message)?err.message:"Action unavailable";
+const safely=err=>["Room not found","Room is already full","Not your turn","Game is over","Wait for a second player","Your king would be in check"].includes(err.message)||/^(Illegal|Choose|Select|Cannot|No |This card|Unknown|Invalid|Request|Malformed|Not implemented|The king|Hit and Run|That piece|You already|Objection!|Counterfeit|Waiting for the opponent|Classified Promotion)/.test(err.message)?err.message:"Action unavailable";
 export async function onRequest(context){
  if(context.request.method!=="POST")return reply({error:"Use POST"},405);
  if(!context.env.DB)return reply({error:"GAMESHUB D1 DB binding is unavailable"},503);

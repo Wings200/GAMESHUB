@@ -6,7 +6,7 @@ const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 const invite=room=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(room);
 const own=p=>p&&p!=="."&&((game?.player||session?.player)==="w"?p===p.toUpperCase():p===p.toLowerCase());
-const myTurn=()=>game?.ready&&!game?.status?.done&&game?.turn===game?.player;
+const myTurn=()=>game?.ready&&!game?.status?.done&&!game?.pendingReaction&&game?.turn===game?.player;
 const toSquare=i=>"abcdefgh"[i&7]+(8-(i>>4));
 function boardFromFen(fen){
  const out=[];for(const row of fen.split(" ")[0].split("/"))for(const char of row){
@@ -197,13 +197,13 @@ function renderHand(){
  for(const card of game.hand){
   const button=document.createElement("button");button.type="button";
   button.className="card"+(selectedCard?.id===card.id?" active":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
-  button.disabled=card.used||!myTurn()||busy||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed");
+  button.disabled=card.used||!myTurn()||busy||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")||(game.effects?.classifiedArmed?.color===game.player);
   const image=putImage(button,card,card.name+" card illustration");image.className="art";
   const stripe=document.createElement("span");stripe.className="rarityLine";button.append(stripe);
   const content=document.createElement("span");content.className="cardContent";
   const name=document.createElement("span");name.className="cardName";name.textContent=card.name;content.append(name);
   const tier=document.createElement("span");tier.className="cardTier";tier.textContent=card.rarity;content.append(tier);
-  const description=document.createElement("span");description.className="cardDesc";description.textContent=card.description;content.append(description);
+  const description=document.createElement("span");description.className="cardDesc";description.textContent=card.id==="counterfeit"&&game.counterfeitOffer?"COPY AVAILABLE: "+game.counterfeitOffer.name+" · uses your full turn":card.description;content.append(description);
   button.append(content);if(card.used)addUsedOverlay(button);
   button.addEventListener("click",()=>selectCard(card));target.append(button);
  }
@@ -245,6 +245,7 @@ function renderExtras(){
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
  if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
+ if(game.counterfeitOffer&&game.hand.some(c=>c.id==="counterfeit"&&!c.used))list.push("🎭 Counterfeit ready to copy "+game.counterfeitOffer.name);
  if(game.capsuleReturn&&myTurn()){
   const btn=document.createElement("button");btn.type="button";btn.className="btn slim primary";
   btn.textContent="⏳ RETURN "+game.capsuleReturn.from.toUpperCase()+" → "+game.capsuleReturn.to.toUpperCase();
@@ -274,6 +275,15 @@ function render(){
  $("matchTitle").textContent=game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
  const left=20-(game.moveCount||0)%20;
  $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
+ const reaction=game.pendingReaction,box=$("reactionBox");
+ box.hidden=!reaction;
+ if(reaction){
+  $("reactionTitle").textContent=reaction.canReact?"OBJECTION! — YOUR RESPONSE":"AWAITING OBJECTION!";
+  $("reactionText").textContent=reaction.canReact?
+   "Your opponent is playing "+reaction.name+". Allow it, or use Objection! to cancel the card and force a normal move.":
+   "Your opponent is deciding whether to allow "+reaction.name+". The board is paused until they respond.";
+  $("reactionActions").hidden=!reaction.canReact;
+ }
  const result=$("gameResult");
  result.hidden=!game.status.done;
  if(game.status.done){
@@ -291,18 +301,21 @@ function render(){
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
  else if(game.status.done)hint=game.status.text;
+ else if(game.pendingReaction)hint=game.pendingReaction.canReact?"Choose ALLOW or OBJECTION! to resolve the pending card.":"Waiting for the opponent to respond to your card.";
  else if(!myTurn())hint="Opponent's turn. Study their hand while you plan your next move.";
  else if(selectedCard)hint=selectedCard.mode==="sniper"?"Select your bishop, then choose a secret diagonal."
-  :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
-   :selectedCard.mode==="one"?(selectedCard.id==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
+  :selectedCard.mode==="two"?(cardFrom?(selectedCard.copyOf||selectedCard.id)==="friendly-fire"?"Select the friendly non-king piece to capture.":(selectedCard.copyOf||selectedCard.id)==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
+   :selectedCard.mode==="one"?((selectedCard.copyOf||selectedCard.id)==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
    :selectedCard.mode==="relocate"?(cardFrom?"Select an enemy piece your selected piece could legally capture.":"Select one of your attacking pieces.")
     :selectedCard.mode==="instant-turn"?"Confirm the card to consume your turn."
    :selectedCard.mode==="one-prep"?"Select the non-king piece you want to move and mark its starting square."
    :selectedCard.mode==="recall"?(cardFrom?"Select a legal promotion destination to recall a captured piece.":"Select a pawn that can promote now.")
+   :selectedCard.mode==="classified-copy"?(cardFrom?"Select the final-rank square and choose your secret piece.":"Select your pawn ready to promote.")
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
- else if(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")hint="Time Capsule armed at "+game.effects.timeCapsule.origin.toUpperCase()+". Move that marked piece now.";
+ else if(game.effects?.classifiedArmed?.color===game.player)hint="CLASSIFIED PROMOTION ARMED · select the pawn, its final square and your hidden promoted piece.";
+  else if(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")hint="Time Capsule armed at "+game.effects.timeCapsule.origin.toUpperCase()+". Move that marked piece now.";
   else if(game.capsuleReturn)hint="You can return your Time Capsule piece using the RETURN button in Active Effects, or make an ordinary move.";
   else if(sniperSelected)hint=game.sniperShots?.length?"Click the highlighted enemy piece to fire your off-board bishop.":"Your bishop is aimed, but its diagonal is blocked or has no legal target.";
  else if(selected)hint="Select a highlighted destination, or another friendly piece.";
@@ -316,23 +329,28 @@ async function fire(target){
  if(option)await send({type:"sniper-shot",to:target});
 }
 async function selectCard(card){
- if(!myTurn()||busy||card.used)return;
+ if(!myTurn()||busy||card.used||card.id==="objection")return;
+ if(card.id==="counterfeit"){
+  const source=game.counterfeitOffer;
+  if(!source){flash("No opponent card to copy on this turn.");return;}
+  card={...card,mode:source.id==="classified-promotion"?"classified-copy":source.id==="time-capsule"||source.id==="delayed-en-passant"?"two":source.mode,copyOf:source.id,description:"Copy "+source.name+" instead of your normal chess move."};
+ }
  if(selectedCard?.id===card.id){clearSelection();render();return;}
  selected=null;selectedCard=card;cardFrom=null;render();
- if(card.mode==="instant"&&card.id==="delayed-en-passant"&&!game.delayedEpTargets?.length){
+ if(card.mode==="instant"&&(card.copyOf||card.id)==="delayed-en-passant"&&!game.delayedEpTargets?.length){
   clearSelection();render();flash("No delayed en passant is available: the extra window may have expired.");return;
  }
  if(card.mode==="recall"&&!game.recallChoices?.length){
   clearSelection();render();flash("No valid Promotion Recall: you need a pawn about to promote and a captured piece with an empty home square.");return;
  }
  if(card.mode==="instant"){
-  const choice=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Play "+card.name+"?",description:card.description+" Your chess move will remain available this turn.",choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
+  const choice=await modal({tag:card.copyOf?"COUNTERFEIT · FULL TURN":"TACTICAL CARD · BONUS ACTION",title:card.copyOf?"Copy "+game.counterfeitOffer.name+"?":"Play "+card.name+"?",description:card.description+(card.copyOf?" This replaces your normal chess move.":" Your chess move will remain available this turn."),choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
   if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="instant-turn"){
    const choice=await modal({tag:"PRISONER EXCHANGE · TURN ACTION",title:"Revive one pawn for each side?",description:card.description+" This consumes your chess turn and restores a pawn to both sides if each has lost one.",choices:[{label:"EXCHANGE PRISONERS",kind:"primary",value:true}]});
    if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="market"){
-  const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
+  const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market"&&c.id!=="counterfeit").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
   const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a random card of the SAME rarity.",choices:options});
   if(slot!==null)await send({type:"card",card:card.id,slot});else{clearSelection();render();}
  }
@@ -340,10 +358,10 @@ async function selectCard(card){
 async function selectSquare(name,piece){
  if(!myTurn()||busy||modalOpen)return;
  if(selectedCard){
-  const card=selectedCard;
+  const card=selectedCard,mechanic=card.copyOf||card.id;
   if(card.mode==="square"){
    if(piece!=="."){flash("Select an empty square.");return;}
-   const approved=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Reserve "+name.toUpperCase()+"?",description:"Your opponent cannot end their next move on "+name.toUpperCase()+". You can still make a normal chess move now.",choices:[{label:"RESERVE SQUARE",value:true,kind:"primary"}]});
+   const approved=await modal({tag:card.copyOf?"COUNTERFEIT · FULL TURN":"TACTICAL CARD · BONUS ACTION",title:"Reserve "+name.toUpperCase()+"?",description:"Your opponent cannot end their next move on "+name.toUpperCase()+"."+(card.copyOf?" This consumes your turn.":" You can still make a normal chess move now."),choices:[{label:"RESERVE SQUARE",value:true,kind:"primary"}]});
    if(approved)await send({type:"card",card:card.id,to:name});return;
   }
   if(card.mode==="one-prep"){
@@ -351,6 +369,18 @@ async function selectSquare(name,piece){
     if(!game.legal.some(m=>m.from===name&&!m.promotion)){flash("That piece has no legal move to use with Time Capsule.");return;}
     const approved=await modal({tag:"TIME CAPSULE · BONUS ACTION",title:"Mark "+name.toUpperCase()+"?",description:"You must move this piece now. On your next turn you may spend that turn returning the same surviving piece to "+name.toUpperCase()+" if the square is empty and the return is king-safe.",choices:[{label:"MARK THIS SQUARE",value:true,kind:"primary"}]});
     if(approved)await send({type:"card",card:card.id,from:name});return;
+   }
+   if(card.mode==="classified-copy"){
+    if(!cardFrom){
+     if(!own(piece)||piece.toLowerCase()!=="p"||!game.legal.some(m=>m.from===name&&m.promotion)){flash("Select a pawn ready to promote.");return;}
+     cardFrom=name;render();return;
+    }
+    if(name===cardFrom){cardFrom=null;render();return;}
+    const eligible=game.legal.some(m=>m.from===cardFrom&&m.to===name&&m.promotion);
+    if(!eligible){flash("Select a legal promotion destination.");return;}
+    const promotion=await modal({tag:"COUNTERFEIT · CLASSIFIED PROMOTION",title:"Choose your secret piece",description:"Your promoted piece stays disguised to the opponent until it checks, moves, or is captured. This uses your full turn.",choices:[{label:"♕ QUEEN",value:"q"},{label:"♜ ROOK",value:"r"},{label:"♗ BISHOP",value:"b"},{label:"♞ KNIGHT",value:"n"}]});
+    if(promotion)await send({type:"card",card:card.id,from:cardFrom,to:name,promotion});
+    return;
    }
    if(card.mode==="recall"){
     if(!cardFrom){
@@ -367,7 +397,7 @@ async function selectSquare(name,piece){
    }
    if(card.mode==="one"){
    if(!own(piece)||piece.toLowerCase()==="k"){flash("Choose one of your non-king pieces.");return;}
-   const insuring=card.id==="insurance-fraud";
+   const insuring=mechanic==="insurance-fraud";
     const approved=await modal({tag:insuring?"INSURANCE FRAUD":"VOLUNTARY EVICTION",title:insuring?"Insure "+name.toUpperCase()+"?":"Evict the piece on "+name.toUpperCase()+"?",description:insuring?"The selected piece is visibly insured for two enemy turns. If an enemy captures it, that attacker cannot move on its owner's next turn. This consumes your current turn.":"This permanently removes your own "+piece.toUpperCase()+" from the game and consumes your chess turn. You cannot undo this.",choices:[{label:insuring?"INSURE PIECE":"YES, REMOVE IT",value:true,kind:insuring?"primary":"danger"}]});
    if(approved)await send({type:"card",card:card.id,from:name});return;
   }
@@ -407,7 +437,7 @@ async function selectSquare(name,piece){
   if(!candidates.length){flash("That isn't a legal move.");return;}
   let promotion="";
   if(candidates.some(m=>m.promotion)){
-   promotion=await modal({tag:"PAWN PROMOTION",title:"Choose your promotion",description:"Your pawn has reached the final rank. Choose its new identity.",choices:[
+   promotion=await modal({tag:game.effects?.classifiedArmed?.color===game.player?"CLASSIFIED PROMOTION":"PAWN PROMOTION",title:game.effects?.classifiedArmed?.color===game.player?"Choose your HIDDEN promotion":"Choose your promotion",description:game.effects?.classifiedArmed?.color===game.player?"Your opponent will see a disguised pawn until the promoted piece moves, captures, gives check or is captured.":"Your pawn has reached the final rank. Choose its new identity.",choices:[
     {label:"♕ QUEEN",value:"q"},{label:"♜ ROOK",value:"r"},{label:"♗ BISHOP",value:"b"},{label:"♞ KNIGHT",value:"n"}]});
    if(!promotion)return;
   }
@@ -416,6 +446,8 @@ async function selectSquare(name,piece){
  if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
+$("allowCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"allow"});});
+$("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"object"});});
 $("create").addEventListener("click",async()=>{
  const button=$("create");button.disabled=true;$("lobbyError").textContent="";
  try{await begin(await api("create",{}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
