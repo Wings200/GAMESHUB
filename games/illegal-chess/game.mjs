@@ -133,9 +133,9 @@ export function playerView(g,color){
   effects:structuredClone(g.effects),last:redactedLast(g,color),log:g.log.slice(-40),
   pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
   counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
-  relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="relocation-order"&&!c.used)?relocationChoices(g):[],
-  recallChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="promotion-recall"&&!c.used)?promotionRecallChoices(g):[],
-  delayedEpTargets:!st.done&&current(s)===color&&g.hands[color].some(c=>c.id==="delayed-en-passant"&&!c.used)?delayedEpMoves(g,color).map(m=>({from:sq(m[0]),to:sq(m[1])})):[],
+  relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="relocation-order"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="relocation-order"))?relocationChoices(g):[],
+  recallChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="promotion-recall"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="promotion-recall"))?promotionRecallChoices(g):[],
+  delayedEpTargets:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="delayed-en-passant"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="delayed-en-passant"))?delayedEpMoves(g,color).map(m=>({from:sq(m[0]),to:sq(m[1])})):[],
   capsuleReturn:!st.done&&current(s)===color?capsuleReturn(g,color):null,
   sniper:{own:g.snipers?.[color]?{origin:g.snipers[color].origin,direction:g.snipers[color].direction,shots:g.snipers[color].shots||0}:null,
    opponentActive:!!g.snipers?.[color==="w"?"b":"w"],
@@ -227,6 +227,7 @@ function commit(g,color,next,label,last=null,effect=null){
   g.capturedPawns.b--;
  }
  if(effect?.kind==="promotion-recall")g.capturedPieces[color][effect.into]--;
+ if(effect?.kind==="time-capsule-copy")g.effects.timeCapsule={color,origin:effect.from,piece:effect.piece,stage:"return",square:effect.to};
  g.moveCount=(g.moveCount||0)+1;
  // Exactly one extra opportunity: on the eligible player's turn after one
  // opponent reply, not repeatedly. Both colors may have different windows.
@@ -333,8 +334,41 @@ function friendlyCaptureShape(s,a,b){
  }
  return true;
 }
-export function act(g,color,req){
- requireTurn(g,color);if(!req||typeof req!=="object")throw Error("Invalid action");
+function rememberCard(g,color,id){
+ if(id==="objection"||id==="counterfeit")return;
+ g.copyOffers||={w:null,b:null};
+ g.copyOffers[color==="w"?"b":"w"]={id};
+}
+export function act(g,color,req,options={}){
+ if(!req||typeof req!=="object")throw Error("Invalid action");
+ if(g.pendingReaction){
+  const pending=g.pendingReaction;
+  if(req.type!=="reaction"||color!==pending.defender)throw Error("Waiting for the opponent to answer Objection!");
+  if(req.decision==="object"){
+   owned(g,color,"objection").used=true;
+   g.pendingReaction=null;
+   g.cardBlocked={color:pending.actor};
+   g.log.push({side:color,text:"Objection! canceled "+getCard(pending.card).name+" — opposing card retained; normal move required"});
+   return;
+  }
+  if(req.decision!=="allow")throw Error("Choose whether to object or allow this card");
+  g.pendingReaction=null;
+  act(g,pending.actor,pending.action,{skipReaction:true});
+  return;
+ }
+ requireTurn(g,color);
+ if(g.cardBlocked?.color===color&&req.type!=="move")throw Error("Objection! requires a normal chess move");
+ if(req.type==="card"&&req.card==="objection")throw Error("Objection! can only be used to react to an opposing card");
+ if(req.type==="card"&&!options.skipReaction){
+  const other=color==="w"?"b":"w";
+  if(g.hands[other].some(c=>c.id==="objection"&&!c.used)){
+   // Validate on a clone; directions/secret options never go to the defender.
+   const simulated=structuredClone(g);
+   act(simulated,color,req,{skipReaction:true});
+   g.pendingReaction={actor:color,defender:other,card:req.card,action:structuredClone(req)};
+   return;
+  }
+ }
  const s=g.s;g.snipers ||= {w:null,b:null};
  if(req.type==="time-capsule-return"){
   const cap=capsuleReturn(g,color);
@@ -371,8 +405,21 @@ export function act(g,color,req){
   return;
  }
  if(req.type!=="card")throw Error("Unknown action");
- const card=getCard(req.card);if(!card)throw Error("Unknown card");
- const token=owned(g,color,card.id);
+ const copying=req.card==="counterfeit",offer=copying?g.copyOffers?.[color]:null;
+ if(copying&&(!offer||["counterfeit","objection"].includes(offer.id)))throw Error("Counterfeit has no eligible card to copy this turn");
+ const card=getCard(copying?offer.id:req.card);if(!card)throw Error("Unknown card");
+ const token=owned(g,color,req.card);
+ const bonus=(description)=>{
+  token.used=true;
+  if(copying){
+   commit(g,color,pass(s),"Counterfeit copied "+card.name+" · "+description);
+   if(card.id==="pawn-strike")g.effects.pawnStrike=2;
+   if(card.id==="ceasefire")g.effects.ceasefire=2;
+  }else{
+   g.log.push({side:color,text:description});
+   rememberCard(g,color,card.id);
+  }
+ };
  const own=p=>side(p)===s.t;
  let nx,label,last=null,effect=null;
  if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run"].includes(card.id))pair(req);
