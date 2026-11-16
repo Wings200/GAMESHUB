@@ -216,7 +216,7 @@ test("Pawn Strike blocks both players' pawn advances for a full round, but not t
 
 test("Insurance Fraud protects a real piece for two enemy turns and freezes its capturer",()=>{
  const g=room();give(g,"w","insurance-fraud");
- g.s=parseFen("7k/7b/8/8/4R3/8/8/K7 w - - 0 1");g.history=[g.s];
+ g.s=parseFen("7k/7b/8/8/4R3/8/8/K4N2 w - - 0 1");g.history=[g.s];
  act(g,"w",{type:"card",card:"insurance-fraud",from:"e4"});
  assert.equal(g.effects.insurance.w.square,idx("e4"));
  assert.equal(g.effects.insurance.w.remaining,2);
