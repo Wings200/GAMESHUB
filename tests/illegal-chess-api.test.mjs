@@ -80,3 +80,22 @@ test("API supports opt-in Sniper test rooms without leaking the hidden diagonal"
  assert.equal(opponent.data.sniper.own,null);
  assert.equal(JSON.stringify(opponent.data).includes('"direction":"NE"'),false);
 });
+
+test("Multiplayer session tokens follow their players when colors swap",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{});
+ const guest=await post(db,"join",{room:host.data.room});
+ const row=db.rooms.get(host.data.room);
+ const saved=JSON.parse(row.state);
+ // Fast-forward the turn counter to exercise the swap boundary over the API.
+ saved.moveCount=19;row.state=JSON.stringify(saved);
+ const triggering=await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
+ assert.equal(triggering.status,200);
+ assert.equal(triggering.data.view.swaps,1);
+ assert.equal(triggering.data.view.player,"b","Original white token now owns black");
+ const guestView=await post(db,"state",guest.data);
+ assert.equal(guestView.data.player,"w","Original black token now owns white");
+ assert.equal(guestView.data.turn,"b","Swapping control does not change board turn order");
+ const next=await post(db,"action",{...host.data,action:{type:"move",from:"e7",to:"e5"}});
+ assert.equal(next.status,200,"Original white browser can now move black pieces");
+ assert.equal(next.data.view.player,"b");
+});
