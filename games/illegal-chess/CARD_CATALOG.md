@@ -2,7 +2,7 @@
 
 This records the original 26 approved concepts. Keep gameplay rules stable while adding server-side checks and UI. A card must **not** enter random draws unless the server implements it and it has tests.
 
-## Live gameplay cards (18)
+## Live gameplay cards (21)
 
 | Card | Rarity | Status |
 |---|---|---|
@@ -24,6 +24,9 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Insurance Fraud | Uncommon | Live (wave 2) |
 | Prisoner Exchange | Uncommon | Live (wave 2) |
 | Relocation Order | Epic | Live (wave 2) |
+| Delayed En Passant | Uncommon | Live (wave 3) |
+| Promotion Recall | Rare | Live (wave 3) |
+| Time Capsule | Epic | Live (wave 3) |
 
 ## Wave 2 semantics
 
@@ -31,14 +34,17 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 - **Prisoner Exchange:** Spend a turn returning one actually lost pawn per color to its earliest empty original pawn square. Each side benefits. Promotions do not count as lost pawns.
 - **Relocation Order:** Choose a normally legal capture of an enemy non-king piece, then pick an empty original starting square of that piece. Your attacker stays put. The server excludes king-unsafe destinations.
 
-## Approved gameplay cards still awaiting implementation (7)
+## Wave 3 semantics
 
-- **Delayed En Passant:** allow one additional turn to en-passant if the relevant pawns remain in position. Ensure both pawns and the capture square are validated before use.
-- **Promotion Recall:** on a pawn reaching the promotion rank, remove that pawn instead of normal promotion and revive a captured knight/bishop/rook on an empty original starting square.
+- **Delayed En Passant (Uncommon):** Bonus card to restore the legal en-passant capture on the next opportunity after missing the standard chance. The eligible pawn, adjacent capturing pawn and passed-through square must remain valid. The bonus expires after this turn; no unlimited en passant.
+- **Promotion Recall (Rare):** As a pawn reaches its final rank, consume the card to remove that pawn and revive a genuinely captured friendly knight, bishop or rook on an empty original home square; this replaces the ordinary promotion.
+- **Time Capsule (Epic):** Bonus action before an ordinary non-promotion move of your chosen non-king piece. The origin is visible to both players. On your next turn you can spend the turn returning that same surviving piece to its empty origin if your king remains safe, or decline and let the marker expire.
+
+## Approved gameplay cards still awaiting implementation (4)
+
 - **Identity Theft (Epic):** select two friendly non-king pieces; swap their *appearances only* for the opponent's next turn. Real movement/attack rules never change.
 - **Objection!:** reaction to an opponent card activation, canceling that card's activation. The opponent retains their card and continues with a normal move. Requires on-page multiplayer reaction handling.
 - **Classified Promotion:** the promoted piece is disguised as pawn/? for the opponent until it moves, captures, checks, or is captured. Its real identity stays hidden on the server and never leaks through allowed-move lists/UI.
-- **Time Capsule (Epic):** before moving a non-king piece, mark its starting square. On the user's next turn, optionally spend that turn returning the same surviving piece to the marked square, only if empty and king-safe; otherwise marker expires. Opponent sees marker and can occupy its square.
 - **Counterfeit (Legendary):** after opponent plays a non-reaction card, copy that ability for your following turn. The copied ability consumes Counterfeit's card slot/use and must be played instead of a normal move; if unusable, expires. No choosing which opposing ability to copy.
 
 ## Separate next milestone: The Analyst (26th card)
