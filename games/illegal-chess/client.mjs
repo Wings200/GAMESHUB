@@ -6,7 +6,7 @@ const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 const invite=room=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(room);
 const own=p=>p&&p!=="."&&((game?.player||session?.player)==="w"?p===p.toUpperCase():p===p.toLowerCase());
-const myTurn=()=>game?.ready&&!game?.status?.done&&game?.turn===game?.player;
+const myTurn=()=>game?.ready&&!game?.status?.done&&!game?.pendingReaction&&game?.turn===game?.player;
 const toSquare=i=>"abcdefgh"[i&7]+(8-(i>>4));
 function boardFromFen(fen){
  const out=[];for(const row of fen.split(" ")[0].split("/"))for(const char of row){
@@ -197,13 +197,13 @@ function renderHand(){
  for(const card of game.hand){
   const button=document.createElement("button");button.type="button";
   button.className="card"+(selectedCard?.id===card.id?" active":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
-  button.disabled=card.used||!myTurn()||busy||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed");
+  button.disabled=card.used||!myTurn()||busy||card.id==="objection"||(card.id==="counterfeit"&&!game.counterfeitOffer)||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed");
   const image=putImage(button,card,card.name+" card illustration");image.className="art";
   const stripe=document.createElement("span");stripe.className="rarityLine";button.append(stripe);
   const content=document.createElement("span");content.className="cardContent";
   const name=document.createElement("span");name.className="cardName";name.textContent=card.name;content.append(name);
   const tier=document.createElement("span");tier.className="cardTier";tier.textContent=card.rarity;content.append(tier);
-  const description=document.createElement("span");description.className="cardDesc";description.textContent=card.description;content.append(description);
+  const description=document.createElement("span");description.className="cardDesc";description.textContent=card.id==="counterfeit"&&game.counterfeitOffer?"COPY AVAILABLE: "+game.counterfeitOffer.name+" · uses your full turn":card.description;content.append(description);
   button.append(content);if(card.used)addUsedOverlay(button);
   button.addEventListener("click",()=>selectCard(card));target.append(button);
  }
@@ -245,6 +245,7 @@ function renderExtras(){
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
  if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
+ if(game.counterfeitOffer&&game.hand.some(c=>c.id==="counterfeit"&&!c.used))list.push("🎭 Counterfeit ready to copy "+game.counterfeitOffer.name);
  if(game.capsuleReturn&&myTurn()){
   const btn=document.createElement("button");btn.type="button";btn.className="btn slim primary";
   btn.textContent="⏳ RETURN "+game.capsuleReturn.from.toUpperCase()+" → "+game.capsuleReturn.to.toUpperCase();
@@ -274,6 +275,15 @@ function render(){
  $("matchTitle").textContent=game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
  const left=20-(game.moveCount||0)%20;
  $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
+ const reaction=game.pendingReaction,box=$("reactionBox");
+ box.hidden=!reaction;
+ if(reaction){
+  $("reactionTitle").textContent=reaction.canReact?"OBJECTION! — YOUR RESPONSE":"AWAITING OBJECTION!";
+  $("reactionText").textContent=reaction.canReact?
+   "Your opponent is playing "+reaction.name+". Allow it, or use Objection! to cancel the card and force a normal move.":
+   "Your opponent is deciding whether to allow "+reaction.name+". The board is paused until they respond.";
+  $("reactionActions").hidden=!reaction.canReact;
+ }
  const result=$("gameResult");
  result.hidden=!game.status.done;
  if(game.status.done){
@@ -291,6 +301,7 @@ function render(){
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
  else if(game.status.done)hint=game.status.text;
+ else if(game.pendingReaction)hint=game.pendingReaction.canReact?"Choose ALLOW or OBJECTION! to resolve the pending card.":"Waiting for the opponent to respond to your card.";
  else if(!myTurn())hint="Opponent's turn. Study their hand while you plan your next move.";
  else if(selectedCard)hint=selectedCard.mode==="sniper"?"Select your bishop, then choose a secret diagonal."
   :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
