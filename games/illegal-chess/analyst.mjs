@@ -23,7 +23,7 @@ export function gradeAnalystTurn(g,color,next,label,last){
  const square=piece!=="."&&side(piece)===(color==="w"?1:-1)?sq(last.to):null;
  const common={side:color,turn:(g.moveCount||0)+1,move:label,square,estimated:false};
  const custom={...common,status:"custom",grade:"Custom Rule",symbol:ANALYST_SYMBOLS.Custom,
-  reason:"Custom card rules or hidden pieces are active. Stockfish only evaluates standard chess moves.",square:null};
+  reason:"Custom card rules or hidden pieces are active. Stockfish only evaluates standard chess moves."};
  if(!stockfishSafe(g)||!last||!Number.isInteger(last.from)||!Number.isInteger(last.to))return custom;
  // A card can alter the board using a legal-looking move. Only the literal
  // normal chess move route is eligible, and its resulting FEN must match
