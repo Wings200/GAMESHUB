@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.7
+## Live in Alpha 0.8
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -10,7 +10,7 @@
 - **Card expansion wave 2:** Insurance Fraud, Prisoner Exchange and Relocation Order have server-side validation, original artwork, in-game selection, and automated tests. Insurance markers are visible to both players. Relocation Order allows the user to select only king-safe original home squares.
 - **Card expansion wave 3:** Delayed En Passant extends a single en-passant opportunity using server-side history; Promotion Recall spends the promoting pawn to revive a previously captured friendly minor/major piece at its home square; Time Capsule visibly marks and temporarily tracks a real piece, with an on-board return button next turn. All three use the in-game UI and validate king safety.
 - **Final gameplay cards:** Identity Theft swaps only enemy-visible appearances. Classified Promotion conceals the actual promoted piece type. Objection! gives the opponent a server-validated in-site reaction before card resolution, and Counterfeit clones the most recent nonreaction enemy card at the cost of a full turn. These include multiplayer secrecy and reaction regression tests.
-- **The Analyst is the 26th card.** Legendary passive: automatically grades both players' completed turns, with original card art, an on-page history, eight categories, and a dedicated Analyst test-room mode. The server estimates material and position after actual legal moves, sniper fire, current card resources, visible effects and 20-turn player control swaps. It includes limited lookahead to immediate ordinary chess replies. **This is a transparent, bounded heuristic, not a full search of every possible card play or a proven Stockfish-level classification**. Never expose raw card secrets in the grading payload.
+- **The Analyst is the 26th card.** Legendary passive: records standard legal chess moves without server-side grading and offers those moves to an isolated client-side Stockfish 19 lite single-threaded UCI engine. Grades compare the engine's preferred root move to the played move at bounded depth/time. On-board feedback coins appear above the moved piece for **1000ms** only after analysis completes, with a matching color/icon history and legend. In custom-rule positions, no FEN or Stockfish job is emitted to avoid leaking concealed information or pretending Stockfish knows chess-card rules. Previous heuristic grades are labeled as historical estimates. Engine files are served unmodified from an allowlisted pinned CDN via the same-origin function; their GPL-3.0 source/license link is in the UI. No runtime external opening books or Chess.com accuracy models are used.
 - **Approved catalog:** See [CARD_CATALOG.md](./CARD_CATALOG.md) for all 26 original approved concepts, remaining rules and the separate Analyzer milestone.
 - **Optional sniper test match** gives *both* players Bishop Sniper plus two random other cards. Standard games keep three random rarity-weighted draws. Test matches are unranked like the rest of Alpha.
 
