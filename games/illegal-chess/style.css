@@ -61,3 +61,10 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 .board .square.capsuleOrigin{box-shadow:inset 0 0 0 3px #ffc88e,0 0 13px #f9c87e66;z-index:1}
 .board .square.capsuleOrigin:after{content:"⏳";position:absolute;right:1px;top:0;font-size:clamp(10px,2vw,16px);filter:drop-shadow(0 1px 2px #081521);pointer-events:none;z-index:3}
 .board .square.capsuleTracked{outline:3px dashed #dda9ff;outline-offset:-5px}
+
+/* Alpha 0.6: reaction response remains within GAMESHUB, not browser dialogs. */
+.reactionBox{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:17px;border:1px solid #b7a2ef88;background:linear-gradient(110deg,#282245,#141b2e);border-radius:17px;padding:19px 23px;margin:15px 0 23px;box-shadow:0 10px 34px #0005}
+.reactionBox h3{font-size:23px;color:#f2e9ff;margin:5px 0}
+.reactionBox p{margin:0;max-width:630px;color:#bac9e4;font-size:12px}
+.reactionActions{display:flex;gap:12px;flex-wrap:wrap}
+.reactionActions .btn{min-width:145px}
