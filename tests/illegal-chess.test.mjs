@@ -213,3 +213,66 @@ test("Pawn Strike blocks both players' pawn advances for a full round, but not t
  assert.equal(playerView(capture,"w").legal.some(m=>m.from==="e4"&&m.to==="d5"),true,"Captures remain legal");
  assert.equal(playerView(capture,"w").legal.some(m=>m.from==="e4"&&m.to==="e5"),false);
 });
+
+test("Insurance Fraud protects a real piece for two enemy turns and freezes its capturer",()=>{
+ const g=room();give(g,"w","insurance-fraud");
+ g.s=parseFen("7k/7b/8/8/4R3/8/8/K7 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"insurance-fraud",from:"e4"});
+ assert.equal(g.effects.insurance.w.square,idx("e4"));
+ assert.equal(g.effects.insurance.w.remaining,2);
+ assert.equal(playerView(g,"b").effects.insurance.w.square,idx("e4"),"Opponent sees the insurance marker");
+ move(g,"b","h7","e4");
+ assert.equal(g.effects.insurance.w,null,"Insurance pays out on capture");
+ assert.equal(g.effects.freeze.color,"b");
+ assert.equal(g.effects.freeze.square,idx("e4"));
+ move(g,"w","a1","a2");
+ assert.equal(playerView(g,"b").legal.some(m=>m.from==="e4"),false,"The capturing bishop is frozen for one turn");
+ move(g,"b","h8","g8");
+ assert.equal(g.effects.freeze,null,"Freeze expires after the capturer's following turn");
+});
+test("Insurance Fraud follows an insured piece and expires after two enemy turns",()=>{
+ const g=room();give(g,"w","insurance-fraud");
+ g.s=parseFen("7k/8/8/8/8/8/4R3/K7 w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"insurance-fraud",from:"e2"});
+ move(g,"b","h8","g8");
+ assert.equal(g.effects.insurance.w.remaining,1);
+ move(g,"w","e2","e4");
+ assert.equal(g.effects.insurance.w.square,idx("e4"));
+ move(g,"b","g8","h8");
+ assert.equal(g.effects.insurance.w,null);
+});
+test("Prisoner Exchange restores both captured pawn colors once and is not available otherwise",()=>{
+ const g=room();give(g,"w","prisoner-exchange");
+ g.s=parseFen("7k/8/8/2pp4/1P2P3/8/8/K7 w - - 0 1");g.history=[g.s];
+ assert.throws(()=>act(g,"w",{type:"card",card:"prisoner-exchange"}),/Both colors/);
+ move(g,"w","b4","c5");
+ move(g,"b","d5","e4");
+ assert.equal(g.capturedPawns.w,1);
+ assert.equal(g.capturedPawns.b,1);
+ act(g,"w",{type:"card",card:"prisoner-exchange"});
+ assert.equal(g.s.b[idx("a2")],"P");
+ assert.equal(g.s.b[idx("a7")],"p");
+ assert.equal(g.capturedPawns.w,0);
+ assert.equal(g.capturedPawns.b,0);
+ assert.equal(g.hands.w[0].used,true);
+});
+test("Promoting a pawn does not pretend it was captured for Prisoner Exchange",()=>{
+ const g=room();
+ g.s=parseFen("6k1/P7/8/8/8/8/8/7K w - - 0 1");g.history=[g.s];
+ move(g,"w","a7","a8","q");
+ assert.equal(g.capturedPawns.w,0);
+});
+test("Relocation Order lets the player pick an empty enemy home square without moving attacker or exposing king",()=>{
+ const g=room();give(g,"w","relocation-order");
+ g.s=parseFen("6k1/8/4r3/8/4R3/8/8/K7 w - - 0 1");g.history=[g.s];
+ const choice=playerView(g,"w").relocationChoices.find(x=>x.from==="e4"&&x.to==="e6");
+ assert.ok(choice,"A legal rook capture offers relocation");
+ assert.ok(choice.homes.includes("h8"));
+ assert.equal(choice.homes.includes("a8"),false,"Relocating a rook onto a8 would check White's king on a1");
+ assert.throws(()=>act(g,"w",{type:"card",card:"relocation-order",from:"e4",to:"e6",dest:"a8"}),/legal capture target/);
+ act(g,"w",{type:"card",card:"relocation-order",from:"e4",to:"e6",dest:"h8"});
+ assert.equal(g.s.b[idx("e4")],"R");
+ assert.equal(g.s.b[idx("e6")],".");
+ assert.equal(g.s.b[idx("h8")],"r");
+ assert.equal(g.hands.w[0].used,true);
+});
