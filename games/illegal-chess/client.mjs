@@ -111,6 +111,9 @@ function renderBoard(){
    cell.classList.add(piece==="."?"hint":"capture");
   }
   if(myTurn()&&game.sniperShots?.includes(name))cell.classList.add("shot");
+  if(game.effects?.freeze?.square===((8-rank)*16+file))cell.classList.add("freezeTarget");
+  if(game.effects?.reserved?.square===((8-rank)*16+file))cell.classList.add("reservedTarget");
+  if(game.status.text.includes("CHECK")&&((game.turn==="w"&&piece==="K")||(game.turn==="b"&&piece==="k")))cell.classList.add("inCheck");
   if(game.last&&(game.last.from===i||game.last.to===i))cell.classList.add("lastMove");
   if(piece!=="."){
    const symbol=document.createElement("span");symbol.className="piece "+(piece===piece.toUpperCase()?"white":"black");
