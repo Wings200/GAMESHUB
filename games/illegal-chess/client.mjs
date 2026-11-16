@@ -5,8 +5,8 @@ const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 const invite=room=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(room);
-const own=p=>p&&p!=="."&&(session?.player==="w"?p===p.toUpperCase():p===p.toLowerCase());
-const myTurn=()=>game?.ready&&!game?.status?.done&&game?.turn===session?.player;
+const own=p=>p&&p!=="."&&((game?.player||session?.player)==="w"?p===p.toUpperCase():p===p.toLowerCase());
+const myTurn=()=>game?.ready&&!game?.status?.done&&game?.turn===game?.player;
 const toSquare=i=>"abcdefgh"[i&7]+(8-(i>>4));
 function boardFromFen(fen){
  const out=[];for(const row of fen.split(" ")[0].split("/"))for(const char of row){
@@ -106,8 +106,7 @@ function renderLobby(){
 const diagonals={NE:[1,1],NW:[-1,1],SE:[1,-1],SW:[-1,-1]};
 // The player's own invisible-to-opponent sniper sits one full square beyond
 // the playable 8x8 board, and its normal diagonal extends back into the board.
-function sniperVision(){
- const sniper=game?.sniper?.own;
+function sniperVision(sniper=game?.sniper?.own,stopAtBlock=true){
  if(!sniper)return null;
  const delta=diagonals[sniper.direction];
  if(!delta)return null;
@@ -121,12 +120,12 @@ function sniperVision(){
  for(let f=file,r=rank;f>=0&&f<8&&r>=1&&r<=8;f-=dx,r-=dy){
   const square="abcdefgh"[f]+r,piece=pieces[(8-r)*8+f];
   ray.add(square);
-  if(piece!=="."){blocker={square,piece};break;}
+  if(piece!=="."){if(!blocker)blocker={square,piece};if(stopAtBlock)break;}
  }
  return {outside,ray,blocker,direction:sniper.direction};
 }
 function renderBoard(){
- const pieces=boardFromFen(game.fen),board=$("board"),isBlack=session.player==="b",vision=sniperVision();
+ const pieces=boardFromFen(game.fen),board=$("board"),isBlack=game.player==="b",vision=sniperVision(),enemyVision=sniperVision(game.sniper?.opponentRevealed,false);
  const frag=document.createDocumentFragment();
  // An actual ten-by-ten visual grid: the inner 8x8 is playable chess;
  // the outer ring is off-board. Only the owner sees their bishop there.
@@ -165,7 +164,11 @@ function renderBoard(){
    cell.classList.add((vision.direction==="NE"||vision.direction==="SW")?"slopeUp":"slopeDown");
    if(vision.blocker?.square===name&&!game.sniperShots?.includes(name))cell.classList.add("sniperBlocked");
   }
-  if(game.sniperShots?.includes(name))cell.classList.add("shot");
+  if(enemyVision?.ray.has(name)){
+    cell.classList.add("enemySniperRay");
+    cell.classList.add((enemyVision.direction==="NE"||enemyVision.direction==="SW")?"slopeUp":"slopeDown");
+   }
+   if(game.sniperShots?.includes(name))cell.classList.add("shot");
   if(game.effects?.freeze?.square===((8-rank)*16+file))cell.classList.add("freezeTarget");
   if(game.effects?.reserved?.square===((8-rank)*16+file))cell.classList.add("reservedTarget");
   if(game.status.text.includes("CHECK")&&((game.turn==="w"&&piece==="K")||(game.turn==="b"&&piece==="k")))cell.classList.add("inCheck");
@@ -214,14 +217,14 @@ function renderSniper(){
  box.hidden=!own&&!game.sniper?.opponentActive;
  if(own){
   $("sniperTitle").textContent="YOUR BISHOP IS OFF-BOARD";
-  $("sniperDetail").textContent="Your bishop is shown beyond the board. Click it to aim; click a highlighted enemy to shoot. Direction: "+own.direction+" (secret).";
+  $("sniperDetail").textContent=(own.shots?"SECOND SHOT — your bishop will teleport onto the captured square. The enemy sees your diagonal.":"FIRST SHOT — your bishop stays off-board, then your diagonal is revealed.")+" Click the bishop to aim. Direction: "+own.direction+".";
   if(myTurn())for(const target of game.sniperShots||[]){
    const btn=document.createElement("button");btn.className="btn slim primary";btn.textContent="⌖ FIRE AT "+target.toUpperCase();
    btn.addEventListener("click",()=>fire(target));actions.append(btn);
   }
  }else{
   $("sniperTitle").textContent="ENEMY BISHOP SNIPER ACTIVE";
-  $("sniperDetail").textContent="Direction unknown · diagonal can be blocked by pieces";
+  $("sniperDetail").textContent=game.sniper?.opponentRevealed?"DIAGONAL REVEALED · "+game.sniper.opponentRevealed.direction+" · visible on your board":"Direction unknown until the first shot · pieces can block the firing line";
  }
 }
 function renderExtras(){
@@ -231,25 +234,37 @@ function renderExtras(){
  if(e.reserved)list.push("🅿 Reserved square · "+toSquare(e.reserved.square));
  if(e.ceasefire)list.push("⚑ Ceasefire · "+e.ceasefire+" move(s)");
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
- if(game.sniper?.opponentActive)list.push("⌖ Enemy Sniper · hidden");
+ if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
  if(!list.length){const none=document.createElement("span");none.className="muted";none.textContent="No active effects";fx.append(none);}
  const log=$("log");log.replaceChildren();
  for(const event of [...game.log].reverse()){
   const row=document.createElement("div");row.className="logRow";
-  const label=document.createElement("b");label.textContent=event.side==="w"?"WHITE":"BLACK";row.append(label,document.createTextNode(event.text));log.append(row);
+  const label=document.createElement("b");label.textContent=event.side==="w"?"WHITE":event.side==="b"?"BLACK":"EVENT";row.append(label,document.createTextNode(event.text));log.append(row);
  }
  if(!game.log.length){const empty=document.createElement("span");empty.className="muted";empty.textContent="The first move starts your story.";log.append(empty);}
 }
 function render(){
  if(!game)return;
- const black=session.player==="b";
+ const black=game.player==="b";
  $("selfIcon").textContent=black?"♚":"♔";$("enemyIcon").textContent=black?"♔":"♚";
  $("selfIcon").classList.toggle("dark",black);$("enemyIcon").classList.toggle("dark",!black);
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
  $("selfState").textContent=game.status.text;
  $("matchTitle").textContent=game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
+ const left=20-(game.moveCount||0)%20;
+ $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
+ const result=$("gameResult");
+ result.hidden=!game.status.done;
+ if(game.status.done){
+  const winner=game.status.winner;
+  const headline=winner===null?"DRAW":winner===game.player?"VICTORY":"DEFEAT";
+  $("gameResultTitle").textContent=headline;
+  $("gameResultDetail").textContent=game.status.text+" · The match is finished; moves and cards are now locked.";
+  result.classList.toggle("victory",headline==="VICTORY");
+  result.classList.toggle("defeat",headline==="DEFEAT");
+ }
  $("enemyState").textContent=!game.ready?"Invite someone to join":game.status.done?"Match complete":myTurn()?"Waiting for your move":"Choosing a move…";
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
@@ -272,7 +287,7 @@ function render(){
 }
 async function fire(target){
  if(!myTurn())return;
- const option=await modal({tag:"BISHOP SNIPER",title:"Take the shot?",description:"Your off-board bishop will capture the first enemy piece in its firing line at "+target.toUpperCase()+". This uses your chess turn. The bishop remains off-board.",choices:[{label:"FIRE · "+target.toUpperCase(),value:true,kind:"danger"}]});
+ const option=await modal({tag:"BISHOP SNIPER",title:"Take the shot?",description:"Your bishop will capture "+target.toUpperCase()+". "+(game.sniper?.own?.shots?"SECOND SHOT: it teleports onto the captured square and leaves sniper mode.":"FIRST SHOT: it stays off-board, but your diagonal is revealed to the opponent.")+" This uses your chess turn.",choices:[{label:"FIRE · "+target.toUpperCase(),value:true,kind:"danger"}]});
  if(option)await send({type:"sniper-shot",to:target});
 }
 async function selectCard(card){

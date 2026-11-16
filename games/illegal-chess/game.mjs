@@ -8,7 +8,7 @@ export const CARDS=[
  {id:"colorblind-bishop",name:"Colorblind Bishop",rarity:"Uncommon",mode:"two",description:"Step your bishop one empty orthogonal square, changing square color."},
  {id:"knight-exchange",name:"Knight Exchange",rarity:"Uncommon",mode:"two",description:"Swap your knight and pawn a knight-jump apart."},
  {id:"parking-ticket",name:"Parking Ticket",rarity:"Rare",mode:"instant",description:"Freeze the enemy's last-moved piece for one turn. Play a chess move afterward."},
- {id:"bishop-sniper",name:"Bishop Sniper",rarity:"Epic",mode:"sniper",description:"Send a bishop secretly off-board along a diagonal. Later, snipe inward through an unblocked ray."},
+ {id:"bishop-sniper",name:"Bishop Sniper",rarity:"Epic",mode:"sniper",description:"Fire once from off-board, revealing your diagonal. The second shot captures and teleports the bishop onto its target."},
  {id:"reserved-parking",name:"Reserved Parking",rarity:"Rare",mode:"square",description:"Reserve one empty enemy landing square; then make your normal move."},
  {id:"ceasefire",name:"Ceasefire",rarity:"Rare",mode:"instant",description:"Declare no captures for your move and the opponent's reply."},
  {id:"double-ko",name:"Double KO",rarity:"Epic",mode:"two",description:"Capture, but both the attacking and captured pieces disappear."},
@@ -27,7 +27,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0},last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,players:{w:whiteToken,b:null},hands:{w:sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0},moveCount:0,swaps:0,last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -42,12 +42,19 @@ export function available(g){
  // Temporary restrictions cannot artificially force stalemate/checkmate.
  return allowed.length||!ordinary.length?allowed:ordinary;
 }
-// A sniper shot is an alternative chess turn. An available shot can prevent stalemate.
+// Shot one removes a target but keeps the off-board bishop. Shot two lands the bishop
+// on the captured square and deactivates the sniper. Both are alternative chess turns.
+function sniperResult(g,color,to){
+ const sniper=g.snipers[color],landing=sniper.shots>=1;
+ const nextSnipers=landing?{...g.snipers,[color]:null}:g.snipers;
+ const next=patch(g.s,{remove:[to],place:landing?[[to,color==="w"?"B":"b"]]:[],resetHalf:true},nextSnipers);
+ return {next,nextSnipers,landing};
+}
 export function sniperShots(g,color){
  const sniper=g.snipers?.[color],front=sniperFront(g.s,sniper);
  if(!front||side(front.piece)!==(color==="w"?-1:1)||front.piece.toLowerCase()==="k"||g.effects.ceasefire>0)return [];
- try{patch(g.s,{remove:[sq(front.square)],resetHalf:true},g.snipers);return [sq(front.square)];}
- catch{return [];} 
+ try{sniperResult(g,color,sq(front.square));return [sq(front.square)];}
+ catch{return [];}
 }
 export function status(g){
  if(!g.players.b)return {done:false,text:"Waiting for opponent"};
@@ -56,11 +63,13 @@ export function status(g){
 }
 export function playerView(g,color){
  const s=g.s,st=status(g);
- return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:stateFen(g),status:st,
+ return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:stateFen(g),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:structuredClone(g.effects),last:g.last,log:g.log.slice(-40),
-  sniper:{own:g.snipers?.[color]?{origin:g.snipers[color].origin,direction:g.snipers[color].direction}:null,opponentActive:!!g.snipers?.[color==="w"?"b":"w"]},
+  sniper:{own:g.snipers?.[color]?{origin:g.snipers[color].origin,direction:g.snipers[color].direction,shots:g.snipers[color].shots||0}:null,
+   opponentActive:!!g.snipers?.[color==="w"?"b":"w"],
+   opponentRevealed:g.snipers?.[color==="w"?"b":"w"]?.revealed?{origin:g.snipers[color==="w"?"b":"w"].origin,direction:g.snipers[color==="w"?"b":"w"].direction}:null},
   sniperShots:st.done||current(s)!==color?[]:sniperShots(g,color),
   legal:st.done||current(s)!==color?[]:available(g).map(m=>({from:sq(m[0]),to:sq(m[1]),promotion:m[2]||"",capture:s.b[m[1]]!=="."||m[3]==="ep"}))};
 }
@@ -72,6 +81,16 @@ function commit(g,color,next,label,last=null,effect=null){
  if(effect?.kind==="freeze")g.effects.freeze={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="reserved")g.effects.reserved={color:color==="w"?"b":"w",square:effect.square};
  if(effect?.kind==="ceasefire")g.effects.ceasefire=2;
+ g.moveCount=(g.moveCount||0)+1;
+ // Change who controls each side after 20 turn-consuming actions. Pieces and
+ // their active effects keep their colors; unused cards stay with each player.
+ // Never change ownership after a winning move, or we'd award the win wrongly.
+ if(g.moveCount%20===0&&!status(g).done){
+  [g.players.w,g.players.b]=[g.players.b,g.players.w];
+  [g.hands.w,g.hands.b]=[g.hands.b,g.hands.w];
+  g.swaps=(g.swaps||0)+1;
+  g.log.push({side:"system",text:"COLOR SWAP — both players now control the opposite pieces"});
+ }
  if(g.log.length>150)g.log=g.log.slice(-100);
 }
 function pass(s){return {...s,b:s.b.slice(),t:-s.t,ep:-1,half:s.half+1,full:s.full+(s.t===-1?1:0)};}
@@ -93,8 +112,11 @@ export function act(g,color,req){
  const s=g.s;g.snipers ||= {w:null,b:null};
  if(req.type==="sniper-shot"){
   if(!isSquare(req.to)||!sniperShots(g,color).includes(req.to))throw Error("That piece is not the first available sniper target");
-  const next=patch(s,{remove:[req.to],resetHalf:true},g.snipers);
-  commit(g,color,next,"Bishop Sniper shot: "+req.to,null);return;
+  const {next,nextSnipers,landing}=sniperResult(g,color,req.to);
+  if(landing)g.snipers=nextSnipers;
+  else {g.snipers[color].shots=1;g.snipers[color].revealed=true;}
+  commit(g,color,next,landing?"Bishop Sniper second shot: "+req.to+" — bishop lands on target":"Bishop Sniper first shot: "+req.to+" — diagonal revealed",
+   landing?{color,from:null,to:idx(req.to),square:idx(req.to),piece:color==="w"?"B":"b"}:null);return;
  }
  if(req.type==="move"){
   pair(req);
@@ -146,7 +168,7 @@ export function act(g,color,req){
   if(g.snipers[color])throw Error("You already have an off-board Bishop Sniper");
   const sniper=sniperPosition(req.from,req.direction);
   nx=patch(s,{remove:[req.from]},g.snipers);
-  g.snipers[color]=sniper;
+  g.snipers[color]={...sniper,shots:0,revealed:false};
   label="Bishop Sniper deployed";last=null;
  }else if(card.id==="parking-ticket"){
   if(!g.last||g.last.color===color||!on(g.last.to)||side(s.b[g.last.to])!==-s.t)throw Error("No eligible enemy last-moved piece");

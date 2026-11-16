@@ -89,10 +89,10 @@ export function insufficient(s){
  return !p.length||(p.length===1&&["b","n"].includes(p[0][0]))||(p.every(x=>x[0]==="b")&&new Set(p.map(x=>x[1])).size===1);
 }
 export function stateStatus(s,history=[s],moveList=legal(s),snipers=null){
- if(!moveList.length)return {done:true,text:inCheck(s,s.t,snipers)?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};
- if(!snipers?.w&&!snipers?.b&&insufficient(s))return {done:true,text:"Draw by insufficient material"};
+ if(!moveList.length){const mate=inCheck(s,s.t,snipers);return {done:true,winner:mate?(s.t===1?"b":"w"):null,text:mate?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};}
+ if(!snipers?.w&&!snipers?.b&&insufficient(s))return {done:true,winner:null,text:"Draw by insufficient material"};
  const repeats=history.filter(p=>positionKey(p)===positionKey(s,snipers)).length;
- if(s.half>=150)return {done:true,text:"Draw by 75-move rule"};
- if(repeats>=5)return {done:true,text:"Draw by fivefold repetition"};
- return {done:false,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s,s.t,snipers)?" · CHECK":"")};
+ if(s.half>=150)return {done:true,winner:null,text:"Draw by 75-move rule"};
+ if(repeats>=5)return {done:true,winner:null,text:"Draw by fivefold repetition"};
+ return {done:false,winner:null,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s,s.t,snipers)?" · CHECK":"")};
 }

@@ -52,7 +52,8 @@ export async function onRequest(context){
   try{act(game,player,data.action)}catch(e){return reply({error:safely(e)},400)}
   const result=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?").bind(JSON.stringify(game),Date.now(),code,r.version).run();
   if(result.meta?.changes!==1)return reply({error:"Move conflict; refresh and try again"},409);
-  return reply({ok:true,view:playerView(game,player)});
+  // Color ownership may change after this action: identify the player again before returning the private view.
+  return reply({ok:true,view:playerView(game,getIdentity(game,hashed))});
  }catch(error){
   if(/^(Room code|Invalid player|Malformed JSON|Request too large)/.test(error.message))return reply({error:error.message},400);
   console.error("Illegal Chess server error",error);
