@@ -171,6 +171,9 @@ function renderBoard(){
    if(game.sniperShots?.includes(name))cell.classList.add("shot");
   if(game.effects?.freeze?.square===((8-rank)*16+file))cell.classList.add("freezeTarget");
   if(game.effects?.reserved?.square===((8-rank)*16+file))cell.classList.add("reservedTarget");
+   const cap=game.effects?.timeCapsule;
+   if(cap?.origin===name)cell.classList.add("capsuleOrigin");
+   if(cap?.square===((8-rank)*16+file))cell.classList.add("capsuleTracked");
    if(Object.values(game.effects?.insurance||{}).some(mark=>mark?.square===((8-rank)*16+file)))cell.classList.add("insuredTarget");
   if(game.status.text.includes("CHECK")&&((game.turn==="w"&&piece==="K")||(game.turn==="b"&&piece==="k")))cell.classList.add("inCheck");
   if(game.last&&(game.last.from===((8-rank)*16+file)||game.last.to===((8-rank)*16+file)))cell.classList.add("lastMove");
@@ -194,7 +197,7 @@ function renderHand(){
  for(const card of game.hand){
   const button=document.createElement("button");button.type="button";
   button.className="card"+(selectedCard?.id===card.id?" active":"");button.style.setProperty("--tier",tierColors[card.rarity]||"#bcc8df");
-  button.disabled=card.used||!myTurn()||busy;
+  button.disabled=card.used||!myTurn()||busy||(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed");
   const image=putImage(button,card,card.name+" card illustration");image.className="art";
   const stripe=document.createElement("span");stripe.className="rarityLine";button.append(stripe);
   const content=document.createElement("span");content.className="cardContent";
@@ -236,9 +239,22 @@ function renderExtras(){
  if(e.ceasefire)list.push("⚑ Ceasefire · "+e.ceasefire+" move(s)");
  if(e.pawnStrike)list.push("✊ Pawn Strike · pawns cannot advance · "+e.pawnStrike+" turn(s)");
  for(const mark of Object.values(e.insurance||{}))if(mark)list.push("🛡 Insured "+toSquare(mark.square)+" · "+mark.remaining+" enemy turn(s)");
+ const capsule=e.timeCapsule;
+ if(e.delayedEp)list.push("↘ Delayed En Passant · available this turn");
+ if(capsule)list.push("⏳ Time Capsule · "+capsule.origin.toUpperCase()+(capsule.stage==="armed"?" · MOVE MARKED PIECE":" · return next turn"));
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
  if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
+ if(game.capsuleReturn&&myTurn()){
+  const btn=document.createElement("button");btn.type="button";btn.className="btn slim primary";
+  btn.textContent="⏳ RETURN "+game.capsuleReturn.from.toUpperCase()+" → "+game.capsuleReturn.to.toUpperCase();
+  btn.addEventListener("click",async()=>{
+   const cap=game.capsuleReturn;
+   const allowed=await modal({tag:"TIME CAPSULE · TURN ACTION",title:"Return your marked piece?",description:"Teleport the surviving piece back to "+cap.to.toUpperCase()+". This spends your chess turn; the marked origin must be empty.",choices:[{label:"RETURN PIECE",value:true,kind:"primary"}]});
+   if(allowed)await send({type:"time-capsule-return"});
+  });
+  fx.append(btn);
+ }
  if(!list.length){const none=document.createElement("span");none.className="muted";none.textContent="No active effects";fx.append(none);}
  const log=$("log");log.replaceChildren();
  for(const event of [...game.log].reverse()){
@@ -280,11 +296,15 @@ function render(){
   :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
    :selectedCard.mode==="one"?(selectedCard.id==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
    :selectedCard.mode==="relocate"?(cardFrom?"Select an enemy piece your selected piece could legally capture.":"Select one of your attacking pieces.")
-   :selectedCard.mode==="instant-turn"?"Confirm the card to consume your turn."
+    :selectedCard.mode==="instant-turn"?"Confirm the card to consume your turn."
+   :selectedCard.mode==="one-prep"?"Select the non-king piece you want to move and mark its starting square."
+   :selectedCard.mode==="recall"?(cardFrom?"Select a legal promotion destination to recall a captured piece.":"Select a pawn that can promote now.")
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
- else if(sniperSelected)hint=game.sniperShots?.length?"Click the highlighted enemy piece to fire your off-board bishop.":"Your bishop is aimed, but its diagonal is blocked or has no legal target.";
+ else if(game.effects?.timeCapsule?.color===game.player&&game.effects.timeCapsule.stage==="armed")hint="Time Capsule armed at "+game.effects.timeCapsule.origin.toUpperCase()+". Move that marked piece now.";
+  else if(game.capsuleReturn)hint="You can return your Time Capsule piece using the RETURN button in Active Effects, or make an ordinary move.";
+  else if(sniperSelected)hint=game.sniperShots?.length?"Click the highlighted enemy piece to fire your off-board bishop.":"Your bishop is aimed, but its diagonal is blocked or has no legal target.";
  else if(selected)hint="Select a highlighted destination, or another friendly piece.";
  else if(game.sniperShots?.length)hint="It's your turn. You can fire your hidden bishop or move another piece.";
  else hint="Your turn. Select a piece, or play a tactical card before you move.";
@@ -299,6 +319,12 @@ async function selectCard(card){
  if(!myTurn()||busy||card.used)return;
  if(selectedCard?.id===card.id){clearSelection();render();return;}
  selected=null;selectedCard=card;cardFrom=null;render();
+ if(card.mode==="instant"&&card.id==="delayed-en-passant"&&!game.delayedEpTargets?.length){
+  clearSelection();render();flash("No delayed en passant is available: the extra window may have expired.");return;
+ }
+ if(card.mode==="recall"&&!game.recallChoices?.length){
+  clearSelection();render();flash("No valid Promotion Recall: you need a pawn about to promote and a captured piece with an empty home square.");return;
+ }
  if(card.mode==="instant"){
   const choice=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Play "+card.name+"?",description:card.description+" Your chess move will remain available this turn.",choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
   if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
@@ -320,7 +346,26 @@ async function selectSquare(name,piece){
    const approved=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Reserve "+name.toUpperCase()+"?",description:"Your opponent cannot end their next move on "+name.toUpperCase()+". You can still make a normal chess move now.",choices:[{label:"RESERVE SQUARE",value:true,kind:"primary"}]});
    if(approved)await send({type:"card",card:card.id,to:name});return;
   }
-  if(card.mode==="one"){
+  if(card.mode==="one-prep"){
+    if(!own(piece)||piece.toLowerCase()==="k"){flash("Select your own non-king piece.");return;}
+    if(!game.legal.some(m=>m.from===name&&!m.promotion)){flash("That piece has no legal move to use with Time Capsule.");return;}
+    const approved=await modal({tag:"TIME CAPSULE · BONUS ACTION",title:"Mark "+name.toUpperCase()+"?",description:"You must move this piece now. On your next turn you may spend that turn returning the same surviving piece to "+name.toUpperCase()+" if the square is empty and the return is king-safe.",choices:[{label:"MARK THIS SQUARE",value:true,kind:"primary"}]});
+    if(approved)await send({type:"card",card:card.id,from:name});return;
+   }
+   if(card.mode==="recall"){
+    if(!cardFrom){
+     if(!own(piece)||piece.toLowerCase()!=="p"||!game.recallChoices.some(c=>c.from===name)){flash("Select a pawn with a legal Promotion Recall.");return;}
+     cardFrom=name;render();return;
+    }
+    if(name===cardFrom){cardFrom=null;render();return;}
+    const option=game.recallChoices.find(c=>c.from===cardFrom&&c.to===name);
+    if(!option){flash("That is not a valid Promotion Recall destination.");return;}
+    const items=option.options.map(o=>({label:({n:"♞ KNIGHT",b:"♗ BISHOP",r:"♜ ROOK"})[o.into]+" → "+o.home.toUpperCase(),value:o.into+":"+o.home,kind:"ghost"}));
+    const choice=await modal({tag:"PROMOTION RECALL",title:"Revive a captured piece",description:"Your pawn disappears upon reaching "+name.toUpperCase()+". Choose which captured piece to return to an empty original square instead of ordinary promotion.",choices:items});
+    if(choice){const [into,home]=choice.split(":");await send({type:"card",card:card.id,from:cardFrom,to:name,into,home});}
+    return;
+   }
+   if(card.mode==="one"){
    if(!own(piece)||piece.toLowerCase()==="k"){flash("Choose one of your non-king pieces.");return;}
    const insuring=card.id==="insurance-fraud";
     const approved=await modal({tag:insuring?"INSURANCE FRAUD":"VOLUNTARY EVICTION",title:insuring?"Insure "+name.toUpperCase()+"?":"Evict the piece on "+name.toUpperCase()+"?",description:insuring?"The selected piece is visibly insured for two enemy turns. If an enemy captures it, that attacker cannot move on its owner's next turn. This consumes your current turn.":"This permanently removes your own "+piece.toUpperCase()+" from the game and consumes your chess turn. You cannot undo this.",choices:[{label:insuring?"INSURE PIECE":"YES, REMOVE IT",value:true,kind:insuring?"primary":"danger"}]});

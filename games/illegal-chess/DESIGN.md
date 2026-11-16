@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.4
+## Live in Alpha 0.5
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -8,6 +8,7 @@
 - **Bishop Sniper:** place one bishop completely off-board in one of four directions (NE/NW/SE/SW). The diagonal stays secret before the first shot. **First shot:** capture the first unobstructed enemy piece without moving the bishop; reveal the diagonal to the defender. **Second shot:** capture the next first unobstructed enemy piece, then teleport the bishop onto its captured square, ending sniper mode. A friendly or enemy piece blocks everything behind it; the off-board firing ray counts for checks and king safety before the second shot. Each shot uses one chess turn.
 - **Card expansion wave 1:** Pawn Ram (Common), Friendly Fire (Uncommon), and Pawn Strike (Rare) are now playable with their original accepted rules, custom illustrations, and regression coverage. Pawn Strike is a bonus action that blocks both players' pawn *forward* moves for the acting turn and next reply while keeping diagonal captures legal. Friendly Fire honors king safety and cannot target a friendly king.
 - **Card expansion wave 2:** Insurance Fraud, Prisoner Exchange and Relocation Order have server-side validation, original artwork, in-game selection, and automated tests. Insurance markers are visible to both players. Relocation Order allows the user to select only king-safe original home squares.
+- **Card expansion wave 3:** Delayed En Passant extends a single en-passant opportunity using server-side history; Promotion Recall spends the promoting pawn to revive a previously captured friendly minor/major piece at its home square; Time Capsule visibly marks and temporarily tracks a real piece, with an on-board return button next turn. All three use the in-game UI and validate king safety.
 - **Approved catalog:** See [CARD_CATALOG.md](./CARD_CATALOG.md) for all 26 original approved concepts, remaining rules and the separate Analyzer milestone.
 - **Optional sniper test match** gives *both* players Bishop Sniper plus two random other cards. Standard games keep three random rarity-weighted draws. Test matches are unranked like the rest of Alpha.
 
