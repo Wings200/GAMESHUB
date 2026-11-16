@@ -97,6 +97,14 @@ function visibleFen(g,viewer){
  }
  return fen({...g.s,b});
 }
+function publicEffects(g,viewer){
+ const e=structuredClone(g.effects);
+ // Piece-type fields are only used by server rules. Public modifiers need
+ // square and countdown, never a private piece type or its hidden identity.
+ for(const mark of Object.values(e.insurance||{}))if(mark&&mark.color!==viewer)delete mark.piece;
+ if(e.timeCapsule&&e.timeCapsule.color!==viewer)delete e.timeCapsule.piece;
+ return e;
+}
 function redactedLast(g,viewer){
  const last=g.last;if(!last)return null;
  for(const mark of Object.values(g.classified||{})){
@@ -130,7 +138,7 @@ export function playerView(g,color){
  return {room:g.room,player:color,testMode:!!g.sniperTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
-  effects:structuredClone(g.effects),last:redactedLast(g,color),log:g.log.slice(-40),
+  effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
   pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
   counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
   relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="relocation-order"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="relocation-order"))?relocationChoices(g):[],
@@ -265,6 +273,10 @@ function relocationChoices(g){
  for(const m of available(g)){
   const from=sq(m[0]),to=sq(m[1]),piece=s.b[m[1]];
   if(piece==="."||piece.toLowerCase()==="k"||m[3]==="ep"||m[2])continue;
+  // Do not leak an enemy disguise's true type through the relocation home
+  // squares; neither hidden identities nor Identity Theft can be probed.
+  if(Object.values(g.classified||{}).some(mark=>mark&&mark.color!==current(s)&&idx(mark.square)===m[1]))continue;
+  if(g.identityTheft&&g.identityTheft.color!==current(s)&&[g.identityTheft.a,g.identityTheft.b].some(k=>idx(k)===m[1]))continue;
   const homes=originalSquares(piece).filter(h=>s.b[idx(h)]===".").filter(h=>{
    try{patch(s,{remove:[to],place:[[h,piece]]},g.snipers);return true;}catch{return false;}
   });
