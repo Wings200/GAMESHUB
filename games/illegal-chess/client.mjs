@@ -171,6 +171,7 @@ function renderBoard(){
    if(game.sniperShots?.includes(name))cell.classList.add("shot");
   if(game.effects?.freeze?.square===((8-rank)*16+file))cell.classList.add("freezeTarget");
   if(game.effects?.reserved?.square===((8-rank)*16+file))cell.classList.add("reservedTarget");
+   if(Object.values(game.effects?.insurance||{}).some(mark=>mark?.square===((8-rank)*16+file)))cell.classList.add("insuredTarget");
   if(game.status.text.includes("CHECK")&&((game.turn==="w"&&piece==="K")||(game.turn==="b"&&piece==="k")))cell.classList.add("inCheck");
   if(game.last&&(game.last.from===((8-rank)*16+file)||game.last.to===((8-rank)*16+file)))cell.classList.add("lastMove");
   if(piece!=="."){
@@ -234,6 +235,7 @@ function renderExtras(){
  if(e.reserved)list.push("🅿 Reserved square · "+toSquare(e.reserved.square));
  if(e.ceasefire)list.push("⚑ Ceasefire · "+e.ceasefire+" move(s)");
  if(e.pawnStrike)list.push("✊ Pawn Strike · pawns cannot advance · "+e.pawnStrike+" turn(s)");
+ for(const mark of Object.values(e.insurance||{}))if(mark)list.push("🛡 Insured "+toSquare(mark.square)+" · "+mark.remaining+" enemy turn(s)");
  if(game.sniper?.own)list.push("⌖ Your Bishop Sniper · "+game.sniper.own.direction);
  if(game.sniper?.opponentActive)list.push(game.sniper.opponentRevealed?"⌖ Enemy Sniper · diagonal revealed":"⌖ Enemy Sniper · hidden");
  for(const value of list){const chip=document.createElement("span");chip.className="effect";chip.textContent=value;fx.append(chip);}
@@ -276,7 +278,9 @@ function render(){
  else if(!myTurn())hint="Opponent's turn. Study their hand while you plan your next move.";
  else if(selectedCard)hint=selectedCard.mode==="sniper"?"Select your bishop, then choose a secret diagonal."
   :selectedCard.mode==="two"?(cardFrom?selectedCard.id==="friendly-fire"?"Select the friendly non-king piece to capture.":selectedCard.id==="pawn-ram"?"Select the directly opposing pawn to push backward.":"Select the destination square.":"Select the starting piece.")
-  :selectedCard.mode==="one"?"Select your own non-king piece to remove."
+   :selectedCard.mode==="one"?(selectedCard.id==="insurance-fraud"?"Select a friendly non-king piece to insure for two enemy turns.":"Select your own non-king piece to remove.")
+   :selectedCard.mode==="relocate"?(cardFrom?"Select an enemy piece your selected piece could legally capture.":"Select one of your attacking pieces.")
+   :selectedCard.mode==="instant-turn"?"Confirm the card to consume your turn."
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
@@ -298,7 +302,10 @@ async function selectCard(card){
  if(card.mode==="instant"){
   const choice=await modal({tag:"TACTICAL CARD · BONUS ACTION",title:"Play "+card.name+"?",description:card.description+" Your chess move will remain available this turn.",choices:[{label:"ACTIVATE CARD",kind:"primary",value:true}]});
   if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
- }else if(card.mode==="market"){
+  }else if(card.mode==="instant-turn"){
+   const choice=await modal({tag:"PRISONER EXCHANGE · TURN ACTION",title:"Revive one pawn for each side?",description:card.description+" This consumes your chess turn and restores a pawn to both sides if each has lost one.",choices:[{label:"EXCHANGE PRISONERS",kind:"primary",value:true}]});
+   if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
+  }else if(card.mode==="market"){
   const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
   const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a random card of the SAME rarity.",choices:options});
   if(slot!==null)await send({type:"card",card:card.id,slot});else{clearSelection();render();}
@@ -315,7 +322,8 @@ async function selectSquare(name,piece){
   }
   if(card.mode==="one"){
    if(!own(piece)||piece.toLowerCase()==="k"){flash("Choose one of your non-king pieces.");return;}
-   const approved=await modal({tag:"VOLUNTARY EVICTION",title:"Evict the piece on "+name.toUpperCase()+"?",description:"This permanently removes your own "+piece.toUpperCase()+" from the game and consumes your chess turn. You cannot undo this.",choices:[{label:"YES, REMOVE IT",value:true,kind:"danger"}]});
+   const insuring=card.id==="insurance-fraud";
+    const approved=await modal({tag:insuring?"INSURANCE FRAUD":"VOLUNTARY EVICTION",title:insuring?"Insure "+name.toUpperCase()+"?":"Evict the piece on "+name.toUpperCase()+"?",description:insuring?"The selected piece is visibly insured for two enemy turns. If an enemy captures it, that attacker cannot move on its owner's next turn. This consumes your current turn.":"This permanently removes your own "+piece.toUpperCase()+" from the game and consumes your chess turn. You cannot undo this.",choices:[{label:insuring?"INSURE PIECE":"YES, REMOVE IT",value:true,kind:insuring?"primary":"danger"}]});
    if(approved)await send({type:"card",card:card.id,from:name});return;
   }
   if(card.mode==="transform"){
@@ -329,7 +337,16 @@ async function selectSquare(name,piece){
     {label:"↗ NORTH-EAST",value:"NE"},{label:"↖ NORTH-WEST",value:"NW"},{label:"↘ SOUTH-EAST",value:"SE"},{label:"↙ SOUTH-WEST",value:"SW"}]});
    if(direction)await send({type:"card",card:card.id,from:name,direction});return;
   }
-  if(card.mode==="two"){
+  if(card.mode==="relocate"){
+    if(!cardFrom){if(!own(piece)){flash("Choose one of your attacking pieces first.");return;}cardFrom=name;render();return;}
+    if(name===cardFrom){cardFrom=null;render();return;}
+    const option=(game.relocationChoices||[]).find(c=>c.from===cardFrom&&c.to===name);
+    if(!option){flash("That piece cannot be legally relocated by your attacker.");return;}
+    const dest=await modal({tag:"RELOCATION ORDER",title:"Relocate the enemy at "+name.toUpperCase(),description:"Your "+cardFrom.toUpperCase()+" attacker remains in place. Choose an empty original starting square for the enemy piece. This consumes your turn.",choices:option.homes.map(h=>({label:h.toUpperCase(),value:h,kind:"ghost"}))});
+    if(dest)await send({type:"card",card:card.id,from:cardFrom,to:name,dest});
+    return;
+   }
+   if(card.mode==="two"){
    if(!cardFrom){if(!own(piece)){flash("Select one of your pieces first.");return;}cardFrom=name;render();return;}
    if(name===cardFrom){cardFrom=null;render();return;}
    await send({type:"card",card:card.id,from:cardFrom,to:name});return;
