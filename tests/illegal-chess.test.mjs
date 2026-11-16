@@ -454,3 +454,19 @@ test("Copying a bonus card via Counterfeit consumes the full turn and retains it
  assert.equal(g.effects.pawnStrike,2,"Copied card affects both forthcoming turns");
  assert.equal(playerView(g,"w").legal.some(m=>m.from==="e2"&&m.to==="e4"),false);
 });
+
+test("Enemy cannot identify disguised promotions using Relocation Order or public effect metadata",()=>{
+ const g=room();give(g,"w","classified-promotion");give(g,"b","relocation-order");
+ g.s=parseFen("7k/P7/r7/8/8/8/5P2/7K w - - 0 1");g.history=[g.s];
+ act(g,"w",{type:"card",card:"classified-promotion"});
+ assert.throws(()=>act(g,"w",{type:"card",card:"voluntary-eviction",from:"h1"}),/Classified Promotion requires/);
+ move(g,"w","a7","a8","n");
+ assert.equal(g.s.b[idx("a8")],"N");
+ const view=playerView(g,"b");
+ assert.ok(view.fen.startsWith("P6k"));
+ assert.equal(view.relocationChoices.some(c=>c.to==="a8"),false,"No original knight home-squares leak through relocation choices");
+ g.effects.insurance.w={color:"w",square:idx("a8"),piece:"N",remaining:2};
+ const hidden=playerView(g,"b");
+ assert.equal(Object.hasOwn(hidden.effects.insurance.w,"piece"),false,"Enemy only sees public insurance square and duration");
+ assert.equal(playerView(g,"w").effects.insurance.w.piece,"N","The owner still sees their actual piece");
+});
