@@ -3,7 +3,7 @@ import {cardImage} from "./art.mjs";
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
-let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,busy=false,poll=null,modalOpen=false,lastState="";
+let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 const invite=room=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(room);
 const own=p=>p&&p!=="."&&(session?.player==="w"?p===p.toUpperCase():p===p.toLowerCase());
 const myTurn=()=>game?.ready&&!game?.status?.done&&game?.turn===session?.player;
@@ -15,7 +15,7 @@ function boardFromFen(fen){
  }return out;
 }
 function flash(message){const bar=$("toast");bar.textContent=message;bar.hidden=false;clearTimeout(flash.timer);flash.timer=setTimeout(()=>bar.hidden=true,3200);}
-function clearSelection(){selected=null;selectedCard=null;cardFrom=null;}
+function clearSelection(){selected=null;selectedCard=null;cardFrom=null;sniperSelected=false;}
 async function api(method,payload){
  const response=await fetch("/api/illegal-chess/"+method,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload||{})});
  let json;try{json=await response.json();}catch{throw Error("The game server returned an unexpected response.");}
@@ -102,31 +102,80 @@ function renderLobby(){
   shell.append(title,rarity);art.append(shell);
  }
 }
+
+const diagonals={NE:[1,1],NW:[-1,1],SE:[1,-1],SW:[-1,-1]};
+// The player's own invisible-to-opponent sniper sits one full square beyond
+// the playable 8x8 board, and its normal diagonal extends back into the board.
+function sniperVision(){
+ const sniper=game?.sniper?.own;
+ if(!sniper)return null;
+ const delta=diagonals[sniper.direction];
+ if(!delta)return null;
+ const [dx,dy]=delta;
+ let file="abcdefgh".indexOf(sniper.origin[0]),rank=Number(sniper.origin[1]);
+ if(file<0||!rank)return null;
+ while(file+dx>=0&&file+dx<8&&rank+dy>=1&&rank+dy<=8){file+=dx;rank+=dy;}
+ const outside={file:file+dx,rank:rank+dy};
+ const pieces=boardFromFen(game.fen),ray=new Set();
+ let blocker=null;
+ for(let f=file,r=rank;f>=0&&f<8&&r>=1&&r<=8;f-=dx,r-=dy){
+  const square="abcdefgh"[f]+r,piece=pieces[(8-r)*8+f];
+  ray.add(square);
+  if(piece!=="."){blocker={square,piece};break;}
+ }
+ return {outside,ray,blocker,direction:sniper.direction};
+}
 function renderBoard(){
- const pieces=boardFromFen(game.fen),board=$("board"),isBlack=session.player==="b";
+ const pieces=boardFromFen(game.fen),board=$("board"),isBlack=session.player==="b",vision=sniperVision();
  const frag=document.createDocumentFragment();
- for(let n=0;n<64;n++){
-  const visualRank=Math.floor(n/8),visualFile=n%8;
-  const rank=isBlack?visualRank+1:8-visualRank,file=isBlack?7-visualFile:visualFile;
+ // An actual ten-by-ten visual grid: the inner 8x8 is playable chess;
+ // the outer ring is off-board. Only the owner sees their bishop there.
+ for(let n=0;n<100;n++){
+  const visualRank=Math.floor(n/10),visualFile=n%10;
+  const rank=isBlack?visualRank:9-visualRank;
+  const file=isBlack?8-visualFile:visualFile-1;
+  const inside=file>=0&&file<8&&rank>=1&&rank<=8;
+  if(!inside){
+   const ghost=document.createElement("div");ghost.className="square outside";
+   ghost.setAttribute("aria-hidden","true");
+   if(vision?.outside.file===file&&vision?.outside.rank===rank){
+    ghost.classList.add("offboardSniper");
+    if(sniperSelected)ghost.classList.add("selected");
+    const icon=document.createElement("span");icon.className="piece "+(isBlack?"black":"white");
+    icon.textContent=isBlack?"♝":"♗";ghost.append(icon);
+    const pin=document.createElement("span");pin.className="sniperPin";pin.textContent="⌖";ghost.append(pin);
+    ghost.removeAttribute("aria-hidden");ghost.setAttribute("role","button");ghost.setAttribute("tabindex","0");
+    ghost.setAttribute("aria-label","Your off-board bishop, aim down the "+vision.direction+" diagonal");
+    const aim=()=>{if(!myTurn()||modalOpen)return;const next=!sniperSelected;clearSelection();sniperSelected=next;render();};
+    ghost.addEventListener("click",aim);
+    ghost.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();aim();}});
+   }
+   frag.append(ghost);continue;
+  }
   const i=(8-rank)*8+file,piece=pieces[i],name="abcdefgh"[file]+rank;
   const cell=document.createElement("button");cell.type="button";
-  cell.className="square "+((visualRank+visualFile)%2?"dark":"light");
+  cell.className="square "+(((rank+file)%2)?"dark":"light");
   cell.setAttribute("aria-label",name+" "+(piece==="."?"empty":piece));
   if(name===selected||name===cardFrom)cell.classList.add("selected");
   if(!selectedCard&&selected&&game.legal.some(m=>m.from===selected&&m.to===name)){
    cell.classList.add(piece==="."?"hint":"capture");
   }
-  if(myTurn()&&game.sniperShots?.includes(name))cell.classList.add("shot");
+  if(vision?.ray.has(name)){
+   cell.classList.add("sniperRay");
+   cell.classList.add((vision.direction==="NE"||vision.direction==="SW")?"slopeUp":"slopeDown");
+   if(vision.blocker?.square===name&&!game.sniperShots?.includes(name))cell.classList.add("sniperBlocked");
+  }
+  if(game.sniperShots?.includes(name))cell.classList.add("shot");
   if(game.effects?.freeze?.square===((8-rank)*16+file))cell.classList.add("freezeTarget");
   if(game.effects?.reserved?.square===((8-rank)*16+file))cell.classList.add("reservedTarget");
   if(game.status.text.includes("CHECK")&&((game.turn==="w"&&piece==="K")||(game.turn==="b"&&piece==="k")))cell.classList.add("inCheck");
-  if(game.last&&(game.last.from===i||game.last.to===i))cell.classList.add("lastMove");
+  if(game.last&&(game.last.from===((8-rank)*16+file)||game.last.to===((8-rank)*16+file)))cell.classList.add("lastMove");
   if(piece!=="."){
    const symbol=document.createElement("span");symbol.className="piece "+(piece===piece.toUpperCase()?"white":"black");
    symbol.textContent=glyph[piece]||"?";cell.append(symbol);
   }
-  if(visualFile===0){const label=document.createElement("span");label.className="coord";label.textContent=rank;cell.append(label);}
-  if(visualRank===7){const label=document.createElement("span");label.className="coord file";label.textContent="abcdefgh"[file];cell.append(label);}
+  if(file===0){const label=document.createElement("span");label.className="coord";label.textContent=rank;cell.append(label);}
+  if(rank===1){const label=document.createElement("span");label.className="coord file";label.textContent="abcdefgh"[file];cell.append(label);}
   cell.addEventListener("click",()=>selectSquare(name,piece));frag.append(cell);
  }
  board.replaceChildren(frag);
@@ -165,7 +214,7 @@ function renderSniper(){
  box.hidden=!own&&!game.sniper?.opponentActive;
  if(own){
   $("sniperTitle").textContent="YOUR BISHOP IS OFF-BOARD";
-  $("sniperDetail").textContent="Direction "+own.direction+" · opponent cannot see it";
+  $("sniperDetail").textContent="Your bishop is shown beyond the board. Click it to aim; click a highlighted enemy to shoot. Direction: "+own.direction+" (secret).";
   if(myTurn())for(const target of game.sniperShots||[]){
    const btn=document.createElement("button");btn.className="btn slim primary";btn.textContent="⌖ FIRE AT "+target.toUpperCase();
    btn.addEventListener("click",()=>fire(target));actions.append(btn);
@@ -215,6 +264,7 @@ function render(){
   :selectedCard.mode==="square"?"Select an empty target square."
   :selectedCard.mode==="transform"?"Select your queen, then a new piece."
   :"Choose a target.";
+ else if(sniperSelected)hint=game.sniperShots?.length?"Click the highlighted enemy piece to fire your off-board bishop.":"Your bishop is aimed, but its diagonal is blocked or has no legal target.";
  else if(selected)hint="Select a highlighted destination, or another friendly piece.";
  else if(game.sniperShots?.length)hint="It's your turn. You can fire your hidden bishop or move another piece.";
  else hint="Your turn. Select a piece, or play a tactical card before you move.";
@@ -270,7 +320,8 @@ async function selectSquare(name,piece){
   }
   return;
  }
- if(!selected&&game.sniperShots?.includes(name)){await fire(name);return;}
+ if(!selectedCard&&(sniperSelected||!selected)&&game.sniperShots?.includes(name)){await fire(name);return;}
+ if(sniperSelected){sniperSelected=false;render();flash("There is no legal sniper shot on that square.");return;}
  if(selected){
   if(selected===name){selected=null;render();return;}
   if(own(piece)){selected=name;render();return;}
@@ -284,7 +335,7 @@ async function selectSquare(name,piece){
   }
   await send({type:"move",from:selected,to:name,promotion});return;
  }
- if(own(piece)){selected=name;render();}
+ if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
 $("create").addEventListener("click",async()=>{
