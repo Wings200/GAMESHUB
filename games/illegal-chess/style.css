@@ -92,3 +92,24 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 .analystDisclaimer{font-size:10px;color:#91a5c3;margin:14px 0 0}
 .cardPassive{border-color:#fbd18899;box-shadow:0 0 22px #e7b86222 inset}
 .cardPassive .cardTier:after{content:" · ALWAYS ON";color:#ffe0a3}
+
+/* Alpha 0.7.1: one-second grade annotation above the last moved piece. */
+.board .square.analystSymbolSquare{z-index:5;overflow:visible}
+.board .square .analystMoveSymbol{
+ position:absolute;z-index:12;top:-11px;right:-8px;
+ display:inline-grid;place-items:center;min-width:23px;height:23px;
+ padding:0 5px;border-radius:9px;border:2px solid #d4e3ff;
+ background:#1b2c47;color:#edf5ff;font-size:15px;font-weight:900;
+ letter-spacing:-.04em;line-height:1;white-space:nowrap;
+ pointer-events:none;user-select:none;box-shadow:0 3px 12px #06101acc;
+ animation:analystGradePop .16s ease-out both;
+}
+.board .square .analystMoveSymbol.book,
+.board .square .analystMoveSymbol.best,
+.board .square .analystMoveSymbol.brilliant{background:#14654b;border-color:#aaf6d5;color:#fffbe2}
+.board .square .analystMoveSymbol.excellent,
+.board .square .analystMoveSymbol.good{background:#26578d;border-color:#a9d4ff}
+.board .square .analystMoveSymbol.inaccuracy{background:#86571d;border-color:#ffe0a5}
+.board .square .analystMoveSymbol.mistake,
+.board .square .analystMoveSymbol.blunder{background:#8c2d40;border-color:#ffb7c1}
+@keyframes analystGradePop{from{transform:translateY(7px) scale(.78);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
