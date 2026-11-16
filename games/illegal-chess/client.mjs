@@ -28,7 +28,7 @@ function scheduleStockfishReviews(){
  if(stockfishRoom!==session.room)resetStockfish(session.room);
  // Previous turns are reviewed locally, asynchronously, never in the move
  // request. Only the latest six are queued after joining a running match.
- for(const entry of (game.analyst.entries||[]).slice(-6)){
+ for(const entry of (game.analyst.entries||[]).slice(-6).reverse()){
   if(entry.status!=="pending"||stockfishReviews.has(entry.turn)||stockfishInProgress.has(entry.turn))continue;
   stockfishInProgress.add(entry.turn);
   stockfishReviewer ||= createStockfishReviewer();
