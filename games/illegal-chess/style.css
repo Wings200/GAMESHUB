@@ -68,3 +68,27 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 .reactionBox p{margin:0;max-width:630px;color:#bac9e4;font-size:12px}
 .reactionActions{display:flex;gap:12px;flex-wrap:wrap}
 .reactionActions .btn{min-width:145px}
+
+/* Alpha 0.7 · The Analyst: a passive move review built into the match. */
+.analystPanel{margin:16px 0 22px;padding:22px clamp(16px,3vw,30px);border:1px solid #bb9058aa;border-radius:18px;background:radial-gradient(ellipse at 90% 0%,#66502a50,transparent 50%),linear-gradient(130deg,#201d31,#101725);box-shadow:0 16px 36px #0006}
+.analystIntro{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.analystIntro h3{margin:6px 0;color:#ffe4a6;font-size:clamp(23px,3vw,34px)}
+.analystIntro p{color:#b9c3d9;font-size:12px;max-width:520px;line-height:1.6;margin:7px 0}
+.analysisLive{font-size:10px;letter-spacing:.13em;background:#ffd98924;color:#fce8b4;border:1px solid #f5c77366;padding:5px 8px;border-radius:50px;vertical-align:middle}
+.analystSpotlight{display:flex;flex-direction:column;gap:6px;max-width:370px;min-width:195px}
+.analystSpotlight strong{font-size:clamp(20px,3.2vw,32px);color:#f6dea7;letter-spacing:.035em}
+.analystSpotlight span{font-size:12px;line-height:1.5;color:#c1cee1}
+.analystHistory{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:9px}
+.analystEntry{border:1px solid #ffffff18;border-radius:12px;padding:12px;background:#121a2bb8;display:flex;flex-direction:column;gap:6px}
+.analystEntryTop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.analystEntryTop b{font-size:10px;letter-spacing:.09em;color:#adc1dc}
+.analystGrade{font-size:11px;font-weight:900;border-radius:6px;padding:4px 7px;background:#53607b44;color:#dce8ff}
+.analystGrade.brilliant,.analystGrade.best,.analystGrade.book{color:#97f5ca;background:#24735a4a}
+.analystGrade.excellent,.analystGrade.good{color:#a3d0ff;background:#33548165}
+.analystGrade.inaccuracy{color:#ffe0a5;background:#78582c66}
+.analystGrade.mistake,.analystGrade.blunder{color:#ffacb2;background:#843d4a66}
+.analystMove{font-size:13px;font-weight:700;color:#f2f5fb}
+.analystReason{font-size:11px;line-height:1.45;color:#9fb1cb}
+.analystDisclaimer{font-size:10px;color:#91a5c3;margin:14px 0 0}
+.cardPassive{border-color:#fbd18899;box-shadow:0 0 22px #e7b86222 inset}
+.cardPassive .cardTier:after{content:" · ALWAYS ON";color:#ffe0a3}
