@@ -2,7 +2,7 @@
 
 This records the original 26 approved concepts. Keep gameplay rules stable while adding server-side checks and UI. A card must **not** enter random draws unless the server implements it and it has tests.
 
-## Live gameplay cards (15)
+## Live gameplay cards (18)
 
 | Card | Rarity | Status |
 |---|---|---|
@@ -20,16 +20,22 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Black Market | Legendary | Live |
 | Pawn Ram | Common | Implemented in wave 1 |
 | Friendly Fire | Uncommon | Implemented in wave 1 |
-| Pawn Strike | Rare | Implemented in wave 1 |
+| Pawn Strike | Rare | Live |
+| Insurance Fraud | Uncommon | Live (wave 2) |
+| Prisoner Exchange | Uncommon | Live (wave 2) |
+| Relocation Order | Epic | Live (wave 2) |
 
-## Approved gameplay cards still awaiting implementation (10)
+## Wave 2 semantics
+
+- **Insurance Fraud:** Spend a turn protecting your non-king piece for two enemy turns. The marker is visible to both players; capture freezes the capturing piece for its next turn. The marker follows normal piece movement.
+- **Prisoner Exchange:** Spend a turn returning one actually lost pawn per color to its earliest empty original pawn square. Each side benefits. Promotions do not count as lost pawns.
+- **Relocation Order:** Choose a normally legal capture of an enemy non-king piece, then pick an empty original starting square of that piece. Your attacker stays put. The server excludes king-unsafe destinations.
+
+## Approved gameplay cards still awaiting implementation (7)
 
 - **Delayed En Passant:** allow one additional turn to en-passant if the relevant pawns remain in position. Ensure both pawns and the capture square are validated before use.
 - **Promotion Recall:** on a pawn reaching the promotion rank, remove that pawn instead of normal promotion and revive a captured knight/bishop/rook on an empty original starting square.
-- **Insurance Fraud (Uncommon):** insure a selected friendly piece for two opponent turns; if an enemy captures it, the capturing piece cannot move on its owner's following turn. Opponent sees marker.
 - **Identity Theft (Epic):** select two friendly non-king pieces; swap their *appearances only* for the opponent's next turn. Real movement/attack rules never change.
-- **Relocation Order (Epic):** target an enemy non-king piece that one of your pieces could normally capture; instead relocate the target to an empty one of its original starting squares. Attacker stays. Uses turn.
-- **Prisoner Exchange (Uncommon):** if both colors have lost a pawn, revive one captured pawn on each color's empty original starting square, simultaneously; consumes turn.
 - **Objection!:** reaction to an opponent card activation, canceling that card's activation. The opponent retains their card and continues with a normal move. Requires on-page multiplayer reaction handling.
 - **Classified Promotion:** the promoted piece is disguised as pawn/? for the opponent until it moves, captures, checks, or is captured. Its real identity stays hidden on the server and never leaks through allowed-move lists/UI.
 - **Time Capsule (Epic):** before moving a non-king piece, mark its starting square. On the user's next turn, optionally spend that turn returning the same surviving piece to the marked square, only if empty and king-safe; otherwise marker expires. Opponent sees marker and can occupy its square.
