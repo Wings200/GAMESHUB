@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
-import {parseFen,START_FEN,legal,apply,sq,fen} from "../games/illegal-chess/engine.mjs";
+import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 const room=()=>{const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");return g;};
 const move=(g,color,from,to,promotion="")=>act(g,color,{type:"move",from,to,promotion});
 const give=(g,color,id)=>{g.hands[color]=[{id,used:false},{id:"knight-exchange",used:false},{id:"ceasefire",used:false}];};
@@ -18,7 +18,7 @@ test("server rejects wrong turn and illegal chess moves",()=>{
 });
 test("checkmate is determined by legal chess",()=>{
  const g=room();move(g,"w","f2","f3");move(g,"b","e7","e5");move(g,"w","g2","g4");move(g,"b","d8","h4");
- assert.equal(status(g).done,true);assert.match(status(g).text,/checkmate/);
+ assert.equal(status(g).done,true);assert.match(status(g).text,/checkmate/);assert.equal(status(g).winner,"b");
 });
 test("Pawn Sidestep consumes a turn, moves one square sideways only",()=>{
  const g=room();give(g,"w","pawn-sidestep");
@@ -45,10 +45,11 @@ test("Black Market only trades another unused card of matching rarity",()=>{
 test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
  const g=room();give(g,"w","parking-ticket");
  move(g,"w","e2","e4");move(g,"b","g8","f6");
- const before=g.history.length;
+ const before=g.history.length,turnCount=g.moveCount;
  act(g,"w",{type:"card",card:"parking-ticket"});
  assert.equal(g.s.t,1,"White should still be able to play chess");
  assert.equal(g.history.length,before,"Bonus card must not consume a chess turn");
+ assert.equal(g.moveCount,turnCount,"Bonus cards must not advance color-swap countdown");
  assert.equal(g.hands.w[0].used,true);
  assert.equal(g.effects.freeze.color,"b");
  move(g,"w","d2","d4");
@@ -86,6 +87,7 @@ test("Bishop Sniper teleports outside the board, conceals direction, and only hi
  assert.equal(g.snipers.w.direction,"NE");
  assert.equal(playerView(g,"b").sniper.own,null);
  assert.equal(playerView(g,"b").sniper.opponentActive,true);
+ assert.equal(playerView(g,"b").sniper.opponentRevealed,null,"Enemy must not learn diagonal before shot one");
  assert.equal(JSON.stringify(playerView(g,"b")).includes('"direction":"NE"'),false);
  move(g,"b","e8","d8");
  assert.deepEqual(playerView(g,"w").sniperShots,["g7"],"Pawn blocks the queen on f6");
@@ -93,9 +95,16 @@ test("Bishop Sniper teleports outside the board, conceals direction, and only hi
  act(g,"w",{type:"sniper-shot",to:"g7"});
  assert.equal(g.s.b[(8-7)*16+6],".");
  assert.equal(g.s.b[(8-6)*16+5],"q");
- assert.equal(g.snipers.w.direction,"NE","Bishop remains off-board");
+ assert.equal(g.snipers.w.direction,"NE","Bishop stays off-board after shot one");
+ assert.equal(g.snipers.w.shots,1);
+ assert.deepEqual(playerView(g,"b").sniper.opponentRevealed,{origin:"c3",direction:"NE"},"First shot reveals the diagonal");
  move(g,"b","d8","e8");
  assert.deepEqual(playerView(g,"w").sniperShots,["f6"],"Queen becomes reachable when pawn removed");
+ act(g,"w",{type:"sniper-shot",to:"f6"});
+ assert.equal(g.s.b[idx("f6")],"B","Second shot teleports the attacking bishop to the captured square");
+ assert.equal(g.snipers.w,null,"Bishop leaves sniper mode after its second shot");
+ assert.equal(playerView(g,"b").sniper.opponentActive,false);
+ assert.equal(playerView(g,"b").sniper.opponentRevealed,null);
 });
 test("An offboard sniper still attacks king squares and blocks normal king moves",()=>{
  const g=room();give(g,"w","bishop-sniper");
@@ -126,4 +135,34 @@ test("Optional Bishop Sniper test rooms guarantee the card for both players with
  assert.equal(new Set(g.hands.w.map(c=>c.id)).size,3);
  assert.equal(new Set(g.hands.b.map(c=>c.id)).size,3);
  assert.equal(playerView(g,"b").testMode,true);
+});
+
+test("Every 20 turn-consuming actions swaps player control and their unused hands, not the board",()=>{
+ const g=room(),whitePlayer=g.players.w,blackPlayer=g.players.b;
+ g.hands.w=[{id:"pawn-sidestep",used:false}];
+ g.hands.b=[{id:"black-market",used:false}];
+ const moves=[
+  ["a2","a3","a7","a6"],["b2","b3","b7","b6"],
+  ["c2","c3","c7","c6"],["d2","d3","d7","d6"],
+  ["e2","e3","e7","e6"],["f2","f3","f7","f6"],
+  ["g2","g3","g7","g6"],["h2","h3","h7","h6"],
+  ["a1","a2","a8","a7"],["h1","h2","h8","h7"]
+ ];
+ for(const [i,[wf,wt,bf,bt]] of moves.entries()){
+  move(g,"w",wf,wt);
+  assert.equal(g.swaps,0,"No swap before both players finish 10 moves");
+  move(g,"b",bf,bt);
+  if(i<9)assert.equal(g.swaps,0);
+ }
+ assert.equal(g.moveCount,20);
+ assert.equal(g.swaps,1);
+ assert.equal(g.players.w,blackPlayer);
+ assert.equal(g.players.b,whitePlayer);
+ assert.equal(g.hands.b[0].id,"pawn-sidestep","Cards stay with their original player");
+ assert.equal(g.hands.w[0].id,"black-market");
+ assert.equal(g.s.b[idx("a3")],"P","Board pieces do not change colors");
+ assert.equal(g.s.b[idx("a6")],"p");
+ assert.equal(g.s.t,1,"Normal white/black move order continues");
+ assert.equal(playerView(g,"w").swaps,1);
+ assert.equal(status(g).done,false);
 });
