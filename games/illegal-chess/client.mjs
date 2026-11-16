@@ -4,6 +4,29 @@ const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
+const analystSymbols={Book:"📖",Best:"★",Excellent:"!",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!"};
+let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
+// Show the newest move's grade once, for exactly one second. Do not replay
+// archived grades on reconnect, or repeat them during board re-renders.
+function prepareAnalystSymbol(){
+ const entries=game?.analyst?.entries||[],latest=entries[entries.length-1];
+ const turn=latest?.turn??0;
+ if(analystSeenTurn===null){analystSeenTurn=turn;return;}
+ if(turn===analystSeenTurn)return;
+ analystSeenTurn=turn;
+ if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
+ analystPopup=null;
+ if(!latest?.square||turn!==game.moveCount)return;
+ const square=latest.square,file="abcdefgh".indexOf(square[0]),rank=Number(square[1]);
+ if(file<0||rank<1||rank>8)return;
+ const piece=boardFromFen(game.fen)[(8-rank)*8+file];
+ if(!piece||piece==="."||(piece===piece.toUpperCase()?"w":"b")!==latest.side)return;
+ analystPopup={square,symbol:latest.symbol||analystSymbols[latest.grade]||"?",grade:latest.grade};
+ analystPopupTimer=setTimeout(()=>{
+  analystPopup=null;analystPopupTimer=null;
+  if(game)renderBoard();
+ },1000);
+}
 const invite=room=>location.origin+"/games/illegal-chess/?room="+encodeURIComponent(room);
 const own=p=>p&&p!=="."&&((game?.player||session?.player)==="w"?p===p.toUpperCase():p===p.toLowerCase());
 const myTurn=()=>game?.ready&&!game?.status?.done&&!game?.pendingReaction&&game?.turn===game?.player;
@@ -81,6 +104,8 @@ async function refresh(){
  }catch(e){$("connection").textContent="RECONNECTING";$("connection").classList.add("offline");}
 }
 async function begin(s){
+ if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
+ analystPopup=null;analystSeenTurn=null;
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -180,6 +205,13 @@ function renderBoard(){
   if(piece!=="."){
    const symbol=document.createElement("span");symbol.className="piece "+(piece===piece.toUpperCase()?"white":"black");
    symbol.textContent=glyph[piece]||"?";cell.append(symbol);
+   if(analystPopup?.square===name){
+    cell.classList.add("analystSymbolSquare");
+    const badge=document.createElement("span");badge.className="analystMoveSymbol "+analystPopup.grade.toLowerCase();
+    badge.textContent=analystPopup.symbol;
+    badge.setAttribute("aria-label",analystPopup.grade+" move");
+    cell.append(badge);
+   }
   }
   if(file===0){const label=document.createElement("span");label.className="coord";label.textContent=rank;cell.append(label);}
   if(rank===1){const label=document.createElement("span");label.className="coord file";label.textContent="abcdefgh"[file];cell.append(label);}
@@ -286,6 +318,7 @@ function renderAnalyst(){
 }
 function render(){
  if(!game)return;
+ prepareAnalystSymbol();
  const black=game.player==="b";
  $("selfIcon").textContent=black?"♚":"♔";$("enemyIcon").textContent=black?"♔":"♚";
  $("selfIcon").classList.toggle("dark",black);$("enemyIcon").classList.toggle("dark",!black);
