@@ -8,6 +8,7 @@ const values={p:100,n:320,b:340,r:510,q:940,k:0};
 const cardValues={Common:10,Uncommon:18,Rare:25,Epic:38,Legendary:48};
 const nextColor=c=>c==="w"?"b":"w";
 export const ANALYST_GRADES=["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"];
+export const ANALYST_SYMBOLS={Book:"📖",Best:"★",Excellent:"!",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!"};
 export const analystActive=g=>["w","b"].some(c=>g.hands?.[c]?.some(card=>card.id==="the-analyst"&&!card.used));
 
 // Use a conservative positional heuristic: material, center, king safety,
@@ -20,8 +21,26 @@ function evaluate(g,s,pov,snipers=g.snipers){
   const sign=side(p)===(pov==="w"?1:-1)?1:-1,type=p.toLowerCase();
   const rank=8-(i>>4),file=i&7;
   const center=Math.max(0,5-(Math.abs(file-3.5)+Math.abs(rank-4.5))*.85);
-  let bonus=type==="n"||type==="b"?center*5:type==="p"?center*1.8+((p==="P"?rank-2:7-rank)*2.4):type==="q"?center*1.1:0;
-  if(type==="k"&&s.full<16)bonus-=center*2;
+  const opening=s.full<=12;
+  let bonus=type==="n"||type==="b"?center*7:type==="p"?center*2.3+((p==="P"?rank-2:7-rank)*3.5):type==="q"?center*1.1:0;
+  if(opening&&(type==="n"||type==="b")){
+   // Developing a knight/bishop is normally more useful than moving the king.
+   const home=type==="n"?(sign===1&&pov==="w"||sign===-1&&pov==="b"?["b1","g1"]:["b8","g8"]):
+     (sign===1&&pov==="w"||sign===-1&&pov==="b"?["c1","f1"]:["c8","f8"]);
+   if(!home.includes(sq(i)))bonus+=22;
+  }
+  if(type==="k"&&opening){
+   const white=p==="K",square=sq(i),home=white?"e1":"e8";
+   const castles=white?["g1","c1"]:["g8","c8"];
+   // The previous heuristic penalized Ke2 by ~2 centipawns, which could
+   // falsely declare a third-move king wander "Best". Penalize the real
+   // opening cost: exposure, lost castling plans and lost development time.
+   if(square!==home&&!castles.includes(square)){
+    const taper=Math.max(0,(15-s.full)/14);
+    bonus-=200*taper+center*8;
+   }else if(castles.includes(square))bonus+=48;
+   else bonus+=12;
+  }
   score+=sign*(values[type]+bonus);
  }
  // Virtual off-board bishop is not represented in the board's FEN.
@@ -134,6 +153,18 @@ export function gradeAnalystTurn(g,color,next,label,last,{availableMoves=[],snip
  const sac=materialOf(next,color)<materialOf(g.s,color)-270;
  const brilliant=sac&&!mate&&played>=best-50&&played>evaluate(snapshot,g.s,color,g.snipers)+20;
  const book=commonOpening(g,last,label);
- const grade=classifyAnalyst({gap,book,brilliant,mate});
- return {side:color,turn:(g.moveCount||0)+1,move:label,grade,reason:mate?"Checkmate ends the match.":reasons[grade],estimated:true};
+ let grade=classifyAnalyst({gap,book,brilliant,mate});
+ const moved=Number.isInteger(last?.from)?g.s.b[last.from]:".";
+ const ordinaryKingWalk=moved.toLowerCase()==="k"&&g.s.full<=9&&
+  !inCheck(g.s,g.s.t,g.snipers)&&!mate&&
+  !(Math.abs((last?.to??0)-last.from)===2)&&
+  availableMoves.some(m=>g.s.b[m[0]].toLowerCase()!=="k");
+ // A shallow top-six search can miss long-term king danger. Never award
+ // a top grade to an unforced, non-castling king walk in the opening.
+ if(ordinaryKingWalk&&["Book","Best","Excellent","Good","Brilliant"].includes(grade))grade="Inaccuracy";
+ const reason=ordinaryKingWalk&&grade==="Inaccuracy"?
+  "Moving an unthreatened king early usually loses castling and exposes it; developing pieces is safer.":
+  mate?"Checkmate ends the match.":reasons[grade];
+ const square=Number.isInteger(last?.to)&&on(last.to)&&next.b[last.to]!=="."?sq(last.to):null;
+ return {side:color,turn:(g.moveCount||0)+1,move:label,grade,symbol:ANALYST_SYMBOLS[grade],square,reason,estimated:true};
 }
