@@ -16,9 +16,9 @@ class FakeD1 {
    async all(){
     if(sql.includes("FROM illegal_chess_public_rooms p JOIN illegal_chess_rooms r")){
      const cutoff=args[0];
-     const records=[...db.publicRooms.entries()].filter(([code,created_at])=>created_at>cutoff&&db.rooms.has(code))
-      .sort((a,b)=>a[1]-b[1]).slice(0,60)
-      .map(([code,created_at])=>({code,created_at,version:db.rooms.get(code).version,state:db.rooms.get(code).state}));
+     const records=[...db.publicRooms.entries()].filter(([code,metadata])=>metadata.last_seen>cutoff&&db.rooms.has(code))
+      .sort((a,b)=>a[1].created_at-b[1].created_at).slice(0,60)
+      .map(([code,metadata])=>({code,created_at:metadata.created_at,version:db.rooms.get(code).version,state:db.rooms.get(code).state}));
      return {results:records};
     }
     throw Error("Unexpected all SQL: "+sql);
@@ -26,9 +26,15 @@ class FakeD1 {
    async run(){
     if(sql.includes("CREATE TABLE"))return {meta:{changes:0}};
     if(sql.includes("INSERT INTO illegal_chess_public_rooms")){
-     const [code,created_at]=args;
+     const [code,created_at,last_seen]=args;
      if(db.publicRooms.has(code))throw Error("UNIQUE constraint failed");
-     db.publicRooms.set(code,created_at);return {meta:{changes:1}};
+     db.publicRooms.set(code,{created_at,last_seen});return {meta:{changes:1}};
+    }
+    if(sql.includes("UPDATE illegal_chess_public_rooms SET last_seen")){
+     const [last_seen,code]=args,metadata=db.publicRooms.get(code);
+     if(!metadata)return {meta:{changes:0}};
+     metadata.last_seen=last_seen;
+     return {meta:{changes:1}};
     }
     if(sql.includes("DELETE FROM illegal_chess_public_rooms")){
      const changed=db.publicRooms.delete(args[0]);
@@ -481,11 +487,23 @@ test("Public host can unlist a waiting room, not an opponent or unauthorized tok
  assert.equal((await post(db,"unlist",joined.data)).status,403);
  assert.equal((await post(db,"unlist",host.data)).status,403);
 });
-test("Stale public rooms expire from discovery without deleting active game sessions",async()=>{
+test("Inactive public rooms disappear from discovery without deleting game sessions",async()=>{
  const db=new FakeD1();
  const host=await post(db,"create",{visibility:"public"});
- db.publicRooms.set(host.data.room,Date.now()-61*60*1000);
+ db.publicRooms.get(host.data.room).last_seen=Date.now()-50*1000;
  assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
  assert.equal((await post(db,"state",host.data)).status,200);
  assert.equal((await post(db,"quick-join",{})).data.player,"w");
+});
+
+test("Authenticated public heartbeat keeps a waiting host discoverable",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{visibility:"public"});
+ db.publicRooms.get(host.data.room).last_seen=Date.now()-50*1000;
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ assert.equal((await post(db,"public-heartbeat",{room:host.data.room,token:"0".repeat(64)})).status,403);
+ const beat=await post(db,"public-heartbeat",host.data);
+ assert.equal(beat.status,200);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,1);
+ await post(db,"join",{room:host.data.room});
+ assert.equal((await post(db,"public-heartbeat",host.data)).status,403);
 });
