@@ -18,7 +18,7 @@ const smooth=t=>{const x=clamp(t);return x*x*(3-2*x);};
 export function sniperMotion(ms){
  const after=Math.max(0,ms-1320)/1000;
  const recoil=ms>=1320&&ms<2120
-  ?Math.max(0,.48*Math.exp(-after*4)*Math.sin(after*12)):0;
+  ?.48*Math.exp(-after*4)*Math.sin(after*12):0;
  const cameraJolt=ms>=1320&&ms<1620
   ?Math.sin((ms-1320)*.10)*.045*(1-(ms-1320)/300):0;
  const scopeZoom=smooth((ms-650)/540)*(1-smooth((ms-1260)/160));
