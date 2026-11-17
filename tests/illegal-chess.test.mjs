@@ -44,6 +44,57 @@ test("Recent-card preferences favor unseen cards within a rarity, never changing
   }
  }
 });
+test("Expansion wave: ten new Common cards can be played and consume a turn",()=>{
+ const cases=[
+  ["pawn-moonwalk","4k3/8/8/8/4P3/8/8/4K2R w K - 0 1","e4","e3","e3","P"],
+  ["jaywalking","4k3/8/8/8/4P3/8/8/4K2R w K - 0 1","e4","f5","f5","P"],
+  ["knight-walks","4k3/8/8/8/4N3/8/8/4K2R w K - 0 1","e4","e5","e5","N"],
+  ["rooks-shortcut","k7/8/8/8/4R3/8/8/4K3 w - - 0 1","e4","f5","f5","R"],
+  ["bishop-vault","k7/8/8/8/2B5/3p4/8/4K3 w - - 0 1","c4","e2","e2","B"],
+  ["triple-step","k7/8/8/8/8/8/4P3/4K2R w K - 0 1","e2","e5","e5","P"],
+  ["pawn-headbutt","k7/8/8/4n3/4P3/8/8/4K2R w K - 0 1","e4","e5","e5","P"],
+  ["pawn-parkour","k7/8/3p4/8/4P3/8/8/4K2R w K - 0 1","e4","e6","e6","P"],
+  ["royal-uber","k7/8/8/8/8/8/8/4K2R w K - 0 1","e1","g1","g1","K"],
+  ["knight-bishop-swap","k7/8/8/8/8/3B4/1N6/4K2R w K - 0 1","b2","d3","d3","N"]
+ ];
+ for(const [id,setup,from,to,target,piece] of cases){
+  const g=room();g.s=parseFen(setup);g.history=[g.s];give(g,"w",id);
+  assert.doesNotThrow(()=>act(g,"w",{type:"card",card:id,from,to}),id);
+  assert.equal(g.s.b[idx(target)],piece,id+" destination");
+  assert.equal(g.moveCount,1,id+" turn count");
+  assert.equal(g.s.t,-1,id+" next player");
+  assert.equal(g.hands.w[0].used,true,id+" card spent");
+  if(id==="pawn-headbutt")assert.equal(g.capturedPieces.b.n,1,"Headbutt must count a captured piece");
+  if(id==="knight-bishop-swap")assert.equal(g.s.b[idx("b2")],"B");
+  if(id==="royal-uber")assert.equal(g.s.b[idx("h1")],"R","Royal Uber does not castle");
+  if(id==="pawn-parkour"){
+   assert.equal(g.s.ep,idx("e5"),"Parkour creates a normal one-turn en passant square");
+   assert.ok(legal(g.s).some(m=>sq(m[0])==="d6"&&sq(m[1])==="e5"&&m[3]==="ep"));
+  }
+ }
+});
+test("New card abilities reject invalid moves and preserve king safety",()=>{
+ const bad=[
+  ["pawn-moonwalk","e4","d3"],
+  ["jaywalking","e4","e5"],
+  ["knight-walks","e4","f6"],
+  ["rooks-shortcut","e4","e5"],
+  ["bishop-vault","e4","f7"],
+  ["triple-step","e4","e7"],
+  ["pawn-headbutt","e4","e5"],
+  ["pawn-parkour","e4","e7"],
+  ["royal-uber","e1","h1"],
+  ["knight-bishop-swap","e4","f5"]
+ ];
+ for(const [id,from,to] of bad){
+  const g=room();give(g,"w",id);
+  assert.throws(()=>act(g,"w",{type:"card",card:id,from,to}),/Choose|Pawn Strike|reserved|frozen/i,id);
+  assert.equal(g.moveCount,0,id+" invalid attempt must not consume turn");
+ }
+ const g=room();give(g,"w","royal-uber");
+ g.s=parseFen("k4r2/8/8/8/8/8/8/4K3 w - - 0 1");g.history=[g.s];
+ assert.throws(()=>act(g,"w",{type:"card",card:"royal-uber",from:"e1",to:"g1"}),/check|safe/i,"King may not cross attacked f1");
+});
 test("server rejects wrong turn and illegal chess moves",()=>{
  const g=room();assert.throws(()=>move(g,"b","e7","e5"),/Not your turn/);
  assert.throws(()=>move(g,"w","e2","e5"),/Illegal chess move/);
