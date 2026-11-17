@@ -50,7 +50,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],analystLease:null,last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -149,6 +149,7 @@ export function playerView(g,color){
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
+  cinematics:(g.cinematics||[]).slice(-8),
   analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32),
    worker:g.analystLease?.expires>Date.now()?{
     role:g.analystLease.hash===g.players[color]?"leader":"viewer",
@@ -427,11 +428,25 @@ export function act(g,color,req,options={}){
  if(g.effects.classifiedArmed?.color===color&&req.type!=="move")throw Error("Classified Promotion requires your pawn promotion now");
  if(req.type==="sniper-shot"){
   if(!isSquare(req.to)||!sniperShots(g,color).includes(req.to))throw Error("That piece is not the first available sniper target");
+  // A public, server-authored cinematic event is created ONLY after a
+  // successful capture. Both players receive identical, ordered events.
+  // The first shot publicly reveals the off-board sniper's diagonal; the
+  // second shot teleports the bishop without replaying the rifle cinematic.
+  const sniper=g.snipers[color],victim=s.b[idx(req.to)];
   const {next,nextSnipers,landing}=sniperResult(g,color,req.to);
   if(landing)g.snipers=nextSnipers;
   else {g.snipers[color].shots=1;g.snipers[color].revealed=true;}
   commit(g,color,next,landing?"Bishop Sniper second shot: "+req.to+" — bishop lands on target":"Bishop Sniper first shot: "+req.to+" — diagonal revealed",
-   landing?{color,from:null,to:idx(req.to),square:idx(req.to),piece:color==="w"?"B":"b"}:null);return;
+   landing?{color,from:null,to:idx(req.to),square:idx(req.to),piece:color==="w"?"B":"b"}:null);
+  g.cinematics||=[];
+  g.cinematics.push({
+   id:g.moveCount,
+   kind:landing?"sniper-teleport":"sniper-first-shot",
+   attacker:color,origin:sniper.origin,direction:sniper.direction,
+   target:req.to,victim
+  });
+  if(g.cinematics.length>12)g.cinematics=g.cinematics.slice(-8);
+  return;
  }
  if(req.type==="move"){
   pair(req);
