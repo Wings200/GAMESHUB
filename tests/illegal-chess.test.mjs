@@ -4,6 +4,7 @@ import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-che
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
+import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS} from "../games/illegal-chess/cinematic.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -788,4 +789,64 @@ test("The Analyst exposes one server-elected worker only, without session token 
  assert.equal(host.worker.clientId,guest.worker.clientId,"Both see the same lease");
  assert.equal(JSON.stringify(host).includes("host-secret"),false);
  assert.equal(JSON.stringify(guest).includes("guest-secret"),false);
+});
+
+test("Bishop Sniper cinematic V1 has a shared first-shot bullet and second-shot teleport, never duplicates",()=>{
+ const g=room();give(g,"w","bishop-sniper");
+ g.s=parseFen("4k3/6p1/5q2/8/8/2B5/8/4K3 w - - 0 1");g.history=[g.s];
+ assert.deepEqual(playerView(g,"w").cinematics,[]);
+ assert.deepEqual(playerView(g,"b").cinematics,[]);
+ act(g,"w",{type:"card",card:"bishop-sniper",from:"c3",direction:"NE"});
+ assert.deepEqual(g.cinematics,[],"Preparing a hidden sniper must NOT reveal a cinematic or secret direction");
+ move(g,"b","e8","d8");
+ assert.throws(()=>act(g,"w",{type:"sniper-shot",to:"f6"}),/first available sniper target/);
+ assert.equal(g.cinematics.length,0,"Illegal shots never generate effects");
+ act(g,"w",{type:"sniper-shot",to:"g7"});
+ const first=g.cinematics[0];
+ assert.deepEqual(first,{
+  id:3,kind:"sniper-first-shot",attacker:"w",origin:"c3",direction:"NE",target:"g7",victim:"p"
+ });
+ assert.equal(g.snipers.w.shots,1);
+ assert.equal(g.s.b[idx("g7")],".");
+ assert.deepEqual(playerView(g,"w").cinematics,playerView(g,"b").cinematics,
+  "Both players receive the exact same server-recorded shot");
+ assert.equal(cinematicCaption(first).fullScreen,true);
+ assert.equal(cinematicCaption(first).duration,1550);
+ assert.equal(cinematicCaption(first).detail,"C3 · NE · TARGET G7");
+ move(g,"b","d8","e8");
+ act(g,"w",{type:"sniper-shot",to:"f6"});
+ const second=g.cinematics[1];
+ assert.deepEqual(second,{
+  id:5,kind:"sniper-teleport",attacker:"w",origin:"c3",direction:"NE",target:"f6",victim:"q"
+ });
+ assert.equal(g.s.b[idx("f6")],"B","Second shot actually lands on its captured target");
+ assert.equal(g.snipers.w,null);
+ assert.equal(cinematicCaption(second).fullScreen,false,"Second shot must NOT replay the bullet cinematic");
+ assert.equal(cinematicCaption(second).duration,680);
+ assert.deepEqual(playerView(g,"w").cinematics,playerView(g,"b").cinematics);
+});
+test("Cinematic event ordering skips archived actions and doesn't repeat on multiplayer polling",()=>{
+ const events=[
+  {id:9,kind:"sniper-first-shot",attacker:"b",origin:"f6",direction:"SW",target:"c3",victim:"N"},
+  {id:11,kind:"sniper-teleport",attacker:"b",origin:"f6",direction:"SW",target:"b2",victim:"P"}
+ ];
+ const initial=nextCinematic(events,null);
+ assert.deepEqual(initial,{seen:11,event:null},"Joining an old match doesn't replay past action");
+ assert.deepEqual(nextCinematic(events,initial.seen),{seen:11,event:null},"Polling again should not replay the same scene");
+ const newEvent={id:13,kind:"sniper-first-shot",attacker:"w",origin:"a1",direction:"NE",target:"d4",victim:"p"};
+ assert.deepEqual(nextCinematic([...events,newEvent],11),{seen:13,event:newEvent});
+ assert.deepEqual(nextCinematic([...events,newEvent],13),{seen:13,event:null});
+ assert.equal(nextCinematic([],null).seen,0,"New rooms start with no seen actions");
+ assert.deepEqual(Object.keys(CINEMATIC_DURATIONS),["sniper-first-shot","sniper-teleport"]);
+});
+test("Cinematic helper rejects unexpected messages and enforces trusted square/side fields",()=>{
+ const good={id:2,kind:"sniper-first-shot",attacker:"w",origin:"a1",direction:"NE",target:"c3",victim:"q"};
+ for(const bad of [
+  {...good,id:-1},{...good,kind:"other"},{...good,attacker:"x"},
+  {...good,direction:"secret"},{...good,target:"z9"},{...good,victim:"<script>"},
+ ]){
+  assert.equal(cinematicCaption(bad),null);
+  assert.equal(nextCinematic([bad],0).event,null);
+ }
+ assert.equal(cinematicCaption(good).title,"BISHOP SNIPER");
 });

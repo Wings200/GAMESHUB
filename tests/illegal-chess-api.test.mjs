@@ -296,3 +296,33 @@ test("Analyzer cannot forge a grade directly or send another move's evaluation",
  assert.equal(result.grade,"Analyzing");
  assert.equal(Object.hasOwn((await post(db,"state",guest.data)).data.analyst.worker,"hash"),false,"Never leak player authentication hashes");
 });
+
+test("Both live multiplayer API clients receive the same Bishop Sniper cinematic sequence",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{mode:"sniper-test"});
+ const guest=await post(db,"join",{room:host.data.room});
+ const row=db.rooms.get(host.data.room),g=JSON.parse(row.state);
+ g.s=parseFen("4k3/6p1/5q2/8/8/2B5/8/4K3 w - - 0 1");
+ g.history=[g.s];g.hands.w=[{id:"bishop-sniper",used:false}];
+ g.hands.b=[{id:"pawn-sidestep",used:false}];
+ row.state=JSON.stringify(g);
+ let hostResponse=await post(db,"action",{...host.data,action:{type:"card",card:"bishop-sniper",from:"c3",direction:"NE"}});
+ assert.equal(hostResponse.status,200);
+ const secret=(await post(db,"state",guest.data)).data;
+ assert.equal(secret.cinematics.length,0,"Secret pre-shot diagonal cannot be exposed by the cinematic");
+ assert.equal(secret.sniper.opponentRevealed,null);
+ await post(db,"action",{...guest.data,action:{type:"move",from:"e8",to:"d8"}});
+ hostResponse=await post(db,"action",{...host.data,action:{type:"sniper-shot",to:"g7"}});
+ assert.equal(hostResponse.status,200);
+ const guestFirst=(await post(db,"state",guest.data)).data;
+ assert.equal(guestFirst.cinematics.length,1);
+ assert.deepEqual(hostResponse.data.view.cinematics,guestFirst.cinematics,
+  "First shot cinematic must be identical on both devices");
+ assert.equal(guestFirst.cinematics[0].kind,"sniper-first-shot");
+ await post(db,"action",{...guest.data,action:{type:"move",from:"d8",to:"e8"}});
+ const second=await post(db,"action",{...host.data,action:{type:"sniper-shot",to:"f6"}});
+ assert.equal(second.status,200);
+ const guestSecond=(await post(db,"state",guest.data)).data;
+ assert.equal(guestSecond.cinematics[1].kind,"sniper-teleport");
+ assert.deepEqual(second.data.view.cinematics,guestSecond.cinematics);
+ assert.equal(guestSecond.fen.split(" ")[0].includes("5B2"),true);
+});

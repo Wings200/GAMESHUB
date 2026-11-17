@@ -26,6 +26,7 @@ jobs:
       - run: node --check games/illegal-chess/engine.mjs
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check games/illegal-chess/analyst.mjs
+      - run: node --check games/illegal-chess/cinematic.mjs
       - run: node --check games/illegal-chess/stockfish-review.mjs
       - run: node --check games/illegal-chess/stockfish-cdn-worker.js
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
@@ -53,7 +54,7 @@ jobs:
           assert.match(client,/analystDeviceScore/,"Device capability-based election must be present");
           assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
-          assert.match(html,/ALPHA 0\.9\.1/,"Correct shared-Analyst release must load");
+          assert.match(html,/ALPHA 0\.9\.2/,"Bishop Sniper cinematic release must load");
           const api=fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8");
           assert.match(api,/analystRequest/,"Server-authoritative Analyst lease and review endpoint");
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
@@ -77,6 +78,14 @@ jobs:
           assert.match(client,/offboardSniper/,"Own bishop must be rendered in the extra ring");
           assert.match(client,/sniperVision/,"Sniper diagonal must be visible to owner");
           assert.match(client,/game\.sniperShots\?\.includes\(name\)/,"Board must accept direct sniper targets");
+          assert.match(html,/id="sniperCinematic"/,"Tactical replay overlay must be present");
+          assert.match(html,/id="cinematicTargetPiece"/,"Captured piece art must be drawn");
+          assert.match(client,/syncSniperCinematics\(\)/,"Only server-recorded actions trigger cinematics");
+          assert.match(client,/nextCinematic\(game\?\.cinematics,cinematicSeen\)/,"Opponent polling must dedupe shots");
+          assert.match(client,/sniperWarpTarget===name/,"Second shot needs a board-only teleport");
+          assert.match(fs.readFileSync("games/illegal-chess/cinematic.mjs","utf8"),/sniper-first-shot/);
+          assert.match(style,/\.sniperCinematic\.isPlaying/,"First shot needs fullscreen CSS animation");
+          assert.match(style,/prefers-reduced-motion:reduce/,"Animations must respect reduced-motion users");
           assert.match(style,/repeat\(10,minmax\(0,1fr\)\)/,"10x10 board including one-square perimeter");
           assert.match(style,/\.square\.sniperRay/);
           assert.match(style,/\.analystMoveSymbol/,"Transient grade badge must have board styling");

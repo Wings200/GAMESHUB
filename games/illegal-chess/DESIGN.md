@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.1.1
+## Live in Alpha 0.9.2
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -61,3 +61,12 @@ Important constraints:
 - **Chromebook fallback.** A ChromeOS device has a deliberately low capability score and only runs lightweight Stockfish if no stronger player is connected. Full NNUE remains preferred on the stronger PC; forced low-tier runs avoid the ~94 MB download. Analysis time is reduced to approximately 1.1 seconds total on Lite and 2.2 seconds total on Full, plus engine initialization.
 - **Shared retry and clear errors.** One player may reset failed reviews from the in-game Retry Stockfish button, triggering a fresh election. The client never computes separate local grades; status, symbols and history always come from the server-persisted result. Both players see identical labels, though the second screen may receive the new label at the next ~1.5-second poll.
 - **Trust boundary:** This is a cooperative multiplayer game, not a cryptographically attested engine. The server calculates labels from supplied UCI score fields, rejects stale/fabricated move identifiers and duplicate submissions, but cannot prove an authenticated player didn't manipulate their own engine scores. For competitive ranked play, move the engine into a trusted server job or validate analyses against a trusted engine service. This feature does **not** change chess rules or reveal concealed card choices.
+
+## Bishop Sniper cinematic V1 · Alpha 0.9.2
+
+- **Trigger:** only after the server accepts a real Bishop Sniper shot. Every valid shot appends a bounded, immutable-in-history public cinematic event to the same D1 room, carrying its move-count ID, shooter side, already-revealed origin and diagonal, captured target square and original victim symbol. Both players receive the same event through the existing `playerView` and 1.5-second state polling; no extra network calls or video streams are needed.
+- **First shot:** a 1.55-second fullscreen, non-interactive tactical cutscene built from an original inline SVG of a chess bishop lying prone with a scoped rifle, CSS perspective chess-floor, darkening/vignette, target reticle, muzzle flash, bullet tracer and captured piece disintegration. The bishop stays off-board; its diagonal is revealed after this shot, exactly as before.
+- **Second shot:** a distinct 680ms purple **shadow teleport** effect at the real chessboard destination (the server has already teleported the bishop into that capture square). No rifle firing animation or second bullet sequence. No changes to chess turn timing or sniper rules.
+- **Multiplayer:** the scene is driven only by the server's committed action event. Both browsers receive identical parameters, and the client tracks the last seen event ID to avoid replay on repeated polls, UI updates, refreshes, or joining an older match. A failed/invalid shot emits no event; a secret preparatory card action emits none either, preserving secrecy.
+- **Performance:** only SVG and GPU-friendly CSS opacity/transform animations; no WebGL, canvas simulation, third-party media, external sound assets or heavy 3D models. The overlay never intercepts input. `prefers-reduced-motion` reduces presentation to a brief static confirmation; any background tab silently skips a stale cutscene.
+- **Testing:** gameplay and two-real-session API tests cover both shots, identical server payloads, no secret pre-shot leak, no animation on invalid shots, and deterministic helper tests for first vs. second shot, duration, event ordering, and invalid payloads. Live browser visual and performance playtesting on Chromebook remains recommended.
