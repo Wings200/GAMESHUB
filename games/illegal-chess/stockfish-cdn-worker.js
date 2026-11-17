@@ -12,8 +12,9 @@
  const host=variant==="unpkg"
   ?"https://unpkg.com/stockfish@19.0.1/bin/"
   :"https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/";
+ const filename=variant==="asm"?"stockfish-19-asm.js":"stockfish-19-lite-single.js";
  try{
-  importScripts(host+"stockfish-19-lite-single.js");
+  importScripts(host+filename);
  }catch(error){
   self.postMessage("stockfish-loader-error: "+String(error?.message||error));
   throw error;
