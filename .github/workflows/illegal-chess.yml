@@ -52,10 +52,10 @@ jobs:
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
           assert.match(html,/id="retryStockfish"/,"A retry button must exist");
           assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/engineSources/,"Engine must attempt multiple hosts");
-          assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/stockfish-19-single\\.js/,"Default must use full NNUE Stockfish");
+          assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/stockfish-19-single\.js/,"Default must use full NNUE Stockfish");
           assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/go depth /,"Engine must perform a bounded UCI search");
-          assert.match(fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8"),/stockfish-19-single\\.wasm/,"Pages proxy must serve full NNUE WASM");
-          assert.match(html,/ALPHA 0\\.9/,"Browser assets must be version-bumped");
+          assert.match(fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8"),/stockfish-19-single\.wasm/,"Pages proxy must serve full NNUE WASM");
+          assert.match(html,/ALPHA 0\.9/,"Browser assets must be version-bumped");
           assert.match(fs.readFileSync("games/illegal-chess/stockfish-cdn-worker.js","utf8"),/importScripts/,"Same-origin CDN worker shim");
           assert.match(html,/id="analystLegend"/,"Round feedback legend must be present");
           assert.match(client,/analystPopupTimer=setTimeout\([\s\S]*?\},1000\)/,"One-second board feedback remains enabled");
