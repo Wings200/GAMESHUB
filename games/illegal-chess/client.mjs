@@ -253,21 +253,8 @@ function boardFromFen(fen){
 }
 function flash(message){const bar=$("toast");bar.textContent=message;bar.hidden=false;clearTimeout(flash.timer);flash.timer=setTimeout(()=>bar.hidden=true,3200);}
 function clearSelection(){selected=null;selectedCard=null;cardFrom=null;sniperSelected=false;}
-const recentCardKey="gameshub-illegal-chess-recent-draws";
-function recentCards(){
- try{
-  const value=JSON.parse(localStorage.getItem(recentCardKey)||"[]");
-  return Array.isArray(value)?value.filter(id=>typeof id==="string").slice(0,12):[];
- }catch{return [];}
-}
-function rememberCards(view){
- if(!Array.isArray(view?.hand)||!view.hand.length)return;
- const ids=view.hand.map(c=>c.id).filter(id=>typeof id==="string");
- const ordered=[...new Set([...ids,...recentCards()])].slice(0,12);
- try{localStorage.setItem(recentCardKey,JSON.stringify(ordered));}catch{}
-}
 async function api(method,payload){
- const response=await fetch("/api/illegal-chess/"+method,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(["create","join","quick-join"].includes(method)?{...(payload||{}),recentCards:recentCards()}:(payload||{}))});
+ const response=await fetch("/api/illegal-chess/"+method,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload||{})});
  let json;try{json=await response.json();}catch{throw Error("The game server returned an unexpected response.");}
  if(!response.ok)throw Error(json.error||"The game server rejected this action.");
  return json;
@@ -376,7 +363,7 @@ async function send(action){
  busy=true;try{
   const result=await api("action",{...activeSession,action});
   if(session!==activeSession)return;
-  game=result.view;lastState=JSON.stringify(game);rememberCards(game);clearSelection();render();
+  game=result.view;lastState=JSON.stringify(game);clearSelection();render();
   if(myTurn()&&action.type==="card")done();
  }catch(error){flash(error.message);}
  finally{busy=false;void refresh();}
@@ -389,7 +376,7 @@ async function refresh(){
   if(session!==activeSession)return;
   $("connection").textContent="CONNECTED";$("connection").classList.remove("offline");
   const serial=JSON.stringify(data);
-  if(serial!==lastState){game=data;lastState=serial;rememberCards(game);render();}
+  if(serial!==lastState){game=data;lastState=serial;render();}
   void registerAnalyst();
  }catch(e){$("connection").textContent="RECONNECTING";$("connection").classList.add("offline");}
 }
@@ -756,7 +743,7 @@ async function selectCard(card){
    if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="market"){
   const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market"&&c.id!=="counterfeit").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
-  const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a random card of the SAME rarity.",choices:options});
+  const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a uniformly random different card from any rarity.",choices:options});
   if(slot!==null)await send({type:"card",card:card.id,slot});else{clearSelection();render();}
  }
 }
