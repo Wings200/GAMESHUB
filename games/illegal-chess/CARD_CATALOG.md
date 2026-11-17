@@ -113,3 +113,12 @@ Full Stockfish 19 NNUE remains the preferred model on sufficiently capable
 machines, with Lite/ASM fallbacks. Shorter search times and strict full-engine
 initialization timeouts improve responsiveness; labels remain estimates and
 variant card rules remain explicitly marked Custom Rule.
+
+## Alpha 0.9.6 · The Analyst card grants *personal*, not universal, visibility
+
+One Stockfish evaluation is stored per move in the shared room, **but only players
+who actually own The Analyst can see ratings, history, or symbols**. The owning
+player can evaluate both players' moves. The other player's account sees no
+review panel, and the room API never sends them hidden analysis details.
+If both players own the card, they receive the same canonical grade using one
+elected worker. The 20-turn color swap preserves ownership.

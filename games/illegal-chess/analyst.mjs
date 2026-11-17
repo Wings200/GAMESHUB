@@ -6,7 +6,10 @@ import {legal,apply,fen,sq,on,side} from "./engine.mjs";
 
 export const ANALYST_GRADES=["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"];
 export const ANALYST_SYMBOLS={Book:"▤",Best:"★",Excellent:"👍",Good:"✓",Inaccuracy:"?!",Mistake:"?",Blunder:"??",Brilliant:"!!",Great:"!",MissedWin:"✕",Custom:"✦"};
-export const analystActive=g=>["w","b"].some(c=>g.hands?.[c]?.some(card=>card.id==="the-analyst"&&!card.used));
+// One card activates a shared match-wide calculation; access to its grades
+// is personal. Passing a seat checks whether THAT player owns the card.
+export const analystActive=(g,color=null)=>(color==="w"||color==="b"?[color]:["w","b"])
+ .some(c=>g.hands?.[c]?.some(card=>card.id==="the-analyst"&&!card.used));
 
 function stockfishSafe(g){
  if(Object.values(g.snipers||{}).some(Boolean))return false;

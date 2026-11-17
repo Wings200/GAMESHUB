@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.5
+## Live in Alpha 0.9.6
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -99,3 +99,12 @@ Important constraints:
 - **User control and autoplay restrictions.** An accessible `SFX ON/OFF` button in the multiplayer header controls this browser only; preference persists locally. Sound needs a user gesture to unlock per browser autoplay rules, so a second device that has not interacted with the page remains silent rather than forcing audio. Audio is stopped when cinematics are interrupted, matches are switched, or SFX are muted. On WebGL fallback, sound uses its own 1.55-second cue layout; reduced-motion users retain a brief static presentation.
 - **Chromebook performance.** The original sculpted models still share one ~3.3-MiB vertex buffer with no third-party dependencies, 25fps/0.95-DPR ChromeOS cap, and on-demand WebGL rendering. Chromebook impact particles are reduced (18 vs. 38 fragments) and muzzle/bullet particle counts are lower. Web Audio only generates data on demand.
 - **Verification.** Automated tests cover zoom/recoil, sound timeline/cue ordering, mute and audio restrictions, mocked Web Audio voice generation, and fallback behavior. Mock GPU rendering traverses all five 3D phases on ChromeOS and desktop configurations. Real deployed devices still need sound and GPU playtesting.
+
+## The Analyst personal-ownership privacy fix · Alpha 0.9.6
+
+- **Why:** Before Alpha 0.9.6, the match-wide Stockfish system exposed move grades, engine status and analysis FEN/UCI inputs to both screens whenever even *one* player's hand contained The Analyst. This mistakenly granted the opponent the legendary passive card's benefits.
+- **Owner-only visibility:** The server now checks each authenticated player's actual current hand. Only someone holding the unused `the-analyst` card receives `analyst.active=true`, move ratings, badges, annotation history, worker details and analysis inputs. For a non-owner the API returns `{active:false,entries:[],worker:null}`. This isn't only CSS hiding: the JSON response itself omits the private data. The opponent can still see the card in the publicly visible hand, as before.
+- **Authorization:** The `/api/illegal-chess/analyst` register, retry, submit and failure intents are rejected for authenticated players without the passive card; they cannot elect themselves to run an engine or obtain privileged review data by calling the endpoint directly.
+- **Performance remains:** Internally the match still has a *single* canonical game-wide analysis log. A card holder receives ratings for both sides' moves, as designed. If **both** players hold the passive, their results are identical and the higher-capability device can still be elected for the one shared Stockfish engine. With only one holder, that holder runs Stockfish locally (Lite fallback on weak devices); letting the other device run it would necessarily send it privileged analysis input.
+- **Color swaps:** The holder's card and session move together across the 20-turn color swap. Ownership checks follow the new seat, so the non-holder never inherits the other player's ratings.
+- **Frontend:** Non-holders get no Analyst panel or move annotation symbols and any stale popup/worker is cleared; a cache-busted client update is required to replace older JS. Tests cover owner on either side, two holders, forged API calls, privacy of completed score/history/engine status and the color swap.
