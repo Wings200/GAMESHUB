@@ -178,6 +178,8 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
     }
    };
    w.onmessageerror=()=>finish(Error(candidate.label+": unreadable engine message"));
+   // Configure Hash/Skill before UCI's readyok handshake.
+   currentSource=candidate;
    try{w.postMessage("uci");}catch(error){finish(Error(candidate.label+": "+error.message));}
   });
  }
