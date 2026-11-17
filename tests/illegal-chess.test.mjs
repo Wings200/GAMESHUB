@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
+import {newGame,joinGame,randomHand,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
@@ -23,6 +23,26 @@ test("starting chess position and three-card random hands are valid",()=>{
  const s=parseFen(START_FEN);assert.equal(legal(s).length,20);assert.equal(fen(s),START_FEN);
  const g=room();for(const color of ["w","b"]){assert.equal(g.hands[color].length,3);assert.equal(new Set(g.hands[color].map(c=>c.id)).size,3);assert.ok(g.hands[color].every(c=>CARDS.some(d=>d.id===c.id)));}
  assert.equal(playerView(g,"w").turn,"w");assert.equal(playerView(g,"w").legal.length,20);
+});
+test("Matchmaking deals six distinct cards, without duplicate hands across the two players",()=>{
+ for(let i=0;i<60;i++){
+  const g=newGame("NO-REPEATS","white"+i);joinGame(g,"black"+i);
+  assert.equal(new Set([...g.hands.w,...g.hands.b].map(c=>c.id)).size,6);
+ }
+});
+test("Recent-card preferences favor unseen cards within a rarity, never changing the drawn tier",()=>{
+ const keep=new Map();
+ for(const card of CARDS)if(!keep.has(card.rarity))keep.set(card.rarity,card.id);
+ const seen=CARDS.filter(c=>!([...keep.values()].includes(c.id))).map(c=>c.id);
+ for(let i=0;i<80;i++){
+  const hand=randomHand(seen);
+  assert.equal(hand.length,3);
+  assert.equal(new Set(hand.map(c=>c.id)).size,3);
+  for(const rarity of keep.keys()){
+   const cards=hand.filter(c=>CARDS.find(item=>item.id===c.id).rarity===rarity);
+   if(cards.length)assert.equal(cards[0].id,keep.get(rarity),"First card from a tier must be unseen when possible");
+  }
+ }
 });
 test("server rejects wrong turn and illegal chess moves",()=>{
  const g=room();assert.throws(()=>move(g,"b","e7","e5"),/Not your turn/);
