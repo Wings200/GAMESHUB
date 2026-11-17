@@ -1,7 +1,7 @@
-// Illegal Chess V1 cinematic event helpers. Server-authored events only.
+// Illegal Chess V2 cinematic event helpers. Server-authored events only.
 // Pure helpers keep replay, ordering, and shot/teleport presentation testable.
 export const CINEMATIC_DURATIONS={
- "sniper-first-shot":1550,
+ "sniper-first-shot":4900,
  "sniper-teleport":680
 };
 const validSquare=s=>typeof s==="string"&&/^[a-h][1-8]$/.test(s);
