@@ -122,15 +122,10 @@ async function openPublicRooms(db){
   return [{code:r.code,createdAt:r.created_at,version:r.version,game}];
  });
 }
-// This is a player's local, optional recently-seen list, not a way to change rarity odds.
-function recentCardIds(data){
- if(!Array.isArray(data?.recentCards))return [];
- return [...new Set(data.recentCards.slice(0,12).filter(x=>typeof x==="string"&&x.length<=64))];
-}
-async function createRoom(db,{publicRoom=false,recentCards=[]}={}){
+async function createRoom(db,{publicRoom=false}={}){
  const playerToken=newToken(),hashed=await hash(playerToken),now=Date.now();
  for(let tries=0;tries<8;tries++){
-  const code=newCode(),game=newGame(code,hashed,recentCards);
+  const code=newCode(),game=newGame(code,hashed);
   game.public=publicRoom;
   try{
    await db.prepare("INSERT INTO illegal_chess_rooms(code,version,state,created_at,updated_at) VALUES(?,0,?,?,?)").bind(code,JSON.stringify(game),now,now).run();
@@ -140,9 +135,9 @@ async function createRoom(db,{publicRoom=false,recentCards=[]}={}){
  }
  throw Error("Could not allocate a room");
 }
-async function joinOpenRoom(db,record,recentCards=[]){
+async function joinOpenRoom(db,record){
  const t=newToken(),hashed=await hash(t),g=record.game;
- joinGame(g,hashed,recentCards);
+ joinGame(g,hashed);
  const saved=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?")
   .bind(JSON.stringify(g),Date.now(),record.code,record.version).run();
  if(saved.meta?.changes!==1)return null;
@@ -170,23 +165,23 @@ export async function onRequest(context){
   }
   if(path==="create"){
    if(Object.hasOwn(data,"mode"))return reply({error:"Guaranteed-card test rooms are no longer available"},400);
-   try{return reply(await createRoom(db,{publicRoom:data.visibility==="public",recentCards:recentCardIds(data)}));}
+   try{return reply(await createRoom(db,{publicRoom:data.visibility==="public"}));}
    catch(e){if(e.message==="Could not allocate a room")return reply({error:e.message},503);throw e;}
   }
   if(path==="quick-join"){
    // Race-safe compare-and-swap: two guests cannot take the same second seat.
    for(const r of await openPublicRooms(db)){
-    const joined=await joinOpenRoom(db,r,recentCardIds(data));
+    const joined=await joinOpenRoom(db,r);
     if(joined)return reply(joined);
    }
-   return reply(await createRoom(db,{publicRoom:true,recentCards:recentCardIds(data)}));
+   return reply(await createRoom(db,{publicRoom:true}));
   }
   const code=roomCode(data.room),r=await row(db,code);
   if(!r)return reply({error:"Room not found"},404);
   const game=JSON.parse(r.state);
   if(path==="join"){
    if(game.players.b)return reply({error:"Room is already full"},409);
-   const t=newToken(),hashed=await hash(t);joinGame(game,hashed,recentCardIds(data));
+   const t=newToken(),hashed=await hash(t);joinGame(game,hashed);
    const result=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?").bind(JSON.stringify(game),Date.now(),code,r.version).run();
    if(result.meta?.changes!==1)return reply({error:"Room changed; try again"},409);
    if(game.public)await db.prepare("DELETE FROM illegal_chess_public_rooms WHERE code=?").bind(code).run();
