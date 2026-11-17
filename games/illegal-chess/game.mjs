@@ -51,7 +51,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -311,11 +311,15 @@ function commit(g,color,next,label,last=null,effect=null){
  for(const c of ["w","b"])if(g.epWindows[c]&&(g.moveCount>g.epWindows[c].readyAt||next.b[idx(g.epWindows[c].victim)]!==(c==="w"?"p":"P")))g.epWindows[c]=null;
  // Change who controls each side after 20 turn-consuming actions. Pieces and
  // their active effects keep their colors; unused cards stay with each player.
- // Never change ownership after a winning move, or we'd award the win wrongly.
- if(g.moveCount%20===0&&!g.rescue&&!status(g).done){
+ // Do not steal the defender's remaining rescue seconds with a scheduled
+ // color swap. If a rescue starts on the twentieth move, swap only after a
+ // successful escape. A timed-out mate never changes ownership.
+ if(g.moveCount%20===0&&g.rescue)g.pendingColorSwap=true;
+ if((g.moveCount%20===0||g.pendingColorSwap)&&!g.rescue&&!status(g).done){
   [g.players.w,g.players.b]=[g.players.b,g.players.w];
   [g.hands.w,g.hands.b]=[g.hands.b,g.hands.w];
   g.swaps=(g.swaps||0)+1;
+  g.pendingColorSwap=false;
   g.log.push({side:"system",text:"COLOR SWAP — both players now control the opposite pieces"});
  }
  if(g.log.length>150)g.log=g.log.slice(-100);
