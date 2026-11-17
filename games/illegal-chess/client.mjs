@@ -1,5 +1,6 @@
 import {cardImage} from "./art.mjs";
-import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=1";
+import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);
@@ -9,22 +10,36 @@ let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperS
 // Server-synchronized Bishop Sniper replay; neither player invents or triggers
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
+let sniperRenderer=null,sniper3DUnavailable=false;
+const cinematicPhaseClasses=["phaseCloseup","phaseFire","phaseBullet","phaseImpact","phaseReturn"];
 function stopSniperCinematic(){
  if(cinematicTimer){clearTimeout(cinematicTimer);cinematicTimer=null;}
  if(sniperWarpTimer){clearTimeout(sniperWarpTimer);sniperWarpTimer=null;}
  sniperWarpTarget=null;
+ sniperRenderer?.stop();
  const overlay=$("sniperCinematic");
- overlay.classList.remove("isPlaying");overlay.hidden=true;
+ overlay.classList.remove("isPlaying","is3D",...cinematicPhaseClasses);
+ overlay.hidden=true;
+}
+function disposeSniper3D(){
+ stopSniperCinematic();
+ sniperRenderer?.dispose();sniperRenderer=null;sniper3DUnavailable=false;
+}
+function sniperPhase(phase){
+ const overlay=$("sniperCinematic");
+ overlay.classList.remove(...cinematicPhaseClasses);
+ overlay.classList.add("phase"+phase.name[0].toUpperCase()+phase.name.slice(1));
+ $("cinematicSubtitle").textContent=phase.subtitle;
 }
 function playSniperCinematic(event){
  const scene=cinematicCaption(event);
  if(!scene||document.hidden)return;
  stopSniperCinematic();
  $("cinematicLive").textContent=event.kind==="sniper-first-shot"?
-  "Bishop Sniper fired at "+event.target.toUpperCase()+". Target captured.":
+  "Bishop Sniper aiming, firing and tracking a bullet in 3D toward "+event.target.toUpperCase()+". Target captured.":
   "Bishop Sniper teleported to "+event.target.toUpperCase()+". Target captured.";
  if(!scene.fullScreen){
-  // Shot 2 is a short shadow arrival on the actual chess board: no bullet.
+  // The second shot ALWAYS remains a short 2D board teleport; no 3D gunshot.
   sniperWarpTarget=event.target;
   renderBoard();
   sniperWarpTimer=setTimeout(()=>{
@@ -34,18 +49,33 @@ function playSniperCinematic(event){
   return;
  }
  const overlay=$("sniperCinematic");
+ const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
  overlay.classList.toggle("attackerBlack",event.attacker==="b");
  $("cinematicTitle").textContent=scene.title;
  $("cinematicSubtitle").textContent=scene.eyebrow;
  $("cinematicDetail").textContent=scene.detail;
  $("cinematicTargetPiece").textContent=glyph[scene.victim]||"♟";
+ if(!reduced&&!sniper3DUnavailable&&!sniperRenderer){
+  // The shader/geometry are built just once; the GPU is idle between shots.
+  // No separate Three.js download, video files, or textures.
+  sniperRenderer=createSniper3D($("sniper3DCanvas"),{
+   onPhase:sniperPhase,
+   onFinish:()=>{if(!$("sniperCinematic").hidden)stopSniperCinematic();}
+  });
+  if(!sniperRenderer)sniper3DUnavailable=true;
+ }
+ const use3D=!!sniperRenderer&&!reduced;
+ overlay.classList.toggle("is3D",use3D);
  overlay.hidden=false;
- // Restart keyframes for each distinct server action; CSS/SVG remain cached.
- requestAnimationFrame(()=>overlay.classList.add("isPlaying"));
+ if(use3D&&!sniperRenderer.play(event)){
+  overlay.classList.remove("is3D");
+  sniper3DUnavailable=true;
+ }
+ requestAnimationFrame(()=>{if(!overlay.hidden)overlay.classList.add("isPlaying");});
  cinematicTimer=setTimeout(()=>{
   cinematicTimer=null;
-  overlay.classList.remove("isPlaying");overlay.hidden=true;
- },window.matchMedia("(prefers-reduced-motion: reduce)").matches?300:scene.duration);
+  stopSniperCinematic();
+ },reduced?300:use3D?SNIPER_3D_DURATION+180:1550);
 }
 function syncSniperCinematics(){
  const update=nextCinematic(game?.cinematics,cinematicSeen);
@@ -252,7 +282,7 @@ async function refresh(){
 async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  resetStockfish(s.room);
- stopSniperCinematic();cinematicSeen=null;
+ disposeSniper3D();cinematicSeen=null;
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -716,7 +746,7 @@ $("leave").addEventListener("click",async()=>{
  const accept=await modal({tag:"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
  if(!accept)return;
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
- stopSniperCinematic();cinematicSeen=null;
+ disposeSniper3D();cinematicSeen=null;
  if(poll){clearInterval(poll);poll=null;}clearSelection();
  history.replaceState({}, "", "/games/illegal-chess/");
  $("match").hidden=true;$("lobby").hidden=false;$("connection").textContent="CONNECTING";$("connection").classList.add("offline");
