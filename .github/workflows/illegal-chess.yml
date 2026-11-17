@@ -67,7 +67,7 @@ jobs:
           assert.match(client,/analystDeviceScore/,"Device capability-based election must be present");
           assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
-          assert.match(html,/ALPHA 0\.11\.0/,"Expanded 36-card release must load");
+          assert.match(html,/ALPHA 0\.11\.1/,"Ceasefire rescue bugfix release must load");
           const api=fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8");
           assert.match(api,/analystRequest/,"Server-authoritative Analyst lease and review endpoint");
           assert.match(api,/Only a player holding The Analyst/,"Unentitled clients must not use engine commands");
