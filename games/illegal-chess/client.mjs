@@ -1,6 +1,7 @@
 import {cardImage} from "./art.mjs";
 import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
-import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=2";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
+import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);
@@ -11,12 +12,37 @@ let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperS
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
 let sniperRenderer=null,sniper3DUnavailable=false;
+// SFX are local-only. Shared multiplayer events dictate WHAT happened;
+// each player independently controls WHETHER their browser plays audio.
+const sniperAudio=createSniperSoundtrack();
+const soundPreferenceKey="gameshub-illegal-chess-sniper-sfx";
+let soundEnabled=true;
+try{soundEnabled=localStorage.getItem(soundPreferenceKey)!=="off";}catch{}
+sniperAudio.setEnabled(soundEnabled);
+function showSniperSoundState(){
+ const button=$("sniperSoundToggle");
+ if(!button)return;
+ button.textContent=soundEnabled?"🔊 SFX ON":"🔇 SFX OFF";
+ button.setAttribute("aria-pressed",String(soundEnabled));
+ button.title=soundEnabled?
+  "Bishop Sniper cinematic sounds enabled on this device":
+  "Bishop Sniper cinematic sounds muted on this device";
+}
+function unlockSniperSound(){
+ if(soundEnabled)sniperAudio.unlock();
+}
+// User gestures are essential: browsers prohibit unsolicited Web Audio
+// playback. Joining/playing normally unlocks audio on the active device.
+document.addEventListener("pointerdown",unlockSniperSound,{capture:true});
+document.addEventListener("keydown",unlockSniperSound,{capture:true});
+
 const cinematicPhaseClasses=["phaseCloseup","phaseFire","phaseBullet","phaseImpact","phaseReturn"];
 function stopSniperCinematic(){
  if(cinematicTimer){clearTimeout(cinematicTimer);cinematicTimer=null;}
  if(sniperWarpTimer){clearTimeout(sniperWarpTimer);sniperWarpTimer=null;}
  sniperWarpTarget=null;
  sniperRenderer?.stop();
+ sniperAudio.stop();
  const overlay=$("sniperCinematic");
  overlay.classList.remove("isPlaying","is3D",...cinematicPhaseClasses);
  overlay.hidden=true;
@@ -42,6 +68,7 @@ function playSniperCinematic(event){
   // The second shot ALWAYS remains a short 2D board teleport; no 3D gunshot.
   sniperWarpTarget=event.target;
   renderBoard();
+  sniperAudio.playTeleport();
   sniperWarpTimer=setTimeout(()=>{
    sniperWarpTimer=null;sniperWarpTarget=null;
    if(game)renderBoard();
@@ -67,15 +94,20 @@ function playSniperCinematic(event){
  const use3D=!!sniperRenderer&&!reduced;
  overlay.classList.toggle("is3D",use3D);
  overlay.hidden=false;
- if(use3D&&!sniperRenderer.play(event)){
+ // The audio follows the exact WebGL event timeline; if GPU startup fails,
+ // fall back to a short V1-compatible sound sequence.
+ const started3D=use3D&&sniperRenderer.play(event);
+ if(use3D&&!started3D){
   overlay.classList.remove("is3D");
   sniper3DUnavailable=true;
  }
+ if(started3D)sniperAudio.playFirstShot();
+ else if(!reduced)sniperAudio.playFallbackShot();
  requestAnimationFrame(()=>{if(!overlay.hidden)overlay.classList.add("isPlaying");});
  cinematicTimer=setTimeout(()=>{
   cinematicTimer=null;
   stopSniperCinematic();
- },reduced?300:use3D?SNIPER_3D_DURATION+180:1550);
+ },reduced?300:started3D?SNIPER_3D_DURATION+180:1550);
 }
 function syncSniperCinematics(){
  const update=nextCinematic(game?.cinematics,cinematicSeen);
@@ -742,6 +774,14 @@ $("join").addEventListener("click",async()=>{
  try{await begin(await api("join",{room:$("code").value}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
 });
 $("code").addEventListener("keydown",event=>{if(event.key==="Enter")$("join").click();});
+$("sniperSoundToggle").addEventListener("click",()=>{
+ soundEnabled=!soundEnabled;
+ sniperAudio.setEnabled(soundEnabled);
+ if(soundEnabled)sniperAudio.unlock(); // direct button gesture
+ try{localStorage.setItem(soundPreferenceKey,soundEnabled?"on":"off");}catch{}
+ showSniperSoundState();
+});
+showSniperSoundState();
 $("leave").addEventListener("click",async()=>{
  const accept=await modal({tag:"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
  if(!accept)return;
