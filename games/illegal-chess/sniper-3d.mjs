@@ -96,7 +96,7 @@ function lookAt(eye,target){
  ]);
 }
 const COLORS={
- white:[.95,.91,.84],dark:[.22,.31,.42],gold:[1,.73,.29],
+ white:[.95,.91,.84],dark:[.34,.42,.55],gold:[1,.73,.29],
  violet:[.62,.47,.9],steel:[.42,.55,.66],gun:[.12,.18,.25],
  black:[.1,.13,.2],lens:[.21,.76,.93],flash:[1,.7,.23],
  tileLight:[.36,.52,.62],tileDark:[.15,.24,.35],
@@ -119,7 +119,7 @@ const fragmentSource=[
  " vec3 n=normalize(vNormal);",
  " vec3 key=normalize(vec3(-0.65,0.82,-0.25));",
  " float diff=max(dot(n,key),0.0);",
- " float fill=.26+.17*max(dot(n,normalize(vec3(.7,.3,.8))),0.0);",
+ " float fill=.35+.18*max(dot(n,normalize(vec3(.7,.3,.8))),0.0);",
  " vec3 view=normalize(uCamera-vWorld);",
  " float rim=pow(1.0-max(dot(n,view),0.0),2.5);",
  " float spec=pow(max(dot(n,normalize(key+view)),0.0),42.0);",
