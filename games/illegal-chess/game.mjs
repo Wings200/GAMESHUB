@@ -50,7 +50,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],analystLease:null,last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -149,7 +149,11 @@ export function playerView(g,color){
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
-  analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32)},
+  analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32),
+   worker:g.analystLease?.expires>Date.now()?{
+    role:g.analystLease.hash===g.players[color]?"leader":"viewer",
+    clientId:g.analystLease.id,quality:g.analystLease.quality,score:g.analystLease.score
+   }:null},
   pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
   counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
   relocationChoices:!st.done&&current(s)===color&&g.hands[color].some(c=>!c.used&&(c.id==="relocation-order"||c.id==="counterfeit"&&g.copyOffers?.[color]?.id==="relocation-order"))?relocationChoices(g):[],
