@@ -71,7 +71,7 @@ export function classifyStockfish(entry,best,played){
  // don't invent those prestigious labels without sufficient evidence.
  const coin=MOVE_COINS[grade];
  return {...entry,status:"done",grade,symbol:coin.symbol,name:coin.name,
-  engine:"Stockfish 19 lite",estimated:false,loss,
+  engine:"Stockfish 19 · UCI review",estimated:false,loss,
   depth:Math.min(best.score.depth,played.score.depth),
   reason:grade==="MissedWin"?"Stockfish found a forced mate that this move misses.":
    grade==="Book"?"Known opening development, supported by Stockfish's preferred line.":
