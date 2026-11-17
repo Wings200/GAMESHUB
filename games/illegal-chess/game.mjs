@@ -4,6 +4,16 @@ import {parseFen,START_FEN,clone,on,side,sq,idx,isSquare,legal,apply,inCheck,upd
 import {gradeAnalystTurn,analystActive} from "./analyst.mjs";
 
 export const CARDS=[
+ {id:"pawn-moonwalk",name:"Pawn Moonwalk",rarity:"Common",mode:"two",description:"Move a pawn one square backward into empty space. Uses your turn."},
+ {id:"jaywalking",name:"Jaywalking",rarity:"Common",mode:"two",description:"Move a pawn diagonally forward one square into empty space without capturing. Uses your turn."},
+ {id:"knight-walks",name:"Knight Walks",rarity:"Common",mode:"two",description:"Move a knight one orthogonal square into empty space. Uses your turn."},
+ {id:"rooks-shortcut",name:"Rook's Shortcut",rarity:"Common",mode:"two",description:"Move a rook one diagonal square into empty space. Uses your turn."},
+ {id:"bishop-vault",name:"Bishop Vault",rarity:"Common",mode:"two",description:"Jump a bishop exactly two diagonal squares over one intervening piece to an empty landing square. Uses your turn."},
+ {id:"triple-step",name:"Triple Step",rarity:"Common",mode:"two",description:"From its starting rank, advance a pawn three clear squares. Cannot be used to en passant. Uses your turn."},
+ {id:"pawn-headbutt",name:"Pawn Headbutt",rarity:"Common",mode:"two",description:"Capture an enemy non-king piece one square straight ahead of your pawn. Uses your turn."},
+ {id:"pawn-parkour",name:"Pawn Parkour",rarity:"Common",mode:"two",description:"Advance a pawn two squares from a non-home rank if both are empty; en passant remains possible. Uses your turn."},
+ {id:"royal-uber",name:"Royal Uber",rarity:"Common",mode:"two",description:"Move your king two squares sideways through a safe, empty square to another safe, empty square. Not castling. Uses your turn."},
+ {id:"knight-bishop-swap",name:"Knight-Bishop Swap",rarity:"Common",mode:"two",description:"Swap your knight and bishop when exactly one knight jump apart. Uses your turn."},
  {id:"pawn-sidestep",name:"Pawn Sidestep",rarity:"Common",mode:"two",description:"Slide a pawn sideways one empty square. Uses your turn."},
  {id:"pawn-ram",name:"Pawn Ram",rarity:"Common",mode:"two",description:"Push an opposing pawn facing your pawn one square backward into empty space. Your pawn stays put. Uses your turn."},
  {id:"friendly-fire",name:"Friendly Fire",rarity:"Uncommon",mode:"two",description:"Capture one of your own non-king pieces with another of your pieces using its normal capture movement. Uses your turn."},
@@ -532,8 +542,53 @@ export function act(g,color,req,options={}){
  };
  const own=p=>side(p)===s.t;
  let nx,label,last=null,effect=null;
- if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run"].includes(card.id))pair(req);
- if(card.id==="pawn-sidestep"){
+ if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run",
+ "pawn-moonwalk","jaywalking","knight-walks","rooks-shortcut","bishop-vault","triple-step","pawn-headbutt","pawn-parkour","royal-uber","knight-bishop-swap"].includes(card.id))pair(req);
+ if(["pawn-moonwalk","jaywalking","knight-walks","rooks-shortcut","bishop-vault","triple-step","pawn-headbutt","pawn-parkour","royal-uber","knight-bishop-swap"].includes(card.id)){
+   const a=idx(req.from),b=idx(req.to),p=s.b[a],target=s.b[b];
+   const dx=(b&7)-(a&7),dy=(b>>4)-(a>>4),ax=Math.abs(dx),ay=Math.abs(dy);
+   const pawn=p.toLowerCase()==="p",isFinal=(b>>4)===(s.t===1?0:7);
+   const empty=target===".",forward=dy===-s.t;
+   if(!own(p))throw Error("Choose your own piece");
+   if(g.effects.freeze?.color===color&&g.effects.freeze.square===a)throw Error("That piece is frozen");
+   if(g.effects.reserved?.color===color&&g.effects.reserved.square===b)throw Error("That square is reserved");
+   if(g.effects.pawnStrike>0&&["jaywalking","triple-step","pawn-parkour"].includes(card.id))throw Error("Pawn Strike prevents advancing this turn");
+   let valid=false,remove=[req.from],place=[[req.to,p]],resetHalf=pawn;
+   if(card.id==="pawn-moonwalk")valid=pawn&&empty&&dx===0&&dy===s.t;
+   if(card.id==="jaywalking")valid=pawn&&empty&&ax===1&&forward&&!isFinal;
+   if(card.id==="knight-walks")valid=p.toLowerCase()==="n"&&empty&&ax+ay===1;
+   if(card.id==="rooks-shortcut")valid=p.toLowerCase()==="r"&&empty&&ax===1&&ay===1;
+   if(card.id==="bishop-vault"){
+    const mid=a+Math.sign(dx)+(Math.sign(dy)*16);
+    valid=p.toLowerCase()==="b"&&empty&&ax===2&&ay===2&&on(mid)&&s.b[mid]!==".";
+   }
+   if(card.id==="triple-step"){
+    valid=pawn&&empty&&dx===0&&dy===-3*s.t&&(a>>4)===(s.t===1?6:1)&&
+     s.b[a-16*s.t]==="."&&s.b[a-32*s.t]===".";
+   }
+   if(card.id==="pawn-headbutt"){
+    valid=pawn&&dx===0&&forward&&!isFinal&&side(target)===-s.t&&target.toLowerCase()!=="k"&&g.effects.ceasefire===0;
+    if(valid)remove.push(req.to);
+   }
+   if(card.id==="pawn-parkour"){
+    valid=pawn&&empty&&dx===0&&dy===-2*s.t&&(a>>4)!==(s.t===1?6:1)&&!isFinal&&
+     on(a-16*s.t)&&s.b[a-16*s.t]===".";
+   }
+   if(card.id==="royal-uber"){
+    valid=p.toLowerCase()==="k"&&empty&&ax===2&&dy===0&&!inCheck(s,s.t,g.snipers)&&
+     s.b[a+Math.sign(dx)]===".";
+    // Every square traversed by the king must be safe, not just the destination.
+    if(valid)patch(s,{remove:[req.from],place:[[sq(a+Math.sign(dx)),p]]},g.snipers);
+   }
+   if(card.id==="knight-bishop-swap"){
+    valid=p.toLowerCase()==="n"&&own(target)&&target.toLowerCase()==="b"&&jump(req.from,req.to);
+    if(valid){remove=[req.from,req.to];place=[[req.from,target],[req.to,p]];}
+   }
+   if(!valid)throw Error("Choose a valid "+card.name+" move");
+   nx=patch(s,{remove,place,resetHalf},g.snipers);
+   label=card.name+": "+req.from+" → "+req.to;
+   last={color,from:a,to:b,square:b,piece:p};
+  }else if(card.id==="pawn-sidestep"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="p"||!own(p)||s.b[b]!=="."||(a>>4)!==(b>>4)||Math.abs((a&7)-(b&7))!==1)throw Error("Choose a pawn and an empty neighboring file");
   nx=patch(s,{remove:[req.from],place:[[req.to,p]],resetHalf:true},g.snipers);label="Pawn Sidestep: "+req.from+" → "+req.to;last={color,from:a,to:b};
@@ -698,5 +753,12 @@ export function act(g,color,req,options={}){
   nx=pass(s);token.used=true;selected.id=replacement;
   commit(g,color,nx,"Black Market → "+getCard(replacement).name);if(!copying)rememberCard(g,color,card.id);return;
  }else throw Error("Not implemented");
- token.used=true;commit(g,color,nx,label,last,effect);if(!copying)rememberCard(g,color,card.id);
+ token.used=true;commit(g,color,nx,label,last,effect);
+ if(card.id==="pawn-parkour"){
+  // Match the standard double-step's one-reply en-passant opportunity.
+  g.epWindows||={w:null,b:null};
+  g.epWindows[color==="w"?"b":"w"]={target:sq((idx(req.from)+idx(req.to))/2),victim:req.to,readyAt:g.moveCount+2};
+  g.s.ep=(idx(req.from)+idx(req.to))/2;
+ }
+ if(!copying)rememberCard(g,color,card.id);
 }
