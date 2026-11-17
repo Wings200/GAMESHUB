@@ -152,7 +152,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
     if(!settled)finish(error);
     else if(active){
      const task=active;active=null;clearTimeout(task.timer);task.reject(error);
-     disposeWorker();
+     disposeWorker();starting=null;
     }
    };
    w.onmessageerror=()=>finish(Error(candidate.label+": unreadable engine message"));
