@@ -80,21 +80,21 @@ card cancellation and Counterfeit interaction, the 20-turn seat swap, 30-second
 checkmate rescue, promotion and en-passant state, move-history accuracy, image/UX,
 and tests for both players. Any concept may need rebalance before approval.
 
-## Card draw variety improvement (development branch)
+## Equal card draw chances (Alpha 0.11 development branch)
 
-- Rebalanced tier odds from 45/30/15/8/2 to **28% Common, 29% Uncommon,
-  25% Rare, 14% Epic and 4% Legendary**. These are tier-level odds before
-  a tier runs out of available cards in a hand.
-- A browser can send the IDs of up to twelve recently seen cards. The server
-  selects rarity first, then prefers a card that is *not* in that recent list
-  among the currently available cards of that rarity. If no fresh choice exists
-  in that rarity, the draw falls back to the whole available set.
-- The second player's three cards exclude the first player's three IDs, so
-  six distinct cards are dealt to each match. Ten additional Common cards also
-  reduce repeats within the previously tiny Common tier.
-- Recent history is stored locally in the browser, not in the shared game room.
-  Clearing browser data or switching devices resets that preference. The
-  server remains the source of truth for all actual draws.
+- **Every playable card has the same chance to be drawn**, regardless of its
+  Common / Uncommon / Rare / Epic / Legendary label. Rarity is purely
+  descriptive / cosmetic, not a probability multiplier.
+- The server samples three different cards for each player uniformly without
+  replacement. The second player's hand excludes the first player's three
+  cards, making all six cards distinct within a match.
+- No browser history, recent-card bonus, hidden tier weight, or individual
+  card weight influences which cards are drawn.
+- **Black Market** replaces an unused card with one uniformly selected
+  different card of *any* rarity. Existing turn cost remains unchanged.
+- With 36 implemented cards, every card has a 3/36 = 8.33% chance of
+  appearing in a particular player's initial three-card hand. The 20
+  expansion concepts not implemented are not dealt.
 
 ## Wave 2 semantics
 
