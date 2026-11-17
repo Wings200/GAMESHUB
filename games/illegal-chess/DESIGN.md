@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.2
+## Live in Alpha 0.9.3
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -70,3 +70,13 @@ Important constraints:
 - **Multiplayer:** the scene is driven only by the server's committed action event. Both browsers receive identical parameters, and the client tracks the last seen event ID to avoid replay on repeated polls, UI updates, refreshes, or joining an older match. A failed/invalid shot emits no event; a secret preparatory card action emits none either, preserving secrecy.
 - **Performance:** only SVG and GPU-friendly CSS opacity/transform animations; no WebGL, canvas simulation, third-party media, external sound assets or heavy 3D models. The overlay never intercepts input. `prefers-reduced-motion` reduces presentation to a brief static confirmation; any background tab silently skips a stale cutscene.
 - **Testing:** gameplay and two-real-session API tests cover both shots, identical server payloads, no secret pre-shot leak, no animation on invalid shots, and deterministic helper tests for first vs. second shot, duration, event ordering, and invalid payloads. Live browser visual and performance playtesting on Chromebook remains recommended.
+
+
+## Bishop Sniper real 3D cinematic V2 · Alpha 0.9.3
+
+- **Actual geometry and 3D cameras:** V2 replaces the short fake-3D first-shot experience on WebGL-capable devices with a self-contained, procedural WebGL 3D scene. It renders original low-poly 3D meshes of a prone bishop and scoped sniper rifle, a real 3D chessboard with perspective, a physically positioned bullet and trail, and a modelled enemy chess piece matching the captured type. There are **no third-party 3D engine downloads, photos, prerendered videos, textures, assets, or WebGL dependency packages**.
+- **4.9-second cinematic:** the camera moves through five visibly distinct phases: 0–1,300 ms **close-up** (the bishop preparing the shot), 1,300–1,580 ms **fire/recoil** (muzzle flash), 1,580–3,500 ms **slow-motion bullet follow** (the camera and 3D projectile move over the physical board toward the target), 3,500–4,400 ms **impact** (the victim disintegrates into volumetric fragments), and 4,400–4,900 ms **camera pullback/return**. Subtitles change with each shot phase.
+- **Correct gameplay:** shot #1 is triggered only by the existing authoritative, committed \`sniper-first-shot\` event, and its camera uses the actual original square and captured target square in 3D world coordinates. The bishop remains off-board and the firing diagonal is revealed by the server exactly as before. Both players receive the same event but may begin playback at different moments because multiplayer uses polling. Shot #2 still uses the short 680ms board-local shadow teleport; it **never** plays another gunshot.
+- **Chromebook protections:** ChromeOS uses roughly **25fps**, reduced rendering resolution (≤0.95 device pixel ratio), low-power WebGL preference and no antialiasing. Desktop is capped to roughly 45fps and 1.25 DPR. The WebGL context runs only for a confirmed cinematic; frame loops stop when it ends, and the GPU program/buffer is released on leaving the match.
+- **Accessibility/fallback:** people with reduced-motion enabled get a short static scene instead of forced rapid camera movement. If WebGL is not supported or shaders cannot initialize, V1's CSS/SVG effect remains as a fallback rather than failing the game. The canvas never intercepts clicks; all card choices remain in site.
+- **Verification:** pure timeline/3D math tests include each diagonal, both attacker colors, real bullet/camera motion, and target coordinates. A mocked WebGL smoke test verifies that the renderer creates geometry and draws every camera phase, in addition to multiplayer regression tests. Exact visual quality and performance on the user's Chromebook still need live browser testing.
