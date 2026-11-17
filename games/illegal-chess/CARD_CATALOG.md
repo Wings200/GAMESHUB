@@ -33,6 +33,67 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Counterfeit | Legendary | Live (wave 4) |
 | The Analyst | Legendary | Live · passive (Alpha 0.7) |
 
+## Proposed expansion — 30 NEW concepts (not yet implemented or in draws)
+
+These are **design proposals**, not approved gameplay rules or playable cards.
+The live catalog remains the 26 tested cards above until each new card passes
+server-authoritative validation, client selection, original art, replay/privacy checks,
+and two-browser multiplayer testing. Default: each listed action uses the entire turn
+unless described as a bonus. No ability may leave its user's king in check.
+
+| # | Proposed card | Rarity | Rules proposal |
+|---:|---|---|---|
+| 27 | Pawn Moonwalk | Common | Move one of your pawns one square straight backward into an empty square. No capture. |
+| 28 | Jaywalking | Common | Move one pawn forward-diagonally into an empty square without capturing. |
+| 29 | Knight Walks | Common | Step a knight one orthogonal square into an empty square instead of jumping. |
+| 30 | Rook's Shortcut | Common | Step a rook one diagonal square to an empty square. |
+| 31 | Bishop Vault | Common | Jump a bishop over exactly one adjacent piece on a diagonal to the empty square immediately beyond it. |
+| 32 | Triple Step | Common | From its original home square, advance a pawn three empty forward squares in one move. Does not create an en-passant window. |
+| 33 | Pawn Headbutt | Common | Capture an enemy non-king piece directly one square in front of your pawn. |
+| 34 | Pawn Parkour | Common | Advance a pawn two empty squares from a non-home rank; the skipped square can be captured en passant on the next reply. |
+| 35 | Royal Uber | Common | Move your king two squares sideways through an empty, unattacked intermediate square to a safe empty destination. Not castling. |
+| 36 | Knight-Bishop Swap | Common | Exchange your knight and bishop when they are precisely one knight jump apart. |
+| 37 | Backstab | Uncommon | Capture an enemy non-king piece with a pawn one square diagonally backward. |
+| 38 | Bishop Uppercut | Uncommon | Capture an adjacent orthogonal enemy non-king piece with your bishop. |
+| 39 | Rook Pole Vault | Uncommon | Move a rook over one immediately adjacent friendly piece along a rank/file, landing on the next empty square. |
+| 40 | Knight Detour | Uncommon | Move a knight in two consecutive knight jumps via one empty intermediate square, landing on a different empty square. |
+| 41 | Reinforcements | Uncommon | Revive one genuinely captured pawn on one of your empty original pawn home squares. |
+| 42 | Pawn Quarantine | Uncommon | **Bonus:** Choose an enemy pawn; it cannot move during its owner's next turn (unless its removal/capture ends the effect). |
+| 43 | Bubble Wrap | Uncommon | **Bonus:** Shield a chosen friendly non-king piece from one ordinary capture on the next enemy turn. No immunity to special cards; king safety remains authoritative. |
+| 44 | Castle Crashers | Uncommon | Swap your rook and bishop on the same rank with no intervening pieces. Not castling. |
+| 45 | Rook Sniper | Rare | Capture the first unobstructed enemy non-king piece along a rook ray without moving the rook. |
+| 46 | Mutiny | Rare | Convert one enemy pawn into your pawn in place, provided the resulting position is legal. |
+| 47 | Knight Forklift | Rare | Move a knight normally to an empty square and carry an adjacent friendly pawn to the knight's old square if both moves are safe. |
+| 48 | Early Graduation | Rare | Replace a pawn on your sixth rank with a knight in place; consumes your turn. |
+| 49 | Royal Evacuation | Rare | Swap your king with an adjacent friendly pawn, only when the king ends on a safe square. |
+| 50 | Double Shift | Rare | Advance two distinct friendly pawns one empty forward square each as one turn. Neither move may capture. |
+| 51 | Mandatory Overtime | Rare | **Bonus:** If the opponent has a legal pawn move on their next turn, their ordinary move must be a pawn move. Special cards and forced check escapes take priority. |
+| 52 | Queen's Ransom | Epic | Sacrifice your queen to revive up to two genuinely captured friendly minor pieces on their empty original home squares. |
+| 53 | Hostile Relocation | Epic | Relocate one enemy non-king piece by one orthogonal square to an empty square without capturing it. |
+| 54 | Ghost Rook | Epic | Teleport your rook to an empty square on its rank or file, passing through any blockers. |
+| 55 | Boardroom Shuffle | Epic | Swap any two friendly non-king pieces anywhere on the board. |
+| 56 | Grand Theft Chess | Legendary | Swap one friendly non-king piece with one enemy non-king piece anywhere on the board. Pieces retain their original colors. |
+
+**Design checks before activation:** ordinary chess king safety, hidden effects,
+card cancellation and Counterfeit interaction, the 20-turn seat swap, 30-second
+checkmate rescue, promotion and en-passant state, move-history accuracy, image/UX,
+and tests for both players. Any concept may need rebalance before approval.
+
+## Card draw variety improvement (development branch)
+
+- Rebalanced tier odds from 45/30/15/8/2 to **28% Common, 29% Uncommon,
+  25% Rare, 14% Epic and 4% Legendary**. These are tier-level odds before
+  a tier runs out of available cards in a hand.
+- A browser can send the IDs of up to twelve recently seen cards. The server
+  selects rarity first, then prefers a card that is *not* in that recent list
+  among the currently available cards of that rarity. If no fresh choice exists
+  in that rarity, the draw falls back to the whole available set.
+- The second player's three cards exclude the first player's three IDs, so
+  six distinct cards are dealt to each match.
+- Recent history is stored locally in the browser, not in the shared game room.
+  Clearing browser data or switching devices resets that preference. The
+  server remains the source of truth for all actual draws.
+
 ## Wave 2 semantics
 
 - **Insurance Fraud:** Spend a turn protecting your non-king piece for two enemy turns. The marker is visible to both players; capture freezes the capturing piece for its next turn. The marker follows normal piece movement.
