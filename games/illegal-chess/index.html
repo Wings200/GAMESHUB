@@ -45,6 +45,10 @@
    <p id="gameResultDetail">Checkmate. The match is over.</p>
    <span class="gameResultFooter">The final board and move history remain available below.</span>
   </section>
+  <section id="rescueBox" class="rescueBox" hidden aria-live="polite" aria-label="Checkmate rescue countdown">
+   <div class="rescueInfo"><span class="eyebrow">30-SECOND CARD RESCUE</span><h3 id="rescueTitle">ESCAPE CHECKMATE</h3><p id="rescueDescription">Use a card to escape checkmate before the countdown expires.</p></div>
+   <strong id="rescueCountdown" class="rescueCountdown" role="timer" aria-live="off">30.0s</strong>
+  </section>
   <section id="reactionBox" class="reactionBox" hidden aria-live="polite">
    <div><span class="eyebrow">COUNTER-CARD WINDOW</span><h3 id="reactionTitle">OBJECTION! — YOUR RESPONSE</h3><p id="reactionText">An opponent's card is awaiting your answer.</p></div>
    <div id="reactionActions" class="reactionActions">
@@ -163,6 +167,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=18"></script>
+<script type="module" src="./client.mjs?v=19"></script>
 </body>
 </html>
