@@ -152,7 +152,7 @@ export function playerView(g,color){
   analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32),
    worker:g.analystLease?.expires>Date.now()?{
     role:g.analystLease.hash===g.players[color]?"leader":"viewer",
-    clientId:g.analystLease.id,quality:g.analystLease.quality,score:g.analystLease.score
+    clientId:g.analystLease.id,quality:g.analystLease.quality,score:g.analystLease.score,readyAt:g.analystLease.readyAt
    }:null},
   pendingReaction:g.pendingReaction?{card:g.pendingReaction.card,name:getCard(g.pendingReaction.card)?.name||"Card",actor:g.pendingReaction.actor,defender:g.pendingReaction.defender,canReact:color===g.pendingReaction.defender}:null,
   counterfeitOffer:current(s)===color&&!g.cardBlocked&&g.copyOffers?.[color]?{...getCard(g.copyOffers[color].id)}:null,
