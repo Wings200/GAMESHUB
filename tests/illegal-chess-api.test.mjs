@@ -57,6 +57,14 @@ class FakeD1 {
   };
  }
 }
+// Test fixtures edit a fake D1 record; production room creation never accepts
+// guaranteed-card options or exposes a way to choose cards.
+function setTestHands(db,room,{w,b}={}){
+ const row=db.rooms.get(room),game=JSON.parse(row.state);
+ if(w)game.hands.w=w.map(id=>({id,used:false}));
+ if(b)game.hands.b=b.map(id=>({id,used:false}));
+ row.state=JSON.stringify(game);
+}
 async function post(db,path,data){
  const request=new Request("https://gameshub.example/api/illegal-chess/"+path,{
   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
@@ -90,17 +98,14 @@ test("two GAMESHUB browsers can create, join, and alternate turns",async()=>{
  assert.equal(Object.hasOwn(black.data.view,"history"),false);
 });
 
-test("API supports opt-in Sniper test rooms without leaking the hidden diagonal",async()=>{
+test("A normal match preserves Sniper hidden direction when the hand is arranged in a test fixture",async()=>{
  const db=new FakeD1();
- const white=await post(db,"create",{mode:"sniper-test"});
+ const white=await post(db,"create",{});
  const black=await post(db,"join",{room:white.data.room});
- // Prevent this sniper-only test from being paused by a randomly drawn Objection!.
- const saved=db.rooms.get(white.data.room),setup=JSON.parse(saved.state);
- for(const card of setup.hands.b)if(card.id==="objection")card.id=["pawn-sidestep","pawn-ram","voluntary-eviction"].find(id=>!setup.hands.b.some(c=>c.id===id));
- saved.state=JSON.stringify(setup);
+ setTestHands(db,white.data.room,{w:["bishop-sniper","pawn-sidestep","ceasefire"],b:["bishop-sniper","pawn-sidestep","ceasefire"]});
  const w=await post(db,"state",white.data);
  const b=await post(db,"state",black.data);
- assert.equal(w.data.testMode,true);assert.equal(b.data.testMode,true);
+ assert.equal(Object.hasOwn(w.data,"testMode"),false);assert.equal(Object.hasOwn(b.data,"testMode"),false);
  assert.equal(w.data.hand[0].id,"bishop-sniper");
  assert.equal(b.data.hand[0].id,"bishop-sniper");
  const move=await post(db,"action",{...white.data,action:{type:"card",card:"bishop-sniper",from:"c1",direction:"NE"}});
@@ -160,12 +165,13 @@ test("Live API keeps Objection target payload private and real promoted identity
 });
 
 test("Two live browser sessions see passive Analyst grades after each real move",async()=>{
- const db=new FakeD1(),host=await post(db,"create",{mode:"analyst-test"}),guest=await post(db,"join",{room:host.data.room});
+ const db=new FakeD1(),host=await post(db,"create",{}),guest=await post(db,"join",{room:host.data.room});
  assert.equal(host.status,200);
  assert.equal(guest.status,200);
+ setTestHands(db,host.data.room,{w:["the-analyst","pawn-sidestep","ceasefire"],b:["the-analyst","pawn-sidestep","ceasefire"]});
  const w=await post(db,"state",host.data),b=await post(db,"state",guest.data);
- assert.equal(w.data.analystTest,true);
- assert.equal(b.data.analystTest,true);
+ assert.equal(Object.hasOwn(w.data,"analystTest"),false);
+ assert.equal(Object.hasOwn(b.data,"analystTest"),false);
  assert.equal(w.data.hand[0].id,"the-analyst");
  assert.equal(b.data.hand[0].id,"the-analyst");
  const start=await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
@@ -242,8 +248,9 @@ test("The CDN proxy streams the official pinned full NNUE Stockfish 19 assets",a
 
 test("Only one stronger device analyzes: both multiplayer screens receive the SAME saved Stockfish grade",async()=>{
  const db=new FakeD1();
- const host=await post(db,"create",{mode:"analyst-test"});
+ const host=await post(db,"create",{});
  const guest=await post(db,"join",{room:host.data.room});
+ setTestHands(db,host.data.room,{w:["the-analyst","pawn-sidestep","ceasefire"],b:["the-analyst","pawn-sidestep","ceasefire"]});
  const lightId="11111111-1111-4111-8111-111111111111";
  const strongId="22222222-2222-4222-8222-222222222222";
  const lightweight=await post(db,"analyst",{...host.data,intent:"register",clientId:lightId,score:1});
@@ -277,8 +284,9 @@ test("Only one stronger device analyzes: both multiplayer screens receive the SA
 });
 
 test("Shared Analyst lease survives a color swap, expires on disconnect, and can be retried",async()=>{
- const db=new FakeD1(),host=await post(db,"create",{mode:"analyst-test"});
+ const db=new FakeD1(),host=await post(db,"create",{});
  const guest=await post(db,"join",{room:host.data.room});
+ setTestHands(db,host.data.room,{w:["the-analyst","pawn-sidestep","ceasefire"],b:["the-analyst","pawn-sidestep","ceasefire"]});
  const fastId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
  const slowId="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
  let elected=await post(db,"analyst",{...host.data,intent:"register",clientId:fastId,score:115});
@@ -307,8 +315,9 @@ test("Shared Analyst lease survives a color swap, expires on disconnect, and can
 });
 
 test("Analyzer cannot forge a grade directly or send another move's evaluation",async()=>{
- const db=new FakeD1(),host=await post(db,"create",{mode:"analyst-test"});
+ const db=new FakeD1(),host=await post(db,"create",{});
  const guest=await post(db,"join",{room:host.data.room});
+ setTestHands(db,host.data.room,{w:["the-analyst","pawn-sidestep","ceasefire"],b:["the-analyst","pawn-sidestep","ceasefire"]});
  const id="abababab-abab-4aba-8aba-abababababab";
  await post(db,"analyst",{...host.data,intent:"register",clientId:id,score:100});
  await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
@@ -323,7 +332,7 @@ test("Analyzer cannot forge a grade directly or send another move's evaluation",
 });
 
 test("Both live multiplayer API clients receive the same Bishop Sniper cinematic sequence",async()=>{
- const db=new FakeD1(),host=await post(db,"create",{mode:"sniper-test"});
+ const db=new FakeD1(),host=await post(db,"create",{});
  const guest=await post(db,"join",{room:host.data.room});
  const row=db.rooms.get(host.data.room),g=JSON.parse(row.state);
  g.s=parseFen("4k3/6p1/5q2/8/8/2B5/8/4K3 w - - 0 1");
@@ -506,4 +515,30 @@ test("Authenticated public heartbeat keeps a waiting host discoverable",async()=
  assert.equal((await post(db,"public-list",{})).data.rooms.length,1);
  await post(db,"join",{room:host.data.room});
  assert.equal((await post(db,"public-heartbeat",host.data)).status,403);
+});
+
+test("Retired guaranteed-card hosting modes are rejected by the public API",async()=>{
+ const db=new FakeD1();
+ for(const mode of ["sniper-test","analyst-test"]){
+  const response=await post(db,"create",{mode});
+  assert.equal(response.status,400);
+  assert.match(response.data.error,/no longer available/);
+ }
+ assert.equal(db.rooms.size,0,"Rejected test-room requests must not create rooms");
+ const normal=await post(db,"create",{});
+ const publicRoom=await post(db,"create",{visibility:"public"});
+ assert.equal(normal.status,200);
+ assert.equal(publicRoom.status,200);
+ for(const r of [normal,publicRoom]){
+  const joined=await post(db,"join",{room:r.data.room});
+  assert.equal(joined.status,200);
+  const state=(await post(db,"state",r.data)).data;
+  assert.equal(Object.hasOwn(state,"testMode"),false);
+  assert.equal(Object.hasOwn(state,"analystTest"),false);
+  assert.equal(state.hand.length,3);
+  assert.equal((await post(db,"state",joined.data)).data.hand.length,3);
+  const stored=JSON.parse(db.rooms.get(r.data.room).state);
+  assert.equal(Object.hasOwn(stored,"sniperTest"),false);
+  assert.equal(Object.hasOwn(stored,"analystTest"),false);
+ }
 });
