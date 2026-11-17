@@ -904,6 +904,15 @@ $("copy").addEventListener("click",async()=>{
 renderLobby();
 void refreshPublicRooms();
 setInterval(()=>{if(!$("lobby").hidden)void refreshPublicRooms();},7000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!$("lobby").hidden)void refreshPublicRooms();});
+function publicPresence(){
+ if(!session||!game?.publicRoom||game.ready||game.player!=="w")return;
+ void api("public-heartbeat",session).catch(()=>{});
+}
+setInterval(publicPresence,12000);
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden)return;
+ if(!$("lobby").hidden)void refreshPublicRooms();
+ else publicPresence();
+});
 const wanted=new URL(location.href).searchParams.get("room");if(wanted)$("code").value=wanted.toUpperCase();
 try{const saved=JSON.parse(sessionStorage.getItem("gameshub-illegal-chess")||"null");if(saved?.room&&saved?.token&&(!wanted||saved.room===wanted.toUpperCase()))begin(saved);}catch{}
