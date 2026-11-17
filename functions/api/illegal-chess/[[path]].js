@@ -99,7 +99,7 @@ function analystRequest(g,hashed,data,now=Date.now()){
 }
 // Public rooms are discoverable for one hour, and only while awaiting a guest.
 // Public-list responses never include player session hashes, hands or board state.
-const PUBLIC_OPEN_MS=60*60*1000;
+const PUBLIC_PRESENCE_MS=45_000; // stale public hosts disappear unless they heartbeat
 const codePattern=/^[A-HJ-NP-Z2-9]{6}$/;
 const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode=()=>{const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(n=>alphabet[n%alphabet.length]).join("");};
@@ -109,12 +109,12 @@ async function json(request){const raw=await request.text();if(raw.length>8192)t
 function getIdentity(game,hashed){if(game.players.w===hashed)return "w";if(game.players.b===hashed)return "b";return null;}
 async function init(db){
  await db.prepare("CREATE TABLE IF NOT EXISTS illegal_chess_rooms (code TEXT PRIMARY KEY, version INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
- await db.prepare("CREATE TABLE IF NOT EXISTS illegal_chess_public_rooms (code TEXT PRIMARY KEY, created_at INTEGER NOT NULL)").run();
+ await db.prepare("CREATE TABLE IF NOT EXISTS illegal_chess_public_rooms (code TEXT PRIMARY KEY, created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL)").run();
 }
 async function row(db,code){return db.prepare("SELECT code,version,state FROM illegal_chess_rooms WHERE code=? LIMIT 1").bind(code).first();}
 async function openPublicRooms(db){
- const rows=await db.prepare("SELECT p.code,p.created_at,r.version,r.state FROM illegal_chess_public_rooms p JOIN illegal_chess_rooms r ON r.code=p.code WHERE p.created_at>? ORDER BY p.created_at ASC LIMIT 60")
-  .bind(Date.now()-PUBLIC_OPEN_MS).all();
+ const rows=await db.prepare("SELECT p.code,p.created_at,r.version,r.state FROM illegal_chess_public_rooms p JOIN illegal_chess_rooms r ON r.code=p.code WHERE p.last_seen>? ORDER BY p.created_at ASC LIMIT 60")
+  .bind(Date.now()-PUBLIC_PRESENCE_MS).all();
  return (rows.results||[]).flatMap(r=>{
   let game;
   try{game=JSON.parse(r.state);}catch{return [];}
@@ -129,7 +129,7 @@ async function createRoom(db,{mode="",publicRoom=false}={}){
   game.public=publicRoom;
   try{
    await db.prepare("INSERT INTO illegal_chess_rooms(code,version,state,created_at,updated_at) VALUES(?,0,?,?,?)").bind(code,JSON.stringify(game),now,now).run();
-   if(publicRoom)await db.prepare("INSERT INTO illegal_chess_public_rooms(code,created_at) VALUES(?,?)").bind(code,now).run();
+   if(publicRoom)await db.prepare("INSERT INTO illegal_chess_public_rooms(code,created_at,last_seen) VALUES(?,?,?)").bind(code,now,now).run();
    return {room:code,player:"w",token:playerToken,publicRoom};
   }catch(e){if(/UNIQUE|constraint/i.test(String(e)))continue;throw e;}
  }
@@ -156,7 +156,7 @@ export async function onRequest(context){
  if(!context.env.DB)return reply({error:"GAMESHUB D1 DB binding is unavailable"},503);
  try{
   const path=new URL(context.request.url).pathname.split("/").filter(Boolean).pop();
-  if(!["create","join","state","action","analyst","public-list","quick-join","unlist"].includes(path))return reply({error:"Unknown endpoint"},404);
+  if(!["create","join","state","action","analyst","public-list","quick-join","unlist","public-heartbeat"].includes(path))return reply({error:"Unknown endpoint"},404);
   const data=await json(context.request),db=context.env.DB;
   await init(db);
   if(path==="public-list"){
@@ -189,6 +189,11 @@ export async function onRequest(context){
   const hashed=await hash(tokenValue(data.token)),player=getIdentity(game,hashed);
   if(!player)return reply({error:"Invalid player session"},403);
   if(path==="state")return reply(playerView(game,player));
+  if(path==="public-heartbeat"){
+   if(player!=="w"||!game.public||game.players.b)return reply({error:"Only waiting public hosts can update presence"},403);
+   await db.prepare("UPDATE illegal_chess_public_rooms SET last_seen=? WHERE code=?").bind(Date.now(),code).run();
+   return reply({ok:true});
+  }
   if(path==="unlist"){
    if(player!=="w"||game.players.b)return reply({error:"Only a waiting public host can close the listing"},403);
    await db.prepare("DELETE FROM illegal_chess_public_rooms WHERE code=?").bind(code).run();
