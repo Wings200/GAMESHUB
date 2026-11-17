@@ -4,6 +4,16 @@ import {parseFen,START_FEN,clone,on,side,sq,idx,isSquare,legal,apply,inCheck,upd
 import {gradeAnalystTurn,analystActive} from "./analyst.mjs";
 
 export const CARDS=[
+ {id:"pawn-moonwalk",name:"Pawn Moonwalk",rarity:"Common",mode:"two",description:"Move a pawn one square backward into empty space. Uses your turn."},
+ {id:"jaywalking",name:"Jaywalking",rarity:"Common",mode:"two",description:"Move a pawn diagonally forward one square into empty space without capturing. Uses your turn."},
+ {id:"knight-walks",name:"Knight Walks",rarity:"Common",mode:"two",description:"Move a knight one orthogonal square into empty space. Uses your turn."},
+ {id:"rooks-shortcut",name:"Rook's Shortcut",rarity:"Common",mode:"two",description:"Move a rook one diagonal square into empty space. Uses your turn."},
+ {id:"bishop-vault",name:"Bishop Vault",rarity:"Common",mode:"two",description:"Jump a bishop exactly two diagonal squares over one intervening piece to an empty landing square. Uses your turn."},
+ {id:"triple-step",name:"Triple Step",rarity:"Common",mode:"two",description:"From its starting rank, advance a pawn three clear squares. Cannot be used to en passant. Uses your turn."},
+ {id:"pawn-headbutt",name:"Pawn Headbutt",rarity:"Common",mode:"two",description:"Capture an enemy non-king piece one square straight ahead of your pawn. Uses your turn."},
+ {id:"pawn-parkour",name:"Pawn Parkour",rarity:"Common",mode:"two",description:"Advance a pawn two squares from a non-home rank if both are empty; en passant remains possible. Uses your turn."},
+ {id:"royal-uber",name:"Royal Uber",rarity:"Common",mode:"two",description:"Move your king two squares sideways through a safe, empty square to another safe, empty square. Not castling. Uses your turn."},
+ {id:"knight-bishop-swap",name:"Knight-Bishop Swap",rarity:"Common",mode:"two",description:"Swap your knight and bishop when exactly one knight jump apart. Uses your turn."},
  {id:"pawn-sidestep",name:"Pawn Sidestep",rarity:"Common",mode:"two",description:"Slide a pawn sideways one empty square. Uses your turn."},
  {id:"pawn-ram",name:"Pawn Ram",rarity:"Common",mode:"two",description:"Push an opposing pawn facing your pawn one square backward into empty space. Your pawn stays put. Uses your turn."},
  {id:"friendly-fire",name:"Friendly Fire",rarity:"Uncommon",mode:"two",description:"Capture one of your own non-king pieces with another of your pieces using its normal capture movement. Uses your turn."},
@@ -24,22 +34,31 @@ export const CARDS=[
  {id:"double-ko",name:"Double KO",rarity:"Epic",mode:"two",description:"Capture, but both the attacking and captured pieces disappear."},
  {id:"hit-and-run",name:"Hit and Run",rarity:"Epic",mode:"two",description:"Make a legal knight capture without leaving the starting square."},
  {id:"queens-abdication",name:"Queen's Abdication",rarity:"Epic",mode:"transform",description:"Transform your queen into a knight or bishop in place."},
- {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for another of the same rarity."},
+ {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for one random different card, regardless of rarity."},
  {id:"identity-theft",name:"Identity Theft",rarity:"Epic",mode:"two",description:"Exchange the appearances of two friendly non-king pieces for the opponent's next turn. Their real moves and attack rules remain unchanged."},
  {id:"objection",name:"Objection!",rarity:"Rare",mode:"reaction",description:"When your opponent activates a card, object to cancel it. Their card is retained and they must make a normal move."},
  {id:"classified-promotion",name:"Classified Promotion",rarity:"Rare",mode:"instant",description:"Arm your immediate pawn promotion. The new piece stays disguised to your opponent until it moves, captures, checks, or is captured."},
  {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."},
  {id:"the-analyst",name:"The Analyst",rarity:"Legendary",mode:"passive",description:"PASSIVE: Uses real Stockfish 19 chess evaluation for ordinary moves, with circular feedback icons. Custom card positions are marked separately."}
 ];
-const weights={Common:45,Uncommon:30,Rare:15,Epic:8,Legendary:2};
+// Every playable card has equal draw probability. Rarity is a display label only.
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
 const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
 export const CHECKMATE_RESCUE_MS=30_000;
-function pickWeighted(pool){const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}const options=pool.filter(c=>c.rarity===r);return options[rand(options.length)];}
-export function randomHand(){const pool=CARDS.slice(),hand=[];for(let i=0;i<3;i++){const card=pickWeighted(pool);hand.push({id:card.id,used:false});pool.splice(pool.indexOf(card),1);}return hand;}
+// Uniformly sample without replacement. No rarity weights or recent-hand preferences.
+export function randomHand(excludeIds=[]){
+ const excluded=new Set(excludeIds),pool=CARDS.filter(c=>!excluded.has(c.id)),hand=[];
+ if(pool.length<3)throw Error("Not enough distinct cards to deal a hand");
+ for(let i=0;i<3;i++){
+  const chosen=rand(pool.length);
+  const [card]=pool.splice(chosen,1);
+  hand.push({id:card.id,used:false});
+ }
+ return hand;
+}
 export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
-export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand();}
+export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand(g.hands.w.map(c=>c.id));}
 export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s);
@@ -512,8 +531,54 @@ export function act(g,color,req,options={}){
  };
  const own=p=>side(p)===s.t;
  let nx,label,last=null,effect=null;
- if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run"].includes(card.id))pair(req);
- if(card.id==="pawn-sidestep"){
+ if(["pawn-sidestep","pawn-ram","friendly-fire","colorblind-bishop","knight-exchange","double-ko","hit-and-run",
+ "pawn-moonwalk","jaywalking","knight-walks","rooks-shortcut","bishop-vault","triple-step","pawn-headbutt","pawn-parkour","royal-uber","knight-bishop-swap"].includes(card.id))pair(req);
+ if(["pawn-moonwalk","jaywalking","knight-walks","rooks-shortcut","bishop-vault","triple-step","pawn-headbutt","pawn-parkour","royal-uber","knight-bishop-swap"].includes(card.id)){
+   const a=idx(req.from),b=idx(req.to),p=s.b[a],target=s.b[b];
+   const dx=(b&7)-(a&7),dy=(b>>4)-(a>>4),ax=Math.abs(dx),ay=Math.abs(dy);
+   const pawn=p.toLowerCase()==="p",isFinal=(b>>4)===(s.t===1?0:7);
+   const empty=target===".",forward=dy===-s.t;
+   if(!own(p))throw Error("Choose your own piece");
+   if(g.effects.freeze?.color===color&&g.effects.freeze.square===a)throw Error("That piece is frozen");
+   if(g.effects.reserved?.color===color&&g.effects.reserved.square===b)throw Error("That square is reserved");
+   if(g.effects.pawnStrike>0&&["jaywalking","triple-step","pawn-parkour"].includes(card.id))throw Error("Pawn Strike prevents advancing this turn");
+   let valid=false,remove=[req.from],place=[[req.to,p]],resetHalf=pawn;
+   if(card.id==="pawn-moonwalk")valid=pawn&&empty&&dx===0&&dy===s.t;
+   if(card.id==="jaywalking")valid=pawn&&empty&&ax===1&&forward&&!isFinal;
+   if(card.id==="knight-walks")valid=p.toLowerCase()==="n"&&empty&&ax+ay===1;
+   if(card.id==="rooks-shortcut")valid=p.toLowerCase()==="r"&&empty&&ax===1&&ay===1;
+   if(card.id==="bishop-vault"){
+    const mid=a+Math.sign(dx)+(Math.sign(dy)*16);
+    valid=p.toLowerCase()==="b"&&empty&&ax===2&&ay===2&&on(mid)&&s.b[mid]!==".";
+   }
+   if(card.id==="triple-step"){
+    valid=pawn&&empty&&dx===0&&dy===-3*s.t&&(a>>4)===(s.t===1?6:1)&&
+     s.b[a-16*s.t]==="."&&s.b[a-32*s.t]===".";
+   }
+   if(card.id==="pawn-headbutt"){
+    valid=pawn&&dx===0&&forward&&!isFinal&&side(target)===-s.t&&target.toLowerCase()!=="k"&&!(g.effects.ceasefire>0);
+    if(valid)remove.push(req.to);
+   }
+   if(card.id==="pawn-parkour"){
+    valid=pawn&&empty&&dx===0&&dy===-2*s.t&&(a>>4)!==(s.t===1?6:1)&&!isFinal&&
+     on(a-16*s.t)&&s.b[a-16*s.t]===".";
+   }
+   if(card.id==="royal-uber"){
+    valid=p.toLowerCase()==="k"&&empty&&ax===2&&dy===0&&!inCheck(s,s.t,g.snipers)&&
+     s.b[a+Math.sign(dx)]===".";
+    // Every square traversed by the king must be safe, not just the destination.
+    if(valid)patch(s,{remove:[req.from],place:[[sq(a+Math.sign(dx)),p]]},g.snipers);
+   }
+   if(card.id==="knight-bishop-swap"){
+    valid=p.toLowerCase()==="n"&&own(target)&&target.toLowerCase()==="b"&&jump(req.from,req.to);
+    if(valid){remove=[req.from,req.to];place=[[req.from,target],[req.to,p]];}
+   }
+   if(!valid)throw Error("Choose a valid "+card.name+" move");
+   nx=patch(s,{remove,place,resetHalf},g.snipers);
+   if(card.id==="pawn-parkour")nx.ep=(a+b)/2;
+   label=card.name+": "+req.from+" → "+req.to;
+   last={color,from:a,to:b,square:b,piece:p};
+  }else if(card.id==="pawn-sidestep"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="p"||!own(p)||s.b[b]!=="."||(a>>4)!==(b>>4)||Math.abs((a&7)-(b&7))!==1)throw Error("Choose a pawn and an empty neighboring file");
   nx=patch(s,{remove:[req.from],place:[[req.to,p]],resetHalf:true},g.snipers);label="Pawn Sidestep: "+req.from+" → "+req.to;last={color,from:a,to:b};
@@ -672,11 +737,17 @@ export function act(g,color,req,options={}){
   if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!Number.isInteger(req.slot)||req.slot<0||req.slot>=3)throw Error("Choose another card slot");
   const selected=g.hands[color][req.slot];if(!selected||selected.used||selected.id==="black-market")throw Error("Choose another unused card");
-  const pool=CARDS.filter(c=>c.rarity===getCard(selected.id).rarity&&c.id!==selected.id&&!g.hands[color].some(h=>h.id===c.id));
-  if(!pool.length)throw Error("No card of the same rarity available to swap");
+  const pool=CARDS.filter(c=>c.id!==selected.id&&!g.hands[color].some(h=>h.id===c.id));
+  if(!pool.length)throw Error("No other card available to swap");
   const replacement=pool[rand(pool.length)].id;
   nx=pass(s);token.used=true;selected.id=replacement;
   commit(g,color,nx,"Black Market → "+getCard(replacement).name);if(!copying)rememberCard(g,color,card.id);return;
  }else throw Error("Not implemented");
- token.used=true;commit(g,color,nx,label,last,effect);if(!copying)rememberCard(g,color,card.id);
+ token.used=true;commit(g,color,nx,label,last,effect);
+ if(card.id==="pawn-parkour"){
+  // Match the standard double-step's one-reply en-passant opportunity.
+  g.epWindows||={w:null,b:null};
+  g.epWindows[color==="w"?"b":"w"]={target:sq((idx(req.from)+idx(req.to))/2),victim:req.to,readyAt:g.moveCount+2};
+ }
+ if(!copying)rememberCard(g,color,card.id);
 }

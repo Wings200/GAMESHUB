@@ -1,4 +1,4 @@
-import {cardImage} from "./art.mjs";
+import {cardImage} from "./art.mjs?v=3";
 import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
 import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
@@ -743,7 +743,7 @@ async function selectCard(card){
    if(choice)await send({type:"card",card:card.id});else{clearSelection();render();}
   }else if(card.mode==="market"){
   const options=game.hand.map((c,i)=>({...c,slot:i})).filter(c=>!c.used&&c.id!=="black-market"&&c.id!=="counterfeit").map(c=>({label:c.name+" · "+c.rarity,value:c.slot,kind:"ghost"}));
-  const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a random card of the SAME rarity.",choices:options});
+  const slot=await modal({tag:"BLACK MARKET",title:"Trade an unused card",description:"Black Market consumes your chess turn. Select an unused card; it will be replaced by a uniformly random different card from any rarity.",choices:options});
   if(slot!==null)await send({type:"card",card:card.id,slot});else{clearSelection();render();}
  }
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
+import {newGame,joinGame,randomHand,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
@@ -23,6 +23,79 @@ test("starting chess position and three-card random hands are valid",()=>{
  const s=parseFen(START_FEN);assert.equal(legal(s).length,20);assert.equal(fen(s),START_FEN);
  const g=room();for(const color of ["w","b"]){assert.equal(g.hands[color].length,3);assert.equal(new Set(g.hands[color].map(c=>c.id)).size,3);assert.ok(g.hands[color].every(c=>CARDS.some(d=>d.id===c.id)));}
  assert.equal(playerView(g,"w").turn,"w");assert.equal(playerView(g,"w").legal.length,20);
+});
+test("Matchmaking deals six distinct cards, without duplicate hands across the two players",()=>{
+ for(let i=0;i<60;i++){
+  const g=newGame("NO-REPEATS","white"+i);joinGame(g,"black"+i);
+  assert.equal(new Set([...g.hands.w,...g.hands.b].map(c=>c.id)).size,6);
+ }
+});
+test("Every card has the same base draw probability regardless of rarity",()=>{
+ const trials=12000,counts=new Map(CARDS.map(c=>[c.id,0]));
+ for(let i=0;i<trials;i++){
+  const hand=randomHand();
+  assert.equal(new Set(hand.map(c=>c.id)).size,3,"A hand is sampled without replacement");
+  for(const item of hand)counts.set(item.id,counts.get(item.id)+1);
+ }
+ const expected=trials*3/CARDS.length;
+ for(const card of CARDS){
+  const actual=counts.get(card.id);
+  assert.ok(Math.abs(actual-expected)<expected*.2,card.name+" should not be weighted by rarity");
+ }
+ // Requested exclusions matter only when another player already has a card.
+ const excluded=CARDS.slice(0,3).map(c=>c.id);
+ for(let i=0;i<50;i++)assert.ok(randomHand(excluded).every(c=>!excluded.includes(c.id)));
+});
+test("Expansion wave: ten new Common cards can be played and consume a turn",()=>{
+ const cases=[
+  ["pawn-moonwalk","4k3/8/8/8/4P3/8/8/4K2R w K - 0 1","e4","e3","e3","P"],
+  ["jaywalking","4k3/8/8/8/4P3/8/8/4K2R w K - 0 1","e4","f5","f5","P"],
+  ["knight-walks","4k3/8/8/8/4N3/8/8/4K2R w K - 0 1","e4","e5","e5","N"],
+  ["rooks-shortcut","k7/8/8/8/4R3/8/8/4K3 w - - 0 1","e4","f5","f5","R"],
+  ["bishop-vault","k7/8/8/8/2B5/3p4/8/4K3 w - - 0 1","c4","e2","e2","B"],
+  ["triple-step","k7/8/8/8/8/8/4P3/4K2R w K - 0 1","e2","e5","e5","P"],
+  ["pawn-headbutt","k7/8/8/4n3/4P3/8/8/4K2R w K - 0 1","e4","e5","e5","P"],
+  ["pawn-parkour","k7/8/3p4/8/4P3/8/8/4K2R w K - 0 1","e4","e6","e6","P"],
+  ["royal-uber","k7/8/8/8/8/8/8/4K2R w K - 0 1","e1","g1","g1","K"],
+  ["knight-bishop-swap","k7/8/8/8/8/3B4/1N6/4K2R w K - 0 1","b2","d3","d3","N"]
+ ];
+ for(const [id,setup,from,to,target,piece] of cases){
+  const g=room();g.s=parseFen(setup);g.history=[g.s];give(g,"w",id);
+  assert.doesNotThrow(()=>act(g,"w",{type:"card",card:id,from,to}),id);
+  assert.equal(g.s.b[idx(target)],piece,id+" destination");
+  assert.equal(g.moveCount,1,id+" turn count");
+  assert.equal(g.s.t,-1,id+" next player");
+  assert.equal(g.hands.w[0].used,true,id+" card spent");
+  if(id==="pawn-headbutt")assert.equal(g.capturedPieces.b.n,1,"Headbutt must count a captured piece");
+  if(id==="knight-bishop-swap")assert.equal(g.s.b[idx("b2")],"B");
+  if(id==="royal-uber")assert.equal(g.s.b[idx("h1")],"R","Royal Uber does not castle");
+  if(id==="pawn-parkour"){
+   assert.equal(g.s.ep,idx("e5"),"Parkour creates a normal one-turn en passant square");
+   assert.ok(legal(g.s).some(m=>sq(m[0])==="d6"&&sq(m[1])==="e5"&&m[3]==="ep"));
+  }
+ }
+});
+test("New card abilities reject invalid moves and preserve king safety",()=>{
+ const bad=[
+  ["pawn-moonwalk","e4","d3"],
+  ["jaywalking","e4","e5"],
+  ["knight-walks","e4","f6"],
+  ["rooks-shortcut","e4","e5"],
+  ["bishop-vault","e4","f7"],
+  ["triple-step","e4","e7"],
+  ["pawn-headbutt","e4","e5"],
+  ["pawn-parkour","e4","e7"],
+  ["royal-uber","e1","h1"],
+  ["knight-bishop-swap","e4","f5"]
+ ];
+ for(const [id,from,to] of bad){
+  const g=room();give(g,"w",id);
+  assert.throws(()=>act(g,"w",{type:"card",card:id,from,to}),/Choose|Pawn Strike|reserved|frozen/i,id);
+  assert.equal(g.moveCount,0,id+" invalid attempt must not consume turn");
+ }
+ const g=room();give(g,"w","royal-uber");
+ g.s=parseFen("k4r2/8/8/8/8/8/8/4K3 w - - 0 1");g.history=[g.s];
+ assert.throws(()=>act(g,"w",{type:"card",card:"royal-uber",from:"e1",to:"g1"}),/check|safe/i,"King may not cross attacked f1");
 });
 test("server rejects wrong turn and illegal chess moves",()=>{
  const g=room();assert.throws(()=>move(g,"b","e7","e5"),/Not your turn/);
@@ -49,12 +122,21 @@ test("Colorblind Bishop changes square color and respects check safety",()=>{
  act(g,"w",{type:"card",card:"colorblind-bishop",from:"f1",to:"f2"});
  assert.equal(g.s.b[(8-2)*16+5],"B");
 });
-test("Black Market only trades another unused card of matching rarity",()=>{
+test("Black Market uniformly trades an unused card for any different card, regardless of rarity",()=>{
  const g=room();g.hands.w=[{id:"black-market",used:false},{id:"pawn-sidestep",used:false},{id:"colorblind-bishop",used:false}];
  assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:0}),/another unused card/);
  act(g,"w",{type:"card",card:"black-market",slot:1});
  assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
- assert.ok(["voluntary-eviction","pawn-ram"].includes(g.hands.w[1].id),"Black Market must replace with a different card of the same rarity");
+ assert.ok(CARDS.some(c=>c.id===g.hands.w[1].id));
+ assert.notEqual(g.hands.w[1].id,"pawn-sidestep");
+ assert.notEqual(g.hands.w[1].id,"colorblind-bishop");
+ let differentTier=false;
+ for(let i=0;i<50;i++){
+  const next=room();next.hands.w=[{id:"black-market",used:false},{id:"pawn-sidestep",used:false},{id:"colorblind-bishop",used:false}];
+  act(next,"w",{type:"card",card:"black-market",slot:1});
+  if(CARDS.find(c=>c.id===next.hands.w[1].id).rarity!=="Common")differentTier=true;
+ }
+ assert.ok(differentTier,"Replacement must be allowed from another rarity");
 });
 
 test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
@@ -482,8 +564,8 @@ test("Enemy cannot identify disguised promotions using Relocation Order or publi
  assert.equal(playerView(g,"w").effects.insurance.w.piece,"N","The owner still sees their actual piece");
 });
 
-test("The Analyst completes the approved 26-card collection and remains a passive Legendary",()=>{
- assert.equal(CARDS.length,26);
+test("The Analyst remains passive across the original 26 and the ten-card Common expansion",()=>{
+ assert.equal(CARDS.length,36);
  const card=CARDS.find(c=>c.id==="the-analyst");
  assert.deepEqual({rarity:card.rarity,mode:card.mode},{rarity:"Legendary",mode:"passive"});
  assert.deepEqual(ANALYST_GRADES,["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"]);
