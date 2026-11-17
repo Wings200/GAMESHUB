@@ -60,7 +60,7 @@ function analystRequest(g,hashed,data,now=Date.now()){
   const quality=data.score>=70?"full":"lite";
   const same=current&&lease.hash===hashed&&lease.id===data.clientId;
   if(!current||same||data.score>lease.score+1){
-   g.analystLease={hash:hashed,id:data.clientId,score:data.score,quality,expires:now+ANALYST_LEASE_MS};
+   g.analystLease={hash:hashed,id:data.clientId,score:data.score,quality,expires:now+ANALYST_LEASE_MS,readyAt:same?lease.readyAt:now+1800};
    return true;
   }
   return false;
@@ -83,13 +83,13 @@ function analystRequest(g,hashed,data,now=Date.now()){
   return true;
  }
  if(data.intent!=="submit")throw Error("Unknown Analyst command");
- if(!entry.beforeFen||!entry.uci||!analystResultValid(data.best)||!analystResultValid(data.played,entry.uci))
+ if(!["full","lite","asm"].includes(data.quality)||!entry.beforeFen||!entry.uci||!analystResultValid(data.best)||!analystResultValid(data.played,entry.uci))
   throw Error("Invalid Stockfish review payload");
  const rated=classifyStockfish(entry,data.best,data.played);
  Object.assign(entry,{
   status:"done",grade:rated.grade,symbol:rated.symbol,name:rated.name,
   estimated:false,loss:rated.loss,depth:rated.depth,reason:rated.reason,
-  engine:lease.quality==="full"?"Stockfish 19 · Full NNUE":"Stockfish 19 · Lite NNUE",
+  engine:data.quality==="full"&&lease.quality==="full"?"Stockfish 19 · Full NNUE":data.quality==="asm"?"Stockfish 19 · ASM.js":"Stockfish 19 · Lite NNUE",
   reviewedAt:now
  });
  return true;
