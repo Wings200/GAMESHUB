@@ -30,8 +30,9 @@ test("server rejects wrong turn and illegal chess moves",()=>{
  move(g,"w","e2","e4");move(g,"b","e7","e5");
  assert.equal(g.s.t,1);assert.equal(playerView(g,"w").log.length,2);
 });
-test("checkmate is determined by legal chess",()=>{
- const g=room();move(g,"w","f2","f3");move(g,"b","e7","e5");move(g,"w","g2","g4");move(g,"b","d8","h4");
+test("checkmate is determined by legal chess when the defender has no remaining cards",()=>{
+ const g=room();g.hands.w.forEach(card=>card.used=true);
+ move(g,"w","f2","f3");move(g,"b","e7","e5");move(g,"w","g2","g4");move(g,"b","d8","h4");
  assert.equal(status(g).done,true);assert.match(status(g).text,/checkmate/);assert.equal(status(g).winner,"b");
 });
 test("Pawn Sidestep consumes a turn, moves one square sideways only",()=>{
