@@ -142,16 +142,20 @@ test("Hidden sniper attacks the king after a pawn blocking the firing line is re
  assert.match(status(g).text,/CHECK/,"The black king on f6 is now in sniper check");
  assert.equal(playerView(g,"b").legal.some(m=>m.from==="f6"&&m.to==="e5"),false,"King cannot move to another square on an attacked ray");
 });
-test("Optional Bishop Sniper test rooms guarantee the card for both players without changing ordinary draws",()=>{
- const g=newGame("SNIPER","a",{sniperTest:true});
+test("Normal rooms always draw three unique random cards without guaranteed test mode",()=>{
+ const g=newGame("NORMAL","a");
  joinGame(g,"b");
- assert.equal(g.hands.w.length,3);assert.equal(g.hands.b.length,3);
- assert.equal(g.hands.w[0].id,"bishop-sniper");assert.equal(g.hands.b[0].id,"bishop-sniper");
- assert.equal(new Set(g.hands.w.map(c=>c.id)).size,3);
- assert.equal(new Set(g.hands.b.map(c=>c.id)).size,3);
- assert.equal(playerView(g,"b").testMode,true);
+ for(const color of ["w","b"]){
+  assert.equal(g.hands[color].length,3);
+  assert.equal(new Set(g.hands[color].map(c=>c.id)).size,3);
+  assert.ok(g.hands[color].every(c=>CARDS.some(d=>d.id===c.id)));
+ }
+ assert.equal(Object.hasOwn(g,"sniperTest"),false);
+ assert.equal(Object.hasOwn(g,"analystTest"),false);
+ const view=playerView(g,"b");
+ assert.equal(Object.hasOwn(view,"testMode"),false);
+ assert.equal(Object.hasOwn(view,"analystTest"),false);
 });
-
 test("Every 20 turn-consuming actions swaps player control and their unused hands, not the board",()=>{
  const g=room(),whitePlayer=g.players.w,blackPlayer=g.players.b;
  g.hands.w=[{id:"pawn-sidestep",used:false}];
@@ -510,17 +514,12 @@ test("The Analyst grades both moves for the OWNER only, without consuming the pa
   assert.equal(Object.hasOwn(entry,"bestMove"),false,"Never leak inferred hidden possibilities or specific secrets");
  }
 });
-test("Analyst test rooms guarantee the passive card to BOTH players",()=>{
- const g=newGame("ANALYST","first",{analystTest:true});joinGame(g,"second");
- assert.equal(g.analystTest,true);
- for(const color of ["w","b"]){
-  assert.equal(g.hands[color].length,3);
-  assert.equal(g.hands[color][0].id,"the-analyst");
-  assert.equal(new Set(g.hands[color].map(c=>c.id)).size,3);
- }
- const view=playerView(g,"w");
- assert.equal(view.analystTest,true);
- assert.equal(view.analyst.active,true);
+test("The Analyst still works when received through ordinary gameplay",()=>{
+ const g=newGame("NORMAL","first");joinGame(g,"second");
+ give(g,"w","the-analyst");
+ give(g,"b","the-analyst");
+ for(const color of ["w","b"])assert.equal(playerView(g,color).analyst.active,true);
+ assert.equal(Object.hasOwn(playerView(g,"w"),"analystTest"),false);
 });
 test("Analyst grade categories map deterministic score gaps and tactical exceptions",()=>{
  const grade=(gap,more={})=>classifyAnalyst({gap,...more});
@@ -789,7 +788,8 @@ test("Full NNUE runs at max strength with deeper 2.2-second root searches",async
 });
 
 test("The Analyst exposes one server-elected worker only, without session token hashes",()=>{
- const g=newGame("SHARED","host-secret",{analystTest:true});joinGame(g,"guest-secret");
+ const g=newGame("SHARED","host-secret");joinGame(g,"guest-secret");
+ give(g,"w","the-analyst");give(g,"b","the-analyst");
  g.analystLease={hash:"host-secret",id:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",score:110,quality:"full",readyAt:Date.now()-1,expires:Date.now()+10000};
  const host=playerView(g,"w").analyst,guest=playerView(g,"b").analyst;
  assert.equal(host.worker.role,"leader");
