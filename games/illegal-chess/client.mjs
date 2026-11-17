@@ -662,7 +662,7 @@ function render(){
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
  $("selfState").textContent=game.status.text;
  $("matchVisibility").textContent=game.publicRoom?"PUBLIC MULTIPLAYER MATCH":"PRIVATE MULTIPLAYER MATCH";
- $("matchTitle").textContent=game.analystTest?"The Analyst · test match":game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
+ $("matchTitle").textContent="The board has no mercy.";
  const left=20-(game.moveCount||0)%20;
  $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
  const reaction=game.pendingReaction,box=$("reactionBox");
@@ -853,16 +853,6 @@ $("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact
 $("create").addEventListener("click",async()=>{
  const button=$("create");button.disabled=true;$("lobbyError").textContent="";
  try{await begin(await api("create",{}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
-});
-$("analystTest").addEventListener("click",async()=>{
- const button=$("analystTest");button.disabled=true;$("lobbyError").textContent="";
- try{await begin(await api("create",{mode:"analyst-test"}));}
- catch(error){$("lobbyError").textContent=error.message;}
- finally{button.disabled=false;}
-});
-$("sniperTest").addEventListener("click",async()=>{
- const button=$("sniperTest");button.disabled=true;$("lobbyError").textContent="";
- try{await begin(await api("create",{mode:"sniper-test"}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
 });
 $("join").addEventListener("click",async()=>{
  const button=$("join");button.disabled=true;$("lobbyError").textContent="";
