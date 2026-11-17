@@ -672,12 +672,13 @@ test("Classified identities and off-board snipers never enter Stockfish inputs",
 
 test("Stockfish fallback includes both CDN hosts and explicit WASM hash",()=>{
  const sources=engineSources();
- assert.equal(sources.length,3);
+ assert.equal(sources.length,4);
  assert.equal(sources[0].url,"/api/illegal-chess/stockfish-19-lite-single.js");
  assert.match(sources[1].url,/stockfish-cdn-worker\.js\?cdn=jsdelivr#/);
  assert.match(sources[2].url,/stockfish-cdn-worker\.js\?cdn=unpkg#/);
  assert.match(decodeURIComponent(sources[1].url.split("#")[1]),/^https:\/\/cdn\.jsdelivr\.net\/npm\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
  assert.match(decodeURIComponent(sources[2].url.split("#")[1]),/^https:\/\/unpkg\.com\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
+ assert.equal(sources[3].url,"/games/illegal-chess/stockfish-cdn-worker.js?cdn=asm");
 });
 test("Stockfish retries an immediately broken worker and analyzes using the next source",async()=>{
  const urls=[],commands=[];
