@@ -1,5 +1,5 @@
 import {cardImage} from "./art.mjs";
-import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs";
+import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs?v=2";
 
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
