@@ -96,6 +96,19 @@ and tests for both players. Any concept may need rebalance before approval.
   appearing in a particular player's initial three-card hand. The 20
   expansion concepts not implemented are not dealt.
 
+## Ceasefire and Bishop Sniper interaction
+
+Ceasefire is a bonus action and can be activated **during check**. While it
+lasts (your upcoming ordinary move and the opponent's reply), captures,
+off-board Bishop Sniper shots, and the sniper's virtual checking ray are
+disabled. Normal chess threats still count as check; this card does not
+permit a king to ignore a rook, knight, pawn, queen or ordinary bishop.
+The off-board sniper remains deployed and its hidden direction remains
+protected. If Ceasefire is used during the 30-second checkmate rescue,
+the defender must **complete a legal turn** before the original clock runs
+out; playing the bonus card alone is not survival. When Ceasefire ends,
+the sniper threat resumes unless the position has otherwise changed.
+
 ## Wave 2 semantics
 
 - **Insurance Fraud:** Spend a turn protecting your non-king piece for two enemy turns. The marker is visible to both players; capture freezes the capturing piece for its next turn. The marker follows normal piece movement.
