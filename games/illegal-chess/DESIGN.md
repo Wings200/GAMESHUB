@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.8
+## Live in Alpha 0.8.1
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -37,3 +37,10 @@ Important constraints:
 - The Legendary Analyst would need an evaluator that understands off-board bishops and other cards; ordinary Stockfish alone cannot correctly score Illegal Chess moves.
 - Multiplayer currently polls room state from Cloudflare D1 about every 1.5 seconds. Real-time WebSockets, reconnect/room expiry, match timers, replays, and accessibility audits should be considered before a large public release.
 - Rebalance rarity and card combination effects after two-player playtesting.
+
+## Stockfish startup resilience (Alpha 0.8.1)
+
+- The browser tries the original same-origin Cloudflare Pages Function engine route first. If the worker fails to boot, it next tries a same-origin static classic-worker shim that imports the pinned Stockfish 19.0.1 lite script and supplies its matching WASM URL from jsDelivr, then unpkg. The shim loads only official pinned engine files, and all position data remains inside the browser.
+- The Pages Function's JS/WASM proxy also falls back to unpkg if jsDelivr is unavailable.
+- Both failure type and source are visible in the Analyst panel. An in-game **Retry Stockfish** button disposes the failed worker and rechecks pending turns without breaking the multiplayer session. Previous failed requests cannot overwrite a later retry.
+- Live browser loading still needs a real deployment smoke test; local tests emulate UCI messages and network/worker failures. No homemade rating fallback is allowed.
