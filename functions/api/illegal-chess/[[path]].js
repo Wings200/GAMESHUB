@@ -9,6 +9,11 @@ const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers
 // Upstream source and license: https://github.com/nmrugg/stockfish.js
 const STOCKFISH_ORIGINS=["https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/","https://unpkg.com/stockfish@19.0.1/bin/"];
 const ENGINE_FILES={
+ // Full NNUE is the strongest official Stockfish.js 19 browser build usable
+ // without cross-origin isolation. It includes the official full neural net.
+ "stockfish-19-single.js":"text/javascript; charset=utf-8",
+ "stockfish-19-single.wasm":"application/wasm",
+ // Keep smaller builds for browsers with limited bandwidth or memory.
  "stockfish-19-lite-single.js":"text/javascript; charset=utf-8",
  "stockfish-19-lite-single.wasm":"application/wasm"
 };

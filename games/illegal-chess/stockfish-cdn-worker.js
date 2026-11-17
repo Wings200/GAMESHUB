@@ -8,11 +8,14 @@
  */
 "use strict";
 (function(){
- const variant=new URL(self.location.href).searchParams.get("cdn");
+ const query=new URL(self.location.href).searchParams;
+ const variant=query.get("cdn"),engine=query.get("engine")||"lite";
  const host=variant==="unpkg"
   ?"https://unpkg.com/stockfish@19.0.1/bin/"
   :"https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/";
- const filename=variant==="asm"?"stockfish-19-asm.js":"stockfish-19-lite-single.js";
+ // Full = Stockfish 19 with its full-size NNUE. Lite/ASM remain fallback.
+ const filename=engine==="full"?"stockfish-19-single.js":
+   engine==="asm"||variant==="asm"?"stockfish-19-asm.js":"stockfish-19-lite-single.js";
  try{
   importScripts(host+filename);
  }catch(error){

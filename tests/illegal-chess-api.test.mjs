@@ -192,3 +192,25 @@ test("Stockfish asset proxy retries pinned unpkg when jsDelivr is down",async()=
  assert.equal(urls.length,2);
  assert.ok(urls.every(x=>x.includes("stockfish@19.0.1/bin/stockfish-19-lite-single.wasm")));
 });
+
+test("The CDN proxy streams the official pinned full NNUE Stockfish 19 assets",async()=>{
+ const visited=[];
+ const fetcher=async(url,options)=>{
+  visited.push({url,headers:options.headers});
+  return new Response(new Uint8Array([0,97,115,109]),{status:200});
+ };
+ for(const [name,mime] of [
+  ["stockfish-19-single.js","text/javascript; charset=utf-8"],
+  ["stockfish-19-single.wasm","application/wasm"]
+ ]){
+  const result=await serveStockfishAsset(name,fetcher);
+  assert.equal(result.status,200);
+  assert.equal(result.headers.get("Content-Type"),mime);
+  assert.equal((await result.arrayBuffer()).byteLength,4);
+ }
+ assert.equal(visited.length,2);
+ assert.ok(visited.every(v=>v.url.startsWith("https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/stockfish-19-single.")));
+ const nonexistent=await serveStockfishAsset("stockfish-20-single.wasm",fetcher);
+ assert.equal(nonexistent.status,404);
+ assert.equal(visited.length,2,"The route must not proxy arbitrary files");
+});

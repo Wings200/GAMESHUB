@@ -74,3 +74,27 @@ The actual Stockfish.js 19.0.1 lite single-threaded JavaScript+WebAssembly files
 - Add legality, turn-count and edge-case tests per card before enabling it in random hands.
 - All confirmations and reactions stay in the GAMESHUB interface, never browser alert/prompt/confirm.
 - Playtest two real browsers, including the instant post-swap turn and card ownership.
+
+## Alpha 0.9 · strongest practical browser engine
+
+Official **Stockfish 19** is the latest stable release as of November 16, 2026. The
+Analyst now prioritizes the **full-size NNUE Stockfish 19 single-threaded WASM**
+bundle (about 94 MB for both files). It evaluates the engine-preferred root move
+and the actually played move from the same standard-chess position, with deeper,
+max-strength, approximately 2.2-second per-candidate UCI searches (depth cap 24).
+The full-size NNUE evaluation network is significantly stronger than the small
+Lite neural network used in Alpha 0.8.
+
+The full engine loads through pinned 19.0.1 jsDelivr worker shim first;
+a pinned Cloudflare Pages proxy and unpkg direct import provide two more full
+NNUE choices. If the large full engine fails due to network, memory, or device
+limits, the game falls back to Stockfish 19 Lite, then ASM.js. The review
+shows which tier actually evaluated the move and **does not mislabel Lite as
+Full NNUE**. Both players still receive chess-only reviews; special cards,
+concealed positions, and off-board snipers cannot be meaningfully evaluated by
+standard Stockfish and are labeled Custom Rule.
+
+This does *not* automatically reproduce Chess.com's proprietary move grades,
+or magically understand the card rules. Search time and browser hardware affect
+move accuracy. Multi-threaded Stockfish requires cross-origin isolation; we use
+full single-threaded to avoid interfering with GAMESHUB's other resources.

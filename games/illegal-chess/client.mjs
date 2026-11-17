@@ -1,5 +1,5 @@
 import {cardImage} from "./art.mjs";
-import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs?v=2";
+import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs?v=3";
 
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
@@ -348,7 +348,11 @@ function renderAnalyst(){
  $("retryStockfish").hidden=!failed;
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
  const pending=recent?.status==="pending";
- $("analystLive").textContent=active?(pending?"STOCKFISH 19 · ANALYZING":"STOCKFISH 19 · ACTIVE"):"REVIEW ARCHIVED";
+ const workerStatus=stockfishReviewer?.getStatus();
+ $("analystLive").textContent=!active?"REVIEW ARCHIVED":
+  pending?(workerStatus?.ready?(workerStatus.quality==="full"?"FULL NNUE · DEEP ANALYSIS":"STOCKFISH "+(workerStatus.source||"FALLBACK")+" · ANALYZING"):
+    "STOCKFISH 19 FULL NNUE · LOADING (~94 MB)"):
+  recent?.engine||"STOCKFISH 19 · READY";
  const coin=recent?(MOVE_COINS[recent.grade]||(recent.status==="custom"?MOVE_COINS.Custom:null)):null;
  const spotlight=$("analystSpotlight");
  const previous=spotlight.querySelector(".analystSpotlightCoin");if(previous)previous.remove();

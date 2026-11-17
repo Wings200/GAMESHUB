@@ -615,7 +615,7 @@ test("Stockfish grades 3.Ke2 poorly when its engine line loses two pawns' worth"
  assert.equal(out.symbol,"?");
  assert.equal(out.loss,227);
  assert.equal(out.estimated,false);
- assert.equal(out.engine,"Stockfish 19 lite");
+ assert.equal(out.engine,"Stockfish 19 · UCI review");
 });
 test("Stockfish-only feedback labels a missed forced mate and a sound book opening",()=>{
  const mate=classifyStockfish({turn:12,uci:"f3e5",side:"w"},{
@@ -656,8 +656,8 @@ test("Stockfish reviewer sends real UCI position plus two bounded searches",asyn
   beforeFen:"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"});
  assert.equal(result.grade,"Mistake");
  assert.ok(commands.some(s=>s.startsWith("position fen ")));
- assert.ok(commands.some(s=>s==="go depth 13 movetime 380"));
- assert.ok(commands.some(s=>s==="go depth 13 movetime 380 searchmoves e1e2"));
+ assert.ok(commands.some(s=>s==="go depth 21 movetime 1350"));
+ assert.ok(commands.some(s=>s==="go depth 21 movetime 1350 searchmoves e1e2"));
  reviewer.dispose();
 });
 test("Classified identities and off-board snipers never enter Stockfish inputs",()=>{
@@ -670,15 +670,23 @@ test("Classified identities and off-board snipers never enter Stockfish inputs",
  assert.equal(review.uci,undefined);
 });
 
-test("Stockfish fallback includes both CDN hosts and explicit WASM hash",()=>{
+test("Stockfish 19 defaults to full NNUE browser engine, then lite/ASM backups",()=>{
  const sources=engineSources();
- assert.equal(sources.length,4);
- assert.equal(sources[0].url,"/api/illegal-chess/stockfish-19-lite-single.js");
- assert.match(sources[1].url,/stockfish-cdn-worker\.js\?cdn=jsdelivr#/);
- assert.match(sources[2].url,/stockfish-cdn-worker\.js\?cdn=unpkg#/);
- assert.match(decodeURIComponent(sources[1].url.split("#")[1]),/^https:\/\/cdn\.jsdelivr\.net\/npm\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
- assert.match(decodeURIComponent(sources[2].url.split("#")[1]),/^https:\/\/unpkg\.com\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
- assert.equal(sources[3].url,"/games/illegal-chess/stockfish-cdn-worker.js?cdn=asm");
+ assert.equal(sources.length,7);
+ assert.equal(sources[0].quality,"full","The strongest full neural network must be preferred");
+ assert.ok(sources[0].url.includes("stockfish-cdn-worker.js?cdn=jsdelivr&engine=full#"));
+ assert.equal(decodeURIComponent(sources[0].url.split("#")[1]),
+  "https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/stockfish-19-single.wasm");
+ assert.equal(sources[1].url,"/api/illegal-chess/stockfish-19-single.js");
+ assert.equal(sources[1].quality,"full");
+ assert.match(sources[2].url,/cdn=unpkg&engine=full#/);
+ assert.equal(sources[3].url,"/api/illegal-chess/stockfish-19-lite-single.js");
+ assert.equal(sources[3].quality,"lite");
+ assert.match(sources[4].url,/cdn=jsdelivr&engine=lite#/);
+ assert.match(sources[5].url,/cdn=unpkg&engine=lite#/);
+ assert.equal(sources[6].url,"/games/illegal-chess/stockfish-cdn-worker.js?cdn=asm&engine=asm");
+ assert.equal(sources[6].quality,"asm");
+ assert.ok(sources.slice(0,3).every(x=>x.quality==="full"),"Never silently choose the weaker model first");
 });
 test("Stockfish retries an immediately broken worker and analyzes using the next source",async()=>{
  const urls=[],commands=[];
@@ -715,7 +723,7 @@ test("Stockfish retries an immediately broken worker and analyzes using the next
  assert.deepEqual(urls.slice(0,2),["local.js","message:uci"]);
  assert.ok(urls.includes("cdn.js"));
  assert.equal(reviewer.getStatus().source,"healthy fallback");
- assert.ok(commands.includes("go depth 13 movetime 380 searchmoves e1e2"));
+ assert.ok(commands.includes("go depth 21 movetime 1350 searchmoves e1e2"));
  reviewer.dispose();
 });
 test("Stockfish reports useful failure causes when all worker sources are unavailable",async()=>{
@@ -730,5 +738,43 @@ test("Stockfish reports useful failure causes when all worker sources are unavai
  });
  await assert.rejects(reviewer.analyze({status:"pending",turn:1,side:"w",uci:"e2e4",
   beforeFen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}),/GAMESHUB proxy.*404 Not Found.*unpkg backup.*404 Not Found/);
+ reviewer.dispose();
+});
+
+test("Full NNUE runs at max strength with deeper 2.2-second root searches",async()=>{
+ const commands=[];
+ class FullWorker{
+  onmessage=null;searches=0;
+  postMessage(message){
+   commands.push(message);
+   if(message==="uci")queueMicrotask(()=>this.onmessage({data:"uciok"}));
+   if(message==="isready")queueMicrotask(()=>this.onmessage({data:"readyok"}));
+   if(message.startsWith("go ")){
+    this.searches++;
+    const forced=this.searches===2;
+    queueMicrotask(()=>{
+     this.onmessage({data:"info depth 19 score cp "+(forced?-130:30)+" nodes 300012 pv "+(forced?"e1e2":"f1c4")});
+     this.onmessage({data:"bestmove "+(forced?"e1e2":"f1c4")});
+    });
+   }
+  }
+  terminate(){}
+ }
+ const reviewer=createStockfishReviewer({
+  workerFactory:()=>new FullWorker(),
+  sources:[{label:"Stockfish 19 Full NNUE",quality:"full",url:"full.js",timeout:1000}]
+ });
+ const entry={status:"pending",turn:5,side:"w",uci:"e1e2",
+  beforeFen:"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"};
+ const grade=await reviewer.analyze(entry);
+ assert.equal(grade.status,"done");
+ assert.equal(grade.engine,"Stockfish 19 · Full NNUE");
+ assert.equal(reviewer.getStatus().quality,"full");
+ assert.ok(commands.includes("setoption name Hash value 48"));
+ assert.ok(commands.includes("setoption name UCI_LimitStrength value false"));
+ assert.ok(commands.includes("setoption name Skill Level value 20"));
+ assert.ok(commands.includes("go depth 24 movetime 2200"));
+ assert.ok(commands.includes("go depth 24 movetime 2200 searchmoves e1e2"));
+ assert.equal(commands.filter(x=>x.startsWith("go ")).length,2);
  reviewer.dispose();
 });
