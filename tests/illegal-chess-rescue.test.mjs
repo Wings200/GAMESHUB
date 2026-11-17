@@ -125,3 +125,29 @@ test("Allowed Objection! response commits the defended position",()=>{
  assert.equal(g.s.b[idx("f7")],"k");
  assert.equal(status(g).done,false);
 });
+
+test("A 20-turn color swap waits for rescue, then occurs after a successful escape",()=>{
+ const g=room();
+ // Test the end-of-cycle boundary without replaying 19 unrelated moves.
+ move(g,"w","e2","e4");
+ move(g,"b","d7","d5");
+ move(g,"w","g1","f3");
+ move(g,"b","d5","e4");
+ move(g,"w","f1","b5");
+ move(g,"b","c8","d7");
+ g.moveCount=19;
+ const beforePlayers={...g.players};
+ act(g,"w",{type:"card",card:"bishop-sniper",from:"b5",direction:"NE"});
+ assert.equal(g.moveCount,20);
+ assert.equal(g.swaps,0);
+ assert.equal(g.pendingColorSwap,true);
+ assert.equal(g.players.w,beforePlayers.w);
+ assert.equal(g.players.b,beforePlayers.b);
+ act(g,"b",{type:"card",card:"friendly-fire",from:"e8",to:"f7"});
+ assert.equal(g.rescue,null);
+ assert.equal(g.moveCount,21);
+ assert.equal(g.pendingColorSwap,false);
+ assert.equal(g.swaps,1);
+ assert.equal(g.players.w,beforePlayers.b);
+ assert.equal(g.players.b,beforePlayers.w);
+});
