@@ -213,6 +213,11 @@ function scheduleStockfishReviews(){
 // The review arrives asynchronously, so only show a completed current-turn
 // result; symbols from reconnect/history are never replayed.
 function prepareAnalystSymbol(){
+ // Never leave an annotation on-screen for someone who does not own the card.
+ if(!game?.analyst?.active){
+  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
+  analystPopup=null;analystSeenTurn=game?.moveCount??0;return;
+ }
  const latest=(game?.analyst?.entries||[]).at(-1);
  const turn=latest?.turn??0;
  if(analystSeenTurn===null){analystSeenTurn=turn;return;}
@@ -508,9 +513,14 @@ function renderExtras(){
  if(!game.log.length){const empty=document.createElement("span");empty.className="muted";empty.textContent="The first move starts your story.";log.append(empty);}
 }
 function renderAnalyst(){
- const entries=game.analyst?.entries||[],active=!!game.analyst?.active;
- const panel=$("analystPanel");panel.hidden=!active&&!entries.length;
- if(panel.hidden)return;
+ const active=!!game.analyst?.active;
+ const entries=active?(game.analyst?.entries||[]):[];
+ const panel=$("analystPanel");panel.hidden=!active;
+ if(panel.hidden){
+  if(stockfishReviewer){stockfishReviewer.dispose();stockfishReviewer=null;}
+  analystBusy=false;
+  return;
+ }
  const failed=entries.some(e=>resolvedReview(e).status==="unavailable");
  $("retryStockfish").hidden=!failed;
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
