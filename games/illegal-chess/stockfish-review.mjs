@@ -116,7 +116,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
   if(w!==worker||!active)return;
   const info=parseUciInfo(line);
   if(info&&(!active.score||info.depth>=active.score.depth))active.score=info;
-  const move=line.match(/^bestmove\\s+(\\S+)/);
+  const move=line.match(/^bestmove\s+(\S+)/);
   if(move){
    const job=active;active=null;clearTimeout(job.timer);
    job.resolve({score:job.score,bestmove:move[1]});
@@ -137,7 +137,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
    const timer=setTimeout(()=>finish(Error(candidate.label+": Stockfish startup timed out")),candidate.timeout);
    w.onmessage=event=>{
     const payload=event.data;
-    const lines=typeof payload==="string"?payload.split(/\\r?\\n/):[];
+    const lines=typeof payload==="string"?payload.split(/\r?\n/):[];
     for(const line of lines){
      if(!line.trim())continue;
      const text=line.trim();
