@@ -1,4 +1,4 @@
-import {buildSculptMeshes} from "./sniper-sculpts.mjs";
+import {buildSculptMeshes} from "./sniper-sculpts.mjs?v=1";
 // Illegal Chess · Bishop Sniper cinematic V3
 // Original procedural 3D WebGL; no external JS, models, video, or textures.
 // Only runs during server-committed sniper first-shot cinematic events.
@@ -120,8 +120,10 @@ const fragmentSource=[
  " vec3 key=normalize(vec3(-0.65,0.82,-0.25));",
  " float diff=max(dot(n,key),0.0);",
  " float fill=.26+.17*max(dot(n,normalize(vec3(.7,.3,.8))),0.0);",
- " float rim=pow(1.0-max(dot(n,normalize(uCamera-vWorld)),0.0),2.5);",
- " vec3 lit=uColor*(fill+diff*.74+rim*.25)+uColor*uGlow;",
+ " vec3 view=normalize(uCamera-vWorld);",
+ " float rim=pow(1.0-max(dot(n,view),0.0),2.5);",
+ " float spec=pow(max(dot(n,normalize(key+view)),0.0),42.0);",
+ " vec3 lit=uColor*(fill+diff*.74+rim*.22)+uColor*uGlow+vec3(.64,.75,.85)*spec*.35;",
  " float fog=clamp((length(uCamera-vWorld)-12.0)/21.0,0.0,.56);",
  " lit=mix(lit,vec3(.045,.065,.11),fog);",
  " gl_FragColor=vec4(lit,1.0);","}"
@@ -255,7 +257,7 @@ function drawWorld(gl,g,event,ms,width,height){
  d("sculptBishop",[-.28,.23,-.9],[.91,.91,.91],armor,[Math.PI/2,0,0],0,br);
  d("sculptBishopGilding",[-.28,.23,-.9],[.91,.91,.91],gold,[Math.PI/2,0,0],.08,br);
  // Sculpted jacket/cape flows under the figure instead of a featureless box.
- d("sculptRifleStock",[-.30,.12,-.55],[.6,.25,.9],robe,[0,-Math.PI/2,0],0,rig);
+ d("sphere",[-.30,.11,-.70],[1.12,.14,1.73],robe,[0,0,0],0,rig);
  // Weapon model has a shaped stock, pistol grip, curved barrel, a scope with
  // objective bell, eyepiece/lens, recoil pad, trigger and two folding legs.
  d("sculptRifleStock",[.25,.35,-.13],[.79,.75,.92],COLORS.gun,[0,-Math.PI/2,0],0,br);
