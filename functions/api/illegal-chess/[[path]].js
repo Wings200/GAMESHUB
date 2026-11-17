@@ -164,6 +164,7 @@ export async function onRequest(context){
    return reply({rooms:open.slice(0,40).map(r=>({code:r.code,createdAt:r.createdAt,players:1,capacity:2}))});
   }
   if(path==="create"){
+   if(Object.hasOwn(data,"mode"))return reply({error:"Guaranteed-card test rooms are no longer available"},400);
    try{return reply(await createRoom(db,{publicRoom:data.visibility==="public"}));}
    catch(e){if(e.message==="Could not allocate a room")return reply({error:e.message},503);throw e;}
   }
