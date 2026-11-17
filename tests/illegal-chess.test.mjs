@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CARDS} from "../games/illegal-chess/game.mjs";
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
-import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer} from "../games/illegal-chess/stockfish-review.mjs";
+import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -668,4 +668,66 @@ test("Classified identities and off-board snipers never enter Stockfish inputs",
  assert.equal(review.status,"custom");
  assert.equal(review.beforeFen,undefined);
  assert.equal(review.uci,undefined);
+});
+
+test("Stockfish fallback includes both CDN hosts and explicit WASM hash",()=>{
+ const sources=engineSources();
+ assert.equal(sources.length,3);
+ assert.equal(sources[0].url,"/api/illegal-chess/stockfish-19-lite-single.js");
+ assert.match(sources[1].url,/stockfish-cdn-worker\.js\?cdn=jsdelivr#/);
+ assert.match(sources[2].url,/stockfish-cdn-worker\.js\?cdn=unpkg#/);
+ assert.match(decodeURIComponent(sources[1].url.split("#")[1]),/^https:\/\/cdn\.jsdelivr\.net\/npm\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
+ assert.match(decodeURIComponent(sources[2].url.split("#")[1]),/^https:\/\/unpkg\.com\/stockfish@19\.0\.1\/bin\/stockfish-19-lite-single\.wasm$/);
+});
+test("Stockfish retries an immediately broken worker and analyzes using the next source",async()=>{
+ const urls=[],commands=[];
+ class BrokenWorker{
+  onerror=null;
+  postMessage(m){urls.push("message:"+m);queueMicrotask(()=>this.onerror({message:"Cloudflare asset returned HTTP 503"}));}
+  terminate(){urls.push("terminate broken");}
+ }
+ class WorkingWorker{
+  onmessage=null;searches=0;
+  postMessage(m){
+   commands.push(m);
+   if(m==="uci")queueMicrotask(()=>this.onmessage({data:"uciok"}));
+   if(m==="isready")queueMicrotask(()=>this.onmessage({data:"readyok"}));
+   if(m.startsWith("go ")){
+    this.searches++;
+    const forced=this.searches===2;
+    queueMicrotask(()=>{
+     this.onmessage({data:"info depth 13 score cp "+(forced?-140:34)+" nodes 4218 pv "+(forced?"e1e2":"f1c4")});
+     this.onmessage({data:"bestmove "+(forced?"e1e2":"f1c4")});
+    });
+   }
+  }
+  terminate(){urls.push("terminate working");}
+ }
+ const reviewer=createStockfishReviewer({
+  sources:[{label:"broken proxy",url:"local.js",timeout:1000},{label:"healthy fallback",url:"cdn.js",timeout:1000}],
+  workerFactory:url=>{urls.push(url);return url==="local.js"?new BrokenWorker():new WorkingWorker();}
+ });
+ const result=await reviewer.analyze({status:"pending",turn:5,side:"w",uci:"e1e2",
+  beforeFen:"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"});
+ assert.equal(result.status,"done");
+ assert.equal(result.grade,"Mistake");
+ assert.deepEqual(urls.slice(0,2),["local.js","message:uci"]);
+ assert.ok(urls.includes("cdn.js"));
+ assert.equal(reviewer.getStatus().source,"healthy fallback");
+ assert.ok(commands.includes("go depth 13 movetime 380 searchmoves e1e2"));
+ reviewer.dispose();
+});
+test("Stockfish reports useful failure causes when all worker sources are unavailable",async()=>{
+ class Broken{
+  onerror=null;
+  postMessage(){queueMicrotask(()=>this.onerror({message:"404 Not Found"}));}
+  terminate(){}
+ }
+ const reviewer=createStockfishReviewer({
+  sources:[{label:"GAMESHUB proxy",url:"proxy",timeout:1000},{label:"unpkg backup",url:"backup",timeout:1000}],
+  workerFactory:()=>new Broken()
+ });
+ await assert.rejects(reviewer.analyze({status:"pending",turn:1,side:"w",uci:"e2e4",
+  beforeFen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}),/GAMESHUB proxy.*404 Not Found.*unpkg backup.*404 Not Found/);
+ reviewer.dispose();
 });
