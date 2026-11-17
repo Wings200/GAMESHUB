@@ -33,17 +33,18 @@ function scheduleStockfishReviews(){
   stockfishInProgress.add(entry.turn);
   stockfishReviewer ||= createStockfishReviewer();
   const room=session.room;
-  stockfishReviewer.analyze(entry).then(result=>{
-   if(room!==session?.room)return;
+  const currentReviewer=stockfishReviewer;
+  currentReviewer.analyze(entry).then(result=>{
+   if(room!==session?.room||currentReviewer!==stockfishReviewer)return;
    stockfishReviews.set(entry.turn,result);
    prepareAnalystSymbol();
    renderAnalyst();renderBoard();
   }).catch(error=>{
-   if(room!==session?.room)return;
+   if(room!==session?.room||currentReviewer!==stockfishReviewer)return;
    stockfishReviews.set(entry.turn,{...entry,status:"unavailable",grade:"Unavailable",
     symbol:null,reason:"Engine error: "+String(error?.message||"unknown failure").slice(0,320)+". Use Retry Stockfish to try again."});
    renderAnalyst();
-  }).finally(()=>stockfishInProgress.delete(entry.turn));
+  }).finally(()=>{if(currentReviewer===stockfishReviewer)stockfishInProgress.delete(entry.turn);});
  }
 }
 // The review arrives asynchronously, so only show a completed current-turn
