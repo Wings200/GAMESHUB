@@ -2,6 +2,7 @@
 // POST /api/illegal-chess/{create,join,state,action}; no unauthenticated spectator endpoints.
 import {newGame,joinGame,act,playerView} from "../../../games/illegal-chess/game.mjs";
 import {classifyStockfish} from "../../../games/illegal-chess/stockfish-review.mjs";
+import {analystActive} from "../../../games/illegal-chess/analyst.mjs";
 
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 // Whitelisted, unmodified Stockfish.js GPL-3.0 engine assets. Proxied through
@@ -48,7 +49,9 @@ const analystResultValid=(r,uci)=>{
   Number.isInteger(score.depth)&&score.depth>=1&&score.depth<=80;
 };
 function analystRequest(g,hashed,data,now=Date.now()){
- if(!g.players.b||!g.hands||!["w","b"].some(c=>g.hands[c].some(h=>h.id==="the-analyst"&&!h.used)))throw Error("Analyst is not active");
+ const player=getIdentity(g,hashed);
+ if(!g.players.b||!player||!analystActive(g,player))
+  throw Error("Only a player holding The Analyst can request Stockfish reviews");
  if(!analystIdValid(data.clientId))throw Error("Invalid Analyst client identity");
  const lease=g.analystLease;
  const current=lease&&lease.expires>now;
