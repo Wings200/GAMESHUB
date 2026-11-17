@@ -89,7 +89,8 @@ export function engineSources(local=ENGINE_WORKER){
    url:"/games/illegal-chess/stockfish-cdn-worker.js?cdn="+label+
     "#"+encodeURIComponent(base+"stockfish-19-lite-single.wasm"),
    timeout:20000
-  }))
+  })),
+  {label:"Stockfish ASM.js fallback",url:"/games/illegal-chess/stockfish-cdn-worker.js?cdn=asm",timeout:26000}
  ];
 }
 
@@ -196,7 +197,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
    if(entry.status!=="pending"||!entry.beforeFen||!entry.uci)throw Error("Position cannot be sent to Stockfish");
    const best=await search(entry.beforeFen,null);
    const played=await search(entry.beforeFen,entry.uci);
-   return classifyStockfish(entry,best,played);
+   return {...classifyStockfish(entry,best,played),engine:reason==="Stockfish ASM.js fallback"?"Stockfish 19 ASM.js":"Stockfish 19 lite"};
   });
   queue=task.catch(()=>{});
   return task;
