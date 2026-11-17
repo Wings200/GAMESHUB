@@ -41,7 +41,7 @@ function scheduleStockfishReviews(){
   }).catch(error=>{
    if(room!==session?.room)return;
    stockfishReviews.set(entry.turn,{...entry,status:"unavailable",grade:"Unavailable",
-    symbol:null,reason:"Stockfish could not load or evaluate this move. No estimated grade was substituted."});
+    symbol:null,reason:"Engine error: "+String(error?.message||"unknown failure").slice(0,320)+". Use Retry Stockfish to try again."});
    renderAnalyst();
   }).finally(()=>stockfishInProgress.delete(entry.turn));
  }
@@ -343,6 +343,8 @@ function renderAnalyst(){
  const entries=game.analyst?.entries||[],active=!!game.analyst?.active;
  const panel=$("analystPanel");panel.hidden=!active&&!entries.length;
  if(panel.hidden)return;
+ const failed=entries.some(e=>resolvedReview(e).status==="unavailable");
+ $("retryStockfish").hidden=!failed;
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
  const pending=recent?.status==="pending";
  $("analystLive").textContent=active?(pending?"STOCKFISH 19 · ANALYZING":"STOCKFISH 19 · ACTIVE"):"REVIEW ARCHIVED";
@@ -568,6 +570,11 @@ async function selectSquare(name,piece){
  if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
+$("retryStockfish").addEventListener("click",()=>{
+ if(stockfishReviewer){stockfishReviewer.dispose();stockfishReviewer=null;}
+ stockfishReviews.clear();stockfishInProgress.clear();
+ if(game){renderAnalyst();}
+});
 $("allowCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"allow"});});
 $("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"object"});});
 $("create").addEventListener("click",async()=>{
