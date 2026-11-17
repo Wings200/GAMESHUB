@@ -34,6 +34,7 @@ function playSniperCinematic(event){
   return;
  }
  const overlay=$("sniperCinematic");
+ overlay.classList.toggle("attackerBlack",event.attacker==="b");
  $("cinematicTitle").textContent=scene.title;
  $("cinematicSubtitle").textContent=scene.eyebrow;
  $("cinematicDetail").textContent=scene.detail;
