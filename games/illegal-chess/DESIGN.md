@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.3
+## Live in Alpha 0.9.4
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -80,3 +80,12 @@ Important constraints:
 - **Chromebook protections:** ChromeOS uses roughly **25fps**, reduced rendering resolution (≤0.95 device pixel ratio), low-power WebGL preference and no antialiasing. Desktop is capped to roughly 45fps and 1.25 DPR. The WebGL context runs only for a confirmed cinematic; frame loops stop when it ends, and the GPU program/buffer is released on leaving the match.
 - **Accessibility/fallback:** people with reduced-motion enabled get a short static scene instead of forced rapid camera movement. If WebGL is not supported or shaders cannot initialize, V1's CSS/SVG effect remains as a fallback rather than failing the game. The canvas never intercepts clicks; all card choices remain in site.
 - **Verification:** pure timeline/3D math tests include each diagonal, both attacker colors, real bullet/camera motion, and target coordinates. A mocked WebGL smoke test verifies that the renderer creates geometry and draws every camera phase, in addition to multiplayer regression tests. Exact visual quality and performance on the user's Chromebook still need live browser testing.
+
+## Bishop Sniper sculpted models V3 · Alpha 0.9.4
+
+- **Playtest-driven correction.** The 2026-11-16 screen recording showed V2's physically real 3D scene still using placeholder-shaped geometry: a huge faceted bishop base next to simple rectangular gun geometry, plus a distant generic block on the victim square. Merely prolonging the camera would not fix the missing recognizability.
+- **Original sculpted 3D models.** Introduced `sniper-sculpts.mjs`, a one-time triangle-mesh model generator. The attacking bishop now has a curved turned Staunton-style base/body, a large sculpted mitre with an engraved diagonal slot, separate finial gilding, and a grounded prone pose. The scoped sniper rifle uses a shaped 3D stock and pistol grip, curved barrel, sculpted objective/eyepiece scope and muzzle brake, instead of the cuboids used in V2.
+- **Distinct victim models for all six types.** The captured piece is selected using the actual server-recorded `victim` symbol and its own 3D mesh: rounded-head pawn, crenellated rook, sculpted horse-head knight with mane, mitred bishop, crowned queen, or king with cross. Both black and white victim sides retain their appropriate materials and the first-shot impact/disintegration sequence.
+- **Better camera framing/materials.** The introductory shot moves to a three-quarter side camera that deliberately shows the bishop's mitre and rifle in profile rather than looking down the oversized base. Added interpolated curved profiles, smooth per-vertex normals, improved specular highlights and brighter dark-piece lighting. Existing 4.9-second staged WebGL cinematic, slow-motion bullet follow, multiplayer event synchronization and separate second-shot teleport remain unchanged.
+- **Performance.** All models are generated locally from JS data (no external asset download), combined into one GPU vertex buffer approximately 3.3 MiB. ChromeOS remains capped near 25 FPS, reduced raster resolution, no MSAA, rendering only while a shot plays. WebGL unsupported browsers and reduced-motion users retain the existing graceful fallback.
+- **Scope honesty.** These are custom modeled/stylized **actual curved triangle meshes**, not photographic textures, a character rig, or licensed external GLB assets. If photorealism or animated hands/facial details is wanted later, that requires a dedicated authored character/model asset pipeline.
