@@ -2,14 +2,14 @@
 
 ## Public servers and Quick Play (Alpha 0.10.0)
 
-- **Quick Play:** Players join the oldest available public room or automatically host a new public room if none is open. Guests take the second seat. Match rules and 26-card draws are identical to standard private games; public games are not sniper/Analyst test mode.
+- **Quick Play:** Players join the oldest available public room or automatically host a new public room if none is open. Guests take the second seat. Match rules and 26-card draws are identical to standard private games; all new games use ordinary weighted random hands.
 - **Public lobby browser:** All visitors can view current *waiting* public games (code, age, and 1/2 seat count), manually join one, or refresh the list (automatically every 7 seconds). Joining is checked by the server, not the browser. A room vanishes from the list once filled.
 - **No private-room exposure:** Private games never enter the public index. Listing responses contain no player token, token hash, chess state, hands, or engine analysis. Public room codes are intentionally visible and anyone may join; private code-based invitations continue to work unchanged.
 - **Race-safe matchmaking:** Room joining uses an optimistic D1 version check so simultaneous joiners cannot both claim the second seat. The losing browser can refresh and choose a different room.
 - **Active hosts only:** A public waiting host sends an authenticated presence heartbeat every 12 seconds while the match is open. A public room is hidden after 45 seconds without a heartbeat, preventing abandoned tab listings. The waiting host can unlist by leaving the room; existing private room data is never deleted by unlisting.
 - **Current scope:** This is discoverable public **two-player matchmaking**, not dedicated geographically distributed chess servers, spectator access, user accounts, skill ratings, ranked matchmaking, persistent chat, or WebSockets. Public D1 room state and player authentication remain the same as existing private multiplayer.
 
-## Live in Alpha 0.10.0
+## Live in Alpha 0.10.1
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -21,7 +21,7 @@
 - **Final gameplay cards:** Identity Theft swaps only enemy-visible appearances. Classified Promotion conceals the actual promoted piece type. Objection! gives the opponent a server-validated in-site reaction before card resolution, and Counterfeit clones the most recent nonreaction enemy card at the cost of a full turn. These include multiplayer secrecy and reaction regression tests.
 - **The Analyst is the 26th card.** Legendary passive: records standard legal chess moves without server-side grading and offers those moves to an isolated client-side Stockfish 19 lite single-threaded UCI engine. Grades compare the engine's preferred root move to the played move at bounded depth/time. On-board feedback coins appear above the moved piece for **1000ms** only after analysis completes, with a matching color/icon history and legend. In custom-rule positions, no FEN or Stockfish job is emitted to avoid leaking concealed information or pretending Stockfish knows chess-card rules. Previous heuristic grades are labeled as historical estimates. Engine files are served unmodified from an allowlisted pinned CDN via the same-origin function; their GPL-3.0 source/license link is in the UI. No runtime external opening books or Chess.com accuracy models are used.
 - **Approved catalog:** See [CARD_CATALOG.md](./CARD_CATALOG.md) for all 26 original approved concepts, remaining rules and the separate Analyzer milestone.
-- **Optional sniper test match** gives *both* players Bishop Sniper plus two random other cards. Standard games keep three random rarity-weighted draws. Test matches are unranked like the rest of Alpha.
+- **Standard room creation only:** private hosts and public matchmaking each draw three unique randomized cards, with existing rarity weights. Guaranteed Bishop Sniper and Analyst test-room hosting was removed in Alpha 0.10.1, including both lobby controls and the creation API's old test-mode options. Automated tests still set up card-specific fixtures internally, without exposing a game mode to players.
 
 ## Future: cinematic Bishop Sniper shot
 

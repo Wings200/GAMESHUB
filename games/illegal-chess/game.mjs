@@ -38,21 +38,8 @@ const current=s=>s.t===1?"w":"b";
 export const CHECKMATE_RESCUE_MS=30_000;
 function pickWeighted(pool){const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}const options=pool.filter(c=>c.rarity===r);return options[rand(options.length)];}
 export function randomHand(){const pool=CARDS.slice(),hand=[];for(let i=0;i<3;i++){const card=pickWeighted(pool);hand.push({id:card.id,used:false});pool.splice(pool.indexOf(card),1);}return hand;}
-function analystTestHand(){
- const pool=randomHand().filter(c=>c.id!=="the-analyst").slice(0,2);
- while(pool.length<2){
-  const choices=CARDS.filter(c=>c.id!=="the-analyst"&&!pool.some(x=>x.id===c.id));
-  pool.push({id:pickWeighted(choices).id,used:false});
- }
- return [{id:"the-analyst",used:false},...pool];
-}
-function sniperTestHand(){
- const hand=randomHand().filter(c=>c.id!=="bishop-sniper").slice(0,2);
- while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
- return [{id:"bishop-sniper",used:false},...hand];
-}
-export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
-export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
+export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
+export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s);
@@ -172,7 +159,7 @@ function pieceGivesCheck(s,mark){
 
 export function playerView(g,color){
  const s=g.s,st=status(g),canAnalyze=analystActive(g,color);
- return {room:g.room,player:color,testMode:!!g.sniperTest,analystTest:!!g.analystTest,ready:!!g.players.b,publicRoom:!!g.public,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
+ return {room:g.room,player:color,ready:!!g.players.b,publicRoom:!!g.public,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
