@@ -74,52 +74,121 @@ export function classifyStockfish(entry,best,played){
    "Stockfish estimates roughly "+loss+" centipawns lost compared with its preferred chess move."};
 }
 
-export function createStockfishReviewer({workerFactory=url=>new Worker(url),url=ENGINE_WORKER}={}){
- let worker=null,boot=null,active=null,queue=Promise.resolve(),broken=false;
- function fail(error){
-  broken=true;
-  if(active){clearTimeout(active.timer);active.reject(error);active=null;}
+// Attempt same-origin Pages proxy first. If its JS or WASM cannot load, run
+// the *same* GPL Stockfish engine via a same-origin classic worker shim using
+// an explicit WASM CDN URL (no change to chess data/privacy).
+export function engineSources(local=ENGINE_WORKER){
+ const urls=[
+  ["jsdelivr","https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/"],
+  ["unpkg","https://unpkg.com/stockfish@19.0.1/bin/"]
+ ];
+ return [
+  {label:"GAMESHUB engine route",url:local,timeout:9000},
+  ...urls.map(([label,base])=>({
+   label:label+" fallback",
+   url:"/games/illegal-chess/stockfish-cdn-worker.js?cdn="+label+
+    "#"+encodeURIComponent(base+"stockfish-19-lite-single.wasm"),
+   timeout:20000
+  }))
+ ];
+}
+
+export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,sources=null}={}){
+ let worker=null,starting=null,active=null,queue=Promise.resolve(),disposed=false,reason="";
+ const candidates=sources||(!workerFactory?engineSources(url):[{label:"test engine",url,timeout:10000}]);
+ const spawn=workerFactory||((source)=>new Worker(source));
+ const getStatus=()=>({ready:!!worker,source:reason});
+ function disposeWorker(){
   if(worker){worker.terminate();worker=null;}
  }
- function handleLine(line){
-  if(line==="uciok"||line.endsWith("\nuciok")){worker?.postMessage("setoption name Hash value 16");worker?.postMessage("isready");return;}
-  if(line==="readyok"){boot?.resolve();boot=null;return;}
-  if(!active)return;
+ function handleLine(line,w,allowBootResolve,bootReject){
+  if(line.startsWith("stockfish-loader-error:")){
+   const error=Error(line.slice("stockfish-loader-error:".length).trim());
+   bootReject?.(error);
+   return;
+  }
+  if(line==="uciok"){
+   w.postMessage("setoption name Hash value 16");
+   w.postMessage("isready");
+   return;
+  }
+  if(line==="readyok"){allowBootResolve?.();return;}
+  if(w!==worker||!active)return;
   const info=parseUciInfo(line);
   if(info&&(!active.score||info.depth>=active.score.depth))active.score=info;
-  const move=line.match(/^bestmove\s+(\S+)/);
+  const move=line.match(/^bestmove\\s+(\\S+)/);
   if(move){
    const job=active;active=null;clearTimeout(job.timer);
    job.resolve({score:job.score,bestmove:move[1]});
   }
  }
- async function ready(){
-  if(broken)throw Error("Stockfish worker unavailable");
-  if(worker)return;
-  worker=workerFactory(url);
-  const booted=new Promise((resolve,reject)=>{
-   const timer=setTimeout(()=>{fail(Error("Stockfish engine initialization timed out"));reject(Error("Stockfish startup timeout"));},18000);
-   boot={resolve:()=>{clearTimeout(timer);resolve();},
-    reject:error=>{clearTimeout(timer);reject(error);}};
+ function attempt(candidate){
+  return new Promise((resolve,reject)=>{
+   if(disposed){reject(Error("Stockfish reviewer closed"));return;}
+   let w;
+   try{w=spawn(candidate.url);}catch(error){reject(Error(candidate.label+": "+String(error?.message||error)));return;}
+   let settled=false;
+   const finish=(error)=>{
+    if(settled)return;
+    settled=true;clearTimeout(timer);
+    if(error){w.terminate();reject(error);}
+    else{worker=w;reason=candidate.label;resolve();}
+   };
+   const timer=setTimeout(()=>finish(Error(candidate.label+": Stockfish startup timed out")),candidate.timeout);
+   w.onmessage=event=>{
+    const payload=event.data;
+    const lines=typeof payload==="string"?payload.split(/\\r?\\n/):[];
+    for(const line of lines){
+     if(!line.trim())continue;
+     const text=line.trim();
+     if(text.startsWith("stockfish-loader-error:")){
+      finish(Error(candidate.label+": "+text.slice(23).trim()));return;
+     }
+     handleLine(text,w,()=>finish(null),error=>finish(error));
+    }
+   };
+   w.onerror=event=>{
+    const error=Error(candidate.label+": "+(event?.message||"engine script or WASM download failed"));
+    if(!settled)finish(error);
+    else if(active){
+     const task=active;active=null;clearTimeout(task.timer);task.reject(error);
+     disposeWorker();
+    }
+   };
+   w.onmessageerror=()=>finish(Error(candidate.label+": unreadable engine message"));
+   try{w.postMessage("uci");}catch(error){finish(Error(candidate.label+": "+error.message));}
   });
-  worker.onmessage=event=>{
-   for(const line of String(event.data||"").split(/\r?\n/))if(line.trim())handleLine(line.trim());
-  };
-  worker.onerror=()=>{
-   const error=Error("Stockfish engine failed to load");
-   boot?.reject(error);boot=null;
-   fail(error);
-  };
-  worker.postMessage("uci");
-  await booted;
+ }
+ async function ready(){
+  if(disposed)throw Error("Stockfish reviewer closed");
+  if(worker)return;
+  if(!starting){
+   starting=(async()=>{
+    const failures=[];
+    for(const candidate of candidates){
+     if(disposed)throw Error("Stockfish reviewer closed");
+     try{await attempt(candidate);return;}
+     catch(error){failures.push(error.message);}
+    }
+    throw Error("Could not start Stockfish: "+failures.join("; "));
+   })();
+  }
+  try{await starting;}catch(error){starting=null;throw error;}
  }
  async function search(fen,move){
   await ready();
   return new Promise((resolve,reject)=>{
-   const timer=setTimeout(()=>{fail(Error("Stockfish search timed out"));reject(Error("Stockfish search timed out"));},12000);
+   const timer=setTimeout(()=>{
+    if(active){active=null;disposeWorker();starting=null;}
+    reject(Error("Stockfish search timed out"));
+   },15000);
    active={resolve,reject,timer,score:null};
-   worker.postMessage("position fen "+fen);
-   worker.postMessage("go depth 13 movetime 380"+(move?" searchmoves "+move:""));
+   try{
+    worker.postMessage("position fen "+fen);
+    worker.postMessage("go depth 13 movetime 380"+(move?" searchmoves "+move:""));
+   }catch(error){
+    clearTimeout(timer);active=null;disposeWorker();starting=null;reject(error);
+   }
   });
  }
  function analyze(entry){
@@ -133,11 +202,9 @@ export function createStockfishReviewer({workerFactory=url=>new Worker(url),url=
   return task;
  }
  function dispose(){
-  broken=true;
-  if(boot){boot.reject(Error("Stockfish reviewer closed"));boot=null;}
+  disposed=true;
   if(active){clearTimeout(active.timer);active.reject(Error("Stockfish reviewer closed"));active=null;}
-  if(worker)worker.terminate();
-  worker=null;
+  disposeWorker();
  }
- return {analyze,dispose};
+ return {analyze,dispose,getStatus};
 }
