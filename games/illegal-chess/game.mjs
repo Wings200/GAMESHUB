@@ -144,14 +144,17 @@ function pieceGivesCheck(s,mark){
 }
 
 export function playerView(g,color){
- const s=g.s,st=status(g);
+ const s=g.s,st=status(g),canAnalyze=analystActive(g,color);
  return {room:g.room,player:color,testMode:!!g.sniperTest,analystTest:!!g.analystTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
   cinematics:(g.cinematics||[]).slice(-8),
-  analyst:{active:analystActive(g),entries:(g.analystLog||[]).slice(-32),
-   worker:g.analystLease?.expires>Date.now()?{
+  // The Analyst's ability belongs ONLY to a player holding the passive card.
+  // Match-wide evaluation remains shared internally, but grade history,
+  // move analysis inputs (beforeFen/uci) and worker info are private to owners.
+  analyst:{active:canAnalyze,entries:canAnalyze?(g.analystLog||[]).slice(-32):[],
+   worker:canAnalyze&&g.analystLease?.expires>Date.now()?{
     role:g.analystLease.hash===g.players[color]?"leader":"viewer",
     clientId:g.analystLease.id,quality:g.analystLease.quality,score:g.analystLease.score,readyAt:g.analystLease.readyAt
    }:null},
