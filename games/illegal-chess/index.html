@@ -6,22 +6,37 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=16">
+<link rel="stylesheet" href="./style.css?v=17">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.9.7</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.10.0</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
   <div class="lobbyCopy">
    <div class="eyebrow">YOUR MOVE. YOUR RULES.</div>
    <h1>It's chess.<br><em>Until it isn't.</em></h1>
-   <p>Invite a friend to a private match. Draw three randomized cards with different rarities, bend the rules, and make every move count.</p>
+   <p>Join public servers to play someone new, or invite a friend to a private match. Draw three randomized cards, bend the rules, and make every move count.</p>
    <div class="lobbyActions">
-    <button class="btn primary" id="create" type="button">CREATE A PRIVATE MATCH <span aria-hidden="true">↗</span></button><button class="btn ghost" id="sniperTest" type="button">⌖ TEST BISHOP SNIPER · BOTH PLAYERS GET ONE</button>
+    <div class="publicPlayActions">
+     <button class="btn primary" id="quickPlay" type="button">⚡ QUICK PLAY <span>FIND OPPONENT</span></button>
+     <button class="btn ghost" id="hostPublic" type="button">✦ HOST PUBLIC ROOM</button>
+    </div>
+    <section class="publicLobby" aria-label="Open public Illegal Chess servers">
+     <div class="publicLobbyHead">
+      <div><span class="eyebrow">OPEN MATCHES</span><h2>Public servers <span id="publicRoomCount" class="publicCount">0</span></h2></div>
+      <button class="btn ghost slim" id="refreshPublic" type="button" aria-label="Refresh public room list">↻ REFRESH</button>
+     </div>
+     <div id="publicRooms" class="publicRooms" role="list" aria-live="polite">
+      <p class="publicEmpty">Loading public servers…</p>
+     </div>
+     <p id="publicLobbyHint" class="publicLobbyHint">Public games are visible to everyone. Each room has two players.</p>
+    </section>
+    <div class="privatePlayDivider">OR PLAY WITH A FRIEND</div>
+    <button class="btn ghost" id="create" type="button">CREATE A PRIVATE MATCH <span aria-hidden="true">↗</span></button><button class="btn ghost" id="sniperTest" type="button">⌖ TEST BISHOP SNIPER · BOTH PLAYERS GET ONE</button>
     <button class="btn ghost" id="analystTest" type="button">🧠 TEST THE ANALYST · BOTH PLAYERS GET ONE</button>
     <div>
      <div class="eyebrow" style="margin-bottom:9px">HAVE A ROOM CODE?</div>
@@ -36,7 +51,7 @@
  </section>
  <section id="match" hidden aria-label="Illegal Chess multiplayer game">
   <div class="matchHead">
-   <div><span class="eyebrow">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle" id="matchTitle">The board has no mercy.</h2><div id="swapCounter" class="swapCounter" aria-live="polite">COLOR SWAP IN 20 TURNS</div></div>
+   <div><span class="eyebrow" id="matchVisibility">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle" id="matchTitle">The board has no mercy.</h2><div id="swapCounter" class="swapCounter" aria-live="polite">COLOR SWAP IN 20 TURNS</div></div>
    <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><button id="sniperSoundToggle" class="btn slim ghost sniperSoundToggle" type="button" aria-pressed="true" title="Toggle local Bishop Sniper cinematic sound">🔊 SFX ON</button><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button><button id="leave" class="btn slim ghost" type="button">LEAVE ROOM</button></div>
   </div>
   <section id="gameResult" class="gameResult" hidden aria-live="assertive" role="status">
@@ -82,7 +97,7 @@
   </div>
  </section>
 </main>
-<footer class="footer">ILLEGAL CHESS · A GAMESHUB GAME · PRIVATE MULTIPLAYER ALPHA</footer>
+<footer class="footer">ILLEGAL CHESS · A GAMESHUB GAME · PUBLIC + PRIVATE MULTIPLAYER ALPHA</footer>
 <!-- True real-time 3D Bishop Sniper V2, with lightweight V1 visual fallback. -->
 <div id="sniperCinematic" class="sniperCinematic" hidden aria-hidden="true">
  <canvas id="sniper3DCanvas" class="cinematic3DCanvas" aria-hidden="true"></canvas>
@@ -167,6 +182,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=19"></script>
+<script type="module" src="./client.mjs?v=20"></script>
 </body>
 </html>
