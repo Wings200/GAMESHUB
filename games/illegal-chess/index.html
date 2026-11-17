@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=10">
+<link rel="stylesheet" href="./style.css?v=11">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.8</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.8.1</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -56,6 +56,7 @@
    <div class="analystIntro"><div><span class="eyebrow">LEGENDARY · PASSIVE CARD #26</span><h3>🧠 THE ANALYST <span class="analysisLive" id="analystLive">ACTIVE</span></h3><p>Powered by real Stockfish 19 lite. Normal chess moves are analyzed locally; card effects and concealed positions are marked Custom Rule.</p></div>
    <div class="analystSpotlight" id="analystSpotlight"><strong id="analystLatestGrade">AWAITING MOVES</strong><span id="analystLatestDetail">Both players' completed turns will be graded here.</span></div></div>
    <div class="analystHistory" id="analystHistory" role="list"></div>
+   <button class="btn slim ghost" type="button" id="retryStockfish" hidden>↻ RETRY STOCKFISH ENGINE</button>
    <div class="eyebrow analystLegendTitle">MOVE FEEDBACK SYMBOLS</div>
    <div class="analystLegend" id="analystLegend" aria-label="Stockfish review symbol legend"></div>
    <p class="analystDisclaimer">Grades are Stockfish 19 lite chess-only evaluations, not Chess.com's proprietary accuracy labels or an analysis of Illegal Chess cards. Engine runs locally in your browser. <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener noreferrer">Stockfish.js source</a> · <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GPLv3 license</a>.</p>
@@ -89,6 +90,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=10"></script>
+<script type="module" src="./client.mjs?v=11"></script>
 </body>
 </html>
