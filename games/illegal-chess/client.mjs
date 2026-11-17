@@ -1,10 +1,57 @@
 import {cardImage} from "./art.mjs";
+import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
+// Server-synchronized Bishop Sniper replay; neither player invents or triggers
+// the action locally. Seen event IDs also prevent replay on re-render/poll.
+let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
+function stopSniperCinematic(){
+ if(cinematicTimer){clearTimeout(cinematicTimer);cinematicTimer=null;}
+ if(sniperWarpTimer){clearTimeout(sniperWarpTimer);sniperWarpTimer=null;}
+ sniperWarpTarget=null;
+ const overlay=$("sniperCinematic");
+ overlay.classList.remove("isPlaying");overlay.hidden=true;
+}
+function playSniperCinematic(event){
+ const scene=cinematicCaption(event);
+ if(!scene||document.hidden)return;
+ stopSniperCinematic();
+ $("cinematicLive").textContent=event.kind==="sniper-first-shot"?
+  "Bishop Sniper fired at "+event.target.toUpperCase()+". Target captured.":
+  "Bishop Sniper teleported to "+event.target.toUpperCase()+". Target captured.";
+ if(!scene.fullScreen){
+  // Shot 2 is a short shadow arrival on the actual chess board: no bullet.
+  sniperWarpTarget=event.target;
+  renderBoard();
+  sniperWarpTimer=setTimeout(()=>{
+   sniperWarpTimer=null;sniperWarpTarget=null;
+   if(game)renderBoard();
+  },window.matchMedia("(prefers-reduced-motion: reduce)").matches?260:scene.duration);
+  return;
+ }
+ const overlay=$("sniperCinematic");
+ $("cinematicTitle").textContent=scene.title;
+ $("cinematicSubtitle").textContent=scene.eyebrow;
+ $("cinematicDetail").textContent=scene.detail;
+ $("cinematicTargetPiece").textContent=glyph[scene.victim]||"♟";
+ overlay.hidden=false;
+ // Restart keyframes for each distinct server action; CSS/SVG remain cached.
+ requestAnimationFrame(()=>overlay.classList.add("isPlaying"));
+ cinematicTimer=setTimeout(()=>{
+  cinematicTimer=null;
+  overlay.classList.remove("isPlaying");overlay.hidden=true;
+ },window.matchMedia("(prefers-reduced-motion: reduce)").matches?300:scene.duration);
+}
+function syncSniperCinematics(){
+ const update=nextCinematic(game?.cinematics,cinematicSeen);
+ cinematicSeen=update.seen;
+ if(update.event)playSniperCinematic(update.event);
+}
+
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
 // Every tab has an ephemeral identity, but only ONE participating device
 // receives the server's analyzer lease. All actual verdicts are saved in D1.
@@ -204,6 +251,7 @@ async function refresh(){
 async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  resetStockfish(s.room);
+ stopSniperCinematic();cinematicSeen=null;
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -276,7 +324,9 @@ function renderBoard(){
   }
   const i=(8-rank)*8+file,piece=pieces[i],name="abcdefgh"[file]+rank;
   const cell=document.createElement("button");cell.type="button";
+  cell.dataset.square=name;
   cell.className="square "+(((rank+file)%2)?"dark":"light");
+  if(sniperWarpTarget===name)cell.classList.add("sniperWarpTarget");
   cell.setAttribute("aria-label",name+" "+(piece==="."?"empty":piece));
   if(name===selected||name===cardFrom)cell.classList.add("selected");
   if(!selectedCard&&selected&&game.legal.some(m=>m.from===selected&&m.to===name)){
@@ -481,6 +531,7 @@ function render(){
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
  renderBoard();renderHand();renderSniper();renderExtras();renderAnalyst();
+ syncSniperCinematics();
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
  else if(game.status.done)hint=game.status.text;
@@ -664,6 +715,7 @@ $("leave").addEventListener("click",async()=>{
  const accept=await modal({tag:"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
  if(!accept)return;
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
+ stopSniperCinematic();cinematicSeen=null;
  if(poll){clearInterval(poll);poll=null;}clearSelection();
  history.replaceState({}, "", "/games/illegal-chess/");
  $("match").hidden=true;$("lobby").hidden=false;$("connection").textContent="CONNECTING";$("connection").classList.add("offline");
