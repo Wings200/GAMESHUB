@@ -10,13 +10,13 @@
 - **30-card expansion plan.** Ten cards are now implemented; the remaining
   twenty have distinct rule proposals in CARD_CATALOG.md but are not currently
   shuffled into gameplay.
-- **New rarity odds:** 28% Common / 29% Uncommon / 25% Rare / 14% Epic /
-  4% Legendary, recalculated as tiers run out of available cards.
-- **Less repetition between matches.** Each browser remembers up to twelve
-  recently seen cards in local storage and submits that list when creating or
-  joining a room. Within the server-selected rarity, unseen cards are favored.
-  The server never raises a player's chance of receiving a Legendary in response
-  to that list. A new match's six cards are all distinct across both players.
+- **Equal probability per card.** The server selects each playable card
+  uniformly, with no rarity weights or recent-card preference. Rarity is a
+  cosmetic label; a Legendary is just as likely as a Common card.
+- **Unique cards within each match.** Each three-card hand has no duplicate
+  IDs and the second player cannot draw any of the first player's three.
+  New matches can repeat cards; there is no history-based bias.
+- **Black Market** now trades for any different card with no rarity restriction.
 - **No changes** to public/private room protocols, color swaps, checkmate
   rescue, The Analyst ownership, Stockfish or Bishop Sniper cinematics.
 - **Release caution:** The GitHub workflow has been failing before useful
@@ -26,7 +26,7 @@
 
 ## Public servers and Quick Play (Alpha 0.10.0)
 
-- **Quick Play:** Players join the oldest available public room or automatically host a new public room if none is open. Guests take the second seat. Match rules and the 36-card draw pool are identical to standard private games; all new games use ordinary weighted random hands.
+- **Quick Play:** Players join the oldest available public room or automatically host a new public room if none is open. Guests take the second seat. Match rules and the 36-card draw pool are identical to standard private games; all new games use uniformly random three-card hands.
 - **Public lobby browser:** All visitors can view current *waiting* public games (code, age, and 1/2 seat count), manually join one, or refresh the list (automatically every 7 seconds). Joining is checked by the server, not the browser. A room vanishes from the list once filled.
 - **No private-room exposure:** Private games never enter the public index. Listing responses contain no player token, token hash, chess state, hands, or engine analysis. Public room codes are intentionally visible and anyone may join; private code-based invitations continue to work unchanged.
 - **Race-safe matchmaking:** Room joining uses an optimistic D1 version check so simultaneous joiners cannot both claim the second seat. The losing browser can refresh and choose a different room.
@@ -45,7 +45,7 @@
 - **Final gameplay cards:** Identity Theft swaps only enemy-visible appearances. Classified Promotion conceals the actual promoted piece type. Objection! gives the opponent a server-validated in-site reaction before card resolution, and Counterfeit clones the most recent nonreaction enemy card at the cost of a full turn. These include multiplayer secrecy and reaction regression tests.
 - **The Analyst is the 26th card.** Legendary passive: records standard legal chess moves without server-side grading and offers those moves to an isolated client-side Stockfish 19 lite single-threaded UCI engine. Grades compare the engine's preferred root move to the played move at bounded depth/time. On-board feedback coins appear above the moved piece for **1000ms** only after analysis completes, with a matching color/icon history and legend. In custom-rule positions, no FEN or Stockfish job is emitted to avoid leaking concealed information or pretending Stockfish knows chess-card rules. Previous heuristic grades are labeled as historical estimates. Engine files are served unmodified from an allowlisted pinned CDN via the same-origin function; their GPL-3.0 source/license link is in the UI. No runtime external opening books or Chess.com accuracy models are used.
 - **Approved catalog:** See [CARD_CATALOG.md](./CARD_CATALOG.md) for all 26 original approved concepts, remaining rules and the separate Analyzer milestone.
-- **Standard room creation only:** private hosts and public matchmaking each draw three unique randomized cards, with the rebalanced rarity weights. Guaranteed Bishop Sniper and Analyst test-room hosting was removed in Alpha 0.10.1, including both lobby controls and the creation API's old test-mode options. Automated tests still set up card-specific fixtures internally, without exposing a game mode to players.
+- **Standard room creation only:** private hosts and public matchmaking each draw three unique randomized cards, with equal chance for each playable card. Guaranteed Bishop Sniper and Analyst test-room hosting was removed in Alpha 0.10.1, including both lobby controls and the creation API's old test-mode options. Automated tests still set up card-specific fixtures internally, without exposing a game mode to players.
 
 ## Future: cinematic Bishop Sniper shot
 
