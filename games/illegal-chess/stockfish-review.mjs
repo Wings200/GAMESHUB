@@ -216,7 +216,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
     const full=currentSource?.quality==="full";
     const asm=currentSource?.quality==="asm";
     const depth=asm?17:full?24:21;
-    const milliseconds=asm?1500:full?2200:1350;
+    const milliseconds=asm?650:full?1100:550;
     worker.postMessage("go depth "+depth+" movetime "+milliseconds+(move?" searchmoves "+move:""));
    }catch(error){
     clearTimeout(timer);active=null;disposeWorker();starting=null;reject(error);
@@ -230,7 +230,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
    const played=await search(entry.beforeFen,entry.uci);
    const engine=currentSource?.quality==="full"?"Stockfish 19 · Full NNUE":
     currentSource?.quality==="asm"?"Stockfish 19 · ASM.js":"Stockfish 19 · Lite NNUE";
-   return {...classifyStockfish(entry,best,played),engine,source:reason};
+   return {...classifyStockfish(entry,best,played),engine,source:reason,best,played};
   });
   queue=task.catch(()=>{});
   return task;
