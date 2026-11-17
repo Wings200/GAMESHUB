@@ -12,7 +12,7 @@
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.9</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.9.1</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -53,7 +53,7 @@
    </div>
   </section>
   <section id="analystPanel" class="analystPanel" hidden aria-label="The Analyst move grades" aria-live="polite">
-   <div class="analystIntro"><div><span class="eyebrow">LEGENDARY · PASSIVE CARD #26</span><h3>🧠 THE ANALYST <span class="analysisLive" id="analystLive">ACTIVE</span></h3><p>Powered by full-strength Stockfish 19 NNUE (about 94 MB on first use) with deeper analysis. Falls back to Lite when necessary; custom card rules remain outside Stockfish.</p></div>
+   <div class="analystIntro"><div><span class="eyebrow">LEGENDARY · PASSIVE CARD #26</span><h3>🧠 THE ANALYST <span class="analysisLive" id="analystLive">ACTIVE</span></h3><p>ONE SHARED ANALYST per match. The stronger connected player runs Stockfish; both screens display the exact same saved move grade. Chromebooks receive the result without loading the huge engine when a stronger device is connected. Special card rules stay outside Stockfish.</p></div>
    <div class="analystSpotlight" id="analystSpotlight"><strong id="analystLatestGrade">AWAITING MOVES</strong><span id="analystLatestDetail">Both players' completed turns will be graded here.</span></div></div>
    <div class="analystHistory" id="analystHistory" role="list"></div>
    <button class="btn slim ghost" type="button" id="retryStockfish" hidden>↻ RETRY STOCKFISH ENGINE</button>
@@ -90,6 +90,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=12"></script>
+<script type="module" src="./client.mjs?v=13"></script>
 </body>
 </html>
