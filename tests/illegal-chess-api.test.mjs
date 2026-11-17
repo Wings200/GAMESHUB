@@ -326,3 +326,77 @@ test("Both live multiplayer API clients receive the same Bishop Sniper cinematic
  assert.deepEqual(second.data.view.cinematics,guestSecond.cinematics);
  assert.equal(guestSecond.fen.split(" ")[0].includes("5B2"),true);
 });
+
+test("Only the Analyst owner sees scores and can register, retry, or publish engine results",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{});
+ const guest=await post(db,"join",{room:host.data.room});
+ const row=db.rooms.get(host.data.room),g=JSON.parse(row.state);
+ g.hands.w=[{id:"the-analyst",used:false},{id:"pawn-sidestep",used:false}];
+ g.hands.b=[{id:"pawn-sidestep",used:false},{id:"parking-ticket",used:false}];
+ row.state=JSON.stringify(g);
+ const lightId="11111111-1111-4111-8111-111111111111";
+ const ownerId="22222222-2222-4222-8222-222222222222";
+ const nonowner=(await post(db,"state",guest.data)).data;
+ assert.deepEqual(nonowner.analyst,{active:false,entries:[],worker:null});
+ const forbiddenRegister=await post(db,"analyst",{...guest.data,intent:"register",score:120,clientId:lightId});
+ assert.equal(forbiddenRegister.status,400);
+ assert.match(forbiddenRegister.data.error,/Only a player holding The Analyst/);
+ const forbiddenRetry=await post(db,"analyst",{...guest.data,intent:"retry",clientId:lightId});
+ assert.equal(forbiddenRetry.status,400);
+ const allowed=await post(db,"analyst",{...host.data,intent:"register",clientId:ownerId,score:95});
+ assert.equal(allowed.status,200);
+ assert.equal(allowed.data.view.analyst.worker.role,"leader");
+ const first=await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
+ assert.equal(first.status,200);
+ const ownerFirst=(await post(db,"state",host.data)).data;
+ const blockedFirst=(await post(db,"state",guest.data)).data;
+ assert.equal(ownerFirst.analyst.entries[0].status,"pending");
+ assert.deepEqual(blockedFirst.analyst,{active:false,entries:[],worker:null});
+ const best={score:{kind:"cp",value:30,depth:19},bestmove:"e2e4"};
+ const played={score:{kind:"cp",value:25,depth:19},bestmove:"e2e4"};
+ const forbiddenSubmit=await post(db,"analyst",{...guest.data,intent:"submit",clientId:lightId,
+  turn:1,best,played,quality:"full"});
+ assert.equal(forbiddenSubmit.status,400);
+ const forbiddenFailure=await post(db,"analyst",{...guest.data,intent:"failure",
+  clientId:lightId,turn:1,message:"simulated"});
+ assert.equal(forbiddenFailure.status,400);
+ const saved=await post(db,"analyst",{...host.data,intent:"submit",clientId:ownerId,
+  turn:1,best,played,quality:"full"});
+ assert.equal(saved.status,200);
+ assert.equal(saved.data.view.analyst.entries[0].grade,"Book");
+ const blockedAfter=(await post(db,"state",guest.data)).data;
+ assert.deepEqual(blockedAfter.analyst,{active:false,entries:[],worker:null});
+ const response=JSON.stringify(blockedAfter);
+ assert.equal(response.includes('"beforeFen"'),false);
+ assert.equal(response.includes('"uci"'),false);
+ assert.equal(response.includes('"grade":"Book"'),false);
+ assert.equal(response.includes(ownerId),false);
+ assert.equal(JSON.parse(row.state).analystLog[0].grade,"Book",
+  "One canonical grade remains saved for the owner's view");
+});
+test("If only Black owns Analyst, White never receives grades, including after a 20-turn color swap",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{});
+ const guest=await post(db,"join",{room:host.data.room});
+ const row=db.rooms.get(host.data.room),g=JSON.parse(row.state);
+ g.hands.w=[{id:"pawn-sidestep",used:false}];
+ g.hands.b=[{id:"the-analyst",used:false}];
+ row.state=JSON.stringify(g);
+ assert.equal((await post(db,"state",host.data)).data.analyst.active,false);
+ assert.equal((await post(db,"state",guest.data)).data.analyst.active,true);
+ const id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+ const whiteDenied=await post(db,"analyst",{...host.data,intent:"register",clientId:id,score:200});
+ assert.equal(whiteDenied.status,400);
+ const blackAllowed=await post(db,"analyst",{...guest.data,intent:"register",clientId:id,score:95});
+ assert.equal(blackAllowed.status,200);
+ let mutated=JSON.parse(row.state);mutated.moveCount=19;row.state=JSON.stringify(mutated);
+ const swapped=await post(db,"action",{...host.data,action:{type:"move",from:"e2",to:"e4"}});
+ assert.equal(swapped.status,200);
+ assert.equal(swapped.data.view.player,"b","Old White is now controlling Black");
+ assert.deepEqual(swapped.data.view.analyst,{active:false,entries:[],worker:null});
+ const blackOwner=(await post(db,"state",guest.data)).data;
+ assert.equal(blackOwner.player,"w","Old Black now controls White");
+ assert.equal(blackOwner.analyst.active,true);
+ assert.equal(blackOwner.analyst.entries.length,1);
+ assert.equal(blackOwner.analyst.worker.role,"leader",
+  "Lease remains attached to the authenticated owner across the color swap");
+});
