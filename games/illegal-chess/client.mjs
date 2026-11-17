@@ -253,8 +253,21 @@ function boardFromFen(fen){
 }
 function flash(message){const bar=$("toast");bar.textContent=message;bar.hidden=false;clearTimeout(flash.timer);flash.timer=setTimeout(()=>bar.hidden=true,3200);}
 function clearSelection(){selected=null;selectedCard=null;cardFrom=null;sniperSelected=false;}
+const recentCardKey="gameshub-illegal-chess-recent-draws";
+function recentCards(){
+ try{
+  const value=JSON.parse(localStorage.getItem(recentCardKey)||"[]");
+  return Array.isArray(value)?value.filter(id=>typeof id==="string").slice(0,12):[];
+ }catch{return [];}
+}
+function rememberCards(view){
+ if(!Array.isArray(view?.hand)||!view.hand.length)return;
+ const ids=view.hand.map(c=>c.id).filter(id=>typeof id==="string");
+ const ordered=[...new Set([...ids,...recentCards()])].slice(0,12);
+ try{localStorage.setItem(recentCardKey,JSON.stringify(ordered));}catch{}
+}
 async function api(method,payload){
- const response=await fetch("/api/illegal-chess/"+method,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload||{})});
+ const response=await fetch("/api/illegal-chess/"+method,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(["create","join","quick-join"].includes(method)?{...(payload||{}),recentCards:recentCards()}:(payload||{}))});
  let json;try{json=await response.json();}catch{throw Error("The game server returned an unexpected response.");}
  if(!response.ok)throw Error(json.error||"The game server rejected this action.");
  return json;
@@ -363,7 +376,7 @@ async function send(action){
  busy=true;try{
   const result=await api("action",{...activeSession,action});
   if(session!==activeSession)return;
-  game=result.view;lastState=JSON.stringify(game);clearSelection();render();
+  game=result.view;lastState=JSON.stringify(game);rememberCards(game);clearSelection();render();
   if(myTurn()&&action.type==="card")done();
  }catch(error){flash(error.message);}
  finally{busy=false;void refresh();}
@@ -376,7 +389,7 @@ async function refresh(){
   if(session!==activeSession)return;
   $("connection").textContent="CONNECTED";$("connection").classList.remove("offline");
   const serial=JSON.stringify(data);
-  if(serial!==lastState){game=data;lastState=serial;render();}
+  if(serial!==lastState){game=data;lastState=serial;rememberCards(game);render();}
   void registerAnalyst();
  }catch(e){$("connection").textContent="RECONNECTING";$("connection").classList.add("offline");}
 }
