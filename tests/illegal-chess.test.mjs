@@ -656,8 +656,8 @@ test("Stockfish reviewer sends real UCI position plus two bounded searches",asyn
   beforeFen:"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"});
  assert.equal(result.grade,"Mistake");
  assert.ok(commands.some(s=>s.startsWith("position fen ")));
- assert.ok(commands.some(s=>s==="go depth 21 movetime 1350"));
- assert.ok(commands.some(s=>s==="go depth 21 movetime 1350 searchmoves e1e2"));
+ assert.ok(commands.some(s=>s==="go depth 21 movetime 550"));
+ assert.ok(commands.some(s=>s==="go depth 21 movetime 550 searchmoves e1e2"));
  reviewer.dispose();
 });
 test("Classified identities and off-board snipers never enter Stockfish inputs",()=>{
@@ -723,7 +723,7 @@ test("Stockfish retries an immediately broken worker and analyzes using the next
  assert.deepEqual(urls.slice(0,2),["local.js","message:uci"]);
  assert.ok(urls.includes("cdn.js"));
  assert.equal(reviewer.getStatus().source,"healthy fallback");
- assert.ok(commands.includes("go depth 21 movetime 1350 searchmoves e1e2"));
+ assert.ok(commands.includes("go depth 21 movetime 550 searchmoves e1e2"));
  reviewer.dispose();
 });
 test("Stockfish reports useful failure causes when all worker sources are unavailable",async()=>{
@@ -773,8 +773,19 @@ test("Full NNUE runs at max strength with deeper 2.2-second root searches",async
  assert.ok(commands.includes("setoption name Hash value 48"));
  assert.ok(commands.includes("setoption name UCI_LimitStrength value false"));
  assert.ok(commands.includes("setoption name Skill Level value 20"));
- assert.ok(commands.includes("go depth 24 movetime 2200"));
- assert.ok(commands.includes("go depth 24 movetime 2200 searchmoves e1e2"));
+ assert.ok(commands.includes("go depth 24 movetime 1100"));
+ assert.ok(commands.includes("go depth 24 movetime 1100 searchmoves e1e2"));
  assert.equal(commands.filter(x=>x.startsWith("go ")).length,2);
  reviewer.dispose();
+});
+
+test("The Analyst exposes one server-elected worker only, without session token hashes",()=>{
+ const g=newGame("SHARED","host-secret",{analystTest:true});joinGame(g,"guest-secret");
+ g.analystLease={hash:"host-secret",id:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",score:110,quality:"full",readyAt:Date.now()-1,expires:Date.now()+10000};
+ const host=playerView(g,"w").analyst,guest=playerView(g,"b").analyst;
+ assert.equal(host.worker.role,"leader");
+ assert.equal(guest.worker.role,"viewer");
+ assert.equal(host.worker.clientId,guest.worker.clientId,"Both see the same lease");
+ assert.equal(JSON.stringify(host).includes("host-secret"),false);
+ assert.equal(JSON.stringify(guest).includes("guest-secret"),false);
 });

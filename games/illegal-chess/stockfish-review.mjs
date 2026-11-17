@@ -93,12 +93,12 @@ export function engineSources(local=ENGINE_WORKER){
  // Pages Functions can be unreliable on some hosting plans.
  const origins=[
   ...urls.filter(a=>a[0]==="jsdelivr").map(([host,base])=>({
-   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:55000,
+   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:host==="jsdelivr"?14000:6000,
    url:shim+host+"&engine=full#"+encodeURIComponent(base+"stockfish-19-single.wasm")
   })),
-  {label:"Stockfish 19 Full NNUE · GAMESHUB",quality:"full",url:local,timeout:55000},
+  {label:"Stockfish 19 Full NNUE · GAMESHUB",quality:"full",url:local,timeout:6000},
   ...urls.filter(a=>a[0]==="unpkg").map(([host,base])=>({
-   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:55000,
+   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:host==="jsdelivr"?14000:6000,
    url:shim+host+"&engine=full#"+encodeURIComponent(base+"stockfish-19-single.wasm")
   })),
   {label:"Stockfish 19 Lite · GAMESHUB",quality:"lite",
@@ -216,7 +216,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
     const full=currentSource?.quality==="full";
     const asm=currentSource?.quality==="asm";
     const depth=asm?17:full?24:21;
-    const milliseconds=asm?1500:full?2200:1350;
+    const milliseconds=asm?650:full?1100:550;
     worker.postMessage("go depth "+depth+" movetime "+milliseconds+(move?" searchmoves "+move:""));
    }catch(error){
     clearTimeout(timer);active=null;disposeWorker();starting=null;reject(error);
@@ -230,7 +230,7 @@ export function createStockfishReviewer({workerFactory=null,url=ENGINE_WORKER,so
    const played=await search(entry.beforeFen,entry.uci);
    const engine=currentSource?.quality==="full"?"Stockfish 19 · Full NNUE":
     currentSource?.quality==="asm"?"Stockfish 19 · ASM.js":"Stockfish 19 · Lite NNUE";
-   return {...classifyStockfish(entry,best,played),engine,source:reason};
+   return {...classifyStockfish(entry,best,played),engine,source:reason,best,played};
   });
   queue=task.catch(()=>{});
   return task;

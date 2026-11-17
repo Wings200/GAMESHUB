@@ -98,3 +98,18 @@ This does *not* automatically reproduce Chess.com's proprietary move grades,
 or magically understand the card rules. Search time and browser hardware affect
 move accuracy. Multi-threaded Stockfish requires cross-origin isolation; we use
 full single-threaded to avoid interfering with GAMESHUB's other resources.
+
+## Alpha 0.9.1 · one shared Analyst in multiplayer
+
+The Analyst is now a **single match-wide service**, not a separate engine per
+browser. Each completed chess move receives one server-persisted grade, shared
+between both players even if they both hold The Analyst. The strongest
+connected device generally analyzes, and the weaker one (especially ChromeOS)
+only observes. If the leader disconnects, the remaining player can take over
+after a brief lease. Grades are computed from Stockfish's raw UCI scores by
+the GAMESHUB server and are never independently relabeled by the two clients.
+
+Full Stockfish 19 NNUE remains the preferred model on sufficiently capable
+machines, with Lite/ASM fallbacks. Shorter search times and strict full-engine
+initialization timeouts improve responsiveness; labels remain estimates and
+variant card rules remain explicitly marked Custom Rule.

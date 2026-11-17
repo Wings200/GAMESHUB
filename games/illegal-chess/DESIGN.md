@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.1
+## Live in Alpha 0.9.1.1
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -52,3 +52,12 @@ Important constraints:
 - Degrades gracefully to Lite NNUE and then ASM.js on unsupported or slow devices, with explicit source and tier shown in the Analyst status. First-time full download is large; players on slow connections may see a noticeable engine loading state.
 - Full engine's JS/WASM are allowed from the same pinned npm package via Cloudflare Pages Function or the same-origin worker shim with a direct CDN WASM hash. No server-side chess analysis credentials or remote positions. Original Stockfish engine is GPLv3; see attribution links in the game.
 - UI no longer describes the Analyzer as always 'Lite'. Revalidate actual real-browser downloads after deployment: synthetic worker tests cannot prove successful full engine WebAssembly initialization or performance.
+
+## One shared Analyst · Chromebook performance (Alpha 0.9.1)
+
+- **One evaluation per turn, not per browser.** When the passive Analyst is active, only one connected device is elected to run Stockfish. It publishes the engine's raw best/played evaluations via an authenticated POST `/api/illegal-chess/analyst` endpoint. The server validates the UCI score shape and move, computes the label with the shared classifier, stores the final grade in the room's existing D1 match history, and exposes that same record to **both** player views. Repeated submissions are rejected.
+- **Prefer the more capable player.** Both clients report coarse local capability estimates (hardware concurrency, available memory, reduced-data preference and ChromeOS detection) to elect a worker. A more capable client can preempt a weaker client. All remaining devices are viewers and never download Stockfish. The score is a scheduling hint from authenticated participants, not a security-sensitive or guaranteed hardware benchmark.
+- **Automatic takeover.** The elected worker sends a lease heartbeat. The lease expires after 20 seconds without one; the other player can claim the role. Ownership is associated with authenticated player session hashes rather than board colors, so it continues through the 20-turn color swap. A short election grace period helps avoid starting the heavy engine before both devices register.
+- **Chromebook fallback.** A ChromeOS device has a deliberately low capability score and only runs lightweight Stockfish if no stronger player is connected. Full NNUE remains preferred on the stronger PC; forced low-tier runs avoid the ~94 MB download. Analysis time is reduced to approximately 1.1 seconds total on Lite and 2.2 seconds total on Full, plus engine initialization.
+- **Shared retry and clear errors.** One player may reset failed reviews from the in-game Retry Stockfish button, triggering a fresh election. The client never computes separate local grades; status, symbols and history always come from the server-persisted result. Both players see identical labels, though the second screen may receive the new label at the next ~1.5-second poll.
+- **Trust boundary:** This is a cooperative multiplayer game, not a cryptographically attested engine. The server calculates labels from supplied UCI score fields, rejects stale/fabricated move identifiers and duplicate submissions, but cannot prove an authenticated player didn't manipulate their own engine scores. For competitive ranked play, move the engine into a trusted server job or validate analyses against a trusted engine service. This feature does **not** change chess rules or reveal concealed card choices.

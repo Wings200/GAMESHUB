@@ -49,6 +49,13 @@ jobs:
           assert.match(html,/id="analystTest"/);
           assert.match(client,/renderAnalyst\(/);
           assert.match(client,/createStockfishReviewer/);
+          assert.match(client,/analystLeader\(\)/,"Only the elected player may compute reviews");
+          assert.match(client,/analystDeviceScore/,"Device capability-based election must be present");
+          assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
+          assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
+          assert.match(html,/ALPHA 0\.9\.1/,"Correct shared-Analyst release must load");
+          const api=fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8");
+          assert.match(api,/analystRequest/,"Server-authoritative Analyst lease and review endpoint");
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
           assert.match(html,/id="retryStockfish"/,"A retry button must exist");
           assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/engineSources/,"Engine must attempt multiple hosts");
