@@ -483,17 +483,19 @@ test("The Analyst completes the approved 26-card collection and remains a passiv
  assert.deepEqual({rarity:card.rarity,mode:card.mode},{rarity:"Legendary",mode:"passive"});
  assert.deepEqual(ANALYST_GRADES,["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"]);
 });
-test("The Analyst grades BOTH players' turns with one passive card, without consuming it",()=>{
+test("The Analyst grades both moves for the OWNER only, without consuming the passive",()=>{
  const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
  assert.equal(playerView(g,"w").analyst.active,true);
- assert.equal(playerView(g,"b").analyst.active,true);
+ assert.equal(playerView(g,"b").analyst.active,false,"Opponent must not inherit the owner's passive");
  assert.throws(()=>act(g,"w",{type:"card",card:"the-analyst"}),/passive/);
  move(g,"w","e2","e4");
  move(g,"b","e7","e5");
- const view=playerView(g,"b");
+ const view=playerView(g,"w"),nonowner=playerView(g,"b");
  assert.equal(g.hands.w[0].used,false,"The card never consumes a turn or a use");
  assert.equal(g.moveCount,2);
  assert.equal(view.analyst.entries.length,2);
+ assert.deepEqual(nonowner.analyst,{active:false,entries:[],worker:null},
+  "Non-owner receives NO grades, FEN inputs, UCI moves or lease details");
  assert.deepEqual(view.analyst.entries.map(x=>x.side),["w","b"]);
  assert.equal(view.analyst.entries[0].turn,1);
  for(const entry of view.analyst.entries){
@@ -552,7 +554,9 @@ test("The Analyst keeps grading through 20-turn color swaps and does not expose 
  assert.equal(g.analystLog.length,1);
  assert.equal(g.analystLog[0].turn,20);
  assert.equal(playerView(g,"b").analyst.active,true,"Original holder retains the passive after swapping control");
- const summary=JSON.stringify(playerView(g,"w").analyst);
+ assert.deepEqual(playerView(g,"w").analyst,{active:false,entries:[],worker:null},
+  "Opposite seat still cannot inspect review data after the color swap");
+ const summary=JSON.stringify(playerView(g,"b").analyst);
  assert.ok(!summary.includes('"direction"')&&!summary.includes('"players"'));
 });
 
@@ -1030,4 +1034,37 @@ test("V4 audio degrades safely on restricted browsers and does not create a cont
  assert.equal(blocked.playTeleport(),false);
  blocked.setEnabled(false);
  blocked.dispose();
+});
+
+test("Analyst view is private when only Black owns the card, yet still grades both sides",()=>{
+ const g=room();give(g,"b","the-analyst");give(g,"w","pawn-sidestep");
+ move(g,"w","e2","e4");
+ move(g,"b","e7","e5");
+ const white=playerView(g,"w"),black=playerView(g,"b");
+ assert.deepEqual(white.analyst,{active:false,entries:[],worker:null});
+ assert.equal(black.analyst.active,true);
+ assert.deepEqual(black.analyst.entries.map(x=>x.side),["w","b"]);
+ assert.equal(g.analystLog.length,2,"The internal match has one canonical log");
+});
+test("When both players hold The Analyst, both receive the SAME canonical grades",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","the-analyst");
+ move(g,"w","e2","e4");
+ const w=playerView(g,"w").analyst,b=playerView(g,"b").analyst;
+ assert.equal(w.active,true);assert.equal(b.active,true);
+ assert.deepEqual(w.entries,b.entries);
+ assert.equal(g.analystLog.length,1,"No duplicated Stockfish analysis");
+});
+test("Non-owner view excludes even synthetic recorded scores and a current worker lease",()=>{
+ const g=room();give(g,"w","the-analyst");give(g,"b","pawn-sidestep");
+ move(g,"w","e2","e4");
+ Object.assign(g.analystLog[0],{grade:"Excellent",status:"done",symbol:"★",engine:"Stockfish 19",reason:"Secret grade"});
+ g.analystLease={hash:g.players.w,id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  score:105,quality:"full",expires:Date.now()+100000,readyAt:Date.now()};
+ const hidden=JSON.stringify(playerView(g,"b"));
+ assert.ok(!hidden.includes("Secret grade"));
+ assert.ok(!hidden.includes("Stockfish 19"));
+ assert.ok(!hidden.includes("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"));
+ assert.ok(!hidden.includes('"beforeFen"')&&!hidden.includes('"uci"'));
+ assert.equal(playerView(g,"w").analyst.entries[0].grade,"Excellent");
+ assert.equal(playerView(g,"w").analyst.worker.role,"leader");
 });
