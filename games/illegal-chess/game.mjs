@@ -34,42 +34,31 @@ export const CARDS=[
  {id:"double-ko",name:"Double KO",rarity:"Epic",mode:"two",description:"Capture, but both the attacking and captured pieces disappear."},
  {id:"hit-and-run",name:"Hit and Run",rarity:"Epic",mode:"two",description:"Make a legal knight capture without leaving the starting square."},
  {id:"queens-abdication",name:"Queen's Abdication",rarity:"Epic",mode:"transform",description:"Transform your queen into a knight or bishop in place."},
- {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for another of the same rarity."},
+ {id:"black-market",name:"Black Market",rarity:"Legendary",mode:"market",description:"Exchange an unused card for one random different card, regardless of rarity."},
  {id:"identity-theft",name:"Identity Theft",rarity:"Epic",mode:"two",description:"Exchange the appearances of two friendly non-king pieces for the opponent's next turn. Their real moves and attack rules remain unchanged."},
  {id:"objection",name:"Objection!",rarity:"Rare",mode:"reaction",description:"When your opponent activates a card, object to cancel it. Their card is retained and they must make a normal move."},
  {id:"classified-promotion",name:"Classified Promotion",rarity:"Rare",mode:"instant",description:"Arm your immediate pawn promotion. The new piece stays disguised to your opponent until it moves, captures, checks, or is captured."},
  {id:"counterfeit",name:"Counterfeit",rarity:"Legendary",mode:"copy",description:"On your next turn, copy the most recent non-reaction card your opponent activated. Copying consumes your full chess turn."},
  {id:"the-analyst",name:"The Analyst",rarity:"Legendary",mode:"passive",description:"PASSIVE: Uses real Stockfish 19 chess evaluation for ordinary moves, with circular feedback icons. Custom card positions are marked separately."}
 ];
-// Tier-level odds keep Legendary cards scarce while allowing more Uncommon/Rare variety.
-// The original 45% Common tier had only three cards, causing repeated hands.
-const weights={Common:28,Uncommon:29,Rare:25,Epic:14,Legendary:4};
+// Every playable card has equal draw probability. Rarity is a display label only.
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
 const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
 export const CHECKMATE_RESCUE_MS=30_000;
-function pickWeighted(pool,recent=new Set()){
- const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));
- let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];
- for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}
- // Prefer unseen cards only AFTER rarity is selected. Recency never increases
- // the probability of a Legendary or bypasses server-authoritative drawing.
- const options=pool.filter(c=>c.rarity===r),fresh=options.filter(c=>!recent.has(c.id));
- const choices=fresh.length?fresh:options;
- return choices[rand(choices.length)];
-}
-export function randomHand(recentIds=[],excludeIds=[]){
- const recent=new Set(recentIds),excluded=new Set(excludeIds);
- const pool=CARDS.filter(c=>!excluded.has(c.id)),hand=[];
+// Uniformly sample without replacement. No rarity weights or recent-hand preferences.
+export function randomHand(excludeIds=[]){
+ const excluded=new Set(excludeIds),pool=CARDS.filter(c=>!excluded.has(c.id)),hand=[];
+ if(pool.length<3)throw Error("Not enough distinct cards to deal a hand");
  for(let i=0;i<3;i++){
-  const card=pickWeighted(pool,recent);
+  const chosen=rand(pool.length);
+  const [card]=pool.splice(chosen,1);
   hand.push({id:card.id,used:false});
-  pool.splice(pool.indexOf(card),1);
  }
  return hand;
 }
-export function newGame(room,whiteToken,recentCards=[]){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(recentCards),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
-export function joinGame(g,blackToken,recentCards=[]){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand(recentCards,g.hands.w.map(c=>c.id));}
+export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
+export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand(g.hands.w.map(c=>c.id));}
 export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s);
@@ -748,8 +737,8 @@ export function act(g,color,req,options={}){
   if(inCheck(s))throw Error("Cannot skip a turn in check");
   if(!Number.isInteger(req.slot)||req.slot<0||req.slot>=3)throw Error("Choose another card slot");
   const selected=g.hands[color][req.slot];if(!selected||selected.used||selected.id==="black-market")throw Error("Choose another unused card");
-  const pool=CARDS.filter(c=>c.rarity===getCard(selected.id).rarity&&c.id!==selected.id&&!g.hands[color].some(h=>h.id===c.id));
-  if(!pool.length)throw Error("No card of the same rarity available to swap");
+  const pool=CARDS.filter(c=>c.id!==selected.id&&!g.hands[color].some(h=>h.id===c.id));
+  if(!pool.length)throw Error("No other card available to swap");
   const replacement=pool[rand(pool.length)].id;
   nx=pass(s);token.used=true;selected.id=replacement;
   commit(g,color,nx,"Black Market → "+getCard(replacement).name);if(!copying)rememberCard(g,color,card.id);return;
