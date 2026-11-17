@@ -35,6 +35,7 @@ const weights={Common:45,Uncommon:30,Rare:15,Epic:8,Legendary:2};
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
 const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
+export const CHECKMATE_RESCUE_MS=30_000;
 function pickWeighted(pool){const tiers=Object.keys(weights).filter(t=>pool.some(c=>c.rarity===t));let n=rand(tiers.reduce((sum,t)=>sum+weights[t],0)),r=tiers[0];for(const t of tiers){n-=weights[t];if(n<0){r=t;break;}}const options=pool.filter(c=>c.rarity===r);return options[rand(options.length)];}
 export function randomHand(){const pool=CARDS.slice(),hand=[];for(let i=0;i<3;i++){const card=pickWeighted(pool);hand.push({id:card.id,used:false});pool.splice(pool.indexOf(card),1);}return hand;}
 function analystTestHand(){
@@ -50,7 +51,7 @@ function sniperTestHand(){
  while(hand.length<2){const pool=CARDS.filter(c=>c.id!=="bishop-sniper"&&!hand.some(x=>x.id===c.id));hand.push({id:pickWeighted(pool).id,used:false});}
  return [{id:"bishop-sniper",used:false},...hand];
 }
-export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
+export function newGame(room,whiteToken,{sniperTest=false,analystTest=false}={}){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,sniperTest,analystTest,players:{w:whiteToken,b:null},hands:{w:analystTest?analystTestHand():sniperTest?sniperTestHand():randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=g.analystTest?analystTestHand():g.sniperTest?sniperTestHand():randomHand();}
 export const stateFen=g=>fen(g.s);
 export function available(g){
@@ -88,9 +89,35 @@ export function sniperShots(g,color){
  try{sniperResult(g,color,sq(front.square));return [sq(front.square)];}
  catch{return [];}
 }
-export function status(g){
+// Every player with at least one unused card receives the same 30 seconds,
+// including if the remaining cards cannot possibly rescue their king.
+function startRescue(g,now=Date.now()){
+ if(g.rescue||!g.players.b||available(g).length||!inCheck(g.s,g.s.t,g.snipers))return;
+ const color=current(g.s);
+ if(sniperShots(g,color).length||!(g.hands[color]||[]).some(c=>!c.used))return;
+ g.rescue={color,deadline:now+CHECKMATE_RESCUE_MS};
+ g.log.push({side:"system",text:(color==="w"?"White":"Black")+" has 30 seconds to escape checkmate using a card"});
+}
+function pauseRescue(g){
+ if(g.rescue&&!g.rescue.pausedAt)g.rescue.pausedAt=Date.now();
+}
+function resumeRescue(g){
+ if(g.rescue?.pausedAt){
+  g.rescue.deadline+=Math.max(0,Date.now()-g.rescue.pausedAt);
+  delete g.rescue.pausedAt;
+ }
+}
+export function status(g,now=Date.now()){
  if(!g.players.b)return {done:false,text:"Waiting for opponent"};
  const moves=available(g),color=current(g.s),shots=sniperShots(g,color);
+ if(!moves.length&&!shots.length&&inCheck(g.s,g.s.t,g.snipers)&&g.rescue?.color===color){
+  const paused=!!g.rescue.pausedAt;
+  const remainingMs=Math.max(0,g.rescue.deadline-(paused?g.rescue.pausedAt:now));
+  if(paused||remainingMs>0)return {
+   done:false,winner:null,text:(color==="w"?"White":"Black")+" faces checkmate — card rescue window",
+   rescue:{remainingMs,paused}
+  };
+ }
  return stateStatus(g.s,g.history,moves.length?moves:shots,g.snipers);
 }
 
@@ -274,6 +301,10 @@ function commit(g,color,next,label,last=null,effect=null){
  if(effect?.kind==="promotion-recall")g.capturedPieces[color][effect.into]--;
  if(effect?.kind==="time-capsule-copy")g.effects.timeCapsule={color,origin:effect.from,piece:effect.piece,stage:"return",square:effect.to};
  g.moveCount=(g.moveCount||0)+1;
+ // Successful turn-consuming escapes clear the previous timer. A new clock
+ // starts only for a fresh mating threat; bonus cards cannot reset the clock.
+ g.rescue=null;
+ startRescue(g);
  // Exactly one extra opportunity: on the eligible player's turn after one
  // opponent reply, not repeatedly. Both colors may have different windows.
  g.epWindows||={w:null,b:null};
@@ -281,7 +312,7 @@ function commit(g,color,next,label,last=null,effect=null){
  // Change who controls each side after 20 turn-consuming actions. Pieces and
  // their active effects keep their colors; unused cards stay with each player.
  // Never change ownership after a winning move, or we'd award the win wrongly.
- if(g.moveCount%20===0&&!status(g).done){
+ if(g.moveCount%20===0&&!g.rescue&&!status(g).done){
   [g.players.w,g.players.b]=[g.players.b,g.players.w];
   [g.hands.w,g.hands.b]=[g.hands.b,g.hands.w];
   g.swaps=(g.swaps||0)+1;
@@ -395,6 +426,7 @@ export function act(g,color,req,options={}){
   if(req.type!=="reaction"||color!==pending.defender)throw Error("Waiting for the opponent to answer Objection!");
   if(req.decision==="object"){
    owned(g,color,"objection").used=true;
+   resumeRescue(g);
    g.pendingReaction=null;
    g.cardBlocked={color:pending.actor};
    g.log.push({side:color,text:"Objection! canceled "+getCard(pending.card).name+" — opposing card retained; normal move required"});
@@ -402,6 +434,7 @@ export function act(g,color,req,options={}){
   }
   if(req.decision!=="allow")throw Error("Choose whether to object or allow this card");
   g.pendingReaction=null;
+  resumeRescue(g);
   act(g,pending.actor,pending.action,{skipReaction:true});
   return;
  }
@@ -415,6 +448,7 @@ export function act(g,color,req,options={}){
    const simulated=structuredClone(g);
    act(simulated,color,req,{skipReaction:true});
    g.pendingReaction={actor:color,defender:other,card:req.card,action:structuredClone(req)};
+   pauseRescue(g); // Opponent's reaction decision does not drain the clock.
    return;
   }
  }
