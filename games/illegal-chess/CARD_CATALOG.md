@@ -11,7 +11,7 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Colorblind Bishop | Uncommon | Live |
 | Knight Exchange | Uncommon | Live |
 | Parking Ticket | Rare | Live |
-| Bishop Sniper | Epic | Live · real 3D cinematic V2 (Alpha 0.9.3) |
+| Bishop Sniper | Epic | Live · sculpted 3D models V3 (Alpha 0.9.4) |
 | Reserved Parking | Rare | Live |
 | Ceasefire | Rare | Live |
 | Double KO | Epic | Live |
