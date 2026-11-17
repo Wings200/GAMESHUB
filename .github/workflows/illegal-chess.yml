@@ -108,8 +108,8 @@ jobs:
           assert.match(client,/sniperAudio\.playFallbackShot\(\)/,"Fallback must not produce late 3D audio cues");
           assert.match(client,/pointerdown.*unlockSniperSound/,"Audio unlock must require a real gesture");
           assert.match(html,/id="sniperSoundToggle"/,"Match must expose a local SFX toggle");
-          assert.match(html,/id="cinematicAimHud"/,"3D scope HUD required");
-          assert.match(html,/id="cinematicBulletHud"/,"Bullet slow-motion HUD required");
+          assert.match(html,/class="cinematicAimHud"/,"3D scope HUD required");
+          assert.match(html,/class="cinematicBulletHud"/,"Bullet slow-motion HUD required");
           assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted model renderer must refresh cached V2 renderer");
           assert.match(real3d,/buildSculptMeshes\(\)/,"New sculpt meshes are merged into the GPU buffer");
           assert.match(real3d,/d\("sculptBishop"/,"Bishop cannot be a generic cylinder in the cinematic");
