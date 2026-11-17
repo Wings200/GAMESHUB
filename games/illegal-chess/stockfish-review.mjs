@@ -93,12 +93,12 @@ export function engineSources(local=ENGINE_WORKER){
  // Pages Functions can be unreliable on some hosting plans.
  const origins=[
   ...urls.filter(a=>a[0]==="jsdelivr").map(([host,base])=>({
-   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:55000,
+   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:host==="jsdelivr"?14000:6000,
    url:shim+host+"&engine=full#"+encodeURIComponent(base+"stockfish-19-single.wasm")
   })),
-  {label:"Stockfish 19 Full NNUE · GAMESHUB",quality:"full",url:local,timeout:55000},
+  {label:"Stockfish 19 Full NNUE · GAMESHUB",quality:"full",url:local,timeout:6000},
   ...urls.filter(a=>a[0]==="unpkg").map(([host,base])=>({
-   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:55000,
+   label:"Stockfish 19 Full NNUE · "+host,quality:"full",timeout:host==="jsdelivr"?14000:6000,
    url:shim+host+"&engine=full#"+encodeURIComponent(base+"stockfish-19-single.wasm")
   })),
   {label:"Stockfish 19 Lite · GAMESHUB",quality:"lite",
