@@ -59,7 +59,7 @@ test("Friendly Fire king self-capture escapes Sniper's Gambit and cancels the cl
 });
 test("Remaining unusable cards still earn the full window, not an immediate loss",()=>{
  const g=room();
- g.hands.b=[{id:"the-analyst",used:false},{id:"objection",used:false},{id:"pawn-strike",used:false}];
+ g.hands.b=[{id:"the-analyst",used:false},{id:"ceasefire",used:false},{id:"pawn-strike",used:false}];
  northeastMate(g);
  const deadline=g.rescue.deadline;
  assert.equal(status(g).done,false);
