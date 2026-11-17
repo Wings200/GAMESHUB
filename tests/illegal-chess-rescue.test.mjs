@@ -93,6 +93,19 @@ test("Ceasefire can save a king from off-board Bishop Sniper check during rescue
  assert.equal(status(g).done,false);
  assert.equal(g.snipers.w?.direction,"NE","Sniper stays on-board state, hidden deployment persists");
 });
+test("Counterfeit Ceasefire consumes its turn but still rescues against the sniper",()=>{
+ const g=room();
+ g.hands.b=[{id:"counterfeit",used:false}];
+ northeastMate(g);
+ g.copyOffers.b={id:"ceasefire"};
+ act(g,"b",{type:"card",card:"counterfeit"});
+ assert.equal(g.rescue,null);
+ assert.equal(g.s.t,1);
+ assert.equal(g.moveCount,8,"Copied bonus spends one turn");
+ assert.equal(g.effects.ceasefire,1,"Only the opposing reply remains after copied Ceasefire");
+ assert.equal(status(g).done,false);
+ assert.equal(g.hands.b[0].used,true);
+});
 test("Ceasefire cannot freeze a rescue deadline by suppressing sniper threats",()=>{
  const g=room();g.hands.b=[{id:"ceasefire",used:false}];
  northeastMate(g);
