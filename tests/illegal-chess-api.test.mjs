@@ -4,7 +4,7 @@ import {onRequest,serveStockfishAsset} from "../functions/api/illegal-chess/[[pa
 import {parseFen} from "../games/illegal-chess/engine.mjs";
 
 class FakeD1 {
- constructor(){this.rooms=new Map();}
+ constructor(){this.rooms=new Map();this.publicRooms=new Map();}
  prepare(sql){
   const db=this;let args=[];
   return {
@@ -13,8 +13,33 @@ class FakeD1 {
     if(sql.includes("SELECT code,version,state")){const room=db.rooms.get(args[0]);return room?{...room}:null;}
     throw Error("Unexpected first SQL: "+sql);
    },
+   async all(){
+    if(sql.includes("FROM illegal_chess_public_rooms p JOIN illegal_chess_rooms r")){
+     const cutoff=args[0];
+     const records=[...db.publicRooms.entries()].filter(([code,metadata])=>metadata.last_seen>cutoff&&db.rooms.has(code))
+      .sort((a,b)=>a[1].created_at-b[1].created_at).slice(0,60)
+      .map(([code,metadata])=>({code,created_at:metadata.created_at,version:db.rooms.get(code).version,state:db.rooms.get(code).state}));
+     return {results:records};
+    }
+    throw Error("Unexpected all SQL: "+sql);
+   },
    async run(){
     if(sql.includes("CREATE TABLE"))return {meta:{changes:0}};
+    if(sql.includes("INSERT INTO illegal_chess_public_rooms")){
+     const [code,created_at,last_seen]=args;
+     if(db.publicRooms.has(code))throw Error("UNIQUE constraint failed");
+     db.publicRooms.set(code,{created_at,last_seen});return {meta:{changes:1}};
+    }
+    if(sql.includes("UPDATE illegal_chess_public_rooms SET last_seen")){
+     const [last_seen,code]=args,metadata=db.publicRooms.get(code);
+     if(!metadata)return {meta:{changes:0}};
+     metadata.last_seen=last_seen;
+     return {meta:{changes:1}};
+    }
+    if(sql.includes("DELETE FROM illegal_chess_public_rooms")){
+     const changed=db.publicRooms.delete(args[0]);
+     return {meta:{changes:changed?1:0}};
+    }
     if(sql.includes("INSERT INTO illegal_chess_rooms")){
      const [code,state,created_at,updated_at]=args;
      if(db.rooms.has(code))throw Error("UNIQUE constraint failed");
@@ -399,4 +424,86 @@ test("If only Black owns Analyst, White never receives grades, including after a
  assert.equal(blackOwner.analyst.entries.length,1);
  assert.equal(blackOwner.analyst.worker.role,"leader",
   "Lease remains attached to the authenticated owner across the color swap");
+});
+
+
+test("public rooms are discoverable without exposing private sessions, pieces or cards",async()=>{
+ const db=new FakeD1(),privateRoom=await post(db,"create",{}),
+       publicRoom=await post(db,"create",{visibility:"public"});
+ assert.equal(privateRoom.status,200);assert.equal(privateRoom.data.publicRoom,false);
+ assert.equal(publicRoom.status,200);assert.equal(publicRoom.data.publicRoom,true);
+ const list=await post(db,"public-list",{});
+ assert.equal(list.status,200);
+ assert.equal(list.data.rooms.length,1);
+ assert.deepEqual(Object.keys(list.data.rooms[0]).sort(),["capacity","code","createdAt","players"]);
+ assert.equal(list.data.rooms[0].code,publicRoom.data.room);
+ assert.ok(!JSON.stringify(list.data).includes(privateRoom.data.room));
+ assert.ok(!JSON.stringify(list.data).includes(publicRoom.data.token));
+ assert.ok(!JSON.stringify(list.data).includes("hands"));
+ assert.ok(!JSON.stringify(list.data).includes("players\":{\"w"));
+ assert.equal((await post(db,"state",publicRoom.data)).data.publicRoom,true);
+ assert.equal((await post(db,"state",privateRoom.data)).data.publicRoom,false);
+});
+test("Quick Play creates public room when none exists, and next opponent joins automatically",async()=>{
+ const db=new FakeD1();
+ const first=await post(db,"quick-join",{});
+ assert.equal(first.status,200);
+ assert.equal(first.data.player,"w");
+ assert.equal(first.data.publicRoom,true);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,1);
+ const second=await post(db,"quick-join",{});
+ assert.equal(second.status,200);
+ assert.equal(second.data.player,"b");
+ assert.equal(second.data.room,first.data.room);
+ assert.notEqual(second.data.token,first.data.token);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ assert.equal((await post(db,"state",first.data)).data.ready,true);
+ const third=await post(db,"quick-join",{});
+ assert.equal(third.data.player,"w");
+ assert.notEqual(third.data.room,first.data.room);
+});
+test("Public room joins close listing and only one guest can win a last-seat race",async()=>{
+ const db=new FakeD1();
+ const host=await post(db,"create",{visibility:"public"});
+ const [a,b]=await Promise.all([
+  post(db,"join",{room:host.data.room}),
+  post(db,"join",{room:host.data.room})
+ ]);
+ assert.deepEqual([a.status,b.status].sort(),[200,409]);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ const saved=JSON.parse(db.rooms.get(host.data.room).state);
+ assert.ok(saved.players.b);
+});
+test("Public host can unlist a waiting room, not an opponent or unauthorized token",async()=>{
+ const db=new FakeD1();
+ const host=await post(db,"create",{visibility:"public"});
+ assert.equal((await post(db,"unlist",{room:host.data.room,token:"0".repeat(64)})).status,403);
+ const unlisted=await post(db,"unlist",host.data);
+ assert.equal(unlisted.status,200);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ // Removing from discovery does not invalidate the private room code for reconnect.
+ const joined=await post(db,"join",{room:host.data.room});
+ assert.equal(joined.status,200);
+ assert.equal((await post(db,"unlist",joined.data)).status,403);
+ assert.equal((await post(db,"unlist",host.data)).status,403);
+});
+test("Inactive public rooms disappear from discovery without deleting game sessions",async()=>{
+ const db=new FakeD1();
+ const host=await post(db,"create",{visibility:"public"});
+ db.publicRooms.get(host.data.room).last_seen=Date.now()-50*1000;
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ assert.equal((await post(db,"state",host.data)).status,200);
+ assert.equal((await post(db,"quick-join",{})).data.player,"w");
+});
+
+test("Authenticated public heartbeat keeps a waiting host discoverable",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{visibility:"public"});
+ db.publicRooms.get(host.data.room).last_seen=Date.now()-50*1000;
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,0);
+ assert.equal((await post(db,"public-heartbeat",{room:host.data.room,token:"0".repeat(64)})).status,403);
+ const beat=await post(db,"public-heartbeat",host.data);
+ assert.equal(beat.status,200);
+ assert.equal((await post(db,"public-list",{})).data.rooms.length,1);
+ await post(db,"join",{room:host.data.room});
+ assert.equal((await post(db,"public-heartbeat",host.data)).status,403);
 });

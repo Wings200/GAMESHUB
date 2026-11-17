@@ -172,7 +172,7 @@ function pieceGivesCheck(s,mark){
 
 export function playerView(g,color){
  const s=g.s,st=status(g),canAnalyze=analystActive(g,color);
- return {room:g.room,player:color,testMode:!!g.sniperTest,analystTest:!!g.analystTest,ready:!!g.players.b,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
+ return {room:g.room,player:color,testMode:!!g.sniperTest,analystTest:!!g.analystTest,ready:!!g.players.b,publicRoom:!!g.public,turn:current(s),fen:visibleFen(g,color),status:st,moveCount:g.moveCount||0,swaps:g.swaps||0,
   hand:g.hands[color].map(c=>({...getCard(c.id),used:c.used})),
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
