@@ -1,51 +1,104 @@
 import {cardImage} from "./art.mjs";
-import {MOVE_COINS,createStockfishReviewer} from "./stockfish-review.mjs?v=3";
+import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
-const stockfishReviews=new Map(),stockfishInProgress=new Set();
-let stockfishReviewer=null,stockfishRoom=null;
+// Every tab has an ephemeral identity, but only ONE participating device
+// receives the server's analyzer lease. All actual verdicts are saved in D1.
+const analystClientId=crypto.randomUUID();
+let stockfishReviewer=null,stockfishRoom=null,analystBusy=false,analystHelloAt=0,analystHelloPending=false;
+function analystDeviceScore(){
+ const cores=Math.min(16,Math.max(1,navigator.hardwareConcurrency||2));
+ const memory=Math.min(16,Math.max(0,navigator.deviceMemory||0));
+ const platform=navigator.userAgentData?.platform||navigator.platform||"";
+ const chromebook=/CrOS|Chrome OS|Chromebook/i.test(platform+" "+navigator.userAgent);
+ const saver=!!navigator.connection?.saveData;
+ return Math.max(1,Math.min(200,Math.round(cores*5+memory*6-(chromebook?130:0)-(saver?35:0))));
+}
 function resetStockfish(room){
  if(stockfishReviewer)stockfishReviewer.dispose();
- stockfishReviewer=null;stockfishRoom=room;stockfishReviews.clear();stockfishInProgress.clear();
+ stockfishReviewer=null;stockfishRoom=room;analystBusy=false;
+ analystHelloAt=0;analystHelloPending=false;
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  analystPopup=null;analystSeenTurn=null;
 }
+const analystLeader=()=>!!game?.analyst?.active&&
+ game.analyst.worker?.role==="leader"&&game.analyst.worker.clientId===analystClientId;
 function resolvedReview(entry){
- const result=stockfishReviews.get(entry.turn);
- if(result)return result;
- // Old match records used the removed heuristic. Never relabel their grades
- // as a verified Stockfish review after upgrading the client.
  if(!entry.status)return {...entry,status:"legacy",grade:"Previous Estimate",symbol:null,
-  reason:"Older match record: this grade came from the retired heuristic, not Stockfish."};
+  reason:"This older review came from the retired heuristic, not from shared Stockfish."};
  return entry;
+}
+function acceptAnalystView(view){
+ if(!game||view?.room!==game.room)return;
+ if(view.moveCount!==game.moveCount){void refresh();return;}
+ game.analyst=view.analyst;
+ prepareAnalystSymbol();
+ renderAnalyst();renderBoard();
+}
+async function registerAnalyst(force=false){
+ if(!game?.ready||!game.analyst?.active||!session||analystHelloPending)return;
+ if(!force&&Date.now()-analystHelloAt<7500)return;
+ analystHelloPending=true;analystHelloAt=Date.now();
+ const room=session.room;
+ try{
+  const data=await api("analyst",{...session,intent:"register",clientId:analystClientId,score:analystDeviceScore()});
+  if(session?.room===room)acceptAnalystView(data.view);
+ }catch(error){
+  if(session?.room===room)analystHelloAt=Date.now()-5500;
+ }finally{analystHelloPending=false;}
+}
+async function analystCommand(data){
+ let lastError;
+ for(let attempt=0;attempt<3;attempt++){
+  try{return await api("analyst",{...session,clientId:analystClientId,...data});}
+  catch(error){
+   lastError=error;
+   if(!/state changed|retry/i.test(String(error?.message||"")))break;
+  }
+ }
+ throw lastError;
 }
 function scheduleStockfishReviews(){
  if(!game?.analyst?.active||!session)return;
  if(stockfishRoom!==session.room)resetStockfish(session.room);
- // Previous turns are reviewed locally, asynchronously, never in the move
- // request. Only the latest six are queued after joining a running match.
- for(const entry of (game.analyst.entries||[]).slice(-6).reverse()){
-  if(entry.status!=="pending"||stockfishReviews.has(entry.turn)||stockfishInProgress.has(entry.turn))continue;
-  stockfishInProgress.add(entry.turn);
-  stockfishReviewer ||= createStockfishReviewer();
-  const room=session.room;
-  const currentReviewer=stockfishReviewer;
-  currentReviewer.analyze(entry).then(result=>{
-   if(room!==session?.room||currentReviewer!==stockfishReviewer)return;
-   stockfishReviews.set(entry.turn,result);
-   prepareAnalystSymbol();
-   renderAnalyst();renderBoard();
-  }).catch(error=>{
-   if(room!==session?.room||currentReviewer!==stockfishReviewer)return;
-   stockfishReviews.set(entry.turn,{...entry,status:"unavailable",grade:"Unavailable",
-    symbol:null,reason:"Engine error: "+String(error?.message||"unknown failure").slice(0,320)+". Use Retry Stockfish to try again."});
-   renderAnalyst();
-  }).finally(()=>{if(currentReviewer===stockfishReviewer)stockfishInProgress.delete(entry.turn);});
+ if(!analystLeader()){
+  if(stockfishReviewer){stockfishReviewer.dispose();stockfishReviewer=null;}
+  analystBusy=false;
+  return;
  }
+ const worker=game.analyst.worker;
+ if(Date.now()<(worker.readyAt||0)||analystBusy)return;
+ const entry=[...(game.analyst.entries||[])].reverse().find(e=>e.status==="pending"&&e.beforeFen&&e.uci);
+ if(!entry)return;
+ // The Chromebook doesn't load the 94-MB NNUE if a stronger PC has won the
+ // election. If it is the only player online, use the Lite backup.
+ const sources=worker.quality==="full"?engineSources():engineSources().filter(s=>s.quality!=="full");
+ stockfishReviewer ||= createStockfishReviewer({sources});
+ analystBusy=true;
+ const reviewer=stockfishReviewer,room=session.room,turn=entry.turn;
+ reviewer.analyze(entry).then(async result=>{
+  if(session?.room!==room||reviewer!==stockfishReviewer||!analystLeader())return;
+  const quality=reviewer.getStatus().quality||"lite";
+  try{
+   const published=await analystCommand({intent:"submit",turn,best:result.best,played:result.played,quality});
+   if(session?.room===room&&reviewer===stockfishReviewer)acceptAnalystView(published.view);
+  }catch(error){if(session?.room===room)void refresh();}
+ }).catch(async error=>{
+  if(session?.room!==room||reviewer!==stockfishReviewer||!analystLeader())return;
+  try{
+   const published=await analystCommand({intent:"failure",turn,message:String(error?.message||error).slice(0,180)});
+   if(session?.room===room&&reviewer===stockfishReviewer)acceptAnalystView(published.view);
+  }catch(error){if(session?.room===room)void refresh();}
+ }).finally(()=>{
+  if(reviewer!==stockfishReviewer)return;
+  analystBusy=false;
+  // Other turns may be pending, but submit each score only once to D1.
+  if(session?.room===room)void refresh();
+ });
 }
 // The review arrives asynchronously, so only show a completed current-turn
 // result; symbols from reconnect/history are never replayed.
@@ -145,6 +198,7 @@ async function refresh(){
   $("connection").textContent="CONNECTED";$("connection").classList.remove("offline");
   const serial=JSON.stringify(data);
   if(serial!==lastState){game=data;lastState=serial;render();}
+  void registerAnalyst();
  }catch(e){$("connection").textContent="RECONNECTING";$("connection").classList.add("offline");}
 }
 async function begin(s){
@@ -348,11 +402,11 @@ function renderAnalyst(){
  $("retryStockfish").hidden=!failed;
  const recent=entries.length?resolvedReview(entries.at(-1)):null;
  const pending=recent?.status==="pending";
- const workerStatus=stockfishReviewer?.getStatus();
+ const owner=game.analyst?.worker,local=analystLeader();
  $("analystLive").textContent=!active?"REVIEW ARCHIVED":
-  pending?(workerStatus?.ready?(workerStatus.quality==="full"?"FULL NNUE · DEEP ANALYSIS":"STOCKFISH "+(workerStatus.source||"FALLBACK")+" · ANALYZING"):
-    "STOCKFISH 19 FULL NNUE · LOADING (~94 MB)"):
-  recent?.engine||"STOCKFISH 19 · READY";
+  pending?(local?"SHARED ANALYST · "+(owner.quality==="full"?"FULL NNUE":"LITE")+" · ANALYZING":
+   owner?"SHARED ANALYST · OTHER DEVICE ANALYZING":"SHARED ANALYST · ELECTING WORKER"):
+   (recent?.engine?recent.engine+" · SHARED":"SHARED ANALYST · READY");
  const coin=recent?(MOVE_COINS[recent.grade]||(recent.status==="custom"?MOVE_COINS.Custom:null)):null;
  const spotlight=$("analystSpotlight");
  const previous=spotlight.querySelector(".analystSpotlightCoin");if(previous)previous.remove();
@@ -575,10 +629,15 @@ async function selectSquare(name,piece){
  if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
-$("retryStockfish").addEventListener("click",()=>{
+$("retryStockfish").addEventListener("click",async()=>{
+ if(!session)return;
  if(stockfishReviewer){stockfishReviewer.dispose();stockfishReviewer=null;}
- stockfishReviews.clear();stockfishInProgress.clear();
- if(game){renderAnalyst();}
+ analystBusy=false;
+ try{
+  const saved=await api("analyst",{...session,intent:"retry",clientId:analystClientId});
+  acceptAnalystView(saved.view);
+  void registerAnalyst(true);
+ }catch(error){flash(error.message);}
 });
 $("allowCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"allow"});});
 $("objectCard").addEventListener("click",()=>{if(game?.pendingReaction?.canReact&&!busy)void send({type:"reaction",decision:"object"});});
