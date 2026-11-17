@@ -33,13 +33,14 @@ This records the original 26 approved concepts. Keep gameplay rules stable while
 | Counterfeit | Legendary | Live (wave 4) |
 | The Analyst | Legendary | Live · passive (Alpha 0.7) |
 
-## Proposed expansion — 30 NEW concepts (not yet implemented or in draws)
+## Expansion — 10 NEW Common cards implemented + 20 further concepts
 
-These are **design proposals**, not approved gameplay rules or playable cards.
-The live catalog remains the 26 tested cards above until each new card passes
-server-authoritative validation, client selection, original art, replay/privacy checks,
-and two-browser multiplayer testing. Default: each listed action uses the entire turn
-unless described as a bonus. No ability may leave its user's king in check.
+**Cards #27–36 are implemented and eligible for random hands.** They have
+server-authoritative movement/capture validation, client two-square selection,
+original SVG illustrations, and automated rule tests. The remaining **cards #37–56
+are design proposals only**, and are not dealt or counted as live until tested.
+Default: each action uses the entire turn unless described as a bonus.
+No ability may leave its user's king in check.
 
 | # | Proposed card | Rarity | Rules proposal |
 |---:|---|---|---|
@@ -74,7 +75,7 @@ unless described as a bonus. No ability may leave its user's king in check.
 | 55 | Boardroom Shuffle | Epic | Swap any two friendly non-king pieces anywhere on the board. |
 | 56 | Grand Theft Chess | Legendary | Swap one friendly non-king piece with one enemy non-king piece anywhere on the board. Pieces retain their original colors. |
 
-**Design checks before activation:** ordinary chess king safety, hidden effects,
+**For the 20 concepts not yet live, design checks before activation:** ordinary chess king safety, hidden effects,
 card cancellation and Counterfeit interaction, the 20-turn seat swap, 30-second
 checkmate rescue, promotion and en-passant state, move-history accuracy, image/UX,
 and tests for both players. Any concept may need rebalance before approval.
@@ -89,7 +90,8 @@ and tests for both players. Any concept may need rebalance before approval.
   among the currently available cards of that rarity. If no fresh choice exists
   in that rarity, the draw falls back to the whole available set.
 - The second player's three cards exclude the first player's three IDs, so
-  six distinct cards are dealt to each match.
+  six distinct cards are dealt to each match. Ten additional Common cards also
+  reduce repeats within the previously tiny Common tier.
 - Recent history is stored locally in the browser, not in the shared game room.
   Clearing browser data or switching devices resets that preference. The
   server remains the source of truth for all actual draws.
