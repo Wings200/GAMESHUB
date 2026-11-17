@@ -30,19 +30,21 @@ test("Matchmaking deals six distinct cards, without duplicate hands across the t
   assert.equal(new Set([...g.hands.w,...g.hands.b].map(c=>c.id)).size,6);
  }
 });
-test("Recent-card preferences favor unseen cards within a rarity, never changing the drawn tier",()=>{
- const keep=new Map();
- for(const card of CARDS)if(!keep.has(card.rarity))keep.set(card.rarity,card.id);
- const seen=CARDS.filter(c=>!([...keep.values()].includes(c.id))).map(c=>c.id);
- for(let i=0;i<80;i++){
-  const hand=randomHand(seen);
-  assert.equal(hand.length,3);
-  assert.equal(new Set(hand.map(c=>c.id)).size,3);
-  for(const rarity of keep.keys()){
-   const cards=hand.filter(c=>CARDS.find(item=>item.id===c.id).rarity===rarity);
-   if(cards.length)assert.equal(cards[0].id,keep.get(rarity),"First card from a tier must be unseen when possible");
-  }
+test("Every card has the same base draw probability regardless of rarity",()=>{
+ const trials=12000,counts=new Map(CARDS.map(c=>[c.id,0]));
+ for(let i=0;i<trials;i++){
+  const hand=randomHand();
+  assert.equal(new Set(hand.map(c=>c.id)).size,3,"A hand is sampled without replacement");
+  for(const item of hand)counts.set(item.id,counts.get(item.id)+1);
  }
+ const expected=trials*3/CARDS.length;
+ for(const card of CARDS){
+  const actual=counts.get(card.id);
+  assert.ok(Math.abs(actual-expected)<expected*.2,card.name+" should not be weighted by rarity");
+ }
+ // Requested exclusions matter only when another player already has a card.
+ const excluded=CARDS.slice(0,3).map(c=>c.id);
+ for(let i=0;i<50;i++)assert.ok(randomHand(excluded).every(c=>!excluded.includes(c.id)));
 });
 test("Expansion wave: ten new Common cards can be played and consume a turn",()=>{
  const cases=[
@@ -120,13 +122,21 @@ test("Colorblind Bishop changes square color and respects check safety",()=>{
  act(g,"w",{type:"card",card:"colorblind-bishop",from:"f1",to:"f2"});
  assert.equal(g.s.b[(8-2)*16+5],"B");
 });
-test("Black Market only trades another unused card of matching rarity",()=>{
+test("Black Market uniformly trades an unused card for any different card, regardless of rarity",()=>{
  const g=room();g.hands.w=[{id:"black-market",used:false},{id:"pawn-sidestep",used:false},{id:"colorblind-bishop",used:false}];
  assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:0}),/another unused card/);
  act(g,"w",{type:"card",card:"black-market",slot:1});
  assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
- assert.equal(CARDS.find(c=>c.id===g.hands.w[1].id).rarity,"Common","Black Market must replace with a different card of the same rarity");
+ assert.ok(CARDS.some(c=>c.id===g.hands.w[1].id));
  assert.notEqual(g.hands.w[1].id,"pawn-sidestep");
+ assert.notEqual(g.hands.w[1].id,"colorblind-bishop");
+ let differentTier=false;
+ for(let i=0;i<50;i++){
+  const next=room();next.hands.w=[{id:"black-market",used:false},{id:"pawn-sidestep",used:false},{id:"colorblind-bishop",used:false}];
+  act(next,"w",{type:"card",card:"black-market",slot:1});
+  if(CARDS.find(c=>c.id===next.hands.w[1].id).rarity!=="Common")differentTier=true;
+ }
+ assert.ok(differentTier,"Replacement must be allowed from another rarity");
 });
 
 test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
