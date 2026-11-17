@@ -9,6 +9,7 @@ const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 let rescueClock=null,rescueStartAt=0,rescueStartRemaining=0;
+let publicListingPending=false,publicJoinPending=false;
 // Server-synchronized Bishop Sniper replay; neither player invents or triggers
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
@@ -257,6 +258,68 @@ async function api(method,payload){
  let json;try{json=await response.json();}catch{throw Error("The game server returned an unexpected response.");}
  if(!response.ok)throw Error(json.error||"The game server rejected this action.");
  return json;
+}
+
+// Public listings contain room codes and age only, never player credentials.
+async function refreshPublicRooms(){
+ if($("lobby").hidden||publicListingPending)return;
+ publicListingPending=true;
+ const button=$("refreshPublic"),target=$("publicRooms");
+ button.disabled=true;
+ try{
+  const result=await api("public-list",{});
+  if($("lobby").hidden)return;
+  const rooms=Array.isArray(result.rooms)?result.rooms:[];
+  target.replaceChildren();
+  $("publicRoomCount").textContent=String(rooms.length);
+  if(!rooms.length){
+   const empty=document.createElement("p");empty.className="publicEmpty";
+   empty.textContent="No public rooms yet. Host one or hit Quick Play to find a match.";
+   target.append(empty);
+  }
+  for(const room of rooms){
+   if(!/^[A-HJ-NP-Z2-9]{6}$/.test(room.code))continue;
+   const row=document.createElement("div");row.className="publicRoom";row.setAttribute("role","listitem");
+   const details=document.createElement("div");details.className="publicRoomDetails";
+   const code=document.createElement("strong");code.textContent="♟ "+room.code;
+   const waiting=document.createElement("span");waiting.className="publicRoomStatus";
+   const mins=Math.max(0,Math.floor((Date.now()-room.createdAt)/60000));
+   waiting.textContent="● WAITING · 1/2 PLAYERS · "+(mins<1?"JUST OPENED":mins+" MIN AGO");
+   details.append(code,waiting);
+   const join=document.createElement("button");join.type="button";join.className="btn slim primary";
+   join.textContent="JOIN →";join.disabled=publicJoinPending;
+   join.addEventListener("click",()=>void joinPublicRoom(room.code));
+   row.append(details,join);target.append(row);
+  }
+  $("publicLobbyHint").textContent="Open rooms refresh automatically · public hosts can share their codes.";
+ }catch(error){
+  target.replaceChildren();
+  const message=document.createElement("p");message.className="publicEmpty";
+  message.textContent="Public servers unavailable. Try refresh or play a private room.";
+  target.append(message);
+  $("publicLobbyHint").textContent=error.message;
+ }finally{publicListingPending=false;button.disabled=false;}
+}
+async function publicAction(method,data={}){
+ if(publicJoinPending)return;
+ publicJoinPending=true;
+ for(const id of ["quickPlay","hostPublic","refreshPublic"])$(id).disabled=true;
+ $("lobbyError").textContent="";
+ try{await begin(await api(method,data));}
+ catch(error){$("lobbyError").textContent=error.message;}
+ finally{
+  publicJoinPending=false;
+  for(const id of ["quickPlay","hostPublic","refreshPublic"])$(id).disabled=false;
+  if(!$("lobby").hidden)void refreshPublicRooms();
+ }
+}
+async function joinPublicRoom(room){
+ if(publicJoinPending)return;
+ publicJoinPending=true;
+ $("lobbyError").textContent="";
+ try{await begin(await api("join",{room}));}
+ catch(error){$("lobbyError").textContent=error.message;}
+ finally{publicJoinPending=false;if(!$("lobby").hidden)void refreshPublicRooms();}
 }
 
 // Every decision belongs to the GAMESHUB interface. Never use alert/prompt/confirm.
@@ -598,6 +661,7 @@ function render(){
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
  $("selfState").textContent=game.status.text;
+ $("matchVisibility").textContent=game.publicRoom?"PUBLIC MULTIPLAYER MATCH":"PRIVATE MULTIPLAYER MATCH";
  $("matchTitle").textContent=game.analystTest?"The Analyst · test match":game.testMode?"Bishop Sniper · test match":"The board has no mercy.";
  const left=20-(game.moveCount||0)%20;
  $("swapCounter").textContent=game.status.done?"MATCH FINISHED":"COLOR SWAP IN "+left+" TURN"+(left===1?"":"S")+" · "+(game.swaps||0)+" SWAPS";
@@ -805,6 +869,9 @@ $("join").addEventListener("click",async()=>{
  try{await begin(await api("join",{room:$("code").value}));}catch(error){$("lobbyError").textContent=error.message;}finally{button.disabled=false;}
 });
 $("code").addEventListener("keydown",event=>{if(event.key==="Enter")$("join").click();});
+$("quickPlay").addEventListener("click",()=>void publicAction("quick-join"));
+$("hostPublic").addEventListener("click",()=>void publicAction("create",{visibility:"public"}));
+$("refreshPublic").addEventListener("click",()=>void refreshPublicRooms());
 $("sniperSoundToggle").addEventListener("click",()=>{
  soundEnabled=!soundEnabled;
  sniperAudio.setEnabled(soundEnabled);
@@ -814,8 +881,12 @@ $("sniperSoundToggle").addEventListener("click",()=>{
 });
 showSniperSoundState();
 $("leave").addEventListener("click",async()=>{
- const accept=await modal({tag:"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
+ const accept=await modal({tag:game?.publicRoom?"LEAVE PUBLIC ROOM":"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
  if(!accept)return;
+ if(game?.publicRoom&&!game.ready&&session?.player==="w"){
+  try{await api("unlist",session);}
+  catch(error){flash("Could not close public listing: "+error.message);return;}
+ }
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
  disposeSniper3D();cinematicSeen=null;
  if(poll){clearInterval(poll);poll=null;}
@@ -823,12 +894,16 @@ $("leave").addEventListener("click",async()=>{
  clearSelection();
  history.replaceState({}, "", "/games/illegal-chess/");
  $("match").hidden=true;$("lobby").hidden=false;$("connection").textContent="CONNECTING";$("connection").classList.add("offline");
+ void refreshPublicRooms();
 });
 
 $("copy").addEventListener("click",async()=>{
  const url=invite(session.room);
- await modal({tag:"PRIVATE ROOM INVITATION",title:"Invite your opponent",description:"Copy the private room link below and send it to a friend. No browser pop-ups required.",link:url,choices:[{label:"SELECT & COPY LINK",value:"__copy",kind:"primary"}]});
+ await modal({tag:game?.publicRoom?"PUBLIC ROOM LINK":"PRIVATE ROOM INVITATION",title:"Invite your opponent",description:"Copy the private room link below and send it to a friend. No browser pop-ups required.",link:url,choices:[{label:"SELECT & COPY LINK",value:"__copy",kind:"primary"}]});
 });
 renderLobby();
+void refreshPublicRooms();
+setInterval(()=>{if(!$("lobby").hidden)void refreshPublicRooms();},7000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!$("lobby").hidden)void refreshPublicRooms();});
 const wanted=new URL(location.href).searchParams.get("room");if(wanted)$("code").value=wanted.toUpperCase();
 try{const saved=JSON.parse(sessionStorage.getItem("gameshub-illegal-chess")||"null");if(saved?.room&&saved?.token&&(!wanted||saved.room===wanted.toUpperCase()))begin(saved);}catch{}
