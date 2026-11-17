@@ -303,3 +303,57 @@ function drawWorld(gl,g,event,ms,width,height){
   }
  }
 }
+
+export function createSniper3D(canvas,{onPhase=()=>{},onFinish=()=>{}}={}){
+ if(!canvas||typeof canvas.getContext!=="function")return null;
+ const chromeOS=typeof navigator!=="undefined"&&/CrOS|Chrome OS|Chromebook/i.test(navigator.userAgent||"");
+ let gl;
+ try{
+  gl=canvas.getContext("webgl",{alpha:false,antialias:!chromeOS,depth:true,
+   powerPreference:chromeOS?"low-power":"default",preserveDrawingBuffer:false});
+ }catch{return null;}
+ if(!gl)return null;
+ let graphics;
+ try{graphics=createGraphics(gl);}
+ catch(error){console.warn("Bishop Sniper 3D GPU initialization failed",error);return null;}
+ let frame=0,playing=false,started=0,lastFrame=0,phaseName="",event=null;
+ const maxFps=chromeOS?25:45,frameInterval=1000/maxFps;
+ function tick(timestamp){
+  if(!playing)return;
+  const elapsed=Math.max(0,timestamp-started),phase=shotPhase(elapsed);
+  if(phaseName!==phase.name){phaseName=phase.name;onPhase(phase);}
+  const pixelRatio=Math.min(chromeOS?.95:1.25,window.devicePixelRatio||1);
+  const w=Math.max(1,Math.round(canvas.clientWidth*pixelRatio));
+  const h=Math.max(1,Math.round(canvas.clientHeight*pixelRatio));
+  if(canvas.width!==w||canvas.height!==h){
+   canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);
+  }
+  if(timestamp-lastFrame>=frameInterval||!lastFrame){
+   lastFrame=timestamp;
+   try{drawWorld(gl,graphics,event,elapsed,w,h);}
+   catch(error){
+    console.warn("Bishop Sniper 3D render interrupted",error);
+    stop();onFinish();return;
+   }
+  }
+  if(elapsed>=SNIPER_3D_DURATION){
+   stop();onFinish();return;
+  }
+  frame=requestAnimationFrame(tick);
+ }
+ function stop(){
+  playing=false;
+  if(frame){cancelAnimationFrame(frame);frame=0;}
+ }
+ function play(next){
+  if(!sniperPath(next))return false;
+  stop();event=next;phaseName="";started=performance.now();lastFrame=0;playing=true;
+  frame=requestAnimationFrame(tick);
+  return true;
+ }
+ function dispose(){stop();graphics.dispose();}
+ canvas.addEventListener("webglcontextlost",e=>{
+  e.preventDefault();stop();onFinish();
+ },{once:true});
+ return {play,stop,dispose,supported:true};
+}
