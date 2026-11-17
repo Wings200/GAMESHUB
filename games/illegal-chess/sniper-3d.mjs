@@ -1,4 +1,5 @@
-// Illegal Chess · Bishop Sniper cinematic V2
+import {buildSculptMeshes} from "./sniper-sculpts.mjs";
+// Illegal Chess · Bishop Sniper cinematic V3
 // Original procedural 3D WebGL; no external JS, models, video, or textures.
 // Only runs during server-committed sniper first-shot cinematic events.
 export const SNIPER_3D_DURATION=4900;
@@ -36,8 +37,10 @@ export function cinematicCamera(event,ms){
  let eye,look,bullet=null;
  if(phase==="closeup"||phase==="fire"){
   const push=smooth(ms/1300);
-  eye=at(shooter,-1.95+.48*push,1.24-.16*push,1.02);
-  look=at(shooter,.47+.2*push,.12,.43);
+  // Side-on portrait of the sculpted bishop, not a backwards shot into its
+  // oversized base. This framing makes the mitre, rifle stock and scope clear.
+  eye=at(shooter,.22+.28*push,2.65-.4*push,1.48-.15*push);
+  look=at(shooter,.66+.12*push,.03,.43);
   if(phase==="fire"){
    const k=(ms-1300)/280;
    eye=at(eye,-.08*Math.sin(k*Math.PI),0,.016*Math.sin(k*40));
@@ -176,6 +179,13 @@ function buildMeshes(){
   [.19,.42],[.25,.82],[.21,1.12],[.13,1.25],[0,1.3]],18));
  add("ring",()=>lathe([[.52,-.11],[.56,-.04],[.56,.04],[.52,.11]],18));
  add("bulletTip",()=>lathe([[.32,-.5],[.32,.06],[0,.5]],12));
+ // V3 supplies genuinely shaped, smooth-normal Staunton silhouettes and
+ // curved rifle meshes. Merge into the same single GPU vertex buffer.
+ for(const [name,data] of Object.entries(buildSculptMeshes())){
+  const first=vertices.length/6;
+  for(let i=0;i<data.length;i++)vertices.push(data[i]);
+  meshes[name]={first,count:data.length/6};
+ }
  return {mesh:meshes,data:new Float32Array(vertices)};
 }
 function makeShader(gl,type,source){
@@ -232,25 +242,35 @@ function drawWorld(gl,g,event,ms,width,height){
   d("cube",[0,.005,edge],[8.67,.1,.065],COLORS.gold);
   d("cube",[edge,.005,0],[.065,.1,8.67],COLORS.gold);
  }
- // Low-poly chess bishop lying prone with a long scoped 3D rifle.
+ // Sculpted bishop and rifle, both separate 3D meshes with curved profiles.
+ // Rig points down the actual diagonal. The mitre is recognizable in close-up.
  const rig=mm(translate(...cam.shooter),rotY(cam.yaw));
  const isWhite=event.attacker==="w",armor=isWhite?COLORS.white:COLORS.dark;
  const robe=isWhite?COLORS.violet:[.18,.18,.32];
- d("bishop",[-.25,.3,-.16],[.88,.95,.92],armor,[Math.PI/2,0,0],0,rig);
- d("ring",[-.25,.31,-.64],[.82,.7,.72],COLORS.gold,[Math.PI/2,0,0],0,rig);
- d("sphere",[-.25,.35,.59],[.48,.46,.5],armor,[0,0,0],0,rig);
- d("cone",[-.25,.46,.62],[.25,.54,.25],COLORS.gold,[Math.PI/2,0,0],0,rig);
- d("sphere",[-.08,.47,.74],[.1,.1,.13],COLORS.lens,[0,0,0],.25,rig);
- d("cube",[-.2,.12,-.32],[.68,.12,1.35],robe,[0,0,0],0,rig);
- d("cube",[.25,.27,-.15],[.38,.25,.82],COLORS.gun,[0,0,0],0,rig);
- d("cube",[.25,.33,.34],[.18,.25,.65],COLORS.steel,[0,0,0],0,rig);
- d("cylinder",[.25,.41,.99],[.115,2.3,.115],COLORS.gun,[Math.PI/2,0,0],0,rig);
- d("cylinder",[.25,.41,1.93],[.065,.46,.065],COLORS.steel,[Math.PI/2,0,0],0,rig);
- d("cylinder",[.25,.57,.29],[.15,.61,.15],COLORS.gun,[Math.PI/2,0,0],0,rig);
- d("cylinder",[.25,.57,.58],[.13,.06,.13],COLORS.lens,[Math.PI/2,0,0],.2,rig);
- d("cube",[.25,.47,.3],[.1,.22,.11],COLORS.steel,[0,0,0],0,rig);
- d("cube",[.25,.14,.7],[.085,.34,.075],COLORS.steel,[.25,0,.4],0,rig);
- d("cube",[.25,.14,1.22],[.085,.35,.075],COLORS.steel,[.32,0,-.35],0,rig);
+ const gold=isWhite?COLORS.gold:[.7,.59,.92];
+ const recoil=ms>=1300&&ms<1500?Math.sin(((ms-1300)/200)*Math.PI)*.1:0;
+ const br=mm(rig,translate(0,0,-recoil));
+ // Body is horizontal on the ground: ornate base at the rear; real bishop
+ // head, miter groove and finial point toward the scoped rifle.
+ d("sculptBishop",[-.28,.23,-.9],[.91,.91,.91],armor,[Math.PI/2,0,0],0,br);
+ d("sculptBishopGilding",[-.28,.23,-.9],[.91,.91,.91],gold,[Math.PI/2,0,0],.08,br);
+ // Sculpted jacket/cape flows under the figure instead of a featureless box.
+ d("sculptRifleStock",[-.30,.12,-.55],[.6,.25,.9],robe,[0,-Math.PI/2,0],0,rig);
+ // Weapon model has a shaped stock, pistol grip, curved barrel, a scope with
+ // objective bell, eyepiece/lens, recoil pad, trigger and two folding legs.
+ d("sculptRifleStock",[.25,.35,-.13],[.79,.75,.92],COLORS.gun,[0,-Math.PI/2,0],0,br);
+ d("sculptRifleGrip",[.26,.22,-.12],[.67,.7,.62],COLORS.steel,[0,-Math.PI/2,0],0,br);
+ d("sculptBarrel",[.25,.43,.90],[.84,.85,.84],COLORS.steel,[Math.PI/2,0,0],0,br);
+ d("sculptBarrel",[.25,.43,.76],[.72,.72,.65],COLORS.gun,[Math.PI/2,0,0],0,br);
+ d("sculptMuzzleBrake",[.25,.43,1.93],[.74,.77,.74],COLORS.steel,[Math.PI/2,0,0],0,br);
+ d("sculptScope",[.25,.64,.28],[.75,.77,.78],COLORS.gun,[Math.PI/2,0,0],0,br);
+ d("sphere",[.25,.64,.6],[.14,.14,.11],COLORS.lens,[0,0,0],.32,br);
+ d("sphere",[.25,.64,-.1],[.11,.11,.08],COLORS.lens,[0,0,0],.28,br);
+ d("cylinder",[.25,.61,.3],[.14,.12,.14],COLORS.steel,[0,0,0],0,br);
+ d("cylinder",[.25,.51,.3],[.08,.26,.08],COLORS.gun,[0,0,0],0,br);
+ d("cylinder",[.25,.2,1.11],[.07,.49,.07],COLORS.steel,[0,0,-.36],0,br);
+ d("cylinder",[.25,.2,1.11],[.07,.49,.07],COLORS.steel,[0,0,.36],0,br);
+ d("sphere",[.25,.42,1.96],[.07,.07,.07],COLORS.black,[0,0,0],0,br);
  if(ms>=1300&&ms<=3510){
   const fire=(ms-1300)/280,bulletPos=cam.bullet||cam.muzzle;
   const bulletRig=mm(translate(...bulletPos),rotY(cam.yaw));
@@ -267,27 +287,35 @@ function drawWorld(gl,g,event,ms,width,height){
   d("sphere",cam.muzzle,[.72*pulse,.72*pulse,.72*pulse],COLORS.flash,[0,0,0],2);
   d("cone",cam.muzzle,[.45*pulse,.98*pulse,.45*pulse],COLORS.gold,[Math.PI/2,0,0],2);
  }
- // Actual captured chess piece TYPE rendered as a 3D body at its square.
+ // An actual recognizable sculpt for the specific victim piece type,
+ // NOT one generic cylinder with cuboids glued to its head.
  const hit=cam.hit,t=event.victim.toLowerCase();
  const victimColor=event.victim===event.victim.toUpperCase()?COLORS.white:COLORS.dark;
+ const rimColor=event.victim===event.victim.toUpperCase()?COLORS.gold:[.65,.55,.83];
  const impact=ms>=3500?clamp((ms-3500)/900):0,shrink=1-smooth(impact)*.75;
+ const meshByPiece={p:"sculptPawn",r:"sculptRook",n:"sculptKnight",
+  b:"sculptBishop",q:"sculptQueen",k:"sculptKing"};
  if(ms<4230){
   const warp=ms>=3500?Math.sin(impact*Math.PI*2)*.12:0;
-  d("chess",[hit[0],-.01+warp,hit[2]],[.85*shrink,1.03*shrink,.85*shrink],victimColor);
-  if(t==="p"||t==="q"||t==="k"){
-   d("sphere",[hit[0],1.34*shrink,hit[2]],[.44*shrink,.44*shrink,.44*shrink],victimColor);
+  const targetModel=mm(translate(hit[0],-.01+warp,hit[2]),scale(.92*shrink,.92*shrink,.92*shrink));
+  d(meshByPiece[t]||"sculptPawn",[0,0,0],[1,1,1],victimColor,[0,0,0],0,targetModel);
+  d("ring",[0,.12,0],[.81,.16,.81],rimColor,[0,0,0],.04,targetModel);
+  if(t==="b"){
+   d("sculptBishopGilding",[0,0,0],[1,1,1],rimColor,[0,0,0],0.08,targetModel);
   }else if(t==="n"){
-   d("cube",[hit[0],1.36*shrink,hit[2]+.13],[.43*shrink,.46*shrink,.64*shrink],victimColor,[.25,0,-.24]);
-  }else if(t==="b"){
-   d("cone",[hit[0],1.4*shrink,hit[2]],[.52*shrink,.73*shrink,.52*shrink],victimColor);
-  }else if(t==="r"){
-   d("cube",[hit[0],1.48*shrink,hit[2]],[.62*shrink,.35*shrink,.62*shrink],victimColor);
-  }
-  if(t==="q"||t==="k"){
-   for(let n=0;n<5;n++){const a=n*Math.PI*2/5;
-    d("cone",[hit[0]+Math.cos(a)*.22*shrink,1.55*shrink,hit[2]+Math.sin(a)*.22*shrink],
-     [.17*shrink,.39*shrink,.17*shrink],COLORS.gold);
+   d("sculptKnightMane",[0,0,0],[1,1,1],rimColor,[0,0,0],0,targetModel);
+   d("sphere",[.31,1.29,.23],[.11,.11,.11],COLORS.black,[0,0,0],0,targetModel);
+   d("sphere",[.31,1.29,-.23],[.11,.11,.11],COLORS.black,[0,0,0],0,targetModel);
+  }else if(t==="q"){
+   for(let n=0;n<8;n++){
+    const a=n*Math.PI/4;
+    d("sphere",[Math.cos(a)*.36,1.44,Math.sin(a)*.36],
+     [.20,.20,.20],rimColor,[0,0,0],.06,targetModel);
    }
+   d("sphere",[0,1.5,0],[.20,.20,.20],rimColor,[0,0,0],.06,targetModel);
+  }else if(t==="k"){
+   d("cube",[0,1.76,0],[.16,.54,.16],rimColor,[0,0,0],.07,targetModel);
+   d("cube",[0,1.83,0],[.52,.15,.18],rimColor,[0,0,0],.07,targetModel);
   }
  }
  if(ms>=3500&&ms<4300){
