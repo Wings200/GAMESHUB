@@ -40,7 +40,7 @@ Important constraints:
 
 ## Stockfish startup resilience (Alpha 0.8.1)
 
-- The browser tries the original same-origin Cloudflare Pages Function engine route first. If the worker fails to boot, it next tries a same-origin static classic-worker shim that imports the pinned Stockfish 19.0.1 lite script and supplies its matching WASM URL from jsDelivr, then unpkg. The shim loads only official pinned engine files, and all position data remains inside the browser.
+- The browser tries the original same-origin Cloudflare Pages Function engine route first. If the worker fails to boot, it next tries a same-origin static classic-worker shim that imports the pinned Stockfish 19.0.1 lite script and supplies its matching WASM URL from jsDelivr, then unpkg. If WebAssembly fails entirely, it attempts the official Stockfish 19 ASM.js (JavaScript-only) build as a last resort. The shim loads only official pinned engine files, and all position data remains inside the browser.
 - The Pages Function's JS/WASM proxy also falls back to unpkg if jsDelivr is unavailable.
 - Both failure type and source are visible in the Analyst panel. An in-game **Retry Stockfish** button disposes the failed worker and rechecks pending turns without breaking the multiplayer session. Previous failed requests cannot overwrite a later retry.
 - Live browser loading still needs a real deployment smoke test; local tests emulate UCI messages and network/worker failures. No homemade rating fallback is allowed.
