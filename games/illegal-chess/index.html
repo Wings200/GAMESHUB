@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=15">
+<link rel="stylesheet" href="./style.css?v=16">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.9.4</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.9.5</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -37,7 +37,7 @@
  <section id="match" hidden aria-label="Illegal Chess multiplayer game">
   <div class="matchHead">
    <div><span class="eyebrow">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle" id="matchTitle">The board has no mercy.</h2><div id="swapCounter" class="swapCounter" aria-live="polite">COLOR SWAP IN 20 TURNS</div></div>
-   <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button><button id="leave" class="btn slim ghost" type="button">LEAVE ROOM</button></div>
+   <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><button id="sniperSoundToggle" class="btn slim ghost sniperSoundToggle" type="button" aria-pressed="true" title="Toggle local Bishop Sniper cinematic sound">🔊 SFX ON</button><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button><button id="leave" class="btn slim ghost" type="button">LEAVE ROOM</button></div>
   </div>
   <section id="gameResult" class="gameResult" hidden aria-live="assertive" role="status">
    <span class="eyebrow">ILLEGAL CHESS · MATCH COMPLETE</span>
@@ -85,6 +85,13 @@
  <div class="cinematicBackdrop"></div>
  <div class="cinematicScanlines"></div>
  <div class="cinematicStage">
+  <div class="cinematicAimHud" aria-hidden="true">
+   <span class="cinematicScopeMarks"></span>
+   <span class="cinematicScopeCross"></span>
+   <span class="cinematicScopeReadout">⦿ TARGET LOCKED · READY TO FIRE</span>
+  </div>
+  <div class="cinematicBulletHud" aria-hidden="true"><span class="cinematicSlowMo">0.25× SLOW MOTION</span><span class="cinematicVelocity">● 3D BULLET TRACKING</span></div>
+  <div class="cinematicProgress" aria-hidden="true"><i></i></div>
   <div class="cinematicCopy">
    <span class="cinematicEyebrow">⌖ GAMESHUB · ILLEGAL CHESS</span>
    <h2 id="cinematicTitle">BISHOP SNIPER</h2>
@@ -156,6 +163,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=16"></script>
+<script type="module" src="./client.mjs?v=17"></script>
 </body>
 </html>
