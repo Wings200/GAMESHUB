@@ -11,6 +11,7 @@ export const SNIPER_SOUND_CUES=Object.freeze([
  {name:"outro",ms:4460}
 ]);
 export const SNIPER_TELEPORT_CUES=Object.freeze([{name:"teleport",ms:0}]);
+export const SNIPER_FALLBACK_CUES=Object.freeze([{name:"scope",ms:120},{name:"fire",ms:490},{name:"impact",ms:1030}]);
 export function createSniperSoundtrack(AudioContextClass=
  typeof globalThis!=="undefined"?(globalThis.AudioContext||globalThis.webkitAudioContext):null){
  let context=null,master=null,noiseBuffer=null,enabled=true;
@@ -136,11 +137,12 @@ export function createSniperSoundtrack(AudioContextClass=
  }
  function playFirstShot(){return play(SNIPER_SOUND_CUES);}
  function playTeleport(){return play(SNIPER_TELEPORT_CUES);}
+ function playFallbackShot(){return play(SNIPER_FALLBACK_CUES);}
  function dispose(){
   stop();
   if(context){const current=context;context=null;master=null;noiseBuffer=null;
    void current.close().catch(()=>{});}
  }
- return {unlock,setEnabled,playFirstShot,playTeleport,stop,dispose,
+ return {unlock,setEnabled,playFirstShot,playFallbackShot,playTeleport,stop,dispose,
   get enabled(){return enabled;},get ready(){return !!context&&context.state==="running";}};
 }
