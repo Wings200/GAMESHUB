@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {newGame,joinGame,act,playerView,status,CHECKMATE_RESCUE_MS} from "../games/illegal-chess/game.mjs";
-import {idx,inCheck} from "../games/illegal-chess/engine.mjs";
+import {idx,inCheck,parseFen} from "../games/illegal-chess/engine.mjs";
 
 function room(){
  const g=newGame("ABCDEF","white-token-hash");
@@ -68,6 +68,53 @@ test("Remaining unusable cards still earn the full window, not an immediate loss
  assert.equal(g.rescue.deadline,deadline);
  assert.equal(status(g).done,false);
  assert.ok(inCheck(g.s,-1,g.snipers));
+});
+test("Ceasefire can save a king from off-board Bishop Sniper check during rescue",()=>{
+ const g=room();
+ g.hands.b=[{id:"ceasefire",used:false},{id:"the-analyst",used:false}];
+ northeastMate(g);
+ const deadline=g.rescue.deadline;
+ assert.equal(g.effects.ceasefire,0);
+ assert.equal(playerView(g,"b").legal.length,0,"Sniper has trapped the king");
+ // Ceasefire's no-capture rule now disables the Sniper's *checking ray* too.
+ act(g,"b",{type:"card",card:"ceasefire"});
+ assert.equal(g.effects.ceasefire,2);
+ assert.equal(g.hands.b[0].used,true);
+ assert.equal(g.rescue.deadline,deadline,"A bonus card cannot reset rescue time");
+ assert.equal(g.s.t,-1,"Ceasefire must remain a bonus action");
+ assert.equal(status(g).done,false);
+ assert.ok(status(g).rescue?.remainingMs>0,"Clock still runs until a turn is completed");
+ assert.ok(playerView(g,"b").legal.some(m=>m.from==="a7"&&m.to==="a6"),
+   "Black can now play a legal non-capture while the virtual check is silent");
+ assert.equal(playerView(g,"b").sniper.opponentActive,true,"Enemy sniper stays deployed during Ceasefire");
+ move(g,"b","a7","a6");
+ assert.equal(g.rescue,null,"Completing a legal turn clears the original rescue");
+ assert.equal(g.effects.ceasefire,1,"Ceasefire remains active for opponent's reply");
+ assert.equal(status(g).done,false);
+ assert.equal(g.snipers.w?.direction,"NE","Sniper stays on-board state, hidden deployment persists");
+});
+test("Ceasefire cannot freeze a rescue deadline by suppressing sniper threats",()=>{
+ const g=room();g.hands.b=[{id:"ceasefire",used:false}];
+ northeastMate(g);
+ act(g,"b",{type:"card",card:"ceasefire"});
+ assert.ok(playerView(g,"b").legal.length>0,"Some non-capture moves become available");
+ g.rescue.deadline=Date.now()-1;
+ assert.equal(status(g).done,true,"Rescue still expires without a completed turn");
+ assert.equal(status(g).winner,"w");
+ assert.throws(()=>move(g,"b","a7","a6"),/Game is over/);
+});
+test("Ceasefire in ordinary chess check does not disable normal attacks",()=>{
+ const g=room();
+ g.hands.w=[{id:"ceasefire",used:false}];
+ g.s=parseFen("4r1k1/8/8/8/8/8/8/4K3 w - - 0 1");
+ g.history=[g.s];
+ assert.ok(inCheck(g.s,1),"Rook gives normal check");
+ act(g,"w",{type:"card",card:"ceasefire"});
+ assert.equal(g.effects.ceasefire,2);
+ assert.equal(playerView(g,"w").legal.some(m=>m.from==="e1"&&m.to==="e2"),false,
+   "King may not step along an enemy rook's attack, even during Ceasefire");
+ assert.throws(()=>move(g,"w","e1","e2"),/Illegal chess move/);
+ assert.equal(g.s.t,1);
 });
 test("At 30 seconds server returns checkmate and refuses any further card",()=>{
  const g=room();northeastMate(g);
