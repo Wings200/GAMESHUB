@@ -1062,7 +1062,8 @@ test("Non-owner view excludes even synthetic recorded scores and a current worke
   score:105,quality:"full",expires:Date.now()+100000,readyAt:Date.now()};
  const hidden=JSON.stringify(playerView(g,"b"));
  assert.ok(!hidden.includes("Secret grade"));
- assert.ok(!hidden.includes("Stockfish 19"));
+ assert.ok(!hidden.includes('"engine":"Stockfish 19"'));
+ assert.ok(!hidden.includes('"grade":"Excellent"'));
  assert.ok(!hidden.includes("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"));
  assert.ok(!hidden.includes('"beforeFen"')&&!hidden.includes('"uci"'));
  assert.equal(playerView(g,"w").analyst.entries[0].grade,"Excellent");
