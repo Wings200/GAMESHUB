@@ -27,6 +27,7 @@ jobs:
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check games/illegal-chess/stockfish-review.mjs
+      - run: node --check games/illegal-chess/stockfish-cdn-worker.js
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
       - run: node --check games/illegal-chess/client.mjs
       - run: node --check games/illegal-chess/art.mjs
@@ -48,6 +49,10 @@ jobs:
           assert.match(html,/id="analystTest"/);
           assert.match(client,/renderAnalyst\(/);
           assert.match(client,/createStockfishReviewer/);
+          assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
+          assert.match(html,/id="retryStockfish"/,"A retry button must exist");
+          assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/engineSources/,"Engine must attempt multiple hosts");
+          assert.match(fs.readFileSync("games/illegal-chess/stockfish-cdn-worker.js","utf8"),/importScripts/,"Same-origin CDN worker shim");
           assert.match(html,/id="analystLegend"/,"Round feedback legend must be present");
           assert.match(client,/analystPopupTimer=setTimeout\([\s\S]*?\},1000\)/,"One-second board feedback remains enabled");
           assert.match(client,/className="analystCoin analystCoinSmall "/,"Circular symbols in the review history");

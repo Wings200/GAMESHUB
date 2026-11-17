@@ -7,7 +7,7 @@ const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers
 // our own origin so browser Web Workers resolve their matching WASM file next
 // to the JS glue, with no changes to existing D1 gameplay/authentication.
 // Upstream source and license: https://github.com/nmrugg/stockfish.js
-const STOCKFISH_ORIGIN="https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/";
+const STOCKFISH_ORIGINS=["https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/","https://unpkg.com/stockfish@19.0.1/bin/"];
 const ENGINE_FILES={
  "stockfish-19-lite-single.js":"text/javascript; charset=utf-8",
  "stockfish-19-lite-single.wasm":"application/wasm"
@@ -15,18 +15,19 @@ const ENGINE_FILES={
 export async function serveStockfishAsset(path,fetcher=fetch){
  const mime=ENGINE_FILES[path];
  if(!mime)return reply({error:"Unknown engine asset"},404);
- try{
-  const source=await fetcher(STOCKFISH_ORIGIN+path,{method:"GET",headers:{"Accept":mime.split(";")[0]}});
-  if(!source.ok)return reply({error:"Stockfish download unavailable"},503);
-  return new Response(source.body,{status:200,headers:{
-   "Content-Type":mime,
-   "Cache-Control":"public, max-age=86400, stale-while-revalidate=86400",
-   "X-Content-Type-Options":"nosniff"
-  }});
- }catch(error){
-  console.warn("Stockfish asset fetch failed",error);
-  return reply({error:"Stockfish download unavailable"},503);
+ for(const origin of STOCKFISH_ORIGINS){
+  try{
+   const source=await fetcher(origin+path,{method:"GET",headers:{"Accept":mime.split(";")[0]}});
+   if(!source.ok){console.warn("Stockfish CDN returned",source.status,origin);continue;}
+   return new Response(source.body,{status:200,headers:{
+    "Content-Type":mime,
+    "Cache-Control":"public, max-age=86400, stale-while-revalidate=86400",
+    "X-Content-Type-Options":"nosniff",
+    "X-Stockfish-CDN":origin.includes("jsdelivr")?"jsdelivr":"unpkg"
+   }});
+  }catch(error){console.warn("Stockfish asset fetch failed",origin,error);}
  }
+ return reply({error:"Both Stockfish CDNs are currently unavailable"},503);
 }
 
 const codePattern=/^[A-HJ-NP-Z2-9]{6}$/;

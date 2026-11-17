@@ -178,3 +178,17 @@ test("GAMESHUB only proxies pinned Stockfish JS and WASM assets, with proper MIM
  const offline=await serveStockfishAsset("stockfish-19-lite-single.js",async()=>new Response("",{status:404}));
  assert.equal(offline.status,503,"Never substitute fake engine results if the download fails");
 });
+
+test("Stockfish asset proxy retries pinned unpkg when jsDelivr is down",async()=>{
+ const urls=[];
+ const fallback=await serveStockfishAsset("stockfish-19-lite-single.wasm",async url=>{
+  urls.push(url);
+  if(url.includes("jsdelivr"))return new Response("CDN unavailable",{status:503});
+  return new Response(new Uint8Array([0,97,115,109]),{status:200});
+ });
+ assert.equal(fallback.status,200);
+ assert.equal(fallback.headers.get("Content-Type"),"application/wasm");
+ assert.equal(fallback.headers.get("X-Stockfish-CDN"),"unpkg");
+ assert.equal(urls.length,2);
+ assert.ok(urls.every(x=>x.includes("stockfish@19.0.1/bin/stockfish-19-lite-single.wasm")));
+});
