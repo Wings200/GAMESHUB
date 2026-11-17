@@ -1,6 +1,6 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.8.1
+## Live in Alpha 0.9.1
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
@@ -44,3 +44,11 @@ Important constraints:
 - The Pages Function's JS/WASM proxy also falls back to unpkg if jsDelivr is unavailable.
 - Both failure type and source are visible in the Analyst panel. An in-game **Retry Stockfish** button disposes the failed worker and rechecks pending turns without breaking the multiplayer session. Previous failed requests cannot overwrite a later retry.
 - Live browser loading still needs a real deployment smoke test; local tests emulate UCI messages and network/worker failures. No homemade rating fallback is allowed.
+
+## Full NNUE strength upgrade (Alpha 0.9)
+
+- Official latest stable **Stockfish 19**, pinned to stockfish@19.0.1. First preference is **Full, single-threaded** 19 with its full-size NNUE network (approximately 94 MB), rather than the weaker Lite NNUE model. It is the strongest practical browser build that works on normal web pages without COOP/COEP cross-origin isolation.
+- Stronger analysis: UCI max skill level, approximately 2.2 seconds per search (best and played move from same original FEN), depth cap 24, and 48 MB engine transposition hash. A legal chess move costs up to two searches, and cannot receive a fabricated result when the browser cannot run the engine.
+- Degrades gracefully to Lite NNUE and then ASM.js on unsupported or slow devices, with explicit source and tier shown in the Analyst status. First-time full download is large; players on slow connections may see a noticeable engine loading state.
+- Full engine's JS/WASM are allowed from the same pinned npm package via Cloudflare Pages Function or the same-origin worker shim with a direct CDN WASM hash. No server-side chess analysis credentials or remote positions. Original Stockfish engine is GPLv3; see attribution links in the game.
+- UI no longer describes the Analyzer as always 'Lite'. Revalidate actual real-browser downloads after deployment: synthetic worker tests cannot prove successful full engine WebAssembly initialization or performance.
