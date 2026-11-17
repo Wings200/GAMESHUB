@@ -125,7 +125,8 @@ test("Black Market only trades another unused card of matching rarity",()=>{
  assert.throws(()=>act(g,"w",{type:"card",card:"black-market",slot:0}),/another unused card/);
  act(g,"w",{type:"card",card:"black-market",slot:1});
  assert.equal(g.s.t,-1);assert.equal(g.hands.w[0].used,true);
- assert.ok(["voluntary-eviction","pawn-ram"].includes(g.hands.w[1].id),"Black Market must replace with a different card of the same rarity");
+ assert.equal(CARDS.find(c=>c.id===g.hands.w[1].id).rarity,"Common","Black Market must replace with a different card of the same rarity");
+ assert.notEqual(g.hands.w[1].id,"pawn-sidestep");
 });
 
 test("Parking Ticket is a bonus action and freezes the correct enemy piece",()=>{
@@ -553,8 +554,8 @@ test("Enemy cannot identify disguised promotions using Relocation Order or publi
  assert.equal(playerView(g,"w").effects.insurance.w.piece,"N","The owner still sees their actual piece");
 });
 
-test("The Analyst completes the approved 26-card collection and remains a passive Legendary",()=>{
- assert.equal(CARDS.length,26);
+test("The Analyst remains passive across the original 26 and the ten-card Common expansion",()=>{
+ assert.equal(CARDS.length,36);
  const card=CARDS.find(c=>c.id==="the-analyst");
  assert.deepEqual({rarity:card.rarity,mode:card.mode},{rarity:"Legendary",mode:"passive"});
  assert.deepEqual(ANALYST_GRADES,["Book","Best","Excellent","Good","Inaccuracy","Mistake","Blunder","Brilliant"]);
