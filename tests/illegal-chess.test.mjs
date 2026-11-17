@@ -5,7 +5,8 @@ import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
 import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS} from "../games/illegal-chess/cinematic.mjs";
-import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D} from "../games/illegal-chess/sniper-3d.mjs";
+import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D,sniperMotion} from "../games/illegal-chess/sniper-3d.mjs";
+import {createSniperSoundtrack,SNIPER_SOUND_CUES,SNIPER_FALLBACK_CUES,SNIPER_TELEPORT_CUES} from "../games/illegal-chess/sniper-sound.mjs";
 import {buildSculptMeshes,sculptAssetCatalog} from "../games/illegal-chess/sniper-sculpts.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
@@ -943,4 +944,90 @@ test("V3 models use real vertices and normals and have physically distinct silho
  assert.ok(stock.width>1.5,"Sniper rifle needs a properly shaped long stock");
  assert.ok(stock.height>.5,"Sniper rifle needs a meaningful three-dimensional silhouette");
  assert.ok(scope.height>.8,"Scope mesh must have objective bell and eyepiece");
+});
+
+test("Bishop Sniper V4 camera zooms through the scope and the rifle visibly recoils then settles",()=>{
+ const ev={origin:"c3",target:"g7",direction:"NE",attacker:"w",victim:"p"};
+ const normal=cinematicCamera(ev,250),zoom=cinematicCamera(ev,1100),fire=cinematicCamera(ev,1390);
+ assert.ok(sniperMotion(850).scopeZoom>0);
+ assert.ok(sniperMotion(1150).scopeZoom>.65,"Scope focus must occupy the latter part of the first shot");
+ assert.ok(sniperMotion(1500).scopeZoom<.1);
+ assert.ok(Math.abs(sniperMotion(1400).recoil)>.12,"The gun must have visibly measurable kickback");
+ assert.equal(sniperMotion(2200).recoil,0,"No permanent moved rifle after firing");
+ assert.notDeepEqual(normal.eye,zoom.eye);
+ assert.notDeepEqual(fire.eye,zoom.eye);
+ assert.equal(sniperMotion(1200).impact,0);
+ assert.ok(sniperMotion(3760).shockwave>.1,"Impact creates an expanding shockwave");
+ assert.ok(sniperMotion(2510).bulletBoost>.5,"Slow motion projectile has extra luminous streaks");
+ assert.equal(sniperMotion(4800).shockwave,0,"No lingering expensive GPU impact debris");
+});
+test("V4 Web Audio cue blueprint is synced to its 4.9 second shared event and has a short 2D fallback",()=>{
+ assert.deepEqual(SNIPER_SOUND_CUES.map(x=>x.name),
+  ["scope","chamber","fire","bullet","impact","debris","outro"]);
+ for(let i=1;i<SNIPER_SOUND_CUES.length;i++)
+  assert.ok(SNIPER_SOUND_CUES[i].ms>SNIPER_SOUND_CUES[i-1].ms,"Audio clock cues must be ordered");
+ assert.equal(SNIPER_SOUND_CUES.find(x=>x.name==="fire").ms,1320);
+ assert.equal(SNIPER_SOUND_CUES.find(x=>x.name==="impact").ms,3500);
+ assert.ok(SNIPER_SOUND_CUES.at(-1).ms<SNIPER_3D_DURATION);
+ assert.ok(SNIPER_FALLBACK_CUES.at(-1).ms<1550,"2D fallback must not play off-screen sounds");
+ assert.equal(SNIPER_TELEPORT_CUES.length,1);
+ assert.equal(SNIPER_TELEPORT_CUES[0].name,"teleport");
+});
+test("V4 sound is gesture-unlocked, locally mutable, and creates real oscillator/noise voices",()=>{
+ const events=[];
+ class Param{
+  value=0;
+  setValueAtTime(value,t){this.value=value;events.push(["set",value,t]);}
+  exponentialRampToValueAtTime(value,t){this.value=value;events.push(["ramp",value,t]);}
+  cancelScheduledValues(t){events.push(["cancel",t]);}
+ }
+ class AudioNodeMock{
+  onended=null;frequency=new Param();gain=new Param();Q=new Param();
+  type="";buffer=null;
+  connect(node){events.push(["connect"]);}
+  start(t){events.push(["start",t]);}
+  stop(t){events.push(["stop",t]);if(typeof this.onended==="function")this.onended();}
+ }
+ class Context{
+  state="running";sampleRate=8000;currentTime=10;destination={};
+  createGain(){return new AudioNodeMock();}
+  createOscillator(){events.push(["oscillator"]);return new AudioNodeMock();}
+  createBufferSource(){events.push(["noise"]);return new AudioNodeMock();}
+  createBiquadFilter(){return new AudioNodeMock();}
+  createBuffer(_channels,frames,_rate){
+   return {getChannelData(){return new Float32Array(frames);}};
+  }
+  close(){this.state="closed";events.push(["closed"]);return Promise.resolve();}
+  resume(){this.state="running";return Promise.resolve();}
+ }
+ const sfx=createSniperSoundtrack(Context);
+ assert.equal(sfx.ready,false);
+ assert.equal(sfx.playFirstShot(),false,"Audio must not silently auto-unlock outside a gesture");
+ assert.equal(sfx.unlock(),true);
+ assert.equal(sfx.ready,true);
+ assert.equal(sfx.playFirstShot(),true);
+ assert.ok(events.filter(x=>x[0]==="oscillator").length>=5,"Distinct tonal cues required");
+ assert.ok(events.filter(x=>x[0]==="noise").length>=4,"Rifle, bullet and impact each use noise");
+ const starts=events.filter(x=>x[0]==="start").map(x=>x[1]);
+ assert.ok(starts.some(x=>x>=11.3&&x<=11.5),"Rifle sound must begin at ~1.32s on the audio clock");
+ assert.ok(starts.some(x=>x>=13.5&&x<=13.7),"Impact sound must land at ~3.5s");
+ sfx.setEnabled(false);
+ assert.equal(sfx.playTeleport(),false,"Muted user receives no second-shot sound");
+ sfx.setEnabled(true);
+ assert.equal(sfx.playTeleport(),true,"Second-shot teleport has its own unique SFX");
+ sfx.dispose();
+ assert.ok(events.some(x=>x[0]==="closed"));
+});
+test("V4 audio degrades safely on restricted browsers and does not create a context without a gesture",()=>{
+ const noAudio=createSniperSoundtrack(null);
+ assert.equal(noAudio.unlock(),false);
+ assert.equal(noAudio.playFirstShot(),false);
+ assert.equal(noAudio.playFallbackShot(),false);
+ noAudio.dispose();
+ class Restricted{constructor(){throw Error("Audio not allowed");}}
+ const blocked=createSniperSoundtrack(Restricted);
+ assert.equal(blocked.unlock(),false);
+ assert.equal(blocked.playTeleport(),false);
+ blocked.setEnabled(false);
+ blocked.dispose();
 });

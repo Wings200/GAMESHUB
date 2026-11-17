@@ -1,5 +1,5 @@
 import {buildSculptMeshes} from "./sniper-sculpts.mjs?v=1";
-// Illegal Chess · Bishop Sniper cinematic V3
+// Illegal Chess · Bishop Sniper cinematic V4
 // Original procedural 3D WebGL; no external JS, models, video, or textures.
 // Only runs during server-committed sniper first-shot cinematic events.
 export const SNIPER_3D_DURATION=4900;
@@ -13,6 +13,21 @@ export const SNIPER_3D_PHASES=Object.freeze([
 export const shotPhase=ms=>SNIPER_3D_PHASES.find(p=>ms<p.end)||SNIPER_3D_PHASES.at(-1);
 const clamp=(n,min=0,max=1)=>Math.max(min,Math.min(max,n));
 const smooth=t=>{const x=clamp(t);return x*x*(3-2*x);};
+// Deterministic animation rig: camera, weapon and impact effects all read
+// the same timeline. No extra physics engine or hidden timers.
+export function sniperMotion(ms){
+ const after=Math.max(0,ms-1320)/1000;
+ const recoil=ms>=1320&&ms<2120
+  ?.48*Math.exp(-after*4)*Math.sin(after*12):0;
+ const cameraJolt=ms>=1320&&ms<1620
+  ?Math.sin((ms-1320)*.10)*.045*(1-(ms-1320)/300):0;
+ const scopeZoom=smooth((ms-650)/540)*(1-smooth((ms-1260)/160));
+ const impact=clamp((ms-3500)/900);
+ const shockwave=ms>=3500&&ms<4150?smooth((ms-3500)/650):0;
+ const bulletBoost=ms>=1580&&ms<3500
+  ?Math.sin(Math.PI*clamp((ms-1580)/1920)):0;
+ return {recoil,cameraJolt,scopeZoom,impact,shockwave,bulletBoost};
+}
 export function square3D(square){
  if(!/^[a-h][1-8]$/.test(square||""))return null;
  return [(square.charCodeAt(0)-97)-3.5,0,3.5-(Number(square[1])-1)];
@@ -39,12 +54,14 @@ export function cinematicCamera(event,ms){
   const push=smooth(ms/1300);
   // Side-on portrait of the sculpted bishop, not a backwards shot into its
   // oversized base. This framing makes the mitre, rifle stock and scope clear.
-  eye=at(shooter,.22+.28*push,2.65-.4*push,1.48-.15*push);
-  look=at(shooter,.66+.12*push,.03,.43);
-  if(phase==="fire"){
-   const k=(ms-1300)/280;
-   eye=at(eye,-.08*Math.sin(k*Math.PI),0,.016*Math.sin(k*40));
-  }
+  // The aiming camera travels from a side portrait into the scope line.
+  // Camera proximity and FOV both change: this is a true 3D zoom.
+  const motion=sniperMotion(ms);
+  eye=at(shooter,.22+.32*push,2.65-.4*push-1.03*motion.scopeZoom,
+   1.48-.15*push-.26*motion.scopeZoom);
+  look=at(shooter,.66+.25*push+.3*motion.scopeZoom,.03,.43);
+  if(phase==="fire")eye=at(eye,-motion.recoil*.16,0,motion.cameraJolt);
+
  }else if(phase==="bullet"){
   // Physical bullet chase: eye moves with the projectile in 3D world space.
   const u=clamp((ms-1580)/1920),track=1-Math.pow(1-u,1.45);
@@ -223,7 +240,9 @@ function createGraphics(gl){
 function drawWorld(gl,g,event,ms,width,height){
  const {draw,uniforms}=g,cam=cinematicCamera(event,ms);
  if(!cam)return;
- const projection=perspective(Math.PI/3.1,width/height,.04,64);
+ const focus=sniperMotion(ms).scopeZoom;
+ const fov=(Math.PI/3.1)*(1-.22*focus);
+ const projection=perspective(fov,width/height,.04,64);
  gl.uniformMatrix4fv(uniforms.vp,false,mm(projection,lookAt(cam.eye,cam.look)));
  gl.uniform3fv(uniforms.camera,cam.eye);
  gl.clearColor(.028,.043,.08,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -246,8 +265,11 @@ function drawWorld(gl,g,event,ms,width,height){
  const isWhite=event.attacker==="w",armor=isWhite?COLORS.white:COLORS.dark;
  const robe=isWhite?COLORS.violet:[.18,.18,.32];
  const gold=isWhite?COLORS.gold:[.7,.59,.92];
- const recoil=ms>=1300&&ms<1500?Math.sin(((ms-1300)/200)*Math.PI)*.1:0;
- const br=mm(rig,translate(0,0,-recoil));
+ const motion=sniperMotion(ms);
+ const recoil=motion.recoil;
+ // Rifle assembly recoils into the bishop, rebounds, then settles.
+ const br=mm(rig,mm(translate(0,0,-recoil),
+  rotX(-recoil*.16)));
  // Body is horizontal on the ground: ornate base at the rear; real bishop
  // head, miter groove and finial point toward the scoped rifle.
  d("sculptBishop",[-.28,.23,-.9],[.91,.91,.91],armor,[Math.PI/2,0,0],0,br);
@@ -275,15 +297,31 @@ function drawWorld(gl,g,event,ms,width,height){
   const recoil=ms<1580?Math.max(0,Math.sin(fire*Math.PI))*.04:0;
   d("cylinder",[0,0,-recoil],[.115,.33,.115],COLORS.bullet,[Math.PI/2,0,0],.28,bulletRig);
   d("bulletTip",[0,0,.24-recoil],[.15,.3,.15],COLORS.gold,[Math.PI/2,0,0],.5,bulletRig);
-  for(let n=1;n<=4;n++){
-   const off=.24+n*.21;
-   d("sphere",[0,0,-off],[.14/n,.12/n,.23],COLORS.flash,[0,0,0],.8/n,bulletRig);
+  // Volumetric tracer + luminous speed lines, attached to the ACTUAL bullet
+  // trajectory. Draw fewer details when the Chromebook quality cap is active.
+  const particleCount=g.compact?4:8;
+  for(let n=1;n<=particleCount;n++){
+   const off=.22+n*.23,fade=(particleCount+1-n)/particleCount;
+   d("sphere",[0,0,-off],[.12*fade,.115*fade,.25+motion.bulletBoost*.13],
+    n%2?COLORS.flash:COLORS.lens,[0,0,0],.5*fade,bulletRig);
+   if(n<4)d("cylinder",[0,0,-off-.15],[.045*fade,.43,.045*fade],
+    COLORS.gold,[Math.PI/2,0,0],.2,bulletRig);
   }
  }
- if(ms>=1310&&ms<1470){
-  const pulse=Math.sin(((ms-1310)/160)*Math.PI);
-  d("sphere",cam.muzzle,[.72*pulse,.72*pulse,.72*pulse],COLORS.flash,[0,0,0],2);
-  d("cone",cam.muzzle,[.45*pulse,.98*pulse,.45*pulse],COLORS.gold,[Math.PI/2,0,0],2);
+ if(ms>=1320&&ms<1510){
+  const k=clamp((ms-1320)/190),pulse=Math.pow(1-k,1.7);
+  d("sphere",cam.muzzle,[1.05*pulse,.97*pulse,1.05*pulse],
+   COLORS.flash,[0,0,0],2.5*pulse);
+  d("cone",cam.muzzle,[.60*pulse,1.45*pulse,.60*pulse],
+   COLORS.gold,[Math.PI/2,0,0],2.4*pulse);
+  const count=g.compact?5:11;
+  for(let i=0;i<count;i++){
+   const a=i*2.39996,travel=(.4+k*1.9),speed=1-(i%3)*.12;
+   d("sphere",[cam.muzzle[0]+Math.cos(a)*travel*speed,
+    cam.muzzle[1]+Math.sin(a)*travel*.6,
+    cam.muzzle[2]+Math.cos(a*.7)*travel*.4],
+    [.04*pulse,.04*pulse,.11*pulse],COLORS.flash,[0,0,0],1.3*pulse);
+  }
  }
  // An actual recognizable sculpt for the specific victim piece type,
  // NOT one generic cylinder with cuboids glued to its head.
@@ -320,12 +358,30 @@ function drawWorld(gl,g,event,ms,width,height){
   const age=clamp((ms-3500)/780);
   d("sphere",[hit[0],.8,hit[2]],[.58*(1-age),.58*(1-age),.58*(1-age)],
    COLORS.flash,[0,0,0],1.5*(1-age));
-  for(let i=0;i<24;i++){
-   const a=i*2.39996,b=((i*7)%24)/24,spread=.35+age*2.4;
-   const pos=[hit[0]+Math.cos(a)*spread,.73+Math.sin(b*Math.PI)*spread*.6-age*.5,
-    hit[2]+Math.sin(a)*spread],size=(1-age)*(.08+(i%4)*.025);
-   d("cube",pos,[size,size*2,size],i%3?COLORS.gold:COLORS.violet,
-    [age*2,age*3,age*4],.2);
+  // Two growing shockwave rings in physical 3D space, plus tumbling stone
+  // fragments and glowing sparks. All trajectories deterministic by event time.
+  const wave=motion.shockwave;
+  if(ms<4130){
+   d("ring",[hit[0],.21,hit[2]],[.7+wave*2.7,.06,.7+wave*2.7],
+    COLORS.gold,[0,0,0],1.1*(1-wave));
+   d("ring",[hit[0],.44,hit[2]],[.35+wave*1.95,.06,.35+wave*1.95],
+    COLORS.lens,[0,0,0],.6*(1-wave));
+  }
+  const count=g.compact?18:38;
+  for(let i=0;i<count;i++){
+   const a=i*2.39996,b=((i*7)%count)/count,spread=.3+age*2.8;
+   const speed=.7+(i%5)*.13;
+   const pos=[hit[0]+Math.cos(a)*spread*speed,
+    .73+Math.sin(b*Math.PI)*spread*.64-age*.46,
+    hit[2]+Math.sin(a)*spread*speed];
+   const size=(1-age)*(.055+(i%4)*.029);
+   if(i%3===0){
+    d("sphere",pos,[size*.8,size*.8,size*2],COLORS.flash,
+     [age*3,age*4,age*5],.55*(1-age));
+   }else{
+    d("cube",pos,[size,size*2,size],
+     i%2?rimColor:victimColor,[age*3,age*4,age*6],.13*(1-age));
+   }
   }
  }
 }
@@ -340,7 +396,7 @@ export function createSniper3D(canvas,{onPhase=()=>{},onFinish=()=>{}}={}){
  }catch{return null;}
  if(!gl)return null;
  let graphics;
- try{graphics=createGraphics(gl);}
+ try{graphics=createGraphics(gl);graphics.compact=chromeOS;}
  catch(error){console.warn("Bishop Sniper 3D GPU initialization failed",error);return null;}
  let frame=0,playing=false,started=0,lastFrame=0,phaseName="",event=null;
  const maxFps=chromeOS?25:45,frameInterval=1000/maxFps;

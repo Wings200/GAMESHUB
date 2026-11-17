@@ -28,6 +28,7 @@ jobs:
       - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check games/illegal-chess/cinematic.mjs
       - run: node --check games/illegal-chess/sniper-3d.mjs
+      - run: node --check games/illegal-chess/sniper-sound.mjs
       - run: node --check games/illegal-chess/sniper-sculpts.mjs
       - run: node --check games/illegal-chess/stockfish-review.mjs
       - run: node --check games/illegal-chess/stockfish-cdn-worker.js
@@ -56,7 +57,7 @@ jobs:
           assert.match(client,/analystDeviceScore/,"Device capability-based election must be present");
           assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
-          assert.match(html,/ALPHA 0\.9\.4/,"Sculpted Bishop Sniper V3 release must load");
+          assert.match(html,/ALPHA 0\.9\.5/,"Bishop Sniper V4 audio and animated effects release must load");
           const api=fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8");
           assert.match(api,/analystRequest/,"Server-authoritative Analyst lease and review endpoint");
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
@@ -85,14 +86,31 @@ jobs:
           assert.match(client,/createSniper3D/,"The 3D renderer must be invoked by server-triggered shot");
           assert.match(client,/sniperRenderer.play\(event\)/,"A first shot must start the 3D camera");
           assert.match(client,/cinematic\.mjs\?v=2/,"Updated V2 runtime events must avoid stale cache");
-          assert.match(client,/sniper-3d\.mjs\?v=2/,"Sculpted V3 renderer must be loaded");
+          assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted V3 renderer must be loaded");
           const real3d=fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8");
           assert.match(real3d,/getContext\("webgl"/,"Actual GPU 3D, not fake 2D scaling");
           assert.match(real3d,/SNIPER_3D_DURATION=4900/,"Long close-up, bullet-follow and impact");
           assert.match(real3d,/cinematicCamera\(event,ms\)/,"Physical camera positions must animate");
           assert.match(real3d,/drawWorld\(gl,graphics,event,elapsed,w,h\)/,"GPU frames must contain 3D scene");
           assert.match(real3d,/Chrome OS\|Chromebook/,"Chromebook performance profile is enabled");
-          assert.match(client,/sniper-3d\.mjs\?v=2/,"Sculpted model renderer must refresh cached V2 renderer");
+          assert.match(real3d,/function sniperMotion|export function sniperMotion/,"V4 must animate real weapon recoil/zoom");
+          assert.match(real3d,/shotPhase\(|shockwave|sniperMotion/,"3D impacts must follow a shared deterministic timeline");
+          assert.match(real3d,/g\.compact\?18:38/,"Low-end devices must have fewer 3D fragments");
+          assert.match(real3d,/d\("ring",\[hit\[0\],\.21/,"Physical 3D shockwave must be drawn");
+          const audio=fs.readFileSync("games/illegal-chess/sniper-sound.mjs","utf8");
+          assert.match(audio,/createSniperSoundtrack/,"Procedural SFX module must exist");
+          assert.match(audio,/createOscillator/,"Rifle SFX require synthesized pitches");
+          assert.match(audio,/createBufferSource/,"Rifle and bullet SFX require filtered noise");
+          assert.match(audio,/SNIPER_FALLBACK_CUES/,"WebGL-less devices need a shorter audio timeline");
+          assert.match(client,/sniper-sound\.mjs\?v=1/,"Client must load cache-busted sounds");
+          assert.match(client,/sniperAudio\.playFirstShot\(\)/,"Cinematic must play first-shot sound");
+          assert.match(client,/sniperAudio\.playTeleport\(\)/,"Second shot must have distinct teleport sound");
+          assert.match(client,/sniperAudio\.playFallbackShot\(\)/,"Fallback must not produce late 3D audio cues");
+          assert.match(client,/pointerdown.*unlockSniperSound/,"Audio unlock must require a real gesture");
+          assert.match(html,/id="sniperSoundToggle"/,"Match must expose a local SFX toggle");
+          assert.match(html,/class="cinematicAimHud"/,"3D scope HUD required");
+          assert.match(html,/class="cinematicBulletHud"/,"Bullet slow-motion HUD required");
+          assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted model renderer must refresh cached V2 renderer");
           assert.match(real3d,/buildSculptMeshes\(\)/,"New sculpt meshes are merged into the GPU buffer");
           assert.match(real3d,/d\("sculptBishop"/,"Bishop cannot be a generic cylinder in the cinematic");
           assert.match(real3d,/sculptPawn/,"Captured pawn has its own 3D model");
@@ -113,6 +131,9 @@ jobs:
           assert.match(client,/sniperWarpTarget===name/,"Second shot needs a board-only teleport");
           assert.match(fs.readFileSync("games/illegal-chess/cinematic.mjs","utf8"),/sniper-first-shot/);
           assert.match(style,/\.sniperCinematic\.isPlaying/,"First shot needs fullscreen CSS animation");
+          assert.match(style,/\.cinematicAimHud/,"Scope animation must be styled");
+          assert.match(style,/\.cinematicBulletHud/,"Slow-motion HUD must be styled");
+          assert.match(style,/\.cinematicProgress/,"Timing progress bar must be styled");
           assert.match(style,/\.sniperCinematic\.is3D\.isPlaying/,"WebGL replay must remain visible for 4.9s");
           assert.match(style,/\.cinematic3DCanvas/,"3D stage must render fullscreen");
           assert.match(style,/prefers-reduced-motion:reduce/,"Animations must respect reduced-motion users");

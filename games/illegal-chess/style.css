@@ -348,3 +348,68 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){
  .sniperCinematic.is3D .cinematic3DCanvas{display:none}
 }
+
+
+/* Alpha 0.9.5 · Bishop Sniper V4 aim HUD, slow-motion camera and sound control.
+   All transitions are opacity / transforms; no CSS filter per-frame workload. */
+.sniperSoundToggle{min-width:96px;white-space:nowrap;border-color:#687d9e77!important}
+.sniperSoundToggle[aria-pressed="true"]{color:#d8efff!important;border-color:#72a8cb88!important}
+.sniperSoundToggle[aria-pressed="false"]{opacity:.72}
+.cinematicAimHud,.cinematicBulletHud{display:none;position:absolute;inset:0;z-index:4;
+ pointer-events:none;color:#c9f9ff;text-shadow:0 2px 8px #000d}
+.sniperCinematic.is3D.phaseCloseup .cinematicAimHud{display:block;
+ animation:sniperScopeEntrance 1.3s both}
+.cinematicScopeMarks{position:absolute;left:50%;top:50%;width:min(44vw,36vh,340px);
+ aspect-ratio:1;border:1.5px solid #b9e8f9a8;border-radius:50%;
+ transform:translate(-50%,-50%);
+ box-shadow:0 0 0 24px #96e9ff0b,inset 0 0 0 21px #59b7dc08,0 0 34px #83dfff2b}
+.cinematicScopeMarks:before,.cinematicScopeMarks:after{content:"";position:absolute;
+ left:50%;top:50%;background:#a3e8ff92}
+.cinematicScopeMarks:before{width:170%;height:1px;transform:translate(-50%,-50%)}
+.cinematicScopeMarks:after{height:170%;width:1px;transform:translate(-50%,-50%)}
+.cinematicScopeCross{position:absolute;left:50%;top:50%;height:19px;width:19px;
+ border:1px solid #dff8ff;transform:translate(-50%,-50%) rotate(45deg);
+ box-shadow:0 0 14px #80d8ff}
+.cinematicScopeCross:after{content:"";position:absolute;inset:6px;
+ border-radius:50%;background:#f9f9e9;box-shadow:0 0 12px #b5e9ff}
+.cinematicScopeReadout{position:absolute;top:67%;left:50%;transform:translateX(-50%);
+ background:#0a202dba;padding:7px 12px;border:1px solid #7bcbe670;
+ font:900 clamp(9px,1.1vw,13px)/1.3 monospace;letter-spacing:.16em;
+ white-space:nowrap}
+.sniperCinematic.is3D.phaseBullet .cinematicBulletHud{display:flex;
+ align-items:flex-end;justify-content:center;flex-direction:column;
+ gap:9px;padding-right:5vw;animation:sniperHUDEntrance .25s both}
+.cinematicSlowMo{border:1px solid #90d9f599;background:#081c2bce;
+ padding:12px 16px;color:#e1f9ff;font-size:clamp(14px,2.5vw,25px);
+ font-weight:1000;letter-spacing:.18em}
+.cinematicVelocity{font:900 clamp(9px,1.3vw,13px)/1.4 monospace;
+ letter-spacing:.2em;color:#accce3;background:#09121fcc;padding:5px 12px}
+.cinematicProgress{display:none;position:absolute;z-index:5;left:4%;right:4%;
+ top:clamp(7px,1.5vh,16px);height:3px;background:#e8fcff24;overflow:hidden}
+.cinematicProgress i{display:block;width:100%;height:100%;
+ transform-origin:left;background:linear-gradient(90deg,#80e4ff,#c9b2ff,#ffc372)}
+.sniperCinematic.is3D.isPlaying .cinematicProgress{display:block}
+.sniperCinematic.is3D.isPlaying .cinematicProgress i{
+ animation:sniperTimelineProgress 4.9s linear both}
+.sniperCinematic.is3D.phaseFire .cinematicStage:before{content:"";position:absolute;
+ inset:0;z-index:5;background:radial-gradient(circle at 60% 50%,#ffe9b1bb,#ecbf5b2c 40%,transparent 75%);
+ pointer-events:none;animation:sniperFireScreen .28s ease-out both}
+@keyframes sniperScopeEntrance{
+ 0%{opacity:0;transform:scale(1.3)}45%{opacity:.45}
+ 72%{opacity:1;transform:scale(1)}98%{opacity:1}
+ 100%{opacity:0;transform:scale(.98)}
+}
+@keyframes sniperHUDEntrance{0%{opacity:0;transform:translateX(18px)}
+ 100%{opacity:1;transform:translateX(0)}}
+@keyframes sniperTimelineProgress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes sniperFireScreen{0%{opacity:.75}28%{opacity:.45}100%{opacity:0}}
+@media(max-width:660px){
+ .sniperSoundToggle{min-width:78px;padding-inline:9px!important;font-size:11px!important}
+ .cinematicScopeReadout{font-size:9px;letter-spacing:.06em;top:63%}
+ .cinematicScopeMarks{width:min(55vw,38vh)}
+ .cinematicSlowMo{padding:7px 11px;letter-spacing:.06em}
+ .sniperCinematic.is3D.phaseBullet .cinematicBulletHud{padding-right:4vw}
+}
+@media(prefers-reduced-motion:reduce){
+ .cinematicAimHud,.cinematicBulletHud,.cinematicProgress{display:none!important}
+}
