@@ -30,7 +30,7 @@ export const CARDS=[
  {id:"parking-ticket",name:"Parking Ticket",rarity:"Rare",mode:"instant",description:"Freeze the enemy's last-moved piece for one turn. Play a chess move afterward."},
  {id:"bishop-sniper",name:"Bishop Sniper",rarity:"Epic",mode:"sniper",description:"Fire once from off-board, revealing your diagonal. The second shot captures and teleports the bishop onto its target."},
  {id:"reserved-parking",name:"Reserved Parking",rarity:"Rare",mode:"square",description:"Reserve one empty enemy landing square; then make your normal move."},
- {id:"ceasefire",name:"Ceasefire",rarity:"Rare",mode:"instant",description:"Declare no captures for your move and the opponent's reply."},
+ {id:"ceasefire",name:"Ceasefire",rarity:"Rare",mode:"instant",description:"Pause all captures and off-board Bishop Sniper threats for your move and the opponent's reply. You must still escape ordinary chess check."},
  {id:"double-ko",name:"Double KO",rarity:"Epic",mode:"two",description:"Capture, but both the attacking and captured pieces disappear."},
  {id:"hit-and-run",name:"Hit and Run",rarity:"Epic",mode:"two",description:"Make a legal knight capture without leaving the starting square."},
  {id:"queens-abdication",name:"Queen's Abdication",rarity:"Epic",mode:"transform",description:"Transform your queen into a knight or bishop in place."},
@@ -45,6 +45,10 @@ export const CARDS=[
 const rand=n=>{if(n<1)throw Error("Invalid random range");const a=new Uint32Array(1);const limit=Math.floor(4294967296/n)*n;do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n};
 const getCard=id=>CARDS.find(c=>c.id===id);
 const current=s=>s.t===1?"w":"b";
+// Ceasefire prevents off-board sniper captures, so its virtual checking ray
+// must be disabled for king safety while the no-capture truce is active.
+// Keep the actual hidden snipers in room state; the truce never reveals them.
+const threateningSnipers=g=>g.effects?.ceasefire>0?null:g.snipers;
 export const CHECKMATE_RESCUE_MS=30_000;
 // Uniformly sample without replacement. No rarity weights or recent-hand preferences.
 export function randomHand(excludeIds=[]){
@@ -63,7 +67,7 @@ export const stateFen=g=>fen(g.s);
 export function available(g){
  const s=g.s,col=current(s);
  const extra=g.effects.delayedEp?.color===col?delayedEpMoves(g,col):[];
- const ordinary=[...legal(s,g.snipers),...extra];
+ const ordinary=[...legal(s,threateningSnipers(g)),...extra];
  const capsule=g.effects.timeCapsule;
  const allowed=ordinary.filter(m=>{
   const capture=s.b[m[1]]!=="."||m[3]==="ep";
@@ -79,7 +83,7 @@ export function available(g){
  if(g.effects.classifiedArmed?.color===col)return allowed;
  // Pawn Strike forbids forward pawn moves without exception, even if the player has no other moves.
  // Preserve the old fallback for other legacy temporary modifiers.
- return g.effects.pawnStrike>0?allowed:(allowed.length||!ordinary.length?allowed:ordinary);
+ return g.effects.pawnStrike>0||g.effects.ceasefire>0?allowed:(allowed.length||!ordinary.length?allowed:ordinary);
 }
 // Shot one removes a target but keeps the off-board bishop. Shot two lands the bishop
 // on the captured square and deactivates the sniper. Both are alternative chess turns.
@@ -98,7 +102,7 @@ export function sniperShots(g,color){
 // Every player with at least one unused card receives the same 30 seconds,
 // including if the remaining cards cannot possibly rescue their king.
 function startRescue(g,now=Date.now()){
- if(g.rescue||!g.players.b||available(g).length||!inCheck(g.s,g.s.t,g.snipers))return;
+ if(g.rescue||!g.players.b||available(g).length||!inCheck(g.s,g.s.t,threateningSnipers(g)))return;
  const color=current(g.s);
  if(sniperShots(g,color).length||!(g.hands[color]||[]).some(c=>!c.used))return;
  g.rescue={color,deadline:now+CHECKMATE_RESCUE_MS};
@@ -116,15 +120,20 @@ function resumeRescue(g){
 export function status(g,now=Date.now()){
  if(!g.players.b)return {done:false,text:"Waiting for opponent"};
  const moves=available(g),color=current(g.s),shots=sniperShots(g,color);
- if(!moves.length&&!shots.length&&inCheck(g.s,g.s.t,g.snipers)&&g.rescue?.color===color){
+ // Once a 30-second rescue begins, bonus cards never cancel its deadline.
+ // Even if Ceasefire temporarily silences a sniper check, the defender must
+ // finish a legal turn before the original rescue timer reaches zero.
+ if(g.rescue?.color===color){
   const paused=!!g.rescue.pausedAt;
   const remainingMs=Math.max(0,g.rescue.deadline-(paused?g.rescue.pausedAt:now));
   if(paused||remainingMs>0)return {
    done:false,winner:null,text:(color==="w"?"White":"Black")+" faces checkmate — card rescue window",
    rescue:{remainingMs,paused}
   };
+  return {done:true,winner:color==="w"?"b":"w",
+   text:(color==="w"?"Black":"White")+" wins by checkmate"};
  }
- return stateStatus(g.s,g.history,moves.length?moves:shots,g.snipers);
+ return stateStatus(g.s,g.history,moves.length?moves:shots,g.snipers,threateningSnipers(g));
 }
 
 // The player seeing a disguise receives only an apparent FEN. Actual piece
@@ -356,7 +365,7 @@ function relocationChoices(g){
   if(Object.values(g.classified||{}).some(mark=>mark&&mark.color!==current(s)&&idx(mark.square)===m[1]))continue;
   if(g.identityTheft&&g.identityTheft.color!==current(s)&&[g.identityTheft.a,g.identityTheft.b].some(k=>idx(k)===m[1]))continue;
   const homes=originalSquares(piece).filter(h=>s.b[idx(h)]===".").filter(h=>{
-   try{patch(s,{remove:[to],place:[[h,piece]]},g.snipers);return true;}catch{return false;}
+   try{patch(s,{remove:[to],place:[[h,piece]]},threateningSnipers(g));return true;}catch{return false;}
   });
   if(homes.length)out.push({from,to,homes});
  }
@@ -369,7 +378,7 @@ function delayedEpMoves(g,color){
  const w=g.epWindows?.[color],s=g.s;
  if(!w||current(s)!==color||g.moveCount!==w.readyAt)return [];
  if(s.b[idx(w.victim)]!==(color==="w"?"p":"P")||s.b[idx(w.target)]!==".")return [];
- return legal({...s,ep:idx(w.target)},g.snipers).filter(m=>m[3]==="ep"&&sq(m[1])===w.target);
+ return legal({...s,ep:idx(w.target)},threateningSnipers(g)).filter(m=>m[3]==="ep"&&sq(m[1])===w.target);
 }
 function promotionRecallChoices(g){
  const s=g.s,color=current(s),pool=g.capturedPieces?.[color]||{},options=[];
@@ -384,7 +393,7 @@ function promotionRecallChoices(g){
     if(home===to||s.b[idx(home)]!==".")continue;
     // Validate the complete alternative result, not a normal promoted piece.
     const nx=apply(s,m);nx.b[m[1]]=".";nx.b[idx(home)]=piece;
-    if(!inCheck(nx,s.t,g.snipers))homes.push({into:type,home});
+    if(!inCheck(nx,s.t,threateningSnipers(g)))homes.push({into:type,home});
    }
   }
   if(homes.length)options.push({from,to,options:homes});
@@ -398,7 +407,7 @@ function capsuleReturn(g,color){
  if(g.effects.freeze?.color===color&&g.effects.freeze.square===cap.square)return null;
  if(g.effects.reserved?.color===color&&g.effects.reserved.square===idx(cap.origin))return null;
  try{
-  patch(s,{remove:[sq(cap.square)],place:[[cap.origin,cap.piece]]},g.snipers);
+  patch(s,{remove:[sq(cap.square)],place:[[cap.origin,cap.piece]]},threateningSnipers(g));
   return {from:sq(cap.square),to:cap.origin};
  }catch{return null;}
 }
@@ -467,7 +476,7 @@ export function act(g,color,req,options={}){
   const cap=capsuleReturn(g,color);
   if(!cap)throw Error("Time Capsule return is no longer legal");
   const piece=s.b[idx(cap.from)];
-  const next=patch(s,{remove:[cap.from],place:[[cap.to,piece]]},g.snipers);
+  const next=patch(s,{remove:[cap.from],place:[[cap.to,piece]]},threateningSnipers(g));
   commit(g,color,next,"Time Capsule return: "+cap.from+" → "+cap.to,{color,from:idx(cap.from),to:idx(cap.to),square:idx(cap.to),piece});
   return;
  }
@@ -519,11 +528,14 @@ export function act(g,color,req,options={}){
  if(card.id==="the-analyst")throw Error("The Analyst is passive and analyzes turns automatically");
  const token=owned(g,color,req.card);
  const bonus=(description)=>{
+  if(copying&&inCheck(s,s.t,card.id==="ceasefire"?null:threateningSnipers(g)))throw Error("Counterfeit cannot end a turn while your king is in check");
   token.used=true;
   if(copying){
+   // Counterfeit spends the whole turn. Activate Ceasefire before committing
+   // so both checkmate validation and its remaining one-reply duration match.
+   if(card.id==="ceasefire")g.effects.ceasefire=2;
    commit(g,color,pass(s),"Counterfeit copied "+card.name+" · "+description);
    if(card.id==="pawn-strike")g.effects.pawnStrike=2;
-   if(card.id==="ceasefire")g.effects.ceasefire=2;
   }else{
    g.log.push({side:color,text:description});
    rememberCard(g,color,card.id);
@@ -564,50 +576,50 @@ export function act(g,color,req,options={}){
      on(a-16*s.t)&&s.b[a-16*s.t]===".";
    }
    if(card.id==="royal-uber"){
-    valid=p.toLowerCase()==="k"&&empty&&ax===2&&dy===0&&!inCheck(s,s.t,g.snipers)&&
+    valid=p.toLowerCase()==="k"&&empty&&ax===2&&dy===0&&!inCheck(s,s.t,threateningSnipers(g))&&
      s.b[a+Math.sign(dx)]===".";
     // Every square traversed by the king must be safe, not just the destination.
-    if(valid)patch(s,{remove:[req.from],place:[[sq(a+Math.sign(dx)),p]]},g.snipers);
+    if(valid)patch(s,{remove:[req.from],place:[[sq(a+Math.sign(dx)),p]]},threateningSnipers(g));
    }
    if(card.id==="knight-bishop-swap"){
     valid=p.toLowerCase()==="n"&&own(target)&&target.toLowerCase()==="b"&&jump(req.from,req.to);
     if(valid){remove=[req.from,req.to];place=[[req.from,target],[req.to,p]];}
    }
    if(!valid)throw Error("Choose a valid "+card.name+" move");
-   nx=patch(s,{remove,place,resetHalf},g.snipers);
+   nx=patch(s,{remove,place,resetHalf},threateningSnipers(g));
    if(card.id==="pawn-parkour")nx.ep=(a+b)/2;
    label=card.name+": "+req.from+" → "+req.to;
    last={color,from:a,to:b,square:b,piece:p};
   }else if(card.id==="pawn-sidestep"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="p"||!own(p)||s.b[b]!=="."||(a>>4)!==(b>>4)||Math.abs((a&7)-(b&7))!==1)throw Error("Choose a pawn and an empty neighboring file");
-  nx=patch(s,{remove:[req.from],place:[[req.to,p]],resetHalf:true},g.snipers);label="Pawn Sidestep: "+req.from+" → "+req.to;last={color,from:a,to:b};
+  nx=patch(s,{remove:[req.from],place:[[req.to,p]],resetHalf:true},threateningSnipers(g));label="Pawn Sidestep: "+req.from+" → "+req.to;last={color,from:a,to:b};
  }else if(card.id==="pawn-ram"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a],enemy=s.b[b],rear=b-16*s.t;
   if(!own(p)||p.toLowerCase()!=="p"||b!==a-16*s.t||enemy.toLowerCase()!=="p"||side(enemy)!==-s.t||!on(rear)||s.b[rear]!==".")throw Error("Pawn Ram needs two opposing pawns face-to-face with one empty square behind the enemy pawn");
-  nx=patch(s,{remove:[req.to],place:[[sq(rear),enemy]],resetHalf:true},g.snipers);
+  nx=patch(s,{remove:[req.to],place:[[sq(rear),enemy]],resetHalf:true},threateningSnipers(g));
   label="Pawn Ram: "+req.to+" → "+sq(rear);last=null;
  }else if(card.id==="identity-theft"){
   pair(req);
   const p=s.b[idx(req.from)],q=s.b[idx(req.to)];
   if(req.from===req.to||!own(p)||!own(q)||p.toLowerCase()==="k"||q.toLowerCase()==="k")throw Error("Choose two different friendly non-king pieces");
-  nx=patch(s,{},g.snipers);
+  nx=patch(s,{},threateningSnipers(g));
   g.identityTheft={color,a:req.from,b:req.to,pieceA:p,pieceB:q};
   label="Identity Theft: two allied pieces now look swapped to the opponent";
  }else if(card.id==="friendly-fire"){
   if(g.effects.ceasefire>0)throw Error("Ceasefire prevents captures, including Friendly Fire");
   const a=idx(req.from),b=idx(req.to),piece=s.b[a],target=s.b[b];
   if(!own(piece)||!own(target)||target.toLowerCase()==="k"||!friendlyCaptureShape(s,a,b))throw Error("Choose your attacking piece and a friendly non-king target in its normal capture path");
-  nx=patch(s,{remove:[req.from,req.to],place:[[req.to,piece]],resetHalf:true},g.snipers);
+  nx=patch(s,{remove:[req.from,req.to],place:[[req.to,piece]],resetHalf:true},threateningSnipers(g));
   label="Friendly Fire: "+req.from+" x "+req.to;last={color,from:a,to:b,square:b,piece};
  }else if(card.id==="colorblind-bishop"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   if(p.toLowerCase()!=="b"||!own(p)||s.b[b]!=="."||Math.abs((a&7)-(b&7))+Math.abs((a>>4)-(b>>4))!==1)throw Error("Choose your bishop and one orthogonally adjacent empty square");
-  nx=patch(s,{remove:[req.from],place:[[req.to,p]]},g.snipers);label="Colorblind Bishop: "+req.from+" → "+req.to;last={color,from:a,to:b};
+  nx=patch(s,{remove:[req.from],place:[[req.to,p]]},threateningSnipers(g));label="Colorblind Bishop: "+req.from+" → "+req.to;last={color,from:a,to:b};
  }else if(card.id==="knight-exchange"){
   const a=idx(req.from),b=idx(req.to);
   if(s.b[a].toLowerCase()!=="n"||!own(s.b[a])||s.b[b].toLowerCase()!=="p"||!own(s.b[b])||!jump(req.from,req.to))throw Error("Choose a friendly knight and pawn exactly one knight jump away");
-  nx=patch(s,{remove:[req.from,req.to],place:[[req.to,s.b[a]],[req.from,s.b[b]]],resetHalf:true},g.snipers);label="Knight Exchange: "+req.from+" ↔ "+req.to;last={color,from:a,to:b};
+  nx=patch(s,{remove:[req.from,req.to],place:[[req.to,s.b[a]],[req.from,s.b[b]]],resetHalf:true},threateningSnipers(g));label="Knight Exchange: "+req.from+" ↔ "+req.to;last={color,from:a,to:b};
  }else if(card.id==="double-ko"||card.id==="hit-and-run"){
   const a=idx(req.from),b=idx(req.to),p=s.b[a];
   const m=available(g).find(m=>m[0]===a&&m[1]===b&&!m[2]&&(s.b[b]!=="."||m[3]==="ep"));
@@ -615,22 +627,22 @@ export function act(g,color,req,options={}){
   if(card.id==="hit-and-run"&&p.toLowerCase()!=="n")throw Error("Hit and Run requires a knight");
   if(card.id==="double-ko"&&p.toLowerCase()==="k")throw Error("The king cannot use Double KO");
   const ep=m[3]==="ep"?[sq(b+16*s.t)]:[];
-  nx=patch(s,{remove:card.id==="double-ko"?[req.from,req.to,...ep]:[req.to,...ep],resetHalf:true},g.snipers);
+  nx=patch(s,{remove:card.id==="double-ko"?[req.from,req.to,...ep]:[req.to,...ep],resetHalf:true},threateningSnipers(g));
   label=card.name+": "+req.from+" x "+req.to;last={color,from:a,to:card.id==="hit-and-run"?a:b};
  }else if(card.id==="queens-abdication"){
   if(!isSquare(req.from)||!["b","n"].includes(req.into))throw Error("Select your queen and a new piece");
   const a=idx(req.from),p=s.b[a];
   if(p.toLowerCase()!=="q"||!own(p))throw Error("Select your queen");
   const transformed=s.t===1?req.into.toUpperCase():req.into;
-  nx=patch(s,{remove:[req.from],place:[[req.from,transformed]]},g.snipers);label="Queen's Abdication: "+req.from+" → "+req.into.toUpperCase();last={color,from:a,to:a};
+  nx=patch(s,{remove:[req.from],place:[[req.from,transformed]]},threateningSnipers(g));label="Queen's Abdication: "+req.from+" → "+req.into.toUpperCase();last={color,from:a,to:a};
  }else if(card.id==="voluntary-eviction"){
   if(!isSquare(req.from)||!own(s.b[idx(req.from)])||s.b[idx(req.from)].toLowerCase()==="k")throw Error("Choose your own non-king piece");
-  nx=patch(s,{remove:[req.from],resetHalf:true},g.snipers);label="Voluntary Eviction: "+req.from;
+  nx=patch(s,{remove:[req.from],resetHalf:true},threateningSnipers(g));label="Voluntary Eviction: "+req.from;
  }else if(card.id==="bishop-sniper"){
   if(!isSquare(req.from)||s.b[idx(req.from)].toLowerCase()!=="b"||!own(s.b[idx(req.from)]))throw Error("Choose one of your bishops");
   if(g.snipers[color])throw Error("You already have an off-board Bishop Sniper");
   const sniper=sniperPosition(req.from,req.direction);
-  nx=patch(s,{remove:[req.from]},g.snipers);
+  nx=patch(s,{remove:[req.from]},threateningSnipers(g));
   g.snipers[color]={...sniper,shots:0,revealed:false};
   label="Bishop Sniper deployed";last=null;
  }else if(card.id==="insurance-fraud"){
@@ -638,7 +650,7 @@ export function act(g,color,req,options={}){
   const a=idx(req.from),p=s.b[a];
   if(!own(p)||p.toLowerCase()==="k")throw Error("Choose a friendly non-king piece to insure");
   if(g.effects.insurance?.[color])throw Error("You already have an insured piece");
-  nx=patch(s,{},g.snipers);
+  nx=patch(s,{},threateningSnipers(g));
   effect={kind:"insurance",square:a,piece:p};
   label="Insurance Fraud: "+req.from+" is insured for two enemy turns";
  }else if(card.id==="prisoner-exchange"){
@@ -646,7 +658,7 @@ export function act(g,color,req,options={}){
   const white=[..."abcdefgh"].map(f=>f+"2").find(h=>s.b[idx(h)]==="."),
         black=[..."abcdefgh"].map(f=>f+"7").find(h=>s.b[idx(h)]===".");
   if(!white||!black)throw Error("Both colors need an empty original pawn square");
-  nx=patch(s,{place:[[white,"P"],[black,"p"]],resetHalf:true},g.snipers);
+  nx=patch(s,{place:[[white,"P"],[black,"p"]],resetHalf:true},threateningSnipers(g));
   effect={kind:"prisoner-exchange"};
   label="Prisoner Exchange: revived White "+white+" and Black "+black;
  }else if(card.id==="relocation-order"){
@@ -655,7 +667,7 @@ export function act(g,color,req,options={}){
   const choice=relocationChoices(g).find(m=>m.from===req.from&&m.to===req.to);
   if(!choice||!choice.homes.includes(req.dest))throw Error("Choose a legal capture target and an empty original starting square");
   const target=s.b[idx(req.to)];
-  nx=patch(s,{remove:[req.to],place:[[req.dest,target]]},g.snipers);
+  nx=patch(s,{remove:[req.to],place:[[req.dest,target]]},threateningSnipers(g));
   label="Relocation Order: "+req.to+" → "+req.dest;
  }else if(card.id==="delayed-en-passant"){
   const candidates=delayedEpMoves(g,color);
@@ -697,7 +709,7 @@ export function act(g,color,req,options={}){
   nx=apply(s,m);
   nx.b[m[1]]=".";
   nx.b[idx(req.home)]=color==="w"?req.into.toUpperCase():req.into;
-  if(inCheck(nx,s.t,g.snipers))throw Error("Your king would be in check");
+  if(inCheck(nx,s.t,threateningSnipers(g)))throw Error("Your king would be in check");
   nx.half=0;
   label="Promotion Recall: "+req.from+" → "+req.to+" · "+req.into.toUpperCase()+" revived at "+req.home;
   last={color,from:m[0],to:m[1],square:m[1],piece:"."};
@@ -730,11 +742,12 @@ export function act(g,color,req,options={}){
   g.effects.reserved={color:color==="w"?"b":"w",square:idx(req.to)};
   bonus("Reserved Parking: "+req.to+" · bonus action");return;
  }else if(card.id==="ceasefire"){
-  if(inCheck(s,s.t,g.snipers))throw Error("Cannot use Ceasefire while in check");
+  // Valid in check: this silences only off-board sniper attacks. It is
+  // still a bonus action, so the defender must complete a legal move.
   g.effects.ceasefire=2;
   bonus("Ceasefire · bonus action");return;
  }else if(card.id==="black-market"){
-  if(inCheck(s))throw Error("Cannot skip a turn in check");
+  if(inCheck(s,s.t,threateningSnipers(g)))throw Error("Cannot skip a turn in check");
   if(!Number.isInteger(req.slot)||req.slot<0||req.slot>=3)throw Error("Choose another card slot");
   const selected=g.hands[color][req.slot];if(!selected||selected.used||selected.id==="black-market")throw Error("Choose another unused card");
   const pool=CARDS.filter(c=>c.id!==selected.id&&!g.hands[color].some(h=>h.id===c.id));

@@ -88,11 +88,13 @@ export function insufficient(s){
  const p=[];for(let i=0;i<128;i++)if(on(i)&&s.b[i]!=="."&&s.b[i].toLowerCase()!=="k")p.push([s.b[i].toLowerCase(),((i>>4)+(i&7))%2]);
  return !p.length||(p.length===1&&["b","n"].includes(p[0][0]))||(p.every(x=>x[0]==="b")&&new Set(p.map(x=>x[1])).size===1);
 }
-export function stateStatus(s,history=[s],moveList=legal(s),snipers=null){
- if(!moveList.length){const mate=inCheck(s,s.t,snipers);return {done:true,winner:mate?(s.t===1?"b":"w"):null,text:mate?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};}
+// Actual snipers control material/repetition rules; attackingSnipers can be suppressed
+// temporarily by Ceasefire without deleting hidden snipers from the position.
+export function stateStatus(s,history=[s],moveList=legal(s),snipers=null,attackingSnipers=snipers){
+ if(!moveList.length){const mate=inCheck(s,s.t,attackingSnipers);return {done:true,winner:mate?(s.t===1?"b":"w"):null,text:mate?(s.t===1?"Black":"White")+" wins by checkmate":"Draw by stalemate"};}
  if(!snipers?.w&&!snipers?.b&&insufficient(s))return {done:true,winner:null,text:"Draw by insufficient material"};
  const repeats=history.filter(p=>positionKey(p)===positionKey(s,snipers)).length;
  if(s.half>=150)return {done:true,winner:null,text:"Draw by 75-move rule"};
  if(repeats>=5)return {done:true,winner:null,text:"Draw by fivefold repetition"};
- return {done:false,winner:null,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s,s.t,snipers)?" · CHECK":"")};
+ return {done:false,winner:null,text:(s.t===1?"White":"Black")+" to move"+(inCheck(s,s.t,attackingSnipers)?" · CHECK":"")};
 }
