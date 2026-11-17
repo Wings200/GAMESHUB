@@ -567,7 +567,7 @@ export function act(g,color,req,options={}){
      s.b[a-16*s.t]==="."&&s.b[a-32*s.t]===".";
    }
    if(card.id==="pawn-headbutt"){
-    valid=pawn&&dx===0&&forward&&!isFinal&&side(target)===-s.t&&target.toLowerCase()!=="k"&&g.effects.ceasefire===0;
+    valid=pawn&&dx===0&&forward&&!isFinal&&side(target)===-s.t&&target.toLowerCase()!=="k"&&!(g.effects.ceasefire>0);
     if(valid)remove.push(req.to);
    }
    if(card.id==="pawn-parkour"){
@@ -586,6 +586,7 @@ export function act(g,color,req,options={}){
    }
    if(!valid)throw Error("Choose a valid "+card.name+" move");
    nx=patch(s,{remove,place,resetHalf},g.snipers);
+   if(card.id==="pawn-parkour")nx.ep=(a+b)/2;
    label=card.name+": "+req.from+" → "+req.to;
    last={color,from:a,to:b,square:b,piece:p};
   }else if(card.id==="pawn-sidestep"){
@@ -758,7 +759,6 @@ export function act(g,color,req,options={}){
   // Match the standard double-step's one-reply en-passant opportunity.
   g.epWindows||={w:null,b:null};
   g.epWindows[color==="w"?"b":"w"]={target:sq((idx(req.from)+idx(req.to))/2),victim:req.to,readyAt:g.moveCount+2};
-  g.s.ep=(idx(req.from)+idx(req.to))/2;
  }
  if(!copying)rememberCard(g,color,card.id);
 }
