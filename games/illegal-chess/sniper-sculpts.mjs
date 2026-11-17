@@ -83,7 +83,7 @@ function builder(){
   shapeExtrude(contour,.43);
  }
  const finish=()=>new Float32Array(vertices);
- return {lathe,shapeExtrude,horse,finish};
+ return {lathe,shapeExtrude,horse,tri,quad,finish};
 }
 const foundation=[
  [.01,0],[.36,.014],[.41,.03],[.46,.052],[.47,.087],
@@ -148,23 +148,16 @@ export function buildSculptMeshes(){
  add("sculptPawn",b=>b.lathe(pawnSilhouette,{segments:40,subdiv:3}));
  add("sculptRook",b=>{
   b.lathe(rookSilhouette,{segments:40,subdiv:3});
-  // Eight crenellated turret teeth mesh, not eight independent cubes.
+  // A crenellated circular rook turret with raised curved merlons.
   for(let i=0;i<8;i++){
-   const a=i*TAU/8+.09,bth=a+TAU/8*.64;
-   const pts=[];
-   for(const [rad,y] of [[.29,1.17],[.42,1.17],[.42,1.37],[.29,1.37]]){
-    pts.push([rad*Math.cos(a),y,rad*Math.sin(a)],
-     [rad*Math.cos(bth),y,rad*Math.sin(bth)]);
-   }
-   const faces=[[0,2,6,4],[1,5,7,3],[0,1,3,2],[4,6,7,5],[2,3,7,6],[0,4,5,1]];
-   const norm3=v=>{const l=Math.hypot(...v)||1;return v.map(n=>n/l);};
-   const sub3=(u,v)=>u.map((n,j)=>n-v[j]);
-   const cross3=(u,v)=>[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
-   // Reuse shapeExtrude for a thin vertical ring tooth silhouette by rotating
-   // the geometry around its own upright turret axis.
-   const tooth=[[.29*Math.cos(a),1.17],[.42*Math.cos(a),1.17],
-    [.42*Math.cos(a),1.37],[.29*Math.cos(a),1.37]];
-   // Teeth are accurately located in 3D with a separate ring sweep below.
+   const a=i*TAU/8+.1,bth=a+TAU/8*.68;
+   const point=(rad,th,y)=>[rad*Math.cos(th),y,rad*Math.sin(th)];
+   const A=point(.28,a,1.15),B=point(.43,a,1.15);
+   const C=point(.43,bth,1.15),D=point(.28,bth,1.15);
+   const E=point(.28,a,1.39),F=point(.43,a,1.39);
+   const G=point(.43,bth,1.39),H=point(.28,bth,1.39);
+   for(const face of [[A,B,F,E],[B,C,G,F],[C,D,H,G],[D,A,E,H],[E,F,G,H]])
+    b.quad(...face);
   }
  });
  add("sculptKnight",b=>{
