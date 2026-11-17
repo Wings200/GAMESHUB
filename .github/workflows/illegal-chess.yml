@@ -28,6 +28,7 @@ jobs:
       - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check games/illegal-chess/cinematic.mjs
       - run: node --check games/illegal-chess/sniper-3d.mjs
+      - run: node --check games/illegal-chess/sniper-sculpts.mjs
       - run: node --check games/illegal-chess/stockfish-review.mjs
       - run: node --check games/illegal-chess/stockfish-cdn-worker.js
       - run: node --check 'functions/api/illegal-chess/[[path]].js'
@@ -55,7 +56,7 @@ jobs:
           assert.match(client,/analystDeviceScore/,"Device capability-based election must be present");
           assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
-          assert.match(html,/ALPHA 0\.9\.3/,"Real 3D Bishop Sniper V2 release must load");
+          assert.match(html,/ALPHA 0\.9\.4/,"Sculpted Bishop Sniper V3 release must load");
           const api=fs.readFileSync("functions/api/illegal-chess/[[path]].js","utf8");
           assert.match(api,/analystRequest/,"Server-authoritative Analyst lease and review endpoint");
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
@@ -84,13 +85,28 @@ jobs:
           assert.match(client,/createSniper3D/,"The 3D renderer must be invoked by server-triggered shot");
           assert.match(client,/sniperRenderer.play\(event\)/,"A first shot must start the 3D camera");
           assert.match(client,/cinematic\.mjs\?v=2/,"Updated V2 runtime events must avoid stale cache");
-          assert.match(client,/sniper-3d\.mjs\?v=1/,"3D module must be loaded");
+          assert.match(client,/sniper-3d\.mjs\?v=2/,"Sculpted V3 renderer must be loaded");
           const real3d=fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8");
           assert.match(real3d,/getContext\("webgl"/,"Actual GPU 3D, not fake 2D scaling");
           assert.match(real3d,/SNIPER_3D_DURATION=4900/,"Long close-up, bullet-follow and impact");
           assert.match(real3d,/cinematicCamera\(event,ms\)/,"Physical camera positions must animate");
           assert.match(real3d,/drawWorld\(gl,graphics,event,elapsed,w,h\)/,"GPU frames must contain 3D scene");
           assert.match(real3d,/Chrome OS\|Chromebook/,"Chromebook performance profile is enabled");
+          assert.match(client,/sniper-3d\.mjs\?v=2/,"Sculpted model renderer must refresh cached V2 renderer");
+          assert.match(real3d,/buildSculptMeshes\(\)/,"New sculpt meshes are merged into the GPU buffer");
+          assert.match(real3d,/d\("sculptBishop"/,"Bishop cannot be a generic cylinder in the cinematic");
+          assert.match(real3d,/sculptPawn/,"Captured pawn has its own 3D model");
+          assert.match(real3d,/sculptRook/,"Captured rook has its own 3D model");
+          assert.match(real3d,/sculptKnight/,"Captured knight has its own 3D model");
+          assert.match(real3d,/sculptQueen/,"Captured queen has its own 3D model");
+          assert.match(real3d,/sculptKing/,"Captured king has its own 3D model");
+          assert.doesNotMatch(real3d,/d\("chess"/,"Generic one-size-fits-all victim model is retired");
+          const sculpt=fs.readFileSync("games/illegal-chess/sniper-sculpts.mjs","utf8");
+          assert.match(sculpt,/function buildSculptMeshes|export function buildSculptMeshes/,"Detailed chess geometry generator required");
+          assert.match(sculpt,/sculptRifleStock/,"Rifle stock must have its own shaped mesh");
+          assert.match(sculpt,/sculptScope/,"Scope must have its own shaped mesh");
+          assert.match(sculpt,/sculptKnightMane/,"Knight needs a carved mane profile");
+          assert.match(sculpt,/Engraved mitre slot/,"Bishop mitre must have a sculpted groove");
           assert.match(html,/id="cinematicTargetPiece"/,"Captured piece art must be drawn");
           assert.match(client,/syncSniperCinematics\(\)/,"Only server-recorded actions trigger cinematics");
           assert.match(client,/nextCinematic\(game\?\.cinematics,cinematicSeen\)/,"Opponent polling must dedupe shots");

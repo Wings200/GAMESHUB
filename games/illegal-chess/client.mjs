@@ -1,6 +1,6 @@
 import {cardImage} from "./art.mjs";
 import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
-import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=1";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=2";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);

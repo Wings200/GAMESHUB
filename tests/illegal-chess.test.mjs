@@ -6,6 +6,7 @@ import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-c
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
 import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS} from "../games/illegal-chess/cinematic.mjs";
 import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D} from "../games/illegal-chess/sniper-3d.mjs";
+import {buildSculptMeshes,sculptAssetCatalog} from "../games/illegal-chess/sniper-sculpts.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -902,4 +903,44 @@ test("3D replay resolves both bishop colors and all cardinal firing diagonals",(
  }
  assert.equal(sniperPath({origin:"a1",target:"a1"}),null);
  assert.equal(cinematicCamera({origin:"invalid",target:"g7"},100),null);
+});
+
+test("V3 Bishop Sniper has 13 actual sculpted 3D meshes, not a shared target block",()=>{
+ const meshes=buildSculptMeshes();
+ const expected=sculptAssetCatalog();
+ assert.equal(expected.length,13);
+ for(const type of expected){
+  const mesh=meshes[type];
+  assert.ok(mesh instanceof Float32Array,"Missing 3D geometry for "+type);
+  assert.equal(mesh.length%18,0,"Triangles need 3 vertices with positions/normals for "+type);
+  assert.ok(mesh.length>=400,"Model needs enough 3D detail: "+type);
+  assert.ok([...mesh].every(Number.isFinite),"No NaN/Infinity vertices for "+type);
+ }
+ const categories=["Bishop","Pawn","Rook","Knight","Queen","King"];
+ assert.ok(categories.every(x=>meshes["sculpt"+x]));
+ assert.ok(new Set(categories.map(x=>meshes["sculpt"+x].length)).size>=5,
+  "Each chess piece type must have its own distinct geometry, not reused primitive blocks");
+ assert.ok(meshes.sculptBishop.length/18>6000,"High detail bishops need a curved mitre and collar");
+ assert.ok(meshes.sculptPawn.length/18>4000,"Captured pawn needs an actual rounded head");
+ assert.ok(meshes.sculptRook.length/18>4000,"Captured rook needs an actual crenellated turret");
+ assert.ok(meshes.sculptKnight.length/18>2000,"Knight needs a carved horse head");
+});
+test("V3 models use real vertices and normals and have physically distinct silhouettes",()=>{
+ const meshes=buildSculptMeshes(),bounds=mesh=>{
+  const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+  for(let i=0;i<mesh.length;i+=6)for(let axis=0;axis<3;axis++){
+   min[axis]=Math.min(min[axis],mesh[i+axis]);
+   max[axis]=Math.max(max[axis],mesh[i+axis]);
+  }
+  return {width:max[0]-min[0],height:max[1]-min[1],depth:max[2]-min[2]};
+ };
+ const bishop=bounds(meshes.sculptBishop),pawn=bounds(meshes.sculptPawn),
+  rook=bounds(meshes.sculptRook),knight=bounds(meshes.sculptKnight);
+ assert.ok(bishop.height>pawn.height+0.5,"Bishop mitre must stand much higher than a pawn's head");
+ assert.ok(knight.height>rook.height,"Sculpted horse-head knight must be recognizable");
+ assert.ok(bishop.width>.8&&bishop.depth>.8&&bishop.height>1.75);
+ const stock=bounds(meshes.sculptRifleStock),scope=bounds(meshes.sculptScope);
+ assert.ok(stock.width>1.5,"Sniper rifle needs a properly shaped long stock");
+ assert.ok(stock.height>.5,"Sniper rifle needs a meaningful three-dimensional silhouette");
+ assert.ok(scope.height>.8,"Scope mesh must have objective bell and eyepiece");
 });
