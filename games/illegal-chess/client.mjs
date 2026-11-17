@@ -1,4 +1,4 @@
-import {cardImage} from "./art.mjs";
+import {cardImage} from "./art.mjs?v=3";
 import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
 import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
