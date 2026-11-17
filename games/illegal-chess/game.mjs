@@ -531,9 +531,11 @@ export function act(g,color,req,options={}){
   if(copying&&inCheck(s,s.t,card.id==="ceasefire"?null:threateningSnipers(g)))throw Error("Counterfeit cannot end a turn while your king is in check");
   token.used=true;
   if(copying){
+   // Counterfeit spends the whole turn. Activate Ceasefire before committing
+   // so both checkmate validation and its remaining one-reply duration match.
+   if(card.id==="ceasefire")g.effects.ceasefire=2;
    commit(g,color,pass(s),"Counterfeit copied "+card.name+" · "+description);
    if(card.id==="pawn-strike")g.effects.pawnStrike=2;
-   if(card.id==="ceasefire")g.effects.ceasefire=2;
   }else{
    g.log.push({side:color,text:description});
    rememberCard(g,color,card.id);
