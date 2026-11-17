@@ -674,9 +674,9 @@ test("Stockfish 19 defaults to full NNUE browser engine, then lite/ASM backups",
  const sources=engineSources();
  assert.equal(sources.length,7);
  assert.equal(sources[0].quality,"full","The strongest full neural network must be preferred");
- assert.match(sources[0].url,/stockfish-cdn-worker\\.js\\?cdn=jsdelivr&engine=full#/);
- assert.match(decodeURIComponent(sources[0].url.split("#")[1]),
-  /^https:\\/\\/cdn\\.jsdelivr\\.net\\/npm\\/stockfish@19\\.0\\.1\\/bin\\/stockfish-19-single\\.wasm$/);
+ assert.ok(sources[0].url.includes("stockfish-cdn-worker.js?cdn=jsdelivr&engine=full#"));
+ assert.equal(decodeURIComponent(sources[0].url.split("#")[1]),
+  "https://cdn.jsdelivr.net/npm/stockfish@19.0.1/bin/stockfish-19-single.wasm");
  assert.equal(sources[1].url,"/api/illegal-chess/stockfish-19-single.js");
  assert.equal(sources[1].quality,"full");
  assert.match(sources[2].url,/cdn=unpkg&engine=full#/);
