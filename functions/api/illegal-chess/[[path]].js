@@ -60,7 +60,7 @@ function analystRequest(g,hashed,data,now=Date.now()){
   const quality=data.score>=70?"full":"lite";
   const same=current&&lease.hash===hashed&&lease.id===data.clientId;
   if(!current||same||data.score>lease.score+1){
-   g.analystLease={hash:hashed,id:data.clientId,score:data.score,quality,expires:now+ANALYST_LEASE_MS,readyAt:same?lease.readyAt:now+1800};
+   g.analystLease={hash:hashed,id:data.clientId,score:data.score,quality,expires:now+ANALYST_LEASE_MS,readyAt:same?lease.readyAt:now+(data.score<=15?4500:1800)};
    return true;
   }
   return false;
