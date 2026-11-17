@@ -1,6 +1,15 @@
 # ILLEGAL CHESS — Visual and rules roadmap
 
-## Live in Alpha 0.9.7
+## Public servers and Quick Play (Alpha 0.10.0)
+
+- **Quick Play:** Players join the oldest available public room or automatically host a new public room if none is open. Guests take the second seat. Match rules and 26-card draws are identical to standard private games; public games are not sniper/Analyst test mode.
+- **Public lobby browser:** All visitors can view current *waiting* public games (code, age, and 1/2 seat count), manually join one, or refresh the list (automatically every 7 seconds). Joining is checked by the server, not the browser. A room vanishes from the list once filled.
+- **No private-room exposure:** Private games never enter the public index. Listing responses contain no player token, token hash, chess state, hands, or engine analysis. Public room codes are intentionally visible and anyone may join; private code-based invitations continue to work unchanged.
+- **Race-safe matchmaking:** Room joining uses an optimistic D1 version check so simultaneous joiners cannot both claim the second seat. The losing browser can refresh and choose a different room.
+- **Active hosts only:** A public waiting host sends an authenticated presence heartbeat every 12 seconds while the match is open. A public room is hidden after 45 seconds without a heartbeat, preventing abandoned tab listings. The waiting host can unlist by leaving the room; existing private room data is never deleted by unlisting.
+- **Current scope:** This is discoverable public **two-player matchmaking**, not dedicated geographically distributed chess servers, spectator access, user accounts, skill ratings, ranked matchmaking, persistent chat, or WebSockets. Public D1 room state and player authentication remain the same as existing private multiplayer.
+
+## Live in Alpha 0.10.0
 
 - All actions that need choices or confirmations use the on-page `#modalShade` dialog. No `window.prompt`, `window.confirm` or `window.alert`.
 - Every implemented card has original SVG illustration displayed in **both** hands. Used cards remain displayed under a prominent crossed-out USED overlay.
