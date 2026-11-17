@@ -1,6 +1,7 @@
 // GAMESHUB Pages Function: two-player Illegal Chess rooms backed by existing D1 DB.
 // POST /api/illegal-chess/{create,join,state,action}; no unauthenticated spectator endpoints.
 import {newGame,joinGame,act,playerView} from "../../../games/illegal-chess/game.mjs";
+import {classifyStockfish} from "../../../games/illegal-chess/stockfish-review.mjs";
 
 const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 // Whitelisted, unmodified Stockfish.js GPL-3.0 engine assets. Proxied through
@@ -35,6 +36,64 @@ export async function serveStockfishAsset(path,fetcher=fetch){
  return reply({error:"Both Stockfish CDNs are currently unavailable"},503);
 }
 
+const ANALYST_LEASE_MS=20000;
+const analystIdValid=id=>typeof id==="string"&&/^[a-f0-9-]{20,64}$/.test(id);
+const analystScoreValid=score=>Number.isInteger(score)&&score>=1&&score<=200;
+const analystResultValid=(r,uci)=>{
+ if(!r||typeof r!=="object"||!r.score||typeof r.score!=="object")return false;
+ const {score,bestmove}=r;
+ return /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(bestmove||"")&&
+  (uci?bestmove===uci:true)&&["cp","mate"].includes(score.kind)&&
+  Number.isInteger(score.value)&&Math.abs(score.value)<=40000&&
+  Number.isInteger(score.depth)&&score.depth>=1&&score.depth<=80;
+};
+function analystRequest(g,hashed,data,now=Date.now()){
+ if(!g.players.b||!g.hands||!["w","b"].some(c=>g.hands[c].some(h=>h.id==="the-analyst"&&!h.used)))throw Error("Analyst is not active");
+ if(!analystIdValid(data.clientId))throw Error("Invalid Analyst client identity");
+ const lease=g.analystLease;
+ const current=lease&&lease.expires>now;
+ if(data.intent==="register"){
+  if(!analystScoreValid(data.score))throw Error("Invalid Analyst device capability");
+  // Prefer the stronger connected device, but automatically take over if it
+  // disconnects. A Chromebook scores low and does not start a heavy worker
+  // while a more capable desktop remains connected.
+  const quality=data.score>=70?"full":"lite";
+  const same=current&&lease.hash===hashed&&lease.id===data.clientId;
+  if(!current||same||data.score>lease.score+1){
+   g.analystLease={hash:hashed,id:data.clientId,score:data.score,quality,expires:now+ANALYST_LEASE_MS};
+   return true;
+  }
+  return false;
+ }
+ if(data.intent==="retry"){
+  let changed=false;
+  for(const entry of g.analystLog||[])if(entry.status==="unavailable"){
+   entry.status="pending";entry.grade="Analyzing";entry.reason="Waiting for shared Stockfish review.";
+   entry.symbol=null;changed=true;
+  }
+  g.analystLease=null;
+  return changed||!!lease;
+ }
+ if(!current||lease.hash!==hashed||lease.id!==data.clientId)throw Error("Analyst worker changed; your result is not the shared result");
+ const entry=(g.analystLog||[]).find(e=>e.turn===data.turn);
+ if(!entry||entry.status!=="pending")throw Error("Analyst turn was already graded or is no longer available");
+ if(data.intent==="failure"){
+  entry.status="unavailable";entry.grade="Unavailable";entry.symbol=null;
+  entry.reason="Stockfish unavailable on the analyzing device: "+String(data.message||"worker failed").slice(0,180);
+  return true;
+ }
+ if(data.intent!=="submit")throw Error("Unknown Analyst command");
+ if(!entry.beforeFen||!entry.uci||!analystResultValid(data.best)||!analystResultValid(data.played,entry.uci))
+  throw Error("Invalid Stockfish review payload");
+ const rated=classifyStockfish(entry,data.best,data.played);
+ Object.assign(entry,{
+  status:"done",grade:rated.grade,symbol:rated.symbol,name:rated.name,
+  estimated:false,loss:rated.loss,depth:rated.depth,reason:rated.reason,
+  engine:lease.quality==="full"?"Stockfish 19 · Full NNUE":"Stockfish 19 · Lite NNUE",
+  reviewedAt:now
+ });
+ return true;
+}
 const codePattern=/^[A-HJ-NP-Z2-9]{6}$/;
 const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode=()=>{const a=new Uint8Array(6);crypto.getRandomValues(a);return [...a].map(n=>alphabet[n%alphabet.length]).join("");};
@@ -58,7 +117,7 @@ export async function onRequest(context){
  if(!context.env.DB)return reply({error:"GAMESHUB D1 DB binding is unavailable"},503);
  try{
   const path=new URL(context.request.url).pathname.split("/").filter(Boolean).pop();
-  if(!["create","join","state","action"].includes(path))return reply({error:"Unknown endpoint"},404);
+  if(!["create","join","state","action","analyst"].includes(path))return reply({error:"Unknown endpoint"},404);
   const data=await json(context.request),db=context.env.DB;
   await init(db);
   if(path==="create"){
@@ -85,6 +144,17 @@ export async function onRequest(context){
   const hashed=await hash(tokenValue(data.token)),player=getIdentity(game,hashed);
   if(!player)return reply({error:"Invalid player session"},403);
   if(path==="state")return reply(playerView(game,player));
+  if(path==="analyst"){
+   let mutated;
+   try{mutated=analystRequest(game,hashed,data);}
+   catch(e){return reply({error:e.message},400);}
+   if(mutated){
+    const saved=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?")
+     .bind(JSON.stringify(game),Date.now(),code,r.version).run();
+    if(saved.meta?.changes!==1)return reply({error:"Analyst state changed; retry"},409);
+   }
+   return reply({ok:true,view:playerView(game,getIdentity(game,hashed))});
+  }
   try{act(game,player,data.action)}catch(e){return reply({error:safely(e)},400)}
   const result=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?").bind(JSON.stringify(game),Date.now(),code,r.version).run();
   if(result.meta?.changes!==1)return reply({error:"Move conflict; refresh and try again"},409);
