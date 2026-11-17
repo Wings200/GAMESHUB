@@ -301,3 +301,50 @@ a{color:inherit;text-decoration:none}[hidden]{display:none!important}
  .cinematicCrosshair,.cinematicMuzzle,.cinematicBullet,.cinematicHit{display:none}
  .board .square.sniperWarpTarget{box-shadow:inset 0 0 0 4px #ad7fd4}
 }
+
+
+/* Alpha 0.9.3 · Actual WebGL 3D sniper replay. The 2D SVG remains a safe
+   fallback for devices with no GPU/WebGL or users preferring reduced motion. */
+.cinematic3DCanvas{position:absolute;inset:0;width:100%;height:100%;display:none;
+ z-index:1;pointer-events:none;touch-action:none}
+.sniperCinematic.is3D .cinematic3DCanvas{display:block}
+.sniperCinematic.is3D.isPlaying{animation:cinematic3DScreen 4.9s linear both}
+.sniperCinematic.is3D .cinematicBackdrop,
+.sniperCinematic.is3D .cinematicGround,
+.sniperCinematic.is3D .cinematicBishop,
+.sniperCinematic.is3D .cinematicCrosshair,
+.sniperCinematic.is3D .cinematicMuzzle,
+.sniperCinematic.is3D .cinematicBullet,
+.sniperCinematic.is3D .cinematicTarget{display:none!important}
+.sniperCinematic.is3D .cinematicStage{border:clamp(5px,1.2vw,14px) solid #080d17b0;
+ box-shadow:inset 0 0 80px #000a}
+.sniperCinematic.is3D .cinematicScanlines{z-index:3;opacity:.12}
+.sniperCinematic.is3D .cinematicCopy{z-index:5;max-width:90%;pointer-events:none;
+ top:clamp(26px,7vh,92px);transition:opacity .2s}
+.sniperCinematic.is3D .cinematicCopy h2{font-size:clamp(35px,6vw,86px)}
+.sniperCinematic.is3D .cinematicCopy p{color:#bce9f6;font-size:clamp(11px,1.3vw,16px)}
+.sniperCinematic.is3D.phaseBullet .cinematicCopy{opacity:.7}
+.sniperCinematic.is3D.phaseBullet .cinematicCopy h2{font-size:clamp(22px,4vw,48px)}
+.sniperCinematic.is3D.phaseImpact .cinematicCopy h2{color:#fbd7b6}
+.sniperCinematic.is3D .cinematicFooter{z-index:5;pointer-events:none}
+.sniperCinematic.is3D.phaseBullet .cinematicFooter{
+ color:#c7f3ff;border-top-color:#76bce3a3}
+.sniperCinematic.is3D.phaseImpact .cinematicStage:after{
+ content:"";position:absolute;inset:0;z-index:4;pointer-events:none;
+ background:radial-gradient(circle at 50% 53%,#fff5bd9c,#f6a66926 50%,transparent 80%);
+ animation:cinematic3DHitFlash .55s ease-out both}
+@keyframes cinematic3DScreen{
+ 0%{opacity:0}5%,91%{opacity:1}100%{opacity:0}
+}
+@keyframes cinematic3DHitFlash{
+ 0%{opacity:.85}22%{opacity:.45}100%{opacity:0}
+}
+@media(max-width:660px){
+ .sniperCinematic.is3D .cinematicCopy{top:9%;left:6%;max-width:92%}
+ .sniperCinematic.is3D .cinematicCopy h2{font-size:clamp(29px,9vw,59px)}
+ .sniperCinematic.is3D.phaseBullet .cinematicCopy h2{font-size:clamp(22px,6vw,35px)}
+ .sniperCinematic.is3D .cinematicFooter{bottom:5%;font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .sniperCinematic.is3D .cinematic3DCanvas{display:none}
+}

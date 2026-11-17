@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=13">
+<link rel="stylesheet" href="./style.css?v=14">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.9.2</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.9.3</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -79,8 +79,9 @@
  </section>
 </main>
 <footer class="footer">ILLEGAL CHESS · A GAMESHUB GAME · PRIVATE MULTIPLAYER ALPHA</footer>
-<!-- Lightweight, self-contained tactical replay. No video, canvas, or 3D engine. -->
+<!-- True real-time 3D Bishop Sniper V2, with lightweight V1 visual fallback. -->
 <div id="sniperCinematic" class="sniperCinematic" hidden aria-hidden="true">
+ <canvas id="sniper3DCanvas" class="cinematic3DCanvas" aria-hidden="true"></canvas>
  <div class="cinematicBackdrop"></div>
  <div class="cinematicScanlines"></div>
  <div class="cinematicStage">
@@ -155,6 +156,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=14"></script>
+<script type="module" src="./client.mjs?v=15"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
 import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS} from "../games/illegal-chess/cinematic.mjs";
+import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D} from "../games/illegal-chess/sniper-3d.mjs";
 const room=()=>{
  const g=newGame("ABCDEF","white-secret-hash");joinGame(g,"black-secret-hash");
  // General engine tests must never hang on a random Objection reaction.
@@ -811,7 +812,7 @@ test("Bishop Sniper cinematic V1 has a shared first-shot bullet and second-shot 
  assert.deepEqual(playerView(g,"w").cinematics,playerView(g,"b").cinematics,
   "Both players receive the exact same server-recorded shot");
  assert.equal(cinematicCaption(first).fullScreen,true);
- assert.equal(cinematicCaption(first).duration,1550);
+ assert.equal(cinematicCaption(first).duration,4900);
  assert.equal(cinematicCaption(first).detail,"C3 · NE · TARGET G7");
  move(g,"b","d8","e8");
  act(g,"w",{type:"sniper-shot",to:"f6"});
@@ -849,4 +850,56 @@ test("Cinematic helper rejects unexpected messages and enforces trusted square/s
   assert.equal(nextCinematic([bad],0).event,null);
  }
  assert.equal(cinematicCaption(good).title,"BISHOP SNIPER");
+});
+
+test("Bishop Sniper V2 is genuine multi-stage 3D camera choreography, not a 1-second UI flash",()=>{
+ assert.equal(SNIPER_3D_DURATION,4900);
+ assert.deepEqual(SNIPER_3D_PHASES.map(x=>x.name),["closeup","fire","bullet","impact","return"]);
+ assert.ok(SNIPER_3D_PHASES.every((x,i)=>x.end-x.start>=250),"Every camera segment must remain visible");
+ assert.equal(shotPhase(0).name,"closeup");
+ assert.equal(shotPhase(1450).name,"fire");
+ assert.equal(shotPhase(2500).name,"bullet");
+ assert.equal(shotPhase(3950).name,"impact");
+ assert.equal(shotPhase(4700).name,"return");
+ assert.equal(shotPhase(4999).name,"return");
+ assert.equal(SNIPER_3D_PHASES.find(x=>x.name==="bullet").end-SNIPER_3D_PHASES.find(x=>x.name==="bullet").start,1920,
+  "Give the bullet its own 1.92-second slow motion chase");
+});
+test("3D camera tracks a real moving bullet through chessboard world space to its actual victim square",()=>{
+ const event={origin:"c3",target:"g7",direction:"NE",attacker:"w",victim:"p"};
+ assert.deepEqual(square3D("c3"),[-1.5,0,1.5]);
+ assert.deepEqual(square3D("g7"),[2.5,0,-2.5]);
+ assert.equal(square3D("z9"),null);
+ const path=sniperPath(event);
+ assert.deepEqual(path.target,[2.5,0,-2.5]);
+ assert.ok(path.shooter[0]<path.origin[0]&&path.shooter[2]>path.origin[2],
+  "Off-board shooter starts BEHIND its original square");
+ const close=cinematicCamera(event,400),fire=cinematicCamera(event,1400);
+ const mid=cinematicCamera(event,2300),late=cinematicCamera(event,3200);
+ const impact=cinematicCamera(event,3750);
+ assert.equal(close.phase,"closeup");assert.equal(fire.phase,"fire");
+ assert.equal(mid.phase,"bullet");assert.equal(late.phase,"bullet");
+ assert.equal(impact.phase,"impact");
+ assert.ok(mid.bullet&&late.bullet,"Bullet is a 3D model travelling through the scene, not a CSS line");
+ assert.ok(mid.bullet[0]<late.bullet[0]&&mid.bullet[2]>late.bullet[2],"Bullet moves northeast along the actual diagonal");
+ assert.ok(mid.eye[0]<late.eye[0]&&mid.eye[2]>late.eye[2],"Camera physically follows moving bullet");
+ assert.notDeepEqual(mid.eye,late.eye,"Bullet and camera position change over time");
+ assert.equal(impact.bullet,null,"After impact, the camera cuts to the target");
+ assert.ok([...mid.eye,...mid.look,...mid.bullet,...late.eye].every(Number.isFinite));
+});
+test("3D replay resolves both bishop colors and all cardinal firing diagonals",()=>{
+ for(const [origin,target,direction] of [
+  ["a1","d4","NE"],["h1","e4","NW"],["a8","d5","SE"],["h8","e5","SW"]]){
+  const ev={origin,target,direction,attacker:"b",victim:"N"};
+  const path=sniperPath(ev);
+  assert.ok(path&&Number.isFinite(path.yaw));
+  for(const ms of [100,1550,1900,2750,3550,4750]){
+   const camera=cinematicCamera(ev,ms);
+   assert.ok(camera);
+   assert.equal(camera.phase,shotPhase(ms).name);
+   assert.ok([...camera.eye,...camera.look].every(Number.isFinite));
+  }
+ }
+ assert.equal(sniperPath({origin:"a1",target:"a1"}),null);
+ assert.equal(cinematicCamera({origin:"invalid",target:"g7"},100),null);
 });
