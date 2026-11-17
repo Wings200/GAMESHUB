@@ -123,3 +123,183 @@ const fragmentSource=[
  " lit=mix(lit,vec3(.045,.065,.11),fog);",
  " gl_FragColor=vec4(lit,1.0);","}"
 ].join("\n");
+
+function buildMeshes(){
+ const vertices=[],meshes={};
+ function tri(a,b,c){
+  const n=unit(cross(sub(b,a),sub(c,a)));
+  for(const p of [a,b,c])vertices.push(...p,...n);
+ }
+ function quad(a,b,c,d){tri(a,b,c);tri(a,c,d);}
+ function box(cx=0,cy=0,cz=0,x=1,y=1,z=1){
+  const a=x/2,b=y/2,c=z/2,p=(i,j,k)=>[cx+i*a,cy+j*b,cz+k*c];
+  quad(p(-1,1,-1),p(1,1,-1),p(1,1,1),p(-1,1,1));
+  quad(p(-1,-1,1),p(1,-1,1),p(1,-1,-1),p(-1,-1,-1));
+  quad(p(-1,-1,1),p(-1,1,1),p(1,1,1),p(1,-1,1));
+  quad(p(1,-1,-1),p(1,1,-1),p(-1,1,-1),p(-1,-1,-1));
+  quad(p(1,-1,1),p(1,1,1),p(1,1,-1),p(1,-1,-1));
+  quad(p(-1,-1,-1),p(-1,1,-1),p(-1,1,1),p(-1,-1,1));
+ }
+ function lathe(profile,segments=16){
+  for(let j=0;j<profile.length-1;j++){
+   const [r1,y1]=profile[j],[r2,y2]=profile[j+1];
+   for(let i=0;i<segments;i++){
+    const a=i*2*Math.PI/segments,b=(i+1)*2*Math.PI/segments;
+    quad([r1*Math.cos(a),y1,r1*Math.sin(a)],
+     [r1*Math.cos(b),y1,r1*Math.sin(b)],
+     [r2*Math.cos(b),y2,r2*Math.sin(b)],
+     [r2*Math.cos(a),y2,r2*Math.sin(a)]);
+   }
+  }
+ }
+ function sphere(rings=8,segments=14){
+  for(let y=0;y<rings;y++){
+   const t1=-Math.PI/2+y*Math.PI/rings,t2=-Math.PI/2+(y+1)*Math.PI/rings;
+   for(let j=0;j<segments;j++){
+    const p1=j*2*Math.PI/segments,p2=(j+1)*2*Math.PI/segments;
+    const v=(t,p)=>[Math.cos(t)*Math.cos(p)*.5,Math.sin(t)*.5,Math.cos(t)*Math.sin(p)*.5];
+    quad(v(t1,p1),v(t1,p2),v(t2,p2),v(t2,p1));
+   }
+  }
+ }
+ const add=(name,draw)=>{
+  const first=vertices.length/6;draw();
+  meshes[name]={first,count:vertices.length/6-first};
+ };
+ add("cube",()=>box());
+ add("sphere",()=>sphere());
+ add("cylinder",()=>lathe([[.5,-.5],[.5,.5]]));
+ add("cone",()=>lathe([[.52,-.5],[0,.5]]));
+ add("bishop",()=>lathe([[.33,-.7],[.39,-.58],[.32,-.49],[.24,-.43],
+  [.16,-.2],[.2,.18],[.22,.37],[.32,.62],[.23,.73],[.06,.84],[0,.88]],18));
+ add("chess",()=>lathe([[.4,0],[.43,.1],[.28,.18],[.25,.26],
+  [.19,.42],[.25,.82],[.21,1.12],[.13,1.25],[0,1.3]],18));
+ add("ring",()=>lathe([[.52,-.11],[.56,-.04],[.56,.04],[.52,.11]],18));
+ add("bulletTip",()=>lathe([[.32,-.5],[.32,.06],[0,.5]],12));
+ return {mesh:meshes,data:new Float32Array(vertices)};
+}
+function makeShader(gl,type,source){
+ const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
+ if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
+  const error=gl.getShaderInfoLog(shader);
+  gl.deleteShader(shader);throw Error(error||"WebGL shader compilation failed");
+ }
+ return shader;
+}
+function createGraphics(gl){
+ const vertex=makeShader(gl,gl.VERTEX_SHADER,vertexSource);
+ const fragment=makeShader(gl,gl.FRAGMENT_SHADER,fragmentSource);
+ const program=gl.createProgram();
+ gl.attachShader(program,vertex);gl.attachShader(program,fragment);
+ gl.linkProgram(program);gl.deleteShader(vertex);gl.deleteShader(fragment);
+ if(!gl.getProgramParameter(program,gl.LINK_STATUS))
+  throw Error(gl.getProgramInfoLog(program)||"WebGL program link failed");
+ gl.useProgram(program);
+ const {mesh,data}=buildMeshes(),buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+ gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+ const pos=gl.getAttribLocation(program,"aPosition"),normal=gl.getAttribLocation(program,"aNormal");
+ gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,24,0);
+ gl.enableVertexAttribArray(normal);gl.vertexAttribPointer(normal,3,gl.FLOAT,false,24,12);
+ gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
+ const uniforms={model:gl.getUniformLocation(program,"uModel"),vp:gl.getUniformLocation(program,"uVP"),
+  color:gl.getUniformLocation(program,"uColor"),glow:gl.getUniformLocation(program,"uGlow"),
+  camera:gl.getUniformLocation(program,"uCamera")};
+ function draw(name,m,tint,glow=0){
+  const part=mesh[name];if(!part)return;
+  gl.uniformMatrix4fv(uniforms.model,false,m);
+  gl.uniform3fv(uniforms.color,tint);gl.uniform1f(uniforms.glow,glow);
+  gl.drawArrays(gl.TRIANGLES,part.first,part.count);
+ }
+ return {draw,uniforms,dispose(){gl.deleteBuffer(buffer);gl.deleteProgram(program);}};
+}
+function drawWorld(gl,g,event,ms,width,height){
+ const {draw,uniforms}=g,cam=cinematicCamera(event,ms);
+ if(!cam)return;
+ const projection=perspective(Math.PI/3.1,width/height,.04,64);
+ gl.uniformMatrix4fv(uniforms.vp,false,mm(projection,lookAt(cam.eye,cam.look)));
+ gl.uniform3fv(uniforms.camera,cam.eye);
+ gl.clearColor(.028,.043,.08,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ const d=(mesh,pos,sz,col,rot=[0,0,0],glow=0,parent=null)=>{
+  const m=model(pos,sz,rot);draw(mesh,parent?mm(parent,m):m,col,glow);
+ };
+ // Board and pieces have genuine 3D positions. Following the bullet creates
+ // real perspective, lighting and parallax across every rank and file.
+ d("cube",[0,-.14,0],[8.65,.25,8.65],COLORS.board);
+ for(let row=0;row<8;row++)for(let col=0;col<8;col++)
+  d("cube",[col-3.5,.005,row-3.5],[.99,.045,.99],
+   (row+col)%2?COLORS.tileDark:COLORS.tileLight);
+ for(const edge of [-4.33,4.33]){
+  d("cube",[0,.005,edge],[8.67,.1,.065],COLORS.gold);
+  d("cube",[edge,.005,0],[.065,.1,8.67],COLORS.gold);
+ }
+ // Low-poly chess bishop lying prone with a long scoped 3D rifle.
+ const rig=mm(translate(...cam.shooter),rotY(cam.yaw));
+ const isWhite=event.attacker==="w",armor=isWhite?COLORS.white:COLORS.dark;
+ const robe=isWhite?COLORS.violet:[.18,.18,.32];
+ d("bishop",[-.25,.3,-.16],[.88,.95,.92],armor,[Math.PI/2,0,0],0,rig);
+ d("ring",[-.25,.31,-.64],[.82,.7,.72],COLORS.gold,[Math.PI/2,0,0],0,rig);
+ d("sphere",[-.25,.35,.59],[.48,.46,.5],armor,[0,0,0],0,rig);
+ d("cone",[-.25,.46,.62],[.25,.54,.25],COLORS.gold,[Math.PI/2,0,0],0,rig);
+ d("sphere",[-.08,.47,.74],[.1,.1,.13],COLORS.lens,[0,0,0],.25,rig);
+ d("cube",[-.2,.12,-.32],[.68,.12,1.35],robe,[0,0,0],0,rig);
+ d("cube",[.25,.27,-.15],[.38,.25,.82],COLORS.gun,[0,0,0],0,rig);
+ d("cube",[.25,.33,.34],[.18,.25,.65],COLORS.steel,[0,0,0],0,rig);
+ d("cylinder",[.25,.41,.99],[.115,2.3,.115],COLORS.gun,[Math.PI/2,0,0],0,rig);
+ d("cylinder",[.25,.41,1.93],[.065,.46,.065],COLORS.steel,[Math.PI/2,0,0],0,rig);
+ d("cylinder",[.25,.57,.29],[.15,.61,.15],COLORS.gun,[Math.PI/2,0,0],0,rig);
+ d("cylinder",[.25,.57,.58],[.13,.06,.13],COLORS.lens,[Math.PI/2,0,0],.2,rig);
+ d("cube",[.25,.47,.3],[.1,.22,.11],COLORS.steel,[0,0,0],0,rig);
+ d("cube",[.25,.14,.7],[.085,.34,.075],COLORS.steel,[.25,0,.4],0,rig);
+ d("cube",[.25,.14,1.22],[.085,.35,.075],COLORS.steel,[.32,0,-.35],0,rig);
+ if(ms>=1300&&ms<=3510){
+  const fire=(ms-1300)/280,bulletPos=cam.bullet||cam.muzzle;
+  const bulletRig=mm(translate(...bulletPos),rotY(cam.yaw));
+  const recoil=ms<1580?Math.max(0,Math.sin(fire*Math.PI))*.04:0;
+  d("cylinder",[0,0,-recoil],[.115,.33,.115],COLORS.bullet,[Math.PI/2,0,0],.28,bulletRig);
+  d("bulletTip",[0,0,.24-recoil],[.15,.3,.15],COLORS.gold,[Math.PI/2,0,0],.5,bulletRig);
+  for(let n=1;n<=4;n++){
+   const off=.24+n*.21;
+   d("sphere",[0,0,-off],[.14/n,.12/n,.23],COLORS.flash,[0,0,0],.8/n,bulletRig);
+  }
+ }
+ if(ms>=1310&&ms<1470){
+  const pulse=Math.sin(((ms-1310)/160)*Math.PI);
+  d("sphere",cam.muzzle,[.72*pulse,.72*pulse,.72*pulse],COLORS.flash,[0,0,0],2);
+  d("cone",cam.muzzle,[.45*pulse,.98*pulse,.45*pulse],COLORS.gold,[Math.PI/2,0,0],2);
+ }
+ // Actual captured chess piece TYPE rendered as a 3D body at its square.
+ const hit=cam.hit,t=event.victim.toLowerCase();
+ const victimColor=event.victim===event.victim.toUpperCase()?COLORS.white:COLORS.dark;
+ const impact=ms>=3500?clamp((ms-3500)/900):0,shrink=1-smooth(impact)*.75;
+ if(ms<4230){
+  const warp=ms>=3500?Math.sin(impact*Math.PI*2)*.12:0;
+  d("chess",[hit[0],-.01+warp,hit[2]],[.85*shrink,1.03*shrink,.85*shrink],victimColor);
+  if(t==="p"||t==="q"||t==="k"){
+   d("sphere",[hit[0],1.34*shrink,hit[2]],[.44*shrink,.44*shrink,.44*shrink],victimColor);
+  }else if(t==="n"){
+   d("cube",[hit[0],1.36*shrink,hit[2]+.13],[.43*shrink,.46*shrink,.64*shrink],victimColor,[.25,0,-.24]);
+  }else if(t==="b"){
+   d("cone",[hit[0],1.4*shrink,hit[2]],[.52*shrink,.73*shrink,.52*shrink],victimColor);
+  }else if(t==="r"){
+   d("cube",[hit[0],1.48*shrink,hit[2]],[.62*shrink,.35*shrink,.62*shrink],victimColor);
+  }
+  if(t==="q"||t==="k"){
+   for(let n=0;n<5;n++){const a=n*Math.PI*2/5;
+    d("cone",[hit[0]+Math.cos(a)*.22*shrink,1.55*shrink,hit[2]+Math.sin(a)*.22*shrink],
+     [.17*shrink,.39*shrink,.17*shrink],COLORS.gold);
+   }
+  }
+ }
+ if(ms>=3500&&ms<4300){
+  const age=clamp((ms-3500)/780);
+  d("sphere",[hit[0],.8,hit[2]],[.58*(1-age),.58*(1-age),.58*(1-age)],
+   COLORS.flash,[0,0,0],1.5*(1-age));
+  for(let i=0;i<24;i++){
+   const a=i*2.39996,b=((i*7)%24)/24,spread=.35+age*2.4;
+   const pos=[hit[0]+Math.cos(a)*spread,.73+Math.sin(b*Math.PI)*spread*.6-age*.5,
+    hit[2]+Math.sin(a)*spread],size=(1-age)*(.08+(i%4)*.025);
+   d("cube",pos,[size,size*2,size],i%3?COLORS.gold:COLORS.violet,
+    [age*2,age*3,age*4],.2);
+  }
+ }
+}
