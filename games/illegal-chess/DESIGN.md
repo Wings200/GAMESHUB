@@ -29,7 +29,8 @@ Important constraints:
 ## Color swaps and game end
 
 - Every 20 turn-consuming player actions (20 half-moves), the players swap control of White and Black; chess pieces, turn order, active effects and off-board snipers stay with their board colors. Each player keeps their unused cards. The server rotates authentication ownership; the browser follows the returned current color. Bonus cards do not advance the counter.
-- Checkmate, stalemate and other terminal results stop actions and show a prominent victory/defeat/draw banner, with the server-provided winner deciding the result. A game that just ended does not swap owners.
+- Checkmate normally stops the match immediately if the defender has no unused cards. If the defender has **any** unused card (including a card incapable of rescuing the king), the server opens one **30-second checkmate rescue window** rather than declaring an immediate loss. Either player sees the same warning and countdown. Only a fully legal, king-safe card action can save the position; legal bonus actions that do not escape keep the original timer running. When the clock expires, the original checkmate becomes final and both cards and moves lock. Objection! pauses the rescue clock while the opponent decides, then resumes without losing time. A color swap scheduled on the twentieth move is deferred until rescue succeeds, never awarded during an unresolved or lost rescue. All match state and deadlines live in Cloudflare D1; client countdowns only display the authoritative state.
+- Stalemate and other terminal results retain their usual immediate outcome and winner/draw banner. A game that ended never swaps owners.
 
 ## Further engineering
 
