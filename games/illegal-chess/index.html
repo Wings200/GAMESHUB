@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=12">
+<link rel="stylesheet" href="./style.css?v=13">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.9.1</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.9.2</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -79,6 +79,71 @@
  </section>
 </main>
 <footer class="footer">ILLEGAL CHESS · A GAMESHUB GAME · PRIVATE MULTIPLAYER ALPHA</footer>
+<!-- Lightweight, self-contained tactical replay. No video, canvas, or 3D engine. -->
+<div id="sniperCinematic" class="sniperCinematic" hidden aria-hidden="true">
+ <div class="cinematicBackdrop"></div>
+ <div class="cinematicScanlines"></div>
+ <div class="cinematicStage">
+  <div class="cinematicCopy">
+   <span class="cinematicEyebrow">⌖ GAMESHUB · ILLEGAL CHESS</span>
+   <h2 id="cinematicTitle">BISHOP SNIPER</h2>
+   <p id="cinematicSubtitle">FIRST SHOT · PRECISION ELIMINATION</p>
+  </div>
+  <div class="cinematicGround" aria-hidden="true"></div>
+  <div class="cinematicBishop" aria-hidden="true">
+   <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" focusable="false">
+    <defs>
+     <linearGradient id="cinematicArmor" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3d9"/><stop offset=".5" stop-color="#a9a2bd"/><stop offset="1" stop-color="#39394f"/>
+     </linearGradient>
+     <linearGradient id="cinematicSteel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#879ca7"/><stop offset=".44" stop-color="#283943"/><stop offset="1" stop-color="#0b1119"/>
+     </linearGradient>
+     <linearGradient id="cinematicRobe" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#816eaa"/><stop offset="1" stop-color="#19172b"/>
+     </linearGradient>
+    </defs>
+    <ellipse cx="361" cy="302" rx="315" ry="21" fill="#000" opacity=".55"/>
+    <!-- Bishop lying prone, long cloak flattened against the ground -->
+    <path d="M86 267Q130 224 201 240L319 265Q358 282 376 297L82 297Z" fill="url(#cinematicRobe)" stroke="#ad8eda" stroke-width="4"/>
+    <path d="M124 274Q167 225 246 260L290 282 103 284" fill="none" stroke="#ebd7ff" stroke-width="5" opacity=".55"/>
+    <path d="M292 270L365 247 408 253 379 279 315 288Z" fill="#38364c" stroke="#8f83a7" stroke-width="4"/>
+    <g transform="translate(224 203) rotate(74)">
+     <path d="M0-63C-28-42-37-14-33 10-23 36-8 58 0 68 8 58 23 36 33 10 37-14 28-42 0-63Z" fill="url(#cinematicArmor)" stroke="#fff4e1" stroke-width="5"/>
+     <path d="M-12-41 16 4-4 47" fill="none" stroke="#282437" stroke-width="10" stroke-linecap="round"/>
+     <path d="M-27 35Q0 56 27 35" fill="none" stroke="#e4d5ec" stroke-width="7"/>
+     <rect x="-43" y="61" width="86" height="16" rx="7" fill="#544b69" stroke="#d6c4e6" stroke-width="3"/>
+    </g>
+    <!-- Shoulder and gloves are tucked behind the scope -->
+    <path d="M297 247q30-32 64-10l24 12-31 25-49 1" fill="#494059" stroke="#c5b0d7" stroke-width="4"/>
+    <path d="M355 251q31-25 54-4l-11 24-37 4" fill="#38374b" stroke="#958da9" stroke-width="3"/>
+    <!-- Stylized long-range rifle with scope and bipod -->
+    <path d="M327 258 284 279 265 270 304 241Z" fill="#242a35" stroke="#748595" stroke-width="4"/>
+    <rect x="332" y="235" width="267" height="19" rx="5" fill="url(#cinematicSteel)" stroke="#a3b5b7" stroke-width="3"/>
+    <rect x="589" y="240" width="89" height="8" rx="3" fill="#a9b8bd" stroke="#536878" stroke-width="3"/>
+    <rect x="673" y="236" width="19" height="15" rx="3" fill="#1c2630" stroke="#a6b6bd" stroke-width="2"/>
+    <path d="M378 257v30m0-5-17 22m17-22 16 22" fill="none" stroke="#798d9c" stroke-width="6" stroke-linecap="round"/>
+    <path d="M581 253l-21 42m21-42 24 42" fill="none" stroke="#768994" stroke-width="6" stroke-linecap="round"/>
+    <rect x="405" y="216" width="112" height="15" rx="6" fill="#1b2932" stroke="#aab6bd" stroke-width="4"/>
+    <rect x="447" y="203" width="35" height="13" rx="4" fill="#2c3940" stroke="#c9e1e8" stroke-width="3"/>
+    <ellipse cx="404" cy="223" rx="9" ry="9" fill="#3b5b6b" stroke="#c0e8fd" stroke-width="3"/>
+    <path d="M459 258l-8 35-25-2 11-36" fill="#262c35" stroke="#8995a0" stroke-width="3"/>
+    <path d="M438 273h-32" stroke="#e8ddc8" stroke-width="5" stroke-linecap="round"/>
+    <g class="cinematicRifleGlow"><path d="M600 242h90" stroke="#d9f2ff" stroke-width="3" opacity=".5"/></g>
+   </svg>
+  </div>
+  <div class="cinematicCrosshair" aria-hidden="true"><i></i><b>LOCKED</b></div>
+  <div class="cinematicMuzzle" aria-hidden="true"></div>
+  <div class="cinematicBullet" aria-hidden="true"></div>
+  <div class="cinematicTarget" aria-hidden="true">
+   <span class="cinematicTargetRing"></span>
+   <span class="cinematicTargetPiece" id="cinematicTargetPiece">♟</span>
+   <span class="cinematicHit">DIRECT HIT</span>
+  </div>
+  <div class="cinematicFooter"><span>SHOT CONFIRMED</span><span id="cinematicDetail">TARGET LOCKED</span></div>
+ </div>
+</div>
+<div class="cinematicLive" id="cinematicLive" role="status" aria-live="polite"></div>
 <div id="modalShade" class="modalShade" hidden role="presentation">
  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
   <div class="eyebrow" id="modalTag">CONFIRM ACTION</div>
@@ -90,6 +155,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=13"></script>
+<script type="module" src="./client.mjs?v=14"></script>
 </body>
 </html>
