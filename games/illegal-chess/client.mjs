@@ -8,6 +8,7 @@ const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
+let rescueClock=null,rescueStartAt=0,rescueStartRemaining=0;
 // Server-synchronized Bishop Sniper replay; neither player invents or triggers
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
@@ -569,6 +570,25 @@ function renderAnalyst(){
  }
  scheduleStockfishReviews();
 }
+function updateRescueClock(){
+ const rescue=game?.status?.rescue;
+ if(!rescue)return;
+ const remaining=rescue.paused?rescueStartRemaining:Math.max(0,rescueStartRemaining-(Date.now()-rescueStartAt));
+ $("rescueCountdown").textContent=(Math.ceil(remaining/100)/10).toFixed(1)+"s";
+}
+function syncRescueClock(){
+ const rescue=game?.status?.rescue,box=$("rescueBox");
+ box.hidden=!rescue;
+ if(!rescue){if(rescueClock){clearInterval(rescueClock);rescueClock=null;}return;}
+ box.classList.toggle("rescueMine",game.turn===game.player);
+ $("rescueTitle").textContent=game.turn===game.player?"ESCAPE CHECKMATE":"OPPONENT'S LAST CHANCE";
+ $("rescueDescription").textContent=rescue.paused?"Countdown paused while Objection! is resolved.":
+  game.turn===game.player?"Use any remaining card to make a legal escape. Not every card can save your king.":
+  "Your opponent has 30 seconds to escape checkmate with their remaining cards.";
+ rescueStartAt=Date.now();rescueStartRemaining=rescue.remainingMs;
+ updateRescueClock();
+ if(!rescueClock)rescueClock=setInterval(updateRescueClock,100);
+}
 function render(){
  if(!game)return;
  prepareAnalystSymbol();
@@ -590,6 +610,7 @@ function render(){
    "Your opponent is deciding whether to allow "+reaction.name+". The board is paused until they respond.";
   $("reactionActions").hidden=!reaction.canReact;
  }
+ syncRescueClock();
  const result=$("gameResult");
  result.hidden=!game.status.done;
  if(game.status.done){
@@ -797,7 +818,9 @@ $("leave").addEventListener("click",async()=>{
  if(!accept)return;
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
  disposeSniper3D();cinematicSeen=null;
- if(poll){clearInterval(poll);poll=null;}clearSelection();
+ if(poll){clearInterval(poll);poll=null;}
+ if(rescueClock){clearInterval(rescueClock);rescueClock=null;}
+ clearSelection();
  history.replaceState({}, "", "/games/illegal-chess/");
  $("match").hidden=true;$("lobby").hidden=false;$("connection").textContent="CONNECTING";$("connection").classList.add("offline");
 });
