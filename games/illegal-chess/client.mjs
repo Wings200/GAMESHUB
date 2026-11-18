@@ -1,5 +1,5 @@
 import {cardImage} from "./art.mjs?v=3";
-import {nextCinematic,cinematicCaption} from "./cinematic.mjs?v=2";
+import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
 import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
@@ -13,6 +13,7 @@ let publicListingPending=false,publicJoinPending=false;
 // Server-synchronized Bishop Sniper replay; neither player invents or triggers
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
+let previousCardView=null,cardCastTimer=null;
 let sniperRenderer=null,sniper3DUnavailable=false;
 // SFX are local-only. Shared multiplayer events dictate WHAT happened;
 // each player independently controls WHETHER their browser plays audio.
@@ -115,6 +116,32 @@ function syncSniperCinematics(){
  const update=nextCinematic(game?.cinematics,cinematicSeen);
  cinematicSeen=update.seen;
  if(update.event)playSniperCinematic(update.event);
+}
+
+// Short, non-blocking card reveal. Render only when a room snapshot confirms
+// that an unused card was actually consumed, on either player's side.
+function stopCardCast(){
+ if(cardCastTimer){clearTimeout(cardCastTimer);cardCastTimer=null;}
+ const el=$("cardActivation");
+ el.classList.remove("isPlaying","enemyCast");
+ el.hidden=true;
+}
+function syncCardCasts(){
+ const casts=newCardCasts(previousCardView,game);
+ previousCardView=game;
+ if(!casts.length||document.hidden)return;
+ const cast=casts.at(-1),mine=cast.color===game.player,el=$("cardActivation");
+ stopCardCast();
+ el.classList.toggle("enemyCast",!mine);
+ el.style.setProperty("--cast-accent",tierColors[cast.rarity]||"#adc1df");
+ $("cardCastArt").src=cardImage(cast.id,cast.rarity);
+ $("cardCastArt").alt="";
+ $("cardCastSide").textContent=mine?"YOUR CARD · "+cast.rarity.toUpperCase():"OPPONENT CARD · "+cast.rarity.toUpperCase();
+ $("cardCastName").textContent=cast.name.toUpperCase();
+ $("cardCastLive").textContent=(mine?"You":"Opponent")+" activated "+cast.name+".";
+ el.hidden=false;
+ requestAnimationFrame(()=>{if(!el.hidden)el.classList.add("isPlaying");});
+ cardCastTimer=setTimeout(stopCardCast,window.matchMedia("(prefers-reduced-motion: reduce)").matches?450:1250);
 }
 
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
@@ -383,7 +410,7 @@ async function refresh(){
 async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  resetStockfish(s.room);
- disposeSniper3D();cinematicSeen=null;
+ disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -689,6 +716,7 @@ function render(){
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
  renderBoard();renderHand();renderSniper();renderExtras();renderAnalyst();
+ syncCardCasts();
  syncSniperCinematics();
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
@@ -878,7 +906,7 @@ $("leave").addEventListener("click",async()=>{
   catch(error){flash("Could not close public listing: "+error.message);return;}
  }
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
- disposeSniper3D();cinematicSeen=null;
+ disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
  if(poll){clearInterval(poll);poll=null;}
  if(rescueClock){clearInterval(rescueClock);rescueClock=null;}
  clearSelection();
