@@ -30,3 +30,33 @@ export function cinematicCaption(e){
   fullScreen:e.kind==="sniper-first-shot"
  };
 }
+
+
+// Detect freshly spent cards from authoritative multiplayer snapshots, never
+// from a local click. Match the same *player's* hand, not board color: every
+// twenty turns ownership of White/Black swaps, but both players keep their own
+// cards. Count spent copies to avoid false replays on repeated polls.
+const visibleHands=view=>{
+ if(!view||!["w","b"].includes(view.player)||
+    !Array.isArray(view.hand)||!Array.isArray(view.opponent))return null;
+ return {self:view.hand,opponent:view.opponent};
+};
+export function newCardCasts(previous,current){
+ const before=visibleHands(previous),after=visibleHands(current);
+ if(!before||!after||previous.room!==current.room)return [];
+ const casts=[];
+ for(const actor of ["self","opponent"]){
+  const unused=new Set(before[actor].filter(card=>card?.used===false).map(card=>card.id));
+  const alreadySpent=new Map();
+  for(const card of before[actor])if(card?.used===true)alreadySpent.set(card.id,(alreadySpent.get(card.id)||0)+1);
+  for(const card of after[actor]){
+   if(card?.used!==true)continue;
+   const oldCount=alreadySpent.get(card.id)||0;
+   if(oldCount>0){alreadySpent.set(card.id,oldCount-1);continue;}
+   if(!unused.has(card.id)||typeof card.id!=="string"||!/^[a-z0-9-]+$/.test(card.id)||
+      typeof card.name!=="string"||!["Common","Uncommon","Rare","Epic","Legendary"].includes(card.rarity))continue;
+   casts.push({actor,id:card.id,name:card.name,rarity:card.rarity});
+  }
+ }
+ return casts;
+}

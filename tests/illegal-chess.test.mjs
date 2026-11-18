@@ -4,7 +4,7 @@ import {newGame,joinGame,randomHand,act,playerView,status,CARDS} from "../games/
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
-import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS} from "../games/illegal-chess/cinematic.mjs";
+import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS,newCardCasts} from "../games/illegal-chess/cinematic.mjs";
 import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D,sniperMotion} from "../games/illegal-chess/sniper-3d.mjs";
 import {createSniperSoundtrack,SNIPER_SOUND_CUES,SNIPER_FALLBACK_CUES,SNIPER_TELEPORT_CUES} from "../games/illegal-chess/sniper-sound.mjs";
 import {buildSculptMeshes,sculptAssetCatalog} from "../games/illegal-chess/sniper-sculpts.mjs";
@@ -881,6 +881,48 @@ test("The Analyst exposes one server-elected worker only, without session token 
  assert.equal(JSON.stringify(guest).includes("guest-secret"),false);
 });
 
+test("Card activation flourish detects only newly spent cards in both authoritative player views",()=>{
+ const g=room();give(g,"w","ceasefire");
+ const beforeWhite=playerView(g,"w"),beforeBlack=playerView(g,"b");
+ assert.deepEqual(newCardCasts(null,beforeWhite),[],"Joining an existing room never replays older cards");
+ assert.deepEqual(newCardCasts(beforeWhite,beforeWhite),[],"Polling unchanged state is silent");
+ act(g,"w",{type:"card",card:"ceasefire"});
+ const afterWhite=playerView(g,"w"),afterBlack=playerView(g,"b");
+ const ownCast={actor:"self",id:"ceasefire",name:"Ceasefire",rarity:"Rare"};
+ const enemyCast={...ownCast,actor:"opponent"};
+ assert.deepEqual(newCardCasts(beforeWhite,afterWhite),[ownCast],"Actor sees own card animation after server approval");
+ assert.deepEqual(newCardCasts(beforeBlack,afterBlack),[enemyCast],"Opponent sees the same animation");
+ assert.deepEqual(newCardCasts(afterWhite,afterWhite),[],"Re-render must not replay card");
+ const swappedPerspective={...afterWhite,player:"b"};
+ assert.deepEqual(newCardCasts(afterWhite,swappedPerspective),[],
+  "Twenty-turn color control swaps must not create phantom activations");
+ assert.deepEqual(newCardCasts({...beforeWhite,room:"OLD"},afterWhite),[],"New rooms must not replay old casts");
+});
+test("Card cast flourish survives real 20-turn controller and hand swaps",()=>{
+ const g=room();
+ g.hands.w=[{id:"ceasefire",used:true},{id:"parking-ticket",used:false}];
+ g.hands.b=[{id:"friendly-fire",used:true},{id:"pawn-strike",used:false}];
+ g.moveCount=19;
+ const prior=playerView(g,"w");
+ move(g,"w","e2","e4"); // the twentieth action rotates player colors and hand ownership
+ assert.equal(g.swaps,1);
+ const after=playerView(g,"b"); // original White player now controls Black
+ assert.deepEqual(after.hand.map(c=>c.id),prior.hand.map(c=>c.id));
+ assert.deepEqual(newCardCasts(prior,after),[],
+  "Spent cards cannot be replayed when the players swap sides");
+});
+test("Card cast detection ignores invalid public snapshots and other cards becoming visible",()=>{
+ const g=room();give(g,"w","black-market");
+ const before=playerView(g,"w");
+ act(g,"w",{type:"card",card:"black-market",slot:1});
+ const after=playerView(g,"w");
+ assert.deepEqual(newCardCasts(before,after).map(c=>c.id),["black-market"],
+  "The replacement received from Black Market must not look like a card activation");
+ assert.deepEqual(newCardCasts({},after),[]);
+ assert.deepEqual(newCardCasts(before,{...after,hand:null}),[]);
+ const bad={...after,hand:after.hand.map(c=>c.id==="black-market"?{...c,rarity:"unsafe"}:c)};
+ assert.deepEqual(newCardCasts(before,bad),[],"Unexpected rarity input must not reach the animation");
+});
 test("Bishop Sniper cinematic V1 has a shared first-shot bullet and second-shot teleport, never duplicates",()=>{
  const g=room();give(g,"w","bishop-sniper");
  g.s=parseFen("4k3/6p1/5q2/8/8/2B5/8/4K3 w - - 0 1");g.history=[g.s];
