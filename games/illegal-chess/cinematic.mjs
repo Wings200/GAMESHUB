@@ -48,9 +48,13 @@ export function newCardCasts(previous,current){
  const casts=[];
  for(const color of ["w","b"]){
   const unused=new Set(before[color].filter(card=>card?.used===false).map(card=>card.id));
+  const alreadySpent=new Map();
+  for(const card of before[color])if(card?.used===true)alreadySpent.set(card.id,(alreadySpent.get(card.id)||0)+1);
   for(const card of after[color]){
-   if(!card||card.used!==true||!unused.has(card.id)||
-      typeof card.id!=="string"||!/^[a-z0-9-]+$/.test(card.id)||
+   if(card?.used!==true)continue;
+   const oldCount=alreadySpent.get(card.id)||0;
+   if(oldCount>0){alreadySpent.set(card.id,oldCount-1);continue;}
+   if(!unused.has(card.id)||typeof card.id!=="string"||!/^[a-z0-9-]+$/.test(card.id)||
       typeof card.name!=="string"||!["Common","Uncommon","Rare","Epic","Legendary"].includes(card.rarity))continue;
    casts.push({color,id:card.id,name:card.name,rarity:card.rarity});
   }
