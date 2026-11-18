@@ -142,3 +142,22 @@ Important constraints:
 - **Performance remains:** Internally the match still has a *single* canonical game-wide analysis log. A card holder receives ratings for both sides' moves, as designed. If **both** players hold the passive, their results are identical and the higher-capability device can still be elected for the one shared Stockfish engine. With only one holder, that holder runs Stockfish locally (Lite fallback on weak devices); letting the other device run it would necessarily send it privileged analysis input.
 - **Color swaps:** The holder's card and session move together across the 20-turn color swap. Ownership checks follow the new seat, so the non-holder never inherits the other player's ratings.
 - **Frontend:** Non-holders get no Analyst panel or move annotation symbols and any stale popup/worker is cleared; a cache-busted client update is required to replace older JS. Tests cover owner on either side, two holders, forged API calls, privacy of completed score/history/engine status and the color swap.
+
+
+## Card activation effects · Alpha 0.11.2
+
+- **Confirmed activations only.** A lightweight 1.25-second card-flip and rarity-color pulse
+  appears when a card changes from unused to spent in the authoritative room state.
+  Both participants see their own or the opponent's card being activated, without any
+  extra server messages or new card probabilities.
+- **Non-blocking.** The effect has no hit targets, never delays chess input or the
+  30-second rescue timer, and never replaces the Bishop Sniper's existing 3D shot.
+  The opponent's hand is already public. No secret card, preview, or hidden direction
+  is revealed.
+- **No replay bugs.** First joining/reloading a match only seeds state; repeated
+  polls have no effect; a 20-action color swap does not replay already spent cards.
+  Black Market replacing another slot is not mistaken for activating that new card.
+- **Accessibility.** The brief, mobile-friendly overlay does not steal focus;
+  a separate text status announces activations and reduced-motion users receive
+  a short static fade. All artwork is reused from the existing card renderer.
+
