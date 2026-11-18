@@ -888,9 +888,10 @@ test("Card activation flourish detects only newly spent cards in both authoritat
  assert.deepEqual(newCardCasts(beforeWhite,beforeWhite),[],"Polling unchanged state is silent");
  act(g,"w",{type:"card",card:"ceasefire"});
  const afterWhite=playerView(g,"w"),afterBlack=playerView(g,"b");
- const cast={color:"w",id:"ceasefire",name:"Ceasefire",rarity:"Rare"};
- assert.deepEqual(newCardCasts(beforeWhite,afterWhite),[cast],"Actor sees own card animation after server approval");
- assert.deepEqual(newCardCasts(beforeBlack,afterBlack),[cast],"Opponent sees the same animation");
+ const ownCast={actor:"self",id:"ceasefire",name:"Ceasefire",rarity:"Rare"};
+ const enemyCast={...ownCast,actor:"opponent"};
+ assert.deepEqual(newCardCasts(beforeWhite,afterWhite),[ownCast],"Actor sees own card animation after server approval");
+ assert.deepEqual(newCardCasts(beforeBlack,afterBlack),[enemyCast],"Opponent sees the same animation");
  assert.deepEqual(newCardCasts(afterWhite,afterWhite),[],"Re-render must not replay card");
  const swappedPerspective={...afterWhite,player:"b",hand:afterWhite.opponent,opponent:afterWhite.hand};
  assert.deepEqual(newCardCasts(afterWhite,swappedPerspective),[],
