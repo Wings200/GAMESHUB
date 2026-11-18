@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#080b13">
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
-<link rel="stylesheet" href="./style.css?v=17">
+<link rel="stylesheet" href="./style.css?v=18">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
 <header class="top">
  <div class="mark"><div class="mark-icon" aria-hidden="true">♞</div><div><span>ILLEGAL <b>CHESS</b></span><small>GAMESHUB ORIGINAL · MULTIPLAYER</small></div></div>
- <div class="topright"><span class="buildtag">ALPHA 0.11.1</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
+ <div class="topright"><span class="buildtag">ALPHA 0.11.2</span><a class="back" href="/">← BACK TO GAMESHUB</a></div>
 </header>
 <main class="shell">
  <section id="lobby" class="lobby" aria-label="Illegal Chess lobby">
@@ -97,6 +97,23 @@
  </section>
 </main>
 <footer class="footer">ILLEGAL CHESS · A GAMESHUB GAME · PUBLIC + PRIVATE MULTIPLAYER ALPHA</footer>
+<!-- Lightweight card activation flourish: server-confirmed, non-interactive and
+     visible to both players without altering the gameplay or draw odds. -->
+<div id="cardActivation" class="cardActivation" hidden aria-hidden="true">
+ <div class="cardCastRing"></div>
+ <div class="cardCastStage">
+  <div class="cardCastArtwork"><img id="cardCastArt" alt=""><span class="cardCastGlint"></span></div>
+  <div class="cardCastCopy">
+   <span id="cardCastSide" class="cardCastSide">YOUR CARD · RARE</span>
+   <strong id="cardCastName">CARD NAME</strong>
+   <span class="cardCastConfirm">✦ CARD ACTIVATED</span>
+  </div>
+ </div>
+ <span class="cardCastSpark cardCastSparkOne"></span>
+ <span class="cardCastSpark cardCastSparkTwo"></span>
+ <span class="cardCastSpark cardCastSparkThree"></span>
+</div>
+<div id="cardCastLive" class="cardCastLive" role="status" aria-live="polite"></div>
 <!-- True real-time 3D Bishop Sniper V2, with lightweight V1 visual fallback. -->
 <div id="sniperCinematic" class="sniperCinematic" hidden aria-hidden="true">
  <canvas id="sniper3DCanvas" class="cinematic3DCanvas" aria-hidden="true"></canvas>
@@ -181,6 +198,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=22"></script>
+<script type="module" src="./client.mjs?v=23"></script>
 </body>
 </html>
