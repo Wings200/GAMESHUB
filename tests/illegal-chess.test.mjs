@@ -898,6 +898,19 @@ test("Card activation flourish detects only newly spent cards in both authoritat
   "Twenty-turn color control swaps must not create phantom activations");
  assert.deepEqual(newCardCasts({...beforeWhite,room:"OLD"},afterWhite),[],"New rooms must not replay old casts");
 });
+test("Card cast flourish survives real 20-turn controller and hand swaps",()=>{
+ const g=room();
+ g.hands.w=[{id:"ceasefire",used:true},{id:"parking-ticket",used:false}];
+ g.hands.b=[{id:"friendly-fire",used:true},{id:"pawn-strike",used:false}];
+ g.moveCount=19;
+ const prior=playerView(g,"w");
+ move(g,"w","e2","e4"); // the twentieth action rotates player colors and hand ownership
+ assert.equal(g.swaps,1);
+ const after=playerView(g,"b"); // original White player now controls Black
+ assert.deepEqual(after.hand.map(c=>c.id),prior.hand.map(c=>c.id));
+ assert.deepEqual(newCardCasts(prior,after),[],
+  "Spent cards cannot be replayed when the players swap sides");
+});
 test("Card cast detection ignores invalid public snapshots and other cards becoming visible",()=>{
  const g=room();give(g,"w","black-market");
  const before=playerView(g,"w");
