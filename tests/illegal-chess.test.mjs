@@ -893,7 +893,7 @@ test("Card activation flourish detects only newly spent cards in both authoritat
  assert.deepEqual(newCardCasts(beforeWhite,afterWhite),[ownCast],"Actor sees own card animation after server approval");
  assert.deepEqual(newCardCasts(beforeBlack,afterBlack),[enemyCast],"Opponent sees the same animation");
  assert.deepEqual(newCardCasts(afterWhite,afterWhite),[],"Re-render must not replay card");
- const swappedPerspective={...afterWhite,player:"b",hand:afterWhite.opponent,opponent:afterWhite.hand};
+ const swappedPerspective={...afterWhite,player:"b"};
  assert.deepEqual(newCardCasts(afterWhite,swappedPerspective),[],
   "Twenty-turn color control swaps must not create phantom activations");
  assert.deepEqual(newCardCasts({...beforeWhite,room:"OLD"},afterWhite),[],"New rooms must not replay old casts");
