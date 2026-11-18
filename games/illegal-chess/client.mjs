@@ -130,7 +130,7 @@ function syncCardCasts(){
  const casts=newCardCasts(previousCardView,game);
  previousCardView=game;
  if(!casts.length||document.hidden)return;
- const cast=casts.at(-1),mine=cast.color===game.player,el=$("cardActivation");
+ const cast=casts.at(-1),mine=cast.actor==="self",el=$("cardActivation");
  stopCardCast();
  el.classList.toggle("enemyCast",!mine);
  el.style.setProperty("--cast-accent",tierColors[cast.rarity]||"#adc1df");
