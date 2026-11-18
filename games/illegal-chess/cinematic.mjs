@@ -32,31 +32,30 @@ export function cinematicCaption(e){
 }
 
 
-// Detect only freshly spent cards in authoritative multiplayer room snapshots.
-// Both players see the same public hands. We match by board color (not local
-// perspective) because a 20-turn color swap changes which side each player owns.
-// This is purely visual: no locally predicted card effects or extra server data.
-const coloredHands=view=>{
+// Detect freshly spent cards from authoritative multiplayer snapshots, never
+// from a local click. Match the same *player's* hand, not board color: every
+// twenty turns ownership of White/Black swaps, but both players keep their own
+// cards. Count spent copies to avoid false replays on repeated polls.
+const visibleHands=view=>{
  if(!view||!["w","b"].includes(view.player)||
     !Array.isArray(view.hand)||!Array.isArray(view.opponent))return null;
- return view.player==="w"?
-  {w:view.hand,b:view.opponent}:{w:view.opponent,b:view.hand};
+ return {self:view.hand,opponent:view.opponent};
 };
 export function newCardCasts(previous,current){
- const before=coloredHands(previous),after=coloredHands(current);
+ const before=visibleHands(previous),after=visibleHands(current);
  if(!before||!after||previous.room!==current.room)return [];
  const casts=[];
- for(const color of ["w","b"]){
-  const unused=new Set(before[color].filter(card=>card?.used===false).map(card=>card.id));
+ for(const actor of ["self","opponent"]){
+  const unused=new Set(before[actor].filter(card=>card?.used===false).map(card=>card.id));
   const alreadySpent=new Map();
-  for(const card of before[color])if(card?.used===true)alreadySpent.set(card.id,(alreadySpent.get(card.id)||0)+1);
-  for(const card of after[color]){
+  for(const card of before[actor])if(card?.used===true)alreadySpent.set(card.id,(alreadySpent.get(card.id)||0)+1);
+  for(const card of after[actor]){
    if(card?.used!==true)continue;
    const oldCount=alreadySpent.get(card.id)||0;
    if(oldCount>0){alreadySpent.set(card.id,oldCount-1);continue;}
    if(!unused.has(card.id)||typeof card.id!=="string"||!/^[a-z0-9-]+$/.test(card.id)||
       typeof card.name!=="string"||!["Common","Uncommon","Rare","Epic","Legendary"].includes(card.rarity))continue;
-   casts.push({color,id:card.id,name:card.name,rarity:card.rarity});
+   casts.push({actor,id:card.id,name:card.name,rarity:card.rarity});
   }
  }
  return casts;
