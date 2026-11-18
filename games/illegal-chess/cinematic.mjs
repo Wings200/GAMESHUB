@@ -30,3 +30,30 @@ export function cinematicCaption(e){
   fullScreen:e.kind==="sniper-first-shot"
  };
 }
+
+
+// Detect only freshly spent cards in authoritative multiplayer room snapshots.
+// Both players see the same public hands. We match by board color (not local
+// perspective) because a 20-turn color swap changes which side each player owns.
+// This is purely visual: no locally predicted card effects or extra server data.
+const coloredHands=view=>{
+ if(!view||!["w","b"].includes(view.player)||
+    !Array.isArray(view.hand)||!Array.isArray(view.opponent))return null;
+ return view.player==="w"?
+  {w:view.hand,b:view.opponent}:{w:view.opponent,b:view.hand};
+};
+export function newCardCasts(previous,current){
+ const before=coloredHands(previous),after=coloredHands(current);
+ if(!before||!after||previous.room!==current.room)return [];
+ const casts=[];
+ for(const color of ["w","b"]){
+  const unused=new Set(before[color].filter(card=>card?.used===false).map(card=>card.id));
+  for(const card of after[color]){
+   if(!card||card.used!==true||!unused.has(card.id)||
+      typeof card.id!=="string"||!/^[a-z0-9-]+$/.test(card.id)||
+      typeof card.name!=="string"||!["Common","Uncommon","Rare","Epic","Legendary"].includes(card.rarity))continue;
+   casts.push({color,id:card.id,name:card.name,rarity:card.rarity});
+  }
+ }
+ return casts;
+}
