@@ -168,3 +168,9 @@
  0%{opacity:0;filter:blur(12px)}18%{opacity:1;filter:blur(0)}
  73%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(7px)}
 }
+
+/* Identical piece silhouettes and contrasting materials in CSS fallback. */
+.combatActor.combatDark,.combatVictim.combatDark{
+ color:#29394b;-webkit-text-stroke:1.1px #d7e4ee;
+ text-shadow:0 2px 3px #020711,0 0 14px #e9e8df;
+}
