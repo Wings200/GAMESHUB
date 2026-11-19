@@ -29,9 +29,10 @@ export function boardFromSnapshot(fen){
  }
  return board.length===64?board:null;
 }
-const INDEX_TO_BOARD=n=>(7-(n>>4))*8+(n&7);
+// Engine 0x88 rows and FEN rows both begin at rank 8 (a8 is index zero).
+const INDEX_TO_BOARD=n=>(n>>4)*8+(n&7);
 const AT=(board,n)=>VALID_INDEX(n)?board?.[INDEX_TO_BOARD(n)]||null:null;
-const PIECE_INDEX=(board,piece)=>{const n=board?.indexOf(piece)??-1;return n<0?null:(7-Math.floor(n/8))*16+n%8;};
+const PIECE_INDEX=(board,piece)=>{const n=board?.indexOf(piece)??-1;return n<0?null:Math.floor(n/8)*16+n%8;};
 const threatenedKing=(current,board,finish=false)=>{
  const winner=current.status.winner;
  const color=finish&&["w","b"].includes(winner)?(winner==="w"?"b":"w"):current.turn;
@@ -41,7 +42,7 @@ const threatenedKing=(current,board,finish=false)=>{
 function enPassantVictim(before,after,from,to,attacker){
  if(attacker?.toLowerCase()!=="p"||AT(before,to)!=="."||AT(after,to)!==attacker)return null;
  if(Math.abs((from&7)-(to&7))!==1||Math.abs((from>>4)-(to>>4))!==1)return null;
- const victimSquare=to+(COLOR(attacker)==="w"?-16:16);
+ const victimSquare=to+(COLOR(attacker)==="w"?16:-16);
  const victim=AT(before,victimSquare);
  return victim?.toLowerCase()==="p"&&ENEMY(attacker,victim)&&AT(after,victimSquare)==="."?victim:null;
 }
@@ -99,7 +100,7 @@ function element(tag,className,text){
  return node;
 }
 function coords(index,player){
- const file=index&7,rank=(index>>4)+1;
+ const file=index&7,rank=8-(index>>4);
  // 10x10 board with a one-square sniper perimeter, viewed from the player.
  const col=player==="b"?8-file:file+1;
  const row=player==="b"?rank:9-rank;
