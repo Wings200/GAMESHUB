@@ -1,4 +1,5 @@
 import {createCombat3D} from "./sniper-3d.mjs?v=4";
+import {makePieceSVG} from "./piece-shapes.mjs?v=1";
 // Visual-only cinematic director for server-confirmed Illegal Chess snapshots.
 // Never mutates game state, reserves turns, pauses rescue timers, or predicts moves.
 const PIECES={p:"PAWN",n:"KNIGHT",b:"BISHOP",r:"ROOK",q:"QUEEN",k:"KING"};
@@ -142,8 +143,8 @@ export function createCinematicDirector(board,getMode){
   const ms=reduced?360:DURATIONS[cue.kind]||900;
   position();
   title.textContent=cue.title;detail.textContent=cue.detail;
-  attacker.textContent=GLYPHS[cue.attacker]||"";
-  victim.textContent=GLYPHS[cue.victim]||"";
+  attacker.replaceChildren(makePieceSVG(cue.attacker)||document.createTextNode(GLYPHS[cue.attacker]||""));
+  victim.replaceChildren(makePieceSVG(cue.victim)||document.createTextNode(GLYPHS[cue.victim]||""));
   attacker.classList.toggle("combatDark",!!cue.attacker&&COLOR(cue.attacker)==="b");
   victim.classList.toggle("combatDark",!!cue.victim&&COLOR(cue.victim)==="b");
   const from=VALID_INDEX(cue.from)?coords(cue.from,board.dataset.player):{x:"50%",y:"50%"};
