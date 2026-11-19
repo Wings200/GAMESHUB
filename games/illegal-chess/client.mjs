@@ -1,7 +1,8 @@
 import {cardImage} from "./art.mjs?v=3";
-import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=2";
+import {makePieceSVG} from "./piece-shapes.mjs?v=1";
+import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=3";
 import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
-import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=4";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=5";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
@@ -95,7 +96,7 @@ function playSniperCinematic(event){
  $("cinematicTitle").textContent=scene.title;
  $("cinematicSubtitle").textContent=scene.eyebrow;
  $("cinematicDetail").textContent=scene.detail;
- $("cinematicTargetPiece").textContent=glyph[scene.victim]||"♟";
+ $("cinematicTargetPiece").replaceChildren(makePieceSVG(scene.victim)||document.createTextNode(glyph[scene.victim]||"♟"));
  if(!reduced&&!sniper3DUnavailable&&!sniperRenderer){
   // The shader/geometry are built just once; the GPU is idle between shots.
   // No separate Three.js download, video files, or textures.
@@ -484,7 +485,7 @@ function renderBoard(){
     ghost.classList.add("offboardSniper");
     if(sniperSelected)ghost.classList.add("selected");
     const icon=document.createElement("span");icon.className="piece "+(isBlack?"black":"white");
-    icon.textContent="♗";ghost.append(icon);
+    icon.append(makePieceSVG(isBlack?"b":"B"));ghost.append(icon);
     const pin=document.createElement("span");pin.className="sniperPin";pin.textContent="⌖";ghost.append(pin);
     ghost.removeAttribute("aria-hidden");ghost.setAttribute("role","button");ghost.setAttribute("tabindex","0");
     ghost.setAttribute("aria-label","Your off-board bishop, aim down the "+vision.direction+" diagonal");
@@ -524,7 +525,7 @@ function renderBoard(){
   if(game.last&&(game.last.from===((8-rank)*16+file)||game.last.to===((8-rank)*16+file)))cell.classList.add("lastMove");
   if(piece!=="."){
    const symbol=document.createElement("span");symbol.className="piece "+(piece===piece.toUpperCase()?"white":"black");
-   symbol.textContent=glyph[piece]||"?";cell.append(symbol);
+   symbol.append(makePieceSVG(piece)||document.createTextNode(glyph[piece]||"?"));cell.append(symbol);
    if(analystPopup?.square===name){
     cell.classList.add("analystSymbolSquare");
     const badge=document.createElement("span");badge.className="analystMoveSymbol analystCoin "+analystPopup.tone;
@@ -696,7 +697,8 @@ function render(){
  if(!game)return;
  prepareAnalystSymbol();
  const black=game.player==="b";
- $("selfIcon").textContent="♔";$("enemyIcon").textContent="♔";
+ $("selfIcon").replaceChildren(makePieceSVG(black?"k":"K"));
+ $("enemyIcon").replaceChildren(makePieceSVG(black?"K":"k"));
  $("selfIcon").classList.toggle("dark",black);$("enemyIcon").classList.toggle("dark",!black);
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";
