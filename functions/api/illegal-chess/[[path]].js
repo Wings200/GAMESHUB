@@ -1,6 +1,6 @@
 // GAMESHUB Pages Function: two-player Illegal Chess rooms backed by existing D1 DB.
 // POST /api/illegal-chess/{create,join,state,action}; no unauthenticated spectator endpoints.
-import {newGame,joinGame,act,playerView} from "../../../games/illegal-chess/game.mjs";
+import {newGame,joinGame,act,playerView,cardUsageSnapshot,recordCardUsage,voteRematch} from "../../../games/illegal-chess/game.mjs";
 import {classifyStockfish} from "../../../games/illegal-chess/stockfish-review.mjs";
 import {analystActive} from "../../../games/illegal-chess/analyst.mjs";
 
@@ -146,7 +146,7 @@ async function joinOpenRoom(db,record){
 }
 function roomCode(input){const code=String(input||"").trim().toUpperCase();if(!codePattern.test(code))throw Error("Room code must be six characters");return code;}
 function tokenValue(input){const token=String(input||"");if(!/^[a-f0-9]{64}$/.test(token))throw Error("Invalid player session");return token;}
-const safely=err=>["Room not found","Room is already full","Not your turn","Game is over","Wait for a second player","Your king would be in check"].includes(err.message)||/^(Illegal|Choose|Select|Cannot|No |This card|Unknown|Invalid|Request|Malformed|Not implemented|The king|Hit and Run|That piece|You already|Objection!|Counterfeit|Waiting for the opponent|Classified Promotion)/.test(err.message)?err.message:"Action unavailable";
+const safely=err=>["Room not found","Room is already full","Not your turn","Game is over","Wait for a second player","Your king would be in check","Finish the match before requesting a rematch","Choose whether you are ready for a rematch"].includes(err.message)||/^(Illegal|Choose|Select|Cannot|No |This card|Unknown|Invalid|Request|Malformed|Not implemented|The king|Hit and Run|That piece|You already|Objection!|Counterfeit|Waiting for the opponent|Classified Promotion)/.test(err.message)?err.message:"Action unavailable";
 export async function onRequest(context){
  if(context.request.method==="GET"){
   const pathname=new URL(context.request.url).pathname;
@@ -156,7 +156,7 @@ export async function onRequest(context){
  if(!context.env.DB)return reply({error:"GAMESHUB D1 DB binding is unavailable"},503);
  try{
   const path=new URL(context.request.url).pathname.split("/").filter(Boolean).pop();
-  if(!["create","join","state","action","analyst","public-list","quick-join","unlist","public-heartbeat"].includes(path))return reply({error:"Unknown endpoint"},404);
+  if(!["create","join","state","action","analyst","public-list","quick-join","unlist","public-heartbeat","rematch"].includes(path))return reply({error:"Unknown endpoint"},404);
   const data=await json(context.request),db=context.env.DB;
   await init(db);
   if(path==="public-list"){
@@ -211,7 +211,19 @@ export async function onRequest(context){
    }
    return reply({ok:true,view:playerView(game,getIdentity(game,hashed))});
   }
+  if(path==="rematch"){
+   if(!Number.isInteger(data.round)||data.round!==(game.round||1))return reply({error:"Rematch round changed; refresh the match"},409);
+   let next;
+   try{next=voteRematch(game,player,data.ready);}
+   catch(e){return reply({error:safely(e)},400);}
+   const saved=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?")
+    .bind(JSON.stringify(next),Date.now(),code,r.version).run();
+   if(saved.meta?.changes!==1)return reply({error:"Rematch changed; refresh and try again"},409);
+   return reply({ok:true,view:playerView(next,getIdentity(next,hashed))});
+  }
+  const beforeCards=cardUsageSnapshot(game);
   try{act(game,player,data.action)}catch(e){return reply({error:safely(e)},400)}
+  recordCardUsage(game,beforeCards);
   const result=await db.prepare("UPDATE illegal_chess_rooms SET state=?,version=version+1,updated_at=? WHERE code=? AND version=?").bind(JSON.stringify(game),Date.now(),code,r.version).run();
   if(result.meta?.changes!==1)return reply({error:"Move conflict; refresh and try again"},409);
   // Color ownership may change after this action: identify the player again before returning the private view.
