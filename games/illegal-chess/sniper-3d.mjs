@@ -448,7 +448,7 @@ const COMBAT_SCULPT={p:"sculptPawn",n:"sculptKnight",b:"sculptBishop",
  r:"sculptRook",q:"sculptQueen",k:"sculptKing"};
 export const combatPosition=index=>
  Number.isInteger(index)&&index>=0&&index<128&&!(index&0x88)
- ?[(index&7)-3.5,0,3.5-(index>>4)]:null;
+ ?[(index&7)-3.5,0,(index>>4)-3.5]:null;
 export const combatBlend=(ms,duration)=>{
  const t=clamp(ms/Math.max(1,duration));
  return {progress:t,charge:smooth((t-.12)/.37),
