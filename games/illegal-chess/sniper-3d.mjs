@@ -546,7 +546,7 @@ export function createCombat3D(canvas,onUnavailable=()=>{}){
  let request=0,active=false,started=0,lastDraw=-Infinity,event=null,duration=0;
  const interval=1000/(chromeOS?22:35);
  function stop(){
-  active=false;
+  active=false;canvas.style.opacity="0";
   if(request){cancelAnimationFrame(request);request=0;}
  }
  function tick(now){
@@ -560,7 +560,7 @@ export function createCombat3D(canvas,onUnavailable=()=>{}){
    if(canvas.width!==w||canvas.height!==h){
     canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);
    }
-   try{drawCombatWorld(gl,graphics,event,elapsed,duration,w,h);}
+   try{drawCombatWorld(gl,graphics,event,elapsed,duration,w,h);canvas.style.opacity="1";}
    catch(error){console.warn("Combat 3D render interrupted",error);
     stop();onUnavailable();return;}
   }
