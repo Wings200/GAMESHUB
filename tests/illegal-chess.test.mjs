@@ -4,7 +4,7 @@ import {newGame,joinGame,randomHand,act,playerView,status,CARDS} from "../games/
 import {parseFen,START_FEN,legal,apply,sq,fen,idx} from "../games/illegal-chess/engine.mjs";
 import {ANALYST_GRADES,ANALYST_SYMBOLS,classifyAnalyst} from "../games/illegal-chess/analyst.mjs";
 import {MOVE_COINS,parseUciInfo,classifyStockfish,createStockfishReviewer,engineSources} from "../games/illegal-chess/stockfish-review.mjs";
-import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS,newCardCasts} from "../games/illegal-chess/cinematic.mjs";
+import {nextCinematic,cinematicCaption,CINEMATIC_DURATIONS,newCardCasts,nextCardEvents} from "../games/illegal-chess/cinematic.mjs";
 import {SNIPER_3D_DURATION,SNIPER_3D_PHASES,shotPhase,sniperPath,cinematicCamera,square3D,sniperMotion} from "../games/illegal-chess/sniper-3d.mjs";
 import {createSniperSoundtrack,SNIPER_SOUND_CUES,SNIPER_FALLBACK_CUES,SNIPER_TELEPORT_CUES} from "../games/illegal-chess/sniper-sound.mjs";
 import {buildSculptMeshes,sculptAssetCatalog} from "../games/illegal-chess/sniper-sculpts.mjs";
@@ -1193,4 +1193,21 @@ test("Non-owner view excludes even synthetic recorded scores and a current worke
  assert.ok(!hidden.includes('"beforeFen"')&&!hidden.includes('"uci"'));
  assert.equal(playerView(g,"w").analyst.entries[0].grade,"Excellent");
  assert.equal(playerView(g,"w").analyst.worker.role,"leader");
+});
+
+
+test("Card casts stay ordered and deduplicated, including two uses between polls",()=>{
+ const events=[
+  {seq:1,actor:"self",id:"ceasefire",name:"Ceasefire",rarity:"Common"},
+  {seq:2,actor:"opponent",id:"bishop-sniper",name:"Bishop Sniper",rarity:"Epic"},
+  {seq:3,actor:"self",id:"objection",name:"Objection!",rarity:"Rare"}
+ ];
+ const initial=nextCardEvents(events, null);
+ assert.equal(initial.seen,3);assert.deepEqual(initial.events,[],"No stale card replays on page load");
+ const update=nextCardEvents(events,1);
+ assert.deepEqual(update.events.map(e=>e.seq),[2,3],"No skipped cast when two occur between polls");
+ assert.equal(update.seen,3);
+ assert.deepEqual(nextCardEvents(events,update.seen).events,[],"No duplicate cast when state repeats");
+ assert.deepEqual(nextCardEvents(events,0).events.map(e=>e.seq),[1,2,3],"Fresh rematches show their first action");
+ assert.deepEqual(nextCardEvents([events[1],events[0],events[2]],0).events.map(e=>e.seq),[1,2,3]);
 });

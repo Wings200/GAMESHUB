@@ -61,9 +61,48 @@ export function randomHand(excludeIds=[]){
  }
  return hand;
 }
-export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],last:null,log:[]};}
+export function newGame(room,whiteToken){const s=parseFen(START_FEN),snipers={w:null,b:null};s.sniperSignature=JSON.stringify(snipers);return {room,s,history:[s],snipers,players:{w:whiteToken,b:null},hands:{w:randomHand(),b:[]},effects:{freeze:null,reserved:null,ceasefire:0,pawnStrike:0,insurance:{w:null,b:null},delayedEp:null,timeCapsule:null},epWindows:{w:null,b:null},capturedPieces:{w:{n:0,b:0,r:0},b:{n:0,b:0,r:0}},capturedPawns:{w:0,b:0},identityTheft:null,classified:{w:null,b:null},copyOffers:{w:null,b:null},pendingReaction:null,cardBlocked:null,moveCount:0,swaps:0,rescue:null,pendingColorSwap:false,analystLog:[],analystLease:null,cinematics:[],cardEvents:[],cardEventSeq:0,round:1,rematch:{w:false,b:false},last:null,log:[]};}
 export function joinGame(g,blackToken){if(g.players.b)throw Error("Room is already full");g.players.b=blackToken;g.hands.b=randomHand(g.hands.w.map(c=>c.id));}
 export const stateFen=g=>fen(g.s);
+// Capture the original owner of each hand, not the side controlling it.
+// Every 20 turns the seat tokens and hands swap; comparing by color would
+// misattribute card uses, miss simultaneous Objection! plays, or replay casts.
+export function cardUsageSnapshot(g){
+ const hands=new Map();
+ for(const color of ["w","b"])if(g.players[color])
+  hands.set(g.players[color],(g.hands[color]||[]).map(card=>({...card})));
+ return hands;
+}
+export function recordCardUsage(g,before){
+ g.cardEvents||=[];g.cardEventSeq||=0;
+ for(const color of ["w","b"]){
+  const owner=g.players[color],previous=before.get(owner)||[],current=g.hands[color]||[];
+  for(let slot=0;slot<current.length;slot++){
+   const old=previous[slot],card=current[slot];
+   if(old&&!old.used&&card?.used){
+    g.cardEvents.push({seq:++g.cardEventSeq,player:owner,card:old.id});
+   }
+  }
+ }
+ if(g.cardEvents.length>60)g.cardEvents=g.cardEvents.slice(-40);
+}
+// Both authenticated participants must opt in after the result is final.
+// A fresh round reuses the SAME room and session tokens, alternates colors,
+// and deals new independent random hands. Neither vote alone resets the board.
+export function voteRematch(g,color,ready){
+ if(!g.players.b||!status(g).done)throw Error("Finish the match before requesting a rematch");
+ if(typeof ready!=="boolean")throw Error("Choose whether you are ready for a rematch");
+ g.rematch||={w:false,b:false};
+ g.rematch[color]=ready;
+ if(!g.rematch.w||!g.rematch.b)return g;
+ const next=newGame(g.room,g.players.b);
+ joinGame(next,g.players.w);
+ next.public=!!g.public;
+ next.round=(g.round||1)+1;
+ next.log.push({side:"system",text:"REMATCH ROUND "+next.round+" — colors switched and fresh cards dealt"});
+ return next;
+}
+
 export function available(g){
  const s=g.s,col=current(s);
  const extra=g.effects.delayedEp?.color===col?delayedEpMoves(g,col):[];
@@ -192,6 +231,15 @@ export function playerView(g,color){
   opponent:g.hands[color==="w"?"b":"w"].map(c=>({...getCard(c.id),used:c.used})),
   effects:publicEffects(g,color),last:redactedLast(g,color),log:g.log.slice(-40),
   cinematics:(g.cinematics||[]).slice(-8),
+  round:g.round||1,
+  rematch:{selfReady:!!g.rematch?.[color],opponentReady:!!g.rematch?.[color==="w"?"b":"w"]},
+  // Server-confirmed activations in order. Player hashes never leave the server;
+  // actors are resolved against seat ownership AFTER any color swaps.
+  cardEvents:(g.cardEvents||[]).slice(-40).map(event=>{
+   const card=getCard(event.card);
+   return {seq:event.seq,actor:event.player===g.players[color]?"self":"opponent",
+    id:event.card,name:card?.name||"Card",rarity:card?.rarity||"Common"};
+  }),
   // The Analyst's ability belongs ONLY to a player holding the passive card.
   // Match-wide evaluation remains shared internally, but grade history,
   // move analysis inputs (beforeFen/uci) and worker info are private to owners.

@@ -60,3 +60,18 @@ export function newCardCasts(previous,current){
  }
  return casts;
 }
+
+// Deliver ALL server-confirmed card events, once, in sequence order. The first
+// snapshot of an already-running room baselines past events without replay.
+// A brand-new rematch can explicitly pass seen=0 to show its earliest casts.
+export function nextCardEvents(events,seen){
+ const valid=Array.isArray(events)?events.filter(event=>
+  Number.isInteger(event?.seq)&&event.seq>0&&
+  ["self","opponent"].includes(event.actor)&&
+  typeof event.id==="string"&&/^[a-z0-9-]+$/.test(event.id)&&
+  typeof event.name==="string"&&
+  ["Common","Uncommon","Rare","Epic","Legendary"].includes(event.rarity)):[];
+ const latest=valid.reduce((n,event)=>Math.max(n,event.seq),0);
+ if(seen===null)return {seen:latest,events:[]};
+ return {seen:Math.max(seen,latest),events:valid.filter(event=>event.seq>seen).sort((a,b)=>a.seq-b.seq)};
+}
