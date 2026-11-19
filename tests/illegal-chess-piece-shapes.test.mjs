@@ -12,7 +12,7 @@ function withDOM(fn){
  try{return fn();}finally{globalThis.document=previousDocument;}
 }
 test("all six types exist and Black uses near-black opaque fill",()=>{
- assert.deepEqual(pieceShapeTypes.sort(),["b","k","n","p","q","r"]);
+ assert.deepEqual([...pieceShapeTypes].sort(),["b","k","n","p","q","r"]);
  for(const type of pieceShapeTypes){
   const dark=pieceColors(type),ivory=pieceColors(type.toUpperCase());
   assert.equal(dark.fill,"#10161e");
