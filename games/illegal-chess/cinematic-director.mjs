@@ -143,6 +143,8 @@ export function createCinematicDirector(board,getMode){
   title.textContent=cue.title;detail.textContent=cue.detail;
   attacker.textContent=GLYPHS[cue.attacker]||"";
   victim.textContent=GLYPHS[cue.victim]||"";
+  attacker.classList.toggle("combatDark",!!cue.attacker&&COLOR(cue.attacker)==="b");
+  victim.classList.toggle("combatDark",!!cue.victim&&COLOR(cue.victim)==="b");
   const from=VALID_INDEX(cue.from)?coords(cue.from,board.dataset.player):{x:"50%",y:"50%"};
   const to=VALID_INDEX(cue.to)?coords(cue.to,board.dataset.player):{x:"50%",y:"50%"};
   root.style.setProperty("--from-x",from.x);root.style.setProperty("--from-y",from.y);
@@ -155,7 +157,7 @@ export function createCinematicDirector(board,getMode){
   // unavailable, including on low-powered devices or lost GPU contexts.
   if(!reduced&&!rendererUnavailable){
    if(!renderer){
-    renderer=createCombat3D(canvas);
+    renderer=createCombat3D(canvas,()=>{root.classList.remove("has3D");rendererUnavailable=true;});
     if(!renderer)rendererUnavailable=true;
    }
    if(renderer?.play(cue,ms))root.classList.add("has3D");
