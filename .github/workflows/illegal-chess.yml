@@ -76,7 +76,7 @@ jobs:
           assert.match(html,/ALPHA 0\.11\.2/,"Multiplayer card casting release must load");
           assert.match(html,/style\.css\?v=20/,"Fresh casting CSS must be cache-busted");
           assert.match(html,/client\.mjs\?v=27/,"Card sync and rematch client must be cache-busted");
-          assert.match(client,/cinematic\.mjs\?v=3/,"New cast detector must be loaded");
+          assert.match(client,/cinematic\.mjs\?v=4/,"New cast detector must be loaded");
           assert.match(client,/syncCardCasts\(\)/,"Both players must see used-card animations");
           assert.match(html,/id="cardActivation"/,"Nonblocking card cast overlay must exist");
           assert.match(html,/id="endScreen"/,"Match must have a full results screen");
@@ -131,7 +131,7 @@ jobs:
           assert.match(html,/id="sniper3DCanvas"/,"3D replay must have a real WebGL canvas");
           assert.match(client,/createSniper3D/,"The 3D renderer must be invoked by server-triggered shot");
           assert.match(client,/sniperRenderer.play\(event\)/,"A first shot must start the 3D camera");
-          assert.match(client,/cinematic\.mjs\?v=3/,"Latest runtime events must avoid stale cache");
+          assert.match(client,/cinematic\.mjs\?v=4/,"Latest runtime events must avoid stale cache");
           assert.match(client,/sniper-3d\.mjs\?v=5/,"Sculpted V3 renderer must be loaded");
           assert.match(client,/cinematic-director\.mjs\?v=3/,"Fresh 3D combat integration must be cache-busted");
           assert.match(client,/piece-shapes\.mjs\?v=1/,"Identical Black and White SVG geometry must load");
