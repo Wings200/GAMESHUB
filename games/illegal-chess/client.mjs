@@ -821,10 +821,12 @@ function render(){
   const winner=game.status.winner;
   const headline=winner===null?"DRAW":winner===game.player?"VICTORY":"DEFEAT";
   $("gameResultTitle").textContent=headline;
-  $("gameResultDetail").textContent=game.status.text+" · The match is finished; moves and cards are now locked.";
+  $("gameResultDetail").textContent=game.status.text+" · The final board stays available below.";
   result.classList.toggle("victory",headline==="VICTORY");
   result.classList.toggle("defeat",headline==="DEFEAT");
  }
+ $("resultRematch").hidden=!game.status.done;
+ syncPostMatch();
  $("enemyState").textContent=!game.ready?"Invite someone to join":game.status.done?"Match complete":myTurn()?"Waiting for your move":"Choosing a move…";
  $("selfTurn").hidden=!myTurn();$("enemyTurn").hidden=!game.ready||game.status.done||myTurn();
  if(selectedCard&&!game.hand.some(c=>c.id===selectedCard.id&&!c.used)){clearSelection();}
@@ -980,6 +982,26 @@ async function selectSquare(name,piece){
  if(own(piece)){sniperSelected=false;selected=name;render();}
  else flash("Select your own piece first.");
 }
+$("endRematch").addEventListener("click",()=>void changeRematch(true));
+$("endCancelRematch").addEventListener("click",()=>void changeRematch(false));
+$("resultRematch").addEventListener("click",()=>void changeRematch(!game?.rematch?.selfReady));
+$("endReview").addEventListener("click",()=>{
+ postMatchDismissed=true;$("endScreen").hidden=true;
+ $("gameResult").scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("resultSummary").addEventListener("click",()=>{
+ if(!game?.status?.done)return;
+ postMatchDismissed=false;
+ if(postMatchTimer){clearTimeout(postMatchTimer);postMatchTimer=null;}
+ $("endScreen").hidden=false;
+ $("endRematch").focus({preventScroll:true});
+});
+$("endLeave").addEventListener("click",()=>$("leave").click());
+document.addEventListener("keydown",event=>{
+ if(event.key==="Escape"&&!$("endScreen").hidden&&!modalOpen){
+  postMatchDismissed=true;$("endScreen").hidden=true;
+ }
+});
 $("retryStockfish").addEventListener("click",async()=>{
  if(!session)return;
  if(stockfishReviewer){stockfishReviewer.dispose();stockfishReviewer=null;}
@@ -1026,8 +1048,8 @@ $("leave").addEventListener("click",async()=>{
   catch(error){flash("Could not close public listing: "+error.message);return;}
  }
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
- disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
- combatDirector.reset();previousCombatView=null;
+ disposeSniper3D();cinematicSeen=null;resetCardSync();
+ combatDirector.reset();previousCombatView=null;resetPostMatch();
  if(poll){clearInterval(poll);poll=null;}
  if(rescueClock){clearInterval(rescueClock);rescueClock=null;}
  clearSelection();
