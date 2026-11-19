@@ -1,12 +1,12 @@
 import {cardImage} from "./art.mjs?v=3";
-import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=1";
+import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=2";
 import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
-import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=4";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
 const $=id=>document.getElementById(id);
-const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
+const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♔",q:"♕",r:"♖",b:"♗",n:"♘",p:"♙"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
 const cinematicModeKey="gameshub-illegal-chess-cinematic-mode";
 let cinematicMode="full";
@@ -484,7 +484,7 @@ function renderBoard(){
     ghost.classList.add("offboardSniper");
     if(sniperSelected)ghost.classList.add("selected");
     const icon=document.createElement("span");icon.className="piece "+(isBlack?"black":"white");
-    icon.textContent=isBlack?"♝":"♗";ghost.append(icon);
+    icon.textContent="♗";ghost.append(icon);
     const pin=document.createElement("span");pin.className="sniperPin";pin.textContent="⌖";ghost.append(pin);
     ghost.removeAttribute("aria-hidden");ghost.setAttribute("role","button");ghost.setAttribute("tabindex","0");
     ghost.setAttribute("aria-label","Your off-board bishop, aim down the "+vision.direction+" diagonal");
@@ -696,7 +696,7 @@ function render(){
  if(!game)return;
  prepareAnalystSymbol();
  const black=game.player==="b";
- $("selfIcon").textContent=black?"♚":"♔";$("enemyIcon").textContent=black?"♔":"♚";
+ $("selfIcon").textContent="♔";$("enemyIcon").textContent="♔";
  $("selfIcon").classList.toggle("dark",black);$("enemyIcon").classList.toggle("dark",!black);
  $("selfLabel").textContent=(black?"BLACK":"WHITE")+" · YOU";
  $("enemyLabel").textContent=(black?"WHITE":"BLACK")+" · OPPONENT";

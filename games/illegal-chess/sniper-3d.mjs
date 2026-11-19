@@ -439,3 +439,144 @@ export function createSniper3D(canvas,{onPhase=()=>{},onFinish=()=>{}}={}){
  },{once:true});
  return {play,stop,dispose,supported:true};
 }
+
+
+// Shared WebGL sculpt/lighting pipeline for confirmed captures, check,
+// rescue and match endings. No chess state or countdown is changed here.
+// The same sculpt mesh is used for both colors: only material tint changes.
+const COMBAT_SCULPT={p:"sculptPawn",n:"sculptKnight",b:"sculptBishop",
+ r:"sculptRook",q:"sculptQueen",k:"sculptKing"};
+export const combatPosition=index=>
+ Number.isInteger(index)&&index>=0&&index<128&&!(index&0x88)
+ ?[(index&7)-3.5,0,(index>>4)-3.5]:null;
+export const combatBlend=(ms,duration)=>{
+ const t=clamp(ms/Math.max(1,duration));
+ return {progress:t,charge:smooth((t-.12)/.37),
+  impact:smooth((t-.44)/.11),
+  dissolve:smooth((t-.59)/.27),
+  exit:smooth((t-.75)/.25)};
+};
+function drawCombatWorld(gl,g,cue,ms,duration,w,h){
+ const {draw,uniforms}=g;
+ const kind=cue.kind,animation=combatBlend(ms,duration);
+ const {progress:t,charge,impact,dissolve,exit}=animation;
+ const origin=combatPosition(cue.from),target=combatPosition(cue.to);
+ const king=combatPosition(cue.kingSquare);
+ const focus=(kind==="capture"?target:king)||[0,0,0];
+ const activeFocus=kind==="capture"&&origin?
+  lerp3(origin,focus,smooth((t-.06)/.44)):focus;
+ const orbit=-.68+t*.48;
+ const distance=kind==="finish"?5.6-1.8*smooth(t):6.8-1.25*charge;
+ const eye=[activeFocus[0]+Math.sin(orbit)*distance,
+  kind==="finish"?4.1-1.2*smooth(t):4.3+.4*Math.sin(t*Math.PI),
+  activeFocus[2]+Math.cos(orbit)*distance];
+ const projection=perspective(Math.PI/3.3,w/h,.045,75);
+ gl.uniformMatrix4fv(uniforms.vp,false,mm(projection,lookAt(eye,
+  [activeFocus[0],.75,activeFocus[2]])));
+ gl.uniform3fv(uniforms.camera,eye);
+ gl.clearColor(.029,.041,.067,1);
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ const d=(mesh,pos,sz,col,rot=[0,0,0],glow=0,parent=null)=>{
+  const m=model(pos,sz,rot);draw(mesh,parent?mm(parent,m):m,col,glow);
+ };
+ // Ground, raised chess tiles, and border are genuine depth-tested geometry.
+ d("cube",[0,-.20,0],[8.7,.35,8.7],[.07,.10,.17]);
+ for(let row=0;row<8;row++)for(let col=0;col<8;col++)
+  d("cube",[col-3.5,0,row-3.5],[.99,.07,.99],
+   (row+col)%2?[.17,.27,.36]:[.40,.56,.65]);
+ for(const edge of [-4.34,4.34]){
+  d("cube",[0,.025,edge],[8.73,.13,.055],[.7,.53,.29]);
+  d("cube",[edge,.025,0],[.055,.13,8.73],[.7,.53,.29]);
+ }
+ const tint=p=>p===p?.toUpperCase()?[.96,.91,.82]:[.21,.27,.38];
+ const trim=p=>p===p?.toUpperCase()?[1,.78,.40]:[.68,.57,.82];
+ function piece(p,pos,{shrink=1,angle=0,drop=0,glow=0}={}){
+  if(!COMBAT_SCULPT[p?.toLowerCase()]||!pos||shrink<=.015)return;
+  const parent=mm(translate(pos[0],drop+.045,pos[2]),
+   mm(rotZ(angle),scale(.94*shrink,.94*shrink,.94*shrink)));
+  d(COMBAT_SCULPT[p.toLowerCase()],[0,0,0],[1,1,1],tint(p),[0,0,0],glow,parent);
+  if(p.toLowerCase()==="b")d("sculptBishopGilding",[0,0,0],[1,1,1],trim(p),[0,0,0],glow,parent);
+  if(p.toLowerCase()==="n")d("sculptKnightMane",[0,0,0],[1,1,1],trim(p),[0,0,0],glow,parent);
+ }
+ if(kind==="capture"&&origin&&target){
+  // The attacking piece is driven through the source/destination squares.
+  const travel=lerp3(origin,target,charge);
+  piece(cue.attacker,travel,{drop:.16*Math.sin(charge*Math.PI),glow:.1+impact*.15});
+  // The victim crumples and gradually sinks/fades behind the impact.
+  piece(cue.victim,target,{shrink:1-.98*dissolve,angle:1.2*dissolve,
+   drop:-.54*dissolve,glow:impact*(1-dissolve)*.55});
+  const pulse=impact*(1-exit);
+  if(pulse>.005){
+   d("ring",[target[0],.14,target[2]],[.55+pulse*1.65,.055,.55+pulse*1.65],
+    [1,.55,.30],[0,0,0],.65*pulse);
+   d("sphere",[target[0],.9,target[2]],[.20*pulse,.20*pulse,.20*pulse],
+    [1,.81,.58],[0,0,0],pulse);
+  }
+ }else{
+  const endangered=cue.kingPiece||"k";
+  if(king){
+   const isFinal=kind==="finish";
+   const fall=isFinal?smooth((t-.40)/.45):0;
+   piece(endangered,king,{shrink:1-.1*fall,angle:fall*1.3,
+    drop:-fall*.75,glow:kind==="escape"?.16:.20+Math.sin(t*18)*.08});
+   const ringScale=1+Math.sin(t*12)*.14+(kind==="finish"?fall*.55:0);
+   const ringColor=kind==="escape"?[.25,1,.68]:[1,.26,.33];
+   d("ring",[king[0],.12,king[2]],[.78*ringScale,.12,.78*ringScale],
+    ringColor,[0,0,0],.16+Math.sin(t*18)*.08);
+   if(isFinal&&fall>.1){
+    d("ring",[king[0],.08,king[2]],[.9+fall*1.15,.07,.9+fall*1.15],
+     [.96,.71,.36],[0,0,0],fall*.4);
+   }
+  }
+ }
+}
+// Same frame-throttling and GPU cleanup as Bishop Sniper. The canvas
+// only renders while a confirmed cue is on-screen.
+export function createCombat3D(canvas,onUnavailable=()=>{}){
+ if(!canvas||typeof canvas.getContext!=="function")return null;
+ const chromeOS=typeof navigator!=="undefined"&&/CrOS|Chrome OS|Chromebook/i.test(navigator.userAgent||"");
+ let gl;
+ try{gl=canvas.getContext("webgl",{alpha:false,antialias:!chromeOS,
+  depth:true,powerPreference:chromeOS?"low-power":"default"});}catch{return null;}
+ if(!gl)return null;
+ let graphics;
+ try{graphics=createGraphics(gl);}catch(error){
+  console.warn("Combat 3D initialization failed",error);return null;
+ }
+ let request=0,active=false,started=0,lastDraw=-Infinity,event=null,duration=0;
+ const interval=1000/(chromeOS?22:35);
+ function stop(){
+  active=false;canvas.style.opacity="0";
+  if(request){cancelAnimationFrame(request);request=0;}
+ }
+ function tick(now){
+  if(!active)return;
+  const elapsed=Math.min(duration,Math.max(0,now-started));
+  if(now-lastDraw>=interval||elapsed===duration){
+   lastDraw=now;
+   const ratio=Math.min(chromeOS?1:1.35,window.devicePixelRatio||1);
+   const w=Math.max(1,Math.round(canvas.clientWidth*ratio));
+   const h=Math.max(1,Math.round(canvas.clientHeight*ratio));
+   if(canvas.width!==w||canvas.height!==h){
+    canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);
+   }
+   try{drawCombatWorld(gl,graphics,event,elapsed,duration,w,h);canvas.style.opacity="1";}
+   catch(error){console.warn("Combat 3D render interrupted",error);
+    stop();onUnavailable();return;}
+  }
+  if(elapsed<duration)request=requestAnimationFrame(tick);
+  else stop();
+ }
+ function play(cue,ms){
+  if(!cue||!["capture","check","rescue","escape","finish"].includes(cue.kind)||
+   (cue.kind==="capture"&&(!combatPosition(cue.from)||!combatPosition(cue.to)))||
+   (cue.kind!=="capture"&&!combatPosition(cue.kingSquare)))return false;
+  stop();event=cue;duration=Math.max(1,ms);lastDraw=-Infinity;
+  started=performance.now();active=true;request=requestAnimationFrame(tick);
+  return true;
+ }
+ canvas.addEventListener("webglcontextlost",e=>{
+  e.preventDefault();stop();onUnavailable();
+ },{once:true});
+ return {play,stop,dispose(){stop();graphics.dispose();},supported:true};
+}

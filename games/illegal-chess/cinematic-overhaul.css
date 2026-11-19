@@ -126,3 +126,51 @@
 .combatDirector.mode-reduced .combatImpact,.combatDirector.mode-reduced .combatTrail,
 .combatDirector.mode-reduced .combatFlash{display:none}
 .combatDirector.mode-reduced:before{display:none}
+
+
+/* V2 · The WebGL stage is a real 3D board with the SAME sculpt meshes for
+   both sides. It lives behind UI/callouts, never intercepts player input. */
+.combat3DCanvas{position:absolute;inset:0;z-index:1;width:100%;height:100%;
+ display:block;pointer-events:none}
+.combatDirector:not(.has3D) .combat3DCanvas{display:none}
+.combatDirector.has3D{background:#0a1220}
+.combatDirector.has3D .combatActor,
+.combatDirector.has3D .combatVictim,
+.combatDirector.has3D .combatTrail,
+.combatDirector.has3D .combatImpact{display:none}
+.combatDirector.has3D .combatBars{border-block-width:clamp(10px,2.1vw,23px)}
+.combatDirector{--combat-duration:2300ms;will-change:opacity}
+.combatDirector.isPlaying{animation:combatShow var(--combat-duration) ease-in-out both}
+.combatDirector.isPlaying .combatCaption{animation:combatCaptionIn var(--combat-duration) ease-in-out both}
+.combatDirector.kind-capture.isPlaying .combatActor{animation-duration:var(--combat-duration)}
+.combatDirector.kind-capture.isPlaying .combatVictim{animation-duration:var(--combat-duration)}
+.combatDirector.kind-capture.isPlaying .combatImpact{animation-duration:var(--combat-duration)}
+.combatDirector.kind-capture.isPlaying .combatFlash{animation-duration:var(--combat-duration)}
+.combatDirector.kind-capture.isPlaying .combatTrail{animation-duration:var(--combat-duration)}
+.combatDirector.kind-check.isPlaying,.combatDirector.kind-rescue.isPlaying,
+.combatDirector.kind-escape.isPlaying{animation:combatWarning var(--combat-duration) ease-in-out both}
+.combatDirector.kind-finish.isPlaying{animation:combatFinal var(--combat-duration) ease-in-out both}
+/* A visible 15–25% opening, 45% hold, and gradual 550–900 ms farewell. */
+@keyframes combatShow{
+ 0%{opacity:0}15%{opacity:1}69%{opacity:1}100%{opacity:0}
+}
+@keyframes combatCaptionIn{
+ 0%{opacity:0;transform:translateY(25px) scale(.92)}
+ 18%,70%{opacity:1;transform:translateY(0) scale(1)}
+ 100%{opacity:0;transform:translateY(-6px) scale(1.025)}
+}
+@keyframes combatWarning{
+ 0%{opacity:0;filter:brightness(1)}15%{opacity:1;filter:brightness(1.2)}
+ 32%{filter:brightness(1.8)}50%,70%{opacity:1;filter:brightness(1)}
+ 100%{opacity:0;filter:brightness(.85)}
+}
+@keyframes combatFinal{
+ 0%{opacity:0;filter:blur(12px)}18%{opacity:1;filter:blur(0)}
+ 73%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(7px)}
+}
+
+/* Identical piece silhouettes and contrasting materials in CSS fallback. */
+.combatActor.combatDark,.combatVictim.combatDark{
+ color:#29394b;-webkit-text-stroke:1.1px #d7e4ee;
+ text-shadow:0 2px 3px #020711,0 0 14px #e9e8df;
+}

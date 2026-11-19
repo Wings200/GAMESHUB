@@ -71,8 +71,8 @@ jobs:
           assert.match(client,/intent:"submit"/,"The browser must publish its result to the shared room");
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
           assert.match(html,/ALPHA 0\.11\.2/,"Multiplayer card casting release must load");
-          assert.match(html,/style\.css\?v=18/,"Fresh casting CSS must be cache-busted");
-          assert.match(html,/client\.mjs\?v=24/,"New cinematic director client must be cache-busted");
+          assert.match(html,/style\.css\?v=19/,"Fresh casting CSS must be cache-busted");
+          assert.match(html,/client\.mjs\?v=25/,"New cinematic director client must be cache-busted");
           assert.match(client,/cinematic\.mjs\?v=3/,"New cast detector must be loaded");
           assert.match(client,/syncCardCasts\(\)/,"Both players must see used-card animations");
           assert.match(html,/id="cardActivation"/,"Nonblocking card cast overlay must exist");
@@ -118,7 +118,9 @@ jobs:
           assert.match(client,/createSniper3D/,"The 3D renderer must be invoked by server-triggered shot");
           assert.match(client,/sniperRenderer.play\(event\)/,"A first shot must start the 3D camera");
           assert.match(client,/cinematic\.mjs\?v=3/,"Latest runtime events must avoid stale cache");
-          assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted V3 renderer must be loaded");
+          assert.match(client,/sniper-3d\.mjs\?v=4/,"Sculpted V3 renderer must be loaded");
+          assert.match(client,/cinematic-director\.mjs\?v=2/,"Fresh 3D combat integration must be cache-busted");
+          assert.match(fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8"),/createCombat3D/,"Confirmed capture and check scenes must use real WebGL sculptures");
           const real3d=fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8");
           assert.match(real3d,/getContext\("webgl"/,"Actual GPU 3D, not fake 2D scaling");
           assert.match(real3d,/SNIPER_3D_DURATION=4900/,"Long close-up, bullet-follow and impact");
@@ -142,7 +144,7 @@ jobs:
           assert.match(html,/id="sniperSoundToggle"/,"Match must expose a local SFX toggle");
           assert.match(html,/class="cinematicAimHud"/,"3D scope HUD required");
           assert.match(html,/class="cinematicBulletHud"/,"Bullet slow-motion HUD required");
-          assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted model renderer must refresh cached V2 renderer");
+          assert.match(client,/sniper-3d\.mjs\?v=4/,"Sculpted model renderer must refresh cached V2 renderer");
           assert.match(real3d,/buildSculptMeshes\(\)/,"New sculpt meshes are merged into the GPU buffer");
           assert.match(real3d,/d\("sculptBishop"/,"Bishop cannot be a generic cylinder in the cinematic");
           assert.match(real3d,/sculptPawn/,"Captured pawn has its own 3D model");
