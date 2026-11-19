@@ -542,3 +542,88 @@ test("Retired guaranteed-card hosting modes are rejected by the public API",asyn
   assert.equal(Object.hasOwn(stored,"analystTest"),false);
  }
 });
+
+
+test("Server-recorded card history syncs every activation to both players in order",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{}),guest=await post(db,"join",{room:host.data.room});
+ setTestHands(db,host.data.room,{
+  w:["ceasefire","pawn-strike","the-analyst"],
+  b:["knight-exchange","pawn-sidestep","the-analyst"]
+ });
+ const initial=(await post(db,"state",guest.data)).data;
+ assert.deepEqual(initial.cardEvents,[]);
+ const first=await post(db,"action",{...host.data,action:{type:"card",card:"ceasefire"}});
+ assert.equal(first.status,200);
+ const second=await post(db,"action",{...host.data,action:{type:"card",card:"pawn-strike"}});
+ assert.equal(second.status,200);
+ const w=(await post(db,"state",host.data)).data,b=(await post(db,"state",guest.data)).data;
+ assert.deepEqual(w.cardEvents.map(e=>e.seq),[1,2]);
+ assert.deepEqual(b.cardEvents.map(e=>e.seq),[1,2],"Opponent sees every card despite skipping two polls");
+ assert.deepEqual(w.cardEvents.map(e=>e.actor),["self","self"]);
+ assert.deepEqual(b.cardEvents.map(e=>e.actor),["opponent","opponent"]);
+ assert.deepEqual(w.cardEvents.map(e=>e.name),["Ceasefire","Pawn Strike"]);
+ assert.equal(w.hand[0].used,true);assert.equal(w.hand[1].used,true);
+ assert.equal(b.opponent[0].used,true);assert.equal(b.opponent[1].used,true);
+ for(const view of [w,b]){
+  assert.equal(JSON.stringify(view).includes('"player":"'+JSON.parse(db.rooms.get(host.data.room).state).players.w+'"'),false);
+  assert.equal(view.cardEvents.some(e=>Object.hasOwn(e,"player")),false);
+ }
+});
+test("An Objection creates no fake card event until allowed, or logs the spent counter-card",async()=>{
+ for(const decision of ["allow","object"]){
+  const db=new FakeD1(),host=await post(db,"create",{}),guest=await post(db,"join",{room:host.data.room});
+  setTestHands(db,host.data.room,{w:["ceasefire","pawn-strike","the-analyst"],b:["objection","knight-exchange","the-analyst"]});
+  const pending=await post(db,"action",{...host.data,action:{type:"card",card:"ceasefire"}});
+  assert.equal(pending.status,200);
+  assert.ok(pending.data.view.pendingReaction);
+  assert.equal(pending.data.view.cardEvents.length,0,"Proposed cards are not marked as played yet");
+  const answered=await post(db,"action",{...guest.data,action:{type:"reaction",decision}});
+  assert.equal(answered.status,200);
+  const w=(await post(db,"state",host.data)).data,b=(await post(db,"state",guest.data)).data;
+  assert.equal(w.cardEvents.length,1);assert.equal(b.cardEvents.length,1);
+  assert.equal(w.cardEvents[0].id,decision==="allow"?"ceasefire":"objection");
+  assert.equal(w.cardEvents[0].actor,decision==="allow"?"self":"opponent");
+  assert.equal(b.cardEvents[0].actor,decision==="allow"?"opponent":"self");
+  assert.equal(w.hand[0].used,decision==="allow");
+ }
+});
+test("Rematch requires both authenticated players and starts a fresh alternating-color round",async()=>{
+ const db=new FakeD1(),host=await post(db,"create",{visibility:"public"}),guest=await post(db,"join",{room:host.data.room});
+ const beforeReady=await post(db,"rematch",{...host.data,round:1,ready:true});
+ assert.equal(beforeReady.status,400,"Ongoing matches must not be reset");
+ const record=db.rooms.get(host.data.room),game=JSON.parse(record.state);
+ game.s=parseFen("7k/6Q1/5K2/8/8/8/8/8 b - - 0 1");
+ game.history=[game.s];
+ game.hands.b.forEach(c=>c.used=true);
+ record.state=JSON.stringify(game);
+ const finished=(await post(db,"state",host.data)).data;
+ assert.equal(finished.status.done,true);
+ const invalid=await post(db,"rematch",{room:host.data.room,token:"a".repeat(64),round:1,ready:true});
+ assert.equal(invalid.status,403);
+ const first=await post(db,"rematch",{...host.data,round:1,ready:true});
+ assert.equal(first.status,200);
+ assert.equal(first.data.view.round,1);
+ assert.equal(first.data.view.rematch.selfReady,true);
+ assert.equal(first.data.view.rematch.opponentReady,false);
+ const cancelled=await post(db,"rematch",{...host.data,round:1,ready:false});
+ assert.equal(cancelled.status,200);
+ assert.equal(cancelled.data.view.rematch.selfReady,false);
+ await post(db,"rematch",{...host.data,round:1,ready:true});
+ const second=await post(db,"rematch",{...guest.data,round:1,ready:true});
+ assert.equal(second.status,200);
+ assert.equal(second.data.view.round,2);
+ assert.equal(second.data.view.player,"w","Guest takes White for next round");
+ assert.equal(second.data.view.status.done,false);
+ assert.equal(second.data.view.publicRoom,true);
+ assert.deepEqual(second.data.view.cardEvents,[]);
+ assert.equal(second.data.view.hand.length,3);
+ assert.equal(second.data.view.opponent.length,3);
+ assert.equal(new Set([...second.data.view.hand,...second.data.view.opponent].map(c=>c.id)).size,6);
+ const original=(await post(db,"state",host.data)).data;
+ assert.equal(original.player,"b","Host takes Black with original token");
+ assert.equal(original.round,2);
+ assert.equal(original.rematch.selfReady,false);
+ assert.equal(original.status.done,false);
+ assert.equal((await post(db,"rematch",{...host.data,round:1,ready:true})).status,409,"Delayed votes cannot reset the next round");
+ assert.equal((await post(db,"rematch",{...host.data,round:2,ready:true})).status,400,"No rematching during the new game");
+});
