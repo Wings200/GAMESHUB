@@ -1,12 +1,15 @@
+import {createCombat3D} from "./sniper-3d.mjs?v=4";
 // Visual-only cinematic director for server-confirmed Illegal Chess snapshots.
 // Never mutates game state, reserves turns, pauses rescue timers, or predicts moves.
 const PIECES={p:"PAWN",n:"KNIGHT",b:"BISHOP",r:"ROOK",q:"QUEEN",k:"KING"};
-const GLYPHS={p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚",P:"♙",N:"♘",B:"♗",R:"♖",Q:"♕",K:"♔"};
+// Identical silhouettes across colors even on the non-WebGL fallback.
+const GLYPHS={p:"♙",n:"♘",b:"♗",r:"♖",q:"♕",k:"♔",P:"♙",N:"♘",B:"♗",R:"♖",Q:"♕",K:"♔"};
 const VALID_INDEX=n=>Number.isInteger(n)&&n>=0&&n<128&&(n&0x88)===0;
 const NAME=p=>PIECES[p?.toLowerCase()]||"PIECE";
 const COLOR=p=>p===p?.toUpperCase()?"w":"b";
 const ENEMY=(a,b)=>a!=="."&&b!=="."&&COLOR(a)!==COLOR(b);
-const DURATIONS={capture:1150,check:850,rescue:1200,escape:950,finish:1800};
+// Longer holds with 550–850 ms exit fades; reduced motion uses a short static notice.
+export const DURATIONS={capture:2300,check:2500,rescue:2700,escape:2400,finish:3500};
 
 // Read only what the server exposed to THIS player, so disguised pieces stay
 // disguised and no hidden board/card information leaks through cinematics.
@@ -28,6 +31,13 @@ export function boardFromSnapshot(fen){
 }
 const INDEX_TO_BOARD=n=>(7-(n>>4))*8+(n&7);
 const AT=(board,n)=>VALID_INDEX(n)?board?.[INDEX_TO_BOARD(n)]||null:null;
+const PIECE_INDEX=(board,piece)=>{const n=board?.indexOf(piece)??-1;return n<0?null:(7-Math.floor(n/8))*16+n%8;};
+const threatenedKing=(current,board,finish=false)=>{
+ const winner=current.status.winner;
+ const color=finish&&["w","b"].includes(winner)?(winner==="w"?"b":"w"):current.turn;
+ const kingPiece=color==="b"?"k":"K";
+ return {kingPiece,kingSquare:PIECE_INDEX(board,kingPiece)};
+};
 function enPassantVictim(before,after,from,to,attacker){
  if(attacker?.toLowerCase()!=="p"||AT(before,to)!=="."||AT(after,to)!==attacker)return null;
  if(Math.abs((from&7)-(to&7))!==1||Math.abs((from>>4)-(to>>4))!==1)return null;
@@ -50,9 +60,15 @@ export function cinematicCues(previous,current){
  if(nextMove&&!sniper&&before&&after&&VALID_INDEX(current.last?.from)&&VALID_INDEX(current.last?.to)){
   const from=current.last.from,to=current.last.to,attacker=AT(before,from);
   const landed=AT(after,to),target=AT(before,to);
-  const ordinary=from!==to&&attacker&&attacker!=="."&&target&&target!=="."&&
-   ((landed&&landed!==".")||(landed==="."&&AT(after,from)==="."));
-  const ep=from!==to?enPassantVictim(before,after,from,to,attacker):null;
+  // The previous director treated ANY occupied destination as a capture.
+  // Require opposing colors, vacated origin, and a confirmed change of target.
+  // Ignore retained last-move metadata on a card-only update.
+  const staleLast=previous.last?.from===from&&previous.last?.to===to;
+  const moved=AT(after,from)===".";
+  const landingOkay=landed==="."||(landed&&landed!=="."&&COLOR(landed)===COLOR(attacker));
+  const ordinary=!staleLast&&from!==to&&moved&&ENEMY(attacker,target)&&
+   landingOkay&&landed!==target;
+  const ep=!staleLast&&moved&&from!==to?enPassantVictim(before,after,from,to,attacker):null;
   if(ordinary||ep){
    const victim=ordinary?target:ep;
    const name=landed==="."?"DOUBLE KO":NAME(attacker)+" CAPTURE";
@@ -64,15 +80,16 @@ export function cinematicCues(previous,current){
  if(!previous.status.done&&current.status.done){
   const mate=/checkmate/i.test(current.status.text);
   cues.push({kind:"finish",title:mate?"CHECKMATE":current.status.winner?"MATCH COMPLETE":"DRAW",
-   detail:current.status.text,moveCount:current.moveCount});
+   detail:current.status.text,...threatenedKing(current,after,true),moveCount:current.moveCount});
  }else if(nowRescue&&!wasRescue){
   cues.push({kind:"rescue",title:"LAST CHANCE",detail:"30-SECOND CARD RESCUE",
-   moveCount:current.moveCount});
+   ...threatenedKing(current,after),moveCount:current.moveCount});
  }else if(wasRescue&&!nowRescue&&nextMove){
-  cues.push({kind:"escape",title:"ESCAPED",detail:"THE KING SURVIVES",moveCount:current.moveCount});
+  cues.push({kind:"escape",title:"ESCAPED",detail:"THE KING SURVIVES",
+   ...threatenedKing(previous,before),moveCount:current.moveCount});
  }else if(nextMove&&!nowRescue&&!current.status.done&&/check/i.test(current.status.text)){
   cues.push({kind:"check",title:"CHECK",detail:"THE KING IS UNDER ATTACK",
-   moveCount:current.moveCount});
+   ...threatenedKing(current,after),moveCount:current.moveCount});
  }
  return cues;
 }
@@ -98,7 +115,10 @@ export function createCinematicDirector(board,getMode){
   caption=element("div","combatCaption"),overline=element("span","combatEyebrow","ILLEGAL CHESS // CINEMATIC"),
   title=element("strong","combatHeadline"),detail=element("span","combatDetail");
  caption.append(overline,title,detail);
- root.append(bars,flash,trail,attacker,victim,impact,caption);host.append(root);
+ const canvas=element("canvas","combat3DCanvas");
+ canvas.setAttribute("aria-hidden","true");
+ root.append(canvas,bars,flash,trail,attacker,victim,impact,caption);host.append(root);
+ let renderer=null,rendererUnavailable=false;
  let timer=null,active=false,queue=[];
  function position(){
   const b=board.getBoundingClientRect(),h=host.getBoundingClientRect();
@@ -107,6 +127,7 @@ export function createCinematicDirector(board,getMode){
  }
  function stop(){
   if(timer!==null){clearTimeout(timer);timer=null;}
+  renderer?.stop();
   root.hidden=true;root.className="combatDirector";active=false;
  }
  function reset(){queue=[];stop();}
@@ -127,8 +148,18 @@ export function createCinematicDirector(board,getMode){
   root.style.setProperty("--from-x",from.x);root.style.setProperty("--from-y",from.y);
   root.style.setProperty("--to-x",to.x);root.style.setProperty("--to-y",to.y);
   const piece=cue.attacker?.toLowerCase();
+  root.style.setProperty("--combat-duration",ms+"ms");
   root.className="combatDirector kind-"+cue.kind+(reduced?" mode-reduced":"")+
    (PIECES[piece]?" piece-"+piece:"");
+  // WebGL is initialized lazily and is visual-only. Fall back to CSS if
+  // unavailable, including on low-powered devices or lost GPU contexts.
+  if(!reduced&&!rendererUnavailable){
+   if(!renderer){
+    renderer=createCombat3D(canvas);
+    if(!renderer)rendererUnavailable=true;
+   }
+   if(renderer?.play(cue,ms))root.classList.add("has3D");
+  }
   root.hidden=false;active=true;
   // Restart the CSS timeline even when consecutive events share a kind.
   void root.offsetWidth;
@@ -142,5 +173,5 @@ export function createCinematicDirector(board,getMode){
   if(queue.length>4)queue=queue.slice(-4);
   if(!active)next();
  }
- return {enqueue,reset,stop,dispose(){reset();root.remove();}};
+ return {enqueue,reset,stop,dispose(){reset();renderer?.dispose();renderer=null;root.remove();}};
 }
