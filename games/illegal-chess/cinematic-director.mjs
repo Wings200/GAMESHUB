@@ -1,4 +1,4 @@
-import {createCombat3D} from "./sniper-3d.mjs?v=4";
+import {createCombat3D} from "./sniper-3d.mjs?v=5";
 import {makePieceSVG} from "./piece-shapes.mjs?v=1";
 // Visual-only cinematic director for server-confirmed Illegal Chess snapshots.
 // Never mutates game state, reserves turns, pauses rescue timers, or predicts moves.
