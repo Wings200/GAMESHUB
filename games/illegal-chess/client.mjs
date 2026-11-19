@@ -26,6 +26,8 @@ let publicListingPending=false,publicJoinPending=false;
 // the action locally. Seen event IDs also prevent replay on re-render/poll.
 let cinematicSeen=null,cinematicTimer=null,sniperWarpTimer=null,sniperWarpTarget=null;
 let previousCardView=null,cardCastTimer=null;
+let cardEventSeen=null,cardEventRound=null,cardCastQueue=[];
+let postMatchRound=null,postMatchShown=false,postMatchDismissed=false,postMatchTimer=null,rematchBusy=false;
 let sniperRenderer=null,sniper3DUnavailable=false;
 // SFX are local-only. Shared multiplayer events dictate WHAT happened;
 // each player independently controls WHETHER their browser plays audio.
@@ -138,12 +140,15 @@ function stopCardCast(){
  el.classList.remove("isPlaying","enemyCast");
  el.hidden=true;
 }
-function syncCardCasts(){
- const casts=newCardCasts(previousCardView,game);
- previousCardView=game;
- if(!casts.length||document.hidden||cinematicMode==="off")return;
- const cast=casts.at(-1),mine=cast.actor==="self",el=$("cardActivation");
+function resetCardSync(){
  stopCardCast();
+ cardCastQueue=[];cardEventSeen=null;cardEventRound=null;previousCardView=null;
+}
+function playNextCardCast(){
+ if(cardCastTimer||!cardCastQueue.length)return;
+ const cast=cardCastQueue.shift(),mine=cast.actor==="self",el=$("cardActivation");
+ if(document.hidden||cinematicMode==="off"){playNextCardCast();return;}
+ el.classList.remove("isPlaying");
  el.classList.toggle("enemyCast",!mine);
  el.style.setProperty("--cast-accent",tierColors[cast.rarity]||"#adc1df");
  $("cardCastArt").src=cardImage(cast.id,cast.rarity);
@@ -153,7 +158,32 @@ function syncCardCasts(){
  $("cardCastLive").textContent=(mine?"You":"Opponent")+" activated "+cast.name+".";
  el.hidden=false;
  requestAnimationFrame(()=>{if(!el.hidden)el.classList.add("isPlaying");});
- cardCastTimer=setTimeout(stopCardCast,(cinematicMode==="reduced"||window.matchMedia("(prefers-reduced-motion: reduce)").matches)?450:1250);
+ cardCastTimer=setTimeout(()=>{
+  cardCastTimer=null;
+  el.classList.remove("isPlaying","enemyCast");el.hidden=true;
+  playNextCardCast();
+ },(cinematicMode==="reduced"||window.matchMedia("(prefers-reduced-motion: reduce)").matches)?450:1250);
+}
+// A monotonic sequence of authoritative server events handles multiple cards
+// between 1.5s polls, including Objection!, Counterfeit, and color swaps.
+function syncCardCasts(){
+ const round=game?.round||1;
+ if(cardEventRound!==round){
+  resetCardSync();cardEventRound=round;
+ }
+ const events=game?.cardEvents;
+ if(Array.isArray(events)){
+  previousCardView=game;
+  const latest=events.at(-1)?.seq||0;
+  if(cardEventSeen===null){cardEventSeen=latest;return;}
+  const fresh=events.filter(event=>Number.isInteger(event.seq)&&event.seq>cardEventSeen);
+  cardEventSeen=Math.max(cardEventSeen,latest);
+  if(fresh.length)cardCastQueue.push(...fresh);
+ }else{
+  cardCastQueue.push(...newCardCasts(previousCardView,game));
+  previousCardView=game;
+ }
+ playNextCardCast();
 }
 
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
@@ -402,7 +432,7 @@ async function send(action){
  busy=true;try{
   const result=await api("action",{...activeSession,action});
   if(session!==activeSession)return;
-  game=result.view;lastState=JSON.stringify(game);clearSelection();render();
+  applyGameView(result.view);clearSelection();render();
   if(myTurn()&&action.type==="card")done();
  }catch(error){flash(error.message);}
  finally{busy=false;void refresh();}
@@ -415,15 +445,83 @@ async function refresh(){
   if(session!==activeSession)return;
   $("connection").textContent="CONNECTED";$("connection").classList.remove("offline");
   const serial=JSON.stringify(data);
-  if(serial!==lastState){game=data;lastState=serial;render();}
+  if(serial!==lastState)applyGameView(data);
   void registerAnalyst();
  }catch(e){$("connection").textContent="RECONNECTING";$("connection").classList.add("offline");}
+}
+function resetPostMatch(){
+ if(postMatchTimer){clearTimeout(postMatchTimer);postMatchTimer=null;}
+ postMatchRound=null;postMatchShown=false;postMatchDismissed=false;
+ $("endScreen").hidden=true;
+}
+function syncPostMatch(){
+ const round=game?.round||1,ended=!!game?.status?.done;
+ const overlay=$("endScreen");
+ if(postMatchRound!==round){
+  resetPostMatch();postMatchRound=round;
+ }
+ if(!ended){
+  overlay.hidden=true;
+  return;
+ }
+ const winner=game.status.winner;
+ const outcome=winner===null?"DRAW":winner===game.player?"VICTORY":"DEFEAT";
+ overlay.classList.toggle("win",outcome==="VICTORY");
+ overlay.classList.toggle("lose",outcome==="DEFEAT");
+ overlay.classList.toggle("draw",outcome==="DRAW");
+ $("endOutcome").textContent=outcome;
+ $("endRound").textContent="ROUND "+round+" COMPLETE";
+ $("endReason").textContent=game.status.text;
+ $("endStats").textContent=(game.moveCount||0)+" TURNS · "+(game.swaps||0)+" COLOR SWAPS";
+ const mine=!!game.rematch?.selfReady,theirs=!!game.rematch?.opponentReady;
+ $("endRematch").hidden=mine;
+ $("endCancelRematch").hidden=!mine;
+ $("endRematch").disabled=rematchBusy;
+ $("endCancelRematch").disabled=rematchBusy;
+ $("resultRematch").textContent=mine?"CANCEL REMATCH REQUEST":theirs?"ACCEPT REMATCH":"REQUEST REMATCH";
+ $("endRematchState").textContent=mine?"READY — waiting for your opponent to accept":
+  theirs?"Your opponent requested a rematch. Accept to start instantly.":
+  "Both players must agree. New round, new cards, switched colors.";
+ $("resultRematch").disabled=rematchBusy;
+ if(!postMatchShown){
+  postMatchShown=true;
+  postMatchTimer=setTimeout(()=>{
+   postMatchTimer=null;
+   if(game?.status?.done&&(game.round||1)===round&&!postMatchDismissed){
+    overlay.hidden=false;
+    $("endRematch").focus({preventScroll:true});
+   }
+  },5300); // Let the full 3D checkmate or sniper cinematic finish first.
+ }
+}
+function applyGameView(view){
+ if(game&&(view.round||1)!==(game.round||1)){
+  clearSelection();
+  resetCardSync();cinematicSeen=null;disposeSniper3D();
+  combatDirector.reset();previousCombatView=null;
+  stopSniperCinematic();resetPostMatch();
+  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
+  analystPopup=null;analystSeenTurn=null;
+  resetStockfish(view.room);
+ }
+ game=view;lastState=JSON.stringify(view);render();
+}
+async function changeRematch(ready){
+ if(!session||!game?.status?.done||rematchBusy)return;
+ const current=session,round=game.round||1;
+ rematchBusy=true;syncPostMatch();
+ try{
+  const result=await api("rematch",{...current,round,ready});
+  if(session!==current)return;
+  applyGameView(result.view);
+ }catch(error){flash(error.message);void refresh();}
+ finally{rematchBusy=false;if(game)syncPostMatch();}
 }
 async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  resetStockfish(s.room);
- disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
- combatDirector.reset();previousCombatView=null;
+ disposeSniper3D();cinematicSeen=null;resetCardSync();
+ combatDirector.reset();previousCombatView=null;resetPostMatch();
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
