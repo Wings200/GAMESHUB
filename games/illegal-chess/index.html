@@ -7,6 +7,7 @@
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=18">
+<link rel="stylesheet" href="./cinematic-overhaul.css?v=1">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
 <body>
@@ -51,7 +52,7 @@
  <section id="match" hidden aria-label="Illegal Chess multiplayer game">
   <div class="matchHead">
    <div><span class="eyebrow" id="matchVisibility">PRIVATE MULTIPLAYER MATCH</span><h2 class="matchTitle" id="matchTitle">The board has no mercy.</h2><div id="swapCounter" class="swapCounter" aria-live="polite">COLOR SWAP IN 20 TURNS</div></div>
-   <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><button id="sniperSoundToggle" class="btn slim ghost sniperSoundToggle" type="button" aria-pressed="true" title="Toggle local Bishop Sniper cinematic sound">🔊 SFX ON</button><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button><button id="leave" class="btn slim ghost" type="button">LEAVE ROOM</button></div>
+   <div class="matchTools"><span id="connection" class="connection offline">CONNECTING</span><label class="cinematicModeControl" for="cinematicMode">🎬 EFFECTS <select id="cinematicMode" aria-label="Cinematic effects intensity"><option value="full">FULL</option><option value="reduced">REDUCED</option><option value="off">OFF</option></select></label><button id="sniperSoundToggle" class="btn slim ghost sniperSoundToggle" type="button" aria-pressed="true" title="Toggle local Bishop Sniper cinematic sound">🔊 SFX ON</button><div class="roomChip"><span class="eyebrow">ROOM</span><strong id="room">------</strong></div><button id="copy" class="btn slim ghost" type="button">COPY INVITE</button><button id="leave" class="btn slim ghost" type="button">LEAVE ROOM</button></div>
   </div>
   <section id="gameResult" class="gameResult" hidden aria-live="assertive" role="status">
    <span class="eyebrow">ILLEGAL CHESS · MATCH COMPLETE</span>
@@ -198,6 +199,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=23"></script>
+<script type="module" src="./client.mjs?v=24"></script>
 </body>
 </html>
