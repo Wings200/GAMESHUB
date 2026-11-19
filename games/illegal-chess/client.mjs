@@ -1,4 +1,5 @@
 import {cardImage} from "./art.mjs?v=3";
+import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=1";
 import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
 import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=3";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
@@ -7,6 +8,16 @@ import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-revi
 const $=id=>document.getElementById(id);
 const glyph={K:"♔",Q:"♕",R:"♖",B:"♗",N:"♘",P:"♙",k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟︎"};
 const tierColors={Common:"#adb9cc",Uncommon:"#71e0ae",Rare:"#8bafff",Epic:"#d4a4fa",Legendary:"#ffd382"};
+const cinematicModeKey="gameshub-illegal-chess-cinematic-mode";
+let cinematicMode="full";
+try{const saved=localStorage.getItem(cinematicModeKey);if(["full","reduced","off"].includes(saved))cinematicMode=saved;}catch{}
+const combatDirector=createCinematicDirector($("board"),()=>cinematicMode);
+let previousCombatView=null;
+function syncCombatCinematics(){
+ const cues=cinematicCues(previousCombatView,game);
+ previousCombatView=game;
+ combatDirector.enqueue(cues);
+}
 let session=null,game=null,selected=null,selectedCard=null,cardFrom=null,sniperSelected=false,busy=false,poll=null,modalOpen=false,lastState="";
 let rescueClock=null,rescueStartAt=0,rescueStartRemaining=0;
 let publicListingPending=false,publicJoinPending=false;
@@ -62,7 +73,7 @@ function sniperPhase(phase){
 }
 function playSniperCinematic(event){
  const scene=cinematicCaption(event);
- if(!scene||document.hidden)return;
+ if(!scene||document.hidden||cinematicMode==="off")return;
  stopSniperCinematic();
  $("cinematicLive").textContent=event.kind==="sniper-first-shot"?
   "Bishop Sniper aiming, firing and tracking a bullet in 3D toward "+event.target.toUpperCase()+". Target captured.":
@@ -75,11 +86,11 @@ function playSniperCinematic(event){
   sniperWarpTimer=setTimeout(()=>{
    sniperWarpTimer=null;sniperWarpTarget=null;
    if(game)renderBoard();
-  },window.matchMedia("(prefers-reduced-motion: reduce)").matches?260:scene.duration);
+  },(cinematicMode==="reduced"||window.matchMedia("(prefers-reduced-motion: reduce)").matches)?260:scene.duration);
   return;
  }
  const overlay=$("sniperCinematic");
- const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const reduced=cinematicMode==="reduced"||window.matchMedia("(prefers-reduced-motion: reduce)").matches;
  overlay.classList.toggle("attackerBlack",event.attacker==="b");
  $("cinematicTitle").textContent=scene.title;
  $("cinematicSubtitle").textContent=scene.eyebrow;
@@ -129,7 +140,7 @@ function stopCardCast(){
 function syncCardCasts(){
  const casts=newCardCasts(previousCardView,game);
  previousCardView=game;
- if(!casts.length||document.hidden)return;
+ if(!casts.length||document.hidden||cinematicMode==="off")return;
  const cast=casts.at(-1),mine=cast.actor==="self",el=$("cardActivation");
  stopCardCast();
  el.classList.toggle("enemyCast",!mine);
@@ -141,7 +152,7 @@ function syncCardCasts(){
  $("cardCastLive").textContent=(mine?"You":"Opponent")+" activated "+cast.name+".";
  el.hidden=false;
  requestAnimationFrame(()=>{if(!el.hidden)el.classList.add("isPlaying");});
- cardCastTimer=setTimeout(stopCardCast,window.matchMedia("(prefers-reduced-motion: reduce)").matches?450:1250);
+ cardCastTimer=setTimeout(stopCardCast,(cinematicMode==="reduced"||window.matchMedia("(prefers-reduced-motion: reduce)").matches)?450:1250);
 }
 
 let analystSeenTurn=null,analystPopup=null,analystPopupTimer=null;
@@ -411,6 +422,7 @@ async function begin(s){
  if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
  resetStockfish(s.room);
  disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
+ combatDirector.reset();previousCombatView=null;
  session=s;sessionStorage.setItem("gameshub-illegal-chess",JSON.stringify(s));
  history.replaceState({}, "",invite(s.room));
  $("lobby").hidden=true;$("match").hidden=false;$("room").textContent=s.room;
@@ -456,6 +468,7 @@ function sniperVision(sniper=game?.sniper?.own,stopAtBlock=true){
 }
 function renderBoard(){
  const pieces=boardFromFen(game.fen),board=$("board"),isBlack=game.player==="b",vision=sniperVision(),enemyVision=sniperVision(game.sniper?.opponentRevealed,false);
+ board.dataset.player=game.player;
  const frag=document.createDocumentFragment();
  // An actual ten-by-ten visual grid: the inner 8x8 is playable chess;
  // the outer ring is off-board. Only the owner sees their bishop there.
@@ -718,6 +731,7 @@ function render(){
  renderBoard();renderHand();renderSniper();renderExtras();renderAnalyst();
  syncCardCasts();
  syncSniperCinematics();
+ syncCombatCinematics();
  let hint;
  if(!game.ready)hint="Send a room invite to your opponent. Your cards are already dealt.";
  else if(game.status.done)hint=game.status.text;
@@ -898,6 +912,12 @@ $("sniperSoundToggle").addEventListener("click",()=>{
  showSniperSoundState();
 });
 showSniperSoundState();
+$("cinematicMode").value=cinematicMode;
+$("cinematicMode").addEventListener("change",event=>{
+ cinematicMode=event.target.value;
+ try{localStorage.setItem(cinematicModeKey,cinematicMode);}catch{}
+ combatDirector.reset();stopSniperCinematic();stopCardCast();
+});
 $("leave").addEventListener("click",async()=>{
  const accept=await modal({tag:game?.publicRoom?"LEAVE PUBLIC ROOM":"LEAVE PRIVATE ROOM",title:"Leave this match?",description:"This closes your current player session in this tab. Your opponent's room remains saved, but you won't be able to act in it without the session token.",choices:[{label:"LEAVE ROOM",value:true,kind:"danger"}]});
  if(!accept)return;
@@ -907,6 +927,7 @@ $("leave").addEventListener("click",async()=>{
  }
  sessionStorage.removeItem("gameshub-illegal-chess");session=null;game=null;lastState="";
  disposeSniper3D();cinematicSeen=null;stopCardCast();previousCardView=null;
+ combatDirector.reset();previousCombatView=null;
  if(poll){clearInterval(poll);poll=null;}
  if(rescueClock){clearInterval(rescueClock);rescueClock=null;}
  clearSelection();

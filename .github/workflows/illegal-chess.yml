@@ -5,6 +5,7 @@ on:
       - "games/illegal-chess/**"
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
+      - "tests/illegal-chess-cinematic-director.test.mjs"
       - "tests/illegal-chess-rescue.test.mjs"
       - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
@@ -14,6 +15,7 @@ on:
       - "games/illegal-chess/**"
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
+      - "tests/illegal-chess-cinematic-director.test.mjs"
       - "tests/illegal-chess-rescue.test.mjs"
       - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
@@ -29,6 +31,7 @@ jobs:
       - run: node --check games/illegal-chess/game.mjs
       - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check games/illegal-chess/cinematic.mjs
+      - run: node --check games/illegal-chess/cinematic-director.mjs
       - run: node --check games/illegal-chess/sniper-3d.mjs
       - run: node --check games/illegal-chess/sniper-sound.mjs
       - run: node --check games/illegal-chess/sniper-sculpts.mjs
@@ -69,7 +72,7 @@ jobs:
           assert.match(client,/stockfish-review\.mjs\?v=4/,"New engine worker code must be cache-busted");
           assert.match(html,/ALPHA 0\.11\.2/,"Multiplayer card casting release must load");
           assert.match(html,/style\.css\?v=18/,"Fresh casting CSS must be cache-busted");
-          assert.match(html,/client\.mjs\?v=23/,"Fresh card-cast client must be cache-busted");
+          assert.match(html,/client\.mjs\?v=24/,"New cinematic director client must be cache-busted");
           assert.match(client,/cinematic\.mjs\?v=3/,"New cast detector must be loaded");
           assert.match(client,/syncCardCasts\(\)/,"Both players must see used-card animations");
           assert.match(html,/id="cardActivation"/,"Nonblocking card cast overlay must exist");
@@ -88,7 +91,7 @@ jobs:
           assert.match(game,/worker:canAnalyze&&/,"Non-owners must not see the worker lease");
           assert.match(client,/panel\.hidden=!active/,"The Analyst panel must be hidden without ownership");
           assert.match(client,/if\(!game\?\.analyst\?\.active\)/,"Remove leftover on-board grades for non-owners");
-          assert.match(html,/client\.mjs\?v=22/,"Force a refreshed 36-card client asset");
+          assert.match(html,/id="cinematicMode"/,"Intensity selector must be available in match UI");
           assert.match(client,/retryStockfish/,"Recover failed analyzer without leaving match");
           assert.match(html,/id="retryStockfish"/,"A retry button must exist");
           assert.match(fs.readFileSync("games/illegal-chess/stockfish-review.mjs","utf8"),/engineSources/,"Engine must attempt multiple hosts");
@@ -114,7 +117,7 @@ jobs:
           assert.match(html,/id="sniper3DCanvas"/,"3D replay must have a real WebGL canvas");
           assert.match(client,/createSniper3D/,"The 3D renderer must be invoked by server-triggered shot");
           assert.match(client,/sniperRenderer.play\(event\)/,"A first shot must start the 3D camera");
-          assert.match(client,/cinematic\.mjs\?v=2/,"Updated V2 runtime events must avoid stale cache");
+          assert.match(client,/cinematic\.mjs\?v=3/,"Latest runtime events must avoid stale cache");
           assert.match(client,/sniper-3d\.mjs\?v=3/,"Sculpted V3 renderer must be loaded");
           const real3d=fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8");
           assert.match(real3d,/getContext\("webgl"/,"Actual GPU 3D, not fake 2D scaling");
@@ -171,4 +174,4 @@ jobs:
           assert.match(style,/\.analystMoveSymbol/,"Transient grade badge must have board styling");
 
           EOF
-      - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs tests/illegal-chess-rescue.test.mjs
+      - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs tests/illegal-chess-rescue.test.mjs tests/illegal-chess-cinematic-director.test.mjs
