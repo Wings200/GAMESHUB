@@ -1,8 +1,8 @@
 import {cardImage} from "./art.mjs?v=3";
 import {makePieceSVG} from "./piece-shapes.mjs?v=1";
-import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=2";
+import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=3";
 import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
-import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=4";
+import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=5";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
 
