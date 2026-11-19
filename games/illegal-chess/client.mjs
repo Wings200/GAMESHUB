@@ -96,7 +96,7 @@ function playSniperCinematic(event){
  $("cinematicTitle").textContent=scene.title;
  $("cinematicSubtitle").textContent=scene.eyebrow;
  $("cinematicDetail").textContent=scene.detail;
- $("cinematicTargetPiece").textContent=glyph[scene.victim]||"♟";
+ $("cinematicTargetPiece").replaceChildren(makePieceSVG(scene.victim)||document.createTextNode(glyph[scene.victim]||"♟"));
  if(!reduced&&!sniper3DUnavailable&&!sniperRenderer){
   // The shader/geometry are built just once; the GPU is idle between shots.
   // No separate Three.js download, video files, or textures.
