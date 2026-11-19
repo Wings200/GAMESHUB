@@ -4,10 +4,9 @@ import {existsSync, readFileSync} from 'node:fs';
 
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
-test('paused Weapon Lab RPG and GAMESHUB Engine are not linked from the public library', () => {
+test('paused Weapon Lab RPG and GAMESHUB Engine stay unlisted', () => {
+  assert.doesNotMatch(home, /href\s*=\s*["'][^"']*\/games\/(?:rpg-prototype|engine-test)(?:\/|["'?#])/i);
   for (const slug of ['rpg-prototype', 'engine-test']) {
-    const publicLink = new RegExp('\\bhref\\s*=\\s*["\\\'][^"\\\']*\\/games\\/' + slug + '(?:\\/|["\\\'?#])', 'i');
-    assert.doesNotMatch(home, publicLink, slug + ' must remain unlisted');
     assert.ok(existsSync(new URL('../games/' + slug + '/index.html', import.meta.url)), slug + ' files must be retained');
   }
 });
