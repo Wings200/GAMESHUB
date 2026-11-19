@@ -6,6 +6,7 @@ on:
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
       - "tests/illegal-chess-cinematic-director.test.mjs"
+      - "tests/illegal-chess-piece-shapes.test.mjs"
       - "tests/illegal-chess-rescue.test.mjs"
       - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
@@ -16,6 +17,7 @@ on:
       - "functions/api/illegal-chess/**"
       - "tests/illegal-chess.test.mjs"
       - "tests/illegal-chess-cinematic-director.test.mjs"
+      - "tests/illegal-chess-piece-shapes.test.mjs"
       - "tests/illegal-chess-rescue.test.mjs"
       - "tests/illegal-chess-api.test.mjs"
       - ".github/workflows/illegal-chess.yml"
@@ -32,6 +34,7 @@ jobs:
       - run: node --check games/illegal-chess/analyst.mjs
       - run: node --check games/illegal-chess/cinematic.mjs
       - run: node --check games/illegal-chess/cinematic-director.mjs
+      - run: node --check games/illegal-chess/piece-shapes.mjs
       - run: node --check games/illegal-chess/sniper-3d.mjs
       - run: node --check games/illegal-chess/sniper-sound.mjs
       - run: node --check games/illegal-chess/sniper-sculpts.mjs
@@ -120,6 +123,7 @@ jobs:
           assert.match(client,/cinematic\.mjs\?v=3/,"Latest runtime events must avoid stale cache");
           assert.match(client,/sniper-3d\.mjs\?v=5/,"Sculpted V3 renderer must be loaded");
           assert.match(client,/cinematic-director\.mjs\?v=3/,"Fresh 3D combat integration must be cache-busted");
+          assert.match(client,/piece-shapes\.mjs\?v=1/,"Identical Black and White SVG geometry must load");
           assert.match(fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8"),/createCombat3D/,"Confirmed capture and check scenes must use real WebGL sculptures");
           const real3d=fs.readFileSync("games/illegal-chess/sniper-3d.mjs","utf8");
           assert.match(real3d,/getContext\("webgl"/,"Actual GPU 3D, not fake 2D scaling");
@@ -176,4 +180,4 @@ jobs:
           assert.match(style,/\.analystMoveSymbol/,"Transient grade badge must have board styling");
 
           EOF
-      - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs tests/illegal-chess-rescue.test.mjs tests/illegal-chess-cinematic-director.test.mjs
+      - run: node --test tests/illegal-chess.test.mjs tests/illegal-chess-api.test.mjs tests/illegal-chess-rescue.test.mjs tests/illegal-chess-cinematic-director.test.mjs tests/illegal-chess-piece-shapes.test.mjs
