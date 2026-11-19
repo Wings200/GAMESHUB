@@ -510,7 +510,19 @@ async function changeRematch(ready){
  const current=session,round=game.round||1;
  rematchBusy=true;syncPostMatch();
  try{
-  const result=await api("rematch",{...current,round,ready});
+  let result;
+  try{result=await api("rematch",{...current,round,ready});}
+  catch(error){
+   if(!/Rematch changed; refresh and try again/.test(error.message))throw error;
+   // Optimistic room-version conflicts are common when both users accept
+   // together. Re-read the authoritative state and retry only the SAME round.
+   const fresh=await api("state",current);
+   if(session!==current)return;
+   if((fresh.round||1)!==round||!fresh.status.done||fresh.rematch?.selfReady===ready){
+    applyGameView(fresh);return;
+   }
+   result=await api("rematch",{...current,round,ready});
+  }
   if(session!==current)return;
   applyGameView(result.view);
  }catch(error){flash(error.message);void refresh();}
