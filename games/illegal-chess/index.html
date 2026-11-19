@@ -7,6 +7,7 @@
 <meta name="description" content="ILLEGAL CHESS at GAMESHUB — chess with collectible rule-bending cards and two-player private rooms.">
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="./style.css?v=20">
+<link rel="stylesheet" href="./match-finish.css?v=1">
 <link rel="stylesheet" href="./cinematic-overhaul.css?v=3">
 <title>ILLEGAL CHESS | GAMESHUB</title>
 </head>
@@ -59,7 +60,31 @@
    <strong id="gameResultTitle">VICTORY</strong>
    <p id="gameResultDetail">Checkmate. The match is over.</p>
    <span class="gameResultFooter">The final board and move history remain available below.</span>
+   <div class="gameResultButtons">
+    <button id="resultSummary" class="btn slim ghost" type="button">VIEW MATCH SUMMARY</button>
+    <button id="resultRematch" class="btn slim primary" type="button">REQUEST REMATCH</button>
+   </div>
   </section>
+  <div id="endScreen" class="endScreen" hidden>
+   <section class="endCard" role="dialog" aria-modal="true" aria-labelledby="endOutcome" aria-describedby="endReason">
+    <div class="endCrest" aria-hidden="true">♛</div>
+    <span class="endOverline" id="endRound">ROUND 1 COMPLETE</span>
+    <h2 id="endOutcome">VICTORY</h2>
+    <p id="endReason">White wins by checkmate</p>
+    <span class="endStats" id="endStats">0 TURNS · 0 COLOR SWAPS</span>
+    <div class="endDivider"></div>
+    <div class="endNext">
+     <strong>PLAY ANOTHER ROUND?</strong>
+     <p id="endRematchState">Both players must agree. New round, new cards, switched colors.</p>
+     <div class="endActions">
+      <button id="endRematch" class="btn primary" type="button">⚔ REQUEST REMATCH</button>
+      <button id="endCancelRematch" class="btn ghost" type="button" hidden>CANCEL REMATCH REQUEST</button>
+      <button id="endReview" class="btn ghost" type="button">REVIEW FINAL BOARD</button>
+     </div>
+     <button id="endLeave" class="endLeave" type="button">LEAVE MATCH · BACK TO LOBBY</button>
+    </div>
+   </section>
+  </div>
   <section id="rescueBox" class="rescueBox" hidden aria-live="polite" aria-label="Checkmate rescue countdown">
    <div class="rescueInfo"><span class="eyebrow">30-SECOND CARD RESCUE</span><h3 id="rescueTitle">ESCAPE CHECKMATE</h3><p id="rescueDescription">Use a card to escape checkmate before the countdown expires.</p></div>
    <strong id="rescueCountdown" class="rescueCountdown" role="timer" aria-live="off">30.0s</strong>
@@ -90,7 +115,9 @@
    </section>
    <aside class="sidebar">
     <section class="panel"><div class="panelHead"><div><div class="eyebrow">YOUR ARSENAL</div><h2>Your three cards</h2></div><span class="count" id="remaining">3 REMAINING</span></div><div id="hand" class="cards"></div><p class="helpText">Click a card to activate it. Used cards stay visible, crossed out. Tactical cards such as Parking Ticket let you move afterward.</p></section>
-    <section class="panel"><div class="panelHead"><div><div class="eyebrow">READ YOUR ENEMY</div><h2>Opponent's cards</h2></div><span class="count">VISIBLE</span></div><div id="otherhand" class="opCards"></div></section>
+    <section class="panel"><div class="panelHead"><div><div class="eyebrow">READ YOUR ENEMY</div><h2>Opponent's cards</h2></div><span class="count">VISIBLE</span></div><div id="otherhand" class="opCards"></div>
+     <div class="cardEventPanel"><span class="eyebrow">SYNCED CARD ACTIVITY</span><div id="cardEventFeed" class="cardEventFeed" aria-live="polite"><span class="muted">No cards played yet.</span></div></div>
+    </section>
     <section class="panel"><div class="panelHead"><div><div class="eyebrow">BOARD MODIFIERS</div><h2>Active effects</h2></div></div><div id="effects" class="effects"><span class="muted">None active</span></div></section>
     <section class="panel"><div class="panelHead"><div><div class="eyebrow">MATCH RECORD</div><h2>Turn history</h2></div></div><div id="log" class="log"><span class="muted">No moves yet</span></div></section>
    </aside>
@@ -199,6 +226,6 @@
  </section>
 </div>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
-<script type="module" src="./client.mjs?v=26"></script>
+<script type="module" src="./client.mjs?v=27"></script>
 </body>
 </html>
