@@ -1,7 +1,7 @@
 import {cardImage} from "./art.mjs?v=3";
 import {makePieceSVG} from "./piece-shapes.mjs?v=1";
 import {cinematicCues,createCinematicDirector} from "./cinematic-director.mjs?v=3";
-import {nextCinematic,cinematicCaption,newCardCasts} from "./cinematic.mjs?v=3";
+import {nextCinematic,cinematicCaption,newCardCasts,nextCardEvents} from "./cinematic.mjs?v=4";
 import {createSniper3D,SNIPER_3D_DURATION} from "./sniper-3d.mjs?v=5";
 import {createSniperSoundtrack} from "./sniper-sound.mjs?v=1";
 import {MOVE_COINS,createStockfishReviewer,engineSources} from "./stockfish-review.mjs?v=4";
@@ -174,11 +174,9 @@ function syncCardCasts(){
  const events=game?.cardEvents;
  if(Array.isArray(events)){
   previousCardView=game;
-  const latest=events.at(-1)?.seq||0;
-  if(cardEventSeen===null){cardEventSeen=latest;return;}
-  const fresh=events.filter(event=>Number.isInteger(event.seq)&&event.seq>cardEventSeen);
-  cardEventSeen=Math.max(cardEventSeen,latest);
-  if(fresh.length)cardCastQueue.push(...fresh);
+  const update=nextCardEvents(events,cardEventSeen);
+  cardEventSeen=update.seen;
+  if(update.events.length)cardCastQueue.push(...update.events);
  }else{
   cardCastQueue.push(...newCardCasts(previousCardView,game));
   previousCardView=game;
@@ -497,7 +495,8 @@ function syncPostMatch(){
 function applyGameView(view){
  if(game&&(view.round||1)!==(game.round||1)){
   clearSelection();
-  resetCardSync();cinematicSeen=null;disposeSniper3D();
+  resetCardSync();cardEventRound=view.round||1;cardEventSeen=0;
+  cinematicSeen=null;disposeSniper3D();
   combatDirector.reset();previousCombatView=null;
   stopSniperCinematic();resetPostMatch();
   if(analystPopupTimer){clearTimeout(analystPopupTimer);analystPopupTimer=null;}
