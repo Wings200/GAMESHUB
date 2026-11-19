@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {boardFromSnapshot,cinematicCues} from "../games/illegal-chess/cinematic-director.mjs";
+import {boardFromSnapshot,cinematicCues,DURATIONS} from "../games/illegal-chess/cinematic-director.mjs";
+import {combatBlend,combatPosition} from "../games/illegal-chess/sniper-3d.mjs";
 
 const initial="4k3/8/3p4/8/4N3/8/8/4K3 w - - 0 1";
 const taken="4k3/8/3N4/8/8/8/8/4K3 b - - 0 1";
@@ -69,4 +70,43 @@ test("rescue expiry produces a final cinematic even without a new move",()=>{
 test("one missed snapshot cannot falsely create a guessed capture",()=>{
  const before=view(),after=view({moveCount:6,fen:taken,last:{from:e4,to:d6}});
  assert.deepEqual(cinematicCues(before,after),[]);
+});
+
+
+test("bishop moving into an empty square never fabricates a capture",()=>{
+ const before=view({fen:"4k3/8/8/8/8/8/8/2B1K3 w - - 0 1"});
+ const after=view({moveCount:5,fen:"4k3/8/8/8/8/8/3B4/4K3 b - - 1 1",
+  last:{from:2,to:19}});
+ assert.deepEqual(cinematicCues(before,after),[]);
+});
+test("a friendly destination cannot be advertised as an enemy capture",()=>{
+ const before=view({fen:"4k3/8/8/8/8/8/3P4/2B1K3 w - - 0 1"});
+ const after=view({moveCount:5,fen:"4k3/8/8/8/8/8/3B4/4K3 b - - 1 1",
+  last:{from:2,to:19}});
+ assert.deepEqual(cinematicCues(before,after),[]);
+});
+test("stale last move metadata cannot replay a capture after a card event",()=>{
+ const before=view({last:{from:e4,to:d6}});
+ const after=view({moveCount:5,fen:taken,last:{from:e4,to:d6}});
+ assert.deepEqual(cinematicCues(before,after),[]);
+});
+test("check and finish cinematics target the correct sculpted king",()=>{
+ const before=view();
+ const checked=view({moveCount:5,fen:taken,last:{from:e4,to:d6},
+  turn:"b",status:{done:false,rescue:null,winner:null,text:"Black to move · CHECK"}});
+ assert.equal(cinematicCues(before,checked).at(-1).kingSquare,116);
+ assert.equal(cinematicCues(before,checked).at(-1).kingPiece,"k");
+ const mate=view({moveCount:5,turn:"b",status:{done:true,rescue:null,winner:"w",
+  text:"White wins by checkmate"}});
+ assert.equal(cinematicCues(before,mate).at(-1).kingPiece,"k");
+});
+test("real 3D combat uses valid board coordinates and longer cinematic durations",()=>{
+ assert.deepEqual(combatPosition(0),[-3.5,0,3.5]);
+ assert.deepEqual(combatPosition(119),[3.5,0,-3.5]);
+ assert.equal(combatPosition(8),null);
+ assert.equal(combatBlend(0,2300).charge,0);
+ assert.ok(combatBlend(1200,2300).impact>0);
+ assert.ok(DURATIONS.capture>=2000);
+ assert.ok(DURATIONS.check>=2000);
+ assert.ok(DURATIONS.finish>=3000);
 });
