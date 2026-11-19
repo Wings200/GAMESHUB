@@ -642,6 +642,27 @@ function addUsedOverlay(card,opponent=false){
  const used=document.createElement("div");used.className=opponent?"usedMark":"cardUsed";
  const text=document.createElement("span");text.textContent="USED";used.append(text);card.append(used);
 }
+function renderCardEventFeed(){
+ const target=$("cardEventFeed");
+ target.replaceChildren();
+ const events=Array.isArray(game.cardEvents)?game.cardEvents.slice(-7).reverse():[];
+ if(!events.length){
+  const empty=document.createElement("span");empty.className="muted";
+  empty.textContent="No cards played yet.";
+  target.append(empty);return;
+ }
+ for(const entry of events){
+  const row=document.createElement("div");
+  row.className="cardEventRow "+(entry.actor==="self"?"mine":"theirs");
+  const side=document.createElement("span");side.className="cardEventSide";
+  side.textContent=entry.actor==="self"?"YOU":"OPPONENT";
+  const name=document.createElement("span");name.className="cardEventName";
+  name.textContent=entry.name+" · "+entry.rarity;
+  const number=document.createElement("span");number.className="cardEventSeq";
+  number.textContent="#"+entry.seq;
+  row.append(side,name,number);target.append(row);
+ }
+}
 function renderHand(){
  const target=$("hand"),opponent=$("otherhand");target.replaceChildren();opponent.replaceChildren();
  $("remaining").textContent=game.hand.filter(card=>!card.used).length+" REMAINING";
@@ -666,6 +687,7 @@ function renderHand(){
   if(card.used)addUsedOverlay(shell,true);opponent.append(shell);
  }
  if(!game.opponent.length){const waiting=document.createElement("span");waiting.className="muted";waiting.textContent="Waiting for an opponent to join.";opponent.append(waiting);}
+ renderCardEventFeed();
 }
 function renderSniper(){
  const own=game.sniper?.own,box=$("sniperBox"),actions=$("sniperActions");actions.replaceChildren();
