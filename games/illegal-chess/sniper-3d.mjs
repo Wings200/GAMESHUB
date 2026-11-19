@@ -113,7 +113,7 @@ function lookAt(eye,target){
  ]);
 }
 const COLORS={
- white:[.95,.91,.84],dark:[.34,.42,.55],gold:[1,.73,.29],
+ white:[.95,.91,.84],dark:[.10,.13,.19],gold:[1,.73,.29],
  violet:[.62,.47,.9],steel:[.42,.55,.66],gun:[.12,.18,.25],
  black:[.1,.13,.2],lens:[.21,.76,.93],flash:[1,.7,.23],
  tileLight:[.36,.52,.62],tileDark:[.15,.24,.35],
@@ -488,7 +488,7 @@ function drawCombatWorld(gl,g,cue,ms,duration,w,h){
   d("cube",[0,.025,edge],[8.73,.13,.055],[.7,.53,.29]);
   d("cube",[edge,.025,0],[.055,.13,8.73],[.7,.53,.29]);
  }
- const tint=p=>p===p?.toUpperCase()?[.96,.91,.82]:[.21,.27,.38];
+ const tint=p=>p===p?.toUpperCase()?[.96,.91,.82]:[.09,.12,.18];
  const trim=p=>p===p?.toUpperCase()?[1,.78,.40]:[.68,.57,.82];
  function piece(p,pos,{shrink=1,angle=0,drop=0,glow=0}={}){
   if(!COMBAT_SCULPT[p?.toLowerCase()]||!pos||shrink<=.015)return;
