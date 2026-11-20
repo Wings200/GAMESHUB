@@ -13,7 +13,7 @@ import {advanceChallenges,challengeSnapshot} from "./games/redline/challenges.js
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const GAMESHUB_IDENTITY_VERIFY_URL =
-  "https://redline-dnk.pages.dev/api/account/multiplayer-verify";
+  "https://gameshub-dnk.pages.dev/api/account/multiplayer-verify";
 
 const VALID_CARS = new Set(REDLINE_CAR_IDS);
 
