@@ -1,61 +1,66 @@
-# VAULT DIRECTIVE — Survival Alpha 0.3
+# VAULT DIRECTIVE — Cutaway Reboot
 
-VAULT DIRECTIVE is an original, browser-based post-apocalyptic underground survival simulation inside GAMESHUB. The player begins with an **abandoned access hatch, three survivors, limited salvage and no constructed rooms**.
+**A new, original underground-survival game inside GAMESHUB.** It starts with an abandoned hatch, three named survivors, and a short passage. **There are zero built rooms at the beginning.**
 
-The game is inspired by the broad resource/room/population management genre, but diverges strongly from Fallout Shelter through physical excavation and builder movement, manual rescue assignments, independent security doors, persistent scavenging sites, and player-defined work shifts. No Fallout assets or branding are copied.
+This is a ground-up replacement of the previous prototype, with its own rendering system, controller, and simulation. The code and artwork are original. The Fallout Shelter cutaway style and broad gameplay systems inform this design, but Fallout Shelter assets, characters, interfaces, audio, and proprietary material have not been copied.
 
-## Start playing
+## Open and play
 
-Open \`/games/vault-directive/\`. The first-day tutorial is optional, does not restrict other actions, and highlights only the next task.
+Visit \`/games/vault-directive/\`. Choose **Begin the First Day** and use the optional field guide. The old Alpha 0.3 browser save is retained under its original key; the reboot uses \`gameshub.vault-directive.cutaway.v4\`.
 
-- **Inspect** a resident to learn their needs, skills, health and equipment.
-- **Excavate** a two-tile-tall accessible stretch of earth and **assign a specific resident**. They walk there and physically clear it. Excavation progress is persistent.
-- **Build** a generator in the cleared space. The builder physically reaches and constructs it; the facility starts with an idle emergency output and generates more when staffed. Generators consume fuel.
-- Expand with **sleeping quarters** (beds), **water treatment** and **hydroponics**. Open advanced facilities when you're ready: medbay, radio beacon, security, storage, ventilation, training and workshop.
-- **Open the Wasteland Map** to send scavengers into actual rooms at persistent locations. Choose search/salvage, fight or retreat if hostiles are present, and return home to unload finite supplies. Scouts can discover additional sites.
-- **Manage residents** by assigning room jobs and shifts, boosting skills, treating health/infection, equipping defenders, welcoming refugees, or starting family plans in powered quarters.
-- **Survive crises** including fires, vermin, fuel shortages, radiation-like infection, raider incursions and occupation, cave-ins, low oxygen, strikes, and possible total defeat. You can place physical blast doors, configure lockdowns, and order manual rescues.
+- **Inspect** a survivor. The roster along the bottom exposes each individual. You can click a survivor and click a room to assign them; the inspector also offers job assignments and work shifts.
+- **Excavate** real dirt (including room ceilings and corridor floors). Click and drag a rectangular work zone beside the starting tunnel; a free resident is automatically assigned and must physically reach the site.
+- **Build a generator** in a cleared, three-row chamber that is 3–6 tiles wide. Build jobs reserve real materials and require a moving builder. Assign a resident to increase production.
+- **Construct water treatment and a canteen**, staff them, and collect ready production batches by clicking their floating icons. Food and water are always consumed by the population.
+- **Grow the settlement** by building living quarters, welcoming refugees, and improving rooms.
+- **Explore the wasteland** using the map: choose a real named location, assemble one or two available adults, wait for travel, then enter a four-room sectional building. Select specific rooms to search or salvage; if hostiles are present, fight or retreat. All loot is finite per location. Surveying discovers further unique locations without instantly awarding loot.
+- **Survive security incidents**: raiders, feral infections, fires, infestations, deep cave-ins and rescue missions. Build real blast-door chambers between corridors; you may seal them manually to stop raiders, but that can cut electricity, access and fresh air. Staff a powered security room to monitor captured sectors. A powered quarantine ward can isolate an infected resident.
+- **Manage your community** with individual attributes, level progression, morale, fuel, food, water, medicine, defensive equipment, shifts, training, upgrading, medical care, housing and family growth. All rooms except generators draw electricity; generators consume fuel.
 
 ## Controls
 
-| Action | Control |
+| Control | Effect |
 |---|---|
-| Inspect/select | Click a person, room, work order or blast door |
-| Excavate | Select Excavation, drag across accessible solid terrain |
-| Build | Choose a facility, drag sideways across two rows of excavated space |
-| Blast door / ladder | Choose tool, click a valid cleared corridor/shaft tile |
-| Pan camera | Drag empty space with Inspect, or W/A/S/D and arrow keys |
-| Zoom | Mouse wheel, plus/minus keys, on-screen plus/minus |
-| Pause | Space or pause button |
-| Select speed | 1×, 2× or 4× on the top bar |
-| Save / tutorial | Buttons on left sidebar |
+| Click a resident | Inspect stats, health, assignment, gear, needs and shift |
+| Select resident, then click room | Assign directly to that room |
+| EXCAVATE + drag | Mark accessible solid ground for manual excavation |
+| BUILD ROOM + select type + drag | Place a 3–6-wide room inside three rows of excavated space |
+| LADDER + click | Add a segment vertically connected to an existing shaft |
+| BLAST DOOR + click | Order construction of a secured corridor checkpoint |
+| Click a built room | Inspect, collect output, assign crew, rush, upgrade, repair |
+| Click a blast door | Manually close or reopen it; inspect durability |
+| W/A/S/D or arrow keys | Pan camera |
+| Wheel, +, − | Zoom camera |
+| Space | Pause or resume |
+| 1×, 2×, 4× | Adjust simulation speed |
+| WASTELAND | Open the location map and active scavenging team |
+| ⚙ Options | Save, tutorial, policies, reset confirmation |
 
-The original vault hatch is the first ladder. Additional shaft tiles require excavating and installing ladder segments. Rooms must connect to physically accessible passages; residents cannot walk through sealed blast doors.
+**No browser confirm popups** are used for gameplay. The interface is inside the game. The field guide can be skipped, hidden and reopened without preventing free play.
 
-## Resource mechanics
+## Architecture
 
-- **Power is a live supply/demand network.** Every non-generator room consumes electricity, including living quarters and storage, plus an essential entrance circuit. Generators burn finite fuel and gain output with skilled staff. Power priorities matter under deficit.
-- **Food and water are continuous stock drains**, displayed to one decimal with per-minute net rates. Production requires powered rooms and staff with appropriate attributes.
-- **Air quality** falls with poor power/ventilation; isolated sealed sectors also lose room air until routes reopen or they have powered air-handling capacity.
-- **Materials** are gathered through actual scavenging/salvage and used in construction, door chambers, repairs, medical supplies and workshop recipes.
-- **Room levels 1–3** can be improved by assigned builders; rushing staffed resource rooms accelerates production at calculated incident risk.
+- \`index.html\`: clean full-screen game shell
+- \`v4.css\`: responsive in-world UI
+- \`model.js\`: **single source of truth** for terrain, physics/pathfinding, power, resources, residents, jobs, quests, raids, incidents, rescues, scouting, arrivals and save data
+- \`art.js\`: original 2D cutaway terrain, stylized room furnishings and people, illumination, machinery, dust, rubble, raids and construction rendering
+- \`game-v4.js\`: user input, canvas camera, tutorial, roster, room inspector, modals, resource displays and save lifecycle
+- \`tests/vault-directive-v4.test.mjs\`: regression coverage using the real simulation and a mocked canvas/DOM
 
-## Emergency controls
+Run from repo root:
+\`\`\`bash
+node --check games/vault-directive/model.js
+node --check games/vault-directive/art.js
+node --check games/vault-directive/game-v4.js
+node --test tests/vault-directive-v4.test.mjs
+\`\`\`
 
-The Safety & Crises screen shows raiders, fires/vermin, captured/damaged rooms, door states, trapped residents, auto-lockdown, and ration/overtime policies. Select specific defenders, keep doors closed, repair breaches, assign rescue crews, and give trapped residents conserve-air/self-clear orders when appropriate.
+## Design differences and still-open work
 
-## Population
+The gameplay **is not a pixel-for-pixel or full 1:1 implementation of Fallout Shelter**. The simulation and procedural 2D art are original. Our physical digging, ladders, engineering projects, site-specific scavenging, rescue operations, and containment rules deliberately differ from that game.
 
-Refugees wait at the hatch for your explicit approval. Capacity equals the initial three emergency spaces plus powered/constructed sleeping quarters. Radio staffing attracts additional people, rescuing civilians at the relay station brings people to the admission queue, and family plans can add dependent residents who grow into adult workers.
+The reboot covers a substantial playable first-to-middle-game slice, but extensive story quests, broad equipment inventory/crafting variety, fully independent raider actors, sophisticated faction politics, final 3D rigs/cinematic animations, mobile polish, audio, elaborate staged collapse engineering and long-form campaign balancing still need future development.
 
-## Save and compatibility
+The included test harness checks logic and non-throwing renderer/controller behavior. It is **not a substitute for a real-browser visual playtest**, which remains necessary before claiming release-grade polish.
 
-The game saves locally in the browser every 14 seconds, on page-hide/exit and on demand. The New Game confirmation removes only the VAULT DIRECTIVE save. Version 1 foundation saves are migrated to v2 data fields on load without deleting the old settlement.
-
-## Testing and limitations
-
-Run \`node --test tests/vault-directive-foundation.test.mjs\` to exercise the real simulation in a mocked DOM/canvas harness. Syntax checks and tests are also configured in the GitHub workflow.
-
-This is **an expanded playable survival alpha, not full feature parity or final visual quality**. Animated 3D residents, complete collapse/reinforcement systems, independent raider actors, very large campaign maps and extended quests remain planned. See [MECHANICS_AND_TEST_AUDIT.md](./MECHANICS_AND_TEST_AUDIT.md) for actual implemented features versus still-open scope.
-
-All code remains isolated under \`games/vault-directive/\`, its test and workflow. REDLINE, ILLEGAL CHESS and other GAMESHUB games are untouched.
+The previous Alpha 0.3 source is preserved at Git branch \`backup/vault-directive-alpha-0.3-before-reboot\`; other GAMESHUB games are untouched.
