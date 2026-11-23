@@ -59,7 +59,7 @@ const valid=d=>d&&d.schema===1&&Array.isArray(d.cells)&&d.cells.length===WIDTH*H
 function load(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY));return valid(d)?d:null;}catch{return null;}}
 function persist(){if(!g)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(g));}catch{}}
 function timeDay(){return 1+Math.floor((g.minutes+480)/1440);}
-function hour(){return Math.floor(((g.minutes+480)%1440)/60);}
+function hour(){return !g ? 8 : Math.floor(((g.minutes+480)%1440)/60);}
 function clock(){const m=(g.minutes+480)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 function log(text,danger=false){if(!g)return;g.log.unshift({when:'DAY '+String(timeDay()).padStart(2,'0'),text,danger});g.log=g.log.slice(0,45);}
 function toast(text,warning=false){const n=$('floatingToast');n.textContent=text;n.style.borderColor=warning?'#d67b69':'#bc9b60';n.style.color=warning?'#ffc0b0':'#e2d39f';n.classList.add('show');toastUntil=performance.now()+2600;}
