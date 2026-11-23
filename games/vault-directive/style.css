@@ -107,3 +107,18 @@
 @media(max-width:1270px){.sidebar{max-height:none}.surface-layer{inset:116px 0 81px}}
 @media(max-width:900px){.resources{grid-template-columns:repeat(3,minmax(0,1fr))}.materials-summary{grid-column:1/-1;grid-template-columns:140px repeat(3,minmax(0,1fr))}.materials-summary>strong{grid-column:auto}.surface-overworld{min-height:290px}}
 @media(max-width:780px){.resources{grid-template-columns:repeat(3,minmax(0,1fr))}.materials-summary{grid-column:1/-1;grid-template-columns:90px repeat(3,minmax(0,1fr))}.materials-summary>span{font-size:8px}.materials-summary b{font-size:14px}.panel-nav{grid-template-columns:repeat(4,minmax(0,1fr))}.panel-tab{font-size:8px}.coach{gap:5px;padding:7px 8px;min-height:58px}.coach-copy strong{font-size:15px}.coach-copy span{font-size:8px}.coach-action{font-size:9px;padding:7px 6px}.surface-layer{inset:131px 0 75px}.surface-overworld{min-height:260px}.surface-map-header h2{font-size:21px}.site-pin{min-width:60px;max-width:90px;padding:6px;font-size:8px}.site-pin span{font-size:8px}.site-pin small{display:none}.surface-details{min-height:92px;padding:8px;gap:8px}.surface-details button{white-space:normal;font-size:9px;padding:8px}.action{min-width:72px}}
+
+/* Dining, readable overnight routines, and small-screen surface map fixes. */
+.room.cafeteria{background:linear-gradient(155deg,#80684e,#3c4039 70%);border-color:#bdad88}
+.room.cafeteria .room-light{background:radial-gradient(ellipse at top,#e9bf745e,transparent 69%)}
+.room.cafeteria .machine{width:84px;height:14px;background:#a07c52;border:3px solid #c09e6a;bottom:20px;box-shadow:0 13px #685741}
+.room.cafeteria .machine:nth-child(1){left:16px}
+.room.cafeteria .machine:nth-child(2){left:139px}
+.room.cafeteria .machine::before{content:'';position:absolute;top:-6px;left:12px;width:14px;height:6px;background:#d2cdb7;border-radius:100%;box-shadow:31px 1px #d4bd84,50px 0 #c4d1bd}
+.room.cafeteria .machine::after{content:'';height:18px;top:auto;bottom:-25px;left:3px;right:5px;background:repeating-linear-gradient(90deg,#5a493f 0 5px,transparent 6px 28px);border:none}
+.surface-layer{overflow-y:auto;overscroll-behavior:contain}
+.surface-layer.no-coach{top:52px}
+.travel-avatar{font-size:0;background:#33544d;box-shadow:0 0 14px #e5d98f}
+.travel-avatar::before{content:'';position:absolute;top:0px;left:10px;width:11px;height:12px;border-radius:50% 50% 35% 35%;background:#d8ae89;border-top:5px solid #caa56a}
+.travel-avatar::after{content:'';position:absolute;bottom:0;left:7px;width:18px;height:15px;background:linear-gradient(90deg,#628c7b 0 70%,#c09b6c 71%);border:2px solid #d8c497;border-radius:3px}
+@media(max-width:780px){.surface-layer.no-coach{top:72px}.surface-overworld{flex:1 0 270px}.surface-layer{overflow-y:auto}.site-pin{box-shadow:0 4px 8px #07191988}}
