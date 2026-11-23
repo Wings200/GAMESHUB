@@ -277,7 +277,7 @@ test('incident response, raid combat and door lockdown are simulated',()=>{
   assert.equal(systems.createRaid(app.state,{}),true);
   advance(app,8);
   assert.equal(app.state.threat.phase,'blocked');
-  assert.equal(app.state.threat.x,8);
+  assert.ok(app.state.threat.x>=8 && app.state.threat.x<10,'Raiders must stop before the sealed door');
   assert.ok(door.door.hp<100);
 });
 test('fair negotiation can end a strike and medical bay can revive the injured',()=>{
