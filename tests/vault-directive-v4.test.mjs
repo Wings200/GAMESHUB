@@ -448,3 +448,34 @@ test('desperate scouting is risky rather than impossible when the last ration is
   until(M,s,()=>!s.survey,60);
   assert.equal(s.discovered.length,1);
 });
+
+
+test('infection cannot jump across a physically sealed blast door',()=>{
+  const {M}=env(),s=M.create();
+  const order=M.installDoor(s,10,4);assert.equal(order.ok,true);
+  until(M,s,()=>order.job.done,90);
+  const gate=s.doors.at(-1);
+  M.toggleDoor(s,gate.id);
+  const infected=s.people[0],healthy=s.people[1];
+  infected.x=9;infected.y=4;infected.infection=65;
+  healthy.x=11;healthy.y=4;healthy.infection=0;
+  advance(M,s,9);
+  assert.equal(healthy.infection,0);
+  assert.ok(infected.infection>65);
+});
+test('a powered isolation ward supports controlled quarantine and reduces infection progression',()=>{
+  const {M}=env(),s=M.create();
+  allClear(M,s,12,2,9);
+  s.rooms.push({id:710,type:'generator',x:12,y:2,w:4,level:1,integrity:100,priority:2});
+  s.rooms.push({id:711,type:'quarantine',x:16,y:2,w:4,level:1,integrity:100,priority:2});
+  M.power(s);
+  const person=s.people[0];person.infection=50;
+  const result=M.quarantine(s,person.id);assert.equal(result.ok,true);
+  assert.equal(person.quarantined,true);
+  const before=person.infection;
+  advance(M,s,8);
+  assert.ok(person.infection>before);
+  assert.ok(person.infection<before+1);
+  assert.equal(M.releaseQuarantine(s,person.id).ok,true);
+  assert.equal(person.quarantined,false);
+});
