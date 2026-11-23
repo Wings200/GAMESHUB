@@ -190,8 +190,8 @@
     if(!a||!b||a.id===b.id||a.dead||b.dead||a.child||b.child||
       a.age<18||b.age<18||a.trapped||b.trapped)return {ok:false,error:'Choose two available adult residents.'};
     if(a.morale<45||b.morale<45)return {ok:false,error:'Both residents need adequate morale before starting a family.'};
-    if(!state.rooms.some(r=>r.type==='bunks'&&r.integrity>0&&!r.captured))
-      return {ok:false,error:'Construct living quarters first.'};
+    if(!state.rooms.some(r=>r.type==='bunks'&&r.integrity>0&&!r.captured&&active(state,r)))
+      return {ok:false,error:'Construct and power sleeping quarters first.'};
     if(alive(state).length+state.familyPlans.length>=capacity(state))
       return {ok:false,error:'Not enough beds for a new family member.'};
     if(state.familyPlans.some(p=>p.parents.includes(a.id)||p.parents.includes(b.id)))
