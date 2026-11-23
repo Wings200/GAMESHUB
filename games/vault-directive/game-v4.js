@@ -63,6 +63,7 @@
   }
   function setMode(next,type=null){
     mode=next;roomType=type;drag=null;
+    if(next!=='inspect'){selectedWorker=null;renderRoster();}
     cls(stage,'dig',mode==='dig');cls(stage,'build',mode==='build');cls(stage,'door',mode==='door');cls(stage,'ladder',mode==='ladder');
     for(const b of document.querySelectorAll('.command[data-tool]'))cls(b,'active',b.dataset.tool===mode);
     $('toolStatus').textContent=mode==='dig'?'DRAG ACROSS CONNECTED EARTH TO EXCAVATE':
@@ -177,7 +178,10 @@
   function openSelectJob(id){selected={kind:'job',id};renderInspector();}
   function openSelectDoor(id){selected={kind:'door',id};renderInspector();}
   function openSelectTrap(id){selected={kind:'trap',id};renderInspector();}
-  function clearSelect(){selected=null;cls($('inspector'),'hidden',true);}
+  function clearSelect(){
+    selected=null;selectedWorker=null;cls($('inspector'),'hidden',true);
+    renderRoster();
+  }
   function need(p,name,val){
     return '<div class="mini-progress"><span style="width:70px">'+name+'</span><div class="rail"><span style="width:'+pct(val)+
       '%;background:'+(val<30?'#dc947c':val<55?'#d9ba7e':'#91bd9c')+'"></span></div><em>'+Math.round(val)+'%</em></div>';
@@ -639,17 +643,17 @@
       try{world.releasePointerCapture(ev.pointerId);}catch(e){}
       if(old.mode==='dig'){
         const r=M.dig(s,old.a.x,old.a.y,old.b.x,old.b.y);
-        if(result(r))openSelectJob(r.job.id);
+        if(result(r)){clearSelect();toast(r.job.workers.length?'Excavation underway. Watch the worker dig!':'Excavation marked. Click the work site to assign a crew.');}
         return;
       }
       if(old.mode==='build'){
         const x=Math.min(old.a.x,old.b.x),w=Math.abs(old.a.x-old.b.x)+1;
         const r=M.build(s,roomType,x,old.a.y,Math.max(3,w));
-        if(result(r)){setMode('inspect');openSelectJob(r.job.id);}
+        if(result(r)){setMode('inspect');clearSelect();toast('Builder dispatched. Watch the chamber take shape.');}
         return;
       }
       if(old.mode==='door'){const t=tile(at),r=M.installDoor(s,t.x,t.y);
-        if(result(r)){setMode('inspect');openSelectJob(r.job.id);}return;}
+        if(result(r)){setMode('inspect');clearSelect();toast('Blast-door chamber under construction.');}return;}
       if(old.mode==='ladder'){const t=tile(at);result(M.installLadder(s,t.x,t.y));return;}
       if(old.mode==='pan'&&!old.moved)stageClick(at);
     });
