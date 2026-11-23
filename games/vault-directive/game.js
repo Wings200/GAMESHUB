@@ -11,11 +11,30 @@ const TYPES={
  security:{name:'Security Station',label:'SECURITY',color:'#9baec4',icon:'⬡',scrap:45,credits:30,desc:'Strengthens assaults and protects nearby sectors.'},
  workshop:{name:'Salvage Workshop',label:'WORKSHOP',color:'#c4a36f',icon:'⚒',scrap:35,credits:20,desc:'Recovers scrap and earns small amounts of credits.'}
 };
-const INITIAL={0:'command',1:'power',2:'water',3:'quarters',4:'security',6:'farm',7:'quarters',8:'medbay',9:'workshop'};
+const INITIAL={0:'command',1:'power'};
+const SKILLS=[
+ {id:'grid',group:'ENGINEERING',icon:'⚡',title:'Efficient Grid',desc:'+25% power generation.',requires:[]},
+ {id:'recycling',group:'ENGINEERING',icon:'◈',title:'Water Recycling',desc:'+30% purified water production.',requires:['grid']},
+ {id:'harvest',group:'ENGINEERING',icon:'✿',title:'Nutrient Farming',desc:'+30% hydroponics food output.',requires:[]},
+ {id:'salvage',group:'ENGINEERING',icon:'⚒',title:'Salvage Teams',desc:'+40% scrap production.',requires:[]},
+ {id:'economy',group:'CIVILIZATION',icon:'¤',title:'Efficient Construction',desc:'Build rooms for 20% less scrap and credits.',requires:['salvage']},
+ {id:'community',group:'CIVILIZATION',icon:'♥',title:'Community Outreach',desc:'Residents gain extra loyalty, including when recruited.',requires:[]},
+ {id:'housing',group:'CIVILIZATION',icon:'⌂',title:'Modular Quarters',desc:'+5 resident beds per quarters level.',requires:['community']},
+ {id:'triage',group:'CIVILIZATION',icon:'✚',title:'Advanced Triage',desc:'+30% medical production and better recovery.',requires:['community']},
+ {id:'tactics',group:'SECURITY',icon:'⬡',title:'Tactical Training',desc:'+15% chance to retake a hostile room by assault.',requires:[]},
+ {id:'siege',group:'SECURITY',icon:'⛨',title:'Pressure Seals',desc:'Sealed hostile rooms lose resistance 50% faster.',requires:['tactics']}
+];
+const TUTORIAL=[
+ {title:'A PLACE TO REST',desc:'Your vault starts with only a Command Center and an automated Power Reactor—and nobody lives here yet. Click an adjacent + EXCAVATE sector, then build Living Quarters.',action:'FIND BUILD SITE',type:'quarters'},
+ {title:'SECURE CLEAN WATER',desc:'Residents will need clean drinking water. Select another adjoining + EXCAVATE sector and build Water Works.',action:'FIND BUILD SITE',type:'water'},
+ {title:'GROW YOUR OWN FOOD',desc:'Build a Hydroponics farm. Your water and food systems produce supplies even before they are fully staffed.',action:'FIND BUILD SITE',type:'farm'},
+ {title:'WELCOME A SURVIVOR',desc:'Now you have housing, food, and water. Click + SURVIVOR above the vault to invite your first resident. Nobody joins automatically during training.',action:'SHOW INTAKE',type:'recruit'},
+ {title:'GIVE THEM A JOB',desc:'Select a resident in the roster below, then choose Water Works or Hydroponics and click ASSIGN. Workers increase room production.',action:'SELECT WORKPLACE',type:'assign'},
+ {title:'UNLOCK YOUR FIRST SKILL',desc:'Open SKILLS above the vault. Spend your starting skill point on a permanent upgrade, then earn more research XP through gameplay.',action:'OPEN SKILL TREE',type:'skills'}
+];
 const FIRST=['Mara','Elias','Ava','Tobin','Soren','Jules','Nina','Rhea','Cato','Milo','Iris','Orin','Vera','Kira','Ezra','Noel','Dax','Mina','Lena','Cass','Sam','Eden'];
 const LAST=['Vale','Rowan','Hale','Morrow','Briar','Stone','Voss','Mercer','Finn','Kade','Marsh','Wells','Reed','Dane'];
 const TRAITS=['Determined','Inventive','Cautious','Optimistic','Skeptical','Compassionate','Ambitious','Protective','Independent','Idealistic','Restless'];
-const startingJobs=[0,1,1,2,2,3,4,4,6,6,7,8,8,9,3,7];
 const canvas=document.getElementById('vaultCanvas'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let game=null,selected=0,selectedResident=null,speed=1,elapsed=0,lastStep=performance.now(),frame=0,saveNotice=0;
@@ -30,21 +49,32 @@ const secs=()=>game?.rooms.filter(r=>r&&r.owner==='vault').length||0;
 function room(type){return {type,owner:'vault',sealed:false,level:1,hp:100,resistance:0};}
 function pushLog(text,alarm=false){if(!game)return;game.events.unshift({day:game.day,text,alarm});game.events=game.events.slice(0,55);}
 function resident(n,job,all) {
- const id=all.length,trait=TRAITS[(n*7+3)%TRAITS.length];
- return {id,name:FIRST[n%FIRST.length]+' '+LAST[(n*3+1)%LAST.length],trait,loyalty:clamp(64+(n*17)%27-(trait==='Restless'?22:trait==='Ambitious'?12:0),27,96),health:100,job,bond:n>0?Math.floor((n-1)/2):null};
+ const id=n,trait=TRAITS[(n*7+3)%TRAITS.length];
+ return {id,name:FIRST[n%FIRST.length]+' '+LAST[(n*3+1)%LAST.length],trait,loyalty:clamp(64+(n*17)%27-(trait==='Restless'?22:trait==='Ambitious'?12:0),27,96),health:100,job,bond:all.length?all[Math.floor(Math.random()*all.length)].id:null};
 }
 function fresh(name,mode,number=1){
  const rooms=Array(COUNT).fill(null);Object.entries(INITIAL).forEach(([i,t])=>rooms[+i]=room(t));
- const people=startingJobs.map((job,n)=>resident(n,job,startingJobs.slice(0,n)));
+ const people=[];
  const sandbox=mode==='sandbox';
- return {version:1,name:name.trim().slice(0,28)||'VAULT-01',number,mode,phase:'vault',day:1,rooms,people,
- resources:{power:sandbox?220:80,food:sandbox?220:85,water:sandbox?220:90,meds:sandbox?80:28,scrap:sandbox?800:235,credits:sandbox?800:225},
- factions:{rebels:{morale:70,leader:''},raiders:{morale:80,leader:'The Marauders'}},outbreaks:{},events:[{day:1,text:'Vault personnel assigned. All systems are awaiting your directives.',alarm:false}],history:[],lastProduction:null};
+ return {version:2,name:name.trim().slice(0,28)||'VAULT-01',number,mode,phase:'vault',day:1,rooms,people,
+ resources:{power:sandbox?220:55,food:sandbox?220:42,water:sandbox?220:42,meds:sandbox?80:24,scrap:sandbox?800:160,credits:sandbox?800:130},
+ research:{level:1,xp:0,points:1,unlocked:[]},tutorial:{enabled:true,step:0,finished:false},
+ factions:{rebels:{morale:70,leader:''},raiders:{morale:80,leader:'The Marauders'}},outbreaks:{},events:[{day:1,text:'The hatch is secure. Your new vault is empty. Build shelter and begin welcoming survivors.',alarm:false}],history:[],lastProduction:null};
 }
 function goodGame(s){
- return s&&s.version===1&&Array.isArray(s.rooms)&&s.rooms.length===COUNT&&Array.isArray(s.people)&&s.resources&&s.factions&&s.outbreaks&&Array.isArray(s.events)&&['vault','exile','gameover'].includes(s.phase)&&['standard','hardcore','sandbox'].includes(s.mode);
+ return s&&(s.version===1||s.version===2)&&Array.isArray(s.rooms)&&s.rooms.length===COUNT&&Array.isArray(s.people)&&s.resources&&s.factions&&s.outbreaks&&Array.isArray(s.events)&&['vault','exile','gameover'].includes(s.phase)&&['standard','hardcore','sandbox'].includes(s.mode);
 }
-function saved(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));return goodGame(s)?s:null;}catch{return null;}}
+function saved(){
+ try{
+  const s=JSON.parse(localStorage.getItem(SAVE_KEY));
+  if(!goodGame(s))return null;
+  // Upgrade existing alpha saves in place without deleting residents or buildings.
+  if(!s.research||!Array.isArray(s.research.unlocked))s.research={level:1,xp:0,points:1,unlocked:[]};
+  if(!s.tutorial)s.tutorial={enabled:false,step:TUTORIAL.length,finished:true};
+  s.version=2;
+  return s;
+ }catch{return null;}
+}
 function persist(){if(!game)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch{}}
 function begin(name,mode){
  game=fresh(name,mode);selected=0;selectedResident=null;speed=1;elapsed=0;lastStep=performance.now();$('startOverlay').classList.add('hidden');$('exileOverlay').classList.add('hidden');pushLog('Overseer authority granted. Construct, assign, and defend.',false);persist();render();
@@ -54,6 +84,113 @@ function resume(s){
  $('startOverlay').classList.add('hidden');$('exileOverlay').classList.toggle('hidden',game.phase==='vault');
  render();if(game.phase!=='vault')renderExile();
 }
+function hasSkill(id){return !!game?.research?.unlocked.includes(id);}
+function earnXP(amount,reason){
+ if(!game||amount<=0)return;
+ const progress=game.research;progress.xp+=amount;
+ let threshold=55+(progress.level-1)*20;
+ while(progress.xp>=threshold){
+  progress.xp-=threshold;progress.level++;progress.points++;
+  pushLog('DIRECTIVE LEVEL '+progress.level+': +1 skill point. Open SKILLS to spend it.');
+  threshold=55+(progress.level-1)*20;
+ }
+}
+function buildCost(t){
+ return {scrap:Math.ceil(t.scrap*(hasSkill('economy')?.8:1)),
+  credits:Math.ceil(t.credits*(hasSkill('economy')?.8:1))};
+}
+function tutorialDone(){
+ const t=game.tutorial;if(!t?.enabled)return;
+ while(t.step<TUTORIAL.length){
+  const objective=TUTORIAL[t.step].type;
+  const complete=objective==='quarters'?has('quarters'):objective==='water'?has('water'):
+   objective==='farm'?has('farm'):objective==='recruit'?game.people.length>0:
+   objective==='assign'?game.people.some(p=>['water','farm'].includes(game.rooms[p.job]?.type)):
+   game.research.unlocked.length>0;
+  if(!complete)break;
+  t.step++;
+  if(t.step<TUTORIAL.length)pushLog('Tutorial complete: '+TUTORIAL[t.step-1].title+'. Next: '+TUTORIAL[t.step].title+'.');
+ }
+ if(t.step>=TUTORIAL.length){
+  t.enabled=false;t.finished=true;game.resources.scrap+=20;game.resources.credits+=15;
+  pushLog('OVERSEER TRAINING COMPLETE! +20 scrap and +15 credits. Your vault now operates independently.');
+ }
+}
+function inviteSurvivor(){
+ if(!game||game.phase!=='vault')return;
+ const beds=capacity(),first=game.people.length===0,cost=first?0:12;
+ if(game.people.length>=beds||!has('quarters')||!has('water')||!has('farm')
+  ||game.resources.food<5||game.resources.water<5||game.resources.credits<cost)return;
+ const i=game.rooms.findIndex(r=>owned(r)&&!r.sealed&&r.type==='quarters');
+ if(i<0)return;
+ const n=Math.max(-1,...game.people.map(p=>p.id))+1;
+ const person=resident(n,i,game.people);
+ if(hasSkill('community'))person.loyalty=clamp(person.loyalty+8,0,100);
+ game.resources.credits-=cost;game.resources.food-=3;game.resources.water-=3;
+ game.people.push(person);
+ pushLog('NEW ARRIVAL: '+person.name+' joined your vault. Select them in RESIDENTS to assign a job.');
+ earnXP(15,'recruit');
+ tutorialDone();commit();
+}
+function unlockSkill(id){
+ if(!game||game.phase!=='vault')return;
+ const skill=SKILLS.find(item=>item.id===id);
+ if(!skill||game.research.points<1||hasSkill(id)||skill.requires.some(req=>!hasSkill(req)))return;
+ game.research.points--;game.research.unlocked.push(id);
+ pushLog('SKILL UNLOCKED: '+skill.title+'. '+skill.desc);
+ tutorialDone();commit();
+}
+function renderSkills(){
+ if(!game)return;
+ const progress=game.research,threshold=55+(progress.level-1)*20;
+ $('researchLevel').textContent=progress.level;
+ $('researchPoints').textContent=progress.points;
+ $('skillPointsChip').textContent=progress.points;
+ $('researchXP').textContent=Math.floor(progress.xp)+' / '+threshold;
+ $('researchXPBar').style.width=(Math.min(100,progress.xp/threshold*100))+'%';
+ const root=$('skillsList');root.replaceChildren();
+ for(const group of ['ENGINEERING','CIVILIZATION','SECURITY']){
+  const section=elem('section','skill-branch');
+  section.append(elem('div','skill-branch-title',group));
+  const tiles=elem('div','skill-tiles');
+  SKILLS.filter(skill=>skill.group===group).forEach(skill=>{
+   const learned=hasSkill(skill.id);
+   const blocked=skill.requires.some(req=>!hasSkill(req));
+   const card=elem('article','skill-card'+(learned?' learned':blocked?' blocked':''));
+   const badge=elem('span','skill-icon',skill.icon);
+   const detail=elem('div','skill-detail');
+   detail.append(elem('strong','',skill.title),elem('p','',skill.desc));
+   if(skill.requires.length)detail.append(elem('small','', 'REQUIRES: '+skill.requires.map(req=>SKILLS.find(s=>s.id===req)?.title||req).join(', ')));
+   const button=action(learned?'UNLOCKED':blocked?'LOCKED':progress.points>0?'UNLOCK · 1 POINT':'NEED 1 POINT',
+    ()=>unlockSkill(skill.id),learned||blocked||progress.points<1||game.phase!=='vault');
+   card.append(badge,detail,button);tiles.append(card);
+  });
+  section.append(tiles);root.append(section);
+ }
+}
+function renderTutorial(){
+ const t=game.tutorial,show=game.phase==='vault'&&t?.enabled&&t.step<TUTORIAL.length;
+ $('tutorialPanel').hidden=!show;
+ if(!show)return;
+ const step=TUTORIAL[t.step];
+ $('tutorialCounter').textContent=(t.step+1)+' / '+TUTORIAL.length;
+ $('tutorialTitle').textContent=step.title;
+ $('tutorialDescription').textContent=step.desc;
+ $('tutorialFocusBtn').textContent=step.action+' →';
+ $('tutorialProgress').style.width=Math.round(t.step/TUTORIAL.length*100)+'%';
+}
+function focusTutorial(){
+ if(!game?.tutorial?.enabled)return;
+ const task=TUTORIAL[game.tutorial.step]?.type;
+ if(['quarters','water','farm'].includes(task)){
+  const i=game.rooms.findIndex((r,j)=>!r&&canBuild(j));if(i>=0){selected=i;renderInspector();}
+ }else if(task==='recruit'){$('intakeBtn').focus?.();}
+ else if(task==='assign'){
+  selected=game.rooms.findIndex(r=>owned(r)&&r.type==='water');
+  if(selected<0)selected=game.rooms.findIndex(r=>owned(r)&&r.type==='farm');
+  selectedResident=game.people[0]?.id??null;renderInspector();renderResidents();
+ }else if(task==='skills'){$('skillsOverlay').classList.remove('hidden');renderSkills();}
+}
 function averageLoyalty(){return game?.people.length?Math.round(game.people.reduce((n,p)=>n+p.loyalty,0)/game.people.length):0;}
 function staff(i){return game.people.filter(p=>p.job===i&&p.health>10).length;}
 function production(){
@@ -62,11 +199,11 @@ function production(){
  game.rooms.forEach((r,i)=>{
   if(!owned(r)||r.sealed||r.hp<=0)return;
   active++;const factor=(.45+.24*staff(i))*r.level*(r.hp/100);
-  if(r.type==='power')d.power+=18*factor;
-  if(r.type==='water')d.water+=14*factor;
-  if(r.type==='farm')d.food+=14*factor;
-  if(r.type==='medbay')d.meds+=3.4*factor;
-  if(r.type==='workshop'){d.scrap+=3.2*factor;d.credits+=1.7*factor;}
+  if(r.type==='power')d.power+=18*factor*(hasSkill('grid')?1.25:1);
+  if(r.type==='water')d.water+=14*factor*(hasSkill('recycling')?1.3:1);
+  if(r.type==='farm')d.food+=14*factor*(hasSkill('harvest')?1.3:1);
+  if(r.type==='medbay')d.meds+=3.4*factor*(hasSkill('triage')?1.3:1);
+  if(r.type==='workshop'){d.scrap+=3.2*factor*(hasSkill('salvage')?1.4:1);d.credits+=1.7*factor;}
   if(r.type==='command')d.credits+=2.3*factor;
  });
  d.power-=active*1.25+game.people.length*.12;
@@ -75,7 +212,7 @@ function production(){
  d.meds-=game.people.length*.065;
  return d;
 }
-function capacity(){return game.rooms.reduce((n,r)=>n+(owned(r)&&!r.sealed&&r.type==='quarters'?10*r.level:0),0);}
+function capacity(){return game.rooms.reduce((n,r)=>n+(owned(r)&&!r.sealed&&r.type==='quarters'?(hasSkill('housing')?15:10)*r.level:0),0);}
 function has(type,owner='vault'){return game.rooms.some(r=>r&&r.owner===owner&&r.type===type);}
 function setResource(key,n){game.resources[key]=clamp(game.resources[key]+n,0,9999);}
 function applyProduction(){
@@ -89,9 +226,9 @@ function applyProduction(){
   const friend=game.people.find(other=>other.id===p.bond);
   const social=friend?clamp((friend.loyalty-p.loyalty)*.014,-.38,.38)+(owned(game.rooms[friend.job])?0:-.2):0;
   const traitEffect=p.trait==='Skeptical'&&shortages.length?-.65:p.trait==='Optimistic'?.17:p.trait==='Protective'&&sheltered&&game.rooms[p.job]?.type==='security'?.22:p.trait==='Compassionate'&&sheltered&&game.rooms[p.job]?.type==='medbay'?.18:p.trait==='Ambitious'&&game.rooms[p.job]?.type==='quarters'?-.10:0;
-  p.loyalty=clamp(p.loyalty+(risk?-risk:.28)+social+traitEffect,0,98);
+  p.loyalty=clamp(p.loyalty+(risk?-risk:.28)+social+traitEffect+(hasSkill('community')?.25:0),0,98);
   if(shortages.length)p.health=clamp(p.health-1.2*shortages.length,0,100);
-  else if(game.resources.meds>1&&has('medbay'))p.health=clamp(p.health+.55,0,100);
+  else if(game.resources.meds>1&&has('medbay'))p.health=clamp(p.health+(hasSkill('triage')?.8:.55),0,100);
  });
  if(shortages.length&&(game.day%3===0))pushLog('Supply crisis: '+shortages.join(', ').toUpperCase()+' depleted. Resident loyalty is falling.',true);
  if(crowd&&game.day%4===0)pushLog('Overcrowding has increased unrest. Build living quarters.',true);
@@ -111,6 +248,7 @@ function beginHostile(type,forced=false){
  const own=game.rooms.map((r,i)=>owned(r)?i:-1).filter(i=>i>=0);
  if(!own.length)return;
  if(type==='rebels'){
+  if(game.people.length<4){pushLog('At least four residents are required before a faction can organize an uprising.');return;}
   if(hostileSectorIndices('rebels').length){pushLog('Rebel cells are already active inside the vault.',true);return;}
   const candidates=own.filter(i=>i!==0&&[7,8,9,6,3,2,4,1].includes(i));
   if(!candidates.length)return;
@@ -172,7 +310,7 @@ function tickEnemies(){
   f.morale=clamp(f.morale-drain,0,100);
   for(const i of regions){
    const r=game.rooms[i];
-   if(r.sealed){r.resistance=clamp(r.resistance-(r.type==='farm'||r.type==='water'?2.8:8.5),0,100);}
+   if(r.sealed){r.resistance=clamp(r.resistance-(r.type==='farm'||r.type==='water'?2.8:8.5)*(hasSkill('siege')?1.5:1),0,100);}
    else r.resistance=clamp(r.resistance+(sufficient?.8:-1.8),0,100);
    if(r.resistance<=0){recapture(i,'Siege succeeded: '+TYPES[r.type].name+' has surrendered.');}
   }
@@ -198,17 +336,18 @@ function recapture(i,note){
 function tick(){
  if(!game||game.phase!=='vault')return;
  game.day++;
+ earnXP(2,'time');
  applyProduction();
  tickOutbreaks();
  tickEnemies();
  if(game.phase==='vault'){
-  if(game.day>=8&&game.day%5===0&&averageLoyalty()<51&&Math.random()<.48)beginHostile('rebels');
-  else if(game.day>15&&game.day%11===0&&Math.random()<.25&&averageLoyalty()<75)beginHostile('rebels');
-  if(game.day>=11&&game.day%9===0&&Math.random()<.4)beginHostile('raiders');
-  if(game.day>=7&&game.day%8===0&&Math.random()<.35)beginOutbreak();
-  if(game.day%7===0&&Math.random()<.52&&game.people.length<capacity()){
+  if(!game.tutorial?.enabled&&game.people.length>=4&&game.day>=8&&game.day%5===0&&averageLoyalty()<51&&Math.random()<.48)beginHostile('rebels');
+  else if(!game.tutorial?.enabled&&game.people.length>=4&&game.day>15&&game.day%11===0&&Math.random()<.25&&averageLoyalty()<75)beginHostile('rebels');
+  if(!game.tutorial?.enabled&&game.day>=11&&game.day%9===0&&Math.random()<.4)beginHostile('raiders');
+  if(!game.tutorial?.enabled&&game.people.length>=1&&game.day>=7&&game.day%8===0&&Math.random()<.35)beginOutbreak();
+  if(!game.tutorial?.enabled&&game.day%7===0&&Math.random()<.52&&game.people.length<capacity()){
    const n=game.people.length,job=game.rooms.findIndex(r=>owned(r)&&r.type==='quarters');
-   if(job>=0){const p=resident(n,job,game.people);game.people.push(p);pushLog('A new survivor, '+p.name+', joined your vault.');}
+   if(job>=0&&game.people.length>0){const p=resident(Math.max(...game.people.map(p=>p.id))+1,job,game.people);game.people.push(p);pushLog('A new survivor, '+p.name+', joined your vault.');earnXP(12,'arrival');}
   }
   if(game.day%9===0){game.resources.scrap+=12;pushLog('Scavenger delivery: +12 scrap recovered from the surface.');}
   checkLoss();
@@ -228,9 +367,9 @@ function checkLoss(){
 function canBuild(i){return !game.rooms[i]&&adjacent(i).some(j=>owned(game.rooms[j])&&!game.rooms[j].sealed);}
 function build(i,type){
  const t=TYPES[type];if(!t||!canBuild(i)||game.phase!=='vault')return;
- if(game.resources.scrap<t.scrap||game.resources.credits<t.credits)return;
- game.resources.scrap-=t.scrap;game.resources.credits-=t.credits;game.rooms[i]=room(type);
- pushLog(t.name+' constructed in sector '+sector(i)+'.');commit();
+ const cost=buildCost(t);if(game.resources.scrap<cost.scrap||game.resources.credits<cost.credits)return;
+ game.resources.scrap-=cost.scrap;game.resources.credits-=cost.credits;game.rooms[i]=room(type);
+ pushLog(t.name+' constructed in sector '+sector(i)+'.');earnXP(24,'construction');tutorialDone();commit();
 }
 function sector(i){return 'B'+(Math.floor(i/COLS)+1)+'-'+String((i%COLS)+1).padStart(2,'0');}
 function manage(action){
@@ -243,13 +382,13 @@ function manage(action){
   const scrap=25*r.level,credits=15*r.level;
   if(game.resources.scrap<scrap||game.resources.credits<credits)return;
   game.resources.scrap-=scrap;game.resources.credits-=credits;r.level++;r.hp=100;
-  pushLog(TYPES[r.type].name+' upgraded to level '+r.level+'.');
+  pushLog(TYPES[r.type].name+' upgraded to level '+r.level+'.');earnXP(18,'upgrade');
  }else if(action==='repair'&&owned(r)&&r.hp<100&&game.resources.scrap>=12){
   game.resources.scrap-=12;r.hp=clamp(r.hp+40,0,100);pushLog(sector(i)+' structural damage repaired.');
  }else if(action==='storm'&&hostile(r)&&game.resources.power>=7&&game.resources.meds>=3){
   game.resources.power-=7;game.resources.meds-=3;
   const guards=game.people.filter(p=>owned(game.rooms[p.job])&&game.rooms[p.job].type==='security'&&!game.rooms[p.job].sealed&&p.health>25).length;
-  const chance=clamp(.35+guards*.12+(r.sealed?.16:0)-(r.resistance/350),.16,.88);
+  const chance=clamp(.35+guards*.12+(r.sealed?.16:0)-(r.resistance/350)+(hasSkill('tactics')?.15:0),.16,.94);
   if(Math.random()<chance){
    recapture(i,'Security teams reclaimed '+TYPES[r.type].name+' after close-quarters fighting.');
   }else{
@@ -269,9 +408,9 @@ function manage(action){
   pushLog('Emergency medical response deployed to '+sector(i)+'.');
  }else if(action==='assign'&&owned(r)&&selectedResident!==null){
   const p=game.people.find(p=>p.id===selectedResident);
-  if(p){p.job=i;pushLog(p.name+' assigned to '+TYPES[r.type].name+'.');selectedResident=null;}
+  if(p){p.job=i;pushLog(p.name+' assigned to '+TYPES[r.type].name+'.');selectedResident=null;earnXP(10,'staffing');}
  }
- checkLoss();commit();
+ tutorialDone();checkLoss();commit();
 }
 function renderExile(){
  if(!game||game.phase==='vault'){$('exileOverlay').classList.add('hidden');return;}
@@ -301,8 +440,12 @@ function exileAction(choice){
   game.history=old.history.slice();
   game.resources.scrap=clamp(Math.floor(old.resources.scrap*.45),70,300);
   game.resources.credits=clamp(Math.floor(old.resources.credits*.45),60,300);
-  game.people=game.people.slice(0,clamp(survivors,5,16));
-  game.people.forEach(p=>{if(!game.rooms[p.job])p.job=3;});
+  game.tutorial={enabled:false,step:TUTORIAL.length,finished:true};
+  game.research=JSON.parse(JSON.stringify(old.research));
+  const loyal=old.people.filter(p=>p.loyalty>=60).slice(0,10);
+  if(loyal.length)game.rooms[5]=room('quarters');
+  game.people=loyal.map(p=>({...p,job:5}));
+  game.people.forEach(p=>{if(!game.rooms[p.job])p.job=0;});
   pushLog('A new chapter begins. The fallen vault remains under enemy control.',true);
   game.phase='vault';speed=1;
  }else{
@@ -333,7 +476,7 @@ function render(){
  const prod=production(),territory=game.rooms.filter(Boolean).length;
  $('vaultName').textContent=game.name.toUpperCase()+' / SECTOR '+game.number;
  $('day').textContent=String(game.day).padStart(3,'0');$('population').textContent=String(game.people.length).padStart(2,'0');
- $('loyalty').textContent=averageLoyalty()+'%';$('control').textContent=territory?Math.round(secs()/territory*100)+'%':'0%';
+ $('loyalty').textContent=game.people.length?averageLoyalty()+'%':'—';$('control').textContent=territory?Math.round(secs()/territory*100)+'%':'0%';
  $('roomCount').textContent=String(territory).padStart(2,'0')+' SECTORS';
  $('statusChip').textContent=game.phase==='exile'?'OVERSEER EXILED':game.phase==='gameover'?'COMMAND TERMINATED':hostileSectorIndices('rebels').length||hostileSectorIndices('raiders').length?'ACTIVE HOSTILITIES':'OPERATIONS NORMAL';
  $('worldMessage').textContent=game.phase==='vault'?(Object.keys(game.outbreaks).length?'BIOHAZARD CONDITIONS':hostileSectorIndices('rebels').length||hostileSectorIndices('raiders').length?'SECTORS UNDER OCCUPATION':'ALL SYSTEMS REPORTING'):'COMMAND UNAVAILABLE';
@@ -343,9 +486,14 @@ function render(){
   $('r-'+k).textContent=money(game.resources[k]);const node=$('r-'+k).closest('.resource');node.classList.toggle('critical',game.resources[k]<(k==='power'||k==='food'||k==='water'?20:0));
   if(['power','food','water','meds'].includes(k))$('d-'+k).textContent=(prod[k]>=0?'+':'')+prod[k].toFixed(1)+' / DAY';
  }
+ $('intakeBtn').disabled=game.phase!=='vault'||!has('quarters')||!has('water')||!has('farm')||
+    game.people.length>=capacity()||game.resources.food<5||game.resources.water<5||
+    game.resources.credits<(game.people.length===0?0:12);
+ $('intakeBtn').title=game.people.length===0?'Requires quarters, clean water, food production and 5 food/water supplies':'Invite a survivor: 12 credits, 3 food, 3 water (housing required)';
+ renderTutorial();renderSkills();
  renderInspector();renderResidents();renderEvents();
  const actionsEnabled=game.phase==='vault';
- $('revoltBtn').disabled=!actionsEnabled;$('raidBtn').disabled=!actionsEnabled;$('outbreakBtn').disabled=!actionsEnabled;
+ $('revoltBtn').disabled=!actionsEnabled||game.tutorial?.enabled||game.people.length<4;$('raidBtn').disabled=!actionsEnabled||game.tutorial?.enabled;$('outbreakBtn').disabled=!actionsEnabled||game.tutorial?.enabled;
 }
 function addInfo(body,label,value){
  const row=elem('div','info-line');row.append(elem('span','',label),elem('b','',value));body.append(row);
@@ -360,9 +508,9 @@ function renderInspector(){
   const list=elem('div','build-list');
   Object.entries(TYPES).forEach(([key,t])=>{
    if(key==='command')return;
-   const b=elem('button','build-option');b.disabled=!allowed||game.phase!=='vault'||game.resources.scrap<t.scrap||game.resources.credits<t.credits;
+   const cost=buildCost(t);const b=elem('button','build-option');b.disabled=!allowed||game.phase!=='vault'||game.resources.scrap<cost.scrap||game.resources.credits<cost.credits;
    b.append(elem('span','b-icon',t.icon));
-   const v=elem('span');v.append(elem('strong','',t.name),elem('small','',t.desc),elem('em','',t.scrap+' SCRAP  /  '+t.credits+' CREDITS'));b.append(v);
+   const v=elem('span');v.append(elem('strong','',t.name),elem('small','',t.desc),elem('em','',cost.scrap+' SCRAP  /  '+cost.credits+' CREDITS'));b.append(v);
    b.addEventListener('click',()=>build(selected,key));list.append(b);
   });root.append(list);return;
  }
@@ -382,7 +530,7 @@ function renderInspector(){
   addInfo(root,'FACTION MORALE',Math.round(f.morale)+'%');
   addInfo(root,'ENEMY SUPPLY',support.food&&support.water?'SUSTAINABLE':support.food||support.water?'LIMITED':'STARVING');
   addInfo(root,'MEDICAL SUPPORT',support.medical?'AVAILABLE':'NONE');
- }else if(r.type==='quarters')addInfo(root,'HOUSING',10*r.level+' CAPACITY');
+ }else if(r.type==='quarters')addInfo(root,'HOUSING',(hasSkill('housing')?15:10)*r.level+' CAPACITY');
  else addInfo(root,'OUTPUT',r.sealed?'SHUT DOWN':r.level>1?'BOOSTED':'NORMAL');
  const heading=elem('div','section-heading','SECTOR DIRECTIVES');heading.style.marginTop='22px';root.append(heading);
  const grid=elem('div','action-grid');
@@ -408,6 +556,10 @@ function renderInspector(){
 }
 function renderResidents(){
  const root=$('roster');root.replaceChildren();
+ $('rosterHelp').textContent=game.people.length
+  ? 'Select a resident, then select a friendly sector to reassign them. Housing: '+game.people.length+'/'+capacity()
+  : 'No residents yet. Build quarters, water and food, then click + SURVIVOR to invite your first settler.';
+ if(!game.people.length){root.append(elem('div','roster-empty','NO RESIDENTS YET · INTAKE OFFLINE'));return;}
  game.people.forEach(p=>{
   const card=elem('button','resident'+(selectedResident===p.id?' selected':''));card.type='button';
   const av=elem('span','avatar',p.name[0]);
@@ -568,6 +720,11 @@ function loop(now){
  if(game&&game.phase==='vault'&&speed>0){elapsed+=dt*speed;while(elapsed>=2200){elapsed-=2200;tick();}}
  draw(now/1000);requestAnimationFrame(loop);
 }
+$('intakeBtn').addEventListener('click',inviteSurvivor);
+$('skillsBtn').addEventListener('click',()=>{$('skillsOverlay').classList.remove('hidden');renderSkills();});
+$('closeSkillsBtn').addEventListener('click',()=>$('skillsOverlay').classList.add('hidden'));
+$('tutorialFocusBtn').addEventListener('click',focusTutorial);
+$('skipTutorialBtn').addEventListener('click',()=>{if(game?.tutorial?.enabled){game.tutorial.enabled=false;game.tutorial.finished=true;game.tutorial.step=TUTORIAL.length;pushLog('Overseer training skipped. You can now govern freely.');commit();}});
 $('startBtn').addEventListener('click',()=>begin($('vaultInput').value,document.querySelector('input[name="mode"]:checked').value));
 $('continueBtn').addEventListener('click',()=>{const s=saved();if(s)resume(s);});
 $('helpBtn').addEventListener('click',()=>$('helpOverlay').classList.remove('hidden'));
