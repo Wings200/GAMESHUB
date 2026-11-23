@@ -37,7 +37,7 @@
  <section class="workspace">
   <div class="world">
    <div class="worldbar">
-    <div class="toggle" role="group" aria-label="View location"><button id="undergroundBtn" class="active" type="button">▤ UNDERGROUND</button><button id="surfaceBtn" type="button">☀ SURFACE</button></div>
+    <div class="toggle" role="group" aria-label="View location"><button id="undergroundBtn" class="active" type="button">▤ UNDERGROUND</button><button id="surfaceBtn" type="button">☀ SURFACE</button></div><button id="fallbackBtn" type="button" class="safemap" title="Use reliable HTML map if your Canvas screen is blank">▤ SAFE MAP</button>
     <div class="worldmessage"><span class="dot"></span><span id="worldStatus">AWAITING COMMAND</span></div>
    </div>
    <div class="viewport"><canvas id="world" width="1130" height="700" aria-label="Interactive underground tunnel and surface map">Canvas 2D is required to play.</canvas><div id="worldFallback" class="world-fallback" aria-label="Interactive backup game map" hidden></div><div id="floatingToast" class="toast" role="status" aria-live="polite"></div></div>
