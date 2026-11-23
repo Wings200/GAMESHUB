@@ -111,7 +111,7 @@
     const demand=1+state.rooms.reduce((sum,r)=>sum+(ROOMS[r.type]?.draw||1),0);
     let remaining=generation;
     const prioritized=state.rooms.slice().sort((a,b)=>(a.priority??2)-(b.priority??2) ||
-      (a.type==='water'?-1:0) || a.id-b.id);
+      Number(b.type==='water')-Number(a.type==='water') || a.id-b.id);
     const online=new Set();
     if(remaining>=1)remaining-=1;
     for(const r of prioritized) {
@@ -440,7 +440,8 @@
       }
       if(incident.severity>100){
         incident.severity=35;
-        const close=state.rooms.find(r=>r.id!==rm.id&&Math.abs(r.x-rm.x)<10&&Math.abs(r.y-rm.y)<=3&&!state.incidents.some(e=>e.roomId===r.id));
+        const close=state.rooms.find(r=>r.id!==rm.id&&Math.abs(r.x-rm.x)<10&&Math.abs(r.y-rm.y)<=3&&
+          !state.incidents.some(e=>e.roomId===r.id)&&(!hooks?.roomRoute||hooks.roomRoute(rm,r)));
         if(close)state.incidents.push({id:++state.threatId,kind:incident.kind,roomId:close.id,severity:18,seconds:0});
         emit(hooks,'Incident spreading through the settlement. Dispatch workers!',true);
       }
@@ -450,12 +451,22 @@
       else if(state.resources.food>1&&state.resources.water>1&&r.morale<72)r.morale=min(72,r.morale+dt*.007);
       if(state.policy.overtime){r.energy=max(0,r.energy-dt*.045);r.morale=max(0,r.morale-dt*.009);}
       if(r.morale<18&&r.loyalty<30&&!r.striking&&!r.trapped){
+        if(r.taskId){const job=state.projects.find(p=>p.id===r.taskId);if(job)job.workers=job.workers.filter(id=>id!==r.id);}
         r.striking=true;r.jobRoom=null;r.taskId=null;r.state='strike';
         emit(hooks,r.name+' has joined a strike over poor living conditions. Address their needs or negotiate.',true);
       }
       if(r.striking&&r.morale>=47){r.striking=false;r.state='idle';emit(hooks,r.name+' returned to duty.');}
       if(r.infection>0){
         r.infection=min(110,r.infection+dt*.045);
+        if(r.infection>58){
+          for(const peer of residents){
+            if(peer.id!==r.id&&!peer.dead&&peer.infection<100 && Math.abs(peer.x-r.x)<2.5 &&
+              Math.abs(peer.y-r.y)<1.5){
+              const protection=state.rooms.some(room=>room.type==='ventilation'&&active(state,room,p))?.45:1;
+              peer.infection=min(100,peer.infection+dt*.009*protection);
+            }
+          }
+        }
         if(r.infection>60)r.morale=max(0,r.morale-dt*.02);
         if(r.infection>=100){
           r.dead=true;r.state='dead';r.recoverable=false;r.jobRoom=null;r.taskId=null;r.defending=false;
@@ -463,7 +474,8 @@
           createRaid(state,hooks,'ferals');
         }
       }
-      if(r.health<=0){
+      if(r.health<=0 && !r.dead){
+        if(r.taskId){const job=state.projects.find(p=>p.id===r.taskId);if(job)job.workers=job.workers.filter(id=>id!==r.id);}
         r.dead=true;r.state='dead';r.jobRoom=null;r.taskId=null;r.defending=false;
         emit(hooks,r.name+' has died. Medical revival may be possible.',true);
       }
