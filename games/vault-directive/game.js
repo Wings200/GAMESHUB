@@ -408,7 +408,7 @@ function manage(action){
   pushLog('Emergency medical response deployed to '+sector(i)+'.');
  }else if(action==='assign'&&owned(r)&&selectedResident!==null){
   const p=game.people.find(p=>p.id===selectedResident);
-  if(p){p.job=i;pushLog(p.name+' assigned to '+TYPES[r.type].name+'.');selectedResident=null;earnXP(10,'staffing');}
+  if(p){const changed=p.job!==i;p.job=i;if(changed){pushLog(p.name+' assigned to '+TYPES[r.type].name+'.');earnXP(10,'staffing');}selectedResident=null;}
  }
  tutorialDone();checkLoss();commit();
 }
